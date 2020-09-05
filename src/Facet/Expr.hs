@@ -5,3 +5,4 @@ module Facet.Expr
 
 data Expr a where
   Lam :: (Expr a -> Expr b) -> Expr (a -> b)
+  (:$) :: Expr (a -> b) -> Expr a -> Expr b
