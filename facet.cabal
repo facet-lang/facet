@@ -40,5 +40,8 @@ library
     Facet.Pretty
   build-depends:
     , base ^>= 4.14
+    , prettyprinter
+    , prettyprinter-ansi-terminal
+    , terminal-size
   hs-source-dirs:      lib
   default-language:    Haskell2010
