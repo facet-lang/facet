@@ -1,0 +1,43 @@
+cabal-version:       2.2
+
+name:                facet
+version:             0.0.0.0
+synopsis:            algebraic effects for elaboration
+-- description:
+homepage:            https://github.com/robrix/facet
+-- bug-reports:
+license:             BSD-3-Clause
+license-file:        LICENSE
+author:              Rob Rix
+maintainer:          rob.rix@me.com
+copyright:           2020 Rob Rix
+category:            Language
+
+
+common common
+  default-language: Haskell2010
+  ghc-options:
+    -Weverything
+    -Wno-all-missed-specialisations
+    -Wno-implicit-prelude
+    -Wno-missed-specialisations
+    -Wno-missing-import-lists
+    -Wno-missing-local-signatures
+    -Wno-monomorphism-restriction
+    -Wno-name-shadowing
+    -Wno-safe
+    -Wno-unsafe
+  if (impl(ghc >= 8.8))
+    ghc-options: -Wno-missing-deriving-strategies
+  if (impl(ghc >= 8.10))
+    ghc-options:
+      -Wno-missing-safe-haskell-mode
+      -Wno-prepositive-qualified-module
+
+library
+  import: common
+  -- exposed-modules:
+  build-depends:
+    , base ^>= 4.14
+  hs-source-dirs:      lib
+  default-language:    Haskell2010
