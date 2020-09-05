@@ -36,7 +36,8 @@ common common
 
 library
   import: common
-  -- exposed-modules:
+  exposed-modules:
+    Facet.Pretty
   build-depends:
     , base ^>= 4.14
   hs-source-dirs:      lib
