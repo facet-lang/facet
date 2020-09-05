@@ -37,6 +37,7 @@ common common
 library
   import: common
   exposed-modules:
+    Facet.Expr
     Facet.Pretty
   build-depends:
     , base ^>= 4.14
