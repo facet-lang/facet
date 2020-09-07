@@ -3,6 +3,7 @@ module Facet.Expr
   -- * Effects
 , Sum(..)
 , State(..)
+, None
   -- * Examples
 , id'
 , const'
@@ -24,6 +25,9 @@ data Sum l r k
 data State s k
   = Get (s -> k)
   | Put s k
+
+-- | No effects.
+data None k
 
 
 -- Examples
