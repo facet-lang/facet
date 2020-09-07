@@ -1,5 +1,7 @@
 module Facet.Expr
 ( Expr(..)
+, Eff(..)
+, Inst(..)
   -- * Effects
 , Sum(..)
 , State(..)
@@ -13,6 +15,14 @@ class Expr repr where
   lam :: [repr a -> repr b] -> repr (a -> b)
   ($$) :: repr (a -> b) -> repr a -> repr b
   infixl 9 $$
+
+
+class Eff repr where
+  handle :: repr (Sum eff sig) a -> (Inst eff b -> repr sig c) -> repr sig c
+
+data Inst eff a
+  = Val a
+  | Eff (eff a)
 
 
 -- Effects
