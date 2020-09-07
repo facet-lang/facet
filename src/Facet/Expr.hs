@@ -3,6 +3,7 @@ module Facet.Expr
 ( Expr(..)
   -- * Examples
 , id'
+, const'
 ) where
 
 class Expr repr where
@@ -15,3 +16,6 @@ class Expr repr where
 
 id' :: Expr repr => repr (a -> a)
 id' = lam [id]
+
+const' :: Expr repr => repr (a -> b -> a)
+const' = lam [\ a -> lam [const a]]
