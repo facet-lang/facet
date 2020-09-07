@@ -1,4 +1,5 @@
 {-# LANGUAGE EmptyCase #-}
+{-# LANGUAGE LambdaCase #-}
 module Facet.Expr
 ( Expr(..)
 , Inst(..)
@@ -10,6 +11,7 @@ module Facet.Expr
   -- * Examples
 , id'
 , const'
+, execState
 ) where
 
 class Expr repr where
@@ -49,3 +51,11 @@ id' = lam var
 
 const' :: Expr repr => repr (a -> b -> a)
 const' = lam (lam . const . var)
+
+execState :: Expr repr => repr (a -> s -> a)
+-- FIXME: this is using a carrier type of @a@ but it should be using @s -> (s, a)@ or something like that.
+execState = lam (\case
+  Val a -> lam (const a)
+  Eff (Get k) -> lam (k . var)
+  -- FIXME: how exactly do we use the new state?
+  Eff (Put _ k) -> lam (const k))
