@@ -4,6 +4,6 @@ module Facet.Expr
 ) where
 
 class Expr repr where
-  lam :: (repr a -> repr b) -> repr (a -> b)
+  lam :: [repr a -> repr b] -> repr (a -> b)
   ($$) :: repr (a -> b) -> repr a -> repr b
   infixl 9 $$
