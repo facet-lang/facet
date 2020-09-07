@@ -1,6 +1,7 @@
 module Facet.Expr
 ( Expr(..)
   -- * Effects
+, Sum(..)
 , State(..)
   -- * Examples
 , id'
@@ -14,6 +15,11 @@ class Expr repr where
 
 
 -- Effects
+
+-- | Sum of effects represented as a binary tree.
+data Sum l r m k
+  = L (l m k)
+  | R (r m k)
 
 data State s m k
   = Get (s -> m k)
