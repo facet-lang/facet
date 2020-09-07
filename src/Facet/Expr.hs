@@ -1,3 +1,4 @@
+{-# LANGUAGE KindSignatures #-}
 module Facet.Expr
 ( Expr(..)
   -- * Effects
@@ -8,6 +9,8 @@ module Facet.Expr
 , const'
 ) where
 
+import Data.Kind (Type)
+
 class Expr repr where
   lam :: [repr a -> repr b] -> repr (a -> b)
   ($$) :: repr (a -> b) -> repr a -> repr b
@@ -17,7 +20,7 @@ class Expr repr where
 -- Effects
 
 -- | Sum of effects represented as a binary tree.
-data Sum l r m k
+data Sum l r (m :: Type -> Type) k
   = L (l m k)
   | R (r m k)
 
