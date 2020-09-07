@@ -1,7 +1,6 @@
 {-# LANGUAGE EmptyCase #-}
 module Facet.Expr
 ( Expr(..)
-, Eff(..)
 , Inst(..)
 , var
   -- * Effects
@@ -18,9 +17,6 @@ class Expr repr where
   ($$) :: repr (a -> b) -> repr a -> repr b
   infixl 9 $$
 
-
-class Eff repr where
-  handle :: repr (Sum eff sig) a -> (Inst eff b -> repr sig c) -> repr sig c
 
 data Inst eff a
   = Val a
