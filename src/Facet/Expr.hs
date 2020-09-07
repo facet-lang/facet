@@ -1,4 +1,3 @@
-{-# LANGUAGE GADTs #-}
 module Facet.Expr
 ( Expr(..)
   -- * Effects
