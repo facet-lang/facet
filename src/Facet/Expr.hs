@@ -1,7 +1,9 @@
+{-# LANGUAGE EmptyCase #-}
 module Facet.Expr
 ( Expr(..)
 , Eff(..)
 , Inst(..)
+, var
   -- * Effects
 , Sum(..)
 , State(..)
@@ -23,6 +25,10 @@ class Eff repr where
 data Inst eff a
   = Val a
   | Eff (eff a)
+
+var :: Inst None a -> a
+var (Val a) = a
+var (Eff e) = case e of {}
 
 
 -- Effects
