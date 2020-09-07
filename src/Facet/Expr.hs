@@ -3,6 +3,7 @@ module Facet.Expr
 ( Expr(..)
 ) where
 
-data Expr a where
-  Lam :: (Expr a -> Expr b) -> Expr (a -> b)
-  (:$) :: Expr (a -> b) -> Expr a -> Expr b
+class Expr repr where
+  lam :: (repr a -> repr b) -> repr (a -> b)
+  ($$) :: repr (a -> b) -> repr a -> repr b
+  infixl 9 $$
