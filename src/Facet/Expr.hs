@@ -14,7 +14,7 @@ module Facet.Expr
 ) where
 
 class Expr repr where
-  lam :: [repr a -> repr b] -> repr (a -> b)
+  lam :: [Inst eff (repr a) -> repr b] -> repr (a -> b)
   ($$) :: repr (a -> b) -> repr a -> repr b
   infixl 9 $$
 
@@ -49,7 +49,7 @@ data None k
 -- Examples
 
 id' :: Expr repr => repr (a -> a)
-id' = lam [id]
+id' = lam [var]
 
 const' :: Expr repr => repr (a -> b -> a)
-const' = lam [\ a -> lam [const a]]
+const' = lam [\ a -> lam [const (var a)]]
