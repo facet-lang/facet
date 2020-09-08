@@ -16,6 +16,7 @@ module Facet.Expr
 , first
 , second
 , Eff(..)
+, send
   -- * Effects
 , Sum(..)
 , State(..)
@@ -79,6 +80,9 @@ second f ab = inlr (exl ab) (f $$ exr ab)
 
 class Eff repr where
   inst :: sig (repr sig) a -> repr sig a
+
+send :: (Has eff sig, Eff repr) => eff (repr sig) a -> repr sig a
+send = inst . inj
 
 
 -- Effects
