@@ -1,6 +1,7 @@
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -38,9 +39,9 @@ class Expr (repr :: (Type -> Type) -> (Type -> Type)) where
   infixl 9 $$
 
 
-data Inst eff a
-  = Val a
-  | Eff (eff a)
+data Inst eff a where
+  Val :: a -> Inst eff a
+  Eff :: eff a -> Inst eff a
 
 var :: Inst None a -> a
 var (Val a) = a
