@@ -50,15 +50,15 @@ infixl 1 <&, &>
 
 
 class Pair repr where
-  pair :: repr a -> repr b -> repr (a, b)
+  inlr :: repr a -> repr b -> repr (a, b)
   fst' :: repr (a, b) -> repr a
   snd' :: repr (a, b) -> repr b
 
 first :: (Expr repr, Pair repr) => repr (a -> a') -> repr (a, b) -> repr (a', b)
-first f ab = pair (f $$ fst' ab) (snd' ab)
+first f ab = inlr (f $$ fst' ab) (snd' ab)
 
 second :: (Expr repr, Pair repr) => repr (b -> b') -> repr (a, b) -> repr (a, b')
-second f ab = pair (fst' ab) (f $$ snd' ab)
+second f ab = inlr (fst' ab) (f $$ snd' ab)
 
 
 -- Effects
@@ -89,7 +89,7 @@ flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
 
 runState :: (Expr repr, Pair repr) => repr (s -> a -> (s, a))
 runState = lam $ \ s -> lam $ \case
-  Val a -> pair (var s) a
+  Val a -> inlr (var s) a
   Eff (Get k) -> runState $$ var s $$ k (var s)
   Eff (Put s k) -> runState $$ s $$ k
 
