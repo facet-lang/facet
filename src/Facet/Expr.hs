@@ -12,6 +12,7 @@ module Facet.Expr
 , Pair(..)
 , first
 , second
+, Eff(..)
   -- * Effects
 , Sum(..)
 , State(..)
@@ -63,6 +64,10 @@ first f ab = inlr (f $$ exl ab) (exr ab)
 
 second :: (Expr repr, Pair repr) => repr sig (b -> b') -> repr sig (a, b) -> repr sig (a, b')
 second f ab = inlr (exl ab) (f $$ exr ab)
+
+
+class Eff repr where
+  inst :: sig a -> repr sig a
 
 
 -- Effects
