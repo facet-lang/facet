@@ -26,6 +26,7 @@ module Facet.Expr
 , const'
 , flip'
 , get
+, put
 , runState
 , execState
   -- * Signatures
@@ -109,6 +110,9 @@ flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
 
 get :: (Eff repr, Has (State (repr sig s)) sig) => repr sig s
 get = inst (inj (Get id))
+
+put :: (Eff repr, Expr repr, Unit repr, Has (State (repr sig s)) sig) => repr sig (s -> ())
+put = lam $ \ s -> inst (inj (Put (var s) unit))
 
 runState :: (Expr repr, Pair repr) => repr sig (s -> a -> (s, a))
 runState = lam $ \ s -> lam $ \case
