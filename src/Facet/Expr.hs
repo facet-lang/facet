@@ -1,4 +1,5 @@
 {-# LANGUAGE EmptyCase #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
@@ -22,6 +23,7 @@ module Facet.Expr
 , id'
 , const'
 , flip'
+, get
 , runState
 , execState
   -- * Signatures
@@ -67,7 +69,7 @@ second f ab = inlr (exl ab) (f $$ exr ab)
 
 
 class Eff repr where
-  inst :: sig a -> repr sig a
+  inst :: sig (repr sig a) -> repr sig a
 
 
 -- Effects
@@ -98,6 +100,9 @@ const' = lam (lam . const . var)
 
 flip' :: Expr repr => repr sig ((a -> b -> c) -> (b -> a -> c))
 flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
+
+get :: (Eff repr, Has (State (repr sig s)) sig) => repr sig s
+get = inst (inj (Get id))
 
 runState :: (Expr repr, Pair repr) => repr sig (s -> a -> (s, a))
 runState = lam $ \ s -> lam $ \case
