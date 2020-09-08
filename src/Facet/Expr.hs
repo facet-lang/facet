@@ -15,6 +15,7 @@ module Facet.Expr
 , id'
 , const'
 , flip'
+, runState
 , execState
 ) where
 
@@ -70,6 +71,12 @@ const' = lam (lam . const . var)
 
 flip' :: Expr repr => repr ((a -> b -> c) -> (b -> a -> c))
 flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
+
+runState :: (Expr repr, Pair repr) => repr (a -> s -> (s, a))
+runState = lam $ \case
+  Val a -> lam $ \ s -> pair (var s) a
+  Eff (Get k) -> lam $ \ s -> pair (var s) (k (var s))
+  Eff (Put s k) -> lam $ \ _ -> pair s k
 
 execState :: Expr repr => repr (a -> s -> a)
 -- FIXME: this is using a carrier type of @a@ but it should be using @s -> (s, a)@ or something like that.
