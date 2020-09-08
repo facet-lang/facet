@@ -87,14 +87,14 @@ const' = lam (lam . const . var)
 flip' :: Expr repr => repr ((a -> b -> c) -> (b -> a -> c))
 flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
 
-runState :: (Expr repr, Pair repr) => repr (a -> s -> (s, a))
-runState = lam $ \case
+runState :: (Expr repr, Pair repr) => repr (s -> a -> (s, a))
+runState = (flip' $$) $ lam $ \case
   Val a -> lam $ \ s -> pair (var s) a
   Eff (Get k) -> lam $ \ s -> pair (var s) (k (var s))
   Eff (Put s k) -> lam $ \ _ -> pair s k
 
-execState :: (Expr repr, Pair repr) => repr (a -> s -> a)
-execState = lam $ \ a -> lam $ \ s -> snd' (runState $$ var a $$ var s)
+execState :: (Expr repr, Pair repr) => repr (s -> a -> a)
+execState = lam $ \ s -> lam $ \ a -> snd' (runState $$ var s $$ var a)
 
 
 -- Signatures
