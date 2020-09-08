@@ -104,3 +104,6 @@ class Has eff sig where
 
 instance Has eff eff where
   inj = id
+
+instance Has eff (Sum eff sig) where
+  inj = L
