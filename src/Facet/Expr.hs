@@ -88,10 +88,10 @@ flip' :: Expr repr => repr ((a -> b -> c) -> (b -> a -> c))
 flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
 
 runState :: (Expr repr, Pair repr) => repr (s -> a -> (s, a))
-runState = (flip' $$) $ lam $ \case
-  Val a -> lam $ \ s -> pair (var s) a
-  Eff (Get k) -> lam $ \ s -> pair (var s) (k (var s))
-  Eff (Put s k) -> lam $ \ _ -> pair s k
+runState = lam $ \ s -> lam $ \case
+  Val a -> pair (var s) a
+  Eff (Get k) -> runState $$ var s $$ k (var s)
+  Eff (Put s k) -> runState $$ s $$ k
 
 execState :: (Expr repr, Pair repr) => repr (s -> a -> a)
 execState = lam $ \ s -> lam $ \ a -> snd' (runState $$ var s $$ var a)
