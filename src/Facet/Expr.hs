@@ -25,6 +25,7 @@ module Facet.Expr
 , id'
 , const'
 , flip'
+, curry'
 , get
 , put
 , runState
@@ -107,6 +108,9 @@ const' = lam (lam . const . var)
 
 flip' :: Expr repr => repr sig ((a -> b -> c) -> (b -> a -> c))
 flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
+
+curry' :: (Expr repr, Pair repr) => repr sig (((a, b) -> c) -> (a -> b -> c))
+curry' = lam $ \ f -> lam $ \ a -> lam $ \ b -> var f $$ inlr (var a) (var b)
 
 get :: (Eff repr, Has (State (repr sig s)) sig) => repr sig s
 get = inst (inj (Get id))
