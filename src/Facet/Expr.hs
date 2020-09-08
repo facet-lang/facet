@@ -1,5 +1,6 @@
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Expr
@@ -26,7 +27,9 @@ module Facet.Expr
 , Has
 ) where
 
-class Expr repr where
+import Data.Kind (Type)
+
+class Expr (repr :: (Type -> Type) -> (Type -> Type)) where
   lam :: (Inst eff (repr sig a) -> repr sig b) -> repr sig (a -> b)
   ($$) :: repr sig (a -> b) -> repr sig a -> repr sig b
   infixl 9 $$
@@ -50,7 +53,7 @@ a &> b = flip' $$ const' $$ a $$ b
 infixl 1 <&, &>
 
 
-class Pair repr where
+class Pair (repr :: (Type -> Type) -> (Type -> Type)) where
   inlr :: repr sig a -> repr sig b -> repr sig (a, b)
   exl :: repr sig (a, b) -> repr sig a
   exr :: repr sig (a, b) -> repr sig b
