@@ -121,10 +121,10 @@ uncurry' :: (Expr repr, Pair repr) => repr sig ((a -> b -> c) -> ((a, b) -> c))
 uncurry' = lam $ \ f -> lam $ \ ab -> var f $$ exl (var ab) $$ exr (var ab)
 
 get :: (Eff repr, Has (State s) sig) => repr sig s
-get = alg (inj (Get id))
+get = send (Get id)
 
 put :: (Eff repr, Expr repr, Unit repr, Has (State s) sig) => repr sig (s -> ())
-put = lam $ \ s -> alg (inj (Put (var s) unit))
+put = lam $ \ s -> send (Put (var s) unit)
 
 runState :: (Expr repr, Pair repr) => repr sig (s -> a -> (s, a))
 runState = lam $ \ s -> lam $ \case
