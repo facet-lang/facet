@@ -1,4 +1,5 @@
 {-# LANGUAGE EmptyCase #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Expr
@@ -100,3 +101,6 @@ execState = lam $ \ a -> lam $ \ s -> snd' (runState $$ var a $$ var s)
 
 class Has eff sig where
   inj :: eff a -> sig a
+
+instance Has eff eff where
+  inj = id
