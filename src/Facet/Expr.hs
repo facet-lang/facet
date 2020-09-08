@@ -107,3 +107,6 @@ instance Has eff eff where
 
 instance Has eff (Sum eff sig) where
   inj = L
+
+instance Has eff sig => Has eff (Sum non sig) where
+  inj = R . inj
