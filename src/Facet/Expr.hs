@@ -4,6 +4,7 @@ module Facet.Expr
 ( Expr(..)
 , Inst(..)
 , var
+, Pair(..)
   -- * Effects
 , Sum(..)
 , State(..)
@@ -28,6 +29,12 @@ data Inst eff a
 var :: Inst None a -> a
 var (Val a) = a
 var (Eff e) = case e of {}
+
+
+class Pair repr where
+  pair :: repr a -> repr b -> repr (a, b)
+  fst' :: repr (a, b) -> repr a
+  snd' :: repr (a, b) -> repr b
 
 
 -- Effects
