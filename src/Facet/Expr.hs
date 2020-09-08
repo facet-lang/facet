@@ -15,6 +15,7 @@ module Facet.Expr
 , Sum(..)
 , State(..)
 , None
+, Return(..)
   -- * Examples
 , id'
 , const'
@@ -74,6 +75,9 @@ data State s k
 
 -- | No effects.
 data None k
+
+-- | The identity effect.
+newtype Return a = Return a
 
 
 -- Examples
