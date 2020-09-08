@@ -93,8 +93,11 @@ runState = lam $ \ s -> lam $ \case
   Eff (Get k) -> runState $$ var s $$ k (var s)
   Eff (Put s k) -> runState $$ s $$ k
 
-execState :: (Expr repr, Pair repr) => repr (s -> a -> a)
-execState = lam $ \ s -> lam $ \ a -> snd' (runState $$ var s $$ var a)
+execState :: Expr repr => repr (s -> a -> a)
+execState = lam $ \ s -> lam $ \case
+  Val a -> a
+  Eff (Get k) -> execState $$ var s $$ k (var s)
+  Eff (Put s k) -> execState $$ s $$ k
 
 
 -- Signatures
