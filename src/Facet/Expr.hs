@@ -1,5 +1,6 @@
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Expr
 ( Expr(..)
 , Inst(..)
@@ -19,6 +20,8 @@ module Facet.Expr
 , flip'
 , runState
 , execState
+  -- * Signatures
+, Has
 ) where
 
 class Expr repr where
@@ -91,3 +94,9 @@ runState = lam $ \case
 
 execState :: (Expr repr, Pair repr) => repr (a -> s -> a)
 execState = lam $ \ a -> lam $ \ s -> snd' (runState $$ var a $$ var s)
+
+
+-- Signatures
+
+class Has eff sig where
+  inj :: eff a -> sig a
