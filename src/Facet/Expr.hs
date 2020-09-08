@@ -26,6 +26,7 @@ module Facet.Expr
 , const'
 , flip'
 , curry'
+, uncurry'
 , get
 , put
 , runState
@@ -111,6 +112,9 @@ flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
 
 curry' :: (Expr repr, Pair repr) => repr sig (((a, b) -> c) -> (a -> b -> c))
 curry' = lam $ \ f -> lam $ \ a -> lam $ \ b -> var f $$ inlr (var a) (var b)
+
+uncurry' :: (Expr repr, Pair repr) => repr sig ((a -> b -> c) -> ((a, b) -> c))
+uncurry' = lam $ \ f -> lam $ \ ab -> var f $$ exl (var ab) $$ exr (var ab)
 
 get :: (Eff repr, Has (State (repr sig s)) sig) => repr sig s
 get = inst (inj (Get id))
