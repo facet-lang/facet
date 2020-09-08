@@ -27,8 +27,8 @@ module Facet.Expr
 ) where
 
 class Expr repr where
-  lam :: (Inst eff (repr a) -> repr b) -> repr (a -> b)
-  ($$) :: repr (a -> b) -> repr a -> repr b
+  lam :: (Inst eff (repr sig a) -> repr sig b) -> repr sig (a -> b)
+  ($$) :: repr sig (a -> b) -> repr sig a -> repr sig b
   infixl 9 $$
 
 
@@ -41,24 +41,24 @@ var (Val a) = a
 var (Eff e) = case e of {}
 
 
-(<&) :: Expr repr => repr a -> repr b -> repr a
+(<&) :: Expr repr => repr sig a -> repr sig b -> repr sig a
 a <& b = const' $$ a $$ b
 
-(&>) :: Expr repr => repr a -> repr b -> repr b
+(&>) :: Expr repr => repr sig a -> repr sig b -> repr sig b
 a &> b = flip' $$ const' $$ a $$ b
 
 infixl 1 <&, &>
 
 
 class Pair repr where
-  inlr :: repr a -> repr b -> repr (a, b)
-  exl :: repr (a, b) -> repr a
-  exr :: repr (a, b) -> repr b
+  inlr :: repr sig a -> repr sig b -> repr sig (a, b)
+  exl :: repr sig (a, b) -> repr sig a
+  exr :: repr sig (a, b) -> repr sig b
 
-first :: (Expr repr, Pair repr) => repr (a -> a') -> repr (a, b) -> repr (a', b)
+first :: (Expr repr, Pair repr) => repr sig (a -> a') -> repr sig (a, b) -> repr sig (a', b)
 first f ab = inlr (f $$ exl ab) (exr ab)
 
-second :: (Expr repr, Pair repr) => repr (b -> b') -> repr (a, b) -> repr (a, b')
+second :: (Expr repr, Pair repr) => repr sig (b -> b') -> repr sig (a, b) -> repr sig (a, b')
 second f ab = inlr (exl ab) (f $$ exr ab)
 
 
@@ -82,22 +82,22 @@ newtype Return a = Return a
 
 -- Examples
 
-id' :: Expr repr => repr (a -> a)
+id' :: Expr repr => repr sig (a -> a)
 id' = lam var
 
-const' :: Expr repr => repr (a -> b -> a)
+const' :: Expr repr => repr sig (a -> b -> a)
 const' = lam (lam . const . var)
 
-flip' :: Expr repr => repr ((a -> b -> c) -> (b -> a -> c))
+flip' :: Expr repr => repr sig ((a -> b -> c) -> (b -> a -> c))
 flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
 
-runState :: (Expr repr, Pair repr) => repr (s -> a -> (s, a))
+runState :: (Expr repr, Pair repr) => repr sig (s -> a -> (s, a))
 runState = lam $ \ s -> lam $ \case
   Val a -> inlr (var s) a
   Eff (Get k) -> runState $$ var s $$ k (var s)
   Eff (Put s k) -> runState $$ s $$ k
 
-execState :: Expr repr => repr (s -> a -> a)
+execState :: Expr repr => repr sig (s -> a -> a)
 execState = lam $ \ s -> lam $ \case
   Val a -> a
   Eff (Get k) -> execState $$ var s $$ k (var s)
