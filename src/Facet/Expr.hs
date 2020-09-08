@@ -51,14 +51,14 @@ infixl 1 <&, &>
 
 class Pair repr where
   inlr :: repr a -> repr b -> repr (a, b)
-  fst' :: repr (a, b) -> repr a
-  snd' :: repr (a, b) -> repr b
+  exl :: repr (a, b) -> repr a
+  exr :: repr (a, b) -> repr b
 
 first :: (Expr repr, Pair repr) => repr (a -> a') -> repr (a, b) -> repr (a', b)
-first f ab = inlr (f $$ fst' ab) (snd' ab)
+first f ab = inlr (f $$ exl ab) (exr ab)
 
 second :: (Expr repr, Pair repr) => repr (b -> b') -> repr (a, b) -> repr (a, b')
-second f ab = inlr (fst' ab) (f $$ snd' ab)
+second f ab = inlr (exl ab) (f $$ exr ab)
 
 
 -- Effects
