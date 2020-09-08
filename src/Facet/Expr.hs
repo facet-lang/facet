@@ -4,6 +4,8 @@ module Facet.Expr
 ( Expr(..)
 , Inst(..)
 , var
+, (<&)
+, (&>)
 , Pair(..)
 , first
 , second
@@ -32,6 +34,15 @@ data Inst eff a
 var :: Inst None a -> a
 var (Val a) = a
 var (Eff e) = case e of {}
+
+
+(<&) :: Expr repr => repr a -> repr b -> repr a
+a <& b = const' $$ a $$ b
+
+(&>) :: Expr repr => repr a -> repr b -> repr b
+a &> b = flip' $$ const' $$ a $$ b
+
+infixl 1 <&, &>
 
 
 class Pair repr where
