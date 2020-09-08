@@ -11,6 +11,7 @@ module Facet.Expr
 , var
 , (<&)
 , (&>)
+, Unit(..)
 , Pair(..)
 , first
 , second
@@ -55,6 +56,10 @@ a <& b = const' $$ a $$ b
 a &> b = flip' $$ const' $$ a $$ b
 
 infixl 1 <&, &>
+
+
+class Unit (repr :: (Type -> Type) -> (Type -> Type)) where
+  unit :: repr sig ()
 
 
 class Pair (repr :: (Type -> Type) -> (Type -> Type)) where
