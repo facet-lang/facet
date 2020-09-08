@@ -78,10 +78,5 @@ runState = lam $ \case
   Eff (Get k) -> lam $ \ s -> pair (var s) (k (var s))
   Eff (Put s k) -> lam $ \ _ -> pair s k
 
-execState :: Expr repr => repr (a -> s -> a)
--- FIXME: this is using a carrier type of @a@ but it should be using @s -> (s, a)@ or something like that.
-execState = lam (\case
-  Val a -> lam (const a)
-  Eff (Get k) -> lam (k . var)
-  -- FIXME: how exactly do we use the new state?
-  Eff (Put _ k) -> lam (const k))
+execState :: (Expr repr, Pair repr) => repr (a -> s -> a)
+execState = lam $ \ a -> lam $ \ s -> snd' (runState $$ var a $$ var s)
