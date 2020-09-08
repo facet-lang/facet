@@ -5,6 +5,8 @@ module Facet.Expr
 , Inst(..)
 , var
 , Pair(..)
+, first
+, second
   -- * Effects
 , Sum(..)
 , State(..)
@@ -35,6 +37,12 @@ class Pair repr where
   pair :: repr a -> repr b -> repr (a, b)
   fst' :: repr (a, b) -> repr a
   snd' :: repr (a, b) -> repr b
+
+first :: (Expr repr, Pair repr) => repr (a -> a') -> repr (a, b) -> repr (a', b)
+first f ab = pair (f $$ fst' ab) (snd' ab)
+
+second :: (Expr repr, Pair repr) => repr (b -> b') -> repr (a, b) -> repr (a, b')
+second f ab = pair (fst' ab) (f $$ snd' ab)
 
 
 -- Effects
