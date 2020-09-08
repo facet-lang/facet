@@ -11,6 +11,7 @@ module Facet.Expr
   -- * Examples
 , id'
 , const'
+, flip'
 , execState
 ) where
 
@@ -51,6 +52,9 @@ id' = lam var
 
 const' :: Expr repr => repr (a -> b -> a)
 const' = lam (lam . const . var)
+
+flip' :: Expr repr => repr ((a -> b -> c) -> (b -> a -> c))
+flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
 
 execState :: Expr repr => repr (a -> s -> a)
 -- FIXME: this is using a carrier type of @a@ but it should be using @s -> (s, a)@ or something like that.
