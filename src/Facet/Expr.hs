@@ -116,14 +116,14 @@ put = lam $ \ s -> inst (inj (Put (var s) unit))
 
 runState :: (Expr repr, Pair repr) => repr sig (s -> a -> (s, a))
 runState = lam $ \ s -> lam $ \case
-  Val a -> inlr (var s) a
-  Eff (Get k) -> runState $$ var s $$ k (var s)
+  Val a         -> inlr (var s) a
+  Eff (Get   k) -> runState $$ var s $$ k (var s)
   Eff (Put s k) -> runState $$ s $$ k
 
 execState :: Expr repr => repr sig (s -> a -> a)
 execState = lam $ \ s -> lam $ \case
-  Val a -> a
-  Eff (Get k) -> execState $$ var s $$ k (var s)
+  Val a         -> a
+  Eff (Get   k) -> execState $$ var s $$ k (var s)
   Eff (Put s k) -> execState $$ s $$ k
 
 
