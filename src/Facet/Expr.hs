@@ -145,7 +145,7 @@ postIncr = get <& (put $$ (get + (1 :: repr sig Int)))
 
 -- Signatures
 
--- | Union of effect signature, represented as a binary tree.
+-- | Union of effect signatures, represented as a binary tree.
 data S2 l r (repr :: Type -> Type) k
   = SL (l repr k)
   | SR (r repr k)
