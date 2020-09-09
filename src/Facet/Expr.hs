@@ -94,8 +94,8 @@ data Sum l r (repr :: Type -> Type) (repr' :: Type -> Type) k
   | R (r repr repr' k)
 
 data State s (repr :: Type -> Type) (repr' :: Type -> Type) k
-  = Get (repr s -> repr k)
-  | Put (repr s) (repr k)
+  = Get (repr s -> repr' k)
+  | Put (repr s) (repr' k)
 
 -- | No effects.
 data None (repr :: Type -> Type) (repr' :: Type -> Type) k
