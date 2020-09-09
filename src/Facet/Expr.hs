@@ -34,7 +34,7 @@ module Facet.Expr
 , S2(..)
 , S1(..)
 , S0
-, Subset
+, Subset(..)
 ) where
 
 import Data.Kind (Type)
