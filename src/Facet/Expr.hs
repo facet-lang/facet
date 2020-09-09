@@ -45,11 +45,11 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type) -> (Type -> Type)) -> (Typ
   infixl 9 $$
 
 
-data Inst eff f a where
-  Val :: f a -> Inst eff f a
-  Eff :: eff f f a -> Inst eff f a
+data Inst eff repr a where
+  Val :: repr a -> Inst eff repr a
+  Eff :: eff repr repr a -> Inst eff repr a
 
-var :: Inst None f a -> f a
+var :: Inst None repr a -> repr a
 var (Val a) = a
 var (Eff e) = case e of {}
 
