@@ -41,7 +41,7 @@ import Data.Kind (Type)
 
 class Expr (repr :: ((Type -> Type) -> (Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
   lam :: (Inst eff (repr sig) (repr sig') a -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
-  ($$) :: repr sig (repr sig a -> repr sig b) -> repr sig a -> repr sig b
+  ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
 
