@@ -149,7 +149,7 @@ execState' s a = lam (\case
 -- Signatures
 
 class Has (eff :: (Type -> Type) -> (Type -> Type)) (sig :: (Type -> Type) -> (Type -> Type)) where
-  inj :: eff f a -> sig f a
+  inj :: eff repr a -> sig repr a
 
 instance Has eff eff where
   inj = id
