@@ -17,9 +17,6 @@ module Facet.Expr
 , Eff(..)
 , send
   -- * Effects
-, Union(..)
-, Leaf(..)
-, None
 , State(..)
 , Return(..)
   -- * Examples
@@ -34,6 +31,9 @@ module Facet.Expr
 , execState
 , execState'
   -- * Signatures
+, Union(..)
+, Leaf(..)
+, None
 , Subset
 ) where
 
@@ -81,16 +81,6 @@ send = alg . inj
 
 
 -- Effects
-
--- | Union of effect sets, represented as a binary tree.
-data Union l r (repr :: Type -> Type) k
-  = L (l repr k)
-  | R (r repr k)
-
-newtype Leaf eff (repr :: Type -> Type) k = Eff (eff repr k)
-
--- | No effects.
-data None (repr :: Type -> Type) k
 
 data State s (repr :: Type -> Type) k
   = Get (repr s -> k)
@@ -143,6 +133,17 @@ execState' s a = lam (\case
 
 
 -- Signatures
+
+-- | Union of effect sets, represented as a binary tree.
+data Union l r (repr :: Type -> Type) k
+  = L (l repr k)
+  | R (r repr k)
+
+newtype Leaf eff (repr :: Type -> Type) k = Eff (eff repr k)
+
+-- | No effects.
+data None (repr :: Type -> Type) k
+
 
 class Subset (sub :: (Type -> Type) -> (Type -> Type)) (sup :: (Type -> Type) -> (Type -> Type)) where
   inj :: sub repr a -> sup repr a
