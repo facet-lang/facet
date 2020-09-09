@@ -93,7 +93,7 @@ data Sum l r (repr :: Type -> Type) k
   = L (l repr k)
   | R (r repr k)
 
-data State s repr k
+data State s (repr :: Type -> Type) k
   = Get (repr s -> repr k)
   | Put (repr s) (repr k)
 
