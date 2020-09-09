@@ -161,6 +161,9 @@ instance Subset S0 (S1 eff) where
 instance Subset S0 (S2 l r) where
   inj = absurd
 
+instance (eff1 ~ eff2) => Subset (S1 eff1) (S1 eff2) where
+  inj = id
+
 instance Subset sub (S2 sub set) where
   inj = SL
 
