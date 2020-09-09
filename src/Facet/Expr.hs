@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -37,6 +38,7 @@ module Facet.Expr
 , S0
 , absurd
 , Subset(..)
+, Member
 ) where
 
 import Data.Kind (Type)
@@ -174,3 +176,6 @@ instance Subset (S1 eff) (S2 set1 (S2 set2 set3)) => Subset (S1 eff) (S2 (S2 set
 instance (Subset setl sets, Subset setr sets) => Subset (S2 setl setr) sets where
   inj (SL setl) = inj setl
   inj (SR setr) = inj setr
+
+
+type Member eff sig = Subset (S1 eff) sig
