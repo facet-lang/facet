@@ -36,7 +36,7 @@ module Facet.Expr
 , unS2
 , S1(..)
 , S0
-, absurd
+, unS0
 , Subset(..)
 , Member
 ) where
@@ -49,7 +49,7 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
   infixl 9 $$
 
 var :: Either (repr (sig :: (Type -> Type) -> (Type -> Type)) a) (S0 (repr sig) (repr sig a)) -> repr sig a
-var = either id absurd
+var = either id unS0
 
 
 (<&) :: Expr repr => repr sig a -> repr sig b -> repr sig a
@@ -147,15 +147,15 @@ newtype S1 eff (repr :: Type -> Type) k = S1 { unS1 :: eff repr k }
 -- | No effects.
 data S0 (repr :: Type -> Type) k
 
-absurd :: S0 repr a -> b
-absurd = \case{}
+unS0 :: S0 repr a -> b
+unS0 = \case{}
 
 
 class Subset (sub :: (Type -> Type) -> (Type -> Type)) (sup :: (Type -> Type) -> (Type -> Type)) where
   inj :: sub repr a -> sup repr a
 
 instance Subset S0 sig where
-  inj = absurd
+  inj = unS0
 
 -- FIXME: should this be generalized to @Coercible eff1 eff2@?
 instance (eff1 ~ eff2) => Subset (S1 eff1) (S1 eff2) where
