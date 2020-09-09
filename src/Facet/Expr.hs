@@ -31,7 +31,6 @@ module Facet.Expr
 , put
 , runState
 , execState
-, execState'
   -- * Signatures
 , S2(..)
 , S1(..)
@@ -128,12 +127,6 @@ execState = lam $ \ s -> lam $ \case
   Left a          -> a
   Right (Get   k) -> execState $$ var s $$ k (var s)
   Right (Put s k) -> execState $$ s $$ k
-
-execState' :: Expr repr => repr sig s -> repr (State s) a -> repr sig a
-execState' s a = lam (\case
-  Left a          -> a
-  Right (Get   k) -> execState' s (k s)
-  Right (Put s k) -> execState' s k) $$ a
 
 
 -- Signatures
