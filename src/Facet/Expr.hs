@@ -38,12 +38,12 @@ module Facet.Expr
 
 import Data.Kind (Type)
 
-class Expr (repr :: ((Type -> Type) -> (Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
-  lam :: (Either (repr sig a) (eff (repr sig) (repr sig') a) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
+class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
+  lam :: (Either (repr sig a) (eff (repr sig) (repr sig' a)) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
-var :: Either a (None f g b) -> a
+var :: Either a (None f b) -> a
 var = either id (\case{})
 
 
@@ -56,11 +56,11 @@ a &> b = flip' $$ const' $$ a $$ b
 infixl 1 <&, &>
 
 
-class Unit (repr :: ((Type -> Type) -> (Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
+class Unit (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
   unit :: repr sig ()
 
 
-class Pair (repr :: ((Type -> Type) -> (Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
+class Pair (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
   inlr :: repr sig a -> repr sig b -> repr sig (a, b)
   exl :: repr sig (a, b) -> repr sig a
   exr :: repr sig (a, b) -> repr sig b
@@ -73,28 +73,28 @@ second f ab = inlr (exl ab) (f $$ exr ab)
 
 
 class Eff repr where
-  alg :: sig (repr sig) (repr sig) a -> repr sig a
+  alg :: sig (repr sig) (repr sig a) -> repr sig a
 
-send :: (Subset eff sig, Eff repr) => eff (repr sig) (repr sig) a -> repr sig a
+send :: (Subset eff sig, Eff repr) => eff (repr sig) (repr sig a) -> repr sig a
 send = alg . inj
 
 
 -- Effects
 
 -- | Union of effect sets, represented as a binary tree.
-data Union l r (repr :: Type -> Type) (repr' :: Type -> Type) k
-  = L (l repr repr' k)
-  | R (r repr repr' k)
+data Union l r (repr :: Type -> Type) k
+  = L (l repr k)
+  | R (r repr k)
 
-data State s (repr :: Type -> Type) (repr' :: Type -> Type) k
-  = Get (repr s -> repr' k)
-  | Put (repr s) (repr' k)
+data State s (repr :: Type -> Type) k
+  = Get (repr s -> k)
+  | Put (repr s) k
 
 -- | No effects.
-data None (repr :: Type -> Type) (repr' :: Type -> Type) k
+data None (repr :: Type -> Type) k
 
 -- | The identity effect.
-newtype Return (repr :: Type -> Type) (repr' :: Type -> Type) a = Return (repr a)
+newtype Return (repr :: Type -> Type) a = Return (repr a)
 
 
 -- Examples
@@ -141,8 +141,8 @@ execState' s a = lam (\case
 
 -- Signatures
 
-class Subset (sub :: (Type -> Type) -> (Type -> Type) -> (Type -> Type)) (sup :: (Type -> Type) -> (Type -> Type) -> (Type -> Type)) where
-  inj :: sub repr repr' a -> sup repr repr' a
+class Subset (sub :: (Type -> Type) -> (Type -> Type)) (sup :: (Type -> Type) -> (Type -> Type)) where
+  inj :: sub repr a -> sup repr a
 
 instance Subset set set where
   inj = id
