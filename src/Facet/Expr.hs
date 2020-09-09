@@ -10,6 +10,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Expr
 ( Expr(..)
+, Comp(..)
 , var
 , lam0
 , (<&)
@@ -62,6 +63,10 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
   iff :: repr sig Bool -> repr sig a -> repr sig a -> repr sig a
 
   alg :: sig (repr sig) (repr sig a) -> repr sig a
+
+data Comp eff repr repr' a where
+  Val :: repr a -> Comp eff repr repr' a
+  Eff :: eff repr (repr' a) -> Comp eff repr repr' a
 
 var :: Either (repr (sig :: (Type -> Type) -> (Type -> Type)) a) (S0 (repr sig) (repr sig a)) -> repr sig a
 var = either id unS0
