@@ -160,8 +160,7 @@ instance Subset S0 sig where
 instance (eff1 ~ eff2) => Subset (S1 eff1) (S1 eff2) where
   inj = id
 
--- FIXME: should this be generalized to @Coercible eff1 eff2@?
-instance (eff1 ~ eff2) => Subset (S1 eff1) (S2 (S1 eff2) set) where
+instance Subset (S1 eff) (S2 (S1 eff) set) where
   inj = SL
 
 instance Subset (S1 eff) (S2 set1 (S2 set2 set3)) => Subset (S1 eff) (S2 (S2 set1 set2) set3) where
