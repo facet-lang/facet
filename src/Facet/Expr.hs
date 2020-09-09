@@ -136,8 +136,8 @@ execState' s a = lam (\case
 
 -- | Union of effect signature, represented as a binary tree.
 data S2 l r (repr :: Type -> Type) k
-  = L (l repr k)
-  | R (r repr k)
+  = SL (l repr k)
+  | SR (r repr k)
 
 newtype S1 eff (repr :: Type -> Type) k = S1 (eff repr k)
 
@@ -152,7 +152,7 @@ instance Subset set set where
   inj = id
 
 instance Subset sub (S2 sub set) where
-  inj = L
+  inj = SL
 
 instance Subset sub sup => Subset sub (S2 set sup) where
-  inj = R . inj
+  inj = SR . inj
