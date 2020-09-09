@@ -148,14 +148,14 @@ execState' s a = lam (\case
 
 -- Signatures
 
-class Subset (eff :: (Type -> Type) -> (Type -> Type) -> (Type -> Type)) (sig :: (Type -> Type) -> (Type -> Type) -> (Type -> Type)) where
-  inj :: eff repr repr' a -> sig repr repr' a
+class Subset (sub :: (Type -> Type) -> (Type -> Type) -> (Type -> Type)) (sup :: (Type -> Type) -> (Type -> Type) -> (Type -> Type)) where
+  inj :: sub repr repr' a -> sup repr repr' a
 
-instance Subset eff eff where
+instance Subset set set where
   inj = id
 
-instance Subset eff (Sum eff sig) where
+instance Subset sub (Sum sub set) where
   inj = L
 
-instance Subset eff sig => Subset eff (Sum non sig) where
+instance Subset sub sup => Subset sub (Sum set sup) where
   inj = R . inj
