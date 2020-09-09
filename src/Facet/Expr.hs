@@ -6,6 +6,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Expr
 ( Expr(..)
@@ -32,6 +33,7 @@ module Facet.Expr
 , put
 , runState
 , execState
+, postIncr
   -- * Signatures
 , S2(..)
 , unS2
@@ -132,6 +134,10 @@ execState = lam $ \ s -> lam $ \case
   Left a               -> a
   Right (S1 (Get   k)) -> execState $$ var s $$ k (var s)
   Right (S1 (Put s k)) -> execState $$ s $$ k
+
+
+postIncr :: forall repr sig . (Eff repr, Expr repr, Unit repr, Num (repr sig Int), Member (State Int) sig) => repr sig Int
+postIncr = get <& (put $$ (get + (1 :: repr sig Int)))
 
 
 -- Signatures
