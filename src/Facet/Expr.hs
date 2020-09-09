@@ -33,7 +33,7 @@ module Facet.Expr
   -- * Signatures
 , S2(..)
 , S1(..)
-, None
+, S0
 , Subset
 ) where
 
@@ -44,7 +44,7 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
-var :: Either a (None f b) -> a
+var :: Either a (S0 f b) -> a
 var = either id (\case{})
 
 
@@ -142,7 +142,7 @@ data S2 l r (repr :: Type -> Type) k
 newtype S1 eff (repr :: Type -> Type) k = S1 (eff repr k)
 
 -- | No effects.
-data None (repr :: Type -> Type) k
+data S0 (repr :: Type -> Type) k
 
 
 class Subset (sub :: (Type -> Type) -> (Type -> Type)) (sup :: (Type -> Type) -> (Type -> Type)) where
