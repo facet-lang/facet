@@ -162,9 +162,11 @@ instance Subset S0 (S1 eff) where
 instance Subset S0 (S2 l r) where
   inj = absurd
 
+-- FIXME: should this be generalized to @Coercible eff1 eff2@?
 instance (eff1 ~ eff2) => Subset (S1 eff1) (S1 eff2) where
   inj = id
 
+-- FIXME: should this be generalized to @Coercible eff1 eff2@?
 instance (eff1 ~ eff2) => Subset (S1 eff1) (S2 (S1 eff2) set) where
   inj = SL
 
