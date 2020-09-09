@@ -16,7 +16,6 @@ module Facet.Expr
 , (&>)
 , first
 , second
-, Eff(..)
 , send
   -- * Effects
 , State(..)
@@ -55,6 +54,7 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
   exl :: repr sig (a, b) -> repr sig a
   exr :: repr sig (a, b) -> repr sig b
 
+  alg :: sig (repr sig) (repr sig a) -> repr sig a
 
 var :: Either (repr (sig :: (Type -> Type) -> (Type -> Type)) a) (S0 (repr sig) (repr sig a)) -> repr sig a
 var = either id unS0
@@ -79,10 +79,7 @@ second :: Expr repr => repr sig (repr sig b -> repr sig b') -> repr sig (a, b) -
 second f ab = inlr (exl ab) (f $$ exr ab)
 
 
-class Eff repr where
-  alg :: sig (repr sig) (repr sig a) -> repr sig a
-
-send :: (Subset eff sig, Eff repr) => eff (repr sig) (repr sig a) -> repr sig a
+send :: (Subset eff sig, Expr repr) => eff (repr sig) (repr sig a) -> repr sig a
 send = alg . inj
 
 
@@ -113,10 +110,10 @@ curry' = lam $ \ f -> lam $ \ a -> lam $ \ b -> var f $$ inlr (var a) (var b)
 uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
 uncurry' = lam $ \ f -> lam $ \ ab -> var f $$ exl (var ab) $$ exr (var ab)
 
-get :: (Eff repr, Member (State s) sig) => repr sig s
+get :: (Expr repr, Member (State s) sig) => repr sig s
 get = send (S1 (Get id))
 
-put :: (Eff repr, Expr repr, Member (State s) sig) => repr sig (repr sig s -> repr sig ())
+put :: (Expr repr, Member (State s) sig) => repr sig (repr sig s -> repr sig ())
 put = lam $ \ s -> send (S1 (Put (var s) unit))
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (S1 (State s)) a -> repr sig (s, a)))
@@ -132,7 +129,7 @@ execState = lam $ \ s -> lam $ \case
   Right (S1 (Put s k)) -> execState $$ s $$ k
 
 
-postIncr :: forall repr sig . (Eff repr, Expr repr, Num (repr sig Int), Member (State Int) sig) => repr sig Int
+postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State Int) sig) => repr sig Int
 postIncr = get <& (put $$ (get + (1 :: repr sig Int)))
 
 
