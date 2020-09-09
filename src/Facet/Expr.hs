@@ -33,6 +33,7 @@ module Facet.Expr
 , execState
   -- * Signatures
 , S2(..)
+, unS2
 , S1(..)
 , S0
 , absurd
@@ -135,6 +136,11 @@ execState = lam $ \ s -> lam $ \case
 data S2 l r (repr :: Type -> Type) k
   = SL (l repr k)
   | SR (r repr k)
+
+unS2 :: (l repr k -> a) -> (r repr k -> a) -> (S2 l r repr k -> a)
+unS2 el er = \case
+  SL l -> el l
+  SR r -> er r
 
 newtype S1 eff (repr :: Type -> Type) k = S1 { unS1 :: eff repr k }
 
