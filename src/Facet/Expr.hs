@@ -14,7 +14,6 @@ module Facet.Expr
 , lam0
 , (<&)
 , (&>)
-, Pair(..)
 , first
 , second
 , Eff(..)
@@ -52,6 +51,11 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
 
   unit :: repr sig ()
 
+  inlr :: repr sig a -> repr sig b -> repr sig (a, b)
+  exl :: repr sig (a, b) -> repr sig a
+  exr :: repr sig (a, b) -> repr sig b
+
+
 var :: Either (repr (sig :: (Type -> Type) -> (Type -> Type)) a) (S0 (repr sig) (repr sig a)) -> repr sig a
 var = either id unS0
 
@@ -68,15 +72,10 @@ a &> b = flip' $$ const' $$ a $$ b
 infixl 1 <&, &>
 
 
-class Pair (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
-  inlr :: repr sig a -> repr sig b -> repr sig (a, b)
-  exl :: repr sig (a, b) -> repr sig a
-  exr :: repr sig (a, b) -> repr sig b
-
-first :: (Expr repr, Pair repr) => repr sig (repr sig a -> repr sig a') -> repr sig (a, b) -> repr sig (a', b)
+first :: Expr repr => repr sig (repr sig a -> repr sig a') -> repr sig (a, b) -> repr sig (a', b)
 first f ab = inlr (f $$ exl ab) (exr ab)
 
-second :: (Expr repr, Pair repr) => repr sig (repr sig b -> repr sig b') -> repr sig (a, b) -> repr sig (a, b')
+second :: Expr repr => repr sig (repr sig b -> repr sig b') -> repr sig (a, b) -> repr sig (a, b')
 second f ab = inlr (exl ab) (f $$ exr ab)
 
 
@@ -108,10 +107,10 @@ const' = lam (lam0 . const . var)
 flip' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig b -> repr sig (repr sig a -> repr sig c)))
 flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
 
-curry' :: (Expr repr, Pair repr) => repr sig (repr sig (repr sig (a, b) -> repr sig c) -> repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)))
+curry' :: Expr repr => repr sig (repr sig (repr sig (a, b) -> repr sig c) -> repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)))
 curry' = lam $ \ f -> lam $ \ a -> lam $ \ b -> var f $$ inlr (var a) (var b)
 
-uncurry' :: (Expr repr, Pair repr) => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
+uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
 uncurry' = lam $ \ f -> lam $ \ ab -> var f $$ exl (var ab) $$ exr (var ab)
 
 get :: (Eff repr, Member (State s) sig) => repr sig s
@@ -120,7 +119,7 @@ get = send (S1 (Get id))
 put :: (Eff repr, Expr repr, Member (State s) sig) => repr sig (repr sig s -> repr sig ())
 put = lam $ \ s -> send (S1 (Put (var s) unit))
 
-runState :: (Expr repr, Pair repr) => repr sig (repr sig s -> repr sig (repr (S1 (State s)) a -> repr sig (s, a)))
+runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (S1 (State s)) a -> repr sig (s, a)))
 runState = lam $ \ s -> lam $ \case
   Left a               -> inlr (var s) a
   Right (S1 (Get   k)) -> runState $$ var s $$ k (var s)
