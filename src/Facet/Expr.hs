@@ -20,7 +20,6 @@ module Facet.Expr
 , send
   -- * Effects
 , State(..)
-, Return(..)
   -- * Examples
 , id'
 , const'
@@ -102,9 +101,6 @@ send = alg . inj
 data State s (repr :: Type -> Type) k where
   Get :: State s repr (repr s)
   Put :: repr s -> State s repr (repr ())
-
--- | The identity effect.
-newtype Return (repr :: Type -> Type) a = Return (repr a)
 
 
 -- Examples
