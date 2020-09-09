@@ -136,7 +136,7 @@ data S2 l r (repr :: Type -> Type) k
   = SL (l repr k)
   | SR (r repr k)
 
-newtype S1 eff (repr :: Type -> Type) k = S1 (eff repr k)
+newtype S1 eff (repr :: Type -> Type) k = S1 { unS1 :: eff repr k }
 
 -- | No effects.
 data S0 (repr :: Type -> Type) k
