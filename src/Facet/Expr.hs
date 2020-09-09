@@ -46,7 +46,7 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
   infixl 9 $$
 
 var :: Either a (S0 f b) -> a
-var = either id (\case{})
+var = either id absurd
 
 
 (<&) :: Expr repr => repr sig a -> repr sig b -> repr sig a
