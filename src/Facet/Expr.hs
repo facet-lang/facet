@@ -66,12 +66,12 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
 
 data Comp eff (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) sig sig' a where
   Val :: repr sig a -> Comp eff repr sig sig' a
-  Eff :: eff (repr sig) (repr sig' a) -> Comp eff repr sig sig' a
+  Eff :: eff (repr sig) k -> (k -> repr sig' a) -> Comp eff repr sig sig' a
 
 var :: Comp S0 repr sig sig' a -> repr sig a
 var = \case
-  Val a -> a
-  Eff e -> unS0 e
+  Val a   -> a
+  Eff e _ -> unS0 e
 
 lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = lam (f . var)
@@ -99,9 +99,9 @@ send = alg . inj
 
 -- Effects
 
-data State s (repr :: Type -> Type) k
-  = Get (repr s -> k)
-  | Put (repr s) k
+data State s (repr :: Type -> Type) k where
+  Get :: State s repr (repr s)
+  Put :: repr s -> State s repr (repr ())
 
 -- | The identity effect.
 newtype Return (repr :: Type -> Type) a = Return (repr a)
@@ -125,22 +125,22 @@ uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b 
 uncurry' = lam $ \ f -> lam $ \ ab -> var f $$ exl (var ab) $$ exr (var ab)
 
 get :: (Expr repr, Member (State s) sig) => repr sig s
-get = send (S1 (Get id))
+get = send (S1 Get)
 
 put :: (Expr repr, Member (State s) sig) => repr sig (repr sig s -> repr sig ())
-put = lam $ \ s -> send (S1 (Put (var s) unit))
+put = lam $ \ s -> send (S1 (Put (var s)))
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (S1 (State s)) a -> repr sig (s, a)))
-runState = lam $ \ s -> lam $ \case
-  Val a              -> inlr (var s) a
-  Eff (S1 (Get   k)) -> runState $$ var s $$ k (var s)
-  Eff (S1 (Put s k)) -> runState $$ s $$ k
+runState = lam0 $ \ s -> lam $ \case
+  Val a              -> inlr s a
+  Eff (S1 Get)     k -> runState $$ s $$ k s
+  Eff (S1 (Put s)) k -> runState $$ s $$ k unit
 
 execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (S1 (State s)) a -> repr sig a))
-execState = lam $ \ s -> lam $ \case
+execState = lam0 $ \ s -> lam $ \case
   Val a              -> a
-  Eff (S1 (Get   k)) -> execState $$ var s $$ k (var s)
-  Eff (S1 (Put s k)) -> execState $$ s $$ k
+  Eff (S1 Get)     k -> execState $$ s $$ k s
+  Eff (S1 (Put s)) k -> execState $$ s $$ k unit
 
 
 postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State Int) sig) => repr sig Int
