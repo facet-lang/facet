@@ -7,7 +7,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Expr
 ( Expr(..)
-, Inst(..)
 , var
 , (<&)
 , (&>)
@@ -40,18 +39,12 @@ module Facet.Expr
 import Data.Kind (Type)
 
 class Expr (repr :: ((Type -> Type) -> (Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
-  lam :: (Inst eff (repr sig) (repr sig') a -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
+  lam :: (Either (repr sig a) (eff (repr sig) (repr sig') a) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
-
-data Inst eff (repr :: Type -> Type) (repr' :: Type -> Type) a where
-  Val :: repr a -> Inst eff repr repr' a
-  Eff :: eff repr repr' a -> Inst eff repr repr' a
-
-var :: Inst None repr repr' a -> repr a
-var (Val a) = a
-var (Eff e) = case e of {}
+var :: Either a (None f g b) -> a
+var = either id (\case{})
 
 
 (<&) :: Expr repr => repr sig a -> repr sig b -> repr sig a
@@ -129,21 +122,21 @@ put = lam $ \ s -> send (Put (var s) unit)
 
 runState :: (Expr repr, Pair repr) => repr sig (repr sig s -> repr sig (repr (State s) a -> repr sig (s, a)))
 runState = lam $ \ s -> lam $ \case
-  Val a         -> inlr (var s) a
-  Eff (Get   k) -> runState $$ var s $$ k (var s)
-  Eff (Put s k) -> runState $$ s $$ k
+  Left a          -> inlr (var s) a
+  Right (Get   k) -> runState $$ var s $$ k (var s)
+  Right (Put s k) -> runState $$ s $$ k
 
 execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (State s) a -> repr sig a))
 execState = lam $ \ s -> lam $ \case
-  Val a         -> a
-  Eff (Get   k) -> execState $$ var s $$ k (var s)
-  Eff (Put s k) -> execState $$ s $$ k
+  Left a          -> a
+  Right (Get   k) -> execState $$ var s $$ k (var s)
+  Right (Put s k) -> execState $$ s $$ k
 
 execState' :: Expr repr => repr sig s -> repr (State s) a -> repr sig a
 execState' s a = lam (\case
-  Val a         -> a
-  Eff (Get   k) -> execState' s (k s)
-  Eff (Put s k) -> execState' s k) $$ a
+  Left a          -> a
+  Right (Get   k) -> execState' s (k s)
+  Right (Put s k) -> execState' s k) $$ a
 
 
 -- Signatures
