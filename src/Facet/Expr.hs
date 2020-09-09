@@ -139,7 +139,7 @@ execState = lam $ \ s -> lam $ \case
   Eff (Get   k) -> execState $$ var s $$ k (var s)
   Eff (Put s k) -> execState $$ s $$ k
 
-execState' :: Expr repr => repr sig s -> repr sig a -> repr sig a
+execState' :: Expr repr => repr sig s -> repr (Sum (State s) sig) a -> repr sig a
 execState' s a = lam (\case
   Val a         -> a
   Eff (Get   k) -> execState' s (k s)
