@@ -152,8 +152,8 @@ absurd = \case{}
 class Subset (sub :: (Type -> Type) -> (Type -> Type)) (sup :: (Type -> Type) -> (Type -> Type)) where
   inj :: sub repr a -> sup repr a
 
-instance Subset set set where
-  inj = id
+instance Subset S0 set where
+  inj = absurd
 
 instance Subset sub (S2 sub set) where
   inj = SL
