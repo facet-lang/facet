@@ -32,7 +32,7 @@ module Facet.Expr
 , execState'
   -- * Signatures
 , S2(..)
-, Leaf(..)
+, S1(..)
 , None
 , Subset
 ) where
@@ -139,7 +139,7 @@ data S2 l r (repr :: Type -> Type) k
   = L (l repr k)
   | R (r repr k)
 
-newtype Leaf eff (repr :: Type -> Type) k = Eff (eff repr k)
+newtype S1 eff (repr :: Type -> Type) k = S1 (eff repr k)
 
 -- | No effects.
 data None (repr :: Type -> Type) k
