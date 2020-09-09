@@ -18,7 +18,7 @@ module Facet.Expr
 , Eff(..)
 , send
   -- * Effects
-, Sum(..)
+, Union(..)
 , State(..)
 , None
 , Return(..)
@@ -88,8 +88,8 @@ send = alg . inj
 
 -- Effects
 
--- | Sum of effects represented as a binary tree.
-data Sum l r (repr :: Type -> Type) (repr' :: Type -> Type) k
+-- | Union of effect sets, represented as a binary tree.
+data Union l r (repr :: Type -> Type) (repr' :: Type -> Type) k
   = L (l repr repr' k)
   | R (r repr repr' k)
 
@@ -154,8 +154,8 @@ class Subset (sub :: (Type -> Type) -> (Type -> Type) -> (Type -> Type)) (sup ::
 instance Subset set set where
   inj = id
 
-instance Subset sub (Sum sub set) where
+instance Subset sub (Union sub set) where
   inj = L
 
-instance Subset sub sup => Subset sub (Sum set sup) where
+instance Subset sub sup => Subset sub (Union set sup) where
   inj = R . inj
