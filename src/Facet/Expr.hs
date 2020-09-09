@@ -34,6 +34,7 @@ module Facet.Expr
 , S2(..)
 , S1(..)
 , S0
+, absurd
 , Subset(..)
 ) where
 
@@ -143,6 +144,9 @@ newtype S1 eff (repr :: Type -> Type) k = S1 (eff repr k)
 
 -- | No effects.
 data S0 (repr :: Type -> Type) k
+
+absurd :: S0 repr a -> b
+absurd = \case{}
 
 
 class Subset (sub :: (Type -> Type) -> (Type -> Type)) (sup :: (Type -> Type) -> (Type -> Type)) where
