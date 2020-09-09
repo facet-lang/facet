@@ -164,8 +164,6 @@ instance Subset S0 (S2 l r) where
 instance (eff1 ~ eff2) => Subset (S1 eff1) (S1 eff2) where
   inj = id
 
-instance Subset sub (S2 sub set) where
-  inj = SL
-
-instance Subset sub sup => Subset sub (S2 set sup) where
-  inj = SR . inj
+instance (Subset setl sets, Subset setr sets) => Subset (S2 setl setr) sets where
+  inj (SL setl) = inj setl
+  inj (SR setr) = inj setr
