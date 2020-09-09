@@ -89,19 +89,19 @@ send = alg . inj
 -- Effects
 
 -- | Sum of effects represented as a binary tree.
-data Sum l r (f :: Type -> Type) k
-  = L (l f k)
-  | R (r f k)
+data Sum l r (repr :: Type -> Type) k
+  = L (l repr k)
+  | R (r repr k)
 
-data State s f k
-  = Get (f s -> f k)
-  | Put (f s) (f k)
+data State s repr k
+  = Get (repr s -> repr k)
+  | Put (repr s) (repr k)
 
 -- | No effects.
-data None (f :: Type -> Type) k
+data None (repr :: Type -> Type) k
 
 -- | The identity effect.
-newtype Return (f :: Type -> Type) a = Return (f a)
+newtype Return (repr :: Type -> Type) a = Return (repr a)
 
 
 -- Examples
