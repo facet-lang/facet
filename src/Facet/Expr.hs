@@ -127,7 +127,7 @@ get = send (Get id)
 put :: (Eff repr, Expr repr, Unit repr, Has (State s) sig) => repr sig (repr sig s -> repr sig ())
 put = lam $ \ s -> send (Put (var s) unit)
 
-runState :: (Expr repr, Pair repr) => repr sig (repr sig s -> repr sig (repr sig a -> repr sig (s, a)))
+runState :: (Expr repr, Pair repr) => repr sig (repr sig s -> repr sig (repr (Sum (State s) sig) a -> repr sig (s, a)))
 runState = lam $ \ s -> lam $ \case
   Val a         -> inlr (var s) a
   Eff (Get   k) -> runState $$ var s $$ k (var s)
