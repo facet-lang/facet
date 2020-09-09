@@ -19,8 +19,8 @@ module Facet.Expr
   -- * Effects
 , Union(..)
 , Leaf(..)
-, State(..)
 , None
+, State(..)
 , Return(..)
   -- * Examples
 , id'
@@ -89,12 +89,12 @@ data Union l r (repr :: Type -> Type) k
 
 newtype Leaf eff (repr :: Type -> Type) k = Eff (eff repr k)
 
+-- | No effects.
+data None (repr :: Type -> Type) k
+
 data State s (repr :: Type -> Type) k
   = Get (repr s -> k)
   | Put (repr s) k
-
--- | No effects.
-data None (repr :: Type -> Type) k
 
 -- | The identity effect.
 newtype Return (repr :: Type -> Type) a = Return (repr a)
