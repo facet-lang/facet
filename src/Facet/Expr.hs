@@ -10,6 +10,7 @@
 module Facet.Expr
 ( Expr(..)
 , var
+, lam0
 , (<&)
 , (&>)
 , Unit(..)
@@ -50,6 +51,9 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
 
 var :: Either (repr (sig :: (Type -> Type) -> (Type -> Type)) a) (S0 (repr sig) (repr sig a)) -> repr sig a
 var = either id unS0
+
+lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
+lam0 f = lam (f . var)
 
 
 (<&) :: Expr repr => repr sig a -> repr sig b -> repr sig a
