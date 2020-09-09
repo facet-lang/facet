@@ -111,11 +111,11 @@ curry' = lam $ \ f -> lam $ \ a -> lam $ \ b -> var f $$ inlr (var a) (var b)
 uncurry' :: (Expr repr, Pair repr) => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
 uncurry' = lam $ \ f -> lam $ \ ab -> var f $$ exl (var ab) $$ exr (var ab)
 
-get :: (Eff repr, Subset (State s) sig) => repr sig s
-get = send (Get id)
+get :: (Eff repr, Member (State s) sig) => repr sig s
+get = send (S1 (Get id))
 
-put :: (Eff repr, Expr repr, Unit repr, Subset (State s) sig) => repr sig (repr sig s -> repr sig ())
-put = lam $ \ s -> send (Put (var s) unit)
+put :: (Eff repr, Expr repr, Unit repr, Member (State s) sig) => repr sig (repr sig s -> repr sig ())
+put = lam $ \ s -> send (S1 (Put (var s) unit))
 
 runState :: (Expr repr, Pair repr) => repr sig (repr sig s -> repr sig (repr (State s) a -> repr sig (s, a)))
 runState = lam $ \ s -> lam $ \case
