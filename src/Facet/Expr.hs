@@ -40,16 +40,16 @@ module Facet.Expr
 import Data.Kind (Type)
 
 class Expr (repr :: ((Type -> Type) -> (Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
-  lam :: (Inst eff (repr sig) a -> repr sig b) -> repr sig (a -> b)
+  lam :: (Inst eff (repr sig) (repr sig) a -> repr sig b) -> repr sig (a -> b)
   ($$) :: repr sig (a -> b) -> repr sig a -> repr sig b
   infixl 9 $$
 
 
-data Inst eff repr a where
-  Val :: repr a -> Inst eff repr a
-  Eff :: eff repr repr a -> Inst eff repr a
+data Inst eff (repr :: Type -> Type) (repr' :: Type -> Type) a where
+  Val :: repr a -> Inst eff repr repr' a
+  Eff :: eff repr repr' a -> Inst eff repr repr' a
 
-var :: Inst None repr a -> repr a
+var :: Inst None repr repr' a -> repr a
 var (Val a) = a
 var (Eff e) = case e of {}
 
