@@ -34,7 +34,7 @@ module Facet.Expr
 , execState
 , execState'
   -- * Signatures
-, Has
+, Subset
 ) where
 
 import Data.Kind (Type)
@@ -82,7 +82,7 @@ second f ab = inlr (exl ab) (f $$ exr ab)
 class Eff repr where
   alg :: sig (repr sig) (repr sig) a -> repr sig a
 
-send :: (Has eff sig, Eff repr) => eff (repr sig) (repr sig) a -> repr sig a
+send :: (Subset eff sig, Eff repr) => eff (repr sig) (repr sig) a -> repr sig a
 send = alg . inj
 
 
@@ -121,10 +121,10 @@ curry' = lam $ \ f -> lam $ \ a -> lam $ \ b -> var f $$ inlr (var a) (var b)
 uncurry' :: (Expr repr, Pair repr) => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
 uncurry' = lam $ \ f -> lam $ \ ab -> var f $$ exl (var ab) $$ exr (var ab)
 
-get :: (Eff repr, Has (State s) sig) => repr sig s
+get :: (Eff repr, Subset (State s) sig) => repr sig s
 get = send (Get id)
 
-put :: (Eff repr, Expr repr, Unit repr, Has (State s) sig) => repr sig (repr sig s -> repr sig ())
+put :: (Eff repr, Expr repr, Unit repr, Subset (State s) sig) => repr sig (repr sig s -> repr sig ())
 put = lam $ \ s -> send (Put (var s) unit)
 
 runState :: (Expr repr, Pair repr) => repr sig (repr sig s -> repr sig (repr (State s) a -> repr sig (s, a)))
@@ -148,14 +148,14 @@ execState' s a = lam (\case
 
 -- Signatures
 
-class Has (eff :: (Type -> Type) -> (Type -> Type) -> (Type -> Type)) (sig :: (Type -> Type) -> (Type -> Type) -> (Type -> Type)) where
+class Subset (eff :: (Type -> Type) -> (Type -> Type) -> (Type -> Type)) (sig :: (Type -> Type) -> (Type -> Type) -> (Type -> Type)) where
   inj :: eff repr repr' a -> sig repr repr' a
 
-instance Has eff eff where
+instance Subset eff eff where
   inj = id
 
-instance Has eff (Sum eff sig) where
+instance Subset eff (Sum eff sig) where
   inj = L
 
-instance Has eff sig => Has eff (Sum non sig) where
+instance Subset eff sig => Subset eff (Sum non sig) where
   inj = R . inj
