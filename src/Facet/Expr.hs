@@ -47,7 +47,7 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
-var :: Either a (S0 f b) -> a
+var :: Either (repr (sig :: (Type -> Type) -> (Type -> Type)) a) (S0 (repr sig) (repr sig a)) -> repr sig a
 var = either id absurd
 
 
