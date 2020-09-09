@@ -54,6 +54,10 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
   exl :: repr sig (a, b) -> repr sig a
   exr :: repr sig (a, b) -> repr sig b
 
+  inl :: repr sig a -> repr sig (Either a b)
+  inr :: repr sig b -> repr sig (Either a b)
+  exlr :: (repr sig a -> repr sig c) -> (repr sig b -> repr sig c) -> (repr sig (Either a b) -> repr sig c)
+
   true, false :: repr sig Bool
   iff :: repr sig Bool -> repr sig a -> repr sig a -> repr sig a
 
