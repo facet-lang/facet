@@ -134,7 +134,7 @@ execState' s a = lam (\case
 
 -- Signatures
 
--- | Union of effect sets, represented as a binary tree.
+-- | Union of effect signature, represented as a binary tree.
 data Union l r (repr :: Type -> Type) k
   = L (l repr k)
   | R (r repr k)
