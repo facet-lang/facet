@@ -5,6 +5,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Expr
 ( Expr(..)
 , var
@@ -166,6 +167,14 @@ instance (eff1 ~ eff2) => Subset (S1 eff1) (S1 eff2) where
 
 instance (eff1 ~ eff2) => Subset (S1 eff1) (S2 (S1 eff2) set) where
   inj = SL
+
+instance Subset (S1 eff) (S2 set1 (S2 set2 set3)) => Subset (S1 eff) (S2 (S2 set1 set2) set3) where
+  inj = reassoc . inj
+    where
+    reassoc = \case
+      SL l      -> SL (SL l)
+      SR (SL l) -> SL (SR l)
+      SR (SR r) -> SR r
 
 instance (Subset setl sets, Subset setr sets) => Subset (S2 setl setr) sets where
   inj (SL setl) = inj setl
