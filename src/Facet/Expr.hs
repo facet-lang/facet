@@ -45,7 +45,7 @@ module Facet.Expr
 import Data.Kind (Type)
 
 class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
-  lam :: Subset eff sig' => (Either (repr sig a) (eff (repr sig) (repr sig' a)) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
+  lam :: Subset eff sig' => (Comp eff repr sig sig' a -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
@@ -64,12 +64,14 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
 
   alg :: sig (repr sig) (repr sig a) -> repr sig a
 
-data Comp eff repr repr' a where
-  Val :: repr a -> Comp eff repr repr' a
-  Eff :: eff repr (repr' a) -> Comp eff repr repr' a
+data Comp eff (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) sig sig' a where
+  Val :: repr sig a -> Comp eff repr sig sig' a
+  Eff :: eff (repr sig) (repr sig' a) -> Comp eff repr sig sig' a
 
-var :: Either (repr (sig :: (Type -> Type) -> (Type -> Type)) a) (S0 (repr sig) (repr sig a)) -> repr sig a
-var = either id unS0
+var :: Comp S0 repr sig sig' a -> repr sig a
+var = \case
+  Val a -> a
+  Eff e -> unS0 e
 
 lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = lam (f . var)
@@ -130,15 +132,15 @@ put = lam $ \ s -> send (S1 (Put (var s) unit))
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (S1 (State s)) a -> repr sig (s, a)))
 runState = lam $ \ s -> lam $ \case
-  Left a               -> inlr (var s) a
-  Right (S1 (Get   k)) -> runState $$ var s $$ k (var s)
-  Right (S1 (Put s k)) -> runState $$ s $$ k
+  Val a              -> inlr (var s) a
+  Eff (S1 (Get   k)) -> runState $$ var s $$ k (var s)
+  Eff (S1 (Put s k)) -> runState $$ s $$ k
 
 execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (S1 (State s)) a -> repr sig a))
 execState = lam $ \ s -> lam $ \case
-  Left a               -> a
-  Right (S1 (Get   k)) -> execState $$ var s $$ k (var s)
-  Right (S1 (Put s k)) -> execState $$ s $$ k
+  Val a              -> a
+  Eff (S1 (Get   k)) -> execState $$ var s $$ k (var s)
+  Eff (S1 (Put s k)) -> execState $$ s $$ k
 
 
 postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State Int) sig) => repr sig Int
