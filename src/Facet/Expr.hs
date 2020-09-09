@@ -31,7 +31,7 @@ module Facet.Expr
 , execState
 , execState'
   -- * Signatures
-, Union(..)
+, S2(..)
 , Leaf(..)
 , None
 , Subset
@@ -135,7 +135,7 @@ execState' s a = lam (\case
 -- Signatures
 
 -- | Union of effect signature, represented as a binary tree.
-data Union l r (repr :: Type -> Type) k
+data S2 l r (repr :: Type -> Type) k
   = L (l repr k)
   | R (r repr k)
 
@@ -151,8 +151,8 @@ class Subset (sub :: (Type -> Type) -> (Type -> Type)) (sup :: (Type -> Type) ->
 instance Subset set set where
   inj = id
 
-instance Subset sub (Union sub set) where
+instance Subset sub (S2 sub set) where
   inj = L
 
-instance Subset sub sup => Subset sub (Union set sup) where
+instance Subset sub sup => Subset sub (S2 set sup) where
   inj = R . inj
