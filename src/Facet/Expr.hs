@@ -18,6 +18,7 @@ module Facet.Expr
 , send
   -- * Effects
 , Union(..)
+, Leaf(..)
 , State(..)
 , None
 , Return(..)
@@ -85,6 +86,8 @@ send = alg . inj
 data Union l r (repr :: Type -> Type) k
   = L (l repr k)
   | R (r repr k)
+
+newtype Leaf eff (repr :: Type -> Type) k = Eff (eff repr k)
 
 data State s (repr :: Type -> Type) k
   = Get (repr s -> k)
