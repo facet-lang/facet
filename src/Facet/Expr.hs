@@ -45,7 +45,7 @@ module Facet.Expr
 import Data.Kind (Type)
 
 class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
-  lam :: (Either (repr sig a) (eff (repr sig) (repr sig' a)) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
+  lam :: Subset eff sig' => (Either (repr sig a) (eff (repr sig) (repr sig' a)) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
@@ -104,7 +104,7 @@ id' :: Expr repr => repr sig (repr sig a -> repr sig a)
 id' = lam var
 
 const' :: Expr repr => repr sig (repr sig a -> repr sig (repr sig b -> repr sig a))
-const' = lam (lam . const . var)
+const' = lam (lam0 . const . var)
 
 flip' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig b -> repr sig (repr sig a -> repr sig c)))
 flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
@@ -121,17 +121,17 @@ get = send (S1 (Get id))
 put :: (Eff repr, Expr repr, Unit repr, Member (State s) sig) => repr sig (repr sig s -> repr sig ())
 put = lam $ \ s -> send (S1 (Put (var s) unit))
 
-runState :: (Expr repr, Pair repr) => repr sig (repr sig s -> repr sig (repr (State s) a -> repr sig (s, a)))
+runState :: (Expr repr, Pair repr) => repr sig (repr sig s -> repr sig (repr (S1 (State s)) a -> repr sig (s, a)))
 runState = lam $ \ s -> lam $ \case
-  Left a          -> inlr (var s) a
-  Right (Get   k) -> runState $$ var s $$ k (var s)
-  Right (Put s k) -> runState $$ s $$ k
+  Left a               -> inlr (var s) a
+  Right (S1 (Get   k)) -> runState $$ var s $$ k (var s)
+  Right (S1 (Put s k)) -> runState $$ s $$ k
 
-execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (State s) a -> repr sig a))
+execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (S1 (State s)) a -> repr sig a))
 execState = lam $ \ s -> lam $ \case
-  Left a          -> a
-  Right (Get   k) -> execState $$ var s $$ k (var s)
-  Right (Put s k) -> execState $$ s $$ k
+  Left a               -> a
+  Right (S1 (Get   k)) -> execState $$ var s $$ k (var s)
+  Right (S1 (Put s k)) -> execState $$ s $$ k
 
 
 -- Signatures
