@@ -1,2 +1,5 @@
 module Facet.Eval
-() where
+( Eval(..)
+) where
+
+newtype Eval sig a = Eval { eval :: a }
