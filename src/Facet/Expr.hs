@@ -14,7 +14,6 @@ module Facet.Expr
 , lam0
 , (<&)
 , (&>)
-, Unit(..)
 , Pair(..)
 , first
 , second
@@ -51,6 +50,8 @@ class Expr (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
+  unit :: repr sig ()
+
 var :: Either (repr (sig :: (Type -> Type) -> (Type -> Type)) a) (S0 (repr sig) (repr sig a)) -> repr sig a
 var = either id unS0
 
@@ -65,10 +66,6 @@ a <& b = const' $$ a $$ b
 a &> b = flip' $$ const' $$ a $$ b
 
 infixl 1 <&, &>
-
-
-class Unit (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
-  unit :: repr sig ()
 
 
 class Pair (repr :: ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
@@ -120,7 +117,7 @@ uncurry' = lam $ \ f -> lam $ \ ab -> var f $$ exl (var ab) $$ exr (var ab)
 get :: (Eff repr, Member (State s) sig) => repr sig s
 get = send (S1 (Get id))
 
-put :: (Eff repr, Expr repr, Unit repr, Member (State s) sig) => repr sig (repr sig s -> repr sig ())
+put :: (Eff repr, Expr repr, Member (State s) sig) => repr sig (repr sig s -> repr sig ())
 put = lam $ \ s -> send (S1 (Put (var s) unit))
 
 runState :: (Expr repr, Pair repr) => repr sig (repr sig s -> repr sig (repr (S1 (State s)) a -> repr sig (s, a)))
@@ -136,7 +133,7 @@ execState = lam $ \ s -> lam $ \case
   Right (S1 (Put s k)) -> execState $$ s $$ k
 
 
-postIncr :: forall repr sig . (Eff repr, Expr repr, Unit repr, Num (repr sig Int), Member (State Int) sig) => repr sig Int
+postIncr :: forall repr sig . (Eff repr, Expr repr, Num (repr sig Int), Member (State Int) sig) => repr sig Int
 postIncr = get <& (put $$ (get + (1 :: repr sig Int)))
 
 
