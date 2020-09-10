@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE KindSignatures #-}
 module Facet.Eval
@@ -6,6 +7,7 @@ module Facet.Eval
 
 import Data.Functor.Identity
 import Data.Kind (Type)
+import Facet.Expr
 
-newtype Eval (sig :: (Type -> Type) -> (Type -> Type)) a = Eval { eval :: a }
+newtype Eval (sig :: Bin ((Type -> Type) -> (Type -> Type))) a = Eval { eval :: a }
   deriving (Applicative, Functor) via Identity
