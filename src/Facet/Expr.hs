@@ -154,7 +154,7 @@ data Bin a
   | B2 (Bin a) (Bin a)
 
 data Sig (sig :: Bin ((Type -> Type) -> (Type -> Type))) (repr :: Type -> Type) k where
-  Sig1 :: f repr k -> Sig ('B1 f)   repr k
+  Sig1 ::     f repr k -> Sig ('B1 f)   repr k
   SigL :: Sig l repr k -> Sig ('B2 l r) repr k
   SigR :: Sig r repr k -> Sig ('B2 l r) repr k
 
