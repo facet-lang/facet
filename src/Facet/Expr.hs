@@ -67,6 +67,8 @@ class Expr (repr :: Bin ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) wh
 
   alg :: Sig sig (repr sig) (repr sig a) -> repr sig a
 
+  weaken :: Subset sub sup => repr sub a -> repr sup a
+
 data Coyoneda f a where
   Coyoneda :: f b -> (b -> a) -> Coyoneda f a
 
