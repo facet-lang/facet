@@ -10,6 +10,17 @@
 
 ## Goals
 
+- effects as sole mechanism for ad hoc polymorphism; arithmetic, comparison, etc., performed via effects (thus, can be overridden locally)
+  - some system for (ideally coherent) defaulting
+- quantitative type theory controlling phasing and erasure in particular
+  - specialization & inlining of handlers
+- compilation
+  - fine-grained incremental compilation
+- metaprogramming & general elaborator reflection via effects
+- syntax desugaring via effects
+- data representation as an effect; peano numerals & nat-as-int should be interconvertable
+- elaboration, optimization, & compilation reflected via an effectful DSL
+
 
 ## Development
 
