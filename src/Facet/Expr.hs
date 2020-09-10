@@ -193,8 +193,7 @@ instance Subset (S1 eff) (S2 set1 (S2 set2 set3)) => Subset (S1 eff) (S2 (S2 set
       SR (SR r) -> SR r
 
 instance (Subset setl sets, Subset setr sets) => Subset (S2 setl setr) sets where
-  inj (SL setl) = inj setl
-  inj (SR setr) = inj setr
+  inj = unS2 inj inj
 
 
 type Member eff sig = Subset (S1 eff) sig
