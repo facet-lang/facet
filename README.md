@@ -26,3 +26,10 @@
 
 
 ## TODO
+
+- evaluator
+- interpreter
+- concrete syntax
+  - pretty-printer
+  - parser
+- driver executable
