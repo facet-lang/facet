@@ -42,6 +42,7 @@ library
     Facet.Pretty
   build-depends:
     , base ^>= 4.14
+    , lens
     , prettyprinter
     , prettyprinter-ansi-terminal
     , terminal-size

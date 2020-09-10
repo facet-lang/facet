@@ -44,6 +44,7 @@ module Facet.Expr
 ) where
 
 import Control.Applicative ((<|>))
+import Control.Lens (Prism', preview, prism', review)
 import Data.Kind (Type)
 
 class Expr (repr :: Bin ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
@@ -174,8 +175,13 @@ unSig2 el er = \case
 
 
 class Subset (sub :: Bin ((Type -> Type) -> (Type -> Type))) (sup :: Bin ((Type -> Type) -> (Type -> Type))) where
+  sub :: Prism' (Sig sup repr a) (Sig sub repr a)
+  sub = prism' inj prj
   inj :: Sig sub repr a -> Sig sup repr a
+  inj = review sub
   prj :: Sig sup repr a -> Maybe (Sig sub repr a)
+  prj = preview sub
+  {-# MINIMAL sub | (inj, prj) #-}
 
 instance Subset 'B0 sig where
   inj = unSig0
