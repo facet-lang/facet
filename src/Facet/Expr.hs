@@ -176,33 +176,31 @@ unSig2 el er = \case
 
 class Subset (sub :: Bin ((Type -> Type) -> (Type -> Type))) (sup :: Bin ((Type -> Type) -> (Type -> Type))) where
   sub :: Prism' (Sig sup repr a) (Sig sub repr a)
-  sub = prism' inj prj
-  inj :: Sig sub repr a -> Sig sup repr a
-  inj = review sub
-  prj :: Sig sup repr a -> Maybe (Sig sub repr a)
-  prj = preview sub
-  {-# MINIMAL sub | (inj, prj) #-}
+
+inj :: Subset sub sup => Sig sub repr a -> Sig sup repr a
+inj = review sub
+
+prj :: Subset sub sup => Sig sup repr a -> Maybe (Sig sub repr a)
+prj = preview sub
 
 instance Subset 'B0 sig where
-  inj = unSig0
-  prj _ = Nothing
+  sub = prism' unSig0 (const Nothing)
 
 -- FIXME: should this be generalized to @Coercible eff1 eff2@?
 instance (eff1 ~ eff2) => Subset ('B1 eff1) ('B1 eff2) where
-  inj = id
-  prj = Just
+  sub = prism' id Just
 
 instance Subset ('B1 eff) ('B2 ('B1 eff) set) where
-  inj = SigL
-  prj = unSig2 Just (const Nothing)
+  sub = prism' SigL (unSig2 Just (const Nothing))
 
 instance Subset ('B1 eff) ('B2 set1 ('B2 set2 set3)) => Subset ('B1 eff) ('B2 ('B2 set1 set2) set3) where
-  inj = unSig2 (SigL . SigL) (unSig2 (SigL . SigR) SigR) . inj
-  prj = prj . unSig2 (unSig2 SigL (SigR . SigL)) (SigR . SigR)
+  sub = prism' reassocL reassocR
+    where
+    reassocL = unSig2 (SigL . SigL) (unSig2 (SigL . SigR) SigR) . inj
+    reassocR = prj . unSig2 (unSig2 SigL (SigR . SigL)) (SigR . SigR)
 
 instance (Subset setl sets, Subset setr sets) => Subset ('B2 setl setr) sets where
-  inj = unSig2 inj inj
-  prj s = SigL <$> prj s <|> SigR <$> prj s
+  sub = prism' (unSig2 inj inj) (\ s -> SigL <$> prj s <|> SigR <$> prj s)
 
 
 type Member eff sig = Subset ('B1 eff) sig
