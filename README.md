@@ -29,6 +29,17 @@
 
 ## Development
 
+Make sure you have a recent enough `ghc` (8.10+) and `cabal` (3+); I’m not testing against older versions. On macOS, I recommend `ghcup`.
+
+I do just about everything via `ghci`, which can be conveniently initialized and launched as follows:
+
+```
+cabal build # make sure dependencies are known & installed
+script/repl # actually launch the repl
+```
+
+`ghcide` integration is also provided, and I edit in VS Code configured to use it.
+
 
 ## TODO
 
