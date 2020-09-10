@@ -14,6 +14,7 @@ module Facet.Expr
 , Comp(..)
 , var
 , lam0
+, lam1
 , (<&)
 , (&>)
 , first
@@ -80,6 +81,9 @@ var = \case
 
 lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = lam (f . var)
+
+lam1 :: (Expr repr, Subset ('B1 eff) sig') => (Comp ('B1 eff) repr sig sig' a -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
+lam1 = lam
 
 
 (<&) :: Expr repr => repr sig a -> repr sig b -> repr sig a
