@@ -152,7 +152,7 @@ data Bin a
   | B1 a
   | B2 (Bin a) (Bin a)
 
-data Sig (repr :: Type -> Type) f k where
+data Sig (repr :: Type -> Type) sig k where
   Sig1 :: f repr k -> Sig repr (S1 f)   k
   SigL :: l repr k -> Sig repr (S2 l r) k
   SigR :: r repr k -> Sig repr (S2 l r) k
