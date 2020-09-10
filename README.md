@@ -22,6 +22,11 @@
 - elaboration, optimization, & compilation reflected via an effectful DSL
 
 
+## Non-goals
+
+- elision of signature variables; I’m willing to be completely explicit (for now at least)
+
+
 ## Development
 
 
