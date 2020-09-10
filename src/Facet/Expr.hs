@@ -35,6 +35,7 @@ module Facet.Expr
   -- * Signatures
 , Bin(..)
 , Sig(..)
+, unSig0
 , S2(..)
 , unS2
 , S1(..)
@@ -157,6 +158,9 @@ data Sig (sig :: Bin ((Type -> Type) -> (Type -> Type))) (repr :: Type -> Type) 
   Sig1 ::     f repr k -> Sig ('B1 f)   repr k
   SigL :: Sig l repr k -> Sig ('B2 l r) repr k
   SigR :: Sig r repr k -> Sig ('B2 l r) repr k
+
+unSig0 :: Sig 'B0 repr a -> b
+unSig0 = \case{}
 
 -- | Union of effect signatures, represented as a binary tree.
 data S2 l r (repr :: Type -> Type) k
