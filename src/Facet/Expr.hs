@@ -32,6 +32,7 @@ module Facet.Expr
 , execState
 , postIncr
   -- * Signatures
+, Sig(..)
 , S2(..)
 , unS2
 , S1(..)
@@ -144,6 +145,12 @@ postIncr = get <& (put $$ (get + (1 :: repr sig Int)))
 
 
 -- Signatures
+
+data Sig (repr :: Type -> Type) f k where
+  Sig0 ::             Sig repr S0 k
+  Sig1 :: f repr k -> Sig repr (S1 f) k
+  SigL :: l repr k -> Sig repr (S2 l r) k
+  SigR :: r repr k -> Sig repr (S2 l r) k
 
 -- | Union of effect signatures, represented as a binary tree.
 data S2 l r (repr :: Type -> Type) k
