@@ -32,6 +32,7 @@ module Facet.Expr
 , execState
 , postIncr
   -- * Signatures
+, Bin(..)
 , Sig(..)
 , S2(..)
 , unS2
@@ -145,6 +146,11 @@ postIncr = get <& (put $$ (get + (1 :: repr sig Int)))
 
 
 -- Signatures
+
+data Bin a
+  = B0
+  | B1 a
+  | B2 (Bin a) (Bin a)
 
 data Sig (repr :: Type -> Type) f k where
   Sig1 :: f repr k -> Sig repr (S1 f)   k
