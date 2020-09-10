@@ -43,6 +43,7 @@ module Facet.Expr
 , Member
 ) where
 
+import Control.Applicative ((<|>))
 import Data.Kind (Type)
 
 class Expr (repr :: Bin ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
@@ -174,22 +175,28 @@ unSig2 el er = \case
 
 class Subset (sub :: Bin ((Type -> Type) -> (Type -> Type))) (sup :: Bin ((Type -> Type) -> (Type -> Type))) where
   inj :: Sig sub repr a -> Sig sup repr a
+  prj :: Sig sup repr a -> Maybe (Sig sub repr a)
 
 instance Subset 'B0 sig where
   inj = unSig0
+  prj _ = Nothing
 
 -- FIXME: should this be generalized to @Coercible eff1 eff2@?
 instance (eff1 ~ eff2) => Subset ('B1 eff1) ('B1 eff2) where
   inj = id
+  prj = Just
 
 instance Subset ('B1 eff) ('B2 ('B1 eff) set) where
   inj = SigL
+  prj = unSig2 Just (const Nothing)
 
 instance Subset ('B1 eff) ('B2 set1 ('B2 set2 set3)) => Subset ('B1 eff) ('B2 ('B2 set1 set2) set3) where
   inj = unSig2 (SigL . SigL) (unSig2 (SigL . SigR) SigR) . inj
+  prj = prj . unSig2 (unSig2 SigL (SigR . SigL)) (SigR . SigR)
 
 instance (Subset setl sets, Subset setr sets) => Subset ('B2 setl setr) sets where
   inj = unSig2 inj inj
+  prj s = SigL <$> prj s <|> SigR <$> prj s
 
 
 type Member eff sig = Subset ('B1 eff) sig
