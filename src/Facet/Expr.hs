@@ -173,6 +173,10 @@ data Sig (sig :: Bin ((Type -> Type) -> (Type -> Type))) (repr :: Type -> Type) 
 instance HFunctor f => HFunctor (Sig ('B1 f)) where
   hmap f (Sig1 a) = Sig1 (hmap f a)
 
+instance (HFunctor (Sig l), HFunctor (Sig r)) => HFunctor (Sig ('B2 l r)) where
+  hmap f (SigL a) = SigL (hmap f a)
+  hmap f (SigR a) = SigR (hmap f a)
+
 unSig0 :: Sig 'B0 repr a -> b
 unSig0 = \case{}
 
