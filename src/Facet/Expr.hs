@@ -11,7 +11,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Expr
 ( Expr(..)
-, Comp(..)
+, Eff(..)
 , var
 , lam0
 , lam1
@@ -48,7 +48,7 @@ import Control.Lens (Prism', preview, prism', review)
 import Data.Kind (Type)
 
 class Expr (repr :: Bin ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) where
-  lam :: Subset eff sig' => (Comp eff repr sig sig' a -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
+  lam :: Subset eff sig' => (Either (repr sig a) (Eff eff repr sig sig' a) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
@@ -67,19 +67,18 @@ class Expr (repr :: Bin ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) wh
 
   alg :: Sig sig (repr sig) (repr sig a) -> repr sig a
 
-data Comp (eff :: Bin ((Type -> Type) -> (Type -> Type))) (repr :: Bin ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) sig sig' a where
-  Val :: repr sig a -> Comp eff repr sig sig' a
-  Eff :: Sig eff (repr sig) k -> (k -> repr sig' a) -> Comp eff repr sig sig' a
+data Eff (eff :: Bin ((Type -> Type) -> (Type -> Type))) (repr :: Bin ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) sig sig' a where
+  Eff :: Sig eff (repr sig) k -> (k -> repr sig' a) -> Eff eff repr sig sig' a
 
-var :: Comp 'B0 repr sig sig' a -> repr sig a
+var :: Either (repr sig a) (Eff 'B0 repr sig sig' a) -> repr sig a
 var = \case
-  Val a   -> a
-  Eff e _ -> unSig0 e
+  Left  a         -> a
+  Right (Eff e _) -> unSig0 e
 
 lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = lam (f . var)
 
-lam1 :: (Expr repr, Subset ('B1 eff) sig') => (Comp ('B1 eff) repr sig sig' a -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
+lam1 :: (Expr repr, Subset ('B1 eff) sig') => (Either (repr sig a) (Eff ('B1 eff) repr sig sig' a) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
 lam1 = lam
 
 
@@ -135,15 +134,15 @@ put = lam $ \ s -> send (Sig1 (Put (var s)))
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr ('B1 (State s)) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
-  Val a                -> inlr s a
-  Eff (Sig1 Get)     k -> runState $$ s $$ k s
-  Eff (Sig1 (Put s)) k -> runState $$ s $$ k unit
+  Left a                       -> inlr s a
+  Right (Eff (Sig1 Get)     k) -> runState $$ s $$ k s
+  Right (Eff (Sig1 (Put s)) k) -> runState $$ s $$ k unit
 
 execState :: Expr repr => repr sig (repr sig s -> repr sig (repr ('B1 (State s)) a -> repr sig a))
 execState = lam0 $ \ s -> lam1 $ \case
-  Val a                -> a
-  Eff (Sig1 Get)     k -> execState $$ s $$ k s
-  Eff (Sig1 (Put s)) k -> execState $$ s $$ k unit
+  Left a                       -> a
+  Right (Eff (Sig1 Get)     k) -> execState $$ s $$ k s
+  Right (Eff (Sig1 (Put s)) k) -> execState $$ s $$ k unit
 
 
 postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State Int) sig) => repr sig Int
