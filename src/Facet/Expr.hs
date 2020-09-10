@@ -40,6 +40,8 @@ module Facet.Expr
 , unSig1
 , unSig2
 , Subset(..)
+, inj
+, prj
 , Member
 ) where
 
