@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -152,10 +153,10 @@ data Bin a
   | B1 a
   | B2 (Bin a) (Bin a)
 
-data Sig sig (repr :: Type -> Type) k where
-  Sig1 :: f repr k -> Sig (S1 f)   repr k
-  SigL :: l repr k -> Sig (S2 l r) repr k
-  SigR :: r repr k -> Sig (S2 l r) repr k
+data Sig (sig :: Bin ((Type -> Type) -> (Type -> Type))) (repr :: Type -> Type) k where
+  Sig1 :: f repr k -> Sig ('B1 f)   repr k
+  SigL :: Sig l repr k -> Sig ('B2 l r) repr k
+  SigR :: Sig r repr k -> Sig ('B2 l r) repr k
 
 -- | Union of effect signatures, represented as a binary tree.
 data S2 l r (repr :: Type -> Type) k
