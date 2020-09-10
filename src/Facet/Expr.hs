@@ -185,12 +185,7 @@ instance Subset (S1 eff) (S2 (S1 eff) set) where
   inj = SL
 
 instance Subset (S1 eff) (S2 set1 (S2 set2 set3)) => Subset (S1 eff) (S2 (S2 set1 set2) set3) where
-  inj = reassoc . inj
-    where
-    reassoc = \case
-      SL l      -> SL (SL l)
-      SR (SL l) -> SL (SR l)
-      SR (SR r) -> SR r
+  inj = unS2 (SL . SL) (unS2 (SL . SR) SR) . inj
 
 instance (Subset setl sets, Subset setr sets) => Subset (S2 setl setr) sets where
   inj = unS2 inj inj
