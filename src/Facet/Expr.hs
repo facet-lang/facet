@@ -70,6 +70,9 @@ class Expr (repr :: Bin ((Type -> Type) -> (Type -> Type)) -> (Type -> Type)) wh
 data Coyoneda f a where
   Coyoneda :: f b -> (b -> a) -> Coyoneda f a
 
+instance Functor (Coyoneda f) where
+  fmap f (Coyoneda a k) = Coyoneda a (f . k)
+
 var :: Either (repr a) (Coyoneda (Sig 'B0 repr) (repr' a)) -> repr a
 var = \case
   Left  a              -> a
