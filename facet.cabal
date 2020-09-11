@@ -40,6 +40,7 @@ library
     Facet.Eval
     Facet.Expr
     Facet.Pretty
+    Facet.Print
   build-depends:
     , base ^>= 4.14
     , lens
