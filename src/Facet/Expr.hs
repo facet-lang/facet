@@ -52,7 +52,7 @@ import Control.Lens (Prism', preview, prism', review)
 import Data.Kind (Type)
 
 class Expr (repr :: Bin (Type -> Type) -> (Type -> Type)) where
-  lam :: Subset eff sig' => (Either (repr sig a) (Sig eff (repr sig' a)) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
+  lam :: Subset eff sig' => (Either (repr sig a) (Sig eff (repr eff a)) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
@@ -81,7 +81,7 @@ var = \case
 lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = lam (f . var)
 
-lam1 :: (Expr repr, Subset ('B1 eff) sig') => (Either (repr sig a) (Sig ('B1 eff) (repr sig' a)) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
+lam1 :: (Expr repr, Subset ('B1 eff) sig') => (Either (repr sig a) (Sig ('B1 eff) (repr ('B1 eff) a)) -> repr sig b) -> repr sig (repr sig' a -> repr sig b)
 lam1 = lam
 
 
