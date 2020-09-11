@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -109,6 +110,7 @@ send = alg . inj
 data State s k
   = Get (s -> k)
   | Put s k
+  deriving (Functor)
 
 
 -- Examples
