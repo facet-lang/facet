@@ -38,7 +38,6 @@ module Facet.Expr
 , Bin(..)
 , Sig(..)
 , unSig0
-, unSig1
 , unSig2
 , Subset(..)
 , inj
@@ -175,9 +174,6 @@ instance (Functor (Sig l), Functor (Sig r)) => Functor (Sig ('B2 l r)) where
 
 unSig0 :: Sig 'B0 a -> b
 unSig0 = \case{}
-
-unSig1 :: Sig ('B1 f) k -> f k
-unSig1 (Sig1 f) = f
 
 unSig2 :: (Sig l k -> a) -> (Sig r k -> a) -> (Sig ('B2 l r) k -> a)
 unSig2 el er = \case
