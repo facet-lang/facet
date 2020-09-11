@@ -244,9 +244,9 @@ instance (Doc (ann Nesting) doc, Applicative ann) => Doc (ann Nesting) (Rainbow 
 
   flatAlt = liftA2 flatAlt
 
-  parens   = nestRainbow (pretty '(') (pretty ')')
-  brackets = nestRainbow (pretty '[') (pretty ']')
-  braces   = nestRainbow (pretty '{') (pretty '}')
+  parens   = nestRainbow lparen   rparen
+  brackets = nestRainbow lbracket rbracket
+  braces   = nestRainbow lbrace   rbrace
 
 nestRainbow :: (Doc (ann Nesting) doc, Applicative ann) => doc -> doc -> Rainbow doc -> Rainbow doc
 nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (pure lv) l <> run (Nesting (1 + getNesting lv)) <> annotate (pure lv) r
