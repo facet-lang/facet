@@ -8,7 +8,7 @@ module Facet.Eval
 import Data.Kind (Type)
 import Facet.Expr
 
-newtype Eval r (sig :: Bin ((Type -> Type) -> (Type -> Type))) a = Eval { eval :: (a -> r) -> r }
+newtype Eval r (sig :: Bin (Type -> Type)) a = Eval { eval :: (a -> r) -> r }
   deriving (Functor)
 
 instance Applicative (Eval r sig) where
