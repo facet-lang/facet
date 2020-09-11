@@ -79,6 +79,9 @@ data Coyoneda f a where
 instance Functor (Coyoneda f) where
   fmap f (Coyoneda a k) = Coyoneda a (f . k)
 
+instance HFunctor Coyoneda where
+  hmap f (Coyoneda a k) = Coyoneda (f a) k
+
 var :: Either (repr a) (Coyoneda (Sig 'B0 repr) (repr' a)) -> repr a
 var = \case
   Left  a              -> a
