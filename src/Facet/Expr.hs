@@ -82,7 +82,7 @@ instance Functor (Coyoneda f) where
 instance HFunctor Coyoneda where
   hmap f (Coyoneda a k) = Coyoneda (f a) k
 
-var :: Either (repr a) (Coyoneda (Sig 'B0 repr) (repr' a)) -> repr a
+var :: Either (repr (sig :: Bin ((Type -> Type) -> (Type -> Type))) a) (Coyoneda (Sig 'B0 (repr sig)) (repr sig' a)) -> repr sig a
 var = \case
   Left  a              -> a
   Right (Coyoneda e _) -> unSig0 e
