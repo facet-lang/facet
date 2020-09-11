@@ -37,6 +37,7 @@ module Facet.Expr
 , execState
 , postIncr
 , empty
+, runEmpty
   -- * Signatures
 , Bin(..)
 , Sig(..)
@@ -158,6 +159,11 @@ postIncr = get <& (put $$ (get + (1 :: repr sig Int)))
 
 empty :: (Expr repr, Member Empty sig) => repr sig a
 empty = send (Sig1 Empty id)
+
+runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr ('B1 Empty) a -> repr sig a))
+runEmpty = lam0 $ \ a -> lam1 $ \case
+  Left x               -> x
+  Right (Sig1 Empty _) -> a
 
 
 -- Signatures
