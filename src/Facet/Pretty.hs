@@ -21,10 +21,10 @@ module Facet.Pretty
 , parensIf
 , Level(..)
 , PrecDoc(..)
-, rainbow
-, Rainbow(..)
 , runPrec
 , Prec(..)
+, rainbow
+, Rainbow(..)
 ) where
 
 import           Control.Applicative (liftA2)
@@ -156,40 +156,6 @@ class Doc ann doc => PrecDoc ann doc where
   resetPrec :: Level -> doc -> doc
 
 
-rainbow :: Rainbow doc -> doc
-rainbow = (`runRainbow` 0)
-
-newtype Rainbow doc = Rainbow { runRainbow :: Int -> doc }
-  deriving (Applicative, Functor, Monad, Monoid, Semigroup)
-
-instance Show doc => Show (Rainbow doc) where
-  showsPrec p = showsPrec p . rainbow
-
-instance (Doc (ann Int) doc, Applicative ann) => Doc (ann Int) (Rainbow doc) where
-  pretty = pure . pretty
-
-  hardline = pure hardline
-
-  annotate = fmap . annotate
-
-  align = fmap align
-
-  group = fmap group
-
-  flatAlt = liftA2 flatAlt
-
-  parens   = nestRainbow (pretty '(') (pretty ')')
-  brackets = nestRainbow (pretty '[') (pretty ']')
-  braces   = nestRainbow (pretty '{') (pretty '}')
-
-nestRainbow :: (Doc (ann Int) doc, Applicative ann) => doc -> doc -> Rainbow doc -> Rainbow doc
-nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (pure lv) l <> run (1 + lv) <> annotate (pure lv) r
-
-instance (PrecDoc (ann Int) doc, Applicative ann) => PrecDoc (ann Int) (Rainbow doc) where
-  prec = fmap . prec
-  resetPrec = fmap . resetPrec
-
-
 runPrec :: Level -> Prec a -> a
 runPrec l (Prec run) = run l
 
@@ -223,5 +189,39 @@ instance Doc ann doc => PrecDoc ann (Prec doc) where
   resetPrec l (Prec d) = Prec $ \ _ -> d l
 
 instance (Applicative f, PrecDoc ann a) => PrecDoc ann (Ap f a) where
+  prec = fmap . prec
+  resetPrec = fmap . resetPrec
+
+
+rainbow :: Rainbow doc -> doc
+rainbow = (`runRainbow` 0)
+
+newtype Rainbow doc = Rainbow { runRainbow :: Int -> doc }
+  deriving (Applicative, Functor, Monad, Monoid, Semigroup)
+
+instance Show doc => Show (Rainbow doc) where
+  showsPrec p = showsPrec p . rainbow
+
+instance (Doc (ann Int) doc, Applicative ann) => Doc (ann Int) (Rainbow doc) where
+  pretty = pure . pretty
+
+  hardline = pure hardline
+
+  annotate = fmap . annotate
+
+  align = fmap align
+
+  group = fmap group
+
+  flatAlt = liftA2 flatAlt
+
+  parens   = nestRainbow (pretty '(') (pretty ')')
+  brackets = nestRainbow (pretty '[') (pretty ']')
+  braces   = nestRainbow (pretty '{') (pretty '}')
+
+nestRainbow :: (Doc (ann Int) doc, Applicative ann) => doc -> doc -> Rainbow doc -> Rainbow doc
+nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (pure lv) l <> run (1 + lv) <> annotate (pure lv) r
+
+instance (PrecDoc (ann Int) doc, Applicative ann) => PrecDoc (ann Int) (Rainbow doc) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
