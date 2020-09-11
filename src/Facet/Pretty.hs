@@ -8,6 +8,12 @@ module Facet.Pretty
 , space
 , line
 , line'
+, lparen
+, rparen
+, lbracket
+, rbracket
+, lbrace
+, rbrace
 , enclose
 , surround
 , encloseSep
@@ -105,6 +111,18 @@ line = flatAlt hardline space
 
 line' :: Doc ann doc => doc
 line' = flatAlt hardline mempty
+
+lparen, rparen :: Doc ann doc => doc
+lparen = pretty "("
+rparen = pretty ")"
+
+lbracket, rbracket :: Doc ann doc => doc
+lbracket = pretty "["
+rbracket = pretty "]"
+
+lbrace, rbrace :: Doc ann doc => doc
+lbrace = pretty "{"
+rbrace = pretty "}"
 
 enclose :: Doc ann doc => doc -> doc -> doc -> doc
 enclose l r x = l <> x <> r
