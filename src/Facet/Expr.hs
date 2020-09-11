@@ -117,8 +117,8 @@ send = alg . inj
 -- Effects
 
 data State s (repr :: Type -> Type) k where
-  Get :: State s repr (repr s)
-  Put :: repr s -> State s repr (repr ())
+  Get :: State s repr s
+  Put :: s -> State s repr (repr ())
 
 
 -- Examples
@@ -138,26 +138,26 @@ curry' = lam $ \ f -> lam $ \ a -> lam $ \ b -> var f $$ inlr (var a) (var b)
 uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
 uncurry' = lam $ \ f -> lam $ \ ab -> var f $$ exl (var ab) $$ exr (var ab)
 
-get :: (Expr repr, Member (State s) sig) => repr sig s
+get :: (Expr repr, Member (State (repr sig s)) sig) => repr sig s
 get = send (Sig1 Get)
 
-put :: (Expr repr, Member (State s) sig) => repr sig (repr sig s -> repr sig ())
+put :: (Expr repr, Member (State (repr sig s)) sig) => repr sig (repr sig s -> repr sig ())
 put = lam $ \ s -> send (Sig1 (Put (var s)))
 
-runState :: Expr repr => repr sig (repr sig s -> repr sig (repr ('B1 (State s)) a -> repr sig (s, a)))
+runState :: Expr repr => repr sig (repr sig s -> repr sig (repr ('B1 (State (repr sig s))) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
   Left a                            -> inlr s a
   Right (Coyoneda (Sig1 Get)     k) -> runState $$ s $$ k s
   Right (Coyoneda (Sig1 (Put s)) k) -> runState $$ s $$ k unit
 
-execState :: Expr repr => repr sig (repr sig s -> repr sig (repr ('B1 (State s)) a -> repr sig a))
+execState :: Expr repr => repr sig (repr sig s -> repr sig (repr ('B1 (State (repr sig s))) a -> repr sig a))
 execState = lam0 $ \ s -> lam1 $ \case
   Left a                            -> a
   Right (Coyoneda (Sig1 Get)     k) -> execState $$ s $$ k s
   Right (Coyoneda (Sig1 (Put s)) k) -> execState $$ s $$ k unit
 
 
-postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State Int) sig) => repr sig Int
+postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State (repr sig Int)) sig) => repr sig Int
 postIncr = get <& (put $$ (get + (1 :: repr sig Int)))
 
 
