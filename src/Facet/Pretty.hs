@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -31,6 +32,7 @@ module Facet.Pretty
 , runPrec
 , Prec(..)
 , Nesting(..)
+, Nest(..)
 , rainbow
 , Rainbow(..)
 ) where
@@ -222,6 +224,11 @@ instance (Applicative f, PrecDoc ann a) => PrecDoc ann (Ap f a) where
 newtype Nesting = Nesting { getNesting :: Int }
   deriving (Eq, Ord, Show)
 
+data Nest a
+  = Nest Nesting
+  | Ann a
+  deriving (Eq, Ord, Show)
+
 rainbow :: Rainbow doc -> doc
 rainbow = (`runRainbow` Nesting 0)
 
@@ -231,7 +238,7 @@ newtype Rainbow doc = Rainbow { runRainbow :: Nesting -> doc }
 instance Show doc => Show (Rainbow doc) where
   showsPrec p = showsPrec p . rainbow
 
-instance (Doc (ann Nesting) doc, Applicative ann) => Doc (ann Nesting) (Rainbow doc) where
+instance (Doc (Nest ann) doc) => Doc (Nest ann) (Rainbow doc) where
   pretty = pure . pretty
 
   hardline = pure hardline
@@ -248,9 +255,9 @@ instance (Doc (ann Nesting) doc, Applicative ann) => Doc (ann Nesting) (Rainbow 
   brackets = nestRainbow lbracket rbracket
   braces   = nestRainbow lbrace   rbrace
 
-nestRainbow :: (Doc (ann Nesting) doc, Applicative ann) => doc -> doc -> Rainbow doc -> Rainbow doc
-nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (pure lv) l <> run (Nesting (1 + getNesting lv)) <> annotate (pure lv) r
+nestRainbow :: Doc (Nest ann) doc => doc -> doc -> Rainbow doc -> Rainbow doc
+nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (Nest lv) l <> run (Nesting (1 + getNesting lv)) <> annotate (Nest lv) r
 
-instance (PrecDoc (ann Nesting) doc, Applicative ann) => PrecDoc (ann Nesting) (Rainbow doc) where
+instance (PrecDoc (Nest ann) doc) => PrecDoc (Nest ann) (Rainbow doc) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec

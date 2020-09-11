@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
@@ -20,15 +19,15 @@ import qualified Facet.Pretty as P
 prettyPrint :: MonadIO m => Print sig a -> m ()
 prettyPrint = prettyPrintWith defaultStyle
 
-prettyPrintWith :: MonadIO m => (Highlight Nesting -> ANSI.AnsiStyle) -> Print sig a -> m ()
+prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> Print sig a -> m ()
 prettyPrintWith style  = putDoc . PP.reAnnotate style . getDoc . runPrint
 
-defaultStyle :: Highlight Nesting -> ANSI.AnsiStyle
+defaultStyle :: Nest Highlight -> ANSI.AnsiStyle
 defaultStyle = \case
-  Name     -> mempty
-  Op       -> ANSI.color     ANSI.Cyan
-  Lit      -> ANSI.bold
   Nest i   -> colours !! (getNesting i `mod` len)
+  Ann Name -> mempty
+  Ann Op   -> ANSI.color     ANSI.Cyan
+  Ann Lit  -> ANSI.bold
   where
   colours =
     [ ANSI.Red
@@ -42,26 +41,17 @@ defaultStyle = \case
     [ANSI.color, ANSI.colorDull]
   len = length colours
 
-getDoc :: Doc -> PP.Doc (Highlight Nesting)
+getDoc :: Doc -> PP.Doc (Nest Highlight)
 getDoc (Doc doc) = rainbow (runPrec (Level 0) doc)
 
-newtype Doc = Doc (Prec (Rainbow (PP.Doc (Highlight Nesting))))
-  deriving (P.Doc (Highlight Nesting), Monoid, P.PrecDoc (Highlight Nesting), Semigroup, Show)
+newtype Doc = Doc (Prec (Rainbow (PP.Doc (Nest Highlight))))
+  deriving (P.Doc (Nest Highlight), Monoid, P.PrecDoc (Nest Highlight), Semigroup, Show)
 
 newtype Print (sig :: Bin (Type -> Type)) a = Print { runPrint :: Doc }
-  deriving (P.Doc (Highlight Nesting), Monoid, P.PrecDoc (Highlight Nesting), Semigroup)
+  deriving (P.Doc (Nest Highlight), Monoid, P.PrecDoc (Nest Highlight), Semigroup)
 
-data Highlight a
+data Highlight
   = Name
   | Op
   | Lit
-  | Nest a
-  deriving (Functor)
-
-instance Applicative Highlight where
-  pure = Nest
-  f <*> a = case f of
-      Name     -> Name
-      Op       -> Op
-      Lit      -> Lit
-      Nest f   -> f <$> a
+  deriving (Enum, Eq, Ord, Show)
