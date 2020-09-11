@@ -24,6 +24,7 @@ module Facet.Expr
 , send
   -- * Effects
 , State(..)
+, Empty(..)
   -- * Examples
 , id'
 , const'
@@ -110,6 +111,8 @@ send = alg . inj
 data State s k where
   Get :: State s s
   Put :: s -> State s ()
+
+data Empty k = Empty
 
 
 -- Examples
