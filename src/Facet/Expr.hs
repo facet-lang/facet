@@ -10,6 +10,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Expr
 ( Expr(..)
@@ -106,10 +107,9 @@ send = alg . inj
 
 -- Effects
 
-data State s k
-  = Get (s -> k)
-  | Put s k
-  deriving (Functor)
+data State s k where
+  Get :: State s s
+  Put :: s -> State s ()
 
 
 -- Examples
@@ -130,22 +130,22 @@ uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b 
 uncurry' = lam $ \ f -> lam $ \ ab -> var f $$ exl (var ab) $$ exr (var ab)
 
 get :: (Expr repr, Member (State (repr sig s)) sig) => repr sig s
-get = send (Sig1 (Get id))
+get = send (Sig1 Get id)
 
 put :: (Expr repr, Member (State (repr sig s)) sig) => repr sig (repr sig s -> repr sig ())
-put = lam $ \ s -> send (Sig1 (Put (var s) unit))
+put = lam $ \ s -> send (Sig1 (Put (var s)) (const unit))
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr ('B1 (State (repr sig s))) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
   Left a                 -> inlr s a
-  Right (Sig1 (Get   k)) -> runState $$ s $$ k s
-  Right (Sig1 (Put s k)) -> runState $$ s $$ k
+  Right (Sig1 Get     k) -> runState $$ s $$ k s
+  Right (Sig1 (Put s) k) -> runState $$ s $$ k ()
 
 execState :: Expr repr => repr sig (repr sig s -> repr sig (repr ('B1 (State (repr sig s))) a -> repr sig a))
 execState = lam0 $ \ s -> lam1 $ \case
   Left a                 -> a
-  Right (Sig1 (Get   k)) -> execState $$ s $$ k s
-  Right (Sig1 (Put s k)) -> execState $$ s $$ k
+  Right (Sig1 Get     k) -> execState $$ s $$ k s
+  Right (Sig1 (Put s) k) -> execState $$ s $$ k ()
 
 
 postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State (repr sig Int)) sig) => repr sig Int
@@ -159,18 +159,12 @@ data Bin a
   | B1 a
   | B2 (Bin a) (Bin a)
 
-data Sig (sig :: Bin (Type -> Type)) k where
-  Sig1 ::     f k -> Sig ('B1 f)   k
-  SigL :: Sig l k -> Sig ('B2 l r) k
-  SigR :: Sig r k -> Sig ('B2 l r) k
+data Sig (sig :: Bin (Type -> Type)) a where
+  Sig1 ::     f k -> (k -> a) -> Sig ('B1 f)   a
+  SigL :: Sig l a             -> Sig ('B2 l r) a
+  SigR :: Sig r a             -> Sig ('B2 l r) a
 
-instance Functor f => Functor (Sig ('B1 f)) where
-  fmap f (Sig1 a) = Sig1 (fmap f a)
-
-instance (Functor (Sig l), Functor (Sig r)) => Functor (Sig ('B2 l r)) where
-  fmap f = \case
-    SigL l -> SigL (fmap f l)
-    SigR r -> SigR (fmap f r)
+deriving instance Functor (Sig sig)
 
 unSig0 :: Sig 'B0 a -> b
 unSig0 = \case{}
