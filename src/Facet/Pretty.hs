@@ -11,6 +11,7 @@ module Facet.Pretty
 , enclose
 , surround
 , encloseSep
+, tupled
 , cat
 , vcat
 , sep
@@ -116,6 +117,14 @@ encloseSep l r s ds = case ds of
   []  -> l <> r
   [d] -> l <> d <> r
   _   -> cat (zipWith (<>) (l : repeat s) ds) <> r
+
+tupled :: Doc ann doc => [doc] -> doc
+tupled
+  = group
+  . encloseSep
+    (flatAlt (pretty "( ") (pretty "("))
+    (flatAlt (pretty " )") (pretty ")"))
+    (pretty ", ")
 
 cat :: Doc ann doc => [doc] -> doc
 cat = group . vcat
