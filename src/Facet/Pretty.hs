@@ -140,8 +140,8 @@ tupled :: Doc ann doc => [doc] -> doc
 tupled
   = group
   . encloseSep
-    (flatAlt (pretty "( ") (pretty "("))
-    (flatAlt (pretty " )") (pretty ")"))
+    (lparen <> flatAlt space mempty)
+    (flatAlt space mempty <> rparen)
     (pretty ", ")
 
 cat :: Doc ann doc => [doc] -> doc
