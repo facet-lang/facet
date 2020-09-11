@@ -115,25 +115,25 @@ data State s k where
 -- Examples
 
 id' :: Expr repr => repr sig (repr sig a -> repr sig a)
-id' = lam var
+id' = lam0 id
 
 const' :: Expr repr => repr sig (repr sig a -> repr sig (repr sig b -> repr sig a))
-const' = lam (lam0 . const . var)
+const' = lam0 (lam0 . const)
 
 flip' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig b -> repr sig (repr sig a -> repr sig c)))
-flip' = lam (\ f -> lam (\ b -> lam (\ a -> var f $$ var a $$ var b)))
+flip' = lam0 (\ f -> lam0 (\ b -> lam0 (\ a -> f $$ a $$ b)))
 
 curry' :: Expr repr => repr sig (repr sig (repr sig (a, b) -> repr sig c) -> repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)))
-curry' = lam $ \ f -> lam $ \ a -> lam $ \ b -> var f $$ inlr (var a) (var b)
+curry' = lam0 $ \ f -> lam0 $ \ a -> lam0 $ \ b -> f $$ inlr a b
 
 uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
-uncurry' = lam $ \ f -> lam $ \ ab -> var f $$ exl (var ab) $$ exr (var ab)
+uncurry' = lam0 $ \ f -> lam0 $ \ ab -> f $$ exl ab $$ exr ab
 
 get :: (Expr repr, Member (State (repr sig s)) sig) => repr sig s
 get = send (Sig1 Get id)
 
 put :: (Expr repr, Member (State (repr sig s)) sig) => repr sig (repr sig s -> repr sig ())
-put = lam $ \ s -> send (Sig1 (Put (var s)) (const unit))
+put = lam0 $ \ s -> send (Sig1 (Put s) (const unit))
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr ('B1 (State (repr sig s))) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
