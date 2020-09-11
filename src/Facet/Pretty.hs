@@ -178,11 +178,9 @@ instance Doc ann doc => Doc ann (Prec doc) where
 
   flatAlt = liftA2 flatAlt
 
-  parens = fmap parens . resetPrec (Level 0)
-
+  parens   = fmap parens   . resetPrec (Level 0)
   brackets = fmap brackets . resetPrec (Level 0)
-
-  braces = fmap braces . resetPrec (Level 0)
+  braces   = fmap braces   . resetPrec (Level 0)
 
 instance Doc ann doc => PrecDoc ann (Prec doc) where
   prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
