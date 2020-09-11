@@ -71,6 +71,8 @@ class Expr (repr :: Bin (Type -> Type) -> (Type -> Type)) where
 
   alg :: Sig sig (repr sig a) -> repr sig a
 
+  weaken :: Subset sub sup => repr sub a -> repr sup a
+
 var :: Either (repr (sig :: Bin (Type -> Type)) a) (Sig 'B0 (repr sig' a)) -> repr sig a
 var = \case
   Left  a -> a
