@@ -239,6 +239,10 @@ instance (Applicative f, PrecDoc ann a) => PrecDoc ann (Ap f a) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
 
+instance PrecDoc ann a => PrecDoc ann (b -> a) where
+  prec = fmap . prec
+  resetPrec = fmap . resetPrec
+
 
 newtype Nesting = Nesting { getNesting :: Int }
   deriving (Eq, Ord, Show)
