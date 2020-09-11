@@ -25,6 +25,7 @@ prettyPrintWith style  = putDoc . PP.reAnnotate style . getDoc . runPrint
 
 defaultStyle :: Highlight Nesting -> ANSI.AnsiStyle
 defaultStyle = \case
+  Name     -> mempty
   Nest i   -> colours !! (getNesting i `mod` len)
   where
   colours =
@@ -48,9 +49,12 @@ newtype Doc = Doc (Prec (Rainbow (PP.Doc (Highlight Nesting))))
 newtype Print (sig :: Bin (Type -> Type)) a = Print { runPrint :: Doc }
   deriving (P.Doc (Highlight Nesting), Monoid, P.PrecDoc (Highlight Nesting), Semigroup)
 
-newtype Highlight a = Nest a
+data Highlight a
+  = Name
+  | Nest a
   deriving (Functor)
 
 instance Applicative Highlight where
   pure = Nest
   Nest f <*> Nest a = Nest (f a)
+  _      <*> _      = Name
