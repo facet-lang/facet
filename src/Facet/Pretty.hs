@@ -63,13 +63,13 @@ class Monoid doc => Doc ann doc | doc -> ann where
   flatAlt :: doc -> doc -> doc
 
   parens :: doc -> doc
-  parens = enclose (pretty "(") (pretty ")")
+  parens = enclose lparen rparen
 
   brackets :: doc -> doc
-  brackets = enclose (pretty "[") (pretty "]")
+  brackets = enclose lbracket rbracket
 
   braces :: doc -> doc
-  braces = enclose (pretty "{") (pretty "}")
+  braces = enclose lbrace rbrace
 
 instance Doc ann (PP.Doc ann) where
   pretty = PP.pretty
