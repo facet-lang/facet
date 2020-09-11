@@ -165,6 +165,14 @@ data Sig (sig :: Bin (Type -> Type)) k where
   SigL :: Sig l k -> Sig ('B2 l r) k
   SigR :: Sig r k -> Sig ('B2 l r) k
 
+instance Functor f => Functor (Sig ('B1 f)) where
+  fmap f (Sig1 a) = Sig1 (fmap f a)
+
+instance (Functor (Sig l), Functor (Sig r)) => Functor (Sig ('B2 l r)) where
+  fmap f = \case
+    SigL l -> SigL (fmap f l)
+    SigR r -> SigR (fmap f r)
+
 unSig0 :: Sig 'B0 a -> b
 unSig0 = \case{}
 
