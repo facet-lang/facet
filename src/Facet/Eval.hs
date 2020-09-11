@@ -15,3 +15,6 @@ instance Applicative (Eval r sig) where
   pure a = Eval $ \ k -> k a
 
   Eval f <*> Eval a = Eval $ \ k -> f $ \ f' -> a $ \ a' -> k (f' a')
+
+instance Monad (Eval r sig) where
+  m >>= f = Eval $ \ k -> eval m $ \ a -> eval (f a) k
