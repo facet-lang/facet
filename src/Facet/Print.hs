@@ -2,25 +2,55 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE LambdaCase #-}
 module Facet.Print
-( Print(..)
+( prettyPrint
+, Print(..)
 ) where
 
+import           Control.Applicative ((<**>))
+import           Control.Monad.IO.Class
 import           Data.Kind (Type)
 import qualified Data.Text.Prettyprint.Doc as PP
+import qualified Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
 import           Facet.Expr
 import           Facet.Pretty hiding (Doc, PrecDoc)
 import qualified Facet.Pretty as P
 
+prettyPrint :: MonadIO m => Print sig a -> m ()
+prettyPrint = prettyPrintWith defaultStyle
+
+prettyPrintWith :: MonadIO m => (Highlight Int -> ANSI.AnsiStyle) -> Print sig a -> m ()
+prettyPrintWith style  = putDoc . PP.reAnnotate style . getDoc . runPrint
+
+defaultStyle :: Highlight Int -> ANSI.AnsiStyle
+defaultStyle = \case
+  Nest i   -> colours !! (i `mod` len)
+  where
+  colours =
+    [ ANSI.Red
+    , ANSI.Green
+    , ANSI.Yellow
+    , ANSI.Blue
+    , ANSI.Magenta
+    , ANSI.Cyan
+    ]
+    <**>
+    [ANSI.color, ANSI.colorDull]
+  len = length colours
+
+getDoc :: Doc -> PP.Doc (Highlight Int)
+getDoc (Doc doc) = rainbow (runPrec (Level 0) doc)
+
 newtype Doc = Doc (Prec (Rainbow (PP.Doc (Highlight Int))))
   deriving (P.Doc (Highlight Int), Monoid, P.PrecDoc (Highlight Int), Semigroup, Show)
 
-newtype Print (sig :: Bin (Type -> Type)) a = Print { print :: Doc }
+newtype Print (sig :: Bin (Type -> Type)) a = Print { runPrint :: Doc }
   deriving (P.Doc (Highlight Int), Monoid, P.PrecDoc (Highlight Int), Semigroup)
 
-newtype Highlight a = Highlight a
+newtype Highlight a = Nest a
   deriving (Functor)
 
 instance Applicative Highlight where
-  pure = Highlight
-  Highlight f <*> Highlight a = Highlight (f a)
+  pure = Nest
+  Nest f <*> Nest a = Nest (f a)
