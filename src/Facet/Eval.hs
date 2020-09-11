@@ -3,6 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Facet.Eval
 ( Eval(..)
+, eval0
 ) where
 
 import Control.Applicative (liftA)
@@ -11,6 +12,9 @@ import Data.Kind (Type)
 import Facet.Expr
 
 newtype Eval (sig :: Bin (Type -> Type)) a = Eval { eval :: forall r . (Either a (Sig sig (Eval sig a)) -> r) -> r }
+
+eval0 :: Eval 'B0 a -> a
+eval0 m = eval m (either id unSig0)
 
 instance Functor (Eval sig) where
   fmap = liftA
