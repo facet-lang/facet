@@ -27,6 +27,7 @@ defaultStyle :: Highlight Nesting -> ANSI.AnsiStyle
 defaultStyle = \case
   Name     -> mempty
   Op       -> ANSI.color     ANSI.Cyan
+  Lit      -> ANSI.bold
   Nest i   -> colours !! (getNesting i `mod` len)
   where
   colours =
@@ -53,6 +54,7 @@ newtype Print (sig :: Bin (Type -> Type)) a = Print { runPrint :: Doc }
 data Highlight a
   = Name
   | Op
+  | Lit
   | Nest a
   deriving (Functor)
 
@@ -61,4 +63,5 @@ instance Applicative Highlight where
   f <*> a = case f of
       Name     -> Name
       Op       -> Op
+      Lit      -> Lit
       Nest f   -> f <$> a
