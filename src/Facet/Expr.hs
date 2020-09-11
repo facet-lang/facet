@@ -38,6 +38,7 @@ module Facet.Expr
 , postIncr
 , empty
 , runEmpty
+, execEmpty
   -- * Signatures
 , Bin(..)
 , Sig(..)
@@ -164,6 +165,9 @@ runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr ('B1 Empty) a ->
 runEmpty = lam0 $ \ a -> lam1 $ \case
   Left x               -> x
   Right (Sig1 Empty _) -> a
+
+execEmpty :: Expr repr => repr sig (repr ('B1 Empty) a -> repr sig Bool)
+execEmpty = lam1 (either (const true) (const false))
 
 
 -- Signatures
