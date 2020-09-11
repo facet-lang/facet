@@ -105,6 +105,25 @@ instance (Applicative f, Doc ann a) => Doc ann (Ap f a) where
 
   braces = fmap braces
 
+instance Doc ann a => Doc ann (b -> a) where
+  pretty = pure . pretty
+
+  hardline = pure hardline
+
+  annotate = fmap . annotate
+
+  align = fmap align
+
+  group = fmap group
+
+  flatAlt = liftA2 flatAlt
+
+  parens = fmap parens
+
+  brackets = fmap brackets
+
+  braces = fmap braces
+
 space :: Doc ann doc => doc
 space = pretty ' '
 
