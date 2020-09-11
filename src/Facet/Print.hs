@@ -20,12 +20,12 @@ import qualified Facet.Pretty as P
 prettyPrint :: MonadIO m => Print sig a -> m ()
 prettyPrint = prettyPrintWith defaultStyle
 
-prettyPrintWith :: MonadIO m => (Highlight Int -> ANSI.AnsiStyle) -> Print sig a -> m ()
+prettyPrintWith :: MonadIO m => (Highlight Nesting -> ANSI.AnsiStyle) -> Print sig a -> m ()
 prettyPrintWith style  = putDoc . PP.reAnnotate style . getDoc . runPrint
 
-defaultStyle :: Highlight Int -> ANSI.AnsiStyle
+defaultStyle :: Highlight Nesting -> ANSI.AnsiStyle
 defaultStyle = \case
-  Nest i   -> colours !! (i `mod` len)
+  Nest i   -> colours !! (getNesting i `mod` len)
   where
   colours =
     [ ANSI.Red
@@ -39,14 +39,14 @@ defaultStyle = \case
     [ANSI.color, ANSI.colorDull]
   len = length colours
 
-getDoc :: Doc -> PP.Doc (Highlight Int)
+getDoc :: Doc -> PP.Doc (Highlight Nesting)
 getDoc (Doc doc) = rainbow (runPrec (Level 0) doc)
 
-newtype Doc = Doc (Prec (Rainbow (PP.Doc (Highlight Int))))
-  deriving (P.Doc (Highlight Int), Monoid, P.PrecDoc (Highlight Int), Semigroup, Show)
+newtype Doc = Doc (Prec (Rainbow (PP.Doc (Highlight Nesting))))
+  deriving (P.Doc (Highlight Nesting), Monoid, P.PrecDoc (Highlight Nesting), Semigroup, Show)
 
 newtype Print (sig :: Bin (Type -> Type)) a = Print { runPrint :: Doc }
-  deriving (P.Doc (Highlight Int), Monoid, P.PrecDoc (Highlight Int), Semigroup)
+  deriving (P.Doc (Highlight Nesting), Monoid, P.PrecDoc (Highlight Nesting), Semigroup)
 
 newtype Highlight a = Nest a
   deriving (Functor)

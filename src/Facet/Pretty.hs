@@ -23,6 +23,7 @@ module Facet.Pretty
 , PrecDoc(..)
 , runPrec
 , Prec(..)
+, Nesting(..)
 , rainbow
 , Rainbow(..)
 ) where
@@ -191,16 +192,19 @@ instance (Applicative f, PrecDoc ann a) => PrecDoc ann (Ap f a) where
   resetPrec = fmap . resetPrec
 
 
-rainbow :: Rainbow doc -> doc
-rainbow = (`runRainbow` 0)
+newtype Nesting = Nesting { getNesting :: Int }
+  deriving (Eq, Ord, Show)
 
-newtype Rainbow doc = Rainbow { runRainbow :: Int -> doc }
+rainbow :: Rainbow doc -> doc
+rainbow = (`runRainbow` Nesting 0)
+
+newtype Rainbow doc = Rainbow { runRainbow :: Nesting -> doc }
   deriving (Applicative, Functor, Monad, Monoid, Semigroup)
 
 instance Show doc => Show (Rainbow doc) where
   showsPrec p = showsPrec p . rainbow
 
-instance (Doc (ann Int) doc, Applicative ann) => Doc (ann Int) (Rainbow doc) where
+instance (Doc (ann Nesting) doc, Applicative ann) => Doc (ann Nesting) (Rainbow doc) where
   pretty = pure . pretty
 
   hardline = pure hardline
@@ -217,9 +221,9 @@ instance (Doc (ann Int) doc, Applicative ann) => Doc (ann Int) (Rainbow doc) whe
   brackets = nestRainbow (pretty '[') (pretty ']')
   braces   = nestRainbow (pretty '{') (pretty '}')
 
-nestRainbow :: (Doc (ann Int) doc, Applicative ann) => doc -> doc -> Rainbow doc -> Rainbow doc
-nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (pure lv) l <> run (1 + lv) <> annotate (pure lv) r
+nestRainbow :: (Doc (ann Nesting) doc, Applicative ann) => doc -> doc -> Rainbow doc -> Rainbow doc
+nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (pure lv) l <> run (Nesting (1 + getNesting lv)) <> annotate (pure lv) r
 
-instance (PrecDoc (ann Int) doc, Applicative ann) => PrecDoc (ann Int) (Rainbow doc) where
+instance (PrecDoc (ann Nesting) doc, Applicative ann) => PrecDoc (ann Nesting) (Rainbow doc) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
