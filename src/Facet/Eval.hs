@@ -58,3 +58,5 @@ instance Expr Eval where
     Right c' -> k (Right (fmap (\ c -> iff c t e) c'))
 
   alg s = Eval $ \ k -> k (Right s)
+
+  weaken a = Eval $ \ k -> eval a $ \ a' -> k (fmap (inj . fmap weaken) a')
