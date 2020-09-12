@@ -39,6 +39,7 @@ module Facet.Pretty
 , var
 , incr
 , fresh
+, bind
 , Fresh(..)
 ) where
 
@@ -306,6 +307,9 @@ incr = Var . succ . getVar
 
 fresh :: Fresh doc -> doc
 fresh = (`runFresh` Var 0)
+
+bind :: Doc ann doc => (Fresh doc -> Fresh doc) -> Fresh doc
+bind f = Fresh $ \ v -> runFresh (f (pretty v)) (incr v)
 
 newtype Fresh doc = Fresh { runFresh :: Var -> doc }
   deriving (Applicative, Doc ann, Functor, Monad, Monoid, PrecDoc ann, Semigroup)
