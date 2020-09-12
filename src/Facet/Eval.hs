@@ -13,10 +13,10 @@ import Data.Bifunctor (bimap, first)
 import Data.Kind (Type)
 import Facet.Expr
 
-newtype Eval (sig :: Type -> Type) a = Eval { eval :: forall r . (Either a (Eff sig (Eval sig a)) -> r) -> r }
+newtype Eval (sig :: Type -> Type) a = Eval { runEval :: forall r . (Either a (Eff sig (Eval sig a)) -> r) -> r }
 
 eval0 :: Eval None a -> a
-eval0 m = eval m (either id (\ (Eff e _) -> absurd e))
+eval0 m = runEval m (either id (\ (Eff e _) -> absurd e))
 
 instance Functor (Eval sig) where
   fmap = liftA
@@ -24,23 +24,23 @@ instance Functor (Eval sig) where
 instance Applicative (Eval sig) where
   pure a = Eval $ \ k -> k (Left a)
 
-  f <*> a = Eval $ \ k -> eval f $ either
-    (\ f' -> eval a (k . bimap f' (fmap (fmap f'))))
+  f <*> a = Eval $ \ k -> runEval f $ either
+    (\ f' -> runEval a (k . bimap f' (fmap (fmap f'))))
     (k . Right . fmap (<*> a))
 
 instance Monad (Eval sig) where
-  m >>= f = Eval $ \ k -> eval m $ either
-    ((`eval` k) . f)
+  m >>= f = Eval $ \ k -> runEval m $ either
+    ((`runEval` k) . f)
     (k . Right . fmap (>>= f))
 
 instance Expr Eval where
   val = pure . eval0
 
   -- k (Left …) indicates that we don’t need to perform effects to construct the lambda itself, even if it uses effects to do its job
-  lam f = Eval $ \ k -> k (Left (`eval` f . first pure))
-  f $$ a = Eval $ \ k -> eval f $ \case
-    Left  f' -> eval (f' a) k
-    Right f' -> eval (alg f' >>= \ f' -> f' a) k
+  lam f = Eval $ \ k -> k (Left (`runEval` f . first pure))
+  f $$ a = Eval $ \ k -> runEval f $ \case
+    Left  f' -> runEval (f' a) k
+    Right f' -> runEval (alg f' >>= \ f' -> f' a) k
 
   unit = pure ()
 
@@ -50,14 +50,14 @@ instance Expr Eval where
 
   inl = fmap Left
   inr = fmap Right
-  exlr f g e = Eval $ \ k -> eval e $ \case
-    Left  e -> eval (either (f . pure) (g . pure) e) k
+  exlr f g e = Eval $ \ k -> runEval e $ \case
+    Left  e -> runEval (either (f . pure) (g . pure) e) k
     Right e -> k (Right (exlr f g <$> e))
 
   true  = pure True
   false = pure False
-  iff c t e = Eval $ \ k -> eval c $ \case
-    Left  c' -> eval (if c' then t else e) k
+  iff c t e = Eval $ \ k -> runEval c $ \case
+    Left  c' -> runEval (if c' then t else e) k
     Right c' -> k (Right (fmap (\ c -> iff c t e) c'))
 
   alg s = Eval $ \ k -> k (Right s)
