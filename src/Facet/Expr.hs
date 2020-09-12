@@ -189,7 +189,6 @@ prj = preview sub
 instance Subset None sig where
   sub = prism' absurd (const Nothing)
 
--- FIXME: should this be generalized to @Coercible eff1 eff2@?
 instance Subset eff eff where
   sub = prism' id Just
 
