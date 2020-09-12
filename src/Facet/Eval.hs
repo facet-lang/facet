@@ -10,6 +10,7 @@ module Facet.Eval
 ) where
 
 import Control.Applicative (liftA, liftA2)
+import Control.Monad ((<=<))
 import Data.Bifunctor (bimap, first)
 import Data.Kind (Type)
 import Facet.Expr
@@ -42,9 +43,7 @@ instance Expr Eval where
 
   -- k (Left …) indicates that we don’t need to perform effects to construct the lambda itself, even if it uses effects to do its job
   lam f = Eval $ \ k -> k (Left (eval (f . first pure)))
-  f $$ a = Eval $ \ k -> runEval f $ eval k . \case
-    Left  f' -> f' a
-    Right f' -> alg f' >>= \ f' -> f' a
+  f $$ a = Eval $ \ k -> runEval f $ eval k . either ($ a) (($ a) <=< alg)
 
   unit = pure ()
 
