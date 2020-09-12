@@ -8,6 +8,7 @@ module Facet.Eval
 , eval
 , eval0
 , Handler(..)
+, handle
 ) where
 
 import Control.Applicative (liftA, liftA2)
@@ -68,3 +69,6 @@ instance Expr Eval where
 
 
 newtype Handler (sig :: Type -> Type) = Handler { runHandler :: forall a k . Eff sig a -> (a -> k) -> k }
+
+handle :: Eff sig a -> (a -> k) -> Handler sig -> k
+handle e k h = runHandler h e k
