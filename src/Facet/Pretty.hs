@@ -35,6 +35,7 @@ module Facet.Pretty
 , Nest(..)
 , rainbow
 , Rainbow(..)
+, Var(..)
 ) where
 
 import           Control.Applicative (liftA2)
@@ -284,3 +285,6 @@ nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (Nest lv) l <> run (N
 instance (PrecDoc (Nest ann) doc) => PrecDoc (Nest ann) (Rainbow doc) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
+
+
+newtype Var = Var { getVar :: Int }
