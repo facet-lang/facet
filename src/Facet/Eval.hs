@@ -26,7 +26,7 @@ instance Applicative (Eval sig) where
   pure a = Eval $ \ k -> k (Left a)
 
   f <*> a = Eval $ \ k -> eval f $ either
-    (\ f' -> eval a $ \ a' -> k (bimap f' (fmap (fmap f')) a'))
+    (\ f' -> eval a (k . bimap f' (fmap (fmap f'))))
     (k . Right . fmap (<*> a))
 
 instance Monad (Eval sig) where
