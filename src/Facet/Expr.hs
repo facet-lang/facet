@@ -18,8 +18,6 @@ module Facet.Expr
 , lam1
 , (<&)
 , (&>)
-, first
-, second
 , send
   -- * Effects
 , State(..)
@@ -92,13 +90,6 @@ a <& b = const' $$ a $$ b
 a &> b = flip' $$ const' $$ a $$ b
 
 infixl 1 <&, &>
-
-
-first :: Expr val comp => comp sig (comp sig a -> comp sig a') -> comp sig (a, b) -> comp sig (a', b)
-first f ab = inlr (f $$ exl ab) (exr ab)
-
-second :: Expr val comp => comp sig (comp sig b -> comp sig b') -> comp sig (a, b) -> comp sig (a, b')
-second f ab = inlr (exl ab) (f $$ exr ab)
 
 
 send :: (Subset eff sig, Expr val comp) => eff (comp sig a) -> comp sig a
