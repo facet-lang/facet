@@ -300,3 +300,4 @@ incr = Var . succ . getVar
 
 
 newtype Fresh doc = Fresh { runFresh :: Var -> doc }
+  deriving (Applicative, Functor, Monad, Monoid, Semigroup)
