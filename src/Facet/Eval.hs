@@ -68,7 +68,7 @@ instance Expr Eval where
   alg s = Eval $ \ _ k -> k (Right s)
 
 
-newtype Handler (sig :: Type -> Type) = Handler { runHandler :: forall a k . Eff sig a -> (a -> k) -> k }
+newtype Handler (sig :: Type -> Type) = Handler { runHandler :: forall a k . sig a -> (a -> k) -> k }
 
-handle :: Eff sig a -> (a -> k) -> Handler sig -> k
+handle :: sig a -> (a -> k) -> Handler sig -> k
 handle e k h = runHandler h e k
