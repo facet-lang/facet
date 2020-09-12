@@ -20,7 +20,7 @@ eval :: (Either a (Eff sig (Eval sig a)) -> r) -> Eval sig a -> r
 eval = flip runEval
 
 eval0 :: Eval None a -> a
-eval0 m = runEval m (either id (\ (Eff e _) -> absurd e))
+eval0 = eval (either id (\ (Eff e _) -> absurd e))
 
 instance Functor (Eval sig) where
   fmap = liftA
