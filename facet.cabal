@@ -47,5 +47,6 @@ library
     , prettyprinter
     , prettyprinter-ansi-terminal
     , terminal-size
+    , transformers
   hs-source-dirs:      src
   default-language:    Haskell2010
