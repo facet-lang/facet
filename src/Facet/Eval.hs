@@ -35,6 +35,8 @@ instance Monad (Eval sig) where
     (k . Right . fmap (>>= f))
 
 instance Expr Identity Eval where
+  val = pure . runIdentity
+
   -- k (Left …) indicates that we don’t need to perform effects to construct the lambda itself, even if it uses effects to do its job
   lam f = Eval $ \ k -> k (Left (`eval` f . first pure))
   f $$ a = Eval $ \ k -> eval f $ \case

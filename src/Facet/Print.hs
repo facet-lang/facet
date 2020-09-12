@@ -59,6 +59,8 @@ data Highlight
   deriving (Enum, Eq, Ord, Show)
 
 instance Expr (Print None) Print where
+  val = Print . runPrint
+
   lam f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
   f $$ a = Print $ runPrint f <+> runPrint a
 

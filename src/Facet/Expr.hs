@@ -56,6 +56,9 @@ import Data.Kind (Type)
 import Data.Functor.Sum
 
 class Expr (val :: Type -> Type) (comp :: (Type -> Type) -> (Type -> Type)) | comp -> val where
+  -- | Values embed into computations at every signature.
+  val :: val a -> comp sig a
+
   lam :: (Either (comp sig a) (Eff eff (comp eff a)) -> comp sig b) -> comp sig (comp eff a -> comp sig b)
   ($$) :: comp sig (comp sig' a -> comp sig b) -> comp sig' a -> comp sig b
   infixl 9 $$
