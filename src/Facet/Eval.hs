@@ -23,7 +23,7 @@ eval :: Handler None -> (Either a (Eff sig (Eval sig a)) -> r) -> Eval sig a -> 
 eval h k e = runEval e h k
 
 eval0 :: Eval None a -> a
-eval0 = eval (Handler (\ (Eff e _) _ -> absurd e)) (either id (\ (Eff e _) -> absurd e))
+eval0 = eval (Handler (const . absurd)) (either id (\ (Eff e _) -> absurd e))
 
 instance Functor (Eval sig) where
   fmap = liftA
