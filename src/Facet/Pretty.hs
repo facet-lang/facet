@@ -38,6 +38,7 @@ module Facet.Pretty
 , Var(..)
 , var
 , incr
+, Fresh(..)
 ) where
 
 import           Control.Applicative (liftA2)
@@ -296,3 +297,6 @@ var = pretty . getVar
 
 incr :: Var -> Var
 incr = Var . succ . getVar
+
+
+newtype Fresh doc = Fresh { runFresh :: Var -> doc }
