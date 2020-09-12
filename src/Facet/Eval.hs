@@ -17,9 +17,9 @@ import Data.Bifunctor (bimap, first)
 import Data.Kind (Type)
 import Facet.Expr
 
-newtype Eval (sig :: Type -> Type) a = Eval { runEval :: Handler None -> forall r . (Either a (Eff sig (Eval sig a)) -> r) -> r }
+newtype Eval (sig :: Type -> Type) a = Eval { runEval :: forall r . Handler None r -> (Either a (Eff sig (Eval sig a)) -> r) -> r }
 
-eval :: Handler None -> (Either a (Eff sig (Eval sig a)) -> r) -> Eval sig a -> r
+eval :: Handler None r -> (Either a (Eff sig (Eval sig a)) -> r) -> Eval sig a -> r
 eval h k e = runEval e h k
 
 eval0 :: Eval None a -> a
@@ -44,7 +44,7 @@ instance Expr Eval where
   val = pure . eval0
 
   -- k (Left …) indicates that we don’t need to perform effects to construct the lambda itself, even if it uses effects to do its job
-  lam f = Eval $ \ h k -> k (Left (eval h (f . first pure)))
+  lam f = Eval $ \ _ k -> k (Left (eval (Handler (const . absurd)) (f . first pure)))
   f $$ a = Eval $ \ h k -> runEval f h $ eval h k . either ($ a) (($ a) <=< alg)
 
   unit = pure ()
@@ -68,7 +68,7 @@ instance Expr Eval where
   alg s = Eval $ \ _ k -> k (Right s)
 
 
-newtype Handler (sig :: Type -> Type) = Handler { runHandler :: forall a k . sig a -> (a -> k) -> k }
+newtype Handler (sig :: Type -> Type) r = Handler { runHandler :: forall a . sig a -> (a -> r) -> r }
 
-handle :: sig a -> (a -> k) -> Handler sig -> k
+handle :: sig a -> (a -> r) -> Handler sig r -> r
 handle e k h = runHandler h e k
