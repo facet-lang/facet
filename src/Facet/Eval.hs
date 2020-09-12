@@ -19,6 +19,13 @@ newtype Eval (sig :: Type -> Type) a = Eval { eval :: forall r . (Either a (Eff 
 
 newtype Val a = Val { getVal :: a }
 
+instance Functor Val where
+  fmap = liftA
+
+instance Applicative Val where
+  pure = Val
+  Val f <*> Val a = Val (f a )
+
 eval0 :: Eval None a -> a
 eval0 m = eval m (either id (\ (Eff e _) -> absurd e))
 
