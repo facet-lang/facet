@@ -37,6 +37,7 @@ module Facet.Pretty
 , Rainbow(..)
 , Var(..)
 , var
+, incr
 ) where
 
 import           Control.Applicative (liftA2)
@@ -292,3 +293,6 @@ newtype Var = Var { getVar :: Int }
 
 var :: Doc ann a => Var -> a
 var = pretty . getVar
+
+incr :: Var -> Var
+incr = Var . succ . getVar
