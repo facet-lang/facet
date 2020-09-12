@@ -50,6 +50,7 @@ module Facet.Expr
 
 import Control.Applicative ((<|>))
 import Control.Lens (Prism', preview, prism', review)
+import Data.Bifunctor (first)
 import Data.Kind (Type)
 import Data.Functor.Sum
 
@@ -57,7 +58,7 @@ class Expr (val :: Type -> Type) (comp :: (Type -> Type) -> (Type -> Type)) | co
   -- | Values embed into computations at every signature.
   val :: val a -> comp sig a
 
-  lam :: (Either (comp sig a) (Eff eff (comp eff a)) -> comp sig b) -> comp sig (comp eff a -> comp sig b)
+  lam :: (Either (val a) (Eff eff (comp eff a)) -> comp sig b) -> comp sig (comp eff a -> comp sig b)
   ($$) :: comp sig (comp sig' a -> comp sig b) -> comp sig' a -> comp sig b
   infixl 9 $$
 
@@ -77,10 +78,10 @@ class Expr (val :: Type -> Type) (comp :: (Type -> Type) -> (Type -> Type)) | co
   alg :: Eff sig (comp sig a) -> comp sig a
 
 lam0 :: Expr val comp => (comp sig a -> comp sig b) -> comp sig (comp sig a -> comp sig b)
-lam0 f = lam (f . either id alg)
+lam0 f = lam (f . either val alg)
 
 lam1 :: Expr val comp => (Either (comp sig a) (Eff eff (comp eff a)) -> comp sig b) -> comp sig (comp eff a -> comp sig b)
-lam1 = lam
+lam1 f = lam (f . first val)
 
 
 (<&) :: Expr val comp => comp sig a -> comp sig b -> comp sig a
