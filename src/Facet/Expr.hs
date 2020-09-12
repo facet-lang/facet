@@ -143,7 +143,7 @@ execState = lam0 $ \ s -> lam1 $ \case
 
 
 postIncr :: forall val comp sig . (Expr val comp, Num (comp sig Int), Member (State (comp sig Int)) sig) => comp sig Int
-postIncr = get <& (put $$ (get + (1 :: comp sig Int)))
+postIncr = get <& put $$ (get + (1 :: comp sig Int))
 
 
 empty :: (Expr val comp, Member Empty sig) => comp sig a
