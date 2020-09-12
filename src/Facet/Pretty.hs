@@ -36,7 +36,6 @@ module Facet.Pretty
 , rainbow
 , Rainbow(..)
 , Var(..)
-, incr
 , fresh
 , bind
 , Fresh(..)
