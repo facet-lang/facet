@@ -305,3 +305,6 @@ fresh = (`runFresh` Var 0)
 
 newtype Fresh doc = Fresh { runFresh :: Var -> doc }
   deriving (Applicative, Functor, Monad, Monoid, Semigroup)
+
+instance Show doc => Show (Fresh doc) where
+  showsPrec p = showsPrec p . fresh
