@@ -54,7 +54,7 @@ import Data.Bifunctor (first)
 import Data.Kind (Type)
 import Data.Functor.Sum
 
-class Expr (val :: Type -> Type) (comp :: (Type -> Type) -> (Type -> Type)) | comp -> val where
+class Expr (val :: Type -> Type) (comp :: (Type -> Type) -> (Type -> Type)) | comp -> val, val -> comp where
   -- | Values embed into computations at every signature.
   val :: val a -> comp sig a
 
