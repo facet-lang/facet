@@ -17,13 +17,13 @@ import Data.Bifunctor (bimap, first)
 import Data.Kind (Type)
 import Facet.Expr
 
-newtype Eval (sig :: Type -> Type) a = Eval { runEval :: () -> forall r . (Either a (Eff sig (Eval sig a)) -> r) -> r }
+newtype Eval (sig :: Type -> Type) a = Eval { runEval :: Handler None -> forall r . (Either a (Eff sig (Eval sig a)) -> r) -> r }
 
-eval :: () -> (Either a (Eff sig (Eval sig a)) -> r) -> Eval sig a -> r
+eval :: Handler None -> (Either a (Eff sig (Eval sig a)) -> r) -> Eval sig a -> r
 eval h k e = runEval e h k
 
 eval0 :: Eval None a -> a
-eval0 = eval () (either id (\ (Eff e _) -> absurd e))
+eval0 = eval (Handler (\ (Eff e _) _ -> absurd e)) (either id (\ (Eff e _) -> absurd e))
 
 instance Functor (Eval sig) where
   fmap = liftA
