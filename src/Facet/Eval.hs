@@ -31,7 +31,7 @@ instance Applicative (Eval sig) where
 
 instance Monad (Eval sig) where
   m >>= f = Eval $ \ k -> eval m $ either
-    (\ a -> eval (f a) k)
+    ((`eval` k) . f)
     (k . Right . fmap (>>= f))
 
 instance Expr Identity Eval where
