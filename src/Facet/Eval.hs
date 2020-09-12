@@ -5,7 +5,6 @@
 {-# LANGUAGE RankNTypes #-}
 module Facet.Eval
 ( Eval(..)
-, Val(..)
 , eval0
 ) where
 
@@ -15,15 +14,6 @@ import Data.Kind (Type)
 import Facet.Expr
 
 newtype Eval (sig :: Type -> Type) a = Eval { eval :: forall r . (Either a (Eff sig (Eval sig a)) -> r) -> r }
-
-newtype Val a = Val { getVal :: a }
-
-instance Functor Val where
-  fmap = liftA
-
-instance Applicative Val where
-  pure = Val
-  Val f <*> Val a = Val (f a )
 
 eval0 :: Eval None a -> a
 eval0 m = eval m (either id (\ (Eff e _) -> absurd e))
@@ -43,8 +33,8 @@ instance Monad (Eval sig) where
     ((`eval` k) . f)
     (k . Right . fmap (>>= f))
 
-instance Expr Val Eval where
-  val = pure . getVal
+instance Expr Eval where
+  val = pure . eval0
 
   -- k (Left …) indicates that we don’t need to perform effects to construct the lambda itself, even if it uses effects to do its job
   lam f = Eval $ \ k -> k (Left (`eval` f . first pure))
