@@ -15,14 +15,13 @@ import Control.Monad (ap)
 import Control.Monad.Trans.Cont
 import Control.Monad.Trans.Reader
 import Data.Bool (bool)
-import Data.Functor.Identity
 import Data.Kind (Type)
 import Facet.Expr
 
-newtype Eval (sig :: Type -> Type) a = Eval { runEval :: forall r . ReaderT (Handler None r) (ContT r Identity) a }
+newtype Eval (sig :: Type -> Type) a = Eval { runEval :: forall r . ReaderT (Handler None r) (Cont r) a }
 
 eval :: Handler None r -> (a -> r) -> Eval sig a -> r
-eval h k e = runIdentity (runContT (runReaderT (runEval e) h) (Identity . k))
+eval h k e = runCont (runReaderT (runEval e) h) k
 
 eval0 :: Eval None a -> a
 eval0 = eval (Handler (const . absurd)) id
