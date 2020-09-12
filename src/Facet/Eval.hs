@@ -42,9 +42,9 @@ instance Expr Eval where
 
   -- k (Left …) indicates that we don’t need to perform effects to construct the lambda itself, even if it uses effects to do its job
   lam f = Eval $ \ k -> k (Left (eval (f . first pure)))
-  f $$ a = Eval $ \ k -> runEval f $ \case
-    Left  f' -> runEval (f' a) k
-    Right f' -> runEval (alg f' >>= \ f' -> f' a) k
+  f $$ a = Eval $ \ k -> runEval f $ eval k . \case
+    Left  f' -> f' a
+    Right f' -> alg f' >>= \ f' -> f' a
 
   unit = pure ()
 
