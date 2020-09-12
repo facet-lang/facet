@@ -1,7 +1,9 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Print
 ( prettyPrint
 , Print(..)
@@ -56,7 +58,7 @@ data Highlight
   | Lit
   deriving (Enum, Eq, Ord, Show)
 
-instance Expr Print where
+instance Expr (Print None) Print where
   lam f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
   f $$ a = Print $ runPrint f <+> runPrint a
 

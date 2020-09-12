@@ -4,10 +4,10 @@
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -55,7 +55,7 @@ import Control.Lens (Prism', preview, prism', review)
 import Data.Kind (Type)
 import Data.Functor.Sum
 
-class Expr (comp :: (Type -> Type) -> (Type -> Type)) where
+class Expr (val :: Type -> Type) (comp :: (Type -> Type) -> (Type -> Type)) | comp -> val where
   lam :: (Either (comp sig a) (Eff eff (comp eff a)) -> comp sig b) -> comp sig (comp eff a -> comp sig b)
   ($$) :: comp sig (comp sig' a -> comp sig b) -> comp sig' a -> comp sig b
   infixl 9 $$
@@ -75,30 +75,30 @@ class Expr (comp :: (Type -> Type) -> (Type -> Type)) where
 
   alg :: Eff sig (comp sig a) -> comp sig a
 
-lam0 :: Expr comp => (comp sig a -> comp sig b) -> comp sig (comp sig a -> comp sig b)
+lam0 :: Expr val comp => (comp sig a -> comp sig b) -> comp sig (comp sig a -> comp sig b)
 lam0 f = lam (f . either id alg)
 
-lam1 :: Expr comp => (Either (comp sig a) (Eff eff (comp eff a)) -> comp sig b) -> comp sig (comp eff a -> comp sig b)
+lam1 :: Expr val comp => (Either (comp sig a) (Eff eff (comp eff a)) -> comp sig b) -> comp sig (comp eff a -> comp sig b)
 lam1 = lam
 
 
-(<&) :: Expr comp => comp sig a -> comp sig b -> comp sig a
+(<&) :: Expr val comp => comp sig a -> comp sig b -> comp sig a
 a <& b = const' $$ a $$ b
 
-(&>) :: Expr comp => comp sig a -> comp sig b -> comp sig b
+(&>) :: Expr val comp => comp sig a -> comp sig b -> comp sig b
 a &> b = flip' $$ const' $$ a $$ b
 
 infixl 1 <&, &>
 
 
-first :: Expr comp => comp sig (comp sig a -> comp sig a') -> comp sig (a, b) -> comp sig (a', b)
+first :: Expr val comp => comp sig (comp sig a -> comp sig a') -> comp sig (a, b) -> comp sig (a', b)
 first f ab = inlr (f $$ exl ab) (exr ab)
 
-second :: Expr comp => comp sig (comp sig b -> comp sig b') -> comp sig (a, b) -> comp sig (a, b')
+second :: Expr val comp => comp sig (comp sig b -> comp sig b') -> comp sig (a, b) -> comp sig (a, b')
 second f ab = inlr (exl ab) (f $$ exr ab)
 
 
-send :: (Subset eff sig, Expr comp) => eff (comp sig a) -> comp sig a
+send :: (Subset eff sig, Expr val comp) => eff (comp sig a) -> comp sig a
 send e = alg $ Eff (inj e) id
 
 
@@ -113,53 +113,53 @@ data Empty k = Empty
 
 -- Examples
 
-id' :: Expr comp => comp sig (comp sig a -> comp sig a)
+id' :: Expr val comp => comp sig (comp sig a -> comp sig a)
 id' = lam0 id
 
-const' :: Expr comp => comp sig (comp sig a -> comp sig (comp sig b -> comp sig a))
+const' :: Expr val comp => comp sig (comp sig a -> comp sig (comp sig b -> comp sig a))
 const' = lam0 (lam0 . const)
 
-flip' :: Expr comp => comp sig (comp sig (comp sig a -> comp sig (comp sig b -> comp sig c)) -> comp sig (comp sig b -> comp sig (comp sig a -> comp sig c)))
+flip' :: Expr val comp => comp sig (comp sig (comp sig a -> comp sig (comp sig b -> comp sig c)) -> comp sig (comp sig b -> comp sig (comp sig a -> comp sig c)))
 flip' = lam0 (\ f -> lam0 (\ b -> lam0 (\ a -> f $$ a $$ b)))
 
-curry' :: Expr comp => comp sig (comp sig (comp sig (a, b) -> comp sig c) -> comp sig (comp sig a -> comp sig (comp sig b -> comp sig c)))
+curry' :: Expr val comp => comp sig (comp sig (comp sig (a, b) -> comp sig c) -> comp sig (comp sig a -> comp sig (comp sig b -> comp sig c)))
 curry' = lam0 $ \ f -> lam0 $ \ a -> lam0 $ \ b -> f $$ inlr a b
 
-uncurry' :: Expr comp => comp sig (comp sig (comp sig a -> comp sig (comp sig b -> comp sig c)) -> comp sig (comp sig (a, b) -> comp sig c))
+uncurry' :: Expr val comp => comp sig (comp sig (comp sig a -> comp sig (comp sig b -> comp sig c)) -> comp sig (comp sig (a, b) -> comp sig c))
 uncurry' = lam0 $ \ f -> lam0 $ \ ab -> f $$ exl ab $$ exr ab
 
-get :: (Expr comp, Member (State (comp sig s)) sig) => comp sig s
+get :: (Expr val comp, Member (State (comp sig s)) sig) => comp sig s
 get = send (Eff Get id)
 
-put :: (Expr comp, Member (State (comp sig s)) sig) => comp sig (comp sig s -> comp sig ())
+put :: (Expr val comp, Member (State (comp sig s)) sig) => comp sig (comp sig s -> comp sig ())
 put = lam0 $ \ s -> send (Eff (Put s) (const unit))
 
-runState :: Expr comp => comp sig (comp sig s -> comp sig (comp (State (comp sig s)) a -> comp sig (s, a)))
+runState :: Expr val comp => comp sig (comp sig s -> comp sig (comp (State (comp sig s)) a -> comp sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
   Left a                 -> inlr s a
   Right (Eff Get     k) -> runState $$ s $$ k s
   Right (Eff (Put s) k) -> runState $$ s $$ k ()
 
-execState :: Expr comp => comp sig (comp sig s -> comp sig (comp (State (comp sig s)) a -> comp sig a))
+execState :: Expr val comp => comp sig (comp sig s -> comp sig (comp (State (comp sig s)) a -> comp sig a))
 execState = lam0 $ \ s -> lam1 $ \case
   Left a                 -> a
   Right (Eff Get     k) -> execState $$ s $$ k s
   Right (Eff (Put s) k) -> execState $$ s $$ k ()
 
 
-postIncr :: forall comp sig . (Expr comp, Num (comp sig Int), Member (State (comp sig Int)) sig) => comp sig Int
+postIncr :: forall val comp sig . (Expr val comp, Num (comp sig Int), Member (State (comp sig Int)) sig) => comp sig Int
 postIncr = get <& (put $$ (get + (1 :: comp sig Int)))
 
 
-empty :: (Expr comp, Member Empty sig) => comp sig a
+empty :: (Expr val comp, Member Empty sig) => comp sig a
 empty = send (Eff Empty id)
 
-runEmpty :: Expr comp => comp sig (comp sig a -> comp sig (comp Empty a -> comp sig a))
+runEmpty :: Expr val comp => comp sig (comp sig a -> comp sig (comp Empty a -> comp sig a))
 runEmpty = lam0 $ \ a -> lam1 $ \case
   Left x              -> x
   Right (Eff Empty _) -> a
 
-execEmpty :: Expr comp => comp sig (comp Empty a -> comp sig Bool)
+execEmpty :: Expr val comp => comp sig (comp Empty a -> comp sig Bool)
 execEmpty = lam1 (either (const true) (const false))
 
 

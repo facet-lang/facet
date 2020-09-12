@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 module Facet.Eval
 ( Eval(..)
@@ -9,6 +10,7 @@ module Facet.Eval
 
 import Control.Applicative (liftA, liftA2)
 import Data.Bifunctor (bimap, first)
+import Data.Functor.Identity
 import Data.Kind (Type)
 import Facet.Expr hiding (first)
 
@@ -32,7 +34,7 @@ instance Monad (Eval sig) where
     (\ a -> eval (f a) k)
     (k . Right . fmap (>>= f))
 
-instance Expr Eval where
+instance Expr Identity Eval where
   -- k (Left …) indicates that we don’t need to perform effects to construct the lambda itself, even if it uses effects to do its job
   lam f = Eval $ \ k -> k (Left (`eval` f . first pure))
   f $$ a = Eval $ \ k -> eval f $ \case
