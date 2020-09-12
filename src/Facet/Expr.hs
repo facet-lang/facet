@@ -48,7 +48,6 @@ module Facet.Expr
 , inj
 , prj
 , Member
-, HFunctor(..)
 ) where
 
 import Control.Applicative ((<|>))
@@ -223,7 +222,3 @@ instance (Subset setl sets, Subset setr sets) => Subset ('B2 setl setr) sets whe
 
 
 type Member eff sig = Subset ('B1 eff) sig
-
-
-class HFunctor h where
-  hmap :: (forall x . f x -> g x) -> h f a -> h g a
