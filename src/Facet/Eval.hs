@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Facet.Eval
 ( Eval(..)
+, eval
 , eval0
 ) where
 
@@ -14,6 +15,9 @@ import Data.Kind (Type)
 import Facet.Expr
 
 newtype Eval (sig :: Type -> Type) a = Eval { runEval :: forall r . (Either a (Eff sig (Eval sig a)) -> r) -> r }
+
+eval :: (Either a (Eff sig (Eval sig a)) -> r) -> Eval sig a -> r
+eval = flip runEval
 
 eval0 :: Eval None a -> a
 eval0 m = runEval m (either id (\ (Eff e _) -> absurd e))
@@ -30,14 +34,14 @@ instance Applicative (Eval sig) where
 
 instance Monad (Eval sig) where
   m >>= f = Eval $ \ k -> runEval m $ either
-    ((`runEval` k) . f)
+    (eval k . f)
     (k . Right . fmap (>>= f))
 
 instance Expr Eval where
   val = pure . eval0
 
   -- k (Left …) indicates that we don’t need to perform effects to construct the lambda itself, even if it uses effects to do its job
-  lam f = Eval $ \ k -> k (Left (`runEval` f . first pure))
+  lam f = Eval $ \ k -> k (Left (eval (f . first pure)))
   f $$ a = Eval $ \ k -> runEval f $ \case
     Left  f' -> runEval (f' a) k
     Right f' -> runEval (alg f' >>= \ f' -> f' a) k
