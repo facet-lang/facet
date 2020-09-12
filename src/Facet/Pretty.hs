@@ -36,7 +36,6 @@ module Facet.Pretty
 , rainbow
 , Rainbow(..)
 , Var(..)
-, var
 , incr
 , fresh
 , bind
@@ -297,9 +296,6 @@ newtype Var = Var { getVar :: Int }
 
 instance PP.Pretty Var where
   pretty = pretty . getVar
-
-var :: Doc ann a => Var -> a
-var = pretty . getVar
 
 incr :: Var -> Var
 incr = Var . succ . getVar
