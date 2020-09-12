@@ -72,7 +72,7 @@ class Expr (val :: Type -> Type) (comp :: (Type -> Type) -> (Type -> Type)) | co
   inr :: comp sig b -> comp sig (Either a b)
   exlr :: (comp sig a -> comp sig c) -> (comp sig b -> comp sig c) -> (comp sig (Either a b) -> comp sig c)
 
-  true, false :: comp sig Bool
+  true, false :: val Bool
   iff :: comp sig Bool -> comp sig a -> comp sig a -> comp sig a
 
   alg :: Eff sig (comp sig a) -> comp sig a
@@ -155,7 +155,7 @@ runEmpty = lam0 $ \ a -> lam1 $ \case
   Right (Eff Empty _) -> a
 
 execEmpty :: Expr val comp => comp sig (comp Empty a -> comp sig Bool)
-execEmpty = lam1 (either (const true) (const false))
+execEmpty = lam1 (val . either (const true) (const false))
 
 
 -- Signatures
