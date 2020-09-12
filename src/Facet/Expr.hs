@@ -40,10 +40,11 @@ module Facet.Expr
 , runEmpty
 , execEmpty
   -- * Signatures
-, Bin(..)
-, Sig(..)
-, unSig0
-, unSig2
+, None
+, absurd
+, Eff(..)
+, Sum(..)
+, unSum
 , Subset(..)
 , inj
 , prj
@@ -53,9 +54,10 @@ module Facet.Expr
 import Control.Applicative ((<|>))
 import Control.Lens (Prism', preview, prism', review)
 import Data.Kind (Type)
+import Data.Functor.Sum
 
-class Expr (repr :: Bin (Type -> Type) -> (Type -> Type)) where
-  lam :: (Either (repr sig a) (Sig eff (repr eff a)) -> repr sig b) -> repr sig (repr eff a -> repr sig b)
+class Expr (repr :: (Type -> Type) -> (Type -> Type)) where
+  lam :: (Either (repr sig a) (Eff eff (repr eff a)) -> repr sig b) -> repr sig (repr eff a -> repr sig b)
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
@@ -72,17 +74,17 @@ class Expr (repr :: Bin (Type -> Type) -> (Type -> Type)) where
   true, false :: repr sig Bool
   iff :: repr sig Bool -> repr sig a -> repr sig a -> repr sig a
 
-  alg :: Sig sig (repr sig a) -> repr sig a
+  alg :: Eff sig (repr sig a) -> repr sig a
 
-var :: Either (repr (sig :: Bin (Type -> Type)) a) (Sig 'B0 (repr sig' a)) -> repr sig a
+var :: Either (repr (sig :: Type -> Type) a) (None (repr sig' a)) -> repr sig a
 var = \case
   Left  a -> a
-  Right e -> unSig0 e
+  Right e -> absurd e
 
 lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = lam (f . either id alg)
 
-lam1 :: Expr repr => (Either (repr sig a) (Sig ('B1 eff) (repr ('B1 eff) a)) -> repr sig b) -> repr sig (repr ('B1 eff) a -> repr sig b)
+lam1 :: Expr repr => (Either (repr sig a) (Eff eff (repr eff a)) -> repr sig b) -> repr sig (repr eff a -> repr sig b)
 lam1 = lam
 
 
@@ -102,8 +104,8 @@ second :: Expr repr => repr sig (repr sig b -> repr sig b') -> repr sig (a, b) -
 second f ab = inlr (exl ab) (f $$ exr ab)
 
 
-send :: (Subset eff sig, Expr repr) => Sig eff (repr sig a) -> repr sig a
-send = alg . inj
+send :: (Subset eff sig, Expr repr) => eff (repr sig a) -> repr sig a
+send e = alg $ Eff (inj e) id
 
 
 -- Effects
@@ -133,22 +135,22 @@ uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b 
 uncurry' = lam0 $ \ f -> lam0 $ \ ab -> f $$ exl ab $$ exr ab
 
 get :: (Expr repr, Member (State (repr sig s)) sig) => repr sig s
-get = send (Sig1 Get id)
+get = send (Eff Get id)
 
 put :: (Expr repr, Member (State (repr sig s)) sig) => repr sig (repr sig s -> repr sig ())
-put = lam0 $ \ s -> send (Sig1 (Put s) (const unit))
+put = lam0 $ \ s -> send (Eff (Put s) (const unit))
 
-runState :: Expr repr => repr sig (repr sig s -> repr sig (repr ('B1 (State (repr sig s))) a -> repr sig (s, a)))
+runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (State (repr sig s)) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
   Left a                 -> inlr s a
-  Right (Sig1 Get     k) -> runState $$ s $$ k s
-  Right (Sig1 (Put s) k) -> runState $$ s $$ k ()
+  Right (Eff Get     k) -> runState $$ s $$ k s
+  Right (Eff (Put s) k) -> runState $$ s $$ k ()
 
-execState :: Expr repr => repr sig (repr sig s -> repr sig (repr ('B1 (State (repr sig s))) a -> repr sig a))
+execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (State (repr sig s)) a -> repr sig a))
 execState = lam0 $ \ s -> lam1 $ \case
   Left a                 -> a
-  Right (Sig1 Get     k) -> execState $$ s $$ k s
-  Right (Sig1 (Put s) k) -> execState $$ s $$ k ()
+  Right (Eff Get     k) -> execState $$ s $$ k s
+  Right (Eff (Put s) k) -> execState $$ s $$ k ()
 
 
 postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State (repr sig Int)) sig) => repr sig Int
@@ -156,67 +158,63 @@ postIncr = get <& (put $$ (get + (1 :: repr sig Int)))
 
 
 empty :: (Expr repr, Member Empty sig) => repr sig a
-empty = send (Sig1 Empty id)
+empty = send (Eff Empty id)
 
-runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr ('B1 Empty) a -> repr sig a))
+runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr Empty a -> repr sig a))
 runEmpty = lam0 $ \ a -> lam1 $ \case
-  Left x               -> x
-  Right (Sig1 Empty _) -> a
+  Left x              -> x
+  Right (Eff Empty _) -> a
 
-execEmpty :: Expr repr => repr sig (repr ('B1 Empty) a -> repr sig Bool)
+execEmpty :: Expr repr => repr sig (repr Empty a -> repr sig Bool)
 execEmpty = lam1 (either (const true) (const false))
 
 
 -- Signatures
 
-data Bin a
-  = B0
-  | B1 a
-  | B2 (Bin a) (Bin a)
+data None a
+  deriving (Functor)
 
-data Sig (sig :: Bin (Type -> Type)) a where
-  Sig1 ::     f k -> (k -> a) -> Sig ('B1 f)   a
-  SigL :: Sig l a             -> Sig ('B2 l r) a
-  SigR :: Sig r a             -> Sig ('B2 l r) a
+absurd :: None a -> b
+absurd = \case{}
 
-deriving instance Functor (Sig sig)
+data Eff f a where
+  Eff :: f k -> (k -> a) -> Eff f a
 
-unSig0 :: Sig 'B0 a -> b
-unSig0 = \case{}
+deriving instance Functor (Eff f)
 
-unSig2 :: (Sig l k -> a) -> (Sig r k -> a) -> (Sig ('B2 l r) k -> a)
-unSig2 el er = \case
-  SigL l -> el l
-  SigR r -> er r
+unSum :: (l a -> b) -> (r a -> b) -> Sum l r a -> b
+unSum fl fr = \case
+  InL l -> fl l
+  InR r -> fr r
 
 
-class Subset (sub :: Bin (Type -> Type)) (sup :: Bin (Type -> Type)) where
-  sub :: Prism' (Sig sup a) (Sig sub a)
+class Subset (sub :: Type -> Type) (sup :: Type -> Type) where
+  sub :: Prism' (sup a) (sub a)
 
-inj :: Subset sub sup => Sig sub a -> Sig sup a
+inj :: Subset sub sup => sub a -> sup a
 inj = review sub
 
-prj :: Subset sub sup => Sig sup a -> Maybe (Sig sub a)
+prj :: Subset sub sup => sup a -> Maybe (sub a)
 prj = preview sub
 
-instance Subset 'B0 sig where
-  sub = prism' unSig0 (const Nothing)
+instance Subset None sig where
+  sub = prism' absurd (const Nothing)
 
 -- FIXME: should this be generalized to @Coercible eff1 eff2@?
-instance (eff1 ~ eff2) => Subset ('B1 eff1) ('B1 eff2) where
+instance Subset eff eff where
   sub = prism' id Just
 
-instance Subset ('B1 eff) ('B2 ('B1 eff) set) where
-  sub = prism' SigL (unSig2 Just (const Nothing))
+instance Subset (Eff eff) (Sum (Eff eff) set) where
+  sub = prism' InL (unSum Just (const Nothing))
 
-instance Subset ('B1 eff) ('B2 set1 ('B2 set2 set3)) => Subset ('B1 eff) ('B2 ('B2 set1 set2) set3) where
+instance Subset eff (Sum set1 (Sum set2 set3)) => Subset eff (Sum (Sum set1 set2) set3) where
   sub = prism' reassocL reassocR
     where
-    reassocL = unSig2 (SigL . SigL) (unSig2 (SigL . SigR) SigR) . inj
-    reassocR = prj . unSig2 (unSig2 SigL (SigR . SigL)) (SigR . SigR)
+    reassocL = unSum (InL . InL) (unSum (InL . InR) InR) . inj
+    reassocR = prj . unSum (unSum InL (InR . InL)) (InR . InR)
 
-instance (Subset setl sets, Subset setr sets) => Subset ('B2 setl setr) sets where
-  sub = prism' (unSig2 inj inj) (\ s -> SigL <$> prj s <|> SigR <$> prj s)
+instance (Subset setl sets, Subset setr sets) => Subset (Sum setl setr) sets where
+  sub = prism' (unSum inj inj) (\ s -> InL <$> prj s <|> InR <$> prj s)
 
 
-type Member eff sig = Subset ('B1 eff) sig
+type Member eff sig = Subset (Eff eff) sig

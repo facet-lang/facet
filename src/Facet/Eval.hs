@@ -12,10 +12,10 @@ import Data.Bifunctor (bimap, first)
 import Data.Kind (Type)
 import Facet.Expr hiding (first)
 
-newtype Eval (sig :: Bin (Type -> Type)) a = Eval { eval :: forall r . (Either a (Sig sig (Eval sig a)) -> r) -> r }
+newtype Eval (sig :: Type -> Type) a = Eval { eval :: forall r . (Either a (Eff sig (Eval sig a)) -> r) -> r }
 
-eval0 :: Eval 'B0 a -> a
-eval0 m = eval m (either id unSig0)
+eval0 :: Eval None a -> a
+eval0 m = eval m (either id (\ (Eff e _) -> absurd e))
 
 instance Functor (Eval sig) where
   fmap = liftA
