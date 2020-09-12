@@ -7,6 +7,7 @@ module Facet.Eval
 ( Eval(..)
 , eval
 , eval0
+, Handler(..)
 ) where
 
 import Control.Applicative (liftA, liftA2)
@@ -64,3 +65,6 @@ instance Expr Eval where
     Right c' -> k (Right (fmap (\ c -> iff c t e) c'))
 
   alg s = Eval $ \ _ k -> k (Right s)
+
+
+newtype Handler (sig :: Type -> Type) = Handler { runHandler :: forall a k . Eff sig a -> (a -> k) -> k }
