@@ -139,13 +139,13 @@ put = lam0 $ \ s -> send (Eff (Put s) (const unit))
 
 runState :: Expr val comp => comp sig (comp sig s -> comp sig (comp (State (comp sig s)) a -> comp sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
-  Left a                 -> inlr s a
+  Left a                -> inlr s a
   Right (Eff Get     k) -> runState $$ s $$ k s
   Right (Eff (Put s) k) -> runState $$ s $$ k ()
 
 execState :: Expr val comp => comp sig (comp sig s -> comp sig (comp (State (comp sig s)) a -> comp sig a))
 execState = lam0 $ \ s -> lam1 $ \case
-  Left a                 -> a
+  Left a                -> a
   Right (Eff Get     k) -> execState $$ s $$ k s
   Right (Eff (Put s) k) -> execState $$ s $$ k ()
 
