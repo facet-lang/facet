@@ -265,7 +265,7 @@ newtype Rainbow doc = Rainbow { runRainbow :: Nesting -> doc }
 instance Show doc => Show (Rainbow doc) where
   showsPrec p = showsPrec p . rainbow
 
-instance (Doc (Nest ann) doc) => Doc (Nest ann) (Rainbow doc) where
+instance Doc (Nest ann) doc => Doc (Nest ann) (Rainbow doc) where
   pretty = pure . pretty
 
   hardline = pure hardline
