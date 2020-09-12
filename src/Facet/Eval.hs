@@ -11,7 +11,6 @@ module Facet.Eval
 
 import Control.Applicative (liftA, liftA2)
 import Data.Bifunctor (bimap, first)
-import Data.Functor.Identity
 import Data.Kind (Type)
 import Facet.Expr
 
@@ -44,8 +43,8 @@ instance Monad (Eval sig) where
     ((`eval` k) . f)
     (k . Right . fmap (>>= f))
 
-instance Expr Identity Eval where
-  val = pure . runIdentity
+instance Expr Val Eval where
+  val = pure . getVal
 
   -- k (Left …) indicates that we don’t need to perform effects to construct the lambda itself, even if it uses effects to do its job
   lam f = Eval $ \ k -> k (Left (`eval` f . first pure))
