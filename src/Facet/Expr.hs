@@ -62,7 +62,7 @@ class Expr (val :: Type -> Type) (comp :: (Type -> Type) -> (Type -> Type)) | co
   ($$) :: comp sig (comp sig' a -> comp sig b) -> comp sig' a -> comp sig b
   infixl 9 $$
 
-  unit :: val ()
+  unit :: comp sig ()
 
   inlr :: comp sig a -> comp sig b -> comp sig (a, b)
   exl :: comp sig (a, b) -> comp sig a
@@ -127,7 +127,7 @@ get :: (Expr val comp, Member (State (comp sig s)) sig) => comp sig s
 get = send (Eff Get id)
 
 put :: (Expr val comp, Member (State (comp sig s)) sig) => comp sig (comp sig s -> comp sig ())
-put = lam0 $ \ s -> send (Eff (Put s) (const (val unit)))
+put = lam0 $ \ s -> send (Eff (Put s) (const unit))
 
 runState :: Expr val comp => comp sig (comp sig s -> comp sig (comp (State (comp sig s)) a -> comp sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
