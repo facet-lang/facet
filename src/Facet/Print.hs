@@ -12,7 +12,7 @@ import           Control.Monad.IO.Class
 import           Data.Kind (Type)
 import qualified Data.Text.Prettyprint.Doc as PP
 import qualified Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
-import           Facet.Expr hiding (var)
+import           Facet.Expr
 import           Facet.Pretty hiding (Doc, PrecDoc)
 import qualified Facet.Pretty as P
 

@@ -14,7 +14,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Expr
 ( Expr(..)
-, var
 , lam0
 , lam1
 , (<&)
@@ -75,11 +74,6 @@ class Expr (repr :: (Type -> Type) -> (Type -> Type)) where
   iff :: repr sig Bool -> repr sig a -> repr sig a -> repr sig a
 
   alg :: Eff sig (repr sig a) -> repr sig a
-
-var :: Either (repr (sig :: Type -> Type) a) (None (repr sig' a)) -> repr sig a
-var = \case
-  Left  a -> a
-  Right e -> absurd e
 
 lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = lam (f . either id alg)
