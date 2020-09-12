@@ -294,6 +294,9 @@ instance PrecDoc (Nest ann) doc => PrecDoc (Nest ann) (Rainbow doc) where
 newtype Var = Var { getVar :: Int }
   deriving (Eq, Ord, Show)
 
+instance PP.Pretty Var where
+  pretty = pretty . getVar
+
 var :: Doc ann a => Var -> a
 var = pretty . getVar
 
