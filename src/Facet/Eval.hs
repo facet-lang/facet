@@ -11,14 +11,18 @@ module Facet.Eval
 ) where
 
 import Control.Applicative (liftA, liftA2)
+import Control.Monad (ap)
+import Control.Monad.Trans.Cont
+import Control.Monad.Trans.Reader
 import Data.Bool (bool)
+import Data.Functor.Identity
 import Data.Kind (Type)
 import Facet.Expr
 
-newtype Eval (sig :: Type -> Type) a = Eval { runEval :: forall r . Handler None r -> (a -> r) -> r }
+newtype Eval (sig :: Type -> Type) a = Eval { runEval :: forall r . ReaderT (Handler None r) (ContT r Identity) a }
 
 eval :: Handler None r -> (a -> r) -> Eval sig a -> r
-eval h k e = runEval e h k
+eval h k e = runIdentity (runContT (runReaderT (runEval e) h) (Identity . k))
 
 eval0 :: Eval None a -> a
 eval0 = eval (Handler (const . absurd)) id
@@ -27,19 +31,18 @@ instance Functor (Eval sig) where
   fmap = liftA
 
 instance Applicative (Eval sig) where
-  pure a = Eval $ \ _ k -> k a
+  pure a = Eval $ pure a
 
-  f <*> a = Eval $ \ h k -> runEval f h (\ f' -> runEval a h (k . f'))
+  (<*>) = ap
 
 instance Monad (Eval sig) where
-  m >>= f = Eval $ \ h k -> runEval m h (eval h k . f)
+  m >>= f = Eval $ runEval m >>= runEval . f
 
 instance Expr Eval where
   val = pure . eval0
 
-  -- not using the incoming handler indicates that we don’t need to perform effects to construct the lambda itself, even if it uses effects to do its job
-  lam f = Eval $ \ _ k -> k (eval (Handler (const . absurd)) (f . Left . pure))
-  f $$ a = Eval $ \ h k -> runEval f h (eval h k . ($ a))
+  lam f = Eval $ pure $ f . Left . eval (Handler (const . absurd)) pure
+  f $$ a = Eval $ runEval f >>= runEval . ($ a)
 
   unit = pure ()
 
@@ -49,13 +52,13 @@ instance Expr Eval where
 
   inl = fmap Left
   inr = fmap Right
-  exlr f g e = Eval $ \ h k -> runEval e h (eval h k . either (f . pure) (g . pure))
+  exlr f g e = Eval $ runEval e >>= runEval . either (f . pure) (g . pure)
 
   true  = pure True
   false = pure False
-  iff c t e = Eval $ \ h k -> runEval c h (eval h k . bool e t)
+  iff c t e = Eval $ runEval c >>= runEval . bool e t
 
-  alg (Eff s k) = Eval $ \ h k' -> handle s (eval h k' . k) (error "TBD")
+  alg (Eff s k) = Eval $ handle s (runEval . k) (error "TBD")
 
 
 newtype Handler (sig :: Type -> Type) r = Handler { runHandler :: forall a . sig a -> (a -> r) -> r }
