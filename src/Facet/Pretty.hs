@@ -286,7 +286,7 @@ instance (Doc (Nest ann) doc) => Doc (Nest ann) (Rainbow doc) where
 nestRainbow :: Doc (Nest ann) doc => doc -> doc -> Rainbow doc -> Rainbow doc
 nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (Nest lv) l <> run (Nesting (1 + getNesting lv)) <> annotate (Nest lv) r
 
-instance (PrecDoc (Nest ann) doc) => PrecDoc (Nest ann) (Rainbow doc) where
+instance PrecDoc (Nest ann) doc => PrecDoc (Nest ann) (Rainbow doc) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
 
