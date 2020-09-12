@@ -12,7 +12,7 @@ import Control.Applicative (liftA, liftA2)
 import Data.Bifunctor (bimap, first)
 import Data.Functor.Identity
 import Data.Kind (Type)
-import Facet.Expr hiding (first)
+import Facet.Expr
 
 newtype Eval (sig :: Type -> Type) a = Eval { eval :: forall r . (Either a (Eff sig (Eval sig a)) -> r) -> r }
 
