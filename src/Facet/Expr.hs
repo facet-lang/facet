@@ -54,46 +54,46 @@ import Data.Bifunctor (first)
 import Data.Kind (Type)
 import Data.Functor.Sum
 
-class Expr (comp :: (Type -> Type) -> (Type -> Type)) where
+class Expr (repr :: (Type -> Type) -> (Type -> Type)) where
   -- | Values embed into computations at every signature.
-  val :: comp None a -> comp sig a
+  val :: repr None a -> repr sig a
 
-  lam :: (Either (comp None a) (Eff eff (comp eff a)) -> comp sig b) -> comp sig (comp eff a -> comp sig b)
-  ($$) :: comp sig (comp sig' a -> comp sig b) -> comp sig' a -> comp sig b
+  lam :: (Either (repr None a) (Eff eff (repr eff a)) -> repr sig b) -> repr sig (repr eff a -> repr sig b)
+  ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
-  unit :: comp sig ()
+  unit :: repr sig ()
 
-  inlr :: comp sig a -> comp sig b -> comp sig (a, b)
-  exl :: comp sig (a, b) -> comp sig a
-  exr :: comp sig (a, b) -> comp sig b
+  inlr :: repr sig a -> repr sig b -> repr sig (a, b)
+  exl :: repr sig (a, b) -> repr sig a
+  exr :: repr sig (a, b) -> repr sig b
 
-  inl :: comp sig a -> comp sig (Either a b)
-  inr :: comp sig b -> comp sig (Either a b)
-  exlr :: (comp sig a -> comp sig c) -> (comp sig b -> comp sig c) -> (comp sig (Either a b) -> comp sig c)
+  inl :: repr sig a -> repr sig (Either a b)
+  inr :: repr sig b -> repr sig (Either a b)
+  exlr :: (repr sig a -> repr sig c) -> (repr sig b -> repr sig c) -> (repr sig (Either a b) -> repr sig c)
 
-  true, false :: comp sig Bool
-  iff :: comp sig Bool -> comp sig a -> comp sig a -> comp sig a
+  true, false :: repr sig Bool
+  iff :: repr sig Bool -> repr sig a -> repr sig a -> repr sig a
 
-  alg :: Eff sig (comp sig a) -> comp sig a
+  alg :: Eff sig (repr sig a) -> repr sig a
 
-lam0 :: Expr comp => (comp sig a -> comp sig b) -> comp sig (comp sig a -> comp sig b)
+lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = lam (f . either val alg)
 
-lam1 :: Expr comp => (Either (comp sig a) (Eff eff (comp eff a)) -> comp sig b) -> comp sig (comp eff a -> comp sig b)
+lam1 :: Expr repr => (Either (repr sig a) (Eff eff (repr eff a)) -> repr sig b) -> repr sig (repr eff a -> repr sig b)
 lam1 f = lam (f . first val)
 
 
-(<&) :: Expr comp => comp sig a -> comp sig b -> comp sig a
+(<&) :: Expr repr => repr sig a -> repr sig b -> repr sig a
 a <& b = const' $$ a $$ b
 
-(&>) :: Expr comp => comp sig a -> comp sig b -> comp sig b
+(&>) :: Expr repr => repr sig a -> repr sig b -> repr sig b
 a &> b = flip' $$ const' $$ a $$ b
 
 infixl 1 <&, &>
 
 
-send :: (Subset eff sig, Expr comp) => eff (comp sig a) -> comp sig a
+send :: (Subset eff sig, Expr repr) => eff (repr sig a) -> repr sig a
 send e = alg $ Eff (inj e) id
 
 
@@ -108,53 +108,53 @@ data Empty k = Empty
 
 -- Examples
 
-id' :: Expr comp => comp sig (comp sig a -> comp sig a)
+id' :: Expr repr => repr sig (repr sig a -> repr sig a)
 id' = lam0 id
 
-const' :: Expr comp => comp sig (comp sig a -> comp sig (comp sig b -> comp sig a))
+const' :: Expr repr => repr sig (repr sig a -> repr sig (repr sig b -> repr sig a))
 const' = lam0 (lam0 . const)
 
-flip' :: Expr comp => comp sig (comp sig (comp sig a -> comp sig (comp sig b -> comp sig c)) -> comp sig (comp sig b -> comp sig (comp sig a -> comp sig c)))
+flip' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig b -> repr sig (repr sig a -> repr sig c)))
 flip' = lam0 (\ f -> lam0 (\ b -> lam0 (\ a -> f $$ a $$ b)))
 
-curry' :: Expr comp => comp sig (comp sig (comp sig (a, b) -> comp sig c) -> comp sig (comp sig a -> comp sig (comp sig b -> comp sig c)))
+curry' :: Expr repr => repr sig (repr sig (repr sig (a, b) -> repr sig c) -> repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)))
 curry' = lam0 $ \ f -> lam0 $ \ a -> lam0 $ \ b -> f $$ inlr a b
 
-uncurry' :: Expr comp => comp sig (comp sig (comp sig a -> comp sig (comp sig b -> comp sig c)) -> comp sig (comp sig (a, b) -> comp sig c))
+uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
 uncurry' = lam0 $ \ f -> lam0 $ \ ab -> f $$ exl ab $$ exr ab
 
-get :: (Expr comp, Member (State (comp sig s)) sig) => comp sig s
+get :: (Expr repr, Member (State (repr sig s)) sig) => repr sig s
 get = send (Eff Get id)
 
-put :: (Expr comp, Member (State (comp sig s)) sig) => comp sig (comp sig s -> comp sig ())
+put :: (Expr repr, Member (State (repr sig s)) sig) => repr sig (repr sig s -> repr sig ())
 put = lam0 $ \ s -> send (Eff (Put s) (const unit))
 
-runState :: Expr comp => comp sig (comp sig s -> comp sig (comp (State (comp sig s)) a -> comp sig (s, a)))
+runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (State (repr sig s)) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
   Left a                -> inlr s a
   Right (Eff Get     k) -> runState $$ s $$ k s
   Right (Eff (Put s) k) -> runState $$ s $$ k ()
 
-execState :: Expr comp => comp sig (comp sig s -> comp sig (comp (State (comp sig s)) a -> comp sig a))
+execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (State (repr sig s)) a -> repr sig a))
 execState = lam0 $ \ s -> lam1 $ \case
   Left a                -> a
   Right (Eff Get     k) -> execState $$ s $$ k s
   Right (Eff (Put s) k) -> execState $$ s $$ k ()
 
 
-postIncr :: forall comp sig . (Expr comp, Num (comp sig Int), Member (State (comp sig Int)) sig) => comp sig Int
-postIncr = get <& put $$ (get + 1 :: comp sig Int)
+postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State (repr sig Int)) sig) => repr sig Int
+postIncr = get <& put $$ (get + 1 :: repr sig Int)
 
 
-empty :: (Expr comp, Member Empty sig) => comp sig a
+empty :: (Expr repr, Member Empty sig) => repr sig a
 empty = send (Eff Empty id)
 
-runEmpty :: Expr comp => comp sig (comp sig a -> comp sig (comp Empty a -> comp sig a))
+runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr Empty a -> repr sig a))
 runEmpty = lam0 $ \ a -> lam1 $ \case
   Left x              -> x
   Right (Eff Empty _) -> a
 
-execEmpty :: Expr comp => comp sig (comp Empty a -> comp sig Bool)
+execEmpty :: Expr repr => repr sig (repr Empty a -> repr sig Bool)
 execEmpty = lam1 (either (const true) (const false))
 
 
