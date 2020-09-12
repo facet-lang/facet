@@ -36,6 +36,7 @@ module Facet.Pretty
 , rainbow
 , Rainbow(..)
 , Var(..)
+, var
 ) where
 
 import           Control.Applicative (liftA2)
@@ -288,3 +289,6 @@ instance (PrecDoc (Nest ann) doc) => PrecDoc (Nest ann) (Rainbow doc) where
 
 
 newtype Var = Var { getVar :: Int }
+
+var :: Doc ann a => Var -> a
+var = pretty . getVar
