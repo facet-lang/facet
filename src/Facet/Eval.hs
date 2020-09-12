@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Facet.Eval
 ( Eval(..)
+, Val(..)
 , eval0
 ) where
 
@@ -15,6 +16,8 @@ import Data.Kind (Type)
 import Facet.Expr
 
 newtype Eval (sig :: Type -> Type) a = Eval { eval :: forall r . (Either a (Eff sig (Eval sig a)) -> r) -> r }
+
+newtype Val a = Val { getVal :: a }
 
 eval0 :: Eval None a -> a
 eval0 m = eval m (either id (\ (Eff e _) -> absurd e))
