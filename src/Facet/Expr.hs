@@ -192,7 +192,7 @@ instance Subset None sig where
 instance Subset eff eff where
   sub = prism' id Just
 
-instance Subset (Eff eff) (Sum (Eff eff) set) where
+instance Subset eff (Sum eff set) where
   sub = prism' InL (unSum Just (const Nothing))
 
 instance Subset eff (Sum set1 (Sum set2 set3)) => Subset eff (Sum (Sum set1 set2) set3) where
