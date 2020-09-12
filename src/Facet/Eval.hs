@@ -45,7 +45,7 @@ instance Expr Eval where
 
   -- k (Left …) indicates that we don’t need to perform effects to construct the lambda itself, even if it uses effects to do its job
   lam f = Eval $ \ _ k -> k (Left (eval (Handler (const . absurd)) (f . first pure)))
-  f $$ a = Eval $ \ h k -> runEval f h $ eval h k . either ($ a) (($ a) <=< alg)
+  f $$ a = Eval $ \ h k -> eval h (eval h k . either ($ a) (($ a) <=< alg)) f
 
   unit = pure ()
 
