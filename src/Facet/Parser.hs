@@ -8,6 +8,7 @@ module Facet.Parser
 , First(..)
 , Parser(..)
 , Token(..)
+, parse
 , lexer
 , parens
 , braces
@@ -97,6 +98,9 @@ instance (Ord s, Show s) => Parsing s (Parser s) where
       | isNullable pr, Set.member s f -> runParser pr i f
       | otherwise                     -> error ("illegal input symbol: " <> show s)
   p <?> (a, _) = p <|> pure a
+
+parse :: Parser c a -> [c] -> a
+parse p s = fst (runParser p s Set.empty)
 
 
 data Token
