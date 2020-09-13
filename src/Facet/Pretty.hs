@@ -29,7 +29,7 @@ module Facet.Pretty
 , (</>)
 , parensIf
 , Level(..)
-, PrecDoc(..)
+, PrecPrinter(..)
 , runPrec
 , Prec(..)
 , Nesting(..)
@@ -205,7 +205,7 @@ parensIf _    = id
 newtype Level = Level Int
   deriving (Eq, Ord, Show)
 
-class Printer ann doc => PrecDoc ann doc where
+class Printer ann doc => PrecPrinter ann doc where
   prec :: Level -> doc -> doc
   resetPrec :: Level -> doc -> doc
 
@@ -236,15 +236,15 @@ instance Printer ann doc => Printer ann (Prec doc) where
   brackets = fmap brackets . resetPrec (Level 0)
   braces   = fmap braces   . resetPrec (Level 0)
 
-instance Printer ann doc => PrecDoc ann (Prec doc) where
+instance Printer ann doc => PrecPrinter ann (Prec doc) where
   prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
   resetPrec l (Prec d) = Prec $ \ _ -> d l
 
-instance (Applicative f, PrecDoc ann a) => PrecDoc ann (Ap f a) where
+instance (Applicative f, PrecPrinter ann a) => PrecPrinter ann (Ap f a) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
 
-instance PrecDoc ann a => PrecDoc ann (b -> a) where
+instance PrecPrinter ann a => PrecPrinter ann (b -> a) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
 
@@ -286,7 +286,7 @@ instance Printer (Nest ann) doc => Printer (Nest ann) (Rainbow doc) where
 nestRainbow :: Printer (Nest ann) doc => doc -> doc -> Rainbow doc -> Rainbow doc
 nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (Nest lv) l <> run (Nesting (1 + getNesting lv)) <> annotate (Nest lv) r
 
-instance PrecDoc (Nest ann) doc => PrecDoc (Nest ann) (Rainbow doc) where
+instance PrecPrinter (Nest ann) doc => PrecPrinter (Nest ann) (Rainbow doc) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
 
@@ -308,7 +308,7 @@ bind :: Printer ann doc => (Fresh doc -> Fresh doc) -> Fresh doc
 bind f = Fresh $ \ v -> runFresh (f (pretty v)) (incr v)
 
 newtype Fresh doc = Fresh { runFresh :: Var -> doc }
-  deriving (Applicative, Printer ann, Functor, Monad, Monoid, PrecDoc ann, Semigroup)
+  deriving (Applicative, Printer ann, Functor, Monad, Monoid, PrecPrinter ann, Semigroup)
 
 instance Show doc => Show (Fresh doc) where
   showsPrec p = showsPrec p . fresh

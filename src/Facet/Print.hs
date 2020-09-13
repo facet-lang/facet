@@ -17,8 +17,7 @@ import           Data.Kind (Type)
 import qualified Data.Text.Prettyprint.Doc as PP
 import qualified Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
 import           Facet.Expr
-import           Facet.Pretty hiding (PrecDoc)
-import qualified Facet.Pretty as P
+import           Facet.Pretty
 
 prettyPrint :: MonadIO m => Print sig a -> m ()
 prettyPrint = prettyPrintWith defaultStyle
@@ -49,10 +48,10 @@ getDoc :: Doc -> PP.Doc (Nest Highlight)
 getDoc (Doc doc) = rainbow (runPrec (Level 0) doc)
 
 newtype Doc = Doc (Prec (Rainbow (PP.Doc (Nest Highlight))))
-  deriving (Monoid, P.PrecDoc (Nest Highlight), Printer (Nest Highlight), Semigroup, Show)
+  deriving (Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup, Show)
 
 newtype Print (sig :: Type -> Type) a = Print { runPrint :: Fresh Doc }
-  deriving (Functor, Monoid, P.PrecDoc (Nest Highlight), Printer (Nest Highlight), Semigroup)
+  deriving (Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
   deriving (Applicative) via Const (Fresh Doc)
 
 data Highlight
