@@ -60,7 +60,7 @@ class (forall sig . Functor (repr sig)) => Expr (repr :: (Type -> Type) -> (Type
   -- | Values embed into computations at every signature.
   val :: repr None a -> repr sig a
 
-  lam :: (Either (repr None a) (Eff eff (repr eff a)) -> repr sig b) -> repr sig (repr eff a -> repr sig b)
+  lam :: (Either (repr None a) (Eff eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
@@ -83,9 +83,9 @@ class (forall sig . Functor (repr sig)) => Expr (repr :: (Type -> Type) -> (Type
 
 -- FIXME: should lam0 & lam1 be primitive instead of lam?
 lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
-lam0 f = lam (f . either val alg)
+lam0 f = (. weaken) <$> lam (f . either val absurdE)
 
-lam1 :: Expr repr => (Either (repr sig a) (Eff eff (repr eff a)) -> repr sig b) -> repr sig (repr eff a -> repr sig b)
+lam1 :: Expr repr => (Either (repr sig a) (Eff eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
 lam1 f = lam (f . first val)
 
 
@@ -134,13 +134,13 @@ get = send (Eff Get id)
 put :: (Expr repr, Member (State (repr sig s)) sig) => repr sig (repr sig s -> repr sig ())
 put = lam0 $ \ s -> send (Eff (Put s) (const unit))
 
-runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (State (repr sig s)) a -> repr sig (s, a)))
+runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr sig s)) sig) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
   Left a                -> inlr s a
   Right (Eff Get     k) -> runState $$ s $$ k s
   Right (Eff (Put s) k) -> runState $$ s $$ k ()
 
-execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (State (repr sig s)) a -> repr sig a))
+execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr sig s)) sig) a -> repr sig a))
 execState = lam0 $ \ s -> lam1 $ \case
   Left a                -> a
   Right (Eff Get     k) -> execState $$ s $$ k s
@@ -154,12 +154,12 @@ postIncr = get <& put $$ (get + 1 :: repr sig Int)
 empty :: (Expr repr, Member Empty sig) => repr sig a
 empty = send (Eff Empty id)
 
-runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr Empty a -> repr sig a))
+runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr (Sum Empty sig) a -> repr sig a))
 runEmpty = lam0 $ \ a -> lam1 $ \case
   Left x              -> x
   Right (Eff Empty _) -> a
 
-execEmpty :: Expr repr => repr sig (repr Empty a -> repr sig Bool)
+execEmpty :: Expr repr => repr sig (repr (Sum Empty sig) a -> repr sig Bool)
 execEmpty = lam1 (either (const true) (const false))
 
 
