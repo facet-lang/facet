@@ -3,6 +3,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
+-- FIXME: move this whole module into a new package?
 module Facet.Pretty
 ( putDoc
 , Doc(..)
