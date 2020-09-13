@@ -25,6 +25,9 @@ class Applicative p => Parsing s p | p -> s where
   (<?>) :: p a -> (a, String) -> p a
   infixl 2 <?>
 
+string :: Parsing Char p => String -> p String
+string s = foldr ((*>) . symbol) (pure s) s
+
 
 newtype Null s a = Null { getNullable :: Bool }
   deriving (Functor)
