@@ -11,6 +11,7 @@ import Data.Coerce
 class Alternative p => Parsing s p | p -> s where
   symbol :: s -> p s
   (<?>) :: p a -> (a, String) -> p a
+  infixl 2 <?>
 
 newtype Parser s a = Parser { runParser :: () }
 
