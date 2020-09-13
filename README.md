@@ -43,7 +43,6 @@ script/repl # actually launch the repl
 
 ## TODO
 
-- evaluator
 - concrete syntax
   - pretty-printer
   - parser
