@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Parser
@@ -17,9 +18,7 @@ class Alternative p => Parsing s p | p -> s where
   infixl 2 <?>
 
 newtype Nullable s a = Nullable { getNullable :: Bool }
-
-instance Functor (Nullable s) where
-  fmap _ = coerce
+  deriving (Functor)
 
 instance Applicative (Nullable s) where
   pure _ = Nullable True
@@ -38,9 +37,7 @@ data First s a = First
   { isNullable :: Nullable s a
   , getFirst :: Set.Set s
   }
-
-instance Functor (First s) where
-  fmap _ = coerce
+  deriving (Functor)
 
 instance Ord s => Applicative (First s) where
   pure a = First (pure a) Set.empty
