@@ -3,17 +3,13 @@
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Signature
 ( None
 , absurd
-, Eff(..)
-, absurdE
 , Sum(..)
 , unSum
 , Subset(..)
@@ -32,14 +28,6 @@ data None a
 
 absurd :: None a -> b
 absurd = \case{}
-
-data Eff f a where
-  Eff :: f k -> (k -> a) -> Eff f a
-
-deriving instance Functor (Eff f)
-
-absurdE :: Eff None a -> b
-absurdE (Eff e _) = absurd e
 
 unSum :: (l a -> b) -> (r a -> b) -> Sum l r a -> b
 unSum fl fr = \case
