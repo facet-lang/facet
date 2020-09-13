@@ -19,7 +19,6 @@ module Facet.Expr
 , lam1
 , (<&)
 , (&>)
-, send
   -- * Effects
 , State(..)
 , Empty(..)
@@ -86,10 +85,6 @@ a &> b = flip' $$ const' $$ a $$ b
 infixl 1 <&, &>
 
 
-send :: (Subset eff sig, Expr repr) => eff (repr sig a) -> repr sig a
-send e = alg $ Eff (inj e) id
-
-
 -- Effects
 
 data State s k where
@@ -140,7 +135,7 @@ postIncr = get <& put $$ (get + 1 :: repr sig Int)
 
 
 empty :: (Expr repr, Member Empty sig) => repr sig a
-empty = send Empty
+empty = alg $ Eff (inj Empty) pure
 
 runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr (Sum Empty sig) a -> repr sig a))
 runEmpty = lam0 $ \ a -> lam1 $ \case
