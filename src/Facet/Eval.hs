@@ -51,7 +51,7 @@ instance Expr Eval where
 
   inl = fmap Left
   inr = fmap Right
-  exlr f g e = Eval $ runEval e >>= runEval . either (f . pure) (g . pure)
+  exlr f g e = e >>= either (f . pure) (g . pure)
 
   true  = pure True
   false = pure False
