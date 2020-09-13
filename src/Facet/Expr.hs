@@ -61,8 +61,6 @@ class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
-  exlr :: (repr sig a -> repr sig c) -> (repr sig b -> repr sig c) -> (repr sig (Either a b) -> repr sig c)
-
   iff :: repr sig Bool -> repr sig a -> repr sig a -> repr sig a
 
   alg :: Eff sig (repr sig a) -> repr sig a

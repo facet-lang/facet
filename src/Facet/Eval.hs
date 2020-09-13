@@ -41,8 +41,6 @@ instance Expr Eval where
 
   f $$ a = Eval $ \ h k -> runEval f (\ (Eff e k') -> h (Eff e (($$ a) . k'))) $ \ f' -> runEval (f' a) h k
 
-  exlr f g e = e >>= either (f . pure) (g . pure)
-
   iff c t e = c >>= bool e t
 
   alg e = Eval $ \ h _ -> h e
