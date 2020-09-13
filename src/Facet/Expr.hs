@@ -64,8 +64,6 @@ class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
-  inlr :: repr sig a -> repr sig b -> repr sig (a, b)
-
   exlr :: (repr sig a -> repr sig c) -> (repr sig b -> repr sig c) -> (repr sig (Either a b) -> repr sig c)
 
   true, false :: repr sig Bool
@@ -117,7 +115,7 @@ flip' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> 
 flip' = lam0 (\ f -> lam0 (\ b -> lam0 (\ a -> val f $$ val a $$ val b)))
 
 curry' :: Expr repr => repr sig (repr sig (repr sig (a, b) -> repr sig c) -> repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)))
-curry' = lam0 $ \ f -> lam0 $ \ a -> lam0 $ \ b -> val f $$ inlr (val a) (val b)
+curry' = lam0 $ \ f -> lam0 $ \ a -> lam0 $ \ b -> val f $$ ((,) <$> val a <*> val b)
 
 uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
 uncurry' = lam0 $ \ f -> lam0 $ \ ab -> val f $$ fmap fst (val ab) $$ fmap snd (val ab)
@@ -130,7 +128,7 @@ put = lam0 $ \ s -> alg (Eff (inj (Put s)) pure)
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
-  Left a                -> inlr (val s) a
+  Left a                -> (,) <$> val s <*> a
   Right (Eff Get     k) -> runState $$ val s $$ k s
   Right (Eff (Put s) k) -> runState $$ val s $$ k ()
 

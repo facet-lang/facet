@@ -6,7 +6,7 @@ module Facet.Eval
 , eval0
 ) where
 
-import Control.Applicative (liftA, liftA2)
+import Control.Applicative (liftA)
 import Control.Monad (ap, (<=<))
 import Data.Bool (bool)
 import Facet.Expr
@@ -43,8 +43,6 @@ instance Expr Eval where
       a
 
   f $$ a = Eval $ \ h k -> runEval f (\ (Eff e k') -> h (Eff e (($$ a) . k'))) $ \ f' -> runEval (f' a) h k
-
-  inlr = liftA2 (,)
 
   exlr f g e = e >>= either (f . pure) (g . pure)
 

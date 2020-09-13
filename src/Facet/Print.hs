@@ -67,8 +67,6 @@ instance Expr Print where
   lam f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
   f $$ a = Print $ runPrint f <+> runPrint a
 
-  inlr (Print a) (Print b) = Print $ tupled [a, b]
-
   exlr l r (Print lr) = Print $ pretty "on" <+> lr <+> cases
     [ \ var -> (pretty "InL" <+> var, runPrint (l (Print var)))
     , \ var -> (pretty "InR" <+> var, runPrint (r (Print var)))
