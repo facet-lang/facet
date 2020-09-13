@@ -7,6 +7,7 @@ module Facet.Parser
 , string
 , opt
 , many
+, some
 , Null(..)
 , First(..)
 , Parser(..)
@@ -18,6 +19,7 @@ module Facet.Parser
 ) where
 
 import           Data.Coerce
+import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Set as Set
 
 class Applicative p => Parsing s p | p -> s where
@@ -37,6 +39,9 @@ opt p v = p <|> pure v
 
 many :: Parsing s p => p a -> p [a]
 many p = opt ((:) <$> p <*> many p) []
+
+some :: Parsing s p => p a -> p (NonEmpty a)
+some p = (:|) <$> p <*> many p
 
 
 newtype Null s a = Null { getNullable :: Bool }
