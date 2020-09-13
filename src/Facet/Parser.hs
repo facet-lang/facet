@@ -8,12 +8,12 @@ module Facet.Parser
 , Parser(..)
 ) where
 
-import           Control.Applicative
 import           Data.Coerce
 import qualified Data.Set as Set
 
-class Alternative p => Parsing s p | p -> s where
+class Applicative p => Parsing s p | p -> s where
   symbol :: s -> p s
+  (<|>) :: p a -> p a -> p a
   (<?>) :: p a -> (a, String) -> p a
   infixl 2 <?>
 
@@ -24,12 +24,9 @@ instance Applicative (Nullable s) where
   pure _ = Nullable True
   (<*>) = coerce (&&)
 
-instance Alternative (Nullable s) where
-  empty = Nullable False
-  (<|>) = coerce (||)
-
 instance Parsing s (Nullable s) where
   symbol _ = Nullable False
+  (<|>) = coerce (||)
   _ <?> _ = Nullable False
 
 
@@ -48,12 +45,9 @@ combine e s1 s2
   | getNullable e = s1 <> s2
   | otherwise     = s1
 
-instance Ord s => Alternative (First s) where
-  empty = First empty Set.empty
-  First nl sl <|> First nr sr = First (nl <|> nr) (sl <> sr)
-
 instance Ord s => Parsing s (First s) where
   symbol s = First (symbol s) (Set.singleton s)
+  First nl sl <|> First nr sr = First (nl <|> nr) (sl <> sr)
   First np sp <?> e = First (np <?> e) sp
 
 
