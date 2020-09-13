@@ -33,7 +33,7 @@ instance Expr Eval where
     where
     go a = Eval $ \ hb kb -> eval
       (\ e k' -> case e of
-        InL eff -> eval hb kb (f (Right (Eff eff k')))
+        InL eff -> eval hb kb (f (Right (eff, k')))
         InR sig -> hb sig (go . k'))
       (eval hb kb . f . Left . pure)
       a

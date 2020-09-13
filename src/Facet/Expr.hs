@@ -39,7 +39,7 @@ import Data.Functor.Sum
 import Facet.Signature
 
 class (forall sig . Applicative (repr sig)) => Expr repr where
-  lam :: (Either (repr None a) (Eff eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
+  lam :: (forall k . Either (repr None a) (eff k, k -> repr (Sum eff sig) a) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
@@ -52,9 +52,9 @@ val :: Expr repr => repr None a -> repr sig a
 val = weakenBy absurd
 
 lam0 :: Expr repr => (repr None a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
-lam0 f = (. weakenBy InR) <$> lam (f . either id absurdE)
+lam0 f = (. weakenBy InR) <$> lam (f . either id (absurd . fst))
 
-lam1 :: Expr repr => (Either (repr sig a) (Eff eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
+lam1 :: Expr repr => (forall k . Either (repr sig a) (eff k, k -> repr (Sum eff sig) a) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
 lam1 f = lam (f . first val)
 
 
@@ -102,14 +102,14 @@ put = lam0 $ \ s -> alg (inj (Put s)) pure
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
   Left a                -> (,) <$> val s <*> a
-  Right (Eff Get     k) -> runState $$ val s $$ k s
-  Right (Eff (Put s) k) -> runState $$ val s $$ k ()
+  Right (Get,   k) -> runState $$ val s $$ k s
+  Right (Put s, k) -> runState $$ val s $$ k ()
 
 execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig a))
 execState = lam0 $ \ s -> lam1 $ \case
   Left a                -> a
-  Right (Eff Get     k) -> execState $$ val s $$ k s
-  Right (Eff (Put s) k) -> execState $$ val s $$ k ()
+  Right (Get,   k) -> execState $$ val s $$ k s
+  Right (Put s, k) -> execState $$ val s $$ k ()
 
 
 postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State (repr None Int)) sig) => repr sig Int
@@ -121,8 +121,8 @@ empty = alg (inj Empty) pure
 
 runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr (Sum Empty sig) a -> repr sig a))
 runEmpty = lam0 $ \ a -> lam1 $ \case
-  Left x              -> x
-  Right (Eff Empty _) -> val a
+  Left x           -> x
+  Right (Empty, _) -> val a
 
 execEmpty :: Expr repr => repr sig (repr (Sum Empty sig) a -> repr sig Bool)
 execEmpty = lam1 (either (const (pure True)) (const (pure False)))
