@@ -52,3 +52,7 @@ combine :: Semigroup t => Nullable s a -> t -> t -> t
 combine e s1 s2
   | getNullable e = s1 <> s2
   | otherwise     = s1
+
+instance Ord s => Alternative (First s) where
+  empty = First empty Set.empty
+  First nl sl <|> First nr sr = First (nl <|> nr) (sl <> sr)
