@@ -132,26 +132,26 @@ curry' = lam0 $ \ f -> lam0 $ \ a -> lam0 $ \ b -> f $$ inlr a b
 uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
 uncurry' = lam0 $ \ f -> lam0 $ \ ab -> f $$ exl ab $$ exr ab
 
-get :: (Expr repr, Member (State (repr sig s)) sig) => repr sig s
-get = send Get
+get :: (Expr repr, Member (State (repr None s)) sig) => repr sig s
+get = alg $ Eff (inj Get) val
 
-put :: (Expr repr, Member (State (repr sig s)) sig) => repr sig (repr sig s -> repr sig ())
-put = lam0 $ \ s -> alg (Eff (inj (Put s)) (const unit))
+put :: (Expr repr, Member (State (repr None s)) sig) => repr sig (repr sig s -> repr sig ())
+put = lam0' $ \ s -> alg (Eff (inj (Put s)) (const unit))
 
-runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr sig s)) sig) a -> repr sig (s, a)))
-runState = lam0 $ \ s -> lam1 $ \case
-  Left a                -> inlr s a
-  Right (Eff Get     k) -> runState $$ s $$ k s
-  Right (Eff (Put s) k) -> runState $$ s $$ k ()
+runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig (s, a)))
+runState = lam0' $ \ s -> lam1 $ \case
+  Left a                -> inlr (val s) a
+  Right (Eff Get     k) -> runState $$ val s $$ k s
+  Right (Eff (Put s) k) -> runState $$ val s $$ k ()
 
-execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr sig s)) sig) a -> repr sig a))
-execState = lam0 $ \ s -> lam1 $ \case
+execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig a))
+execState = lam0' $ \ s -> lam1 $ \case
   Left a                -> a
-  Right (Eff Get     k) -> execState $$ s $$ k s
-  Right (Eff (Put s) k) -> execState $$ s $$ k ()
+  Right (Eff Get     k) -> execState $$ val s $$ k s
+  Right (Eff (Put s) k) -> execState $$ val s $$ k ()
 
 
-postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State (repr sig Int)) sig) => repr sig Int
+postIncr :: forall repr sig . (Expr repr, Num (repr sig Int), Member (State (repr None Int)) sig) => repr sig Int
 postIncr = get <& put $$ (get + 1 :: repr sig Int)
 
 
