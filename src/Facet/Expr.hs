@@ -129,10 +129,10 @@ uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b 
 uncurry' = lam0 $ \ f -> lam0 $ \ ab -> f $$ exl ab $$ exr ab
 
 get :: (Expr repr, Member (State (repr sig s)) sig) => repr sig s
-get = send (Eff Get id)
+get = send Get
 
 put :: (Expr repr, Member (State (repr sig s)) sig) => repr sig (repr sig s -> repr sig ())
-put = lam0 $ \ s -> send (Eff (Put s) (const unit))
+put = lam0 $ \ s -> alg (Eff (inj (Put s)) (const unit))
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr sig s)) sig) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
@@ -152,7 +152,7 @@ postIncr = get <& put $$ (get + 1 :: repr sig Int)
 
 
 empty :: (Expr repr, Member Empty sig) => repr sig a
-empty = send (Eff Empty id)
+empty = send Empty
 
 runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr (Sum Empty sig) a -> repr sig a))
 runEmpty = lam0 $ \ a -> lam1 $ \case
@@ -213,4 +213,4 @@ instance (Subset setl sets, Subset setr sets) => Subset (Sum setl setr) sets whe
   sub = prism' (unSum inj inj) (\ s -> InL <$> prj s <|> InR <$> prj s)
 
 
-type Member eff sig = Subset (Eff eff) sig
+type Member eff sig = Subset eff sig
