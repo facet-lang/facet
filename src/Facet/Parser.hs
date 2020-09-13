@@ -13,6 +13,7 @@ import qualified Data.Set as Set
 
 class Applicative p => Parsing s p | p -> s where
   isNullable :: p a -> Bool
+  firstSet :: p a -> Set.Set s
   symbol :: s -> p s
   (<|>) :: p a -> p a -> p a
   (<?>) :: p a -> (a, String) -> p a
@@ -28,6 +29,7 @@ instance Applicative (Null s) where
 
 instance Parsing s (Null s) where
   isNullable = getNullable
+  firstSet _ = Set.empty
   symbol _ = Null False
   (<|>) = coerce (||)
   _ <?> _ = Null False
@@ -50,6 +52,7 @@ combine e s1 s2
 
 instance Ord s => Parsing s (First s) where
   isNullable = isNullable . getNull
+  firstSet = getFirst
   symbol s = First (symbol s) (Set.singleton s)
   First nl sl <|> First nr sr = First (nl <|> nr) (sl <> sr)
   First np sp <?> e = First (np <?> e) sp
@@ -71,6 +74,7 @@ instance (Ord s, Show s) => Applicative (Parser s) where
 
 instance (Ord s, Show s) => Parsing s (Parser s) where
   isNullable = isNullable . first
+  firstSet = getFirst . first
   symbol s = Parser (symbol s) (\ i _ -> (s, tail i))
   pl@(Parser fl kl) <|> pr@(Parser fr kr) = Parser (fl <|> fr) $ \ i f -> case i of
     []
