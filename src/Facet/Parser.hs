@@ -116,6 +116,9 @@ lexer
   <|> RBrace <$ symbol '}'
   <|> LParen <$ symbol '('
   <|> RParen <$ symbol ')'
+  <|> Colon  <$ symbol ':'
+  <|> Pipe   <$ symbol '|'
+  <|> Arrow  <$ string "->"
 
 parens :: Parsing Token p => p a -> p a
 parens a = symbol LParen *> a <* symbol RParen
