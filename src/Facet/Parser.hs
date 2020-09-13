@@ -8,6 +8,7 @@ module Facet.Parser
 , First(..)
 , Parser(..)
 , Token(..)
+, lexer
 , parens
 , braces
 ) where
@@ -105,6 +106,13 @@ data Token
   | Arrow
   | Ident String
   deriving (Eq, Ord, Show)
+
+lexer :: Parsing Char p => p Token
+lexer
+  =   LBrace <$ symbol '{'
+  <|> RBrace <$ symbol '}'
+  <|> LParen <$ symbol '('
+  <|> RParen <$ symbol ')'
 
 parens :: Parsing Token p => p a -> p a
 parens a = symbol LParen *> a <* symbol RParen
