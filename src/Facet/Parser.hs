@@ -63,11 +63,11 @@ data Parser s a = Parser
 
 instance (Ord s, Show s) => Applicative (Parser s) where
   pure a = Parser (pure a) (\ i _ -> (a, i))
-  Parser ff kf <*> ~pa@(Parser fa ka) = Parser (ff <*> fa) (\ i f ->
+  Parser ff kf <*> ~pa@(Parser fa ka) = Parser (ff <*> fa) $ \ i f ->
     let (f', i')  = kf i  (combine pa (getFirst fa) f)
         (a', i'') = ka i' f
         fa'       = f' a'
-    in  fa' `seq` (fa', i''))
+    in  fa' `seq` (fa', i'')
 
 instance (Ord s, Show s) => Parsing s (Parser s) where
   isNullable = isNullable . first
