@@ -132,7 +132,7 @@ get :: (Expr repr, Member (State (repr None s)) sig) => repr sig s
 get = alg $ Eff (inj Get) val
 
 put :: (Expr repr, Member (State (repr None s)) sig) => repr sig (repr sig s -> repr sig ())
-put = lam0 $ \ s -> alg (Eff (inj (Put s)) (const unit))
+put = lam0 $ \ s -> alg (Eff (inj (Put s)) pure)
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
