@@ -16,7 +16,6 @@
 module Facet.Expr
 ( Expr(..)
 , lam0
-, lam0'
 , lam1
 , (<&)
 , (&>)
@@ -83,11 +82,8 @@ class (forall sig . Functor (repr sig)) => Expr (repr :: (Type -> Type) -> (Type
   weaken :: repr sig a -> repr (Sum eff sig) a
 
 -- FIXME: should lam0 & lam1 be primitive instead of lam?
-lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
-lam0 f = (. weaken) <$> lam (f . either val absurdE)
-
-lam0' :: Expr repr => (repr None a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
-lam0' f = (. weaken) <$> lam (f . either id absurdE)
+lam0 :: Expr repr => (repr None a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
+lam0 f = (. weaken) <$> lam (f . either id absurdE)
 
 lam1 :: Expr repr => (Either (repr sig a) (Eff eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
 lam1 f = lam (f . first val)
@@ -118,34 +114,34 @@ data Empty k = Empty
 -- Examples
 
 id' :: Expr repr => repr sig (repr sig a -> repr sig a)
-id' = lam0 id
+id' = lam0 val
 
 const' :: Expr repr => repr sig (repr sig a -> repr sig (repr sig b -> repr sig a))
-const' = lam0 (lam0 . const)
+const' = lam0 (lam0 . const . val)
 
 flip' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig b -> repr sig (repr sig a -> repr sig c)))
-flip' = lam0 (\ f -> lam0 (\ b -> lam0 (\ a -> f $$ a $$ b)))
+flip' = lam0 (\ f -> lam0 (\ b -> lam0 (\ a -> val f $$ val a $$ val b)))
 
 curry' :: Expr repr => repr sig (repr sig (repr sig (a, b) -> repr sig c) -> repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)))
-curry' = lam0 $ \ f -> lam0 $ \ a -> lam0 $ \ b -> f $$ inlr a b
+curry' = lam0 $ \ f -> lam0 $ \ a -> lam0 $ \ b -> val f $$ inlr (val a) (val b)
 
 uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
-uncurry' = lam0 $ \ f -> lam0 $ \ ab -> f $$ exl ab $$ exr ab
+uncurry' = lam0 $ \ f -> lam0 $ \ ab -> val f $$ exl (val ab) $$ exr (val ab)
 
 get :: (Expr repr, Member (State (repr None s)) sig) => repr sig s
 get = alg $ Eff (inj Get) val
 
 put :: (Expr repr, Member (State (repr None s)) sig) => repr sig (repr sig s -> repr sig ())
-put = lam0' $ \ s -> alg (Eff (inj (Put s)) (const unit))
+put = lam0 $ \ s -> alg (Eff (inj (Put s)) (const unit))
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig (s, a)))
-runState = lam0' $ \ s -> lam1 $ \case
+runState = lam0 $ \ s -> lam1 $ \case
   Left a                -> inlr (val s) a
   Right (Eff Get     k) -> runState $$ val s $$ k s
   Right (Eff (Put s) k) -> runState $$ val s $$ k ()
 
 execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig a))
-execState = lam0' $ \ s -> lam1 $ \case
+execState = lam0 $ \ s -> lam1 $ \case
   Left a                -> a
   Right (Eff Get     k) -> execState $$ val s $$ k s
   Right (Eff (Put s) k) -> execState $$ val s $$ k ()
@@ -161,7 +157,7 @@ empty = send Empty
 runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr (Sum Empty sig) a -> repr sig a))
 runEmpty = lam0 $ \ a -> lam1 $ \case
   Left x              -> x
-  Right (Eff Empty _) -> a
+  Right (Eff Empty _) -> val a
 
 execEmpty :: Expr repr => repr sig (repr (Sum Empty sig) a -> repr sig Bool)
 execEmpty = lam1 (either (const true) (const false))
