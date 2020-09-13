@@ -56,7 +56,7 @@ import Data.Bifunctor (first)
 import Data.Kind (Type)
 import Data.Functor.Sum
 
-class (forall sig . Functor (repr sig)) => Expr (repr :: (Type -> Type) -> (Type -> Type)) where
+class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (Type -> Type)) where
   -- | Values embed into computations at every signature.
   val :: repr None a -> repr sig a
 
