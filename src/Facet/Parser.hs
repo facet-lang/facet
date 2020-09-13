@@ -1,2 +1,5 @@
 module Facet.Parser
-() where
+( Parser(..)
+) where
+
+newtype Parser a = Parser { runParser :: () }
