@@ -6,6 +6,7 @@ module Facet.Parser
 ( Parsing(..)
 , string
 , opt
+, many
 , Null(..)
 , First(..)
 , Parser(..)
@@ -33,6 +34,9 @@ string s = foldr ((*>) . symbol) (pure s) s
 
 opt :: Parsing s p => p a -> a -> p a
 opt p v = p <|> pure v
+
+many :: Parsing s p => p a -> p [a]
+many p = opt ((:) <$> p <*> many p) []
 
 
 newtype Null s a = Null { getNullable :: Bool }
