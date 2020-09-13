@@ -2,9 +2,9 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Parser
 ( Parsing(..)
-, Parser(..)
 , Nullable(..)
 , First(..)
+, Parser(..)
 ) where
 
 import           Control.Applicative
@@ -15,8 +15,6 @@ class Alternative p => Parsing s p | p -> s where
   symbol :: s -> p s
   (<?>) :: p a -> (a, String) -> p a
   infixl 2 <?>
-
-newtype Parser s a = Parser { runParser :: () }
 
 newtype Nullable s a = Nullable { getNullable :: Bool }
 
@@ -60,3 +58,6 @@ instance Ord s => Alternative (First s) where
 instance Ord s => Parsing s (First s) where
   symbol s = First (symbol s) (Set.singleton s)
   First np sp <?> e = First (np <?> e) sp
+
+
+newtype Parser s a = Parser { runParser :: () }
