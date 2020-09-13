@@ -1,20 +1,16 @@
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 module Facet.Eval
 ( Eval(..)
 , eval
 , eval0
-, Handler(..)
-, handle
 ) where
 
 import Control.Applicative (liftA, liftA2)
 import Control.Monad (ap, (<=<))
 import Data.Bool (bool)
-import Data.Kind (Type)
 import Facet.Expr
 
 newtype Eval sig a = Eval { runEval :: forall r . (forall k . sig k -> (k -> Eval sig a) -> r) -> (a -> r) -> r }
@@ -67,9 +63,3 @@ instance Expr Eval where
   alg (Eff e k) = Eval $ \ h _ -> h e k
 
   weaken e = Eval $ \ h k -> eval (\ e k' -> h (InR e) (weaken . k')) k e
-
-
-newtype Handler (sig :: Type -> Type) r = Handler { runHandler :: forall a . sig a -> (a -> r) -> r }
-
-handle :: sig a -> (a -> r) -> Handler sig r -> r
-handle e k h = runHandler h e k
