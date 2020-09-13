@@ -3,7 +3,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Parser
 ( Parsing(..)
-, Nullable(..)
+, Null(..)
 , First(..)
 , Parser(..)
 ) where
@@ -17,21 +17,21 @@ class Applicative p => Parsing s p | p -> s where
   (<?>) :: p a -> (a, String) -> p a
   infixl 2 <?>
 
-newtype Nullable s a = Nullable { getNullable :: Bool }
+newtype Null s a = Null { getNullable :: Bool }
   deriving (Functor)
 
-instance Applicative (Nullable s) where
-  pure _ = Nullable True
+instance Applicative (Null s) where
+  pure _ = Null True
   (<*>) = coerce (&&)
 
-instance Parsing s (Nullable s) where
-  symbol _ = Nullable False
+instance Parsing s (Null s) where
+  symbol _ = Null False
   (<|>) = coerce (||)
-  _ <?> _ = Nullable False
+  _ <?> _ = Null False
 
 
 data First s a = First
-  { isNullable :: Nullable s a
+  { isNullable :: Null s a
   , getFirst :: Set.Set s
   }
   deriving (Functor)
@@ -40,7 +40,7 @@ instance Ord s => Applicative (First s) where
   pure a = First (pure a) Set.empty
   First nf sf <*> ~(First na sa) = First (nf <*> na) (combine nf sf sa)
 
-combine :: Semigroup t => Nullable s a -> t -> t -> t
+combine :: Semigroup t => Null s a -> t -> t -> t
 combine e s1 s2
   | getNullable e = s1 <> s2
   | otherwise     = s1
