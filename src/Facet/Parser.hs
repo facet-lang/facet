@@ -5,6 +5,7 @@ module Facet.Parser
 ( Parsing(..)
 , Nullable(..)
 , First(..)
+, ParserK(..)
 , Parser(..)
 ) where
 
@@ -49,6 +50,9 @@ instance Ord s => Parsing s (First s) where
   symbol s = First (symbol s) (Set.singleton s)
   First nl sl <|> First nr sr = First (nl <|> nr) (sl <> sr)
   First np sp <?> e = First (np <?> e) sp
+
+
+newtype ParserK s a = ParserK { runParserK :: [s] -> Set.Set s -> (a, [s]) }
 
 
 data Parser s a = Parser
