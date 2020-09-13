@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
@@ -50,7 +51,7 @@ newtype Doc = Doc (Prec (Rainbow (PP.Doc (Nest Highlight))))
   deriving (P.Doc (Nest Highlight), Monoid, P.PrecDoc (Nest Highlight), Semigroup, Show)
 
 newtype Print (sig :: Type -> Type) a = Print { runPrint :: Fresh Doc }
-  deriving (P.Doc (Nest Highlight), Monoid, P.PrecDoc (Nest Highlight), Semigroup)
+  deriving (P.Doc (Nest Highlight), Functor, Monoid, P.PrecDoc (Nest Highlight), Semigroup)
 
 data Highlight
   = Name
