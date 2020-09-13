@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Parser
@@ -7,6 +8,7 @@ module Facet.Parser
 , First(..)
 , Parser(..)
 , Token(..)
+, parens
 ) where
 
 import           Data.Coerce
@@ -101,3 +103,6 @@ data Token
   | Arrow
   | Ident String
   deriving (Eq, Ord, Show)
+
+parens :: Parsing Token p => p a -> p a
+parens a = symbol LParen *> a <* symbol RParen
