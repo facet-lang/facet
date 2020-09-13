@@ -94,6 +94,10 @@ instance (Ord s, Show s) => Parsing s (Parser s) where
 data Token
   = LBrace
   | RBrace
+  | LParen
+  | RParen
   | Colon
+  | Pipe
+  | Arrow
   | Ident String
   deriving (Eq, Ord, Show)
