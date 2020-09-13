@@ -61,3 +61,4 @@ data Parser s a = Parser
   { first     :: First s a
   , runParser :: [s] -> Set.Set s -> (a, [s])
   }
+  deriving (Functor)
