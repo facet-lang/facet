@@ -5,7 +5,7 @@ version:             0.0.0.0
 synopsis:            algebraic effects for elaboration
 -- description:
 homepage:            https://github.com/robrix/facet
--- bug-reports:
+bug-reports:         https://github.com/robrix/facet/issues
 license:             BSD-3-Clause
 license-file:        LICENSE
 author:              Rob Rix
