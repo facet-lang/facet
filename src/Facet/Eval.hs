@@ -1,6 +1,4 @@
-{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 module Facet.Eval
 ( Eval(..)
@@ -13,13 +11,13 @@ import Control.Monad (ap, (<=<))
 import Data.Bool (bool)
 import Facet.Expr
 
-newtype Eval sig a = Eval { runEval :: forall r . (forall k . sig k -> (k -> Eval sig a) -> r) -> (a -> r) -> r }
+newtype Eval sig a = Eval { runEval :: forall r . (Eff sig (Eval sig a) -> r) -> (a -> r) -> r }
 
-eval :: (forall k . sig k -> (k -> Eval sig a) -> r) -> (a -> r) -> Eval sig a -> r
+eval :: (Eff sig (Eval sig a) -> r) -> (a -> r) -> Eval sig a -> r
 eval h k e = runEval e h k
 
 eval0 :: (a -> r) -> Eval None a -> r
-eval0 = eval (\case{})
+eval0 = eval absurdE
 
 instance Functor (Eval sig) where
   fmap = liftA
@@ -30,7 +28,7 @@ instance Applicative (Eval sig) where
   (<*>) = ap
 
 instance Monad (Eval sig) where
-  m >>= f = Eval $ \ h k -> eval (\ e k' -> h e (f <=< k')) (eval h k . f) m
+  m >>= f = Eval $ \ h k -> eval (\ (Eff e k') -> h (Eff e (f <=< k'))) (eval h k . f) m
 
 instance Expr Eval where
   val = pure . eval0 id
@@ -38,13 +36,13 @@ instance Expr Eval where
   lam f = pure go
     where
     go a = Eval $ \ hb kb -> eval
-      (\case
-        InL eff -> eval hb kb . f . Right . Eff eff
-        InR sig -> \ k' -> hb sig (go . k'))
+      (\ (Eff e k') -> case e of
+        InL eff -> eval hb kb (f (Right (Eff eff k')))
+        InR sig -> hb (Eff sig (go . k')))
       (eval hb kb . f . Left . pure)
       a
 
-  f $$ a = Eval $ \ h k -> runEval f (\ e k' -> h e (($$ a) . k')) $ \ f' -> runEval (f' a) h k
+  f $$ a = Eval $ \ h k -> runEval f (\ (Eff e k') -> h (Eff e (($$ a) . k'))) $ \ f' -> runEval (f' a) h k
 
   unit = pure ()
 
@@ -60,6 +58,6 @@ instance Expr Eval where
   false = pure False
   iff c t e = c >>= bool e t
 
-  alg (Eff e k) = Eval $ \ h _ -> h e k
+  alg e = Eval $ \ h _ -> h e
 
-  weaken e = Eval $ \ h k -> eval (\ e k' -> h (InR e) (weaken . k')) k e
+  weaken e = Eval $ \ h k -> eval (\ (Eff e k') -> h (Eff (InR e) (weaken . k'))) k e
