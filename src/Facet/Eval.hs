@@ -49,4 +49,4 @@ instance Expr Eval where
 
   alg e = Eval $ \ h _ -> h e
 
-  weaken e = Eval $ \ h k -> eval (\ (Eff e k') -> h (Eff (InR e) (weaken . k'))) k e
+  weakenBy f = go where go e = Eval $ \ h k -> eval (\ (Eff e k') -> h (Eff (f e) (go . k'))) k e

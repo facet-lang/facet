@@ -70,11 +70,11 @@ class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (
 
   alg :: Eff sig (repr sig a) -> repr sig a
 
-  weaken :: repr sig a -> repr (Sum eff sig) a
+  weakenBy :: (forall x . sub x -> sup x) -> repr sub a -> repr sup a
 
 -- FIXME: should lam0 & lam1 be primitive instead of lam?
 lam0 :: Expr repr => (repr None a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
-lam0 f = (. weaken) <$> lam (f . either id absurdE)
+lam0 f = (. weakenBy InR) <$> lam (f . either id absurdE)
 
 lam1 :: Expr repr => (Either (repr sig a) (Eff eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
 lam1 f = lam (f . first val)
