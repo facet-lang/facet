@@ -14,15 +14,15 @@ class Alternative p => Parsing s p | p -> s where
 
 newtype Parser s a = Parser { runParser :: () }
 
-newtype Nullable a = Nullable { getNullable :: Bool }
+newtype Nullable s a = Nullable { getNullable :: Bool }
 
-instance Functor Nullable where
+instance Functor (Nullable s) where
   fmap _ = coerce
 
-instance Applicative Nullable where
+instance Applicative (Nullable s) where
   pure _ = Nullable True
   (<*>) = coerce (&&)
 
-instance Alternative Nullable where
+instance Alternative (Nullable s) where
   empty = Nullable False
   (<|>) = coerce (||)
