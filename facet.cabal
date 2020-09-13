@@ -39,6 +39,7 @@ library
   exposed-modules:
     Facet.Eval
     Facet.Expr
+    Facet.Parser
     Facet.Pretty
     Facet.Print
     Facet.Signature
