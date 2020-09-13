@@ -6,8 +6,7 @@ module Facet.Eval
 , eval0
 ) where
 
-import Control.Applicative (liftA)
-import Control.Monad (ap, (<=<))
+import Control.Monad (ap, liftM, (<=<))
 import Data.Bool (bool)
 import Facet.Expr
 
@@ -20,7 +19,7 @@ eval0 :: (a -> r) -> Eval None a -> r
 eval0 = eval absurdE
 
 instance Functor (Eval sig) where
-  fmap = liftA
+  fmap = liftM
 
 instance Applicative (Eval sig) where
   pure a = Eval $ \ _ k -> k a
