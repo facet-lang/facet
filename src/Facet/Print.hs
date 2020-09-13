@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
@@ -10,7 +11,7 @@ module Facet.Print
 , Print(..)
 ) where
 
-import           Control.Applicative ((<**>))
+import           Control.Applicative (Const(..), (<**>))
 import           Control.Monad.IO.Class
 import           Data.Kind (Type)
 import qualified Data.Text.Prettyprint.Doc as PP
@@ -52,6 +53,7 @@ newtype Doc = Doc (Prec (Rainbow (PP.Doc (Nest Highlight))))
 
 newtype Print (sig :: Type -> Type) a = Print { runPrint :: Fresh Doc }
   deriving (P.Doc (Nest Highlight), Functor, Monoid, P.PrecDoc (Nest Highlight), Semigroup)
+  deriving (Applicative) via Const (Fresh Doc)
 
 data Highlight
   = Name
