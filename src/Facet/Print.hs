@@ -84,6 +84,8 @@ instance Expr Print where
 
   alg _ = Print $ pretty "TBD"
 
+  weaken = Print . runPrint
+
 cases :: P.Doc ann doc => [Fresh doc -> (Fresh doc, Fresh doc)] -> Fresh doc
 cases cs = bind $ \ var -> group
   . encloseSep

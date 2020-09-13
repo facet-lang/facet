@@ -79,6 +79,8 @@ class (forall sig . Functor (repr sig)) => Expr (repr :: (Type -> Type) -> (Type
 
   alg :: Eff sig (repr sig a) -> repr sig a
 
+  weaken :: repr sig a -> repr (Sum eff sig) a
+
 -- FIXME: should lam0 & lam1 be primitive instead of lam?
 lam0 :: Expr repr => (repr sig a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = lam (f . either val alg)

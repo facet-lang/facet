@@ -59,6 +59,8 @@ instance Expr Eval where
 
   alg (Eff s k) = Eval $ handle s (runEval . k) (error "TBD")
 
+  weaken e = Eval $ runEval e
+
 
 newtype Handler (sig :: Type -> Type) r = Handler { runHandler :: forall a . sig a -> (a -> r) -> r }
 
