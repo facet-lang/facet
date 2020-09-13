@@ -64,3 +64,21 @@ instance Ord s => Applicative (Parser s) where
         (a', i'') = ka i' f
         fa'       = f' a'
     in  fa' `seq` (fa', i''))
+
+instance (Ord s, Show s) => Parsing s (Parser s) where
+  symbol s = Parser (symbol s) (\ i _ -> (s, tail i))
+  Parser fl kl <|> Parser fr kr = Parser (fl <|> fr) $ \ i f -> case i of
+    []
+      | el        -> kl [] f
+      | er        -> kr [] f
+      | otherwise -> error "unexpected eof"
+    i@(s:_)
+      | Set.member s (getFirst fl)  -> kl i f
+      | Set.member s (getFirst fr)  -> kr i f
+      | el, Set.member s f          -> kl i f
+      | er, Set.member s f          -> kr i f
+      | otherwise                   -> error ("illegal input symbol: " <> show s)
+    where
+    el = getNullable (isNullable fl)
+    er = getNullable (isNullable fr)
+  p <?> (a, _) = p <|> pure a
