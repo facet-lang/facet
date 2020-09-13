@@ -18,3 +18,7 @@ newtype Nullable a = Nullable { getNullable :: Bool }
 
 instance Functor Nullable where
   fmap _ = coerce
+
+instance Applicative Nullable where
+  pure _ = Nullable True
+  (<*>) = coerce (&&)
