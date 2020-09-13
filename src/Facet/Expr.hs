@@ -41,6 +41,7 @@ module Facet.Expr
 , None
 , absurd
 , Eff(..)
+, absurdE
 , Sum(..)
 , unSum
 , Subset(..)
@@ -172,6 +173,9 @@ data Eff f a where
   Eff :: f k -> (k -> a) -> Eff f a
 
 deriving instance Functor (Eff f)
+
+absurdE :: Eff None a -> b
+absurdE (Eff e _) = absurd e
 
 unSum :: (l a -> b) -> (r a -> b) -> Sum l r a -> b
 unSum fl fr = \case
