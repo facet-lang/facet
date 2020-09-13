@@ -6,6 +6,7 @@ module Facet.Parser
 , Null(..)
 , First(..)
 , Parser(..)
+, Token(..)
 ) where
 
 import           Data.Coerce
@@ -88,3 +89,11 @@ instance (Ord s, Show s) => Parsing s (Parser s) where
       | isNullable pr, Set.member s f -> runParser pr i f
       | otherwise                     -> error ("illegal input symbol: " <> show s)
   p <?> (a, _) = p <|> pure a
+
+
+data Token
+  = LBrace
+  | RBrace
+  | Colon
+  | Ident String
+  deriving (Eq, Ord, Show)
