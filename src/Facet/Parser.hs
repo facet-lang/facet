@@ -62,3 +62,11 @@ data Parser s a = Parser
   , runParser :: [s] -> Set.Set s -> (a, [s])
   }
   deriving (Functor)
+
+instance Ord s => Applicative (Parser s) where
+  pure a = Parser (pure a) (\ i _ -> (a, i))
+  Parser ff kf <*> ~(Parser fa ka) = Parser (ff <*> fa) (\ i f ->
+    let (f', i')  = kf i  (combine (isNullable fa) (getFirst fa) f)
+        (a', i'') = ka i' f
+        fa'       = f' a'
+    in  fa' `seq` (fa', i''))
