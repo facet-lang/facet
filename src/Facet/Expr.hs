@@ -47,6 +47,9 @@ class (forall sig . Applicative (repr sig)) => Expr repr where
 
   weakenBy :: (forall x . sub x -> sup x) -> repr sub a -> repr sup a
 
+  -- FIXME: constructors
+  -- FIXME: patterns
+
 -- | Values embed into computations at every signature.
 val :: Expr repr => repr None a -> repr sig a
 val = weakenBy absurd
