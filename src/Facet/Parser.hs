@@ -9,6 +9,7 @@ module Facet.Parser
 , Parser(..)
 , Token(..)
 , parens
+, braces
 ) where
 
 import           Data.Coerce
@@ -106,3 +107,6 @@ data Token
 
 parens :: Parsing Token p => p a -> p a
 parens a = symbol LParen *> a <* symbol RParen
+
+braces :: Parsing Token p => p a -> p a
+braces a = symbol LBrace *> a <* symbol RBrace
