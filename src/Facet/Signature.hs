@@ -1,5 +1,4 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE KindSignatures #-}
@@ -23,7 +22,6 @@ import Data.Functor.Sum
 import Data.Kind (Type)
 
 data None a
-  deriving (Functor)
 
 absurd :: None a -> b
 absurd = \case{}
