@@ -53,6 +53,7 @@ instance Ord s => Parsing s (First s) where
 
 
 newtype ParserK s a = ParserK { runParserK :: [s] -> Set.Set s -> (a, [s]) }
+  deriving (Functor)
 
 
 data Parser s a = Parser
