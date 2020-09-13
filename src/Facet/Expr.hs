@@ -61,8 +61,6 @@ class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
-  iff :: repr sig Bool -> repr sig a -> repr sig a -> repr sig a
-
   alg :: Eff sig (repr sig a) -> repr sig a
 
   weakenBy :: (forall x . sub x -> sup x) -> repr sub a -> repr sup a

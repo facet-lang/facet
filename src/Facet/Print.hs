@@ -65,8 +65,6 @@ instance Expr Print where
   lam f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
   f $$ a = Print $ runPrint f <+> runPrint a
 
-  iff c t e = Print $ pretty "if" <+> runPrint c <+> runPrint t <+> runPrint e
-
   alg _ = Print $ pretty "TBD"
 
   weakenBy _ = Print . runPrint
