@@ -17,6 +17,7 @@ class Applicative p => Parsing s p | p -> s where
   (<?>) :: p a -> (a, String) -> p a
   infixl 2 <?>
 
+
 newtype Null s a = Null { getNullable :: Bool }
   deriving (Functor)
 
