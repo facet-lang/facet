@@ -66,8 +66,6 @@ class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (
 
   inlr :: repr sig a -> repr sig b -> repr sig (a, b)
 
-  inl :: repr sig a -> repr sig (Either a b)
-  inr :: repr sig b -> repr sig (Either a b)
   exlr :: (repr sig a -> repr sig c) -> (repr sig b -> repr sig c) -> (repr sig (Either a b) -> repr sig c)
 
   true, false :: repr sig Bool

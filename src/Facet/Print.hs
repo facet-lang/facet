@@ -73,8 +73,6 @@ instance Expr Print where
     [ \ var -> (pretty "InL" <+> var, runPrint (l (Print var)))
     , \ var -> (pretty "InR" <+> var, runPrint (r (Print var)))
     ]
-  inl (Print l) = Print $ pretty "InL" <+> l
-  inr (Print r) = Print $ pretty "InR" <+> r
 
   true  = annotate (Ann Lit) (pretty "True")
   false = annotate (Ann Lit) (pretty "False")

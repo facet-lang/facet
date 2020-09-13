@@ -46,8 +46,6 @@ instance Expr Eval where
 
   inlr = liftA2 (,)
 
-  inl = fmap Left
-  inr = fmap Right
   exlr f g e = e >>= either (f . pure) (g . pure)
 
   true  = pure True
