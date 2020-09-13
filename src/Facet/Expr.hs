@@ -57,9 +57,6 @@ import Data.Kind (Type)
 import Data.Functor.Sum
 
 class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (Type -> Type)) where
-  -- | Values embed into computations at every signature.
-  val :: repr None a -> repr sig a
-
   lam :: (Either (repr None a) (Eff eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
@@ -71,6 +68,10 @@ class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (
   alg :: Eff sig (repr sig a) -> repr sig a
 
   weakenBy :: (forall x . sub x -> sup x) -> repr sub a -> repr sup a
+
+-- | Values embed into computations at every signature.
+val :: Expr repr => repr None a -> repr sig a
+val = weakenBy absurd
 
 -- FIXME: should lam0 & lam1 be primitive instead of lam?
 lam0 :: Expr repr => (repr None a -> repr sig b) -> repr sig (repr sig a -> repr sig b)

@@ -30,8 +30,6 @@ instance Monad (Eval sig) where
   m >>= f = Eval $ \ h k -> eval (\ (Eff e k') -> h (Eff e (f <=< k'))) (eval h k . f) m
 
 instance Expr Eval where
-  val = pure . eval0 id
-
   lam f = pure go
     where
     go a = Eval $ \ hb kb -> eval
