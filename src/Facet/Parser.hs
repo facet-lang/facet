@@ -60,4 +60,7 @@ instance Ord s => Parsing s (First s) where
   First np sp <?> e = First (np <?> e) sp
 
 
-newtype Parser s a = Parser { runParser :: () }
+data Parser s a = Parser
+  { first     :: First s a
+  , runParser :: [s] -> Set.Set s -> (a, [s])
+  }
