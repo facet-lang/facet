@@ -56,3 +56,7 @@ combine e s1 s2
 instance Ord s => Alternative (First s) where
   empty = First empty Set.empty
   First nl sl <|> First nr sr = First (nl <|> nr) (sl <> sr)
+
+instance Ord s => Parsing s (First s) where
+  symbol s = First (symbol s) (Set.singleton s)
+  First np sp <?> e = First (np <?> e) sp
