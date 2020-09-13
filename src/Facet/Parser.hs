@@ -46,7 +46,7 @@ instance Functor (First s) where
 
 instance Ord s => Applicative (First s) where
   pure a = First (pure a) Set.empty
-  First nf sf <*> First na sa = First (nf <*> na) (combine nf sf sa)
+  First nf sf <*> ~(First na sa) = First (nf <*> na) (combine nf sf sa)
 
 combine :: Semigroup t => Nullable s a -> t -> t -> t
 combine e s1 s2
