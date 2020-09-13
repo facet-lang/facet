@@ -5,7 +5,7 @@ module Facet.Parser
 ( Parsing(..)
 , Nullable(..)
 , First(..)
-, ParserK(..)
+, ParserCont(..)
 , Parser(..)
 ) where
 
@@ -52,7 +52,7 @@ instance Ord s => Parsing s (First s) where
   First np sp <?> e = First (np <?> e) sp
 
 
-newtype ParserK s a = ParserK { runParserK :: [s] -> Set.Set s -> (a, [s]) }
+newtype ParserCont s a = ParserCont { runParserCont :: [s] -> Set.Set s -> (a, [s]) }
   deriving (Functor)
 
 
