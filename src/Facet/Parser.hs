@@ -4,6 +4,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Parser
 ( Parsing(..)
+, string
 , Null(..)
 , First(..)
 , Parser(..)
