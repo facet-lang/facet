@@ -65,8 +65,6 @@ class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (
   infixl 9 $$
 
   inlr :: repr sig a -> repr sig b -> repr sig (a, b)
-  exl :: repr sig (a, b) -> repr sig a
-  exr :: repr sig (a, b) -> repr sig b
 
   inl :: repr sig a -> repr sig (Either a b)
   inr :: repr sig b -> repr sig (Either a b)
@@ -124,7 +122,7 @@ curry' :: Expr repr => repr sig (repr sig (repr sig (a, b) -> repr sig c) -> rep
 curry' = lam0 $ \ f -> lam0 $ \ a -> lam0 $ \ b -> val f $$ inlr (val a) (val b)
 
 uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig (a, b) -> repr sig c))
-uncurry' = lam0 $ \ f -> lam0 $ \ ab -> val f $$ exl (val ab) $$ exr (val ab)
+uncurry' = lam0 $ \ f -> lam0 $ \ ab -> val f $$ fmap fst (val ab) $$ fmap snd (val ab)
 
 get :: (Expr repr, Member (State (repr None s)) sig) => repr sig s
 get = alg $ Eff (inj Get) val
