@@ -8,6 +8,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -54,7 +55,7 @@ import Data.Bifunctor (first)
 import Data.Kind (Type)
 import Data.Functor.Sum
 
-class Expr (repr :: (Type -> Type) -> (Type -> Type)) where
+class (forall sig . Functor (repr sig)) => Expr (repr :: (Type -> Type) -> (Type -> Type)) where
   -- | Values embed into computations at every signature.
   val :: repr None a -> repr sig a
 
