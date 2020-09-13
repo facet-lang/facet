@@ -2,7 +2,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuantifiedConstraints #-}
@@ -36,11 +35,10 @@ module Facet.Expr
 ) where
 
 import Data.Bifunctor (first)
-import Data.Kind (Type)
 import Data.Functor.Sum
 import Facet.Signature
 
-class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (Type -> Type)) where
+class (forall sig . Applicative (repr sig)) => Expr repr where
   lam :: (Either (repr None a) (Eff eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
