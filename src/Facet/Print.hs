@@ -17,7 +17,7 @@ import           Data.Kind (Type)
 import qualified Data.Text.Prettyprint.Doc as PP
 import qualified Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
 import           Facet.Expr
-import           Facet.Pretty hiding (Doc, PrecDoc)
+import           Facet.Pretty hiding (PrecDoc)
 import qualified Facet.Pretty as P
 
 prettyPrint :: MonadIO m => Print sig a -> m ()
@@ -49,10 +49,10 @@ getDoc :: Doc -> PP.Doc (Nest Highlight)
 getDoc (Doc doc) = rainbow (runPrec (Level 0) doc)
 
 newtype Doc = Doc (Prec (Rainbow (PP.Doc (Nest Highlight))))
-  deriving (P.Doc (Nest Highlight), Monoid, P.PrecDoc (Nest Highlight), Semigroup, Show)
+  deriving (Monoid, P.PrecDoc (Nest Highlight), Printer (Nest Highlight), Semigroup, Show)
 
 newtype Print (sig :: Type -> Type) a = Print { runPrint :: Fresh Doc }
-  deriving (P.Doc (Nest Highlight), Functor, Monoid, P.PrecDoc (Nest Highlight), Semigroup)
+  deriving (Functor, Monoid, P.PrecDoc (Nest Highlight), Printer (Nest Highlight), Semigroup)
   deriving (Applicative) via Const (Fresh Doc)
 
 data Highlight
@@ -69,7 +69,7 @@ instance Expr Print where
 
   weakenBy _ = Print . runPrint
 
-cases :: P.Doc ann doc => [Fresh doc -> (Fresh doc, Fresh doc)] -> Fresh doc
+cases :: Printer ann doc => [Fresh doc -> (Fresh doc, Fresh doc)] -> Fresh doc
 cases cs = bind $ \ var -> group
   . encloseSep
     (lbrace <> flatAlt space mempty)

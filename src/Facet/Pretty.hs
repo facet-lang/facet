@@ -6,7 +6,7 @@
 -- FIXME: move this whole module into a new package?
 module Facet.Pretty
 ( putDoc
-, Doc(..)
+, Printer(..)
 , space
 , line
 , line'
@@ -56,7 +56,7 @@ putDoc doc = do
   liftIO (ANSI.renderIO stdout (PP.layoutSmart PP.defaultLayoutOptions { PP.layoutPageWidth = PP.AvailablePerLine s 0.8 } (doc <> PP.line)))
 
 
-class Monoid doc => Doc ann doc | doc -> ann where
+class Monoid doc => Printer ann doc | doc -> ann where
   pretty :: PP.Pretty a => a -> doc
 
   hardline :: doc
@@ -78,7 +78,7 @@ class Monoid doc => Doc ann doc | doc -> ann where
   braces :: doc -> doc
   braces = enclose lbrace rbrace
 
-instance Doc ann (PP.Doc ann) where
+instance Printer ann (PP.Doc ann) where
   pretty = PP.pretty
 
   hardline = PP.hardline
@@ -91,7 +91,7 @@ instance Doc ann (PP.Doc ann) where
 
   flatAlt = PP.flatAlt
 
-instance (Applicative f, Doc ann a) => Doc ann (Ap f a) where
+instance (Applicative f, Printer ann a) => Printer ann (Ap f a) where
   pretty = pure . pretty
 
   hardline = pure hardline
@@ -110,7 +110,7 @@ instance (Applicative f, Doc ann a) => Doc ann (Ap f a) where
 
   braces = fmap braces
 
-instance Doc ann a => Doc ann (b -> a) where
+instance Printer ann a => Printer ann (b -> a) where
   pretty = pure . pretty
 
   hardline = pure hardline
@@ -129,40 +129,40 @@ instance Doc ann a => Doc ann (b -> a) where
 
   braces = fmap braces
 
-space :: Doc ann doc => doc
+space :: Printer ann doc => doc
 space = pretty ' '
 
-line :: Doc ann doc => doc
+line :: Printer ann doc => doc
 line = flatAlt hardline space
 
-line' :: Doc ann doc => doc
+line' :: Printer ann doc => doc
 line' = flatAlt hardline mempty
 
-lparen, rparen :: Doc ann doc => doc
+lparen, rparen :: Printer ann doc => doc
 lparen = pretty '('
 rparen = pretty ')'
 
-lbracket, rbracket :: Doc ann doc => doc
+lbracket, rbracket :: Printer ann doc => doc
 lbracket = pretty '['
 rbracket = pretty ']'
 
-lbrace, rbrace :: Doc ann doc => doc
+lbrace, rbrace :: Printer ann doc => doc
 lbrace = pretty '{'
 rbrace = pretty '}'
 
-enclose :: Doc ann doc => doc -> doc -> doc -> doc
+enclose :: Printer ann doc => doc -> doc -> doc -> doc
 enclose l r x = l <> x <> r
 
-surround :: Doc ann doc => doc -> doc -> doc -> doc
+surround :: Printer ann doc => doc -> doc -> doc -> doc
 surround x l r = enclose l r x
 
-encloseSep :: Doc ann doc => doc -> doc -> doc -> [doc] -> doc
+encloseSep :: Printer ann doc => doc -> doc -> doc -> [doc] -> doc
 encloseSep l r s ds = case ds of
   []  -> l <> r
   [d] -> l <> d <> r
   _   -> cat (zipWith (<>) (l : repeat s) ds) <> r
 
-tupled :: Doc ann doc => [doc] -> doc
+tupled :: Printer ann doc => [doc] -> doc
 tupled
   = group
   . encloseSep
@@ -170,34 +170,34 @@ tupled
     (flatAlt space mempty <> rparen)
     (pretty ", ")
 
-cat :: Doc ann doc => [doc] -> doc
+cat :: Printer ann doc => [doc] -> doc
 cat = group . vcat
 
-vcat :: Doc ann doc => [doc] -> doc
+vcat :: Printer ann doc => [doc] -> doc
 vcat = concatWith (surround line')
 
-sep :: Doc ann doc => [doc] -> doc
+sep :: Printer ann doc => [doc] -> doc
 sep = group . vsep
 
-vsep :: Doc ann doc => [doc] -> doc
+vsep :: Printer ann doc => [doc] -> doc
 vsep = concatWith (</>)
 
-concatWith :: (Doc ann doc, Foldable t) => (doc -> doc -> doc) -> t doc -> doc
+concatWith :: (Printer ann doc, Foldable t) => (doc -> doc -> doc) -> t doc -> doc
 concatWith (<>) ds
   | null ds   = mempty
   | otherwise = foldr1 (<>) ds
 
-(<+>) :: Doc ann doc => doc -> doc -> doc
+(<+>) :: Printer ann doc => doc -> doc -> doc
 (<+>) = surround space
 
 infixr 6 <+>
 
-(</>) :: Doc ann doc => doc -> doc -> doc
+(</>) :: Printer ann doc => doc -> doc -> doc
 (</>) = surround line
 
 infixr 6 </>
 
-parensIf :: Doc ann doc => Bool -> doc -> doc
+parensIf :: Printer ann doc => Bool -> doc -> doc
 parensIf True = parens
 parensIf _    = id
 
@@ -205,7 +205,7 @@ parensIf _    = id
 newtype Level = Level Int
   deriving (Eq, Ord, Show)
 
-class Doc ann doc => PrecDoc ann doc where
+class Printer ann doc => PrecDoc ann doc where
   prec :: Level -> doc -> doc
   resetPrec :: Level -> doc -> doc
 
@@ -219,7 +219,7 @@ newtype Prec a = Prec (Level -> a)
 instance Show a => Show (Prec a) where
   showsPrec p = showsPrec p . runPrec (Level p)
 
-instance Doc ann doc => Doc ann (Prec doc) where
+instance Printer ann doc => Printer ann (Prec doc) where
   pretty = pure . pretty
 
   hardline = pure hardline
@@ -236,7 +236,7 @@ instance Doc ann doc => Doc ann (Prec doc) where
   brackets = fmap brackets . resetPrec (Level 0)
   braces   = fmap braces   . resetPrec (Level 0)
 
-instance Doc ann doc => PrecDoc ann (Prec doc) where
+instance Printer ann doc => PrecDoc ann (Prec doc) where
   prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
   resetPrec l (Prec d) = Prec $ \ _ -> d l
 
@@ -266,7 +266,7 @@ newtype Rainbow doc = Rainbow { runRainbow :: Nesting -> doc }
 instance Show doc => Show (Rainbow doc) where
   showsPrec p = showsPrec p . rainbow
 
-instance Doc (Nest ann) doc => Doc (Nest ann) (Rainbow doc) where
+instance Printer (Nest ann) doc => Printer (Nest ann) (Rainbow doc) where
   pretty = pure . pretty
 
   hardline = pure hardline
@@ -283,7 +283,7 @@ instance Doc (Nest ann) doc => Doc (Nest ann) (Rainbow doc) where
   brackets = nestRainbow lbracket rbracket
   braces   = nestRainbow lbrace   rbrace
 
-nestRainbow :: Doc (Nest ann) doc => doc -> doc -> Rainbow doc -> Rainbow doc
+nestRainbow :: Printer (Nest ann) doc => doc -> doc -> Rainbow doc -> Rainbow doc
 nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (Nest lv) l <> run (Nesting (1 + getNesting lv)) <> annotate (Nest lv) r
 
 instance PrecDoc (Nest ann) doc => PrecDoc (Nest ann) (Rainbow doc) where
@@ -304,11 +304,11 @@ incr = Var . succ . getVar
 fresh :: Fresh doc -> doc
 fresh = (`runFresh` Var 0)
 
-bind :: Doc ann doc => (Fresh doc -> Fresh doc) -> Fresh doc
+bind :: Printer ann doc => (Fresh doc -> Fresh doc) -> Fresh doc
 bind f = Fresh $ \ v -> runFresh (f (pretty v)) (incr v)
 
 newtype Fresh doc = Fresh { runFresh :: Var -> doc }
-  deriving (Applicative, Doc ann, Functor, Monad, Monoid, PrecDoc ann, Semigroup)
+  deriving (Applicative, Printer ann, Functor, Monad, Monoid, PrecDoc ann, Semigroup)
 
 instance Show doc => Show (Fresh doc) where
   showsPrec p = showsPrec p . fresh
