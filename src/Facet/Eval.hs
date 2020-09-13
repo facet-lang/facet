@@ -1,6 +1,7 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE EmptyCase #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 module Facet.Eval
 ( Eval(..)
@@ -11,37 +12,43 @@ module Facet.Eval
 ) where
 
 import Control.Applicative (liftA, liftA2)
-import Control.Monad (ap)
-import Control.Monad.Trans.Cont
-import Control.Monad.Trans.Reader
+import Control.Monad (ap, (<=<))
 import Data.Bool (bool)
 import Data.Kind (Type)
 import Facet.Expr
 
-newtype Eval (sig :: Type -> Type) a = Eval { runEval :: forall r . ReaderT (Handler None r) (Cont r) a }
+newtype Eval sig a = Eval { runEval :: forall r . (forall k . sig k -> (k -> Eval sig a) -> r) -> (a -> r) -> r }
 
-eval :: Handler None r -> (a -> r) -> Eval sig a -> r
-eval h k e = runCont (runReaderT (runEval e) h) k
+eval :: (forall k . sig k -> (k -> Eval sig a) -> r) -> (a -> r) -> Eval sig a -> r
+eval h k e = runEval e h k
 
-eval0 :: Eval None a -> a
-eval0 = eval (Handler (const . absurd)) id
+eval0 :: (a -> r) -> Eval None a -> r
+eval0 = eval (\case{})
 
 instance Functor (Eval sig) where
   fmap = liftA
 
 instance Applicative (Eval sig) where
-  pure a = Eval $ pure a
+  pure a = Eval $ \ _ k -> k a
 
   (<*>) = ap
 
 instance Monad (Eval sig) where
-  m >>= f = Eval $ runEval m >>= runEval . f
+  m >>= f = Eval $ \ h k -> eval (\ e k' -> h e (f <=< k')) (eval h k . f) m
 
 instance Expr Eval where
-  val = pure . eval0
+  val = pure . eval0 id
 
-  lam f = Eval $ pure $ f . Left . eval (Handler (const . absurd)) pure
-  f $$ a = Eval $ runEval f >>= runEval . ($ a)
+  lam f = pure go
+    where
+    go a = Eval $ \ hb kb -> eval
+      (\case
+        InL eff -> eval hb kb . f . Right . Eff eff
+        InR sig -> \ k' -> hb sig (go . k'))
+      (eval hb kb . f . Left . pure)
+      a
+
+  f $$ a = Eval $ \ h k -> runEval f (\ e k' -> h e (($$ a) . k')) $ \ f' -> runEval (f' a) h k
 
   unit = pure ()
 
@@ -57,9 +64,9 @@ instance Expr Eval where
   false = pure False
   iff c t e = c >>= bool e t
 
-  alg (Eff s k) = Eval $ handle s (runEval . k) (error "TBD")
+  alg (Eff e k) = Eval $ \ h _ -> h e k
 
-  weaken e = Eval $ runEval e
+  weaken e = Eval $ \ h k -> eval (\ e k' -> h (InR e) (weaken . k')) k e
 
 
 newtype Handler (sig :: Type -> Type) r = Handler { runHandler :: forall a . sig a -> (a -> r) -> r }
