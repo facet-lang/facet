@@ -125,6 +125,7 @@ data Token
   | Colon
   | Pipe
   | Arrow
+  | Comment String
   | Ident String
   deriving (Eq, Ord, Show)
 
