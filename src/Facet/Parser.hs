@@ -40,3 +40,6 @@ data First s a = First
   { isNullable :: Nullable s a
   , getFirst :: Set.Set s
   }
+
+instance Functor (First s) where
+  fmap _ = coerce
