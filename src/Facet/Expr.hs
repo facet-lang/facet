@@ -66,7 +66,6 @@ class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (
 
   exlr :: (repr sig a -> repr sig c) -> (repr sig b -> repr sig c) -> (repr sig (Either a b) -> repr sig c)
 
-  true, false :: repr sig Bool
   iff :: repr sig Bool -> repr sig a -> repr sig a -> repr sig a
 
   alg :: Eff sig (repr sig a) -> repr sig a
@@ -152,7 +151,7 @@ runEmpty = lam0 $ \ a -> lam1 $ \case
   Right (Eff Empty _) -> val a
 
 execEmpty :: Expr repr => repr sig (repr (Sum Empty sig) a -> repr sig Bool)
-execEmpty = lam1 (either (const true) (const false))
+execEmpty = lam1 (either (const (pure True)) (const (pure False)))
 
 
 -- Signatures

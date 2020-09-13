@@ -72,8 +72,6 @@ instance Expr Print where
     , \ var -> (pretty "InR" <+> var, runPrint (r (Print var)))
     ]
 
-  true  = annotate (Ann Lit) (pretty "True")
-  false = annotate (Ann Lit) (pretty "False")
   iff c t e = Print $ pretty "if" <+> runPrint c <+> runPrint t <+> runPrint e
 
   alg _ = Print $ pretty "TBD"

@@ -45,8 +45,6 @@ instance Expr Eval where
 
   exlr f g e = e >>= either (f . pure) (g . pure)
 
-  true  = pure True
-  false = pure False
   iff c t e = c >>= bool e t
 
   alg e = Eval $ \ h _ -> h e
