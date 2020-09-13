@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Parser
 ( Parsing(..)
@@ -27,3 +28,7 @@ instance Applicative (Nullable s) where
 instance Alternative (Nullable s) where
   empty = Nullable False
   (<|>) = coerce (||)
+
+instance Parsing s (Nullable s) where
+  symbol _ = Nullable False
+  _ <?> _ = Nullable False
