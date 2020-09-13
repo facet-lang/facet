@@ -67,8 +67,6 @@ instance Expr Print where
   lam f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
   f $$ a = Print $ runPrint f <+> runPrint a
 
-  unit = annotate (Ann Lit) (pretty "()")
-
   inlr (Print a) (Print b) = Print $ tupled [a, b]
   exl (Print p) = Print $ pretty "exl" <+> p
   exr (Print p) = Print $ pretty "exr" <+> p
