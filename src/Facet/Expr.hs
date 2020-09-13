@@ -43,7 +43,7 @@ class (forall sig . Applicative (repr sig)) => Expr repr where
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
-  alg :: Eff sig (repr sig a) -> repr sig a
+  alg :: sig k -> (k -> repr sig a) -> repr sig a
 
   weakenBy :: (forall x . sub x -> sup x) -> repr sub a -> repr sup a
 
@@ -94,10 +94,10 @@ uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b 
 uncurry' = lam0 $ \ f -> lam0 $ \ ab -> val f $$ fmap fst (val ab) $$ fmap snd (val ab)
 
 get :: (Expr repr, Member (State (repr None s)) sig) => repr sig s
-get = alg $ Eff (inj Get) val
+get = alg (inj Get) val
 
 put :: (Expr repr, Member (State (repr None s)) sig) => repr sig (repr sig s -> repr sig ())
-put = lam0 $ \ s -> alg (Eff (inj (Put s)) pure)
+put = lam0 $ \ s -> alg (inj (Put s)) pure
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
@@ -117,7 +117,7 @@ postIncr = get <& put $$ (get + 1 :: repr sig Int)
 
 
 empty :: (Expr repr, Member Empty sig) => repr sig a
-empty = alg $ Eff (inj Empty) pure
+empty = alg (inj Empty) pure
 
 runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr (Sum Empty sig) a -> repr sig a))
 runEmpty = lam0 $ \ a -> lam1 $ \case
