@@ -76,14 +76,14 @@ instance (Ord s, Show s) => Parsing s (Parser s) where
   isNullable = isNullable . first
   firstSet = firstSet . first
   symbol s = Parser (symbol s) (\ i _ -> (s, tail i))
-  pl@(Parser fl kl) <|> pr@(Parser fr kr) = Parser (fl <|> fr) $ \ i f -> case i of
+  pl@(Parser _ kl) <|> pr@(Parser _ kr) = Parser (first pl <|> first pr) $ \ i f -> case i of
     []
       | isNullable pl -> kl [] f
       | isNullable pr -> kr [] f
       | otherwise     -> error "unexpected eof"
     i@(s:_)
-      | Set.member s (getFirst fl)    -> kl i f
-      | Set.member s (getFirst fr)    -> kr i f
+      | Set.member s (firstSet pl)    -> kl i f
+      | Set.member s (firstSet pr)    -> kr i f
       | isNullable pl, Set.member s f -> kl i f
       | isNullable pr, Set.member s f -> kr i f
       | otherwise                     -> error ("illegal input symbol: " <> show s)
