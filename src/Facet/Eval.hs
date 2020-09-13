@@ -55,7 +55,7 @@ instance Expr Eval where
 
   true  = pure True
   false = pure False
-  iff c t e = Eval $ runEval c >>= runEval . bool e t
+  iff c t e = c >>= bool e t
 
   alg (Eff s k) = Eval $ handle s (runEval . k) (error "TBD")
 
