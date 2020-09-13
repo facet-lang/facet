@@ -4,10 +4,12 @@ module Facet.Parser
 ( Parsing(..)
 , Parser(..)
 , Nullable(..)
+, First(..)
 ) where
 
-import Control.Applicative
-import Data.Coerce
+import           Control.Applicative
+import           Data.Coerce
+import qualified Data.Set as Set
 
 class Alternative p => Parsing s p | p -> s where
   symbol :: s -> p s
@@ -32,3 +34,9 @@ instance Alternative (Nullable s) where
 instance Parsing s (Nullable s) where
   symbol _ = Nullable False
   _ <?> _ = Nullable False
+
+
+data First s a = First
+  { isNullable :: Nullable s a
+  , getFirst :: Set.Set s
+  }

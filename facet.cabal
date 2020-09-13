@@ -45,6 +45,7 @@ library
     Facet.Signature
   build-depends:
     , base ^>= 4.14
+    , containers
     , lens
     , prettyprinter
     , prettyprinter-ansi-terminal
