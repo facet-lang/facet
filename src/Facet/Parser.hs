@@ -43,3 +43,12 @@ data First s a = First
 
 instance Functor (First s) where
   fmap _ = coerce
+
+instance Ord s => Applicative (First s) where
+  pure a = First (pure a) Set.empty
+  First nf sf <*> First na sa = First (nf <*> na) (combine nf sf sa)
+
+combine :: Semigroup t => Nullable s a -> t -> t -> t
+combine e s1 s2
+  | getNullable e = s1 <> s2
+  | otherwise     = s1
