@@ -22,3 +22,7 @@ instance Functor Nullable where
 instance Applicative Nullable where
   pure _ = Nullable True
   (<*>) = coerce (&&)
+
+instance Alternative Nullable where
+  empty = Nullable False
+  (<|>) = coerce (||)
