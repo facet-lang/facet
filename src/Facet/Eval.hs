@@ -7,7 +7,6 @@ module Facet.Eval
 ) where
 
 import Control.Monad (ap, liftM, (<=<))
-import Data.Bool (bool)
 import Facet.Expr
 
 newtype Eval sig a = Eval { runEval :: forall r . (Eff sig (Eval sig a) -> r) -> (a -> r) -> r }
