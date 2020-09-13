@@ -53,7 +53,6 @@ class (forall sig . Applicative (repr sig)) => Expr (repr :: (Type -> Type) -> (
 val :: Expr repr => repr None a -> repr sig a
 val = weakenBy absurd
 
--- FIXME: should lam0 & lam1 be primitive instead of lam?
 lam0 :: Expr repr => (repr None a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = (. weakenBy InR) <$> lam (f . either id absurdE)
 
