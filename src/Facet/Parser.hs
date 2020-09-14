@@ -13,15 +13,19 @@ module Facet.Parser
 , some
 , Parser(..)
 , Input(..)
+, Sym(..)
 , Token(..)
 , parse
+, tokenize
 , lexer
 , parens
 , braces
 ) where
 
-import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.CharSet as CharSet
+import qualified Data.IntSet as IntSet
+import           Data.List.NonEmpty (NonEmpty(..))
+import           Prelude hiding (span)
 
 data Pos = Pos { line :: {-# UNPACK #-} !Int, col :: {-# unpack #-} !Int }
   deriving (Eq, Ord, Show)
@@ -38,16 +42,13 @@ data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
 class (Monoid set, Show sym) => Symbol set sym | sym -> set where
   singleton :: sym -> set
   member :: sym -> set -> Bool
-  advance :: Input sym -> sym -> Input sym
 
 instance Symbol CharSet.CharSet Char where
   singleton = CharSet.singleton
   member = CharSet.member
-  advance (Input i p) c = Input (tail i) $ p <> case c of
-    '\n' -> Pos 1 0
-    _    -> Pos 0 1
 
 class Applicative p => Parsing s p | p -> s where
+  position :: p Pos
   symbol :: s -> p s
   (<|>) :: p a -> p a -> p a
   infixl 3 <|>
@@ -66,6 +67,9 @@ many p = opt ((:) <$> p <*> many p) []
 some :: Parsing s p => p a -> p (NonEmpty a)
 some p = (:|) <$> p <*> many p
 
+span :: Parsing s p => p a -> p Span
+span p = Span <$> position <* p <*> position
+
 
 combine :: Semigroup t => Bool -> t -> t -> t
 combine e s1 s2
@@ -81,9 +85,18 @@ data Parser t s a = Parser
   deriving (Functor)
 
 data Input s = Input
-  { input :: ![s]
+  { input :: ![Token s]
   , pos   :: {-# unpack #-} !Pos
   }
+
+advance :: Input sym -> Input sym
+advance (Input i _) = Input (tail i) (end (tokenSpan (head i)))
+
+data Token sym = Token
+  { tokenSymbol :: sym
+  , tokenSpan   :: Span
+  }
+  deriving (Show)
 
 instance Symbol set sym => Applicative (Parser set sym) where
   pure a = Parser True mempty (\ i _ -> (a, i))
@@ -94,13 +107,14 @@ instance Symbol set sym => Applicative (Parser set sym) where
     in  fa' `seq` (fa', i'')
 
 instance Symbol set sym => Parsing sym (Parser set sym) where
-  symbol s = Parser False (singleton s) (\ i _ -> (s, advance i s))
+  position = Parser True mempty $ \ i _ -> (pos i, i)
+  symbol s = Parser False (singleton s) (\ i _ -> (s, advance i))
   pl <|> pr = Parser (nullable pl || nullable pr) (first pl <> first pr) $ \ i f -> case input i of
     []
       | nullable pl -> runParser pl i f
       | nullable pr -> runParser pr i f
       | otherwise   -> error "unexpected eof"
-    s:_
+    Token s _:_
       | member s (first pl)     -> runParser pl i f
       | member s (first pr)     -> runParser pr i f
       | nullable pl, member s f -> runParser pl i f
@@ -108,13 +122,21 @@ instance Symbol set sym => Parsing sym (Parser set sym) where
       | otherwise               -> error ("illegal input symbol: " <> show s)
   p <?> (a, _) = p <|> pure a
 
-parse :: Monoid t => Parser t c a -> [c] -> a
+parse :: Monoid t => Parser t c a -> [Token c] -> a
 parse p s = fst (runParser p (Input s mempty) mempty)
 
+tokenize :: String -> [Token Char]
+tokenize = go mempty
+  where
+  go _ []     = []
+  go p (c:cs) = Token c (Span p p') : go p' cs
+    where
+    p' = p <> case c of
+      '\n' -> Pos 1 0
+      _    -> Pos 0 1
 
--- FIXME: we need to be able to associate spans with tokens
 
-data Token
+data Sym
   = LBrace
   | RBrace
   | LParen
@@ -125,18 +147,23 @@ data Token
   | Ident
   deriving (Enum, Eq, Ord, Show)
 
-lexer :: Parsing Char p => p [Token]
-lexer = many
-  $   LBrace <$ symbol '{'
-  <|> RBrace <$ symbol '}'
-  <|> LParen <$ symbol '('
-  <|> RParen <$ symbol ')'
-  <|> Colon  <$ symbol ':'
-  <|> Pipe   <$ symbol '|'
-  <|> Arrow  <$ string "->"
+instance Symbol IntSet.IntSet Sym where
+  singleton = IntSet.singleton . fromEnum
+  member = IntSet.member . fromEnum
 
-parens :: Parsing Token p => p a -> p a
+
+lexer :: Parsing Char p => p [Token Sym]
+lexer = many
+  $   Token LBrace <$> span (symbol '{')
+  <|> Token RBrace <$> span (symbol '}')
+  <|> Token LParen <$> span (symbol '(')
+  <|> Token RParen <$> span (symbol ')')
+  <|> Token Colon  <$> span (symbol ':')
+  <|> Token Pipe   <$> span (symbol '|')
+  <|> Token Arrow  <$> span (string "->")
+
+parens :: Parsing Sym p => p a -> p a
 parens a = symbol LParen *> a <* symbol RParen
 
-braces :: Parsing Token p => p a -> p a
+braces :: Parsing Sym p => p a -> p a
 braces a = symbol LBrace *> a <* symbol RBrace
