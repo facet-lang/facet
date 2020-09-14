@@ -31,7 +31,7 @@ module Facet.Parser
 , Notice(..)
 , prettyNotice
 , Token(..)
-, lexString
+, parseString
 , lexAndParseString
 , parse
 , tokenize
@@ -333,8 +333,8 @@ instance (Symbol sym, set ~ Set sym) => Parsing sym (Parser set sym) where
   pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
   fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
 
-lexString :: Maybe FilePath -> Parser CharSet.CharSet Char a -> String -> ([Notice], a)
-lexString path p s = first errs (parse p (sourceFromString path s) (tokenize s))
+parseString :: Maybe FilePath -> Parser CharSet.CharSet Char a -> String -> ([Notice], a)
+parseString path p s = first errs (parse p (sourceFromString path s) (tokenize s))
 
 lexAndParseString :: Symbol sym => Maybe FilePath -> Parser CharSet.CharSet Char [Token sym] -> Parser (Set sym) sym a -> String -> ([Notice], a)
 lexAndParseString path l p s = (errs sl ++ errs sp, a)
