@@ -29,10 +29,8 @@ module Facet.Parser
 , prettyLevel
 , Notice(..)
 , prettyNotice
-, Token(..)
 , parseString
 , parse
-, tokenize
 , parser
 , parens
 , braces
@@ -153,10 +151,10 @@ choose p choices = go
   where
   go i noskip = case input i of
     []  -> insertOrNull p i
-    s:_ -> let s' = tokenSymbol s in case Map.lookup s' choices of
+    s:_ -> case Map.lookup s choices of
       Nothing
-        | any (member s') noskip -> insertOrNull p i
-        | otherwise              -> choose p choices (advance i{ errs = errs i ++ [ deleted (show s') i ] }) noskip
+        | any (member s) noskip -> insertOrNull p i
+        | otherwise             -> choose p choices (advance i{ errs = errs i ++ [ deleted (show s) i ] }) noskip
       Just k -> k i noskip
 
 insertOrNull :: Null a -> State -> (State, a)
@@ -175,13 +173,18 @@ type ParserCont a = State -> [CharSet.CharSet] -> (State, a)
 
 data State = State
   { src   :: Source
-  , input :: [Token]
+  , input :: String
   , errs  :: [Notice]
   , pos   :: {-# unpack #-} !Pos
   }
 
 advance :: State -> State
-advance (State s i es _) = State s (tail i) es (end (tokenSpan (head i)))
+advance (State s i es (Pos l c)) = State s (tail i) es p
+  where
+  p = case head i of
+    '\n' -> Pos (l + 1) 0
+    _    -> Pos l       (c + 1)
+
 
 stateExcerpt :: State -> Excerpt
 stateExcerpt i = Excerpt (path (src i)) (src i ! pos i) (Span (pos i) (pos i))
@@ -295,13 +298,6 @@ blue    = annotate $ color Blue
 magenta = annotate $ color Magenta
 
 
-data Token = Token
-  { tokenSymbol :: Char
-  , tokenSource :: Maybe String -- ^ will be Nothing for tokens for which it would be constant
-  , tokenSpan   :: Span
-  }
-  deriving (Show)
-
 instance Applicative Parser where
   pure a = Parser (pure a) mempty []
   Parser nf ff tf <*> ~(Parser na fa ta) = Parser (nf <*> na) (combine (nullable nf) ff fa) $ tseq tf ta
@@ -328,22 +324,12 @@ instance Parsing Parser where
   fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
 
 parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
-parseString path p s = first errs (parse p (sourceFromString path s) (tokenize s))
+parseString path p s = first errs (parse p (sourceFromString path s) s)
 
-parse :: Parser a -> Source -> [Token] -> (State, a)
+parse :: Parser a -> Source -> String -> (State, a)
 parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   where
   choices = Map.fromList (table p)
-
-tokenize :: String -> [Token]
-tokenize = go (Pos 0 0)
-  where
-  go _ []     = []
-  go p@(Pos l c) (x:xs) = Token x Nothing (Span p p') : go p' xs
-    where
-    p' = case x of
-      '\n' -> Pos (l + 1) 0
-      _    -> Pos l       (c + 1)
 
 
 parser :: Parsing p => p [Name]
