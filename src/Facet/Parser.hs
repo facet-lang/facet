@@ -16,8 +16,8 @@ module Facet.Parser
 , spanned
 , Parser(..)
 , State(..)
-, Lines(..)
-, linesFromString
+, Source(..)
+, sourceFromString
 , takeLine
 , substring
 , (!)
@@ -58,7 +58,7 @@ instance Symbol CharSet.CharSet Char where
 
 class Applicative p => Parsing s p | p -> s where
   position :: p Pos
-  source :: p Lines
+  source :: p Source
   symbol :: s -> p s
   (<|>) :: p a -> p a -> p a
   infixl 3 <|>
@@ -155,7 +155,7 @@ data Parser t s a = Parser
 type ParserCont t s a = State s -> [t] -> (State s, a)
 
 data State s = State
-  { lines :: Lines
+  { src   :: Source
   , input :: [Token s]
   , errs  :: [String]
   , pos   :: {-# unpack #-} !Pos
@@ -165,16 +165,19 @@ advance :: State sym -> State sym
 advance (State s i es _) = State s (tail i) es (end (tokenSpan (head i)))
 
 
-newtype Lines = Lines { getLines :: [String] }
+data Source = Source
+  { path  :: Maybe FilePath
+  , lines :: [String]
+  }
   deriving (Eq, Ord, Show)
 
-linesFromString :: String -> Lines
-linesFromString = Lines . go
+sourceFromString :: Maybe FilePath -> String -> Source
+sourceFromString path = Source path . go
   where
   go = \case
     "" -> [""]
     s  -> let (line, rest) = takeLine s in line : either (const []) go rest
-{-# inline linesFromString #-}
+{-# inline sourceFromString #-}
 
 takeLine :: String -> (String, Either String String)
 takeLine = go id where
@@ -187,8 +190,8 @@ takeLine = go id where
     c   :rest -> go (line . (c:)) rest
 {-# inline takeLine #-}
 
-substring :: Lines -> Span -> String
-substring lines (Span (Pos sl sc) (Pos el ec)) = concat (onHead (drop sc) (onLast (take ec) (drop sl (take el (getLines lines)))))
+substring :: Source -> Span -> String
+substring source (Span (Pos sl sc) (Pos el ec)) = concat (onHead (drop sc) (onLast (take ec) (drop sl (take el (lines source)))))
   where
   onHead f = \case
     []   -> []
@@ -200,8 +203,8 @@ substring lines (Span (Pos sl sc) (Pos el ec)) = concat (onHead (drop sc) (onLas
       [x]  -> [f x]
       x:xs -> x:go xs
 
-(!) :: Lines -> Pos -> String
-Lines lines ! pos = lines !! line pos
+(!) :: Source -> Pos -> String
+Source _ lines ! pos = lines !! line pos
 {-# INLINE (!) #-}
 
 infixl 9 !
@@ -233,23 +236,23 @@ instance Symbol set sym => Applicative (Parser set sym) where
 
 instance Symbol set sym => Parsing sym (Parser set sym) where
   position = Parser (Null pos) mempty []
-  source = Parser (Null lines) mempty []
+  source = Parser (Null src) mempty []
   symbol s = Parser (Insert (const s) [ inserted s ]) (singleton s) [(s, \ i _ -> (advance i, s))]
   -- FIXME: warn on non-disjoint first sets
   pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
   p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty []
 
-lexString :: Parser CharSet.CharSet Char a -> String -> ([String], a)
-lexString p s = first errs (parse p (linesFromString s) (tokenize s))
+lexString :: Maybe FilePath -> Parser CharSet.CharSet Char a -> String -> ([String], a)
+lexString path p s = first errs (parse p (sourceFromString path s) (tokenize s))
 
-parseString :: Symbol set sym => Parser CharSet.CharSet Char [Token sym] -> Parser set sym a -> String -> ([String], a)
-parseString l p s = (errs sl ++ errs sp, a)
+parseString :: Symbol set sym => Maybe FilePath -> Parser CharSet.CharSet Char [Token sym] -> Parser set sym a -> String -> ([String], a)
+parseString path l p s = (errs sl ++ errs sp, a)
   where
-  lines = linesFromString s
+  lines = sourceFromString path s
   (sl, ts) = parse l lines (tokenize s)
   (sp, a)  = parse p lines ts
 
-parse :: Symbol set s => Parser set s a -> Lines -> [Token s] -> (State s, a)
+parse :: Symbol set s => Parser set s a -> Source -> [Token s] -> (State s, a)
 parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   where
   choices = Map.fromList (table p)
