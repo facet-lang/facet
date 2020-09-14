@@ -48,9 +48,9 @@ import qualified Data.IntSet as IntSet
 import           Data.List (isSuffixOf)
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map as Map
-import           Data.Text.Prettyprint.Doc hiding (braces, line, parens)
-import           Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
 import           Prelude hiding (fail, lines, null, span)
+import           Prettyprinter hiding (braces, line, parens)
+import           Prettyprinter.Render.Terminal as ANSI
 
 data Pos = Pos { line :: {-# unpack #-} !Int, col :: {-# unpack #-} !Int }
   deriving (Eq, Ord, Show)
