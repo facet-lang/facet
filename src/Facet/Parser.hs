@@ -23,6 +23,10 @@ module Facet.Parser
 , (!)
 , Excerpt(..)
 , excerpted
+, Level(..)
+, prettyLevel
+, Notice(..)
+, prettyNotice
 , Sym(..)
 , Token(..)
 , lexString
@@ -37,8 +41,11 @@ module Facet.Parser
 import           Data.Bifunctor (first)
 import qualified Data.CharSet as CharSet
 import qualified Data.IntSet as IntSet
+import           Data.List (isSuffixOf)
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map as Map
+import           Data.Text.Prettyprint.Doc hiding (braces, line, parens)
+import           Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
 import           Prelude hiding (lines, null, span)
 
 data Pos = Pos { line :: {-# unpack #-} !Int, col :: {-# unpack #-} !Int }
@@ -223,6 +230,56 @@ excerpted :: Parsing s p => p a -> p (Excerpt, a)
 excerpted p = first . mk <$> source <*> spanned p
   where
   mk src span = Excerpt (path src) (src ! start span) span
+
+
+data Level
+  = Warn
+  | Error
+  deriving (Eq, Ord, Show)
+
+prettyLevel :: Level -> Doc AnsiStyle
+prettyLevel = \case
+  Warn  -> magenta (pretty "warning")
+  Error -> red     (pretty "error")
+
+
+data Notice = Notice
+  { level   :: !(Maybe Level)
+  , excerpt :: {-# UNPACK #-} !Excerpt
+  , reason  :: !(Doc AnsiStyle)
+  , context :: ![Doc AnsiStyle]
+  }
+  deriving (Show)
+
+prettyNotice :: Notice -> Doc AnsiStyle
+prettyNotice (Notice level (Excerpt path text span) reason context) = vsep
+  ( nest 2 (group (fillSep
+    [ bold (pretty path) <> colon <> pos (start span) <> colon <> foldMap ((space <>) . (<> colon) . prettyLevel) level
+    , reason
+    ]))
+  : blue (pretty (succ (line (start span)))) <+> align (vcat
+    [ blue (pretty '|') <+> pretty text <> if "\n" `isSuffixOf` text then mempty else blue (pretty "<end of input>")
+    , blue (pretty '|') <+> padding span <> caret span
+    ])
+  : context)
+  where
+  pos (Pos l c) = bold (pretty (succ l)) <> colon <> bold (pretty (succ c))
+
+  padding (Span (Pos _ c) _) = pretty (replicate c ' ')
+
+  caret (Span start@(Pos sl sc) end@(Pos el ec))
+    | start == end = green (pretty '^')
+    | sl    == el  = green (pretty (replicate (ec - sc) '~'))
+    | otherwise    = green (pretty "^…")
+
+  bold = annotate ANSI.bold
+
+
+red, green, blue, magenta :: Doc AnsiStyle -> Doc AnsiStyle
+red     = annotate $ color Red
+green   = annotate $ color Green
+blue    = annotate $ color Blue
+magenta = annotate $ color Magenta
 
 
 data Token sym = Token
