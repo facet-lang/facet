@@ -13,7 +13,6 @@ module Facet.Parser
 , some
 , Parser(..)
 , Input(..)
-, advance
 , Token(..)
 , parse
 , lexer
@@ -37,11 +36,12 @@ data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
   deriving (Eq, Ord, Show)
 
 class (Ord s, Show s) => Symbol s where
-  delta :: s -> Pos
+  advance :: Input s -> s -> Input s
 
 instance Symbol Char where
-  delta '\n' = Pos 1 0
-  delta _    = Pos 0 1
+  advance (Input i p) c = Input (tail i) $ p <> case c of
+    '\n' -> Pos 1 0
+    _    -> Pos 0 1
 
 class (Symbol s, Applicative p) => Parsing s p | p -> s where
   symbol :: s -> p s
@@ -80,9 +80,6 @@ data Input s = Input
   { input :: ![s]
   , pos   :: {-# unpack #-} !Pos
   }
-
-advance :: Symbol s => Input s -> s -> Input s
-advance (Input i p) s = Input (tail i) (p <> delta s)
 
 instance Symbol s => Applicative (Parser s) where
   pure a = Parser True Set.empty (\ i _ -> (a, i))
