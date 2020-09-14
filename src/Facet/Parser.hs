@@ -365,6 +365,8 @@ data Sym
   | Ident
   deriving (Enum, Eq, Ord, Show)
 
+instance Pretty Sym where pretty = pretty . show
+
 instance Symbol Sym where
   type Set Sym = IntSet.IntSet
   singleton = IntSet.singleton . fromEnum
