@@ -15,6 +15,7 @@ module Facet.Parser
 , First(..)
 , Parser(..)
 , Input(..)
+, advance
 , Token(..)
 , parse
 , lexer
@@ -112,6 +113,9 @@ data Input s = Input
   { input :: ![s]
   , pos   :: {-# unpack #-} !Pos
   }
+
+advance :: Symbol s => Input s -> s -> Input s
+advance (Input i p) s = Input (tail i) (p <> delta s)
 
 instance Symbol s => Applicative (Parser s) where
   pure a = Parser (pure a) (\ i _ -> (a, i))
