@@ -145,7 +145,7 @@ instance Symbol set sym => Parsing sym (Parser set sym) where
       | nullable pl, member s f -> runParser pl i f
       | nullable pr, member s f -> runParser pr i f
       | otherwise               -> error ("illegal input symbol: " <> show s)
-  p <?> (a, _) = p <|> pure a
+  p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty (\ i _ -> (a, i))
 
 parse :: Monoid t => Parser t c a -> [Token c] -> a
 parse p s = fst (runParser p (Input s mempty) mempty)
