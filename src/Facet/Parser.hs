@@ -28,14 +28,14 @@ import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map as Map
 import           Prelude hiding (null, span)
 
-data Pos = Pos { line :: {-# unpack #-} !Int, col :: {-# unpack #-} !Int }
+data Pos = Pos { line :: {-# unpack #-} !Int, col :: {-# unpack #-} !Int, index :: {-# unpack #-} !Int }
   deriving (Eq, Ord, Show)
 
 instance Semigroup Pos where
-  Pos l1 c1 <> Pos l2 c2 = Pos (l1 + l2) (c1 + c2)
+  Pos l1 c1 i1 <> Pos l2 c2 i2 = Pos (l1 + l2) (c1 + c2) (i1 + i2)
 
 instance Monoid Pos where
-  mempty = Pos 0 0
+  mempty = Pos 0 0 0
 
 data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
   deriving (Eq, Ord, Show)
@@ -195,8 +195,8 @@ tokenize = go mempty
   go p (c:cs) = Token c Nothing (Span p p') : go p' cs
     where
     p' = p <> case c of
-      '\n' -> Pos 1 0
-      _    -> Pos 0 1
+      '\n' -> Pos 1 0 1
+      _    -> Pos 0 1 1
 
 
 data Sym
