@@ -97,7 +97,7 @@ opt :: Parsing s p => p a -> a -> p a
 opt p v = p <|> pure v
 
 many :: Parsing s p => p a -> p [a]
-many p = opt ((:) <$> p <*> many p) []
+many p = go where go = opt ((:) <$> p <*> go) []
 
 some :: Parsing s p => p a -> p [a]
 some p = (:) <$> p <*> many p
