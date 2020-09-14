@@ -25,6 +25,7 @@ module Facet.Parser
 , braces
 ) where
 
+import           Data.Bifunctor (first)
 import qualified Data.CharSet as CharSet
 import qualified Data.IntSet as IntSet
 import           Data.List.NonEmpty (NonEmpty(..))
@@ -224,9 +225,8 @@ parseString l p s = (el ++ ep, a)
   (ep, a)  = parse p lines ts
 
 parse :: Symbol set s => Parser set s a -> Lines -> [Token s] -> ([String], a)
-parse p ls s = (errs i, a)
+parse p ls s = first errs (choose (null p) choices (State ls s mempty (Pos 0 0 0)) mempty)
   where
-  (i, a) = choose (null p) choices (State ls s mempty (Pos 0 0 0)) mempty
   choices = Map.fromList (table p)
 
 tokenize :: String -> [Token Char]
