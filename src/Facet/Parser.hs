@@ -120,7 +120,7 @@ data Token
   | Pipe
   | Arrow
   | Ident
-  deriving (Eq, Ord, Show)
+  deriving (Enum, Eq, Ord, Show)
 
 lexer :: Parsing Char p => p [Token]
 lexer = many
