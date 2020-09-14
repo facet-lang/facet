@@ -143,10 +143,10 @@ instance Applicative (Null s) where
       Insert a sa -> Insert (f <*> a) sa
     Insert f sf -> Insert (f <*> getNull a) (combine (not (nullable a)) sf (getErrors a))
 
-inserted :: Show s => s -> State s -> Notice
+inserted :: Show a => a -> State s -> Notice
 inserted s i = Notice (Just Error) (stateExcerpt i) (pretty "inserted" <+> pretty (show s)) []
 
-deleted :: Show s => s -> State s -> Notice
+deleted :: Show a => a -> State s -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (pretty "deleted"  <+> pretty (show s)) []
 
 alt :: Null s a -> Null s a -> Null s a
