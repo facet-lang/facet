@@ -29,6 +29,9 @@ import qualified Data.Set as Set
 data Pos = Pos { line :: {-# UNPACK #-} !Int, col :: {-# unpack #-} !Int }
   deriving (Eq, Ord, Show)
 
+instance Semigroup Pos where
+  Pos l1 c1 <> Pos l2 c2 = Pos (l1 + l2) (c1 + c2)
+
 data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
   deriving (Eq, Ord, Show)
 
