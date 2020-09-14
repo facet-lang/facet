@@ -11,6 +11,7 @@ module Facet.Parser
 , Parsing(..)
 , (<?>)
 , string
+, set
 , opt
 , many
 , some
@@ -86,6 +87,9 @@ infixl 2 <?>
 
 string :: Parsing Char p => String -> p String
 string s = foldr ((*>) . symbol) (pure s) s
+
+set :: Parsing s p => Set s -> s -> String -> p s
+set t a s = foldr ((<|>) . symbol) (fail a s) (toList t)
 
 opt :: Parsing s p => p a -> a -> p a
 opt p v = p <|> pure v
