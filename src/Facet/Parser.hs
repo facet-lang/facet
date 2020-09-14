@@ -35,7 +35,6 @@ module Facet.Parser
 , lexAndParseString
 , parse
 , tokenize
-, Sym(..)
 , parser
 , parens
 , braces
@@ -44,7 +43,6 @@ module Facet.Parser
 import           Data.Bifunctor (first)
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as CharSet
-import qualified Data.IntSet as IntSet
 import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
@@ -357,24 +355,6 @@ tokenize = go (Pos 0 0)
       _    -> Pos l       (c + 1)
 
 
-data Sym
-  = LBrace
-  | RBrace
-  | LParen
-  | RParen
-  | Colon
-  | Pipe
-  | Arrow
-  | Ident
-  deriving (Enum, Eq, Ord, Show)
-
-instance Symbol Sym where
-  type Set Sym = IntSet.IntSet
-  singleton = IntSet.singleton . fromEnum
-  member    = IntSet.member    . fromEnum
-  toList    = map toEnum . IntSet.toList
-
-
 parser :: Parsing Char p => p [Name]
 parser = ws *> many (some (ident <* ws))
   where
@@ -382,11 +362,11 @@ parser = ws *> many (some (ident <* ws))
   ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 
-parens :: Parsing Sym p => p a -> p a
-parens a = symbol LParen *> a <* symbol RParen
+parens :: Parsing Char p => p a -> p a
+parens a = symbol '(' *> a <* symbol ')'
 
-braces :: Parsing Sym p => p a -> p a
-braces a = symbol LBrace *> a <* symbol RBrace
+braces :: Parsing Char p => p a -> p a
+braces a = symbol '{' *> a <* symbol '}'
 
 
 type Name = String
