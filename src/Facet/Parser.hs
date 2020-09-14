@@ -46,7 +46,8 @@ import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Prelude hiding (fail, lines, null, span)
-import           Prettyprinter hiding (braces, line, parens)
+import           Prettyprinter hiding (braces, colon, line, parens)
+import qualified Prettyprinter as P
 import           Prettyprinter.Render.Terminal as ANSI
 
 data Pos = Pos { line :: {-# unpack #-} !Int, col :: {-# unpack #-} !Int }
@@ -286,7 +287,7 @@ data Notice = Notice
 prettyNotice :: Notice -> Doc AnsiStyle
 prettyNotice (Notice level (Excerpt path text span) reason context) = vsep
   ( nest 2 (group (fillSep
-    [ bold (pretty (fromMaybe "(interactive)" path)) <> colon <> pos (start span) <> colon <> foldMap ((space <>) . (<> colon) . prettyLevel) level
+    [ bold (pretty (fromMaybe "(interactive)" path)) <> P.colon <> pos (start span) <> P.colon <> foldMap ((space <>) . (<> P.colon) . prettyLevel) level
     , reason
     ]))
   : blue (pretty (succ (line (start span)))) <+> align (vcat
@@ -295,7 +296,7 @@ prettyNotice (Notice level (Excerpt path text span) reason context) = vsep
     ])
   : context)
   where
-  pos (Pos l c) = bold (pretty (succ l)) <> colon <> bold (pretty (succ c))
+  pos (Pos l c) = bold (pretty (succ l)) <> P.colon <> bold (pretty (succ c))
 
   padding (Span (Pos _ c) _) = pretty (replicate c ' ')
 
@@ -350,6 +351,7 @@ upper = set upper' (fromMaybe 'A') "uppercase letter"
 letter = lower <|> upper <?> ('a', "letter")
 ident = token ((:) <$> lower <*> many letter)
 tident = token ((:) <$> upper <*> many letter)
+colon = token (char ':')
 ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 token p = p <* ws
@@ -370,7 +372,7 @@ type Name = String
 def :: Parser Def
 def = Def
   <$> ident
-  <*  token (char ':')
+  <*  colon
   <*> type'
   <*> term
 
@@ -378,7 +380,7 @@ type' :: Parser Type
 type' = fn <|> pi <|> fail TErr "type"
   where
   fn = app <**> opt (flip ((:->) . (,) Nothing) <$ token (string "->") <*> type') id
-  pi = (:->) <$> parens ((,) . Just <$> ident <* token (char ':') <*> type') <* token (string "->") <*> type'
+  pi = (:->) <$> parens ((,) . Just <$> ident <* colon <*> type') <* token (string "->") <*> type'
   app = foldl (:$) <$> atom <*> many type'
   atom
     =   TVar <$> tident
