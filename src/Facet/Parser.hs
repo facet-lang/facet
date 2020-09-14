@@ -312,7 +312,7 @@ instance (Symbol sym, set ~ Set sym) => Applicative (Parser set sym) where
 instance (Symbol sym, set ~ Set sym) => Parsing sym (Parser set sym) where
   position = Parser (Null pos) mempty []
   source = Parser (Null src) mempty []
-  symbol s = Parser (Insert (const s) [ inserted s ]) (singleton s) [(s, \ i _ -> (advance i, s))]
+  symbol s = Parser (Insert (const s) [ inserted s ]) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
   -- FIXME: warn on non-disjoint first sets
   pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
   p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty []
