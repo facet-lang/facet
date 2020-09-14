@@ -44,7 +44,6 @@ module Facet.Parser
 
 import           Data.Bifunctor (first)
 import qualified Data.CharSet as CharSet
-import qualified Data.CharSet.Unicode as CharSet
 import qualified Data.IntSet as IntSet
 import           Data.List (isSuffixOf)
 import           Data.List.NonEmpty (NonEmpty(..))
@@ -382,7 +381,7 @@ lexer = many
   <|> Token Colon  Nothing <$> span (symbol ':')
   <|> Token Pipe   Nothing <$> span (symbol '|')
   <|> Token Arrow  Nothing <$> span (string "->")
-  <|> mkIdent <$> spanned (some (set CharSet.letter 'a' "letter"))
+  <|> mkIdent <$> spanned (some (set (CharSet.fromList ['a'..'z']) '_' "letter"))
   where
   mkIdent (span, s:|src) = Token Ident (Just (s:src)) span
 
