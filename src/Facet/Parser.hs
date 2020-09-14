@@ -13,6 +13,7 @@ module Facet.Parser
 , many
 , some
 , span
+, spanned
 , Parser(..)
 , State(..)
 , Lines(..)
@@ -79,6 +80,11 @@ some p = (:|) <$> p <*> many p
 
 span :: Parsing s p => p a -> p Span
 span p = Span <$> position <* p <*> position
+
+spanned :: Parsing s p => p a -> p (Span, a)
+spanned p = mk <$> position <*> p <*> position
+  where
+  mk s a e = (Span s e, a)
 
 
 combine :: Semigroup t => Bool -> t -> t -> t
