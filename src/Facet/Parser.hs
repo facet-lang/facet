@@ -12,7 +12,7 @@ module Facet.Parser
 , many
 , some
 , Parser(..)
-, Input(..)
+, State(..)
 , Sym(..)
 , Token(..)
 , parse
@@ -79,8 +79,8 @@ combine e s1 s2
 
 
 data Null s a
-  = Null   (Input s -> a)
-  | Insert (Input s -> a) [String]
+  = Null   (State s -> a)
+  | Insert (State s -> a) [String]
   deriving (Functor)
 
 instance Applicative (Null s) where
@@ -103,7 +103,7 @@ alt _        r = r
 data Parser t s a = Parser
   { null      :: Null s a
   , first     :: t
-  , runParser :: Input s -> t -> (a, Input s)
+  , runParser :: State s -> t -> (a, State s)
   }
   deriving (Functor)
 
@@ -112,13 +112,13 @@ nullable p = case null p of
   Null  _    -> True
   Insert _ _ -> False
 
-data Input s = Input
+data State s = State
   { input :: ![Token s]
   , pos   :: {-# unpack #-} !Pos
   }
 
-advance :: Input sym -> Input sym
-advance (Input i _) = Input (tail i) (end (tokenSpan (head i)))
+advance :: State sym -> State sym
+advance (State i _) = State (tail i) (end (tokenSpan (head i)))
 
 data Token sym = Token
   { tokenSymbol :: sym
@@ -152,7 +152,7 @@ instance Symbol set sym => Parsing sym (Parser set sym) where
   p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty (\ i _ -> (a, i))
 
 parse :: Monoid t => Parser t c a -> [Token c] -> a
-parse p s = fst (runParser p (Input s mempty) mempty)
+parse p s = fst (runParser p (State s mempty) mempty)
 
 tokenize :: String -> [Token Char]
 tokenize = go mempty
