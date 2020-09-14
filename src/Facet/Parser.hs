@@ -36,7 +36,7 @@ module Facet.Parser
 , parse
 , tokenize
 , Sym(..)
-, lexer
+, parser
 , parens
 , braces
 , ident
@@ -376,20 +376,10 @@ instance Symbol Sym where
   toList    = map toEnum . IntSet.toList
 
 
-lexer :: Parsing Char p => p [Token Sym]
-lexer = many
-  (   no LBrace <$ ws <*> spanned (symbol '{')
-  <|> no RBrace <$ ws <*> spanned (symbol '}')
-  <|> no LParen <$ ws <*> spanned (symbol '(')
-  <|> no RParen <$ ws <*> spanned (symbol ')')
-  <|> no Colon  <$ ws <*> spanned (symbol ':')
-  <|> no Pipe   <$ ws <*> spanned (symbol '|')
-  <|> no Arrow  <$ ws <*> spanned (string "->")
-  <|> yes Ident <$ ws <*> spanned (some (set (CharSet.fromList ['a'..'z']) (fromMaybe '_') "letter")))
-  <* ws
+parser :: Parsing Char p => p [Name]
+parser = ws *> many (some (ident <* ws))
   where
-  no x = Token x Nothing . fst
-  yes x = uncurry (flip (Token x . Just))
+  ident = set (CharSet.fromList ['a'..'z']) (fromMaybe '_') "letter"
   ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 
