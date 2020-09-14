@@ -32,7 +32,7 @@ module Facet.Parser
 , prettyNotice
 , Token(..)
 , lexString
-, parseString
+, lexAndParseString
 , parse
 , tokenize
 , Sym(..)
@@ -336,8 +336,8 @@ instance (Symbol sym, set ~ Set sym) => Parsing sym (Parser set sym) where
 lexString :: Maybe FilePath -> Parser CharSet.CharSet Char a -> String -> ([Notice], a)
 lexString path p s = first errs (parse p (sourceFromString path s) (tokenize s))
 
-parseString :: Symbol sym => Maybe FilePath -> Parser CharSet.CharSet Char [Token sym] -> Parser (Set sym) sym a -> String -> ([Notice], a)
-parseString path l p s = (errs sl ++ errs sp, a)
+lexAndParseString :: Symbol sym => Maybe FilePath -> Parser CharSet.CharSet Char [Token sym] -> Parser (Set sym) sym a -> String -> ([Notice], a)
+lexAndParseString path l p s = (errs sl ++ errs sp, a)
   where
   lines = sourceFromString path s
   (sl, ts) = parse l lines (tokenize s)
