@@ -25,7 +25,7 @@ import qualified Data.Set as Set
 
 class (Ord s, Show s) => Symbol s where
 
-class Applicative p => Parsing s p | p -> s where
+class (Symbol s, Applicative p) => Parsing s p | p -> s where
   isNullable :: p a -> Bool
   firstSet :: p a -> Set.Set s
   symbol :: s -> p s
@@ -54,7 +54,7 @@ instance Applicative (Null s) where
   pure _ = Null True
   (<*>) = coerce (&&)
 
-instance Parsing s (Null s) where
+instance Symbol s => Parsing s (Null s) where
   isNullable = getNullable
   firstSet _ = Set.empty
   symbol _ = Null False
@@ -68,7 +68,7 @@ data First s a = First
   }
   deriving (Functor)
 
-instance Ord s => Applicative (First s) where
+instance Symbol s => Applicative (First s) where
   pure a = First (pure a) Set.empty
   First nf sf <*> ~(First na sa) = First (nf <*> na) (combine nf sf sa)
 
@@ -77,7 +77,7 @@ combine e s1 s2
   | isNullable e = s1 <> s2
   | otherwise    = s1
 
-instance Ord s => Parsing s (First s) where
+instance Symbol s => Parsing s (First s) where
   isNullable = isNullable . getNull
   firstSet = getFirst
   symbol s = First (symbol s) (Set.singleton s)
@@ -91,7 +91,7 @@ data Parser s a = Parser
   }
   deriving (Functor)
 
-instance (Ord s, Show s) => Applicative (Parser s) where
+instance Symbol s => Applicative (Parser s) where
   pure a = Parser (pure a) (\ i _ -> (a, i))
   Parser ff kf <*> ~pa@(Parser fa ka) = Parser (ff <*> fa) $ \ i f ->
     let (f', i')  = kf i  (combine pa (getFirst fa) f)
@@ -99,7 +99,7 @@ instance (Ord s, Show s) => Applicative (Parser s) where
         fa'       = f' a'
     in  fa' `seq` (fa', i'')
 
-instance (Ord s, Show s) => Parsing s (Parser s) where
+instance Symbol s => Parsing s (Parser s) where
   isNullable = isNullable . first
   firstSet = firstSet . first
   symbol s = Parser (symbol s) (\ i _ -> (s, tail i))
