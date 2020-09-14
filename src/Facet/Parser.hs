@@ -149,6 +149,7 @@ data State s = State
 advance :: State sym -> State sym
 advance (State s i es _) = State s (tail i) es (end (tokenSpan (head i)))
 
+
 newtype Lines = Lines { getLines :: [String] }
   deriving (Eq, Ord, Show)
 
@@ -170,6 +171,7 @@ takeLine = go id where
     '\n':rest -> (line "\n", Right rest)
     c   :rest -> go (line . (c:)) rest
 {-# inline takeLine #-}
+
 
 data Token sym = Token
   { tokenSymbol :: sym
