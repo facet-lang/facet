@@ -56,8 +56,8 @@ instance Semigroup Span where
 position :: Parser Pos
 position = Parser (Null pos) mempty []
 
-symbol :: Char -> Parser Char
-symbol s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
+char :: Char -> Parser Char
+char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
 
 source :: Parser Source
 source = Parser (Null src) mempty []
@@ -76,10 +76,10 @@ p <?> (a, s) = p <|> fail a s
 infixl 2 <?>
 
 string :: String -> Parser String
-string s = foldr ((*>) . symbol) (pure s) s <?> (s, s)
+string s = foldr ((*>) . char) (pure s) s <?> (s, s)
 
 set :: CharSet -> (Maybe Char -> t) -> String -> Parser t
-set t f s = foldr ((<|>) . fmap (f . Just) . symbol) (fail (f Nothing) s) (toList t)
+set t f s = foldr ((<|>) . fmap (f . Just) . char) (fail (f Nothing) s) (toList t)
 
 opt :: Parser a -> a -> Parser a
 opt p v = p <|> pure v
@@ -332,10 +332,10 @@ ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" 
 
 
 parens :: Parser a -> Parser a
-parens a = symbol '(' *> a <* symbol ')'
+parens a = char '(' *> a <* char ')'
 
 braces :: Parser a -> Parser a
-braces a = symbol '{' *> a <* symbol '}'
+braces a = char '{' *> a <* char '}'
 
 
 type Name = String
