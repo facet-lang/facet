@@ -17,6 +17,7 @@ module Facet.Parser
 , Lines(..)
 , linesFromString
 , takeLine
+, substring
 , (!)
 , Sym(..)
 , Token(..)
@@ -178,6 +179,19 @@ takeLine = go id where
     '\n':rest -> (line "\n", Right rest)
     c   :rest -> go (line . (c:)) rest
 {-# inline takeLine #-}
+
+substring :: Lines -> Span -> String
+substring lines (Span (Pos sl sc _) (Pos el ec _)) = concat (onHead (drop sc) (onLast (take ec) (drop sl (take el (getLines lines)))))
+  where
+  onHead f = \case
+    []   -> []
+    x:xs -> f x : xs
+  onLast f = go
+    where
+    go = \case
+      []   -> []
+      [x]  -> [f x]
+      x:xs -> x:go xs
 
 (!) :: Lines -> Pos -> String
 Lines lines ! pos = lines !! line pos
