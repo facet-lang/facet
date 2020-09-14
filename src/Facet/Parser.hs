@@ -355,10 +355,10 @@ ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" 
 token p = p <* ws
 
 parens :: Parser a -> Parser a
-parens a = char '(' *> a <* char ')'
+parens a = token (char '(') *> a <* token (char ')')
 
 braces :: Parser a -> Parser a
-braces a = char '{' *> a <* char '}'
+braces a = token (char '{') *> a <* token (char '}')
 
 
 type Name = String
