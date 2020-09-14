@@ -157,9 +157,9 @@ data Token
   | Ident String -- FIXME: this is wrong
   deriving (Eq, Ord, Show)
 
-lexer :: Parsing Char p => p Token
-lexer
-  =   LBrace <$ symbol '{'
+lexer :: Parsing Char p => p [Token]
+lexer = many
+  $   LBrace <$ symbol '{'
   <|> RBrace <$ symbol '}'
   <|> LParen <$ symbol '('
   <|> RParen <$ symbol ')'
