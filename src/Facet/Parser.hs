@@ -215,17 +215,17 @@ instance Symbol set sym => Parsing sym (Parser set sym) where
   p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty []
 
 lexString :: Parser CharSet.CharSet Char a -> String -> ([String], a)
-lexString p s = parse p (linesFromString s) (tokenize s)
+lexString p s = first errs (parse p (linesFromString s) (tokenize s))
 
 parseString :: Symbol set sym => Parser CharSet.CharSet Char [Token sym] -> Parser set sym a -> String -> ([String], a)
-parseString l p s = (el ++ ep, a)
+parseString l p s = (errs sl ++ errs sp, a)
   where
   lines = linesFromString s
-  (el, ts) = parse l lines (tokenize s)
-  (ep, a)  = parse p lines ts
+  (sl, ts) = parse l lines (tokenize s)
+  (sp, a)  = parse p lines ts
 
-parse :: Symbol set s => Parser set s a -> Lines -> [Token s] -> ([String], a)
-parse p ls s = first errs (choose (null p) choices (State ls s mempty (Pos 0 0 0)) mempty)
+parse :: Symbol set s => Parser set s a -> Lines -> [Token s] -> (State s, a)
+parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0 0)) mempty
   where
   choices = Map.fromList (table p)
 
