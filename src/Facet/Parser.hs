@@ -321,14 +321,14 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
 
 parser :: Parser [Name]
 parser = ws *> many (ident <* ws)
-  where
-  lower' = fromList ['a'..'z']
-  lower = set lower' (fromMaybe 'a') "lowercase letter"
-  upper' = fromList ['A'..'Z']
-  upper = set upper' (fromMaybe 'A') "uppercase letter"
-  letter = lower <|> upper <?> ('a', "letter")
-  ident = (:) <$> lower <*> many letter
-  ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
+
+lower' = fromList ['a'..'z']
+lower = set lower' (fromMaybe 'a') "lowercase letter"
+upper' = fromList ['A'..'Z']
+upper = set upper' (fromMaybe 'A') "uppercase letter"
+letter = lower <|> upper <?> ('a', "letter")
+ident = (:) <$> lower <*> many letter
+ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 
 parens :: Parser a -> Parser a
