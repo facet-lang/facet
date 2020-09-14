@@ -33,6 +33,9 @@ data Pos = Pos { line :: {-# UNPACK #-} !Int, col :: {-# unpack #-} !Int }
 instance Semigroup Pos where
   Pos l1 c1 <> Pos l2 c2 = Pos (l1 + l2) (c1 + c2)
 
+instance Monoid Pos where
+  mempty = Pos 0 0
+
 data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
   deriving (Eq, Ord, Show)
 
@@ -143,7 +146,7 @@ instance Symbol s => Parsing s (Parser s) where
   p <?> (a, _) = p <|> pure a
 
 parse :: Parser c a -> [c] -> a
-parse p s = fst (runParser p (Input s (Pos 0 0)) Set.empty)
+parse p s = fst (runParser p (Input s mempty) Set.empty)
 
 
 data Token
