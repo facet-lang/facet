@@ -62,7 +62,7 @@ data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
 instance Semigroup Span where
   Span s1 e1 <> Span s2 e2 = Span (min s1 s2) (max e1 e2)
 
-class (Monoid (Set sym), Ord sym, Pretty sym) => Symbol sym where
+class (Monoid (Set sym), Ord sym, Show sym) => Symbol sym where
   type Set sym
   singleton :: sym -> Set sym
   member :: sym -> Set sym -> Bool
@@ -143,11 +143,11 @@ instance Applicative (Null s) where
       Insert a sa -> Insert (f <*> a) sa
     Insert f sf -> Insert (f <*> getNull a) (combine (not (nullable a)) sf (getErrors a))
 
-inserted :: Pretty s => s -> State s -> Notice
-inserted s i = Notice (Just Error) (stateExcerpt i) (pretty "inserted" <+> pretty s) []
+inserted :: Show s => s -> State s -> Notice
+inserted s i = Notice (Just Error) (stateExcerpt i) (pretty "inserted" <+> pretty (show s)) []
 
-deleted :: Pretty s => s -> State s -> Notice
-deleted  s i = Notice (Just Error) (stateExcerpt i) (pretty "deleted" <+> pretty s) []
+deleted :: Show s => s -> State s -> Notice
+deleted  s i = Notice (Just Error) (stateExcerpt i) (pretty "deleted"  <+> pretty (show s)) []
 
 alt :: Null s a -> Null s a -> Null s a
 alt l@Null{} _ = l
@@ -368,8 +368,6 @@ data Sym
   | Arrow
   | Ident
   deriving (Enum, Eq, Ord, Show)
-
-instance Pretty Sym where pretty = pretty . show
 
 instance Symbol Sym where
   type Set Sym = IntSet.IntSet
