@@ -48,6 +48,7 @@ import qualified Data.IntSet as IntSet
 import           Data.List (isSuffixOf)
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map as Map
+import           Data.Maybe (fromMaybe)
 import           Prelude hiding (fail, lines, null, span)
 import           Prettyprinter hiding (braces, line, parens)
 import           Prettyprinter.Render.Terminal as ANSI
@@ -271,7 +272,7 @@ data Notice = Notice
 prettyNotice :: Notice -> Doc AnsiStyle
 prettyNotice (Notice level (Excerpt path text span) reason context) = vsep
   ( nest 2 (group (fillSep
-    [ bold (pretty path) <> colon <> pos (start span) <> colon <> foldMap ((space <>) . (<> colon) . prettyLevel) level
+    [ bold (pretty (fromMaybe "(interactive)" path)) <> colon <> pos (start span) <> colon <> foldMap ((space <>) . (<> colon) . prettyLevel) level
     , reason
     ]))
   : blue (pretty (succ (line (start span)))) <+> align (vcat
