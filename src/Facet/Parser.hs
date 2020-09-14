@@ -62,7 +62,7 @@ data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
 instance Semigroup Span where
   Span s1 e1 <> Span s2 e2 = Span (min s1 s2) (max e1 e2)
 
-class (Monoid (Set sym), Ord sym, Show sym) => Symbol sym where
+class (Monoid (Set sym), Ord sym, Pretty sym) => Symbol sym where
   type Set sym
   singleton :: sym -> Set sym
   member :: sym -> Set sym -> Bool
@@ -119,7 +119,7 @@ combine e s1 s2
 
 data Null s a
   = Null   (State s -> a)
-  | Insert (State s -> a) [String]
+  | Insert (State s -> a) (State s -> [Notice])
   deriving (Functor)
 
 nullable :: Null s a -> Bool
@@ -131,9 +131,9 @@ getNull :: Null s a -> State s -> a
 getNull (Null   f)   = f
 getNull (Insert f _) = f
 
-getErrors :: Null s a -> [String]
-getErrors (Null   _)   = []
-getErrors (Insert _ e) = e
+getErrors :: Null s a -> State s -> [Notice]
+getErrors (Null   _)   = const []
+getErrors (Insert _ f) = f
 
 instance Applicative (Null s) where
   pure = Null . pure
@@ -143,11 +143,11 @@ instance Applicative (Null s) where
       Insert a sa -> Insert (f <*> a) sa
     Insert f sf -> Insert (f <*> getNull a) (combine (not (nullable a)) sf (getErrors a))
 
-inserted :: Show s => s -> String
-inserted s = "inserted " <> show s
+inserted :: Pretty s => s -> State s -> Notice
+inserted s i = Notice (Just Error) (stateExcerpt i) (pretty "inserted" <+> pretty s) []
 
-deleted :: Show s => s -> String
-deleted s = "deleted " <> show s
+deleted :: Pretty s => s -> State s -> Notice
+deleted  s i = Notice (Just Error) (stateExcerpt i) (pretty "deleted" <+> pretty s) []
 
 alt :: Null s a -> Null s a -> Null s a
 alt l@Null{} _ = l
@@ -161,13 +161,13 @@ choose p choices = go
     s:_ -> let s' = tokenSymbol s in case Map.lookup s' choices of
       Nothing
         | any (member s') noskip -> insertOrNull p i
-        | otherwise              -> choose p choices (advance i{ errs = errs i ++ [ deleted s' ] }) noskip
+        | otherwise              -> choose p choices (advance i{ errs = errs i ++ [ deleted s' i ] }) noskip
       Just k -> k i noskip
 
 insertOrNull :: Null s a -> State s -> (State s, a)
 insertOrNull n i = case n of
   Null   a   -> (i, a i)
-  Insert a e -> (i{ errs = errs i ++ e }, a i)
+  Insert a e -> (i{ errs = errs i ++ e i }, a i)
 
 data Parser t s a = Parser
   { null     :: Null s a
@@ -181,7 +181,7 @@ type ParserCont t s a = State s -> [t] -> (State s, a)
 data State s = State
   { src   :: Source
   , input :: [Token s]
-  , errs  :: [String]
+  , errs  :: [Notice]
   , pos   :: {-# unpack #-} !Pos
   }
 
@@ -327,15 +327,15 @@ instance (Symbol sym, set ~ Set sym) => Applicative (Parser set sym) where
 instance (Symbol sym, set ~ Set sym) => Parsing sym (Parser set sym) where
   position = Parser (Null pos) mempty []
   source = Parser (Null src) mempty []
-  symbol s = Parser (Insert (const s) [ inserted s ]) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
+  symbol s = Parser (Insert (const s) (pure <$> inserted s)) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
   -- FIXME: warn on non-disjoint first sets
   pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
-  fail a e = Parser (Insert (const a) [e]) mempty []
+  fail a e = Parser (Insert (const a) (\ i -> [ Notice (Just Error) (stateExcerpt i) (pretty e) [] ])) mempty []
 
-lexString :: Maybe FilePath -> Parser CharSet.CharSet Char a -> String -> ([String], a)
+lexString :: Maybe FilePath -> Parser CharSet.CharSet Char a -> String -> ([Notice], a)
 lexString path p s = first errs (parse p (sourceFromString path s) (tokenize s))
 
-parseString :: Symbol sym => Maybe FilePath -> Parser CharSet.CharSet Char [Token sym] -> Parser (Set sym) sym a -> String -> ([String], a)
+parseString :: Symbol sym => Maybe FilePath -> Parser CharSet.CharSet Char [Token sym] -> Parser (Set sym) sym a -> String -> ([Notice], a)
 parseString path l p s = (errs sl ++ errs sp, a)
   where
   lines = sourceFromString path s
