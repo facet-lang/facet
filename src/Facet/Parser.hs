@@ -119,7 +119,7 @@ data Token
   | Colon
   | Pipe
   | Arrow
-  | Ident String -- FIXME: this is wrong
+  | Ident
   deriving (Eq, Ord, Show)
 
 lexer :: Parsing Char p => p [Token]
