@@ -151,6 +151,7 @@ advance (State i es _) = State (tail i) es (end (tokenSpan (head i)))
 
 data Token sym = Token
   { tokenSymbol :: sym
+  , tokenSource :: Maybe String -- ^ will be Nothing for tokens for which it would be constant
   , tokenSpan   :: Span
   }
   deriving (Show)
@@ -188,7 +189,7 @@ tokenize :: String -> [Token Char]
 tokenize = go mempty
   where
   go _ []     = []
-  go p (c:cs) = Token c (Span p p') : go p' cs
+  go p (c:cs) = Token c Nothing (Span p p') : go p' cs
     where
     p' = p <> case c of
       '\n' -> Pos 1 0
@@ -213,13 +214,13 @@ instance Symbol IntSet.IntSet Sym where
 
 lexer :: Parsing Char p => p [Token Sym]
 lexer = many
-  $   Token LBrace <$> span (symbol '{')
-  <|> Token RBrace <$> span (symbol '}')
-  <|> Token LParen <$> span (symbol '(')
-  <|> Token RParen <$> span (symbol ')')
-  <|> Token Colon  <$> span (symbol ':')
-  <|> Token Pipe   <$> span (symbol '|')
-  <|> Token Arrow  <$> span (string "->")
+  $   Token LBrace Nothing <$> span (symbol '{')
+  <|> Token RBrace Nothing <$> span (symbol '}')
+  <|> Token LParen Nothing <$> span (symbol '(')
+  <|> Token RParen Nothing <$> span (symbol ')')
+  <|> Token Colon  Nothing <$> span (symbol ':')
+  <|> Token Pipe   Nothing <$> span (symbol '|')
+  <|> Token Arrow  Nothing <$> span (string "->")
 
 parens :: Parsing Sym p => p a -> p a
 parens a = symbol LParen *> a <* symbol RParen
