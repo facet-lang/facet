@@ -9,6 +9,7 @@ module Facet.Parser
 , Span(..)
 , Symbol(..)
 , Parsing(..)
+, (<?>)
 , string
 , opt
 , many
@@ -47,7 +48,7 @@ import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map as Map
 import           Data.Text.Prettyprint.Doc hiding (braces, line, parens)
 import           Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
-import           Prelude hiding (lines, null, span)
+import           Prelude hiding (fail, lines, null, span)
 
 data Pos = Pos { line :: {-# unpack #-} !Int, col :: {-# unpack #-} !Int }
   deriving (Eq, Ord, Show)
@@ -76,9 +77,12 @@ class (Symbol s, Applicative p) => Parsing s p | p -> s where
   symbol :: s -> p s
   (<|>) :: p a -> p a -> p a
   infixl 3 <|>
-  -- FIXME: always require <?> to terminate a chain of alternatives
-  (<?>) :: p a -> (a, String) -> p a
-  infixl 2 <?>
+  fail :: a -> String -> p a
+
+-- FIXME: always require <?>/fail to terminate a chain of alternatives
+(<?>) :: Parsing s p => p a -> (a, String) -> p a
+p <?> (a, s) = p <|> fail a s
+infixl 2 <?>
 
 string :: Parsing Char p => String -> p String
 string s = foldr ((*>) . symbol) (pure s) s
@@ -317,7 +321,7 @@ instance (Symbol sym, set ~ Set sym) => Parsing sym (Parser set sym) where
   symbol s = Parser (Insert (const s) [ inserted s ]) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
   -- FIXME: warn on non-disjoint first sets
   pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
-  p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty []
+  fail a e = Parser (Insert (const a) [e]) mempty []
 
 lexString :: Maybe FilePath -> Parser CharSet.CharSet Char a -> String -> ([String], a)
 lexString path p s = first errs (parse p (sourceFromString path s) (tokenize s))
