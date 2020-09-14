@@ -37,7 +37,7 @@ import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map as Map
 import           Prelude hiding (lines, null, span)
 
-data Pos = Pos { line :: {-# unpack #-} !Int, col :: {-# unpack #-} !Int, index :: {-# unpack #-} !Int }
+data Pos = Pos { line :: {-# unpack #-} !Int, col :: {-# unpack #-} !Int }
   deriving (Eq, Ord, Show)
 
 data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
@@ -181,7 +181,7 @@ takeLine = go id where
 {-# inline takeLine #-}
 
 substring :: Lines -> Span -> String
-substring lines (Span (Pos sl sc _) (Pos el ec _)) = concat (onHead (drop sc) (onLast (take ec) (drop sl (take el (getLines lines)))))
+substring lines (Span (Pos sl sc) (Pos el ec)) = concat (onHead (drop sc) (onLast (take ec) (drop sl (take el (getLines lines)))))
   where
   onHead f = \case
     []   -> []
@@ -243,19 +243,19 @@ parseString l p s = (errs sl ++ errs sp, a)
   (sp, a)  = parse p lines ts
 
 parse :: Symbol set s => Parser set s a -> Lines -> [Token s] -> (State s, a)
-parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0 0)) mempty
+parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   where
   choices = Map.fromList (table p)
 
 tokenize :: String -> [Token Char]
-tokenize = go (Pos 0 0 0)
+tokenize = go (Pos 0 0)
   where
   go _ []     = []
-  go p@(Pos l c i) (x:xs) = Token x Nothing (Span p p') : go p' xs
+  go p@(Pos l c) (x:xs) = Token x Nothing (Span p p') : go p' xs
     where
     p' = case x of
-      '\n' -> Pos (l + 1) 0       (i + 1)
-      _    -> Pos l       (c + 1) (i + 1)
+      '\n' -> Pos (l + 1) 0
+      _    -> Pos l       (c + 1)
 
 
 data Sym
