@@ -30,12 +30,12 @@ module Facet.Parser
 , prettyLevel
 , Notice(..)
 , prettyNotice
-, Sym(..)
 , Token(..)
 , lexString
 , parseString
 , parse
 , tokenize
+, Sym(..)
 , lexer
 , parens
 , braces
