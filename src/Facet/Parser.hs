@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE LambdaCase #-}
 module Facet.Parser
 ( Pos(..)
 , Span(..)
@@ -16,6 +17,7 @@ module Facet.Parser
 , Sym(..)
 , Token(..)
 , parse
+, parseString
 , tokenize
 , lexer
 , parens
@@ -138,13 +140,36 @@ data Parser t s a = Parser
 type ParserCont t s a = State s -> [t] -> (a, State s)
 
 data State s = State
-  { input :: [Token s]
+  { lines :: Lines
+  , input :: [Token s]
   , errs  :: [String]
   , pos   :: {-# unpack #-} !Pos
   }
 
 advance :: State sym -> State sym
-advance (State i es _) = State (tail i) es (end (tokenSpan (head i)))
+advance (State s i es _) = State s (tail i) es (end (tokenSpan (head i)))
+
+newtype Lines = Lines { getLines :: [String] }
+  deriving (Eq, Ord, Show)
+
+linesFromString :: String -> Lines
+linesFromString = Lines . go
+  where
+  go = \case
+    "" -> [""]
+    s  -> let (line, rest) = takeLine s in line : either (const []) go rest
+{-# inline linesFromString #-}
+
+takeLine :: String -> (String, Either String String)
+takeLine = go id where
+  go line = \case
+    ""        -> (line "", Left "")
+    '\r':rest -> case rest of
+      '\n':rest -> (line "\r\n", Right rest)
+      _         -> (line "\r", Right rest)
+    '\n':rest -> (line "\n", Right rest)
+    c   :rest -> go (line . (c:)) rest
+{-# inline takeLine #-}
 
 data Token sym = Token
   { tokenSymbol :: sym
@@ -177,8 +202,11 @@ instance Symbol set sym => Parsing sym (Parser set sym) where
   pl <|> pr = Parser (null pl `alt` null pr) (first pl <> first pr) (table pl <> table pr)
   p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty []
 
-parse :: Symbol set s => Parser set s a -> [Token s] -> (a, [String])
-parse p s = errs <$> choose (null p) choices (State s mempty (Pos 0 0 0)) mempty
+parseString :: Parser CharSet.CharSet Char a -> String -> (a, [String])
+parseString p s = parse p (linesFromString s) (tokenize s)
+
+parse :: Symbol set s => Parser set s a -> Lines -> [Token s] -> (a, [String])
+parse p ls s = errs <$> choose (null p) choices (State ls s mempty (Pos 0 0 0)) mempty
   where
   choices = Map.fromList (table p)
 
