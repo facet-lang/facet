@@ -3,7 +3,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Parser
-( Symbol(..)
+( Pos(..)
+, Symbol(..)
 , Parsing(..)
 , string
 , opt
@@ -22,6 +23,9 @@ module Facet.Parser
 import           Data.Coerce
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Set as Set
+
+data Pos = Pos { line :: {-# UNPACK #-} !Int, col :: {-# unpack #-} !Int }
+  deriving (Eq, Ord, Show)
 
 class (Ord s, Show s) => Symbol s where
 
