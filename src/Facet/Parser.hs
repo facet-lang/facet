@@ -12,6 +12,7 @@ module Facet.Parser
 , opt
 , many
 , some
+, span
 , Parser(..)
 , State(..)
 , Lines(..)
