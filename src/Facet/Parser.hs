@@ -340,8 +340,8 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   choices = Map.fromList (table p)
 
 
-parser :: Parser [Name]
-parser = ws *> many (ident <* ws)
+parser :: Parser [Def]
+parser = ws *> many def
 
 lower' = fromList ['a'..'z']
 lower = set lower' (fromMaybe 'a') "lowercase letter"
@@ -362,3 +362,51 @@ braces a = token (char '{') *> a <* token (char '}')
 
 
 type Name = String
+
+-- case
+-- : (x : a) -> (f : a -> b) -> b
+-- { f x }
+
+def :: Parser Def
+def = Def
+  <$> ident
+  <*  token (char ':')
+  <*> type'
+  <*> term
+
+type' :: Parser Type
+type'
+  =   TVar <$> tident
+  <|> (:->) <$> parens ((,) . Just <$> ident <* token (char ':') <*> type') <* token (string "->") <*> type'
+  <|> fail TErr "type"
+
+term :: Parser Term
+term
+  =   Var <$> ident
+  <|> Lam <$> braces (opt (pure <$> term) [])
+  <|> fail Err "term"
+
+data Def = Def Name Type Term
+  deriving (Show)
+
+type TName = String
+
+data Type
+  = TVar TName
+  | (Maybe Name, Type) :-> Type
+  | Type :$ Type
+  | TErr
+  deriving (Show)
+
+infixr 0 :->
+infixl 9 :$
+
+
+data Term
+  = Var Name
+  | Lam [Term]
+  | Term :$$ Term
+  | Err
+  deriving (Show)
+
+infixl 9 :$$
