@@ -327,9 +327,10 @@ lower = set lower' (fromMaybe 'a') "lowercase letter"
 upper' = fromList ['A'..'Z']
 upper = set upper' (fromMaybe 'A') "uppercase letter"
 letter = lower <|> upper <?> ('a', "letter")
-ident = (:) <$> lower <*> many letter
+ident = token ((:) <$> lower <*> many letter)
 ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
+token p = p <* ws
 
 parens :: Parser a -> Parser a
 parens a = char '(' *> a <* char ')'
