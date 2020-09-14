@@ -62,11 +62,13 @@ class (Monoid (Set sym), Ord sym, Show sym) => Symbol sym where
   type Set sym
   singleton :: sym -> Set sym
   member :: sym -> Set sym -> Bool
+  toList :: Set sym -> [sym]
 
 instance Symbol Char where
   type Set Char = CharSet.CharSet
   singleton = CharSet.singleton
   member    = CharSet.member
+  toList    = CharSet.toList
 
 class (Symbol s, Applicative p) => Parsing s p | p -> s where
   position :: p Pos
@@ -358,6 +360,7 @@ instance Symbol Sym where
   type Set Sym = IntSet.IntSet
   singleton = IntSet.singleton . fromEnum
   member    = IntSet.member    . fromEnum
+  toList    = map toEnum . IntSet.toList
 
 
 lexer :: Parsing Char p => p [Token Sym]
