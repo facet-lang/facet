@@ -21,7 +21,7 @@ module Facet.Parser
 ) where
 
 import           Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.Set as Set
+import qualified Data.CharSet as CharSet
 
 data Pos = Pos { line :: {-# UNPACK #-} !Int, col :: {-# unpack #-} !Int }
   deriving (Eq, Ord, Show)
@@ -35,15 +35,19 @@ instance Monoid Pos where
 data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
   deriving (Eq, Ord, Show)
 
-class (Ord s, Show s) => Symbol s where
-  advance :: Input s -> s -> Input s
+class (Monoid set, Show sym) => Symbol set sym | sym -> set where
+  singleton :: sym -> set
+  member :: sym -> set -> Bool
+  advance :: Input sym -> sym -> Input sym
 
-instance Symbol Char where
+instance Symbol CharSet.CharSet Char where
+  singleton = CharSet.singleton
+  member = CharSet.member
   advance (Input i p) c = Input (tail i) $ p <> case c of
     '\n' -> Pos 1 0
     _    -> Pos 0 1
 
-class (Symbol s, Applicative p) => Parsing s p | p -> s where
+class Applicative p => Parsing s p | p -> s where
   symbol :: s -> p s
   (<|>) :: p a -> p a -> p a
   infixl 3 <|>
@@ -69,10 +73,10 @@ combine e s1 s2
   | otherwise = s1
 
 
-data Parser s a = Parser
+data Parser t s a = Parser
   { nullable  :: Bool
-  , first     :: Set.Set s
-  , runParser :: Input s -> Set.Set s -> (a, Input s)
+  , first     :: t
+  , runParser :: Input s -> t -> (a, Input s)
   }
   deriving (Functor)
 
@@ -81,31 +85,31 @@ data Input s = Input
   , pos   :: {-# unpack #-} !Pos
   }
 
-instance Symbol s => Applicative (Parser s) where
-  pure a = Parser True Set.empty (\ i _ -> (a, i))
+instance Symbol set sym => Applicative (Parser set sym) where
+  pure a = Parser True mempty (\ i _ -> (a, i))
   Parser nf ff kf <*> ~(Parser na fa ka) = Parser (nf && na) (combine nf ff fa) $ \ i f ->
     let (f', i')  = kf i  (combine na fa f)
         (a', i'') = ka i' f
         fa'       = f' a'
     in  fa' `seq` (fa', i'')
 
-instance Symbol s => Parsing s (Parser s) where
-  symbol s = Parser False (Set.singleton s) (\ i _ -> (s, advance i s))
+instance Symbol set sym => Parsing sym (Parser set sym) where
+  symbol s = Parser False (singleton s) (\ i _ -> (s, advance i s))
   pl <|> pr = Parser (nullable pl || nullable pr) (first pl <> first pr) $ \ i f -> case input i of
     []
       | nullable pl -> runParser pl i f
       | nullable pr -> runParser pr i f
       | otherwise   -> error "unexpected eof"
     s:_
-      | Set.member s (first pl)     -> runParser pl i f
-      | Set.member s (first pr)     -> runParser pr i f
-      | nullable pl, Set.member s f -> runParser pl i f
-      | nullable pr, Set.member s f -> runParser pr i f
-      | otherwise                   -> error ("illegal input symbol: " <> show s)
+      | member s (first pl)     -> runParser pl i f
+      | member s (first pr)     -> runParser pr i f
+      | nullable pl, member s f -> runParser pl i f
+      | nullable pr, member s f -> runParser pr i f
+      | otherwise               -> error ("illegal input symbol: " <> show s)
   p <?> (a, _) = p <|> pure a
 
-parse :: Parser c a -> [c] -> a
-parse p s = fst (runParser p (Input s mempty) Set.empty)
+parse :: Monoid t => Parser t c a -> [c] -> a
+parse p s = fst (runParser p (Input s mempty) mempty)
 
 
 -- FIXME: we need to be able to associate spans with tokens
