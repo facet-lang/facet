@@ -31,12 +31,6 @@ import           Prelude hiding (null, span)
 data Pos = Pos { line :: {-# unpack #-} !Int, col :: {-# unpack #-} !Int, index :: {-# unpack #-} !Int }
   deriving (Eq, Ord, Show)
 
-instance Semigroup Pos where
-  Pos l1 c1 i1 <> Pos l2 c2 i2 = Pos (l1 + l2) (c1 + c2) (i1 + i2)
-
-instance Monoid Pos where
-  mempty = Pos 0 0 0
-
 data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
   deriving (Eq, Ord, Show)
 
@@ -184,19 +178,19 @@ instance Symbol set sym => Parsing sym (Parser set sym) where
   p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty []
 
 parse :: Symbol set s => Parser set s a -> [Token s] -> (a, [String])
-parse p s = errs <$> choose (null p) choices (State s mempty mempty) mempty
+parse p s = errs <$> choose (null p) choices (State s mempty (Pos 0 0 0)) mempty
   where
   choices = Map.fromList (table p)
 
 tokenize :: String -> [Token Char]
-tokenize = go mempty
+tokenize = go (Pos 0 0 0)
   where
   go _ []     = []
-  go p (c:cs) = Token c Nothing (Span p p') : go p' cs
+  go p@(Pos l c i) (x:xs) = Token x Nothing (Span p p') : go p' xs
     where
-    p' = p <> case c of
-      '\n' -> Pos 1 0 1
-      _    -> Pos 0 1 1
+    p' = case x of
+      '\n' -> Pos (l + 1) 0       (i + 1)
+      _    -> Pos l       (c + 1) (i + 1)
 
 
 data Sym
