@@ -105,7 +105,7 @@ instance Symbol s => Parsing s (First s) where
 
 data Parser s a = Parser
   { first     :: First s a
-  , runParser :: [s] -> Set.Set s -> (a, [s])
+  , runParser :: Input s -> Set.Set s -> (a, Input s)
   }
   deriving (Functor)
 
@@ -128,11 +128,11 @@ instance Symbol s => Applicative (Parser s) where
 instance Symbol s => Parsing s (Parser s) where
   isNullable = isNullable . first
   firstSet = firstSet . first
-  symbol s = Parser (symbol s) (\ i _ -> (s, tail i))
-  pl <|> pr = Parser (first pl <|> first pr) $ \ i f -> case i of
+  symbol s = Parser (symbol s) (\ i _ -> (s, advance i s))
+  pl <|> pr = Parser (first pl <|> first pr) $ \ i f -> case input i of
     []
-      | isNullable pl -> runParser pl [] f
-      | isNullable pr -> runParser pr [] f
+      | isNullable pl -> runParser pl i f
+      | isNullable pr -> runParser pr i f
       | otherwise     -> error "unexpected eof"
     s:_
       | Set.member s (firstSet pl)    -> runParser pl i f
@@ -143,7 +143,7 @@ instance Symbol s => Parsing s (Parser s) where
   p <?> (a, _) = p <|> pure a
 
 parse :: Parser c a -> [c] -> a
-parse p s = fst (runParser p s Set.empty)
+parse p s = fst (runParser p (Input s (Pos 0 0)) Set.empty)
 
 
 data Token
