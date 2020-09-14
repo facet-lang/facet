@@ -330,7 +330,7 @@ instance (Symbol sym, set ~ Set sym) => Parsing sym (Parser set sym) where
   symbol s = Parser (Insert (const s) (pure <$> inserted s)) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
   -- FIXME: warn on non-disjoint first sets
   pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
-  fail a e = Parser (Insert (const a) (\ i -> [ Notice (Just Error) (stateExcerpt i) (pretty e) [] ])) mempty []
+  fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
 
 lexString :: Maybe FilePath -> Parser CharSet.CharSet Char a -> String -> ([Notice], a)
 lexString path p s = first errs (parse p (sourceFromString path s) (tokenize s))
