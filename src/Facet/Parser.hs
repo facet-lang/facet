@@ -14,6 +14,7 @@ module Facet.Parser
 , Null(..)
 , First(..)
 , Parser(..)
+, Input(..)
 , Token(..)
 , parse
 , lexer
@@ -103,6 +104,11 @@ data Parser s a = Parser
   , runParser :: [s] -> Set.Set s -> (a, [s])
   }
   deriving (Functor)
+
+data Input s = Input
+  { input :: ![s]
+  , pos   :: {-# unpack #-} !Pos
+  }
 
 instance Symbol s => Applicative (Parser s) where
   pure a = Parser (pure a) (\ i _ -> (a, i))
