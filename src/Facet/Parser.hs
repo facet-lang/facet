@@ -14,6 +14,10 @@ module Facet.Parser
 , some
 , Parser(..)
 , State(..)
+, Lines(..)
+, linesFromString
+, takeLine
+, (!)
 , Sym(..)
 , Token(..)
 , lexString
