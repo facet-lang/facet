@@ -276,7 +276,7 @@ prettyNotice (Notice level (Excerpt path text span) reason context) = vsep
     , reason
     ]))
   : blue (pretty (succ (line (start span)))) <+> align (vcat
-    [ blue (pretty '|') <+> if "\n" `isSuffixOf` text then pretty (init text) else pretty text <> blue (pretty "<end of input>")
+    [ blue (pretty '|') <+> if "\n" `isSuffixOf` text then pretty (init text) <> blue (pretty "\\n") else pretty text <> blue (pretty "<end of input>")
     , blue (pretty '|') <+> padding span <> caret span
     ])
   : context)
