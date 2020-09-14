@@ -46,7 +46,7 @@ class (Monoid set, Ord sym, Show sym) => Symbol set sym | sym -> set where
 
 instance Symbol CharSet.CharSet Char where
   singleton = CharSet.singleton
-  member = CharSet.member
+  member    = CharSet.member
 
 class Applicative p => Parsing s p | p -> s where
   position :: p Pos
@@ -208,7 +208,7 @@ data Sym
 
 instance Symbol IntSet.IntSet Sym where
   singleton = IntSet.singleton . fromEnum
-  member = IntSet.member . fromEnum
+  member    = IntSet.member    . fromEnum
 
 
 lexer :: Parsing Char p => p [Token Sym]
