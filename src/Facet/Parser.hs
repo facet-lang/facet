@@ -349,6 +349,7 @@ upper' = fromList ['A'..'Z']
 upper = set upper' (fromMaybe 'A') "uppercase letter"
 letter = lower <|> upper <?> ('a', "letter")
 ident = token ((:) <$> lower <*> many letter)
+tident = token ((:) <$> upper <*> many letter)
 ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 token p = p <* ws
