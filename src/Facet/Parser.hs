@@ -320,9 +320,9 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
 
 
 parser :: Parsing p => p [Name]
-parser = ws *> many (some (ident <* ws))
+parser = ws *> many (ident <* ws)
   where
-  ident = set (fromList ['a'..'z']) (fromMaybe '_') "letter"
+  ident = some (set (fromList ['a'..'z']) (fromMaybe '_') "letter")
   ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 
