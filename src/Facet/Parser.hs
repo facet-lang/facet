@@ -32,6 +32,7 @@ data Span = Span { start :: {-# UNPACK #-} !Pos, end :: {-# unpack #-} !Pos }
   deriving (Eq, Ord, Show)
 
 class (Ord s, Show s) => Symbol s where
+  delta :: s -> Pos
 
 class (Symbol s, Applicative p) => Parsing s p | p -> s where
   isNullable :: p a -> Bool
