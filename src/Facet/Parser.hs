@@ -53,6 +53,7 @@ class Applicative p => Parsing s p | p -> s where
   symbol :: s -> p s
   (<|>) :: p a -> p a -> p a
   infixl 3 <|>
+  -- FIXME: always require <?> to terminate a chain of alternatives
   (<?>) :: p a -> (a, String) -> p a
   infixl 2 <?>
 
