@@ -125,7 +125,7 @@ data Token
   | Colon
   | Pipe
   | Arrow
-  | Ident String
+  | Ident String -- FIXME: this is wrong
   deriving (Eq, Ord, Show)
 
 lexer :: Parsing Char p => p Token
