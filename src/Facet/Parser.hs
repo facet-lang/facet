@@ -34,6 +34,10 @@ data Span = Span { start :: {-# UNPACK #-} !Pos, end :: {-# unpack #-} !Pos }
 class (Ord s, Show s) => Symbol s where
   delta :: s -> Pos
 
+instance Symbol Char where
+  delta '\n' = Pos 1 0
+  delta _    = Pos 0 1
+
 class (Symbol s, Applicative p) => Parsing s p | p -> s where
   isNullable :: p a -> Bool
   firstSet :: p a -> Set.Set s
