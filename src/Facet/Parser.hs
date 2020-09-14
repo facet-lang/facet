@@ -172,6 +172,12 @@ takeLine = go id where
     c   :rest -> go (line . (c:)) rest
 {-# inline takeLine #-}
 
+(!) :: Lines -> Pos -> String
+Lines lines ! pos = lines !! line pos
+{-# INLINE (!) #-}
+
+infixl 9 !
+
 
 data Token sym = Token
   { tokenSymbol :: sym
