@@ -21,6 +21,8 @@ module Facet.Parser
 , takeLine
 , substring
 , (!)
+, Excerpt(..)
+, excerpted
 , Sym(..)
 , Token(..)
 , lexString
@@ -208,6 +210,19 @@ Source _ lines ! pos = lines !! line pos
 {-# INLINE (!) #-}
 
 infixl 9 !
+
+
+data Excerpt = Excerpt
+  { excerptPath :: !(Maybe FilePath)
+  , excerptLine :: !String
+  , excerptSpan :: {-# UNPACK #-} !Span
+  }
+  deriving (Eq, Ord, Show)
+
+excerpted :: Parsing s p => p a -> p (Excerpt, a)
+excerpted p = first . mk <$> source <*> spanned p
+  where
+  mk src span = Excerpt (path src) (src ! start span) span
 
 
 data Token sym = Token
