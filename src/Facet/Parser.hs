@@ -114,11 +114,12 @@ nullable p = case null p of
 
 data State s = State
   { input :: ![Token s]
+  , errs  :: [String]
   , pos   :: {-# unpack #-} !Pos
   }
 
 advance :: State sym -> State sym
-advance (State i _) = State (tail i) (end (tokenSpan (head i)))
+advance (State i es _) = State (tail i) es (end (tokenSpan (head i)))
 
 data Token sym = Token
   { tokenSymbol :: sym
@@ -152,7 +153,7 @@ instance Symbol set sym => Parsing sym (Parser set sym) where
   p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty (\ i _ -> (a, i))
 
 parse :: Monoid t => Parser t c a -> [Token c] -> a
-parse p s = fst (runParser p (State s mempty) mempty)
+parse p s = fst (runParser p (State s mempty mempty) mempty)
 
 tokenize :: String -> [Token Char]
 tokenize = go mempty
