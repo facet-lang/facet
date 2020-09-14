@@ -22,7 +22,6 @@ module Facet.Parser
 , braces
 ) where
 
-import           Control.Applicative (liftA2)
 import qualified Data.CharSet as CharSet
 import qualified Data.IntSet as IntSet
 import           Data.List.NonEmpty (NonEmpty(..))
@@ -79,25 +78,27 @@ combine e s1 s2
   | otherwise = s1
 
 
-data Null a
-  = Null   a
-  | Insert a [String]
+data Null s a
+  = Null   (Input s -> a)
+  | Insert (Input s -> a) [String]
   deriving (Functor)
 
-instance Applicative Null where
-  pure = Null
+instance Applicative (Null s) where
+  pure = Null . pure
   f <*> a = case f of
-    Null   f    -> fmap f a
+    Null   f    -> case a of
+      Null   a    -> Null   (f <*> a)
+      Insert a sa -> Insert (f <*> a) sa
     Insert f sf -> case a of
-      Null   a    -> Insert (f a) sf
-      Insert a sa -> Insert (f a) (sf <> sa)
+      Null   a    -> Insert (f <*> a) sf
+      Insert a sa -> Insert (f <*> a) (sf <> sa)
 
-alt :: Null a -> Null a -> Null a
+alt :: Null s a -> Null s a -> Null s a
 alt l@Null{} _ = l
 alt _        r = r
 
 data Parser t s a = Parser
-  { null      :: Null (Input s -> a)
+  { null      :: Null s a
   , first     :: t
   , runParser :: Input s -> t -> (a, Input s)
   }
@@ -123,15 +124,15 @@ data Token sym = Token
   deriving (Show)
 
 instance Symbol set sym => Applicative (Parser set sym) where
-  pure a = Parser (pure (pure a)) mempty (\ i _ -> (a, i))
-  pf@(Parser nf ff kf) <*> ~pa@(Parser na fa ka) = Parser (liftA2 (<*>) nf na) (combine (nullable pf) ff fa) $ \ i f ->
+  pure a = Parser (pure a) mempty (\ i _ -> (a, i))
+  pf@(Parser nf ff kf) <*> ~pa@(Parser na fa ka) = Parser (nf <*> na) (combine (nullable pf) ff fa) $ \ i f ->
     let (f', i')  = kf i  (combine (nullable pa) fa f)
         (a', i'') = ka i' f
         fa'       = f' a'
     in  fa' `seq` (fa', i'')
 
 instance Symbol set sym => Parsing sym (Parser set sym) where
-  position = Parser (pure pos) mempty $ \ i _ -> (pos i, i)
+  position = Parser (Null pos) mempty $ \ i _ -> (pos i, i)
   symbol s = Parser (Insert (const s) [ "inserted " <> show s ]) (singleton s) (\ i _ -> (s, advance i))
   -- FIXME: warn on non-disjoint first sets
   pl <|> pr = Parser (null pl `alt` null pr) (first pl <> first pr) $ \ i f -> case input i of
