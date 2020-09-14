@@ -39,7 +39,6 @@ module Facet.Parser
 , parser
 , parens
 , braces
-, ident
 ) where
 
 import           Data.Bifunctor (first)
@@ -389,8 +388,5 @@ parens a = symbol LParen *> a <* symbol RParen
 braces :: Parsing Sym p => p a -> p a
 braces a = symbol LBrace *> a <* symbol RBrace
 
-
-ident :: Parsing Sym p => p Name
-ident = substring <$> source <*> span (symbol Ident)
 
 type Name = String
