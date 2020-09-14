@@ -16,8 +16,8 @@ module Facet.Parser
 , State(..)
 , Sym(..)
 , Token(..)
+, lexString
 , parse
-, parseString
 , tokenize
 , lexer
 , parens
@@ -212,8 +212,8 @@ instance Symbol set sym => Parsing sym (Parser set sym) where
   pl <|> pr = Parser (null pl `alt` null pr) (first pl <> first pr) (table pl <> table pr)
   p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty []
 
-parseString :: Parser CharSet.CharSet Char a -> String -> (a, [String])
-parseString p s = parse p (linesFromString s) (tokenize s)
+lexString :: Parser CharSet.CharSet Char a -> String -> (a, [String])
+lexString p s = parse p (linesFromString s) (tokenize s)
 
 parse :: Symbol set s => Parser set s a -> Lines -> [Token s] -> (a, [String])
 parse p ls s = errs <$> choose (null p) choices (State ls s mempty (Pos 0 0 0)) mempty
