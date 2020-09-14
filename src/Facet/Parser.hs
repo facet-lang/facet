@@ -4,6 +4,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Parser
 ( Pos(..)
+, Span(..)
 , Symbol(..)
 , Parsing(..)
 , string
@@ -25,6 +26,9 @@ import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Set as Set
 
 data Pos = Pos { line :: {-# UNPACK #-} !Int, col :: {-# unpack #-} !Int }
+  deriving (Eq, Ord, Show)
+
+data Span = Span { start :: {-# UNPACK #-} !Pos, end :: {-# unpack #-} !Pos }
   deriving (Eq, Ord, Show)
 
 class (Ord s, Show s) => Symbol s where
