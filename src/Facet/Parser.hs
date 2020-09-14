@@ -375,11 +375,16 @@ def = Def
   <*> term
 
 type' :: Parser Type
-type'
-  =   TVar <$> tident
-  <|> TVar <$> ident
-  <|> (:->) <$> parens ((,) . Just <$> ident <* token (char ':') <*> type') <* token (string "->") <*> type'
-  <|> fail TErr "type"
+type' = fn <|> pi <|> fail TErr "type"
+  where
+  fn = app <**> opt (flip ((:->) . (,) Nothing) <$ token (string "->") <*> type') id
+  pi = (:->) <$> parens ((,) . Just <$> ident <* token (char ':') <*> type') <* token (string "->") <*> type'
+  app = foldl (:$) <$> atom <*> many type'
+  atom
+    =   TVar <$> tident
+    <|> TVar <$> ident
+    <|> parens type'
+    <?> (TErr, "atomic type")
 
 term :: Parser Term
 term
