@@ -143,11 +143,11 @@ instance Applicative (Null s) where
       Insert a sa -> Insert (f <*> a) sa
     Insert f sf -> Insert (f <*> getNull a) (combine (not (nullable a)) sf (getErrors a))
 
-inserted :: Show a => a -> State s -> Notice
-inserted s i = Notice (Just Error) (stateExcerpt i) (pretty "inserted" <+> pretty (show s)) []
+inserted :: String -> State s -> Notice
+inserted s i = Notice (Just Error) (stateExcerpt i) (pretty "inserted" <+> pretty s) []
 
-deleted :: Show a => a -> State s -> Notice
-deleted  s i = Notice (Just Error) (stateExcerpt i) (pretty "deleted"  <+> pretty (show s)) []
+deleted :: String -> State s -> Notice
+deleted  s i = Notice (Just Error) (stateExcerpt i) (pretty "deleted"  <+> pretty s) []
 
 alt :: Null s a -> Null s a -> Null s a
 alt l@Null{} _ = l
@@ -161,7 +161,7 @@ choose p choices = go
     s:_ -> let s' = tokenSymbol s in case Map.lookup s' choices of
       Nothing
         | any (member s') noskip -> insertOrNull p i
-        | otherwise              -> choose p choices (advance i{ errs = errs i ++ [ deleted s' i ] }) noskip
+        | otherwise              -> choose p choices (advance i{ errs = errs i ++ [ deleted (show s') i ] }) noskip
       Just k -> k i noskip
 
 insertOrNull :: Null s a -> State s -> (State s, a)
@@ -327,7 +327,7 @@ instance (Symbol sym, set ~ Set sym) => Applicative (Parser set sym) where
 instance (Symbol sym, set ~ Set sym) => Parsing sym (Parser set sym) where
   position = Parser (Null pos) mempty []
   source = Parser (Null src) mempty []
-  symbol s = Parser (Insert (const s) (pure <$> inserted s)) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
+  symbol s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
   -- FIXME: warn on non-disjoint first sets
   pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
   fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
