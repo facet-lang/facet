@@ -40,6 +40,9 @@ instance Monoid Pos where
 data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
   deriving (Eq, Ord, Show)
 
+instance Semigroup Span where
+  Span s1 e1 <> Span s2 e2 = Span (min s1 s2) (max e1 e2)
+
 class (Monoid set, Ord sym, Show sym) => Symbol set sym | sym -> set where
   singleton :: sym -> set
   member :: sym -> set -> Bool
