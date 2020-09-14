@@ -28,7 +28,7 @@ import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map as Map
 import           Prelude hiding (null, span)
 
-data Pos = Pos { line :: {-# UNPACK #-} !Int, col :: {-# unpack #-} !Int }
+data Pos = Pos { line :: {-# unpack #-} !Int, col :: {-# unpack #-} !Int }
   deriving (Eq, Ord, Show)
 
 instance Semigroup Pos where
