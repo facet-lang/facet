@@ -47,7 +47,6 @@ import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as CharSet
 import qualified Data.IntSet as IntSet
 import           Data.List (isSuffixOf)
-import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Prelude hiding (fail, lines, null, span)
@@ -100,8 +99,8 @@ opt p v = p <|> pure v
 many :: Parsing s p => p a -> p [a]
 many p = opt ((:) <$> p <*> many p) []
 
-some :: Parsing s p => p a -> p (NonEmpty a)
-some p = (:|) <$> p <*> many p
+some :: Parsing s p => p a -> p [a]
+some p = (:) <$> p <*> many p
 
 span :: Parsing s p => p a -> p Span
 span p = Span <$> position <* p <*> position
@@ -379,18 +378,19 @@ instance Symbol Sym where
 
 lexer :: Parsing Char p => p [Token Sym]
 lexer = many
-  (   Token LBrace Nothing <$ ws <*> span (symbol '{')
-  <|> Token RBrace Nothing <$ ws <*> span (symbol '}')
-  <|> Token LParen Nothing <$ ws <*> span (symbol '(')
-  <|> Token RParen Nothing <$ ws <*> span (symbol ')')
-  <|> Token Colon  Nothing <$ ws <*> span (symbol ':')
-  <|> Token Pipe   Nothing <$ ws <*> span (symbol '|')
-  <|> Token Arrow  Nothing <$ ws <*> span (string "->")
-  <|> mkIdent <$> spanned (some (set (CharSet.fromList ['a'..'z']) (fromMaybe '_') "letter")))
+  (   no LBrace <$ ws <*> spanned (symbol '{')
+  <|> no RBrace <$ ws <*> spanned (symbol '}')
+  <|> no LParen <$ ws <*> spanned (symbol '(')
+  <|> no RParen <$ ws <*> spanned (symbol ')')
+  <|> no Colon  <$ ws <*> spanned (symbol ':')
+  <|> no Pipe   <$ ws <*> spanned (symbol '|')
+  <|> no Arrow  <$ ws <*> spanned (string "->")
+  <|> yes Ident <$ ws <*> spanned (some (set (CharSet.fromList ['a'..'z']) (fromMaybe '_') "letter")))
   <* ws
   where
-  mkIdent (span, s:|src) = Token Ident (Just (s:src)) span
-  ws = () <$ many (set (CharSet.separator <> CharSet.control) (const ()) "whitespace")
+  no x = Token x Nothing . fst
+  yes x = uncurry (flip (Token x . Just))
+  ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 
 parens :: Parsing Sym p => p a -> p a
