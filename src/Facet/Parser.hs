@@ -365,6 +365,9 @@ lexer = many
   <|> Token Colon  Nothing <$> span (symbol ':')
   <|> Token Pipe   Nothing <$> span (symbol '|')
   <|> Token Arrow  Nothing <$> span (string "->")
+  <|> mkIdent <$> spanned (string "abcd")
+  where
+  mkIdent (span, src) = Token Ident (Just src) span
 
 parens :: Parsing Sym p => p a -> p a
 parens a = symbol LParen *> a <* symbol RParen
