@@ -127,10 +127,10 @@ choose p choices = go
         | otherwise              -> choose p choices (advance i{ errs = errs i ++ [ deleted s' ] }) noskip
       Just k -> k i noskip
 
-insertOrNull :: Null s a -> State s -> (a, State s)
+insertOrNull :: Null s a -> State s -> (State s, a)
 insertOrNull n i = case n of
-  Null   a   -> (a i, i)
-  Insert a e -> (a i, i{ errs = errs i ++ e })
+  Null   a   -> (i, a i)
+  Insert a e -> (i{ errs = errs i ++ e }, a i)
 
 data Parser t s a = Parser
   { null     :: Null s a
@@ -139,7 +139,7 @@ data Parser t s a = Parser
   }
   deriving (Functor)
 
-type ParserCont t s a = State s -> [t] -> (a, State s)
+type ParserCont t s a = State s -> [t] -> (State s, a)
 
 data State s = State
   { lines :: Lines
@@ -196,19 +196,19 @@ instance Symbol set sym => Applicative (Parser set sym) where
     tseq tf ta = combine (nullable nf) tabf taba
       where
       tabf = map (fmap (\ k i noskip ->
-        let (f', i')  = k i (fa:noskip)
-            (a', i'') = choose na choices i' noskip
+        let (i', f')  = k i (fa:noskip)
+            (i'', a') = choose na choices i' noskip
             fa'       = f' a'
-        in  fa' `seq` (fa', i''))) tf
+        in  fa' `seq` (i'', fa'))) tf
       taba = map (fmap (\ k i noskip ->
-        let (a', i') = k i noskip
+        let (i', a') = k i noskip
             fa'      = getNull nf i' a'
-        in  fa' `seq` (fa', i'))) ta
+        in  fa' `seq` (i', fa'))) ta
 
 instance Symbol set sym => Parsing sym (Parser set sym) where
   position = Parser (Null pos) mempty []
   source = Parser (Null lines) mempty []
-  symbol s = Parser (Insert (const s) [ inserted s ]) (singleton s) [(s, \ i _ -> (s, advance i))]
+  symbol s = Parser (Insert (const s) [ inserted s ]) (singleton s) [(s, \ i _ -> (advance i, s))]
   -- FIXME: warn on non-disjoint first sets
   pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
   p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty []
@@ -226,7 +226,7 @@ parseString l p s = (el ++ ep, a)
 parse :: Symbol set s => Parser set s a -> Lines -> [Token s] -> ([String], a)
 parse p ls s = (errs i, a)
   where
-  (a, i) = choose (null p) choices (State ls s mempty (Pos 0 0 0)) mempty
+  (i, a) = choose (null p) choices (State ls s mempty (Pos 0 0 0)) mempty
   choices = Map.fromList (table p)
 
 tokenize :: String -> [Token Char]
