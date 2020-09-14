@@ -6,7 +6,6 @@
 module Facet.Parser
 ( Pos(..)
 , Span(..)
-, Parsing(..)
 , (<?>)
 , string
 , set
@@ -54,38 +53,47 @@ data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
 instance Semigroup Span where
   Span s1 e1 <> Span s2 e2 = Span (min s1 s2) (max e1 e2)
 
-class Applicative p => Parsing p where
-  position :: p Pos
-  source :: p Source
-  symbol :: Char -> p Char
-  (<|>) :: p a -> p a -> p a
-  infixl 3 <|>
-  fail :: a -> String -> p a
+position :: Parser Pos
+position = Parser (Null pos) mempty []
+
+symbol :: Char -> Parser Char
+symbol s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
+
+source :: Parser Source
+source = Parser (Null src) mempty []
+
+-- FIXME: warn on non-disjoint first sets
+(<|>) :: Parser a -> Parser a -> Parser a
+pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
+infixl 3 <|>
+
+fail :: a -> String -> Parser a
+fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
 
 -- FIXME: always require <?>/fail to terminate a chain of alternatives
-(<?>) :: Parsing p => p a -> (a, String) -> p a
+(<?>) :: Parser a -> (a, String) -> Parser a
 p <?> (a, s) = p <|> fail a s
 infixl 2 <?>
 
-string :: Parsing p => String -> p String
+string :: String -> Parser String
 string s = foldr ((*>) . symbol) (pure s) s <?> (s, s)
 
-set :: Parsing p => CharSet -> (Maybe Char -> t) -> String -> p t
+set :: CharSet -> (Maybe Char -> t) -> String -> Parser t
 set t f s = foldr ((<|>) . fmap (f . Just) . symbol) (fail (f Nothing) s) (toList t)
 
-opt :: Parsing p => p a -> a -> p a
+opt :: Parser a -> a -> Parser a
 opt p v = p <|> pure v
 
-many :: Parsing p => p a -> p [a]
+many :: Parser a -> Parser [a]
 many p = go where go = opt ((:) <$> p <*> go) []
 
-some :: Parsing p => p a -> p [a]
+some :: Parser a -> Parser [a]
 some p = (:) <$> p <*> many p
 
-span :: Parsing p => p a -> p Span
+span :: Parser a -> Parser Span
 span p = Span <$> position <* p <*> position
 
-spanned :: Parsing p => p a -> p (Span, a)
+spanned :: Parser a -> Parser (Span, a)
 spanned p = mk <$> position <*> p <*> position
   where
   mk s a e = (Span s e, a)
@@ -229,7 +237,7 @@ data Excerpt = Excerpt
   }
   deriving (Eq, Ord, Show)
 
-excerpted :: Parsing p => p a -> p (Excerpt, a)
+excerpted :: Parser a -> Parser (Excerpt, a)
 excerpted p = first . mk <$> source <*> spanned p
   where
   mk src span = Excerpt (path src) (src ! start span) span
@@ -302,14 +310,6 @@ instance Applicative Parser where
             fa'      = getNull nf i' a'
         in  fa' `seq` (i', fa'))) ta
 
-instance Parsing Parser where
-  position = Parser (Null pos) mempty []
-  source = Parser (Null src) mempty []
-  symbol s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
-  -- FIXME: warn on non-disjoint first sets
-  pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
-  fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
-
 parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
 
@@ -319,17 +319,17 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   choices = Map.fromList (table p)
 
 
-parser :: Parsing p => p [Name]
+parser :: Parser [Name]
 parser = ws *> many (ident <* ws)
   where
   ident = some (set (fromList ['a'..'z']) (fromMaybe '_') "letter")
   ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 
-parens :: Parsing p => p a -> p a
+parens :: Parser a -> Parser a
 parens a = symbol '(' *> a <* symbol ')'
 
-braces :: Parsing p => p a -> p a
+braces :: Parser a -> Parser a
 braces a = symbol '{' *> a <* symbol '}'
 
 
