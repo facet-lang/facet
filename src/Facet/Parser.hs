@@ -213,19 +213,20 @@ instance Symbol set sym => Parsing sym (Parser set sym) where
   pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
   p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty []
 
-lexString :: Parser CharSet.CharSet Char a -> String -> (a, [String])
+lexString :: Parser CharSet.CharSet Char a -> String -> ([String], a)
 lexString p s = parse p (linesFromString s) (tokenize s)
 
-parseString :: Symbol set sym => Parser CharSet.CharSet Char [Token sym] -> Parser set sym a -> String -> (a, [String])
-parseString l p s = (a, el ++ ep)
+parseString :: Symbol set sym => Parser CharSet.CharSet Char [Token sym] -> Parser set sym a -> String -> ([String], a)
+parseString l p s = (el ++ ep, a)
   where
   lines = linesFromString s
-  (ts, el) = parse l lines (tokenize s)
-  (a,  ep) = parse p lines ts
+  (el, ts) = parse l lines (tokenize s)
+  (ep, a)  = parse p lines ts
 
-parse :: Symbol set s => Parser set s a -> Lines -> [Token s] -> (a, [String])
-parse p ls s = errs <$> choose (null p) choices (State ls s mempty (Pos 0 0 0)) mempty
+parse :: Symbol set s => Parser set s a -> Lines -> [Token s] -> ([String], a)
+parse p ls s = (errs i, a)
   where
+  (a, i) = choose (null p) choices (State ls s mempty (Pos 0 0 0)) mempty
   choices = Map.fromList (table p)
 
 tokenize :: String -> [Token Char]
