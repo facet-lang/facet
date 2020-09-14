@@ -44,6 +44,7 @@ module Facet.Parser
 
 import           Data.Bifunctor (first)
 import qualified Data.CharSet as CharSet
+import qualified Data.CharSet.Unicode as CharSet
 import qualified Data.IntSet as IntSet
 import           Data.List (isSuffixOf)
 import           Data.List.NonEmpty (NonEmpty(..))
@@ -90,8 +91,8 @@ infixl 2 <?>
 string :: Parsing Char p => String -> p String
 string s = foldr ((*>) . symbol) (pure s) s <?> (s, s)
 
-set :: Parsing s p => Set s -> s -> String -> p s
-set t a s = foldr ((<|>) . symbol) (fail a s) (toList t)
+set :: Parsing s p => Set s -> (Maybe s -> t) -> String -> p t
+set t f s = foldr ((<|>) . fmap (f . Just) . symbol) (fail (f Nothing) s) (toList t)
 
 opt :: Parsing s p => p a -> a -> p a
 opt p v = p <|> pure v
@@ -378,16 +379,19 @@ instance Symbol Sym where
 
 lexer :: Parsing Char p => p [Token Sym]
 lexer = many
-  $   Token LBrace Nothing <$> span (symbol '{')
-  <|> Token RBrace Nothing <$> span (symbol '}')
-  <|> Token LParen Nothing <$> span (symbol '(')
-  <|> Token RParen Nothing <$> span (symbol ')')
-  <|> Token Colon  Nothing <$> span (symbol ':')
-  <|> Token Pipe   Nothing <$> span (symbol '|')
-  <|> Token Arrow  Nothing <$> span (string "->")
-  <|> mkIdent <$> spanned (some (set (CharSet.fromList ['a'..'z']) '_' "letter"))
+  (   Token LBrace Nothing <$ ws <*> span (symbol '{')
+  <|> Token RBrace Nothing <$ ws <*> span (symbol '}')
+  <|> Token LParen Nothing <$ ws <*> span (symbol '(')
+  <|> Token RParen Nothing <$ ws <*> span (symbol ')')
+  <|> Token Colon  Nothing <$ ws <*> span (symbol ':')
+  <|> Token Pipe   Nothing <$ ws <*> span (symbol '|')
+  <|> Token Arrow  Nothing <$ ws <*> span (string "->")
+  <|> mkIdent <$> spanned (some (set (CharSet.fromList ['a'..'z']) (fromMaybe '_') "letter")))
+  <* ws
   where
   mkIdent (span, s:|src) = Token Ident (Just (s:src)) span
+  ws = () <$ many (set (CharSet.separator <> CharSet.control) (const ()) "whitespace")
+
 
 parens :: Parsing Sym p => p a -> p a
 parens a = symbol LParen *> a <* symbol RParen
