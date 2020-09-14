@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeFamilies #-}
 module Facet.Parser
@@ -32,7 +31,6 @@ module Facet.Parser
 , prettyNotice
 , Token(..)
 , parseString
-, lexAndParseString
 , parse
 , tokenize
 , parser
@@ -71,38 +69,38 @@ instance Symbol Char where
   member    = CharSet.member
   toList    = CharSet.toList
 
-class (Symbol s, Applicative p) => Parsing s p | p -> s where
+class Applicative p => Parsing p where
   position :: p Pos
   source :: p Source
-  symbol :: s -> p s
+  symbol :: Char -> p Char
   (<|>) :: p a -> p a -> p a
   infixl 3 <|>
   fail :: a -> String -> p a
 
 -- FIXME: always require <?>/fail to terminate a chain of alternatives
-(<?>) :: Parsing s p => p a -> (a, String) -> p a
+(<?>) :: Parsing p => p a -> (a, String) -> p a
 p <?> (a, s) = p <|> fail a s
 infixl 2 <?>
 
-string :: Parsing Char p => String -> p String
+string :: Parsing p => String -> p String
 string s = foldr ((*>) . symbol) (pure s) s <?> (s, s)
 
-set :: Parsing s p => Set s -> (Maybe s -> t) -> String -> p t
+set :: Parsing p => CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
 set t f s = foldr ((<|>) . fmap (f . Just) . symbol) (fail (f Nothing) s) (toList t)
 
-opt :: Parsing s p => p a -> a -> p a
+opt :: Parsing p => p a -> a -> p a
 opt p v = p <|> pure v
 
-many :: Parsing s p => p a -> p [a]
+many :: Parsing p => p a -> p [a]
 many p = go where go = opt ((:) <$> p <*> go) []
 
-some :: Parsing s p => p a -> p [a]
+some :: Parsing p => p a -> p [a]
 some p = (:) <$> p <*> many p
 
-span :: Parsing s p => p a -> p Span
+span :: Parsing p => p a -> p Span
 span p = Span <$> position <* p <*> position
 
-spanned :: Parsing s p => p a -> p (Span, a)
+spanned :: Parsing p => p a -> p (Span, a)
 spanned p = mk <$> position <*> p <*> position
   where
   mk s a e = (Span s e, a)
@@ -114,25 +112,25 @@ combine e s1 s2
   | otherwise = s1
 
 
-data Null s a
-  = Null   (State s -> a)
-  | Insert (State s -> a) (State s -> [Notice])
+data Null a
+  = Null   (State -> a)
+  | Insert (State -> a) (State -> [Notice])
   deriving (Functor)
 
-nullable :: Null s a -> Bool
+nullable :: Null a -> Bool
 nullable p = case p of
   Null  _    -> True
   Insert _ _ -> False
 
-getNull :: Null s a -> State s -> a
+getNull :: Null a -> State -> a
 getNull (Null   f)   = f
 getNull (Insert f _) = f
 
-getErrors :: Null s a -> State s -> [Notice]
+getErrors :: Null a -> State -> [Notice]
 getErrors (Null   _)   = const []
 getErrors (Insert _ f) = f
 
-instance Applicative (Null s) where
+instance Applicative Null where
   pure = Null . pure
   f <*> a = case f of
     Null   f    -> case a of
@@ -140,17 +138,17 @@ instance Applicative (Null s) where
       Insert a sa -> Insert (f <*> a) sa
     Insert f sf -> Insert (f <*> getNull a) (combine (not (nullable a)) sf (getErrors a))
 
-inserted :: String -> State s -> Notice
+inserted :: String -> State -> Notice
 inserted s i = Notice (Just Error) (stateExcerpt i) (pretty "inserted" <+> pretty s) []
 
-deleted :: String -> State s -> Notice
+deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (pretty "deleted"  <+> pretty s) []
 
-alt :: Null s a -> Null s a -> Null s a
+alt :: Null a -> Null a -> Null a
 alt l@Null{} _ = l
 alt _        r = r
 
-choose :: Symbol s => Null s a -> Map.Map s (ParserCont (Set s) s a) -> ParserCont (Set s) s a
+choose :: Null a -> Map.Map Char (ParserCont a) -> ParserCont a
 choose p choices = go
   where
   go i noskip = case input i of
@@ -161,31 +159,31 @@ choose p choices = go
         | otherwise              -> choose p choices (advance i{ errs = errs i ++ [ deleted (show s') i ] }) noskip
       Just k -> k i noskip
 
-insertOrNull :: Null s a -> State s -> (State s, a)
+insertOrNull :: Null a -> State -> (State, a)
 insertOrNull n i = case n of
   Null   a   -> (i, a i)
   Insert a e -> (i{ errs = errs i ++ e i }, a i)
 
-data Parser t s a = Parser
-  { null     :: Null s a
-  , firstSet :: t
-  , table    :: [(s, ParserCont t s a)]
+data Parser a = Parser
+  { null     :: Null a
+  , firstSet :: CharSet.CharSet
+  , table    :: [(Char, ParserCont a)]
   }
   deriving (Functor)
 
-type ParserCont t s a = State s -> [t] -> (State s, a)
+type ParserCont a = State -> [CharSet.CharSet] -> (State, a)
 
-data State s = State
+data State = State
   { src   :: Source
-  , input :: [Token s]
+  , input :: [Token]
   , errs  :: [Notice]
   , pos   :: {-# unpack #-} !Pos
   }
 
-advance :: State sym -> State sym
+advance :: State -> State
 advance (State s i es _) = State s (tail i) es (end (tokenSpan (head i)))
 
-stateExcerpt :: State s -> Excerpt
+stateExcerpt :: State -> Excerpt
 stateExcerpt i = Excerpt (path (src i)) (src i ! pos i) (Span (pos i) (pos i))
 
 
@@ -241,7 +239,7 @@ data Excerpt = Excerpt
   }
   deriving (Eq, Ord, Show)
 
-excerpted :: Parsing s p => p a -> p (Excerpt, a)
+excerpted :: Parsing p => p a -> p (Excerpt, a)
 excerpted p = first . mk <$> source <*> spanned p
   where
   mk src span = Excerpt (path src) (src ! start span) span
@@ -297,14 +295,14 @@ blue    = annotate $ color Blue
 magenta = annotate $ color Magenta
 
 
-data Token sym = Token
-  { tokenSymbol :: sym
+data Token = Token
+  { tokenSymbol :: Char
   , tokenSource :: Maybe String -- ^ will be Nothing for tokens for which it would be constant
   , tokenSpan   :: Span
   }
   deriving (Show)
 
-instance (Symbol sym, set ~ Set sym) => Applicative (Parser set sym) where
+instance Applicative Parser where
   pure a = Parser (pure a) mempty []
   Parser nf ff tf <*> ~(Parser na fa ta) = Parser (nf <*> na) (combine (nullable nf) ff fa) $ tseq tf ta
     where
@@ -321,7 +319,7 @@ instance (Symbol sym, set ~ Set sym) => Applicative (Parser set sym) where
             fa'      = getNull nf i' a'
         in  fa' `seq` (i', fa'))) ta
 
-instance (Symbol sym, set ~ Set sym) => Parsing sym (Parser set sym) where
+instance Parsing Parser where
   position = Parser (Null pos) mempty []
   source = Parser (Null src) mempty []
   symbol s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
@@ -329,22 +327,15 @@ instance (Symbol sym, set ~ Set sym) => Parsing sym (Parser set sym) where
   pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
   fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
 
-parseString :: Maybe FilePath -> Parser CharSet.CharSet Char a -> String -> ([Notice], a)
+parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) (tokenize s))
 
-lexAndParseString :: Symbol sym => Maybe FilePath -> Parser CharSet.CharSet Char [Token sym] -> Parser (Set sym) sym a -> String -> ([Notice], a)
-lexAndParseString path l p s = (errs sl ++ errs sp, a)
-  where
-  lines = sourceFromString path s
-  (sl, ts) = parse l lines (tokenize s)
-  (sp, a)  = parse p lines ts
-
-parse :: Symbol s => Parser (Set s) s a -> Source -> [Token s] -> (State s, a)
+parse :: Parser a -> Source -> [Token] -> (State, a)
 parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   where
   choices = Map.fromList (table p)
 
-tokenize :: String -> [Token Char]
+tokenize :: String -> [Token]
 tokenize = go (Pos 0 0)
   where
   go _ []     = []
@@ -355,17 +346,17 @@ tokenize = go (Pos 0 0)
       _    -> Pos l       (c + 1)
 
 
-parser :: Parsing Char p => p [Name]
+parser :: Parsing p => p [Name]
 parser = ws *> many (some (ident <* ws))
   where
   ident = set (CharSet.fromList ['a'..'z']) (fromMaybe '_') "letter"
   ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 
-parens :: Parsing Char p => p a -> p a
+parens :: Parsing p => p a -> p a
 parens a = symbol '(' *> a <* symbol ')'
 
-braces :: Parsing Char p => p a -> p a
+braces :: Parsing p => p a -> p a
 braces a = symbol '{' *> a <* symbol '}'
 
 
