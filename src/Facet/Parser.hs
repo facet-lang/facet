@@ -3,7 +3,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Parser
-( Parsing(..)
+( Symbol(..)
+, Parsing(..)
 , string
 , opt
 , many
@@ -21,6 +22,8 @@ module Facet.Parser
 import           Data.Coerce
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Set as Set
+
+class (Ord s, Show s) => Symbol s where
 
 class Applicative p => Parsing s p | p -> s where
   isNullable :: p a -> Bool
