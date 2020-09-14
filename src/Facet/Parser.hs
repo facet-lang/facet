@@ -6,7 +6,6 @@
 module Facet.Parser
 ( Pos(..)
 , Span(..)
-, Symbol(..)
 , Parsing(..)
 , (<?>)
 , string
@@ -37,7 +36,7 @@ module Facet.Parser
 ) where
 
 import           Data.Bifunctor (first)
-import qualified Data.CharSet as CharSet
+import           Data.CharSet (CharSet, fromList, member, singleton, toList)
 import qualified Data.CharSet.Unicode as CharSet
 import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
@@ -55,18 +54,6 @@ data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
 instance Semigroup Span where
   Span s1 e1 <> Span s2 e2 = Span (min s1 s2) (max e1 e2)
 
-class (Monoid (Set sym), Ord sym, Show sym) => Symbol sym where
-  type Set sym
-  singleton :: sym -> Set sym
-  member :: sym -> Set sym -> Bool
-  toList :: Set sym -> [sym]
-
-instance Symbol Char where
-  type Set Char = CharSet.CharSet
-  singleton = CharSet.singleton
-  member    = CharSet.member
-  toList    = CharSet.toList
-
 class Applicative p => Parsing p where
   position :: p Pos
   source :: p Source
@@ -83,7 +70,7 @@ infixl 2 <?>
 string :: Parsing p => String -> p String
 string s = foldr ((*>) . symbol) (pure s) s <?> (s, s)
 
-set :: Parsing p => CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
+set :: Parsing p => CharSet -> (Maybe Char -> t) -> String -> p t
 set t f s = foldr ((<|>) . fmap (f . Just) . symbol) (fail (f Nothing) s) (toList t)
 
 opt :: Parsing p => p a -> a -> p a
@@ -164,12 +151,12 @@ insertOrNull n i = case n of
 
 data Parser a = Parser
   { null     :: Null a
-  , firstSet :: CharSet.CharSet
+  , firstSet :: CharSet
   , table    :: [(Char, ParserCont a)]
   }
   deriving (Functor)
 
-type ParserCont a = State -> [CharSet.CharSet] -> (State, a)
+type ParserCont a = State -> [CharSet] -> (State, a)
 
 data State = State
   { src   :: Source
@@ -335,7 +322,7 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
 parser :: Parsing p => p [Name]
 parser = ws *> many (some (ident <* ws))
   where
-  ident = set (CharSet.fromList ['a'..'z']) (fromMaybe '_') "letter"
+  ident = set (fromList ['a'..'z']) (fromMaybe '_') "letter"
   ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 
