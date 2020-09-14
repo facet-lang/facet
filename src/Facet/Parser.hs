@@ -187,6 +187,9 @@ data State s = State
 advance :: State sym -> State sym
 advance (State s i es _) = State s (tail i) es (end (tokenSpan (head i)))
 
+stateExcerpt :: State s -> Excerpt
+stateExcerpt i = Excerpt (path (src i)) (src i ! pos i) (Span (pos i) (pos i))
+
 
 data Source = Source
   { path  :: Maybe FilePath
