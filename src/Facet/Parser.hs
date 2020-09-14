@@ -11,6 +11,10 @@ module Facet.Parser
 , set
 , opt
 , many
+, chainr
+, chainl
+, chainr1
+, chainl1
 , some
 , span
 , spanned
@@ -34,6 +38,7 @@ module Facet.Parser
 , braces
 ) where
 
+import           Control.Applicative ((<**>))
 import           Data.Bifunctor (first)
 import           Data.CharSet (CharSet, fromList, member, singleton, toList)
 import qualified Data.CharSet.Unicode as CharSet
@@ -86,6 +91,22 @@ opt p v = p <|> pure v
 
 many :: Parser a -> Parser [a]
 many p = go where go = opt ((:) <$> p <*> go) []
+
+chainr :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
+chainr p = opt . chainr1 p
+
+chainl :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
+chainl p = opt . chainl1 p
+
+chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 p op = p <**> go
+  where
+  go = opt ((\ f y g x -> g (f x y)) <$> op <*> p <*> go) id
+
+chainr1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainr1 p op = go
+  where
+  go = p <**> opt (flip <$> op <*> go) id
 
 some :: Parser a -> Parser [a]
 some p = (:) <$> p <*> many p
