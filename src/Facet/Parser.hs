@@ -377,6 +377,7 @@ def = Def
 type' :: Parser Type
 type'
   =   TVar <$> tident
+  <|> TVar <$> ident
   <|> (:->) <$> parens ((,) . Just <$> ident <* token (char ':') <*> type') <* token (string "->") <*> type'
   <|> fail TErr "type"
 
