@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeFamilies #-}
 module Facet.Parser
 ( Pos(..)
 , Span(..)
@@ -57,15 +58,17 @@ data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
 instance Semigroup Span where
   Span s1 e1 <> Span s2 e2 = Span (min s1 s2) (max e1 e2)
 
-class (Monoid set, Ord sym, Show sym) => Symbol set sym | sym -> set where
-  singleton :: sym -> set
-  member :: sym -> set -> Bool
+class (Monoid (Set sym), Ord sym, Show sym) => Symbol sym where
+  type Set sym
+  singleton :: sym -> Set sym
+  member :: sym -> Set sym -> Bool
 
-instance Symbol CharSet.CharSet Char where
+instance Symbol Char where
+  type Set Char = CharSet.CharSet
   singleton = CharSet.singleton
   member    = CharSet.member
 
-class Applicative p => Parsing s p | p -> s where
+class (Symbol s, Applicative p) => Parsing s p | p -> s where
   position :: p Pos
   source :: p Source
   symbol :: s -> p s
@@ -138,7 +141,7 @@ alt :: Null s a -> Null s a -> Null s a
 alt l@Null{} _ = l
 alt _        r = r
 
-choose :: Symbol set s => Null s a -> Map.Map s (ParserCont set s a) -> ParserCont set s a
+choose :: Symbol s => Null s a -> Map.Map s (ParserCont (Set s) s a) -> ParserCont (Set s) s a
 choose p choices = go
   where
   go i noskip = case input i of
@@ -289,7 +292,7 @@ data Token sym = Token
   }
   deriving (Show)
 
-instance Symbol set sym => Applicative (Parser set sym) where
+instance (Symbol sym, set ~ Set sym) => Applicative (Parser set sym) where
   pure a = Parser (pure a) mempty []
   Parser nf ff tf <*> ~(Parser na fa ta) = Parser (nf <*> na) (combine (nullable nf) ff fa) $ tseq tf ta
     where
@@ -306,7 +309,7 @@ instance Symbol set sym => Applicative (Parser set sym) where
             fa'      = getNull nf i' a'
         in  fa' `seq` (i', fa'))) ta
 
-instance Symbol set sym => Parsing sym (Parser set sym) where
+instance (Symbol sym, set ~ Set sym) => Parsing sym (Parser set sym) where
   position = Parser (Null pos) mempty []
   source = Parser (Null src) mempty []
   symbol s = Parser (Insert (const s) [ inserted s ]) (singleton s) [(s, \ i _ -> (advance i, s))]
@@ -317,14 +320,14 @@ instance Symbol set sym => Parsing sym (Parser set sym) where
 lexString :: Maybe FilePath -> Parser CharSet.CharSet Char a -> String -> ([String], a)
 lexString path p s = first errs (parse p (sourceFromString path s) (tokenize s))
 
-parseString :: Symbol set sym => Maybe FilePath -> Parser CharSet.CharSet Char [Token sym] -> Parser set sym a -> String -> ([String], a)
+parseString :: Symbol sym => Maybe FilePath -> Parser CharSet.CharSet Char [Token sym] -> Parser (Set sym) sym a -> String -> ([String], a)
 parseString path l p s = (errs sl ++ errs sp, a)
   where
   lines = sourceFromString path s
   (sl, ts) = parse l lines (tokenize s)
   (sp, a)  = parse p lines ts
 
-parse :: Symbol set s => Parser set s a -> Source -> [Token s] -> (State s, a)
+parse :: Symbol s => Parser (Set s) s a -> Source -> [Token s] -> (State s, a)
 parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   where
   choices = Map.fromList (table p)
@@ -351,7 +354,8 @@ data Sym
   | Ident
   deriving (Enum, Eq, Ord, Show)
 
-instance Symbol IntSet.IntSet Sym where
+instance Symbol Sym where
+  type Set Sym = IntSet.IntSet
   singleton = IntSet.singleton . fromEnum
   member    = IntSet.member    . fromEnum
 
