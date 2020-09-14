@@ -22,10 +22,11 @@ module Facet.Parser
 , braces
 ) where
 
+import           Control.Applicative (liftA2)
 import qualified Data.CharSet as CharSet
 import qualified Data.IntSet as IntSet
 import           Data.List.NonEmpty (NonEmpty(..))
-import           Prelude hiding (span)
+import           Prelude hiding (null, span)
 
 data Pos = Pos { line :: {-# UNPACK #-} !Int, col :: {-# unpack #-} !Int }
   deriving (Eq, Ord, Show)
@@ -77,12 +78,34 @@ combine e s1 s2
   | otherwise = s1
 
 
+data Null a
+  = Null   a
+  | Insert a [String]
+  deriving (Functor)
+
+instance Applicative Null where
+  pure = Null
+  f <*> a = case f of
+    Null   f    -> fmap f a
+    Insert f sf -> case a of
+      Null   a    -> Insert (f a) sf
+      Insert a sa -> Insert (f a) (sf <> sa)
+
+alt :: Null a -> Null a -> Null a
+alt l@Null{} _ = l
+alt _        r = r
+
 data Parser t s a = Parser
-  { nullable  :: Bool
+  { null      :: Null (Input s -> a)
   , first     :: t
   , runParser :: Input s -> t -> (a, Input s)
   }
   deriving (Functor)
+
+nullable :: Parser t s a -> Bool
+nullable p = case null p of
+  Null  _    -> True
+  Insert _ _ -> False
 
 data Input s = Input
   { input :: ![Token s]
@@ -99,17 +122,17 @@ data Token sym = Token
   deriving (Show)
 
 instance Symbol set sym => Applicative (Parser set sym) where
-  pure a = Parser True mempty (\ i _ -> (a, i))
-  Parser nf ff kf <*> ~(Parser na fa ka) = Parser (nf && na) (combine nf ff fa) $ \ i f ->
-    let (f', i')  = kf i  (combine na fa f)
+  pure a = Parser (pure (pure a)) mempty (\ i _ -> (a, i))
+  pf@(Parser nf ff kf) <*> ~pa@(Parser na fa ka) = Parser (liftA2 (<*>) nf na) (combine (nullable pf) ff fa) $ \ i f ->
+    let (f', i')  = kf i  (combine (nullable pa) fa f)
         (a', i'') = ka i' f
         fa'       = f' a'
     in  fa' `seq` (fa', i'')
 
 instance Symbol set sym => Parsing sym (Parser set sym) where
-  position = Parser True mempty $ \ i _ -> (pos i, i)
-  symbol s = Parser False (singleton s) (\ i _ -> (s, advance i))
-  pl <|> pr = Parser (nullable pl || nullable pr) (first pl <> first pr) $ \ i f -> case input i of
+  position = Parser (pure pos) mempty $ \ i _ -> (pos i, i)
+  symbol s = Parser (Insert (const s) [ "expected " <> show s ]) (singleton s) (\ i _ -> (s, advance i))
+  pl <|> pr = Parser (null pl `alt` null pr) (first pl <> first pr) $ \ i f -> case input i of
     []
       | nullable pl -> runParser pl i f
       | nullable pr -> runParser pr i f
