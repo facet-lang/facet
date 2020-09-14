@@ -108,6 +108,8 @@ parse :: Parser c a -> [c] -> a
 parse p s = fst (runParser p (Input s mempty) Set.empty)
 
 
+-- FIXME: we need to be able to associate spans with tokens
+
 data Token
   = LBrace
   | RBrace
