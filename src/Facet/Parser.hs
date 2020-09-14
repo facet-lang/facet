@@ -93,6 +93,9 @@ instance Applicative (Null s) where
       Null   a    -> Insert (f <*> a) sf
       Insert a sa -> Insert (f <*> a) (sf <> sa)
 
+inserted :: Show s => s -> String
+inserted s = "inserted " <> show s
+
 alt :: Null s a -> Null s a -> Null s a
 alt l@Null{} _ = l
 alt _        r = r
@@ -133,7 +136,7 @@ instance Symbol set sym => Applicative (Parser set sym) where
 
 instance Symbol set sym => Parsing sym (Parser set sym) where
   position = Parser (Null pos) mempty $ \ i _ -> (pos i, i)
-  symbol s = Parser (Insert (const s) [ "inserted " <> show s ]) (singleton s) (\ i _ -> (s, advance i))
+  symbol s = Parser (Insert (const s) [ inserted s ]) (singleton s) (\ i _ -> (s, advance i))
   -- FIXME: warn on non-disjoint first sets
   pl <|> pr = Parser (null pl `alt` null pr) (first pl <> first pr) $ \ i f -> case input i of
     []
