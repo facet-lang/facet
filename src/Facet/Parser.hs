@@ -88,7 +88,7 @@ p <?> (a, s) = p <|> fail a s
 infixl 2 <?>
 
 string :: Parsing Char p => String -> p String
-string s = foldr ((*>) . symbol) (pure s) s
+string s = foldr ((*>) . symbol) (pure s) s <?> (s, s)
 
 set :: Parsing s p => Set s -> s -> String -> p s
 set t a s = foldr ((<|>) . symbol) (fail a s) (toList t)
