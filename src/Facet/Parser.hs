@@ -28,7 +28,7 @@ import qualified Data.CharSet as CharSet
 import qualified Data.IntSet as IntSet
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Map as Map
-import           Prelude hiding (null, span)
+import           Prelude hiding (lines, null, span)
 
 data Pos = Pos { line :: {-# unpack #-} !Int, col :: {-# unpack #-} !Int, index :: {-# unpack #-} !Int }
   deriving (Eq, Ord, Show)
@@ -49,6 +49,7 @@ instance Symbol CharSet.CharSet Char where
 
 class Applicative p => Parsing s p | p -> s where
   position :: p Pos
+  source :: p Lines
   symbol :: s -> p s
   (<|>) :: p a -> p a -> p a
   infixl 3 <|>
@@ -205,6 +206,7 @@ instance Symbol set sym => Applicative (Parser set sym) where
 
 instance Symbol set sym => Parsing sym (Parser set sym) where
   position = Parser (Null pos) mempty []
+  source = Parser (Null lines) mempty []
   symbol s = Parser (Insert (const s) [ inserted s ]) (singleton s) [(s, \ i _ -> (s, advance i))]
   -- FIXME: warn on non-disjoint first sets
   pl <|> pr = Parser (null pl `alt` null pr) (first pl <> first pr) (table pl <> table pr)
