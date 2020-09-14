@@ -133,9 +133,9 @@ insertOrNull n i = case n of
   Insert a e -> (a i, i{ errs = errs i ++ e })
 
 data Parser t s a = Parser
-  { null  :: Null s a
-  , first :: t
-  , table :: [(s, ParserCont t s a)]
+  { null     :: Null s a
+  , firstSet :: t
+  , table    :: [(s, ParserCont t s a)]
   }
   deriving (Functor)
 
@@ -210,7 +210,7 @@ instance Symbol set sym => Parsing sym (Parser set sym) where
   source = Parser (Null lines) mempty []
   symbol s = Parser (Insert (const s) [ inserted s ]) (singleton s) [(s, \ i _ -> (s, advance i))]
   -- FIXME: warn on non-disjoint first sets
-  pl <|> pr = Parser (null pl `alt` null pr) (first pl <> first pr) (table pl <> table pr)
+  pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
   p <?> (a, e) = p <|> Parser (Insert (const a) [e]) mempty []
 
 lexString :: Parser CharSet.CharSet Char a -> String -> (a, [String])
