@@ -127,7 +127,7 @@ instance Symbol s => Parsing s (Parser s) where
       | isNullable pl -> runParser pl [] f
       | isNullable pr -> runParser pr [] f
       | otherwise     -> error "unexpected eof"
-    i@(s:_)
+    s:_
       | Set.member s (firstSet pl)    -> runParser pl i f
       | Set.member s (firstSet pr)    -> runParser pr i f
       | isNullable pl, Set.member s f -> runParser pl i f
