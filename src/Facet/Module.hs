@@ -5,6 +5,7 @@ module Facet.Module
 , Decl(..)
 ) where
 
+import Facet.Expr
 import Facet.Type
 
 type DeclName = String
@@ -13,8 +14,8 @@ class Decl expr ty decl => Module expr ty decl mod | mod -> decl ty expr where
   (.:) :: DeclName -> decl a -> mod (decl a)
   infixr 0 .:
 
-class Type ty => Decl expr ty decl | decl -> ty expr where
+class (Expr expr, Type ty) => Decl expr ty decl | decl -> ty expr where
   forAll :: (ty -> decl a) -> decl a
-  (>->) :: ty -> (expr a -> decl (expr b)) -> decl (expr a -> expr b)
-  (.=) :: ty -> expr a -> decl (expr a)
+  (>->) :: ty -> (expr sig a -> decl (expr sig b)) -> decl (expr sig a -> expr sig b)
+  (.=) :: ty -> expr sig a -> decl (expr sig a)
   infix 1 .=
