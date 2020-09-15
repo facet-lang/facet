@@ -1,5 +1,5 @@
 Base.Bool : Module
-{
+{ # fixme: it’d be nice to drop the curly braces in module syntax
 Bool : Type
 { False : Bool
 , True  : Bool
