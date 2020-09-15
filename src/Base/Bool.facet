@@ -25,6 +25,7 @@ not : Bool -> Bool
 }
 
 not : Doc # fixme: annotate to indicate it’s only available at doc time
+# fixme: would be nice to somehow attach this to the definition above in the syntax tree too
 { line "negate a Bool"
 , examples # these would presumably be automatically tested
   [ not True  ==> False
