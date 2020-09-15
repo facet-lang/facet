@@ -394,7 +394,7 @@ type' = fn <|> pi <|> fail TErr "type"
   where
   fn = app <**> opt (flip ((:->) . (,) Nothing) <$ token (string "->") <*> type') id
   pi = (:->) <$> parens ((,) . Just <$> ident <* colon <*> type') <* token (string "->") <*> type'
-  app = foldl (:$) <$> atom <*> many type'
+  app = foldl (:$) <$> atom <*> many atom
   atom
     =   TVar <$> tident
     <|> TVar <$> ident
