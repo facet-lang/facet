@@ -16,6 +16,8 @@ bool
 , True  -> t!
 }
 
+# fixme: what would be a good syntax for linearity annotations?
+# fixme: how do we describe the compilation of this down to a branch instruction?
 if
 : (c : Bool) -> (t : {a}) -> (e : {a}) -> a
 { case c { True -> t! | False -> e! } }
