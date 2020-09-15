@@ -392,7 +392,7 @@ def = Def
 type' :: Parser Type
 type' = fn <|> pi <|> fail TErr "type"
   where
-  fn = app <**> opt (flip (:->) <$ token (string "->") <*> type') id
+  fn = app <**> opt (flip (:->) <$ token (string "->") <*> fn) id
   pi = (:=>) <$> parens ((,) <$> ident <* colon <*> type') <* token (string "->") <*> type'
   app = foldl (:$) <$> atom <*> many atom
   atom
