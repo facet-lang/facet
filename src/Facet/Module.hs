@@ -8,8 +8,8 @@ module Facet.Module
 type DeclName = String
 
 class Decl expr ty decl => Module expr ty decl mod | mod -> decl ty expr where
-  (.:) :: DeclName -> (decl a -> decl a) -> mod (decl a)
-  infix 0 .:
+  (.:) :: DeclName -> decl a -> mod (decl a)
+  infixr 0 .:
 
 class Decl expr ty decl | decl -> ty expr where
   forAll :: (ty -> decl a) -> decl a
