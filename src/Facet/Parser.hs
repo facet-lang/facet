@@ -408,7 +408,7 @@ term
   <|> fail Err "term"
 
 data Def = Def Name Type Term
-  deriving (Show)
+  deriving (Eq, Show)
 
 type TName = String
 
@@ -417,7 +417,7 @@ data Type
   | (Maybe Name, Type) :-> Type
   | Type :$ Type
   | TErr
-  deriving (Show)
+  deriving (Eq, Show)
 
 infixr 0 :->
 infixl 9 :$
@@ -428,6 +428,6 @@ data Term
   | Lam [Term]
   | Term :$$ Term
   | Err
-  deriving (Show)
+  deriving (Eq, Show)
 
 infixl 9 :$$
