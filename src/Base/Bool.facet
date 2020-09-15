@@ -22,6 +22,18 @@ not : Bool -> Bool
 , True  -> False
 }
 
+not : Doc
+{ line "negate a Bool"
+, examples # these would presumably be automatically tested
+  [ not True  ==> False
+  , not False ==> True
+  ]
+, properties # these would presumably be automatically property tested
+  [ prop "anti-idempotence" : Bool -> Prop { x -> not x =/= not (not x) }
+  ]
+, since 1 0 0 0
+}
+
 bool
 : (e : {a}) -> (t : {a}) -> Bool -> a
 { False -> e!
