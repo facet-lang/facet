@@ -37,6 +37,7 @@ module Facet.Parser
 , parser
 , parens
 , braces
+, brackets
 ) where
 
 import           Control.Applicative ((<**>))
@@ -359,6 +360,8 @@ lparen = token (char '(')
 rparen = token (char ')')
 lbrace = token (char '{')
 rbrace = token (char '}')
+lbracket = token (char '[')
+rbracket = token (char ']')
 ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 token p = p <* ws
@@ -368,6 +371,9 @@ parens a = lparen *> a <* rparen
 
 braces :: Parser a -> Parser a
 braces a = lbrace *> a <* rbrace
+
+brackets :: Parser a -> Parser a
+brackets a = lbracket *> a <* rbracket
 
 
 type Name = String
