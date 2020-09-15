@@ -43,6 +43,7 @@ library
     Facet.Pretty
     Facet.Print
     Facet.Signature
+    Facet.Type
   build-depends:
     , base ^>= 4.14
     , charset
