@@ -10,6 +10,7 @@ module Facet.Parser
 , string
 , set
 , opt
+, optional
 , many
 , chainr
 , chainl
@@ -88,6 +89,9 @@ set t f s = foldr ((<|>) . fmap (f . Just) . char) (fail (f Nothing) s) (toList 
 
 opt :: Parser a -> a -> Parser a
 opt p v = p <|> pure v
+
+optional :: Parser a -> Parser (Maybe a)
+optional p = opt (Just <$> p) Nothing
 
 many :: Parser a -> Parser [a]
 many p = go where go = opt ((:) <$> p <*> go) []
