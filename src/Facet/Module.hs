@@ -1,2 +1,5 @@
 module Facet.Module
-() where
+( Module
+) where
+
+class Module m where
