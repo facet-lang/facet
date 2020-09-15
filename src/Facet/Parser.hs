@@ -392,8 +392,8 @@ def = Def
 type' :: Parser Type
 type' = fn <|> pi <|> fail TErr "type"
   where
-  fn = app <**> opt (flip ((:->) . (,) Nothing) <$ token (string "->") <*> type') id
-  pi = (:->) <$> parens ((,) . Just <$> ident <* colon <*> type') <* token (string "->") <*> type'
+  fn = app <**> opt (flip ((:->) . Binding Nothing) <$ token (string "->") <*> type') id
+  pi = (:->) <$> parens (Binding . Just <$> ident <* colon <*> type') <* token (string "->") <*> type'
   app = foldl (:$) <$> atom <*> many atom
   atom
     =   TVar <$> tident
@@ -414,13 +414,16 @@ type TName = String
 
 data Type
   = TVar TName
-  | (Maybe Name, Type) :-> Type
+  | Binding :-> Type
   | Type :$ Type
   | TErr
   deriving (Eq, Show)
 
 infixr 0 :->
 infixl 9 :$
+
+data Binding = Binding (Maybe Name) Type
+  deriving (Eq, Show)
 
 
 data Term
