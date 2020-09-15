@@ -1,5 +1,17 @@
 Base.Bool : Module
 { # fixme: it’d be nice to drop the curly braces in module syntax
+
+# fixme: how do we control the implicit scope? should there even be any? where do e.g. Type & Module come from?
+# fixme: how do we make explicit imports convenient?
+# fixme: parameterized modules are relatively obvious from the definition side (Base.Parameterized : Blah -> Module), but:
+# 1. where do the symbols in that outer scope come from? can we differentiate between the imports needed to construct the module and the imports needed by the module itself? (phasing annotations here too?)
+# 2. what does it look like applying that stuff on the import side?
+
+# should we have a (non-nesting) block comment syntax?
+
+# documentation
+# testing
+
 Bool : Type
 { False : Bool
 , True  : Bool
@@ -21,4 +33,7 @@ bool
 if
 : (c : Bool) -> (t : {a}) -> (e : {a}) -> a
 { case c { True -> t! | False -> e! } }
+
+# fixme: can we type terms in declaration scope as having compile-time phasing using QTT–style annotations on the context?
+# fixme: can we just sort of assume that stuff has the same phase as its module? (or “no earlier than” perhaps?)
 }
