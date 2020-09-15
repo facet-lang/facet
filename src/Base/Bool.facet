@@ -36,4 +36,14 @@ if
 
 # fixme: can we type terms in declaration scope as having compile-time phasing using QTT–style annotations on the context?
 # fixme: can we just sort of assume that stuff has the same phase as its module? (or “no earlier than” perhaps?)
+
+Base.Bool.Tests : Module # maybe parameterize this module by a signature for tests or something
+# annotate this module via a semiring describing that it only lives in the test phase
+{
+
+not_antiidempotence : (x : Bool) -> Test
+{ not x =/= not (not x) }
+
+}
+
 }
