@@ -7,6 +7,8 @@ Base.Bool : Module
 # 1. where do the symbols in that outer scope come from? can we differentiate between the imports needed to construct the module and the imports needed by the module itself? (phasing annotations here too?)
 # 2. what does it look like applying that stuff on the import side?
 
+# wait, isn’t module parameterization kind of redundant? maybe modules can have effects too. `Base.Bool.Test : [Test]Module`
+
 # should we have a (non-nesting) block comment syntax?
 
 # documentation
