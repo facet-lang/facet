@@ -9,4 +9,10 @@ not : Bool -> Bool
 { False -> True
 , True  -> False
 }
+
+bool
+: (e : {a}) -> (t : {a}) -> Bool -> a
+{ False -> e!
+, True  -> t!
+}
 }
