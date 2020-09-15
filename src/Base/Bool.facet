@@ -1,3 +1,7 @@
 Base.Bool : Module
 {
+Bool : Type
+{ False : Bool
+, True  : Bool
+}
 }
