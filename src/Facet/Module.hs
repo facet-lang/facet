@@ -1,10 +1,10 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Module
-( DefName
+( DeclName
 , Module(..)
 ) where
 
-type DefName = String
+type DeclName = String
 
-class Module def mod | mod -> def where
-  (.=) :: DefName -> (def a -> def a) -> mod (def a)
+class Module decl mod | mod -> decl where
+  (.=) :: DeclName -> (decl a -> decl a) -> mod (decl a)
