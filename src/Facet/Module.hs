@@ -12,4 +12,5 @@ class Decl ty decl => Module ty decl mod | mod -> decl ty where
   infix 0 .:
 
 class Decl ty decl | decl -> ty where
+  forAll :: (ty -> decl a) -> decl a
   (>->) :: ty -> (ty -> decl a) -> decl a
