@@ -351,15 +351,19 @@ letter = lower <|> upper <?> ('a', "letter")
 ident = token ((:) <$> lower <*> many letter)
 tident = token ((:) <$> upper <*> many letter)
 colon = token (char ':')
+lparen = token (char '(')
+rparen = token (char ')')
+lbrace = token (char '{')
+rbrace = token (char '}')
 ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
 token p = p <* ws
 
 parens :: Parser a -> Parser a
-parens a = token (char '(') *> a <* token (char ')')
+parens a = lparen *> a <* rparen
 
 braces :: Parser a -> Parser a
-braces a = token (char '{') *> a <* token (char '}')
+braces a = lbrace *> a <* rbrace
 
 
 type Name = String
