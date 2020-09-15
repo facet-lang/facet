@@ -15,4 +15,8 @@ bool
 { False -> e!
 , True  -> t!
 }
+
+if
+: (c : Bool) -> (t : {a}) -> (e : {a}) -> a
+{ case c { True -> t! | False -> e! } }
 }
