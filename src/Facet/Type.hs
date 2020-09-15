@@ -3,5 +3,5 @@ module Facet.Type
 ) where
 
 class Type ty where
-  (-->) :: ty -> ty -> ty
+  (-->) :: ty expr a -> ty expr b -> ty expr (expr a -> expr b)
   infixr 2 -->
