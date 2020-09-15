@@ -10,7 +10,7 @@ import Facet.Type
 
 type DeclName = String
 
-class Decl expr ty decl => Module expr ty decl mod | mod -> decl ty expr where
+class (Decl expr ty decl, Applicative mod) => Module expr ty decl mod | mod -> decl ty expr where
   (.:) :: DeclName -> decl a -> mod (decl a)
   infixr 0 .:
 
