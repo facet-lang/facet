@@ -1,2 +1,6 @@
 module Facet.Type
-() where
+( Type(..)
+) where
+
+class Type ty where
+  (-->) :: ty -> ty
