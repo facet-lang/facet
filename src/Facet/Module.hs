@@ -16,6 +16,6 @@ class Decl expr ty decl => Module expr ty decl mod | mod -> decl ty expr where
 
 class (Expr expr, Type ty) => Decl expr ty decl | decl -> ty expr where
   forAll :: (ty -> decl a) -> decl a
-  (>->) :: ty -> (expr sig a -> decl (expr sig b)) -> decl (expr sig a -> expr sig b)
-  (.=) :: ty -> expr sig a -> decl (expr sig a)
+  (>->) :: ty -> (expr sig a -> decl b) -> decl (expr sig a -> expr sig b)
+  (.=) :: ty -> expr sig a -> decl a
   infix 1 .=
