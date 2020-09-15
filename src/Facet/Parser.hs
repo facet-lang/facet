@@ -46,7 +46,6 @@ import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Prelude hiding (fail, lines, null, span)
-import           Prettyprinter hiding (braces, colon, line, parens)
 import qualified Prettyprinter as P
 import           Prettyprinter.Render.Terminal as ANSI
 
@@ -154,10 +153,10 @@ instance Applicative Null where
     Insert f sf -> Insert (f <*> getNull a) (combine (not (nullable a)) sf (getErrors a))
 
 inserted :: String -> State -> Notice
-inserted s i = Notice (Just Error) (stateExcerpt i) (pretty "inserted" <+> pretty s) []
+inserted s i = Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P.pretty s) []
 
 deleted :: String -> State -> Notice
-deleted  s i = Notice (Just Error) (stateExcerpt i) (pretty "deleted"  <+> pretty s) []
+deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
 
 alt :: Null a -> Null a -> Null a
 alt l@Null{} _ = l
@@ -270,49 +269,49 @@ data Level
   | Error
   deriving (Eq, Ord, Show)
 
-prettyLevel :: Level -> Doc AnsiStyle
+prettyLevel :: Level -> P.Doc AnsiStyle
 prettyLevel = \case
-  Warn  -> magenta (pretty "warning")
-  Error -> red     (pretty "error")
+  Warn  -> magenta (P.pretty "warning")
+  Error -> red     (P.pretty "error")
 
 
 data Notice = Notice
   { level   :: !(Maybe Level)
   , excerpt :: {-# UNPACK #-} !Excerpt
-  , reason  :: !(Doc AnsiStyle)
-  , context :: ![Doc AnsiStyle]
+  , reason  :: !(P.Doc AnsiStyle)
+  , context :: ![P.Doc AnsiStyle]
   }
   deriving (Show)
 
-prettyNotice :: Notice -> Doc AnsiStyle
-prettyNotice (Notice level (Excerpt path text span) reason context) = vsep
-  ( nest 2 (group (fillSep
-    [ bold (pretty (fromMaybe "(interactive)" path)) <> P.colon <> pos (start span) <> P.colon <> foldMap ((space <>) . (<> P.colon) . prettyLevel) level
+prettyNotice :: Notice -> P.Doc AnsiStyle
+prettyNotice (Notice level (Excerpt path text span) reason context) = P.vsep
+  ( P.nest 2 (P.group (P.fillSep
+    [ bold (P.pretty (fromMaybe "(interactive)" path)) <> P.colon <> pos (start span) <> P.colon <> foldMap ((P.space <>) . (<> P.colon) . prettyLevel) level
     , reason
     ]))
-  : blue (pretty (succ (line (start span)))) <+> align (vcat
-    [ blue (pretty '|') <+> if "\n" `isSuffixOf` text then pretty (init text) <> blue (pretty "\\n") else pretty text <> blue (pretty "<end of input>")
-    , blue (pretty '|') <+> padding span <> caret span
+  : blue (P.pretty (succ (line (start span)))) P.<+> P.align (P.vcat
+    [ blue (P.pretty '|') P.<+> if "\n" `isSuffixOf` text then P.pretty (init text) <> blue (P.pretty "\\n") else P.pretty text <> blue (P.pretty "<end of input>")
+    , blue (P.pretty '|') P.<+> padding span <> caret span
     ])
   : context)
   where
-  pos (Pos l c) = bold (pretty (succ l)) <> P.colon <> bold (pretty (succ c))
+  pos (Pos l c) = bold (P.pretty (succ l)) <> P.colon <> bold (P.pretty (succ c))
 
-  padding (Span (Pos _ c) _) = pretty (replicate c ' ')
+  padding (Span (Pos _ c) _) = P.pretty (replicate c ' ')
 
   caret (Span start@(Pos sl sc) end@(Pos el ec))
-    | start == end = green (pretty '^')
-    | sl    == el  = green (pretty (replicate (ec - sc) '~'))
-    | otherwise    = green (pretty "^…")
+    | start == end = green (P.pretty '^')
+    | sl    == el  = green (P.pretty (replicate (ec - sc) '~'))
+    | otherwise    = green (P.pretty "^…")
 
-  bold = annotate ANSI.bold
+  bold = P.annotate ANSI.bold
 
 
-red, green, blue, magenta :: Doc AnsiStyle -> Doc AnsiStyle
-red     = annotate $ color Red
-green   = annotate $ color Green
-blue    = annotate $ color Blue
-magenta = annotate $ color Magenta
+red, green, blue, magenta :: P.Doc AnsiStyle -> P.Doc AnsiStyle
+red     = P.annotate $ color Red
+green   = P.annotate $ color Green
+blue    = P.annotate $ color Blue
+magenta = P.annotate $ color Magenta
 
 
 instance Applicative Parser where
