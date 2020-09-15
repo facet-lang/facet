@@ -24,7 +24,7 @@ not : Bool -> Bool
 , True  -> False
 }
 
-not : Doc
+not : Doc # fixme: annotate to indicate it’s only available at doc time
 { line "negate a Bool"
 , examples # these would presumably be automatically tested
   [ not True  ==> False
