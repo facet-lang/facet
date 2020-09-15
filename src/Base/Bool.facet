@@ -54,6 +54,7 @@ if
 
 Base.Bool.Tests : Module # maybe parameterize this module by a signature for tests or something
 # annotate this module via a semiring describing that it only lives in the test phase
+# we can’t export this in other phases either which is an interesting thought
 {
 
 not_antiidempotence : (x : Bool) -> Test
