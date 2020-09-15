@@ -4,4 +4,9 @@ Bool : Type
 { False : Bool
 , True  : Bool
 }
+
+not : Bool -> Bool
+{ False -> True
+, True  -> False
+}
 }
