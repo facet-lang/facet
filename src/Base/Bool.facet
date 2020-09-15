@@ -1,3 +1,5 @@
+# NB: this file and its syntax is entirely aspirational.
+
 Base.Bool : Module
 { # fixme: it’d be nice to drop the curly braces in module syntax; maybe dropping the curly braces means it just extends to the rest of the current branch?
 
