@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
@@ -8,6 +9,7 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module Facet.Expr
 ( Expr(..)
 , lam0
@@ -75,6 +77,8 @@ infixl 1 <&, &>
 
 data Inst eff a
   = forall k . Inst (eff k) (k -> a)
+
+deriving instance Functor (Inst eff)
 
 
 -- Effects
