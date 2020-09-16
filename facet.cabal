@@ -49,6 +49,7 @@ library
     , base ^>= 4.14
     , charset
     , containers
+    , distributive
     , lens
     , prettyprinter
     , prettyprinter-ansi-terminal
