@@ -85,6 +85,7 @@ instance Permutable f => Extends f f where
   weakens = id
 
 
+-- | A witness of the transitivity of 'Extends'.
 newtype Tr (i :: Type -> Type) (j :: Type -> Type) k a = Tr { getTr :: k a }
   deriving (Applicative, Functor)
 
