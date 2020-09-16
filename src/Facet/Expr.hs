@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -13,6 +14,7 @@ module Facet.Expr
 , lam1
 , (<&)
 , (&>)
+, Inst(..)
   -- * Effects
 , State(..)
 , Empty(..)
@@ -69,6 +71,10 @@ a <& b = const' $$ a $$ b
 a &> b = flip' $$ const' $$ a $$ b
 
 infixl 1 <&, &>
+
+
+data Inst eff a
+  = forall k . Inst (eff k) (k -> a)
 
 
 -- Effects
