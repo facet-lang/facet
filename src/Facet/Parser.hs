@@ -10,7 +10,6 @@ module Facet.Parser
 , string
 , set
 , opt
-, optional
 , many
 , chainr
 , chainl
@@ -40,7 +39,7 @@ module Facet.Parser
 , brackets
 ) where
 
-import           Control.Applicative ((<**>))
+import           Control.Applicative (Alternative(..), (<**>))
 import           Data.Bifunctor (first)
 import           Data.CharSet (CharSet, fromList, member, singleton, toList)
 import qualified Data.CharSet.Unicode as CharSet
@@ -69,11 +68,6 @@ char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ 
 source :: Parser Source
 source = Parser (Null src) mempty []
 
--- FIXME: warn on non-disjoint first sets
-(<|>) :: Parser a -> Parser a -> Parser a
-pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
-infixl 3 <|>
-
 fail :: a -> String -> Parser a
 fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
 
@@ -88,14 +82,8 @@ string s = foldr ((*>) . char) (pure s) s <?> (s, s)
 set :: CharSet -> (Maybe Char -> t) -> String -> Parser t
 set t f s = foldr ((<|>) . fmap (f . Just) . char) (fail (f Nothing) s) (toList t)
 
-opt :: Parser a -> a -> Parser a
+opt :: Alternative m => m a -> a -> m a
 opt p v = p <|> pure v
-
-optional :: Parser a -> Parser (Maybe a)
-optional p = opt (Just <$> p) Nothing
-
-many :: Parser a -> Parser [a]
-many p = go where go = opt ((:) <$> p <*> go) []
 
 chainr :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
 chainr p = opt . chainr1 p
@@ -112,9 +100,6 @@ chainr1 :: Parser a -> Parser (a -> a -> a) -> Parser a
 chainr1 p op = go
   where
   go = p <**> opt (flip <$> op <*> go) id
-
-some :: Parser a -> Parser [a]
-some p = (:) <$> p <*> many p
 
 span :: Parser a -> Parser Span
 span p = Span <$> position <* p <*> position
@@ -335,6 +320,13 @@ instance Applicative Parser where
         let (i', a') = k i noskip
             fa'      = getNull nf i' a'
         in  fa' `seq` (i', fa'))) ta
+
+instance Alternative Parser where
+  empty = fail (error "empty") ""
+
+  -- FIXME: warn on non-disjoint first sets
+  pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
+
 
 parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
