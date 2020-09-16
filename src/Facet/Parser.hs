@@ -44,6 +44,7 @@ import           Control.Applicative ((<**>))
 import           Data.Bifunctor (first)
 import           Data.CharSet (CharSet, fromList, member, singleton, toList)
 import qualified Data.CharSet.Unicode as CharSet
+import           Data.Foldable (traverse_)
 import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
@@ -83,7 +84,7 @@ p <?> (a, s) = p <|> fail a s
 infixl 2 <?>
 
 string :: String -> Parser String
-string s = foldr ((*>) . char) (pure s) s <?> (s, s)
+string s = s <$ traverse_ char s <?> (s, s)
 
 set :: CharSet -> (Maybe Char -> t) -> String -> Parser t
 set t f s = foldr ((<|>) . fmap (f . Just) . char) (fail (f Nothing) s) (toList t)
