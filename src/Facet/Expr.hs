@@ -40,7 +40,6 @@ module Facet.Expr
 , module Facet.Signature
 ) where
 
-import Data.Bifunctor (first)
 import Data.Functor.Sum
 import Facet.Signature
 
@@ -73,8 +72,8 @@ val = weakenBy absurd
 lam0 :: Expr repr => (repr None a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = (. weakenBy InR) <$> lam (f . either id absurdI)
 
-lam1 :: Expr repr => (Either (repr sig a) (Inst eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
-lam1 f = lam (f . first val)
+lam1 :: Expr repr => (Either (repr None a) (Inst eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
+lam1 = lam
 
 
 (<&) :: Expr repr => repr sig a -> repr sig b -> repr sig a
@@ -86,7 +85,9 @@ a &> b = flip' $$ const' $$ a $$ b
 infixl 1 <&, &>
 
 lam1' :: Expr repr => (Either (repr sig a) (Inst eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
-lam1' = lam1
+lam1' f = lam1 $ \case
+  Left  a -> f (Left (val a))
+  Right i -> f (Right i)
 
 
 -- Effects
@@ -123,13 +124,13 @@ put = lam0 $ \ s -> alg (inj (Put s)) pure
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam1 $ \case
-  Left a                -> (,) <$> val s <*> a
+  Left a                -> (,) <$> val s <*> val a
   Right (Inst Get     k) -> runState $$ val s $$ k s
   Right (Inst (Put s) k) -> runState $$ val s $$ k ()
 
 execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig a))
 execState = lam0 $ \ s -> lam1 $ \case
-  Left a                -> a
+  Left a                -> val a
   Right (Inst Get     k) -> execState $$ val s $$ k s
   Right (Inst (Put s) k) -> execState $$ val s $$ k ()
 
@@ -143,7 +144,7 @@ empty = alg (inj Empty) pure
 
 runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr (Sum Empty sig) a -> repr sig a))
 runEmpty = lam0 $ \ a -> lam1 $ \case
-  Left x               -> x
+  Left x               -> val x
   Right (Inst Empty _) -> val a
 
 execEmpty :: Expr repr => repr sig (repr (Sum Empty sig) a -> repr sig Bool)
