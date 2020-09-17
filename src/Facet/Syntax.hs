@@ -34,7 +34,7 @@ class (forall sig . Applicative (repr sig)) => Expr repr where
   ($$) :: repr sig (repr sig' a -> repr sig b) -> repr sig' a -> repr sig b
   infixl 9 $$
 
-  alg :: sig k -> (k -> repr sig a) -> repr sig a
+  alg :: Inst sig (repr sig a) -> repr sig a
 
   weakenBy :: (forall x . sub x -> sup x) -> repr sub a -> repr sup a
 

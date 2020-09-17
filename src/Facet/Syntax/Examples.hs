@@ -63,10 +63,10 @@ uncurry' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b 
 uncurry' = lam0 $ \ f -> lam0 $ \ ab -> val f $$ fmap fst (val ab) $$ fmap snd (val ab)
 
 get :: (Expr repr, Member (State (repr None s)) sig) => repr sig s
-get = alg (inj Get) val
+get = alg (Inst (inj Get) val)
 
 put :: (Expr repr, Member (State (repr None s)) sig) => repr sig (repr sig s -> repr sig ())
-put = lam0 $ \ s -> alg (inj (Put s)) pure
+put = lam0 $ \ s -> alg (Inst (inj (Put s)) pure)
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig (s, a)))
 runState = lam0 $ \ s -> lam $ \case
@@ -86,7 +86,7 @@ postIncr = get <& put $$ (get + 1 :: repr sig Int)
 
 
 empty :: (Expr repr, Member Empty sig) => repr sig a
-empty = alg (inj Empty) pure
+empty = alg (Inst (inj Empty) pure)
 
 runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr (Sum Empty sig) a -> repr sig a))
 runEmpty = lam0 $ \ a -> lam $ \case

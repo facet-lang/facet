@@ -40,6 +40,6 @@ instance Expr Eval where
 
   f $$ a = Eval $ \ h k -> runEval f (\ e -> h (($$ a) <$> e)) $ \ f' -> runEval (f' a) h k
 
-  alg e k = Eval $ \ h _ -> h (Inst e k)
+  alg i = Eval $ \ h _ -> h i
 
   weakenBy f = go where go e = Eval $ \ h k -> eval (\ (Inst e k') -> h (Inst (f e) (go . k'))) k e
