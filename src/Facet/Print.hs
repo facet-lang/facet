@@ -84,3 +84,6 @@ instance U.Expr (Print sig a) where
   f $$ a = Print $ runPrint f <+> runPrint a
 
   global = pretty
+
+instance U.Err (Print sig a) where
+  err = pretty "err"
