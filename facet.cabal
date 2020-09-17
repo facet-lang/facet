@@ -40,6 +40,7 @@ library
     Facet.Eval
     Facet.Expr
     Facet.Expr.Lifted
+    Facet.Expr.Untyped
     Facet.Functor.C
     Facet.Functor.I
     Facet.Module
