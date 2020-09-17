@@ -11,7 +11,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 module Facet.Syntax
-( Expr(..)
+( -- * Expressions
+  Expr(..)
 , Inst(..)
 , absurdI
 , val
