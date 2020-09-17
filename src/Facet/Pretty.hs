@@ -16,6 +16,8 @@ module Facet.Pretty
 , rbracket
 , lbrace
 , rbrace
+, comma
+, colon
 , enclose
 , surround
 , encloseSep
@@ -149,6 +151,12 @@ rbracket = pretty ']'
 lbrace, rbrace :: Printer ann doc => doc
 lbrace = pretty '{'
 rbrace = pretty '}'
+
+comma :: Printer ann doc => doc
+comma = pretty ','
+
+colon :: Printer ann doc => doc
+colon = pretty ':'
 
 enclose :: Printer ann doc => doc -> doc -> doc -> doc
 enclose l r x = l <> x <> r
