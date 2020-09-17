@@ -12,11 +12,11 @@
 {-# LANGUAGE StandaloneDeriving #-}
 module Facet.Expr
 ( Expr(..)
+, Inst(..)
 , lam0
 , lam1
 , (<&)
 , (&>)
-, Inst(..)
 , lam1'
   -- * Effects
 , State(..)
@@ -56,6 +56,12 @@ class (forall sig . Applicative (repr sig)) => Expr repr where
   -- FIXME: constructors
   -- FIXME: patterns
 
+data Inst eff a
+  = forall k . Inst (eff k) (k -> a)
+
+deriving instance Functor (Inst eff)
+
+
 -- | Values embed into computations at every signature.
 val :: Expr repr => repr None a -> repr sig a
 val = weakenBy absurd
@@ -74,12 +80,6 @@ a <& b = const' $$ a $$ b
 a &> b = flip' $$ const' $$ a $$ b
 
 infixl 1 <&, &>
-
-
-data Inst eff a
-  = forall k . Inst (eff k) (k -> a)
-
-deriving instance Functor (Inst eff)
 
 lam1' :: Expr repr => (Either (repr sig a) (Inst eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
 lam1' f = lam1 $ \case
