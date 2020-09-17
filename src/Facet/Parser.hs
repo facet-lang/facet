@@ -346,7 +346,7 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   choices = Map.fromList (table p)
 
 
-parser :: Parser [Def]
+parser :: Parser [Def repr]
 parser = ws *> many def
 
 lower' = fromList ['a'..'z']
@@ -383,14 +383,14 @@ type Name = String
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
 
-def :: Parser Def
+def :: Parser (Def repr)
 def = Def
   <$> ident
   <*  colon
   <*> type'
   <*> term
 
-type' :: Parser Type
+type' :: Parser (Type repr)
 type' = fn <|> pi <|> fail TErr "type"
   where
   fn = app <**> opt (flip (:->) <$ token (string "->") <*> fn) id
@@ -402,22 +402,22 @@ type' = fn <|> pi <|> fail TErr "type"
     <|> parens type'
     <?> (TErr, "atomic type")
 
-term :: Parser Term
+term :: Parser (Term repr)
 term
   =   Var <$> ident
   <|> Lam <$> braces (opt (pure <$> term) [])
   <|> fail Err "term"
 
-data Def = Def Name Type Term
+data Def repr = Def Name (Type repr) (Term repr)
   deriving (Eq, Show)
 
 type TName = String
 
-data Type
+data Type repr
   = TVar TName
-  | Type :-> Type
-  | (Name, Type) :=> Type
-  | Type :$ Type
+  | Type repr :-> Type repr
+  | (Name, Type repr) :=> Type repr
+  | Type repr :$ Type repr
   | TErr
   deriving (Eq, Show)
 
@@ -426,10 +426,10 @@ infixr 0 :=>
 infixl 9 :$
 
 
-data Term
+data Term repr
   = Var Name
-  | Lam [Term]
-  | Term :$$ Term
+  | Lam [Term repr]
+  | Term repr :$$ Term repr
   | Err
   deriving (Eq, Show)
 
