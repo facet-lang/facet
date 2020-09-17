@@ -6,6 +6,7 @@
 module Facet.Parser
 ( Pos(..)
 , Span(..)
+, Parsing(..)
 , (<?>)
 , string
 , set
@@ -84,48 +85,48 @@ instance Parsing Parser where
   fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
 
 -- FIXME: always require <?>/fail to terminate a chain of alternatives
-(<?>) :: Parser a -> (a, String) -> Parser a
+(<?>) :: Parsing p => p a -> (a, String) -> p a
 p <?> (a, s) = p <|> fail a s
 infixl 2 <?>
 
-string :: String -> Parser String
+string :: Parsing p => String -> p String
 string s = s <$ traverse_ char s <?> (s, s)
 
-set :: CharSet -> (Maybe Char -> t) -> String -> Parser t
+set :: Parsing p => CharSet -> (Maybe Char -> t) -> String -> p t
 set t f s = foldr ((<|>) . fmap (f . Just) . char) (fail (f Nothing) s) (toList t)
 
-opt :: Parser a -> a -> Parser a
+opt :: Parsing p => p a -> a -> p a
 opt p v = p <|> pure v
 
-optional :: Parser a -> Parser (Maybe a)
+optional :: Parsing p => p a -> p (Maybe a)
 optional p = opt (Just <$> p) Nothing
 
-many :: Parser a -> Parser [a]
+many :: Parsing p => p a -> p [a]
 many p = go where go = opt ((:) <$> p <*> go) []
 
-chainr :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
+chainr :: Parsing p => p a -> p (a -> a -> a) -> a -> p a
 chainr p = opt . chainr1 p
 
-chainl :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
+chainl :: Parsing p => p a -> p (a -> a -> a) -> a -> p a
 chainl p = opt . chainl1 p
 
-chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 :: Parsing p => p a -> p (a -> a -> a) -> p a
 chainl1 p op = p <**> go
   where
   go = opt ((\ f y g x -> g (f x y)) <$> op <*> p <*> go) id
 
-chainr1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainr1 :: Parsing p => p a -> p (a -> a -> a) -> p a
 chainr1 p op = go
   where
   go = p <**> opt (flip <$> op <*> go) id
 
-some :: Parser a -> Parser [a]
+some :: Parsing p => p a -> p [a]
 some p = (:) <$> p <*> many p
 
-span :: Parser a -> Parser Span
+span :: Parsing p => p a -> p Span
 span p = Span <$> position <* p <*> position
 
-spanned :: Parser a -> Parser (Span, a)
+spanned :: Parsing p => p a -> p (Span, a)
 spanned p = mk <$> position <*> p <*> position
   where
   mk s a e = (Span s e, a)
@@ -269,7 +270,7 @@ data Excerpt = Excerpt
   }
   deriving (Eq, Ord, Show)
 
-excerpted :: Parser a -> Parser (Excerpt, a)
+excerpted :: Parsing p => p a -> p (Excerpt, a)
 excerpted p = first . mk <$> source <*> spanned p
   where
   mk src span = Excerpt (path src) (src ! start span) span
@@ -351,14 +352,16 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   choices = Map.fromList (table p)
 
 
-parser :: Expr repr => Parser [Def repr]
+parser :: (Parsing p, Expr repr) => p [Def repr]
 parser = ws *> many def
 
 lower' = fromList ['a'..'z']
+lower, upper, letter, colon, lparen, rparen, lbrace, rbrace, lbracket, rbracket :: Parsing p => p Char
 lower = set lower' (fromMaybe 'a') "lowercase letter"
 upper' = fromList ['A'..'Z']
 upper = set upper' (fromMaybe 'A') "uppercase letter"
 letter = lower <|> upper <?> ('a', "letter")
+ident, tident :: Parsing p => p Name
 ident = token ((:) <$> lower <*> many letter)
 tident = token ((:) <$> upper <*> many letter)
 colon = token (char ':')
@@ -368,17 +371,19 @@ lbrace = token (char '{')
 rbrace = token (char '}')
 lbracket = token (char '[')
 rbracket = token (char ']')
+ws :: Parsing p => p ()
 ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
+token :: Parsing p => p a -> p a
 token p = p <* ws
 
-parens :: Parser a -> Parser a
+parens :: Parsing p => p a -> p a
 parens a = lparen *> a <* rparen
 
-braces :: Parser a -> Parser a
+braces :: Parsing p => p a -> p a
 braces a = lbrace *> a <* rbrace
 
-brackets :: Parser a -> Parser a
+brackets :: Parsing p => p a -> p a
 brackets a = lbracket *> a <* rbracket
 
 
@@ -388,14 +393,14 @@ type Name = String
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
 
-def :: Expr repr => Parser (Def repr)
+def :: (Parsing p, Expr repr) => p (Def repr)
 def = Def
   <$> ident
   <*  colon
   <*> type'
   <*> term
 
-type' :: Expr repr => Parser (Type repr)
+type' :: (Parsing p, Expr repr) => p (Type repr)
 type' = fn <|> pi <|> fail TErr "type"
   where
   fn = app <**> opt (flip (:->) <$ token (string "->") <*> fn) id
@@ -407,7 +412,7 @@ type' = fn <|> pi <|> fail TErr "type"
     <|> parens type'
     <?> (TErr, "atomic type")
 
-term :: Expr repr => Parser (Term repr)
+term :: (Parsing p, Expr repr) => p (Term repr)
 term
   =   Var <$> ident
   <|> Lam <$> braces (opt (pure <$> term) [])
