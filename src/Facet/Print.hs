@@ -93,3 +93,11 @@ instance U.Expr (Print sig a) where
 
 instance U.Err (Print sig a) where
   err = pretty "err"
+
+instance U.Type (Print sig a) where
+  a --> b = a <+> pretty "->" <+> b
+  t >-> f = Print $ bind $ \ var -> let var' = prettyVar var in braces (space <> var' <> colon <> runPrint t <> space) <+> pretty "->" <+> runPrint (f (Print var'))
+  f .$ a = f <+> a
+  l .* r = parens $ l <> comma <+> r
+  _Unit = pretty "()"
+  tglobal = pretty
