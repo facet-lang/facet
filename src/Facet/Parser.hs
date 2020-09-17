@@ -42,7 +42,7 @@ module Facet.Parser
 , brackets
 ) where
 
-import           Control.Applicative ((<**>))
+import           Control.Applicative (liftA2, (<**>))
 import           Data.Bifunctor (first)
 import           Data.CharSet (CharSet, fromList, member, singleton, toList)
 import qualified Data.CharSet.Unicode as CharSet
@@ -75,6 +75,11 @@ class Applicative p => Parsing p where
   infixl 3 <|>
   fail :: a -> String -> p a
 
+  -- | Parse some text, and then parse something else constructed using a parser that parses the same literal text.
+  --
+  -- This is like a restricted form of the monadic bind.
+  capture :: (a -> b -> c) -> p a -> (p a -> p b) -> p c
+
 instance Parsing Parser where
   position = Parser (Null pos) mempty []
 
@@ -86,12 +91,27 @@ instance Parsing Parser where
 
   fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
 
+  -- FIXME: this is probably exponential in the depth of the parse tree because of running f twice? but maybe laziness will save us?
+  -- FIXME: is this even correct?
+  -- FIXME: do we want to require that p be non-nullable?
+  capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table sp))
+    where
+    sp = first . substring <$> source <*> spanned p
+    go k i follow =
+      let (i', (s, a)) = k i follow
+          gp = g (a <$ string s)
+          choices = Map.fromList (table gp)
+          (i'', b) = choose (null gp) choices i' follow
+          fab = f a b
+      in fab `seq` (i'', fab)
+
 instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   position = C $ pure <$> position
   char s   = C $ pure <$> char s
   source   = C $ pure <$> source
   l <|> r  = C $ getC l <|> getC r
   fail a s = C $ fail (pure a) s
+  capture f p g = C $ capture (liftA2 f) (getC p) (getC . g . C)
 
 -- FIXME: always require <?>/fail to terminate a chain of alternatives
 (<?>) :: Parsing p => p a -> (a, String) -> p a
