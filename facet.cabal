@@ -41,6 +41,7 @@ library
     Facet.Expr
     Facet.Expr.Lifted
     Facet.Expr.Untyped
+    Facet.Expr.Untyped.Lifted
     Facet.Functor.C
     Facet.Functor.I
     Facet.Module
