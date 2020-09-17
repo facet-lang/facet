@@ -64,14 +64,15 @@ lam0 f = (. weakenBy InR) <$> lam (f . either id absurdI)
 
 (<&) :: Expr repr => repr sig a -> repr sig b -> repr sig a
 a <& b = const' $$ a $$ b
+  where
+  const' = lam0 (lam0 . const . val)
 
 (&>) :: Expr repr => repr sig a -> repr sig b -> repr sig b
 a &> b = flip' $$ const' $$ a $$ b
+  where
+  const' = lam0 (lam0 . const . val)
 
 infixl 1 <&, &>
-
-const' :: Expr repr => repr sig (repr sig a -> repr sig (repr sig b -> repr sig a))
-const' = lam0 (lam0 . const . val)
 
 flip' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig b -> repr sig (repr sig a -> repr sig c)))
 flip' = lam0 (\ f -> lam0 (\ b -> lam0 (\ a -> val f $$ val a $$ val b)))
