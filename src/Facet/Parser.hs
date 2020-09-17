@@ -18,6 +18,8 @@ module Facet.Parser
 , chainl
 , chainr1
 , chainl1
+, sepBy
+, sepBy1
 , some
 , span
 , spanned
@@ -152,6 +154,12 @@ chainr1 :: Parsing p => p a -> p (a -> a -> a) -> p a
 chainr1 p op = go
   where
   go = p <**> opt (flip <$> op <*> go) id
+
+sepBy :: Parsing p => p a -> p s -> p [a]
+sepBy p s = opt (sepBy1 p s) []
+
+sepBy1 :: Parsing p => p a -> p s -> p [a]
+sepBy1 p s = (:) <$> p <*> many (s *> p)
 
 some :: Parsing p => p a -> p [a]
 some p = (:) <$> p <*> many p
