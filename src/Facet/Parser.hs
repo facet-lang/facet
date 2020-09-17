@@ -464,13 +464,14 @@ tglobal :: (S.Type ty, Parsing p) => p ty
 tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
 
 type_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty
-type_ vars = fn {-<|> pi-} <|> fail S.err "type"
+type_ var = fn var <|> forAll var <|> fail S.err "type"
   where
-  fn = app <**> opt (flip (S.-->) <$ arrow <*> fn) id
-  app = foldl (S..$) <$> atom <*> many atom
-  atom
-    =   parens (prd <$> sepBy (type_ vars) comma)
-    <|> vars
+  fn var = app var <**> opt (flip (S.-->) <$ arrow <*> fn var) id
+  forAll var = lbrace *> capture (\ _ b -> b) ident (\ i -> colon *> (type_ var S.>-> \ t -> rbrace *> arrow *> type_ (weaken var <|> liftCOuter t <* weaken i)))
+  app var = foldl (S..$) <$> atom var <*> many (atom var)
+  atom var
+    =   parens (prd <$> sepBy (type_ var) comma)
+    <|> var
   prd [] = S._Unit
   prd ts = foldl1 (S..*) ts
 
