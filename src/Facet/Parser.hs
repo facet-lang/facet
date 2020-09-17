@@ -42,6 +42,7 @@ module Facet.Parser
 , parens
 , braces
 , brackets
+, type_
 , expr
 ) where
 
@@ -397,7 +398,7 @@ parser :: (Parsing p, S.Expr repr) => p [Def repr]
 parser = ws *> many def
 
 lower' = fromList ['a'..'z']
-lower, upper, letter, colon, lparen, rparen, lbrace, rbrace, lbracket, rbracket :: Parsing p => p Char
+lower, upper, letter, colon, comma, lparen, rparen, lbrace, rbrace, lbracket, rbracket :: Parsing p => p Char
 lower = set lower' (fromMaybe 'a') "lowercase letter"
 upper' = fromList ['A'..'Z']
 upper = set upper' (fromMaybe 'A') "uppercase letter"
@@ -406,6 +407,7 @@ ident, tident :: Parsing p => p Name
 ident = token ((:) <$> lower <*> many letter)
 tident = token ((:) <$> upper <*> many letter)
 colon = token (char ':')
+comma = token (char ',')
 lparen = token (char '(')
 rparen = token (char ')')
 lbrace = token (char '{')
@@ -454,6 +456,18 @@ type' = fn <|> pi <|> fail TErr "type"
     <|> TVar <$> ident
     <|> parens type'
     <?> (TErr, "atomic type")
+
+type_ :: (Parsing p, S.Type ty, S.Err ty) => p ty
+type_ = fn {-<|> pi-} <|> fail S.err "type"
+  where
+  fn = app <**> opt (flip (S.-->) <$ arrow <*> fn) id
+  app = foldl (S..$) <$> atom <*> many atom
+  atom
+    =   S.tglobal <$> tident
+    <|> parens (prd <$> sepBy type_ comma)
+    <?> (S.err, "atomic type")
+  prd [] = S._Unit
+  prd ts = foldl1 (S..*) ts
 
 term :: (Parsing p, S.Expr repr) => p (Term repr)
 term
