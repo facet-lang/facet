@@ -48,6 +48,7 @@ import           Data.Foldable (traverse_)
 import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
+import           Facet.Expr.Untyped.Lifted
 import           Prelude hiding (fail, lines, null, span)
 import qualified Prettyprinter as P
 import           Prettyprinter.Render.Terminal as ANSI
@@ -346,7 +347,7 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   choices = Map.fromList (table p)
 
 
-parser :: Parser [Def repr]
+parser :: Expr repr => Parser [Def repr]
 parser = ws *> many def
 
 lower' = fromList ['a'..'z']
@@ -383,14 +384,14 @@ type Name = String
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
 
-def :: Parser (Def repr)
+def :: Expr repr => Parser (Def repr)
 def = Def
   <$> ident
   <*  colon
   <*> type'
   <*> term
 
-type' :: Parser (Type repr)
+type' :: Expr repr => Parser (Type repr)
 type' = fn <|> pi <|> fail TErr "type"
   where
   fn = app <**> opt (flip (:->) <$ token (string "->") <*> fn) id
@@ -402,7 +403,7 @@ type' = fn <|> pi <|> fail TErr "type"
     <|> parens type'
     <?> (TErr, "atomic type")
 
-term :: Parser (Term repr)
+term :: Expr repr => Parser (Term repr)
 term
   =   Var <$> ident
   <|> Lam <$> braces (opt (pure <$> term) [])
