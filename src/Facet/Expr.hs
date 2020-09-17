@@ -13,6 +13,7 @@
 module Facet.Expr
 ( Expr(..)
 , Inst(..)
+, absurdI
 , lam0
 , lam1
 , (<&)
@@ -60,6 +61,9 @@ data Inst eff a
   = forall k . Inst (eff k) (k -> a)
 
 deriving instance Functor (Inst eff)
+
+absurdI :: Inst None a -> b
+absurdI (Inst e _) = absurd e
 
 
 -- | Values embed into computations at every signature.
