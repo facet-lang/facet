@@ -42,7 +42,7 @@ module Facet.Parser
 , parens
 , braces
 , brackets
-, type_
+, type''
 , expr
 ) where
 
@@ -457,15 +457,20 @@ type' = fn <|> pi <|> fail TErr "type"
     <|> parens type'
     <?> (TErr, "atomic type")
 
-type_ :: (Parsing p, S.Type ty, S.Err ty) => p ty
-type_ = fn {-<|> pi-} <|> fail S.err "type"
+type'' :: (S.Type ty, S.Err ty, Parsing p) => p ty
+type'' = runIdentity <$> getC (type_ tglobal)
+
+tglobal :: (S.Type ty, Parsing p) => p ty
+tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
+
+type_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty
+type_ vars = fn {-<|> pi-} <|> fail S.err "type"
   where
   fn = app <**> opt (flip (S.-->) <$ arrow <*> fn) id
   app = foldl (S..$) <$> atom <*> many atom
   atom
-    =   S.tglobal <$> tident
-    <|> parens (prd <$> sepBy type_ comma)
-    <?> (S.err, "atomic type")
+    =   parens (prd <$> sepBy (type_ vars) comma)
+    <|> vars
   prd [] = S._Unit
   prd ts = foldl1 (S..*) ts
 
