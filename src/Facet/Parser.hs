@@ -276,7 +276,7 @@ takeLine = go id where
 {-# inline takeLine #-}
 
 substring :: Source -> Span -> String
-substring source (Span (Pos sl sc) (Pos el ec)) = concat (onHead (drop sc) (onLast (take ec) (drop sl (take el (lines source)))))
+substring source (Span (Pos sl sc) (Pos el ec)) = concat (onHead (drop sc) (onLast (take ec) (drop sl (take (el+1) (lines source)))))
   where
   onHead f = \case
     []   -> []
