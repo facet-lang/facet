@@ -70,12 +70,10 @@ a <& b = const' $$ a $$ b
 (&>) :: Expr repr => repr sig a -> repr sig b -> repr sig b
 a &> b = flip' $$ const' $$ a $$ b
   where
+  flip' = lam0 (\ f -> lam0 (\ b -> lam0 (\ a -> val f $$ val a $$ val b)))
   const' = lam0 (lam0 . const . val)
 
 infixl 1 <&, &>
-
-flip' :: Expr repr => repr sig (repr sig (repr sig a -> repr sig (repr sig b -> repr sig c)) -> repr sig (repr sig b -> repr sig (repr sig a -> repr sig c)))
-flip' = lam0 (\ f -> lam0 (\ b -> lam0 (\ a -> val f $$ val a $$ val b)))
 
 
 -- Types
