@@ -9,7 +9,5 @@ class Expr repr where
   ($$) :: repr -> repr -> repr
   infixl 9 $$
 
-  alg :: repr -> (repr -> repr) -> repr
-
 class Err expr where
   err :: expr
