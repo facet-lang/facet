@@ -3,10 +3,11 @@
 module Facet.Syntax.Untyped.Lifted
 ( S.Expr(global)
 , S.Err(..)
-, S.Type(..)
+, S.Type(_Unit, tglobal, (-->), (.*), (.$))
 , lam
 , lam0
 , ($$)
+, (>->)
 ) where
 
 import           Control.Applicative (liftA2)
@@ -29,3 +30,13 @@ lam0 f = S.lam0 <$> C (getC <$> getC (f (C (pure id))))
 f $$ a = liftA2 (S.$$) f a
 
 infixl 9 $$
+
+
+(>->)
+  :: (Applicative m, Permutable env, S.Type ty)
+  => (m :.: env) ty
+  -> (forall env' . Permutable env' => (env :.: env') ty -> (m :.: env :.: env') ty)
+  -> (m :.: env) ty
+t >-> b = (S.>->) <$> t <*> C (getC <$> getC (b (C (pure id))))
+
+infixr 1 >->
