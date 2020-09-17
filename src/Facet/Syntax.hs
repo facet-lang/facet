@@ -80,6 +80,9 @@ class Type ty where
   (.*) :: ty expr a -> ty expr b -> ty expr (a, b)
   infixl 7 .*
 
+  (.$) :: ty expr (expr a -> expr b) -> ty expr a -> ty expr b
+  infixl 9 .$
+
   _Unit :: ty expr ()
 
 
