@@ -18,6 +18,7 @@ import qualified Data.Text.Prettyprint.Doc as PP
 import qualified Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
 import           Facet.Pretty
 import           Facet.Syntax
+import qualified Facet.Syntax.Untyped as U
 
 prettyPrint :: MonadIO m => Print sig a -> m ()
 prettyPrint = prettyPrintWith defaultStyle
@@ -75,3 +76,9 @@ cases cs = bind $ \ var -> group
     (flatAlt space mempty <> rbrace)
     (flatAlt (pretty " | ") (pretty "| "))
   $ map (\ (p, b) -> p <+> pretty "->" <+> b) (cs <*> [var])
+
+
+instance U.Expr (Print sig a) where
+  lam0 f = Print $ cases [\ var -> (var, runPrint (f (Print var)))]
+  lam  f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
+  f $$ a = Print $ runPrint f <+> runPrint a
