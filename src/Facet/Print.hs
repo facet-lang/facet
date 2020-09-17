@@ -75,7 +75,7 @@ cases cs = bind $ \ var -> group
   . encloseSep
     (lbrace <> flatAlt space mempty)
     (flatAlt space mempty <> rbrace)
-    (flatAlt (pretty " | ") (pretty "| "))
+    (flatAlt (pretty " , ") (pretty ", "))
   $ map (\ (p, b) -> p <+> pretty "->" <+> b) (cs <*> [prettyVar var])
 
 prettyVar :: Printer (Nest Highlight) doc => Var -> doc
