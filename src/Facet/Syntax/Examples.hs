@@ -4,7 +4,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Facet.Syntax.Examples
-( prelude
+( -- * Examples
+  prelude
 , id'
 , const'
 , flip'
@@ -18,6 +19,9 @@ module Facet.Syntax.Examples
 , empty
 , runEmpty
 , execEmpty
+  -- * Effects
+, State(..)
+, Empty(..)
 ) where
 
 import Facet.Syntax
@@ -91,3 +95,12 @@ runEmpty = lam0 $ \ a -> lam $ \case
 
 execEmpty :: Expr repr => repr sig (repr (Sum Empty sig) a -> repr sig Bool)
 execEmpty = lam (either (const (pure True)) (const (pure False)))
+
+
+-- Effects
+
+data State s k where
+  Get :: State s s
+  Put :: s -> State s ()
+
+data Empty k = Empty

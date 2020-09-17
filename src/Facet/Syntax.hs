@@ -2,7 +2,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE QuantifiedConstraints #-}
@@ -24,9 +23,6 @@ module Facet.Syntax
 , DeclName
 , Module(..)
 , Decl(..)
-  -- * Effects
-, State(..)
-, Empty(..)
   -- * Signatures
 , module Facet.Signature
 ) where
@@ -107,13 +103,3 @@ class (Expr expr, Type ty) => Decl expr ty decl | decl -> ty expr where
   infixr 1 >->
   (.=) :: ty (expr sig) a -> expr sig a -> decl a
   infix 1 .=
-
-
-
--- Effects
-
-data State s k where
-  Get :: State s s
-  Put :: s -> State s ()
-
-data Empty k = Empty
