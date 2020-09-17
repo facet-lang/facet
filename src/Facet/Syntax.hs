@@ -10,7 +10,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-module Facet.Expr
+module Facet.Syntax
 ( Expr(..)
 , Inst(..)
 , absurdI

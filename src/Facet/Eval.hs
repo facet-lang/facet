@@ -7,7 +7,7 @@ module Facet.Eval
 ) where
 
 import Control.Monad (ap, liftM)
-import Facet.Expr
+import Facet.Syntax
 
 newtype Eval sig a = Eval { runEval :: forall r . (Inst sig (Eval sig a) -> r) -> (a -> r) -> r }
 

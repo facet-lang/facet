@@ -48,7 +48,7 @@ import           Data.Foldable (traverse_)
 import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
-import           Facet.Expr.Untyped.Lifted
+import           Facet.Syntax.Untyped.Lifted
 import           Prelude hiding (fail, lines, null, span)
 import qualified Prettyprinter as P
 import           Prettyprinter.Render.Terminal as ANSI

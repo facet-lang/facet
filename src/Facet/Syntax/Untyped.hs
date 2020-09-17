@@ -1,4 +1,4 @@
-module Facet.Expr.Untyped
+module Facet.Syntax.Untyped
 ( Expr(..)
 ) where
 

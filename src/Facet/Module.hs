@@ -7,7 +7,7 @@ module Facet.Module
 , prelude
 ) where
 
-import Facet.Expr
+import Facet.Syntax
 import Facet.Type
 
 type DeclName = String

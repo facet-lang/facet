@@ -16,8 +16,8 @@ import           Control.Monad.IO.Class
 import           Data.Kind (Type)
 import qualified Data.Text.Prettyprint.Doc as PP
 import qualified Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
-import           Facet.Expr
 import           Facet.Pretty
+import           Facet.Syntax
 
 prettyPrint :: MonadIO m => Print sig a -> m ()
 prettyPrint = prettyPrintWith defaultStyle

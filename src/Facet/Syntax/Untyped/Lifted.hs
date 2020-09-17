@@ -1,13 +1,13 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
-module Facet.Expr.Untyped.Lifted
+module Facet.Syntax.Untyped.Lifted
 ( Expr.Expr
 , lam
 , lam0
 ) where
 
-import qualified Facet.Expr.Untyped as Expr
-import Facet.Functor.C
+import           Facet.Functor.C
+import qualified Facet.Syntax.Untyped as Expr
 
 lam
   :: (Applicative m, Permutable env, Expr.Expr repr)

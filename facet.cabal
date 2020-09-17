@@ -38,10 +38,6 @@ library
   import: common
   exposed-modules:
     Facet.Eval
-    Facet.Expr
-    Facet.Expr.Lifted
-    Facet.Expr.Untyped
-    Facet.Expr.Untyped.Lifted
     Facet.Functor.C
     Facet.Functor.I
     Facet.Module
@@ -49,6 +45,10 @@ library
     Facet.Pretty
     Facet.Print
     Facet.Signature
+    Facet.Syntax
+    Facet.Syntax.Lifted
+    Facet.Syntax.Untyped
+    Facet.Syntax.Untyped.Lifted
     Facet.Type
   build-depends:
     , base ^>= 4.14
