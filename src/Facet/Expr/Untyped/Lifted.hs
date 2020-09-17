@@ -1,7 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Expr.Untyped.Lifted
-( lam
+( Expr.Expr
+, lam
 , lam0
 ) where
 

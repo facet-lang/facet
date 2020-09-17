@@ -3,6 +3,7 @@
 module Facet.Expr.Lifted
 ( lam
 , lam0
+, Expr.Expr
 ) where
 
 import qualified Facet.Expr as Expr
