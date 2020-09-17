@@ -2,6 +2,7 @@ module Facet.Syntax.Untyped
 ( Name
 , Expr(..)
 , Err(..)
+, TName
 , Type(..)
 ) where
 
@@ -17,6 +18,9 @@ class Expr repr where
 
 class Err expr where
   err :: expr
+
+
+type TName = String
 
 class Type ty where
   (-->) :: ty -> ty -> ty
