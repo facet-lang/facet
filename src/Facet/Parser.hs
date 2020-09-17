@@ -96,11 +96,12 @@ instance Parsing Parser where
   -- FIXME: this is probably exponential in the depth of the parse tree because of running f twice? but maybe laziness will save us?
   -- FIXME: is this even correct?
   -- FIXME: do we want to require that p be non-nullable?
-  capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table sp))
+  capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table p))
     where
-    sp = first . substring <$> source <*> spanned p
     go k i follow =
-      let (i', (s, a)) = k i (firstSet gp:follow)
+      let (i', a) = k i (fs:follow)
+          s = substring (src i) (Span (pos i) (pos i'))
+          fs = firstSet gp
           gp = g (a <$ string s)
           choices = Map.fromList (table gp)
           (i'', b) = choose (null gp) choices i' follow
