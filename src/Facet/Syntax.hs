@@ -3,9 +3,9 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -21,6 +21,10 @@ module Facet.Syntax
 , (&>)
   -- * Types
 , Type(..)
+  -- * Modules
+, DeclName
+, Module(..)
+, Decl(..)
   -- * Effects
 , State(..)
 , Empty(..)
@@ -96,6 +100,23 @@ class Type ty where
   infixl 7 .*
 
   _Unit :: ty expr ()
+
+
+-- Modules
+
+type DeclName = String
+
+class (Decl expr ty decl, Applicative mod) => Module expr ty decl mod | mod -> decl ty expr where
+  (.:) :: DeclName -> decl a -> mod (decl a)
+  infixr 0 .:
+
+class (Expr expr, Type ty) => Decl expr ty decl | decl -> ty expr where
+  forAll :: (ty (expr sig) a -> decl b) -> decl b
+  (>->) :: ty (expr sig) a -> (expr sig a -> decl b) -> decl (expr sig a -> b)
+  infixr 1 >->
+  (.=) :: ty (expr sig) a -> expr sig a -> decl a
+  infix 1 .=
+
 
 
 -- Effects
