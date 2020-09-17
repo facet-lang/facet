@@ -472,6 +472,7 @@ type_ var = fn var <|> forAll var <|> fail S.err "type"
   atom var
     =   parens (prd <$> sepBy (type_ var) comma)
     <|> var
+    <|> S._Type <$ string "Type"
   prd [] = S._Unit
   prd ts = foldl1 (S..*) ts
 
