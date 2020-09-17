@@ -1,5 +1,4 @@
 {-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE FunctionalDependencies #-}
 module Facet.Module
 ( prelude
 ) where
