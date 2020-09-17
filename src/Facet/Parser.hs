@@ -98,7 +98,7 @@ instance Parsing Parser where
     where
     sp = first . substring <$> source <*> spanned p
     go k i follow =
-      let (i', (s, a)) = k i follow
+      let (i', (s, a)) = k i (firstSet gp:follow)
           gp = g (a <$ string s)
           choices = Map.fromList (table gp)
           (i'', b) = choose (null gp) choices i' follow
