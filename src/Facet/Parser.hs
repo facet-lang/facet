@@ -62,22 +62,26 @@ data Span = Span { start :: {-# unpack #-} !Pos, end :: {-# unpack #-} !Pos }
 instance Semigroup Span where
   Span s1 e1 <> Span s2 e2 = Span (min s1 s2) (max e1 e2)
 
-position :: Parser Pos
-position = Parser (Null pos) mempty []
 
-char :: Char -> Parser Char
-char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
+class Applicative p => Parsing p where
+  position :: p Pos
+  char :: Char -> p Char
+  source :: p Source
+  -- FIXME: warn on non-disjoint first sets
+  (<|>) :: p a -> p a -> p a
+  infixl 3 <|>
+  fail :: a -> String -> p a
 
-source :: Parser Source
-source = Parser (Null src) mempty []
+instance Parsing Parser where
+  position = Parser (Null pos) mempty []
 
--- FIXME: warn on non-disjoint first sets
-(<|>) :: Parser a -> Parser a -> Parser a
-pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
-infixl 3 <|>
+  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
 
-fail :: a -> String -> Parser a
-fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
+  source = Parser (Null src) mempty []
+
+  pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
+
+  fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
 
 -- FIXME: always require <?>/fail to terminate a chain of alternatives
 (<?>) :: Parser a -> (a, String) -> Parser a
