@@ -68,10 +68,9 @@ a <& b = const' $$ a $$ b
   const' = lam0 (lam0 . const . val)
 
 (&>) :: Expr repr => repr sig a -> repr sig b -> repr sig b
-a &> b = flip' $$ const' $$ a $$ b
+a &> b = snd' $$ a $$ b
   where
-  flip' = lam0 (\ f -> lam0 (\ b -> lam0 (\ a -> val f $$ val a $$ val b)))
-  const' = lam0 (lam0 . const . val)
+  snd' = lam0 (const (lam0 val))
 
 infixl 1 <&, &>
 
