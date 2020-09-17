@@ -63,9 +63,9 @@ lam0 f = (. weakenBy InR) <$> lam (f . either id absurdI)
 
 
 (<&) :: Expr repr => repr sig a -> repr sig b -> repr sig a
-a <& b = const' $$ a $$ b
+a <& b = fst' $$ a $$ b
   where
-  const' = lam0 (lam0 . const . val)
+  fst' = lam0 (lam0 . const . val)
 
 (&>) :: Expr repr => repr sig a -> repr sig b -> repr sig b
 a &> b = snd' $$ a $$ b
