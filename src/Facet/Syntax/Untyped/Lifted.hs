@@ -3,6 +3,7 @@
 module Facet.Syntax.Untyped.Lifted
 ( S.Expr(global)
 , S.Err(..)
+, S.Type(..)
 , lam
 , lam0
 , ($$)
