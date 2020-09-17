@@ -70,10 +70,10 @@ mapC = coerce
 
 
 weaken :: (Functor m, Extends env env') => (m :.: env) a -> (m :.: env') a
-weaken = C . fmap weakens . getC
+weaken = mapC (fmap weakens)
 
 strengthen :: (Functor m, Functor env) => (m :.: env :.: I) a -> (m :.: env) a
-strengthen = C . fmap (fmap getI . getC) . getC
+strengthen = mapC (fmap (fmap getI . getC))
 
 
 type Permutable f = (Applicative f, Distributive f)
