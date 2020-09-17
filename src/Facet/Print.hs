@@ -100,4 +100,5 @@ instance U.Type (Print sig a) where
   f .$ a = f <+> a
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
+  _Type = pretty "Type"
   tglobal = pretty

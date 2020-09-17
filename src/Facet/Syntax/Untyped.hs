@@ -36,5 +36,6 @@ class Type ty where
   infixl 9 .$
 
   _Unit :: ty
+  _Type :: ty
 
   tglobal :: TName -> ty
