@@ -30,3 +30,5 @@ class Type ty where
   infixl 7 .*
 
   _Unit :: ty
+
+  tglobal :: TName -> ty
