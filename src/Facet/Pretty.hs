@@ -304,8 +304,8 @@ incr = Var . succ . getVar
 fresh :: Fresh doc -> doc
 fresh = (`runFresh` Var 0)
 
-bind :: Printer ann doc => (Fresh doc -> Fresh doc) -> Fresh doc
-bind f = Fresh $ \ v -> runFresh (f (pretty v)) (incr v)
+bind :: (Var -> Fresh doc) -> Fresh doc
+bind f = Fresh $ \ v -> runFresh (f v) (incr v)
 
 newtype Fresh doc = Fresh { runFresh :: Var -> doc }
   deriving (Applicative, Printer ann, Functor, Monad, Monoid, PrecPrinter ann, Semigroup)

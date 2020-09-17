@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
@@ -69,13 +70,17 @@ instance Expr Print where
 
   weakenBy _ = Print . runPrint
 
-cases :: Printer ann doc => [Fresh doc -> (Fresh doc, Fresh doc)] -> Fresh doc
+cases :: Printer (Nest Highlight) doc => [Fresh doc -> (Fresh doc, Fresh doc)] -> Fresh doc
 cases cs = bind $ \ var -> group
   . encloseSep
     (lbrace <> flatAlt space mempty)
     (flatAlt space mempty <> rbrace)
     (flatAlt (pretty " | ") (pretty "| "))
-  $ map (\ (p, b) -> p <+> pretty "->" <+> b) (cs <*> [var])
+  $ map (\ (p, b) -> p <+> pretty "->" <+> b) (cs <*> [prettyVar var])
+  where
+  prettyVar (Var i) = annotate (Ann Name) (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
+    (q, r) = i `divMod` 26
+  alphabet = ['a'..'z']
 
 
 instance U.Expr (Print sig a) where
