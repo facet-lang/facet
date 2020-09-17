@@ -18,7 +18,6 @@ module Facet.Expr
 , lam1
 , (<&)
 , (&>)
-, lam1'
   -- * Effects
 , State(..)
 , Empty(..)
@@ -83,9 +82,6 @@ a <& b = const' $$ a $$ b
 a &> b = flip' $$ const' $$ a $$ b
 
 infixl 1 <&, &>
-
-lam1' :: Expr repr => (Either (repr None a) (Inst eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
-lam1' = lam1
 
 
 -- Effects
