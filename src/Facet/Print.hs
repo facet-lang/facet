@@ -82,3 +82,5 @@ instance U.Expr (Print sig a) where
   lam0 f = Print $ cases [\ var -> (var, runPrint (f (Print var)))]
   lam  f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
   f $$ a = Print $ runPrint f <+> runPrint a
+
+  global = pretty
