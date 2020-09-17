@@ -24,7 +24,7 @@ lam0
   -> (m :.: env) repr
 lam0 f = S.lam0 <$> C (getC <$> getC (f (C (pure id))))
 
-($$) :: (Applicative m, Applicative env, S.Expr expr) => m (env expr) -> m (env expr) -> m (env expr)
-f $$ a = liftA2 (liftA2 (S.$$)) f a
+($$) :: (Applicative m, Applicative env, S.Expr expr) => (m :.: env) expr -> (m :.: env) expr -> (m :.: env) expr
+f $$ a = liftA2 (S.$$) f a
 
 infixl 9 $$
