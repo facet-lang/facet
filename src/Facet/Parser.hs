@@ -49,7 +49,7 @@ import           Data.Foldable (traverse_)
 import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
-import           Facet.Syntax.Untyped.Lifted
+import qualified Facet.Syntax.Untyped.Lifted as S
 import           Prelude hiding (fail, lines, null, span)
 import qualified Prettyprinter as P
 import           Prettyprinter.Render.Terminal as ANSI
@@ -352,7 +352,7 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   choices = Map.fromList (table p)
 
 
-parser :: (Parsing p, Expr repr) => p [Def repr]
+parser :: (Parsing p, S.Expr repr) => p [Def repr]
 parser = ws *> many def
 
 lower' = fromList ['a'..'z']
@@ -395,14 +395,14 @@ type Name = String
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
 
-def :: (Parsing p, Expr repr) => p (Def repr)
+def :: (Parsing p, S.Expr repr) => p (Def repr)
 def = Def
   <$> ident
   <*  colon
   <*> type'
   <*> term
 
-type' :: (Parsing p, Expr repr) => p (Type repr)
+type' :: (Parsing p, S.Expr repr) => p (Type repr)
 type' = fn <|> pi <|> fail TErr "type"
   where
   fn = app <**> opt (flip (:->) <$ arrow <*> fn) id
@@ -414,7 +414,7 @@ type' = fn <|> pi <|> fail TErr "type"
     <|> parens type'
     <?> (TErr, "atomic type")
 
-term :: (Parsing p, Expr repr) => p (Term repr)
+term :: (Parsing p, S.Expr repr) => p (Term repr)
 term
   =   Var <$> ident
   <|> Lam <$> braces (opt (pure <$> term) [])
