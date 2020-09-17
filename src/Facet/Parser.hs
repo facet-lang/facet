@@ -452,7 +452,10 @@ term
   <|> fail Err "term"
 
 expr :: (S.Expr expr, S.Err expr, Parsing p) => p expr
-expr = runIdentity <$> getC (expr_ (S.global <$> ident <?> (S.global "_", "variable")))
+expr = runIdentity <$> getC (expr_ global)
+
+global :: (S.Expr expr, Parsing p) => p expr
+global = S.global <$> ident <?> (S.global "_", "variable")
 
 expr_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
 expr_ var = lam_ var <|> var
