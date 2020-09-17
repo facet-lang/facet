@@ -40,6 +40,7 @@ module Facet.Parser
 , parens
 , braces
 , brackets
+, expr
 ) where
 
 import           Control.Applicative (liftA2, (<**>))
@@ -47,6 +48,7 @@ import           Data.Bifunctor (first)
 import           Data.CharSet (CharSet, fromList, member, singleton, toList)
 import qualified Data.CharSet.Unicode as CharSet
 import           Data.Foldable (traverse_)
+import           Data.Functor.Identity
 import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
@@ -448,6 +450,16 @@ term
   =   Var <$> ident
   <|> Lam <$> braces (opt (pure <$> term) [])
   <|> fail Err "term"
+
+expr :: (S.Expr expr, S.Err expr, Parsing p) => p expr
+expr = runIdentity <$> getC (expr_ (S.global <$> ident <?> (S.global "_", "variable")))
+
+expr_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
+expr_ var = lam_ var <|> var
+
+lam_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
+lam_ var = braces $ capture (const id) ident (\ i -> arrow *> S.lam0 (\ v -> expr_ (liftCOuter v <* weaken i <|> weaken var))) <?> (S.err, "clause")
+
 
 data Def repr = Def Name (Type repr) (Term repr)
   deriving (Eq, Show)
