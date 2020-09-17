@@ -371,6 +371,8 @@ lbrace = token (char '{')
 rbrace = token (char '}')
 lbracket = token (char '[')
 rbracket = token (char ']')
+arrow :: Parsing p => p String
+arrow = token (string "->")
 ws :: Parsing p => p ()
 ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
 
@@ -403,8 +405,8 @@ def = Def
 type' :: (Parsing p, Expr repr) => p (Type repr)
 type' = fn <|> pi <|> fail TErr "type"
   where
-  fn = app <**> opt (flip (:->) <$ token (string "->") <*> fn) id
-  pi = (:=>) <$> parens ((,) <$> ident <* colon <*> type') <* token (string "->") <*> type'
+  fn = app <**> opt (flip (:->) <$ arrow <*> fn) id
+  pi = (:=>) <$> parens ((,) <$> ident <* colon <*> type') <* arrow <*> type'
   app = foldl (:$) <$> atom <*> many atom
   atom
     =   TVar <$> tident
