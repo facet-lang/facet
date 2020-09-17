@@ -29,6 +29,9 @@ class Type ty where
   (.*) :: ty -> ty -> ty
   infixl 7 .*
 
+  (.$) :: ty -> ty -> ty
+  infixl 9 .$
+
   _Unit :: ty
 
   tglobal :: TName -> ty
