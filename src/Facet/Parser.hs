@@ -461,7 +461,7 @@ expr_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) exp
 expr_ var = lam_ var <|> var
 
 lam_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
-lam_ var = braces $ capture (const id) ident (\ i -> arrow *> S.lam0 (\ v -> expr_ (liftCOuter v <* weaken i <|> weaken var))) <?> (S.err, "clause")
+lam_ var = braces $ S.lam0 (\ v -> capture (\ _ b -> b) ident (\ i -> arrow *> expr_ (liftCOuter v <* i <|> weaken var))) <?> (S.err, "clause")
 
 
 data Def repr = Def Name (Type repr) (Term repr)
