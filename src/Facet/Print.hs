@@ -77,9 +77,10 @@ cases cs = bind $ \ var -> group
     (flatAlt space mempty <> rbrace)
     (flatAlt (pretty " | ") (pretty "| "))
   $ map (\ (p, b) -> p <+> pretty "->" <+> b) (cs <*> [prettyVar var])
-  where
-  prettyVar (Var i) = annotate (Ann Name) (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
-    (q, r) = i `divMod` 26
+
+prettyVar :: Printer (Nest Highlight) doc => Var -> doc
+prettyVar (Var i) = annotate (Ann Name) (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
+  (q, r) = i `divMod` 26
   alphabet = ['a'..'z']
 
 
