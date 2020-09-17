@@ -467,7 +467,7 @@ type_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (
 type_ var = fn var <|> forAll var <|> fail S.err "type"
   where
   fn var = app var <**> opt (flip (S.-->) <$ arrow <*> fn var) id
-  forAll var = lbrace *> capture (\ _ b -> b) ident (\ i -> colon *> (type_ var S.>-> \ t -> rbrace *> arrow *> type_ (weaken var <|> liftCOuter t <* weaken i)))
+  forAll var = lbrace *> capture (const id) ident (\ i -> colon *> (type_ var S.>-> \ t -> rbrace *> arrow *> type_ (weaken var <|> liftCOuter t <* weaken i)))
   app var = foldl (S..$) <$> atom var <*> many (atom var)
   atom var
     =   parens (prd <$> sepBy (type_ var) comma)
@@ -492,7 +492,7 @@ expr_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) exp
 expr_ var = lam_ var <|> var
 
 lam_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
-lam_ var = braces $ S.lam0 (\ v -> capture (\ _ b -> b) ident (\ i -> arrow *> expr_ (weaken var <|> liftCOuter v <* i))) <?> (S.err, "clause")
+lam_ var = braces $ S.lam0 (\ v -> capture (const id) ident (\ i -> arrow *> expr_ (weaken var <|> liftCOuter v <* i))) <?> (S.err, "clause")
 
 
 data Def repr = Def Name (Type repr) (Term repr)
