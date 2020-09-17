@@ -9,7 +9,7 @@
 module Facet.Functor.C
 ( (:.:)(..)
 , liftCOuter
-, liftC
+, liftCInner
 , mapC
 , weaken
 , strengthen
@@ -62,8 +62,8 @@ instance (Distributive f, Distributive g) => Distributive (f :.: g) where
 liftCOuter :: Applicative f => g a -> (f :.: g) a
 liftCOuter = C . pure
 
-liftC :: (Functor m, Applicative i) => m a -> (m :.: i) a
-liftC = C . fmap pure
+liftCInner :: (Functor m, Applicative i) => m a -> (m :.: i) a
+liftCInner = C . fmap pure
 
 mapC :: (f (g a) -> f' (g' a')) -> ((f :.: g) a -> (f' :.: g') a')
 mapC = coerce
@@ -83,7 +83,7 @@ class (Permutable m, Permutable n) => Extends m n where
   weakens :: m a -> n a
 
 instance (Permutable f, Permutable g) => Extends f (f :.: g) where
-  weakens = liftC
+  weakens = liftCInner
 
 instance Permutable f => Extends f f where
   weakens = id
