@@ -14,6 +14,7 @@ module Facet.Expr
 ( Expr(..)
 , Inst(..)
 , absurdI
+, val
 , lam0
 , (<&)
 , (&>)
