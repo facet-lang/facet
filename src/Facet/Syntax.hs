@@ -19,6 +19,8 @@ module Facet.Syntax
 , lam0
 , (<&)
 , (&>)
+  -- * Types
+, Type(..)
   -- * Effects
 , State(..)
 , Empty(..)
@@ -82,6 +84,18 @@ a <& b = const' $$ a $$ b
 a &> b = flip' $$ const' $$ a $$ b
 
 infixl 1 <&, &>
+
+
+-- Types
+
+class Type ty where
+  (-->) :: ty expr a -> ty expr b -> ty expr (expr a -> expr b)
+  infixr 2 -->
+
+  (.*) :: ty expr a -> ty expr b -> ty expr (a, b)
+  infixl 7 .*
+
+  _Unit :: ty expr ()
 
 
 -- Effects

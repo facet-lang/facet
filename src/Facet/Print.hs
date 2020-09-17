@@ -13,7 +13,7 @@ module Facet.Print
 
 import           Control.Applicative (Const(..), (<**>))
 import           Control.Monad.IO.Class
-import           Data.Kind (Type)
+import qualified Data.Kind as K
 import qualified Data.Text.Prettyprint.Doc as PP
 import qualified Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
 import           Facet.Pretty
@@ -50,7 +50,7 @@ getDoc (Doc doc) = rainbow (runPrec (Level 0) doc)
 newtype Doc = Doc (Prec (Rainbow (PP.Doc (Nest Highlight))))
   deriving (Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup, Show)
 
-newtype Print (sig :: Type -> Type) a = Print { runPrint :: Fresh Doc }
+newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: Fresh Doc }
   deriving (Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
   deriving (Applicative) via Const (Fresh Doc)
 

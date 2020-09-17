@@ -8,7 +8,6 @@ module Facet.Module
 ) where
 
 import Facet.Syntax
-import Facet.Type
 
 type DeclName = String
 
