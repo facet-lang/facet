@@ -84,10 +84,8 @@ a &> b = flip' $$ const' $$ a $$ b
 
 infixl 1 <&, &>
 
-lam1' :: Expr repr => (Either (repr sig a) (Inst eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
-lam1' f = lam1 $ \case
-  Left  a -> f (Left (val a))
-  Right i -> f (Right i)
+lam1' :: Expr repr => (Either (repr None a) (Inst eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
+lam1' = lam1
 
 
 -- Effects
