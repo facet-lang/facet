@@ -1,5 +1,6 @@
 module Facet.Syntax.Untyped
 ( Expr(..)
+, Err(..)
 ) where
 
 class Expr repr where
@@ -9,3 +10,6 @@ class Expr repr where
   infixl 9 $$
 
   alg :: repr -> (repr -> repr) -> repr
+
+class Err expr where
+  err :: expr

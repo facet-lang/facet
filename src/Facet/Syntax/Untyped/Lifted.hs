@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Syntax.Untyped.Lifted
 ( S.Expr
+, S.Err(..)
 , lam
 , lam0
 , ($$)
