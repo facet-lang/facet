@@ -417,7 +417,10 @@ rbracket = token (char ']')
 arrow :: Parsing p => p String
 arrow = token (string "->")
 ws :: Parsing p => p ()
-ws = let c = set (CharSet.separator <> CharSet.control) (const ()) "whitespace" in opt (c <* ws) ()
+ws = opt (c <* ws) ()
+  where
+  c = set wsSet (const ()) "whitespace"
+  wsSet = CharSet.separator <> CharSet.control
 
 token :: Parsing p => p a -> p a
 token p = p <* ws
