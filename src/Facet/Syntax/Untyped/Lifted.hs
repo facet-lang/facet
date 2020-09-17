@@ -1,7 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Syntax.Untyped.Lifted
-( S.Expr
+( S.Expr(global)
 , S.Err(..)
 , lam
 , lam0
