@@ -75,6 +75,7 @@ class Applicative p => Parsing p where
   -- FIXME: warn on non-disjoint first sets
   (<|>) :: p a -> p a -> p a
   infixl 3 <|>
+  -- FIXME: allow failure values to produce errors from the state
   fail :: a -> String -> p a
 
   -- | Parse some text, and then parse something else constructed using a parser that parses the same literal text.
