@@ -26,6 +26,9 @@ class Type ty where
   (-->) :: ty -> ty -> ty
   infixr 2 -->
 
+  (>->) :: ty -> (ty -> ty) -> ty
+  infixr 1 >->
+
   (.*) :: ty -> ty -> ty
   infixl 7 .*
 
