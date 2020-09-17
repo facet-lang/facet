@@ -43,6 +43,8 @@ module Facet.Syntax
 import Data.Functor.Sum
 import Facet.Signature
 
+-- Expressions
+
 class (forall sig . Applicative (repr sig)) => Expr repr where
   -- FIXME: patterns
   lam :: (Either (repr None a) (Inst eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
