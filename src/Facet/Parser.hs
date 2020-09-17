@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 module Facet.Parser
 ( Pos(..)
 , Span(..)
@@ -49,6 +50,7 @@ import           Data.Foldable (traverse_)
 import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
+import           Facet.Functor.C
 import qualified Facet.Syntax.Untyped.Lifted as S
 import           Prelude hiding (fail, lines, null, span)
 import qualified Prettyprinter as P
@@ -83,6 +85,13 @@ instance Parsing Parser where
   pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
 
   fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
+
+instance (Parsing f, Applicative g) => Parsing (f :.: g) where
+  position = C $ pure <$> position
+  char s   = C $ pure <$> char s
+  source   = C $ pure <$> source
+  l <|> r  = C $ getC l <|> getC r
+  fail a s = C $ fail (pure a) s
 
 -- FIXME: always require <?>/fail to terminate a chain of alternatives
 (<?>) :: Parsing p => p a -> (a, String) -> p a
