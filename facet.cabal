@@ -38,9 +38,9 @@ library
   import: common
   exposed-modules:
     Facet.Eval
+    Facet.Examples
     Facet.Functor.C
     Facet.Functor.I
-    Facet.Module
     Facet.Parser
     Facet.Pretty
     Facet.Print

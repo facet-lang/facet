@@ -1,5 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
-module Facet.Module
+module Facet.Examples
 ( prelude
 ) where
 
