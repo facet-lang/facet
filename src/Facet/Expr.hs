@@ -15,7 +15,6 @@ module Facet.Expr
 , Inst(..)
 , absurdI
 , lam0
-, lam1
 , (<&)
 , (&>)
   -- * Effects
@@ -71,9 +70,6 @@ val = weakenBy absurd
 lam0 :: Expr repr => (repr None a -> repr sig b) -> repr sig (repr sig a -> repr sig b)
 lam0 f = (. weakenBy InR) <$> lam (f . either id absurdI)
 
-lam1 :: Expr repr => (Either (repr None a) (Inst eff (repr (Sum eff sig) a)) -> repr sig b) -> repr sig (repr (Sum eff sig) a -> repr sig b)
-lam1 = lam
-
 
 (<&) :: Expr repr => repr sig a -> repr sig b -> repr sig a
 a <& b = const' $$ a $$ b
@@ -117,13 +113,13 @@ put :: (Expr repr, Member (State (repr None s)) sig) => repr sig (repr sig s -> 
 put = lam0 $ \ s -> alg (inj (Put s)) pure
 
 runState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig (s, a)))
-runState = lam0 $ \ s -> lam1 $ \case
+runState = lam0 $ \ s -> lam $ \case
   Left a                -> (,) <$> val s <*> val a
   Right (Inst Get     k) -> runState $$ val s $$ k s
   Right (Inst (Put s) k) -> runState $$ val s $$ k ()
 
 execState :: Expr repr => repr sig (repr sig s -> repr sig (repr (Sum (State (repr None s)) sig) a -> repr sig a))
-execState = lam0 $ \ s -> lam1 $ \case
+execState = lam0 $ \ s -> lam $ \case
   Left a                -> val a
   Right (Inst Get     k) -> execState $$ val s $$ k s
   Right (Inst (Put s) k) -> execState $$ val s $$ k ()
@@ -137,9 +133,9 @@ empty :: (Expr repr, Member Empty sig) => repr sig a
 empty = alg (inj Empty) pure
 
 runEmpty :: Expr repr => repr sig (repr sig a -> repr sig (repr (Sum Empty sig) a -> repr sig a))
-runEmpty = lam0 $ \ a -> lam1 $ \case
+runEmpty = lam0 $ \ a -> lam $ \case
   Left x               -> val x
   Right (Inst Empty _) -> val a
 
 execEmpty :: Expr repr => repr sig (repr (Sum Empty sig) a -> repr sig Bool)
-execEmpty = lam1 (either (const (pure True)) (const (pure False)))
+execEmpty = lam (either (const (pure True)) (const (pure False)))
