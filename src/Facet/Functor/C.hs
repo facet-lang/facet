@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Functor.C
 ( (:.:)(..)
+, liftCOuter
 , liftC
 , mapC
 , weaken
@@ -57,6 +58,9 @@ instance (Distributive f, Distributive g) => Distributive (f :.: g) where
 
   collect f = C . fmap distribute . collect (coerce f)
   {-# INLINE collect #-}
+
+liftCOuter :: Applicative f => g a -> (f :.: g) a
+liftCOuter = C . pure
 
 liftC :: (Functor m, Applicative i) => m a -> (m :.: i) a
 liftC = C . fmap pure
