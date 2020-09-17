@@ -3,7 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Facet.Examples
+module Facet.Syntax.Examples
 ( prelude
 , id'
 , const'

@@ -38,7 +38,6 @@ library
   import: common
   exposed-modules:
     Facet.Eval
-    Facet.Examples
     Facet.Functor.C
     Facet.Functor.I
     Facet.Parser
@@ -46,6 +45,7 @@ library
     Facet.Print
     Facet.Signature
     Facet.Syntax
+    Facet.Syntax.Examples
     Facet.Syntax.Lifted
     Facet.Syntax.Untyped
     Facet.Syntax.Untyped.Lifted
