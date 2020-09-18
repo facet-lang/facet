@@ -59,7 +59,7 @@ newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Fresh Doc }
   deriving (Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
 newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: UntypedPrint }
-  deriving (Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
+  deriving (Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
   deriving (Applicative) via Const UntypedPrint
 
 data Highlight
@@ -118,9 +118,9 @@ instance U.Expr (Print sig a) where
 instance U.Err (Print sig a) where
   err = pretty "err"
 
-instance U.Type (Print sig a) where
+instance U.Type UntypedPrint where
   a --> b = a <+> arrow <+> b
-  t >-> f = Print $ UntypedPrint $ bind $ \ var -> runUntypedPrint $ let var' = prettyVar var in braces (space <> var' <+> colon <+> runPrint t <> space) <+> arrow <+> runPrint (f (Print var'))
+  t >-> f = UntypedPrint $ bind $ \ var -> runUntypedPrint $ let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
   f .$ a = prec (Level 10) f <+> prec (Level 11) a
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
