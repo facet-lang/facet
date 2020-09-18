@@ -59,7 +59,7 @@ newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Fresh Doc }
   deriving (Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
 newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: UntypedPrint }
-  deriving (U.Err, Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
+  deriving (U.Err, U.Expr, Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
   deriving (Applicative) via Const UntypedPrint
 
 data Highlight
@@ -104,9 +104,9 @@ prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else 
   alphabet = ['a'..'z']
 
 
-instance U.Expr (Print sig a) where
-  lam0 f = Print $ cases [\ var -> (var, runPrint (f (Print var)))]
-  lam  f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
+instance U.Expr UntypedPrint where
+  lam0 f = cases [\ var -> (var, f var)]
+  lam  f = cases [\ var -> (var, f (Left var))]
   f $$ a = prec (Level 10) f <+> prec (Level 11) a
 
   -- FIXME: don’t pretty-print local variables with the same name as globals used in the body
