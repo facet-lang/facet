@@ -51,7 +51,7 @@ defaultStyle = \case
   len = length colours
 
 newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Fresh (Prec (Rainbow (PP.Doc (Nest Highlight)))) }
-  deriving (Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
+  deriving (FreshPrinter (Nest Highlight), Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
 newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: UntypedPrint }
   deriving (U.Err, U.Expr, Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
@@ -83,9 +83,8 @@ instance Expr Print where
   weakenBy _ = Print . runPrint
 
 cases :: [UntypedPrint -> (UntypedPrint, UntypedPrint)] -> UntypedPrint
-cases cs = UntypedPrint $ bind $ \ var ->
-    runUntypedPrint
-  . group
+cases cs = bind $ \ var ->
+    group
   . braces
   . encloseSep
     (flatAlt space mempty)
@@ -115,7 +114,7 @@ instance U.Err UntypedPrint where
 
 instance U.Type UntypedPrint where
   a --> b = a <+> arrow <+> b
-  t >-> f = UntypedPrint $ bind $ \ var -> runUntypedPrint $ let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
+  t >-> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
   f .$ a = prec (Level 10) f <+> prec (Level 11) a
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
