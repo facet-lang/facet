@@ -114,9 +114,7 @@ prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else 
 instance U.Expr UntypedPrint where
   lam0 f = cases [\ var -> (var, f var)]
   lam  f = cases [\ var -> (var, f (Left var))]
-  ($$) = infixl' AppL AppR (\ f a -> askingPrec (\case
-    AppR -> f </> a
-    _    -> group (f <> nest 2 (line <> a))))
+  ($$) = app
 
   -- FIXME: don’t pretty-print local variables with the same name as globals used in the body
   global = pretty
@@ -130,8 +128,14 @@ instance U.Err UntypedPrint where
 instance U.Type UntypedPrint where
   (-->) = infixr' FnL FnR (\ a b -> a <+> arrow <+> b)
   t >-> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
-  (.$) = infixl' AppL AppR (\ f a -> group (f <> nest 2 (line <> a)))
+  (.$) = app
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
   _Type = pretty "Type"
   tglobal = pretty
+
+
+app :: UntypedPrint -> UntypedPrint -> UntypedPrint
+app = infixl' AppL AppR (\ f a -> askingPrec (\case
+    AppR -> f </> a
+    _    -> group (f <> nest 2 (line <> a))))
