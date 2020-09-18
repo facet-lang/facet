@@ -1,9 +1,10 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
--- FIXME: virtualize Fresh.
 module Facet.Pretty.Fresh
 ( Var(..)
+, FreshPrinter(..)
 , fresh
-, bind
 , Fresh(..)
 , module Facet.Pretty
 ) where
@@ -17,14 +18,17 @@ incr :: Var -> Var
 incr = Var . succ . getVar
 
 
+class Printer ann doc => FreshPrinter ann doc where
+  bind :: (Var -> doc) -> doc
+
 fresh :: Fresh doc -> doc
 fresh = (`runFresh` Var 0)
-
-bind :: (Var -> Fresh doc) -> Fresh doc
-bind f = Fresh $ \ v -> runFresh (f v) (incr v)
 
 newtype Fresh doc = Fresh { runFresh :: Var -> doc }
   deriving (Applicative, Printer ann, Functor, Monad, Monoid, Semigroup)
 
 instance Show doc => Show (Fresh doc) where
   showsPrec p = showsPrec p . fresh
+
+instance Printer ann doc => FreshPrinter ann (Fresh doc) where
+  bind f = Fresh $ \ v -> runFresh (f v) (incr v)
