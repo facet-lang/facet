@@ -118,7 +118,9 @@ prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else 
 instance U.Expr UntypedPrint where
   lam0 f = cases [\ var -> (var, f var)]
   lam  f = cases [\ var -> (var, f (Left var))]
-  ($$) = infixl' (Level 10) (\ f a -> f <> align (line <> a))
+  ($$) = infixl' (Level 10) (\ f a -> withContext (\case
+    Param -> f </> context Param a
+    _     -> group (f <> align (line <> context Param a))))
 
   -- FIXME: don’t pretty-print local variables with the same name as globals used in the body
   global = pretty
