@@ -25,7 +25,6 @@ newtype Level = Level { getLevel :: Int }
 
 class (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann doc | doc -> ann lvl where
   prec :: lvl -> doc -> doc
-  resetPrec :: lvl -> doc -> doc
   askingPrec :: (lvl -> doc) -> doc
   localPrec :: lvl -> doc -> doc
 
@@ -69,13 +68,11 @@ instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => Printer ann (Prec 
 
 instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann (Prec lvl doc) where
   prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
-  resetPrec l (Prec d) = Prec $ \ _ -> d l
   askingPrec f = Prec $ runPrec <*> f
   localPrec l (Prec d) = Prec $ \ _ -> d l
 
 instance PrecPrinter lvl ann a => PrecPrinter lvl ann (b -> a) where
   prec = fmap . prec
-  resetPrec = fmap . resetPrec
   askingPrec f b = askingPrec (($ b) . f)
   localPrec = fmap . localPrec
 
