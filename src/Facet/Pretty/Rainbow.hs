@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
+-- FIXME: virtualize nestRainbow
 module Facet.Pretty.Rainbow
 ( Nesting(..)
 , Nest(..)
