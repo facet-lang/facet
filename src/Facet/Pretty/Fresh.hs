@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+-- FIXME: virtualize Fresh.
 module Facet.Pretty.Fresh
 ( Var(..)
 , fresh
