@@ -12,7 +12,6 @@ module Facet.Pretty.Prec
 , module Facet.Pretty) where
 
 import Control.Applicative (liftA2)
-import Data.Monoid (Ap(..))
 import Facet.Pretty
 import Facet.Pretty.Fresh
 import Facet.Pretty.Rainbow
@@ -54,10 +53,6 @@ instance Printer ann doc => Printer ann (Prec doc) where
 instance Printer ann doc => PrecPrinter ann (Prec doc) where
   prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
   resetPrec l (Prec d) = Prec $ \ _ -> d l
-
-instance (Applicative f, PrecPrinter ann a) => PrecPrinter ann (Ap f a) where
-  prec = fmap . prec
-  resetPrec = fmap . resetPrec
 
 instance PrecPrinter ann a => PrecPrinter ann (b -> a) where
   prec = fmap . prec
