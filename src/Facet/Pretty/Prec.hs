@@ -58,8 +58,5 @@ instance PrecPrinter ann a => PrecPrinter ann (b -> a) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
 
-instance PrecPrinter (Nest ann) doc => PrecPrinter (Nest ann) (Rainbow doc) where
-  prec = fmap . prec
-  resetPrec = fmap . resetPrec
-
+deriving instance PrecPrinter (Nest ann) doc => PrecPrinter (Nest ann) (Rainbow doc)
 deriving instance PrecPrinter ann doc => PrecPrinter ann (Fresh doc)
