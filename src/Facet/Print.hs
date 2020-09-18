@@ -59,7 +59,7 @@ newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Fresh Doc }
   deriving (Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
 newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: UntypedPrint }
-  deriving (Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
+  deriving (U.Err, Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
   deriving (Applicative) via Const UntypedPrint
 
 data Highlight
@@ -115,7 +115,7 @@ instance U.Expr (Print sig a) where
   unit = pretty "()"
   l ** r = tupled [l, r]
 
-instance U.Err (Print sig a) where
+instance U.Err UntypedPrint where
   err = pretty "err"
 
 instance U.Type UntypedPrint where
