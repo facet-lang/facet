@@ -24,7 +24,7 @@ newtype Level = Level { getLevel :: Int }
   deriving (Bounded, Enum, Eq, Ord, Show)
 
 
-class (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann doc | doc -> ann lvl where
+class (Bounded lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann doc | doc -> ann lvl where
   askingPrec :: (lvl -> doc) -> doc
   localPrec :: lvl -> doc -> doc
 
@@ -50,7 +50,7 @@ newtype Prec lvl a = Prec (lvl -> a)
 instance (Bounded lvl, Show a) => Show (Prec lvl a) where
   showsPrec p = showsPrec p . runPrec minBound
 
-instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => Printer ann (Prec lvl doc) where
+instance (Bounded lvl, Ord lvl, Printer ann doc) => Printer ann (Prec lvl doc) where
   pretty = pure . pretty
 
   hardline = pure hardline
@@ -69,7 +69,7 @@ instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => Printer ann (Prec 
   brackets = fmap brackets . localPrec minBound
   braces   = fmap braces   . localPrec minBound
 
-instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann (Prec lvl doc) where
+instance (Bounded lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann (Prec lvl doc) where
   askingPrec f = Prec $ runPrec <*> f
   localPrec l (Prec d) = Prec $ \ _ -> d l
 
