@@ -82,7 +82,7 @@ instance Expr Print where
 
   weakenBy _ = Print . runPrint
 
-cases :: [UntypedPrint -> (UntypedPrint, UntypedPrint)] -> UntypedPrint
+cases :: FreshPrinter (Nest Highlight) doc => [doc -> (doc, doc)] -> doc
 cases cs = bind $ \ var ->
     group
   . braces
