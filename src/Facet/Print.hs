@@ -103,6 +103,7 @@ instance U.Expr (Print sig a) where
   lam  f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
   f $$ a = prec (Level 10) f <+> prec (Level 11) a
 
+  -- FIXME: don’t pretty-print local variables with the same name as globals used in the body
   global = pretty
 
   unit = pretty "()"
