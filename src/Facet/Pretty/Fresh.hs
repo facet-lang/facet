@@ -30,5 +30,8 @@ newtype Fresh doc = Fresh { runFresh :: Var -> doc }
 instance Show doc => Show (Fresh doc) where
   showsPrec p = showsPrec p . fresh
 
+instance FreshPrinter ann a => FreshPrinter ann (b -> a) where
+  bind f a = bind (($ a) . f)
+
 instance Printer ann doc => FreshPrinter ann (Fresh doc) where
   bind f = Fresh $ \ v -> runFresh (f v) (incr v)
