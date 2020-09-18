@@ -28,7 +28,7 @@ prettyPrint :: MonadIO m => Print sig a -> m ()
 prettyPrint = prettyPrintWith defaultStyle
 
 prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> Print sig a -> m ()
-prettyPrintWith style  = putDoc . PP.reAnnotate style . getDoc . fresh . runPrint
+prettyPrintWith style  = putDoc . PP.reAnnotate style . getDoc . fresh . runUntypedPrint . runPrint
 
 defaultStyle :: Nest Highlight -> ANSI.AnsiStyle
 defaultStyle = \case
@@ -58,7 +58,7 @@ newtype Doc = Doc (Prec (Rainbow (PP.Doc (Nest Highlight))))
 newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Fresh Doc }
   deriving (Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
-newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: Fresh Doc }
+newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: UntypedPrint }
   deriving (Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
   deriving (Applicative) via Const UntypedPrint
 
@@ -87,8 +87,10 @@ instance Expr Print where
 
   weakenBy _ = Print . runPrint
 
-cases :: Printer (Nest Highlight) doc => [Fresh doc -> (Fresh doc, Fresh doc)] -> Fresh doc
-cases cs = bind $ \ var -> group
+cases :: [UntypedPrint -> (UntypedPrint, UntypedPrint)] -> UntypedPrint
+cases cs = UntypedPrint $ bind $ \ var ->
+    runUntypedPrint
+  . group
   . braces
   . encloseSep
     (flatAlt space mempty)
@@ -118,7 +120,7 @@ instance U.Err (Print sig a) where
 
 instance U.Type (Print sig a) where
   a --> b = a <+> arrow <+> b
-  t >-> f = Print $ bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> runPrint t <> space) <+> arrow <+> runPrint (f (Print var'))
+  t >-> f = Print $ UntypedPrint $ bind $ \ var -> runUntypedPrint $ let var' = prettyVar var in braces (space <> var' <+> colon <+> runPrint t <> space) <+> arrow <+> runPrint (f (Print var'))
   f .$ a = prec (Level 10) f <+> prec (Level 11) a
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
