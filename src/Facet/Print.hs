@@ -76,7 +76,7 @@ arrow = op (pretty "->")
 
 instance Expr Print where
   lam f = Print $ cases [\ var -> (var, coerce (f . Left) var)]
-  f $$ a = Print $ runPrint f U.$$ runPrint a
+  ($$) = coerce ((U.$$) :: UntypedPrint -> UntypedPrint -> UntypedPrint)
 
   alg _ = Print $ pretty "TBD"
 
