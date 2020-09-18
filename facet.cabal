@@ -41,6 +41,7 @@ library
     Facet.Functor.C
     Facet.Functor.I
     Facet.Parser
+    Facet.Pretty
     Facet.Pretty.Fresh
     Facet.Pretty.Prec
     Facet.Pretty.Rainbow
