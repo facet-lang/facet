@@ -88,7 +88,7 @@ arrow = op (pretty "->")
 
 instance Expr Print where
   lam f = Print $ cases [\ var -> (var, coerce (f . Left) var)]
-  ($$) = coerce ((U.$$) :: UntypedPrint -> UntypedPrint -> UntypedPrint)
+  ($$) = coerce app
 
   alg _ = Print $ pretty "TBD"
 
