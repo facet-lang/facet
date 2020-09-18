@@ -100,6 +100,7 @@ instance Parsing Parser where
   -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
   -- FIXME: is this even correct?
   -- FIXME: do we want to require that p be non-nullable?
+  -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table p))
     where
     go k i follow =
