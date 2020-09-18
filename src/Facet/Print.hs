@@ -82,7 +82,7 @@ arrow = op (pretty "->")
 
 instance Expr Print where
   lam f = Print $ cases [\ var -> (var, coerce (f . Left) var)]
-  f $$ a = Print $ runPrint f <+> runPrint a
+  f $$ a = Print $ prec (Level 10) (runPrint f) <+> prec (Level 11) (runPrint a)
 
   alg _ = Print $ pretty "TBD"
 
