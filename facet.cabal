@@ -43,6 +43,7 @@ library
     Facet.Parser
     Facet.Pretty.Fresh
     Facet.Pretty.Prec
+    Facet.Pretty.Rainbow
     Facet.Print
     Facet.Signature
     Facet.Syntax
