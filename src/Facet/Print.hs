@@ -87,7 +87,7 @@ prettyVar (Var i) = annotate (Ann Name) (pretty (alphabet !! r) <> if q > 0 then
 instance U.Expr (Print sig a) where
   lam0 f = Print $ cases [\ var -> (var, runPrint (f (Print var)))]
   lam  f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
-  f $$ a = Print $ runPrint f <+> runPrint a
+  f $$ a = prec (Level 10) f <+> prec (Level 11) a
 
   global = pretty
 
@@ -100,7 +100,7 @@ instance U.Err (Print sig a) where
 instance U.Type (Print sig a) where
   a --> b = a <+> pretty "->" <+> b
   t >-> f = Print $ bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> runPrint t <> space) <+> pretty "->" <+> runPrint (f (Print var'))
-  f .$ a = f <+> a
+  f .$ a = prec (Level 10) f <+> prec (Level 11) a
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
   _Type = pretty "Type"
