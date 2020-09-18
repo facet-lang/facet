@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Pretty.Prec
@@ -20,7 +20,7 @@ import Facet.Pretty.Rainbow
 newtype Level = Level Int
   deriving (Eq, Ord, Show)
 
-class Printer ann doc => PrecPrinter ann doc | doc -> ann where
+class Printer ann doc => PrecPrinter ann doc where
   prec :: Level -> doc -> doc
   resetPrec :: Level -> doc -> doc
 
