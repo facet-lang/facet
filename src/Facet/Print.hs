@@ -65,6 +65,14 @@ data Highlight
 name :: Printer (Nest Highlight) doc => doc -> doc
 name = annotate (Ann Name)
 
+op :: Printer (Nest Highlight) doc => doc -> doc
+op = annotate (Ann Op)
+
+
+arrow :: Printer (Nest Highlight) doc => doc
+arrow = op (pretty "->")
+
+
 instance Expr Print where
   lam f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
   f $$ a = Print $ runPrint f <+> runPrint a
@@ -79,7 +87,7 @@ cases cs = bind $ \ var -> group
     (lbrace <> flatAlt space mempty)
     (flatAlt space mempty <> rbrace)
     (flatAlt (pretty " , ") (pretty ", "))
-  $ map (\ (p, b) -> p <+> pretty "->" <+> b) (cs <*> [prettyVar var])
+  $ map (\ (p, b) -> p <+> arrow <+> b) (cs <*> [prettyVar var])
 
 prettyVar :: Printer (Nest Highlight) doc => Var -> doc
 prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
@@ -101,8 +109,8 @@ instance U.Err (Print sig a) where
   err = pretty "err"
 
 instance U.Type (Print sig a) where
-  a --> b = a <+> pretty "->" <+> b
-  t >-> f = Print $ bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> runPrint t <> space) <+> pretty "->" <+> runPrint (f (Print var'))
+  a --> b = a <+> arrow <+> b
+  t >-> f = Print $ bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> runPrint t <> space) <+> arrow <+> runPrint (f (Print var'))
   f .$ a = prec (Level 10) f <+> prec (Level 11) a
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
