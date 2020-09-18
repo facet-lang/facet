@@ -16,7 +16,7 @@ import Facet.Pretty
 import Facet.Pretty.Fresh
 import Facet.Pretty.Rainbow
 
-newtype Level = Level Int
+newtype Level = Level { getLevel :: Int }
   deriving (Eq, Ord, Show)
 
 
