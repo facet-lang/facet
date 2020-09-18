@@ -80,4 +80,4 @@ instance PrecPrinter ann a => PrecPrinter ann (b -> a) where
   askingPrec f b = askingPrec (($ b) . f)
 
 deriving instance PrecPrinter (Nest ann) doc => PrecPrinter (Nest ann) (Rainbow doc)
-deriving instance PrecPrinter ann doc => PrecPrinter ann (Fresh doc)
+deriving instance PrecPrinter       ann  doc => PrecPrinter       ann  (Fresh   doc)
