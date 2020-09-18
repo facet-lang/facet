@@ -26,10 +26,10 @@ newtype Level = Level { getLevel :: Int }
 
 class Printer ann doc => PrecPrinter lvl ann doc | doc -> ann lvl where
   askingPrec :: (lvl -> doc) -> doc
-  localPrec :: lvl -> doc -> doc
+  localPrec :: (lvl -> lvl) -> doc -> doc
 
 prec :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> doc -> doc
-prec l d = askingPrec $ \ l' -> parensIf (l' > l) (localPrec l d)
+prec l d = askingPrec $ \ l' -> parensIf (l' > l) (localPrec (const l) d)
 
 infix' :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
 infix' lo hi sep l r = prec lo (sep (prec hi l) (prec hi r))
@@ -65,13 +65,13 @@ instance (Bounded lvl, Printer ann doc) => Printer ann (Prec lvl doc) where
 
   flatAlt = liftA2 flatAlt
 
-  parens   = fmap parens   . localPrec minBound
-  brackets = fmap brackets . localPrec minBound
-  braces   = fmap braces   . localPrec minBound
+  parens   = fmap parens   . localPrec (const minBound)
+  brackets = fmap brackets . localPrec (const minBound)
+  braces   = fmap braces   . localPrec (const minBound)
 
 instance (Bounded lvl, Printer ann doc) => PrecPrinter lvl ann (Prec lvl doc) where
   askingPrec f = Prec $ runPrec <*> f
-  localPrec l (Prec d) = Prec $ \ _ -> d l
+  localPrec l (Prec d) = Prec $ d . l
 
 instance PrecPrinter lvl ann a => PrecPrinter lvl ann (b -> a) where
   askingPrec f b = askingPrec (($ b) . f)
