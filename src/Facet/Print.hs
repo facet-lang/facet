@@ -98,7 +98,7 @@ instance Expr Print where
 
   weakenBy _ = Print . runPrint
 
-cases :: FreshPrinter (Nest Highlight) doc => [doc -> (doc, doc)] -> doc
+cases :: (FreshPrinter (Nest Highlight) doc, PrecPrinter (Nest Highlight) doc) => [doc -> (doc, doc)] -> doc
 cases cs = bind $ \ var ->
     group
   . align
@@ -107,7 +107,7 @@ cases cs = bind $ \ var ->
     (flatAlt space mempty)
     (flatAlt line mempty)
     (flatAlt (space <> comma <> space) (comma <> space))
-  $ map (\ (p, b) -> p <+> arrow <+> align b) (cs <*> [prettyVar var])
+  $ map (uncurry (infix' (Level 0) (\ a b -> a <+> arrow <> nest 2 (line <> b)))) (cs <*> [prettyVar var])
 
 prettyVar :: Printer (Nest Highlight) doc => Var -> doc
 prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
