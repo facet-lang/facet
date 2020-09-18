@@ -20,7 +20,7 @@ import Facet.Pretty.Fresh
 import Facet.Pretty.Rainbow
 
 newtype Level = Level { getLevel :: Int }
-  deriving (Enum, Eq, Ord, Show)
+  deriving (Bounded, Enum, Eq, Ord, Show)
 
 
 class (Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann doc | doc -> ann lvl where
