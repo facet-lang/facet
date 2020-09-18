@@ -85,10 +85,11 @@ instance Expr Print where
 cases :: FreshPrinter (Nest Highlight) doc => [doc -> (doc, doc)] -> doc
 cases cs = bind $ \ var ->
     group
+  . align
   . braces
   . encloseSep
     (flatAlt space mempty)
-    (flatAlt space mempty)
+    (flatAlt line mempty)
     (flatAlt (space <> comma <> space) (comma <> space))
   $ map (\ (p, b) -> p <+> arrow <+> align b) (cs <*> [prettyVar var])
 
