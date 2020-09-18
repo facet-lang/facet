@@ -56,6 +56,7 @@ newtype Doc = Doc (Prec (Rainbow (PP.Doc (Nest Highlight))))
   deriving (Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup, Show)
 
 newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Fresh Doc }
+  deriving (Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
 newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: Fresh Doc }
   deriving (Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
