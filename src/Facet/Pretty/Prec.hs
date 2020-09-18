@@ -24,20 +24,20 @@ newtype Level = Level { getLevel :: Int }
   deriving (Bounded, Enum, Eq, Ord, Show)
 
 
-class (Bounded lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann doc | doc -> ann lvl where
+class (Bounded lvl, Printer ann doc) => PrecPrinter lvl ann doc | doc -> ann lvl where
   askingPrec :: (lvl -> doc) -> doc
   localPrec :: lvl -> doc -> doc
 
-prec :: PrecPrinter lvl ann doc => lvl -> doc -> doc
+prec :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> doc -> doc
 prec l d = askingPrec $ \ l' -> parensIf (l' > l) (localPrec l d)
 
-infix' :: PrecPrinter lvl ann doc => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infix' :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
 infix' lo hi sep l r = prec lo (sep (prec hi l) (prec hi r))
 
-infixl' :: PrecPrinter lvl ann doc => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infixl' :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
 infixl' lo hi sep l r = prec lo (sep l (prec hi r))
 
-infixr' :: PrecPrinter lvl ann doc => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infixr' :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
 infixr' lo hi sep l r = prec lo (sep (prec hi l) r)
 
 
@@ -50,7 +50,7 @@ newtype Prec lvl a = Prec (lvl -> a)
 instance (Bounded lvl, Show a) => Show (Prec lvl a) where
   showsPrec p = showsPrec p . runPrec minBound
 
-instance (Bounded lvl, Ord lvl, Printer ann doc) => Printer ann (Prec lvl doc) where
+instance (Bounded lvl, Printer ann doc) => Printer ann (Prec lvl doc) where
   pretty = pure . pretty
 
   hardline = pure hardline
@@ -69,7 +69,7 @@ instance (Bounded lvl, Ord lvl, Printer ann doc) => Printer ann (Prec lvl doc) w
   brackets = fmap brackets . localPrec minBound
   braces   = fmap braces   . localPrec minBound
 
-instance (Bounded lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann (Prec lvl doc) where
+instance (Bounded lvl, Printer ann doc) => PrecPrinter lvl ann (Prec lvl doc) where
   askingPrec f = Prec $ runPrec <*> f
   localPrec l (Prec d) = Prec $ \ _ -> d l
 
