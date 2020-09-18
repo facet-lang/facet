@@ -114,7 +114,7 @@ instance U.Err UntypedPrint where
   err = pretty "err"
 
 instance U.Type UntypedPrint where
-  a --> b = prec (Level 0) (prec (Level 1) a <+> arrow <+> b)
+  (-->) = infixr' (Level 0) (\ a b -> a <+> arrow <+> b)
   t >-> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
   (.$) = infixl' (Level 10) (\ f a -> group (f <> align (line <> a)))
   l .* r = parens $ l <> comma <+> r
