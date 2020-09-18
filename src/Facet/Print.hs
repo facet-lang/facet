@@ -30,7 +30,7 @@ prettyPrint :: MonadIO m => Print sig a -> m ()
 prettyPrint = prettyPrintWith defaultStyle
 
 prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> Print sig a -> m ()
-prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec (Level 0) . fresh . runUntypedPrint Null . runPrint . group
+prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . runUntypedPrint . runPrint . group
 
 defaultStyle :: Nest Highlight -> ANSI.AnsiStyle
 defaultStyle = \case
@@ -51,26 +51,22 @@ defaultStyle = \case
     [ANSI.color, ANSI.colorDull]
   len = length colours
 
-runUntypedPrint :: Context -> UntypedPrint -> Fresh (Prec Level (Rainbow (PP.Doc (Nest Highlight))))
-runUntypedPrint c (UntypedPrint r) = r c
-
-newtype UntypedPrint = UntypedPrint (Context -> Fresh (Prec Level (Rainbow (PP.Doc (Nest Highlight)))))
-  deriving (FreshPrinter (Nest Highlight), Monoid, PrecPrinter Level (Nest Highlight), Printer (Nest Highlight), Semigroup)
+newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Fresh (Prec Context (Rainbow (PP.Doc (Nest Highlight)))) }
+  deriving (FreshPrinter (Nest Highlight), Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
 data Context
   = Null
-  | Param
+  | FnR
+  | FnL
+  | Pattern
+  | Expr
+  | AppL
+  | AppR
   deriving (Bounded, Enum, Eq, Ord, Show)
 
 newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: UntypedPrint }
-  deriving (U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter Level (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
+  deriving (U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
   deriving (Applicative) via Const UntypedPrint
-
-context :: Context -> UntypedPrint -> UntypedPrint
-context c a = UntypedPrint $ const (runUntypedPrint c a)
-
-withContext :: (Context -> UntypedPrint) -> UntypedPrint
-withContext f = UntypedPrint (runUntypedPrint <*> f)
 
 
 data Highlight
@@ -98,7 +94,7 @@ instance Expr Print where
 
   weakenBy _ = Print . runPrint
 
-cases :: (FreshPrinter (Nest Highlight) doc, PrecPrinter Level (Nest Highlight) doc) => [doc -> (doc, doc)] -> doc
+cases :: (FreshPrinter (Nest Highlight) doc, PrecPrinter Context (Nest Highlight) doc) => [doc -> (doc, doc)] -> doc
 cases cs = bind $ \ var ->
     group
   . align
@@ -107,7 +103,7 @@ cases cs = bind $ \ var ->
     (flatAlt space mempty)
     (flatAlt line mempty)
     (flatAlt (space <> comma <> space) (comma <> space))
-  $ map (uncurry (infix' (Level 0) (Level 1) (\ a b -> a <+> arrow <> nest 2 (line <> b)))) (cs <*> [prettyVar var])
+  $ map (\ (a, b) -> prec Pattern a <+> arrow <> nest 2 (line <> prec Expr b)) (cs <*> [prettyVar var])
 
 prettyVar :: Printer (Nest Highlight) doc => Var -> doc
 prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
@@ -118,9 +114,9 @@ prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else 
 instance U.Expr UntypedPrint where
   lam0 f = cases [\ var -> (var, f var)]
   lam  f = cases [\ var -> (var, f (Left var))]
-  ($$) = infixl' (Level 10) (Level 11) (\ f a -> withContext (\case
-    Param -> f </> context Param a
-    _     -> group (f <> align (line <> context Param a))))
+  ($$) = infixl' AppL AppR (\ f a -> askingPrec (\case
+    AppR -> f </> a
+    _    -> group (f <> align (line <> a))))
 
   -- FIXME: don’t pretty-print local variables with the same name as globals used in the body
   global = pretty
@@ -132,9 +128,9 @@ instance U.Err UntypedPrint where
   err = pretty "err"
 
 instance U.Type UntypedPrint where
-  (-->) = infixr' (Level 0) (Level 1) (\ a b -> a <+> arrow <+> b)
+  (-->) = infixr' FnL FnR (\ a b -> a <+> arrow <+> b)
   t >-> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
-  (.$) = infixl' (Level 10) (Level 11) (\ f a -> group (f <> align (line <> a)))
+  (.$) = infixl' AppL AppR (\ f a -> group (f <> align (line <> a)))
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
   _Type = pretty "Type"
