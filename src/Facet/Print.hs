@@ -60,7 +60,7 @@ newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Fresh Doc }
 
 newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: Fresh Doc }
   deriving (Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
-  deriving (Applicative) via Const (Fresh Doc)
+  deriving (Applicative) via Const UntypedPrint
 
 data Highlight
   = Name
