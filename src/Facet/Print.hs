@@ -51,10 +51,10 @@ defaultStyle = \case
     [ANSI.color, ANSI.colorDull]
   len = length colours
 
-runUntypedPrint :: Context -> UntypedPrint -> Fresh (Prec (Rainbow (PP.Doc (Nest Highlight))))
+runUntypedPrint :: Context -> UntypedPrint -> Fresh (Prec Level (Rainbow (PP.Doc (Nest Highlight))))
 runUntypedPrint c (UntypedPrint r) = r c
 
-newtype UntypedPrint = UntypedPrint (Context -> Fresh (Prec (Rainbow (PP.Doc (Nest Highlight)))))
+newtype UntypedPrint = UntypedPrint (Context -> Fresh (Prec Level (Rainbow (PP.Doc (Nest Highlight)))))
   deriving (FreshPrinter (Nest Highlight), Monoid, PrecPrinter Level (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
 data Context

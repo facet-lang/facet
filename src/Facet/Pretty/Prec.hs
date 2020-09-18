@@ -38,16 +38,16 @@ infixr' :: PrecPrinter lvl ann doc => lvl -> (doc -> doc -> doc) -> (doc -> doc 
 infixr' lv sep l r = prec lv (sep (prec (succ lv) l) r)
 
 
-runPrec :: Level -> Prec a -> a
+runPrec :: lvl -> Prec lvl a -> a
 runPrec l (Prec run) = run l
 
-newtype Prec a = Prec (Level -> a)
+newtype Prec lvl a = Prec (lvl -> a)
   deriving (Applicative, Functor, Monad, Monoid, Semigroup)
 
-instance Show a => Show (Prec a) where
-  showsPrec p = showsPrec p . runPrec (Level p)
+instance (Bounded lvl, Show a) => Show (Prec lvl a) where
+  showsPrec p = showsPrec p . runPrec minBound
 
-instance Printer ann doc => Printer ann (Prec doc) where
+instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => Printer ann (Prec lvl doc) where
   pretty = pure . pretty
 
   hardline = pure hardline
@@ -62,11 +62,11 @@ instance Printer ann doc => Printer ann (Prec doc) where
 
   flatAlt = liftA2 flatAlt
 
-  parens   = fmap parens   . resetPrec (Level 0)
-  brackets = fmap brackets . resetPrec (Level 0)
-  braces   = fmap braces   . resetPrec (Level 0)
+  parens   = fmap parens   . resetPrec minBound
+  brackets = fmap brackets . resetPrec minBound
+  braces   = fmap braces   . resetPrec minBound
 
-instance Printer ann doc => PrecPrinter Level ann (Prec doc) where
+instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann (Prec lvl doc) where
   prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
   resetPrec l (Prec d) = Prec $ \ _ -> d l
   askingPrec f = Prec $ runPrec <*> f
