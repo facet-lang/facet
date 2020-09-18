@@ -31,14 +31,14 @@ class Printer ann doc => PrecPrinter ann doc where
   resetPrec :: Level -> doc -> doc
   askingPrec :: (Level -> doc) -> doc
 
-infix' :: PrecPrinter ann doc => Level -> doc -> doc -> doc -> doc
-infix' lv sep l r = prec lv (prec (incr lv) l <> sep <> prec (incr lv) r)
+infix' :: PrecPrinter ann doc => Level -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infix' lv sep l r = prec lv (sep (prec (incr lv) l) (prec (incr lv) r))
 
-infixl' :: PrecPrinter ann doc => Level -> doc -> doc -> doc -> doc
-infixl' lv sep l r = prec lv (l <> sep <> prec (incr lv) r)
+infixl' :: PrecPrinter ann doc => Level -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infixl' lv sep l r = prec lv (sep l (prec (incr lv) r))
 
-infixr' :: PrecPrinter ann doc => Level -> doc -> doc -> doc -> doc
-infixr' lv sep l r = prec lv (prec (incr lv) l <> sep <> r)
+infixr' :: PrecPrinter ann doc => Level -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infixr' lv sep l r = prec lv (sep (prec (incr lv) l) r)
 
 
 runPrec :: Level -> Prec a -> a
