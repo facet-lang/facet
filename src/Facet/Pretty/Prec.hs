@@ -7,6 +7,7 @@
 module Facet.Pretty.Prec
 ( Level(..)
 , PrecPrinter(..)
+, infix'
 , infixl'
 , infixr'
 , runPrec
@@ -29,6 +30,9 @@ class Printer ann doc => PrecPrinter ann doc where
   prec :: Level -> doc -> doc
   resetPrec :: Level -> doc -> doc
   askingPrec :: (Level -> doc) -> doc
+
+infix' :: PrecPrinter ann doc => Level -> doc -> doc -> doc -> doc
+infix' lv sep l r = prec lv (prec (incr lv) l <> sep <> prec (incr lv) r)
 
 infixl' :: PrecPrinter ann doc => Level -> doc -> doc -> doc -> doc
 infixl' lv sep l r = prec lv (l <> sep <> prec (incr lv) r)
