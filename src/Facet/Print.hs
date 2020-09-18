@@ -17,7 +17,7 @@ import           Control.Monad.IO.Class
 import qualified Data.Kind as K
 import qualified Data.Text.Prettyprint.Doc as PP
 import qualified Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
-import           Facet.Pretty
+import           Facet.Pretty.Prec
 import           Facet.Syntax
 import qualified Facet.Syntax.Untyped as U
 

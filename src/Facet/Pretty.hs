@@ -30,10 +30,6 @@ module Facet.Pretty
 , (<+>)
 , (</>)
 , parensIf
-, Level(..)
-, PrecPrinter(..)
-, runPrec
-, Prec(..)
 , Nesting(..)
 , Nest(..)
 , rainbow
@@ -210,53 +206,6 @@ parensIf True = parens
 parensIf _    = id
 
 
-newtype Level = Level Int
-  deriving (Eq, Ord, Show)
-
-class Printer ann doc => PrecPrinter ann doc where
-  prec :: Level -> doc -> doc
-  resetPrec :: Level -> doc -> doc
-
-
-runPrec :: Level -> Prec a -> a
-runPrec l (Prec run) = run l
-
-newtype Prec a = Prec (Level -> a)
-  deriving (Applicative, Functor, Monad, Monoid, Semigroup)
-
-instance Show a => Show (Prec a) where
-  showsPrec p = showsPrec p . runPrec (Level p)
-
-instance Printer ann doc => Printer ann (Prec doc) where
-  pretty = pure . pretty
-
-  hardline = pure hardline
-
-  annotate = fmap . annotate
-
-  align = fmap align
-
-  group = fmap group
-
-  flatAlt = liftA2 flatAlt
-
-  parens   = fmap parens   . resetPrec (Level 0)
-  brackets = fmap brackets . resetPrec (Level 0)
-  braces   = fmap braces   . resetPrec (Level 0)
-
-instance Printer ann doc => PrecPrinter ann (Prec doc) where
-  prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
-  resetPrec l (Prec d) = Prec $ \ _ -> d l
-
-instance (Applicative f, PrecPrinter ann a) => PrecPrinter ann (Ap f a) where
-  prec = fmap . prec
-  resetPrec = fmap . resetPrec
-
-instance PrecPrinter ann a => PrecPrinter ann (b -> a) where
-  prec = fmap . prec
-  resetPrec = fmap . resetPrec
-
-
 newtype Nesting = Nesting { getNesting :: Int }
   deriving (Eq, Ord, Show)
 
@@ -294,10 +243,6 @@ instance Printer (Nest ann) doc => Printer (Nest ann) (Rainbow doc) where
 nestRainbow :: Printer (Nest ann) doc => doc -> doc -> Rainbow doc -> Rainbow doc
 nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (Nest lv) l <> run (Nesting (1 + getNesting lv)) <> annotate (Nest lv) r
 
-instance PrecPrinter (Nest ann) doc => PrecPrinter (Nest ann) (Rainbow doc) where
-  prec = fmap . prec
-  resetPrec = fmap . resetPrec
-
 
 newtype Var = Var { getVar :: Int }
   deriving (Eq, Ord, Show)
@@ -316,7 +261,7 @@ bind :: (Var -> Fresh doc) -> Fresh doc
 bind f = Fresh $ \ v -> runFresh (f v) (incr v)
 
 newtype Fresh doc = Fresh { runFresh :: Var -> doc }
-  deriving (Applicative, Printer ann, Functor, Monad, Monoid, PrecPrinter ann, Semigroup)
+  deriving (Applicative, Printer ann, Functor, Monad, Monoid, Semigroup)
 
 instance Show doc => Show (Fresh doc) where
   showsPrec p = showsPrec p . fresh
