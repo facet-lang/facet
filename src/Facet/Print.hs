@@ -15,6 +15,7 @@ module Facet.Print
 
 import           Control.Applicative (Const(..), (<**>))
 import           Control.Monad.IO.Class
+import           Data.Coerce
 import qualified Data.Kind as K
 import qualified Data.Text.Prettyprint.Doc as PP
 import qualified Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
@@ -80,7 +81,7 @@ arrow = op (pretty "->")
 
 
 instance Expr Print where
-  lam f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
+  lam f = Print $ cases [\ var -> (var, coerce (f . Left) var)]
   f $$ a = Print $ runPrint f <+> runPrint a
 
   alg _ = Print $ pretty "TBD"
