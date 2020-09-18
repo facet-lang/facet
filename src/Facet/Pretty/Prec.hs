@@ -27,6 +27,7 @@ class (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann d
   prec :: lvl -> doc -> doc
   resetPrec :: lvl -> doc -> doc
   askingPrec :: (lvl -> doc) -> doc
+  localPrec :: lvl -> doc -> doc
 
 infix' :: PrecPrinter lvl ann doc => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
 infix' lo hi sep l r = prec lo (sep (prec hi l) (prec hi r))
@@ -70,11 +71,13 @@ instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl an
   prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
   resetPrec l (Prec d) = Prec $ \ _ -> d l
   askingPrec f = Prec $ runPrec <*> f
+  localPrec l (Prec d) = Prec $ \ _ -> d l
 
 instance PrecPrinter lvl ann a => PrecPrinter lvl ann (b -> a) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
   askingPrec f b = askingPrec (($ b) . f)
+  localPrec = fmap . localPrec
 
 deriving instance PrecPrinter lvl (Nest ann) doc => PrecPrinter lvl (Nest ann) (Rainbow doc)
 deriving instance PrecPrinter lvl       ann  doc => PrecPrinter lvl       ann  (Fresh   doc)
