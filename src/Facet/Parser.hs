@@ -492,11 +492,17 @@ global :: (S.Expr expr, Parsing p) => p expr
 global = S.global <$> ident <?> (S.global "_", "variable")
 
 expr_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
-expr_ var = lam_ var <|> var
-
-lam_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
-lam_ var = braces $ S.lam0 (\ v -> capture (const id) identS (\ i -> ws *> arrow *> expr_ (weaken var <|> liftCOuter v <* token i))) <?> (S.err, "clause")
-
+expr_ var = foldl (S.$$) <$> atom_ var <*> many (atom_ var)
+  where
+  lam_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
+  lam_ var = braces $ S.lam0 (\ v -> capture (const id) identS (\ i -> ws *> arrow *> expr_ (weaken var <|> liftCOuter v <* token i))) <?> (S.err, "clause")
+  atom_ var
+    =   lam_ var
+    <|> parens (prd <$> sepBy (expr_ var) comma)
+    <|> var
+    where
+    prd [] = S.unit
+    prd ts = foldl1 (S.**) ts
 
 data Def repr = Def Name (Type repr) (Term repr)
   deriving (Eq, Show)
