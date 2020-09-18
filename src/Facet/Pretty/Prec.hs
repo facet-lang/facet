@@ -22,6 +22,7 @@ newtype Level = Level Int
 class Printer ann doc => PrecPrinter ann doc where
   prec :: Level -> doc -> doc
   resetPrec :: Level -> doc -> doc
+  askingPrec :: (Level -> doc) -> doc
 
 
 runPrec :: Level -> Prec a -> a
@@ -53,10 +54,12 @@ instance Printer ann doc => Printer ann (Prec doc) where
 instance Printer ann doc => PrecPrinter ann (Prec doc) where
   prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
   resetPrec l (Prec d) = Prec $ \ _ -> d l
+  askingPrec f = Prec $ runPrec <*> f
 
 instance PrecPrinter ann a => PrecPrinter ann (b -> a) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
+  askingPrec f b = askingPrec (($ b) . f)
 
 deriving instance PrecPrinter (Nest ann) doc => PrecPrinter (Nest ann) (Rainbow doc)
 deriving instance PrecPrinter ann doc => PrecPrinter ann (Fresh doc)
