@@ -63,9 +63,9 @@ instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => Printer ann (Prec 
 
   flatAlt = liftA2 flatAlt
 
-  parens   = fmap parens   . resetPrec minBound
-  brackets = fmap brackets . resetPrec minBound
-  braces   = fmap braces   . resetPrec minBound
+  parens   = fmap parens   . localPrec minBound
+  brackets = fmap brackets . localPrec minBound
+  braces   = fmap braces   . localPrec minBound
 
 instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann (Prec lvl doc) where
   prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
