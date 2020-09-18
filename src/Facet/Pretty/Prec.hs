@@ -19,6 +19,7 @@ import Facet.Pretty.Rainbow
 newtype Level = Level Int
   deriving (Eq, Ord, Show)
 
+
 class Printer ann doc => PrecPrinter ann doc where
   prec :: Level -> doc -> doc
   resetPrec :: Level -> doc -> doc
