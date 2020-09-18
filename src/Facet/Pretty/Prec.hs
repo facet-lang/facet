@@ -23,7 +23,7 @@ newtype Level = Level { getLevel :: Int }
   deriving (Bounded, Enum, Eq, Ord, Show)
 
 
-class (Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann doc | doc -> ann lvl where
+class (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann doc | doc -> ann lvl where
   prec :: lvl -> doc -> doc
   resetPrec :: lvl -> doc -> doc
   askingPrec :: (lvl -> doc) -> doc
