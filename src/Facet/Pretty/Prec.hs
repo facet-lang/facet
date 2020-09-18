@@ -14,6 +14,7 @@ module Facet.Pretty.Prec
 import Control.Applicative (liftA2)
 import Data.Monoid (Ap(..))
 import Facet.Pretty
+import Facet.Pretty.Fresh
 
 newtype Level = Level Int
   deriving (Eq, Ord, Show)

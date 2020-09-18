@@ -34,10 +34,6 @@ module Facet.Pretty
 , Nest(..)
 , rainbow
 , Rainbow(..)
-, Var(..)
-, fresh
-, bind
-, Fresh(..)
 ) where
 
 import           Control.Applicative (liftA2)
@@ -242,26 +238,3 @@ instance Printer (Nest ann) doc => Printer (Nest ann) (Rainbow doc) where
 
 nestRainbow :: Printer (Nest ann) doc => doc -> doc -> Rainbow doc -> Rainbow doc
 nestRainbow l r (Rainbow run) = Rainbow $ \ lv -> annotate (Nest lv) l <> run (Nesting (1 + getNesting lv)) <> annotate (Nest lv) r
-
-
-newtype Var = Var { getVar :: Int }
-  deriving (Eq, Ord, Show)
-
-instance PP.Pretty Var where
-  pretty = pretty . getVar
-
-incr :: Var -> Var
-incr = Var . succ . getVar
-
-
-fresh :: Fresh doc -> doc
-fresh = (`runFresh` Var 0)
-
-bind :: (Var -> Fresh doc) -> Fresh doc
-bind f = Fresh $ \ v -> runFresh (f v) (incr v)
-
-newtype Fresh doc = Fresh { runFresh :: Var -> doc }
-  deriving (Applicative, Printer ann, Functor, Monad, Monoid, Semigroup)
-
-instance Show doc => Show (Fresh doc) where
-  showsPrec p = showsPrec p . fresh
