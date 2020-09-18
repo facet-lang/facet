@@ -138,4 +138,4 @@ instance U.Type UntypedPrint where
 app :: UntypedPrint -> UntypedPrint -> UntypedPrint
 app = infixl' AppL AppR (\ f a -> askingPrec (\case
     AppR -> f </> a
-    _    -> group (f <> nest 2 (line <> a))))
+    _    -> f <> nest 2 (line <> a)))
