@@ -16,6 +16,11 @@ class Expr repr where
 
   global :: Name -> repr
 
+  unit :: repr
+  -- | Tupling.
+  (**) :: repr -> repr -> repr
+
+
 class Err expr where
   err :: expr
 

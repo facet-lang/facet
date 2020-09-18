@@ -91,6 +91,9 @@ instance U.Expr (Print sig a) where
 
   global = pretty
 
+  unit = pretty "()"
+  l ** r = tupled [l, r]
+
 instance U.Err (Print sig a) where
   err = pretty "err"
 
