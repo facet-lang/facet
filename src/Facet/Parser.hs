@@ -250,11 +250,9 @@ data State = State
   }
 
 advance :: State -> State
-advance (State s i es (Pos l c)) = State s (tail i) es p
-  where
-  p = case head i of
-    '\n' -> Pos (l + 1) 0
-    _    -> Pos l       (c + 1)
+advance (State s i es (Pos l c)) = State s (tail i) es $ case head i of
+  '\n' -> Pos (l + 1) 0
+  _    -> Pos l       (c + 1)
 
 
 stateExcerpt :: State -> Excerpt
