@@ -10,6 +10,7 @@
 module Facet.Print
 ( prettyPrint
 , UntypedPrint(..)
+, Context(..)
 , Print(..)
 ) where
 
@@ -52,6 +53,11 @@ defaultStyle = \case
 
 newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Fresh (Prec (Rainbow (PP.Doc (Nest Highlight)))) }
   deriving (FreshPrinter (Nest Highlight), Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
+
+data Context
+  = Null
+  | Param
+  deriving (Bounded, Enum, Eq, Ord, Show)
 
 newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: UntypedPrint }
   deriving (U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
