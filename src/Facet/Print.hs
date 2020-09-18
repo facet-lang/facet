@@ -62,6 +62,9 @@ data Highlight
   | Lit
   deriving (Enum, Eq, Ord, Show)
 
+name :: Printer (Nest Highlight) doc => doc -> doc
+name = annotate (Ann Name)
+
 instance Expr Print where
   lam f = Print $ cases [\ var -> (var, runPrint (f (Left (Print var))))]
   f $$ a = Print $ runPrint f <+> runPrint a
@@ -79,7 +82,7 @@ cases cs = bind $ \ var -> group
   $ map (\ (p, b) -> p <+> pretty "->" <+> b) (cs <*> [prettyVar var])
 
 prettyVar :: Printer (Nest Highlight) doc => Var -> doc
-prettyVar (Var i) = annotate (Ann Name) (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
+prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
   (q, r) = i `divMod` 26
   alphabet = ['a'..'z']
 
