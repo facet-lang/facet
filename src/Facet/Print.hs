@@ -85,9 +85,10 @@ instance Expr Print where
 
 cases :: Printer (Nest Highlight) doc => [Fresh doc -> (Fresh doc, Fresh doc)] -> Fresh doc
 cases cs = bind $ \ var -> group
+  . braces
   . encloseSep
-    (lbrace <> flatAlt space mempty)
-    (flatAlt space mempty <> rbrace)
+    (flatAlt space mempty)
+    (flatAlt space mempty)
     (flatAlt (pretty " , ") (pretty ", "))
   $ map (\ (p, b) -> p <+> arrow <+> b) (cs <*> [prettyVar var])
 
