@@ -33,8 +33,8 @@ module Facet.Pretty
 import           Control.Applicative (liftA2)
 import           Control.Monad.IO.Class
 import           Data.Monoid (Ap(..))
-import qualified Data.Text.Prettyprint.Doc as PP
-import qualified Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
+import qualified Prettyprinter as PP
+import qualified Prettyprinter.Render.Terminal as ANSI
 import           System.Console.Terminal.Size as Size
 import           System.IO (stdout)
 
