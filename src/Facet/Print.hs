@@ -101,7 +101,7 @@ prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else 
 instance U.Expr UntypedPrint where
   lam0 f = cases [\ var -> (var, f var)]
   lam  f = cases [\ var -> (var, f (Left var))]
-  f $$ a = prec (Level 10) f <+> prec (Level 11) a
+  f $$ a = prec (Level 10) f </> prec (Level 11) a
 
   -- FIXME: don’t pretty-print local variables with the same name as globals used in the body
   global = pretty
@@ -115,7 +115,7 @@ instance U.Err UntypedPrint where
 instance U.Type UntypedPrint where
   a --> b = a <+> arrow <+> b
   t >-> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
-  f .$ a = prec (Level 10) f <+> prec (Level 11) a
+  f .$ a = prec (Level 10) f </> prec (Level 11) a
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
   _Type = pretty "Type"
