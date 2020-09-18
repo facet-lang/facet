@@ -29,7 +29,7 @@ prettyPrint :: MonadIO m => Print sig a -> m ()
 prettyPrint = prettyPrintWith defaultStyle
 
 prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> Print sig a -> m ()
-prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec (Level 0) . fresh . runUntypedPrint . runPrint
+prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec (Level 0) . fresh . runUntypedPrint . runPrint . group
 
 defaultStyle :: Nest Highlight -> ANSI.AnsiStyle
 defaultStyle = \case
