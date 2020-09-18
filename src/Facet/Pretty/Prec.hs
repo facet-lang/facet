@@ -7,6 +7,7 @@
 module Facet.Pretty.Prec
 ( Level(..)
 , PrecPrinter(..)
+, infixl'
 , runPrec
 , Prec(..)
 , module Facet.Pretty) where
@@ -19,11 +20,17 @@ import Facet.Pretty.Rainbow
 newtype Level = Level { getLevel :: Int }
   deriving (Eq, Ord, Show)
 
+incr :: Level -> Level
+incr = Level . succ . getLevel
+
 
 class Printer ann doc => PrecPrinter ann doc where
   prec :: Level -> doc -> doc
   resetPrec :: Level -> doc -> doc
   askingPrec :: (Level -> doc) -> doc
+
+infixl' :: PrecPrinter ann doc => Level -> doc -> doc -> doc -> doc
+infixl' lv sep l r = prec lv (l <> sep <> prec (incr lv) r)
 
 
 runPrec :: Level -> Prec a -> a
