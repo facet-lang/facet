@@ -19,6 +19,7 @@ class Expr repr where
   unit :: repr
   -- | Tupling.
   (**) :: repr -> repr -> repr
+  -- FIXME: tupling/unit should take a list of expressions
 
 
 class Err expr where
@@ -36,6 +37,7 @@ class Type ty where
 
   (.*) :: ty -> ty -> ty
   infixl 7 .*
+  -- FIXME: tupling/unit should take a list of types
 
   (.$) :: ty -> ty -> ty
   infixl 9 .$
