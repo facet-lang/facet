@@ -15,6 +15,7 @@ import Control.Applicative (liftA2)
 import Data.Monoid (Ap(..))
 import Facet.Pretty
 import Facet.Pretty.Fresh
+import Facet.Pretty.Rainbow
 
 newtype Level = Level Int
   deriving (Eq, Ord, Show)

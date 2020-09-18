@@ -19,6 +19,7 @@ import qualified Data.Text.Prettyprint.Doc as PP
 import qualified Data.Text.Prettyprint.Doc.Render.Terminal as ANSI
 import           Facet.Pretty.Fresh
 import           Facet.Pretty.Prec
+import           Facet.Pretty.Rainbow
 import           Facet.Syntax
 import qualified Facet.Syntax.Untyped as U
 
