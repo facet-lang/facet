@@ -7,6 +7,7 @@
 module Facet.Pretty.Prec
 ( Level(..)
 , PrecPrinter(..)
+, prec
 , infix'
 , infixl'
 , infixr'
@@ -24,9 +25,11 @@ newtype Level = Level { getLevel :: Int }
 
 
 class (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann doc | doc -> ann lvl where
-  prec :: lvl -> doc -> doc
   askingPrec :: (lvl -> doc) -> doc
   localPrec :: lvl -> doc -> doc
+
+prec :: PrecPrinter lvl ann doc => lvl -> doc -> doc
+prec l d = askingPrec $ \ l' -> parensIf (l' > l) (localPrec l d)
 
 infix' :: PrecPrinter lvl ann doc => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
 infix' lo hi sep l r = prec lo (sep (prec hi l) (prec hi r))
@@ -67,12 +70,10 @@ instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => Printer ann (Prec 
   braces   = fmap braces   . localPrec minBound
 
 instance (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann (Prec lvl doc) where
-  prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
   askingPrec f = Prec $ runPrec <*> f
   localPrec l (Prec d) = Prec $ \ _ -> d l
 
 instance PrecPrinter lvl ann a => PrecPrinter lvl ann (b -> a) where
-  prec = fmap . prec
   askingPrec f b = askingPrec (($ b) . f)
   localPrec = fmap . localPrec
 
