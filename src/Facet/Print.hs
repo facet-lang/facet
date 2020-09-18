@@ -107,7 +107,7 @@ cases cs = bind $ \ var ->
     (flatAlt space mempty)
     (flatAlt line mempty)
     (flatAlt (space <> comma <> space) (comma <> space))
-  $ map (uncurry (infix' succ (Level 0) (\ a b -> a <+> arrow <> nest 2 (line <> b)))) (cs <*> [prettyVar var])
+  $ map (uncurry (infix' (Level 0) (Level 1) (\ a b -> a <+> arrow <> nest 2 (line <> b)))) (cs <*> [prettyVar var])
 
 prettyVar :: Printer (Nest Highlight) doc => Var -> doc
 prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
@@ -118,7 +118,7 @@ prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else 
 instance U.Expr UntypedPrint where
   lam0 f = cases [\ var -> (var, f var)]
   lam  f = cases [\ var -> (var, f (Left var))]
-  ($$) = infixl' succ (Level 10) (\ f a -> withContext (\case
+  ($$) = infixl' (Level 10) (Level 11) (\ f a -> withContext (\case
     Param -> f </> context Param a
     _     -> group (f <> align (line <> context Param a))))
 
@@ -132,9 +132,9 @@ instance U.Err UntypedPrint where
   err = pretty "err"
 
 instance U.Type UntypedPrint where
-  (-->) = infixr' succ (Level 0) (\ a b -> a <+> arrow <+> b)
+  (-->) = infixr' (Level 0) (Level 1) (\ a b -> a <+> arrow <+> b)
   t >-> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
-  (.$) = infixl' succ (Level 10) (\ f a -> group (f <> align (line <> a)))
+  (.$) = infixl' (Level 10) (Level 11) (\ f a -> group (f <> align (line <> a)))
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
   _Type = pretty "Type"

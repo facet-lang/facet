@@ -28,14 +28,14 @@ class (Bounded lvl, Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann d
   resetPrec :: lvl -> doc -> doc
   askingPrec :: (lvl -> doc) -> doc
 
-infix' :: PrecPrinter lvl ann doc => (lvl -> lvl) -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
-infix' succ lv sep l r = prec lv (sep (prec (succ lv) l) (prec (succ lv) r))
+infix' :: PrecPrinter lvl ann doc => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infix' lo hi sep l r = prec lo (sep (prec hi l) (prec hi r))
 
-infixl' :: PrecPrinter lvl ann doc => (lvl -> lvl) -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
-infixl' succ lv sep l r = prec lv (sep l (prec (succ lv) r))
+infixl' :: PrecPrinter lvl ann doc => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infixl' lo hi sep l r = prec lo (sep l (prec hi r))
 
-infixr' :: PrecPrinter lvl ann doc => (lvl -> lvl) -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
-infixr' succ lv sep l r = prec lv (sep (prec (succ lv) l) r)
+infixr' :: PrecPrinter lvl ann doc => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infixr' lo hi sep l r = prec lo (sep (prec hi l) r)
 
 
 runPrec :: lvl -> Prec lvl a -> a
