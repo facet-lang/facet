@@ -55,7 +55,7 @@ runUntypedPrint :: Context -> UntypedPrint -> Fresh (Prec (Rainbow (PP.Doc (Nest
 runUntypedPrint c (UntypedPrint r) = r c
 
 newtype UntypedPrint = UntypedPrint (Context -> Fresh (Prec (Rainbow (PP.Doc (Nest Highlight)))))
-  deriving (FreshPrinter (Nest Highlight), Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup)
+  deriving (FreshPrinter (Nest Highlight), Monoid, PrecPrinter Level (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
 data Context
   = Null
@@ -63,7 +63,7 @@ data Context
   deriving (Bounded, Enum, Eq, Ord, Show)
 
 newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: UntypedPrint }
-  deriving (U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
+  deriving (U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter Level (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
   deriving (Applicative) via Const UntypedPrint
 
 context :: Context -> UntypedPrint -> UntypedPrint
@@ -98,7 +98,7 @@ instance Expr Print where
 
   weakenBy _ = Print . runPrint
 
-cases :: (FreshPrinter (Nest Highlight) doc, PrecPrinter (Nest Highlight) doc) => [doc -> (doc, doc)] -> doc
+cases :: (FreshPrinter (Nest Highlight) doc, PrecPrinter Level (Nest Highlight) doc) => [doc -> (doc, doc)] -> doc
 cases cs = bind $ \ var ->
     group
   . align

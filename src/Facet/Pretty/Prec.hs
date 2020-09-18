@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Pretty.Prec
@@ -20,25 +20,22 @@ import Facet.Pretty.Fresh
 import Facet.Pretty.Rainbow
 
 newtype Level = Level { getLevel :: Int }
-  deriving (Eq, Ord, Show)
-
-incr :: Level -> Level
-incr = Level . succ . getLevel
+  deriving (Enum, Eq, Ord, Show)
 
 
-class Printer ann doc => PrecPrinter ann doc where
-  prec :: Level -> doc -> doc
-  resetPrec :: Level -> doc -> doc
-  askingPrec :: (Level -> doc) -> doc
+class (Enum lvl, Ord lvl, Printer ann doc) => PrecPrinter lvl ann doc | doc -> ann lvl where
+  prec :: lvl -> doc -> doc
+  resetPrec :: lvl -> doc -> doc
+  askingPrec :: (lvl -> doc) -> doc
 
-infix' :: PrecPrinter ann doc => Level -> (doc -> doc -> doc) -> (doc -> doc -> doc)
-infix' lv sep l r = prec lv (sep (prec (incr lv) l) (prec (incr lv) r))
+infix' :: PrecPrinter lvl ann doc => lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infix' lv sep l r = prec lv (sep (prec (succ lv) l) (prec (succ lv) r))
 
-infixl' :: PrecPrinter ann doc => Level -> (doc -> doc -> doc) -> (doc -> doc -> doc)
-infixl' lv sep l r = prec lv (sep l (prec (incr lv) r))
+infixl' :: PrecPrinter lvl ann doc => lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infixl' lv sep l r = prec lv (sep l (prec (succ lv) r))
 
-infixr' :: PrecPrinter ann doc => Level -> (doc -> doc -> doc) -> (doc -> doc -> doc)
-infixr' lv sep l r = prec lv (sep (prec (incr lv) l) r)
+infixr' :: PrecPrinter lvl ann doc => lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infixr' lv sep l r = prec lv (sep (prec (succ lv) l) r)
 
 
 runPrec :: Level -> Prec a -> a
@@ -69,15 +66,15 @@ instance Printer ann doc => Printer ann (Prec doc) where
   brackets = fmap brackets . resetPrec (Level 0)
   braces   = fmap braces   . resetPrec (Level 0)
 
-instance Printer ann doc => PrecPrinter ann (Prec doc) where
+instance Printer ann doc => PrecPrinter Level ann (Prec doc) where
   prec l (Prec d) = Prec $ \ l' -> parensIf (l' > l) (d l)
   resetPrec l (Prec d) = Prec $ \ _ -> d l
   askingPrec f = Prec $ runPrec <*> f
 
-instance PrecPrinter ann a => PrecPrinter ann (b -> a) where
+instance PrecPrinter lvl ann a => PrecPrinter lvl ann (b -> a) where
   prec = fmap . prec
   resetPrec = fmap . resetPrec
   askingPrec f b = askingPrec (($ b) . f)
 
-deriving instance PrecPrinter (Nest ann) doc => PrecPrinter (Nest ann) (Rainbow doc)
-deriving instance PrecPrinter       ann  doc => PrecPrinter       ann  (Fresh   doc)
+deriving instance PrecPrinter lvl (Nest ann) doc => PrecPrinter lvl (Nest ann) (Rainbow doc)
+deriving instance PrecPrinter lvl       ann  doc => PrecPrinter lvl       ann  (Fresh   doc)
