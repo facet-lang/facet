@@ -59,6 +59,8 @@ instance Printer ann doc => Printer ann (Prec doc) where
 
   align = fmap align
 
+  nest = fmap . nest
+
   group = fmap group
 
   flatAlt = liftA2 flatAlt

@@ -40,6 +40,8 @@ instance Printer (Nest ann) doc => Printer (Nest ann) (Rainbow doc) where
 
   align = fmap align
 
+  nest = fmap . nest
+
   group = fmap group
 
   flatAlt = liftA2 flatAlt

@@ -53,6 +53,8 @@ class Monoid doc => Printer ann doc | doc -> ann where
 
   align :: doc -> doc
 
+  nest :: Int -> doc -> doc
+
   group :: doc -> doc
 
   flatAlt :: doc -> doc -> doc
@@ -75,6 +77,8 @@ instance Printer ann (PP.Doc ann) where
 
   align = PP.align
 
+  nest = PP.nest
+
   group = PP.group
 
   flatAlt = PP.flatAlt
@@ -87,6 +91,8 @@ instance (Applicative f, Printer ann a) => Printer ann (Ap f a) where
   annotate = fmap . annotate
 
   align = fmap align
+
+  nest = fmap . nest
 
   group = fmap group
 
@@ -106,6 +112,8 @@ instance Printer ann a => Printer ann (b -> a) where
   annotate = fmap . annotate
 
   align = fmap align
+
+  nest = fmap . nest
 
   group = fmap group
 
