@@ -159,4 +159,4 @@ app l r = askingPrec $ \case
 
 
 instance U.Module Print Print where
-  n .: b = group $ pretty n </> b
+  n .: b = group $ pretty n </> group (colon <+> b)
