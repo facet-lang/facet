@@ -39,7 +39,7 @@ class ForAll ty decl | decl -> ty where
 
 type TName = String
 
-class Type ty where
+class ForAll ty ty => Type ty where
   (-->) :: ty -> ty -> ty
   infixr 2 -->
 
@@ -62,7 +62,7 @@ class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
   (.:) :: DeclName -> decl -> mod
   infixr 0 .:
 
-class (Expr expr, ForAll ty decl, Type ty, ForAll ty ty) => Decl expr ty decl | decl -> ty expr where
+class (Expr expr, ForAll ty decl, Type ty) => Decl expr ty decl | decl -> ty expr where
   (.=) :: ty -> expr -> decl
   infix 1 .=
 
