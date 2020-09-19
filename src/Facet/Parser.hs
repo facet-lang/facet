@@ -440,11 +440,14 @@ type Name = String
 -- { f x }
 
 decl :: (S.Module expr ty decl mod, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p mod
-decl = (S..:) <$> ident <* colon <*> type'
+decl = (S..:) <$> ident <* colon <*> sig
 
 
 type' :: (S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p decl
 type' = runIdentity <$> getC (sig_ global tglobal)
+
+sig :: (S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p decl
+sig = runIdentity <$> getC (sig_ global tglobal)
 
 sig_ :: forall p env expr ty decl . (Permutable env, Parsing p, S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr) => (p :.: env) expr -> (p :.: env) ty -> (p :.: env) decl
 sig_ var tvar = (S..=) <$> type_ tvar <*> expr_ var <|> bind var tvar <|> forAll (sig_ (weaken var)) tvar
