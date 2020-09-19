@@ -48,10 +48,11 @@ library
     Facet.Print
     Facet.Signature
     Facet.Syntax
-    Facet.Syntax.Examples
     Facet.Syntax.Lifted
     Facet.Syntax.Untyped
     Facet.Syntax.Untyped.Lifted
+  other-modules:
+    Facet.Syntax.Examples
   build-depends:
     , base ^>= 4.14
     , charset
