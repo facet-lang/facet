@@ -52,8 +52,9 @@ defaultStyle = \case
   len = length colours
 
 type Inner = Fresh (Prec Context (Rainbow (PP.Doc (Nest Highlight))))
+type Trans = Context -> Inner -> Inner
 
-newtype UntypedPrint = UntypedPrint { runUntypedPrint :: (Context -> Inner -> Inner) -> Inner }
+newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Trans -> Inner }
   deriving (FreshPrinter (Nest Highlight), Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
 context :: Context -> UntypedPrint -> UntypedPrint
