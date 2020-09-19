@@ -59,6 +59,9 @@ newtype UntypedPrint = UntypedPrint { runUntypedPrint :: (Context -> Inner -> In
 context :: Context -> UntypedPrint -> UntypedPrint
 context c a = UntypedPrint $ \ trans -> trans c (prec c (runUntypedPrint a trans))
 
+withTransition :: (Context -> Inner -> Inner) -> UntypedPrint -> UntypedPrint
+withTransition trans a = UntypedPrint $ \ _ -> runUntypedPrint a trans
+
 data Context
   = Null
   | FnR
