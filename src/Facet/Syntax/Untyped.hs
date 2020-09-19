@@ -1,9 +1,12 @@
+{-# LANGUAGE FunctionalDependencies #-}
 module Facet.Syntax.Untyped
 ( Name
 , Expr(..)
 , Err(..)
 , TName
 , Type(..)
+, DeclName
+, Module(..)
 ) where
 
 type Name = String
@@ -46,3 +49,10 @@ class Type ty where
   _Type :: ty
 
   tglobal :: TName -> ty
+
+
+type DeclName = String
+
+class Module decl mod | mod -> decl where
+  (.:) :: DeclName -> decl -> mod
+  infixr 0 .:
