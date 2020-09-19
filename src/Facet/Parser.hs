@@ -478,30 +478,3 @@ expr_ var = foldl (S.$$) <$> atom_ var <*> many (atom_ var)
     where
     prd [] = S.unit
     prd ts = foldl1 (S.**) ts
-
-data Def repr = Def Name (Type repr) (Term repr)
-  deriving (Eq, Show)
-
-type TName = String
-
-data Type repr
-  = TVar TName
-  | Type repr :-> Type repr
-  | (Name, Type repr) :=> Type repr
-  | Type repr :$ Type repr
-  | TErr
-  deriving (Eq, Show)
-
-infixr 0 :->
-infixr 0 :=>
-infixl 9 :$
-
-
-data Term repr
-  = Var Name
-  | Lam [Term repr]
-  | Term repr :$$ Term repr
-  | Err
-  deriving (Eq, Show)
-
-infixl 9 :$$
