@@ -61,7 +61,7 @@ instance PrecPrinter Context (Nest Highlight) UntypedPrint where
   askingPrec = coerce (askingPrec :: (Context -> Trans -> Inner) -> Trans -> Inner)
   localPrec f (UntypedPrint run) = UntypedPrint $ \ t -> localPrec f (askingPrec (\ c -> t c (run t)))
 
-withTransition :: (Context -> Inner -> Inner) -> UntypedPrint -> UntypedPrint
+withTransition :: Trans -> UntypedPrint -> UntypedPrint
 withTransition trans a = UntypedPrint $ \ _ -> runUntypedPrint a trans
 
 whenPrec :: PrecPrinter lvl ann p => (lvl -> Bool) -> (p -> p) -> p -> p
