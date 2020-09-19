@@ -8,6 +8,7 @@ module Facet.Syntax.Untyped.Lifted
 , S.Decl(..)
 , lam
 , lam0
+, (>=>)
 , (>->)
 ) where
 
@@ -26,6 +27,15 @@ lam0
   -> (m :.: env) repr
 lam0 f = S.lam0 <$> C (getC <$> getC (f (C (pure id))))
 
+
+(>=>)
+  :: (Applicative m, Permutable env, S.Type ty)
+  => (m :.: env) ty
+  -> (forall env' . Permutable env' => (env :.: env') ty -> (m :.: env :.: env') ty)
+  -> (m :.: env) ty
+t >=> b = (S.>=>) <$> t <*> C (getC <$> getC (b (C (pure id))))
+
+infixr 1 >=>
 
 (>->)
   :: (Applicative m, Permutable env, S.Type ty)
