@@ -62,7 +62,7 @@ data Context
   | Expr
   | AppL
   | AppR
-  deriving (Bounded, Enum, Eq, Ord, Show)
+  deriving (Bounded, Eq, Ord, Show)
 
 newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: UntypedPrint }
   deriving (U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
