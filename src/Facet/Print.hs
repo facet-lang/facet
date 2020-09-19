@@ -75,8 +75,8 @@ data Context
   = Null
   | FnR
   | FnL
-  | Pattern
   | Expr
+  | Pattern
   | AppL
   | AppR
   | Var'
