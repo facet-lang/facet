@@ -442,14 +442,16 @@ decl = (S..:) <$> ident <* colon <*> type'
 
 
 type' :: (S.Expr ty, S.Type ty, S.Err ty, Parsing p) => p ty
-type' = runIdentity <$> getC (type_ tglobal global)
+type' = runIdentity <$> getC (sig_ tglobal global)
 
 tglobal :: (S.Type ty, Parsing p) => p ty
 tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
 
-type_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty -> (p :.: env) ty
-type_ tvar var = fn tvar var <|> bind tvar var <|> forAll tvar var <|> fail S.err "type"
+sig_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty -> (p :.: env) ty
+sig_ = type_
   where
+  type_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty -> (p :.: env) ty
+  type_ tvar var = fn tvar var <|> bind tvar var <|> forAll tvar var <|> fail S.err "type"
   fn tvar var = app tvar var <**> opt (flip (S.-->) <$ arrow <*> fn tvar var) id
   -- FIXME: bind multiple type variables of the same kind in a single set of braces
   forAll tvar var = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (fn tvar var S.>-> \ t -> rbrace *> arrow *> type_ (weaken tvar <|> liftCOuter t <* weaken (token i)) (weaken var)))
