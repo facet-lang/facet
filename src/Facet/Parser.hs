@@ -41,6 +41,7 @@ module Facet.Parser
 , parens
 , braces
 , brackets
+, decl
 , type''
 , expr
 ) where
@@ -436,6 +437,10 @@ type Name = String
 -- case
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
+
+decl :: Parsing p => p Name
+decl = ident
+
 
 type'' :: (S.Type ty, S.Err ty, Parsing p) => p ty
 type'' = runIdentity <$> getC (type_ tglobal)
