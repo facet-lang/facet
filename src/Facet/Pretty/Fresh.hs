@@ -33,5 +33,8 @@ instance Show doc => Show (Fresh doc) where
 instance FreshPrinter ann a => FreshPrinter ann (b -> a) where
   bind f a = bind (($ a) . f)
 
+instance (FreshPrinter ann a, FreshPrinter ann b) => FreshPrinter ann (a, b) where
+  bind f = (bind (fst . f), bind (snd . f))
+
 instance Printer ann doc => FreshPrinter ann (Fresh doc) where
   bind f = Fresh $ \ v -> runFresh (f v) (incr v)
