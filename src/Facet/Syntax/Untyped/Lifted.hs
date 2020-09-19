@@ -5,7 +5,8 @@ module Facet.Syntax.Untyped.Lifted
 , S.Err(..)
 , S.Type(_Type, _Unit, tglobal, (-->), (.*), (.$))
 , S.Module(..)
-, S.Decl(..)
+, S.Decl((.=))
+, S.ForAll
 , lam
 , lam0
 , (>=>)
@@ -29,19 +30,19 @@ lam0 f = S.lam0 <$> C (getC <$> getC (f (C (pure id))))
 
 
 (>=>)
-  :: (Applicative m, Permutable env, S.Type ty)
+  :: (Applicative m, Permutable env, S.ForAll ty decl)
   => (m :.: env) ty
-  -> (forall env' . Permutable env' => (env :.: env') ty -> (m :.: env :.: env') ty)
-  -> (m :.: env) ty
+  -> (forall env' . Permutable env' => (env :.: env') ty -> (m :.: env :.: env') decl)
+  -> (m :.: env) decl
 t >=> b = (S.>=>) <$> t <*> C (getC <$> getC (b (C (pure id))))
 
 infixr 1 >=>
 
 (>->)
-  :: (Applicative m, Permutable env, S.Type ty)
+  :: (Applicative m, Permutable env, S.Decl expr ty decl)
   => (m :.: env) ty
-  -> (forall env' . Permutable env' => (env :.: env') ty -> (m :.: env :.: env') ty)
-  -> (m :.: env) ty
+  -> (forall env' . Permutable env' => (env :.: env') expr -> (m :.: env :.: env') decl)
+  -> (m :.: env) decl
 t >-> b = (S.>->) <$> t <*> C (getC <$> getC (b (C (pure id))))
 
 infixr 1 >->

@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Parser
@@ -438,26 +439,27 @@ type Name = String
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
 
-decl :: (S.Module expr ty decl mod, S.Expr decl, S.Type decl, S.Err decl, Parsing p) => p mod
+decl :: (S.Module expr ty decl mod, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p mod
 decl = (S..:) <$> ident <* colon <*> type'
 
 
-type' :: (S.Expr ty, S.Type ty, S.Err ty, Parsing p) => p ty
+type' :: (S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p decl
 type' = runIdentity <$> getC (sig_ tglobal global)
 
 tglobal :: (S.Type ty, Parsing p) => p ty
 tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
 
 -- FIXME: construct a representation containing both a type and a definition
-sig_ :: forall p env ty . (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty -> (p :.: env) ty
-sig_ = type_
+sig_ :: forall p env expr ty decl . (Permutable env, Parsing p, S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr) => (p :.: env) ty -> (p :.: env) expr -> (p :.: env) decl
+sig_ tvar var = (S..=) <$> type_ tvar var <*> expr_ var <|> bind tvar var <|> forAll sig_ tvar var
   where
-  type_ :: Permutable env' => (p :.: env') ty -> (p :.: env') ty -> (p :.: env') ty
-  type_ tvar var = fn tvar var <|> bind tvar var <|> forAll tvar var <|> fail S.err "type"
+  type_ :: Permutable env' => (p :.: env') ty -> (p :.: env') expr -> (p :.: env') ty
+  type_ tvar var = fn tvar var <|> forAll type_ tvar var <|> fail S.err "type"
   fn tvar var = app tvar var <**> opt (flip (S.-->) <$ arrow <*> fn tvar var) id
   -- FIXME: bind multiple type variables of the same kind in a single set of braces
-  forAll tvar var = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (fn tvar var S.>=> \ t -> rbrace *> arrow *> type_ (weaken tvar <|> liftCOuter t <* weaken (token i)) (weaken var)))
-  bind tvar var = lparen *> capture (const id) identS (\ i -> ws *> colon *> (fn tvar var S.>-> \ t -> rparen *> arrow *> type_ (weaken tvar) (weaken var <|> liftCOuter t <* weaken (token i))))
+  forAll :: (Permutable env', S.ForAll ty res) => (forall env' . Permutable env' => (p :.: env') ty -> (p :.: env') expr -> (p :.: env') res) -> (p :.: env') ty -> (p :.: env') expr -> (p :.: env') res
+  forAll k tvar var = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar var S.>=> \ t -> rbrace *> arrow *> k (weaken tvar <|> liftCOuter t <* weaken (token i)) (weaken var)))
+  bind tvar var = lparen *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar var S.>-> \ t -> rparen *> arrow *> sig_ (weaken tvar) (weaken var <|> liftCOuter t <* weaken (token i))))
   app tvar var = foldl (S..$) <$> atom tvar var <*> many (atom tvar var)
   atom tvar var
     =   parens (prd <$> sepBy (type_ tvar var) comma)

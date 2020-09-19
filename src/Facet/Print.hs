@@ -140,10 +140,11 @@ instance U.Expr Print where
 instance U.Err Print where
   err = pretty "err"
 
+instance U.ForAll Print Print where
+  t >=> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
+
 instance U.Type Print where
   (-->) = infixr' FnL FnR (\ a b -> a <+> arrow <+> b)
-  t >=> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
-  t >-> f = bind $ \ var -> let var' = prettyVar var in parens (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
   (.$) = app
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
@@ -164,3 +165,5 @@ instance U.Module Print Print Print Print where
 
 instance U.Decl Print Print Print where
   t .= b = t </> pretty '=' <+> b
+
+  t >-> f = bind $ \ var -> let var' = prettyVar var in parens (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
