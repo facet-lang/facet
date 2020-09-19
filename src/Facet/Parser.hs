@@ -438,8 +438,8 @@ type Name = String
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
 
-decl :: Parsing p => p Name
-decl = ident
+decl :: (S.Type ty, S.Err ty, Parsing p) => p (Name, ty)
+decl = (,) <$> ident <*> type'
 
 
 type' :: (S.Type ty, S.Err ty, Parsing p) => p ty
