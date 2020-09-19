@@ -38,3 +38,9 @@
 :set -Wno-unused-packages
 
 :load Facet.Eval Facet.Functor.C Facet.Functor.I Facet.Signature Facet.Parser Facet.Pretty Facet.Print Facet.Syntax Facet.Syntax.Examples
+
+import Facet.Parser
+import Facet.Pretty
+import Facet.Print
+import Facet.Signature
+import Data.Foldable (traverse_)
