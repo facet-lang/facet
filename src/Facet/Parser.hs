@@ -486,7 +486,7 @@ global :: (S.Expr expr, Parsing p) => p expr
 global = S.global <$> ident <?> (S.global "_", "variable")
 
 expr_ :: forall p env expr . (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
-expr_ var = foldl (S.$$) <$> atom_ var <*> many (atom_ var)
+expr_ = app atom_
   where
   -- FIXME: patterns
   lam_ :: Permutable env' => (p :.: env') expr -> (p :.: env') expr
