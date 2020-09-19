@@ -452,6 +452,7 @@ type_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (
 type_ var = fn var <|> forAll var <|> fail S.err "type"
   where
   fn var = app var <**> opt (flip (S.-->) <$ arrow <*> fn var) id
+  -- FIXME: variable-binding function types
   forAll var = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (type_ var S.>-> \ t -> rbrace *> arrow *> type_ (weaken var <|> liftCOuter t <* weaken (token i))))
   app var = foldl (S..$) <$> atom var <*> many (atom var)
   atom var
