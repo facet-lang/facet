@@ -86,6 +86,9 @@ newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
   deriving (U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
   deriving (Applicative) via Const Print
 
+instance U.ForAll (TPrint sig a) (TPrint sig a) where
+  (>=>) = coerce ((U.>=>) :: Print -> (Print -> Print) -> Print)
+
 
 data Highlight
   = Name
