@@ -30,7 +30,7 @@ prettyPrint :: MonadIO m => Print sig a -> m ()
 prettyPrint = prettyPrintWith defaultStyle
 
 prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> Print sig a -> m ()
-prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . runUntypedPrint . runPrint . group
+prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runUntypedPrint` id) . runPrint . group
 
 defaultStyle :: Nest Highlight -> ANSI.AnsiStyle
 defaultStyle = \case
@@ -51,7 +51,7 @@ defaultStyle = \case
     [ANSI.color, ANSI.colorDull]
   len = length colours
 
-newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Fresh (Prec Context (Rainbow (PP.Doc (Nest Highlight)))) }
+newtype UntypedPrint = UntypedPrint { runUntypedPrint :: (UntypedPrint -> UntypedPrint) -> Fresh (Prec Context (Rainbow (PP.Doc (Nest Highlight)))) }
   deriving (FreshPrinter (Nest Highlight), Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
 data Context
