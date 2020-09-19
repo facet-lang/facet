@@ -494,12 +494,11 @@ global = S.global <$> ident <?> (S.global "_", "variable")
 expr_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
 expr_ var = foldl (S.$$) <$> atom_ var <*> many (atom_ var)
   where
-  -- FIXME: nested lambdas
   -- FIXME: patterns
   lam_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
   lam_ var = braces $ clause_ var
   clause_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
-  clause_ var = S.lam0 (\ v -> capture (const id) identS (\ i -> ws *> arrow *> expr_ (weaken var <|> liftCOuter v <* token i))) <?> (S.err, "clause")
+  clause_ var = S.lam0 (\ v -> capture (const id) identS (\ i -> let var' = weaken var <|> liftCOuter v <* token i in ws *> (clause_ var' <|> arrow *> expr_ var'))) <?> (S.err, "clause")
   atom_ var
     =   lam_ var
     <|> parens (prd <$> sepBy (expr_ var) comma)
