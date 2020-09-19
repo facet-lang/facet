@@ -37,4 +37,4 @@
 :seti -Wno-type-defaults
 :set -Wno-unused-packages
 
-:load Facet.Syntax
+:load Facet.Eval Facet.Examples Facet.Functor.C Facet.Functor.I Facet.Signature Facet.Syntax Facet.Parser Facet.Pretty Facet.Print
