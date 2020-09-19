@@ -113,7 +113,7 @@ instance Expr Print where
   weakenBy _ = coerce
 
 cases :: [UntypedPrint -> (UntypedPrint, UntypedPrint)] -> UntypedPrint
-cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> nest 2 (line <> b)) }) . group . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty))
+cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> nest 2 (line <> withTransition (const id) b)) }) . group . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty))
   . encloseSep
     mempty
     mempty
