@@ -486,14 +486,14 @@ global :: (S.Expr expr, Parsing p) => p expr
 global = S.global <$> ident <?> (S.global "_", "variable")
 
 expr_ :: forall p env expr . (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
-expr_ = app atom_
+expr_ = app atom
   where
   -- FIXME: patterns
   lam_ :: Permutable env' => (p :.: env') expr -> (p :.: env') expr
   lam_ var = braces $ clause_ var
   clause_ :: Permutable env' => (p :.: env') expr -> (p :.: env') expr
   clause_ var = S.lam0 (\ v -> capture (const id) identS (\ i -> let var' = weaken var <|> liftCOuter v <* token i in ws *> (clause_ var' <|> arrow *> expr_ var'))) <?> (S.err, "clause")
-  atom_ var
+  atom var
     =   lam_ var
     <|> parens (prd <$> sepBy (expr_ var) comma)
     <|> var
