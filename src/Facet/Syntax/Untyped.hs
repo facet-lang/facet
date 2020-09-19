@@ -58,7 +58,7 @@ class Type ty where
 
 type DeclName = String
 
-class Module decl mod | mod -> decl where
+class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
   (.:) :: DeclName -> decl -> mod
   infixr 0 .:
 

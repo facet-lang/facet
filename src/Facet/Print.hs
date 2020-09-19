@@ -159,7 +159,7 @@ app l r = askingPrec $ \case
   op = infixl' AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
 
 
-instance U.Module Print Print where
+instance U.Module Print Print Print Print where
   n .: b = group $ pretty n </> group (colon <+> b)
 
 instance U.Decl Print Print Print where

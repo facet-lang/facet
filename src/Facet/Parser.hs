@@ -438,7 +438,7 @@ type Name = String
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
 
-decl :: (S.Module ty mod, S.Expr ty, S.Type ty, S.Err ty, Parsing p) => p mod
+decl :: (S.Module expr ty decl mod, S.Expr decl, S.Type decl, S.Err decl, Parsing p) => p mod
 decl = (S..:) <$> ident <* colon <*> type'
 
 
