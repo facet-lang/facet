@@ -9,7 +9,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Print
 ( prettyPrint
-, UPrint(..)
+, Print(..)
 , Context(..)
 , TPrint(..)
 ) where
@@ -30,7 +30,7 @@ prettyPrint :: MonadIO m => TPrint sig a -> m ()
 prettyPrint = prettyPrintWith defaultStyle
 
 prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> TPrint sig a -> m ()
-prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runUPrint` const id) . runTPrint . group
+prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runPrint` const id) . runTPrint . group
 
 defaultStyle :: Nest Highlight -> ANSI.AnsiStyle
 defaultStyle = \case
@@ -52,17 +52,17 @@ defaultStyle = \case
   len = length colours
 
 type Inner = Fresh (Prec Context (Rainbow (PP.Doc (Nest Highlight))))
-type Trans = Context -> UPrint -> UPrint
+type Trans = Context -> Print -> Print
 
-newtype UPrint = UPrint { runUPrint :: Trans -> Inner }
+newtype Print = Print { runPrint :: Trans -> Inner }
   deriving (FreshPrinter (Nest Highlight), Monoid, Printer (Nest Highlight), Semigroup)
 
-instance PrecPrinter Context (Nest Highlight) UPrint where
+instance PrecPrinter Context (Nest Highlight) Print where
   askingPrec = coerce (askingPrec :: (Context -> Trans -> Inner) -> Trans -> Inner)
-  localPrec f a = UPrint $ \ t -> localPrec f (askingPrec ((`runUPrint` t) . (`t` a)))
+  localPrec f a = Print $ \ t -> localPrec f (askingPrec ((`runPrint` t) . (`t` a)))
 
-withTransition :: Trans -> UPrint -> UPrint
-withTransition trans a = UPrint $ \ _ -> runUPrint a trans
+withTransition :: Trans -> Print -> Print
+withTransition trans a = Print $ \ _ -> runPrint a trans
 
 whenPrec :: PrecPrinter lvl ann p => (lvl -> Bool) -> (p -> p) -> p -> p
 whenPrec p f = ifPrec p f id
@@ -82,9 +82,9 @@ data Context
   | Var'
   deriving (Bounded, Eq, Ord, Show)
 
-newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: UPrint }
+newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
   deriving (U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
-  deriving (Applicative) via Const UPrint
+  deriving (Applicative) via Const Print
 
 
 data Highlight
@@ -112,7 +112,7 @@ instance Expr TPrint where
 
   weakenBy _ = coerce
 
-cases :: [UPrint -> (UPrint, UPrint)] -> UPrint
+cases :: [Print -> (Print, Print)] -> Print
 cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty))
   . encloseSep
     mempty
@@ -120,13 +120,13 @@ cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . withTransition (\case
     (flatAlt (space <> comma <> space) (comma <> space))
   $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [prettyVar var])
 
-prettyVar :: Var -> UPrint
+prettyVar :: Var -> Print
 prettyVar (Var i) = prec Var' (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
   (q, r) = i `divMod` 26
   alphabet = ['a'..'z']
 
 
-instance U.Expr UPrint where
+instance U.Expr Print where
   lam0 f = cases [\ var -> (var, f var)]
   lam  f = cases [\ var -> (var, f (Left var))]
   ($$) = app
@@ -137,10 +137,10 @@ instance U.Expr UPrint where
   unit = pretty "()"
   l ** r = tupled [l, r]
 
-instance U.Err UPrint where
+instance U.Err Print where
   err = pretty "err"
 
-instance U.Type UPrint where
+instance U.Type Print where
   (-->) = infixr' FnL FnR (\ a b -> a <+> arrow <+> b)
   t >-> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
   (.$) = app
@@ -150,7 +150,7 @@ instance U.Type UPrint where
   tglobal = pretty
 
 
-app :: UPrint -> UPrint -> UPrint
+app :: Print -> Print -> Print
 app l r = askingPrec $ \case
   AppL -> op
   _    -> group op
@@ -158,5 +158,5 @@ app l r = askingPrec $ \case
   op = infixl' AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
 
 
-instance U.Module UPrint UPrint where
+instance U.Module Print Print where
   n .: b = group $ pretty n </> b
