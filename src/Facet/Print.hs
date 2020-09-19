@@ -55,7 +55,11 @@ type Inner = Fresh (Prec Context (Rainbow (PP.Doc (Nest Highlight))))
 type Trans = Context -> Inner -> Inner
 
 newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Trans -> Inner }
-  deriving (FreshPrinter (Nest Highlight), Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup)
+  deriving (FreshPrinter (Nest Highlight), Monoid, Printer (Nest Highlight), Semigroup)
+
+instance PrecPrinter Context (Nest Highlight) UntypedPrint where
+  askingPrec = coerce (askingPrec :: (Context -> Trans -> Inner) -> Trans -> Inner)
+  localPrec  = coerce (localPrec  :: (Context -> Context) -> (Trans -> Inner) -> Trans -> Inner)
 
 context :: Context -> UntypedPrint -> UntypedPrint
 context c a = UntypedPrint $ \ trans -> trans c (prec c (runUntypedPrint a trans))
