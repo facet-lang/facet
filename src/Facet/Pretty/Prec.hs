@@ -77,5 +77,9 @@ instance PrecPrinter lvl ann a => PrecPrinter lvl ann (b -> a) where
   askingPrec f b = askingPrec (($ b) . f)
   localPrec = fmap . localPrec
 
+instance (PrecPrinter lvl ann a, PrecPrinter lvl ann b) => PrecPrinter lvl ann (a, b) where
+  askingPrec f = (askingPrec (fst . f), askingPrec (snd . f))
+  localPrec f (a, b) = (localPrec f a, localPrec f b)
+
 deriving instance PrecPrinter lvl (Nest ann) doc => PrecPrinter lvl (Nest ann) (Rainbow doc)
 deriving instance PrecPrinter lvl       ann  doc => PrecPrinter lvl       ann  (Fresh   doc)
