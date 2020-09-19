@@ -464,10 +464,10 @@ type_ :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (
 type_ tvar = fn tvar <|> forAll type_ tvar <|> fail S.err "type"
 
 fn :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
-fn tvar = app tvar <**> opt (flip (S.-->) <$ arrow <*> fn tvar) id
+fn tvar = app tatom tvar <**> opt (flip (S.-->) <$ arrow <*> fn tvar) id
 
-app :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
-app tvar = foldl (S.$$) <$> tatom tvar <*> many (tatom tvar)
+app :: (Permutable env, S.App expr, Parsing p) => ((p :.: env) expr -> (p :.: env) expr) -> ((p :.: env) expr -> (p :.: env) expr)
+app atom tvar = foldl (S.$$) <$> atom tvar <*> many (atom tvar)
 
 tatom :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
 tatom tvar
