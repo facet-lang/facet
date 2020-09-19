@@ -453,14 +453,14 @@ tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
 sig_ :: forall p env expr ty decl . (Permutable env, Parsing p, S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr) => (p :.: env) expr -> (p :.: env) ty -> (p :.: env) decl
 sig_ var tvar = (S..=) <$> type_ tvar <*> expr_ var <|> bind var tvar <|> forAll (sig_ (weaken var)) tvar
   where
-  type_ :: forall env . Permutable env => (p :.: env) ty -> (p :.: env) ty
-  type_ tvar = fn tvar <|> forAll type_ tvar <|> fail S.err "type"
-  fn tvar = app tvar <**> opt (flip (S.-->) <$ arrow <*> fn tvar) id
+  bind :: forall env . Permutable env => (p :.: env) expr -> (p :.: env) ty -> (p :.: env) decl
+  bind var tvar = lparen *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig_ (weaken var <|> liftCOuter t <* weaken (token i)) (weaken tvar)))
   -- FIXME: bind multiple type variables of the same kind in a single set of braces
   forAll :: forall env res . (Permutable env, S.ForAll ty res) => (forall env' . Extends env env' => (p :.: env') ty -> (p :.: env') res) -> (p :.: env) ty -> (p :.: env) res
   forAll k tvar = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>=> \ t -> rbrace *> arrow *> k (weaken tvar <|> liftCOuter t <* weaken (token i))))
-  bind :: forall env . Permutable env => (p :.: env) expr -> (p :.: env) ty -> (p :.: env) decl
-  bind var tvar = lparen *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig_ (weaken var <|> liftCOuter t <* weaken (token i)) (weaken tvar)))
+  type_ :: forall env . Permutable env => (p :.: env) ty -> (p :.: env) ty
+  type_ tvar = fn tvar <|> forAll type_ tvar <|> fail S.err "type"
+  fn tvar = app tvar <**> opt (flip (S.-->) <$ arrow <*> fn tvar) id
   app tvar = foldl (S..$) <$> atom tvar <*> many (atom tvar)
   atom tvar
     =   parens (prd <$> sepBy (type_ tvar) comma)
