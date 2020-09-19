@@ -161,3 +161,6 @@ app l r = askingPrec $ \case
 
 instance U.Module Print Print where
   n .: b = group $ pretty n </> group (colon <+> b)
+
+instance U.Decl Print Print Print where
+  t .= b = t </> pretty '=' <+> b
