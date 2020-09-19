@@ -451,17 +451,26 @@ sig_ var tvar = (S..=) <$> type_ tvar <*> expr_ var <|> bind var tvar <|> forAll
   where
   bind :: forall env . Permutable env => (p :.: env) expr -> (p :.: env) ty -> (p :.: env) decl
   bind var tvar = lparen *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig_ (weaken var <|> liftCOuter t <* weaken (token i)) (weaken tvar)))
-  -- FIXME: bind multiple type variables of the same kind in a single set of braces
-  forAll :: forall env res . (Permutable env, S.ForAll ty res) => (forall env' . Extends env env' => (p :.: env') ty -> (p :.: env') res) -> (p :.: env) ty -> (p :.: env) res
-  forAll k tvar = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>=> \ t -> rbrace *> arrow *> k (weaken tvar <|> liftCOuter t <* weaken (token i))))
-  type_ :: forall env . Permutable env => (p :.: env) ty -> (p :.: env) ty
-  type_ tvar = fn tvar <|> forAll type_ tvar <|> fail S.err "type"
-  fn tvar = app tvar <**> opt (flip (S.-->) <$ arrow <*> fn tvar) id
-  app tvar = foldl (S..$) <$> atom tvar <*> many (atom tvar)
-  atom tvar
-    =   parens (prd <$> sepBy (type_ tvar) comma)
-    <|> tvar
-    <|> S._Type <$ string "Type"
+
+-- FIXME: bind multiple type variables of the same kind in a single set of braces
+forAll :: (Permutable env, S.ForAll ty res, S.Type ty, S.Err ty, Parsing p) => (forall env' . Extends env env' => (p :.: env') ty -> (p :.: env') res) -> (p :.: env) ty -> (p :.: env) res
+forAll k tvar = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>=> \ t -> rbrace *> arrow *> k (weaken tvar <|> liftCOuter t <* weaken (token i))))
+
+type_ :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
+type_ tvar = fn tvar <|> forAll type_ tvar <|> fail S.err "type"
+
+fn :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
+fn tvar = app tvar <**> opt (flip (S.-->) <$ arrow <*> fn tvar) id
+
+app :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
+app tvar = foldl (S..$) <$> atom tvar <*> many (atom tvar)
+
+atom :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
+atom tvar
+  =   parens (prd <$> sepBy (type_ tvar) comma)
+  <|> tvar
+  <|> S._Type <$ string "Type"
+  where
   prd [] = S._Unit
   prd ts = foldl1 (S..*) ts
 
