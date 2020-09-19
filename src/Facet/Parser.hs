@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Parser
 ( Pos(..)
@@ -448,10 +449,10 @@ tglobal :: (S.Type ty, Parsing p) => p ty
 tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
 
 -- FIXME: construct a representation containing both a type and a definition
-sig_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty -> (p :.: env) ty
+sig_ :: forall p env ty . (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty -> (p :.: env) ty
 sig_ = type_
   where
-  type_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty -> (p :.: env) ty
+  type_ :: Permutable env' => (p :.: env') ty -> (p :.: env') ty -> (p :.: env') ty
   type_ tvar var = fn tvar var <|> bind tvar var <|> forAll tvar var <|> fail S.err "type"
   fn tvar var = app tvar var <**> opt (flip (S.-->) <$ arrow <*> fn tvar var) id
   -- FIXME: bind multiple type variables of the same kind in a single set of braces
@@ -472,13 +473,13 @@ expr = runIdentity <$> getC (expr_ global)
 global :: (S.Expr expr, Parsing p) => p expr
 global = S.global <$> ident <?> (S.global "_", "variable")
 
-expr_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
+expr_ :: forall p env expr . (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
 expr_ var = foldl (S.$$) <$> atom_ var <*> many (atom_ var)
   where
   -- FIXME: patterns
-  lam_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
+  lam_ :: Permutable env' => (p :.: env') expr -> (p :.: env') expr
   lam_ var = braces $ clause_ var
-  clause_ :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
+  clause_ :: Permutable env' => (p :.: env') expr -> (p :.: env') expr
   clause_ var = S.lam0 (\ v -> capture (const id) identS (\ i -> let var' = weaken var <|> liftCOuter v <* token i in ws *> (clause_ var' <|> arrow *> expr_ var'))) <?> (S.err, "clause")
   atom_ var
     =   lam_ var
