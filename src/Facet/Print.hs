@@ -118,10 +118,6 @@ cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . withTransition (\case
     mempty
     mempty
     (flatAlt (space <> comma <> space) (comma <> space))
-  -- FIXME: how do we ensure that we add the arrow when anything _else_ (i.e. non-lambda) is printed?
-  -- We could apply tht rule in everything else, or we could return the data back out in the printer
-  -- Or maybe we could pass the arrow forward … somehow?
-  -- CPS?
   $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [prettyVar var])
 
 prettyVar :: Var -> UntypedPrint
