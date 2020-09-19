@@ -109,8 +109,8 @@ instance Expr Print where
 
   weakenBy _ = coerce
 
-cases :: (FreshPrinter (Nest Highlight) doc, PrecPrinter Context (Nest Highlight) doc) => [doc -> (doc, doc)] -> doc
-cases cs = bind $ \ var -> whenPrec (/= Expr) (group . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty))
+cases :: [UntypedPrint -> (UntypedPrint, UntypedPrint)] -> UntypedPrint
+cases cs = context Expr . bind $ \ var -> whenPrec (/= Expr) (group . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty))
   . encloseSep
     mempty
     mempty
