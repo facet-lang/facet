@@ -57,7 +57,7 @@ newtype UntypedPrint = UntypedPrint { runUntypedPrint :: (Context -> Inner -> In
   deriving (FreshPrinter (Nest Highlight), Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup)
 
 context :: Context -> UntypedPrint -> UntypedPrint
-context c = prec c
+context c a = UntypedPrint $ \ trans -> trans c (prec c (runUntypedPrint a trans))
 
 data Context
   = Null
