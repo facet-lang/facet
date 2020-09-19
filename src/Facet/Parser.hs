@@ -457,8 +457,8 @@ forAll :: (Permutable env, S.ForAll ty res, S.Type ty, S.Err ty, Parsing p) => (
 forAll k tvar = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>=> \ t -> rbrace *> arrow *> k (weaken tvar <|> liftCOuter t <* weaken (token i))))
 
 
-type' :: (S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p decl
-type' = runIdentity <$> getC (sig_ global tglobal)
+type' :: (S.Type ty, S.Err ty, Parsing p) => p ty
+type' = runIdentity <$> getC (type_ tglobal)
 
 type_ :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
 type_ tvar = fn tvar <|> forAll type_ tvar <|> fail S.err "type"
