@@ -446,9 +446,6 @@ decl = (S..:) <$> ident <* colon <*> type'
 type' :: (S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p decl
 type' = runIdentity <$> getC (sig_ global tglobal)
 
-tglobal :: (S.Type ty, Parsing p) => p ty
-tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
-
 -- FIXME: construct a representation containing both a type and a definition
 sig_ :: forall p env expr ty decl . (Permutable env, Parsing p, S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr) => (p :.: env) expr -> (p :.: env) ty -> (p :.: env) decl
 sig_ var tvar = (S..=) <$> type_ tvar <*> expr_ var <|> bind var tvar <|> forAll (sig_ (weaken var)) tvar
@@ -468,6 +465,9 @@ sig_ var tvar = (S..=) <$> type_ tvar <*> expr_ var <|> bind var tvar <|> forAll
     <|> S._Type <$ string "Type"
   prd [] = S._Unit
   prd ts = foldl1 (S..*) ts
+
+tglobal :: (S.Type ty, Parsing p) => p ty
+tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
 
 
 expr :: (S.Expr expr, S.Err expr, Parsing p) => p expr
