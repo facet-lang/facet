@@ -42,7 +42,7 @@ module Facet.Parser
 , braces
 , brackets
 , decl
-, type''
+, type'
 , expr
 ) where
 
@@ -442,8 +442,8 @@ decl :: Parsing p => p Name
 decl = ident
 
 
-type'' :: (S.Type ty, S.Err ty, Parsing p) => p ty
-type'' = runIdentity <$> getC (type_ tglobal)
+type' :: (S.Type ty, S.Err ty, Parsing p) => p ty
+type' = runIdentity <$> getC (type_ tglobal)
 
 tglobal :: (S.Type ty, Parsing p) => p ty
 tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
