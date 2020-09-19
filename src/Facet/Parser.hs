@@ -38,7 +38,6 @@ module Facet.Parser
 , prettyNotice
 , parseString
 , parse
-, parser
 , parens
 , braces
 , brackets
@@ -393,9 +392,6 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   choices = Map.fromList (table p)
 
 
-parser :: (Parsing p, S.Expr repr) => p [Def repr]
-parser = ws *> many def
-
 lower' = fromList ['a'..'z']
 lower, upper, letter, colon, comma, lparen, rparen, lbrace, rbrace, lbracket, rbracket :: Parsing p => p Char
 lower = set lower' (fromMaybe 'a') "lowercase letter"
@@ -441,25 +437,6 @@ type Name = String
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
 
-def :: (Parsing p, S.Expr repr) => p (Def repr)
-def = Def
-  <$> ident
-  <*  colon
-  <*> type'
-  <*> term
-
-type' :: (Parsing p, S.Expr repr) => p (Type repr)
-type' = fn <|> pi <|> fail TErr "type"
-  where
-  fn = app <**> opt (flip (:->) <$ arrow <*> fn) id
-  pi = (:=>) <$> parens ((,) <$> ident <* colon <*> type') <* arrow <*> type'
-  app = foldl (:$) <$> atom <*> many atom
-  atom
-    =   TVar <$> tident
-    <|> TVar <$> ident
-    <|> parens type'
-    <?> (TErr, "atomic type")
-
 type'' :: (S.Type ty, S.Err ty, Parsing p) => p ty
 type'' = runIdentity <$> getC (type_ tglobal)
 
@@ -479,11 +456,6 @@ type_ var = fn var <|> forAll var <|> fail S.err "type"
   prd [] = S._Unit
   prd ts = foldl1 (S..*) ts
 
-term :: (Parsing p, S.Expr repr) => p (Term repr)
-term
-  =   Var <$> ident
-  <|> Lam <$> braces (opt (pure <$> term) [])
-  <|> fail Err "term"
 
 expr :: (S.Expr expr, S.Err expr, Parsing p) => p expr
 expr = runIdentity <$> getC (expr_ global)
