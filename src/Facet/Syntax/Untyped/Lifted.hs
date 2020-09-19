@@ -4,6 +4,7 @@ module Facet.Syntax.Untyped.Lifted
 ( S.Expr(global, unit, ($$), (**))
 , S.Err(..)
 , S.Type(_Type, _Unit, tglobal, (-->), (.*), (.$))
+, S.Module(..)
 , lam
 , lam0
 , (>->)
