@@ -26,11 +26,11 @@ import qualified Facet.Syntax.Untyped as U
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 
-prettyPrint :: MonadIO m => TPrint sig a -> m ()
+prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = prettyPrintWith defaultStyle
 
-prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> TPrint sig a -> m ()
-prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runPrint` const id) . runTPrint . group
+prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> Print -> m ()
+prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runPrint` const id) . group
 
 defaultStyle :: Nest Highlight -> ANSI.AnsiStyle
 defaultStyle = \case
