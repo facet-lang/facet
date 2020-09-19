@@ -11,7 +11,7 @@ module Facet.Print
 ( prettyPrint
 , UPrint(..)
 , Context(..)
-, Print(..)
+, TPrint(..)
 ) where
 
 import           Control.Applicative (Const(..), (<**>))
@@ -26,11 +26,11 @@ import qualified Facet.Syntax.Untyped as U
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 
-prettyPrint :: MonadIO m => Print sig a -> m ()
+prettyPrint :: MonadIO m => TPrint sig a -> m ()
 prettyPrint = prettyPrintWith defaultStyle
 
-prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> Print sig a -> m ()
-prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runUPrint` const id) . runPrint . group
+prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> TPrint sig a -> m ()
+prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runUPrint` const id) . runTPrint . group
 
 defaultStyle :: Nest Highlight -> ANSI.AnsiStyle
 defaultStyle = \case
@@ -82,7 +82,7 @@ data Context
   | Var'
   deriving (Bounded, Eq, Ord, Show)
 
-newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: UPrint }
+newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: UPrint }
   deriving (U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
   deriving (Applicative) via Const UPrint
 
@@ -104,11 +104,11 @@ arrow :: Printer (Nest Highlight) doc => doc
 arrow = op (pretty "->")
 
 
-instance Expr Print where
-  lam f = Print $ cases [\ var -> (var, coerce (f . Left) var)]
+instance Expr TPrint where
+  lam f = TPrint $ cases [\ var -> (var, coerce (f . Left) var)]
   ($$) = coerce app
 
-  alg _ = Print $ pretty "TBD"
+  alg _ = TPrint $ pretty "TBD"
 
   weakenBy _ = coerce
 
