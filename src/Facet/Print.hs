@@ -150,7 +150,6 @@ instance U.ForAll Print Print where
 
 instance U.Type Print where
   (-->) = infixr' FnL FnR (\ a b -> a <+> arrow <+> b)
-  (.$) = app
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
   _Type = pretty "Type"

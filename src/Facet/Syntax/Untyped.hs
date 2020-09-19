@@ -43,16 +43,13 @@ class ForAll ty decl | decl -> ty where
 
 type TName = String
 
-class ForAll ty ty => Type ty where
+class (App ty, ForAll ty ty) => Type ty where
   (-->) :: ty -> ty -> ty
   infixr 2 -->
 
   (.*) :: ty -> ty -> ty
   infixl 7 .*
   -- FIXME: tupling/unit should take a list of types
-
-  (.$) :: ty -> ty -> ty
-  infixl 9 .$
 
   _Unit :: ty
   _Type :: ty

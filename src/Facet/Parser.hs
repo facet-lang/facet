@@ -467,7 +467,7 @@ fn :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :
 fn tvar = app tvar <**> opt (flip (S.-->) <$ arrow <*> fn tvar) id
 
 app :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
-app tvar = foldl (S..$) <$> atom tvar <*> many (atom tvar)
+app tvar = foldl (S.$$) <$> atom tvar <*> many (atom tvar)
 
 atom :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
 atom tvar
