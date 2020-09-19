@@ -63,7 +63,7 @@ withTransition :: (Context -> Inner -> Inner) -> UntypedPrint -> UntypedPrint
 withTransition trans a = UntypedPrint $ \ _ -> runUntypedPrint a trans
 
 whenPrec :: (Eq lvl, PrecPrinter lvl ann p) => lvl -> (p -> p) -> p -> p
-whenPrec p f a = askingPrec $ \ p' -> if p == p' then f a else a
+whenPrec p f = ifPrec (== p) f id
 
 ifPrec :: PrecPrinter lvl ann p => (lvl -> Bool) -> (p -> p) -> (p -> p) -> p -> p
 ifPrec p f g a = askingPrec $ \ p' -> if p p' then f a else g a
