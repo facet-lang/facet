@@ -110,7 +110,7 @@ instance Expr Print where
   weakenBy _ = coerce
 
 cases :: (FreshPrinter (Nest Highlight) doc, PrecPrinter Context (Nest Highlight) doc) => [doc -> (doc, doc)] -> doc
-cases cs = bind $ \ var -> askingPrec (\case{ Expr -> id ; _ -> group . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty) })
+cases cs = bind $ \ var -> whenPrec (/= Expr) (group . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty))
   . encloseSep
     mempty
     mempty
@@ -119,7 +119,7 @@ cases cs = bind $ \ var -> askingPrec (\case{ Expr -> id ; _ -> group . align . 
   -- We could apply tht rule in everything else, or we could return the data back out in the printer
   -- Or maybe we could pass the arrow forward … somehow?
   -- CPS?
-  $ map (\ (a, b) -> prec Pattern a <+> askingPrec (\case{ Expr -> arrow <> nest 2 (line <> b) ; _ -> prec Expr b })) (cs <*> [prettyVar var])
+  $ map (\ (a, b) -> prec Pattern a <+> ifPrec (== Expr) (\ b -> arrow <> nest 2 (line <> b)) (prec Expr) b) (cs <*> [prettyVar var])
 
 prettyVar :: Printer (Nest Highlight) doc => Var -> doc
 prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
