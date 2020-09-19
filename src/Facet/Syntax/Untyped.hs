@@ -7,6 +7,7 @@ module Facet.Syntax.Untyped
 , Type(..)
 , DeclName
 , Module(..)
+, Decl(..)
 ) where
 
 type Name = String
@@ -60,3 +61,7 @@ type DeclName = String
 class Module decl mod | mod -> decl where
   (.:) :: DeclName -> decl -> mod
   infixr 0 .:
+
+class (Expr expr, Type ty) => Decl expr ty decl | decl -> ty expr where
+  (.=) :: ty -> expr -> decl
+  infix 1 .=
