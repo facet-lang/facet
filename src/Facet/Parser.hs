@@ -443,9 +443,6 @@ decl :: (S.Module expr ty decl mod, S.Err decl, S.Err ty, S.Err expr, Parsing p)
 decl = (S..:) <$> ident <* colon <*> sig
 
 
-type' :: (S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p decl
-type' = runIdentity <$> getC (sig_ global tglobal)
-
 sig :: (S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p decl
 sig = runIdentity <$> getC (sig_ global tglobal)
 
@@ -458,6 +455,10 @@ sig_ var tvar = (S..=) <$> type_ tvar <*> expr_ var <|> bind var tvar <|> forAll
 -- FIXME: bind multiple type variables of the same kind in a single set of braces
 forAll :: (Permutable env, S.ForAll ty res, S.Type ty, S.Err ty, Parsing p) => (forall env' . Extends env env' => (p :.: env') ty -> (p :.: env') res) -> (p :.: env) ty -> (p :.: env) res
 forAll k tvar = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>=> \ t -> rbrace *> arrow *> k (weaken tvar <|> liftCOuter t <* weaken (token i))))
+
+
+type' :: (S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p decl
+type' = runIdentity <$> getC (sig_ global tglobal)
 
 type_ :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
 type_ tvar = fn tvar <|> forAll type_ tvar <|> fail S.err "type"
