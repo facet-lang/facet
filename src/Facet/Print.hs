@@ -77,6 +77,7 @@ data Context
   | Expr
   | AppL
   | AppR
+  | Var'
   deriving (Bounded, Eq, Ord, Show)
 
 newtype Print (sig :: K.Type -> K.Type) a = Print { runPrint :: UntypedPrint }
@@ -121,8 +122,8 @@ cases cs = context Expr . bind $ \ var -> whenPrec (/= Expr) (group . align . br
   -- CPS?
   $ map (\ (a, b) -> prec Pattern a <+> ifPrec (== Expr) (\ b -> arrow <> nest 2 (line <> b)) (prec Expr) b) (cs <*> [prettyVar var])
 
-prettyVar :: Printer (Nest Highlight) doc => Var -> doc
-prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
+prettyVar :: Var -> UntypedPrint
+prettyVar (Var i) = context Var' (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
   (q, r) = i `divMod` 26
   alphabet = ['a'..'z']
 
