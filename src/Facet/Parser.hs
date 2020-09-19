@@ -438,27 +438,27 @@ type Name = String
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
 
-decl :: (S.Module ty mod, S.Type ty, S.Err ty, Parsing p) => p mod
+decl :: (S.Module ty mod, S.Expr ty, S.Type ty, S.Err ty, Parsing p) => p mod
 decl = (S..:) <$> ident <* colon <*> type'
 
 
-type' :: (S.Type ty, S.Err ty, Parsing p) => p ty
-type' = runIdentity <$> getC (type_ tglobal)
+type' :: (S.Expr ty, S.Type ty, S.Err ty, Parsing p) => p ty
+type' = runIdentity <$> getC (type_ tglobal global)
 
 tglobal :: (S.Type ty, Parsing p) => p ty
 tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
 
-type_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty
-type_ var = fn var <|> bind var <|> forAll var <|> fail S.err "type"
+type_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty -> (p :.: env) ty
+type_ tvar var = fn tvar var <|> bind tvar var <|> forAll tvar var <|> fail S.err "type"
   where
-  fn var = app var <**> opt (flip (S.-->) <$ arrow <*> fn var) id
+  fn tvar var = app tvar var <**> opt (flip (S.-->) <$ arrow <*> fn tvar var) id
   -- FIXME: bind multiple type variables of the same kind in a single set of braces
-  forAll var = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (fn var S.>-> \ t -> rbrace *> arrow *> type_ (weaken var <|> liftCOuter t <* weaken (token i))))
-  bind var = lparen *> capture (const id) identS (\ i -> ws *> colon *> (fn var S.>-> \ t -> rparen *> arrow *> type_ (weaken var <|> liftCOuter t <* weaken (token i))))
-  app var = foldl (S..$) <$> atom var <*> many (atom var)
-  atom var
-    =   parens (prd <$> sepBy (type_ var) comma)
-    <|> var
+  forAll tvar var = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (fn tvar var S.>-> \ t -> rbrace *> arrow *> type_ (weaken tvar <|> liftCOuter t <* weaken (token i)) (weaken var)))
+  bind tvar var = lparen *> capture (const id) identS (\ i -> ws *> colon *> (fn tvar var S.>-> \ t -> rparen *> arrow *> type_ (weaken tvar) (weaken var <|> liftCOuter t <* weaken (token i))))
+  app tvar var = foldl (S..$) <$> atom tvar var <*> many (atom tvar var)
+  atom tvar var
+    =   parens (prd <$> sepBy (type_ tvar var) comma)
+    <|> tvar
     <|> S._Type <$ string "Type"
   prd [] = S._Unit
   prd ts = foldl1 (S..*) ts
