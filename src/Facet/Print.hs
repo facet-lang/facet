@@ -142,7 +142,8 @@ instance U.Err Print where
 
 instance U.Type Print where
   (-->) = infixr' FnL FnR (\ a b -> a <+> arrow <+> b)
-  t >-> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
+  t >=> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
+  t >-> f = bind $ \ var -> let var' = prettyVar var in parens (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
   (.$) = app
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
