@@ -456,7 +456,7 @@ sig_ = type_
   type_ tvar var = fn tvar var <|> bind tvar var <|> forAll tvar var <|> fail S.err "type"
   fn tvar var = app tvar var <**> opt (flip (S.-->) <$ arrow <*> fn tvar var) id
   -- FIXME: bind multiple type variables of the same kind in a single set of braces
-  forAll tvar var = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (fn tvar var S.>-> \ t -> rbrace *> arrow *> type_ (weaken tvar <|> liftCOuter t <* weaken (token i)) (weaken var)))
+  forAll tvar var = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (fn tvar var S.>=> \ t -> rbrace *> arrow *> type_ (weaken tvar <|> liftCOuter t <* weaken (token i)) (weaken var)))
   bind tvar var = lparen *> capture (const id) identS (\ i -> ws *> colon *> (fn tvar var S.>-> \ t -> rparen *> arrow *> type_ (weaken tvar) (weaken var <|> liftCOuter t <* weaken (token i))))
   app tvar var = foldl (S..$) <$> atom tvar var <*> many (atom tvar var)
   atom tvar var
