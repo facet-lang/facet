@@ -59,7 +59,7 @@ newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Trans -> Inner }
 
 instance PrecPrinter Context (Nest Highlight) UntypedPrint where
   askingPrec = coerce (askingPrec :: (Context -> Trans -> Inner) -> Trans -> Inner)
-  localPrec  = coerce (localPrec  :: (Context -> Context) -> (Trans -> Inner) -> Trans -> Inner)
+  localPrec f (UntypedPrint run) = UntypedPrint $ \ t -> localPrec f (askingPrec (\ c -> t c (run t)))
 
 context :: Context -> UntypedPrint -> UntypedPrint
 context c a = UntypedPrint $ \ trans -> trans c (prec c (runUntypedPrint a trans))
