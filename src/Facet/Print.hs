@@ -92,7 +92,7 @@ instance Expr Print where
 
   alg _ = Print $ pretty "TBD"
 
-  weakenBy _ = Print . runPrint
+  weakenBy _ = coerce
 
 cases :: (FreshPrinter (Nest Highlight) doc, PrecPrinter Context (Nest Highlight) doc) => [doc -> (doc, doc)] -> doc
 cases cs = bind $ \ var -> askingPrec (\case{ Expr -> id ; _ -> group . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty) })
