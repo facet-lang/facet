@@ -83,7 +83,7 @@ data Context
   deriving (Bounded, Eq, Ord, Show)
 
 newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
-  deriving (U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
+  deriving (U.App, U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
   deriving (Applicative) via Const Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
@@ -129,10 +129,12 @@ prettyVar (Var i) = localPrec (const Var') (name (pretty (alphabet !! r) <> if q
   alphabet = ['a'..'z']
 
 
+instance U.App Print where
+  ($$) = app
+
 instance U.Expr Print where
   lam0 f = cases [\ var -> (var, f var)]
   lam  f = cases [\ var -> (var, f (Left var))]
-  ($$) = app
 
   -- FIXME: don’t pretty-print local variables with the same name as globals used in the body
   global = pretty

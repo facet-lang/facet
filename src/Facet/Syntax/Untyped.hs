@@ -1,6 +1,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Syntax.Untyped
-( Name
+( App(..)
+, Name
 , Expr(..)
 , Err(..)
 , TName
@@ -11,13 +12,16 @@ module Facet.Syntax.Untyped
 , Decl(..)
 ) where
 
+class App expr where
+  ($$) :: expr -> expr -> expr
+  infixl 9 $$
+
+
 type Name = String
 
-class Expr repr where
+class App repr => Expr repr where
   lam0 :: (repr -> repr) -> repr
   lam :: (Either repr (repr, repr -> repr) -> repr) -> repr
-  ($$) :: repr -> repr -> repr
-  infixl 9 $$
 
   global :: Name -> repr
 
