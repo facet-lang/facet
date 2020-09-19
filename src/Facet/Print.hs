@@ -122,7 +122,7 @@ cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . group . align . brace
   -- We could apply tht rule in everything else, or we could return the data back out in the printer
   -- Or maybe we could pass the arrow forward … somehow?
   -- CPS?
-  $ map (\ (a, b) -> prec Pattern a <+> ifPrec (== Expr) (\ b -> arrow <> nest 2 (line <> b)) (prec Expr) b) (cs <*> [prettyVar var])
+  $ map (\ (a, b) -> prec Pattern a <+> withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> nest 2 (line <> b)) }) b) (cs <*> [prettyVar var])
 
 prettyVar :: Var -> UntypedPrint
 prettyVar (Var i) = prec Var' (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
