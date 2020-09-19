@@ -61,9 +61,6 @@ instance PrecPrinter Context (Nest Highlight) UntypedPrint where
   askingPrec = coerce (askingPrec :: (Context -> Trans -> Inner) -> Trans -> Inner)
   localPrec f (UntypedPrint run) = UntypedPrint $ \ t -> localPrec f (askingPrec (\ c -> t c (run t)))
 
-context :: Context -> UntypedPrint -> UntypedPrint
-context c a = UntypedPrint $ \ trans -> trans c (prec c (runUntypedPrint a trans))
-
 withTransition :: (Context -> Inner -> Inner) -> UntypedPrint -> UntypedPrint
 withTransition trans a = UntypedPrint $ \ _ -> runUntypedPrint a trans
 
@@ -116,7 +113,7 @@ instance Expr Print where
   weakenBy _ = coerce
 
 cases :: [UntypedPrint -> (UntypedPrint, UntypedPrint)] -> UntypedPrint
-cases cs = bind $ \ var -> whenPrec (/= Expr) (context Expr . group . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty))
+cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . group . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty))
   . encloseSep
     mempty
     mempty
@@ -128,7 +125,7 @@ cases cs = bind $ \ var -> whenPrec (/= Expr) (context Expr . group . align . br
   $ map (\ (a, b) -> prec Pattern a <+> ifPrec (== Expr) (\ b -> arrow <> nest 2 (line <> b)) (prec Expr) b) (cs <*> [prettyVar var])
 
 prettyVar :: Var -> UntypedPrint
-prettyVar (Var i) = context Var' (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
+prettyVar (Var i) = prec Var' (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
   (q, r) = i `divMod` 26
   alphabet = ['a'..'z']
 
@@ -158,8 +155,6 @@ instance U.Type UntypedPrint where
 
 
 app :: UntypedPrint -> UntypedPrint -> UntypedPrint
-app l r = context AppL $ op l r
-  where
-  op = infixl' AppL AppR $ \ f a -> askingPrec $ \case
-    AppR -> f </> a
-    _    -> f <> nest 2 (line <> a)
+app = infixl' AppL AppR $ \ f a -> askingPrec $ \case
+  AppR -> f </> a
+  _    -> f <> nest 2 (line <> a)
