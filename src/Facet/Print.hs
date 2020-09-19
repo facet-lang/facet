@@ -52,14 +52,14 @@ defaultStyle = \case
   len = length colours
 
 type Inner = Fresh (Prec Context (Rainbow (PP.Doc (Nest Highlight))))
-type Trans = Context -> Inner -> Inner
+type Trans = Context -> UntypedPrint -> UntypedPrint
 
 newtype UntypedPrint = UntypedPrint { runUntypedPrint :: Trans -> Inner }
   deriving (FreshPrinter (Nest Highlight), Monoid, Printer (Nest Highlight), Semigroup)
 
 instance PrecPrinter Context (Nest Highlight) UntypedPrint where
   askingPrec = coerce (askingPrec :: (Context -> Trans -> Inner) -> Trans -> Inner)
-  localPrec f (UntypedPrint run) = UntypedPrint $ \ t -> localPrec f (askingPrec (\ c -> t c (run t)))
+  localPrec f a = UntypedPrint $ \ t -> localPrec f (askingPrec ((`runUntypedPrint` t) . (`t` a)))
 
 withTransition :: Trans -> UntypedPrint -> UntypedPrint
 withTransition trans a = UntypedPrint $ \ _ -> runUntypedPrint a trans
