@@ -155,6 +155,8 @@ instance U.Type UntypedPrint where
 
 
 app :: UntypedPrint -> UntypedPrint -> UntypedPrint
-app = infixl' AppL AppR $ \ f a -> askingPrec $ \case
-  AppL -> f <> nest 2 (line <> a)
-  _    -> f </> a
+app l r = askingPrec $ \case
+  AppL -> op
+  _    -> group op
+  where
+  op = infixl' AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
