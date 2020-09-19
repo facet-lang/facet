@@ -156,3 +156,7 @@ app l r = askingPrec $ \case
   _    -> group op
   where
   op = infixl' AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
+
+
+instance U.Module UntypedPrint UntypedPrint where
+  n .: b = group $ pretty n </> b
