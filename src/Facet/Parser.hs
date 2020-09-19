@@ -447,6 +447,7 @@ type' = runIdentity <$> getC (sig_ tglobal global)
 tglobal :: (S.Type ty, Parsing p) => p ty
 tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
 
+-- FIXME: construct a representation containing both a type and a definition
 sig_ :: (Permutable env, Parsing p, S.Type ty, S.Err ty) => (p :.: env) ty -> (p :.: env) ty -> (p :.: env) ty
 sig_ = type_
   where
