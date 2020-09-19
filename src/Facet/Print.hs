@@ -95,15 +95,14 @@ instance Expr Print where
   weakenBy _ = Print . runPrint
 
 cases :: (FreshPrinter (Nest Highlight) doc, PrecPrinter Context (Nest Highlight) doc) => [doc -> (doc, doc)] -> doc
-cases cs = bind $ \ var ->
-    group
-  . align
-  . braces
+cases cs = bind $ \ var -> askingPrec (\case{ Expr -> id ; _ -> group . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty) })
   . encloseSep
-    (flatAlt space mempty)
-    (flatAlt line mempty)
+    mempty
+    mempty
     (flatAlt (space <> comma <> space) (comma <> space))
-  $ map (\ (a, b) -> prec Pattern a <+> arrow <> nest 2 (line <> prec Expr b)) (cs <*> [prettyVar var])
+  -- FIXME: how do we ensure that we add the arrow when anything _else_ (i.e. non-lambda) is printed?
+  -- We could apply tht rule in everything else, or we could return the data back out in the printer
+  $ map (\ (a, b) -> prec Pattern a <+> askingPrec (\case{ Expr -> arrow <> nest 2 (line <> b) ; _ -> prec Expr b })) (cs <*> [prettyVar var])
 
 prettyVar :: Printer (Nest Highlight) doc => Var -> doc
 prettyVar (Var i) = name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty) where
