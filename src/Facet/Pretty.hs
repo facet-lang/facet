@@ -125,6 +125,27 @@ instance Printer ann a => Printer ann (b -> a) where
 
   braces = fmap braces
 
+instance (Printer ann a, Printer ann b) => Printer ann (a, b) where
+  pretty a = (pretty a, pretty a)
+
+  hardline = (hardline, hardline)
+
+  annotate ann (a, b) = (annotate ann a, annotate ann b)
+
+  align (a, b) = (align a, align b)
+
+  nest i (a, b) = (nest i a, nest i b)
+
+  group (a, b) = (group a, group b)
+
+  flatAlt (a1, a2) (b1, b2) = (flatAlt a1 b1, flatAlt a2 b2)
+
+  parens (a, b) = (parens a, parens b)
+
+  brackets (a, b) = (brackets a, brackets b)
+
+  braces (a, b) = (braces a, braces b)
+
 space :: Printer ann doc => doc
 space = pretty ' '
 
