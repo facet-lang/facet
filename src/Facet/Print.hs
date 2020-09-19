@@ -102,6 +102,8 @@ cases cs = bind $ \ var -> askingPrec (\case{ Expr -> id ; _ -> group . align . 
     (flatAlt (space <> comma <> space) (comma <> space))
   -- FIXME: how do we ensure that we add the arrow when anything _else_ (i.e. non-lambda) is printed?
   -- We could apply tht rule in everything else, or we could return the data back out in the printer
+  -- Or maybe we could pass the arrow forward … somehow?
+  -- CPS?
   $ map (\ (a, b) -> prec Pattern a <+> askingPrec (\case{ Expr -> arrow <> nest 2 (line <> b) ; _ -> prec Expr b })) (cs <*> [prettyVar var])
 
 prettyVar :: Printer (Nest Highlight) doc => Var -> doc
