@@ -172,7 +172,7 @@ lbracket = token (char '[')
 rbracket = token (char ']')
 
 ws :: Parsing p => p ()
-ws = opt (c <* ws) ()
+ws = skipMany c
   where
   c = set wsSet (const ()) "whitespace"
   wsSet = CharSet.separator <> CharSet.control
