@@ -35,7 +35,9 @@ forAll :: forall env ty res p . (Permutable env, S.ForAll ty res, S.Type ty, S.E
 forAll k tvar = lbrace *> capture (const id) identS go
   where
   go :: (p :.: env) S.Name -> (p :.: env) res
-  go i = ws *> colon *> (type_ tvar S.>=> \ t -> rbrace *> arrow *> k (weaken tvar <|> liftCOuter t <* weaken (token i)))
+  go i = ws *>
+    (   colon *> (type_ tvar S.>=> \ t -> rbrace *> arrow *> k (weaken tvar <|> liftCOuter t <* weaken (token i)))
+    <|> comma *> capture (const id) identS (go . (i <|>))) -- FIXME: construct multiple arrow types
 
 
 type' :: (S.Type ty, S.Err ty, Parsing p) => p ty
