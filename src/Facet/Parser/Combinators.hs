@@ -60,6 +60,8 @@ class Applicative p => Parsing p where
   -- | Parse some text, and then parse something else constructed using a parser that parses the same literal text.
   --
   -- This is like a restricted form of the monadic bind.
+  --
+  -- FIXME: this is a bad name.
   capture :: (a -> b -> c) -> p a -> (p a -> p b) -> p c
 
 instance (Parsing f, Applicative g) => Parsing (f :.: g) where
