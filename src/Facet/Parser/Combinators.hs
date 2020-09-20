@@ -150,18 +150,27 @@ lowerSet, upperSet :: CharSet
 lowerSet = fromList ['a'..'z']
 upperSet = fromList ['A'..'Z']
 
-lower, upper, letter, colon, comma, lparen, rparen, lbrace, rbrace, lbracket, rbracket :: Parsing p => p Char
+lower, upper, letter :: Parsing p => p Char
 lower = set lowerSet (fromMaybe 'a') "lowercase letter"
 upper = set upperSet (fromMaybe 'A') "uppercase letter"
 letter = lower <|> upper <?> ('a', "letter")
+
+colon, comma :: Parsing p => p Char
 colon = token (char ':')
 comma = token (char ',')
+
+lparen, rparen :: Parsing p => p Char
 lparen = token (char '(')
 rparen = token (char ')')
+
+lbrace, rbrace :: Parsing p => p Char
 lbrace = token (char '{')
 rbrace = token (char '}')
+
+lbracket, rbracket :: Parsing p => p Char
 lbracket = token (char '[')
 rbracket = token (char ']')
+
 ws :: Parsing p => p ()
 ws = opt (c <* ws) ()
   where
