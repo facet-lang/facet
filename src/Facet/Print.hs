@@ -170,4 +170,4 @@ instance U.Module Print Print Print Print where
 instance U.Decl Print Print Print where
   t .= b = t </> pretty '=' <+> b
 
-  t >-> f = bind $ \ var -> let var' = prettyVar var in parens (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
+  t >-> f = bind $ \ var -> let var' = prettyVar var in parens (var' <+> colon <+> t) <+> arrow <+> f var'
