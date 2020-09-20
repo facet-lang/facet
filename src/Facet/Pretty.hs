@@ -4,6 +4,7 @@
 -- FIXME: move this whole module into a new package?
 module Facet.Pretty
 ( putDoc
+, PP.Pretty
 , Printer(..)
 , space
 , line
