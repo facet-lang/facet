@@ -85,12 +85,6 @@ captureBody f g mk k i follow =
 type ParserCont a = State -> [CharSet] -> (State, a)
 
 
-combine :: Semigroup t => Bool -> t -> t -> t
-combine e s1 s2
-  | e         = s1 <> s2
-  | otherwise = s1
-
-
 data Null a
   = Null   (State -> a)
   | Insert (State -> a) (State -> [Notice])
@@ -158,3 +152,9 @@ advance (State s i es (Pos l c)) = State s (tail i) es $ case head i of
 
 stateExcerpt :: State -> Excerpt
 stateExcerpt i = Excerpt (path (src i)) (src i ! pos i) (Span (pos i) (pos i))
+
+
+combine :: Semigroup t => Bool -> t -> t -> t
+combine e s1 s2
+  | e         = s1 <> s2
+  | otherwise = s1
