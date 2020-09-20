@@ -43,6 +43,7 @@ library
     Facet.Parser
     Facet.Parser.Combinators
     Facet.Parser.Excerpt
+    Facet.Parser.Notice
     Facet.Parser.Source
     Facet.Parser.Span
     Facet.Pretty
