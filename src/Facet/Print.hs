@@ -124,6 +124,9 @@ cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . withTransition (\case
     (flatAlt (space <> comma <> space) (comma <> space))
   $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [prettyVar var])
 
+ann :: Printer ann p => p -> p -> p
+ann v t = v </> group (align (colon <+> flatAlt space mempty <> t))
+
 prettyVar :: Var -> Print
 prettyVar (Var i) = setPrec Var' (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
   (q, r) = i `divMod` 26
@@ -163,7 +166,7 @@ instance U.Type Print where
 
 
 instance U.Module Print Print Print Print where
-  n .: b = group $ pretty n </> group (align (colon <+> flatAlt space mempty <> b))
+  n .: b = group $ ann (pretty n) b
 
 instance U.Decl Print Print Print where
   t .= b = t </> pretty '=' <+> b
