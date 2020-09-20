@@ -116,7 +116,7 @@ instance Expr TPrint where
   weakenBy _ = coerce
 
 cases :: [Print -> (Print, Print)] -> Print
-cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose (flatAlt space mempty) (flatAlt line mempty))
+cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
   . encloseSep
     mempty
     mempty
