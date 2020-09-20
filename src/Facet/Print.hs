@@ -130,11 +130,17 @@ ann v t = v </> group (align (colon <+> flatAlt space mempty <> t))
 var :: Int -> Print
 var = varWith toLower
 
+tvar :: Int -> Print
+tvar = varWith toUpper
+
 varWith :: PP.Pretty a => (Int -> a) -> Int -> Print
 varWith f i = setPrec Var (name (pretty (f i)))
 
 toLower :: Int -> String
 toLower = toAlpha ['a'..'z']
+
+toUpper :: Int -> String
+toUpper = toAlpha ['A'..'Z']
 
 toAlpha :: String -> Int -> String
 toAlpha alphabet i = alphabet !! r : if q > 0 then show q else ""
@@ -165,7 +171,7 @@ instance U.Err Print where
 
 instance U.ForAll Print Print where
   -- FIXME: combine quantification over type variables of the same kind
-  t >=> f = bind $ \ v -> let v' = var v in group (align (braces (space <> ann v' t <> flatAlt line space))) </> arrow <+> prec FnR (f v')
+  t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> ann v' t <> flatAlt line space))) </> arrow <+> prec FnR (f v')
 
 instance U.Type Print where
   (-->) = infixr' FnL FnR (\ a b -> a </> arrow <+> b)
