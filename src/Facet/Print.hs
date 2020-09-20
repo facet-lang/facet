@@ -152,7 +152,7 @@ instance U.Err Print where
 
 instance U.ForAll Print Print where
   -- FIXME: combine quantification over type variables of the same kind
-  t >=> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
+  t >=> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> prec FnR (f var')
 
 instance U.Type Print where
   (-->) = infixr' FnL FnR (\ a b -> a <+> arrow <+> b)
@@ -168,4 +168,4 @@ instance U.Module Print Print Print Print where
 instance U.Decl Print Print Print where
   t .= b = t </> pretty '=' <+> b
 
-  t >-> f = bind $ \ var -> let var' = prettyVar var in parens (var' <+> colon <+> t) <+> arrow <+> f var'
+  t >-> f = bind $ \ var -> let var' = prettyVar var in parens (var' <+> colon <+> t) <+> arrow <+> prec FnR (f var')
