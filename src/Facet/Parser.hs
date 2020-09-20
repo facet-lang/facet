@@ -4,9 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Parser
-( Pos(..)
-, Span(..)
-, parens
+( parens
 , braces
 , brackets
 , decl
@@ -21,7 +19,6 @@ import           Data.Functor.Identity
 import           Data.Maybe (fromMaybe)
 import           Facet.Functor.C
 import           Facet.Parser.Combinators
-import           Facet.Parser.Span
 import qualified Facet.Syntax.Untyped.Lifted as S
 import           Prelude hiding (fail, lines, null, span)
 
