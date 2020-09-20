@@ -16,8 +16,6 @@ import           Facet.Parser.Combinators
 import qualified Facet.Syntax.Untyped.Lifted as S
 import           Prelude hiding (fail, lines, null, span)
 
-type Name = String
-
 -- case
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
@@ -88,7 +86,7 @@ app :: (Permutable env, S.App expr, Parsing p) => ((p :.: env) expr -> (p :.: en
 app atom tvar = foldl (S.$$) <$> atom tvar <*> many (atom tvar)
 
 
-identS, ident, tidentS, tident :: Parsing p => p Name
+identS, ident, tidentS, tident :: Parsing p => p S.Name
 identS = (:) <$> lower <*> many letter
 ident = token identS
 tidentS = (:) <$> upper <*> many letter

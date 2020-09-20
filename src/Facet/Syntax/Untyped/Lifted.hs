@@ -1,7 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Syntax.Untyped.Lifted
-( S.App(..)
+( S.Name
+, S.App(..)
 , S.Expr(global, unit, (**))
 , S.Err(..)
 , S.Type(_Type, _Unit, tglobal, (-->), (.*))
