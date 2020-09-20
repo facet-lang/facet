@@ -128,7 +128,10 @@ ann :: Printer ann p => p -> p -> p
 ann v t = v </> group (align (colon <+> flatAlt space mempty <> t))
 
 var :: Int -> Print
-var i = setPrec Var (name (pretty (toLower i)))
+var = varWith toLower
+
+varWith :: PP.Pretty a => (Int -> a) -> Int -> Print
+varWith f i = setPrec Var (name (pretty (f i)))
 
 toLower :: Int -> String
 toLower = toAlpha ['a'..'z']
