@@ -127,8 +127,8 @@ cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . withTransition (\case
 ann :: Printer ann p => p -> p -> p
 ann v t = v </> group (align (colon <+> flatAlt space mempty <> t))
 
-prettyVar :: Var -> Print
-prettyVar (Var i) = setPrec Var' (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
+prettyVar :: Int -> Print
+prettyVar i = setPrec Var' (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
   (q, r) = i `divMod` 26
   alphabet = ['a'..'z']
 
