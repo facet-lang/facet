@@ -128,19 +128,13 @@ ann :: Printer ann p => p -> p -> p
 ann v t = v </> group (align (colon <+> flatAlt space mempty <> t))
 
 var :: Int -> Print
-var = varWith toLower
+var = varFrom ['a'..'z']
 
 tvar :: Int -> Print
-tvar = varWith toUpper
+tvar = varFrom ['A'..'Z']
 
-varWith :: PP.Pretty a => (Int -> a) -> Int -> Print
-varWith f i = setPrec Var (name (pretty (f i)))
-
-toLower :: Int -> String
-toLower = toAlpha ['a'..'z']
-
-toUpper :: Int -> String
-toUpper = toAlpha ['A'..'Z']
+varFrom :: String -> Int -> Print
+varFrom alpha i = setPrec Var (name (pretty (toAlpha alpha i)))
 
 toAlpha :: String -> Int -> String
 toAlpha alphabet i = alphabet !! r : if q > 0 then show q else ""
