@@ -56,7 +56,7 @@ instance Parsing Parser where
 
   source = Parser (Null src) mempty []
 
-  pl <|> pr = Parser (null pl `alt` null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
+  pl <|> pr = Parser (null pl <> null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
 
   fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
 
@@ -90,6 +90,10 @@ data Null a
   | Insert (State -> a) (State -> [Notice])
   deriving (Functor)
 
+instance Semigroup (Null a) where
+  l@Null{} <> _ = l
+  _        <> r = r
+
 instance Applicative Null where
   pure = Null . pure
   f <*> a = case f of
@@ -116,10 +120,6 @@ inserted s i = Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P
 
 deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
-
-alt :: Null a -> Null a -> Null a
-alt l@Null{} _ = l
-alt _        r = r
 
 choose :: Null a -> Map.Map Char (ParserCont a) -> ParserCont a
 choose p choices = go
