@@ -152,6 +152,7 @@ instance U.App Print where
 
 instance U.Expr Print where
   -- FIXME: Preserve variable names from user code where possible
+  -- FIXME: Use _ in binding positions for unused variables
   lam0 f = cases [\ var -> (var, f var)]
   lam  f = cases [\ var -> (var, f (Left var))]
 
