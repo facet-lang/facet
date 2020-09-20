@@ -7,6 +7,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
 module Facet.Print
 ( prettyPrint
 , Print(..)
@@ -109,7 +110,7 @@ arrow = op (pretty "->")
 
 instance Expr TPrint where
   lam f = TPrint $ cases [\ var -> (var, coerce (f . Left) var)]
-  ($$) = coerce app
+  ($$) = coerce ((U.$$) @Print)
 
   alg _ = TPrint $ pretty "TBD"
 
@@ -130,7 +131,11 @@ prettyVar (Var i) = setPrec Var' (name (pretty (alphabet !! r) <> if q > 0 then 
 
 
 instance U.App Print where
-  ($$) = app
+  l $$ r = askingPrec $ \case
+    AppL -> op
+    _    -> group op
+    where
+    op = infixl' AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
 
 instance U.Expr Print where
   lam0 f = cases [\ var -> (var, f var)]
@@ -154,14 +159,6 @@ instance U.Type Print where
   _Unit = pretty "()"
   _Type = pretty "Type"
   tglobal = pretty
-
-
-app :: Print -> Print -> Print
-app l r = askingPrec $ \case
-  AppL -> op
-  _    -> group op
-  where
-  op = infixl' AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
 
 
 instance U.Module Print Print Print Print where
