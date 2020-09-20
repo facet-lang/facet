@@ -22,18 +22,14 @@ type Name = String
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
 
-decl :: (S.Module expr ty decl mod, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p mod
-decl = (S..:) <$> ident <* colon <*> sig
-
-
-sig :: (S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr, Parsing p) => p decl
-sig = runIdentity <$> getC (sig_ global tglobal)
-
-sig_ :: forall p env expr ty decl . (Permutable env, Parsing p, S.Decl expr ty decl, S.Err decl, S.Err ty, S.Err expr) => (p :.: env) expr -> (p :.: env) ty -> (p :.: env) decl
-sig_ var tvar = (S..=) <$> type_ tvar <*> expr_ var <|> bind var tvar <|> forAll (sig_ (weaken var)) tvar
+decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Err ty, S.Err expr, Parsing p) => p mod
+decl = (S..:) <$> ident <* colon <*> (runIdentity <$> getC (sig global tglobal))
   where
+  sig :: Permutable env => (p :.: env) expr -> (p :.: env) ty -> (p :.: env) decl
+  sig var tvar = (S..=) <$> type_ tvar <*> expr_ var <|> bind var tvar <|> forAll (sig (weaken var)) tvar
+
   bind :: forall env . Permutable env => (p :.: env) expr -> (p :.: env) ty -> (p :.: env) decl
-  bind var tvar = lparen *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig_ (weaken var <|> liftCOuter t <* weaken (token i)) (weaken tvar)))
+  bind var tvar = lparen *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig (weaken var <|> liftCOuter t <* weaken (token i)) (weaken tvar)))
 
 -- FIXME: bind multiple type variables of the same kind in a single set of braces
 forAll :: (Permutable env, S.ForAll ty res, S.Type ty, S.Err ty, Parsing p) => (forall env' . Extends env env' => (p :.: env') ty -> (p :.: env') res) -> (p :.: env) ty -> (p :.: env) res
