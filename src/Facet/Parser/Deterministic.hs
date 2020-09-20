@@ -17,6 +17,30 @@ import           Facet.Parser.Span
 import           Prelude hiding (null)
 import qualified Prettyprinter as P
 
+data Parser a = Parser
+  { null     :: Null a
+  , firstSet :: CharSet
+  , table    :: [(Char, ParserCont a)]
+  }
+  deriving (Functor)
+
+instance Applicative Parser where
+  pure a = Parser (pure a) mempty []
+  Parser nf ff tf <*> ~(Parser na fa ta) = Parser (nf <*> na) (combine (nullable nf) ff fa) $ tseq tf ta
+    where
+    choices = Map.fromList ta
+    tseq tf ta = combine (nullable nf) tabf taba
+      where
+      tabf = map (fmap (\ k i noskip ->
+        let (i', f')  = k i (fa:noskip)
+            (i'', a') = choose na choices i' noskip
+            fa'       = f' a'
+        in  fa' `seq` (i'', fa'))) tf
+      taba = map (fmap (\ k i noskip ->
+        let (i', a') = k i noskip
+            fa'      = getNull nf i' a'
+        in  fa' `seq` (i', fa'))) ta
+
 instance Parsing Parser where
   position = Parser (Null pos) mempty []
 
@@ -48,6 +72,9 @@ captureBody f g mk k i follow =
       (i'', b) = choose (null gp) choices i' follow
       fab = f a b
   in fab `seq` (i'', fab)
+
+
+type ParserCont a = State -> [CharSet] -> (State, a)
 
 
 combine :: Semigroup t => Bool -> t -> t -> t
@@ -108,15 +135,6 @@ insertOrNull n i = case n of
   Null   a   -> (i, a i)
   Insert a e -> (i{ errs = errs i ++ e i }, a i)
 
-data Parser a = Parser
-  { null     :: Null a
-  , firstSet :: CharSet
-  , table    :: [(Char, ParserCont a)]
-  }
-  deriving (Functor)
-
-type ParserCont a = State -> [CharSet] -> (State, a)
-
 data State = State
   { src   :: Source
   , input :: String
@@ -133,23 +151,6 @@ advance (State s i es (Pos l c)) = State s (tail i) es $ case head i of
 stateExcerpt :: State -> Excerpt
 stateExcerpt i = Excerpt (path (src i)) (src i ! pos i) (Span (pos i) (pos i))
 
-
-instance Applicative Parser where
-  pure a = Parser (pure a) mempty []
-  Parser nf ff tf <*> ~(Parser na fa ta) = Parser (nf <*> na) (combine (nullable nf) ff fa) $ tseq tf ta
-    where
-    choices = Map.fromList ta
-    tseq tf ta = combine (nullable nf) tabf taba
-      where
-      tabf = map (fmap (\ k i noskip ->
-        let (i', f')  = k i (fa:noskip)
-            (i'', a') = choose na choices i' noskip
-            fa'       = f' a'
-        in  fa' `seq` (i'', fa'))) tf
-      taba = map (fmap (\ k i noskip ->
-        let (i', a') = k i noskip
-            fa'      = getNull nf i' a'
-        in  fa' `seq` (i', fa'))) ta
 
 parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
