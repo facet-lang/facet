@@ -10,8 +10,6 @@ module Facet.Parser
 , Span(..)
 , Parser(..)
 , State(..)
-, Excerpt(..)
-, excerpted
 , Level(..)
 , prettyLevel
 , Notice(..)
@@ -36,6 +34,7 @@ import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Facet.Functor.C
 import           Facet.Parser.Combinators
+import           Facet.Parser.Excerpt
 import           Facet.Parser.Source
 import           Facet.Parser.Span
 import qualified Facet.Syntax.Untyped.Lifted as S
@@ -153,19 +152,6 @@ advance (State s i es (Pos l c)) = State s (tail i) es $ case head i of
 
 stateExcerpt :: State -> Excerpt
 stateExcerpt i = Excerpt (path (src i)) (src i ! pos i) (Span (pos i) (pos i))
-
-
-data Excerpt = Excerpt
-  { excerptPath :: !(Maybe FilePath)
-  , excerptLine :: !String
-  , excerptSpan :: {-# UNPACK #-} !Span
-  }
-  deriving (Eq, Ord, Show)
-
-excerpted :: Parsing p => p a -> p (Excerpt, a)
-excerpted p = first . mk <$> source <*> spanned p
-  where
-  mk src span = Excerpt (path src) (src ! start span) span
 
 
 data Level
