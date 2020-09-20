@@ -32,7 +32,13 @@ decl = (S..:) <$> ident <* colon <*> (runIdentity <$> getC (sig global tglobal))
   bind var tvar = lparen *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig (weaken var <|> liftCOuter t <* weaken (token i)) (weaken tvar)))
 
 
-forAll :: forall env ty res p x . (Permutable env, S.ForAll ty res, S.Type ty, S.Err ty, Parsing p) => (forall env' . Permutable env' => (p :.: env') x -> (p :.: env') ty -> (p :.: env') res) -> (p :.: env) x -> (p :.: env) ty -> (p :.: env) res
+forAll
+  :: forall env ty res p x
+  .  (Permutable env, S.ForAll ty res, S.Type ty, S.Err ty, Parsing p)
+  => (forall env' . Permutable env' => (p :.: env') x -> (p :.: env') ty -> (p :.: env') res)
+  -> (p :.: env) x
+  -> (p :.: env) ty
+  -> (p :.: env) res
 forAll k x tvar = lbrace *> names []
   where
   names is = capture (const id) tidentS $ \ i -> ws *>
