@@ -138,11 +138,13 @@ token p = p <* ws
 
 -- Character parsers
 
-lower' = fromList ['a'..'z']
+lowerSet, upperSet :: CharSet
+lowerSet = fromList ['a'..'z']
+upperSet = fromList ['A'..'Z']
+
 lower, upper, letter, colon, comma, lparen, rparen, lbrace, rbrace, lbracket, rbracket :: Parsing p => p Char
-lower = set lower' (fromMaybe 'a') "lowercase letter"
-upper' = fromList ['A'..'Z']
-upper = set upper' (fromMaybe 'A') "uppercase letter"
+lower = set lowerSet (fromMaybe 'a') "lowercase letter"
+upper = set upperSet (fromMaybe 'A') "uppercase letter"
 letter = lower <|> upper <?> ('a', "letter")
 colon = token (char ':')
 comma = token (char ',')
