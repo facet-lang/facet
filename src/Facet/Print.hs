@@ -151,6 +151,7 @@ instance U.App Print where
     op = infixl' AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
 
 instance U.Expr Print where
+  -- FIXME: Preserve variable names from user code where possible
   lam0 f = cases [\ var -> (var, f var)]
   lam  f = cases [\ var -> (var, f (Left var))]
 
