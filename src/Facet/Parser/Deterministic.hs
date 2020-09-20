@@ -14,8 +14,8 @@ import           Facet.Parser.Excerpt
 import           Facet.Parser.Notice
 import           Facet.Parser.Source
 import           Facet.Parser.Span
+import qualified Facet.Pretty as P
 import           Prelude hiding (null)
-import qualified Prettyprinter as P
 
 parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
