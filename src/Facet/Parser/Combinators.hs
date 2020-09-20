@@ -16,15 +16,34 @@ module Facet.Parser.Combinators
 , some
 , span
 , spanned
+, parens
+, braces
+, brackets
+, token
+, ws
+  -- * Character parsers
+, lower
+, upper
+, letter
+, colon
+, comma
+, lparen
+, rparen
+, lbrace
+, rbrace
+, lbracket
+, rbracket
 ) where
 
-import Control.Applicative (liftA2, (<**>))
-import Data.CharSet (CharSet, toList)
-import Data.Foldable (traverse_)
-import Facet.Functor.C
-import Facet.Parser.Source
-import Facet.Parser.Span
-import Prelude hiding (fail, span)
+import           Control.Applicative (liftA2, (<**>))
+import           Data.CharSet (CharSet, fromList, toList)
+import qualified Data.CharSet.Unicode as CharSet
+import           Data.Foldable (traverse_)
+import           Data.Maybe (fromMaybe)
+import           Facet.Functor.C
+import           Facet.Parser.Source
+import           Facet.Parser.Span
+import           Prelude hiding (fail, span)
 
 class Applicative p => Parsing p where
   position :: p Pos
@@ -101,3 +120,40 @@ spanned :: Parsing p => p a -> p (Span, a)
 spanned p = mk <$> position <*> p <*> position
   where
   mk s a e = (Span s e, a)
+
+
+parens :: Parsing p => p a -> p a
+parens a = lparen *> a <* rparen
+
+braces :: Parsing p => p a -> p a
+braces a = lbrace *> a <* rbrace
+
+brackets :: Parsing p => p a -> p a
+brackets a = lbracket *> a <* rbracket
+
+
+token :: Parsing p => p a -> p a
+token p = p <* ws
+
+
+-- Character parsers
+
+lower' = fromList ['a'..'z']
+lower, upper, letter, colon, comma, lparen, rparen, lbrace, rbrace, lbracket, rbracket :: Parsing p => p Char
+lower = set lower' (fromMaybe 'a') "lowercase letter"
+upper' = fromList ['A'..'Z']
+upper = set upper' (fromMaybe 'A') "uppercase letter"
+letter = lower <|> upper <?> ('a', "letter")
+colon = token (char ':')
+comma = token (char ',')
+lparen = token (char '(')
+rparen = token (char ')')
+lbrace = token (char '{')
+rbrace = token (char '}')
+lbracket = token (char '[')
+rbracket = token (char ']')
+ws :: Parsing p => p ()
+ws = opt (c <* ws) ()
+  where
+  c = set wsSet (const ()) "whitespace"
+  wsSet = CharSet.separator <> CharSet.control

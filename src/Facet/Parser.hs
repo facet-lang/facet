@@ -4,63 +4,26 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Parser
-( parens
-, braces
-, brackets
-, decl
+( decl
 , type'
 , expr
 ) where
 
 import           Control.Applicative ((<**>))
-import qualified Data.CharSet as CharSet
-import qualified Data.CharSet.Unicode as CharSet
 import           Data.Functor.Identity
-import           Data.Maybe (fromMaybe)
 import           Facet.Functor.C
 import           Facet.Parser.Combinators
 import qualified Facet.Syntax.Untyped.Lifted as S
 import           Prelude hiding (fail, lines, null, span)
 
-lower' = CharSet.fromList ['a'..'z']
-lower, upper, letter, colon, comma, lparen, rparen, lbrace, rbrace, lbracket, rbracket :: Parsing p => p Char
-lower = set lower' (fromMaybe 'a') "lowercase letter"
-upper' = CharSet.fromList ['A'..'Z']
-upper = set upper' (fromMaybe 'A') "uppercase letter"
-letter = lower <|> upper <?> ('a', "letter")
 identS, ident, tidentS, tident :: Parsing p => p Name
 identS = (:) <$> lower <*> many letter
 ident = token identS
 tidentS = (:) <$> upper <*> many letter
 tident = token tidentS
-colon = token (char ':')
-comma = token (char ',')
-lparen = token (char '(')
-rparen = token (char ')')
-lbrace = token (char '{')
-rbrace = token (char '}')
-lbracket = token (char '[')
-rbracket = token (char ']')
+
 arrow :: Parsing p => p String
 arrow = token (string "->")
-ws :: Parsing p => p ()
-ws = opt (c <* ws) ()
-  where
-  c = set wsSet (const ()) "whitespace"
-  wsSet = CharSet.separator <> CharSet.control
-
-token :: Parsing p => p a -> p a
-token p = p <* ws
-
-parens :: Parsing p => p a -> p a
-parens a = lparen *> a <* rparen
-
-braces :: Parsing p => p a -> p a
-braces a = lbrace *> a <* rbrace
-
-brackets :: Parsing p => p a -> p a
-brackets a = lbracket *> a <* rbracket
-
 
 type Name = String
 
