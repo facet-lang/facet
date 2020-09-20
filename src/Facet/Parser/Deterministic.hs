@@ -25,6 +25,7 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   where
   choices = Map.fromList (table p)
 
+-- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
   { null     :: Null a
   , firstSet :: CharSet
