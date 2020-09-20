@@ -8,6 +8,7 @@ module Facet.Parser.Combinators
 , optional
 , many
 , skipMany
+, skipSome
 , chainr
 , chainl
 , chainr1
@@ -91,6 +92,9 @@ many p = go where go = opt ((:) <$> p <*> go) []
 
 skipMany :: Parsing p => p a -> p ()
 skipMany p = go where go = opt (p *> go) ()
+
+skipSome :: Parsing p => p a -> p ()
+skipSome p = p *> skipMany p
 
 chainr :: Parsing p => p a -> p (a -> a -> a) -> a -> p a
 chainr p = opt . chainr1 p
