@@ -34,7 +34,7 @@ decl = (S..:) <$> ident <* colon <*> (runIdentity <$> getC (sig global tglobal))
 forAll :: forall env ty res p x . (Permutable env, S.ForAll ty res, S.Type ty, S.Err ty, Parsing p) => (forall env' . Permutable env' => (p :.: env') x -> (p :.: env') ty -> (p :.: env') res) -> (p :.: env) x -> (p :.: env) ty -> (p :.: env) res
 forAll k x tvar = lbrace *> names []
   where
-  names is = capture (const id) identS $ \ i -> ws *>
+  names is = capture (const id) tidentS $ \ i -> ws *>
     (   comma *> names (i:is)
     <|> colon *> capture0 (const id) (type_ tvar <* rbrace <* arrow) (\ t -> types t x tvar (reverse (i:is))))
   types :: Permutable env' => (p :.: env') ty -> (p :.: env') x -> (p :.: env') ty -> [(p :.: env') S.Name] -> (p :.: env') res
