@@ -124,7 +124,7 @@ cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . withTransition (\case
   $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [prettyVar var])
 
 prettyVar :: Var -> Print
-prettyVar (Var i) = localPrec (const Var') (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
+prettyVar (Var i) = setPrec Var' (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
   (q, r) = i `divMod` 26
   alphabet = ['a'..'z']
 

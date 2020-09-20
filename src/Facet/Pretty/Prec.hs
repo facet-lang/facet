@@ -8,6 +8,7 @@ module Facet.Pretty.Prec
 ( Level(..)
 , PrecPrinter(..)
 , prec
+, setPrec
 , infix'
 , infixl'
 , infixr'
@@ -29,7 +30,10 @@ class Printer ann doc => PrecPrinter lvl ann doc | doc -> ann lvl where
   localPrec :: (lvl -> lvl) -> doc -> doc
 
 prec :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> doc -> doc
-prec l d = askingPrec $ \ l' -> parensIf (l' > l) (localPrec (const l) d)
+prec l d = askingPrec $ \ l' -> parensIf (l' > l) (setPrec l d)
+
+setPrec :: PrecPrinter lvl ann doc => lvl -> doc -> doc
+setPrec = localPrec . const
 
 infix' :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
 infix' lo hi sep l r = prec lo (sep (prec hi l) (prec hi r))
@@ -65,9 +69,9 @@ instance (Bounded lvl, Printer ann doc) => Printer ann (Prec lvl doc) where
 
   flatAlt = liftA2 flatAlt
 
-  parens   = fmap parens   . localPrec (const minBound)
-  brackets = fmap brackets . localPrec (const minBound)
-  braces   = fmap braces   . localPrec (const minBound)
+  parens   = fmap parens   . setPrec minBound
+  brackets = fmap brackets . setPrec minBound
+  braces   = fmap braces   . setPrec minBound
 
 instance (Bounded lvl, Printer ann doc) => PrecPrinter lvl ann (Prec lvl doc) where
   askingPrec f = Prec $ runPrec <*> f
