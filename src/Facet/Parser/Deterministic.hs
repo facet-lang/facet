@@ -28,36 +28,26 @@ instance Parsing Parser where
 
   fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
 
-  -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
-  -- FIXME: is this even correct?
-  -- FIXME: do we want to require that p be non-nullable?
   -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table p))
     where
-    go k i follow =
-      let (i', a) = k i (fs:follow)
-          s = substring (src i) (Span (pos i) (pos i'))
-          fs = firstSet gp
-          gp = g (a <$ string s)
-          choices = Map.fromList (table gp)
-          (i'', b) = choose (null gp) choices i' follow
-          fab = f a b
-      in fab `seq` (i'', fab)
+    go k i = captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k i
 
-  -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
-  -- FIXME: is this even correct?
-  -- FIXME: do we want to require that p be non-nullable?
-  -- FIXME: accidentally capturing whitespace in p breaks things
   capture0 f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table p))
     where
-    go k i follow =
-      let (i', a) = k i (fs:follow)
-          fs = firstSet gp
-          gp = g (pure a)
-          choices = Map.fromList (table gp)
-          (i'', b) = choose (null gp) choices i' follow
-          fab = f a b
-      in fab `seq` (i'', fab)
+    go = captureBody f g (pure . snd)
+
+-- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
+-- FIXME: is this even correct?
+-- FIXME: do we want to require that p be non-nullable?
+captureBody f g mk k i follow =
+  let (i', a) = k i (fs:follow)
+      fs = firstSet gp
+      gp = g (mk (i', a))
+      choices = Map.fromList (table gp)
+      (i'', b) = choose (null gp) choices i' follow
+      fab = f a b
+  in fab `seq` (i'', fab)
 
 
 combine :: Semigroup t => Bool -> t -> t -> t
