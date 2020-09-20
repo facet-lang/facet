@@ -1,13 +1,16 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Facet.Parser.Deterministic
 ( parseString
+, parseString'
 , parse
 , Parser(..)
 , Null(..)
 ) where
 
+import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor (first)
 import           Data.CharSet (CharSet, member, singleton)
+import           Data.Foldable (traverse_)
 import qualified Data.Map as Map
 import           Facet.Parser.Combinators
 import           Facet.Parser.Excerpt
@@ -19,6 +22,13 @@ import           Prelude hiding (null)
 
 parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
+
+-- FIXME: move this somewhere more reasonable for execution from ghci only.
+parseString' :: P.Pretty a => MonadIO m => Parser a -> String -> m ()
+parseString' p s = do
+  let (errs, a) = parseString Nothing p s
+  traverse_ (P.putDoc . prettyNotice) errs
+  P.putDoc (P.pretty a)
 
 parse :: Parser a -> Source -> String -> (State, a)
 parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
