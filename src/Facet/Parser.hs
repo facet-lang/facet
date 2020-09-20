@@ -21,6 +21,12 @@ import           Prelude hiding (fail, lines, null, span)
 -- : (x : a) -> (f : a -> b) -> b
 -- { f x }
 
+-- TODO:
+-- list literals
+-- numeric literals
+-- forcing nullary computations
+-- holes
+
 -- FIXME: this runs into problems when binders capture a variable sharing a prefix w/ other used vars.
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Err ty, S.Err expr, Parsing p) => p mod
 decl = (S..:) <$> ident <* colon <*> (runIdentity <$> getC (sig global tglobal))
