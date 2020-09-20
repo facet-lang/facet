@@ -31,8 +31,11 @@ decl = (S..:) <$> ident <* colon <*> (runIdentity <$> getC (sig global tglobal))
 
 
 -- FIXME: bind multiple type variables of the same kind in a single set of braces
-forAll :: (Permutable env, S.ForAll ty res, S.Type ty, S.Err ty, Parsing p) => (forall env' . Extends env env' => (p :.: env') ty -> (p :.: env') res) -> (p :.: env) ty -> (p :.: env) res
-forAll k tvar = lbrace *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>=> \ t -> rbrace *> arrow *> k (weaken tvar <|> liftCOuter t <* weaken (token i))))
+forAll :: forall env ty res p . (Permutable env, S.ForAll ty res, S.Type ty, S.Err ty, Parsing p) => (forall env' . Extends env env' => (p :.: env') ty -> (p :.: env') res) -> (p :.: env) ty -> (p :.: env) res
+forAll k tvar = lbrace *> capture (const id) identS go
+  where
+  go :: (p :.: env) S.Name -> (p :.: env) res
+  go i = ws *> colon *> (type_ tvar S.>=> \ t -> rbrace *> arrow *> k (weaken tvar <|> liftCOuter t <* weaken (token i)))
 
 
 type' :: (S.Type ty, S.Err ty, Parsing p) => p ty
