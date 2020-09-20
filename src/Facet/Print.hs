@@ -163,7 +163,7 @@ instance U.Type Print where
 
 
 instance U.Module Print Print Print Print where
-  n .: b = group $ pretty n </> group (align (colon <+> flatAlt mempty space <> b))
+  n .: b = group $ pretty n </> group (align (colon <+> flatAlt space mempty <> b))
 
 instance U.Decl Print Print Print where
   t .= b = t </> pretty '=' <+> b
