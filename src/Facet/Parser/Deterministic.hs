@@ -137,6 +137,7 @@ insertOrNull n i = case n of
   Null   a   -> (i, a i)
   Insert a e -> (i{ errs = errs i ++ e i }, a i)
 
+
 data State = State
   { src   :: Source
   , input :: String
@@ -148,7 +149,6 @@ advance :: State -> State
 advance (State s i es (Pos l c)) = State s (tail i) es $ case head i of
   '\n' -> Pos (l + 1) 0
   _    -> Pos l       (c + 1)
-
 
 stateExcerpt :: State -> Excerpt
 stateExcerpt i = Excerpt (path (src i)) (src i ! pos i) (Span (pos i) (pos i))
