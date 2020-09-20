@@ -31,18 +31,16 @@ decl = (S..:) <$> ident <* colon <*> (runIdentity <$> getC (sig global tglobal))
   bind var tvar = lparen *> capture (const id) identS (\ i -> ws *> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig (weaken var <|> liftCOuter t <* weaken (token i)) (weaken tvar)))
 
 
--- FIXME: bind multiple type variables of the same kind in a single set of braces
 forAll :: forall env ty res p x . (Permutable env, S.ForAll ty res, S.Type ty, S.Err ty, Parsing p) => (forall env' . Permutable env' => (p :.: env') x -> (p :.: env') ty -> (p :.: env') res) -> (p :.: env) x -> (p :.: env) ty -> (p :.: env) res
 forAll k x tvar = lbrace *> names []
   where
   names is = capture (const id) identS $ \ i -> ws *>
     (   comma *> names (i:is)
-    <|> colon *> types x (type_ tvar <* rbrace <* arrow) tvar (reverse (i:is)))
-  -- FIXME: this is binding each to be of the type of the previous one, i.e. a : Type, b : a, c : b
-  types :: Permutable env' => (p :.: env') x -> (p :.: env') ty -> (p :.: env') ty -> [(p :.: env') S.Name] -> (p :.: env') res
-  types x t tvar = \case
+    <|> colon *> capture0 (const id) (type_ tvar <* rbrace <* arrow) (\ t -> types t x tvar (reverse (i:is))))
+  types :: Permutable env' => (p :.: env') ty -> (p :.: env') x -> (p :.: env') ty -> [(p :.: env') S.Name] -> (p :.: env') res
+  types ty x tvar = \case
     []   -> k x tvar
-    i:is -> t S.>=> \ t -> types (weaken x) (liftCOuter t) (weaken tvar <|> liftCOuter t <* weaken (token i)) (map weaken is)
+    i:is -> ty S.>=> \ t -> types (weaken ty) (weaken x) (weaken tvar <|> liftCOuter t <* weaken (token i)) (map weaken is)
 
 
 type' :: (S.Type ty, S.Err ty, Parsing p) => p ty
