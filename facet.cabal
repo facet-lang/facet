@@ -42,6 +42,7 @@ library
     Facet.Functor.I
     Facet.Parser
     Facet.Parser.Combinators
+    Facet.Parser.Deterministic
     Facet.Parser.Excerpt
     Facet.Parser.Notice
     Facet.Parser.Source
