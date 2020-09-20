@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Facet.Parser.Deterministic
-( Parser(..)
-, Null(..)
-, parseString
+( parseString
 , parse
+, Parser(..)
+, Null(..)
 ) where
 
 import           Data.Bifunctor (first)
@@ -16,6 +16,14 @@ import           Facet.Parser.Source
 import           Facet.Parser.Span
 import           Prelude hiding (null)
 import qualified Prettyprinter as P
+
+parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
+parseString path p s = first errs (parse p (sourceFromString path s) s)
+
+parse :: Parser a -> Source -> String -> (State, a)
+parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
+  where
+  choices = Map.fromList (table p)
 
 data Parser a = Parser
   { null     :: Null a
@@ -150,12 +158,3 @@ advance (State s i es (Pos l c)) = State s (tail i) es $ case head i of
 
 stateExcerpt :: State -> Excerpt
 stateExcerpt i = Excerpt (path (src i)) (src i ! pos i) (Span (pos i) (pos i))
-
-
-parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
-parseString path p s = first errs (parse p (sourceFromString path s) s)
-
-parse :: Parser a -> Source -> String -> (State, a)
-parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
-  where
-  choices = Map.fromList (table p)
