@@ -128,9 +128,16 @@ ann :: Printer ann p => p -> p -> p
 ann v t = v </> group (align (colon <+> flatAlt space mempty <> t))
 
 var :: Int -> Print
-var i = setPrec Var (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
-  (q, r) = i `divMod` 26
-  alphabet = ['a'..'z']
+var i = setPrec Var (name (pretty (toLower i)))
+
+toLower :: Int -> String
+toLower = toAlpha ['a'..'z']
+
+toAlpha :: String -> Int -> String
+toAlpha alphabet i = alphabet !! r : if q > 0 then show q else ""
+  where
+  n = length alphabet
+  (q, r) = i `divMod` n
 
 
 instance U.App Print where
