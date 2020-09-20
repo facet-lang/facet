@@ -37,9 +37,8 @@ forAll k x tvar = lbrace *> names []
   where
   names is = capture (const id) identS $ \ i -> ws *>
     (   comma *> names (i:is)
-    <|> colon *> types x (type_ tvar <* rbrace <* arrow) tvar (i:is))
+    <|> colon *> types x (type_ tvar <* rbrace <* arrow) tvar (reverse (i:is)))
   -- FIXME: this is binding each to be of the type of the previous one, i.e. a : Type, b : a, c : b
-  -- FIXME: this binds in the reverse order
   types :: Permutable env' => (p :.: env') x -> (p :.: env') ty -> (p :.: env') ty -> [(p :.: env') S.Name] -> (p :.: env') res
   types x t tvar = \case
     []   -> k x tvar
