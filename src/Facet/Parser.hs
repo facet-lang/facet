@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
@@ -10,10 +9,6 @@ module Facet.Parser
 , Span(..)
 , Parser(..)
 , State(..)
-, Level(..)
-, prettyLevel
-, Notice(..)
-, prettyNotice
 , parseString
 , parse
 , parens
@@ -29,18 +24,17 @@ import           Data.Bifunctor (first)
 import           Data.CharSet (CharSet, fromList, member, singleton)
 import qualified Data.CharSet.Unicode as CharSet
 import           Data.Functor.Identity
-import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Facet.Functor.C
 import           Facet.Parser.Combinators
 import           Facet.Parser.Excerpt
+import           Facet.Parser.Notice
 import           Facet.Parser.Source
 import           Facet.Parser.Span
 import qualified Facet.Syntax.Untyped.Lifted as S
 import           Prelude hiding (fail, lines, null, span)
 import qualified Prettyprinter as P
-import           Prettyprinter.Render.Terminal as ANSI
 
 instance Parsing Parser where
   position = Parser (Null pos) mempty []
@@ -152,56 +146,6 @@ advance (State s i es (Pos l c)) = State s (tail i) es $ case head i of
 
 stateExcerpt :: State -> Excerpt
 stateExcerpt i = Excerpt (path (src i)) (src i ! pos i) (Span (pos i) (pos i))
-
-
-data Level
-  = Warn
-  | Error
-  deriving (Eq, Ord, Show)
-
-prettyLevel :: Level -> P.Doc AnsiStyle
-prettyLevel = \case
-  Warn  -> magenta (P.pretty "warning")
-  Error -> red     (P.pretty "error")
-
-
-data Notice = Notice
-  { level   :: !(Maybe Level)
-  , excerpt :: {-# UNPACK #-} !Excerpt
-  , reason  :: !(P.Doc AnsiStyle)
-  , context :: ![P.Doc AnsiStyle]
-  }
-  deriving (Show)
-
-prettyNotice :: Notice -> P.Doc AnsiStyle
-prettyNotice (Notice level (Excerpt path text span) reason context) = P.vsep
-  ( P.nest 2 (P.group (P.fillSep
-    [ bold (P.pretty (fromMaybe "(interactive)" path)) <> P.colon <> pos (start span) <> P.colon <> foldMap ((P.space <>) . (<> P.colon) . prettyLevel) level
-    , reason
-    ]))
-  : blue (P.pretty (succ (line (start span)))) P.<+> P.align (P.vcat
-    [ blue (P.pretty '|') P.<+> if "\n" `isSuffixOf` text then P.pretty (init text) <> blue (P.pretty "\\n") else P.pretty text <> blue (P.pretty "<end of input>")
-    , blue (P.pretty '|') P.<+> padding span <> caret span
-    ])
-  : context)
-  where
-  pos (Pos l c) = bold (P.pretty (succ l)) <> P.colon <> bold (P.pretty (succ c))
-
-  padding (Span (Pos _ c) _) = P.pretty (replicate c ' ')
-
-  caret (Span start@(Pos sl sc) end@(Pos el ec))
-    | start == end = green (P.pretty '^')
-    | sl    == el  = green (P.pretty (replicate (ec - sc) '~'))
-    | otherwise    = green (P.pretty "^…")
-
-  bold = P.annotate ANSI.bold
-
-
-red, green, blue, magenta :: P.Doc AnsiStyle -> P.Doc AnsiStyle
-red     = P.annotate $ color Red
-green   = P.annotate $ color Green
-blue    = P.annotate $ color Blue
-magenta = P.annotate $ color Magenta
 
 
 instance Applicative Parser where
