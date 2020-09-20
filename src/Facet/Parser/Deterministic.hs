@@ -44,6 +44,21 @@ instance Parsing Parser where
           fab = f a b
       in fab `seq` (i'', fab)
 
+  -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
+  -- FIXME: is this even correct?
+  -- FIXME: do we want to require that p be non-nullable?
+  -- FIXME: accidentally capturing whitespace in p breaks things
+  capture0 f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table p))
+    where
+    go k i follow =
+      let (i', a) = k i (fs:follow)
+          fs = firstSet gp
+          gp = g (pure a)
+          choices = Map.fromList (table gp)
+          (i'', b) = choose (null gp) choices i' follow
+          fab = f a b
+      in fab `seq` (i'', fab)
+
 
 combine :: Semigroup t => Bool -> t -> t -> t
 combine e s1 s2

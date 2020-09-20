@@ -64,6 +64,11 @@ class Applicative p => Parsing p where
   -- FIXME: this is a bad name.
   capture :: (a -> b -> c) -> p a -> (p a -> p b) -> p c
 
+  -- | Like capture, but the higher-order parser receives a pure parser instead of a parser of the same text.
+  --
+  -- FIXME: this is a bad name.
+  capture0 :: (a -> b -> c) -> p a -> (p a -> p b) -> p c
+
 instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   position = C $ pure <$> position
   char s   = C $ pure <$> char s
@@ -71,6 +76,7 @@ instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   l <|> r  = C $ getC l <|> getC r
   fail a s = C $ fail (pure a) s
   capture f p g = C $ capture (liftA2 f) (getC p) (getC . g . C)
+  capture0 f p g = C $ capture0 (liftA2 f) (getC p) (getC . g . C)
 
 -- FIXME: always require <?>/fail to terminate a chain of alternatives
 (<?>) :: Parsing p => p a -> (a, String) -> p a
