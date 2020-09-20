@@ -83,15 +83,15 @@ expr_ = app atom
 
 -- FIXME: patterns
 -- FIXME: nullary computations
-lam_ :: forall p env expr . (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
-lam_ var = braces $ clause_ var
+lam :: forall p env expr . (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
+lam var = braces $ clause var
   where
-  clause_ :: Permutable env' => (p :.: env') expr -> (p :.: env') expr
-  clause_ var = S.lam0 (\ v -> capture (const id) identS (\ i -> let var' = weaken var <|> liftCOuter v <* token i in ws *> (clause_ var' <|> arrow *> expr_ var'))) <?> (S.err, "clause")
+  clause :: Permutable env' => (p :.: env') expr -> (p :.: env') expr
+  clause var = S.lam0 (\ v -> capture (const id) identS (\ i -> let var' = weaken var <|> liftCOuter v <* token i in ws *> (clause var' <|> arrow *> expr_ var'))) <?> (S.err, "clause")
 
 atom :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
 atom var
-  =   lam_ var
+  =   lam var
   <|> parens (prd <$> sepBy (expr_ var) comma)
   <|> var
   where
