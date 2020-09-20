@@ -151,6 +151,7 @@ instance U.Err Print where
   err = pretty "err"
 
 instance U.ForAll Print Print where
+  -- FIXME: combine quantification over type variables of the same kind
   t >=> f = bind $ \ var -> let var' = prettyVar var in braces (space <> var' <+> colon <+> t <> space) <+> arrow <+> f var'
 
 instance U.Type Print where
