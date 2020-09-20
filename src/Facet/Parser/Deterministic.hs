@@ -96,6 +96,14 @@ data Null a
   | Insert (State -> a) (State -> [Notice])
   deriving (Functor)
 
+instance Applicative Null where
+  pure = Null . pure
+  f <*> a = case f of
+    Null   f    -> case a of
+      Null   a    -> Null   (f <*> a)
+      Insert a sa -> Insert (f <*> a) sa
+    Insert f sf -> Insert (f <*> getNull a) (combine (not (nullable a)) sf (getErrors a))
+
 nullable :: Null a -> Bool
 nullable p = case p of
   Null  _    -> True
@@ -108,14 +116,6 @@ getNull (Insert f _) = f
 getErrors :: Null a -> State -> [Notice]
 getErrors (Null   _)   = const []
 getErrors (Insert _ f) = f
-
-instance Applicative Null where
-  pure = Null . pure
-  f <*> a = case f of
-    Null   f    -> case a of
-      Null   a    -> Null   (f <*> a)
-      Insert a sa -> Insert (f <*> a) sa
-    Insert f sf -> Insert (f <*> getNull a) (combine (not (nullable a)) sf (getErrors a))
 
 inserted :: String -> State -> Notice
 inserted s i = Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P.pretty s) []
