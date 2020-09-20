@@ -82,6 +82,7 @@ expr_ :: forall p env expr . (Permutable env, S.Expr expr, S.Err expr, Parsing p
 expr_ = app atom
 
 -- FIXME: patterns
+-- FIXME: nullary computations
 lam_ :: forall p env expr . (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
 lam_ var = braces $ clause_ var
   where
