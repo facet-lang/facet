@@ -117,18 +117,18 @@ instance Expr TPrint where
   weakenBy _ = coerce
 
 cases :: [Print -> (Print, Print)] -> Print
-cases cs = bind $ \ var -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
+cases cs = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
   . encloseSep
     mempty
     mempty
     (flatAlt (space <> comma <> space) (comma <> space))
-  $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [prettyVar var])
+  $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [var v])
 
 ann :: Printer ann p => p -> p -> p
 ann v t = v </> group (align (colon <+> flatAlt space mempty <> t))
 
-prettyVar :: Int -> Print
-prettyVar i = setPrec Var (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
+var :: Int -> Print
+var i = setPrec Var (name (pretty (alphabet !! r) <> if q > 0 then pretty q else mempty)) where
   (q, r) = i `divMod` 26
   alphabet = ['a'..'z']
 
@@ -155,7 +155,7 @@ instance U.Err Print where
 
 instance U.ForAll Print Print where
   -- FIXME: combine quantification over type variables of the same kind
-  t >=> f = bind $ \ var -> let var' = prettyVar var in group (align (braces (space <> ann var' t <> flatAlt line space))) </> arrow <+> prec FnR (f var')
+  t >=> f = bind $ \ v -> let v' = var v in group (align (braces (space <> ann v' t <> flatAlt line space))) </> arrow <+> prec FnR (f v')
 
 instance U.Type Print where
   (-->) = infixr' FnL FnR (\ a b -> a </> arrow <+> b)
@@ -171,4 +171,4 @@ instance U.Module Print Print Print Print where
 instance U.Decl Print Print Print where
   t .= b = t </> pretty '=' <+> b
 
-  t >-> f = bind $ \ var -> let var' = prettyVar var in group (align (parens (ann var' t))) </> arrow <+> prec FnR (f var')
+  t >-> f = bind $ \ v -> let v' = var v in group (align (parens (ann v' t))) </> arrow <+> prec FnR (f v')
