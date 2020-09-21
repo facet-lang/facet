@@ -145,8 +145,11 @@ recovering follow this k i n = case input i of
     -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
     -- we can eliminate it if we instead allow the continuation to decide, I *think*.
     -- might involve a recovery parameter to Cont, taking null p?
-    | any (member s) follow -> insertOrNull i n k
-    | otherwise             -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow k
+    | canMatch s follow -> insertOrNull i n k
+    | otherwise         -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow k
+
+canMatch :: Char -> [CharSet] -> Bool
+canMatch = any . member
 
 
 data State = State
