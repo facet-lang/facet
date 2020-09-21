@@ -45,40 +45,41 @@ data Parser a = Parser
   deriving (Functor)
 
 instance Applicative Parser where
-  pure a = Parser (pure a) mempty []
+  pure a = Parser (pure a) mempty mempty
   f <*> a = Parser (null f <*> null a) (combine nullablef (firstSet f) (firstSet a)) tseq
     where
     nullablef = nullable (null f)
     choices = buildMap (table a)
     tseq = combine nullablef tabf taba
       where
-      tabf = map (fmap (\ k -> cont $ \ i noskip ->
+      tabf = fmap (\ k -> cont $ \ i noskip ->
         let (i', f')  = runCont k i (firstSet a:noskip)
             (i'', a') = runCont (choose (null a) choices) i' noskip
             fa'       = f' a'
-        in  fa' `seq` (i'', fa'))) (table f)
-      taba = map (fmap (\ k -> cont $ \ i noskip ->
+        in  fa' `seq` (i'', fa')) (table f)
+      taba = fmap (\ k -> cont $ \ i noskip ->
         let (i', a') = runCont k i noskip
             fa'      = getNull (null f) i' a'
-        in  fa' `seq` (i', fa'))) (table a)
+        in  fa' `seq` (i', fa')) (table a)
 
 instance Parsing Parser where
-  position = Parser (Null pos) mempty []
+  position = Parser (Null pos) mempty mempty
 
-  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, cont $ \ i _ -> (advance i, s)) ]
+  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) (Map.singleton s (cont (\ i _ -> (advance i, s))))
 
-  source = Parser (Null src) mempty []
+  source = Parser (Null src) mempty mempty
 
-  pl <|> pr = Parser (null pl <> null pr) (firstSet pl <> firstSet pr) (table pl <> table pr)
+  -- NB: we append the tables in reverse order because <> on Map is left-biased and we want a right-biased union
+  pl <|> pr = Parser (null pl <> null pr) (firstSet pl <> firstSet pr) (table pr <> table pl)
 
-  fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty []
+  fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty mempty
 
   -- FIXME: accidentally capturing whitespace in p breaks things
-  capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table p))
+  capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (fmap go (table p))
     where
     go k = cont $ \ i -> runCont (captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k) i
 
-  capture0 f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table p))
+  capture0 f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (fmap go (table p))
     where
     go = captureBody f g (pure . snd)
 
@@ -96,7 +97,7 @@ captureBody f g mk k = cont $ \ i follow ->
   in fab `seq` (i'', fab)
 
 
-type Table a = [(Char, Cont a)]
+type Table a = Map.Map Char (Cont a)
 
 newtype Cont a = Cont (forall r . (State -> a -> r) -> State -> [CharSet] -> r)
   deriving (Functor)
@@ -187,4 +188,4 @@ combine e s1 s2
 
 
 buildMap :: Table a -> ContMap a
-buildMap = Map.fromList
+buildMap = id
