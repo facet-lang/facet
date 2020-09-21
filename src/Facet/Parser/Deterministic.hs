@@ -71,7 +71,7 @@ instance Parsing Parser where
     go = captureBody f g (pure . snd)
 
 inFirstSet :: Parser a -> Predicate
-inFirstSet = memberOf . keysSet . table
+inFirstSet = memberOf . table
 
 -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
 -- FIXME: is this even correct?
@@ -97,8 +97,8 @@ instance Monoid (Table a) where
 singleton :: Char -> a -> Table a
 singleton c k = Table [(CharSet.singleton c, k)]
 
-keysSet :: Table a -> CharSet.CharSet
-keysSet = foldMap fst . getTable
+member :: Char -> Table a -> Bool
+member c = any (CharSet.member c . fst) . getTable
 
 lookup :: Char -> Table a -> Maybe a
 lookup c t = snd <$> find (CharSet.member c . fst) (getTable t)
@@ -112,8 +112,8 @@ instance Semigroup Predicate where
 instance Monoid Predicate where
   mempty = Predicate $ const False
 
-memberOf :: CharSet.CharSet -> Predicate
-memberOf = Predicate . flip CharSet.member
+memberOf :: Table a -> Predicate
+memberOf = Predicate . flip member
 
 
 newtype Cont a = Cont { runCont :: forall r . State -> Predicate -> (State -> a -> r) -> r }
