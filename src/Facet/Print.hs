@@ -12,6 +12,7 @@ module Facet.Print
 ( prettyPrint
 , prettyPrintWith
 , prettyWith
+, defaultStyle
 , Print(..)
 , Context(..)
 , TPrint(..)
