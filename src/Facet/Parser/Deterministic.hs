@@ -33,7 +33,7 @@ parseString' p s = do
 parse :: Parser a -> Source -> String -> (State, a)
 parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
   where
-  choices = Map.fromList (table p)
+  choices = buildMap (table p)
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
@@ -47,7 +47,7 @@ instance Applicative Parser where
   pure a = Parser (pure a) mempty []
   Parser nf ff tf <*> ~(Parser na fa ta) = Parser (nf <*> na) (combine (nullable nf) ff fa) $ tseq tf ta
     where
-    choices = Map.fromList ta
+    choices = buildMap ta
     tseq tf ta = combine (nullable nf) tabf taba
       where
       tabf = map (fmap (\ k i noskip ->
@@ -171,3 +171,7 @@ combine :: Semigroup t => Bool -> t -> t -> t
 combine e s1 s2
   | e         = s1 <> s2
   | otherwise = s1
+
+
+buildMap :: Table a -> ContMap a
+buildMap = Map.fromList
