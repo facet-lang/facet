@@ -72,6 +72,8 @@ class Applicative p => Parsing p where
   -- FIXME: this is a bad name.
   capture0 :: (a -> b -> c) -> p a -> (p a -> p b) -> p c
 
+  {-# MINIMAL position, char, source, (<|>), fail, capture, capture0 #-}
+
 instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   position = C $ pure <$> position
   char s   = C $ pure <$> char s
