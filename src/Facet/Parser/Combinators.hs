@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeOperators #-}
 module Facet.Parser.Combinators
 ( Parsing(..)
 , char
@@ -38,12 +37,11 @@ module Facet.Parser.Combinators
 , optional
 ) where
 
-import           Control.Applicative (Alternative(..), liftA2, optional, (<**>))
+import           Control.Applicative (Alternative(..), optional, (<**>))
 import qualified Data.Char as Char
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as CharSet
 import           Data.Foldable (traverse_)
-import           Facet.Functor.C
 import           Facet.Parser.Source
 import           Facet.Parser.Span
 import           Prelude hiding (span)
@@ -71,15 +69,6 @@ class Alternative p => Parsing p where
   capture0 :: (a -> b -> c) -> p a -> (p a -> p b) -> p c
 
   {-# MINIMAL position, satisfy, source, errorWith, capture, capture0 #-}
-
-instance (Parsing f, Applicative g) => Parsing (f :.: g) where
-  position = C $ pure <$> position
-  satisfy p = C $ pure <$> satisfy p
-  source   = C $ pure <$> source
-  errorWith a s = C $ errorWith (pure <$> a) s
-  capture f p g = C $ capture (liftA2 f) (getC p) (getC . g . C)
-  capture0 f p g = C $ capture0 (liftA2 f) (getC p) (getC . g . C)
-  -- FIXME: we can’t do something like notFollowedBy effectively because of contravariance in g.
 
 char :: Parsing p => Char -> p Char
 char c = satisfy (== c) <|> errorWith (Just c) (show c)
