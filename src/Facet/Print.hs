@@ -181,6 +181,7 @@ instance U.Module Print Print Print Print where
   n .: b = group $ ann (pretty n) b
 
 instance U.Decl Print Print Print where
+  -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
   t .= b = t </> pretty '=' <+> b
 
   t >-> f = bind $ \ v -> let v' = var v in group (align (parens (ann v' t))) </> arrow <+> prec FnR (f v')
