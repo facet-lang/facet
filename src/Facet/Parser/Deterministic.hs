@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 -- | A parser based on the design laid out in /Deterministic, Error-Correcting Combinator Parsers/, S. Doaitse Swierstra, Luc Duponcheel (tho it has diverged somewhat due both to changes in the language and our specific use case).
 module Facet.Parser.Deterministic
 ( parseString
@@ -25,7 +26,7 @@ parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], Maybe a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
 
 parse :: Parser a -> Source -> String -> (State, Maybe a)
-parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) mempty (\ i -> (i, Nothing)) (\ i a -> (i, Just a))
+parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) mempty (,Nothing) (\ i a -> (i, Just a))
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
@@ -78,7 +79,7 @@ inFirstSet = memberOf . table
 -- FIXME: do we want to require that p be non-nullable?
 captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> ((State, a) -> Parser a') -> Cont a -> Cont c
 captureBody f g mk k = Cont $ \ i follow err k' ->
-  let (i', a) = runCont k i (inFirstSet gp <> follow) (\ i -> (i, Nothing)) (\ i a -> (i, Just a))
+  let (i', a) = runCont k i (inFirstSet gp <> follow) (,Nothing) (\ i a -> (i, Just a))
       gp = g (mk (i', fromJust a))
   in runCont (choose gp) i' follow err $ \ i'' b ->
   let fab = f (fromJust a) b in fab `seq` k' i'' fab
