@@ -84,7 +84,7 @@ instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   capture0 f p g = C $ capture0 (liftA2 f) (getC p) (getC . g . C)
 
 char :: Parsing p => Char -> p Char
-char = satisfy . (==)
+char c = satisfy (== c) <|> fail c (show c)
 
 set :: Parsing p => CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
 set t f s = f . Just <$> satisfy (`CharSet.member` t) <|> fail (f Nothing) s
