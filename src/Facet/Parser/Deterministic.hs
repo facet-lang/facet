@@ -10,7 +10,7 @@ module Facet.Parser.Deterministic
 
 import           Data.Bifunctor (first)
 import qualified Data.CharSet as CharSet
-import qualified Data.IntMap as IntMap
+import           Data.Foldable (find)
 import           Data.Maybe (listToMaybe)
 import           Facet.Parser.Combinators
 import           Facet.Parser.Excerpt
@@ -83,24 +83,24 @@ captureBody f g mk k = Cont $ \ i follow k' ->
   let fab = f a b in fab `seq` k' i'' fab
 
 
-newtype Table a = Table { getTable :: IntMap.IntMap a }
+newtype Table a = Table { getTable :: [(CharSet.CharSet, a)] }
   deriving (Functor)
 
 instance Semigroup (Table a) where
-  -- NB: we append in reverse order because <> on Map is left-biased and we want a right-biased union
+  -- NB: we append in reverse order because we want a right-biased union
   a1 <> a2 = Table (getTable a2 <> getTable a1)
 
 instance Monoid (Table a) where
   mempty = Table mempty
 
 singleton :: Char -> a -> Table a
-singleton c k = Table (IntMap.singleton (fromEnum c) k)
+singleton c k = Table [(CharSet.singleton c, k)]
 
 keysSet :: Table a -> CharSet.CharSet
-keysSet = CharSet.toCharSet . IntMap.keysSet . getTable
+keysSet = foldMap fst . getTable
 
 lookup :: Char -> Table a -> Maybe a
-lookup c t = IntMap.lookup (fromEnum c) (getTable t)
+lookup c t = snd <$> find (CharSet.member c . fst) (getTable t)
 
 
 newtype Cont a = Cont { runCont :: forall r . State -> [CharSet.CharSet] -> (State -> a -> r) -> r }
