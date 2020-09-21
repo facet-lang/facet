@@ -36,4 +36,13 @@ uncurry
 (>>) : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (A -> C)
 = { a -> f (g a) }
 
+
+(<|) : { A, B : Type } -> (f : A -> B) -> (a : A) -> B
+= f a
+# NB: equivalently: { A, B : Type } -> (f : A -> B) -> A -> B = f
+# NB: equivalently: { A, B : Type } -> (A -> B) -> A -> B = id
+
+(|>) : { A, B : Type } -> (a : A) -> (f : A -> B) -> B
+= f a
+
 }
