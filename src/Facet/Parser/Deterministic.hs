@@ -50,20 +50,20 @@ instance Applicative Parser where
     nullablef = nullable (null f)
     tseq = combine nullablef tabf taba
       where
-      tabf = fmap (\ k -> cont $ \ i noskip ->
+      tabf = fmap (\ k -> Cont $ \ k' i noskip ->
         let (i', f')  = runCont k (,) i (firstSet a:noskip)
             (i'', a') = runCont (choose a) (,) i' noskip
             fa'       = f' a'
-        in  fa' `seq` (i'', fa')) (table f)
-      taba = fmap (\ k -> cont $ \ i noskip ->
+        in  fa' `seq` k' i'' fa') (table f)
+      taba = fmap (\ k -> Cont $ \ k' i noskip ->
         let (i', a') = runCont k (,) i noskip
             fa'      = getNull (null f) i' a'
-        in  fa' `seq` (i', fa')) (table a)
+        in  fa' `seq` k' i' fa') (table a)
 
 instance Parsing Parser where
   position = Parser (Null pos) mempty mempty
 
-  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) (Map.singleton s (cont (\ i _ -> (advance i, s))))
+  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) (Map.singleton s (Cont (\ k' i _ -> k' (advance i) s)))
 
   source = Parser (Null src) mempty mempty
 
@@ -75,7 +75,7 @@ instance Parsing Parser where
   -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (fmap go (table p))
     where
-    go k = cont $ \ i -> runCont (captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k) (,) i
+    go k = Cont $ \ k' i -> runCont (captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k) k' i
 
   capture0 f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (fmap go (table p))
     where
@@ -85,22 +85,19 @@ instance Parsing Parser where
 -- FIXME: is this even correct?
 -- FIXME: do we want to require that p be non-nullable?
 captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> ((State, a) -> Parser a') -> Cont a -> Cont c
-captureBody f g mk k = cont $ \ i follow ->
+captureBody f g mk k = Cont $ \ k' i follow ->
   let (i', a) = runCont k (,) i (fs:follow)
       fs = firstSet gp
       gp = g (mk (i', a))
       (i'', b) = runCont (choose gp) (,) i' follow
       fab = f a b
-  in fab `seq` (i'', fab)
+  in fab `seq` k' i'' fab
 
 
 type Table a = Map.Map Char (Cont a)
 
 newtype Cont a = Cont { runCont :: forall r . (State -> a -> r) -> State -> [CharSet] -> r }
   deriving (Functor)
-
-cont :: (State -> [CharSet] -> (State, a)) -> Cont a
-cont k = Cont $ \ r i f -> uncurry r (k i f)
 
 
 data Null a
@@ -140,15 +137,15 @@ deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
 
 choose :: Parser a -> Cont a
-choose p = cont go
+choose p = Cont go
   where
-  go i noskip = case input i of
-    []  -> insertOrNull (null p) i
+  go k i noskip = case input i of
+    []  -> uncurry k (insertOrNull (null p) i)
     s:_ -> case Map.lookup s (table p) of
       Nothing
-        | any (member s) noskip -> insertOrNull (null p) i
-        | otherwise             -> runCont (choose p) (,) (advance i{ errs = errs i ++ [ deleted (show s) i ] }) noskip
-      Just k                    -> runCont k (,) i noskip
+        | any (member s) noskip -> uncurry k (insertOrNull (null p) i)
+        | otherwise             -> runCont (choose p) k (advance i{ errs = errs i ++ [ deleted (show s) i ] }) noskip
+      Just k'                   -> runCont k' k i noskip
 
 insertOrNull :: Null a -> State -> (State, a)
 insertOrNull n i = case n of
