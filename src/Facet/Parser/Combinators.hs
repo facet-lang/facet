@@ -3,7 +3,6 @@ module Facet.Parser.Combinators
 ( Parsing(..)
 , (<?>)
 , string
-, set
 , opt
 , optional
 , many
@@ -50,6 +49,10 @@ import           Prelude hiding (fail, span)
 class Applicative p => Parsing p where
   position :: p Pos
   char :: Char -> p Char
+
+  set :: CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
+  set t f s = foldr ((<|>) . fmap (f . Just) . char) (fail (f Nothing) s) (CharSet.toList t)
+
   source :: p Source
   -- FIXME: warn on non-disjoint first sets
   (<|>) :: p a -> p a -> p a
@@ -85,9 +88,6 @@ infixl 2 <?>
 
 string :: Parsing p => String -> p String
 string s = s <$ traverse_ char s <?> (s, s)
-
-set :: Parsing p => CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
-set t f s = foldr ((<|>) . fmap (f . Just) . char) (fail (f Nothing) s) (CharSet.toList t)
 
 opt :: Parsing p => p a -> a -> p a
 opt p v = p <|> pure v
