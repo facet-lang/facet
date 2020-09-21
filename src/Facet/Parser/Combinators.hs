@@ -50,6 +50,7 @@ class Applicative p => Parsing p where
   position :: p Pos
 
   char :: Char -> p Char
+  char c = set (CharSet.singleton c) (const c) (show c)
 
   set :: CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
   set t f s = foldr ((<|>) . fmap (f . Just) . char) (fail (f Nothing) s) (CharSet.toList t)
@@ -73,7 +74,7 @@ class Applicative p => Parsing p where
   -- FIXME: this is a bad name.
   capture0 :: (a -> b -> c) -> p a -> (p a -> p b) -> p c
 
-  {-# MINIMAL position, char, source, (<|>), fail, capture, capture0 #-}
+  {-# MINIMAL position, (char | set), source, (<|>), fail, capture, capture0 #-}
 
 instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   position = C $ pure <$> position
