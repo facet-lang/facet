@@ -129,9 +129,9 @@ deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P
 choose :: Parser a -> Cont a
 choose p = go
   where
-  go = Cont $ \ i follow k -> case listToMaybe (input i) >>= (`Map.lookup` table p) of
-    Nothing -> recovering follow go k i (null p)
-    Just k' -> runCont k' i follow k
+  go = Cont $ \ i -> case listToMaybe (input i) >>= (`Map.lookup` table p) of
+    Nothing -> \ follow k -> recovering follow go k i (null p)
+    Just k' -> runCont k' i
 
 insertOrNull :: State -> Null a -> (State -> a -> r) -> r
 insertOrNull i n k = case n of
