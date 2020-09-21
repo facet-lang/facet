@@ -139,14 +139,14 @@ insertOrNull i n k = case n of
   Insert a e -> k i{ errs = errs i ++ e i } (a i)
 
 recovering :: (Char -> Bool) -> Cont a -> State -> Null a -> [CharSet] -> (State -> a -> r) -> r
-recovering canMatch this i n follow k = case input i of
-  "" -> insertOrNull i n k
+recovering canMatch this i n follow = case input i of
+  "" -> insertOrNull i n
   s:_
     -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
     -- we can eliminate it if we instead allow the continuation to decide, I *think*.
     -- might involve a recovery parameter to Cont, taking null p?
-    | canMatch s -> insertOrNull i n k
-    | otherwise  -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow k
+    | canMatch s -> insertOrNull i n
+    | otherwise  -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow
 
 canMatch :: Char -> [CharSet] -> Bool
 canMatch = any . member
