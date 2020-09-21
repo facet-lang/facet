@@ -129,21 +129,25 @@ choose :: Parser a -> Cont a
 choose p = Cont go
   where
   go i follow k = case input i of
-    []  -> insertOrNull i (null p) k
+    [] -> recovering follow (choose p) k i (null p)
     s:_ -> case Map.lookup s (table p) of
-      Nothing
-        -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
-        -- we can eliminate it if we instead allow the continuation to decide, I *think*.
-        -- might involve a recovery parameter to Cont, taking null p?
-        | any (member s) follow -> insertOrNull i (null p) k
-        | otherwise             -> runCont (choose p) (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow k
-      Just k'                   -> runCont k' i follow k
+      Nothing -> recovering follow (choose p) k i (null p)
+      Just k' -> runCont k' i follow k
 
 insertOrNull :: State -> Null a -> (State -> a -> r) -> r
 insertOrNull i n k = case n of
   Null   a   -> k i (a i)
   Insert a e -> k i{ errs = errs i ++ e i } (a i)
 
+recovering :: [CharSet] -> Cont a -> (State -> a -> r) -> State -> Null a -> r
+recovering follow this k i n = case input i of
+  "" -> insertOrNull i n k
+  s:_
+    -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
+    -- we can eliminate it if we instead allow the continuation to decide, I *think*.
+    -- might involve a recovery parameter to Cont, taking null p?
+    | any (member s) follow -> insertOrNull i n k
+    | otherwise             -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow k
 
 data State = State
   { src   :: Source
