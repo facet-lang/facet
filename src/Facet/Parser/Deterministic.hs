@@ -45,19 +45,20 @@ data Parser a = Parser
 
 instance Applicative Parser where
   pure a = Parser (pure a) mempty []
-  Parser nf ff tf <*> a = Parser (nf <*> null a) (combine (nullable nf) ff (firstSet a)) $ tseq tf
+  f <*> a = Parser (null f <*> null a) (combine nullablef (firstSet f) (firstSet a)) tseq
     where
+    nullablef = nullable (null f)
     choices = buildMap (table a)
-    tseq tf = combine (nullable nf) tabf taba
+    tseq = combine nullablef tabf taba
       where
       tabf = map (fmap (\ k i noskip ->
         let (i', f')  = k i (firstSet a:noskip)
             (i'', a') = choose (null a) choices i' noskip
             fa'       = f' a'
-        in  fa' `seq` (i'', fa'))) tf
+        in  fa' `seq` (i'', fa'))) (table f)
       taba = map (fmap (\ k i noskip ->
         let (i', a') = k i noskip
-            fa'      = getNull nf i' a'
+            fa'      = getNull (null f) i' a'
         in  fa' `seq` (i', fa'))) (table a)
 
 instance Parsing Parser where
