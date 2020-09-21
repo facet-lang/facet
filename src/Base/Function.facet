@@ -26,6 +26,7 @@ curry
 uncurry
 : { A, B, C : Type } -> (f : A -> B -> C) -> (A, B) -> C
 = { (x, y) -> f x y } # NB: you can’t bind individual fields of a type in the signature, so we have to pattern match here
+# NB: equivalently: uncurry : { A, B, C : Type } -> (f : A -> B -> C) -> (x : (A, B)) -> C = f (fst x) (snd x) # assuming standard definitions of these projections
 
 
 # fixme: do we want to support mixfix syntax?
