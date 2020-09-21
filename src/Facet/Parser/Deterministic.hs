@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE RankNTypes #-}
 -- | A parser based on the design laid out in /Deterministic, Error-Correcting Combinator Parsers/, S. Doaitse Swierstra, Luc Duponcheel (tho it has diverged somewhat due both to changes in the language and our specific use case).
 module Facet.Parser.Deterministic
@@ -13,7 +12,6 @@ import           Data.Bifunctor (first)
 import           Data.CharSet (CharSet, fromList, member)
 import qualified Data.Map as Map
 import           Data.Maybe (listToMaybe)
-import           Data.Monoid (Dual(..))
 import           Facet.Parser.Combinators
 import           Facet.Parser.Excerpt
 import           Facet.Parser.Notice
@@ -87,7 +85,13 @@ captureBody f g mk k = Cont $ \ i follow k' ->
 
 newtype Table a = Table { getTable :: Map.Map Char a }
   deriving (Functor)
-  deriving (Monoid, Semigroup) via (Dual (Table a)) -- NB: we derive these via Dual because <> on Map is left-biased and we want a right-biased union
+
+instance Semigroup (Table a) where
+  -- NB: we append in reverse order because <> on Map is left-biased and we want a right-biased union
+  a1 <> a2 = Table (getTable a2 <> getTable a1)
+
+instance Monoid (Table a) where
+  mempty = Table mempty
 
 singleton :: Char -> a -> Table a
 singleton c k = Table (Map.singleton c k)
