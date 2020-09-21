@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE RankNTypes #-}
 -- | A parser based on the design laid out in /Deterministic, Error-Correcting Combinator Parsers/, S. Doaitse Swierstra, Luc Duponcheel (tho it has diverged somewhat due both to changes in the language and our specific use case).
 module Facet.Parser.Deterministic
@@ -12,13 +13,14 @@ import           Data.Bifunctor (first)
 import           Data.CharSet (CharSet, fromList, member)
 import qualified Data.Map as Map
 import           Data.Maybe (listToMaybe)
+import           Data.Monoid (Dual(..))
 import           Facet.Parser.Combinators
 import           Facet.Parser.Excerpt
 import           Facet.Parser.Notice
 import           Facet.Parser.Source
 import           Facet.Parser.Span
 import qualified Facet.Pretty as P
-import           Prelude hiding (null)
+import           Prelude hiding (lookup, null)
 
 parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
@@ -29,7 +31,7 @@ parse p ls s = runCont (choose (const False) p) (State ls s mempty (Pos 0 0)) me
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
   { null     :: Null a
-  , table    :: Table a
+  , table    :: Table (Cont a)
   }
   deriving (Functor)
 
@@ -51,12 +53,11 @@ instance Applicative Parser where
 instance Parsing Parser where
   position = Parser (Null pos) mempty
 
-  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (Map.singleton s (Cont (\ i _ k' -> k' (advance i) s)))
+  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s (Cont (\ i _ k' -> k' (advance i) s)))
 
   source = Parser (Null src) mempty
 
-  -- NB: we append the tables in reverse order because <> on Map is left-biased and we want a right-biased union
-  pl <|> pr = Parser (null pl <> null pr) (table pr <> table pl)
+  pl <|> pr = Parser (null pl <> null pr) (table pl <> table pr)
 
   fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty
 
@@ -70,7 +71,7 @@ instance Parsing Parser where
     go = captureBody f g (pure . snd)
 
 firstSet :: Parser a -> CharSet
-firstSet p = fromList $ Map.keys (table p)
+firstSet = keys . table
 
 -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
 -- FIXME: is this even correct?
@@ -84,7 +85,19 @@ captureBody f g mk k = Cont $ \ i follow k' ->
   let fab = f a b in fab `seq` k' i'' fab
 
 
-type Table a = Map.Map Char (Cont a)
+newtype Table a = Table { getTable :: Map.Map Char a }
+  deriving (Functor)
+  deriving (Monoid, Semigroup) via (Dual (Table a)) -- NB: we derive these via Dual because <> on Map is left-biased and we want a right-biased union
+
+singleton :: Char -> a -> Table a
+singleton c k = Table (Map.singleton c k)
+
+keys :: Table a -> CharSet
+keys = fromList . Map.keys . getTable
+
+lookup :: Char -> Table a -> Maybe a
+lookup c t = Map.lookup c (getTable t)
+
 
 newtype Cont a = Cont { runCont :: forall r . State -> [CharSet] -> (State -> a -> r) -> r }
   deriving (Functor)
@@ -129,7 +142,7 @@ deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P
 choose :: (Char -> Bool) -> Parser a -> Cont a
 choose canMatch p = go
   where
-  go = Cont $ \ i -> case listToMaybe (input i) >>= (`Map.lookup` table p) of
+  go = Cont $ \ i -> case listToMaybe (input i) >>= (`lookup` table p) of
     Nothing -> recovering canMatch go i (null p)
     Just k' -> runCont k' i
 
