@@ -26,7 +26,7 @@ parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], Maybe a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
 
 parse :: Parser a -> Source -> String -> (State, Maybe a)
-parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) mempty (,Nothing) (\ i a -> (i, Just a))
+parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) mempty (, Nothing) (\ i -> (i,) . Just)
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
@@ -54,17 +54,17 @@ instance Applicative Parser where
           Nothing -> err i
 
 instance Alternative Parser where
-  empty = Parser (Insert ((,) <$> err (P.pretty "empty") <*> pure Nothing)) mempty
+  empty = Parser (Insert ((, Nothing) <$> err (P.pretty "empty"))) mempty
   pl <|> pr = Parser (null pl <> null pr) (table pl <> table pr)
 
 instance Parsing Parser where
   position = Parser (Null pos) mempty
 
-  satisfy p = Parser (Insert ((,) <$> err (P.pretty "inserted unknown character") <*> pure Nothing)) (Table [(Predicate p, Cont (\ i _ _ k' -> k' (advance i) (head (input i))))])
+  satisfy p = Parser (Insert ((, Nothing) <$> err (P.pretty "inserted unknown character"))) (Table [(Predicate p, Cont (\ i _ _ k' -> k' (advance i) (head (input i))))])
 
   source = Parser (Null src) mempty
 
-  errorWith a e = Parser (Insert ((,) <$> inserted e <*> pure a)) mempty
+  errorWith a e = Parser (Insert ((, a) <$> inserted e)) mempty
 
   -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (fmap go (table p))
