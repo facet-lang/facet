@@ -175,9 +175,6 @@ recovering :: Cont a -> State -> Null a -> Predicate -> (State -> r) -> (State -
 recovering this i n follow = case input i of
   "" -> insertOrNull i n
   s:_
-    -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
-    -- we can eliminate it if we instead allow the continuation to decide, I *think*.
-    -- might involve a recovery parameter to Cont, taking null p?
     | test s follow -> insertOrNull i n
     | otherwise     -> runCont this (advance i{ errs = errs i ++ deleted (show s) i }) follow
 
