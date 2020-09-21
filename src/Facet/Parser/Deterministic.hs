@@ -105,9 +105,6 @@ cont :: (State -> [CharSet] -> (State, a)) -> Cont a
 cont k = Cont $ \ r i f -> uncurry r (k i f)
 
 
-type ContMap a = Map.Map Char (Cont a)
-
-
 data Null a
   = Null   (State -> a)
   | Insert (State -> a) (State -> [Notice])
@@ -144,7 +141,7 @@ inserted s i = Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P
 deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
 
-choose :: Null a -> ContMap a -> Cont a
+choose :: Null a -> Table a -> Cont a
 choose p choices = cont go
   where
   go i noskip = case input i of
