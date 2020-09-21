@@ -11,6 +11,7 @@
 module Facet.Print
 ( prettyPrint
 , prettyPrintWith
+, prettyWith
 , Print(..)
 , Context(..)
 , TPrint(..)
@@ -32,7 +33,10 @@ prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = prettyPrintWith defaultStyle
 
 prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> Print -> m ()
-prettyPrintWith style = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runPrint` const id) . group
+prettyPrintWith style = putDoc . prettyWith style
+
+prettyWith :: (Nest Highlight -> ANSI.AnsiStyle) -> Print -> PP.Doc ANSI.AnsiStyle
+prettyWith style = PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runPrint` const id) . group
 
 defaultStyle :: Nest Highlight -> ANSI.AnsiStyle
 defaultStyle = \case
