@@ -73,14 +73,14 @@ tatom tvar
   prd ts = foldl1 (liftA2 (S..*)) ts
 
 tglobal :: (S.Type ty, Parsing p) => p ty
-tglobal = S.tglobal <$> tident <?> (Just (S.tglobal "_"), "variable")
+tglobal = S.tglobal <$> tident <|> errorWith (Just (S.tglobal "_")) "variable"
 
 
 expr :: (S.Expr expr, S.Err expr, Parsing p) => p expr
 expr = runIdentity <$> expr_ (pure <$> global)
 
 global :: (S.Expr expr, Parsing p) => p expr
-global = S.global <$> ident <?> (Just (S.global "_"), "variable")
+global = S.global <$> ident <|> errorWith (Just (S.global "_")) "variable"
 
 expr_ :: forall p env expr . (S.Permutable env, S.Expr expr, S.Err expr, Parsing p) => p (env expr) -> p (env expr)
 expr_ = app atom
@@ -92,7 +92,7 @@ lam :: forall p env expr . (S.Permutable env, S.Expr expr, S.Err expr, Parsing p
 lam var = braces $ clause var
   where
   clause :: S.Permutable env' => p (env' expr) -> p (env' expr)
-  clause var = S.lam0 (\ v -> capture (const id) identS (\ i -> let var' = S.weaken var <|> v <$ token i in ws *> (clause var' <|> arrow *> expr_ var'))) <?> (Just (pure S.err), "clause")
+  clause var = S.lam0 (\ v -> capture (const id) identS (\ i -> let var' = S.weaken var <|> v <$ token i in ws *> (clause var' <|> arrow *> expr_ var'))) <|> errorWith (Just (pure S.err)) "clause"
 
 atom :: (S.Permutable env, S.Expr expr, S.Err expr, Parsing p) => p (env expr) -> p (env expr)
 atom var
