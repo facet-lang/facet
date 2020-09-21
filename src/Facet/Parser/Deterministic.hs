@@ -24,7 +24,7 @@ parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
 
 parse :: Parser a -> Source -> String -> (State, a)
-parse p ls s = runCont (choose (const False) p) (State ls s mempty (Pos 0 0)) (const False) (,)
+parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) (const False) (,)
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
@@ -42,7 +42,7 @@ instance Applicative Parser where
       where
       f' k = Cont $ \ i follow k' ->
         runCont k i ((||) <$> (`CharSet.member` firstSet a) <*> follow) $ \ i' f' ->
-        runCont (choose follow a) i' follow $ \ i'' a' ->
+        runCont (choose a) i' follow $ \ i'' a' ->
         let fa' = f' a' in fa' `seq` k' i'' fa'
       a' k = Cont $ \ i follow k' ->
         runCont k i follow $ \ i' a' ->
@@ -81,7 +81,7 @@ captureBody f g mk k = Cont $ \ i follow k' ->
   let (i', a) = runCont k i ((||) <$> (`CharSet.member` fs) <*> follow) (,)
       fs = firstSet gp
       gp = g (mk (i', a))
-  in runCont (choose follow gp) i' follow $ \ i'' b ->
+  in runCont (choose gp) i' follow $ \ i'' b ->
   let fab = f a b in fab `seq` k' i'' fab
 
 
@@ -148,11 +148,11 @@ inserted s i = Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P
 deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
 
-choose :: Predicate -> Parser a -> Cont a
-choose canMatch p = go
+choose :: Parser a -> Cont a
+choose p = go
   where
   go = Cont $ \ i -> case listToMaybe (input i) >>= (`lookup` table p) of
-    Nothing -> recovering canMatch go i (null p)
+    Nothing -> recovering go i (null p)
     Just k' -> runCont k' i
 
 insertOrNull :: State -> Null a -> (State -> a -> r) -> r
@@ -160,14 +160,14 @@ insertOrNull i n k = case n of
   Null   a   -> k i (a i)
   Insert a e -> k i{ errs = errs i ++ e i } (a i)
 
-recovering :: Predicate -> Cont a -> State -> Null a -> Predicate -> (State -> a -> r) -> r
-recovering canMatch this i n follow = case input i of
+recovering :: Cont a -> State -> Null a -> Predicate -> (State -> a -> r) -> r
+recovering this i n follow = case input i of
   "" -> insertOrNull i n
   s:_
     -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
     -- we can eliminate it if we instead allow the continuation to decide, I *think*.
     -- might involve a recovery parameter to Cont, taking null p?
-    | canMatch s -> insertOrNull i n
+    | follow s   -> insertOrNull i n
     | otherwise  -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow
 
 
