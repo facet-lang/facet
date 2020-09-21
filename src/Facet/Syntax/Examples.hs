@@ -4,8 +4,10 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Facet.Syntax.Examples
-( -- * Examples
-  prelude
+( -- * Parsing
+  parseString'
+  -- * Examples
+, prelude
 , id'
 , const'
 , flip'
@@ -24,7 +26,19 @@ module Facet.Syntax.Examples
 , Empty(..)
 ) where
 
-import Facet.Syntax.Typed
+import           Control.Monad.IO.Class (MonadIO(..))
+import           Data.Foldable (traverse_)
+import           Facet.Parser.Deterministic
+import           Facet.Parser.Notice
+import qualified Facet.Pretty as P
+import           Facet.Syntax.Typed
+
+parseString' :: P.Pretty a => MonadIO m => Parser a -> String -> m ()
+parseString' p s = do
+  let (errs, a) = parseString Nothing p s
+  traverse_ (P.putDoc . prettyNotice) errs
+  P.putDoc (P.pretty a)
+
 
 prelude :: Module expr ty decl mod => mod ()
 prelude = do
