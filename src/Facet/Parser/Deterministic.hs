@@ -105,6 +105,9 @@ lookup :: Char -> Table a -> Maybe a
 lookup c t = snd <$> find (CharSet.member c . fst) (getTable t)
 
 
+type Predicate = Char -> Bool
+
+
 newtype Cont a = Cont { runCont :: forall r . State -> [CharSet.CharSet] -> (State -> a -> r) -> r }
   deriving (Functor)
 
@@ -145,7 +148,7 @@ inserted s i = Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P
 deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
 
-choose :: (Char -> Bool) -> Parser a -> Cont a
+choose :: Predicate -> Parser a -> Cont a
 choose canMatch p = go
   where
   go = Cont $ \ i -> case listToMaybe (input i) >>= (`lookup` table p) of
@@ -157,7 +160,7 @@ insertOrNull i n k = case n of
   Null   a   -> k i (a i)
   Insert a e -> k i{ errs = errs i ++ e i } (a i)
 
-recovering :: (Char -> Bool) -> Cont a -> State -> Null a -> [CharSet.CharSet] -> (State -> a -> r) -> r
+recovering :: Predicate -> Cont a -> State -> Null a -> [CharSet.CharSet] -> (State -> a -> r) -> r
 recovering canMatch this i n follow = case input i of
   "" -> insertOrNull i n
   s:_
