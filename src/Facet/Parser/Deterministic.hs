@@ -10,7 +10,7 @@ module Facet.Parser.Deterministic
 
 import           Data.Bifunctor (first)
 import           Data.Foldable (find)
-import           Data.Maybe (listToMaybe)
+import           Data.Maybe (fromJust, listToMaybe)
 import           Facet.Parser.Combinators
 import           Facet.Parser.Excerpt
 import           Facet.Parser.Notice
@@ -21,11 +21,11 @@ import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 import           Prelude hiding (lookup, null)
 
-parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
+parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], Maybe a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
 
-parse :: Parser a -> Source -> String -> (State, a)
-parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) mempty (,)
+parse :: Parser a -> Source -> String -> (State, Maybe a)
+parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) mempty (\ i -> (i, Nothing)) (\ i a -> (i, Just a))
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
@@ -41,19 +41,19 @@ instance Applicative Parser where
     nullablef = nullable (null f)
     tseq = combine nullablef (f' <$> table f) (a' <$> table a)
       where
-      f' k = Cont $ \ i follow k' ->
-        runCont k i (inFirstSet a <> follow) $ \ i' f' ->
-        runCont (choose a) i' follow $ \ i'' a' ->
+      f' k = Cont $ \ i follow err k' ->
+        runCont k i (inFirstSet a <> follow) err $ \ i' f' ->
+        runCont (choose a) i' follow err $ \ i'' a' ->
         let fa' = f' a' in fa' `seq` k' i'' fa'
-      a' k = Cont $ \ i follow k' ->
-        runCont k i follow $ \ i' a' ->
+      a' k = Cont $ \ i follow err k' ->
+        runCont k i follow err $ \ i' a' ->
         let fa' = getNull (null f) i' a' in fa' `seq` k' i' fa'
 
 instance Parsing Parser where
   position = Parser (Null pos) mempty
 
   -- FIXME: we can’t pick a sensible default for an arbitrary predicate; recovery should be smarter I think?
-  satisfy p = Parser (Insert ((,) <$> err (P.pretty "inserted unknown character") <*> pure '_')) (Table [(Predicate p, Cont (\ i _ k' -> k' (advance i) (head (input i))))])
+  satisfy p = Parser (Insert ((,) <$> err (P.pretty "inserted unknown character") <*> pure '_')) (Table [(Predicate p, Cont (\ i _ _ k' -> k' (advance i) (head (input i))))])
 
   source = Parser (Null src) mempty
 
@@ -77,11 +77,11 @@ inFirstSet = memberOf . table
 -- FIXME: is this even correct?
 -- FIXME: do we want to require that p be non-nullable?
 captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> ((State, a) -> Parser a') -> Cont a -> Cont c
-captureBody f g mk k = Cont $ \ i follow k' ->
-  let (i', a) = runCont k i (inFirstSet gp <> follow) (,)
-      gp = g (mk (i', a))
-  in runCont (choose gp) i' follow $ \ i'' b ->
-  let fab = f a b in fab `seq` k' i'' fab
+captureBody f g mk k = Cont $ \ i follow err k' ->
+  let (i', a) = runCont k i (inFirstSet gp <> follow) (\ i -> (i, Nothing)) (\ i a -> (i, Just a))
+      gp = g (mk (i', fromJust a))
+  in runCont (choose gp) i' follow err $ \ i'' b ->
+  let fab = f (fromJust a) b in fab `seq` k' i'' fab
 
 
 newtype Table a = Table { getTable :: [(Predicate, a)] }
@@ -116,7 +116,7 @@ memberOf :: Table a -> Predicate
 memberOf = Predicate . flip member
 
 
-newtype Cont a = Cont { runCont :: forall r . State -> Predicate -> (State -> a -> r) -> r }
+newtype Cont a = Cont { runCont :: forall r . State -> Predicate -> (State -> r) -> (State -> a -> r) -> r }
   deriving (Functor)
 
 
@@ -171,15 +171,15 @@ insertOrNull i n k = case n of
   Null   a -> k i (a i)
   Insert a -> let (e, a') = a i in k i{ errs = errs i ++ e } a'
 
-recovering :: Cont a -> State -> Null a -> Predicate -> (State -> a -> r) -> r
-recovering this i n follow = case input i of
+recovering :: Cont a -> State -> Null a -> Predicate -> (State -> r) -> (State -> a -> r) -> r
+recovering this i n follow err = case input i of
   "" -> insertOrNull i n
   s:_
     -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
     -- we can eliminate it if we instead allow the continuation to decide, I *think*.
     -- might involve a recovery parameter to Cont, taking null p?
     | test s follow -> insertOrNull i n
-    | otherwise     -> runCont this (advance i{ errs = errs i ++ deleted (show s) i }) follow
+    | otherwise     -> runCont this (advance i{ errs = errs i ++ deleted (show s) i }) follow err
 
 
 data State = State

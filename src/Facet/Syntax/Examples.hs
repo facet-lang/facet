@@ -38,7 +38,7 @@ parseString' :: MonadIO m => Parser Print -> String -> m ()
 parseString' p s = do
   let (errs, a) = parseString Nothing p s
   traverse_ (P.putDoc . prettyNotice) errs
-  prettyPrint a
+  maybe (pure ()) prettyPrint a
 
 
 prelude :: Module expr ty decl mod => mod ()
