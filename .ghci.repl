@@ -39,4 +39,5 @@
 
 :load Facet.Eval Facet.Functor.C Facet.Functor.I Facet.Signature Facet.Parser Facet.Parser.Deterministic Facet.Parser.Notice Facet.Pretty Facet.Print Facet.Syntax.Typed Facet.Syntax.Examples
 
+import Facet.Parser
 import Facet.Syntax.Examples
