@@ -148,6 +148,7 @@ recovering follow this k i n = case input i of
     | any (member s) follow -> insertOrNull i n k
     | otherwise             -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow k
 
+
 data State = State
   { src   :: Source
   , input :: String
