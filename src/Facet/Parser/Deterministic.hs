@@ -130,6 +130,9 @@ choose p = Cont go
     []  -> insertOrNull i (null p) k
     s:_ -> case Map.lookup s (table p) of
       Nothing
+        -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
+        -- we can eliminate it if we instead allow the continuation to decide, I *think*.
+        -- might involve a recovery parameter to Cont, taking null p?
         | any (member s) follow -> insertOrNull i (null p) k
         | otherwise             -> runCont (choose p) (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow k
       Just k'                   -> runCont k' i follow k
