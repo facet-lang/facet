@@ -31,13 +31,14 @@ import           Data.Foldable (traverse_)
 import           Facet.Parser.Deterministic
 import           Facet.Parser.Notice
 import qualified Facet.Pretty as P
+import           Facet.Print
 import           Facet.Syntax.Typed
 
-parseString' :: P.Pretty a => MonadIO m => Parser a -> String -> m ()
+parseString' :: MonadIO m => Parser Print -> String -> m ()
 parseString' p s = do
   let (errs, a) = parseString Nothing p s
   traverse_ (P.putDoc . prettyNotice) errs
-  P.putDoc (P.pretty a)
+  prettyPrint a
 
 
 prelude :: Module expr ty decl mod => mod ()
