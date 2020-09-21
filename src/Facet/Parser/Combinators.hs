@@ -2,7 +2,6 @@ module Facet.Parser.Combinators
 ( Parsing(..)
 , char
 , oneOfSet
-, (<?>)
 , string
 , opt
 , skipMany
@@ -54,6 +53,7 @@ class Alternative p => Parsing p where
   source :: p Source
 
   -- FIXME: allow failure values to produce errors from the state
+  -- FIXME: always require errorWith to terminate a chain of alternatives
   errorWith :: Maybe a -> String -> p a
 
   -- | Parse some text, and then parse something else constructed using a parser that parses the same literal text.
@@ -76,13 +76,8 @@ char c = satisfy (== c) <|> errorWith (Just c) (show c)
 oneOfSet :: Parsing p => CharSet.CharSet -> p Char
 oneOfSet t = satisfy (`CharSet.member` t)
 
--- FIXME: always require <?>/errorWith to terminate a chain of alternatives
-(<?>) :: Parsing p => p a -> (Maybe a, String) -> p a
-p <?> (a, s) = p <|> errorWith a s
-infixl 2 <?>
-
 string :: Parsing p => String -> p String
-string s = s <$ traverse_ char s <?> (Just s, s)
+string s = s <$ traverse_ char s <|> errorWith (Just s) s
 
 opt :: Parsing p => p a -> a -> p a
 opt p v = p <|> pure v
