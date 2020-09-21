@@ -24,7 +24,7 @@ parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
 
 parse :: Parser a -> Source -> String -> (State, a)
-parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) mempty (,)
+parse p ls s = runCont (choose (const False) p) (State ls s mempty (Pos 0 0)) mempty (,)
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
@@ -42,7 +42,7 @@ instance Applicative Parser where
       where
       f' k = Cont $ \ i follow k' ->
         runCont k i (firstSet a:follow) $ \ i' f' ->
-        runCont (choose a) i' follow $ \ i'' a' ->
+        runCont (choose (`canMatch` follow) a) i' follow $ \ i'' a' ->
         let fa' = f' a' in fa' `seq` k' i'' fa'
       a' k = Cont $ \ i follow k' ->
         runCont k i follow $ \ i' a' ->
@@ -80,7 +80,7 @@ captureBody f g mk k = Cont $ \ i follow k' ->
   let (i', a) = runCont k i (fs:follow) (,)
       fs = firstSet gp
       gp = g (mk (i', a))
-  in runCont (choose gp) i' follow $ \ i'' b ->
+  in runCont (choose (`canMatch` follow) gp) i' follow $ \ i'' b ->
   let fab = f a b in fab `seq` k' i'' fab
 
 
@@ -126,11 +126,11 @@ inserted s i = Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P
 deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
 
-choose :: Parser a -> Cont a
-choose p = go
+choose :: (Char -> Bool) -> Parser a -> Cont a
+choose canMatch p = go
   where
   go = Cont $ \ i -> case listToMaybe (input i) >>= (`Map.lookup` table p) of
-    Nothing -> \ follow -> recovering (`canMatch` follow) go i (null p) follow
+    Nothing -> recovering canMatch go i (null p)
     Just k' -> runCont k' i
 
 insertOrNull :: State -> Null a -> (State -> a -> r) -> r
