@@ -140,17 +140,17 @@ choose :: Parser a -> Cont a
 choose p = Cont go
   where
   go k i noskip = case input i of
-    []  -> uncurry k (insertOrNull (null p) i)
+    []  -> insertOrNull k (null p) i
     s:_ -> case Map.lookup s (table p) of
       Nothing
-        | any (member s) noskip -> uncurry k (insertOrNull (null p) i)
+        | any (member s) noskip -> insertOrNull k (null p) i
         | otherwise             -> runCont (choose p) k (advance i{ errs = errs i ++ [ deleted (show s) i ] }) noskip
       Just k'                   -> runCont k' k i noskip
 
-insertOrNull :: Null a -> State -> (State, a)
-insertOrNull n i = case n of
-  Null   a   -> (i, a i)
-  Insert a e -> (i{ errs = errs i ++ e i }, a i)
+insertOrNull :: (State -> a -> r) -> Null a -> State -> r
+insertOrNull k n i = case n of
+  Null   a   -> k i (a i)
+  Insert a e -> k i{ errs = errs i ++ e i } (a i)
 
 
 data State = State
