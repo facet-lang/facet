@@ -9,7 +9,7 @@ module Facet.Parser.Deterministic
 ) where
 
 import           Data.Bifunctor (first)
-import           Data.CharSet (CharSet, member, toCharSet)
+import qualified Data.CharSet as CharSet
 import qualified Data.IntMap as IntMap
 import           Data.Maybe (listToMaybe)
 import           Facet.Parser.Combinators
@@ -68,7 +68,7 @@ instance Parsing Parser where
     where
     go = captureBody f g (pure . snd)
 
-firstSet :: Parser a -> CharSet
+firstSet :: Parser a -> CharSet.CharSet
 firstSet = keysSet . table
 
 -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
@@ -96,14 +96,14 @@ instance Monoid (Table a) where
 singleton :: Char -> a -> Table a
 singleton c k = Table (IntMap.singleton (fromEnum c) k)
 
-keysSet :: Table a -> CharSet
-keysSet = toCharSet . IntMap.keysSet . getTable
+keysSet :: Table a -> CharSet.CharSet
+keysSet = CharSet.toCharSet . IntMap.keysSet . getTable
 
 lookup :: Char -> Table a -> Maybe a
 lookup c t = IntMap.lookup (fromEnum c) (getTable t)
 
 
-newtype Cont a = Cont { runCont :: forall r . State -> [CharSet] -> (State -> a -> r) -> r }
+newtype Cont a = Cont { runCont :: forall r . State -> [CharSet.CharSet] -> (State -> a -> r) -> r }
   deriving (Functor)
 
 
@@ -155,7 +155,7 @@ insertOrNull i n k = case n of
   Null   a   -> k i (a i)
   Insert a e -> k i{ errs = errs i ++ e i } (a i)
 
-recovering :: (Char -> Bool) -> Cont a -> State -> Null a -> [CharSet] -> (State -> a -> r) -> r
+recovering :: (Char -> Bool) -> Cont a -> State -> Null a -> [CharSet.CharSet] -> (State -> a -> r) -> r
 recovering canMatch this i n follow = case input i of
   "" -> insertOrNull i n
   s:_
@@ -165,8 +165,8 @@ recovering canMatch this i n follow = case input i of
     | canMatch s -> insertOrNull i n
     | otherwise  -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow
 
-canMatch :: Char -> [CharSet] -> Bool
-canMatch = any . member
+canMatch :: Char -> [CharSet.CharSet] -> Bool
+canMatch = any . CharSet.member
 
 
 data State = State
