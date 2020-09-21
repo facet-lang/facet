@@ -104,10 +104,13 @@ lookup :: Char -> Table a -> Maybe a
 lookup c t = snd <$> find (CharSet.member c . fst) (getTable t)
 
 
-newtype Predicate = Predicate { test :: Char -> Bool }
+newtype Predicate = Predicate { runPredicate :: Char -> Bool }
+
+test :: Char -> Predicate -> Bool
+test = flip runPredicate
 
 instance Semigroup Predicate where
-  p1 <> p2 = Predicate ((||) <$> test p1 <*> test p2)
+  p1 <> p2 = Predicate ((||) <$> runPredicate p1 <*> runPredicate p2)
 
 instance Monoid Predicate where
   mempty = Predicate $ const False
@@ -175,7 +178,7 @@ recovering this i n follow = case input i of
     -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
     -- we can eliminate it if we instead allow the continuation to decide, I *think*.
     -- might involve a recovery parameter to Cont, taking null p?
-    | test follow s -> insertOrNull i n
+    | test s follow -> insertOrNull i n
     | otherwise     -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow
 
 
