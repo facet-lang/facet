@@ -31,7 +31,7 @@ parseString' p s = do
   P.putDoc (P.pretty a)
 
 parse :: Parser a -> Source -> String -> (State, a)
-parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
+parse p ls s = runCont (choose (null p) choices) (State ls s mempty (Pos 0 0)) mempty
   where
   choices = buildMap (table p)
 
@@ -51,20 +51,20 @@ instance Applicative Parser where
     choices = buildMap (table a)
     tseq = combine nullablef tabf taba
       where
-      tabf = map (fmap (\ k i noskip ->
-        let (i', f')  = k i (firstSet a:noskip)
-            (i'', a') = choose (null a) choices i' noskip
+      tabf = map (fmap (\ k -> Cont $ \ i noskip ->
+        let (i', f')  = runCont k i (firstSet a:noskip)
+            (i'', a') = runCont (choose (null a) choices) i' noskip
             fa'       = f' a'
         in  fa' `seq` (i'', fa'))) (table f)
-      taba = map (fmap (\ k i noskip ->
-        let (i', a') = k i noskip
+      taba = map (fmap (\ k -> Cont $ \ i noskip ->
+        let (i', a') = runCont k i noskip
             fa'      = getNull (null f) i' a'
         in  fa' `seq` (i', fa'))) (table a)
 
 instance Parsing Parser where
   position = Parser (Null pos) mempty []
 
-  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, \ i _ -> (advance i, s)) ]
+  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, Cont $ \ i _ -> (advance i, s)) ]
 
   source = Parser (Null src) mempty []
 
@@ -75,7 +75,7 @@ instance Parsing Parser where
   -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table p))
     where
-    go k i = captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k i
+    go k = Cont $ \ i -> runCont (captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k) i
 
   capture0 f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table p))
     where
@@ -84,18 +84,22 @@ instance Parsing Parser where
 -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
 -- FIXME: is this even correct?
 -- FIXME: do we want to require that p be non-nullable?
-captureBody f g mk k i follow =
-  let (i', a) = k i (fs:follow)
+captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> ((State, a) -> Parser a') -> Cont a -> Cont c
+captureBody f g mk k = Cont $ \ i follow ->
+  let (i', a) = runCont k i (fs:follow)
       fs = firstSet gp
       gp = g (mk (i', a))
       choices = Map.fromList (table gp)
-      (i'', b) = choose (null gp) choices i' follow
+      (i'', b) = runCont (choose (null gp) choices) i' follow
       fab = f a b
   in fab `seq` (i'', fab)
 
 
 type Table a = [(Char, Cont a)]
-type Cont a = State -> [CharSet] -> (State, a)
+
+newtype Cont a = Cont { runCont :: State -> [CharSet] -> (State, a) }
+  deriving (Functor)
+
 type ContMap a = Map.Map Char (Cont a)
 
 
@@ -136,15 +140,15 @@ deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
 
 choose :: Null a -> ContMap a -> Cont a
-choose p choices = go
+choose p choices = Cont go
   where
   go i noskip = case input i of
     []  -> insertOrNull p i
     s:_ -> case Map.lookup s choices of
       Nothing
         | any (member s) noskip -> insertOrNull p i
-        | otherwise             -> choose p choices (advance i{ errs = errs i ++ [ deleted (show s) i ] }) noskip
-      Just k                    -> k i noskip
+        | otherwise             -> runCont (choose p choices) (advance i{ errs = errs i ++ [ deleted (show s) i ] }) noskip
+      Just k                    -> runCont k i noskip
 
 insertOrNull :: Null a -> State -> (State, a)
 insertOrNull n i = case n of
