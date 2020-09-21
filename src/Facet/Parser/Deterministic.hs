@@ -32,7 +32,7 @@ parseString' p s = do
   P.putDoc (P.pretty a)
 
 parse :: Parser a -> Source -> String -> (State, a)
-parse p ls s = runCont (choose (null p) (table p)) (State ls s mempty (Pos 0 0)) mempty
+parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) mempty
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
@@ -51,7 +51,7 @@ instance Applicative Parser where
       where
       tabf = fmap (\ k -> cont $ \ i noskip ->
         let (i', f')  = runCont k i (firstSet a:noskip)
-            (i'', a') = runCont (choose (null a) (table a)) i' noskip
+            (i'', a') = runCont (choose a) i' noskip
             fa'       = f' a'
         in  fa' `seq` (i'', fa')) (table f)
       taba = fmap (\ k -> cont $ \ i noskip ->
@@ -88,7 +88,7 @@ captureBody f g mk k = cont $ \ i follow ->
   let (i', a) = runCont k i (fs:follow)
       fs = firstSet gp
       gp = g (mk (i', a))
-      (i'', b) = runCont (choose (null gp) (table gp)) i' follow
+      (i'', b) = runCont (choose gp) i' follow
       fab = f a b
   in fab `seq` (i'', fab)
 
@@ -141,15 +141,15 @@ inserted s i = Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P
 deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
 
-choose :: Null a -> Table a -> Cont a
-choose p choices = cont go
+choose :: Parser a -> Cont a
+choose p = cont go
   where
   go i noskip = case input i of
-    []  -> insertOrNull p i
-    s:_ -> case Map.lookup s choices of
+    []  -> insertOrNull (null p) i
+    s:_ -> case Map.lookup s (table p) of
       Nothing
-        | any (member s) noskip -> insertOrNull p i
-        | otherwise             -> runCont (choose p choices) (advance i{ errs = errs i ++ [ deleted (show s) i ] }) noskip
+        | any (member s) noskip -> insertOrNull (null p) i
+        | otherwise             -> runCont (choose p) (advance i{ errs = errs i ++ [ deleted (show s) i ] }) noskip
       Just k                    -> runCont k i noskip
 
 insertOrNull :: Null a -> State -> (State, a)
