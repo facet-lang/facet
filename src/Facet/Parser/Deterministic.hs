@@ -176,6 +176,6 @@ stateExcerpt i = Excerpt (path (src i)) (src i ! pos i) (Span (pos i) (pos i))
 
 
 combine :: Semigroup t => Bool -> t -> t -> t
-combine e s1 s2
-  | e         = s1 <> s2
-  | otherwise = s1
+combine e
+  | e         = (<>)
+  | otherwise = const
