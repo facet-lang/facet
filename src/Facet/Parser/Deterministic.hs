@@ -11,6 +11,7 @@ module Facet.Parser.Deterministic
 import           Data.Bifunctor (first)
 import           Data.CharSet (CharSet, fromList, member)
 import qualified Data.Map as Map
+import           Data.Maybe (listToMaybe)
 import           Facet.Parser.Combinators
 import           Facet.Parser.Excerpt
 import           Facet.Parser.Notice
@@ -128,11 +129,9 @@ deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P
 choose :: Parser a -> Cont a
 choose p = Cont go
   where
-  go i follow k = case input i of
-    [] -> recovering follow (choose p) k i (null p)
-    s:_ -> case Map.lookup s (table p) of
-      Nothing -> recovering follow (choose p) k i (null p)
-      Just k' -> runCont k' i follow k
+  go i follow k = case listToMaybe (input i) >>= (`Map.lookup` table p) of
+    Nothing -> recovering follow (choose p) k i (null p)
+    Just k' -> runCont k' i follow k
 
 insertOrNull :: State -> Null a -> (State -> a -> r) -> r
 insertOrNull i n k = case n of
