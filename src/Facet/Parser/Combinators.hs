@@ -39,6 +39,7 @@ module Facet.Parser.Combinators
 ) where
 
 import           Control.Applicative (liftA2, (<**>))
+import qualified Data.Char as Char
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as CharSet
 import           Data.Foldable (traverse_)
@@ -183,7 +184,7 @@ lbracket = token (char '[')
 rbracket = token (char ']')
 
 ws :: Parsing p => p ()
-ws = skipMany c
-  where
-  c = () <$ oneOfSet wsSet <|> fail () "whitespace"
-  wsSet = CharSet.separator <> CharSet.control
+ws = skipMany space
+
+space :: Parsing p => p Char
+space = satisfy Char.isSpace <|> fail ' ' "space"
