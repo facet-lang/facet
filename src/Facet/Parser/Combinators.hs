@@ -79,6 +79,7 @@ class Applicative p => Parsing p where
 instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   position = C $ pure <$> position
   char s   = C $ pure <$> char s
+  set s f e = C $ pure <$> set s f e
   source   = C $ pure <$> source
   l <|> r  = C $ getC l <|> getC r
   fail a s = C $ fail (pure a) s
