@@ -69,7 +69,7 @@ instance Parsing Parser where
     go = captureBody f g (pure . snd)
 
 firstSet :: Parser a -> CharSet
-firstSet = keys . table
+firstSet = keysSet . table
 
 -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
 -- FIXME: is this even correct?
@@ -96,8 +96,8 @@ instance Monoid (Table a) where
 singleton :: Char -> a -> Table a
 singleton c k = Table (Map.singleton c k)
 
-keys :: Table a -> CharSet
-keys = fromList . Map.keys . getTable
+keysSet :: Table a -> CharSet
+keysSet = fromList . Map.keys . getTable
 
 lookup :: Char -> Table a -> Maybe a
 lookup c t = Map.lookup c (getTable t)
