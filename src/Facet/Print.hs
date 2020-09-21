@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeApplications #-}
 module Facet.Print
 ( prettyPrint
+, prettyPrintWith
 , Print(..)
 , Context(..)
 , TPrint(..)
