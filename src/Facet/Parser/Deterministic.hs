@@ -51,13 +51,13 @@ instance Parsing Parser where
   position = Parser (Null pos) mempty
 
   -- FIXME: we can’t pick a sensible default for an arbitrary predicate; recovery should be smarter I think?
-  satisfy p = Parser (Insert (const '_') (pure <$> inserted "something satisfying an arbitrary predicate, lol")) (Table [(Predicate p, Cont (\ i _ k' -> k' (advance i) (head (input i))))])
+  satisfy p = Parser (Insert (flip (,) '_' . pure <$> inserted "something satisfying an arbitrary predicate, lol")) (Table [(Predicate p, Cont (\ i _ k' -> k' (advance i) (head (input i))))])
 
   source = Parser (Null src) mempty
 
   pl <|> pr = Parser (null pl <> null pr) (table pl <> table pr)
 
-  fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty
+  fail a e = Parser (Insert (flip (,) a . pure <$> inserted e)) mempty
 
   -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (fmap go (table p))
@@ -120,7 +120,7 @@ newtype Cont a = Cont { runCont :: forall r . State -> Predicate -> (State -> a 
 
 data Null a
   = Null   (State -> a)
-  | Insert (State -> a) (State -> [Notice])
+  | Insert (State -> ([Notice], a))
   deriving (Functor)
 
 instance Semigroup (Null a) where
@@ -131,22 +131,22 @@ instance Applicative Null where
   pure = Null . pure
   f <*> a = case f of
     Null   f    -> case a of
-      Null   a    -> Null   (f <*> a)
-      Insert a sa -> Insert (f <*> a) sa
-    Insert f sf -> Insert (f <*> getNull a) (combine (not (nullable a)) sf (getErrors a))
+      Null   a -> Null   (f <*> a)
+      Insert a -> Insert (\ i -> f i <$> a i)
+    Insert f -> Insert (\ i -> let (fe, f') = f i in (combine (not (nullable a)) fe (getErrors a i), f' (getNull a i)))
 
 nullable :: Null a -> Bool
 nullable p = case p of
-  Null  _    -> True
-  Insert _ _ -> False
+  Null  _  -> True
+  Insert _ -> False
 
 getNull :: Null a -> State -> a
-getNull (Null   f)   = f
-getNull (Insert f _) = f
+getNull (Null   f) = f
+getNull (Insert f) = snd . f
 
 getErrors :: Null a -> State -> [Notice]
-getErrors (Null   _)   = const []
-getErrors (Insert _ f) = f
+getErrors (Null   _) = const []
+getErrors (Insert f) = fst . f
 
 inserted :: String -> State -> Notice
 inserted s i = Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P.pretty s) []
@@ -163,8 +163,8 @@ choose p = go
 
 insertOrNull :: State -> Null a -> (State -> a -> r) -> r
 insertOrNull i n k = case n of
-  Null   a   -> k i (a i)
-  Insert a e -> k i{ errs = errs i ++ e i } (a i)
+  Null   a -> k i (a i)
+  Insert a -> let (e, a') = a i in k i{ errs = errs i ++ e } a'
 
 recovering :: Cont a -> State -> Null a -> Predicate -> (State -> a -> r) -> r
 recovering this i n follow = case input i of
