@@ -38,17 +38,15 @@ instance Applicative Parser where
   f <*> a = Parser (null f <*> null a) (combine nullablef (firstSet f) (firstSet a)) tseq
     where
     nullablef = nullable (null f)
-    tseq = combine nullablef tabf taba
+    tseq = combine nullablef (f' <$> table f) (a' <$> table a)
       where
-      tabf = fmap (\ k -> Cont $ \ i follow k' ->
-        let (i', f')  = runCont k i (firstSet a:follow) (,)
-            (i'', a') = runCont (choose a) i' follow (,)
-            fa'       = f' a'
-        in  fa' `seq` k' i'' fa') (table f)
-      taba = fmap (\ k -> Cont $ \ i follow k' ->
-        let (i', a') = runCont k i follow (,)
-            fa'      = getNull (null f) i' a'
-        in  fa' `seq` k' i' fa') (table a)
+      f' k = Cont $ \ i follow k' ->
+        runCont k i (firstSet a:follow) $ \ i' f' ->
+        runCont (choose a) i' follow $ \ i'' a' ->
+        let fa' = f' a' in fa' `seq` k' i'' fa'
+      a' k = Cont $ \ i follow k' ->
+        runCont k i follow $ \ i' a' ->
+        let fa' = getNull (null f) i' a' in fa' `seq` k' i' fa'
 
 instance Parsing Parser where
   position = Parser (Null pos) mempty mempty
@@ -79,9 +77,8 @@ captureBody f g mk k = Cont $ \ i follow k' ->
   let (i', a) = runCont k i (fs:follow) (,)
       fs = firstSet gp
       gp = g (mk (i', a))
-      (i'', b) = runCont (choose gp) i' follow (,)
-      fab = f a b
-  in fab `seq` k' i'' fab
+  in runCont (choose gp) i' follow $ \ i'' b ->
+  let fab = f a b in fab `seq` k' i'' fab
 
 
 type Table a = Map.Map Char (Cont a)
