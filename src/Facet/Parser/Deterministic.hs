@@ -39,7 +39,7 @@ parse p ls s = choose (null p) choices (State ls s mempty (Pos 0 0)) mempty
 data Parser a = Parser
   { null     :: Null a
   , firstSet :: CharSet
-  , table    :: [(Char, ParserCont a)]
+  , table    :: ParserTable a
   }
   deriving (Functor)
 
@@ -93,6 +93,7 @@ captureBody f g mk k i follow =
   in fab `seq` (i'', fab)
 
 
+type ParserTable a = [(Char, ParserCont a)]
 type ParserCont a = State -> [CharSet] -> (State, a)
 
 
