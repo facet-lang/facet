@@ -32,9 +32,7 @@ parseString' p s = do
   P.putDoc (P.pretty a)
 
 parse :: Parser a -> Source -> String -> (State, a)
-parse p ls s = runCont (choose (null p) choices) (State ls s mempty (Pos 0 0)) mempty
-  where
-  choices = buildMap (table p)
+parse p ls s = runCont (choose (null p) (table p)) (State ls s mempty (Pos 0 0)) mempty
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
@@ -49,12 +47,11 @@ instance Applicative Parser where
   f <*> a = Parser (null f <*> null a) (combine nullablef (firstSet f) (firstSet a)) tseq
     where
     nullablef = nullable (null f)
-    choices = buildMap (table a)
     tseq = combine nullablef tabf taba
       where
       tabf = fmap (\ k -> cont $ \ i noskip ->
         let (i', f')  = runCont k i (firstSet a:noskip)
-            (i'', a') = runCont (choose (null a) choices) i' noskip
+            (i'', a') = runCont (choose (null a) (table a)) i' noskip
             fa'       = f' a'
         in  fa' `seq` (i'', fa')) (table f)
       taba = fmap (\ k -> cont $ \ i noskip ->
@@ -91,8 +88,7 @@ captureBody f g mk k = cont $ \ i follow ->
   let (i', a) = runCont k i (fs:follow)
       fs = firstSet gp
       gp = g (mk (i', a))
-      choices = buildMap (table gp)
-      (i'', b) = runCont (choose (null gp) choices) i' follow
+      (i'', b) = runCont (choose (null gp) (table gp)) i' follow
       fab = f a b
   in fab `seq` (i'', fab)
 
@@ -185,7 +181,3 @@ combine :: Semigroup t => Bool -> t -> t -> t
 combine e s1 s2
   | e         = s1 <> s2
   | otherwise = s1
-
-
-buildMap :: Table a -> ContMap a
-buildMap = id
