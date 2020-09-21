@@ -41,7 +41,7 @@ instance Applicative Parser where
     tseq = combine nullablef (f' <$> table f) (a' <$> table a)
       where
       f' k = Cont $ \ i follow k' ->
-        runCont k i (memberOf (firstSet a) <> follow) $ \ i' f' ->
+        runCont k i (inFirstSet a <> follow) $ \ i' f' ->
         runCont (choose a) i' follow $ \ i'' a' ->
         let fa' = f' a' in fa' `seq` k' i'' fa'
       a' k = Cont $ \ i follow k' ->
@@ -70,16 +70,15 @@ instance Parsing Parser where
     where
     go = captureBody f g (pure . snd)
 
-firstSet :: Parser a -> CharSet.CharSet
-firstSet = keysSet . table
+inFirstSet :: Parser a -> Predicate
+inFirstSet = memberOf . keysSet . table
 
 -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
 -- FIXME: is this even correct?
 -- FIXME: do we want to require that p be non-nullable?
 captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> ((State, a) -> Parser a') -> Cont a -> Cont c
 captureBody f g mk k = Cont $ \ i follow k' ->
-  let (i', a) = runCont k i (memberOf fs <> follow) (,)
-      fs = firstSet gp
+  let (i', a) = runCont k i (inFirstSet gp <> follow) (,)
       gp = g (mk (i', a))
   in runCont (choose gp) i' follow $ \ i'' b ->
   let fab = f a b in fab `seq` k' i'' fab
