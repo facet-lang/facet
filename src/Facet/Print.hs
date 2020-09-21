@@ -12,7 +12,7 @@ module Facet.Print
 ( prettyPrint
 , prettyPrintWith
 , prettyWith
-, defaultStyle
+, terminalStyle
 , Print(..)
 , Context(..)
 , TPrint(..)
@@ -31,7 +31,7 @@ import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 
 prettyPrint :: MonadIO m => Print -> m ()
-prettyPrint = prettyPrintWith defaultStyle
+prettyPrint = prettyPrintWith terminalStyle
 
 prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> Print -> m ()
 prettyPrintWith style = putDoc . prettyWith style
@@ -39,8 +39,8 @@ prettyPrintWith style = putDoc . prettyWith style
 prettyWith :: (Nest Highlight -> a) -> Print -> PP.Doc a
 prettyWith style = PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runPrint` const id) . group
 
-defaultStyle :: Nest Highlight -> ANSI.AnsiStyle
-defaultStyle = \case
+terminalStyle :: Nest Highlight -> ANSI.AnsiStyle
+terminalStyle = \case
   Nest i   -> colours !! (getNesting i `mod` len)
   Ann Name -> mempty
   Ann Op   -> ANSI.color     ANSI.Cyan
