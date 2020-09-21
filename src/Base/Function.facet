@@ -27,4 +27,13 @@ uncurry
 : { A, B, C : Type } -> (f : A -> B -> C) -> (A, B) -> C
 = { (x, y) -> f x y } # NB: you can’t bind individual fields of a type in the signature, so we have to pattern match here too
 
+
+# fixme: do we want to support mixfix syntax?
+# fixme: how do we want to specify fixity?
+(<<) : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
+= { a -> f (g a) }
+
+(>>) : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (A -> C)
+= { a -> f (g a) }
+
 }
