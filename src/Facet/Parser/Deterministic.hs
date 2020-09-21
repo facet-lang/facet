@@ -17,6 +17,8 @@ import           Facet.Parser.Notice
 import           Facet.Parser.Source
 import           Facet.Parser.Span
 import qualified Facet.Pretty as P
+import qualified Prettyprinter as PP
+import qualified Prettyprinter.Render.Terminal as ANSI
 import           Prelude hiding (lookup, null)
 
 parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
@@ -148,11 +150,14 @@ getErrors :: Null a -> State -> [Notice]
 getErrors (Null   _) = const []
 getErrors (Insert f) = fst . f
 
+err :: PP.Doc ANSI.AnsiStyle -> State -> [Notice]
+err d i = [Notice (Just Error) (stateExcerpt i) d []]
+
 inserted :: String -> State -> [Notice]
-inserted s i = [Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P.pretty s) []]
+inserted s = err (P.pretty "inserted" P.<+> P.pretty s)
 
 deleted :: String -> State -> [Notice]
-deleted  s i = [Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []]
+deleted  s = err (P.pretty "deleted"  P.<+> P.pretty s)
 
 choose :: Parser a -> Cont a
 choose p = go
