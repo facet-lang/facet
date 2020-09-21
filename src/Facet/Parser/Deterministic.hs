@@ -24,7 +24,7 @@ parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
 
 parse :: Parser a -> Source -> String -> (State, a)
-parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) (const False) (,)
+parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) mempty (,)
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
@@ -41,7 +41,7 @@ instance Applicative Parser where
     tseq = combine nullablef (f' <$> table f) (a' <$> table a)
       where
       f' k = Cont $ \ i follow k' ->
-        runCont k i ((||) <$> (`CharSet.member` firstSet a) <*> follow) $ \ i' f' ->
+        runCont k i (memberOf (firstSet a) <> follow) $ \ i' f' ->
         runCont (choose a) i' follow $ \ i'' a' ->
         let fa' = f' a' in fa' `seq` k' i'' fa'
       a' k = Cont $ \ i follow k' ->
@@ -78,7 +78,7 @@ firstSet = keysSet . table
 -- FIXME: do we want to require that p be non-nullable?
 captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> ((State, a) -> Parser a') -> Cont a -> Cont c
 captureBody f g mk k = Cont $ \ i follow k' ->
-  let (i', a) = runCont k i ((||) <$> (`CharSet.member` fs) <*> follow) (,)
+  let (i', a) = runCont k i (memberOf fs <> follow) (,)
       fs = firstSet gp
       gp = g (mk (i', a))
   in runCont (choose gp) i' follow $ \ i'' b ->
@@ -105,7 +105,16 @@ lookup :: Char -> Table a -> Maybe a
 lookup c t = snd <$> find (CharSet.member c . fst) (getTable t)
 
 
-type Predicate = Char -> Bool
+newtype Predicate = Predicate { test :: Char -> Bool }
+
+instance Semigroup Predicate where
+  p1 <> p2 = Predicate ((||) <$> test p1 <*> test p2)
+
+instance Monoid Predicate where
+  mempty = Predicate $ const False
+
+memberOf :: CharSet.CharSet -> Predicate
+memberOf = Predicate . flip CharSet.member
 
 
 newtype Cont a = Cont { runCont :: forall r . State -> Predicate -> (State -> a -> r) -> r }
@@ -167,8 +176,8 @@ recovering this i n follow = case input i of
     -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
     -- we can eliminate it if we instead allow the continuation to decide, I *think*.
     -- might involve a recovery parameter to Cont, taking null p?
-    | follow s   -> insertOrNull i n
-    | otherwise  -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow
+    | test follow s -> insertOrNull i n
+    | otherwise     -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow
 
 
 data State = State
