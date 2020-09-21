@@ -39,10 +39,4 @@
 
 :load Facet.Eval Facet.Functor.C Facet.Functor.I Facet.Signature Facet.Parser Facet.Parser.Deterministic Facet.Parser.Notice Facet.Pretty Facet.Print Facet.Syntax.Typed Facet.Syntax.Examples
 
-import Facet.Parser
-import Facet.Parser.Deterministic
-import Facet.Parser.Notice
-import Facet.Pretty
-import Facet.Print
-import Facet.Signature
-import Data.Foldable (traverse_)
+import Facet.Syntax.Examples
