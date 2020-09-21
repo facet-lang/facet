@@ -40,13 +40,13 @@ instance Applicative Parser where
     nullablef = nullable (null f)
     tseq = combine nullablef tabf taba
       where
-      tabf = fmap (\ k -> Cont $ \ k' i noskip ->
-        let (i', f')  = runCont k (,) i (firstSet a:noskip)
-            (i'', a') = runCont (choose a) (,) i' noskip
+      tabf = fmap (\ k -> Cont $ \ k' i follow ->
+        let (i', f')  = runCont k (,) i (firstSet a:follow)
+            (i'', a') = runCont (choose a) (,) i' follow
             fa'       = f' a'
         in  fa' `seq` k' i'' fa') (table f)
-      taba = fmap (\ k -> Cont $ \ k' i noskip ->
-        let (i', a') = runCont k (,) i noskip
+      taba = fmap (\ k -> Cont $ \ k' i follow ->
+        let (i', a') = runCont k (,) i follow
             fa'      = getNull (null f) i' a'
         in  fa' `seq` k' i' fa') (table a)
 
@@ -129,13 +129,13 @@ deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P
 choose :: Parser a -> Cont a
 choose p = Cont go
   where
-  go k i noskip = case input i of
+  go k i follow = case input i of
     []  -> insertOrNull k (null p) i
     s:_ -> case Map.lookup s (table p) of
       Nothing
-        | any (member s) noskip -> insertOrNull k (null p) i
-        | otherwise             -> runCont (choose p) k (advance i{ errs = errs i ++ [ deleted (show s) i ] }) noskip
-      Just k'                   -> runCont k' k i noskip
+        | any (member s) follow -> insertOrNull k (null p) i
+        | otherwise             -> runCont (choose p) k (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow
+      Just k'                   -> runCont k' k i follow
 
 insertOrNull :: (State -> a -> r) -> Null a -> State -> r
 insertOrNull k n i = case n of
