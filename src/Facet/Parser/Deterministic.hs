@@ -144,7 +144,7 @@ choose p choices = go
       Nothing
         | any (member s) noskip -> insertOrNull p i
         | otherwise             -> choose p choices (advance i{ errs = errs i ++ [ deleted (show s) i ] }) noskip
-      Just k -> k i noskip
+      Just k                    -> k i noskip
 
 insertOrNull :: Null a -> State -> (State, a)
 insertOrNull n i = case n of
