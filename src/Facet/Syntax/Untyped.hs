@@ -59,6 +59,7 @@ class (App ty, ForAll ty ty) => Type ty where
 
 type DeclName = String
 
+-- FIXME: define a core variant of this where declarations are normalized to not contain term bindings in the signature but instead pattern match in the definition
 class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
   (.:) :: DeclName -> decl -> mod
   infixr 0 .:
