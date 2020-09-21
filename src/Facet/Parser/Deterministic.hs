@@ -127,15 +127,15 @@ choose :: Parser a -> Cont a
 choose p = Cont go
   where
   go i follow k = case input i of
-    []  -> insertOrNull k (null p) i
+    []  -> insertOrNull (null p) i k
     s:_ -> case Map.lookup s (table p) of
       Nothing
-        | any (member s) follow -> insertOrNull k (null p) i
+        | any (member s) follow -> insertOrNull (null p) i k
         | otherwise             -> runCont (choose p) (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow k
       Just k'                   -> runCont k' i follow k
 
-insertOrNull :: (State -> a -> r) -> Null a -> State -> r
-insertOrNull k n i = case n of
+insertOrNull :: Null a -> State -> (State -> a -> r) -> r
+insertOrNull n i k = case n of
   Null   a   -> k i (a i)
   Insert a e -> k i{ errs = errs i ++ e i } (a i)
 
