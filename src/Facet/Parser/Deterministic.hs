@@ -9,7 +9,7 @@ module Facet.Parser.Deterministic
 ) where
 
 import           Data.Bifunctor (first)
-import           Data.CharSet (CharSet, member, singleton)
+import           Data.CharSet (CharSet, fromList, member)
 import qualified Data.Map as Map
 import           Facet.Parser.Combinators
 import           Facet.Parser.Excerpt
@@ -28,14 +28,13 @@ parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) mempty (,)
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
   { null     :: Null a
-  , firstSet :: CharSet
   , table    :: Table a
   }
   deriving (Functor)
 
 instance Applicative Parser where
-  pure a = Parser (pure a) mempty mempty
-  f <*> a = Parser (null f <*> null a) (combine nullablef (firstSet f) (firstSet a)) tseq
+  pure a = Parser (pure a) mempty
+  f <*> a = Parser (null f <*> null a) tseq
     where
     nullablef = nullable (null f)
     tseq = combine nullablef (f' <$> table f) (a' <$> table a)
@@ -49,25 +48,28 @@ instance Applicative Parser where
         let fa' = getNull (null f) i' a' in fa' `seq` k' i' fa'
 
 instance Parsing Parser where
-  position = Parser (Null pos) mempty mempty
+  position = Parser (Null pos) mempty
 
-  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) (Map.singleton s (Cont (\ i _ k' -> k' (advance i) s)))
+  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (Map.singleton s (Cont (\ i _ k' -> k' (advance i) s)))
 
-  source = Parser (Null src) mempty mempty
+  source = Parser (Null src) mempty
 
   -- NB: we append the tables in reverse order because <> on Map is left-biased and we want a right-biased union
-  pl <|> pr = Parser (null pl <> null pr) (firstSet pl <> firstSet pr) (table pr <> table pl)
+  pl <|> pr = Parser (null pl <> null pr) (table pr <> table pl)
 
-  fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty mempty
+  fail a e = Parser (Insert (const a) (pure <$> inserted e)) mempty
 
   -- FIXME: accidentally capturing whitespace in p breaks things
-  capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (fmap go (table p))
+  capture f p g = Parser (f <$> null p <*> null (g p)) (fmap go (table p))
     where
     go k = Cont $ \ i -> runCont (captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k) i
 
-  capture0 f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (fmap go (table p))
+  capture0 f p g = Parser (f <$> null p <*> null (g p)) (fmap go (table p))
     where
     go = captureBody f g (pure . snd)
+
+firstSet :: Parser a -> CharSet
+firstSet p = fromList $ Map.keys (table p)
 
 -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
 -- FIXME: is this even correct?
