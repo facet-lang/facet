@@ -69,11 +69,11 @@ instance Parsing Parser where
   -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (fmap go (table p))
     where
-    go k = Cont $ \ i -> runCont (captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k) i
+    go k = Cont $ \ i -> runCont (captureBody f g (\ i' a -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k) i
 
   capture0 f p g = Parser (f <$> null p <*> null (g p)) (fmap go (table p))
     where
-    go = captureBody f g (pure . snd)
+    go = captureBody f g (const pure)
 
 inFirstSet :: Parser a -> Predicate
 inFirstSet = memberOf . table
@@ -81,10 +81,10 @@ inFirstSet = memberOf . table
 -- FIXME: this is probably exponential in the depth of the parse tree because of running g twice? but maybe laziness will save us?
 -- FIXME: is this even correct?
 -- FIXME: do we want to require that p be non-nullable?
-captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> ((State, a) -> Parser a') -> Cont a -> Cont c
+captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> (State -> a -> Parser a') -> Cont a -> Cont c
 captureBody f g mk k = Cont $ \ i follow err k' ->
   let (i', a) = runCont k i (inFirstSet gp <> follow) (,Nothing) (\ i a -> (i, Just a))
-      gp = g (mk (i', fromJust a))
+      gp = g (mk i' (fromJust a))
   in runCont (choose gp) i' follow err $ \ i'' b ->
   let fab = f (fromJust a) b in fab `seq` k' i'' fab
 
