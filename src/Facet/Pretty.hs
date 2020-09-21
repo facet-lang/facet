@@ -41,9 +41,9 @@ import           System.Console.Terminal.Size as Size
 import           System.IO (Handle, stdout)
 
 hPutDoc :: MonadIO m => Handle -> PP.Doc ANSI.AnsiStyle -> m ()
-hPutDoc handle doc = do
-  s <- maybe 80 Size.width <$> liftIO size
-  liftIO (ANSI.renderIO handle (PP.layoutSmart PP.defaultLayoutOptions { PP.layoutPageWidth = PP.AvailablePerLine s 0.8 } (doc <> PP.line)))
+hPutDoc handle doc = liftIO $ do
+  s <- maybe 80 Size.width <$> size
+  ANSI.renderIO handle (PP.layoutSmart PP.defaultLayoutOptions { PP.layoutPageWidth = PP.AvailablePerLine s 0.8 } (doc <> PP.line))
 
 putDoc :: MonadIO m => PP.Doc ANSI.AnsiStyle -> m ()
 putDoc = hPutDoc stdout
