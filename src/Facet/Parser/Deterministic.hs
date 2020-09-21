@@ -130,7 +130,7 @@ choose :: Parser a -> Cont a
 choose p = go
   where
   go = Cont $ \ i -> case listToMaybe (input i) >>= (`Map.lookup` table p) of
-    Nothing -> recovering go i (null p)
+    Nothing -> \ follow -> recovering (`canMatch` follow) go i (null p) follow
     Just k' -> runCont k' i
 
 insertOrNull :: State -> Null a -> (State -> a -> r) -> r
@@ -138,15 +138,15 @@ insertOrNull i n k = case n of
   Null   a   -> k i (a i)
   Insert a e -> k i{ errs = errs i ++ e i } (a i)
 
-recovering :: Cont a -> State -> Null a -> [CharSet] -> (State -> a -> r) -> r
-recovering this i n follow k = case input i of
+recovering :: (Char -> Bool) -> Cont a -> State -> Null a -> [CharSet] -> (State -> a -> r) -> r
+recovering canMatch this i n follow k = case input i of
   "" -> insertOrNull i n k
   s:_
     -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
     -- we can eliminate it if we instead allow the continuation to decide, I *think*.
     -- might involve a recovery parameter to Cont, taking null p?
-    | canMatch s follow -> insertOrNull i n k
-    | otherwise         -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow k
+    | canMatch s -> insertOrNull i n k
+    | otherwise  -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow k
 
 canMatch :: Char -> [CharSet] -> Bool
 canMatch = any . member
