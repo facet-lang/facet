@@ -4,7 +4,7 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
-module Facet.Syntax
+module Facet.Syntax.Typed
 ( -- * Expressions
   Expr(..)
 , Inst(..)

@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
-module Facet.Syntax.Lifted
+module Facet.Syntax.Typed.Lifted
 ( lam
 , lam0
 , Expr.Expr
@@ -8,7 +8,7 @@ module Facet.Syntax.Lifted
 
 import           Facet.Functor.C
 import           Facet.Signature
-import qualified Facet.Syntax as Expr
+import qualified Facet.Syntax.Typed as Expr
 
 lam
   :: (Applicative m, Permutable env, Expr.Expr repr)

@@ -22,7 +22,7 @@ import qualified Data.Kind as K
 import           Facet.Pretty.Fresh
 import           Facet.Pretty.Prec
 import           Facet.Pretty.Rainbow
-import           Facet.Syntax
+import           Facet.Syntax.Typed
 import qualified Facet.Syntax.Untyped as U
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI

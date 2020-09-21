@@ -53,8 +53,8 @@ library
     Facet.Pretty.Rainbow
     Facet.Print
     Facet.Signature
-    Facet.Syntax
-    Facet.Syntax.Lifted
+    Facet.Syntax.Typed
+    Facet.Syntax.Typed.Lifted
     Facet.Syntax.Untyped
     Facet.Syntax.Untyped.Lifted
   other-modules:

@@ -24,7 +24,7 @@ module Facet.Syntax.Examples
 , Empty(..)
 ) where
 
-import Facet.Syntax
+import Facet.Syntax.Typed
 
 prelude :: Module expr ty decl mod => mod ()
 prelude = do
