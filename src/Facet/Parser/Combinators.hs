@@ -48,6 +48,7 @@ import           Prelude hiding (fail, span)
 
 class Applicative p => Parsing p where
   position :: p Pos
+
   char :: Char -> p Char
 
   set :: CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
