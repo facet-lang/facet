@@ -53,6 +53,10 @@ instance Applicative Parser where
             let fa' = f' a' in fa' `seq` k' i' fa'
           Nothing -> err i
 
+instance Alternative Parser where
+  empty = Parser (Insert ((,) <$> err (P.pretty "empty") <*> pure Nothing)) mempty
+  pl <|> pr = Parser (null pl <> null pr) (table pl <> table pr)
+
 instance Parsing Parser where
   position = Parser (Null pos) mempty
 
@@ -60,8 +64,6 @@ instance Parsing Parser where
   satisfy p = Parser (Insert ((,) <$> err (P.pretty "inserted unknown character") <*> pure (Just '_'))) (Table [(Predicate p, Cont (\ i _ _ k' -> k' (advance i) (head (input i))))])
 
   source = Parser (Null src) mempty
-
-  pl <|> pr = Parser (null pl <> null pr) (table pl <> table pr)
 
   fail a e = Parser (Insert ((,) <$> inserted e <*> pure (Just a))) mempty
 

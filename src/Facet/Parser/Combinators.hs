@@ -6,8 +6,6 @@ module Facet.Parser.Combinators
 , (<?>)
 , string
 , opt
-, optional
-, many
 , skipMany
 , skipSome
 , chainr
@@ -16,7 +14,6 @@ module Facet.Parser.Combinators
 , chainl1
 , sepBy
 , sepBy1
-, some
 , span
 , spanned
 , parens
@@ -36,9 +33,12 @@ module Facet.Parser.Combinators
 , rbrace
 , lbracket
 , rbracket
+  -- * Re-exports
+, Alternative(..)
+, optional
 ) where
 
-import           Control.Applicative (liftA2, (<**>))
+import           Control.Applicative (Alternative(..), liftA2, optional, (<**>))
 import qualified Data.Char as Char
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as CharSet
@@ -48,15 +48,13 @@ import           Facet.Parser.Source
 import           Facet.Parser.Span
 import           Prelude hiding (fail, span)
 
-class Applicative p => Parsing p where
+class Alternative p => Parsing p where
   position :: p Pos
 
   satisfy :: (Char -> Bool) -> p Char
 
   source :: p Source
-  -- FIXME: warn on non-disjoint first sets
-  (<|>) :: p a -> p a -> p a
-  infixl 3 <|>
+
   -- FIXME: allow failure values to produce errors from the state
   fail :: a -> String -> p a
 
@@ -72,13 +70,12 @@ class Applicative p => Parsing p where
   -- FIXME: this is a bad name.
   capture0 :: (a -> b -> c) -> p a -> (p a -> p b) -> p c
 
-  {-# MINIMAL position, satisfy, source, (<|>), fail, capture, capture0 #-}
+  {-# MINIMAL position, satisfy, source, fail, capture, capture0 #-}
 
 instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   position = C $ pure <$> position
   satisfy p = C $ pure <$> satisfy p
   source   = C $ pure <$> source
-  l <|> r  = C $ getC l <|> getC r
   fail a s = C $ fail (pure a) s
   capture f p g = C $ capture (liftA2 f) (getC p) (getC . g . C)
   capture0 f p g = C $ capture0 (liftA2 f) (getC p) (getC . g . C)
@@ -99,12 +96,6 @@ string s = s <$ traverse_ char s <?> (s, s)
 
 opt :: Parsing p => p a -> a -> p a
 opt p v = p <|> pure v
-
-optional :: Parsing p => p a -> p (Maybe a)
-optional p = opt (Just <$> p) Nothing
-
-many :: Parsing p => p a -> p [a]
-many p = go where go = opt ((:) <$> p <*> go) []
 
 skipMany :: Parsing p => p a -> p ()
 skipMany p = go where go = opt (p *> go) ()
@@ -133,9 +124,6 @@ sepBy p s = opt (sepBy1 p s) []
 
 sepBy1 :: Parsing p => p a -> p s -> p [a]
 sepBy1 p s = (:) <$> p <*> many (s *> p)
-
-some :: Parsing p => p a -> p [a]
-some p = (:) <$> p <*> many p
 
 span :: Parsing p => p a -> p Span
 span p = Span <$> position <* p <*> position
