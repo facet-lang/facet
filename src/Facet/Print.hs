@@ -31,7 +31,7 @@ prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = prettyPrintWith defaultStyle
 
 prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> Print -> m ()
-prettyPrintWith style  = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runPrint` const id) . group
+prettyPrintWith style = putDoc . PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runPrint` const id) . group
 
 defaultStyle :: Nest Highlight -> ANSI.AnsiStyle
 defaultStyle = \case
