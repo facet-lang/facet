@@ -24,7 +24,7 @@ parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
 
 parse :: Parser a -> Source -> String -> (State, a)
-parse p ls s = runCont (choose (const False) p) (State ls s mempty (Pos 0 0)) mempty (,)
+parse p ls s = runCont (choose (const False) p) (State ls s mempty (Pos 0 0)) (const False) (,)
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
@@ -41,8 +41,8 @@ instance Applicative Parser where
     tseq = combine nullablef (f' <$> table f) (a' <$> table a)
       where
       f' k = Cont $ \ i follow k' ->
-        runCont k i (firstSet a:follow) $ \ i' f' ->
-        runCont (choose (`canMatch` follow) a) i' follow $ \ i'' a' ->
+        runCont k i ((||) <$> (`CharSet.member` firstSet a) <*> follow) $ \ i' f' ->
+        runCont (choose follow a) i' follow $ \ i'' a' ->
         let fa' = f' a' in fa' `seq` k' i'' fa'
       a' k = Cont $ \ i follow k' ->
         runCont k i follow $ \ i' a' ->
@@ -78,10 +78,10 @@ firstSet = keysSet . table
 -- FIXME: do we want to require that p be non-nullable?
 captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> ((State, a) -> Parser a') -> Cont a -> Cont c
 captureBody f g mk k = Cont $ \ i follow k' ->
-  let (i', a) = runCont k i (fs:follow) (,)
+  let (i', a) = runCont k i ((||) <$> (`CharSet.member` fs) <*> follow) (,)
       fs = firstSet gp
       gp = g (mk (i', a))
-  in runCont (choose (`canMatch` follow) gp) i' follow $ \ i'' b ->
+  in runCont (choose follow gp) i' follow $ \ i'' b ->
   let fab = f a b in fab `seq` k' i'' fab
 
 
@@ -108,7 +108,7 @@ lookup c t = snd <$> find (CharSet.member c . fst) (getTable t)
 type Predicate = Char -> Bool
 
 
-newtype Cont a = Cont { runCont :: forall r . State -> [CharSet.CharSet] -> (State -> a -> r) -> r }
+newtype Cont a = Cont { runCont :: forall r . State -> Predicate -> (State -> a -> r) -> r }
   deriving (Functor)
 
 
@@ -160,7 +160,7 @@ insertOrNull i n k = case n of
   Null   a   -> k i (a i)
   Insert a e -> k i{ errs = errs i ++ e i } (a i)
 
-recovering :: Predicate -> Cont a -> State -> Null a -> [CharSet.CharSet] -> (State -> a -> r) -> r
+recovering :: Predicate -> Cont a -> State -> Null a -> Predicate -> (State -> a -> r) -> r
 recovering canMatch this i n follow = case input i of
   "" -> insertOrNull i n
   s:_
@@ -169,9 +169,6 @@ recovering canMatch this i n follow = case input i of
     -- might involve a recovery parameter to Cont, taking null p?
     | canMatch s -> insertOrNull i n
     | otherwise  -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow
-
-canMatch :: Char -> [CharSet.CharSet] -> Bool
-canMatch = any . CharSet.member
 
 
 data State = State
