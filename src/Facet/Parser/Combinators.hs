@@ -46,7 +46,7 @@ import           Data.Foldable (traverse_)
 import           Facet.Functor.C
 import           Facet.Parser.Source
 import           Facet.Parser.Span
-import           Prelude hiding (fail, span)
+import           Prelude hiding (span)
 
 class Alternative p => Parsing p where
   position :: p Pos
@@ -56,7 +56,7 @@ class Alternative p => Parsing p where
   source :: p Source
 
   -- FIXME: allow failure values to produce errors from the state
-  fail :: a -> String -> p a
+  errorWith :: a -> String -> p a
 
   -- | Parse some text, and then parse something else constructed using a parser that parses the same literal text.
   --
@@ -70,25 +70,25 @@ class Alternative p => Parsing p where
   -- FIXME: this is a bad name.
   capture0 :: (a -> b -> c) -> p a -> (p a -> p b) -> p c
 
-  {-# MINIMAL position, satisfy, source, fail, capture, capture0 #-}
+  {-# MINIMAL position, satisfy, source, errorWith, capture, capture0 #-}
 
 instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   position = C $ pure <$> position
   satisfy p = C $ pure <$> satisfy p
   source   = C $ pure <$> source
-  fail a s = C $ fail (pure a) s
+  errorWith a s = C $ errorWith (pure a) s
   capture f p g = C $ capture (liftA2 f) (getC p) (getC . g . C)
   capture0 f p g = C $ capture0 (liftA2 f) (getC p) (getC . g . C)
 
 char :: Parsing p => Char -> p Char
-char c = satisfy (== c) <|> fail c (show c)
+char c = satisfy (== c) <|> errorWith c (show c)
 
 oneOfSet :: Parsing p => CharSet.CharSet -> p Char
 oneOfSet t = satisfy (`CharSet.member` t)
 
--- FIXME: always require <?>/fail to terminate a chain of alternatives
+-- FIXME: always require <?>/errorWith to terminate a chain of alternatives
 (<?>) :: Parsing p => p a -> (a, String) -> p a
-p <?> (a, s) = p <|> fail a s
+p <?> (a, s) = p <|> errorWith a s
 infixl 2 <?>
 
 string :: Parsing p => String -> p String
@@ -151,9 +151,9 @@ token p = p <* ws
 -- Character parsers
 
 lower, upper, letter :: Parsing p => p Char
-lower = oneOfSet CharSet.lowercaseLetter <|> fail 'a' "lowercase letter"
-upper = oneOfSet CharSet.uppercaseLetter <|> fail 'A' "uppercase letter"
-letter = oneOfSet CharSet.letter <|> fail 'a' "letter"
+lower = oneOfSet CharSet.lowercaseLetter <|> errorWith 'a' "lowercase letter"
+upper = oneOfSet CharSet.uppercaseLetter <|> errorWith 'A' "uppercase letter"
+letter = oneOfSet CharSet.letter <|> errorWith 'a' "letter"
 
 colon, comma :: Parsing p => p Char
 colon = token (char ':')
@@ -175,4 +175,4 @@ ws :: Parsing p => p ()
 ws = skipMany space
 
 space :: Parsing p => p Char
-space = satisfy Char.isSpace <|> fail ' ' "space"
+space = satisfy Char.isSpace <|> errorWith ' ' "space"

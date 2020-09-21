@@ -15,7 +15,7 @@ import           Data.Functor.Identity
 import           Facet.Functor.C
 import           Facet.Parser.Combinators
 import qualified Facet.Syntax.Untyped.Lifted as S
-import           Prelude hiding (fail, lines, null, span)
+import           Prelude hiding (lines, null, span)
 
 -- case
 -- : (x : a) -> (f : a -> b) -> b
@@ -60,7 +60,7 @@ type' :: (S.Type ty, S.Err ty, Parsing p) => p ty
 type' = runIdentity <$> getC (type_ tglobal)
 
 type_ :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
-type_ tvar = fn tvar <|> forAll (const type_) (char '_') tvar <|> fail S.err "type"
+type_ tvar = fn tvar <|> forAll (const type_) (char '_') tvar <|> errorWith S.err "type"
 
 fn :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
 fn tvar = app tatom tvar <**> opt (flip (S.-->) <$ arrow <*> fn tvar) id

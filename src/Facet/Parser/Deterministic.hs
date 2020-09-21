@@ -64,7 +64,7 @@ instance Parsing Parser where
 
   source = Parser (Null src) mempty
 
-  fail a e = Parser (Insert ((,) <$> inserted e <*> pure (Just a))) mempty
+  errorWith a e = Parser (Insert ((,) <$> inserted e <*> pure (Just a))) mempty
 
   -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (fmap go (table p))
