@@ -53,6 +53,8 @@ instance Parsing Parser where
 
   char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s (Cont (\ i _ k' -> k' (advance i) s)))
 
+  set s f e = Parser (Insert (const (f Nothing)) (pure <$> inserted e)) (Table [(s, Cont (\ i _ k' -> k' (advance i) (f (Just (head (input i))))))])
+
   source = Parser (Null src) mempty
 
   pl <|> pr = Parser (null pl <> null pr) (table pl <> table pr)
