@@ -3,7 +3,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- FIXME: move this whole module into a new package?
 module Facet.Pretty
-( putDoc
+( hPutDoc
+, putDoc
 , PP.Pretty
 , Printer(..)
 , space
@@ -37,12 +38,15 @@ import           Data.Monoid (Ap(..))
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 import           System.Console.Terminal.Size as Size
-import           System.IO (stdout)
+import           System.IO (Handle, stdout)
+
+hPutDoc :: MonadIO m => Handle -> PP.Doc ANSI.AnsiStyle -> m ()
+hPutDoc handle doc = do
+  s <- maybe 80 Size.width <$> liftIO size
+  liftIO (ANSI.renderIO handle (PP.layoutSmart PP.defaultLayoutOptions { PP.layoutPageWidth = PP.AvailablePerLine s 0.8 } (doc <> PP.line)))
 
 putDoc :: MonadIO m => PP.Doc ANSI.AnsiStyle -> m ()
-putDoc doc = do
-  s <- maybe 80 Size.width <$> liftIO size
-  liftIO (ANSI.renderIO stdout (PP.layoutSmart PP.defaultLayoutOptions { PP.layoutPageWidth = PP.AvailablePerLine s 0.8 } (doc <> PP.line)))
+putDoc = hPutDoc stdout
 
 
 class Monoid doc => Printer ann doc | doc -> ann where
