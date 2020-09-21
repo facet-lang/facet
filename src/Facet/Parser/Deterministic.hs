@@ -47,20 +47,23 @@ instance Applicative Parser where
         runCont (choose a) i' follow err $ \ i'' a' ->
         let fa' = f' a' in fa' `seq` k' i'' fa'
       a' k = Cont $ \ i follow err k' ->
-        runCont k i follow err $ \ i' a' ->
-        let fa' = getNull (null f) i' a' in fa' `seq` k' i' fa'
+        case getNull (null f) i of
+          Just f' ->
+            runCont k i follow err $ \ i' a' ->
+            let fa' = f' a' in fa' `seq` k' i' fa'
+          Nothing -> err i
 
 instance Parsing Parser where
   position = Parser (Null pos) mempty
 
   -- FIXME: we can’t pick a sensible default for an arbitrary predicate; recovery should be smarter I think?
-  satisfy p = Parser (Insert ((,) <$> err (P.pretty "inserted unknown character") <*> pure '_')) (Table [(Predicate p, Cont (\ i _ _ k' -> k' (advance i) (head (input i))))])
+  satisfy p = Parser (Insert ((,) <$> err (P.pretty "inserted unknown character") <*> pure (Just '_'))) (Table [(Predicate p, Cont (\ i _ _ k' -> k' (advance i) (head (input i))))])
 
   source = Parser (Null src) mempty
 
   pl <|> pr = Parser (null pl <> null pr) (table pl <> table pr)
 
-  fail a e = Parser (Insert ((,) <$> inserted e <*> pure a)) mempty
+  fail a e = Parser (Insert ((,) <$> inserted e <*> pure (Just a))) mempty
 
   -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (fmap go (table p))
@@ -123,7 +126,7 @@ newtype Cont a = Cont { runCont :: forall r . State -> Predicate -> (State -> r)
 
 data Null a
   = Null   (State -> a)
-  | Insert (State -> ([Notice], a))
+  | Insert (State -> ([Notice], Maybe a))
   deriving (Functor)
 
 instance Semigroup (Null a) where
@@ -135,16 +138,16 @@ instance Applicative Null where
   f <*> a = case f of
     Null   f    -> case a of
       Null   a -> Null   (f <*> a)
-      Insert a -> Insert (\ i -> f i <$> a i)
-    Insert f -> Insert (\ i -> let (fe, f') = f i in (combine (not (nullable a)) fe (getErrors a i), f' (getNull a i)))
+      Insert a -> Insert (\ i -> fmap (f i) <$> a i)
+    Insert f -> Insert (\ i -> let (fe, f') = f i in (combine (not (nullable a)) fe (getErrors a i), f' <*> getNull a i))
 
 nullable :: Null a -> Bool
 nullable p = case p of
   Null  _  -> True
   Insert _ -> False
 
-getNull :: Null a -> State -> a
-getNull (Null   f) = f
+getNull :: Null a -> State -> Maybe a
+getNull (Null   f) = Just . f
 getNull (Insert f) = snd . f
 
 getErrors :: Null a -> State -> [Notice]
@@ -168,9 +171,11 @@ choose p = go
     Just k' -> runCont k' i
 
 insertOrNull :: State -> Null a -> (State -> r) -> (State -> a -> r) -> r
-insertOrNull i n _ k = case n of
+insertOrNull i n err k = case n of
   Null   a -> k i (a i)
-  Insert a -> let (e, a') = a i in k i{ errs = errs i ++ e } a'
+  Insert a -> let (e, a') = a i in case a' of
+    Just a' -> k i{ errs = errs i ++ e } a'
+    Nothing -> err i{ errs = errs i ++ e }
 
 recovering :: Cont a -> State -> Null a -> Predicate -> (State -> r) -> (State -> a -> r) -> r
 recovering this i n follow = case input i of
