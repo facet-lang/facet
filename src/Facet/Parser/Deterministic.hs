@@ -53,7 +53,7 @@ instance Parsing Parser where
   position = Parser (Null pos) mempty
 
   -- FIXME: we can’t pick a sensible default for an arbitrary predicate; recovery should be smarter I think?
-  satisfy p = Parser (Insert ((,) <$> inserted "something satisfying an arbitrary predicate, lol" <*> pure '_')) (Table [(Predicate p, Cont (\ i _ k' -> k' (advance i) (head (input i))))])
+  satisfy p = Parser (Insert ((,) <$> err (P.pretty "inserted unknown character") <*> pure '_')) (Table [(Predicate p, Cont (\ i _ k' -> k' (advance i) (head (input i))))])
 
   source = Parser (Null src) mempty
 
