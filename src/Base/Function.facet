@@ -25,7 +25,7 @@ curry
 
 uncurry
 : { A, B, C : Type } -> (f : A -> B -> C) -> (A, B) -> C
-= { (x, y) -> f x y } # NB: you can’t bind individual fields of a type in the signature, so we have to pattern match here too
+= { (x, y) -> f x y } # NB: you can’t bind individual fields of a type in the signature, so we have to pattern match here
 
 
 # fixme: do we want to support mixfix syntax?
