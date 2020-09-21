@@ -95,6 +95,7 @@ captureBody f g mk k i follow =
 
 type Table a = [(Char, Cont a)]
 type Cont a = State -> [CharSet] -> (State, a)
+type ContMap a = Map.Map Char (Cont a)
 
 
 data Null a
@@ -133,7 +134,7 @@ inserted s i = Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P
 deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
 
-choose :: Null a -> Map.Map Char (Cont a) -> Cont a
+choose :: Null a -> ContMap a -> Cont a
 choose p choices = go
   where
   go i noskip = case input i of
