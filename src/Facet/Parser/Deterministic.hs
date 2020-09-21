@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE RankNTypes #-}
 module Facet.Parser.Deterministic
 ( parseString
 , parseString'
@@ -51,12 +52,12 @@ instance Applicative Parser where
     choices = buildMap (table a)
     tseq = combine nullablef tabf taba
       where
-      tabf = map (fmap (\ k -> Cont $ \ i noskip ->
+      tabf = map (fmap (\ k -> cont $ \ i noskip ->
         let (i', f')  = runCont k i (firstSet a:noskip)
             (i'', a') = runCont (choose (null a) choices) i' noskip
             fa'       = f' a'
         in  fa' `seq` (i'', fa'))) (table f)
-      taba = map (fmap (\ k -> Cont $ \ i noskip ->
+      taba = map (fmap (\ k -> cont $ \ i noskip ->
         let (i', a') = runCont k i noskip
             fa'      = getNull (null f) i' a'
         in  fa' `seq` (i', fa'))) (table a)
@@ -64,7 +65,7 @@ instance Applicative Parser where
 instance Parsing Parser where
   position = Parser (Null pos) mempty []
 
-  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, Cont $ \ i _ -> (advance i, s)) ]
+  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) [ (s, cont $ \ i _ -> (advance i, s)) ]
 
   source = Parser (Null src) mempty []
 
@@ -75,7 +76,7 @@ instance Parsing Parser where
   -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table p))
     where
-    go k = Cont $ \ i -> runCont (captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k) i
+    go k = cont $ \ i -> runCont (captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k) i
 
   capture0 f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (map (fmap go) (table p))
     where
@@ -85,7 +86,7 @@ instance Parsing Parser where
 -- FIXME: is this even correct?
 -- FIXME: do we want to require that p be non-nullable?
 captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> ((State, a) -> Parser a') -> Cont a -> Cont c
-captureBody f g mk k = Cont $ \ i follow ->
+captureBody f g mk k = cont $ \ i follow ->
   let (i', a) = runCont k i (fs:follow)
       fs = firstSet gp
       gp = g (mk (i', a))
@@ -97,8 +98,15 @@ captureBody f g mk k = Cont $ \ i follow ->
 
 type Table a = [(Char, Cont a)]
 
-newtype Cont a = Cont { runCont :: State -> [CharSet] -> (State, a) }
+newtype Cont a = Cont (forall r . (State -> a -> r) -> State -> [CharSet] -> r)
   deriving (Functor)
+
+runCont :: Cont a -> State -> [CharSet] -> (State, a)
+runCont (Cont c) = c (,)
+
+cont :: (State -> [CharSet] -> (State, a)) -> Cont a
+cont k = Cont $ \ r i f -> uncurry r (k i f)
+
 
 type ContMap a = Map.Map Char (Cont a)
 
@@ -140,7 +148,7 @@ deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
 
 choose :: Null a -> ContMap a -> Cont a
-choose p choices = Cont go
+choose p choices = cont go
   where
   go i noskip = case input i of
     []  -> insertOrNull p i
