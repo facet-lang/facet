@@ -1,6 +1,8 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Parser.Combinators
 ( Parsing(..)
+, char
+, set
 , (<?>)
 , string
 , opt
@@ -51,12 +53,6 @@ class Applicative p => Parsing p where
 
   satisfy :: (Char -> Bool) -> p Char
 
-  char :: Char -> p Char
-  char = satisfy . (==)
-
-  set :: CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
-  set t f s = f . Just <$> satisfy (`CharSet.member` t) <|> fail (f Nothing) s
-
   source :: p Source
   -- FIXME: warn on non-disjoint first sets
   (<|>) :: p a -> p a -> p a
@@ -81,13 +77,17 @@ class Applicative p => Parsing p where
 instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   position = C $ pure <$> position
   satisfy p = C $ pure <$> satisfy p
-  char s   = C $ pure <$> char s
-  set s f e = C $ pure <$> set s f e
   source   = C $ pure <$> source
   l <|> r  = C $ getC l <|> getC r
   fail a s = C $ fail (pure a) s
   capture f p g = C $ capture (liftA2 f) (getC p) (getC . g . C)
   capture0 f p g = C $ capture0 (liftA2 f) (getC p) (getC . g . C)
+
+char :: Parsing p => Char -> p Char
+char = satisfy . (==)
+
+set :: Parsing p => CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
+set t f s = f . Just <$> satisfy (`CharSet.member` t) <|> fail (f Nothing) s
 
 -- FIXME: always require <?>/fail to terminate a chain of alternatives
 (<?>) :: Parsing p => p a -> (a, String) -> p a

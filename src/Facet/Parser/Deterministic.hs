@@ -9,7 +9,6 @@ module Facet.Parser.Deterministic
 ) where
 
 import           Data.Bifunctor (first)
-import qualified Data.CharSet as CharSet
 import           Data.Foldable (find)
 import           Data.Maybe (listToMaybe)
 import           Facet.Parser.Combinators
@@ -54,10 +53,6 @@ instance Parsing Parser where
   -- FIXME: we can’t pick a sensible default for an arbitrary predicate; recovery should be smarter I think?
   satisfy p = Parser (Insert (const '_') (pure <$> inserted "something satisfying an arbitrary predicate, lol")) (Table [(Predicate p, Cont (\ i _ k' -> k' (advance i) (head (input i))))])
 
-  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s (Cont (\ i _ k' -> k' (advance i) s)))
-
-  set s f e = Parser (Insert (const (f Nothing)) (pure <$> inserted e)) (Table [(Predicate (`CharSet.member` s), Cont (\ i _ k' -> k' (advance i) (f (Just (head (input i))))))])
-
   source = Parser (Null src) mempty
 
   pl <|> pr = Parser (null pl <> null pr) (table pl <> table pr)
@@ -96,9 +91,6 @@ instance Semigroup (Table a) where
 
 instance Monoid (Table a) where
   mempty = Table mempty
-
-singleton :: Char -> a -> Table a
-singleton c k = Table [(Predicate (== c), k)]
 
 member :: Char -> Table a -> Bool
 member c = any (test c . fst) . getTable
