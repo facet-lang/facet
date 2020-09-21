@@ -3,4 +3,28 @@
 Base.Function : Module
 {
 
+id
+: { A : Type } -> (x : A) -> A
+= x
+# NB: equivalently: id : {A : Type } -> A -> A = {x -> x}
+
+const
+: { A, B : Type } -> (x : A) -> (_ : B) -> A
+= x
+# NB: equivalently: const : { A, B : Type } -> (x : A) -> B -> A = { _ -> x }
+# NB: equivalently: const : { A, B : Type } -> A -> B -> A = { _ _ -> x }
+
+flip
+: { A, B, C : Type } -> (f : A -> B -> C) -> (B -> A -> C) # NB: this rightmost set of parens is technically redundant, but useful to understand what the function does
+= { b a -> f a b } # note that we didn’t bind the latter operands in the type so we’re binding (pattern matching on) them both here instead
+
+
+curry
+: { A, B, C : Type } -> (f : (A, B) -> C) -> (x : A) -> (y : B) -> C
+= f (x, y)
+
+uncurry
+: { A, B, C : Type } -> (f : A -> B -> C) -> (A, B) -> C
+= { (x, y) -> f x y } # NB: you can’t bind individual fields of a type in the signature, so we have to pattern match here too
+
 }
