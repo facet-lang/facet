@@ -60,7 +60,7 @@ type' :: (S.Type ty, S.Err ty, Parsing p) => p ty
 type' = runIdentity <$> getC (type_ tglobal)
 
 type_ :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
-type_ tvar = fn tvar <|> forAll (const type_) (char '_') tvar <|> errorWith S.err "type"
+type_ tvar = fn tvar <|> forAll (const type_) (char '_') tvar <|> errorWith (Just S.err) "type"
 
 fn :: (Permutable env, S.Type ty, S.Err ty, Parsing p) => (p :.: env) ty -> (p :.: env) ty
 fn tvar = app tatom tvar <**> opt (flip (S.-->) <$ arrow <*> fn tvar) id
@@ -75,14 +75,14 @@ tatom tvar
   prd ts = foldl1 (S..*) ts
 
 tglobal :: (S.Type ty, Parsing p) => p ty
-tglobal = S.tglobal <$> tident <?> (S.tglobal "_", "variable")
+tglobal = S.tglobal <$> tident <?> (Just (S.tglobal "_"), "variable")
 
 
 expr :: (S.Expr expr, S.Err expr, Parsing p) => p expr
 expr = runIdentity <$> getC (expr_ global)
 
 global :: (S.Expr expr, Parsing p) => p expr
-global = S.global <$> ident <?> (S.global "_", "variable")
+global = S.global <$> ident <?> (Just (S.global "_"), "variable")
 
 expr_ :: forall p env expr . (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
 expr_ = app atom
@@ -94,7 +94,7 @@ lam :: forall p env expr . (Permutable env, S.Expr expr, S.Err expr, Parsing p) 
 lam var = braces $ clause var
   where
   clause :: Permutable env' => (p :.: env') expr -> (p :.: env') expr
-  clause var = S.lam0 (\ v -> capture (const id) identS (\ i -> let var' = weaken var <|> liftCOuter v <* token i in ws *> (clause var' <|> arrow *> expr_ var'))) <?> (S.err, "clause")
+  clause var = S.lam0 (\ v -> capture (const id) identS (\ i -> let var' = weaken var <|> liftCOuter v <* token i in ws *> (clause var' <|> arrow *> expr_ var'))) <?> (Just S.err, "clause")
 
 atom :: (Permutable env, S.Expr expr, S.Err expr, Parsing p) => (p :.: env) expr -> (p :.: env) expr
 atom var
