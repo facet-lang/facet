@@ -14,6 +14,7 @@ module Facet.Functor.C
 , weaken
 , strengthen
 , Permutable
+, Distributive(..)
 , Extends(..)
 , Tr(..)
 ) where
