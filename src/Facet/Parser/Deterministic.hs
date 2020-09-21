@@ -127,10 +127,10 @@ deleted :: String -> State -> Notice
 deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
 
 choose :: Parser a -> Cont a
-choose p = Cont go
+choose p = go
   where
-  go i follow k = case listToMaybe (input i) >>= (`Map.lookup` table p) of
-    Nothing -> recovering follow (choose p) k i (null p)
+  go = Cont $ \ i follow k -> case listToMaybe (input i) >>= (`Map.lookup` table p) of
+    Nothing -> recovering follow go k i (null p)
     Just k' -> runCont k' i follow k
 
 insertOrNull :: State -> Null a -> (State -> a -> r) -> r
