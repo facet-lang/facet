@@ -79,6 +79,7 @@ instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   errorWith a s = C $ errorWith (pure <$> a) s
   capture f p g = C $ capture (liftA2 f) (getC p) (getC . g . C)
   capture0 f p g = C $ capture0 (liftA2 f) (getC p) (getC . g . C)
+  -- FIXME: we can’t do something like notFollowedBy effectively because of contravariance in g.
 
 char :: Parsing p => Char -> p Char
 char c = satisfy (== c) <|> errorWith (Just c) (show c)
