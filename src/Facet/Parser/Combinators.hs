@@ -2,7 +2,7 @@
 module Facet.Parser.Combinators
 ( Parsing(..)
 , char
-, set
+, oneOfSet
 , (<?>)
 , string
 , opt
@@ -42,7 +42,6 @@ import           Control.Applicative (liftA2, (<**>))
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as CharSet
 import           Data.Foldable (traverse_)
-import           Data.Maybe (fromMaybe)
 import           Facet.Functor.C
 import           Facet.Parser.Source
 import           Facet.Parser.Span
@@ -86,8 +85,8 @@ instance (Parsing f, Applicative g) => Parsing (f :.: g) where
 char :: Parsing p => Char -> p Char
 char c = satisfy (== c) <|> fail c (show c)
 
-set :: Parsing p => CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
-set t f s = f . Just <$> satisfy (`CharSet.member` t) <|> fail (f Nothing) s
+oneOfSet :: Parsing p => CharSet.CharSet -> p Char
+oneOfSet t = satisfy (`CharSet.member` t)
 
 -- FIXME: always require <?>/fail to terminate a chain of alternatives
 (<?>) :: Parsing p => p a -> (a, String) -> p a
@@ -163,9 +162,9 @@ token p = p <* ws
 -- Character parsers
 
 lower, upper, letter :: Parsing p => p Char
-lower = set CharSet.lowercaseLetter (fromMaybe 'a') "lowercase letter"
-upper = set CharSet.uppercaseLetter (fromMaybe 'A') "uppercase letter"
-letter = set CharSet.letter (fromMaybe 'a') "letter"
+lower = oneOfSet CharSet.lowercaseLetter <|> fail 'a' "lowercase letter"
+upper = oneOfSet CharSet.uppercaseLetter <|> fail 'A' "uppercase letter"
+letter = oneOfSet CharSet.letter <|> fail 'a' "letter"
 
 colon, comma :: Parsing p => p Char
 colon = token (char ':')
@@ -186,5 +185,5 @@ rbracket = token (char ']')
 ws :: Parsing p => p ()
 ws = skipMany c
   where
-  c = set wsSet (const ()) "whitespace"
+  c = () <$ oneOfSet wsSet <|> fail () "whitespace"
   wsSet = CharSet.separator <> CharSet.control
