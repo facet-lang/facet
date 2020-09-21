@@ -130,7 +130,7 @@ choose :: Parser a -> Cont a
 choose p = go
   where
   go = Cont $ \ i -> case listToMaybe (input i) >>= (`Map.lookup` table p) of
-    Nothing -> \ follow k -> recovering follow go k i (null p)
+    Nothing -> recovering go i (null p)
     Just k' -> runCont k' i
 
 insertOrNull :: State -> Null a -> (State -> a -> r) -> r
@@ -138,8 +138,8 @@ insertOrNull i n k = case n of
   Null   a   -> k i (a i)
   Insert a e -> k i{ errs = errs i ++ e i } (a i)
 
-recovering :: [CharSet] -> Cont a -> (State -> a -> r) -> State -> Null a -> r
-recovering follow this k i n = case input i of
+recovering :: Cont a -> State -> Null a -> [CharSet] -> (State -> a -> r) -> r
+recovering this i n follow k = case input i of
   "" -> insertOrNull i n k
   s:_
     -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
