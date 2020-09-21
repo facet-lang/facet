@@ -53,7 +53,7 @@ instance Parsing Parser where
 
   char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s (Cont (\ i _ k' -> k' (advance i) s)))
 
-  set s f e = Parser (Insert (const (f Nothing)) (pure <$> inserted e)) (Table [(s, Cont (\ i _ k' -> k' (advance i) (f (Just (head (input i))))))])
+  set s f e = Parser (Insert (const (f Nothing)) (pure <$> inserted e)) (Table [(Predicate (`CharSet.member` s), Cont (\ i _ k' -> k' (advance i) (f (Just (head (input i))))))])
 
   source = Parser (Null src) mempty
 
@@ -84,7 +84,7 @@ captureBody f g mk k = Cont $ \ i follow k' ->
   let fab = f a b in fab `seq` k' i'' fab
 
 
-newtype Table a = Table { getTable :: [(CharSet.CharSet, a)] }
+newtype Table a = Table { getTable :: [(Predicate, a)] }
   deriving (Functor)
 
 instance Semigroup (Table a) where
@@ -95,13 +95,13 @@ instance Monoid (Table a) where
   mempty = Table mempty
 
 singleton :: Char -> a -> Table a
-singleton c k = Table [(CharSet.singleton c, k)]
+singleton c k = Table [(Predicate (== c), k)]
 
 member :: Char -> Table a -> Bool
-member c = any (CharSet.member c . fst) . getTable
+member c = any (test c . fst) . getTable
 
 lookup :: Char -> Table a -> Maybe a
-lookup c t = snd <$> find (CharSet.member c . fst) (getTable t)
+lookup c t = snd <$> find (test c . fst) (getTable t)
 
 
 newtype Predicate = Predicate { runPredicate :: Char -> Bool }
