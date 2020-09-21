@@ -30,8 +30,8 @@ parse p ls s = runCont (choose (const False) p) (State ls s mempty (Pos 0 0)) me
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
-  { null     :: Null a
-  , table    :: Table (Cont a)
+  { null  :: Null a
+  , table :: Table (Cont a)
   }
   deriving (Functor)
 
