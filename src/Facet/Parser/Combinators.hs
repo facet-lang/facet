@@ -49,11 +49,13 @@ import           Prelude hiding (fail, span)
 class Applicative p => Parsing p where
   position :: p Pos
 
+  satisfy :: (Char -> Bool) -> p Char
+
   char :: Char -> p Char
-  char c = set (CharSet.singleton c) (const c) (show c)
+  char = satisfy . (==)
 
   set :: CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
-  set t f s = foldr ((<|>) . fmap (f . Just) . char) (fail (f Nothing) s) (CharSet.toList t)
+  set t f s = f . Just <$> satisfy (`CharSet.member` t) <|> fail (f Nothing) s
 
   source :: p Source
   -- FIXME: warn on non-disjoint first sets
@@ -74,10 +76,11 @@ class Applicative p => Parsing p where
   -- FIXME: this is a bad name.
   capture0 :: (a -> b -> c) -> p a -> (p a -> p b) -> p c
 
-  {-# MINIMAL position, (char | set), source, (<|>), fail, capture, capture0 #-}
+  {-# MINIMAL position, satisfy, source, (<|>), fail, capture, capture0 #-}
 
 instance (Parsing f, Applicative g) => Parsing (f :.: g) where
   position = C $ pure <$> position
+  satisfy p = C $ pure <$> satisfy p
   char s   = C $ pure <$> char s
   set s f e = C $ pure <$> set s f e
   source   = C $ pure <$> source

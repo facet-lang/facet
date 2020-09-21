@@ -51,6 +51,9 @@ instance Applicative Parser where
 instance Parsing Parser where
   position = Parser (Null pos) mempty
 
+  -- FIXME: we can’t pick a sensible default for an arbitrary predicate; recovery should be smarter I think?
+  satisfy p = Parser (Insert (const '_') (pure <$> inserted "something satisfying an arbitrary predicate, lol")) (Table [(Predicate p, Cont (\ i _ k' -> k' (advance i) (head (input i))))])
+
   char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s (Cont (\ i _ k' -> k' (advance i) s)))
 
   set s f e = Parser (Insert (const (f Nothing)) (pure <$> inserted e)) (Table [(Predicate (`CharSet.member` s), Cont (\ i _ k' -> k' (advance i) (f (Just (head (input i))))))])
