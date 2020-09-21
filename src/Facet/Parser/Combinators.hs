@@ -38,7 +38,7 @@ module Facet.Parser.Combinators
 ) where
 
 import           Control.Applicative (liftA2, (<**>))
-import           Data.CharSet (CharSet, fromList, toList)
+import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as CharSet
 import           Data.Foldable (traverse_)
 import           Data.Maybe (fromMaybe)
@@ -86,8 +86,8 @@ infixl 2 <?>
 string :: Parsing p => String -> p String
 string s = s <$ traverse_ char s <?> (s, s)
 
-set :: Parsing p => CharSet -> (Maybe Char -> t) -> String -> p t
-set t f s = foldr ((<|>) . fmap (f . Just) . char) (fail (f Nothing) s) (toList t)
+set :: Parsing p => CharSet.CharSet -> (Maybe Char -> t) -> String -> p t
+set t f s = foldr ((<|>) . fmap (f . Just) . char) (fail (f Nothing) s) (CharSet.toList t)
 
 opt :: Parsing p => p a -> a -> p a
 opt p v = p <|> pure v
@@ -154,9 +154,9 @@ token p = p <* ws
 
 -- Character parsers
 
-lowerSet, upperSet :: CharSet
-lowerSet = fromList ['a'..'z']
-upperSet = fromList ['A'..'Z']
+lowerSet, upperSet :: CharSet.CharSet
+lowerSet = CharSet.fromList ['a'..'z']
+upperSet = CharSet.fromList ['A'..'Z']
 
 lower, upper, letter :: Parsing p => p Char
 lower = set lowerSet (fromMaybe 'a') "lowercase letter"
