@@ -31,21 +31,25 @@ uncurry
 
 # fixme: do we want to support mixfix syntax?
 # fixme: how do we want to specify fixity?
-(<<) : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
+(<<)
+: { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
 = { a -> f (g a) }
 # NB: equivalently: (<<) : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (a : A) -> C = f (g a)
 
-(>>) : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (A -> C)
+(>>)
+: { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (A -> C)
 = { a -> f (g a) }
 # NB: equivalently: (>>) : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (a : A) -> C = f (g a)
 
 
-(<|) : { A, B : Type } -> (f : A -> B) -> (a : A) -> B
+(<|)
+: { A, B : Type } -> (f : A -> B) -> (a : A) -> B
 = f a
 # NB: equivalently: { A, B : Type } -> (f : A -> B) -> A -> B = f
 # NB: equivalently: { A, B : Type } -> (A -> B) -> A -> B = id
 
-(|>) : { A, B : Type } -> (a : A) -> (f : A -> B) -> B
+(|>)
+: { A, B : Type } -> (a : A) -> (f : A -> B) -> B
 = f a
 
 }
