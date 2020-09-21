@@ -90,7 +90,7 @@ captureBody f g mk k = cont $ \ i follow ->
   let (i', a) = runCont k i (fs:follow)
       fs = firstSet gp
       gp = g (mk (i', a))
-      choices = Map.fromList (table gp)
+      choices = buildMap (table gp)
       (i'', b) = runCont (choose (null gp) choices) i' follow
       fab = f a b
   in fab `seq` (i'', fab)
