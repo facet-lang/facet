@@ -23,7 +23,7 @@ parseString :: Maybe FilePath -> Parser a -> String -> ([Notice], a)
 parseString path p s = first errs (parse p (sourceFromString path s) s)
 
 parse :: Parser a -> Source -> String -> (State, a)
-parse p ls s = runCont (choose p) (,) (State ls s mempty (Pos 0 0)) mempty
+parse p ls s = runCont (choose p) (State ls s mempty (Pos 0 0)) mempty (,)
 
 -- FIXME: some sort of trie might be smarter about common prefixes
 data Parser a = Parser
@@ -40,20 +40,20 @@ instance Applicative Parser where
     nullablef = nullable (null f)
     tseq = combine nullablef tabf taba
       where
-      tabf = fmap (\ k -> Cont $ \ k' i follow ->
-        let (i', f')  = runCont k (,) i (firstSet a:follow)
-            (i'', a') = runCont (choose a) (,) i' follow
+      tabf = fmap (\ k -> Cont $ \ i follow k' ->
+        let (i', f')  = runCont k i (firstSet a:follow) (,)
+            (i'', a') = runCont (choose a) i' follow (,)
             fa'       = f' a'
         in  fa' `seq` k' i'' fa') (table f)
-      taba = fmap (\ k -> Cont $ \ k' i follow ->
-        let (i', a') = runCont k (,) i follow
+      taba = fmap (\ k -> Cont $ \ i follow k' ->
+        let (i', a') = runCont k i follow (,)
             fa'      = getNull (null f) i' a'
         in  fa' `seq` k' i' fa') (table a)
 
 instance Parsing Parser where
   position = Parser (Null pos) mempty mempty
 
-  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) (Map.singleton s (Cont (\ k' i _ -> k' (advance i) s)))
+  char s = Parser (Insert (const s) (pure <$> inserted (show s))) (singleton s) (Map.singleton s (Cont (\ i _ k' -> k' (advance i) s)))
 
   source = Parser (Null src) mempty mempty
 
@@ -65,7 +65,7 @@ instance Parsing Parser where
   -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (fmap go (table p))
     where
-    go k = Cont $ \ k' i -> runCont (captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k) k' i
+    go k = Cont $ \ i -> runCont (captureBody f g (\ (i', a) -> a <$ string (substring (src i) (Span (pos i) (pos i')))) k) i
 
   capture0 f p g = Parser (f <$> null p <*> null (g p)) (firstSet p) (fmap go (table p))
     where
@@ -75,18 +75,18 @@ instance Parsing Parser where
 -- FIXME: is this even correct?
 -- FIXME: do we want to require that p be non-nullable?
 captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> ((State, a) -> Parser a') -> Cont a -> Cont c
-captureBody f g mk k = Cont $ \ k' i follow ->
-  let (i', a) = runCont k (,) i (fs:follow)
+captureBody f g mk k = Cont $ \ i follow k' ->
+  let (i', a) = runCont k i (fs:follow) (,)
       fs = firstSet gp
       gp = g (mk (i', a))
-      (i'', b) = runCont (choose gp) (,) i' follow
+      (i'', b) = runCont (choose gp) i' follow (,)
       fab = f a b
   in fab `seq` k' i'' fab
 
 
 type Table a = Map.Map Char (Cont a)
 
-newtype Cont a = Cont { runCont :: forall r . (State -> a -> r) -> State -> [CharSet] -> r }
+newtype Cont a = Cont { runCont :: forall r . State -> [CharSet] -> (State -> a -> r) -> r }
   deriving (Functor)
 
 
@@ -129,13 +129,13 @@ deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P
 choose :: Parser a -> Cont a
 choose p = Cont go
   where
-  go k i follow = case input i of
+  go i follow k = case input i of
     []  -> insertOrNull k (null p) i
     s:_ -> case Map.lookup s (table p) of
       Nothing
         | any (member s) follow -> insertOrNull k (null p) i
-        | otherwise             -> runCont (choose p) k (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow
-      Just k'                   -> runCont k' k i follow
+        | otherwise             -> runCont (choose p) (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow k
+      Just k'                   -> runCont k' i follow k
 
 insertOrNull :: (State -> a -> r) -> Null a -> State -> r
 insertOrNull k n i = case n of
