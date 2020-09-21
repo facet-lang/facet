@@ -166,20 +166,20 @@ choose p = go
     Nothing -> recovering go i (null p)
     Just k' -> runCont k' i
 
-insertOrNull :: State -> Null a -> (State -> a -> r) -> r
-insertOrNull i n k = case n of
+insertOrNull :: State -> Null a -> (State -> r) -> (State -> a -> r) -> r
+insertOrNull i n _ k = case n of
   Null   a -> k i (a i)
   Insert a -> let (e, a') = a i in k i{ errs = errs i ++ e } a'
 
 recovering :: Cont a -> State -> Null a -> Predicate -> (State -> r) -> (State -> a -> r) -> r
-recovering this i n follow err = case input i of
+recovering this i n follow = case input i of
   "" -> insertOrNull i n
   s:_
     -- FIXME: this choice is the only thing that depends on the follow set, & thus on the first set.
     -- we can eliminate it if we instead allow the continuation to decide, I *think*.
     -- might involve a recovery parameter to Cont, taking null p?
     | test s follow -> insertOrNull i n
-    | otherwise     -> runCont this (advance i{ errs = errs i ++ deleted (show s) i }) follow err
+    | otherwise     -> runCont this (advance i{ errs = errs i ++ deleted (show s) i }) follow
 
 
 data State = State
