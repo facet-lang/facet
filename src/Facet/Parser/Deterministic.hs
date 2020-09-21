@@ -51,13 +51,13 @@ instance Parsing Parser where
   position = Parser (Null pos) mempty
 
   -- FIXME: we can’t pick a sensible default for an arbitrary predicate; recovery should be smarter I think?
-  satisfy p = Parser (Insert (flip (,) '_' . pure <$> inserted "something satisfying an arbitrary predicate, lol")) (Table [(Predicate p, Cont (\ i _ k' -> k' (advance i) (head (input i))))])
+  satisfy p = Parser (Insert (flip (,) '_' <$> inserted "something satisfying an arbitrary predicate, lol")) (Table [(Predicate p, Cont (\ i _ k' -> k' (advance i) (head (input i))))])
 
   source = Parser (Null src) mempty
 
   pl <|> pr = Parser (null pl <> null pr) (table pl <> table pr)
 
-  fail a e = Parser (Insert (flip (,) a . pure <$> inserted e)) mempty
+  fail a e = Parser (Insert (flip (,) a <$> inserted e)) mempty
 
   -- FIXME: accidentally capturing whitespace in p breaks things
   capture f p g = Parser (f <$> null p <*> null (g p)) (fmap go (table p))
@@ -148,11 +148,11 @@ getErrors :: Null a -> State -> [Notice]
 getErrors (Null   _) = const []
 getErrors (Insert f) = fst . f
 
-inserted :: String -> State -> Notice
-inserted s i = Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P.pretty s) []
+inserted :: String -> State -> [Notice]
+inserted s i = [Notice (Just Error) (stateExcerpt i) (P.pretty "inserted" P.<+> P.pretty s) []]
 
-deleted :: String -> State -> Notice
-deleted  s i = Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []
+deleted :: String -> State -> [Notice]
+deleted  s i = [Notice (Just Error) (stateExcerpt i) (P.pretty "deleted"  P.<+> P.pretty s) []]
 
 choose :: Parser a -> Cont a
 choose p = go
@@ -174,7 +174,7 @@ recovering this i n follow = case input i of
     -- we can eliminate it if we instead allow the continuation to decide, I *think*.
     -- might involve a recovery parameter to Cont, taking null p?
     | test s follow -> insertOrNull i n
-    | otherwise     -> runCont this (advance i{ errs = errs i ++ [ deleted (show s) i ] }) follow
+    | otherwise     -> runCont this (advance i{ errs = errs i ++ deleted (show s) i }) follow
 
 
 data State = State
