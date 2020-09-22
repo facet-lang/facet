@@ -8,10 +8,10 @@ import           Facet.Type
 
 type Env = Map.Map U.Name Type
 
-newtype Elab = Elab { runElab :: Env -> Maybe Type -> Maybe Type }
+newtype Elab = Elab { runElab :: Maybe Type -> Env -> Maybe Type }
 
 instance U.Global Elab where
-  global n = Elab $ \ env ty -> Map.lookup n env >>= maybe pure unify ty
+  global n = Elab $ \ ty env -> Map.lookup n env >>= maybe pure unify ty
 
 
 -- FIXME: handle foralls
