@@ -1,5 +1,6 @@
 module Facet.Elab
 ( elab
+, check
 , Elab(..)
 ) where
 
@@ -13,6 +14,9 @@ type Result = Maybe Type
 
 elab :: Maybe Type -> Env -> Elab -> Result
 elab g e m = runElab m g e
+
+check :: Type -> Env -> Elab -> Result
+check = elab . Just
 
 newtype Elab = Elab { runElab :: Maybe Type -> Env -> Result }
 
