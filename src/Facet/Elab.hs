@@ -2,4 +2,6 @@ module Facet.Elab
 ( Elab(..)
 ) where
 
-newtype Elab = Elab { runElab :: () }
+import Facet.Type
+
+newtype Elab = Elab { runElab :: Type -> () }
