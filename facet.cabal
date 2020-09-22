@@ -65,6 +65,7 @@ library
     , containers
     , distributive
     , lens
+    , parsers
     , prettyprinter
     , prettyprinter-ansi-terminal
     , terminal-size
