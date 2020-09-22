@@ -4,5 +4,6 @@ module Facet.Type
 
 data Type
   = Type
+  | Unit
   | Type :-> Type
   | ForAll Type (Type -> Type)
