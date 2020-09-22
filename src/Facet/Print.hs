@@ -90,7 +90,7 @@ data Context
   deriving (Bounded, Eq, Ord, Show)
 
 newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
-  deriving (U.App, U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
+  deriving (U.App, U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, U.Global, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
   deriving (Applicative) via Const Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
@@ -156,14 +156,15 @@ instance U.App Print where
     where
     op = infixl' AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
 
+instance U.Global Print where
+  -- FIXME: don’t shadow globals with locally-bound variables
+  global = pretty
+
 instance U.Expr Print where
   -- FIXME: Preserve variable names from user code where possible
   -- FIXME: Use _ in binding positions for unused variables
   lam0 f = cases [\ var -> (var, f var)]
   lam  f = cases [\ var -> (var, f (Left var))]
-
-  -- FIXME: don’t pretty-print local variables with the same name as globals used in the body
-  global = pretty
 
   unit = pretty "()"
   l ** r = tupled [l, r]
@@ -180,7 +181,6 @@ instance U.Type Print where
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
   _Type = pretty "Type"
-  tglobal = pretty
 
 
 instance U.Module Print Print Print Print where

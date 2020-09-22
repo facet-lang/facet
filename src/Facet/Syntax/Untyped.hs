@@ -2,6 +2,7 @@
 module Facet.Syntax.Untyped
 ( App(..)
 , Name
+, Global(..)
 , Expr(..)
 , Err(..)
 , TName
@@ -19,11 +20,12 @@ class App expr where
 
 type Name = String
 
-class App expr => Expr expr where
+class Global expr where
+  global :: Name -> expr
+
+class (App expr, Global expr) => Expr expr where
   lam0 :: (expr -> expr) -> expr
   lam :: (Either expr (expr, expr -> expr) -> expr) -> expr
-
-  global :: Name -> expr
 
   unit :: expr
   -- | Tupling.
@@ -43,7 +45,7 @@ class ForAll ty decl | decl -> ty where
 
 type TName = String
 
-class (App ty, ForAll ty ty) => Type ty where
+class (App ty, Global ty, ForAll ty ty) => Type ty where
   (-->) :: ty -> ty -> ty
   infixr 2 -->
 
@@ -53,8 +55,6 @@ class (App ty, ForAll ty ty) => Type ty where
 
   _Unit :: ty
   _Type :: ty
-
-  tglobal :: TName -> ty
 
 
 type DeclName = String

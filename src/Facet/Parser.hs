@@ -75,7 +75,7 @@ tatom tvar
   prd ts = foldl1 (liftA2 (S..*)) ts
 
 tglobal :: (S.Type ty, Monad p, TokenParsing p) => p ty
-tglobal = S.tglobal <$> tname <?> "variable"
+tglobal = S.global <$> tname <?> "variable"
 
 
 expr :: (S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p expr

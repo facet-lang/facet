@@ -2,9 +2,10 @@
 module Facet.Syntax.Untyped.Lifted
 ( S.Name
 , S.App(..)
-, S.Expr(global, unit, (**))
+, S.Global(..)
+, S.Expr(unit, (**))
 , S.Err(..)
-, S.Type(_Type, _Unit, tglobal, (-->), (.*))
+, S.Type(_Type, _Unit, (-->), (.*))
 , S.Module(..)
 , S.Decl((.=))
 , S.ForAll
