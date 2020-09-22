@@ -83,7 +83,7 @@ inFirstSet = memberOf . table
 -- FIXME: do we want to require that p be non-nullable?
 captureBody :: (a -> b -> c) -> (Parser a' -> Parser b) -> (State -> a -> Parser a') -> Cont a -> Cont c
 captureBody f g mk k = Cont $ \ i follow err k' ->
-  let (i', a) = runCont k i (inFirstSet gp <> follow) (,Nothing) (\ i a -> (i, Just a))
+  let (i', a) = runCont k i (inFirstSet gp <> follow) (, Nothing) (\ i a -> (i, Just a))
       gp = g (mk i' (fromJust a))
   in runCont (choose gp) i' follow err $ \ i'' b ->
   let fab = f (fromJust a) b in fab `seq` k' i'' fab
