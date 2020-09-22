@@ -15,7 +15,7 @@ import qualified Facet.Syntax.Untyped.Lifted as S
 import           Prelude hiding (lines, null, span)
 import           Text.Parser.Char
 import           Text.Parser.Combinators
-import           Text.Parser.Token hiding (ident)
+import           Text.Parser.Token
 
 -- case
 -- : (x : a) -> (f : a -> b) -> b
@@ -28,14 +28,14 @@ import           Text.Parser.Token hiding (ident)
 -- holes
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Err ty, S.Err expr, Monad p, TokenParsing p) => p mod
-decl = (S..:) <$> ident <* colon <*> (runIdentity <$> sig (fmap pure global) (fmap pure tglobal))
+decl = (S..:) <$> name <* colon <*> (runIdentity <$> sig (fmap pure global) (fmap pure tglobal))
   where
   sig :: S.Permutable env' => p (env' expr) -> p (env' ty) -> p (env' decl)
   sig var tvar = try (bind var tvar) <|> forAll sig var tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
 
   bind :: S.Permutable env' => p (env' expr) -> p (env' ty) -> p (env' decl)
   bind var tvar = do
-    (i, t) <- parens ((,) <$> ident <* colon <*> type_ tvar)
+    (i, t) <- parens ((,) <$> name <* colon <*> type_ tvar)
     pure t S.>-> \ t -> arrow *> sig (t <$ variable i <|> S.weaken var) (S.weaken tvar)
 
 
@@ -47,7 +47,7 @@ forAll
   -> p (env ty)
   -> p (env res)
 forAll k x tvar = do
-  (names, ty) <- braces ((,) <$> commaSep1 tident <* colon <*> type_ tvar)
+  (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ tvar)
   let loop :: S.Permutable env' => p (env' ty) -> p (env' x) -> p (env' ty) -> [S.Name] -> p (env' res)
       loop ty x tvar = \case
         []   -> k x tvar
@@ -74,14 +74,14 @@ tatom tvar
   prd ts = foldl1 (liftA2 (S..*)) ts
 
 tglobal :: (S.Type ty, TokenParsing p) => p ty
-tglobal = S.tglobal <$> tident <?> "variable"
+tglobal = S.tglobal <$> tname <?> "variable"
 
 
 expr :: (S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p expr
 expr = runIdentity <$> expr_ (pure <$> global)
 
 global :: (S.Expr expr, TokenParsing p) => p expr
-global = S.global <$> ident <?> "variable"
+global = S.global <$> name <?> "variable"
 
 expr_ :: forall p env expr . (S.Permutable env, S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 expr_ = app atom
@@ -92,7 +92,7 @@ lam :: forall p env expr . (S.Permutable env, S.Expr expr, S.Err expr, Monad p, 
 lam var = braces $ clause var
   where
   clause :: S.Permutable env' => p (env' expr) -> p (env' expr)
-  clause var = S.lam0 (\ v -> ident >>= \ i -> let var' = v <$ variable i <|> S.weaken var in clause var' <|> arrow *> expr_ var') <?> "clause"
+  clause var = S.lam0 (\ v -> name >>= \ i -> let var' = v <$ variable i <|> S.weaken var in clause var' <|> arrow *> expr_ var') <?> "clause"
 
 atom :: (S.Permutable env, S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 atom var
@@ -107,9 +107,9 @@ app :: (S.Permutable env, S.App expr, TokenParsing p) => (p (env expr) -> p (env
 app atom tvar = foldl (liftA2 (S.$$)) <$> atom tvar <*> many (atom tvar)
 
 
-ident, tident :: TokenParsing p => p S.Name
-ident = token ((:) <$> lower <*> many letter)
-tident = token ((:) <$> upper <*> many letter)
+name, tname :: TokenParsing p => p S.Name
+name = token ((:) <$> lower <*> many letter)
+tname = token ((:) <$> upper <*> many letter)
 
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
