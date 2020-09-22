@@ -74,14 +74,14 @@ tatom tvar
   prd [] = pure S._Unit
   prd ts = foldl1 (liftA2 (S..*)) ts
 
-tglobal :: (S.Type ty, TokenParsing p) => p ty
+tglobal :: (S.Type ty, Monad p, TokenParsing p) => p ty
 tglobal = S.tglobal <$> tname <?> "variable"
 
 
 expr :: (S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p expr
 expr = runIdentity <$> expr_ (pure <$> global)
 
-global :: (S.Expr expr, TokenParsing p) => p expr
+global :: (S.Expr expr, Monad p, TokenParsing p) => p expr
 global = S.global <$> name <?> "variable"
 
 expr_ :: forall p env expr . (S.Permutable env, S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
@@ -108,9 +108,9 @@ app :: (S.Permutable env, S.App expr, TokenParsing p) => (p (env expr) -> p (env
 app atom tvar = foldl (liftA2 (S.$$)) <$> atom tvar <*> many (atom tvar)
 
 
-name, tname :: TokenParsing p => p S.Name
-name = token ((:) <$> lower <*> many letter)
-tname = token ((:) <$> upper <*> many letter)
+name, tname :: (Monad p, TokenParsing p) => p S.Name
+name  = ident nameStyle
+tname = ident tnameStyle
 
 nameStyle :: CharParsing p => IdentifierStyle p
 nameStyle = IdentifierStyle
