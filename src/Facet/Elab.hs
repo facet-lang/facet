@@ -8,8 +8,9 @@ import qualified Facet.Syntax.Untyped as U
 import           Facet.Type
 
 type Env = Map.Map U.Name Type
+type Result = Maybe Type
 
-newtype Elab = Elab { runElab :: Maybe Type -> Env -> Maybe Type }
+newtype Elab = Elab { runElab :: Maybe Type -> Env -> Result }
 
 instance U.Global Elab where
   global n = Elab $ \ ty -> maybe pure unify ty <=< Map.lookup n
