@@ -28,7 +28,7 @@ import           Text.Parser.Token.Highlight
 -- forcing nullary computations
 -- holes
 
-decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Err ty, S.Err expr, Monad p, TokenParsing p) => p mod
+decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, Monad p, TokenParsing p) => p mod
 decl = (S..:) <$> name <* colon <*> (runIdentity <$> sig (fmap pure global) (fmap pure tglobal))
   where
   sig :: S.Permutable env' => p (env' expr) -> p (env' ty) -> p (env' decl)
@@ -42,7 +42,7 @@ decl = (S..:) <$> name <* colon <*> (runIdentity <$> sig (fmap pure global) (fma
 
 forAll
   :: forall env ty res p x
-  .  (S.Permutable env, S.ForAll ty res, S.Type ty, S.Err ty, Monad p, TokenParsing p)
+  .  (S.Permutable env, S.ForAll ty res, S.Type ty, Monad p, TokenParsing p)
   => (forall env' . S.Permutable env' => p (env' x) -> p (env' ty) -> p (env' res))
   -> p (env x)
   -> p (env ty)
@@ -56,16 +56,16 @@ forAll k x tvar = do
   arrow *> loop (pure ty) x tvar names
 
 
-type' :: (S.Type ty, S.Err ty, Monad p, TokenParsing p) => p ty
+type' :: (S.Type ty, Monad p, TokenParsing p) => p ty
 type' = runIdentity <$> type_ (fmap pure tglobal)
 
-type_ :: (S.Permutable env, S.Type ty, S.Err ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
+type_ :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
 type_ tvar = fn tvar <|> forAll (const type_) (pure <$> char '_') tvar <?> "type"
 
-fn :: (S.Permutable env, S.Type ty, S.Err ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
+fn :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
 fn tvar = app tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
 
-tatom :: (S.Permutable env, S.Type ty, S.Err ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
+tatom :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
 tatom tvar
   =   parens (prd <$> sepBy (type_ tvar) comma)
   <|> tvar
@@ -78,24 +78,24 @@ tglobal :: (S.Type ty, Monad p, TokenParsing p) => p ty
 tglobal = S.global <$> tname <?> "variable"
 
 
-expr :: (S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p expr
+expr :: (S.Expr expr, Monad p, TokenParsing p) => p expr
 expr = runIdentity <$> expr_ (pure <$> global)
 
 global :: (S.Expr expr, Monad p, TokenParsing p) => p expr
 global = S.global <$> name <?> "variable"
 
-expr_ :: forall p env expr . (S.Permutable env, S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
+expr_ :: forall p env expr . (S.Permutable env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 expr_ = app atom
 
 -- FIXME: patterns
 -- FIXME: nullary computations
-lam :: forall p env expr . (S.Permutable env, S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
+lam :: forall p env expr . (S.Permutable env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 lam var = braces $ clause var
   where
   clause :: S.Permutable env' => p (env' expr) -> p (env' expr)
   clause var = S.lam0 (\ v -> name >>= \ i -> let var' = v <$ variable i <|> S.weaken var in clause var' <|> arrow *> expr_ var') <?> "clause"
 
-atom :: (S.Permutable env, S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
+atom :: (S.Permutable env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 atom var
   =   lam var
   <|> parens (prd <$> sepBy (expr_ var) comma)
