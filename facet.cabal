@@ -37,6 +37,7 @@ common common
 library
   import: common
   exposed-modules:
+    Facet.Elab
     Facet.Eval
     Facet.Functor.C
     Facet.Functor.I
