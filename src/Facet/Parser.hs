@@ -27,7 +27,6 @@ import           Text.Parser.Token hiding (ident)
 -- forcing nullary computations
 -- holes
 
--- FIXME: this runs into problems when binders capture a variable sharing a prefix w/ other used vars.
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Err ty, S.Err expr, Monad p, TokenParsing p) => p mod
 decl = (S..:) <$> ident <* colon <*> (runIdentity <$> sig (fmap pure global) (fmap pure tglobal))
   where
