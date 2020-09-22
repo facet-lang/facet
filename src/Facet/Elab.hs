@@ -1,6 +1,7 @@
 module Facet.Elab
 ( elab
 , check
+, synth
 , Elab(..)
 ) where
 
@@ -17,6 +18,9 @@ elab g e m = runElab m g e
 
 check :: Type -> Env -> Elab -> Result
 check = elab . Just
+
+synth :: Type -> Env -> Elab -> Result
+synth = elab . Just
 
 newtype Elab = Elab { runElab :: Maybe Type -> Env -> Result }
 
