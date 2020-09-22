@@ -89,7 +89,6 @@ expr_ = app atom
 
 -- FIXME: patterns
 -- FIXME: nullary computations
--- FIXME: the variable is parsed even when it’s a prefix of a longer identifier
 lam :: forall p env expr . (S.Permutable env, S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 lam var = braces $ clause var
   where
