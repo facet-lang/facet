@@ -176,7 +176,7 @@ instance U.ForAll Print Print where
   t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> ann v' t <> flatAlt line space))) </> arrow <+> prec FnR (f v')
 
 instance U.Type Print where
-  (-->) = infixr' FnL FnR (\ a b -> a </> arrow <+> b)
+  (-->) = infixr' FnL FnR (\ a b -> align a </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
   _Unit = pretty "()"
   _Type = pretty "Type"
