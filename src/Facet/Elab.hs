@@ -1,2 +1,5 @@
 module Facet.Elab
-() where
+( Elab(..)
+) where
+
+newtype Elab = Elab { runElab :: () }
