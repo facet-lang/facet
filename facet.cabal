@@ -41,12 +41,6 @@ library
     Facet.Functor.C
     Facet.Functor.I
     Facet.Parser
-    Facet.Parser.Combinators
-    Facet.Parser.Deterministic
-    Facet.Parser.Excerpt
-    Facet.Parser.Notice
-    Facet.Parser.Source
-    Facet.Parser.Span
     Facet.Pretty
     Facet.Pretty.Fresh
     Facet.Pretty.Prec
@@ -61,8 +55,6 @@ library
     Facet.Syntax.Examples
   build-depends:
     , base ^>= 4.14
-    , charset
-    , containers
     , distributive
     , fused-effects
     , fused-effects-parser
