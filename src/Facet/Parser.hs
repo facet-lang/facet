@@ -35,7 +35,7 @@ decl = (S..:) <$> ident <* colon <*> (runIdentity <$> sig (fmap pure global) (fm
   sig var tvar = try (bind var tvar) <|> forAll sig var tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
 
   bind :: S.Permutable env' => p (env' expr) -> p (env' ty) -> p (env' decl)
-  bind var tvar = lparen *> (ident >>= \ i -> spaces *> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig (S.weaken var <|> t <$ variable i) (S.weaken tvar)))
+  bind var tvar = lparen *> (ident >>= \ i -> spaces *> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig (t <$ variable i <|> S.weaken var) (S.weaken tvar)))
 
 
 forAll
@@ -53,7 +53,7 @@ forAll k x tvar = lbrace *> names []
   types :: S.Permutable env' => p (env' ty) -> p (env' x) -> p (env' ty) -> [p (env' S.Name)] -> p (env' res)
   types ty x tvar = \case
     []   -> k x tvar
-    i:is -> ty S.>=> \ t -> types (S.weaken ty) (S.weaken x) (S.weaken tvar <|> t <$ i) (map S.weaken is)
+    i:is -> ty S.>=> \ t -> types (S.weaken ty) (S.weaken x) (t <$ i <|> S.weaken tvar) (map S.weaken is)
 
 
 type' :: (S.Type ty, S.Err ty, Monad p, TokenParsing p) => p ty
@@ -94,7 +94,7 @@ lam :: forall p env expr . (S.Permutable env, S.Expr expr, S.Err expr, Monad p, 
 lam var = braces $ clause var
   where
   clause :: S.Permutable env' => p (env' expr) -> p (env' expr)
-  clause var = S.lam0 (\ v -> ident >>= \ i -> let var' = S.weaken var <|> v <$ variable i in clause var' <|> arrow *> expr_ var') <?> "clause"
+  clause var = S.lam0 (\ v -> ident >>= \ i -> let var' = v <$ variable i <|> S.weaken var in clause var' <|> arrow *> expr_ var') <?> "clause"
 
 atom :: (S.Permutable env, S.Expr expr, S.Err expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 atom var
