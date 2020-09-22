@@ -2,6 +2,7 @@ module Facet.Elab
 ( Elab(..)
 ) where
 
+import           Control.Monad ((<=<))
 import qualified Data.Map as Map
 import qualified Facet.Syntax.Untyped as U
 import           Facet.Type
@@ -11,7 +12,7 @@ type Env = Map.Map U.Name Type
 newtype Elab = Elab { runElab :: Maybe Type -> Env -> Maybe Type }
 
 instance U.Global Elab where
-  global n = Elab $ \ ty env -> Map.lookup n env >>= maybe pure unify ty
+  global n = Elab $ \ ty -> maybe pure unify ty <=< Map.lookup n
 
 
 -- FIXME: handle foralls
