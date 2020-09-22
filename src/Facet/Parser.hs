@@ -127,4 +127,4 @@ lbrace = token (symbolic '{')
 rbrace = token (symbolic '}')
 
 variable :: TokenParsing p => String -> p String
-variable s = token (string s)
+variable s = token (string s) <* notFollowedBy alphaNum
