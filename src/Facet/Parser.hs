@@ -116,7 +116,7 @@ tidentS = (:) <$> upper <*> many letter
 tident = token tidentS
 
 arrow :: TokenParsing p => p String
-arrow = token (string "->")
+arrow = symbol "->"
 
 lparen, rparen :: TokenParsing p => p Char
 lparen = symbolic '('
