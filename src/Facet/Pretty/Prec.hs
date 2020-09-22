@@ -30,7 +30,7 @@ class Printer ann doc => PrecPrinter lvl ann doc | doc -> ann lvl where
   localPrec :: (lvl -> lvl) -> doc -> doc
 
 prec :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> doc -> doc
-prec l d = askingPrec $ \ l' -> parensIf (l' > l) (setPrec l d)
+prec l d = askingPrec $ \ l' -> setPrec l (parensIf (l' > l) d)
 
 setPrec :: PrecPrinter lvl ann doc => lvl -> doc -> doc
 setPrec = localPrec . const
