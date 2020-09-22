@@ -60,7 +60,7 @@ instance Alternative Parser where
 instance Parsing Parser where
   position = Parser (Null pos) mempty
 
-  satisfy p = Parser (Insert ((, Nothing) <$> err (P.pretty "inserted unknown character"))) (Table [(Predicate p, Cont (\ i _ _ k' -> k' (advance i) (head (input i))))])
+  satisfy p = Parser (Insert ((, Nothing) <$> err (P.pretty "inserted unknown character"))) (singleton (Predicate p) (Cont (\ i _ _ k' -> k' (advance i) (head (input i)))))
 
   source = Parser (Null src) mempty
 
@@ -98,6 +98,9 @@ instance Semigroup (Table a) where
 
 instance Monoid (Table a) where
   mempty = Table mempty
+
+singleton :: Predicate -> a -> Table a
+singleton p a = Table [(p, a)]
 
 member :: Char -> Table a -> Bool
 member c = any (test c . fst) . getTable
