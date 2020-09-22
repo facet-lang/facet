@@ -19,8 +19,8 @@ elab = flip runElab
 check :: Type -> Elab -> Env -> Result
 check = elab . Just
 
-synth :: Type -> Elab -> Env -> Result
-synth = elab . Just
+synth :: Elab -> Env -> Result
+synth = elab Nothing
 
 newtype Elab = Elab { runElab :: Maybe Type -> Env -> Result }
 
