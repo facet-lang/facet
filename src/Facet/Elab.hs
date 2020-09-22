@@ -1,5 +1,6 @@
 module Facet.Elab
-( Elab(..)
+( elab
+, Elab(..)
 ) where
 
 import           Control.Monad ((<=<))
@@ -9,6 +10,9 @@ import           Facet.Type
 
 type Env = Map.Map U.Name Type
 type Result = Maybe Type
+
+elab :: Maybe Type -> Env -> Elab -> Result
+elab g e m = runElab m g e
 
 newtype Elab = Elab { runElab :: Maybe Type -> Env -> Result }
 
