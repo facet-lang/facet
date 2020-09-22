@@ -19,15 +19,15 @@ class App expr where
 
 type Name = String
 
-class App repr => Expr repr where
-  lam0 :: (repr -> repr) -> repr
-  lam :: (Either repr (repr, repr -> repr) -> repr) -> repr
+class App expr => Expr expr where
+  lam0 :: (expr -> expr) -> expr
+  lam :: (Either expr (expr, expr -> expr) -> expr) -> expr
 
-  global :: Name -> repr
+  global :: Name -> expr
 
-  unit :: repr
+  unit :: expr
   -- | Tupling.
-  (**) :: repr -> repr -> repr
+  (**) :: expr -> expr -> expr
   -- FIXME: tupling/unit should take a list of expressions
 
 
