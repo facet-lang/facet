@@ -1,2 +1,6 @@
 module Facet.Type
-() where
+( Type(..)
+) where
+
+data Type
+  = Type
