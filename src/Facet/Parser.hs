@@ -32,7 +32,7 @@ decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Err ty, S.Err 
 decl = (S..:) <$> ident <* colon <*> (runIdentity <$> sig (fmap pure global) (fmap pure tglobal))
   where
   sig :: S.Permutable env' => p (env' expr) -> p (env' ty) -> p (env' decl)
-  sig var tvar = bind var tvar <|> forAll sig var tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
+  sig var tvar = try (bind var tvar) <|> forAll sig var tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
 
   bind :: S.Permutable env' => p (env' expr) -> p (env' ty) -> p (env' decl)
   bind var tvar = lparen *> (ident >>= \ i -> spaces *> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig (S.weaken var <|> t <$ variable i) (S.weaken tvar)))
