@@ -119,12 +119,12 @@ arrow :: TokenParsing p => p String
 arrow = token (string "->")
 
 lparen, rparen :: TokenParsing p => p Char
-lparen = token (symbolic '(')
-rparen = token (symbolic ')')
+lparen = symbolic '('
+rparen = symbolic ')'
 
 lbrace, rbrace :: TokenParsing p => p Char
-lbrace = token (symbolic '{')
-rbrace = token (symbolic '}')
+lbrace = symbolic '{'
+rbrace = symbolic '}'
 
 variable :: TokenParsing p => String -> p String
 variable s = token (string s) <* notFollowedBy alphaNum
