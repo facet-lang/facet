@@ -9,7 +9,7 @@ module Facet.Parser.Notice
 import           Data.List (isSuffixOf)
 import           Data.Maybe (fromMaybe)
 import           Facet.Parser.Excerpt
-import           Facet.Parser.Span
+import           Facet.Parser.Span as Span
 import qualified Prettyprinter as P
 import           Prettyprinter.Render.Terminal as ANSI
 
@@ -38,7 +38,7 @@ prettyNotice (Notice level (Excerpt path text span) reason context) = P.vsep
     [ bold (P.pretty (fromMaybe "(interactive)" path)) <> P.colon <> pos (start span) <> P.colon <> foldMap ((P.space <>) . (<> P.colon) . prettyLevel) level
     , reason
     ]))
-  : blue (P.pretty (succ (line (start span)))) P.<+> P.align (P.vcat
+  : blue (P.pretty (succ (Span.line (start span)))) P.<+> P.align (P.vcat
     [ blue (P.pretty '|') P.<+> if "\n" `isSuffixOf` text then P.pretty (init text) <> blue (P.pretty "\\n") else P.pretty text <> blue (P.pretty "<end of input>")
     , blue (P.pretty '|') P.<+> padding span <> caret span
     ])

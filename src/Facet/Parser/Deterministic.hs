@@ -15,7 +15,7 @@ import           Data.Maybe (fromJust, listToMaybe)
 import           Facet.Parser.Combinators
 import           Facet.Parser.Excerpt
 import           Facet.Parser.Notice
-import           Facet.Parser.Source
+import           Facet.Parser.Source as Source
 import           Facet.Parser.Span
 import qualified Facet.Pretty as P
 import qualified Prettyprinter as PP
@@ -202,7 +202,7 @@ advance (State s i es (Pos l c)) = State s (tail i) es $ case head i of
   _    -> Pos l       (c + 1)
 
 stateExcerpt :: State -> Excerpt
-stateExcerpt i = Excerpt (path (src i)) (src i ! pos i) (Span (pos i) (pos i))
+stateExcerpt i = Excerpt (Source.path (src i)) (src i ! pos i) (Span (pos i) (pos i))
 
 
 combine :: Semigroup t => Bool -> t -> t -> t
