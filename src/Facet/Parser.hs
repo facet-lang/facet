@@ -124,7 +124,7 @@ nameStyle = IdentifierStyle
 tnameStyle :: CharParsing p => IdentifierStyle p
 tnameStyle = IdentifierStyle
   "type name"
-  (upper <|> char '_')
+  upper
   alphaNum
   mempty
   Identifier
