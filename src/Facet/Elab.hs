@@ -13,13 +13,13 @@ import           Facet.Type
 type Env = Map.Map U.Name Type
 type Result = Maybe Type
 
-elab :: Maybe Type -> Env -> Elab -> Result
-elab g e m = runElab m g e
+elab :: Maybe Type -> Elab -> Env -> Result
+elab = flip runElab
 
-check :: Type -> Env -> Elab -> Result
+check :: Type -> Elab -> Env -> Result
 check = elab . Just
 
-synth :: Type -> Env -> Elab -> Result
+synth :: Type -> Elab -> Env -> Result
 synth = elab . Just
 
 newtype Elab = Elab { runElab :: Maybe Type -> Env -> Result }
