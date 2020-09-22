@@ -34,7 +34,7 @@ decl = (S..:) <$> ident <* colon <*> (runIdentity <$> sig (fmap pure global) (fm
   sig var tvar = try (bind var tvar) <|> forAll sig var tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
 
   bind :: S.Permutable env' => p (env' expr) -> p (env' ty) -> p (env' decl)
-  bind var tvar = lparen *> (ident >>= \ i -> spaces *> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig (t <$ variable i <|> S.weaken var) (S.weaken tvar)))
+  bind var tvar = lparen *> (ident >>= \ i -> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig (t <$ variable i <|> S.weaken var) (S.weaken tvar)))
 
 
 forAll
