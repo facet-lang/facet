@@ -35,14 +35,14 @@ prec l d = askingPrec $ \ l' -> setPrec l (parensIf (l' > l) d)
 setPrec :: PrecPrinter lvl ann doc => lvl -> doc -> doc
 setPrec = localPrec . const
 
-infix' :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
-infix' lo hi sep l r = prec lo (sep (prec hi l) (prec hi r))
+infix' :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
+infix' p pl pr sep l r = prec p (sep (prec pl l) (prec pr r))
 
 infixl' :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
-infixl' lo hi sep l r = prec lo (sep l (prec hi r))
+infixl' pl pr sep l r = prec pl (sep l (prec pr r))
 
 infixr' :: (PrecPrinter lvl ann doc, Ord lvl) => lvl -> lvl -> (doc -> doc -> doc) -> (doc -> doc -> doc)
-infixr' lo hi sep l r = prec lo (sep (prec hi l) r)
+infixr' pl pr sep l r = prec pr (sep (prec pl l) r)
 
 
 runPrec :: lvl -> Prec lvl a -> a
