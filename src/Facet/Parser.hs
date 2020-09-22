@@ -16,6 +16,7 @@ import           Prelude hiding (lines, null, span)
 import           Text.Parser.Char
 import           Text.Parser.Combinators
 import           Text.Parser.Token
+import           Text.Parser.Token.Highlight
 
 -- case
 -- : (x : a) -> (f : a -> b) -> b
@@ -110,6 +111,24 @@ app atom tvar = foldl (liftA2 (S.$$)) <$> atom tvar <*> many (atom tvar)
 name, tname :: TokenParsing p => p S.Name
 name = token ((:) <$> lower <*> many letter)
 tname = token ((:) <$> upper <*> many letter)
+
+nameStyle :: CharParsing p => IdentifierStyle p
+nameStyle = IdentifierStyle
+  "name"
+  (lower <|> char '_')
+  alphaNum
+  mempty
+  Identifier
+  ReservedIdentifier
+
+tnameStyle :: CharParsing p => IdentifierStyle p
+tnameStyle = IdentifierStyle
+  "type name"
+  (upper <|> char '_')
+  alphaNum
+  mempty
+  Identifier
+  ReservedIdentifier
 
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
