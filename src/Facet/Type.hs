@@ -4,3 +4,4 @@ module Facet.Type
 
 data Type
   = Type
+  | Type :-> Type
