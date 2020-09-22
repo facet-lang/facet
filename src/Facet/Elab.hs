@@ -4,4 +4,4 @@ module Facet.Elab
 
 import Facet.Type
 
-newtype Elab = Elab { runElab :: Type -> () }
+newtype Elab = Elab { runElab :: Type -> Maybe () }
