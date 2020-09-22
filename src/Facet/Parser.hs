@@ -119,9 +119,9 @@ arrow :: TokenParsing p => p String
 arrow = token (string "->")
 
 lparen, rparen :: TokenParsing p => p Char
-lparen = token (char '(')
-rparen = token (char ')')
+lparen = token (symbolic '(')
+rparen = token (symbolic ')')
 
 lbrace, rbrace :: TokenParsing p => p Char
-lbrace = token (char '{')
-rbrace = token (char '}')
+lbrace = token (symbolic '{')
+rbrace = token (symbolic '}')
