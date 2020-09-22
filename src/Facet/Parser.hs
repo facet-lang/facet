@@ -46,15 +46,13 @@ forAll
   -> p (env x)
   -> p (env ty)
   -> p (env res)
-forAll k x tvar = lbrace *> names []
-  where
-  names is = tident >>= \ i ->
-        comma *> names (fmap pure (variable i):is)
-    <|> colon *> (type_ tvar <* rbrace <* arrow >>= \ t -> types (pure t) x tvar (reverse (fmap pure (variable i):is)))
-  types :: S.Permutable env' => p (env' ty) -> p (env' x) -> p (env' ty) -> [p (env' S.Name)] -> p (env' res)
-  types ty x tvar = \case
-    []   -> k x tvar
-    i:is -> ty S.>=> \ t -> types (S.weaken ty) (S.weaken x) (t <$ i <|> S.weaken tvar) (map S.weaken is)
+forAll k x tvar = do
+  (names, ty) <- braces ((,) <$> commaSep1 tident <* colon <*> type_ tvar)
+  let loop :: S.Permutable env' => p (env' ty) -> p (env' x) -> p (env' ty) -> [S.Name] -> p (env' res)
+      loop ty x tvar = \case
+        []   -> k x tvar
+        i:is -> ty S.>=> \ t -> loop (S.weaken ty) (S.weaken x) (t <$ variable i <|> S.weaken tvar) is
+  arrow *> loop (pure ty) x tvar names
 
 
 type' :: (S.Type ty, S.Err ty, Monad p, TokenParsing p) => p ty
@@ -117,10 +115,6 @@ tident = token tidentS
 
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
-
-lbrace, rbrace :: TokenParsing p => p Char
-lbrace = symbolic '{'
-rbrace = symbolic '}'
 
 variable :: TokenParsing p => String -> p String
 variable s = token (string s <* notFollowedBy alphaNum)
