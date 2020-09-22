@@ -8,3 +8,6 @@ data Type
   | Type :* Type
   | Type :-> Type
   | ForAll Type (Type -> Type)
+
+infixl 7 :*
+infixr 0 :->
