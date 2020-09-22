@@ -27,6 +27,15 @@ newtype Elab = Elab { runElab :: Maybe Type -> ReaderC Env Maybe Type }
 instance U.Global Elab where
   global n = Elab $ \ ty -> maybe pure unify ty =<< ReaderC (Map.lookup n)
 
+instance U.App Elab where
+  f $$ a = Elab $ \ _T -> do
+    _F <- synth f
+    case _F of
+      _A :-> _T' -> do
+        _ <- check _A a
+        maybe pure unify _T _T'
+      _ -> empty
+
 
 -- FIXME: handle foralls
 unify :: Type -> Type -> ReaderC Env Maybe Type
