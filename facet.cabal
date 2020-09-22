@@ -64,6 +64,8 @@ library
     , charset
     , containers
     , distributive
+    , fused-effects
+    , fused-effects-parser
     , lens
     , parsers
     , prettyprinter

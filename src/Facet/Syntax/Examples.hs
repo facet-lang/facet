@@ -26,19 +26,21 @@ module Facet.Syntax.Examples
 , Empty(..)
 ) where
 
+import           Control.Carrier.Parser.Church
+import           Control.Carrier.Reader
+import           Control.Carrier.Throw.Either
+import           Control.Effect.Parser.Notice
+import           Control.Effect.Parser.Source
+import           Control.Effect.Parser.Span
 import           Control.Monad.IO.Class (MonadIO(..))
-import           Data.Foldable (traverse_)
-import           Facet.Parser.Deterministic
-import           Facet.Parser.Notice
 import qualified Facet.Pretty as P
 import           Facet.Print
 import           Facet.Syntax.Typed
 
-parseString' :: MonadIO m => Parser Print -> String -> m ()
+parseString' :: (Algebra sig m, MonadIO m) => ParserC (ReaderC Source (ThrowC Notice m)) Print -> String -> m ()
 parseString' p s = do
-  let (errs, a) = parseString Nothing p s
-  traverse_ (P.putDoc . prettyNotice) errs
-  maybe (pure ()) prettyPrint a
+  r <- runThrow (runParserWithString (Pos 0 0) s p)
+  either (P.putDoc . prettyNotice) prettyPrint r
 
 
 prelude :: Module expr ty decl mod => mod ()
