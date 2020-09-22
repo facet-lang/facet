@@ -90,7 +90,7 @@ data Context
   deriving (Bounded, Eq, Ord, Show)
 
 newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
-  deriving (U.App, U.Err, U.Expr, FreshPrinter (Nest Highlight), Functor, U.Global, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
+  deriving (U.App, U.Expr, FreshPrinter (Nest Highlight), Functor, U.Global, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
   deriving (Applicative) via Const Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
@@ -168,9 +168,6 @@ instance U.Expr Print where
 
   unit = pretty "()"
   l ** r = tupled [l, r]
-
-instance U.Err Print where
-  err = pretty "err"
 
 instance U.ForAll Print Print where
   -- FIXME: combine quantification over type variables of the same kind

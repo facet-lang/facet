@@ -4,7 +4,6 @@ module Facet.Syntax.Untyped
 , Name
 , Global(..)
 , Expr(..)
-, Err(..)
 , TName
 , Type(..)
 , ForAll(..)
@@ -31,10 +30,6 @@ class (App expr, Global expr) => Expr expr where
   -- | Tupling.
   (**) :: expr -> expr -> expr
   -- FIXME: tupling/unit should take a list of expressions
-
-
-class Err expr where
-  err :: expr
 
 
 class ForAll ty decl | decl -> ty where
