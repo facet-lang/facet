@@ -108,9 +108,10 @@ app :: (S.Permutable env, S.App expr, TokenParsing p) => (p (env expr) -> p (env
 app atom tvar = foldl (liftA2 (S.$$)) <$> atom tvar <*> many (atom tvar)
 
 
-name, tname :: (Monad p, TokenParsing p) => p S.Name
+name, tname, holeName :: (Monad p, TokenParsing p) => p S.Name
 name  = ident nameStyle
 tname = ident tnameStyle
+holeName = ident holeNameStyle
 
 nameStyle :: CharParsing p => IdentifierStyle p
 nameStyle = IdentifierStyle
@@ -125,6 +126,15 @@ tnameStyle :: CharParsing p => IdentifierStyle p
 tnameStyle = IdentifierStyle
   "type name"
   upper
+  alphaNum
+  mempty
+  Identifier
+  ReservedIdentifier
+
+holeNameStyle :: CharParsing p => IdentifierStyle p
+holeNameStyle = IdentifierStyle
+  "hole name"
+  (char '?')
   alphaNum
   mempty
   Identifier
