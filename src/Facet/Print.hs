@@ -80,8 +80,8 @@ ifPrec p f g a = askingPrec $ \ p' -> if p p' then f a else g a
 
 data Context
   = Null
-  | FnL
   | FnR
+  | FnL
   | Expr
   | Pattern
   | AppL
