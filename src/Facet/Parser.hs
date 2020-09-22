@@ -34,7 +34,9 @@ decl = (S..:) <$> ident <* colon <*> (runIdentity <$> sig (fmap pure global) (fm
   sig var tvar = try (bind var tvar) <|> forAll sig var tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
 
   bind :: S.Permutable env' => p (env' expr) -> p (env' ty) -> p (env' decl)
-  bind var tvar = lparen *> (ident >>= \ i -> colon *> (type_ tvar S.>-> \ t -> rparen *> arrow *> sig (t <$ variable i <|> S.weaken var) (S.weaken tvar)))
+  bind var tvar = do
+    (i, t) <- parens ((,) <$> ident <* colon <*> type_ tvar)
+    pure t S.>-> \ t -> arrow *> sig (t <$ variable i <|> S.weaken var) (S.weaken tvar)
 
 
 forAll
@@ -115,10 +117,6 @@ tident = token tidentS
 
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
-
-lparen, rparen :: TokenParsing p => p Char
-lparen = symbolic '('
-rparen = symbolic ')'
 
 lbrace, rbrace :: TokenParsing p => p Char
 lbrace = symbolic '{'
