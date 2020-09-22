@@ -107,11 +107,9 @@ app :: (S.Permutable env, S.App expr, TokenParsing p) => (p (env expr) -> p (env
 app atom tvar = foldl (liftA2 (S.$$)) <$> atom tvar <*> many (atom tvar)
 
 
-identS, ident, tidentS, tident :: TokenParsing p => p S.Name
-identS = (:) <$> lower <*> many letter
-ident = token identS
-tidentS = (:) <$> upper <*> many letter
-tident = token tidentS
+ident, tident :: TokenParsing p => p S.Name
+ident = token ((:) <$> lower <*> many letter)
+tident = token ((:) <$> upper <*> many letter)
 
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
