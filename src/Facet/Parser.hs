@@ -48,7 +48,7 @@ forAll
 forAll k x tvar = lbrace *> names []
   where
   names is = tident >>= \ i ->
-       comma *> names (fmap pure (token (string i)):is)
+        comma *> names (fmap pure (token (string i)):is)
     <|> colon *> (type_ tvar <* rbrace <* arrow >>= \ t -> types (pure t) x tvar (reverse (fmap pure (token (string i)):is)))
   types :: S.Permutable env' => p (env' ty) -> p (env' x) -> p (env' ty) -> [p (env' S.Name)] -> p (env' res)
   types ty x tvar = \case
