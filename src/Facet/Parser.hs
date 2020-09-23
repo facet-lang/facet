@@ -63,7 +63,7 @@ type_ :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) ->
 type_ tvar = fn tvar <|> forAll (const type_) (pure <$> char '_') tvar <?> "type"
 
 fn :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
-fn tvar = app (S.$$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
+fn tvar = app (S..$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
 
 tatom :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
 tatom tvar

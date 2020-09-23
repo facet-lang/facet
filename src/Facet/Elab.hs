@@ -27,15 +27,6 @@ newtype Elab ty = Elab { elab :: Maybe Type -> ReaderC Env Maybe ty }
 instance U.Global (Elab Type) where
   global n = Elab $ \ ty -> unify ty =<< ReaderC (Map.lookup n)
 
-instance U.App (Elab Type) where
-  f $$ a = Elab $ \ _T -> do
-    _F <- synth f
-    case _F of
-      _A :-> _T' -> do
-        _ <- check a _A
-        unify _T _T'
-      _ -> empty
-
 instance U.ForAll (Elab Type) (Elab Type) where
   _A >=> _B = Elab $ \ _T -> do
     _ <- check _A Type
@@ -54,6 +45,8 @@ instance U.Type (Elab Type) where
     _ <- check _L Type
     _ <- check _R Type
     unify _T Type
+
+  (.$) = app
 
   _Unit = Elab (`unify` Type)
   _Type = Elab (`unify` Type) -- 🕶
@@ -77,6 +70,7 @@ instance U.Expr (Elab Type) where
       _ <- check b _B
       pure (_A :-> _B)
     _ -> empty
+  ($$) = app
 
   unit = Elab (`unify` Unit)
   l ** r = Elab $ \case
@@ -106,6 +100,15 @@ instance U.Module (Elab Type) (Elab Type) (Elab Type) (Elab Type) where
   _ .: decl = Elab $ \ _T -> do
     _ <- check decl Type -- FIXME: what should the type of declarations be?
     unify _T Type -- FIXME: what should the type of modules be?
+
+app :: Elab Type -> Elab Type -> Elab Type
+f `app` a = Elab $ \ _T -> do
+  _F <- synth f
+  case _F of
+    _A :-> _T' -> do
+      _ <- check a _A
+      unify _T _T'
+    _ -> empty
 
 
 -- FIXME: handle foralls

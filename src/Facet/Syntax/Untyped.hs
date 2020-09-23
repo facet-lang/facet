@@ -1,7 +1,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Syntax.Untyped
-( App(..)
-, Name
+( Name
 , Global(..)
 , Expr(..)
 , TName
@@ -12,19 +11,16 @@ module Facet.Syntax.Untyped
 , Decl(..)
 ) where
 
-class App expr where
-  ($$) :: expr -> expr -> expr
-  infixl 9 $$
-
-
 type Name = String
 
 class Global expr where
   global :: Name -> expr
 
-class (App expr, Global expr) => Expr expr where
+class Global expr => Expr expr where
   lam0 :: (expr -> expr) -> expr
   lam :: (Either expr (expr, expr -> expr) -> expr) -> expr
+  ($$) :: expr -> expr -> expr
+  infixl 9 $$
 
   unit :: expr
   -- | Tupling.
@@ -40,9 +36,12 @@ class ForAll ty decl | decl -> ty where
 
 type TName = String
 
-class (App ty, Global ty, ForAll ty ty) => Type ty where
+class (Global ty, ForAll ty ty) => Type ty where
   (-->) :: ty -> ty -> ty
   infixr 2 -->
+
+  (.$) :: ty -> ty -> ty
+  infixl 9 .$
 
   (.*) :: ty -> ty -> ty
   infixl 7 .*

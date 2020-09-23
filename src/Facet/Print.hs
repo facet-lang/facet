@@ -7,7 +7,6 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeApplications #-}
 module Facet.Print
 ( prettyPrint
 , prettyPrintWith
@@ -90,7 +89,7 @@ data Context
   deriving (Bounded, Eq, Ord, Show)
 
 newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
-  deriving (U.App, U.Expr, FreshPrinter (Nest Highlight), Functor, U.Global, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
+  deriving (U.Expr, FreshPrinter (Nest Highlight), Functor, U.Global, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
   deriving (Applicative) via Const Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
@@ -116,7 +115,7 @@ arrow = op (pretty "->")
 
 instance T.Expr TPrint where
   lam f = TPrint $ cases [\ var -> (var, coerce (f . Left) var)]
-  ($$) = coerce ((U.$$) @Print)
+  ($$) = coerce app
 
   alg _ = TPrint $ pretty "TBD"
 
@@ -149,13 +148,6 @@ toAlpha alphabet i = alphabet !! r : if q > 0 then show q else ""
   (q, r) = i `divMod` n
 
 
-instance U.App Print where
-  l $$ r = askingPrec $ \case
-    AppL -> op
-    _    -> group op
-    where
-    op = infixl' AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
-
 instance U.Global Print where
   -- FIXME: don’t shadow globals with locally-bound variables
   global = pretty
@@ -165,6 +157,7 @@ instance U.Expr Print where
   -- FIXME: Use _ in binding positions for unused variables
   lam0 f = cases [\ var -> (var, f var)]
   lam  f = cases [\ var -> (var, f (Left var))]
+  ($$) = app
 
   unit = pretty "()"
   l ** r = tupled [l, r]
@@ -176,6 +169,7 @@ instance U.ForAll Print Print where
 instance U.Type Print where
   (-->) = infixr' FnL FnR (\ a b -> group (align a) </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
+  (.$) = app
   _Unit = pretty "()"
   _Type = pretty "Type"
 
@@ -188,3 +182,10 @@ instance U.Decl Print Print Print where
   t .= b = t </> pretty '=' <+> b
 
   t >-> f = bind $ \ v -> let v' = var v in group (align (parens (ann v' t))) </> arrow <+> prec FnR (f v')
+
+app :: Print -> Print -> Print
+l `app` r = askingPrec $ \case
+  AppL -> op
+  _    -> group op
+  where
+  op = infixl' AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
