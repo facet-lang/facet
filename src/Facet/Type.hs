@@ -1,5 +1,7 @@
+{-# LANGUAGE LambdaCase #-}
 module Facet.Type
 ( Type(..)
+, interpret
 ) where
 
 import qualified Facet.Core as C
@@ -24,3 +26,13 @@ instance C.Type (Type a) where
   (-->) = (:->)
   (>=>) = ForAll
   (.$) = (:$)
+
+interpret :: C.Type ty => Type ty -> ty
+interpret = \case
+  Var v -> v
+  Type -> C._Type
+  Unit -> C._Unit
+  f :$ a -> interpret f C..$ interpret a
+  l :* r -> interpret l C..* interpret r
+  a :-> b -> interpret a C.--> interpret b
+  ForAll t b -> interpret t C.>=> interpret . b . Var
