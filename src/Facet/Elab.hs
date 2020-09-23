@@ -131,8 +131,8 @@ data a ::: b = a ::: b
 infix 5 :::
 
 
-newtype Check ty a = Check { runCheck :: Type ty -> ReaderC (Env (Type ty)) Maybe a }
-  deriving (Applicative, Functor, Monad) via ReaderC (Type ty) (ReaderC (Env (Type ty)) Maybe)
+newtype Check ty a = Check { runCheck :: Type ty -> Synth ty a }
+  deriving (Applicative, Functor, Monad) via ReaderC (Type ty) (Synth ty)
 
 newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) Maybe a }
   deriving (Applicative, Functor, Monad) via ReaderC (Env (Type ty)) Maybe
