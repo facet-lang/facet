@@ -42,6 +42,20 @@ instance U.ForAll Elab Elab where
     _ <- check (b (Elab (const empty))) Type
     unify _T Type
 
+instance U.Type Elab where
+  _A --> _B = Elab $ \ _T -> do
+    _ <- check _A Type
+    _ <- check _B Type
+    unify _T Type
+
+  _L .* _R = Elab $ \ _T -> do
+    _ <- check _L Type
+    _ <- check _R Type
+    unify _T Type
+
+  _Unit = Elab (`unify` Type)
+  _Type = Elab (`unify` Type) -- 🕶
+
 
 -- FIXME: handle foralls
 unify :: Maybe Type -> Type -> ReaderC Env Maybe Type
