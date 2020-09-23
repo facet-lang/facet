@@ -101,6 +101,12 @@ instance U.Decl (Elab Type) (Elab Type) (Elab Type) where
     _ <- check (_B (Elab (const empty))) Type
     unify _T Type
 
+-- FIXME: specialize this to Elab Module?
+instance U.Module (Elab Type) (Elab Type) (Elab Type) (Elab Type) where
+  _ .: decl = Elab $ \ _T -> do
+    _ <- check decl Type -- FIXME: what should the type of declarations be?
+    unify _T Type -- FIXME: what should the type of modules be?
+
 
 -- FIXME: handle foralls
 unify :: Maybe Type -> Type -> ReaderC Env Maybe Type
