@@ -5,7 +5,8 @@ module Facet.Type
 import qualified Facet.Core as C
 
 data Type a
-  = Type
+  = Var a
+  | Type
   | Unit
   | Type a :* Type a
   | Type a :$ Type a
