@@ -17,10 +17,10 @@ import           Facet.Type
 
 type Env ty = Map.Map U.Name ty
 
-check :: Elab (Type ty) -> Type ty -> ReaderC (Env (Type ty)) Maybe (Type ty)
+check :: Elab ty -> ty -> ReaderC (Env ty) Maybe ty
 check m = elab m . Just
 
-synth :: Elab (Type ty) -> ReaderC (Env (Type ty)) Maybe (Type ty)
+synth :: Elab ty -> ReaderC (Env ty) Maybe ty
 synth m = elab m Nothing
 
 newtype Elab ty = Elab { elab :: Maybe ty -> ReaderC (Env ty) Maybe ty }
