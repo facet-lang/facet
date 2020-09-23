@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Elab
@@ -15,18 +16,18 @@ import           Facet.Type
 
 type Env = Map.Map U.Name Type
 
-check :: Elab -> Type -> ReaderC Env Maybe Type
+check :: Elab ty -> Type -> ReaderC Env Maybe ty
 check m = elab m . Just
 
-synth :: Elab -> ReaderC Env Maybe Type
+synth :: Elab ty -> ReaderC Env Maybe ty
 synth m = elab m Nothing
 
-newtype Elab = Elab { elab :: Maybe Type -> ReaderC Env Maybe Type }
+newtype Elab ty = Elab { elab :: Maybe Type -> ReaderC Env Maybe ty }
 
-instance U.Global Elab where
+instance U.Global (Elab Type) where
   global n = Elab $ \ ty -> unify ty =<< ReaderC (Map.lookup n)
 
-instance U.App Elab where
+instance U.App (Elab Type) where
   f $$ a = Elab $ \ _T -> do
     _F <- synth f
     case _F of
@@ -35,7 +36,7 @@ instance U.App Elab where
         unify _T _T'
       _ -> empty
 
-instance U.ForAll Elab Elab where
+instance U.ForAll (Elab Type) (Elab Type) where
   _A >=> _B = Elab $ \ _T -> do
     _ <- check _A Type
     -- FIXME: this should make a fresh type variable and apply _B to that
@@ -43,7 +44,7 @@ instance U.ForAll Elab Elab where
     _ <- check (_B (Elab (const empty))) Type
     unify _T Type
 
-instance U.Type Elab where
+instance U.Type (Elab Type) where
   _A --> _B = Elab $ \ _T -> do
     _ <- check _A Type
     _ <- check _B Type
@@ -57,7 +58,7 @@ instance U.Type Elab where
   _Unit = Elab (`unify` Type)
   _Type = Elab (`unify` Type) -- 🕶
 
-instance U.Expr Elab where
+instance U.Expr (Elab Type) where
   lam0 f = Elab $ \case
     Just (_A :-> _B) -> do
     -- FIXME: this should make a fresh type variable of type _A and apply f to that
