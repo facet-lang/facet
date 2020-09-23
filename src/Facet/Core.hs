@@ -1,5 +1,6 @@
 module Facet.Core
 ( Type(..)
+, Expr(..)
 ) where
 
 class Type ty where
@@ -17,3 +18,9 @@ class Type ty where
   (.*) :: ty -> ty -> ty
   infixl 7 .*
   -- FIXME: tupling/unit should take a list of types
+
+
+class Expr expr where
+  lam0 :: (expr -> expr) -> expr
+  ($$) :: expr -> expr -> expr
+  infixl 9 $$
