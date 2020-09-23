@@ -63,7 +63,7 @@ type_ :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) ->
 type_ tvar = fn tvar <|> forAll (const type_) (pure <$> char '_') tvar <?> "type"
 
 fn :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
-fn tvar = app tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
+fn tvar = app (S.$$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
 
 tatom :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
 tatom tvar
@@ -85,7 +85,7 @@ global :: (S.Expr expr, Monad p, TokenParsing p) => p expr
 global = S.global <$> name <?> "variable"
 
 expr_ :: forall p env expr . (S.Permutable env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
-expr_ = app atom
+expr_ = app (S.$$) atom
 
 -- FIXME: patterns
 -- FIXME: nullary computations
@@ -104,8 +104,8 @@ atom var
   prd [] = pure S.unit
   prd ts = foldl1 (liftA2 (S.**)) ts
 
-app :: (S.Permutable env, S.App expr, TokenParsing p) => (p (env expr) -> p (env expr)) -> (p (env expr) -> p (env expr))
-app atom tvar = foldl (liftA2 (S.$$)) <$> atom tvar <*> many (atom tvar)
+app :: (S.Permutable env, TokenParsing p) => (expr -> expr -> expr) -> (p (env expr) -> p (env expr)) -> (p (env expr) -> p (env expr))
+app ($$) atom tvar = foldl (liftA2 ($$)) <$> atom tvar <*> many (atom tvar)
 
 
 name, tname, _holeName :: (Monad p, TokenParsing p) => p S.Name
