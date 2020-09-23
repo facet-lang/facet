@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeOperators #-}
 module Facet.Elab
 ( check
 , synth
@@ -119,3 +120,9 @@ unify t1 t2 = maybe pure go t1 t2
     (Type,      Type)      -> pure Type
     (a1 :-> b1, a2 :-> b2) -> (:->) <$> go a1 a2 <*> go b1 b2
     _                      -> empty
+
+
+data a ::: b = a ::: b
+  deriving (Eq, Ord, Show)
+
+infix 5 :::
