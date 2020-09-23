@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Elab
 ( check
 , synth
@@ -31,6 +32,14 @@ instance U.App Elab where
         _ <- check a _A
         maybe pure unify _T _T'
       _ -> empty
+
+instance U.ForAll Elab Elab where
+  t >=> b = Elab $ \ _T -> do
+    _ <- check t Type
+    -- FIXME: this should make a fresh type variable and apply b to that
+    -- FIXME: Type should support type variables I guess
+    _ <- check (b (Elab (const empty))) Type
+    maybe pure unify _T Type
 
 
 -- FIXME: handle foralls
