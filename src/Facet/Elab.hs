@@ -1,6 +1,6 @@
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
@@ -131,8 +131,8 @@ data a ::: b = a ::: b
 infix 5 :::
 
 
-newtype Check ty a = Check { runCheck :: Type ty -> Synth ty a }
-  deriving (Applicative, Functor, Monad) via ReaderC (Type ty) (Synth ty)
+newtype Check ty a = Check { runCheck :: ReaderC (Type ty) (Synth ty) a }
+  deriving (Applicative, Functor, Monad)
 
 newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) Maybe a }
-  deriving (Applicative, Functor, Monad) via ReaderC (Env (Type ty)) Maybe
+  deriving (Applicative, Functor, Monad)
