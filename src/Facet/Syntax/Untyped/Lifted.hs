@@ -13,6 +13,7 @@ module Facet.Syntax.Untyped.Lifted
 , (>->)
 , Permutable
 , weaken
+, strengthen
 ) where
 
 import           Control.Applicative (liftA2)
