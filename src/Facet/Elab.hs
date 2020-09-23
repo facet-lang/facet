@@ -7,6 +7,8 @@ module Facet.Elab
 ( check
 , synth
 , Elab(..)
+, Check(..)
+, Synth(..)
 ) where
 
 import           Control.Carrier.Reader
@@ -126,3 +128,7 @@ data a ::: b = a ::: b
   deriving (Eq, Ord, Show)
 
 infix 5 :::
+
+
+newtype Check ty a = Check { runCheck :: Type ty -> ReaderC (Env (Type ty)) Maybe a }
+newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) Maybe a }
