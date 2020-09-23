@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
@@ -131,4 +132,7 @@ infix 5 :::
 
 
 newtype Check ty a = Check { runCheck :: Type ty -> ReaderC (Env (Type ty)) Maybe a }
+  deriving (Applicative, Functor, Monad) via ReaderC (Type ty) (ReaderC (Env (Type ty)) Maybe)
+
 newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) Maybe a }
+  deriving (Applicative, Functor, Monad) via ReaderC (Env (Type ty)) Maybe
