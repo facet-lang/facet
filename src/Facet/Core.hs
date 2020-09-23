@@ -12,6 +12,8 @@ class Type ty where
   (-->) :: ty -> ty -> ty
   infixr 2 -->
 
+  (.$) :: ty -> ty -> ty
+  infixl 9 .$
   (.*) :: ty -> ty -> ty
   infixl 7 .*
   -- FIXME: tupling/unit should take a list of types
