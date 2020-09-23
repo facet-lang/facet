@@ -85,6 +85,20 @@ instance U.Expr (Elab Type) where
       pure (_L :* _R)
     _ -> empty
 
+instance U.Decl (Elab Type) (Elab Type) (Elab Type) where
+  ty .= v = Elab $ \ _T -> do
+    _Ty <- check ty Type
+    _ <- check v _Ty
+    unify _T Type -- FIXME: what should the type of declarations be?
+
+  _A >-> _B = Elab $ \ _T -> do
+    _ <- check _A Type
+    -- FIXME: this should make a fresh type variable and apply _B to that
+    -- FIXME: Type should support type variables I guess
+    _ <- check (_B (Elab (const empty))) Type
+    unify _T Type
+
+
 -- FIXME: handle foralls
 unify :: Maybe Type -> Type -> ReaderC Env Maybe Type
 unify t1 t2 = maybe pure go t1 t2
