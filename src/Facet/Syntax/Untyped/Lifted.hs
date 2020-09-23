@@ -12,6 +12,7 @@ module Facet.Syntax.Untyped.Lifted
 , (>=>)
 , (>->)
 , Permutable
+, Extends
 , weaken
 , strengthen
 ) where
