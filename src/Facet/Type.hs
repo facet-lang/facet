@@ -2,6 +2,8 @@ module Facet.Type
 ( Type(..)
 ) where
 
+import qualified Facet.Core as C
+
 data Type
   = Type
   | Unit
@@ -12,3 +14,12 @@ data Type
 
 infixl 7 :*
 infixr 0 :->
+infixl 9 :$
+
+instance C.Type Type where
+  _Type = Type
+  _Unit = Unit
+  (.*) = (:*)
+  (-->) = (:->)
+  (>=>) = ForAll
+  (.$) = (:$)
