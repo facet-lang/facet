@@ -90,6 +90,7 @@ instance U.Expr (Elab Type) where
 instance U.Decl (Elab Type) (Elab Type) (Elab Type) where
   ty .= v = Elab $ \ _T -> do
     _Ty <- check ty Type
+    -- FIXME: extend the environment while checking v (for recursive functions)?
     _ <- check v _Ty
     unify _T Type -- FIXME: what should the type of declarations be?
 
