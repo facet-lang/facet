@@ -1,6 +1,5 @@
 module Facet.Elab
-( elab
-, check
+( check
 , synth
 , Elab(..)
 ) where
@@ -13,16 +12,13 @@ import           Facet.Type
 
 type Env = Map.Map U.Name Type
 
-elab :: Maybe Type -> Elab -> ReaderC Env Maybe Type
-elab = flip runElab
-
-check :: Type -> Elab -> ReaderC Env Maybe Type
-check = elab . Just
+check :: Elab -> Type -> ReaderC Env Maybe Type
+check m = elab m . Just
 
 synth :: Elab -> ReaderC Env Maybe Type
-synth = elab Nothing
+synth m = elab m Nothing
 
-newtype Elab = Elab { runElab :: Maybe Type -> ReaderC Env Maybe Type }
+newtype Elab = Elab { elab :: Maybe Type -> ReaderC Env Maybe Type }
 
 instance U.Global Elab where
   global n = Elab $ \ ty -> maybe pure unify ty =<< ReaderC (Map.lookup n)
@@ -32,7 +28,7 @@ instance U.App Elab where
     _F <- synth f
     case _F of
       _A :-> _T' -> do
-        _ <- check _A a
+        _ <- check a _A
         maybe pure unify _T _T'
       _ -> empty
 
