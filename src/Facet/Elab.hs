@@ -35,11 +35,11 @@ instance U.App Elab where
       _ -> empty
 
 instance U.ForAll Elab Elab where
-  t >=> b = Elab $ \ _T -> do
-    _ <- check t Type
-    -- FIXME: this should make a fresh type variable and apply b to that
+  _A >=> _B = Elab $ \ _T -> do
+    _ <- check _A Type
+    -- FIXME: this should make a fresh type variable and apply _B to that
     -- FIXME: Type should support type variables I guess
-    _ <- check (b (Elab (const empty))) Type
+    _ <- check (_B (Elab (const empty))) Type
     unify _T Type
 
 instance U.Type Elab where
