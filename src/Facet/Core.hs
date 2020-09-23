@@ -1,5 +1,7 @@
+{-# LANGUAGE RankNTypes #-}
 module Facet.Core
 ( Type(..)
+, CType(..)
 , Expr(..)
 ) where
 
@@ -18,6 +20,9 @@ class Type ty where
   (.*) :: ty -> ty -> ty
   infixl 7 .*
   -- FIXME: tupling/unit should take a list of types
+
+-- | Closed types.
+newtype CType = CType { getCType :: forall ty . Type ty => ty }
 
 
 class Expr expr where
