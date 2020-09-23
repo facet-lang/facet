@@ -24,11 +24,17 @@ _Unit = pure C._Unit
 (.*) :: (Applicative m, C.Type ty) => m ty -> m ty -> m ty
 (.*) = liftA2 (C..*)
 
+infixl 7 .*
+
 (.$) :: (Applicative m, C.Type ty) => m ty -> m ty -> m ty
 (.$) = liftA2 (C..$)
 
+infixl 9 .$
+
 (-->) :: (Applicative m, C.Type ty) => m ty -> m ty -> m ty
 (-->) = liftA2 (C.-->)
+
+infixr 2 -->
 
 -- | Universal quantification.
 (>=>)
