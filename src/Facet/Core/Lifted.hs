@@ -1,2 +1,6 @@
 module Facet.Core.Lifted
-() where
+( C.Type(_Type, _Unit, (.$), (.*), (-->))
+, C.Expr(($$))
+) where
+
+import qualified Facet.Core as C
