@@ -7,7 +7,7 @@ class Type ty where
   _Unit :: ty
 
   -- | Universal quantification.
-  (>=>) :: ty -> (ty -> decl) -> decl
+  (>=>) :: ty -> (ty -> ty) -> ty
   infixr 1 >=>
   (-->) :: ty -> ty -> ty
   infixr 2 -->
