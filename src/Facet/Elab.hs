@@ -9,6 +9,7 @@ module Facet.Elab
 , synth
 , Elab(..)
 , Check(..)
+, check'
 , Synth(..)
 ) where
 
@@ -133,6 +134,9 @@ infix 5 :::
 
 newtype Check ty a = Check { runCheck :: ReaderC (Type ty) (Synth ty) a }
   deriving (Applicative, Functor, Monad)
+
+check' :: Check ty a -> Type ty -> Synth ty a
+check' c t = runReader t (runCheck c)
 
 newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) Maybe a }
   deriving (Applicative, Functor, Monad)
