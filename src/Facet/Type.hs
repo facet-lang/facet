@@ -3,6 +3,7 @@ module Facet.Type
 ( Type(..)
 , interpret
 , Equal(..)
+, Unify(..)
 ) where
 
 import qualified Facet.Core as C
@@ -40,3 +41,5 @@ interpret = \case
 
 
 newtype Equal ty = Equal { runEqual :: Type ty -> Bool }
+
+newtype Unify ty = Unify { runUnify :: Type ty -> ty }
