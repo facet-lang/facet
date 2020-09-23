@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Elab
 ( check
@@ -56,6 +57,30 @@ instance U.Type Elab where
   _Unit = Elab (`unify` Type)
   _Type = Elab (`unify` Type) -- 🕶
 
+instance U.Expr Elab where
+  lam0 f = Elab $ \case
+    Just (_A :-> _B) -> do
+    -- FIXME: this should make a fresh type variable of type _A and apply f to that
+      let b = f (Elab (const empty))
+      _ <- check b _B
+      pure (_A :-> _B)
+    _ -> empty
+  lam f = Elab $ \case
+    Just (_A :-> _B) -> do
+    -- FIXME: this should make a fresh type variable of type _A and apply f to that
+    -- FIXME: lam should take a list of clauses, and we should check each one in turn
+      let b = f (Left (Elab (const empty)))
+      _ <- check b _B
+      pure (_A :-> _B)
+    _ -> empty
+
+  unit = Elab (`unify` Unit)
+  l ** r = Elab $ \case
+    Just (_L :* _R) -> do
+      _ <- check l _L
+      _ <- check r _R
+      pure (_L :* _R)
+    _ -> empty
 
 -- FIXME: handle foralls
 unify :: Maybe Type -> Type -> ReaderC Env Maybe Type
