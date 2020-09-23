@@ -3,6 +3,7 @@ module Facet.Core.Lifted
 ( C.Type(_Type, _Unit, (.$), (.*), (-->))
 , (>=>)
 , C.Expr(($$))
+, lam0
 ) where
 
 import           Control.Applicative (liftA2)
@@ -18,3 +19,9 @@ import           Facet.Functor.C
 t >=> b = liftA2 (C.>=>) <$> t <*> (getC <$> b (C (pure id)))
 
 infixr 1 >=>
+
+lam0
+  :: (Applicative m, Permutable env, C.Expr expr)
+  => (forall env' . Extends env env' => env' expr -> m (env' expr))
+  -> m (env expr)
+lam0 f = fmap C.lam0 . getC <$> f (C (pure id))
