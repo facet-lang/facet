@@ -58,6 +58,7 @@ instance U.Type (Elab Type) where
   _Unit = Elab (`unify` Type)
   _Type = Elab (`unify` Type) -- 🕶
 
+-- FIXME: specialize this to Elab (Expr ::: Type)?
 instance U.Expr (Elab Type) where
   lam0 f = Elab $ \case
     Just (_A :-> _B) -> do
@@ -85,6 +86,7 @@ instance U.Expr (Elab Type) where
       pure (_L :* _R)
     _ -> empty
 
+-- FIXME: specialize this to Elab Decl?
 instance U.Decl (Elab Type) (Elab Type) (Elab Type) where
   ty .= v = Elab $ \ _T -> do
     _Ty <- check ty Type
