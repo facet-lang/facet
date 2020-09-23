@@ -25,7 +25,7 @@ import qualified Data.Kind as K
 import           Facet.Pretty.Fresh
 import           Facet.Pretty.Prec
 import           Facet.Pretty.Rainbow
-import           Facet.Syntax.Typed
+import qualified Facet.Syntax.Typed as T
 import qualified Facet.Syntax.Untyped as U
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
@@ -114,7 +114,7 @@ arrow :: Printer (Nest Highlight) doc => doc
 arrow = op (pretty "->")
 
 
-instance Expr TPrint where
+instance T.Expr TPrint where
   lam f = TPrint $ cases [\ var -> (var, coerce (f . Left) var)]
   ($$) = coerce ((U.$$) @Print)
 
