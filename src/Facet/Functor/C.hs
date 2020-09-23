@@ -80,7 +80,7 @@ strengthen = mapC (fmap (fmap getI . getC))
 type Permutable f = (Applicative f, Distributive f)
 
 
-class (Permutable m, Permutable n) => Extends m n where
+class (Applicative m, Permutable n) => Extends m n where
   weakens :: m a -> n a
 
 instance (Permutable f, Permutable g) => Extends f (f :.: g) where
