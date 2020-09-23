@@ -136,3 +136,5 @@ newtype Check ty a = Check { runCheck :: ReaderC (Type ty) (Synth ty) a }
 
 newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) Maybe a }
   deriving (Applicative, Functor, Monad)
+
+instance MonadFail (Synth ty) where fail _ = Synth empty
