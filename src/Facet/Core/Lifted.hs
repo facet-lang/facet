@@ -1,8 +1,9 @@
 {-# LANGUAGE RankNTypes #-}
 module Facet.Core.Lifted
-( C.Type((.$), (.*), (-->))
+( C.Type((.$), (-->))
 , _Type
 , _Unit
+, (.*)
 , (>=>)
 , C.Expr(($$))
 , lam0
@@ -17,6 +18,9 @@ _Type = pure C._Type
 
 _Unit :: (Applicative m, C.Type ty) => m ty
 _Unit = pure C._Unit
+
+(.*) :: (Applicative m, C.Type ty) => m ty -> m ty -> m ty
+(.*) = liftA2 (C..*)
 
 -- | Universal quantification.
 (>=>)
