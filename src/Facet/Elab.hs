@@ -14,20 +14,20 @@ import qualified Data.Map as Map
 import qualified Facet.Syntax.Untyped as U
 import           Facet.Type
 
-type Env = Map.Map U.Name (Type ())
+type Env ty = Map.Map U.Name ty
 
-check :: Elab ty -> Type () -> ReaderC Env Maybe ty
+check :: Elab (Type ty) -> Type ty -> ReaderC (Env (Type ty)) Maybe (Type ty)
 check m = elab m . Just
 
-synth :: Elab ty -> ReaderC Env Maybe ty
+synth :: Elab (Type ty) -> ReaderC (Env (Type ty)) Maybe (Type ty)
 synth m = elab m Nothing
 
-newtype Elab ty = Elab { elab :: Maybe (Type ()) -> ReaderC Env Maybe ty }
+newtype Elab ty = Elab { elab :: Maybe ty -> ReaderC (Env ty) Maybe ty }
 
-instance U.Global (Elab (Type ())) where
+instance U.Global (Elab (Type ty)) where
   global n = Elab $ \ ty -> unify ty =<< ReaderC (Map.lookup n)
 
-instance U.ForAll (Elab (Type ())) (Elab (Type ())) where
+instance U.ForAll (Elab (Type ty)) (Elab (Type ty)) where
   _A >=> _B = Elab $ \ _T -> do
     _ <- check _A Type
     -- FIXME: this should make a fresh type variable and apply _B to that
@@ -35,7 +35,7 @@ instance U.ForAll (Elab (Type ())) (Elab (Type ())) where
     _ <- check (_B (Elab (const empty))) Type
     unify _T Type
 
-instance U.Type (Elab (Type ())) where
+instance U.Type (Elab (Type ty)) where
   _A --> _B = Elab $ \ _T -> do
     _ <- check _A Type
     _ <- check _B Type
@@ -52,7 +52,7 @@ instance U.Type (Elab (Type ())) where
   _Type = Elab (`unify` Type) -- 🕶
 
 -- FIXME: specialize this to Elab (Expr ::: Type)?
-instance U.Expr (Elab (Type ())) where
+instance U.Expr (Elab (Type ty)) where
   lam0 f = Elab $ \case
     Just (_A :-> _B) -> do
       -- FIXME: this should make a fresh type variable of type _A and apply f to that
@@ -81,7 +81,7 @@ instance U.Expr (Elab (Type ())) where
     _ -> empty
 
 -- FIXME: specialize this to Elab Decl?
-instance U.Decl (Elab (Type ())) (Elab (Type ())) (Elab (Type ())) where
+instance U.Decl (Elab (Type ty)) (Elab (Type ty)) (Elab (Type ty)) where
   ty .= v = Elab $ \ _T -> do
     _Ty <- check ty Type
     -- FIXME: extend the environment while checking v (for recursive functions)?
@@ -96,12 +96,12 @@ instance U.Decl (Elab (Type ())) (Elab (Type ())) (Elab (Type ())) where
     unify _T Type
 
 -- FIXME: specialize this to Elab Module?
-instance U.Module (Elab (Type ())) (Elab (Type ())) (Elab (Type ())) (Elab (Type ())) where
+instance U.Module (Elab (Type ty)) (Elab (Type ty)) (Elab (Type ty)) (Elab (Type ty)) where
   _ .: decl = Elab $ \ _T -> do
     _ <- check decl Type -- FIXME: what should the type of declarations be?
     unify _T Type -- FIXME: what should the type of modules be?
 
-app :: Elab (Type ()) -> Elab (Type ()) -> Elab (Type ())
+app :: Elab (Type ty) -> Elab (Type ty) -> Elab (Type ty)
 f `app` a = Elab $ \ _T -> do
   _F <- synth f
   case _F of
@@ -112,7 +112,7 @@ f `app` a = Elab $ \ _T -> do
 
 
 -- FIXME: handle foralls
-unify :: Maybe (Type ()) -> Type () -> ReaderC Env Maybe (Type ())
+unify :: Maybe (Type ty) -> Type ty -> ReaderC (Env (Type ty)) Maybe (Type ty)
 unify t1 t2 = maybe pure go t1 t2
   where
   go t1 t2 = case (t1, t2) of
