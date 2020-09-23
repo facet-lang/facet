@@ -61,15 +61,17 @@ instance U.Type (Elab Type) where
 instance U.Expr (Elab Type) where
   lam0 f = Elab $ \case
     Just (_A :-> _B) -> do
-    -- FIXME: this should make a fresh type variable of type _A and apply f to that
+      -- FIXME: this should make a fresh type variable of type _A and apply f to that
+      -- FIXME: this should extend the local environment
       let b = f (Elab (const empty))
       _ <- check b _B
       pure (_A :-> _B)
     _ -> empty
   lam f = Elab $ \case
     Just (_A :-> _B) -> do
-    -- FIXME: this should make a fresh type variable of type _A and apply f to that
-    -- FIXME: lam should take a list of clauses, and we should check each one in turn
+      -- FIXME: this should make a fresh type variable of type _A and apply f to that
+      -- FIXME: lam should take a list of clauses, and we should check each one in turn
+      -- FIXME: this should extend the local environment
       let b = f (Left (Elab (const empty)))
       _ <- check b _B
       pure (_A :-> _B)
