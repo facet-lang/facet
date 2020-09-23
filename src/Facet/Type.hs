@@ -2,6 +2,7 @@
 module Facet.Type
 ( Type(..)
 , interpret
+, Equal(..)
 ) where
 
 import qualified Facet.Core as C
@@ -36,3 +37,6 @@ interpret = \case
   l :* r -> interpret l C..* interpret r
   a :-> b -> interpret a C.--> interpret b
   ForAll t b -> interpret t C.>=> interpret . b . Var
+
+
+newtype Equal ty = Equal { runEqual :: Type ty -> Bool }
