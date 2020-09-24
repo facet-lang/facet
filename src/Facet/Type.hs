@@ -36,14 +36,6 @@ instance (Eq ty, Num ty) => Eq (Type I ty) where
       (ForAll t1 b1, ForAll t2 b2) -> go n t1 t2 && go (n + 1) (b1 (Var n)) (b2 (Var n))
       _ -> False
 
-instance C.Type (Type env ty) where
-  _Type = Type
-  _Unit = Unit
-  (.*) = (:*)
-  (-->) = (:->)
-  (>=>) = undefined -- FIXME: we can’t implement this any more because ForAll requires and returns in an extended environment.
-  (.$) = (:$)
-
 instance C.Interpret (Type I) where
   interpret = getI . getI . CL.interpretA
 
