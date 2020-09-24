@@ -5,6 +5,7 @@ module Facet.Env
 , trans
 , (C.>>>)
 , (^>>)
+, (>>^)
 ) where
 
 import qualified Control.Category as C
@@ -25,3 +26,8 @@ trans f g = Extends (cast g . cast f)
 f ^>> g = Extends f C.>>> g
 
 infixr 1 ^>>
+
+(>>^) :: Extends a b -> (forall t . b t -> c t) -> Extends a c
+f >>^ g = f C.>>> Extends g
+
+infixr 1 >>^
