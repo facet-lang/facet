@@ -62,10 +62,10 @@ instance Interpret f => Interpret (Match f) where
     Y f -> interpret f
 
 
-data ForAll ty = ForAll' ty (ty -> ty)
+data ForAll ty = ForAll ty (ty -> ty)
 
 instance Interpret ForAll where
-  interpret (ForAll' t b) = t >=> b
+  interpret (ForAll t b) = t >=> b
 
 instance Type ty => Type (Match ForAll ty) where
   _Type = N _Type
@@ -73,4 +73,4 @@ instance Type ty => Type (Match ForAll ty) where
   l .* r = N (interpret l .* interpret r)
   f .$ a = N (interpret f .$ interpret a)
   a --> b = N (interpret a --> interpret b)
-  t >=> b = Y (ForAll' (interpret t) (interpret . b . N))
+  t >=> b = Y (ForAll (interpret t) (interpret . b . N))
