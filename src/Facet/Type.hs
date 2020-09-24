@@ -56,3 +56,8 @@ instance Interpret ForAll where
 data Match f a
   = N a
   | Y (f a)
+
+fromMatch :: (C.Type ty, Interpret f) => Match f ty -> ty
+fromMatch = \case
+  N t -> t
+  Y f -> interpret f
