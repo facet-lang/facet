@@ -9,6 +9,7 @@ module Facet.Core.Lifted
 , (>=>)
 , C.Expr(($$))
 , lam0
+, InterpretA(..)
 ) where
 
 import           Control.Applicative (liftA2)
@@ -51,3 +52,7 @@ lam0
   => (forall env' . Extends env env' => env' expr -> m (env' expr))
   -> m (env expr)
 lam0 f = fmap C.lam0 . getC <$> f (C (pure id))
+
+
+class InterpretA f where
+  interpretA :: (C.Type ty, Applicative env, Distributive env) => f env ty -> env ty
