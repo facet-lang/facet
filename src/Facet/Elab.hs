@@ -152,7 +152,11 @@ switch :: Synth ty (Type ty) -> Check ty (Type ty)
 switch s = Check $ ReaderC $ \ _T -> s >>= unify' _T
 
 unify' :: Type ty -> Type ty -> Synth ty (Type ty)
-unify' _ _ = empty
+unify' = curry go
+  where
+  go = \case
+    (Type, Type) -> pure Type
+    _ -> empty
 
 ($$) :: C.Expr expr => Synth ty (expr ::: Type ty) -> Check ty (expr ::: Type ty) -> Synth ty (expr ::: Type ty)
 f $$ a = do
