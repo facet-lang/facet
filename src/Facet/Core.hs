@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 module Facet.Core
@@ -6,6 +7,7 @@ module Facet.Core
 , Expr(..)
 , Interpret(..)
 , Match(..)
+, ForAll(..)
 ) where
 
 import Control.Applicative (liftA2)
@@ -58,3 +60,17 @@ instance Interpret f => Interpret (Match f) where
   interpret = \case
     N t -> t
     Y f -> interpret f
+
+
+data ForAll ty = ForAll' ty (ty -> ty)
+
+instance Interpret ForAll where
+  interpret (ForAll' t b) = t >=> b
+
+instance Type ty => Type (Match ForAll ty) where
+  _Type = N _Type
+  _Unit = N _Unit
+  l .* r = N (interpret l .* interpret r)
+  f .$ a = N (interpret f .$ interpret a)
+  a --> b = N (interpret a --> interpret b)
+  t >=> b = Y (ForAll' (interpret t) (interpret . b . N))

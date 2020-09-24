@@ -43,17 +43,3 @@ instance C.Interpret Type where
 newtype Equal ty = Equal { runEqual :: Type ty -> Bool }
 
 newtype Unify ty = Unify { runUnify :: Type ty -> ty }
-
-
-data ForAll ty = ForAll' ty (ty -> ty)
-
-instance C.Interpret ForAll where
-  interpret (ForAll' t b) = t C.>=> b
-
-instance C.Type ty => C.Type (C.Match ForAll ty) where
-  _Type = C.N C._Type
-  _Unit = C.N C._Unit
-  l .* r = C.N (C.interpret l C..* C.interpret r)
-  f .$ a = C.N (C.interpret f C..$ C.interpret a)
-  a --> b = C.N (C.interpret a C.--> C.interpret b)
-  t >=> b = C.Y (ForAll' (C.interpret t) (C.interpret . b . C.N))
