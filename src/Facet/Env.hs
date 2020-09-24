@@ -1,2 +1,6 @@
+{-# LANGUAGE RankNTypes #-}
 module Facet.Env
-() where
+( Extends
+) where
+
+type Extends repr c d = forall t . repr c t -> repr d t
