@@ -11,6 +11,7 @@ module Facet.Elab
 , Check(..)
 , Synth(..)
 , check'
+, switch
 , unify'
 , ($$)
 ) where
@@ -146,6 +147,9 @@ instance MonadFail (Synth ty) where fail _ = Synth empty
 
 check' :: Check ty a -> Type ty -> Synth ty a
 check' c t = runReader t (runCheck c)
+
+switch :: Synth ty (Type ty) -> Check ty (Type ty)
+switch s = Check $ ReaderC $ \ _T -> s >>= unify' _T
 
 unify' :: Type ty -> Type ty -> Synth ty (Type ty)
 unify' _ _ = empty
