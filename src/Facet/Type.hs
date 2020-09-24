@@ -6,14 +6,14 @@ module Facet.Type
 
 import qualified Facet.Core as C
 
-data Type a
-  = Var a
+data Type ty
+  = Var ty
   | Type
   | Unit
-  | Type a :* Type a
-  | Type a :$ Type a
-  | Type a :-> Type a
-  | ForAll (Type a) (Type a -> Type a)
+  | Type ty :* Type ty
+  | Type ty :$ Type ty
+  | Type ty :-> Type ty
+  | ForAll (Type ty) (Type ty -> Type ty)
 
 infixl 7 :*
 infixr 0 :->
@@ -32,7 +32,7 @@ instance (Eq ty, Num ty) => Eq (Type ty) where
       (ForAll t1 b1, ForAll t2 b2) -> go n t1 t2 && go (n + 1) (b1 (Var n)) (b2 (Var n))
       _ -> False
 
-instance C.Type (Type a) where
+instance C.Type (Type ty) where
   _Type = Type
   _Unit = Unit
   (.*) = (:*)
