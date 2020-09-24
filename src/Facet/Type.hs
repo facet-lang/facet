@@ -63,15 +63,10 @@ instance Interpret f => Interpret (Match f) where
     N t -> t
     Y f -> interpret f
 
-fromMatch :: (C.Type ty, Interpret f) => Match f ty -> ty
-fromMatch = \case
-  N t -> t
-  Y f -> interpret f
-
 instance C.Type ty => C.Type (Match ForAll ty) where
   _Type = N C._Type
   _Unit = N C._Unit
-  l .* r = N (fromMatch l C..* fromMatch r)
-  f .$ a = N (fromMatch f C..$ fromMatch a)
-  a --> b = N (fromMatch a C.--> fromMatch b)
-  t >=> b = Y (ForAll' (fromMatch t) (fromMatch . b . N))
+  l .* r = N (interpret l C..* interpret r)
+  f .$ a = N (interpret f C..$ interpret a)
+  a --> b = N (interpret a C.--> interpret b)
+  t >=> b = Y (ForAll' (interpret t) (interpret . b . N))
