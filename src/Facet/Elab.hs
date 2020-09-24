@@ -13,6 +13,7 @@ module Facet.Elab
 , check'
 ) where
 
+import           Control.Effect.Sum ((:+:))
 import           Control.Carrier.Reader
 import           Control.Effect.Empty
 import qualified Data.Map as Map
@@ -137,7 +138,7 @@ newtype Check ty a = Check { runCheck :: ReaderC (Type ty) (Synth ty) a }
   deriving (Applicative, Functor, Monad)
 
 newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) Maybe a }
-  deriving (Applicative, Functor, Monad)
+  deriving (Algebra (Reader (Env (Type ty)) :+: Empty), Applicative, Functor, Monad)
 
 instance MonadFail (Synth ty) where fail _ = Synth empty
 
