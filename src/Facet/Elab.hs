@@ -16,6 +16,7 @@ module Facet.Elab
 import           Control.Carrier.Reader
 import           Control.Effect.Empty
 import qualified Data.Map as Map
+import qualified Facet.Core.Lifted as C
 import qualified Facet.Syntax.Untyped as U
 import           Facet.Type
 
@@ -142,3 +143,9 @@ instance MonadFail (Synth ty) where fail _ = Synth empty
 
 check' :: Check ty a -> Type ty -> Synth ty a
 check' c t = runReader t (runCheck c)
+
+($$) :: C.Expr expr => Synth ty (expr ::: Type ty) -> Check ty (expr ::: Type ty) -> Synth ty (expr ::: Type ty)
+f $$ a = do
+  f' ::: (_A :-> _B) <- f
+  a' ::: _A <- check' a _A
+  pure $ (f' C.$$ a') ::: _B
