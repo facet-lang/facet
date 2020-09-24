@@ -1,6 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
 module Facet.Env
-( Extends(..)
+( type (~>)
+, Extends(..)
 , refl
 , trans
 , (C.>>>)
@@ -9,6 +11,8 @@ module Facet.Env
 ) where
 
 import qualified Control.Category as C
+
+type (c ~> d) = forall t . c t -> d t
 
 newtype Extends c d = Extends { cast :: forall t . c t -> d t }
 
