@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Type
 ( Type(..)
@@ -66,3 +67,11 @@ fromMatch :: (C.Type ty, Interpret f) => Match f ty -> ty
 fromMatch = \case
   N t -> t
   Y f -> interpret f
+
+instance C.Type ty => C.Type (Match ForAll ty) where
+  _Type = N C._Type
+  _Unit = N C._Unit
+  l .* r = N (fromMatch l C..* fromMatch r)
+  f .$ a = N (fromMatch f C..$ fromMatch a)
+  a --> b = N (fromMatch a C.--> fromMatch b)
+  t >=> b = Y (ForAll' (fromMatch t) (fromMatch . b . N))
