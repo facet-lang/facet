@@ -46,3 +46,6 @@ instance Interpret Type where
 newtype Equal ty = Equal { runEqual :: Type ty -> Bool }
 
 newtype Unify ty = Unify { runUnify :: Type ty -> ty }
+
+
+data ForAll ty = ForAll' ty (ty -> ty)
