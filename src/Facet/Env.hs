@@ -22,6 +22,6 @@ trans :: Extends c d -> Extends d e -> Extends c e
 trans f g = Extends (cast g . cast f)
 
 (^>>) :: (forall t . a t -> b t) -> Extends b c -> Extends a c
-f ^>> Extends g = Extends (g . f)
+f ^>> g = Extends f C.>>> g
 
 infixr 1 ^>>
