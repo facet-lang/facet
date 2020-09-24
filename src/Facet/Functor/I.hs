@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Facet.Functor.I
 ( I(..)
 ) where
@@ -8,7 +9,7 @@ import Data.Coerce
 import Data.Distributive
 
 newtype I a = I { getI :: a }
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+  deriving (Eq, Foldable, Functor, Num, Ord, Show, Traversable)
 
 instance Applicative I where
   pure = coerce
