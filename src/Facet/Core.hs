@@ -1,7 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 module Facet.Core
 ( Type(..)
+, CType(..)
 , Expr(..)
 , Interpret(..)
 , Match(..)
@@ -35,6 +37,10 @@ instance Type ty => Type (a -> ty) where
 
   (.$) = liftA2 (.$)
   (.*) = liftA2 (.*)
+
+
+-- | Closed types.
+newtype CType = CType { getCType :: forall ty . Type ty => ty }
 
 
 class Expr expr where
