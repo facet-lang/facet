@@ -11,6 +11,7 @@ module Facet.Elab
 , Check(..)
 , Synth(..)
 , check'
+, ($$)
 ) where
 
 import           Control.Effect.Sum ((:+:))
