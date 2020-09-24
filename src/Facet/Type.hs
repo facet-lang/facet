@@ -49,3 +49,6 @@ newtype Unify ty = Unify { runUnify :: Type ty -> ty }
 
 
 data ForAll ty = ForAll' ty (ty -> ty)
+
+instance Interpret ForAll where
+  interpret (ForAll' t b) = t C.>=> b
