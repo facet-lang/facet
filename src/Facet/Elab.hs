@@ -156,6 +156,7 @@ unify' = curry go
   where
   go = \case
     (Type, Type) -> pure Type
+    (Unit, Unit) -> pure Unit
     _ -> empty
 
 ($$) :: C.Expr expr => Synth ty (expr ::: Type ty) -> Check ty (expr ::: Type ty) -> Synth ty (expr ::: Type ty)
