@@ -3,6 +3,7 @@ module Facet.Env
 ( Extends(..)
 , refl
 , trans
+, (C.>>>)
 ) where
 
 import qualified Control.Category as C
