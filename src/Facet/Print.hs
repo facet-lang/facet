@@ -59,15 +59,14 @@ terminalStyle = \case
     [ANSI.color, ANSI.colorDull]
   len = length colours
 
-type Inner = Fresh (Prec Context (Rainbow (PP.Doc Highlight)))
 type Trans = Context -> Print -> Print
 
-newtype Print = Print { runPrint :: Trans -> Inner }
+newtype Print = Print { runPrint :: Trans -> Fresh (Prec Context (Rainbow (PP.Doc Highlight))) }
   deriving (FreshPrinter, Monoid, Printer, Semigroup)
 
 instance PrecedencePrinter Print where
   type Level Print = Context
-  askingPrec = coerce (askingPrec :: (Context -> Trans -> Inner) -> Trans -> Inner)
+  askingPrec = coerce (askingPrec :: (Context -> Trans -> Fresh (Prec Context (Rainbow (PP.Doc Highlight)))) -> Trans -> Fresh (Prec Context (Rainbow (PP.Doc Highlight))))
   localPrec f a = Print $ \ t -> localPrec f (askingPrec ((`runPrint` t) . (`t` a)))
 
 withTransition :: Trans -> Print -> Print
