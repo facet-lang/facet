@@ -135,7 +135,7 @@ infix 5 :::
 
 
 newtype Check ty a = Check { runCheck :: ReaderC (Type ty) (Synth ty) a }
-  deriving (Applicative, Functor, Monad)
+  deriving (Algebra (Reader (Type ty) :+: Reader (Env (Type ty)) :+: Empty), Applicative, Functor, Monad)
 
 newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) Maybe a }
   deriving (Algebra (Reader (Env (Type ty)) :+: Empty), Applicative, Functor, Monad)
