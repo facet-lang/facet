@@ -7,7 +7,7 @@ module Facet.Core
 , Expr(..)
 , Interpret(..)
 , Match(..)
-, ForAll(..)
+, IsForAll(..)
 ) where
 
 import Control.Applicative (liftA2)
@@ -62,15 +62,15 @@ instance Interpret f => Interpret (Match f) where
     Y f -> interpret f
 
 
-data ForAll ty = ForAll ty (ty -> ty)
+data IsForAll ty = IsForAll ty (ty -> ty)
 
-instance Interpret ForAll where
-  interpret (ForAll t b) = t >=> b
+instance Interpret IsForAll where
+  interpret (IsForAll t b) = t >=> b
 
-instance Type ty => Type (Match ForAll ty) where
+instance Type ty => Type (Match IsForAll ty) where
   _Type = N _Type
   _Unit = N _Unit
   l .* r = N (interpret l .* interpret r)
   f .$ a = N (interpret f .$ interpret a)
   a --> b = N (interpret a --> interpret b)
-  t >=> b = Y (ForAll (interpret t) (interpret . b . N))
+  t >=> b = Y (IsForAll (interpret t) (interpret . b . N))
