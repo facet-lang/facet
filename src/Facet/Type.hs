@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Facet.Type
 ( Type(..)
-, interpret
+, Interpret(..)
 , Equal(..)
 , Unify(..)
 ) where
@@ -29,15 +29,18 @@ instance C.Type (Type a) where
   (>=>) = ForAll
   (.$) = (:$)
 
-interpret :: C.Type ty => Type ty -> ty
-interpret = \case
-  Var v -> v
-  Type -> C._Type
-  Unit -> C._Unit
-  f :$ a -> interpret f C..$ interpret a
-  l :* r -> interpret l C..* interpret r
-  a :-> b -> interpret a C.--> interpret b
-  ForAll t b -> interpret t C.>=> interpret . b . Var
+class Interpret f where
+  interpret :: C.Type ty => f ty -> ty
+
+instance Interpret Type where
+  interpret = \case
+    Var v -> v
+    Type -> C._Type
+    Unit -> C._Unit
+    f :$ a -> interpret f C..$ interpret a
+    l :* r -> interpret l C..* interpret r
+    a :-> b -> interpret a C.--> interpret b
+    ForAll t b -> interpret t C.>=> interpret . b . Var
 
 
 newtype Equal ty = Equal { runEqual :: Type ty -> Bool }
