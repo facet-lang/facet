@@ -50,19 +50,10 @@ data ForAll ty = ForAll' ty (ty -> ty)
 instance C.Interpret ForAll where
   interpret (ForAll' t b) = t C.>=> b
 
-data Match f a
-  = N a
-  | Y (f a)
-
-instance C.Interpret f => C.Interpret (Match f) where
-  interpret = \case
-    N t -> t
-    Y f -> C.interpret f
-
-instance C.Type ty => C.Type (Match ForAll ty) where
-  _Type = N C._Type
-  _Unit = N C._Unit
-  l .* r = N (C.interpret l C..* C.interpret r)
-  f .$ a = N (C.interpret f C..$ C.interpret a)
-  a --> b = N (C.interpret a C.--> C.interpret b)
-  t >=> b = Y (ForAll' (C.interpret t) (C.interpret . b . N))
+instance C.Type ty => C.Type (C.Match ForAll ty) where
+  _Type = C.N C._Type
+  _Unit = C.N C._Unit
+  l .* r = C.N (C.interpret l C..* C.interpret r)
+  f .$ a = C.N (C.interpret f C..$ C.interpret a)
+  a --> b = C.N (C.interpret a C.--> C.interpret b)
+  t >=> b = C.Y (ForAll' (C.interpret t) (C.interpret . b . C.N))

@@ -1,9 +1,11 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 module Facet.Core
 ( Type(..)
 , CType(..)
 , Expr(..)
 , Interpret(..)
+, Match(..)
 ) where
 
 import Control.Applicative (liftA2)
@@ -47,3 +49,12 @@ class Expr expr where
 
 class Interpret f where
   interpret :: Type ty => f ty -> ty
+
+data Match f a
+  = N a
+  | Y (f a)
+
+instance Interpret f => Interpret (Match f) where
+  interpret = \case
+    N t -> t
+    Y f -> interpret f
