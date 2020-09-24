@@ -57,6 +57,11 @@ data Match f a
   = N a
   | Y (f a)
 
+instance Interpret f => Interpret (Match f) where
+  interpret = \case
+    N t -> t
+    Y f -> interpret f
+
 fromMatch :: (C.Type ty, Interpret f) => Match f ty -> ty
 fromMatch = \case
   N t -> t
