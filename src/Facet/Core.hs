@@ -3,6 +3,7 @@ module Facet.Core
 ( Type(..)
 , CType(..)
 , Expr(..)
+, Interpret(..)
 ) where
 
 class Type ty where
@@ -29,3 +30,7 @@ class Expr expr where
   lam0 :: (expr -> expr) -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
+
+
+class Interpret f where
+  interpret :: Type ty => f ty -> ty

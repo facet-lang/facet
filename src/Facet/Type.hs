@@ -2,7 +2,6 @@
 {-# LANGUAGE LambdaCase #-}
 module Facet.Type
 ( Type(..)
-, Interpret(..)
 , Equal(..)
 , Unify(..)
 ) where
@@ -30,18 +29,15 @@ instance C.Type (Type a) where
   (>=>) = ForAll
   (.$) = (:$)
 
-class Interpret f where
-  interpret :: C.Type ty => f ty -> ty
-
-instance Interpret Type where
+instance C.Interpret Type where
   interpret = \case
     Var v -> v
     Type -> C._Type
     Unit -> C._Unit
-    f :$ a -> interpret f C..$ interpret a
-    l :* r -> interpret l C..* interpret r
-    a :-> b -> interpret a C.--> interpret b
-    ForAll t b -> interpret t C.>=> interpret . b . Var
+    f :$ a -> C.interpret f C..$ C.interpret a
+    l :* r -> C.interpret l C..* C.interpret r
+    a :-> b -> C.interpret a C.--> C.interpret b
+    ForAll t b -> C.interpret t C.>=> C.interpret . b . Var
 
 
 newtype Equal ty = Equal { runEqual :: Type ty -> Bool }
@@ -51,22 +47,22 @@ newtype Unify ty = Unify { runUnify :: Type ty -> ty }
 
 data ForAll ty = ForAll' ty (ty -> ty)
 
-instance Interpret ForAll where
+instance C.Interpret ForAll where
   interpret (ForAll' t b) = t C.>=> b
 
 data Match f a
   = N a
   | Y (f a)
 
-instance Interpret f => Interpret (Match f) where
+instance C.Interpret f => C.Interpret (Match f) where
   interpret = \case
     N t -> t
-    Y f -> interpret f
+    Y f -> C.interpret f
 
 instance C.Type ty => C.Type (Match ForAll ty) where
   _Type = N C._Type
   _Unit = N C._Unit
-  l .* r = N (interpret l C..* interpret r)
-  f .$ a = N (interpret f C..$ interpret a)
-  a --> b = N (interpret a C.--> interpret b)
-  t >=> b = Y (ForAll' (interpret t) (interpret . b . N))
+  l .* r = N (C.interpret l C..* C.interpret r)
+  f .$ a = N (C.interpret f C..$ C.interpret a)
+  a --> b = N (C.interpret a C.--> C.interpret b)
+  t >=> b = Y (ForAll' (C.interpret t) (C.interpret . b . N))
