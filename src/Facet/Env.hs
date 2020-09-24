@@ -5,7 +5,13 @@ module Facet.Env
 , trans
 ) where
 
+import qualified Control.Category as C
+
 newtype Extends c d = Extends { cast :: forall t . c t -> d t }
+
+instance C.Category Extends where
+  id = refl
+  (.) = flip trans
 
 refl :: Extends c c
 refl = Extends id
