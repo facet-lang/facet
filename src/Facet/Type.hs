@@ -1,10 +1,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 module Facet.Type
 ( Type(..)
 ) where
 
 import qualified Facet.Core as C
+import qualified Facet.Core.Lifted as CL
+import           Facet.Functor.C
 import           Facet.Functor.I
 
 data Type env ty
@@ -14,13 +17,13 @@ data Type env ty
   | Type env ty :* Type env ty
   | Type env ty :$ Type env ty
   | Type env ty :-> Type env ty
-  | ForAll (Type env ty) (Type env ty -> Type env ty)
+  | ForAll (Type env ty) (forall env' . Extends env env' => Type env' ty -> Type env' ty)
 
 infixl 7 :*
 infixr 0 :->
 infixl 9 :$
 
-instance (Eq (env ty), Num (env ty)) => Eq (Type env ty) where
+instance (Eq ty, Num ty) => Eq (Type I ty) where
   (==) = go 0
     where
     go n = curry $ \case
@@ -38,15 +41,18 @@ instance C.Type (Type env ty) where
   _Unit = Unit
   (.*) = (:*)
   (-->) = (:->)
-  (>=>) = ForAll
+  (>=>) = undefined -- FIXME: we can’t implement this any more because ForAll requires and returns in an extended environment.
   (.$) = (:$)
 
 instance C.Interpret (Type I) where
-  interpret = \case
-    Var v -> getI v
-    Type -> C._Type
-    Unit -> C._Unit
-    f :$ a -> C.interpret f C..$ C.interpret a
-    l :* r -> C.interpret l C..* C.interpret r
-    a :-> b -> C.interpret a C.--> C.interpret b
-    ForAll t b -> C.interpret t C.>=> C.interpret . b . Var . I
+  interpret = getI . getI . CL.interpretA
+
+instance CL.InterpretA Type where
+  interpretA = \case
+    Var v -> pure v
+    Type -> CL._Type
+    Unit -> CL._Unit
+    f :$ a -> CL.interpretA f CL..$ CL.interpretA a
+    l :* r -> CL.interpretA l CL..* CL.interpretA r
+    a :-> b -> CL.interpretA a CL.--> CL.interpretA b
+    ForAll t b -> CL.interpretA t CL.>=> CL.interpretA . b . Var
