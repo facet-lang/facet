@@ -157,6 +157,7 @@ unify' = curry $ \case
   (Unit, Unit) -> pure Unit
   (l1 :* r1, l2 :* r2) -> (:*) <$> unify' l1 l2 <*> unify' r1 r2
   (f1 :$ a1, f2 :$ a2) -> (:$) <$> unify' f1 f2 <*> unify' a1 a2
+  (a1 :-> b1, a2 :-> b2) -> (:->) <$> unify' a1 a2 <*> unify' b1 b2
   _ -> empty
 
 ($$) :: C.Expr expr => Synth ty (expr ::: Type ty) -> Check ty (expr ::: Type ty) -> Synth ty (expr ::: Type ty)
