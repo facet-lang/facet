@@ -1,14 +1,14 @@
 {-# LANGUAGE RankNTypes #-}
 module Facet.Env
-( Extends
+( Extends(..)
 , refl
 , trans
 ) where
 
-type Extends c d = forall t . c t -> d t
+newtype Extends c d = Extends { cast :: forall t . c t -> d t }
 
 refl :: Extends c c
-refl = id
+refl = Extends id
 
 trans :: Extends c d -> Extends d e -> Extends c e
-trans = flip (.)
+trans f g = Extends (cast g . cast f)
