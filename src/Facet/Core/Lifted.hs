@@ -55,4 +55,4 @@ lam0 f = fmap C.lam0 . getC <$> f (C (pure id))
 
 
 class InterpretA f where
-  interpretA :: (C.Type ty, Applicative env, Distributive env) => f env ty -> env ty
+  interpretA :: (C.Type ty, Permutable env) => f env ty -> env ty
