@@ -52,3 +52,7 @@ data ForAll ty = ForAll' ty (ty -> ty)
 
 instance Interpret ForAll where
   interpret (ForAll' t b) = t C.>=> b
+
+data Match f a
+  = N a
+  | Y (f a)
