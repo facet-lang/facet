@@ -16,9 +16,9 @@ module Facet.Elab
 , ($$)
 ) where
 
-import           Control.Effect.Sum ((:+:))
 import           Control.Carrier.Reader
 import           Control.Effect.Empty
+import           Control.Effect.Sum ((:+:))
 import qualified Data.Map as Map
 import qualified Facet.Core.Lifted as C
 import qualified Facet.Syntax.Untyped as U
