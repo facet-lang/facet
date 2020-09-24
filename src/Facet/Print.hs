@@ -4,9 +4,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Print
 ( prettyPrint
 , prettyPrintWith
@@ -21,29 +22,30 @@ import           Control.Applicative (Const(..), (<**>))
 import           Control.Monad.IO.Class
 import           Data.Coerce
 import qualified Data.Kind as K
-import           Facet.Pretty.Fresh
-import           Facet.Pretty.Prec
-import           Facet.Pretty.Rainbow
+import           Facet.Pretty
 import qualified Facet.Syntax.Typed as T
 import qualified Facet.Syntax.Untyped as U
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
+import           Silkscreen.Printer.Fresh
+import           Silkscreen.Printer.Prec
+import           Silkscreen.Printer.Rainbow
 
 prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = prettyPrintWith terminalStyle
 
-prettyPrintWith :: MonadIO m => (Nest Highlight -> ANSI.AnsiStyle) -> Print -> m ()
+prettyPrintWith :: MonadIO m => (Highlight -> ANSI.AnsiStyle) -> Print -> m ()
 prettyPrintWith style = putDoc . prettyWith style
 
-prettyWith :: (Nest Highlight -> a) -> Print -> PP.Doc a
-prettyWith style = PP.reAnnotate style . rainbow . runPrec Null . fresh . (`runPrint` const id) . group
+prettyWith :: (Highlight -> a) -> Print -> PP.Doc a
+prettyWith style = PP.reAnnotate style . runRainbow (annotate . Nest) 0 . runPrec Null . runFresh 0 . (`runPrint` const id) . group
 
-terminalStyle :: Nest Highlight -> ANSI.AnsiStyle
+terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
-  Nest i   -> colours !! (getNesting i `mod` len)
-  Ann Name -> mempty
-  Ann Op   -> ANSI.color     ANSI.Cyan
-  Ann Lit  -> ANSI.bold
+  Nest i -> colours !! (i `mod` len)
+  Name   -> mempty
+  Op     -> ANSI.color ANSI.Cyan
+  Lit    -> ANSI.bold
   where
   colours =
     [ ANSI.Red
@@ -57,23 +59,24 @@ terminalStyle = \case
     [ANSI.color, ANSI.colorDull]
   len = length colours
 
-type Inner = Fresh (Prec Context (Rainbow (PP.Doc (Nest Highlight))))
+type Inner = Fresh (Prec Context (Rainbow (PP.Doc Highlight)))
 type Trans = Context -> Print -> Print
 
 newtype Print = Print { runPrint :: Trans -> Inner }
-  deriving (FreshPrinter (Nest Highlight), Monoid, Printer (Nest Highlight), Semigroup)
+  deriving (FreshPrinter, Monoid, Printer, Semigroup)
 
-instance PrecPrinter Context (Nest Highlight) Print where
+instance PrecedencePrinter Print where
+  type Level Print = Context
   askingPrec = coerce (askingPrec :: (Context -> Trans -> Inner) -> Trans -> Inner)
   localPrec f a = Print $ \ t -> localPrec f (askingPrec ((`runPrint` t) . (`t` a)))
 
 withTransition :: Trans -> Print -> Print
 withTransition trans a = Print $ \ _ -> runPrint a trans
 
-whenPrec :: PrecPrinter lvl ann p => (lvl -> Bool) -> (p -> p) -> p -> p
+whenPrec :: PrecedencePrinter p => (Level p -> Bool) -> (p -> p) -> p -> p
 whenPrec p f = ifPrec p f id
 
-ifPrec :: PrecPrinter lvl ann p => (lvl -> Bool) -> (p -> p) -> (p -> p) -> p -> p
+ifPrec :: PrecedencePrinter p => (Level p -> Bool) -> (p -> p) -> (p -> p) -> p -> p
 ifPrec p f g a = askingPrec $ \ p' -> if p p' then f a else g a
 
 
@@ -89,7 +92,7 @@ data Context
   deriving (Bounded, Eq, Ord, Show)
 
 newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
-  deriving (U.Expr, FreshPrinter (Nest Highlight), Functor, U.Global, Monoid, PrecPrinter Context (Nest Highlight), Printer (Nest Highlight), Semigroup, U.Type)
+  deriving (U.Expr, FreshPrinter, Functor, U.Global, Monoid, PrecedencePrinter, Printer, Semigroup, U.Type)
   deriving (Applicative) via Const Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
@@ -97,19 +100,20 @@ instance U.ForAll (TPrint sig a) (TPrint sig a) where
 
 
 data Highlight
-  = Name
+  = Nest Int
+  | Name
   | Op
   | Lit
-  deriving (Enum, Eq, Ord, Show)
+  deriving (Eq, Ord, Show)
 
-name :: Printer (Nest Highlight) doc => doc -> doc
-name = annotate (Ann Name)
+name :: (Printer p, Ann p ~ Highlight) => p -> p
+name = annotate Name
 
-op :: Printer (Nest Highlight) doc => doc -> doc
-op = annotate (Ann Op)
+op :: (Printer p, Ann p ~ Highlight) => p -> p
+op = annotate Op
 
 
-arrow :: Printer (Nest Highlight) doc => doc
+arrow :: (Printer p, Ann p ~ Highlight) => p
 arrow = op (pretty "->")
 
 
@@ -129,7 +133,7 @@ cases cs = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ 
     (flatAlt (space <> comma <> space) (comma <> space))
   $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [var v])
 
-ann :: Printer ann p => p -> p -> p
+ann :: Printer p => p -> p -> p
 ann v t = v </> group (align (colon <+> flatAlt space mempty <> t))
 
 var :: Int -> Print
@@ -167,7 +171,7 @@ instance U.ForAll Print Print where
   t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> ann v' t <> flatAlt line space))) </> arrow <+> prec FnR (f v')
 
 instance U.Type Print where
-  (-->) = infixr' FnL FnR (\ a b -> group (align a) </> arrow <+> b)
+  (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
   (.$) = app
   _Unit = pretty "()"
@@ -188,4 +192,4 @@ l `app` r = askingPrec $ \case
   AppL -> op
   _    -> group op
   where
-  op = infixl' AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
+  op = leftAssoc AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
