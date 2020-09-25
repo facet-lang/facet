@@ -191,10 +191,10 @@ infixr 2 -->
 
 -- Expressions
 
-($$) :: C.Expr expr => Synth ty (expr ::: Type ty) -> Check ty (expr ::: Type ty) -> Synth ty (expr ::: Type ty)
+($$) :: C.Expr expr => Synth ty (expr ::: Type ty) -> Check ty expr -> Synth ty (expr ::: Type ty)
 f $$ a = do
   f' ::: (_A :-> _B) <- f
-  a' ::: _A <- check' a _A
+  a' <- check' a _A
   pure $ f' C.$$ a' ::: _B
 
 lam0 :: (C.Expr expr, Applicative env) => (forall env' . C.Extends env env' -> env' (expr ::: Type ty) -> Check ty (env' expr)) -> Check ty (env (expr ::: Type ty))
