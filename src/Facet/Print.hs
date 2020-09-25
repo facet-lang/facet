@@ -23,6 +23,7 @@ import           Control.Monad.IO.Class
 import           Data.Coerce
 import qualified Data.Kind as K
 import           Facet.Pretty
+import qualified Facet.Core as C
 import qualified Facet.Syntax.Typed as T
 import qualified Facet.Syntax.Untyped as U
 import qualified Prettyprinter as PP
@@ -173,6 +174,15 @@ instance U.Type Print where
   (.$) = app
   _Unit = pretty "()"
   _Type = pretty "Type"
+
+instance C.Type Print where
+  (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
+  l .* r = parens $ l <> comma <+> r
+  (.$) = app
+  _Unit = pretty "()"
+  _Type = pretty "Type"
+  -- FIXME: combine quantification over type variables of the same kind
+  t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> ann v' t <> flatAlt line space))) </> arrow <+> prec FnR (f v')
 
 
 instance U.Module Print Print Print Print where
