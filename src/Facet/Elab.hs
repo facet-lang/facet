@@ -19,6 +19,7 @@ module Facet.Elab
 , _Type
 , _Unit
 , (-->)
+, (>=>)
   -- Expressions
 , ($$)
 , lam0
@@ -187,6 +188,18 @@ a --> b = do
   pure $ (a' C.--> b') ::: Type
 
 infixr 2 -->
+
+(>=>)
+  :: (C.Type ty, Applicative env)
+  => Check ty (env ty)
+  -> (forall env' . C.Extends env env' -> env' (ty ::: Type ty) -> Check ty (env' ty))
+  -> Synth ty (env (ty ::: Type ty))
+t >=> b = do
+  t' <- check' t Type
+  f <- pure t' C.>=> \ env ty -> check' (b env (liftA2 (:::) ty (C.cast env (Var <$> t')))) Type
+  pure $ f .: Type
+
+infixr 1 >=>
 
 
 -- Expressions
