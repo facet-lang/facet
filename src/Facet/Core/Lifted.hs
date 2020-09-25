@@ -44,7 +44,7 @@ infixr 2 -->
   => m (env ty)
   -> (forall env' . E.Extends env env' -> env' ty -> m (env' ty))
   -> m (env ty)
-t >=> b = liftA2 (C.>=>) <$> t <*> (getC <$> b (E.Extends liftCInner) (C (pure id)))
+t >=> b = liftA2 (C.>=>) <$> t <*> E.liftBinder b
 
 infixr 1 >=>
 
@@ -52,7 +52,7 @@ lam0
   :: (Applicative m, Permutable env, C.Expr expr)
   => (forall env' . E.Extends env env' -> env' expr -> m (env' expr))
   -> m (env expr)
-lam0 f = fmap C.lam0 . getC <$> f (E.Extends liftCInner) (C (pure id))
+lam0 f = fmap C.lam0 <$> E.liftBinder f
 
 
 class InterpretA f where
