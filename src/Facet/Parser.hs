@@ -30,38 +30,37 @@ import           Text.Parser.Token.Highlight
 -- holes
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, Monad p, TokenParsing p) => p mod
-decl = (S..:) <$> name <* colon <*> (runIdentity <$> sig refl (fmap pure global) (fmap pure tglobal))
+decl = (S..:) <$> name <* colon <*> (runIdentity <$> sig (fmap pure global) refl (fmap pure tglobal))
   where
-  sig :: Applicative env' => Extends env env' -> p (env' expr) -> p (env' ty) -> p (env' decl)
-  sig _ var tvar = try (bind var tvar) <|> forAll sig var tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
+  sig :: Applicative env' => p (env' expr) -> Extends env env' -> p (env' ty) -> p (env' decl)
+  sig var _ tvar = try (bind var tvar) <|> forAll (\ env -> sig (castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
 
   bind :: Applicative env' => p (env' expr) -> p (env' ty) -> p (env' decl)
   bind var tvar = do
     (i, t) <- parens ((,) <$> name <* colon <*> type_ tvar)
-    pure t S.>-> \ env t -> arrow *> sig refl (t <$ variable i <|> castF env var) (castF env tvar)
+    pure t S.>-> \ env t -> arrow *> sig (t <$ variable i <|> castF env var) refl (castF env tvar)
 
 
 forAll
-  :: forall env ty res p x
+  :: forall env ty res p
   .  (Applicative env, S.ForAll ty res, S.Type ty, Monad p, TokenParsing p)
-  => (forall env' . Applicative env' => Extends env env' -> p (env' x) -> p (env' ty) -> p (env' res))
-  -> p (env x)
+  => (forall env' . Applicative env' => Extends env env' -> p (env' ty) -> p (env' res))
   -> p (env ty)
   -> p (env res)
-forAll k x tvar = do
+forAll k tvar = do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ tvar)
-  let loop :: Applicative env' => Extends env env' -> p (env' ty) -> p (env' x) -> p (env' ty) -> [S.Name] -> p (env' res)
-      loop env ty x tvar = \case
-        []   -> k env x tvar
-        i:is -> ty S.>=> \ env' t -> loop (env >>> env') (castF env' ty) (castF env' x) (t <$ variable i <|> castF env' tvar) is
-  arrow *> loop refl (pure ty) x tvar names
+  let loop :: Applicative env' => Extends env env' -> p (env' ty) -> p (env' ty) -> [S.Name] -> p (env' res)
+      loop env ty tvar = \case
+        []   -> k env tvar
+        i:is -> ty S.>=> \ env' t -> loop (env >>> env') (castF env' ty) (t <$ variable i <|> castF env' tvar) is
+  arrow *> loop refl (pure ty) tvar names
 
 
 type' :: (S.Type ty, Monad p, TokenParsing p) => p ty
 type' = runIdentity <$> type_ (fmap pure tglobal)
 
 type_ :: (Applicative env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
-type_ tvar = fn tvar <|> forAll (const (const type_)) (pure <$> char '_') tvar <?> "type"
+type_ tvar = fn tvar <|> forAll (const type_) tvar <?> "type"
 
 fn :: (Applicative env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
 fn tvar = app (S..$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
