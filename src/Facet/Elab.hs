@@ -17,6 +17,7 @@ module Facet.Elab
 , unify'
   -- Types
 , _Type
+, _Unit
   -- Expressions
 , ($$)
 , lam0
@@ -173,6 +174,9 @@ unify' = fmap C.strengthen . go
 
 _Type :: (C.Type ty, Applicative env) => Synth ty (env (ty ::: Type ty))
 _Type = fmap (::: Type) <$> C._Type
+
+_Unit :: (C.Type ty, Applicative env) => Synth ty (env (ty ::: Type ty))
+_Unit = fmap (::: Unit) <$> C._Unit
 
 
 -- Expressions
