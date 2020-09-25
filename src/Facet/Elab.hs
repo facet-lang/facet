@@ -29,9 +29,12 @@ module Facet.Elab
 ) where
 
 import           Control.Applicative (liftA2)
+import           Control.Carrier.Fail.Either
 import           Control.Carrier.Reader
 import           Control.Effect.Empty
+import           Control.Effect.Lift
 import           Control.Effect.Sum ((:+:))
+import           Data.Functor.Identity
 import qualified Data.Map as Map
 import qualified Facet.Core.Lifted as C
 import           Facet.Syntax.Common
@@ -147,15 +150,13 @@ unify t1 t2 = maybe pure go t1 t2
 
 
 newtype Check ty a = Check { runCheck :: ReaderC (Type ty) (Synth ty) a }
-  deriving (Algebra (Reader (Type ty) :+: Reader (Env (Type ty)) :+: Empty), Applicative, Functor, Monad)
+  deriving (Algebra (Reader (Type ty) :+: Reader (Env (Type ty)) :+: Fail :+: Lift Identity), Applicative, Functor, Monad)
 
-newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) Maybe a }
-  deriving (Algebra (Reader (Env (Type ty)) :+: Empty), Applicative, Functor, Monad)
+newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) (FailC Identity) a }
+  deriving (Algebra (Reader (Env (Type ty)) :+: Fail :+: Lift Identity), Applicative, Functor, Monad, MonadFail)
 
-instance MonadFail (Synth ty) where fail _ = Synth empty
-
-elab :: Env (Type ty) -> Synth ty a -> Maybe a
-elab env = runReader env . runSynth
+elab :: Env (Type ty) -> Synth ty a -> Either String a
+elab env = run . runFail . runReader env . runSynth
 
 check' :: Check ty a -> Type ty -> Synth ty a
 check' c t = runReader t (runCheck c)
@@ -178,7 +179,7 @@ unify' = fmap C.strengthen . go
     (l1 :* r1, l2 :* r2) -> liftA2 (C..*) <$> go l1 l2 <*> go r1 r2
     (f1 :$ a1, f2 :$ a2) -> liftA2 (C..$) <$> go f1 f2 <*> go a1 a2
     (a1 :-> b1, a2 :-> b2) -> liftA2 (C.-->) <$> go a1 a2 <*> go b1 b2
-    _ -> empty
+    _ -> fail "could not unify"
 
 
 -- Types
@@ -238,6 +239,6 @@ f $$ a = do
 lam0 :: (C.Expr expr, C.Permutable env) => (forall env' . C.Permutable env => C.Extends env env' -> env' (expr ::: Type ty) -> Check ty (env' expr)) -> Check ty (env expr)
 lam0 f = checking $ \case
   _A :-> _B -> C.lam0 $ \ env v -> check' (f env (v .: _A)) _B
-  _         -> empty
+  _         -> fail "expected function type in lambda"
 
 -- FIXME: internalize scope into Type & Expr?
