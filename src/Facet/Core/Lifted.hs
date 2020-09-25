@@ -3,6 +3,7 @@ module Facet.Core.Lifted
 ( -- * Types
   C.Type((.$), (.*), _Type, _Unit, (-->))
 , (>=>)
+, C.Interpret(..)
   -- * Expressions
 , C.Expr(($$))
 , lam0
