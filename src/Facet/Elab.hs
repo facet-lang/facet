@@ -215,11 +215,12 @@ infixr 2 -->
 
 (>=>)
   :: (C.Type ty, C.Permutable env)
-  => Check ty ty
+  => Check ty ty -- FIXME: this is not constructed in any particular scope
   -> (forall env' . C.Permutable env' => C.Extends env env' -> (env' ty ::: Type ty) -> Check ty (env' ty))
   -> Synth ty (env ty ::: Type ty)
 t >=> b = do
   t' <- check' t Type
+  -- FIXME: this amounts to a predicativity or staging restriction and prevents us from kind-checking uses of the variable under the binder.
   f <- pure (pure t') C.>=> \ env ty -> check' (b env (ty ::: Var t')) Type
   pure $ f ::: Type
 
