@@ -200,6 +200,6 @@ f $$ a = do
 lam0 :: (C.Expr expr, Applicative env) => (forall env' . C.Extends env env' -> env' (expr ::: Type ty) -> Check ty (env' expr)) -> Check ty (env expr)
 lam0 f = checking $ \case
   _A :-> _B -> C.lam0 $ \ env v -> check' (f env (v .: _A)) _B
-  _ -> empty
+  _         -> empty
 
 -- FIXME: internalize scope into Type & Expr?
