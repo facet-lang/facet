@@ -7,6 +7,7 @@ module Facet.Type
 
 import qualified Facet.Core as C
 
+-- FIXME: distinguish Type-with-Var from Type-without-Var
 data Type ty
   = Var ty
   | Type
