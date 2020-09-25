@@ -172,4 +172,4 @@ unify' = fmap C.strengthen . go
 f $$ a = do
   f' ::: (_A :-> _B) <- f
   a' ::: _A <- check' a _A
-  pure $ (f' C.$$ a') ::: _B
+  pure $ f' C.$$ a' ::: _B
