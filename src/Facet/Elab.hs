@@ -29,13 +29,11 @@ module Facet.Elab
 , lam0
 ) where
 
+import           Control.Algebra
 import           Control.Applicative (liftA2)
 import           Control.Carrier.Fail.Either
 import           Control.Carrier.Reader
 import           Control.Effect.Empty
-import           Control.Effect.Lift
-import           Control.Effect.Sum ((:+:))
-import           Data.Functor.Identity
 import qualified Data.Map as Map
 import qualified Facet.Core.Lifted as C
 import           Facet.Syntax.Common
@@ -151,13 +149,22 @@ unify t1 t2 = maybe pure go t1 t2
 
 
 newtype Check ty a = Check { runCheck :: Type ty -> Synth ty a }
-  deriving (Algebra (Reader (Type ty) :+: Reader (Env (Type ty)) :+: Fail :+: Lift Identity), Applicative, Functor, Monad) via ReaderC (Type ty) (Synth ty)
+  deriving (Algebra (Reader (Type ty) :+: Reader (Env (Type ty)) :+: Fail), Applicative, Functor, Monad) via ReaderC (Type ty) (Synth ty)
 
-newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) (FailC Identity) a }
-  deriving (Algebra (Reader (Env (Type ty)) :+: Fail :+: Lift Identity), Applicative, Functor, Monad, MonadFail)
+newtype Synth ty a = Synth { runSynth :: Env (Type ty) -> Either String a }
+  deriving (Algebra (Reader (Env (Type ty)) :+: Fail), Applicative, Functor, Monad, MonadFail) via ReaderC (Env (Type ty)) FailM
+
+newtype FailM a = FailM (Either String a)
+  deriving (Applicative, Functor, Monad)
+
+instance MonadFail FailM where
+  fail = FailM . Left
+
+instance Algebra Fail FailM where
+  alg _ (Fail s) _ = fail s
 
 elab :: Env (Type ty) -> Synth ty a -> Either String a
-elab env = run . runFail . runReader env . runSynth
+elab = flip runSynth
 
 check' :: Check ty a -> Type ty -> Synth ty a
 check' = runCheck
