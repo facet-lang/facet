@@ -10,6 +10,12 @@ module Facet.Core.Lifted
 , C.Expr(($$))
 , lam0
 , InterpretA(..)
+  -- * Re-exports
+, Extends
+, (>>>)
+, castF
+, refl
+, strengthen
 ) where
 
 import           Control.Applicative (liftA2)
