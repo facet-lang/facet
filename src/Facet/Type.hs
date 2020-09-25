@@ -6,20 +6,20 @@ module Facet.Type
 import qualified Facet.Core as C
 
 -- FIXME: distinguish Type-with-Var from Type-without-Var
-data Type ty
-  = Var ty
+data Type a
+  = Var a
   | Type
   | Unit
-  | Type ty :* Type ty
-  | Type ty :$ Type ty
-  | Type ty :-> Type ty
-  | ForAll (Type ty) (Type ty -> Type ty)
+  | Type a :* Type a
+  | Type a :$ Type a
+  | Type a :-> Type a
+  | ForAll (Type a) (Type a -> Type a)
 
 infixl 7 :*
 infixr 0 :->
 infixl 9 :$
 
-instance (Eq ty, Num ty) => Eq (Type ty) where
+instance (Eq a, Num a) => Eq (Type a) where
   (==) = go 0
     where
     go n = curry $ \case
@@ -32,7 +32,7 @@ instance (Eq ty, Num ty) => Eq (Type ty) where
       (ForAll t1 b1, ForAll t2 b2) -> go n t1 t2 && go (n + 1) (b1 (Var n)) (b2 (Var n))
       _ -> False
 
-instance C.Type (Type ty) where
+instance C.Type (Type a) where
   _Type = Type
   _Unit = Unit
   (.*) = (:*)
