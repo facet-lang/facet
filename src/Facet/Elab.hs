@@ -177,3 +177,5 @@ lam0 f = checking $ \case
     f' <- C.lam0 $ \ env ty -> check' (f env (ty .: _A)) _B
     pure $ f' .: (_A :-> _B)
   _ -> empty
+
+-- FIXME: internalize scope into Type & Expr?
