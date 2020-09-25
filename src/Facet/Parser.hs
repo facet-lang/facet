@@ -11,7 +11,6 @@ module Facet.Parser
 
 import           Control.Applicative (Alternative(..), liftA2, (<**>))
 import           Data.Functor.Identity
-import           Facet.Env (Extends, castF, refl, (>>>))
 import qualified Facet.Syntax.Untyped.Lifted as S
 import           Prelude hiding (lines, null, span)
 import           Text.Parser.Char
@@ -30,30 +29,30 @@ import           Text.Parser.Token.Highlight
 -- holes
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, Monad p, TokenParsing p) => p mod
-decl = (S..:) <$> name <* colon <*> (runIdentity <$> sig (fmap pure global) refl (fmap pure tglobal))
+decl = (S..:) <$> name <* colon <*> (runIdentity <$> sig (fmap pure global) S.refl (fmap pure tglobal))
   where
-  sig :: Applicative env' => p (env' expr) -> Extends env env' -> p (env' ty) -> p (env' decl)
-  sig var _ tvar = try (bind var tvar) <|> forAll (\ env -> sig (castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
+  sig :: Applicative env' => p (env' expr) -> S.Extends env env' -> p (env' ty) -> p (env' decl)
+  sig var _ tvar = try (bind var tvar) <|> forAll (\ env -> sig (S.castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
 
   bind :: Applicative env' => p (env' expr) -> p (env' ty) -> p (env' decl)
   bind var tvar = do
     (i, t) <- parens ((,) <$> name <* colon <*> type_ tvar)
-    pure t S.>-> \ env t -> arrow *> sig (t <$ variable i <|> castF env var) refl (castF env tvar)
+    pure t S.>-> \ env t -> arrow *> sig (t <$ variable i <|> S.castF env var) S.refl (S.castF env tvar)
 
 
 forAll
   :: forall env ty res p
   .  (Applicative env, S.ForAll ty res, S.Type ty, Monad p, TokenParsing p)
-  => (forall env' . Applicative env' => Extends env env' -> p (env' ty) -> p (env' res))
+  => (forall env' . Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' res))
   -> p (env ty)
   -> p (env res)
 forAll k tvar = do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ tvar)
-  let loop :: Applicative env' => Extends env env' -> p (env' ty) -> p (env' ty) -> [S.Name] -> p (env' res)
+  let loop :: Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' ty) -> [S.Name] -> p (env' res)
       loop env ty tvar = \case
         []   -> k env tvar
-        i:is -> ty S.>=> \ env' t -> loop (env >>> env') (castF env' ty) (t <$ variable i <|> castF env' tvar) is
-  arrow *> loop refl (pure ty) tvar names
+        i:is -> ty S.>=> \ env' t -> loop (env S.>>> env') (S.castF env' ty) (t <$ variable i <|> S.castF env' tvar) is
+  arrow *> loop S.refl (pure ty) tvar names
 
 
 type' :: (S.Type ty, Monad p, TokenParsing p) => p ty
@@ -93,7 +92,7 @@ lam :: forall p env expr . (Applicative env, S.Expr expr, Monad p, TokenParsing 
 lam var = braces $ clause var
   where
   clause :: Applicative env' => p (env' expr) -> p (env' expr)
-  clause var = S.lam0 (\ env v -> name >>= \ i -> let var' = v <$ variable i <|> castF env var in clause var' <|> arrow *> expr_ var') <?> "clause"
+  clause var = S.lam0 (\ env v -> name >>= \ i -> let var' = v <$ variable i <|> S.castF env var in clause var' <|> arrow *> expr_ var') <?> "clause"
 
 atom :: (Applicative env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 atom var
