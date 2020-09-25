@@ -15,6 +15,9 @@ module Facet.Elab
 , checking
 , switch
 , unify'
+  -- Types
+, _Type
+  -- Expressions
 , ($$)
 , lam0
 ) where
@@ -167,6 +170,9 @@ unify' = fmap C.strengthen . go
 
 
 -- Types
+
+_Type :: (C.Type ty, Applicative env) => Synth ty (env (ty ::: Type ty))
+_Type = fmap (::: Type) <$> C._Type
 
 
 -- Expressions
