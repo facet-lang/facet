@@ -234,13 +234,13 @@ infixr 1 >=>
 
 -- Expressions
 
-($$) :: C.Expr expr => Synth r (expr ::: Type r) -> Check r expr -> Synth r (expr ::: Type r)
+($$) :: C.Expr expr => Synth r (expr (a -> b) ::: Type r) -> Check r (expr a) -> Synth r (expr b ::: Type r)
 f $$ a = do
   f' ::: (_A :-> _B) <- f
   a' <- check' a _A
   pure $ f' C.$$ a' ::: _B
 
-lam0 :: (C.Expr expr, C.Permutable env) => (forall env' . C.Permutable env => C.Extends env env' -> env' (expr ::: Type r) -> Check r (env' expr)) -> Check r (env expr)
+lam0 :: (C.Expr expr, C.Permutable env) => (forall env' . C.Permutable env => C.Extends env env' -> env' (expr a ::: Type r) -> Check r (env' (expr b))) -> Check r (env (expr (a -> b)))
 lam0 f = checking $ \case
   _A :-> _B -> C.lam0 $ \ env v -> check' (f env (v .: _A)) _B
   _         -> fail "expected function type in lambda"

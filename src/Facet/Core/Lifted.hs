@@ -38,6 +38,6 @@ infixr 1 >=>
 
 lam0
   :: (Applicative m, Permutable env, C.Expr expr)
-  => (forall env' . Permutable env' => Extends env env' -> env' expr -> m (env' expr))
-  -> m (env expr)
+  => (forall env' . Permutable env' => Extends env env' -> env' (expr a) -> m (env' (expr b)))
+  -> m (env (expr (a -> b)))
 lam0 f = fmap C.lam0 <$> liftBinder f

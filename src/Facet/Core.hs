@@ -49,8 +49,8 @@ newtype CType = CType { getCType :: forall ty . Type ty => ty }
 
 
 class Expr expr where
-  lam0 :: (expr -> expr) -> expr
-  ($$) :: expr -> expr -> expr
+  lam0 :: (expr a -> expr b) -> expr (a -> b)
+  ($$) :: expr (a -> b) -> expr a -> expr b
   infixl 9 $$
 
 
