@@ -1,10 +1,10 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Elab
 ( check
@@ -31,14 +31,16 @@ module Facet.Elab
 
 import           Control.Algebra
 import           Control.Applicative (liftA2)
-import           Control.Carrier.Fail.Either
 import           Control.Carrier.Reader
 import           Control.Effect.Empty
+import           Control.Effect.Error
 import qualified Data.Map as Map
 import qualified Facet.Core.Lifted as C
+import           Facet.Print (Print)
 import           Facet.Syntax.Common
 import qualified Facet.Syntax.Untyped as U
 import           Facet.Type
+import           Silkscreen
 
 type Env ty = Map.Map U.Name ty
 
@@ -149,21 +151,15 @@ unify t1 t2 = maybe pure go t1 t2
 
 
 newtype Check ty a = Check { runCheck :: Type ty -> Synth ty a }
-  deriving (Algebra (Reader (Type ty) :+: Reader (Env (Type ty)) :+: Fail), Applicative, Functor, Monad) via ReaderC (Type ty) (Synth ty)
+  deriving (Algebra (Reader (Type ty) :+: Reader (Env (Type ty)) :+: Error Print), Applicative, Functor, Monad) via ReaderC (Type ty) (Synth ty)
 
-newtype Synth ty a = Synth { runSynth :: Env (Type ty) -> Either String a }
-  deriving (Algebra (Reader (Env (Type ty)) :+: Fail), Applicative, Functor, Monad, MonadFail) via ReaderC (Env (Type ty)) FailM
+newtype Synth ty a = Synth { runSynth :: Env (Type ty) -> Either Print a }
+  deriving (Algebra (Reader (Env (Type ty)) :+: Error Print), Applicative, Functor, Monad) via ReaderC (Env (Type ty)) (Either Print)
 
-newtype FailM a = FailM (Either String a)
-  deriving (Applicative, Functor, Monad)
+instance MonadFail (Synth ty) where
+  fail = throwError @Print . pretty
 
-instance MonadFail FailM where
-  fail = FailM . Left
-
-instance Algebra Fail FailM where
-  alg _ (Fail s) _ = fail s
-
-elab :: Env (Type ty) -> Synth ty a -> Either String a
+elab :: Env (Type ty) -> Synth ty a -> Either Print a
 elab = flip runSynth
 
 check' :: Check ty a -> Type ty -> Synth ty a
