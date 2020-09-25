@@ -14,6 +14,7 @@ module Facet.Core.Lifted
 , castF
 , refl
 , strengthen
+, weaken
 ) where
 
 import           Control.Applicative (liftA2)
