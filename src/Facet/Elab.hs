@@ -153,13 +153,15 @@ switch :: Synth ty (Type ty) -> Check ty (Type ty)
 switch s = Check $ ReaderC $ \ _T -> s >>= unify' _T
 
 unify' :: Type ty -> Type ty -> Synth ty (Type ty)
-unify' = curry $ \case
-  (Type, Type) -> pure Type
-  (Unit, Unit) -> pure Unit
-  (l1 :* r1, l2 :* r2) -> (:*) <$> unify' l1 l2 <*> unify' r1 r2
-  (f1 :$ a1, f2 :$ a2) -> (:$) <$> unify' f1 f2 <*> unify' a1 a2
-  (a1 :-> b1, a2 :-> b2) -> (:->) <$> unify' a1 a2 <*> unify' b1 b2
-  _ -> empty
+unify' = fmap C.strengthen . go
+  where
+  go = curry $ \case
+    (Type, Type) -> C._Type
+    (Unit, Unit) -> C._Unit
+    (l1 :* r1, l2 :* r2) -> go l1 l2 C..* go r1 r2
+    (f1 :$ a1, f2 :$ a2) -> go f1 f2 C..$ go a1 a2
+    (a1 :-> b1, a2 :-> b2) -> go a1 a2 C.--> go b1 b2
+    _ -> empty
 
 ($$) :: C.Expr expr => Synth ty (expr ::: Type ty) -> Check ty (expr ::: Type ty) -> Synth ty (expr ::: Type ty)
 f $$ a = do
