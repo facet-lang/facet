@@ -11,7 +11,6 @@ module Facet.Core.Lifted
   -- * Expressions
 , C.Expr(($$))
 , lam0
-, InterpretA(..)
   -- * Re-exports
 , Extends
 , (>>>)
@@ -65,7 +64,3 @@ lam0
   => (forall env' . Applicative env' => Extends env env' -> env' expr -> m (env' expr))
   -> m (env expr)
 lam0 f = fmap C.lam0 <$> liftBinder f
-
-
-class InterpretA f where
-  interpretA :: (C.Type ty, Applicative env, Applicative m) => f env ty -> m (env ty)
