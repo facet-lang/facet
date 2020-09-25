@@ -8,6 +8,7 @@ module Facet.Env
 , (C.>>>)
 , (^>>)
 , (>>^)
+, castF
 , liftBinder
 ) where
 
@@ -38,6 +39,9 @@ f >>^ g = f C.>>> Extends g
 
 infixr 1 >>^
 
+
+castF :: Functor m => Extends a b -> m (a x) -> m (b x)
+castF e = fmap (cast e)
 
 liftBinder :: (Applicative m, Applicative env) => (forall env' . Applicative env' => Extends env env' -> env' a -> m (env' b)) -> m (env (a -> b))
 liftBinder f = getC <$> f (Extends liftCInner) (C (pure id))
