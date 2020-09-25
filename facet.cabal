@@ -48,6 +48,7 @@ library
     Facet.Pretty
     Facet.Print
     Facet.Signature
+    Facet.Syntax.Common
     Facet.Syntax.Typed
     Facet.Syntax.Typed.Lifted
     Facet.Syntax.Untyped
