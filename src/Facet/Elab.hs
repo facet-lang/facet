@@ -165,6 +165,9 @@ unify' = fmap C.strengthen . go
     (a1 :-> b1, a2 :-> b2) -> go a1 a2 C.--> go b1 b2
     _ -> empty
 
+
+-- Expressions
+
 ($$) :: C.Expr expr => Synth ty (expr ::: Type ty) -> Check ty (expr ::: Type ty) -> Synth ty (expr ::: Type ty)
 f $$ a = do
   f' ::: (_A :-> _B) <- f
