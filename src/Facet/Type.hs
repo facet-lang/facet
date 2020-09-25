@@ -1,8 +1,6 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Type
 ( Type(..)
-, FType(..)
 ) where
 
 import qualified Facet.Core as C
@@ -51,7 +49,3 @@ instance C.Interpret Type where
     l :* r -> C.interpret l C..* C.interpret r
     a :-> b -> C.interpret a C.--> C.interpret b
     ForAll t b -> C.interpret t C.>=> C.interpret . b . Var
-
-
-newtype FType = FType { ftype :: Type FType }
-  deriving (C.Type)
