@@ -8,9 +8,11 @@ module Facet.Env
 , (C.>>>)
 , (^>>)
 , (>>^)
+, liftBinder
 ) where
 
 import qualified Control.Category as C
+import           Facet.Functor.C ((:.:)(..), liftCInner)
 
 type (c ~> d) = forall t . c t -> d t
 
@@ -35,3 +37,7 @@ infixr 1 ^>>
 f >>^ g = f C.>>> Extends g
 
 infixr 1 >>^
+
+
+liftBinder :: (Applicative m, Applicative env) => (forall env' . Extends env env' -> env' a -> m (env' b)) -> m (env (a -> b))
+liftBinder f = getC <$> f (Extends liftCInner) (C (pure id))
