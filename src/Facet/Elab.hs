@@ -214,9 +214,9 @@ a --> b = do
 infixr 2 -->
 
 (>=>)
-  :: (C.Type ty, Applicative env)
+  :: (C.Type ty, C.Permutable env)
   => Check ty (env ty)
-  -> (forall env' . C.Extends env env' -> env' (ty ::: Type ty) -> Check ty (env' ty))
+  -> (forall env' . C.Permutable env' => C.Extends env env' -> env' (ty ::: Type ty) -> Check ty (env' ty))
   -> Synth ty (env (ty ::: Type ty))
 t >=> b = do
   t' <- check' t Type
@@ -234,7 +234,7 @@ f $$ a = do
   a' <- check' a _A
   pure $ f' C.$$ a' ::: _B
 
-lam0 :: (C.Expr expr, Applicative env) => (forall env' . C.Extends env env' -> env' (expr ::: Type ty) -> Check ty (env' expr)) -> Check ty (env expr)
+lam0 :: (C.Expr expr, C.Permutable env) => (forall env' . C.Permutable env => C.Extends env env' -> env' (expr ::: Type ty) -> Check ty (env' expr)) -> Check ty (env expr)
 lam0 f = checking $ \case
   _A :-> _B -> C.lam0 $ \ env v -> check' (f env (v .: _A)) _B
   _         -> empty

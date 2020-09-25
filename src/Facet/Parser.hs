@@ -30,10 +30,10 @@ import           Text.Parser.Token.Highlight
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, Monad p, TokenParsing p) => p mod
 decl = (S..:) <$> name <* colon <*> S.strengthen (sig (fmap pure global) S.refl (fmap pure tglobal))
   where
-  sig :: Applicative env' => p (env' expr) -> S.Extends env env' -> p (env' ty) -> p (env' decl)
+  sig :: S.Permutable env' => p (env' expr) -> S.Extends env env' -> p (env' ty) -> p (env' decl)
   sig var _ tvar = try (bind var tvar) <|> forAll (\ env -> sig (S.castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
 
-  bind :: Applicative env' => p (env' expr) -> p (env' ty) -> p (env' decl)
+  bind :: S.Permutable env' => p (env' expr) -> p (env' ty) -> p (env' decl)
   bind var tvar = do
     (i, t) <- parens ((,) <$> name <* colon <*> type_ tvar)
     pure t S.>-> \ env t -> arrow *> sig (t <$ variable i <|> S.castF env var) S.refl (S.castF env tvar)
@@ -41,13 +41,13 @@ decl = (S..:) <$> name <* colon <*> S.strengthen (sig (fmap pure global) S.refl 
 
 forAll
   :: forall env ty res p
-  .  (Applicative env, S.ForAll ty res, S.Type ty, Monad p, TokenParsing p)
-  => (forall env' . Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' res))
+  .  (S.Permutable env, S.ForAll ty res, S.Type ty, Monad p, TokenParsing p)
+  => (forall env' . S.Permutable env' => S.Extends env env' -> p (env' ty) -> p (env' res))
   -> p (env ty)
   -> p (env res)
 forAll k tvar = do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ tvar)
-  let loop :: Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' ty) -> [S.Name] -> p (env' res)
+  let loop :: S.Permutable env' => S.Extends env env' -> p (env' ty) -> p (env' ty) -> [S.Name] -> p (env' res)
       loop env ty tvar = \case
         []   -> k env tvar
         i:is -> ty S.>=> \ env' t -> loop (env S.>>> env') (S.castF env' ty) (t <$ variable i <|> S.castF env' tvar) is
@@ -57,13 +57,13 @@ forAll k tvar = do
 type' :: (S.Type ty, Monad p, TokenParsing p) => p ty
 type' = S.strengthen (type_ (fmap pure tglobal))
 
-type_ :: (Applicative env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
+type_ :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
 type_ tvar = fn tvar <|> forAll (const type_) tvar <?> "type"
 
-fn :: (Applicative env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
+fn :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
 fn tvar = app (S..$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
 
-tatom :: (Applicative env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
+tatom :: (S.Permutable env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
 tatom tvar
   =   parens (prd <$> sepBy (type_ tvar) comma)
   <|> tvar
@@ -82,18 +82,18 @@ expr = S.strengthen (expr_ (pure <$> global))
 global :: (S.Expr expr, Monad p, TokenParsing p) => p expr
 global = S.global <$> name <?> "variable"
 
-expr_ :: forall p env expr . (Applicative env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
+expr_ :: forall p env expr . (S.Permutable env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 expr_ = app (S.$$) atom
 
 -- FIXME: patterns
 -- FIXME: nullary computations
-lam :: forall p env expr . (Applicative env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
+lam :: forall p env expr . (S.Permutable env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 lam var = braces $ clause var
   where
-  clause :: Applicative env' => p (env' expr) -> p (env' expr)
+  clause :: S.Permutable env' => p (env' expr) -> p (env' expr)
   clause var = S.lam0 (\ env v -> name >>= \ i -> let var' = v <$ variable i <|> S.castF env var in clause var' <|> arrow *> expr_ var') <?> "clause"
 
-atom :: (Applicative env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
+atom :: (S.Permutable env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 atom var
   =   lam var
   <|> parens (prd <$> sepBy (expr_ var) comma)
@@ -102,7 +102,7 @@ atom var
   prd [] = pure S.unit
   prd ts = foldl1 (liftA2 (S.**)) ts
 
-app :: (Applicative env, TokenParsing p) => (expr -> expr -> expr) -> (p (env expr) -> p (env expr)) -> (p (env expr) -> p (env expr))
+app :: (S.Permutable env, TokenParsing p) => (expr -> expr -> expr) -> (p (env expr) -> p (env expr)) -> (p (env expr) -> p (env expr))
 app ($$) atom tvar = foldl (liftA2 ($$)) <$> atom tvar <*> many (atom tvar)
 
 
