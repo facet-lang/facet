@@ -166,6 +166,9 @@ unify' = fmap C.strengthen . go
     _ -> empty
 
 
+-- Types
+
+
 -- Expressions
 
 ($$) :: C.Expr expr => Synth ty (expr ::: Type ty) -> Check ty (expr ::: Type ty) -> Synth ty (expr ::: Type ty)
