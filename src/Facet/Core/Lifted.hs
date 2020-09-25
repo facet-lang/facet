@@ -1,6 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Facet.Core.Lifted
-( C.Type
+( -- * Types
+  C.Type
 , _Type
 , _Unit
 , (.*)
@@ -21,6 +22,8 @@ module Facet.Core.Lifted
 import           Control.Applicative (liftA2)
 import qualified Facet.Core as C
 import           Facet.Env
+
+-- Types
 
 _Type :: (Applicative m, Applicative env, C.Type ty) => m (env ty)
 _Type = pure (pure C._Type)
