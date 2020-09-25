@@ -9,6 +9,7 @@ module Facet.Core
 , Match(..)
 , IsType(..)
 , IsUnit(..)
+, IsProd(..)
 , IsApp(..)
 , IsFunction(..)
 , IsForAll(..)
@@ -89,6 +90,20 @@ instance Type ty => Type (Match IsUnit ty) where
   _Type = N _Type
   _Unit = Y IsUnit
   l .* r = N (interpret l .* interpret r)
+  f .$ a = N (interpret f .$ interpret a)
+  a --> b = N (interpret a --> interpret b)
+  t >=> b = N (interpret t >=> interpret . b . N)
+
+
+data IsProd ty = IsProd ty ty
+
+instance Interpret IsProd where
+  interpret (IsProd a b) = a --> b
+
+instance Type ty => Type (Match IsProd ty) where
+  _Type = N _Type
+  _Unit = N _Unit
+  l .* r = Y (IsProd (interpret l) (interpret r))
   f .$ a = N (interpret f .$ interpret a)
   a --> b = N (interpret a --> interpret b)
   t >=> b = N (interpret t >=> interpret . b . N)
