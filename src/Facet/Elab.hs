@@ -127,6 +127,7 @@ unify t1 t2 = maybe pure go t1 t2
   where
   go t1 t2 = case (t1, t2) of
     (Type,      Type)      -> pure Type
+    (Unit,      Unit)      -> pure Unit
     (a1 :-> b1, a2 :-> b2) -> (:->) <$> go a1 a2 <*> go b1 b2
     _                      -> empty
 
