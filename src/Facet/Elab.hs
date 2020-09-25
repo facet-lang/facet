@@ -183,33 +183,33 @@ unify' = fmap C.strengthen . go
 
 -- Types
 
-_Type :: (C.Type ty, Applicative env) => Synth ty (env (ty ::: Type ty))
-_Type = pure . pure $ C._Type ::: Type
+_Type :: (C.Type ty, Applicative env) => Synth ty (env ty ::: Type ty)
+_Type = pure $ pure C._Type ::: Type
 
-_Unit :: (C.Type ty, Applicative env) => Synth ty (env (ty ::: Type ty))
-_Unit = pure . pure $ C._Unit ::: Type
+_Unit :: (C.Type ty, Applicative env) => Synth ty (env ty ::: Type ty)
+_Unit = pure $ pure C._Unit ::: Type
 
-(.$) :: C.Type ty => Synth ty (ty ::: Type ty) -> Check ty ty -> Synth ty (ty ::: Type ty)
+(.$) :: (C.Type ty, Applicative env) => Synth ty (env ty ::: Type ty) -> Check ty (env ty) -> Synth ty (env ty ::: Type ty)
 a .$ b = do
   a' ::: (_A :-> _B) <- a
   b' <- check' b _A
-  pure $ (a' C..$ b') ::: Type
+  pure $ liftA2 (C..$) a' b' ::: Type
 
 infixl 9 .$
 
-(.*) :: (C.Type ty, Applicative env) => Check ty (env ty) -> Check ty (env ty) -> Synth ty (env (ty ::: Type ty))
+(.*) :: (C.Type ty, Applicative env) => Check ty (env ty) -> Check ty (env ty) -> Synth ty (env ty ::: Type ty)
 a .* b = do
   a' <- check' a Type
   b' <- check' b Type
-  pure $ liftA2 (C..*) a' b' .: Type
+  pure $ liftA2 (C..*) a' b' ::: Type
 
 infixl 7 .*
 
-(-->) :: (C.Type ty, Applicative env) => Check ty (env ty) -> Check ty (env ty) -> Synth ty (env (ty ::: Type ty))
+(-->) :: (C.Type ty, Applicative env) => Check ty (env ty) -> Check ty (env ty) -> Synth ty (env ty ::: Type ty)
 a --> b = do
   a' <- check' a Type
   b' <- check' b Type
-  pure $ liftA2 (C.-->) a' b' .: Type
+  pure $ liftA2 (C.-->) a' b' ::: Type
 
 infixr 2 -->
 
