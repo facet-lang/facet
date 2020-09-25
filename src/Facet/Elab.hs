@@ -22,6 +22,7 @@ import           Control.Effect.Empty
 import           Control.Effect.Sum ((:+:))
 import qualified Data.Map as Map
 import qualified Facet.Core.Lifted as C
+import           Facet.Syntax.Common
 import qualified Facet.Syntax.Untyped as U
 import           Facet.Type
 
@@ -131,12 +132,6 @@ unify t1 t2 = maybe pure go t1 t2
     (Unit,      Unit)      -> pure Unit
     (a1 :-> b1, a2 :-> b2) -> (:->) <$> go a1 a2 <*> go b1 b2
     _                      -> empty
-
-
-data a ::: b = a ::: b
-  deriving (Eq, Ord, Show)
-
-infix 5 :::
 
 
 newtype Check ty a = Check { runCheck :: ReaderC (Type ty) (Synth ty) a }

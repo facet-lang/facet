@@ -1,2 +1,9 @@
+{-# LANGUAGE TypeOperators #-}
 module Facet.Syntax.Common
-() where
+( (:::)(..)
+) where
+
+data a ::: b = a ::: b
+  deriving (Eq, Ord, Show)
+
+infix 5 :::
