@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -149,8 +150,8 @@ unify t1 t2 = maybe pure go t1 t2
     _                      -> empty
 
 
-newtype Check ty a = Check { runCheck :: ReaderC (Type ty) (Synth ty) a }
-  deriving (Algebra (Reader (Type ty) :+: Reader (Env (Type ty)) :+: Fail :+: Lift Identity), Applicative, Functor, Monad)
+newtype Check ty a = Check { runCheck :: Type ty -> Synth ty a }
+  deriving (Algebra (Reader (Type ty) :+: Reader (Env (Type ty)) :+: Fail :+: Lift Identity), Applicative, Functor, Monad) via ReaderC (Type ty) (Synth ty)
 
 newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) (FailC Identity) a }
   deriving (Algebra (Reader (Env (Type ty)) :+: Fail :+: Lift Identity), Applicative, Functor, Monad, MonadFail)
@@ -159,13 +160,13 @@ elab :: Env (Type ty) -> Synth ty a -> Either String a
 elab env = run . runFail . runReader env . runSynth
 
 check' :: Check ty a -> Type ty -> Synth ty a
-check' c t = runReader t (runCheck c)
+check' = runCheck
 
 checking :: (Type ty -> Synth ty a) -> Check ty a
-checking = Check . ReaderC
+checking = Check
 
 switch :: Synth ty (a ::: Type ty) -> Check ty a
-switch s = Check $ ReaderC $ \ _T -> do
+switch s = Check $ \ _T -> do
   a ::: _T' <- s
   a <$ unify' _T _T'
 
