@@ -197,11 +197,9 @@ f $$ a = do
   a' <- check' a _A
   pure $ f' C.$$ a' ::: _B
 
-lam0 :: (C.Expr expr, Applicative env) => (forall env' . C.Extends env env' -> env' (expr ::: Type ty) -> Check ty (env' expr)) -> Check ty (env (expr ::: Type ty))
+lam0 :: (C.Expr expr, Applicative env) => (forall env' . C.Extends env env' -> env' (expr ::: Type ty) -> Check ty (env' expr)) -> Check ty (env expr)
 lam0 f = checking $ \case
-  _A :-> _B -> do
-    f' <- C.lam0 $ \ env v -> check' (f env (v .: _A)) _B
-    pure $ f' .: (_A :-> _B)
+  _A :-> _B -> C.lam0 $ \ env v -> check' (f env (v .: _A)) _B
   _ -> empty
 
 -- FIXME: internalize scope into Type & Expr?
