@@ -163,8 +163,10 @@ check' c t = runReader t (runCheck c)
 checking :: (Type ty -> Synth ty a) -> Check ty a
 checking = Check . ReaderC
 
-switch :: Synth ty (Type ty) -> Check ty (Type ty)
-switch s = Check $ ReaderC $ \ _T -> s >>= unify' _T
+switch :: Synth ty (a ::: Type ty) -> Check ty a
+switch s = Check $ ReaderC $ \ _T -> do
+  a ::: _T' <- s
+  a <$ unify' _T _T'
 
 unify' :: Type ty -> Type ty -> Synth ty (Type ty)
 unify' = fmap C.strengthen . go
