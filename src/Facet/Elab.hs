@@ -186,8 +186,8 @@ unify' = fmap C.strengthen . go
 _Type :: C.Type ty => Synth ty (ty ::: Type ty)
 _Type = pure $ C._Type ::: Type
 
-_Unit :: C.Type ty => Synth ty (ty ::: Type ty)
-_Unit = pure $ C._Unit ::: Type
+_Unit :: (C.Type ty, Applicative env) => Synth ty (env (ty ::: Type ty))
+_Unit = pure . pure $ C._Unit ::: Type
 
 (.$) :: C.Type ty => Synth ty (ty ::: Type ty) -> Check ty ty -> Synth ty (ty ::: Type ty)
 a .$ b = do
