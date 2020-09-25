@@ -14,7 +14,7 @@ module Facet.Core.Lifted
 
 import           Control.Applicative (liftA2)
 import qualified Facet.Core as C
-import qualified Facet.Env as E
+import           Facet.Env
 
 _Type :: (Applicative m, Applicative env, C.Type ty) => m (env ty)
 _Type = pure (pure C._Type)
@@ -41,17 +41,17 @@ infixr 2 -->
 (>=>)
   :: (Applicative m, Applicative env, C.Type ty)
   => m (env ty)
-  -> (forall env' . Applicative env' => E.Extends env env' -> env' ty -> m (env' ty))
+  -> (forall env' . Applicative env' => Extends env env' -> env' ty -> m (env' ty))
   -> m (env ty)
-t >=> b = liftA2 (C.>=>) <$> t <*> E.liftBinder b
+t >=> b = liftA2 (C.>=>) <$> t <*> liftBinder b
 
 infixr 1 >=>
 
 lam0
   :: (Applicative m, Applicative env, C.Expr expr)
-  => (forall env' . Applicative env' => E.Extends env env' -> env' expr -> m (env' expr))
+  => (forall env' . Applicative env' => Extends env env' -> env' expr -> m (env' expr))
   -> m (env expr)
-lam0 f = fmap C.lam0 <$> E.liftBinder f
+lam0 f = fmap C.lam0 <$> liftBinder f
 
 
 class InterpretA f where
