@@ -155,6 +155,7 @@ switch s = Check $ ReaderC $ \ _T -> s >>= unify' _T
 unify' :: Type ty -> Type ty -> Synth ty (Type ty)
 unify' = fmap C.strengthen . go
   where
+  go :: Applicative env => Type ty -> Type ty -> Synth ty (env (Type ty))
   go = curry $ \case
     (Type, Type) -> C._Type
     (Unit, Unit) -> C._Unit
