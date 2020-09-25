@@ -21,7 +21,6 @@ import           Control.Effect.Empty
 import           Control.Effect.Sum ((:+:))
 import qualified Data.Map as Map
 import qualified Facet.Core.Lifted as C
-import           Facet.Functor.I
 import qualified Facet.Syntax.Untyped as U
 import           Facet.Type
 
@@ -35,10 +34,10 @@ synth m = elab m Nothing
 
 newtype Elab ty = Elab { elab :: Maybe ty -> ReaderC (Env ty) Maybe ty }
 
-instance U.Global (Elab (Type I ty)) where
+instance U.Global (Elab (Type ty)) where
   global n = Elab $ \ ty -> unify ty =<< ReaderC (Map.lookup n)
 
-instance U.ForAll (Elab (Type I ty)) (Elab (Type I ty)) where
+instance U.ForAll (Elab (Type ty)) (Elab (Type ty)) where
   _A >=> _B = Elab $ \ _T -> do
     _ <- check _A Type
     -- FIXME: this should make a fresh type variable and apply _B to that
@@ -46,7 +45,7 @@ instance U.ForAll (Elab (Type I ty)) (Elab (Type I ty)) where
     _ <- check (_B (Elab (const empty))) Type
     unify _T Type
 
-instance U.Type (Elab (Type I ty)) where
+instance U.Type (Elab (Type ty)) where
   _A --> _B = Elab $ \ _T -> do
     _ <- check _A Type
     _ <- check _B Type
@@ -63,7 +62,7 @@ instance U.Type (Elab (Type I ty)) where
   _Type = Elab (`unify` Type) -- 🕶
 
 -- FIXME: specialize this to Elab (Expr ::: Type)?
-instance U.Expr (Elab (Type I ty)) where
+instance U.Expr (Elab (Type ty)) where
   lam0 f = Elab $ \case
     Just (_A :-> _B) -> do
       -- FIXME: this should make a fresh type variable of type _A and apply f to that
@@ -92,7 +91,7 @@ instance U.Expr (Elab (Type I ty)) where
     _ -> empty
 
 -- FIXME: specialize this to Elab Decl?
-instance U.Decl (Elab (Type I ty)) (Elab (Type I ty)) (Elab (Type I ty)) where
+instance U.Decl (Elab (Type ty)) (Elab (Type ty)) (Elab (Type ty)) where
   ty .= v = Elab $ \ _T -> do
     _Ty <- check ty Type
     -- FIXME: extend the environment while checking v (for recursive functions)?
@@ -107,12 +106,12 @@ instance U.Decl (Elab (Type I ty)) (Elab (Type I ty)) (Elab (Type I ty)) where
     unify _T Type
 
 -- FIXME: specialize this to Elab Module?
-instance U.Module (Elab (Type I ty)) (Elab (Type I ty)) (Elab (Type I ty)) (Elab (Type I ty)) where
+instance U.Module (Elab (Type ty)) (Elab (Type ty)) (Elab (Type ty)) (Elab (Type ty)) where
   _ .: decl = Elab $ \ _T -> do
     _ <- check decl Type -- FIXME: what should the type of declarations be?
     unify _T Type -- FIXME: what should the type of modules be?
 
-app :: Elab (Type I ty) -> Elab (Type I ty) -> Elab (Type I ty)
+app :: Elab (Type ty) -> Elab (Type ty) -> Elab (Type ty)
 f `app` a = Elab $ \ _T -> do
   _F <- synth f
   case _F of
@@ -123,7 +122,7 @@ f `app` a = Elab $ \ _T -> do
 
 
 -- FIXME: handle foralls
-unify :: Maybe (Type I ty) -> Type I ty -> ReaderC (Env (Type I ty)) Maybe (Type I ty)
+unify :: Maybe (Type ty) -> Type ty -> ReaderC (Env (Type ty)) Maybe (Type ty)
 unify t1 t2 = maybe pure go t1 t2
   where
   go t1 t2 = case (t1, t2) of
@@ -138,21 +137,21 @@ data a ::: b = a ::: b
 infix 5 :::
 
 
-newtype Check ty a = Check { runCheck :: ReaderC (Type I ty) (Synth ty) a }
-  deriving (Algebra (Reader (Type I ty) :+: Reader (Env (Type I ty)) :+: Empty), Applicative, Functor, Monad)
+newtype Check ty a = Check { runCheck :: ReaderC (Type ty) (Synth ty) a }
+  deriving (Algebra (Reader (Type ty) :+: Reader (Env (Type ty)) :+: Empty), Applicative, Functor, Monad)
 
-newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type I ty)) Maybe a }
-  deriving (Algebra (Reader (Env (Type I ty)) :+: Empty), Applicative, Functor, Monad)
+newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) Maybe a }
+  deriving (Algebra (Reader (Env (Type ty)) :+: Empty), Applicative, Functor, Monad)
 
 instance MonadFail (Synth ty) where fail _ = Synth empty
 
-check' :: Check ty a -> Type I ty -> Synth ty a
+check' :: Check ty a -> Type ty -> Synth ty a
 check' c t = runReader t (runCheck c)
 
-switch :: Synth ty (Type I ty) -> Check ty (Type I ty)
+switch :: Synth ty (Type ty) -> Check ty (Type ty)
 switch s = Check $ ReaderC $ \ _T -> s >>= unify' _T
 
-unify' :: Type I ty -> Type I ty -> Synth ty (Type I ty)
+unify' :: Type ty -> Type ty -> Synth ty (Type ty)
 unify' = curry $ \case
   (Type, Type) -> pure Type
   (Unit, Unit) -> pure Unit
@@ -161,7 +160,7 @@ unify' = curry $ \case
   (a1 :-> b1, a2 :-> b2) -> (:->) <$> unify' a1 a2 <*> unify' b1 b2
   _ -> empty
 
-($$) :: C.Expr expr => Synth ty (expr ::: Type I ty) -> Check ty (expr ::: Type I ty) -> Synth ty (expr ::: Type I ty)
+($$) :: C.Expr expr => Synth ty (expr ::: Type ty) -> Check ty (expr ::: Type ty) -> Synth ty (expr ::: Type ty)
 f $$ a = do
   f' ::: (_A :-> _B) <- f
   a' ::: _A <- check' a _A

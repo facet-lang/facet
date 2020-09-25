@@ -6,24 +6,21 @@ module Facet.Type
 ) where
 
 import qualified Facet.Core as C
-import qualified Facet.Core.Lifted as CL
-import           Facet.Functor.C
-import           Facet.Functor.I
 
-data Type env ty
-  = Var (env ty)
+data Type ty
+  = Var ty
   | Type
   | Unit
-  | Type env ty :* Type env ty
-  | Type env ty :$ Type env ty
-  | Type env ty :-> Type env ty
-  | ForAll (Type env ty) (forall env' . Extends env env' => Type env' ty -> Type env' ty)
+  | Type ty :* Type ty
+  | Type ty :$ Type ty
+  | Type ty :-> Type ty
+  | ForAll (Type ty) (Type ty -> Type ty)
 
 infixl 7 :*
 infixr 0 :->
 infixl 9 :$
 
-instance (Eq ty, Num ty) => Eq (Type I ty) where
+instance (Eq ty, Num ty) => Eq (Type ty) where
   (==) = go 0
     where
     go n = curry $ \case
@@ -36,15 +33,12 @@ instance (Eq ty, Num ty) => Eq (Type I ty) where
       (ForAll t1 b1, ForAll t2 b2) -> go n t1 t2 && go (n + 1) (b1 (Var n)) (b2 (Var n))
       _ -> False
 
-instance C.Interpret (Type I) where
-  interpret = getI . getI . CL.interpretA
-
-instance CL.InterpretA Type where
-  interpretA = \case
-    Var v -> pure v
-    Type -> CL._Type
-    Unit -> CL._Unit
-    f :$ a -> CL.interpretA f CL..$ CL.interpretA a
-    l :* r -> CL.interpretA l CL..* CL.interpretA r
-    a :-> b -> CL.interpretA a CL.--> CL.interpretA b
-    ForAll t b -> CL.interpretA t CL.>=> CL.interpretA . b . Var
+instance C.Interpret Type where
+  interpret = \case
+    Var v -> v
+    Type -> C._Type
+    Unit -> C._Unit
+    f :$ a -> C.interpret f C..$ C.interpret a
+    l :* r -> C.interpret l C..* C.interpret r
+    a :-> b -> C.interpret a C.--> C.interpret b
+    ForAll t b -> C.interpret t C.>=> C.interpret . b . Var
