@@ -215,13 +215,13 @@ infixr 2 -->
 
 (>=>)
   :: (C.Type ty, C.Permutable env)
-  => Check ty (env ty)
-  -> (forall env' . C.Permutable env' => C.Extends env env' -> env' (ty ::: Type ty) -> Check ty (env' ty))
-  -> Synth ty (env (ty ::: Type ty))
+  => Check ty ty
+  -> (forall env' . C.Permutable env' => C.Extends env env' -> (env' ty ::: Type ty) -> Check ty (env' ty))
+  -> Synth ty (env ty ::: Type ty)
 t >=> b = do
   t' <- check' t Type
-  f <- pure t' C.>=> \ env ty -> check' (b env (liftA2 (:::) ty (C.cast env (Var <$> t')))) Type
-  pure $ f .: Type
+  f <- pure (pure t') C.>=> \ env ty -> check' (b env (ty ::: Var t')) Type
+  pure $ f ::: Type
 
 infixr 1 >=>
 
