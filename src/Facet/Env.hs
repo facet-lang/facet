@@ -11,6 +11,7 @@ module Facet.Env
 , castF
 , liftBinder
 , strengthen
+, weaken
 ) where
 
 import qualified Control.Category as C
@@ -51,3 +52,6 @@ liftBinder f = getC <$> f (Extends liftCInner) (C (pure id))
 
 strengthen :: Functor m => m (I a) -> m a
 strengthen = fmap getI
+
+weaken :: (Functor m, Applicative env) => m a -> m (env a)
+weaken = fmap pure
