@@ -10,7 +10,6 @@ module Facet.Parser
 ) where
 
 import           Control.Applicative (Alternative(..), liftA2, (<**>))
-import           Data.Functor.Identity
 import qualified Facet.Syntax.Untyped.Lifted as S
 import           Prelude hiding (lines, null, span)
 import           Text.Parser.Char
@@ -29,7 +28,7 @@ import           Text.Parser.Token.Highlight
 -- holes
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, Monad p, TokenParsing p) => p mod
-decl = (S..:) <$> name <* colon <*> (runIdentity <$> sig (fmap pure global) S.refl (fmap pure tglobal))
+decl = (S..:) <$> name <* colon <*> S.strengthen (sig (fmap pure global) S.refl (fmap pure tglobal))
   where
   sig :: Applicative env' => p (env' expr) -> S.Extends env env' -> p (env' ty) -> p (env' decl)
   sig var _ tvar = try (bind var tvar) <|> forAll (\ env -> sig (S.castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
@@ -56,7 +55,7 @@ forAll k tvar = do
 
 
 type' :: (S.Type ty, Monad p, TokenParsing p) => p ty
-type' = runIdentity <$> type_ (fmap pure tglobal)
+type' = S.strengthen (type_ (fmap pure tglobal))
 
 type_ :: (Applicative env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> p (env ty)
 type_ tvar = fn tvar <|> forAll (const type_) tvar <?> "type"
@@ -78,7 +77,7 @@ tglobal = S.global <$> tname <?> "variable"
 
 
 expr :: (S.Expr expr, Monad p, TokenParsing p) => p expr
-expr = runIdentity <$> expr_ (pure <$> global)
+expr = S.strengthen (expr_ (pure <$> global))
 
 global :: (S.Expr expr, Monad p, TokenParsing p) => p expr
 global = S.global <$> name <?> "variable"
