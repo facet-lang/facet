@@ -39,5 +39,5 @@ f >>^ g = f C.>>> Extends g
 infixr 1 >>^
 
 
-liftBinder :: (Applicative m, Applicative env) => (forall env' . Extends env env' -> env' a -> m (env' b)) -> m (env (a -> b))
+liftBinder :: (Applicative m, Applicative env) => (forall env' . Applicative env' => Extends env env' -> env' a -> m (env' b)) -> m (env (a -> b))
 liftBinder f = getC <$> f (Extends liftCInner) (C (pure id))

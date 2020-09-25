@@ -15,7 +15,6 @@ module Facet.Core.Lifted
 import           Control.Applicative (liftA2)
 import qualified Facet.Core as C
 import qualified Facet.Env as E
-import           Facet.Functor.C
 
 _Type :: (Applicative m, Applicative env, C.Type ty) => m (env ty)
 _Type = pure (pure C._Type)
@@ -40,20 +39,20 @@ infixr 2 -->
 
 -- | Universal quantification.
 (>=>)
-  :: (Applicative m, Permutable env, C.Type ty)
+  :: (Applicative m, Applicative env, C.Type ty)
   => m (env ty)
-  -> (forall env' . E.Extends env env' -> env' ty -> m (env' ty))
+  -> (forall env' . Applicative env' => E.Extends env env' -> env' ty -> m (env' ty))
   -> m (env ty)
 t >=> b = liftA2 (C.>=>) <$> t <*> E.liftBinder b
 
 infixr 1 >=>
 
 lam0
-  :: (Applicative m, Permutable env, C.Expr expr)
-  => (forall env' . E.Extends env env' -> env' expr -> m (env' expr))
+  :: (Applicative m, Applicative env, C.Expr expr)
+  => (forall env' . Applicative env' => E.Extends env env' -> env' expr -> m (env' expr))
   -> m (env expr)
 lam0 f = fmap C.lam0 <$> E.liftBinder f
 
 
 class InterpretA f where
-  interpretA :: (C.Type ty, Permutable env, Applicative m) => f env ty -> m (env ty)
+  interpretA :: (C.Type ty, Applicative env, Applicative m) => f env ty -> m (env ty)
