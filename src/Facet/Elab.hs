@@ -38,12 +38,12 @@ import           Facet.Type
 type Env ty = Map.Map U.Name ty
 
 check :: Elab ty -> ty -> ReaderC (Env ty) Maybe ty
-check m = elab m . Just
+check m = runElab m . Just
 
 synth :: Elab ty -> ReaderC (Env ty) Maybe ty
-synth m = elab m Nothing
+synth m = runElab m Nothing
 
-newtype Elab ty = Elab { elab :: Maybe ty -> ReaderC (Env ty) Maybe ty }
+newtype Elab ty = Elab { runElab :: Maybe ty -> ReaderC (Env ty) Maybe ty }
 
 instance U.Global (Elab (Type ty)) where
   global n = Elab $ \ ty -> unify ty =<< ReaderC (Map.lookup n)
