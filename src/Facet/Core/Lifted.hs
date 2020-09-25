@@ -8,6 +8,7 @@ module Facet.Core.Lifted
 , (.$)
 , (-->)
 , (>=>)
+  -- * Expressions
 , C.Expr(($$))
 , lam0
 , InterpretA(..)
@@ -55,6 +56,9 @@ infixr 2 -->
 t >=> b = liftA2 (C.>=>) <$> t <*> liftBinder b
 
 infixr 1 >=>
+
+
+-- Expressions
 
 lam0
   :: (Applicative m, Applicative env, C.Expr expr)
