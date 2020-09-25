@@ -33,6 +33,14 @@ instance (Eq ty, Num ty) => Eq (Type ty) where
       (ForAll t1 b1, ForAll t2 b2) -> go n t1 t2 && go (n + 1) (b1 (Var n)) (b2 (Var n))
       _ -> False
 
+instance C.Type (Type ty) where
+  _Type = Type
+  _Unit = Unit
+  (.*) = (:*)
+  (.$) = (:$)
+  (-->) = (:->)
+  (>=>) = ForAll
+
 instance C.Interpret Type where
   interpret = \case
     Var v -> v
