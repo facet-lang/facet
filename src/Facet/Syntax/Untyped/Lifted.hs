@@ -16,10 +16,11 @@ module Facet.Syntax.Untyped.Lifted
 , (>>>)
 , castF
 , refl
+, strengthen
 ) where
 
 import           Control.Applicative (liftA2)
-import           Facet.Env (Extends, castF, liftBinder, refl, (>>>))
+import           Facet.Env (Extends, castF, liftBinder, refl, strengthen, (>>>))
 import qualified Facet.Syntax.Untyped as S
 
 lam
