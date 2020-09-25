@@ -10,10 +10,12 @@ module Facet.Env
 , (>>^)
 , castF
 , liftBinder
+, strengthen
 ) where
 
 import qualified Control.Category as C
 import           Facet.Functor.C ((:.:)(..), liftCInner)
+import           Facet.Functor.I (I(..))
 
 type (c ~> d) = forall t . c t -> d t
 
@@ -45,3 +47,7 @@ castF e = fmap (cast e)
 
 liftBinder :: (Applicative m, Applicative env) => (forall env' . Applicative env' => Extends env env' -> env' a -> m (env' b)) -> m (env (a -> b))
 liftBinder f = getC <$> f (Extends liftCInner) (C (pure id))
+
+
+strengthen :: Functor m => m (I a) -> m a
+strengthen = fmap getI
