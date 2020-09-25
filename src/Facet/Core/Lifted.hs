@@ -14,6 +14,7 @@ module Facet.Core.Lifted
 
 import           Control.Applicative (liftA2)
 import qualified Facet.Core as C
+import qualified Facet.Env as E
 import           Facet.Functor.C
 
 _Type :: (Applicative m, Applicative env, C.Type ty) => m (env ty)
@@ -41,17 +42,17 @@ infixr 2 -->
 (>=>)
   :: (Applicative m, Permutable env, C.Type ty)
   => m (env ty)
-  -> (forall env' . Extends env env' => env' ty -> m (env' ty))
+  -> (forall env' . E.Extends env env' -> env' ty -> m (env' ty))
   -> m (env ty)
-t >=> b = liftA2 (C.>=>) <$> t <*> (getC <$> b (C (pure id)))
+t >=> b = liftA2 (C.>=>) <$> t <*> (getC <$> b (E.Extends liftCInner) (C (pure id)))
 
 infixr 1 >=>
 
 lam0
   :: (Applicative m, Permutable env, C.Expr expr)
-  => (forall env' . Extends env env' => env' expr -> m (env' expr))
+  => (forall env' . E.Extends env env' -> env' expr -> m (env' expr))
   -> m (env expr)
-lam0 f = fmap C.lam0 . getC <$> f (C (pure id))
+lam0 f = fmap C.lam0 . getC <$> f (E.Extends liftCInner) (C (pure id))
 
 
 class InterpretA f where
