@@ -11,19 +11,11 @@ module Facet.Functor.C
 , liftCOuter
 , liftCInner
 , mapC
-, weaken
-, strengthen
-, Permutable
-, Distributive(..)
-, Extends(..)
-, Tr(..)
 ) where
 
 import Control.Applicative (Alternative(..), liftA2)
 import Data.Coerce (coerce)
 import Data.Distributive
-import Data.Kind (Type)
-import Facet.Functor.I
 
 newtype (f :.: g) a = C { getC :: f (g a) }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -68,38 +60,3 @@ liftCInner = C . fmap pure
 
 mapC :: (f (g a) -> f' (g' a')) -> ((f :.: g) a -> (f' :.: g') a')
 mapC = coerce
-
-
-weaken :: (Functor m, Extends env env') => m (env a) -> m (env' a)
-weaken = fmap weakens
-
-strengthen :: (Functor m, Functor env) => m ((env :.: I) a) -> m (env a)
-strengthen = fmap (fmap getI . getC)
-
-
-type Permutable f = (Applicative f, Distributive f)
-
-
-class (Applicative m, Permutable n) => Extends m n where
-  weakens :: m a -> n a
-
-instance (Permutable f, Permutable g) => Extends f (f :.: g) where
-  weakens = liftCInner
-
-instance Permutable f => Extends f f where
-  weakens = id
-
-
--- | A witness of the transitivity of 'Extends'.
-newtype Tr (i :: Type -> Type) (j :: Type -> Type) k a = Tr { getTr :: k a }
-  deriving (Applicative, Functor)
-
-instance Distributive k => Distributive (Tr i j k) where
-  distribute = Tr . distribute . fmap getTr
-  {-# INLINE distribute #-}
-
-  collect f = Tr . collect (getTr . f)
-  {-# INLINE collect #-}
-
-instance (Extends i j, Extends j k) => Extends i (Tr i j k) where
-  weakens (m :: i a) = Tr (weakens (weakens m :: j a))

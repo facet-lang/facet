@@ -11,14 +11,10 @@ module Facet.Syntax.Untyped.Lifted
 , lam0
 , (>=>)
 , (>->)
-, Extends
-, weaken
-, strengthen
 ) where
 
 import           Control.Applicative (liftA2)
 import qualified Facet.Env as E
-import           Facet.Functor.C
 import qualified Facet.Syntax.Untyped as S
 
 lam
