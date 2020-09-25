@@ -150,33 +150,33 @@ unify t1 t2 = maybe pure go t1 t2
     _                      -> empty
 
 
-newtype Check ty a = Check { runCheck :: Type ty -> Synth ty a }
-  deriving (Algebra (Reader (Type ty) :+: Reader (Env (Type ty)) :+: Error Print), Applicative, Functor, Monad) via ReaderC (Type ty) (Synth ty)
+newtype Check r a = Check { runCheck :: Type r -> Synth r a }
+  deriving (Algebra (Reader (Type r) :+: Reader (Env (Type r)) :+: Error Print), Applicative, Functor, Monad) via ReaderC (Type r) (Synth r)
 
-newtype Synth ty a = Synth { runSynth :: Env (Type ty) -> Either Print a }
-  deriving (Algebra (Reader (Env (Type ty)) :+: Error Print), Applicative, Functor, Monad) via ReaderC (Env (Type ty)) (Either Print)
+newtype Synth r a = Synth { runSynth :: Env (Type r) -> Either Print a }
+  deriving (Algebra (Reader (Env (Type r)) :+: Error Print), Applicative, Functor, Monad) via ReaderC (Env (Type r)) (Either Print)
 
-instance MonadFail (Synth ty) where
+instance MonadFail (Synth r) where
   fail = throwError @Print . pretty
 
-elab :: Env (Type ty) -> Synth ty a -> Either Print a
+elab :: Env (Type r) -> Synth r a -> Either Print a
 elab = flip runSynth
 
-check' :: Check ty a -> Type ty -> Synth ty a
+check' :: Check r a -> Type r -> Synth r a
 check' = runCheck
 
-checking :: (Type ty -> Synth ty a) -> Check ty a
+checking :: (Type r -> Synth r a) -> Check r a
 checking = Check
 
-switch :: Synth ty (a ::: Type ty) -> Check ty a
+switch :: Synth r (a ::: Type r) -> Check r a
 switch s = Check $ \ _T -> do
   a ::: _T' <- s
   a <$ unify' _T _T'
 
-unify' :: Type ty -> Type ty -> Synth ty (Type ty)
+unify' :: Type r -> Type r -> Synth r (Type r)
 unify' = go
   where
-  go :: Type ty -> Type ty -> Synth ty (Type ty)
+  go :: Type r -> Type r -> Synth r (Type r)
   go = curry $ \case
     (Type, Type) -> pure C._Type
     (Unit, Unit) -> pure C._Unit
@@ -188,13 +188,13 @@ unify' = go
 
 -- Types
 
-_Type :: Applicative env => Synth ty (env (Type ty) ::: Type ty)
+_Type :: Applicative env => Synth r (env (Type r) ::: Type r)
 _Type = pure $ pure C._Type ::: Type
 
-_Unit :: Applicative env => Synth ty (env (Type ty) ::: Type ty)
+_Unit :: Applicative env => Synth r (env (Type r) ::: Type r)
 _Unit = pure $ pure C._Unit ::: Type
 
-(.$) :: Applicative env => Synth ty (env (Type ty) ::: Type ty) -> Check ty (env (Type ty)) -> Synth ty (env (Type ty) ::: Type ty)
+(.$) :: Applicative env => Synth r (env (Type r) ::: Type r) -> Check r (env (Type r)) -> Synth r (env (Type r) ::: Type r)
 a .$ b = do
   a' ::: (_A :-> _B) <- a
   b' <- check' b _A
@@ -202,7 +202,7 @@ a .$ b = do
 
 infixl 9 .$
 
-(.*) :: Applicative env => Check ty (env (Type ty)) -> Check ty (env (Type ty)) -> Synth ty (env (Type ty) ::: Type ty)
+(.*) :: Applicative env => Check r (env (Type r)) -> Check r (env (Type r)) -> Synth r (env (Type r) ::: Type r)
 a .* b = do
   a' <- check' a Type
   b' <- check' b Type
@@ -210,7 +210,7 @@ a .* b = do
 
 infixl 7 .*
 
-(-->) :: Applicative env => Check ty (env (Type ty)) -> Check ty (env (Type ty)) -> Synth ty (env (Type ty) ::: Type ty)
+(-->) :: Applicative env => Check r (env (Type r)) -> Check r (env (Type r)) -> Synth r (env (Type r) ::: Type r)
 a --> b = do
   a' <- check' a Type
   b' <- check' b Type
@@ -220,9 +220,9 @@ infixr 2 -->
 
 (>=>)
   :: C.Permutable env
-  => Check ty (Type ty) -- FIXME: this is not constructed in any particular scope
-  -> (forall env' . C.Permutable env' => C.Extends env env' -> (env' (Type ty) ::: Type ty) -> Check ty (env' (Type ty)))
-  -> Synth ty (env (Type ty) ::: Type ty)
+  => Check r (Type r) -- FIXME: this is not constructed in any particular scope
+  -> (forall env' . C.Permutable env' => C.Extends env env' -> (env' (Type r) ::: Type r) -> Check r (env' (Type r)))
+  -> Synth r (env (Type r) ::: Type r)
 t >=> b = do
   t' <- check' t Type
   -- FIXME: this amounts to a predicativity or staging restriction and prevents us from kind-checking uses of the variable under the binder.
@@ -234,13 +234,13 @@ infixr 1 >=>
 
 -- Expressions
 
-($$) :: C.Expr expr => Synth ty (expr ::: Type ty) -> Check ty expr -> Synth ty (expr ::: Type ty)
+($$) :: C.Expr expr => Synth r (expr ::: Type r) -> Check r expr -> Synth r (expr ::: Type r)
 f $$ a = do
   f' ::: (_A :-> _B) <- f
   a' <- check' a _A
   pure $ f' C.$$ a' ::: _B
 
-lam0 :: (C.Expr expr, C.Permutable env) => (forall env' . C.Permutable env => C.Extends env env' -> env' (expr ::: Type ty) -> Check ty (env' expr)) -> Check ty (env expr)
+lam0 :: (C.Expr expr, C.Permutable env) => (forall env' . C.Permutable env => C.Extends env env' -> env' (expr ::: Type r) -> Check r (env' expr)) -> Check r (env expr)
 lam0 f = checking $ \case
   _A :-> _B -> C.lam0 $ \ env v -> check' (f env (v .: _A)) _B
   _         -> fail "expected function type in lambda"
