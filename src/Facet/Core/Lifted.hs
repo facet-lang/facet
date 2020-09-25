@@ -9,6 +9,7 @@ module Facet.Core.Lifted
   -- * Re-exports
 , Extends
 , (>>>)
+, cast
 , castF
 , refl
 , strengthen
