@@ -11,6 +11,7 @@ module Facet.Elab
 , Elab(..)
 , Check(..)
 , Synth(..)
+, elab
 , check'
 , checking
 , switch
@@ -150,6 +151,9 @@ newtype Synth ty a = Synth { runSynth :: ReaderC (Env (Type ty)) Maybe a }
   deriving (Algebra (Reader (Env (Type ty)) :+: Empty), Applicative, Functor, Monad)
 
 instance MonadFail (Synth ty) where fail _ = Synth empty
+
+elab :: Env (Type ty) -> Synth ty a -> Maybe a
+elab env = runReader env . runSynth
 
 check' :: Check ty a -> Type ty -> Synth ty a
 check' c t = runReader t (runCheck c)
