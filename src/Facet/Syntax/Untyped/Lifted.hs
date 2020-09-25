@@ -19,7 +19,7 @@ module Facet.Syntax.Untyped.Lifted
 ) where
 
 import           Control.Applicative (liftA2)
-import           Facet.Env
+import           Facet.Env (Extends, castF, liftBinder, refl, (>>>))
 import qualified Facet.Syntax.Untyped as S
 
 lam
