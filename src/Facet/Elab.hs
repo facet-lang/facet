@@ -200,7 +200,7 @@ f $$ a = do
 lam0 :: (C.Expr expr, Applicative env) => (forall env' . C.Extends env env' -> env' (expr ::: Type ty) -> Check ty (env' expr)) -> Check ty (env (expr ::: Type ty))
 lam0 f = checking $ \case
   _A :-> _B -> do
-    f' <- C.lam0 $ \ env ty -> check' (f env (ty .: _A)) _B
+    f' <- C.lam0 $ \ env v -> check' (f env (v .: _A)) _B
     pure $ f' .: (_A :-> _B)
   _ -> empty
 
