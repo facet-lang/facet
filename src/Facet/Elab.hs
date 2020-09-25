@@ -188,13 +188,13 @@ unify' = go
 
 -- Types
 
-_Type :: (C.Type ty, Applicative env) => Synth ty (env ty ::: Type ty)
+_Type :: Applicative env => Synth ty (env (Type ty) ::: Type ty)
 _Type = pure $ pure C._Type ::: Type
 
-_Unit :: (C.Type ty, Applicative env) => Synth ty (env ty ::: Type ty)
+_Unit :: Applicative env => Synth ty (env (Type ty) ::: Type ty)
 _Unit = pure $ pure C._Unit ::: Type
 
-(.$) :: (C.Type ty, Applicative env) => Synth ty (env ty ::: Type ty) -> Check ty (env ty) -> Synth ty (env ty ::: Type ty)
+(.$) :: Applicative env => Synth ty (env (Type ty) ::: Type ty) -> Check ty (env (Type ty)) -> Synth ty (env (Type ty) ::: Type ty)
 a .$ b = do
   a' ::: (_A :-> _B) <- a
   b' <- check' b _A
@@ -202,7 +202,7 @@ a .$ b = do
 
 infixl 9 .$
 
-(.*) :: (C.Type ty, Applicative env) => Check ty (env ty) -> Check ty (env ty) -> Synth ty (env ty ::: Type ty)
+(.*) :: Applicative env => Check ty (env (Type ty)) -> Check ty (env (Type ty)) -> Synth ty (env (Type ty) ::: Type ty)
 a .* b = do
   a' <- check' a Type
   b' <- check' b Type
@@ -210,7 +210,7 @@ a .* b = do
 
 infixl 7 .*
 
-(-->) :: (C.Type ty, Applicative env) => Check ty (env ty) -> Check ty (env ty) -> Synth ty (env ty ::: Type ty)
+(-->) :: Applicative env => Check ty (env (Type ty)) -> Check ty (env (Type ty)) -> Synth ty (env (Type ty) ::: Type ty)
 a --> b = do
   a' <- check' a Type
   b' <- check' b Type
@@ -219,14 +219,14 @@ a --> b = do
 infixr 2 -->
 
 (>=>)
-  :: (C.Type ty, C.Permutable env)
-  => Check ty ty -- FIXME: this is not constructed in any particular scope
-  -> (forall env' . C.Permutable env' => C.Extends env env' -> (env' ty ::: Type ty) -> Check ty (env' ty))
-  -> Synth ty (env ty ::: Type ty)
+  :: C.Permutable env
+  => Check ty (Type ty) -- FIXME: this is not constructed in any particular scope
+  -> (forall env' . C.Permutable env' => C.Extends env env' -> (env' (Type ty) ::: Type ty) -> Check ty (env' (Type ty)))
+  -> Synth ty (env (Type ty) ::: Type ty)
 t >=> b = do
   t' <- check' t Type
   -- FIXME: this amounts to a predicativity or staging restriction and prevents us from kind-checking uses of the variable under the binder.
-  f <- pure (pure t') C.>=> \ env ty -> check' (b env (ty ::: Var t')) Type
+  f <- pure (pure t') C.>=> \ env ty -> check' (b env (ty ::: t')) Type
   pure $ f ::: Type
 
 infixr 1 >=>
