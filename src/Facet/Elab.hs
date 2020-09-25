@@ -3,6 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Elab
 ( check
@@ -15,6 +16,7 @@ module Facet.Elab
 , switch
 , unify'
 , ($$)
+, lam0
 ) where
 
 import           Control.Carrier.Reader
@@ -168,3 +170,10 @@ f $$ a = do
   f' ::: (_A :-> _B) <- f
   a' ::: _A <- check' a _A
   pure $ f' C.$$ a' ::: _B
+
+lam0 :: (C.Expr expr, Applicative env) => (forall env' . C.Extends env env' -> env' (expr ::: Type ty) -> Check ty (env' expr)) -> Check ty (env (expr ::: Type ty))
+lam0 f = checking $ \case
+  _A :-> _B -> do
+    f' <- C.lam0 $ \ env ty -> check' (f env (ty .: _A)) _B
+    pure $ f' .: (_A :-> _B)
+  _ -> empty
