@@ -197,11 +197,11 @@ a .$ b = do
 
 infixl 9 .$
 
-(.*) :: C.Type ty => Check ty ty -> Check ty ty -> Synth ty (ty ::: Type ty)
+(.*) :: (C.Type ty, Applicative env) => Check ty (env ty) -> Check ty (env ty) -> Synth ty (env (ty ::: Type ty))
 a .* b = do
   a' <- check' a Type
   b' <- check' b Type
-  pure $ (a' C..* b') ::: Type
+  pure $ liftA2 (C..*) a' b' .: Type
 
 infixl 7 .*
 
