@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Env
@@ -8,6 +9,7 @@ module Facet.Env
 , (C.>>>)
 , (^>>)
 , (>>^)
+, Permutable
 , castF
 , liftBinder
 , strengthen
@@ -15,6 +17,7 @@ module Facet.Env
 ) where
 
 import qualified Control.Category as C
+import           Data.Distributive (Distributive)
 import           Facet.Functor.C ((:.:)(..), liftCInner)
 import           Facet.Functor.I (I(..))
 
@@ -42,6 +45,8 @@ f >>^ g = f C.>>> Extends g
 
 infixr 1 >>^
 
+
+type Permutable i = (Applicative i, Distributive i)
 
 castF :: Functor m => Extends a b -> m (a x) -> m (b x)
 castF e = fmap (cast e)
