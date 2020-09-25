@@ -18,6 +18,7 @@ module Facet.Elab
   -- Types
 , _Type
 , _Unit
+, (-->)
   -- Expressions
 , ($$)
 , lam0
@@ -178,6 +179,14 @@ _Type = pure $ C._Type ::: Type
 
 _Unit :: C.Type ty => Synth ty (ty ::: Type ty)
 _Unit = pure $ C._Unit ::: Unit
+
+(-->) :: C.Type ty => Check ty ty -> Check ty ty -> Synth ty (ty ::: Type ty)
+a --> b = do
+  a' <- check' a Type
+  b' <- check' b Type
+  pure $ (a' C.--> b') ::: Type
+
+infixr 2 -->
 
 
 -- Expressions
