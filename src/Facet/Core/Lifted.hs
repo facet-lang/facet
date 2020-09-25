@@ -7,9 +7,8 @@ module Facet.Core.Lifted
 , C.Expr(($$))
 , lam0
   -- * Re-exports
-, Extends
+, Extends(..)
 , (>>>)
-, cast
 , castF
 , refl
 , strengthen
