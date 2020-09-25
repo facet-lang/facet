@@ -225,7 +225,6 @@ infixr 2 -->
   -> Synth r (env (Type r) ::: Type r)
 t >=> b = do
   t' <- check' t Type
-  -- FIXME: this amounts to a predicativity or staging restriction and prevents us from kind-checking uses of the variable under the binder.
   f <- pure (pure t') C.>=> \ env ty -> check' (b env (ty ::: t')) Type
   pure $ f ::: Type
 
