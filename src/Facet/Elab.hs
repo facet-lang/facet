@@ -23,6 +23,7 @@ module Facet.Elab
 , lam0
 ) where
 
+import           Control.Applicative (liftA2)
 import           Control.Carrier.Reader
 import           Control.Effect.Empty
 import           Control.Effect.Sum ((:+:))
@@ -162,21 +163,21 @@ unify' = fmap C.strengthen . go
   where
   go :: Applicative env => Type ty -> Type ty -> Synth ty (env (Type ty))
   go = curry $ \case
-    (Type, Type) -> C._Type
-    (Unit, Unit) -> C._Unit
-    (l1 :* r1, l2 :* r2) -> go l1 l2 C..* go r1 r2
-    (f1 :$ a1, f2 :$ a2) -> go f1 f2 C..$ go a1 a2
-    (a1 :-> b1, a2 :-> b2) -> go a1 a2 C.--> go b1 b2
+    (Type, Type) -> pure $ pure C._Type
+    (Unit, Unit) -> pure $ pure C._Unit
+    (l1 :* r1, l2 :* r2) -> liftA2 (C..*) <$> go l1 l2 <*> go r1 r2
+    (f1 :$ a1, f2 :$ a2) -> liftA2 (C..$) <$> go f1 f2 <*> go a1 a2
+    (a1 :-> b1, a2 :-> b2) -> liftA2 (C.-->) <$> go a1 a2 <*> go b1 b2
     _ -> empty
 
 
 -- Types
 
-_Type :: (C.Type ty, Applicative env) => Synth ty (env (ty ::: Type ty))
-_Type = fmap (::: Type) <$> C._Type
+_Type :: C.Type ty => Synth ty (ty ::: Type ty)
+_Type = pure $ C._Type ::: Type
 
-_Unit :: (C.Type ty, Applicative env) => Synth ty (env (ty ::: Type ty))
-_Unit = fmap (::: Unit) <$> C._Unit
+_Unit :: C.Type ty => Synth ty (ty ::: Type ty)
+_Unit = pure $ C._Unit ::: Unit
 
 
 -- Expressions
