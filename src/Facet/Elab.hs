@@ -174,15 +174,15 @@ switch s = Check $ \ _T -> do
   a <$ unify' _T _T'
 
 unify' :: Type ty -> Type ty -> Synth ty (Type ty)
-unify' = fmap C.strengthen . go
+unify' = go
   where
-  go :: Applicative env => Type ty -> Type ty -> Synth ty (env (Type ty))
+  go :: Type ty -> Type ty -> Synth ty (Type ty)
   go = curry $ \case
-    (Type, Type) -> pure $ pure C._Type
-    (Unit, Unit) -> pure $ pure C._Unit
-    (l1 :* r1, l2 :* r2) -> liftA2 (C..*) <$> go l1 l2 <*> go r1 r2
-    (f1 :$ a1, f2 :$ a2) -> liftA2 (C..$) <$> go f1 f2 <*> go a1 a2
-    (a1 :-> b1, a2 :-> b2) -> liftA2 (C.-->) <$> go a1 a2 <*> go b1 b2
+    (Type, Type) -> pure C._Type
+    (Unit, Unit) -> pure C._Unit
+    (l1 :* r1, l2 :* r2) -> (C..*) <$> go l1 l2 <*> go r1 r2
+    (f1 :$ a1, f2 :$ a2) -> (C..$) <$> go f1 f2 <*> go a1 a2
+    (a1 :-> b1, a2 :-> b2) -> (C.-->) <$> go a1 a2 <*> go b1 b2
     _ -> fail "could not unify"
 
 
