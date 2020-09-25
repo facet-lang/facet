@@ -9,6 +9,7 @@ module Facet.Core
 , Match(..)
 , IsType(..)
 , IsUnit(..)
+, IsFunction(..)
 , IsForAll(..)
 ) where
 
@@ -89,6 +90,20 @@ instance Type ty => Type (Match IsUnit ty) where
   l .* r = N (interpret l .* interpret r)
   f .$ a = N (interpret f .$ interpret a)
   a --> b = N (interpret a --> interpret b)
+  t >=> b = N (interpret t >=> interpret . b . N)
+
+
+data IsFunction ty = IsFunction ty ty
+
+instance Interpret IsFunction where
+  interpret (IsFunction a b) = a --> b
+
+instance Type ty => Type (Match IsFunction ty) where
+  _Type = N _Type
+  _Unit = N _Unit
+  l .* r = N (interpret l .* interpret r)
+  f .$ a = N (interpret f .$ interpret a)
+  a --> b = Y (IsFunction (interpret a) (interpret b))
   t >=> b = N (interpret t >=> interpret . b . N)
 
 
