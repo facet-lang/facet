@@ -8,7 +8,7 @@ module Facet.Type.Typed
 import qualified Data.Kind as K
 
 data Type k r t where
-  Var :: Int -> Type r k t
+  Var :: r -> Type r k t
   Type :: Type r K.Type K.Type
   Unit :: Type r K.Type ()
   ForAll :: Type r K.Type ka -> (Type r ka ta -> Type r kb tb) -> Type r (ka -> kb) (ta -> tb)
@@ -20,10 +20,10 @@ infixl 9 :$
 infixr 0 :->
 infixl 7 :*
 
-eq :: Type r ka ta -> Type r kb tb -> Bool
+eq :: Type Int ka ta -> Type Int kb tb -> Bool
 eq = go 0
   where
-  go :: Int -> Type r ka ta -> Type r kb tb -> Bool
+  go :: Int -> Type Int ka ta -> Type Int kb tb -> Bool
   go n = curry $ \case
     (Var n1,       Var n2)       -> n1 == n2
     (Type,         Type)         -> True
