@@ -4,6 +4,7 @@ module Facet.Type.Typed
 ( Type(..)
 , eq
 , interpret
+, SomeType(..)
 ) where
 
 import qualified Data.Kind as K
@@ -45,3 +46,7 @@ interpret = \case
   f :$ a     -> interpret f C..$  interpret a
   a :-> b    -> interpret a C.--> interpret b
   l :* r     -> interpret l C..*  interpret r
+
+
+data SomeType r where
+  SomeType :: Type r k -> SomeType r
