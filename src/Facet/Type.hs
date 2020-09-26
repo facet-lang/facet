@@ -7,6 +7,8 @@ module Facet.Type
 
 import           Control.Monad (ap, guard)
 import qualified Facet.Core as C
+import qualified Facet.Print as P
+import           Silkscreen (pretty)
 
 -- FIXME: distinguish Type-with-Var from Type-without-Var?
 data Type a
@@ -52,6 +54,7 @@ instance Eq a => Eq (Type a) where
       _ -> False
 
 instance Show a => Show (Type a) where
+  showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . C.interpret . fmap (pretty . show)
 
 instance C.Type (Type ()) where
   _Type = Type
