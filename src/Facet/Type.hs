@@ -19,6 +19,10 @@ data Type a
   | ForAll (Type a) (Type (Maybe a))
   deriving (Foldable, Functor, Traversable)
 
+infixl 7 :*
+infixr 0 :->
+infixl 9 :$
+
 instance Applicative Type where
   pure = Var
   (<*>) = ap
@@ -32,10 +36,6 @@ instance Monad Type where
     f :$ a     -> (f >>= k) :$ (a >>= k)
     a :-> b    -> (a >>= k) :-> (b >>= k)
     ForAll t b -> ForAll (t >>= k) (b >>= traverse k)
-
-infixl 7 :*
-infixr 0 :->
-infixl 9 :$
 
 instance Eq a => Eq (Type a) where
   (==) = go
