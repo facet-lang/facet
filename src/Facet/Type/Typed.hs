@@ -3,8 +3,10 @@ module Facet.Type.Typed
 ( Type(..)
 ) where
 
+import qualified Data.Kind as K
+
 data Type a where
-  Type :: Type () -- FIXME: Data.Kind.Type?
+  Type :: Type K.Type
   Unit :: Type ()
   (:->) :: Type a -> Type b -> Type (a -> b)
   (:$) :: Type (a -> b) -> Type a -> Type b
