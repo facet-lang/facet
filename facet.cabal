@@ -54,6 +54,7 @@ library
     Facet.Syntax.Untyped
     Facet.Syntax.Untyped.Lifted
     Facet.Type
+    Facet.Type.Typed
   other-modules:
     Facet.Syntax.Examples
   build-depends:
