@@ -1,6 +1,9 @@
 {-# LANGUAGE GADTs #-}
 module Facet.Type.Typed
 ( Type(..)
+, (-->)
+, (.+)
+, (.*)
 ) where
 
 import qualified Data.Kind as K
@@ -15,3 +18,18 @@ data Type k t where
   Prd :: Type (K.Type -> K.Type -> K.Type) (ta -> tb -> (ta, tb))
 
 infixl 9 :$
+
+(-->) :: Type K.Type ta -> Type K.Type tb -> Type K.Type (ta -> tb)
+a --> b = Arr :$ a :$ b
+
+infixr 0 -->
+
+(.+) :: Type K.Type ta -> Type K.Type tb -> Type K.Type (Either ta tb)
+a .+ b = Sum :$ a :$ b
+
+infixl 6 .+
+
+(.*) :: Type K.Type ta -> Type K.Type tb -> Type K.Type (ta, tb)
+a .* b = Prd :$ a :$ b
+
+infixl 7 .*
