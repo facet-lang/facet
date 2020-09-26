@@ -191,6 +191,8 @@ unify' = go
 
 -- Types
 
+-- FIXME: differentiate between typed and untyped types?
+
 _Type :: Synth (Type a ::: Type r)
 _Type = pure $ Type ::: Type
 
