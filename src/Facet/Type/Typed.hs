@@ -5,13 +5,13 @@ module Facet.Type.Typed
 
 import qualified Data.Kind as K
 
-data Type t k where
+data Type k t where
   Type :: Type K.Type K.Type
-  Unit :: Type () K.Type
-  (:->) :: Type ta K.Type -> Type tb K.Type -> Type (ta -> tb) K.Type
-  (:$) :: Type (ta -> tb) (ka -> kb) -> Type ta ka -> Type tb kb
-  (:*) :: Type a K.Type -> Type b K.Type -> Type (a, b) K.Type
-  ForAll :: Type a K.Type -> (Type ta a -> Type tb b) -> Type (ta -> tb) (a -> b)
+  Unit :: Type K.Type ()
+  (:->) :: Type K.Type ta -> Type K.Type tb -> Type K.Type (ta -> tb)
+  (:$) :: Type (ka -> kb) (ta -> tb) -> Type ka ta -> Type kb tb
+  (:*) :: Type K.Type ta -> Type K.Type tb -> Type K.Type (ta, tb)
+  ForAll :: Type K.Type ka -> (Type ka ta -> Type kb tb) -> Type (ka -> kb) (ta -> tb)
 
 infixl 7 :*
 infixr 0 :->
