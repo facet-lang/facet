@@ -5,6 +5,7 @@ module Facet.Type.Typed
 
 data Type a where
   Type :: Type () -- FIXME: Data.Kind.Type?
+  Unit :: Type ()
   (:->) :: Type a -> Type b -> Type (a -> b)
   (:$) :: Type (a -> b) -> Type a -> Type b
   (:*) :: Type a -> Type b -> Type (a, b)
