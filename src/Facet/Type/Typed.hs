@@ -3,9 +3,11 @@
 module Facet.Type.Typed
 ( Type(..)
 , eq
+, interpret
 ) where
 
 import qualified Data.Kind as K
+import qualified Facet.Core as C
 
 data Type k r t where
   Var :: r -> Type r k t
@@ -33,3 +35,13 @@ eq = go 0
     (a1 :-> b1,    a2 :-> b2)    -> go n a1 a2 && go n b1 b2
     (l1 :* r1,     l2 :* r2)     -> go n l1 l2 && go n r1 r2
     _ -> False
+
+interpret :: C.Type r => Type r k t -> r
+interpret = \case
+  Var r      -> r
+  Type       -> C._Type
+  Unit       -> C._Unit
+  ForAll t b -> interpret t C.>=> interpret . b . Var
+  f :$ a     -> interpret f C..$  interpret a
+  a :-> b    -> interpret a C.--> interpret b
+  l :* r     -> interpret l C..*  interpret r
