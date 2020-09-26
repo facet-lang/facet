@@ -183,6 +183,8 @@ unify' = go
     (l1 :* r1, l2 :* r2) -> (:*) <$> go l1 l2 <*> go r1 r2
     (f1 :$ a1, f2 :$ a2) -> (:$) <$> go f1 f2 <*> go a1 a2
     (a1 :-> b1, a2 :-> b2) -> (:->) <$> go a1 a2 <*> go b1 b2
+    -- FIXME: build and display a diff of the root types
+    -- FIXME: indicate the point in the source which led to this
     (t1, t2) -> fail $ "could not unify " <> show t1 <> " with " <> show t2
 
 
