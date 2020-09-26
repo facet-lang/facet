@@ -168,22 +168,22 @@ check' = runCheck
 checking :: (Type r -> Synth a) -> Check r a
 checking = Check
 
-switch :: Synth (a ::: Type r) -> Check r a
+switch :: Show r => Synth (a ::: Type r) -> Check r a
 switch s = Check $ \ _T -> do
   a ::: _T' <- s
   a <$ unify' _T _T'
 
-unify' :: Type r -> Type r -> Synth (Type r)
+unify' :: Show r => Type r -> Type r -> Synth (Type r)
 unify' = go
   where
-  go :: Type r -> Type r -> Synth (Type r)
+  go :: Show r => Type r -> Type r -> Synth (Type r)
   go = curry $ \case
     (Type, Type) -> pure Type
     (Unit, Unit) -> pure Unit
     (l1 :* r1, l2 :* r2) -> (:*) <$> go l1 l2 <*> go r1 r2
     (f1 :$ a1, f2 :$ a2) -> (:$) <$> go f1 f2 <*> go a1 a2
     (a1 :-> b1, a2 :-> b2) -> (:->) <$> go a1 a2 <*> go b1 b2
-    _ -> fail "could not unify"
+    (t1, t2) -> fail $ "could not unify " <> show t1 <> " with " <> show t2
 
 
 -- Types
