@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Type.Typed
@@ -9,6 +10,7 @@ module Facet.Type.Typed
 
 import qualified Data.Kind as K
 import qualified Facet.Core as C
+import qualified Facet.Print as P
 
 data Type k r where
   Var :: r -> Type k r
@@ -23,6 +25,9 @@ infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
 infixl 7 :*
+
+instance Show (Type k P.Print) where
+  showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . interpret
 
 eq :: Type ka Int -> Type kb Int -> Bool
 eq = go 0
