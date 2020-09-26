@@ -9,6 +9,7 @@ module Facet.Type.Typed
 import qualified Data.Kind as K
 
 data Type k t where
+  Var :: Int -> Type k t
   Type :: Type K.Type K.Type
   Unit :: Type K.Type ()
   ForAll :: Type K.Type ka -> (Type ka ta -> Type kb tb) -> Type (ka -> kb) (ta -> tb)
