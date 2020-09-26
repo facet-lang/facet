@@ -68,6 +68,9 @@ instance PrecedencePrinter Print where
   askingPrec = coerce (askingPrec :: (Context -> (Context -> Print -> Print) -> Fresh (Prec Context (Rainbow (PP.Doc Highlight)))) -> (Context -> Print -> Print) -> Fresh (Prec Context (Rainbow (PP.Doc Highlight))))
   localPrec f a = Print $ \ t -> localPrec f (askingPrec ((`runPrint` t) . (`t` a)))
 
+instance Show Print where
+  showsPrec p = showsPrec p . prettyWith terminalStyle
+
 withTransition :: (Context -> Print -> Print) -> Print -> Print
 withTransition trans a = Print $ \ _ -> runPrint a trans
 

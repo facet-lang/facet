@@ -51,6 +51,8 @@ instance Eq a => Eq (Type a) where
       (ForAll t1 b1, ForAll t2 b2) -> go t1 t2 && go b1 b2
       _ -> False
 
+instance Show a => Show (Type a) where
+
 instance C.Type (Type ()) where
   _Type = Type
   _Unit = Unit
