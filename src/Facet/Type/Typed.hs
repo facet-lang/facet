@@ -9,23 +9,23 @@ module Facet.Type.Typed
 import qualified Data.Kind as K
 import qualified Facet.Core as C
 
-data Type k r t where
-  Var :: r -> Type r k t
-  Type :: Type r K.Type K.Type
-  Unit :: Type r K.Type ()
-  ForAll :: Type r K.Type ka -> (Type r ka ta -> Type r kb tb) -> Type r (ka -> kb) (ta -> tb)
-  (:$) :: Type r (ka -> kb) (ta -> tb) -> Type r ka ta -> Type r kb tb
-  (:->) :: Type r K.Type ta -> Type r K.Type tb -> Type r K.Type (ta -> tb)
-  (:*) :: Type r K.Type ta -> Type r K.Type tb -> Type r K.Type (ta, tb)
+data Type k r where
+  Var :: r -> Type r k
+  Type :: Type r K.Type
+  Unit :: Type r K.Type
+  ForAll :: Type r K.Type -> (Type r ka -> Type r kb) -> Type r (ka -> kb)
+  (:$) :: Type r (ka -> kb) -> Type r ka -> Type r kb
+  (:->) :: Type r K.Type -> Type r K.Type -> Type r K.Type
+  (:*) :: Type r K.Type -> Type r K.Type -> Type r K.Type
 
 infixl 9 :$
 infixr 0 :->
 infixl 7 :*
 
-eq :: Type Int ka ta -> Type Int kb tb -> Bool
+eq :: Type Int ka -> Type Int kb -> Bool
 eq = go 0
   where
-  go :: Int -> Type Int ka ta -> Type Int kb tb -> Bool
+  go :: Int -> Type Int ka -> Type Int kb -> Bool
   go n = curry $ \case
     (Var n1,       Var n2)       -> n1 == n2
     (Type,         Type)         -> True
@@ -36,7 +36,7 @@ eq = go 0
     (l1 :* r1,     l2 :* r2)     -> go n l1 l2 && go n r1 r2
     _ -> False
 
-interpret :: C.Type r => Type r k t -> r
+interpret :: C.Type r => Type r k -> r
 interpret = \case
   Var r      -> r
   Type       -> C._Type
