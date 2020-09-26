@@ -31,13 +31,11 @@ module Facet.Elab
 ) where
 
 import           Control.Algebra
-import           Control.Applicative (liftA2)
 import           Control.Carrier.Reader
 import           Control.Effect.Empty
 import           Control.Effect.Error
 import qualified Data.Map as Map
 import qualified Facet.Core.Lifted as C
-import           Facet.Env (liftBinder)
 import           Facet.Print (Print)
 import           Facet.Syntax.Common
 import qualified Facet.Syntax.Untyped as U
@@ -190,45 +188,44 @@ unify' = go
 
 -- Types
 
-_Type :: Applicative env => Synth (env (Type a) ::: Type r)
-_Type = pure $ pure Type ::: Type
+_Type :: Synth (Type a ::: Type r)
+_Type = pure $ Type ::: Type
 
-_Unit :: Applicative env => Synth (env (Type a) ::: Type r)
-_Unit = pure $ pure Unit ::: Type
+_Unit :: Synth (Type a ::: Type r)
+_Unit = pure $ Unit ::: Type
 
-(.$) :: Applicative env => Synth (env (Type r) ::: Type r) -> Check r (env (Type r)) -> Synth (env (Type r) ::: Type r)
+(.$) :: Synth (Type r ::: Type r) -> Check r (Type r) -> Synth (Type r ::: Type r)
 a .$ b = do
   a' ::: (_A :-> _B) <- a
   b' <- check' b _A
-  pure $ liftA2 (:$) a' b' ::: Type
+  pure $ a' :$ b' ::: Type
 
 infixl 9 .$
 
-(.*) :: Applicative env => Check r (env (Type r)) -> Check r (env (Type r)) -> Synth (env (Type r) ::: Type r)
+(.*) :: Check r (Type r) -> Check r (Type r) -> Synth (Type r ::: Type r)
 a .* b = do
   a' <- check' a Type
   b' <- check' b Type
-  pure $ liftA2 (:*) a' b' ::: Type
+  pure $ a' :* b' ::: Type
 
 infixl 7 .*
 
-(-->) :: Applicative env => Check r (env (Type r)) -> Check r (env (Type r)) -> Synth (env (Type r) ::: Type r)
+(-->) :: Check r (Type r) -> Check r (Type r) -> Synth (Type r ::: Type r)
 a --> b = do
   a' <- check' a Type
   b' <- check' b Type
-  pure $ liftA2 (:->) a' b' ::: Type
+  pure $ (a' :-> b') ::: Type
 
 infixr 2 -->
 
 (>=>)
-  :: C.Permutable env
-  => Check r (Type r) -- FIXME: this is not constructed in any particular scope
-  -> (forall env' . C.Permutable env' => C.Extends env env' -> (env' (Type (Maybe r)) ::: Type r) -> Check r (env' (Type (Maybe r))))
-  -> Synth (env (Type r) ::: Type r)
+  :: Check r (Type r)
+  -> ((Type (Maybe r) ::: Type (Maybe r)) -> Check (Maybe r) (Type (Maybe r)))
+  -> Synth (Type r ::: Type r)
 t >=> b = do
   t' <- check' t Type
-  b' <- liftBinder $ \ env ty -> check' (b env (ty ::: t')) Type
-  pure $ (ForAll t' <$> (($ Var Nothing) <$> b'))  ::: Type
+  b' <- check' (b (Var Nothing ::: fmap Just t')) Type
+  pure $ ForAll t' b'  ::: Type
 
 infixr 1 >=>
 
