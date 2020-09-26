@@ -14,12 +14,10 @@ data Type k r t where
   ForAll :: Type r K.Type ka -> (Type r ka ta -> Type r kb tb) -> Type r (ka -> kb) (ta -> tb)
   (:$) :: Type r (ka -> kb) (ta -> tb) -> Type r ka ta -> Type r kb tb
   (:->) :: Type r K.Type ta -> Type r K.Type tb -> Type r K.Type (ta -> tb)
-  (:+) :: Type r K.Type ta -> Type r K.Type tb -> Type r K.Type (Either ta tb)
   (:*) :: Type r K.Type ta -> Type r K.Type tb -> Type r K.Type (ta, tb)
 
 infixl 9 :$
 infixr 0 :->
-infixl 6 :+
 infixl 7 :*
 
 eq :: Type r ka ta -> Type r kb tb -> Bool
@@ -33,6 +31,5 @@ eq = go 0
     (ForAll t1 b1, ForAll t2 b2) -> go n t1 t2 && go (n + 1) (b1 (Var n)) (b2 (Var n))
     (f1 :$ a1,     f2 :$ a2)     -> go n f1 f2 && go n a1 a2
     (a1 :-> b1,    a2 :-> b2)    -> go n a1 a2 && go n b1 b2
-    (l1 :+ r1,     l2 :+ r2)     -> go n l1 l2 && go n r1 r2
     (l1 :* r1,     l2 :* r2)     -> go n l1 l2 && go n r1 r2
     _ -> False
