@@ -3,7 +3,6 @@
 {-# LANGUAGE LambdaCase #-}
 module Facet.Type.Typed
 ( Type(..)
-, eq
 , interpret
 , SomeType(..)
 ) where
@@ -28,20 +27,6 @@ infixl 7 :*
 
 instance Show (Type k P.Print) where
   showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . interpret
-
-eq :: Type ka Int -> Type kb Int -> Bool
-eq = go 0
-  where
-  go :: Int -> Type ka Int -> Type kb Int -> Bool
-  go n = curry $ \case
-    (Var n1,    Var n2)    -> n1 == n2
-    (Type,      Type)      -> True
-    (Unit,      Unit)      -> True
-    (t1 :=> b1, t2 :=> b2) -> go n t1 t2 && go (n + 1) (b1 (Var n)) (b2 (Var n))
-    (f1 :$ a1,  f2 :$ a2)  -> go n f1 f2 && go n a1 a2
-    (a1 :-> b1, a2 :-> b2) -> go n a1 a2 && go n b1 b2
-    (l1 :* r1,  l2 :* r2)  -> go n l1 l2 && go n r1 r2
-    _ -> False
 
 interpret :: C.Type r => Type k r -> r
 interpret = \case
