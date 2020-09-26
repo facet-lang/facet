@@ -18,11 +18,12 @@ data Type a
   | Type a :* Type a
   | Type a :$ Type a
   | Type a :-> Type a
-  | ForAll (Type a) (Type (Maybe a))
+  | Type a :=> Type (Maybe a)
   deriving (Foldable, Functor, Traversable)
 
 infixl 7 :*
 infixr 0 :->
+infixr 0 :=>
 infixl 9 :$
 
 instance Applicative Type where
@@ -31,13 +32,13 @@ instance Applicative Type where
 
 instance Monad Type where
   m >>= k = case m of
-    Var a      -> k a
-    Type       -> Type
-    Unit       -> Unit
-    l :* r     -> (l >>= k) :* (r >>= k)
-    f :$ a     -> (f >>= k) :$ (a >>= k)
-    a :-> b    -> (a >>= k) :-> (b >>= k)
-    ForAll t b -> ForAll (t >>= k) (b >>= traverse k)
+    Var a   -> k a
+    Type    -> Type
+    Unit    -> Unit
+    l :* r  -> (l >>= k) :* (r >>= k)
+    f :$ a  -> (f >>= k) :$ (a >>= k)
+    a :-> b -> (a >>= k) :-> (b >>= k)
+    t :=> b -> (t >>= k) :=> (b >>= traverse k)
 
 instance Eq a => Eq (Type a) where
   (==) = go
@@ -50,7 +51,7 @@ instance Eq a => Eq (Type a) where
       (l1 :* r1, l2 :* r2) -> go l1 l2 && go r1 r2
       (f1 :$ a1, f2 :$ a2) -> go f1 f2 && go a1 a2
       (a1 :-> b1, a2 :-> b2) -> go a1 a2 && go b1 b2
-      (ForAll t1 b1, ForAll t2 b2) -> go t1 t2 && go b1 b2
+      (t1 :=> b1, t2 :=> b2) -> go t1 t2 && go b1 b2
       _ -> False
 
 instance Show a => Show (Type a) where
@@ -62,7 +63,7 @@ instance C.Type (Type ()) where
   (.*) = (:*)
   (.$) = (:$)
   (-->) = (:->)
-  t >=> b = ForAll t (abstract () (b (Var ())))
+  t >=> b = t :=> abstract () (b (Var ()))
 
 instance C.Interpret Type where
   interpret = \case
@@ -72,7 +73,7 @@ instance C.Interpret Type where
     f :$ a -> C.interpret f C..$ C.interpret a
     l :* r -> C.interpret l C..* C.interpret r
     a :-> b -> C.interpret a C.--> C.interpret b
-    ForAll t b -> C.interpret t C.>=> C.interpret . (`instantiate` b) . Var
+    t :=> b -> C.interpret t C.>=> C.interpret . (`instantiate` b) . Var
 
 
 abstract :: Eq a => a -> Type a -> Type (Maybe a)

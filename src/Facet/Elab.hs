@@ -183,10 +183,10 @@ unify' = go
     (l1 :* r1, l2 :* r2) -> (:*) <$> go l1 l2 <*> go r1 r2
     (f1 :$ a1, f2 :$ a2) -> (:$) <$> go f1 f2 <*> go a1 a2
     (a1 :-> b1, a2 :-> b2) -> (:->) <$> go a1 a2 <*> go b1 b2
-    (ForAll t1 b1, ForAll t2 b2) -> ForAll <$> go t1 t2 <*> unify' b1 b2
+    (t1 :=> b1, t2 :=> b2) -> (:=>) <$> go t1 t2 <*> unify' b1 b2
     -- FIXME: build and display a diff of the root types
     -- FIXME: indicate the point in the source which led to this
-    -- FIXME: what do we do about the Var case? can we unify only closed types? (presumably not because ForAll contains an open type which it closes, so we will need to operate under them sometimes)
+    -- FIXME: what do we do about the Var case? can we unify only closed types? (presumably not because (:=>) contains an open type which it closes, so we will need to operate under them sometimes)
     (t1, t2) -> fail $ "could not unify " <> show t1 <> " with " <> show t2
 
 
@@ -231,7 +231,7 @@ infixr 2 -->
 t >=> b = do
   t' <- check' t Type
   b' <- check' (b (Var Nothing ::: fmap Just t')) Type
-  pure $ ForAll t' b'  ::: Type
+  pure $ (t' :=> b')  ::: Type
 
 infixr 1 >=>
 
