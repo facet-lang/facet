@@ -5,7 +5,7 @@ module Facet.Type.Typed
 
 import qualified Data.Kind as K
 
-data Type a where
+data Type t where
   Type :: Type K.Type
   Unit :: Type ()
   (:->) :: Type a -> Type b -> Type (a -> b)
