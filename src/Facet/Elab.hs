@@ -36,6 +36,7 @@ import           Control.Effect.Empty
 import           Control.Effect.Error
 import qualified Data.Map as Map
 import qualified Facet.Core.Lifted as C
+import           Facet.Env (liftBinder)
 import           Facet.Print (Print)
 import           Facet.Syntax.Common
 import qualified Facet.Syntax.Untyped as U
@@ -178,27 +179,27 @@ unify' = go
   where
   go :: Type r -> Type r -> Synth r (Type r)
   go = curry $ \case
-    (Type, Type) -> pure C._Type
-    (Unit, Unit) -> pure C._Unit
-    (l1 :* r1, l2 :* r2) -> (C..*) <$> go l1 l2 <*> go r1 r2
-    (f1 :$ a1, f2 :$ a2) -> (C..$) <$> go f1 f2 <*> go a1 a2
-    (a1 :-> b1, a2 :-> b2) -> (C.-->) <$> go a1 a2 <*> go b1 b2
+    (Type, Type) -> pure Type
+    (Unit, Unit) -> pure Unit
+    (l1 :* r1, l2 :* r2) -> (:*) <$> go l1 l2 <*> go r1 r2
+    (f1 :$ a1, f2 :$ a2) -> (:$) <$> go f1 f2 <*> go a1 a2
+    (a1 :-> b1, a2 :-> b2) -> (:->) <$> go a1 a2 <*> go b1 b2
     _ -> fail "could not unify"
 
 
 -- Types
 
-_Type :: Applicative env => Synth r (env (Type r) ::: Type r)
-_Type = pure $ pure C._Type ::: Type
+_Type :: Applicative env => Synth r (env (Type a) ::: Type r)
+_Type = pure $ pure Type ::: Type
 
-_Unit :: Applicative env => Synth r (env (Type r) ::: Type r)
-_Unit = pure $ pure C._Unit ::: Type
+_Unit :: Applicative env => Synth r (env (Type a) ::: Type r)
+_Unit = pure $ pure Unit ::: Type
 
 (.$) :: Applicative env => Synth r (env (Type r) ::: Type r) -> Check r (env (Type r)) -> Synth r (env (Type r) ::: Type r)
 a .$ b = do
   a' ::: (_A :-> _B) <- a
   b' <- check' b _A
-  pure $ liftA2 (C..$) a' b' ::: Type
+  pure $ liftA2 (:$) a' b' ::: Type
 
 infixl 9 .$
 
@@ -206,7 +207,7 @@ infixl 9 .$
 a .* b = do
   a' <- check' a Type
   b' <- check' b Type
-  pure $ liftA2 (C..*) a' b' ::: Type
+  pure $ liftA2 (:*) a' b' ::: Type
 
 infixl 7 .*
 
@@ -214,19 +215,19 @@ infixl 7 .*
 a --> b = do
   a' <- check' a Type
   b' <- check' b Type
-  pure $ liftA2 (C.-->) a' b' ::: Type
+  pure $ liftA2 (:->) a' b' ::: Type
 
 infixr 2 -->
 
 (>=>)
   :: C.Permutable env
   => Check r (Type r) -- FIXME: this is not constructed in any particular scope
-  -> (forall env' . C.Permutable env' => C.Extends env env' -> (env' (Type r) ::: Type r) -> Check r (env' (Type r)))
+  -> (forall env' . C.Permutable env' => C.Extends env env' -> (env' (Type (Maybe r)) ::: Type r) -> Check r (env' (Type (Maybe r))))
   -> Synth r (env (Type r) ::: Type r)
 t >=> b = do
   t' <- check' t Type
-  f <- pure (pure t') C.>=> \ env ty -> check' (b env (ty ::: t')) Type
-  pure $ f ::: Type
+  b' <- liftBinder $ \ env ty -> check' (b env (ty ::: t')) Type
+  pure $ (ForAll t' <$> (($ Var Nothing) <$> b'))  ::: Type
 
 infixr 1 >=>
 
