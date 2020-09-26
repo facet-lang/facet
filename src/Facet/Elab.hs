@@ -1,6 +1,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
@@ -152,16 +153,16 @@ unify t1 t2 = maybe pure go t1 t2
 
 
 newtype Check r a = Check { runCheck :: Type r -> Synth r a }
-  deriving (Algebra (Reader (Type r) :+: Reader (Env (Type r)) :+: Error Print), Applicative, Functor, Monad) via ReaderC (Type r) (Synth r)
+  deriving (Algebra (Reader (Type r) :+: Error Print), Applicative, Functor, Monad) via ReaderC (Type r) (Synth r)
 
-newtype Synth r a = Synth { runSynth :: Env (Type r) -> Either Print a }
-  deriving (Algebra (Reader (Env (Type r)) :+: Error Print), Applicative, Functor, Monad) via ReaderC (Env (Type r)) (Either Print)
+newtype Synth r a = Synth { runSynth :: Either Print a }
+  deriving (Algebra (Error Print), Applicative, Functor, Monad)
 
 instance MonadFail (Synth r) where
   fail = throwError @Print . pretty
 
-elab :: Env (Type r) -> Synth r a -> Either Print a
-elab = flip runSynth
+elab :: Synth r a -> Either Print a
+elab = runSynth
 
 check' :: Check r a -> Type r -> Synth r a
 check' = runCheck
