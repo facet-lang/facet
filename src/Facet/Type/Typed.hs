@@ -10,38 +10,38 @@ module Facet.Type.Typed
 
 import qualified Data.Kind as K
 
-data Type k t where
-  Var :: Int -> Type k t
-  Type :: Type K.Type K.Type
-  Unit :: Type K.Type ()
-  ForAll :: Type K.Type ka -> (Type ka ta -> Type kb tb) -> Type (ka -> kb) (ta -> tb)
-  (:$) :: Type (ka -> kb) (ta -> tb) -> Type ka ta -> Type kb tb
-  Arr :: Type (K.Type -> K.Type -> K.Type) (ta -> tb -> (ta -> tb))
-  Sum :: Type (K.Type -> K.Type -> K.Type) (ta -> tb -> Either ta tb)
-  Prd :: Type (K.Type -> K.Type -> K.Type) (ta -> tb -> (ta, tb))
+data Type k r t where
+  Var :: Int -> Type r k t
+  Type :: Type r K.Type K.Type
+  Unit :: Type r K.Type ()
+  ForAll :: Type r K.Type ka -> (Type r ka ta -> Type r kb tb) -> Type r (ka -> kb) (ta -> tb)
+  (:$) :: Type r (ka -> kb) (ta -> tb) -> Type r ka ta -> Type r kb tb
+  Arr :: Type r (K.Type -> K.Type -> K.Type) (ta -> tb -> (ta -> tb))
+  Sum :: Type r (K.Type -> K.Type -> K.Type) (ta -> tb -> Either ta tb)
+  Prd :: Type r (K.Type -> K.Type -> K.Type) (ta -> tb -> (ta, tb))
 
 infixl 9 :$
 
-(-->) :: Type K.Type ta -> Type K.Type tb -> Type K.Type (ta -> tb)
+(-->) :: Type r K.Type ta -> Type r K.Type tb -> Type r K.Type (ta -> tb)
 a --> b = Arr :$ a :$ b
 
 infixr 0 -->
 
-(.+) :: Type K.Type ta -> Type K.Type tb -> Type K.Type (Either ta tb)
+(.+) :: Type r K.Type ta -> Type r K.Type tb -> Type r K.Type (Either ta tb)
 a .+ b = Sum :$ a :$ b
 
 infixl 6 .+
 
-(.*) :: Type K.Type ta -> Type K.Type tb -> Type K.Type (ta, tb)
+(.*) :: Type r K.Type ta -> Type r K.Type tb -> Type r K.Type (ta, tb)
 a .* b = Prd :$ a :$ b
 
 infixl 7 .*
 
 
-eq :: Type ka ta -> Type kb tb -> Bool
+eq :: Type r ka ta -> Type r kb tb -> Bool
 eq = go 0
   where
-  go :: Int -> Type ka ta -> Type kb tb -> Bool
+  go :: Int -> Type r ka ta -> Type r kb tb -> Bool
   go n = curry $ \case
     (Var n1,       Var n2)       -> n1 == n2
     (Type,         Type)         -> True
