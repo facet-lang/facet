@@ -24,10 +24,9 @@ import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
 import           Data.Coerce
 import qualified Data.Kind as K
-import           Facet.Pretty
 import qualified Facet.Core as C
-import qualified Facet.Core.Typed as CT
 import           Facet.Functor.K
+import           Facet.Pretty
 import qualified Facet.Syntax.Typed as T
 import qualified Facet.Syntax.Untyped as U
 import qualified Prettyprinter as PP
@@ -98,7 +97,7 @@ data Context
 
 newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
   deriving (U.Expr, FreshPrinter, Functor, U.Global, Monoid, PrecedencePrinter, Printer, Semigroup, U.Type)
-  deriving (Applicative) via K Print
+  deriving (Applicative, C.Type) via K Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
   (>=>) = coerce ((U.>=>) :: Print -> (Print -> Print) -> Print)
@@ -129,16 +128,6 @@ instance T.Expr TPrint where
   alg _ = TPrint $ pretty "TBD"
 
   weakenBy _ = coerce
-
-instance CT.Type (TPrint sig) where
-  _Type = pretty "Type"
-  _Unit = pretty "()"
-
-  (>=>) = coerce ((U.>=>) :: Print -> (Print -> Print) -> Print)
-  (.$) = coerce app
-
-  (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
-  l .* r = parens $ l <> comma <+> r
 
 
 cases :: [Print -> (Print, Print)] -> Print
@@ -193,14 +182,14 @@ instance U.Type Print where
   _Unit = pretty "()"
   _Type = pretty "Type"
 
-instance C.Type Print where
+instance C.Type (K Print) where
   (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
-  (.$) = app
+  (.$) = coerce app
   _Unit = pretty "()"
   _Type = pretty "Type"
   -- FIXME: combine quantification over type variables of the same kind
-  t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> ann v' t <> flatAlt line space))) </> arrow <+> prec FnR (f v')
+  t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> coerce (ann v' t) <> flatAlt line space))) </> arrow <+> coerce (prec FnR (f (coerce v')))
 
 
 instance U.Module Print Print Print Print where

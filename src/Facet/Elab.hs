@@ -33,9 +33,9 @@ import           Control.Applicative (liftA2)
 import           Control.Carrier.Reader
 import           Control.Effect.Error
 import qualified Data.Kind as K
+import qualified Facet.Core as CT
 import qualified Facet.Core.Lifted as C
-import qualified Facet.Core.Typed as CT
-import qualified Facet.Core.Typed.Lifted as CTL
+import qualified Facet.Core.Lifted as CTL
 import           Facet.Env
 import           Facet.Print (Print, TPrint(..), tvar)
 import           Facet.Syntax.Common

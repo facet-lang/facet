@@ -7,7 +7,7 @@ module Facet.Type
 ) where
 
 import qualified Data.Kind as K
-import qualified Facet.Core.Typed as CT
+import qualified Facet.Core as C
 import qualified Facet.Print as P
 
 data Type r k where
@@ -25,9 +25,9 @@ infixr 0 :->
 infixl 7 :*
 
 instance Show (Type (P.TPrint sig) k) where
-  showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . P.runTPrint . CT.interpret
+  showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . P.runTPrint . C.interpret
 
-instance CT.Type (Type r) where
+instance C.Type (Type r) where
   _Type = Type
   _Unit = Unit
   (>=>) = (:=>)
@@ -35,15 +35,15 @@ instance CT.Type (Type r) where
   (-->) = (:->)
   (.*)  = (:*)
 
-instance CT.Interpret Type where
+instance C.Interpret Type where
   interpret = \case
     Var r   -> r
-    Type    -> CT._Type
-    Unit    -> CT._Unit
-    t :=> b -> CT.interpret t CT.>=> CT.interpret . b . Var
-    f :$ a  -> CT.interpret f CT..$  CT.interpret a
-    a :-> b -> CT.interpret a CT.--> CT.interpret b
-    l :* r  -> CT.interpret l CT..*  CT.interpret r
+    Type    -> C._Type
+    Unit    -> C._Unit
+    t :=> b -> C.interpret t C.>=> C.interpret . b . Var
+    f :$ a  -> C.interpret f C..$  C.interpret a
+    a :-> b -> C.interpret a C.--> C.interpret b
+    l :* r  -> C.interpret l C..*  C.interpret r
 
 
 data SomeType r where
