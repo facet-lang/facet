@@ -39,6 +39,7 @@ library
   exposed-modules:
     Facet.Core
     Facet.Core.Lifted
+    Facet.Core.Typed
     Facet.Elab
     Facet.Env
     Facet.Eval
