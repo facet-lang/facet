@@ -9,7 +9,8 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Elab
-( Check(..)
+( Elab(..)
+, Check(..)
 , Synth(..)
 , check
 , checking
@@ -40,6 +41,8 @@ import           Facet.Print (Print, TPrint(..), tvar)
 import           Facet.Syntax.Common
 import qualified Facet.Type.Typed as T
 import           Silkscreen
+
+newtype Elab a = Elab { elab :: a }
 
 newtype Check a = Check { runCheck :: ForAll1 T.Type K.Type -> Synth a }
   deriving (Algebra (Reader (ForAll1 T.Type K.Type) :+: Error Print), Applicative, Functor, Monad) via ReaderC (ForAll1 T.Type K.Type) Synth
