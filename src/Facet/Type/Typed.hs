@@ -3,7 +3,6 @@
 {-# LANGUAGE LambdaCase #-}
 module Facet.Type.Typed
 ( Type(..)
-, interpret
 , SomeType(..)
 ) where
 
@@ -26,17 +25,17 @@ infixr 0 :->
 infixl 7 :*
 
 instance Show (Type k P.Print) where
-  showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . interpret
+  showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . C.interpret
 
-interpret :: C.Type r => Type k r -> r
-interpret = \case
-  Var r   -> r
-  Type    -> C._Type
-  Unit    -> C._Unit
-  t :=> b -> interpret t C.>=> interpret . b . Var
-  f :$ a  -> interpret f C..$  interpret a
-  a :-> b -> interpret a C.--> interpret b
-  l :* r  -> interpret l C..*  interpret r
+instance C.Interpret (Type k) where
+  interpret = \case
+    Var r   -> r
+    Type    -> C._Type
+    Unit    -> C._Unit
+    t :=> b -> C.interpret t C.>=> C.interpret . b . Var
+    f :$ a  -> C.interpret f C..$  C.interpret a
+    a :-> b -> C.interpret a C.--> C.interpret b
+    l :* r  -> C.interpret l C..*  C.interpret r
 
 
 data SomeType r where
