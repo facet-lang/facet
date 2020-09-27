@@ -45,6 +45,9 @@ import           Silkscreen
 
 newtype Elab a = Elab { elab :: a }
 
+instance S.ForAll a a => S.ForAll (Elab a) (Elab a) where
+  t >=> b = Elab $ elab t S.>=> elab . b . Elab
+
 instance S.Expr a => S.Expr (Elab a) where
   global = Elab . S.global
   lam0 f = Elab $ S.lam0 (elab . f . Elab)
