@@ -192,7 +192,7 @@ unify' t1 t2 = t2 <$ go 0 (instantiate1 t1) (instantiate1 t2) -- NB: unification
 _Type :: Synth (ForAll1 T.Type K.Type ::: ForAll1 T.Type K.Type)
 _Type = pure $ CT._Type ::: CT._Type
 
-_Unit :: Synth (ForAll1 T.Type K.Type ::: ForAll1 T.Type K.Type)
+_Unit :: Applicative env => Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
 _Unit = pure $ CT._Unit ::: CT._Type
 
 (.$) :: Applicative env => Synth (env (ForAll1 T.Type (k1 -> k2)) ::: ForAll1 T.Type K.Type) -> Check (env (ForAll1 T.Type k1)) -> Synth (env (ForAll1 T.Type k2) ::: ForAll1 T.Type K.Type)
