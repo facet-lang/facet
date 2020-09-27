@@ -27,6 +27,14 @@ infixl 7 :*
 instance Show (Type (P.TPrint sig) k) where
   showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . P.runTPrint . CT.interpret
 
+instance CT.Type (Type r) where
+  _Type = Type
+  _Unit = Unit
+  (>=>) = (:=>)
+  (.$)  = (:$)
+  (-->) = (:->)
+  (.*)  = (:*)
+
 instance CT.Interpret Type where
   interpret = \case
     Var r   -> r
