@@ -10,7 +10,7 @@ import           Facet.Elab
 import           Facet.Env
 import           Facet.Functor.I
 import qualified Facet.Print as P
-import           Facet.Syntax.Common
+import           Facet.Syntax
 import qualified Facet.Type as T
 import qualified Silkscreen as S
 

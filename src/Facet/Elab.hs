@@ -38,7 +38,7 @@ import qualified Facet.Core.Lifted as C
 import qualified Facet.Core.Lifted as CTL
 import           Facet.Env
 import           Facet.Print (Print, TPrint(..), tvar)
-import           Facet.Syntax.Common
+import           Facet.Syntax
 import           Facet.Type
 import           Silkscreen
 

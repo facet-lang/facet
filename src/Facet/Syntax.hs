@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeOperators #-}
-module Facet.Syntax.Common
+module Facet.Syntax
 ( (:::)(..)
 , (.:)
 ) where
