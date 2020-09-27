@@ -151,13 +151,13 @@ cases cs = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ 
 ann :: Printer p => p -> p -> p
 ann v t = v </> group (align (colon <+> flatAlt space mempty <> t))
 
-var :: Int -> Print
+var :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
 var = varFrom ['a'..'z']
 
-tvar :: Int -> Print
+tvar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
 tvar = varFrom ['A'..'Z']
 
-varFrom :: String -> Int -> Print
+varFrom :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => String -> Int -> p
 varFrom alpha i = setPrec Var (name (pretty (toAlpha alpha i)))
 
 toAlpha :: String -> Int -> String
