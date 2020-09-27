@@ -7,6 +7,7 @@ module Facet.Core.Typed.Lifted
 , (.$)
 , (-->)
 , (.*)
+, C.Interpret(..)
 ) where
 
 import           Control.Applicative (liftA2)
