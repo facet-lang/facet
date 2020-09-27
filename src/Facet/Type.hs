@@ -3,7 +3,6 @@
 {-# LANGUAGE LambdaCase #-}
 module Facet.Type
 ( Type(..)
-, SomeType(..)
 ) where
 
 import qualified Data.Kind as K
@@ -44,7 +43,3 @@ instance C.Interpret Type where
     f :$ a  -> C.interpret f C..$  C.interpret a
     a :-> b -> C.interpret a C.--> C.interpret b
     l :* r  -> C.interpret l C..*  C.interpret r
-
-
-data SomeType r where
-  SomeType :: Type r k -> SomeType r
