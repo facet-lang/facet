@@ -10,6 +10,8 @@ module Facet.Syntax.Common
 , sequenceForAllMaybe
 , ForAll1(..)
 , hoistForAll1
+, CompL(..)
+, sequenceForAll1Maybe
 ) where
 
 import Data.Maybe (fromJust)
@@ -42,3 +44,10 @@ newtype ForAll1 f a = Abstract1 { instantiate1 :: forall x . f x a }
 
 hoistForAll1 :: (forall x . f x a -> g x a) -> ForAll1 f a -> ForAll1 g a
 hoistForAll1 f t = Abstract1 (f (instantiate1 t))
+
+newtype CompL f g r a = CompL { getCompL :: f (g r a) }
+
+sequenceForAll1Maybe :: ForAll1 (CompL Maybe f) a -> Maybe (ForAll1 f a)
+sequenceForAll1Maybe t = case instantiate1 t of
+  CompL Nothing  -> Nothing
+  CompL (Just _) -> Just (hoistForAll1 (fromJust . getCompL) t)
