@@ -10,6 +10,9 @@ data Name = Name { name :: String, id' :: Int }
 instance Eq Name where
   (==) = (==) `on` id'
 
+instance Ord Name where
+  compare = compare `on` id'
+
 instance Show Name where
   showsPrec p = showsPrec p . pretty
 
