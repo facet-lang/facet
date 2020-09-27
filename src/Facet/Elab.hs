@@ -66,10 +66,10 @@ unify' t1 t2 = t2 <$ go 0 (instantiate1 t1) (instantiate1 t2) -- NB: unification
   where
   go :: Int -> T.Type (TPrint sig) k1 -> T.Type (TPrint sig) k2 -> Synth ()
   go n = curry $ \case
-    (T.Type, T.Type) -> pure ()
-    (T.Unit, T.Unit) -> pure ()
-    (l1 T.:* r1, l2 T.:* r2) -> go n l1 l2 *> go n r1 r2
-    (f1 T.:$ a1, f2 T.:$ a2) -> go n f1 f2 *> go n a1 a2
+    (T.Type,      T.Type)      -> pure ()
+    (T.Unit,      T.Unit)      -> pure ()
+    (l1 T.:* r1,  l2 T.:* r2)  -> go n l1 l2 *> go n r1 r2
+    (f1 T.:$ a1,  f2 T.:$ a2)  -> go n f1 f2 *> go n a1 a2
     (a1 T.:-> b1, a2 T.:-> b2) -> go n a1 a2 *> go n b1 b2
     (t1 T.:=> b1, t2 T.:=> b2) -> go n t1 t2 *> go (n + 1) (b1 (T.Var (TPrint (tvar n)))) (b2 (T.Var (TPrint (tvar n))))
     -- FIXME: build and display a diff of the root types
