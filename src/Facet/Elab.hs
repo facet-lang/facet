@@ -222,6 +222,7 @@ infixr 2 -->
 
 (>=>)
   :: Permutable env
+  -- FIXME: computing this type in some arbitrary environment amounts to a predicativity or staging restriction which means the body of the quantifier can’t actually use the type
   => Check (env (ForAll1 T.Type K.Type))
   -> (forall env' . Permutable env' => Extends env env' -> env' (ForAll1 T.Type k1 ::: ForAll1 T.Type K.Type) -> Check (env' (ForAll1 T.Type k2)))
   -> Synth (env (ForAll1 T.Type (k1 -> k2) ::: ForAll1 T.Type K.Type))
