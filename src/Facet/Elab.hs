@@ -38,6 +38,7 @@ import qualified Facet.Core.Lifted as C
 import qualified Facet.Core.Lifted as CTL
 import           Facet.Env
 import           Facet.Functor.C
+import           Facet.Functor.I
 import           Facet.Print (Print)
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -67,8 +68,8 @@ instance S.Expr a => S.Expr (Elab a) where
   l ** r = Elab $ elab l S.** elab r
 
 
-newtype Check a = Check { runCheck :: Type -> Synth a }
-  deriving (Algebra (Reader Type :+: Error Print), Applicative, Functor, Monad) via ReaderC Type Synth
+newtype Check a = Check { runCheck :: Type I -> Synth a }
+  deriving (Algebra (Reader (Type I) :+: Error Print), Applicative, Functor, Monad) via ReaderC (Type I) Synth
 
 newtype Synth a = Synth { runSynth :: Either Print a }
   deriving (Algebra (Error Print), Applicative, Functor, Monad)
@@ -76,18 +77,18 @@ newtype Synth a = Synth { runSynth :: Either Print a }
 instance MonadFail Synth where
   fail = throwError @Print . pretty
 
-check :: Check a -> Type -> Synth a
+check :: Check a -> Type I -> Synth a
 check = runCheck
 
-checking :: (Type -> Synth a) -> Check a
+checking :: (Type I -> Synth a) -> Check a
 checking = Check
 
-switch :: Synth (a ::: Type) -> Check a
+switch :: Synth (a ::: Type I) -> Check a
 switch s = Check $ \ _T -> do
   a ::: _T' <- s
   a <$ unify' _T _T'
 
-unify' :: Type -> Type -> Synth Type
+unify' :: Type I -> Type I -> Synth (Type I)
 unify' t1 t2 = t2 <$ go (inst t1) (inst t2) -- NB: unification cannot (currently) result in information increase, so it always suffices to take (arbitrarily) the second operand as the result. Failures escape by throwing an exception, so this will not affect failed results.
   where
   go :: Type' Print -> Type' Print -> Synth ()
@@ -109,13 +110,13 @@ unify' t1 t2 = t2 <$ go (inst t1) (inst t2) -- NB: unification cannot (currently
 
 -- Types
 
-_Type :: Applicative env => Synth (env Type ::: Type)
+_Type :: Applicative env => Synth (env (Type I) ::: Type I)
 _Type = pure $ CTL._Type ::: CT._Type
 
-_Unit :: Applicative env => Synth (env Type ::: Type)
+_Unit :: Applicative env => Synth (env (Type I) ::: Type I)
 _Unit = pure $ CTL._Unit ::: CT._Type
 
-(.$) :: Applicative env => Synth (env Type ::: Type) -> Check (env Type) -> Synth (env Type ::: Type)
+(.$) :: Applicative env => Synth (env (Type I) ::: Type I) -> Check (env (Type I)) -> Synth (env (Type I) ::: Type I)
 f .$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
@@ -124,7 +125,7 @@ f .$ a = do
 
 infixl 9 .$
 
-(.*) :: Applicative env => Check (env Type) -> Check (env Type) -> Synth (env Type ::: Type)
+(.*) :: Applicative env => Check (env (Type I)) -> Check (env (Type I)) -> Synth (env (Type I) ::: Type I)
 a .* b = do
   a' <- check a CT._Type
   b' <- check b CT._Type
@@ -132,7 +133,7 @@ a .* b = do
 
 infixl 7 .*
 
-(-->) :: Applicative env => Check (env Type) -> Check (env Type) -> Synth (env Type ::: Type)
+(-->) :: Applicative env => Check (env (Type I)) -> Check (env (Type I)) -> Synth (env (Type I) ::: Type I)
 a --> b = do
   a' <- check a CT._Type
   b' <- check b CT._Type
@@ -142,9 +143,9 @@ infixr 2 -->
 
 (>=>)
   :: Applicative env
-  => Check Type
-  -> (forall env' . Applicative env' => Extends env env' -> (env' Type ::: Type) -> Check (env' Type))
-  -> Synth (env Type ::: Type)
+  => Check (Type I)
+  -> (forall env' . Applicative env' => Extends env env' -> (env' (Type I) ::: Type I) -> Check (env' (Type I)))
+  -> Synth (env (Type I) ::: Type I)
 t >=> b = do
   t' <- check t CT._Type
   x <- pure (pure t') CTL.>=> \ env v -> check (b env (v ::: t')) CT._Type
@@ -155,29 +156,29 @@ infixr 1 >=>
 
 -- Expressions
 
-asFn :: Type -> Maybe (Type, Type)
+asFn :: Type I -> Maybe (Type I, Type I)
 asFn = liftA2 (,) <$> dom <*> cod
 
-dom :: Type -> Maybe Type
+dom :: Type I -> Maybe (Type I)
 dom = traverseTypeMaybe (\case
   _A :-> _B -> C (Just _A)
   _         -> C Nothing)
 
-cod :: Type -> Maybe Type
+cod :: Type I -> Maybe (Type I)
 cod = traverseTypeMaybe (\case
   _A :-> _B -> C (Just _B)
   _         -> C Nothing)
 
-($$) :: C.Expr expr => Synth (expr ::: Type) -> Check expr -> Synth (expr ::: Type)
+($$) :: C.Expr expr => Synth (expr ::: Type I) -> Check expr -> Synth (expr ::: Type I)
 f $$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
   a' <- check a _A
   pure $ f' C.$$ a' ::: _B
 
-lam0 :: (C.Expr expr, Applicative env) => (forall env' . Applicative env => C.Extends env env' -> env' (expr ::: Type) -> Check (env' expr)) -> Check (env expr)
+lam0 :: (C.Expr expr, Applicative env) => (forall env' . Applicative env => C.Extends env env' -> env' (expr ::: Type I) -> Check (env' expr)) -> Check (env expr)
 lam0 f = checking $ \ t -> case asFn t of
   Just (_A, _B) -> C.lam0 $ \ env v -> check (f env (v .: _A)) _B
   _             -> fail "expected function type in lambda"
 
--- FIXME: internalize scope into Type & Expr?
+-- FIXME: internalize scope into Type I & Expr?
