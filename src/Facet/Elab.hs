@@ -200,11 +200,11 @@ unify' t1 t2 = t2 <$ go 0 (instantiate t1) (instantiate t2) -- NB: unification c
 
 -- FIXME: differentiate between typed and untyped types?
 
-_Type :: Synth (T.Type K.Type r ::: T.Type K.Type r)
-_Type = pure $ T.Type ::: T.Type
+_Type :: Synth (ForAll (T.Type K.Type) ::: ForAll (T.Type K.Type))
+_Type = pure $ Abstract T.Type ::: Abstract T.Type
 
-_Unit :: Synth (T.Type K.Type r ::: T.Type K.Type r)
-_Unit = pure $ T.Unit ::: T.Type
+_Unit :: Synth (ForAll (T.Type K.Type) ::: ForAll (T.Type K.Type))
+_Unit = pure $ Abstract T.Unit ::: Abstract T.Type
 
 (.$) :: Synth (T.Type (k1 -> k2) r ::: ForAll (T.Type K.Type)) -> Check (T.Type k1 r) -> Synth (T.Type k2 r ::: T.Type K.Type r)
 f .$ a = do
