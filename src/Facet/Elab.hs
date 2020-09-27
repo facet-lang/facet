@@ -39,7 +39,7 @@ import qualified Facet.Core.Typed.Lifted as CTL
 import           Facet.Env
 import           Facet.Print (Print, TPrint(..), tvar)
 import           Facet.Syntax.Common
-import qualified Facet.Type.Typed as T
+import qualified Facet.Type as T
 import           Silkscreen
 
 newtype Elab a = Elab { elab :: a }

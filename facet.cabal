@@ -55,7 +55,7 @@ library
     Facet.Syntax.Typed.Lifted
     Facet.Syntax.Untyped
     Facet.Syntax.Untyped.Lifted
-    Facet.Type.Typed
+    Facet.Type
   other-modules:
     Facet.GHCI
     Facet.Syntax.Examples

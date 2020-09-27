@@ -11,7 +11,7 @@ import           Facet.Env
 import           Facet.Functor.I
 import qualified Facet.Print as P
 import           Facet.Syntax.Common
-import qualified Facet.Type.Typed as T
+import qualified Facet.Type as T
 import qualified Silkscreen as S
 
 printElab :: Synth (I (ForAll1 T.Type ((K.Type -> K.Type) -> K.Type)) ::: ForAll1 T.Type K.Type) -> IO ()

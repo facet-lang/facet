@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
-module Facet.Type.Typed
+module Facet.Type
 ( Type(..)
 , SomeType(..)
 ) where
