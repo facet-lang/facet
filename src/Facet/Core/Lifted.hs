@@ -45,7 +45,6 @@ t >=> b = liftA2 (C.>=>) <$> t <*> liftBinder b
 
 infixr 1 >=>
 
-
 (.$) :: (C.Type ty, Applicative env) => env (ty (k1 -> k2)) -> env (ty k1) -> env (ty k2)
 (.$) = liftA2 (C..$)
 
@@ -56,7 +55,6 @@ infixl 9 .$
 (-->) = liftA2 (C.-->)
 
 infixr 2 -->
-
 
 (.*) :: (C.Type ty, Applicative env) => env (ty K.Type) -> env (ty K.Type) -> env (ty K.Type)
 (.*) = liftA2 (C..*)
