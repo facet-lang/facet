@@ -1,9 +1,11 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Syntax.Common
 ( (:::)(..)
 , (.:)
 , ForAll(..)
+, hoistForAll
 ) where
 
 data a ::: b = a ::: b
@@ -19,3 +21,6 @@ infix 5 .:
 
 
 newtype ForAll f = Abstract { instantiate :: forall x . f x }
+
+hoistForAll :: (forall x . f x -> g x) -> ForAll f -> ForAll g
+hoistForAll f t = Abstract (f (instantiate t))
