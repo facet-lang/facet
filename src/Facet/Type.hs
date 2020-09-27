@@ -11,6 +11,7 @@ module Facet.Type
 , traverseTypeMaybe
 ) where
 
+import qualified Data.IntMap as IntMap
 import           Data.Maybe (fromJust)
 import           Data.Text (Text)
 import qualified Facet.Core as C
@@ -58,14 +59,14 @@ instance C.Type (Type' r) where
   (.*)  = (:*)
 
 instance C.Interpret Type' where
-  interpret = go []
+  interpret = go mempty
     where
     go e = \case
       Var r   -> r
-      Bound n -> e !! id' n
+      Bound n -> e IntMap.! id' n
       Type    -> C._Type
       Unit    -> C._Unit
-      t :=> b -> go e (ty t) C.>=> \ v -> go (v:e) b
+      t :=> b -> go e (ty t) C.>=> \ v -> go (IntMap.insert (id' (tm t)) v e) b
       f :$ a  -> go e f C..$  go e a
       a :-> b -> go e a C.--> go e b
       l :* r  -> go e l C..*  go e r
