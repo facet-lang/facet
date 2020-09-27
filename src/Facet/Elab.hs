@@ -38,7 +38,7 @@ import qualified Facet.Core.Lifted as C
 import qualified Facet.Core.Lifted as CTL
 import           Facet.Env
 import           Facet.Functor.C
-import           Facet.Print (Print, tvar)
+import           Facet.Print (Print)
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Facet.Type
@@ -88,16 +88,18 @@ switch s = Check $ \ _T -> do
   a <$ unify' _T _T'
 
 unify' :: Type -> Type -> Synth Type
-unify' t1 t2 = t2 <$ go 0 (inst t1) (inst t2) -- NB: unification cannot (currently) result in information increase, so it always suffices to take (arbitrarily) the second operand as the result. Failures escape by throwing an exception, so this will not affect failed results.
+unify' t1 t2 = t2 <$ go (inst t1) (inst t2) -- NB: unification cannot (currently) result in information increase, so it always suffices to take (arbitrarily) the second operand as the result. Failures escape by throwing an exception, so this will not affect failed results.
   where
-  go :: Int -> Type' Print -> Type' Print -> Synth ()
-  go n = curry $ \case
+  go :: Type' Print -> Type' Print -> Synth ()
+  go = curry $ \case
+    (Bound n1,  Bound n2)
+      | n1 == n2           -> pure ()
     (Type,      Type)      -> pure ()
     (Unit,      Unit)      -> pure ()
-    (l1 :* r1,  l2 :* r2)  -> go n l1 l2 *> go n r1 r2
-    (f1 :$ a1,  f2 :$ a2)  -> go n f1 f2 *> go n a1 a2
-    (a1 :-> b1, a2 :-> b2) -> go n a1 a2 *> go n b1 b2
-    (t1 :=> b1, t2 :=> b2) -> go n t1 t2 *> go (n + 1) (b1 (Var (tvar n))) (b2 (Var (tvar n)))
+    (l1 :* r1,  l2 :* r2)  -> go l1 l2 *> go r1 r2
+    (f1 :$ a1,  f2 :$ a2)  -> go f1 f2 *> go a1 a2
+    (a1 :-> b1, a2 :-> b2) -> go a1 a2 *> go b1 b2
+    (t1 :=> b1, t2 :=> b2) -> go (ty t1) (ty t2) *> go b1 b2
     -- FIXME: build and display a diff of the root types
     -- FIXME: indicate the point in the source which led to this
     -- FIXME: what do we do about the Var case? can we unify only closed types? (presumably not because (:=>) contains an open type which it closes, so we will need to operate under them sometimes.) Eq would work but it’s a tall order.

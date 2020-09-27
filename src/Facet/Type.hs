@@ -12,16 +12,20 @@ module Facet.Type
 ) where
 
 import           Data.Maybe (fromJust)
+import           Data.Text (Text)
 import qualified Facet.Core as C
 import           Facet.Functor.C
+import           Facet.Name
 import qualified Facet.Print as P
+import           Facet.Syntax
 import           Unsafe.Coerce (unsafeCoerce)
 
 data Type' r
   = Var r
+  | Bound Name
   | Type
   | Unit
-  | Type' r :=> (Type' r -> Type' r)
+  | (Name ::: Type' r) :=> Type' r
   | Type' r :$  Type' r
   | Type' r :-> Type' r
   | Type' r :*  Type' r
@@ -34,23 +38,43 @@ infixl 7 :*
 instance Show (Type' P.Print) where
   showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . C.interpret
 
+instance Scoped (Type' a) where
+  maxBV = \case
+    Var _   -> 0
+    Bound _ -> 0
+    Type    -> 0
+    Unit    -> 0
+    t :=> _ -> maxBV t
+    f :$ a  -> maxBV f `max` maxBV a
+    a :-> b -> maxBV a `max` maxBV b
+    l :* r  -> maxBV l `max` maxBV r
+
 instance C.Type (Type' r) where
   _Type = Type
   _Unit = Unit
-  (>=>) = (:=>)
+  (>=>) = (>=>) . (mempty :::)
   (.$)  = (:$)
   (-->) = (:->)
   (.*)  = (:*)
 
 instance C.Interpret Type' where
-  interpret = \case
-    Var r   -> r
-    Type    -> C._Type
-    Unit    -> C._Unit
-    t :=> b -> C.interpret t C.>=> C.interpret . b . Var
-    f :$ a  -> C.interpret f C..$  C.interpret a
-    a :-> b -> C.interpret a C.--> C.interpret b
-    l :* r  -> C.interpret l C..*  C.interpret r
+  interpret = go []
+    where
+    go e = \case
+      Var r   -> r
+      Bound n -> e !! id' n
+      Type    -> C._Type
+      Unit    -> C._Unit
+      (_ ::: t) :=> b -> go e t C.>=> \ v -> go (v:e) b
+      f :$ a  -> go e f C..$  go e a
+      a :-> b -> go e a C.--> go e b
+      l :* r  -> go e l C..*  go e r
+
+(>=>) :: (Text ::: Type' r) -> (Type' r -> Type' r) -> Type' r
+(n ::: t) >=> b = (n' ::: t) :=> b'
+  where
+  b' = b (Bound n')
+  n' = Name n (maxBV b')
 
 
 newtype Type = Abs { inst :: forall r . Type' r }
