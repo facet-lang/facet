@@ -39,6 +39,8 @@ import           Control.Effect.Error
 import qualified Data.Kind as K
 import qualified Data.Map as Map
 import qualified Facet.Core.Lifted as C
+import qualified Facet.Core.Typed.Lifted as CT
+import           Facet.Env
 import           Facet.Print (Print, TPrint(..), tvar)
 import           Facet.Syntax.Common
 import qualified Facet.Syntax.Untyped as U
@@ -231,13 +233,14 @@ a --> b = do
 infixr 2 -->
 
 (>=>)
-  :: Check (Type r)
-  -> ((Type (Maybe r) ::: Type (Maybe r)) -> Check (Type (Maybe r)))
-  -> Synth (Type r ::: Type r)
+  :: Permutable env
+  => Check (env (ForAll1 T.Type K.Type))
+  -> (forall env' . Permutable env' => Extends env env' -> env' (ForAll1 T.Type k1 ::: ForAll1 T.Type K.Type) -> Check (env' (ForAll1 T.Type k2)))
+  -> Synth (env (ForAll1 T.Type (k1 -> k2) ::: ForAll1 T.Type K.Type))
 t >=> b = do
   t' <- check' t (Abstract1 T.Type)
-  b' <- check' (b (Var Nothing ::: fmap Just t')) (Abstract1 T.Type)
-  pure $ (t' :=> b')  ::: Type
+  x <- pure t' CT.>=> \ env v -> check' (b env ((:::) <$> v <*> cast env t')) CT._Type
+  pure $ x .: Abstract1 T.Type
 
 infixr 1 >=>
 
