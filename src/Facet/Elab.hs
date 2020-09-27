@@ -36,6 +36,7 @@ import           Control.Effect.Error
 import qualified Data.Kind as K
 import qualified Data.Map as Map
 import qualified Facet.Core.Lifted as C
+import qualified Facet.Core.Typed as CT
 import qualified Facet.Core.Typed.Lifted as CTL
 import           Facet.Env
 import           Facet.Print (Print, TPrint(..), tvar)
@@ -189,34 +190,34 @@ unify' t1 t2 = t2 <$ go 0 (instantiate1 t1) (instantiate1 t2) -- NB: unification
 
 -- FIXME: differentiate between typed and untyped types?
 
-_Type :: Synth (ForAll1 T.Type K.Type ::: ForAll1 T.Type K.Type)
-_Type = pure $ CTL._Type ::: CTL._Type
+_Type :: Applicative env => Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
+_Type = pure $ CTL._Type ::: CT._Type
 
 _Unit :: Applicative env => Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
-_Unit = pure $ CTL._Unit ::: CTL._Type
+_Unit = pure $ CTL._Unit ::: CT._Type
 
 (.$) :: Applicative env => Synth (env (ForAll1 T.Type (k1 -> k2)) ::: ForAll1 T.Type K.Type) -> Check (env (ForAll1 T.Type k1)) -> Synth (env (ForAll1 T.Type k2) ::: ForAll1 T.Type K.Type)
 f .$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
   a' <- check' a _A
-  pure $ f' CTL..$ a' ::: CTL._Type
+  pure $ f' CTL..$ a' ::: CT._Type
 
 infixl 9 .$
 
 (.*) :: Applicative env => Check (env (ForAll1 T.Type K.Type)) -> Check (env (ForAll1 T.Type K.Type)) -> Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
 a .* b = do
-  a' <- check' a (CTL._Type)
-  b' <- check' b (CTL._Type)
-  pure $ a' CTL..* b' ::: CTL._Type
+  a' <- check' a CT._Type
+  b' <- check' b CT._Type
+  pure $ a' CTL..* b' ::: CT._Type
 
 infixl 7 .*
 
 (-->) :: Applicative env => Check (env (ForAll1 T.Type K.Type)) -> Check (env (ForAll1 T.Type K.Type)) -> Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
 a --> b = do
-  a' <- check' a CTL._Type
-  b' <- check' b CTL._Type
-  pure $ (a' CTL.--> b') ::: CTL._Type
+  a' <- check' a CT._Type
+  b' <- check' b CT._Type
+  pure $ (a' CTL.--> b') ::: CT._Type
 
 infixr 2 -->
 
@@ -226,9 +227,9 @@ infixr 2 -->
   -> (forall env' . Permutable env' => Extends env env' -> (env' (ForAll1 T.Type k1) ::: ForAll1 T.Type K.Type) -> Check (env' (ForAll1 T.Type k2)))
   -> Synth (env (ForAll1 T.Type (k1 -> k2) ::: ForAll1 T.Type K.Type))
 t >=> b = do
-  t' <- check' t (CTL._Type)
-  x <- pure (pure t') CTL.>=> \ env v -> check' (b env (v ::: t')) CTL._Type
-  pure $ x .: CTL._Type
+  t' <- check' t CT._Type
+  x <- pure (pure t') CTL.>=> \ env v -> check' (b env (v ::: t')) CT._Type
+  pure $ x .: CT._Type
 
 infixr 1 >=>
 
