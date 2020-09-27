@@ -16,6 +16,8 @@ module Facet.Print
 , Print(..)
 , Context(..)
 , TPrint(..)
+, var
+, tvar
 ) where
 
 import           Control.Applicative (Const(..), (<**>))
