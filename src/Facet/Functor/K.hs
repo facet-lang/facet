@@ -1,2 +1,5 @@
 module Facet.Functor.K
-() where
+( K(..)
+) where
+
+newtype K a b = K { getK :: a }
