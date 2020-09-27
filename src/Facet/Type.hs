@@ -75,9 +75,9 @@ instance C.Interpret Type' where
 (n ::: t) >=> b = binder Bound ((:=>) . (::: t)) n b
 
 
-newtype Type e = Abs { inst :: forall r . Type' r }
+newtype Type = Abs { inst :: forall r . Type' r }
 
-instance C.Type (Type e) where
+instance C.Type Type where
   _Type = Abs C._Type
   _Unit = Abs C._Unit
 
@@ -88,10 +88,10 @@ instance C.Type (Type e) where
   l .*  r = Abs $ inst l C..*  inst r
 
 
-hoistType :: (forall x . Type' x -> Type' x) -> Type e -> Type e
+hoistType :: (forall x . Type' x -> Type' x) -> Type -> Type
 hoistType f t = Abs (f (inst t))
 
-traverseTypeMaybe :: (forall x . Type' x -> (Maybe :.: Type') x) -> Type e -> Maybe (Type e)
+traverseTypeMaybe :: (forall x . Type' x -> (Maybe :.: Type') x) -> Type -> Maybe Type
 traverseTypeMaybe f t = case f (inst t) of
   C Nothing  -> Nothing
   C (Just _) -> Just (Abs (fromJust (getC (f (inst t)))))

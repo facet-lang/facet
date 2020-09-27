@@ -32,8 +32,8 @@ parseString' p s = do
 
 -- Elaboration
 
-printElab :: Synth (I (T.Type I) ::: T.Type I) -> IO ()
+printElab :: Synth (I T.Type ::: T.Type) -> IO ()
 printElab = either P.prettyPrint (\ (I tm ::: ty) -> P.prettyPrint (P.runTPrint (C.interpret (T.inst tm)) S.<+> S.colon S.<+> P.runTPrint (C.interpret (T.inst ty)))) . runSynth
 
-thing :: Synth (I (T.Type I) ::: T.Type I)
+thing :: Synth (I T.Type ::: T.Type)
 thing = strengthen (switch (switch _Type --> switch _Type)) >=> \ _ t -> switch (switch (pure t .$ switch _Unit) --> switch (pure t .$ switch _Unit))
