@@ -1,3 +1,4 @@
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 module Facet.Core.Typed
 ( Type(..)
