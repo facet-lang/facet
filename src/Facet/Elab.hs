@@ -109,8 +109,6 @@ unify' t1 t2 = t2 <$ go (inst t1) (inst t2) -- NB: unification cannot (currently
 
 -- Types
 
--- FIXME: differentiate between typed and untyped types?
-
 _Type :: Applicative env => Synth (env Type ::: Type)
 _Type = pure $ CTL._Type ::: CT._Type
 
