@@ -1,5 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
-module Facet.Syntax.Untyped.Lifted
+module Facet.Surface.Lifted
 ( S.Name
 , S.Global(..)
 , S.Expr(unit, (**), ($$))
@@ -22,7 +22,7 @@ module Facet.Syntax.Untyped.Lifted
 
 import           Control.Applicative (liftA2)
 import           Facet.Env (Extends, Permutable, castF, liftBinder, refl, strengthen, (>>>))
-import qualified Facet.Syntax.Untyped as S
+import qualified Facet.Surface as S
 
 lam
   :: (Applicative m, Permutable env, S.Expr repr)

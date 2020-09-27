@@ -10,7 +10,7 @@ module Facet.Parser
 ) where
 
 import           Control.Applicative (Alternative(..), liftA2, (<**>))
-import qualified Facet.Syntax.Untyped.Lifted as S
+import qualified Facet.Surface.Lifted as S
 import           Prelude hiding (lines, null, span)
 import           Text.Parser.Char
 import           Text.Parser.Combinators

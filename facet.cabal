@@ -49,11 +49,11 @@ library
     Facet.Pretty
     Facet.Print
     Facet.Signature
+    Facet.Surface
+    Facet.Surface.Lifted
     Facet.Syntax
     Facet.Syntax.Typed
     Facet.Syntax.Typed.Lifted
-    Facet.Syntax.Untyped
-    Facet.Syntax.Untyped.Lifted
     Facet.Type
   other-modules:
     Facet.GHCI

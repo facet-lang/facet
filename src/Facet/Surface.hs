@@ -1,5 +1,5 @@
 {-# LANGUAGE FunctionalDependencies #-}
-module Facet.Syntax.Untyped
+module Facet.Surface
 ( Name
 , Global(..)
 , Expr(..)

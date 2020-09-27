@@ -27,8 +27,8 @@ import qualified Data.Kind as K
 import qualified Facet.Core as C
 import           Facet.Functor.K
 import           Facet.Pretty
+import qualified Facet.Surface as U
 import qualified Facet.Syntax.Typed as T
-import qualified Facet.Syntax.Untyped as U
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 import           Silkscreen.Printer.Fresh
