@@ -9,8 +9,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Elab
-( synth
-, Elab(..)
+( Elab(..)
 , Check(..)
 , Synth(..)
 , check'
@@ -47,9 +46,6 @@ import qualified Facet.Type.Typed as T
 import           Silkscreen
 
 type Env ty = Map.Map U.Name ty
-
-synth :: Elab ty -> ReaderC (Env ty) Maybe ty
-synth m = runElab m Nothing
 
 newtype Elab ty = Elab { runElab :: Maybe ty -> ReaderC (Env ty) Maybe ty }
 
@@ -132,7 +128,7 @@ instance U.Module (Elab (Type ty)) (Elab (Type ty)) (Elab (Type ty)) (Elab (Type
 
 app :: Elab (Type ty) -> Elab (Type ty) -> Elab (Type ty)
 f `app` a = Elab $ \ _T -> do
-  _F <- synth f
+  _F <- runElab f Nothing
   case _F of
     _A :-> _T' -> do
       _ <- runElab a (Just _A)
