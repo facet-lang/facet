@@ -65,7 +65,7 @@ instance C.Interpret Type' where
       Bound n -> e !! id' n
       Type    -> C._Type
       Unit    -> C._Unit
-      (_ ::: t) :=> b -> go e t C.>=> \ v -> go (v:e) b
+      t :=> b -> go e (ty t) C.>=> \ v -> go (v:e) b
       f :$ a  -> go e f C..$  go e a
       a :-> b -> go e a C.--> go e b
       l :* r  -> go e l C..*  go e r
