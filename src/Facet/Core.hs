@@ -4,31 +4,29 @@ module Facet.Core
 , Interpret(..)
 ) where
 
-import qualified Data.Kind as K
-
 class Type ty where
-  _Type :: ty K.Type
-  _Unit :: ty K.Type
+  _Type :: ty
+  _Unit :: ty
 
   -- | Universal quantification.
-  (>=>) :: ty K.Type -> (ty k1 -> ty k2) -> ty (k1 -> k2)
+  (>=>) :: ty -> (ty -> ty) -> ty
   infixr 1 >=>
-  (.$) :: ty (k1 -> k2) -> ty k1 -> ty k2
+  (.$) :: ty -> ty -> ty
   infixl 9 .$
 
-  (-->) :: ty K.Type -> ty K.Type -> ty K.Type
+  (-->) :: ty -> ty -> ty
   infixr 2 -->
-  (.*) :: ty K.Type -> ty K.Type -> ty K.Type
+  (.*) :: ty -> ty -> ty
   infixl 7 .*
 
   -- FIXME: tupling/unit should take a list of types
 
 
 class Expr expr where
-  lam0 :: (expr a -> expr b) -> expr (a -> b)
-  ($$) :: expr (a -> b) -> expr a -> expr b
+  lam0 :: (expr -> expr) -> expr
+  ($$) :: expr -> expr -> expr
   infixl 9 $$
 
 
 class Interpret f where
-  interpret :: Type ty => f ty a -> ty a
+  interpret :: Type ty => f ty -> ty

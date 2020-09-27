@@ -3,36 +3,36 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
 module Facet.Type
 ( Type(..)
 , Type'(..)
 , hoistType
-, CompL(..)
 , traverseTypeMaybe
 ) where
 
-import qualified Data.Kind as K
 import           Data.Maybe (fromJust)
 import qualified Facet.Core as C
+import           Facet.Functor.C
 import qualified Facet.Print as P
 import           Unsafe.Coerce (unsafeCoerce)
 
-data Type' r k where
-  Var :: r k -> Type' r k
-  Type :: Type' r K.Type
-  Unit :: Type' r K.Type
-  (:=>) :: Type' r K.Type -> (Type' r ka -> Type' r kb) -> Type' r (ka -> kb)
-  (:$) :: Type' r (ka -> kb) -> Type' r ka -> Type' r kb
-  (:->) :: Type' r K.Type -> Type' r K.Type -> Type' r K.Type
-  (:*) :: Type' r K.Type -> Type' r K.Type -> Type' r K.Type
+data Type' r
+  = Var r
+  | Type
+  | Unit
+  | Type' r :=> (Type' r -> Type' r)
+  | Type' r :$  Type' r
+  | Type' r :-> Type' r
+  | Type' r :*  Type' r
 
 infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
 infixl 7 :*
 
-instance Show (Type' (P.TPrint sig) k) where
-  showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . P.runTPrint . C.interpret
+instance Show (Type' P.Print) where
+  showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . C.interpret
 
 instance C.Type (Type' r) where
   _Type = Type
@@ -53,7 +53,7 @@ instance C.Interpret Type' where
     l :* r  -> C.interpret l C..*  C.interpret r
 
 
-newtype Type k = Abs { inst :: forall r . Type' r k }
+newtype Type = Abs { inst :: forall r . Type' r }
 
 instance C.Type Type where
   _Type = Abs C._Type
@@ -66,12 +66,10 @@ instance C.Type Type where
   l .*  r = Abs $ inst l C..*  inst r
 
 
-hoistType :: (forall x . Type' x a -> Type' x a) -> Type a -> Type a
+hoistType :: (forall x . Type' x -> Type' x) -> Type -> Type
 hoistType f t = Abs (f (inst t))
 
-newtype CompL f g r a = CompL { getCompL :: f (g r a) }
-
-traverseTypeMaybe :: (forall x . Type' x a -> CompL Maybe Type' x a) -> Type a -> Maybe (Type a)
+traverseTypeMaybe :: (forall x . Type' x -> (Maybe :.: Type') x) -> Type -> Maybe Type
 traverseTypeMaybe f t = case f (inst t) of
-  CompL Nothing  -> Nothing
-  CompL (Just _) -> Just (Abs (fromJust (getCompL (f (inst t)))))
+  C Nothing  -> Nothing
+  C (Just _) -> Just (Abs (fromJust (getC (f (inst t)))))

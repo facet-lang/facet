@@ -96,8 +96,8 @@ data Context
   deriving (Bounded, Eq, Ord, Show)
 
 newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
-  deriving (U.Expr, FreshPrinter, Functor, Monoid, PrecedencePrinter, Printer, Semigroup, U.Type)
-  deriving (Applicative, C.Type) via K Print
+  deriving (U.Expr, FreshPrinter, Functor, Monoid, PrecedencePrinter, Printer, Semigroup, C.Type, U.Type)
+  deriving (Applicative) via K Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
   (>=>) = coerce ((U.>=>) :: Print -> (Print -> Print) -> Print)
@@ -181,14 +181,14 @@ instance U.Type Print where
   _Unit = pretty "()"
   _Type = pretty "Type"
 
-instance C.Type (K Print) where
+instance C.Type Print where
   (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
   (.$) = coerce app
   _Unit = pretty "()"
   _Type = pretty "Type"
   -- FIXME: combine quantification over type variables of the same kind
-  t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> coerce (ann v' t) <> flatAlt line space))) </> arrow <+> coerce (prec FnR (f (coerce v')))
+  t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> ann v' t <> flatAlt line space))) </> arrow <+> prec FnR (f v')
 
 
 instance U.Module Print Print Print Print where
