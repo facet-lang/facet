@@ -205,7 +205,7 @@ _Type :: Synth (ForAll1 T.Type K.Type ::: ForAll1 T.Type K.Type)
 _Type = pure $ CT._Type ::: CT._Type
 
 _Unit :: Synth (ForAll1 T.Type K.Type ::: ForAll1 T.Type K.Type)
-_Unit = pure $ Abstract1 T.Unit ::: CT._Type
+_Unit = pure $ CT._Unit ::: CT._Type
 
 (.$) :: Synth (ForAll1 T.Type (k1 -> k2) ::: ForAll1 T.Type K.Type) -> Check (ForAll1 T.Type k1) -> Synth (ForAll1 T.Type k2 ::: ForAll1 T.Type K.Type)
 f .$ a = do
