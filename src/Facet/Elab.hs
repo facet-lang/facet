@@ -202,33 +202,33 @@ unify' t1 t2 = t2 <$ go 0 (instantiate1 t1) (instantiate1 t2) -- NB: unification
 -- FIXME: differentiate between typed and untyped types?
 
 _Type :: Synth (ForAll1 T.Type K.Type ::: ForAll1 T.Type K.Type)
-_Type = pure $ Abstract1 T.Type ::: Abstract1 T.Type
+_Type = pure $ CT._Type ::: CT._Type
 
 _Unit :: Synth (ForAll1 T.Type K.Type ::: ForAll1 T.Type K.Type)
-_Unit = pure $ Abstract1 T.Unit ::: Abstract1 T.Type
+_Unit = pure $ Abstract1 T.Unit ::: CT._Type
 
 (.$) :: Synth (ForAll1 T.Type (k1 -> k2) ::: ForAll1 T.Type K.Type) -> Check (ForAll1 T.Type k1) -> Synth (ForAll1 T.Type k2 ::: ForAll1 T.Type K.Type)
 f .$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
   a' <- check' a _A
-  pure $ Abstract1 (instantiate1 f' T.:$ instantiate1 a') ::: Abstract1 T.Type
+  pure $ Abstract1 (instantiate1 f' T.:$ instantiate1 a') ::: CT._Type
 
 infixl 9 .$
 
 (.*) :: Check (ForAll1 T.Type K.Type) -> Check (ForAll1 T.Type K.Type) -> Synth (ForAll1 T.Type K.Type ::: ForAll1 T.Type K.Type)
 a .* b = do
-  a' <- check' a (Abstract1 T.Type)
-  b' <- check' b (Abstract1 T.Type)
-  pure $ Abstract1 (instantiate1 a' T.:* instantiate1 b') ::: Abstract1 T.Type
+  a' <- check' a (CT._Type)
+  b' <- check' b (CT._Type)
+  pure $ Abstract1 (instantiate1 a' T.:* instantiate1 b') ::: CT._Type
 
 infixl 7 .*
 
 (-->) :: Check (ForAll1 T.Type K.Type) -> Check (ForAll1 T.Type K.Type) -> Synth (ForAll1 T.Type K.Type ::: ForAll1 T.Type K.Type)
 a --> b = do
-  a' <- check' a (Abstract1 T.Type)
-  b' <- check' b (Abstract1 T.Type)
-  pure $ Abstract1 (instantiate1 a' T.:-> instantiate1 b') ::: Abstract1 T.Type
+  a' <- check' a CT._Type
+  b' <- check' b CT._Type
+  pure $ Abstract1 (instantiate1 a' T.:-> instantiate1 b') ::: CT._Type
 
 infixr 2 -->
 
@@ -238,9 +238,9 @@ infixr 2 -->
   -> (forall env' . Permutable env' => Extends env env' -> env' (ForAll1 T.Type k1 ::: ForAll1 T.Type K.Type) -> Check (env' (ForAll1 T.Type k2)))
   -> Synth (env (ForAll1 T.Type (k1 -> k2) ::: ForAll1 T.Type K.Type))
 t >=> b = do
-  t' <- check' t (Abstract1 T.Type)
+  t' <- check' t (CT._Type)
   x <- pure t' CT.>=> \ env v -> check' (b env ((:::) <$> v <*> cast env t')) CT._Type
-  pure $ x .: Abstract1 T.Type
+  pure $ x .: CT._Type
 
 infixr 1 >=>
 
