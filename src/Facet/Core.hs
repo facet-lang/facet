@@ -10,8 +10,6 @@ module Facet.Core
 ) where
 
 import qualified Data.Kind as K
-import           Facet.Syntax.Common
-import           Unsafe.Coerce (unsafeCoerce)
 
 class Type ty where
   _Type :: ty K.Type
@@ -29,16 +27,6 @@ class Type ty where
   infixl 7 .*
 
   -- FIXME: tupling/unit should take a list of types
-
-instance (forall r . Type (f r)) => Type (ForAll1 f) where
-  _Type = Abstract1 _Type
-  _Unit = Abstract1 _Unit
-
-  t >=> b = Abstract1 $ instantiate1 t >=> instantiate1 . b . unsafeCoerce -- I *think* this is justified by the dual parametricity in ForAll1 and again in the quantified constraint. r cannot affect the operation of >=>, so we can safely coerce the argument to its universal quantification
-  f .$  a = Abstract1 $ instantiate1 f .$  instantiate1 a
-
-  a --> b = Abstract1 $ instantiate1 a --> instantiate1 b
-  l .*  r = Abstract1 $ instantiate1 l .*  instantiate1 r
 
 
 class Expr expr where
