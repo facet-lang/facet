@@ -8,6 +8,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
 ( Elab(..)
 , Check(..)
@@ -45,7 +46,7 @@ import           Silkscreen
 
 newtype Elab a = Elab { elab :: a }
 
-instance S.ForAll a a => S.ForAll (Elab a) (Elab a) where
+instance S.ForAll a b => S.ForAll (Elab a) (Elab b) where
   t >=> b = Elab $ elab t S.>=> elab . b . Elab
 
 instance S.Expr a => S.Expr (Elab a) where
