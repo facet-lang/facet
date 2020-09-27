@@ -12,7 +12,6 @@ module Facet.Surface.Lifted
 , (>->)
   -- * Re-exports
 , Extends
-, Permutable
 , (>>>)
 , castF
 , refl
@@ -20,35 +19,35 @@ module Facet.Surface.Lifted
 ) where
 
 import           Control.Applicative (liftA2)
-import           Facet.Env (Extends, Permutable, castF, liftBinder, refl, strengthen, (>>>))
+import           Facet.Env (Extends, castF, liftBinder, refl, strengthen, (>>>))
 import qualified Facet.Surface as S
 
 lam
-  :: (Applicative m, Permutable env, S.Expr repr)
-  => (forall env' . Permutable env' => Extends env env' -> env' (Either repr (repr, repr -> repr)) -> m (env' repr))
+  :: (Applicative m, Applicative env, S.Expr repr)
+  => (forall env' . Applicative env' => Extends env env' -> env' (Either repr (repr, repr -> repr)) -> m (env' repr))
   -> m (env repr)
 lam f = fmap S.lam <$> liftBinder f
 
 lam0
-  :: (Applicative m, Permutable env, S.Expr repr)
-  => (forall env' . Permutable env' => Extends env env' -> env' repr -> m (env' repr))
+  :: (Applicative m, Applicative env, S.Expr repr)
+  => (forall env' . Applicative env' => Extends env env' -> env' repr -> m (env' repr))
   -> m (env repr)
 lam0 f = fmap S.lam0 <$> liftBinder f
 
 
 (>=>)
-  :: (Applicative m, Permutable env, S.ForAll ty decl)
+  :: (Applicative m, Applicative env, S.ForAll ty decl)
   => m (env ty)
-  -> (forall env' . Permutable env' => Extends env env' -> env' ty -> m (env' decl))
+  -> (forall env' . Applicative env' => Extends env env' -> env' ty -> m (env' decl))
   -> m (env decl)
 t >=> b = liftA2 (S.>=>) <$> t <*> liftBinder b
 
 infixr 1 >=>
 
 (>->)
-  :: (Applicative m, Permutable env, S.Decl expr ty decl)
+  :: (Applicative m, Applicative env, S.Decl expr ty decl)
   => m (env ty)
-  -> (forall env' . Permutable env' => Extends env env' -> env' expr -> m (env' decl))
+  -> (forall env' . Applicative env' => Extends env env' -> env' expr -> m (env' decl))
   -> m (env decl)
 t >-> b = liftA2 (S.>->) <$> t <*> liftBinder b
 

@@ -14,7 +14,6 @@ module Facet.Core.Lifted
 , lam0
   -- * Re-exports
 , Extends(..)
-, Permutable
 , (>>>)
 , castF
 , refl
@@ -36,9 +35,9 @@ _Unit = pure C._Unit
 
 
 (>=>)
-  :: (C.Type ty, Applicative m, Permutable env)
+  :: (C.Type ty, Applicative m, Applicative env)
   => m (env ty)
-  -> (forall env' . Permutable env' => Extends env env' -> env' ty -> m (env' ty))
+  -> (forall env' . Applicative env' => Extends env env' -> env' ty -> m (env' ty))
   -> m (env ty)
 t >=> b = liftA2 (C.>=>) <$> t <*> liftBinder b
 
@@ -64,7 +63,7 @@ infixl 7 .*
 -- Expressions
 
 lam0
-  :: (Applicative m, Permutable env, C.Expr expr)
-  => (forall env' . Permutable env' => Extends env env' -> env' expr -> m (env' expr))
+  :: (Applicative m, Applicative env, C.Expr expr)
+  => (forall env' . Applicative env' => Extends env env' -> env' expr -> m (env' expr))
   -> m (env expr)
 lam0 f = fmap C.lam0 <$> liftBinder f
