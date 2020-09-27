@@ -212,7 +212,7 @@ f .$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
   a' <- check' a _A
-  pure $ Abstract1 (instantiate1 f' T.:$ instantiate1 a') ::: CT._Type
+  pure $ f' CT..$ a' ::: CT._Type
 
 infixl 9 .$
 
@@ -220,7 +220,7 @@ infixl 9 .$
 a .* b = do
   a' <- check' a (CT._Type)
   b' <- check' b (CT._Type)
-  pure $ Abstract1 (instantiate1 a' T.:* instantiate1 b') ::: CT._Type
+  pure $ a' CT..* b' ::: CT._Type
 
 infixl 7 .*
 
@@ -228,7 +228,7 @@ infixl 7 .*
 a --> b = do
   a' <- check' a CT._Type
   b' <- check' b CT._Type
-  pure $ Abstract1 (instantiate1 a' T.:-> instantiate1 b') ::: CT._Type
+  pure $ (a' CT.--> b') ::: CT._Type
 
 infixr 2 -->
 
