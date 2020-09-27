@@ -26,6 +26,7 @@ import           Data.Coerce
 import qualified Data.Kind as K
 import           Facet.Pretty
 import qualified Facet.Core as C
+import qualified Facet.Core.Typed as CT
 import qualified Facet.Syntax.Typed as T
 import qualified Facet.Syntax.Untyped as U
 import qualified Prettyprinter as PP
@@ -127,6 +128,17 @@ instance T.Expr TPrint where
   alg _ = TPrint $ pretty "TBD"
 
   weakenBy _ = coerce
+
+instance CT.Type (TPrint sig) where
+  _Type = pretty "Type"
+  _Unit = pretty "()"
+
+  (>=>) = coerce ((U.>=>) :: Print -> (Print -> Print) -> Print)
+  (.$) = coerce app
+
+  (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
+  l .* r = parens $ l <> comma <+> r
+
 
 cases :: [Print -> (Print, Print)] -> Print
 cases cs = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
