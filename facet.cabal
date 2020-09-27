@@ -46,6 +46,7 @@ library
     Facet.Eval
     Facet.Functor.C
     Facet.Functor.I
+    Facet.Functor.K
     Facet.Parser
     Facet.Pretty
     Facet.Print
