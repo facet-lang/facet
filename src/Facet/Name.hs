@@ -22,8 +22,8 @@ instance Show Name where
 instance Pretty Name where
   pretty n = pretty (name n) <> pretty (id' n)
 
-prime :: Name -> Name
-prime n = n{ id' = id' n + 1 }
+prime :: Text -> Int -> Name
+prime n i = Name n (i + 1)
 
 
 class Scoped t where
