@@ -1,2 +1,5 @@
 module Facet.Name
-() where
+( Name(..)
+) where
+
+data Name = Name { name :: String, id' :: Int }
