@@ -1,7 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 module Facet.Core.Typed.Lifted
-( C.Type(_Type, _Unit, (.$))
+( C.Type(_Type, _Unit)
 , (>=>)
+, (.$)
 , (-->)
 , (.*)
 ) where
@@ -19,6 +20,12 @@ import           Facet.Env
 t >=> b = liftA2 (C.>=>) <$> t <*> liftBinder b
 
 infixr 1 >=>
+
+
+(.$) :: (C.Type ty, Applicative env) => env (ty (k1 -> k2)) -> env (ty k1) -> env (ty k2)
+(.$) = liftA2 (C..$)
+
+infixl 9 .$
 
 
 (-->) :: (C.Type ty, Applicative env) => env (ty K.Type) -> env (ty K.Type) -> env (ty K.Type)

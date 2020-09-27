@@ -195,7 +195,7 @@ _Type = pure $ CT._Type ::: CT._Type
 _Unit :: Synth (ForAll1 T.Type K.Type ::: ForAll1 T.Type K.Type)
 _Unit = pure $ CT._Unit ::: CT._Type
 
-(.$) :: Synth (ForAll1 T.Type (k1 -> k2) ::: ForAll1 T.Type K.Type) -> Check (ForAll1 T.Type k1) -> Synth (ForAll1 T.Type k2 ::: ForAll1 T.Type K.Type)
+(.$) :: Applicative env => Synth (env (ForAll1 T.Type (k1 -> k2)) ::: ForAll1 T.Type K.Type) -> Check (env (ForAll1 T.Type k1)) -> Synth (env (ForAll1 T.Type k2) ::: ForAll1 T.Type K.Type)
 f .$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
