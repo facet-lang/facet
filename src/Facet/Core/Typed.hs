@@ -1,5 +1,6 @@
 module Facet.Core.Typed
 ( Type(..)
+, Interpret(..)
 ) where
 
 import qualified Data.Kind as K
@@ -19,3 +20,7 @@ class Type ty where
   (.*) :: ty K.Type -> ty K.Type -> ty K.Type
   infixl 7 .*
   -- FIXME: tupling/unit should take a list of types
+
+
+class Interpret f where
+  interpret :: Type ty => f ty a -> ty a
