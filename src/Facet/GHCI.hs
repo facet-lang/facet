@@ -1,0 +1,2 @@
+module Facet.GHCI
+() where

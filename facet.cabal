@@ -58,6 +58,7 @@ library
     Facet.Type
     Facet.Type.Typed
   other-modules:
+    Facet.GHCI
     Facet.Syntax.Examples
   build-depends:
     , base ^>= 4.14
