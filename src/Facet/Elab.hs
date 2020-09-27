@@ -14,7 +14,6 @@ module Facet.Elab
 , Elab(..)
 , Check(..)
 , Synth(..)
-, elab
 , check'
 , checking
 , switch
@@ -164,9 +163,6 @@ newtype Synth a = Synth { runSynth :: Either Print a }
 
 instance MonadFail Synth where
   fail = throwError @Print . pretty
-
-elab :: Synth a -> Either Print a
-elab = runSynth
 
 check' :: Check a -> ForAll1 T.Type K.Type -> Synth a
 check' = runCheck
