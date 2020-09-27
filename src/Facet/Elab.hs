@@ -221,14 +221,13 @@ a --> b = do
 infixr 2 -->
 
 (>=>)
-  :: Permutable env
-  => Check (ForAll1 T.Type K.Type)
-  -> (forall env' . Permutable env' => Extends env env' -> (env' (ForAll1 T.Type k1) ::: ForAll1 T.Type K.Type) -> Check (env' (ForAll1 T.Type k2)))
-  -> Synth (env (ForAll1 T.Type (k1 -> k2) ::: ForAll1 T.Type K.Type))
+  :: Check (ForAll1 T.Type K.Type)
+  -> (forall env . Permutable env => (env (ForAll1 T.Type k1) ::: ForAll1 T.Type K.Type) -> Check (env (ForAll1 T.Type k2)))
+  -> Synth (ForAll1 T.Type (k1 -> k2) ::: ForAll1 T.Type K.Type)
 t >=> b = do
   t' <- check' t (CT._Type)
-  x <- pure (pure t') CT.>=> \ env v -> check' (b env (v ::: t')) CT._Type
-  pure $ x .: CT._Type
+  x <- strengthen $ pure (pure t') CT.>=> \ _ v -> check' (b (v ::: t')) CT._Type
+  pure $ x ::: CT._Type
 
 infixr 1 >=>
 
