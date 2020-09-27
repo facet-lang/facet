@@ -212,7 +212,7 @@ a .* b = do
 
 infixl 7 .*
 
-(-->) :: Check (ForAll1 T.Type K.Type) -> Check (ForAll1 T.Type K.Type) -> Synth (ForAll1 T.Type K.Type ::: ForAll1 T.Type K.Type)
+(-->) :: Applicative env => Check (env (ForAll1 T.Type K.Type)) -> Check (env (ForAll1 T.Type K.Type)) -> Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
 a --> b = do
   a' <- check' a CT._Type
   b' <- check' b CT._Type
