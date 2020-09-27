@@ -206,12 +206,12 @@ _Type = pure $ Abstract T.Type ::: Abstract T.Type
 _Unit :: Synth (ForAll (T.Type K.Type) ::: ForAll (T.Type K.Type))
 _Unit = pure $ Abstract T.Unit ::: Abstract T.Type
 
-(.$) :: Synth (T.Type (k1 -> k2) r ::: ForAll (T.Type K.Type)) -> Check (T.Type k1 r) -> Synth (T.Type k2 r ::: T.Type K.Type r)
+(.$) :: Synth (ForAll (T.Type (k1 -> k2)) ::: ForAll (T.Type K.Type)) -> Check (ForAll (T.Type k1)) -> Synth (ForAll (T.Type k2) ::: ForAll (T.Type K.Type))
 f .$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
   a' <- check' a _A
-  pure $ f' T.:$ a' ::: T.Type
+  pure $ Abstract (instantiate f' T.:$ instantiate a') ::: Abstract T.Type
 
 infixl 9 .$
 
