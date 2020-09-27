@@ -9,8 +9,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Elab
-( check
-, synth
+( synth
 , Elab(..)
 , Check(..)
 , Synth(..)
@@ -49,9 +48,6 @@ import           Silkscreen
 
 type Env ty = Map.Map U.Name ty
 
-check :: Elab ty -> ty -> ReaderC (Env ty) Maybe ty
-check m = runElab m . Just
-
 synth :: Elab ty -> ReaderC (Env ty) Maybe ty
 synth m = runElab m Nothing
 
@@ -62,21 +58,21 @@ instance U.Global (Elab (Type ty)) where
 
 instance U.ForAll (Elab (Type ty)) (Elab (Type ty)) where
   _A >=> _B = Elab $ \ _T -> do
-    _ <- check _A Type
+    _ <- runElab _A (Just Type)
     -- FIXME: this should make a fresh type variable and apply _B to that
     -- FIXME: Type should support type variables I guess
-    _ <- check (_B (Elab (const empty))) Type
+    _ <- runElab (_B (Elab (const empty))) (Just Type)
     unify _T Type
 
 instance U.Type (Elab (Type ty)) where
   _A --> _B = Elab $ \ _T -> do
-    _ <- check _A Type
-    _ <- check _B Type
+    _ <- runElab _A (Just Type)
+    _ <- runElab _B (Just Type)
     unify _T Type
 
   _L .* _R = Elab $ \ _T -> do
-    _ <- check _L Type
-    _ <- check _R Type
+    _ <- runElab _L (Just Type)
+    _ <- runElab _R (Just Type)
     unify _T Type
 
   (.$) = app
@@ -91,7 +87,7 @@ instance U.Expr (Elab (Type ty)) where
       -- FIXME: this should make a fresh type variable of type _A and apply f to that
       -- FIXME: this should extend the local environment
       let b = f (Elab (const empty))
-      _ <- check b _B
+      _ <- runElab b (Just _B)
       pure (_A :-> _B)
     _ -> empty
   lam f = Elab $ \case
@@ -100,7 +96,7 @@ instance U.Expr (Elab (Type ty)) where
       -- FIXME: lam should take a list of clauses, and we should check each one in turn
       -- FIXME: this should extend the local environment
       let b = f (Left (Elab (const empty)))
-      _ <- check b _B
+      _ <- runElab b (Just _B)
       pure (_A :-> _B)
     _ -> empty
   ($$) = app
@@ -108,30 +104,30 @@ instance U.Expr (Elab (Type ty)) where
   unit = Elab (`unify` Unit)
   l ** r = Elab $ \case
     Just (_L :* _R) -> do
-      _ <- check l _L
-      _ <- check r _R
+      _ <- runElab l (Just _L)
+      _ <- runElab r (Just _R)
       pure (_L :* _R)
     _ -> empty
 
 -- FIXME: specialize this to Elab Decl?
 instance U.Decl (Elab (Type ty)) (Elab (Type ty)) (Elab (Type ty)) where
   ty .= v = Elab $ \ _T -> do
-    _Ty <- check ty Type
+    _Ty <- runElab ty (Just Type)
     -- FIXME: extend the environment while checking v (for recursive functions)?
-    _ <- check v _Ty
+    _ <- runElab v (Just _Ty)
     unify _T Type -- FIXME: what should the type of declarations be?
 
   _A >-> _B = Elab $ \ _T -> do
-    _ <- check _A Type
+    _ <- runElab _A (Just Type)
     -- FIXME: this should make a fresh type variable and apply _B to that
     -- FIXME: Type should support type variables I guess
-    _ <- check (_B (Elab (const empty))) Type
+    _ <- runElab (_B (Elab (const empty))) (Just Type)
     unify _T Type
 
 -- FIXME: specialize this to Elab Module?
 instance U.Module (Elab (Type ty)) (Elab (Type ty)) (Elab (Type ty)) (Elab (Type ty)) where
   _ .: decl = Elab $ \ _T -> do
-    _ <- check decl Type -- FIXME: what should the type of declarations be?
+    _ <- runElab decl (Just Type) -- FIXME: what should the type of declarations be?
     unify _T Type -- FIXME: what should the type of modules be?
 
 app :: Elab (Type ty) -> Elab (Type ty) -> Elab (Type ty)
@@ -139,7 +135,7 @@ f `app` a = Elab $ \ _T -> do
   _F <- synth f
   case _F of
     _A :-> _T' -> do
-      _ <- check a _A
+      _ <- runElab a (Just _A)
       unify _T _T'
     _ -> empty
 
