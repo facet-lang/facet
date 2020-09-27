@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Syntax
 ( (:::)(..)
+, ty
 , (.:)
 ) where
 
@@ -13,6 +14,9 @@ infix 5 :::
 
 instance (Scoped a, Scoped b) => Scoped (a ::: b) where
   maxBV (a ::: b) = maxBV a `max` maxBV b
+
+ty :: a ::: b -> b
+ty (_ ::: b) = b
 
 
 (.:) :: Functor m => m a -> b -> m (a ::: b)
