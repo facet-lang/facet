@@ -96,7 +96,7 @@ data Context
   deriving (Bounded, Eq, Ord, Show)
 
 newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
-  deriving (U.Expr, FreshPrinter, Functor, U.Global, Monoid, PrecedencePrinter, Printer, Semigroup, U.Type)
+  deriving (U.Expr, FreshPrinter, Functor, Monoid, PrecedencePrinter, Printer, Semigroup, U.Type)
   deriving (Applicative, C.Type) via K Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
@@ -156,12 +156,9 @@ toAlpha alphabet i = alphabet !! r : if q > 0 then show q else ""
   n = length alphabet
   (q, r) = i `divMod` n
 
-
-instance U.Global Print where
+instance U.Expr Print where
   -- FIXME: don’t shadow globals with locally-bound variables
   global = pretty
-
-instance U.Expr Print where
   -- FIXME: Preserve variable names from user code where possible
   -- FIXME: Use _ in binding positions for unused variables
   lam0 f = cases [\ var -> (var, f var)]
@@ -176,6 +173,8 @@ instance U.ForAll Print Print where
   t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> ann v' t <> flatAlt line space))) </> arrow <+> prec FnR (f v')
 
 instance U.Type Print where
+    -- FIXME: don’t shadow globals with locally-bound variables
+  tglobal = pretty
   (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
   (.$) = app

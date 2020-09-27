@@ -1,7 +1,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Surface
 ( Name
-, Global(..)
 , Expr(..)
 , TName
 , Type(..)
@@ -13,10 +12,9 @@ module Facet.Surface
 
 type Name = String
 
-class Global expr where
+class Expr expr where
   global :: Name -> expr
 
-class Global expr => Expr expr where
   lam0 :: (expr -> expr) -> expr
   lam :: (Either expr (expr, expr -> expr) -> expr) -> expr
   ($$) :: expr -> expr -> expr
@@ -36,7 +34,9 @@ class ForAll ty decl | decl -> ty where
 
 type TName = String
 
-class (Global ty, ForAll ty ty) => Type ty where
+class (ForAll ty ty) => Type ty where
+  tglobal :: Name -> ty
+
   (-->) :: ty -> ty -> ty
   infixr 2 -->
 

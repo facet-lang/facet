@@ -1,9 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 module Facet.Surface.Lifted
 ( S.Name
-, S.Global(..)
-, S.Expr(unit, (**), ($$))
-, S.Type(_Type, _Unit, (-->), (.*), (.$))
+, S.Expr(global, unit, (**), ($$))
+, S.Type(tglobal, _Type, _Unit, (-->), (.*), (.$))
 , S.Module(..)
 , S.Decl((.=))
 , S.ForAll
