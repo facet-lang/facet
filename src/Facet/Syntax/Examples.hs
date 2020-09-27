@@ -4,10 +4,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Facet.Syntax.Examples
-( -- * Parsing
-  parseString'
-  -- * Examples
-, prelude
+( -- * Examples
+  prelude
 , id'
 , const'
 , flip'
@@ -26,20 +24,7 @@ module Facet.Syntax.Examples
 , Empty(..)
 ) where
 
-import           Control.Carrier.Parser.Church
-import           Control.Carrier.Throw.Either
-import           Control.Effect.Parser.Notice
-import           Control.Effect.Parser.Span
-import           Control.Monad.IO.Class (MonadIO(..))
-import qualified Facet.Pretty as P
-import           Facet.Print
-import           Facet.Syntax.Typed
-
-parseString' :: (Algebra sig m, MonadIO m) => ParserC (ThrowC Notice m) Print -> String -> m ()
-parseString' p s = do
-  r <- runThrow (runParserWithString (Pos 0 0) s p)
-  either (P.putDoc . prettyNotice) prettyPrint r
-
+import Facet.Syntax.Typed
 
 prelude :: Module expr ty decl mod => mod ()
 prelude = do
