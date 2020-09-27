@@ -2,9 +2,10 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Functor.C
 ( (:.:)(..)
@@ -18,7 +19,9 @@ import Data.Coerce (coerce)
 import Data.Distributive
 
 newtype (f :.: g) a = C { getC :: f (g a) }
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+  deriving (Eq, Foldable, Functor, Ord, Show)
+
+deriving instance (Traversable f, Traversable g) => Traversable (f :.: g)
 
 infixr 7 :.:
 
