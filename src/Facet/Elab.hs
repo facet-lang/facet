@@ -12,7 +12,7 @@ module Facet.Elab
 ( Elab(..)
 , Check(..)
 , Synth(..)
-, check'
+, check
 , checking
 , switch
 , unify'
@@ -157,8 +157,8 @@ newtype Synth a = Synth { runSynth :: Either Print a }
 instance MonadFail Synth where
   fail = throwError @Print . pretty
 
-check' :: Check a -> ForAll1 T.Type K.Type -> Synth a
-check' = runCheck
+check :: Check a -> ForAll1 T.Type K.Type -> Synth a
+check = runCheck
 
 checking :: (ForAll1 T.Type K.Type -> Synth a) -> Check a
 checking = Check
@@ -200,23 +200,23 @@ _Unit = pure $ CTL._Unit ::: CT._Type
 f .$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
-  a' <- check' a _A
+  a' <- check a _A
   pure $ f' CTL..$ a' ::: CT._Type
 
 infixl 9 .$
 
 (.*) :: Applicative env => Check (env (ForAll1 T.Type K.Type)) -> Check (env (ForAll1 T.Type K.Type)) -> Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
 a .* b = do
-  a' <- check' a CT._Type
-  b' <- check' b CT._Type
+  a' <- check a CT._Type
+  b' <- check b CT._Type
   pure $ a' CTL..* b' ::: CT._Type
 
 infixl 7 .*
 
 (-->) :: Applicative env => Check (env (ForAll1 T.Type K.Type)) -> Check (env (ForAll1 T.Type K.Type)) -> Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
 a --> b = do
-  a' <- check' a CT._Type
-  b' <- check' b CT._Type
+  a' <- check a CT._Type
+  b' <- check b CT._Type
   pure $ (a' CTL.--> b') ::: CT._Type
 
 infixr 2 -->
@@ -227,8 +227,8 @@ infixr 2 -->
   -> (forall env' . Permutable env' => Extends env env' -> (env' (ForAll1 T.Type k1) ::: ForAll1 T.Type K.Type) -> Check (env' (ForAll1 T.Type k2)))
   -> Synth (env (ForAll1 T.Type (k1 -> k2) ::: ForAll1 T.Type K.Type))
 t >=> b = do
-  t' <- check' t CT._Type
-  x <- pure (pure t') CTL.>=> \ env v -> check' (b env (v ::: t')) CT._Type
+  t' <- check t CT._Type
+  x <- pure (pure t') CTL.>=> \ env v -> check (b env (v ::: t')) CT._Type
   pure $ x .: CT._Type
 
 infixr 1 >=>
@@ -253,12 +253,12 @@ cod = sequenceForAll1Maybe . hoistForAll1 (\case
 f $$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
-  a' <- check' a _A
+  a' <- check a _A
   pure $ f' C.$$ a' ::: _B
 
 lam0 :: (C.Expr expr, C.Permutable env) => (forall env' . C.Permutable env => C.Extends env env' -> env' (expr a ::: ForAll1 T.Type K.Type) -> Check (env' (expr b))) -> Check (env (expr (a -> b)))
 lam0 f = checking $ \ t -> case asFn t of
-  Just (_A, _B) -> C.lam0 $ \ env v -> check' (f env (v .: _A)) _B
+  Just (_A, _B) -> C.lam0 $ \ env v -> check (f env (v .: _A)) _B
   _             -> fail "expected function type in lambda"
 
 -- FIXME: internalize scope into Type & Expr?
