@@ -215,11 +215,11 @@ f .$ a = do
 
 infixl 9 .$
 
-(.*) :: Check (Type r) -> Check (Type r) -> Synth (Type r ::: Type r)
+(.*) :: Check (ForAll (T.Type K.Type)) -> Check (ForAll (T.Type K.Type)) -> Synth (ForAll (T.Type K.Type) ::: ForAll (T.Type K.Type))
 a .* b = do
   a' <- check' a (Abstract T.Type)
   b' <- check' b (Abstract T.Type)
-  pure $ a' :* b' ::: Type
+  pure $ Abstract (instantiate a' T.:* instantiate b') ::: Abstract T.Type
 
 infixl 7 .*
 
