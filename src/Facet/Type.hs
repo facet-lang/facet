@@ -71,10 +71,7 @@ instance C.Interpret Type' where
       l :* r  -> go e l C..*  go e r
 
 (>=>) :: (Text ::: Type' r) -> (Type' r -> Type' r) -> Type' r
-(n ::: t) >=> b = (n' ::: t) :=> b'
-  where
-  b' = b (Bound n')
-  n' = Name n (maxBV b')
+(n ::: t) >=> b = binder Bound ((:=>) . (::: t)) n b
 
 
 newtype Type = Abs { inst :: forall r . Type' r }

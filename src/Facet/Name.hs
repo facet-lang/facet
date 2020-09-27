@@ -2,6 +2,7 @@ module Facet.Name
 ( Name(..)
 , prime
 , Scoped(..)
+, binder
 ) where
 
 import Data.Function (on)
@@ -31,3 +32,15 @@ class Scoped t where
 
 instance Scoped Name where
   maxBV = id'
+
+binder
+  :: Scoped t
+  => (Name -> t)
+  -> (Name -> t -> r)
+  -> Text
+  -> (t -> t)
+  -> r
+binder bound ctor n e = ctor n' b'
+  where
+  b' = e (bound n')
+  n' = prime n (maxBV b')
