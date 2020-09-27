@@ -39,13 +39,13 @@ import qualified Facet.Core.Typed.Lifted as CTL
 import           Facet.Env
 import           Facet.Print (Print, TPrint(..), tvar)
 import           Facet.Syntax.Common
-import qualified Facet.Type as T
+import           Facet.Type
 import           Silkscreen
 
 newtype Elab a = Elab { elab :: a }
 
-newtype Check a = Check { runCheck :: ForAll1 T.Type K.Type -> Synth a }
-  deriving (Algebra (Reader (ForAll1 T.Type K.Type) :+: Error Print), Applicative, Functor, Monad) via ReaderC (ForAll1 T.Type K.Type) Synth
+newtype Check a = Check { runCheck :: ForAll1 Type K.Type -> Synth a }
+  deriving (Algebra (Reader (ForAll1 Type K.Type) :+: Error Print), Applicative, Functor, Monad) via ReaderC (ForAll1 Type K.Type) Synth
 
 newtype Synth a = Synth { runSynth :: Either Print a }
   deriving (Algebra (Error Print), Applicative, Functor, Monad)
@@ -53,28 +53,28 @@ newtype Synth a = Synth { runSynth :: Either Print a }
 instance MonadFail Synth where
   fail = throwError @Print . pretty
 
-check :: Check a -> ForAll1 T.Type K.Type -> Synth a
+check :: Check a -> ForAll1 Type K.Type -> Synth a
 check = runCheck
 
-checking :: (ForAll1 T.Type K.Type -> Synth a) -> Check a
+checking :: (ForAll1 Type K.Type -> Synth a) -> Check a
 checking = Check
 
-switch :: Synth (a ::: ForAll1 T.Type K.Type) -> Check a
+switch :: Synth (a ::: ForAll1 Type K.Type) -> Check a
 switch s = Check $ \ _T -> do
   a ::: _T' <- s
   a <$ unify' _T _T'
 
-unify' :: ForAll1 T.Type K.Type -> ForAll1 T.Type K.Type -> Synth (ForAll1 T.Type K.Type)
+unify' :: ForAll1 Type K.Type -> ForAll1 Type K.Type -> Synth (ForAll1 Type K.Type)
 unify' t1 t2 = t2 <$ go 0 (instantiate1 t1) (instantiate1 t2) -- NB: unification cannot (currently) result in information increase, so it always suffices to take (arbitrarily) the second operand as the result. Failures escape by throwing an exception, so this will not affect failed results.
   where
-  go :: Int -> T.Type (TPrint sig) k1 -> T.Type (TPrint sig) k2 -> Synth ()
+  go :: Int -> Type (TPrint sig) k1 -> Type (TPrint sig) k2 -> Synth ()
   go n = curry $ \case
-    (T.Type,      T.Type)      -> pure ()
-    (T.Unit,      T.Unit)      -> pure ()
-    (l1 T.:* r1,  l2 T.:* r2)  -> go n l1 l2 *> go n r1 r2
-    (f1 T.:$ a1,  f2 T.:$ a2)  -> go n f1 f2 *> go n a1 a2
-    (a1 T.:-> b1, a2 T.:-> b2) -> go n a1 a2 *> go n b1 b2
-    (t1 T.:=> b1, t2 T.:=> b2) -> go n t1 t2 *> go (n + 1) (b1 (T.Var (TPrint (tvar n)))) (b2 (T.Var (TPrint (tvar n))))
+    (Type,      Type)      -> pure ()
+    (Unit,      Unit)      -> pure ()
+    (l1 :* r1,  l2 :* r2)  -> go n l1 l2 *> go n r1 r2
+    (f1 :$ a1,  f2 :$ a2)  -> go n f1 f2 *> go n a1 a2
+    (a1 :-> b1, a2 :-> b2) -> go n a1 a2 *> go n b1 b2
+    (t1 :=> b1, t2 :=> b2) -> go n t1 t2 *> go (n + 1) (b1 (Var (TPrint (tvar n)))) (b2 (Var (TPrint (tvar n))))
     -- FIXME: build and display a diff of the root types
     -- FIXME: indicate the point in the source which led to this
     -- FIXME: what do we do about the Var case? can we unify only closed types? (presumably not because (:=>) contains an open type which it closes, so we will need to operate under them sometimes.) Eq would work but it’s a tall order.
@@ -86,13 +86,13 @@ unify' t1 t2 = t2 <$ go 0 (instantiate1 t1) (instantiate1 t2) -- NB: unification
 
 -- FIXME: differentiate between typed and untyped types?
 
-_Type :: Applicative env => Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
+_Type :: Applicative env => Synth (env (ForAll1 Type K.Type) ::: ForAll1 Type K.Type)
 _Type = pure $ CTL._Type ::: CT._Type
 
-_Unit :: Applicative env => Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
+_Unit :: Applicative env => Synth (env (ForAll1 Type K.Type) ::: ForAll1 Type K.Type)
 _Unit = pure $ CTL._Unit ::: CT._Type
 
-(.$) :: Applicative env => Synth (env (ForAll1 T.Type (k1 -> k2)) ::: ForAll1 T.Type K.Type) -> Check (env (ForAll1 T.Type k1)) -> Synth (env (ForAll1 T.Type k2) ::: ForAll1 T.Type K.Type)
+(.$) :: Applicative env => Synth (env (ForAll1 Type (k1 -> k2)) ::: ForAll1 Type K.Type) -> Check (env (ForAll1 Type k1)) -> Synth (env (ForAll1 Type k2) ::: ForAll1 Type K.Type)
 f .$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
@@ -101,7 +101,7 @@ f .$ a = do
 
 infixl 9 .$
 
-(.*) :: Applicative env => Check (env (ForAll1 T.Type K.Type)) -> Check (env (ForAll1 T.Type K.Type)) -> Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
+(.*) :: Applicative env => Check (env (ForAll1 Type K.Type)) -> Check (env (ForAll1 Type K.Type)) -> Synth (env (ForAll1 Type K.Type) ::: ForAll1 Type K.Type)
 a .* b = do
   a' <- check a CT._Type
   b' <- check b CT._Type
@@ -109,7 +109,7 @@ a .* b = do
 
 infixl 7 .*
 
-(-->) :: Applicative env => Check (env (ForAll1 T.Type K.Type)) -> Check (env (ForAll1 T.Type K.Type)) -> Synth (env (ForAll1 T.Type K.Type) ::: ForAll1 T.Type K.Type)
+(-->) :: Applicative env => Check (env (ForAll1 Type K.Type)) -> Check (env (ForAll1 Type K.Type)) -> Synth (env (ForAll1 Type K.Type) ::: ForAll1 Type K.Type)
 a --> b = do
   a' <- check a CT._Type
   b' <- check b CT._Type
@@ -119,9 +119,9 @@ infixr 2 -->
 
 (>=>)
   :: Permutable env
-  => Check (ForAll1 T.Type K.Type)
-  -> (forall env' . Permutable env' => Extends env env' -> (env' (ForAll1 T.Type k1) ::: ForAll1 T.Type K.Type) -> Check (env' (ForAll1 T.Type k2)))
-  -> Synth (env (ForAll1 T.Type (k1 -> k2)) ::: ForAll1 T.Type K.Type)
+  => Check (ForAll1 Type K.Type)
+  -> (forall env' . Permutable env' => Extends env env' -> (env' (ForAll1 Type k1) ::: ForAll1 Type K.Type) -> Check (env' (ForAll1 Type k2)))
+  -> Synth (env (ForAll1 Type (k1 -> k2)) ::: ForAll1 Type K.Type)
 t >=> b = do
   t' <- check t CT._Type
   x <- pure (pure t') CTL.>=> \ env v -> check (b env (v ::: t')) CT._Type
@@ -132,27 +132,27 @@ infixr 1 >=>
 
 -- Expressions
 
-asFn :: ForAll1 T.Type K.Type -> Maybe (ForAll1 T.Type K.Type, ForAll1 T.Type K.Type)
+asFn :: ForAll1 Type K.Type -> Maybe (ForAll1 Type K.Type, ForAll1 Type K.Type)
 asFn = liftA2 (,) <$> dom <*> cod
 
-dom :: ForAll1 T.Type K.Type -> Maybe (ForAll1 T.Type K.Type)
+dom :: ForAll1 Type K.Type -> Maybe (ForAll1 Type K.Type)
 dom = sequenceForAll1Maybe . hoistForAll1 (\case
-  _A T.:-> _B -> CompL (Just _A)
+  _A :-> _B -> CompL (Just _A)
   _           -> CompL Nothing)
 
-cod :: ForAll1 T.Type K.Type -> Maybe (ForAll1 T.Type K.Type)
+cod :: ForAll1 Type K.Type -> Maybe (ForAll1 Type K.Type)
 cod = sequenceForAll1Maybe . hoistForAll1 (\case
-  _A T.:-> _B -> CompL (Just _B)
+  _A :-> _B -> CompL (Just _B)
   _           -> CompL Nothing)
 
-($$) :: C.Expr expr => Synth (expr (a -> b) ::: ForAll1 T.Type K.Type) -> Check (expr a) -> Synth (expr b ::: ForAll1 T.Type K.Type)
+($$) :: C.Expr expr => Synth (expr (a -> b) ::: ForAll1 Type K.Type) -> Check (expr a) -> Synth (expr b ::: ForAll1 Type K.Type)
 f $$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
   a' <- check a _A
   pure $ f' C.$$ a' ::: _B
 
-lam0 :: (C.Expr expr, C.Permutable env) => (forall env' . C.Permutable env => C.Extends env env' -> env' (expr a ::: ForAll1 T.Type K.Type) -> Check (env' (expr b))) -> Check (env (expr (a -> b)))
+lam0 :: (C.Expr expr, C.Permutable env) => (forall env' . C.Permutable env => C.Extends env env' -> env' (expr a ::: ForAll1 Type K.Type) -> Check (env' (expr b))) -> Check (env (expr (a -> b)))
 lam0 f = checking $ \ t -> case asFn t of
   Just (_A, _B) -> C.lam0 $ \ env v -> check (f env (v .: _A)) _B
   _             -> fail "expected function type in lambda"
