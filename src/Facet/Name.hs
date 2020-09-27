@@ -1,6 +1,7 @@
 module Facet.Name
 ( Name(..)
 , prime
+, Scoped(..)
 ) where
 
 import Data.Function (on)
@@ -23,3 +24,7 @@ instance Pretty Name where
 
 prime :: Name -> Name
 prime n = n{ id' = id' n + 1 }
+
+
+class Scoped t where
+  maxBV :: t -> Int
