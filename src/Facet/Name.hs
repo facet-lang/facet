@@ -28,3 +28,6 @@ prime n = n{ id' = id' n + 1 }
 
 class Scoped t where
   maxBV :: t -> Int
+
+instance Scoped Name where
+  maxBV = id'
