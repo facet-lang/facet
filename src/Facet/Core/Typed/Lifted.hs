@@ -1,2 +1,5 @@
 module Facet.Core.Typed.Lifted
-() where
+( C.Type(..)
+) where
+
+import qualified Facet.Core.Typed as C
