@@ -186,7 +186,7 @@ unify' = go
     (t1 :=> b1, t2 :=> b2) -> (:=>) <$> go t1 t2 <*> unify' b1 b2
     -- FIXME: build and display a diff of the root types
     -- FIXME: indicate the point in the source which led to this
-    -- FIXME: what do we do about the Var case? can we unify only closed types? (presumably not because (:=>) contains an open type which it closes, so we will need to operate under them sometimes)
+    -- FIXME: what do we do about the Var case? can we unify only closed types? (presumably not because (:=>) contains an open type which it closes, so we will need to operate under them sometimes.) Eq would work but it’s a tall order.
     (t1, t2) -> fail $ "could not unify " <> show t1 <> " with " <> show t2
 
 
