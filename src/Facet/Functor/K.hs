@@ -5,4 +5,4 @@ module Facet.Functor.K
 ) where
 
 newtype K a b = K { getK :: a }
-  deriving (Eq, Foldable, Functor, Num, Ord, Show, Traversable)
+  deriving (Eq, Foldable, Functor, Monoid, Num, Ord, Semigroup, Show, Traversable)
