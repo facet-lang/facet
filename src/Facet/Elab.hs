@@ -38,11 +38,21 @@ import qualified Facet.Core.Lifted as C
 import qualified Facet.Core.Lifted as CTL
 import           Facet.Env
 import           Facet.Print (Print, TPrint(..), tvar)
+import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Facet.Type
 import           Silkscreen
 
 newtype Elab a = Elab { elab :: a }
+
+instance S.Expr a => S.Expr (Elab a) where
+  global = Elab . S.global
+  lam0 f = Elab $ S.lam0 (elab . f . Elab)
+  lam f = Elab $ S.lam (elab . f . either (Left . Elab) (\ (e, k) -> Right (Elab e, Elab . k . elab)))
+  f $$ a = Elab $ elab f S.$$ elab a
+  unit = Elab S.unit
+  l ** r = Elab $ elab l S.** elab r
+
 
 newtype Check a = Check { runCheck :: Type K.Type -> Synth a }
   deriving (Algebra (Reader (Type K.Type) :+: Error Print), Applicative, Functor, Monad) via ReaderC (Type K.Type) Synth
