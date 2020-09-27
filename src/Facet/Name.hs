@@ -4,9 +4,10 @@ module Facet.Name
 ) where
 
 import Data.Function (on)
+import Data.Text (Text)
 import Prettyprinter (Pretty(..))
 
-data Name = Name { name :: String, id' :: Int }
+data Name = Name { name :: Text, id' :: Int }
 
 instance Eq Name where
   (==) = (==) `on` id'
