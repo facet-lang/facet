@@ -49,6 +49,15 @@ newtype Elab a = Elab { elab :: a }
 instance S.ForAll a b => S.ForAll (Elab a) (Elab b) where
   t >=> b = Elab $ elab t S.>=> elab . b . Elab
 
+instance S.Type a => S.Type (Elab a) where
+  tglobal = Elab . S.tglobal
+  a --> b = Elab $ elab a S.--> elab b
+  f .$  a = Elab $ elab f S..$  elab a
+  l .*  r = Elab $ elab l S..*  elab r
+
+  _Unit = Elab S._Unit
+  _Type = Elab S._Type
+
 instance S.Expr a => S.Expr (Elab a) where
   global = Elab . S.global
   lam0 f = Elab $ S.lam0 (elab . f . Elab)
