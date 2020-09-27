@@ -20,13 +20,14 @@ module Facet.Print
 , tvar
 ) where
 
-import           Control.Applicative (Const(..), (<**>))
+import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
 import           Data.Coerce
 import qualified Data.Kind as K
 import           Facet.Pretty
 import qualified Facet.Core as C
 import qualified Facet.Core.Typed as CT
+import           Facet.Functor.K
 import qualified Facet.Syntax.Typed as T
 import qualified Facet.Syntax.Untyped as U
 import qualified Prettyprinter as PP
@@ -97,7 +98,7 @@ data Context
 
 newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
   deriving (U.Expr, FreshPrinter, Functor, U.Global, Monoid, PrecedencePrinter, Printer, Semigroup, U.Type)
-  deriving (Applicative) via Const Print
+  deriving (Applicative) via K Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
   (>=>) = coerce ((U.>=>) :: Print -> (Print -> Print) -> Print)
