@@ -93,7 +93,7 @@ instance Type ty => Type (Match IsUnit ty) where
 data IsProd ty = IsProd ty ty
 
 instance Interpret IsProd where
-  interpret (IsProd a b) = a --> b
+  interpret (IsProd a b) = a .* b
 
 instance Type ty => Type (Match IsProd ty) where
   _Type = N _Type
@@ -107,7 +107,7 @@ instance Type ty => Type (Match IsProd ty) where
 data IsApp ty = IsApp ty ty
 
 instance Interpret IsApp where
-  interpret (IsApp a b) = a --> b
+  interpret (IsApp a b) = a .$ b
 
 instance Type ty => Type (Match IsApp ty) where
   _Type = N _Type
