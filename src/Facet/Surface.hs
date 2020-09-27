@@ -34,7 +34,7 @@ class ForAll ty decl | decl -> ty where
 
 type TName = String
 
-class (ForAll ty ty) => Type ty where
+class ForAll ty ty => Type ty where
   tglobal :: Name -> ty
 
   (-->) :: ty -> ty -> ty
