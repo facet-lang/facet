@@ -1,5 +1,6 @@
 module Facet.Name
 ( Name(..)
+, prime
 ) where
 
 import Data.Function (on)
@@ -18,3 +19,6 @@ instance Show Name where
 
 instance Pretty Name where
   pretty n = pretty (name n) <> pretty (id' n)
+
+prime :: Name -> Name
+prime n = n{ id' = id' n + 1 }
