@@ -7,7 +7,7 @@ module Facet.Surface
 , TName(..)
 , Type(..)
 , ForAll(..)
-, DeclName(..)
+, DName(..)
 , Module(..)
 , Decl(..)
 , (:::)(..)
@@ -61,12 +61,12 @@ class ForAll ty ty => Type ty where
   _Type :: ty
 
 
-newtype DeclName = DeclName { getDeclName :: Text }
+newtype DName = DName { getDeclName :: Text }
   deriving (Eq, IsString, Ord, Pretty, Show)
 
 -- FIXME: define a core variant of this where declarations are normalized to not contain term bindings in the signature but instead pattern match in the definition
 class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
-  (.:) :: DeclName -> decl -> mod
+  (.:) :: DName -> decl -> mod
   infixr 0 .:
 
 class (Expr expr, ForAll ty decl, Type ty) => Decl expr ty decl | decl -> ty expr where

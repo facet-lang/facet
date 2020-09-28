@@ -113,7 +113,7 @@ name  = ident nameStyle
 _holeName = ident holeNameStyle
 tname :: (Monad p, TokenParsing p) => p S.TName
 tname = ident tnameStyle
-declName :: (Monad p, TokenParsing p) => p S.DeclName
+declName :: (Monad p, TokenParsing p) => p S.DName
 declName = ident declNameStyle
 
 nameStyle :: CharParsing p => IdentifierStyle p
