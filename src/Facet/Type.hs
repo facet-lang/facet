@@ -98,6 +98,7 @@ rebind f = go
 
 
 newtype Type = Abs { inst :: forall r . Type' r }
+  deriving (CH.Type) via (CH.Circ Type)
 
 instance Scoped Type where
   maxBV (Abs t) = maxBV t
