@@ -6,11 +6,11 @@ module Facet.Name
 , binder
 ) where
 
-import Data.Function (on)
-import Data.Text (Text, pack)
-import Prettyprinter (Pretty(..))
+import           Data.Function (on)
+import qualified Data.Text as T
+import           Prettyprinter (Pretty(..))
 
-data Name = Name { name :: Text, id' :: Int }
+data Name = Name { name :: T.Text, id' :: Int }
 
 instance Eq Name where
   (==) = (==) `on` id'
@@ -22,9 +22,19 @@ instance Show Name where
   showsPrec p = showsPrec p . pretty
 
 instance Pretty Name where
-  pretty n = pretty (name n) <> pretty (id' n)
+  pretty n
+    | T.null (name n) = var (id' n)
+    | otherwise       = pretty (name n) <> pretty (id' n)
+    where
+    var = varFrom ['a'..'z']
+    varFrom alpha i = pretty (toAlpha alpha i)
+    toAlpha alphabet i = alphabet !! r : if q > 0 then show q else ""
+      where
+      n = length alphabet
+      (q, r) = i `divMod` n
 
-prime :: Text -> Int -> Name
+
+prime :: T.Text -> Int -> Name
 prime n i = Name n (i + 1)
 
 
@@ -42,7 +52,7 @@ binder
   :: Scoped t
   => (Name -> t)
   -> (Name -> t -> r)
-  -> Text
+  -> T.Text
   -> (t -> t)
   -> r
 binder bound ctor n e = ctor n' b'
