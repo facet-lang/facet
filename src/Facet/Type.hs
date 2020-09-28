@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -Wno-noncanonical-monad-instances #-}
 module Facet.Type
 ( Type(..)
 , Type'(..)
@@ -13,10 +15,10 @@ module Facet.Type
 , interpretType
 ) where
 
-import           Control.Monad (ap)
 import qualified Data.IntMap as IntMap
 import           Data.Maybe (fromJust)
 import qualified Facet.Core as C
+import           Facet.Deriving
 import           Facet.Functor.C
 import           Facet.Name
 import qualified Facet.Print as P
@@ -32,6 +34,7 @@ data Type' r
   | Type' r :-> Type' r
   | Type' r :*  Type' r
   deriving (Foldable, Functor, Traversable)
+  deriving (Applicative) via MonadInstance Type'
 
 infixr 0 :=>
 infixl 9 :$
@@ -41,11 +44,8 @@ infixl 7 :*
 instance Show (Type' P.Print) where
   showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . C.interpret
 
-instance Applicative Type' where
-  pure = Var
-  (<*>) = ap
-
 instance Monad Type' where
+  return = Var
   t >>= f = rebind f mempty t
 
 instance Scoped (Type' a) where
