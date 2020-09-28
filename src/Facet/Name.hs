@@ -7,10 +7,12 @@ module Facet.Name
 , Scoped(..)
 , binder
 , binderM
+, instantiate
 ) where
 
 import           Control.Monad.Fix
 import           Data.Function (on)
+import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import           Facet.Pretty
 import qualified Prettyprinter as P
@@ -71,3 +73,7 @@ binderM
   -> m r
 binderM bound ctor n e = uncurry ctor <$> mfix (\ ~(n', b') -> do
   (prime n (maxBV b'),) <$> e (bound n'))
+
+
+instantiate :: Name -> t -> IntMap.IntMap t -> IntMap.IntMap t
+instantiate = IntMap.insert . id'
