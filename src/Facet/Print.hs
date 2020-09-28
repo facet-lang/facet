@@ -177,11 +177,11 @@ instance U.Type Print where
 
 instance C.Type Print where
   bound = setPrec Var . name . prettyNameWith tvar
-  (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
-  l .* r = parens $ l <> comma <+> r
-  (.$) = coerce app
-  _Unit = pretty "()"
-  _Type = pretty "Type"
+  (-->) = (U.-->)
+  (.*) = (U..*)
+  (.$) = app
+  _Unit = U._Unit
+  _Type = U._Type
   -- FIXME: combine quantification over type variables of the same kind
   (v ::: t) >=> b = group (align (braces (space <> ann (prettyNameWith tvar v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
