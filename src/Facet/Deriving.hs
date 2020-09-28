@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 module Facet.Deriving
 ( MonadInstance(..)
 ) where
