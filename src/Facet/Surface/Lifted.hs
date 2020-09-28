@@ -50,7 +50,7 @@ infixr 1 >=>
 
 (>->)
   :: (Applicative m, Applicative env, S.Decl expr ty decl)
-  => m (env ty)
+  => m (env (S.EName S.::: ty))
   -> (forall env' . Applicative env' => Extends env env' -> env' expr -> m (env' decl))
   -> m (env decl)
 t >-> b = liftA2 (S.>->) <$> t <*> liftBinder b

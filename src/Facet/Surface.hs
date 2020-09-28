@@ -73,5 +73,5 @@ class (Expr expr, ForAll ty decl, Type ty) => Decl expr ty decl | decl -> ty exp
   (.=) :: ty -> expr -> decl
   infix 1 .=
 
-  (>->) :: ty -> (expr -> decl) -> decl
+  (>->) :: (EName ::: ty) -> (expr -> decl) -> decl
   infixr 1 >->

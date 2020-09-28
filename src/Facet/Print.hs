@@ -196,7 +196,7 @@ instance U.Decl Print Print Print where
   -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
   t .= b = t </> pretty '=' <+> b
 
-  t >-> f = bind $ \ v -> let v' = evar v in group (align (parens (ann (v' ::: t)))) </> arrow <+> prec FnR (f v')
+  (n ::: t) >-> f = let v' = var (pretty n) in group (align (parens (ann (v' ::: t)))) </> arrow <+> prec FnR (f v')
 
 app :: Print -> Print -> Print
 l `app` r = askingPrec $ \case
