@@ -51,7 +51,7 @@ forAll k tvar = do
   let loop :: Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' ty) -> [S.Name] -> p (env' res)
       loop env ty tvar = \case
         []   -> k env tvar
-        i:is -> ty S.>=> \ env' t -> loop (env S.>>> env') (S.castF env' ty) (t <$ variable i <|> S.castF env' tvar) is
+        i:is -> (fmap (i S.:::) <$> ty) S.>=> \ env' t -> loop (env S.>>> env') (S.castF env' ty) (t <$ variable i <|> S.castF env' tvar) is
   arrow *> loop S.refl (pure ty) tvar names
 
 

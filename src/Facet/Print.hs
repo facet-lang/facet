@@ -25,9 +25,10 @@ import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
 import           Data.Coerce
 import qualified Data.Kind as K
+import           Data.Text (Text)
 import qualified Facet.Core as C
 import           Facet.Functor.K
-import           Facet.Name (prettyNameWith)
+import           Facet.Name (prettyNameWith, prime)
 import qualified Facet.Pretty as P
 import qualified Facet.Surface as U
 import           Facet.Syntax
@@ -103,7 +104,7 @@ newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
   deriving (Applicative) via K Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
-  (>=>) = coerce ((U.>=>) :: Print -> (Print -> Print) -> Print)
+  (>=>) = coerce ((U.>=>) :: (Text ::: Print) -> (Print -> Print) -> Print)
 
 
 data Highlight
@@ -164,7 +165,10 @@ instance U.Expr Print where
 
 instance U.ForAll Print Print where
   -- FIXME: combine quantification over type variables of the same kind
-  t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (f v')
+  -- (v ::: t) >=> b = binder (prettyNameWith tvar) (forAll . (::: t)) v b
+  (n ::: t) >=> b = bind $ \ v -> let v' = prettyNameWith tvar (prime n (Just v)) in forAll (v' ::: t) (b v')
+    where
+    forAll (v ::: t) b = group (align (braces (space <> ann (v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
 instance U.Type Print where
     -- FIXME: don’t shadow globals with locally-bound variables

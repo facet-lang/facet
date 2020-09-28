@@ -1,4 +1,5 @@
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE TypeOperators #-}
 module Facet.Surface
 ( Name
 , Expr(..)
@@ -32,7 +33,7 @@ class Expr expr where
 
 class ForAll ty decl | decl -> ty where
   -- | Universal quantification.
-  (>=>) :: ty -> (ty -> decl) -> decl
+  (>=>) :: (Name ::: ty) -> (ty -> decl) -> decl
   infixr 1 >=>
 
 

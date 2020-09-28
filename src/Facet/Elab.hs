@@ -52,7 +52,7 @@ type Env = IntMap.IntMap Type
 newtype Elab a = Elab { elab :: a }
 
 instance S.ForAll a b => S.ForAll (Elab a) (Elab b) where
-  t >=> b = Elab $ elab t S.>=> elab . b . Elab
+  (n ::: t) >=> b = Elab $ (n ::: elab t) S.>=> elab . b . Elab
 
 instance S.Type a => S.Type (Elab a) where
   tglobal = Elab . S.tglobal
