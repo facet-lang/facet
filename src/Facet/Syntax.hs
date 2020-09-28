@@ -7,12 +7,16 @@ module Facet.Syntax
 , (.:)
 ) where
 
+import Data.Bifunctor
 import Facet.Name
 
 data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infix 5 :::
+
+instance Bifunctor (:::) where
+  bimap f g (a ::: b) = f a ::: g b
 
 instance (Scoped a, Scoped b) => Scoped (a ::: b) where
   maxBV (a ::: b) = maxBV a `max` maxBV b
