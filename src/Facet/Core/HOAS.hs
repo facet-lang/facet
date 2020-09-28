@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.HOAS
 ( Type(..)
+, Expr(..)
 ) where
 
 import Data.Text (Text)
@@ -22,3 +23,8 @@ class Type ty where
   infixl 7 .*
 
   -- FIXME: tupling/unit should take a list of types
+
+class Expr expr where
+  lam0 :: Text -> (expr -> expr) -> expr
+  ($$) :: expr -> expr -> expr
+  infixl 9 $$
