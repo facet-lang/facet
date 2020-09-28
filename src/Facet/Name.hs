@@ -1,12 +1,13 @@
 module Facet.Name
 ( Name(..)
 , prime
+, __
 , Scoped(..)
 , binder
 ) where
 
 import Data.Function (on)
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Prettyprinter (Pretty(..))
 
 data Name = Name { name :: Text, id' :: Int }
@@ -25,6 +26,10 @@ instance Pretty Name where
 
 prime :: Text -> Int -> Name
 prime n i = Name n (i + 1)
+
+
+__ :: Text
+__ = pack "_"
 
 
 class Scoped t where
