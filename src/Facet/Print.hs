@@ -145,11 +145,14 @@ cases cs = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ 
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
 
+var :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => p -> p
+var = setPrec Var . name
+
 evar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
-evar = setPrec Var . name . P.var
+evar = var . P.var
 
 tvar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
-tvar = setPrec Var . name . P.tvar
+tvar = var . P.tvar
 
 instance U.Expr Print where
   -- FIXME: don’t shadow globals with locally-bound variables
