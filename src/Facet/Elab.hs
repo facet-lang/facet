@@ -35,7 +35,7 @@ import           Control.Applicative (liftA2)
 import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Monad.Fix
-import qualified Data.IntMap as IntMap
+import qualified Data.Map as Map
 import           Data.Text (Text)
 import qualified Facet.Core as CT
 import qualified Facet.Core.Lifted as C
@@ -47,7 +47,7 @@ import           Facet.Syntax
 import           Facet.Type
 import           Silkscreen
 
-type Env = IntMap.IntMap Type
+type Env = Map.Map Text Type
 
 elab :: (Elab a ::: Maybe Type) -> Either Print a
 elab ~(m ::: t) = runSynth (runElab m mempty t)
