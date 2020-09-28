@@ -4,6 +4,7 @@ module Facet.Syntax
 ( (:::)(..)
 , tm
 , ty
+, uncurryAnn
 , (.:)
 ) where
 
@@ -26,6 +27,10 @@ tm (a ::: _) = a
 
 ty :: a ::: b -> b
 ty (_ ::: b) = b
+
+
+uncurryAnn :: (a -> b -> c) -> ((a ::: b) -> c)
+uncurryAnn f ~(a ::: b) = f a b
 
 
 (.:) :: Functor m => m a -> b -> m (a ::: b)
