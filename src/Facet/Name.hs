@@ -13,7 +13,8 @@ import           Control.Monad.Fix
 import           Data.Function (on)
 import qualified Data.Text as T
 import           Facet.Pretty
-import           Prettyprinter (Doc, Pretty(..))
+import qualified Prettyprinter as P
+import           Silkscreen
 
 data Name = Name { name :: T.Text, id' :: Int }
 
@@ -24,12 +25,12 @@ instance Ord Name where
   compare = compare `on` id'
 
 instance Show Name where
-  showsPrec p = showsPrec p . pretty
+  showsPrec p = showsPrec p . P.pretty
 
-instance Pretty Name where
+instance P.Pretty Name where
   pretty = prettyName
 
-prettyName :: Name -> Doc ann
+prettyName :: Printer p => Name -> p
 prettyName n
   | T.null (name n) = var (id' n)
   | otherwise       = pretty (name n) <> pretty (id' n)
