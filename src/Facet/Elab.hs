@@ -36,6 +36,7 @@ import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Monad.Fix
 import qualified Data.Map as Map
+import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import qualified Facet.Core as CT
 import qualified Facet.Core.Lifted as C
@@ -126,14 +127,18 @@ unify' t1 t2 = t2 <$ go (inst t1) (inst t2) -- NB: unification cannot (currently
     (Type,      Type)      -> pure ()
     (Unit,      Unit)      -> pure ()
     (l1 :* r1,  l2 :* r2)  -> go l1 l2 *> go r1 r2
-    (f1 :$ a1,  f2 :$ a2)  -> go f1 f2 *> go a1 a2
+    (f1 :$ a1,  f2 :$ a2)  -> fromMaybe (failWith (f1 :$ a1) (f2 :$ a2)) (goS a1 a2)
     (a1 :-> b1, a2 :-> b2) -> go a1 a2 *> go b1 b2
     (t1 :=> b1, t2 :=> b2) -> go (ty t1) (ty t2) *> go b1 b2
     -- FIXME: build and display a diff of the root types
     -- FIXME: indicate the point in the source which led to this
     -- FIXME: what do we do about the Var case? can we unify only closed types? (presumably not because (:=>) contains an open type which it closes, so we will need to operate under them sometimes.) Eq would work but it’s a tall order.
     -- FIXME: Show discards highlighting &c. how do we render arbitrary types to a Print or Notice? Is there some class for that? Do we just monomorphize it?
-    (t1, t2) -> fail $ "could not unify " <> show t1 <> " with " <> show t2
+    (t1, t2) -> failWith t1 t2
+  failWith t1 t2 = fail $ "could not unify " <> show t1 <> " with " <> show t2
+  goS Nil        Nil        = Just (pure ())
+  goS (i1 :> l1) (i2 :> l2) = (*>) <$> goS i1 i2 <*> Just (go l1 l2)
+  goS _          _          = Nothing
 
 
 -- Types
