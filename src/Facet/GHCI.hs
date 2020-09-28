@@ -6,6 +6,7 @@ module Facet.GHCI
 , parseElabString
   -- * Elaboration
 , printElab
+, prettyAnn
 , thing
 ) where
 
@@ -42,7 +43,10 @@ parseElabString p s = runM $
 -- Elaboration
 
 printElab :: Synth (T.Type ::: T.Type) -> IO ()
-printElab = P.prettyPrint . either id (\ (tm ::: ty) -> C.interpret (T.inst tm) S.<+> S.colon S.<+> C.interpret (T.inst ty)) . runSynth
+printElab = P.prettyPrint . either id prettyAnn . runSynth
+
+prettyAnn :: (S.Printer p, C.Type p) => (T.Type ::: T.Type) -> p
+prettyAnn (tm ::: ty) = C.interpret (T.inst tm) S.<+> S.colon S.<+> C.interpret (T.inst ty)
 
 thing :: Synth (T.Type ::: T.Type)
 thing = (__ ::: switch (switch _Type --> switch _Type)) >=> \ t -> switch (switch (pure t .$ switch _Unit) --> switch (pure t .$ switch _Unit))
