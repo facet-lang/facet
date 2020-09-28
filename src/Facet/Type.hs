@@ -27,11 +27,10 @@ import qualified Facet.Print as P
 import           Facet.Syntax
 
 data Type' r
-  = Bound Name
-  | Type
+  = Type
   | Unit
   | (Name ::: Type' r) :=> Type' r
-  | r :$ Stack (Type' r)
+  | Either Name r :$ Stack (Type' r)
   | Type' r :-> Type' r
   | Type' r :*  Type' r
   deriving (Foldable, Functor, Traversable)
@@ -47,12 +46,11 @@ instance Show (Type' P.Print) where
   showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . C.interpret
 
 instance Monad Type' where
-  return a = a :$ Nil
+  return a = Right a :$ Nil
   t >>= f = rebind f mempty t
 
 instance Scoped (Type' a) where
   maxBV = \case
-    Bound _ -> Nothing
     Type    -> Nothing
     Unit    -> Nothing
     t :=> _ -> maxBV t
@@ -61,7 +59,7 @@ instance Scoped (Type' a) where
     l :* r  -> maxBV l <> maxBV r
 
 instance C.Type (Type' r) where
-  tbound = Bound
+  tbound n = Left n :$ Nil
   _Type = Type
   _Unit = Unit
   (==>) = (:=>)
@@ -73,11 +71,10 @@ instance C.Interpret Type' where
   interpret = go
     where
     go = \case
-      Bound n -> C.tbound n
       Type    -> C._Type
       Unit    -> C._Unit
       t :=> b -> fmap go t C.==> go b
-      f :$ a  -> foldl' (\ f a -> f C..$ go a) f a
+      f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound id f) a
       a :-> b -> go a C.--> go b
       l :* r  -> go l C..*  go r
 
@@ -95,11 +92,10 @@ rebind :: (r -> Type' r') -> IntMap.IntMap (Type' r') -> Type' r -> Type' r'
 rebind g = go
   where
   go e = \case
-    Bound b         -> e IntMap.! id' b
     Type            -> Type
     Unit            -> Unit
     (n ::: t) :=> b -> (hint n ::: go e t) C.>=> \ v -> go (instantiate n v e) b
-    f :$  a         -> g f $$* fmap (go e) a
+    f :$  a         -> either ((e IntMap.!) . id') g f $$* fmap (go e) a
     a :-> b         -> go e a :-> go e b
     l :*  r         -> go e l :* go e r
 

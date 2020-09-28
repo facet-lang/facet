@@ -122,12 +122,13 @@ unify' t1 t2 = t2 <$ go (inst t1) (inst t2) -- NB: unification cannot (currently
   where
   go :: Type' Print -> Type' Print -> Synth ()
   go = curry $ \case
-    (Bound n1,  Bound n2)
-      | n1 == n2           -> pure ()
     (Type,      Type)      -> pure ()
     (Unit,      Unit)      -> pure ()
     (l1 :* r1,  l2 :* r2)  -> go l1 l2 *> go r1 r2
-    (f1 :$ a1,  f2 :$ a2)  -> fromMaybe (failWith (f1 :$ a1) (f2 :$ a2)) (goS a1 a2)
+    (f1 :$ a1,  f2 :$ a2)
+      | Left n1 <- f1
+      , Left n2 <- f2
+      , n1 == n2           -> fromMaybe (failWith (f1 :$ a1) (f2 :$ a2)) (goS a1 a2)
     (a1 :-> b1, a2 :-> b2) -> go a1 a2 *> go b1 b2
     (t1 :=> b1, t2 :=> b2) -> go (ty t1) (ty t2) *> go b1 b2
     -- FIXME: build and display a diff of the root types
