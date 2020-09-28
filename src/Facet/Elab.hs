@@ -80,9 +80,7 @@ instance S.ForAll (Elab Type (Type ::: Type)) (Elab Type (Type ::: Type)) where
   (n ::: t) >=> b = synthing $ (S.getTName n ::: checked t) >=> checked . b . pure
 
 instance S.Type (Elab Type (Type ::: Type)) where
-  tglobal s = asks @(Env Type) (Map.lookup (S.getTName s)) >>= \case
-    Just b  -> pure $ b
-    Nothing -> fail $ "variable not in scope: " <> show (S.getTName s)
+  tglobal = synthing . global . S.getTName
   a --> b = synthing $ checked a --> checked b
   f .$  a = synthing $ synthed f .$  checked a
   l .*  r = synthing $ checked l .*  checked r
@@ -91,9 +89,7 @@ instance S.Type (Elab Type (Type ::: Type)) where
   _Type = synthing _Type
 
 instance (C.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
-  global s = asks @(Env _) (Map.lookup (S.getEName s)) >>= \case
-    Just b  -> pure $ b
-    Nothing -> fail $ "variable not in scope: " <> show (S.getEName s)
+  global = synthing . global . S.getEName
   lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = fail "TBD"
   f $$ a = synthing $ synthed f $$ checked a
