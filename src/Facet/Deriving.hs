@@ -5,6 +5,24 @@ module Facet.Deriving
 
 import Control.Monad (ap, liftM)
 
+-- | 'Functor' & 'Applicative' instances derivable via a 'Monad' instance, for use with @-XDerivingVia@.
+--
+-- Define a 'Monad' instance for your type @M@, and then add @deriving ('Functor', 'Applicative') via 'MonadInstance' M@. E.g.:
+--
+-- @
+-- data Opt a = None | Some a
+--   deriving (Functor, Applicative) via MonadInstance Opt
+--
+-- instance Monad Opt where
+--   return = Some
+--   None   >>= _ = None
+--   Some a >>= f = f a
+-- @
+--
+-- NB:
+--
+-- 1. There is no 'Monad' instance defined for 'MonadInstance' itself to avoid accidentally deriving confusing circular definitions.
+-- 2. Your 'Monad' instance /must/ define 'return'.
 newtype MonadInstance m a = MonadInstance (m a)
 
 instance Monad m => Functor (MonadInstance m) where
