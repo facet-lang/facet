@@ -175,7 +175,7 @@ f $$ a = do
   a' <- check a _A
   pure $ f' C.$$ a' ::: _B
 
-lam0 :: (C.Expr expr, Applicative env) => (forall env' . Applicative env => C.Extends env env' -> env' (expr ::: Type) -> Check (env' expr)) -> Check (env expr)
+lam0 :: (C.Expr expr, Applicative env) => (forall env' . Applicative env' => C.Extends env env' -> env' (expr ::: Type) -> Check (env' expr)) -> Check (env expr)
 lam0 f = checking $ \ t -> case asFn t of
   Just (_A, _B) -> C.lam0 $ \ env v -> check (f env (v .: _A)) _B
   _             -> fail "expected function type in lambda"
