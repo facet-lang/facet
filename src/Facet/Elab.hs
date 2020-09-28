@@ -50,7 +50,7 @@ import           Silkscreen
 type Env = Map.Map T.Text Type
 
 implicit :: Env
-implicit = mempty
+implicit = Map.fromList [ (T.pack "Type", CT._Type) ]
 
 elab :: (Elab a ::: Maybe Type) -> Either Print a
 elab ~(m ::: t) = runSynth (runElab m implicit t)
