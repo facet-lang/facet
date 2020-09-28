@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface
-( Name(..)
+( EName(..)
 , Expr(..)
 , TName(..)
 , Type(..)
@@ -18,11 +18,11 @@ import Data.Text (Text)
 import Facet.Syntax ((:::)(..))
 import Prettyprinter (Pretty)
 
-newtype Name = Name { getName :: Text }
+newtype EName = EName { getEName :: Text }
   deriving (Eq, IsString, Ord, Pretty, Show)
 
 class Expr expr where
-  global :: Name -> expr
+  global :: EName -> expr
 
   lam0 :: (expr -> expr) -> expr
   lam :: (Either expr (expr, expr -> expr) -> expr) -> expr
