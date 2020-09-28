@@ -35,10 +35,6 @@ prettyNameWith var n
   | T.null (name n) = var (id' n)
   | otherwise       = pretty (name n) <> pretty (id' n)
 
-var :: Printer p => Int -> p
-var = varFrom ['a'..'z']
-varFrom alpha i = pretty (toAlpha alpha i)
-
 
 prime :: T.Text -> Maybe Int -> Name
 prime n i = Name n (maybe 0 succ i)

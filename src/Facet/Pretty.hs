@@ -2,11 +2,15 @@ module Facet.Pretty
 ( hPutDoc
 , putDoc
 , toAlpha
+, var
+, tvar
+, varFrom
 ) where
 
 import           Control.Monad.IO.Class
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
+import           Silkscreen
 import           System.Console.Terminal.Size as Size
 import           System.IO (Handle, stdout)
 
@@ -24,3 +28,13 @@ toAlpha alphabet i = alphabet !! r : if q > 0 then show q else ""
   where
   n = length alphabet
   (q, r) = i `divMod` n
+
+
+var :: Printer p => Int -> p
+var = varFrom ['a'..'z']
+
+tvar :: Printer p => Int -> p
+tvar = varFrom ['A'..'Z']
+
+varFrom :: Printer p => String -> Int -> p
+varFrom alpha i = pretty (toAlpha alpha i)

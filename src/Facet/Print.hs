@@ -27,7 +27,7 @@ import           Data.Coerce
 import qualified Data.Kind as K
 import qualified Facet.Core as C
 import           Facet.Functor.K
-import           Facet.Pretty
+import qualified Facet.Pretty as P
 import qualified Facet.Surface as U
 import           Facet.Syntax
 import qualified Facet.Syntax.Typed as T
@@ -41,7 +41,7 @@ prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = prettyPrintWith terminalStyle
 
 prettyPrintWith :: MonadIO m => (Highlight -> ANSI.AnsiStyle) -> Print -> m ()
-prettyPrintWith style = putDoc . prettyWith style
+prettyPrintWith style = P.putDoc . prettyWith style
 
 prettyWith :: (Highlight -> a) -> Print -> PP.Doc a
 prettyWith style = PP.reAnnotate style . runRainbow (annotate . Nest) 0 . runPrec Null . runFresh 0 . (`runPrint` const id) . group
@@ -144,13 +144,10 @@ ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
 
 var :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
-var = varFrom ['a'..'z']
+var = setPrec Var . name . P.var
 
 tvar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
-tvar = varFrom ['A'..'Z']
-
-varFrom :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => String -> Int -> p
-varFrom alpha i = setPrec Var (name (pretty (toAlpha alpha i)))
+tvar = setPrec Var . name . P.tvar
 
 instance U.Expr Print where
   -- FIXME: don’t shadow globals with locally-bound variables
