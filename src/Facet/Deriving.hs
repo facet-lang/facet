@@ -6,6 +6,26 @@ module Facet.Deriving
 import Control.Applicative (liftA, liftA2)
 import Control.Monad (ap, liftM, liftM2)
 
+-- | 'Functor' instances derivable via an 'Applicative' instance, for use with @-XDerivingVia@.
+--
+-- Define an 'Applicative' instance for your type @A@, and then add @deriving ('Functor') via 'ApplicativeInstance' A@. E.g.:
+--
+-- @
+-- data Validation e a = Failure e | Success a
+--   deriving (Functor) via ApplicativeInstance (Validation e)
+--
+-- instance Semigroup e => Applicative (Validation e) where
+--   pure = Success
+--   Failure a <*> Failure b = Failure (a <> b)
+--   Failure a <*> _         = Failure a
+--   _         <*> Failure b = Failure b
+--   Success f <*> Success a = Success (f a)
+-- @
+--
+-- NB:
+--
+-- 1. There is no 'Applicative' instance defined for 'ApplicativeInstance' itself to avoid accidentally deriving confusing circular definitions.
+-- 2. If you are able to define a 'Monad' instance for your type, you may wish to consider using 'MonadInstance' instead.
 newtype ApplicativeInstance m a = ApplicativeInstance (m a)
 
 instance Applicative m => Functor (ApplicativeInstance m) where
