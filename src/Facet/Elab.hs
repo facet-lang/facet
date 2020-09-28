@@ -54,6 +54,11 @@ newtype Elab a = Elab { elab :: Maybe Type -> Synth a }
 checked :: Elab (a ::: Type) -> Check a
 checked (Elab m) = Check (fmap tm . m . Just)
 
+checking :: Check a -> Elab (a ::: Type)
+checking m = Elab $ \case
+  Just t  -> check (m ::: t) .: t
+  Nothing -> fail "can’t synthesize a type for this lambda"
+
 synthed :: Elab a -> Synth a
 synthed = (`elab` Nothing)
 
@@ -76,9 +81,7 @@ instance S.Type (Elab (Type ::: Type)) where
 
 instance (C.Expr a, Scoped a) => S.Expr (Elab (a ::: Type)) where
   global _ = fail "TBD" -- FIXME: carry around a global environment
-  lam0 n f = Elab $ \case
-    Just t  -> check (lam0 (S.getEName n) (checked . f . pure) ::: t) .: t
-    Nothing -> fail "can’t synthesize a type for this lambda"
+  lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = fail "TBD"
   f $$ a = synthing $ synthed f $$ checked a
   unit = fail "TBD"
