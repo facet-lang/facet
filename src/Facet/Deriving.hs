@@ -45,3 +45,6 @@ instance Monad m => Applicative (MonadInstance m) where
 
   MonadInstance ma *> MonadInstance mb = MonadInstance $ ma >> mb
   {-# INLINE (*>) #-}
+
+  MonadInstance ma <* MonadInstance mb = MonadInstance $ do { a <- ma ; _ <- mb ; return a }
+  {-# INLINE (<*) #-}
