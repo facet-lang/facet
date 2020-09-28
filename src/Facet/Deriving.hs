@@ -12,6 +12,9 @@ instance Applicative m => Functor (ApplicativeInstance m) where
   fmap f (ApplicativeInstance m) = ApplicativeInstance (liftA f m)
   {-# INLINE fmap #-}
 
+  a <$ ApplicativeInstance m = ApplicativeInstance (liftA (const a) m)
+  {-# INLINE (<$) #-}
+
 
 -- | 'Functor' & 'Applicative' instances derivable via a 'Monad' instance, for use with @-XDerivingVia@.
 --
