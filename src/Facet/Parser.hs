@@ -10,6 +10,7 @@ module Facet.Parser
 ) where
 
 import           Control.Applicative (Alternative(..), liftA2, (<**>))
+import           Data.Coerce
 import           Data.Text (Text)
 import qualified Facet.Surface.Lifted as S
 import           Prelude hiding (lines, null, span)
@@ -154,5 +155,5 @@ holeNameStyle = IdentifierStyle
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
 
-variable :: TokenParsing p => Text -> p Text
-variable s = token (text s <* notFollowedBy alphaNum)
+variable :: (TokenParsing p, Coercible t Text) => t -> p t
+variable s = token (coerce <$> text (coerce s) <* notFollowedBy alphaNum)
