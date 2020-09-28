@@ -89,7 +89,9 @@ instance S.Type (Elab Type (Type ::: Type)) where
   _Type = synthing _Type
 
 instance (C.Type a, C.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
-  global s = fail $ "TBD: global " <> show s -- FIXME: carry around a global environment
+  global s = asks @(Env _) (Map.lookup (S.getEName s)) >>= \case
+    Just b  -> pure $ b
+    Nothing -> fail $ "variable not in scope: " <> show (S.getEName s)
   lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = fail "TBD"
   f $$ a = synthing $ synthed f $$ checked a
