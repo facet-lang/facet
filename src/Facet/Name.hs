@@ -37,8 +37,8 @@ instance Pretty Name where
       (q, r) = i `divMod` n
 
 
-prime :: T.Text -> Int -> Name
-prime n i = Name n (i + 1)
+prime :: T.Text -> Maybe Int -> Name
+prime n i = Name n (maybe 0 succ i)
 
 
 __ :: T.Text
@@ -46,10 +46,10 @@ __ = T.empty
 
 
 class Scoped t where
-  maxBV :: t -> Int
+  maxBV :: t -> Maybe Int
 
 instance Scoped Name where
-  maxBV = id'
+  maxBV = Just . id'
 
 binder
   :: Scoped t

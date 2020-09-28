@@ -38,10 +38,10 @@ instance Show (Type' P.Print) where
 
 instance Scoped (Type' a) where
   maxBV = \case
-    Var _   -> 0
-    Bound _ -> 0
-    Type    -> 0
-    Unit    -> 0
+    Var _   -> Nothing
+    Bound _ -> Nothing
+    Type    -> Nothing
+    Unit    -> Nothing
     t :=> _ -> maxBV t
     f :$ a  -> maxBV f `max` maxBV a
     a :-> b -> maxBV a `max` maxBV b
