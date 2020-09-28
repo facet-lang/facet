@@ -3,7 +3,8 @@ module Facet.Deriving
 ( MonadInstance(..)
 ) where
 
-import Control.Monad (ap, liftM)
+import Control.Applicative (liftA2)
+import Control.Monad (ap, liftM, liftM2)
 
 -- | 'Functor' & 'Applicative' instances derivable via a 'Monad' instance, for use with @-XDerivingVia@.
 --
@@ -38,3 +39,6 @@ instance Monad m => Applicative (MonadInstance m) where
 
   MonadInstance f <*> MonadInstance a = MonadInstance (ap f a)
   {-# INLINE (<*>) #-}
+
+  liftA2 f (MonadInstance ma) (MonadInstance mb) = MonadInstance $ liftM2 f ma mb
+  {-# INLINE liftA2 #-}
