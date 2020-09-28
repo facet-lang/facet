@@ -18,7 +18,7 @@ import           Facet.Pretty
 import qualified Prettyprinter as P
 import           Silkscreen
 
-data Name = Name { name :: T.Text, id' :: Int }
+data Name = Name { hint :: T.Text, id' :: Int }
 
 instance Eq Name where
   (==) = (==) `on` id'
@@ -34,8 +34,8 @@ instance P.Pretty Name where
 
 prettyNameWith :: Printer p => (Int -> p) -> Name -> p
 prettyNameWith var n
-  | T.null (name n) = var (id' n)
-  | otherwise       = pretty (name n) <> pretty (id' n)
+  | T.null (hint n) = var (id' n)
+  | otherwise       = pretty (hint n) <> pretty (id' n)
 
 
 prime :: T.Text -> Maybe Int -> Name
