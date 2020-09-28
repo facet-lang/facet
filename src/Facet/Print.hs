@@ -194,6 +194,7 @@ instance U.Module Print Print Print Print where
 
 instance U.Decl Print Print Print where
   -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
+  -- FIXME: we don’t parse =, we shouldn’t print it here.
   t .= b = t </> pretty '=' <+> b
 
   (n ::: t) >-> f = let v' = var (pretty n) in group (align (parens (ann (v' ::: t)))) </> arrow <+> prec FnR (f v')
