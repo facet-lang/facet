@@ -10,3 +10,6 @@ newtype MonadInstance m a = MonadInstance (m a)
 instance Monad m => Functor (MonadInstance m) where
   fmap f (MonadInstance m) = MonadInstance (liftM f m)
   {-# INLINE fmap #-}
+
+  a <$ MonadInstance m = MonadInstance (liftM (const a) m)
+  {-# INLINE (<$) #-}
