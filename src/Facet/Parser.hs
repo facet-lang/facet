@@ -69,7 +69,6 @@ tatom :: (Applicative env, S.Type ty, Monad p, TokenParsing p) => p (env ty) -> 
 tatom tvar
   =   parens (prd <$> sepBy (type_ tvar) comma)
   <|> tvar
-  <|> pure S._Type <$ string "Type"
   where
   prd [] = pure S._Unit
   prd ts = foldl1 (liftA2 (S..*)) ts
