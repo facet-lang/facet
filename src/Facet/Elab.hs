@@ -49,27 +49,41 @@ import           Silkscreen
 
 type Env = IntMap.IntMap Type
 
-newtype Elab a = Elab { elab :: a }
+newtype Elab a = Elab { elab :: Maybe Type -> Synth a }
+  deriving (Algebra (Reader (Maybe Type) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Maybe Type) Synth
 
-instance S.ForAll a b => S.ForAll (Elab a) (Elab b) where
-  (n ::: t) >=> b = Elab $ (n ::: elab t) S.>=> elab . b . Elab
+checked :: Elab (a ::: Type) -> Check a
+checked (Elab m) = Check (fmap tm . m . Just)
 
-instance S.Type a => S.Type (Elab a) where
-  tglobal = Elab . S.tglobal
-  a --> b = Elab $ elab a S.--> elab b
-  f .$  a = Elab $ elab f S..$  elab a
-  l .*  r = Elab $ elab l S..*  elab r
+synthed :: Elab a -> Synth a
+synthed = (`elab` Nothing)
 
-  _Unit = Elab S._Unit
-  _Type = Elab S._Type
+switched :: Synth (a ::: Type) -> Elab (a ::: Type)
+switched m = Elab $ \case
+  Just t  -> check (switch m ::: t) .: t
+  Nothing -> m
 
-instance S.Expr a => S.Expr (Elab a) where
-  global = Elab . S.global
-  lam0 n f = Elab $ S.lam0 n (elab . f . Elab)
-  lam n f = Elab $ S.lam n (elab . f . either (Left . Elab) (\ (e, k) -> Right (Elab e, Elab . k . elab)))
-  f $$ a = Elab $ elab f S.$$ elab a
-  unit = Elab S.unit
-  l ** r = Elab $ elab l S.** elab r
+instance S.ForAll (Elab (Type ::: Type)) (Elab (Type ::: Type)) where
+  (n ::: t) >=> b = switched $ (S.getTName n ::: checked t) >=> checked . b . pure
+
+instance S.Type (Elab (Type ::: Type)) where
+  tglobal _ = fail "TBD"
+  a --> b = switched $ checked a --> checked b
+  f .$  a = switched $ synthed f .$  checked a
+  l .*  r = switched $ checked l .*  checked r
+
+  _Unit = switched _Unit
+  _Type = switched _Type
+
+instance (C.Expr a, Scoped a) => S.Expr (Elab (a ::: Type)) where
+  global _ = fail "TBD"
+  lam0 n f = Elab $ \case
+    Just t  -> check (lam0 (S.getEName n) (checked . f . pure) ::: t) .: t
+    Nothing -> fail "can’t synthesize a type for this lambda"
+  lam _ _ = fail "TBD"
+  f $$ a = switched $ synthed f $$ checked a
+  unit = fail "TBD"
+  _ ** _ = fail "TBD"
 
 
 newtype Check a = Check { runCheck :: Type -> Synth a }
