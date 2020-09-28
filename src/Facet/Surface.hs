@@ -10,7 +10,9 @@ module Facet.Surface
 , Decl(..)
 ) where
 
-type Name = String
+import Data.Text (Text)
+
+type Name = Text
 
 class Expr expr where
   global :: Name -> expr
@@ -32,7 +34,7 @@ class ForAll ty decl | decl -> ty where
   infixr 1 >=>
 
 
-type TName = String
+type TName = Text
 
 class ForAll ty ty => Type ty where
   tglobal :: Name -> ty
@@ -51,7 +53,7 @@ class ForAll ty ty => Type ty where
   _Type :: ty
 
 
-type DeclName = String
+type DeclName = Text
 
 -- FIXME: define a core variant of this where declarations are normalized to not contain term bindings in the signature but instead pattern match in the definition
 class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
