@@ -57,9 +57,9 @@ instance Scoped (Type' a) where
     Type    -> Nothing
     Unit    -> Nothing
     t :=> _ -> maxBV t
-    f :$ a  -> maxBV f `max` maxBV a
-    a :-> b -> maxBV a `max` maxBV b
-    l :* r  -> maxBV l `max` maxBV r
+    f :$ a  -> maxBV f <> maxBV a
+    a :-> b -> maxBV a <> maxBV b
+    l :* r  -> maxBV l <> maxBV r
 
 instance C.Type (Type' r) where
   tbound = Bound

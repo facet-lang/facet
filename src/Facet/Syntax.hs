@@ -22,7 +22,7 @@ instance Bifunctor (:::) where
   bimap f g (a ::: b) = f a ::: g b
 
 instance (Scoped a, Scoped b) => Scoped (a ::: b) where
-  maxBV (a ::: b) = maxBV a `max` maxBV b
+  maxBV (a ::: b) = maxBV a <> maxBV b
 
 tm :: a ::: b -> a
 tm (a ::: _) = a
