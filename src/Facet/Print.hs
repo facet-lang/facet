@@ -165,7 +165,6 @@ instance U.Expr Print where
 
 instance U.ForAll Print Print where
   -- FIXME: combine quantification over type variables of the same kind
-  -- (v ::: t) >=> b = binder (prettyNameWith tvar) (forAll . (::: t)) v b
   (n ::: t) >=> b = bind $ \ v -> let v' = prettyNameWith tvar (prime n (Just v)) in forAll (v' ::: t) (b v')
     where
     forAll (v ::: t) b = group (align (braces (space <> ann (v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
