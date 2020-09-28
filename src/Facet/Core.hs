@@ -41,5 +41,5 @@ class Expr expr where
   infixl 9 $$
 
 
-class Interpret f where
-  interpret :: Type ty => f ty -> ty
+class Interpret t where
+  interpret :: Type r => t -> r

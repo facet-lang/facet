@@ -31,7 +31,6 @@ module Facet.Elab
 ) where
 
 import           Control.Algebra
-import           Control.Applicative (liftA2)
 import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Monad.Fix
@@ -40,7 +39,6 @@ import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import qualified Facet.Core as CT
 import qualified Facet.Core.Lifted as C
-import           Facet.Functor.C
 import           Facet.Name (Scoped)
 import           Facet.Print (Print)
 import qualified Facet.Surface as S
@@ -118,17 +116,15 @@ switch s = Check $ \ _T -> do
   a <$ unify' _T _T'
 
 unify' :: Type -> Type -> Synth Type
-unify' t1 t2 = t2 <$ go (inst t1) (inst t2) -- NB: unification cannot (currently) result in information increase, so it always suffices to take (arbitrarily) the second operand as the result. Failures escape by throwing an exception, so this will not affect failed results.
+unify' t1 t2 = t2 <$ go t1 t2 -- NB: unification cannot (currently) result in information increase, so it always suffices to take (arbitrarily) the second operand as the result. Failures escape by throwing an exception, so this will not affect failed results.
   where
-  go :: Type' Print -> Type' Print -> Synth ()
+  go :: Type -> Type -> Synth ()
   go = curry $ \case
     (Type,      Type)      -> pure ()
     (Unit,      Unit)      -> pure ()
     (l1 :* r1,  l2 :* r2)  -> go l1 l2 *> go r1 r2
     (f1 :$ a1,  f2 :$ a2)
-      | Left n1 <- f1
-      , Left n2 <- f2
-      , n1 == n2           -> fromMaybe (failWith (f1 :$ a1) (f2 :$ a2)) (goS a1 a2)
+      | f1 == f2           -> fromMaybe (failWith (f1 :$ a1) (f2 :$ a2)) (goS a1 a2)
     (a1 :-> b1, a2 :-> b2) -> go a1 a2 *> go b1 b2
     (t1 :=> b1, t2 :=> b2) -> go (ty t1) (ty t2) *> go b1 b2
     -- FIXME: build and display a diff of the root types
@@ -190,17 +186,9 @@ infixr 1 >=>
 -- Expressions
 
 asFn :: Type -> Maybe (Type, Type)
-asFn = liftA2 (,) <$> dom <*> cod
-
-dom :: Type -> Maybe Type
-dom = traverseTypeMaybe (\case
-  _A :-> _B -> C (Just _A)
-  _         -> C Nothing)
-
-cod :: Type -> Maybe Type
-cod = traverseTypeMaybe (\case
-  _A :-> _B -> C (Just _B)
-  _         -> C Nothing)
+asFn = \case
+  _A :-> _B -> Just (_A, _B)
+  _         -> Nothing
 
 ($$) :: C.Expr expr => Synth (expr ::: Type) -> Check expr -> Synth (expr ::: Type)
 f $$ a = do
