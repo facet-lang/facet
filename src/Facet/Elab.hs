@@ -11,6 +11,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
 ( Env
+, elab
 , Elab(..)
 , Check(..)
 , Synth(..)
@@ -47,6 +48,9 @@ import           Facet.Type
 import           Silkscreen
 
 type Env = IntMap.IntMap Type
+
+elab :: (Elab a ::: Maybe Type) -> Either Print a
+elab ~(m ::: t) = runSynth (runElab m t)
 
 newtype Elab a = Elab { runElab :: Maybe Type -> Synth a }
   deriving (Algebra (Reader (Maybe Type) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Maybe Type) Synth
