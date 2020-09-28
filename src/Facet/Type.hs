@@ -18,6 +18,7 @@ module Facet.Type
 import qualified Data.IntMap as IntMap
 import           Data.Maybe (fromJust)
 import qualified Facet.Core as C
+import qualified Facet.Core.HOAS as CH
 import           Facet.Deriving
 import           Facet.Functor.C
 import           Facet.Name
@@ -35,6 +36,7 @@ data Type' r
   | Type' r :*  Type' r
   deriving (Foldable, Functor, Traversable)
   deriving (Applicative) via MonadInstance Type'
+  deriving (CH.Type) via (CH.Circ (Type' r))
 
 infixr 0 :=>
 infixl 9 :$
