@@ -42,3 +42,6 @@ instance Monad m => Applicative (MonadInstance m) where
 
   liftA2 f (MonadInstance ma) (MonadInstance mb) = MonadInstance $ liftM2 f ma mb
   {-# INLINE liftA2 #-}
+
+  MonadInstance ma *> MonadInstance mb = MonadInstance $ ma >> mb
+  {-# INLINE (*>) #-}
