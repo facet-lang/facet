@@ -108,9 +108,9 @@ app :: (Applicative env, TokenParsing p) => (expr -> expr -> expr) -> (p (env ex
 app ($$) atom tvar = foldl (liftA2 ($$)) <$> atom tvar <*> many (atom tvar)
 
 
-name, _holeName :: (Monad p, TokenParsing p) => p S.EName
+name, _hname :: (Monad p, TokenParsing p) => p S.EName
 name  = ident nameStyle
-_holeName = ident holeNameStyle
+_hname = ident hnameStyle
 tname :: (Monad p, TokenParsing p) => p S.TName
 tname = ident tnameStyle
 dname :: (Monad p, TokenParsing p) => p S.DName
@@ -143,8 +143,8 @@ tnameStyle = IdentifierStyle
   Identifier
   ReservedIdentifier
 
-holeNameStyle :: CharParsing p => IdentifierStyle p
-holeNameStyle = IdentifierStyle
+hnameStyle :: CharParsing p => IdentifierStyle p
+hnameStyle = IdentifierStyle
   "hole name"
   (char '?')
   alphaNum
