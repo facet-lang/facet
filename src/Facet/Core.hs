@@ -29,7 +29,8 @@ class Type ty where
 
 
 class Expr expr where
-  lam0 :: (expr -> expr) -> expr
+  bound :: Name -> expr
+  lam0 :: Name -> expr -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
 

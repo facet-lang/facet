@@ -40,6 +40,7 @@ import           Data.Text (Text)
 import qualified Facet.Core as CT
 import qualified Facet.Core.Lifted as C
 import           Facet.Functor.C
+import           Facet.Name (Scoped)
 import           Facet.Print (Print)
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -178,9 +179,9 @@ f $$ a = do
   a' <- check a _A
   pure $ f' C.$$ a' ::: _B
 
-lam0 :: (C.Expr expr, Applicative env) => (forall env' . Applicative env' => C.Extends env env' -> env' (expr ::: Type) -> Check (env' expr)) -> Check (env expr)
-lam0 f = checking $ \ t -> case asFn t of
-  Just (_A, _B) -> C.lam0 $ \ env v -> check (f env (v .: _A)) _B
+lam0 :: (C.Expr expr, Scoped expr) => Text -> ((expr ::: Type) -> Check expr) -> Check expr
+lam0 n f = checking $ \ t -> case asFn t of
+  Just (_A, _B) -> C.lam0 n $ \ v -> check (f (v ::: _A)) _B
   _             -> fail "expected function type in lambda"
 
 -- FIXME: internalize scope into Type & Expr?

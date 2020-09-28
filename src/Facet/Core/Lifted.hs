@@ -68,7 +68,8 @@ infixl 7 .*
 -- Expressions
 
 lam0
-  :: (Applicative m, Applicative env, C.Expr expr)
-  => (forall env' . Applicative env' => Extends env env' -> env' expr -> m (env' expr))
-  -> m (env expr)
-lam0 f = fmap C.lam0 <$> liftBinder f
+  :: (C.Expr expr, Scoped expr, MonadFix m)
+  => Text
+  -> (expr -> m expr)
+  -> m expr
+lam0 = binderM C.bound C.lam0
