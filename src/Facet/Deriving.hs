@@ -35,5 +35,6 @@ instance Monad m => Functor (MonadInstance m) where
 instance Monad m => Applicative (MonadInstance m) where
   pure = MonadInstance . return
   {-# INLINE pure #-}
+
   MonadInstance f <*> MonadInstance a = MonadInstance (ap f a)
   {-# INLINE (<*>) #-}
