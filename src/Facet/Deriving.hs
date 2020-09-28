@@ -1,2 +1,5 @@
 module Facet.Deriving
-() where
+( MonadInstance(..)
+) where
+
+newtype MonadInstance m a = MonadInstance (m a)
