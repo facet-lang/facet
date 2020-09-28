@@ -29,7 +29,7 @@ import           Text.Parser.Token.Highlight
 -- holes
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, Monad p, TokenParsing p) => p mod
-decl = (S..:) <$> name <* colon <*> S.strengthen (sig (fmap pure global) S.refl (fmap pure tglobal))
+decl = (S..:) <$> declName <* colon <*> S.strengthen (sig (fmap pure global) S.refl (fmap pure tglobal))
   where
   sig :: Applicative env' => p (env' expr) -> S.Extends env env' -> p (env' ty) -> p (env' decl)
   sig var _ tvar = try (bind var tvar) <|> forAll (\ env -> sig (S.castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
@@ -112,9 +112,20 @@ name  = ident nameStyle
 _holeName = ident holeNameStyle
 tname :: (Monad p, TokenParsing p) => p S.TName
 tname = ident tnameStyle
+declName :: (Monad p, TokenParsing p) => p S.DeclName
+declName = ident declNameStyle
 
 nameStyle :: CharParsing p => IdentifierStyle p
 nameStyle = IdentifierStyle
+  "name"
+  (lower <|> char '_')
+  alphaNum
+  mempty
+  Identifier
+  ReservedIdentifier
+
+declNameStyle :: CharParsing p => IdentifierStyle p
+declNameStyle = IdentifierStyle
   "name"
   (lower <|> char '_')
   alphaNum
