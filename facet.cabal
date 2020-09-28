@@ -38,6 +38,7 @@ library
   import: common
   exposed-modules:
     Facet.Core
+    Facet.Core.HOAS
     Facet.Core.Lifted
     Facet.Deriving
     Facet.Elab
