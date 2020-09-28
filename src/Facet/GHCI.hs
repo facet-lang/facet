@@ -33,7 +33,7 @@ parseString' p s = runM $ do
   r <- runThrow (runParserWithString (Pos 0 0) s p)
   either (P.putDoc . prettyNotice) P.prettyPrint r
 
-parseElabString :: MonadIO m => ParserC (ThrowC Notice (LiftC m)) (Elab T.Type P.Print) -> String -> m ()
+parseElabString :: (MonadIO m, C.Type e) => ParserC (ThrowC Notice (LiftC m)) (Elab e P.Print) -> String -> m ()
 parseElabString p s = runM $
   runThrow (runParserWithString (Pos 0 0) s p) >>= \ r -> case first prettyNotice r >>= first (P.prettyWith P.terminalStyle) . elab . (::: Nothing) of
     Left err -> P.putDoc err
