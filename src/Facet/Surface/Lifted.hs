@@ -28,15 +28,17 @@ import qualified Facet.Surface as S
 
 lam
   :: (Applicative m, Applicative env, S.Expr repr)
-  => (forall env' . Applicative env' => Extends env env' -> env' (Either repr (repr, repr -> repr)) -> m (env' repr))
+  => m (env S.EName)
+  -> (forall env' . Applicative env' => Extends env env' -> env' (Either repr (repr, repr -> repr)) -> m (env' repr))
   -> m (env repr)
-lam f = fmap S.lam <$> liftBinder f
+lam n f = liftA2 S.lam <$> n <*> liftBinder f
 
 lam0
   :: (Applicative m, Applicative env, S.Expr repr)
-  => (forall env' . Applicative env' => Extends env env' -> env' repr -> m (env' repr))
+  => m (env S.EName)
+  -> (forall env' . Applicative env' => Extends env env' -> env' repr -> m (env' repr))
   -> m (env repr)
-lam0 f = fmap S.lam0 <$> liftBinder f
+lam0 n f = liftA2 S.lam0 <$> n <*> liftBinder f
 
 
 (>=>)

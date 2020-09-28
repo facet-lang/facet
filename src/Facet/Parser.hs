@@ -93,7 +93,7 @@ lam :: forall p env expr . (Applicative env, S.Expr expr, Monad p, TokenParsing 
 lam var = braces $ clause var
   where
   clause :: Applicative env' => p (env' expr) -> p (env' expr)
-  clause var = S.lam0 (\ env v -> name >>= \ i -> let var' = v <$ variable i <|> S.castF env var in clause var' <|> arrow *> expr_ var') <?> "clause"
+  clause var = name >>= \ i -> S.lam0 (pure (pure i)) (\ env v -> let var' = v <$ variable i <|> S.castF env var in clause var' <|> arrow *> expr_ var') <?> "clause"
 
 atom :: (Applicative env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 atom var

@@ -65,8 +65,8 @@ instance S.Type a => S.Type (Elab a) where
 
 instance S.Expr a => S.Expr (Elab a) where
   global = Elab . S.global
-  lam0 f = Elab $ S.lam0 (elab . f . Elab)
-  lam f = Elab $ S.lam (elab . f . either (Left . Elab) (\ (e, k) -> Right (Elab e, Elab . k . elab)))
+  lam0 n f = Elab $ S.lam0 n (elab . f . Elab)
+  lam n f = Elab $ S.lam n (elab . f . either (Left . Elab) (\ (e, k) -> Right (Elab e, Elab . k . elab)))
   f $$ a = Elab $ elab f S.$$ elab a
   unit = Elab S.unit
   l ** r = Elab $ elab l S.** elab r

@@ -125,7 +125,7 @@ arrow = op (pretty "->")
 
 
 instance T.Expr TPrint where
-  lam f = TPrint $ cases [\ var -> (var, coerce (f . Left) var)]
+  lam f = TPrint $ cases Nothing [\ var -> (var, coerce (f . Left) var)]
   ($$) = coerce app
 
   alg _ = TPrint $ pretty "TBD"
@@ -133,8 +133,14 @@ instance T.Expr TPrint where
   weakenBy _ = coerce
 
 
-cases :: [Print -> (Print, Print)] -> Print
-cases cs = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
+cases :: Maybe U.EName -> [Print -> (Print, Print)] -> Print
+cases (Just n) cs = whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
+  . encloseSep
+    mempty
+    mempty
+    (flatAlt (space <> comma <> space) (comma <> space))
+  $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [name (pretty n)])
+cases Nothing  cs = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
   . encloseSep
     mempty
     mempty
@@ -158,8 +164,8 @@ instance U.Expr Print where
   global = pretty
   -- FIXME: Preserve variable names from user code where possible
   -- FIXME: Use _ in binding positions for unused variables
-  lam0 f = cases [\ var -> (var, f var)]
-  lam  f = cases [\ var -> (var, f (Left var))]
+  lam0 n f = cases (Just n) [\ var -> (var, f var)]
+  lam  n f = cases (Just n) [\ var -> (var, f (Left var))]
   ($$) = app
 
   unit = pretty "()"

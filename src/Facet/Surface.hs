@@ -24,8 +24,8 @@ newtype EName = EName { getEName :: Text }
 class Expr expr where
   global :: EName -> expr
 
-  lam0 :: (expr -> expr) -> expr
-  lam :: (Either expr (expr, expr -> expr) -> expr) -> expr
+  lam0 :: EName -> (expr -> expr) -> expr
+  lam :: EName -> (Either expr (expr, expr -> expr) -> expr) -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
 
