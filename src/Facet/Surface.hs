@@ -8,9 +8,11 @@ module Facet.Surface
 , DeclName
 , Module(..)
 , Decl(..)
+, (:::)(..)
 ) where
 
 import Data.Text (Text)
+import Facet.Syntax ((:::)(..))
 
 type Name = Text
 
