@@ -17,7 +17,7 @@ module Facet.Print
 , Print(..)
 , Context(..)
 , TPrint(..)
-, var
+, evar
 , tvar
 ) where
 
@@ -140,13 +140,13 @@ cases cs = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ 
     mempty
     mempty
     (flatAlt (space <> comma <> space) (comma <> space))
-  $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [var v])
+  $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [evar v])
 
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
 
-var :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
-var = setPrec Var . name . P.var
+evar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
+evar = setPrec Var . name . P.var
 
 tvar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
 tvar = setPrec Var . name . P.tvar
@@ -194,7 +194,7 @@ instance U.Decl Print Print Print where
   -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
   t .= b = t </> pretty '=' <+> b
 
-  t >-> f = bind $ \ v -> let v' = var v in group (align (parens (ann (v' ::: t)))) </> arrow <+> prec FnR (f v')
+  t >-> f = bind $ \ v -> let v' = evar v in group (align (parens (ann (v' ::: t)))) </> arrow <+> prec FnR (f v')
 
 app :: Print -> Print -> Print
 l `app` r = askingPrec $ \case
