@@ -5,8 +5,10 @@ module Facet.Core.HOAS
 , Circ(..)
 ) where
 
-import Data.Text (Text)
-import Facet.Syntax ((:::)(..))
+import           Data.Text (Text)
+import qualified Facet.Core as C
+import           Facet.Name (Scoped, binder)
+import           Facet.Syntax ((:::)(..))
 
 class Type ty where
   _Type :: ty
@@ -32,3 +34,13 @@ class Expr expr where
 
 
 newtype Circ t = Circ { getCirc :: t }
+
+instance (C.Type t, Scoped t) => Type (Circ t) where
+  _Type = Circ C._Type
+  _Unit = Circ C._Unit
+
+  (n ::: t) >=> b = Circ $ binder C.tbound ((C.==>) . (::: getCirc t)) n (getCirc . b . Circ)
+  f .$  a = Circ $ getCirc f C..$ getCirc a
+
+  a --> b = Circ $ getCirc a C.--> getCirc b
+  l .*  r = Circ $ getCirc l C..*  getCirc r
