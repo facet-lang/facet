@@ -81,8 +81,8 @@ newtype Synth a = Synth { runSynth :: Either Print a }
 instance MonadFail Synth where
   fail = throwError @Print . pretty
 
-check :: Check a -> Type -> Synth a
-check = runCheck
+check :: (Check a ::: Type) -> Synth a
+check = uncurryAnn runCheck
 
 checking :: (Type -> Synth a) -> Check a
 checking = Check
@@ -124,23 +124,23 @@ _Unit = pure $ CT._Unit ::: CT._Type
 f .$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
-  a' <- check a _A
+  a' <- check (a ::: _A)
   pure $ f' CT..$ a' ::: CT._Type
 
 infixl 9 .$
 
 (.*) :: Check Type -> Check Type -> Synth (Type ::: Type)
 a .* b = do
-  a' <- check a CT._Type
-  b' <- check b CT._Type
+  a' <- check (a ::: CT._Type)
+  b' <- check (b ::: CT._Type)
   pure $ a' CT..* b' ::: CT._Type
 
 infixl 7 .*
 
 (-->) :: Check Type -> Check Type -> Synth (Type ::: Type)
 a --> b = do
-  a' <- check a CT._Type
-  b' <- check b CT._Type
+  a' <- check (a ::: CT._Type)
+  b' <- check (b ::: CT._Type)
   pure $ (a' CT.--> b') ::: CT._Type
 
 infixr 2 -->
@@ -150,8 +150,8 @@ infixr 2 -->
   -> ((Type ::: Type) -> Check Type)
   -> Synth (Type ::: Type)
 (n ::: t) >=> b = do
-  t' <- check t CT._Type
-  ftb' <- pure (n ::: t') C.>=> \ v -> check (b (v ::: t')) CT._Type
+  t' <- check (t ::: CT._Type)
+  ftb' <- pure (n ::: t') C.>=> \ v -> check (b (v ::: t') ::: CT._Type)
   pure $ ftb' ::: CT._Type
 
 infixr 1 >=>
@@ -176,12 +176,12 @@ cod = traverseTypeMaybe (\case
 f $$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
-  a' <- check a _A
+  a' <- check (a ::: _A)
   pure $ f' C.$$ a' ::: _B
 
 lam0 :: (C.Expr expr, Scoped expr) => Text -> ((expr ::: Type) -> Check expr) -> Check expr
 lam0 n f = checking $ \ t -> case asFn t of
-  Just (_A, _B) -> C.lam0 n $ \ v -> check (f (v ::: _A)) _B
+  Just (_A, _B) -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _             -> fail "expected function type in lambda"
 
 -- FIXME: internalize scope into Type & Expr?
