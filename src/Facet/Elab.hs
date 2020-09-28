@@ -72,10 +72,10 @@ instance S.Expr a => S.Expr (Elab a) where
 
 
 newtype Check a = Check { runCheck :: Type -> Synth a }
-  deriving (Algebra (Reader Type :+: Reader Env :+: Error Print), Applicative, Functor, Monad) via ReaderC Type Synth
+  deriving (Algebra (Reader Type :+: Error Print), Applicative, Functor, Monad) via ReaderC Type Synth
 
-newtype Synth a = Synth { runSynth :: Env -> Either Print a }
-  deriving (Algebra (Reader Env :+: Error Print), Applicative, Functor, Monad, MonadFix) via ReaderC Env (Either Print)
+newtype Synth a = Synth { runSynth :: Either Print a }
+  deriving (Algebra (Error Print), Applicative, Functor, Monad, MonadFix) via Either Print
 
 instance MonadFail Synth where
   fail = throwError @Print . pretty
