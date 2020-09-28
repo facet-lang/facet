@@ -1,7 +1,9 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.GHCI
 ( -- * Parsing
   parseString'
+, parseElabString
   -- * Elaboration
 , printElab
 , thing
@@ -13,6 +15,7 @@ import           Control.Carrier.Throw.Either (ThrowC, runThrow)
 import           Control.Effect.Parser.Notice (Notice, prettyNotice)
 import           Control.Effect.Parser.Span (Pos(..))
 import           Control.Monad.IO.Class (MonadIO(..))
+import           Data.Bifunctor
 import qualified Facet.Core.Lifted as C
 import           Facet.Elab
 import qualified Facet.Pretty as P
@@ -28,6 +31,12 @@ parseString' :: MonadIO m => ParserC (ThrowC Notice (LiftC m)) P.Print -> String
 parseString' p s = runM $ do
   r <- runThrow (runParserWithString (Pos 0 0) s p)
   either (P.putDoc . prettyNotice) P.prettyPrint r
+
+parseElabString :: MonadIO m => ParserC (ThrowC Notice (LiftC m)) (Elab P.Print) -> String -> m ()
+parseElabString p s = runM $
+  runThrow (runParserWithString (Pos 0 0) s p) >>= \ r -> case first prettyNotice r >>= first (P.prettyWith P.terminalStyle) . elab . (::: Nothing) of
+    Left err -> P.putDoc err
+    Right a -> P.prettyPrint a
 
 
 -- Elaboration
