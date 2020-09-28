@@ -22,7 +22,7 @@ import Control.Monad (ap, liftM)
 -- NB:
 --
 -- 1. There is no 'Monad' instance defined for 'MonadInstance' itself to avoid accidentally deriving confusing circular definitions.
--- 2. Your 'Monad' instance /must/ define 'return'. This will trigger @-Wnoncanonical-monad-instances@ if that is enabled, so you may wish to disable that warning local to the module with an @OPTIONS_GHC@ pragma.
+-- 2. Your 'Monad' instance /must/ define 'return'. This will trigger @-Wnoncanonical-monad-instances@ if that is enabled, so you may wish to disable that warning local to the module with an @OPTIONS_GHC -Wno-noncanonical-monad-instances@ pragma.
 newtype MonadInstance m a = MonadInstance (m a)
 
 instance Monad m => Functor (MonadInstance m) where
