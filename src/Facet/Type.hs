@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -28,6 +29,7 @@ data Type' r
   | Type' r :$  Type' r
   | Type' r :-> Type' r
   | Type' r :*  Type' r
+  deriving (Foldable, Functor, Traversable)
 
 infixr 0 :=>
 infixl 9 :$
