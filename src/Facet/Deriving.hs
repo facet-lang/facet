@@ -26,6 +26,7 @@ import Control.Monad (ap, liftM, liftM2)
 --
 -- 1. There is no 'Applicative' instance defined for 'ApplicativeInstance' itself to avoid accidentally deriving confusing circular definitions.
 -- 2. If you are able to define a 'Monad' instance for your type, you may wish to consider using 'MonadInstance' instead.
+-- 3. For many types, @-XDeriveFunctor@ may be just as convenient.
 newtype ApplicativeInstance m a = ApplicativeInstance (m a)
 
 instance Applicative m => Functor (ApplicativeInstance m) where
