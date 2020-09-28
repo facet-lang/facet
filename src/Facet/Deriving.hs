@@ -1,9 +1,12 @@
 module Facet.Deriving
-( MonadInstance(..)
+( ApplicativeInstance(..)
+, MonadInstance(..)
 ) where
 
 import Control.Applicative (liftA2)
 import Control.Monad (ap, liftM, liftM2)
+
+newtype ApplicativeInstance m a = ApplicativeInstance (m a)
 
 -- | 'Functor' & 'Applicative' instances derivable via a 'Monad' instance, for use with @-XDerivingVia@.
 --
