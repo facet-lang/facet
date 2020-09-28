@@ -203,4 +203,5 @@ l `app` r = askingPrec $ \case
   AppL -> op
   _    -> group op
   where
+  -- FIXME: lambdas get parenthesized on the left
   op = leftAssoc AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
