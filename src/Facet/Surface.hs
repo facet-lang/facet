@@ -1,21 +1,25 @@
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface
-( Name
+( Name(..)
 , Expr(..)
-, TName
+, TName(..)
 , Type(..)
 , ForAll(..)
-, DeclName
+, DeclName(..)
 , Module(..)
 , Decl(..)
 , (:::)(..)
 ) where
 
+import Data.String (IsString(..))
 import Data.Text (Text)
 import Facet.Syntax ((:::)(..))
+import Prettyprinter (Pretty)
 
-type Name = Text
+newtype Name = Name { getName :: Text }
+  deriving (Eq, IsString, Ord, Pretty, Show)
 
 class Expr expr where
   global :: Name -> expr
@@ -37,10 +41,11 @@ class ForAll ty decl | decl -> ty where
   infixr 1 >=>
 
 
-type TName = Text
+newtype TName = TName { getTName :: Text }
+  deriving (Eq, IsString, Ord, Pretty, Show)
 
 class ForAll ty ty => Type ty where
-  tglobal :: Name -> ty
+  tglobal :: TName -> ty
 
   (-->) :: ty -> ty -> ty
   infixr 2 -->
@@ -56,7 +61,8 @@ class ForAll ty ty => Type ty where
   _Type :: ty
 
 
-type DeclName = Text
+newtype DeclName = DeclName { getDeclName :: Text }
+  deriving (Eq, IsString, Ord, Pretty, Show)
 
 -- FIXME: define a core variant of this where declarations are normalized to not contain term bindings in the signature but instead pattern match in the definition
 class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
