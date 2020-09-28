@@ -11,6 +11,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
 ( Env
+, implicit
 , elab
 , Elab(..)
 , Check(..)
@@ -52,24 +53,24 @@ implicit :: C.Type a => Env a
 implicit = Map.fromList [ (T.pack "Type", CT._Type ::: CT._Type) ]
 
 elab :: C.Type e => (Elab e a ::: Maybe Type) -> Either Print a
-elab ~(m ::: t) = runSynth (runElab m implicit t)
+elab ~(m ::: t) = runSynth (runElab m t) implicit
 
-newtype Elab e a = Elab { runElab :: Env e -> Maybe Type -> Synth a }
-  deriving (Algebra (Reader (Env e) :+: Reader (Maybe Type) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Env e) (ReaderC (Maybe Type) Synth)
+newtype Elab e a = Elab { runElab :: Maybe Type -> Synth e a }
+  deriving (Algebra (Reader (Maybe Type) :+: Reader (Env e) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Maybe Type) (Synth e)
 
-checked :: C.Type e => Elab e (a ::: Type) -> Check a
-checked (Elab m) = Check (fmap tm . m implicit . Just)
+checked :: Elab e (a ::: Type) -> Check e a
+checked (Elab m) = Check (fmap tm . m . Just)
 
-checking :: Check a -> Elab e (a ::: Type)
-checking m = Elab $ const $ \case
+checking :: Check e a -> Elab e (a ::: Type)
+checking m = Elab $ \case
   Just t  -> check (m ::: t) .: t
   Nothing -> fail "can’t synthesize a type for this lambda"
 
-synthed :: C.Type e => Elab e a -> Synth a
-synthed (Elab run) = run implicit Nothing
+synthed :: Elab e a -> Synth e a
+synthed (Elab run) = run Nothing
 
-synthing :: Synth (a ::: Type) -> Elab e (a ::: Type)
-synthing m = Elab $ const $ \case
+synthing :: Synth e (a ::: Type) -> Elab e (a ::: Type)
+synthing m = Elab $ \case
   Just t  -> check (switch m ::: t) .: t
   Nothing -> m
 
@@ -88,7 +89,7 @@ instance S.Type (Elab Type (Type ::: Type)) where
   _Unit = synthing _Unit
   _Type = synthing _Type
 
-instance (C.Type a, C.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
+instance (C.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
   global s = asks @(Env _) (Map.lookup (S.getEName s)) >>= \case
     Just b  -> pure $ b
     Nothing -> fail $ "variable not in scope: " <> show (S.getEName s)
@@ -99,27 +100,27 @@ instance (C.Type a, C.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
   _ ** _ = fail "TBD"
 
 
-newtype Check a = Check { runCheck :: Type -> Synth a }
-  deriving (Algebra (Reader Type :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC Type Synth
+newtype Check e a = Check { runCheck :: Type -> Synth e a }
+  deriving (Algebra (Reader Type :+: Reader (Env e) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC Type (Synth e)
 
-newtype Synth a = Synth { runSynth :: Either Print a }
-  deriving (Algebra (Error Print), Applicative, Functor, Monad, MonadFix) via Either Print
+newtype Synth e a = Synth { runSynth :: Env e -> Either Print a }
+  deriving (Algebra (Reader (Env e) :+: Error Print), Applicative, Functor, Monad, MonadFix) via ReaderC (Env e) (Either Print)
 
-instance MonadFail Synth where
+instance MonadFail (Synth e) where
   fail = throwError @Print . pretty
 
-check :: (Check a ::: Type) -> Synth a
+check :: (Check e a ::: Type) -> Synth e a
 check = uncurryAnn runCheck
 
-switch :: Synth (a ::: Type) -> Check a
+switch :: Synth e (a ::: Type) -> Check e a
 switch s = Check $ \ _T -> do
   a ::: _T' <- s
   a <$ unify' _T _T'
 
-unify' :: Type -> Type -> Synth Type
+unify' :: Type -> Type -> Synth e Type
 unify' t1 t2 = t2 <$ go t1 t2 -- NB: unification cannot (currently) result in information increase, so it always suffices to take (arbitrarily) the second operand as the result. Failures escape by throwing an exception, so this will not affect failed results.
   where
-  go :: Type -> Type -> Synth ()
+  go :: Type -> Type -> Synth e ()
   go = curry $ \case
     (Type,      Type)      -> pure ()
     (Unit,      Unit)      -> pure ()
@@ -140,13 +141,13 @@ unify' t1 t2 = t2 <$ go t1 t2 -- NB: unification cannot (currently) result in in
 
 -- Types
 
-_Type :: Synth (Type ::: Type)
+_Type :: Synth e (Type ::: Type)
 _Type = pure $ CT._Type ::: CT._Type
 
-_Unit :: Synth (Type ::: Type)
+_Unit :: Synth e (Type ::: Type)
 _Unit = pure $ CT._Unit ::: CT._Type
 
-(.$) :: Synth (Type ::: Type) -> Check Type -> Synth (Type ::: Type)
+(.$) :: Synth e (Type ::: Type) -> Check e Type -> Synth e (Type ::: Type)
 f .$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
@@ -155,7 +156,7 @@ f .$ a = do
 
 infixl 9 .$
 
-(.*) :: Check Type -> Check Type -> Synth (Type ::: Type)
+(.*) :: Check e Type -> Check e Type -> Synth e (Type ::: Type)
 a .* b = do
   a' <- check (a ::: CT._Type)
   b' <- check (b ::: CT._Type)
@@ -163,7 +164,7 @@ a .* b = do
 
 infixl 7 .*
 
-(-->) :: Check Type -> Check Type -> Synth (Type ::: Type)
+(-->) :: Check e Type -> Check e Type -> Synth e (Type ::: Type)
 a --> b = do
   a' <- check (a ::: CT._Type)
   b' <- check (b ::: CT._Type)
@@ -172,9 +173,9 @@ a --> b = do
 infixr 2 -->
 
 (>=>)
-  :: (T.Text ::: Check Type)
-  -> ((Type ::: Type) -> Check Type)
-  -> Synth (Type ::: Type)
+  :: (T.Text ::: Check e Type)
+  -> ((Type ::: Type) -> Check e Type)
+  -> Synth e (Type ::: Type)
 (n ::: t) >=> b = do
   t' <- check (t ::: CT._Type)
   ftb' <- pure (n ::: t') C.>=> \ v -> check (b (v ::: t') ::: CT._Type)
@@ -190,14 +191,14 @@ asFn = \case
   _A :-> _B -> Just (_A, _B)
   _         -> Nothing
 
-($$) :: C.Expr expr => Synth (expr ::: Type) -> Check expr -> Synth (expr ::: Type)
+($$) :: C.Expr expr => Synth e (expr ::: Type) -> Check e expr -> Synth e (expr ::: Type)
 f $$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
   a' <- check (a ::: _A)
   pure $ f' C.$$ a' ::: _B
 
-lam0 :: (C.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check expr) -> Check expr
+lam0 :: (C.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check e expr) -> Check e expr
 lam0 n f = Check $ \ t -> case asFn t of
   Just (_A, _B) -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _             -> fail "expected function type in lambda"

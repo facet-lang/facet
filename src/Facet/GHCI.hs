@@ -42,11 +42,11 @@ parseElabString p s = runM $
 
 -- Elaboration
 
-printElab :: Synth (T.Type ::: T.Type) -> IO ()
-printElab = P.prettyPrint . either id prettyAnn . runSynth
+printElab :: C.Type e => Synth e (T.Type ::: T.Type) -> IO ()
+printElab = P.prettyPrint . either id prettyAnn . (`runSynth` implicit)
 
 prettyAnn :: (S.Printer p, C.Type p) => (T.Type ::: T.Type) -> p
 prettyAnn (tm ::: ty) = C.interpret tm S.<+> S.colon S.<+> C.interpret ty
 
-thing :: Synth (T.Type ::: T.Type)
+thing :: Synth e (T.Type ::: T.Type)
 thing = (__ ::: switch (switch _Type --> switch _Type)) >=> \ t -> switch (switch (pure t .$ switch _Unit) --> switch (pure t .$ switch _Unit))
