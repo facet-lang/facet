@@ -27,6 +27,7 @@ import           Data.Coerce
 import qualified Data.Kind as K
 import qualified Facet.Core as C
 import           Facet.Functor.K
+import           Facet.Name (prettyNameWith)
 import qualified Facet.Pretty as P
 import qualified Facet.Surface as U
 import           Facet.Syntax
@@ -175,14 +176,14 @@ instance U.Type Print where
   _Type = pretty "Type"
 
 instance C.Type Print where
-  bound = setPrec Var . name . pretty
+  bound = setPrec Var . name . prettyNameWith tvar
   (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
   (.$) = coerce app
   _Unit = pretty "()"
   _Type = pretty "Type"
   -- FIXME: combine quantification over type variables of the same kind
-  (v ::: t) >=> b = group (align (braces (space <> ann (pretty v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
+  (v ::: t) >=> b = group (align (braces (space <> ann (prettyNameWith tvar v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
 
 instance U.Module Print Print Print Print where
