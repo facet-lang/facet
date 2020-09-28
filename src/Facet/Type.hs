@@ -77,6 +77,9 @@ instance C.Interpret Type' where
 
 newtype Type = Abs { inst :: forall r . Type' r }
 
+instance Scoped Type where
+  maxBV (Abs t) = maxBV t
+
 instance C.Type Type where
   _Type = Abs C._Type
   _Unit = Abs C._Unit
