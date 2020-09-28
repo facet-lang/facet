@@ -13,6 +13,7 @@ module Facet.Name
 import           Control.Monad.Fix
 import           Data.Function (on)
 import qualified Data.IntMap as IntMap
+import           Data.Semigroup (Max(..))
 import qualified Data.Text as T
 import           Facet.Pretty
 import qualified Prettyprinter as P
@@ -38,8 +39,8 @@ prettyNameWith var n
   | otherwise       = pretty (hint n) <> pretty (id' n)
 
 
-prime :: T.Text -> Maybe Int -> Name
-prime n i = Name n (maybe 0 succ i)
+prime :: T.Text -> Maybe (Max Int) -> Name
+prime n i = Name n (maybe 0 (succ . getMax) i)
 
 
 __ :: T.Text
@@ -47,10 +48,10 @@ __ = T.empty
 
 
 class Scoped t where
-  maxBV :: t -> Maybe Int
+  maxBV :: t -> Maybe (Max Int)
 
 instance Scoped Name where
-  maxBV = Just . id'
+  maxBV = Just . Max . id'
 
 binder
   :: Scoped t
