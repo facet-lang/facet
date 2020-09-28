@@ -11,15 +11,12 @@ import Control.Monad (ap, liftM, liftM2)
 -- Define an 'Applicative' instance for your type @A@, and then add @deriving ('Functor') via 'ApplicativeInstance' A@. E.g.:
 --
 -- @
--- data Validation e a = Failure e | Success a
---   deriving (Functor) via ApplicativeInstance (Validation e)
+-- newtype Constant a b = Constant a
+--   deriving (Functor) via ApplicativeInstance (Constant a)
 --
--- instance Semigroup e => Applicative (Validation e) where
---   pure = Success
---   Failure a <*> Failure b = Failure (a <> b)
---   Failure a <*> _         = Failure a
---   _         <*> Failure b = Failure b
---   Success f <*> Success a = Success (f a)
+-- instance Monoid a => Applicative (Constant a) where
+--   pure _ = Constant mempty
+--   Constant a <*> Constant b = Constant (a <> b)
 -- @
 --
 -- NB:
