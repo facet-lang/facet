@@ -2,6 +2,7 @@
 module Facet.Core.HOAS
 ( Type(..)
 , Expr(..)
+, Circ(..)
 ) where
 
 import Data.Text (Text)
@@ -28,3 +29,6 @@ class Expr expr where
   lam0 :: Text -> (expr -> expr) -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
+
+
+newtype Circ t = Circ { getCirc :: t }
