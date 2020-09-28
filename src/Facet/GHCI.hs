@@ -7,7 +7,8 @@ module Facet.GHCI
 , thing
 ) where
 
-import           Control.Carrier.Parser.Church (Algebra, ParserC, runParserWithString)
+import           Control.Carrier.Lift
+import           Control.Carrier.Parser.Church (ParserC, runParserWithString)
 import           Control.Carrier.Throw.Either (ThrowC, runThrow)
 import           Control.Effect.Parser.Notice (Notice, prettyNotice)
 import           Control.Effect.Parser.Span (Pos(..))
@@ -23,8 +24,8 @@ import qualified Silkscreen as S
 
 -- Parsing
 
-parseString' :: (Algebra sig m, MonadIO m) => ParserC (ThrowC Notice m) P.Print -> String -> m ()
-parseString' p s = do
+parseString' :: MonadIO m => ParserC (ThrowC Notice (LiftC m)) P.Print -> String -> m ()
+parseString' p s = runM $ do
   r <- runThrow (runParserWithString (Pos 0 0) s p)
   either (P.putDoc . prettyNotice) P.prettyPrint r
 
