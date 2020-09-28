@@ -28,8 +28,8 @@ prime :: Text -> Int -> Name
 prime n i = Name n (i + 1)
 
 
-__ :: Text
-__ = pack "_"
+__ :: T.Text
+__ = T.empty
 
 
 class Scoped t where
