@@ -3,7 +3,7 @@ module Facet.Deriving
 ( MonadInstance(..)
 ) where
 
-import Control.Monad (liftM)
+import Control.Monad (ap, liftM)
 
 newtype MonadInstance m a = MonadInstance (m a)
 
@@ -13,3 +13,9 @@ instance Monad m => Functor (MonadInstance m) where
 
   a <$ MonadInstance m = MonadInstance (liftM (const a) m)
   {-# INLINE (<$) #-}
+
+instance Monad m => Applicative (MonadInstance m) where
+  pure = MonadInstance . return
+  {-# INLINE pure #-}
+  MonadInstance f <*> MonadInstance a = MonadInstance (ap f a)
+  {-# INLINE (<*>) #-}
