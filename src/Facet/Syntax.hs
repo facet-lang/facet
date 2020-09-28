@@ -7,6 +7,7 @@ module Facet.Syntax
 , uncurryAnn
 , curryAnn
 , (.:)
+, Stack(..)
 ) where
 
 import Data.Bifunctor
@@ -41,3 +42,8 @@ curryAnn f a b = f (a ::: b)
 tm .: ty = (::: ty) <$> tm
 
 infix 5 .:
+
+
+data Stack a
+  = Nil
+  | Stack a :> a
