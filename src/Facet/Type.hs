@@ -48,7 +48,7 @@ instance Scoped (Type' a) where
     l :* r  -> maxBV l `max` maxBV r
 
 instance C.Type (Type' r) where
-  bound = Bound
+  tbound = Bound
   _Type = Type
   _Unit = Unit
   (>=>) = (:=>)
@@ -61,7 +61,7 @@ instance C.Interpret Type' where
     where
     go = \case
       Var r   -> r
-      Bound n -> C.bound n
+      Bound n -> C.tbound n
       Type    -> C._Type
       Unit    -> C._Unit
       t :=> b -> fmap go t C.>=> go b
@@ -76,7 +76,7 @@ instance Scoped Type where
   maxBV (Abs t) = maxBV t
 
 instance C.Type Type where
-  bound n = Abs $ Bound n
+  tbound n = Abs $ Bound n
   _Type = Abs C._Type
   _Unit = Abs C._Unit
 

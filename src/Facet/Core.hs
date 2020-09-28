@@ -9,7 +9,7 @@ import Facet.Name (Name)
 import Facet.Syntax ((:::))
 
 class Type ty where
-  bound :: Name -> ty
+  tbound :: Name -> ty
 
   _Type :: ty
   _Unit :: ty

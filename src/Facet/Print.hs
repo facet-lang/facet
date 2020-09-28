@@ -176,7 +176,7 @@ instance U.Type Print where
   _Type = pretty "Type"
 
 instance C.Type Print where
-  bound = setPrec Var . name . prettyNameWith tvar
+  tbound = setPrec Var . name . prettyNameWith tvar
   (-->) = (U.-->)
   (.*) = (U..*)
   (.$) = app
