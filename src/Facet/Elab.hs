@@ -67,7 +67,7 @@ instance S.ForAll (Elab (Type ::: Type)) (Elab (Type ::: Type)) where
   (n ::: t) >=> b = switched $ (S.getTName n ::: checked t) >=> checked . b . pure
 
 instance S.Type (Elab (Type ::: Type)) where
-  tglobal _ = fail "TBD"
+  tglobal _ = fail "TBD" -- FIXME: carry around a global environment
   a --> b = switched $ checked a --> checked b
   f .$  a = switched $ synthed f .$  checked a
   l .*  r = switched $ checked l .*  checked r
@@ -76,7 +76,7 @@ instance S.Type (Elab (Type ::: Type)) where
   _Type = switched _Type
 
 instance (C.Expr a, Scoped a) => S.Expr (Elab (a ::: Type)) where
-  global _ = fail "TBD"
+  global _ = fail "TBD" -- FIXME: carry around a global environment
   lam0 n f = Elab $ \case
     Just t  -> check (lam0 (S.getEName n) (checked . f . pure) ::: t) .: t
     Nothing -> fail "can’t synthesize a type for this lambda"
