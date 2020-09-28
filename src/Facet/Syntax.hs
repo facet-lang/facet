@@ -47,3 +47,5 @@ infix 5 .:
 data Stack a
   = Nil
   | Stack a :> a
+
+infixl 5 :>
