@@ -75,7 +75,7 @@ instance S.ForAll (Elab (Type ::: Type)) (Elab (Type ::: Type)) where
   (n ::: t) >=> b = synthing $ (S.getTName n ::: checked t) >=> checked . b . pure
 
 instance S.Type (Elab (Type ::: Type)) where
-  tglobal _ = fail "TBD" -- FIXME: carry around a global environment
+  tglobal s = fail $ "TBD: tglobal " <> show s -- FIXME: carry around a global environment
   a --> b = synthing $ checked a --> checked b
   f .$  a = synthing $ synthed f .$  checked a
   l .*  r = synthing $ checked l .*  checked r
@@ -84,7 +84,7 @@ instance S.Type (Elab (Type ::: Type)) where
   _Type = synthing _Type
 
 instance (C.Expr a, Scoped a) => S.Expr (Elab (a ::: Type)) where
-  global _ = fail "TBD" -- FIXME: carry around a global environment
+  global s = fail $ "TBD: global " <> show s -- FIXME: carry around a global environment
   lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = fail "TBD"
   f $$ a = synthing $ synthed f $$ checked a
