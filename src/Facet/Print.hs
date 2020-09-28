@@ -25,7 +25,6 @@ import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
 import           Data.Coerce
 import qualified Data.Kind as K
-import           Data.Text (Text)
 import qualified Facet.Core as C
 import           Facet.Functor.K
 import qualified Facet.Name as N
@@ -104,7 +103,7 @@ newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
   deriving (Applicative) via K Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
-  (>=>) = coerce ((U.>=>) :: (Text ::: Print) -> (Print -> Print) -> Print)
+  (>=>) = coerce ((U.>=>) :: (U.TName ::: Print) -> (Print -> Print) -> Print)
 
 
 data Highlight
