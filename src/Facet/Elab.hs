@@ -47,10 +47,10 @@ import           Facet.Syntax
 import           Facet.Type
 import           Silkscreen
 
-type Env e = Map.Map T.Text e
+type Env e = Map.Map T.Text (e ::: Type)
 
 implicit :: Env Type
-implicit = Map.fromList [ (T.pack "Type", CT._Type) ]
+implicit = Map.fromList [ (T.pack "Type", CT._Type ::: CT._Type) ]
 
 elab :: (Elab Type a ::: Maybe Type) -> Either Print a
 elab ~(m ::: t) = runSynth (runElab m implicit t)
@@ -79,7 +79,7 @@ instance S.ForAll (Elab Type (Type ::: Type)) (Elab Type (Type ::: Type)) where
 
 instance S.Type (Elab Type (Type ::: Type)) where
   tglobal s = asks @(Env Type) (Map.lookup (S.getTName s)) >>= \case
-    Just _T -> pure $ CT._Type ::: _T -- FIXME: quit lying
+    Just b  -> pure $ b
     Nothing -> fail $ "variable not in scope: " <> show (S.getTName s)
   a --> b = synthing $ checked a --> checked b
   f .$  a = synthing $ synthed f .$  checked a
