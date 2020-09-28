@@ -75,7 +75,9 @@ instance S.ForAll (Elab (Type ::: Type)) (Elab (Type ::: Type)) where
   (n ::: t) >=> b = synthing $ (S.getTName n ::: checked t) >=> checked . b . pure
 
 instance S.Type (Elab (Type ::: Type)) where
-  tglobal s = fail $ "TBD: tglobal " <> show s -- FIXME: carry around a global environment
+  tglobal s = asks @Env (Map.lookup (S.getTName s)) >>= \case
+    Just _T -> pure $ CT._Type ::: _T -- FIXME: quit lying
+    Nothing -> fail $ "variable not in scope: " <> show (S.getTName s)
   a --> b = synthing $ checked a --> checked b
   f .$  a = synthing $ synthed f .$  checked a
   l .*  r = synthing $ checked l .*  checked r
