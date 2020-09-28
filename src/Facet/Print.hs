@@ -168,7 +168,7 @@ instance U.Expr Print where
 
 instance U.ForAll Print Print where
   -- FIXME: combine quantification over type variables of the same kind
-  (n ::: t) >=> b = bind $ \ v -> let v' = N.prettyNameWith tvar (N.Name n v) in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (b v')
+  (n ::: t) >=> b = let v' = var (pretty n) in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (b v')
 
 instance U.Type Print where
     -- FIXME: don’t shadow globals with locally-bound variables
