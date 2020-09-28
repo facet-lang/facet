@@ -1,11 +1,14 @@
+{-# LANGUAGE TupleSections #-}
 module Facet.Name
 ( Name(..)
 , prime
 , __
 , Scoped(..)
 , binder
+, binderM
 ) where
 
+import           Control.Monad.Fix
 import           Data.Function (on)
 import qualified Data.Text as T
 import           Prettyprinter (Pretty(..))
@@ -59,3 +62,13 @@ binder bound ctor n e = ctor n' b'
   where
   b' = e (bound n')
   n' = prime n (maxBV b')
+
+binderM
+  :: (Scoped t, MonadFix m)
+  => (Name -> t)
+  -> (Name -> t -> r)
+  -> T.Text
+  -> (t -> m t)
+  -> m r
+binderM bound ctor n e = uncurry ctor <$> mfix (\ ~(n', b') -> do
+  (prime n (maxBV b'),) <$> e (bound n'))
