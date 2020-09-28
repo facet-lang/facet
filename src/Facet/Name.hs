@@ -2,7 +2,7 @@
 module Facet.Name
 ( Name(..)
 , prime
-, prettyName
+, prettyNameWith
 , __
 , Scoped(..)
 , binder
@@ -28,15 +28,16 @@ instance Show Name where
   showsPrec p = showsPrec p . P.pretty
 
 instance P.Pretty Name where
-  pretty = prettyName
+  pretty = prettyNameWith var
 
-prettyName :: Printer p => Name -> p
-prettyName n
+prettyNameWith :: Printer p => (Int -> p) -> Name -> p
+prettyNameWith var n
   | T.null (name n) = var (id' n)
   | otherwise       = pretty (name n) <> pretty (id' n)
-  where
-  var = varFrom ['a'..'z']
-  varFrom alpha i = pretty (toAlpha alpha i)
+
+var :: Printer p => Int -> p
+var = varFrom ['a'..'z']
+varFrom alpha i = pretty (toAlpha alpha i)
 
 
 prime :: T.Text -> Maybe Int -> Name
