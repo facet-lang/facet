@@ -33,7 +33,7 @@ class Expr expr where
 
 class ForAll ty decl | decl -> ty where
   -- | Universal quantification.
-  (>=>) :: (Name ::: ty) -> (ty -> decl) -> decl
+  (>=>) :: (TName ::: ty) -> (ty -> decl) -> decl
   infixr 1 >=>
 
 

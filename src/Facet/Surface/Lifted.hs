@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Lifted
 ( S.Name
+, S.TName
 , S.Expr(global, unit, (**), ($$))
 , S.Type(tglobal, _Type, _Unit, (-->), (.*), (.$))
 , S.Module(..)
@@ -39,7 +40,7 @@ lam0 f = fmap S.lam0 <$> liftBinder f
 
 (>=>)
   :: (Applicative m, Applicative env, S.ForAll ty decl)
-  => m (env (S.Name S.::: ty))
+  => m (env (S.TName S.::: ty))
   -> (forall env' . Applicative env' => Extends env env' -> env' ty -> m (env' decl))
   -> m (env decl)
 t >=> b = liftA2 (S.>=>) <$> t <*> liftBinder b

@@ -48,7 +48,7 @@ forAll
   -> p (env res)
 forAll k tvar = do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ tvar)
-  let loop :: Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' ty) -> [S.Name] -> p (env' res)
+  let loop :: Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' ty) -> [S.TName] -> p (env' res)
       loop env ty tvar = \case
         []   -> k env tvar
         i:is -> (fmap (i S.:::) <$> ty) S.>=> \ env' t -> loop (env S.>>> env') (S.castF env' ty) (t <$ variable i <|> S.castF env' tvar) is
@@ -107,10 +107,11 @@ app :: (Applicative env, TokenParsing p) => (expr -> expr -> expr) -> (p (env ex
 app ($$) atom tvar = foldl (liftA2 ($$)) <$> atom tvar <*> many (atom tvar)
 
 
-name, tname, _holeName :: (Monad p, TokenParsing p) => p S.Name
+name, _holeName :: (Monad p, TokenParsing p) => p S.Name
 name  = ident nameStyle
-tname = ident tnameStyle
 _holeName = ident holeNameStyle
+tname :: (Monad p, TokenParsing p) => p S.TName
+tname = ident tnameStyle
 
 nameStyle :: CharParsing p => IdentifierStyle p
 nameStyle = IdentifierStyle
