@@ -9,6 +9,7 @@ module Facet.Type
 , Type'(..)
 , hoistType
 , traverseTypeMaybe
+, interpretType
 ) where
 
 import           Data.Maybe (fromJust)
@@ -94,3 +95,7 @@ traverseTypeMaybe :: (forall x . Type' x -> (Maybe :.: Type') x) -> Type -> Mayb
 traverseTypeMaybe f t = case f (inst t) of
   C Nothing  -> Nothing
   C (Just _) -> Just (Abs (fromJust (getC (f (inst t)))))
+
+
+interpretType :: C.Type r => Type -> r
+interpretType = C.interpret . inst
