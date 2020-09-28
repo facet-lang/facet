@@ -13,6 +13,8 @@ module Facet.Type
 , interpretType
 ) where
 
+import           Control.Monad (ap)
+import qualified Data.IntMap as IntMap
 import           Data.Maybe (fromJust)
 import qualified Facet.Core as C
 import           Facet.Functor.C
@@ -38,6 +40,13 @@ infixl 7 :*
 
 instance Show (Type' P.Print) where
   showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . C.interpret
+
+instance Applicative Type' where
+  pure = Var
+  (<*>) = ap
+
+instance Monad Type' where
+  t >>= f = rebind f mempty t
 
 instance Scoped (Type' a) where
   maxBV = \case
@@ -71,6 +80,19 @@ instance C.Interpret Type' where
       f :$ a  -> go f C..$  go a
       a :-> b -> go a C.--> go b
       l :* r  -> go l C..*  go r
+
+rebind :: (r -> Type' r') -> IntMap.IntMap (Type' r') -> Type' r -> Type' r'
+rebind f = go
+  where
+  go e = \case
+    Var a           -> f a
+    Bound b         -> e IntMap.! id' b
+    Type            -> Type
+    Unit            -> Unit
+    (n ::: t) :=> b -> (hint n ::: go e t) C.>=> \ v -> go (instantiate n v e) b
+    f :$  a         -> go e f :$ go e a
+    a :-> b         -> go e a :-> go e b
+    l :*  r         -> go e l :* go e r
 
 
 newtype Type = Abs { inst :: forall r . Type' r }
