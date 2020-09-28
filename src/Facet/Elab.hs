@@ -49,14 +49,17 @@ import           Silkscreen
 
 type Env = Map.Map T.Text Type
 
+implicit :: Env
+implicit = mempty
+
 elab :: (Elab a ::: Maybe Type) -> Either Print a
-elab ~(m ::: t) = runSynth (runElab m mempty t)
+elab ~(m ::: t) = runSynth (runElab m implicit t)
 
 newtype Elab a = Elab { runElab :: Env -> Maybe Type -> Synth a }
   deriving (Algebra (Reader Env :+: Reader (Maybe Type) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC Env (ReaderC (Maybe Type) Synth)
 
 checked :: Elab (a ::: Type) -> Check a
-checked (Elab m) = Check (fmap tm . m mempty . Just)
+checked (Elab m) = Check (fmap tm . m implicit . Just)
 
 checking :: Check a -> Elab (a ::: Type)
 checking m = Elab $ const $ \case
@@ -64,7 +67,7 @@ checking m = Elab $ const $ \case
   Nothing -> fail "can’t synthesize a type for this lambda"
 
 synthed :: Elab a -> Synth a
-synthed (Elab run) = run mempty Nothing
+synthed (Elab run) = run implicit Nothing
 
 synthing :: Synth (a ::: Type) -> Elab (a ::: Type)
 synthing m = Elab $ const $ \case
