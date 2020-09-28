@@ -10,7 +10,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
-( Elab(..)
+( Env
+, Elab(..)
 , Check(..)
 , Synth(..)
 , check
@@ -33,16 +34,19 @@ import           Control.Algebra
 import           Control.Applicative (liftA2)
 import           Control.Carrier.Reader
 import           Control.Effect.Error
+import           Control.Monad.Fix
+import qualified Data.IntMap as IntMap
+import           Data.Text (Text)
 import qualified Facet.Core as CT
 import qualified Facet.Core.Lifted as C
-import qualified Facet.Core.Lifted as CTL
-import           Facet.Env
 import           Facet.Functor.C
 import           Facet.Print (Print)
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Facet.Type
 import           Silkscreen
+
+type Env = IntMap.IntMap Type
 
 newtype Elab a = Elab { elab :: a }
 
@@ -68,10 +72,10 @@ instance S.Expr a => S.Expr (Elab a) where
 
 
 newtype Check a = Check { runCheck :: Type -> Synth a }
-  deriving (Algebra (Reader Type :+: Error Print), Applicative, Functor, Monad) via ReaderC Type Synth
+  deriving (Algebra (Reader Type :+: Reader Env :+: Error Print), Applicative, Functor, Monad) via ReaderC Type Synth
 
-newtype Synth a = Synth { runSynth :: Either Print a }
-  deriving (Algebra (Error Print), Applicative, Functor, Monad)
+newtype Synth a = Synth { runSynth :: Env -> Either Print a }
+  deriving (Algebra (Reader Env :+: Error Print), Applicative, Functor, Monad, MonadFix) via ReaderC Env (Either Print)
 
 instance MonadFail Synth where
   fail = throwError @Print . pretty
@@ -109,46 +113,45 @@ unify' t1 t2 = t2 <$ go (inst t1) (inst t2) -- NB: unification cannot (currently
 
 -- Types
 
-_Type :: Applicative env => Synth (env Type ::: Type)
-_Type = pure $ CTL._Type ::: CT._Type
+_Type :: Synth (Type ::: Type)
+_Type = pure $ CT._Type ::: CT._Type
 
-_Unit :: Applicative env => Synth (env Type ::: Type)
-_Unit = pure $ CTL._Unit ::: CT._Type
+_Unit :: Synth (Type ::: Type)
+_Unit = pure $ CT._Unit ::: CT._Type
 
-(.$) :: Applicative env => Synth (env Type ::: Type) -> Check (env Type) -> Synth (env Type ::: Type)
+(.$) :: Synth (Type ::: Type) -> Check Type -> Synth (Type ::: Type)
 f .$ a = do
   f' ::: _F <- f
   Just (_A, _B) <- pure $ asFn _F
   a' <- check a _A
-  pure $ f' CTL..$ a' ::: CT._Type
+  pure $ f' CT..$ a' ::: CT._Type
 
 infixl 9 .$
 
-(.*) :: Applicative env => Check (env Type) -> Check (env Type) -> Synth (env Type ::: Type)
+(.*) :: Check Type -> Check Type -> Synth (Type ::: Type)
 a .* b = do
   a' <- check a CT._Type
   b' <- check b CT._Type
-  pure $ a' CTL..* b' ::: CT._Type
+  pure $ a' CT..* b' ::: CT._Type
 
 infixl 7 .*
 
-(-->) :: Applicative env => Check (env Type) -> Check (env Type) -> Synth (env Type ::: Type)
+(-->) :: Check Type -> Check Type -> Synth (Type ::: Type)
 a --> b = do
   a' <- check a CT._Type
   b' <- check b CT._Type
-  pure $ (a' CTL.--> b') ::: CT._Type
+  pure $ (a' CT.--> b') ::: CT._Type
 
 infixr 2 -->
 
 (>=>)
-  :: Applicative env
-  => Check Type
-  -> (forall env' . Applicative env' => Extends env env' -> (env' Type ::: Type) -> Check (env' Type))
-  -> Synth (env Type ::: Type)
-t >=> b = do
+  :: (Text ::: Check Type)
+  -> ((Type ::: Type) -> Check Type)
+  -> Synth (Type ::: Type)
+(n ::: t) >=> b = do
   t' <- check t CT._Type
-  x <- pure (pure t') CTL.>=> \ env v -> check (b env (v ::: t')) CT._Type
-  pure $ x ::: CT._Type
+  ftb' <- pure (n ::: t') C.>=> \ v -> check (b (v ::: t')) CT._Type
+  pure $ ftb' ::: CT._Type
 
 infixr 1 >=>
 

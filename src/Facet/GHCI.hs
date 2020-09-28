@@ -14,9 +14,8 @@ import           Control.Effect.Parser.Span (Pos(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import qualified Facet.Core.Lifted as C
 import           Facet.Elab
-import           Facet.Env (strengthen)
 import qualified Facet.Pretty as P
-import           Facet.Functor.I (I(..))
+import           Facet.Name
 import qualified Facet.Print as P
 import           Facet.Syntax ((:::)(..))
 import qualified Facet.Type as T
@@ -32,8 +31,8 @@ parseString' p s = do
 
 -- Elaboration
 
-printElab :: Synth (I T.Type ::: T.Type) -> IO ()
-printElab = either P.prettyPrint (\ (I tm ::: ty) -> P.prettyPrint (P.runTPrint (C.interpret (T.inst tm)) S.<+> S.colon S.<+> P.runTPrint (C.interpret (T.inst ty)))) . runSynth
+printElab :: Synth (T.Type ::: T.Type) -> IO ()
+printElab = either P.prettyPrint (\ (tm ::: ty) -> P.prettyPrint (P.runTPrint (C.interpret (T.inst tm)) S.<+> S.colon S.<+> P.runTPrint (C.interpret (T.inst ty)))) . (`runSynth` mempty)
 
-thing :: Synth (I T.Type ::: T.Type)
-thing = strengthen (switch (switch _Type --> switch _Type)) >=> \ _ t -> switch (switch (pure t .$ switch _Unit) --> switch (pure t .$ switch _Unit))
+thing :: Synth (T.Type ::: T.Type)
+thing = (__ ::: switch (switch _Type --> switch _Type)) >=> \ t -> switch (switch (pure t .$ switch _Unit) --> switch (pure t .$ switch _Unit))

@@ -7,6 +7,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Print
 ( prettyPrint
@@ -28,6 +29,7 @@ import qualified Facet.Core as C
 import           Facet.Functor.K
 import           Facet.Pretty
 import qualified Facet.Surface as U
+import           Facet.Syntax
 import qualified Facet.Syntax.Typed as T
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
@@ -138,8 +140,8 @@ cases cs = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ 
     (flatAlt (space <> comma <> space) (comma <> space))
   $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [var v])
 
-ann :: Printer p => p -> p -> p
-ann v t = v </> group (align (colon <+> flatAlt space mempty <> t))
+ann :: Printer p => (p ::: p) -> p
+ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
 
 var :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
 var = varFrom ['a'..'z']
@@ -170,7 +172,7 @@ instance U.Expr Print where
 
 instance U.ForAll Print Print where
   -- FIXME: combine quantification over type variables of the same kind
-  t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> ann v' t <> flatAlt line space))) </> arrow <+> prec FnR (f v')
+  t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (f v')
 
 instance U.Type Print where
     -- FIXME: don’t shadow globals with locally-bound variables
@@ -182,23 +184,24 @@ instance U.Type Print where
   _Type = pretty "Type"
 
 instance C.Type Print where
+  bound = setPrec Var . name . pretty
   (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
   (.$) = coerce app
   _Unit = pretty "()"
   _Type = pretty "Type"
   -- FIXME: combine quantification over type variables of the same kind
-  t >=> f = bind $ \ v -> let v' = tvar v in group (align (braces (space <> ann v' t <> flatAlt line space))) </> arrow <+> prec FnR (f v')
+  (v ::: t) >=> b = group (align (braces (space <> ann (pretty v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
 
 instance U.Module Print Print Print Print where
-  n .: b = group $ ann (pretty n) b
+  n .: b = group $ ann (pretty n ::: b)
 
 instance U.Decl Print Print Print where
   -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
   t .= b = t </> pretty '=' <+> b
 
-  t >-> f = bind $ \ v -> let v' = var v in group (align (parens (ann v' t))) </> arrow <+> prec FnR (f v')
+  t >-> f = bind $ \ v -> let v' = var v in group (align (parens (ann (v' ::: t)))) </> arrow <+> prec FnR (f v')
 
 app :: Print -> Print -> Print
 l `app` r = askingPrec $ \case

@@ -11,15 +11,12 @@ module Facet.Type
 , traverseTypeMaybe
 ) where
 
-import qualified Data.IntMap as IntMap
 import           Data.Maybe (fromJust)
-import           Data.Text (Text)
 import qualified Facet.Core as C
 import           Facet.Functor.C
 import           Facet.Name
 import qualified Facet.Print as P
 import           Facet.Syntax
-import           Unsafe.Coerce (unsafeCoerce)
 
 data Type' r
   = Var r
@@ -51,28 +48,26 @@ instance Scoped (Type' a) where
     l :* r  -> maxBV l `max` maxBV r
 
 instance C.Type (Type' r) where
+  bound = Bound
   _Type = Type
   _Unit = Unit
-  (>=>) = (>=>) . (mempty :::)
+  (>=>) = (:=>)
   (.$)  = (:$)
   (-->) = (:->)
   (.*)  = (:*)
 
 instance C.Interpret Type' where
-  interpret = go mempty
+  interpret = go
     where
-    go e = \case
+    go = \case
       Var r   -> r
-      Bound n -> e IntMap.! id' n
+      Bound n -> C.bound n
       Type    -> C._Type
       Unit    -> C._Unit
-      t :=> b -> go e (ty t) C.>=> \ v -> go (IntMap.insert (id' (tm t)) v e) b
-      f :$ a  -> go e f C..$  go e a
-      a :-> b -> go e a C.--> go e b
-      l :* r  -> go e l C..*  go e r
-
-(>=>) :: (Text ::: Type' r) -> (Type' r -> Type' r) -> Type' r
-(n ::: t) >=> b = binder Bound ((:=>) . (::: t)) n b
+      t :=> b -> fmap go t C.>=> go b
+      f :$ a  -> go f C..$  go a
+      a :-> b -> go a C.--> go b
+      l :* r  -> go l C..*  go r
 
 
 newtype Type = Abs { inst :: forall r . Type' r }
@@ -81,10 +76,11 @@ instance Scoped Type where
   maxBV (Abs t) = maxBV t
 
 instance C.Type Type where
+  bound n = Abs $ Bound n
   _Type = Abs C._Type
   _Unit = Abs C._Unit
 
-  t >=> b = Abs $ inst t C.>=> inst . b . unsafeCoerce -- I *think* this is justified by the dual parametricity in ForAll1 and again in the quantified constraint. r cannot affect the operation of >=>, so we can safely coerce the argument to its universal quantification
+  t >=> b = Abs $ fmap inst t C.>=> inst b
   f .$  a = Abs $ inst f C..$  inst a
 
   a --> b = Abs $ inst a C.--> inst b

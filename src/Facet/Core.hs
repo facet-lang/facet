@@ -1,15 +1,21 @@
+{-# LANGUAGE TypeOperators #-}
 module Facet.Core
 ( Type(..)
 , Expr(..)
 , Interpret(..)
 ) where
 
+import Facet.Name (Name)
+import Facet.Syntax ((:::))
+
 class Type ty where
+  bound :: Name -> ty
+
   _Type :: ty
   _Unit :: ty
 
   -- | Universal quantification.
-  (>=>) :: ty -> (ty -> ty) -> ty
+  (>=>) :: (Name ::: ty) -> ty -> ty
   infixr 1 >=>
   (.$) :: ty -> ty -> ty
   infixl 9 .$
