@@ -152,12 +152,6 @@ tvar = varFrom ['A'..'Z']
 varFrom :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => String -> Int -> p
 varFrom alpha i = setPrec Var (name (pretty (toAlpha alpha i)))
 
-toAlpha :: String -> Int -> String
-toAlpha alphabet i = alphabet !! r : if q > 0 then show q else ""
-  where
-  n = length alphabet
-  (q, r) = i `divMod` n
-
 instance U.Expr Print where
   -- FIXME: don’t shadow globals with locally-bound variables
   global = pretty

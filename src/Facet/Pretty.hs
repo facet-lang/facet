@@ -1,6 +1,7 @@
 module Facet.Pretty
 ( hPutDoc
 , putDoc
+, toAlpha
 ) where
 
 import           Control.Monad.IO.Class
@@ -16,3 +17,10 @@ hPutDoc handle doc = liftIO $ do
 
 putDoc :: MonadIO m => PP.Doc ANSI.AnsiStyle -> m ()
 putDoc = hPutDoc stdout
+
+
+toAlpha :: String -> Int -> String
+toAlpha alphabet i = alphabet !! r : if q > 0 then show q else ""
+  where
+  n = length alphabet
+  (q, r) = i `divMod` n
