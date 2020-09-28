@@ -48,7 +48,7 @@ import           Silkscreen
 
 type Env = IntMap.IntMap Type
 
-newtype Elab a = Elab { elab :: Maybe Type -> Synth a }
+newtype Elab a = Elab { runElab :: Maybe Type -> Synth a }
   deriving (Algebra (Reader (Maybe Type) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Maybe Type) Synth
 
 checked :: Elab (a ::: Type) -> Check a
@@ -60,7 +60,7 @@ checking m = Elab $ \case
   Nothing -> fail "can’t synthesize a type for this lambda"
 
 synthed :: Elab a -> Synth a
-synthed = (`elab` Nothing)
+synthed = (`runElab` Nothing)
 
 synthing :: Synth (a ::: Type) -> Elab (a ::: Type)
 synthing m = Elab $ \case
