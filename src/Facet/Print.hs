@@ -25,6 +25,7 @@ import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
 import           Data.Coerce
 import qualified Data.Kind as K
+import qualified Data.Text as T
 import qualified Facet.Core as C
 import           Facet.Functor.K
 import qualified Facet.Name as N
@@ -125,7 +126,7 @@ arrow = op (pretty "->")
 
 
 instance T.Expr TPrint where
-  lam f = TPrint $ cases Nothing [\ var -> (var, coerce (f . Left) var)]
+  lam f = TPrint $ cases N.__ [\ var -> (var, coerce (f . Left) var)]
   ($$) = coerce app
 
   alg _ = TPrint $ pretty "TBD"
@@ -133,19 +134,20 @@ instance T.Expr TPrint where
   weakenBy _ = coerce
 
 
-cases :: Maybe U.EName -> [Print -> (Print, Print)] -> Print
-cases (Just n) cs = whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
-  . encloseSep
-    mempty
-    mempty
-    (flatAlt (space <> comma <> space) (comma <> space))
-  $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [name (pretty n)])
-cases Nothing  cs = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
-  . encloseSep
-    mempty
-    mempty
-    (flatAlt (space <> comma <> space) (comma <> space))
-  $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [evar v])
+cases :: T.Text -> [Print -> (Print, Print)] -> Print
+cases n cs
+  | T.null n = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
+    . encloseSep
+      mempty
+      mempty
+      (flatAlt (space <> comma <> space) (comma <> space))
+    $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [evar v])
+  | otherwise = whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
+    . encloseSep
+      mempty
+      mempty
+      (flatAlt (space <> comma <> space) (comma <> space))
+    $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [name (pretty n)])
 
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
@@ -164,8 +166,8 @@ instance U.Expr Print where
   global = pretty
   -- FIXME: Preserve variable names from user code where possible
   -- FIXME: Use _ in binding positions for unused variables
-  lam0 n f = cases (Just n) [\ var -> (var, f var)]
-  lam  n f = cases (Just n) [\ var -> (var, f (Left var))]
+  lam0 n f = cases (coerce n) [\ var -> (var, f var)]
+  lam  n f = cases (coerce n) [\ var -> (var, f (Left var))]
   ($$) = app
 
   unit = pretty "()"
