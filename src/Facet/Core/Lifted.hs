@@ -44,7 +44,7 @@ _Unit = pure C._Unit
   => m (Text ::: ty)
   -> (ty -> m ty)
   -> m ty
-t >=> b = t >>= \ (n ::: t) -> binderM C.tbound ((C.>=>) . (::: t)) n b
+t >=> b = t >>= \ (n ::: t) -> binderM C.tbound ((C.==>) . (::: t)) n b
 
 infixr 1 >=>
 

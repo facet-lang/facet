@@ -52,7 +52,7 @@ instance C.Type (Type' r) where
   tbound = Bound
   _Type = Type
   _Unit = Unit
-  (>=>) = (:=>)
+  (==>) = (:=>)
   (.$)  = (:$)
   (-->) = (:->)
   (.*)  = (:*)
@@ -65,7 +65,7 @@ instance C.Interpret Type' where
       Bound n -> C.tbound n
       Type    -> C._Type
       Unit    -> C._Unit
-      t :=> b -> fmap go t C.>=> go b
+      t :=> b -> fmap go t C.==> go b
       f :$ a  -> go f C..$  go a
       a :-> b -> go a C.--> go b
       l :* r  -> go l C..*  go r
@@ -81,7 +81,7 @@ instance C.Type Type where
   _Type = Abs C._Type
   _Unit = Abs C._Unit
 
-  t >=> b = Abs $ fmap inst t C.>=> inst b
+  t ==> b = Abs $ fmap inst t C.==> inst b
   f .$  a = Abs $ inst f C..$  inst a
 
   a --> b = Abs $ inst a C.--> inst b

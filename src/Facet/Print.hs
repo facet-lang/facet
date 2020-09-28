@@ -186,7 +186,7 @@ instance C.Type Print where
   _Unit = U._Unit
   _Type = U._Type
   -- FIXME: combine quantification over type variables of the same kind
-  (v ::: t) >=> b = group (align (braces (space <> ann (N.prettyNameWith tvar v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
+  (v ::: t) ==> b = group (align (braces (space <> ann (N.prettyNameWith tvar v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
 
 instance U.Module Print Print Print Print where
