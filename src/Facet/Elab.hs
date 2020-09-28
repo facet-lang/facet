@@ -36,7 +36,7 @@ import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Monad.Fix
 import qualified Data.Map as Map
-import           Data.Text (Text)
+import qualified Data.Text as T
 import qualified Facet.Core as CT
 import qualified Facet.Core.Lifted as C
 import           Facet.Functor.C
@@ -47,7 +47,7 @@ import           Facet.Syntax
 import           Facet.Type
 import           Silkscreen
 
-type Env = Map.Map Text Type
+type Env = Map.Map T.Text Type
 
 elab :: (Elab a ::: Maybe Type) -> Either Print a
 elab ~(m ::: t) = runSynth (runElab m mempty t)
@@ -163,7 +163,7 @@ a --> b = do
 infixr 2 -->
 
 (>=>)
-  :: (Text ::: Check Type)
+  :: (T.Text ::: Check Type)
   -> ((Type ::: Type) -> Check Type)
   -> Synth (Type ::: Type)
 (n ::: t) >=> b = do
@@ -196,7 +196,7 @@ f $$ a = do
   a' <- check (a ::: _A)
   pure $ f' C.$$ a' ::: _B
 
-lam0 :: (C.Expr expr, Scoped expr) => Text -> ((expr ::: Type) -> Check expr) -> Check expr
+lam0 :: (C.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check expr) -> Check expr
 lam0 n f = Check $ \ t -> case asFn t of
   Just (_A, _B) -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _             -> fail "expected function type in lambda"
