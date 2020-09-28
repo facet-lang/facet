@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Syntax
 ( (:::)(..)
@@ -9,7 +10,7 @@ module Facet.Syntax
 import Facet.Name
 
 data a ::: b = a ::: b
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infix 5 :::
 
