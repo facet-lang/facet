@@ -49,7 +49,7 @@ import           Silkscreen
 
 type Env e = Map.Map T.Text (e ::: Type)
 
-implicit :: Env Type
+implicit :: C.Type a => Env a
 implicit = Map.fromList [ (T.pack "Type", CT._Type ::: CT._Type) ]
 
 elab :: (Elab Type a ::: Maybe Type) -> Either Print a
