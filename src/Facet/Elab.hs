@@ -47,38 +47,38 @@ import           Facet.Syntax
 import           Facet.Type
 import           Silkscreen
 
-type Env = Map.Map T.Text Type
+type Env e = Map.Map T.Text e
 
-implicit :: Env
+implicit :: Env Type
 implicit = Map.fromList [ (T.pack "Type", CT._Type) ]
 
-elab :: (Elab a ::: Maybe Type) -> Either Print a
+elab :: (Elab Type a ::: Maybe Type) -> Either Print a
 elab ~(m ::: t) = runSynth (runElab m implicit t)
 
-newtype Elab a = Elab { runElab :: Env -> Maybe Type -> Synth a }
-  deriving (Algebra (Reader Env :+: Reader (Maybe Type) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC Env (ReaderC (Maybe Type) Synth)
+newtype Elab e a = Elab { runElab :: Env e -> Maybe Type -> Synth a }
+  deriving (Algebra (Reader (Env e) :+: Reader (Maybe Type) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Env e) (ReaderC (Maybe Type) Synth)
 
-checked :: Elab (a ::: Type) -> Check a
+checked :: Elab Type (a ::: Type) -> Check a
 checked (Elab m) = Check (fmap tm . m implicit . Just)
 
-checking :: Check a -> Elab (a ::: Type)
+checking :: Check a -> Elab e (a ::: Type)
 checking m = Elab $ const $ \case
   Just t  -> check (m ::: t) .: t
   Nothing -> fail "can’t synthesize a type for this lambda"
 
-synthed :: Elab a -> Synth a
+synthed :: Elab Type a -> Synth a
 synthed (Elab run) = run implicit Nothing
 
-synthing :: Synth (a ::: Type) -> Elab (a ::: Type)
+synthing :: Synth (a ::: Type) -> Elab e (a ::: Type)
 synthing m = Elab $ const $ \case
   Just t  -> check (switch m ::: t) .: t
   Nothing -> m
 
-instance S.ForAll (Elab (Type ::: Type)) (Elab (Type ::: Type)) where
+instance S.ForAll (Elab Type (Type ::: Type)) (Elab Type (Type ::: Type)) where
   (n ::: t) >=> b = synthing $ (S.getTName n ::: checked t) >=> checked . b . pure
 
-instance S.Type (Elab (Type ::: Type)) where
-  tglobal s = asks @Env (Map.lookup (S.getTName s)) >>= \case
+instance S.Type (Elab Type (Type ::: Type)) where
+  tglobal s = asks @(Env Type) (Map.lookup (S.getTName s)) >>= \case
     Just _T -> pure $ CT._Type ::: _T -- FIXME: quit lying
     Nothing -> fail $ "variable not in scope: " <> show (S.getTName s)
   a --> b = synthing $ checked a --> checked b
@@ -88,7 +88,7 @@ instance S.Type (Elab (Type ::: Type)) where
   _Unit = synthing _Unit
   _Type = synthing _Type
 
-instance (C.Expr a, Scoped a) => S.Expr (Elab (a ::: Type)) where
+instance (C.Expr a, Scoped a) => S.Expr (Elab Type (a ::: Type)) where
   global s = fail $ "TBD: global " <> show s -- FIXME: carry around a global environment
   lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = fail "TBD"
