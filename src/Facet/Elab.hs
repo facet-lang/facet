@@ -52,13 +52,13 @@ type Env e = Map.Map T.Text (e ::: Type)
 implicit :: C.Type a => Env a
 implicit = Map.fromList [ (T.pack "Type", CT._Type ::: CT._Type) ]
 
-elab :: (Elab Type a ::: Maybe Type) -> Either Print a
+elab :: C.Type e => (Elab e a ::: Maybe Type) -> Either Print a
 elab ~(m ::: t) = runSynth (runElab m implicit t)
 
 newtype Elab e a = Elab { runElab :: Env e -> Maybe Type -> Synth a }
   deriving (Algebra (Reader (Env e) :+: Reader (Maybe Type) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Env e) (ReaderC (Maybe Type) Synth)
 
-checked :: Elab Type (a ::: Type) -> Check a
+checked :: C.Type e => Elab e (a ::: Type) -> Check a
 checked (Elab m) = Check (fmap tm . m implicit . Just)
 
 checking :: Check a -> Elab e (a ::: Type)
@@ -66,7 +66,7 @@ checking m = Elab $ const $ \case
   Just t  -> check (m ::: t) .: t
   Nothing -> fail "can’t synthesize a type for this lambda"
 
-synthed :: Elab Type a -> Synth a
+synthed :: C.Type e => Elab e a -> Synth a
 synthed (Elab run) = run implicit Nothing
 
 synthing :: Synth (a ::: Type) -> Elab e (a ::: Type)
@@ -88,7 +88,7 @@ instance S.Type (Elab Type (Type ::: Type)) where
   _Unit = synthing _Unit
   _Type = synthing _Type
 
-instance (C.Expr a, Scoped a) => S.Expr (Elab Type (a ::: Type)) where
+instance (C.Type a, C.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
   global s = fail $ "TBD: global " <> show s -- FIXME: carry around a global environment
   lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = fail "TBD"
