@@ -15,7 +15,6 @@ module Facet.Elab
 , Check(..)
 , Synth(..)
 , check
-, checking
 , switch
 , unify'
   -- Types
@@ -97,9 +96,6 @@ instance MonadFail Synth where
 
 check :: (Check a ::: Type) -> Synth a
 check = uncurryAnn runCheck
-
-checking :: (Type -> Synth a) -> Check a
-checking = Check
 
 switch :: Synth (a ::: Type) -> Check a
 switch s = Check $ \ _T -> do
@@ -194,7 +190,7 @@ f $$ a = do
   pure $ f' C.$$ a' ::: _B
 
 lam0 :: (C.Expr expr, Scoped expr) => Text -> ((expr ::: Type) -> Check expr) -> Check expr
-lam0 n f = checking $ \ t -> case asFn t of
+lam0 n f = Check $ \ t -> case asFn t of
   Just (_A, _B) -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _             -> fail "expected function type in lambda"
 
