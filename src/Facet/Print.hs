@@ -136,18 +136,15 @@ instance T.Expr TPrint where
 
 cases :: T.Text -> [Print -> (Print, Print)] -> Print
 cases n cs
-  | T.null n = bind $ \ v -> whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
+  | T.null n  = bind (go . evar)
+  | otherwise = go (name (pretty n))
+  where
+  go v = whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
     . encloseSep
       mempty
       mempty
       (flatAlt (space <> comma <> space) (comma <> space))
-    $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [evar v])
-  | otherwise = whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
-    . encloseSep
-      mempty
-      mempty
-      (flatAlt (space <> comma <> space) (comma <> space))
-    $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [name (pretty n)])
+    $ map (\ (a, b) -> withTransition (const id) (prec Pattern a) <+> prec Expr b) (cs <*> [v])
 
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
