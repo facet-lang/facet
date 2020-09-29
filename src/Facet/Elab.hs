@@ -151,8 +151,7 @@ _Unit = pure $ CT._Unit ::: CT._Type
 
 (.$) :: Synth e (Type ::: Type) -> Check e Type -> Synth e (Type ::: Type)
 f .$ a = do
-  f' ::: _F <- f
-  Just (_A, _B) <- pure $ asFn _F
+  f' ::: (_A :-> _B) <- f
   a' <- check (a ::: _A)
   pure $ f' CT..$ a' ::: CT._Type
 
@@ -188,21 +187,15 @@ infixr 1 >=>
 
 -- Expressions
 
-asFn :: Type -> Maybe (Type, Type)
-asFn = \case
-  _A :-> _B -> Just (_A, _B)
-  _         -> Nothing
-
 ($$) :: C.Expr expr => Synth e (expr ::: Type) -> Check e expr -> Synth e (expr ::: Type)
 f $$ a = do
-  f' ::: _F <- f
-  Just (_A, _B) <- pure $ asFn _F
+  f' ::: (_A :-> _B) <- f
   a' <- check (a ::: _A)
   pure $ f' C.$$ a' ::: _B
 
 lam0 :: (C.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check e expr) -> Check e expr
-lam0 n f = Check $ \ t -> case asFn t of
-  Just (_A, _B) -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
-  _             -> fail "expected function type in lambda"
+lam0 n f = Check $ \case
+  _A :-> _B -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
+  _         -> fail "expected function type in lambda"
 
 -- FIXME: internalize scope into Type & Expr?
