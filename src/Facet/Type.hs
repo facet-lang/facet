@@ -66,7 +66,7 @@ instance C.Interpret Type where
 
 ($$) :: Type -> Type -> Type
 (f :$ as) $$ a = f :$ (as :> a)
-(t :=> b) $$ a = rebind (IntMap.singleton (id' (tm t)) a) b
+(t :=> b) $$ a = subst (IntMap.singleton (id' (tm t)) a) b
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: Foldable t => Type -> t Type -> Type
@@ -74,11 +74,11 @@ f $$* as = foldl' ($$) f as
 
 infixl 9 $$, $$*
 
-rebind :: IntMap.IntMap Type -> Type -> Type
-rebind e = \case
+subst :: IntMap.IntMap Type -> Type -> Type
+subst e = \case
   Type            -> Type
   Unit            -> Unit
-  (n ::: t) :=> b -> (hint n ::: rebind e t) C.>=> \ v -> rebind (instantiate n v e) b
-  f :$  a         -> (e IntMap.! id' f) $$* fmap (rebind e) a
-  a :-> b         -> rebind e a :-> rebind e b
-  l :*  r         -> rebind e l :* rebind e r
+  (n ::: t) :=> b -> (hint n ::: subst e t) C.>=> \ v -> subst (instantiate n v e) b
+  f :$  a         -> (e IntMap.! id' f) $$* fmap (subst e) a
+  a :-> b         -> subst e a :-> subst e b
+  l :*  r         -> subst e l :* subst e r
