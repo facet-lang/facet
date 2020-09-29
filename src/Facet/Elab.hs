@@ -76,9 +76,6 @@ fromSynth m = Elab $ \case
 instance Has (Reader Span) sig m => S.Located (Elab e m a) where
   locate = local . const
 
-instance (Has (Error Print) sig m, MonadFix m) => S.ForAll (Elab Type m (Type ::: Type)) (Elab Type m (Type ::: Type)) where
-  (n ::: t) >=> b = fromSynth $ (S.getTName n ::: checked t) >=> checked . b . pure
-
 instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab Type m (Type ::: Type)) where
   tglobal = fromSynth . global . S.getTName
   (n ::: t) >~> b = fromSynth $ (S.getTName n ::: checked t) >=> checked . b . pure

@@ -6,7 +6,6 @@ module Facet.Surface
 , Expr(..)
 , TName(..)
 , Type(..)
-, ForAll(..)
 , DName(..)
 , Module(..)
 , Decl(..)
@@ -35,12 +34,6 @@ class Expr expr where
   -- | Tupling.
   (**) :: expr -> expr -> expr
   -- FIXME: tupling/unit should take a list of expressions
-
-
-class ForAll ty decl | decl -> ty where
-  -- | Universal quantification.
-  (>=>) :: (TName ::: ty) -> (ty -> decl) -> decl
-  infixr 1 >=>
 
 
 newtype TName = TName { getTName :: Text }
@@ -74,9 +67,13 @@ class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
   (.:) :: DName -> decl -> mod
   infixr 0 .:
 
-class (Expr expr, ForAll ty decl, Type ty) => Decl expr ty decl | decl -> ty expr where
+class (Expr expr, Type ty) => Decl expr ty decl | decl -> ty expr where
   (.=) :: ty -> expr -> decl
   infix 1 .=
+
+  -- | Universal quantification.
+  (>=>) :: (TName ::: ty) -> (ty -> decl) -> decl
+  infixr 1 >=>
 
   (>->) :: (EName ::: ty) -> (expr -> decl) -> decl
   infixr 1 >->

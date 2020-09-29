@@ -102,9 +102,6 @@ newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
   deriving (U.Expr, FreshPrinter, Functor, U.Located, Monoid, PrecedencePrinter, Printer, Semigroup, C.Type, U.Type)
   deriving (Applicative) via K Print
 
-instance U.ForAll (TPrint sig a) (TPrint sig a) where
-  (>=>) = coerce ((U.>=>) :: (U.TName ::: Print) -> (Print -> Print) -> Print)
-
 
 data Highlight
   = Nest Int
@@ -168,10 +165,6 @@ instance U.Expr Print where
   unit = pretty "()"
   l ** r = tupled [l, r]
 
-instance U.ForAll Print Print where
-  -- FIXME: combine quantification over type variables of the same kind
-  (n ::: t) >=> b = let v' = var (pretty n) in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (b v')
-
 instance U.Type Print where
     -- FIXME: don’t shadow globals with locally-bound variables
   tglobal = pretty
@@ -201,6 +194,9 @@ instance U.Decl Print Print Print where
   -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
   -- FIXME: we don’t parse =, we shouldn’t print it here.
   t .= b = t </> pretty '=' <+> b
+
+    -- FIXME: combine quantification over type variables of the same kind
+  (n ::: t) >=> b = let v' = var (pretty n) in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (b v')
 
   (n ::: t) >-> f = let v' = var (pretty n) in group (align (parens (ann (v' ::: t)))) </> arrow <+> prec FnR (f v')
 

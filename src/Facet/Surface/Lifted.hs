@@ -8,7 +8,6 @@ module Facet.Surface.Lifted
 , S.Type(tglobal, _Type, _Unit, (-->), (.*), (.$))
 , S.Module(..)
 , S.Decl((.=))
-, S.ForAll
 , S.Located(..)
 , (S.:::)(..)
 , lam
@@ -53,7 +52,7 @@ t >~> b = liftA2 (S.>~>) <$> t <*> liftBinder b
 infixr 1 >~>
 
 (>=>)
-  :: (Applicative m, Applicative env, S.ForAll ty decl)
+  :: (Applicative m, Applicative env, S.Decl expr ty decl)
   => m (env (S.TName S.::: ty))
   -> (forall env' . Applicative env' => Extends env env' -> env' ty -> m (env' decl))
   -> m (env decl)
