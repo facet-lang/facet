@@ -99,7 +99,7 @@ data Context
   deriving (Bounded, Eq, Ord, Show)
 
 newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
-  deriving (U.Expr, FreshPrinter, Functor, Monoid, PrecedencePrinter, Printer, Semigroup, C.Type, U.Type)
+  deriving (U.Expr, FreshPrinter, Functor, U.Located, Monoid, PrecedencePrinter, Printer, Semigroup, C.Type, U.Type)
   deriving (Applicative) via K Print
 
 instance U.ForAll (TPrint sig a) (TPrint sig a) where
@@ -152,6 +152,9 @@ evar = var . P.var
 
 tvar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
 tvar = var . P.tvar
+
+instance U.Located Print where
+  locate _ = id
 
 instance U.Expr Print where
   -- FIXME: don’t shadow globals with locally-bound variables
