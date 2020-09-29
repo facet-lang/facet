@@ -213,7 +213,7 @@ lam0 n f = Check $ \case
 -- Contextualized errors
 
 newtype ErrorC e m a = ErrorC { runErrorC :: E.ErrorC (Span, e) m a }
-  deriving (Applicative, Functor, Monad)
+  deriving (Applicative, Functor, Monad, MonadFix)
 
 instance Has (Reader Span) sig m => Algebra (Error e :+: sig) (ErrorC e m) where
   alg hdl sig ctx = ErrorC $ case sig of
