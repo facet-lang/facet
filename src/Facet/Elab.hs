@@ -38,7 +38,6 @@ import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Monad.Fix
 import qualified Data.Map as Map
-import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import qualified Facet.Core.Lifted as C
 import           Facet.Name (Scoped)
@@ -119,13 +118,14 @@ unify' t1 t2 = t2 <$ go t1 t2 -- NB: unification cannot (currently) result in in
   where
   go :: Type -> Type -> Synth e ()
   go = curry $ \case
-    (Type,      Type)      -> pure ()
-    (Unit,      Unit)      -> pure ()
-    (l1 :* r1,  l2 :* r2)  -> go l1 l2 *> go r1 r2
+    (Type,      Type)       -> pure ()
+    (Unit,      Unit)       -> pure ()
+    (l1 :* r1,  l2 :* r2)   -> go l1 l2 *> go r1 r2
     (f1 :$ a1,  f2 :$ a2)
-      | f1 == f2           -> fromMaybe (failWith (f1 :$ a1) (f2 :$ a2)) (goS a1 a2)
-    (a1 :-> b1, a2 :-> b2) -> go a1 a2 *> go b1 b2
-    (t1 :=> b1, t2 :=> b2) -> go (ty t1) (ty t2) *> go b1 b2
+      | f1 == f2
+      , Just _ <- goS a1 a2 -> pure ()
+    (a1 :-> b1, a2 :-> b2)  -> go a1 a2 *> go b1 b2
+    (t1 :=> b1, t2 :=> b2)  -> go (ty t1) (ty t2) *> go b1 b2
     -- FIXME: build and display a diff of the root types
     -- FIXME: indicate the point in the source which led to this
     -- FIXME: Show discards highlighting &c. how do we render arbitrary types to a Print or Notice? Is there some class for that? Do we just monomorphize it?
