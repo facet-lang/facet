@@ -64,7 +64,7 @@ type_ :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) 
 type_ tvar = fn tvar <|> forAll (const type_) tvar <?> "type"
 
 fn :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
-fn tvar = app (S..$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
+fn tvar = locating $ app (S..$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
 
 tatom :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
 tatom tvar = locating
