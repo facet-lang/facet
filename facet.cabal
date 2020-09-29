@@ -37,6 +37,7 @@ common common
 library
   import: common
   exposed-modules:
+    Facet.Carrier.Error.Span
     Facet.Core
     Facet.Core.HOAS
     Facet.Core.Lifted
