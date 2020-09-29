@@ -140,7 +140,7 @@ unify' t1 t2 = t2 <$ go t1 t2 -- NB: unification cannot (currently) result in in
 
 global :: T.Text -> Synth e (e ::: Type)
 global s = asks (Map.lookup s) >>= \case
-  Just b  -> pure $ b
+  Just b  -> pure b
   Nothing -> fail $ "variable not in scope: " <> show s
 
 app :: (a -> a -> a) -> Synth e (a ::: Type) -> Check e a -> Synth e (a ::: Type)
