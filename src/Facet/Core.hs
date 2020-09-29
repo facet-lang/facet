@@ -3,7 +3,6 @@
 module Facet.Core
 ( Type(..)
 , Expr(..)
-, Decl(..)
 , Module(..)
 , Interpret(..)
 , (>=>)
@@ -49,14 +48,9 @@ class Expr expr where
   infixl 9 $$
 
 
-class Decl expr ty decl | decl -> ty expr where
-  (.:.) :: expr -> ty -> decl
-  infix 0 .:.
-
-
-class Module decl mod | mod -> decl where
+class Module expr ty mod | mod -> expr ty where
   -- FIXME: qualified names
-  (.=) :: Text -> decl -> mod
+  (.=) :: Text -> (expr ::: ty) -> mod
   infix 0 .=
 
 
