@@ -14,7 +14,6 @@ module Facet.GHCI
 
 import           Control.Carrier.Lift
 import           Control.Carrier.Parser.Church (ParserC, Input(..), errToNotice, runParser, runParserWithString)
-import           Control.Carrier.Throw.Either (ThrowC, runThrow)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
 import           Control.Effect.Parser.Source (Source(..), sourceFromString)
@@ -34,10 +33,8 @@ import qualified Silkscreen as S
 
 -- Parsing
 
-parseString' :: MonadIO m => ParserC (ThrowC Notice (LiftC m)) P.Print -> String -> m ()
-parseString' p s = runM $ do
-  r <- runThrow (runParserWithString (Pos 0 0) s p)
-  either (P.putDoc . prettyNotice) P.prettyPrint r
+parseString' :: MonadIO m => ParserC (Either Notice) P.Print -> String -> m ()
+parseString' p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWithString (Pos 0 0) s p)
 
 parseElabString :: (MonadIO m, C.Type e) => ParserC (LiftC m) (Elab e P.Print) -> String -> m ()
 parseElabString p s = runM $
