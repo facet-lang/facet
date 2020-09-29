@@ -41,7 +41,6 @@ library
     Facet.Core
     Facet.Core.HOAS
     Facet.Core.Lifted
-    Facet.Deriving
     Facet.Elab
     Facet.Env
     Facet.Eval
