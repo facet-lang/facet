@@ -201,5 +201,3 @@ lam0 :: (C.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check e expr
 lam0 n f = Check $ \case
   _A :-> _B -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _         -> fail "expected function type in lambda"
-
--- FIXME: internalize scope into Type & Expr?
