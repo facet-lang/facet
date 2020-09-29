@@ -173,7 +173,7 @@ a .* b = do
 
 infixl 7 .*
 
-(-->) :: Monad m => Check e m Type -> Check e m Type -> Synth e m (Type ::: Type)
+(-->) :: (Monad m, C.Type t) => Check e m t -> Check e m t -> Synth e m (t ::: Type)
 a --> b = do
   a' <- check (a ::: C._Type)
   b' <- check (b ::: C._Type)
