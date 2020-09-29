@@ -1,3 +1,4 @@
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.HOAS
 ( Type(..)
@@ -27,7 +28,7 @@ class Type ty where
 
   -- FIXME: tupling/unit should take a list of types
 
-class Expr expr where
+class Expr ty expr | expr -> ty where
   global :: Applicative m => Text -> m expr
   tlam :: MonadFix m => Text -> (expr -> m expr) -> m expr
   lam0 :: MonadFix m => Text -> (expr -> m expr) -> m expr
