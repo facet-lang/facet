@@ -114,7 +114,7 @@ switch s = Check $ \ _T -> do
   a ::: _T' <- s
   a <$ unify _T _T'
 
-unify :: Has (Error Print) sig m => Type -> Type -> m ()
+unify :: Has (Error Print) sig m => Type -> Type -> Synth e m ()
 unify t1 t2 = go t1 t2
   where
   go = curry $ \case
