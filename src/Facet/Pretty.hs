@@ -28,7 +28,7 @@ putDoc :: MonadIO m => PP.Doc ANSI.AnsiStyle -> m ()
 putDoc = hPutDoc stdout
 
 putDocWith :: MonadIO m => (a -> ANSI.AnsiStyle) -> PP.Doc a -> m ()
-putDocWith style = putDoc . PP.reAnnotate style
+putDocWith = hPutDocWith stdout
 
 
 toAlpha :: String -> Int -> String
