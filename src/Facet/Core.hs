@@ -1,7 +1,10 @@
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core
 ( Type(..)
 , Expr(..)
+, Decl(..)
+, Module(..)
 , Interpret(..)
 , (>=>)
 ) where
@@ -44,6 +47,16 @@ class Expr expr where
   lam0 :: Name -> expr -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
+
+
+class Decl expr ty decl | decl -> ty expr where
+  (.:.) :: expr -> ty -> decl
+  infix 0 .:.
+
+
+class Module decl mod | mod -> decl where
+  -- FIXME: qualified names
+  (.=) :: Text -> decl -> mod
 
 
 class Interpret t where
