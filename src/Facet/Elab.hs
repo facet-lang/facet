@@ -137,7 +137,7 @@ unify t1 t2 = go t1 t2
 
 -- General
 
-global :: Has (Error Print) sig m => T.Text -> Synth e m (e ::: Type)
+global :: (Has (Error Print) sig m, Has (Reader (Env e)) sig m) => T.Text -> m (e ::: Type)
 global s = asks (Map.lookup s) >>= \case
   Just b  -> pure b
   Nothing -> freeVariable s
