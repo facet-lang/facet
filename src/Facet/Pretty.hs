@@ -1,6 +1,7 @@
 module Facet.Pretty
 ( hPutDoc
 , putDoc
+, putDocWith
 , toAlpha
 , var
 , tvar
@@ -21,6 +22,9 @@ hPutDoc handle doc = liftIO $ do
 
 putDoc :: MonadIO m => PP.Doc ANSI.AnsiStyle -> m ()
 putDoc = hPutDoc stdout
+
+putDocWith :: MonadIO m => (a -> ANSI.AnsiStyle) -> PP.Doc a -> m ()
+putDocWith style = putDoc . PP.reAnnotate style
 
 
 toAlpha :: String -> Int -> String
