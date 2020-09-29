@@ -37,7 +37,7 @@ import qualified Silkscreen as S
 parseString' :: MonadIO m => ParserC (Either Notice) P.Print -> String -> m ()
 parseString' p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWithString (Pos 0 0) s p)
 
-parseElabString :: (MonadIO m, C.Type e) => ParserC (Either Notice) (Elab e (ErrorC Span P.Print ((->) Span)) P.Print) -> String -> m ()
+parseElabString :: MonadIO m => ParserC (Either Notice) (Elab (ErrorC Span P.Print ((->) Span)) P.Print) -> String -> m ()
 parseElabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . elab . (::: Nothing) of
   Left err -> P.putDoc (prettyNotice err)
   Right a  -> P.prettyPrint a
@@ -50,13 +50,13 @@ parseElabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) s
 
 -- Elaboration
 
-printElab :: C.Type e => Synth e (Either P.Print) (T.Type ::: T.Type) -> IO ()
+printElab :: Synth (Either P.Print) (T.Type ::: T.Type) -> IO ()
 printElab m = P.prettyPrint (either id prettyAnn (runSynth m implicit))
 
 prettyAnn :: (S.Printer p, C.Type p) => (T.Type ::: T.Type) -> p
 prettyAnn (tm ::: ty) = C.interpret tm S.<+> S.colon S.<+> C.interpret ty
 
-thing :: (Has (Error P.Print) sig m, MonadFix m) => Synth e m (T.Type ::: T.Type)
+thing :: (Has (Error P.Print) sig m, MonadFix m) => Synth m (T.Type ::: T.Type)
 thing = (__ ::: switch (switch _Type --> switch _Type)) >=> \ t -> switch (switch (pure t .$ switch _Unit) --> switch (pure t .$ switch _Unit))
 
 

@@ -34,6 +34,7 @@ import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Effect.Parser.Span (Span(..))
 import           Control.Monad.Fix
+import           Data.Bifunctor (first)
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Facet.Core.Lifted as C
@@ -44,40 +45,40 @@ import           Facet.Syntax
 import           Facet.Type
 import           Silkscreen (pretty, (<+>), (</>))
 
-type Env e = Map.Map T.Text (e ::: Type)
+type Env = Map.Map T.Text Type
 
-implicit :: C.Type a => Env a
-implicit = Map.fromList [ (T.pack "Type", C._Type ::: C._Type) ]
+implicit :: Env
+implicit = Map.fromList [ (T.pack "Type", C._Type) ]
 
-elab :: C.Type e => (Elab e m a ::: Maybe Type) -> m a
+elab :: (Elab m a ::: Maybe Type) -> m a
 elab ~(m ::: t) = runSynth (runElab m t) implicit
 
-newtype Elab e m a = Elab { runElab :: Maybe Type -> Synth e m a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (Synth e m)
+newtype Elab m a = Elab { runElab :: Maybe Type -> Synth m a }
+  deriving (Algebra (Reader (Maybe Type) :+: Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (Synth m)
 
-checked :: Has (Error Print) sig m => Elab e m (a ::: Type) -> Check e m a
+checked :: Has (Error Print) sig m => Elab m (a ::: Type) -> Check m a
 checked m = Check $ \ _T -> do
   a ::: _T' <- runElab m (Just _T)
   a <$ unify _T _T'
 
-fromCheck :: Has (Error Print) sig m => Check e m a -> Elab e m (a ::: Type)
+fromCheck :: Has (Error Print) sig m => Check m a -> Elab m (a ::: Type)
 fromCheck m = Elab $ \case
   Just t  -> check (m ::: t) .: t
   Nothing -> couldNotSynthesize
 
-synthed :: Elab e m a -> Synth e m a
+synthed :: Elab m a -> Synth m a
 synthed (Elab run) = run Nothing
 
-fromSynth :: Has (Error Print) sig m => Synth e m (a ::: Type) -> Elab e m (a ::: Type)
+fromSynth :: Has (Error Print) sig m => Synth m (a ::: Type) -> Elab m (a ::: Type)
 fromSynth m = Elab $ \case
   Just t  -> check (switch m ::: t) .: t
   Nothing -> m
 
-instance Has (Reader Span) sig m => S.Located (Elab e m a) where
+instance Has (Reader Span) sig m => S.Located (Elab m a) where
   locate = local . const
 
-instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab Type m (Type ::: Type)) where
-  tglobal = fromSynth . global . S.getTName
+instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab m (Type ::: Type)) where
+  tglobal = fromSynth . fmap (first C.tglobal) . global . S.getTName
   (n ::: t) >~> b = fromSynth $ (S.getTName n ::: checked t) >~> checked . b . pure
   a --> b = fromSynth $ checked a --> checked b
   f .$  a = fromSynth $ synthed f .$  checked a
@@ -86,8 +87,8 @@ instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab Type m (Type ::: 
   _Unit = fromSynth _Unit
   _Type = fromSynth _Type
 
-instance (C.Expr a, Scoped a, Has (Error Print) sig m, MonadFix m) => S.Expr (Elab a m (a ::: Type)) where
-  global = fromSynth . global . S.getEName
+instance (C.Expr a, Scoped a, Has (Error Print) sig m, MonadFix m) => S.Expr (Elab m (a ::: Type)) where
+  global = fromSynth . fmap (first C.global) . global . S.getEName
   lam0 n f = fromCheck $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = tbd
   f $$ a = fromSynth $ synthed f $$ checked a
@@ -95,19 +96,19 @@ instance (C.Expr a, Scoped a, Has (Error Print) sig m, MonadFix m) => S.Expr (El
   _ ** _ = tbd
 
 
-newtype Check e m a = Check { runCheck :: Type -> Synth e m a }
-  deriving (Algebra (Reader Type :+: Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Type (Synth e m)
+newtype Check m a = Check { runCheck :: Type -> Synth m a }
+  deriving (Algebra (Reader Type :+: Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Type (Synth m)
 
-runSynth :: Synth e m a -> Env e -> m a
+runSynth :: Synth m a -> Env -> m a
 runSynth (Synth m) e = m e
 
-newtype Synth e m a = Synth (Env e -> m a)
-  deriving (Algebra (Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Env e) m
+newtype Synth m a = Synth (Env -> m a)
+  deriving (Algebra (Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Env m
 
-check :: (Check e m a ::: Type) -> Synth e m a
+check :: (Check m a ::: Type) -> Synth m a
 check = uncurryAnn runCheck
 
-switch :: Has (Error Print) sig m => Synth e m (a ::: Type) -> Check e m a
+switch :: Has (Error Print) sig m => Synth m (a ::: Type) -> Check m a
 switch s = Check $ \ _T -> do
   a ::: _T' <- s
   a <$ unify _T _T'
@@ -135,12 +136,12 @@ unify t1 t2 = go t1 t2
 
 -- General
 
-global :: Has (Error Print) sig m => T.Text -> Synth e m (e ::: Type)
+global :: Has (Error Print) sig m => T.Text -> Synth m (T.Text ::: Type)
 global s = asks (Map.lookup s) >>= \case
-  Just b  -> pure b
+  Just b  -> pure (s ::: b)
   Nothing -> freeVariable s
 
-app :: Has (Error Print) sig m => (a -> a -> a) -> Synth e m (a ::: Type) -> Check e m a -> Synth e m (a ::: Type)
+app :: Has (Error Print) sig m => (a -> a -> a) -> Synth m (a ::: Type) -> Check m a -> Synth m (a ::: Type)
 app ($$) f a = do
   f' ::: _F <- f
   case _F of
@@ -152,18 +153,18 @@ app ($$) f a = do
 
 -- Types
 
-_Type :: (Applicative m, C.Type t) => Synth e m (t ::: Type)
+_Type :: (Applicative m, C.Type t) => Synth m (t ::: Type)
 _Type = pure $ C._Type ::: C._Type
 
-_Unit :: (Applicative m, C.Type t) => Synth e m (t ::: Type)
+_Unit :: (Applicative m, C.Type t) => Synth m (t ::: Type)
 _Unit = pure $ C._Unit ::: C._Type
 
-(.$) :: (Has (Error Print) sig m, C.Type t) => Synth e m (t ::: Type) -> Check e m t -> Synth e m (t ::: Type)
+(.$) :: (Has (Error Print) sig m, C.Type t) => Synth m (t ::: Type) -> Check m t -> Synth m (t ::: Type)
 (.$) = app (C..$)
 
 infixl 9 .$
 
-(.*) :: (Monad m, C.Type t) => Check e m t -> Check e m t -> Synth e m (t ::: Type)
+(.*) :: (Monad m, C.Type t) => Check m t -> Check m t -> Synth m (t ::: Type)
 a .* b = do
   a' <- check (a ::: C._Type)
   b' <- check (b ::: C._Type)
@@ -171,7 +172,7 @@ a .* b = do
 
 infixl 7 .*
 
-(-->) :: (Monad m, C.Type t) => Check e m t -> Check e m t -> Synth e m (t ::: Type)
+(-->) :: (Monad m, C.Type t) => Check m t -> Check m t -> Synth m (t ::: Type)
 a --> b = do
   a' <- check (a ::: C._Type)
   b' <- check (b ::: C._Type)
@@ -181,9 +182,9 @@ infixr 2 -->
 
 (>~>)
   :: MonadFix m
-  => (T.Text ::: Check e m Type)
-  -> ((Type ::: Type) -> Check e m Type)
-  -> Synth e m (Type ::: Type)
+  => (T.Text ::: Check m Type)
+  -> ((Type ::: Type) -> Check m Type)
+  -> Synth m (Type ::: Type)
 (n ::: t) >~> b = do
   t' <- check (t ::: C._Type)
   ftb' <- pure (n ::: C.interpret t') C.>=> \ v -> check (b (v ::: t') ::: C._Type)
@@ -193,9 +194,9 @@ infixr 1 >~>
 
 (>=>)
   :: (MonadFix m, C.Type t, Scoped t)
-  => (T.Text ::: Check e m Type)
-  -> ((t ::: Type) -> Check e m t)
-  -> Synth e m (t ::: Type)
+  => (T.Text ::: Check m Type)
+  -> ((t ::: Type) -> Check m t)
+  -> Synth m (t ::: Type)
 (n ::: t) >=> b = do
   t' <- check (t ::: C._Type)
   ftb' <- pure (n ::: C.interpret t') C.>=> \ v -> check (b (v ::: t') ::: C._Type)
@@ -206,10 +207,10 @@ infixr 1 >=>
 
 -- Expressions
 
-($$) :: (C.Expr expr, Has (Error Print) sig m) => Synth e m (expr ::: Type) -> Check e m expr -> Synth e m (expr ::: Type)
+($$) :: (C.Expr expr, Has (Error Print) sig m) => Synth m (expr ::: Type) -> Check m expr -> Synth m (expr ::: Type)
 ($$) = app (C.$$)
 
-lam0 :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check e m expr) -> Check e m expr
+lam0 :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
 lam0 n f = Check $ \case
   _A :-> _B -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _T        -> expectedFunctionType _T (pretty "when checking lambda")
