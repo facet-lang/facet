@@ -160,7 +160,7 @@ _Type = pure $ C._Type ::: C._Type
 _Unit :: (Applicative m, C.Type t) => Synth e m (t ::: Type)
 _Unit = pure $ C._Unit ::: C._Type
 
-(.$) :: Has (Error Print) sig m => Synth e m (Type ::: Type) -> Check e m Type -> Synth e m (Type ::: Type)
+(.$) :: (Has (Error Print) sig m, C.Type t) => Synth e m (t ::: Type) -> Check e m t -> Synth e m (t ::: Type)
 (.$) = app (C..$)
 
 infixl 9 .$
