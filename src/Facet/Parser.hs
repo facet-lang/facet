@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -33,6 +34,7 @@ import           Text.Parser.Token.Highlight
 -- holes
 
 newtype Facet m a = Facet { runFacet :: m a }
+  deriving (Alternative, Applicative, CharParsing, Functor, LocationParsing, Monad, Parsing, TokenParsing)
 
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, LocationParsing p) => p mod
