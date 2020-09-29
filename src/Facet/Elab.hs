@@ -55,7 +55,7 @@ type Env e = Map.Map T.Text (e ::: Type)
 implicit :: C.Type a => Env a
 implicit = Map.fromList [ (T.pack "Type", C._Type ::: C._Type) ]
 
-elab :: C.Type e => (Elab e a ::: Maybe Type) -> Either Print a
+elab :: C.Type e => (Elab e a ::: Maybe Type) -> Either (Span, Print) a
 elab ~(m ::: t) = runSynth (runElab m t) (Span (Pos 0 0) (Pos 0 0)) implicit
 
 newtype Elab e a = Elab { runElab :: Maybe Type -> Synth e a }
@@ -106,11 +106,11 @@ instance (C.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
 newtype Check e a = Check { runCheck :: Type -> Synth e a }
   deriving (Algebra (Reader Type :+: Reader (Env e) :+: Error Print :+: Reader Span), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC Type (Synth e)
 
-runSynth :: Synth e a -> Span -> Env e -> Either Print a
-runSynth (Synth m) s e = E.runError (pure . Left) (pure . Right) (m e) s
+runSynth :: Synth e a -> Span -> Env e -> Either (Span, Print) a
+runSynth (Synth m) s e = E.runError (pure . Left) (pure . Right) (runErrorC (m e)) s
 
-newtype Synth e a = Synth (Env e -> E.ErrorC Print ((->) Span) a)
-  deriving (Algebra (Reader (Env e) :+: Error Print :+: Reader Span), Applicative, Functor, Monad, MonadFix) via ReaderC (Env e) (E.ErrorC Print ((->) Span))
+newtype Synth e a = Synth (Env e -> ErrorC Print ((->) Span) a)
+  deriving (Algebra (Reader (Env e) :+: Error Print :+: Reader Span), Applicative, Functor, Monad, MonadFix) via ReaderC (Env e) (ErrorC Print ((->) Span))
 
 instance MonadFail (Synth e) where
   fail = throwError @Print . pretty
