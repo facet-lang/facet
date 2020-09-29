@@ -31,7 +31,7 @@ import           Text.Parser.Token.Highlight
 -- holes
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, Monad p, LocationParsing p) => p mod
-decl = (S..:) <$> dname <* colon <*> S.strengthen (sig (fmap pure global) S.refl (fmap pure tglobal))
+decl = (S..:) <$> dname <* colon <*> S.strengthen (sig global S.refl tglobal)
   where
   sig :: Applicative env' => p (env' expr) -> S.Extends env env' -> p (env' ty) -> p (env' decl)
   sig var _ tvar = try (bind var tvar) <|> forAll (\ env -> sig (S.castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
@@ -58,7 +58,7 @@ forAll k tvar = do
 
 
 type' :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => p ty
-type' = S.strengthen (type_ (fmap pure tglobal))
+type' = S.strengthen (type_ tglobal)
 
 type_ :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
 type_ tvar = fn tvar <|> forAll (const type_) tvar <?> "type"
@@ -74,15 +74,15 @@ tatom tvar
   prd [] = pure S._Unit
   prd ts = foldl1 (liftA2 (S..*)) ts
 
-tglobal :: (S.Type ty, Monad p, TokenParsing p) => p ty
-tglobal = S.tglobal <$> tname <?> "variable"
+tglobal :: (S.Type ty, Monad p, Applicative env, TokenParsing p) => p (env ty)
+tglobal = pure . S.tglobal <$> tname <?> "variable"
 
 
 expr :: (S.Expr expr, S.Located expr, Monad p, LocationParsing p) => p expr
-expr = S.strengthen (expr_ (pure <$> global))
+expr = S.strengthen (expr_ global)
 
-global :: (S.Expr expr, Monad p, TokenParsing p) => p expr
-global = S.global <$> name <?> "variable"
+global :: (S.Expr expr, Monad p, Applicative env, TokenParsing p) => p (env expr)
+global = pure . S.global <$> name <?> "variable"
 
 expr_ :: forall p env expr . (Applicative env, S.Expr expr, S.Located expr, Monad p, LocationParsing p) => p (env expr) -> p (env expr)
 expr_ = app (S.$$) atom
