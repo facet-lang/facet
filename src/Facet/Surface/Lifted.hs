@@ -9,6 +9,7 @@ module Facet.Surface.Lifted
 , S.Module(..)
 , S.Decl((.=))
 , S.ForAll
+, S.Located(..)
 , (S.:::)(..)
 , lam
 , lam0
