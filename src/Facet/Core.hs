@@ -10,7 +10,7 @@ module Facet.Core
 
 import Data.Text (Text)
 import Facet.Name (Name, Scoped, binder)
-import Facet.Syntax ((:::)(..))
+import Facet.Syntax ((:::)(..), (:=)(..))
 
 class Type ty where
   -- FIXME: qualified names
@@ -50,8 +50,8 @@ class Expr expr where
 
 class Module expr ty mod | mod -> expr ty where
   -- FIXME: qualified names
-  (.=) :: Text -> (expr ::: ty) -> mod
-  infix 0 .=
+  (.:.) :: Text -> (expr := ty) -> mod
+  infix 1 .:.
 
 
 class Interpret t where
