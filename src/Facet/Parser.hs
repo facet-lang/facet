@@ -30,7 +30,7 @@ import           Text.Parser.Token.Highlight
 -- forcing nullary computations
 -- holes
 
-decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, Monad p, LocationParsing p) => p mod
+decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, Monad p, LocationParsing p) => p mod
 decl = (S..:) <$> dname <* colon <*> S.strengthen (sig (fmap pure global) S.refl (fmap pure tglobal))
   where
   sig :: Applicative env' => p (env' expr) -> S.Extends env env' -> p (env' ty) -> p (env' decl)
@@ -44,7 +44,7 @@ decl = (S..:) <$> dname <* colon <*> S.strengthen (sig (fmap pure global) S.refl
 
 forAll
   :: forall env ty res p
-  .  (Applicative env, S.ForAll ty res, S.Type ty, Monad p, LocationParsing p)
+  .  (Applicative env, S.ForAll ty res, S.Type ty, S.Located ty, Monad p, LocationParsing p)
   => (forall env' . Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' res))
   -> p (env ty)
   -> p (env res)
@@ -57,16 +57,16 @@ forAll k tvar = do
   arrow *> loop S.refl (pure ty) tvar names
 
 
-type' :: (S.Type ty, Monad p, LocationParsing p) => p ty
+type' :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => p ty
 type' = S.strengthen (type_ (fmap pure tglobal))
 
-type_ :: (Applicative env, S.Type ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
+type_ :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
 type_ tvar = fn tvar <|> forAll (const type_) tvar <?> "type"
 
-fn :: (Applicative env, S.Type ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
+fn :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
 fn tvar = app (S..$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
 
-tatom :: (Applicative env, S.Type ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
+tatom :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
 tatom tvar
   =   parens (prd <$> sepBy (type_ tvar) comma)
   <|> tvar
@@ -78,24 +78,24 @@ tglobal :: (S.Type ty, Monad p, TokenParsing p) => p ty
 tglobal = S.tglobal <$> tname <?> "variable"
 
 
-expr :: (S.Expr expr, Monad p, LocationParsing p) => p expr
+expr :: (S.Expr expr, S.Located expr, Monad p, LocationParsing p) => p expr
 expr = S.strengthen (expr_ (pure <$> global))
 
 global :: (S.Expr expr, Monad p, TokenParsing p) => p expr
 global = S.global <$> name <?> "variable"
 
-expr_ :: forall p env expr . (Applicative env, S.Expr expr, Monad p, LocationParsing p) => p (env expr) -> p (env expr)
+expr_ :: forall p env expr . (Applicative env, S.Expr expr, S.Located expr, Monad p, LocationParsing p) => p (env expr) -> p (env expr)
 expr_ = app (S.$$) atom
 
 -- FIXME: patterns
 -- FIXME: nullary computations
-lam :: forall p env expr . (Applicative env, S.Expr expr, Monad p, LocationParsing p) => p (env expr) -> p (env expr)
+lam :: forall p env expr . (Applicative env, S.Expr expr, S.Located expr, Monad p, LocationParsing p) => p (env expr) -> p (env expr)
 lam var = braces $ clause var
   where
   clause :: Applicative env' => p (env' expr) -> p (env' expr)
   clause var = name >>= \ i -> S.lam0 (pure (pure i)) (\ env v -> let var' = v <$ variable i <|> S.castF env var in clause var' <|> arrow *> expr_ var') <?> "clause"
 
-atom :: (Applicative env, S.Expr expr, Monad p, LocationParsing p) => p (env expr) -> p (env expr)
+atom :: (Applicative env, S.Expr expr, S.Located expr, Monad p, LocationParsing p) => p (env expr) -> p (env expr)
 atom var
   =   lam var
   <|> parens (prd <$> sepBy (expr_ var) comma)
