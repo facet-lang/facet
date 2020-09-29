@@ -67,10 +67,10 @@ binder bound ctor n e = ctor n' b'
 
 binderM
   :: (Scoped t, MonadFix m)
-  => (Name -> t)
+  => (Name -> d)
   -> (Name -> t -> r)
   -> T.Text
-  -> (t -> m t)
+  -> (d -> m t)
   -> m r
 binderM bound ctor n e = uncurry ctor <$> mfix (\ ~(n', b') -> do
   (prime n (maxBV b'),) <$> e (bound n'))
