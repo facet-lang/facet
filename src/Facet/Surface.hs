@@ -64,8 +64,8 @@ newtype DName = DName { getDeclName :: Text }
 
 -- FIXME: define a core variant of this where declarations are normalized to not contain term bindings in the signature but instead pattern match in the definition
 class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
-  (.:) :: DName -> decl -> mod
-  infixr 0 .:
+  (.:.) :: DName -> decl -> mod
+  infix 1 .:.
 
 class (Expr expr, Type ty) => Decl expr ty decl | decl -> ty expr where
   (.=) :: ty -> expr -> decl

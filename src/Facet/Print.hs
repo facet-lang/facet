@@ -189,7 +189,7 @@ instance C.Type Print where
 
 
 instance U.Module Print Print Print Print where
-  n .: b = group $ ann (pretty n ::: b)
+  n .:. b = group $ ann (pretty n ::: b)
 
 instance U.Decl Print Print Print where
   -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.

@@ -43,7 +43,7 @@ instance TokenParsing m => TokenParsing (Facet m) where
 
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, LocationParsing p) => p mod
-decl = S.strengthen . locating $ fmap . (S..:) <$> dname <* colon <*> sig global S.refl tglobal
+decl = S.strengthen . locating $ fmap . (S..:.) <$> dname <* colon <*> sig global S.refl tglobal
   where
   sig :: Applicative env' => p (env' expr) -> S.Extends env env' -> p (env' ty) -> p (env' decl)
   sig var _ tvar = try (bind var tvar) <|> forAll (S.>=>) (\ env -> sig (S.castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
