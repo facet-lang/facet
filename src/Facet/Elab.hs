@@ -15,6 +15,7 @@ module Facet.Elab
 , elab
 , Elab(..)
 , Check(..)
+, runSynth
 , Synth(..)
 , check
 , switch
@@ -35,10 +36,12 @@ module Facet.Elab
 
 import           Control.Algebra
 import qualified Control.Carrier.Error.Church as E
+import           Control.Carrier.Lift
 import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.Fix
+import           Data.Functor.Identity
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Facet.Core.Lifted as C
@@ -58,7 +61,7 @@ elab :: C.Type e => (Elab e a ::: Maybe Type) -> Either Print a
 elab ~(m ::: t) = runSynth (runElab m t) (Span (Pos 0 0) (Pos 0 0)) implicit
 
 newtype Elab e a = Elab { runElab :: Maybe Type -> Synth e a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader Span :+: Reader (Env e) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Maybe Type) (Synth e)
+  deriving (Algebra (Reader (Maybe Type) :+: Reader Span :+: Reader (Env e) :+: Error Print :+: Lift Identity), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Maybe Type) (Synth e)
 
 checked :: Elab e (a ::: Type) -> Check e a
 checked m = Check $ \ _T -> do
@@ -103,10 +106,13 @@ instance (C.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
 
 
 newtype Check e a = Check { runCheck :: Type -> Synth e a }
-  deriving (Algebra (Reader Type :+: Reader Span :+: Reader (Env e) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC Type (Synth e)
+  deriving (Algebra (Reader Type :+: Reader Span :+: Reader (Env e) :+: Error Print :+: Lift Identity), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC Type (Synth e)
 
-newtype Synth e a = Synth { runSynth :: Span -> Env e -> Either Print a }
-  deriving (Algebra (Reader Span :+: Reader (Env e) :+: Error Print), Applicative, Functor, Monad, MonadFix) via ReaderC Span (ReaderC (Env e) (Either Print))
+runSynth :: Synth e a -> Span -> Env e -> Either Print a
+runSynth (Synth m) s e = run (E.runError (pure . Left) (pure . Right) (m s e))
+
+newtype Synth e a = Synth (Span -> Env e -> E.ErrorC Print Identity a)
+  deriving (Algebra (Reader Span :+: Reader (Env e) :+: Error Print :+: Lift Identity), Applicative, Functor, Monad, MonadFix) via ReaderC Span (ReaderC (Env e) (E.ErrorC Print Identity))
 
 instance MonadFail (Synth e) where
   fail = throwError @Print . pretty
