@@ -9,7 +9,7 @@ module Facet.Elab
 , implicit
 , elab
 , Elab(..)
-, Check(..)
+, Check
 , runSynth
 , Synth(..)
 , check
@@ -56,7 +56,7 @@ newtype Elab e m a = Elab { runElab :: Maybe Type -> Synth e m a }
   deriving (Algebra (Reader (Maybe Type) :+: Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (Synth e m)
 
 checked :: Has (Error Print) sig m => Elab e m (a ::: Type) -> Check (Synth e m) a
-checked m = Check $ \ _T -> do
+checked m _T = do
   a ::: _T' <- runElab m (Just _T)
   a <$ unify _T _T'
 
@@ -97,8 +97,7 @@ instance (C.Expr a, Scoped a, Has (Error Print) sig m, MonadFix m) => S.Expr (El
   _ ** _ = tbd
 
 
-newtype Check m a = Check { runCheck :: Type -> m a }
-  deriving (Algebra (Reader Type :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Type m
+type Check m a = Type -> m a
 
 runSynth :: Synth e m a -> Env e -> m a
 runSynth (Synth m) e = m e
@@ -107,10 +106,10 @@ newtype Synth e m a = Synth (Env e -> m a)
   deriving (Algebra (Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Env e) m
 
 check :: (Check m a ::: Type) -> m a
-check = uncurryAnn runCheck
+check = uncurryAnn ($)
 
 switch :: Has (Error Print) sig m => m (a ::: Type) -> Check m a
-switch s = Check $ \ _T -> do
+switch s _T = do
   a ::: _T' <- s
   a <$ unify _T _T'
 
@@ -200,7 +199,7 @@ infixr 1 >=>
 ($$) = app (C.$$)
 
 lam0 :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check (Synth e m) expr) -> Check (Synth e m) expr
-lam0 n f = Check $ \case
+lam0 n f = \case
   _A :-> _B -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _T        -> expectedFunctionType _T (pretty "when checking lambda")
 
