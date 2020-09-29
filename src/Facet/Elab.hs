@@ -107,7 +107,7 @@ newtype Check e a = Check { runCheck :: Type -> Synth e a }
   deriving (Algebra (Reader Type :+: Reader (Env e) :+: Error Print :+: Reader Span), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC Type (Synth e)
 
 runSynth :: Synth e a -> Span -> Env e -> Either (Span, Print) a
-runSynth (Synth m) s e = E.runError (pure . Left) (pure . Right) (runErrorC (m e)) s
+runSynth (Synth m) s e = runError (m e) s
 
 newtype Synth e a = Synth (Env e -> ErrorC Print ((->) Span) a)
   deriving (Algebra (Reader (Env e) :+: Error Print :+: Reader Span), Applicative, Functor, Monad, MonadFix) via ReaderC (Env e) (ErrorC Print ((->) Span))
@@ -215,6 +215,9 @@ lam0 n f = Check $ \case
 
 
 -- Contextualized errors
+
+runError :: Applicative m => ErrorC e m a -> m (Either (Span, e) a)
+runError = E.runError (pure . Left) (pure . Right) . runErrorC
 
 newtype ErrorC e m a = ErrorC { runErrorC :: E.ErrorC (Span, e) m a }
   deriving (Applicative, Functor, Monad, MonadFix)
