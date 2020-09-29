@@ -11,6 +11,7 @@ import Facet.Name (Name, Scoped, binder)
 import Facet.Syntax ((:::)(..))
 
 class Type ty where
+  -- FIXME: qualified names
   tglobal :: Text -> ty
   tbound :: Name -> ty
 
@@ -36,6 +37,7 @@ class Type ty where
 infixr 1 >=>
 
 class Expr expr where
+  -- FIXME: qualified names
   global :: Text -> expr
   bound :: Name -> expr
   tlam :: Name -> expr -> expr
