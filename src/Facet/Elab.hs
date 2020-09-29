@@ -116,8 +116,8 @@ switch s = Check $ \ _T -> do
   a ::: _T' <- s
   a <$ unify _T _T'
 
-unify :: MonadFail m => Type -> Type -> Synth e m Type
-unify t1 t2 = t2 <$ go t1 t2 -- NB: unification cannot (currently) result in information increase, so it always suffices to take (arbitrarily) the second operand as the result. Failures escape by throwing an exception, so this will not affect failed results.
+unify :: MonadFail m => Type -> Type -> Synth e m ()
+unify t1 t2 = go t1 t2
   where
   go = curry $ \case
     (Type,      Type)       -> pure ()
