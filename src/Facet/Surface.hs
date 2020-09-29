@@ -11,8 +11,10 @@ module Facet.Surface
 , Module(..)
 , Decl(..)
 , (:::)(..)
+, Located(..)
 ) where
 
+import Control.Effect.Parser.Span (Span)
 import Data.String (IsString(..))
 import Data.Text (Text)
 import Facet.Syntax ((:::)(..))
@@ -75,3 +77,7 @@ class (Expr expr, ForAll ty decl, Type ty) => Decl expr ty decl | decl -> ty exp
 
   (>->) :: (EName ::: ty) -> (expr -> decl) -> decl
   infixr 1 >->
+
+
+class Located expr where
+  locate :: Span -> expr -> expr
