@@ -116,7 +116,6 @@ switch s = Check $ \ _T -> do
 unify' :: Type -> Type -> Synth e Type
 unify' t1 t2 = t2 <$ go t1 t2 -- NB: unification cannot (currently) result in information increase, so it always suffices to take (arbitrarily) the second operand as the result. Failures escape by throwing an exception, so this will not affect failed results.
   where
-  go :: Type -> Type -> Synth e ()
   go = curry $ \case
     (Type,      Type)       -> pure ()
     (Unit,      Unit)       -> pure ()
