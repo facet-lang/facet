@@ -5,5 +5,5 @@ module Facet.Carrier.Fail.Throw.Print
 
 import Control.Monad.Fix
 
-newtype FailC m a = FailC { runFail :: m a }
+newtype FailC p m a = FailC { runFail :: m a }
   deriving (Applicative, Functor, Monad, MonadFix)
