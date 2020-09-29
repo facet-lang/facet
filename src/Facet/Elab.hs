@@ -228,4 +228,4 @@ freeVariable :: Has (Error Print) sig m => T.Text -> m a
 freeVariable s = err $ pretty "variable not in scope:" <+> pretty s
 
 expectedFunctionType :: Has (Error Print) sig m => Type -> Print -> m a
-expectedFunctionType t s = err $ pretty "expected: _ -> _\n actual:" <+> C.interpret t </> s
+expectedFunctionType t s = err $ pretty "expected:" <+> pretty "_ -> _" </> pretty "actual:" <+> C.interpret t </> s
