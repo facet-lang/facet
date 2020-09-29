@@ -78,7 +78,7 @@ instance Has (Reader Span) sig m => S.Located (Elab e m a) where
 
 instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab Type m (Type ::: Type)) where
   tglobal = fromSynth . global . S.getTName
-  (n ::: t) >~> b = fromSynth $ (S.getTName n ::: checked t) >=> checked . b . pure
+  (n ::: t) >~> b = fromSynth $ (S.getTName n ::: checked t) >~> checked . b . pure
   a --> b = fromSynth $ checked a --> checked b
   f .$  a = fromSynth $ synthed f .$  checked a
   l .*  r = fromSynth $ checked l .*  checked r
@@ -178,6 +178,18 @@ a --> b = do
   pure $ (a' C.--> b') ::: C._Type
 
 infixr 2 -->
+
+(>~>)
+  :: MonadFix m
+  => (T.Text ::: Check e m Type)
+  -> ((Type ::: Type) -> Check e m Type)
+  -> Synth e m (Type ::: Type)
+(n ::: t) >~> b = do
+  t' <- check (t ::: C._Type)
+  ftb' <- pure (n ::: C.interpret t') C.>=> \ v -> check (b (v ::: t') ::: C._Type)
+  pure $ ftb' ::: C._Type
+
+infixr 1 >~>
 
 (>=>)
   :: (MonadFix m, C.Type t, Scoped t)
