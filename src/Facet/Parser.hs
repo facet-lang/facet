@@ -39,7 +39,7 @@ decl = (S..:) <$> dname <* colon <*> S.strengthen (sig (fmap pure global) S.refl
   bind :: Applicative env' => p (env' expr) -> p (env' ty) -> p (env' decl)
   bind var tvar = do
     (i, t) <- parens ((,) <$> name <* colon <*> type_ tvar)
-    pure ((i S.:::) <$> t) S.>-> \ env t -> arrow *> sig (fmap . S.locate <$> variable i <*> pure t <|> S.castF env var) S.refl (S.castF env tvar)
+    pure ((i S.:::) <$> t) S.>-> \ env t -> arrow *> sig (locating (t <$ variable i) <|> S.castF env var) S.refl (S.castF env tvar)
 
 
 forAll
