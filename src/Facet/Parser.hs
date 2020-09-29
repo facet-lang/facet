@@ -157,3 +157,7 @@ arrow = symbol "->"
 
 variable :: (LocationParsing p, Coercible t Text) => t -> p Span
 variable s = spanning (token (text (coerce s) <* notFollowedBy alphaNum))
+
+
+locating :: (LocationParsing p, S.Located a, Functor env) => p (env a) -> p (env a)
+locating = fmap (uncurry (fmap . S.locate)) . spanned
