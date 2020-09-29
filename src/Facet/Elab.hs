@@ -65,7 +65,7 @@ checked m = Check $ \ _T -> do
 checking :: MonadFail m => Check e m a -> Elab e m (a ::: Type)
 checking m = Elab $ \case
   Just t  -> check (m ::: t) .: t
-  Nothing -> fail "can’t synthesize a type for this lambda"
+  Nothing -> couldNotSynthesize
 
 synthed :: Elab e m a -> Synth e m a
 synthed (Elab run) = run Nothing
@@ -214,3 +214,6 @@ tbd = fail "TBD"
 
 couldNotUnify :: MonadFail m => Type -> Type -> m a
 couldNotUnify t1 t2 = fail $ "could not unify " <> show t1 <> " with " <> show t2
+
+couldNotSynthesize :: MonadFail m => m a
+couldNotSynthesize = fail "could not synthesize a type"
