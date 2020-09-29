@@ -34,6 +34,7 @@ module Facet.Elab
 ) where
 
 import           Control.Algebra
+import qualified Control.Carrier.Error.Church as E
 import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Effect.Parser.Span (Pos(..), Span(..))
@@ -207,3 +208,15 @@ lam0 :: (C.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check e expr
 lam0 n f = Check $ \case
   _A :-> _B -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _         -> fail "expected function type in lambda"
+
+
+-- Contextualized errors
+
+newtype ErrorC e m a = ErrorC { runErrorC :: E.ErrorC (Span, e) m a }
+  deriving (Applicative, Functor, Monad)
+
+instance Has (Reader Span) sig m => Algebra (Error e :+: sig) (ErrorC e m) where
+  alg hdl sig ctx = ErrorC $ case sig of
+    L (L (Throw e))   -> ask @Span >>= throwError . flip (,) e
+    L (R (Catch m h)) -> runErrorC (hdl (m <$ ctx)) `catchError` (runErrorC . hdl . (<$ ctx) . h . snd @Span)
+    R other           -> alg (runErrorC . hdl) (R other) ctx
