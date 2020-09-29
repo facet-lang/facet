@@ -7,7 +7,7 @@ map
 | Cons x xs -> Cons (f x) (map f xs)
 }
 
-(;) : (_ : a) -> b -> b
+(;) : (_ : b) -> (a : a) -> a
 { a }
 
 
