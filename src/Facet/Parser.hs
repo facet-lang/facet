@@ -30,8 +30,8 @@ import           Text.Parser.Token.Highlight
 -- forcing nullary computations
 -- holes
 
-decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, Monad p, LocationParsing p) => p mod
-decl = (S..:) <$> dname <* colon <*> S.strengthen (sig global S.refl tglobal)
+decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, LocationParsing p) => p mod
+decl = S.strengthen . locating $ fmap . (S..:) <$> dname <* colon <*> sig global S.refl tglobal
   where
   sig :: Applicative env' => p (env' expr) -> S.Extends env env' -> p (env' ty) -> p (env' decl)
   sig var _ tvar = try (bind var tvar) <|> forAll (\ env -> sig (S.castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
