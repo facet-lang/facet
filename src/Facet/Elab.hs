@@ -51,10 +51,10 @@ import           Silkscreen
 
 type Env e = Map.Map T.Text (e ::: Type)
 
-implicit :: C.Type a => Env a
+implicit :: CT.Type a => Env a
 implicit = Map.fromList [ (T.pack "Type", CT._Type ::: CT._Type) ]
 
-elab :: C.Type e => (Elab e a ::: Maybe Type) -> Either Print a
+elab :: CT.Type e => (Elab e a ::: Maybe Type) -> Either Print a
 elab ~(m ::: t) = runSynth (runElab m t) implicit
 
 newtype Elab e a = Elab { runElab :: Maybe Type -> Synth e a }
@@ -89,7 +89,7 @@ instance S.Type (Elab Type (Type ::: Type)) where
   _Unit = synthing _Unit
   _Type = synthing _Type
 
-instance (C.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
+instance (CT.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
   global = synthing . global . S.getEName
   lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = fail "TBD"
@@ -194,10 +194,10 @@ infixr 1 >=>
 
 -- Expressions
 
-($$) :: C.Expr expr => Synth e (expr ::: Type) -> Check e expr -> Synth e (expr ::: Type)
-($$) = app (C.$$)
+($$) :: CT.Expr expr => Synth e (expr ::: Type) -> Check e expr -> Synth e (expr ::: Type)
+($$) = app (CT.$$)
 
-lam0 :: (C.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check e expr) -> Check e expr
+lam0 :: (CT.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check e expr) -> Check e expr
 lam0 n f = Check $ \case
   _A :-> _B -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _         -> fail "expected function type in lambda"
