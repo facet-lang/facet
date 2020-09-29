@@ -16,7 +16,7 @@ import Facet.Name
 data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-infix 5 :::
+infixr 5 :::
 
 instance Bifunctor (:::) where
   bimap f g (a ::: b) = f a ::: g b
@@ -41,7 +41,7 @@ curryAnn f a b = f (a ::: b)
 (.:) :: Functor m => m a -> b -> m (a ::: b)
 tm .: ty = (::: ty) <$> tm
 
-infix 5 .:
+infixr 5 .:
 
 
 data Stack a
