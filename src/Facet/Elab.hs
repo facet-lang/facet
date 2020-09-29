@@ -109,7 +109,7 @@ newtype Synth e m a = Synth (Env e -> m a)
 check :: (Check m a ::: Type) -> m a
 check = uncurryAnn runCheck
 
-switch :: Has (Error Print) sig m => Synth e m (a ::: Type) -> Check (Synth e m) a
+switch :: Has (Error Print) sig m => m (a ::: Type) -> Check m a
 switch s = Check $ \ _T -> do
   a ::: _T' <- s
   a <$ unify _T _T'
