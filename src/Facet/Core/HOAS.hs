@@ -5,48 +5,50 @@ module Facet.Core.HOAS
 , Circ(..)
 ) where
 
+import           Control.Applicative (liftA2)
+import           Control.Monad.Fix (MonadFix)
 import           Data.Text (Text)
 import qualified Facet.Core as C
-import           Facet.Name (Scoped, binder)
+import           Facet.Name (Scoped, binderM)
 import           Facet.Syntax ((:::)(..))
 
 class Type ty where
-  tglobal :: Text -> ty
+  tglobal :: Applicative m => Text -> m ty
 
-  _Type :: ty
-  _Unit :: ty
+  _Type :: Applicative m => m ty
+  _Unit :: Applicative m => m ty
 
   -- | Universal quantification.
-  (>=>) :: (Text ::: ty) -> (ty -> ty) -> ty
+  (>=>) :: MonadFix m => m (Text ::: ty) -> (ty -> m ty) -> m ty
   infixr 1 >=>
-  (.$) :: ty -> ty -> ty
+  (.$) :: Applicative m => m ty -> m ty -> m ty
   infixl 9 .$
 
-  (-->) :: ty -> ty -> ty
+  (-->) :: Applicative m => m ty -> m ty -> m ty
   infixr 2 -->
-  (.*) :: ty -> ty -> ty
+  (.*) :: Applicative m => m ty -> m ty -> m ty
   infixl 7 .*
 
   -- FIXME: tupling/unit should take a list of types
 
 class Expr expr where
-  global :: Text -> expr
-  tlam :: Text -> (expr -> expr) -> expr
-  lam0 :: Text -> (expr -> expr) -> expr
-  ($$) :: expr -> expr -> expr
+  global :: Applicative m => Text -> m expr
+  tlam :: MonadFix m => Text -> (expr -> m expr) -> m expr
+  lam0 :: MonadFix m => Text -> (expr -> m expr) -> m expr
+  ($$) :: Applicative m => m expr -> m expr -> m expr
   infixl 9 $$
 
 
 newtype Circ t = Circ { getCirc :: t }
 
 instance (C.Type t, Scoped t) => Type (Circ t) where
-  tglobal = Circ . C.tglobal
+  tglobal = pure . Circ . C.tglobal
 
-  _Type = Circ C._Type
-  _Unit = Circ C._Unit
+  _Type = pure $ Circ C._Type
+  _Unit = pure $ Circ C._Unit
 
-  (n ::: t) >=> b = Circ $ binder C.tbound ((C.==>) . (::: getCirc t)) n (getCirc . b . Circ)
-  f .$  a = Circ $ getCirc f C..$ getCirc a
+  t >=> b = t >>= \ (n ::: t) -> Circ <$> binderM C.tbound ((C.==>) . (::: getCirc t)) n (fmap getCirc . b . Circ)
+  f .$  a = Circ <$> liftA2 (C..$)  (getCirc <$> f) (getCirc <$> a)
 
-  a --> b = Circ $ getCirc a C.--> getCirc b
-  l .*  r = Circ $ getCirc l C..*  getCirc r
+  a --> b = Circ <$> liftA2 (C.-->) (getCirc <$> a) (getCirc <$> b)
+  l .*  r = Circ <$> liftA2 (C..*)  (getCirc <$> l) (getCirc <$> r)

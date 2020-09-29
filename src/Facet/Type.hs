@@ -1,4 +1,3 @@
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -10,6 +9,7 @@ module Facet.Type
 ( Type(..)
 ) where
 
+import           Control.Applicative (liftA2)
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.Text (Text)
@@ -26,7 +26,6 @@ data Type
   | Either Name Text :$  Stack Type
   | Type :-> Type
   | Type :*  Type
-  deriving (CH.Type) via (CH.Circ Type)
 
 infixr 0 :=>
 infixl 9 :$
@@ -44,6 +43,18 @@ instance Scoped Type where
     _ :$ a  -> foldMap maxBV a
     a :-> b -> maxBV a <> maxBV b
     l :* r  -> maxBV l <> maxBV r
+
+instance CH.Type Type where
+  tglobal = pure . C.tglobal
+
+  _Type = pure C._Type
+  _Unit = pure C._Unit
+
+  t >=> b = t >>= \ (n ::: t) -> binderM C.tbound ((C.==>) . (::: t)) n b
+  f .$  a = liftA2 (C..$)  f a
+
+  a --> b = liftA2 (C.-->) a b
+  l .*  r = liftA2 (C..*)  l r
 
 instance C.Type Type where
   tglobal n = Right n :$ Nil
