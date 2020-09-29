@@ -11,6 +11,8 @@ import           Facet.Name (Scoped, binder)
 import           Facet.Syntax ((:::)(..))
 
 class Type ty where
+  tglobal :: Text -> ty
+
   _Type :: ty
   _Unit :: ty
 
@@ -28,6 +30,7 @@ class Type ty where
   -- FIXME: tupling/unit should take a list of types
 
 class Expr expr where
+  global :: Text -> expr
   tlam :: Text -> (expr -> expr) -> expr
   lam0 :: Text -> (expr -> expr) -> expr
   ($$) :: expr -> expr -> expr
@@ -37,6 +40,8 @@ class Expr expr where
 newtype Circ t = Circ { getCirc :: t }
 
 instance (C.Type t, Scoped t) => Type (Circ t) where
+  tglobal = Circ . C.tglobal
+
   _Type = Circ C._Type
   _Unit = Circ C._Unit
 
