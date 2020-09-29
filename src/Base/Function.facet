@@ -55,8 +55,8 @@ uncurry
 
 
 case
-: { A, B : Type } -> (x : A) -> (f : A -> B) -> B
-= (|>)
+: { A, B : Type } -> A -> (A -> B) -> B
+(|>)
 
 # desugars to:
 # case
