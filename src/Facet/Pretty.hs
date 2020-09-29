@@ -1,5 +1,6 @@
 module Facet.Pretty
 ( hPutDoc
+, hPutDocWith
 , putDoc
 , putDocWith
 , toAlpha
@@ -19,6 +20,9 @@ hPutDoc :: MonadIO m => Handle -> PP.Doc ANSI.AnsiStyle -> m ()
 hPutDoc handle doc = liftIO $ do
   s <- maybe 80 Size.width <$> size
   ANSI.renderIO handle (PP.layoutSmart PP.defaultLayoutOptions { PP.layoutPageWidth = PP.AvailablePerLine s 0.8 } (doc <> PP.line))
+
+hPutDocWith :: MonadIO m => Handle -> (a -> ANSI.AnsiStyle) -> PP.Doc a -> m ()
+hPutDocWith handle style = hPutDoc handle . PP.reAnnotate style
 
 putDoc :: MonadIO m => PP.Doc ANSI.AnsiStyle -> m ()
 putDoc = hPutDoc stdout
