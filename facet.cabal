@@ -38,6 +38,7 @@ library
   import: common
   exposed-modules:
     Facet.Carrier.Error.Context
+    Facet.Carrier.Fail.Print
     Facet.Core
     Facet.Core.HOAS
     Facet.Core.Lifted
