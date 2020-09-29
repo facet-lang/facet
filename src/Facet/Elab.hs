@@ -81,7 +81,6 @@ instance S.Located (Elab e a) where
   locate _ = id
 
 instance S.ForAll (Elab Type (Type ::: Type)) (Elab Type (Type ::: Type)) where
-  -- FIXME: something’s amiss here; we don’t check that the bound variable is the correct kind when applying it (or not) for example
   (n ::: t) >=> b = synthing $ (S.getTName n ::: checked t) >=> checked . b . pure
 
 instance S.Type (Elab Type (Type ::: Type)) where
