@@ -18,7 +18,7 @@ module Facet.Elab
 , Synth(..)
 , check
 , switch
-, unify'
+, unify
   -- * General
 , global
   -- * Types
@@ -61,7 +61,7 @@ newtype Elab e a = Elab { runElab :: Maybe Type -> Synth e a }
 checked :: Elab e (a ::: Type) -> Check e a
 checked m = Check $ \ _T -> do
   a ::: _T' <- runElab m (Just _T)
-  a <$ unify' _T _T'
+  a <$ unify _T _T'
 
 checking :: Check e a -> Elab e (a ::: Type)
 checking m = Elab $ \case
@@ -113,10 +113,10 @@ check = uncurryAnn runCheck
 switch :: Synth e (a ::: Type) -> Check e a
 switch s = Check $ \ _T -> do
   a ::: _T' <- s
-  a <$ unify' _T _T'
+  a <$ unify _T _T'
 
-unify' :: Type -> Type -> Synth e Type
-unify' t1 t2 = t2 <$ go t1 t2 -- NB: unification cannot (currently) result in information increase, so it always suffices to take (arbitrarily) the second operand as the result. Failures escape by throwing an exception, so this will not affect failed results.
+unify :: Type -> Type -> Synth e Type
+unify t1 t2 = t2 <$ go t1 t2 -- NB: unification cannot (currently) result in information increase, so it always suffices to take (arbitrarily) the second operand as the result. Failures escape by throwing an exception, so this will not affect failed results.
   where
   go = curry $ \case
     (Type,      Type)       -> pure ()
