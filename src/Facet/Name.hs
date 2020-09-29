@@ -55,10 +55,10 @@ instance Scoped Name where
 
 binder
   :: Scoped t
-  => (Name -> t)
+  => (Name -> d)
   -> (Name -> t -> r)
   -> T.Text
-  -> (t -> t)
+  -> (d -> t)
   -> r
 binder bound ctor n e = ctor n' b'
   where
