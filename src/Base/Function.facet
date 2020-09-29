@@ -5,47 +5,47 @@ Base.Function : Module
 
 id
 : { A : Type } -> (x : A) -> A
-= x
+{ x }
 # NB: equivalently: id : {A : Type } -> A -> A = {x -> x}
 
 const
 : { A, B : Type } -> (x : A) -> (_ : B) -> A
-= x
+{ x }
 # NB: equivalently: const : { A, B : Type } -> (x : A) -> B -> A = { _ -> x }
 # NB: equivalently: const : { A, B : Type } -> A -> B -> A = { _ _ -> x }
 
 flip
 : { A, B, C : Type } -> (f : A -> B -> C) -> (B -> A -> C) # NB: this rightmost set of parens is technically redundant, but useful to understand what the function does
-= { b a -> f a b } # note that we didn’t bind the latter operands in the type so we’re binding (pattern matching on) them both here instead
+{ b a -> f a b } # note that we didn’t bind the latter operands in the type so we’re binding (pattern matching on) them both here instead
 
 
 curry
 : { A, B, C : Type } -> (f : (A, B) -> C) -> (x : A) -> (y : B) -> C
-= f (x, y)
+{ f (x, y) }
 
 uncurry
 : { A, B, C : Type } -> (f : A -> B -> C) -> (A, B) -> C
-= { (x, y) -> f x y } # NB: you can’t bind individual fields of a type in the signature, so we have to pattern match here
-# NB: equivalently: uncurry : { A, B, C : Type } -> (f : A -> B -> C) -> (x : (A, B)) -> C = f (fst x) (snd x) # assuming standard definitions of these projections
+{ (x, y) -> f x y } # NB: you can’t bind individual fields of a type in the signature, so we have to pattern match here
+# NB: equivalently: uncurry : { A, B, C : Type } -> (f : A -> B -> C) -> (x : (A, B)) -> C { f (fst x) (snd x) } # assuming standard definitions of these projections
 
 
 # fixme: do we want to support mixfix syntax?
 # fixme: how do we want to specify fixity?
 (<<)
 : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
-= { a -> f (g a) }
+{ a -> f (g a) }
 # NB: equivalently: (<<) : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (a : A) -> C = f (g a)
 
 (>>)
 : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (A -> C)
-= { a -> f (g a) }
+{ a -> f (g a) }
 # NB: equivalently: (>>) : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (a : A) -> C = f (g a)
 
 
 # fixme: I honestly can’t tell if these are backwards relative to composition or not
 (<|)
 : { A, B : Type } -> (f : A -> B) -> (a : A) -> B
-= f a
+{ f a }
 # NB: equivalently: { A, B : Type } -> (f : A -> B) -> A -> B = f
 # NB: equivalently: { A, B : Type } -> (A -> B) -> A -> B = id
 
@@ -56,11 +56,11 @@ uncurry
 
 case
 : { A, B : Type } -> A -> (A -> B) -> B
-(|>)
+{ (|>) }
 
 # desugars to:
 # case
 # : { A : Base.Type.Type } -> { B : Base.Type.Type } -> A -> (A -> B) -> B
-# (Base.Function.|>)
+# { (Base.Function.|>) }
 
 }
