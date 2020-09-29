@@ -40,7 +40,7 @@ import           Control.Monad.Fix
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
-import qualified Facet.Core as CT
+import qualified Facet.Core as C
 import qualified Facet.Core.Lifted as CL
 import           Facet.Name (Scoped)
 import           Facet.Print (Print)
@@ -51,10 +51,10 @@ import           Silkscreen
 
 type Env e = Map.Map T.Text (e ::: Type)
 
-implicit :: CT.Type a => Env a
-implicit = Map.fromList [ (T.pack "Type", CT._Type ::: CT._Type) ]
+implicit :: C.Type a => Env a
+implicit = Map.fromList [ (T.pack "Type", C._Type ::: C._Type) ]
 
-elab :: CT.Type e => (Elab e a ::: Maybe Type) -> Either Print a
+elab :: C.Type e => (Elab e a ::: Maybe Type) -> Either Print a
 elab ~(m ::: t) = runSynth (runElab m t) implicit
 
 newtype Elab e a = Elab { runElab :: Maybe Type -> Synth e a }
@@ -89,7 +89,7 @@ instance S.Type (Elab Type (Type ::: Type)) where
   _Unit = synthing _Unit
   _Type = synthing _Type
 
-instance (CT.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
+instance (C.Expr a, Scoped a) => S.Expr (Elab a (a ::: Type)) where
   global = synthing . global . S.getEName
   lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = fail "TBD"
@@ -154,29 +154,29 @@ app ($$) f a = do
 -- Types
 
 _Type :: Synth e (Type ::: Type)
-_Type = pure $ CT._Type ::: CT._Type
+_Type = pure $ C._Type ::: C._Type
 
 _Unit :: Synth e (Type ::: Type)
-_Unit = pure $ CT._Unit ::: CT._Type
+_Unit = pure $ C._Unit ::: C._Type
 
 (.$) :: Synth e (Type ::: Type) -> Check e Type -> Synth e (Type ::: Type)
-(.$) = app (CT..$)
+(.$) = app (C..$)
 
 infixl 9 .$
 
 (.*) :: Check e Type -> Check e Type -> Synth e (Type ::: Type)
 a .* b = do
-  a' <- check (a ::: CT._Type)
-  b' <- check (b ::: CT._Type)
-  pure $ a' CT..* b' ::: CT._Type
+  a' <- check (a ::: C._Type)
+  b' <- check (b ::: C._Type)
+  pure $ a' C..* b' ::: C._Type
 
 infixl 7 .*
 
 (-->) :: Check e Type -> Check e Type -> Synth e (Type ::: Type)
 a --> b = do
-  a' <- check (a ::: CT._Type)
-  b' <- check (b ::: CT._Type)
-  pure $ (a' CT.--> b') ::: CT._Type
+  a' <- check (a ::: C._Type)
+  b' <- check (b ::: C._Type)
+  pure $ (a' C.--> b') ::: C._Type
 
 infixr 2 -->
 
@@ -185,19 +185,19 @@ infixr 2 -->
   -> ((Type ::: Type) -> Check e Type)
   -> Synth e (Type ::: Type)
 (n ::: t) >=> b = do
-  t' <- check (t ::: CT._Type)
-  ftb' <- pure (n ::: t') CL.>=> \ v -> check (b (v ::: t') ::: CT._Type)
-  pure $ ftb' ::: CT._Type
+  t' <- check (t ::: C._Type)
+  ftb' <- pure (n ::: t') CL.>=> \ v -> check (b (v ::: t') ::: C._Type)
+  pure $ ftb' ::: C._Type
 
 infixr 1 >=>
 
 
 -- Expressions
 
-($$) :: CT.Expr expr => Synth e (expr ::: Type) -> Check e expr -> Synth e (expr ::: Type)
-($$) = app (CT.$$)
+($$) :: C.Expr expr => Synth e (expr ::: Type) -> Check e expr -> Synth e (expr ::: Type)
+($$) = app (C.$$)
 
-lam0 :: (CT.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check e expr) -> Check e expr
+lam0 :: (C.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check e expr) -> Check e expr
 lam0 n f = Check $ \case
   _A :-> _B -> CL.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _         -> fail "expected function type in lambda"
