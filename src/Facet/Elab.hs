@@ -145,9 +145,12 @@ global s = asks (Map.lookup s) >>= \case
 
 app :: (a -> a -> a) -> Synth e (a ::: Type) -> Check e a -> Synth e (a ::: Type)
 app ($$) f a = do
-  f' ::: (_A :-> _B) <- f
-  a' <- check (a ::: _A)
-  pure $ f' $$ a' ::: _B
+  f' ::: _F <- f
+  case _F of
+    _A :-> _B -> do
+      a' <- check (a ::: _A)
+      pure $ f' $$ a' ::: _B
+    _         -> fail $ "cannot apply value of non-function type " <> show _F
 
 
 -- Types
