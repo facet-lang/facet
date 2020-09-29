@@ -1,6 +1,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Text.Parser.Location
 ( LocationParsing(..)
+, Pos
+, Span
 , spanned
 ) where
 
