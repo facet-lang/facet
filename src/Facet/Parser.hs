@@ -38,7 +38,7 @@ decl = (S..:) <$> dname <* colon <*> S.strengthen (sig (fmap pure global) S.refl
   bind :: Applicative env' => p (env' expr) -> p (env' ty) -> p (env' decl)
   bind var tvar = do
     (i, t) <- parens ((,) <$> name <* colon <*> type_ tvar)
-    pure ((i S.:::) <$> t) S.>-> \ env t -> arrow *> sig (t <$ variable i <|> S.castF env var) S.refl (S.castF env tvar)
+    pure ((i S.:::) <$> t) S.>-> \ env t -> arrow *> sig (variable i t <|> S.castF env var) S.refl (S.castF env tvar)
 
 
 forAll
@@ -52,7 +52,7 @@ forAll k tvar = do
   let loop :: Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' ty) -> [S.TName] -> p (env' res)
       loop env ty tvar = \case
         []   -> k env tvar
-        i:is -> (fmap (i S.:::) <$> ty) S.>=> \ env' t -> loop (env S.>>> env') (S.castF env' ty) (t <$ variable i <|> S.castF env' tvar) is
+        i:is -> (fmap (i S.:::) <$> ty) S.>=> \ env' t -> loop (env S.>>> env') (S.castF env' ty) (variable i t <|> S.castF env' tvar) is
   arrow *> loop S.refl (pure ty) tvar names
 
 
@@ -92,7 +92,7 @@ lam :: forall p env expr . (Applicative env, S.Expr expr, Monad p, TokenParsing 
 lam var = braces $ clause var
   where
   clause :: Applicative env' => p (env' expr) -> p (env' expr)
-  clause var = name >>= \ i -> S.lam0 (pure (pure i)) (\ env v -> let var' = v <$ variable i <|> S.castF env var in clause var' <|> arrow *> expr_ var') <?> "clause"
+  clause var = name >>= \ i -> S.lam0 (pure (pure i)) (\ env v -> let var' = variable i v <|> S.castF env var in clause var' <|> arrow *> expr_ var') <?> "clause"
 
 atom :: (Applicative env, S.Expr expr, Monad p, TokenParsing p) => p (env expr) -> p (env expr)
 atom var
@@ -154,5 +154,5 @@ hnameStyle = IdentifierStyle
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
 
-variable :: (TokenParsing p, Coercible t Text) => t -> p t
-variable s = token (coerce <$> text (coerce s) <* notFollowedBy alphaNum)
+variable :: (TokenParsing p, Coercible t Text) => t -> a -> p a
+variable s a = token (a <$ text (coerce s) <* notFollowedBy alphaNum)
