@@ -28,6 +28,7 @@ class Type ty where
   -- FIXME: tupling/unit should take a list of types
 
 class Expr expr where
+  tlam :: Text -> (expr -> expr) -> expr
   lam0 :: Text -> (expr -> expr) -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
