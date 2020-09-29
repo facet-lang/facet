@@ -80,7 +80,7 @@ synthing m = Elab $ \case
   Nothing -> m
 
 instance S.Located (Elab e a) where
-  locate _ = id
+  locate = local . const
 
 instance S.ForAll (Elab Type (Type ::: Type)) (Elab Type (Type ::: Type)) where
   (n ::: t) >=> b = synthing $ (S.getTName n ::: checked t) >=> checked . b . pure
