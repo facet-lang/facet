@@ -7,6 +7,7 @@ module Facet.Core.Lifted
 , C.Interpret(..)
   -- * Expressions
 , C.Expr(global, bound, ($$))
+, tlam
 , lam0
   -- * Re-exports
 , Extends(..)
@@ -37,6 +38,13 @@ infixr 1 >=>
 
 
 -- Expressions
+
+tlam
+  :: (C.Expr expr, Scoped expr, MonadFix m)
+  => Text
+  -> (expr -> m expr)
+  -> m expr
+tlam = binderM C.bound C.tlam
 
 lam0
   :: (C.Expr expr, Scoped expr, MonadFix m)
