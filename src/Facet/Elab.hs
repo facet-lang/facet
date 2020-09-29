@@ -154,10 +154,10 @@ app ($$) f a = do
 
 -- Types
 
-_Type :: Applicative m => Synth e m (Type ::: Type)
+_Type :: Applicative m => m (Type ::: Type)
 _Type = pure $ C._Type ::: C._Type
 
-_Unit :: Applicative m => Synth e m (Type ::: Type)
+_Unit :: Applicative m => m (Type ::: Type)
 _Unit = pure $ C._Unit ::: C._Type
 
 (.$) :: Has (Error Print) sig m => Synth e m (Type ::: Type) -> Check e m Type -> Synth e m (Type ::: Type)
