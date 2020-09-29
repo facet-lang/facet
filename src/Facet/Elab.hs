@@ -60,8 +60,8 @@ checked m = Check $ \ _T -> do
   a ::: _T' <- runElab m (Just _T)
   a <$ unify _T _T'
 
-checking :: Has (Error Print) sig m => Check e m a -> Elab e m (a ::: Type)
-checking m = Elab $ \case
+fromCheck :: Has (Error Print) sig m => Check e m a -> Elab e m (a ::: Type)
+fromCheck m = Elab $ \case
   Just t  -> check (m ::: t) .: t
   Nothing -> couldNotSynthesize
 
@@ -90,7 +90,7 @@ instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab Type m (Type ::: 
 
 instance (C.Expr a, Scoped a, Has (Error Print) sig m, MonadFix m) => S.Expr (Elab a m (a ::: Type)) where
   global = fromSynth . global . S.getEName
-  lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
+  lam0 n f = fromCheck $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = tbd
   f $$ a = fromSynth $ synthed f $$ checked a
   unit = tbd
