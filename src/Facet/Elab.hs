@@ -68,8 +68,8 @@ checking m = Elab $ \case
 synthed :: Elab e m a -> Synth e m a
 synthed (Elab run) = run Nothing
 
-synthing :: Has (Error Print) sig m => Synth e m (a ::: Type) -> Elab e m (a ::: Type)
-synthing m = Elab $ \case
+fromSynth :: Has (Error Print) sig m => Synth e m (a ::: Type) -> Elab e m (a ::: Type)
+fromSynth m = Elab $ \case
   Just t  -> check (switch m ::: t) .: t
   Nothing -> m
 
@@ -77,22 +77,22 @@ instance Has (Reader Span) sig m => S.Located (Elab e m a) where
   locate = local . const
 
 instance (Has (Error Print) sig m, MonadFix m) => S.ForAll (Elab Type m (Type ::: Type)) (Elab Type m (Type ::: Type)) where
-  (n ::: t) >=> b = synthing $ (S.getTName n ::: checked t) >=> checked . b . pure
+  (n ::: t) >=> b = fromSynth $ (S.getTName n ::: checked t) >=> checked . b . pure
 
 instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab Type m (Type ::: Type)) where
-  tglobal = synthing . global . S.getTName
-  a --> b = synthing $ checked a --> checked b
-  f .$  a = synthing $ synthed f .$  checked a
-  l .*  r = synthing $ checked l .*  checked r
+  tglobal = fromSynth . global . S.getTName
+  a --> b = fromSynth $ checked a --> checked b
+  f .$  a = fromSynth $ synthed f .$  checked a
+  l .*  r = fromSynth $ checked l .*  checked r
 
-  _Unit = synthing _Unit
-  _Type = synthing _Type
+  _Unit = fromSynth _Unit
+  _Type = fromSynth _Type
 
 instance (C.Expr a, Scoped a, Has (Error Print) sig m, MonadFix m) => S.Expr (Elab a m (a ::: Type)) where
-  global = synthing . global . S.getEName
+  global = fromSynth . global . S.getEName
   lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = tbd
-  f $$ a = synthing $ synthed f $$ checked a
+  f $$ a = fromSynth $ synthed f $$ checked a
   unit = tbd
   _ ** _ = tbd
 
