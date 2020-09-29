@@ -2,13 +2,8 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Lifted
 ( -- * Types
-  C.Type
-, _Type
-, _Unit
+  C.Type(_Type, _Unit, (.$), (-->), (.*))
 , (>=>)
-, (.$)
-, (-->)
-, (.*)
 , C.Interpret(..)
   -- * Expressions
 , C.Expr(($$))
@@ -22,7 +17,6 @@ module Facet.Core.Lifted
 , weaken
 ) where
 
-import           Control.Applicative (liftA2)
 import           Control.Monad.Fix
 import           Data.Text (Text)
 import qualified Facet.Core as C
@@ -32,13 +26,6 @@ import           Facet.Syntax
 
 -- Types
 
-_Type :: (C.Type ty, Applicative m) => m ty
-_Type = pure C._Type
-
-_Unit :: (C.Type ty, Applicative m) => m ty
-_Unit = pure C._Unit
-
-
 (>=>)
   :: (C.Type ty, Scoped ty, MonadFix m)
   => m (Text ::: ty)
@@ -47,22 +34,6 @@ _Unit = pure C._Unit
 t >=> b = t >>= \ (n ::: t) -> binderM C.tbound ((C.==>) . (::: t)) n b
 
 infixr 1 >=>
-
-(.$) :: (C.Type ty, Applicative m) => m ty -> m ty -> m ty
-(.$) = liftA2 (C..$)
-
-infixl 9 .$
-
-
-(-->) :: (C.Type ty, Applicative m) => m ty -> m ty -> m ty
-(-->) = liftA2 (C.-->)
-
-infixr 2 -->
-
-(.*) :: (C.Type ty, Applicative m) => m ty -> m ty -> m ty
-(.*) = liftA2 (C..*)
-
-infixl 7 .*
 
 
 -- Expressions
