@@ -50,6 +50,9 @@ data a := b = a := b
 
 infixr 2 :=
 
+instance Bifunctor (:=) where
+  bimap f g (a := b) = f a := g b
+
 
 data Stack a
   = Nil
