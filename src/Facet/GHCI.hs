@@ -14,7 +14,7 @@ import           Control.Carrier.Lift
 import           Control.Carrier.Parser.Church (ParserC, runParserWithString)
 import           Control.Carrier.Throw.Either (ThrowC, runThrow)
 import           Control.Effect.Parser.Notice (Notice, prettyNotice)
-import           Control.Effect.Parser.Span (Pos(..))
+import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
 import qualified Facet.Core.Lifted as C
@@ -43,7 +43,7 @@ parseElabString p s = runM $
 -- Elaboration
 
 printElab :: C.Type e => Synth e (T.Type ::: T.Type) -> IO ()
-printElab = P.prettyPrint . either id prettyAnn . (`runSynth` implicit)
+printElab m = P.prettyPrint (either id prettyAnn (runSynth m (Span (Pos 0 0) (Pos 0 0)) implicit))
 
 prettyAnn :: (S.Printer p, C.Type p) => (T.Type ::: T.Type) -> p
 prettyAnn (tm ::: ty) = C.interpret tm S.<+> S.colon S.<+> C.interpret ty
