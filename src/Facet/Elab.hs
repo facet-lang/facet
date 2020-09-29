@@ -59,7 +59,9 @@ newtype Elab e a = Elab { runElab :: Maybe Type -> Synth e a }
   deriving (Algebra (Reader (Maybe Type) :+: Reader (Env e) :+: Error Print), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Maybe Type) (Synth e)
 
 checked :: Elab e (a ::: Type) -> Check e a
-checked m = Check (fmap tm . runElab m . Just)
+checked m = Check $ \ _T -> do
+  a ::: _T' <- runElab m (Just _T)
+  a <$ unify' _T _T'
 
 checking :: Check e a -> Elab e (a ::: Type)
 checking m = Elab $ \case
