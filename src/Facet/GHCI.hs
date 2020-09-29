@@ -8,12 +8,16 @@ module Facet.GHCI
 , printElab
 , prettyAnn
 , thing
+  -- * Errors
+, toNotice
 ) where
 
 import           Control.Carrier.Lift
 import           Control.Carrier.Parser.Church (ParserC, runParserWithString)
 import           Control.Carrier.Throw.Either (ThrowC, runThrow)
-import           Control.Effect.Parser.Notice (Notice, prettyNotice)
+import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
+import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
+import           Control.Effect.Parser.Source (Source(..))
 import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
@@ -24,6 +28,8 @@ import           Facet.Name
 import qualified Facet.Print as P
 import           Facet.Syntax ((:::)(..))
 import qualified Facet.Type as T
+import qualified Prettyprinter as PP
+import qualified Prettyprinter.Render.Terminal as ANSI
 import qualified Silkscreen as S
 
 -- Parsing
@@ -50,3 +56,9 @@ prettyAnn (tm ::: ty) = C.interpret tm S.<+> S.colon S.<+> C.interpret ty
 
 thing :: Synth e (T.Type ::: T.Type)
 thing = (__ ::: switch (switch _Type --> switch _Type)) >=> \ t -> switch (switch (pure t .$ switch _Unit) --> switch (pure t .$ switch _Unit))
+
+
+-- Errors
+
+toNotice :: Maybe Level -> Source -> Span -> P.Print -> [PP.Doc ANSI.AnsiStyle] -> Notice
+toNotice lvl src span = Notice lvl (fromSourceAndSpan src span) . P.prettyWith P.terminalStyle
