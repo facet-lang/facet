@@ -49,37 +49,37 @@ type Env e = Map.Map T.Text (e ::: Type)
 implicit :: C.Type a => Env a
 implicit = Map.fromList [ (T.pack "Type", C._Type ::: C._Type) ]
 
-elab :: C.Type e => (Elab (Synth e m) a ::: Maybe Type) -> m a
+elab :: C.Type e => (Elab e m a ::: Maybe Type) -> m a
 elab ~(m ::: t) = runSynth (runElab m t) implicit
 
-newtype Elab m a = Elab { runElab :: Maybe Type -> m a }
-  deriving (Algebra (Reader (Maybe Type) :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) m
+newtype Elab e m a = Elab { runElab :: Maybe Type -> Synth e m a }
+  deriving (Algebra (Reader (Maybe Type) :+: Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (Synth e m)
 
-checked :: Has (Error Print) sig m => Elab (Synth e m) (a ::: Type) -> Check (Synth e m) a
+checked :: Has (Error Print) sig m => Elab e m (a ::: Type) -> Check (Synth e m) a
 checked m _T = do
   a ::: _T' <- runElab m (Just _T)
   a <$ unify _T _T'
 
-checking :: Has (Error Print) sig m => Check (Synth e m) a -> Elab (Synth e m) (a ::: Type)
+checking :: Has (Error Print) sig m => Check (Synth e m) a -> Elab e m (a ::: Type)
 checking m = Elab $ \case
   Just t  -> check (m ::: t) .: t
   Nothing -> couldNotSynthesize
 
-synthed :: Elab (Synth e m) a -> Synth e m a
+synthed :: Elab e m a -> Synth e m a
 synthed (Elab run) = run Nothing
 
-synthing :: Has (Error Print) sig m => Synth e m (a ::: Type) -> Elab (Synth e m) (a ::: Type)
+synthing :: Has (Error Print) sig m => Synth e m (a ::: Type) -> Elab e m (a ::: Type)
 synthing m = Elab $ \case
   Just t  -> check (switch m ::: t) .: t
   Nothing -> m
 
-instance Has (Reader Span) sig m => S.Located (Elab (Synth e m) a) where
+instance Has (Reader Span) sig m => S.Located (Elab e m a) where
   locate = local . const
 
-instance (Has (Error Print) sig m, MonadFix m) => S.ForAll (Elab (Synth Type m) (Type ::: Type)) (Elab (Synth Type m) (Type ::: Type)) where
+instance (Has (Error Print) sig m, MonadFix m) => S.ForAll (Elab Type m (Type ::: Type)) (Elab Type m (Type ::: Type)) where
   (n ::: t) >=> b = synthing $ (S.getTName n ::: checked t) >=> checked . b . pure
 
-instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab (Synth Type m) (Type ::: Type)) where
+instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab Type m (Type ::: Type)) where
   tglobal = synthing . global . S.getTName
   a --> b = synthing $ checked a --> checked b
   f .$  a = synthing $ synthed f .$  checked a
@@ -88,7 +88,7 @@ instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab (Synth Type m) (T
   _Unit = synthing _Unit
   _Type = synthing _Type
 
-instance (C.Expr a, Scoped a, Has (Error Print) sig m, MonadFix m) => S.Expr (Elab (Synth a m) (a ::: Type)) where
+instance (C.Expr a, Scoped a, Has (Error Print) sig m, MonadFix m) => S.Expr (Elab a m (a ::: Type)) where
   global = synthing . global . S.getEName
   lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = tbd
