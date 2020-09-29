@@ -13,6 +13,7 @@ module Facet.Parser
 ) where
 
 import           Control.Applicative (Alternative(..), liftA2, (<**>))
+import           Data.Char (isSpace)
 import           Data.Coerce
 import           Data.Text (Text)
 import qualified Facet.Surface.Lifted as S
@@ -22,6 +23,7 @@ import           Text.Parser.Combinators
 import           Text.Parser.Location
 import           Text.Parser.Token
 import           Text.Parser.Token.Highlight
+import           Text.Parser.Token.Style
 
 -- case
 -- : (x : a) -> (f : a -> b) -> b
@@ -36,7 +38,8 @@ import           Text.Parser.Token.Highlight
 newtype Facet m a = Facet { runFacet :: m a }
   deriving (Alternative, Applicative, CharParsing, Functor, LocationParsing, Monad, Parsing)
 
-instance TokenParsing m => TokenParsing (Facet m)
+instance TokenParsing m => TokenParsing (Facet m) where
+  someSpace = buildSomeSpaceParser (skipSome (satisfy isSpace)) emptyCommentStyle{ _commentLine = "#" }
 
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, LocationParsing p) => p mod
