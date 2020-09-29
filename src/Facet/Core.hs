@@ -57,6 +57,7 @@ class Decl expr ty decl | decl -> ty expr where
 class Module decl mod | mod -> decl where
   -- FIXME: qualified names
   (.=) :: Text -> decl -> mod
+  infix 0 .=
 
 
 class Interpret t where
