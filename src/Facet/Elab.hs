@@ -108,8 +108,8 @@ newtype Check e a = Check { runCheck :: Type -> Synth e a }
 runSynth :: Synth e a -> Span -> Env e -> Either (Span, Print) a
 runSynth (Synth m) s e = runError (m e) s
 
-newtype Synth e a = Synth (Env e -> ErrorC Print ((->) Span) a)
-  deriving (Algebra (Reader (Env e) :+: Error Print :+: Reader Span), Applicative, Functor, Monad, MonadFix) via ReaderC (Env e) (ErrorC Print ((->) Span))
+newtype Synth e a = Synth (Env e -> ErrorC Span Print ((->) Span) a)
+  deriving (Algebra (Reader (Env e) :+: Error Print :+: Reader Span), Applicative, Functor, Monad, MonadFix) via ReaderC (Env e) (ErrorC Span Print ((->) Span))
 
 instance MonadFail (Synth e) where
   fail = throwError @Print . pretty

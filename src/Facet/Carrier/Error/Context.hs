@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -15,17 +16,16 @@ import           Control.Algebra
 import qualified Control.Carrier.Error.Church as E
 import           Control.Effect.Error
 import           Control.Effect.Reader (Reader, ask)
-import           Control.Effect.Parser.Span
 import           Control.Monad.Fix (MonadFix)
 
-runError :: Applicative m => ErrorC e m a -> m (Either (Span, e) a)
+runError :: Applicative m => ErrorC c e m a -> m (Either (c, e) a)
 runError = E.runError (pure . Left) (pure . Right) . runErrorC
 
-newtype ErrorC e m a = ErrorC { runErrorC :: E.ErrorC (Span, e) m a }
+newtype ErrorC c e m a = ErrorC { runErrorC :: E.ErrorC (c, e) m a }
   deriving (Applicative, Functor, Monad, MonadFix)
 
-instance Has (Reader Span) sig m => Algebra (Error e :+: sig) (ErrorC e m) where
+instance Has (Reader c) sig m => Algebra (Error e :+: sig) (ErrorC c e m) where
   alg hdl sig ctx = ErrorC $ case sig of
-    L (L (Throw e))   -> ask @Span >>= throwError . flip (,) e
-    L (R (Catch m h)) -> runErrorC (hdl (m <$ ctx)) `catchError` (runErrorC . hdl . (<$ ctx) . h . snd @Span)
+    L (L (Throw e))   -> ask @c >>= throwError . flip (,) e
+    L (R (Catch m h)) -> runErrorC (hdl (m <$ ctx)) `catchError` (runErrorC . hdl . (<$ ctx) . h . snd @c)
     R other           -> alg (runErrorC . hdl) (R other) ctx
