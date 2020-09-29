@@ -51,7 +51,7 @@ uncurry
 
 (|>)
 : { A, B : Type } -> (a : A) -> (f : A -> B) -> B
-= f a
+{ f a }
 
 
 case
