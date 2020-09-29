@@ -144,6 +144,12 @@ global s = asks (Map.lookup s) >>= \case
   Just b  -> pure $ b
   Nothing -> fail $ "variable not in scope: " <> show s
 
+app :: (a -> a -> a) -> Synth e (a ::: Type) -> Check e a -> Synth e (a ::: Type)
+app ($$) f a = do
+  f' ::: (_A :-> _B) <- f
+  a' <- check (a ::: _A)
+  pure $ f' $$ a' ::: _B
+
 
 -- Types
 
@@ -154,10 +160,7 @@ _Unit :: Synth e (Type ::: Type)
 _Unit = pure $ CT._Unit ::: CT._Type
 
 (.$) :: Synth e (Type ::: Type) -> Check e Type -> Synth e (Type ::: Type)
-f .$ a = do
-  f' ::: (_A :-> _B) <- f
-  a' <- check (a ::: _A)
-  pure $ f' CT..$ a' ::: _B
+(.$) = app (CT..$)
 
 infixl 9 .$
 
@@ -192,10 +195,7 @@ infixr 1 >=>
 -- Expressions
 
 ($$) :: C.Expr expr => Synth e (expr ::: Type) -> Check e expr -> Synth e (expr ::: Type)
-f $$ a = do
-  f' ::: (_A :-> _B) <- f
-  a' <- check (a ::: _A)
-  pure $ f' C.$$ a' ::: _B
+($$) = app (C.$$)
 
 lam0 :: (C.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check e expr) -> Check e expr
 lam0 n f = Check $ \case
