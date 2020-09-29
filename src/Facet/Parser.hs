@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 module Facet.Parser
 ( decl
 , type'
@@ -34,7 +35,7 @@ decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, 
 decl = S.strengthen . locating $ fmap . (S..:) <$> dname <* colon <*> sig global S.refl tglobal
   where
   sig :: Applicative env' => p (env' expr) -> S.Extends env env' -> p (env' ty) -> p (env' decl)
-  sig var _ tvar = try (bind var tvar) <|> forAll (\ env -> sig (S.castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
+  sig var _ tvar = try (bind var tvar) <|> forAll (S.>=>) (\ env -> sig (S.castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
 
   bind :: Applicative env' => p (env' expr) -> p (env' ty) -> p (env' decl)
   bind var tvar = do
@@ -44,16 +45,21 @@ decl = S.strengthen . locating $ fmap . (S..:) <$> dname <* colon <*> sig global
 
 forAll
   :: forall env ty res p
-  .  (Applicative env, S.ForAll ty res, S.Type ty, S.Located ty, S.Located res, Monad p, LocationParsing p)
-  => (forall env' . Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' res))
+  .  (Applicative env, S.Type ty, S.Located ty, S.Located res, Monad p, LocationParsing p)
+  => (forall m env
+     . (Applicative m, Applicative env)
+     => m (env (S.TName S.::: ty))
+     -> (forall env' . Applicative env' => S.Extends env env' -> env' ty -> m (env' res))
+     -> m (env res))
+  -> (forall env' . Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' res))
   -> p (env ty)
   -> p (env res)
-forAll k tvar = locating $ do
+forAll (>=>) k tvar = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ tvar)
   let loop :: Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' ty) -> [S.TName] -> p (env' res)
       loop env ty tvar = \case
         []   -> k env tvar
-        i:is -> (fmap (i S.:::) <$> ty) S.>=> \ env' t -> loop (env S.>>> env') (S.castF env' ty) (t <$ variable i <|> S.castF env' tvar) is
+        i:is -> (fmap (i S.:::) <$> ty) >=> \ env' t -> loop (env S.>>> env') (S.castF env' ty) (t <$ variable i <|> S.castF env' tvar) is
   arrow *> loop S.refl (pure ty) tvar names
 
 
@@ -61,7 +67,7 @@ type' :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => p ty
 type' = S.strengthen (type_ tglobal)
 
 type_ :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
-type_ tvar = fn tvar <|> forAll (const type_) tvar <?> "type"
+type_ tvar = fn tvar <|> forAll (S.>=>) (const type_) tvar <?> "type"
 
 fn :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
 fn tvar = locating $ app (S..$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
