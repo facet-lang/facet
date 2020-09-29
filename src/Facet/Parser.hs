@@ -5,7 +5,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Parser
-( decl
+( Facet(..)
+, decl
 , type'
 , expr
 ) where
@@ -30,6 +31,9 @@ import           Text.Parser.Token.Highlight
 -- numeric literals
 -- forcing nullary computations
 -- holes
+
+newtype Facet m a = Facet { runFacet :: m a }
+
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, LocationParsing p) => p mod
 decl = S.strengthen . locating $ fmap . (S..:) <$> dname <* colon <*> sig global S.refl tglobal
