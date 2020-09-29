@@ -39,7 +39,7 @@ decl = (S..:) <$> dname <* colon <*> S.strengthen (sig global S.refl tglobal)
   bind :: Applicative env' => p (env' expr) -> p (env' ty) -> p (env' decl)
   bind var tvar = do
     (i, t) <- parens ((,) <$> name <* colon <*> type_ tvar)
-    pure ((i S.:::) <$> t) S.>-> \ env t -> arrow *> sig (locating (t <$ variable i) <|> S.castF env var) S.refl (S.castF env tvar)
+    pure ((i S.:::) <$> t) S.>-> \ env t -> arrow *> sig (t <$ variable i <|> S.castF env var) S.refl (S.castF env tvar)
 
 
 forAll
@@ -74,15 +74,15 @@ tatom tvar = locating
   prd [] = pure S._Unit
   prd ts = foldl1 (liftA2 (S..*)) ts
 
-tglobal :: (S.Type ty, S.Located ty, Monad p, Applicative env, LocationParsing p) => p (env ty)
-tglobal = locating $ pure . S.tglobal <$> tname <?> "variable"
+tglobal :: (S.Type ty, Monad p, Applicative env, TokenParsing p) => p (env ty)
+tglobal = pure . S.tglobal <$> tname <?> "variable"
 
 
 expr :: (S.Expr expr, S.Located expr, Monad p, LocationParsing p) => p expr
 expr = S.strengthen (expr_ global)
 
-global :: (S.Expr expr, S.Located expr, Monad p, Applicative env, LocationParsing p) => p (env expr)
-global = locating $ pure . S.global <$> name <?> "variable"
+global :: (S.Expr expr, Monad p, Applicative env, TokenParsing p) => p (env expr)
+global = pure . S.global <$> name <?> "variable"
 
 expr_ :: forall p env expr . (Applicative env, S.Expr expr, S.Located expr, Monad p, LocationParsing p) => p (env expr) -> p (env expr)
 expr_ = app (S.$$) atom
