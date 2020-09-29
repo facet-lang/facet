@@ -104,8 +104,8 @@ atom var = locating
   prd [] = pure S.unit
   prd ts = foldl1 (liftA2 (S.**)) ts
 
-app :: (Applicative env, TokenParsing p) => (expr -> expr -> expr) -> (p (env expr) -> p (env expr)) -> (p (env expr) -> p (env expr))
-app ($$) atom tvar = foldl (liftA2 ($$)) <$> atom tvar <*> many (atom tvar)
+app :: (Applicative env, LocationParsing p, S.Located expr) => (expr -> expr -> expr) -> (p (env expr) -> p (env expr)) -> (p (env expr) -> p (env expr))
+app ($$) atom tvar = locating $ foldl (liftA2 ($$)) <$> atom tvar <*> many (atom tvar)
 
 
 name, _hname :: (Monad p, TokenParsing p) => p S.EName
