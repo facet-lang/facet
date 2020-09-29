@@ -142,7 +142,7 @@ unify t1 t2 = go t1 t2
 global :: (Algebra sig m, MonadFail m) => T.Text -> Synth e m (e ::: Type)
 global s = asks (Map.lookup s) >>= \case
   Just b  -> pure b
-  Nothing -> fail $ "variable not in scope: " <> show s
+  Nothing -> freeVariable s
 
 app :: MonadFail m => (a -> a -> a) -> Synth e m (a ::: Type) -> Check e m a -> Synth e m (a ::: Type)
 app ($$) f a = do
@@ -217,3 +217,6 @@ couldNotUnify t1 t2 = fail $ "could not unify " <> show t1 <> " with " <> show t
 
 couldNotSynthesize :: MonadFail m => m a
 couldNotSynthesize = fail "could not synthesize a type"
+
+freeVariable :: (MonadFail m, Show a) => a -> m b
+freeVariable s = fail $ "variable not in scope: " <> show s
