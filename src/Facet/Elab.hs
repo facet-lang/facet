@@ -157,7 +157,7 @@ _Unit = pure $ CT._Unit ::: CT._Type
 f .$ a = do
   f' ::: (_A :-> _B) <- f
   a' <- check (a ::: _A)
-  pure $ f' CT..$ a' ::: CT._Type
+  pure $ f' CT..$ a' ::: _B
 
 infixl 9 .$
 
