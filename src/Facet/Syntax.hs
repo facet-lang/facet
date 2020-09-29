@@ -7,6 +7,7 @@ module Facet.Syntax
 , uncurryAnn
 , curryAnn
 , (.:)
+, (:=)(..)
 , Stack(..)
 ) where
 
@@ -42,6 +43,12 @@ curryAnn f a b = f (a ::: b)
 tm .: ty = (::: ty) <$> tm
 
 infixr 2 .:
+
+
+data a := b = a := b
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+infixr 2 :=
 
 
 data Stack a
