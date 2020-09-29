@@ -21,6 +21,7 @@ import           Control.Monad.Fix
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
 import           Facet.Carrier.Error.Context
+import           Facet.Carrier.Fail.Throw.Print
 import qualified Facet.Core.Lifted as C
 import           Facet.Elab
 import qualified Facet.Pretty as P
@@ -37,8 +38,8 @@ import qualified Silkscreen as S
 parseString' :: MonadIO m => ParserC (Either Notice) P.Print -> String -> m ()
 parseString' p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWithString (Pos 0 0) s p)
 
-parseElabString :: (MonadIO m, C.Type e) => ParserC (Either Notice) (Elab e (ErrorC Span P.Print ((->) Span)) P.Print) -> String -> m ()
-parseElabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . elab . (::: Nothing) of
+parseElabString :: (MonadIO m, C.Type e) => ParserC (Either Notice) (Elab e (FailC P.Print (ErrorC Span P.Print ((->) Span))) P.Print) -> String -> m ()
+parseElabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . runFail . elab . (::: Nothing) of
   Left err -> P.putDoc (prettyNotice err)
   Right a -> P.prettyPrint a
   where
