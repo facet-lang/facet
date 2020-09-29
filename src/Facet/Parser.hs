@@ -67,8 +67,8 @@ fn :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => 
 fn tvar = app (S..$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
 
 tatom :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
-tatom tvar
-  =   parens (prd <$> sepBy (type_ tvar) comma)
+tatom tvar = locating
+  $   parens (prd <$> sepBy (type_ tvar) comma)
   <|> tvar
   where
   prd [] = pure S._Unit
@@ -96,8 +96,8 @@ lam var = braces $ clause var
   clause var = name >>= \ i -> S.lam0 (pure (pure i)) (\ env v -> let var' = v <$ variable i <|> S.castF env var in clause var' <|> arrow *> expr_ var') <?> "clause"
 
 atom :: (Applicative env, S.Expr expr, S.Located expr, Monad p, LocationParsing p) => p (env expr) -> p (env expr)
-atom var
-  =   lam var
+atom var = locating
+  $   lam var
   <|> parens (prd <$> sepBy (expr_ var) comma)
   <|> var
   where
