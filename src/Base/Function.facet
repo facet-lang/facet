@@ -58,4 +58,9 @@ case
 : { A, B : Type } -> (x : A) -> (f : A -> B) -> B
 = (|>)
 
+# desugars to:
+# case
+# : { A : Base.Type.Type } -> { B : Base.Type.Type } -> A -> (A -> B) -> B
+# { x f -> f x }
+
 }
