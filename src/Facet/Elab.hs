@@ -19,7 +19,7 @@ module Facet.Elab
 , check
 , switch
 , unify'
-  -- Types
+  -- * Types
 , global
 , _Type
 , _Unit
@@ -27,7 +27,7 @@ module Facet.Elab
 , (.*)
 , (-->)
 , (>=>)
-  -- Expressions
+  -- * Expressions
 , ($$)
 , lam0
 ) where
