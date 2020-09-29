@@ -155,8 +155,8 @@ hnameStyle = IdentifierStyle
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
 
-variable :: (LocationParsing p, Coercible t Text) => t -> p Span
-variable s = spanning (token (text (coerce s) <* notFollowedBy alphaNum))
+variable :: (LocationParsing p, Coercible t Text) => t -> p ()
+variable s = token (text (coerce s) *> notFollowedBy alphaNum)
 
 
 locating :: (LocationParsing p, S.Located a, Functor env) => p (env a) -> p (env a)
