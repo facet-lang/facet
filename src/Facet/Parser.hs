@@ -30,7 +30,7 @@ import           Text.Parser.Token.Highlight
 -- forcing nullary computations
 -- holes
 
-decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, Monad p, LocationParsing p) => p mod
+decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, Monad p, LocationParsing p) => p mod
 decl = (S..:) <$> dname <* colon <*> S.strengthen (sig global S.refl tglobal)
   where
   sig :: Applicative env' => p (env' expr) -> S.Extends env env' -> p (env' ty) -> p (env' decl)
@@ -44,11 +44,11 @@ decl = (S..:) <$> dname <* colon <*> S.strengthen (sig global S.refl tglobal)
 
 forAll
   :: forall env ty res p
-  .  (Applicative env, S.ForAll ty res, S.Type ty, S.Located ty, Monad p, LocationParsing p)
+  .  (Applicative env, S.ForAll ty res, S.Type ty, S.Located ty, S.Located res, Monad p, LocationParsing p)
   => (forall env' . Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' res))
   -> p (env ty)
   -> p (env res)
-forAll k tvar = do
+forAll k tvar = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ tvar)
   let loop :: Applicative env' => S.Extends env env' -> p (env' ty) -> p (env' ty) -> [S.TName] -> p (env' res)
       loop env ty tvar = \case
