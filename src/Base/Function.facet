@@ -61,6 +61,6 @@ case
 # desugars to:
 # case
 # : { A : Base.Type.Type } -> { B : Base.Type.Type } -> A -> (A -> B) -> B
-# { x f -> f x }
+# { x f -> f |> x }
 
 }
