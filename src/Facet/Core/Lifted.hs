@@ -2,11 +2,11 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Lifted
 ( -- * Types
-  C.Type(_Type, _Unit, (.$), (-->), (.*))
+  C.Type(tglobal, tbound, _Type, _Unit, (.$), (-->), (.*))
 , (>=>)
 , C.Interpret(..)
   -- * Expressions
-, C.Expr(($$))
+, C.Expr(global, bound, ($$))
 , lam0
   -- * Re-exports
 , Extends(..)
