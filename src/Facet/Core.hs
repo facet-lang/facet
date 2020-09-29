@@ -38,7 +38,7 @@ class Type ty where
 
 infixr 1 >=>
 
-class Expr expr where
+class Expr ty expr | expr -> ty where
   -- FIXME: qualified names
   global :: Text -> expr
   bound :: Name -> expr
