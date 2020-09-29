@@ -58,7 +58,7 @@ elab :: C.Type e => (Elab e m a ::: Maybe Type) -> m a
 elab ~(m ::: t) = runSynth (runElab m t) implicit
 
 newtype Elab e m a = Elab { runElab :: Maybe Type -> Synth e m a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Maybe Type) (Synth e m)
+  deriving (Algebra (Reader (Maybe Type) :+: Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (Synth e m)
 
 checked :: Has (Error Print) sig m => Elab e m (a ::: Type) -> Check e m a
 checked m = Check $ \ _T -> do
@@ -103,13 +103,13 @@ instance (C.Expr a, Scoped a, Has (Error Print) sig m, MonadFix m) => S.Expr (El
 
 
 newtype Check e m a = Check { runCheck :: Type -> Synth e m a }
-  deriving (Algebra (Reader Type :+: Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC Type (Synth e m)
+  deriving (Algebra (Reader Type :+: Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Type (Synth e m)
 
 runSynth :: Synth e m a -> Env e -> m a
 runSynth (Synth m) e = m e
 
 newtype Synth e m a = Synth (Env e -> m a)
-  deriving (Algebra (Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFail, MonadFix) via ReaderC (Env e) m
+  deriving (Algebra (Reader (Env e) :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Env e) m
 
 check :: (Check e m a ::: Type) -> Synth e m a
 check = uncurryAnn runCheck
