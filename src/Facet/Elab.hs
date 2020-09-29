@@ -19,8 +19,9 @@ module Facet.Elab
 , check
 , switch
 , unify'
-  -- * Types
+  -- * General
 , global
+  -- * Types
 , _Type
 , _Unit
 , (.$)
@@ -136,12 +137,15 @@ unify' t1 t2 = t2 <$ go t1 t2 -- NB: unification cannot (currently) result in in
   goS _          _          = Nothing
 
 
--- Types
+-- General
 
 global :: T.Text -> Synth e (e ::: Type)
 global s = asks (Map.lookup s) >>= \case
   Just b  -> pure $ b
   Nothing -> fail $ "variable not in scope: " <> show s
+
+
+-- Types
 
 _Type :: Synth e (Type ::: Type)
 _Type = pure $ CT._Type ::: CT._Type
