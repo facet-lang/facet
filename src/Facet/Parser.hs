@@ -67,7 +67,7 @@ type' :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => p ty
 type' = S.strengthen (type_ tglobal)
 
 type_ :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
-type_ tvar = fn tvar <|> forAll (S.>=>) (const type_) tvar <?> "type"
+type_ tvar = fn tvar <|> forAll (S.>~>) (const type_) tvar <?> "type"
 
 fn :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
 fn tvar = locating $ app (S..$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)

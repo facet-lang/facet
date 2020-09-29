@@ -175,6 +175,8 @@ instance U.ForAll Print Print where
 instance U.Type Print where
     -- FIXME: don’t shadow globals with locally-bound variables
   tglobal = pretty
+  -- FIXME: combine quantification over type variables of the same kind
+  (n ::: t) >~> b = let v' = var (pretty n) in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (b v')
   (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
   (.$) = app

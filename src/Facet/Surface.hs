@@ -46,8 +46,11 @@ class ForAll ty decl | decl -> ty where
 newtype TName = TName { getTName :: Text }
   deriving (Eq, IsString, Ord, Pretty, Show)
 
-class ForAll ty ty => Type ty where
+class Type ty where
   tglobal :: TName -> ty
+
+  (>~>) :: (TName ::: ty) -> (ty -> ty) -> ty
+  infixr 1 >~>
 
   (-->) :: ty -> ty -> ty
   infixr 2 -->

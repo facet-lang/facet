@@ -81,6 +81,7 @@ instance (Has (Error Print) sig m, MonadFix m) => S.ForAll (Elab Type m (Type ::
 
 instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab Type m (Type ::: Type)) where
   tglobal = fromSynth . global . S.getTName
+  (n ::: t) >~> b = fromSynth $ (S.getTName n ::: checked t) >=> checked . b . pure
   a --> b = fromSynth $ checked a --> checked b
   f .$  a = fromSynth $ synthed f .$  checked a
   l .*  r = fromSynth $ checked l .*  checked r

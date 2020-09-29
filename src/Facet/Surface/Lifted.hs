@@ -13,6 +13,7 @@ module Facet.Surface.Lifted
 , (S.:::)(..)
 , lam
 , lam0
+, (>~>)
 , (>=>)
 , (>->)
   -- * Re-exports
@@ -41,6 +42,15 @@ lam0
   -> m (env repr)
 lam0 n f = liftA2 S.lam0 <$> n <*> liftBinder f
 
+
+(>~>)
+  :: (Applicative m, Applicative env, S.Type ty)
+  => m (env (S.TName S.::: ty))
+  -> (forall env' . Applicative env' => Extends env env' -> env' ty -> m (env' ty))
+  -> m (env ty)
+t >~> b = liftA2 (S.>~>) <$> t <*> liftBinder b
+
+infixr 1 >~>
 
 (>=>)
   :: (Applicative m, Applicative env, S.ForAll ty decl)
