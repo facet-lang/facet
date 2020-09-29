@@ -182,13 +182,13 @@ a --> b = do
 infixr 2 -->
 
 (>=>)
-  :: MonadFix m
+  :: (MonadFix m, C.Type t, Scoped t)
   => (T.Text ::: Check e m Type)
-  -> ((Type ::: Type) -> Check e m Type)
-  -> Synth e m (Type ::: Type)
+  -> ((t ::: Type) -> Check e m t)
+  -> Synth e m (t ::: Type)
 (n ::: t) >=> b = do
   t' <- check (t ::: C._Type)
-  ftb' <- pure (n ::: t') C.>=> \ v -> check (b (v ::: t') ::: C._Type)
+  ftb' <- pure (n ::: C.interpret t') C.>=> \ v -> check (b (v ::: t') ::: C._Type)
   pure $ ftb' ::: C._Type
 
 infixr 1 >=>
