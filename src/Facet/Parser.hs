@@ -34,7 +34,9 @@ import           Text.Parser.Token.Highlight
 -- holes
 
 newtype Facet m a = Facet { runFacet :: m a }
-  deriving (Alternative, Applicative, CharParsing, Functor, LocationParsing, Monad, Parsing, TokenParsing)
+  deriving (Alternative, Applicative, CharParsing, Functor, LocationParsing, Monad, Parsing)
+
+instance TokenParsing m => TokenParsing (Facet m)
 
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, LocationParsing p) => p mod
