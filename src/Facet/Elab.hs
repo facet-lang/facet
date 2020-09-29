@@ -40,7 +40,7 @@ import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.Fix
 import qualified Data.Map as Map
 import qualified Data.Text as T
-import           Facet.Carrier.Error.Span
+import           Facet.Carrier.Error.Context
 import qualified Facet.Core.Lifted as C
 import           Facet.Name (Scoped)
 import           Facet.Print (Print)

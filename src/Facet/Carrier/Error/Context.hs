@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Facet.Carrier.Error.Span
+module Facet.Carrier.Error.Context
 ( runError
 , ErrorC(..)
   -- * Re-exports
