@@ -218,5 +218,5 @@ couldNotUnify t1 t2 = fail $ "could not unify " <> show t1 <> " with " <> show t
 couldNotSynthesize :: MonadFail m => m a
 couldNotSynthesize = fail "could not synthesize a type"
 
-freeVariable :: (MonadFail m, Show a) => a -> m b
-freeVariable s = fail $ "variable not in scope: " <> show s
+freeVariable :: MonadFail m => T.Text -> m a
+freeVariable s = fail $ "variable not in scope: " <> T.unpack s
