@@ -61,6 +61,7 @@ library
   other-modules:
     Facet.GHCI
     Facet.Syntax.Examples
+    Text.Parser.Location
   build-depends:
     , base ^>= 4.14
     , containers
