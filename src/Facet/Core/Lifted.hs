@@ -41,11 +41,11 @@ infixr 1 >=>
 -- Expressions
 
 tlam
-  :: (C.Expr ty expr, Scoped expr, MonadFix m)
+  :: (C.Type ty, C.Expr ty expr, Scoped expr, MonadFix m)
   => Text
-  -> (expr -> m expr)
+  -> (ty -> m expr)
   -> m expr
-tlam = binderM C.bound C.tlam
+tlam = binderM C.tbound C.tlam
 
 lam0
   :: (C.Expr ty expr, Scoped expr, MonadFix m)

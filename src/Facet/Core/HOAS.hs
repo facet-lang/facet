@@ -30,7 +30,7 @@ class Type ty where
 
 class Expr ty expr | expr -> ty where
   global :: Applicative m => Text -> m expr
-  tlam :: MonadFix m => Text -> (expr -> m expr) -> m expr
+  tlam :: MonadFix m => Text -> (ty -> m expr) -> m expr
   lam0 :: MonadFix m => Text -> (expr -> m expr) -> m expr
   ($$) :: Applicative m => m expr -> m expr -> m expr
   infixl 9 $$
