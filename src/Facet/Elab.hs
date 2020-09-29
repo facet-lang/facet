@@ -151,7 +151,7 @@ app ($$) f a = do
     _A :-> _B -> do
       a' <- check (a ::: _A)
       pure $ f' $$ a' ::: _B
-    _         -> fail $ "cannot apply value of non-function type " <> show _F
+    _         -> expectedFunctionType _F "in application"
 
 
 -- Types
@@ -204,7 +204,7 @@ infixr 1 >=>
 lam0 :: (C.Expr expr, Scoped expr, MonadFail m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check e m expr) -> Check e m expr
 lam0 n f = Check $ \case
   _A :-> _B -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
-  _         -> fail "expected function type in lambda"
+  _T        -> expectedFunctionType _T "when checking lambda"
 
 
 -- Failures
@@ -220,3 +220,6 @@ couldNotSynthesize = fail "could not synthesize a type"
 
 freeVariable :: MonadFail m => T.Text -> m a
 freeVariable s = fail $ "variable not in scope: " <> T.unpack s
+
+expectedFunctionType :: MonadFail m => Type -> String -> m a
+expectedFunctionType t s = fail $ "expected: _ -> _\n actual: " <> show t <> ('\n' : s)
