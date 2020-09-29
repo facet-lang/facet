@@ -1,2 +1,5 @@
 module Facet.Carrier.Fail.Throw.Print
-() where
+( FailC(..)
+) where
+
+newtype FailC m a = FailC { runFail :: m a }
