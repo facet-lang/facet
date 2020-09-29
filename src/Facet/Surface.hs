@@ -12,15 +12,13 @@ module Facet.Surface
 , Decl(..)
 , (:::)(..)
 , Located(..)
-, LocationParsing(..)
 ) where
 
-import Control.Effect.Parser.Span (Pos, Span)
+import Control.Effect.Parser.Span (Span)
 import Data.String (IsString(..))
 import Data.Text (Text)
 import Facet.Syntax ((:::)(..))
 import Prettyprinter (Pretty)
-import Text.Parser.Token (TokenParsing)
 
 newtype EName = EName { getEName :: Text }
   deriving (Eq, IsString, Ord, Pretty, Show)
@@ -83,6 +81,3 @@ class (Expr expr, ForAll ty decl, Type ty) => Decl expr ty decl | decl -> ty exp
 
 class Located expr where
   locate :: Span -> expr -> expr
-
-class TokenParsing p => LocationParsing p where
-  position :: p Pos
