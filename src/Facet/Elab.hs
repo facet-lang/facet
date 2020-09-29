@@ -41,7 +41,7 @@ import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import qualified Facet.Core as CT
-import qualified Facet.Core.Lifted as C
+import qualified Facet.Core.Lifted as CL
 import           Facet.Name (Scoped)
 import           Facet.Print (Print)
 import qualified Facet.Surface as S
@@ -186,7 +186,7 @@ infixr 2 -->
   -> Synth e (Type ::: Type)
 (n ::: t) >=> b = do
   t' <- check (t ::: CT._Type)
-  ftb' <- pure (n ::: t') C.>=> \ v -> check (b (v ::: t') ::: CT._Type)
+  ftb' <- pure (n ::: t') CL.>=> \ v -> check (b (v ::: t') ::: CT._Type)
   pure $ ftb' ::: CT._Type
 
 infixr 1 >=>
@@ -199,5 +199,5 @@ infixr 1 >=>
 
 lam0 :: (CT.Expr expr, Scoped expr) => T.Text -> ((expr ::: Type) -> Check e expr) -> Check e expr
 lam0 n f = Check $ \case
-  _A :-> _B -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
+  _A :-> _B -> CL.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _         -> fail "expected function type in lambda"
