@@ -93,10 +93,10 @@ instance (Algebra sig m, MonadFail m, MonadFix m) => S.Type (Elab Type m (Type :
 instance (C.Expr a, Scoped a, Algebra sig m, MonadFail m, MonadFix m) => S.Expr (Elab a m (a ::: Type)) where
   global = synthing . global . S.getEName
   lam0 n f = checking $ lam0 (S.getEName n) (checked . f . pure)
-  lam _ _ = fail "TBD"
+  lam _ _ = tbd
   f $$ a = synthing $ synthed f $$ checked a
-  unit = fail "TBD"
-  _ ** _ = fail "TBD"
+  unit = tbd
+  _ ** _ = tbd
 
 
 newtype Check e m a = Check { runCheck :: Type -> Synth e m a }
@@ -208,6 +208,9 @@ lam0 n f = Check $ \case
 
 
 -- Failures
+
+tbd :: MonadFail m => m a
+tbd = fail "TBD"
 
 couldNotUnify :: MonadFail m => Type -> Type -> m a
 couldNotUnify t1 t2 = fail $ "could not unify " <> show t1 <> " with " <> show t2
