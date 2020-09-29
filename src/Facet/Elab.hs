@@ -131,8 +131,7 @@ unify t1 t2 = t2 <$ go t1 t2 -- NB: unification cannot (currently) result in inf
     -- FIXME: build and display a diff of the root types
     -- FIXME: indicate the point in the source which led to this
     -- FIXME: Show discards highlighting &c. how do we render arbitrary types to a Print or Notice? Is there some class for that? Do we just monomorphize it?
-    (t1, t2) -> failWith t1 t2
-  failWith t1 t2 = fail $ "could not unify " <> show t1 <> " with " <> show t2
+    (t1, t2) -> couldNotUnify t1 t2
   goS Nil        Nil        = Just (pure ())
   goS (i1 :> l1) (i2 :> l2) = (*>) <$> goS i1 i2 <*> Just (go l1 l2)
   goS _          _          = Nothing
@@ -206,3 +205,9 @@ lam0 :: (C.Expr expr, Scoped expr, MonadFail m, MonadFix m) => T.Text -> ((expr 
 lam0 n f = Check $ \case
   _A :-> _B -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
   _         -> fail "expected function type in lambda"
+
+
+-- Failures
+
+couldNotUnify :: MonadFail m => Type -> Type -> m a
+couldNotUnify t1 t2 = fail $ "could not unify " <> show t1 <> " with " <> show t2
