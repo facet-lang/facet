@@ -12,6 +12,7 @@ module Facet.Type
 
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
+import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Core.HOAS as CH
 import           Facet.Name
@@ -22,7 +23,7 @@ data Type
   = Type
   | Unit
   | (Name ::: Type) :=> Type
-  | Name :$  Stack Type
+  | Either Name Text :$  Stack Type
   | Type :-> Type
   | Type :*  Type
   deriving (CH.Type) via (CH.Circ Type)
@@ -45,7 +46,8 @@ instance Scoped Type where
     l :* r  -> maxBV l <> maxBV r
 
 instance C.Type Type where
-  tbound n = n :$ Nil
+  tglobal n = Right n :$ Nil
+  tbound n = Left n :$ Nil
   _Type = Type
   _Unit = Unit
   (==>) = (:=>)
@@ -60,7 +62,7 @@ instance C.Interpret Type where
       Type    -> C._Type
       Unit    -> C._Unit
       t :=> b -> fmap go t C.==> go b
-      f :$ a  -> foldl' (\ f a -> f C..$ go a) (C.tbound f) a
+      f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound C.tglobal f) a
       a :-> b -> go a C.--> go b
       l :* r  -> go l C..*  go r
 
@@ -79,6 +81,8 @@ subst e = \case
   Type            -> Type
   Unit            -> Unit
   (n ::: t) :=> b -> (hint n ::: subst e t) C.>=> \ v -> subst (instantiate n v e) b
-  f :$  a         -> (e IntMap.! id' f) $$* fmap (subst e) a
+  f :$  a
+    | Left f <- f -> (e IntMap.! id' f) $$* fmap (subst e) a
+    | otherwise   -> f :$ fmap (subst e) a
   a :-> b         -> subst e a :-> subst e b
   l :*  r         -> subst e l :* subst e r

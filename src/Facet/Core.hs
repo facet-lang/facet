@@ -11,6 +11,7 @@ import Facet.Name (Name, Scoped, binder)
 import Facet.Syntax ((:::)(..))
 
 class Type ty where
+  tglobal :: Text -> ty
   tbound :: Name -> ty
 
   _Type :: ty
