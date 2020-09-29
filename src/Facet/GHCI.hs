@@ -12,7 +12,7 @@ module Facet.GHCI
 , toNotice
 ) where
 
-import           Control.Carrier.Parser.Church (ParserC, Input(..), errToNotice, runParser, runParserWithString)
+import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, runParser, runParserWithString)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
 import           Control.Effect.Parser.Source (Source(..), sourceFromString)
@@ -23,8 +23,8 @@ import           Data.Bifunctor
 import           Facet.Carrier.Error.Context
 import qualified Facet.Core.Lifted as C
 import           Facet.Elab
-import qualified Facet.Pretty as P
 import           Facet.Name
+import qualified Facet.Pretty as P
 import qualified Facet.Print as P
 import           Facet.Syntax ((:::)(..))
 import qualified Facet.Type as T
@@ -40,7 +40,7 @@ parseString' p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWith
 parseElabString :: (MonadIO m, C.Type e) => ParserC (Either Notice) (Elab e (ErrorC Span P.Print ((->) Span)) P.Print) -> String -> m ()
 parseElabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . elab . (::: Nothing) of
   Left err -> P.putDoc (prettyNotice err)
-  Right a -> P.prettyPrint a
+  Right a  -> P.prettyPrint a
   where
   parsed = runParser (const Right) failure failure input p
   src = sourceFromString Nothing s
