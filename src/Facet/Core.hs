@@ -35,6 +35,7 @@ class Type ty where
 infixr 1 >=>
 
 class Expr expr where
+  global :: Text -> expr
   bound :: Name -> expr
   lam0 :: Name -> expr -> expr
   ($$) :: expr -> expr -> expr
