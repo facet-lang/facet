@@ -7,6 +7,7 @@
 {-# OPTIONS_GHC -Wno-noncanonical-monad-instances #-}
 module Facet.Type
 ( Type(..)
+, subst
 ) where
 
 import           Control.Applicative (liftA2)
