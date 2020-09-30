@@ -34,7 +34,7 @@ infixr 0 :->
 infixl 7 :*
 
 instance Show Type where
-  showsPrec p = showsPrec p . P.prettyWith P.terminalStyle . C.interpret
+  showsPrec p = showsPrec p . P.getPrint . C.interpret
 
 instance Scoped Type where
   maxBV = \case

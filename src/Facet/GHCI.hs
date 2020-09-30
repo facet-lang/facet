@@ -54,4 +54,4 @@ prettyAnn (tm ::: ty) = tm S.<+> S.colon S.<+> C.interpret ty
 -- Errors
 
 toNotice :: Maybe Level -> Source -> Span -> P.Print -> [PP.Doc ANSI.AnsiStyle] -> Notice
-toNotice lvl src span = Notice lvl (fromSourceAndSpan src span) . P.prettyWith P.terminalStyle
+toNotice lvl src span = Notice lvl (fromSourceAndSpan src span) . P.getPrint

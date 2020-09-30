@@ -11,8 +11,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Print
 ( prettyPrint
-, prettyPrintWith
-, prettyWith
+, getPrint
 , terminalStyle
 , Print(..)
 , Context(..)
@@ -39,13 +38,10 @@ import           Silkscreen.Printer.Prec
 import           Silkscreen.Printer.Rainbow
 
 prettyPrint :: MonadIO m => Print -> m ()
-prettyPrint = prettyPrintWith terminalStyle
+prettyPrint = P.putDoc . getPrint
 
-prettyPrintWith :: MonadIO m => (Highlight -> ANSI.AnsiStyle) -> Print -> m ()
-prettyPrintWith style = P.putDoc . prettyWith style
-
-prettyWith :: (Highlight -> a) -> Print -> PP.Doc a
-prettyWith style = PP.reAnnotate style . getDoc . runRainbow (annotate . Nest) 0 . runPrec Null . runFresh 0 . (`runPrint` const id) . group
+getPrint :: Print -> PP.Doc ANSI.AnsiStyle
+getPrint = PP.reAnnotate terminalStyle . getDoc . runRainbow (annotate . Nest) 0 . runPrec Null . runFresh 0 . (`runPrint` const id) . group
 
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
@@ -78,7 +74,7 @@ instance PrecedencePrinter Print where
   localPrec f a = Print $ \ t -> localPrec f (askingPrec ((`runPrint` t) . (`t` a)))
 
 instance Show Print where
-  showsPrec p = showsPrec p . prettyWith terminalStyle
+  showsPrec p = showsPrec p . getPrint
 
 withTransition :: (Context -> Print -> Print) -> Print -> Print
 withTransition trans a = Print $ \ _ -> runPrint a trans
