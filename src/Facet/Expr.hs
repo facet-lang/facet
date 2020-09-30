@@ -3,6 +3,7 @@ module Facet.Expr
 ) where
 
 import qualified Data.Text as T
+import qualified Facet.Core as C
 import           Facet.Name
 
 data Expr
@@ -13,3 +14,10 @@ data Expr
   | Expr :$ Expr
 
 infixl 9 :$
+
+instance C.Expr Expr where
+  global = Global
+  bound = Bound
+  tlam = TLam
+  lam0 = Lam0
+  ($$) = (:$)
