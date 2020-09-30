@@ -101,19 +101,19 @@ instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Ex
   _ ** _ = tbd
 
 instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Decl (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) where
-  t .= b = do
-    _T ::: _ <- t -- FIXME: check this at Type
-    b' ::: _ <- b -- FIXME: check this at _T
-    pure $ b' ::: _T
+  t .= b = Elab $ \ _T -> do -- FIXME: what are we supposed to do with _T? what’s the type of a declaration anyway?
+    _T' ::: _ <- runElab t (Just C._Type)
+    b' ::: _ <- runElab b (Just _T')
+    pure $ b' ::: _T'
 
-  (n ::: t) >=> b = do
-    _T ::: _ <- t -- FIXME: check this at Type
-    (n, b' ::: _B) <- binderM (pure . (::: _T) . C.tbound) (,) (S.getTName n) b
+  (n ::: t) >=> b = Elab $ \ _T -> do
+    _T ::: _ <- runElab t (Just C._Type)
+    (n, b' ::: _B) <- runElab (binderM (pure . (::: _T) . C.tbound) (,) (S.getTName n) b) Nothing
     pure $ C.tlam n b' ::: ((n ::: _T) C.==> _B)
 
-  (n ::: t) >-> b = do
-    _T ::: _ <- t -- FIXME: check this at Type
-    (n, b' ::: _B) <- binderM (pure . (::: _T) . C.bound) (,) (S.getEName n) b
+  (n ::: t) >-> b = Elab $ \ _T -> do
+    _T ::: _ <- runElab t (Just C._Type)
+    (n, b' ::: _B) <- runElab (binderM (pure . (::: _T) . C.bound) (,) (S.getEName n) b) Nothing
     pure $ C.lam0 n b' ::: (_T C.--> _B)
 
 instance (C.Expr expr, Scoped expr, C.Type ty, C.Module expr ty mod, Has (Error Print) sig m, MonadFix m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
