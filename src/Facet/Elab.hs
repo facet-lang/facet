@@ -46,7 +46,7 @@ import           Facet.Print (Print)
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Facet.Type
-import           Silkscreen (fillSep, pretty, (<+>), (</>))
+import           Silkscreen (fillSep, group, pretty, (<+>), (</>))
 
 type Env = Map.Map T.Text Type
 
@@ -262,7 +262,7 @@ fromWords :: String -> Print
 fromWords = fillSep . map pretty . words
 
 err :: Has (Error Print) sig m => Print -> m a
-err = throwError
+err = throwError . group
 
 tbd :: Has (Error Print) sig m => m a
 tbd = err $ pretty "TBD"
