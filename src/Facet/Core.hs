@@ -5,6 +5,8 @@ module Facet.Core
 , Expr(..)
 , Module(..)
 , (>=>)
+, tlam'
+, lam0'
 ) where
 
 import Data.Text (Text)
@@ -45,6 +47,12 @@ class Expr expr where
   lam0 :: Name -> expr -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
+
+tlam' :: (Scoped expr, Expr expr) => Text -> (expr -> expr) -> expr
+tlam' = binder bound tlam
+
+lam0' :: (Scoped expr, Expr expr) => Text -> (expr -> expr) -> expr
+lam0' = binder bound lam0
 
 
 class Module expr ty mod | mod -> expr ty where
