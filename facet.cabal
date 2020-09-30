@@ -48,6 +48,7 @@ library
     Facet.Functor.C
     Facet.Functor.I
     Facet.Functor.K
+    Facet.Module
     Facet.Name
     Facet.Parser
     Facet.Pretty
