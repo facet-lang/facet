@@ -250,6 +250,11 @@ freeVariable s = err $ pretty "variable not in scope:" <+> pretty s
 
 -- Patterns
 
+expectQuantifiedType :: Has (Error Print) sig m => Print -> Type -> m (Type, Type -> Type)
+expectQuantifiedType s = \case
+  (n ::: _T) :=> _B -> pure (_T, \ v -> subst (IntMap.singleton (id' n) v) _B)
+  _T                -> err $ pretty "expected:" <+> pretty "{_} -> _" </> pretty "actual:" <+> C.interpret _T </> s
+
 expectFunctionType :: Has (Error Print) sig m => Print -> Type -> m (Type, Type)
 expectFunctionType s = \case
   _A :-> _B -> pure (_A, _B)
