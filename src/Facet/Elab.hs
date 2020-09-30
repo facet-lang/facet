@@ -129,7 +129,7 @@ instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.De
 instance (C.Expr expr, Scoped expr, C.Type ty, C.Module expr ty mod, Has (Error Print) sig m, MonadFix m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
   n .:. d = do
     e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
-    pure $ S.getDName n C..:. e := C.interpret _T
+    pure $ S.getDName n C..:. e := interpret _T
 
 
 newtype Check m a = Check { runCheck :: Type -> EnvC m a }
@@ -220,7 +220,7 @@ infixr 2 -->
   -> Synth m Type
 (n ::: t) >~> b = Synth $ do
   t' <- check (t ::: C._Type)
-  ftb' <- pure (n ::: C.interpret t') C.>=> \ v -> check (b (v ::: t') ::: C._Type)
+  ftb' <- pure (n ::: interpret t') C.>=> \ v -> check (b (v ::: t') ::: C._Type)
   pure $ ftb' ::: C._Type
 
 infixr 1 >~>
@@ -263,7 +263,7 @@ lam0M n f = Check $ \ ty -> do
   _T <- check (t ::: C._Type)
   -- FIXME: check by extending the context?
   -- FIXME: running the body twice means we’re quadratic or exponential
-  (_A, _B) <- expectFunctionType (fromWords "when checking quantified type") =<< pure (n ::: C.interpret _T) C.>=> \ v -> check (ty <$> b (v ::: _T) ::: C._Type)
+  (_A, _B) <- expectFunctionType (fromWords "when checking quantified type") =<< pure (n ::: interpret _T) C.>=> \ v -> check (ty <$> b (v ::: _T) ::: C._Type)
   tm <- C.tlamM n $ \ v -> check (tm <$> b (v ::: _T) ::: C._Type)
   pure $ tm ::: (_A :-> _B)
 
@@ -295,7 +295,7 @@ mismatch msg exp act = err $ msg
   </> pretty "  actual:" <+> act
 
 couldNotUnify :: Has (Error Print) sig m => Type -> Type -> m a
-couldNotUnify t1 t2 = mismatch (fromWords "could not unify") (C.interpret t2) (C.interpret t1)
+couldNotUnify t1 t2 = mismatch (fromWords "could not unify") (interpret t2) (interpret t1)
 
 couldNotSynthesize :: Has (Error Print) sig m => m a
 couldNotSynthesize = err $ fromWords "could not synthesize a type"
@@ -314,9 +314,9 @@ expectQuantifiedTypeH s t = do
 expectQuantifiedType :: Has (Error Print) sig m => Print -> Type -> m (Name, Type, Type)
 expectQuantifiedType s = \case
   (n ::: _T) :=> _B -> pure (n, _T, _B)
-  _T                -> mismatch s (pretty "{_} -> _") (C.interpret _T)
+  _T                -> mismatch s (pretty "{_} -> _") (interpret _T)
 
 expectFunctionType :: Has (Error Print) sig m => Print -> Type -> m (Type, Type)
 expectFunctionType s = \case
   _A :-> _B -> pure (_A, _B)
-  _T        -> mismatch s (pretty "_ -> _") (C.interpret _T)
+  _T        -> mismatch s (pretty "_ -> _") (interpret _T)

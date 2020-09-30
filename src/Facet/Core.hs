@@ -4,7 +4,6 @@ module Facet.Core
 ( Type(..)
 , Expr(..)
 , Module(..)
-, Interpret(..)
 , (>=>)
 ) where
 
@@ -55,7 +54,3 @@ class Module expr ty mod | mod -> expr ty where
   -- FIXME: qualified names
   (.:.) :: Text -> (expr := ty) -> mod
   infix 1 .:.
-
-
-class Interpret t where
-  interpret :: Type r => t -> r

@@ -7,6 +7,7 @@
 {-# OPTIONS_GHC -Wno-noncanonical-monad-instances #-}
 module Facet.Type
 ( Type(..)
+, interpret
 , subst
 ) where
 
@@ -35,7 +36,7 @@ infixr 0 :->
 infixl 7 :*
 
 instance Show Type where
-  showsPrec p = showsPrec p . P.getPrint . C.interpret
+  showsPrec p = showsPrec p . P.getPrint . interpret
 
 instance Scoped Type where
   maxBV = \case
@@ -68,8 +69,8 @@ instance C.Type Type where
   (-->) = (:->)
   (.*)  = (:*)
 
-instance C.Interpret Type where
-  interpret = go
+interpret :: C.Type r => Type -> r
+interpret = go
     where
     go = \case
       Type    -> C._Type

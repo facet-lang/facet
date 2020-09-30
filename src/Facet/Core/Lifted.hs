@@ -4,7 +4,6 @@ module Facet.Core.Lifted
 ( -- * Types
   C.Type(..)
 , (>=>)
-, C.Interpret(..)
   -- * Expressions
 , C.Expr(..)
 , tlamM
