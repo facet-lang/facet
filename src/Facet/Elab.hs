@@ -41,7 +41,7 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Facet.Core.Lifted as C
-import           Facet.Name (Name(..), Scoped)
+import           Facet.Name (Name(..), Scoped, binderM)
 import           Facet.Print (Print)
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -99,6 +99,22 @@ instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Ex
   f $$ a = fromSynth $ toSynth f $$ toCheck a
   unit = tbd
   _ ** _ = tbd
+
+instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Decl (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) where
+  t .= b = do
+    _T ::: _ <- t -- FIXME: check this at Type
+    b' ::: _ <- b -- FIXME: check this at _T
+    pure $ b' ::: _T
+
+  (n ::: t) >=> b = do
+    _T ::: _ <- t -- FIXME: check this at Type
+    (n, b' ::: _B) <- binderM (pure . (::: _T) . C.tbound) (,) (S.getTName n) b
+    pure $ C.tlam n b' ::: ((n ::: _T) C.==> _B)
+
+  (n ::: t) >-> b = do
+    _T ::: _ <- t -- FIXME: check this at Type
+    (n, b' ::: _B) <- binderM (pure . (::: _T) . C.bound) (,) (S.getEName n) b
+    pure $ C.lam0 n b' ::: (_T C.--> _B)
 
 
 newtype Check m a = Check { runCheck :: Type -> ReaderC Env m a }
