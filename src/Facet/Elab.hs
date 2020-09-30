@@ -261,7 +261,7 @@ infixr 1 >=>
 
 -- Context
 
-(|-) :: Has (Reader (IntMap.IntMap Type)) sig m => Name ::: Type -> m a -> m a
+(|-) :: Has (Reader Context) sig m => Name ::: Type -> m a -> m a
 n ::: t |- m = local (IntMap.insert (id' n) t) m
 
 infix 1 |-
