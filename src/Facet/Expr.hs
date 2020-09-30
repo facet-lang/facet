@@ -2,6 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Expr
 ( Expr(..)
+, interpret
 ) where
 
 import           Control.Applicative (liftA2)
@@ -40,3 +41,11 @@ instance CH.Expr Type.Type Expr where
   tlam n b = n >>= \ n -> binderM C.tbound TLam n b
   lam0 n b = n >>= \ n -> binderM C.bound  Lam0 n b
   ($$) = liftA2 (C.$$)
+
+interpret :: C.Expr r => Expr -> r
+interpret = \case
+  Global n -> C.global n
+  Bound n -> C.bound n
+  TLam n b -> C.tlam n (interpret b)
+  Lam0 n b -> C.lam0 n (interpret b)
+  f :$ a -> interpret f C.$$ interpret a
