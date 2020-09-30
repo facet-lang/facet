@@ -66,7 +66,7 @@ newtype EnvC m a = EnvC { runEnvC :: Env -> m a }
   deriving (Algebra (Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Env m
 
 newtype Elab m a = Elab { runElab :: Maybe Type -> EnvC m a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (ReaderC Env m)
+  deriving (Algebra (Reader (Maybe Type) :+: Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (EnvC m)
 
 fromCheck :: Has (Error Print) sig m => Check m a -> Elab m (a ::: Type)
 fromCheck m = Elab $ \case
