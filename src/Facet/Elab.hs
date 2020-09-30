@@ -126,8 +126,6 @@ unify t1 t2 = go t1 t2
     (a1 :-> b1, a2 :-> b2)  -> go a1 a2 *> go b1 b2
     (t1 :=> b1, t2 :=> b2)  -> go (ty t1) (ty t2) *> go b1 b2
     -- FIXME: build and display a diff of the root types
-    -- FIXME: indicate the point in the source which led to this
-    -- FIXME: Show discards highlighting &c. how do we render arbitrary types to a Print or Notice? Is there some class for that? Do we just monomorphize it?
     (t1, t2) -> couldNotUnify t1 t2
   goS Nil        Nil        = Just (pure ())
   goS (i1 :> l1) (i2 :> l2) = (*>) <$> goS i1 i2 <*> Just (go l1 l2)
