@@ -201,12 +201,12 @@ infixr 1 >~>
 tlam :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((Type ::: Type) -> Check m expr) -> Check m expr
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (pretty "when checking type lambda") ty
-  C.tlam n $ \ v -> check (b (v ::: _T) ::: _B v)
+  C.tlamM n $ \ v -> check (b (v ::: _T) ::: _B v)
 
 lam0 :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
 lam0 n f = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (pretty "when checking lambda") ty
-  C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
+  C.lam0M n $ \ v -> check (f (v ::: _A) ::: _B)
 
 
 -- Declarations
@@ -221,7 +221,7 @@ lam0 n f = Check $ \ ty -> do
   -- FIXME: check by extending the context?
   -- FIXME: running the body twice means we’re quadratic or exponential
   (_A, _B) <- expectFunctionType (pretty "when checking quantified type") =<< pure (n ::: C.interpret _T) C.>=> \ v -> check (ty <$> b (v ::: _T) ::: C._Type)
-  tm <- C.tlam n $ \ v -> check (tm <$> b (v ::: _T) ::: C._Type)
+  tm <- C.tlamM n $ \ v -> check (tm <$> b (v ::: _T) ::: C._Type)
   pure $ tm ::: (_A :-> _B)
 
 infixr 1 >=>
