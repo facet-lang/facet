@@ -35,6 +35,8 @@ import           Text.Parser.Token.Style
 -- forcing nullary computations
 -- holes
 
+-- FIXME: a declaration whose body is a nullary computation backtracks all the way to a binding arrow type
+
 newtype Facet m a = Facet { runFacet :: m a }
   deriving (Alternative, Applicative, CharParsing, Functor, LocationParsing, Monad, Parsing)
 
