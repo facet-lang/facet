@@ -6,7 +6,6 @@ module Facet.Syntax
 , ty
 , uncurryAnn
 , curryAnn
-, (.:)
 , (:=)(..)
 , Stack(..)
 ) where
@@ -37,12 +36,6 @@ uncurryAnn f ~(a ::: b) = f a b
 
 curryAnn :: ((a ::: b) -> c) -> (a -> b -> c)
 curryAnn f a b = f (a ::: b)
-
-
-(.:) :: Functor m => m a -> b -> m (a ::: b)
-tm .: ty = (::: ty) <$> tm
-
-infixr 2 .:
 
 
 data a := b = a := b

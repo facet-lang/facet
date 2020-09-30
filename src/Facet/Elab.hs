@@ -66,7 +66,7 @@ checked m = Check $ \ _T -> do
 
 fromCheck :: Has (Error Print) sig m => Check m a -> Elab m (a ::: Type)
 fromCheck m = Elab $ \case
-  Just t  -> check (m ::: t) .: t
+  Just t  -> (::: t) <$> check (m ::: t)
   Nothing -> couldNotSynthesize
 
 synthed :: Elab m a -> Synth m a
@@ -74,7 +74,7 @@ synthed (Elab run) = run Nothing
 
 fromSynth :: Has (Error Print) sig m => Synth m (a ::: Type) -> Elab m (a ::: Type)
 fromSynth m = Elab $ \case
-  Just t  -> check (switch m ::: t) .: t
+  Just t  -> (::: t) <$> check (switch m ::: t)
   Nothing -> m
 
 instance Has (Reader Span) sig m => S.Located (Elab m a) where
