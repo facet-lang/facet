@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Facet.Expr
 ( Expr(..)
 ) where
@@ -14,6 +15,14 @@ data Expr
   | Expr :$ Expr
 
 infixl 9 :$
+
+instance Scoped Expr where
+  maxBV = \case
+    Global _ -> Nothing
+    Bound _  -> Nothing
+    TLam n _ -> maxBV n
+    Lam0 n _ -> maxBV n
+    f :$ a   -> maxBV f <> maxBV a
 
 instance C.Expr Expr where
   global = Global
