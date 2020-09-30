@@ -55,6 +55,7 @@ implicit = Map.fromList [ (T.pack "Type", C._Type) ]
 elab :: (Elab m a ::: Maybe Type) -> m a
 elab ~(m ::: t) = runSynth (runElab m t) implicit
 
+-- FIXME: rework this so that Check is Type -> m a and Synth is m (a ::: Type) ?
 newtype Elab m a = Elab { runElab :: Maybe Type -> Synth m a }
   deriving (Algebra (Reader (Maybe Type) :+: Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (Synth m)
 
