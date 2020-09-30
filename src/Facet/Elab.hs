@@ -23,10 +23,11 @@ module Facet.Elab
 , (.$)
 , (.*)
 , (-->)
-, (>=>)
   -- * Expressions
 , ($$)
 , lam0
+  -- * Declarations
+, (>=>)
 ) where
 
 import           Control.Algebra
