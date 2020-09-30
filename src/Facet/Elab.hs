@@ -6,6 +6,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
 ( Env
+, Context
 , implicit
 , elab
 , Elab(..)
@@ -50,6 +51,7 @@ import           Facet.Type
 import           Silkscreen (fillSep, group, pretty, (<+>), (</>))
 
 type Env = Map.Map T.Text Type
+type Context = IntMap.IntMap Type
 
 implicit :: Env
 implicit = Map.fromList [ (T.pack "Type", C._Type) ]
