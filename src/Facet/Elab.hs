@@ -110,6 +110,7 @@ instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Ex
   unit = tbd
   _ ** _ = tbd
 
+-- FIXME: this should probably elaborate to nested elaborators, one at type level, producing one at expression level
 instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Decl (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) where
   t .= b = Elab $ \ _T -> do -- FIXME: what are we supposed to do with _T? what’s the type of a declaration anyway?
     _T' ::: _ <- runElab t (Just C._Type)
