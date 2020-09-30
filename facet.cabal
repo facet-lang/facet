@@ -44,6 +44,7 @@ library
     Facet.Elab
     Facet.Env
     Facet.Eval
+    Facet.Expr
     Facet.Functor.C
     Facet.Functor.I
     Facet.Functor.K
