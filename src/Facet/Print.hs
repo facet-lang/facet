@@ -190,7 +190,7 @@ instance U.Type Print where
   l .* r = parens $ l <> comma <+> r
   (.$) = app
   _Unit = pretty "()"
-  _Type = pretty "Type"
+  _Type = annotate Type $ pretty "Type"
 
 instance C.Type Print where
   tglobal = pretty
@@ -199,7 +199,7 @@ instance C.Type Print where
   (.*) = (U..*)
   (.$) = app
   _Unit = U._Unit
-  _Type = U._Type
+  _Type = annotate Type U._Type
   -- FIXME: combine quantification over type variables of the same kind
   (v ::: t) ==> b = group (align (braces (space <> ann (N.prettyNameWith tvar v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
