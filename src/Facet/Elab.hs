@@ -209,12 +209,12 @@ lam0 n f = Check $ \ ty -> do
   -> ((Type ::: Type) -> Check m (expr ::: Type))
   -> Synth m expr
 (n ::: t) >=> b = Synth $ do
-  t' <- check (t ::: C._Type)
+  _T <- check (t ::: C._Type)
   -- FIXME: check by extending the context?
   -- FIXME: running the body twice means we’re quadratic or exponential
-  _T <- pure (n ::: C.interpret t') C.>=> \ v -> check (ty <$> b (v ::: t') ::: C._Type)
-  (_A, _B) <- expectFunctionType (pretty "when checking quantified type") _T
-  tm <- C.tlam n $ \ v -> check (tm <$> b (v ::: t') ::: C._Type)
+  _F <- pure (n ::: C.interpret _T) C.>=> \ v -> check (ty <$> b (v ::: _T) ::: C._Type)
+  (_A, _B) <- expectFunctionType (pretty "when checking quantified type") _F
+  tm <- C.tlam n $ \ v -> check (tm <$> b (v ::: _T) ::: C._Type)
   pure $ tm ::: (_A :-> _B)
 
 infixr 1 >=>
