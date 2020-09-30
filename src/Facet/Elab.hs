@@ -234,7 +234,7 @@ tlam :: (C.Expr expr, Has (Error Print) sig m) => Name -> Check m expr -> Check 
 tlam n b = Check $ \ ty -> do
   (n', _T, _B) <- expectQuantifiedType (fromWords "when checking type lambda") ty
   -- FIXME: add n' to the context
-  C.tlam n <$> check (b ::: _B)
+  n' ::: _T |- C.tlam n <$> check (b ::: _B)
 
 tlamM :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((Type ::: Type) -> Check m expr) -> Check m expr
 tlamM n b = Check $ \ ty -> do
