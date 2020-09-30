@@ -57,7 +57,10 @@ implicit :: Env
 implicit = Map.fromList [ (T.pack "Type", C._Type) ]
 
 elab :: (Elab m a ::: Maybe Type) -> m a
-elab = (`runEnvC` implicit) . uncurryAnn runElab
+elab = runEnv implicit . uncurryAnn runElab
+
+runEnv :: Env -> EnvC m a -> m a
+runEnv = flip runEnvC
 
 newtype EnvC m a = EnvC { runEnvC :: Env -> m a }
   deriving (Algebra (Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Env m
