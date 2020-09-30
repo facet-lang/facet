@@ -187,6 +187,12 @@ instance C.Type Print where
   -- FIXME: combine quantification over type variables of the same kind
   (v ::: t) ==> b = group (align (braces (space <> ann (N.prettyNameWith tvar v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
+instance C.Expr Print where
+  global = pretty
+  bound = setPrec Var . name . N.prettyNameWith evar
+  tlam n b = cases (braces (C.bound n)) [\ v -> (v, b)]
+  lam0 n b = cases (C.bound n) [\ v -> (v, b)]
+  ($$) = app
 
 instance U.Module Print Print Print Print where
   n .:. b = group $ ann (pretty n ::: b)
