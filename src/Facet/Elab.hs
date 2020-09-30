@@ -215,6 +215,7 @@ lam0 n f = Check $ \ ty -> do
 (n ::: t) >=> b = do
   t' <- check (t ::: C._Type)
   -- FIXME: check by extending the context?
+  -- FIXME: running the body twice means we’re quadratic or exponential
   _T <- pure (n ::: C.interpret t') C.>=> \ v -> check (ty <$> b (v ::: t') ::: C._Type)
   (_A, _B) <- expectFunctionType (pretty "when checking quantified type") _T
   tm <- C.tlam n $ \ v -> check (tm <$> b (v ::: t') ::: C._Type)
