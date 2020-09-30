@@ -52,6 +52,7 @@ terminalStyle = \case
   Nest i -> colours !! (i `mod` len)
   Name   -> mempty
   Op     -> ANSI.color ANSI.Cyan
+  Type   -> ANSI.color ANSI.Yellow
   Lit    -> ANSI.bold
   where
   colours =
@@ -123,6 +124,7 @@ newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
 data Highlight
   = Nest Int
   | Name
+  | Type
   | Op
   | Lit
   deriving (Eq, Ord, Show)
