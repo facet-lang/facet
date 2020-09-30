@@ -59,7 +59,7 @@ class Type ty where
   _Type :: ty
 
 
-newtype DName = DName { getDeclName :: Text }
+newtype DName = DName { getDName :: Text }
   deriving (Eq, IsString, Ord, Pretty, Show)
 
 class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
