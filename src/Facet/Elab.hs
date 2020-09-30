@@ -46,7 +46,7 @@ import           Facet.Print (Print)
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Facet.Type
-import           Silkscreen (pretty, (<+>), (</>))
+import           Silkscreen (fillSep, pretty, (<+>), (</>))
 
 type Env = Map.Map T.Text Type
 
@@ -221,12 +221,12 @@ infixr 1 >~>
 
 tlam :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((Type ::: Type) -> Check m expr) -> Check m expr
 tlam n b = Check $ \ ty -> do
-  (_T, _B) <- expectQuantifiedType (pretty "when checking type lambda") ty
+  (_T, _B) <- expectQuantifiedType (fromWords "when checking type lambda") ty
   C.tlamM n $ \ v -> check (b (v ::: _T) ::: _B v)
 
 lam0 :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
 lam0 n f = Check $ \ ty -> do
-  (_A, _B) <- expectFunctionType (pretty "when checking lambda") ty
+  (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
   C.lam0M n $ \ v -> check (f (v ::: _A) ::: _B)
 
 
@@ -241,7 +241,7 @@ lam0 n f = Check $ \ ty -> do
   _T <- check (t ::: C._Type)
   -- FIXME: check by extending the context?
   -- FIXME: running the body twice means we’re quadratic or exponential
-  (_A, _B) <- expectFunctionType (pretty "when checking quantified type") =<< pure (n ::: C.interpret _T) C.>=> \ v -> check (ty <$> b (v ::: _T) ::: C._Type)
+  (_A, _B) <- expectFunctionType (fromWords "when checking quantified type") =<< pure (n ::: C.interpret _T) C.>=> \ v -> check (ty <$> b (v ::: _T) ::: C._Type)
   tm <- C.tlamM n $ \ v -> check (tm <$> b (v ::: _T) ::: C._Type)
   pure $ tm ::: (_A :-> _B)
 
@@ -258,6 +258,9 @@ infix 1 |-
 
 -- Failures
 
+fromWords :: String -> Print
+fromWords = fillSep . map pretty . words
+
 err :: Has (Error Print) sig m => Print -> m a
 err = throwError
 
@@ -265,13 +268,13 @@ tbd :: Has (Error Print) sig m => m a
 tbd = err $ pretty "TBD"
 
 couldNotUnify :: Has (Error Print) sig m => Type -> Type -> m a
-couldNotUnify t1 t2 = err $ pretty "could not unify" <+> C.interpret t1 <+> pretty "with" <+> C.interpret t2
+couldNotUnify t1 t2 = err $ fromWords "could not unify" <+> C.interpret t1 <+> pretty "with" <+> C.interpret t2
 
 couldNotSynthesize :: Has (Error Print) sig m => m a
-couldNotSynthesize = err $ pretty "could not synthesize a type"
+couldNotSynthesize = err $ fromWords "could not synthesize a type"
 
 freeVariable :: Has (Error Print) sig m => T.Text -> m a
-freeVariable s = err $ pretty "variable not in scope:" <+> pretty s
+freeVariable s = err $ fromWords "variable not in scope:" <+> pretty s
 
 
 -- Patterns
