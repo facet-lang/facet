@@ -144,11 +144,9 @@ global s = asks (Map.lookup s) >>= \case
 app :: Has (Error Print) sig m => (a -> a -> a) -> Synth m (a ::: Type) -> Check m a -> Synth m (a ::: Type)
 app ($$) f a = do
   f' ::: _F <- f
-  case _F of
-    _A :-> _B -> do
-      a' <- check (a ::: _A)
-      pure $ f' $$ a' ::: _B
-    _         -> expectedFunctionType _F (pretty "in application")
+  (_A, _B) <- expectFunctionType (pretty "in application") _F
+  a' <- check (a ::: _A)
+  pure $ f' $$ a' ::: _B
 
 
 -- Types
@@ -211,9 +209,9 @@ infixr 1 >=>
 ($$) = app (C.$$)
 
 lam0 :: (C.Expr ty expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
-lam0 n f = Check $ \case
-  _A :-> _B -> C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
-  _T        -> expectedFunctionType _T (pretty "when checking lambda")
+lam0 n f = Check $ \ ty -> do
+  (_A, _B) <- expectFunctionType (pretty "when checking lambda") ty
+  C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
 
 
 -- Failures
@@ -233,5 +231,7 @@ couldNotSynthesize = err $ pretty "could not synthesize a type"
 freeVariable :: Has (Error Print) sig m => T.Text -> m a
 freeVariable s = err $ pretty "variable not in scope:" <+> pretty s
 
-expectedFunctionType :: Has (Error Print) sig m => Type -> Print -> m a
-expectedFunctionType t s = err $ pretty "expected:" <+> pretty "_ -> _" </> pretty "actual:" <+> C.interpret t </> s
+expectFunctionType :: Has (Error Print) sig m => Print -> Type -> m (Type, Type)
+expectFunctionType s = \case
+  _A :-> _B -> pure (_A, _B)
+  _T        -> err $ pretty "expected:" <+> pretty "_ -> _" </> pretty "actual:" <+> C.interpret _T </> s
