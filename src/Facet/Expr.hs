@@ -18,9 +18,7 @@ data Expr
   | Bound Name
   | TLam Name Expr
   | Lam0 Name Expr
-  | Expr :$ Expr
-
-infixl 9 :$
+  | App Expr Expr
 
 instance Scoped Expr where
   maxBV = \case
@@ -28,14 +26,14 @@ instance Scoped Expr where
     Bound _  -> Nothing
     TLam n _ -> maxBV n
     Lam0 n _ -> maxBV n
-    f :$ a   -> maxBV f <> maxBV a
+    App f a  -> maxBV f <> maxBV a
 
 instance C.Expr Expr where
   global = Global
   bound = Bound
   tlam = TLam
   lam0 = Lam0
-  ($$) = (:$)
+  ($$) = App
 
 instance CH.Expr Type.Type Expr where
   tlam n b = n >>= \ n -> binderM C.tbound TLam n b
@@ -47,7 +45,7 @@ interpret = \case
   Bound n -> C.bound n
   TLam n b -> C.tlam n (interpret b)
   Lam0 n b -> C.lam0 n (interpret b)
-  f :$ a -> interpret f C.$$ interpret a
+  App f a -> interpret f C.$$ interpret a
 
 subst :: IntMap.IntMap Expr -> Expr -> Expr
 subst e = \case
@@ -55,4 +53,4 @@ subst e = \case
   Bound n  -> (e IntMap.! id' n)
   TLam n b -> C.tlam' (hint n) (\ v -> subst (instantiate n v e) b)
   Lam0 n b -> C.lam0' (hint n) (\ v -> subst (instantiate n v e) b)
-  f :$ a   -> subst e f :$ subst e a
+  App f a  -> App (subst e f) (subst e a)
