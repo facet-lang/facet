@@ -88,6 +88,7 @@ fn tvar = locating $ app (S..$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow 
 tatom :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => p (env ty) -> p (env ty)
 tatom tvar = locating
   $   parens (prd <$> sepBy (type_ tvar) comma)
+  <|> pure S._Type <$ string "Type"
   <|> tvar
   where
   prd [] = pure S._Unit
