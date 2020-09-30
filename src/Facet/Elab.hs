@@ -268,12 +268,9 @@ tbd :: Has (Error Print) sig m => m a
 tbd = err $ pretty "TBD"
 
 couldNotUnify :: Has (Error Print) sig m => Type -> Type -> m a
-couldNotUnify t1 t2 = err $ fillSep
-  [ fromWords "could not unify"
-  , C.interpret t1
-  , pretty "with"
-  , C.interpret t2
-  ]
+couldNotUnify t1 t2 = err $ fromWords "could not unify"
+  </> pretty "expected:" <+> C.interpret t2
+  </> pretty "  actual:" <+> C.interpret t1
 
 couldNotSynthesize :: Has (Error Print) sig m => m a
 couldNotSynthesize = err $ fromWords "could not synthesize a type"
