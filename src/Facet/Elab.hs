@@ -37,10 +37,11 @@ import           Control.Effect.Error
 import           Control.Effect.Parser.Span (Span(..))
 import           Control.Monad.Fix
 import           Data.Bifunctor (first)
+import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Facet.Core.Lifted as C
-import           Facet.Name (Scoped)
+import           Facet.Name (Name(..), Scoped)
 import           Facet.Print (Print)
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -222,6 +223,14 @@ lam0 n f = Check $ \ ty -> do
   pure $ tm ::: (_A :-> _B) ::: C._Type
 
 infixr 1 >=>
+
+
+-- Context
+
+(|-) :: Has (Reader (IntMap.IntMap Type)) sig m => Name ::: Type -> m a -> m a
+n ::: t |- m = local (IntMap.insert (id' n) t) m
+
+infix 1 |-
 
 
 -- Failures
