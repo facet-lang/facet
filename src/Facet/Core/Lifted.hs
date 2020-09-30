@@ -25,6 +25,7 @@ import qualified Facet.Core as C
 import           Facet.Env
 import           Facet.Name
 import           Facet.Syntax
+import           Facet.Type
 
 -- Types
 
@@ -41,14 +42,14 @@ infixr 1 >=>
 -- Expressions
 
 tlam
-  :: (C.Type ty, C.Expr ty expr, Scoped expr, MonadFix m)
+  :: (C.Expr expr, Scoped expr, MonadFix m)
   => Text
-  -> (ty -> m expr)
+  -> (Type -> m expr)
   -> m expr
 tlam = binderM C.tbound C.tlam
 
 lam0
-  :: (C.Expr ty expr, Scoped expr, MonadFix m)
+  :: (C.Expr expr, Scoped expr, MonadFix m)
   => Text
   -> (expr -> m expr)
   -> m expr

@@ -89,7 +89,7 @@ instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab m (Type ::: Type)
   _Unit = fromSynth _Unit
   _Type = fromSynth _Type
 
-instance (C.Expr ty a, Scoped a, Has (Error Print) sig m, MonadFix m) => S.Expr (Elab m (a ::: Type)) where
+instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Expr (Elab m (expr ::: Type)) where
   global = fromSynth . fmap (first C.global) . global . S.getEName
   lam0 n f = fromCheck $ lam0 (S.getEName n) (checked . f . pure)
   lam _ _ = tbd
@@ -207,10 +207,10 @@ infixr 1 >=>
 
 -- Expressions
 
-($$) :: (C.Expr ty expr, Has (Error Print) sig m) => Synth m (expr ::: Type) -> Check m expr -> Synth m (expr ::: Type)
+($$) :: (C.Expr expr, Has (Error Print) sig m) => Synth m (expr ::: Type) -> Check m expr -> Synth m (expr ::: Type)
 ($$) = app (C.$$)
 
-lam0 :: (C.Expr ty expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
+lam0 :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
 lam0 n f = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (pretty "when checking lambda") ty
   C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
