@@ -26,7 +26,7 @@ module Facet.Elab
   -- * Expressions
 , ($$)
 , tlamM
-, lam0
+, lam0M
   -- * Declarations
 , (>=>)
 ) where
@@ -94,7 +94,7 @@ instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab m (Type ::: Type)
 
 instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Expr (Elab m (expr ::: Type)) where
   global = fmap (first C.global) . fromSynth . global . S.getEName
-  lam0 n f = fromCheck $ lam0 (S.getEName n) (toCheck . f . pure)
+  lam0 n f = fromCheck $ lam0M (S.getEName n) (toCheck . f . pure)
   lam _ _ = tbd
   f $$ a = fromSynth $ toSynth f $$ toCheck a
   unit = tbd
@@ -226,8 +226,8 @@ tlamM n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (fromWords "when checking type lambda") ty
   C.tlamM n $ \ v -> check (b (v ::: _T) ::: _B v)
 
-lam0 :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
-lam0 n f = Check $ \ ty -> do
+lam0M :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
+lam0M n f = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
   C.lam0M n $ \ v -> check (f (v ::: _A) ::: _B)
 
