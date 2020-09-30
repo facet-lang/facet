@@ -193,18 +193,6 @@ infixr 2 -->
 
 infixr 1 >~>
 
-(>=>)
-  :: (MonadFix m, C.Type t, Scoped t)
-  => (T.Text ::: Check m Type)
-  -> ((t ::: Type) -> Check m t)
-  -> Synth m (t ::: Type)
-(n ::: t) >=> b = do
-  t' <- check (t ::: C._Type)
-  ftb' <- pure (n ::: C.interpret t') C.>=> \ v -> check (b (v ::: t') ::: C._Type)
-  pure $ ftb' ::: C._Type
-
-infixr 1 >=>
-
 
 -- Expressions
 
@@ -215,6 +203,24 @@ lam0 :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Tex
 lam0 n f = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (pretty "when checking lambda") ty
   C.lam0 n $ \ v -> check (f (v ::: _A) ::: _B)
+
+
+-- Declarations
+
+(>=>)
+  :: (Has (Error Print) sig m, MonadFix m, C.Expr expr, Scoped expr)
+  => (T.Text ::: Check m Type)
+  -> ((Type ::: Type) -> Check m (expr ::: Type))
+  -> Synth m (expr ::: Type ::: Type)
+(n ::: t) >=> b = do
+  t' <- check (t ::: C._Type)
+  -- FIXME: check by extending the context?
+  _T <- pure (n ::: C.interpret t') C.>=> \ v -> check (ty <$> b (v ::: t') ::: C._Type)
+  (_A, _B) <- expectFunctionType (pretty "when checking quantified type") _T
+  tm <- C.tlam n $ \ v -> check (tm <$> b (v ::: t') ::: C._Type)
+  pure $ tm ::: (_A :-> _B) ::: C._Type
+
+infixr 1 >=>
 
 
 -- Failures
