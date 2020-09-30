@@ -53,6 +53,7 @@ library
     Facet.Print
     Facet.Signature
     Facet.Surface
+    Facet.Surface.HOAS
     Facet.Surface.Lifted
     Facet.Syntax
     Facet.Syntax.Typed
