@@ -24,6 +24,7 @@ import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
 import           Data.Coerce
 import qualified Data.Kind as K
+import           Data.Semigroup (Max(..))
 import qualified Facet.Core as C
 import           Facet.Functor.K
 import qualified Facet.Name as N
@@ -62,8 +63,19 @@ terminalStyle = \case
     [ANSI.color, ANSI.colorDull]
   len = length colours
 
-newtype Doc = Doc { getDoc :: PP.Doc Highlight }
-  deriving (Monoid, Printer, Semigroup)
+data Doc = Doc { maxBV :: Maybe (Max Int), getDoc :: PP.Doc Highlight }
+
+instance Semigroup Doc where
+  Doc m1 d1 <> Doc m2 d2 = Doc (m1 <> m2) (d1 <> d2)
+
+instance Monoid Doc where
+  mempty = Doc mempty mempty
+
+instance Printer Doc where
+  type Ann Doc = Highlight
+  liftDoc0 = Doc mempty
+  liftDoc1 f (Doc m d) = Doc m (f d)
+  liftDoc2 f (Doc m1 d1) (Doc m2 d2) = Doc (m1 <> m2) (f d1 d2)
 
 newtype Print = Print { runPrint :: (Context -> Print -> Print) -> Fresh (Prec Context (Rainbow Doc)) }
   deriving (FreshPrinter, Monoid, Printer, Semigroup)
