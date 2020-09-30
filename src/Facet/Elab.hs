@@ -146,6 +146,7 @@ unify t1 t2 = go t1 t2
     (Unit,      Unit)       -> pure ()
     (l1 :* r1,  l2 :* r2)   -> go l1 l2 *> go r1 r2
     -- FIXME: we try to unify Type-the-global with Type-the-constant
+    -- FIXME: resolve globals to try to progress past certain inequalities
     (f1 :$ a1,  f2 :$ a2)
       | f1 == f2
       , Just _ <- goS a1 a2 -> pure ()
