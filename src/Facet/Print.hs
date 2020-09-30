@@ -45,7 +45,7 @@ prettyPrintWith :: MonadIO m => (Highlight -> ANSI.AnsiStyle) -> Print -> m ()
 prettyPrintWith style = P.putDoc . prettyWith style
 
 prettyWith :: (Highlight -> a) -> Print -> PP.Doc a
-prettyWith style = PP.reAnnotate style . runRainbow (annotate . Nest) 0 . runPrec Null . runFresh 0 . (`runPrint` const id) . group
+prettyWith style = PP.reAnnotate style . getDoc . runRainbow (annotate . Nest) 0 . runPrec Null . runFresh 0 . (`runPrint` const id) . group
 
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
@@ -66,7 +66,8 @@ terminalStyle = \case
     [ANSI.color, ANSI.colorDull]
   len = length colours
 
-type Doc = PP.Doc Highlight
+newtype Doc = Doc { getDoc :: PP.Doc Highlight }
+  deriving (Monoid, Printer, Semigroup)
 
 newtype Print = Print { runPrint :: (Context -> Print -> Print) -> Fresh (Prec Context (Rainbow Doc)) }
   deriving (FreshPrinter, Monoid, Printer, Semigroup)
