@@ -23,6 +23,7 @@ module Facet.Elab
 , (.$)
 , (.*)
 , (-->)
+, (>~>)
   -- * Expressions
 , ($$)
 , lam0
