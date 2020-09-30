@@ -42,7 +42,7 @@ class Expr ty expr | expr -> ty where
 
 
 newtype Circ t = Circ { getCirc :: t }
-  deriving (C.Type)
+  deriving (C.Expr, C.Type)
 
 instance (C.Type t, Scoped t) => Type (Circ t) where
   tglobal = pure . Circ . C.tglobal
