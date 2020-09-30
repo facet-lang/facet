@@ -223,7 +223,7 @@ infixr 1 >~>
 
 tlamM :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((Type ::: Type) -> Check m expr) -> Check m expr
 tlamM n b = Check $ \ ty -> do
-  (_T, _B) <- expectQuantifiedType (fromWords "when checking type lambda") ty
+  (_T, _B) <- expectQuantifiedTypeH (fromWords "when checking type lambda") ty
   C.tlamM n $ \ v -> check (b (v ::: _T) ::: _B v)
 
 lam0M :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
@@ -286,8 +286,8 @@ freeVariable s = err $ fromWords "variable not in scope:" <+> pretty s
 
 -- Patterns
 
-expectQuantifiedType :: Has (Error Print) sig m => Print -> Type -> m (Type, Type -> Type)
-expectQuantifiedType s = \case
+expectQuantifiedTypeH :: Has (Error Print) sig m => Print -> Type -> m (Type, Type -> Type)
+expectQuantifiedTypeH s = \case
   (n ::: _T) :=> _B -> pure (_T, \ v -> subst (IntMap.singleton (id' n) v) _B)
   _T                -> mismatch s (pretty "{_} -> _") (C.interpret _T)
 
