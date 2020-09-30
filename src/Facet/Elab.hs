@@ -57,16 +57,16 @@ implicit :: Env
 implicit = Map.fromList [ (T.pack "Type", C._Type) ]
 
 elab :: (Elab m a ::: Maybe Type) -> m a
-elab = runEnv implicit . uncurryAnn runElab
+elab = runEnv implicit mempty . uncurryAnn runElab
 
-runEnv :: Env -> EnvC m a -> m a
-runEnv = flip runEnvC
+runEnv :: Env -> Context -> EnvC m a -> m a
+runEnv e c m = runEnvC m e c
 
-newtype EnvC m a = EnvC { runEnvC :: Env -> m a }
-  deriving (Algebra (Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Env m
+newtype EnvC m a = EnvC { runEnvC :: Env -> Context -> m a }
+  deriving (Algebra (Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Env (ReaderC Context m)
 
 newtype Elab m a = Elab { runElab :: Maybe Type -> EnvC m a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (EnvC m)
+  deriving (Algebra (Reader (Maybe Type) :+: Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (EnvC m)
 
 fromCheck :: Has (Error Print) sig m => Check m a -> Elab m (a ::: Type)
 fromCheck m = Elab $ \case
@@ -132,7 +132,7 @@ instance (C.Expr expr, Scoped expr, C.Type ty, C.Module expr ty mod, Has (Error 
 
 
 newtype Check m a = Check { runCheck :: Type -> EnvC m a }
-  deriving (Algebra (Reader Type :+: Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Type (EnvC m)
+  deriving (Algebra (Reader Type :+: Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Type (EnvC m)
 
 newtype Synth m a = Synth { runSynth :: EnvC m (a ::: Type) }
 
