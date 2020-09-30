@@ -291,6 +291,11 @@ expectQuantifiedTypeH s = \case
   (n ::: _T) :=> _B -> pure (_T, \ v -> subst (IntMap.singleton (id' n) v) _B)
   _T                -> mismatch s (pretty "{_} -> _") (C.interpret _T)
 
+expectQuantifiedType :: Has (Error Print) sig m => Print -> Type -> m (Name, Type, Type)
+expectQuantifiedType s = \case
+  (n ::: _T) :=> _B -> pure (n, _T, _B)
+  _T                -> mismatch s (pretty "{_} -> _") (C.interpret _T)
+
 expectFunctionType :: Has (Error Print) sig m => Print -> Type -> m (Type, Type)
 expectFunctionType s = \case
   _A :-> _B -> pure (_A, _B)
