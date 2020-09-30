@@ -267,14 +267,13 @@ err = throwError . group
 tbd :: Has (Error Print) sig m => m a
 tbd = err $ pretty "TBD"
 
-mismatch :: Print -> Print -> Print
-mismatch exp act
-  =   pretty "expected:" <+> exp
+mismatch :: Print -> Print -> Print -> Print
+mismatch msg exp act = msg
+  </> pretty "expected:" <+> exp
   </> pretty "  actual:" <+> act
 
 couldNotUnify :: Has (Error Print) sig m => Type -> Type -> m a
-couldNotUnify t1 t2 = err $ fromWords "could not unify"
-  </> mismatch (C.interpret t2) (C.interpret t1)
+couldNotUnify t1 t2 = err $ mismatch (fromWords "could not unify") (C.interpret t2) (C.interpret t1)
 
 couldNotSynthesize :: Has (Error Print) sig m => m a
 couldNotSynthesize = err $ fromWords "could not synthesize a type"
@@ -288,9 +287,9 @@ freeVariable s = err $ fromWords "variable not in scope:" <+> pretty s
 expectQuantifiedType :: Has (Error Print) sig m => Print -> Type -> m (Type, Type -> Type)
 expectQuantifiedType s = \case
   (n ::: _T) :=> _B -> pure (_T, \ v -> subst (IntMap.singleton (id' n) v) _B)
-  _T                -> err $ mismatch (pretty "{_} -> _") (C.interpret _T) </> s
+  _T                -> err $ mismatch s (pretty "{_} -> _") (C.interpret _T)
 
 expectFunctionType :: Has (Error Print) sig m => Print -> Type -> m (Type, Type)
 expectFunctionType s = \case
   _A :-> _B -> pure (_A, _B)
-  _T        -> err $ mismatch (pretty "_ -> _") (C.interpret _T) </> s
+  _T        -> err $ mismatch s (pretty "_ -> _") (C.interpret _T)
