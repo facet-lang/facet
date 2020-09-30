@@ -47,8 +47,8 @@ parseElabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) s
 
 -- Pretty-printing
 
-prettyAnn :: (S.Printer p, C.Type p) => (T.Type ::: T.Type) -> p
-prettyAnn (tm ::: ty) = C.interpret tm S.<+> S.colon S.<+> C.interpret ty
+prettyAnn :: (S.Printer p, C.Type p) => (p ::: T.Type) -> p
+prettyAnn (tm ::: ty) = tm S.<+> S.colon S.<+> C.interpret ty
 
 
 -- Errors
