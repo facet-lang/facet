@@ -127,8 +127,8 @@ data Highlight
   | Lit
   deriving (Eq, Ord, Show)
 
-name :: (Printer p, Ann p ~ Highlight) => p -> p
-name = annotate Name
+name :: (PrecedencePrinter p, Ann p ~ Highlight, Level p ~ Context) => (Int -> p) -> N.Name -> p
+name s = var . N.prettyNameWith s
 
 op :: (Printer p, Ann p ~ Highlight) => p -> p
 op = annotate Op
@@ -159,7 +159,7 @@ ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
 
 var :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => p -> p
-var = setPrec Var . name
+var = setPrec Var . annotate Name
 
 evar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
 evar = var . P.var
@@ -175,8 +175,8 @@ instance U.Expr Print where
   global = pretty
   -- FIXME: Preserve variable names from user code where possible
   -- FIXME: Use _ in binding positions for unused variables
-  lam0 n f = cases (name (pretty n)) [\ var -> (var, f var)]
-  lam  n f = cases (name (pretty n)) [\ var -> (var, f (Left var))]
+  lam0 n f = cases (annotate Name (pretty n)) [\ var -> (var, f var)]
+  lam  n f = cases (annotate Name (pretty n)) [\ var -> (var, f (Left var))]
   ($$) = app
 
   unit = pretty "()"
@@ -195,7 +195,7 @@ instance U.Type Print where
 
 instance C.Type Print where
   tglobal = pretty
-  tbound = setPrec Var . name . N.prettyNameWith tvar
+  tbound = name tvar
   (-->) = (U.-->)
   (.*) = (U..*)
   (.$) = app
@@ -206,7 +206,7 @@ instance C.Type Print where
 
 instance C.Expr Print where
   global = pretty
-  bound = setPrec Var . name . N.prettyNameWith evar
+  bound = name evar
   tlam n b = cases (braces (C.bound n)) [\ v -> (v, b)]
   lam0 n b = cases (C.bound n) [\ v -> (v, b)]
   ($$) = app
