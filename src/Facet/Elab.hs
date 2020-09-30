@@ -10,7 +10,6 @@ module Facet.Elab
 , elab
 , Elab(..)
 , Check(..)
-, runSynth
 , Synth(..)
 , check
 , switch
@@ -103,10 +102,7 @@ instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Ex
 newtype Check m a = Check { runCheck :: Type -> Synth m a }
   deriving (Algebra (Reader Type :+: Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Type (Synth m)
 
-runSynth :: Synth m a -> Env -> m a
-runSynth (Synth m) e = m e
-
-newtype Synth m a = Synth (Env -> m a)
+newtype Synth m a = Synth { runSynth :: Env -> m a }
   deriving (Algebra (Reader Env :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Env m
 
 check :: (Check m a ::: Type) -> Synth m a
