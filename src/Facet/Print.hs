@@ -194,6 +194,10 @@ instance C.Expr Print where
   lam0 n b = cases (C.bound n) [\ v -> (v, b)]
   ($$) = app
 
+instance C.Module Print Print Print where
+  module' n b = ann (pretty n ::: pretty "Module") </> braces b
+  n .:. t := b = ann (pretty n ::: t) </> braces b
+
 instance U.Module Print Print Print Print where
   n .:. b = group $ ann (pretty n ::: b)
 
