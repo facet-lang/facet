@@ -171,9 +171,7 @@ instance U.Located Print where
   locate _ = id
 
 instance U.Expr Print where
-  -- FIXME: don’t shadow globals with locally-bound variables
   global = pretty
-  -- FIXME: Preserve variable names from user code where possible
   -- FIXME: Use _ in binding positions for unused variables
   lam0 n f = cases (annotate Name (pretty n)) [\ var -> (var, f var)]
   lam  n f = cases (annotate Name (pretty n)) [\ var -> (var, f (Left var))]
@@ -183,7 +181,6 @@ instance U.Expr Print where
   l ** r = tupled [l, r]
 
 instance U.Type Print where
-    -- FIXME: don’t shadow globals with locally-bound variables
   tglobal = pretty
   -- FIXME: combine quantification over type variables of the same kind
   (n ::: t) >~> b = let v' = var (pretty n) in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (b v')
