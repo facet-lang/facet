@@ -116,7 +116,7 @@ instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.De
     (n, b' ::: _B) <- binderM (pure . (::: _T) . C.bound) (,) (S.getEName n) b
     pure $ C.lam0 n b' ::: (_T C.--> _B)
 
-instance (C.Expr expr, Scoped expr, C.Type ty, C.Module expr ty mod, Has (Error Print) sig m, MonadFix m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m (mod ())) where
+instance (C.Expr expr, Scoped expr, C.Type ty, C.Module expr ty mod, Has (Error Print) sig m, MonadFix m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
   n .:. d = do
     e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
     pure $ S.getDName n C..:. e := C.interpret _T
