@@ -53,3 +53,9 @@ instance (C.Type t, Scoped t) => Type (Circ t) where
 
   a --> b = Circ <$> liftA2 (C.-->) (getCirc <$> a) (getCirc <$> b)
   l .*  r = Circ <$> liftA2 (C..*)  (getCirc <$> l) (getCirc <$> r)
+
+instance (C.Expr expr, Scoped expr) => Expr (Circ expr) (Circ expr) where
+  global = pure . Circ . C.global
+  tlam n b = n >>= \ n -> Circ <$> binderM C.bound C.tlam n (fmap getCirc . b . Circ)
+  lam0 n b = n >>= \ n -> Circ <$> binderM C.bound C.lam0 n (fmap getCirc . b . Circ)
+  f $$ a = Circ <$> liftA2 (C.$$)  (getCirc <$> f) (getCirc <$> a)
