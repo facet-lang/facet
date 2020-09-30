@@ -58,7 +58,7 @@ prettyAnn :: (S.Printer p, C.Type p) => (T.Type ::: T.Type) -> p
 prettyAnn (tm ::: ty) = C.interpret tm S.<+> S.colon S.<+> C.interpret ty
 
 thing :: (Has (Error P.Print) sig m, MonadFix m) => Synth m (T.Type ::: T.Type)
-thing = (__ ::: switch (switch _Type --> switch _Type)) >=> \ t -> switch (switch (pure t .$ switch _Unit) --> switch (pure t .$ switch _Unit))
+thing = (__ ::: switch (switch _Type --> switch _Type)) >~> \ t -> switch (switch (pure t .$ switch _Unit) --> switch (pure t .$ switch _Unit))
 
 
 -- Errors
