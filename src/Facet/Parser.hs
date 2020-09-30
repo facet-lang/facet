@@ -89,7 +89,7 @@ tatom :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) 
 tatom tvar = locating
   $   parens (prd <$> sepBy (type_ tvar) comma)
   -- FIXME: we should treat Type as a global.
-  <|> pure S._Type <$ string "Type"
+  <|> pure S._Type <$ token (string "Type")
   <|> tvar
   where
   prd [] = pure S._Unit
