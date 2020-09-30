@@ -267,10 +267,14 @@ err = throwError . group
 tbd :: Has (Error Print) sig m => m a
 tbd = err $ pretty "TBD"
 
+mismatch :: Print -> Print -> Print
+mismatch exp act
+  =   pretty "expected:" <+> exp
+  </> pretty "  actual:" <+> act
+
 couldNotUnify :: Has (Error Print) sig m => Type -> Type -> m a
 couldNotUnify t1 t2 = err $ fromWords "could not unify"
-  </> pretty "expected:" <+> C.interpret t2
-  </> pretty "  actual:" <+> C.interpret t1
+  </> mismatch (C.interpret t2) (C.interpret t1)
 
 couldNotSynthesize :: Has (Error Print) sig m => m a
 couldNotSynthesize = err $ fromWords "could not synthesize a type"
