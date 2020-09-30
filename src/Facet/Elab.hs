@@ -25,6 +25,7 @@ module Facet.Elab
 , (>~>)
   -- * Expressions
 , ($$)
+, tlam
 , tlamM
 , lam0M
   -- * Declarations
@@ -220,6 +221,12 @@ infixr 1 >~>
 
 ($$) :: (C.Expr expr, Has (Error Print) sig m) => Synth m expr -> Check m expr -> Synth m expr
 ($$) = app (C.$$)
+
+tlam :: (C.Expr expr, Has (Error Print) sig m) => Name -> Check m expr -> Check m expr
+tlam n b = Check $ \ ty -> do
+  (n', _T, _B) <- expectQuantifiedType (fromWords "when checking type lambda") ty
+  -- FIXME: add n' to the context
+  C.tlam n <$> check (b ::: _B)
 
 tlamM :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((Type ::: Type) -> Check m expr) -> Check m expr
 tlamM n b = Check $ \ ty -> do
