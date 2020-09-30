@@ -3,9 +3,11 @@
 module Facet.Expr
 ( Expr(..)
 , interpret
+, subst
 ) where
 
 import           Control.Applicative (liftA2)
+import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import qualified Facet.Core as C
 import qualified Facet.Core.HOAS as CH
@@ -49,3 +51,11 @@ interpret = \case
   TLam n b -> C.tlam n (interpret b)
   Lam0 n b -> C.lam0 n (interpret b)
   f :$ a -> interpret f C.$$ interpret a
+
+subst :: IntMap.IntMap Expr -> Expr -> Expr
+subst e = \case
+  Global s -> Global s
+  Bound n  -> (e IntMap.! id' n)
+  TLam n b -> C.tlam' (hint n) (\ v -> subst (instantiate n v e) b)
+  Lam0 n b -> C.lam0' (hint n) (\ v -> subst (instantiate n v e) b)
+  f :$ a   -> subst e f :$ subst e a
