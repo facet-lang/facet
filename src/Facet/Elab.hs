@@ -64,7 +64,9 @@ fromCheck m = Elab $ \case
   Nothing -> couldNotSynthesize
 
 toCheck :: Has (Error Print) sig m => Elab m (a ::: Type) -> Check m a
-toCheck = switch . toSynth
+toCheck m = Check $ \ _T -> do
+  a ::: _T' <- runElab m (Just _T)
+  a <$ unify _T _T'
 
 fromSynth :: Has (Error Print) sig m => Synth m a -> Elab m (a ::: Type)
 fromSynth (Synth m) = Elab $ \case
