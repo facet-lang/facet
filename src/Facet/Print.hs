@@ -42,7 +42,10 @@ prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = P.putDoc . getPrint
 
 getPrint :: Print -> PP.Doc ANSI.AnsiStyle
-getPrint = PP.reAnnotate terminalStyle . getDoc . runRainbow (annotate . Nest) 0 . runPrec Null . runFresh 0 . (`runPrint` const id) . group
+getPrint = PP.reAnnotate terminalStyle . getDoc . getPrint'
+
+getPrint' :: Print -> Doc
+getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . runFresh 0 . (`runPrint` const id) . group
 
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
@@ -87,6 +90,9 @@ instance PrecedencePrinter Print where
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
+
+instance N.Scoped Print where
+  maxBV = maxBV . getPrint'
 
 withTransition :: (Context -> Print -> Print) -> Print -> Print
 withTransition trans a = Print $ \ _ -> runPrint a trans
