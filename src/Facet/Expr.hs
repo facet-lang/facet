@@ -6,7 +6,6 @@ module Facet.Expr
 , subst
 ) where
 
-import           Control.Applicative (liftA2)
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import qualified Facet.Core as C
@@ -39,10 +38,8 @@ instance C.Expr Expr where
   ($$) = (:$)
 
 instance CH.Expr Type.Type Expr where
-  global = pure . C.global
   tlam n b = n >>= \ n -> binderM C.tbound TLam n b
   lam0 n b = n >>= \ n -> binderM C.bound  Lam0 n b
-  ($$) = liftA2 (C.$$)
 
 interpret :: C.Expr r => Expr -> r
 interpret = \case

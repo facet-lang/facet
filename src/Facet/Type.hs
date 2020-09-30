@@ -11,7 +11,6 @@ module Facet.Type
 , subst
 ) where
 
-import           Control.Applicative (liftA2)
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.Text (Text)
@@ -48,16 +47,7 @@ instance Scoped Type where
     l :* r  -> maxBV l <> maxBV r
 
 instance CH.Type Type where
-  tglobal = pure . C.tglobal
-
-  _Type = pure C._Type
-  _Unit = pure C._Unit
-
   t >=> b = t >>= \ (n ::: t) -> binderM C.tbound ((C.==>) . (::: t)) n b
-  f .$  a = liftA2 (C..$)  f a
-
-  a --> b = liftA2 (C.-->) a b
-  l .*  r = liftA2 (C..*)  l r
 
 instance C.Type Type where
   tglobal n = Right n :$ Nil
