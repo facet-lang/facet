@@ -28,6 +28,7 @@ module Facet.Elab
 , ($$)
 , tlam
 , tlamM
+, lam0
 , lam0M
   -- * Declarations
 , (>=>)
@@ -239,6 +240,11 @@ tlamM :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Te
 tlamM n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedTypeH (fromWords "when checking type lambda") ty
   C.tlamM n $ \ v -> check (b (v ::: _T) ::: _B v)
+
+lam0 :: (C.Expr expr, Has (Error Print) sig m) => Name -> Check m expr -> Check m expr
+lam0 n b = Check $ \ ty -> do
+  (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
+  n ::: _A |- C.lam0 n <$> check (b ::: _B)
 
 lam0M :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
 lam0M n f = Check $ \ ty -> do
