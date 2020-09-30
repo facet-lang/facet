@@ -241,6 +241,9 @@ couldNotSynthesize = err $ pretty "could not synthesize a type"
 freeVariable :: Has (Error Print) sig m => T.Text -> m a
 freeVariable s = err $ pretty "variable not in scope:" <+> pretty s
 
+
+-- Patterns
+
 expectFunctionType :: Has (Error Print) sig m => Print -> Type -> m (Type, Type)
 expectFunctionType s = \case
   _A :-> _B -> pure (_A, _B)
