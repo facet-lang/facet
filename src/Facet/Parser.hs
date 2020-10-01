@@ -108,31 +108,31 @@ forAll (>=>) k tvar = locating $ do
 
 
 data ExprCtx p a = ExprCtx
-  { root :: p a
-  , self :: p a
-  , next :: p a
+  { root :: p a -> p a
+  , self :: p a -> p a
+  , next :: p a -> p a
   }
 
--- | Operators are parsers parameterized by some expression context.
-type Operator p a = ExprCtx p a -> p a
+-- | Operators are parsers parameterized by some expression context and the in-scope variables.
+type Operator p a = ExprCtx p a -> p a -> p a
 type Table p a = [[Operator p a]]
 
 -- | Build a parser for a Table.
-build :: TokenParsing p => Table p a -> p a
+build :: TokenParsing p => Table p a -> p a -> p a
 build ts = root
   where
-  root = foldr (choiceOrNextP root) (parens root) ts
+  root = foldr (choiceOrNextP root) (parens . root) ts
   choiceOrNextP root ps next = self
     where
-    self = foldr (\ p rest -> p ExprCtx{ root, self, next } <|> rest) next ps
+    self = foldr (\ p rest -> (<|>) <$> p ExprCtx{ root, self, next } <*> rest) next ps
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty
 typeTable =
   [
   ]
 
-atom' :: p ty -> Operator p ty
-atom' var _ctx = var
+atom' :: Operator p a
+atom' _ctx vars = vars
 
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
