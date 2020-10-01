@@ -23,7 +23,7 @@ import qualified Data.List.NonEmpty as NE
 import           Data.Text (Text)
 import           Facet.Name
 import qualified Facet.Surface as S
-import           Prelude hiding (lines, null, span)
+import           Prelude hiding (lines, null, product, span)
 import           Text.Parser.Char
 import           Text.Parser.Combinators
 import           Text.Parser.Position
@@ -131,7 +131,7 @@ build ts = root
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable = NE.fromList
   [ NE.fromList [ fn', forAll' (liftA2 (S.>~>)) ]
-  , NE.fromList [ prd ]
+  , NE.fromList [ product ]
   , NE.fromList
     [ -- FIXME: we should treat Unit & Type as globals.
       const (S._Unit <$ token (string "Unit"))
@@ -156,8 +156,8 @@ forAll' (>=>) ExprCtx{ next, vars } = locating $ do
 fn' :: (S.Type ty, S.Located ty, PositionParsing p) => Operator p ty ty
 fn' ExprCtx{ self, next, vars } = locating $ next vars <**> (flip (S.-->) <$ arrow <*> self vars <|> pure id)
 
-prd :: (S.Type ty, S.Located ty, PositionParsing p) => Operator p ty ty
-prd ExprCtx{ next, vars } = locating $ chainl1 (next vars) ((S..*) <$ comma)
+product :: (S.Type ty, S.Located ty, PositionParsing p) => Operator p ty ty
+product ExprCtx{ next, vars } = locating $ chainl1 (next vars) ((S..*) <$ comma)
 
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
