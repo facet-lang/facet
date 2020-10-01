@@ -17,7 +17,6 @@ import           Data.Foldable (foldl')
 import qualified Data.IntSet as IntSet
 import           Data.Text (Text)
 import qualified Facet.Core as C
-import qualified Facet.Core.HOAS as CH
 import           Facet.Name
 import qualified Facet.Print as P
 import           Facet.Syntax
@@ -47,9 +46,6 @@ instance Scoped Type where
     f :$ a  -> either (IntSet.insert . id') (const id) f (foldMap fvs a)
     a :-> b -> fvs a <> fvs b
     l :* r  -> fvs l <> fvs r
-
-instance CH.Type Type where
-  t >=> b = t >>= \ (n ::: t) -> binderM C.tbound ((C.==>) . (::: t)) n b
 
 instance C.Type Type where
   tglobal n = Right n :$ Nil

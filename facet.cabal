@@ -39,7 +39,6 @@ library
   exposed-modules:
     Facet.Carrier.Error.Context
     Facet.Core
-    Facet.Core.HOAS
     Facet.Core.Lifted
     Facet.Elab
     Facet.Env
@@ -55,7 +54,6 @@ library
     Facet.Print
     Facet.Signature
     Facet.Surface
-    Facet.Surface.HOAS
     Facet.Surface.Lifted
     Facet.Syntax
     Facet.Syntax.Typed

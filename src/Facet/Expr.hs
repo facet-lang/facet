@@ -9,9 +9,7 @@ module Facet.Expr
 import qualified Data.IntSet as IntSet
 import qualified Data.Text as T
 import qualified Facet.Core as C
-import qualified Facet.Core.HOAS as CH
 import           Facet.Name
-import qualified Facet.Type as Type
 
 data Expr
   = Global T.Text
@@ -34,10 +32,6 @@ instance C.Expr Expr where
   tlam n b = TLam (IntSet.delete (id' n) (fvs b)) n b
   lam0 n b = Lam0 (IntSet.delete (id' n) (fvs b)) n b
   f $$ a = App (fvs f <> fvs a) f a
-
-instance CH.Expr Type.Type Expr where
-  tlam n b = n >>= \ n -> binderM C.tbound C.tlam n b
-  lam0 n b = n >>= \ n -> binderM C.bound  C.lam0 n b
 
 interpret :: C.Expr r => Expr -> r
 interpret = \case
