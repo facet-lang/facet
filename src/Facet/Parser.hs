@@ -193,7 +193,7 @@ expr = expr_ global
 global :: (S.Expr expr, Monad p, TokenParsing p) => Facet p expr
 global = S.global <$> name <?> "variable"
 
-expr_ :: forall p expr . (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
+expr_ :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
 expr_ = app (S.$$) atom
 
 -- FIXME: patterns
