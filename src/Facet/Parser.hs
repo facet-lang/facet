@@ -63,7 +63,7 @@ instance CharParsing p => CharParsing (Facet p) where
   notChar = lift . notChar
   anyChar = lift anyChar
   string  = lift . string
-  text = lift . text
+  text    = lift . text
 
 instance TokenParsing m => TokenParsing (Facet m) where
   someSpace = buildSomeSpaceParser (skipSome (satisfy isSpace)) emptyCommentStyle{ _commentLine = "#" }
