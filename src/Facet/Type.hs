@@ -15,7 +15,6 @@ module Facet.Type
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import qualified Data.IntSet as IntSet
-import qualified Data.IntMap as IntMap
 import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Core.HOAS as CH
@@ -75,7 +74,7 @@ interpret = go
 
 ($$) :: Type -> Type -> Type
 (f :$ as) $$ a = f :$ (as :> a)
-(t :=> b) $$ a = subst (IntMap.singleton (id' (tm t)) a) b
+(t :=> b) $$ a = subst (tm t) a b
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: Foldable t => Type -> t Type -> Type
@@ -96,13 +95,16 @@ rename x y = go
     a :-> b       -> go a :-> go b
     l :*  r       -> go l :*  go r
 
-subst :: IntMap.IntMap Type -> Type -> Type
-subst e = \case
+subst :: Name -> Type -> Type -> Type
+subst x e = \case
   Type            -> Type
   Unit            -> Unit
-  (n ::: t) :=> b -> (hint n ::: subst e t) C.>=> \ v -> subst (instantiate n v e) b
+  (n ::: t) :=> b -> let n' = prime (hint n) (fvs b <> fvs e)
+                         b' = subst x e (rename n n' b)
+                    in (n' ::: subst x e t) C.==> b'
   f :$  a
-    | Left f <- f -> (e IntMap.! id' f) $$* fmap (subst e) a
-    | otherwise   -> f :$ fmap (subst e) a
-  a :-> b         -> subst e a :-> subst e b
-  l :*  r         -> subst e l :* subst e r
+    | Left f <- f
+    , f == x      -> e $$* (subst x e <$> a)
+    | otherwise   -> f :$  (subst x e <$> a)
+  a :-> b         -> subst x e a :-> subst x e b
+  l :*  r         -> subst x e l :*  subst x e r

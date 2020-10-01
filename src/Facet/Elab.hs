@@ -310,7 +310,7 @@ freeVariable s = err $ fromWords "variable not in scope:" <+> pretty s
 expectQuantifiedTypeH :: Has (Error Print) sig m => Print -> Type -> m (Type, Type -> Type)
 expectQuantifiedTypeH s t = do
   (n, _T, _B) <- expectQuantifiedType s t
-  pure (_T, \ v -> subst (IntMap.singleton (id' n) v) _B)
+  pure (_T, \ v -> subst n v _B)
 
 expectQuantifiedType :: Has (Error Print) sig m => Print -> Type -> m (Name, Type, Type)
 expectQuantifiedType s = \case
