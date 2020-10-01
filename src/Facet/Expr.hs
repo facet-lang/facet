@@ -22,12 +22,12 @@ data Expr
   | App FVs Expr Expr
 
 instance Scoped Expr where
-  maxBV = \case
-    Global _   -> Nothing
-    Bound _    -> Nothing
-    TLam _ _ n -> maxBV n
-    Lam0 _ _ n -> maxBV n
-    App _ f a  -> maxBV f <> maxBV a
+  fvs = \case
+    Global _   -> IntSet.empty
+    Bound  n   -> fvs n
+    TLam s _ _ -> s
+    Lam0 s _ _ -> s
+    App s _ _  -> s
 
 instance C.Expr Expr where
   global = Global
@@ -55,11 +55,3 @@ subst e = \case
   TLam _ n b -> C.tlam' (hint n) (\ v -> subst (instantiate n v e) b)
   Lam0 _ n b -> C.lam0' (hint n) (\ v -> subst (instantiate n v e) b)
   App _ f a  -> subst e f C.$$ subst e a
-
-fvs :: Expr -> FVs
-fvs = \case
-  Global _   -> IntSet.empty
-  Bound  n   -> IntSet.singleton (id' n)
-  TLam s _ _ -> s
-  Lam0 s _ _ -> s
-  App s _ _  -> s

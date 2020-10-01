@@ -12,6 +12,7 @@ module Facet.Type
 ) where
 
 import           Data.Foldable (foldl')
+import qualified Data.IntSet as IntSet
 import qualified Data.IntMap as IntMap
 import           Data.Text (Text)
 import qualified Facet.Core as C
@@ -38,13 +39,13 @@ instance Show Type where
   showsPrec p = showsPrec p . P.getPrint . interpret
 
 instance Scoped Type where
-  maxBV = \case
-    Type    -> Nothing
-    Unit    -> Nothing
-    t :=> _ -> maxBV t
-    _ :$ a  -> foldMap maxBV a
-    a :-> b -> maxBV a <> maxBV b
-    l :* r  -> maxBV l <> maxBV r
+  fvs = \case
+    Type    -> mempty
+    Unit    -> mempty
+    t :=> b -> IntSet.delete (id' (tm t)) (fvs b)
+    f :$ a  -> either (IntSet.insert . id') (const id) f (foldMap fvs a)
+    a :-> b -> fvs a <> fvs b
+    l :* r  -> fvs l <> fvs r
 
 instance CH.Type Type where
   t >=> b = t >>= \ (n ::: t) -> binderM C.tbound ((C.==>) . (::: t)) n b

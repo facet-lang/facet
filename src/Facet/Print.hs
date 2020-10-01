@@ -24,7 +24,6 @@ import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
 import           Data.Coerce
 import qualified Data.Kind as K
-import           Data.Semigroup (Max(..))
 import qualified Facet.Core as C
 import           Facet.Functor.K
 import qualified Facet.Name as N
@@ -67,7 +66,7 @@ terminalStyle = \case
     [ANSI.color, ANSI.colorDull]
   len = length colours
 
-data Doc = Doc { maxBV :: Maybe (Max Int), getDoc :: PP.Doc Highlight }
+data Doc = Doc { fvs :: N.FVs, getDoc :: PP.Doc Highlight }
 
 instance Semigroup Doc where
   Doc m1 d1 <> Doc m2 d2 = Doc (m1 <> m2) (d1 <> d2)
@@ -93,7 +92,7 @@ instance Show Print where
   showsPrec p = showsPrec p . getPrint
 
 instance N.Scoped Print where
-  maxBV = maxBV . getPrint'
+  fvs = fvs . getPrint'
 
 withTransition :: (Context -> Print -> Print) -> Print -> Print
 withTransition trans a = Print $ \ _ -> runPrint a trans

@@ -1,8 +1,8 @@
 {-# LANGUAGE TupleSections #-}
 module Facet.Name
 ( Name(..)
-, prime
 , prettyNameWith
+, prime
 , __
 , FVs
 , Scoped(..)
@@ -13,8 +13,8 @@ module Facet.Name
 
 import           Control.Monad.Fix
 import           Data.Function (on)
+import qualified Data.IntSet as IntSet
 import qualified Data.IntMap as IntMap
-import           Data.Semigroup (Max(..))
 import qualified Data.Text as T
 import           Facet.Pretty
 import qualified Prettyprinter as P
@@ -40,8 +40,12 @@ prettyNameWith var n
   | otherwise       = pretty (hint n) <> pretty (id' n)
 
 
-prime :: T.Text -> Maybe (Max Int) -> Name
-prime n i = Name n (maybe 0 (succ . getMax) i)
+prime :: Scoped t => T.Text -> t -> Name
+prime n t
+  | IntSet.null fvs' = Name n 0
+  | otherwise        = Name n (IntSet.findMax fvs' + 1)
+  where
+  fvs' = fvs t
 
 
 __ :: T.Text
@@ -51,10 +55,10 @@ __ = T.empty
 type FVs = IntSet.IntSet
 
 class Scoped t where
-  maxBV :: t -> Maybe (Max Int)
+  fvs :: t -> FVs
 
 instance Scoped Name where
-  maxBV = Just . Max . id'
+  fvs = IntSet.singleton . id'
 
 binder
   :: Scoped t
@@ -66,7 +70,7 @@ binder
 binder bound ctor n e = ctor n' b'
   where
   b' = e (bound n')
-  n' = prime n (maxBV b')
+  n' = prime n b'
 
 binderM
   :: (Scoped t, MonadFix m)
@@ -76,7 +80,7 @@ binderM
   -> (d -> m t)
   -> m r
 binderM bound ctor n e = uncurry ctor <$> mfix (\ ~(n', b') -> do
-  (prime n (maxBV b'),) <$> e (bound n'))
+  (prime n b',) <$> e (bound n'))
 
 
 instantiate :: Name -> t -> IntMap.IntMap t -> IntMap.IntMap t
