@@ -1,6 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Text.Parser.Position
-( LocationParsing(..)
+( PositionParsing(..)
 , Pos
 , Span
 , spanning
@@ -11,16 +11,16 @@ import qualified Control.Carrier.Parser.Church as P
 import           Control.Effect.Parser.Span (Pos, Span(..))
 import           Text.Parser.Token (TokenParsing)
 
-class TokenParsing p => LocationParsing p where
+class TokenParsing p => PositionParsing p where
   position :: p Pos
 
-instance P.Algebra sig m => LocationParsing (P.ParserC m) where
+instance P.Algebra sig m => PositionParsing (P.ParserC m) where
   position = P.position
 
-spanning :: LocationParsing p => p a -> p Span
+spanning :: PositionParsing p => p a -> p Span
 spanning p = Span <$> position <* p <*> position
 
-spanned :: LocationParsing p => p a -> p (Span, a)
+spanned :: PositionParsing p => p a -> p (Span, a)
 spanned p = mk <$> position <*> p <*> position
   where
   mk s a e = (Span s e, a)

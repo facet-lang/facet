@@ -69,14 +69,14 @@ instance CharParsing p => CharParsing (Facet p) where
 instance TokenParsing m => TokenParsing (Facet m) where
   someSpace = buildSomeSpaceParser (skipSome (satisfy isSpace)) emptyCommentStyle{ _commentLine = "#" }
 
-instance LocationParsing p => LocationParsing (Facet p) where
+instance PositionParsing p => PositionParsing (Facet p) where
   position = lift position
 
 lift :: p a -> Facet p a
 lift = Facet . const
 
 
-decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, LocationParsing p) => Facet p mod
+decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, PositionParsing p) => Facet p mod
 decl = locating $ (S..:.) <$> dname <* colon <*> sig global tglobal
   where
   sig :: Facet p expr -> Facet p ty -> Facet p decl
@@ -90,7 +90,7 @@ decl = locating $ (S..:.) <$> dname <* colon <*> sig global tglobal
 
 forAll
   :: forall ty res p
-  .  (S.Type ty, S.Located ty, S.Located res, Monad p, LocationParsing p)
+  .  (S.Type ty, S.Located ty, S.Located res, Monad p, PositionParsing p)
   => (Facet p (Name S.::: ty) -> Facet p res -> Facet p res)
   -> (Facet p ty -> Facet p res)
   -> Facet p ty
@@ -104,16 +104,16 @@ forAll (>=>) k tvar = locating $ do
   arrow *> loop tvar names
 
 
-type' :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => Facet p ty
+type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
 
-type_ :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => Facet p ty -> Facet p ty
+type_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 type_ tvar = fn tvar <|> forAll (liftA2 (S.>~>)) type_ tvar <?> "type"
 
-fn :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => Facet p ty -> Facet p ty
+fn :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 fn tvar = locating $ app (S..$) tatom tvar <**> (flip (S.-->) <$ arrow <*> fn tvar <|> pure id)
 
-tatom :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => Facet p ty -> Facet p ty
+tatom :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 tatom tvar = locating
   $   parens (prd <$> sepBy (type_ tvar) comma)
   -- FIXME: we should treat Unit & Type as globals.
@@ -128,24 +128,24 @@ tglobal :: (S.Type ty, Monad p, TokenParsing p) => Facet p ty
 tglobal = S.tglobal <$> tname <?> "variable"
 
 
-expr :: (S.Expr expr, S.Located expr, Monad p, LocationParsing p) => Facet p expr
+expr :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr
 expr = expr_ global
 
 global :: (S.Expr expr, Monad p, TokenParsing p) => Facet p expr
 global = S.global <$> name <?> "variable"
 
-expr_ :: forall p expr . (S.Expr expr, S.Located expr, Monad p, LocationParsing p) => Facet p expr -> Facet p expr
+expr_ :: forall p expr . (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
 expr_ = app (S.$$) atom
 
 -- FIXME: patterns
 -- FIXME: nullary computations
-lam :: forall p expr . (S.Expr expr, S.Located expr, Monad p, LocationParsing p) => Facet p expr -> Facet p expr
+lam :: forall p expr . (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
 lam var = braces $ clause var
   where
   clause :: Facet p expr -> Facet p expr
   clause var = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> var in clause var' <|> arrow *> expr_ var' <?> "clause"
 
-atom :: (S.Expr expr, S.Located expr, Monad p, LocationParsing p) => Facet p expr -> Facet p expr
+atom :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
 atom var = locating
   $   lam var
   <|> parens (prd <$> sepBy (expr_ var) comma)
@@ -154,7 +154,7 @@ atom var = locating
   prd [] = S.unit
   prd ts = foldl1 (S.**) ts
 
-app :: (LocationParsing p, S.Located expr) => (expr -> expr -> expr) -> (Facet p expr -> Facet p expr) -> (Facet p expr -> Facet p expr)
+app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> (Facet p expr -> Facet p expr) -> (Facet p expr -> Facet p expr)
 app ($$) atom tvar = locating $ foldl ($$) <$> atom tvar <*> many (atom tvar)
 
 
@@ -205,9 +205,9 @@ hnameStyle = IdentifierStyle
 arrow :: TokenParsing p => Facet p String
 arrow = symbol "->"
 
-variable :: (LocationParsing p, Coercible t Text) => t -> p ()
+variable :: (PositionParsing p, Coercible t Text) => t -> p ()
 variable s = token (text (coerce s) *> notFollowedBy alphaNum)
 
 
-locating :: (LocationParsing p, S.Located a) => Facet p a -> Facet p a
+locating :: (PositionParsing p, S.Located a) => Facet p a -> Facet p a
 locating = fmap (uncurry S.locate) . spanned
