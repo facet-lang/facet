@@ -132,6 +132,7 @@ typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Fac
 typeTable = NE.fromList
   [ NE.fromList [ fn', forAll' (liftA2 (S.>~>)) ]
   , NE.fromList [ product ]
+  , NE.fromList [ tapp ]
   , NE.fromList
     [ -- FIXME: we should treat Unit & Type as globals.
       const (S._Unit <$ token (string "Unit"))
@@ -158,6 +159,9 @@ fn' ExprCtx{ self, next, vars } = locating $ next vars <**> (flip (S.-->) <$ arr
 
 product :: (S.Type ty, S.Located ty, PositionParsing p) => Operator p ty ty
 product ExprCtx{ next, vars } = locating $ chainl1 (next vars) ((S..*) <$ comma)
+
+tapp :: (S.Type ty, S.Located ty, PositionParsing p) => Operator p ty ty
+tapp ExprCtx{ next, vars } = app (S..$) next vars
 
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
