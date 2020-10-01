@@ -158,7 +158,7 @@ terminate op next = self where self vars = parens $ op BindCtx{ next, self, vars
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable =
-  [ [ fn' . toExprCtx, forAll' (liftA2 (S.>~>)) ]
+  [ [ toBindParser $ Infix R locating ((S.-->) <$ arrow), forAll' (liftA2 (S.>~>)) ]
   , [ toBindParser $ Infix L locating (pure (S..$)) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       const (S._Unit <$ token (string "Unit"))
@@ -179,9 +179,6 @@ forAll' (>=>) BindCtx{ next, vars } = locating $ do
         []   -> next vars
         i:is -> bind (pure i) $ \ v -> pure (v S.::: ty) >=> (loop (S.tbound v <$ variable i <|> vars) is)
   arrow *> loop vars names
-
-fn' :: (S.Type ty, S.Located ty, PositionParsing p) => ExprParser p ty
-fn' ExprCtx{ self, next } = locating $ next <**> (flip (S.-->) <$ arrow <*> self <|> pure id)
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
