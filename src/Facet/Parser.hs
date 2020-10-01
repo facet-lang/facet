@@ -211,7 +211,7 @@ atom var = locating
   prd ts = foldl1 (S.**) ts
 
 app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> (p expr -> p expr) -> (p expr -> p expr)
-app ($$) atom tvar = locating $ foldl ($$) <$> atom tvar <*> many (atom tvar)
+app ($$) atom tvar = locating $ foldl1 ($$) <$> some (atom tvar)
 
 
 name, _hname :: (Monad p, TokenParsing p) => p S.EName
