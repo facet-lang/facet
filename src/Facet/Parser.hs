@@ -129,7 +129,7 @@ build ts end = root
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable =
   [ [ fn', forAll' (liftA2 (S.>~>)) ]
-  , [ product ]
+  , [ product (S..*) ]
   , [ app (S..$) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       const (S._Unit <$ token (string "Unit"))
@@ -153,10 +153,6 @@ forAll' (>=>) ExprCtx{ next, vars } = locating $ do
 
 fn' :: (S.Type ty, S.Located ty, PositionParsing p) => Operator p ty ty
 fn' ExprCtx{ self, next, vars } = locating $ next vars <**> (flip (S.-->) <$ arrow <*> self vars <|> pure id)
-
-product :: (S.Type ty, S.Located ty, PositionParsing p) => Operator p ty ty
-product ExprCtx{ next, vars } = locating $ chainl1 (next vars) ((S..*) <$ comma)
-
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
@@ -225,6 +221,9 @@ atom var = locating
   where
   prd [] = S.unit
   prd ts = foldl1 (S.**) ts
+
+product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Operator p expr expr
+product (**) ExprCtx{ next, vars } = locating $ chainl1 (next vars) ((**) <$ comma)
 
 app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> Operator p expr expr
 app ($$) ExprCtx{ next, vars } = locating $ foldl1 ($$) <$> some (next vars)
