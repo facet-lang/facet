@@ -153,10 +153,10 @@ forAll' (>=>) ExprCtx{ next, vars } = locating $ do
         i:is -> bind (pure i) $ \ v -> pure (v S.::: ty) >=> (loop (S.tbound v <$ variable i <|> vars) is)
   arrow *> loop vars names
 
-fn' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Operator p ty ty
+fn' :: (S.Type ty, S.Located ty, PositionParsing p) => Operator p ty ty
 fn' ExprCtx{ self, next, vars } = locating $ next vars <**> (flip (S.-->) <$ arrow <*> self vars <|> pure id)
 
-prd :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Operator p ty ty
+prd :: (S.Type ty, S.Located ty, PositionParsing p) => Operator p ty ty
 prd ExprCtx{ next, vars } = locating $ chainl1 (next vars) ((S..*) <$ comma)
 
 
