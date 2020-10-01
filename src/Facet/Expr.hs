@@ -48,6 +48,22 @@ interpret = \case
   Lam0 _ n b -> C.lam0 n (interpret b)
   App _ f a -> interpret f C.$$ interpret a
 
+rename :: Name -> Name -> Expr -> Expr
+rename x y = go
+  where
+  go = \case
+    Global s      -> Global s
+    Bound z
+      | x == z    -> Bound y
+      | otherwise -> Bound z
+    TLam s z b
+      | z == x    -> TLam s z b
+      | otherwise -> C.tlam z (go b)
+    Lam0 s z b
+      | z == x    -> Lam0 s z b
+      | otherwise -> C.lam0 z (go b)
+    App _ f a     -> go f C.$$ go a
+
 subst :: IntMap.IntMap Expr -> Expr -> Expr
 subst e = \case
   Global s -> Global s
