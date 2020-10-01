@@ -94,7 +94,7 @@ decl = locating $ (S..:.) <$> dname <* colon <*> sig global tglobal
 
 sigTable :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Table (Facet p) ty decl
 sigTable =
-  [
+  [ [ forAll' (liftA2 (S.>=>)) ]
   ]
 
 
