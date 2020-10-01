@@ -191,6 +191,7 @@ exprTable = NE.fromList
   [ NE.fromList [ app (S.$$) ]
   , NE.fromList
     [ lam'
+    , vars
     ]
   ]
 
