@@ -145,9 +145,11 @@ terminate :: TokenParsing p => BindParser p a b -> (p a -> p b) -> (p a -> p b)
 terminate op next = self where self vars = parens $ op BindCtx{ next, self, vars }
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
-typeTable =
-  [ [ forAll (liftA2 (S.>~>)) ]
-  , [ toBindParser $ Infix R locating ((S.-->) <$ arrow) ]
+typeTable = [ forAll (liftA2 (S.>~>)) ] : monotypeTable
+
+monotypeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
+monotypeTable =
+  [ [ toBindParser $ Infix R locating ((S.-->) <$ arrow) ]
   , [ toBindParser $ Infix L locating (pure (S..$)) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       const (S._Unit <$ token (string "Unit"))
