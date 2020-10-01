@@ -241,5 +241,5 @@ variable :: (PositionParsing p, Coercible t Text) => t -> p ()
 variable s = token (text (coerce s) *> notFollowedBy alphaNum)
 
 
-locating :: (PositionParsing p, S.Located a) => Facet p a -> Facet p a
+locating :: (PositionParsing p, S.Located a) => p a -> p a
 locating = fmap (uncurry S.locate) . spanned
