@@ -168,7 +168,7 @@ type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
 
 type_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
-type_ tvar = fn tvar <|> forAll (liftA2 (S.>~>)) type_ tvar <?> "type"
+type_ = build typeTable
 
 fn :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 fn tvar = locating $ app (S..$) tatom tvar <**> (flip (S.-->) <$ arrow <*> fn tvar <|> pure id)
