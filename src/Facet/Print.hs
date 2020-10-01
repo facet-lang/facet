@@ -153,7 +153,7 @@ instance S.Located Print where
   locate _ = id
 
 instance S.Expr Print where
-  global = pretty
+  global = var . pretty
   -- FIXME: Use _ in binding positions for unused variables
   lam0 n f = let v = var (pretty n) in cases v [f v]
   lam  n f = let v = var (pretty n) in cases v [f (Left v)]
