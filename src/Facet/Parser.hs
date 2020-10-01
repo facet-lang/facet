@@ -92,6 +92,11 @@ decl = locating $ (S..:.) <$> dname <* colon <*> sig global tglobal
     (i, t) <- nesting $ (,) <$> try (symbolic '(' *> name) <* colon <*> type_ tvar <* symbolic ')'
     Facet.Parser.bind (pure i) $ \ v -> ((v S.::: t) S.>->) <$ arrow <*> sig (S.bound v <$ variable i <|> var) tvar
 
+sigTable :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Table (Facet p) ty decl
+sigTable =
+  [
+  ]
+
 
 forAll
   :: forall ty res p
