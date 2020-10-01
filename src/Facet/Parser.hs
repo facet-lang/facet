@@ -107,14 +107,14 @@ forAll (>=>) k tvar = locating $ do
   arrow *> loop tvar names
 
 
-data ExprCtx p a b = ExprCtx
+data BindCtx p a b = BindCtx
   { self :: p a -> p b
   , next :: p a -> p b
   , vars :: p a
   }
 
 -- | Operators are parsers parameterized by some expression context and the in-scope variables.
-type Operator p a b = ExprCtx p a b -> p b
+type Operator p a b = BindCtx p a b -> p b
 type Table p a b = [[Operator p a b]]
 
 -- | Build a parser for a Table.
@@ -124,7 +124,7 @@ build ts end = root
   root = foldr chain end ts
   chain ps next = self
     where
-    self = foldr (\ p rest vars -> p ExprCtx{ self, next, vars } <|> rest vars) next ps
+    self = foldr (\ p rest vars -> p BindCtx{ self, next, vars } <|> rest vars) next ps
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable =
@@ -143,7 +143,7 @@ forAll'
   .  (S.Type ty, S.Located ty, S.Located res, Monad p, PositionParsing p)
   => (Facet p (Name S.::: ty) -> Facet p res -> Facet p res)
   -> Operator (Facet p) ty res
-forAll' (>=>) ExprCtx{ next, vars } = locating $ do
+forAll' (>=>) BindCtx{ next, vars } = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
   let loop :: Facet p ty -> [S.TName] -> Facet p res
       loop vars = \case
@@ -152,7 +152,7 @@ forAll' (>=>) ExprCtx{ next, vars } = locating $ do
   arrow *> loop vars names
 
 fn' :: (S.Type ty, S.Located ty, PositionParsing p) => Operator p ty ty
-fn' ExprCtx{ self, next, vars } = locating $ next vars <**> (flip (S.-->) <$ arrow <*> self vars <|> pure id)
+fn' BindCtx{ self, next, vars } = locating $ next vars <**> (flip (S.-->) <$ arrow <*> self vars <|> pure id)
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
@@ -163,7 +163,7 @@ type_ = build typeTable (parens . type_)
 fn :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 fn tvar = locating $ tapp tvar <**> (flip (S.-->) <$ arrow <*> fn tvar <|> pure id)
   where
-  tapp vars = app (S..$) ExprCtx{ self = tapp, next = tatom, vars }
+  tapp vars = app (S..$) BindCtx{ self = tapp, next = tatom, vars }
 
 tatom :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 tatom tvar = locating
@@ -196,7 +196,7 @@ global :: (S.Expr expr, Monad p, TokenParsing p) => Facet p expr
 global = S.global <$> name <?> "variable"
 
 expr_ :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
-expr_ vars = app (S.$$) ExprCtx{ self = expr_, next = atom, vars }
+expr_ vars = app (S.$$) BindCtx{ self = expr_, next = atom, vars }
 
 -- FIXME: patterns
 -- FIXME: nullary computations
@@ -204,7 +204,7 @@ lam' :: forall p expr . (S.Expr expr, S.Located expr, Monad p, PositionParsing p
 lam' = braces . clause
   where
   clause :: Operator (Facet p) expr expr
-  clause ExprCtx{ self, vars } = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
+  clause BindCtx{ self, vars } = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
 
 -- FIXME: patterns
 -- FIXME: nullary computations
@@ -224,10 +224,10 @@ atom var = locating
   prd ts = foldl1 (S.**) ts
 
 product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Operator p expr expr
-product (**) ExprCtx{ next, vars } = locating $ next vars `chainl1` ((**) <$ comma)
+product (**) BindCtx{ next, vars } = locating $ next vars `chainl1` ((**) <$ comma)
 
 app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> Operator p expr expr
-app ($$) ExprCtx{ next, vars } = locating $ next vars `chainl1` pure ($$)
+app ($$) BindCtx{ next, vars } = locating $ next vars `chainl1` pure ($$)
 
 
 name, _hname :: (Monad p, TokenParsing p) => p S.EName
