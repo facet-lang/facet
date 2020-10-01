@@ -128,7 +128,17 @@ data ExprCtx p a = ExprCtx
 toExprCtx :: BindCtx p a b -> ExprCtx p b
 toExprCtx BindCtx{ self, next, vars } = ExprCtx{ self = self vars, next = next vars }
 
--- | Operators are parsers parameterized by some expression context and the in-scope variables.
+data Assoc = N | L | R
+
+data Operator p a b
+  = Infix Assoc (p b -> p b) (p (b -> b -> b))
+
+toBindParser :: Parsing p => Operator p a b -> BindParser p a b
+toBindParser = \case
+  Infix N wrap op -> (\ ExprCtx{ next } -> wrap (try (next <**> op) <*> next)) . toExprCtx
+  Infix L wrap op -> (\ ExprCtx{ next } -> chainl1_ next wrap op) . toExprCtx
+  Infix R wrap op -> (\ ExprCtx{ self, next } -> wrap (try (next <**> op) <*> self)) . toExprCtx
+
 type BindParser p a b = BindCtx p a b -> p b
 type ExprParser p a = ExprCtx p a -> p a
 type Table p a b = [[BindParser p a b]]
@@ -148,7 +158,7 @@ terminate op next = self where self vars = parens $ op BindCtx{ next, self, vars
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable =
   [ [ fn' . toExprCtx, forAll' (liftA2 (S.>~>)) ]
-  , [ app (S..$) . toExprCtx ]
+  , [ toBindParser $ Infix L locating (pure (S..$)) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       const (S._Unit <$ token (string "Unit"))
     , const (S._Type <$ token (string "Type"))
@@ -200,7 +210,7 @@ tglobal = S.tglobal <$> tname <?> "variable"
 
 exprTable :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Table (Facet p) expr expr
 exprTable =
-  [ [ app (S.$$) . toExprCtx ]
+  [ [ toBindParser $ Infix L locating (pure (S.$$)) ]
   , [ lam'
     , vars
     ]
