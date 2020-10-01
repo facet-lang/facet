@@ -111,8 +111,8 @@ data ExprCtx p a = ExprCtx
   , next :: p a
   }
 
--- | Operators are parsers parameterized by self & the next rule.
-type Operator p a = p a -> p a -> p a
+-- | Operators are parsers parameterized by some expression context.
+type Operator p a = ExprCtx p a -> p a
 type Table p a = [[Operator p a]]
 
 -- | Build a parser for a Table.
@@ -122,7 +122,7 @@ build ts = go
   go = foldr ($) (parens go) (map choiceOrNextP ts)
   choiceOrNextP ps nextP = go
     where
-    go = choice $ map (\ p -> p go nextP) ps ++ [nextP]
+    go = choice $ map (\ p -> p ExprCtx{ self = go, next = nextP }) ps ++ [nextP]
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty
 typeTable =
@@ -130,7 +130,7 @@ typeTable =
   ]
 
 atom' :: p ty -> Operator p ty
-atom' var _self _next = var
+atom' var _ctx = var
 
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
