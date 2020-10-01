@@ -174,11 +174,8 @@ forAll'
   -> BindParser (Facet p) ty res
 forAll' (>=>) BindCtx{ next, vars } = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
-  let loop :: Facet p ty -> [S.TName] -> Facet p res
-      loop vars = \case
-        []   -> next vars
-        i:is -> bind (pure i) $ \ v -> pure (v S.::: ty) >=> (loop (S.tbound v <$ variable i <|> vars) is)
-  arrow *> loop vars names
+  let loop i rest vars = bind (pure i) $ \ v -> pure (v S.::: ty) >=> rest (S.tbound v <$ variable i <|> vars)
+  arrow *> foldr loop next names vars
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
