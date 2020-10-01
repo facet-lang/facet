@@ -124,8 +124,8 @@ typeTable =
   [
   ]
 
-tatom' :: p ty -> Operator p ty
-tatom' var _self _next = var
+atom' :: p ty -> Operator p ty
+atom' var _self _next = var
 
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
