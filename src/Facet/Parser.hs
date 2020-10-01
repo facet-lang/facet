@@ -224,10 +224,10 @@ atom var = locating
   prd ts = foldl1 (S.**) ts
 
 product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Operator p expr expr
-product (**) ExprCtx{ next, self, vars } = locating $ (**) <$> self vars <* comma <*> next vars
+product (**) ExprCtx{ next, vars } = locating $ next vars `chainl1` ((**) <$ comma)
 
 app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> Operator p expr expr
-app ($$) ExprCtx{ next, self, vars } = locating $ ($$) <$> self vars <*> next vars
+app ($$) ExprCtx{ next, vars } = locating $ next vars `chainl1` pure ($$)
 
 
 name, _hname :: (Monad p, TokenParsing p) => p S.EName
