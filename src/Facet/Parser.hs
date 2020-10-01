@@ -107,19 +107,19 @@ forAll (>=>) k tvar = locating $ do
   arrow *> loop tvar names
 
 
-data ExprCtx p a = ExprCtx
-  { root :: p a -> p a
-  , self :: p a -> p a
-  , next :: p a -> p a
+data ExprCtx p a b = ExprCtx
+  { root :: p a -> p b
+  , self :: p a -> p b
+  , next :: p a -> p b
   , vars :: p a
   }
 
 -- | Operators are parsers parameterized by some expression context and the in-scope variables.
-type Operator p a = ExprCtx p a -> p a
-type Table p a = [[Operator p a]]
+type Operator p a b = ExprCtx p a b -> p b
+type Table p a b = [[Operator p a b]]
 
 -- | Build a parser for a Table.
-build :: TokenParsing p => Table p a -> p a -> p a
+build :: TokenParsing p => Table p a b -> p a -> p b
 build ts = root
   where
   root = foldr (choiceOrNextP root) (parens . root) ts
@@ -127,12 +127,12 @@ build ts = root
     where
     self = foldr (\ p rest vars -> p ExprCtx{ root, self, next, vars } <|> rest vars) next ps
 
-typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty
+typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable =
   [ [  ]
   ]
 
-atom' :: Operator p a
+atom' :: Operator p a a
 atom' = vars
 
 
