@@ -96,6 +96,7 @@ sigTable tvars =
 
 tsig :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Facet p decl
 tsig = build tsigTable (\ _ vars -> sig vars global)
+
 sig :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Facet p expr -> Facet p decl
 sig tvars = build (sigTable tvars) (\ _ vars -> (S..=) <$> fn tvars <*> expr_ vars)
 
