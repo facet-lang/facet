@@ -108,6 +108,7 @@ forAll (>=>) k tvar = locating $ do
 
 -- | Operators are parsers parameterized by self & the next rule.
 type Operator p a = p a -> p a -> p a
+type Table p a = [[Operator p a]]
 
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
