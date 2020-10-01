@@ -118,7 +118,7 @@ type Operator p a b = BindCtx p a b -> p b
 type Table p a b = [[Operator p a b]]
 
 -- | Build a parser for a Table.
-build :: TokenParsing p => Table p a b -> (p a -> p b) -> (p a -> p b)
+build :: Alternative p => Table p a b -> (p a -> p b) -> (p a -> p b)
 build ts end = root
   where
   root = foldr chain end ts
