@@ -194,7 +194,7 @@ instance C.Expr Print where
 
 instance C.Module Print Print Print where
   module' n b = ann (pretty n ::: pretty "Module") </> braces b
-  n .:. t := b = ann (pretty n ::: t) </> braces b
+  n .:. t := b = ann (pretty n ::: t) </> b
 
 instance S.Module Print Print Print Print where
   n .:. b = group $ ann (pretty n ::: b)
