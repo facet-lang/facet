@@ -155,8 +155,8 @@ instance U.Located Print where
 instance U.Expr Print where
   global = pretty
   -- FIXME: Use _ in binding positions for unused variables
-  lam0 n f = let v = annotate Name (pretty n) in cases v [f v]
-  lam  n f = let v = annotate Name (pretty n) in cases v [f (Left v)]
+  lam0 n f = let v = var (pretty n) in cases v [f v]
+  lam  n f = let v = var (pretty n) in cases v [f (Left v)]
   ($$) = app
 
   unit = pretty "()"
