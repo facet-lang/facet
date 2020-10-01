@@ -119,10 +119,10 @@ type Operator p a b = ExprCtx p a b -> p b
 type Table p a b = NE.NonEmpty (NE.NonEmpty (Operator p a b))
 
 -- | Build a parser for a Table.
-build :: TokenParsing p => Table p a b -> p a -> p b
-build ts = root
+build :: TokenParsing p => Table p a b -> (p a -> p b) -> (p a -> p b)
+build ts end = root
   where
-  root = foldr chain (parens . root) ts
+  root = foldr chain end ts
   chain ps next = self
     where
     self = foldr (\ p rest vars -> p ExprCtx{ self, next, vars } <|> rest vars) next ps
@@ -167,7 +167,7 @@ type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
 
 type_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
-type_ = build typeTable
+type_ = build typeTable (parens . type_)
 
 fn :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 fn tvar = locating $ app (S..$) tatom tvar <**> (flip (S.-->) <$ arrow <*> fn tvar <|> pure id)
