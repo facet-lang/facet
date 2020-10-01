@@ -87,11 +87,11 @@ decl = S.strengthen . locating $ fmap . (S..:.) <$> dname <* colon <*> sig globa
 forAll
   :: forall env ty res p
   .  (Applicative env, S.Type ty, S.Located ty, S.Located res, Monad p, LocationParsing p)
-  => (forall m env
-     . (Applicative m, Applicative env)
-     => m (env (S.TName S.::: ty))
-     -> (forall env' . Applicative env' => S.Extends env env' -> env' ty -> m (env' res))
-     -> m (env res))
+  => (forall env
+     . Applicative env
+     => Facet p (env (S.TName S.::: ty))
+     -> (forall env' . Applicative env' => S.Extends env env' -> env' ty -> Facet p (env' res))
+     -> Facet p (env res))
   -> (forall env' . Applicative env' => S.Extends env env' -> Facet p (env' ty) -> Facet p (env' res))
   -> Facet p (env ty)
   -> Facet p (env res)
