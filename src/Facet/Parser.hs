@@ -119,6 +119,11 @@ build ts = go
     where
     go = choice $ map (\ p -> p go nextP) ps ++ [nextP]
 
+typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty
+typeTable =
+  [
+  ]
+
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
