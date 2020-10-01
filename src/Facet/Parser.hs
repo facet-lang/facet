@@ -129,9 +129,9 @@ toExprCtx :: BindCtx p a a -> ExprCtx p a
 toExprCtx BindCtx{ self, next, vars } = ExprCtx{ self = self vars, next = next vars }
 
 -- | Operators are parsers parameterized by some expression context and the in-scope variables.
-type Operator p a b = BindCtx p a b -> p b
+type BindParser p a b = BindCtx p a b -> p b
 type ExprParser p a = ExprCtx p a -> p a
-type Table p a b = [[Operator p a b]]
+type Table p a b = [[BindParser p a b]]
 
 -- | Build a parser for a Table.
 build :: Alternative p => Table p a b -> ((p a -> p b) -> (p a -> p b)) -> (p a -> p b)
@@ -142,7 +142,7 @@ build ts end = root
     where
     self = foldr (\ p rest vars -> p BindCtx{ self, next, vars } <|> rest vars) next ps
 
-terminate :: TokenParsing p => Operator p a b -> (p a -> p b) -> (p a -> p b)
+terminate :: TokenParsing p => BindParser p a b -> (p a -> p b) -> (p a -> p b)
 terminate op next = self where self vars = parens $ op BindCtx{ next, self, vars }
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
@@ -160,7 +160,7 @@ forAll'
   :: forall ty res p
   .  (S.Type ty, S.Located ty, S.Located res, Monad p, PositionParsing p)
   => (Facet p (Name S.::: ty) -> Facet p res -> Facet p res)
-  -> Operator (Facet p) ty res
+  -> BindParser (Facet p) ty res
 forAll' (>=>) BindCtx{ next, vars } = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
   let loop :: Facet p ty -> [S.TName] -> Facet p res
@@ -217,10 +217,10 @@ expr_ = build exprTable (terminate (product (S.**) . toExprCtx))
 
 -- FIXME: patterns
 -- FIXME: nullary computations
-lam' :: forall p expr . (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Operator (Facet p) expr expr
+lam' :: forall p expr . (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParser (Facet p) expr expr
 lam' = braces . clause
   where
-  clause :: Operator (Facet p) expr expr
+  clause :: BindParser (Facet p) expr expr
   clause BindCtx{ vars } = self vars where self vars = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
 
 
