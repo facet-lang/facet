@@ -157,7 +157,6 @@ instance S.Expr Print where
   bound = var . pretty . N.hint
   -- FIXME: Use _ in binding positions for unused variables
   lam0 n b = cases (var (pretty (N.hint n))) [b]
-  lam  n b = cases (var (pretty (N.hint n))) [b]
   ($$) = app
 
   unit = pretty "()"

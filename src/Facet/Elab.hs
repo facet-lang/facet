@@ -103,7 +103,6 @@ instance (C.Expr expr, Has (Error P.Print) sig m) => S.Expr (Elab m (expr ::: Ty
   global = fmap (first C.global) . fromSynth . global . S.getEName
   bound n = first C.bound <$> fromSynth (localVar n P.evar)
   lam0 n b = fromCheck $ lam0 n (toCheck b)
-  lam _ _ = tbd
   f $$ a = fromSynth $ toSynth f $$ toCheck a
   unit = tbd
   _ ** _ = tbd
