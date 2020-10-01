@@ -27,7 +27,7 @@ class Expr expr where
   global :: EName -> expr
   bound :: Name -> expr
 
-  lam0 :: Name -> expr -> expr
+  lam :: Name -> expr -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
 

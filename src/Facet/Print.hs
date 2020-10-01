@@ -156,7 +156,7 @@ instance S.Expr Print where
   global = var . pretty
   bound = var . pretty . N.hint
   -- FIXME: Use _ in binding positions for unused variables
-  lam0 n b = cases (var (pretty (N.hint n))) [b]
+  lam n b = cases (var (pretty (N.hint n))) [b]
   ($$) = app
 
   unit = pretty "()"
@@ -188,7 +188,7 @@ instance C.Expr Print where
   global = var . pretty
   bound = name evar
   tlam n b = cases (braces (C.bound n)) [b]
-  lam0 n b = cases (C.bound n) [b]
+  lam n b = cases (C.bound n) [b]
   ($$) = app
 
 instance C.Module Print Print Print where

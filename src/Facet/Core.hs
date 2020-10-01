@@ -37,7 +37,7 @@ class Expr expr where
   global :: Text -> expr
   bound :: Name -> expr
   tlam :: Name -> expr -> expr
-  lam0 :: Name -> expr -> expr
+  lam :: Name -> expr -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
 

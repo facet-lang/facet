@@ -15,7 +15,7 @@ data Expr
   = Global T.Text
   | Bound Name
   | TLam FVs Name Expr
-  | Lam0 FVs Name Expr
+  | Lam FVs Name Expr
   | App FVs Expr Expr
 
 instance Scoped Expr where
@@ -23,14 +23,14 @@ instance Scoped Expr where
     Global _   -> IntSet.empty
     Bound  n   -> fvs n
     TLam s _ _ -> s
-    Lam0 s _ _ -> s
+    Lam s _ _  -> s
     App s _ _  -> s
 
 instance C.Expr Expr where
   global = Global
   bound = Bound
   tlam n b = TLam (IntSet.delete (id' n) (fvs b)) n b
-  lam0 n b = Lam0 (IntSet.delete (id' n) (fvs b)) n b
+  lam n b = Lam (IntSet.delete (id' n) (fvs b)) n b
   f $$ a = App (fvs f <> fvs a) f a
 
 interpret :: C.Expr r => Expr -> r
@@ -38,7 +38,7 @@ interpret = \case
   Global n -> C.global n
   Bound n -> C.bound n
   TLam _ n b -> C.tlam n (interpret b)
-  Lam0 _ n b -> C.lam0 n (interpret b)
+  Lam _ n b -> C.lam n (interpret b)
   App _ f a -> interpret f C.$$ interpret a
 
 rename :: Name -> Name -> Expr -> Expr
@@ -52,9 +52,9 @@ rename x y = go
     TLam s z b
       | z == x    -> TLam s z b
       | otherwise -> C.tlam z (go b)
-    Lam0 s z b
-      | z == x    -> Lam0 s z b
-      | otherwise -> C.lam0 z (go b)
+    Lam s z b
+      | z == x    -> Lam s z b
+      | otherwise -> C.lam z (go b)
     App _ f a     -> go f C.$$ go a
 
 subst :: Name -> Expr -> Expr -> Expr
@@ -68,7 +68,7 @@ subst x e = go
     TLam _ n b    -> let n' = prime (hint n) (fvs b <> fvs e)
                          b' = go (rename n n' b)
                      in C.tlam n' b'
-    Lam0 _ n b    -> let n' = prime (hint n) (fvs b <> fvs e)
+    Lam _ n b     -> let n' = prime (hint n) (fvs b <> fvs e)
                          b' = go (rename n n' b)
-                     in C.lam0 n' b'
+                     in C.lam n' b'
     App _ f a     -> go f C.$$ go a

@@ -27,7 +27,7 @@ module Facet.Elab
   -- * Expressions
 , ($$)
 , tlam
-, lam0
+, lam
 ) where
 
 import           Control.Algebra
@@ -102,7 +102,7 @@ instance Has (Error P.Print) sig m => S.Type (Elab m (Type ::: Type)) where
 instance (C.Expr expr, Has (Error P.Print) sig m) => S.Expr (Elab m (expr ::: Type)) where
   global = fmap (first C.global) . fromSynth . global . S.getEName
   bound n = first C.bound <$> fromSynth (localVar n P.evar)
-  lam0 n b = fromCheck $ lam0 n (toCheck b)
+  lam n b = fromCheck $ lam n (toCheck b)
   f $$ a = fromSynth $ toSynth f $$ toCheck a
   unit = tbd
   _ ** _ = tbd
@@ -122,7 +122,7 @@ instance (C.Expr expr, Has (Error P.Print) sig m) => S.Decl (Elab m (expr ::: Ty
   (n ::: t) >-> b = Elab $ \ _T -> do
     _T ::: _ <- runElab t (Just C._Type)
     b' ::: _B <- n ::: _T |- runElab b Nothing
-    pure $ C.lam0 n b' ::: (_T C.--> _B)
+    pure $ C.lam n b' ::: (_T C.--> _B)
 
 instance (C.Expr expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
   n .:. d = do
@@ -239,10 +239,10 @@ tlam n b = Check $ \ ty -> do
   (n', _T, _B) <- expectQuantifiedType (fromWords "when checking type lambda") ty
   n' ::: _T |- C.tlam n <$> check (b ::: _B)
 
-lam0 :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
-lam0 n b = Check $ \ ty -> do
+lam :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
+lam n b = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
-  n ::: _A |- C.lam0 n <$> check (b ::: _B)
+  n ::: _A |- C.lam n <$> check (b ::: _B)
 
 
 -- Context
