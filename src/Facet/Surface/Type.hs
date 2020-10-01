@@ -3,12 +3,12 @@ module Facet.Surface.Type
 ( Type(..)
 ) where
 
-import Data.Text (Text)
-import Facet.Name
-import Facet.Syntax
+import           Facet.Name
+import qualified Facet.Surface as S
+import           Facet.Syntax
 
 data Type
-  = Free Text
+  = Free S.TName
   | Bound Name
   | Type
   | Unit
@@ -17,7 +17,22 @@ data Type
   | Type :-> Type
   | Type :*  Type
 
-infixr 0 :=>
+infixr 1 :=>
 infixl 9 :$
-infixr 0 :->
+infixr 2 :->
 infixl 7 :*
+
+instance S.Type Type where
+  tglobal = Free
+  tbound = Bound
+
+  (>~>) = (:=>)
+
+  (-->) = (:->)
+
+  (.$) = (:$)
+
+  (.*) = (:*)
+
+  _Unit = Unit
+  _Type = Type
