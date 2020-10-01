@@ -16,7 +16,8 @@ module Facet.Elab
 , switch
 , unify
   -- * General
-, global
+, tglobal
+, eglobal
   -- * Types
 , _Type
 , _Unit
@@ -100,7 +101,7 @@ instance Has (Error P.Print) sig m => S.Type (Elab m (Type ::: Type)) where
   _Type = fromSynth _Type
 
 instance (C.Expr expr, Has (Error P.Print) sig m) => S.Expr (Elab m (expr ::: Type)) where
-  global = fmap (first C.global) . fromSynth . global . S.getEName
+  global = fromSynth . eglobal
   bound n = fromSynth (ebound n)
   lam n b = fromCheck $ lam n (toCheck b)
   f $$ a = fromSynth $ toSynth f $$ toCheck a
@@ -169,9 +170,9 @@ unify t1 t2 = go t1 t2
 
 -- General
 
-global :: Has (Error P.Print) sig m => T.Text -> Synth m T.Text
-global s = Synth $ asks (Map.lookup s) >>= \case
-  Just b  -> pure (s ::: b)
+eglobal :: (C.Expr expr, Has (Error P.Print) sig m) => S.EName -> Synth m expr
+eglobal (S.EName s) = Synth $ asks (Map.lookup s) >>= \case
+  Just b  -> pure (C.global s ::: b)
   Nothing -> freeVariable (pretty s)
 
 tglobal :: (C.Type ty, Has (Error P.Print) sig m) => S.TName -> Synth m ty
