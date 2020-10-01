@@ -4,13 +4,10 @@ module Facet.Core
 ( Type(..)
 , Expr(..)
 , Module(..)
-, (>=>)
-, tlam'
-, lam0'
 ) where
 
 import Data.Text (Text)
-import Facet.Name (Name, Scoped, binder)
+import Facet.Name (Name)
 import Facet.Syntax ((:::)(..), (:=)(..))
 
 class Type ty where
@@ -34,10 +31,6 @@ class Type ty where
 
   -- FIXME: tupling/unit should take a list of types
 
-(>=>) :: (Scoped ty, Type ty) => (Text ::: ty) -> (ty -> ty) -> ty
-(n ::: t) >=> b = binder tbound ((==>) . (::: t)) n b
-
-infixr 1 >=>
 
 class Expr expr where
   -- FIXME: qualified names
@@ -47,12 +40,6 @@ class Expr expr where
   lam0 :: Name -> expr -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
-
-tlam' :: (Scoped expr, Expr expr) => Text -> (expr -> expr) -> expr
-tlam' = binder bound tlam
-
-lam0' :: (Scoped expr, Expr expr) => Text -> (expr -> expr) -> expr
-lam0' = binder bound lam0
 
 
 class Module expr ty mod | mod -> expr ty where
