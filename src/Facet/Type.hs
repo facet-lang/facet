@@ -96,15 +96,17 @@ rename x y = go
     l :*  r       -> go l :*  go r
 
 subst :: Name -> Type -> Type -> Type
-subst x e = \case
-  Type            -> Type
-  Unit            -> Unit
-  (n ::: t) :=> b -> let n' = prime (hint n) (fvs b <> fvs e)
-                         b' = subst x e (rename n n' b)
-                     in (n' ::: subst x e t) C.==> b'
-  f :$  a
-    | Left f <- f
-    , f == x      -> e $$* (subst x e <$> a)
-    | otherwise   -> f :$  (subst x e <$> a)
-  a :-> b         -> subst x e a :-> subst x e b
-  l :*  r         -> subst x e l :*  subst x e r
+subst x e = go
+  where
+  go =  \case
+    Type            -> Type
+    Unit            -> Unit
+    (n ::: t) :=> b -> let n' = prime (hint n) (fvs b <> fvs e)
+                           b' = go (rename n n' b)
+                       in (n' ::: go t) C.==> b'
+    f :$  a
+      | Left f <- f
+      , f == x      -> e $$* (go <$> a)
+      | otherwise   -> f :$  (go <$> a)
+    a :-> b         -> go a :-> go b
+    l :*  r         -> go l :*  go r
