@@ -293,6 +293,9 @@ freeVariable v = err $ fromWords "variable not in scope:" <+> v
 
 -- Patterns
 
+expectChecked :: Has (Error P.Print) sig m => Maybe Type -> m Type
+expectChecked = maybe couldNotSynthesize pure
+
 expectQuantifiedType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Name, Type, Type)
 expectQuantifiedType s = \case
   (n ::: _T) :=> _B -> pure (n, _T, _B)
