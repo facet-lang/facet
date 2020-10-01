@@ -53,7 +53,6 @@ library
     Facet.Print
     Facet.Signature
     Facet.Surface
-    Facet.Surface.Lifted
     Facet.Syntax
     Facet.Type
   other-modules:

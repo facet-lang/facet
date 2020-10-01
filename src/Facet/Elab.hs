@@ -34,13 +34,12 @@ import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Effect.Parser.Span (Span(..))
-import           Control.Monad.Fix
 import           Data.Bifunctor (first)
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Facet.Core.Lifted as C
-import           Facet.Name (Name(..), Scoped, binderM)
+import           Facet.Name (Name(..), prettyNameWith)
 import qualified Facet.Print as P
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -60,10 +59,10 @@ runEnv :: Env -> Context -> EnvC m a -> m a
 runEnv e c m = runEnvC m e c
 
 newtype EnvC m a = EnvC { runEnvC :: Env -> Context -> m a }
-  deriving (Algebra (Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Env (ReaderC Context m)
+  deriving (Algebra (Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Env (ReaderC Context m)
 
 newtype Elab m a = Elab { runElab :: Maybe Type -> EnvC m a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (EnvC m)
+  deriving (Algebra (Reader (Maybe Type) :+: Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC (Maybe Type) (EnvC m)
 
 fromCheck :: Has (Error P.Print) sig m => Check m a -> Elab m (a ::: Type)
 fromCheck m = Elab $ \case
@@ -88,9 +87,10 @@ toSynth (Elab m) = Synth (m Nothing)
 instance Has (Reader Span) sig m => S.Located (Elab m a) where
   locate = local . const
 
-instance (Has (Error P.Print) sig m, MonadFix m) => S.Type (Elab m (Type ::: Type)) where
+instance Has (Error P.Print) sig m => S.Type (Elab m (Type ::: Type)) where
   tglobal = fmap (first C.tglobal) . fromSynth . global . S.getTName
-  (n ::: t) >~> b = fromSynth $ (S.getTName n ::: toCheck t) >~> toCheck . b . pure
+  tbound n = first C.tbound <$> fromSynth (localVar n P.tvar)
+  (n ::: t) >~> b = fromSynth $ (n ::: toCheck t) >~> toCheck b
   a --> b = fromSynth $ toCheck a --> toCheck b
   f .$  a = fromSynth $ toSynth f .$  toCheck a
   l .*  r = fromSynth $ toCheck l .*  toCheck r
@@ -98,16 +98,17 @@ instance (Has (Error P.Print) sig m, MonadFix m) => S.Type (Elab m (Type ::: Typ
   _Unit = fromSynth _Unit
   _Type = fromSynth _Type
 
-instance (C.Expr expr, Scoped expr, Has (Error P.Print) sig m, MonadFix m) => S.Expr (Elab m (expr ::: Type)) where
+instance (C.Expr expr, Has (Error P.Print) sig m) => S.Expr (Elab m (expr ::: Type)) where
   global = fmap (first C.global) . fromSynth . global . S.getEName
-  lam0 n f = fromCheck $ lam0M (S.getEName n) (toCheck . f . pure)
+  bound n = first C.bound <$> fromSynth (localVar n P.evar)
+  lam0 n b = fromCheck $ lam0 n (toCheck b)
   lam _ _ = tbd
   f $$ a = fromSynth $ toSynth f $$ toCheck a
   unit = tbd
   _ ** _ = tbd
 
 -- FIXME: this should probably elaborate to nested elaborators, one at type level, producing one at expression level
-instance (C.Expr expr, Scoped expr, Has (Error P.Print) sig m, MonadFix m) => S.Decl (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) where
+instance (C.Expr expr, Has (Error P.Print) sig m) => S.Decl (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) where
   t .= b = Elab $ \ _T -> do -- FIXME: what are we supposed to do with _T? what’s the type of a declaration anyway?
     _T' ::: _ <- runElab t (Just C._Type)
     b' ::: _ <- runElab b (Just _T')
@@ -115,22 +116,22 @@ instance (C.Expr expr, Scoped expr, Has (Error P.Print) sig m, MonadFix m) => S.
 
   (n ::: t) >=> b = Elab $ \ _T -> do
     _T ::: _ <- runElab t (Just C._Type)
-    (n, b' ::: _B) <- runElab (binderM (pure . (::: _T) . C.tbound) (,) (S.getTName n) b) Nothing
+    b' ::: _B <- n ::: _T |- runElab b Nothing
     pure $ C.tlam n b' ::: ((n ::: _T) C.==> _B)
 
   (n ::: t) >-> b = Elab $ \ _T -> do
     _T ::: _ <- runElab t (Just C._Type)
-    (n, b' ::: _B) <- runElab (binderM (pure . (::: _T) . C.bound) (,) (S.getEName n) b) Nothing
+    b' ::: _B <- n ::: _T |- runElab b Nothing
     pure $ C.lam0 n b' ::: (_T C.--> _B)
 
-instance (C.Expr expr, Scoped expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig m, MonadFix m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
+instance (C.Expr expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
   n .:. d = do
     e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
     pure $ S.getDName n C..:. e := interpret _T
 
 
 newtype Check m a = Check { runCheck :: Type -> EnvC m a }
-  deriving (Algebra (Reader Type :+: Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC Type (EnvC m)
+  deriving (Algebra (Reader Type :+: Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Type (EnvC m)
 
 newtype Synth m a = Synth { runSynth :: EnvC m (a ::: Type) }
 
@@ -173,6 +174,11 @@ global s = Synth $ asks (Map.lookup s) >>= \case
   Just b  -> pure (s ::: b)
   Nothing -> freeVariable (pretty s)
 
+localVar :: Has (Error P.Print) sig m => Name -> (Int -> P.Print) -> Synth m Name
+localVar n var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
+  Just b  -> pure (n ::: b)
+  Nothing -> freeVariable (prettyNameWith var n)
+
 app :: Has (Error P.Print) sig m => (a -> a -> a) -> Synth m a -> Check m a -> Synth m a
 app ($$) f a = Synth $ do
   f' ::: _F <- runSynth f
@@ -211,13 +217,13 @@ a --> b = Synth $ do
 infixr 2 -->
 
 (>~>)
-  :: MonadFix m
-  => (T.Text ::: Check m Type)
-  -> ((Type ::: Type) -> Check m Type)
+  :: Algebra sig m
+  => (Name ::: Check m Type)
+  -> Check m Type
   -> Synth m Type
 (n ::: t) >~> b = Synth $ do
-  t' <- check (t ::: C._Type)
-  ftb' <- pure (n ::: interpret t') C.>=> \ v -> check (b (v ::: t') ::: C._Type)
+  _T <- check (t ::: C._Type)
+  ftb' <- n ::: _T |- ((n ::: _T) C.==>) <$> check (b ::: C._Type)
   pure $ ftb' ::: C._Type
 
 infixr 1 >~>
@@ -237,11 +243,6 @@ lam0 :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Chec
 lam0 n b = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
   n ::: _A |- C.lam0 n <$> check (b ::: _B)
-
-lam0M :: (C.Expr expr, Scoped expr, Has (Error P.Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
-lam0M n f = Check $ \ ty -> do
-  (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
-  C.lam0M n $ \ v -> check (f (v ::: _A) ::: _B)
 
 
 -- Context

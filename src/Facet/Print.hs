@@ -154,9 +154,10 @@ instance S.Located Print where
 
 instance S.Expr Print where
   global = var . pretty
+  bound = var . pretty . N.hint
   -- FIXME: Use _ in binding positions for unused variables
-  lam0 n f = let v = var (pretty n) in cases v [f v]
-  lam  n f = let v = var (pretty n) in cases v [f (Left v)]
+  lam0 n b = cases (var (pretty (N.hint n))) [b]
+  lam  n b = cases (var (pretty (N.hint n))) [b]
   ($$) = app
 
   unit = pretty "()"
@@ -164,8 +165,9 @@ instance S.Expr Print where
 
 instance S.Type Print where
   tglobal = var . pretty
+  tbound = var . pretty . N.hint
   -- FIXME: combine quantification over type variables of the same kind
-  (n ::: t) >~> b = let v' = var (pretty n) in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (b v')
+  (n ::: t) >~> b = group (align (braces (space <> ann (var (pretty (N.hint n)) ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
   (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
   (.$) = app
@@ -202,9 +204,9 @@ instance S.Decl Print Print Print where
   t .= b = t </> b
 
     -- FIXME: combine quantification over type variables of the same kind
-  (n ::: t) >=> b = let v' = var (pretty n) in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (b v')
+  (n ::: t) >=> b = group (align (braces (space <> ann (var (pretty (N.hint n)) ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
-  (n ::: t) >-> f = let v' = var (pretty n) in group (align (parens (ann (v' ::: t)))) </> arrow <+> prec FnR (f v')
+  (n ::: t) >-> b = group (align (parens (ann (var (pretty (N.hint n)) ::: t)))) </> arrow <+> prec FnR b
 
 app :: Print -> Print -> Print
 l `app` r = askingPrec $ \case

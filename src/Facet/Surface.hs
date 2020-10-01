@@ -16,6 +16,7 @@ module Facet.Surface
 import Control.Effect.Parser.Span (Span)
 import Data.String (IsString(..))
 import Data.Text (Text)
+import Facet.Name
 import Facet.Syntax ((:::)(..))
 import Prettyprinter (Pretty)
 
@@ -24,9 +25,10 @@ newtype EName = EName { getEName :: Text }
 
 class Expr expr where
   global :: EName -> expr
+  bound :: Name -> expr
 
-  lam0 :: EName -> (expr -> expr) -> expr
-  lam :: EName -> (Either expr (expr, expr -> expr) -> expr) -> expr
+  lam0 :: Name -> expr -> expr
+  lam :: Name -> expr -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
 
@@ -41,8 +43,9 @@ newtype TName = TName { getTName :: Text }
 
 class Type ty where
   tglobal :: TName -> ty
+  tbound :: Name -> ty
 
-  (>~>) :: (TName ::: ty) -> (ty -> ty) -> ty
+  (>~>) :: (Name ::: ty) -> ty -> ty
   infixr 1 >~>
 
   (-->) :: ty -> ty -> ty
@@ -71,10 +74,10 @@ class (Expr expr, Type ty) => Decl expr ty decl | decl -> ty expr where
   infix 1 .=
 
   -- | Universal quantification.
-  (>=>) :: (TName ::: ty) -> (ty -> decl) -> decl
+  (>=>) :: (Name ::: ty) -> decl -> decl
   infixr 1 >=>
 
-  (>->) :: (EName ::: ty) -> (expr -> decl) -> decl
+  (>->) :: (Name ::: ty) -> decl -> decl
   infixr 1 >->
 
 

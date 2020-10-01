@@ -19,7 +19,8 @@ import           Control.Carrier.Reader
 import           Data.Char (isSpace)
 import           Data.Coerce
 import           Data.Text (Text)
-import qualified Facet.Surface.Lifted as S
+import           Facet.Name
+import qualified Facet.Surface as S
 import           Prelude hiding (lines, null, span)
 import           Text.Parser.Char
 import           Text.Parser.Combinators
@@ -42,6 +43,9 @@ import           Text.Parser.Token.Style
 
 runFacet :: Int -> Facet m a -> m a
 runFacet i (Facet m) = m i
+
+bind :: (Monad m, Coercible t Text) => Facet m t -> (Name -> Facet m a) -> Facet m a
+bind n b = n >>= \ n -> Facet $ \ i -> runFacet (i + 1) (b (Name (coerce n) i))
 
 newtype Facet m a = Facet (Int -> m a)
   deriving (Alternative, Applicative, Functor, Monad) via ReaderC Int m
@@ -73,89 +77,85 @@ lift = Facet . const
 
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, LocationParsing p) => Facet p mod
-decl = S.strengthen . locating $ fmap . (S..:.) <$> dname <* colon <*> sig global S.refl tglobal
+decl = locating $ (S..:.) <$> dname <* colon <*> sig global tglobal
   where
-  sig :: Applicative env' => Facet p (env' expr) -> S.Extends env env' -> Facet p (env' ty) -> Facet p (env' decl)
-  sig var _ tvar = try (bind var tvar) <|> forAll (S.>=>) (\ env -> sig (S.castF env var) env) tvar <|> liftA2 (S..=) <$> type_ tvar <*> expr_ var
+  sig :: Facet p expr -> Facet p ty -> Facet p decl
+  sig var tvar = try (bind var tvar) <|> forAll (liftA2 (S.>=>)) (sig var) tvar <|> (S..=) <$> type_ tvar <*> expr_ var
 
-  bind :: Applicative env' => Facet p (env' expr) -> Facet p (env' ty) -> Facet p (env' decl)
+  bind :: Facet p expr -> Facet p ty -> Facet p decl
   bind var tvar = do
     (i, t) <- parens ((,) <$> name <* colon <*> type_ tvar)
-    pure ((i S.:::) <$> t) S.>-> \ env t -> arrow *> sig (t <$ variable i <|> S.castF env var) S.refl (S.castF env tvar)
+    Facet.Parser.bind (pure i) $ \ v -> ((v S.::: t) S.>->) <$ arrow <*> sig (S.bound v <$ variable i <|> var) tvar
 
 
 forAll
-  :: forall env ty res p
-  .  (Applicative env, S.Type ty, S.Located ty, S.Located res, Monad p, LocationParsing p)
-  => (forall env
-     . Applicative env
-     => Facet p (env (S.TName S.::: ty))
-     -> (forall env' . Applicative env' => S.Extends env env' -> env' ty -> Facet p (env' res))
-     -> Facet p (env res))
-  -> (forall env' . Applicative env' => S.Extends env env' -> Facet p (env' ty) -> Facet p (env' res))
-  -> Facet p (env ty)
-  -> Facet p (env res)
+  :: forall ty res p
+  .  (S.Type ty, S.Located ty, S.Located res, Monad p, LocationParsing p)
+  => (Facet p (Name S.::: ty) -> Facet p res -> Facet p res)
+  -> (Facet p ty -> Facet p res)
+  -> Facet p ty
+  -> Facet p res
 forAll (>=>) k tvar = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ tvar)
-  let loop :: Applicative env' => S.Extends env env' -> Facet p (env' ty) -> Facet p (env' ty) -> [S.TName] -> Facet p (env' res)
-      loop env ty tvar = \case
-        []   -> k env tvar
-        i:is -> (fmap (i S.:::) <$> ty) >=> \ env' t -> loop (env S.>>> env') (S.castF env' ty) (t <$ variable i <|> S.castF env' tvar) is
-  arrow *> loop S.refl (pure ty) tvar names
+  let loop :: Facet p ty -> [S.TName] -> Facet p res
+      loop tvar = \case
+        []   -> k tvar
+        i:is -> bind (pure i) $ \ v -> pure (v S.::: ty) >=> (loop (S.tbound v <$ variable i <|> tvar) is)
+  arrow *> loop tvar names
 
 
 type' :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => Facet p ty
-type' = S.strengthen (type_ tglobal)
+type' = type_ tglobal
 
-type_ :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => Facet p (env ty) -> Facet p (env ty)
-type_ tvar = fn tvar <|> forAll (S.>~>) (const type_) tvar <?> "type"
+type_ :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => Facet p ty -> Facet p ty
+type_ tvar = fn tvar <|> forAll (liftA2 (S.>~>)) type_ tvar <?> "type"
 
-fn :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => Facet p (env ty) -> Facet p (env ty)
-fn tvar = locating $ app (S..$) tatom tvar <**> (flip (liftA2 (S.-->)) <$ arrow <*> fn tvar <|> pure id)
+fn :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => Facet p ty -> Facet p ty
+fn tvar = locating $ app (S..$) tatom tvar <**> (flip (S.-->) <$ arrow <*> fn tvar <|> pure id)
 
-tatom :: (Applicative env, S.Type ty, S.Located ty, Monad p, LocationParsing p) => Facet p (env ty) -> Facet p (env ty)
+tatom :: (S.Type ty, S.Located ty, Monad p, LocationParsing p) => Facet p ty -> Facet p ty
 tatom tvar = locating
   $   parens (prd <$> sepBy (type_ tvar) comma)
   -- FIXME: we should treat Unit & Type as globals.
-  <|> pure S._Unit <$ token (string "Unit")
-  <|> pure S._Type <$ token (string "Type")
+  <|> S._Unit <$ token (string "Unit")
+  <|> S._Type <$ token (string "Type")
   <|> tvar
   where
-  prd [] = pure S._Unit
-  prd ts = foldl1 (liftA2 (S..*)) ts
+  prd [] = S._Unit
+  prd ts = foldl1 (S..*) ts
 
-tglobal :: (S.Type ty, Monad p, Applicative env, TokenParsing p) => Facet p (env ty)
-tglobal = pure . S.tglobal <$> tname <?> "variable"
+tglobal :: (S.Type ty, Monad p, TokenParsing p) => Facet p ty
+tglobal = S.tglobal <$> tname <?> "variable"
 
 
 expr :: (S.Expr expr, S.Located expr, Monad p, LocationParsing p) => Facet p expr
-expr = S.strengthen (expr_ global)
+expr = expr_ global
 
-global :: (S.Expr expr, Monad p, Applicative env, TokenParsing p) => Facet p (env expr)
-global = pure . S.global <$> name <?> "variable"
+global :: (S.Expr expr, Monad p, TokenParsing p) => Facet p expr
+global = S.global <$> name <?> "variable"
 
-expr_ :: forall p env expr . (Applicative env, S.Expr expr, S.Located expr, Monad p, LocationParsing p) => Facet p (env expr) -> Facet p (env expr)
+expr_ :: forall p expr . (S.Expr expr, S.Located expr, Monad p, LocationParsing p) => Facet p expr -> Facet p expr
 expr_ = app (S.$$) atom
 
 -- FIXME: patterns
 -- FIXME: nullary computations
-lam :: forall p env expr . (Applicative env, S.Expr expr, S.Located expr, Monad p, LocationParsing p) => Facet p (env expr) -> Facet p (env expr)
+lam :: forall p expr . (S.Expr expr, S.Located expr, Monad p, LocationParsing p) => Facet p expr -> Facet p expr
 lam var = braces $ clause var
   where
-  clause :: Applicative env' => Facet p (env' expr) -> Facet p (env' expr)
-  clause var = locating $ name >>= \ i -> S.lam0 (pure (pure i)) (\ env v -> let var' = v <$ variable i <|> S.castF env var in clause var' <|> arrow *> expr_ var') <?> "clause"
+  clause :: Facet p expr -> Facet p expr
+  clause var = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> var in clause var' <|> arrow *> expr_ var' <?> "clause"
 
-atom :: (Applicative env, S.Expr expr, S.Located expr, Monad p, LocationParsing p) => Facet p (env expr) ->Facet  p (env expr)
+atom :: (S.Expr expr, S.Located expr, Monad p, LocationParsing p) => Facet p expr -> Facet p expr
 atom var = locating
   $   lam var
   <|> parens (prd <$> sepBy (expr_ var) comma)
   <|> var
   where
-  prd [] = pure S.unit
-  prd ts = foldl1 (liftA2 (S.**)) ts
+  prd [] = S.unit
+  prd ts = foldl1 (S.**) ts
 
-app :: (Applicative env, LocationParsing p, S.Located expr) => (expr -> expr -> expr) -> (Facet p (env expr) -> Facet p (env expr)) -> (Facet p (env expr) -> Facet p (env expr))
-app ($$) atom tvar = locating $ foldl (liftA2 ($$)) <$> atom tvar <*> many (atom tvar)
+app :: (LocationParsing p, S.Located expr) => (expr -> expr -> expr) -> (Facet p expr -> Facet p expr) -> (Facet p expr -> Facet p expr)
+app ($$) atom tvar = locating $ foldl ($$) <$> atom tvar <*> many (atom tvar)
 
 
 name, _hname :: (Monad p, TokenParsing p) => Facet p S.EName
@@ -209,5 +209,5 @@ variable :: (LocationParsing p, Coercible t Text) => t -> p ()
 variable s = token (text (coerce s) *> notFollowedBy alphaNum)
 
 
-locating :: (LocationParsing p, S.Located a, Functor env) => Facet p (env a) -> Facet p (env a)
-locating = fmap (uncurry (fmap . S.locate)) . spanned
+locating :: (LocationParsing p, S.Located a) => Facet p a -> Facet p a
+locating = fmap (uncurry S.locate) . spanned
