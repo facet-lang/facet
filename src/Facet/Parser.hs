@@ -212,7 +212,10 @@ product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Oper
 product (**) BindCtx{ next, self, vars } = locating $ (**) <$> self vars <* comma <*> next vars
 
 app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> Operator p expr expr
-app ($$) BindCtx{ next, vars } = locating $ ($$) <$> next vars <*> next vars
+app ($$) BindCtx{ next, vars } = go
+  where
+  p = next vars
+  go = locating $ p <**> (flip ($$) <$> go <|> pure id)
 
 
 name, _hname :: (Monad p, TokenParsing p) => p S.EName
