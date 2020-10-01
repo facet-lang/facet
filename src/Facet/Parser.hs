@@ -228,10 +228,10 @@ product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Expr
 product (**) ExprCtx{ next, self } = locating $ (**) <$> self <* comma <*> next
 
 app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> ExprParser p expr
-app ($$) ExprCtx{ next } = chainl1_ next locating ($$)
+app ($$) ExprCtx{ next } = chainl1_ next locating (pure ($$))
 
-chainl1_ :: Alternative m => m a -> (m a -> m a) -> (a -> a -> a) -> m a
-chainl1_ p wrap op = go where go = wrap $ p <**> (flip op <$> go <|> pure id)
+chainl1_ :: Alternative m => m a -> (m a -> m a) -> m (a -> a -> a) -> m a
+chainl1_ p wrap op = go where go = wrap $ p <**> (flip <$> op <*> go <|> pure id)
 
 
 name, _hname :: (Monad p, TokenParsing p) => p S.EName
