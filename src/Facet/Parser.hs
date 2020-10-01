@@ -119,9 +119,9 @@ type Table p a = [[Operator p a]]
 
 -- | Build a parser for a Table.
 build :: TokenParsing p => Table p a -> p a
-build ts = go
+build ts = root
   where
-  go = foldr (choiceOrNextP go) (parens go) ts
+  root = foldr (choiceOrNextP root) (parens root) ts
   choiceOrNextP root ps next = self
     where
     self = foldr (\ p rest -> p ExprCtx{ root, self, next } <|> rest) next ps
