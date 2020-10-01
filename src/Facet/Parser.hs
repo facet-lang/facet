@@ -109,8 +109,7 @@ forAll (>=>) k tvar = locating $ do
 
 
 data ExprCtx p a b = ExprCtx
-  { root :: p a -> p b
-  , self :: p a -> p b
+  { self :: p a -> p b
   , next :: p a -> p b
   , vars :: p a
   }
@@ -126,7 +125,7 @@ build ts = root
   root = foldr chain (parens . root) ts
   chain ps next = self
     where
-    self = foldr (\ p rest vars -> p ExprCtx{ root, self, next, vars } <|> rest vars) next ps
+    self = foldr (\ p rest vars -> p ExprCtx{ self, next, vars } <|> rest vars) next ps
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable = NE.fromList
