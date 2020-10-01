@@ -1,4 +1,6 @@
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -111,6 +113,11 @@ data BindCtx p a b = BindCtx
   { self :: p a -> p b
   , next :: p a -> p b
   , vars :: p a
+  }
+
+data ExprCtx p a = ExprCtx
+  { self :: p a
+  , next :: p a
   }
 
 -- | Operators are parsers parameterized by some expression context and the in-scope variables.
