@@ -6,7 +6,6 @@ module Facet.Name
 , __
 , FVs
 , Scoped(..)
-, binder
 , binderM
 , instantiate
 ) where
@@ -62,18 +61,6 @@ instance Scoped IntSet.IntSet where
 
 instance Scoped Name where
   fvs = IntSet.singleton . id'
-
-binder
-  :: Scoped t
-  => (Name -> d)
-  -> (Name -> t -> r)
-  -> T.Text
-  -> (d -> t)
-  -> r
-binder bound ctor n e = ctor n' b'
-  where
-  b' = e (bound n')
-  n' = prime n b'
 
 binderM
   :: (Scoped t, MonadFix m)
