@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Text.Parser.Location
+module Text.Parser.Position
 ( LocationParsing(..)
 , Pos
 , Span

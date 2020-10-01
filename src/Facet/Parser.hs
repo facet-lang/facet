@@ -24,7 +24,7 @@ import qualified Facet.Surface as S
 import           Prelude hiding (lines, null, span)
 import           Text.Parser.Char
 import           Text.Parser.Combinators
-import           Text.Parser.Location
+import           Text.Parser.Position
 import           Text.Parser.Token
 import           Text.Parser.Token.Highlight
 import           Text.Parser.Token.Style
