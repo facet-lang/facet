@@ -142,7 +142,7 @@ terminate op next = self where self vars = parens $ op BindCtx{ next, self, vars
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable =
   [ [ fn', forAll' (liftA2 (S.>~>)) ]
-  , [ app (S..$) ]
+  , [ app (S..$) . toExprCtx ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       const (S._Unit <$ token (string "Unit"))
     , const (S._Type <$ token (string "Type"))
@@ -175,7 +175,7 @@ type_ = build typeTable (terminate (product (S..*)))
 fn :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 fn tvar = locating $ tapp tvar <**> (flip (S.-->) <$ arrow <*> fn tvar <|> pure id)
   where
-  tapp vars = app (S..$) BindCtx{ self = tapp, next = tatom, vars }
+  tapp vars = app (S..$) ExprCtx{ self = tapp vars, next = tatom vars }
 
 tatom :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 tatom tvar = locating
@@ -194,7 +194,7 @@ tglobal = S.tglobal <$> tname <?> "variable"
 
 exprTable :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Table (Facet p) expr expr
 exprTable =
-  [ [ app (S.$$) ]
+  [ [ app (S.$$) . toExprCtx ]
   , [ lam'
     , vars
     ]
@@ -221,11 +221,10 @@ lam' = braces . clause
 product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Operator p expr expr
 product (**) BindCtx{ next, self, vars } = locating $ (**) <$> self vars <* comma <*> next vars
 
-app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> Operator p expr expr
-app ($$) BindCtx{ next, vars } = go
+app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> ExprCtx p expr -> p expr
+app ($$) ExprCtx{ next } = go
   where
-  p = next vars
-  go = locating $ p <**> (flip ($$) <$> go <|> pure id)
+  go = locating $ next <**> (flip ($$) <$> go <|> pure id)
 
 
 name, _hname :: (Monad p, TokenParsing p) => p S.EName
