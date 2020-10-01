@@ -101,7 +101,7 @@ instance Has (Error P.Print) sig m => S.Type (Elab m (Type ::: Type)) where
 
 instance (C.Expr expr, Has (Error P.Print) sig m) => S.Expr (Elab m (expr ::: Type)) where
   global = fmap (first C.global) . fromSynth . global . S.getEName
-  bound n = fromSynth (bound n C.bound P.evar)
+  bound n = fromSynth (ebound n)
   lam n b = fromCheck $ lam n (toCheck b)
   f $$ a = fromSynth $ toSynth f $$ toCheck a
   unit = tbd
@@ -173,6 +173,9 @@ global :: Has (Error P.Print) sig m => T.Text -> Synth m T.Text
 global s = Synth $ asks (Map.lookup s) >>= \case
   Just b  -> pure (s ::: b)
   Nothing -> freeVariable (pretty s)
+
+ebound :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Synth m expr
+ebound n = bound n C.bound P.evar
 
 bound :: Has (Error P.Print) sig m => Name -> (Name -> e) -> (Int -> P.Print) -> Synth m e
 bound n with var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
