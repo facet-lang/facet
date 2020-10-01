@@ -106,6 +106,11 @@ forAll (>=>) k tvar = locating $ do
   arrow *> loop tvar names
 
 
+data ExprCtx p a = ExprCtx
+  { self :: p a
+  , next :: p a
+  }
+
 -- | Operators are parsers parameterized by self & the next rule.
 type Operator p a = p a -> p a -> p a
 type Table p a = [[Operator p a]]
