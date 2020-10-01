@@ -8,9 +8,11 @@
 module Facet.Type
 ( Type(..)
 , interpret
+, rename
 , subst
 ) where
 
+import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import qualified Data.IntSet as IntSet
 import qualified Data.IntMap as IntMap
@@ -80,6 +82,19 @@ _         $$ _ = error "can’t apply non-neutral/forall type"
 f $$* as = foldl' ($$) f as
 
 infixl 9 $$, $$*
+
+rename :: Name -> Name -> Type -> Type
+rename x y = go
+  where
+  go = \case
+    Type          -> Type
+    Unit          -> Unit
+    (z ::: t) :=> b
+      | x == z    -> (z ::: t) :=> b
+      | otherwise -> (z ::: go t) :=> go b
+    f :$ as       -> first (\ z -> if z == x then y else z) f :$ fmap go as
+    a :-> b       -> go a :-> go b
+    l :*  r       -> go l :*  go r
 
 subst :: IntMap.IntMap Type -> Type -> Type
 subst e = \case
