@@ -132,7 +132,8 @@ typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Fac
 typeTable = NE.fromList
   [ NE.fromList [ fn', forAll' (liftA2 (S.>~>)) ]
   , NE.fromList
-    [ const (S._Unit <$ token (string "Unit"))
+    [ -- FIXME: we should treat Unit & Type as globals.
+      const (S._Unit <$ token (string "Unit"))
     , const (S._Type <$ token (string "Type"))
     , vars
     ]
