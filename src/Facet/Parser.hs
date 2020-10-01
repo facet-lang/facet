@@ -129,7 +129,6 @@ toBindParser = \case
   Infix R wrap op -> (\ ExprCtx{ self, next } -> wrap (try (next <**> op) <*> self)) . toExprCtx
 
 type BindParser p a b = BindCtx p a b -> p b
-type ExprParser p a = ExprCtx p a -> p a
 type Table p a b = [[BindParser p a b]]
 
 -- | Build a parser for a Table.
@@ -176,22 +175,6 @@ type_ = build typeTable (terminate (toBindParser (Infix L locating ((S..*) <$ co
 monotype_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 monotype_ = build monotypeTable (terminate (toBindParser (Infix L locating ((S..*) <$ comma))))
 
-fn :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
-fn tvar = locating $ tapp tvar <**> (flip (S.-->) <$ arrow <*> fn tvar <|> pure id)
-  where
-  tapp vars = app (S..$) ExprCtx{ self = tapp vars, next = tatom vars }
-
-tatom :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
-tatom tvar = locating
-  $   parens (prd <$> sepBy (type_ tvar) comma)
-  -- FIXME: we should treat Unit & Type as globals.
-  <|> S._Unit <$ token (string "Unit")
-  <|> S._Type <$ token (string "Type")
-  <|> tvar
-  where
-  prd [] = S._Unit
-  prd ts = foldl1 (S..*) ts
-
 tglobal :: (S.Type ty, Monad p, TokenParsing p) => Facet p ty
 tglobal = S.tglobal <$> tname <?> "variable"
 
@@ -220,9 +203,6 @@ lam' = braces . clause
   where
   clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParser (Facet p) expr expr
   clause BindCtx{ vars } = self vars where self vars = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
-
-app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> ExprParser p expr
-app ($$) ExprCtx{ next } = chainl1_ next locating (pure ($$))
 
 chainl1_ :: Alternative m => m a -> (m a -> m a) -> m (a -> a -> a) -> m a
 chainl1_ p wrap op = go where go = wrap $ p <**> (flip <$> op <*> go <|> pure id)
