@@ -57,6 +57,9 @@ type FVs = IntSet.IntSet
 class Scoped t where
   fvs :: t -> FVs
 
+instance Scoped IntSet.IntSet where
+  fvs = id
+
 instance Scoped Name where
   fvs = IntSet.singleton . id'
 
