@@ -129,7 +129,8 @@ build ts = root
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable =
-  [ [  ]
+  [ [ fn', forAll' (liftA2 (S.>~>)) ]
+  , [ vars ]
   ]
 
 forAll'
