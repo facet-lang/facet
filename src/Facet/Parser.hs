@@ -146,7 +146,8 @@ terminate op next = self where self vars = parens $ op BindCtx{ next, self, vars
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable =
-  [ [ toBindParser $ Infix R locating ((S.-->) <$ arrow), forAll (liftA2 (S.>~>)) ]
+  [ [ forAll (liftA2 (S.>~>)) ]
+  , [ toBindParser $ Infix R locating ((S.-->) <$ arrow) ]
   , [ toBindParser $ Infix L locating (pure (S..$)) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       const (S._Unit <$ token (string "Unit"))
