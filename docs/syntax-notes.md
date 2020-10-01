@@ -331,3 +331,8 @@ Base.Bool : Module
   : (c : Bool) -> (t : {a}) -> (e : {a}) -> a
   { case c { True -> t! | False -> e! } }
 }
+
+
+## open questions
+
+should we generalize binding variables in signatures to pattern matching?
