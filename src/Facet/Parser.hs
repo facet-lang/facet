@@ -84,7 +84,7 @@ decl = locating $ (S..:.) <$> dname <* colon <*> sig global tglobal
 
   bind :: Facet p expr -> Facet p ty -> Facet p decl
   bind var tvar = do
-    (i, t) <- try $ parens ((,) <$> name <* colon <*> type_ tvar)
+    (i, t) <- nesting $ (,) <$> try (symbolic '(' *> name) <* colon <*> type_ tvar <* symbolic ')'
     Facet.Parser.bind (pure i) $ \ v -> ((v S.::: t) S.>->) <$ arrow <*> sig (S.bound v <$ variable i <|> var) tvar
 
 
