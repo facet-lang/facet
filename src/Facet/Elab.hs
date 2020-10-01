@@ -27,11 +27,7 @@ module Facet.Elab
   -- * Expressions
 , ($$)
 , tlam
-, tlamM
 , lam0
-, lam0M
-  -- * Declarations
-, (>=>)
 ) where
 
 import           Control.Algebra
@@ -237,11 +233,6 @@ tlam n b = Check $ \ ty -> do
   (n', _T, _B) <- expectQuantifiedType (fromWords "when checking type lambda") ty
   n' ::: _T |- C.tlam n <$> check (b ::: _B)
 
-tlamM :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((Type ::: Type) -> Check m expr) -> Check m expr
-tlamM n b = Check $ \ ty -> do
-  (_T, _B) <- expectQuantifiedTypeH (fromWords "when checking type lambda") ty
-  C.tlamM n $ \ v -> check (b (v ::: _T) ::: _B v)
-
 lam0 :: (C.Expr expr, Has (Error Print) sig m) => Name -> Check m expr -> Check m expr
 lam0 n b = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
@@ -251,24 +242,6 @@ lam0M :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Te
 lam0M n f = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
   C.lam0M n $ \ v -> check (f (v ::: _A) ::: _B)
-
-
--- Declarations
-
-(>=>)
-  :: (Has (Error Print) sig m, MonadFix m, C.Expr expr, Scoped expr)
-  => (T.Text ::: Check m Type)
-  -> ((Type ::: Type) -> Check m (expr ::: Type))
-  -> Synth m expr
-(n ::: t) >=> b = Synth $ do
-  _T <- check (t ::: C._Type)
-  -- FIXME: check by extending the context?
-  -- FIXME: running the body twice means we’re quadratic or exponential
-  (_A, _B) <- expectFunctionType (fromWords "when checking quantified type") =<< pure (n ::: interpret _T) C.>=> \ v -> check (ty <$> b (v ::: _T) ::: C._Type)
-  tm <- C.tlamM n $ \ v -> check (tm <$> b (v ::: _T) ::: C._Type)
-  pure $ tm ::: (_A :-> _B)
-
-infixr 1 >=>
 
 
 -- Context
@@ -306,11 +279,6 @@ freeVariable s = err $ fromWords "variable not in scope:" <+> pretty s
 
 
 -- Patterns
-
-expectQuantifiedTypeH :: Has (Error Print) sig m => Print -> Type -> m (Type, Type -> Type)
-expectQuantifiedTypeH s t = do
-  (n, _T, _B) <- expectQuantifiedType s t
-  pure (_T, \ v -> subst n v _B)
 
 expectQuantifiedType :: Has (Error Print) sig m => Print -> Type -> m (Name, Type, Type)
 expectQuantifiedType s = \case
