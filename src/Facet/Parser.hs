@@ -85,7 +85,9 @@ decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, 
 decl = locating $ (S..:.) <$> dname <* colon <*> sig global tglobal
   where
   sig :: Facet p expr -> Facet p ty -> Facet p decl
-  sig var tvar = bind var tvar <|> forAll (liftA2 (S.>=>)) (sig var) tvar <|> (S..=) <$> fn tvar <*> expr_ var
+  sig var tvar = bind var tvar <|> forAll var tvar <|> (S..=) <$> fn tvar <*> expr_ var
+
+  forAll evar vars = forAll' (liftA2 (S.>=>)) BindCtx{ vars, next = sig evar, self = \ vars -> forAll evar vars <|> sig evar vars }
 
   bind :: Facet p expr -> Facet p ty -> Facet p decl
   bind var tvar = do
@@ -96,22 +98,6 @@ sigTable :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, 
 sigTable =
   [ [ forAll' (liftA2 (S.>=>)) ]
   ]
-
-
-forAll
-  :: forall ty res p
-  .  (S.Type ty, S.Located ty, S.Located res, Monad p, PositionParsing p)
-  => (Facet p (Name S.::: ty) -> Facet p res -> Facet p res)
-  -> (Facet p ty -> Facet p res)
-  -> Facet p ty
-  -> Facet p res
-forAll (>=>) k tvar = locating $ do
-  (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ tvar)
-  let loop :: Facet p ty -> [S.TName] -> Facet p res
-      loop tvar = \case
-        []   -> k tvar
-        i:is -> bind (pure i) $ \ v -> pure (v S.::: ty) >=> (loop (S.tbound v <$ variable i <|> tvar) is)
-  arrow *> loop tvar names
 
 
 data BindCtx p a b = BindCtx
