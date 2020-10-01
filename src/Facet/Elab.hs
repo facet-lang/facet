@@ -61,6 +61,7 @@ runEnv e c m = runEnvC m e c
 newtype EnvC m a = EnvC { runEnvC :: Env -> Context -> m a }
   deriving (Algebra (Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Env (ReaderC Context m)
 
+-- FIXME: elaborate Expr instead of doing the final tagless dance.
 newtype Elab m a = Elab { runElab :: Maybe Type -> EnvC m a }
   deriving (Algebra (Reader (Maybe Type) :+: Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC (Maybe Type) (EnvC m)
 
