@@ -120,7 +120,7 @@ type Table p a = [[Operator p a]]
 build :: TokenParsing p => Table p a -> p a
 build ts = go
   where
-  go = foldr ($) (parens go) (map (choiceOrNextP go) ts)
+  go = foldr (($) . choiceOrNextP go) (parens go) ts
   choiceOrNextP root ps nextP = go
     where
     go = choice $ map (\ p -> p ExprCtx{ root = root, self = go, next = nextP }) ps ++ [nextP]
