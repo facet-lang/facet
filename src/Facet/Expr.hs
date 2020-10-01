@@ -6,7 +6,6 @@ module Facet.Expr
 , subst
 ) where
 
-import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
 import qualified Data.Text as T
 import qualified Facet.Core as C
@@ -64,10 +63,16 @@ rename x y = go
       | otherwise -> C.lam0 z (go b)
     App _ f a     -> go f C.$$ go a
 
-subst :: IntMap.IntMap Expr -> Expr -> Expr
-subst e = \case
-  Global s -> Global s
-  Bound n  -> (e IntMap.! id' n)
-  TLam _ n b -> C.tlam' (hint n) (\ v -> subst (instantiate n v e) b)
-  Lam0 _ n b -> C.lam0' (hint n) (\ v -> subst (instantiate n v e) b)
-  App _ f a  -> subst e f C.$$ subst e a
+subst :: Name -> Expr -> Expr -> Expr
+subst x e = \case
+  Global s      -> Global s
+  Bound n
+    | n == x    -> e
+    | otherwise -> Bound n
+  TLam _ n b    -> let n' = prime (hint n) (fvs b <> fvs e)
+                       b' = subst x e (rename n n' b)
+                   in C.tlam n' b'
+  Lam0 _ n b    -> let n' = prime (hint n) (fvs b <> fvs e)
+                       b' = subst x e (rename n n' b)
+                   in C.lam0 n' b'
+  App _ f a     -> subst x e f C.$$ subst x e a
