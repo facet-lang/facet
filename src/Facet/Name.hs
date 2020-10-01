@@ -7,7 +7,7 @@ module Facet.Name
 , FVs
 , Scoped(..)
 , instantiate
-, ModuleName(..)
+, MName(..)
 ) where
 
 import           Data.Function (on)
@@ -66,7 +66,7 @@ instantiate :: Name -> t -> IntMap.IntMap t -> IntMap.IntMap t
 instantiate = IntMap.insert . id'
 
 
-data ModuleName
+data MName
   = MN String
-  | ModuleName :.: String
+  | MName :.: String
   deriving (Eq, Ord, Show)
