@@ -38,7 +38,7 @@ import           Data.Bifunctor (first)
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import qualified Data.Text as T
-import qualified Facet.Core.Lifted as C
+import qualified Facet.Core as C
 import           Facet.Name (Name(..), prettyNameWith)
 import qualified Facet.Print as P
 import qualified Facet.Surface as S

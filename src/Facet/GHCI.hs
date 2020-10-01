@@ -18,7 +18,7 @@ import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
 import           Facet.Carrier.Error.Context
-import qualified Facet.Core.Lifted as C
+import qualified Facet.Core as C
 import           Facet.Elab
 import qualified Facet.Module as Module
 import           Facet.Parser (Facet(..), runFacet)
