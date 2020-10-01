@@ -7,50 +7,61 @@ module Facet.Expr
 ) where
 
 import qualified Data.IntMap as IntMap
+import qualified Data.IntSet as IntSet
 import qualified Data.Text as T
 import qualified Facet.Core as C
 import qualified Facet.Core.HOAS as CH
 import           Facet.Name
 import qualified Facet.Type as Type
 
+type FVs = IntSet.IntSet
+
 data Expr
   = Global T.Text
   | Bound Name
-  | TLam Name Expr
-  | Lam0 Name Expr
-  | App Expr Expr
+  | TLam FVs Name Expr
+  | Lam0 FVs Name Expr
+  | App FVs Expr Expr
 
 instance Scoped Expr where
   maxBV = \case
-    Global _ -> Nothing
-    Bound _  -> Nothing
-    TLam n _ -> maxBV n
-    Lam0 n _ -> maxBV n
-    App f a  -> maxBV f <> maxBV a
+    Global _   -> Nothing
+    Bound _    -> Nothing
+    TLam _ _ n -> maxBV n
+    Lam0 _ _ n -> maxBV n
+    App _ f a  -> maxBV f <> maxBV a
 
 instance C.Expr Expr where
   global = Global
   bound = Bound
-  tlam = TLam
-  lam0 = Lam0
-  ($$) = App
+  tlam n b = TLam (IntSet.delete (id' n) (fvs b)) n b
+  lam0 n b = Lam0 (IntSet.delete (id' n) (fvs b)) n b
+  f $$ a = App (fvs f <> fvs a) f a
 
 instance CH.Expr Type.Type Expr where
-  tlam n b = n >>= \ n -> binderM C.tbound TLam n b
-  lam0 n b = n >>= \ n -> binderM C.bound  Lam0 n b
+  tlam n b = n >>= \ n -> binderM C.tbound C.tlam n b
+  lam0 n b = n >>= \ n -> binderM C.bound  C.lam0 n b
 
 interpret :: C.Expr r => Expr -> r
 interpret = \case
   Global n -> C.global n
   Bound n -> C.bound n
-  TLam n b -> C.tlam n (interpret b)
-  Lam0 n b -> C.lam0 n (interpret b)
-  App f a -> interpret f C.$$ interpret a
+  TLam _ n b -> C.tlam n (interpret b)
+  Lam0 _ n b -> C.lam0 n (interpret b)
+  App _ f a -> interpret f C.$$ interpret a
 
 subst :: IntMap.IntMap Expr -> Expr -> Expr
 subst e = \case
   Global s -> Global s
   Bound n  -> (e IntMap.! id' n)
-  TLam n b -> C.tlam' (hint n) (\ v -> subst (instantiate n v e) b)
-  Lam0 n b -> C.lam0' (hint n) (\ v -> subst (instantiate n v e) b)
-  App f a  -> App (subst e f) (subst e a)
+  TLam _ n b -> C.tlam' (hint n) (\ v -> subst (instantiate n v e) b)
+  Lam0 _ n b -> C.lam0' (hint n) (\ v -> subst (instantiate n v e) b)
+  App _ f a  -> subst e f C.$$ subst e a
+
+fvs :: Expr -> FVs
+fvs = \case
+  Global _   -> IntSet.empty
+  Bound  _   -> IntSet.empty
+  TLam s _ _ -> s
+  Lam0 s _ _ -> s
+  App s _ _  -> s
