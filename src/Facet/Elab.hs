@@ -90,7 +90,7 @@ instance Has (Reader Span) sig m => S.Located (Elab m a) where
 
 instance Has (Error P.Print) sig m => S.Type (Elab m (Type ::: Type)) where
   tglobal = fmap (first C.tglobal) . fromSynth . global . S.getTName
-  tbound n = fromSynth (bound n C.tbound P.tvar)
+  tbound n = fromSynth (tbound n)
   (n ::: t) >~> b = fromSynth $ (n ::: toCheck t) >~> toCheck b
   a --> b = fromSynth $ toCheck a --> toCheck b
   f .$  a = fromSynth $ toSynth f .$  toCheck a
@@ -173,6 +173,9 @@ global :: Has (Error P.Print) sig m => T.Text -> Synth m T.Text
 global s = Synth $ asks (Map.lookup s) >>= \case
   Just b  -> pure (s ::: b)
   Nothing -> freeVariable (pretty s)
+
+tbound :: (C.Type ty, Has (Error P.Print) sig m) => Name -> Synth m ty
+tbound n = bound n C.tbound P.tvar
 
 ebound :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Synth m expr
 ebound n = bound n C.bound P.evar
