@@ -118,21 +118,23 @@ type Operator p a b = BindCtx p a b -> p b
 type Table p a b = [[Operator p a b]]
 
 -- | Build a parser for a Table.
-build :: Alternative p => Table p a b -> (p a -> p b) -> (p a -> p b)
+build :: Alternative p => Table p a b -> ((p a -> p b) -> (p a -> p b)) -> (p a -> p b)
 build ts end = root
   where
-  root = foldr chain end ts
+  root = foldr chain (end root) ts
   chain ps next = self
     where
     self = foldr (\ p rest vars -> p BindCtx{ self, next, vars } <|> rest vars) next ps
+
+terminate :: TokenParsing p => Operator p a b -> (p a -> p b) -> (p a -> p b)
+terminate op next = self where self vars = parens $ op BindCtx{ next, self, vars }
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable =
   [ [ fn', forAll' (liftA2 (S.>~>)) ]
   , [ app (S..$) ]
-  , [ product (S..*)
-      -- FIXME: we should treat Unit & Type as globals.
-    , const (S._Unit <$ token (string "Unit"))
+  , [ -- FIXME: we should treat Unit & Type as globals.
+      const (S._Unit <$ token (string "Unit"))
     , const (S._Type <$ token (string "Type"))
     , vars
     ]
@@ -158,7 +160,7 @@ type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
 
 type_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
-type_ = build typeTable (parens . type_)
+type_ = build typeTable (terminate (product (S..*)))
 
 fn :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 fn tvar = locating $ tapp tvar <**> (flip (S.-->) <$ arrow <*> fn tvar <|> pure id)
@@ -183,8 +185,7 @@ tglobal = S.tglobal <$> tname <?> "variable"
 exprTable :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Table (Facet p) expr expr
 exprTable =
   [ [ app (S.$$) ]
-  , [ product (S.**)
-    , lam'
+  , [ lam'
     , vars
     ]
   ]
@@ -224,7 +225,7 @@ atom var = locating
   prd ts = foldl1 (S.**) ts
 
 product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Operator p expr expr
-product (**) BindCtx{ next, vars } = locating $ next vars `chainl1` ((**) <$ comma)
+product (**) BindCtx{ next, self, vars } = locating $ (**) <$> self vars <*> next vars
 
 app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> Operator p expr expr
 app ($$) BindCtx{ next, vars } = locating $ next vars `chainl1` pure ($$)
