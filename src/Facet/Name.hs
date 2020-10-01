@@ -6,11 +6,9 @@ module Facet.Name
 , __
 , FVs
 , Scoped(..)
-, binderM
 , instantiate
 ) where
 
-import           Control.Monad.Fix
 import           Data.Function (on)
 import qualified Data.IntSet as IntSet
 import qualified Data.IntMap as IntMap
@@ -61,16 +59,6 @@ instance Scoped IntSet.IntSet where
 
 instance Scoped Name where
   fvs = IntSet.singleton . id'
-
-binderM
-  :: (Scoped t, MonadFix m)
-  => (Name -> d)
-  -> (Name -> t -> r)
-  -> T.Text
-  -> (d -> m t)
-  -> m r
-binderM bound ctor n e = uncurry ctor <$> mfix (\ ~(n', b') -> do
-  (prime n b',) <$> e (bound n'))
 
 
 instantiate :: Name -> t -> IntMap.IntMap t -> IntMap.IntMap t
