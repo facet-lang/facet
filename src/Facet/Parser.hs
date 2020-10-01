@@ -125,6 +125,7 @@ toExprCtx BindCtx{ self, next, vars } = ExprCtx{ self = self vars, next = next v
 
 -- | Operators are parsers parameterized by some expression context and the in-scope variables.
 type Operator p a b = BindCtx p a b -> p b
+type ExprParser p a = ExprCtx p a -> p a
 type Table p a b = [[Operator p a b]]
 
 -- | Build a parser for a Table.
@@ -221,7 +222,7 @@ lam' = braces . clause
 product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Operator p expr expr
 product (**) BindCtx{ next, self, vars } = locating $ (**) <$> self vars <* comma <*> next vars
 
-app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> ExprCtx p expr -> p expr
+app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> ExprParser p expr
 app ($$) ExprCtx{ next } = go
   where
   go = locating $ next <**> (flip ($$) <$> go <|> pure id)
