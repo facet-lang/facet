@@ -187,6 +187,11 @@ tglobal :: (S.Type ty, Monad p, TokenParsing p) => Facet p ty
 tglobal = S.tglobal <$> tname <?> "variable"
 
 
+exprTable :: (S.Expr expr, S.Located expr, PositionParsing p) => Table (Facet p) expr expr
+exprTable = NE.fromList
+  [ NE.fromList [ eapp ]
+  ]
+
 eapp :: (S.Expr expr, S.Located expr, PositionParsing p) => Operator (Facet p) expr expr
 eapp ExprCtx { next, vars } = app (S.$$) next vars
 
