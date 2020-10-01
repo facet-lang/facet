@@ -210,7 +210,7 @@ atom var = locating
   prd [] = S.unit
   prd ts = foldl1 (S.**) ts
 
-app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> (Facet p expr -> Facet p expr) -> (Facet p expr -> Facet p expr)
+app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> (p expr -> p expr) -> (p expr -> p expr)
 app ($$) atom tvar = locating $ foldl ($$) <$> atom tvar <*> many (atom tvar)
 
 
