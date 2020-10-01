@@ -3,10 +3,10 @@ module Facet.Surface.Decl
 ( Decl(..)
 ) where
 
-import Facet.Expr (Expr)
 import Facet.Name
+import Facet.Surface.Expr (Expr)
+import Facet.Surface.Type (Type)
 import Facet.Syntax
-import Facet.Type (Type)
 
 data Decl
   = Type := Expr
