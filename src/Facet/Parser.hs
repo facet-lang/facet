@@ -226,7 +226,7 @@ product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Oper
 product (**) ExprCtx{ next, self, vars } = parens $ locating $ (**) <$> self vars <* comma <*> next vars
 
 app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> Operator p expr expr
-app ($$) ExprCtx{ next, vars } = locating $ foldl1 ($$) <$> some (next vars)
+app ($$) ExprCtx{ next, self, vars } = locating $ ($$) <$> self vars <*> next vars
 
 
 name, _hname :: (Monad p, TokenParsing p) => p S.EName
