@@ -67,6 +67,6 @@ instantiate = IntMap.insert . id'
 
 
 data MName
-  = MN String
+  = MName String
   | MName :.: String
   deriving (Eq, Ord, Show)
