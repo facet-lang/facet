@@ -131,7 +131,11 @@ build ts = root
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable = NE.fromList
   [ NE.fromList [ fn', forAll' (liftA2 (S.>~>)) ]
-  , NE.fromList [ vars ]
+  , NE.fromList
+    [ const (S._Unit <$ token (string "Unit"))
+    , const (S._Type <$ token (string "Type"))
+    , vars
+    ]
   ]
 
 forAll'
