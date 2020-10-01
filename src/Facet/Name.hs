@@ -73,3 +73,4 @@ data MName
   deriving (Eq, Ord, Show)
 
 data QName = MName :.: String
+  deriving (Eq, Ord, Show)
