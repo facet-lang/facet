@@ -197,7 +197,7 @@ global :: (S.Expr expr, Monad p, TokenParsing p) => Facet p expr
 global = S.global <$> name <?> "variable"
 
 expr_ :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
-expr_ vars = app (S.$$) BindCtx{ self = expr_, next = atom, vars }
+expr_ = build exprTable (terminate (product (S.**)))
 
 -- FIXME: patterns
 -- FIXME: nullary computations
