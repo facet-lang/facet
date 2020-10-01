@@ -59,7 +59,7 @@ subst e = \case
 fvs :: Expr -> FVs
 fvs = \case
   Global _   -> IntSet.empty
-  Bound  _   -> IntSet.empty
+  Bound  n   -> IntSet.singleton (id' n)
   TLam s _ _ -> s
   Lam0 s _ _ -> s
   App s _ _  -> s
