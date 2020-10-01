@@ -11,5 +11,7 @@ import           Facet.Surface.Type (Type)
 data Module
   = S.DName :.:. Decl
 
+infix 1 :.:.
+
 instance S.Module Expr Type Decl Module where
   (.:.) = (:.:.)
