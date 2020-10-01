@@ -190,12 +190,12 @@ app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> (Facet p
 app ($$) atom tvar = locating $ foldl ($$) <$> atom tvar <*> many (atom tvar)
 
 
-name, _hname :: (Monad p, TokenParsing p) => Facet p S.EName
+name, _hname :: (Monad p, TokenParsing p) => p S.EName
 name  = ident nameStyle
 _hname = ident hnameStyle
-tname :: (Monad p, TokenParsing p) => Facet p S.TName
+tname :: (Monad p, TokenParsing p) => p S.TName
 tname = ident tnameStyle
-dname :: (Monad p, TokenParsing p) => Facet p S.DName
+dname :: (Monad p, TokenParsing p) => p S.DName
 dname = ident dnameStyle
 
 nameStyle :: CharParsing p => IdentifierStyle p
