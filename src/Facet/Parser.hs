@@ -82,22 +82,27 @@ lift = Facet . const
 -- FIXME: de-stratify the grammar
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, PositionParsing p) => Facet p mod
-decl = locating $ (S..:.) <$> dname <* colon <*> sig global tglobal
-  where
-  sig :: Facet p expr -> Facet p ty -> Facet p decl
-  sig var tvar = bind var tvar <|> forAll var tvar <|> (S..=) <$> fn tvar <*> expr_ var
+decl = locating $ (S..:.) <$> dname <* colon <*> tsig tglobal
 
-  forAll evar vars = Facet.Parser.forAll (liftA2 (S.>=>)) BindCtx{ vars, next = sig evar, self = \ vars -> forAll evar vars <|> sig evar vars }
-
-  bind :: Facet p expr -> Facet p ty -> Facet p decl
-  bind var tvar = do
-    (i, t) <- nesting $ (,) <$> try (symbolic '(' *> name) <* colon <*> type_ tvar <* symbolic ')'
-    Facet.Parser.bind (pure i) $ \ v -> ((v S.::: t) S.>->) <$ arrow <*> sig (S.bound v <$ variable i <|> var) tvar
-
-sigTable :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Table (Facet p) ty decl
-sigTable =
+tsigTable :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Table (Facet p) ty decl
+tsigTable =
   [ [ forAll (liftA2 (S.>=>)) ]
   ]
+
+sigTable :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Table (Facet p) expr decl
+sigTable tvars =
+  [ [ binder tvars ]
+  ]
+
+tsig :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Facet p decl
+tsig = build tsigTable (\ _ vars -> sig vars global)
+sig :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Facet p expr -> Facet p decl
+sig tvars = build (sigTable tvars) (\ _ vars -> (S..=) <$> fn tvars <*> expr_ vars)
+
+binder :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> BindParser (Facet p) expr decl
+binder tvars BindCtx{ self, vars } = locating $ do
+  (i, t) <- nesting $ (,) <$> try (symbolic '(' *> name) <* colon <*> type_ tvars <* symbolic ')'
+  bind (pure i) $ \ v -> ((v S.::: t) S.>->) <$ arrow <*> self (S.bound v <$ variable i <|> vars)
 
 
 data BindCtx p a b = BindCtx
