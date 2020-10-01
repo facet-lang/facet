@@ -42,7 +42,6 @@ import qualified Facet.Core as C
 import           Facet.Name (Name(..), prettyNameWith)
 import qualified Facet.Print as P
 import qualified Facet.Surface as S
-import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Facet.Type
 import           Silkscreen (fillSep, group, pretty, (<+>), (</>))
@@ -244,10 +243,6 @@ lam :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check
 lam n b = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
   n ::: _A |- C.lam n <$> check (b ::: _B)
-
-
-
-newtype Elab' m a = Elab' { runElab' :: Maybe Type -> EnvC m (a ::: Type) }
 
 
 -- Context
