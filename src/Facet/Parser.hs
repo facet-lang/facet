@@ -131,6 +131,7 @@ toExprCtx BindCtx{ self, next, vars } = ExprCtx{ self = self vars, next = next v
 data Assoc = N | L | R
 
 data Operator p a b
+  -- TODO: prefix, postfix, mixfix
   = Infix Assoc (p b -> p b) (p (b -> b -> b))
 
 toBindParser :: Parsing p => Operator p a b -> BindParser p a b
