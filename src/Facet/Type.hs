@@ -101,7 +101,7 @@ subst x e = \case
   Unit            -> Unit
   (n ::: t) :=> b -> let n' = prime (hint n) (fvs b <> fvs e)
                          b' = subst x e (rename n n' b)
-                    in (n' ::: subst x e t) C.==> b'
+                     in (n' ::: subst x e t) C.==> b'
   f :$  a
     | Left f <- f
     , f == x      -> e $$* (subst x e <$> a)
