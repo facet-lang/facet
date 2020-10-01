@@ -42,7 +42,6 @@ library
     Facet.Core.Lifted
     Facet.Elab
     Facet.Env
-    Facet.Eval
     Facet.Expr
     Facet.Functor.C
     Facet.Functor.I
@@ -56,12 +55,9 @@ library
     Facet.Surface
     Facet.Surface.Lifted
     Facet.Syntax
-    Facet.Syntax.Typed
-    Facet.Syntax.Typed.Lifted
     Facet.Type
   other-modules:
     Facet.GHCI
-    Facet.Syntax.Examples
     Text.Parser.Location
   build-depends:
     , base ^>= 4.14

@@ -15,7 +15,6 @@ module Facet.Print
 , terminalStyle
 , Print(..)
 , Context(..)
-, TPrint(..)
 , evar
 , tvar
 ) where
@@ -23,14 +22,11 @@ module Facet.Print
 import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
 import           Data.Coerce
-import qualified Data.Kind as K
 import qualified Facet.Core as C
-import           Facet.Functor.K
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
 import qualified Facet.Surface as U
 import           Facet.Syntax
-import qualified Facet.Syntax.Typed as T
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 import           Silkscreen.Printer.Fresh
@@ -115,11 +111,6 @@ data Context
   | Var
   deriving (Bounded, Eq, Ord, Show)
 
-newtype TPrint (sig :: K.Type -> K.Type) a = TPrint { runTPrint :: Print }
-  deriving (U.Expr, FreshPrinter, Functor, U.Located, Monoid, PrecedencePrinter, Printer, Semigroup, C.Type, U.Type)
-  deriving (Applicative) via K Print
-
-
 data Highlight
   = Nest Int
   | Name
@@ -137,15 +128,6 @@ op = annotate Op
 
 arrow :: (Printer p, Ann p ~ Highlight) => p
 arrow = op (pretty "->")
-
-
-instance T.Expr TPrint where
-  lam f = TPrint $ bind $ \ v -> cases (evar v) [\ var -> (var, coerce (f . Left) var)]
-  ($$) = coerce app
-
-  alg _ = TPrint $ pretty "TBD"
-
-  weakenBy _ = coerce
 
 
 cases :: Print -> [Print -> (Print, Print)] -> Print
