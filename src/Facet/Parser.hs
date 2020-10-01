@@ -110,6 +110,15 @@ forAll (>=>) k tvar = locating $ do
 type Operator p a = p a -> p a -> p a
 type Table p a = [[Operator p a]]
 
+-- | Build a parser for a Table.
+build :: TokenParsing p => Table p a -> p a
+build ts = go
+  where
+  go = foldr ($) (parens go) (map choiceOrNextP ts)
+  choiceOrNextP ps nextP = go
+    where
+    go = choice $ map (\ p -> p go nextP) ps ++ [nextP]
+
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
