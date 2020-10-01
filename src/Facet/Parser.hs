@@ -171,7 +171,7 @@ type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
 
 type_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
-type_ = build typeTable (terminate (product (S..*)))
+type_ = build typeTable (terminate (product (S..*) . toExprCtx))
 
 fn :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 fn tvar = locating $ tapp tvar <**> (flip (S.-->) <$ arrow <*> fn tvar <|> pure id)
@@ -208,7 +208,7 @@ global :: (S.Expr expr, Monad p, TokenParsing p) => Facet p expr
 global = S.global <$> name <?> "variable"
 
 expr_ :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
-expr_ = build exprTable (terminate (product (S.**)))
+expr_ = build exprTable (terminate (product (S.**) . toExprCtx))
 
 -- FIXME: patterns
 -- FIXME: nullary computations
@@ -219,8 +219,8 @@ lam' = braces . clause
   clause BindCtx{ vars } = self vars where self vars = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
 
 
-product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Operator p expr expr
-product (**) BindCtx{ next, self, vars } = locating $ (**) <$> self vars <* comma <*> next vars
+product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> ExprParser p expr
+product (**) ExprCtx{ next, self } = locating $ (**) <$> self <* comma <*> next
 
 app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> ExprParser p expr
 app ($$) ExprCtx{ next } = go
