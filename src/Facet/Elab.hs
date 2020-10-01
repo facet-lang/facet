@@ -41,7 +41,7 @@ import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Facet.Core.Lifted as C
 import           Facet.Name (Name(..), Scoped, binderM)
-import           Facet.Print (Print)
+import qualified Facet.Print as P
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Facet.Type
@@ -65,17 +65,17 @@ newtype EnvC m a = EnvC { runEnvC :: Env -> Context -> m a }
 newtype Elab m a = Elab { runElab :: Maybe Type -> EnvC m a }
   deriving (Algebra (Reader (Maybe Type) :+: Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad, MonadFix) via ReaderC (Maybe Type) (EnvC m)
 
-fromCheck :: Has (Error Print) sig m => Check m a -> Elab m (a ::: Type)
+fromCheck :: Has (Error P.Print) sig m => Check m a -> Elab m (a ::: Type)
 fromCheck m = Elab $ \case
   Just t  -> (::: t) <$> check (m ::: t)
   Nothing -> couldNotSynthesize
 
-toCheck :: Has (Error Print) sig m => Elab m (a ::: Type) -> Check m a
+toCheck :: Has (Error P.Print) sig m => Elab m (a ::: Type) -> Check m a
 toCheck m = Check $ \ _T -> do
   a ::: _T' <- runElab m (Just _T)
   a <$ unify _T _T'
 
-fromSynth :: Has (Error Print) sig m => Synth m a -> Elab m (a ::: Type)
+fromSynth :: Has (Error P.Print) sig m => Synth m a -> Elab m (a ::: Type)
 fromSynth (Synth m) = Elab $ \case
   Just _T -> do
     a ::: _T' <- m
@@ -88,7 +88,7 @@ toSynth (Elab m) = Synth (m Nothing)
 instance Has (Reader Span) sig m => S.Located (Elab m a) where
   locate = local . const
 
-instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab m (Type ::: Type)) where
+instance (Has (Error P.Print) sig m, MonadFix m) => S.Type (Elab m (Type ::: Type)) where
   tglobal = fmap (first C.tglobal) . fromSynth . global . S.getTName
   (n ::: t) >~> b = fromSynth $ (S.getTName n ::: toCheck t) >~> toCheck . b . pure
   a --> b = fromSynth $ toCheck a --> toCheck b
@@ -98,7 +98,7 @@ instance (Has (Error Print) sig m, MonadFix m) => S.Type (Elab m (Type ::: Type)
   _Unit = fromSynth _Unit
   _Type = fromSynth _Type
 
-instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Expr (Elab m (expr ::: Type)) where
+instance (C.Expr expr, Scoped expr, Has (Error P.Print) sig m, MonadFix m) => S.Expr (Elab m (expr ::: Type)) where
   global = fmap (first C.global) . fromSynth . global . S.getEName
   lam0 n f = fromCheck $ lam0M (S.getEName n) (toCheck . f . pure)
   lam _ _ = tbd
@@ -107,7 +107,7 @@ instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Ex
   _ ** _ = tbd
 
 -- FIXME: this should probably elaborate to nested elaborators, one at type level, producing one at expression level
-instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.Decl (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) where
+instance (C.Expr expr, Scoped expr, Has (Error P.Print) sig m, MonadFix m) => S.Decl (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) where
   t .= b = Elab $ \ _T -> do -- FIXME: what are we supposed to do with _T? what’s the type of a declaration anyway?
     _T' ::: _ <- runElab t (Just C._Type)
     b' ::: _ <- runElab b (Just _T')
@@ -123,7 +123,7 @@ instance (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => S.De
     (n, b' ::: _B) <- runElab (binderM (pure . (::: _T) . C.bound) (,) (S.getEName n) b) Nothing
     pure $ C.lam0 n b' ::: (_T C.--> _B)
 
-instance (C.Expr expr, Scoped expr, C.Type ty, C.Module expr ty mod, Has (Error Print) sig m, MonadFix m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
+instance (C.Expr expr, Scoped expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig m, MonadFix m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
   n .:. d = do
     e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
     pure $ S.getDName n C..:. e := interpret _T
@@ -140,12 +140,12 @@ instance Functor m => Functor (Synth m) where
 check :: (Check m a ::: Type) -> EnvC m a
 check = uncurryAnn runCheck
 
-switch :: Has (Error Print) sig m => Synth m a -> Check m a
+switch :: Has (Error P.Print) sig m => Synth m a -> Check m a
 switch s = Check $ \ _T -> do
   a ::: _T' <- runSynth s
   a <$ unify _T _T'
 
-unify :: Has (Error Print) sig m => Type -> Type -> m ()
+unify :: Has (Error P.Print) sig m => Type -> Type -> m ()
 unify t1 t2 = go t1 t2
   where
   go = curry $ \case
@@ -168,12 +168,12 @@ unify t1 t2 = go t1 t2
 
 -- General
 
-global :: Has (Error Print) sig m => T.Text -> Synth m T.Text
+global :: Has (Error P.Print) sig m => T.Text -> Synth m T.Text
 global s = Synth $ asks (Map.lookup s) >>= \case
   Just b  -> pure (s ::: b)
   Nothing -> freeVariable (pretty s)
 
-app :: Has (Error Print) sig m => (a -> a -> a) -> Synth m a -> Check m a -> Synth m a
+app :: Has (Error P.Print) sig m => (a -> a -> a) -> Synth m a -> Check m a -> Synth m a
 app ($$) f a = Synth $ do
   f' ::: _F <- runSynth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
@@ -189,7 +189,7 @@ _Type = Synth $ pure $ C._Type ::: C._Type
 _Unit :: (Applicative m, C.Type t) => Synth m t
 _Unit = Synth $ pure $ C._Unit ::: C._Type
 
-(.$) :: (Has (Error Print) sig m, C.Type t) => Synth m t -> Check m t -> Synth m t
+(.$) :: (Has (Error P.Print) sig m, C.Type t) => Synth m t -> Check m t -> Synth m t
 (.$) = app (C..$)
 
 infixl 9 .$
@@ -225,20 +225,20 @@ infixr 1 >~>
 
 -- Expressions
 
-($$) :: (C.Expr expr, Has (Error Print) sig m) => Synth m expr -> Check m expr -> Synth m expr
+($$) :: (C.Expr expr, Has (Error P.Print) sig m) => Synth m expr -> Check m expr -> Synth m expr
 ($$) = app (C.$$)
 
-tlam :: (C.Expr expr, Has (Error Print) sig m) => Name -> Check m expr -> Check m expr
+tlam :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
 tlam n b = Check $ \ ty -> do
   (n', _T, _B) <- expectQuantifiedType (fromWords "when checking type lambda") ty
   n' ::: _T |- C.tlam n <$> check (b ::: _B)
 
-lam0 :: (C.Expr expr, Has (Error Print) sig m) => Name -> Check m expr -> Check m expr
+lam0 :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
 lam0 n b = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
   n ::: _A |- C.lam0 n <$> check (b ::: _B)
 
-lam0M :: (C.Expr expr, Scoped expr, Has (Error Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
+lam0M :: (C.Expr expr, Scoped expr, Has (Error P.Print) sig m, MonadFix m) => T.Text -> ((expr ::: Type) -> Check m expr) -> Check m expr
 lam0M n f = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
   C.lam0M n $ \ v -> check (f (v ::: _A) ::: _B)
@@ -254,38 +254,38 @@ infix 1 |-
 
 -- Failures
 
-fromWords :: String -> Print
+fromWords :: String -> P.Print
 fromWords = fillSep . map pretty . words
 
-err :: Has (Error Print) sig m => Print -> m a
+err :: Has (Error P.Print) sig m => P.Print -> m a
 err = throwError . group
 
-tbd :: Has (Error Print) sig m => m a
+tbd :: Has (Error P.Print) sig m => m a
 tbd = err $ pretty "TBD"
 
-mismatch :: Has (Error Print) sig m => Print -> Print -> Print -> m a
+mismatch :: Has (Error P.Print) sig m => P.Print -> P.Print -> P.Print -> m a
 mismatch msg exp act = err $ msg
   </> pretty "expected:" <+> exp
   </> pretty "  actual:" <+> act
 
-couldNotUnify :: Has (Error Print) sig m => Type -> Type -> m a
+couldNotUnify :: Has (Error P.Print) sig m => Type -> Type -> m a
 couldNotUnify t1 t2 = mismatch (fromWords "could not unify") (interpret t2) (interpret t1)
 
-couldNotSynthesize :: Has (Error Print) sig m => m a
+couldNotSynthesize :: Has (Error P.Print) sig m => m a
 couldNotSynthesize = err $ fromWords "could not synthesize a type"
 
-freeVariable :: Has (Error Print) sig m => Print -> m a
+freeVariable :: Has (Error P.Print) sig m => P.Print -> m a
 freeVariable v = err $ fromWords "variable not in scope:" <+> v
 
 
 -- Patterns
 
-expectQuantifiedType :: Has (Error Print) sig m => Print -> Type -> m (Name, Type, Type)
+expectQuantifiedType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Name, Type, Type)
 expectQuantifiedType s = \case
   (n ::: _T) :=> _B -> pure (n, _T, _B)
   _T                -> mismatch s (pretty "{_} -> _") (interpret _T)
 
-expectFunctionType :: Has (Error Print) sig m => Print -> Type -> m (Type, Type)
+expectFunctionType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Type, Type)
 expectFunctionType s = \case
   _A :-> _B -> pure (_A, _B)
   _T        -> mismatch s (pretty "_ -> _") (interpret _T)
