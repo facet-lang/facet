@@ -132,6 +132,19 @@ typeTable =
   [ [  ]
   ]
 
+forAll'
+  :: forall ty res p
+  .  (S.Type ty, S.Located ty, S.Located res, Monad p, PositionParsing p)
+  => (Facet p (Name S.::: ty) -> Facet p res -> Facet p res)
+  -> Operator (Facet p) ty res
+forAll' (>=>) ExprCtx{ next, vars } = locating $ do
+  (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
+  let loop :: Facet p ty -> [S.TName] -> Facet p res
+      loop vars = \case
+        []   -> next vars
+        i:is -> bind (pure i) $ \ v -> pure (v S.::: ty) >=> (loop (S.tbound v <$ variable i <|> vars) is)
+  arrow *> loop vars names
+
 fn' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Operator p ty ty
 fn' ExprCtx{ self, next, vars } = locating $ next vars <**> (flip (S.-->) <$ arrow <*> self vars <|> pure id)
 
