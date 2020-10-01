@@ -157,7 +157,7 @@ fn' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Operator p ty ty
 fn' ExprCtx{ self, next, vars } = locating $ next vars <**> (flip (S.-->) <$ arrow <*> self vars <|> pure id)
 
 prd :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Operator p ty ty
-prd ExprCtx{ next, vars } = locating $ foldl1 (S..*) <$> sepBy1 (next vars) comma
+prd ExprCtx{ next, vars } = locating $ chainl1 (next vars) ((S..*) <$ comma)
 
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
