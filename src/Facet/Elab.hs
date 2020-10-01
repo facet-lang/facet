@@ -1,4 +1,5 @@
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -29,6 +30,8 @@ module Facet.Elab
 , ($$)
 , tlam
 , lam
+  -- * Elaborators
+, elabType
 ) where
 
 import           Control.Algebra
@@ -43,6 +46,7 @@ import qualified Facet.Core as C
 import           Facet.Name (Name(..), prettyNameWith)
 import qualified Facet.Print as P
 import qualified Facet.Surface as S
+import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Facet.Type
 import           Silkscreen (fillSep, group, pretty, (<+>), (</>))
@@ -255,6 +259,40 @@ lam :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check
 lam n b = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
   n ::: _A |- C.lam n <$> check (b ::: _B)
+
+
+-- Elaborators
+
+elabType :: Has (Error P.Print) sig m => (ST.Type ::: Maybe Type) -> EnvC m (Type ::: Type)
+elabType (t ::: _K) = validate =<< case t of
+  ST.Free  n -> synth (tglobal n)
+  ST.Bound n -> synth (tbound n)
+  ST.Type -> pure (C._Type ::: C._Type)
+  ST.Unit -> pure (C._Unit ::: C._Type)
+  (n ::: t) ST.:=> b -> do
+    (_KT, _KB) <- expectChecked _K >>= expectFunctionType (fromWords "in quantified type")
+    _T <- check (t ::: _KT)
+    _B <- n ::: _T |- check (b ::: _KB)
+    pure $ ((n ::: _T) :=> _B) ::: _KT C.--> _KB
+  f ST.:$  a -> do
+    f' ::: _F <- synth' f
+    (_A, _B) <- expectFunctionType (pretty "in application") _F
+    a' <- check (a ::: _A)
+    pure $ f' C..$ a' ::: _B
+  a ST.:-> b -> do
+    a' <- check (a ::: C._Type)
+    b' <- check (b ::: C._Type)
+    pure $ (a' C.--> b') ::: C._Type
+  l ST.:*  r -> do
+    l' <- check (l ::: C._Type)
+    r' <- check (r ::: C._Type)
+    pure $ (l' C..* r') ::: C._Type
+  where
+  check (t ::: _T) = tm <$> elabType (t ::: Just _T)
+  synth' t = elabType (t ::: Nothing)
+  validate r@(_T ::: _K') = case _K of
+    Just _K -> r <$ unify _K' _K
+    _       -> pure r
 
 
 -- Context
