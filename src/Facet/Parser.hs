@@ -160,8 +160,7 @@ typeTable =
   ]
 
 forAll
-  :: forall ty res p
-  .  (S.Type ty, S.Located ty, S.Located res, Monad p, PositionParsing p)
+  :: (S.Type ty, S.Located ty, S.Located res, Monad p, PositionParsing p)
   => (Facet p (Name S.::: ty) -> Facet p res -> Facet p res)
   -> BindParser (Facet p) ty res
 forAll (>=>) BindCtx{ self, vars } = locating $ do
