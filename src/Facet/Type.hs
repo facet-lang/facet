@@ -89,7 +89,7 @@ rename x y = go
     Type          -> Type
     Unit          -> Unit
     (z ::: t) :=> b
-      | x == z    -> (z ::: t) :=> b
+      | x == z    -> (z :::    t) :=>    b
       | otherwise -> (z ::: go t) :=> go b
     f :$ as       -> first (\ z -> if z == x then y else z) f :$ fmap go as
     a :-> b       -> go a :-> go b
