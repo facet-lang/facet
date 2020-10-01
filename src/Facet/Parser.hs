@@ -234,7 +234,7 @@ hnameStyle = IdentifierStyle
   Identifier
   ReservedIdentifier
 
-arrow :: TokenParsing p => Facet p String
+arrow :: TokenParsing p => p String
 arrow = symbol "->"
 
 variable :: (PositionParsing p, Coercible t Text) => t -> p ()
