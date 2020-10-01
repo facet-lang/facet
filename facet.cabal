@@ -39,6 +39,7 @@ library
   exposed-modules:
     Facet.Carrier.Error.Context
     Facet.Core
+    Facet.Decl
     Facet.Elab
     Facet.Env
     Facet.Expr
