@@ -19,6 +19,7 @@ import           Control.Applicative (Alternative(..), liftA2, (<**>))
 import           Control.Carrier.Reader
 import           Data.Char (isSpace)
 import           Data.Coerce
+import qualified Data.List.NonEmpty as NE
 import           Data.Text (Text)
 import           Facet.Name
 import qualified Facet.Surface as S
@@ -116,7 +117,7 @@ data ExprCtx p a b = ExprCtx
 
 -- | Operators are parsers parameterized by some expression context and the in-scope variables.
 type Operator p a b = ExprCtx p a b -> p b
-type Table p a b = [[Operator p a b]]
+type Table p a b = NE.NonEmpty (NE.NonEmpty (Operator p a b))
 
 -- | Build a parser for a Table.
 build :: TokenParsing p => Table p a b -> p a -> p b
@@ -128,9 +129,9 @@ build ts = root
     self = foldr (\ p rest vars -> p ExprCtx{ root, self, next, vars } <|> rest vars) next ps
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
-typeTable =
-  [ [ fn', forAll' (liftA2 (S.>~>)) ]
-  , [ vars ]
+typeTable = NE.fromList
+  [ NE.fromList [ fn', forAll' (liftA2 (S.>~>)) ]
+  , NE.fromList [ vars ]
   ]
 
 forAll'
