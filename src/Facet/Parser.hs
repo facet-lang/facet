@@ -124,7 +124,7 @@ typeTable =
   [
   ]
 
-tatom' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => p ty -> Operator p ty
+tatom' :: p ty -> Operator p ty
 tatom' var _self _next = var
 
 
