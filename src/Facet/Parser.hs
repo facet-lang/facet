@@ -209,7 +209,7 @@ lam' = braces . clause
 
 
 product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Operator p expr expr
-product (**) BindCtx{ next, self, vars } = locating $ (**) <$> self vars <*> next vars
+product (**) BindCtx{ next, self, vars } = locating $ (**) <$> self vars <* comma <*> next vars
 
 app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> Operator p expr expr
 app ($$) BindCtx{ next, vars } = locating $ ($$) <$> next vars <*> next vars
