@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
@@ -123,7 +124,7 @@ build ts = go
   go = foldr (choiceOrNextP go) (parens go) ts
   choiceOrNextP root ps next = self
     where
-    self = choice $ foldr (\ p -> (p ExprCtx{ root = root, self = self, next = next } :)) [next] ps
+    self = choice $ foldr (\ p -> (p ExprCtx{ root, self, next } :)) [next] ps
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty
 typeTable =
