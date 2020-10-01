@@ -171,7 +171,7 @@ unify t1 t2 = go t1 t2
 global :: Has (Error Print) sig m => T.Text -> Synth m T.Text
 global s = Synth $ asks (Map.lookup s) >>= \case
   Just b  -> pure (s ::: b)
-  Nothing -> freeVariable s
+  Nothing -> freeVariable (pretty s)
 
 app :: Has (Error Print) sig m => (a -> a -> a) -> Synth m a -> Check m a -> Synth m a
 app ($$) f a = Synth $ do
@@ -274,8 +274,8 @@ couldNotUnify t1 t2 = mismatch (fromWords "could not unify") (interpret t2) (int
 couldNotSynthesize :: Has (Error Print) sig m => m a
 couldNotSynthesize = err $ fromWords "could not synthesize a type"
 
-freeVariable :: Has (Error Print) sig m => T.Text -> m a
-freeVariable s = err $ fromWords "variable not in scope:" <+> pretty s
+freeVariable :: Has (Error Print) sig m => Print -> m a
+freeVariable v = err $ fromWords "variable not in scope:" <+> v
 
 
 -- Patterns
