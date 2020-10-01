@@ -129,13 +129,13 @@ arrow :: (Printer p, Ann p ~ Highlight) => p
 arrow = op (pretty "->")
 
 
-cases :: Print -> [Print -> Print] -> Print
+cases :: Print -> [Print] -> Print
 cases v cs = whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
   . encloseSep
     mempty
     mempty
     (flatAlt (space <> comma <> space) (comma <> space))
-  $ map (\ b -> withTransition (const id) (prec Pattern v) <+> prec Expr b) (cs <*> [v])
+  $ map (\ b -> withTransition (const id) (prec Pattern v) <+> prec Expr b) cs
 
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
@@ -155,8 +155,8 @@ instance U.Located Print where
 instance U.Expr Print where
   global = pretty
   -- FIXME: Use _ in binding positions for unused variables
-  lam0 n f = cases (annotate Name (pretty n)) [\ var -> f var]
-  lam  n f = cases (annotate Name (pretty n)) [\ var -> f (Left var)]
+  lam0 n f = let v = annotate Name (pretty n) in cases v [f v]
+  lam  n f = let v = annotate Name (pretty n) in cases v [f (Left v)]
   ($$) = app
 
   unit = pretty "()"
@@ -186,8 +186,8 @@ instance C.Type Print where
 instance C.Expr Print where
   global = var . pretty
   bound = name evar
-  tlam n b = cases (braces (C.bound n)) [const b]
-  lam0 n b = cases (C.bound n) [const b]
+  tlam n b = cases (braces (C.bound n)) [b]
+  lam0 n b = cases (C.bound n) [b]
   ($$) = app
 
 instance C.Module Print Print Print where
