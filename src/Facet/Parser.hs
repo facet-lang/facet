@@ -123,8 +123,8 @@ type Table p a b = NE.NonEmpty (NE.NonEmpty (Operator p a b))
 build :: TokenParsing p => Table p a b -> p a -> p b
 build ts = root
   where
-  root = foldr choiceOrNextP (parens . root) ts
-  choiceOrNextP ps next = self
+  root = foldr chain (parens . root) ts
+  chain ps next = self
     where
     self = foldr (\ p rest vars -> p ExprCtx{ root, self, next, vars } <|> rest vars) next ps
 
