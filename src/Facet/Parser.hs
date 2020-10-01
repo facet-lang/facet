@@ -81,7 +81,7 @@ lift = Facet . const
 
 -- FIXME: de-stratify the grammar
 
-decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, PositionParsing p) => Facet p mod
+decl :: (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, PositionParsing p) => Facet p mod
 decl = locating $ (S..:.) <$> dname <* colon <*> tsig tglobal
 
 tsigTable :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Table (Facet p) ty decl
