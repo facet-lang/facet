@@ -8,9 +8,6 @@ module Text.Parser.Location
 ) where
 
 import qualified Control.Carrier.Parser.Church as P
-import           Control.Monad (MonadPlus(..))
-import           Control.Monad.Trans.Class (MonadTrans(..))
-import           Control.Monad.Trans.Reader (ReaderT(..))
 import           Control.Effect.Parser.Span (Pos, Span(..))
 import           Text.Parser.Token (TokenParsing)
 
@@ -19,9 +16,6 @@ class TokenParsing p => LocationParsing p where
 
 instance P.Algebra sig m => LocationParsing (P.ParserC m) where
   position = P.position
-
-instance (LocationParsing m, MonadPlus m) => LocationParsing (ReaderT r m) where
-  position = lift position
 
 spanning :: LocationParsing p => p a -> p Span
 spanning p = Span <$> position <* p <*> position
