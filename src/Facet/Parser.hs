@@ -87,7 +87,7 @@ decl = locating $ (S..:.) <$> dname <* colon <*> sig global tglobal
   sig :: Facet p expr -> Facet p ty -> Facet p decl
   sig var tvar = bind var tvar <|> forAll var tvar <|> (S..=) <$> fn tvar <*> expr_ var
 
-  forAll evar vars = forAll' (liftA2 (S.>=>)) BindCtx{ vars, next = sig evar, self = \ vars -> forAll evar vars <|> sig evar vars }
+  forAll evar vars = Facet.Parser.forAll (liftA2 (S.>=>)) BindCtx{ vars, next = sig evar, self = \ vars -> forAll evar vars <|> sig evar vars }
 
   bind :: Facet p expr -> Facet p ty -> Facet p decl
   bind var tvar = do
@@ -96,7 +96,7 @@ decl = locating $ (S..:.) <$> dname <* colon <*> sig global tglobal
 
 sigTable :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Table (Facet p) ty decl
 sigTable =
-  [ [ forAll' (liftA2 (S.>=>)) ]
+  [ [ forAll (liftA2 (S.>=>)) ]
   ]
 
 
@@ -144,7 +144,7 @@ terminate op next = self where self vars = parens $ op BindCtx{ next, self, vars
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable =
-  [ [ toBindParser $ Infix R locating ((S.-->) <$ arrow), forAll' (liftA2 (S.>~>)) ]
+  [ [ toBindParser $ Infix R locating ((S.-->) <$ arrow), forAll (liftA2 (S.>~>)) ]
   , [ toBindParser $ Infix L locating (pure (S..$)) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       const (S._Unit <$ token (string "Unit"))
@@ -153,12 +153,12 @@ typeTable =
     ]
   ]
 
-forAll'
+forAll
   :: forall ty res p
   .  (S.Type ty, S.Located ty, S.Located res, Monad p, PositionParsing p)
   => (Facet p (Name S.::: ty) -> Facet p res -> Facet p res)
   -> BindParser (Facet p) ty res
-forAll' (>=>) BindCtx{ self, vars } = locating $ do
+forAll (>=>) BindCtx{ self, vars } = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
   let loop i rest vars = bind (pure i) $ \ v -> pure (v S.::: ty) >=> rest (S.tbound v <$ variable i <|> vars)
   arrow *> foldr loop self names vars
