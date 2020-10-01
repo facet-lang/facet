@@ -107,7 +107,8 @@ forAll (>=>) k tvar = locating $ do
 
 
 data ExprCtx p a = ExprCtx
-  { self :: p a
+  { root :: p a
+  , self :: p a
   , next :: p a
   }
 
@@ -119,10 +120,10 @@ type Table p a = [[Operator p a]]
 build :: TokenParsing p => Table p a -> p a
 build ts = go
   where
-  go = foldr ($) (parens go) (map choiceOrNextP ts)
-  choiceOrNextP ps nextP = go
+  go = foldr ($) (parens go) (map (choiceOrNextP go) ts)
+  choiceOrNextP root ps nextP = go
     where
-    go = choice $ map (\ p -> p ExprCtx{ self = go, next = nextP }) ps ++ [nextP]
+    go = choice $ map (\ p -> p ExprCtx{ root = root, self = go, next = nextP }) ps ++ [nextP]
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty
 typeTable =
