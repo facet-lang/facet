@@ -40,8 +40,8 @@ import           Text.Parser.Token.Style
 
 -- FIXME: a declaration whose body is a nullary computation backtracks all the way to a binding arrow type
 
-runFacet :: Facet m a -> m a
-runFacet (Facet m) = m 0
+runFacet :: Int -> Facet m a -> m a
+runFacet i (Facet m) = m i
 
 newtype Facet m a = Facet (Int -> m a)
   deriving (Alternative, Applicative, Functor, Monad) via ReaderC Int m

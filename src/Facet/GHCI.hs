@@ -40,7 +40,7 @@ parseElabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) s
   Left err -> P.putDoc (prettyNotice err)
   Right a  -> P.prettyPrint (Module.interpret a)
   where
-  parsed = runParser (const Right) failure failure input (runFacet p)
+  parsed = runParser (const Right) failure failure input (runFacet 0 p)
   src = sourceFromString Nothing s
   failure = Left . errToNotice src
   input = Input (Pos 0 0) s
