@@ -53,6 +53,7 @@ library
     Facet.Print
     Facet.Signature
     Facet.Surface
+    Facet.Surface.Expr
     Facet.Surface.Type
     Facet.Syntax
     Facet.Type
