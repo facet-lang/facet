@@ -4,6 +4,7 @@ module Facet.Name
 , prime
 , prettyNameWith
 , __
+, FVs
 , Scoped(..)
 , binder
 , binderM
@@ -46,6 +47,8 @@ prime n i = Name n (maybe 0 (succ . getMax) i)
 __ :: T.Text
 __ = T.empty
 
+
+type FVs = IntSet.IntSet
 
 class Scoped t where
   maxBV :: t -> Maybe (Max Int)

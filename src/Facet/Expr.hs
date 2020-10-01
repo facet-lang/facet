@@ -14,8 +14,6 @@ import qualified Facet.Core.HOAS as CH
 import           Facet.Name
 import qualified Facet.Type as Type
 
-type FVs = IntSet.IntSet
-
 data Expr
   = Global T.Text
   | Bound Name
