@@ -217,7 +217,7 @@ atom var = locating
   prd [] = S.unit
   prd ts = foldl1 (S.**) ts
 
-app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> ExprCtx p expr expr -> p expr
+app :: (PositionParsing p, S.Located expr) => (expr -> expr -> expr) -> Operator p expr expr
 app ($$) ExprCtx{ next, vars } = locating $ foldl1 ($$) <$> some (next vars)
 
 
