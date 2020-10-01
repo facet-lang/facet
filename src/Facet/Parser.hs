@@ -129,10 +129,10 @@ build ts end = root
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable =
   [ [ fn', forAll' (liftA2 (S.>~>)) ]
-  , [ product (S..*) ]
   , [ app (S..$) ]
-  , [ -- FIXME: we should treat Unit & Type as globals.
-      const (S._Unit <$ token (string "Unit"))
+  , [ product (S..*)
+      -- FIXME: we should treat Unit & Type as globals.
+    , const (S._Unit <$ token (string "Unit"))
     , const (S._Type <$ token (string "Type"))
     , vars
     ]
