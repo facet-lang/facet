@@ -121,9 +121,9 @@ build :: TokenParsing p => Table p a -> p a
 build ts = go
   where
   go = foldr (choiceOrNextP go) (parens go) ts
-  choiceOrNextP root ps nextP = go
+  choiceOrNextP root ps next = self
     where
-    go = choice $ map (\ p -> p ExprCtx{ root = root, self = go, next = nextP }) ps ++ [nextP]
+    self = choice $ foldr (\ p -> (p ExprCtx{ root = root, self = self, next = next } :)) [next] ps
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty
 typeTable =
