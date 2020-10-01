@@ -25,7 +25,7 @@ import           Data.Coerce
 import qualified Facet.Core as C
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
-import qualified Facet.Surface as U
+import qualified Facet.Surface as S
 import           Facet.Syntax
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
@@ -149,10 +149,10 @@ evar = var . P.var
 tvar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
 tvar = var . P.tvar
 
-instance U.Located Print where
+instance S.Located Print where
   locate _ = id
 
-instance U.Expr Print where
+instance S.Expr Print where
   global = pretty
   -- FIXME: Use _ in binding positions for unused variables
   lam0 n f = let v = var (pretty n) in cases v [f v]
@@ -162,7 +162,7 @@ instance U.Expr Print where
   unit = pretty "()"
   l ** r = tupled [l, r]
 
-instance U.Type Print where
+instance S.Type Print where
   tglobal = var . pretty
   -- FIXME: combine quantification over type variables of the same kind
   (n ::: t) >~> b = let v' = var (pretty n) in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (b v')
@@ -175,11 +175,11 @@ instance U.Type Print where
 instance C.Type Print where
   tglobal = var . pretty
   tbound = name tvar
-  (-->) = (U.-->)
-  (.*) = (U..*)
+  (-->) = (S.-->)
+  (.*) = (S..*)
   (.$) = app
-  _Unit = U._Unit
-  _Type = annotate Type U._Type
+  _Unit = S._Unit
+  _Type = annotate Type S._Type
   -- FIXME: combine quantification over type variables of the same kind
   (v ::: t) ==> b = group (align (braces (space <> ann (N.prettyNameWith tvar v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
@@ -194,10 +194,10 @@ instance C.Module Print Print Print where
   module' n b = ann (pretty n ::: pretty "Module") </> braces b
   n .:. t := b = ann (pretty n ::: t) </> braces b
 
-instance U.Module Print Print Print Print where
+instance S.Module Print Print Print Print where
   n .:. b = group $ ann (pretty n ::: b)
 
-instance U.Decl Print Print Print where
+instance S.Decl Print Print Print where
   -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
   t .= b = t </> b
 
