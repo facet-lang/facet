@@ -133,7 +133,7 @@ instance (C.Expr expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig 
 newtype Check m a = Check { runCheck :: Type -> EnvC m a }
   deriving (Algebra (Reader Type :+: Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Type (EnvC m)
 
-newtype Synth m a = Synth { runSynth :: EnvC m (a ::: Type) }
+newtype Synth m a = Synth { synth :: EnvC m (a ::: Type) }
 
 instance Functor m => Functor (Synth m) where
   fmap f (Synth m) = Synth (first f <$> m)
@@ -143,7 +143,7 @@ check = uncurryAnn runCheck
 
 switch :: Has (Error P.Print) sig m => Synth m a -> Check m a
 switch s = Check $ \ _T -> do
-  a ::: _T' <- runSynth s
+  a ::: _T' <- synth s
   a <$ unify _T _T'
 
 unify :: Has (Error P.Print) sig m => Type -> Type -> m ()
@@ -181,7 +181,7 @@ localVar n var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
 
 app :: Has (Error P.Print) sig m => (a -> a -> a) -> Synth m a -> Check m a -> Synth m a
 app ($$) f a = Synth $ do
-  f' ::: _F <- runSynth f
+  f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
   a' <- check (a ::: _A)
   pure $ f' $$ a' ::: _B
