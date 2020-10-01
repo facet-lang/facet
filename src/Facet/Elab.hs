@@ -90,7 +90,7 @@ instance Has (Reader Span) sig m => S.Located (Elab m a) where
 
 instance Has (Error P.Print) sig m => S.Type (Elab m (Type ::: Type)) where
   tglobal = fmap (first C.tglobal) . fromSynth . global . S.getTName
-  tbound n = fromSynth (localVar n C.tbound P.tvar)
+  tbound n = fromSynth (bound n C.tbound P.tvar)
   (n ::: t) >~> b = fromSynth $ (n ::: toCheck t) >~> toCheck b
   a --> b = fromSynth $ toCheck a --> toCheck b
   f .$  a = fromSynth $ toSynth f .$  toCheck a
@@ -101,7 +101,7 @@ instance Has (Error P.Print) sig m => S.Type (Elab m (Type ::: Type)) where
 
 instance (C.Expr expr, Has (Error P.Print) sig m) => S.Expr (Elab m (expr ::: Type)) where
   global = fmap (first C.global) . fromSynth . global . S.getEName
-  bound n = fromSynth (localVar n C.bound P.evar)
+  bound n = fromSynth (bound n C.bound P.evar)
   lam n b = fromCheck $ lam n (toCheck b)
   f $$ a = fromSynth $ toSynth f $$ toCheck a
   unit = tbd
@@ -174,8 +174,8 @@ global s = Synth $ asks (Map.lookup s) >>= \case
   Just b  -> pure (s ::: b)
   Nothing -> freeVariable (pretty s)
 
-localVar :: Has (Error P.Print) sig m => Name -> (Name -> e) -> (Int -> P.Print) -> Synth m e
-localVar n with var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
+bound :: Has (Error P.Print) sig m => Name -> (Name -> e) -> (Int -> P.Print) -> Synth m e
+bound n with var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
   Just b  -> pure (with n ::: b)
   Nothing -> freeVariable (prettyNameWith var n)
 
