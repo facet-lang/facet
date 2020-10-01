@@ -120,6 +120,9 @@ data ExprCtx p a = ExprCtx
   , next :: p a
   }
 
+toExprCtx :: BindCtx p a a -> ExprCtx p a
+toExprCtx BindCtx{ self, next, vars } = ExprCtx{ self = self vars, next = next vars }
+
 -- | Operators are parsers parameterized by some expression context and the in-scope variables.
 type Operator p a b = BindCtx p a b -> p b
 type Table p a b = [[Operator p a b]]
