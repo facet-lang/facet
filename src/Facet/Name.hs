@@ -69,3 +69,4 @@ instantiate = IntMap.insert . id'
 data ModuleName
   = MN String
   | ModuleName :.: String
+  deriving (Eq, Ord, Show)
