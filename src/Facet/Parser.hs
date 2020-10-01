@@ -207,22 +207,6 @@ lam' = braces . clause
   clause :: Operator (Facet p) expr expr
   clause BindCtx{ self, vars } = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
 
--- FIXME: patterns
--- FIXME: nullary computations
-lam :: forall p expr . (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
-lam var = braces $ clause var
-  where
-  clause :: Facet p expr -> Facet p expr
-  clause var = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> var in clause var' <|> arrow *> expr_ var' <?> "clause"
-
-atom :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
-atom var = locating
-  $   lam var
-  <|> parens (prd <$> sepBy (expr_ var) comma)
-  <|> var
-  where
-  prd [] = S.unit
-  prd ts = foldl1 (S.**) ts
 
 product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Operator p expr expr
 product (**) BindCtx{ next, self, vars } = locating $ (**) <$> self vars <*> next vars
