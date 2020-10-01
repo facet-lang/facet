@@ -80,11 +80,11 @@ decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, 
 decl = locating $ (S..:.) <$> dname <* colon <*> sig global tglobal
   where
   sig :: Facet p expr -> Facet p ty -> Facet p decl
-  sig var tvar = try (bind var tvar) <|> forAll (liftA2 (S.>=>)) (sig var) tvar <|> (S..=) <$> type_ tvar <*> expr_ var
+  sig var tvar = bind var tvar <|> forAll (liftA2 (S.>=>)) (sig var) tvar <|> (S..=) <$> type_ tvar <*> expr_ var
 
   bind :: Facet p expr -> Facet p ty -> Facet p decl
   bind var tvar = do
-    (i, t) <- parens ((,) <$> name <* colon <*> type_ tvar)
+    (i, t) <- try $ parens ((,) <$> name <* colon <*> type_ tvar)
     Facet.Parser.bind (pure i) $ \ v -> ((v S.::: t) S.>->) <$ arrow <*> sig (S.bound v <$ variable i <|> var) tvar
 
 
