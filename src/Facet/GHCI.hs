@@ -2,7 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.GHCI
 ( -- * Parsing
-  parseString'
+  parseString
 , parseElabString
   -- * Pretty-printing
 , prettyAnn
@@ -32,8 +32,8 @@ import qualified Silkscreen as S
 
 -- Parsing
 
-parseString' :: MonadIO m => Facet (ParserC (Either Notice)) P.Print -> String -> m ()
-parseString' p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWithString (Pos 0 0) s (runFacet 0 p))
+parseString :: MonadIO m => Facet (ParserC (Either Notice)) P.Print -> String -> m ()
+parseString p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWithString (Pos 0 0) s (runFacet 0 p))
 
 parseElabString :: MonadIO m => Facet (ParserC (Either Notice)) (Elab (ErrorC Span P.Print ((->) Span)) Module.Module) -> String -> m ()
 parseElabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . elab . (::: Nothing) of
