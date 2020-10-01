@@ -186,9 +186,12 @@ tglobal :: (S.Type ty, Monad p, TokenParsing p) => Facet p ty
 tglobal = S.tglobal <$> tname <?> "variable"
 
 
-exprTable :: (S.Expr expr, S.Located expr, PositionParsing p) => Table (Facet p) expr expr
+exprTable :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Table (Facet p) expr expr
 exprTable = NE.fromList
   [ NE.fromList [ app (S.$$) ]
+  , NE.fromList
+    [ lam'
+    ]
   ]
 
 expr :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr
@@ -199,6 +202,14 @@ global = S.global <$> name <?> "variable"
 
 expr_ :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
 expr_ vars = app (S.$$) ExprCtx{ self = expr_, next = atom, vars }
+
+-- FIXME: patterns
+-- FIXME: nullary computations
+lam' :: forall p expr . (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Operator (Facet p) expr expr
+lam' = braces . clause
+  where
+  clause :: Operator (Facet p) expr expr
+  clause ExprCtx{ self, vars } = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
 
 -- FIXME: patterns
 -- FIXME: nullary computations
