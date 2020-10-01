@@ -132,6 +132,9 @@ typeTable =
   [ [  ]
   ]
 
+fn' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Operator p ty ty
+fn' ExprCtx{ self, next, vars } = locating $ next vars <**> (flip (S.-->) <$ arrow <*> self vars <|> pure id)
+
 atom' :: Operator p a a
 atom' = vars
 
