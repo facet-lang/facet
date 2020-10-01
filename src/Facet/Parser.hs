@@ -94,7 +94,7 @@ tsig :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Mona
 tsig = build tsigTable (\ _ vars -> sig vars global)
 
 sig :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Facet p expr -> Facet p decl
-sig tvars = build (sigTable tvars) (\ _ vars -> (S..=) <$> fn tvars <*> expr_ vars)
+sig tvars = build (sigTable tvars) (\ _ vars -> (S..=) <$> monotype_ tvars <*> expr_ vars)
 
 binder :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> BindParser (Facet p) expr decl
 binder tvars BindCtx{ self, vars } = locating $ do
@@ -172,6 +172,9 @@ type' = type_ tglobal
 
 type_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 type_ = build typeTable (terminate (toBindParser (Infix L locating ((S..*) <$ comma))))
+
+monotype_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
+monotype_ = build monotypeTable (terminate (toBindParser (Infix L locating ((S..*) <$ comma))))
 
 fn :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
 fn tvar = locating $ tapp tvar <**> (flip (S.-->) <$ arrow <*> fn tvar <|> pure id)
