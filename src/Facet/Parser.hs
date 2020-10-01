@@ -183,7 +183,8 @@ tglobal = S.tglobal <$> tname <?> "variable"
 exprTable :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Table (Facet p) expr expr
 exprTable =
   [ [ app (S.$$) ]
-  , [ lam'
+  , [ product (S.**)
+    , lam'
     , vars
     ]
   ]
