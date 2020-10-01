@@ -163,7 +163,7 @@ instance U.Expr Print where
   l ** r = tupled [l, r]
 
 instance U.Type Print where
-  tglobal = pretty
+  tglobal = var . pretty
   -- FIXME: combine quantification over type variables of the same kind
   (n ::: t) >~> b = let v' = var (pretty n) in group (align (braces (space <> ann (v' ::: t) <> flatAlt line space))) </> arrow <+> prec FnR (b v')
   (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
@@ -173,7 +173,7 @@ instance U.Type Print where
   _Type = annotate Type $ pretty "Type"
 
 instance C.Type Print where
-  tglobal = pretty
+  tglobal = var . pretty
   tbound = name tvar
   (-->) = (U.-->)
   (.*) = (U..*)
@@ -184,7 +184,7 @@ instance C.Type Print where
   (v ::: t) ==> b = group (align (braces (space <> ann (N.prettyNameWith tvar v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
 instance C.Expr Print where
-  global = pretty
+  global = var . pretty
   bound = name evar
   tlam n b = cases (braces (C.bound n)) [const b]
   lam0 n b = cases (C.bound n) [const b]
