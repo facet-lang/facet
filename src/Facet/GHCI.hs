@@ -21,7 +21,7 @@ import           Facet.Carrier.Error.Context
 import qualified Facet.Core.Lifted as C
 import           Facet.Elab
 import qualified Facet.Module as Module
-import           Facet.Parser (Facet(..))
+import           Facet.Parser (Facet(..), runFacet)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
 import           Facet.Syntax ((:::)(..))

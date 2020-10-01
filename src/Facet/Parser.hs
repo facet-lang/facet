@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -6,13 +7,15 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Parser
-( Facet(..)
+( runFacet
+, Facet(..)
 , decl
 , type'
 , expr
 ) where
 
 import           Control.Applicative (Alternative(..), liftA2, (<**>))
+import           Control.Carrier.Reader
 import           Data.Char (isSpace)
 import           Data.Coerce
 import           Data.Text (Text)
@@ -37,11 +40,36 @@ import           Text.Parser.Token.Style
 
 -- FIXME: a declaration whose body is a nullary computation backtracks all the way to a binding arrow type
 
-newtype Facet m a = Facet { runFacet :: m a }
-  deriving (Alternative, Applicative, CharParsing, Functor, LocationParsing, Monad, Parsing)
+runFacet :: Facet m a -> m a
+runFacet (Facet m) = m 0
+
+newtype Facet m a = Facet (Int -> m a)
+  deriving (Alternative, Applicative, Functor, Monad) via ReaderC Int m
+
+instance Parsing p => Parsing (Facet p) where
+  try (Facet m) = Facet $ try . m
+  Facet m <?> l = Facet $ \ e -> m e <?> l
+  skipMany (Facet m) = Facet $ skipMany . m
+  unexpected = lift . unexpected
+  eof = lift eof
+  notFollowedBy (Facet m) = Facet $ notFollowedBy . m
+
+instance CharParsing p => CharParsing (Facet p) where
+  satisfy = lift . satisfy
+  char    = lift . char
+  notChar = lift . notChar
+  anyChar = lift anyChar
+  string  = lift . string
+  text = lift . text
 
 instance TokenParsing m => TokenParsing (Facet m) where
   someSpace = buildSomeSpaceParser (skipSome (satisfy isSpace)) emptyCommentStyle{ _commentLine = "#" }
+
+instance LocationParsing p => LocationParsing (Facet p) where
+  position = lift position
+
+lift :: p a -> Facet p a
+lift = Facet . const
 
 
 decl :: forall p expr ty decl mod . (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, LocationParsing p) => p mod
