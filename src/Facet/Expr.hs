@@ -64,15 +64,17 @@ rename x y = go
     App _ f a     -> go f C.$$ go a
 
 subst :: Name -> Expr -> Expr -> Expr
-subst x e = \case
-  Global s      -> Global s
-  Bound n
-    | n == x    -> e
-    | otherwise -> Bound n
-  TLam _ n b    -> let n' = prime (hint n) (fvs b <> fvs e)
-                       b' = subst x e (rename n n' b)
-                   in C.tlam n' b'
-  Lam0 _ n b    -> let n' = prime (hint n) (fvs b <> fvs e)
-                       b' = subst x e (rename n n' b)
-                   in C.lam0 n' b'
-  App _ f a     -> subst x e f C.$$ subst x e a
+subst x e = go
+  where
+  go = \case
+    Global s      -> Global s
+    Bound n
+      | n == x    -> e
+      | otherwise -> Bound n
+    TLam _ n b    -> let n' = prime (hint n) (fvs b <> fvs e)
+                         b' = go (rename n n' b)
+                     in C.tlam n' b'
+    Lam0 _ n b    -> let n' = prime (hint n) (fvs b <> fvs e)
+                         b' = go (rename n n' b)
+                     in C.lam0 n' b'
+    App _ f a     -> go f C.$$ go a
