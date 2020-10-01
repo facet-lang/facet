@@ -29,7 +29,6 @@ import qualified Facet.Surface as U
 import           Facet.Syntax
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
-import           Silkscreen.Printer.Fresh
 import           Silkscreen.Printer.Prec
 import           Silkscreen.Printer.Rainbow
 
@@ -40,7 +39,7 @@ getPrint :: Print -> PP.Doc ANSI.AnsiStyle
 getPrint = PP.reAnnotate terminalStyle . getDoc . getPrint'
 
 getPrint' :: Print -> Doc
-getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . runFresh 0 . (`runPrint` const id) . group
+getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . (`runPrint` const id) . group
 
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
@@ -76,12 +75,12 @@ instance Printer Doc where
   liftDoc1 f (Doc m d) = Doc m (f d)
   liftDoc2 f (Doc m1 d1) (Doc m2 d2) = Doc (m1 <> m2) (f d1 d2)
 
-newtype Print = Print { runPrint :: (Context -> Print -> Print) -> Fresh (Prec Context (Rainbow Doc)) }
-  deriving (FreshPrinter, Monoid, Printer, Semigroup)
+newtype Print = Print { runPrint :: (Context -> Print -> Print) -> Prec Context (Rainbow Doc) }
+  deriving (Monoid, Printer, Semigroup)
 
 instance PrecedencePrinter Print where
   type Level Print = Context
-  askingPrec = coerce (askingPrec :: (Context -> (Context -> Print -> Print) -> Fresh (Prec Context (Rainbow Doc))) -> (Context -> Print -> Print) -> Fresh (Prec Context (Rainbow Doc)))
+  askingPrec = coerce (askingPrec :: (Context -> (Context -> Print -> Print) -> Prec Context (Rainbow Doc)) -> (Context -> Print -> Print) -> Prec Context (Rainbow Doc))
   localPrec f a = Print $ \ t -> localPrec f (askingPrec ((`runPrint` t) . (`t` a)))
 
 instance Show Print where
