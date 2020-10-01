@@ -131,10 +131,10 @@ build ts = root
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable = NE.fromList
   [ NE.fromList [ fn', forAll' (liftA2 (S.>~>)) ]
+  , NE.fromList [ prd ]
   , NE.fromList
-    [ prd
-      -- FIXME: we should treat Unit & Type as globals.
-    , const (S._Unit <$ token (string "Unit"))
+    [ -- FIXME: we should treat Unit & Type as globals.
+      const (S._Unit <$ token (string "Unit"))
     , const (S._Type <$ token (string "Type"))
     , vars
     ]
@@ -157,7 +157,7 @@ fn' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Operator p ty ty
 fn' ExprCtx{ self, next, vars } = locating $ next vars <**> (flip (S.-->) <$ arrow <*> self vars <|> pure id)
 
 prd :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Operator p ty ty
-prd ExprCtx{ root, vars } = locating $ parens (foldl1 (S..*) <$> sepByNonEmpty (root vars) comma)
+prd ExprCtx{ next, vars } = locating $ foldl1 (S..*) <$> sepBy1 (next vars) comma
 
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
