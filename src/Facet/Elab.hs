@@ -89,7 +89,7 @@ instance Has (Reader Span) sig m => S.Located (Elab m a) where
   locate = local . const
 
 instance Has (Error P.Print) sig m => S.Type (Elab m (Type ::: Type)) where
-  tglobal = fmap (first C.tglobal) . fromSynth . global . S.getTName
+  tglobal = fromSynth . tglobal
   tbound n = fromSynth (tbound n)
   (n ::: t) >~> b = fromSynth $ (n ::: toCheck t) >~> toCheck b
   a --> b = fromSynth $ toCheck a --> toCheck b
@@ -172,6 +172,11 @@ unify t1 t2 = go t1 t2
 global :: Has (Error P.Print) sig m => T.Text -> Synth m T.Text
 global s = Synth $ asks (Map.lookup s) >>= \case
   Just b  -> pure (s ::: b)
+  Nothing -> freeVariable (pretty s)
+
+tglobal :: (C.Type ty, Has (Error P.Print) sig m) => S.TName -> Synth m ty
+tglobal (S.TName s) = Synth $ asks (Map.lookup s) >>= \case
+  Just b  -> pure (C.tglobal s ::: b)
   Nothing -> freeVariable (pretty s)
 
 tbound :: (C.Type ty, Has (Error P.Print) sig m) => Name -> Synth m ty
