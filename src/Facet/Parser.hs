@@ -205,7 +205,7 @@ lam' :: forall p expr . (S.Expr expr, S.Located expr, Monad p, PositionParsing p
 lam' = braces . clause
   where
   clause :: Operator (Facet p) expr expr
-  clause BindCtx{ self, vars } = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
+  clause BindCtx{ vars } = self vars where self vars = locating $ bind name $ \ v -> S.lam0 v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
 
 
 product :: (S.Located expr, PositionParsing p) => (expr -> expr -> expr) -> Operator p expr expr
