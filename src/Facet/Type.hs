@@ -28,7 +28,6 @@ data Type
   | Either Name Text :$ Stack Type
   | Type :-> Type
   | Type :*  Type
--- FIXME: shouldn’t Var, HOAS, + rank-n polymorphism allow us to unify?
 
 infixr 0 :=>
 infixl 9 :$
