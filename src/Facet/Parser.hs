@@ -182,7 +182,7 @@ tglobal = S.tglobal <$> tname <?> "variable"
 exprTable :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Table (Facet p) expr expr
 exprTable =
   [ [ toBindParser $ Infix L locating (pure (S.$$)) ]
-  , [ comp
+  , [ toBindParser $ Atom comp
     , toBindParser $ Atom id
     ]
   ]
@@ -197,12 +197,12 @@ expr_ :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p ex
 expr_ = build exprTable (terminate parens (toBindParser (Infix L locating ((S.**) <$ comma))))
 
 -- FIXME: nullary computations
-comp :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParser (Facet p) expr expr
+comp :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
 comp = braces . clause
 
 -- FIXME: patterns
-clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParser (Facet p) expr expr
-clause = self . vars where self vars = locating $ name >>= \ n -> bind n $ \ v -> S.lam v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
+clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
+clause vars = locating $ name >>= \ n -> bind n $ \ v -> S.lam v <$> let var' = S.bound v <$ variable (hint v) <|> vars in clause var' <|> arrow *> expr_ var' <?> "clause"
 
 chainl1_ :: Alternative m => m a -> (m a -> m a) -> m (a -> a -> a) -> m a
 chainl1_ p wrap op = go where go = wrap $ p <**> (flip <$> op <*> go <|> pure id)
