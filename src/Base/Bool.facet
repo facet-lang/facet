@@ -49,7 +49,7 @@ bool
 # fixme: how do we describe the compilation of this down to a branch instruction?
 if
 : (c : Bool) -> (t : {a}) -> (e : {a}) -> a
-{ case c { True -> t! | False -> e! } }
+{ case c { True -> t! , False -> e! } }
 
 # fixme: can we type terms in declaration scope as having compile-time phasing using QTT–style annotations on the context?
 # fixme: can we just sort of assume that stuff has the same phase as its module? (or “no earlier than” perhaps?)
