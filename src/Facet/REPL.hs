@@ -35,24 +35,24 @@ loop = do
 
 commandParser :: (Has Empty sig m', Has Readline sig m') => TokenParsing m => m (m' ())
 commandParser = parseCommand $ mconcat
-  [ command ["help", "h", "?"] $ print helpDoc
-  , command ["quit", "q"]      $ empty
+  [ command ["help", "h", "?"] "display this list of commands" $ print helpDoc
+  , command ["quit", "q"]      "exit the repl"                 $ empty
   ]
 
 parseCommand :: TokenParsing m => Commands a -> m a
 parseCommand (Commands cs) = getAlt (foldMap (Alt . go) cs)
   where
-  go (Command [] v) = pure v
-  go (Command ss v) = v <$ token (char ':' *> choice (map string ss))
+  go (Command [] _ v) = pure v
+  go (Command ss _ v) = v <$ token (char ':' *> choice (map string ss))
 
 
-command :: [String] -> a -> Commands a
-command s a = Commands [Command s a]
+command :: [String] -> String -> a -> Commands a
+command s h a = Commands [Command s h a]
 
 newtype Commands a = Commands [Command a]
   deriving (Foldable, Functor, Monoid, Semigroup, Traversable)
 
-data Command a = Command [String] a
+data Command a = Command [String] String a
   deriving (Foldable, Functor, Traversable)
 
 
