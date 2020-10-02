@@ -190,6 +190,8 @@ instance C.Expr Print where
   tlam n b = cases (braces (C.bound n)) [b]
   lam n b = cases (C.bound n) [b]
   ($$) = app
+  unit = pretty "()"
+  l ** r = tupled [l, r]
 
 instance C.Module Print Print Print where
   module' n b = ann (pretty n ::: pretty "Module") </> braces b

@@ -17,6 +17,8 @@ data Expr
   | TLam FVs Name Expr
   | Lam FVs Name Expr
   | App FVs Expr Expr
+  | Unit
+  | Pair FVs Expr Expr
 
 instance Scoped Expr where
   fvs = \case
@@ -25,6 +27,8 @@ instance Scoped Expr where
     TLam s _ _ -> s
     Lam s _ _  -> s
     App s _ _  -> s
+    Unit       -> IntSet.empty
+    Pair s _ _ -> s
 
 instance C.Expr Expr where
   global = Global
@@ -32,6 +36,8 @@ instance C.Expr Expr where
   tlam n b = TLam (IntSet.delete (id' n) (fvs b)) n b
   lam n b = Lam (IntSet.delete (id' n) (fvs b)) n b
   f $$ a = App (fvs f <> fvs a) f a
+  unit = Unit
+  l ** r = Pair (fvs l <> fvs r) l r
 
 interpret :: C.Expr r => Expr -> r
 interpret = \case
@@ -40,6 +46,8 @@ interpret = \case
   TLam _ n b -> C.tlam n (interpret b)
   Lam _ n b -> C.lam n (interpret b)
   App _ f a -> interpret f C.$$ interpret a
+  Unit -> C.unit
+  Pair _ l r -> interpret l C.** interpret r
 
 rename :: Name -> Name -> Expr -> Expr
 rename x y = go
@@ -56,6 +64,8 @@ rename x y = go
       | z == x    -> Lam s z b
       | otherwise -> C.lam z (go b)
     App _ f a     -> go f C.$$ go a
+    Unit          -> Unit
+    Pair _ l r    -> go l C.** go r
 
 subst :: Name -> Expr -> Expr -> Expr
 subst x e = go
@@ -72,3 +82,5 @@ subst x e = go
                          b' = go (rename n n' b)
                      in C.lam n' b'
     App _ f a     -> go f C.$$ go a
+    Unit          -> Unit
+    Pair _ l r    -> go l C.** go r

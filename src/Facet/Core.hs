@@ -40,6 +40,8 @@ class Expr expr where
   lam :: Name -> expr -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
+  unit :: expr
+  (**) :: expr -> expr -> expr
 
 
 class Module expr ty mod | mod -> expr ty where
