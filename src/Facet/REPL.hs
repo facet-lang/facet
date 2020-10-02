@@ -76,5 +76,5 @@ helpDoc :: Doc AnsiStyle
 helpDoc = tabulate2 (P.space <+> P.space) entries
   where
   entries = map entry commands
-  entry c = (concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)) <> maybe mempty (enclose (pretty '<') (pretty '>') . pretty) (meta c), w (usage c))
+  entry c = (concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)) <> maybe mempty ((space <>) . enclose (pretty '<') (pretty '>') . pretty) (meta c), w (usage c))
   w = align . fillSep . map pretty . words
