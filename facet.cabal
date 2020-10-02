@@ -76,3 +76,13 @@ library
     , terminal-size
     , text
   hs-source-dirs:      src
+
+
+executable facetc
+  import: common
+  main-is: Main.hs
+  hs-source-dirs: facetc
+  build-depends:
+    , base
+    , optparse-applicative
+    , facet
