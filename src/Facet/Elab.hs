@@ -269,8 +269,8 @@ elabType (t ::: _K) = ST.foldType alg t _K
   alg t _K = validate =<< case t of
     ST.Free  n -> synth (tglobal n)
     ST.Bound n -> synth (tbound n)
-    ST.Type -> pure (C._Type ::: C._Type)
-    ST.Unit -> pure (C._Unit ::: C._Type)
+    ST.Type -> synth _Type
+    ST.Unit -> synth _Unit
     (n ::: t) ST.:=> b -> do
       (_KT, _KB) <- expectChecked _K >>= expectFunctionType (fromWords "in quantified type")
       _T <- check (t ::: _KT)
