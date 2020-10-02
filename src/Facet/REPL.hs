@@ -12,7 +12,6 @@ import Control.Carrier.Readline.Haskeline
 import Control.Effect.Parser.Notice (prettyNotice)
 import Control.Effect.Parser.Span (Pos(..))
 import Control.Monad.IO.Class (MonadIO)
-import Data.Monoid (Alt(..))
 import Facet.Pretty
 import Prelude hiding (print)
 import Prettyprinter as P hiding (column, width)
@@ -41,7 +40,7 @@ commands = mconcat
   ]
 
 parseCommands :: TokenParsing m => [Command a] -> m a
-parseCommands = getAlt . foldMap (Alt . go)
+parseCommands = choice . map go
   where
   go (Command [] _ v) = pure v
   go (Command ss _ v) = v <$ choice (map (\ s -> symbol (':':s) <?> (':':s)) ss)
