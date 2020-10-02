@@ -32,6 +32,10 @@ loop = do
   where
   commandParser = parseCommands commands
 
+-- TODO:
+-- - type
+-- - load
+-- - reload
 commands :: [Command Action]
 commands = mconcat
   [ command ["help", "h", "?"] "display this list of commands" $ Action $ print helpDoc
