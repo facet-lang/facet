@@ -11,8 +11,12 @@ import Control.Carrier.Readline.Haskeline
 import Control.Effect.Parser.Notice (prettyNotice)
 import Control.Effect.Parser.Span (Pos(..))
 import Control.Monad.IO.Class (MonadIO)
+import Data.Bifunctor (bimap)
 import Data.Monoid (Alt(..))
 import Facet.Pretty
+import Prelude hiding (print)
+import Prettyprinter as P hiding (column, width)
+import Prettyprinter.Render.Terminal (AnsiStyle)
 import Text.Parser.Char
 import Text.Parser.Combinators
 import Text.Parser.Token
@@ -29,9 +33,10 @@ loop = do
       Left  err -> putDoc (prettyNotice err) *> loop
     Nothing   -> loop
 
-commandParser :: Has Empty sig m' => TokenParsing m => m (m' ())
+commandParser :: (Has Empty sig m', Has Readline sig m') => TokenParsing m => m (m' ())
 commandParser = parseCommand $ mconcat
-  [ command ["quit", "q"] $ empty
+  [ command ["help", "h", "?"] $ print helpDoc
+  , command ["quit", "q"]      $ empty
   ]
 
 parseCommand :: TokenParsing m => Command a -> m a
@@ -46,3 +51,13 @@ command s a = Command [(s, a)]
 
 newtype Command a = Command [([String], a)]
   deriving (Foldable, Functor, Monoid, Semigroup, Traversable)
+
+
+helpDoc :: Doc AnsiStyle
+helpDoc = tabulate2 (P.space <+> P.space) (map (bimap pretty w) entries)
+  where
+  entries =
+    [ (":help, :h, :?", "display this list of commands")
+    , (":quit, :q",     "exit the repl")
+    ]
+  w = align . fillSep . map pretty . words
