@@ -212,11 +212,7 @@ elabType (t ::: _K) = ST.foldType alg t _K
     ST.Bound n -> synth (tbound n)
     ST.Type -> synth _Type
     ST.Unit -> synth _Unit
-    (n ::: t) ST.:=> b -> do
-      (_KT, _KB) <- expectChecked _K >>= expectFunctionType (fromWords "in quantified type")
-      _T <- check (t ::: _KT)
-      _B <- n ::: _T |- check (b ::: _KB)
-      pure $ ((n ::: _T) :=> _B) ::: _KT C.--> _KB
+    t ST.:=> b -> synth (fmap _check t >~> _check b)
     f ST.:$  a -> synth (_synth f .$  _check a)
     a ST.:-> b -> synth (_check a --> _check b)
     l ST.:*  r -> synth (_check l .*  _check r)
@@ -224,7 +220,6 @@ elabType (t ::: _K) = ST.foldType alg t _K
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
-    check (t ::: _T) = tm <$> t (Just _T)
     validate r@(_T ::: _K') = case _K of
       Just _K -> r <$ unify _K' _K
       _       -> pure r
