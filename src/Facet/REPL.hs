@@ -23,21 +23,14 @@ loop = do
   (line, resp) <- prompt "λ "
   case resp of
     Just resp -> case runParserWithString (Pos line 0) resp commandParser of
-      Right cmd -> runEmpty (pure ()) (const loop) (interpret cmd)
+      Right cmd -> runEmpty (pure ()) (const loop) cmd
       Left  err -> putDoc (prettyNotice err) *> loop
     Nothing   -> loop
 
-interpret :: Has Empty sig m => Command -> m ()
-interpret = \case
-  Quit -> empty
-
-commandParser :: TokenParsing m => m Command
+commandParser :: Has Empty sig m' => TokenParsing m => m (m' ())
 commandParser = char ':' *> choice
-  [ Quit <$ command 'q' "quit"
+  [ empty <$ command 'q' "quit"
   ]
-
-data Command
-  = Quit
 
 command :: TokenParsing m => Char -> String -> m ()
 command s l
