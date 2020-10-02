@@ -3,7 +3,6 @@ module Facet.REPL
 ( repl
 ) where
 
-import Control.Applicative ((<|>))
 import Control.Carrier.Empty.Church
 import Control.Carrier.Parser.Church
 import Control.Carrier.Readline.Haskeline
@@ -29,10 +28,8 @@ loop = do
 
 commandParser :: Has Empty sig m' => TokenParsing m => m (m' ())
 commandParser = char ':' *> choice
-  [ empty <$ command 'q' "quit"
+  [ empty <$ command ["quit", "q"]
   ]
 
-command :: TokenParsing m => Char -> String -> m ()
-command s l
-  =   () <$ symbolic s
-  <|> () <$ symbol l
+command :: TokenParsing m => [String] -> m ()
+command s = () <$ choice (map symbol s)
