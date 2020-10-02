@@ -69,11 +69,11 @@ instantiate = IntMap.insert . id'
 
 
 data MName
-  = MName String
-  | MName :. String
+  = MName T.Text
+  | MName :. T.Text
   deriving (Eq, Ord, Show)
 
-data QName = MName :.: String
+data QName = MName :.: T.Text
   deriving (Eq, Ord, Show)
 
 moduleName :: QName -> MName
