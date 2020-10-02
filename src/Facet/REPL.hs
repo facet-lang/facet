@@ -32,9 +32,11 @@ loop = do
       Right cmd -> runEmpty (pure ()) (const loop) cmd
       Left  err -> putDoc (prettyNotice err) *> loop
     Nothing   -> loop
+  where
+  commandParser = parseCommand commands
 
-commandParser :: (Has Empty sig m', Has Readline sig m') => TokenParsing m => m (m' ())
-commandParser = parseCommand $ mconcat
+commands :: (Has Empty sig m, Has Readline sig m) => Commands (m ())
+commands = mconcat
   [ command ["help", "h", "?"] "display this list of commands" $ print helpDoc
   , command ["quit", "q"]      "exit the repl"                 $ empty
   ]
