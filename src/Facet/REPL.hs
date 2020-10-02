@@ -39,18 +39,21 @@ commandParser = parseCommand $ mconcat
   , command ["quit", "q"]      $ empty
   ]
 
-parseCommand :: TokenParsing m => Command a -> m a
-parseCommand (Command cs) = getAlt (foldMap (Alt . uncurry go) cs)
+parseCommand :: TokenParsing m => Commands a -> m a
+parseCommand (Commands cs) = getAlt (foldMap (Alt . go) cs)
   where
-  go [] v = pure v
-  go ss v = v <$ token (char ':' *> choice (map string ss))
+  go (Command [] v) = pure v
+  go (Command ss v) = v <$ token (char ':' *> choice (map string ss))
 
 
-command :: [String] -> a -> Command a
-command s a = Command [(s, a)]
+command :: [String] -> a -> Commands a
+command s a = Commands [Command s a]
 
-newtype Command a = Command [([String], a)]
+newtype Commands a = Commands [Command a]
   deriving (Foldable, Functor, Monoid, Semigroup, Traversable)
+
+data Command a = Command [String] a
+  deriving (Foldable, Functor, Traversable)
 
 
 helpDoc :: Doc AnsiStyle
