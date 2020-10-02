@@ -41,6 +41,122 @@ script/repl # actually launch the repl
 `ghcide` integration is also provided, and I edit in VS Code configured to use it.
 
 
+## Syntax
+
+A quick overview of facet’s syntax:
+
+
+### Comments
+
+Line comments start with `#`. There are no block comments.
+
+```facet
+# comments are like this
+```
+
+
+### Declarations
+
+Declarations live at the top level of a file, and have a name, a signature, and a body wrapped in braces.
+
+```facet
+unit1 : Unit
+{ unit }
+```
+
+A declaration’s signature gives its type, and can also bind variables. Variables bound in the signature are in-scope in the body.
+
+```facet
+id1 : (x : Unit) -> Unit
+{ x }
+```
+
+
+### Functions
+
+If we didn’t bind the variable in the signature, we could instead bind it by pattern matching in the body. Function bodies range over any variables unbound in the signature. For example, the above definition of `id1` is equivalent to:
+
+```facet
+id2 : Unit -> Unit
+{ x -> x }
+```
+
+Functions are typically defined in _curried_ style: a function of two arguments is a function of one argument whose result is a function of one argument. Multiple variables can be bound either in the signature:
+
+```facet
+const1 : (a : Unit) -> (b : Unit) -> Unit
+{ a }
+```
+
+the body:
+
+```facet
+const2 : Unit -> Unit -> Unit
+{ a b -> a }
+```
+
+or a mixture:
+
+```facet
+const3 : (a : Unit) -> Unit -> Unit
+{ b -> a }
+```
+
+Unused parameters can be ignored with a _wildcard_ pattern, written as `_`, whether in the signature:
+
+```facet
+const4 : (a : Unit) -> (_ : Unit) -> Unit
+{ a }
+```
+
+or the body:
+
+```facet
+const5 : Unit -> Unit -> Unit
+{ a _ -> a }
+```
+
+From here on, we’ll prefer to bind variables in the signature rather than the body.
+
+
+### Types
+
+Functions can have type parameters, which are bound in the signature like term variables, but written in initial caps and wrapped in curly braces instead of parentheses:
+
+```facet
+id3 : { A : Type } -> (a : A) -> A
+{ a }
+```
+
+Type variables are in scope in the rest of the signature, and in the body. Unlike parameters, they cannot be bound in the body, only in the signature. There is no implicit generalization of free type variables in the signature (or elsewhere); free type are assumed to be globals, and will error if they’re not in scope.
+
+Multiple type variables of the same kind can be bound separately:
+
+```facet
+const6 : { A : Type } -> { B : Type } -> (a : A) -> (b : B) -> A
+{ a }
+```
+
+or can be combined into a single set of braces:
+
+```facet
+const7 : { A, B : Type } -> (a : A) -> (b : B) -> A
+{ a }
+```
+
+
+### Data
+
+
+### Patterns
+
+
+### Effects
+
+
+### Handlers
+
+
 ## TODO
 
 - driver executable
