@@ -264,7 +264,7 @@ lam n b = Check $ \ ty -> do
 -- Elaborators
 
 elabType :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => (ST.Type ::: Maybe Type) -> EnvC m (Type ::: Type)
-elabType (t ::: _K) = validate =<< case t of
+elabType (t ::: _K) = validate =<< case ST.out t of
   ST.Free  n -> synth (tglobal n)
   ST.Bound n -> synth (tbound n)
   ST.Type -> pure (C._Type ::: C._Type)

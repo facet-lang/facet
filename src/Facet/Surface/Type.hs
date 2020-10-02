@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Type
 ( Type(..)
+, TypeF(..)
 ) where
 
 import           Control.Effect.Parser.Span (Span)
@@ -8,16 +9,18 @@ import           Facet.Name
 import qualified Facet.Surface as S
 import           Facet.Syntax
 
-data Type
+newtype Type = In { out :: TypeF Type }
+
+data TypeF t
   = Free S.TName
   | Bound Name
   | Type
   | Unit
-  | (Name ::: Type) :=> Type
-  | Type :$ Type
-  | Type :-> Type
-  | Type :*  Type
-  | Ann Span Type
+  | (Name ::: t) :=> t
+  | t :$ t
+  | t :-> t
+  | t :*  t
+  | Ann Span t
 
 infixr 1 :=>
 infixl 9 :$
@@ -25,19 +28,19 @@ infixr 2 :->
 infixl 7 :*
 
 instance S.Type Type where
-  tglobal = Free
-  tbound = Bound
+  tglobal = In . Free
+  tbound = In . Bound
 
-  (>~>) = (:=>)
+  (>~>) = fmap In . (:=>)
 
-  (-->) = (:->)
+  (-->) = fmap In . (:->)
 
-  (.$) = (:$)
+  (.$) = fmap In . (:$)
 
-  (.*) = (:*)
+  (.*) = fmap In . (:*)
 
-  _Unit = Unit
-  _Type = Type
+  _Unit = In Unit
+  _Type = In Type
 
 instance S.Located Type where
-  locate = Ann
+  locate = fmap In . Ann
