@@ -16,11 +16,10 @@ module Facet.Elab
 , check
 , switch
 , unify
-  -- * General
-, tglobal
-, eglobal
   -- * Types
 , elabType
+, tglobal
+, tbound
 , _Type
 , _Unit
 , (.$)
@@ -29,6 +28,8 @@ module Facet.Elab
 , (>~>)
   -- * Expressions
 , elabExpr
+, eglobal
+, ebound
 , ($$)
 , tlam
 , lam
