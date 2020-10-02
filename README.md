@@ -43,7 +43,4 @@ script/repl # actually launch the repl
 
 ## TODO
 
-- concrete syntax
-  - pretty-printer
-  - parser
 - driver executable
