@@ -45,16 +45,17 @@ commands = mconcat
 parseCommands :: TokenParsing m => [Command a] -> m a
 parseCommands = choice . map go
   where
-  go (Command [] _ v) = pure v
-  go (Command ss _ v) = v <$ choice (map (\ s -> symbol (':':s) <?> (':':s)) ss)
+  go (Command [] _ _ v) = pure v
+  go (Command ss _ _ v) = v <$ choice (map (\ s -> symbol (':':s) <?> (':':s)) ss)
 
 
 command :: [String] -> String -> a -> [Command a]
-command s h a = [Command s h a]
+command s h a = [Command s h Nothing a]
 
 data Command a = Command
   { symbols :: [String]
   , usage   :: String
+  , meta    :: Maybe String
   , _value  :: a
   }
   deriving (Foldable, Functor, Traversable)
@@ -66,5 +67,5 @@ helpDoc :: Doc AnsiStyle
 helpDoc = tabulate2 (P.space <+> P.space) entries
   where
   entries = map entry commands
-  entry c = (concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)), w (usage c))
+  entry c = (concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)) <> maybe mempty (enclose (pretty '<') (pretty '>') . pretty) (meta c), w (usage c))
   w = align . fillSep . map pretty . words
