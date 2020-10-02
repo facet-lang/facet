@@ -28,6 +28,7 @@ module Facet.Elab
 , (-->)
 , (>~>)
   -- * Expressions
+, elabExpr
 , ($$)
 , tlam
 , lam
@@ -47,6 +48,7 @@ import qualified Facet.Core as C
 import           Facet.Name (Name(..), prettyNameWith)
 import qualified Facet.Print as P
 import qualified Facet.Surface as S
+import qualified Facet.Surface.Expr as SE
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Facet.Type
@@ -268,6 +270,27 @@ infixr 1 >~>
 
 
 -- Expressions
+
+elabExpr :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => (SE.Expr ::: Maybe Type) -> EnvC m (expr ::: Type)
+elabExpr (t ::: _K) = SE.fold alg t _K
+  where
+  alg t _T = case t of
+    SE.Free  n -> validate =<< synth (eglobal n)
+    SE.Bound n -> validate =<< synth (ebound n)
+    SE.Lam n b -> verify (lam n (_check b))
+    f SE.:$  a -> validate =<< synth (_synth f $$  _check a)
+    l SE.:*  r -> verify (_check l **  _check r)
+    SE.Unit    -> validate =<< synth unit
+    SE.Ann s b -> local (const s) $ b _T
+    where
+    _check r = tm <$> Check (r . Just)
+    _synth r = Synth (r Nothing)
+    verify r = case _T of
+      Just _T -> (::: _T) <$> check (r ::: _T)
+      _       -> couldNotSynthesize
+    validate r@(_ ::: _T') = case _T of
+      Just _T -> r <$ unify _T' _T
+      _       -> pure r
 
 ($$) :: (C.Expr expr, Has (Error P.Print) sig m) => Synth m expr -> Check m expr -> Synth m expr
 ($$) = app (C.$$)
