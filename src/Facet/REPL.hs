@@ -51,7 +51,7 @@ command s h a = [Command s h a]
 data Command a = Command
   { symbols :: [String]
   , help    :: String
-  , value   :: a
+  , _value  :: a
   }
   deriving (Foldable, Functor, Traversable)
 
