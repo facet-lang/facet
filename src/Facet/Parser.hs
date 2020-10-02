@@ -80,12 +80,12 @@ decl = locating $ (S..:.) <$> dname <* colon <*> tsig tglobal
 
 tsigTable :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Table (Facet p) ty decl
 tsigTable =
-  [ [ forAll (liftA2 (S.>=>)) ]
+  [ [ toBindParser $ Binder (forAll (liftA2 (S.>=>))) ]
   ]
 
 sigTable :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Table (Facet p) expr decl
 sigTable tvars =
-  [ [ binder tvars ]
+  [ [ toBindParser $ Binder (binder tvars) ]
   ]
 
 tsig :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Facet p decl
