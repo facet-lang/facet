@@ -43,6 +43,7 @@ commands =
   [ Command ["help", "h", "?"] "display this list of commands" . Pure $ Action $ print helpDoc
   , Command ["quit", "q"]      "exit the repl"                 . Pure $ Action $ empty
   , Command ["type", "t"]      "show the type of <expr>"       $ Meta "expr" ((\ e -> Action (print (getPrint e))) <$> expr)
+  , Command ["kind", "k"]      "show the kind of <type>"       $ Meta "type" ((\ e -> Action (print (getPrint e))) <$> type')
   ]
 
 parseCommands :: TokenParsing m => [Command m a] -> m a
