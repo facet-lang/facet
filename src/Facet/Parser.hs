@@ -119,12 +119,14 @@ data Assoc = N | L | R
 data Operator p a
   -- TODO: prefix, postfix, mixfix
   = Infix Assoc (p a -> p a) (p (a -> a -> a))
+  | Atom (p a)
 
 toBindParser :: Parsing p => Operator p a -> BindParser p b a
 toBindParser = \case
   Infix N wrap op -> (\ ExprCtx{ next } -> wrap (try (next <**> op) <*> next)) . toExprCtx
   Infix L wrap op -> (\ ExprCtx{ next } -> chainl1_ next wrap op) . toExprCtx
   Infix R wrap op -> (\ ExprCtx{ self, next } -> wrap (try (next <**> op) <*> self)) . toExprCtx
+  Atom p          -> const p
 
 type BindParser p a b = BindCtx p a b -> p b
 type Table p a b = [[BindParser p a b]]
