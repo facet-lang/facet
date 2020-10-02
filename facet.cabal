@@ -71,6 +71,7 @@ library
     , distributive
     , fused-effects
     , fused-effects-parser
+    , fused-effects-readline
     , lens
     , optparse-applicative
     , parsers
