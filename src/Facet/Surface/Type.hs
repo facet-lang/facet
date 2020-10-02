@@ -3,6 +3,7 @@ module Facet.Surface.Type
 ( Type(..)
 ) where
 
+import           Control.Effect.Parser.Span (Span)
 import           Facet.Name
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -16,6 +17,7 @@ data Type
   | Type :$ Type
   | Type :-> Type
   | Type :*  Type
+  | Ann Span Type
 
 infixr 1 :=>
 infixl 9 :$

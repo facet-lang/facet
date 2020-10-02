@@ -263,7 +263,7 @@ lam n b = Check $ \ ty -> do
 
 -- Elaborators
 
-elabType :: Has (Error P.Print) sig m => (ST.Type ::: Maybe Type) -> EnvC m (Type ::: Type)
+elabType :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => (ST.Type ::: Maybe Type) -> EnvC m (Type ::: Type)
 elabType (t ::: _K) = validate =<< case t of
   ST.Free  n -> synth (tglobal n)
   ST.Bound n -> synth (tbound n)
@@ -287,6 +287,7 @@ elabType (t ::: _K) = validate =<< case t of
     l' <- check (l ::: C._Type)
     r' <- check (r ::: C._Type)
     pure $ (l' C..* r') ::: C._Type
+  ST.Ann s b -> local (const s) $ elabType (b ::: _K)
   where
   check (t ::: _T) = tm <$> elabType (t ::: Just _T)
   synth' t = elabType (t ::: Nothing)
