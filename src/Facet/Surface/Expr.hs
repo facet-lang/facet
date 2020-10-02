@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveTraversable #-}
 module Facet.Surface.Expr
 ( Expr(..)
+, ExprF(..)
 , fold
 ) where
 
