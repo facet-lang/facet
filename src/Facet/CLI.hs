@@ -2,9 +2,9 @@ module Facet.CLI
 ( main
 ) where
 
-import Control.Monad (join)
-import Data.Version (showVersion)
-import Options.Applicative as Options
+import           Control.Monad (join)
+import           Data.Version (showVersion)
+import           Options.Applicative as Options
 import qualified Paths_facet as Library (version)
 
 main :: IO ()
