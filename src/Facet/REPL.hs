@@ -33,8 +33,13 @@ interpret = \case
 
 commandParser :: TokenParsing m => m Command
 commandParser = char ':' *> choice
-  [ Quit <$ symbolic 'q' <|> Quit <$ symbol "quit"
+  [ Quit <$ command 'q' "quit"
   ]
 
 data Command
   = Quit
+
+command :: TokenParsing m => Char -> String -> m ()
+command s l
+  =   () <$ symbolic s
+  <|> () <$ symbol l
