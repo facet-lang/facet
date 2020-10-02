@@ -7,18 +7,20 @@ module Facet.Pretty
 , var
 , tvar
 , varFrom
+, tabulate2
 ) where
 
 import           Control.Monad.IO.Class
+import           Data.Bifunctor (first)
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 import           Silkscreen
-import           System.Console.Terminal.Size as Size
+import qualified System.Console.Terminal.Size as Size
 import           System.IO (Handle, stdout)
 
 hPutDoc :: MonadIO m => Handle -> PP.Doc ANSI.AnsiStyle -> m ()
 hPutDoc handle doc = liftIO $ do
-  s <- maybe 80 Size.width <$> size
+  s <- maybe 80 Size.width <$> Size.size
   ANSI.renderIO handle (PP.layoutSmart PP.defaultLayoutOptions { PP.layoutPageWidth = PP.AvailablePerLine s 0.8 } (doc <> PP.line))
 
 hPutDocWith :: MonadIO m => Handle -> (a -> ANSI.AnsiStyle) -> PP.Doc a -> m ()
@@ -46,3 +48,16 @@ tvar = varFrom ['A'..'Z']
 
 varFrom :: Printer p => String -> Int -> p
 varFrom alpha i = pretty (toAlpha alpha i)
+
+
+tabulate2 :: PP.Doc ANSI.AnsiStyle -> [(PP.Doc ANSI.AnsiStyle, PP.Doc ANSI.AnsiStyle)] -> PP.Doc ANSI.AnsiStyle
+tabulate2 _ [] = mempty
+tabulate2 s cs = vsep (map (uncurry entry) cs')
+  where entry a b = PP.fill w (doc a) <> s <> b
+        w = maximum (map (width . fst) cs')
+        cs' = map (first column) cs
+
+data Column = Column { width :: Int, doc :: PP.Doc ANSI.AnsiStyle }
+
+column :: PP.Doc ANSI.AnsiStyle -> Column
+column a = Column (length (show (PP.unAnnotate a))) a
