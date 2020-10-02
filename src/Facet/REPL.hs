@@ -9,9 +9,11 @@ module Facet.REPL
 import Control.Carrier.Empty.Church
 import Control.Carrier.Parser.Church
 import Control.Carrier.Readline.Haskeline
-import Control.Effect.Parser.Notice (prettyNotice)
+import Control.Effect.Parser.Notice (Notice, prettyNotice)
 import Control.Effect.Parser.Span (Pos(..))
+import Facet.Parser
 import Facet.Pretty
+import Facet.Print
 import Prelude hiding (print)
 import Prettyprinter as P hiding (column, width)
 import Prettyprinter.Render.Terminal (AnsiStyle)
@@ -25,7 +27,7 @@ loop :: Has Readline sig m => m ()
 loop = do
   (line, resp) <- prompt "λ "
   case resp of
-    Just resp -> case runParserWithString (Pos line 0) resp commandParser of
+    Just resp -> case runParserWithString (Pos line 0) resp (runFacet 0 commandParser) of
       Right cmd -> runEmpty (pure ()) (const loop) (runAction cmd)
       Left  err -> print (prettyNotice err) *> loop
     Nothing   -> loop
@@ -36,10 +38,11 @@ loop = do
 -- - type
 -- - load
 -- - reload
-commands :: [Command m Action]
+commands :: [Command (Facet (ParserC (Either Notice))) Action]
 commands =
   [ Command ["help", "h", "?"] "display this list of commands" . Pure $ Action $ print helpDoc
   , Command ["quit", "q"]      "exit the repl"                 . Pure $ Action $ empty
+  , Command ["type", "t"]      "show the type of <expr>"       $ Meta "expr" ((\ e -> Action (print (getPrint e))) <$> expr)
   ]
 
 parseCommands :: TokenParsing m => [Command m a] -> m a
