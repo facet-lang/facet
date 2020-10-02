@@ -46,7 +46,7 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Facet.Core as C
-import           Facet.Env (Env)
+import           Facet.Env (Env(..))
 import           Facet.Name (Name(..), prettyNameWith)
 import qualified Facet.Print as P
 import qualified Facet.Surface as S
@@ -60,7 +60,7 @@ import           Silkscreen (fillSep, group, pretty, (<+>), (</>))
 type Context = IntMap.IntMap Type
 
 implicit :: Env
-implicit = Map.fromList [ (T.pack "Type", C._Type) ]
+implicit = Env $ Map.fromList [ (T.pack "Type", C._Type) ]
 
 elab :: (Elab m a ::: Maybe Type) -> m a
 elab = runEnv implicit mempty . uncurryAnn runElab
@@ -215,7 +215,7 @@ elabType (t ::: _K) = ST.fold alg t _K
       _       -> pure r
 
 tglobal :: (C.Type ty, Has (Error P.Print) sig m) => S.TName -> Synth m ty
-tglobal (S.TName s) = Synth $ asks (Map.lookup s) >>= \case
+tglobal (S.TName s) = Synth $ asks (Map.lookup s . getEnv) >>= \case
   Just b  -> pure (C.tglobal s ::: b)
   Nothing -> freeVariable (pretty s)
 
@@ -284,7 +284,7 @@ elabExpr (t ::: _K) = SE.fold alg t _K
       _       -> pure r
 
 eglobal :: (C.Expr expr, Has (Error P.Print) sig m) => S.EName -> Synth m expr
-eglobal (S.EName s) = Synth $ asks (Map.lookup s) >>= \case
+eglobal (S.EName s) = Synth $ asks (Map.lookup s . getEnv) >>= \case
   Just b  -> pure (C.global s ::: b)
   Nothing -> freeVariable (pretty s)
 
