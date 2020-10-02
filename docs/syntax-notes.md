@@ -283,27 +283,6 @@ idea:
 ----
 
 
-
-I want to be able to say that var has no effects—it’s only for pure values. That means that any effects occurring within must already have been run. Ditto within effect bodies
-
-Further when we have an Eff it should represent only the delta—the signature we’re handling on top of sig.
-
-
-Eval should take a handler for any remaining effects
-
-
-
-
-
-
-
-
-lifting things into their appropriate contexts
-multiple effects
-
-
------
-
 Base : Module
 { Bool : Module { import Base.Bool }
 , List : Module
