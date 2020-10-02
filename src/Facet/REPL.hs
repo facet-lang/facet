@@ -1,2 +1,6 @@
 module Facet.REPL
-() where
+( repl
+) where
+
+repl :: IO ()
+repl = pure ()
