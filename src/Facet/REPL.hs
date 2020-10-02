@@ -28,7 +28,7 @@ loop = do
   case resp of
     Just resp -> case runParserWithString (Pos line 0) resp commandParser of
       Right cmd -> runEmpty (pure ()) (const loop) (runAction cmd)
-      Left  err -> putDoc (prettyNotice err) *> loop
+      Left  err -> print (prettyNotice err) *> loop
     Nothing   -> loop
   where
   commandParser = parseCommands commands
