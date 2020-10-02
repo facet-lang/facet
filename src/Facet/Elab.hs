@@ -20,6 +20,7 @@ module Facet.Elab
 , tglobal
 , eglobal
   -- * Types
+, elabType
 , _Type
 , _Unit
 , (.$)
@@ -30,8 +31,6 @@ module Facet.Elab
 , ($$)
 , tlam
 , lam
-  -- * Elaborators
-, elabType
 ) where
 
 import           Control.Algebra
@@ -205,6 +204,40 @@ app ($$) f a = Synth $ do
 
 -- Types
 
+elabType :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => (ST.Type ::: Maybe Type) -> EnvC m (Type ::: Type)
+elabType (t ::: _K) = ST.foldType alg t _K
+  where
+  alg t _K = validate =<< case t of
+    ST.Free  n -> synth (tglobal n)
+    ST.Bound n -> synth (tbound n)
+    ST.Type -> synth _Type
+    ST.Unit -> synth _Unit
+    (n ::: t) ST.:=> b -> do
+      (_KT, _KB) <- expectChecked _K >>= expectFunctionType (fromWords "in quantified type")
+      _T <- check (t ::: _KT)
+      _B <- n ::: _T |- check (b ::: _KB)
+      pure $ ((n ::: _T) :=> _B) ::: _KT C.--> _KB
+    f ST.:$  a -> do
+      f' ::: _F <- synth' f
+      (_A, _B) <- expectFunctionType (pretty "in application") _F
+      a' <- check (a ::: _A)
+      pure $ f' C..$ a' ::: _B
+    a ST.:-> b -> do
+      a' <- check (a ::: C._Type)
+      b' <- check (b ::: C._Type)
+      pure $ (a' C.--> b') ::: C._Type
+    l ST.:*  r -> do
+      l' <- check (l ::: C._Type)
+      r' <- check (r ::: C._Type)
+      pure $ (l' C..* r') ::: C._Type
+    ST.Ann s b -> local (const s) $ b _K
+    where
+    check (t ::: _T) = tm <$> t (Just _T)
+    synth' t = t Nothing
+    validate r@(_T ::: _K') = case _K of
+      Just _K -> r <$ unify _K' _K
+      _       -> pure r
+
 _Type :: (Applicative m, C.Type t) => Synth m t
 _Type = Synth $ pure $ C._Type ::: C._Type
 
@@ -259,43 +292,6 @@ lam :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check
 lam n b = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
   n ::: _A |- C.lam n <$> check (b ::: _B)
-
-
--- Elaborators
-
-elabType :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => (ST.Type ::: Maybe Type) -> EnvC m (Type ::: Type)
-elabType (t ::: _K) = ST.foldType alg t _K
-  where
-  alg t _K = validate =<< case t of
-    ST.Free  n -> synth (tglobal n)
-    ST.Bound n -> synth (tbound n)
-    ST.Type -> synth _Type
-    ST.Unit -> synth _Unit
-    (n ::: t) ST.:=> b -> do
-      (_KT, _KB) <- expectChecked _K >>= expectFunctionType (fromWords "in quantified type")
-      _T <- check (t ::: _KT)
-      _B <- n ::: _T |- check (b ::: _KB)
-      pure $ ((n ::: _T) :=> _B) ::: _KT C.--> _KB
-    f ST.:$  a -> do
-      f' ::: _F <- synth' f
-      (_A, _B) <- expectFunctionType (pretty "in application") _F
-      a' <- check (a ::: _A)
-      pure $ f' C..$ a' ::: _B
-    a ST.:-> b -> do
-      a' <- check (a ::: C._Type)
-      b' <- check (b ::: C._Type)
-      pure $ (a' C.--> b') ::: C._Type
-    l ST.:*  r -> do
-      l' <- check (l ::: C._Type)
-      r' <- check (r ::: C._Type)
-      pure $ (l' C..* r') ::: C._Type
-    ST.Ann s b -> local (const s) $ b _K
-    where
-    check (t ::: _T) = tm <$> t (Just _T)
-    synth' t = t Nothing
-    validate r@(_T ::: _K') = case _K of
-      Just _K -> r <$ unify _K' _K
-      _       -> pure r
 
 
 -- Context
