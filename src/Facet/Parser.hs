@@ -194,11 +194,11 @@ global = S.global <$> name <?> "variable"
 expr_ :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
 expr_ = build exprTable (terminate (toBindParser (Infix L locating ((S.**) <$ comma))))
 
--- FIXME: patterns
 -- FIXME: nullary computations
 comp :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParser (Facet p) expr expr
 comp = braces . clause
 
+-- FIXME: patterns
 clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParser (Facet p) expr expr
 clause BindCtx{ vars } = self vars where self vars = locating $ bind name $ \ v -> S.lam v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
 
