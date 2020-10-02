@@ -36,28 +36,40 @@ loop = do
 -- - type
 -- - load
 -- - reload
-commands :: [Command Action]
+commands :: [Command m Action]
 commands = mconcat
   [ command ["help", "h", "?"] "display this list of commands" $ Action $ print helpDoc
   , command ["quit", "q"]      "exit the repl"                 $ Action $ empty
   ]
 
-parseCommands :: TokenParsing m => [Command a] -> m a
+parseCommands :: TokenParsing m => [Command m a] -> m a
 parseCommands = choice . map go
   where
-  go (Command [] _ _ v) = pure v
-  go (Command ss _ _ v) = v <$ choice (map (\ s -> symbol (':':s) <?> (':':s)) ss)
+  go (Command [] _ v) = parseValue v
+  go (Command ss _ v) = choice (map (\ s -> symbol (':':s) <?> (':':s)) ss) *> parseValue v
+  parseValue = \case
+    Pure a   -> pure a
+    Meta _ p -> p
 
 
-command :: [String] -> String -> a -> [Command a]
-command s h a = [Command s h Nothing a]
+command :: [String] -> String -> a -> [Command m a]
+command s h a = [Command s h (Pure a)]
 
-data Command a = Command
+data Command p a = Command
   { symbols :: [String]
   , usage   :: String
-  , meta    :: Maybe String
-  , _value  :: a
+  , value   :: Value p a
   }
+  deriving (Foldable, Functor, Traversable)
+
+meta :: Command p a -> Maybe String
+meta c = case value c of
+  Meta s _ -> Just s
+  _        -> Nothing
+
+data Value p a
+  = Pure a
+  | Meta String (p a)
   deriving (Foldable, Functor, Traversable)
 
 newtype Action = Action { runAction :: forall sig m . (Has Empty sig m, Has Readline sig m) => m () }
