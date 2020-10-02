@@ -39,6 +39,7 @@ function flags {
   echo "-I$build_dir/facet-0.0.0.0/build/autogen"
 
   # .hs source dirs
+  echo "-ifacetc"
   echo "-isrc"
 
   # disable automatic selection of packages
