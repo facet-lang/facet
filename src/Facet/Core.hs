@@ -6,8 +6,7 @@ module Facet.Core
 , Module(..)
 ) where
 
-import Data.Text (Text)
-import Facet.Name (Name, QName)
+import Facet.Name (MName, Name, QName)
 import Facet.Syntax ((:::)(..), (:=)(..))
 
 class Type ty where
@@ -43,9 +42,8 @@ class Expr expr where
 
 
 class Module expr ty mod | mod -> expr ty where
-  -- FIXME: qualified names
-  module' :: Text -> mod -> mod
+  module' :: MName -> mod -> mod
 
   -- FIXME: qualified names
-  (.:.) :: Text -> (ty := expr) -> mod
+  (.:.) :: QName -> (ty := expr) -> mod
   infix 1 .:.

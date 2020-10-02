@@ -6,15 +6,15 @@ module Facet.Module
 , interpret
 ) where
 
-import qualified Data.Text as T
 import qualified Facet.Core as C
 import qualified Facet.Expr as Expr
+import           Facet.Name
 import           Facet.Syntax
 import qualified Facet.Type as Type
 
 data Module
-  = Module T.Text Module
-  | T.Text :.:. (Type.Type := Expr.Expr)
+  = Module MName Module
+  | QName :.:. (Type.Type := Expr.Expr)
 
 infix 1 :.:.
 

@@ -21,6 +21,7 @@ import           Facet.Carrier.Error.Context
 import qualified Facet.Core as C
 import           Facet.Elab
 import qualified Facet.Module as Module
+import           Facet.Name (MName(..))
 import           Facet.Parser (Facet(..), runFacet)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
@@ -36,7 +37,7 @@ parseString :: MonadIO m => Facet (ParserC (Either Notice)) P.Print -> String ->
 parseString p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWithString (Pos 0 0) s (runFacet 0 p))
 
 parseElabString :: MonadIO m => Facet (ParserC (Either Notice)) (Elab (ErrorC Span P.Print ((->) Span)) Module.Module) -> String -> m ()
-parseElabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . elab . (::: Nothing) of
+parseElabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . elab (MName mempty) . (::: Nothing) of
   Left err -> P.putDoc (prettyNotice err)
   Right a  -> P.prettyPrint (Module.interpret a)
   where

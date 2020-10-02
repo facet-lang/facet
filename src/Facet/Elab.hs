@@ -60,18 +60,18 @@ type Context = IntMap.IntMap Type
 implicit :: Env.Env
 implicit = Env.fromList [ (T.pack "Type", MName (T.pack "Facet") ::: C._Type) ]
 
-elab :: (Elab m a ::: Maybe Type) -> m a
-elab = runEnv implicit mempty . uncurryAnn runElab
+elab :: MName -> (Elab m a ::: Maybe Type) -> m a
+elab n = runEnv n implicit mempty . uncurryAnn runElab
 
-runEnv :: Env.Env -> Context -> EnvC m a -> m a
-runEnv e c m = runEnvC m e c
+runEnv :: MName -> Env.Env -> Context -> EnvC m a -> m a
+runEnv n e c m = runEnvC m n e c
 
-newtype EnvC m a = EnvC { runEnvC :: Env.Env -> Context -> m a }
-  deriving (Algebra (Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Env.Env (ReaderC Context m)
+newtype EnvC m a = EnvC { runEnvC :: MName -> Env.Env -> Context -> m a }
+  deriving (Algebra (Reader MName :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Env.Env (ReaderC Context m))
 
 -- FIXME: elaborate Expr instead of doing the final tagless dance.
 newtype Elab m a = Elab { runElab :: Maybe Type -> EnvC m a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC (Maybe Type) (EnvC m)
+  deriving (Algebra (Reader (Maybe Type) :+: Reader MName :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC (Maybe Type) (EnvC m)
 
 fromCheck :: Has (Error P.Print) sig m => Check m a -> Elab m (a ::: Type)
 fromCheck m = Elab $ \case
@@ -135,11 +135,12 @@ instance (C.Expr expr, Has (Error P.Print) sig m) => S.Decl (Elab m (expr ::: Ty
 instance (C.Expr expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
   n .:. d = do
     e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
-    pure $ S.getDName n C..:. interpret _T := e
+    mname <- ask
+    pure $ (mname :.: S.getDName n) C..:. interpret _T := e
 
 
 newtype Check m a = Check { runCheck :: Type -> EnvC m a }
-  deriving (Algebra (Reader Type :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Type (EnvC m)
+  deriving (Algebra (Reader Type :+: Reader MName :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Type (EnvC m)
 
 newtype Synth m a = Synth { synth :: EnvC m (a ::: Type) }
 

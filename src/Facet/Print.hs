@@ -155,6 +155,14 @@ evar = var . P.var
 tvar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
 tvar = var . P.tvar
 
+prettyMName :: Printer p => N.MName -> p
+prettyMName (n N.:. s)  = prettyMName n <> pretty '.' <> pretty s
+prettyMName (N.MName s) = pretty s
+
+prettyQName :: PrecedencePrinter p => N.QName -> p
+prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
+
+
 instance S.Located Print where
   locate _ = id
 
@@ -200,8 +208,8 @@ instance C.Expr Print where
   l ** r = tupled [l, r]
 
 instance C.Module Print Print Print where
-  module' n b = ann (pretty n ::: pretty "Module") </> braces b
-  n .:. t := b = ann (pretty n ::: t) </> b
+  module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces b
+  n .:. t := b = ann (var (prettyQName n) ::: t) </> b
 
 instance S.Module Print Print Print Print where
   n .:. b = group $ ann (pretty n ::: b)
@@ -231,13 +239,10 @@ printSurfaceType = ST.fold alg
     ST.Ann _ t -> t
 
 sfree :: Text -> Print
-sfree n = var (pretty n)
+sfree = var . pretty
 
 cfree :: N.QName -> Print
-cfree (mname N.:.: n) = var (go mname <> pretty n)
-  where
-  go (n N.:. s)  = go n <> pretty '.' <> pretty s
-  go (N.MName s) = pretty s
+cfree = var . prettyQName
 
 
 sbound :: N.Name -> Print
