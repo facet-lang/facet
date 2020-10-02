@@ -1,4 +1,4 @@
-# Facet: a call-by-value functional language with algebraic effects, runners, quantitative type theory, and phasing
+# Facet: a call-by-value functional language with algebraic effects, runners, quantitative type theory, and staging
 
 ## Features
 
@@ -12,7 +12,7 @@
 
 - effects as sole mechanism for ad hoc polymorphism; arithmetic, comparison, etc., performed via effects (thus, can be overridden locally)
   - some system for (ideally coherent) defaulting
-- quantitative type theory controlling phasing and erasure in particular
+- quantitative type theory controlling staging and erasure in particular
   - specialization & inlining of handlers
 - compilation
   - fine-grained incremental compilation
