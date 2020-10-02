@@ -48,6 +48,7 @@ import qualified Facet.Surface as S
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Facet.Type
+import           Prelude hiding ((**))
 import           Silkscreen (fillSep, group, pretty, (<+>), (</>))
 
 type Env = Map.Map T.Text Type
@@ -281,6 +282,13 @@ lam n b = Check $ \ ty -> do
 
 unit :: (Applicative m, C.Expr t) => Synth m t
 unit = Synth . pure $ C.unit ::: C._Unit
+
+(**) :: (C.Expr expr, Has (Error P.Print) sig m) => Check m expr -> Check m expr -> Check m expr
+l ** r = Check $ \ _T -> do
+  (_L, _R) <- expectProductType (fromWords "when checking product") _T
+  l' <- check (l ::: _L)
+  r' <- check (r ::: _R)
+  pure (l' C.** r')
 
 
 -- Context
