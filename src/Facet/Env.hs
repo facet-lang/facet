@@ -9,7 +9,7 @@ import           Data.Coerce
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import           Facet.Type
-import Prelude hiding (lookup)
+import           Prelude hiding (lookup)
 
 newtype Env = Env { getEnv :: Map.Map T.Text Type }
 
