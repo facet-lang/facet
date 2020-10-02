@@ -12,7 +12,7 @@ import qualified Facet.Surface as S
 newtype Expr = In { out :: ExprF Expr }
 
 data ExprF e
-  = Global S.EName
+  = Free S.EName
   | Bound Name
   | Lam Name e
   | e :$ e
@@ -25,7 +25,7 @@ infixl 9 :$
 infixl 7 :*
 
 instance S.Expr Expr where
-  global = In . Global
+  global = In . Free
   bound = In . Bound
   lam = fmap In . Lam
   ($$) = fmap In . (:$)
