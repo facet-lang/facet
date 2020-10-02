@@ -277,15 +277,15 @@ elabExpr (t ::: _K) = SE.fold alg t _K
   alg t _T = case t of
     SE.Free  n -> validate =<< synth (eglobal n)
     SE.Bound n -> validate =<< synth (ebound n)
-    SE.Lam n b -> verify (lam n (_check b))
+    SE.Lam n b -> check (lam n (_check b) ::: _T)
     f SE.:$  a -> validate =<< synth (_synth f $$  _check a)
-    l SE.:*  r -> verify (_check l **  _check r)
+    l SE.:*  r -> check (_check l **  _check r ::: _T)
     SE.Unit    -> validate =<< synth unit
     SE.Ann s b -> local (const s) $ b _T
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
-    verify r = expectChecked _T >>= \ _T -> (::: _T) <$> check (r ::: _T)
+    check (m ::: _T) = expectChecked _T >>= \ _T -> (::: _T) <$> runCheck m _T
     validate r@(_ ::: _T') = case _T of
       Just _T -> r <$ unify _T' _T
       _       -> pure r
