@@ -163,3 +163,4 @@ const7 : { A, B : Type } -> (a : A) -> (b : B) -> A
 ## TODO
 
 - driver executable
+- tests 😅
