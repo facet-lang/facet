@@ -208,15 +208,15 @@ app ($$) f a = Synth $ do
 elabType :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => (ST.Type ::: Maybe Type) -> EnvC m (Type ::: Type)
 elabType (t ::: _K) = ST.fold alg t _K
   where
-  alg t _K = validate =<< case t of
-    ST.Free  n -> synth (tglobal n)
-    ST.Bound n -> synth (tbound n)
-    ST.Type    -> synth _Type
-    ST.Unit    -> synth _Unit
-    t ST.:=> b -> synth (fmap _check t >~> _check b)
-    f ST.:$  a -> synth (_synth f .$  _check a)
-    a ST.:-> b -> synth (_check a --> _check b)
-    l ST.:*  r -> synth (_check l .*  _check r)
+  alg t _K = case t of
+    ST.Free  n -> validate =<< synth (tglobal n)
+    ST.Bound n -> validate =<< synth (tbound n)
+    ST.Type    -> validate =<< synth _Type
+    ST.Unit    -> validate =<< synth _Unit
+    t ST.:=> b -> validate =<< synth (fmap _check t >~> _check b)
+    f ST.:$  a -> validate =<< synth (_synth f .$  _check a)
+    a ST.:-> b -> validate =<< synth (_check a --> _check b)
+    l ST.:*  r -> validate =<< synth (_check l .*  _check r)
     ST.Ann s b -> local (const s) $ b _K
     where
     _check r = tm <$> Check (r . Just)
