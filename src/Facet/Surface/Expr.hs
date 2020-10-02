@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveTraversable #-}
 module Facet.Surface.Expr
 ( Expr(..)
-, foldExpr
+, fold
 ) where
 
 import           Control.Effect.Parser.Span (Span)
@@ -32,7 +32,7 @@ instance S.Expr Expr where
   (**) = fmap In . (:*)
 
 
-foldExpr :: (ExprF a -> a) -> Expr -> a
-foldExpr alg = go
+fold :: (ExprF a -> a) -> Expr -> a
+fold alg = go
   where
   go = alg . fmap go . out
