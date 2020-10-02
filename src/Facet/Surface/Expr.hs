@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 module Facet.Surface.Expr
 ( Expr(..)
 ) where
@@ -14,6 +15,7 @@ data ExprF e
   | e :$ e
   | Unit
   | e :* e
+  deriving (Foldable, Functor, Traversable)
 
 infixl 9 :$
 infixl 7 :*
