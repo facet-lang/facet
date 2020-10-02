@@ -52,7 +52,11 @@ command s h a = Commands [Command s h a]
 newtype Commands a = Commands [Command a]
   deriving (Foldable, Functor, Monoid, Semigroup, Traversable)
 
-data Command a = Command [String] String a
+data Command a = Command
+  { symbols :: [String]
+  , help    :: String
+  , value   :: a
+  }
   deriving (Foldable, Functor, Traversable)
 
 
