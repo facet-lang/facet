@@ -205,7 +205,7 @@ app ($$) f a = Synth $ do
 -- Types
 
 elabType :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => (ST.Type ::: Maybe Type) -> EnvC m (Type ::: Type)
-elabType (t ::: _K) = ST.foldType alg t _K
+elabType (t ::: _K) = ST.fold alg t _K
   where
   alg t _K = validate =<< case t of
     ST.Free  n -> synth (tglobal n)

@@ -3,7 +3,7 @@
 module Facet.Surface.Type
 ( Type(..)
 , TypeF(..)
-, foldType
+, fold
 ) where
 
 import           Control.Effect.Parser.Span (Span)
@@ -49,7 +49,7 @@ instance S.Located Type where
   locate = fmap In . Ann
 
 
-foldType :: (TypeF a -> a) -> Type -> a
-foldType alg = go
+fold :: (TypeF a -> a) -> Type -> a
+fold alg = go
   where
   go = alg . fmap go . out
