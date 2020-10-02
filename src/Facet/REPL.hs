@@ -50,7 +50,7 @@ command s h a = [Command s h a]
 
 data Command a = Command
   { symbols :: [String]
-  , help    :: String
+  , usage   :: String
   , _value  :: a
   }
   deriving (Foldable, Functor, Traversable)
@@ -62,5 +62,5 @@ helpDoc :: Doc AnsiStyle
 helpDoc = tabulate2 (P.space <+> P.space) entries
   where
   entries = map entry commands
-  entry c = (concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)), w (help c))
+  entry c = (concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)), w (usage c))
   w = align . fillSep . map pretty . words
