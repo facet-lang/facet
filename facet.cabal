@@ -42,7 +42,6 @@ library
     Facet.Core
     Facet.Decl
     Facet.Elab
-    Facet.Env
     Facet.Expr
     Facet.Functor.C
     Facet.Functor.I
