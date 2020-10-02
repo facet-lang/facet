@@ -13,14 +13,14 @@ main = join (execParser argumentsParser)
 
 argumentsParser :: ParserInfo (IO ())
 argumentsParser = info
-  (version <*> helper <*> options)
+  (version <*> helper <*> hsubparser commands)
   (  fullDesc
   <> progDesc "Facet is a language featuring algebraic effects and handlers."
   <> header   "Facet - a functional, effectful language")
 
-options :: Parser (IO ())
-options
-  =   flag' REPL.repl (short 'i' <> long "interactive" <> help "run interactively")
+commands :: Mod CommandFields (IO ())
+commands
+  =  command "repl" (info (pure REPL.repl) (progDesc "run the repl"))
 
 versionString :: String
 versionString = "facetc version " <> showVersion Library.version
