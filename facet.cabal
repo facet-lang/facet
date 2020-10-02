@@ -69,6 +69,7 @@ library
     , fused-effects
     , fused-effects-parser
     , lens
+    , optparse-applicative
     , parsers
     , prettyprinter
     , prettyprinter-ansi-terminal
@@ -84,5 +85,4 @@ executable facetc
   hs-source-dirs: facetc
   build-depends:
     , base
-    , optparse-applicative
     , facet
