@@ -18,6 +18,10 @@ argumentsParser = info
   <> progDesc "Facet is a language featuring algebraic effects and handlers."
   <> header   "Facet - a functional, effectful language")
 
+-- TODO:
+-- - format
+-- - run
+-- - build
 commands :: Mod CommandFields (IO ())
 commands
   =  command "repl" (info (pure REPL.repl) (progDesc "run the repl"))
