@@ -151,8 +151,8 @@ monotypeTable =
   [ [ toBindParser $ Infix R locating ((S.-->) <$ arrow) ]
   , [ toBindParser $ Infix L locating (pure (S..$)) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
-      const (S._Unit <$ token (string "Unit"))
-    , const (S._Type <$ token (string "Type"))
+      toBindParser $ Atom (S._Unit <$ token (string "Unit"))
+    , toBindParser $ Atom (S._Type <$ token (string "Type"))
     , vars
     ]
   ]
