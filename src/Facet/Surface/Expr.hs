@@ -5,21 +5,23 @@ module Facet.Surface.Expr
 import           Facet.Name
 import qualified Facet.Surface as S
 
-data Expr
+newtype Expr = In { out :: ExprF Expr }
+
+data ExprF e
   = Global S.EName
   | Bound Name
-  | Lam Name Expr
-  | Expr :$ Expr
+  | Lam Name e
+  | e :$ e
   | Unit
-  | Expr :* Expr
+  | e :* e
 
 infixl 9 :$
 infixl 7 :*
 
 instance S.Expr Expr where
-  global = Global
-  bound = Bound
-  lam = Lam
-  ($$) = (:$)
-  unit = Unit
-  (**) = (:*)
+  global = In . Global
+  bound = In . Bound
+  lam = fmap In . Lam
+  ($$) = fmap In . (:$)
+  unit = In Unit
+  (**) = fmap In . (:*)
