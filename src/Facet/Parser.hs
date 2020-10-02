@@ -200,7 +200,12 @@ expr_ = build exprTable (terminate parens (toBindParser (Infix L locating ((S.**
 
 -- FIXME: nullary computations
 comp :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
-comp = braces . clause
+comp = braces . build compTable ($)
+
+compTable :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Table (Facet p) expr expr
+compTable =
+  [ [ Atom clause ]
+  ]
 
 -- FIXME: patterns
 clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
