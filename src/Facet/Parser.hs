@@ -142,8 +142,8 @@ build ts end = root
     where
     self = foldr (\ p rest vars -> p BindCtx{ self, next, vars } <|> rest vars) next ps
 
-terminate :: TokenParsing p => BindParser p a b -> (p a -> p b) -> (p a -> p b)
-terminate op next = self where self vars = parens $ op BindCtx{ next, self, vars }
+terminate :: (p b -> p b) -> BindParser p a b -> (p a -> p b) -> (p a -> p b)
+terminate wrap op next = self where self vars = wrap $ op BindCtx{ next, self, vars }
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 typeTable = [ forAll (liftA2 (S.>~>)) ] : monotypeTable
@@ -172,10 +172,10 @@ type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
 type' = type_ tglobal
 
 type_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
-type_ = build typeTable (terminate (toBindParser (Infix L locating ((S..*) <$ comma))))
+type_ = build typeTable (terminate parens (toBindParser (Infix L locating ((S..*) <$ comma))))
 
 monotype_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
-monotype_ = build monotypeTable (terminate (toBindParser (Infix L locating ((S..*) <$ comma))))
+monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L locating ((S..*) <$ comma))))
 
 tglobal :: (S.Type ty, Monad p, TokenParsing p) => Facet p ty
 tglobal = S.tglobal <$> tname <?> "variable"
@@ -196,7 +196,7 @@ global :: (S.Expr expr, Monad p, TokenParsing p) => Facet p expr
 global = S.global <$> name <?> "variable"
 
 expr_ :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
-expr_ = build exprTable (terminate (toBindParser (Infix L locating ((S.**) <$ comma))))
+expr_ = build exprTable (terminate parens (toBindParser (Infix L locating ((S.**) <$ comma))))
 
 -- FIXME: nullary computations
 comp :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParser (Facet p) expr expr
