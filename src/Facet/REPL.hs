@@ -35,15 +35,14 @@ loop = do
   commandParser = parseCommands commands
 
 -- TODO:
--- - type
 -- - load
 -- - reload
 commands :: [Command (Facet (ParserC (Either Notice))) Action]
 commands =
   [ Command ["help", "h", "?"] "display this list of commands" . Pure $ Action $ print helpDoc
   , Command ["quit", "q"]      "exit the repl"                 . Pure $ Action $ empty
-  , Command ["type", "t"]      "show the type of <expr>"       $ Meta "expr" ((\ e -> Action (print (getPrint e))) <$> expr)
-  , Command ["kind", "k"]      "show the kind of <type>"       $ Meta "type" ((\ e -> Action (print (getPrint e))) <$> type')
+  , Command ["type", "t"]      "show the type of <expr>"       $ Meta "expr" ((\ e -> Action (print (getPrint e))) <$> expr) -- FIXME: elaborate the expr & show the type
+  , Command ["kind", "k"]      "show the kind of <type>"       $ Meta "type" ((\ e -> Action (print (getPrint e))) <$> type') -- FIXME: elaborate the type & show the kind
   ]
 
 parseCommands :: TokenParsing m => [Command m a] -> m a
