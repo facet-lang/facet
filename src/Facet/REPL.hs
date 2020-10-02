@@ -45,7 +45,7 @@ parseCommands :: TokenParsing m => [Command a] -> m a
 parseCommands = getAlt . foldMap (Alt . go)
   where
   go (Command [] _ v) = pure v
-  go (Command ss _ v) = v <$ token (choice (map (string . (':':)) ss))
+  go (Command ss _ v) = v <$ token (choice (map (\ s -> string (':':s) <?> (':':s)) ss))
 
 
 command :: [String] -> String -> a -> [Command a]
