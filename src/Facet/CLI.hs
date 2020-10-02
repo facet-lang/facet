@@ -4,6 +4,7 @@ module Facet.CLI
 
 import           Control.Monad (join)
 import           Data.Version (showVersion)
+import qualified Facet.REPL as REPL
 import           Options.Applicative as Options
 import qualified Paths_facet as Library (version)
 
@@ -19,7 +20,7 @@ argumentsParser = info
 
 options :: Parser (IO ())
 options
-  =   flag' (pure ()) (short 'i' <> long "interactive" <> help "run interactively")
+  =   flag' REPL.repl (short 'i' <> long "interactive" <> help "run interactively")
 
 versionString :: String
 versionString = "facetc version " <> showVersion Library.version
