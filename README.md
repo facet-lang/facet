@@ -43,7 +43,7 @@ script/repl # actually launch the repl
 
 ## Syntax
 
-A quick overview of facet’s syntax:
+A quick overview of facet’s syntax. Note that this is subject to change.
 
 
 ### Comments
