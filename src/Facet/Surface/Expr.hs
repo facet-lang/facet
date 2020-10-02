@@ -1,5 +1,6 @@
 module Facet.Surface.Expr
-( Expr(..)) where
+( Expr(..)
+) where
 
 import           Facet.Name
 import qualified Facet.Surface as S
