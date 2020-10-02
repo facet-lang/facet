@@ -33,7 +33,7 @@ loop = do
       Left  err -> putDoc (prettyNotice err) *> loop
     Nothing   -> loop
   where
-  commandParser = parseCommand commands
+  commandParser = parseCommands commands
 
 commands :: (Has Empty sig m, Has Readline sig m) => [Command (m ())]
 commands = mconcat
@@ -41,8 +41,8 @@ commands = mconcat
   , command ["quit", "q"]      "exit the repl"                 $ empty
   ]
 
-parseCommand :: TokenParsing m => [Command a] -> m a
-parseCommand = getAlt . foldMap (Alt . go)
+parseCommands :: TokenParsing m => [Command a] -> m a
+parseCommands = getAlt . foldMap (Alt . go)
   where
   go (Command [] _ v) = pure v
   go (Command ss _ v) = v <$ token (char ':' *> choice (map string ss))
