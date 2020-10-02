@@ -17,16 +17,22 @@ module Facet.Print
 , Context(..)
 , evar
 , tvar
+  -- * Interpreters
+, printSurfaceType
 ) where
 
 import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
+import           Data.Bifunctor (first)
 import           Data.Coerce
+import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
 import qualified Facet.Surface as S
+import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
+import           Prelude hiding ((**))
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 import           Silkscreen.Printer.Prec
@@ -153,43 +159,43 @@ instance S.Located Print where
   locate _ = id
 
 instance S.Expr Print where
-  global = var . pretty
-  bound = var . pretty . N.hint
+  global = free . S.getEName
+  bound = sbound
   -- FIXME: Use _ in binding positions for unused variables
   lam n b = cases (var (pretty (N.hint n))) [b]
-  ($$) = app
+  ($$) = ($$)
 
   unit = pretty "()"
   l ** r = tupled [l, r]
 
 instance S.Type Print where
-  tglobal = var . pretty
-  tbound = var . pretty . N.hint
+  tglobal = free . S.getTName
+  tbound = sbound
   -- FIXME: combine quantification over type variables of the same kind
   (n ::: t) >~> b = group (align (braces (space <> ann (var (pretty (N.hint n)) ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
   (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
-  (.$) = app
+  (.$) = ($$)
   _Unit = pretty "()"
   _Type = annotate Type $ pretty "Type"
 
 instance C.Type Print where
-  tglobal = var . pretty
-  tbound = name tvar
+  tglobal = free
+  tbound = ctbound
   (-->) = (S.-->)
   (.*) = (S..*)
-  (.$) = app
+  (.$) = ($$)
   _Unit = S._Unit
   _Type = annotate Type S._Type
   -- FIXME: combine quantification over type variables of the same kind
   (v ::: t) ==> b = group (align (braces (space <> ann (N.prettyNameWith tvar v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
 instance C.Expr Print where
-  global = var . pretty
-  bound = name evar
+  global = free
+  bound = cebound
   tlam n b = cases (braces (C.bound n)) [b]
   lam n b = cases (C.bound n) [b]
-  ($$) = app
+  ($$) = ($$)
   unit = pretty "()"
   l ** r = tupled [l, r]
 
@@ -209,10 +215,50 @@ instance S.Decl Print Print Print where
 
   (n ::: t) >-> b = group (align (parens (ann (var (pretty (N.hint n)) ::: t)))) </> arrow <+> prec FnR b
 
-app :: Print -> Print -> Print
-l `app` r = askingPrec $ \case
+
+printSurfaceType :: ST.Type -> Print
+printSurfaceType = ST.fold alg
+  where
+  alg = \case
+    ST.Free n  -> free (S.getTName n)
+    ST.Bound n -> sbound n
+    ST.Type    -> _Type
+    ST.Unit    -> _Unit
+    t ST.:=> b -> first (pretty . N.hint) t >~> b
+    f ST.:$  a -> f $$  a
+    a ST.:-> b -> a --> b
+    l ST.:*  r -> l **  r
+    ST.Ann _ t -> t
+
+free :: Text -> Print
+free n = var (pretty n)
+
+sbound :: N.Name -> Print
+sbound n = var (pretty (N.hint n))
+
+cebound :: N.Name -> Print
+cebound = name evar
+
+ctbound :: N.Name -> Print
+ctbound = name tvar
+
+_Unit, _Type :: Print
+_Unit = annotate Type $ pretty "Unit"
+_Type = annotate Type $ pretty "Type"
+
+($$), (-->), (**) :: Print -> Print -> Print
+f $$ a = askingPrec $ \case
   AppL -> op
   _    -> group op
   where
   -- FIXME: lambdas get parenthesized on the left
-  op = leftAssoc AppL AppR (\ f a -> f <> nest 2 (line <> a)) l r
+  op = leftAssoc AppL AppR (\ f a -> f <> nest 2 (line <> a)) f a
+
+(-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
+
+-- FIXME: left-flatten products
+l ** r = tupled [l, r]
+
+(>~>) :: (Print ::: Print) -> Print -> Print
+-- FIXME: combine quantification over type variables of the same kind
+(n ::: t) >~> b = group (align (braces (space <> ann (var n ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
