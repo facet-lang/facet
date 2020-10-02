@@ -223,10 +223,7 @@ elabType (t ::: _K) = ST.foldType alg t _K
       a' <- check (a ::: _A)
       pure $ f' C..$ a' ::: _B
     a ST.:-> b -> synth (_check a --> _check b)
-    l ST.:*  r -> do
-      l' <- check (l ::: C._Type)
-      r' <- check (r ::: C._Type)
-      pure $ (l' C..* r') ::: C._Type
+    l ST.:*  r -> synth (_check l .*  _check r)
     ST.Ann s b -> local (const s) $ b _K
     where
     _check r = tm <$> Check (r . Just)
