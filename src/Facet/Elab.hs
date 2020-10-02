@@ -6,8 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
-( Env
-, Context
+( Context
 , implicit
 , elab
 , Elab(..)
@@ -46,7 +45,7 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Facet.Core as C
-import           Facet.Env (Env(..))
+import qualified Facet.Env as Env
 import           Facet.Name (Name(..), prettyNameWith)
 import qualified Facet.Print as P
 import qualified Facet.Surface as S
@@ -59,21 +58,21 @@ import           Silkscreen (fillSep, group, pretty, (<+>), (</>))
 
 type Context = IntMap.IntMap Type
 
-implicit :: Env
-implicit = Env $ Map.fromList [ (T.pack "Type", C._Type) ]
+implicit :: Env.Env
+implicit = Env.Env $ Map.fromList [ (T.pack "Type", C._Type) ]
 
 elab :: (Elab m a ::: Maybe Type) -> m a
 elab = runEnv implicit mempty . uncurryAnn runElab
 
-runEnv :: Env -> Context -> EnvC m a -> m a
+runEnv :: Env.Env -> Context -> EnvC m a -> m a
 runEnv e c m = runEnvC m e c
 
-newtype EnvC m a = EnvC { runEnvC :: Env -> Context -> m a }
-  deriving (Algebra (Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Env (ReaderC Context m)
+newtype EnvC m a = EnvC { runEnvC :: Env.Env -> Context -> m a }
+  deriving (Algebra (Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Env.Env (ReaderC Context m)
 
 -- FIXME: elaborate Expr instead of doing the final tagless dance.
 newtype Elab m a = Elab { runElab :: Maybe Type -> EnvC m a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC (Maybe Type) (EnvC m)
+  deriving (Algebra (Reader (Maybe Type) :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC (Maybe Type) (EnvC m)
 
 fromCheck :: Has (Error P.Print) sig m => Check m a -> Elab m (a ::: Type)
 fromCheck m = Elab $ \case
@@ -141,7 +140,7 @@ instance (C.Expr expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig 
 
 
 newtype Check m a = Check { runCheck :: Type -> EnvC m a }
-  deriving (Algebra (Reader Type :+: Reader Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Type (EnvC m)
+  deriving (Algebra (Reader Type :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Type (EnvC m)
 
 newtype Synth m a = Synth { synth :: EnvC m (a ::: Type) }
 
@@ -215,7 +214,7 @@ elabType (t ::: _K) = ST.fold alg t _K
       _       -> pure r
 
 tglobal :: (C.Type ty, Has (Error P.Print) sig m) => S.TName -> Synth m ty
-tglobal (S.TName s) = Synth $ asks (Map.lookup s . getEnv) >>= \case
+tglobal (S.TName s) = Synth $ asks (Env.lookup s) >>= \case
   Just b  -> pure (C.tglobal s ::: b)
   Nothing -> freeVariable (pretty s)
 
@@ -284,7 +283,7 @@ elabExpr (t ::: _K) = SE.fold alg t _K
       _       -> pure r
 
 eglobal :: (C.Expr expr, Has (Error P.Print) sig m) => S.EName -> Synth m expr
-eglobal (S.EName s) = Synth $ asks (Map.lookup s . getEnv) >>= \case
+eglobal (S.EName s) = Synth $ asks (Env.lookup s) >>= \case
   Just b  -> pure (C.global s ::: b)
   Nothing -> freeVariable (pretty s)
 
