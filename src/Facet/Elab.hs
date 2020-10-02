@@ -178,22 +178,6 @@ unify t1 t2 = go t1 t2
 
 -- General
 
-eglobal :: (C.Expr expr, Has (Error P.Print) sig m) => S.EName -> Synth m expr
-eglobal (S.EName s) = Synth $ asks (Map.lookup s) >>= \case
-  Just b  -> pure (C.global s ::: b)
-  Nothing -> freeVariable (pretty s)
-
-tglobal :: (C.Type ty, Has (Error P.Print) sig m) => S.TName -> Synth m ty
-tglobal (S.TName s) = Synth $ asks (Map.lookup s) >>= \case
-  Just b  -> pure (C.tglobal s ::: b)
-  Nothing -> freeVariable (pretty s)
-
-tbound :: (C.Type ty, Has (Error P.Print) sig m) => Name -> Synth m ty
-tbound n = bound n C.tbound P.tvar
-
-ebound :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Synth m expr
-ebound n = bound n C.bound P.evar
-
 bound :: Has (Error P.Print) sig m => Name -> (Name -> e) -> (Int -> P.Print) -> Synth m e
 bound n with var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
   Just b  -> pure (with n ::: b)
@@ -228,6 +212,14 @@ elabType (t ::: _K) = ST.fold alg t _K
     validate r@(_T ::: _K') = case _K of
       Just _K -> r <$ unify _K' _K
       _       -> pure r
+
+tglobal :: (C.Type ty, Has (Error P.Print) sig m) => S.TName -> Synth m ty
+tglobal (S.TName s) = Synth $ asks (Map.lookup s) >>= \case
+  Just b  -> pure (C.tglobal s ::: b)
+  Nothing -> freeVariable (pretty s)
+
+tbound :: (C.Type ty, Has (Error P.Print) sig m) => Name -> Synth m ty
+tbound n = bound n C.tbound P.tvar
 
 _Type :: (Applicative m, C.Type t) => Synth m t
 _Type = Synth $ pure $ C._Type ::: C._Type
@@ -289,6 +281,14 @@ elabExpr (t ::: _K) = SE.fold alg t _K
     validate r@(_ ::: _T') = case _T of
       Just _T -> r <$ unify _T' _T
       _       -> pure r
+
+eglobal :: (C.Expr expr, Has (Error P.Print) sig m) => S.EName -> Synth m expr
+eglobal (S.EName s) = Synth $ asks (Map.lookup s) >>= \case
+  Just b  -> pure (C.global s ::: b)
+  Nothing -> freeVariable (pretty s)
+
+ebound :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Synth m expr
+ebound n = bound n C.bound P.evar
 
 ($$) :: (C.Expr expr, Has (Error P.Print) sig m) => Synth m expr -> Check m expr -> Synth m expr
 ($$) = app (C.$$)
