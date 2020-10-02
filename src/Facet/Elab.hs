@@ -222,16 +222,14 @@ elabType (t ::: _K) = ST.foldType alg t _K
       (_A, _B) <- expectFunctionType (pretty "in application") _F
       a' <- check (a ::: _A)
       pure $ f' C..$ a' ::: _B
-    a ST.:-> b -> do
-      a' <- check (a ::: C._Type)
-      b' <- check (b ::: C._Type)
-      pure $ (a' C.--> b') ::: C._Type
+    a ST.:-> b -> synth (_check a --> _check b)
     l ST.:*  r -> do
       l' <- check (l ::: C._Type)
       r' <- check (r ::: C._Type)
       pure $ (l' C..* r') ::: C._Type
     ST.Ann s b -> local (const s) $ b _K
     where
+    _check r = tm <$> Check (r . Just)
     check (t ::: _T) = tm <$> t (Just _T)
     synth' t = t Nothing
     validate r@(_T ::: _K') = case _K of
