@@ -1,5 +1,8 @@
 # Facet: a call-by-value functional language with algebraic effects, runners, quantitative type theory, and staging
 
+_Caveat lector:_ facet is quite new, and this document is primarily aspirational. Many things do not work, are not implemented, or are poorly thought-out.
+
+
 ## Features
 
 - 📈 functional programming!
