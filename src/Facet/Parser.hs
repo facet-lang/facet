@@ -43,8 +43,8 @@ import           Text.Parser.Token.Style
 runFacet :: Int -> Facet m a -> m a
 runFacet i (Facet m) = m i
 
-bind :: (Monad m, Coercible t Text) => Facet m t -> (Name -> Facet m a) -> Facet m a
-bind n b = n >>= \ n -> Facet $ \ i -> runFacet (i + 1) (b (Name (coerce n) i))
+bind :: Coercible t Text => t -> (Name -> Facet m a) -> Facet m a
+bind n b = Facet $ \ i -> runFacet (i + 1) (b (Name (coerce n) i))
 
 newtype Facet m a = Facet (Int -> m a)
   deriving (Alternative, Applicative, Functor, Monad) via ReaderC Int m
@@ -97,7 +97,7 @@ sig tvars = build (sigTable tvars) (\ _ vars -> (S..=) <$> monotype_ tvars <*> e
 binder :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> BindParser (Facet p) expr decl
 binder tvars BindCtx{ self, vars } = locating $ do
   (i, t) <- nesting $ (,) <$> try (symbolic '(' *> name) <* colon <*> type_ tvars <* symbolic ')'
-  bind (pure i) $ \ v -> ((v S.::: t) S.>->) <$ arrow <*> self (S.bound v <$ variable i <|> vars)
+  bind i $ \ v -> ((v S.::: t) S.>->) <$ arrow <*> self (S.bound v <$ variable i <|> vars)
 
 
 data BindCtx p a b = BindCtx
@@ -163,7 +163,7 @@ forAll
   -> BindParser (Facet p) ty res
 forAll (>=>) BindCtx{ self, vars } = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
-  let loop i rest vars = bind (pure i) $ \ v -> pure (v S.::: ty) >=> rest (S.tbound v <$ variable i <|> vars)
+  let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (S.tbound v <$ variable i <|> vars)
   arrow *> foldr loop self names vars
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
@@ -202,7 +202,7 @@ comp = braces . clause
 
 -- FIXME: patterns
 clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParser (Facet p) expr expr
-clause = self . vars where self vars = locating $ bind name $ \ v -> S.lam v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
+clause = self . vars where self vars = locating $ name >>= \ n -> bind n $ \ v -> S.lam v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
 
 chainl1_ :: Alternative m => m a -> (m a -> m a) -> m (a -> a -> a) -> m a
 chainl1_ p wrap op = go where go = wrap $ p <**> (flip <$> op <*> go <|> pure id)
