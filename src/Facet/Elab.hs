@@ -31,6 +31,8 @@ module Facet.Elab
 , ($$)
 , tlam
 , lam
+, unit
+, (**)
 ) where
 
 import           Control.Algebra
