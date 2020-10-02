@@ -3,6 +3,7 @@ module Facet.Surface.Expr
 ( Expr(..)
 ) where
 
+import           Control.Effect.Parser.Span (Span)
 import           Facet.Name
 import qualified Facet.Surface as S
 
@@ -15,6 +16,7 @@ data ExprF e
   | e :$ e
   | Unit
   | e :* e
+  | Ann Span e
   deriving (Foldable, Functor, Traversable)
 
 infixl 9 :$
