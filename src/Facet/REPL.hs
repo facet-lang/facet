@@ -11,7 +11,6 @@ import Control.Carrier.Parser.Church
 import Control.Carrier.Readline.Haskeline
 import Control.Effect.Parser.Notice (prettyNotice)
 import Control.Effect.Parser.Span (Pos(..))
-import Control.Monad.IO.Class (MonadIO)
 import Facet.Pretty
 import Prelude hiding (print)
 import Prettyprinter as P hiding (column, width)
@@ -22,7 +21,7 @@ import Text.Parser.Token hiding (comma)
 repl :: IO ()
 repl = runReadlineWithHistory loop
 
-loop :: (Has Readline sig m, MonadIO m) => m ()
+loop :: Has Readline sig m => m ()
 loop = do
   (line, resp) <- prompt "λ "
   case resp of
