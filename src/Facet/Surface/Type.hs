@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Type
 ( Type(..)
@@ -21,6 +22,7 @@ data TypeF t
   | t :-> t
   | t :*  t
   | Ann Span t
+  deriving (Foldable, Functor, Traversable)
 
 infixr 1 :=>
 infixl 9 :$
