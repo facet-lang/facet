@@ -331,3 +331,8 @@ expectFunctionType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Type, T
 expectFunctionType s = \case
   _A :-> _B -> pure (_A, _B)
   _T        -> mismatch s (pretty "_ -> _") (interpret _T)
+
+expectProductType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Type, Type)
+expectProductType s = \case
+  _A :* _B -> pure (_A, _B)
+  _T       -> mismatch s (pretty "(_, _)") (interpret _T)
