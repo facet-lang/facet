@@ -9,6 +9,7 @@ module Facet.Name
 , instantiate
 , MName(..)
 , QName(..)
+, moduleName
 ) where
 
 import           Data.Function (on)
@@ -74,3 +75,6 @@ data MName
 
 data QName = MName :.: String
   deriving (Eq, Ord, Show)
+
+moduleName :: QName -> MName
+moduleName (mname :.: _) = mname
