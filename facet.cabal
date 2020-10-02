@@ -62,6 +62,7 @@ library
     Facet.Type
   other-modules:
     Facet.GHCI
+    Paths_facet
     Text.Parser.Position
   build-depends:
     , base ^>= 4.14

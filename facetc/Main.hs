@@ -1,6 +1,5 @@
 module Main
-( main
+( CLI.main
 ) where
 
-main :: IO ()
-main = pure ()
+import Facet.CLI as CLI
