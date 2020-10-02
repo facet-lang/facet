@@ -279,6 +279,9 @@ lam n b = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
   n ::: _A |- C.lam n <$> check (b ::: _B)
 
+unit :: (Applicative m, C.Expr t) => Synth m t
+unit = Synth . pure $ C.unit ::: C._Unit
+
 
 -- Context
 
