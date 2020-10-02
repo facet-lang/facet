@@ -285,9 +285,7 @@ elabExpr (t ::: _K) = SE.fold alg t _K
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
-    verify r = case _T of
-      Just _T -> (::: _T) <$> check (r ::: _T)
-      _       -> couldNotSynthesize
+    verify r = expectChecked _T >>= \ _T -> (::: _T) <$> check (r ::: _T)
     validate r@(_ ::: _T') = case _T of
       Just _T -> r <$ unify _T' _T
       _       -> pure r
