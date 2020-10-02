@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.REPL
 ( repl
@@ -9,6 +11,7 @@ import Control.Carrier.Readline.Haskeline
 import Control.Effect.Parser.Notice (prettyNotice)
 import Control.Effect.Parser.Span (Pos(..))
 import Control.Monad.IO.Class (MonadIO)
+import Data.Monoid (Alt(..))
 import Facet.Pretty
 import Text.Parser.Char
 import Text.Parser.Combinators
@@ -27,9 +30,19 @@ loop = do
     Nothing   -> loop
 
 commandParser :: Has Empty sig m' => TokenParsing m => m (m' ())
-commandParser = char ':' *> choice
-  [ empty <$ command ["quit", "q"]
+commandParser = parseCommand $ mconcat
+  [ command ["quit", "q"] $ empty
   ]
 
-command :: TokenParsing m => [String] -> m ()
-command s = () <$ choice (map symbol s)
+parseCommand :: TokenParsing m => Command a -> m a
+parseCommand (Command cs) = getAlt (foldMap (Alt . uncurry go) cs)
+  where
+  go [] v = pure v
+  go ss v = v <$ token (char ':' *> choice (map string ss))
+
+
+command :: [String] -> a -> Command a
+command s a = Command [(s, a)]
+
+newtype Command a = Command [([String], a)]
+  deriving (Foldable, Functor, Monoid, Semigroup, Traversable)
