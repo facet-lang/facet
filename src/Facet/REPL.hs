@@ -17,7 +17,6 @@ import Facet.Pretty
 import Prelude hiding (print)
 import Prettyprinter as P hiding (column, width)
 import Prettyprinter.Render.Terminal (AnsiStyle)
-import Text.Parser.Char hiding (space)
 import Text.Parser.Combinators
 import Text.Parser.Token hiding (comma)
 
@@ -45,7 +44,7 @@ parseCommands :: TokenParsing m => [Command a] -> m a
 parseCommands = getAlt . foldMap (Alt . go)
   where
   go (Command [] _ v) = pure v
-  go (Command ss _ v) = v <$ token (choice (map (\ s -> string (':':s) <?> (':':s)) ss))
+  go (Command ss _ v) = v <$ choice (map (\ s -> symbol (':':s) <?> (':':s)) ss)
 
 
 command :: [String] -> String -> a -> [Command a]
