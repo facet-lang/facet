@@ -1,6 +1,6 @@
 # syntax
 
-
+```
 map
 : (f : a -> b) -> List a -> List b
 { Nil       -> Nil
@@ -171,7 +171,7 @@ runReader : (a : r) -> [Reader r]a -> a
 withSucc
 : (m : Unit -> a) -> [Reader Nat]a
 { local succ m }
-
+```
 
 
 
@@ -282,7 +282,7 @@ idea:
 
 ----
 
-
+```
 Base : Module
 { Bool : Module { import Base.Bool }
 , List : Module
@@ -310,6 +310,7 @@ Base.Bool : Module
   : (c : Bool) -> (t : {a}) -> (e : {a}) -> a
   { case c { True -> t! | False -> e! } }
 }
+```
 
 
 ## open questions
