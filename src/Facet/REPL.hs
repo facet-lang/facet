@@ -60,10 +60,11 @@ data Command a = Command
 
 
 helpDoc :: Doc AnsiStyle
-helpDoc = tabulate2 (P.space <+> P.space) (map (bimap pretty w) entries)
+helpDoc = tabulate2 (P.space <+> P.space) entries
   where
-  entries =
+  entries = map entry
     [ (":help, :h, :?", "display this list of commands")
     , (":quit, :q",     "exit the repl")
     ]
+  entry = bimap pretty w
   w = align . fillSep . map pretty . words
