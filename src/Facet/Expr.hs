@@ -7,12 +7,11 @@ module Facet.Expr
 ) where
 
 import qualified Data.IntSet as IntSet
-import qualified Data.Text as T
 import qualified Facet.Core as C
 import           Facet.Name
 
 data Expr
-  = Global T.Text
+  = Global QName
   | Bound Name
   | TLam FVs Name Expr
   | Lam FVs Name Expr

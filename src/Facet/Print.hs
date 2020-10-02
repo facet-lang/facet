@@ -159,7 +159,7 @@ instance S.Located Print where
   locate _ = id
 
 instance S.Expr Print where
-  global = free . S.getEName
+  global = sfree . S.getEName
   bound = sbound
   -- FIXME: Use _ in binding positions for unused variables
   lam n b = cases (var (pretty (N.hint n))) [b]
@@ -169,7 +169,7 @@ instance S.Expr Print where
   l ** r = tupled [l, r]
 
 instance S.Type Print where
-  tglobal = free . S.getTName
+  tglobal = sfree . S.getTName
   tbound = sbound
   -- FIXME: combine quantification over type variables of the same kind
   (n ::: t) >~> b = group (align (braces (space <> ann (var (pretty (N.hint n)) ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
@@ -180,7 +180,7 @@ instance S.Type Print where
   _Type = annotate Type $ pretty "Type"
 
 instance C.Type Print where
-  tglobal = free
+  tglobal = cfree
   tbound = ctbound
   (-->) = (S.-->)
   (.*) = (S..*)
@@ -191,7 +191,7 @@ instance C.Type Print where
   (v ::: t) ==> b = group (align (braces (space <> ann (N.prettyNameWith tvar v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
 instance C.Expr Print where
-  global = free
+  global = cfree
   bound = cebound
   tlam n b = cases (braces (C.bound n)) [b]
   lam n b = cases (C.bound n) [b]
@@ -220,7 +220,7 @@ printSurfaceType :: ST.Type -> Print
 printSurfaceType = ST.fold alg
   where
   alg = \case
-    ST.Free n  -> free (S.getTName n)
+    ST.Free n  -> sfree (S.getTName n)
     ST.Bound n -> sbound n
     ST.Type    -> _Type
     ST.Unit    -> _Unit
@@ -230,8 +230,15 @@ printSurfaceType = ST.fold alg
     l ST.:*  r -> l **  r
     ST.Ann _ t -> t
 
-free :: Text -> Print
-free n = var (pretty n)
+sfree :: Text -> Print
+sfree n = var (pretty n)
+
+cfree :: N.QName -> Print
+cfree (mname N.:.: n) = var (go mname <> pretty n)
+  where
+  go (n N.:. s)  = go n <> pretty '.' <> pretty s
+  go (N.MName s) = pretty s
+
 
 sbound :: N.Name -> Print
 sbound n = var (pretty (N.hint n))

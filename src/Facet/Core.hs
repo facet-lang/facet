@@ -7,12 +7,11 @@ module Facet.Core
 ) where
 
 import Data.Text (Text)
-import Facet.Name (Name)
+import Facet.Name (Name, QName)
 import Facet.Syntax ((:::)(..), (:=)(..))
 
 class Type ty where
-  -- FIXME: qualified names
-  tglobal :: Text -> ty
+  tglobal :: QName -> ty
   tbound :: Name -> ty
 
   _Type :: ty
@@ -33,8 +32,7 @@ class Type ty where
 
 
 class Expr expr where
-  -- FIXME: qualified names
-  global :: Text -> expr
+  global :: QName -> expr
   bound :: Name -> expr
   tlam :: Name -> expr -> expr
   lam :: Name -> expr -> expr

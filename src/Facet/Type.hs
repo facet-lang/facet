@@ -15,7 +15,6 @@ module Facet.Type
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import qualified Data.IntSet as IntSet
-import           Data.Text (Text)
 import qualified Facet.Core as C
 import           Facet.Name
 import qualified Facet.Print as P
@@ -25,7 +24,7 @@ data Type
   = Type
   | Unit
   | (Name ::: Type) :=> Type
-  | Either Name Text :$ Stack Type
+  | Either Name QName :$ Stack Type
   | Type :-> Type
   | Type :*  Type
 
