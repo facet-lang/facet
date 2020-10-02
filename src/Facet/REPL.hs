@@ -27,6 +27,7 @@ loop :: Has Readline sig m => m ()
 loop = do
   (line, resp) <- prompt "λ "
   case resp of
+    -- FIXME: evaluate expressions
     Just resp -> case runParserWithString (Pos line 0) resp (runFacet 0 commandParser) of
       Right cmd -> runEmpty (pure ()) (const loop) (runAction cmd)
       Left  err -> print (prettyNotice err) *> loop
