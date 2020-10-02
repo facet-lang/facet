@@ -38,3 +38,6 @@ instance S.Type Type where
 
   _Unit = Unit
   _Type = Type
+
+instance S.Located Type where
+  locate = Ann
