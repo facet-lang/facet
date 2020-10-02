@@ -41,7 +41,7 @@ cabal build # make sure dependencies are known & installed
 script/repl # actually launch the repl
 ```
 
-`ghcide` integration is also provided, and I edit in VS Code configured to use it.
+`haskell-language-server` integration is also provided, and I edit in VS Code configured to use it.
 
 
 ## Syntax
