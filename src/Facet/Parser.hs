@@ -80,12 +80,12 @@ decl = locating $ (S..:.) <$> dname <* colon <*> tsig tglobal
 
 tsigTable :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Table (Facet p) ty decl
 tsigTable =
-  [ [ toBindParser $ Binder (forAll (liftA2 (S.>=>))) ]
+  [ [ Binder (forAll (liftA2 (S.>=>))) ]
   ]
 
 sigTable :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Table (Facet p) expr decl
 sigTable tvars =
-  [ [ toBindParser $ Binder (binder tvars) ]
+  [ [ Binder (binder tvars) ]
   ]
 
 tsig :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Facet p decl
@@ -131,31 +131,31 @@ toBindParser = \case
   Atom p          -> p . vars
 
 type BindParser p a b = BindCtx p a b -> p b
-type Table p a b = [[BindParser p a b]]
+type Table p a b = [[Operator p a b]]
 
 -- | Build a parser for a Table.
-build :: Alternative p => Table p a b -> ((p a -> p b) -> (p a -> p b)) -> (p a -> p b)
+build :: Parsing p => Table p a b -> ((p a -> p b) -> (p a -> p b)) -> (p a -> p b)
 build ts end = root
   where
   root = foldr chain (end root) ts
   chain ps next = self
     where
-    self = foldr (\ p rest vars -> p BindCtx{ self, next, vars } <|> rest vars) next ps
+    self = foldr (\ p rest vars -> toBindParser p BindCtx{ self, next, vars } <|> rest vars) next ps
 
 terminate :: (p b -> p b) -> BindParser p a b -> (p a -> p b) -> (p a -> p b)
 terminate wrap op next = self where self vars = wrap $ op BindCtx{ next, self, vars }
 
 typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
-typeTable = [ forAll (liftA2 (S.>~>)) ] : monotypeTable
+typeTable = [ Binder (forAll (liftA2 (S.>~>))) ] : monotypeTable
 
 monotypeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
 monotypeTable =
-  [ [ toBindParser $ Infix R locating ((S.-->) <$ arrow) ]
-  , [ toBindParser $ Infix L locating (pure (S..$)) ]
+  [ [ Infix R locating ((S.-->) <$ arrow) ]
+  , [ Infix L locating (pure (S..$)) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
-      toBindParser $ Atom (const (S._Unit <$ token (string "Unit")))
-    , toBindParser $ Atom (const (S._Type <$ token (string "Type")))
-    , toBindParser $ Atom id
+      Atom (const (S._Unit <$ token (string "Unit")))
+    , Atom (const (S._Type <$ token (string "Type")))
+    , Atom id
     ]
   ]
 
@@ -183,9 +183,9 @@ tglobal = S.tglobal <$> tname <?> "variable"
 
 exprTable :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Table (Facet p) expr expr
 exprTable =
-  [ [ toBindParser $ Infix L locating (pure (S.$$)) ]
-  , [ toBindParser $ Atom comp
-    , toBindParser $ Atom id
+  [ [ Infix L locating (pure (S.$$)) ]
+  , [ Atom comp
+    , Atom id
     ]
   ]
 
