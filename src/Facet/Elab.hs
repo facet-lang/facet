@@ -42,7 +42,6 @@ import           Control.Effect.Error
 import           Control.Effect.Parser.Span (Span(..))
 import           Data.Bifunctor (first)
 import qualified Data.IntMap as IntMap
-import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Facet.Core as C
 import qualified Facet.Env as Env
@@ -59,7 +58,7 @@ import           Silkscreen (fillSep, group, pretty, (<+>), (</>))
 type Context = IntMap.IntMap Type
 
 implicit :: Env.Env
-implicit = Env.Env $ Map.fromList [ (T.pack "Type", C._Type) ]
+implicit = Env.fromList [ (T.pack "Type", C._Type) ]
 
 elab :: (Elab m a ::: Maybe Type) -> m a
 elab = runEnv implicit mempty . uncurryAnn runElab
