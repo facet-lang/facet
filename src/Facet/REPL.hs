@@ -37,9 +37,9 @@ loop = do
 -- - load
 -- - reload
 commands :: [Command m Action]
-commands = mconcat
-  [ command ["help", "h", "?"] "display this list of commands" $ Action $ print helpDoc
-  , command ["quit", "q"]      "exit the repl"                 $ Action $ empty
+commands =
+  [ Command ["help", "h", "?"] "display this list of commands" . Pure $ Action $ print helpDoc
+  , Command ["quit", "q"]      "exit the repl"                 . Pure $ Action $ empty
   ]
 
 parseCommands :: TokenParsing m => [Command m a] -> m a
@@ -51,9 +51,6 @@ parseCommands = choice . map go
     Pure a   -> pure a
     Meta _ p -> p
 
-
-command :: [String] -> String -> a -> [Command m a]
-command s h a = [Command s h (Pure a)]
 
 data Command p a = Command
   { symbols :: [String]
