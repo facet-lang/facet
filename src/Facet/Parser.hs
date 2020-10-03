@@ -99,7 +99,7 @@ sig tvars = build (sigTable tvars) (\ _ vars -> (S..=) <$> monotype_ tvars <*> e
 
 binder :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> BindParser (Facet p) expr decl
 binder tvars BindCtx{ self, vars } = locating $ do
-  (i, t) <- nesting $ (,) <$> try (symbolic '(' *> name) <* colon <*> type_ tvars <* symbolic ')'
+  (i, t) <- nesting $ (,) <$> try (symbolic '(' *> ename) <* colon <*> type_ tvars <* symbolic ')'
   bind i $ \ v -> ((v S.::: t) S.>->) <$ arrow <*> self (S.bound v <$ variable i <|> vars)
 
 
@@ -196,7 +196,7 @@ expr :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p exp
 expr = expr_ global
 
 global :: (S.Expr expr, Monad p, TokenParsing p) => Facet p expr
-global = S.global <$> name <?> "variable"
+global = S.global <$> ename <?> "variable"
 
 expr_ :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
 expr_ = build exprTable (terminate parens (toBindParser (Infix L locating ((S.**) <$ comma))))
@@ -214,7 +214,7 @@ clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParse
 clause = self . vars
   where
   self vars = (do
-    names <- try (some ((,) <$> position <*> name) <* arrow)
+    names <- try (some ((,) <$> position <*> ename) <* arrow)
     foldr clause expr_ names vars) <?> "clause"
   clause (start, n) rest vars = bind n $ \ v -> do
     lam <- S.lam v <$> rest (S.bound v <$ variable (hint v) <|> vars)
@@ -225,8 +225,8 @@ chainl1_ :: Alternative m => m a -> (m a -> m a) -> m (a -> a -> a) -> m a
 chainl1_ p wrap op = go where go = wrap $ p <**> (flip <$> op <*> go <|> pure id)
 
 
-name, _hname :: (Monad p, TokenParsing p) => p S.EName
-name  = ident nameStyle
+ename, _hname :: (Monad p, TokenParsing p) => p S.EName
+ename  = ident nameStyle
 _hname = ident hnameStyle
 tname :: (Monad p, TokenParsing p) => p S.TName
 tname = ident tnameStyle
