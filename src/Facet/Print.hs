@@ -177,7 +177,7 @@ instance S.Expr Print where
   ($$) = ($$)
 
   unit = unit
-  l ** r = tupled [l, r]
+  (**) = (**)
 
 instance S.Type Print where
   tglobal = sfree . S.getTName
@@ -185,7 +185,7 @@ instance S.Type Print where
   -- FIXME: combine quantification over type variables of the same kind
   (n ::: t) >~> b = group (align (braces (space <> ann (var (pretty (N.hint n)) ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
   (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
-  l .* r = parens $ l <> comma <+> r
+  (.*) = (**)
   (.$) = ($$)
   _Unit = _Unit
   _Type = _Type
@@ -208,7 +208,7 @@ instance C.Expr Print where
   lam = lam . cebound
   ($$) = ($$)
   unit = unit
-  l ** r = tupled [l, r]
+  (**) = (**)
 
 instance C.Module Print Print Print where
   module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep b)
