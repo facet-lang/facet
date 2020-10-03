@@ -38,6 +38,7 @@ loop = do
 -- TODO:
 -- - load
 -- - reload
+-- - multiline
 commands :: [Command (Facet (ParserC (Either Notice))) Action]
 commands =
   [ Command ["help", "h", "?"] "display this list of commands" . Pure $ Action $ print helpDoc
