@@ -96,7 +96,7 @@ Map : Implementation (Map Option) # this has to be typechecked as an open defini
 }
 
 Implementation : { a, b : Type } -> (i : Interface) -> (handle : <i>a -> b) -> ?? some opaque thing maybe?
-= { … ?? }
+{ … ?? }
 
 Map : Implementation (Map Option)
 { <map f o -> k> -> case o
@@ -112,30 +112,30 @@ Map : Implementation (Map Option)
 
 
 Eq : (A : Type) -> Interface
-= { (==) : A -> A -> Bool }
+{ (==) : A -> A -> Bool }
 
 (/=) : {A : Type} -> (a : A) -> (b : A) -> [Eq A]Bool
-= { not (a == b) }
+{ not (a == b) }
 
 
 Semigroup : (A : Type) -> Interface
-= { (<>) : A -> A -> A }
+{ (<>) : A -> A -> A }
 
 Monoid : (A : Type) -> [Semigroup A]Interface
-= { zero : A }
+{ zero : A }
 
 Semiring : (A : Type) -> [Semigroup A]Interface
-= { (><) : A -> A -> A }
+{ (><) : A -> A -> A }
 
 Unital : (A : Type) -> [Semiring A, Monoid A]Interface
-= { one : A }
+{ one : A }
 
 
 
 
 if
 : { A : Type } -> (c : Bool) -> (t : {A}) -> (e : {A}) -> A
-= { case c { True -> t! | False -> e! } }
+{ case c { True -> t! | False -> e! } }
 
 bool
 : { A : Type } -> (e : {A}) -> (t : {A}) -> Bool -> A
