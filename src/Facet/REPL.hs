@@ -7,6 +7,7 @@ module Facet.REPL
 ) where
 
 import           Control.Carrier.Empty.Church
+import           Control.Carrier.Error.Church
 import           Control.Carrier.Parser.Church
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
@@ -40,7 +41,7 @@ loop = do
   case resp of
     -- FIXME: evaluate expressions
     Just resp -> case runParserWithString (Pos line 0) resp (runFacet 0 commandParser) of
-      Right cmd -> runEmpty (pure ()) (const loop) (runAction cmd)
+      Right cmd -> runEmpty (pure ()) (const loop) (runError (print . prettyNotice) pure (runAction cmd))
       Left  err -> print (prettyNotice err) *> loop
     Nothing   -> loop
   where
@@ -89,7 +90,7 @@ data Value p a
   | Meta String (p a)
   deriving (Foldable, Functor, Traversable)
 
-newtype Action = Action { runAction :: forall sig m . (Has Empty sig m, Has Readline sig m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has Empty sig m, Has (Error Notice) sig m, Has Readline sig m, MonadIO m) => m () }
 
 
 helpDoc :: Doc AnsiStyle
