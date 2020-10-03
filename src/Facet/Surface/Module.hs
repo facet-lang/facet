@@ -6,6 +6,7 @@ module Facet.Surface.Module
 , fold
 ) where
 
+import           Control.Effect.Parser.Span (Span)
 import           Facet.Name
 import qualified Facet.Surface as S
 import           Facet.Surface.Decl (Decl)
@@ -18,6 +19,7 @@ data ModuleF a
   = Module MName [a]
   | DefTerm S.EName Decl
   | DefType S.TName Decl
+  | Ann Span a
   deriving (Foldable, Functor, Traversable)
 
 instance S.Module Expr Type Decl Module where

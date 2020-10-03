@@ -373,6 +373,8 @@ elabModule = SM.fold alg
       mname <- ask
       pure $ C.defTerm (mname :.: S.getTName n) (interpret _T := e')
 
+    SM.Ann s d -> local (const s) d
+
 
 -- Context
 
