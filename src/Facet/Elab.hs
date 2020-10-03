@@ -326,24 +326,24 @@ l ** r = Check $ \ _T -> do
 
 -- Declarations
 
-elabDecl :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.Decl -> EnvC m (expr ::: Type)
+elabDecl :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.Decl -> EnvC m (Check m expr ::: Type)
 elabDecl = SD.fold alg
   where
   alg = \case
     (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)
       b' ::: _B <- n ::: _T |- b
-      pure $ C.tlam n b' ::: ((n ::: _T) C.==> _B)
+      pure $ tlam n b' ::: ((n ::: _T) C.==> _B)
 
     (n ::: t) SD.:-> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)
       b' ::: _B <- n ::: _T |- b
-      pure $ C.lam n b' ::: (_T C.--> _B)
+      pure $ lam n b' ::: (_T C.--> _B)
 
     t SD.:= b -> do
       _T ::: _ <- elabType (t ::: Just C._Type)
-      b' ::: _ <- elabExpr (b ::: Just _T)
-      pure $ b' ::: _T
+      pure $ _check (elabExpr . (b :::)) ::: _T
+  _check r = tm <$> Check (r . Just)
 
 
 -- Context
