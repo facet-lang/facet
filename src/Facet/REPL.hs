@@ -15,6 +15,7 @@ import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Notice (Notice, prettyNotice)
 import           Control.Effect.Parser.Span (Pos(..))
+import           Control.Effect.Lens ((%=))
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -72,7 +73,7 @@ load_, type_, kind_ :: Facet (ParserC (Either Notice)) Action
 load_ = load <$> path
   where
   load path = Action $ do
-    runParserWithFile path (runFacet 0 decl) >>= print . getPrint
+    runParserWithFile path (runFacet 0 decl) >>= print . getPrint >> files_ %= Set.insert path
   path = stringLiteral <|> some (satisfy (not . isSpace))
 
 type_ = let act e = Action (print (getPrint e)) in act <$> expr  -- FIXME: elaborate the expr & show the type

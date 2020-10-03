@@ -70,6 +70,7 @@ library
     , containers
     , distributive
     , fused-effects
+    , fused-effects-lens
     , fused-effects-parser
     , fused-effects-readline
     , lens
