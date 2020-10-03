@@ -264,6 +264,9 @@ dname = ident dnameStyle
 reserved :: HashSet.HashSet String
 reserved = HashSet.singleton "_"
 
+nameLetter :: CharParsing p => p Char
+nameLetter = alphaNum <|> char '_'
+
 nameStyle :: CharParsing p => IdentifierStyle p
 nameStyle = IdentifierStyle
   "name"
