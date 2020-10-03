@@ -6,6 +6,7 @@ module Facet.REPL
 ( repl
 ) where
 
+import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Parser.Church
@@ -14,6 +15,7 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Notice (Notice, prettyNotice)
 import           Control.Effect.Parser.Span (Pos(..))
 import           Control.Monad.IO.Class
+import           Data.Char
 import           Data.Semigroup
 import qualified Data.Set as Set
 import           Facet.Parser
@@ -22,6 +24,7 @@ import           Facet.Print
 import           Prelude hiding (print)
 import           Prettyprinter as P hiding (column, width)
 import           Prettyprinter.Render.Terminal (AnsiStyle)
+import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Token hiding (comma)
 
@@ -48,18 +51,25 @@ loop = do
   commandParser = parseCommands commands
 
 -- TODO:
--- - load
 -- - reload
 -- - multiline
 commands :: [Command (Facet (ParserC (Either Notice))) Action]
 commands =
   [ Command ["help", "h", "?"] "display this list of commands" . Pure $ Action $ print helpDoc
   , Command ["quit", "q"]      "exit the repl"                 . Pure $ Action $ empty
+  , Command ["load", "l"]      "add a module to the repl"      $ Meta "path" load_
   , Command ["type", "t"]      "show the type of <expr>"       $ Meta "expr" type_
   , Command ["kind", "k"]      "show the kind of <type>"       $ Meta "type" kind_
   ]
 
-type_, kind_ :: Facet (ParserC (Either Notice)) Action
+load_, type_, kind_ :: Facet (ParserC (Either Notice)) Action
+
+load_ = load <$> path
+  where
+  load path = Action $ do
+    runParserWithFile path (runFacet 0 decl) >>= print . getPrint
+  path = stringLiteral <|> some (satisfy (not . isSpace))
+
 type_ = let act e = Action (print (getPrint e)) in act <$> expr  -- FIXME: elaborate the expr & show the type
 kind_ = let act e = Action (print (getPrint e)) in act <$> type' -- FIXME: elaborate the type & show the kind
 
