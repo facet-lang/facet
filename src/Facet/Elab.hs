@@ -137,13 +137,13 @@ instance (C.Expr expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig 
     e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
     -- wait do we have to check _T? aren’t we supposed to assume it’s already well-formed?
     mname <- ask
-    pure $ (mname :.: S.getEName n) C..:. interpret _T := e
+    pure $ C.defTerm (mname :.: S.getEName n) (interpret _T := e)
 
   defType n d = do
     e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
     -- wait do we have to check _T? aren’t we supposed to assume it’s already well-formed?
     mname <- ask
-    pure $ (mname :.: S.getTName n) C..:. interpret _T := e
+    pure $ C.defTerm (mname :.: S.getTName n) (interpret _T := e)
 
 
 newtype Check m a = Check { runCheck :: Type -> EnvC m a }

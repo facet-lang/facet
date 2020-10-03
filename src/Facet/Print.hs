@@ -209,7 +209,7 @@ instance C.Expr Print where
 
 instance C.Module Print Print Print where
   module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces b
-  n .:. t := b = ann (var (prettyQName n) ::: t) </> b
+  defTerm n (t := b) = ann (var (prettyQName n) ::: t) </> b
 
 instance S.Module Print Print Print Print where
   defTerm n b = group $ ann (var (pretty n) ::: b)
