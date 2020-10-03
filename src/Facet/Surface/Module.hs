@@ -3,6 +3,7 @@
 module Facet.Surface.Module
 ( Module(..)
 , ModuleF(..)
+, fold
 ) where
 
 import           Facet.Name
@@ -23,3 +24,9 @@ instance S.Module Expr Type Decl Module where
   module' = fmap In . Module
   defTerm = fmap In . DefTerm
   defType = fmap In . DefType
+
+
+fold :: (ModuleF a -> a) -> Module -> a
+fold alg = go
+  where
+  go = alg . fmap go . out
