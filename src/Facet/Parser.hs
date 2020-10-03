@@ -174,7 +174,7 @@ forAll
   -> BindParser (Facet p) ty res
 forAll (>=>) BindCtx{ self, vars } = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
-  let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (S.tbound v <$ variable i <|> vars)
+  let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (S.tbound v <$ variable v <|> vars)
   arrow *> foldr loop self names vars
 
 type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
@@ -228,11 +228,11 @@ clause = self . vars
 
 bindPattern :: (PositionParsing p, S.Expr expr) => S.Pattern -> (Name -> (Facet p expr -> Facet p expr) -> Facet p expr) -> Facet p expr
 bindPattern S.Wildcard f = bind __ (\ v -> f v id)
-bindPattern (S.Var n)  f = bind n  (\ v -> f v (S.bound v <$ variable (hint v) <|>))
+bindPattern (S.Var n)  f = bind n  (\ v -> f v (S.bound v <$ variable v <|>))
 
 bindVarPattern :: (PositionParsing p, S.Expr expr, Coercible t Text) => Maybe t -> (Name -> (Facet p expr -> Facet p expr) -> Facet p res) -> Facet p res
 bindVarPattern Nothing  f = bind __ (\ v -> f v id)
-bindVarPattern (Just n) f = bind n  (\ v -> f v (S.bound v <$ variable (hint v) <|>))
+bindVarPattern (Just n) f = bind n  (\ v -> f v (S.bound v <$ variable v <|>))
 
 
 varPattern :: (Monad p, TokenParsing p) => p name -> p (Maybe name)
@@ -300,8 +300,8 @@ hnameStyle = IdentifierStyle
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
 
-variable :: (PositionParsing p, Coercible t Text) => t -> p ()
-variable s = token (text (coerce s) *> notFollowedBy alphaNum)
+variable :: PositionParsing p => Name -> p ()
+variable v = token (text (hint v) *> notFollowedBy alphaNum)
 
 
 locating :: (PositionParsing p, S.Located a) => p a -> p a
