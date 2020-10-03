@@ -1,6 +1,8 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Surface.Module
 ( Module(..)
+, ModuleF(..)
 ) where
 
 import           Facet.Name
@@ -9,12 +11,15 @@ import           Facet.Surface.Decl (Decl)
 import           Facet.Surface.Expr (Expr)
 import           Facet.Surface.Type (Type)
 
-data Module
-  = Module MName [Module]
+newtype Module = In { out :: ModuleF Module }
+
+data ModuleF a
+  = Module MName [a]
   | DefTerm S.EName Decl
   | DefType S.TName Decl
+  deriving (Foldable, Functor, Traversable)
 
 instance S.Module Expr Type Decl Module where
-  module' = Module
-  defTerm = DefTerm
-  defType = DefType
+  module' = fmap In . Module
+  defTerm = fmap In . DefTerm
+  defType = fmap In . DefType
