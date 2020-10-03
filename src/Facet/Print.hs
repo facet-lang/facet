@@ -21,6 +21,7 @@ module Facet.Print
 , printSurfaceType
 , printSurfaceExpr
 , printSurfaceDecl
+, printSurfaceModule
 ) where
 
 import           Control.Applicative ((<**>))
@@ -34,6 +35,7 @@ import qualified Facet.Pretty as P
 import qualified Facet.Surface as S
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
+import qualified Facet.Surface.Module as SM
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Prelude hiding ((**))
@@ -319,3 +321,23 @@ t .= b = t </> b
 
 (>->) :: (Print ::: Print) -> Print -> Print
 (n ::: t) >-> b = group (align (parens (ann (n ::: t)))) </> arrow <+> prec FnR b
+
+
+printSurfaceModule :: SM.Module -> Print
+printSurfaceModule = SM.fold alg
+  where
+  alg = \case
+    SM.Module  n b -> module' n b
+    SM.DefTerm n d -> defTerm (sfree (S.getEName n)) (printSurfaceDecl d)
+    SM.DefType n d -> defType (sfree (S.getTName n)) (printSurfaceDecl d)
+    SM.Ann _ t -> t
+
+
+module' :: N.MName -> [Print] -> Print
+module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep b)
+
+defTerm :: Print -> Print -> Print
+defTerm n b = group $ ann (n ::: b)
+
+defType :: Print -> Print -> Print
+defType n b = group $ ann (n ::: b)
