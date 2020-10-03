@@ -2,7 +2,7 @@
 module Text.Parser.Position
 ( PositionParsing(..)
 , Pos
-, Span
+, Span(..)
 , spanning
 , spanned
 ) where
