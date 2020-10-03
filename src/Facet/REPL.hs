@@ -105,7 +105,7 @@ data Value p a
   | Meta String (p a)
   deriving (Foldable, Functor, Traversable)
 
-newtype Action = Action { runAction :: forall sig m . (Has Empty sig m, Has (Error Notice) sig m, Has Readline sig m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has Empty sig m, Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m () }
 
 
 helpDoc :: Doc AnsiStyle
