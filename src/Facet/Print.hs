@@ -20,17 +20,19 @@ module Facet.Print
   -- * Interpreters
 , printSurfaceType
 , printSurfaceExpr
+, printSurfaceDecl
 ) where
 
 import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
-import           Data.Bifunctor (first)
+import           Data.Bifunctor (bimap, first)
 import           Data.Coerce
 import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
 import qualified Facet.Surface as S
+import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
@@ -300,3 +302,20 @@ lam n b = cases n [b]
 
 unit :: Print
 unit = annotate Con $ pretty "Unit"
+
+
+printSurfaceDecl :: SD.Decl -> Print
+printSurfaceDecl = SD.fold alg
+  where
+  alg = \case
+    t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
+    t SD.:=> b -> bimap (var . pretty . N.hint) printSurfaceType t >~> b
+    t SD.:-> b -> bimap (var . pretty . N.hint) printSurfaceType t >-> b
+    SD.Ann _ t -> t
+
+-- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
+(.=) :: Print -> Print -> Print
+t .= b = t </> b
+
+(>->) :: (Print ::: Print) -> Print -> Print
+(n ::: t) >-> b = group (align (parens (ann (n ::: t)))) </> arrow <+> prec FnR b
