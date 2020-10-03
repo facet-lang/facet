@@ -12,6 +12,7 @@ import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Notice (Notice, prettyNotice)
 import           Control.Effect.Parser.Span (Pos(..))
+import           Data.Semigroup
 import qualified Data.Set as Set
 import           Facet.Parser
 import           Facet.Pretty
@@ -91,7 +92,7 @@ newtype Action = Action { runAction :: forall sig m . (Has Empty sig m, Has Read
 
 
 helpDoc :: Doc AnsiStyle
-helpDoc = tabulate2 (P.space <+> P.space) entries
+helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
   where
   entries = map entry commands
   entry c = (concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)) <> maybe mempty ((space <>) . enclose (pretty '<') (pretty '>') . pretty) (meta c), w (usage c))
