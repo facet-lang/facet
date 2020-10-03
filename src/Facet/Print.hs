@@ -205,7 +205,7 @@ instance C.Expr Print where
   tlam = lam . braces . ctbound
   lam = lam . cebound
   ($$) = ($$)
-  unit = pretty "()"
+  unit = unit
   l ** r = tupled [l, r]
 
 instance C.Module Print Print Print where
@@ -282,3 +282,6 @@ l ** r = tupled [l, r]
 -- FIXME: Use _ in binding positions for unused variables
 lam :: Print -> Print -> Print
 lam n b = cases n [b]
+
+unit :: Print
+unit = annotate Con $ pretty "Unit"
