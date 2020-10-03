@@ -244,7 +244,7 @@ nameStyle = IdentifierStyle
 
 dnameStyle :: CharParsing p => IdentifierStyle p
 dnameStyle = IdentifierStyle
-  "name"
+  "declaration name"
   (lower <|> char '_')
   alphaNum
   mempty
