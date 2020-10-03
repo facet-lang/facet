@@ -52,7 +52,7 @@ elabFile path = do
   s <- liftIO (readFile path)
   let parsed = runParser (const Right) failure failure input (runFacet 0 (whole decl))
       input = Input (Pos 0 0) s
-      src = sourceFromString Nothing s
+      src = sourceFromString (Just path) s
       failure = Left . errToNotice src
   case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . elab (MName mempty) . (::: Nothing) of
     Left err -> P.putDoc (prettyNotice err)
