@@ -179,7 +179,7 @@ instance C.Type Print where
   (.$) = ($$)
   _Unit = _Unit
   _Type = _Type
-  t ==> b = first (N.prettyNameWith tvar) t >~> b
+  t >=> b = first (N.prettyNameWith tvar) t >~> b
 
 instance C.Expr Print where
   global = cfree

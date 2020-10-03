@@ -17,8 +17,8 @@ class Type ty where
   _Unit :: ty
 
   -- | Universal quantification.
-  (==>) :: (Name ::: ty) -> ty -> ty
-  infixr 1 ==>
+  (>=>) :: (Name ::: ty) -> ty -> ty
+  infixr 1 >=>
   (.$) :: ty -> ty -> ty
   infixl 9 .$
 

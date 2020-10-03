@@ -201,7 +201,7 @@ infixr 2 -->
   -> Synth m Type
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: C._Type)
-  ftb' <- n ::: _T |- ((n ::: _T) C.==>) <$> check (b ::: C._Type)
+  ftb' <- n ::: _T |- ((n ::: _T) C.>=>) <$> check (b ::: C._Type)
   pure $ ftb' ::: C._Type
 
 infixr 1 >~>
@@ -269,7 +269,7 @@ elabDecl = SD.fold alg
     (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)
       b' ::: _B <- n ::: _T |- b
-      pure $ tlam n b' ::: ((n ::: _T) C.==> _B)
+      pure $ tlam n b' ::: ((n ::: _T) C.>=> _B)
 
     (n ::: t) SD.:-> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)

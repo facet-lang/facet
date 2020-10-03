@@ -47,7 +47,7 @@ instance C.Type Type where
   tbound n = Left n :$ Nil
   _Type = Type
   _Unit = Unit
-  (==>) = (:=>)
+  (>=>) = (:=>)
   (.$)  = ($$)
   (-->) = (:->)
   (.*)  = (:*)
@@ -58,7 +58,7 @@ interpret = go
     go = \case
       Type    -> C._Type
       Unit    -> C._Unit
-      t :=> b -> fmap go t C.==> go b
+      t :=> b -> fmap go t C.>=> go b
       f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound C.tglobal f) a
       a :-> b -> go a C.--> go b
       l :* r  -> go l C..*  go r
@@ -94,7 +94,7 @@ subst x e = go
     Unit            -> Unit
     (n ::: t) :=> b -> let n' = prime (hint n) (fvs b <> fvs e)
                            b' = go (rename n n' b)
-                       in (n' ::: go t) C.==> b'
+                       in (n' ::: go t) C.>=> b'
     f :$  a
       | Left f <- f
       , f == x      -> e $$* (go <$> a)
