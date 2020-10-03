@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Decl
@@ -17,6 +18,7 @@ data DeclF a
   = Type := Expr
   | (Name ::: Type) :=> a
   | (Name ::: Type) :-> a
+  deriving (Foldable, Functor, Traversable)
 
 infix 1 :=
 infixr 1 :=>
