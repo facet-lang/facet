@@ -105,8 +105,8 @@ sig tvars = build (sigTable tvars) (\ _ vars -> (S..=) <$> monotype_ tvars <*> e
 
 binder :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> BindParser (Facet p) expr decl
 binder tvars BindCtx{ self, vars } = locating $ do
-  (i, t) <- nesting $ (,) <$> try (symbolic '(' *> ename) <* colon <*> type_ tvars <* symbolic ')'
-  bind i $ \ v -> ((v S.::: t) S.>->) <$ arrow <*> self (S.bound v <$ variable i <|> vars)
+  (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type_ tvars <* symbolic ')'
+  bindVarPattern i $ \ v ext -> ((v S.::: t) S.>->) <$ arrow <*> self (ext vars)
 
 
 data BindCtx p a b = BindCtx
@@ -229,6 +229,10 @@ clause = self . vars
 bindPattern :: (PositionParsing p, S.Expr expr) => S.Pattern -> (Name -> (Facet p expr -> Facet p expr) -> Facet p expr) -> Facet p expr
 bindPattern S.Wildcard f = bind __ (\ v -> f v id)
 bindPattern (S.Var n)  f = bind n  (\ v -> f v (S.bound v <$ variable (hint v) <|>))
+
+bindVarPattern :: (PositionParsing p, S.Expr expr, Coercible t Text) => Maybe t -> (Name -> (Facet p expr -> Facet p expr) -> Facet p res) -> Facet p res
+bindVarPattern Nothing  f = bind __ (\ v -> f v id)
+bindVarPattern (Just n) f = bind n  (\ v -> f v (S.bound v <$ variable (hint v) <|>))
 
 
 varPattern :: (Monad p, TokenParsing p) => p name -> p (Maybe name)
