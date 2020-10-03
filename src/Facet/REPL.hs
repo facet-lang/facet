@@ -11,9 +11,9 @@ import           Control.Carrier.Error.Church
 import           Control.Carrier.Parser.Church
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
+import           Control.Effect.Lens ((%=))
 import           Control.Effect.Parser.Notice (Notice, prettyNotice)
 import           Control.Effect.Parser.Span (Pos(..))
-import           Control.Effect.Lens ((%=))
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
