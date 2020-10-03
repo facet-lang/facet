@@ -38,8 +38,6 @@ import           Text.Parser.Token.Style
 -- forcing nullary computations
 -- holes
 
--- FIXME: a declaration whose body is a nullary computation backtracks all the way to a binding arrow type
-
 runFacet :: Int -> Facet m a -> m a
 runFacet i (Facet m) = m i
 
@@ -198,7 +196,6 @@ global = S.global <$> name <?> "variable"
 expr_ :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
 expr_ = build exprTable (terminate parens (toBindParser (Infix L locating ((S.**) <$ comma))))
 
--- FIXME: nullary computations
 comp :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
 comp = braces . build compTable (const expr_)
 
