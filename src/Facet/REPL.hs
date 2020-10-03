@@ -11,12 +11,13 @@ import           Control.Carrier.Error.Church
 import           Control.Carrier.Parser.Church
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens ((%=))
+import           Control.Effect.Lens (use, (%=))
 import           Control.Effect.Parser.Notice (Notice, prettyNotice)
 import           Control.Effect.Parser.Span (Pos(..))
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
+import           Data.Foldable (for_)
 import           Data.Semigroup
 import qualified Data.Set as Set
 import           Facet.Parser
@@ -28,7 +29,7 @@ import           Prettyprinter.Render.Terminal (AnsiStyle)
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Position
-import           Text.Parser.Token hiding (comma)
+import           Text.Parser.Token hiding (brackets, comma)
 
 repl :: IO ()
 repl
@@ -59,18 +60,19 @@ loop = do
     Help -> print helpDoc
     Quit -> empty
     Load path -> load path
+    Reload -> reload
     Type e -> print (getPrint e) -- FIXME: elaborate the expr & show the type
     Kind e -> print (getPrint e) -- FIXME: elaborate the type & show the kind
 
 
 -- TODO:
--- - reload
 -- - multiline
 commands :: [Command Action]
 commands =
   [ Command ["help", "h", "?"] "display this list of commands" $ Pure Help
   , Command ["quit", "q"]      "exit the repl"                 $ Pure Quit
   , Command ["load", "l"]      "add a module to the repl"      $ Meta "path" load_
+  , Command ["reload", "r"]    "reload the loaded modules"     $ Pure Reload
   , Command ["type", "t"]      "show the type of <expr>"       $ Meta "expr" type_
   , Command ["kind", "k"]      "show the kind of <type>"       $ Meta "type" kind_
   ]
@@ -117,6 +119,7 @@ data Action
   = Help
   | Quit
   | Load FilePath
+  | Reload
   | Type Print
   | Kind Print
 
@@ -124,6 +127,16 @@ load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, M
 load path = do
   files_ %= Set.insert path
   runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint
+
+reload :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
+reload = do
+  files <- use files_
+  -- FIXME: topological sort
+  let ln = length files
+  for_ (zip [(1 :: Int)..] (Set.toList files)) $ \ (i, path) -> do
+    -- FIXME: module name
+    print $ green (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
+    runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint
 
 helpDoc :: Doc AnsiStyle
 helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
