@@ -176,7 +176,7 @@ instance S.Expr Print where
   lam = lam . sbound
   ($$) = ($$)
 
-  unit = pretty "()"
+  unit = unit
   l ** r = tupled [l, r]
 
 instance S.Type Print where
@@ -187,8 +187,8 @@ instance S.Type Print where
   (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
   l .* r = parens $ l <> comma <+> r
   (.$) = ($$)
-  _Unit = pretty "()"
-  _Type = annotate Type $ pretty "Type"
+  _Unit = _Unit
+  _Type = _Type
 
 instance C.Type Print where
   tglobal = cfree
