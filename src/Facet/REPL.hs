@@ -113,7 +113,7 @@ reload = do
   for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
     print $ green (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
-    runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint
+    (runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint) `catchError` \ n -> print (stimes (2 :: Int) space <> align (prettyNotice n))
 
 helpDoc :: Doc AnsiStyle
 helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
