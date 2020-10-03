@@ -74,12 +74,12 @@ loop = do
 -- - multiline
 commands :: [Command Action]
 commands =
-  [ Command ["help", "h", "?"] "display this list of commands" $ Pure Help
-  , Command ["quit", "q"]      "exit the repl"                 $ Pure Quit
-  , Command ["load", "l"]      "add a module to the repl"      $ Meta "path" load_
-  , Command ["reload", "r"]    "reload the loaded modules"     $ Pure Reload
-  , Command ["type", "t"]      "show the type of <expr>"       $ Meta "expr" type_
-  , Command ["kind", "k"]      "show the kind of <type>"       $ Meta "type" kind_
+  [ Command ["help", "h", "?"]  "display this list of commands" $ Pure Help
+  , Command ["quit", "q"]       "exit the repl"                 $ Pure Quit
+  , Command ["load", "l"]       "add a module to the repl"      $ Meta "path" load_
+  , Command ["reload", "r", ""] "reload the loaded modules"     $ Pure Reload
+  , Command ["type", "t"]       "show the type of <expr>"       $ Meta "expr" type_
+  , Command ["kind", "k"]       "show the kind of <type>"       $ Meta "type" kind_
   ]
 
 load_ :: PositionParsing p => p Action
