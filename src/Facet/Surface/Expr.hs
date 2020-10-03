@@ -32,6 +32,9 @@ instance S.Expr Expr where
   unit = In Unit
   (**) = fmap In . (:*)
 
+instance S.Located Expr where
+  locate = fmap In . Ann
+
 
 fold :: (ExprF a -> a) -> Expr -> a
 fold alg = go
