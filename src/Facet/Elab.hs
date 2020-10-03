@@ -9,6 +9,8 @@ module Facet.Elab
 ( Context
 , implicit
 , elab
+, runEnv
+, EnvC(..)
 , Elab(..)
 , Check(..)
 , Synth(..)
