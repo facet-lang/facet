@@ -19,6 +19,7 @@ import           Control.Carrier.Reader
 import           Control.Selective
 import           Data.Char (isSpace)
 import           Data.Coerce
+import qualified Data.HashSet as HashSet
 import           Data.Text (Text)
 import           Facet.Name
 import qualified Facet.Surface as S
@@ -247,12 +248,15 @@ tname = ident tnameStyle
 dname :: (Monad p, TokenParsing p) => p S.DName
 dname = ident dnameStyle
 
+reserved :: HashSet.HashSet String
+reserved = HashSet.singleton "_"
+
 nameStyle :: CharParsing p => IdentifierStyle p
 nameStyle = IdentifierStyle
   "name"
   (lower <|> char '_')
   alphaNum
-  mempty
+  reserved
   Identifier
   ReservedIdentifier
 
@@ -261,7 +265,7 @@ dnameStyle = IdentifierStyle
   "declaration name"
   (lower <|> char '_')
   alphaNum
-  mempty
+  reserved
   Identifier
   ReservedIdentifier
 

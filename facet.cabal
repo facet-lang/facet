@@ -84,6 +84,7 @@ library
     , silkscreen
     , terminal-size
     , text
+    , unordered-containers
   hs-source-dirs:      src
 
 
