@@ -271,7 +271,7 @@ infixr 1 >~>
 -- Expressions
 
 elabExpr :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => (SE.Expr ::: Maybe Type) -> EnvC m (expr ::: Type)
-elabExpr (t ::: _K) = SE.fold alg t _K
+elabExpr (t ::: _T) = SE.fold alg t _T
   where
   alg t _T = case t of
     SE.Free  n -> validate =<< synth (eglobal n)
