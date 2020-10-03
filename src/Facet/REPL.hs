@@ -81,6 +81,7 @@ load_ = load <$> path
 type_ = let act e = Action (print (getPrint e)) in act <$> whole expr  -- FIXME: elaborate the expr & show the type
 kind_ = let act e = Action (print (getPrint e)) in act <$> whole type' -- FIXME: elaborate the type & show the kind
 
+
 parseCommands :: TokenParsing m => [Command m a] -> m a
 parseCommands = choice . map go
   where
