@@ -53,6 +53,7 @@ terminalStyle = \case
   Name   -> mempty
   Op     -> ANSI.color ANSI.Cyan
   Type   -> ANSI.color ANSI.Yellow
+  Con    -> ANSI.color ANSI.Red
   Lit    -> ANSI.bold
   where
   colours =
@@ -119,6 +120,7 @@ data Context
 data Highlight
   = Nest Int
   | Name
+  | Con
   | Type
   | Op
   | Lit
