@@ -36,6 +36,8 @@ module Facet.Elab
 , (**)
   -- * Declarations
 , elabDecl
+  -- * Modules
+, elabModule
 ) where
 
 import           Control.Algebra
@@ -52,6 +54,7 @@ import qualified Facet.Print as P
 import qualified Facet.Surface as S
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
+import qualified Facet.Surface.Module as SM
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Facet.Type
@@ -346,6 +349,27 @@ elabDecl = SD.fold alg
       _T ::: _ <- elabType (t ::: Just C._Type)
       pure $ _check (elabExpr . (b :::)) ::: _T
   _check r = tm <$> Check (r . Just)
+
+
+-- Modules
+
+elabModule :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr, C.Type ty, C.Module expr ty mod) => SM.Module -> EnvC m mod
+elabModule = SM.fold alg
+  where
+  alg = \case
+    SM.Module n ds -> C.module' n <$> sequenceA ds
+
+    SM.DefTerm n d -> do
+      e ::: _T <- elabDecl d
+      e' <- check (e ::: _T)
+      mname <- ask
+      pure $ C.defTerm (mname :.: S.getEName n) (interpret _T := e')
+
+    SM.DefType n d -> do
+      e ::: _T <- elabDecl d
+      e' <- check (e ::: _T)
+      mname <- ask
+      pure $ C.defTerm (mname :.: S.getTName n) (interpret _T := e')
 
 
 -- Context
