@@ -52,13 +52,13 @@ commands :: [Command (Facet (ParserC (Either Notice))) Action]
 commands =
   [ Command ["help", "h", "?"] "display this list of commands" . Pure $ Action $ print helpDoc
   , Command ["quit", "q"]      "exit the repl"                 . Pure $ Action $ empty
-  , Command ["type", "t"]      "show the type of <expr>"       $ Meta "expr" (type_ <$> expr) -- FIXME: elaborate the expr & show the type
-  , Command ["kind", "k"]      "show the kind of <type>"       $ Meta "type" (kind_ <$> type') -- FIXME: elaborate the type & show the kind
+  , Command ["type", "t"]      "show the type of <expr>"       $ Meta "expr" type_ -- FIXME: elaborate the expr & show the type
+  , Command ["kind", "k"]      "show the kind of <type>"       $ Meta "type" kind_ -- FIXME: elaborate the type & show the kind
   ]
 
-type_, kind_ :: Print -> Action
-type_ e = Action (print (getPrint e))
-kind_ e = Action (print (getPrint e))
+type_, kind_ :: Facet (ParserC (Either Notice)) Action
+type_ = let act e = Action (print (getPrint e)) in act <$> expr
+kind_ = let act e = Action (print (getPrint e)) in act <$> type'
 
 parseCommands :: TokenParsing m => [Command m a] -> m a
 parseCommands = choice . map go
