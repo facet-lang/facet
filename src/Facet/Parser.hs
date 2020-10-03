@@ -211,7 +211,13 @@ compTable =
 clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParser (Facet p) expr expr
 clause = self . vars
   where
-  self vars = locating $ name >>= \ n -> bind n $ \ v -> S.lam v <$> let var' = S.bound v <$ variable (hint v) <|> vars in self var' <|> arrow *> expr_ var' <?> "clause"
+  self vars = (do
+    names <- some ((,) <$> position <*> name) <* arrow
+    foldr clause expr_ names vars) <?> "clause"
+  clause (start, n) rest vars = bind n $ \ v -> do
+    lam <- S.lam v <$> rest (S.bound v <$ variable (hint v) <|> vars)
+    end <- position
+    pure (S.locate (Span start end) lam)
 
 chainl1_ :: Alternative m => m a -> (m a -> m a) -> m (a -> a -> a) -> m a
 chainl1_ p wrap op = go where go = wrap $ p <**> (flip <$> op <*> go <|> pure id)
