@@ -330,7 +330,7 @@ printSurfaceModule = SM.fold alg
     SM.Module  n b -> module' n b
     SM.DefTerm n d -> defTerm (sfree (S.getEName n)) (printSurfaceDecl d)
     SM.DefType n d -> defType (sfree (S.getTName n)) (printSurfaceDecl d)
-    SM.Ann _ t -> t
+    SM.Ann _ t     -> t
 
 
 module' :: N.MName -> [Print] -> Print
