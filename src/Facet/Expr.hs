@@ -18,6 +18,7 @@ data Expr
   | App FVs Expr Expr
   | Unit
   | Pair FVs Expr Expr
+  deriving (Show)
 
 instance Scoped Expr where
   fvs = \case
