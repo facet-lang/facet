@@ -9,6 +9,7 @@ module Facet.REPL
 import Control.Carrier.Empty.Church
 import Control.Carrier.Parser.Church
 import Control.Carrier.Readline.Haskeline
+import Control.Carrier.State.Church
 import Control.Effect.Parser.Notice (Notice, prettyNotice)
 import Control.Effect.Parser.Span (Pos(..))
 import Facet.Parser
@@ -21,9 +22,16 @@ import Text.Parser.Combinators
 import Text.Parser.Token hiding (comma)
 
 repl :: IO ()
-repl = runReadlineWithHistory loop
+repl
+  = runReadlineWithHistory
+  . evalState REPL{ files = [] }
+  $ loop
 
-loop :: Has Readline sig m => m ()
+data REPL = REPL
+  { files :: [FilePath]
+  }
+
+loop :: (Has Readline sig m, Has (State REPL) sig m) => m ()
 loop = do
   (line, resp) <- prompt "λ "
   case resp of
