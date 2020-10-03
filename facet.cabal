@@ -66,7 +66,6 @@ library
     Facet.GHCI
     Paths_facet
     Text.Parser.Position
-    Text.Parser.Selection
   build-depends:
     , base ^>= 4.14
     , containers
