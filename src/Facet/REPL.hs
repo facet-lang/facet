@@ -49,7 +49,7 @@ loop = do
   (line, resp) <- prompt "λ "
   case resp of
     -- FIXME: evaluate expressions
-    Just resp -> case runParserWithString (Pos line 0) resp (runFacet 0 commandParser) of
+    Just resp -> case runParserWithString (Pos line 0) resp (runFacet 0 (whole commandParser)) of
       Right cmd -> runEmpty (pure ()) (const loop) (runError (print . prettyNotice) pure (runAction cmd))
       Left  err -> print (prettyNotice err) *> loop
     Nothing   -> loop
@@ -73,7 +73,7 @@ load_, type_, kind_ :: Facet (ParserC (Either Notice)) Action
 load_ = load <$> path
   where
   load path = Action $ do
-    runParserWithFile path (runFacet 0 decl) >>= print . getPrint >> files_ %= Set.insert path
+    runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint >> files_ %= Set.insert path
   path = stringLiteral <|> some (satisfy (not . isSpace))
 
 type_ = let act e = Action (print (getPrint e)) in act <$> expr  -- FIXME: elaborate the expr & show the type
