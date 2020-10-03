@@ -138,6 +138,11 @@ instance (C.Expr expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig 
     mname <- ask
     pure $ (mname :.: S.getEName n) C..:. interpret _T := e
 
+  defType n d = do
+    e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
+    mname <- ask
+    pure $ (mname :.: S.getTName n) C..:. interpret _T := e
+
 
 newtype Check m a = Check { runCheck :: Type -> EnvC m a }
   deriving (Algebra (Reader Type :+: Reader MName :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Type (EnvC m)

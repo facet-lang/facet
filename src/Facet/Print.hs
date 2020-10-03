@@ -213,6 +213,7 @@ instance C.Module Print Print Print where
 
 instance S.Module Print Print Print Print where
   defTerm n b = group $ ann (var (pretty n) ::: b)
+  defType n b = group $ ann (var (pretty n) ::: b)
 
 instance S.Decl Print Print Print where
   -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
