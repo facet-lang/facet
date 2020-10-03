@@ -35,6 +35,7 @@ repl :: IO ()
 repl
   = runReadlineWithHistory
   . evalState REPL{ files = mempty }
+  . evalEmpty
   $ loop
 
 data REPL = REPL
@@ -44,15 +45,16 @@ data REPL = REPL
 files_ :: Lens' REPL (Set.Set FilePath)
 files_ = lens files (\ r files -> r{ files })
 
-loop :: (Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
+loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
   (line, resp) <- prompt "λ "
   case resp of
     -- FIXME: evaluate expressions
     Just resp -> case runParserWithString (Pos line 0) resp (runFacet 0 (whole commandParser)) of
-      Right cmd -> runEmpty (pure ()) (const loop) (runError (print . prettyNotice) pure (runAction cmd))
-      Left  err -> print (prettyNotice err) *> loop
-    Nothing   -> loop
+      Right cmd -> runError (print . prettyNotice) pure (runAction cmd)
+      Left  err -> print (prettyNotice err)
+    Nothing   -> pure ()
+  loop
   where
   commandParser = parseCommands commands
 
