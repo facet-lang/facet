@@ -81,79 +81,8 @@ newtype EnvC m a = EnvC { runEnvC :: MName -> Env.Env -> Context -> m a }
 newtype Elab m a = Elab { runElab :: Maybe Type -> EnvC m a }
   deriving (Algebra (Reader (Maybe Type) :+: Reader MName :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC (Maybe Type) (EnvC m)
 
-fromCheck :: Has (Error P.Print) sig m => Check m a -> Elab m (a ::: Type)
-fromCheck m = Elab $ \case
-  Just t  -> (::: t) <$> check (m ::: t)
-  Nothing -> couldNotSynthesize
-
-toCheck :: Has (Error P.Print) sig m => Elab m (a ::: Type) -> Check m a
-toCheck m = Check $ \ _T -> do
-  a ::: _T' <- runElab m (Just _T)
-  a <$ unify _T _T'
-
-fromSynth :: Has (Error P.Print) sig m => Synth m a -> Elab m (a ::: Type)
-fromSynth (Synth m) = Elab $ \case
-  Just _T -> do
-    a ::: _T' <- m
-    (a ::: _T') <$ unify _T _T'
-  Nothing -> m
-
-toSynth :: Elab m (a ::: Type) -> Synth m a
-toSynth (Elab m) = Synth (m Nothing)
-
 instance Has (Reader Span) sig m => S.Located (Elab m a) where
   locate = local . const
-
-instance Has (Error P.Print) sig m => S.Type (Elab m (Type ::: Type)) where
-  tglobal = fromSynth . tglobal
-  tbound n = fromSynth (tbound n)
-  (n ::: t) >~> b = fromSynth $ (n ::: toCheck t) >~> toCheck b
-  a --> b = fromSynth $ toCheck a --> toCheck b
-  f .$  a = fromSynth $ toSynth f .$  toCheck a
-  l .*  r = fromSynth $ toCheck l .*  toCheck r
-
-  _Unit = fromSynth _Unit
-  _Type = fromSynth _Type
-
-instance (C.Expr expr, Has (Error P.Print) sig m) => S.Expr (Elab m (expr ::: Type)) where
-  global = fromSynth . eglobal
-  bound n = fromSynth (ebound n)
-  lam n b = fromCheck $ lam n (toCheck b)
-  f $$ a = fromSynth $ toSynth f $$ toCheck a
-  unit = tbd
-  _ ** _ = tbd
-
--- FIXME: this should probably elaborate to nested elaborators, one at type level, producing one at expression level
-instance (C.Expr expr, Has (Error P.Print) sig m) => S.Decl (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) where
-  t .= b = Elab $ \ _T -> do -- FIXME: what are we supposed to do with _T? what’s the type of a declaration anyway?
-    _T' ::: _ <- runElab t (Just C._Type)
-    b' ::: _ <- runElab b (Just _T')
-    pure $ b' ::: _T'
-
-  (n ::: t) >=> b = Elab $ \ _T -> do
-    _T ::: _ <- runElab t (Just C._Type)
-    b' ::: _B <- n ::: _T |- runElab b Nothing
-    pure $ C.tlam n b' ::: ((n ::: _T) C.==> _B)
-
-  (n ::: t) >-> b = Elab $ \ _T -> do
-    _T ::: _ <- runElab t (Just C._Type)
-    b' ::: _B <- n ::: _T |- runElab b Nothing
-    pure $ C.lam n b' ::: (_T C.--> _B)
-
-instance (C.Expr expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
-  module' n b = C.module' n <$> sequenceA b
-
-  defTerm n d = do
-    e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
-    -- wait do we have to check _T? aren’t we supposed to assume it’s already well-formed?
-    mname <- ask
-    pure $ C.defTerm (mname :.: S.getEName n) (interpret _T := e)
-
-  defType n d = do
-    e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
-    -- wait do we have to check _T? aren’t we supposed to assume it’s already well-formed?
-    mname <- ask
-    pure $ C.defTerm (mname :.: S.getTName n) (interpret _T := e)
 
 
 newtype Check m a = Check { runCheck :: Type -> EnvC m a }
@@ -393,9 +322,6 @@ fromWords = fillSep . map pretty . words
 
 err :: Has (Error P.Print) sig m => P.Print -> m a
 err = throwError . group
-
-tbd :: Has (Error P.Print) sig m => m a
-tbd = err $ pretty "TBD"
 
 mismatch :: Has (Error P.Print) sig m => P.Print -> P.Print -> P.Print -> m a
 mismatch msg exp act = err $ msg
