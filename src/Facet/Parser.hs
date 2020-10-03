@@ -229,6 +229,11 @@ clause = self . vars
     end <- position
     pure (S.locate (Span start end) lam)
 
+bindPattern :: (PositionParsing p, S.Expr expr) => S.Pattern -> (Name -> (Facet p expr -> Facet p expr) -> Facet p expr) -> Facet p expr
+bindPattern S.Wildcard f = bind __ (\ v -> f v id)
+bindPattern (S.Var n)  f = bind n  (\ v -> f v (S.bound v <$ variable (hint v) <|>))
+
+
 -- FIXME: patterns
 pattern :: (Monad p, TokenParsing p) => p S.Pattern
 pattern = S.Var <$> ename
