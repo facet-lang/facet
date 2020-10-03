@@ -171,39 +171,15 @@ prettyQName :: PrecedencePrinter p => N.QName -> p
 prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
-instance S.Located Print where
-  locate _ = id
-
-instance S.Expr Print where
-  global = sfree . S.getEName
-  bound = sbound
-  lam = lam . sbound
-  ($$) = ($$)
-
-  unit = unit
-  (**) = (**)
-
-instance S.Type Print where
-  tglobal = sfree . S.getTName
-  tbound = sbound
-  -- FIXME: combine quantification over type variables of the same kind
-  (n ::: t) >~> b = group (align (braces (space <> ann (var (pretty (N.hint n)) ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
-  (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
+instance C.Type Print where
+  tglobal = cfree
+  tbound = ctbound
+  (-->) = (-->)
   (.*) = (**)
   (.$) = ($$)
   _Unit = _Unit
   _Type = _Type
-
-instance C.Type Print where
-  tglobal = cfree
-  tbound = ctbound
-  (-->) = (S.-->)
-  (.*) = (S..*)
-  (.$) = ($$)
-  _Unit = S._Unit
-  _Type = annotate Type S._Type
-  -- FIXME: combine quantification over type variables of the same kind
-  (v ::: t) ==> b = group (align (braces (space <> ann (N.prettyNameWith tvar v ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
+  t ==> b = first (N.prettyNameWith tvar) t >~> b
 
 instance C.Expr Print where
   global = cfree
@@ -217,20 +193,6 @@ instance C.Expr Print where
 instance C.Module Print Print Print where
   module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep b)
   defTerm n (t := b) = ann (var (prettyQName n) ::: t) </> b
-
-instance S.Module Print Print Print Print where
-  module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep b)
-  defTerm n b = group $ ann (var (pretty n) ::: b)
-  defType n b = group $ ann (var (pretty n) ::: b)
-
-instance S.Decl Print Print Print where
-  -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
-  t .= b = t </> b
-
-    -- FIXME: combine quantification over type variables of the same kind
-  (n ::: t) >=> b = group (align (braces (space <> ann (var (pretty (N.hint n)) ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
-
-  (n ::: t) >-> b = group (align (parens (ann (var (pretty (N.hint n)) ::: t)))) </> arrow <+> prec FnR b
 
 
 printSurfaceType :: ST.Type -> Print
