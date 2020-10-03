@@ -22,6 +22,7 @@ import           Data.Coerce
 import           Data.Text (Text)
 import           Facet.Name
 import qualified Facet.Surface as S
+import qualified Facet.Surface.Pattern as S
 import           Prelude hiding (lines, null, product, span)
 import           Text.Parser.Char
 import           Text.Parser.Combinators
@@ -219,14 +220,14 @@ clause = self . vars
   self vars = (do
     patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
     foldr clause expr_ patterns vars) <?> "clause"
-  clause (start, n) rest vars = bind n $ \ v -> do
+  clause (start, S.Var n) rest vars = bind n $ \ v -> do
     lam <- S.lam v <$> rest (S.bound v <$ variable (hint v) <|> vars)
     end <- position
     pure (S.locate (Span start end) lam)
 
 -- FIXME: patterns
-pattern :: (Monad p, TokenParsing p) => p S.EName
-pattern = ename
+pattern :: (Monad p, TokenParsing p) => p S.Pattern
+pattern = S.Var <$> ename
 
 
 chainl1_ :: Alternative m => m a -> (m a -> m a) -> m (a -> a -> a) -> m a
