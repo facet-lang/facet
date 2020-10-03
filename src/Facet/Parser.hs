@@ -271,7 +271,7 @@ nameStyle :: CharParsing p => IdentifierStyle p
 nameStyle = IdentifierStyle
   "name"
   (lower <|> char '_')
-  alphaNum
+  nameLetter
   reserved
   Identifier
   ReservedIdentifier
@@ -280,7 +280,7 @@ dnameStyle :: CharParsing p => IdentifierStyle p
 dnameStyle = IdentifierStyle
   "declaration name"
   (lower <|> char '_')
-  alphaNum
+  nameLetter
   reserved
   Identifier
   ReservedIdentifier
@@ -289,7 +289,7 @@ tnameStyle :: CharParsing p => IdentifierStyle p
 tnameStyle = IdentifierStyle
   "type name"
   upper
-  alphaNum
+  nameLetter
   reserved
   Identifier
   ReservedIdentifier
@@ -298,7 +298,7 @@ hnameStyle :: CharParsing p => IdentifierStyle p
 hnameStyle = IdentifierStyle
   "hole name"
   (char '?')
-  alphaNum
+  nameLetter
   reserved
   Identifier
   ReservedIdentifier
