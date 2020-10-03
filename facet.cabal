@@ -53,6 +53,7 @@ library
     Facet.Pretty
     Facet.Print
     Facet.REPL
+    Facet.REPL.Parser
     Facet.Signature
     Facet.Surface
     Facet.Surface.Decl
