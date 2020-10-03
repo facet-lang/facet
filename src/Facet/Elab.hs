@@ -329,7 +329,6 @@ l ** r = Check $ \ _T -> do
 elabDecl :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.Decl -> EnvC m (expr ::: Type)
 elabDecl = SD.fold alg
   where
-  alg :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.DeclF (EnvC m (expr ::: Type)) -> EnvC m (expr ::: Type)
   alg = \case
     (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)
