@@ -79,6 +79,7 @@ library
     , parsers
     , prettyprinter
     , prettyprinter-ansi-terminal
+    , selective
     , silkscreen
     , terminal-size
     , text

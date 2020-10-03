@@ -16,6 +16,7 @@ module Facet.Parser
 
 import           Control.Applicative (Alternative(..), liftA2, (<**>))
 import           Control.Carrier.Reader
+import           Control.Selective
 import           Data.Char (isSpace)
 import           Data.Coerce
 import           Data.Text (Text)
@@ -47,6 +48,9 @@ bind n b = Facet $ \ i -> runFacet (i + 1) (b (Name (coerce n) i))
 
 newtype Facet m a = Facet (Int -> m a)
   deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC Int m
+
+instance Selective m => Selective (Facet m) where
+  select f a = Facet $ \ v -> select (runFacet v f) (runFacet v a)
 
 instance Parsing p => Parsing (Facet p) where
   try (Facet m) = Facet $ try . m
