@@ -1,2 +1,8 @@
 module Facet.Surface.Pattern
-() where
+( Pattern(..)
+) where
+
+import qualified Facet.Surface as S
+
+data Pattern
+  = Var S.EName
