@@ -38,25 +38,20 @@ parseString :: MonadIO m => Facet (ParserC (Either Notice)) P.Print -> String ->
 parseString p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWithString (Pos 0 0) s (runFacet 0 p))
 
 elabString :: MonadIO m => Facet (ParserC (Either Notice)) (Elab (ErrorC Span P.Print ((->) Span)) Module.Module) -> String -> m ()
-elabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . elab (MName mempty) . (::: Nothing) of
+elabString = elabPathString Nothing
+
+elabFile :: MonadIO m => FilePath -> m ()
+elabFile path = liftIO (readFile path) >>= elabPathString (Just path) decl
+
+elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) (Elab (ErrorC Span P.Print ((->) Span)) Module.Module) -> String -> m ()
+elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . elab (MName mempty) . (::: Nothing) of
   Left err -> P.putDoc (prettyNotice err)
   Right a  -> P.prettyPrint (Module.interpret a)
   where
-  parsed = runParser (const Right) failure failure input (runFacet 0 p)
-  src = sourceFromString Nothing s
-  failure = Left . errToNotice src
   input = Input (Pos 0 0) s
-
-elabFile :: MonadIO m => FilePath -> m ()
-elabFile path = do
-  s <- liftIO (readFile path)
-  let parsed = runParser (const Right) failure failure input (runFacet 0 (whole decl))
-      input = Input (Pos 0 0) s
-      src = sourceFromString (Just path) s
-      failure = Left . errToNotice src
-  case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . elab (MName mempty) . (::: Nothing) of
-    Left err -> P.putDoc (prettyNotice err)
-    Right a  -> P.prettyPrint (Module.interpret a)
+  src = sourceFromString path s
+  parsed = runParser (const Right) failure failure input (runFacet 0 (whole p))
+  failure = Left . errToNotice src
 
 
 -- Pretty-printing
