@@ -17,7 +17,6 @@ import           Data.Foldable (foldl')
 import qualified Data.IntSet as IntSet
 import qualified Facet.Core as C
 import           Facet.Name
-import qualified Facet.Print as P
 import           Facet.Syntax
 
 data Type
@@ -27,14 +26,12 @@ data Type
   | Either Name QName :$ Stack Type
   | Type :-> Type
   | Type :*  Type
+  deriving (Show)
 
 infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
 infixl 7 :*
-
-instance Show Type where
-  showsPrec p = showsPrec p . P.getPrint . interpret
 
 instance Scoped Type where
   fvs = \case
