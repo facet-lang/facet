@@ -4,6 +4,7 @@ module Facet.GHCI
 ( -- * Parsing
   parseString
 , parseElabString
+, parseElabFile
   -- * Pretty-printing
 , prettyAnn
   -- * Errors
@@ -22,7 +23,7 @@ import qualified Facet.Core as C
 import           Facet.Elab
 import qualified Facet.Module as Module
 import           Facet.Name (MName(..))
-import           Facet.Parser (Facet(..), runFacet)
+import           Facet.Parser (Facet(..), decl, runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
 import           Facet.Syntax ((:::)(..))
@@ -45,6 +46,17 @@ parseElabString p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) s
   src = sourceFromString Nothing s
   failure = Left . errToNotice src
   input = Input (Pos 0 0) s
+
+parseElabFile :: MonadIO m => FilePath -> m ()
+parseElabFile path = do
+  s <- liftIO (readFile path)
+  let parsed = runParser (const Right) failure failure input (runFacet 0 (whole decl))
+      input = Input (Pos 0 0) s
+      src = sourceFromString Nothing s
+      failure = Left . errToNotice src
+  case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . elab (MName mempty) . (::: Nothing) of
+    Left err -> P.putDoc (prettyNotice err)
+    Right a  -> P.prettyPrint (Module.interpret a)
 
 
 -- Pretty-printing
