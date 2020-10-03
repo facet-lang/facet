@@ -117,7 +117,8 @@ runAction = \case
   Help -> print helpDoc
   Quit -> empty
   Load path -> do
-    runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint >> files_ %= Set.insert path
+    files_ %= Set.insert path
+    runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint
   Type e -> print (getPrint e) -- FIXME: elaborate the expr & show the type
   Kind e -> print (getPrint e) -- FIXME: elaborate the type & show the kind
 
