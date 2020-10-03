@@ -236,14 +236,17 @@ bindVarPattern (Just n) f = bind n  (\ v -> f v (S.bound v <$ variable v <|>))
 
 
 varPattern :: (Monad p, TokenParsing p) => p name -> p (Maybe name)
-varPattern n = Just <$> n <|> Nothing <$ reserve nameStyle "_"
+varPattern n = Just <$> n <|> Nothing <$ wildcard
 
+
+wildcard :: (Monad p, TokenParsing p) => p ()
+wildcard = reserve nameStyle "_"
 
 -- FIXME: patterns
 pattern :: (Monad p, TokenParsing p) => p S.Pattern
 pattern
   =   S.Var <$> ename
-  <|> S.Wildcard <$ reserve nameStyle "_"
+  <|> S.Wildcard <$ wildcard
 
 
 chainl1_ :: Alternative m => m a -> (m a -> m a) -> m (a -> a -> a) -> m a
