@@ -348,6 +348,8 @@ elabDecl = SD.fold alg
     t SD.:= b -> do
       _T ::: _ <- elabType (t ::: Just C._Type)
       pure $ _check (elabExpr . (b :::)) ::: _T
+
+    SD.Ann s d -> local (const s) d
   _check r = tm <$> Check (r . Just)
 
 

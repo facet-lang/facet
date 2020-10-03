@@ -7,6 +7,7 @@ module Facet.Surface.Decl
 , fold
 ) where
 
+import           Control.Effect.Parser.Span (Span)
 import           Facet.Name
 import qualified Facet.Surface as S
 import           Facet.Surface.Expr (Expr)
@@ -19,6 +20,7 @@ data DeclF a
   = (Name ::: Type) :=> a
   | (Name ::: Type) :-> a
   | Type := Expr
+  | Ann Span a
   deriving (Foldable, Functor, Traversable)
 
 infix 1 :=
