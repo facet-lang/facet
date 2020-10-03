@@ -2,33 +2,36 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Surface.Module
 ( Module(..)
+, module'
+, defTerm
+, defType
 , ModuleF(..)
 , fold
 ) where
 
-import           Control.Effect.Parser.Span (Span)
-import           Facet.Name
-import qualified Facet.Surface as S
-import           Facet.Surface.Decl (Decl)
-import           Facet.Surface.Expr (Expr)
-import           Facet.Surface.Type (Type)
+import Control.Effect.Parser.Span (Span)
+import Facet.Name
+import Facet.Surface.Decl (Decl)
+import Facet.Surface.Expr (EName)
+import Facet.Surface.Type (TName)
 
 newtype Module = In { out :: ModuleF Module }
 
+module' :: MName -> [Module] -> Module
+module' = fmap In . Module
+
+defTerm :: EName -> Decl -> Module
+defTerm = fmap In . DefTerm
+
+defType :: TName -> Decl -> Module
+defType = fmap In . DefType
+
 data ModuleF a
   = Module MName [a]
-  | DefTerm S.EName Decl
-  | DefType S.TName Decl
+  | DefTerm EName Decl
+  | DefType TName Decl
   | Ann Span a
   deriving (Foldable, Functor, Traversable)
-
-instance S.Module Expr Type Decl Module where
-  module' = fmap In . Module
-  defTerm = fmap In . DefTerm
-  defType = fmap In . DefType
-
-instance S.Located Module where
-  locate = fmap In . Ann
 
 
 fold :: (ModuleF a -> a) -> Module -> a

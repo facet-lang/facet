@@ -3,18 +3,36 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Decl
 ( Decl(..)
+, (>=>)
+, (>->)
+, (.=)
 , DeclF(..)
 , fold
 ) where
 
-import           Control.Effect.Parser.Span (Span)
-import           Facet.Name
-import qualified Facet.Surface as S
-import           Facet.Surface.Expr (Expr)
-import           Facet.Surface.Type (Type)
-import           Facet.Syntax ((:::)(..))
+import Control.Effect.Parser.Span (Span)
+import Facet.Name
+import Facet.Surface.Expr (Expr)
+import Facet.Surface.Type (Type)
+import Facet.Syntax ((:::)(..))
 
 newtype Decl = In { out :: DeclF Decl }
+
+-- | Universal quantification.
+(>=>) :: (Name ::: Type) -> Decl -> Decl
+(>=>) = fmap In . (:=>)
+
+infixr 1 >=>
+
+(>->) :: (Name ::: Type) -> Decl -> Decl
+(>->) = fmap In . (:->)
+
+infixr 1 >->
+
+(.=) :: Type -> Expr -> Decl
+(.=) = fmap In . (:=)
+
+infix 1 .=
 
 data DeclF a
   = (Name ::: Type) :=> a
@@ -26,14 +44,6 @@ data DeclF a
 infix 1 :=
 infixr 1 :=>
 infixr 1 :->
-
-instance S.Decl Expr Type Decl where
-  (.=) = fmap In . (:=)
-  (>=>) = fmap In . (:=>)
-  (>->) = fmap In . (:->)
-
-instance S.Located Decl where
-  locate = fmap In . Ann
 
 
 fold :: (DeclF a -> a) -> Decl -> a

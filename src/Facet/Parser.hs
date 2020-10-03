@@ -84,26 +84,26 @@ whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
 
 
-decl :: (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, PositionParsing p) => Facet p mod
+decl :: (Monad p, PositionParsing p) => Facet p S.Module
 decl = locating $ S.defTerm <$> ename <* colon <*> tsig tglobal
 
-tsigTable :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Table (Facet p) ty decl
+tsigTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Decl
 tsigTable =
   [ [ Binder (forAll (liftA2 (S.>=>))) ]
   ]
 
-sigTable :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Table (Facet p) expr decl
+sigTable :: (Monad p, PositionParsing p) => Facet p S.Type -> Table (Facet p) S.Expr S.Decl
 sigTable tvars =
   [ [ Binder (binder tvars) ]
   ]
 
-tsig :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Facet p decl
+tsig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Decl
 tsig = build tsigTable (\ _ vars -> sig vars global)
 
-sig :: (S.Decl expr ty decl, S.Located expr, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> Facet p expr -> Facet p decl
+sig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Expr -> Facet p S.Decl
 sig tvars = build (sigTable tvars) (\ _ vars -> (S..=) <$> monotype_ tvars <*> expr_ vars)
 
-binder :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Facet p ty -> BindParser (Facet p) expr decl
+binder :: (Monad p, PositionParsing p) => Facet p S.Type -> BindParser (Facet p) S.Expr S.Decl
 binder tvars BindCtx{ self, vars } = locating $ do
   (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type_ tvars <* symbolic ')'
   bindVarPattern i $ \ v ext -> ((v S.::: t) S.>->) <$ arrow <*> self (ext vars)
@@ -154,10 +154,10 @@ build ts end = root
 terminate :: (p b -> p b) -> BindParser p a b -> (p a -> p b) -> (p a -> p b)
 terminate wrap op next = self where self vars = wrap $ op BindCtx{ next, self, vars }
 
-typeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
+typeTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Type
 typeTable = [ Binder (forAll (liftA2 (S.>~>))) ] : monotypeTable
 
-monotypeTable :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Table (Facet p) ty ty
+monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Type
 monotypeTable =
   [ [ Infix R locating ((S.-->) <$ arrow) ]
   , [ Infix L locating (pure (S..$)) ]
@@ -169,28 +169,28 @@ monotypeTable =
   ]
 
 forAll
-  :: (S.Type ty, S.Located ty, S.Located res, Monad p, PositionParsing p)
-  => (Facet p (Name S.::: ty) -> Facet p res -> Facet p res)
-  -> BindParser (Facet p) ty res
+  :: (S.Located res, Monad p, PositionParsing p)
+  => (Facet p (Name S.::: S.Type) -> Facet p res -> Facet p res)
+  -> BindParser (Facet p) S.Type res
 forAll (>=>) BindCtx{ self, vars } = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
   let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (S.tbound v <$ variable v <|> vars)
   arrow *> foldr loop self names vars
 
-type' :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty
+type' :: (Monad p, PositionParsing p) => Facet p S.Type
 type' = type_ tglobal
 
-type_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
+type_ :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Type
 type_ = build typeTable (terminate parens (toBindParser (Infix L locating ((S..*) <$ comma))))
 
-monotype_ :: (S.Type ty, S.Located ty, Monad p, PositionParsing p) => Facet p ty -> Facet p ty
+monotype_ :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Type
 monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L locating ((S..*) <$ comma))))
 
-tglobal :: (S.Type ty, Monad p, TokenParsing p) => Facet p ty
+tglobal :: (Monad p, TokenParsing p) => Facet p S.Type
 tglobal = S.tglobal <$> tname <?> "variable"
 
 
-exprTable :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Table (Facet p) expr expr
+exprTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Expr S.Expr
 exprTable =
   [ [ Infix L locating (pure (S.$$)) ]
   , [ Atom comp
@@ -198,24 +198,24 @@ exprTable =
     ]
   ]
 
-expr :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr
+expr :: (Monad p, PositionParsing p) => Facet p S.Expr
 expr = expr_ global
 
-global :: (S.Expr expr, Monad p, TokenParsing p) => Facet p expr
+global :: (Monad p, TokenParsing p) => Facet p S.Expr
 global = S.global <$> ename <?> "variable"
 
-expr_ :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
+expr_ :: (Monad p, PositionParsing p) => Facet p S.Expr -> Facet p S.Expr
 expr_ = build exprTable (terminate parens (toBindParser (Infix L locating ((S.**) <$ comma))))
 
-comp :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
+comp :: (Monad p, PositionParsing p) => Facet p S.Expr -> Facet p S.Expr
 comp = braces . build compTable (const expr_)
 
-compTable :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Table (Facet p) expr expr
+compTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Expr S.Expr
 compTable =
   [ [ Binder clause ]
   ]
 
-clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParser (Facet p) expr expr
+clause :: (Monad p, PositionParsing p) => BindParser (Facet p) S.Expr S.Expr
 clause = self . vars
   where
   self vars = (do
@@ -226,11 +226,11 @@ clause = self . vars
     end <- position
     pure (S.locate (Span start end) lam)
 
-bindPattern :: (PositionParsing p, S.Expr expr) => S.Pattern -> (Name -> (Facet p expr -> Facet p expr) -> Facet p expr) -> Facet p expr
+bindPattern :: PositionParsing p => S.Pattern -> (Name -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p S.Expr) -> Facet p S.Expr
 bindPattern S.Wildcard f = bind __ (\ v -> f v id)
 bindPattern (S.Var n)  f = bind n  (\ v -> f v (S.bound v <$ variable v <|>))
 
-bindVarPattern :: (PositionParsing p, S.Expr expr, Coercible t Text) => Maybe t -> (Name -> (Facet p expr -> Facet p expr) -> Facet p res) -> Facet p res
+bindVarPattern :: (PositionParsing p, Coercible t Text) => Maybe t -> (Name -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p res) -> Facet p res
 bindVarPattern Nothing  f = bind __ (\ v -> f v id)
 bindVarPattern (Just n) f = bind n  (\ v -> f v (S.bound v <$ variable v <|>))
 

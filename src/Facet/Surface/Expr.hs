@@ -1,18 +1,56 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Facet.Surface.Expr
-( Expr(..)
+( EName(..)
+, Expr(..)
+, global
+, bound
+, lam
+, ($$)
+, unit
+, (**)
 , ExprF(..)
 , fold
 ) where
 
-import           Control.Effect.Parser.Span (Span)
-import           Facet.Name
-import qualified Facet.Surface as S
+import Control.Effect.Parser.Span (Span)
+import Data.String (IsString(..))
+import Data.Text (Text)
+import Facet.Name
+import Prelude hiding ((**))
+import Prettyprinter (Pretty)
+
+newtype EName = EName { getEName :: Text }
+  deriving (Eq, IsString, Ord, Pretty, Show)
 
 newtype Expr = In { out :: ExprF Expr }
 
+global :: EName -> Expr
+global = In . Free
+
+bound :: Name -> Expr
+bound = In . Bound
+
+lam :: Name -> Expr -> Expr
+lam = fmap In . Lam
+
+($$) :: Expr -> Expr -> Expr
+($$) = fmap In . (:$)
+
+infixl 9 $$
+
+unit :: Expr
+unit = In Unit
+
+-- | Tupling.
+(**) :: Expr -> Expr -> Expr
+(**) = fmap In . (:*)
+
+-- FIXME: tupling/unit should take a list of expressions
+
+
 data ExprF e
-  = Free S.EName
+  = Free EName
   | Bound Name
   | Lam Name e
   | e :$ e
@@ -23,17 +61,6 @@ data ExprF e
 
 infixl 9 :$
 infixl 7 :*
-
-instance S.Expr Expr where
-  global = In . Free
-  bound = In . Bound
-  lam = fmap In . Lam
-  ($$) = fmap In . (:$)
-  unit = In Unit
-  (**) = fmap In . (:*)
-
-instance S.Located Expr where
-  locate = fmap In . Ann
 
 
 fold :: (ExprF a -> a) -> Expr -> a
