@@ -8,6 +8,12 @@ module Facet.Pretty
 , tvar
 , varFrom
 , tabulate2
+, red
+, yellow
+, green
+, cyan
+, blue
+, magenta
 ) where
 
 import           Control.Monad.IO.Class
@@ -61,3 +67,12 @@ data Column = Column { width :: Int, doc :: PP.Doc ANSI.AnsiStyle }
 
 column :: PP.Doc ANSI.AnsiStyle -> Column
 column a = Column (length (show (PP.unAnnotate a))) a
+
+
+red, yellow, green, cyan, blue, magenta :: PP.Doc ANSI.AnsiStyle -> PP.Doc ANSI.AnsiStyle
+red     = annotate $ ANSI.color ANSI.Red
+yellow  = annotate $ ANSI.color ANSI.Yellow
+green   = annotate $ ANSI.color ANSI.Green
+cyan    = annotate $ ANSI.color ANSI.Cyan
+blue    = annotate $ ANSI.color ANSI.Blue
+magenta = annotate $ ANSI.color ANSI.Magenta
