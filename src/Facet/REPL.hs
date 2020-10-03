@@ -12,6 +12,7 @@ import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Notice (Notice, prettyNotice)
 import           Control.Effect.Parser.Span (Pos(..))
+import           Control.Monad.IO.Class
 import           Data.Semigroup
 import qualified Data.Set as Set
 import           Facet.Parser
@@ -33,7 +34,7 @@ data REPL = REPL
   { files :: Set.Set FilePath
   }
 
-loop :: (Has Readline sig m, Has (State REPL) sig m) => m ()
+loop :: (Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
   (line, resp) <- prompt "λ "
   case resp of
@@ -88,7 +89,7 @@ data Value p a
   | Meta String (p a)
   deriving (Foldable, Functor, Traversable)
 
-newtype Action = Action { runAction :: forall sig m . (Has Empty sig m, Has Readline sig m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has Empty sig m, Has Readline sig m, MonadIO m) => m () }
 
 
 helpDoc :: Doc AnsiStyle
