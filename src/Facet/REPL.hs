@@ -18,8 +18,8 @@ import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Foldable (for_)
+import qualified Data.Map as Map
 import           Data.Semigroup
-import qualified Data.Set as Set
 import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Print
@@ -40,10 +40,14 @@ repl
   $ loop
 
 data REPL = REPL
-  { files :: Set.Set FilePath
+  { files :: Map.Map FilePath File
   }
 
-files_ :: Lens' REPL (Set.Set FilePath)
+data File = File
+  { loaded :: Bool
+  }
+
+files_ :: Lens' REPL (Map.Map FilePath File)
 files_ = lens files (\ r files -> r{ files })
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
@@ -98,7 +102,7 @@ data Action
 
 load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
-  files_ %= Set.insert path
+  files_ %= Map.insert path File{ loaded = False }
   runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint
 
 reload :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
@@ -106,7 +110,7 @@ reload = do
   files <- use files_
   -- FIXME: topological sort
   let ln = length files
-  for_ (zip [(1 :: Int)..] (Set.toList files)) $ \ (i, path) -> do
+  for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
     print $ green (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
     runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint
