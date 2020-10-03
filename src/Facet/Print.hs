@@ -19,6 +19,7 @@ module Facet.Print
 , tvar
   -- * Interpreters
 , printSurfaceType
+, printSurfaceExpr
 ) where
 
 import           Control.Applicative ((<**>))
@@ -30,6 +31,7 @@ import qualified Facet.Core as C
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
 import qualified Facet.Surface as S
+import qualified Facet.Surface.Expr as SE
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Prelude hiding ((**))
@@ -277,6 +279,19 @@ l ** r = tupled [l, r]
 (>~>) :: (Print ::: Print) -> Print -> Print
 -- FIXME: combine quantification over type variables of the same kind
 (n ::: t) >~> b = group (align (braces (space <> ann (var n ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
+
+
+printSurfaceExpr :: SE.Expr -> Print
+printSurfaceExpr = SE.fold alg
+  where
+  alg = \case
+    SE.Free n  -> sfree (S.getEName n)
+    SE.Bound n -> sbound n
+    SE.Lam n b -> lam (sbound n) b
+    f SE.:$  a -> f $$  a
+    SE.Unit    -> unit
+    l SE.:*  r -> l **  r
+    SE.Ann _ t -> t
 
 
 -- FIXME: Use _ in binding positions for unused variables
