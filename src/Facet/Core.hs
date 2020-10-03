@@ -44,6 +44,5 @@ class Expr expr where
 class Module expr ty mod | mod -> expr ty where
   module' :: MName -> mod -> mod
 
-  -- FIXME: qualified names
   (.:.) :: QName -> (ty := expr) -> mod
   infix 1 .:.
