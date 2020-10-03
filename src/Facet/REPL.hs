@@ -76,8 +76,8 @@ load_ = load <$> path
     runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint >> files_ %= Set.insert path
   path = stringLiteral <|> some (satisfy (not . isSpace))
 
-type_ = let act e = Action (print (getPrint e)) in act <$> expr  -- FIXME: elaborate the expr & show the type
-kind_ = let act e = Action (print (getPrint e)) in act <$> type' -- FIXME: elaborate the type & show the kind
+type_ = let act e = Action (print (getPrint e)) in act <$> whole expr  -- FIXME: elaborate the expr & show the type
+kind_ = let act e = Action (print (getPrint e)) in act <$> whole type' -- FIXME: elaborate the type & show the kind
 
 parseCommands :: TokenParsing m => [Command m a] -> m a
 parseCommands = choice . map go
