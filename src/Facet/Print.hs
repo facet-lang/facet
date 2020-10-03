@@ -169,8 +169,7 @@ instance S.Located Print where
 instance S.Expr Print where
   global = sfree . S.getEName
   bound = sbound
-  -- FIXME: Use _ in binding positions for unused variables
-  lam n b = cases (var (pretty (N.hint n))) [b]
+  lam = lam . sbound
   ($$) = ($$)
 
   unit = pretty "()"
@@ -276,3 +275,8 @@ l ** r = tupled [l, r]
 (>~>) :: (Print ::: Print) -> Print -> Print
 -- FIXME: combine quantification over type variables of the same kind
 (n ::: t) >~> b = group (align (braces (space <> ann (var n ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
+
+
+-- FIXME: Use _ in binding positions for unused variables
+lam :: Print -> Print -> Print
+lam n b = cases n [b]
