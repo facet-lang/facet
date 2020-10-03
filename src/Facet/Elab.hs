@@ -34,6 +34,8 @@ module Facet.Elab
 , lam
 , unit
 , (**)
+  -- * Declarations
+, elabDecl
 ) where
 
 import           Control.Algebra
@@ -48,6 +50,7 @@ import qualified Facet.Env as Env
 import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
 import qualified Facet.Print as P
 import qualified Facet.Surface as S
+import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
@@ -319,6 +322,29 @@ l ** r = Check $ \ _T -> do
   l' <- check (l ::: _L)
   r' <- check (r ::: _R)
   pure (l' C.** r')
+
+
+-- Declarations
+
+elabDecl :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.Decl -> EnvC m (expr ::: Type)
+elabDecl = SD.fold alg
+  where
+  alg :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.DeclF (EnvC m (expr ::: Type)) -> EnvC m (expr ::: Type)
+  alg = \case
+    (n ::: t) SD.:=> b -> do
+      _T ::: _  <- elabType (t ::: Just C._Type)
+      b' ::: _B <- n ::: _T |- b
+      pure $ C.tlam n b' ::: ((n ::: _T) C.==> _B)
+
+    (n ::: t) SD.:-> b -> do
+      _T ::: _  <- elabType (t ::: Just C._Type)
+      b' ::: _B <- n ::: _T |- b
+      pure $ C.lam n b' ::: (_T C.--> _B)
+
+    t SD.:= b -> do
+      _T ::: _ <- elabType (t ::: Just C._Type)
+      b' ::: _ <- elabExpr (b ::: Just _T)
+      pure $ b' ::: _T
 
 
 -- Context
