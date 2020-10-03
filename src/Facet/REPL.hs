@@ -2,7 +2,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RankNTypes #-}
 module Facet.REPL
 ( repl
 ) where
@@ -63,8 +62,8 @@ loop = do
 -- - multiline
 commands :: [Command (Facet (ParserC (Either Notice))) Action]
 commands =
-  [ Command ["help", "h", "?"] "display this list of commands" . Pure $ Action $ print helpDoc
-  , Command ["quit", "q"]      "exit the repl"                 . Pure $ Action $ empty
+  [ Command ["help", "h", "?"] "display this list of commands" $ Pure Help
+  , Command ["quit", "q"]      "exit the repl"                 $ Pure Quit
   , Command ["load", "l"]      "add a module to the repl"      $ Meta "path" load_
   , Command ["type", "t"]      "show the type of <expr>"       $ Meta "expr" type_
   , Command ["kind", "k"]      "show the kind of <type>"       $ Meta "type" kind_
@@ -72,14 +71,10 @@ commands =
 
 load_, type_, kind_ :: Facet (ParserC (Either Notice)) Action
 
-load_ = load <$> path
-  where
-  load path = Action $ do
-    runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint >> files_ %= Set.insert path
-  path = stringLiteral <|> some (satisfy (not . isSpace))
+load_ = Load <$> (stringLiteral <|> some (satisfy (not . isSpace)))
 
-type_ = let act e = Action (print (getPrint e)) in act <$> whole expr  -- FIXME: elaborate the expr & show the type
-kind_ = let act e = Action (print (getPrint e)) in act <$> whole type' -- FIXME: elaborate the type & show the kind
+type_ = Type <$> whole expr  -- FIXME: elaborate the expr & show the type
+kind_ = Kind <$> whole type' -- FIXME: elaborate the type & show the kind
 
 
 parseCommands :: TokenParsing m => [Command m a] -> m a
@@ -109,7 +104,22 @@ data Value p a
   | Meta String (p a)
   deriving (Foldable, Functor, Traversable)
 
-newtype Action = Action { runAction :: forall sig m . (Has Empty sig m, Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m () }
+
+data Action
+  = Help
+  | Quit
+  | Load FilePath
+  | Type Print
+  | Kind Print
+
+runAction :: (Has Empty sig m, Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Action -> m ()
+runAction = \case
+  Help -> print helpDoc
+  Quit -> empty
+  Load path -> do
+    runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint >> files_ %= Set.insert path
+  Type e -> print (getPrint e) -- FIXME: elaborate the expr & show the type
+  Kind e -> print (getPrint e) -- FIXME: elaborate the type & show the kind
 
 
 helpDoc :: Doc AnsiStyle
