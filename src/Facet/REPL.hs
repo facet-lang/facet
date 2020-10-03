@@ -1,7 +1,6 @@
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RankNTypes #-}
 module Facet.REPL
 ( repl
 ) where
@@ -28,6 +27,7 @@ import           Prettyprinter as P hiding (column, width)
 import           Prettyprinter.Render.Terminal (AnsiStyle)
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
+import           Text.Parser.Position
 import           Text.Parser.Token hiding (comma)
 
 repl :: IO ()
@@ -60,7 +60,7 @@ loop = do
 -- TODO:
 -- - reload
 -- - multiline
-commands :: [Command (Facet (ParserC (Either Notice))) Action]
+commands :: [Command Action]
 commands =
   [ Command ["help", "h", "?"] "display this list of commands" $ Pure Help
   , Command ["quit", "q"]      "exit the repl"                 $ Pure Quit
@@ -69,15 +69,17 @@ commands =
   , Command ["kind", "k"]      "show the kind of <type>"       $ Meta "type" kind_
   ]
 
-load_, type_, kind_ :: Facet (ParserC (Either Notice)) Action
+load_ :: PositionParsing p => p Action
 
 load_ = Load <$> (stringLiteral <|> some (satisfy (not . isSpace)))
 
-type_ = Type <$> whole expr  -- FIXME: elaborate the expr & show the type
-kind_ = Kind <$> whole type' -- FIXME: elaborate the type & show the kind
+type_, kind_ :: (PositionParsing p, Monad p) => p Action
+
+type_ = Type <$> runFacet 0 (whole expr ) -- FIXME: elaborate the expr & show the type
+kind_ = Kind <$> runFacet 0 (whole type') -- FIXME: elaborate the type & show the kind
 
 
-parseCommands :: TokenParsing m => [Command m a] -> m a
+parseCommands :: (PositionParsing p, Monad p) => [Command a] -> p a
 parseCommands = choice . map go
   where
   go (Command [] _ v) = parseValue v
@@ -87,22 +89,20 @@ parseCommands = choice . map go
     Meta _ p -> p
 
 
-data Command p a = Command
+data Command a = Command
   { symbols :: [String]
   , usage   :: String
-  , value   :: Value p a
+  , value   :: Value a
   }
-  deriving (Foldable, Functor, Traversable)
 
-meta :: Command p a -> Maybe String
+meta :: Command a -> Maybe String
 meta c = case value c of
   Meta s _ -> Just s
   _        -> Nothing
 
-data Value p a
+data Value a
   = Pure a
-  | Meta String (p a)
-  deriving (Foldable, Functor, Traversable)
+  | Meta String (forall p . (PositionParsing p, Monad p) => p a)
 
 
 data Action
