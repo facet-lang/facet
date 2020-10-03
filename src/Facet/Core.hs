@@ -42,6 +42,6 @@ class Expr expr where
 
 
 class Module expr ty mod | mod -> expr ty where
-  module' :: MName -> mod -> mod
+  module' :: MName -> [mod] -> mod
 
   defTerm :: QName -> (ty := expr) -> mod
