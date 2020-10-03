@@ -231,6 +231,10 @@ bindPattern S.Wildcard f = bind __ (\ v -> f v id)
 bindPattern (S.Var n)  f = bind n  (\ v -> f v (S.bound v <$ variable (hint v) <|>))
 
 
+varPattern :: (Monad p, TokenParsing p) => p name -> p (Maybe name)
+varPattern n = Just <$> n <|> Nothing <$ reserve nameStyle "_"
+
+
 -- FIXME: patterns
 pattern :: (Monad p, TokenParsing p) => p S.Pattern
 pattern
