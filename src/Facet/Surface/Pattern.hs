@@ -5,4 +5,5 @@ module Facet.Surface.Pattern
 import qualified Facet.Surface as S
 
 data Pattern
-  = Var S.EName
+  = Wildcard
+  | Var S.EName

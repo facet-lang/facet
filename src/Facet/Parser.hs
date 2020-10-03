@@ -220,6 +220,10 @@ clause = self . vars
   self vars = (do
     patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
     foldr clause expr_ patterns vars) <?> "clause"
+  clause (start, S.Wildcard) rest vars = bind __ $ \ v -> do
+    lam <- S.lam v <$> rest vars
+    end <- position
+    pure (S.locate (Span start end) lam)
   clause (start, S.Var n) rest vars = bind n $ \ v -> do
     lam <- S.lam v <$> rest (S.bound v <$ variable (hint v) <|> vars)
     end <- position
