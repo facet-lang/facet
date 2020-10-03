@@ -276,7 +276,7 @@ tnameStyle = IdentifierStyle
   "type name"
   upper
   alphaNum
-  mempty
+  reserved
   Identifier
   ReservedIdentifier
 
@@ -285,7 +285,7 @@ hnameStyle = IdentifierStyle
   "hole name"
   (char '?')
   alphaNum
-  mempty
+  reserved
   Identifier
   ReservedIdentifier
 
