@@ -65,15 +65,15 @@ class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
   defType :: TName -> decl -> mod
 
 class (Expr expr, Type ty) => Decl expr ty decl | decl -> ty expr where
-  (.=) :: ty -> expr -> decl
-  infix 1 .=
-
   -- | Universal quantification.
   (>=>) :: (Name ::: ty) -> decl -> decl
   infixr 1 >=>
 
   (>->) :: (Name ::: ty) -> decl -> decl
   infixr 1 >->
+
+  (.=) :: ty -> expr -> decl
+  infix 1 .=
 
 
 class Located expr where

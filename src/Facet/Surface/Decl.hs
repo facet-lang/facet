@@ -16,9 +16,9 @@ import           Facet.Syntax ((:::)(..))
 newtype Decl = In { out :: DeclF Decl }
 
 data DeclF a
-  = Type := Expr
-  | (Name ::: Type) :=> a
+  = (Name ::: Type) :=> a
   | (Name ::: Type) :-> a
+  | Type := Expr
   deriving (Foldable, Functor, Traversable)
 
 infix 1 :=
