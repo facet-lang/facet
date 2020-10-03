@@ -32,6 +32,9 @@ instance S.Decl Expr Type Decl where
   (>=>) = fmap In . (:=>)
   (>->) = fmap In . (:->)
 
+instance S.Located Decl where
+  locate = fmap In . Ann
+
 
 fold :: (DeclF a -> a) -> Decl -> a
 fold alg = go
