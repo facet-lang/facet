@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 module Facet.REPL
 ( repl
@@ -14,6 +15,7 @@ import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Notice (Notice, prettyNotice)
 import           Control.Effect.Parser.Span (Pos(..))
+import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Semigroup
@@ -37,6 +39,9 @@ repl
 data REPL = REPL
   { files :: Set.Set FilePath
   }
+
+files_ :: Lens' REPL (Set.Set FilePath)
+files_ = lens files (\ r files -> r{ files })
 
 loop :: (Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
