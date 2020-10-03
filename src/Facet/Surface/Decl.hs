@@ -4,6 +4,7 @@
 module Facet.Surface.Decl
 ( Decl(..)
 , DeclF(..)
+, fold
 ) where
 
 import           Facet.Name
@@ -28,3 +29,9 @@ instance S.Decl Expr Type Decl where
   (.=) = fmap In . (:=)
   (>=>) = fmap In . (:=>)
   (>->) = fmap In . (:->)
+
+
+fold :: (DeclF a -> a) -> Decl -> a
+fold alg = go
+  where
+  go = alg . fmap go . out
