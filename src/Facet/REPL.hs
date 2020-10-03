@@ -55,6 +55,14 @@ loop = do
   where
   commandParser = parseCommands commands
 
+  runAction = \case
+    Help -> print helpDoc
+    Quit -> empty
+    Load path -> load path
+    Type e -> print (getPrint e) -- FIXME: elaborate the expr & show the type
+    Kind e -> print (getPrint e) -- FIXME: elaborate the type & show the kind
+
+
 -- TODO:
 -- - reload
 -- - multiline
@@ -111,14 +119,6 @@ data Action
   | Load FilePath
   | Type Print
   | Kind Print
-
-runAction :: (Has Empty sig m, Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Action -> m ()
-runAction = \case
-  Help -> print helpDoc
-  Quit -> empty
-  Load path -> load path
-  Type e -> print (getPrint e) -- FIXME: elaborate the expr & show the type
-  Kind e -> print (getPrint e) -- FIXME: elaborate the type & show the kind
 
 load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
