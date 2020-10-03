@@ -133,10 +133,10 @@ instance (C.Expr expr, Has (Error P.Print) sig m) => S.Decl (Elab m (expr ::: Ty
     pure $ C.lam n b' ::: (_T C.--> _B)
 
 instance (C.Expr expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
-  n .:. d = do
+  defTerm n d = do
     e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
     mname <- ask
-    pure $ (mname :.: S.getDName n) C..:. interpret _T := e
+    pure $ (mname :.: S.getEName n) C..:. interpret _T := e
 
 
 newtype Check m a = Check { runCheck :: Type -> EnvC m a }

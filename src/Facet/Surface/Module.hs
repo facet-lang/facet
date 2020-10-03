@@ -9,9 +9,7 @@ import           Facet.Surface.Expr (Expr)
 import           Facet.Surface.Type (Type)
 
 data Module
-  = S.DName :.:. Decl
-
-infix 1 :.:.
+  = DefTerm S.EName Decl
 
 instance S.Module Expr Type Decl Module where
-  (.:.) = (:.:.)
+  defTerm = DefTerm

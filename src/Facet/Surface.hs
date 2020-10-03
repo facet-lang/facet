@@ -6,7 +6,6 @@ module Facet.Surface
 , Expr(..)
 , TName(..)
 , Type(..)
-, DName(..)
 , Module(..)
 , Decl(..)
 , (:::)(..)
@@ -61,12 +60,8 @@ class Type ty where
   _Type :: ty
 
 
-newtype DName = DName { getDName :: Text }
-  deriving (Eq, IsString, Ord, Pretty, Show)
-
 class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
-  (.:.) :: DName -> decl -> mod
-  infix 1 .:.
+  defTerm :: EName -> decl -> mod
 
 class (Expr expr, Type ty) => Decl expr ty decl | decl -> ty expr where
   (.=) :: ty -> expr -> decl

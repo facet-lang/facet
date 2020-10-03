@@ -212,7 +212,7 @@ instance C.Module Print Print Print where
   n .:. t := b = ann (var (prettyQName n) ::: t) </> b
 
 instance S.Module Print Print Print Print where
-  n .:. b = group $ ann (var (pretty n) ::: b)
+  defTerm n b = group $ ann (var (pretty n) ::: b)
 
 instance S.Decl Print Print Print where
   -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.

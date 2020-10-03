@@ -85,7 +85,7 @@ whole p = whiteSpace *> p <* eof
 
 
 decl :: (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, PositionParsing p) => Facet p mod
-decl = locating $ (S..:.) <$> dname <* colon <*> tsig tglobal
+decl = locating $ S.defTerm <$> ename <* colon <*> tsig tglobal
 
 tsigTable :: (S.Decl expr ty decl, S.Located ty, S.Located decl, Monad p, PositionParsing p) => Table (Facet p) ty decl
 tsigTable =
@@ -258,8 +258,6 @@ ename  = ident nameStyle
 _hname = ident hnameStyle
 tname :: (Monad p, TokenParsing p) => p S.TName
 tname = ident tnameStyle
-dname :: (Monad p, TokenParsing p) => p S.DName
-dname = ident dnameStyle
 
 reserved :: HashSet.HashSet String
 reserved = HashSet.singleton "_"
@@ -270,15 +268,6 @@ nameLetter = alphaNum <|> char '_'
 nameStyle :: CharParsing p => IdentifierStyle p
 nameStyle = IdentifierStyle
   "name"
-  (lower <|> char '_')
-  nameLetter
-  reserved
-  Identifier
-  ReservedIdentifier
-
-dnameStyle :: CharParsing p => IdentifierStyle p
-dnameStyle = IdentifierStyle
-  "declaration name"
   (lower <|> char '_')
   nameLetter
   reserved
