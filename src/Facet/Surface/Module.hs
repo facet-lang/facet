@@ -27,6 +27,9 @@ instance S.Module Expr Type Decl Module where
   defTerm = fmap In . DefTerm
   defType = fmap In . DefType
 
+instance S.Located Module where
+  locate = fmap In . Ann
+
 
 fold :: (ModuleF a -> a) -> Module -> a
 fold alg = go
