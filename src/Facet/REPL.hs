@@ -116,12 +116,14 @@ runAction :: (Has Empty sig m, Has (Error Notice) sig m, Has Readline sig m, Has
 runAction = \case
   Help -> print helpDoc
   Quit -> empty
-  Load path -> do
-    files_ %= Set.insert path
-    runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint
+  Load path -> load path
   Type e -> print (getPrint e) -- FIXME: elaborate the expr & show the type
   Kind e -> print (getPrint e) -- FIXME: elaborate the type & show the kind
 
+load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
+load path = do
+  files_ %= Set.insert path
+  runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint
 
 helpDoc :: Doc AnsiStyle
 helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
