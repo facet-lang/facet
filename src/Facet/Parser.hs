@@ -46,7 +46,7 @@ bind :: Coercible t Text => t -> (Name -> Facet m a) -> Facet m a
 bind n b = Facet $ \ i -> runFacet (i + 1) (b (Name (coerce n) i))
 
 newtype Facet m a = Facet (Int -> m a)
-  deriving (Alternative, Applicative, Functor, Monad) via ReaderC Int m
+  deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC Int m
 
 instance Parsing p => Parsing (Facet p) where
   try (Facet m) = Facet $ try . m
