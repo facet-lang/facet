@@ -136,6 +136,8 @@ instance (C.Expr expr, Has (Error P.Print) sig m) => S.Decl (Elab m (expr ::: Ty
     pure $ C.lam n b' ::: (_T C.--> _B)
 
 instance (C.Expr expr, C.Type ty, C.Module expr ty mod, Has (Error P.Print) sig m) => S.Module (Elab m (expr ::: Type)) (Elab m (Type ::: Type)) (Elab m (expr ::: Type)) (Elab m mod) where
+  module' n b = C.module' n <$> sequenceA b
+
   defTerm n d = do
     e ::: _T <- d -- FIXME: check _T at Type, check e at _T -- d should probably be two separate elaborators
     -- wait do we have to check _T? aren’t we supposed to assume it’s already well-formed?

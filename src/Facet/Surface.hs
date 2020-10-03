@@ -61,6 +61,7 @@ class Type ty where
 
 
 class Decl expr ty decl => Module expr ty decl mod | mod -> decl where
+  module' :: MName -> [mod] -> mod
   defTerm :: EName -> decl -> mod
   defType :: TName -> decl -> mod
 
