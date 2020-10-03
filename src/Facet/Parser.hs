@@ -214,12 +214,15 @@ clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParse
 clause = self . vars
   where
   self vars = (do
-    names <- try (some ((,) <$> position <*> ename) <* arrow)
-    foldr clause expr_ names vars) <?> "clause"
+    patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
+    foldr clause expr_ patterns vars) <?> "clause"
   clause (start, n) rest vars = bind n $ \ v -> do
     lam <- S.lam v <$> rest (S.bound v <$ variable (hint v) <|> vars)
     end <- position
     pure (S.locate (Span start end) lam)
+
+pattern :: (Monad p, TokenParsing p) => p S.EName
+pattern = ename
 
 
 chainl1_ :: Alternative m => m a -> (m a -> m a) -> m (a -> a -> a) -> m a
