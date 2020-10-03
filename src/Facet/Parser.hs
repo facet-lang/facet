@@ -200,7 +200,7 @@ expr_ = build exprTable (terminate parens (toBindParser (Infix L locating ((S.**
 
 -- FIXME: nullary computations
 comp :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Facet p expr -> Facet p expr
-comp = braces . build compTable ($)
+comp = braces . build compTable (const expr_)
 
 compTable :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => Table (Facet p) expr expr
 compTable =
@@ -212,7 +212,7 @@ clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParse
 clause = self . vars
   where
   self vars = (do
-    names <- some ((,) <$> position <*> name) <* arrow
+    names <- try (some ((,) <$> position <*> name) <* arrow)
     foldr clause expr_ names vars) <?> "clause"
   clause (start, n) rest vars = bind n $ \ v -> do
     lam <- S.lam v <$> rest (S.bound v <$ variable (hint v) <|> vars)
