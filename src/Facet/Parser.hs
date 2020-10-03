@@ -213,7 +213,6 @@ compTable =
   [ [ Binder clause ]
   ]
 
--- FIXME: patterns
 clause :: (S.Expr expr, S.Located expr, Monad p, PositionParsing p) => BindParser (Facet p) expr expr
 clause = self . vars
   where
@@ -225,6 +224,7 @@ clause = self . vars
     end <- position
     pure (S.locate (Span start end) lam)
 
+-- FIXME: patterns
 pattern :: (Monad p, TokenParsing p) => p S.EName
 pattern = ename
 
