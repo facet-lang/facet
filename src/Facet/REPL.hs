@@ -6,29 +6,30 @@ module Facet.REPL
 ( repl
 ) where
 
-import Control.Carrier.Empty.Church
-import Control.Carrier.Parser.Church
-import Control.Carrier.Readline.Haskeline
-import Control.Carrier.State.Church
-import Control.Effect.Parser.Notice (Notice, prettyNotice)
-import Control.Effect.Parser.Span (Pos(..))
-import Facet.Parser
-import Facet.Pretty
-import Facet.Print
-import Prelude hiding (print)
-import Prettyprinter as P hiding (column, width)
-import Prettyprinter.Render.Terminal (AnsiStyle)
-import Text.Parser.Combinators
-import Text.Parser.Token hiding (comma)
+import           Control.Carrier.Empty.Church
+import           Control.Carrier.Parser.Church
+import           Control.Carrier.Readline.Haskeline
+import           Control.Carrier.State.Church
+import           Control.Effect.Parser.Notice (Notice, prettyNotice)
+import           Control.Effect.Parser.Span (Pos(..))
+import qualified Data.Set as Set
+import           Facet.Parser
+import           Facet.Pretty
+import           Facet.Print
+import           Prelude hiding (print)
+import           Prettyprinter as P hiding (column, width)
+import           Prettyprinter.Render.Terminal (AnsiStyle)
+import           Text.Parser.Combinators
+import           Text.Parser.Token hiding (comma)
 
 repl :: IO ()
 repl
   = runReadlineWithHistory
-  . evalState REPL{ files = [] }
+  . evalState REPL{ files = mempty }
   $ loop
 
 data REPL = REPL
-  { files :: [FilePath]
+  { files :: Set.Set FilePath
   }
 
 loop :: (Has Readline sig m, Has (State REPL) sig m) => m ()
