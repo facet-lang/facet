@@ -234,7 +234,7 @@ printSurfaceType = ST.fold alg
     ST.Bound n -> sbound n
     ST.Type    -> _Type
     ST.Unit    -> _Unit
-    t ST.:=> b -> first (pretty . N.hint) t >~> b
+    t ST.:=> b -> first (var . pretty . N.hint) t >~> b
     f ST.:$  a -> f $$  a
     a ST.:-> b -> a --> b
     l ST.:*  r -> l **  r
