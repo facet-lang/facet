@@ -200,8 +200,8 @@ instance C.Type Print where
 instance C.Expr Print where
   global = cfree
   bound = cebound
-  tlam n b = cases (braces (C.bound n)) [b]
-  lam n b = cases (C.bound n) [b]
+  tlam = lam . braces . ctbound
+  lam = lam . cebound
   ($$) = ($$)
   unit = pretty "()"
   l ** r = tupled [l, r]
