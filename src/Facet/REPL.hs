@@ -80,8 +80,10 @@ kind_ = Kind <$> runFacet 0 (whole type') -- FIXME: elaborate the type & show th
 parseCommands :: (PositionParsing p, Monad p) => [Command a] -> p a
 parseCommands = choice . map go
   where
-  go (Command [] _ v) = parseValue v
-  go (Command ss _ v) = choice (map (\ s -> symbol (':':s) <?> (':':s)) ss) *> parseValue v
+  go c = parseSymbols (symbols c) *> parseValue (value c)
+  parseSymbols = \case
+    [] -> pure ""
+    ss -> choice (map (\ s -> symbol (':':s) <?> (':':s)) ss)
   parseValue = \case
     Pure a   -> pure a
     Meta _ p -> p
