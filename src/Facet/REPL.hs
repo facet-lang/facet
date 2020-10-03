@@ -47,11 +47,9 @@ files_ = lens files (\ r files -> r{ files })
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
   (line, resp) <- prompt "λ "
-  case resp of
+  runError (print . prettyNotice) pure $ case resp of
     -- FIXME: evaluate expressions
-    Just resp -> case runParserWithString (Pos line 0) resp (runFacet 0 (whole commandParser)) of
-      Right cmd -> runError (print . prettyNotice) pure (runAction cmd)
-      Left  err -> print (prettyNotice err)
+    Just resp -> runParserWithString (Pos line 0) resp (runFacet 0 (whole commandParser)) >>= runAction
     Nothing   -> pure ()
   loop
   where
