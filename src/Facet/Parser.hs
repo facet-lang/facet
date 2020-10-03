@@ -11,6 +11,7 @@ module Facet.Parser
 , decl
 , type'
 , expr
+, whole
 ) where
 
 import           Control.Applicative (Alternative(..), liftA2, (<**>))
@@ -71,6 +72,10 @@ instance PositionParsing p => PositionParsing (Facet p) where
 
 lift :: p a -> Facet p a
 lift = Facet . const
+
+
+whole :: TokenParsing p => p a -> p a
+whole p = whiteSpace *> p <* eof
 
 
 decl :: (S.Module expr ty decl mod, S.Located expr, S.Located ty, S.Located decl, S.Located mod, Monad p, PositionParsing p) => Facet p mod
