@@ -80,9 +80,6 @@ newtype EnvC m a = EnvC { runEnvC :: MName -> Env.Env -> Context -> m a }
 newtype Elab m a = Elab { runElab :: Maybe Type -> m a }
   deriving (Algebra (Reader (Maybe Type) :+: sig), Applicative, Functor, Monad) via ReaderC (Maybe Type) m
 
-instance Has (Reader Span) sig m => S.Located (Elab m a) where
-  locate = local . const
-
 
 newtype Check m a = Check { runCheck :: Type -> m a }
   deriving (Algebra (Reader Type :+: sig), Applicative, Functor, Monad) via ReaderC Type m
