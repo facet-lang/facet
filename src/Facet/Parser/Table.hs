@@ -9,7 +9,6 @@ module Facet.Parser.Table
 , Table
 , build
 , terminate
-, chainl1_
 ) where
 
 import Control.Applicative (Alternative(..), (<**>))
@@ -25,15 +24,15 @@ data Assoc = N | L | R
 
 data Operator p a b
   -- TODO: prefix, postfix, mixfix
-  = Infix Assoc (p b -> p b) (p (b -> b -> b))
+  = Infix Assoc (p (b -> b -> b))
   | Binder (BindParser p a b)
   | Atom (p a -> p b)
 
 toBindParser :: Parsing p => Operator p a b -> BindParser p a b
 toBindParser = \case
-  Infix N wrap op -> fromInfix $ \ _    next -> wrap (try (next <**> op) <*> next)
-  Infix L wrap op -> fromInfix $ \ _    next -> chainl1_ next wrap op
-  Infix R wrap op -> fromInfix $ \ self next -> wrap (try (next <**> op) <*> self)
+  Infix N op -> fromInfix $ \ _    next -> try (next <**> op) <*> next
+  Infix L op -> fromInfix $ \ _    next -> chainl1 next op
+  Infix R op -> fromInfix $ \ self next -> try (next <**> op) <*> self
   Binder p        -> p
   Atom p          -> p . vars
   where
@@ -53,8 +52,3 @@ build ts end = root
 
 terminate :: (p b -> p b) -> BindParser p a b -> (p a -> p b) -> (p a -> p b)
 terminate wrap op next = self where self vars = wrap $ op BindCtx{ next, self, vars }
-
-
-chainl1_ :: Alternative m => m a -> (m a -> m a) -> m (a -> a -> a) -> m a
--- FIXME this is chainr1_ 😞
-chainl1_ p wrap op = go where go = wrap $ p <**> (flip <$> op <*> go <|> pure id)
