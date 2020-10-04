@@ -51,7 +51,6 @@ import qualified Facet.Core as C
 import qualified Facet.Env as Env
 import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
 import qualified Facet.Print as P
-import qualified Facet.Surface as S
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
 import qualified Facet.Surface.Module as SM
@@ -147,8 +146,8 @@ elabType (t ::: _K) = ST.fold alg t _K
       Just _K -> r <$ unify _K' _K
       _       -> pure r
 
-tglobal :: (Has (Reader Env.Env) sig m, C.Type ty, Has (Error P.Print) sig m) => S.TName -> Synth m ty
-tglobal (S.TName s) = Synth $ asks (Env.lookup s) >>= \case
+tglobal :: (Has (Reader Env.Env) sig m, C.Type ty, Has (Error P.Print) sig m) => ST.TName -> Synth m ty
+tglobal (ST.TName s) = Synth $ asks (Env.lookup s) >>= \case
   Just b  -> pure (C.tglobal (tm b :.: s) ::: ty b)
   Nothing -> freeVariable (pretty s)
 
@@ -216,8 +215,8 @@ elabExpr (t ::: _T) = SE.fold alg t _T
       Just _T -> r <$ unify _T' _T
       _       -> pure r
 
-eglobal :: (Has (Reader Env.Env) sig m, C.Expr expr, Has (Error P.Print) sig m) => S.EName -> Synth m expr
-eglobal (S.EName s) = Synth $ asks (Env.lookup s) >>= \case
+eglobal :: (Has (Reader Env.Env) sig m, C.Expr expr, Has (Error P.Print) sig m) => SE.EName -> Synth m expr
+eglobal (SE.EName s) = Synth $ asks (Env.lookup s) >>= \case
   Just b  -> pure (C.global (tm b :.: s) ::: ty b)
   Nothing -> freeVariable (pretty s)
 
@@ -284,13 +283,13 @@ elabModule = SM.fold alg
       e ::: _T <- elabDecl d
       e' <- check (e ::: _T)
       mname <- ask
-      pure $ C.defTerm (mname :.: S.getEName n) (interpret _T := e')
+      pure $ C.defTerm (mname :.: SE.getEName n) (interpret _T := e')
 
     SM.DefType n d -> do
       e ::: _T <- elabDecl d
       e' <- check (e ::: _T)
       mname <- ask
-      pure $ C.defTerm (mname :.: S.getTName n) (interpret _T := e')
+      pure $ C.defTerm (mname :.: ST.getTName n) (interpret _T := e')
 
     SM.Ann s d -> local (const s) d
 
