@@ -68,7 +68,6 @@ library
   build-depends:
     , base ^>= 4.14
     , containers
-    , distributive
     , fused-effects
     , fused-effects-lens
     , fused-effects-parser
