@@ -48,9 +48,9 @@ prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = P.putDoc . getPrint
 
 getPrint :: Print -> PP.Doc ANSI.AnsiStyle
-getPrint = PP.reAnnotate terminalStyle . getDoc . getPrint'
+getPrint = PP.reAnnotate terminalStyle . getPrint'
 
-getPrint' :: Print -> Doc
+getPrint' :: Print -> PP.Doc Highlight
 getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . (`runPrint` const id) . group
 
 terminalStyle :: Highlight -> ANSI.AnsiStyle
@@ -74,37 +74,17 @@ terminalStyle = \case
     [ANSI.color, ANSI.colorDull]
   len = length colours
 
-data Doc = Doc { fvs :: N.FVs, getDoc :: PP.Doc Highlight }
 
-instance Semigroup Doc where
-  Doc m1 d1 <> Doc m2 d2 = Doc (m1 <> m2) (d1 <> d2)
-
-instance Monoid Doc where
-  mempty = Doc mempty mempty
-
-instance Printer Doc where
-  type Ann Doc = Highlight
-  liftDoc0 = Doc mempty
-  liftDoc1 f (Doc m d) = Doc m (f d)
-  liftDoc2 f (Doc m1 d1) (Doc m2 d2) = Doc (m1 <> m2) (f d1 d2)
-  -- these combinators destroy free variables :(
-  column    f = Doc mempty (column    (getDoc . f))
-  nesting   f = Doc mempty (nesting   (getDoc . f))
-  pageWidth f = Doc mempty (pageWidth (getDoc . f))
-
-newtype Print = Print { runPrint :: (Context -> Print -> Print) -> Prec Context (Rainbow Doc) }
+newtype Print = Print { runPrint :: (Context -> Print -> Print) -> Prec Context (Rainbow (PP.Doc Highlight)) }
   deriving (Monoid, Printer, Semigroup)
 
 instance PrecedencePrinter Print where
   type Level Print = Context
-  askingPrec = coerce (askingPrec :: (Context -> (Context -> Print -> Print) -> Prec Context (Rainbow Doc)) -> (Context -> Print -> Print) -> Prec Context (Rainbow Doc))
+  askingPrec = coerce (askingPrec :: (Context -> (Context -> Print -> Print) -> Prec Context (Rainbow (PP.Doc Highlight))) -> (Context -> Print -> Print) -> Prec Context (Rainbow (PP.Doc Highlight)))
   localPrec f a = Print $ \ t -> localPrec f (askingPrec ((`runPrint` t) . (`t` a)))
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
-
-instance N.Scoped Print where
-  fvs = fvs . getPrint'
 
 withTransition :: (Context -> Print -> Print) -> Print -> Print
 withTransition trans a = Print $ \ _ -> runPrint a trans
