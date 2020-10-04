@@ -112,13 +112,13 @@ arrow :: (Printer p, Ann p ~ Highlight) => p
 arrow = op (pretty "->")
 
 
-cases :: Print -> Print -> Print
-cases v b
+cases :: [Print] -> Print -> Print
+cases vs b
   = group
   . align
   . braces
   . enclose space (flatAlt line space)
-  $ prec Pattern v <+> arrow <+> group (nest 2 (line' <> prec Expr b))
+  $ foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> prec Expr b))) vs
 
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
@@ -231,7 +231,7 @@ printSurfaceExpr = go
 
 -- FIXME: Use _ in binding positions for unused variables
 lam :: Print -> Print -> Print
-lam n b = cases n b
+lam n b = cases [n] b
 
 unit :: Print
 unit = annotate Con $ pretty "Unit"
