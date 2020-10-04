@@ -131,7 +131,7 @@ monotypeTable =
   ]
 
 forAll
-  :: (S.Located res, Monad p, PositionParsing p)
+  :: (Located res, Monad p, PositionParsing p)
   => (Facet p (Name S.::: S.Type) -> Facet p res -> Facet p res)
   -> BindParser (Facet p) S.Type res
 forAll (>=>) BindCtx{ self, vars } = locating $ do
@@ -186,7 +186,7 @@ clause = self . vars
   clause (start, p) rest vars = bindPattern p $ \ vs ext -> do
     lam <- foldr (fmap . S.lam) (rest (ext vars)) vs
     end <- position
-    pure (S.locate (Span start end) lam)
+    pure (locate (Span start end) lam)
 
 bindPattern :: PositionParsing p => S.Pattern -> ([Name] -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p S.Expr) -> Facet p S.Expr
 bindPattern S.Wildcard   f = bind __ (\ v -> f [v] id)
@@ -268,5 +268,5 @@ variable :: PositionParsing p => Name -> p ()
 variable v = token (text (hint v) *> notFollowedBy alphaNum)
 
 
-locating :: (PositionParsing p, S.Located a) => p a -> p a
-locating = fmap (uncurry S.locate) . spanned
+locating :: (PositionParsing p, Located a) => p a -> p a
+locating = fmap (uncurry locate) . spanned
