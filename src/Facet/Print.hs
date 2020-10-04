@@ -256,8 +256,8 @@ printSurfaceDecl = go
   where
   go = SD.out >>> \case
     t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
-    t SD.:=> b -> bimap (var . pretty . N.hint) printSurfaceType t >~> go b
-    t SD.:-> b -> bimap (var . pretty . N.hint) printSurfaceType t >-> go b
+    t SD.:=> b -> bimap sbound printSurfaceType t >~> go b
+    t SD.:-> b -> bimap sbound printSurfaceType t >-> go b
     SD.Ann _ d -> go d
 
 -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
