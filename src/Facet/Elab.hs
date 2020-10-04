@@ -274,7 +274,7 @@ elabDecl = SD.fold alg
 
 -- Modules
 
-elabModule :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr, C.Type ty, C.Module expr ty mod) => SM.Module -> Elab m mod
+elabModule :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader MName) sig m, Has (Reader Span) sig m, C.Expr expr, C.Type ty, C.Module expr ty mod) => SM.Module -> m mod
 elabModule = SM.fold alg
   where
   alg = \case
