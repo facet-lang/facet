@@ -127,7 +127,7 @@ app ($$) f a = Synth $ do
 
 -- Types
 
-elabType :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => (ST.Type ::: Maybe Type) -> Elab m (Type ::: Type)
+elabType :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m) => (ST.Type ::: Maybe Type) -> m (Type ::: Type)
 elabType (t ::: _K) = ST.fold alg t _K
   where
   alg t _K = case t of
