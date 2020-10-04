@@ -121,8 +121,8 @@ typeTable = [ Binder (forAll (liftA2 (S.>~>))) ] : monotypeTable
 
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Type
 monotypeTable =
-  [ [ Infix R ((S.-->) <$ arrow) ]
-  , [ Infix L (pure (S..$)) ]
+  [ [ Infix R locating ((S.-->) <$ arrow) ]
+  , [ Infix L locating (pure (S..$)) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       Atom (const (S._Unit <$ token (string "Unit")))
     , Atom (const (S._Type <$ token (string "Type")))
@@ -143,10 +143,10 @@ type' :: (Monad p, PositionParsing p) => Facet p S.Type
 type' = type_ tglobal
 
 type_ :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Type
-type_ = build typeTable (terminate parens (toBindParser (Infix L ((S..*) <$ comma))))
+type_ = build typeTable (terminate parens (toBindParser (Infix L locating ((S..*) <$ comma))))
 
 monotype_ :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Type
-monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L ((S..*) <$ comma))))
+monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L locating ((S..*) <$ comma))))
 
 tglobal :: (Monad p, TokenParsing p) => Facet p S.Type
 tglobal = S.tglobal <$> tname <?> "variable"
@@ -154,7 +154,7 @@ tglobal = S.tglobal <$> tname <?> "variable"
 
 exprTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Expr S.Expr
 exprTable =
-  [ [ Infix L (pure (S.$$)) ]
+  [ [ Infix L locating (pure (S.$$)) ]
   , [ Atom comp
     , Atom id
     ]
@@ -167,7 +167,7 @@ global :: (Monad p, TokenParsing p) => Facet p S.Expr
 global = S.global <$> ename <?> "variable"
 
 expr_ :: (Monad p, PositionParsing p) => Facet p S.Expr -> Facet p S.Expr
-expr_ = build exprTable (terminate parens (toBindParser (Infix L ((S.**) <$ comma))))
+expr_ = build exprTable (terminate parens (toBindParser (Infix L locating ((S.**) <$ comma))))
 
 comp :: (Monad p, PositionParsing p) => Facet p S.Expr -> Facet p S.Expr
 comp = braces . build compTable (const expr_)
