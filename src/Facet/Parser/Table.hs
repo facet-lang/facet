@@ -1,5 +1,3 @@
-{-# LANGUAGE DisambiguateRecordFields #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 module Facet.Parser.Table
@@ -23,14 +21,6 @@ data BindCtx p a b = BindCtx
   , vars :: p a
   }
 
-data ExprCtx p a = ExprCtx
-  { self :: p a
-  , next :: p a
-  }
-
-toExprCtx :: BindCtx p a b -> ExprCtx p b
-toExprCtx BindCtx{ self, next, vars } = ExprCtx{ self = self vars, next = next vars }
-
 data Assoc = N | L | R
 
 data Operator p a b
@@ -41,11 +31,13 @@ data Operator p a b
 
 toBindParser :: Parsing p => Operator p a b -> BindParser p a b
 toBindParser = \case
-  Infix N wrap op -> (\ ExprCtx{ next } -> wrap (try (next <**> op) <*> next)) . toExprCtx
-  Infix L wrap op -> (\ ExprCtx{ next } -> chainl1_ next wrap op) . toExprCtx
-  Infix R wrap op -> (\ ExprCtx{ self, next } -> wrap (try (next <**> op) <*> self)) . toExprCtx
+  Infix N wrap op -> fromInfix $ \ _    next -> wrap (try (next <**> op) <*> next)
+  Infix L wrap op -> fromInfix $ \ _    next -> chainl1_ next wrap op
+  Infix R wrap op -> fromInfix $ \ self next -> wrap (try (next <**> op) <*> self)
   Binder p        -> p
   Atom p          -> p . vars
+  where
+  fromInfix f BindCtx{ self, next, vars } = f (self vars) (next vars)
 
 type BindParser p a b = BindCtx p a b -> p b
 type Table p a b = [[Operator p a b]]
