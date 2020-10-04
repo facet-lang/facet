@@ -49,7 +49,7 @@ library
     Facet.Functor.K
     Facet.Module
     Facet.Name
-    Facet.Parser
+    Facet.Parser.Table
     Facet.Pretty
     Facet.Print
     Facet.REPL
