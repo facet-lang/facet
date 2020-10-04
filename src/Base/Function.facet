@@ -31,36 +31,36 @@ uncurry
 
 # fixme: do we want to support mixfix syntax?
 # fixme: how do we want to specify fixity?
-(<<)
+_ << _
 : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
 { a -> f (g a) }
 # NB: equivalently: (<<) : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (a : A) -> C = f (g a)
 
-(>>)
+_ >> _
 : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (A -> C)
 { a -> f (g a) }
 # NB: equivalently: (>>) : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (a : A) -> C = f (g a)
 
 
 # fixme: I honestly can’t tell if these are backwards relative to composition or not
-(<|)
+_ <| _
 : { A, B : Type } -> (f : A -> B) -> (a : A) -> B
 { f a }
 # NB: equivalently: { A, B : Type } -> (f : A -> B) -> A -> B = f
 # NB: equivalently: { A, B : Type } -> (A -> B) -> A -> B = id
 
-(|>)
+_ |> _
 : { A, B : Type } -> (a : A) -> (f : A -> B) -> B
 { f a }
 
 
 case
 : { A, B : Type } -> A -> (A -> B) -> B
-{ (|>) }
+{ (_ |> _) }
 
 # desugars to:
 # case
 # : { A : Base.Type.Type } -> { B : Base.Type.Type } -> A -> (A -> B) -> B
-# { (Base.Function.|>) }
+# { (_ Base.Function.|> _) }
 
 }
