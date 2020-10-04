@@ -8,12 +8,11 @@ module Facet.Functor.K
 import Control.Applicative (liftA2)
 import Data.Coerce
 import Silkscreen
-import Silkscreen.Fresh
 import Silkscreen.Nesting
 import Silkscreen.Precedence
 
 newtype K a b = K { getK :: a }
-  deriving (Eq, Foldable, FreshPrinter, Functor, Monoid, NestingPrinter, Num, Ord, PrecedencePrinter, Printer, Semigroup, Show, Traversable)
+  deriving (Eq, Foldable, Functor, Monoid, NestingPrinter, Num, Ord, PrecedencePrinter, Printer, Semigroup, Show, Traversable)
 
 instance Monoid a => Applicative (K a) where
   pure _ = K mempty

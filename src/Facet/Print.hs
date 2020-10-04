@@ -87,6 +87,10 @@ instance Printer Doc where
   liftDoc0 = Doc mempty
   liftDoc1 f (Doc m d) = Doc m (f d)
   liftDoc2 f (Doc m1 d1) (Doc m2 d2) = Doc (m1 <> m2) (f d1 d2)
+  -- these combinators destroy free variables :(
+  column    f = Doc mempty (column    (getDoc . f))
+  nesting   f = Doc mempty (nesting   (getDoc . f))
+  pageWidth f = Doc mempty (pageWidth (getDoc . f))
 
 newtype Print = Print { runPrint :: (Context -> Print -> Print) -> Prec Context (Rainbow Doc) }
   deriving (Monoid, Printer, Semigroup)

@@ -20,7 +20,7 @@ import           Control.Monad.IO.Class
 import           Data.Bifunctor (first)
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
-import           Silkscreen
+import           Silkscreen hiding (column, width)
 import qualified System.Console.Terminal.Size as Size
 import           System.IO (Handle, stdout)
 

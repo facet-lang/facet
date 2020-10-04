@@ -4,8 +4,3 @@ source-repository-package
   type: git
   location: https://github.com/fused-effects/fused-effects-parser.git
   tag: 90b0b6bd9afddd48a1208f7d09d8a81f1ced9793
-
-source-repository-package
-  type: git
-  location: https://github.com/robrix/silkscreen.git
-  tag: 3559d3ef929ba2fc54a38a86e1d0c3e0c7e47145
