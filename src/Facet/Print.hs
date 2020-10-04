@@ -32,7 +32,6 @@ import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
-import qualified Facet.Surface as S
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
 import qualified Facet.Surface.Module as SM
@@ -183,7 +182,7 @@ printSurfaceType :: ST.Type -> Print
 printSurfaceType = ST.fold alg
   where
   alg = \case
-    ST.Free n  -> sfree (S.getTName n)
+    ST.Free n  -> sfree (ST.getTName n)
     ST.Bound n -> sbound n
     ST.Type    -> _Type
     ST.Unit    -> _Unit
@@ -235,7 +234,7 @@ printSurfaceExpr :: SE.Expr -> Print
 printSurfaceExpr = SE.fold alg
   where
   alg = \case
-    SE.Free n  -> sfree (S.getEName n)
+    SE.Free n  -> sfree (SE.getEName n)
     SE.Bound n -> sbound n
     SE.Lam n b -> lam (sbound n) b
     f SE.:$  a -> f $$  a
@@ -274,8 +273,8 @@ printSurfaceModule = SM.fold alg
   where
   alg = \case
     SM.Module  n b -> module' n b
-    SM.DefTerm n d -> defTerm (sfree (S.getEName n)) (printSurfaceDecl d)
-    SM.DefType n d -> defType (sfree (S.getTName n)) (printSurfaceDecl d)
+    SM.DefTerm n d -> defTerm (sfree (SE.getEName n)) (printSurfaceDecl d)
+    SM.DefType n d -> defType (sfree (ST.getTName n)) (printSurfaceDecl d)
     SM.Ann _ t     -> t
 
 
