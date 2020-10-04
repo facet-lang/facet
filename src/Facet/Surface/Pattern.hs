@@ -2,7 +2,7 @@ module Facet.Surface.Pattern
 ( Pattern(..)
 ) where
 
-import qualified Facet.Surface as S
+import qualified Facet.Surface.Expr as S
 
 data Pattern
   = Wildcard
