@@ -6,6 +6,7 @@ module Facet.Surface.Expr
 , global
 , bound
 , lam
+, unLam
 , ($$)
 , unit
 , (**)
@@ -13,6 +14,7 @@ module Facet.Surface.Expr
 , fold
 ) where
 
+import Control.Effect.Empty
 import Control.Effect.Parser.Span (Span)
 import Data.String (IsString(..))
 import Data.Text (Text)
@@ -33,6 +35,12 @@ bound = In . Bound
 
 lam :: Name -> Expr -> Expr
 lam = fmap In . Lam
+
+unLam :: Has Empty sig m => Expr -> m (Name, Expr)
+unLam e = case out e of
+  Lam n b -> pure (n, b)
+  _       -> empty
+
 
 ($$) :: Expr -> Expr -> Expr
 ($$) = fmap In . (:$)
