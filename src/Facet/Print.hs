@@ -256,7 +256,7 @@ printSurfaceDecl = go
   where
   go = SD.out >>> \case
     t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
-    t SD.:=> b -> bimap sbound printSurfaceType t >~> go b
+    t SD.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefix (SD.unForAll . SD.dropAnn) b))
     t SD.:-> b -> bimap sbound printSurfaceType t >-> go b
     SD.Ann _ d -> go d
 
