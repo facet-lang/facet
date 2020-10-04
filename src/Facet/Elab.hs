@@ -8,10 +8,8 @@
 module Facet.Elab
 ( Context
 , implicit
-, elab
 , runEnv
 , EnvC(..)
-, Elab(..)
 , Check(..)
 , Synth(..)
 , check
@@ -68,17 +66,11 @@ type Context = IntMap.IntMap Type
 implicit :: Env.Env
 implicit = Env.fromList [ (T.pack "Type", MName (T.pack "Facet") ::: C._Type) ]
 
-elab :: (Elab m a ::: Maybe Type) -> m a
-elab = uncurryAnn runElab
-
 runEnv :: MName -> Env.Env -> Context -> EnvC m a -> m a
 runEnv n e c m = runEnvC m n e c
 
 newtype EnvC m a = EnvC { runEnvC :: MName -> Env.Env -> Context -> m a }
   deriving (Algebra (Reader MName :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Env.Env (ReaderC Context m))
-
-newtype Elab m a = Elab { runElab :: Maybe Type -> m a }
-  deriving (Algebra (Reader (Maybe Type) :+: sig), Applicative, Functor, Monad) via ReaderC (Maybe Type) m
 
 
 newtype Check m a = Check { runCheck :: Type -> m a }
