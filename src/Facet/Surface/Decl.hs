@@ -7,6 +7,7 @@ module Facet.Surface.Decl
 , unForAll
 , (>->)
 , (.=)
+, dropAnn
 , DeclF(..)
 , fold
 ) where
@@ -43,6 +44,13 @@ infixr 1 >->
 (.=) = fmap In . (:=)
 
 infix 1 .=
+
+
+dropAnn :: Decl -> Decl
+dropAnn d = case out d of
+  Ann _ d -> d
+  _       -> d
+
 
 data DeclF a
   = (Name ::: Type) :=> a
