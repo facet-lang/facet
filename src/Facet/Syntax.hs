@@ -8,6 +8,7 @@ module Facet.Syntax
 , curryAnn
 , (:=)(..)
 , Stack(..)
+, unprefix
 ) where
 
 import Data.Bifunctor
@@ -53,3 +54,10 @@ data Stack a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infixl 5 :>
+
+unprefix :: (t -> Maybe (a, t)) -> t -> (Stack a, t)
+unprefix un = go Nil
+  where
+  go as t = case un t of
+    Just (a, t') -> go (as :> a) t'
+    Nothing      -> (as, t)
