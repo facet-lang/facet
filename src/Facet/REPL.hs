@@ -54,7 +54,7 @@ files_ = lens files (\ r files -> r{ files })
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
-  (line, resp) <- prompt "λ "
+  (line, resp) <- prompt (cyan <> "\ESC]0;facet\x7λ " <> plain)
   runError (print . prettyNotice) pure $ case resp of
     -- FIXME: evaluate expressions
     Just resp -> runParserWithString (Pos line 0) resp (runFacet 0 (whole commandParser)) >>= runAction
@@ -62,6 +62,9 @@ loop = do
   loop
   where
   commandParser = parseCommands commands
+  cyan = "\ESC[1;36m\STX"
+  plain = "\ESC[0m\STX"
+
 
   runAction = \case
     Help -> print helpDoc
