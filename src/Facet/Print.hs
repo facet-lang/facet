@@ -25,6 +25,7 @@ module Facet.Print
 ) where
 
 import           Control.Applicative ((<**>))
+import           Control.Category ((>>>))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Coerce
@@ -231,16 +232,16 @@ l ** r = tupled [l, r]
 
 
 printSurfaceExpr :: SE.Expr -> Print
-printSurfaceExpr = SE.fold alg
+printSurfaceExpr = go
   where
-  alg = \case
+  go = SE.out >>> \case
     SE.Free n  -> sfree (SE.getEName n)
     SE.Bound n -> sbound n
-    SE.Lam n b -> lam (sbound n) b
-    f SE.:$  a -> f $$  a
+    SE.Lam n b -> lam (sbound n) (go b)
+    f SE.:$  a -> go f $$  go a
     SE.Unit    -> unit
-    l SE.:*  r -> l **  r
-    SE.Ann _ t -> t
+    l SE.:*  r -> go l **  go r
+    SE.Ann _ t -> go t
 
 
 -- FIXME: Use _ in binding positions for unused variables
