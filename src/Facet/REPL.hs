@@ -39,13 +39,21 @@ import           Text.Parser.Token hiding (brackets, comma)
 repl :: IO ()
 repl
   = runReadlineWithHistory
-  . evalState REPL{ files = mempty }
+  . evalState REPL{ files = mempty, promptFunction = defaultPromptFunction }
   . evalEmpty
   . evalFresh 0
   $ loop
 
+defaultPromptFunction :: Int -> IO String
+defaultPromptFunction _ = pure $ "\ESC]0;facet\x7" <> cyan <> "λ " <> plain
+  where
+  cyan = "\ESC[1;36m\STX"
+  plain = "\ESC[0m\STX"
+
+
 data REPL = REPL
-  { files :: Map.Map FilePath File
+  { files          :: Map.Map FilePath File
+  , promptFunction :: Int -> IO String
   }
 
 data File = File
@@ -57,7 +65,7 @@ files_ = lens files (\ r files -> r{ files })
 
 loop :: (Has Empty sig m, Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
-  (line, resp) <- prompt ("\ESC]0;facet\x7λ ")
+  (line, resp) <- prompt
   runError (print . prettyNotice) pure $ case resp of
     -- FIXME: evaluate expressions
     Just resp -> runParserWithString (Pos line 0) resp (runFacet 0 (whole commandParser)) >>= runAction
@@ -128,11 +136,12 @@ helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
   w = align . fillSep . map pretty . words
 
 
-prompt :: (Has Fresh sig m, Has Readline sig m) => String -> m (Int, Maybe String)
-prompt p = (,) <$> fresh <*> getInputLine (cyan <> p <> plain)
-  where
-  cyan = "\ESC[1;36m\STX"
-  plain = "\ESC[0m\STX"
+prompt :: (Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m (Int, Maybe String)
+prompt = do
+  line <- fresh
+  fn <- gets promptFunction
+  p <- liftIO $ fn line
+  (,) line <$> getInputLine p
 
 print :: (Has Readline sig m, MonadIO m) => Doc AnsiStyle -> m ()
 print d = do
