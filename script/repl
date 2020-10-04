@@ -4,6 +4,8 @@
 
 set -e
 
+echo -n -e "\033]0;ghci\007"
+
 cd "$(dirname "$0")/.."
 
 # cabal v2-build all --only-dependencies
