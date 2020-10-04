@@ -55,9 +55,9 @@ data Stack a
 
 infixl 5 :>
 
-unprefix :: (t -> Maybe (a, t)) -> t -> (Stack a, t)
-unprefix un = go Nil
+unprefix :: (t -> Maybe (a, t)) -> t -> ([a], t)
+unprefix un = go id
   where
   go as t = case un t of
-    Just (a, t') -> go (as :> a) t'
-    Nothing      -> (as, t)
+    Just (a, t') -> go (as . (a:)) t'
+    Nothing      -> (as [], t)
