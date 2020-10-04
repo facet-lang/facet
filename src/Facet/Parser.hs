@@ -24,8 +24,12 @@ import qualified Data.HashSet as HashSet
 import           Data.Text (Text)
 import           Facet.Name
 import           Facet.Parser.Table
-import qualified Facet.Surface as S
+import qualified Facet.Surface.Decl as S
+import qualified Facet.Surface.Expr as S
+import qualified Facet.Surface.Module as S
 import qualified Facet.Surface.Pattern as S
+import qualified Facet.Surface.Type as S
+import qualified Facet.Syntax as S
 import           Prelude hiding (lines, null, product, span)
 import           Text.Parser.Char
 import           Text.Parser.Combinators
