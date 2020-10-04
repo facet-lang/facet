@@ -28,7 +28,6 @@ import           Control.Applicative ((<**>))
 import           Control.Category ((>>>))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
-import           Data.Coerce
 import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Name as N
@@ -51,7 +50,7 @@ getPrint :: Print -> PP.Doc ANSI.AnsiStyle
 getPrint = PP.reAnnotate terminalStyle . getPrint'
 
 getPrint' :: Print -> PP.Doc Highlight
-getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . (`runPrint` const id) . group
+getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . runPrint . group
 
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
@@ -75,13 +74,8 @@ terminalStyle = \case
   len = length colours
 
 
-newtype Print = Print { runPrint :: (Context -> Print -> Print) -> Prec Context (Rainbow (PP.Doc Highlight)) }
-  deriving (Monoid, Printer, Semigroup)
-
-instance PrecedencePrinter Print where
-  type Level Print = Context
-  askingPrec = coerce (askingPrec :: (Context -> (Context -> Print -> Print) -> Prec Context (Rainbow (PP.Doc Highlight))) -> (Context -> Print -> Print) -> Prec Context (Rainbow (PP.Doc Highlight)))
-  localPrec f a = Print $ \ t -> localPrec f (askingPrec ((`runPrint` t) . (`t` a)))
+newtype Print = Print { runPrint :: Prec Context (Rainbow (PP.Doc Highlight)) }
+  deriving (Monoid, PrecedencePrinter, Printer, Semigroup)
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
