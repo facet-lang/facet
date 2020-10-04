@@ -197,7 +197,7 @@ infixr 1 >~>
 
 -- Expressions
 
-elabExpr :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => (SE.Expr ::: Maybe Type) -> Elab m (expr ::: Type)
+elabExpr :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m, C.Expr expr) => (SE.Expr ::: Maybe Type) -> m (expr ::: Type)
 elabExpr (t ::: _T) = SE.fold alg t _T
   where
   alg t _T = case t of
