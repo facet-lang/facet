@@ -127,13 +127,13 @@ arrow :: (Printer p, Ann p ~ Highlight) => p
 arrow = op (pretty "->")
 
 
-cases :: Print -> [Print] -> Print
-cases v cs = whenPrec (/= Expr) (prec Expr . withTransition (\case{ Expr -> id ; _ -> (\ b -> arrow <> group (nest 2 (line <> withTransition (const id) b))) }) . group . align . braces . enclose space (flatAlt line space))
-  . encloseSep
-    mempty
-    mempty
-    (flatAlt (space <> comma <> space) (comma <> space))
-  $ map (\ b -> withTransition (const id) (prec Pattern v) <+> prec Expr b) cs
+cases :: Print -> Print -> Print
+cases v b
+  = group
+  . align
+  . braces
+  . enclose space (flatAlt line space)
+  $ prec Pattern v <+> arrow <+> group (nest 2 (line' <> prec Expr b))
 
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
@@ -246,7 +246,7 @@ printSurfaceExpr = go
 
 -- FIXME: Use _ in binding positions for unused variables
 lam :: Print -> Print -> Print
-lam n b = cases n [b]
+lam n b = cases n b
 
 unit :: Print
 unit = annotate Con $ pretty "Unit"
