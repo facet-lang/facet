@@ -16,17 +16,20 @@ module Facet.Surface.Type
 , fold
 ) where
 
-import Control.Effect.Parser.Span (Span)
 import Data.String (IsString(..))
 import Data.Text (Text)
 import Facet.Name
 import Facet.Syntax
 import Prettyprinter (Pretty)
+import Text.Parser.Position (Located(..), Span)
 
 newtype TName = TName { getTName :: Text }
   deriving (Eq, IsString, Ord, Pretty, Show)
 
 newtype Type = In { out :: TypeF Type }
+
+instance Located Type where
+  locate = fmap In . Ann
 
 tglobal :: TName -> Type
 tglobal = In . Free

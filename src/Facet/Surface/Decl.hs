@@ -10,13 +10,16 @@ module Facet.Surface.Decl
 , fold
 ) where
 
-import Control.Effect.Parser.Span (Span)
 import Facet.Name
 import Facet.Surface.Expr (Expr)
 import Facet.Surface.Type (Type)
 import Facet.Syntax ((:::)(..))
+import Text.Parser.Position (Located(..), Span)
 
 newtype Decl = In { out :: DeclF Decl }
+
+instance Located Decl where
+  locate = fmap In . Ann
 
 -- | Universal quantification.
 (>=>) :: (Name ::: Type) -> Decl -> Decl

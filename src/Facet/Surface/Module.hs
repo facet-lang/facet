@@ -9,13 +9,16 @@ module Facet.Surface.Module
 , fold
 ) where
 
-import Control.Effect.Parser.Span (Span)
 import Facet.Name
 import Facet.Surface.Decl (Decl)
 import Facet.Surface.Expr (EName)
 import Facet.Surface.Type (TName)
+import Text.Parser.Position (Located(..), Span)
 
 newtype Module = In { out :: ModuleF Module }
+
+instance Located Module where
+  locate = fmap In . Ann
 
 module' :: MName -> [Module] -> Module
 module' = fmap In . Module

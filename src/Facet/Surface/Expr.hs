@@ -15,17 +15,20 @@ module Facet.Surface.Expr
 ) where
 
 import Control.Effect.Empty
-import Control.Effect.Parser.Span (Span)
 import Data.String (IsString(..))
 import Data.Text (Text)
 import Facet.Name
 import Prelude hiding ((**))
 import Prettyprinter (Pretty)
+import Text.Parser.Position (Located(..), Span)
 
 newtype EName = EName { getEName :: Text }
   deriving (Eq, IsString, Ord, Pretty, Show)
 
 newtype Expr = In { out :: ExprF Expr }
+
+instance Located Expr where
+  locate = fmap In . Ann
 
 global :: EName -> Expr
 global = In . Free
