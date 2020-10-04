@@ -18,8 +18,8 @@ import           Control.Effect.Error
 import           Control.Effect.Reader (Reader, ask)
 import           Control.Monad.Fix (MonadFix)
 
-runError :: Applicative m => ErrorC c e m a -> m (Either (c, e) a)
-runError = E.runError (pure . Left) (pure . Right) . runErrorC
+runError :: (c -> e -> m b) -> (a -> m b) -> ErrorC c e m a -> m b
+runError e p = E.runError (uncurry e) p . runErrorC
 
 newtype ErrorC c e m a = ErrorC { runErrorC :: E.ErrorC (c, e) m a }
   deriving (Applicative, Functor, Monad, MonadFix)
