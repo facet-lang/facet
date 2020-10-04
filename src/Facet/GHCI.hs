@@ -23,7 +23,7 @@ import qualified Facet.Core as C
 import           Facet.Elab
 import qualified Facet.Module as Module
 import           Facet.Name (MName(..))
-import           Facet.Parser (Facet(..), decl, runFacet, whole)
+import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
 import qualified Facet.Surface.Module as S
@@ -42,7 +42,7 @@ elabString :: MonadIO m => Facet (ParserC (Either Notice)) S.Module -> String ->
 elabString = elabPathString Nothing
 
 elabFile :: MonadIO m => FilePath -> m ()
-elabFile path = liftIO (readFile path) >>= elabPathString (Just path) decl
+elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) S.Module -> String -> m ()
 elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . ($ (Span (Pos 0 0) (Pos 0 0))) . runError . runEnv (MName mempty) implicit mempty . elabModule of
