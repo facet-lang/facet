@@ -19,6 +19,7 @@ import           Control.Carrier.Reader
 import           Control.Selective
 import           Data.Char (isSpace)
 import           Data.Coerce
+import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
 import           Data.Text (Text)
 import           Facet.Name
@@ -260,6 +261,11 @@ ename  = ident nameStyle
 _hname = ident hnameStyle
 tname :: (Monad p, TokenParsing p) => p S.TName
 tname = ident tnameStyle
+
+mname :: (Monad p, TokenParsing p) => p MName
+mname = token (runUnspaced (foldl' (:.) . MName <$> comp <* dot <*> sepBy comp dot))
+  where
+  comp = ident tnameStyle
 
 reserved :: HashSet.HashSet String
 reserved = HashSet.singleton "_"
