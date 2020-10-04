@@ -172,7 +172,7 @@ printSurfaceType = go
     ST.Bound n -> sbound n
     ST.Type    -> _Type
     ST.Unit    -> _Unit
-    t ST.:=> b -> bimap sbound go t >~> go b
+    t ST.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefix (ST.unForAll . ST.dropAnn) b))
     f ST.:$  a -> go f $$  go a
     a ST.:-> b -> go a --> go b
     l ST.:*  r -> go l **  go r
@@ -212,8 +212,19 @@ f $$ a = askingPrec $ \case
 l ** r = tupled [l, r]
 
 (>~>) :: (Print ::: Print) -> Print -> Print
--- FIXME: combine quantification over type variables of the same kind
 (n ::: t) >~> b = group (align (braces (space <> ann (var n ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
+
+(>~~>) :: [Print ::: ST.Type] -> Print -> Print
+ts >~~> b = foldr go b (groupByType ST.aeq ts)
+  where
+  go (t, ns) b = (encloseSep mempty mempty (comma <> space) ns ::: printSurfaceType t) >~> b
+
+groupByType :: (t -> t -> Bool) -> [(n ::: t)] -> [(t, [n])]
+groupByType eq = \case
+  []   -> []
+  x:xs -> (ty x, tm x:map tm ys) : groupByType eq zs
+    where
+    (ys,zs) = span (eq (ty x) . ty) xs
 
 
 printSurfaceExpr :: SE.Expr -> Print
