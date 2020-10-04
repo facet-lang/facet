@@ -67,9 +67,9 @@ implicit :: Env.Env
 implicit = Env.fromList [ (T.pack "Type", MName (T.pack "Facet") ::: C._Type) ]
 
 elab :: MName -> Env.Env -> Context -> Elab m a -> m a
-elab n e c m = runEnvC m n e c
+elab n e c (Elab m) = m n e c
 
-newtype Elab m a = Elab { runEnvC :: MName -> Env.Env -> Context -> m a }
+newtype Elab m a = Elab (MName -> Env.Env -> Context -> m a)
   deriving (Algebra (Reader MName :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Env.Env (ReaderC Context m))
 
 
