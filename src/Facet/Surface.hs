@@ -29,7 +29,6 @@ module Facet.Surface
 , defTerm
 , defType
 , (:::)(..)
-, Located(..)
 ) where
 
 import Facet.Surface.Decl as D
@@ -38,4 +37,3 @@ import Facet.Surface.Module as M
 import Facet.Surface.Type as T
 import Facet.Syntax ((:::)(..))
 import Prelude hiding ((**))
-import Text.Parser.Position (Located(..))
