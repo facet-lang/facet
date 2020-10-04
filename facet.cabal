@@ -53,7 +53,6 @@ library
     Facet.REPL
     Facet.REPL.Parser
     Facet.Signature
-    Facet.Surface
     Facet.Surface.Decl
     Facet.Surface.Expr
     Facet.Surface.Module
