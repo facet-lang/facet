@@ -66,11 +66,11 @@ type Context = IntMap.IntMap Type
 implicit :: Env.Env
 implicit = Env.fromList [ (T.pack "Type", MName (T.pack "Facet") ::: C._Type) ]
 
-elab :: MName -> Env.Env -> Context -> Elab m a -> m a
-elab n e c (Elab m) = m n e c
+elab :: MName -> Span -> Env.Env -> Context -> Elab m a -> m a
+elab n s e c (Elab m) = m n s e c
 
-newtype Elab m a = Elab (MName -> Env.Env -> Context -> m a)
-  deriving (Algebra (Reader MName :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Env.Env (ReaderC Context m))
+newtype Elab m a = Elab (MName -> Span -> Env.Env -> Context -> m a)
+  deriving (Algebra (Reader MName :+: Reader Span :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Span (ReaderC Env.Env (ReaderC Context m)))
 
 
 newtype Check m a = Check { runCheck :: Type -> m a }
