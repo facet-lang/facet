@@ -7,6 +7,7 @@ module Facet.Surface.Type
 , tglobal
 , tbound
 , (>~>)
+, unForAll
 , (-->)
 , (.$)
 , (.*)
@@ -17,6 +18,7 @@ module Facet.Surface.Type
 , fold
 ) where
 
+import Control.Effect.Empty
 import Data.String (IsString(..))
 import Data.Text (Text)
 import Facet.Name
@@ -41,6 +43,11 @@ tbound = In . Bound
 (>~>) :: (Name ::: Type) -> Type -> Type
 (>~>) = fmap In . (:=>)
 infixr 1 >~>
+
+unForAll :: Has Empty sig m => Type -> m (Name ::: Type, Type)
+unForAll t = case out t of
+  t :=> b -> pure (t, b)
+  _       -> empty
 
 (-->) :: Type -> Type -> Type
 (-->) = fmap In . (:->)
