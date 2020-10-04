@@ -87,7 +87,7 @@ whole p = whiteSpace *> p <* eof
 
 
 module' :: (Monad p, PositionParsing p) => Facet p S.Module
-module' = locating $ S.module' <$> mname <* colon <* symbol "Module" <*> many decl
+module' = locating $ S.module' <$> mname <* colon <* symbol "Module" <*> braces (many decl)
 
 decl :: (Monad p, PositionParsing p) => Facet p S.Module
 decl = locating
