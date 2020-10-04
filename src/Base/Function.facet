@@ -6,13 +6,13 @@ Base.Function : Module
 id
 : { A : Type } -> (x : A) -> A
 { x }
-# NB: equivalently: id : {A : Type } -> A -> A = {x -> x}
+# NB: equivalently: id : {A : Type} -> A -> A {x -> x}
 
 const
 : { A, B : Type } -> (x : A) -> (_ : B) -> A
 { x }
-# NB: equivalently: const : { A, B : Type } -> (x : A) -> B -> A = { _ -> x }
-# NB: equivalently: const : { A, B : Type } -> A -> B -> A = { _ _ -> x }
+# NB: equivalently: const : { A, B : Type } -> (x : A) -> B -> A { _ -> x }
+# NB: equivalently: const : { A, B : Type } -> A -> B -> A { x _ -> x }
 
 flip
 : { A, B, C : Type } -> (f : A -> B -> C) -> (B -> A -> C) # NB: this rightmost set of parens is technically redundant, but useful to understand what the function does
@@ -34,20 +34,20 @@ uncurry
 _ << _
 : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
 { a -> f (g a) }
-# NB: equivalently: (<<) : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (a : A) -> C = f (g a)
+# NB: equivalently: (<<) : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (a : A) -> C { f (g a) }
 
 _ >> _
 : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (A -> C)
 { a -> f (g a) }
-# NB: equivalently: (>>) : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (a : A) -> C = f (g a)
+# NB: equivalently: (>>) : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (a : A) -> C { f (g a) }
 
 
 # fixme: I honestly can’t tell if these are backwards relative to composition or not
 _ <| _
 : { A, B : Type } -> (f : A -> B) -> (a : A) -> B
 { f a }
-# NB: equivalently: { A, B : Type } -> (f : A -> B) -> A -> B = f
-# NB: equivalently: { A, B : Type } -> (A -> B) -> A -> B = id
+# NB: equivalently: { A, B : Type } -> (f : A -> B) -> A -> B { f }
+# NB: equivalently: { A, B : Type } -> (A -> B) -> A -> B { id }
 
 _ |> _
 : { A, B : Type } -> (a : A) -> (f : A -> B) -> B
