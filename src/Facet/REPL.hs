@@ -101,8 +101,8 @@ load_ = Load <$> (stringLiteral <|> some (satisfy (not . isSpace)))
 
 type_, kind_ :: (PositionParsing p, Monad p) => p Action
 
-type_ = Type <$> runFacet 0 (whole expr ) -- FIXME: elaborate the expr & show the type
-kind_ = Kind <$> runFacet 0 (whole type') -- FIXME: elaborate the type & show the kind
+type_ = Type <$> runFacet 0 (whole expr )
+kind_ = Kind <$> runFacet 0 (whole type')
 
 
 data Action
