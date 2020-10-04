@@ -4,12 +4,14 @@
 module Facet.Surface.Decl
 ( Decl(..)
 , (>=>)
+, unForAll
 , (>->)
 , (.=)
 , DeclF(..)
 , fold
 ) where
 
+import Control.Effect.Empty
 import Facet.Name
 import Facet.Surface.Expr (Expr)
 import Facet.Surface.Type (Type)
@@ -26,6 +28,11 @@ instance Located Decl where
 (>=>) = fmap In . (:=>)
 
 infixr 1 >=>
+
+unForAll :: Has Empty sig m => Decl -> m (Name ::: Type, Decl)
+unForAll d = case out d of
+  t :=> b -> pure (t, b)
+  _       -> empty
 
 (>->) :: (Name ::: Type) -> Decl -> Decl
 (>->) = fmap In . (:->)
