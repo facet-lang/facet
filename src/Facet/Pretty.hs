@@ -1,5 +1,6 @@
 module Facet.Pretty
-( hPutDoc
+( layoutOptionsForTerminal
+, hPutDoc
 , hPutDocWith
 , putDoc
 , putDocWith
@@ -24,10 +25,15 @@ import           Silkscreen hiding (column, width)
 import qualified System.Console.Terminal.Size as Size
 import           System.IO (Handle, stdout)
 
+layoutOptionsForTerminal :: IO PP.LayoutOptions
+layoutOptionsForTerminal = do
+  s <- maybe 80 Size.width <$> Size.size
+  pure PP.defaultLayoutOptions{ PP.layoutPageWidth = PP.AvailablePerLine s 0.8 }
+
 hPutDoc :: MonadIO m => Handle -> PP.Doc ANSI.AnsiStyle -> m ()
 hPutDoc handle doc = liftIO $ do
-  s <- maybe 80 Size.width <$> Size.size
-  ANSI.renderIO handle (PP.layoutSmart PP.defaultLayoutOptions { PP.layoutPageWidth = PP.AvailablePerLine s 0.8 } (doc <> PP.line))
+  opts <- layoutOptionsForTerminal
+  ANSI.renderIO handle (PP.layoutSmart opts (doc <> PP.line))
 
 hPutDocWith :: MonadIO m => Handle -> (a -> ANSI.AnsiStyle) -> PP.Doc a -> m ()
 hPutDocWith handle style = hPutDoc handle . PP.reAnnotate style
