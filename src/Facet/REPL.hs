@@ -116,7 +116,7 @@ data Action
 load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
   files_ %= Map.insert path File{ loaded = False }
-  runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint . printSurfaceModule
+  runParserWithFile path (runFacet 0 (whole module')) >>= print . getPrint . printSurfaceModule
 
 reload :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 reload = do
@@ -126,7 +126,7 @@ reload = do
   for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
     print $ green (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
-    (runParserWithFile path (runFacet 0 (whole decl)) >>= print . getPrint . printSurfaceModule) `catchError` \ n -> print (indent 2 (prettyNotice n))
+    (runParserWithFile path (runFacet 0 (whole module')) >>= print . getPrint . printSurfaceModule) `catchError` \ n -> print (indent 2 (prettyNotice n))
 
 helpDoc :: Doc AnsiStyle
 helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
