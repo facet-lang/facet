@@ -108,7 +108,7 @@ tsig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Decl
 tsig = build tsigTable (\ _ vars -> sig vars global)
 
 sig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Expr -> Facet p S.Decl
-sig tvars = build (sigTable tvars) (\ _ vars -> (S..=) <$> monotype_ tvars <*> expr_ vars)
+sig tvars = build (sigTable tvars) (\ _ vars -> (S..=) <$> monotype_ tvars <*> comp vars)
 
 binder :: (Monad p, PositionParsing p) => Facet p S.Type -> BindParser (Facet p) S.Expr S.Decl
 binder tvars BindCtx{ self, vars } = locating $ do
