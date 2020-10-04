@@ -33,8 +33,8 @@ toBindParser = \case
   Infix N op -> fromInfix $ \ _    next -> try (next <**> op) <*> next
   Infix L op -> fromInfix $ \ _    next -> chainl1 next op
   Infix R op -> fromInfix $ \ self next -> try (next <**> op) <*> self
-  Binder p        -> p
-  Atom p          -> p . vars
+  Binder p   -> p
+  Atom p     -> p . vars
   where
   fromInfix f BindCtx{ self, next, vars } = f (self vars) (next vars)
 
