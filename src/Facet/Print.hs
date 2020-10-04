@@ -86,15 +86,6 @@ instance PrecedencePrinter Print where
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
 
-withTransition :: (Context -> Print -> Print) -> Print -> Print
-withTransition trans a = Print $ \ _ -> runPrint a trans
-
-whenPrec :: PrecedencePrinter p => (Level p -> Bool) -> (p -> p) -> p -> p
-whenPrec p f = ifPrec p f id
-
-ifPrec :: PrecedencePrinter p => (Level p -> Bool) -> (p -> p) -> (p -> p) -> p -> p
-ifPrec p f g a = askingPrec $ \ p' -> if p p' then f a else g a
-
 
 data Context
   = Null
