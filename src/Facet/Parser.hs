@@ -183,14 +183,14 @@ clause = self . vars
   self vars = (do
     patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
     foldr clause expr_ patterns vars) <?> "clause"
-  clause (start, p) rest vars = bindPattern p $ \ v ext -> do
-    lam <- S.lam v <$> rest (ext vars)
+  clause (start, p) rest vars = bindPattern p $ \ vs ext -> do
+    lam <- foldr (fmap . S.lam) (rest (ext vars)) vs
     end <- position
     pure (S.locate (Span start end) lam)
 
-bindPattern :: PositionParsing p => S.Pattern -> (Name -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p S.Expr) -> Facet p S.Expr
-bindPattern S.Wildcard f = bind __ (\ v -> f v id)
-bindPattern (S.Var n)  f = bind n  (\ v -> f v (S.bound v <$ variable v <|>))
+bindPattern :: PositionParsing p => S.Pattern -> ([Name] -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p S.Expr) -> Facet p S.Expr
+bindPattern S.Wildcard   f = bind __ (\ v -> f [v] id)
+bindPattern (S.Var n)    f = bind n  (\ v -> f [v] (S.bound v <$ variable v <|>))
 
 bindVarPattern :: (PositionParsing p, Coercible t Text) => Maybe t -> (Name -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p res) -> Facet p res
 bindVarPattern Nothing  f = bind __ (\ v -> f v id)
