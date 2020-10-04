@@ -8,6 +8,7 @@
 module Facet.Parser
 ( runFacet
 , Facet(..)
+, module'
 , decl
 , type'
 , expr
@@ -84,6 +85,9 @@ lift = Facet . const
 whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
 
+
+module' :: (Monad p, PositionParsing p) => Facet p S.Module
+module' = locating $ S.module' <$> mname <*> many decl
 
 decl :: (Monad p, PositionParsing p) => Facet p S.Module
 decl = locating
