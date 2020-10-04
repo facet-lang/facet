@@ -85,7 +85,9 @@ whole p = whiteSpace *> p <* eof
 
 
 decl :: (Monad p, PositionParsing p) => Facet p S.Module
-decl = locating $ S.defTerm <$> ename <* colon <*> tsig tglobal
+decl = locating
+   $   S.defTerm <$> ename <* colon <*> tsig tglobal
+   <|> S.defType <$> tname <* colon <*> tsig tglobal
 
 tsigTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Decl
 tsigTable =
