@@ -9,7 +9,7 @@ module Facet.Elab
 ( Context
 , implicit
 , elab
-, EnvC(..)
+, Elab(..)
 , Check(..)
 , Synth(..)
 , check
@@ -66,10 +66,10 @@ type Context = IntMap.IntMap Type
 implicit :: Env.Env
 implicit = Env.fromList [ (T.pack "Type", MName (T.pack "Facet") ::: C._Type) ]
 
-elab :: MName -> Env.Env -> Context -> EnvC m a -> m a
+elab :: MName -> Env.Env -> Context -> Elab m a -> m a
 elab n e c m = runEnvC m n e c
 
-newtype EnvC m a = EnvC { runEnvC :: MName -> Env.Env -> Context -> m a }
+newtype Elab m a = Elab { runEnvC :: MName -> Env.Env -> Context -> m a }
   deriving (Algebra (Reader MName :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Env.Env (ReaderC Context m))
 
 
@@ -127,7 +127,7 @@ app ($$) f a = Synth $ do
 
 -- Types
 
-elabType :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => (ST.Type ::: Maybe Type) -> EnvC m (Type ::: Type)
+elabType :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => (ST.Type ::: Maybe Type) -> Elab m (Type ::: Type)
 elabType (t ::: _K) = ST.fold alg t _K
   where
   alg t _K = case t of
@@ -197,7 +197,7 @@ infixr 1 >~>
 
 -- Expressions
 
-elabExpr :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => (SE.Expr ::: Maybe Type) -> EnvC m (expr ::: Type)
+elabExpr :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => (SE.Expr ::: Maybe Type) -> Elab m (expr ::: Type)
 elabExpr (t ::: _T) = SE.fold alg t _T
   where
   alg t _T = case t of
@@ -250,7 +250,7 @@ l ** r = Check $ \ _T -> do
 
 -- Declarations
 
-elabDecl :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.Decl -> EnvC m (Check (EnvC m) expr ::: Type)
+elabDecl :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.Decl -> Elab m (Check (Elab m) expr ::: Type)
 elabDecl = SD.fold alg
   where
   alg = \case
@@ -274,7 +274,7 @@ elabDecl = SD.fold alg
 
 -- Modules
 
-elabModule :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr, C.Type ty, C.Module expr ty mod) => SM.Module -> EnvC m mod
+elabModule :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr, C.Type ty, C.Module expr ty mod) => SM.Module -> Elab m mod
 elabModule = SM.fold alg
   where
   alg = \case
