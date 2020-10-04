@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Type
 ( TName(..)
@@ -14,6 +15,7 @@ module Facet.Surface.Type
 , _Unit
 , _Type
 , dropAnn
+, aeq
 , TypeF(..)
 , fold
 ) where
@@ -75,6 +77,20 @@ dropAnn :: Type -> Type
 dropAnn e = case out e of
   Ann _ e -> e
   _       -> e
+
+
+aeq :: Type -> Type -> Bool
+aeq = fold $ \ t1 t2 -> case (t1, out t2) of
+  (Free  n1,           Free  n2)           -> n1 == n2
+  (Bound n1,           Bound n2)           -> n1 == n2
+  (Type,               Type)               -> True
+  (Unit,               Unit)               -> True
+  ((n1 ::: t1) :=> b1, (n2 ::: t2) :=> b2) -> n1 == n2 && t1 t2 && b1 b2
+  (f1 :$ a1,           f2 :$ a2)           -> f1 f2 && a1 a2
+  (a1 :-> b1,          a2 :-> b2)          -> a1 a2 && b1 b2
+  (l1 :* r1,           l2 :* r2)           -> l1 l2 && r1 r2
+  (Ann _ t1,           Ann _ t2)           -> t1 t2
+  _                                        -> False
 
 
 data TypeF t
