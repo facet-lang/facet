@@ -85,15 +85,15 @@ instance Has (Reader Span) sig m => S.Located (Elab m a) where
   locate = local . const
 
 
-newtype Check m a = Check { runCheck :: Type -> EnvC m a }
-  deriving (Algebra (Reader Type :+: Reader MName :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC Type (EnvC m)
+newtype Check m a = Check { runCheck :: Type -> m a }
+  deriving (Algebra (Reader Type :+: sig), Applicative, Functor, Monad) via ReaderC Type m
 
-newtype Synth m a = Synth { synth :: EnvC m (a ::: Type) }
+newtype Synth m a = Synth { synth :: m (a ::: Type) }
 
 instance Functor m => Functor (Synth m) where
   fmap f (Synth m) = Synth (first f <$> m)
 
-check :: (Check m a ::: Type) -> EnvC m a
+check :: (Check m a ::: Type) -> m a
 check = uncurryAnn runCheck
 
 switch :: Has (Error P.Print) sig m => Synth m a -> Check m a
@@ -124,7 +124,7 @@ unify t1 t2 = go t1 t2
 
 -- General
 
-bound :: Has (Error P.Print) sig m => Name -> (Name -> e) -> (Int -> P.Print) -> Synth m e
+bound :: (Has (Error P.Print) sig m, Has (Reader Context) sig m) => Name -> (Name -> e) -> (Int -> P.Print) -> Synth m e
 bound n with var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
   Just b  -> pure (with n ::: b)
   Nothing -> freeVariable (prettyNameWith var n)
@@ -159,12 +159,12 @@ elabType (t ::: _K) = ST.fold alg t _K
       Just _K -> r <$ unify _K' _K
       _       -> pure r
 
-tglobal :: (C.Type ty, Has (Error P.Print) sig m) => S.TName -> Synth m ty
+tglobal :: (Has (Reader Env.Env) sig m, C.Type ty, Has (Error P.Print) sig m) => S.TName -> Synth m ty
 tglobal (S.TName s) = Synth $ asks (Env.lookup s) >>= \case
   Just b  -> pure (C.tglobal (tm b :.: s) ::: ty b)
   Nothing -> freeVariable (pretty s)
 
-tbound :: (C.Type ty, Has (Error P.Print) sig m) => Name -> Synth m ty
+tbound :: (C.Type ty, Has (Error P.Print) sig m, Has (Reader Context) sig m) => Name -> Synth m ty
 tbound n = bound n C.tbound P.tvar
 
 _Type :: (Applicative m, C.Type t) => Synth m t
@@ -195,7 +195,7 @@ a --> b = Synth $ do
 infixr 2 -->
 
 (>~>)
-  :: Algebra sig m
+  :: Has (Reader Context) sig m
   => (Name ::: Check m Type)
   -> Check m Type
   -> Synth m Type
@@ -228,23 +228,23 @@ elabExpr (t ::: _T) = SE.fold alg t _T
       Just _T -> r <$ unify _T' _T
       _       -> pure r
 
-eglobal :: (C.Expr expr, Has (Error P.Print) sig m) => S.EName -> Synth m expr
+eglobal :: (Has (Reader Env.Env) sig m, C.Expr expr, Has (Error P.Print) sig m) => S.EName -> Synth m expr
 eglobal (S.EName s) = Synth $ asks (Env.lookup s) >>= \case
   Just b  -> pure (C.global (tm b :.: s) ::: ty b)
   Nothing -> freeVariable (pretty s)
 
-ebound :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Synth m expr
+ebound :: (C.Expr expr, Has (Error P.Print) sig m, Has (Reader Context) sig m) => Name -> Synth m expr
 ebound n = bound n C.bound P.evar
 
 ($$) :: (C.Expr expr, Has (Error P.Print) sig m) => Synth m expr -> Check m expr -> Synth m expr
 ($$) = app (C.$$)
 
-tlam :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
+tlam :: (Has (Reader Context) sig m, C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
 tlam n b = Check $ \ ty -> do
   (n', _T, _B) <- expectQuantifiedType (fromWords "when checking type lambda") ty
   n' ::: _T |- C.tlam n <$> check (b ::: _B)
 
-lam :: (C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
+lam :: (Has (Reader Context) sig m, C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
 lam n b = Check $ \ ty -> do
   (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
   n ::: _A |- C.lam n <$> check (b ::: _B)
@@ -262,7 +262,7 @@ l ** r = Check $ \ _T -> do
 
 -- Declarations
 
-elabDecl :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.Decl -> EnvC m (Check m expr ::: Type)
+elabDecl :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.Decl -> EnvC m (Check (EnvC m) expr ::: Type)
 elabDecl = SD.fold alg
   where
   alg = \case
