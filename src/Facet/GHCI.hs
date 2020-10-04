@@ -11,14 +11,13 @@ module Facet.GHCI
 , toNotice
 ) where
 
-import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, runParser, runParserWithString)
+import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, run, runParser, runParserWithString)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
 import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
-import           Facet.Carrier.Error.Context
 import qualified Facet.Core as C
 import           Facet.Elab
 import qualified Facet.Module as Module
@@ -45,7 +44,7 @@ elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) S.Module -> String -> m ()
-elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . run . elab (MName mempty) (Span (Pos 0 0) (Pos 0 0)) implicit mempty . runError . elabModule of
+elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . run . elab (MName mempty) (Span (Pos 0 0) (Pos 0 0)) implicit mempty . elabModule of
   Left err -> P.putDoc (prettyNotice err)
   Right a  -> P.prettyPrint (Module.interpret a)
   where

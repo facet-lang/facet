@@ -42,11 +42,11 @@ module Facet.Elab
 
 import           Control.Algebra
 import           Control.Carrier.Reader
-import           Control.Effect.Error
 import           Control.Effect.Parser.Span (Span(..))
 import           Data.Bifunctor (first)
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
+import           Facet.Carrier.Error.Context
 import qualified Facet.Core as C
 import qualified Facet.Env as Env
 import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
@@ -66,11 +66,11 @@ type Context = IntMap.IntMap Type
 implicit :: Env.Env
 implicit = Env.fromList [ (T.pack "Type", MName (T.pack "Facet") ::: C._Type) ]
 
-elab :: MName -> Span -> Env.Env -> Context -> Elab m a -> m a
-elab n s e c (Elab m) = m n s e c
+elab :: Applicative m => MName -> Span -> Env.Env -> Context -> Elab m a -> m (Either (Span, P.Print) a)
+elab n s e c (Elab m) = runReader s (runError (m n e c))
 
-newtype Elab m a = Elab (MName -> Span -> Env.Env -> Context -> m a)
-  deriving (Algebra (Reader MName :+: Reader Span :+: Reader Env.Env :+: Reader Context :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Span (ReaderC Env.Env (ReaderC Context m)))
+newtype Elab m a = Elab (MName -> Env.Env -> Context -> ErrorC Span P.Print (ReaderC Span m) a)
+  deriving (Algebra (Reader MName :+: Reader Env.Env :+: Reader Context :+: Error P.Print :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Env.Env (ReaderC Context (ErrorC Span P.Print (ReaderC Span m))))
 
 
 newtype Check m a = Check { runCheck :: Type -> m a }
