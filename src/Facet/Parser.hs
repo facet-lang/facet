@@ -191,6 +191,10 @@ clause = self . vars
 bindPattern :: PositionParsing p => S.Pattern -> ([Name] -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p S.Expr) -> Facet p S.Expr
 bindPattern S.Wildcard   f = bind __ (\ v -> f [v] id)
 bindPattern (S.Var n)    f = bind n  (\ v -> f [v] (S.bound v <$ variable v <|>))
+bindPattern (S.Tuple ps) f = go [] id ps
+  where
+  go vs ext []     = f vs ext
+  go vs ext (p:ps) = bindPattern p $ \ vs' ext' -> go (vs <> vs') (ext . ext') ps
 
 bindVarPattern :: (PositionParsing p, Coercible t Text) => Maybe t -> (Name -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p res) -> Facet p res
 bindVarPattern Nothing  f = bind __ (\ v -> f v id)
