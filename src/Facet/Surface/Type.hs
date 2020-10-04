@@ -12,6 +12,7 @@ module Facet.Surface.Type
 , (.*)
 , _Unit
 , _Type
+, dropAnn
 , TypeF(..)
 , fold
 ) where
@@ -61,6 +62,12 @@ _Unit = In Unit
 
 _Type :: Type
 _Type = In Type
+
+
+dropAnn :: Type -> Type
+dropAnn e = case out e of
+  Ann _ e -> e
+  _       -> e
 
 
 data TypeF t
