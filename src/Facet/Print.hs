@@ -252,13 +252,13 @@ unit = annotate Con $ pretty "Unit"
 
 
 printSurfaceDecl :: SD.Decl -> Print
-printSurfaceDecl = SD.fold alg
+printSurfaceDecl = go
   where
-  alg = \case
+  go = SD.out >>> \case
     t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
-    t SD.:=> b -> bimap (var . pretty . N.hint) printSurfaceType t >~> b
-    t SD.:-> b -> bimap (var . pretty . N.hint) printSurfaceType t >-> b
-    SD.Ann _ t -> t
+    t SD.:=> b -> bimap (var . pretty . N.hint) printSurfaceType t >~> go b
+    t SD.:-> b -> bimap (var . pretty . N.hint) printSurfaceType t >-> go b
+    SD.Ann _ d -> go d
 
 -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
 (.=) :: Print -> Print -> Print
