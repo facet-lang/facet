@@ -8,6 +8,7 @@ module Facet.REPL
 import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
+import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Parser.Church
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
@@ -20,6 +21,7 @@ import           Data.Char
 import           Data.Foldable (for_)
 import qualified Data.Map as Map
 import           Data.Semigroup
+import           Data.Text.Lazy (unpack)
 import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Print
@@ -28,7 +30,7 @@ import           Facet.Surface.Expr (Expr)
 import           Facet.Surface.Type (Type)
 import           Prelude hiding (print)
 import           Prettyprinter as P hiding (column, width)
-import           Prettyprinter.Render.Terminal (AnsiStyle)
+import           Prettyprinter.Render.Terminal (AnsiStyle, renderLazy)
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Position
@@ -39,6 +41,7 @@ repl
   = runReadlineWithHistory
   . evalState REPL{ files = mempty }
   . evalEmpty
+  . evalFresh 0
   $ loop
 
 data REPL = REPL
@@ -52,9 +55,9 @@ data File = File
 files_ :: Lens' REPL (Map.Map FilePath File)
 files_ = lens files (\ r files -> r{ files })
 
-loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
+loop :: (Has Empty sig m, Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
-  (line, resp) <- prompt (cyan <> "\ESC]0;facet\x7λ " <> plain)
+  (line, resp) <- prompt ("\ESC]0;facet\x7λ ")
   runError (print . prettyNotice) pure $ case resp of
     -- FIXME: evaluate expressions
     Just resp -> runParserWithString (Pos line 0) resp (runFacet 0 (whole commandParser)) >>= runAction
@@ -62,9 +65,6 @@ loop = do
   loop
   where
   commandParser = parseCommands commands
-  cyan = "\ESC[1;36m\STX"
-  plain = "\ESC[0m\STX"
-
 
   runAction = \case
     Help -> print helpDoc
@@ -126,3 +126,15 @@ helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
   entries = map entry commands
   entry c = (concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)) <> maybe mempty ((space <>) . enclose (pretty '<') (pretty '>') . pretty) (meta c), w (usage c))
   w = align . fillSep . map pretty . words
+
+
+prompt :: (Has Fresh sig m, Has Readline sig m) => String -> m (Int, Maybe String)
+prompt p = (,) <$> fresh <*> getInputLine (cyan <> p <> plain)
+  where
+  cyan = "\ESC[1;36m\STX"
+  plain = "\ESC[0m\STX"
+
+print :: (Has Readline sig m, MonadIO m) => Doc AnsiStyle -> m ()
+print d = do
+  opts <- liftIO layoutOptionsForTerminal
+  outputStrLn (unpack (renderLazy (layoutSmart opts d)))
