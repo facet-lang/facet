@@ -165,18 +165,18 @@ instance C.Module Print Print Print where
 
 
 printSurfaceType :: ST.Type -> Print
-printSurfaceType = ST.fold alg
+printSurfaceType = go
   where
-  alg = \case
+  go = ST.out >>> \case
     ST.Free n  -> sfree (ST.getTName n)
     ST.Bound n -> sbound n
     ST.Type    -> _Type
     ST.Unit    -> _Unit
-    t ST.:=> b -> first (var . pretty . N.hint) t >~> b
-    f ST.:$  a -> f $$  a
-    a ST.:-> b -> a --> b
-    l ST.:*  r -> l **  r
-    ST.Ann _ t -> t
+    t ST.:=> b -> bimap (var . pretty . N.hint) go t >~> go b
+    f ST.:$  a -> go f $$  go a
+    a ST.:-> b -> go a --> go b
+    l ST.:*  r -> go l **  go r
+    ST.Ann _ t -> go t
 
 sfree :: Text -> Print
 sfree = var . pretty
