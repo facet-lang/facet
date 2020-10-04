@@ -10,6 +10,7 @@ module Facet.Surface.Expr
 , ($$)
 , unit
 , (**)
+, dropAnn
 , ExprF(..)
 , fold
 ) where
@@ -58,6 +59,12 @@ unit = In Unit
 (**) = fmap In . (:*)
 
 -- FIXME: tupling/unit should take a list of expressions
+
+
+dropAnn :: Expr -> Expr
+dropAnn e = case out e of
+  Ann _ e -> e
+  _       -> e
 
 
 data ExprF e
