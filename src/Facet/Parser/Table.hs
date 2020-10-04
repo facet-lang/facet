@@ -56,4 +56,5 @@ terminate wrap op next = self where self vars = wrap $ op BindCtx{ next, self, v
 
 
 chainl1_ :: Alternative m => m a -> (m a -> m a) -> m (a -> a -> a) -> m a
+-- FIXME this is chainr1_ 😞
 chainl1_ p wrap op = go where go = wrap $ p <**> (flip <$> op <*> go <|> pure id)
