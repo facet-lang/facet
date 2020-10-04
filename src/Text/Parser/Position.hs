@@ -5,6 +5,7 @@ module Text.Parser.Position
 , Span(..)
 , spanning
 , spanned
+, Located(..)
 ) where
 
 import qualified Control.Carrier.Parser.Church as P
@@ -24,3 +25,7 @@ spanned :: PositionParsing p => p a -> p (Span, a)
 spanned p = mk <$> position <*> p <*> position
   where
   mk s a e = (Span s e, a)
+
+
+class Located t where
+  locate :: Span -> t -> t
