@@ -222,7 +222,7 @@ printSurfaceExpr = go
   go = SE.out >>> \case
     SE.Free n  -> sfree (SE.getEName n)
     SE.Bound n -> sbound n
-    SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefix SE.unLam b))
+    SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefix (SE.unLam . SE.dropAnn) b))
     f SE.:$  a -> go f $$  go a
     SE.Unit    -> unit
     l SE.:*  r -> go l **  go r
