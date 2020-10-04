@@ -250,7 +250,7 @@ l ** r = Check $ \ _T -> do
 
 -- Declarations
 
-elabDecl :: (Has (Error P.Print) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.Decl -> Elab m (Check (Elab m) expr ::: Type)
+elabDecl :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.Decl -> m (Check m expr ::: Type)
 elabDecl = SD.fold alg
   where
   alg = \case
