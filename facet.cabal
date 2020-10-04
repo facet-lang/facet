@@ -44,7 +44,6 @@ library
     Facet.Elab
     Facet.Env
     Facet.Expr
-    Facet.Functor.C
     Facet.Module
     Facet.Name
     Facet.Parser
