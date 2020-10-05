@@ -22,7 +22,7 @@ import           Data.Char (isSpace)
 import           Data.Coerce
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
-import           Data.Text (Text, unpack)
+import           Data.Text (Text)
 import           Facet.Name as N hiding (Assoc(..), Op(..))
 import           Facet.Parser.Table
 import qualified Facet.Surface.Decl as D
@@ -98,127 +98,114 @@ module' = spanning $ M.module' <$> mname <* colon <* symbol "Module" <*> braces 
 
 decl :: (Monad p, PositionParsing p) => Facet p M.Module
 decl = spanning
-  $   M.defTerm <$> ename <* colon <*> tsig tglobal
-  <|> M.defType <$> tname <* colon <*> tsig tglobal
+  $   M.defTerm <$> ename <* colon <*> sig
+  <|> M.defType <$> tname <* colon <*> sig
 
 
 -- Declarations
 
-tsigTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type D.Decl
-tsigTable =
+sigTable :: (Monad p, PositionParsing p) => Table (Facet p) D.Decl
+sigTable =
   [ [ Binder (forAll (liftA2 (D.>=>))) ]
+  , [ Binder binder ]
   ]
 
-sigTable :: (Monad p, PositionParsing p) => Facet p T.Type -> Table (Facet p) E.Expr D.Decl
-sigTable tvars =
-  [ [ Binder (binder tvars) ]
-  ]
+sig :: (Monad p, PositionParsing p) => Facet p D.Decl
+sig = build sigTable (const ((D..=) <$> monotype <*> comp))
 
-tsig :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p D.Decl
-tsig = build tsigTable (\ _ vars -> sig vars global)
-
-sig :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p E.Expr -> Facet p D.Decl
-sig tvars = build (sigTable tvars) (\ _ vars -> (D..=) <$> monotype_ tvars <*> comp vars)
-
-binder :: (Monad p, PositionParsing p) => Facet p T.Type -> BindParser (Facet p) E.Expr D.Decl
-binder tvars BindCtx{ self, vars } = spanning $ do
-  (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type_ tvars <* symbolic ')'
-  bindVarPattern i $ \ v ext -> ((v S.::: t) D.>->) <$ arrow <*> self (ext vars)
+binder :: (Monad p, PositionParsing p) => BindParser (Facet p) D.Decl
+binder BindCtx{ self } = spanning $ do
+  (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type' <* symbolic ')'
+  bindVarPattern i $ \ v -> ((v S.::: t) D.>->) <$ arrow <*> self
 
 
 -- Types
 
-typeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type T.Type
+typeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
 typeTable = [ Binder (forAll (liftA2 (curry (review T.forAll_)))) ] : monotypeTable
 
-monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type T.Type
+monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
 monotypeTable =
   [ [ Infix R (curry (review T.arrow_) <$ arrow) ]
   , [ Infix L (pure (curry (review T.app_))) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
-      Atom (const (T._Unit <$ token (string "Unit")))
-    , Atom (const (T._Type <$ token (string "Type")))
-    , Atom id
+      Atom (T._Unit <$ token (string "Unit"))
+    , Atom (T._Type <$ token (string "Type"))
+    , Atom tvar
     ]
   ]
 
 forAll
   :: (Spanned res, Monad p, PositionParsing p)
   => (Facet p (Name S.::: T.Type) -> Facet p res -> Facet p res)
-  -> BindParser (Facet p) T.Type res
-forAll (>=>) BindCtx{ self, vars } = spanning $ do
-  (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
-  let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (review T.bound_ v <$ variable v <|> vars)
-  arrow *> foldr loop self names vars
+  -> BindParser (Facet p) res
+forAll (>=>) BindCtx{ self } = spanning $ do
+  (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
+  let loop i rest = bind i $ \ v -> pure (v S.::: ty) >=> rest
+  arrow *> foldr loop self names
 
 type' :: (Monad p, PositionParsing p) => Facet p T.Type
-type' = type_ tglobal
+type' = build typeTable (terminate parens (toBindParser (Infix L (curry (review T.prd_) <$ comma))))
 
-type_ :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p T.Type
-type_ = build typeTable (terminate parens (toBindParser (Infix L (curry (review T.prd_) <$ comma))))
+monotype :: (Monad p, PositionParsing p) => Facet p T.Type
+monotype = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review T.prd_) <$ comma))))
 
-monotype_ :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p T.Type
-monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review T.prd_) <$ comma))))
-
-tglobal :: (Monad p, TokenParsing p) => Facet p T.Type
-tglobal = review T.global_ <$> tname <?> "variable"
+tvar :: (Monad p, TokenParsing p) => Facet p T.Type
+tvar = review T.global_ <$> tname <?> "variable"
 
 
 -- Expressions
 
-exprTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr E.Expr
+exprTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr
 exprTable =
   [ [ Infix L (pure (curry (review E.app_))) ]
   , [ Atom comp
-    , Atom (const (review E.hole_ <$> hname))
-    , Atom id
+    , Atom (review E.hole_ <$> hname)
+    , Atom evar
     ]
   ]
 
 expr :: (Monad p, PositionParsing p) => Facet p E.Expr
-expr = expr_ global
+expr = build exprTable (terminate parens (toBindParser (Infix L (curry (review E.prd_) <$ comma))))
 
-global :: (Monad p, TokenParsing p) => Facet p E.Expr
-global = review E.global_ <$> ename <?> "variable"
+comp :: (Monad p, PositionParsing p) => Facet p E.Expr
+comp = braces $ build compTable (const expr)
 
-expr_ :: (Monad p, PositionParsing p) => Facet p E.Expr -> Facet p E.Expr
-expr_ = build exprTable (terminate parens (toBindParser (Infix L (curry (review E.prd_) <$ comma))))
-
-comp :: (Monad p, PositionParsing p) => Facet p E.Expr -> Facet p E.Expr
-comp = braces . build compTable (const expr_)
-
-compTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr E.Expr
+compTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr
 compTable =
   [ [ Binder clause ]
   ]
 
-clause :: (Monad p, PositionParsing p) => BindParser (Facet p) E.Expr E.Expr
-clause = self . vars
+clause :: (Monad p, PositionParsing p) => BindParser (Facet p) E.Expr
+clause _ = self
   where
-  self vars = (do
+  self = (do
     patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
-    foldr clause expr_ patterns vars) <?> "clause"
-  clause (start, p) rest vars = bindPattern p $ \ vs ext -> do
-    lam <- foldr (fmap . curry (review E.lam_)) (rest (ext vars)) vs
+    foldr clause expr patterns) <?> "clause"
+  clause (start, p) rest = bindPattern p $ \ vs -> do
+    lam <- foldr (fmap . curry (review E.lam_)) rest vs
     end <- position
     pure (setSpan (Span start end) lam)
+
+evar :: (Monad p, PositionParsing p) => Facet p E.Expr
+evar = spanning $ review E.global_ <$> ename <?> "variable"
 
 
 -- Patterns
 
-bindPattern :: PositionParsing p => P.Pattern -> ([Name] -> (Facet p E.Expr -> Facet p E.Expr) -> Facet p E.Expr) -> Facet p E.Expr
-bindPattern P.Wildcard   f = bind __ (\ v -> f [v] id)
-bindPattern (P.Var n)    f = bind n  (\ v -> f [v] (review E.bound_ v <$ variable v <|>))
+bindPattern :: PositionParsing p => P.Pattern -> ([Name] -> Facet p E.Expr) -> Facet p E.Expr
+bindPattern P.Wildcard   f = bind __ (\ v -> f [v])
+bindPattern (P.Var n)    f = bind n  (\ v -> f [v])
 -- FIXME: this is incorrect since the structure doesn’t get used in the clause
-bindPattern (P.Tuple ps) f = go [] id ps
+bindPattern (P.Tuple ps) f = go [] ps
   where
-  go vs ext []     = f vs ext
-  go vs ext (p:ps) = bindPattern p $ \ vs' ext' -> go (vs <> vs') (ext . ext') ps
+  go vs []     = f vs
+  go vs (p:ps) = bindPattern p $ \ vs' -> go (vs <> vs') ps
 bindPattern (P.Loc _ p) f = bindPattern p f
 
-bindVarPattern :: (PositionParsing p, Coercible t Text) => Maybe t -> (Name -> (Facet p E.Expr -> Facet p E.Expr) -> Facet p res) -> Facet p res
-bindVarPattern Nothing  f = bind __ (\ v -> f v id)
-bindVarPattern (Just n) f = bind n  (\ v -> f v (review E.bound_ v <$ variable v <|>))
+bindVarPattern :: Coercible t Text => Maybe t -> (Name -> Facet p res) -> Facet p res
+bindVarPattern Nothing  = bind __
+bindVarPattern (Just n) = bind n
 
 
 varPattern :: (Monad p, TokenParsing p) => p name -> p (Maybe name)
@@ -288,6 +275,3 @@ hnameStyle = IdentifierStyle
 
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
-
-variable :: PositionParsing p => Name -> p ()
-variable v = token (try (text (hint v) *> notFollowedBy alphaNum)) <?> unpack (hint v)
