@@ -11,6 +11,7 @@ module Facet.Surface.Type
 , unForAll
 , (-->)
 , (.$)
+, unApp
 , (.*)
 , _Unit
 , _Type
@@ -59,6 +60,11 @@ infixr 2 -->
 (.$) :: Type -> Type -> Type
 
 infixl 9 .$
+
+unApp :: Has Empty sig m => Type -> m (Type, Type)
+unApp e = case out e of
+  f :$ a -> pure (f, a)
+  _      -> empty
 
 
 (.*) :: Type -> Type -> Type
