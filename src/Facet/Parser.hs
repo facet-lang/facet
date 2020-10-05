@@ -287,6 +287,9 @@ reserved = HashSet.singleton "_"
 nameChar :: CharParsing p => p Char
 nameChar = alphaNum <|> char '_'
 
+opChar :: CharParsing p => p Char
+opChar = satisfy isPunctuation
+
 enameStyle :: CharParsing p => IdentifierStyle p
 enameStyle = IdentifierStyle
   "name"
@@ -299,8 +302,8 @@ enameStyle = IdentifierStyle
 onameStyle :: CharParsing p => IdentifierStyle p
 onameStyle = IdentifierStyle
   "operator"
-  (satisfy isPunctuation)
-  (satisfy isPunctuation)
+  opChar
+  opChar
   mempty
   Operator
   ReservedOperator
