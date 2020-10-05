@@ -8,6 +8,7 @@ module Facet.Surface.Expr
 , lam
 , unLam
 , ($$)
+, unApp
 , unit
 , (**)
 , dropAnn
@@ -50,6 +51,12 @@ unLam e = case out e of
 ($$) = fmap In . (:$)
 
 infixl 9 $$
+
+unApp :: Has Empty sig m => Expr -> m (Expr, Expr)
+unApp e = case out e of
+  f :$ a -> pure (f, a)
+  _      -> empty
+
 
 unit :: Expr
 unit = In Unit
