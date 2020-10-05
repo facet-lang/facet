@@ -1,13 +1,16 @@
 module Facet.Pretty
-( layoutOptionsForTerminal
+( -- * Output
+  layoutOptionsForTerminal
 , hPutDoc
 , hPutDocWith
 , putDoc
 , putDocWith
+  -- * Variable formatting
 , toAlpha
 , var
 , tvar
 , varFrom
+  -- * Columnar layout
 , tabulate2
   -- * ANSI terminal colours
 , red
@@ -25,6 +28,8 @@ import qualified Prettyprinter.Render.Terminal as ANSI
 import           Silkscreen hiding (column, width)
 import qualified System.Console.Terminal.Size as Size
 import           System.IO (Handle, stdout)
+
+-- Output
 
 layoutOptionsForTerminal :: IO PP.LayoutOptions
 layoutOptionsForTerminal = do
@@ -46,6 +51,8 @@ putDocWith :: MonadIO m => (a -> ANSI.AnsiStyle) -> PP.Doc a -> m ()
 putDocWith = hPutDocWith stdout
 
 
+-- Variable formatting
+
 toAlpha :: String -> Int -> String
 toAlpha alphabet i = alphabet !! r : if q > 0 then show q else ""
   where
@@ -62,6 +69,8 @@ tvar = varFrom ['A'..'Z']
 varFrom :: Printer p => String -> Int -> p
 varFrom alpha i = pretty (toAlpha alpha i)
 
+
+-- Columnar layout
 
 tabulate2 :: PP.Doc ANSI.AnsiStyle -> [(PP.Doc ANSI.AnsiStyle, PP.Doc ANSI.AnsiStyle)] -> PP.Doc ANSI.AnsiStyle
 tabulate2 _ [] = mempty
