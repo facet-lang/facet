@@ -25,7 +25,7 @@ data Operator p a
 
 toBindParser :: (PositionParsing p, Spanned a) => Operator p a -> OperatorParser p a
 toBindParser = \case
-  Prefix  op -> \ _    next -> op <*> next
+  Prefix  op -> \ self _    -> op <*> self
   Infix N op -> \ _    next -> try (next <**> op) <*> next
   Infix L op -> \ _    next -> chainl1Loc next op
   Infix R op -> \ self next -> try (next <**> op) <*> self
