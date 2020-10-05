@@ -51,7 +51,7 @@ unLam e = case out e of
   _       -> empty
 
 _Lam :: Prism' Expr (Name, Expr)
-_Lam = prism' (uncurry lam) (\case{ In (Lam n b) -> Just (n, b) ; _ -> Nothing })
+_Lam = prism' (In . uncurry Lam) (\case{ In (Lam n b) -> Just (n, b) ; _ -> Nothing })
 
 
 ($$) :: Expr -> Expr -> Expr
@@ -65,7 +65,7 @@ unApp e = case out e of
   _      -> empty
 
 _App :: Prism' Expr (Expr, Expr)
-_App = prism' (uncurry ($$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
+_App = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
 
 
 unit :: Expr
@@ -76,7 +76,7 @@ unit = In Unit
 (**) = fmap In . (:*)
 
 _Prd :: Prism' Expr (Expr, Expr)
-_Prd = prism' (uncurry (**)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Nothing })
+_Prd = prism' (In . uncurry (:*)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Nothing })
 
 -- FIXME: tupling/unit should take a list of expressions
 
