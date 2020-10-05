@@ -58,7 +58,7 @@ import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Facet.Type
 import           Prelude hiding ((**))
-import           Silkscreen (fillSep, group, pretty, (<+>), (</>))
+import           Silkscreen (fillSep, group, pretty, softline, (<+>), (</>))
 
 type Context = IntMap.IntMap Type
 
@@ -319,7 +319,7 @@ couldNotUnify :: Has (Error P.Print) sig m => Type -> Type -> m a
 couldNotUnify t1 t2 = mismatch (fromWords "could not unify") (interpret t2) (interpret t1)
 
 couldNotSynthesize :: Has (Error P.Print) sig m => P.Print -> m a
-couldNotSynthesize msg = err $ fromWords "could not synthesize a type for" </> msg
+couldNotSynthesize msg = err $ fromWords "could not synthesize a type for" <> softline <> msg
 
 freeVariable :: Has (Error P.Print) sig m => P.Print -> m a
 freeVariable v = err $ fromWords "variable not in scope:" <+> v
