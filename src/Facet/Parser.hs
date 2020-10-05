@@ -21,7 +21,7 @@ import           Data.Char (isSpace)
 import           Data.Coerce
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
-import           Data.Text (Text)
+import           Data.Text (Text, unpack)
 import           Facet.Name
 import           Facet.Parser.Table
 import qualified Facet.Surface.Decl as S
@@ -269,7 +269,7 @@ arrow :: TokenParsing p => p String
 arrow = symbol "->"
 
 variable :: PositionParsing p => Name -> p ()
-variable v = token (text (hint v) *> notFollowedBy alphaNum)
+variable v = token (try (text (hint v) *> notFollowedBy alphaNum)) <?> unpack (hint v)
 
 
 locating :: (PositionParsing p, Located a) => p a -> p a
