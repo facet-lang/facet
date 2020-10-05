@@ -28,6 +28,7 @@ import           Control.Applicative ((<**>))
 import           Control.Category ((>>>))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
+import           Data.Foldable (foldl')
 import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Name as N
@@ -211,6 +212,9 @@ f $$ a = askingPrec $ \case
 -- FIXME: left-flatten products
 l ** r = tupled [l, r]
 
+($$*) :: Print -> Stack Print -> Print
+($$*) = fmap group . foldl' (\ f a -> prec AppL f <> nest 2 (line <> prec AppR a))
+
 (>~>) :: (Print ::: Print) -> Print -> Print
 (n ::: t) >~> b = group (align (braces (space <> ann (var n ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
@@ -234,7 +238,7 @@ printSurfaceExpr = go
     SE.Free n  -> sfree (SE.getEName n)
     SE.Bound n -> sbound n
     SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (SE.unLam . SE.dropAnn) b))
-    f SE.:$  a -> go f $$  go a
+    f SE.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (SE.unApp . SE.dropAnn) f))
     SE.Unit    -> unit
     l SE.:*  r -> go l **  go r
     SE.Ann _ t -> go t
