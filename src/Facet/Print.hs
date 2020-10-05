@@ -123,11 +123,7 @@ comp
 
 cases :: [Print] -> Print -> Print
 cases vs b
-  = group
-  . align
-  . braces
-  . prec Comp
-  . enclose space (flatAlt line space)
+  = comp
   $ foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> b))) vs
 
 ann :: Printer p => (p ::: p) -> p
