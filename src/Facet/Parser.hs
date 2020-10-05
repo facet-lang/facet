@@ -48,8 +48,8 @@ import           Text.Parser.Token.Style
 -- numeric literals
 -- forcing nullary computations
 
-type EEnv = Map.Map Text E.Expr
-type TEnv = Map.Map Text T.Type
+type EEnv = Map.Map N.EName E.Expr
+type TEnv = Map.Map N.TName T.Type
 
 runFacet :: EEnv -> TEnv -> Facet m a -> m a
 runFacet e t (Facet m) = m e t
