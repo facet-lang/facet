@@ -9,9 +9,9 @@ module Facet.Env
 import           Data.Coerce
 import qualified Data.Map as Map
 import qualified Data.Text as T
+import           Facet.Core.Type
 import           Facet.Name
 import           Facet.Syntax
-import           Facet.Type
 import           Prelude hiding (lookup)
 
 newtype Env = Env { getEnv :: Map.Map T.Text (MName ::: Type) }

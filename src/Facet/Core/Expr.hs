@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Facet.Expr
+module Facet.Core.Expr
 ( Expr(..)
 , interpret
 , subst

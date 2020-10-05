@@ -48,6 +48,7 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import           Facet.Carrier.Error.Context
 import qualified Facet.Core as C
+import           Facet.Core.Type
 import qualified Facet.Env as Env
 import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
 import qualified Facet.Name as N
@@ -58,7 +59,6 @@ import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
 import qualified Facet.Surface.Type as T
 import           Facet.Syntax
-import           Facet.Type
 import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, group, pretty, softline, (<+>), (</>))
 

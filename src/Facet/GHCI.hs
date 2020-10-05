@@ -19,15 +19,15 @@ import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
 import qualified Facet.Core as C
+import qualified Facet.Core.Module as Module
+import qualified Facet.Core.Type as T
 import           Facet.Elab
-import qualified Facet.Module as Module
 import           Facet.Name (MName(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
 import qualified Facet.Surface.Module as S
 import           Facet.Syntax ((:::)(..))
-import qualified Facet.Type as T
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 import qualified Silkscreen as S

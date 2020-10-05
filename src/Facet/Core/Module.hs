@@ -1,16 +1,16 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
-module Facet.Module
+module Facet.Core.Module
 ( Module(..)
 , interpret
 ) where
 
 import qualified Facet.Core as C
-import qualified Facet.Expr as Expr
+import qualified Facet.Core.Expr as Expr
+import qualified Facet.Core.Type as Type
 import           Facet.Name
 import           Facet.Syntax
-import qualified Facet.Type as Type
 
 data Module
   = Module MName [Module]

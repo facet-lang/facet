@@ -5,7 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-noncanonical-monad-instances #-}
-module Facet.Type
+module Facet.Core.Type
 ( Type(..)
 , interpret
 , rename

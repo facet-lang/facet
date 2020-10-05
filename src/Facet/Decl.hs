@@ -1,2 +1,0 @@
-module Facet.Decl
-() where

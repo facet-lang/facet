@@ -40,11 +40,12 @@ library
     Facet.Carrier.Error.Context
     Facet.CLI
     Facet.Core
-    Facet.Decl
+    Facet.Core.Decl
+    Facet.Core.Expr
+    Facet.Core.Module
+    Facet.Core.Type
     Facet.Elab
     Facet.Env
-    Facet.Expr
-    Facet.Module
     Facet.Name
     Facet.Parser
     Facet.Parser.Table
@@ -58,7 +59,6 @@ library
     Facet.Surface.Pattern
     Facet.Surface.Type
     Facet.Syntax
-    Facet.Type
   other-modules:
     Facet.GHCI
     Paths_facet
