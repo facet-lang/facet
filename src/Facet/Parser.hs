@@ -16,6 +16,7 @@ module Facet.Parser
 
 import           Control.Applicative (Alternative(..), liftA2)
 import           Control.Carrier.Reader
+import           Control.Lens (review)
 import           Control.Selective
 import           Data.Char (isSpace)
 import           Data.Coerce
@@ -158,7 +159,7 @@ tglobal = S.tglobal <$> tname <?> "variable"
 
 exprTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Expr S.Expr
 exprTable =
-  [ [ Infix L (pure (S.$$)) ]
+  [ [ Infix L (pure (curry (review S._App))) ]
   , [ Atom comp
     , Atom id
     ]
@@ -171,7 +172,7 @@ global :: (Monad p, TokenParsing p) => Facet p S.Expr
 global = S.global <$> ename <?> "variable"
 
 expr_ :: (Monad p, PositionParsing p) => Facet p S.Expr -> Facet p S.Expr
-expr_ = build exprTable (terminate parens (toBindParser (Infix L ((S.**) <$ comma))))
+expr_ = build exprTable (terminate parens (toBindParser (Infix L (curry (review S._Prd) <$ comma))))
 
 comp :: (Monad p, PositionParsing p) => Facet p S.Expr -> Facet p S.Expr
 comp = braces . build compTable (const expr_)
@@ -188,7 +189,7 @@ clause = self . vars
     patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
     foldr clause expr_ patterns vars) <?> "clause"
   clause (start, p) rest vars = bindPattern p $ \ vs ext -> do
-    lam <- foldr (fmap . S.lam) (rest (ext vars)) vs
+    lam <- foldr (fmap . curry (review S._Lam)) (rest (ext vars)) vs
     end <- position
     pure (locate (Span start end) lam)
 

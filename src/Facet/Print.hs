@@ -26,6 +26,7 @@ module Facet.Print
 
 import           Control.Applicative ((<**>))
 import           Control.Category ((>>>))
+import           Control.Lens (preview)
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
@@ -237,8 +238,8 @@ printSurfaceExpr = go
   go = SE.out >>> \case
     SE.Free n  -> sfree (SE.getEName n)
     SE.Bound n -> sbound n
-    SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (SE.unLam . SE.dropAnn) b))
-    f SE.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (SE.unApp . SE.dropAnn) f))
+    SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (preview SE._Lam . SE.dropAnn) b))
+    f SE.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview SE._App . SE.dropAnn) f))
     SE.Unit    -> unit
     l SE.:*  r -> go l **  go r
     SE.Ann _ t -> go t
