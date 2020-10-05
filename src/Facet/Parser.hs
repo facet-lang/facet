@@ -262,6 +262,9 @@ hname = ident hnameStyle
 tname :: (Monad p, TokenParsing p) => p N.TName
 tname = ident tnameStyle
 
+dname :: (Monad p, TokenParsing p) => p N.DName
+dname  = ident enameStyle <|> ident tnameStyle
+
 mname :: (Monad p, TokenParsing p) => p N.MName
 mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy comp dot))
   where
