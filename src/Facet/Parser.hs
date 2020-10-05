@@ -163,7 +163,7 @@ monotype :: (Monad p, PositionParsing p) => Facet p T.Type
 monotype = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review T.prd_) <$ comma))))
 
 tvar :: (Monad p, PositionParsing p) => Facet p T.Type
-tvar = spanning $ resolve <$> tname <*> tenv <?> "variable"
+tvar = token (spanning (runUnspaced (resolve <$> tname <*> Unspaced tenv <?> "variable")))
   where
   resolve n env = fromMaybe (review T.global_ n) (Map.lookup n env)
 
