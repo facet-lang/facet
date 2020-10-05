@@ -41,6 +41,7 @@ tglobal_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
 tbound_ :: Prism' Type Name
 tbound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
 
+
 _ForAll :: Prism' Type (Name ::: Type, Type)
 _ForAll = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
 
