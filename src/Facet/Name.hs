@@ -12,11 +12,14 @@ module Facet.Name
 , moduleName
 , EName(..)
 , TName(..)
+, Assoc(..)
+, Op(..)
 ) where
 
 import           Data.Function (on)
 import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
+import           Data.List.NonEmpty
 import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -89,3 +92,12 @@ newtype EName = EName { getEName :: Text }
 
 newtype TName = TName { getTName :: Text }
   deriving (Eq, IsString, Ord, P.Pretty, Show)
+
+
+data Assoc = N | L | R
+
+data Op
+  = Prefix      Text   [Text]
+  | Postfix     [Text] Text
+  | Infix Assoc (NonEmpty Text)
+  | Outfix Text [Text] Text

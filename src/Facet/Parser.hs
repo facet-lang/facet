@@ -23,7 +23,7 @@ import           Data.Coerce
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
 import           Data.Text (Text, unpack)
-import           Facet.Name as N
+import           Facet.Name as N hiding (Assoc(..), Op(..))
 import           Facet.Parser.Table
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
