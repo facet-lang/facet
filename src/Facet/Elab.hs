@@ -133,6 +133,7 @@ elabType (t ::: _K) = ST.fold alg t _K
   alg t _K = case t of
     ST.Free  n -> validate =<< synth (tglobal n)
     ST.Bound n -> validate =<< synth (tbound n)
+    ST.Hole  n -> hole (n ::: _K)
     ST.Type    -> validate =<< synth _Type
     ST.Unit    -> validate =<< synth _Unit
     t ST.:=> b -> validate =<< synth (fmap _check t >~> _check b)

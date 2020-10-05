@@ -172,6 +172,7 @@ printSurfaceType = go
   go = ST.out >>> \case
     ST.Free n  -> sfree (ST.getTName n)
     ST.Bound n -> sbound n
+    ST.Hole n  -> hole n
     ST.Type    -> _Type
     ST.Unit    -> _Unit
     t ST.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (preview ST._ForAll . ST.dropAnn) b))

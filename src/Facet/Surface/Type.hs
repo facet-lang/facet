@@ -7,6 +7,7 @@ module Facet.Surface.Type
 , Type(..)
 , tglobal_
 , tbound_
+, hole_
 , _ForAll
 , _Arrow
 , _TApp
@@ -40,6 +41,9 @@ tglobal_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
 
 tbound_ :: Prism' Type Name
 tbound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
+
+hole_ :: Prism' Type Text
+hole_ = prism' (In . Hole) (\case{ In (Hole n) -> Just n ; _ -> Nothing })
 
 
 _ForAll :: Prism' Type (Name ::: Type, Type)
@@ -85,6 +89,7 @@ aeq = fold $ \ t1 t2 -> case (t1, out t2) of
 data TypeF t
   = Free TName
   | Bound Name
+  | Hole Text
   | Type
   | Unit
   | (Name ::: t) :=> t
