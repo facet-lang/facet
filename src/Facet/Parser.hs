@@ -19,7 +19,6 @@ import           Control.Carrier.Reader
 import           Control.Lens (review)
 import           Control.Selective
 import           Data.Char (isSpace)
-import           Data.Coerce
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
 import qualified Data.Map as Map
@@ -56,8 +55,11 @@ type TEnv = Map.Map Text T.Type
 runFacet :: Int -> EEnv -> TEnv -> Facet m a -> m a
 runFacet i e t (Facet m) = m i e t
 
-bind :: Coercible t Text => t -> (Name -> Facet m a) -> Facet m a
-bind n b = Facet $ \ i e t -> runFacet (i + 1) e t (b (Name (coerce n) i))
+bindE :: N.EName -> (Name -> Facet m a) -> Facet m a
+bindE n b = Facet $ \ i e t -> runFacet (i + 1) e t (b (Name (N.getEName n) i))
+
+bindT :: N.TName -> (Name -> Facet m a) -> Facet m a
+bindT n b = Facet $ \ i e t -> runFacet (i + 1) e t (b (Name (N.getTName n) i))
 
 newtype Facet m a = Facet (Int -> EEnv -> TEnv -> m a)
   deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC Int (ReaderC EEnv (ReaderC TEnv m))
@@ -145,7 +147,7 @@ forAll
   -> BindParser (Facet p) res
 forAll (>=>) BindCtx{ self } = spanning $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
-  let loop i rest = bind i $ \ v -> pure (v S.::: ty) >=> rest
+  let loop i rest = bindT i $ \ v -> pure (v S.::: ty) >=> rest
   arrow *> foldr loop self names
 
 type' :: (Monad p, PositionParsing p) => Facet p T.Type
@@ -198,8 +200,8 @@ evar = spanning $ review E.global_ <$> ename <?> "variable"
 -- Patterns
 
 bindPattern :: PositionParsing p => P.Pattern -> ([Name] -> Facet p E.Expr) -> Facet p E.Expr
-bindPattern P.Wildcard   f = bind __ (\ v -> f [v])
-bindPattern (P.Var n)    f = bind n  (\ v -> f [v])
+bindPattern P.Wildcard   f = bindE (N.EName __) (\ v -> f [v])
+bindPattern (P.Var n)    f = bindE n            (\ v -> f [v])
 -- FIXME: this is incorrect since the structure doesn’t get used in the clause
 bindPattern (P.Tuple ps) f = go [] ps
   where
@@ -207,9 +209,9 @@ bindPattern (P.Tuple ps) f = go [] ps
   go vs (p:ps) = bindPattern p $ \ vs' -> go (vs <> vs') ps
 bindPattern (P.Loc _ p) f = bindPattern p f
 
-bindVarPattern :: Coercible t Text => Maybe t -> (Name -> Facet p res) -> Facet p res
-bindVarPattern Nothing  = bind __
-bindVarPattern (Just n) = bind n
+bindVarPattern :: Maybe N.EName -> (Name -> Facet p res) -> Facet p res
+bindVarPattern Nothing  = bindE (N.EName __)
+bindVarPattern (Just n) = bindE n
 
 
 varPattern :: (Monad p, TokenParsing p) => p name -> p (Maybe name)
