@@ -19,7 +19,7 @@ import Control.Lens.Prism
 import Data.Text (Text)
 import Facet.Name
 import Prelude hiding ((**))
-import Text.Parser.Position (Spanned(..), Span)
+import Text.Parser.Position (Span, Spanned(..))
 
 newtype Expr = In { out :: ExprF Expr }
 
