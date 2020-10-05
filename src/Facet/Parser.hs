@@ -28,7 +28,7 @@ import           Facet.Parser.Table
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as S
 import qualified Facet.Surface.Module as M
-import qualified Facet.Surface.Pattern as S
+import qualified Facet.Surface.Pattern as P
 import qualified Facet.Surface.Type as S
 import qualified Facet.Syntax as S
 import           Prelude hiding (lines, null, product, span)
@@ -206,10 +206,10 @@ clause = self . vars
 
 -- Patterns
 
-bindPattern :: PositionParsing p => S.Pattern -> ([Name] -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p S.Expr) -> Facet p S.Expr
-bindPattern S.Wildcard   f = bind __ (\ v -> f [v] id)
-bindPattern (S.Var n)    f = bind n  (\ v -> f [v] (review S.bound_ v <$ variable v <|>))
-bindPattern (S.Tuple ps) f = go [] id ps
+bindPattern :: PositionParsing p => P.Pattern -> ([Name] -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p S.Expr) -> Facet p S.Expr
+bindPattern P.Wildcard   f = bind __ (\ v -> f [v] id)
+bindPattern (P.Var n)    f = bind n  (\ v -> f [v] (review S.bound_ v <$ variable v <|>))
+bindPattern (P.Tuple ps) f = go [] id ps
   where
   go vs ext []     = f vs ext
   go vs ext (p:ps) = bindPattern p $ \ vs' ext' -> go (vs <> vs') (ext . ext') ps
@@ -227,11 +227,11 @@ wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve nameStyle "_"
 
 -- FIXME: patterns
-pattern :: (Monad p, TokenParsing p) => p S.Pattern
+pattern :: (Monad p, TokenParsing p) => p P.Pattern
 pattern =
-  (   S.Var <$> ename
-  <|> S.Wildcard <$ wildcard
-  <|> S.Tuple <$> parens (commaSep pattern))
+  (   P.Var <$> ename
+  <|> P.Wildcard <$ wildcard
+  <|> P.Tuple <$> parens (commaSep pattern))
   <?> "pattern"
 
 
