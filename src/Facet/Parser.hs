@@ -245,16 +245,16 @@ pattern = spanning
 ename :: (Monad p, TokenParsing p) => p N.EName
 ename  = ident enameStyle
 
-oname :: (Monad p, TokenParsing p) => p N.Op
+oname :: (Monad p, TokenParsing p) => p N.OpN
 oname
   =   postOrIn <$ place <*> sepByNonEmpty comp place <*> option False (True <$ place)
   <|> try (uncurry . outOrPre <$> comp <* place) <*> ((,) <$> sepBy1 comp place <*> option False (True <$ place) <|> pure ([], True))
   where
   place = wildcard
   comp = ident onameStyle
-  outOrPre c cs = bool (N.Outfix c (init cs) (last cs)) (N.Prefix c cs)
+  outOrPre c cs = bool (N.OutfixN c (init cs) (last cs)) (N.PrefixN c cs)
   -- FIXME: how should we specify associativity?
-  postOrIn cs = bool (N.Postfix (NE.init cs) (NE.last cs)) (N.Infix N.N cs)
+  postOrIn cs = bool (N.PostfixN (NE.init cs) (NE.last cs)) (N.InfixN N.N cs)
 
 hname :: (Monad p, TokenParsing p) => p Text
 hname = ident hnameStyle

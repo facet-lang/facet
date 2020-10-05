@@ -15,7 +15,7 @@ module Facet.Name
 , TName(..)
 , DName(..)
 , Assoc(..)
-, Op(..)
+, OpN(..)
 ) where
 
 import           Data.Function (on)
@@ -109,9 +109,9 @@ instance P.Pretty DName where
 data Assoc = N | L | R
   deriving (Eq, Ord, Show)
 
-data Op
-  = Prefix      Text   [Text]
-  | Postfix     [Text] Text
-  | Infix Assoc (NonEmpty Text)
-  | Outfix Text [Text] Text
+data OpN
+  = PrefixN      Text   [Text]
+  | PostfixN     [Text] Text
+  | InfixN Assoc (NonEmpty Text)
+  | OutfixN Text [Text] Text
   deriving (Eq, Ord, Show)
