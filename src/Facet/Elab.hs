@@ -287,7 +287,7 @@ elabModule = M.fold alg
       e ::: _T <- elabDecl d
       e' <- check (e ::: _T)
       mname <- ask
-      pure $ C.defTerm (mname :.: either N.getEName N.getTName n) (interpret _T := e')
+      pure $ C.defTerm (mname :.: N.getDName n) (interpret _T := e')
 
     M.Loc s d -> local (const s) d
 

@@ -290,7 +290,7 @@ printSurfaceModule = M.fold alg
   where
   alg = \case
     M.Module  n b -> module' n b
-    M.Def n d -> def (sfree (either N.getEName N.getTName n)) (printSurfaceDecl d)
+    M.Def n d -> def (sfree (N.getDName n)) (printSurfaceDecl d)
     M.Loc _ t     -> t
 
 

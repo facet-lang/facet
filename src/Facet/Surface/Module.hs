@@ -20,12 +20,12 @@ instance Spanned Module where
 module' :: MName -> [Module] -> Module
 module' = fmap In . Module
 
-def :: Either EName TName -> Decl -> Module
+def :: DName -> Decl -> Module
 def = fmap In . Def
 
 data ModuleF a
   = Module MName [a]
-  | Def (Either EName TName) Decl
+  | Def DName Decl
   | Loc Span a
   deriving (Foldable, Functor, Traversable)
 
