@@ -122,8 +122,7 @@ comp
   . enclose space (flatAlt line space)
 
 cases :: [Print] -> Print -> Print
-cases vs b
-  = foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> b))) vs
+cases vs b = foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> b))) vs
 
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
