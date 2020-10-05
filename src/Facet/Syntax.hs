@@ -8,6 +8,7 @@ module Facet.Syntax
 , curryAnn
 , (:=)(..)
 , Stack(..)
+, unprefixl
 , unprefixr
 ) where
 
@@ -54,6 +55,13 @@ data Stack a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infixl 5 :>
+
+unprefixl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)
+unprefixl un = go id
+  where
+  go as t = case un t of
+    Just (t', a) -> go ((:> a) . as) t'
+    Nothing      -> (t, as Nil)
 
 unprefixr :: (t -> Maybe (a, t)) -> t -> ([a], t)
 unprefixr un = go id
