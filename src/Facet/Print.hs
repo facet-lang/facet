@@ -290,16 +290,12 @@ printSurfaceModule = M.fold alg
   where
   alg = \case
     M.Module  n b -> module' n b
-    M.DefTerm n d -> defTerm (sfree (N.getEName n)) (printSurfaceDecl d)
-    M.DefType n d -> defType (sfree (N.getTName n)) (printSurfaceDecl d)
+    M.Def n d -> def (sfree (either N.getEName N.getTName n)) (printSurfaceDecl d)
     M.Loc _ t     -> t
 
 
 module' :: N.MName -> [Print] -> Print
 module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep b)
 
-defTerm :: Print -> Print -> Print
-defTerm n b = group $ ann (n ::: b)
-
-defType :: Print -> Print -> Print
-defType n b = group $ ann (n ::: b)
+def :: Print -> Print -> Print
+def n b = group $ ann (n ::: b)

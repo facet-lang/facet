@@ -111,9 +111,7 @@ module' :: (Monad p, PositionParsing p) => Facet p M.Module
 module' = spanning $ M.module' <$> mname <* colon <* symbol "Module" <*> braces (many decl)
 
 decl :: (Monad p, PositionParsing p) => Facet p M.Module
-decl = spanning
-  $   M.defTerm <$> ename <* colon <*> sig
-  <|> M.defType <$> tname <* colon <*> sig
+decl = spanning $ M.def <$> (Left <$> ename <|> Right <$> tname) <* colon <*> sig
 
 
 -- Declarations

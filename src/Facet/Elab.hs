@@ -283,17 +283,11 @@ elabModule = M.fold alg
   alg = \case
     M.Module n ds -> C.module' n <$> sequenceA ds
 
-    M.DefTerm n d -> do
+    M.Def n d -> do
       e ::: _T <- elabDecl d
       e' <- check (e ::: _T)
       mname <- ask
-      pure $ C.defTerm (mname :.: N.getEName n) (interpret _T := e')
-
-    M.DefType n d -> do
-      e ::: _T <- elabDecl d
-      e' <- check (e ::: _T)
-      mname <- ask
-      pure $ C.defTerm (mname :.: N.getTName n) (interpret _T := e')
+      pure $ C.defTerm (mname :.: either N.getEName N.getTName n) (interpret _T := e')
 
     M.Loc s d -> local (const s) d
 

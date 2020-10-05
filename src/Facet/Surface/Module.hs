@@ -3,8 +3,7 @@
 module Facet.Surface.Module
 ( Module(..)
 , module'
-, defTerm
-, defType
+, def
 , ModuleF(..)
 , fold
 ) where
@@ -21,16 +20,12 @@ instance Spanned Module where
 module' :: MName -> [Module] -> Module
 module' = fmap In . Module
 
-defTerm :: EName -> Decl -> Module
-defTerm = fmap In . DefTerm
-
-defType :: TName -> Decl -> Module
-defType = fmap In . DefType
+def :: Either EName TName -> Decl -> Module
+def = fmap In . Def
 
 data ModuleF a
   = Module MName [a]
-  | DefTerm EName Decl
-  | DefType TName Decl
+  | Def (Either EName TName) Decl
   | Loc Span a
   deriving (Foldable, Functor, Traversable)
 
