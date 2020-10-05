@@ -75,6 +75,9 @@ unit = In Unit
 (**) :: Expr -> Expr -> Expr
 (**) = fmap In . (:*)
 
+_Prd :: Prism' Expr (Expr, Expr)
+_Prd = prism' (uncurry (**)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Nothing })
+
 -- FIXME: tupling/unit should take a list of expressions
 
 
