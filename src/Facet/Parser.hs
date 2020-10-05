@@ -25,7 +25,7 @@ import qualified Data.HashSet as HashSet
 import           Data.Text (Text, unpack)
 import           Facet.Name
 import           Facet.Parser.Table
-import qualified Facet.Surface.Decl as S
+import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as S
 import qualified Facet.Surface.Module as S
 import qualified Facet.Surface.Pattern as S
@@ -99,26 +99,26 @@ decl = locating
    $   S.defTerm <$> ename <* colon <*> tsig tglobal
    <|> S.defType <$> tname <* colon <*> tsig tglobal
 
-tsigTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Decl
+tsigTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type D.Decl
 tsigTable =
-  [ [ Binder (forAll (liftA2 (S.>=>))) ]
+  [ [ Binder (forAll (liftA2 (D.>=>))) ]
   ]
 
-sigTable :: (Monad p, PositionParsing p) => Facet p S.Type -> Table (Facet p) S.Expr S.Decl
+sigTable :: (Monad p, PositionParsing p) => Facet p S.Type -> Table (Facet p) S.Expr D.Decl
 sigTable tvars =
   [ [ Binder (binder tvars) ]
   ]
 
-tsig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Decl
+tsig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p D.Decl
 tsig = build tsigTable (\ _ vars -> sig vars global)
 
-sig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Expr -> Facet p S.Decl
-sig tvars = build (sigTable tvars) (\ _ vars -> (S..=) <$> monotype_ tvars <*> comp vars)
+sig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Expr -> Facet p D.Decl
+sig tvars = build (sigTable tvars) (\ _ vars -> (D..=) <$> monotype_ tvars <*> comp vars)
 
-binder :: (Monad p, PositionParsing p) => Facet p S.Type -> BindParser (Facet p) S.Expr S.Decl
+binder :: (Monad p, PositionParsing p) => Facet p S.Type -> BindParser (Facet p) S.Expr D.Decl
 binder tvars BindCtx{ self, vars } = locating $ do
   (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type_ tvars <* symbolic ')'
-  bindVarPattern i $ \ v ext -> ((v S.::: t) S.>->) <$ arrow <*> self (ext vars)
+  bindVarPattern i $ \ v ext -> ((v S.::: t) D.>->) <$ arrow <*> self (ext vars)
 
 
 typeTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Type
