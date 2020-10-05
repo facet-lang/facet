@@ -65,7 +65,7 @@ import           Silkscreen (colon, fillSep, group, pretty, softline, (<+>), (</
 type Context = IntMap.IntMap Type
 
 implicit :: Env.Env
-implicit = Env.fromList [ (N.DName (T.pack "Type"), MName (T.pack "Facet") ::: C._Type) ]
+implicit = Env.fromList [ (N.T (N.TName (T.pack "Type")), MName (T.pack "Facet") ::: C._Type) ]
 
 elab :: Applicative m => MName -> Span -> Env.Env -> Context -> Elab m a -> m (Either (Span, P.Print) a)
 elab n s e c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (m n e c)

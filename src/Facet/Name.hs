@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 module Facet.Name
 ( Name(..)
 , prettyNameWith
@@ -94,8 +95,15 @@ newtype EName = EName { getEName :: Text }
 newtype TName = TName { getTName :: Text }
   deriving (Eq, IsString, Ord, P.Pretty, Show)
 
-newtype DName = DName { getDName :: Text }
-  deriving (Eq, IsString, Ord, P.Pretty, Show)
+data DName
+  = E EName
+  | T TName
+  deriving (Eq, Ord, Show)
+
+instance P.Pretty DName where
+  pretty = \case
+    E n -> P.pretty n
+    T n -> P.pretty n
 
 
 data Assoc = N | L | R
