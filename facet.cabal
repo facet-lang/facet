@@ -43,6 +43,7 @@ library
     Facet.Core.Decl
     Facet.Core.Expr
     Facet.Core.Module
+    Facet.Core.Pattern
     Facet.Core.Type
     Facet.Elab
     Facet.Env
