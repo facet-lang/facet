@@ -196,6 +196,7 @@ cebound = name evar
 ctbound :: N.Name -> Print
 ctbound = name tvar
 
+
 _Unit, _Type :: Print
 _Unit = annotate Type $ pretty "Unit"
 _Type = annotate Type $ pretty "Type"
