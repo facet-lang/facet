@@ -50,6 +50,7 @@ import           Facet.Carrier.Error.Context
 import qualified Facet.Core as C
 import qualified Facet.Env as Env
 import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
+import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
@@ -58,7 +59,7 @@ import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Facet.Type
 import           Prelude hiding ((**))
-import           Silkscreen (fillSep, group, pretty, softline, (<+>), (</>))
+import           Silkscreen (group, pretty, softline, (<+>), (</>))
 
 type Context = IntMap.IntMap Type
 
@@ -228,12 +229,12 @@ ebound n = bound n C.bound P.evar
 
 tlam :: (Has (Reader Context) sig m, C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
 tlam n b = Check $ \ ty -> do
-  (n', _T, _B) <- expectQuantifiedType (fromWords "when checking type lambda") ty
+  (n', _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
   n' ::: _T |- C.tlam n <$> check (b ::: _B)
 
 lam :: (Has (Reader Context) sig m, C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
 lam n b = Check $ \ ty -> do
-  (_A, _B) <- expectFunctionType (fromWords "when checking lambda") ty
+  (_A, _B) <- expectFunctionType (reflow "when checking lambda") ty
   n ::: _A |- C.lam n <$> check (b ::: _B)
 
 unit :: (Applicative m, C.Expr t) => Synth m t
@@ -241,7 +242,7 @@ unit = Synth . pure $ C.unit ::: C._Unit
 
 (**) :: (C.Expr expr, Has (Error P.Print) sig m) => Check m expr -> Check m expr -> Check m expr
 l ** r = Check $ \ _T -> do
-  (_L, _R) <- expectProductType (fromWords "when checking product") _T
+  (_L, _R) <- expectProductType (reflow "when checking product") _T
   l' <- check (l ::: _L)
   r' <- check (r ::: _R)
   pure (l' C.** r')
@@ -304,9 +305,6 @@ infix 1 |-
 
 -- Failures
 
-fromWords :: String -> P.Print
-fromWords = fillSep . map pretty . words
-
 err :: Has (Error P.Print) sig m => P.Print -> m a
 err = throwError . group
 
@@ -316,13 +314,13 @@ mismatch msg exp act = err $ msg
   </> pretty "  actual:" <+> act
 
 couldNotUnify :: Has (Error P.Print) sig m => Type -> Type -> m a
-couldNotUnify t1 t2 = mismatch (fromWords "could not unify") (interpret t2) (interpret t1)
+couldNotUnify t1 t2 = mismatch (reflow "could not unify") (interpret t2) (interpret t1)
 
 couldNotSynthesize :: Has (Error P.Print) sig m => P.Print -> m a
-couldNotSynthesize msg = err $ fromWords "could not synthesize a type for" <> softline <> msg
+couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softline <> msg
 
 freeVariable :: Has (Error P.Print) sig m => P.Print -> m a
-freeVariable v = err $ fromWords "variable not in scope:" <+> v
+freeVariable v = err $ reflow "variable not in scope:" <+> v
 
 
 -- Patterns
