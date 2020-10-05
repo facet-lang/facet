@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 module Facet.Surface.Expr
 ( EName(..)
 , Expr(..)
@@ -7,6 +8,7 @@ module Facet.Surface.Expr
 , bound
 , lam
 , unLam
+, _Lam
 , ($$)
 , unApp
 , unit
@@ -17,6 +19,7 @@ module Facet.Surface.Expr
 ) where
 
 import Control.Effect.Empty
+import Control.Lens.Prism
 import Data.String (IsString(..))
 import Data.Text (Text)
 import Facet.Name
@@ -45,6 +48,9 @@ unLam :: Has Empty sig m => Expr -> m (Name, Expr)
 unLam e = case out e of
   Lam n b -> pure (n, b)
   _       -> empty
+
+_Lam :: Prism' Expr (Name, Expr)
+_Lam = prism' (uncurry lam) (\case{ In (Lam n b) -> Just (n, b) ; _ -> Nothing })
 
 
 ($$) :: Expr -> Expr -> Expr
