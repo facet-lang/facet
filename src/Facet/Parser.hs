@@ -22,6 +22,7 @@ import           Data.Char (isSpace)
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
 import qualified Data.Map as Map
+import           Data.Maybe (fromMaybe)
 import           Data.Text (Text)
 import           Facet.Name as N hiding (Assoc(..), Op(..))
 import           Facet.Parser.Table
@@ -162,7 +163,9 @@ monotype :: (Monad p, PositionParsing p) => Facet p T.Type
 monotype = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review T.prd_) <$ comma))))
 
 tvar :: (Monad p, TokenParsing p) => Facet p T.Type
-tvar = review T.global_ <$> tname <?> "variable"
+tvar = resolve <$> tname <*> tenv <?> "variable"
+  where
+  resolve n env = fromMaybe (review T.global_ n) (Map.lookup n env)
 
 
 -- Expressions
