@@ -24,7 +24,7 @@ import           Facet.Pretty
 import qualified Prettyprinter as P
 import           Silkscreen
 
-data Name = Name { hint :: T.Text, id' :: Int }
+data Name = Name { hint :: Text, id' :: Int }
 
 instance Eq Name where
   (==) = (==) `on` id'
@@ -44,7 +44,7 @@ prettyNameWith var n
   | otherwise       = pretty (hint n) <> pretty (id' n)
 
 
-prime :: Scoped t => T.Text -> t -> Name
+prime :: Scoped t => Text -> t -> Name
 prime n t
   | IntSet.null fvs' = Name n 0
   | otherwise        = Name n (IntSet.findMax fvs' + 1)
@@ -52,7 +52,7 @@ prime n t
   fvs' = fvs t
 
 
-__ :: T.Text
+__ :: Text
 __ = T.empty
 
 
@@ -73,11 +73,11 @@ instantiate = IntMap.insert . id'
 
 
 data MName
-  = MName T.Text
-  | MName :. T.Text
+  = MName Text
+  | MName :. Text
   deriving (Eq, Ord, Show)
 
-data QName = MName :.: T.Text
+data QName = MName :.: Text
   deriving (Eq, Ord, Show)
 
 moduleName :: QName -> MName
