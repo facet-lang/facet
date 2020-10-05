@@ -18,12 +18,14 @@ data Assoc = N | L | R
 
 data Operator p a
   -- TODO: prefix, postfix, mixfix
-  = Infix Assoc (p (a -> a -> a))
+  = Prefix (p (a -> a))
+  | Infix Assoc (p (a -> a -> a))
   | Binder (OperatorParser p a)
   | Atom (p a)
 
 toBindParser :: (PositionParsing p, Spanned a) => Operator p a -> OperatorParser p a
 toBindParser = \case
+  Prefix  op -> \ _ next -> op <*> next
   Infix N op -> \ _ next -> try (next <**> op) <*> next
   Infix L op -> \ _ next -> chainl1Loc next op
   Infix R op -> \ self next -> try (next <**> op) <*> self
