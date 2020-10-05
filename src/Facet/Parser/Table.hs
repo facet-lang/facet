@@ -23,6 +23,7 @@ data Operator p a
   = Prefix  (p (a -> a))
   | Postfix (p (a -> a))
   | Infix Assoc (p (a -> a -> a))
+  | Outfix (p (a -> a)) (p ())
   | Binder (OperatorParser p a)
   | Atom (p a)
 
@@ -33,6 +34,7 @@ toBindParser = \case
   Infix N op -> \ _    next -> try (next <**> op) <*> next
   Infix L op -> \ _    next -> chainl1Loc next op
   Infix R op -> \ self next -> try (next <**> op) <*> self
+  Outfix s e -> \ self _    -> s <*> self <* e
   Binder p   -> p
   Atom p     -> const (const p)
   where
