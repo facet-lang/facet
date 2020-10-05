@@ -39,11 +39,12 @@ import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
 import qualified Facet.Surface.Type as T
 import           Facet.Syntax
-import           Prelude hiding ((**))
+import           Prelude hiding ((**))
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 import           Silkscreen.Printer.Prec
 import           Silkscreen.Printer.Rainbow
+import           Text.Parser.Position
 
 prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = P.putDoc . getPrint
@@ -178,8 +179,8 @@ printSurfaceType = go
     T.Hole n  -> hole n
     T.Type    -> _Type
     T.Unit    -> _Unit
-    t T.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (preview T.forAll_ . T.dropLoc) b))
-    f T.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview T.app_ . T.dropLoc) f))
+    t T.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (preview T.forAll_ . dropSpan) b))
+    f T.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview T.app_ . dropSpan) f))
     a T.:-> b -> go a --> go b
     l T.:*  r -> go l **  go r
     T.Loc _ t -> go t
@@ -248,8 +249,8 @@ printSurfaceExpr = go
     E.Free n  -> sfree n
     E.Bound n -> sbound n
     E.Hole n  -> hole n
-    E.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (preview E.lam_ . E.dropLoc) b))
-    f E.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview E.app_ . E.dropLoc) f))
+    E.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (preview E.lam_ . dropSpan) b))
+    f E.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview E.app_ . dropSpan) f))
     E.Unit    -> unit
     l E.:*  r -> go l **  go r
     E.Loc _ t -> go t
@@ -273,7 +274,7 @@ printSurfaceDecl = go
   where
   go = D.out >>> \case
     t D.:=  e -> printSurfaceType t .= comp (printSurfaceExpr e)
-    t D.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (D.unForAll . D.dropLoc) b))
+    t D.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (D.unForAll . dropSpan) b))
     t D.:-> b -> bimap sbound printSurfaceType t >-> go b
     D.Loc _ d -> go d
 

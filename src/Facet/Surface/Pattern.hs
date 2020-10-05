@@ -2,7 +2,6 @@
 {-# LANGUAGE LambdaCase #-}
 module Facet.Surface.Pattern
 ( Pattern(..)
-, dropLoc
 ) where
 
 import Text.Parser.Position (Span, Spanned(..))
@@ -20,8 +19,3 @@ instance Spanned (Pattern a) where
   dropSpan = \case
     Loc _ d -> dropSpan d
     d       -> d
-
-dropLoc :: Pattern a -> Pattern a
-dropLoc = \case
-  Loc _ e -> dropLoc e
-  e       -> e

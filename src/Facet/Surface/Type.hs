@@ -13,7 +13,6 @@ module Facet.Surface.Type
 , prd_
 , _Unit
 , _Type
-, dropLoc
 , aeq
 , TypeF(..)
 , fold
@@ -63,12 +62,6 @@ _Unit = In Unit
 
 _Type :: Type
 _Type = In Type
-
-
-dropLoc :: Type -> Type
-dropLoc e = case out e of
-  Loc _ e -> dropLoc e
-  _       -> e
 
 
 aeq :: Type -> Type -> Bool

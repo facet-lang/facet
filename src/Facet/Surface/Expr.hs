@@ -10,7 +10,6 @@ module Facet.Surface.Expr
 , app_
 , unit
 , prd_
-, dropLoc
 , ExprF(..)
 , Comp(..)
 , fold
@@ -56,12 +55,6 @@ prd_ :: Prism' Expr (Expr, Expr)
 prd_ = prism' (In . uncurry (:*)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Nothing })
 
 -- FIXME: tupling/unit should take a list of expressions
-
-
-dropLoc :: Expr -> Expr
-dropLoc e = case out e of
-  Loc _ e -> dropLoc e
-  _       -> e
 
 
 data ExprF e
