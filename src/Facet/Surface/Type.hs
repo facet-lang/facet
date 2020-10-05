@@ -5,13 +5,13 @@
 module Facet.Surface.Type
 ( TName(..)
 , Type(..)
-, tglobal_
-, tbound_
+, global_
+, bound_
 , hole_
 , _ForAll
 , _Arrow
-, _TApp
-, _TPrd
+, _App
+, _Prd
 , _Unit
 , _Type
 , dropAnn
@@ -36,11 +36,11 @@ newtype Type = In { out :: TypeF Type }
 instance Located Type where
   locate = fmap In . Ann
 
-tglobal_ :: Prism' Type TName
-tglobal_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
+global_ :: Prism' Type TName
+global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
 
-tbound_ :: Prism' Type Name
-tbound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
+bound_ :: Prism' Type Name
+bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
 
 hole_ :: Prism' Type Text
 hole_ = prism' (In . Hole) (\case{ In (Hole n) -> Just n ; _ -> Nothing })
@@ -52,11 +52,11 @@ _ForAll = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ ->
 _Arrow :: Prism' Type (Type, Type)
 _Arrow = prism' (In . uncurry (:->)) (\case{ In (a :-> b) -> Just (a, b) ; _ -> Nothing })
 
-_TApp :: Prism' Type (Type, Type)
-_TApp = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
+_App :: Prism' Type (Type, Type)
+_App = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
 
-_TPrd :: Prism' Type (Type, Type)
-_TPrd = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
+_Prd :: Prism' Type (Type, Type)
+_Prd = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
 
 
 _Unit :: Type

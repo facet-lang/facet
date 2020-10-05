@@ -176,7 +176,7 @@ printSurfaceType = go
     ST.Type    -> _Type
     ST.Unit    -> _Unit
     t ST.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (preview ST._ForAll . ST.dropAnn) b))
-    f ST.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview ST._TApp . ST.dropAnn) f))
+    f ST.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview ST._App . ST.dropAnn) f))
     a ST.:-> b -> go a --> go b
     l ST.:*  r -> go l **  go r
     ST.Ann _ t -> go t

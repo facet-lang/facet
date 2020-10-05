@@ -134,7 +134,7 @@ typeTable = [ Binder (forAll (liftA2 (curry (review T._ForAll)))) ] : monotypeTa
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type T.Type
 monotypeTable =
   [ [ Infix R (curry (review T._Arrow) <$ arrow) ]
-  , [ Infix L (pure (curry (review T._TApp))) ]
+  , [ Infix L (pure (curry (review T._App))) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       Atom (const (T._Unit <$ token (string "Unit")))
     , Atom (const (T._Type <$ token (string "Type")))
@@ -148,20 +148,20 @@ forAll
   -> BindParser (Facet p) T.Type res
 forAll (>=>) BindCtx{ self, vars } = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
-  let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (review T.tbound_ v <$ variable v <|> vars)
+  let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (review T.bound_ v <$ variable v <|> vars)
   arrow *> foldr loop self names vars
 
 type' :: (Monad p, PositionParsing p) => Facet p T.Type
 type' = type_ tglobal
 
 type_ :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p T.Type
-type_ = build typeTable (terminate parens (toBindParser (Infix L (curry (review T._TPrd) <$ comma))))
+type_ = build typeTable (terminate parens (toBindParser (Infix L (curry (review T._Prd) <$ comma))))
 
 monotype_ :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p T.Type
-monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review T._TPrd) <$ comma))))
+monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review T._Prd) <$ comma))))
 
 tglobal :: (Monad p, TokenParsing p) => Facet p T.Type
-tglobal = review T.tglobal_ <$> tname <?> "variable"
+tglobal = review T.global_ <$> tname <?> "variable"
 
 
 -- Expressions
