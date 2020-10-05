@@ -185,7 +185,7 @@ expr :: (Monad p, PositionParsing p) => Facet p E.Expr
 expr = build exprTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review E.prd_)))))
 
 comp :: (Monad p, PositionParsing p) => Facet p E.Expr
-comp = braces $ build compTable (const expr)
+comp = spanning $ braces $ build compTable (const expr)
 
 compTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr
 compTable =
