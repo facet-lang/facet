@@ -98,8 +98,8 @@ module' = locating $ M.module' <$> mname <* colon <* symbol "Module" <*> braces 
 
 decl :: (Monad p, PositionParsing p) => Facet p M.Module
 decl = locating
-   $   M.defTerm <$> ename <* colon <*> tsig tglobal
-   <|> M.defType <$> tname <* colon <*> tsig tglobal
+  $   M.defTerm <$> ename <* colon <*> tsig tglobal
+  <|> M.defType <$> tname <* colon <*> tsig tglobal
 
 
 -- Declarations
