@@ -63,6 +63,12 @@ bindT n b = Facet $ \ e t -> let n' = Name (N.getTName n) (length e + length t) 
 newtype Facet m a = Facet (EEnv -> TEnv -> m a)
   deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC EEnv (ReaderC TEnv m)
 
+eenv :: Applicative m => Facet m EEnv
+eenv = Facet $ \ e _ -> pure e
+
+tenv :: Applicative m => Facet m TEnv
+tenv = Facet $ \ _ t -> pure t
+
 instance Selective m => Selective (Facet m) where
   select f a = Facet $ \ e t -> select (runFacet e t f) (runFacet e t a)
 
