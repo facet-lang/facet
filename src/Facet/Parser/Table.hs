@@ -11,6 +11,8 @@ module Facet.Parser.Table
 ) where
 
 import Control.Applicative (Alternative(..), (<**>))
+import Data.Foldable (foldl')
+import Data.Function ((&))
 import Text.Parser.Combinators
 import Text.Parser.Position
 
@@ -18,7 +20,8 @@ data Assoc = N | L | R
 
 data Operator p a
   -- TODO: prefix, postfix, mixfix
-  = Prefix (p (a -> a))
+  = Prefix  (p (a -> a))
+  | Postfix (p (a -> a))
   | Infix Assoc (p (a -> a -> a))
   | Binder (OperatorParser p a)
   | Atom (p a)
@@ -26,6 +29,7 @@ data Operator p a
 toBindParser :: (PositionParsing p, Spanned a) => Operator p a -> OperatorParser p a
 toBindParser = \case
   Prefix  op -> \ self _    -> op <*> self
+  Postfix op -> \ _    next -> foldl' (&) <$> next <*> many op
   Infix N op -> \ _    next -> try (next <**> op) <*> next
   Infix L op -> \ _    next -> chainl1Loc next op
   Infix R op -> \ self next -> try (next <**> op) <*> self
