@@ -15,6 +15,7 @@ module Facet.Name
 , TName(..)
 , DName(..)
 , Assoc(..)
+, Op(..)
 , OpN(..)
 ) where
 
@@ -107,6 +108,13 @@ instance P.Pretty DName where
 
 
 data Assoc = N | L | R
+  deriving (Eq, Ord, Show)
+
+data Op
+  = Prefix  Text
+  | Postfix Text
+  | Infix Assoc Text
+  | Outfix Text Text
   deriving (Eq, Ord, Show)
 
 data OpN
