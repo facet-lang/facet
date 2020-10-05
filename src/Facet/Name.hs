@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Name
@@ -115,7 +116,7 @@ data Op a
   | Postfix a
   | Infix Assoc a
   | Outfix a a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data OpN
   = PrefixN      Text   [Text]
