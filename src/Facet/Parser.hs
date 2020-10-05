@@ -245,8 +245,8 @@ pattern = spanning
 ename :: (Monad p, TokenParsing p) => p N.EName
 ename  = ident enameStyle
 
-oname :: (Monad p, TokenParsing p) => p N.OpN
-oname
+onameN :: (Monad p, TokenParsing p) => p N.OpN
+onameN
   =   postOrIn <$ place <*> sepByNonEmpty comp place <*> option False (True <$ place)
   <|> try (uncurry . outOrPre <$> comp <* place) <*> ((,) <$> sepBy1 comp place <*> option False (True <$ place) <|> pure ([], True))
   where
