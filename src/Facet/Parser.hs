@@ -143,7 +143,7 @@ monotypeTable =
   ]
 
 forAll
-  :: (Located res, Monad p, PositionParsing p)
+  :: (Spanned res, Monad p, PositionParsing p)
   => (Facet p (Name S.::: T.Type) -> Facet p res -> Facet p res)
   -> BindParser (Facet p) T.Type res
 forAll (>=>) BindCtx{ self, vars } = locating $ do

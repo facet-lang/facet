@@ -11,11 +11,11 @@ module Facet.Surface.Module
 
 import Facet.Name
 import Facet.Surface.Decl (Decl)
-import Text.Parser.Position (Located(..), Span)
+import Text.Parser.Position (Spanned(..), Span)
 
 newtype Module = In { out :: ModuleF Module }
 
-instance Located Module where
+instance Spanned Module where
   locate = fmap In . Loc
 
 module' :: MName -> [Module] -> Module

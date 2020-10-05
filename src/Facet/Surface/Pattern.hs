@@ -5,7 +5,7 @@ module Facet.Surface.Pattern
 ) where
 
 import Facet.Name
-import Text.Parser.Position (Located(..), Span)
+import Text.Parser.Position (Spanned(..), Span)
 
 data Pattern
   = Wildcard
@@ -14,7 +14,7 @@ data Pattern
   | Loc Span Pattern
   deriving (Eq, Ord, Show)
 
-instance Located Pattern where
+instance Spanned Pattern where
   locate = Loc
 
 dropLoc :: Pattern -> Pattern

@@ -19,11 +19,11 @@ import Control.Lens.Prism
 import Data.Text (Text)
 import Facet.Name
 import Prelude hiding ((**))
-import Text.Parser.Position (Located(..), Span)
+import Text.Parser.Position (Spanned(..), Span)
 
 newtype Expr = In { out :: ExprF Expr }
 
-instance Located Expr where
+instance Spanned Expr where
   locate = fmap In . Loc
 
 global_ :: Prism' Expr EName

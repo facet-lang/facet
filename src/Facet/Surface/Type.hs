@@ -23,11 +23,11 @@ import Control.Lens.Prism
 import Data.Text (Text)
 import Facet.Name
 import Facet.Syntax
-import Text.Parser.Position (Located(..), Span)
+import Text.Parser.Position (Spanned(..), Span)
 
 newtype Type = In { out :: TypeF Type }
 
-instance Located Type where
+instance Spanned Type where
   locate = fmap In . Loc
 
 global_ :: Prism' Type TName

@@ -17,11 +17,11 @@ import Facet.Name
 import Facet.Surface.Expr (Expr)
 import Facet.Surface.Type (Type)
 import Facet.Syntax ((:::)(..))
-import Text.Parser.Position (Located(..), Span)
+import Text.Parser.Position (Spanned(..), Span)
 
 newtype Decl = In { out :: DeclF Decl }
 
-instance Located Decl where
+instance Spanned Decl where
   locate = fmap In . Loc
 
 -- | Universal quantification.
