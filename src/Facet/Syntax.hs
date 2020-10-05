@@ -60,7 +60,7 @@ unprefixl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)
 unprefixl un = go id
   where
   go as t = case un t of
-    Just (t', a) -> go ((:> a) . as) t'
+    Just (t', a) -> go (as . (:> a)) t'
     Nothing      -> (t, as Nil)
 
 unprefixr :: (t -> Maybe (a, t)) -> t -> ([a], t)
