@@ -3,7 +3,6 @@ module Text.Parser.Position
 ( PositionParsing(..)
 , Pos
 , Span(..)
-, spanning
 , spanned
 , Spanned(..)
 , locating
@@ -20,9 +19,6 @@ class TokenParsing p => PositionParsing p where
 
 instance P.Algebra sig m => PositionParsing (P.ParserC m) where
   position = P.position
-
-spanning :: PositionParsing p => p a -> p Span
-spanning p = Span <$> position <* p <*> position
 
 spanned :: PositionParsing p => p a -> p (Span, a)
 spanned p = mk <$> position <*> p <*> position
