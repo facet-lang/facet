@@ -161,6 +161,7 @@ exprTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Expr S.Expr
 exprTable =
   [ [ Infix L (pure (curry (review S._App))) ]
   , [ Atom comp
+    , Atom (const (review S.hole_ <$> hname))
     , Atom id
     ]
   ]
@@ -222,9 +223,11 @@ pattern =
   <?> "pattern"
 
 
-ename, _hname :: (Monad p, TokenParsing p) => p S.EName
+ename :: (Monad p, TokenParsing p) => p S.EName
 ename  = ident nameStyle
-_hname = ident hnameStyle
+
+hname :: (Monad p, TokenParsing p) => p Text
+hname = ident hnameStyle
 
 tname :: (Monad p, TokenParsing p) => p S.TName
 tname = ident tnameStyle
