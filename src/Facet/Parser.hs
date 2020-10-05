@@ -213,6 +213,7 @@ bindPattern (P.Tuple ps) f = go [] id ps
   where
   go vs ext []     = f vs ext
   go vs ext (p:ps) = bindPattern p $ \ vs' ext' -> go (vs <> vs') (ext . ext') ps
+bindPattern (P.Loc _ p) f = bindPattern p f
 
 bindVarPattern :: (PositionParsing p, Coercible t Text) => Maybe t -> (Name -> (Facet p E.Expr -> Facet p E.Expr) -> Facet p res) -> Facet p res
 bindVarPattern Nothing  f = bind __ (\ v -> f v id)
