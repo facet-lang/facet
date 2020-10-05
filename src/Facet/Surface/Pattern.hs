@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Surface.Pattern
 ( Pattern(..)
@@ -11,7 +12,7 @@ data Pattern a
   | Var a
   | Tuple [Pattern a]
   | Loc Span (Pattern a)
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 instance Spanned (Pattern a) where
   setSpan = Loc
