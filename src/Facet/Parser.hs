@@ -162,8 +162,8 @@ type' = build typeTable (terminate parens (toBindParser (Infix L (curry (review 
 monotype :: (Monad p, PositionParsing p) => Facet p T.Type
 monotype = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review T.prd_) <$ comma))))
 
-tvar :: (Monad p, TokenParsing p) => Facet p T.Type
-tvar = resolve <$> tname <*> tenv <?> "variable"
+tvar :: (Monad p, PositionParsing p) => Facet p T.Type
+tvar = spanning $ resolve <$> tname <*> tenv <?> "variable"
   where
   resolve n env = fromMaybe (review T.global_ n) (Map.lookup n env)
 
