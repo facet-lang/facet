@@ -51,28 +51,28 @@ import           Text.Parser.Token.Style
 type EEnv = Map.Map Text E.Expr
 type TEnv = Map.Map Text T.Type
 
-runFacet :: Int -> EEnv -> TEnv -> Facet m a -> m a
-runFacet i e t (Facet m) = m i e t
+runFacet :: EEnv -> TEnv -> Facet m a -> m a
+runFacet e t (Facet m) = m e t
 
 bindE :: N.EName -> (Name -> Facet m a) -> Facet m a
-bindE n b = Facet $ \ i e t -> runFacet (i + 1) e t (b (Name (N.getEName n) i))
+bindE n b = Facet $ \ e t -> runFacet e t (b (Name (N.getEName n) (length e + length t)))
 
 bindT :: N.TName -> (Name -> Facet m a) -> Facet m a
-bindT n b = Facet $ \ i e t -> runFacet (i + 1) e t (b (Name (N.getTName n) i))
+bindT n b = Facet $ \ e t -> runFacet e t (b (Name (N.getTName n) (length e + length t)))
 
-newtype Facet m a = Facet (Int -> EEnv -> TEnv -> m a)
-  deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC Int (ReaderC EEnv (ReaderC TEnv m))
+newtype Facet m a = Facet (EEnv -> TEnv -> m a)
+  deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC EEnv (ReaderC TEnv m)
 
 instance Selective m => Selective (Facet m) where
-  select f a = Facet $ \ v e t -> select (runFacet v e t f) (runFacet v e t a)
+  select f a = Facet $ \ e t -> select (runFacet e t f) (runFacet e t a)
 
 instance Parsing p => Parsing (Facet p) where
-  try (Facet m) = Facet $ \ v e t -> try (m v e t)
-  Facet m <?> l = Facet $ \ v e t -> m v e t <?> l
-  skipMany (Facet m) = Facet $ \ v e t -> skipMany (m v e t)
+  try (Facet m) = Facet $ \ e t -> try (m e t)
+  Facet m <?> l = Facet $ \ e t -> m e t <?> l
+  skipMany (Facet m) = Facet $ \ e t -> skipMany (m e t)
   unexpected = lift . unexpected
   eof = lift eof
-  notFollowedBy (Facet m) = Facet $ \ v e t -> notFollowedBy (m v e t)
+  notFollowedBy (Facet m) = Facet $ \ e t -> notFollowedBy (m e t)
 
 instance CharParsing p => CharParsing (Facet p) where
   satisfy = lift . satisfy
@@ -89,7 +89,7 @@ instance PositionParsing p => PositionParsing (Facet p) where
   position = lift position
 
 lift :: p a -> Facet p a
-lift = Facet . const . const . const
+lift = Facet . const . const
 
 
 whole :: TokenParsing p => p a -> p a
