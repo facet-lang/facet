@@ -99,12 +99,14 @@ newtype TName = TName { getTName :: Text }
 data DName
   = E EName
   | T TName
+  | O Op
   deriving (Eq, Ord, Show)
 
 instance P.Pretty DName where
   pretty = \case
     E n -> P.pretty n
     T n -> P.pretty n
+    O o -> P.pretty o
 
 
 data Assoc = N | L | R
