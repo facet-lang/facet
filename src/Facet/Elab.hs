@@ -322,7 +322,7 @@ couldNotSynthesize :: Has (Error P.Print) sig m => P.Print -> m a
 couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softline <> msg
 
 freeVariable :: Has (Error P.Print) sig m => P.Print -> m a
-freeVariable v = err $ reflow "variable not in scope:" <+> v
+freeVariable v = err $ fillSep [reflow "variable not in scope:", v]
 
 
 -- Patterns
