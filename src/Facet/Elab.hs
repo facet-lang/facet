@@ -52,11 +52,11 @@ import qualified Facet.Env as Env
 import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
-import qualified Facet.Surface.Decl as SD
-import qualified Facet.Surface.Expr as SE
-import qualified Facet.Surface.Module as SM
+import qualified Facet.Surface.Decl as D
+import qualified Facet.Surface.Expr as E
+import qualified Facet.Surface.Module as M
 import qualified Facet.Surface.Name as N
-import qualified Facet.Surface.Type as ST
+import qualified Facet.Surface.Type as T
 import           Facet.Syntax
 import           Facet.Type
 import           Prelude hiding ((**))
@@ -128,20 +128,20 @@ app ($$) f a = Synth $ do
 
 -- Types
 
-elabType :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m) => (ST.Type ::: Maybe Type) -> m (Type ::: Type)
-elabType (t ::: _K) = ST.fold alg t _K
+elabType :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m) => (T.Type ::: Maybe Type) -> m (Type ::: Type)
+elabType (t ::: _K) = T.fold alg t _K
   where
   alg t _K = case t of
-    ST.Free  n -> validate =<< synth (tglobal n)
-    ST.Bound n -> validate =<< synth (tbound n)
-    ST.Hole  n -> hole (n ::: _K)
-    ST.Type    -> validate =<< synth _Type
-    ST.Unit    -> validate =<< synth _Unit
-    t ST.:=> b -> validate =<< synth (fmap _check t >~> _check b)
-    f ST.:$  a -> validate =<< synth (_synth f .$  _check a)
-    a ST.:-> b -> validate =<< synth (_check a --> _check b)
-    l ST.:*  r -> validate =<< synth (_check l .*  _check r)
-    ST.Loc s b -> local (const s) $ b _K
+    T.Free  n -> validate =<< synth (tglobal n)
+    T.Bound n -> validate =<< synth (tbound n)
+    T.Hole  n -> hole (n ::: _K)
+    T.Type    -> validate =<< synth _Type
+    T.Unit    -> validate =<< synth _Unit
+    t T.:=> b -> validate =<< synth (fmap _check t >~> _check b)
+    f T.:$  a -> validate =<< synth (_synth f .$  _check a)
+    a T.:-> b -> validate =<< synth (_check a --> _check b)
+    l T.:*  r -> validate =<< synth (_check l .*  _check r)
+    T.Loc s b -> local (const s) $ b _K
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
@@ -199,18 +199,18 @@ infixr 1 >~>
 
 -- Expressions
 
-elabExpr :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m, C.Expr expr) => (SE.Expr ::: Maybe Type) -> m (expr ::: Type)
-elabExpr (t ::: _T) = SE.fold alg t _T
+elabExpr :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m, C.Expr expr) => (E.Expr ::: Maybe Type) -> m (expr ::: Type)
+elabExpr (t ::: _T) = E.fold alg t _T
   where
   alg t _T = case t of
-    SE.Free  n -> validate =<< synth (eglobal n)
-    SE.Bound n -> validate =<< synth (ebound n)
-    SE.Hole  n -> hole (n ::: _T)
-    SE.Lam n b -> check (lam n (_check b) ::: _T) (pretty "lambda")
-    f SE.:$  a -> validate =<< synth (_synth f $$  _check a)
-    l SE.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
-    SE.Unit    -> validate =<< synth unit
-    SE.Loc s b -> local (const s) $ b _T
+    E.Free  n -> validate =<< synth (eglobal n)
+    E.Bound n -> validate =<< synth (ebound n)
+    E.Hole  n -> hole (n ::: _T)
+    E.Lam n b -> check (lam n (_check b) ::: _T) (pretty "lambda")
+    f E.:$  a -> validate =<< synth (_synth f $$  _check a)
+    l E.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
+    E.Unit    -> validate =<< synth unit
+    E.Loc s b -> local (const s) $ b _T
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
@@ -253,49 +253,49 @@ l ** r = Check $ \ _T -> do
 
 -- Declarations
 
-elabDecl :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m, C.Expr expr) => SD.Decl -> m (Check m expr ::: Type)
-elabDecl = SD.fold alg
+elabDecl :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m, C.Expr expr) => D.Decl -> m (Check m expr ::: Type)
+elabDecl = D.fold alg
   where
   alg = \case
-    (n ::: t) SD.:=> b -> do
+    (n ::: t) D.:=> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)
       b' ::: _B <- n ::: _T |- b
       pure $ tlam n b' ::: ((n ::: _T) C.>=> _B)
 
-    (n ::: t) SD.:-> b -> do
+    (n ::: t) D.:-> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)
       b' ::: _B <- n ::: _T |- b
       pure $ lam n b' ::: (_T C.--> _B)
 
-    t SD.:= b -> do
+    t D.:= b -> do
       _T ::: _ <- elabType (t ::: Just C._Type)
       pure $ _check (elabExpr . (b :::)) ::: _T
 
-    SD.Loc s d -> local (const s) d
+    D.Loc s d -> local (const s) d
   _check r = tm <$> Check (r . Just)
 
 
 -- Modules
 
-elabModule :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader MName) sig m, Has (Reader Span) sig m, C.Expr expr, C.Type ty, C.Module expr ty mod) => SM.Module -> m mod
-elabModule = SM.fold alg
+elabModule :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader MName) sig m, Has (Reader Span) sig m, C.Expr expr, C.Type ty, C.Module expr ty mod) => M.Module -> m mod
+elabModule = M.fold alg
   where
   alg = \case
-    SM.Module n ds -> C.module' n <$> sequenceA ds
+    M.Module n ds -> C.module' n <$> sequenceA ds
 
-    SM.DefTerm n d -> do
+    M.DefTerm n d -> do
       e ::: _T <- elabDecl d
       e' <- check (e ::: _T)
       mname <- ask
       pure $ C.defTerm (mname :.: N.getEName n) (interpret _T := e')
 
-    SM.DefType n d -> do
+    M.DefType n d -> do
       e ::: _T <- elabDecl d
       e' <- check (e ::: _T)
       mname <- ask
       pure $ C.defTerm (mname :.: N.getTName n) (interpret _T := e')
 
-    SM.Loc s d -> local (const s) d
+    M.Loc s d -> local (const s) d
 
 
 -- Context
