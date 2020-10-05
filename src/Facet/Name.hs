@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Name
@@ -17,7 +16,6 @@ module Facet.Name
 , DName(..)
 , Assoc(..)
 , Op(..)
-, OName
 , OpN(..)
 ) where
 
@@ -112,14 +110,12 @@ instance P.Pretty DName where
 data Assoc = N | L | R
   deriving (Eq, Ord, Show)
 
-data Op a
-  = Prefix  a
-  | Postfix a
-  | Infix Assoc a
-  | Outfix a a
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-type OName = Op Text
+data Op
+  = Prefix  Text
+  | Postfix Text
+  | Infix Assoc Text
+  | Outfix Text Text
+  deriving (Eq, Ord, Show)
 
 data OpN
   = PrefixN      Text   [Text]
