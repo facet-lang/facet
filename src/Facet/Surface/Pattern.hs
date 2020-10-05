@@ -7,17 +7,17 @@ module Facet.Surface.Pattern
 import Facet.Name
 import Text.Parser.Position (Spanned(..), Span)
 
-data Pattern
+data Pattern a
   = Wildcard
   | Var EName
-  | Tuple [Pattern]
-  | Loc Span Pattern
+  | Tuple [Pattern a]
+  | Loc Span (Pattern a)
   deriving (Eq, Ord, Show)
 
-instance Spanned Pattern where
+instance Spanned (Pattern a) where
   setSpan = Loc
 
-dropLoc :: Pattern -> Pattern
+dropLoc :: Pattern a -> Pattern a
 dropLoc = \case
   Loc _ e -> e
   e       -> e
