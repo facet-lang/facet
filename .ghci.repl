@@ -41,4 +41,5 @@
 
 import Facet.GHCI
 import Facet.Parser
+import Facet.Print
 import Main
