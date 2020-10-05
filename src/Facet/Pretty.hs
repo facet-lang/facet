@@ -5,6 +5,8 @@ module Facet.Pretty
 , hPutDocWith
 , putDoc
 , putDocWith
+  -- * Helpers
+, reflow
   -- * Variable formatting
 , toAlpha
 , var
@@ -49,6 +51,12 @@ putDoc = hPutDoc stdout
 
 putDocWith :: MonadIO m => (a -> ANSI.AnsiStyle) -> PP.Doc a -> m ()
 putDocWith = hPutDocWith stdout
+
+
+-- Helpers
+
+reflow :: Printer p => String -> p
+reflow = fillSep . map pretty . words
 
 
 -- Variable formatting
