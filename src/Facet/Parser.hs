@@ -245,6 +245,17 @@ pattern = spanning
 ename :: (Monad p, TokenParsing p) => p N.EName
 ename  = ident enameStyle
 
+oname :: (Monad p, TokenParsing p) => p N.Op
+oname
+  =   postOrIn <$ place <*> comp <*> option False (True <$ place)
+  <|> try (outOrPre <$> comp <* place) <*> optional comp
+  where
+  place = wildcard
+  comp = ident onameStyle
+  outOrPre s e = maybe (N.Prefix s) (N.Outfix s) e
+  -- FIXME: how should we specify associativity?
+  postOrIn c = bool (N.Postfix c) (N.Infix N.N c)
+
 onameN :: (Monad p, TokenParsing p) => p N.OpN
 onameN
   =   postOrIn <$ place <*> sepByNonEmpty comp place <*> option False (True <$ place)
