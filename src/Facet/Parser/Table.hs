@@ -13,6 +13,7 @@ module Facet.Parser.Table
 
 import Control.Applicative (Alternative(..), (<**>))
 import Text.Parser.Combinators
+import Text.Parser.Position
 
 data BindCtx p a b = BindCtx
   { self :: p a -> p b
@@ -28,10 +29,10 @@ data Operator p a b
   | Binder (BindParser p a b)
   | Atom (p a -> p b)
 
-toBindParser :: Parsing p => Operator p a b -> BindParser p a b
+toBindParser :: (PositionParsing p, Located b) => Operator p a b -> BindParser p a b
 toBindParser = \case
   Infix N op -> fromInfix $ \ _    next -> try (next <**> op) <*> next
-  Infix L op -> fromInfix $ \ _    next -> chainl1 next op
+  Infix L op -> fromInfix $ \ _    next -> chainl1Loc next op
   Infix R op -> fromInfix $ \ self next -> try (next <**> op) <*> self
   Binder p   -> p
   Atom p     -> p . vars
@@ -42,7 +43,7 @@ type BindParser p a b = BindCtx p a b -> p b
 type Table p a b = [[Operator p a b]]
 
 -- | Build a parser for a Table.
-build :: Parsing p => Table p a b -> ((p a -> p b) -> (p a -> p b)) -> (p a -> p b)
+build :: (PositionParsing p, Located b) => Table p a b -> ((p a -> p b) -> (p a -> p b)) -> (p a -> p b)
 build ts end = root
   where
   root = foldr chain (end root) ts
