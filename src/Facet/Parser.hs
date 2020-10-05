@@ -55,10 +55,10 @@ runFacet :: EEnv -> TEnv -> Facet m a -> m a
 runFacet e t (Facet m) = m e t
 
 bindE :: N.EName -> (Name -> Facet m a) -> Facet m a
-bindE n b = Facet $ \ e t -> runFacet e t (b (Name (N.getEName n) (length e + length t)))
+bindE n b = Facet $ \ e t -> let n' = Name (N.getEName n) (length e + length t) in runFacet (Map.insert n (review E.bound_ n') e) t (b n')
 
 bindT :: N.TName -> (Name -> Facet m a) -> Facet m a
-bindT n b = Facet $ \ e t -> runFacet e t (b (Name (N.getTName n) (length e + length t)))
+bindT n b = Facet $ \ e t -> let n' = Name (N.getTName n) (length e + length t) in runFacet e (Map.insert n (review T.bound_ n') t) (b n')
 
 newtype Facet m a = Facet (EEnv -> TEnv -> m a)
   deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC EEnv (ReaderC TEnv m)
