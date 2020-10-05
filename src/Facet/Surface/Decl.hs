@@ -7,7 +7,7 @@ module Facet.Surface.Decl
 , unForAll
 , (>->)
 , (.=)
-, dropAnn
+, dropLoc
 , DeclF(..)
 , fold
 ) where
@@ -22,7 +22,7 @@ import Text.Parser.Position (Located(..), Span)
 newtype Decl = In { out :: DeclF Decl }
 
 instance Located Decl where
-  locate = fmap In . Ann
+  locate = fmap In . Loc
 
 -- | Universal quantification.
 (>=>) :: (Name ::: Type) -> Decl -> Decl
@@ -46,9 +46,9 @@ infixr 1 >->
 infix 1 .=
 
 
-dropAnn :: Decl -> Decl
-dropAnn d = case out d of
-  Ann _ d -> d
+dropLoc :: Decl -> Decl
+dropLoc d = case out d of
+  Loc _ d -> d
   _       -> d
 
 
@@ -56,7 +56,7 @@ data DeclF a
   = (Name ::: Type) :=> a
   | (Name ::: Type) :-> a
   | Type := Expr
-  | Ann Span a
+  | Loc Span a
   deriving (Foldable, Functor, Traversable)
 
 infix 1 :=

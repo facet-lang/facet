@@ -175,11 +175,11 @@ printSurfaceType = go
     ST.Hole n  -> hole n
     ST.Type    -> _Type
     ST.Unit    -> _Unit
-    t ST.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (preview ST.forAll_ . ST.dropAnn) b))
-    f ST.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview ST.app_ . ST.dropAnn) f))
+    t ST.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (preview ST.forAll_ . ST.dropLoc) b))
+    f ST.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview ST.app_ . ST.dropLoc) f))
     a ST.:-> b -> go a --> go b
     l ST.:*  r -> go l **  go r
-    ST.Ann _ t -> go t
+    ST.Loc _ t -> go t
 
 sfree :: Text -> Print
 sfree = var . pretty
@@ -245,11 +245,11 @@ printSurfaceExpr = go
     SE.Free n  -> sfree (SE.getEName n)
     SE.Bound n -> sbound n
     SE.Hole n  -> hole n
-    SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (preview SE.lam_ . SE.dropAnn) b))
-    f SE.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview SE.app_ . SE.dropAnn) f))
+    SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (preview SE.lam_ . SE.dropLoc) b))
+    f SE.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview SE.app_ . SE.dropLoc) f))
     SE.Unit    -> unit
     l SE.:*  r -> go l **  go r
-    SE.Ann _ t -> go t
+    SE.Loc _ t -> go t
 
 
 -- FIXME: Use _ in binding positions for unused variables
@@ -268,9 +268,9 @@ printSurfaceDecl = go
   where
   go = SD.out >>> \case
     t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
-    t SD.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (SD.unForAll . SD.dropAnn) b))
+    t SD.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (SD.unForAll . SD.dropLoc) b))
     t SD.:-> b -> bimap sbound printSurfaceType t >-> go b
-    SD.Ann _ d -> go d
+    SD.Loc _ d -> go d
 
 -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
 (.=) :: Print -> Print -> Print
@@ -287,7 +287,7 @@ printSurfaceModule = SM.fold alg
     SM.Module  n b -> module' n b
     SM.DefTerm n d -> defTerm (sfree (SE.getEName n)) (printSurfaceDecl d)
     SM.DefType n d -> defType (sfree (ST.getTName n)) (printSurfaceDecl d)
-    SM.Ann _ t     -> t
+    SM.Loc _ t     -> t
 
 
 module' :: N.MName -> [Print] -> Print

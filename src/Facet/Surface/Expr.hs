@@ -11,7 +11,7 @@ module Facet.Surface.Expr
 , app_
 , unit
 , prd_
-, dropAnn
+, dropLoc
 , ExprF(..)
 , fold
 ) where
@@ -30,7 +30,7 @@ newtype EName = EName { getEName :: Text }
 newtype Expr = In { out :: ExprF Expr }
 
 instance Located Expr where
-  locate = fmap In . Ann
+  locate = fmap In . Loc
 
 global_ :: Prism' Expr EName
 global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
@@ -58,9 +58,9 @@ prd_ = prism' (In . uncurry (:*)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Noth
 -- FIXME: tupling/unit should take a list of expressions
 
 
-dropAnn :: Expr -> Expr
-dropAnn e = case out e of
-  Ann _ e -> e
+dropLoc :: Expr -> Expr
+dropLoc e = case out e of
+  Loc _ e -> e
   _       -> e
 
 
@@ -72,7 +72,7 @@ data ExprF e
   | e :$ e
   | Unit
   | e :* e
-  | Ann Span e
+  | Loc Span e
   deriving (Foldable, Functor, Traversable)
 
 infixl 9 :$

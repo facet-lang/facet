@@ -140,7 +140,7 @@ elabType (t ::: _K) = ST.fold alg t _K
     f ST.:$  a -> validate =<< synth (_synth f .$  _check a)
     a ST.:-> b -> validate =<< synth (_check a --> _check b)
     l ST.:*  r -> validate =<< synth (_check l .*  _check r)
-    ST.Ann s b -> local (const s) $ b _K
+    ST.Loc s b -> local (const s) $ b _K
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
@@ -209,7 +209,7 @@ elabExpr (t ::: _T) = SE.fold alg t _T
     f SE.:$  a -> validate =<< synth (_synth f $$  _check a)
     l SE.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
     SE.Unit    -> validate =<< synth unit
-    SE.Ann s b -> local (const s) $ b _T
+    SE.Loc s b -> local (const s) $ b _T
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
@@ -270,7 +270,7 @@ elabDecl = SD.fold alg
       _T ::: _ <- elabType (t ::: Just C._Type)
       pure $ _check (elabExpr . (b :::)) ::: _T
 
-    SD.Ann s d -> local (const s) d
+    SD.Loc s d -> local (const s) d
   _check r = tm <$> Check (r . Just)
 
 
@@ -294,7 +294,7 @@ elabModule = SM.fold alg
       mname <- ask
       pure $ C.defTerm (mname :.: ST.getTName n) (interpret _T := e')
 
-    SM.Ann s d -> local (const s) d
+    SM.Loc s d -> local (const s) d
 
 
 -- Context

@@ -18,7 +18,7 @@ import Text.Parser.Position (Located(..), Span)
 newtype Module = In { out :: ModuleF Module }
 
 instance Located Module where
-  locate = fmap In . Ann
+  locate = fmap In . Loc
 
 module' :: MName -> [Module] -> Module
 module' = fmap In . Module
@@ -33,7 +33,7 @@ data ModuleF a
   = Module MName [a]
   | DefTerm EName Decl
   | DefType TName Decl
-  | Ann Span a
+  | Loc Span a
   deriving (Foldable, Functor, Traversable)
 
 

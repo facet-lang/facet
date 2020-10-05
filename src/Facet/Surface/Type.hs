@@ -14,7 +14,7 @@ module Facet.Surface.Type
 , prd_
 , _Unit
 , _Type
-, dropAnn
+, dropLoc
 , aeq
 , TypeF(..)
 , fold
@@ -34,7 +34,7 @@ newtype TName = TName { getTName :: Text }
 newtype Type = In { out :: TypeF Type }
 
 instance Located Type where
-  locate = fmap In . Ann
+  locate = fmap In . Loc
 
 global_ :: Prism' Type TName
 global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
@@ -66,9 +66,9 @@ _Type :: Type
 _Type = In Type
 
 
-dropAnn :: Type -> Type
-dropAnn e = case out e of
-  Ann _ e -> e
+dropLoc :: Type -> Type
+dropLoc e = case out e of
+  Loc _ e -> e
   _       -> e
 
 
@@ -82,7 +82,7 @@ aeq = fold $ \ t1 t2 -> case (t1, out t2) of
   (f1 :$ a1,           f2 :$ a2)           -> f1 f2 && a1 a2
   (a1 :-> b1,          a2 :-> b2)          -> a1 a2 && b1 b2
   (l1 :* r1,           l2 :* r2)           -> l1 l2 && r1 r2
-  (Ann _ t1,           Ann _ t2)           -> t1 t2
+  (Loc _ t1,           Loc _ t2)           -> t1 t2
   _                                        -> False
 
 
@@ -96,7 +96,7 @@ data TypeF t
   | t :$ t
   | t :-> t
   | t :*  t
-  | Ann Span t
+  | Loc Span t
   deriving (Foldable, Functor, Traversable)
 
 infixr 1 :=>
