@@ -37,7 +37,6 @@ import qualified Facet.Pretty as P
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
-import qualified Facet.Surface.Name as N
 import qualified Facet.Surface.Type as T
 import           Facet.Syntax
 import           Prelude hiding ((**))

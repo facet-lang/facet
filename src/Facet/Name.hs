@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TupleSections #-}
 module Facet.Name
 ( Name(..)
@@ -10,11 +11,15 @@ module Facet.Name
 , MName(..)
 , QName(..)
 , moduleName
+, EName(..)
+, TName(..)
 ) where
 
 import           Data.Function (on)
-import qualified Data.IntSet as IntSet
 import qualified Data.IntMap as IntMap
+import qualified Data.IntSet as IntSet
+import           Data.String (IsString(..))
+import           Data.Text (Text)
 import qualified Data.Text as T
 import           Facet.Pretty
 import qualified Prettyprinter as P
@@ -78,3 +83,10 @@ data QName = MName :.: T.Text
 
 moduleName :: QName -> MName
 moduleName (mname :.: _) = mname
+
+
+newtype EName = EName { getEName :: Text }
+  deriving (Eq, IsString, Ord, P.Pretty, Show)
+
+newtype TName = TName { getTName :: Text }
+  deriving (Eq, IsString, Ord, P.Pretty, Show)

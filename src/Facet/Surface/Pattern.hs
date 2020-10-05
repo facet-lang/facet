@@ -4,7 +4,7 @@ module Facet.Surface.Pattern
 , dropLoc
 ) where
 
-import Facet.Surface.Name
+import Facet.Name
 import Text.Parser.Position (Located(..), Span)
 
 data Pattern

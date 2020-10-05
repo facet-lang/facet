@@ -23,12 +23,11 @@ import           Data.Coerce
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
 import           Data.Text (Text, unpack)
-import           Facet.Name
+import           Facet.Name as N
 import           Facet.Parser.Table
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
-import qualified Facet.Surface.Name as N
 import qualified Facet.Surface.Pattern as P
 import qualified Facet.Surface.Type as T
 import qualified Facet.Syntax as S

@@ -55,7 +55,6 @@ library
     Facet.Surface.Decl
     Facet.Surface.Expr
     Facet.Surface.Module
-    Facet.Surface.Name
     Facet.Surface.Pattern
     Facet.Surface.Type
     Facet.Syntax

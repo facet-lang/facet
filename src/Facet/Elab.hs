@@ -50,12 +50,12 @@ import           Facet.Carrier.Error.Context
 import qualified Facet.Core as C
 import qualified Facet.Env as Env
 import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
+import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
-import qualified Facet.Surface.Name as N
 import qualified Facet.Surface.Type as T
 import           Facet.Syntax
 import           Facet.Type

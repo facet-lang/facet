@@ -18,7 +18,6 @@ module Facet.Surface.Expr
 import Control.Lens.Prism
 import Data.Text (Text)
 import Facet.Name
-import Facet.Surface.Name
 import Prelude hiding ((**))
 import Text.Parser.Position (Located(..), Span)
 

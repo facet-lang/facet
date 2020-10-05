@@ -22,7 +22,6 @@ module Facet.Surface.Type
 import Control.Lens.Prism
 import Data.Text (Text)
 import Facet.Name
-import Facet.Surface.Name
 import Facet.Syntax
 import Text.Parser.Position (Located(..), Span)
 
