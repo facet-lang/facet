@@ -6,9 +6,11 @@ module Text.Parser.Position
 , spanning
 , spanned
 , Located(..)
+, chainl1Loc
 ) where
 
-import qualified Control.Carrier.Parser.Church as P
+import           Control.Applicative ((<**>), (<|>))
+import qualified Control.Carrier.Parser.Church as P
 import           Control.Effect.Parser.Span (Pos, Span(..))
 import           Text.Parser.Token (TokenParsing)
 
@@ -29,3 +31,9 @@ spanned p = mk <$> position <*> p <*> position
 
 class Located t where
   locate :: Span -> t -> t
+
+
+chainl1Loc :: (Located a, PositionParsing p) => p a -> p (a -> a -> a) -> p a
+chainl1Loc p op = scan where
+  scan = (,) <$> position <*> p <**> rst
+  rst = (\ f y end g (start, x) -> g (start, locate (Span start end) (f x y))) <$> op <*> p <*> position <*> rst <|> pure snd
