@@ -26,7 +26,7 @@ import           Data.Text (Text, unpack)
 import           Facet.Name
 import           Facet.Parser.Table
 import qualified Facet.Surface.Decl as D
-import qualified Facet.Surface.Expr as S
+import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
 import qualified Facet.Surface.Pattern as P
 import qualified Facet.Surface.Type as S
@@ -109,7 +109,7 @@ tsigTable =
   [ [ Binder (forAll (liftA2 (D.>=>))) ]
   ]
 
-sigTable :: (Monad p, PositionParsing p) => Facet p S.Type -> Table (Facet p) S.Expr D.Decl
+sigTable :: (Monad p, PositionParsing p) => Facet p S.Type -> Table (Facet p) E.Expr D.Decl
 sigTable tvars =
   [ [ Binder (binder tvars) ]
   ]
@@ -117,10 +117,10 @@ sigTable tvars =
 tsig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p D.Decl
 tsig = build tsigTable (\ _ vars -> sig vars global)
 
-sig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Expr -> Facet p D.Decl
+sig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p E.Expr -> Facet p D.Decl
 sig tvars = build (sigTable tvars) (\ _ vars -> (D..=) <$> monotype_ tvars <*> comp vars)
 
-binder :: (Monad p, PositionParsing p) => Facet p S.Type -> BindParser (Facet p) S.Expr D.Decl
+binder :: (Monad p, PositionParsing p) => Facet p S.Type -> BindParser (Facet p) E.Expr D.Decl
 binder tvars BindCtx{ self, vars } = locating $ do
   (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type_ tvars <* symbolic ')'
   bindVarPattern i $ \ v ext -> ((v S.::: t) D.>->) <$ arrow <*> self (ext vars)
@@ -166,57 +166,57 @@ tglobal = review S.tglobal_ <$> tname <?> "variable"
 
 -- Expressions
 
-exprTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Expr S.Expr
+exprTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr E.Expr
 exprTable =
-  [ [ Infix L (pure (curry (review S._App))) ]
+  [ [ Infix L (pure (curry (review E._App))) ]
   , [ Atom comp
-    , Atom (const (review S.hole_ <$> hname))
+    , Atom (const (review E.hole_ <$> hname))
     , Atom id
     ]
   ]
 
-expr :: (Monad p, PositionParsing p) => Facet p S.Expr
+expr :: (Monad p, PositionParsing p) => Facet p E.Expr
 expr = expr_ global
 
-global :: (Monad p, TokenParsing p) => Facet p S.Expr
-global = review S.global_ <$> ename <?> "variable"
+global :: (Monad p, TokenParsing p) => Facet p E.Expr
+global = review E.global_ <$> ename <?> "variable"
 
-expr_ :: (Monad p, PositionParsing p) => Facet p S.Expr -> Facet p S.Expr
-expr_ = build exprTable (terminate parens (toBindParser (Infix L (curry (review S._Prd) <$ comma))))
+expr_ :: (Monad p, PositionParsing p) => Facet p E.Expr -> Facet p E.Expr
+expr_ = build exprTable (terminate parens (toBindParser (Infix L (curry (review E._Prd) <$ comma))))
 
-comp :: (Monad p, PositionParsing p) => Facet p S.Expr -> Facet p S.Expr
+comp :: (Monad p, PositionParsing p) => Facet p E.Expr -> Facet p E.Expr
 comp = braces . build compTable (const expr_)
 
-compTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Expr S.Expr
+compTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr E.Expr
 compTable =
   [ [ Binder clause ]
   ]
 
-clause :: (Monad p, PositionParsing p) => BindParser (Facet p) S.Expr S.Expr
+clause :: (Monad p, PositionParsing p) => BindParser (Facet p) E.Expr E.Expr
 clause = self . vars
   where
   self vars = (do
     patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
     foldr clause expr_ patterns vars) <?> "clause"
   clause (start, p) rest vars = bindPattern p $ \ vs ext -> do
-    lam <- foldr (fmap . curry (review S._Lam)) (rest (ext vars)) vs
+    lam <- foldr (fmap . curry (review E._Lam)) (rest (ext vars)) vs
     end <- position
     pure (locate (Span start end) lam)
 
 
 -- Patterns
 
-bindPattern :: PositionParsing p => P.Pattern -> ([Name] -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p S.Expr) -> Facet p S.Expr
+bindPattern :: PositionParsing p => P.Pattern -> ([Name] -> (Facet p E.Expr -> Facet p E.Expr) -> Facet p E.Expr) -> Facet p E.Expr
 bindPattern P.Wildcard   f = bind __ (\ v -> f [v] id)
-bindPattern (P.Var n)    f = bind n  (\ v -> f [v] (review S.bound_ v <$ variable v <|>))
+bindPattern (P.Var n)    f = bind n  (\ v -> f [v] (review E.bound_ v <$ variable v <|>))
 bindPattern (P.Tuple ps) f = go [] id ps
   where
   go vs ext []     = f vs ext
   go vs ext (p:ps) = bindPattern p $ \ vs' ext' -> go (vs <> vs') (ext . ext') ps
 
-bindVarPattern :: (PositionParsing p, Coercible t Text) => Maybe t -> (Name -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p res) -> Facet p res
+bindVarPattern :: (PositionParsing p, Coercible t Text) => Maybe t -> (Name -> (Facet p E.Expr -> Facet p E.Expr) -> Facet p res) -> Facet p res
 bindVarPattern Nothing  f = bind __ (\ v -> f v id)
-bindVarPattern (Just n) f = bind n  (\ v -> f v (review S.bound_ v <$ variable v <|>))
+bindVarPattern (Just n) f = bind n  (\ v -> f v (review E.bound_ v <$ variable v <|>))
 
 
 varPattern :: (Monad p, TokenParsing p) => p name -> p (Maybe name)
@@ -237,7 +237,7 @@ pattern =
 
 -- Names
 
-ename :: (Monad p, TokenParsing p) => p S.EName
+ename :: (Monad p, TokenParsing p) => p E.EName
 ename  = ident nameStyle
 
 hname :: (Monad p, TokenParsing p) => p Text
