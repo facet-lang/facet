@@ -6,6 +6,7 @@ module Facet.Expr
 , subst
 ) where
 
+import           Control.Lens.Prism
 import qualified Data.IntSet as IntSet
 import qualified Facet.Core as C
 import           Facet.Name
@@ -38,6 +39,9 @@ instance C.Expr Expr where
   f $$ a = App (fvs f <> fvs a) f a
   unit = Unit
   l ** r = Pair (fvs l <> fvs r) l r
+
+_App :: Prism' Expr (Expr, Expr)
+_App = prism' (uncurry (C.$$)) (\case{ App _ f a -> Just (f, a) ; _ -> Nothing })
 
 interpret :: C.Expr r => Expr -> r
 interpret = \case
