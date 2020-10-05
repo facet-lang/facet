@@ -231,9 +231,9 @@ wildcard = reserve nameStyle "_"
 -- FIXME: patterns
 pattern :: (Monad p, TokenParsing p) => p P.Pattern
 pattern =
-  (   P.Var <$> ename
+      P.Var <$> ename
   <|> P.Wildcard <$ wildcard
-  <|> P.Tuple <$> parens (commaSep pattern))
+  <|> P.Tuple <$> parens (commaSep pattern)
   <?> "pattern"
 
 
