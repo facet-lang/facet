@@ -29,6 +29,9 @@ spanned p = mk <$> position <*> p <*> position
 class Spanned t where
   setSpan :: Span -> t -> t
 
+  dropSpan :: t -> t
+  dropSpan = id
+
 spanning :: (PositionParsing p, Spanned a) => p a -> p a
 spanning = fmap (uncurry setSpan) . spanned
 
