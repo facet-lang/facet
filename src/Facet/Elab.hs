@@ -202,15 +202,15 @@ elabExpr (t ::: _T) = SE.fold alg t _T
   alg t _T = case t of
     SE.Free  n -> validate =<< synth (eglobal n)
     SE.Bound n -> validate =<< synth (ebound n)
-    SE.Lam n b -> check (lam n (_check b) ::: _T)
+    SE.Lam n b -> check (lam n (_check b) ::: _T) (pretty "lambda")
     f SE.:$  a -> validate =<< synth (_synth f $$  _check a)
-    l SE.:*  r -> check (_check l **  _check r ::: _T)
+    l SE.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
     SE.Unit    -> validate =<< synth unit
     SE.Ann s b -> local (const s) $ b _T
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
-    check (m ::: _T) = expectChecked _T >>= \ _T -> (::: _T) <$> runCheck m _T
+    check (m ::: _T) msg = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
     validate r@(_ ::: _T') = case _T of
       Just _T -> r <$ unify _T' _T
       _       -> pure r
@@ -318,8 +318,8 @@ mismatch msg exp act = err $ msg
 couldNotUnify :: Has (Error P.Print) sig m => Type -> Type -> m a
 couldNotUnify t1 t2 = mismatch (fromWords "could not unify") (interpret t2) (interpret t1)
 
-couldNotSynthesize :: Has (Error P.Print) sig m => m a
-couldNotSynthesize = err $ fromWords "could not synthesize a type"
+couldNotSynthesize :: Has (Error P.Print) sig m => P.Print -> m a
+couldNotSynthesize msg = err $ fromWords "could not synthesize a type for" </> msg
 
 freeVariable :: Has (Error P.Print) sig m => P.Print -> m a
 freeVariable v = err $ fromWords "variable not in scope:" <+> v
@@ -327,8 +327,8 @@ freeVariable v = err $ fromWords "variable not in scope:" <+> v
 
 -- Patterns
 
-expectChecked :: Has (Error P.Print) sig m => Maybe Type -> m Type
-expectChecked = maybe couldNotSynthesize pure
+expectChecked :: Has (Error P.Print) sig m => Maybe Type -> P.Print -> m Type
+expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 expectQuantifiedType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Name, Type, Type)
 expectQuantifiedType s = \case
