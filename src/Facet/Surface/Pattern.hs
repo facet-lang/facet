@@ -4,12 +4,12 @@ module Facet.Surface.Pattern
 , dropLoc
 ) where
 
-import qualified Facet.Surface.Expr as S
-import           Text.Parser.Position (Located(..), Span)
+import Facet.Surface.Name
+import Text.Parser.Position (Located(..), Span)
 
 data Pattern
   = Wildcard
-  | Var S.EName
+  | Var EName
   | Tuple [Pattern]
   | Loc Span Pattern
   deriving (Eq, Ord, Show)

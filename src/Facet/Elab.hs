@@ -55,6 +55,7 @@ import qualified Facet.Print as P
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
 import qualified Facet.Surface.Module as SM
+import qualified Facet.Surface.Name as N
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Facet.Type
@@ -218,8 +219,8 @@ elabExpr (t ::: _T) = SE.fold alg t _T
       Just _T -> r <$ unify _T' _T
       _       -> pure r
 
-eglobal :: (Has (Reader Env.Env) sig m, C.Expr expr, Has (Error P.Print) sig m) => SE.EName -> Synth m expr
-eglobal (SE.EName s) = Synth $ asks (Env.lookup s) >>= \case
+eglobal :: (Has (Reader Env.Env) sig m, C.Expr expr, Has (Error P.Print) sig m) => N.EName -> Synth m expr
+eglobal (N.EName s) = Synth $ asks (Env.lookup s) >>= \case
   Just b  -> pure (C.global (tm b :.: s) ::: ty b)
   Nothing -> freeVariable (pretty s)
 
@@ -286,7 +287,7 @@ elabModule = SM.fold alg
       e ::: _T <- elabDecl d
       e' <- check (e ::: _T)
       mname <- ask
-      pure $ C.defTerm (mname :.: SE.getEName n) (interpret _T := e')
+      pure $ C.defTerm (mname :.: N.getEName n) (interpret _T := e')
 
     SM.DefType n d -> do
       e ::: _T <- elabDecl d

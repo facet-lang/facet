@@ -2,8 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Surface.Expr
-( EName(..)
-, Expr(..)
+( Expr(..)
 , global_
 , bound_
 , hole_
@@ -17,15 +16,11 @@ module Facet.Surface.Expr
 ) where
 
 import Control.Lens.Prism
-import Data.String (IsString(..))
 import Data.Text (Text)
 import Facet.Name
+import Facet.Surface.Name
 import Prelude hiding ((**))
-import Prettyprinter (Pretty)
 import Text.Parser.Position (Located(..), Span)
-
-newtype EName = EName { getEName :: Text }
-  deriving (Eq, IsString, Ord, Pretty, Show)
 
 newtype Expr = In { out :: ExprF Expr }
 

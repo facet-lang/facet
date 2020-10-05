@@ -37,6 +37,7 @@ import qualified Facet.Pretty as P
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
 import qualified Facet.Surface.Module as SM
+import qualified Facet.Surface.Name as N
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Prelude hiding ((**))
@@ -245,7 +246,7 @@ printSurfaceExpr :: SE.Expr -> Print
 printSurfaceExpr = go
   where
   go = SE.out >>> \case
-    SE.Free n  -> sfree (SE.getEName n)
+    SE.Free n  -> sfree (N.getEName n)
     SE.Bound n -> sbound n
     SE.Hole n  -> hole n
     SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (preview SE.lam_ . SE.dropLoc) b))
@@ -290,7 +291,7 @@ printSurfaceModule = SM.fold alg
   where
   alg = \case
     SM.Module  n b -> module' n b
-    SM.DefTerm n d -> defTerm (sfree (SE.getEName n)) (printSurfaceDecl d)
+    SM.DefTerm n d -> defTerm (sfree (N.getEName n)) (printSurfaceDecl d)
     SM.DefType n d -> defType (sfree (ST.getTName n)) (printSurfaceDecl d)
     SM.Loc _ t     -> t
 

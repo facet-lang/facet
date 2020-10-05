@@ -28,6 +28,7 @@ import           Facet.Parser.Table
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
+import qualified Facet.Surface.Name as N
 import qualified Facet.Surface.Pattern as P
 import qualified Facet.Surface.Type as T
 import qualified Facet.Syntax as S
@@ -239,7 +240,7 @@ pattern = locating
 
 -- Names
 
-ename :: (Monad p, TokenParsing p) => p E.EName
+ename :: (Monad p, TokenParsing p) => p N.EName
 ename  = ident nameStyle
 
 hname :: (Monad p, TokenParsing p) => p Text
