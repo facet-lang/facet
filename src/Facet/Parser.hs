@@ -94,10 +94,10 @@ whole p = whiteSpace *> p <* eof
 -- Modules
 
 module' :: (Monad p, PositionParsing p) => Facet p M.Module
-module' = locating $ M.module' <$> mname <* colon <* symbol "Module" <*> braces (many decl)
+module' = spanning $ M.module' <$> mname <* colon <* symbol "Module" <*> braces (many decl)
 
 decl :: (Monad p, PositionParsing p) => Facet p M.Module
-decl = locating
+decl = spanning
   $   M.defTerm <$> ename <* colon <*> tsig tglobal
   <|> M.defType <$> tname <* colon <*> tsig tglobal
 
@@ -121,7 +121,7 @@ sig :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p E.Expr -> Facet
 sig tvars = build (sigTable tvars) (\ _ vars -> (D..=) <$> monotype_ tvars <*> comp vars)
 
 binder :: (Monad p, PositionParsing p) => Facet p T.Type -> BindParser (Facet p) E.Expr D.Decl
-binder tvars BindCtx{ self, vars } = locating $ do
+binder tvars BindCtx{ self, vars } = spanning $ do
   (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type_ tvars <* symbolic ')'
   bindVarPattern i $ \ v ext -> ((v S.::: t) D.>->) <$ arrow <*> self (ext vars)
 
@@ -146,7 +146,7 @@ forAll
   :: (Spanned res, Monad p, PositionParsing p)
   => (Facet p (Name S.::: T.Type) -> Facet p res -> Facet p res)
   -> BindParser (Facet p) T.Type res
-forAll (>=>) BindCtx{ self, vars } = locating $ do
+forAll (>=>) BindCtx{ self, vars } = spanning $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
   let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (review T.bound_ v <$ variable v <|> vars)
   arrow *> foldr loop self names vars
@@ -230,7 +230,7 @@ wildcard = reserve enameStyle "_"
 
 -- FIXME: patterns
 pattern :: (Monad p, PositionParsing p) => p P.Pattern
-pattern = locating
+pattern = spanning
   $   P.Var <$> ename
   <|> P.Wildcard <$ wildcard
   <|> P.Tuple <$> parens (commaSep pattern)
