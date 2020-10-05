@@ -258,7 +258,7 @@ printSurfaceExpr = go
 
 -- FIXME: Use _ in binding positions for unused variables
 lam :: Print -> Print -> Print
-lam n b = cases [n] b
+lam n b = lams [n] b
 
 lams :: [Print] -> Print -> Print
 lams = cases
