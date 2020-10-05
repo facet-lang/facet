@@ -209,6 +209,7 @@ clause = self . vars
 bindPattern :: PositionParsing p => P.Pattern -> ([Name] -> (Facet p E.Expr -> Facet p E.Expr) -> Facet p E.Expr) -> Facet p E.Expr
 bindPattern P.Wildcard   f = bind __ (\ v -> f [v] id)
 bindPattern (P.Var n)    f = bind n  (\ v -> f [v] (review E.bound_ v <$ variable v <|>))
+-- FIXME: this is incorrect since the structure doesn’t get used in the clause
 bindPattern (P.Tuple ps) f = go [] id ps
   where
   go vs ext []     = f vs ext
