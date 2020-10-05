@@ -25,7 +25,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.HashSet as HashSet
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
-import           Data.Text (Text)
+import           Data.Text (Text, pack)
 import qualified Facet.Name as N
 import           Facet.Parser.Table
 import qualified Facet.Surface.Decl as D
@@ -138,8 +138,8 @@ typeTable = [ Binder (forAll (liftA2 (curry (review T.forAll_)))) ] : monotypeTa
 
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
 monotypeTable =
-  [ [ Infix R (curry (review T.arrow_) <$ arrow) ]
-  , [ Infix L (pure (curry (review T.app_))) ]
+  [ [ Infix R (pack "->") (curry (review T.arrow_)) ]
+  , [ Infix L mempty (curry (review T.app_)) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       Atom (T._Unit <$ token (string "Unit"))
     , Atom (T._Type <$ token (string "Type"))
@@ -157,10 +157,10 @@ forAll (>=>) self _ = spanning $ do
   arrow *> foldr loop self names
 
 type' :: (Monad p, PositionParsing p) => Facet p T.Type
-type' = build typeTable (terminate parens (toBindParser (Infix L (curry (review T.prd_) <$ comma))))
+type' = build typeTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review T.prd_)))))
 
 monotype :: (Monad p, PositionParsing p) => Facet p T.Type
-monotype = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review T.prd_) <$ comma))))
+monotype = build monotypeTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review T.prd_)))))
 
 tvar :: (Monad p, PositionParsing p) => Facet p T.Type
 tvar = token (spanning (runUnspaced (resolve <$> tname <*> Unspaced tenv <?> "variable")))
@@ -172,7 +172,7 @@ tvar = token (spanning (runUnspaced (resolve <$> tname <*> Unspaced tenv <?> "va
 
 exprTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr
 exprTable =
-  [ [ Infix L (pure (curry (review E.app_))) ]
+  [ [ Infix L mempty (curry (review E.app_)) ]
   , [ Atom comp
     , Atom (review E.hole_ <$> hname)
     , Atom evar
@@ -180,7 +180,7 @@ exprTable =
   ]
 
 expr :: (Monad p, PositionParsing p) => Facet p E.Expr
-expr = build exprTable (terminate parens (toBindParser (Infix L (curry (review E.prd_) <$ comma))))
+expr = build exprTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review E.prd_)))))
 
 comp :: (Monad p, PositionParsing p) => Facet p E.Expr
 comp = braces $ build compTable (const expr)

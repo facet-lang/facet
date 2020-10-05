@@ -10,31 +10,33 @@ module Facet.Parser.Table
 , terminate
 ) where
 
-import Control.Applicative (Alternative(..), (<**>))
+import Control.Applicative (Alternative(..))
 import Data.Foldable (foldl')
 import Data.Function ((&))
+import Data.Text (Text)
 import Text.Parser.Combinators
 import Text.Parser.Position
+import Text.Parser.Token
 
 data Assoc = N | L | R
 
 data Operator p a
   -- TODO: prefix, postfix, mixfix
-  = Prefix  (p (a -> a))
-  | Postfix (p (a -> a))
-  | Infix Assoc (p (a -> a -> a))
-  | Outfix (p (a -> a)) (p ())
+  = Prefix  Text (a -> a)
+  | Postfix Text (a -> a)
+  | Infix Assoc Text (a -> a -> a)
+  | Outfix Text Text (a -> a)
   | Binder (OperatorParser p a)
   | Atom (p a)
 
 toBindParser :: (PositionParsing p, Spanned a) => Operator p a -> OperatorParser p a
 toBindParser = \case
-  Prefix  op -> \ self _    -> op <*> self
-  Postfix op -> \ _    next -> foldl' (&) <$> next <*> many op
-  Infix N op -> \ _    next -> try (next <**> op) <*> next
-  Infix L op -> \ _    next -> chainl1Loc next op
-  Infix R op -> \ self next -> try (next <**> op) <*> self
-  Outfix s e -> \ self _    -> s <*> self <* e
+  Prefix   s op -> \ self _    -> op <$ textSymbol s <*> self
+  Postfix  s op -> \ _    next -> foldl' (&) <$> next <*> many (op <$ textSymbol s)
+  Infix N  s op -> \ _    next -> try (op <$> next <* textSymbol s) <*> next
+  Infix L  s op -> \ _    next -> chainl1Loc next (op <$ textSymbol s)
+  Infix R  s op -> \ self next -> try (op <$> next <* textSymbol s) <*> self
+  Outfix s e op -> \ self _    -> op <$ textSymbol s <*> self <* textSymbol e
   Binder p   -> p
   Atom p     -> const (const p)
   where
