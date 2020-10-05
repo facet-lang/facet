@@ -9,6 +9,7 @@ module Facet.Pretty
 , tvar
 , varFrom
 , tabulate2
+  -- * ANSI terminal colours
 , red
 , yellow
 , green
@@ -74,6 +75,8 @@ data Column = Column { width :: Int, doc :: PP.Doc ANSI.AnsiStyle }
 column :: PP.Doc ANSI.AnsiStyle -> Column
 column a = Column (length (show (PP.unAnnotate a))) a
 
+
+-- ANSI terminal colours
 
 red, yellow, green, cyan, blue, magenta :: PP.Doc ANSI.AnsiStyle -> PP.Doc ANSI.AnsiStyle
 red     = annotate $ ANSI.color ANSI.Red
