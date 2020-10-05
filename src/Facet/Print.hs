@@ -113,6 +113,13 @@ op = annotate Op
 arrow :: (Printer p, Ann p ~ Highlight) => p
 arrow = op (pretty "->")
 
+comp :: Print -> Print
+comp
+  = group
+  . align
+  . braces
+  . prec Comp
+  . enclose space (flatAlt line space)
 
 cases :: [Print] -> Print -> Print
 cases vs b
@@ -268,7 +275,7 @@ printSurfaceDecl :: SD.Decl -> Print
 printSurfaceDecl = go
   where
   go = SD.out >>> \case
-    t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
+    t SD.:=  e -> printSurfaceType t .= comp (printSurfaceExpr e)
     t SD.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (SD.unForAll . SD.dropLoc) b))
     t SD.:-> b -> bimap sbound printSurfaceType t >-> go b
     SD.Loc _ d -> go d
