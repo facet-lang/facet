@@ -5,14 +5,12 @@
 module Facet.Surface.Type
 ( TName(..)
 , Type(..)
-, tglobal
-, tbound
-, (>~>)
-, unForAll
-, (-->)
-, (.$)
-, unApp
-, (.*)
+, tglobal_
+, tbound_
+, _ForAll
+, _Arrow
+, _TApp
+, _TPrd
 , _Unit
 , _Type
 , dropAnn
@@ -21,7 +19,7 @@ module Facet.Surface.Type
 , fold
 ) where
 
-import Control.Effect.Empty
+import Control.Lens.Prism
 import Data.String (IsString(..))
 import Data.Text (Text)
 import Facet.Name
@@ -37,40 +35,24 @@ newtype Type = In { out :: TypeF Type }
 instance Located Type where
   locate = fmap In . Ann
 
-tglobal :: TName -> Type
-tglobal = In . Free
+tglobal_ :: Prism' Type TName
+tglobal_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
 
-tbound :: Name -> Type
-tbound = In . Bound
+tbound_ :: Prism' Type Name
+tbound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
 
-(>~>) :: (Name ::: Type) -> Type -> Type
-(>~>) = fmap In . (:=>)
-infixr 1 >~>
+_ForAll :: Prism' Type (Name ::: Type, Type)
+_ForAll = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
 
-unForAll :: Has Empty sig m => Type -> m (Name ::: Type, Type)
-unForAll t = case out t of
-  t :=> b -> pure (t, b)
-  _       -> empty
+_Arrow :: Prism' Type (Type, Type)
+_Arrow = prism' (In . uncurry (:->)) (\case{ In (a :-> b) -> Just (a, b) ; _ -> Nothing })
 
-(-->) :: Type -> Type -> Type
-(-->) = fmap In . (:->)
-infixr 2 -->
+_TApp :: Prism' Type (Type, Type)
+_TApp = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
 
-(.$) = fmap In . (:$)
-(.$) :: Type -> Type -> Type
+_TPrd :: Prism' Type (Type, Type)
+_TPrd = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
 
-infixl 9 .$
-
-unApp :: Has Empty sig m => Type -> m (Type, Type)
-unApp e = case out e of
-  f :$ a -> pure (f, a)
-  _      -> empty
-
-
-(.*) :: Type -> Type -> Type
-(.*) = fmap In . (:*)
-infixl 7 .*
--- FIXME: tupling/unit should take a list of types
 
 _Unit :: Type
 _Unit = In Unit

@@ -174,7 +174,7 @@ printSurfaceType = go
     ST.Bound n -> sbound n
     ST.Type    -> _Type
     ST.Unit    -> _Unit
-    t ST.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (ST.unForAll . ST.dropAnn) b))
+    t ST.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (preview ST._ForAll . ST.dropAnn) b))
     f ST.:$  a -> go f $$  go a
     a ST.:-> b -> go a --> go b
     l ST.:*  r -> go l **  go r

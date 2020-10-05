@@ -122,12 +122,12 @@ binder tvars BindCtx{ self, vars } = locating $ do
 
 
 typeTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Type
-typeTable = [ Binder (forAll (liftA2 (S.>~>))) ] : monotypeTable
+typeTable = [ Binder (forAll (liftA2 (curry (review S._ForAll)))) ] : monotypeTable
 
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Type
 monotypeTable =
-  [ [ Infix R ((S.-->) <$ arrow) ]
-  , [ Infix L (pure (S..$)) ]
+  [ [ Infix R (curry (review S._Arrow) <$ arrow) ]
+  , [ Infix L (pure (curry (review S._TApp))) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       Atom (const (S._Unit <$ token (string "Unit")))
     , Atom (const (S._Type <$ token (string "Type")))
@@ -141,20 +141,20 @@ forAll
   -> BindParser (Facet p) S.Type res
 forAll (>=>) BindCtx{ self, vars } = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
-  let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (S.tbound v <$ variable v <|> vars)
+  let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (review S.tbound_ v <$ variable v <|> vars)
   arrow *> foldr loop self names vars
 
 type' :: (Monad p, PositionParsing p) => Facet p S.Type
 type' = type_ tglobal
 
 type_ :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Type
-type_ = build typeTable (terminate parens (toBindParser (Infix L ((S..*) <$ comma))))
+type_ = build typeTable (terminate parens (toBindParser (Infix L (curry (review S._TPrd) <$ comma))))
 
 monotype_ :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Type
-monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L ((S..*) <$ comma))))
+monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review S._TPrd) <$ comma))))
 
 tglobal :: (Monad p, TokenParsing p) => Facet p S.Type
-tglobal = S.tglobal <$> tname <?> "variable"
+tglobal = review S.tglobal_ <$> tname <?> "variable"
 
 
 exprTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Expr S.Expr
