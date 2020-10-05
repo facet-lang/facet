@@ -172,7 +172,7 @@ printSurfaceType = go
     ST.Bound n -> sbound n
     ST.Type    -> _Type
     ST.Unit    -> _Unit
-    t ST.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefix (ST.unForAll . ST.dropAnn) b))
+    t ST.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (ST.unForAll . ST.dropAnn) b))
     f ST.:$  a -> go f $$  go a
     a ST.:-> b -> go a --> go b
     l ST.:*  r -> go l **  go r
@@ -233,7 +233,7 @@ printSurfaceExpr = go
   go = SE.out >>> \case
     SE.Free n  -> sfree (SE.getEName n)
     SE.Bound n -> sbound n
-    SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefix (SE.unLam . SE.dropAnn) b))
+    SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (SE.unLam . SE.dropAnn) b))
     f SE.:$  a -> go f $$  go a
     SE.Unit    -> unit
     l SE.:*  r -> go l **  go r
@@ -256,7 +256,7 @@ printSurfaceDecl = go
   where
   go = SD.out >>> \case
     t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
-    t SD.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefix (SD.unForAll . SD.dropAnn) b))
+    t SD.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (SD.unForAll . SD.dropAnn) b))
     t SD.:-> b -> bimap sbound printSurfaceType t >-> go b
     SD.Ann _ d -> go d
 

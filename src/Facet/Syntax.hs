@@ -8,7 +8,7 @@ module Facet.Syntax
 , curryAnn
 , (:=)(..)
 , Stack(..)
-, unprefix
+, unprefixr
 ) where
 
 import Data.Bifunctor
@@ -55,8 +55,8 @@ data Stack a
 
 infixl 5 :>
 
-unprefix :: (t -> Maybe (a, t)) -> t -> ([a], t)
-unprefix un = go id
+unprefixr :: (t -> Maybe (a, t)) -> t -> ([a], t)
+unprefixr un = go id
   where
   go as t = case un t of
     Just (a, t') -> go (as . (a:)) t'
