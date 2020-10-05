@@ -174,7 +174,7 @@ printSurfaceType :: ST.Type -> Print
 printSurfaceType = go
   where
   go = ST.out >>> \case
-    ST.Free n  -> sfree (ST.getTName n)
+    ST.Free n  -> sfree (N.getTName n)
     ST.Bound n -> sbound n
     ST.Hole n  -> hole n
     ST.Type    -> _Type
@@ -292,7 +292,7 @@ printSurfaceModule = SM.fold alg
   alg = \case
     SM.Module  n b -> module' n b
     SM.DefTerm n d -> defTerm (sfree (N.getEName n)) (printSurfaceDecl d)
-    SM.DefType n d -> defType (sfree (ST.getTName n)) (printSurfaceDecl d)
+    SM.DefType n d -> defType (sfree (N.getTName n)) (printSurfaceDecl d)
     SM.Loc _ t     -> t
 
 

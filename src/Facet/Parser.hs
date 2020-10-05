@@ -246,7 +246,7 @@ ename  = ident nameStyle
 hname :: (Monad p, TokenParsing p) => p Text
 hname = ident hnameStyle
 
-tname :: (Monad p, TokenParsing p) => p T.TName
+tname :: (Monad p, TokenParsing p) => p N.TName
 tname = ident tnameStyle
 
 mname :: (Monad p, TokenParsing p) => p MName

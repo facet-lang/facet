@@ -3,8 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Type
-( TName(..)
-, Type(..)
+( Type(..)
 , global_
 , bound_
 , hole_
@@ -21,15 +20,11 @@ module Facet.Surface.Type
 ) where
 
 import Control.Lens.Prism
-import Data.String (IsString(..))
 import Data.Text (Text)
 import Facet.Name
+import Facet.Surface.Name
 import Facet.Syntax
-import Prettyprinter (Pretty)
 import Text.Parser.Position (Located(..), Span)
-
-newtype TName = TName { getTName :: Text }
-  deriving (Eq, IsString, Ord, Pretty, Show)
 
 newtype Type = In { out :: TypeF Type }
 

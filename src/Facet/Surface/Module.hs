@@ -12,7 +12,6 @@ module Facet.Surface.Module
 import Facet.Name
 import Facet.Surface.Decl (Decl)
 import Facet.Surface.Name
-import Facet.Surface.Type (TName)
 import Text.Parser.Position (Located(..), Span)
 
 newtype Module = In { out :: ModuleF Module }

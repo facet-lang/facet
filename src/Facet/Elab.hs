@@ -149,8 +149,8 @@ elabType (t ::: _K) = ST.fold alg t _K
       Just _K -> r <$ unify _K' _K
       _       -> pure r
 
-tglobal :: (Has (Reader Env.Env) sig m, C.Type ty, Has (Error P.Print) sig m) => ST.TName -> Synth m ty
-tglobal (ST.TName s) = Synth $ asks (Env.lookup s) >>= \case
+tglobal :: (Has (Reader Env.Env) sig m, C.Type ty, Has (Error P.Print) sig m) => N.TName -> Synth m ty
+tglobal (N.TName s) = Synth $ asks (Env.lookup s) >>= \case
   Just b  -> pure (C.tglobal (tm b :.: s) ::: ty b)
   Nothing -> freeVariable (pretty s)
 
@@ -293,7 +293,7 @@ elabModule = SM.fold alg
       e ::: _T <- elabDecl d
       e' <- check (e ::: _T)
       mname <- ask
-      pure $ C.defTerm (mname :.: ST.getTName n) (interpret _T := e')
+      pure $ C.defTerm (mname :.: N.getTName n) (interpret _T := e')
 
     SM.Loc s d -> local (const s) d
 
