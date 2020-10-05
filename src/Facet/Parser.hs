@@ -47,7 +47,6 @@ import           Text.Parser.Token.Style
 -- list literals
 -- numeric literals
 -- forcing nullary computations
--- holes
 
 type EEnv = Map.Map Text E.Expr
 type TEnv = Map.Map Text T.Type
