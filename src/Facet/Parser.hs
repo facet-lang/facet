@@ -225,6 +225,7 @@ pattern =
 ename, _hname :: (Monad p, TokenParsing p) => p S.EName
 ename  = ident nameStyle
 _hname = ident hnameStyle
+
 tname :: (Monad p, TokenParsing p) => p S.TName
 tname = ident tnameStyle
 
