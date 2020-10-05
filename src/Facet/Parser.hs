@@ -18,7 +18,7 @@ import           Control.Applicative (Alternative(..), liftA2)
 import           Control.Carrier.Reader
 import           Control.Lens (review)
 import           Control.Selective
-import           Data.Char (isSpace)
+import           Data.Char (isPunctuation, isSpace)
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
 import qualified Data.Map as Map
@@ -270,6 +270,15 @@ enameStyle = IdentifierStyle
   reserved
   Identifier
   ReservedIdentifier
+
+onameStyle :: CharParsing p => IdentifierStyle p
+onameStyle = IdentifierStyle
+  "operator"
+  (satisfy isPunctuation)
+  (satisfy isPunctuation)
+  mempty
+  Operator
+  ReservedOperator
 
 tnameStyle :: CharParsing p => IdentifierStyle p
 tnameStyle = IdentifierStyle
