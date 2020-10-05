@@ -5,7 +5,7 @@ module Facet.Surface.Pattern
 , dropLoc
 ) where
 
-import Text.Parser.Position (Spanned(..), Span)
+import Text.Parser.Position (Span, Spanned(..))
 
 data Pattern a
   = Wildcard
@@ -16,6 +16,10 @@ data Pattern a
 
 instance Spanned (Pattern a) where
   setSpan = Loc
+
+  dropSpan = \case
+    Loc _ d -> dropSpan d
+    d       -> d
 
 dropLoc :: Pattern a -> Pattern a
 dropLoc = \case

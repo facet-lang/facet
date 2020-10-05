@@ -16,6 +16,7 @@ module Facet.Surface.Expr
 , fold
 ) where
 
+import Control.Category ((>>>))
 import Control.Lens.Prism
 import Data.Text (Text)
 import Facet.Name
@@ -26,6 +27,10 @@ newtype Expr = In { out :: ExprF Expr }
 
 instance Spanned Expr where
   setSpan = fmap In . Loc
+
+  dropSpan = out >>> \case
+    Loc _ d -> dropSpan d
+    d       -> In d
 
 global_ :: Prism' Expr DName
 global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })

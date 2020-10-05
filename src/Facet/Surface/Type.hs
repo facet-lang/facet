@@ -19,16 +19,21 @@ module Facet.Surface.Type
 , fold
 ) where
 
+import Control.Category ((>>>))
 import Control.Lens.Prism
 import Data.Text (Text)
 import Facet.Name
 import Facet.Syntax
-import Text.Parser.Position (Spanned(..), Span)
+import Text.Parser.Position (Span, Spanned(..))
 
 newtype Type = In { out :: TypeF Type }
 
 instance Spanned Type where
   setSpan = fmap In . Loc
+
+  dropSpan = out >>> \case
+    Loc _ d -> dropSpan d
+    d       -> In d
 
 global_ :: Prism' Type DName
 global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })

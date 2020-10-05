@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Surface.Module
 ( Module(..)
@@ -8,14 +9,19 @@ module Facet.Surface.Module
 , fold
 ) where
 
+import Control.Category ((>>>))
 import Facet.Name
 import Facet.Surface.Decl (Decl)
-import Text.Parser.Position (Spanned(..), Span)
+import Text.Parser.Position (Span, Spanned(..))
 
 newtype Module = In { out :: ModuleF Module }
 
 instance Spanned Module where
   setSpan = fmap In . Loc
+
+  dropSpan = out >>> \case
+    Loc _ d -> dropSpan d
+    d       -> In d
 
 module' :: MName -> [Module] -> Module
 module' = fmap In . Module

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Decl
@@ -12,17 +13,22 @@ module Facet.Surface.Decl
 , fold
 ) where
 
+import Control.Category ((>>>))
 import Control.Effect.Empty
 import Facet.Name
 import Facet.Surface.Expr (Expr)
 import Facet.Surface.Type (Type)
 import Facet.Syntax ((:::)(..))
-import Text.Parser.Position (Spanned(..), Span)
+import Text.Parser.Position (Span, Spanned(..))
 
 newtype Decl = In { out :: DeclF Decl }
 
 instance Spanned Decl where
   setSpan = fmap In . Loc
+
+  dropSpan = out >>> \case
+    Loc _ d -> dropSpan d
+    d       -> In d
 
 -- | Universal quantification.
 (>=>) :: (Name ::: Type) -> Decl -> Decl
