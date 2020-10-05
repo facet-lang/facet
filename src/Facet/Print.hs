@@ -175,8 +175,8 @@ printSurfaceType = go
     ST.Hole n  -> hole n
     ST.Type    -> _Type
     ST.Unit    -> _Unit
-    t ST.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (preview ST._ForAll . ST.dropAnn) b))
-    f ST.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview ST._App . ST.dropAnn) f))
+    t ST.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (preview ST.forAll_ . ST.dropAnn) b))
+    f ST.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview ST.app_ . ST.dropAnn) f))
     a ST.:-> b -> go a --> go b
     l ST.:*  r -> go l **  go r
     ST.Ann _ t -> go t
@@ -245,8 +245,8 @@ printSurfaceExpr = go
     SE.Free n  -> sfree (SE.getEName n)
     SE.Bound n -> sbound n
     SE.Hole n  -> hole n
-    SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (preview SE._Lam . SE.dropAnn) b))
-    f SE.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview SE._App . SE.dropAnn) f))
+    SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (preview SE.lam_ . SE.dropAnn) b))
+    f SE.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview SE.app_ . SE.dropAnn) f))
     SE.Unit    -> unit
     l SE.:*  r -> go l **  go r
     SE.Ann _ t -> go t

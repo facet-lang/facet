@@ -129,12 +129,12 @@ binder tvars BindCtx{ self, vars } = locating $ do
 -- Types
 
 typeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type T.Type
-typeTable = [ Binder (forAll (liftA2 (curry (review T._ForAll)))) ] : monotypeTable
+typeTable = [ Binder (forAll (liftA2 (curry (review T.forAll_)))) ] : monotypeTable
 
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type T.Type
 monotypeTable =
-  [ [ Infix R (curry (review T._Arrow) <$ arrow) ]
-  , [ Infix L (pure (curry (review T._App))) ]
+  [ [ Infix R (curry (review T.arrow_) <$ arrow) ]
+  , [ Infix L (pure (curry (review T.app_))) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
       Atom (const (T._Unit <$ token (string "Unit")))
     , Atom (const (T._Type <$ token (string "Type")))
@@ -155,10 +155,10 @@ type' :: (Monad p, PositionParsing p) => Facet p T.Type
 type' = type_ tglobal
 
 type_ :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p T.Type
-type_ = build typeTable (terminate parens (toBindParser (Infix L (curry (review T._Prd) <$ comma))))
+type_ = build typeTable (terminate parens (toBindParser (Infix L (curry (review T.prd_) <$ comma))))
 
 monotype_ :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p T.Type
-monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review T._Prd) <$ comma))))
+monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review T.prd_) <$ comma))))
 
 tglobal :: (Monad p, TokenParsing p) => Facet p T.Type
 tglobal = review T.global_ <$> tname <?> "variable"
@@ -168,7 +168,7 @@ tglobal = review T.global_ <$> tname <?> "variable"
 
 exprTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr E.Expr
 exprTable =
-  [ [ Infix L (pure (curry (review E._App))) ]
+  [ [ Infix L (pure (curry (review E.app_))) ]
   , [ Atom comp
     , Atom (const (review E.hole_ <$> hname))
     , Atom id
@@ -182,7 +182,7 @@ global :: (Monad p, TokenParsing p) => Facet p E.Expr
 global = review E.global_ <$> ename <?> "variable"
 
 expr_ :: (Monad p, PositionParsing p) => Facet p E.Expr -> Facet p E.Expr
-expr_ = build exprTable (terminate parens (toBindParser (Infix L (curry (review E._Prd) <$ comma))))
+expr_ = build exprTable (terminate parens (toBindParser (Infix L (curry (review E.prd_) <$ comma))))
 
 comp :: (Monad p, PositionParsing p) => Facet p E.Expr -> Facet p E.Expr
 comp = braces . build compTable (const expr_)
@@ -199,7 +199,7 @@ clause = self . vars
     patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
     foldr clause expr_ patterns vars) <?> "clause"
   clause (start, p) rest vars = bindPattern p $ \ vs ext -> do
-    lam <- foldr (fmap . curry (review E._Lam)) (rest (ext vars)) vs
+    lam <- foldr (fmap . curry (review E.lam_)) (rest (ext vars)) vs
     end <- position
     pure (locate (Span start end) lam)
 

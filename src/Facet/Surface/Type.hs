@@ -8,10 +8,10 @@ module Facet.Surface.Type
 , global_
 , bound_
 , hole_
-, _ForAll
-, _Arrow
-, _App
-, _Prd
+, forAll_
+, arrow_
+, app_
+, prd_
 , _Unit
 , _Type
 , dropAnn
@@ -46,17 +46,17 @@ hole_ :: Prism' Type Text
 hole_ = prism' (In . Hole) (\case{ In (Hole n) -> Just n ; _ -> Nothing })
 
 
-_ForAll :: Prism' Type (Name ::: Type, Type)
-_ForAll = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
+forAll_ :: Prism' Type (Name ::: Type, Type)
+forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
 
-_Arrow :: Prism' Type (Type, Type)
-_Arrow = prism' (In . uncurry (:->)) (\case{ In (a :-> b) -> Just (a, b) ; _ -> Nothing })
+arrow_ :: Prism' Type (Type, Type)
+arrow_ = prism' (In . uncurry (:->)) (\case{ In (a :-> b) -> Just (a, b) ; _ -> Nothing })
 
-_App :: Prism' Type (Type, Type)
-_App = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
+app_ :: Prism' Type (Type, Type)
+app_ = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
 
-_Prd :: Prism' Type (Type, Type)
-_Prd = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
+prd_ :: Prism' Type (Type, Type)
+prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
 
 
 _Unit :: Type

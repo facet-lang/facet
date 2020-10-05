@@ -7,10 +7,10 @@ module Facet.Surface.Expr
 , global_
 , bound_
 , hole_
-, _Lam
-, _App
+, lam_
+, app_
 , unit
-, _Prd
+, prd_
 , dropAnn
 , ExprF(..)
 , fold
@@ -42,18 +42,18 @@ hole_ :: Prism' Expr Text
 hole_ = prism' (In . Hole) (\case{ In (Hole n) -> Just n ; _ -> Nothing })
 
 
-_Lam :: Prism' Expr (Name, Expr)
-_Lam = prism' (In . uncurry Lam) (\case{ In (Lam n b) -> Just (n, b) ; _ -> Nothing })
+lam_ :: Prism' Expr (Name, Expr)
+lam_ = prism' (In . uncurry Lam) (\case{ In (Lam n b) -> Just (n, b) ; _ -> Nothing })
 
-_App :: Prism' Expr (Expr, Expr)
-_App = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
+app_ :: Prism' Expr (Expr, Expr)
+app_ = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
 
 
 unit :: Expr
 unit = In Unit
 
-_Prd :: Prism' Expr (Expr, Expr)
-_Prd = prism' (In . uncurry (:*)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Nothing })
+prd_ :: Prism' Expr (Expr, Expr)
+prd_ = prism' (In . uncurry (:*)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Nothing })
 
 -- FIXME: tupling/unit should take a list of expressions
 
