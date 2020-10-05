@@ -206,7 +206,7 @@ clause _ _ = self
 evar :: (Monad p, PositionParsing p) => Facet p E.Expr
 evar
   =   token (spanning (runUnspaced (resolve <$> ename <*> Unspaced eenv <?> "variable")))
-  <|> try (review E.global_ . N.O <$> parens oname) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
+  <|> try (spanning (runUnspaced (review E.global_ . N.O <$> Unspaced (parens oname)))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
   where
   resolve n env = fromMaybe (review E.global_ (N.E n)) (Map.lookup n env)
 
