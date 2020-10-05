@@ -66,6 +66,7 @@ library
     Text.Parser.Position
   build-depends:
     , base ^>= 4.14
+    , charset
     , containers
     , fused-effects
     , fused-effects-lens

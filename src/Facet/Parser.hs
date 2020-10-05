@@ -19,7 +19,9 @@ import           Control.Carrier.Reader
 import           Control.Lens (review)
 import           Control.Selective
 import           Data.Bool (bool)
-import           Data.Char (isPunctuation, isSpace)
+import           Data.Char (isSpace)
+import qualified Data.CharSet as CharSet
+import qualified Data.CharSet.Unicode as Unicode
 import           Data.Foldable (foldl')
 import qualified Data.List.NonEmpty as NE
 import qualified Data.HashSet as HashSet
@@ -288,7 +290,7 @@ nameChar :: CharParsing p => p Char
 nameChar = alphaNum <|> char '_'
 
 opChar :: CharParsing p => p Char
-opChar = satisfy isPunctuation
+opChar = oneOfSet (CharSet.difference (Unicode.punctuation <> Unicode.symbol) (CharSet.fromList "(){}"))
 
 enameStyle :: CharParsing p => IdentifierStyle p
 enameStyle = IdentifierStyle
