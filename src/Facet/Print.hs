@@ -179,8 +179,12 @@ printSurfaceType = go
     T.Hole n  -> hole n
     T.Type    -> _Type
     T.Unit    -> _Unit
-    t T.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (preview T.forAll_ . dropSpan) b))
-    f T.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview T.app_ . dropSpan) f))
+    t T.:=> b ->
+      let (t', b') = unprefixr (preview T.forAll_ . dropSpan) b
+      in map (first sbound) (t:t') >~~> go b'
+    f T.:$  a ->
+      let (f', a') = unprefixl (preview T.app_ . dropSpan) f
+      in go f' $$* fmap go (a' :> a)
     a T.:-> b -> go a --> go b
     l T.:*  r -> go l **  go r
     T.Loc _ t -> go t
@@ -249,8 +253,12 @@ printSurfaceExpr = go
     E.Free n  -> sfree n
     E.Bound n -> sbound n
     E.Hole n  -> hole n
-    E.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (preview E.lam_ . dropSpan) b))
-    f E.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview E.app_ . dropSpan) f))
+    E.Lam n b ->
+      let (n', b') = unprefixr (preview E.lam_ . dropSpan) b
+      in lams (map sbound (n:n')) (go b')
+    f E.:$  a ->
+      let (f', a') = unprefixl (preview E.app_ . dropSpan) f
+      in go f' $$* fmap go (a' :> a)
     E.Unit    -> unit
     l E.:*  r -> go l **  go r
     E.Loc _ t -> go t
@@ -274,7 +282,9 @@ printSurfaceDecl = go
   where
   go = D.out >>> \case
     t D.:=  e -> printSurfaceType t .= comp (printSurfaceExpr e)
-    t D.:=> b -> uncurry (>~~>) (bimap (map (first sbound) . (t:)) go (unprefixr (D.unForAll . dropSpan) b))
+    t D.:=> b ->
+      let (t', b') = unprefixr (D.unForAll . dropSpan) b
+      in map (first sbound) (t:t') >~~> go b'
     t D.:-> b -> bimap sbound printSurfaceType t >-> go b
     D.Loc _ d -> go d
 
