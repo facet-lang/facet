@@ -19,5 +19,5 @@ instance Spanned (Pattern a) where
 
 dropLoc :: Pattern a -> Pattern a
 dropLoc = \case
-  Loc _ e -> e
+  Loc _ e -> dropLoc e
   e       -> e

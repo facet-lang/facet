@@ -62,7 +62,7 @@ _Type = In Type
 
 dropLoc :: Type -> Type
 dropLoc e = case out e of
-  Loc _ e -> e
+  Loc _ e -> dropLoc e
   _       -> e
 
 

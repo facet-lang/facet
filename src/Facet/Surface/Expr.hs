@@ -54,7 +54,7 @@ prd_ = prism' (In . uncurry (:*)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Noth
 
 dropLoc :: Expr -> Expr
 dropLoc e = case out e of
-  Loc _ e -> e
+  Loc _ e -> dropLoc e
   _       -> e
 
 

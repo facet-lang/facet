@@ -48,7 +48,7 @@ infix 1 .=
 
 dropLoc :: Decl -> Decl
 dropLoc d = case out d of
-  Loc _ d -> d
+  Loc _ d -> dropLoc d
   _       -> d
 
 
