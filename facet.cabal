@@ -52,7 +52,6 @@ library
     Facet.Print
     Facet.REPL
     Facet.REPL.Parser
-    Facet.Signature
     Facet.Surface.Decl
     Facet.Surface.Expr
     Facet.Surface.Module
