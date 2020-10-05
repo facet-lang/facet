@@ -117,6 +117,15 @@ data Op
   | Outfix Text Text
   deriving (Eq, Ord, Show)
 
+instance P.Pretty Op where
+  pretty = \case
+    Prefix   s -> P.pretty s <+> place
+    Postfix  s -> place <+> P.pretty s
+    Infix  _ s -> place <+> P.pretty s <+> place
+    Outfix s e -> P.pretty s <+> place <+> P.pretty e
+    where
+    place = P.pretty '_'
+
 data OpN
   = PrefixN      Text   [Text]
   | PostfixN     [Text] Text
