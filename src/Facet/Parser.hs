@@ -284,14 +284,14 @@ mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy co
 reserved :: HashSet.HashSet String
 reserved = HashSet.singleton "_"
 
-nameLetter :: CharParsing p => p Char
-nameLetter = alphaNum <|> char '_'
+nameChar :: CharParsing p => p Char
+nameChar = alphaNum <|> char '_'
 
 enameStyle :: CharParsing p => IdentifierStyle p
 enameStyle = IdentifierStyle
   "name"
   (lower <|> char '_')
-  nameLetter
+  nameChar
   reserved
   Identifier
   ReservedIdentifier
@@ -309,7 +309,7 @@ tnameStyle :: CharParsing p => IdentifierStyle p
 tnameStyle = IdentifierStyle
   "type name"
   upper
-  nameLetter
+  nameChar
   reserved
   Identifier
   ReservedIdentifier
@@ -318,7 +318,7 @@ hnameStyle :: CharParsing p => IdentifierStyle p
 hnameStyle = IdentifierStyle
   "hole name"
   (char '?')
-  nameLetter
+  nameChar
   reserved
   Identifier
   ReservedIdentifier
