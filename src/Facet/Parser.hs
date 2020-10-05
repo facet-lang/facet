@@ -245,6 +245,12 @@ pattern = spanning
 ename :: (Monad p, TokenParsing p) => p N.EName
 ename  = ident enameStyle
 
+oname :: (Monad p, TokenParsing p) => p N.Op
+oname
+  =   N.Prefix <$> pre <*> many pre
+  where
+  pre = ident onameStyle <* wildcard
+
 hname :: (Monad p, TokenParsing p) => p Text
 hname = ident hnameStyle
 
