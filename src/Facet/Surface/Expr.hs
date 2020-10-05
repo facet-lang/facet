@@ -6,20 +6,15 @@ module Facet.Surface.Expr
 , Expr(..)
 , global
 , bound
-, lam
-, unLam
 , _Lam
-, ($$)
-, unApp
 , _App
 , unit
-, (**)
+, _Prd
 , dropAnn
 , ExprF(..)
 , fold
 ) where
 
-import Control.Effect.Empty
 import Control.Lens.Prism
 import Data.String (IsString(..))
 import Data.Text (Text)
@@ -42,27 +37,9 @@ global = In . Free
 bound :: Name -> Expr
 bound = In . Bound
 
-lam :: Name -> Expr -> Expr
-lam = fmap In . Lam
-
-unLam :: Has Empty sig m => Expr -> m (Name, Expr)
-unLam e = case out e of
-  Lam n b -> pure (n, b)
-  _       -> empty
 
 _Lam :: Prism' Expr (Name, Expr)
 _Lam = prism' (In . uncurry Lam) (\case{ In (Lam n b) -> Just (n, b) ; _ -> Nothing })
-
-
-($$) :: Expr -> Expr -> Expr
-($$) = fmap In . (:$)
-
-infixl 9 $$
-
-unApp :: Has Empty sig m => Expr -> m (Expr, Expr)
-unApp e = case out e of
-  f :$ a -> pure (f, a)
-  _      -> empty
 
 _App :: Prism' Expr (Expr, Expr)
 _App = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
@@ -70,10 +47,6 @@ _App = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Noth
 
 unit :: Expr
 unit = In Unit
-
--- | Tupling.
-(**) :: Expr -> Expr -> Expr
-(**) = fmap In . (:*)
 
 _Prd :: Prism' Expr (Expr, Expr)
 _Prd = prism' (In . uncurry (:*)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Nothing })
