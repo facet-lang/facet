@@ -274,7 +274,7 @@ tname :: (Monad p, TokenParsing p) => p N.TName
 tname = ident tnameStyle
 
 dname :: (Monad p, TokenParsing p) => p N.DName
-dname  = N.E <$> ename <|> N.T <$> tname
+dname  = N.E <$> ename <|> N.T <$> tname <|> N.O <$> oname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
 mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy comp dot))
