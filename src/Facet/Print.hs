@@ -197,6 +197,10 @@ ctbound :: N.Name -> Print
 ctbound = name tvar
 
 
+hole :: Text -> Print
+hole n = pretty '?' <> pretty n
+
+
 _Unit, _Type :: Print
 _Unit = annotate Type $ pretty "Unit"
 _Type = annotate Type $ pretty "Type"
@@ -239,6 +243,7 @@ printSurfaceExpr = go
   go = SE.out >>> \case
     SE.Free n  -> sfree (SE.getEName n)
     SE.Bound n -> sbound n
+    SE.Hole n  -> hole n
     SE.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (preview SE._Lam . SE.dropAnn) b))
     f SE.:$  a -> uncurry ($$*) (bimap go (fmap go . (:> a)) (unprefixl (preview SE._App . SE.dropAnn) f))
     SE.Unit    -> unit

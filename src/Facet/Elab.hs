@@ -59,7 +59,7 @@ import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Facet.Type
 import           Prelude hiding ((**))
-import           Silkscreen (group, pretty, softline, (<+>), (</>))
+import           Silkscreen (colon, fillSep, group, pretty, softline, (<+>), (</>))
 
 type Context = IntMap.IntMap Type
 
@@ -203,6 +203,7 @@ elabExpr (t ::: _T) = SE.fold alg t _T
   alg t _T = case t of
     SE.Free  n -> validate =<< synth (eglobal n)
     SE.Bound n -> validate =<< synth (ebound n)
+    SE.Hole  n -> hole (n ::: _T)
     SE.Lam n b -> check (lam n (_check b) ::: _T) (pretty "lambda")
     f SE.:$  a -> validate =<< synth (_synth f $$  _check a)
     l SE.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
@@ -307,6 +308,11 @@ infix 1 |-
 
 err :: Has (Error P.Print) sig m => P.Print -> m a
 err = throwError . group
+
+hole :: Has (Error P.Print) sig m => (T.Text ::: Maybe Type) -> m (a ::: Type)
+hole (n ::: t) = case t of
+  Just t  -> err $ fillSep [pretty "found", pretty "hole", pretty n, colon, interpret t]
+  Nothing -> couldNotSynthesize (fillSep [ pretty "hole", pretty n ])
 
 mismatch :: Has (Error P.Print) sig m => P.Print -> P.Print -> P.Print -> m a
 mismatch msg exp act = err $ msg
