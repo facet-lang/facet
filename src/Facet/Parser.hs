@@ -22,6 +22,7 @@ import           Data.Char (isSpace)
 import           Data.Coerce
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
+import qualified Data.Map as Map
 import           Data.Text (Text)
 import           Facet.Name as N hiding (Assoc(..), Op(..))
 import           Facet.Parser.Table
@@ -49,25 +50,28 @@ import           Text.Parser.Token.Style
 -- forcing nullary computations
 -- holes
 
-runFacet :: Int -> Facet m a -> m a
-runFacet i (Facet m) = m i
+type EEnv = Map.Map Text E.Expr
+type TEnv = Map.Map Text T.Type
+
+runFacet :: Int -> EEnv -> TEnv -> Facet m a -> m a
+runFacet i e t (Facet m) = m i e t
 
 bind :: Coercible t Text => t -> (Name -> Facet m a) -> Facet m a
-bind n b = Facet $ \ i -> runFacet (i + 1) (b (Name (coerce n) i))
+bind n b = Facet $ \ i e t -> runFacet (i + 1) e t (b (Name (coerce n) i))
 
-newtype Facet m a = Facet (Int -> m a)
-  deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC Int m
+newtype Facet m a = Facet (Int -> EEnv -> TEnv -> m a)
+  deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC Int (ReaderC EEnv (ReaderC TEnv m))
 
 instance Selective m => Selective (Facet m) where
-  select f a = Facet $ \ v -> select (runFacet v f) (runFacet v a)
+  select f a = Facet $ \ v e t -> select (runFacet v e t f) (runFacet v e t a)
 
 instance Parsing p => Parsing (Facet p) where
-  try (Facet m) = Facet $ try . m
-  Facet m <?> l = Facet $ \ e -> m e <?> l
-  skipMany (Facet m) = Facet $ skipMany . m
+  try (Facet m) = Facet $ \ v e t -> try (m v e t)
+  Facet m <?> l = Facet $ \ v e t -> m v e t <?> l
+  skipMany (Facet m) = Facet $ \ v e t -> skipMany (m v e t)
   unexpected = lift . unexpected
   eof = lift eof
-  notFollowedBy (Facet m) = Facet $ notFollowedBy . m
+  notFollowedBy (Facet m) = Facet $ \ v e t -> notFollowedBy (m v e t)
 
 instance CharParsing p => CharParsing (Facet p) where
   satisfy = lift . satisfy
@@ -84,7 +88,7 @@ instance PositionParsing p => PositionParsing (Facet p) where
   position = lift position
 
 lift :: p a -> Facet p a
-lift = Facet . const
+lift = Facet . const . const . const
 
 
 whole :: TokenParsing p => p a -> p a
