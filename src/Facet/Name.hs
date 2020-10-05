@@ -17,6 +17,7 @@ module Facet.Name
 , DName(..)
 , Assoc(..)
 , Op(..)
+, OName
 , OpN(..)
 ) where
 
@@ -117,6 +118,8 @@ data Op a
   | Infix Assoc a
   | Outfix a a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+type OName = Op Text
 
 data OpN
   = PrefixN      Text   [Text]
