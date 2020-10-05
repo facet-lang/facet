@@ -227,7 +227,7 @@ varPattern n = Just <$> n <|> Nothing <$ wildcard
 
 
 wildcard :: (Monad p, TokenParsing p) => p ()
-wildcard = reserve nameStyle "_"
+wildcard = reserve enameStyle "_"
 
 -- FIXME: patterns
 pattern :: (Monad p, PositionParsing p) => p P.Pattern
@@ -241,7 +241,7 @@ pattern = locating
 -- Names
 
 ename :: (Monad p, TokenParsing p) => p N.EName
-ename  = ident nameStyle
+ename  = ident enameStyle
 
 hname :: (Monad p, TokenParsing p) => p Text
 hname = ident hnameStyle
@@ -260,8 +260,8 @@ reserved = HashSet.singleton "_"
 nameLetter :: CharParsing p => p Char
 nameLetter = alphaNum <|> char '_'
 
-nameStyle :: CharParsing p => IdentifierStyle p
-nameStyle = IdentifierStyle
+enameStyle :: CharParsing p => IdentifierStyle p
+enameStyle = IdentifierStyle
   "name"
   (lower <|> char '_')
   nameLetter
