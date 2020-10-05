@@ -5,7 +5,7 @@ module Facet.Surface.Pattern
 ) where
 
 import qualified Facet.Surface.Expr as S
-import Text.Parser.Position (Located(..), Span)
+import           Text.Parser.Position (Located(..), Span)
 
 data Pattern
   = Wildcard
