@@ -27,7 +27,7 @@ import           Facet.Name
 import           Facet.Parser.Table
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as S
-import qualified Facet.Surface.Module as S
+import qualified Facet.Surface.Module as M
 import qualified Facet.Surface.Pattern as S
 import qualified Facet.Surface.Type as S
 import qualified Facet.Syntax as S
@@ -93,13 +93,13 @@ whole p = whiteSpace *> p <* eof
 
 -- Modules
 
-module' :: (Monad p, PositionParsing p) => Facet p S.Module
-module' = locating $ S.module' <$> mname <* colon <* symbol "Module" <*> braces (many decl)
+module' :: (Monad p, PositionParsing p) => Facet p M.Module
+module' = locating $ M.module' <$> mname <* colon <* symbol "Module" <*> braces (many decl)
 
-decl :: (Monad p, PositionParsing p) => Facet p S.Module
+decl :: (Monad p, PositionParsing p) => Facet p M.Module
 decl = locating
-   $   S.defTerm <$> ename <* colon <*> tsig tglobal
-   <|> S.defType <$> tname <* colon <*> tsig tglobal
+   $   M.defTerm <$> ename <* colon <*> tsig tglobal
+   <|> M.defType <$> tname <* colon <*> tsig tglobal
 
 
 -- Declarations
