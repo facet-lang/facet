@@ -87,7 +87,7 @@ data Context
   = Null
   | FnR
   | FnL
-  | Expr
+  | Comp
   | Pattern
   | AppL
   | AppR
@@ -119,8 +119,9 @@ cases vs b
   = group
   . align
   . braces
+  . prec Comp
   . enclose space (flatAlt line space)
-  $ foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> prec Expr b))) vs
+  $ foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> b))) vs
 
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
