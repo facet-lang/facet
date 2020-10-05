@@ -169,7 +169,7 @@ expr :: (Monad p, PositionParsing p) => Facet p S.Expr
 expr = expr_ global
 
 global :: (Monad p, TokenParsing p) => Facet p S.Expr
-global = S.global <$> ename <?> "variable"
+global = review S.global_ <$> ename <?> "variable"
 
 expr_ :: (Monad p, PositionParsing p) => Facet p S.Expr -> Facet p S.Expr
 expr_ = build exprTable (terminate parens (toBindParser (Infix L (curry (review S._Prd) <$ comma))))
@@ -195,7 +195,7 @@ clause = self . vars
 
 bindPattern :: PositionParsing p => S.Pattern -> ([Name] -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p S.Expr) -> Facet p S.Expr
 bindPattern S.Wildcard   f = bind __ (\ v -> f [v] id)
-bindPattern (S.Var n)    f = bind n  (\ v -> f [v] (S.bound v <$ variable v <|>))
+bindPattern (S.Var n)    f = bind n  (\ v -> f [v] (review S.bound_ v <$ variable v <|>))
 bindPattern (S.Tuple ps) f = go [] id ps
   where
   go vs ext []     = f vs ext
@@ -203,7 +203,7 @@ bindPattern (S.Tuple ps) f = go [] id ps
 
 bindVarPattern :: (PositionParsing p, Coercible t Text) => Maybe t -> (Name -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p res) -> Facet p res
 bindVarPattern Nothing  f = bind __ (\ v -> f v id)
-bindVarPattern (Just n) f = bind n  (\ v -> f v (S.bound v <$ variable v <|>))
+bindVarPattern (Just n) f = bind n  (\ v -> f v (review S.bound_ v <$ variable v <|>))
 
 
 varPattern :: (Monad p, TokenParsing p) => p name -> p (Maybe name)

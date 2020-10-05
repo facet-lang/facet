@@ -4,8 +4,8 @@
 module Facet.Surface.Expr
 ( EName(..)
 , Expr(..)
-, global
-, bound
+, global_
+, bound_
 , _Lam
 , _App
 , unit
@@ -31,11 +31,11 @@ newtype Expr = In { out :: ExprF Expr }
 instance Located Expr where
   locate = fmap In . Ann
 
-global :: EName -> Expr
-global = In . Free
+global_ :: Prism' Expr EName
+global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
 
-bound :: Name -> Expr
-bound = In . Bound
+bound_ :: Prism' Expr Name
+bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
 
 
 _Lam :: Prism' Expr (Name, Expr)
