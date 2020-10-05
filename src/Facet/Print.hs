@@ -123,8 +123,7 @@ comp
 
 cases :: [Print] -> Print -> Print
 cases vs b
-  = comp
-  $ foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> b))) vs
+  = foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> b))) vs
 
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
@@ -261,7 +260,9 @@ lam :: Print -> Print -> Print
 lam n = lams [n]
 
 lams :: [Print] -> Print -> Print
-lams = cases
+lams ns b = askingPrec $ \case
+  Comp -> cases ns b
+  _    -> comp (cases ns b)
 
 unit :: Print
 unit = annotate Con $ pretty "Unit"
