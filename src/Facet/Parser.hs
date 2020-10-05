@@ -260,8 +260,8 @@ oname
   -- FIXME: how should we specify associativity?
   postOrIn c = bool (N.Postfix c) (N.Infix N.N c)
 
-onameN :: (Monad p, TokenParsing p) => p N.OpN
-onameN
+_onameN :: (Monad p, TokenParsing p) => p N.OpN
+_onameN
   =   postOrIn <$ place <*> sepByNonEmpty comp place <*> option False (True <$ place)
   <|> try (uncurry . outOrPre <$> comp <* place) <*> ((,) <$> sepBy1 comp place <*> option False (True <$ place) <|> pure ([], True))
   where
