@@ -6,6 +6,7 @@ module Text.Parser.Position
 , spanning
 , spanned
 , Located(..)
+, locating
 , chainl1Loc
 ) where
 
@@ -32,6 +33,8 @@ spanned p = mk <$> position <*> p <*> position
 class Located t where
   locate :: Span -> t -> t
 
+locating :: (PositionParsing p, Located a) => p a -> p a
+locating = fmap (uncurry locate) . spanned
 
 chainl1Loc :: (Located a, PositionParsing p) => p a -> p (a -> a -> a) -> p a
 chainl1Loc p op = scan where

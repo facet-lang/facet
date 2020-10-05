@@ -291,7 +291,3 @@ arrow = symbol "->"
 
 variable :: PositionParsing p => Name -> p ()
 variable v = token (try (text (hint v) *> notFollowedBy alphaNum)) <?> unpack (hint v)
-
-
-locating :: (PositionParsing p, Located a) => p a -> p a
-locating = fmap (uncurry locate) . spanned
