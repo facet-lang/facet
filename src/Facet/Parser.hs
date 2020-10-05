@@ -91,6 +91,8 @@ whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
 
 
+-- Modules
+
 module' :: (Monad p, PositionParsing p) => Facet p S.Module
 module' = locating $ S.module' <$> mname <* colon <* symbol "Module" <*> braces (many decl)
 
@@ -98,6 +100,9 @@ decl :: (Monad p, PositionParsing p) => Facet p S.Module
 decl = locating
    $   S.defTerm <$> ename <* colon <*> tsig tglobal
    <|> S.defType <$> tname <* colon <*> tsig tglobal
+
+
+-- Declarations
 
 tsigTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type D.Decl
 tsigTable =
@@ -120,6 +125,8 @@ binder tvars BindCtx{ self, vars } = locating $ do
   (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type_ tvars <* symbolic ')'
   bindVarPattern i $ \ v ext -> ((v S.::: t) D.>->) <$ arrow <*> self (ext vars)
 
+
+-- Types
 
 typeTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Type
 typeTable = [ Binder (forAll (liftA2 (curry (review S._ForAll)))) ] : monotypeTable
@@ -156,6 +163,8 @@ monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L (curry 
 tglobal :: (Monad p, TokenParsing p) => Facet p S.Type
 tglobal = review S.tglobal_ <$> tname <?> "variable"
 
+
+-- Expressions
 
 exprTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Expr S.Expr
 exprTable =
@@ -194,6 +203,9 @@ clause = self . vars
     end <- position
     pure (locate (Span start end) lam)
 
+
+-- Patterns
+
 bindPattern :: PositionParsing p => S.Pattern -> ([Name] -> (Facet p S.Expr -> Facet p S.Expr) -> Facet p S.Expr) -> Facet p S.Expr
 bindPattern S.Wildcard   f = bind __ (\ v -> f [v] id)
 bindPattern (S.Var n)    f = bind n  (\ v -> f [v] (review S.bound_ v <$ variable v <|>))
@@ -222,6 +234,8 @@ pattern =
   <|> S.Tuple <$> parens (commaSep pattern))
   <?> "pattern"
 
+
+-- Names
 
 ename :: (Monad p, TokenParsing p) => p S.EName
 ename  = ident nameStyle
