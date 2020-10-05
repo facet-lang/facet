@@ -18,8 +18,10 @@ import           Control.Applicative (Alternative(..), liftA2)
 import           Control.Carrier.Reader
 import           Control.Lens (review)
 import           Control.Selective
+import           Data.Bool (bool)
 import           Data.Char (isPunctuation, isSpace)
 import           Data.Foldable (foldl')
+import qualified Data.List.NonEmpty as NE
 import qualified Data.HashSet as HashSet
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
@@ -247,9 +249,14 @@ ename  = ident enameStyle
 
 oname :: (Monad p, TokenParsing p) => p N.Op
 oname
-  =   N.Prefix <$> pre <*> many pre
+  =   postOrIn <$ place <*> sepByNonEmpty comp place <*> option False (True <$ place)
+  <|> try (uncurry . outOrPre <$> comp <* place) <*> ((,) <$> sepBy1 comp place <*> option False (True <$ place) <|> pure ([], True))
   where
-  pre = ident onameStyle <* wildcard
+  place = wildcard
+  comp = ident onameStyle
+  outOrPre c cs = bool (N.Outfix c (init cs) (last cs)) (N.Prefix c cs)
+  -- FIXME: how should we specify associativity?
+  postOrIn cs = bool (N.Postfix (NE.init cs) (NE.last cs)) (N.Infix N.N cs)
 
 hname :: (Monad p, TokenParsing p) => p Text
 hname = ident hnameStyle
