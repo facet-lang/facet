@@ -165,7 +165,7 @@ monotype = build monotypeTable (terminate parens (toBindParser (Infix L (curry (
 tvar :: (Monad p, PositionParsing p) => Facet p T.Type
 tvar = token (spanning (runUnspaced (resolve <$> tname <*> Unspaced tenv <?> "variable")))
   where
-  resolve n env = fromMaybe (review T.global_ n) (Map.lookup n env)
+  resolve n env = fromMaybe (review T.global_ (N.DName (N.getTName n))) (Map.lookup n env)
 
 
 -- Expressions
@@ -204,7 +204,7 @@ clause _ _ = self
 evar :: (Monad p, PositionParsing p) => Facet p E.Expr
 evar = token (spanning (runUnspaced (resolve <$> ename <*> Unspaced eenv <?> "variable")))
   where
-  resolve n env = fromMaybe (review E.global_ n) (Map.lookup n env)
+  resolve n env = fromMaybe (review E.global_ (N.DName (N.getEName n))) (Map.lookup n env)
 
 
 -- Patterns

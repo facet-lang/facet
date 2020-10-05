@@ -132,8 +132,7 @@ elabType :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader 
 elabType (t ::: _K) = T.fold alg t _K
   where
   alg t _K = case t of
-    -- FIXME: free variables should use DName
-    T.Free  n -> validate =<< synth (tglobal (N.DName (N.getTName n)))
+    T.Free  n -> validate =<< synth (tglobal n)
     T.Bound n -> validate =<< synth (tbound n)
     T.Hole  n -> hole (n ::: _K)
     T.Type    -> validate =<< synth _Type
@@ -204,8 +203,7 @@ elabExpr :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader 
 elabExpr (t ::: _T) = E.fold alg t _T
   where
   alg t _T = case t of
-    -- FIXME: free variables should use DName
-    E.Free  n -> validate =<< synth (eglobal (N.DName (N.getEName n)))
+    E.Free  n -> validate =<< synth (eglobal n)
     E.Bound n -> validate =<< synth (ebound n)
     E.Hole  n -> hole (n ::: _T)
     E.Lam n b -> check (lam n (_check b) ::: _T) (pretty "lambda")

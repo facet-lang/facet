@@ -173,7 +173,7 @@ printSurfaceType :: T.Type -> Print
 printSurfaceType = go
   where
   go = T.out >>> \case
-    T.Free n  -> sfree (N.getTName n)
+    T.Free n  -> sfree n
     T.Bound n -> sbound n
     T.Hole n  -> hole n
     T.Type    -> _Type
@@ -184,7 +184,7 @@ printSurfaceType = go
     l T.:*  r -> go l **  go r
     T.Loc _ t -> go t
 
-sfree :: Text -> Print
+sfree :: N.DName -> Print
 sfree = var . pretty
 
 cfree :: N.QName -> Print
@@ -245,7 +245,7 @@ printSurfaceExpr :: E.Expr -> Print
 printSurfaceExpr = go
   where
   go = E.out >>> \case
-    E.Free n  -> sfree (N.getEName n)
+    E.Free n  -> sfree n
     E.Bound n -> sbound n
     E.Hole n  -> hole n
     E.Lam n b -> uncurry lams (bimap (map sbound . (n:)) go (unprefixr (preview E.lam_ . E.dropLoc) b))
@@ -290,7 +290,7 @@ printSurfaceModule = M.fold alg
   where
   alg = \case
     M.Module  n b -> module' n b
-    M.Def n d -> def (sfree (N.getDName n)) (printSurfaceDecl d)
+    M.Def n d -> def (sfree n) (printSurfaceDecl d)
     M.Loc _ t     -> t
 
 

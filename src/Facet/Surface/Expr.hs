@@ -26,7 +26,7 @@ newtype Expr = In { out :: ExprF Expr }
 instance Spanned Expr where
   setSpan = fmap In . Loc
 
-global_ :: Prism' Expr EName
+global_ :: Prism' Expr DName
 global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
 
 bound_ :: Prism' Expr Name
@@ -59,7 +59,7 @@ dropLoc e = case out e of
 
 
 data ExprF e
-  = Free EName
+  = Free DName
   | Bound Name
   | Hole Text
   | Lam Name e

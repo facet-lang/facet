@@ -30,7 +30,7 @@ newtype Type = In { out :: TypeF Type }
 instance Spanned Type where
   setSpan = fmap In . Loc
 
-global_ :: Prism' Type TName
+global_ :: Prism' Type DName
 global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
 
 bound_ :: Prism' Type Name
@@ -81,7 +81,7 @@ aeq = fold $ \ t1 t2 -> case (t1, out t2) of
 
 
 data TypeF t
-  = Free TName
+  = Free DName
   | Bound Name
   | Hole Text
   | Type
