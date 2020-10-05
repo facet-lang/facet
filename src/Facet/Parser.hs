@@ -24,7 +24,7 @@ import qualified Data.HashSet as HashSet
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Data.Text (Text)
-import           Facet.Name as N hiding (Assoc(..), Op(..))
+import qualified Facet.Name as N
 import           Facet.Parser.Table
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
@@ -55,11 +55,11 @@ type TEnv = Map.Map N.TName T.Type
 runFacet :: EEnv -> TEnv -> Facet m a -> m a
 runFacet e t (Facet m) = m e t
 
-bindE :: N.EName -> (Name -> Facet m a) -> Facet m a
-bindE n b = Facet $ \ e t -> let n' = Name (N.getEName n) (length e + length t) in runFacet (Map.insert n (review E.bound_ n') e) t (b n')
+bindE :: N.EName -> (N.Name -> Facet m a) -> Facet m a
+bindE n b = Facet $ \ e t -> let n' = N.Name (N.getEName n) (length e + length t) in runFacet (Map.insert n (review E.bound_ n') e) t (b n')
 
-bindT :: N.TName -> (Name -> Facet m a) -> Facet m a
-bindT n b = Facet $ \ e t -> let n' = Name (N.getTName n) (length e + length t) in runFacet e (Map.insert n (review T.bound_ n') t) (b n')
+bindT :: N.TName -> (N.Name -> Facet m a) -> Facet m a
+bindT n b = Facet $ \ e t -> let n' = N.Name (N.getTName n) (length e + length t) in runFacet e (Map.insert n (review T.bound_ n') t) (b n')
 
 newtype Facet m a = Facet (EEnv -> TEnv -> m a)
   deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC EEnv (ReaderC TEnv m)
@@ -149,7 +149,7 @@ monotypeTable =
 
 forAll
   :: (Spanned res, Monad p, PositionParsing p)
-  => (Facet p (Name S.::: T.Type) -> Facet p res -> Facet p res)
+  => (Facet p (N.Name S.::: T.Type) -> Facet p res -> Facet p res)
   -> OperatorParser (Facet p) res
 forAll (>=>) self _ = spanning $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
@@ -209,9 +209,9 @@ evar = token (spanning (runUnspaced (resolve <$> ename <*> Unspaced eenv <?> "va
 
 -- Patterns
 
-bindPattern :: PositionParsing p => P.Pattern -> ([Name] -> Facet p E.Expr) -> Facet p E.Expr
-bindPattern P.Wildcard   f = bindE (N.EName __) (\ v -> f [v])
-bindPattern (P.Var n)    f = bindE n            (\ v -> f [v])
+bindPattern :: PositionParsing p => P.Pattern -> ([N.Name] -> Facet p E.Expr) -> Facet p E.Expr
+bindPattern P.Wildcard   f = bindE (N.EName N.__) (\ v -> f [v])
+bindPattern (P.Var n)    f = bindE n              (\ v -> f [v])
 -- FIXME: this is incorrect since the structure doesn’t get used in the clause
 bindPattern (P.Tuple ps) f = go [] ps
   where
@@ -219,8 +219,8 @@ bindPattern (P.Tuple ps) f = go [] ps
   go vs (p:ps) = bindPattern p $ \ vs' -> go (vs <> vs') ps
 bindPattern (P.Loc _ p) f = bindPattern p f
 
-bindVarPattern :: Maybe N.EName -> (Name -> Facet p res) -> Facet p res
-bindVarPattern Nothing  = bindE (N.EName __)
+bindVarPattern :: Maybe N.EName -> (N.Name -> Facet p res) -> Facet p res
+bindVarPattern Nothing  = bindE (N.EName N.__)
 bindVarPattern (Just n) = bindE n
 
 
@@ -251,8 +251,8 @@ hname = ident hnameStyle
 tname :: (Monad p, TokenParsing p) => p N.TName
 tname = ident tnameStyle
 
-mname :: (Monad p, TokenParsing p) => p MName
-mname = token (runUnspaced (foldl' (:.) . MName <$> comp <* dot <*> sepBy comp dot))
+mname :: (Monad p, TokenParsing p) => p N.MName
+mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy comp dot))
   where
   comp = ident tnameStyle
 
