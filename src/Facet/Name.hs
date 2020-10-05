@@ -81,7 +81,7 @@ data MName
   | MName :. Text
   deriving (Eq, Ord, Show)
 
-data QName = MName :.: Text
+data QName = MName :.: DName
   deriving (Eq, Ord, Show)
 
 moduleName :: QName -> MName

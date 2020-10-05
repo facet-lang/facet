@@ -8,16 +8,15 @@ module Facet.Env
 
 import           Data.Coerce
 import qualified Data.Map as Map
-import qualified Data.Text as T
 import           Facet.Core.Type
 import           Facet.Name
 import           Facet.Syntax
 import           Prelude hiding (lookup)
 
-newtype Env = Env { getEnv :: Map.Map T.Text (MName ::: Type) }
+newtype Env = Env { getEnv :: Map.Map DName (MName ::: Type) }
 
-fromList :: [(T.Text, MName ::: Type)] -> Env
-fromList = coerce (Map.fromList @T.Text @(MName ::: Type))
+fromList :: [(DName, MName ::: Type)] -> Env
+fromList = coerce (Map.fromList @DName @(MName ::: Type))
 
-lookup :: T.Text -> Env -> Maybe (MName ::: Type)
-lookup = coerce (Map.lookup @T.Text @(MName ::: Type))
+lookup :: DName -> Env -> Maybe (MName ::: Type)
+lookup = coerce (Map.lookup @DName @(MName ::: Type))

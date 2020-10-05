@@ -65,7 +65,7 @@ import           Silkscreen (colon, fillSep, group, pretty, softline, (<+>), (</
 type Context = IntMap.IntMap Type
 
 implicit :: Env.Env
-implicit = Env.fromList [ (T.pack "Type", MName (T.pack "Facet") ::: C._Type) ]
+implicit = Env.fromList [ (N.DName (T.pack "Type"), MName (T.pack "Facet") ::: C._Type) ]
 
 elab :: Applicative m => MName -> Span -> Env.Env -> Context -> Elab m a -> m (Either (Span, P.Print) a)
 elab n s e c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (m n e c)
@@ -132,7 +132,8 @@ elabType :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader 
 elabType (t ::: _K) = T.fold alg t _K
   where
   alg t _K = case t of
-    T.Free  n -> validate =<< synth (tglobal n)
+    -- FIXME: free variables should use DName
+    T.Free  n -> validate =<< synth (tglobal (N.DName (N.getTName n)))
     T.Bound n -> validate =<< synth (tbound n)
     T.Hole  n -> hole (n ::: _K)
     T.Type    -> validate =<< synth _Type
@@ -149,10 +150,10 @@ elabType (t ::: _K) = T.fold alg t _K
       Just _K -> r <$ unify _K' _K
       _       -> pure r
 
-tglobal :: (Has (Reader Env.Env) sig m, C.Type ty, Has (Error P.Print) sig m) => N.TName -> Synth m ty
-tglobal (N.TName s) = Synth $ asks (Env.lookup s) >>= \case
-  Just b  -> pure (C.tglobal (tm b :.: s) ::: ty b)
-  Nothing -> freeVariable (pretty s)
+tglobal :: (Has (Reader Env.Env) sig m, C.Type ty, Has (Error P.Print) sig m) => N.DName -> Synth m ty
+tglobal n = Synth $ asks (Env.lookup n) >>= \case
+  Just b  -> pure (C.tglobal (tm b :.: n) ::: ty b)
+  Nothing -> freeVariable (pretty n)
 
 tbound :: (C.Type ty, Has (Error P.Print) sig m, Has (Reader Context) sig m) => Name -> Synth m ty
 tbound n = bound n C.tbound P.tvar
@@ -203,7 +204,8 @@ elabExpr :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader 
 elabExpr (t ::: _T) = E.fold alg t _T
   where
   alg t _T = case t of
-    E.Free  n -> validate =<< synth (eglobal n)
+    -- FIXME: free variables should use DName
+    E.Free  n -> validate =<< synth (eglobal (N.DName (N.getEName n)))
     E.Bound n -> validate =<< synth (ebound n)
     E.Hole  n -> hole (n ::: _T)
     E.Lam n b -> check (lam n (_check b) ::: _T) (pretty "lambda")
@@ -219,10 +221,10 @@ elabExpr (t ::: _T) = E.fold alg t _T
       Just _T -> r <$ unify _T' _T
       _       -> pure r
 
-eglobal :: (Has (Reader Env.Env) sig m, C.Expr expr, Has (Error P.Print) sig m) => N.EName -> Synth m expr
-eglobal (N.EName s) = Synth $ asks (Env.lookup s) >>= \case
-  Just b  -> pure (C.global (tm b :.: s) ::: ty b)
-  Nothing -> freeVariable (pretty s)
+eglobal :: (Has (Reader Env.Env) sig m, C.Expr expr, Has (Error P.Print) sig m) => N.DName -> Synth m expr
+eglobal n = Synth $ asks (Env.lookup n) >>= \case
+  Just b  -> pure (C.global (tm b :.: n) ::: ty b)
+  Nothing -> freeVariable (pretty n)
 
 ebound :: (C.Expr expr, Has (Error P.Print) sig m, Has (Reader Context) sig m) => Name -> Synth m expr
 ebound n = bound n C.bound P.evar
@@ -287,7 +289,7 @@ elabModule = M.fold alg
       e ::: _T <- elabDecl d
       e' <- check (e ::: _T)
       mname <- ask
-      pure $ C.defTerm (mname :.: N.getDName n) (interpret _T := e')
+      pure $ C.defTerm (mname :.: n) (interpret _T := e')
 
     M.Loc s d -> local (const s) d
 
