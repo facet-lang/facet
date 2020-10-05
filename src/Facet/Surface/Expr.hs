@@ -11,6 +11,7 @@ module Facet.Surface.Expr
 , _Lam
 , ($$)
 , unApp
+, _App
 , unit
 , (**)
 , dropAnn
@@ -62,6 +63,9 @@ unApp :: Has Empty sig m => Expr -> m (Expr, Expr)
 unApp e = case out e of
   f :$ a -> pure (f, a)
   _      -> empty
+
+_App :: Prism' Expr (Expr, Expr)
+_App = prism' (uncurry ($$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
 
 
 unit :: Expr
