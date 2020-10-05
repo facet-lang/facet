@@ -125,7 +125,7 @@ sigTable =
 sig :: (Monad p, PositionParsing p) => Facet p D.Decl
 sig = build sigTable (const ((D..=) <$> monotype <*> comp))
 
-binder :: (Monad p, PositionParsing p) => BindParser (Facet p) D.Decl
+binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) D.Decl
 binder self _ = spanning $ do
   (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type' <* symbolic ')'
   bindVarPattern i $ \ v -> ((v S.::: t) D.>->) <$ arrow <*> self
@@ -150,7 +150,7 @@ monotypeTable =
 forAll
   :: (Spanned res, Monad p, PositionParsing p)
   => (Facet p (Name S.::: T.Type) -> Facet p res -> Facet p res)
-  -> BindParser (Facet p) res
+  -> OperatorParser (Facet p) res
 forAll (>=>) self _ = spanning $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
   let loop i rest = bindT i $ \ v -> pure (v S.::: ty) >=> rest
@@ -190,7 +190,7 @@ compTable =
   [ [ Binder clause ]
   ]
 
-clause :: (Monad p, PositionParsing p) => BindParser (Facet p) E.Expr
+clause :: (Monad p, PositionParsing p) => OperatorParser (Facet p) E.Expr
 clause _ _ = self
   where
   self = (do

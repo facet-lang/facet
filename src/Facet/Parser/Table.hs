@@ -4,7 +4,7 @@ module Facet.Parser.Table
 ( Assoc(..)
 , Operator(..)
 , toBindParser
-, BindParser
+, OperatorParser
 , Table
 , build
 , terminate
@@ -19,10 +19,10 @@ data Assoc = N | L | R
 data Operator p a
   -- TODO: prefix, postfix, mixfix
   = Infix Assoc (p (a -> a -> a))
-  | Binder (BindParser p a)
+  | Binder (OperatorParser p a)
   | Atom (p a)
 
-toBindParser :: (PositionParsing p, Spanned a) => Operator p a -> BindParser p a
+toBindParser :: (PositionParsing p, Spanned a) => Operator p a -> OperatorParser p a
 toBindParser = \case
   Infix N op -> \ _ next -> try (next <**> op) <*> next
   Infix L op -> \ _ next -> chainl1Loc next op
@@ -31,7 +31,7 @@ toBindParser = \case
   Atom p     -> const (const p)
   where
 
-type BindParser p a = p a -> p a -> p a
+type OperatorParser p a = p a -> p a -> p a
 type Table p a = [[Operator p a]]
 
 -- | Build a parser for a Table.
@@ -43,5 +43,5 @@ build ts end = root
     where
     self = foldr (\ p rest -> toBindParser p self next <|> rest) next ps
 
-terminate :: (p a -> p a) -> BindParser p a -> p a -> p a
+terminate :: (p a -> p a) -> OperatorParser p a -> p a -> p a
 terminate wrap op next = self where self = wrap $ op self next
