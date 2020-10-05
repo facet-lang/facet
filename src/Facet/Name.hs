@@ -12,6 +12,7 @@ module Facet.Name
 , moduleName
 , EName(..)
 , TName(..)
+, DName(..)
 , Assoc(..)
 , Op(..)
 ) where
@@ -91,6 +92,9 @@ newtype EName = EName { getEName :: Text }
   deriving (Eq, IsString, Ord, P.Pretty, Show)
 
 newtype TName = TName { getTName :: Text }
+  deriving (Eq, IsString, Ord, P.Pretty, Show)
+
+newtype DName = DName { getDName :: Text }
   deriving (Eq, IsString, Ord, P.Pretty, Show)
 
 
