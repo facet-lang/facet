@@ -202,7 +202,7 @@ clause _ = self
     pure (setSpan (Span start end) lam)
 
 evar :: (Monad p, PositionParsing p) => Facet p E.Expr
-evar = spanning $ review E.global_ <$> ename <?> "variable"
+evar = token (spanning (runUnspaced (review E.global_ <$> ename <?> "variable")))
 
 
 -- Patterns
