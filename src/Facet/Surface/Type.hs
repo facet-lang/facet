@@ -28,7 +28,7 @@ import Text.Parser.Position (Spanned(..), Span)
 newtype Type = In { out :: TypeF Type }
 
 instance Spanned Type where
-  locate = fmap In . Loc
+  setSpan = fmap In . Loc
 
 global_ :: Prism' Type TName
 global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })

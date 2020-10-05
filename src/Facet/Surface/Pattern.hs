@@ -15,7 +15,7 @@ data Pattern
   deriving (Eq, Ord, Show)
 
 instance Spanned Pattern where
-  locate = Loc
+  setSpan = Loc
 
 dropLoc :: Pattern -> Pattern
 dropLoc = \case

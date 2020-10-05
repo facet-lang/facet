@@ -201,7 +201,7 @@ clause = self . vars
   clause (start, p) rest vars = bindPattern p $ \ vs ext -> do
     lam <- foldr (fmap . curry (review E.lam_)) (rest (ext vars)) vs
     end <- position
-    pure (locate (Span start end) lam)
+    pure (setSpan (Span start end) lam)
 
 
 -- Patterns

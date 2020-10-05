@@ -22,7 +22,7 @@ import Text.Parser.Position (Spanned(..), Span)
 newtype Decl = In { out :: DeclF Decl }
 
 instance Spanned Decl where
-  locate = fmap In . Loc
+  setSpan = fmap In . Loc
 
 -- | Universal quantification.
 (>=>) :: (Name ::: Type) -> Decl -> Decl

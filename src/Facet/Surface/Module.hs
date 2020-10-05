@@ -16,7 +16,7 @@ import Text.Parser.Position (Spanned(..), Span)
 newtype Module = In { out :: ModuleF Module }
 
 instance Spanned Module where
-  locate = fmap In . Loc
+  setSpan = fmap In . Loc
 
 module' :: MName -> [Module] -> Module
 module' = fmap In . Module
