@@ -12,6 +12,7 @@ module Facet.Surface.Expr
 , prd_
 , dropLoc
 , ExprF(..)
+, Comp(..)
 , fold
 ) where
 
@@ -77,3 +78,9 @@ fold :: (ExprF a -> a) -> Expr -> a
 fold alg = go
   where
   go = alg . fmap go . out
+
+
+data Comp e
+  = Cases [(Name, e)]
+  | Expr e
+  deriving (Foldable, Functor, Traversable)
