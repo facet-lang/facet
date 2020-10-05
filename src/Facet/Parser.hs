@@ -29,7 +29,7 @@ import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
 import qualified Facet.Surface.Pattern as P
-import qualified Facet.Surface.Type as S
+import qualified Facet.Surface.Type as T
 import qualified Facet.Syntax as S
 import           Prelude hiding (lines, null, product, span)
 import           Text.Parser.Char
@@ -104,23 +104,23 @@ decl = locating
 
 -- Declarations
 
-tsigTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type D.Decl
+tsigTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type D.Decl
 tsigTable =
   [ [ Binder (forAll (liftA2 (D.>=>))) ]
   ]
 
-sigTable :: (Monad p, PositionParsing p) => Facet p S.Type -> Table (Facet p) E.Expr D.Decl
+sigTable :: (Monad p, PositionParsing p) => Facet p T.Type -> Table (Facet p) E.Expr D.Decl
 sigTable tvars =
   [ [ Binder (binder tvars) ]
   ]
 
-tsig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p D.Decl
+tsig :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p D.Decl
 tsig = build tsigTable (\ _ vars -> sig vars global)
 
-sig :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p E.Expr -> Facet p D.Decl
+sig :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p E.Expr -> Facet p D.Decl
 sig tvars = build (sigTable tvars) (\ _ vars -> (D..=) <$> monotype_ tvars <*> comp vars)
 
-binder :: (Monad p, PositionParsing p) => Facet p S.Type -> BindParser (Facet p) E.Expr D.Decl
+binder :: (Monad p, PositionParsing p) => Facet p T.Type -> BindParser (Facet p) E.Expr D.Decl
 binder tvars BindCtx{ self, vars } = locating $ do
   (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type_ tvars <* symbolic ')'
   bindVarPattern i $ \ v ext -> ((v S.::: t) D.>->) <$ arrow <*> self (ext vars)
@@ -128,40 +128,40 @@ binder tvars BindCtx{ self, vars } = locating $ do
 
 -- Types
 
-typeTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Type
-typeTable = [ Binder (forAll (liftA2 (curry (review S._ForAll)))) ] : monotypeTable
+typeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type T.Type
+typeTable = [ Binder (forAll (liftA2 (curry (review T._ForAll)))) ] : monotypeTable
 
-monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) S.Type S.Type
+monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type T.Type
 monotypeTable =
-  [ [ Infix R (curry (review S._Arrow) <$ arrow) ]
-  , [ Infix L (pure (curry (review S._TApp))) ]
+  [ [ Infix R (curry (review T._Arrow) <$ arrow) ]
+  , [ Infix L (pure (curry (review T._TApp))) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
-      Atom (const (S._Unit <$ token (string "Unit")))
-    , Atom (const (S._Type <$ token (string "Type")))
+      Atom (const (T._Unit <$ token (string "Unit")))
+    , Atom (const (T._Type <$ token (string "Type")))
     , Atom id
     ]
   ]
 
 forAll
   :: (Located res, Monad p, PositionParsing p)
-  => (Facet p (Name S.::: S.Type) -> Facet p res -> Facet p res)
-  -> BindParser (Facet p) S.Type res
+  => (Facet p (Name S.::: T.Type) -> Facet p res -> Facet p res)
+  -> BindParser (Facet p) T.Type res
 forAll (>=>) BindCtx{ self, vars } = locating $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type_ vars)
-  let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (review S.tbound_ v <$ variable v <|> vars)
+  let loop i rest vars = bind i $ \ v -> pure (v S.::: ty) >=> rest (review T.tbound_ v <$ variable v <|> vars)
   arrow *> foldr loop self names vars
 
-type' :: (Monad p, PositionParsing p) => Facet p S.Type
+type' :: (Monad p, PositionParsing p) => Facet p T.Type
 type' = type_ tglobal
 
-type_ :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Type
-type_ = build typeTable (terminate parens (toBindParser (Infix L (curry (review S._TPrd) <$ comma))))
+type_ :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p T.Type
+type_ = build typeTable (terminate parens (toBindParser (Infix L (curry (review T._TPrd) <$ comma))))
 
-monotype_ :: (Monad p, PositionParsing p) => Facet p S.Type -> Facet p S.Type
-monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review S._TPrd) <$ comma))))
+monotype_ :: (Monad p, PositionParsing p) => Facet p T.Type -> Facet p T.Type
+monotype_ = build monotypeTable (terminate parens (toBindParser (Infix L (curry (review T._TPrd) <$ comma))))
 
-tglobal :: (Monad p, TokenParsing p) => Facet p S.Type
-tglobal = review S.tglobal_ <$> tname <?> "variable"
+tglobal :: (Monad p, TokenParsing p) => Facet p T.Type
+tglobal = review T.tglobal_ <$> tname <?> "variable"
 
 
 -- Expressions
@@ -243,7 +243,7 @@ ename  = ident nameStyle
 hname :: (Monad p, TokenParsing p) => p Text
 hname = ident hnameStyle
 
-tname :: (Monad p, TokenParsing p) => p S.TName
+tname :: (Monad p, TokenParsing p) => p T.TName
 tname = ident tnameStyle
 
 mname :: (Monad p, TokenParsing p) => p MName
