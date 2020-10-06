@@ -26,6 +26,7 @@ import           Data.Foldable (foldl')
 import qualified Data.IntSet as IntSet
 import qualified Facet.Core as C
 import           Facet.Name
+import           Facet.Stack
 import           Facet.Syntax
 
 newtype Type = In { out :: TypeF Type }

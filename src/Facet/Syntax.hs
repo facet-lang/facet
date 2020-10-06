@@ -7,13 +7,13 @@ module Facet.Syntax
 , uncurryAnn
 , curryAnn
 , (:=)(..)
-, Stack(..)
 , unprefixl
 , unprefixr
 ) where
 
 import Data.Bifunctor
 import Facet.Name
+import Facet.Stack
 
 data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -48,13 +48,6 @@ infix 2 :=
 instance Bifunctor (:=) where
   bimap f g (a := b) = f a := g b
 
-
-data Stack a
-  = Nil
-  | Stack a :> a
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-infixl 5 :>
 
 unprefixl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)
 unprefixl un = go id

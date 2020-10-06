@@ -55,6 +55,7 @@ import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
+import           Facet.Stack
 import qualified Facet.Surface.Comp as C
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
