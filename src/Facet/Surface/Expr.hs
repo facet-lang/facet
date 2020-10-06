@@ -7,10 +7,10 @@ module Facet.Surface.Expr
 , bound_
 , hole_
 , lam_
+, comp_
 , app_
 , unit_
 , prd_
-, comp_
 , ExprF(..)
 , fold
 ) where
@@ -45,6 +45,9 @@ hole_ = prism' (In . Hole) (\case{ In (Hole n) -> Just n ; _ -> Nothing })
 lam_ :: Prism' Expr (Name, Expr)
 lam_ = prism' (In . uncurry Lam) (\case{ In (Lam n b) -> Just (n, b) ; _ -> Nothing })
 
+comp_ :: Prism' Expr (Comp Expr)
+comp_ = prism' (In . Comp) (\case{ In (Comp c) -> Just c ; _ -> Nothing })
+
 app_ :: Prism' Expr (Expr, Expr)
 app_ = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
 
@@ -58,19 +61,15 @@ prd_ = prism' (In . uncurry (:*)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Noth
 -- FIXME: tupling/unit should take a list of expressions
 
 
-comp_ :: Prism' Expr (Comp Expr)
-comp_ = prism' (In . Comp) (\case{ In (Comp c) -> Just c ; _ -> Nothing })
-
-
 data ExprF e
   = Free DName
   | Bound Name
   | Hole Text
   | Lam Name e
+  | Comp (Comp e)
   | e :$ e
   | Unit
   | e :* e
-  | Comp (Comp e)
   | Loc Span e
   deriving (Foldable, Functor, Traversable)
 
