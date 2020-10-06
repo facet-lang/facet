@@ -10,6 +10,7 @@ module Facet.Vars
 , FVs(..)
 , getFVs
 , prime
+, primes
 ) where
 
 import           Data.Coerce
@@ -69,6 +70,11 @@ getFVs v = runFVs v mempty mempty
 -- | Construct a fresh name given the provided free variables.
 prime :: Text -> FVs -> Name
 prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . getFVs
+
+primes :: [Text] -> FVs -> [Name]
+primes ns fvs = zipWith (\ n v -> Name n (base + v)) ns [0..]
+  where
+  base = maybe 0 (+ 1) (findMax' (getVars (getFVs fvs)))
 
 
 findMax' :: IntSet.IntSet -> Maybe Int
