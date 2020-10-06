@@ -66,6 +66,7 @@ getFVs :: FVs -> Vars
 getFVs v = runFVs v mempty mempty
 
 
+-- | Construct a fresh name given the provided free variables.
 prime :: Text -> FVs -> Name
 prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . getFVs
 
