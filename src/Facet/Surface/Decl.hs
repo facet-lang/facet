@@ -5,7 +5,7 @@
 module Facet.Surface.Decl
 ( Decl(..)
 , (>=>)
-, unForAll
+, forAll_
 , (>->)
 , (.=)
 , DeclF(..)
@@ -13,7 +13,7 @@ module Facet.Surface.Decl
 ) where
 
 import Control.Category ((>>>))
-import Control.Effect.Empty
+import Control.Lens.Prism
 import Facet.Name
 import Facet.Surface.Expr (Expr)
 import Facet.Surface.Type (Type)
@@ -35,10 +35,8 @@ instance Spanned Decl where
 
 infixr 1 >=>
 
-unForAll :: Has Empty sig m => Decl -> m (Name ::: Type, Decl)
-unForAll d = case out d of
-  t :=> b -> pure (t, b)
-  _       -> empty
+forAll_ :: Prism' Decl (Name ::: Type, Decl)
+forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
 
 (>->) :: (Name ::: Type) -> Decl -> Decl
 (>->) = fmap In . (:->)

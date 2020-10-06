@@ -283,7 +283,7 @@ printSurfaceDecl = go
   go = D.out >>> \case
     t D.:=  e -> printSurfaceType t .= comp (printSurfaceExpr e)
     t D.:=> b ->
-      let (t', b') = unprefixr (D.unForAll . dropSpan) b
+      let (t', b') = unprefixr (preview D.forAll_ . dropSpan) b
       in map (first sbound) (t:t') >~~> go b'
     t D.:-> b -> bimap sbound printSurfaceType t >-> go b
     D.Loc _ d -> go d
