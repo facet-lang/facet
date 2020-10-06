@@ -1,5 +1,6 @@
 module Facet.FVs
 ( FVs
+, null
 , Scoped(..)
 , prime
 ) where
@@ -7,8 +8,12 @@ module Facet.FVs
 import qualified Data.IntSet as IntSet
 import           Data.Text (Text)
 import           Facet.Name
+import           Prelude hiding (null)
 
 type FVs = IntSet.IntSet
+
+null :: FVs -> Bool
+null = IntSet.null
 
 
 class Scoped t where
@@ -23,7 +28,7 @@ instance Scoped Name where
 
 prime :: Scoped t => Text -> t -> Name
 prime n t
-  | IntSet.null fvs' = Name n 0
-  | otherwise        = Name n (IntSet.findMax fvs' + 1)
+  | null fvs' = Name n 0
+  | otherwise = Name n (IntSet.findMax fvs' + 1)
   where
   fvs' = fvs t
