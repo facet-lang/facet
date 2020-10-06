@@ -5,7 +5,6 @@ module Facet.Name
 , prettyNameWith
 , prime
 , __
-, FVs
 , Scoped(..)
 , instantiate
 , MName(..)
@@ -26,6 +25,7 @@ import           Data.List.NonEmpty
 import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
+import           Facet.FVs
 import           Facet.Pretty
 import qualified Prettyprinter as P
 import           Silkscreen
@@ -61,8 +61,6 @@ prime n t
 __ :: Text
 __ = T.empty
 
-
-type FVs = IntSet.IntSet
 
 class Scoped t where
   fvs :: t -> FVs

@@ -1,2 +1,7 @@
 module Facet.FVs
-() where
+( FVs
+) where
+
+import qualified Data.IntSet as IntSet
+
+type FVs = IntSet.IntSet

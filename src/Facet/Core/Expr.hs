@@ -14,6 +14,7 @@ import           Control.Category ((>>>))
 import           Control.Lens.Prism
 import qualified Data.IntSet as IntSet
 import qualified Facet.Core as C
+import           Facet.FVs
 import           Facet.Name
 
 newtype Expr = In { out :: ExprF Expr }
