@@ -17,6 +17,15 @@ import Text.Parser.Position (Span, Spanned(..))
 
 newtype Pattern a = In { out :: PatternF a (Pattern a) }
 
+instance Foldable Pattern where
+  foldMap f = go where go = bifoldMap f go . out
+
+instance Functor Pattern where
+  fmap f = go where go = In . bimap f go . out
+
+instance Traversable Pattern where
+  traverse f = go where go = fmap In . bitraverse f go . out
+
 instance Spanned (Pattern a) where
   setSpan = fmap In . Loc
 
