@@ -196,10 +196,13 @@ comp = spanning (braces (review E.comp_ <$> clauses))
 
 clause :: (Monad p, PositionParsing p) => Facet p (C.Clause E.Expr)
 clause = (do
-  patterns <- try (some pattern <* arrow)
-  bindPatterns patterns clause) <?> "clause"
+  ps <- try (some ((,) <$> position <*> pattern) <* arrow)
+  foldr go body ps) <?> "clause"
   where
-  clause vs = foldr (\ v -> fmap (review C.clause_ . (,) v)) body vs
+  go (start, p) rest = bindPattern p $ \ vs -> do
+    c <- foldr (\ v b -> review C.clause_ . (,) v <$> b) rest vs
+    end <- position
+    pure $ setSpan (Span start end) c
 
 body :: (Monad p, PositionParsing p) => Facet p (C.Clause E.Expr)
 body = review C.body_ <$> expr
@@ -213,11 +216,6 @@ evar
 
 
 -- Patterns
-
-bindPatterns :: PositionParsing p => [P.Pattern N.EName] -> ([N.Name] -> Facet p a) -> Facet p a
-bindPatterns ps f = foldr go f ps []
-  where
-  go p f vs = bindPattern p (f . (vs ++))
 
 bindPattern :: PositionParsing p => P.Pattern N.EName -> ([N.Name] -> Facet p a) -> Facet p a
 bindPattern p f = case P.out p of
