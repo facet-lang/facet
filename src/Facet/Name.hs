@@ -5,7 +5,6 @@ module Facet.Name
 , prettyNameWith
 , prime
 , __
-, Scoped(..)
 , instantiate
 , MName(..)
 , QName(..)
@@ -61,12 +60,6 @@ prime n t
 __ :: Text
 __ = T.empty
 
-
-class Scoped t where
-  fvs :: t -> FVs
-
-instance Scoped IntSet.IntSet where
-  fvs = id
 
 instance Scoped Name where
   fvs = IntSet.singleton . id'

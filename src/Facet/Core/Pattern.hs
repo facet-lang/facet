@@ -4,7 +4,7 @@ module Facet.Core.Pattern
 ( Pattern(..)
 ) where
 
-import Facet.Name
+import Facet.FVs
 
 data Pattern a
   = Wildcard

@@ -12,7 +12,7 @@ module Facet.Syntax
 ) where
 
 import Data.Bifunctor
-import Facet.Name
+import Facet.FVs
 import Facet.Stack
 
 data a ::: b = a ::: b
