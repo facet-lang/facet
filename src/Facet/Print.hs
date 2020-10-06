@@ -262,14 +262,19 @@ printSurfaceExpr = go
       in go f' $$* fmap go (a' :> a)
     SE.Unit    -> unit
     l SE.:*  r -> go l **  go r
-    SE.Comp c  -> comp $ printSurfaceComp c
+    SE.Comp c  -> printSurfaceComp c
     SE.Loc _ t -> go t
 
 printSurfaceComp :: SC.Comp SE.Expr -> Print
-printSurfaceComp = SC.out >>> \case
-  SC.Cases cs -> group (concatWith (surround (line' <> comma <> space)) (map (\ (vs, b) -> vsep (map (prec Pattern . sbound) vs) <+> arrow <> group (nest 2 (line <> printSurfaceExpr b))) cs))
-  SC.Expr e   -> prec Expr (printSurfaceExpr e)
-  SC.Loc _ c  -> printSurfaceComp c
+printSurfaceComp = comp . concatWith (surround (line' <> comma <> space)) . map printSurfaceClause . SC.getComp
+
+printSurfaceClause :: SC.Clause SE.Expr -> Print
+printSurfaceClause = SC.out >>> \case
+  SC.Clause n b -> prec Pattern (sbound n) <+> case SC.out b of
+    SC.Body b   -> arrow <> group (nest 2 (line <> printSurfaceExpr b))
+    _           -> printSurfaceClause b
+  SC.Body e     -> prec Expr (printSurfaceExpr e)
+  SC.Loc _ c    -> printSurfaceClause c
 
 
 -- FIXME: Use _ in binding positions for unused variables

@@ -47,7 +47,6 @@ import           Control.Lens (preview)
 import           Data.Bifunctor (first)
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
-import           Data.Traversable (for)
 import           Facet.Carrier.Error.Context
 import qualified Facet.Core as C
 import           Facet.Core.Type
@@ -258,15 +257,18 @@ l ** r = Check $ \ _T -> do
   pure (l' C.** r')
 
 comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span) sig m, C.Expr expr) => C.Comp (Check m expr) -> Check m expr
-comp = C.fold $ \case
-  C.Cases cs -> Check $ \ _T -> do
-    (_A, _B) <- expectFunctionType (reflow "when checking computation") _T
-    cs' <- for cs $ \ (ns, b) ->
-      foldr (\ n -> (n ::: _A |-)) ((,) ns <$> check (b ::: _B)) ns
-    -- FIXME: extend Core to include computation types
-    -- FIXME: extend Core to include pattern matching so this isn’t broken
-    pure $ uncurry (flip (foldr C.lam)) $ head cs'
-  C.Expr e   -> e
+comp (C.Comp cs) = do
+  cs' <- traverse clause cs
+  -- FIXME: extend Core to include pattern matching so this isn’t broken
+  -- FIXME: extend Core to include computation types
+  pure $ head cs'
+
+clause :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span) sig m, C.Expr expr) => C.Clause (Check m expr) -> Check m expr
+clause = C.fold $ \case
+  C.Clause n b -> Check $ \ _T -> do
+    (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
+    n ::: _A |- C.lam n <$> check (b ::: _A)
+  C.Body e   -> e
   C.Loc s c  -> local (const s) c
 
 
