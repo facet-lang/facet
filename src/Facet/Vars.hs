@@ -1,11 +1,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Facet.Vars
 ( Vars(..)
-, singleton
 , insert
 , delete
 , difference
 , member
+, Binding(..)
 , Scoped(..)
 , prime
 ) where
@@ -18,9 +18,6 @@ import           Facet.Name
 newtype Vars = Vars { getVars :: IntSet.IntSet }
   deriving (Monoid, Semigroup, Show)
 
-singleton :: Name -> Vars
-singleton = Vars . IntSet.singleton . id'
-
 insert :: Name -> Vars -> Vars
 insert = coerce (IntSet.insert . id')
 
@@ -32,6 +29,13 @@ difference = coerce IntSet.difference
 
 member :: Name -> Vars -> Bool
 member = coerce (IntSet.member . id')
+
+
+class Monoid t => Binding t where
+  singleton :: Name -> t
+
+instance Binding Vars where
+  singleton = Vars . IntSet.singleton . id'
 
 
 class Scoped t where
