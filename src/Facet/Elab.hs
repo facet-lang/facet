@@ -267,7 +267,7 @@ clause :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Sp
 clause = C.fold $ \case
   C.Clause n b -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
-    n ::: _A |- C.lam n <$> check (b ::: _A)
+    n ::: _A |- C.lam n <$> check (b ::: _B)
   C.Body e   -> e
   C.Loc s c  -> local (const s) c
 
