@@ -10,13 +10,13 @@ module Facet.Vars
 , FVs(..)
 , getFVs
 , prime
-, renameWith
+, renameAccumL
 ) where
 
-import           Control.Carrier.Fresh.Church
 import           Data.Coerce
 import qualified Data.IntSet as IntSet
 import           Data.Text (Text)
+import           Data.Traversable (mapAccumL)
 import           Facet.Name
 
 newtype Vars = Vars { getVars :: IntSet.IntSet }
@@ -72,9 +72,10 @@ getFVs v = runFVs v mempty mempty
 prime :: Text -> FVs -> Name
 prime n = Name n . freshIdForFVs
 
-renameWith :: Traversable t => (Int -> a -> b) -> FVs -> t a -> t b
-renameWith f fvs = run . evalFresh base . traverse (\ a -> f <$> fresh <*> pure a)
+renameAccumL :: Traversable t => (Int -> a -> b -> (a, c)) -> FVs -> a -> t b -> (a, t c)
+renameAccumL f fvs a t = let ((_, a'), t') = mapAccumL step (base, a) t in (a', t')
   where
+  step (i, a) b = let (a', c) = f i a b in ((i + 1, a'), c)
   base = freshIdForFVs fvs
 
 
