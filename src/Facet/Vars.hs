@@ -7,6 +7,7 @@ module Facet.Vars
 , member
 , Binding(..)
 , Scoped(..)
+, FVs(..)
 , prime
 ) where
 
@@ -49,6 +50,8 @@ instance Scoped Vars where
 instance Scoped Name where
   fvs = singleton
 
+
+newtype FVs = FVs { runFVs :: Vars -> Vars -> Vars }
 
 prime :: Scoped t => Text -> t -> Name
 prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . fvs
