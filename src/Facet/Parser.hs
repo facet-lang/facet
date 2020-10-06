@@ -220,7 +220,7 @@ bindPatterns ps f = foldr go f ps []
   go p f vs = bindPattern p (f . (vs ++))
 
 bindPattern :: PositionParsing p => P.Pattern N.EName -> ([N.Name] -> Facet p a) -> Facet p a
-bindPattern p f = case p of
+bindPattern p f = case P.out p of
   P.Wildcard   -> bindE (N.EName N.__) (\ v -> f [v])
   (P.Var n)    -> bindE n              (\ v -> f [v])
   -- FIXME: this is incorrect since the structure doesn’t get used in the clause
@@ -245,9 +245,9 @@ wildcard = reserve enameStyle "_"
 -- FIXME: patterns
 pattern :: (Monad p, PositionParsing p) => p (P.Pattern N.EName)
 pattern = spanning
-  $   P.Var <$> ename
-  <|> P.Wildcard <$ wildcard
-  <|> P.Tuple <$> parens (commaSep pattern)
+  $   review P.var_ <$> ename
+  <|> review P.wildcard_ <$> wildcard
+  <|> review P.tuple_ <$> parens (commaSep pattern)
   <?> "pattern"
 
 
