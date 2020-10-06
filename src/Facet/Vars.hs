@@ -10,7 +10,7 @@ module Facet.Vars
 , FVs(..)
 , getFVs
 , prime
-, primes
+, renameWith
 ) where
 
 import           Control.Carrier.State.Church
@@ -72,8 +72,8 @@ getFVs v = runFVs v mempty mempty
 prime :: Text -> FVs -> Name
 prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . getFVs
 
-primes :: Traversable t => t Text -> FVs -> t Name
-primes ns fvs = run (evalState base (traverse (\ n -> do{ i <- get ; put (i + 1) ; pure (Name n i) }) ns))
+renameWith :: Traversable t => ((Name -> Name) -> a -> b) -> t a -> FVs -> t b
+renameWith f ts fvs = run (evalState base (traverse (\ a -> do{ i <- get ; put (i + 1) ; pure (f ((`Name` i) . hint) a) }) ts))
   where
   base = maybe 0 (+ 1) (findMax' (getVars (getFVs fvs)))
 
