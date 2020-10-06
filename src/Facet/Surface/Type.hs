@@ -11,15 +11,16 @@ module Facet.Surface.Type
 , arrow_
 , app_
 , prd_
-, _Unit
 , _Type
+, _Void
+, _Unit
 , aeq
 , TypeF(..)
 , fold
 ) where
 
 import Control.Category ((>>>))
-import Control.Lens.Prism
+import Control.Lens.Prism hiding (_Void)
 import Data.Text (Text)
 import Facet.Name
 import Facet.Syntax
@@ -57,11 +58,14 @@ prd_ :: Prism' Type (Type, Type)
 prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
 
 
-_Unit :: Type
-_Unit = In Unit
-
 _Type :: Type
 _Type = In Type
+
+_Void :: Type
+_Void = In Void
+
+_Unit :: Type
+_Unit = In Unit
 
 
 aeq :: Type -> Type -> Bool
@@ -83,6 +87,7 @@ data TypeF t
   | Bound Name
   | Hole Text
   | Type
+  | Void
   | Unit
   | (Name ::: t) :=> t
   | t :$ t

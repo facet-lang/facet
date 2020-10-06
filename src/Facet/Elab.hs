@@ -138,6 +138,7 @@ elabType (t ::: _K) = T.fold alg t _K
     T.Bound n -> validate =<< synth (tbound n)
     T.Hole  n -> hole (n ::: _K)
     T.Type    -> validate =<< synth _Type
+    T.Void    -> validate =<< synth _Void
     T.Unit    -> validate =<< synth _Unit
     t T.:=> b -> validate =<< synth (fmap _check t >~> _check b)
     f T.:$  a -> validate =<< synth (_synth f .$  _check a)
@@ -161,6 +162,9 @@ tbound n = bound n C.tbound P.tvar
 
 _Type :: (Applicative m, C.Type t) => Synth m t
 _Type = Synth $ pure $ C._Type ::: C._Type
+
+_Void :: (Applicative m, C.Type t) => Synth m t
+_Void = Synth $ pure $ C._Void ::: C._Type
 
 _Unit :: (Applicative m, C.Type t) => Synth m t
 _Unit = Synth $ pure $ C._Unit ::: C._Type

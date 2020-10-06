@@ -180,6 +180,7 @@ printSurfaceType = go
     T.Bound n -> sbound n
     T.Hole n  -> hole n
     T.Type    -> _Type
+    T.Void    -> _Void
     T.Unit    -> _Unit
     t T.:=> b ->
       let (t', b') = unprefixr (preview T.forAll_ . dropSpan) b
