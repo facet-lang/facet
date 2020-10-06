@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
@@ -13,11 +12,11 @@ module Facet.Core.Type
 , arrow_
 , app_
 , prd_
+, interpret
 , rename
 , subst
 , TypeF(..)
 , fold
-, Interpret(..)
 ) where
 
 import           Control.Category ((>>>))
@@ -62,6 +61,20 @@ app_ = prism' (uncurry ($$)) (\case{ In (f :$ (as :> a)) -> Just (In (f :$ as), 
 
 prd_ :: Prism' Type (Type, Type)
 prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
+
+
+interpret :: C.Type r => Type -> r
+interpret = go
+    where
+    go = out >>> \case
+      Type    -> C._Type
+      Void    -> C._Void
+      Unit    -> C._Unit
+      t :=> b -> fmap go t C.>=> go b
+      f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound C.tglobal f) a
+      a :-> b -> go a C.--> go b
+      l :* r  -> go l C..*  go r
+
 
 ($$) :: Type -> Type -> Type
 In (f :$ as) $$ a = In $ f :$ (as :> a)
@@ -125,19 +138,3 @@ fold :: (TypeF a -> a) -> Type -> a
 fold alg = go
   where
   go = alg . fmap go . out
-
-
-class Interpret i r where
-  interpret :: i -> r
-
-instance C.Type r => Interpret Type r where
-  interpret = go
-    where
-    go = out >>> \case
-      Type    -> C._Type
-      Void    -> C._Void
-      Unit    -> C._Unit
-      t :=> b -> fmap go t C.>=> go b
-      f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound C.tglobal f) a
-      a :-> b -> go a C.--> go b
-      l :* r  -> go l C..*  go r
