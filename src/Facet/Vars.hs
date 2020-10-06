@@ -59,6 +59,10 @@ instance Semigroup FVs where
 instance Monoid FVs where
   mempty = FVs (const id)
 
+instance Binding FVs where
+  singleton n = FVs $ \ b -> if n `member` b then id else insert n
+  bind n v = FVs $ runFVs v . insert n
+
 
 prime :: Scoped t => Text -> t -> Name
 prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . fvs
