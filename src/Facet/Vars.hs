@@ -8,6 +8,7 @@ module Facet.Vars
 , Binding(..)
 , Scoped(..)
 , FVs(..)
+, getFVs
 , prime
 ) where
 
@@ -63,6 +64,9 @@ instance Monoid FVs where
 instance Binding FVs where
   singleton n = FVs $ \ b -> if n `member` b then id else insert n
   bind n v = FVs $ runFVs v . insert n
+
+getFVs :: FVs -> Vars
+getFVs v = runFVs v mempty mempty
 
 
 prime :: Scoped t => Text -> t -> Name
