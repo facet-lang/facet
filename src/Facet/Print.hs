@@ -20,6 +20,7 @@ module Facet.Print
   -- * Interpreters
 , printSurfaceType
 , printSurfaceExpr
+, printSurfaceClause
 , printSurfaceDecl
 , printSurfaceModule
 ) where
