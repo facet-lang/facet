@@ -194,9 +194,9 @@ compTable =
   ]
 
 clause :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (C.Comp E.Expr)
-clause _ _ = (do
+clause _ next = (do
   patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
-  foldr clause (review C.expr_ <$> expr) patterns) <?> "clause"
+  foldr clause next patterns) <?> "clause"
   where
   clause (start, p) rest = bindPattern p $ \ vs -> do
     lam <- foldr (\ v b -> review C.cases_ . pure . (,) v <$> b) rest vs
