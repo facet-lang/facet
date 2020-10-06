@@ -13,7 +13,7 @@ module Facet.Vars
 , renameWith
 ) where
 
-import           Control.Carrier.State.Church
+import           Control.Carrier.Fresh.Church
 import           Data.Coerce
 import qualified Data.IntSet as IntSet
 import           Data.Text (Text)
@@ -73,7 +73,7 @@ prime :: Text -> FVs -> Name
 prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . getFVs
 
 renameWith :: Traversable t => ((Name -> Name) -> a -> b) -> t a -> FVs -> t b
-renameWith f ts fvs = run (evalState base (traverse (\ a -> do{ i <- get ; put (i + 1) ; pure (f ((`Name` i) . hint) a) }) ts))
+renameWith f ts fvs = run (evalFresh base (traverse (\ a -> do{ i <- fresh ; pure (f ((`Name` i) . hint) a) }) ts))
   where
   base = maybe 0 (+ 1) (findMax' (getVars (getFVs fvs)))
 
