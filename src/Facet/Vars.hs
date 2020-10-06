@@ -33,9 +33,11 @@ member = coerce (IntSet.member . id')
 
 class Monoid t => Binding t where
   singleton :: Name -> t
+  bind :: Name -> t -> t
 
 instance Binding Vars where
   singleton = Vars . IntSet.singleton . id'
+  bind = delete
 
 
 class Scoped t where
