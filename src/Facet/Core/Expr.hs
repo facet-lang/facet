@@ -58,10 +58,10 @@ rename :: Name -> Name -> Expr -> Expr
 rename x y = go
   where
   go = \case
-    Global s      -> Global s
+    Global s      -> C.global s
     Bound z
-      | x == z    -> Bound y
-      | otherwise -> Bound z
+      | x == z    -> C.bound y
+      | otherwise -> C.bound z
     TLam s z b
       | z == x    -> TLam s z b
       | otherwise -> C.tlam z (go b)
@@ -69,7 +69,7 @@ rename x y = go
       | z == x    -> Lam s z b
       | otherwise -> C.lam z (go b)
     App _ f a     -> go f C.$$ go a
-    Unit          -> Unit
+    Unit          -> C.unit
     Pair _ l r    -> go l C.** go r
 
 subst :: Name -> Expr -> Expr -> Expr
