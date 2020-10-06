@@ -46,6 +46,7 @@ import           Control.Effect.Parser.Span (Span(..))
 import           Data.Bifunctor (first)
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
+import           Data.Traversable (for)
 import           Facet.Carrier.Error.Context
 import qualified Facet.Core as C
 import           Facet.Core.Type
@@ -210,6 +211,7 @@ elabExpr (t ::: _T) = E.fold alg t _T
     f E.:$  a -> validate =<< synth (_synth f $$  _check a)
     l E.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
     E.Unit    -> validate =<< synth unit
+    E.Comp c  -> check (comp (_check <$> c) ::: _T) (pretty "computation")
     E.Loc s b -> local (const s) $ b _T
     where
     _check r = tm <$> Check (r . Just)
@@ -249,6 +251,17 @@ l ** r = Check $ \ _T -> do
   l' <- check (l ::: _L)
   r' <- check (r ::: _R)
   pure (l' C.** r')
+
+comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m) => E.Comp (Check m expr) -> Check m expr
+comp = \case
+  -- FIXME: extend Core.Type to include a zero to accommodate the empty list
+  E.Cases cs -> Check $ \ _T -> do
+    (_A, _B) <- expectFunctionType (reflow "when checking computation") _T
+    cs' <- for cs $ \ (n, b) ->
+      n ::: _A |- (,) n <$> check (b ::: _B)
+    -- FIXME: extend Core to include pattern matching so this isn’t broken
+    pure $ snd $ head cs'
+  E.Expr e   -> e
 
 
 -- Declarations

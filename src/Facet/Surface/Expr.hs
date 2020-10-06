@@ -10,6 +10,7 @@ module Facet.Surface.Expr
 , app_
 , unit
 , prd_
+, comp_
 , ExprF(..)
 , Comp(..)
 , fold
@@ -57,6 +58,10 @@ prd_ = prism' (In . uncurry (:*)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Noth
 -- FIXME: tupling/unit should take a list of expressions
 
 
+comp_ :: Prism' Expr (Comp Expr)
+comp_ = prism' (In . Comp) (\case{ In (Comp c) -> Just c ; _ -> Nothing })
+
+
 data ExprF e
   = Free DName
   | Bound Name
@@ -65,6 +70,7 @@ data ExprF e
   | e :$ e
   | Unit
   | e :* e
+  | Comp (Comp e)
   | Loc Span e
   deriving (Foldable, Functor, Traversable)
 
