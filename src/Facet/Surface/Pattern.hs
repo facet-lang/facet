@@ -6,6 +6,7 @@ module Facet.Surface.Pattern
 , var_
 , tuple_
 , PatternF(..)
+, fold
 ) where
 
 import Control.Category ((>>>))
@@ -65,3 +66,9 @@ instance Bitraversable PatternF where
     Var a    -> Var <$> f a
     Tuple ps -> Tuple <$> traverse g ps
     Loc s p  -> Loc s <$> g p
+
+
+fold :: (PatternF n a -> a) -> Pattern n -> a
+fold alg = go
+  where
+  go = alg . fmap go . out
