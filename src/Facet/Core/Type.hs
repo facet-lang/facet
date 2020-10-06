@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -10,32 +11,20 @@ module Facet.Core.Type
 , interpret
 , rename
 , subst
+, TypeF(..)
 ) where
 
-import           Data.Bifunctor (first)
+import           Control.Category ((>>>))
 import           Data.Foldable (foldl')
 import qualified Data.IntSet as IntSet
 import qualified Facet.Core as C
 import           Facet.Name
 import           Facet.Syntax
 
-data Type
-  = Type
-  | Void
-  | Unit
-  | (Name ::: Type) :=> Type
-  | Either Name QName :$ Stack Type
-  | Type :-> Type
-  | Type :*  Type
-  deriving (Show)
-
-infixr 0 :=>
-infixl 9 :$
-infixr 0 :->
-infixl 7 :*
+newtype Type = In { out :: TypeF Type }
 
 instance Scoped Type where
-  fvs = \case
+  fvs = out >>> \case
     Type    -> mempty
     Void    -> mempty
     Unit    -> mempty
@@ -45,20 +34,20 @@ instance Scoped Type where
     l :* r  -> fvs l <> fvs r
 
 instance C.Type Type where
-  tglobal n = Right n :$ Nil
-  tbound n = Left n :$ Nil
-  _Type = Type
-  _Void = Void
-  _Unit = Unit
-  (>=>) = (:=>)
+  tglobal n = In $ Right n :$ Nil
+  tbound n = In $ Left n :$ Nil
+  _Type = In $ Type
+  _Void = In $ Void
+  _Unit = In $ Unit
+  (>=>) = fmap In . (:=>)
   (.$)  = ($$)
-  (-->) = (:->)
-  (.*)  = (:*)
+  (-->) = fmap In . (:->)
+  (.*)  = fmap In . (:*)
 
 interpret :: C.Type r => Type -> r
 interpret = go
     where
-    go = \case
+    go = out >>> \case
       Type    -> C._Type
       Void    -> C._Void
       Unit    -> C._Unit
@@ -68,9 +57,9 @@ interpret = go
       l :* r  -> go l C..*  go r
 
 ($$) :: Type -> Type -> Type
-(f :$ as) $$ a = f :$ (as :> a)
-(t :=> b) $$ a = subst (tm t) a b
-_         $$ _ = error "can’t apply non-neutral/forall type"
+In (f :$ as) $$ a = In $ f :$ (as :> a)
+In (t :=> b) $$ a = subst (tm t) a b
+_            $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: Foldable t => Type -> t Type -> Type
 f $$* as = foldl' ($$) f as
@@ -80,30 +69,46 @@ infixl 9 $$, $$*
 rename :: Name -> Name -> Type -> Type
 rename x y = go
   where
-  go = \case
-    Type          -> Type
-    Void          -> Void
-    Unit          -> Unit
+  go = out >>> \case
+    Type          -> C._Type
+    Void          -> C._Void
+    Unit          -> C._Unit
     (z ::: t) :=> b
-      | x == z    -> (z ::: go t) :=>    b
-      | otherwise -> (z ::: go t) :=> go b
-    f :$ as       -> first (\ z -> if z == x then y else z) f :$ fmap go as
-    a :-> b       -> go a :-> go b
-    l :*  r       -> go l :*  go r
+      | x == z    -> (z ::: go t) C.>=>    b
+      | otherwise -> (z ::: go t) C.>=> go b
+    f :$ as       -> either (\ z -> C.tbound (if z == x then y else z)) C.tglobal f $$* fmap go as
+    a :-> b       -> go a C.--> go b
+    l :*  r       -> go l C..*  go r
 
 subst :: Name -> Type -> Type -> Type
 subst x e = go
   where
-  go =  \case
-    Type            -> Type
-    Void            -> Void
-    Unit            -> Unit
+  go =  out >>> \case
+    Type            -> C._Type
+    Void            -> C._Void
+    Unit            -> C._Unit
     (n ::: t) :=> b -> let n' = prime (hint n) (fvs b <> fvs e)
                            b' = go (rename n n' b)
                        in (n' ::: go t) C.>=> b'
-    f :$  a
+    f :$  as
       | Left f <- f
-      , f == x      -> e $$* (go <$> a)
-      | otherwise   -> f :$  (go <$> a)
-    a :-> b         -> go a :-> go b
-    l :*  r         -> go l :*  go r
+      , f == x      -> e $$* fmap go as
+      | otherwise   -> either C.tbound C.tglobal f $$* fmap go as
+    a :-> b         -> go a C.--> go b
+    l :*  r         -> go l C..*  go r
+
+
+data TypeF t
+  = Type
+  | Void
+  | Unit
+  | (Name ::: t) :=> t
+  | Either Name QName :$ Stack t
+  | t :-> t
+  | t :*  t
+  deriving (Foldable, Functor, Show, Traversable)
+
+infixr 0 :=>
+infixl 9 :$
+infixr 0 :->
+infixl 7 :*

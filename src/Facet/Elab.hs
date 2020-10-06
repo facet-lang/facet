@@ -42,8 +42,9 @@ module Facet.Elab
 
 import           Control.Algebra
 import           Control.Carrier.Reader
+import           Control.Category ((>>>))
 import           Control.Effect.Parser.Span (Span(..))
-import           Data.Bifunctor (first)
+import           Data.Bifunctor (bimap, first)
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import           Data.Traversable (for)
@@ -95,7 +96,7 @@ switch s = Check $ \ _T -> do
 unify :: Has (Error P.Print) sig m => Type -> Type -> m ()
 unify t1 t2 = go t1 t2
   where
-  go = curry $ \case
+  go = curry $ bimap out out >>> \case
     (Type,      Type)       -> pure ()
     (Unit,      Unit)       -> pure ()
     (l1 :* r1,  l2 :* r2)   -> go l1 l2 *> go r1 r2
@@ -107,7 +108,7 @@ unify t1 t2 = go t1 t2
     (a1 :-> b1, a2 :-> b2)  -> go a1 a2 *> go b1 b2
     (t1 :=> b1, t2 :=> b2)  -> go (ty t1) (ty t2) *> go b1 b2
     -- FIXME: build and display a diff of the root types
-    (t1, t2) -> couldNotUnify t1 t2
+    (t1, t2) -> couldNotUnify (In t1) (In t2)
   goS Nil        Nil        = Just (pure ())
   goS (i1 :> l1) (i2 :> l2) = (*>) <$> goS i1 i2 <*> Just (go l1 l2)
   goS _          _          = Nothing
@@ -349,16 +350,16 @@ expectChecked :: Has (Error P.Print) sig m => Maybe Type -> P.Print -> m Type
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 expectQuantifiedType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Name, Type, Type)
-expectQuantifiedType s = \case
+expectQuantifiedType s = out >>> \case
   (n ::: _T) :=> _B -> pure (n, _T, _B)
-  _T                -> mismatch s (pretty "{_} -> _") (interpret _T)
+  _T                -> mismatch s (pretty "{_} -> _") (interpret (In _T))
 
 expectFunctionType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Type, Type)
-expectFunctionType s = \case
+expectFunctionType s = out >>> \case
   _A :-> _B -> pure (_A, _B)
-  _T        -> mismatch s (pretty "_ -> _") (interpret _T)
+  _T        -> mismatch s (pretty "_ -> _") (interpret (In _T))
 
 expectProductType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Type, Type)
-expectProductType s = \case
+expectProductType s = out >>> \case
   _A :* _B -> pure (_A, _B)
-  _T       -> mismatch s (pretty "(_, _)") (interpret _T)
+  _T       -> mismatch s (pretty "(_, _)") (interpret (In _T))
