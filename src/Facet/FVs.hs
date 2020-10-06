@@ -4,6 +4,7 @@ module Facet.FVs
 , insert
 , delete
 , difference
+, member
 , Scoped(..)
 , prime
 ) where
@@ -25,6 +26,9 @@ delete = IntSet.delete . id'
 
 difference :: FVs -> FVs -> FVs
 difference = IntSet.difference
+
+member :: Name -> FVs -> Bool
+member = IntSet.member . id'
 
 
 class Scoped t where
