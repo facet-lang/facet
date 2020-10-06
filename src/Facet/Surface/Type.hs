@@ -78,6 +78,7 @@ aeq = fold $ \ t1 t2 -> case (t1, out t2) of
   (f1 :$ a1,           f2 :$ a2)           -> f1 f2 && a1 a2
   (a1 :-> b1,          a2 :-> b2)          -> a1 a2 && b1 b2
   (l1 :* r1,           l2 :* r2)           -> l1 l2 && r1 r2
+  -- FIXME: skip spans one either side independently right up front
   (Loc _ t1,           Loc _ t2)           -> t1 t2
   _                                        -> False
 
