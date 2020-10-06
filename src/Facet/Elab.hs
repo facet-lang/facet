@@ -352,14 +352,14 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 expectQuantifiedType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Name, Type, Type)
 expectQuantifiedType s = out >>> \case
   (n ::: _T) :=> _B -> pure (n, _T, _B)
-  _T                -> mismatch s (pretty "{_} -> _") (interpret (In _T))
+  _T                -> mismatch s (pretty "{_} -> _") (interpret _T)
 
 expectFunctionType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Type, Type)
 expectFunctionType s = out >>> \case
   _A :-> _B -> pure (_A, _B)
-  _T        -> mismatch s (pretty "_ -> _") (interpret (In _T))
+  _T        -> mismatch s (pretty "_ -> _") (interpret _T)
 
 expectProductType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Type, Type)
 expectProductType s = out >>> \case
   _A :* _B -> pure (_A, _B)
-  _T       -> mismatch s (pretty "(_, _)") (interpret (In _T))
+  _T       -> mismatch s (pretty "(_, _)") (interpret _T)
