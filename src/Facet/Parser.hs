@@ -30,6 +30,7 @@ import           Data.Maybe (fromMaybe)
 import           Data.Text (Text, pack)
 import qualified Facet.Name as N
 import           Facet.Parser.Table
+import qualified Facet.Surface.Comp as C
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
@@ -185,21 +186,20 @@ expr :: (Monad p, PositionParsing p) => Facet p E.Expr
 expr = build exprTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review E.prd_)))))
 
 comp :: (Monad p, PositionParsing p) => Facet p E.Expr
-comp = spanning $ braces $ build compTable (const expr)
+comp = review E.comp_ <$> spanning (braces (build compTable (const (C.Expr <$> expr))))
 
-compTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr
+compTable :: (Monad p, PositionParsing p) => Table (Facet p) (C.Comp E.Expr)
 compTable =
   [ [ Binder clause ]
   ]
 
-clause :: (Monad p, PositionParsing p) => OperatorParser (Facet p) E.Expr
-clause _ _ = self
+clause :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (C.Comp E.Expr)
+clause _ _ = (do
+  patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
+  foldr clause (C.Expr <$> expr) patterns) <?> "clause"
   where
-  self = (do
-    patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
-    foldr clause expr patterns) <?> "clause"
   clause (start, p) rest = bindPattern p $ \ vs -> do
-    lam <- foldr (fmap . curry (review E.lam_)) rest vs
+    lam <- foldr (\ v b -> C.Cases . (:[]) . (,) v . review E.comp_ <$> b) rest vs
     end <- position
     pure (setSpan (Span start end) lam)
 
