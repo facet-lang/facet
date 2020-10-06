@@ -196,9 +196,7 @@ comp = spanning (braces (review E.comp_ <$> clauses))
     <|> pure []
 
 clause :: (Monad p, PositionParsing p) => Facet p (C.Clause E.Expr)
-clause = (do
-  ps <- try (some ((,) <$> position <*> pattern) <* arrow)
-  foldr go body ps) <?> "clause"
+clause = (try (some ((,) <$> position <*> pattern) <* arrow) >>= foldr go body) <?> "clause"
   where
   go (start, p) rest = bindPattern p $ \ p' -> do
     c <- review C.clause_ . (,) p' <$> rest
