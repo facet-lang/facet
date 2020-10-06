@@ -44,10 +44,7 @@ instance Binding Vars where
 
 
 class Scoped t where
-  fvs :: t -> Vars
-
-instance Scoped Vars where
-  fvs = id
+  fvs :: Binding vs => t -> vs
 
 instance Scoped Name where
   fvs = singleton
@@ -69,8 +66,8 @@ getFVs :: FVs -> Vars
 getFVs v = runFVs v mempty mempty
 
 
-prime :: Scoped t => Text -> t -> Name
-prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . fvs
+prime :: Text -> FVs -> Name
+prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . getFVs
 
 
 findMax' :: IntSet.IntSet -> Maybe Int
