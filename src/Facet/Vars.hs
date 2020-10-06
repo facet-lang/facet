@@ -13,6 +13,7 @@ module Facet.Vars
 , primes
 ) where
 
+import           Control.Carrier.State.Church
 import           Data.Coerce
 import qualified Data.IntSet as IntSet
 import           Data.Text (Text)
@@ -71,8 +72,8 @@ getFVs v = runFVs v mempty mempty
 prime :: Text -> FVs -> Name
 prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . getFVs
 
-primes :: [Text] -> FVs -> [Name]
-primes ns fvs = zipWith (\ n v -> Name n (base + v)) ns [0..]
+primes :: Traversable t => t Text -> FVs -> t Name
+primes ns fvs = run (evalState base (traverse (\ n -> do{ i <- get ; put (i + 1) ; pure (Name n i) }) ns))
   where
   base = maybe 0 (+ 1) (findMax' (getVars (getFVs fvs)))
 
