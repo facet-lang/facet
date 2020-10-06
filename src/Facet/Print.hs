@@ -267,13 +267,9 @@ printSurfaceExpr = go
 
 printSurfaceComp :: C.Comp E.Expr -> Print
 printSurfaceComp = \case
-  C.Cases cs -> group (concatWith (surround (line' <> comma <> space)) (map (uncurry (clause . sbound)) cs))
+  C.Cases cs -> group (concatWith (surround (line' <> comma <> space)) (map (\ (v, b) -> prec Pattern (sbound v) <+> printSurfaceComp b) cs))
   C.Expr e   -> arrow <> group (nest 2 (line' <> prec Expr (printSurfaceExpr e)))
   C.Loc _ c  -> printSurfaceComp c
-
-
-clause :: Print -> C.Comp E.Expr -> Print
-clause v b = prec Pattern v <+> printSurfaceComp b
 
 
 -- FIXME: Use _ in binding positions for unused variables
