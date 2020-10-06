@@ -72,8 +72,8 @@ getFVs v = runFVs v mempty mempty
 prime :: Text -> FVs -> Name
 prime n = Name n . freshIdForFVs
 
-renameWith :: Traversable t => (Int -> a -> b) -> t a -> FVs -> t b
-renameWith f ts fvs = run (evalFresh base (traverse (\ a -> f <$> fresh <*> pure a) ts))
+renameWith :: Traversable t => (Int -> a -> b) -> FVs -> t a -> t b
+renameWith f fvs ts = run (evalFresh base (traverse (\ a -> f <$> fresh <*> pure a) ts))
   where
   base = freshIdForFVs fvs
 
