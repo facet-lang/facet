@@ -70,13 +70,16 @@ getFVs v = runFVs v mempty mempty
 
 -- | Construct a fresh name given the provided free variables.
 prime :: Text -> FVs -> Name
-prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . getFVs
+prime n = Name n . freshIdForFVs
 
 renameWith :: Traversable t => (Int -> a -> b) -> t a -> FVs -> t b
 renameWith f ts fvs = run (evalFresh base (traverse (\ a -> f <$> fresh <*> pure a) ts))
   where
-  base = maybe 0 (+ 1) (findMax' (getVars (getFVs fvs)))
+  base = freshIdForFVs fvs
 
+
+freshIdForFVs :: FVs -> Int
+freshIdForFVs = maybe 0 (+ 1) . findMax' . getVars . getFVs
 
 findMax' :: IntSet.IntSet -> Maybe Int
 findMax' s
