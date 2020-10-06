@@ -3,6 +3,7 @@
 module Facet.GHCI
 ( -- * Parsing
   parseString
+, printFile
 , elabString
 , elabFile
   -- * Pretty-printing
@@ -11,7 +12,9 @@ module Facet.GHCI
 , toNotice
 ) where
 
-import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, run, runParser, runParserWithString)
+import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, run, runParser, runParserWithFile, runParserWithString)
+import           Control.Carrier.Lift (runM)
+import           Control.Carrier.Throw.Either (runThrow)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
 import           Control.Effect.Parser.Source (Source(..), sourceFromString)
@@ -36,6 +39,12 @@ import qualified Silkscreen as S
 
 parseString :: MonadIO m => Facet (ParserC (Either Notice)) P.Print -> String -> m ()
 parseString p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWithString (Pos 0 0) s (runFacet mempty mempty p))
+
+printFile :: MonadIO m => FilePath -> m ()
+printFile path = runM (runThrow (runParserWithFile path (runFacet mempty mempty (whole module')))) >>= \case
+  Left err -> P.putDoc (prettyNotice err)
+  Right m  -> P.prettyPrint (P.printSurfaceModule m)
+
 
 elabString :: MonadIO m => Facet (ParserC (Either Notice)) S.Module -> String -> m ()
 elabString = elabPathString Nothing
