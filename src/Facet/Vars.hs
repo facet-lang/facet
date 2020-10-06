@@ -72,8 +72,8 @@ getFVs v = runFVs v mempty mempty
 prime :: Text -> FVs -> Name
 prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . getFVs
 
-renameWith :: Traversable t => ((Name -> Name) -> a -> b) -> t a -> FVs -> t b
-renameWith f ts fvs = run (evalFresh base (traverse (\ a -> do{ i <- fresh ; pure (f ((`Name` i) . hint) a) }) ts))
+renameWith :: Traversable t => (Int -> a -> b) -> t a -> FVs -> t b
+renameWith f ts fvs = run (evalFresh base (traverse (\ a -> f <$> fresh <*> pure a) ts))
   where
   base = maybe 0 (+ 1) (findMax' (getVars (getFVs fvs)))
 
