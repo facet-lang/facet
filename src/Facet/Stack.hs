@@ -14,5 +14,10 @@ data Stack a
 
 infixl 5 :>
 
+instance Semigroup (Stack a) where
+  a <> Nil       = a
+  a <> (bs :> b) = (a <> bs) :> b
+
+
 fromList :: [a] -> Stack a
 fromList = foldl' (:>) Nil
