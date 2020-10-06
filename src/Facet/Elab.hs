@@ -42,8 +42,8 @@ module Facet.Elab
 
 import           Control.Algebra
 import           Control.Carrier.Reader
-import           Control.Category ((>>>))
 import           Control.Effect.Parser.Span (Span(..))
+import           Control.Lens (preview)
 import           Data.Bifunctor (first)
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
@@ -350,16 +350,16 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 -- Patterns
 
 expectQuantifiedType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Name, Type, Type)
-expectQuantifiedType s = out >>> \case
-  (n ::: _T) :=> _B -> pure (n, _T, _B)
-  _T                -> mismatch s (pretty "{_} -> _") (interpret _T)
+expectQuantifiedType s _T = case preview forAll_ _T of
+  Just ((n ::: _T), _B) -> pure (n, _T, _B)
+  _                     -> mismatch s (pretty "{_} -> _") (interpret _T)
 
 expectFunctionType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Type, Type)
-expectFunctionType s = out >>> \case
-  _A :-> _B -> pure (_A, _B)
-  _T        -> mismatch s (pretty "_ -> _") (interpret _T)
+expectFunctionType s _T = case preview arrow_ _T of
+  Just (_A, _B) -> pure (_A, _B)
+  _             -> mismatch s (pretty "_ -> _") (interpret _T)
 
 expectProductType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Type, Type)
-expectProductType s = out >>> \case
-  _A :* _B -> pure (_A, _B)
-  _T       -> mismatch s (pretty "(_, _)") (interpret _T)
+expectProductType s _T = case preview prd_ _T of
+  Just (_A, _B) -> pure (_A, _B)
+  _             -> mismatch s (pretty "(_, _)") (interpret _T)
