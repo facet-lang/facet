@@ -43,8 +43,9 @@ module Facet.Elab
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Effect.Parser.Span (Span(..))
-import           Control.Lens (preview)
+import           Control.Lens (preview, review)
 import           Data.Bifunctor (first)
+import           Data.Foldable (toList)
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import           Facet.Carrier.Error.Context
@@ -60,6 +61,7 @@ import qualified Facet.Surface.Comp as C
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
+import qualified Facet.Surface.Pattern as SP
 import qualified Facet.Surface.Type as T
 import           Facet.Syntax
 import           Prelude hiding ((**))
@@ -271,6 +273,23 @@ clause = C.fold $ \case
     n ::: _A |- C.lam n <$> check (b ::: _B)
   C.Body e   -> e
   C.Loc s c  -> local (const s) c
+
+
+pattern :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => SP.Pattern N.Name -> Check m (SP.Pattern (N.Name ::: Type))
+pattern = SP.fold $ \case
+  SP.Wildcard -> pure (review SP.wildcard_ ())
+  SP.Var n    -> Check $ \ _T -> pure (review SP.var_ (n ::: _T))
+  SP.Tuple ps -> Check $ \ _T -> review SP.tuple_ . toList <$> go _T (fromList ps)
+    where
+    go _T = \case
+      Nil      -> Nil      <$  unify C._Unit _T
+      Nil :> p -> (Nil :>) <$> check (p ::: _T)
+      ps  :> p -> do
+        (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
+        ps' <- go _L ps
+        p' <- check (p ::: _R)
+        pure $ ps' :> p'
+  SP.Loc s p  -> local (const s) p
 
 
 -- Declarations
