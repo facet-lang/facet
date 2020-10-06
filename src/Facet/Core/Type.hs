@@ -124,3 +124,6 @@ instance C.Type r => Interpret Type r where
       f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound C.tglobal f) a
       a :-> b -> go a C.--> go b
       l :* r  -> go l C..*  go r
+
+instance C.Type r => Interpret (TypeF Type) r where
+  interpret = interpret . In
