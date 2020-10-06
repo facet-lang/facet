@@ -18,6 +18,9 @@ instance Semigroup (Stack a) where
   a <> Nil       = a
   a <> (bs :> b) = (a <> bs) :> b
 
+instance Monoid (Stack a) where
+  mempty = Nil
+
 
 fromList :: [a] -> Stack a
 fromList = foldl' (:>) Nil
