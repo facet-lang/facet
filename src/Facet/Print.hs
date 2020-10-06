@@ -269,7 +269,7 @@ printSurfaceComp :: SC.Comp SE.Expr -> Print
 printSurfaceComp = SC.out >>> \case
   SC.Cases cs -> group (concatWith (surround (line' <> comma <> space)) (map (\ (v, b) -> prec Pattern (sbound v) <+> case SC.out b of
     SC.Expr _ -> arrow <> group (nest 2 (line <> printSurfaceComp b))
-    _        -> printSurfaceComp b) cs))
+    _         -> printSurfaceComp b) cs))
   SC.Expr e   -> prec Expr (printSurfaceExpr e)
   SC.Loc _ c  -> printSurfaceComp c
 
