@@ -22,7 +22,6 @@ module Facet.Core.Type
 import           Control.Category ((>>>))
 import           Control.Lens.Prism hiding (_Void)
 import           Data.Foldable (foldl')
-import qualified Data.IntSet as IntSet
 import qualified Facet.Core as C
 import           Facet.FVs
 import           Facet.Name
@@ -37,8 +36,8 @@ instance Scoped Type where
     Type    -> mempty
     Void    -> mempty
     Unit    -> mempty
-    t :=> b -> IntSet.delete (id' (tm t)) (fvs b)
-    f :$ a  -> either (IntSet.insert . id') (const id) f (foldMap fvs a)
+    t :=> b -> delete (tm t) (fvs b)
+    f :$ a  -> either insert (const id) f (foldMap fvs a)
     a :-> b -> fvs a <> fvs b
     l :* r  -> fvs l <> fvs r
 
