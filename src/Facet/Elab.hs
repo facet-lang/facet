@@ -43,13 +43,14 @@ module Facet.Elab
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Effect.Parser.Span (Span(..))
-import           Control.Lens (preview, review)
+import           Control.Lens (preview)
 import           Data.Bifunctor (first)
 import           Data.Foldable (toList)
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import           Facet.Carrier.Error.Context
 import qualified Facet.Core as C
+import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Type
 import qualified Facet.Env as Env
 import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
@@ -277,11 +278,11 @@ clause = C.fold $ \case
   C.Loc s c  -> local (const s) c
 
 
-pattern :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => SP.Pattern N.Name -> Check m (SP.Pattern (N.Name ::: Type))
+pattern :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => SP.Pattern N.Name -> Check m (CP.Pattern (N.Name ::: Type))
 pattern = SP.fold $ \case
-  SP.Wildcard -> pure (review SP.wildcard_ ())
-  SP.Var n    -> Check $ \ _T -> pure (review SP.var_ (n ::: _T))
-  SP.Tuple ps -> Check $ \ _T -> review SP.tuple_ . toList <$> go _T (fromList ps)
+  SP.Wildcard -> pure CP.Wildcard
+  SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
+  SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go _T (fromList ps)
     where
     go _T = \case
       Nil      -> Nil      <$  unify C._Unit _T
