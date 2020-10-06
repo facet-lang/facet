@@ -54,6 +54,7 @@ library
     Facet.Print
     Facet.REPL
     Facet.REPL.Parser
+    Facet.Surface.Comp
     Facet.Surface.Decl
     Facet.Surface.Expr
     Facet.Surface.Module
