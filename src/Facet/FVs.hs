@@ -3,6 +3,7 @@ module Facet.FVs
 , singleton
 , insert
 , delete
+, difference
 , Scoped(..)
 , prime
 ) where
@@ -21,6 +22,9 @@ insert = IntSet.insert . id'
 
 delete :: Name -> FVs -> FVs
 delete = IntSet.delete . id'
+
+difference :: FVs -> FVs -> FVs
+difference = IntSet.difference
 
 
 class Scoped t where
