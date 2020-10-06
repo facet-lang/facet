@@ -110,6 +110,8 @@ subst x e = go
     l :*  r         -> go l C..*  go r
 
 
+-- FIXME: computation types
+-- FIXME: effect signatures
 data TypeF t
   = Type
   | Void
