@@ -164,3 +164,6 @@ const7 : { A, B : Type } -> (a : A) -> (b : B) -> A
 
 - driver executable
 - tests 😅
+- let bindings
+- effects
+- datatype declarations
