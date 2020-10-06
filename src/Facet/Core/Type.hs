@@ -37,9 +37,9 @@ instance Scoped Type where
 instance C.Type Type where
   tglobal n = In $ Right n :$ Nil
   tbound n = In $ Left n :$ Nil
-  _Type = In $ Type
-  _Void = In $ Void
-  _Unit = In $ Unit
+  _Type = In Type
+  _Void = In Void
+  _Unit = In Unit
   (>=>) = fmap In . (:=>)
   (.$)  = ($$)
   (-->) = fmap In . (:->)
