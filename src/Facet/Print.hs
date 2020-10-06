@@ -267,8 +267,10 @@ printSurfaceExpr = go
 
 printSurfaceComp :: C.Comp E.Expr -> Print
 printSurfaceComp = C.out >>> \case
-  C.Cases cs -> group (concatWith (surround (line' <> comma <> space)) (map (\ (v, b) -> prec Pattern (sbound v) <+> printSurfaceComp b) cs))
-  C.Expr e   -> arrow <> group (nest 2 (line <> prec Expr (printSurfaceExpr e)))
+  C.Cases cs -> group (concatWith (surround (line' <> comma <> space)) (map (\ (v, b) -> prec Pattern (sbound v) <+> case C.out b of
+    C.Expr _ -> arrow <> group (nest 2 (line <> printSurfaceComp b))
+    _        -> printSurfaceComp b) cs))
+  C.Expr e   -> prec Expr (printSurfaceExpr e)
   C.Loc _ c  -> printSurfaceComp c
 
 
