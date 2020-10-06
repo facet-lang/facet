@@ -236,8 +236,8 @@ tlam n b = Check $ \ ty -> do
   n' ::: _T |- C.tlam n <$> check (b ::: _B)
 
 lam :: (Has (Reader Context) sig m, C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
-lam n b = Check $ \ ty -> do
-  (_A, _B) <- expectFunctionType (reflow "when checking lambda") ty
+lam n b = Check $ \ _T -> do
+  (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   n ::: _A |- C.lam n <$> check (b ::: _B)
 
 unit :: (Applicative m, C.Expr t) => Synth m t
