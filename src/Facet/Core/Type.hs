@@ -133,6 +133,17 @@ infixl 9 :$
 infixr 0 :->
 infixl 7 :*
 
+instance C.Type (TypeF Type) where
+  tglobal n = Right n :$ Nil
+  tbound n = Left n :$ Nil
+  _Type = Type
+  _Void = Void
+  _Unit = Unit
+  t >=> b = fmap In t :=> In b
+  f .$  a = out $ In f $$ In a
+  a --> b = In a :-> In b
+  l .*  r = In l :* In r
+
 
 fold :: (TypeF a -> a) -> Type -> a
 fold alg = go
