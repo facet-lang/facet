@@ -187,21 +187,16 @@ expr :: (Monad p, PositionParsing p) => Facet p E.Expr
 expr = build exprTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review E.prd_)))))
 
 comp :: (Monad p, PositionParsing p) => Facet p E.Expr
-comp = spanning (braces (build compTable (const (review (E.comp_ . C.expr_) <$> expr))))
+comp = spanning (braces (clause <|> review (E.comp_ . C.expr_) <$> expr))
 
-compTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr
-compTable =
-  [ [ Binder clause ]
-  ]
-
-clause :: (Monad p, PositionParsing p) => OperatorParser (Facet p) E.Expr
-clause _ next = review E.comp_ <$> (do
+clause :: (Monad p, PositionParsing p) => Facet p E.Expr
+clause = review E.comp_ <$> (do
   start <- position
   patterns <- try (some pattern <* arrow)
   bindPatterns patterns (clause start)) <?> "clause"
   where
   clause start vs = do
-    comp <- review C.cases_ . pure . (,) vs <$> next
+    comp <- review C.cases_ . pure . (,) vs <$> expr
     end <- position
     pure (setSpan (Span start end) comp)
 
