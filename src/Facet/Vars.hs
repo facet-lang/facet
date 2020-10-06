@@ -32,6 +32,7 @@ member :: Name -> Vars -> Bool
 member = coerce (IntSet.member . id')
 
 
+-- https://www.haskell.org/ghc/blog/20190728-free-variable-traversals.html 🎩 bgamari
 class Monoid t => Binding t where
   singleton :: Name -> t
   bind :: Name -> t -> t
