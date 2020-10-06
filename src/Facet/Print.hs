@@ -289,7 +289,7 @@ printSurfaceDecl :: D.Decl -> Print
 printSurfaceDecl = go
   where
   go = D.out >>> \case
-    t D.:=  e -> printSurfaceType t .= comp (printSurfaceExpr e)
+    t D.:=  e -> printSurfaceType t .= printSurfaceExpr e
     t D.:=> b ->
       let (t', b') = unprefixr (preview D.forAll_ . dropSpan) b
       in map (first sbound) (t:t') >~~> go b'
