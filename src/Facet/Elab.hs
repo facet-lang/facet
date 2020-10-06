@@ -343,11 +343,11 @@ couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softl
 freeVariable :: Has (Error P.Print) sig m => P.Print -> m a
 freeVariable v = err $ fillSep [reflow "variable not in scope:", v]
 
-
--- Patterns
-
 expectChecked :: Has (Error P.Print) sig m => Maybe Type -> P.Print -> m Type
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
+
+
+-- Patterns
 
 expectQuantifiedType :: Has (Error P.Print) sig m => P.Print -> Type -> m (Name, Type, Type)
 expectQuantifiedType s = out >>> \case
