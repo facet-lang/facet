@@ -144,8 +144,9 @@ monotypeTable =
   [ [ Infix R (pack "->") (curry (review T.arrow_)) ]
   , [ Infix L mempty (curry (review T.app_)) ]
   , [ -- FIXME: we should treat Unit & Type as globals.
-      Atom (T._Unit <$ token (string "Unit"))
-    , Atom (T._Type <$ token (string "Type"))
+      Atom (T._Type <$ token (string "Type"))
+    , Atom (T._Void <$ token (string "Void"))
+    , Atom (T._Unit <$ token (string "Unit"))
     , Atom tvar
     ]
   ]
