@@ -22,7 +22,7 @@ import           Data.Bool (bool)
 import           Data.Char (isSpace)
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as Unicode
-import           Data.Foldable (foldl')
+import           Data.Foldable (foldl', toList)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.HashSet as HashSet
 import qualified Data.Map as Map
@@ -218,15 +218,7 @@ evar
 -- Patterns
 
 bindPattern :: PositionParsing p => P.Pattern N.EName -> ([N.Name] -> Facet p a) -> Facet p a
-bindPattern p f = case P.out p of
-  P.Wildcard -> bindE (N.EName N.__) (\ v -> f [v])
-  P.Var n    -> bindE n              (\ v -> f [v])
-  -- FIXME: this is incorrect since the structure doesn’t get used in the clause
-  P.Tuple ps -> go [] ps
-    where
-    go vs []     = f vs
-    go vs (p:ps) = bindPattern p $ \ vs' -> go (vs <> vs') ps
-  P.Loc _ p  -> bindPattern p f
+bindPattern p f = bindPattern' p (f . toList)
 
 bindPattern' :: PositionParsing p => P.Pattern N.EName -> (P.Pattern N.Name -> Facet p a) -> Facet p a
 bindPattern' p f = case P.out p of
