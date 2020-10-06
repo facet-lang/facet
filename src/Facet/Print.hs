@@ -168,7 +168,7 @@ instance C.Expr Print where
   global = cfree
   bound = cebound
   tlam = lam . braces . ctbound
-  lam = lam . cebound
+  lam = lam . printCorePattern
   ($$) = ($$)
   unit = unit
   (**) = (**)

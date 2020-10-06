@@ -13,6 +13,7 @@ module Facet.Core.Expr
 import           Control.Category ((>>>))
 import           Control.Lens.Prism
 import qualified Facet.Core as C
+import qualified Facet.Core.Pattern as P
 import           Facet.Name
 import           Facet.Vars
 
@@ -23,7 +24,7 @@ instance Scoped Expr where
     Global _ -> mempty
     Bound  n -> fvs n
     TLam n b -> bind n (fvs b)
-    Lam n b  -> bind n (fvs b)
+    Lam p b  -> foldr bind (fvs b) p
     App f a  -> fvs f <> fvs a
     Unit     -> mempty
     Pair l r -> fvs l <> fvs r
@@ -63,7 +64,7 @@ rename x y = go
       | z == x    -> C.tlam z b
       | otherwise -> C.tlam z (go b)
     Lam z b
-      | z == x    -> C.lam z b
+      | elem x z  -> C.lam z b
       | otherwise -> C.lam z (go b)
     App f a       -> go f C.$$ go a
     Unit          -> C.unit
@@ -81,9 +82,11 @@ subst x e = go
     TLam n b      -> let n' = prime (hint n) (fvs b <> fvs e)
                          b' = go (rename n n' b)
                      in C.tlam n' b'
-    Lam n b       -> let n' = prime (hint n) (fvs b <> fvs e)
-                         b' = go (rename n n' b)
-                     in C.lam n' b'
+    Lam p b       ->
+      let vs = fvs b <> fvs e
+          (re, p') = renameAccumL (\ i f n -> let n' = Name (hint n) i in (f . rename n n', n')) vs id p
+          b' = go (re b)
+      in C.lam p' b'
     App f a       -> go f C.$$ go a
     Unit          -> C.unit
     Pair l r      -> go l C.** go r
@@ -93,7 +96,7 @@ data ExprF e
   = Global QName
   | Bound Name
   | TLam Name e
-  | Lam Name e
+  | Lam (P.Pattern Name) e
   | App e e
   | Unit
   | Pair e e

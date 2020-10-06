@@ -248,7 +248,7 @@ tlam n b = Check $ \ ty -> do
 lam :: (Has (Reader Context) sig m, C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
-  n ::: _A |- C.lam n <$> check (b ::: _B)
+  n ::: _A |- C.lam (CP.Var n) <$> check (b ::: _B)
 
 unit :: (Applicative m, C.Expr t) => Synth m t
 unit = Synth . pure $ C.unit ::: C._Unit
@@ -272,8 +272,7 @@ clause = C.fold $ \case
   C.Clause p b -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
     p' <- check (pattern p ::: _A)
-    -- FIXME: we should construct a single C.lam per Clause, not one for each variable bound in the pattern.
-    foldr (\ (n ::: _T) b -> n ::: _T |- C.lam n <$> b) (check (b ::: _B)) p'
+    foldr (|-) (C.lam (tm <$> p') <$> check (b ::: _B)) p'
   C.Body e   -> e
   C.Loc s c  -> local (const s) c
 
