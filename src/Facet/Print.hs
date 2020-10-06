@@ -21,6 +21,7 @@ module Facet.Print
 , printSurfaceType
 , printSurfaceExpr
 , printSurfaceClause
+, printSurfacePattern
 , printSurfaceDecl
 , printSurfaceModule
 ) where
@@ -39,6 +40,7 @@ import qualified Facet.Surface.Comp as SC
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
 import qualified Facet.Surface.Module as SM
+import qualified Facet.Surface.Pattern as SP
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Prelude hiding ((**))
@@ -277,6 +279,12 @@ printSurfaceClause = SC.out >>> \case
   SC.Body e     -> prec Expr (printSurfaceExpr e)
   SC.Loc _ c    -> printSurfaceClause c
 
+printSurfacePattern :: SP.Pattern N.Name -> Print
+printSurfacePattern p = prec Pattern $ case SP.out p of
+  SP.Wildcard -> pretty '_'
+  SP.Var n    -> sbound n
+  SP.Tuple p  -> tupled (map printSurfacePattern p)
+  SP.Loc _ p  -> printSurfacePattern p
 
 -- FIXME: Use _ in binding positions for unused variables
 lam :: Print -> Print -> Print
