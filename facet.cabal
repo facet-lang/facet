@@ -47,7 +47,6 @@ library
     Facet.Core.Type
     Facet.Elab
     Facet.Env
-    Facet.FVs
     Facet.Name
     Facet.Parser
     Facet.Parser.Table
@@ -63,6 +62,7 @@ library
     Facet.Surface.Pattern
     Facet.Surface.Type
     Facet.Syntax
+    Facet.Vars
   other-modules:
     Facet.GHCI
     Paths_facet

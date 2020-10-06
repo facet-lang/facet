@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Facet.FVs
-( FVs(..)
+module Facet.Vars
+( Vars(..)
 , singleton
 , insert
 , delete
@@ -15,29 +15,29 @@ import qualified Data.IntSet as IntSet
 import           Data.Text (Text)
 import           Facet.Name
 
-newtype FVs = FVs { getFVs :: IntSet.IntSet }
+newtype Vars = Vars { getVars :: IntSet.IntSet }
   deriving (Monoid, Semigroup, Show)
 
-singleton :: Name -> FVs
-singleton = FVs . IntSet.singleton . id'
+singleton :: Name -> Vars
+singleton = Vars . IntSet.singleton . id'
 
-insert :: Name -> FVs -> FVs
+insert :: Name -> Vars -> Vars
 insert = coerce (IntSet.insert . id')
 
-delete :: Name -> FVs -> FVs
+delete :: Name -> Vars -> Vars
 delete = coerce (IntSet.delete . id')
 
-difference :: FVs -> FVs -> FVs
+difference :: Vars -> Vars -> Vars
 difference = coerce IntSet.difference
 
-member :: Name -> FVs -> Bool
+member :: Name -> Vars -> Bool
 member = coerce (IntSet.member . id')
 
 
 class Scoped t where
-  fvs :: t -> FVs
+  fvs :: t -> Vars
 
-instance Scoped FVs where
+instance Scoped Vars where
   fvs = id
 
 instance Scoped Name where
@@ -45,7 +45,7 @@ instance Scoped Name where
 
 
 prime :: Scoped t => Text -> t -> Name
-prime n = Name n . maybe 0 (+ 1) . findMax' . getFVs . fvs
+prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . fvs
 
 
 findMax' :: IntSet.IntSet -> Maybe Int

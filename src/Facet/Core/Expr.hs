@@ -13,8 +13,8 @@ module Facet.Core.Expr
 import           Control.Category ((>>>))
 import           Control.Lens.Prism
 import qualified Facet.Core as C
-import           Facet.FVs
 import           Facet.Name
+import           Facet.Vars
 
 newtype Expr = In { out :: ExprF Expr }
 
@@ -90,11 +90,11 @@ subst x e = go
 data ExprF e
   = Global QName
   | Bound Name
-  | TLam FVs Name e
-  | Lam FVs Name e
-  | App FVs e e
+  | TLam Vars Name e
+  | Lam Vars Name e
+  | App Vars e e
   | Unit
-  | Pair FVs e e
+  | Pair Vars e e
   deriving (Foldable, Functor, Show, Traversable)
 
 fold :: (ExprF a -> a) -> Expr -> a

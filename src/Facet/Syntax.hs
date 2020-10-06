@@ -12,8 +12,8 @@ module Facet.Syntax
 ) where
 
 import Data.Bifunctor
-import Facet.FVs
 import Facet.Stack
+import Facet.Vars
 
 data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)

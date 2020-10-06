@@ -23,10 +23,10 @@ import           Control.Category ((>>>))
 import           Control.Lens.Prism hiding (_Void)
 import           Data.Foldable (foldl')
 import qualified Facet.Core as C
-import           Facet.FVs
 import           Facet.Name
 import           Facet.Stack
 import           Facet.Syntax
+import           Facet.Vars
 
 newtype Type = In { out :: TypeF Type }
   deriving (C.Type)
