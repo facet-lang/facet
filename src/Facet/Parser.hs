@@ -213,7 +213,7 @@ evar
 
 -- Patterns
 
-bindPattern :: PositionParsing p => P.Pattern N.EName -> ([N.Name] -> Facet p E.Expr) -> Facet p E.Expr
+bindPattern :: PositionParsing p => P.Pattern N.EName -> ([N.Name] -> Facet p a) -> Facet p a
 bindPattern P.Wildcard   f = bindE (N.EName N.__) (\ v -> f [v])
 bindPattern (P.Var n)    f = bindE n              (\ v -> f [v])
 -- FIXME: this is incorrect since the structure doesn’t get used in the clause
