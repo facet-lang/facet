@@ -288,9 +288,7 @@ pattern = SP.fold $ \case
       Nil :> p -> (Nil :>) <$> check (p ::: _T)
       ps  :> p -> do
         (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
-        ps' <- go _L ps
-        p' <- check (p ::: _R)
-        pure $ ps' :> p'
+        (:>) <$> go _L ps <*> check (p ::: _R)
   SP.Loc s p  -> local (const s) p
 
 
