@@ -259,7 +259,6 @@ l ** r = Check $ \ _T -> do
 
 comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span) sig m, C.Expr expr) => C.Comp (Check m expr) -> Check m expr
 comp = C.fold $ \case
-  -- FIXME: extend Core.Type to include a zero to accommodate the empty list
   C.Cases cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking computation") _T
     cs' <- for cs $ \ (n, b) ->
