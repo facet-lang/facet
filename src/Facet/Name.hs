@@ -3,7 +3,6 @@
 module Facet.Name
 ( Name(..)
 , prettyNameWith
-, prime
 , __
 , instantiate
 , MName(..)
@@ -19,12 +18,10 @@ module Facet.Name
 
 import           Data.Function (on)
 import qualified Data.IntMap as IntMap
-import qualified Data.IntSet as IntSet
 import           Data.List.NonEmpty
 import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
-import           Facet.FVs
 import           Facet.Pretty
 import qualified Prettyprinter as P
 import           Silkscreen
@@ -49,20 +46,8 @@ prettyNameWith var n
   | otherwise       = pretty (hint n) <> pretty (id' n)
 
 
-prime :: Scoped t => Text -> t -> Name
-prime n t
-  | IntSet.null fvs' = Name n 0
-  | otherwise        = Name n (IntSet.findMax fvs' + 1)
-  where
-  fvs' = fvs t
-
-
 __ :: Text
 __ = T.empty
-
-
-instance Scoped Name where
-  fvs = IntSet.singleton . id'
 
 
 instantiate :: Name -> t -> IntMap.IntMap t -> IntMap.IntMap t
