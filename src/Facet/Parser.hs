@@ -157,8 +157,9 @@ forAll
   -> OperatorParser (Facet p) res
 forAll (>=>) self _ = spanning $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
-  let loop i rest = bindT i $ \ v -> pure (v S.::: ty) >=> rest
-  arrow *> foldr loop self names
+  arrow *> foldr (loop ty) self names
+  where
+  loop ty i rest = bindT i $ \ v -> pure (v S.::: ty) >=> rest
 
 type' :: (Monad p, PositionParsing p) => Facet p T.Type
 type' = build typeTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review T.prd_)))))
