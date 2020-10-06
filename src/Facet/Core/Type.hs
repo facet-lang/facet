@@ -12,6 +12,7 @@ module Facet.Core.Type
 , rename
 , subst
 , TypeF(..)
+, fold
 ) where
 
 import           Control.Category ((>>>))
@@ -112,3 +113,9 @@ infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
 infixl 7 :*
+
+
+fold :: (TypeF a -> a) -> Type -> a
+fold alg = go
+  where
+  go = alg . fmap go . out
