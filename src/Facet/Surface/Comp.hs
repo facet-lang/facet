@@ -1,9 +1,7 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Surface.Comp
-( Comp(..)
-, clauses_
-, Clause(..)
+( Clause(..)
 , clause_
 , body_
 , ClauseF(..)
@@ -11,19 +9,12 @@ module Facet.Surface.Comp
 ) where
 
 import Control.Category ((>>>))
-import Control.Lens (Prism', coerced, prism')
+import Control.Lens (Prism', prism')
 import Data.Bifoldable
 import Data.Bifunctor
 import Data.Bitraversable
 import Facet.Name
 import Text.Parser.Position (Span, Spanned(..))
-
-newtype Comp e = Comp { getComp :: [Clause e] }
-  deriving (Foldable, Functor, Traversable)
-
-clauses_ :: Prism' (Comp e) [Clause e]
-clauses_ = coerced
-
 
 newtype Clause e = In { out :: ClauseF e (Clause e) }
 

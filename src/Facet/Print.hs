@@ -265,8 +265,8 @@ printSurfaceExpr = go
     SE.Comp c  -> printSurfaceComp c
     SE.Loc _ t -> go t
 
-printSurfaceComp :: SC.Comp SE.Expr -> Print
-printSurfaceComp = comp . concatWith (surround (line' <> comma <> space)) . map printSurfaceClause . SC.getComp
+printSurfaceComp :: [SC.Clause SE.Expr] -> Print
+printSurfaceComp = comp . concatWith (surround (line' <> comma <> space)) . map printSurfaceClause
 
 printSurfaceClause :: SC.Clause SE.Expr -> Print
 printSurfaceClause = SC.out >>> \case

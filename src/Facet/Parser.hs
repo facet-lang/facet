@@ -187,7 +187,7 @@ expr :: (Monad p, PositionParsing p) => Facet p E.Expr
 expr = build exprTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review E.prd_)))))
 
 comp :: (Monad p, PositionParsing p) => Facet p E.Expr
-comp = spanning (braces (review (E.comp_ . C.clauses_) <$> clauses))
+comp = spanning (braces (review E.comp_ <$> clauses))
   where
   clauses
     =   sepBy1 clause comma

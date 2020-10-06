@@ -18,7 +18,7 @@ import Control.Category ((>>>))
 import Control.Lens.Prism
 import Data.Text (Text)
 import Facet.Name
-import Facet.Surface.Comp (Comp)
+import Facet.Surface.Comp (Clause)
 import Prelude hiding ((**))
 import Text.Parser.Position (Span, Spanned(..))
 
@@ -41,8 +41,8 @@ hole_ :: Prism' Expr Text
 hole_ = prism' (In . Hole) (\case{ In (Hole n) -> Just n ; _ -> Nothing })
 
 
-comp_ :: Prism' Expr (Comp Expr)
-comp_ = prism' (In . Comp) (\case{ In (Comp c) -> Just c ; _ -> Nothing })
+comp_ :: Prism' Expr [Clause Expr]
+comp_ = prism' (In . Comp) (\case{ In (Comp cs) -> Just cs ; _ -> Nothing })
 
 app_ :: Prism' Expr (Expr, Expr)
 app_ = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
@@ -61,7 +61,7 @@ data ExprF e
   = Free DName
   | Bound Name
   | Hole Text
-  | Comp (Comp e)
+  | Comp [Clause e]
   | e :$ e
   | Unit
   | e :* e

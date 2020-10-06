@@ -215,7 +215,7 @@ elabExpr (t ::: _T) = E.fold alg t _T
     f E.:$  a -> validate =<< synth (_synth f $$  _check a)
     l E.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
     E.Unit    -> validate =<< synth unit
-    E.Comp c  -> check (comp (_check <$> c) ::: _T) (pretty "computation")
+    E.Comp cs -> check (comp (map (fmap _check) cs) ::: _T) (pretty "computation")
     E.Loc s b -> local (const s) $ b _T
     where
     _check r = tm <$> Check (r . Just)
@@ -256,8 +256,8 @@ l ** r = Check $ \ _T -> do
   r' <- check (r ::: _R)
   pure (l' C.** r')
 
-comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span) sig m, C.Expr expr) => C.Comp (Check m expr) -> Check m expr
-comp (C.Comp cs) = do
+comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span) sig m, C.Expr expr) => [C.Clause (Check m expr)] -> Check m expr
+comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
   -- FIXME: extend Core to include computation types
