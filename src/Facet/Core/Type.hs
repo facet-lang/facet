@@ -2,17 +2,18 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-noncanonical-monad-instances #-}
 module Facet.Core.Type
 ( Type(..)
-, interpret
 , rename
 , subst
 , TypeF(..)
 , fold
+, Interpret(..)
 ) where
 
 import           Control.Category ((>>>))
@@ -44,18 +45,6 @@ instance C.Type Type where
   (.$)  = ($$)
   (-->) = fmap In . (:->)
   (.*)  = fmap In . (:*)
-
-interpret :: C.Type r => Type -> r
-interpret = go
-    where
-    go = out >>> \case
-      Type    -> C._Type
-      Void    -> C._Void
-      Unit    -> C._Unit
-      t :=> b -> fmap go t C.>=> go b
-      f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound C.tglobal f) a
-      a :-> b -> go a C.--> go b
-      l :* r  -> go l C..*  go r
 
 ($$) :: Type -> Type -> Type
 In (f :$ as) $$ a = In $ f :$ (as :> a)
@@ -119,3 +108,19 @@ fold :: (TypeF a -> a) -> Type -> a
 fold alg = go
   where
   go = alg . fmap go . out
+
+
+class Interpret i r where
+  interpret :: i -> r
+
+instance C.Type r => Interpret Type r where
+  interpret = go
+    where
+    go = out >>> \case
+      Type    -> C._Type
+      Void    -> C._Void
+      Unit    -> C._Unit
+      t :=> b -> fmap go t C.>=> go b
+      f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound C.tglobal f) a
+      a :-> b -> go a C.--> go b
+      l :* r  -> go l C..*  go r
