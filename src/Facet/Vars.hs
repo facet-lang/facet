@@ -56,6 +56,9 @@ newtype FVs = FVs { runFVs :: Vars -> Vars -> Vars }
 instance Semigroup FVs where
   FVs v1 <> FVs v2 = FVs $ \ b f -> v1 b (v2 b f)
 
+instance Monoid FVs where
+  mempty = FVs (const id)
+
 
 prime :: Scoped t => Text -> t -> Name
 prime n = Name n . maybe 0 (+ 1) . findMax' . getVars . fvs
