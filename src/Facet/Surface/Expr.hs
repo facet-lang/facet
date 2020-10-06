@@ -6,7 +6,6 @@ module Facet.Surface.Expr
 , global_
 , bound_
 , hole_
-, lam_
 , comp_
 , app_
 , unit_
@@ -42,9 +41,6 @@ hole_ :: Prism' Expr Text
 hole_ = prism' (In . Hole) (\case{ In (Hole n) -> Just n ; _ -> Nothing })
 
 
-lam_ :: Prism' Expr (Name, Expr)
-lam_ = prism' (In . uncurry Lam) (\case{ In (Lam n b) -> Just (n, b) ; _ -> Nothing })
-
 comp_ :: Prism' Expr (Comp Expr)
 comp_ = prism' (In . Comp) (\case{ In (Comp c) -> Just c ; _ -> Nothing })
 
@@ -65,7 +61,6 @@ data ExprF e
   = Free DName
   | Bound Name
   | Hole Text
-  | Lam Name e
   | Comp (Comp e)
   | e :$ e
   | Unit

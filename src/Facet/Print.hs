@@ -257,9 +257,6 @@ printSurfaceExpr = go
     E.Free n  -> sfree n
     E.Bound n -> sbound n
     E.Hole n  -> hole n
-    E.Lam n b ->
-      let (n', b') = unprefixr (preview E.lam_ . dropSpan) b
-      in lams (map sbound (n:n')) (go b')
     f E.:$  a ->
       let (f', a') = unprefixl (preview E.app_ . dropSpan) f
       in go f' $$* fmap go (a' :> a)

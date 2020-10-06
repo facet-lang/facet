@@ -212,7 +212,6 @@ elabExpr (t ::: _T) = E.fold alg t _T
     E.Free  n -> validate =<< synth (eglobal n)
     E.Bound n -> validate =<< synth (ebound n)
     E.Hole  n -> hole (n ::: _T)
-    E.Lam n b -> check (lam n (_check b) ::: _T) (pretty "lambda")
     f E.:$  a -> validate =<< synth (_synth f $$  _check a)
     l E.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
     E.Unit    -> validate =<< synth unit
