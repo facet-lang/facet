@@ -22,7 +22,7 @@ import           Data.Bool (bool)
 import           Data.Char (isSpace)
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as Unicode
-import           Data.Foldable (foldl', toList)
+import           Data.Foldable (foldl')
 import qualified Data.List.NonEmpty as NE
 import qualified Data.HashSet as HashSet
 import qualified Data.Map as Map
@@ -217,15 +217,12 @@ evar
 
 -- Patterns
 
-bindPattern :: PositionParsing p => P.Pattern N.EName -> ([N.Name] -> Facet p a) -> Facet p a
-bindPattern p f = bindPattern' p (f . toList)
-
-bindPattern' :: PositionParsing p => P.Pattern N.EName -> (P.Pattern N.Name -> Facet p a) -> Facet p a
-bindPattern' p f = case P.out p of
+bindPattern :: PositionParsing p => P.Pattern N.EName -> (P.Pattern N.Name -> Facet p a) -> Facet p a
+bindPattern p f = case P.out p of
   P.Wildcard -> bindE (N.EName N.__) (const (f (review P.wildcard_ ())))
   P.Var n    -> bindE n              (f . review P.var_)
-  P.Tuple ps -> foldr (\ p k ps -> bindPattern' p $ \ p' -> k (p':ps)) (f . review P.tuple_) ps []
-  P.Loc _ p  -> bindPattern' p f
+  P.Tuple ps -> foldr (\ p k ps -> bindPattern p $ \ p' -> k (p':ps)) (f . review P.tuple_) ps []
+  P.Loc _ p  -> bindPattern p f
 
 bindVarPattern :: Maybe N.EName -> (N.Name -> Facet p res) -> Facet p res
 bindVarPattern Nothing  = bindE (N.EName N.__)
