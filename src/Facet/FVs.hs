@@ -2,6 +2,7 @@ module Facet.FVs
 ( FVs
 , singleton
 , insert
+, delete
 , Scoped(..)
 , prime
 ) where
@@ -17,6 +18,9 @@ singleton = IntSet.singleton . id'
 
 insert :: Name -> FVs -> FVs
 insert = IntSet.insert . id'
+
+delete :: Name -> FVs -> FVs
+delete = IntSet.delete . id'
 
 
 class Scoped t where
