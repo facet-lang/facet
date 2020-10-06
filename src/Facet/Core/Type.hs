@@ -9,6 +9,10 @@
 {-# OPTIONS_GHC -Wno-noncanonical-monad-instances #-}
 module Facet.Core.Type
 ( Type(..)
+, forAll_
+, arrow_
+, app_
+, prd_
 , rename
 , subst
 , TypeF(..)
@@ -17,6 +21,7 @@ module Facet.Core.Type
 ) where
 
 import           Control.Category ((>>>))
+import           Control.Lens.Prism hiding (_Void)
 import           Data.Foldable (foldl')
 import qualified Data.IntSet as IntSet
 import qualified Facet.Core as C
@@ -45,6 +50,18 @@ instance C.Type Type where
   (.$)  = ($$)
   (-->) = fmap In . (:->)
   (.*)  = fmap In . (:*)
+
+forAll_ :: Prism' Type (Name ::: Type, Type)
+forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
+
+arrow_ :: Prism' Type (Type, Type)
+arrow_ = prism' (In . uncurry (:->)) (\case{ In (a :-> b) -> Just (a, b) ; _ -> Nothing })
+
+app_ :: Prism' Type (Type, Type)
+app_ = prism' (uncurry ($$)) (\case{ In (f :$ (as :> a)) -> Just (In (f :$ as), a) ; _ -> Nothing })
+
+prd_ :: Prism' Type (Type, Type)
+prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
 
 ($$) :: Type -> Type -> Type
 In (f :$ as) $$ a = In $ f :$ (as :> a)
