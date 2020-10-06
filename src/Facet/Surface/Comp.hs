@@ -28,7 +28,7 @@ instance Traversable Comp where
   traverse f = go where go = fmap In . bitraverse f go . out
 
 
-cases_ :: Prism' (Comp e) [(Name, Comp e)]
+cases_ :: Prism' (Comp e) [([Name], e)]
 cases_ = prism' (In . Cases) (\case{ In (Cases cs) -> Just cs ; _ -> Nothing })
 
 expr_ :: Prism' (Comp e) e
@@ -36,7 +36,7 @@ expr_ = prism' (In . Expr) (\case{ In (Expr e) -> Just e ; _ -> Nothing })
 
 
 data CompF e c
-  = Cases [(Name, c)]
+  = Cases [([Name], e)]
   | Expr e
   | Loc Span c
   deriving (Foldable, Functor, Traversable)
@@ -51,7 +51,7 @@ instance Bifunctor CompF where
 
 instance Bitraversable CompF where
   bitraverse f g = \case
-    Cases cs -> Cases <$> traverse (traverse g) cs
+    Cases cs -> Cases <$> traverse (traverse f) cs
     Expr e   -> Expr <$> f e
     Loc s c  -> Loc s <$> g c
 

@@ -187,20 +187,21 @@ expr :: (Monad p, PositionParsing p) => Facet p E.Expr
 expr = build exprTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review E.prd_)))))
 
 comp :: (Monad p, PositionParsing p) => Facet p E.Expr
-comp = review E.comp_ <$> spanning (braces (build compTable (const (review C.expr_ <$> expr))))
+comp = spanning (braces (build compTable (const (review (E.comp_ . C.expr_) <$> expr))))
 
-compTable :: (Monad p, PositionParsing p) => Table (Facet p) (C.Comp E.Expr)
+compTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr
 compTable =
   [ [ Binder clause ]
   ]
 
-clause :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (C.Comp E.Expr)
-clause _ next = (do
-  patterns <- try (some ((,) <$> position <*> pattern) <* arrow)
-  foldr clause next patterns) <?> "clause"
+clause :: (Monad p, PositionParsing p) => OperatorParser (Facet p) E.Expr
+clause _ next = review E.comp_ <$> (do
+  start <- position
+  patterns <- try (some pattern <* arrow)
+  bindPatterns patterns (clause start)) <?> "clause"
   where
-  clause (start, p) rest = bindPattern p $ \ vs -> do
-    comp <- foldr (\ v b -> review C.cases_ . pure . (,) v <$> b) rest vs
+  clause start vs = do
+    comp <- review C.cases_ . pure . (,) vs <$> next
     end <- position
     pure (setSpan (Span start end) comp)
 
@@ -213,6 +214,11 @@ evar
 
 
 -- Patterns
+
+bindPatterns :: PositionParsing p => [P.Pattern N.EName] -> ([N.Name] -> Facet p a) -> Facet p a
+bindPatterns ps f = foldr go f ps []
+  where
+  go p f vs = bindPattern p (f . (vs ++))
 
 bindPattern :: PositionParsing p => P.Pattern N.EName -> ([N.Name] -> Facet p a) -> Facet p a
 bindPattern P.Wildcard   f = bindE (N.EName N.__) (\ v -> f [v])

@@ -261,11 +261,11 @@ comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span
 comp = C.fold $ \case
   C.Cases cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking computation") _T
-    cs' <- for cs $ \ (n, b) ->
-      n ::: _A |- (,) n <$> check (b ::: _B)
+    cs' <- for cs $ \ (ns, b) ->
+      foldr (\ n -> (n ::: _A |-)) ((,) ns <$> check (b ::: _B)) ns
     -- FIXME: extend Core to include computation types
     -- FIXME: extend Core to include pattern matching so this isn’t broken
-    pure $ uncurry C.lam $ head cs'
+    pure $ uncurry (flip (foldr C.lam)) $ head cs'
   C.Expr e   -> e
   C.Loc s c  -> local (const s) c
 
