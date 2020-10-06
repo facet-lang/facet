@@ -76,10 +76,10 @@ subst :: Name -> Expr -> Expr -> Expr
 subst x e = go
   where
   go = \case
-    Global s      -> Global s
+    Global s      -> C.global s
     Bound n
       | n == x    -> e
-      | otherwise -> Bound n
+      | otherwise -> C.bound n
     TLam _ n b    -> let n' = prime (hint n) (fvs b <> fvs e)
                          b' = go (rename n n' b)
                      in C.tlam n' b'
@@ -87,5 +87,5 @@ subst x e = go
                          b' = go (rename n n' b)
                      in C.lam n' b'
     App _ f a     -> go f C.$$ go a
-    Unit          -> Unit
+    Unit          -> C.unit
     Pair _ l r    -> go l C.** go r
