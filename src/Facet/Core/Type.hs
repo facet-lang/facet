@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
@@ -28,6 +29,7 @@ import           Facet.Name
 import           Facet.Syntax
 
 newtype Type = In { out :: TypeF Type }
+  deriving (C.Type)
 
 instance Scoped Type where
   fvs = out >>> \case
@@ -39,16 +41,6 @@ instance Scoped Type where
     a :-> b -> fvs a <> fvs b
     l :* r  -> fvs l <> fvs r
 
-instance C.Type Type where
-  tglobal n = In $ Right n :$ Nil
-  tbound n = In $ Left n :$ Nil
-  _Type = In Type
-  _Void = In Void
-  _Unit = In Unit
-  (>=>) = fmap In . (:=>)
-  (.$)  = ($$)
-  (-->) = fmap In . (:->)
-  (.*)  = fmap In . (:*)
 
 forAll_ :: Prism' Type (Name ::: Type, Type)
 forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
