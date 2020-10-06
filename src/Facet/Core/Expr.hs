@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Core.Expr
@@ -5,25 +6,20 @@ module Facet.Core.Expr
 , app_
 , interpret
 , subst
+, ExprF(..)
+, fold
 ) where
 
+import           Control.Category ((>>>))
 import           Control.Lens.Prism
 import qualified Data.IntSet as IntSet
 import qualified Facet.Core as C
 import           Facet.Name
 
-data Expr
-  = Global QName
-  | Bound Name
-  | TLam FVs Name Expr
-  | Lam FVs Name Expr
-  | App FVs Expr Expr
-  | Unit
-  | Pair FVs Expr Expr
-  deriving (Show)
+newtype Expr = In { out :: ExprF Expr }
 
 instance Scoped Expr where
-  fvs = \case
+  fvs = out >>> \case
     Global _   -> IntSet.empty
     Bound  n   -> fvs n
     TLam s _ _ -> s
@@ -33,19 +29,19 @@ instance Scoped Expr where
     Pair s _ _ -> s
 
 instance C.Expr Expr where
-  global = Global
-  bound = Bound
-  tlam n b = TLam (IntSet.delete (id' n) (fvs b)) n b
-  lam n b = Lam (IntSet.delete (id' n) (fvs b)) n b
-  f $$ a = App (fvs f <> fvs a) f a
-  unit = Unit
-  l ** r = Pair (fvs l <> fvs r) l r
+  global = In . Global
+  bound = In . Bound
+  tlam n b = In $ TLam (IntSet.delete (id' n) (fvs b)) n b
+  lam n b = In $ Lam (IntSet.delete (id' n) (fvs b)) n b
+  f $$ a = In $ App (fvs f <> fvs a) f a
+  unit = In Unit
+  l ** r = In $ Pair (fvs l <> fvs r) l r
 
 app_ :: Prism' Expr (Expr, Expr)
-app_ = prism' (uncurry (C.$$)) (\case{ App _ f a -> Just (f, a) ; _ -> Nothing })
+app_ = prism' (uncurry (C.$$)) (\case{ In (App _ f a) -> Just (f, a) ; _ -> Nothing })
 
 interpret :: C.Expr r => Expr -> r
-interpret = \case
+interpret = out >>> \case
   Global n -> C.global n
   Bound n -> C.bound n
   TLam _ n b -> C.tlam n (interpret b)
@@ -57,16 +53,16 @@ interpret = \case
 rename :: Name -> Name -> Expr -> Expr
 rename x y = go
   where
-  go = \case
+  go = out >>> \case
     Global s      -> C.global s
     Bound z
       | x == z    -> C.bound y
       | otherwise -> C.bound z
     TLam s z b
-      | z == x    -> TLam s z b
+      | z == x    -> In $ TLam s z b
       | otherwise -> C.tlam z (go b)
     Lam s z b
-      | z == x    -> Lam s z b
+      | z == x    -> In $ Lam s z b
       | otherwise -> C.lam z (go b)
     App _ f a     -> go f C.$$ go a
     Unit          -> C.unit
@@ -75,7 +71,7 @@ rename x y = go
 subst :: Name -> Expr -> Expr -> Expr
 subst x e = go
   where
-  go = \case
+  go = out >>> \case
     Global s      -> C.global s
     Bound n
       | n == x    -> e
@@ -89,3 +85,19 @@ subst x e = go
     App _ f a     -> go f C.$$ go a
     Unit          -> C.unit
     Pair _ l r    -> go l C.** go r
+
+
+data ExprF e
+  = Global QName
+  | Bound Name
+  | TLam FVs Name e
+  | Lam FVs Name e
+  | App FVs e e
+  | Unit
+  | Pair FVs e e
+  deriving (Foldable, Functor, Show, Traversable)
+
+fold :: (ExprF a -> a) -> Expr -> a
+fold alg = go
+  where
+  go = alg . fmap go . out
