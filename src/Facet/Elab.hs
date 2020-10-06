@@ -252,7 +252,7 @@ l ** r = Check $ \ _T -> do
   r' <- check (r ::: _R)
   pure (l' C.** r')
 
-comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m) => E.Comp (Check m expr) -> Check m expr
+comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, C.Expr expr) => E.Comp (Check m expr) -> Check m expr
 comp = \case
   -- FIXME: extend Core.Type to include a zero to accommodate the empty list
   E.Cases cs -> Check $ \ _T -> do
@@ -260,7 +260,7 @@ comp = \case
     cs' <- for cs $ \ (n, b) ->
       n ::: _A |- (,) n <$> check (b ::: _B)
     -- FIXME: extend Core to include pattern matching so this isn’t broken
-    pure $ snd $ head cs'
+    pure $ uncurry C.lam $ head cs'
   E.Expr e   -> e
 
 
