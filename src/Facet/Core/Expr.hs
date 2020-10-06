@@ -20,35 +20,35 @@ newtype Expr = In { out :: ExprF Expr }
 
 instance Scoped Expr where
   fvs = out >>> \case
-    Global _   -> mempty
-    Bound  n   -> fvs n
-    TLam s _ _ -> s
-    Lam s _ _  -> s
-    App s _ _  -> s
-    Unit       -> mempty
-    Pair s _ _ -> s
+    Global _ -> mempty
+    Bound  n -> fvs n
+    TLam n b -> bind n (fvs b)
+    Lam n b  -> bind n (fvs b)
+    App f a  -> fvs f <> fvs a
+    Unit     -> mempty
+    Pair l r -> fvs l <> fvs r
 
 instance C.Expr Expr where
   global = In . Global
   bound = In . Bound
-  tlam n b = In $ TLam (bind n (fvs b)) n b
-  lam n b = In $ Lam (bind n (fvs b)) n b
-  f $$ a = In $ App (fvs f <> fvs a) f a
+  tlam = fmap In . TLam
+  lam = fmap In . Lam
+  ($$) = fmap In . App
   unit = In Unit
-  l ** r = In $ Pair (fvs l <> fvs r) l r
+  (**) = fmap In . Pair
 
 app_ :: Prism' Expr (Expr, Expr)
-app_ = prism' (uncurry (C.$$)) (\case{ In (App _ f a) -> Just (f, a) ; _ -> Nothing })
+app_ = prism' (uncurry (C.$$)) (\case{ In (App f a) -> Just (f, a) ; _ -> Nothing })
 
 interpret :: C.Expr r => Expr -> r
 interpret = out >>> \case
   Global n -> C.global n
   Bound n -> C.bound n
-  TLam _ n b -> C.tlam n (interpret b)
-  Lam _ n b -> C.lam n (interpret b)
-  App _ f a -> interpret f C.$$ interpret a
+  TLam n b -> C.tlam n (interpret b)
+  Lam n b -> C.lam n (interpret b)
+  App f a -> interpret f C.$$ interpret a
   Unit -> C.unit
-  Pair _ l r -> interpret l C.** interpret r
+  Pair l r -> interpret l C.** interpret r
 
 rename :: Name -> Name -> Expr -> Expr
 rename x y = go
@@ -58,15 +58,15 @@ rename x y = go
     Bound z
       | x == z    -> C.bound y
       | otherwise -> C.bound z
-    TLam s z b
-      | z == x    -> In $ TLam s z b
+    TLam z b
+      | z == x    -> C.tlam z b
       | otherwise -> C.tlam z (go b)
-    Lam s z b
-      | z == x    -> In $ Lam s z b
+    Lam z b
+      | z == x    -> C.lam z b
       | otherwise -> C.lam z (go b)
-    App _ f a     -> go f C.$$ go a
+    App f a       -> go f C.$$ go a
     Unit          -> C.unit
-    Pair _ l r    -> go l C.** go r
+    Pair l r      -> go l C.** go r
 
 subst :: Name -> Expr -> Expr -> Expr
 subst x e = go
@@ -76,25 +76,25 @@ subst x e = go
     Bound n
       | n == x    -> e
       | otherwise -> C.bound n
-    TLam _ n b    -> let n' = prime (hint n) (fvs b <> fvs e)
+    TLam n b      -> let n' = prime (hint n) (fvs b <> fvs e)
                          b' = go (rename n n' b)
                      in C.tlam n' b'
-    Lam _ n b     -> let n' = prime (hint n) (fvs b <> fvs e)
+    Lam n b       -> let n' = prime (hint n) (fvs b <> fvs e)
                          b' = go (rename n n' b)
                      in C.lam n' b'
-    App _ f a     -> go f C.$$ go a
+    App f a       -> go f C.$$ go a
     Unit          -> C.unit
-    Pair _ l r    -> go l C.** go r
+    Pair l r      -> go l C.** go r
 
 
 data ExprF e
   = Global QName
   | Bound Name
-  | TLam Vars Name e
-  | Lam Vars Name e
-  | App Vars e e
+  | TLam Name e
+  | Lam Name e
+  | App e e
   | Unit
-  | Pair Vars e e
+  | Pair e e
   deriving (Foldable, Functor, Show, Traversable)
 
 fold :: (ExprF a -> a) -> Expr -> a
