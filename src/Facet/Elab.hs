@@ -254,16 +254,16 @@ l ** r = Check $ \ _T -> do
   pure (l' C.** r')
 
 comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span) sig m, C.Expr expr) => C.Comp (Check m expr) -> Check m expr
-comp = \case
+comp = C.fold $ \case
   -- FIXME: extend Core.Type to include a zero to accommodate the empty list
   C.Cases cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking computation") _T
     cs' <- for cs $ \ (n, b) ->
-      n ::: _A |- (,) n <$> check (comp b ::: _B)
+      n ::: _A |- (,) n <$> check (b ::: _B)
     -- FIXME: extend Core to include pattern matching so this isn’t broken
     pure $ uncurry C.lam $ head cs'
   C.Expr e   -> e
-  C.Loc s c  -> local (const s) $ comp c
+  C.Loc s c  -> local (const s) c
 
 
 -- Declarations
