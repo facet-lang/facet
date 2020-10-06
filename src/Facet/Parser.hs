@@ -220,14 +220,15 @@ bindPatterns ps f = foldr go f ps []
   go p f vs = bindPattern p (f . (vs ++))
 
 bindPattern :: PositionParsing p => P.Pattern N.EName -> ([N.Name] -> Facet p a) -> Facet p a
-bindPattern P.Wildcard   f = bindE (N.EName N.__) (\ v -> f [v])
-bindPattern (P.Var n)    f = bindE n              (\ v -> f [v])
--- FIXME: this is incorrect since the structure doesn’t get used in the clause
-bindPattern (P.Tuple ps) f = go [] ps
-  where
-  go vs []     = f vs
-  go vs (p:ps) = bindPattern p $ \ vs' -> go (vs <> vs') ps
-bindPattern (P.Loc _ p) f = bindPattern p f
+bindPattern p f = case p of
+  P.Wildcard   -> bindE (N.EName N.__) (\ v -> f [v])
+  (P.Var n)    -> bindE n              (\ v -> f [v])
+  -- FIXME: this is incorrect since the structure doesn’t get used in the clause
+  (P.Tuple ps) -> go [] ps
+    where
+    go vs []     = f vs
+    go vs (p:ps) = bindPattern p $ \ vs' -> go (vs <> vs') ps
+  (P.Loc _ p) -> bindPattern p f
 
 bindVarPattern :: Maybe N.EName -> (N.Name -> Facet p res) -> Facet p res
 bindVarPattern Nothing  = bindE (N.EName N.__)
