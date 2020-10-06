@@ -21,6 +21,7 @@ module Facet.Print
 , printSurfaceType
 , printSurfaceExpr
 , printSurfaceClause
+, printCorePattern
 , printSurfacePattern
 , printSurfaceDecl
 , printSurfaceModule
@@ -34,6 +35,7 @@ import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
 import           Data.Text (Text)
 import qualified Facet.Core as C
+import qualified Facet.Core.Pattern as CP
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
 import           Facet.Stack
@@ -279,6 +281,12 @@ printSurfaceClause = SC.out >>> \case
     _           -> printSurfaceClause b
   SC.Body e     -> prec Expr (printSurfaceExpr e)
   SC.Loc _ c    -> printSurfaceClause c
+
+printCorePattern :: CP.Pattern N.Name -> Print
+printCorePattern p = prec Pattern $ case p of
+  CP.Wildcard -> pretty '_'
+  CP.Var n    -> sbound n
+  CP.Tuple p  -> tupled (map printCorePattern p)
 
 printSurfacePattern :: SP.Pattern N.Name -> Print
 printSurfacePattern p = prec Pattern $ case SP.out p of
