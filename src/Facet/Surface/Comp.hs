@@ -1,2 +1,11 @@
+{-# LANGUAGE DeriveTraversable #-}
 module Facet.Surface.Comp
-() where
+( Comp(..)
+) where
+
+import Facet.Name
+
+data Comp e
+  = Cases [(Name, e)]
+  | Expr e
+  deriving (Foldable, Functor, Traversable)

@@ -12,7 +12,6 @@ module Facet.Surface.Expr
 , prd_
 , comp_
 , ExprF(..)
-, Comp(..)
 , fold
 ) where
 
@@ -20,6 +19,7 @@ import Control.Category ((>>>))
 import Control.Lens.Prism
 import Data.Text (Text)
 import Facet.Name
+import Facet.Surface.Comp (Comp)
 import Prelude hiding ((**))
 import Text.Parser.Position (Span, Spanned(..))
 
@@ -82,9 +82,3 @@ fold :: (ExprF a -> a) -> Expr -> a
 fold alg = go
   where
   go = alg . fmap go . out
-
-
-data Comp e
-  = Cases [(Name, e)]
-  | Expr e
-  deriving (Foldable, Functor, Traversable)

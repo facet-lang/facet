@@ -34,6 +34,7 @@ import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
+import qualified Facet.Surface.Comp as C
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
@@ -264,10 +265,10 @@ printSurfaceExpr = go
     E.Comp c  -> comp $ printSurfaceComp c
     E.Loc _ t -> go t
 
-printSurfaceComp :: E.Comp E.Expr -> Print
+printSurfaceComp :: C.Comp E.Expr -> Print
 printSurfaceComp = \case
-  E.Cases cs -> group (concatWith (surround (line' <> comma <> space)) (map (uncurry (clause . sbound)) cs))
-  E.Expr e   -> printSurfaceExpr e
+  C.Cases cs -> group (concatWith (surround (line' <> comma <> space)) (map (uncurry (clause . sbound)) cs))
+  C.Expr e   -> printSurfaceExpr e
 
 
 clause :: Print -> E.Expr -> Print

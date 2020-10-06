@@ -55,6 +55,7 @@ import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
+import qualified Facet.Surface.Comp as C
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
@@ -252,16 +253,16 @@ l ** r = Check $ \ _T -> do
   r' <- check (r ::: _R)
   pure (l' C.** r')
 
-comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, C.Expr expr) => E.Comp (Check m expr) -> Check m expr
+comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, C.Expr expr) => C.Comp (Check m expr) -> Check m expr
 comp = \case
   -- FIXME: extend Core.Type to include a zero to accommodate the empty list
-  E.Cases cs -> Check $ \ _T -> do
+  C.Cases cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking computation") _T
     cs' <- for cs $ \ (n, b) ->
       n ::: _A |- (,) n <$> check (b ::: _B)
     -- FIXME: extend Core to include pattern matching so this isn’t broken
     pure $ uncurry C.lam $ head cs'
-  E.Expr e   -> e
+  C.Expr e   -> e
 
 
 -- Declarations
