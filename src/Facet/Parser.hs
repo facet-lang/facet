@@ -199,7 +199,7 @@ clause _ _ = (do
   foldr clause (C.Expr <$> expr) patterns) <?> "clause"
   where
   clause (start, p) rest = bindPattern p $ \ vs -> do
-    lam <- foldr (\ v b -> C.Cases . (:[]) . (,) v . review E.comp_ <$> b) rest vs
+    lam <- foldr (\ v b -> C.Cases . pure . (,) v <$> b) rest vs
     end <- position
     pure (setSpan (Span start end) lam)
 

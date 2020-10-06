@@ -259,7 +259,7 @@ comp = \case
   C.Cases cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking computation") _T
     cs' <- for cs $ \ (n, b) ->
-      n ::: _A |- (,) n <$> check (b ::: _B)
+      n ::: _A |- (,) n <$> check (comp b ::: _B)
     -- FIXME: extend Core to include pattern matching so this isn’t broken
     pure $ uncurry C.lam $ head cs'
   C.Expr e   -> e

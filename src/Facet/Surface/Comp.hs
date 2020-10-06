@@ -8,7 +8,7 @@ import Facet.Name
 import Text.Parser.Position (Span, Spanned(..))
 
 data Comp e
-  = Cases [(Name, e)]
+  = Cases [(Name, Comp e)]
   | Expr e
   | Loc Span (Comp e)
   deriving (Foldable, Functor, Traversable)
