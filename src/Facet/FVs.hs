@@ -22,8 +22,9 @@ instance Scoped Name where
 
 
 prime :: Scoped t => Text -> t -> Name
-prime n t
-  | IntSet.null fvs' = Name n 0
-  | otherwise        = Name n (IntSet.findMax fvs' + 1)
-  where
-  fvs' = fvs t
+prime n = Name n . maybe 0 (+ 1) . findMax' . fvs
+
+findMax' :: IntSet.IntSet -> Maybe Int
+findMax' s
+  | IntSet.null s = Nothing
+  | otherwise     = Just (IntSet.findMax s)
