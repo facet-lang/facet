@@ -14,6 +14,7 @@ import Data.Bifoldable
 import Data.Bifunctor
 import Data.Bitraversable
 import Facet.Name
+import Facet.Surface.Pattern (Pattern)
 import Text.Parser.Position (Span, Spanned(..))
 
 newtype Clause e = In { out :: ClauseF e (Clause e) }
@@ -35,7 +36,7 @@ instance Spanned (Clause e) where
     d       -> In d
 
 
-clause_ :: Prism' (Clause e) (Name, Clause e)
+clause_ :: Prism' (Clause e) (Pattern Name, Clause e)
 clause_ = prism' (In . uncurry Clause) (\case{ In (Clause n b) -> Just (n, b) ; _ -> Nothing })
 
 body_ :: Prism' (Clause e) e
@@ -43,7 +44,7 @@ body_ = prism' (In . Body) (\case{ In (Body e) -> Just e ; _ -> Nothing })
 
 
 data ClauseF e c
-  = Clause Name c
+  = Clause (Pattern Name) c
   | Body e
   | Loc Span c
   deriving (Foldable, Functor, Traversable)

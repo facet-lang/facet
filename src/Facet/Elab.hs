@@ -268,9 +268,11 @@ comp cs = do
 
 clause :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span) sig m, C.Expr expr) => C.Clause (Check m expr) -> Check m expr
 clause = C.fold $ \case
-  C.Clause n b -> Check $ \ _T -> do
+  C.Clause p b -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
-    n ::: _A |- C.lam n <$> check (b ::: _B)
+    p' <- check (pattern p ::: _A)
+    -- FIXME: we should construct a single C.lam per Clause, not one for each variable bound in the pattern.
+    foldr (\ (n ::: _T) b -> n ::: _T |- C.lam n <$> b) (check (b ::: _B)) p'
   C.Body e   -> e
   C.Loc s c  -> local (const s) c
 

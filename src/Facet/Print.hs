@@ -274,7 +274,7 @@ printSurfaceComp = comp . concatWith (surround (line' <> comma <> space)) . map 
 
 printSurfaceClause :: SC.Clause SE.Expr -> Print
 printSurfaceClause = SC.out >>> \case
-  SC.Clause n b -> prec Pattern (sbound n) <+> case SC.out b of
+  SC.Clause p b -> printSurfacePattern p <+> case SC.out b of
     SC.Body b   -> arrow <> group (nest 2 (line <> printSurfaceExpr b))
     _           -> printSurfaceClause b
   SC.Body e     -> prec Expr (printSurfaceExpr e)

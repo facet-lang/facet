@@ -200,8 +200,8 @@ clause = (do
   ps <- try (some ((,) <$> position <*> pattern) <* arrow)
   foldr go body ps) <?> "clause"
   where
-  go (start, p) rest = bindPattern p $ \ vs -> do
-    c <- foldr (\ v b -> review C.clause_ . (,) v <$> b) rest vs
+  go (start, p) rest = bindPattern p $ \ p' -> do
+    c <- review C.clause_ . (,) p' <$> rest
     end <- position
     pure $ setSpan (Span start end) c
 
