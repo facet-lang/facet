@@ -73,7 +73,7 @@ prime :: Text -> FVs -> Name
 prime n = Name n . freshIdForFVs
 
 renameWith :: Traversable t => (Int -> a -> b) -> FVs -> t a -> t b
-renameWith f fvs ts = run (evalFresh base (traverse (\ a -> f <$> fresh <*> pure a) ts))
+renameWith f fvs = run . evalFresh base . traverse (\ a -> f <$> fresh <*> pure a)
   where
   base = freshIdForFVs fvs
 
