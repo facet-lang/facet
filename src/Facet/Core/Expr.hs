@@ -2,6 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Core.Expr
 ( Expr(..)
+, app_
 , interpret
 , subst
 ) where
@@ -40,8 +41,8 @@ instance C.Expr Expr where
   unit = Unit
   l ** r = Pair (fvs l <> fvs r) l r
 
-_App :: Prism' Expr (Expr, Expr)
-_App = prism' (uncurry (C.$$)) (\case{ App _ f a -> Just (f, a) ; _ -> Nothing })
+app_ :: Prism' Expr (Expr, Expr)
+app_ = prism' (uncurry (C.$$)) (\case{ App _ f a -> Just (f, a) ; _ -> Nothing })
 
 interpret :: C.Expr r => Expr -> r
 interpret = \case
