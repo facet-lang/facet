@@ -228,6 +228,13 @@ bindPattern p f = case P.out p of
     go vs (p:ps) = bindPattern p $ \ vs' -> go (vs <> vs') ps
   P.Loc _ p  -> bindPattern p f
 
+bindPattern' :: PositionParsing p => P.Pattern N.EName -> (P.Pattern N.Name -> Facet p a) -> Facet p a
+bindPattern' p f = case P.out p of
+  P.Wildcard -> bindE (N.EName N.__) (const (f (review P.wildcard_ ())))
+  P.Var n    -> bindE n              (f . review P.var_)
+  P.Tuple ps -> foldr (\ p k ps -> bindPattern' p $ \ p' -> k (p':ps)) (f . review P.tuple_) ps []
+  P.Loc _ p  -> bindPattern' p f
+
 bindVarPattern :: Maybe N.EName -> (N.Name -> Facet p res) -> Facet p res
 bindVarPattern Nothing  = bindE (N.EName N.__)
 bindVarPattern (Just n) = bindE n
