@@ -1,2 +1,8 @@
 module Facet.Core.Pattern
-() where
+( Pattern(..)
+) where
+
+data Pattern a
+  = Wildcard
+  | Var a
+  | Tuple [Pattern a]
