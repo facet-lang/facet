@@ -269,6 +269,7 @@ printSurfaceComp :: C.Comp E.Expr -> Print
 printSurfaceComp = \case
   C.Cases cs -> group (concatWith (surround (line' <> comma <> space)) (map (uncurry (clause . sbound)) cs))
   C.Expr e   -> printSurfaceExpr e
+  C.Loc _ c  -> printSurfaceComp c
 
 
 clause :: Print -> E.Expr -> Print
