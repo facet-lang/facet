@@ -50,6 +50,7 @@ interpret = out >>> \case
   Unit -> C.unit
   Pair l r -> interpret l C.** interpret r
 
+-- FIXME: this is pretty inefficient for multiple renamings; we should try to fuse renamings.
 rename :: Name -> Name -> Expr -> Expr
 rename x y = go
   where
@@ -68,6 +69,7 @@ rename x y = go
     Unit          -> C.unit
     Pair l r      -> go l C.** go r
 
+-- FIXME: this is pretty inefficient for multiple substitutions; we should try to fuse substitutions.
 subst :: Name -> Expr -> Expr -> Expr
 subst x e = go
   where
