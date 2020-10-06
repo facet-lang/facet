@@ -8,7 +8,7 @@ module Facet.Surface.Expr
 , hole_
 , lam_
 , app_
-, unit
+, unit_
 , prd_
 , comp_
 , ExprF(..)
@@ -49,8 +49,8 @@ app_ :: Prism' Expr (Expr, Expr)
 app_ = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
 
 
-unit :: Expr
-unit = In Unit
+unit_ :: Prism' Expr ()
+unit_ = prism' (const (In Unit)) (\case{ In Unit -> Just () ; _ -> Nothing })
 
 prd_ :: Prism' Expr (Expr, Expr)
 prd_ = prism' (In . uncurry (:*)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Nothing })
