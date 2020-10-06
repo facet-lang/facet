@@ -191,7 +191,7 @@ comp = spanning (braces body)
   where
   body
     =   review (E.comp_ . C.cases_) <$> sepBy1 clause comma
-    <|> review (E.comp_ . C.expr_) <$> expr
+    <|> review (E.comp_ . C.expr_)  <$> expr
     <|> pure (review (E.comp_ . C.cases_) [])
 
 clause :: (Monad p, PositionParsing p) => Facet p ([N.Name], E.Expr)
