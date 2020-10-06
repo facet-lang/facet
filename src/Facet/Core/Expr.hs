@@ -12,7 +12,6 @@ module Facet.Core.Expr
 
 import           Control.Category ((>>>))
 import           Control.Lens.Prism
-import qualified Data.IntSet as IntSet
 import qualified Facet.Core as C
 import           Facet.FVs
 import           Facet.Name
@@ -21,19 +20,19 @@ newtype Expr = In { out :: ExprF Expr }
 
 instance Scoped Expr where
   fvs = out >>> \case
-    Global _   -> IntSet.empty
+    Global _   -> mempty
     Bound  n   -> fvs n
     TLam s _ _ -> s
     Lam s _ _  -> s
     App s _ _  -> s
-    Unit       -> IntSet.empty
+    Unit       -> mempty
     Pair s _ _ -> s
 
 instance C.Expr Expr where
   global = In . Global
   bound = In . Bound
-  tlam n b = In $ TLam (IntSet.delete (id' n) (fvs b)) n b
-  lam n b = In $ Lam (IntSet.delete (id' n) (fvs b)) n b
+  tlam n b = In $ TLam (delete n (fvs b)) n b
+  lam n b = In $ Lam (delete n (fvs b)) n b
   f $$ a = In $ App (fvs f <> fvs a) f a
   unit = In Unit
   l ** r = In $ Pair (fvs l <> fvs r) l r
