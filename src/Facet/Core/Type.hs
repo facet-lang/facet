@@ -65,15 +65,15 @@ prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Noth
 
 interpret :: C.Type r => Type -> r
 interpret = go
-    where
-    go = out >>> \case
-      Type    -> C._Type
-      Void    -> C._Void
-      Unit    -> C._Unit
-      t :=> b -> fmap go t C.>=> go b
-      f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound C.tglobal f) a
-      a :-> b -> go a C.--> go b
-      l :* r  -> go l C..*  go r
+  where
+  go = out >>> \case
+    Type    -> C._Type
+    Void    -> C._Void
+    Unit    -> C._Unit
+    t :=> b -> fmap go t C.>=> go b
+    f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound C.tglobal f) a
+    a :-> b -> go a C.--> go b
+    l :* r  -> go l C..*  go r
 
 
 ($$) :: Type -> Type -> Type
