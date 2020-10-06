@@ -31,8 +31,8 @@ instance Scoped Expr where
 instance C.Expr Expr where
   global = In . Global
   bound = In . Bound
-  tlam n b = In $ TLam (delete n (fvs b)) n b
-  lam n b = In $ Lam (delete n (fvs b)) n b
+  tlam n b = In $ TLam (bind n (fvs b)) n b
+  lam n b = In $ Lam (bind n (fvs b)) n b
   f $$ a = In $ App (fvs f <> fvs a) f a
   unit = In Unit
   l ** r = In $ Pair (fvs l <> fvs r) l r
