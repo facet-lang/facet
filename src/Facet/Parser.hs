@@ -200,9 +200,9 @@ clause _ next = (do
   foldr clause next patterns) <?> "clause"
   where
   clause (start, p) rest = bindPattern p $ \ vs -> do
-    lam <- foldr (\ v b -> review C.cases_ . pure . (,) v <$> b) rest vs
+    comp <- foldr (\ v b -> review C.cases_ . pure . (,) v <$> b) rest vs
     end <- position
-    pure (setSpan (Span start end) lam)
+    pure (setSpan (Span start end) comp)
 
 evar :: (Monad p, PositionParsing p) => Facet p E.Expr
 evar
