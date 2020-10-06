@@ -34,11 +34,11 @@ import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
-import qualified Facet.Surface.Comp as C
-import qualified Facet.Surface.Decl as D
-import qualified Facet.Surface.Expr as E
-import qualified Facet.Surface.Module as M
-import qualified Facet.Surface.Type as T
+import qualified Facet.Surface.Comp as SC
+import qualified Facet.Surface.Decl as SD
+import qualified Facet.Surface.Expr as SE
+import qualified Facet.Surface.Module as SM
+import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Prelude hiding ((**))
 import qualified Prettyprinter as PP
@@ -172,25 +172,25 @@ instance C.Module Print Print Print where
   defTerm n (t := b) = ann (var (prettyQName n) ::: t) </> b
 
 
-printSurfaceType :: T.Type -> Print
+printSurfaceType :: ST.Type -> Print
 printSurfaceType = go
   where
-  go = T.out >>> \case
-    T.Free n  -> sfree n
-    T.Bound n -> sbound n
-    T.Hole n  -> hole n
-    T.Type    -> _Type
-    T.Void    -> _Void
-    T.Unit    -> _Unit
-    t T.:=> b ->
-      let (t', b') = unprefixr (preview T.forAll_ . dropSpan) b
+  go = ST.out >>> \case
+    ST.Free n  -> sfree n
+    ST.Bound n -> sbound n
+    ST.Hole n  -> hole n
+    ST.Type    -> _Type
+    ST.Void    -> _Void
+    ST.Unit    -> _Unit
+    t ST.:=> b ->
+      let (t', b') = unprefixr (preview ST.forAll_ . dropSpan) b
       in map (first sbound) (t:t') >~~> go b'
-    f T.:$  a ->
-      let (f', a') = unprefixl (preview T.app_ . dropSpan) f
+    f ST.:$  a ->
+      let (f', a') = unprefixl (preview ST.app_ . dropSpan) f
       in go f' $$* fmap go (a' :> a)
-    a T.:-> b -> go a --> go b
-    l T.:*  r -> go l **  go r
-    T.Loc _ t -> go t
+    a ST.:-> b -> go a --> go b
+    l ST.:*  r -> go l **  go r
+    ST.Loc _ t -> go t
 
 sfree :: N.DName -> Print
 sfree = var . pretty
@@ -237,8 +237,8 @@ l ** r = tupled [l, r]
 (>~>) :: (Print ::: Print) -> Print -> Print
 (n ::: t) >~> b = group (align (braces (space <> ann (var n ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
 
-(>~~>) :: [Print ::: T.Type] -> Print -> Print
-ts >~~> b = foldr go b (groupByType T.aeq ts)
+(>~~>) :: [Print ::: ST.Type] -> Print -> Print
+ts >~~> b = foldr go b (groupByType ST.aeq ts)
   where
   go (t, ns) b = (encloseSep mempty mempty (comma <> space) ns ::: printSurfaceType t) >~> b
 
@@ -250,28 +250,28 @@ groupByType eq = \case
     (ys,zs) = span (eq (ty x) . ty) xs
 
 
-printSurfaceExpr :: E.Expr -> Print
+printSurfaceExpr :: SE.Expr -> Print
 printSurfaceExpr = go
   where
-  go = E.out >>> \case
-    E.Free n  -> sfree n
-    E.Bound n -> sbound n
-    E.Hole n  -> hole n
-    f E.:$  a ->
-      let (f', a') = unprefixl (preview E.app_ . dropSpan) f
+  go = SE.out >>> \case
+    SE.Free n  -> sfree n
+    SE.Bound n -> sbound n
+    SE.Hole n  -> hole n
+    f SE.:$  a ->
+      let (f', a') = unprefixl (preview SE.app_ . dropSpan) f
       in go f' $$* fmap go (a' :> a)
-    E.Unit    -> unit
-    l E.:*  r -> go l **  go r
-    E.Comp c  -> comp $ printSurfaceComp c
-    E.Loc _ t -> go t
+    SE.Unit    -> unit
+    l SE.:*  r -> go l **  go r
+    SE.Comp c  -> comp $ printSurfaceComp c
+    SE.Loc _ t -> go t
 
-printSurfaceComp :: C.Comp E.Expr -> Print
-printSurfaceComp = C.out >>> \case
-  C.Cases cs -> group (concatWith (surround (line' <> comma <> space)) (map (\ (v, b) -> prec Pattern (sbound v) <+> case C.out b of
-    C.Expr _ -> arrow <> group (nest 2 (line <> printSurfaceComp b))
+printSurfaceComp :: SC.Comp SE.Expr -> Print
+printSurfaceComp = SC.out >>> \case
+  SC.Cases cs -> group (concatWith (surround (line' <> comma <> space)) (map (\ (v, b) -> prec Pattern (sbound v) <+> case SC.out b of
+    SC.Expr _ -> arrow <> group (nest 2 (line <> printSurfaceComp b))
     _        -> printSurfaceComp b) cs))
-  C.Expr e   -> prec Expr (printSurfaceExpr e)
-  C.Loc _ c  -> printSurfaceComp c
+  SC.Expr e   -> prec Expr (printSurfaceExpr e)
+  SC.Loc _ c  -> printSurfaceComp c
 
 
 -- FIXME: Use _ in binding positions for unused variables
@@ -287,16 +287,16 @@ unit :: Print
 unit = annotate Con $ pretty "Unit"
 
 
-printSurfaceDecl :: D.Decl -> Print
+printSurfaceDecl :: SD.Decl -> Print
 printSurfaceDecl = go
   where
-  go = D.out >>> \case
-    t D.:=  e -> printSurfaceType t .= printSurfaceExpr e
-    t D.:=> b ->
-      let (t', b') = unprefixr (preview D.forAll_ . dropSpan) b
+  go = SD.out >>> \case
+    t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
+    t SD.:=> b ->
+      let (t', b') = unprefixr (preview SD.forAll_ . dropSpan) b
       in map (first sbound) (t:t') >~~> go b'
-    t D.:-> b -> bimap sbound printSurfaceType t >-> go b
-    D.Loc _ d -> go d
+    t SD.:-> b -> bimap sbound printSurfaceType t >-> go b
+    SD.Loc _ d -> go d
 
 -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
 (.=) :: Print -> Print -> Print
@@ -306,13 +306,13 @@ t .= b = t </> b
 (n ::: t) >-> b = group (align (parens (ann (n ::: t)))) </> arrow <+> prec FnR b
 
 
-printSurfaceModule :: M.Module -> Print
-printSurfaceModule = M.fold alg
+printSurfaceModule :: SM.Module -> Print
+printSurfaceModule = SM.fold alg
   where
   alg = \case
-    M.Module  n b -> module' n b
-    M.Def n d -> def (sfree n) (printSurfaceDecl d)
-    M.Loc _ t     -> t
+    SM.Module  n b -> module' n b
+    SM.Def n d -> def (sfree n) (printSurfaceDecl d)
+    SM.Loc _ t     -> t
 
 
 module' :: N.MName -> [Print] -> Print
