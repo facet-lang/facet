@@ -21,6 +21,7 @@ import           Facet.Syntax
 
 data Type
   = Type
+  | Void
   | Unit
   | (Name ::: Type) :=> Type
   | Either Name QName :$ Stack Type
@@ -36,6 +37,7 @@ infixl 7 :*
 instance Scoped Type where
   fvs = \case
     Type    -> mempty
+    Void    -> mempty
     Unit    -> mempty
     t :=> b -> IntSet.delete (id' (tm t)) (fvs b)
     f :$ a  -> either (IntSet.insert . id') (const id) f (foldMap fvs a)
@@ -46,6 +48,7 @@ instance C.Type Type where
   tglobal n = Right n :$ Nil
   tbound n = Left n :$ Nil
   _Type = Type
+  _Void = Void
   _Unit = Unit
   (>=>) = (:=>)
   (.$)  = ($$)
@@ -57,6 +60,7 @@ interpret = go
     where
     go = \case
       Type    -> C._Type
+      Void    -> C._Void
       Unit    -> C._Unit
       t :=> b -> fmap go t C.>=> go b
       f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound C.tglobal f) a
@@ -78,6 +82,7 @@ rename x y = go
   where
   go = \case
     Type          -> Type
+    Void          -> Void
     Unit          -> Unit
     (z ::: t) :=> b
       | x == z    -> (z ::: go t) :=>    b
@@ -91,6 +96,7 @@ subst x e = go
   where
   go =  \case
     Type            -> Type
+    Void            -> Void
     Unit            -> Unit
     (n ::: t) :=> b -> let n' = prime (hint n) (fvs b <> fvs e)
                            b' = go (rename n n' b)

@@ -14,6 +14,8 @@ class Type ty where
   tbound :: Name -> ty
 
   _Type :: ty
+  -- FIXME: encode these as datatypes
+  _Void :: ty
   _Unit :: ty
 
   -- | Universal quantification.

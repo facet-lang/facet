@@ -153,8 +153,9 @@ instance C.Type Print where
   (-->) = (-->)
   (.*) = (**)
   (.$) = ($$)
-  _Unit = _Unit
   _Type = _Type
+  _Void = _Void
+  _Unit = _Unit
   t >=> b = first (N.prettyNameWith tvar) t >~> b
 
 instance C.Expr Print where
@@ -211,9 +212,10 @@ hole :: Text -> Print
 hole n = pretty '?' <> pretty n
 
 
-_Unit, _Type :: Print
-_Unit = annotate Type $ pretty "Unit"
+_Type, _Void, _Unit :: Print
 _Type = annotate Type $ pretty "Type"
+_Void = annotate Type $ pretty "Void"
+_Unit = annotate Type $ pretty "Unit"
 
 ($$), (-->), (**) :: Print -> Print -> Print
 f $$ a = askingPrec $ \case
