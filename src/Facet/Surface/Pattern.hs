@@ -10,6 +10,9 @@ module Facet.Surface.Pattern
 
 import Control.Category ((>>>))
 import Control.Lens (Prism', prism')
+import Data.Bifoldable
+import Data.Bifunctor
+import Data.Bitraversable
 import Text.Parser.Position (Span, Spanned(..))
 
 newtype Pattern a = In { out :: PatternF a (Pattern a) }
@@ -38,3 +41,18 @@ data PatternF a p
   | Tuple [p]
   | Loc Span p
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+instance Bifoldable PatternF where
+  bifoldMap = bifoldMapDefault
+
+instance Bifunctor PatternF where
+  bimap = bimapDefault
+
+  second = fmap
+
+instance Bitraversable PatternF where
+  bitraverse f g = \case
+    Wildcard -> pure Wildcard
+    Var a    -> Var <$> f a
+    Tuple ps -> Tuple <$> traverse g ps
+    Loc s p  -> Loc s <$> g p
