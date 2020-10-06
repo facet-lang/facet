@@ -44,6 +44,7 @@ instance Scoped Name where
 prime :: Scoped t => Text -> t -> Name
 prime n = Name n . maybe 0 (+ 1) . findMax' . fvs
 
+
 findMax' :: IntSet.IntSet -> Maybe Int
 findMax' s
   | IntSet.null s = Nothing
