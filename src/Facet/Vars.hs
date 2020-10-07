@@ -6,6 +6,7 @@ module Facet.Vars
 , difference
 , member
 , Binding(..)
+, Binding1(..)
 , Scoped(..)
 , FVs(..)
 , getFVs
@@ -44,6 +45,11 @@ class Monoid t => Binding t where
 instance Binding Vars where
   singleton = Vars . IntSet.singleton . id'
   bind = delete
+
+
+class Applicative t => Binding1 t where
+  singleton1 :: Name a -> t (Name a)
+  bind1 :: Name a -> t b -> t b
 
 
 class Scoped t where
