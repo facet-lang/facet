@@ -380,8 +380,8 @@ pattern = SP.fold $ \case
 
 elabDecl
   :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
-  => SD.Decl ->
-    m (Check m CE.Expr ::: Type)
+  => SD.Decl
+  -> m (Check m CE.Expr ::: Type)
 elabDecl = SD.fold alg
   where
   alg = \case
