@@ -300,8 +300,8 @@ tlam
   -> Check m expr
   -> Check m expr
 tlam n b = Check $ \ ty -> do
-  (n', _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  n' ::: _T |- C.tlam n <$> check (b ::: _B)
+  (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
+  _T |- C.tlam n <$> check (b ::: _B)
 
 lam
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
@@ -454,10 +454,10 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 -- Patterns
 
-expectQuantifiedType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Name, Type, Type)
+expectQuantifiedType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Name ::: Type, Type)
 expectQuantifiedType s _T = case preview forAll_ _T of
-  Just ((n ::: _T), _B) -> pure (n, _T, _B)
-  _                     -> mismatch s (pretty "{_} -> _") (interpret _T)
+  Just t -> pure t
+  _      -> mismatch s (pretty "{_} -> _") (interpret _T)
 
 expectFunctionType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)
 expectFunctionType s _T = case preview arrow_ _T of
