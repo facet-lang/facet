@@ -401,6 +401,7 @@ elabModule
   :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
   => SM.Module
   -> m CM.Module
+-- FIXME: elaborate submodules with local instead of runReader, once we have submodules
 elabModule (SM.Module s n ds) = local (const s) $ runReader n $ C.module' n <$> traverse elabDef ds
 
 elabDef
