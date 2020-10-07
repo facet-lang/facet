@@ -1,3 +1,4 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -180,7 +181,7 @@ _Unit = Synth $ pure $ C._Unit ::: C._Type
 
 infixl 9 .$
 
-(.*) :: (Monad m, C.Type t) => Check m t -> Check m t -> Synth m t
+(.*) :: (Applicative m, C.Type t) => Check m t -> Check m t -> Synth m t
 a .* b = Synth $ do
   a' <- check (a ::: C._Type)
   b' <- check (b ::: C._Type)
@@ -188,7 +189,7 @@ a .* b = Synth $ do
 
 infixl 7 .*
 
-(-->) :: (Monad m, C.Type t) => Check m t -> Check m t -> Synth m t
+(-->) :: (Applicative m, C.Type t) => Check m t -> Check m t -> Synth m t
 a --> b = Synth $ do
   a' <- check (a ::: C._Type)
   b' <- check (b ::: C._Type)
