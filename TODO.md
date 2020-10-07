@@ -3,7 +3,9 @@
 _Caveat lector: there are no guarantees of correctness or completeness on the contents of this file._
 
 
-## Core
+## Language
+
+### Core
 
 - Substitution & renaming are specified manually over `Expr` & `Type`. This is brittle.
 
@@ -20,7 +22,7 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - Eliminate patterns in lambda domains.
 
 
-## Surface
+### Surface
 
 - `let` bindings.
 
@@ -29,19 +31,21 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - Effects.
 
 
-## Elaborator
+## Components
+
+### Elaborator
 
 - Emit warnings.
 
 - Continue after errors on a declaration-by-declaration basis.
 
 
-## Pretty-printer
+### Pretty-printer
 
 - Decompose into DSLs for printing parts of syntax, interpreters written against said DSLs, and composable implementations of the DSLs providing different behaviours for e.g. bound variable display.
 
 
-## Driver
+### Driver
 
 - Formatting.
 
@@ -52,6 +56,6 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - LSP.
 
 
-## Tests
+### Tests
 
 - Should exist 😅
