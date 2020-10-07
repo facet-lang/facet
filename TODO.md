@@ -69,6 +69,10 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Continue after errors on a declaration-by-declaration basis.
 
+- Insert type application expressions for quantifiers.
+
+  These will presumably have to be metavariables, so we’ll further need to solve for them. Substitution presents its bill at last.
+
 
 ### Pretty-printer
 
