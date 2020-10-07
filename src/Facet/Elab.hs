@@ -22,8 +22,6 @@ module Facet.Elab
 , global
   -- * Types
 , elabType
-, tglobal
-, tbound
 , _Type
 , _Unit
 , (.$)
@@ -32,8 +30,6 @@ module Facet.Elab
 , (>~>)
   -- * Expressions
 , elabExpr
-, eglobal
-, ebound
 , ($$)
 , tlam
 , lam
@@ -172,8 +168,8 @@ elabType
 elabType (t ::: _K) = ST.fold alg t _K
   where
   alg t _K = case t of
-    ST.Free  n -> validate =<< synth (tglobal n)
-    ST.Bound n -> validate =<< synth (tbound n)
+    ST.Free  n -> validate =<< synth (C.tglobal <$> global n)
+    ST.Bound n -> validate =<< synth (C.tbound <$> bound n)
     ST.Hole  n -> hole (n ::: _K)
     ST.Type    -> validate =<< synth _Type
     ST.Void    -> validate =<< synth _Void
@@ -190,17 +186,6 @@ elabType (t ::: _K) = ST.fold alg t _K
       Just _K -> r <$ unify _K' _K
       _       -> pure r
 
-tglobal
-  :: (Has (Reader Env.Env :+: Throw P.Print) sig m, C.Type ty)
-  => N.DName
-  -> Synth m ty
-tglobal n = C.tglobal <$> global n
-
-tbound
-  :: (Has (Reader Context :+: Throw P.Print) sig m, C.Type ty)
-  => Name T
-  -> Synth m ty
-tbound n = C.tbound <$> bound n
 
 _Type :: (Applicative m, C.Type t) => Synth m t
 _Type = Synth $ pure $ C._Type ::: C._Type
@@ -266,8 +251,8 @@ elabExpr
 elabExpr (t ::: _T) = SE.fold alg t _T
   where
   alg t _T = case t of
-    SE.Free  n -> validate =<< synth (eglobal n)
-    SE.Bound n -> validate =<< synth (ebound n)
+    SE.Free  n -> validate =<< synth (C.global <$> global n)
+    SE.Bound n -> validate =<< synth (C.bound <$> bound n)
     SE.Hole  n -> hole (n ::: _T)
     f SE.:$  a -> validate =<< synth (_synth f $$  _check a)
     l SE.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
@@ -282,17 +267,6 @@ elabExpr (t ::: _T) = SE.fold alg t _T
       Just _T -> r <$ unify _T' _T
       _       -> pure r
 
-eglobal
-  :: (Has (Reader Env.Env :+: Throw P.Print) sig m, C.Expr expr)
-  => N.DName
-  -> Synth m expr
-eglobal n = C.global <$> global n
-
-ebound
-  :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
-  => Name E
-  -> Synth m expr
-ebound n = C.bound <$> bound n
 
 ($$)
   :: (Has (Throw P.Print) sig m, C.Expr expr)
