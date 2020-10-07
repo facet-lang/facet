@@ -141,7 +141,7 @@ binder self _ = spanning $ do
 -- Types
 
 typeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
-typeTable = [ Op.Operator (forAll (uncurry setSpan. fmap (review T.forAll_))) ] : monotypeTable
+typeTable = [ Op.Operator (forAll (uncurry setSpan . fmap (review T.forAll_))) ] : monotypeTable
 
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
 monotypeTable =
