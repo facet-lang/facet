@@ -72,7 +72,7 @@ import qualified Facet.Surface.Pattern as SP
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Prelude hiding ((**))
-import           Silkscreen (colon, fillSep, group, pretty, softline, (<+>), (</>))
+import           Silkscreen (colon, fillSep, group, line, nest, pretty, softline, (</>))
 
 type Context = IntMap.IntMap Type
 
@@ -444,8 +444,8 @@ hole (n ::: t) = case t of
 
 mismatch :: Has (Throw P.Print) sig m => P.Print -> P.Print -> P.Print -> m a
 mismatch msg exp act = err $ msg
-  </> pretty "expected:" <+> exp
-  </> pretty "  actual:" <+> act
+  </> pretty "expected:" <> nest 2 (line <> exp)
+  </> pretty "  actual:" <> nest 2 (line <> act)
 
 couldNotUnify :: Has (Throw P.Print) sig m => Type -> Type -> m a
 couldNotUnify t1 t2 = mismatch (reflow "could not unify") (interpret t2) (interpret t1)
