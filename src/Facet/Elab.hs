@@ -160,10 +160,10 @@ elabType
   -> m (Type ::: Type)
 elabType (t ::: _K) = ST.fold alg t _K
   where
-  alg t _K = case t of
+  alg = \case
     ST.Free  n -> switch $ synth (C.tglobal <$> global n)
     ST.Bound n -> switch $ synth (C.tbound <$> bound n)
-    ST.Hole  n -> hole (n ::: _K)
+    ST.Hole  n -> \ _K -> hole (n ::: _K)
     ST.Type    -> switch $ synth _Type
     ST.Void    -> switch $ synth _Void
     ST.Unit    -> switch $ synth _Unit
@@ -171,11 +171,11 @@ elabType (t ::: _K) = ST.fold alg t _K
     f ST.:$  a -> switch $ synth (_synth f .$  _check a)
     a ST.:-> b -> switch $ synth (_check a --> _check b)
     l ST.:*  r -> switch $ synth (_check l .*  _check r)
-    ST.Loc s b -> local (const s) $ b _K
+    ST.Loc s b -> local (const s) . b
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
-    switch m = case _K of
+    switch m = \case
       Just _K -> m >>= \ r -> r <$ unify (ty r) _K
       _       -> m
 
