@@ -17,6 +17,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Case expressions.
 
+- Eliminate patterns in lambda domains.
+
 
 ## Surface
 
