@@ -65,7 +65,7 @@ instance Binding a => Binding1 (Const a) where
 newtype Rename a = Rename { runRename :: forall x . Name x -> Name x -> a }
 
 instance Functor Rename where
-  fmap f (Rename run) = Rename $ \ x y -> f (run x y)
+  fmap f r = Rename $ \ x y -> f (runRename r x y)
 
 instance Applicative Rename where
   pure a = Rename $ \ _ _ -> a
