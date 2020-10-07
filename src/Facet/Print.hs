@@ -175,9 +175,9 @@ instance C.Expr Print where
   (**) = (**)
 
 instance C.Module Print Print Print where
-  module' n ds = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: t) </> getDef d) ds))
+  module' n ds = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: t) </> printDef d) ds))
     where
-    getDef = \case
+    printDef = \case
       C.DTerm b -> b
       C.DType b -> b
 
