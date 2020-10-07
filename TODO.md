@@ -54,6 +54,11 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 ## Components
 
+### Parser
+
+- Extend the precedence table for mixfix operators.
+
+
 ### Elaborator
 
 - Emit warnings.
