@@ -5,7 +5,7 @@ Effect.Reader : Module
 
 Reader : (R : Type) -> InteRface
 { ask : R
-, local : (R -> R) -> A -> A
+, local : {A : Type} -> (R -> R) -> A -> A
 }
 
 }
