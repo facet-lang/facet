@@ -182,12 +182,12 @@ instance C.Expr Print where
   (**) = (**)
 
 instance C.Module Print Print Print where
-  module' n ds = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: t) </> printDef d) ds))
+  module' n ds = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: t) </> printDef d) ds))
     where
     printDef = \case
       C.DTerm b  -> b
       C.DType b  -> b
-      C.DData cs -> braces (commaSep (map (ann . first pretty) cs))
+      C.DData cs -> block (commaSep (map (ann . first pretty) cs))
 
 
 printCoreType :: CT.Type -> Print
@@ -365,7 +365,7 @@ printSurfaceDef (SM.Def _ n d) = def (sfree n) (printSurfaceDecl d)
 
 
 module' :: N.MName -> [Print] -> Print
-module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep b)
+module' n b = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep b)
 
 def :: Print -> Print -> Print
 def n b = group $ ann (n ::: b)
