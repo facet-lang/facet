@@ -79,6 +79,9 @@ instance Binding1 Rename where
 
 newtype Substitute a = Substitute { runSubstitute :: forall x t . Scoped1 t => Name x -> t -> a }
 
+instance Functor Substitute where
+  fmap f s = Substitute $ \ x e -> f (runSubstitute s x e)
+
 
 class Scoped t where
   fvs :: Binding vs => t -> vs
