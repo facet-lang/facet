@@ -280,7 +280,7 @@ clause = SC.fold $ \case
   SC.Loc s c  -> local (const s) c
 
 
-pattern :: (Has (Reader Span :+: Throw P.Print) sig m) => SP.Pattern N.Name -> Check m (CP.Pattern (N.Name ::: Type))
+pattern :: Has (Reader Span :+: Throw P.Print) sig m => SP.Pattern N.Name -> Check m (CP.Pattern (N.Name ::: Type))
 pattern = SP.fold $ \case
   SP.Wildcard -> pure (review CP.wildcard_ ())
   SP.Var n    -> Check $ \ _T -> pure (review CP.var_ (n ::: _T))
