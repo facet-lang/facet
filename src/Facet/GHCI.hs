@@ -55,7 +55,7 @@ elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) S.Module -> String -> m ()
 elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . run . elab (MName mempty) (Span (Pos 0 0) (Pos 0 0)) implicit mempty . elabModule of
   Left err -> P.putDoc (prettyNotice err)
-  Right a  -> P.prettyPrint (Module.interpret a)
+  Right a  -> P.prettyPrint (Module.interpretModule a)
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s

@@ -173,8 +173,10 @@ instance C.Expr Print where
   unit = unit
   (**) = (**)
 
-instance C.Module Print Print Print where
+instance C.Module Print Print where
   module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep b)
+
+instance C.Def Print Print Print where
   defTerm n (t := b) = ann (var (prettyQName n) ::: t) </> b
 
 
@@ -328,9 +330,10 @@ t .= b = t </> b
 
 
 printSurfaceModule :: SM.Module -> Print
-printSurfaceModule = SM.out >>> \case
-  SM.Module  n b -> module' n (map printSurfaceModule b)
-  SM.Def n d -> def (sfree n) (printSurfaceDecl d)
+printSurfaceModule (SM.Module _ n ds) = module' n (map printSurfaceDef ds)
+
+printSurfaceDef :: SM.Def -> Print
+printSurfaceDef (SM.Def _ n d) = def (sfree n) (printSurfaceDecl d)
 
 
 module' :: N.MName -> [Print] -> Print

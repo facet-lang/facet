@@ -113,12 +113,12 @@ whole p = whiteSpace *> p <* eof
 module' :: (Monad p, PositionParsing p) => Facet p M.Module
 module' = mk <$> spanned ((,) <$> mname <* colon <* symbol "Module" <*> braces (many decl))
   where
-  mk (s, (n, ds)) = M.module' s n ds
+  mk (s, (n, ds)) = M.Module s n ds
 
-decl :: (Monad p, PositionParsing p) => Facet p M.Module
+decl :: (Monad p, PositionParsing p) => Facet p M.Def
 decl = mk <$> spanned ((,) <$> dname <* colon <*> sig)
   where
-  mk (s, (n, b)) = M.def s n b
+  mk (s, (n, b)) = M.Def s n b
 
 
 -- Declarations

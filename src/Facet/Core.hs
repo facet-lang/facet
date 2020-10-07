@@ -4,6 +4,7 @@ module Facet.Core
 ( Type(..)
 , Expr(..)
 , Module(..)
+, Def(..)
 ) where
 
 import qualified Facet.Core.Pattern as P
@@ -44,7 +45,9 @@ class Expr expr where
   (**) :: expr -> expr -> expr
 
 
-class Module expr ty mod | mod -> expr ty where
-  module' :: MName -> [mod] -> mod
+class Def expr ty def | def -> expr ty where
+  defTerm :: QName -> (ty := expr) -> def
 
-  defTerm :: QName -> (ty := expr) -> mod
+
+class Module def mod | mod -> def where
+  module' :: MName -> [def] -> mod

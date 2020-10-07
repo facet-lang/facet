@@ -41,7 +41,6 @@ module Facet.Elab
 ) where
 
 import           Control.Algebra
-import           Control.Category ((>>>))
 import           Control.Carrier.Reader
 import           Control.Effect.Parser.Span (Span(..))
 import           Control.Lens (preview, review)
@@ -319,18 +318,18 @@ elabDecl = SD.fold alg
 
 -- Modules
 
-elabModule :: (Algebra sig m, C.Module expr ty mod, C.Type ty, C.Expr expr) => SM.Module -> Elab m mod
-elabModule = SM.out >>> \case
-  SM.Module n ds -> C.module' n <$> traverse elabModule ds
+elabModule :: (Algebra sig m, C.Module def mod, C.Def expr ty def, C.Type ty, C.Expr expr) => SM.Module -> Elab m mod
+elabModule (SM.Module s n ds) = local (const s) $ C.module' n <$> traverse elabDef ds
 
-  SM.Def n d -> do
-    e ::: _T <- elabDecl d
-    e' <- check (e ::: _T)
-    mname <- ask
-    -- FIXME: extend the environment
-    -- FIXME: extend the module
-    -- FIXME: support defining types
-    pure $ C.defTerm (mname :.: n) (interpret _T := e')
+elabDef :: (Algebra sig m, C.Def expr ty def, C.Type ty, C.Expr expr) => SM.Def -> Elab m def
+elabDef (SM.Def s n d) = local (const s) $ do
+  e ::: _T <- elabDecl d
+  e' <- check (e ::: _T)
+  mname <- ask
+  -- FIXME: extend the environment
+  -- FIXME: extend the module
+  -- FIXME: support defining types
+  pure $ C.defTerm (mname :.: n) (interpret _T := e')
 
 
 -- Context
