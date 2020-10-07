@@ -11,7 +11,7 @@ module Facet.Core.Expr
 ) where
 
 import           Control.Category ((>>>))
-import           Control.Lens.Prism
+import           Control.Lens.Prism (Prism', prism')
 import qualified Facet.Core as C
 import qualified Facet.Core.Pattern as P
 import           Facet.Name
