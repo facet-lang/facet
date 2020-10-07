@@ -5,7 +5,7 @@
 module Facet.Surface.Decl
 ( Decl(..)
 , forAll_
-, (>->)
+, bind_
 , (.=)
 , DeclF(..)
 , fold
@@ -31,10 +31,8 @@ instance Spanned Decl where
 forAll_ :: Prism' Decl (Name T ::: Type, Decl)
 forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
 
-(>->) :: (Name E ::: Type) -> Decl -> Decl
-(>->) = fmap In . (:->)
-
-infixr 1 >->
+bind_ :: Prism' Decl (Name E ::: Type, Decl)
+bind_ = prism' (In . uncurry (:->)) (\case{ In (t :-> b) -> Just (t, b) ; _ -> Nothing })
 
 (.=) :: Type -> Expr -> Decl
 (.=) = fmap In . (:=)
