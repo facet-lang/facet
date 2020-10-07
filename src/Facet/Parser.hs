@@ -176,7 +176,7 @@ monotype :: (Monad p, PositionParsing p) => Facet p T.Type
 monotype = build monotypeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review T.prd_)))))
 
 tvar :: (Monad p, PositionParsing p) => Facet p T.Type
-tvar = token (spanning (runUnspaced (resolve <$> tname <*> Unspaced tenv <?> "variable")))
+tvar = token (settingSpan (runUnspaced (resolve <$> tname <*> Unspaced tenv <?> "variable")))
   where
   resolve n env = fromMaybe (review T.global_ (N.T n)) (Map.lookup n env)
 
@@ -196,7 +196,7 @@ expr :: (Monad p, PositionParsing p) => Facet p E.Expr
 expr = build exprTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review E.prd_)))))
 
 comp :: (Monad p, PositionParsing p) => Facet p E.Expr
-comp = spanning (braces (review E.comp_ <$> clauses))
+comp = settingSpan (braces (review E.comp_ <$> clauses))
   where
   clauses
     =   sepBy1 clause comma
@@ -216,8 +216,8 @@ body = review C.body_ <$> expr
 
 evar :: (Monad p, PositionParsing p) => Facet p E.Expr
 evar
-  =   token (spanning (runUnspaced (resolve <$> ename <*> Unspaced eenv <?> "variable")))
-  <|> try (token (spanning (runUnspaced (review E.global_ . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
+  =   token (settingSpan (runUnspaced (resolve <$> ename <*> Unspaced eenv <?> "variable")))
+  <|> try (token (settingSpan (runUnspaced (review E.global_ . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
   where
   resolve n env = fromMaybe (review E.global_ (N.E n)) (Map.lookup n env)
 
@@ -245,7 +245,7 @@ wildcard = reserve enameStyle "_"
 
 -- FIXME: patterns
 pattern :: (Monad p, PositionParsing p) => p (P.Pattern N.EName)
-pattern = spanning
+pattern = settingSpan
   $   review P.var_ <$> ename
   <|> review P.wildcard_ <$> wildcard
   <|> review P.tuple_ <$> parens (commaSep pattern)
