@@ -301,7 +301,7 @@ printSurfaceExpr = go
     SE.Loc _ t -> go t
 
 printSurfaceComp :: [SC.Clause SE.Expr] -> Print
-printSurfaceComp = comp . concatWith (surround (line' <> comma <> space)) . map printSurfaceClause
+printSurfaceComp = comp . commaSep . map printSurfaceClause
 
 printSurfaceClause :: SC.Clause SE.Expr -> Print
 printSurfaceClause = SC.out >>> \case
