@@ -182,14 +182,14 @@ printSurfaceType = go
   where
   go = ST.out >>> \case
     ST.Free n  -> sfree n
-    ST.Bound n -> sbound (N.getTLocal n)
+    ST.Bound n -> sbound n
     ST.Hole n  -> hole n
     ST.Type    -> _Type
     ST.Void    -> _Void
     ST.Unit    -> _Unit
     t ST.:=> b ->
       let (t', b') = unprefixr (preview ST.forAll_ . dropSpan) b
-      in map (first (sbound . N.getTLocal)) (t:t') >~~> go b'
+      in map (first sbound) (t:t') >~~> go b'
     f ST.:$  a ->
       let (f', a') = unprefixl (preview ST.app_ . dropSpan) f
       in go f' $$* fmap go (a' :> a)
@@ -204,13 +204,13 @@ cfree :: N.QName -> Print
 cfree = var . prettyQName
 
 
-sbound :: N.Name -> Print
+sbound :: N.Name a -> Print
 sbound = var . pretty . N.hint
 
-cebound :: N.ELocal -> Print
+cebound :: N.Name N.E -> Print
 cebound = var . pretty
 
-ctbound :: N.TLocal -> Print
+ctbound :: N.Name N.T -> Print
 ctbound = var . pretty
 
 
@@ -260,7 +260,7 @@ printSurfaceExpr = go
   where
   go = SE.out >>> \case
     SE.Free n  -> sfree n
-    SE.Bound n -> sbound (N.getELocal n)
+    SE.Bound n -> sbound n
     SE.Hole n  -> hole n
     f SE.:$  a ->
       let (f', a') = unprefixl (preview SE.app_ . dropSpan) f
@@ -281,16 +281,16 @@ printSurfaceClause = SC.out >>> \case
   SC.Body e     -> prec Expr (printSurfaceExpr e)
   SC.Loc _ c    -> printSurfaceClause c
 
-printCorePattern :: CP.Pattern N.ELocal -> Print
+printCorePattern :: CP.Pattern (N.Name N.E) -> Print
 printCorePattern p = prec Pattern $ case CP.out p of
   CP.Wildcard -> pretty '_'
-  CP.Var n    -> sbound (N.getELocal n)
+  CP.Var n    -> sbound n
   CP.Tuple p  -> tupled (map printCorePattern p)
 
-printSurfacePattern :: SP.Pattern N.ELocal -> Print
+printSurfacePattern :: SP.Pattern (N.Name N.E) -> Print
 printSurfacePattern p = prec Pattern $ case SP.out p of
   SP.Wildcard -> pretty '_'
-  SP.Var n    -> sbound (N.getELocal n)
+  SP.Var n    -> sbound n
   SP.Tuple p  -> tupled (map printSurfacePattern p)
   SP.Loc _ p  -> printSurfacePattern p
 
@@ -314,8 +314,8 @@ printSurfaceDecl = go
     t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
     t SD.:=> b ->
       let (t', b') = unprefixr (preview SD.forAll_ . dropSpan) b
-      in map (first (sbound . N.getTLocal)) (t:t') >~~> go b'
-    t SD.:-> b -> bimap (sbound . N.getELocal) printSurfaceType t >-> go b
+      in map (first sbound) (t:t') >~~> go b'
+    t SD.:-> b -> bimap sbound printSurfaceType t >-> go b
     SD.Loc _ d -> go d
 
 -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.

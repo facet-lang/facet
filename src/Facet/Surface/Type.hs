@@ -38,14 +38,14 @@ instance Spanned Type where
 global_ :: Prism' Type DName
 global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
 
-bound_ :: Prism' Type TLocal
+bound_ :: Prism' Type (Name T)
 bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
 
 hole_ :: Prism' Type Text
 hole_ = prism' (In . Hole) (\case{ In (Hole n) -> Just n ; _ -> Nothing })
 
 
-forAll_ :: Prism' Type (TLocal ::: Type, Type)
+forAll_ :: Prism' Type (Name T ::: Type, Type)
 forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
 
 arrow_ :: Prism' Type (Type, Type)
@@ -85,12 +85,12 @@ aeq = fold $ \ t1 t2 -> case (t1, out t2) of
 
 data TypeF t
   = Free DName
-  | Bound TLocal
+  | Bound (Name T)
   | Hole Text
   | Type
   | Void
   | Unit
-  | (TLocal ::: t) :=> t
+  | (Name T ::: t) :=> t
   | t :$ t
   | t :-> t
   | t :*  t

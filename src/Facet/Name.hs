@@ -1,10 +1,13 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Name
 ( Name(..)
 , prettyNameWith
-, ELocal(..)
-, TLocal(..)
+, eqN
+, elemN
+, E
+, T
 , __
 , instantiate
 , MName(..)
@@ -18,6 +21,7 @@ module Facet.Name
 , OpN(..)
 ) where
 
+import           Data.Coerce
 import           Data.Function (on)
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty
@@ -28,42 +32,45 @@ import           Facet.Pretty
 import qualified Prettyprinter as P
 import           Silkscreen
 
-data Name = Name { hint :: Text, id' :: Int }
+data Name a = Name { hint :: Text, id' :: Int }
 
-instance Eq Name where
+instance Eq (Name a) where
   (==) = (==) `on` id'
 
-instance Ord Name where
+instance Ord (Name a) where
   compare = compare `on` id'
 
-instance Show Name where
+instance Show (Name a) where
   showsPrec _ (Name h i) = showString (unpack h) . shows i
 
+instance P.Pretty (Name E) where
+  pretty = prettyNameWith evar
 
-prettyNameWith :: Printer p => (Int -> p) -> Name -> p
+instance P.Pretty (Name T) where
+  pretty = prettyNameWith tvar
+
+
+prettyNameWith :: Printer p => (Int -> p) -> Name a -> p
 prettyNameWith var n
   | T.null (hint n) = var (id' n)
   | otherwise       = pretty (hint n) <> pretty (id' n)
 
+eqN :: Name a -> Name b -> Bool
+eqN = coerce ((==) :: Name a -> Name a -> Bool)
 
-newtype ELocal = ELocal { getELocal :: Name }
-  deriving (Eq, Ord, Show)
+elemN :: Foldable t => Name b -> t (Name a) -> Bool
+elemN = elem . coerce
 
-instance P.Pretty ELocal where
-  pretty = prettyNameWith evar . getELocal
 
-newtype TLocal = TLocal { getTLocal :: Name }
-  deriving (Eq, Ord, Show)
-
-instance P.Pretty TLocal where
-  pretty = prettyNameWith tvar . getTLocal
+data E
+data T
 
 
 __ :: Text
 __ = T.empty
 
 
-instantiate :: Name -> t -> IntMap.IntMap t -> IntMap.IntMap t
+instantiate :: Name a -> t -> IntMap.IntMap t -> IntMap.IntMap t
 instantiate = IntMap.insert . id'
 
 

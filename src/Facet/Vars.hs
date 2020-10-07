@@ -23,23 +23,23 @@ import           Facet.Name
 newtype Vars = Vars { getVars :: IntSet.IntSet }
   deriving (Monoid, Semigroup, Show)
 
-insert :: Name -> Vars -> Vars
+insert :: Name a -> Vars -> Vars
 insert = coerce (IntSet.insert . id')
 
-delete :: Name -> Vars -> Vars
+delete :: Name a -> Vars -> Vars
 delete = coerce (IntSet.delete . id')
 
 difference :: Vars -> Vars -> Vars
 difference = coerce IntSet.difference
 
-member :: Name -> Vars -> Bool
+member :: Name a -> Vars -> Bool
 member = coerce (IntSet.member . id')
 
 
 -- https://www.haskell.org/ghc/blog/20190728-free-variable-traversals.html 🎩 bgamari
 class Monoid t => Binding t where
-  singleton :: Name -> t
-  bind :: Name -> t -> t
+  singleton :: Name a -> t
+  bind :: Name a -> t -> t
 
 instance Binding Vars where
   singleton = Vars . IntSet.singleton . id'
@@ -49,7 +49,7 @@ instance Binding Vars where
 class Scoped t where
   fvs :: Binding vs => t -> vs
 
-instance Scoped Name where
+instance Scoped (Name a) where
   fvs = singleton
 
 
@@ -70,7 +70,7 @@ getFVs v = runFVs v mempty mempty
 
 
 -- | Construct a fresh name given the provided free variables.
-prime :: Text -> FVs -> Name
+prime :: Text -> FVs -> Name a
 prime n = Name n . freshIdForFVs
 
 renameAccumL :: Traversable t => (Int -> a -> b -> (a, c)) -> FVs -> a -> t b -> (a, t c)

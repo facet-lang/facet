@@ -60,11 +60,11 @@ type TEnv = Map.Map N.TName T.Type
 runFacet :: EEnv -> TEnv -> Facet m a -> m a
 runFacet e t (Facet m) = m e t
 
-bindE :: N.EName -> (N.ELocal -> Facet m a) -> Facet m a
-bindE n b = Facet $ \ e t -> let n' = N.ELocal (N.Name (N.getEName n) (length e + length t)) in runFacet (Map.insert n (review E.bound_ n') e) t (b n')
+bindE :: N.EName -> (N.Name N.E -> Facet m a) -> Facet m a
+bindE n b = Facet $ \ e t -> let n' = N.Name (N.getEName n) (length e + length t) in runFacet (Map.insert n (review E.bound_ n') e) t (b n')
 
-bindT :: N.TName -> (N.TLocal -> Facet m a) -> Facet m a
-bindT n b = Facet $ \ e t -> let n' = N.TLocal (N.Name (N.getTName n) (length e + length t)) in runFacet e (Map.insert n (review T.bound_ n') t) (b n')
+bindT :: N.TName -> (N.Name N.T -> Facet m a) -> Facet m a
+bindT n b = Facet $ \ e t -> let n' = N.Name (N.getTName n) (length e + length t) in runFacet e (Map.insert n (review T.bound_ n') t) (b n')
 
 newtype Facet m a = Facet (EEnv -> TEnv -> m a)
   deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC EEnv (ReaderC TEnv m)
@@ -157,7 +157,7 @@ monotypeTable =
 
 forAll
   :: (Spanned res, Monad p, PositionParsing p)
-  => (Facet p (N.TLocal S.::: T.Type) -> Facet p res -> Facet p res)
+  => (Facet p (N.Name N.T S.::: T.Type) -> Facet p res -> Facet p res)
   -> OperatorParser (Facet p) res
 forAll (>=>) self _ = spanning $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
@@ -220,14 +220,14 @@ evar
 
 -- Patterns
 
-bindPattern :: PositionParsing p => P.Pattern N.EName -> (P.Pattern N.ELocal -> Facet p a) -> Facet p a
+bindPattern :: PositionParsing p => P.Pattern N.EName -> (P.Pattern (N.Name N.E) -> Facet p a) -> Facet p a
 bindPattern p f = case P.out p of
   P.Wildcard -> bindE (N.EName N.__) (const (f (review P.wildcard_ ())))
   P.Var n    -> bindE n              (f . review P.var_)
   P.Tuple ps -> foldr (\ p k ps -> bindPattern p $ \ p' -> k (ps . (p':))) (f . review P.tuple_ . ($ [])) ps id
   P.Loc _ p  -> bindPattern p f
 
-bindVarPattern :: Maybe N.EName -> (N.ELocal -> Facet p res) -> Facet p res
+bindVarPattern :: Maybe N.EName -> (N.Name N.E -> Facet p res) -> Facet p res
 bindVarPattern Nothing  = bindE (N.EName N.__)
 bindVarPattern (Just n) = bindE n
 

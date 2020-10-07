@@ -36,13 +36,13 @@ instance Scoped Type where
     Type    -> mempty
     Void    -> mempty
     Unit    -> mempty
-    t :=> b -> bind (getTLocal (tm t)) (fvs b)
-    f :$ a  -> either (singleton . getTLocal) (const mempty) f <> foldMap fvs a
+    t :=> b -> bind (tm t) (fvs b)
+    f :$ a  -> either singleton (const mempty) f <> foldMap fvs a
     a :-> b -> fvs a <> fvs b
     l :* r  -> fvs l <> fvs r
 
 
-forAll_ :: Prism' Type (TLocal ::: Type, Type)
+forAll_ :: Prism' Type (Name T ::: Type, Type)
 forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
 
 arrow_ :: Prism' Type (Type, Type)
@@ -78,7 +78,7 @@ f $$* as = foldl' ($$) f as
 
 infixl 9 $$, $$*
 
-rename :: TLocal -> TLocal -> Type -> Type
+rename :: Name T -> Name T -> Type -> Type
 rename x y = go
   where
   go = out >>> \case
@@ -92,14 +92,14 @@ rename x y = go
     a :-> b       -> go a C.--> go b
     l :*  r       -> go l C..*  go r
 
-subst :: TLocal -> Type -> Type -> Type
+subst :: Name T -> Type -> Type -> Type
 subst x e = go
   where
   go =  out >>> \case
     Type            -> C._Type
     Void            -> C._Void
     Unit            -> C._Unit
-    (n ::: t) :=> b -> let n' = TLocal (prime (hint (getTLocal n)) (fvs b <> fvs e))
+    (n ::: t) :=> b -> let n' = prime (hint n) (fvs b <> fvs e)
                            b' = go (rename n n' b)
                        in (n' ::: go t) C.>=> b'
     f :$  as
@@ -116,8 +116,8 @@ data TypeF t
   = Type
   | Void
   | Unit
-  | (TLocal ::: t) :=> t
-  | Either TLocal QName :$ Stack t
+  | (Name T ::: t) :=> t
+  | Either (Name T) QName :$ Stack t
   | t :-> t
   | t :*  t
   deriving (Foldable, Functor, Show, Traversable)
