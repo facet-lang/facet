@@ -24,3 +24,4 @@ interpretDef :: (C.Expr expr, C.Type ty) => (C.Def Expr.Expr Type.Type ::: Type.
 interpretDef = \case
   C.DTerm e  ::: _T -> C.DTerm (Expr.interpret e)  ::: Type.interpret _T
   C.DType _T ::: _K -> C.DType (Type.interpret _T) ::: Type.interpret _K
+  C.DData cs ::: _K -> C.DData (map (fmap Type.interpret) cs) ::: Type.interpret _K

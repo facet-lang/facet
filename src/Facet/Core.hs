@@ -8,7 +8,7 @@ module Facet.Core
 ) where
 
 import qualified Facet.Core.Pattern as P
-import           Facet.Name (E, MName, QName, Name, T)
+import           Facet.Name (CName, E, MName, Name, QName, T)
 import           Facet.Syntax ((:::)(..))
 
 class Type ty where
@@ -48,6 +48,7 @@ class Expr expr where
 data Def expr ty
   = DTerm expr
   | DType ty
+  | DData [CName ::: ty]
   deriving (Eq, Ord, Show)
 
 

@@ -185,8 +185,9 @@ instance C.Module Print Print Print where
   module' n ds = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: t) </> printDef d) ds))
     where
     printDef = \case
-      C.DTerm b -> b
-      C.DType b -> b
+      C.DTerm b  -> b
+      C.DType b  -> b
+      C.DData cs -> braces (commaSep (map (ann . first pretty) cs))
 
 
 printCoreType :: CT.Type -> Print
