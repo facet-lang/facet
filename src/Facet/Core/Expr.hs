@@ -21,7 +21,7 @@ newtype Expr = In { out :: ExprF Expr }
 
 instance Scoped Expr where
   fvs = out >>> \case
-    Global _ -> mempty
+    Free _   -> mempty
     Bound  n -> fvs n
     TLam n b -> bind n (fvs b)
     Lam p b  -> foldr bind (fvs b) p
@@ -30,7 +30,7 @@ instance Scoped Expr where
     Pair l r -> fvs l <> fvs r
 
 instance C.Expr Expr where
-  global = In . Global
+  global = In . Free
   bound = In . Bound
   tlam = fmap In . TLam
   lam = fmap In . Lam
@@ -43,7 +43,7 @@ app_ = prism' (uncurry (C.$$)) (\case{ In (App f a) -> Just (f, a) ; _ -> Nothin
 
 interpret :: C.Expr r => Expr -> r
 interpret = out >>> \case
-  Global n -> C.global n
+  Free n -> C.global n
   Bound n -> C.bound n
   TLam n b -> C.tlam n (interpret b)
   Lam n b -> C.lam n (interpret b)
@@ -56,7 +56,7 @@ rename :: Name -> Name -> Expr -> Expr
 rename x y = go
   where
   go = out >>> \case
-    Global s      -> C.global s
+    Free s        -> C.global s
     Bound z
       | x == z    -> C.bound y
       | otherwise -> C.bound z
@@ -75,7 +75,7 @@ subst :: Name -> Expr -> Expr -> Expr
 subst x e = go
   where
   go = out >>> \case
-    Global s      -> C.global s
+    Free s        -> C.global s
     Bound n
       | n == x    -> e
       | otherwise -> C.bound n
@@ -93,7 +93,7 @@ subst x e = go
 
 
 data ExprF e
-  = Global QName
+  = Free QName
   | Bound Name
   | TLam Name e
   | Lam (P.Pattern Name) e
