@@ -14,6 +14,7 @@ module Facet.Name
 , QName(..)
 , moduleName
 , EName(..)
+, CName(..)
 , TName(..)
 , DName(..)
 , Assoc(..)
@@ -87,6 +88,9 @@ moduleName (mname :.: _) = mname
 
 
 newtype EName = EName { getEName :: Text }
+  deriving (Eq, IsString, Ord, P.Pretty, Show)
+
+newtype CName = CName { getCName :: Text }
   deriving (Eq, IsString, Ord, P.Pretty, Show)
 
 newtype TName = TName { getTName :: Text }
