@@ -3,6 +3,8 @@
 module Facet.Name
 ( Name(..)
 , prettyNameWith
+, ELocal(..)
+, TLocal(..)
 , __
 , instantiate
 , MName(..)
@@ -41,6 +43,11 @@ prettyNameWith :: Printer p => (Int -> p) -> Name -> p
 prettyNameWith var n
   | T.null (hint n) = var (id' n)
   | otherwise       = pretty (hint n) <> pretty (id' n)
+
+
+newtype ELocal = ELocal { getELocal :: Name }
+
+newtype TLocal = TLocal { getTLocal :: Name }
 
 
 __ :: Text
