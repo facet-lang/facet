@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
@@ -44,7 +45,7 @@ module Facet.Elab
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Effect.Parser.Span (Span(..))
-import           Control.Lens (preview, review)
+import           Control.Lens (Prism', preview, review)
 import           Data.Bifunctor (first)
 import           Data.Foldable (toList)
 import qualified Data.IntMap as IntMap
@@ -454,11 +455,14 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 -- Patterns
 
+expectMatch :: Has (Throw P.Print) sig m => Prism' Type out -> P.Print -> P.Print -> Type -> m out
+expectMatch pat exp s _T = maybe (mismatch s exp (interpret _T)) pure (preview pat _T)
+
 expectQuantifiedType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Name ::: Type, Type)
-expectQuantifiedType s _T = maybe (mismatch s (pretty "{_} -> _") (interpret _T)) pure (preview forAll_ _T)
+expectQuantifiedType = expectMatch forAll_ (pretty "{_} -> _")
 
 expectFunctionType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)
-expectFunctionType s _T = maybe (mismatch s (pretty "_ -> _") (interpret _T)) pure (preview arrow_ _T)
+expectFunctionType = expectMatch arrow_ (pretty "_ -> _")
 
 expectProductType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)
-expectProductType s _T = maybe (mismatch s (pretty "(_, _)") (interpret _T)) pure (preview prd_ _T)
+expectProductType = expectMatch prd_ (pretty "(_, _)")
