@@ -17,6 +17,7 @@ import           Data.Coerce
 import qualified Data.IntSet as IntSet
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
+import           GHC.Exts
 import           Facet.Name
 
 newtype Vars = Vars { getVars :: IntSet.IntSet }
@@ -55,7 +56,7 @@ instance Scoped Name where
 newtype FVs = FVs { runFVs :: Vars -> Vars -> Vars }
 
 instance Semigroup FVs where
-  FVs v1 <> FVs v2 = FVs $ \ b f -> v1 b (v2 b f)
+  FVs v1 <> FVs v2 = FVs $ oneShot $ \ b -> oneShot $ \ f -> v1 b (v2 b f)
 
 instance Monoid FVs where
   mempty = FVs (const id)
