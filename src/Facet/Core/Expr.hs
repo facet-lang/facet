@@ -33,7 +33,7 @@ instance Scoped Expr where
     Lam p b  -> foldr bind (fvs b) p
     App f a  -> fvs f <> fvs a
     Unit     -> mempty
-    Pair l r -> fvs l <> fvs r
+    l :* r   -> fvs l <> fvs r
 
 instance C.Expr Expr where
   global = In . Free
@@ -42,7 +42,7 @@ instance C.Expr Expr where
   lam = fmap In . Lam
   ($$) = fmap In . App
   unit = In Unit
-  (**) = fmap In . Pair
+  (**) = fmap In . (:*)
 
 
 global_ :: Prism' Expr QName
@@ -66,7 +66,7 @@ unit_ :: Prism' Expr ()
 unit_ = prism' (const (In Unit)) (\case{ In Unit -> Just () ; _ -> Nothing })
 
 prd_ :: Prism' Expr (Expr, Expr)
-prd_ = prism' (In . uncurry Pair) (\case{ In (Pair l r) -> Just (l, r) ; _ -> Nothing })
+prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
 
 
 interpret :: C.Expr r => Expr -> r
@@ -77,7 +77,7 @@ interpret = out >>> \case
   Lam n b -> C.lam n (interpret b)
   App f a -> interpret f C.$$ interpret a
   Unit -> C.unit
-  Pair l r -> interpret l C.** interpret r
+  l :* r -> interpret l C.** interpret r
 
 -- FIXME: this is pretty inefficient for multiple renamings; we should try to fuse renamings.
 rename :: Name -> Name -> Expr -> Expr
@@ -96,7 +96,7 @@ rename x y = go
       | otherwise -> C.lam z (go b)
     App f a       -> go f C.$$ go a
     Unit          -> C.unit
-    Pair l r      -> go l C.** go r
+    l :* r        -> go l C.** go r
 
 -- FIXME: this is pretty inefficient for multiple substitutions; we should try to fuse substitutions.
 subst :: Name -> Expr -> Expr -> Expr
@@ -117,7 +117,7 @@ subst x e = go
       in C.lam p' b'
     App f a       -> go f C.$$ go a
     Unit          -> C.unit
-    Pair l r      -> go l C.** go r
+    l :* r        -> go l C.** go r
 
 
 data ExprF e
@@ -127,8 +127,10 @@ data ExprF e
   | Lam (P.Pattern Name) e
   | App e e
   | Unit
-  | Pair e e
+  | e :* e
   deriving (Foldable, Functor, Show, Traversable)
+
+infixl 7 :*
 
 fold :: (ExprF a -> a) -> Expr -> a
 fold alg = go
