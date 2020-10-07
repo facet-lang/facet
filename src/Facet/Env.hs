@@ -5,6 +5,7 @@ module Facet.Env
 ( Env(..)
 , fromList
 , lookup
+, insert
 ) where
 
 import           Data.Coerce
@@ -22,3 +23,6 @@ fromList = coerce (Map.fromList @DName @(MName ::: Type))
 
 lookup :: DName -> Env -> Maybe (MName ::: Type)
 lookup = coerce (Map.lookup @DName @(MName ::: Type))
+
+insert :: QName ::: Type -> Env -> Env
+insert (m :.: d ::: _T) = Env . Map.insert d (m ::: _T) . getEnv
