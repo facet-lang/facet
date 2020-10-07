@@ -333,7 +333,6 @@ printSurfaceModule = SM.fold alg
   alg = \case
     SM.Module  n b -> module' n b
     SM.Def n d -> def (sfree n) (printSurfaceDecl d)
-    SM.Loc _ t     -> t
 
 
 module' :: N.MName -> [Print] -> Print

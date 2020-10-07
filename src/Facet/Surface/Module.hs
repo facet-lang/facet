@@ -9,30 +9,21 @@ module Facet.Surface.Module
 , fold
 ) where
 
-import Control.Category ((>>>))
 import Facet.Name
 import Facet.Surface.Decl (Decl)
-import Text.Parser.Position (Span, Spanned(..))
+import Text.Parser.Position (Span)
 
-newtype Module = In { out :: ModuleF Module }
+data Module = In { ann :: Span, out :: ModuleF Module }
 
-instance Spanned Module where
-  setSpan = fmap In . Loc
+module' :: Span -> MName -> [Module] -> Module
+module' s = fmap (In s) . Module
 
-  dropSpan = out >>> \case
-    Loc _ d -> dropSpan d
-    d       -> In d
-
-module' :: MName -> [Module] -> Module
-module' = fmap In . Module
-
-def :: DName -> Decl -> Module
-def = fmap In . Def
+def :: Span -> DName -> Decl -> Module
+def s = fmap (In s) . Def
 
 data ModuleF a
   = Module MName [a]
   | Def DName Decl
-  | Loc Span a
   deriving (Foldable, Functor, Traversable)
 
 

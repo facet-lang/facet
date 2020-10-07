@@ -332,8 +332,6 @@ elabModule = SM.out >>> \case
     -- FIXME: support defining types
     pure $ C.defTerm (mname :.: n) (interpret _T := e')
 
-  SM.Loc s m -> local (const s) (elabModule m)
-
 
 -- Context
 
