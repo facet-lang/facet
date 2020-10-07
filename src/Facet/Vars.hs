@@ -70,6 +70,11 @@ instance Applicative Rename where
   pure a = Rename $ \ _ _ -> a
   f <*> a = Rename $ \ x y -> runRename f x y (runRename a x y)
 
+instance Binding1 Rename where
+  singleton1 z = Rename $ \ x y -> if z == coerce x then coerce y else z
+  -- FIXME: this is inefficient; it has to traverse the entirety of b even if it’s not going to do anything to it
+  bind1 z b = Rename $ \ x y -> if z == coerce x then runRename b z z else runRename b x y
+
 
 class Scoped t where
   fvs :: Binding vs => t -> vs
