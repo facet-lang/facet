@@ -135,7 +135,7 @@ sig = build sigTable (const (curry (review D.def_) <$> monotype <*> comp)) -- FI
 binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) D.Decl
 binder self _ = spanning $ do
   (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type' <* symbolic ')'
-  bindVarPattern i $ \ v -> (review D.bind_ . (,) (v S.::: t)) <$ arrow <*> self
+  bindVarPattern i $ \ v -> review D.bind_ . (,) (v S.::: t) <$ arrow <*> self
 
 
 -- Types
