@@ -50,8 +50,10 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import           Facet.Carrier.Error.Context
 import qualified Facet.Core as C
+import qualified Facet.Core.Expr as CE
+import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
-import           Facet.Core.Type
+import           Facet.Core.Type as CT
 import qualified Facet.Env as Env
 import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
 import qualified Facet.Name as N
@@ -209,7 +211,7 @@ infixr 1 >~>
 
 -- Expressions
 
-elabExpr :: (Algebra sig m, C.Expr expr) => (SE.Expr ::: Maybe Type) -> Elab m (expr ::: Type)
+elabExpr :: Algebra sig m => (SE.Expr ::: Maybe Type) -> Elab m (CE.Expr ::: Type)
 elabExpr (t ::: _T) = SE.fold alg t _T
   where
   alg t _T = case t of
@@ -294,7 +296,7 @@ pattern = SP.fold $ \case
 
 -- Declarations
 
-elabDecl :: (Algebra sig m, C.Expr expr) => SD.Decl -> Elab m (Check m expr ::: Type)
+elabDecl :: Algebra sig m => SD.Decl -> Elab m (Check m CE.Expr ::: Type)
 elabDecl = SD.fold alg
   where
   alg = \case
@@ -318,10 +320,10 @@ elabDecl = SD.fold alg
 
 -- Modules
 
-elabModule :: (Algebra sig m, C.Module def mod, C.Def expr ty def, C.Type ty, C.Expr expr) => SM.Module -> Elab m mod
+elabModule :: Algebra sig m => SM.Module -> Elab m CM.Module
 elabModule (SM.Module s n ds) = local (const s) $ C.module' n <$> traverse elabDef ds
 
-elabDef :: (Algebra sig m, C.Def expr ty def, C.Type ty, C.Expr expr) => SM.Def -> Elab m def
+elabDef :: Algebra sig m => SM.Def -> Elab m CM.Def
 elabDef (SM.Def s n d) = local (const s) $ do
   e ::: _T <- elabDecl d
   e' <- check (e ::: _T)
