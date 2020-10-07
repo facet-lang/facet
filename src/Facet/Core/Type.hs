@@ -99,9 +99,10 @@ subst x e = go
     Type            -> C._Type
     Void            -> C._Void
     Unit            -> C._Unit
-    (n ::: t) :=> b -> let n' = prime (hint n) (fvs b <> fvs e)
-                           b' = go (rename n n' b)
-                       in (n' ::: go t) C.>=> b'
+    (n ::: t) :=> b ->
+      let n' = prime (hint n) (fvs b <> fvs e)
+          b' = go (rename n n' b)
+      in (n' ::: go t) C.>=> b'
     f :$  as
       | Left f <- f
       , f == x      -> e $$* fmap go as
