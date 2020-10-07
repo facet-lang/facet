@@ -130,7 +130,7 @@ sigTable =
   ]
 
 sig :: (Monad p, PositionParsing p) => Facet p D.Decl
-sig = build sigTable (const ((D..=) <$> monotype <*> comp)) -- FIXME: parse type declarations too
+sig = build sigTable (const (curry (review D.def_) <$> monotype <*> comp)) -- FIXME: parse type declarations too
 
 binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) D.Decl
 binder self _ = spanning $ do
