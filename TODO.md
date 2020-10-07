@@ -13,12 +13,16 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Datatypes.
 
+- Effects.
+
 
 ## Surface
 
 - `let` bindings.
 
 - Datatypes.
+
+- Effects.
 
 
 ## Driver
