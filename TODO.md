@@ -11,10 +11,14 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - `let` bindings.
 
+- Datatypes.
+
 
 ## Surface
 
 - `let` bindings.
+
+- Datatypes.
 
 
 ## Driver
