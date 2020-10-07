@@ -29,7 +29,7 @@ import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Data.Text (Text, pack)
 import qualified Facet.Name as N
-import           Facet.Parser.Table
+import           Facet.Parser.Table as Op
 import qualified Facet.Surface.Comp as C
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
@@ -42,7 +42,7 @@ import           Text.Parser.Char
 import           Text.Parser.Combinators
 import           Text.Parser.Position
 import           Text.Parser.Token
-import           Text.Parser.Token.Highlight
+import           Text.Parser.Token.Highlight as Highlight
 import           Text.Parser.Token.Style
 
 -- case
@@ -125,8 +125,8 @@ decl = mk <$> spanned ((,) <$> dname <* colon <*> sig)
 
 sigTable :: (Monad p, PositionParsing p) => Table (Facet p) D.Decl
 sigTable =
-  [ [ Binder (forAll (liftA2 (D.>=>))) ]
-  , [ Binder binder ]
+  [ [ Op.Operator (forAll (liftA2 (D.>=>))) ]
+  , [ Op.Operator binder ]
   ]
 
 sig :: (Monad p, PositionParsing p) => Facet p D.Decl
@@ -141,7 +141,7 @@ binder self _ = spanning $ do
 -- Types
 
 typeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
-typeTable = [ Binder (forAll (liftA2 (curry (review T.forAll_)))) ] : monotypeTable
+typeTable = [ Op.Operator (forAll (liftA2 (curry (review T.forAll_)))) ] : monotypeTable
 
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
 monotypeTable =
@@ -313,7 +313,7 @@ onameStyle = IdentifierStyle
   opChar
   opChar
   mempty
-  Operator
+  Highlight.Operator
   ReservedOperator
 
 tnameStyle :: CharParsing p => IdentifierStyle p
