@@ -31,7 +31,7 @@ instance Scoped Expr where
     Bound  n -> fvs n
     TLam n b -> bind n (fvs b)
     Lam p b  -> foldr bind (fvs b) p
-    App f a  -> fvs f <> fvs a
+    f :$ a   -> fvs f <> fvs a
     Unit     -> mempty
     l :* r   -> fvs l <> fvs r
 
@@ -40,7 +40,7 @@ instance C.Expr Expr where
   bound = In . Bound
   tlam = fmap In . TLam
   lam = fmap In . Lam
-  ($$) = fmap In . App
+  ($$) = fmap In . (:$)
   unit = In Unit
   (**) = fmap In . (:*)
 
@@ -59,7 +59,7 @@ lam_ :: Prism' Expr (P.Pattern Name, Expr)
 lam_ = prism' (uncurry C.lam) (\case{ In (Lam p b) -> Just (p, b) ; _ -> Nothing })
 
 app_ :: Prism' Expr (Expr, Expr)
-app_ = prism' (uncurry (C.$$)) (\case{ In (App f a) -> Just (f, a) ; _ -> Nothing })
+app_ = prism' (uncurry (C.$$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
 
 
 unit_ :: Prism' Expr ()
@@ -75,7 +75,7 @@ interpret = out >>> \case
   Bound n -> C.bound n
   TLam n b -> C.tlam n (interpret b)
   Lam n b -> C.lam n (interpret b)
-  App f a -> interpret f C.$$ interpret a
+  f :$ a -> interpret f C.$$ interpret a
   Unit -> C.unit
   l :* r -> interpret l C.** interpret r
 
@@ -94,7 +94,7 @@ rename x y = go
     Lam z b
       | elem x z  -> C.lam z b
       | otherwise -> C.lam z (go b)
-    App f a       -> go f C.$$ go a
+    f :$ a        -> go f C.$$ go a
     Unit          -> C.unit
     l :* r        -> go l C.** go r
 
@@ -115,7 +115,7 @@ subst x e = go
           (re, p') = renameAccumL (\ i f n -> let n' = Name (hint n) i in (f . rename n n', n')) vs id p
           b' = go (re b)
       in C.lam p' b'
-    App f a       -> go f C.$$ go a
+    f :$ a        -> go f C.$$ go a
     Unit          -> C.unit
     l :* r        -> go l C.** go r
 
@@ -125,11 +125,12 @@ data ExprF e
   | Bound Name
   | TLam Name e
   | Lam (P.Pattern Name) e
-  | App e e
+  | e :$ e
   | Unit
   | e :* e
   deriving (Foldable, Functor, Show, Traversable)
 
+infixl 9 :$
 infixl 7 :*
 
 fold :: (ExprF a -> a) -> Expr -> a
