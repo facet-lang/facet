@@ -125,7 +125,7 @@ decl = mk <$> spanned ((,) <$> dname <* colon <*> sig)
 
 sigTable :: (Monad p, PositionParsing p) => Table (Facet p) D.Decl
 sigTable =
-  [ [ Op.Operator (forAll (liftA2 (D.>=>))) ]
+  [ [ Op.Operator (forAll (liftA2 (curry (review D.forAll_)))) ]
   , [ Op.Operator binder ]
   ]
 

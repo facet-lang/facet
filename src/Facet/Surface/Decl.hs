@@ -4,7 +4,6 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Decl
 ( Decl(..)
-, (>=>)
 , forAll_
 , (>->)
 , (.=)
@@ -28,12 +27,6 @@ instance Spanned Decl where
   dropSpan = out >>> \case
     Loc _ d -> dropSpan d
     d       -> In d
-
--- | Universal quantification.
-(>=>) :: (Name T ::: Type) -> Decl -> Decl
-(>=>) = fmap In . (:=>)
-
-infixr 1 >=>
 
 forAll_ :: Prism' Decl (Name T ::: Type, Decl)
 forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
