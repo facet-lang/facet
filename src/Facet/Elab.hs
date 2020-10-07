@@ -132,6 +132,14 @@ unify t1 t2 = go t1 t2
 
 -- General
 
+global
+  :: (Has (Reader Env.Env :+: Throw P.Print) sig m)
+  => N.DName
+  -> Synth m QName
+global n = Synth $ asks (Env.lookup n) >>= \case
+  Just b  -> pure (tm b :.: n ::: ty b)
+  Nothing -> freeVariable (pretty n)
+
 bound
   :: Has (Reader Context :+: Throw P.Print) sig m
   => Name
@@ -186,9 +194,7 @@ tglobal
   :: (Has (Reader Env.Env :+: Throw P.Print) sig m, C.Type ty)
   => N.DName
   -> Synth m ty
-tglobal n = Synth $ asks (Env.lookup n) >>= \case
-  Just b  -> pure (C.tglobal (tm b :.: n) ::: ty b)
-  Nothing -> freeVariable (pretty n)
+tglobal n = C.tglobal <$> global n
 
 tbound
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Type ty)
@@ -280,9 +286,7 @@ eglobal
   :: (Has (Reader Env.Env :+: Throw P.Print) sig m, C.Expr expr)
   => N.DName
   -> Synth m expr
-eglobal n = Synth $ asks (Env.lookup n) >>= \case
-  Just b  -> pure (C.global (tm b :.: n) ::: ty b)
-  Nothing -> freeVariable (pretty n)
+eglobal n = C.global <$> global n
 
 ebound
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
