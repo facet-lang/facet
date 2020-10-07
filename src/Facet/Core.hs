@@ -46,9 +46,9 @@ class Expr expr where
 
 
 class Def expr ty def | def -> expr ty where
-  defTerm :: QName -> (ty := expr) -> def
-  defType :: QName -> (ty := ty) -> def
+  defTerm :: (ty := expr) -> def
+  defType :: (ty := ty) -> def
 
 
 class Module def mod | mod -> def where
-  module' :: MName -> [def] -> mod
+  module' :: MName -> [(QName, def)] -> mod

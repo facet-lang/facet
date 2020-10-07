@@ -175,11 +175,11 @@ instance C.Expr Print where
   (**) = (**)
 
 instance C.Module Print Print where
-  module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep b)
+  module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep (map (\ (n, d) -> ann (cfree n ::: d)) b))
 
 instance C.Def Print Print Print where
-  defTerm n (t := b) = ann (var (prettyQName n) ::: t) </> b
-  defType n (t := b) = ann (var (prettyQName n) ::: t) </> b
+  defTerm (t := b) = t </> b
+  defType (t := b) = t </> b
 
 
 printCoreType :: CT.Type -> Print
