@@ -152,19 +152,19 @@ prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 instance C.Type Print where
   tglobal = cfree
-  tbound = ctbound
+  tbound = cbound
   (-->) = (-->)
   (.*) = (**)
   (.$) = ($$)
   _Type = _Type
   _Void = _Void
   _Unit = _Unit
-  t >=> b = first ctbound t >~> b
+  t >=> b = first cbound t >~> b
 
 instance C.Expr Print where
   global = cfree
-  bound = cebound
-  tlam = lam . braces . ctbound
+  bound = cbound
+  tlam = lam . braces . cbound
   lam = lam . printCorePattern
   ($$) = ($$)
   unit = unit
@@ -207,11 +207,8 @@ cfree = var . prettyQName
 sbound :: N.Name a -> Print
 sbound = var . pretty . N.hint
 
-cebound :: N.Name N.E -> Print
-cebound = var . pretty
-
-ctbound :: N.Name N.T -> Print
-ctbound = var . pretty
+cbound :: Pretty (N.Name a) => N.Name a -> Print
+cbound = var . pretty
 
 
 hole :: Text -> Print
