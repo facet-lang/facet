@@ -20,9 +20,8 @@ import           Data.Function (on)
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty
 import           Data.String (IsString(..))
-import           Data.Text (Text)
+import           Data.Text (Text, unpack)
 import qualified Data.Text as T
-import           Facet.Pretty
 import qualified Prettyprinter as P
 import           Silkscreen
 
@@ -35,7 +34,7 @@ instance Ord Name where
   compare = compare `on` id'
 
 instance Show Name where
-  showsPrec p = showsPrec p . prettyNameWith (evar :: Int -> P.Doc ())
+  showsPrec _ (Name h i) = showString (unpack h) . shows i
 
 
 prettyNameWith :: Printer p => (Int -> p) -> Name -> p
