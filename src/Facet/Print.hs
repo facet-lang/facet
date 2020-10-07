@@ -179,6 +179,7 @@ instance C.Module Print Print where
 
 instance C.Def Print Print Print where
   defTerm n (t := b) = ann (var (prettyQName n) ::: t) </> b
+  defType n (t := b) = ann (var (prettyQName n) ::: t) </> b
 
 
 printCoreType :: CT.Type -> Print

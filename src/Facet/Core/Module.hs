@@ -23,10 +23,15 @@ interpretModule :: (C.Expr expr, C.Type ty, C.Def expr ty def, C.Module def mod)
 interpretModule (Module n b) = C.module' n (map interpretDef b)
 
 interpretDef :: (C.Expr expr, C.Type ty, C.Def expr ty def) => Def -> def
-interpretDef (DefTerm n (ty := expr)) = C.defTerm n (Type.interpret ty := Expr.interpret expr)
+interpretDef = \case
+  DefTerm n (_T := e)  -> C.defTerm n (Type.interpret _T := Expr.interpret e)
+  DefType n (_K := _T) -> C.defType n (Type.interpret _K := Type.interpret _T)
 
 
-data Def = DefTerm QName (Type.Type := Expr.Expr)
+data Def
+  = DefTerm QName (Type.Type := Expr.Expr)
+  | DefType QName (Type.Type := Type.Type)
 
 instance C.Def Expr.Expr Type.Type Def where
+  defType = DefType
   defTerm = DefTerm
