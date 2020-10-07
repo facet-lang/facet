@@ -80,23 +80,23 @@ newtype Elab m a = Elab (MName -> Env.Env -> Context -> ErrorC Span P.Print m a
   deriving (Algebra (Reader MName :+: Reader Env.Env :+: Reader Context :+: Error P.Print :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Env.Env (ReaderC Context (ErrorC Span P.Print m)))
 
 
-newtype Check m a = Check { runCheck :: Type -> m a }
-  deriving (Algebra (Reader Type :+: sig), Applicative, Functor, Monad) via ReaderC Type m
+newtype Check m a = Check { runCheck :: Type -> Elab m a }
+  deriving (Algebra (Reader Type :+: Reader MName :+: Reader Env.Env :+: Reader Context :+: Error P.Print :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC Type (Elab m)
 
-newtype Synth m a = Synth { synth :: m (a ::: Type) }
+newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
 
 instance Functor m => Functor (Synth m) where
   fmap f (Synth m) = Synth (first f <$> m)
 
-check :: (Check m a ::: Type) -> m a
+check :: (Check m a ::: Type) -> Elab m a
 check = uncurryAnn runCheck
 
-switch :: Has (Error P.Print) sig m => Synth m a -> Check m a
+switch :: Algebra sig m => Synth m a -> Check m a
 switch s = Check $ \ _T -> do
   a ::: _T' <- synth s
   a <$ unify _T _T'
 
-unify :: Has (Error P.Print) sig m => Type -> Type -> m ()
+unify :: Algebra sig m => Type -> Type -> Elab m ()
 unify t1 t2 = go t1 t2
   where
   go t1 t2 = case (out t1, out t2) of
@@ -119,12 +119,12 @@ unify t1 t2 = go t1 t2
 
 -- General
 
-bound :: (Has (Error P.Print) sig m, Has (Reader Context) sig m) => Name -> (Name -> e) -> (Int -> P.Print) -> Synth m e
+bound :: Algebra sig m => Name -> (Name -> e) -> (Int -> P.Print) -> Synth m e
 bound n with var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
   Just b  -> pure (with n ::: b)
   Nothing -> freeVariable (prettyNameWith var n)
 
-app :: Has (Error P.Print) sig m => (a -> a -> a) -> Synth m a -> Check m a -> Synth m a
+app :: Algebra sig m => (a -> a -> a) -> Synth m a -> Check m a -> Synth m a
 app ($$) f a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
@@ -156,29 +156,29 @@ elabType (t ::: _K) = T.fold alg t _K
       Just _K -> r <$ unify _K' _K
       _       -> pure r
 
-tglobal :: (Has (Reader Env.Env) sig m, C.Type ty, Has (Error P.Print) sig m) => N.DName -> Synth m ty
+tglobal :: (C.Type ty, Algebra sig m) => N.DName -> Synth m ty
 tglobal n = Synth $ asks (Env.lookup n) >>= \case
   Just b  -> pure (C.tglobal (tm b :.: n) ::: ty b)
   Nothing -> freeVariable (pretty n)
 
-tbound :: (C.Type ty, Has (Error P.Print) sig m, Has (Reader Context) sig m) => Name -> Synth m ty
+tbound :: (C.Type ty, Algebra sig m) => Name -> Synth m ty
 tbound n = bound n C.tbound P.tvar
 
-_Type :: (Applicative m, C.Type t) => Synth m t
+_Type :: C.Type t => Synth m t
 _Type = Synth $ pure $ C._Type ::: C._Type
 
-_Void :: (Applicative m, C.Type t) => Synth m t
+_Void :: C.Type t => Synth m t
 _Void = Synth $ pure $ C._Void ::: C._Type
 
-_Unit :: (Applicative m, C.Type t) => Synth m t
+_Unit :: C.Type t => Synth m t
 _Unit = Synth $ pure $ C._Unit ::: C._Type
 
-(.$) :: (Has (Error P.Print) sig m, C.Type t) => Synth m t -> Check m t -> Synth m t
+(.$) :: (Algebra sig m, C.Type t) => Synth m t -> Check m t -> Synth m t
 (.$) = app (C..$)
 
 infixl 9 .$
 
-(.*) :: (Monad m, C.Type t) => Check m t -> Check m t -> Synth m t
+(.*) :: C.Type t => Check m t -> Check m t -> Synth m t
 a .* b = Synth $ do
   a' <- check (a ::: C._Type)
   b' <- check (b ::: C._Type)
@@ -186,7 +186,7 @@ a .* b = Synth $ do
 
 infixl 7 .*
 
-(-->) :: (Monad m, C.Type t) => Check m t -> Check m t -> Synth m t
+(-->) :: C.Type t => Check m t -> Check m t -> Synth m t
 a --> b = Synth $ do
   a' <- check (a ::: C._Type)
   b' <- check (b ::: C._Type)
@@ -195,7 +195,7 @@ a --> b = Synth $ do
 infixr 2 -->
 
 (>~>)
-  :: Has (Reader Context) sig m
+  :: Algebra sig m
   => (Name ::: Check m Type)
   -> Check m Type
   -> Synth m Type
@@ -229,45 +229,45 @@ elabExpr (t ::: _T) = E.fold alg t _T
       Just _T -> r <$ unify _T' _T
       _       -> pure r
 
-eglobal :: (Has (Reader Env.Env) sig m, C.Expr expr, Has (Error P.Print) sig m) => N.DName -> Synth m expr
+eglobal :: (Algebra sig m, C.Expr expr) => N.DName -> Synth m expr
 eglobal n = Synth $ asks (Env.lookup n) >>= \case
   Just b  -> pure (C.global (tm b :.: n) ::: ty b)
   Nothing -> freeVariable (pretty n)
 
-ebound :: (C.Expr expr, Has (Error P.Print) sig m, Has (Reader Context) sig m) => Name -> Synth m expr
+ebound :: (C.Expr expr, Algebra sig m) => Name -> Synth m expr
 ebound n = bound n C.bound P.evar
 
-($$) :: (C.Expr expr, Has (Error P.Print) sig m) => Synth m expr -> Check m expr -> Synth m expr
+($$) :: (C.Expr expr, Algebra sig m) => Synth m expr -> Check m expr -> Synth m expr
 ($$) = app (C.$$)
 
-tlam :: (Has (Reader Context) sig m, C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
+tlam :: (Algebra sig m, C.Expr expr) => Name -> Check m expr -> Check m expr
 tlam n b = Check $ \ ty -> do
   (n', _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
   n' ::: _T |- C.tlam n <$> check (b ::: _B)
 
-lam :: (Has (Reader Context) sig m, C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
+lam :: (Algebra sig m, C.Expr expr) => Name -> Check m expr -> Check m expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   n ::: _A |- C.lam (review CP.var_ n) <$> check (b ::: _B)
 
-unit :: (Applicative m, C.Expr t) => Synth m t
+unit :: C.Expr t => Synth m t
 unit = Synth . pure $ C.unit ::: C._Unit
 
-(**) :: (C.Expr expr, Has (Error P.Print) sig m) => Check m expr -> Check m expr -> Check m expr
+(**) :: (C.Expr expr, Algebra sig m) => Check m expr -> Check m expr -> Check m expr
 l ** r = Check $ \ _T -> do
   (_L, _R) <- expectProductType (reflow "when checking product") _T
   l' <- check (l ::: _L)
   r' <- check (r ::: _R)
   pure (l' C.** r')
 
-comp :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span) sig m, C.Expr expr) => [C.Clause (Check m expr)] -> Check m expr
+comp :: (Algebra sig m, C.Expr expr) => [C.Clause (Check m expr)] -> Check m expr
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
   -- FIXME: extend Core to include computation types
   pure $ head cs'
 
-clause :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span) sig m, C.Expr expr) => C.Clause (Check m expr) -> Check m expr
+clause :: (Algebra sig m, C.Expr expr) => C.Clause (Check m expr) -> Check m expr
 clause = C.fold $ \case
   C.Clause p b -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
@@ -277,7 +277,7 @@ clause = C.fold $ \case
   C.Loc s c  -> local (const s) c
 
 
-pattern :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => SP.Pattern N.Name -> Check m (CP.Pattern (N.Name ::: Type))
+pattern :: Algebra sig m => SP.Pattern N.Name -> Check m (CP.Pattern (N.Name ::: Type))
 pattern = SP.fold $ \case
   SP.Wildcard -> pure (review CP.wildcard_ ())
   SP.Var n    -> Check $ \ _T -> pure (review CP.var_ (n ::: _T))
@@ -294,7 +294,7 @@ pattern = SP.fold $ \case
 
 -- Declarations
 
-elabDecl :: (Algebra sig m, C.Expr expr) => D.Decl -> Elab m (Check (Elab m) expr ::: Type)
+elabDecl :: (Algebra sig m, C.Expr expr) => D.Decl -> Elab m (Check m expr ::: Type)
 elabDecl = D.fold alg
   where
   alg = \case
