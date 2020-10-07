@@ -35,10 +35,7 @@ instance Ord Name where
   compare = compare `on` id'
 
 instance Show Name where
-  showsPrec p = showsPrec p . P.pretty
-
-instance P.Pretty Name where
-  pretty = prettyNameWith evar
+  showsPrec p = showsPrec p . prettyNameWith (evar :: Int -> P.Doc ())
 
 
 prettyNameWith :: Printer p => (Int -> p) -> Name -> p
