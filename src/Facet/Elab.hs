@@ -18,6 +18,8 @@ module Facet.Elab
 , check
 , switch
 , unify
+  -- * General
+, global
   -- * Types
 , elabType
 , tglobal
