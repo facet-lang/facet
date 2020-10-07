@@ -162,7 +162,7 @@ instance C.Type Print where
   _Type = _Type
   _Void = _Void
   _Unit = _Unit
-  t >=> b = first (N.prettyNameWith tvar) t >~> b
+  t >=> b = first ctbound t >~> b
 
 instance C.Expr Print where
   global = cfree
@@ -185,14 +185,14 @@ printSurfaceType = go
   where
   go = ST.out >>> \case
     ST.Free n  -> sfree n
-    ST.Bound n -> sbound n
+    ST.Bound n -> sbound (N.getTLocal n)
     ST.Hole n  -> hole n
     ST.Type    -> _Type
     ST.Void    -> _Void
     ST.Unit    -> _Unit
     t ST.:=> b ->
       let (t', b') = unprefixr (preview ST.forAll_ . dropSpan) b
-      in map (first sbound) (t:t') >~~> go b'
+      in map (first (sbound . N.getTLocal)) (t:t') >~~> go b'
     f ST.:$  a ->
       let (f', a') = unprefixl (preview ST.app_ . dropSpan) f
       in go f' $$* fmap go (a' :> a)
@@ -213,8 +213,8 @@ sbound n = var (pretty (N.hint n))
 cebound :: N.Name -> Print
 cebound = name evar
 
-ctbound :: N.Name -> Print
-ctbound = name tvar
+ctbound :: N.TLocal -> Print
+ctbound = var . pretty
 
 
 hole :: Text -> Print
@@ -317,7 +317,7 @@ printSurfaceDecl = go
     t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
     t SD.:=> b ->
       let (t', b') = unprefixr (preview SD.forAll_ . dropSpan) b
-      in map (first sbound) (t:t') >~~> go b'
+      in map (first (sbound . N.getTLocal)) (t:t') >~~> go b'
     t SD.:-> b -> bimap sbound printSurfaceType t >-> go b
     SD.Loc _ d -> go d
 

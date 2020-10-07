@@ -63,8 +63,8 @@ runFacet e t (Facet m) = m e t
 bindE :: N.EName -> (N.Name -> Facet m a) -> Facet m a
 bindE n b = Facet $ \ e t -> let n' = N.Name (N.getEName n) (length e + length t) in runFacet (Map.insert n (review E.bound_ n') e) t (b n')
 
-bindT :: N.TName -> (N.Name -> Facet m a) -> Facet m a
-bindT n b = Facet $ \ e t -> let n' = N.Name (N.getTName n) (length e + length t) in runFacet e (Map.insert n (review T.bound_ n') t) (b n')
+bindT :: N.TName -> (N.TLocal -> Facet m a) -> Facet m a
+bindT n b = Facet $ \ e t -> let n' = N.TLocal (N.Name (N.getTName n) (length e + length t)) in runFacet e (Map.insert n (review T.bound_ n') t) (b n')
 
 newtype Facet m a = Facet (EEnv -> TEnv -> m a)
   deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC EEnv (ReaderC TEnv m)
@@ -157,7 +157,7 @@ monotypeTable =
 
 forAll
   :: (Spanned res, Monad p, PositionParsing p)
-  => (Facet p (N.Name S.::: T.Type) -> Facet p res -> Facet p res)
+  => (Facet p (N.TLocal S.::: T.Type) -> Facet p res -> Facet p res)
   -> OperatorParser (Facet p) res
 forAll (>=>) self _ = spanning $ do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')

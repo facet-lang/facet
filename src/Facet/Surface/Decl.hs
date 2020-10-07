@@ -30,12 +30,12 @@ instance Spanned Decl where
     d       -> In d
 
 -- | Universal quantification.
-(>=>) :: (Name ::: Type) -> Decl -> Decl
+(>=>) :: (TLocal ::: Type) -> Decl -> Decl
 (>=>) = fmap In . (:=>)
 
 infixr 1 >=>
 
-forAll_ :: Prism' Decl (Name ::: Type, Decl)
+forAll_ :: Prism' Decl (TLocal ::: Type, Decl)
 forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
 
 (>->) :: (Name ::: Type) -> Decl -> Decl
@@ -50,7 +50,7 @@ infix 1 .=
 
 
 data DeclF a
-  = (Name ::: Type) :=> a
+  = (TLocal ::: Type) :=> a
   | (Name ::: Type) :-> a
   | Type := Expr
   | Loc Span a

@@ -29,7 +29,7 @@ instance Scoped Expr where
   fvs = out >>> \case
     Free _   -> mempty
     Bound  n -> fvs n
-    TLam n b -> bind n (fvs b)
+    TLam n b -> bind (getTLocal n) (fvs b)
     Lam p b  -> foldr bind (fvs b) p
     f :$ a   -> fvs f <> fvs a
     Unit     -> mempty
@@ -52,7 +52,7 @@ bound_ :: Prism' Expr Name
 bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
 
 
-tlam_ :: Prism' Expr (Name, Expr)
+tlam_ :: Prism' Expr (TLocal, Expr)
 tlam_ = prism' (uncurry C.tlam) (\case{ In (TLam n b) -> Just (n, b) ; _ -> Nothing })
 
 lam_ :: Prism' Expr (P.Pattern Name, Expr)
@@ -88,9 +88,9 @@ rename x y = go
     Bound z
       | x == z    -> C.bound y
       | otherwise -> C.bound z
-    TLam z b
-      | z == x    -> C.tlam z b
-      | otherwise -> C.tlam z (go b)
+    TLam (TLocal z) b
+      | z == x    -> C.tlam (TLocal z) b
+      | otherwise -> C.tlam (TLocal z) (go b)
     Lam z b
       | elem x z  -> C.lam z b
       | otherwise -> C.lam z (go b)
@@ -107,9 +107,9 @@ subst x e = go
     Bound n
       | n == x    -> e
       | otherwise -> C.bound n
-    TLam n b      -> let n' = prime (hint n) (fvs b <> fvs e)
-                         b' = go (rename n n' b)
-                     in C.tlam n' b'
+    TLam n b      -> let n' = prime (hint (getTLocal n)) (fvs b <> fvs e)
+                         b' = go (rename (getTLocal n) n' b)
+                     in C.tlam (TLocal n') b'
     Lam p b       ->
       let vs = fvs b <> fvs e
           (re, p') = renameAccumL (\ i f n -> let n' = Name (hint n) i in (f . rename n n', n')) vs id p
@@ -123,7 +123,7 @@ subst x e = go
 data ExprF e
   = Free QName
   | Bound Name
-  | TLam Name e
+  | TLam TLocal e
   | Lam (P.Pattern Name) e
   | e :$ e
   | Unit

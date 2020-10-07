@@ -61,7 +61,7 @@ import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Type as CT
 import qualified Facet.Env as Env
-import           Facet.Name (MName(..), Name(..), QName(..), prettyNameWith)
+import           Facet.Name (MName(..), Name(..), QName(..), TLocal(..), prettyNameWith)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
@@ -200,9 +200,9 @@ tglobal n = C.tglobal <$> global n
 
 tbound
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Type ty)
-  => Name
+  => TLocal
   -> Synth m ty
-tbound n = bound n C.tbound P.tvar
+tbound n = bound (getTLocal n) (C.tbound . TLocal) P.tvar
 
 _Type :: (Applicative m, C.Type t) => Synth m t
 _Type = Synth $ pure $ C._Type ::: C._Type
@@ -248,12 +248,12 @@ infixr 2 -->
 
 (>~>)
   :: Has (Reader Context) sig m
-  => (Name ::: Check m Type)
+  => (TLocal ::: Check m Type)
   -> Check m Type
   -> Synth m Type
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: C._Type)
-  ftb' <- n ::: _T |- ((n ::: _T) C.>=>) <$> check (b ::: C._Type)
+  ftb' <- getTLocal n ::: _T |- ((n ::: _T) C.>=>) <$> check (b ::: C._Type)
   pure $ ftb' ::: C._Type
 
 infixr 1 >~>
@@ -305,12 +305,12 @@ ebound n = bound n C.bound P.evar
 
 tlam
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
-  => Name
+  => TLocal
   -> Check m expr
   -> Check m expr
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  _T |- C.tlam n <$> check (b ::: _B)
+  first getTLocal _T |- C.tlam n <$> check (b ::: _B)
 
 lam
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
@@ -387,7 +387,7 @@ elabDecl = SD.fold alg
   alg = \case
     (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)
-      b' ::: _B <- n ::: _T |- b
+      b' ::: _B <- getTLocal n ::: _T |- b
       pure $ tlam n b' ::: ((n ::: _T) C.>=> _B)
 
     (n ::: t) SD.:-> b -> do
@@ -471,7 +471,7 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 expectMatch :: Has (Throw P.Print) sig m => Prism' Type out -> P.Print -> P.Print -> Type -> m out
 expectMatch pat exp s _T = maybe (mismatch s exp (interpret _T)) pure (preview pat _T)
 
-expectQuantifiedType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Name ::: Type, Type)
+expectQuantifiedType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (TLocal ::: Type, Type)
 expectQuantifiedType = expectMatch forAll_ (pretty "{_} -> _")
 
 expectFunctionType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)

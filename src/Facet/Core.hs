@@ -8,12 +8,12 @@ module Facet.Core
 ) where
 
 import qualified Facet.Core.Pattern as P
-import           Facet.Name (MName, Name, QName)
+import           Facet.Name (MName, Name, QName, TLocal)
 import           Facet.Syntax ((:::)(..), (:=)(..))
 
 class Type ty where
   tglobal :: QName -> ty
-  tbound :: Name -> ty
+  tbound :: TLocal -> ty
 
   _Type :: ty
   -- FIXME: encode these as datatypes
@@ -21,7 +21,7 @@ class Type ty where
   _Unit :: ty
 
   -- | Universal quantification.
-  (>=>) :: (Name ::: ty) -> ty -> ty
+  (>=>) :: (TLocal ::: ty) -> ty -> ty
   infixr 1 >=>
   (.$) :: ty -> ty -> ty
   infixl 9 .$
@@ -37,7 +37,7 @@ class Type ty where
 class Expr expr where
   global :: QName -> expr
   bound :: Name -> expr
-  tlam :: Name -> expr -> expr
+  tlam :: TLocal -> expr -> expr
   lam :: P.Pattern Name -> expr -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
