@@ -261,7 +261,7 @@ l ** r = tupled [l, r]
 ($$*) = fmap group . foldl' (\ f a -> prec AppL f <> nest 2 (line <> prec AppR a))
 
 (>~>) :: (Print ::: Print) -> Print -> Print
-(n ::: t) >~> b = group (align (braces (space <> ann (var n ::: t) <> flatAlt line space))) </> arrow <+> prec FnR b
+(n ::: t) >~> b = group (align (braces (space <> ann (var n ::: t) <> line))) </> arrow <+> prec FnR b
 
 (>~~>) :: [Print ::: ST.Type] -> Print -> Print
 ts >~~> b = foldr go b (groupByType ST.aeq ts)
