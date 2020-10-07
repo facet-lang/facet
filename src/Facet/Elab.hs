@@ -161,21 +161,21 @@ elabType
 elabType (t ::: _K) = ST.fold alg t _K
   where
   alg t _K = case t of
-    ST.Free  n -> validate =<< synth (C.tglobal <$> global n)
-    ST.Bound n -> validate =<< synth (C.tbound <$> bound n)
+    ST.Free  n -> switch =<< synth (C.tglobal <$> global n)
+    ST.Bound n -> switch =<< synth (C.tbound <$> bound n)
     ST.Hole  n -> hole (n ::: _K)
-    ST.Type    -> validate =<< synth _Type
-    ST.Void    -> validate =<< synth _Void
-    ST.Unit    -> validate =<< synth _Unit
-    t ST.:=> b -> validate =<< synth (fmap _check t >~> _check b)
-    f ST.:$  a -> validate =<< synth (_synth f .$  _check a)
-    a ST.:-> b -> validate =<< synth (_check a --> _check b)
-    l ST.:*  r -> validate =<< synth (_check l .*  _check r)
+    ST.Type    -> switch =<< synth _Type
+    ST.Void    -> switch =<< synth _Void
+    ST.Unit    -> switch =<< synth _Unit
+    t ST.:=> b -> switch =<< synth (fmap _check t >~> _check b)
+    f ST.:$  a -> switch =<< synth (_synth f .$  _check a)
+    a ST.:-> b -> switch =<< synth (_check a --> _check b)
+    l ST.:*  r -> switch =<< synth (_check l .*  _check r)
     ST.Loc s b -> local (const s) $ b _K
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
-    validate r@(_ ::: _K') = case _K of
+    switch r@(_ ::: _K') = case _K of
       Just _K -> r <$ unify _K' _K
       _       -> pure r
 
@@ -244,19 +244,19 @@ elabExpr
 elabExpr (t ::: _T) = SE.fold alg t _T
   where
   alg t _T = case t of
-    SE.Free  n -> validate =<< synth (C.global <$> global n)
-    SE.Bound n -> validate =<< synth (C.bound <$> bound n)
+    SE.Free  n -> switch =<< synth (C.global <$> global n)
+    SE.Bound n -> switch =<< synth (C.bound <$> bound n)
     SE.Hole  n -> hole (n ::: _T)
-    f SE.:$  a -> validate =<< synth (_synth f $$  _check a)
+    f SE.:$  a -> switch =<< synth (_synth f $$  _check a)
     l SE.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
-    SE.Unit    -> validate =<< synth unit
+    SE.Unit    -> switch =<< synth unit
     SE.Comp cs -> check (comp (map (fmap _check) cs) ::: _T) (pretty "computation")
     SE.Loc s b -> local (const s) $ b _T
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
     check (m ::: _T) msg = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
-    validate r@(_ ::: _T') = case _T of
+    switch r@(_ ::: _T') = case _T of
       Just _T -> r <$ unify _T' _T
       _       -> pure r
 
