@@ -21,7 +21,8 @@ module Facet.Core.Type
 ) where
 
 import           Control.Category ((>>>))
-import           Control.Lens.Prism hiding (_Void)
+import           Control.Lens (Prism', prism', review)
+import           Data.Bitraversable (bitraverse)
 import           Data.Foldable (foldl')
 import qualified Facet.Core as C
 import           Facet.Name
@@ -41,6 +42,16 @@ instance Scoped Type where
     f :$ as -> either singleton (const mempty) f <> foldMap fvs as
     a :-> b -> fvs a <> fvs b
     l :* r  -> fvs l <> fvs r
+
+instance Scoped1 Type where
+  fvs1 = out >>> \case
+    Type    -> pure C._Type
+    Void    -> pure C._Type
+    Unit    -> pure C._Type
+    t :=> b -> curry (review forAll_) <$> traverse fvs1 t <*> bind1 (tm t) (fvs1 b)
+    f :$ as -> curry (review app'_) <$> bitraverse singleton1 pure f <*> traverse fvs1 as
+    a :-> b -> curry (review arrow_) <$> fvs1 a <*> fvs1 b
+    l :* r  -> curry (review prd_) <$> fvs1 l <*> fvs1 r
 
 
 forAll_ :: Prism' Type (Name T ::: Type, Type)
