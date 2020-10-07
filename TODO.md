@@ -71,6 +71,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Preserve comments in surface syntax 😱
 
+- Parenthesize operators occurring free in expressions.
+
 
 ### Driver
 
