@@ -258,7 +258,7 @@ f $$ a = askingPrec $ \case
 l ** r = tupled [l, r]
 
 ($$*) :: Print -> Stack Print -> Print
-($$*) = fmap group . foldl' (\ f a -> prec AppL f <> nest 2 (line <> prec AppR a))
+($$*) = fmap group . foldl' ($$)
 
 (>~>) :: (Print ::: Print) -> Print -> Print
 (n ::: t) >~> b = group (align (braces (space <> ann (var n ::: t) <> line))) </> arrow <+> prec FnR b
