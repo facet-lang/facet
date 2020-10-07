@@ -455,16 +455,10 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 -- Patterns
 
 expectQuantifiedType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Name ::: Type, Type)
-expectQuantifiedType s _T = case preview forAll_ _T of
-  Just t -> pure t
-  _      -> mismatch s (pretty "{_} -> _") (interpret _T)
+expectQuantifiedType s _T = maybe (mismatch s (pretty "{_} -> _") (interpret _T)) pure (preview forAll_ _T)
 
 expectFunctionType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)
-expectFunctionType s _T = case preview arrow_ _T of
-  Just t -> pure t
-  _      -> mismatch s (pretty "_ -> _") (interpret _T)
+expectFunctionType s _T = maybe (mismatch s (pretty "_ -> _") (interpret _T)) pure (preview arrow_ _T)
 
 expectProductType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)
-expectProductType s _T = case preview prd_ _T of
-  Just t -> pure t
-  _      -> mismatch s (pretty "(_, _)") (interpret _T)
+expectProductType s _T = maybe (mismatch s (pretty "(_, _)") (interpret _T)) pure (preview prd_ _T)
