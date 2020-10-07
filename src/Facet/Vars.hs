@@ -16,6 +16,7 @@ module Facet.Vars
 ) where
 
 import           Data.Coerce
+import           Data.Functor.Const
 import qualified Data.IntSet as IntSet
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
@@ -51,6 +52,10 @@ instance Binding Vars where
 class Applicative t => Binding1 t where
   singleton1 :: Name a -> t (Name a)
   bind1 :: Name a -> t b -> t b
+
+instance Binding a => Binding1 (Const a) where
+  singleton1 n = Const (singleton n)
+  bind1 n (Const b) = Const (bind n b)
 
 
 class Scoped t where
