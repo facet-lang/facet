@@ -31,7 +31,7 @@ module Facet.Print
 
 import           Control.Applicative ((<**>))
 import           Control.Category ((>>>))
-import           Control.Lens (preview)
+import           Control.Lens (preview, to)
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
@@ -345,10 +345,9 @@ printSurfaceDecl = go
   go = SD.out >>> \case
     t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
     t SD.:=> b ->
-      let (t', b') = splitr (preview SD.forAll_ . dropSpan) b
+      let (t', b') = splitr (preview (SD.forAll_.to snd)) b
       in map (first sbound) (t:t') >~~> go b'
     t SD.:-> b -> bimap sbound printSurfaceType t >-> go b
-    SD.Loc _ d -> go d
 
 -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
 (.=) :: Print -> Print -> Print

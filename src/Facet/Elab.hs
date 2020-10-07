@@ -357,7 +357,7 @@ elabDecl
   -> m (Check m CE.Expr ::: Type)
 elabDecl = SD.fold alg
   where
-  alg = \case
+  alg s = local (const s) . \case
     (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)
       b' ::: _B <- n ::: _T |- b
@@ -372,7 +372,6 @@ elabDecl = SD.fold alg
       _T ::: _ <- elabType (t ::: Just C._Type)
       pure $ _check (elabExpr . (b :::)) ::: _T
 
-    SD.Loc s d -> local (const s) d
   _check r = tm <$> Check (r . Just)
 
 

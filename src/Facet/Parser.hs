@@ -125,17 +125,19 @@ decl = mk <$> spanned ((,) <$> dname <* colon <*> sig)
 
 sigTable :: (Monad p, PositionParsing p) => Table (Facet p) D.Decl
 sigTable =
-  [ [ Op.Operator (forAll (uncurry setSpan . fmap (review D.forAll_))) ]
+  [ [ Op.Operator (forAll (review D.forAll_)) ]
   , [ Op.Operator binder ]
   ]
 
 sig :: (Monad p, PositionParsing p) => Facet p D.Decl
-sig = build sigTable (const (curry (review D.def_) <$> monotype <*> comp)) -- FIXME: parse type declarations too
+sig = build sigTable (const (review D.def_ <$> spanned ((,) <$> monotype <*> comp))) -- FIXME: parse type declarations too
 
 binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) D.Decl
-binder self _ = spanning $ do
-  (i, t) <- nesting $ (,) <$> try (symbolic '(' *> varPattern ename) <* colon <*> type' <* symbolic ')'
-  bindVarPattern i $ \ v -> review D.bind_ . (,) (v S.::: t) <$ arrow <*> self
+binder self _ = do
+  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* symbolic '(' <*> varPattern ename) <* colon <*> type' <* symbolic ')'
+  bindVarPattern i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
+  where
+  mk start t b end = review D.bind_ (Span start end, (t, b))
 
 
 -- Types

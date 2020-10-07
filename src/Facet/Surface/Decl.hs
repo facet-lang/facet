@@ -11,38 +11,29 @@ module Facet.Surface.Decl
 , fold
 ) where
 
-import Control.Category ((>>>))
 import Control.Lens.Prism
 import Facet.Name
 import Facet.Surface.Expr (Expr)
 import Facet.Surface.Type (Type)
 import Facet.Syntax ((:::)(..))
-import Text.Parser.Position (Span, Spanned(..))
+import Text.Parser.Position (Span)
 
-newtype Decl = In { out :: DeclF Decl }
+data Decl = In { ann :: Span, out :: DeclF Decl }
 
-instance Spanned Decl where
-  setSpan = fmap In . Loc
+forAll_ :: Prism' Decl (Span, (Name T ::: Type, Decl))
+forAll_ = prism' (uncurry In . fmap (uncurry (:=>))) (\case{ In s (t :=> b) -> Just (s, (t, b)) ; _ -> Nothing })
 
-  dropSpan = out >>> \case
-    Loc _ d -> dropSpan d
-    d       -> In d
+bind_ :: Prism' Decl (Span, (Name E ::: Type, Decl))
+bind_ = prism' (uncurry In . fmap (uncurry (:->))) (\case{ In s (t :-> b) -> Just (s, (t, b)) ; _ -> Nothing })
 
-forAll_ :: Prism' Decl (Name T ::: Type, Decl)
-forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
-
-bind_ :: Prism' Decl (Name E ::: Type, Decl)
-bind_ = prism' (In . uncurry (:->)) (\case{ In (t :-> b) -> Just (t, b) ; _ -> Nothing })
-
-def_ :: Prism' Decl (Type, Expr)
-def_ = prism' (In . uncurry (:=)) (\case{ In (t := e) -> Just (t, e) ; _ -> Nothing })
+def_ :: Prism' Decl (Span, (Type, Expr))
+def_ = prism' (uncurry In . fmap (uncurry (:=))) (\case{ In s (t := e) -> Just (s, (t, e)) ; _ -> Nothing })
 
 
 data DeclF a
   = (Name T ::: Type) :=> a
   | (Name E ::: Type) :-> a
   | Type := Expr
-  | Loc Span a
   deriving (Foldable, Functor, Traversable)
 
 infix 1 :=
@@ -50,7 +41,7 @@ infixr 1 :=>
 infixr 1 :->
 
 
-fold :: (DeclF a -> a) -> Decl -> a
+fold :: (Span -> DeclF a -> a) -> Decl -> a
 fold alg = go
   where
-  go = alg . fmap go . out
+  go = alg . ann <*> fmap go . out
