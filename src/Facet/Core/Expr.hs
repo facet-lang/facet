@@ -3,7 +3,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Core.Expr
 ( Expr(..)
+, global_
+, bound_
+, tlam_
+, lam_
 , app_
+, unit_
+, prd_
 , interpret
 , subst
 , ExprF(..)
@@ -39,8 +45,28 @@ instance C.Expr Expr where
   (**) = fmap In . Pair
 
 
+global_ :: Prism' Expr QName
+global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
+
+bound_ :: Prism' Expr Name
+bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
+
+
+tlam_ :: Prism' Expr (Name, Expr)
+tlam_ = prism' (uncurry C.tlam) (\case{ In (TLam n b) -> Just (n, b) ; _ -> Nothing })
+
+lam_ :: Prism' Expr (P.Pattern Name, Expr)
+lam_ = prism' (uncurry C.lam) (\case{ In (Lam p b) -> Just (p, b) ; _ -> Nothing })
+
 app_ :: Prism' Expr (Expr, Expr)
 app_ = prism' (uncurry (C.$$)) (\case{ In (App f a) -> Just (f, a) ; _ -> Nothing })
+
+
+unit_ :: Prism' Expr ()
+unit_ = prism' (const (In Unit)) (\case{ In Unit -> Just () ; _ -> Nothing })
+
+prd_ :: Prism' Expr (Expr, Expr)
+prd_ = prism' (In . uncurry Pair) (\case{ In (Pair l r) -> Just (l, r) ; _ -> Nothing })
 
 
 interpret :: C.Expr r => Expr -> r
