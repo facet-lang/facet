@@ -40,6 +40,7 @@ instance Show Name where
 instance P.Pretty Name where
   pretty = prettyNameWith evar
 
+
 prettyNameWith :: Printer p => (Int -> p) -> Name -> p
 prettyNameWith var n
   | T.null (hint n) = var (id' n)
