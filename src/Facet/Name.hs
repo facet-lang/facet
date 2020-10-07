@@ -55,6 +55,9 @@ instance P.Pretty ELocal where
 newtype TLocal = TLocal { getTLocal :: Name }
   deriving (Eq, Ord, Show)
 
+instance P.Pretty TLocal where
+  pretty = prettyNameWith tvar . getTLocal
+
 
 __ :: Text
 __ = T.empty
