@@ -226,10 +226,9 @@ evar
 
 bindPattern :: PositionParsing p => P.Pattern N.EName -> (P.Pattern (N.Name N.E) -> Facet p a) -> Facet p a
 bindPattern p f = case P.out p of
-  P.Wildcard -> bindE (N.EName N.__) (const (f (review P.wildcard_ ())))
-  P.Var n    -> bindE n              (f . review P.var_)
-  P.Tuple ps -> foldr (\ p k ps -> bindPattern p $ \ p' -> k (ps . (p':))) (f . review P.tuple_ . ($ [])) ps id
-  P.Loc _ p  -> bindPattern p f
+  P.Wildcard -> bindE (N.EName N.__) (const (f (review P.wildcard_ (P.ann p))))
+  P.Var n    -> bindE n              (f . review P.var_ . (,) (P.ann p))
+  P.Tuple ps -> foldr (\ p k ps -> bindPattern p $ \ p' -> k (ps . (p':))) (f . review P.tuple_ . (,) (P.ann p) . ($ [])) ps id
 
 bindVarPattern :: Maybe N.EName -> (N.Name N.E -> Facet p res) -> Facet p res
 bindVarPattern Nothing  = bindE (N.EName N.__)
@@ -245,10 +244,10 @@ wildcard = reserve enameStyle "_"
 
 -- FIXME: patterns
 pattern :: (Monad p, PositionParsing p) => p (P.Pattern N.EName)
-pattern = settingSpan
-  $   review P.var_ <$> ename
-  <|> review P.wildcard_ <$> wildcard
-  <|> review P.tuple_ <$> parens (commaSep pattern)
+pattern
+  =   review P.var_ <$> spanned ename
+  <|> review P.wildcard_ <$> spanning wildcard
+  <|> review P.tuple_ <$> spanned (parens (commaSep pattern))
   <?> "pattern"
 
 

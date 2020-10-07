@@ -335,7 +335,7 @@ pattern
   :: Has (Reader Span :+: Throw P.Print) sig m
   => SP.Pattern (Name E)
   -> Check m (CP.Pattern (Name E ::: Type))
-pattern = SP.fold $ \case
+pattern = SP.fold $ \ s -> local (const s) . \case
   SP.Wildcard -> pure (review CP.wildcard_ ())
   SP.Var n    -> Check $ \ _T -> pure (review CP.var_ (n ::: _T))
   SP.Tuple ps -> Check $ \ _T -> review CP.tuple_ . toList <$> go _T (fromList ps)
@@ -346,7 +346,6 @@ pattern = SP.fold $ \case
       ps  :> p -> do
         (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
         (:>) <$> go _L ps <*> check (p ::: _R)
-  SP.Loc s p  -> local (const s) p
 
 
 -- Declarations

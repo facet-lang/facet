@@ -9,47 +9,38 @@ module Facet.Surface.Pattern
 , fold
 ) where
 
-import Control.Category ((>>>))
 import Control.Lens (Prism', prism')
 import Data.Bifoldable
 import Data.Bifunctor
 import Data.Bitraversable
-import Text.Parser.Position (Span, Spanned(..))
+import Text.Parser.Position (Span)
 
-newtype Pattern a = In { out :: PatternF a (Pattern a) }
+data Pattern a = In { ann :: Span, out :: PatternF a (Pattern a) }
 
 instance Foldable Pattern where
   foldMap f = go where go = bifoldMap f go . out
 
 instance Functor Pattern where
-  fmap f = go where go = In . bimap f go . out
+  fmap f = go where go = In . ann <*> bimap f go . out
 
 instance Traversable Pattern where
-  traverse f = go where go = fmap In . bitraverse f go . out
-
-instance Spanned (Pattern a) where
-  setSpan = fmap In . Loc
-
-  dropSpan = out >>> \case
-    Loc _ d -> dropSpan d
-    d       -> In d
+  traverse f = go where go = fmap . In . ann <*> bitraverse f go . out
 
 
-wildcard_ :: Prism' (Pattern a) ()
-wildcard_ = prism' (const (In Wildcard)) (\case{ In Wildcard -> Just () ; _ -> Nothing })
+wildcard_ :: Prism' (Pattern a) Span
+wildcard_ = prism' (`In` Wildcard) (\case{ In s Wildcard -> Just s ; _ -> Nothing })
 
-var_ :: Prism' (Pattern a) a
-var_ = prism' (In . Var) (\case{ In (Var a) -> Just a ; _ -> Nothing })
+var_ :: Prism' (Pattern a) (Span, a)
+var_ = prism' (uncurry In . fmap Var) (\case{ In s (Var a) -> Just (s, a) ; _ -> Nothing })
 
-tuple_ :: Prism' (Pattern a) [Pattern a]
-tuple_ = prism' (In . Tuple) (\case{ In (Tuple ps) -> Just ps ; _ -> Nothing })
+tuple_ :: Prism' (Pattern a) (Span, [Pattern a])
+tuple_ = prism' (uncurry In . fmap Tuple) (\case{ In s (Tuple ps) -> Just (s, ps) ; _ -> Nothing })
 
 
 data PatternF a p
   = Wildcard
   | Var a
   | Tuple [p]
-  | Loc Span p
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 instance Bifoldable PatternF where
@@ -65,10 +56,9 @@ instance Bitraversable PatternF where
     Wildcard -> pure Wildcard
     Var a    -> Var <$> f a
     Tuple ps -> Tuple <$> traverse g ps
-    Loc s p  -> Loc s <$> g p
 
 
-fold :: (PatternF n a -> a) -> Pattern n -> a
+fold :: (Span -> PatternF n a -> a) -> Pattern n -> a
 fold alg = go
   where
-  go = alg . fmap go . out
+  go = alg . ann <*> fmap go . out
