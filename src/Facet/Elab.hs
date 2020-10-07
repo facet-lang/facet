@@ -401,6 +401,7 @@ elabModule
   :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
   => SM.Module
   -> m CM.Module
+-- FIXME: elaborate all the types first, and only then the terms
 elabModule (SM.Module s n ds) = local (const s) $ C.module' n <$> traverse (elabDef n) ds
 
 elabDef
