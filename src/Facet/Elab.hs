@@ -328,6 +328,9 @@ elabModule = M.fold alg
       e ::: _T <- elabDecl d
       e' <- check (e ::: _T)
       mname <- ask
+      -- FIXME: extend the environment
+      -- FIXME: extend the module
+      -- FIXME: support defining types
       pure $ C.defTerm (mname :.: n) (interpret _T := e')
 
     M.Loc s d -> local (const s) d
