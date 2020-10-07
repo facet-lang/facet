@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RankNTypes #-}
 module Facet.Vars
 ( Vars(..)
 , insert
@@ -7,6 +8,7 @@ module Facet.Vars
 , member
 , Binding(..)
 , Binding1(..)
+, Rename(..)
 , Scoped(..)
 , Scoped1(..)
 , fvsDefault
@@ -57,6 +59,9 @@ class Applicative t => Binding1 t where
 instance Binding a => Binding1 (Const a) where
   singleton1 n = Const (singleton n)
   bind1 n (Const b) = Const (bind n b)
+
+
+newtype Rename a = Rename { runRename :: forall x . Name x -> Name x -> a }
 
 
 class Scoped t where
