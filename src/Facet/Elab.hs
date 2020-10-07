@@ -243,20 +243,20 @@ elabExpr
   -> m (CE.Expr ::: Type)
 elabExpr (t ::: _T) = SE.fold alg t _T
   where
-  alg t _T = case t of
+  alg = \case
     SE.Free  n -> switch $ synth (C.global <$> global n)
     SE.Bound n -> switch $ synth (C.bound <$> bound n)
-    SE.Hole  n -> hole (n ::: _T)
+    SE.Hole  n -> \ _T -> hole (n ::: _T)
     f SE.:$  a -> switch $ synth (_synth f $$  _check a)
-    l SE.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
+    l SE.:*  r -> check (_check l **  _check r) (pretty "product")
     SE.Unit    -> switch $ synth unit
-    SE.Comp cs -> check (comp (map (fmap _check) cs) ::: _T) (pretty "computation")
-    SE.Loc s b -> local (const s) $ b _T
+    SE.Comp cs -> check (comp (map (fmap _check) cs)) (pretty "computation")
+    SE.Loc s b -> local (const s) . b
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
-    check (m ::: _T) msg = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
-    switch m = case _T of
+    check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
+    switch m = \case
       Just _T -> m >>= \ r -> r <$ unify (ty r) _T
       _       -> m
 
