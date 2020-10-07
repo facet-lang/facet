@@ -58,12 +58,12 @@ import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
 import           Facet.Stack
-import qualified Facet.Surface.Comp as C
-import qualified Facet.Surface.Decl as D
-import qualified Facet.Surface.Expr as E
-import qualified Facet.Surface.Module as M
+import qualified Facet.Surface.Comp as SC
+import qualified Facet.Surface.Decl as SD
+import qualified Facet.Surface.Expr as SE
+import qualified Facet.Surface.Module as SM
 import qualified Facet.Surface.Pattern as SP
-import qualified Facet.Surface.Type as T
+import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, group, pretty, softline, (<+>), (</>))
@@ -134,21 +134,21 @@ app ($$) f a = Synth $ do
 
 -- Types
 
-elabType :: Algebra sig m => (T.Type ::: Maybe Type) -> Elab m (Type ::: Type)
-elabType (t ::: _K) = T.fold alg t _K
+elabType :: Algebra sig m => (ST.Type ::: Maybe Type) -> Elab m (Type ::: Type)
+elabType (t ::: _K) = ST.fold alg t _K
   where
   alg t _K = case t of
-    T.Free  n -> validate =<< synth (tglobal n)
-    T.Bound n -> validate =<< synth (tbound n)
-    T.Hole  n -> hole (n ::: _K)
-    T.Type    -> validate =<< synth _Type
-    T.Void    -> validate =<< synth _Void
-    T.Unit    -> validate =<< synth _Unit
-    t T.:=> b -> validate =<< synth (fmap _check t >~> _check b)
-    f T.:$  a -> validate =<< synth (_synth f .$  _check a)
-    a T.:-> b -> validate =<< synth (_check a --> _check b)
-    l T.:*  r -> validate =<< synth (_check l .*  _check r)
-    T.Loc s b -> local (const s) $ b _K
+    ST.Free  n -> validate =<< synth (tglobal n)
+    ST.Bound n -> validate =<< synth (tbound n)
+    ST.Hole  n -> hole (n ::: _K)
+    ST.Type    -> validate =<< synth _Type
+    ST.Void    -> validate =<< synth _Void
+    ST.Unit    -> validate =<< synth _Unit
+    t ST.:=> b -> validate =<< synth (fmap _check t >~> _check b)
+    f ST.:$  a -> validate =<< synth (_synth f .$  _check a)
+    a ST.:-> b -> validate =<< synth (_check a --> _check b)
+    l ST.:*  r -> validate =<< synth (_check l .*  _check r)
+    ST.Loc s b -> local (const s) $ b _K
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
@@ -209,18 +209,18 @@ infixr 1 >~>
 
 -- Expressions
 
-elabExpr :: (Algebra sig m, C.Expr expr) => (E.Expr ::: Maybe Type) -> Elab m (expr ::: Type)
-elabExpr (t ::: _T) = E.fold alg t _T
+elabExpr :: (Algebra sig m, C.Expr expr) => (SE.Expr ::: Maybe Type) -> Elab m (expr ::: Type)
+elabExpr (t ::: _T) = SE.fold alg t _T
   where
   alg t _T = case t of
-    E.Free  n -> validate =<< synth (eglobal n)
-    E.Bound n -> validate =<< synth (ebound n)
-    E.Hole  n -> hole (n ::: _T)
-    f E.:$  a -> validate =<< synth (_synth f $$  _check a)
-    l E.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
-    E.Unit    -> validate =<< synth unit
-    E.Comp cs -> check (comp (map (fmap _check) cs) ::: _T) (pretty "computation")
-    E.Loc s b -> local (const s) $ b _T
+    SE.Free  n -> validate =<< synth (eglobal n)
+    SE.Bound n -> validate =<< synth (ebound n)
+    SE.Hole  n -> hole (n ::: _T)
+    f SE.:$  a -> validate =<< synth (_synth f $$  _check a)
+    l SE.:*  r -> check (_check l **  _check r ::: _T) (pretty "product")
+    SE.Unit    -> validate =<< synth unit
+    SE.Comp cs -> check (comp (map (fmap _check) cs) ::: _T) (pretty "computation")
+    SE.Loc s b -> local (const s) $ b _T
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
@@ -260,21 +260,21 @@ l ** r = Check $ \ _T -> do
   r' <- check (r ::: _R)
   pure (l' C.** r')
 
-comp :: (Algebra sig m, C.Expr expr) => [C.Clause (Check m expr)] -> Check m expr
+comp :: (Algebra sig m, C.Expr expr) => [SC.Clause (Check m expr)] -> Check m expr
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
   -- FIXME: extend Core to include computation types
   pure $ head cs'
 
-clause :: (Algebra sig m, C.Expr expr) => C.Clause (Check m expr) -> Check m expr
-clause = C.fold $ \case
-  C.Clause p b -> Check $ \ _T -> do
+clause :: (Algebra sig m, C.Expr expr) => SC.Clause (Check m expr) -> Check m expr
+clause = SC.fold $ \case
+  SC.Clause p b -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
     p' <- check (pattern p ::: _A)
     foldr (|-) (C.lam (tm <$> p') <$> check (b ::: _B)) p'
-  C.Body e   -> e
-  C.Loc s c  -> local (const s) c
+  SC.Body e   -> e
+  SC.Loc s c  -> local (const s) c
 
 
 pattern :: Algebra sig m => SP.Pattern N.Name -> Check m (CP.Pattern (N.Name ::: Type))
@@ -294,37 +294,37 @@ pattern = SP.fold $ \case
 
 -- Declarations
 
-elabDecl :: (Algebra sig m, C.Expr expr) => D.Decl -> Elab m (Check m expr ::: Type)
-elabDecl = D.fold alg
+elabDecl :: (Algebra sig m, C.Expr expr) => SD.Decl -> Elab m (Check m expr ::: Type)
+elabDecl = SD.fold alg
   where
   alg = \case
-    (n ::: t) D.:=> b -> do
+    (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)
       b' ::: _B <- n ::: _T |- b
       pure $ tlam n b' ::: ((n ::: _T) C.>=> _B)
 
-    (n ::: t) D.:-> b -> do
+    (n ::: t) SD.:-> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)
       b' ::: _B <- n ::: _T |- b
       pure $ lam n b' ::: (_T C.--> _B)
 
-    t D.:= b -> do
+    t SD.:= b -> do
       _T ::: _ <- elabType (t ::: Just C._Type)
       pure $ _check (elabExpr . (b :::)) ::: _T
 
-    D.Loc s d -> local (const s) d
+    SD.Loc s d -> local (const s) d
   _check r = tm <$> Check (r . Just)
 
 
 -- Modules
 
-elabModule :: (Algebra sig m, C.Module expr ty mod, C.Type ty, C.Expr expr) => M.Module -> Elab m mod
-elabModule = M.fold alg
+elabModule :: (Algebra sig m, C.Module expr ty mod, C.Type ty, C.Expr expr) => SM.Module -> Elab m mod
+elabModule = SM.fold alg
   where
   alg = \case
-    M.Module n ds -> C.module' n <$> sequenceA ds
+    SM.Module n ds -> C.module' n <$> sequenceA ds
 
-    M.Def n d -> do
+    SM.Def n d -> do
       e ::: _T <- elabDecl d
       e' <- check (e ::: _T)
       mname <- ask
@@ -333,7 +333,7 @@ elabModule = M.fold alg
       -- FIXME: support defining types
       pure $ C.defTerm (mname :.: n) (interpret _T := e')
 
-    M.Loc s d -> local (const s) d
+    SM.Loc s d -> local (const s) d
 
 
 -- Context
