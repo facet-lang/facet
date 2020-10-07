@@ -10,6 +10,17 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
   It would be nice to abstract those operations one and for all; it would also be nice to test the hell out of them. Can we take advantage of the `Binding` traversal? It knows about binders after all…
 
 
+## Driver
+
+- Formatting.
+
+- Running.
+
+- Compilation.
+
+- LSP.
+
+
 ## Tests
 
 - Should exist 😅
