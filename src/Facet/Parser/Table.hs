@@ -3,7 +3,7 @@
 module Facet.Parser.Table
 ( Assoc(..)
 , Operator(..)
-, toBindParser
+, parseOperator
 , OperatorParser
 , Table
 , build
@@ -29,8 +29,8 @@ data Operator p a
   | Binder (OperatorParser p a)
   | Atom (p a)
 
-toBindParser :: (PositionParsing p, Spanned a) => Operator p a -> OperatorParser p a
-toBindParser = \case
+parseOperator :: (PositionParsing p, Spanned a) => Operator p a -> OperatorParser p a
+parseOperator = \case
   Prefix   s op -> \ self _    -> op <$ textSymbol s <*> self
   Postfix  s op -> \ _    next -> foldl' (&) <$> next <*> many (op <$ textSymbol s)
   Infix N  s op -> \ _    next -> try (op <$> next <* textSymbol s) <*> next
@@ -50,7 +50,7 @@ build ts end = root
   root = foldr chain (end root) ts
   chain ps next = self
     where
-    self = foldr (\ p rest -> toBindParser p self next <|> rest) next ps
+    self = foldr (\ p rest -> parseOperator p self next <|> rest) next ps
 
 terminate :: (p a -> p a) -> OperatorParser p a -> p a -> p a
 terminate wrap op next = self where self = wrap $ op self next

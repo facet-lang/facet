@@ -166,10 +166,10 @@ forAll (>=>) self _ = spanning $ do
   loop ty i rest = bindT i $ \ v -> pure (v S.::: ty) >=> rest
 
 type' :: (Monad p, PositionParsing p) => Facet p T.Type
-type' = build typeTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review T.prd_)))))
+type' = build typeTable (terminate parens (parseOperator (Infix L (pack ",") (curry (review T.prd_)))))
 
 monotype :: (Monad p, PositionParsing p) => Facet p T.Type
-monotype = build monotypeTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review T.prd_)))))
+monotype = build monotypeTable (terminate parens (parseOperator (Infix L (pack ",") (curry (review T.prd_)))))
 
 tvar :: (Monad p, PositionParsing p) => Facet p T.Type
 tvar = token (spanning (runUnspaced (resolve <$> tname <*> Unspaced tenv <?> "variable")))
@@ -189,7 +189,7 @@ exprTable =
   ]
 
 expr :: (Monad p, PositionParsing p) => Facet p E.Expr
-expr = build exprTable (terminate parens (toBindParser (Infix L (pack ",") (curry (review E.prd_)))))
+expr = build exprTable (terminate parens (parseOperator (Infix L (pack ",") (curry (review E.prd_)))))
 
 comp :: (Monad p, PositionParsing p) => Facet p E.Expr
 comp = spanning (braces (review E.comp_ <$> clauses))
