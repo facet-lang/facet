@@ -34,7 +34,7 @@ instance Spanned Expr where
 global_ :: Prism' Expr DName
 global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
 
-bound_ :: Prism' Expr Name
+bound_ :: Prism' Expr ELocal
 bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
 
 hole_ :: Prism' Expr Text
@@ -59,7 +59,7 @@ prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Noth
 
 data ExprF e
   = Free DName
-  | Bound Name
+  | Bound ELocal
   | Hole Text
   | Comp [Clause e]
   | e :$ e

@@ -61,7 +61,7 @@ import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Type as CT
 import qualified Facet.Env as Env
-import           Facet.Name (MName(..), Name(..), QName(..), TLocal(..), prettyNameWith)
+import           Facet.Name (ELocal(..), MName(..), Name(..), QName(..), TLocal(..), prettyNameWith)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
@@ -292,9 +292,9 @@ eglobal n = C.global <$> global n
 
 ebound
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
-  => Name
+  => ELocal
   -> Synth m expr
-ebound n = bound n C.bound P.evar
+ebound n = bound (getELocal n) (C.bound . ELocal) P.evar
 
 ($$)
   :: (Has (Throw P.Print) sig m, C.Expr expr)
@@ -314,12 +314,12 @@ tlam n b = Check $ \ ty -> do
 
 lam
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
-  => Name
+  => ELocal
   -> Check m expr
   -> Check m expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
-  n ::: _A |- C.lam (review CP.var_ n) <$> check (b ::: _B)
+  getELocal n ::: _A |- C.lam (review CP.var_ n) <$> check (b ::: _B)
 
 unit :: (Applicative m, C.Expr t) => Synth m t
 unit = Synth . pure $ C.unit ::: C._Unit
@@ -353,15 +353,15 @@ clause = SC.fold $ \case
   SC.Clause p b -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
     p' <- check (pattern p ::: _A)
-    foldr (|-) (C.lam (tm <$> p') <$> check (b ::: _B)) p'
+    foldr ((|-) . first getELocal) (C.lam (tm <$> p') <$> check (b ::: _B)) p'
   SC.Body e   -> e
   SC.Loc s c  -> local (const s) c
 
 
 pattern
   :: Has (Reader Span :+: Throw P.Print) sig m
-  => SP.Pattern N.Name
-  -> Check m (CP.Pattern (N.Name ::: Type))
+  => SP.Pattern N.ELocal
+  -> Check m (CP.Pattern (N.ELocal ::: Type))
 pattern = SP.fold $ \case
   SP.Wildcard -> pure (review CP.wildcard_ ())
   SP.Var n    -> Check $ \ _T -> pure (review CP.var_ (n ::: _T))
@@ -392,7 +392,7 @@ elabDecl = SD.fold alg
 
     (n ::: t) SD.:-> b -> do
       _T ::: _  <- elabType (t ::: Just C._Type)
-      b' ::: _B <- n ::: _T |- b
+      b' ::: _B <- getELocal n ::: _T |- b
       pure $ lam n b' ::: (_T C.--> _B)
 
     t SD.:= b -> do

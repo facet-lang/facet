@@ -8,7 +8,7 @@ module Facet.Core
 ) where
 
 import qualified Facet.Core.Pattern as P
-import           Facet.Name (MName, Name, QName, TLocal)
+import           Facet.Name (ELocal, MName, QName, TLocal)
 import           Facet.Syntax ((:::)(..), (:=)(..))
 
 class Type ty where
@@ -36,9 +36,9 @@ class Type ty where
 
 class Expr expr where
   global :: QName -> expr
-  bound :: Name -> expr
+  bound :: ELocal -> expr
   tlam :: TLocal -> expr -> expr
-  lam :: P.Pattern Name -> expr -> expr
+  lam :: P.Pattern ELocal -> expr -> expr
   ($$) :: expr -> expr -> expr
   infixl 9 $$
   unit :: expr
