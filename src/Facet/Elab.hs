@@ -461,10 +461,10 @@ expectQuantifiedType s _T = case preview forAll_ _T of
 
 expectFunctionType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)
 expectFunctionType s _T = case preview arrow_ _T of
-  Just (_A, _B) -> pure (_A, _B)
-  _             -> mismatch s (pretty "_ -> _") (interpret _T)
+  Just t -> pure t
+  _      -> mismatch s (pretty "_ -> _") (interpret _T)
 
 expectProductType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)
 expectProductType s _T = case preview prd_ _T of
-  Just (_A, _B) -> pure (_A, _B)
-  _             -> mismatch s (pretty "(_, _)") (interpret _T)
+  Just t -> pure t
+  _      -> mismatch s (pretty "(_, _)") (interpret _T)
