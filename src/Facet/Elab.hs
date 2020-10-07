@@ -61,7 +61,7 @@ import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Type as CT
 import qualified Facet.Env as Env
-import           Facet.Name (E, MName(..), Name(..), QName(..), T, prettyNameWith)
+import           Facet.Name (E, MName(..), Name(..), QName(..), T)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
@@ -74,7 +74,7 @@ import qualified Facet.Surface.Pattern as SP
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Prelude hiding ((**))
-import           Silkscreen (colon, fillSep, group, line, nest, pretty, softline, (</>))
+import           Silkscreen (Pretty, colon, fillSep, group, line, nest, pretty, softline, (</>))
 
 type Context = IntMap.IntMap Type
 
@@ -143,13 +143,12 @@ global n = Synth $ asks (Env.lookup n) >>= \case
   Nothing -> freeVariable (pretty n)
 
 bound
-  :: Has (Reader Context :+: Throw P.Print) sig m
+  :: (Has (Reader Context :+: Throw P.Print) sig m, Pretty (Name a))
   => Name a
-  -> (Int -> P.Print)
   -> Synth m (Name a)
-bound n var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
+bound n = Synth $ asks (IntMap.lookup (id' n)) >>= \case
   Just b  -> pure (n ::: b)
-  Nothing -> freeVariable (prettyNameWith var n)
+  Nothing -> freeVariable (pretty n)
 
 app
   :: Has (Throw P.Print) sig m
@@ -201,7 +200,7 @@ tbound
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Type ty)
   => Name T
   -> Synth m ty
-tbound n = C.tbound <$> bound n P.tvar
+tbound n = C.tbound <$> bound n
 
 _Type :: (Applicative m, C.Type t) => Synth m t
 _Type = Synth $ pure $ C._Type ::: C._Type
@@ -293,7 +292,7 @@ ebound
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
   => Name E
   -> Synth m expr
-ebound n = C.bound <$> bound n P.evar
+ebound n = C.bound <$> bound n
 
 ($$)
   :: (Has (Throw P.Print) sig m, C.Expr expr)
