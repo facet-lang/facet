@@ -123,6 +123,15 @@ unify t1 t2 = go t1 t2
 
 -- General
 
+switch
+  :: Has (Throw P.Print) sig m
+  => m (a ::: Type)
+  -> Maybe Type
+  -> m (a ::: Type)
+switch m = \case
+  Just _K -> m >>= \ r -> r <$ unify (ty r) _K
+  _       -> m
+
 global
   :: (Has (Reader Env.Env :+: Throw P.Print) sig m)
   => N.DName
@@ -175,9 +184,6 @@ elabType (t ::: _K) = ST.fold alg t _K
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
-    switch m = \case
-      Just _K -> m >>= \ r -> r <$ unify (ty r) _K
-      _       -> m
 
 
 _Type :: (Applicative m, C.Type t) => Synth m t
@@ -256,9 +262,6 @@ elabExpr (t ::: _T) = SE.fold alg t _T
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
     check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
-    switch m = \case
-      Just _T -> m >>= \ r -> r <$ unify (ty r) _T
-      _       -> m
 
 
 ($$)
