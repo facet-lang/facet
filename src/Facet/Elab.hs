@@ -145,11 +145,10 @@ global n = Synth $ asks (Env.lookup n) >>= \case
 bound
   :: Has (Reader Context :+: Throw P.Print) sig m
   => Name a
-  -> (Name a -> e)
   -> (Int -> P.Print)
-  -> Synth m e
-bound n with var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
-  Just b  -> pure (with n ::: b)
+  -> Synth m (Name a)
+bound n var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
+  Just b  -> pure (n ::: b)
   Nothing -> freeVariable (prettyNameWith var n)
 
 app
@@ -202,7 +201,7 @@ tbound
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Type ty)
   => Name T
   -> Synth m ty
-tbound n = bound n C.tbound P.tvar
+tbound n = C.tbound <$> bound n P.tvar
 
 _Type :: (Applicative m, C.Type t) => Synth m t
 _Type = Synth $ pure $ C._Type ::: C._Type
@@ -294,7 +293,7 @@ ebound
   :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
   => Name E
   -> Synth m expr
-ebound n = bound n C.bound P.evar
+ebound n = C.bound <$> bound n P.evar
 
 ($$)
   :: (Has (Throw P.Print) sig m, C.Expr expr)
