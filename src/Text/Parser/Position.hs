@@ -35,7 +35,7 @@ class Spanned t where
 spanning :: (PositionParsing p, Spanned a) => p a -> p a
 spanning = fmap (uncurry setSpan) . spanned
 
-chainl1Loc :: (Spanned a, PositionParsing p) => p a -> p (a -> a -> a) -> p a
+chainl1Loc :: PositionParsing p => p a -> p (Span -> a -> a -> a) -> p a
 chainl1Loc p op = scan where
   scan = (,) <$> position <*> p <**> rst
-  rst = (\ f y end g (start, x) -> g (start, setSpan (Span start end) (f x y))) <$> op <*> p <*> position <*> rst <|> pure snd
+  rst = (\ f y end g (start, x) -> g (start, f (Span start end) x y)) <$> op <*> p <*> position <*> rst <|> pure snd

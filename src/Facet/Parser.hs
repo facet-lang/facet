@@ -145,8 +145,8 @@ typeTable = [ Op.Operator (forAll (uncurry setSpan . fmap (review T.forAll_))) ]
 
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
 monotypeTable =
-  [ [ Infix R (pack "->") (curry (review T.arrow_)) ]
-  , [ Infix L mempty (curry (review T.app_)) ]
+  [ [ Infix R (pack "->") (\ s -> fmap (setSpan s) . curry (review T.arrow_)) ]
+  , [ Infix L mempty (\ s -> fmap (setSpan s) . curry (review T.app_)) ]
   , [ -- FIXME: we should treat these as globals.
       Atom (T._Type <$ token (string "Type"))
     , Atom (T._Void <$ token (string "Void"))
@@ -168,10 +168,10 @@ forAll mk self _ = do
   mk' start a end = mk (Span start end, a)
 
 type' :: (Monad p, PositionParsing p) => Facet p T.Type
-type' = build typeTable (terminate parens (parseOperator (Infix L (pack ",") (curry (review T.prd_)))))
+type' = build typeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review T.prd_)))))
 
 monotype :: (Monad p, PositionParsing p) => Facet p T.Type
-monotype = build monotypeTable (terminate parens (parseOperator (Infix L (pack ",") (curry (review T.prd_)))))
+monotype = build monotypeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review T.prd_)))))
 
 tvar :: (Monad p, PositionParsing p) => Facet p T.Type
 tvar = token (spanning (runUnspaced (resolve <$> tname <*> Unspaced tenv <?> "variable")))
@@ -183,7 +183,7 @@ tvar = token (spanning (runUnspaced (resolve <$> tname <*> Unspaced tenv <?> "va
 
 exprTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr
 exprTable =
-  [ [ Infix L mempty (curry (review E.app_)) ]
+  [ [ Infix L mempty (\ s -> fmap (setSpan s) . curry (review E.app_)) ]
   , [ Atom comp
     , Atom (review E.hole_ <$> hname)
     , Atom evar
@@ -191,7 +191,7 @@ exprTable =
   ]
 
 expr :: (Monad p, PositionParsing p) => Facet p E.Expr
-expr = build exprTable (terminate parens (parseOperator (Infix L (pack ",") (curry (review E.prd_)))))
+expr = build exprTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review E.prd_)))))
 
 comp :: (Monad p, PositionParsing p) => Facet p E.Expr
 comp = spanning (braces (review E.comp_ <$> clauses))
