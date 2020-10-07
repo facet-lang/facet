@@ -174,12 +174,12 @@ instance C.Expr Print where
   unit = unit
   (**) = (**)
 
-instance C.Module Print Print where
-  module' n b = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep (map (\ (n, d) -> ann (cfree n ::: d)) b))
+instance C.Module Print Print Print where
+  module' n ds = ann (var (prettyMName n) ::: pretty "Module") </> braces (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: t) </> d) ds))
 
 instance C.Def Print Print Print where
-  defTerm (t := b) = t </> b
-  defType (t := b) = t </> b
+  defTerm b = b
+  defType b = b
 
 
 printCoreType :: CT.Type -> Print

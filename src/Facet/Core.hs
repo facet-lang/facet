@@ -9,7 +9,7 @@ module Facet.Core
 
 import qualified Facet.Core.Pattern as P
 import           Facet.Name (E, MName, QName, Name, T)
-import           Facet.Syntax ((:::)(..), (:=)(..))
+import           Facet.Syntax ((:::)(..))
 
 class Type ty where
   tglobal :: QName -> ty
@@ -46,9 +46,9 @@ class Expr expr where
 
 
 class Def expr ty def | def -> expr ty where
-  defTerm :: (ty := expr) -> def
-  defType :: (ty := ty) -> def
+  defTerm :: expr -> def
+  defType :: ty -> def
 
 
-class Module def mod | mod -> def where
-  module' :: MName -> [(QName, def)] -> mod
+class Module ty def mod | mod -> def ty where
+  module' :: MName -> [(QName, def ::: ty)] -> mod
