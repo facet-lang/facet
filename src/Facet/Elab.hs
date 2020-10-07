@@ -417,7 +417,8 @@ elabDef mname (SM.Def s n d) = local (const s) $ do
     e ::: _T <- elabDecl d
     e' <- check (e ::: _T)
     pure $ e' ::: _T
-  -- FIXME: extend the environment
+
+  modify $ Env.insert (mname :.: n ::: _T)
   -- FIXME: extend the module
   -- FIXME: support defining types
   pure $ C.defTerm (mname :.: n) (interpret _T := e')
