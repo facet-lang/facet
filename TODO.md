@@ -27,6 +27,13 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - Effects.
 
 
+## Elaborator
+
+- Emit warnings.
+
+- Continue after errors on a declaration-by-declaration basis.
+
+
 ## Driver
 
 - Formatting.
