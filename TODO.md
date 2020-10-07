@@ -65,6 +65,12 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Decompose into DSLs for printing parts of syntax, interpreters written against said DSLs, and composable implementations of the DSLs providing different behaviours for e.g. bound variable display.
 
+- Disincline the printer to format declarations on a single line.
+
+- Space out declarations in module bodies better.
+
+- Preserve comments in surface syntax 😱
+
 
 ### Driver
 
