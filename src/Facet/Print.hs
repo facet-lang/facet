@@ -125,10 +125,14 @@ arrow = op (pretty "->")
 
 comp :: Print -> Print
 comp
+  = block
+  . prec Comp
+
+block :: Print -> Print
+block
   = group
   . align
   . braces
-  . prec Comp
   . enclose space (flatAlt line space)
 
 cases :: [Print] -> Print -> Print
