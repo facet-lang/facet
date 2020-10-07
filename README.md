@@ -158,12 +158,3 @@ const7 : { A, B : Type } -> (a : A) -> (b : B) -> A
 
 
 ### Handlers
-
-
-## TODO
-
-- driver executable
-- tests 😅
-- let bindings
-- effects
-- datatype declarations
