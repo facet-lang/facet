@@ -135,6 +135,9 @@ block
   . braces
   . enclose space line
 
+commaSep :: [Print] -> Print
+commaSep = encloseSep mempty mempty (comma <> space)
+
 cases :: [Print] -> Print -> Print
 cases vs b = foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> prec Expr b))) vs
 
@@ -262,7 +265,7 @@ l ** r = tupled [l, r]
 (>~~>) :: [Print ::: ST.Type] -> Print -> Print
 ts >~~> b = foldr go b (groupByType ST.aeq ts)
   where
-  go (t, ns) b = (encloseSep mempty mempty (comma <> space) ns ::: printSurfaceType t) >~> b
+  go (t, ns) b = (commaSep ns ::: printSurfaceType t) >~> b
 
 groupByType :: (t -> t -> Bool) -> [(n ::: t)] -> [(t, [n])]
 groupByType eq = \case
