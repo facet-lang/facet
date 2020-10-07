@@ -19,6 +19,7 @@ module Facet.Print
 , tvar
   -- * Interpreters
 , printSurfaceType
+, printCoreExpr
 , printSurfaceExpr
 , printSurfaceClause
 , printCorePattern
@@ -35,6 +36,7 @@ import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
 import           Data.Text (Text)
 import qualified Facet.Core as C
+import qualified Facet.Core.Expr as CE
 import qualified Facet.Core.Pattern as CP
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
@@ -251,6 +253,16 @@ groupByType eq = \case
     where
     (ys,zs) = span (eq (ty x) . ty) xs
 
+
+printCoreExpr :: CE.Expr -> Print
+printCoreExpr = CE.fold $ \case
+  CE.Free n   -> cfree n
+  CE.Bound n  -> sbound n
+  CE.TLam n b -> lam (braces (cbound n)) b
+  CE.Lam  p b -> lam (printCorePattern p) b
+  f CE.:$  a  -> f $$ a
+  CE.Unit     -> unit
+  l CE.:*  r  -> l **  r
 
 printSurfaceExpr :: SE.Expr -> Print
 printSurfaceExpr = go
