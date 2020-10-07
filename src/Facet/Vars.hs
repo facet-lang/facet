@@ -9,6 +9,7 @@ module Facet.Vars
 , Binding(..)
 , Binding1(..)
 , Rename(..)
+, Substitute(..)
 , Scoped(..)
 , Scoped1(..)
 , fvsDefault
@@ -74,6 +75,9 @@ instance Binding1 Rename where
   singleton1 z = Rename $ \ x y -> if z == coerce x then coerce y else z
   -- FIXME: this is inefficient; it has to traverse the entirety of b even if it’s not going to do anything to it
   bind1 z b = Rename $ \ x y -> if z == coerce x then runRename b z z else runRename b x y
+
+
+newtype Substitute a = Substitute { runSubstitute :: forall x t . Scoped1 t => Name x -> t -> a }
 
 
 class Scoped t where
