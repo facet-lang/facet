@@ -148,3 +148,5 @@ data OpN
   | InfixN Assoc (NonEmpty Text)
   | OutfixN Text [Text] Text
   deriving (Eq, Ord, Show)
+
+-- FIXME: can we treat this more compositionally instead? i.e. treat an n-ary prefix operator as a composition of individual prefix operators?
