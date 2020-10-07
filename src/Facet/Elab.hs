@@ -16,7 +16,6 @@ module Facet.Elab
 , Check(..)
 , Synth(..)
 , check
-, switch
 , unify
   -- * General
 , global
@@ -96,13 +95,6 @@ instance Functor m => Functor (Synth m) where
 check :: (Check m a ::: Type) -> m a
 check = uncurryAnn runCheck
 
-switch
-  :: Has (Throw P.Print) sig m
-  => Synth m a
-  -> Check m a
-switch s = Check $ \ _T -> do
-  a ::: _T' <- synth s
-  a <$ unify _T _T'
 
 unify
   :: Has (Throw P.Print) sig m
