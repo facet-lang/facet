@@ -212,7 +212,10 @@ infixr 1 >~>
 
 -- Expressions
 
-elabExpr :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m => (SE.Expr ::: Maybe Type) -> m (CE.Expr ::: Type)
+elabExpr
+  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
+  => (SE.Expr ::: Maybe Type)
+  -> m (CE.Expr ::: Type)
 elabExpr (t ::: _T) = SE.fold alg t _T
   where
   alg t _T = case t of
@@ -232,23 +235,41 @@ elabExpr (t ::: _T) = SE.fold alg t _T
       Just _T -> r <$ unify _T' _T
       _       -> pure r
 
-eglobal :: (Has (Reader Env.Env :+: Throw P.Print) sig m, C.Expr expr) => N.DName -> Synth m expr
+eglobal
+  :: (Has (Reader Env.Env :+: Throw P.Print) sig m, C.Expr expr)
+  => N.DName
+  -> Synth m expr
 eglobal n = Synth $ asks (Env.lookup n) >>= \case
   Just b  -> pure (C.global (tm b :.: n) ::: ty b)
   Nothing -> freeVariable (pretty n)
 
-ebound :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr) => Name -> Synth m expr
+ebound
+  :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
+  => Name
+  -> Synth m expr
 ebound n = bound n C.bound P.evar
 
-($$) :: (Has (Throw P.Print) sig m, C.Expr expr) => Synth m expr -> Check m expr -> Synth m expr
+($$)
+  :: (Has (Throw P.Print) sig m, C.Expr expr)
+  => Synth m expr
+  -> Check m expr
+  -> Synth m expr
 ($$) = app (C.$$)
 
-tlam :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr) => Name -> Check m expr -> Check m expr
+tlam
+  :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
+  => Name
+  -> Check m expr
+  -> Check m expr
 tlam n b = Check $ \ ty -> do
   (n', _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
   n' ::: _T |- C.tlam n <$> check (b ::: _B)
 
-lam :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr) => Name -> Check m expr -> Check m expr
+lam
+  :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
+  => Name
+  -> Check m expr
+  -> Check m expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   n ::: _A |- C.lam (review CP.var_ n) <$> check (b ::: _B)
@@ -256,21 +277,31 @@ lam n b = Check $ \ _T -> do
 unit :: (Applicative m, C.Expr t) => Synth m t
 unit = Synth . pure $ C.unit ::: C._Unit
 
-(**) :: (Has (Throw P.Print) sig m, C.Expr expr) => Check m expr -> Check m expr -> Check m expr
+(**)
+  :: (Has (Throw P.Print) sig m, C.Expr expr)
+  => Check m expr
+  -> Check m expr
+  -> Check m expr
 l ** r = Check $ \ _T -> do
   (_L, _R) <- expectProductType (reflow "when checking product") _T
   l' <- check (l ::: _L)
   r' <- check (r ::: _R)
   pure (l' C.** r')
 
-comp :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m, C.Expr expr) => [SC.Clause (Check m expr)] -> Check m expr
+comp
+  :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m, C.Expr expr)
+  => [SC.Clause (Check m expr)]
+  -> Check m expr
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
   -- FIXME: extend Core to include computation types
   pure $ head cs'
 
-clause :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m, C.Expr expr) => SC.Clause (Check m expr) -> Check m expr
+clause
+  :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m, C.Expr expr)
+  => SC.Clause (Check m expr)
+  -> Check m expr
 clause = SC.fold $ \case
   SC.Clause p b -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
@@ -280,7 +311,10 @@ clause = SC.fold $ \case
   SC.Loc s c  -> local (const s) c
 
 
-pattern :: Has (Reader Span :+: Throw P.Print) sig m => SP.Pattern N.Name -> Check m (CP.Pattern (N.Name ::: Type))
+pattern
+  :: Has (Reader Span :+: Throw P.Print) sig m
+  => SP.Pattern N.Name
+  -> Check m (CP.Pattern (N.Name ::: Type))
 pattern = SP.fold $ \case
   SP.Wildcard -> pure (review CP.wildcard_ ())
   SP.Var n    -> Check $ \ _T -> pure (review CP.var_ (n ::: _T))
@@ -297,7 +331,10 @@ pattern = SP.fold $ \case
 
 -- Declarations
 
-elabDecl :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m => SD.Decl -> m (Check m CE.Expr ::: Type)
+elabDecl
+  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
+  => SD.Decl ->
+    m (Check m CE.Expr ::: Type)
 elabDecl = SD.fold alg
   where
   alg = \case
@@ -321,10 +358,16 @@ elabDecl = SD.fold alg
 
 -- Modules
 
-elabModule :: Has (Reader Context :+: Reader Env.Env :+: Reader MName :+: Reader Span :+: Throw P.Print) sig m => SM.Module -> m CM.Module
+elabModule
+  :: Has (Reader Context :+: Reader Env.Env :+: Reader MName :+: Reader Span :+: Throw P.Print) sig m
+  => SM.Module
+  -> m CM.Module
 elabModule (SM.Module s n ds) = local (const s) $ C.module' n <$> traverse elabDef ds
 
-elabDef :: Has (Reader Context :+: Reader Env.Env :+: Reader MName :+: Reader Span :+: Throw P.Print) sig m => SM.Def -> m CM.Def
+elabDef
+  :: Has (Reader Context :+: Reader Env.Env :+: Reader MName :+: Reader Span :+: Throw P.Print) sig m
+  => SM.Def
+  -> m CM.Def
 elabDef (SM.Def s n d) = local (const s) $ do
   e ::: _T <- elabDecl d
   e' <- check (e ::: _T)
