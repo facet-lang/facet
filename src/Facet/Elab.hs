@@ -121,7 +121,7 @@ unify t1 t2 = go t1 t2
 
 -- General
 
-bound :: (Has (Throw P.Print) sig m, Has (Reader Context) sig m) => Name -> (Name -> e) -> (Int -> P.Print) -> Synth m e
+bound :: (Has (Reader Context) sig m, Has (Throw P.Print) sig m) => Name -> (Name -> e) -> (Int -> P.Print) -> Synth m e
 bound n with var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
   Just b  -> pure (with n ::: b)
   Nothing -> freeVariable (prettyNameWith var n)
@@ -231,7 +231,7 @@ elabExpr (t ::: _T) = SE.fold alg t _T
       Just _T -> r <$ unify _T' _T
       _       -> pure r
 
-eglobal :: (Has (Throw P.Print) sig m, Has (Reader Env.Env) sig m, C.Expr expr) => N.DName -> Synth m expr
+eglobal :: (Has (Reader Env.Env) sig m, Has (Throw P.Print) sig m, C.Expr expr) => N.DName -> Synth m expr
 eglobal n = Synth $ asks (Env.lookup n) >>= \case
   Just b  -> pure (C.global (tm b :.: n) ::: ty b)
   Nothing -> freeVariable (pretty n)
@@ -242,12 +242,12 @@ ebound n = bound n C.bound P.evar
 ($$) :: (Has (Throw P.Print) sig m, C.Expr expr) => Synth m expr -> Check m expr -> Synth m expr
 ($$) = app (C.$$)
 
-tlam :: (Has (Throw P.Print) sig m, Has (Reader Context) sig m, C.Expr expr) => Name -> Check m expr -> Check m expr
+tlam :: (Has (Reader Context) sig m, Has (Throw P.Print) sig m, C.Expr expr) => Name -> Check m expr -> Check m expr
 tlam n b = Check $ \ ty -> do
   (n', _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
   n' ::: _T |- C.tlam n <$> check (b ::: _B)
 
-lam :: (Has (Throw P.Print) sig m, Has (Reader Context) sig m, C.Expr expr) => Name -> Check m expr -> Check m expr
+lam :: (Has (Reader Context) sig m, Has (Throw P.Print) sig m, C.Expr expr) => Name -> Check m expr -> Check m expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   n ::: _A |- C.lam (review CP.var_ n) <$> check (b ::: _B)
@@ -262,14 +262,14 @@ l ** r = Check $ \ _T -> do
   r' <- check (r ::: _R)
   pure (l' C.** r')
 
-comp :: (Has (Throw P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span) sig m, C.Expr expr) => [SC.Clause (Check m expr)] -> Check m expr
+comp :: (Has (Reader Context) sig m, Has (Reader Span) sig m, Has (Throw P.Print) sig m, C.Expr expr) => [SC.Clause (Check m expr)] -> Check m expr
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
   -- FIXME: extend Core to include computation types
   pure $ head cs'
 
-clause :: (Has (Throw P.Print) sig m, Has (Reader Context) sig m, Has (Reader Span) sig m, C.Expr expr) => SC.Clause (Check m expr) -> Check m expr
+clause :: (Has (Reader Context) sig m, Has (Reader Span) sig m, Has (Throw P.Print) sig m, C.Expr expr) => SC.Clause (Check m expr) -> Check m expr
 clause = SC.fold $ \case
   SC.Clause p b -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
@@ -279,7 +279,7 @@ clause = SC.fold $ \case
   SC.Loc s c  -> local (const s) c
 
 
-pattern :: (Has (Throw P.Print) sig m, Has (Reader Span) sig m) => SP.Pattern N.Name -> Check m (CP.Pattern (N.Name ::: Type))
+pattern :: (Has (Reader Span) sig m, Has (Throw P.Print) sig m) => SP.Pattern N.Name -> Check m (CP.Pattern (N.Name ::: Type))
 pattern = SP.fold $ \case
   SP.Wildcard -> pure (review CP.wildcard_ ())
   SP.Var n    -> Check $ \ _T -> pure (review CP.var_ (n ::: _T))
