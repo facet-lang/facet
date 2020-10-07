@@ -108,9 +108,10 @@ subst x e = go
     Bound n
       | n `eqN` x -> e
       | otherwise -> C.bound n
-    TLam n b      -> let n' = prime (hint n) (fvs b <> fvs e)
-                         b' = go (rename n n' b)
-                     in C.tlam n' b'
+    TLam n b      ->
+      let n' = prime (hint n) (fvs b <> fvs e)
+          b' = go (rename n n' b)
+      in C.tlam n' b'
     Lam p b       ->
       let vs = fvs b <> fvs e
           (re, p') = renameAccumL (\ i f n -> let n' = Name (hint n) i in (f . rename n n', n')) vs id p
