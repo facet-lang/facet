@@ -253,7 +253,7 @@ elabExpr (t ::: _T) = SE.fold alg t _T
     SE.Free  n -> switch $ synth (C.global <$> global n)
     SE.Bound n -> switch $ synth (C.bound <$> bound n)
     SE.Hole  n -> \ _T -> hole (n ::: _T)
-    f SE.:$  a -> switch $ synth (_synth f $$  _check a)
+    f SE.:$  a -> switch $ synth (_synth f $$ _check a)
     l SE.:*  r -> check (_check l **  _check r) (pretty "product")
     SE.Unit    -> switch $ synth unit
     SE.Comp cs -> check (comp (map (fmap _check) cs)) (pretty "computation")
