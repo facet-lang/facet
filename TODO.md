@@ -31,6 +31,27 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - Effects.
 
 
+### Modules
+
+- Imports.
+
+- Submodules.
+
+- Design the relationship between files and modules. Currently thinking of a file as a metalanguage “script” which _constructs_ a module.
+
+  - Regardless, how does the compiler know where to find the file for any particular import? I want `:load` to load (transitive) dependencies; do we have to relate module names and file paths like `ghc`?
+
+  - For that matter, how does the programmer know?
+
+- Do we need to declare a module header with every file? Do we need to wrap the whole file in braces?
+
+  - A header could be useful for stuff like language levels, versions, etc.
+
+- How do we specify exports?
+
+- Are modules “just” records?
+
+
 ## Components
 
 ### Elaborator
