@@ -9,6 +9,7 @@ module Facet.Vars
 , Binding1(..)
 , Scoped(..)
 , Scoped1(..)
+, fvsDefault
 , FVs(..)
 , getFVs
 , prime
@@ -67,6 +68,9 @@ instance Scoped (Name a) where
 
 class Scoped1 t where
   fvs1 :: Binding1 vs => t -> vs t
+
+fvsDefault :: (Scoped1 t, Binding vs) => t -> vs
+fvsDefault = getConst . fvs1
 
 
 newtype FVs = FVs { runFVs :: Vars -> Vars -> Vars }
