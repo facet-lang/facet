@@ -24,6 +24,7 @@ import           Data.List.NonEmpty
 import           Data.String (IsString(..))
 import           Data.Text (Text, unpack)
 import qualified Data.Text as T
+import           Facet.Pretty
 import qualified Prettyprinter as P
 import           Silkscreen
 
@@ -47,6 +48,9 @@ prettyNameWith var n
 
 newtype ELocal = ELocal { getELocal :: Name }
   deriving (Eq, Ord, Show)
+
+instance P.Pretty ELocal where
+  pretty = prettyNameWith evar . getELocal
 
 newtype TLocal = TLocal { getTLocal :: Name }
   deriving (Eq, Ord, Show)
