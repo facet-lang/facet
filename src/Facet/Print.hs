@@ -54,8 +54,8 @@ import           Prelude hiding ((**))
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 import qualified Silkscreen as P
-import           Silkscreen.Printer.Prec
-import           Silkscreen.Printer.Rainbow
+import           Silkscreen.Printer.Prec hiding (Printer)
+import           Silkscreen.Printer.Rainbow hiding (Printer)
 import           Text.Parser.Position
 
 prettyPrint :: MonadIO m => Print -> m ()
