@@ -30,6 +30,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Effects.
 
+- Allow binding operator names as local variables.
+
 
 ### Modules
 
