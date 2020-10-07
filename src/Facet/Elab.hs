@@ -43,7 +43,7 @@ module Facet.Elab
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Effect.Parser.Span (Span(..))
-import           Control.Lens (preview)
+import           Control.Lens (preview, review)
 import           Data.Bifunctor (first)
 import           Data.Foldable (toList)
 import qualified Data.IntMap as IntMap
@@ -248,7 +248,7 @@ tlam n b = Check $ \ ty -> do
 lam :: (Has (Reader Context) sig m, C.Expr expr, Has (Error P.Print) sig m) => Name -> Check m expr -> Check m expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
-  n ::: _A |- C.lam (CP.Var n) <$> check (b ::: _B)
+  n ::: _A |- C.lam (review CP.var_ n) <$> check (b ::: _B)
 
 unit :: (Applicative m, C.Expr t) => Synth m t
 unit = Synth . pure $ C.unit ::: C._Unit
@@ -279,9 +279,9 @@ clause = C.fold $ \case
 
 pattern :: (Has (Error P.Print) sig m, Has (Reader Span) sig m) => SP.Pattern N.Name -> Check m (CP.Pattern (N.Name ::: Type))
 pattern = SP.fold $ \case
-  SP.Wildcard -> pure CP.Wildcard
-  SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
-  SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go _T (fromList ps)
+  SP.Wildcard -> pure (review CP.wildcard_ ())
+  SP.Var n    -> Check $ \ _T -> pure (review CP.var_ (n ::: _T))
+  SP.Tuple ps -> Check $ \ _T -> review CP.tuple_ . toList <$> go _T (fromList ps)
     where
     go _T = \case
       Nil      -> Nil      <$  unify C._Unit _T

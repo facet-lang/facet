@@ -283,7 +283,7 @@ printSurfaceClause = SC.out >>> \case
   SC.Loc _ c    -> printSurfaceClause c
 
 printCorePattern :: CP.Pattern N.Name -> Print
-printCorePattern p = prec Pattern $ case p of
+printCorePattern p = prec Pattern $ case CP.out p of
   CP.Wildcard -> pretty '_'
   CP.Var n    -> sbound n
   CP.Tuple p  -> tupled (map printCorePattern p)
