@@ -134,7 +134,7 @@ app ($$) f a = Synth $ do
 
 -- Types
 
-elabType :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m) => (T.Type ::: Maybe Type) -> m (Type ::: Type)
+elabType :: Algebra sig m => (T.Type ::: Maybe Type) -> Elab m (Type ::: Type)
 elabType (t ::: _K) = T.fold alg t _K
   where
   alg t _K = case t of
@@ -209,7 +209,7 @@ infixr 1 >~>
 
 -- Expressions
 
-elabExpr :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m, C.Expr expr) => (E.Expr ::: Maybe Type) -> m (expr ::: Type)
+elabExpr :: (Algebra sig m, C.Expr expr) => (E.Expr ::: Maybe Type) -> Elab m (expr ::: Type)
 elabExpr (t ::: _T) = E.fold alg t _T
   where
   alg t _T = case t of
@@ -294,7 +294,7 @@ pattern = SP.fold $ \case
 
 -- Declarations
 
-elabDecl :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader Span) sig m, C.Expr expr) => D.Decl -> m (Check m expr ::: Type)
+elabDecl :: (Algebra sig m, C.Expr expr) => D.Decl -> Elab m (Check (Elab m) expr ::: Type)
 elabDecl = D.fold alg
   where
   alg = \case
@@ -318,7 +318,7 @@ elabDecl = D.fold alg
 
 -- Modules
 
-elabModule :: (Has (Error P.Print) sig m, Has (Reader Context) sig m, Has (Reader Env.Env) sig m, Has (Reader MName) sig m, Has (Reader Span) sig m, C.Expr expr, C.Type ty, C.Module expr ty mod) => M.Module -> m mod
+elabModule :: (Algebra sig m, C.Module expr ty mod, C.Type ty, C.Expr expr) => M.Module -> Elab m mod
 elabModule = M.fold alg
   where
   alg = \case
