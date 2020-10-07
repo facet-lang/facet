@@ -400,7 +400,7 @@ elabDef mname (SM.Def s n d) = local (const s) $ do
   modify $ Env.insert (mname :.: n ::: _T)
   -- FIXME: extend the module
   -- FIXME: support defining types
-  pure $ (mname :.: n, C.DTerm e' ::: interpret _T)
+  pure (mname :.: n, C.DTerm e' ::: interpret _T)
 
 
 -- Context
