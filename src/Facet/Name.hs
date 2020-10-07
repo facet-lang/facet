@@ -75,11 +75,13 @@ instantiate :: Name a -> t -> IntMap.IntMap t -> IntMap.IntMap t
 instantiate = IntMap.insert . id'
 
 
+-- | Module names.
 data MName
   = MName Text
   | MName :. Text
   deriving (Eq, Ord, Show)
 
+-- | Qualified names, consisting of a module name and declaration name.
 data QName = MName :.: DName
   deriving (Eq, Ord, Show)
 
@@ -87,15 +89,19 @@ moduleName :: QName -> MName
 moduleName (mname :.: _) = mname
 
 
+-- | Expression names, as provided by the user.
 newtype EName = EName { getEName :: Text }
   deriving (Eq, IsString, Ord, P.Pretty, Show)
 
+-- | Constructor names, as provided by the user.
 newtype CName = CName { getCName :: Text }
   deriving (Eq, IsString, Ord, P.Pretty, Show)
 
+-- | Type names, as provided by the user.
 newtype TName = TName { getTName :: Text }
   deriving (Eq, IsString, Ord, P.Pretty, Show)
 
+-- | Declaration names; a choice of expression, term, or operator names.
 data DName
   = E EName
   | T TName
@@ -109,15 +115,19 @@ instance P.Pretty DName where
     O o -> P.pretty o
 
 
+-- | Associativity of an infix operator.
 data Assoc = N | L | R
   deriving (Eq, Ord, Show)
 
+-- | Mixfix operators, restricted to unary (prefix, postfix, outfix) & binary (infix).
 data Op
   = Prefix  Text
   | Postfix Text
   | Infix Assoc Text
   | Outfix Text Text
   deriving (Eq, Ord, Show)
+
+-- FIXME: specify relative precedences
 
 instance P.Pretty Op where
   pretty = \case
@@ -128,6 +138,10 @@ instance P.Pretty Op where
     where
     place = P.pretty '_'
 
+
+-- | Mixfix operators, supporting a broader set of names.
+--
+-- Not currently used because parsing will require type indices to ensure that the constructors line up with the number of places, i.e. vectors and such.
 data OpN
   = PrefixN      Text   [Text]
   | PostfixN     [Text] Text
