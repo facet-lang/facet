@@ -54,11 +54,11 @@ instance Binding Vars where
 
 class Applicative t => Binding1 t where
   singleton1 :: Name a -> t (Name a)
-  bind1 :: Scoped1 b => Name a -> b -> t b -> t b
+  bind1 :: Name a -> t b -> t b
 
 instance Binding a => Binding1 (Const a) where
   singleton1 n = Const (singleton n)
-  bind1 n _ (Const b) = Const (bind n b)
+  bind1 n (Const b) = Const (bind n b)
 
 
 newtype Rename a = Rename { runRename :: forall x . Name x -> Name x -> a }

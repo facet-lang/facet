@@ -48,7 +48,7 @@ instance Scoped1 Type where
     Type    -> pure C._Type
     Void    -> pure C._Type
     Unit    -> pure C._Type
-    t :=> b -> curry (review forAll_) <$> traverse fvs1 t <*> bind1 (tm t) b (fvs1 b)
+    t :=> b -> curry (review forAll_) <$> traverse fvs1 t <*> bind1 (tm t) (fvs1 b)
     f :$ as -> curry (review app'_) <$> bitraverse singleton1 pure f <*> traverse fvs1 as
     a :-> b -> curry (review arrow_) <$> fvs1 a <*> fvs1 b
     l :* r  -> curry (review prd_) <$> fvs1 l <*> fvs1 r
