@@ -82,6 +82,10 @@ newtype Substitute a = Substitute { runSubstitute :: forall x t . Scoped1 t => N
 instance Functor Substitute where
   fmap f s = Substitute $ \ x e -> f (runSubstitute s x e)
 
+instance Applicative Substitute where
+  pure a = Substitute $ \ _ _ -> a
+  f <*> a = Substitute $ \ x e -> runSubstitute f x e (runSubstitute a x e)
+
 
 class Scoped t where
   fvs :: Binding vs => t -> vs
