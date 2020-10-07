@@ -77,11 +77,11 @@ type Context = IntMap.IntMap Type
 implicit :: Env.Env
 implicit = Env.fromList [ (N.T (N.TName (T.pack "Type")), MName (T.pack "Facet") ::: C._Type) ]
 
-elab :: Applicative m => MName -> Span -> Env.Env -> Context -> Elab m a -> m (Either (Span, P.Print) a)
-elab n s e c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (m n e c)
+elab :: Applicative m => Span -> Env.Env -> Context -> Elab m a -> m (Either (Span, P.Print) a)
+elab s e c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (m e c)
 
-newtype Elab m a = Elab (MName -> Env.Env -> Context -> ErrorC Span P.Print m a)
-  deriving (Algebra (Reader MName :+: Reader Env.Env :+: Reader Context :+: Error P.Print :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Env.Env (ReaderC Context (ErrorC Span P.Print m)))
+newtype Elab m a = Elab (Env.Env -> Context -> ErrorC Span P.Print m a)
+  deriving (Algebra (Reader Env.Env :+: Reader Context :+: Error P.Print :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC Env.Env (ReaderC Context (ErrorC Span P.Print m))
 
 
 newtype Check m a = Check { runCheck :: Type -> m a }
@@ -398,10 +398,10 @@ elabDecl = SD.fold alg
 -- Modules
 
 elabModule
-  :: Has (Reader Context :+: Reader Env.Env :+: Reader MName :+: Reader Span :+: Throw P.Print) sig m
+  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
   => SM.Module
   -> m CM.Module
-elabModule (SM.Module s n ds) = local (const s) $ C.module' n <$> traverse elabDef ds
+elabModule (SM.Module s n ds) = local (const s) $ runReader n $ C.module' n <$> traverse elabDef ds
 
 elabDef
   :: Has (Reader Context :+: Reader Env.Env :+: Reader MName :+: Reader Span :+: Throw P.Print) sig m
