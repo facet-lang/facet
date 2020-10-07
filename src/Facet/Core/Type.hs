@@ -11,6 +11,7 @@ module Facet.Core.Type
 , forAll_
 , arrow_
 , app_
+, app'_
 , prd_
 , interpret
 , rename
@@ -50,6 +51,9 @@ arrow_ = prism' (In . uncurry (:->)) (\case{ In (a :-> b) -> Just (a, b) ; _ -> 
 
 app_ :: Prism' Type (Type, Type)
 app_ = prism' (uncurry ($$)) (\case{ In (f :$ (as :> a)) -> Just (In (f :$ as), a) ; _ -> Nothing })
+
+app'_ :: Prism' Type (Either (Name T) QName, Stack Type)
+app'_ = prism' (In . uncurry (:$)) (\case{ In (f :$ as) -> Just (f, as) ; _ -> Nothing })
 
 prd_ :: Prism' Type (Type, Type)
 prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
