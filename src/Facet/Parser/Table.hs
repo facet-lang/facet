@@ -39,7 +39,6 @@ toBindParser = \case
   Outfix s e op -> \ self _    -> op <$ textSymbol s <*> nesting self <* textSymbol e
   Binder p   -> p
   Atom p     -> const (const p)
-  where
 
 type OperatorParser p a = p a -> p a -> p a
 type Table p a = [[Operator p a]]
