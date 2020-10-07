@@ -87,6 +87,12 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - Parenthesize operators occurring free in expressions.
 
 
+### Evaluator
+
+- Should exist 😅
+
+
+
 ### Driver
 
 - Formatting.
