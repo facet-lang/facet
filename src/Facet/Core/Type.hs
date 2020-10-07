@@ -37,7 +37,7 @@ instance Scoped Type where
     Void    -> mempty
     Unit    -> mempty
     t :=> b -> fvs (ty t) <> bind (tm t) (fvs b)
-    f :$ a  -> either singleton (const mempty) f <> foldMap fvs a
+    f :$ as -> either singleton (const mempty) f <> foldMap fvs as
     a :-> b -> fvs a <> fvs b
     l :* r  -> fvs l <> fvs r
 
