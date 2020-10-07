@@ -45,10 +45,11 @@ class Expr expr where
   (**) :: expr -> expr -> expr
 
 
-class Def expr ty def | def -> expr ty where
-  defTerm :: expr -> def
-  defType :: ty -> def
+data Def expr ty
+  = DTerm expr
+  | DType ty
+  deriving (Eq, Ord, Show)
 
 
-class Module ty def mod | mod -> def ty where
-  module' :: MName -> [(QName, def ::: ty)] -> mod
+class Module expr ty mod | mod -> expr ty where
+  module' :: MName -> [(QName, Def expr ty ::: ty)] -> mod

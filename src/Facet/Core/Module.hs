@@ -4,8 +4,6 @@
 module Facet.Core.Module
 ( Module(..)
 , interpretModule
-, interpretDef
-, Def(..)
 ) where
 
 import qualified Facet.Core as C
@@ -14,24 +12,15 @@ import qualified Facet.Core.Type as Type
 import           Facet.Name
 import           Facet.Syntax
 
-data Module = Module MName [(QName, Def ::: Type.Type)]
+data Module = Module MName [(QName, C.Def Expr.Expr Type.Type ::: Type.Type)]
 
-instance C.Module Type.Type Def Module where
+instance C.Module Expr.Expr Type.Type Module where
   module' = Module
 
-interpretModule :: (C.Expr expr, C.Type ty, C.Def expr ty def, C.Module ty def mod) => Module -> mod
+interpretModule :: (C.Expr expr, C.Type ty, C.Module expr ty mod) => Module -> mod
 interpretModule (Module n b) = C.module' n (map (fmap interpretDef) b)
 
-interpretDef :: (C.Expr expr, C.Type ty, C.Def expr ty def) => (Def ::: Type.Type) -> def ::: ty
+interpretDef :: (C.Expr expr, C.Type ty) => (C.Def Expr.Expr Type.Type ::: Type.Type) -> C.Def expr ty ::: ty
 interpretDef = \case
-  DefTerm e  ::: _T -> C.defTerm (Expr.interpret e)  ::: Type.interpret _T
-  DefType _T ::: _K -> C.defType (Type.interpret _T) ::: Type.interpret _K
-
-
-data Def
-  = DefTerm Expr.Expr
-  | DefType Type.Type
-
-instance C.Def Expr.Expr Type.Type Def where
-  defType = DefType
-  defTerm = DefTerm
+  C.DTerm e  ::: _T -> C.DTerm (Expr.interpret e)  ::: Type.interpret _T
+  C.DType _T ::: _K -> C.DType (Type.interpret _T) ::: Type.interpret _K
