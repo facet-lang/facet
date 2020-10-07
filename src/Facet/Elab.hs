@@ -401,17 +401,16 @@ elabModule
   :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
   => SM.Module
   -> m CM.Module
--- FIXME: elaborate submodules with local instead of runReader, once we have submodules
-elabModule (SM.Module s n ds) = local (const s) $ runReader n $ C.module' n <$> traverse elabDef ds
+elabModule (SM.Module s n ds) = local (const s) $ C.module' n <$> traverse (elabDef n) ds
 
 elabDef
-  :: Has (Reader Context :+: Reader Env.Env :+: Reader MName :+: Reader Span :+: Throw P.Print) sig m
-  => SM.Def
+  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
+  => MName
+  -> SM.Def
   -> m CM.Def
-elabDef (SM.Def s n d) = local (const s) $ do
+elabDef mname (SM.Def s n d) = local (const s) $ do
   e ::: _T <- elabDecl d
   e' <- check (e ::: _T)
-  mname <- ask
   -- FIXME: extend the environment
   -- FIXME: extend the module
   -- FIXME: support defining types
