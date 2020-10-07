@@ -5,6 +5,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
@@ -44,6 +45,7 @@ module Facet.Elab
 
 import           Control.Algebra
 import           Control.Carrier.Reader
+import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Span (Span(..))
 import           Control.Lens (Prism', preview, review)
 import           Data.Bifunctor (first)
@@ -402,16 +404,19 @@ elabModule
   => SM.Module
   -> m CM.Module
 -- FIXME: elaborate all the types first, and only then the terms
-elabModule (SM.Module s n ds) = local (const s) $ C.module' n <$> traverse (elabDef n) ds
+elabModule (SM.Module s n ds) = local (const s) $ evalState (mempty @Env.Env) $ C.module' n <$> traverse (elabDef n) ds
 
 elabDef
-  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
+  :: Has (Reader Context :+: Reader Span :+: State Env.Env :+: Throw P.Print) sig m
   => MName
   -> SM.Def
   -> m CM.Def
 elabDef mname (SM.Def s n d) = local (const s) $ do
-  e ::: _T <- elabDecl d
-  e' <- check (e ::: _T)
+  env <- get @Env.Env
+  e' ::: _T <- runReader env $ do
+    e ::: _T <- elabDecl d
+    e' <- check (e ::: _T)
+    pure $ e' ::: _T
   -- FIXME: extend the environment
   -- FIXME: extend the module
   -- FIXME: support defining types
