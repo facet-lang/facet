@@ -183,7 +183,7 @@ elabType (t ::: _K) = ST.fold alg t _K
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
-    validate r@(_T ::: _K') = case _K of
+    validate r@(_ ::: _K') = case _K of
       Just _K -> r <$ unify _K' _K
       _       -> pure r
 
