@@ -18,6 +18,7 @@ module Facet.Print
 , evar
 , tvar
   -- * Interpreters
+, printCoreType
 , printSurfaceType
 , printCoreExpr
 , printSurfaceExpr
@@ -38,6 +39,7 @@ import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Core.Expr as CE
 import qualified Facet.Core.Pattern as CP
+import qualified Facet.Core.Type as CT
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
 import           Facet.Stack
@@ -177,6 +179,17 @@ instance C.Module Print Print where
 
 instance C.Def Print Print Print where
   defTerm n (t := b) = ann (var (prettyQName n) ::: t) </> b
+
+
+printCoreType :: CT.Type -> Print
+printCoreType = CT.fold $ \case
+  CT.Type    -> _Type
+  CT.Void    -> _Void
+  CT.Unit    -> _Unit
+  t CT.:=> b -> first cbound t >~> b
+  f CT.:$ as -> foldl' ($$) (either cbound cfree f) as
+  a CT.:-> b -> a --> b
+  l CT.:*  r -> l **  r
 
 
 printSurfaceType :: ST.Type -> Print
