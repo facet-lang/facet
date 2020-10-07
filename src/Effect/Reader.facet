@@ -3,9 +3,9 @@
 Effect.Reader : Module
 {
 
-Reader : (r : Type) -> Interface
-{ ask : r
-, local : (r -> r) -> a -> a
+Reader : (R : Type) -> InteRface
+{ ask : R
+, local : (R -> R) -> A -> A
 }
 
 }
