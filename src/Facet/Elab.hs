@@ -161,23 +161,23 @@ elabType
 elabType (t ::: _K) = ST.fold alg t _K
   where
   alg t _K = case t of
-    ST.Free  n -> switch =<< synth (C.tglobal <$> global n)
-    ST.Bound n -> switch =<< synth (C.tbound <$> bound n)
+    ST.Free  n -> switch $ synth (C.tglobal <$> global n)
+    ST.Bound n -> switch $ synth (C.tbound <$> bound n)
     ST.Hole  n -> hole (n ::: _K)
-    ST.Type    -> switch =<< synth _Type
-    ST.Void    -> switch =<< synth _Void
-    ST.Unit    -> switch =<< synth _Unit
-    t ST.:=> b -> switch =<< synth (fmap _check t >~> _check b)
-    f ST.:$  a -> switch =<< synth (_synth f .$  _check a)
-    a ST.:-> b -> switch =<< synth (_check a --> _check b)
-    l ST.:*  r -> switch =<< synth (_check l .*  _check r)
+    ST.Type    -> switch $ synth _Type
+    ST.Void    -> switch $ synth _Void
+    ST.Unit    -> switch $ synth _Unit
+    t ST.:=> b -> switch $ synth (fmap _check t >~> _check b)
+    f ST.:$  a -> switch $ synth (_synth f .$  _check a)
+    a ST.:-> b -> switch $ synth (_check a --> _check b)
+    l ST.:*  r -> switch $ synth (_check l .*  _check r)
     ST.Loc s b -> local (const s) $ b _K
     where
     _check r = tm <$> Check (r . Just)
     _synth r = Synth (r Nothing)
-    switch r@(_ ::: _K') = case _K of
-      Just _K -> r <$ unify _K' _K
-      _       -> pure r
+    switch m = case _K of
+      Just _K -> m >>= \ r -> r <$ unify (ty r) _K
+      _       -> m
 
 
 _Type :: (Applicative m, C.Type t) => Synth m t
