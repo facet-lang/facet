@@ -204,10 +204,10 @@ printSurfaceType = go
     ST.Void    -> _Void
     ST.Unit    -> _Unit
     t ST.:=> b ->
-      let (t', b') = unprefixr (preview ST.forAll_ . dropSpan) b
+      let (t', b') = splitr (preview ST.forAll_ . dropSpan) b
       in map (first sbound) (t:t') >~~> go b'
     f ST.:$  a ->
-      let (f', a') = unprefixl (preview ST.app_ . dropSpan) f
+      let (f', a') = splitl (preview ST.app_ . dropSpan) f
       in go f' $$* fmap go (a' :> a)
     a ST.:-> b -> go a --> go b
     l ST.:*  r -> go l **  go r
@@ -286,7 +286,7 @@ printSurfaceExpr = go
     SE.Bound n -> sbound n
     SE.Hole n  -> hole n
     f SE.:$  a ->
-      let (f', a') = unprefixl (preview SE.app_ . dropSpan) f
+      let (f', a') = splitl (preview SE.app_ . dropSpan) f
       in go f' $$* fmap go (a' :> a)
     SE.Unit    -> unit
     l SE.:*  r -> go l **  go r
@@ -336,7 +336,7 @@ printSurfaceDecl = go
   go = SD.out >>> \case
     t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
     t SD.:=> b ->
-      let (t', b') = unprefixr (preview SD.forAll_ . dropSpan) b
+      let (t', b') = splitr (preview SD.forAll_ . dropSpan) b
       in map (first sbound) (t:t') >~~> go b'
     t SD.:-> b -> bimap sbound printSurfaceType t >-> go b
     SD.Loc _ d -> go d

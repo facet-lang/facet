@@ -7,8 +7,8 @@ module Facet.Syntax
 , uncurryAnn
 , curryAnn
 , (:=)(..)
-, unprefixl
-, unprefixr
+, splitl
+, splitr
 ) where
 
 import Data.Bifunctor
@@ -49,15 +49,15 @@ instance Bifunctor (:=) where
   bimap f g (a := b) = f a := g b
 
 
-unprefixl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)
-unprefixl un = go id
+splitl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)
+splitl un = go id
   where
   go as t = case un t of
     Just (t', a) -> go (as . (:> a)) t'
     Nothing      -> (t, as Nil)
 
-unprefixr :: (t -> Maybe (a, t)) -> t -> ([a], t)
-unprefixr un = go id
+splitr :: (t -> Maybe (a, t)) -> t -> ([a], t)
+splitr un = go id
   where
   go as t = case un t of
     Just (a, t') -> go (as . (a:)) t'
