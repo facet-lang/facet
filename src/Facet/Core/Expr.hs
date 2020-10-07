@@ -38,8 +38,10 @@ instance C.Expr Expr where
   unit = In Unit
   (**) = fmap In . Pair
 
+
 app_ :: Prism' Expr (Expr, Expr)
 app_ = prism' (uncurry (C.$$)) (\case{ In (App f a) -> Just (f, a) ; _ -> Nothing })
+
 
 interpret :: C.Expr r => Expr -> r
 interpret = out >>> \case
