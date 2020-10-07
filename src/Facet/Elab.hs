@@ -122,12 +122,22 @@ unify t1 t2 = go t1 t2
 
 -- General
 
-bound :: Has (Reader Context :+: Throw P.Print) sig m => Name -> (Name -> e) -> (Int -> P.Print) -> Synth m e
+bound
+  :: Has (Reader Context :+: Throw P.Print) sig m
+  => Name
+  -> (Name -> e)
+  -> (Int -> P.Print)
+  -> Synth m e
 bound n with var = Synth $ asks (IntMap.lookup (id' n)) >>= \case
   Just b  -> pure (with n ::: b)
   Nothing -> freeVariable (prettyNameWith var n)
 
-app :: Has (Throw P.Print) sig m => (a -> a -> a) -> Synth m a -> Check m a -> Synth m a
+app
+  :: Has (Throw P.Print) sig m
+  => (a -> a -> a)
+  -> Synth m a
+  -> Check m a
+  -> Synth m a
 app ($$) f a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
@@ -137,7 +147,10 @@ app ($$) f a = Synth $ do
 
 -- Types
 
-elabType :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m => (ST.Type ::: Maybe Type) -> m (Type ::: Type)
+elabType
+  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
+  => (ST.Type ::: Maybe Type)
+  -> m (Type ::: Type)
 elabType (t ::: _K) = ST.fold alg t _K
   where
   alg t _K = case t of
@@ -159,12 +172,18 @@ elabType (t ::: _K) = ST.fold alg t _K
       Just _K -> r <$ unify _K' _K
       _       -> pure r
 
-tglobal :: (Has (Reader Env.Env :+: Throw P.Print) sig m, C.Type ty) => N.DName -> Synth m ty
+tglobal
+  :: (Has (Reader Env.Env :+: Throw P.Print) sig m, C.Type ty)
+  => N.DName
+  -> Synth m ty
 tglobal n = Synth $ asks (Env.lookup n) >>= \case
   Just b  -> pure (C.tglobal (tm b :.: n) ::: ty b)
   Nothing -> freeVariable (pretty n)
 
-tbound :: (Has (Reader Context :+: Throw P.Print) sig m, C.Type ty) => Name -> Synth m ty
+tbound
+  :: (Has (Reader Context :+: Throw P.Print) sig m, C.Type ty)
+  => Name
+  -> Synth m ty
 tbound n = bound n C.tbound P.tvar
 
 _Type :: (Applicative m, C.Type t) => Synth m t
@@ -176,12 +195,20 @@ _Void = Synth $ pure $ C._Void ::: C._Type
 _Unit :: (Applicative m, C.Type t) => Synth m t
 _Unit = Synth $ pure $ C._Unit ::: C._Type
 
-(.$) :: (Has (Throw P.Print) sig m, C.Type t) => Synth m t -> Check m t -> Synth m t
+(.$)
+  :: (Has (Throw P.Print) sig m, C.Type t)
+  => Synth m t
+  -> Check m t
+  -> Synth m t
 (.$) = app (C..$)
 
 infixl 9 .$
 
-(.*) :: (Applicative m, C.Type t) => Check m t -> Check m t -> Synth m t
+(.*)
+  :: (Applicative m, C.Type t)
+  => Check m t
+  -> Check m t
+  -> Synth m t
 a .* b = Synth $ do
   a' <- check (a ::: C._Type)
   b' <- check (b ::: C._Type)
@@ -189,7 +216,11 @@ a .* b = Synth $ do
 
 infixl 7 .*
 
-(-->) :: (Applicative m, C.Type t) => Check m t -> Check m t -> Synth m t
+(-->)
+  :: (Applicative m, C.Type t)
+  => Check m t
+  -> Check m t
+  -> Synth m t
 a --> b = Synth $ do
   a' <- check (a ::: C._Type)
   b' <- check (b ::: C._Type)
