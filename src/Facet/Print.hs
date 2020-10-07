@@ -133,7 +133,7 @@ block
   = group
   . align
   . braces
-  . enclose space (flatAlt line space)
+  . enclose space line
 
 cases :: [Print] -> Print -> Print
 cases vs b = foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> prec Expr b))) vs
