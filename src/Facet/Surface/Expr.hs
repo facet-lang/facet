@@ -52,7 +52,7 @@ unit_ :: Prism' Expr ()
 unit_ = prism' (const (In Unit)) (\case{ In Unit -> Just () ; _ -> Nothing })
 
 prd_ :: Prism' Expr (Expr, Expr)
-prd_ = prism' (In . uncurry (:*)) (\case{ In (f :* a) -> Just (f, a) ; _ -> Nothing })
+prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
 
 -- FIXME: tupling/unit should take a list of expressions
 
