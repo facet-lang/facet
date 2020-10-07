@@ -34,6 +34,11 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - Continue after errors on a declaration-by-declaration basis.
 
 
+## Pretty-printer
+
+- Decompose into DSLs for printing parts of syntax, interpreters written against said DSLs, and composable implementations of the DSLs providing different behaviours for e.g. bound variable display.
+
+
 ## Driver
 
 - Formatting.
