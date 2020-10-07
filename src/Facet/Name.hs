@@ -149,4 +149,4 @@ data OpN
   | OutfixN Text [Text] Text
   deriving (Eq, Ord, Show)
 
--- FIXME: can we treat this more compositionally instead? i.e. treat an n-ary prefix operator as a composition of individual prefix operators?
+-- FIXME: can we treat this more compositionally instead? i.e. treat an n-ary prefix operator as a composition of individual prefix operators? Then each placeholder lines up with a unary operator corresponding to the type of the tail
