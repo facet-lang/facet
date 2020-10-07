@@ -147,7 +147,7 @@ monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
 monotypeTable =
   [ [ Infix R (pack "->") (curry (review T.arrow_)) ]
   , [ Infix L mempty (curry (review T.app_)) ]
-  , [ -- FIXME: we should treat Unit & Type as globals.
+  , [ -- FIXME: we should treat these as globals.
       Atom (T._Type <$ token (string "Type"))
     , Atom (T._Void <$ token (string "Void"))
     , Atom (T._Unit <$ token (string "Unit"))
