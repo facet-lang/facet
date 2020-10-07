@@ -42,6 +42,7 @@ module Facet.Elab
 
 import           Control.Algebra
 import           Control.Carrier.Reader
+import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Span (Span(..))
 import           Control.Lens (preview, review)
 import           Data.Bifunctor (first)
@@ -74,14 +75,14 @@ implicit :: Env.Env
 implicit = Env.fromList [ (N.T (N.TName (T.pack "Type")), MName (T.pack "Facet") ::: C._Type) ]
 
 elab :: Applicative m => MName -> Span -> Env.Env -> Context -> Elab m a -> m (Either (Span, P.Print) a)
-elab n s e c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (m n e c)
+elab n s e c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (evalState e (m n c))
 
-newtype Elab m a = Elab (MName -> Env.Env -> Context -> ErrorC Span P.Print m a)
-  deriving (Algebra (Reader MName :+: Reader Env.Env :+: Reader Context :+: Error P.Print :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Env.Env (ReaderC Context (ErrorC Span P.Print m)))
+newtype Elab m a = Elab (MName -> Context -> StateC Env.Env (ErrorC Span P.Print m) a)
+  deriving (Algebra (Reader MName :+: Reader Context :+: State Env.Env :+: Error P.Print :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC MName (ReaderC Context (StateC Env.Env (ErrorC Span P.Print m)))
 
 
 newtype Check m a = Check { runCheck :: Type -> Elab m a }
-  deriving (Algebra (Reader Type :+: Reader MName :+: Reader Env.Env :+: Reader Context :+: Error P.Print :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC Type (Elab m)
+  deriving (Algebra (Reader Type :+: Reader MName :+: Reader Context :+: State Env.Env :+: Error P.Print :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC Type (Elab m)
 
 newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
 
@@ -157,7 +158,7 @@ elabType (t ::: _K) = T.fold alg t _K
       _       -> pure r
 
 tglobal :: (C.Type ty, Algebra sig m) => N.DName -> Synth m ty
-tglobal n = Synth $ asks (Env.lookup n) >>= \case
+tglobal n = Synth $ gets (Env.lookup n) >>= \case
   Just b  -> pure (C.tglobal (tm b :.: n) ::: ty b)
   Nothing -> freeVariable (pretty n)
 
@@ -230,7 +231,7 @@ elabExpr (t ::: _T) = E.fold alg t _T
       _       -> pure r
 
 eglobal :: (Algebra sig m, C.Expr expr) => N.DName -> Synth m expr
-eglobal n = Synth $ asks (Env.lookup n) >>= \case
+eglobal n = Synth $ gets (Env.lookup n) >>= \case
   Just b  -> pure (C.global (tm b :.: n) ::: ty b)
   Nothing -> freeVariable (pretty n)
 
