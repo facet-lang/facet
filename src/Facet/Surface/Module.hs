@@ -6,7 +6,6 @@ module Facet.Surface.Module
 , module'
 , def
 , ModuleF(..)
-, fold
 ) where
 
 import Facet.Name
@@ -25,9 +24,3 @@ data ModuleF a
   = Module MName [a]
   | Def DName Decl
   deriving (Foldable, Functor, Traversable)
-
-
-fold :: (ModuleF a -> a) -> Module -> a
-fold alg = go
-  where
-  go = alg . fmap go . out

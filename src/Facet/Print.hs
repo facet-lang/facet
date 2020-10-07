@@ -328,11 +328,9 @@ t .= b = t </> b
 
 
 printSurfaceModule :: SM.Module -> Print
-printSurfaceModule = SM.fold alg
-  where
-  alg = \case
-    SM.Module  n b -> module' n b
-    SM.Def n d -> def (sfree n) (printSurfaceDecl d)
+printSurfaceModule = SM.out >>> \case
+  SM.Module  n b -> module' n (map printSurfaceModule b)
+  SM.Def n d -> def (sfree n) (printSurfaceDecl d)
 
 
 module' :: N.MName -> [Print] -> Print
