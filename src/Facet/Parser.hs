@@ -156,10 +156,10 @@ monotypeTable =
   ]
 
 forAll
-  :: (Spanned res, Monad p, PositionParsing p)
+  :: (Monad p, PositionParsing p)
   => ((Span, ((N.Name N.T S.::: T.Type), res)) -> res)
   -> OperatorParser (Facet p) res
-forAll mk self _ = spanning $ do
+forAll mk self _ = do
   start <- position
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
   arrow *> foldr (loop start ty) self names
