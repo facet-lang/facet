@@ -140,7 +140,7 @@ var :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => p -> p
 var = setPrec Var . annotate Name
 
 evar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
-evar = var . P.var
+evar = var . P.evar
 
 tvar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
 tvar = var . P.tvar

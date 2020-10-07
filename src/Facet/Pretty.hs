@@ -9,7 +9,7 @@ module Facet.Pretty
 , reflow
   -- * Variable formatting
 , toAlpha
-, var
+, evar
 , tvar
 , varFrom
   -- * Columnar layout
@@ -68,8 +68,8 @@ toAlpha alphabet i = alphabet !! r : if q > 0 then show q else ""
   (q, r) = i `divMod` n
 
 
-var :: Printer p => Int -> p
-var = varFrom ['a'..'z']
+evar :: Printer p => Int -> p
+evar = varFrom ['a'..'z']
 
 tvar :: Printer p => Int -> p
 tvar = varFrom ['A'..'Z']

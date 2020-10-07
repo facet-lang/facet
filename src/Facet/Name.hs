@@ -38,7 +38,7 @@ instance Show Name where
   showsPrec p = showsPrec p . P.pretty
 
 instance P.Pretty Name where
-  pretty = prettyNameWith var
+  pretty = prettyNameWith evar
 
 prettyNameWith :: Printer p => (Int -> p) -> Name -> p
 prettyNameWith var n
