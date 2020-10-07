@@ -46,8 +46,10 @@ prettyNameWith var n
 
 
 newtype ELocal = ELocal { getELocal :: Name }
+  deriving (Eq, Ord, Show)
 
 newtype TLocal = TLocal { getTLocal :: Name }
+  deriving (Eq, Ord, Show)
 
 
 __ :: Text
