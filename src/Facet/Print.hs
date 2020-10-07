@@ -53,6 +53,7 @@ import           Facet.Syntax
 import           Prelude hiding ((**))
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
+import qualified Silkscreen as P
 import           Silkscreen.Printer.Prec
 import           Silkscreen.Printer.Rainbow
 import           Text.Parser.Position
@@ -89,7 +90,7 @@ terminalStyle = \case
 
 
 newtype Print = Print { runPrint :: Prec Context (Rainbow (PP.Doc Highlight)) }
-  deriving (Monoid, PrecedencePrinter, Printer, Semigroup)
+  deriving (Monoid, PrecedencePrinter, P.Printer, Semigroup)
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
@@ -116,11 +117,11 @@ data Highlight
   | Lit
   deriving (Eq, Ord, Show)
 
-op :: (Printer p, Ann p ~ Highlight) => p -> p
+op :: (P.Printer p, Ann p ~ Highlight) => p -> p
 op = annotate Op
 
 
-arrow :: (Printer p, Ann p ~ Highlight) => p
+arrow :: (P.Printer p, Ann p ~ Highlight) => p
 arrow = op (pretty "->")
 
 comp :: Print -> Print
@@ -141,7 +142,7 @@ commaSep = encloseSep mempty mempty (comma <> space)
 cases :: [Print] -> Print -> Print
 cases vs b = foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> prec Expr b))) vs
 
-ann :: Printer p => (p ::: p) -> p
+ann :: P.Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
 
 var :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => p -> p
@@ -153,7 +154,7 @@ evar = var . P.evar
 tvar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
 tvar = var . P.tvar
 
-prettyMName :: Printer p => N.MName -> p
+prettyMName :: P.Printer p => N.MName -> p
 prettyMName (n N.:. s)  = prettyMName n <> pretty '.' <> pretty s
 prettyMName (N.MName s) = pretty s
 
