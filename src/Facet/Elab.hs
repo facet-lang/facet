@@ -94,12 +94,19 @@ instance Functor m => Functor (Synth m) where
 check :: (Check m a ::: Type) -> m a
 check = uncurryAnn runCheck
 
-switch :: Has (Throw P.Print) sig m => Synth m a -> Check m a
+switch
+  :: Has (Throw P.Print) sig m
+  => Synth m a
+  -> Check m a
 switch s = Check $ \ _T -> do
   a ::: _T' <- synth s
   a <$ unify _T _T'
 
-unify :: Has (Throw P.Print) sig m => Type -> Type -> m ()
+unify
+  :: Has (Throw P.Print) sig m
+  => Type
+  -> Type
+  -> m ()
 unify t1 t2 = go t1 t2
   where
   go t1 t2 = case (out t1, out t2) of
