@@ -14,7 +14,6 @@ module Facet.Core.Type
 , app'_
 , prd_
 , interpret
-, rename
 , subst
 , TypeF(..)
 , fold
@@ -94,19 +93,6 @@ f $$* as = foldl' ($$) f as
 
 infixl 9 $$, $$*
 
-rename :: Name T -> Name T -> Type -> Type
-rename x y = go
-  where
-  go = out >>> \case
-    Type          -> C._Type
-    Void          -> C._Void
-    Unit          -> C._Unit
-    z ::: t :=> b
-      | x == z    -> z ::: go t C.>=>    b
-      | otherwise -> z ::: go t C.>=> go b
-    f :$ as       -> either (\ z -> C.tbound (if z == x then y else z)) C.tglobal f $$* fmap go as
-    a :-> b       -> go a C.--> go b
-    l :*  r       -> go l C..*  go r
 
 subst :: Substitution Type -> Type -> Type
 subst sub = out >>> \case
