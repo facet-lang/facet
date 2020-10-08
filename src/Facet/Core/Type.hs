@@ -109,23 +109,21 @@ rename x y = go
     l :*  r       -> go l C..*  go r
 
 subst :: Substitution Type -> Type -> Type
-subst sub = go
-  where
-  go = out >>> \case
-    Type          -> C._Type
-    Void          -> C._Void
-    Unit          -> C._Unit
-    n ::: t :=> b ->
-      let n' = prime (hint n) (fvs b <> foldMap fvs sub)
-          b' = go (rename n n' b)
-      in (n' ::: go t) C.>=> b'
-    f :$  as      -> f' $$* fmap go as
-      where
-      f' = case f of
-        Left f | Just e <- Subst.lookup f sub -> e
-        _                                     -> either C.tbound C.tglobal f
-    a :-> b       -> go a C.--> go b
-    l :*  r       -> go l C..*  go r
+subst sub = out >>> \case
+  Type          -> C._Type
+  Void          -> C._Void
+  Unit          -> C._Unit
+  n ::: t :=> b ->
+    let n' = prime (hint n) (fvs b <> foldMap fvs sub)
+        b' = subst sub (rename n n' b)
+    in (n' ::: subst sub t) C.>=> b'
+  f :$  as      -> f' $$* fmap (subst sub) as
+    where
+    f' = case f of
+      Left f | Just e <- Subst.lookup f sub -> e
+      _                                     -> either C.tbound C.tglobal f
+  a :-> b       -> subst sub a C.--> subst sub b
+  l :*  r       -> subst sub l C..*  subst sub r
 
 
 -- FIXME: computation types
