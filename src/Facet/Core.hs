@@ -1,10 +1,9 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core
 ( Type(..)
-, Def(..)
 ) where
 
-import Facet.Name (CName, Name, QName, T)
+import Facet.Name (Name, QName, T)
 import Facet.Syntax ((:::)(..))
 
 class Type ty where
@@ -28,10 +27,3 @@ class Type ty where
   infixl 7 .*
 
   -- FIXME: tupling/unit should take a list of types
-
-
-data Def expr ty
-  = DTerm expr
-  | DType ty
-  | DData [CName ::: ty]
-  deriving (Eq, Ord, Show)

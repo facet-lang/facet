@@ -382,7 +382,7 @@ elabDef
   :: Has (Reader Context :+: Reader Span :+: State Env.Env :+: Throw P.Print) sig m
   => MName
   -> SM.Def
-  -> m (QName, C.Def CE.Expr Type ::: Type)
+  -> m (QName, CM.Def ::: Type)
 elabDef mname (SM.Def s n d) = local (const s) $ do
   env <- get @Env.Env
   e' ::: _T <- runReader env $ do
@@ -393,7 +393,7 @@ elabDef mname (SM.Def s n d) = local (const s) $ do
   modify $ Env.insert (mname :.: n ::: _T)
   -- FIXME: extend the module
   -- FIXME: support defining types
-  pure (mname :.: n, C.DTerm e' ::: _T)
+  pure (mname :.: n, CM.DTerm e' ::: _T)
 
 
 -- Context

@@ -345,11 +345,11 @@ t .= b = t </> b
 printCoreModule :: CM.Module -> Print
 printCoreModule (CM.Module n ds) = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: printCoreType t) </> printCoreDef d) ds))
 
-printCoreDef :: C.Def CE.Expr CT.Type -> Print
+printCoreDef :: CM.Def -> Print
 printCoreDef = \case
-  C.DTerm b  -> printCoreExpr b
-  C.DType b  -> printCoreType b
-  C.DData cs -> block (commaSep (map (ann . bimap pretty printCoreType) cs))
+  CM.DTerm b  -> printCoreExpr b
+  CM.DType b  -> printCoreType b
+  CM.DData cs -> block (commaSep (map (ann . bimap pretty printCoreType) cs))
 
 
 printSurfaceModule :: SM.Module -> Print
