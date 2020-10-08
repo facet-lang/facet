@@ -11,7 +11,6 @@ module Facet.Core.Expr
 , app_
 , unit_
 , prd_
-, subst
 , ExprF(..)
 , fold
 ) where
@@ -21,6 +20,7 @@ import           Control.Lens (Prism', prism', review)
 import           Data.Coerce (coerce)
 import qualified Facet.Core.Pattern as P
 import           Facet.Name
+import           Facet.Substitution as Subst
 import           Facet.Vars
 
 newtype Expr = In { out :: ExprF Expr }
@@ -75,48 +75,8 @@ prd_ :: Prism' Expr (Expr, Expr)
 prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
 
 
--- FIXME: this is pretty inefficient for multiple renamings; we should try to fuse renamings.
-rename :: Name a -> Name a -> Expr -> Expr
-rename x y = go
-  where
-  go = out >>> \case
-    Free s        -> review global_ s
-    Bound z
-      | x `eqN` z -> review bound_ (coerce y)
-      | otherwise -> review bound_ z
-    TLam z b
-      | z `eqN` x -> review tlam_ (z, b)
-      | otherwise -> review tlam_ (z, go b)
-    TApp f a      -> review tapp_ (go f, go a)
-    Lam z b
-      | elemN x z -> review lam_ (z, b)
-      | otherwise -> review lam_ (z, go b)
-    f :$ a        -> review app_ (go f, go a)
-    Unit          -> review unit_ ()
-    l :* r        -> review prd_ (go l, go r)
-
--- FIXME: this is pretty inefficient for multiple substitutions; we should try to fuse substitutions.
-subst :: Name a -> Expr -> Expr -> Expr
-subst x e = go
-  where
-  go = out >>> \case
-    Free s        -> review global_ s
-    Bound n
-      | n `eqN` x -> e
-      | otherwise -> review bound_ n
-    TLam n b      ->
-      let n' = prime (hint n) (fvs b <> fvs e)
-          b' = go (rename n n' b)
-      in review tlam_ (n', b')
-    TApp f a      -> review tapp_ (go f, go a)
-    Lam p b       ->
-      let vs = fvs b <> fvs e
-          (re, p') = renameAccumL (\ i f n -> let n' = Name (hint n) i in (f . rename n n', n')) vs id p
-          b' = go (re b)
-      in review lam_ (p', b')
-    f :$ a        -> review app_ (go f, go a)
-    Unit          -> review unit_ ()
-    l :* r        -> review prd_ (go l, go r)
+instance Substitutable Expr where
+  subst sub = substitute sub . fvs1
 
 
 data ExprF e
