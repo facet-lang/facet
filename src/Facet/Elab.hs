@@ -422,7 +422,7 @@ mismatch msg exp act = err $ msg
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
 couldNotUnify :: Has (Throw P.Print) sig m => Type -> Type -> m a
-couldNotUnify t1 t2 = mismatch (reflow "could not unify") (P.printCoreType t2) (P.printCoreType t1)
+couldNotUnify t1 t2 = mismatch (reflow "mismatch") (P.printCoreType t2) (P.printCoreType t1)
 
 couldNotSynthesize :: Has (Throw P.Print) sig m => P.Print -> m a
 couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softline <> msg
