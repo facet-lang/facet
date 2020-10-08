@@ -101,7 +101,7 @@ rename x y = go
     Type          -> C._Type
     Void          -> C._Void
     Unit          -> C._Unit
-    (z ::: t) :=> b
+    z ::: t :=> b
       | x == z    -> (z ::: go t) C.>=>    b
       | otherwise -> (z ::: go t) C.>=> go b
     f :$ as       -> either (\ z -> C.tbound (if z == x then y else z)) C.tglobal f $$* fmap go as
@@ -112,20 +112,20 @@ subst :: Substitution Type -> Type -> Type
 subst sub = go
   where
   go = out >>> \case
-    Type            -> C._Type
-    Void            -> C._Void
-    Unit            -> C._Unit
-    (n ::: t) :=> b ->
+    Type          -> C._Type
+    Void          -> C._Void
+    Unit          -> C._Unit
+    n ::: t :=> b ->
       let n' = prime (hint n) (fvs b <> foldMap fvs sub)
           b' = go (rename n n' b)
       in (n' ::: go t) C.>=> b'
-    f :$  as        -> f' $$* fmap go as
+    f :$  as      -> f' $$* fmap go as
       where
       f' = case f of
         Left f | Just e <- Subst.lookup f sub -> e
         _                                     -> either C.tbound C.tglobal f
-    a :-> b         -> go a C.--> go b
-    l :*  r         -> go l C..*  go r
+    a :-> b       -> go a C.--> go b
+    l :*  r       -> go l C..*  go r
 
 
 -- FIXME: computation types
