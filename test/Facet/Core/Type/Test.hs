@@ -18,5 +18,5 @@ prop_fvs_tbound = property $ do
   n <- forAll name
   getFVs (fvs (C.tbound n :: Type)) === bound n
 
-name :: Gen (Name T)
+name :: MonadGen m => m (Name T)
 name = Name __ <$> Gen.int (Range.linear 0 100)
