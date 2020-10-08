@@ -14,8 +14,10 @@ module Facet.GHCI
 , makeType
 , _Type
 , (>=>)
+, (-->)
 ) where
 
+import           Control.Applicative (liftA2)
 import           Control.Carrier.Lift (runM)
 import           Control.Carrier.Parser.Church (Has, Input(..), ParserC, errToNotice, run, runParser, runParserWithFile, runParserWithString)
 import           Control.Carrier.Reader (Reader, ReaderC, asks, runReader)
@@ -96,3 +98,6 @@ s ::: t >=> b = do
   (C.>=>) . (n :::) <$> t <*> b (pure (C.tbound n))
 
 infixr 1 >=>
+
+(-->) :: Applicative m => m T.Type -> m T.Type -> m T.Type
+(-->) = liftA2 (C.-->)
