@@ -9,6 +9,7 @@
 module Facet.Core.Type
 ( Type(..)
 , global_
+, bound_
 , forAll_
 , arrow_
 , app_
@@ -20,7 +21,7 @@ module Facet.Core.Type
 ) where
 
 import           Control.Category ((>>>))
-import           Control.Lens (Prism', prism', review, _Right)
+import           Control.Lens (Prism', prism', review, _Left, _Right)
 import           Data.Foldable (foldl')
 import qualified Facet.Core as C
 import           Facet.Name
@@ -57,6 +58,9 @@ var_ = prism' (In . (:$ Nil)) (\case { In (f :$ Nil) -> Just f ; _ -> Nothing })
 
 global_ :: Prism' Type QName
 global_ = var_ . _Right
+
+bound_ :: Prism' Type (Name T)
+bound_ = var_ . _Left
 
 forAll_ :: Prism' Type (Name T ::: Type, Type)
 forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
