@@ -9,7 +9,6 @@ module Facet.Name
 , E
 , T
 , __
-, instantiate
 , MName(..)
 , QName(..)
 , moduleName
@@ -24,7 +23,6 @@ module Facet.Name
 
 import           Data.Coerce
 import           Data.Function (on)
-import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty
 import           Data.String (IsString(..))
 import           Data.Text (Text, unpack)
@@ -69,10 +67,6 @@ data T
 
 __ :: Text
 __ = T.empty
-
-
-instantiate :: Name a -> t -> IntMap.IntMap t -> IntMap.IntMap t
-instantiate = IntMap.insert . id'
 
 
 -- | Module names.
