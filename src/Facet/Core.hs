@@ -3,12 +3,11 @@
 module Facet.Core
 ( Type(..)
 , Expr(..)
-, Module(..)
 , Def(..)
 ) where
 
 import qualified Facet.Core.Pattern as P
-import           Facet.Name (CName, E, MName, Name, QName, T)
+import           Facet.Name (CName, E, Name, QName, T)
 import           Facet.Syntax ((:::)(..))
 
 class Type ty where
@@ -50,7 +49,3 @@ data Def expr ty
   | DType ty
   | DData [CName ::: ty]
   deriving (Eq, Ord, Show)
-
-
-class Module expr ty mod | mod -> expr ty where
-  module' :: MName -> [(QName, Def expr ty ::: ty)] -> mod

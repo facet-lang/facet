@@ -185,14 +185,6 @@ instance C.Expr Print where
   unit = unit
   (**) = (**)
 
-instance C.Module Print Print Print where
-  module' n ds = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: t) </> printDef d) ds))
-    where
-    printDef = \case
-      C.DTerm b  -> b
-      C.DType b  -> b
-      C.DData cs -> block (commaSep (map (ann . first pretty) cs))
-
 
 printCoreType :: CT.Type -> Print
 printCoreType = CT.fold $ \case

@@ -376,7 +376,7 @@ elabModule
   => SM.Module
   -> m CM.Module
 -- FIXME: elaborate all the types first, and only then the terms
-elabModule (SM.Module s n ds) = local (const s) $ evalState (mempty @Env.Env) $ C.module' n <$> traverse (elabDef n) ds
+elabModule (SM.Module s n ds) = local (const s) $ evalState (mempty @Env.Env) $ CM.Module n <$> traverse (elabDef n) ds
 
 elabDef
   :: Has (Reader Context :+: Reader Span :+: State Env.Env :+: Throw P.Print) sig m
