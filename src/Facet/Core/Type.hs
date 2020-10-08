@@ -59,7 +59,7 @@ out_ = coerced
 
 
 var_ :: Prism' Type (Either (Name T) QName)
-var_ = prism' (In . (:$ Nil)) (\case { In (f :$ Nil) -> Just f ; _ -> Nothing })
+var_ = out_ . prism' (:$ Nil) (\case { f :$ Nil -> Just f ; _ -> Nothing })
 
 global_ :: Prism' Type QName
 global_ = var_ . _Right
@@ -68,19 +68,19 @@ bound_ :: Prism' Type (Name T)
 bound_ = var_ . _Left
 
 forAll_ :: Prism' Type (Name T ::: Type, Type)
-forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
+forAll_ = out_ . prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing })
 
 arrow_ :: Prism' Type (Type, Type)
-arrow_ = prism' (In . uncurry (:->)) (\case{ In (a :-> b) -> Just (a, b) ; _ -> Nothing })
+arrow_ = out_ . prism' (uncurry (:->)) (\case{ a :-> b -> Just (a, b) ; _ -> Nothing })
 
 app_ :: Prism' Type (Type, Type)
 app_ = prism' (uncurry ($$)) (\case{ In (f :$ (as :> a)) -> Just (In (f :$ as), a) ; _ -> Nothing })
 
 app'_ :: Prism' Type (Either (Name T) QName, Stack Type)
-app'_ = prism' (In . uncurry (:$)) (\case{ In (f :$ as) -> Just (f, as) ; _ -> Nothing })
+app'_ = out_ . prism' (uncurry (:$)) (\case{ f :$ as -> Just (f, as) ; _ -> Nothing })
 
 prd_ :: Prism' Type (Type, Type)
-prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
+prd_ = out_ . prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
 
 
 interpret :: C.Type r => Type -> r
