@@ -6,6 +6,7 @@ module Facet.Core.Expr
 , global_
 , bound_
 , tlam_
+, tapp_
 , lam_
 , app_
 , unit_
@@ -29,6 +30,7 @@ instance Scoped Expr where
     Free _   -> mempty
     Bound  n -> fvs n
     TLam n b -> bind n (fvs b)
+    TApp f a -> fvs f <> fvs a
     Lam p b  -> foldr bind (fvs b) p
     f :$ a   -> fvs f <> fvs a
     Unit     -> mempty
@@ -44,6 +46,9 @@ bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
 
 tlam_ :: Prism' Expr (Name T, Expr)
 tlam_ = prism' (In . uncurry TLam) (\case{ In (TLam n b) -> Just (n, b) ; _ -> Nothing })
+
+tapp_ :: Prism' Expr (Expr, Expr)
+tapp_ = prism' (In . uncurry TApp) (\case{ In (TApp f a) -> Just (f, a) ; _ -> Nothing })
 
 lam_ :: Prism' Expr (P.Pattern (Name E), Expr)
 lam_ = prism' (In . uncurry Lam) (\case{ In (Lam p b) -> Just (p, b) ; _ -> Nothing })
@@ -71,6 +76,7 @@ rename x y = go
     TLam z b
       | z `eqN` x -> review tlam_ (z, b)
       | otherwise -> review tlam_ (z, go b)
+    TApp f a      -> review tapp_ (go f, go a)
     Lam z b
       | elemN x z -> review lam_ (z, b)
       | otherwise -> review lam_ (z, go b)
@@ -91,6 +97,7 @@ subst x e = go
       let n' = prime (hint n) (fvs b <> fvs e)
           b' = go (rename n n' b)
       in review tlam_ (n', b')
+    TApp f a      -> review tapp_ (go f, go a)
     Lam p b       ->
       let vs = fvs b <> fvs e
           (re, p') = renameAccumL (\ i f n -> let n' = Name (hint n) i in (f . rename n n', n')) vs id p
@@ -105,6 +112,7 @@ data ExprF e
   = Free QName
   | Bound (Name E)
   | TLam (Name T) e
+  | TApp e e
   | Lam (P.Pattern (Name E)) e
   | e :$ e
   | Unit

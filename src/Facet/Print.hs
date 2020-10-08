@@ -255,6 +255,7 @@ printCoreExpr = CE.fold $ \case
   CE.Free n   -> cfree n
   CE.Bound n  -> sbound n
   CE.TLam n b -> lam (braces (cbound n)) b
+  CE.TApp f a -> f $$ braces a
   CE.Lam  p b -> lam (printCorePattern p) b
   f CE.:$  a  -> f $$ a
   CE.Unit     -> unit
