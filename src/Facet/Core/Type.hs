@@ -20,7 +20,6 @@ module Facet.Core.Type
 
 import           Control.Category ((>>>))
 import           Control.Lens (Prism', prism', review)
-import           Data.Bitraversable (bitraverse)
 import           Data.Foldable (foldl')
 import qualified Facet.Core as C
 import           Facet.Name
@@ -47,8 +46,14 @@ instance Scoped1 Type where
     Type    -> pure C._Type
     Void    -> pure C._Type
     Unit    -> pure C._Type
-    t :=> b -> curry (review forAll_) <$> traverse fvs1 t <*> bind1 (tm t) (fvs1 b)
-    f :$ as -> curry (review app'_) <$> bitraverse bound1 pure f <*> traverse fvs1 as
+    t :=> b -> mk <$> fvs1 (ty t) <*> bind1 C.tbound (tm t) b
+      where
+      mk t' (n', b') = review forAll_ (n' ::: t', b')
+    f :$ as -> f' <*> traverse fvs1 as
+      where
+      f' = case f of
+        Left f -> ($$*) <$> bound1 C.tbound f
+        _      -> pure (curry (review app'_) f)
     a :-> b -> curry (review arrow_) <$> fvs1 a <*> fvs1 b
     l :* r  -> curry (review prd_) <$> fvs1 l <*> fvs1 r
 

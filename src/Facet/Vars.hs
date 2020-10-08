@@ -1,4 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Vars
 ( Vars(..)
 , insert
@@ -9,7 +11,6 @@ module Facet.Vars
 , Binding1(..)
 , substitute
 , Substitute(..)
-, boundS
 , Scoped(..)
 , Scoped1(..)
 , fvsDefault
@@ -55,13 +56,13 @@ instance Binding Vars where
   bind = delete
 
 
-class Applicative t => Binding1 t where
-  bound1 :: Name a -> t (Name a)
-  bind1 :: Name a -> t b -> t b
+class Applicative f => Binding1 t f where
+  bound1 :: (Name a -> t) -> Name a -> f t
+  bind1 :: (Name a -> t) -> Name a -> t -> f (Name a, t)
 
-instance Binding a => Binding1 (Const a) where
-  bound1 n = Const (bound n)
-  bind1 n (Const b) = Const (bind n b)
+instance (Scoped1 t, Binding a) => Binding1 t (Const a) where
+  bound1 _ n = Const (bound n)
+  bind1 _ n b = Const (bind n (getConst (fvs1 b)))
 
 
 substitute :: Subst.Substitution t -> Substitute t a -> a
@@ -76,9 +77,13 @@ instance Applicative (Substitute t) where
   pure a = Substitute $ \ _ -> a
   f <*> a = Substitute $ \ sub -> runSubstitute f sub (runSubstitute a sub)
 
+instance Scoped1 t => Binding1 t (Substitute t) where
+  bound1 mk n = Substitute $ \ sub -> fromMaybe (mk n) (Subst.lookup n sub)
 
-boundS :: Name a -> (Name a -> t) -> Substitute t t
-boundS n mk = Substitute $ \ sub -> fromMaybe (mk n) (Subst.lookup n sub)
+  bind1 mkBound n b = Substitute $ \ sub ->
+    let n' = prime (hint n) (fvsDefault b <> foldMap fvsDefault sub)
+        b' = runSubstitute (fvs1 b) (Subst.insert n (mkBound n') sub)
+    in (n', b')
 
 
 class Scoped t where
@@ -89,7 +94,7 @@ instance Scoped (Name a) where
 
 
 class Scoped1 t where
-  fvs1 :: Binding1 vs => t -> vs t
+  fvs1 :: Binding1 t vs => t -> vs t
 
 fvsDefault :: (Scoped1 t, Binding vs) => t -> vs
 fvsDefault = getConst . fvs1
