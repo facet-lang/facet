@@ -129,7 +129,7 @@ switch
   -> Maybe Type
   -> m (a ::: Type)
 switch m = \case
-  Just _K -> m >>= \ r -> r <$ unify (ty r) _K
+  Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify _K' _K
   _       -> m
 
 global
