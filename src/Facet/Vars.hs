@@ -7,6 +7,7 @@ module Facet.Vars
 , member
 , Binding(..)
 , Binding1(..)
+, substitute
 , Substitute(..)
 , boundS
 , Scoped(..)
@@ -62,6 +63,9 @@ instance Binding a => Binding1 (Const a) where
   bound1 n = Const (bound n)
   bind1 n (Const b) = Const (bind n b)
 
+
+substitute :: Subst.Substitution t -> Substitute t a -> a
+substitute s m = runSubstitute m s
 
 newtype Substitute t a = Substitute { runSubstitute :: Subst.Substitution t -> a }
 
