@@ -31,7 +31,7 @@ import qualified Facet.Substitution as Subst
 import           GHC.Exts
 
 newtype Vars = Vars { getVars :: IntSet.IntSet }
-  deriving (Monoid, Semigroup, Show)
+  deriving (Eq, Monoid, Semigroup, Show)
 
 insert :: Name a -> Vars -> Vars
 insert = coerce (IntSet.insert . id')
