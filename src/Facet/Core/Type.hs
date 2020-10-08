@@ -115,7 +115,7 @@ subst sub = out >>> \case
   Unit          -> C._Unit
   n ::: t :=> b ->
     let n' = prime (hint n) (fvs b <> foldMap fvs sub)
-        b' = subst sub (rename n n' b)
+        b' = subst (Subst.insert n (C.tbound n') sub) b
     in n' ::: subst sub t C.>=> b'
   f :$  as      -> f' $$* fmap (subst sub) as
     where
