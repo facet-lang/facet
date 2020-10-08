@@ -10,10 +10,13 @@ module Facet.GHCI
 , prettyAnn
   -- * Errors
 , toNotice
+  -- * Smart constructors
+, (>=>)
 ) where
 
 import           Control.Carrier.Lift (runM)
-import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, run, runParser, runParserWithFile, runParserWithString)
+import           Control.Carrier.Parser.Church (Has, Input(..), ParserC, errToNotice, run, runParser, runParserWithFile, runParserWithString)
+import           Control.Carrier.Reader (Reader, ask)
 import           Control.Carrier.Throw.Either (runThrow)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
@@ -21,10 +24,12 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
+import           Data.Text (pack)
 import qualified Facet.Core as C
 import qualified Facet.Core.Module as Module
 import qualified Facet.Core.Type as T
 import           Facet.Elab
+import           Facet.Name (Name(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
@@ -72,3 +77,14 @@ prettyAnn (tm ::: ty) = tm S.<+> S.colon S.<+> T.interpret ty
 
 toNotice :: Maybe Level -> Source -> Span -> P.Print -> [PP.Doc ANSI.AnsiStyle] -> Notice
 toNotice lvl src span = Notice lvl (fromSourceAndSpan src span) . P.getPrint
+
+
+-- Smart constructors
+
+(>=>) :: Has (Reader Int) sig m => m (String ::: T.Type) -> m T.Type -> m T.Type
+t >=> b = do
+  i <- ask
+  s ::: t' <- t
+  (Name (pack s) i ::: t' C.>=>) <$> b
+
+infixr 1 >=>
