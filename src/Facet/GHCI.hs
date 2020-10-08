@@ -18,7 +18,7 @@ module Facet.GHCI
 
 import           Control.Carrier.Lift (runM)
 import           Control.Carrier.Parser.Church (Has, Input(..), ParserC, errToNotice, run, runParser, runParserWithFile, runParserWithString)
-import           Control.Carrier.Reader (Reader, ReaderC, ask, runReader)
+import           Control.Carrier.Reader (Reader, ReaderC, asks, runReader)
 import           Control.Carrier.Throw.Either (runThrow)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
@@ -90,9 +90,9 @@ makeType = run . runReader 0
 _Type :: Applicative m => m T.Type
 _Type = pure C._Type
 
-(>=>) :: Has (Reader Int) sig m => (String ::: m T.Type) -> m T.Type -> m T.Type
+(>=>) :: Has (Reader Int) sig m => (String ::: m T.Type) -> (m T.Type -> m T.Type) -> m T.Type
 s ::: t >=> b = do
-  i <- ask
-  (C.>=>) . (Name (pack s) i :::) <$> t <*> b
+  n <- asks (Name (pack s))
+  (C.>=>) . (n :::) <$> t <*> b (pure (C.tbound n))
 
 infixr 1 >=>
