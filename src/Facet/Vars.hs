@@ -78,12 +78,12 @@ instance Binding1 Rename where
   bind1 z b = Rename $ \ x y -> if z == coerce x then runRename b z z else runRename b x y
 
 
-newtype Substitute a = Substitute { runSubstitute :: forall t . Scoped1 t => Subst.Substitution t -> a }
+newtype Substitute t a = Substitute { runSubstitute :: Subst.Substitution t -> a }
 
-instance Functor Substitute where
+instance Functor (Substitute t) where
   fmap f s = Substitute $ \ sub -> f (runSubstitute s sub)
 
-instance Applicative Substitute where
+instance Applicative (Substitute t) where
   pure a = Substitute $ \ _ -> a
   f <*> a = Substitute $ \ sub -> runSubstitute f sub (runSubstitute a sub)
 
