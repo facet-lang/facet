@@ -99,23 +99,7 @@ infixl 9 $$, $$*
 
 
 instance Substitutable Type where
-  subst sub = out >>> \case
-    Type          -> C._Type
-    Void          -> C._Void
-    Unit          -> C._Unit
-    n ::: t :=> b ->
-      -- FIXME: we don’t need to traverse the body if the substitution won’t change it.
-      -- FIXME: we don’t need to rename the binder if the variable isn’t free in or bound by the substitution.
-      let n' = prime (hint n) (fvs b <> foldMap fvs sub)
-          b' = subst (Subst.insert n (C.tbound n') sub) b
-      in n' ::: subst sub t C.>=> b'
-    f :$  as      -> f' $$* fmap (subst sub) as
-      where
-      f' = case f of
-        Left f | Just e <- Subst.lookup f sub -> e
-        _                                     -> either C.tbound C.tglobal f
-    a :-> b       -> subst sub a C.--> subst sub b
-    l :*  r       -> subst sub l C..*  subst sub r
+  subst sub = substitute sub . fvs1
 
 
 -- FIXME: computation types
