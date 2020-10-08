@@ -85,10 +85,9 @@ toNotice lvl src span = Notice lvl (fromSourceAndSpan src span) . P.getPrint
 _Type :: Applicative m => m T.Type
 _Type = pure C._Type
 
-(>=>) :: Has (Reader Int) sig m => m (String ::: T.Type) -> m T.Type -> m T.Type
-t >=> b = do
+(>=>) :: Has (Reader Int) sig m => (String ::: m T.Type) -> m T.Type -> m T.Type
+s ::: t >=> b = do
   i <- ask
-  s ::: t' <- t
-  (Name (pack s) i ::: t' C.>=>) <$> b
+  (C.>=>) . (Name (pack s) i :::) <$> t <*> b
 
 infixr 1 >=>
