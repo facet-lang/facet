@@ -24,8 +24,8 @@ import           Data.Functor.Const
 import qualified Data.IntSet as IntSet
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
-import           GHC.Exts
 import           Facet.Name
+import           GHC.Exts
 
 newtype Vars = Vars { getVars :: IntSet.IntSet }
   deriving (Monoid, Semigroup, Show)
