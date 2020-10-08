@@ -11,6 +11,7 @@ module Facet.GHCI
   -- * Errors
 , toNotice
   -- * Smart constructors
+, _Type
 , (>=>)
 ) where
 
@@ -80,6 +81,9 @@ toNotice lvl src span = Notice lvl (fromSourceAndSpan src span) . P.getPrint
 
 
 -- Smart constructors
+
+_Type :: Applicative m => m T.Type
+_Type = pure C._Type
 
 (>=>) :: Has (Reader Int) sig m => m (String ::: T.Type) -> m T.Type -> m T.Type
 t >=> b = do
