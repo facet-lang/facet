@@ -8,6 +8,7 @@
 {-# OPTIONS_GHC -Wno-noncanonical-monad-instances #-}
 module Facet.Core.Type
 ( Type(..)
+, out_
 , global_
 , bound_
 , forAll_
@@ -21,7 +22,7 @@ module Facet.Core.Type
 ) where
 
 import           Control.Category ((>>>))
-import           Control.Lens (Prism', prism', review, _Left, _Right)
+import           Control.Lens (Iso', Prism', coerced, prism', review, _Left, _Right)
 import           Data.Foldable (foldl')
 import qualified Facet.Core as C
 import           Facet.Name
@@ -51,6 +52,10 @@ instance Scoped1 Type where
         _      -> pure (curry (review app'_) f)
     a :-> b -> curry (review arrow_) <$> fvs1 a <*> fvs1 b
     l :* r  -> curry (review prd_) <$> fvs1 l <*> fvs1 r
+
+
+out_ :: Iso' Type (TypeF Type)
+out_ = coerced
 
 
 var_ :: Prism' Type (Either (Name T) QName)
