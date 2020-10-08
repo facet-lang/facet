@@ -9,6 +9,7 @@ module Facet.Vars
 , member
 , Binding(..)
 , Binding1(..)
+, bind1
 , substitute
 , Substitute(..)
 , Scoped(..)
@@ -60,13 +61,13 @@ instance Binding Vars where
 
 class Applicative f => Binding1 t f where
   bound1 :: (Name a -> t) -> Name a -> f t
-  bind1 :: (Name a -> t) -> Name a -> t -> f (Name a, t)
-  bind1 mk n b = first runIdentity <$> bindN mk (Identity n) b
   bindN :: Traversable p => (Name a -> t) -> p (Name a) -> t -> f (p (Name a), t)
+
+bind1 :: Binding1 t f => (Name a -> t) -> Name a -> t -> f (Name a, t)
+bind1 mk n b = first runIdentity <$> bindN mk (Identity n) b
 
 instance (Scoped1 t, Binding a) => Binding1 t (Const a) where
   bound1 _ n = Const (bound n)
-  bind1 _ n b = Const (bind n (getConst (fvs1 b)))
   bindN _ p b = Const (foldr (\ n b -> bind n b) (getConst (fvs1 b)) p)
 
 
@@ -84,11 +85,6 @@ instance Applicative (Substitute t) where
 
 instance Scoped1 t => Binding1 t (Substitute t) where
   bound1 mk n = Substitute $ \ sub -> fromMaybe (mk n) (Subst.lookup n sub)
-
-  bind1 mkBound n b = Substitute $ \ sub ->
-    let n' = prime (hint n) (fvsDefault b <> foldMap fvsDefault sub)
-        b' = runSubstitute (fvs1 b) (Subst.insert n (mkBound n') sub)
-    in (n', b')
 
   bindN mkBound p b = Substitute $ \ sub ->
     let (sub', p') = renameAccumL (\ i sub n -> let n' = Name (hint n) i in (Subst.insert n (mkBound n') sub, n')) (fvsDefault b <> foldMap fvsDefault sub) sub p
