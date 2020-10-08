@@ -1,5 +1,4 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE RankNTypes #-}
 module Facet.Vars
 ( Vars(..)
 , insert
@@ -8,7 +7,6 @@ module Facet.Vars
 , member
 , Binding(..)
 , Binding1(..)
-, Rename(..)
 , Substitute(..)
 , Scoped(..)
 , Scoped1(..)
@@ -61,21 +59,6 @@ class Applicative t => Binding1 t where
 instance Binding a => Binding1 (Const a) where
   bound1 n = Const (bound n)
   bind1 n (Const b) = Const (bind n b)
-
-
-newtype Rename a = Rename { runRename :: forall x . Name x -> Name x -> a }
-
-instance Functor Rename where
-  fmap f r = Rename $ \ x y -> f (runRename r x y)
-
-instance Applicative Rename where
-  pure a = Rename $ \ _ _ -> a
-  f <*> a = Rename $ \ x y -> runRename f x y (runRename a x y)
-
-instance Binding1 Rename where
-  bound1 z = Rename $ \ x y -> if z == coerce x then coerce y else z
-  -- FIXME: this is inefficient; it has to traverse the entirety of b even if it’s not going to do anything to it
-  bind1 z b = Rename $ \ x y -> if z == coerce x then runRename b z z else runRename b x y
 
 
 newtype Substitute t a = Substitute { runSubstitute :: Subst.Substitution t -> a }
