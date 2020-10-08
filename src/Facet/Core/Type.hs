@@ -32,14 +32,7 @@ newtype Type = In { out :: TypeF Type }
   deriving (C.Type, Show)
 
 instance Scoped Type where
-  fvs = out >>> \case
-    Type    -> mempty
-    Void    -> mempty
-    Unit    -> mempty
-    t :=> b -> fvs (ty t) <> bind (tm t) (fvs b)
-    f :$ as -> either bound (const mempty) f <> foldMap fvs as
-    a :-> b -> fvs a <> fvs b
-    l :* r  -> fvs l <> fvs r
+  fvs = fvsDefault
 
 instance Scoped1 Type where
   fvs1 = out >>> \case
