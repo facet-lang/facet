@@ -41,16 +41,16 @@ instance Scoped Type where
 
 instance Scoped1 Type where
   fvs1 = out >>> \case
-    Type    -> pure C._Type
-    Void    -> pure C._Void
-    Unit    -> pure C._Unit
-    t :=> b -> mk <$> fvs1 (ty t) <*> bind1 C.tbound (tm t) b
+    Type    -> pure (review type_ ())
+    Void    -> pure (review void_ ())
+    Unit    -> pure (review unit_ ())
+    t :=> b -> mk <$> fvs1 (ty t) <*> bind1 (review bound_) (tm t) b
       where
       mk t' (n', b') = review forAll_ (n' ::: t', b')
     f :$ as -> f' <*> traverse fvs1 as
       where
       f' = case f of
-        Left f -> ($$*) <$> bound1 C.tbound f
+        Left f -> ($$*) <$> bound1 (review bound_) f
         _      -> pure (curry (review app'_) f)
     a :-> b -> curry (review arrow_) <$> fvs1 a <*> fvs1 b
     l :* r  -> curry (review prd_) <$> fvs1 l <*> fvs1 r
