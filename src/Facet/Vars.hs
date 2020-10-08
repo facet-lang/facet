@@ -13,8 +13,6 @@ module Facet.Vars
 , Scoped(..)
 , Scoped1(..)
 , fvsDefault
-, Substitution(..)
-, instantiate
 , FVs(..)
 , getFVs
 , prime
@@ -23,7 +21,6 @@ module Facet.Vars
 
 import           Data.Coerce
 import           Data.Functor.Const
-import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
@@ -102,12 +99,6 @@ class Scoped1 t where
 
 fvsDefault :: (Scoped1 t, Binding vs) => t -> vs
 fvsDefault = getConst . fvs1
-
-
-newtype Substitution a = Substitution { getSubstitution :: IntMap.IntMap a }
-
-instantiate :: Name a -> t -> Substitution t -> Substitution t
-instantiate n t = Substitution . IntMap.insert (id' n) t . getSubstitution
 
 
 newtype FVs = FVs { runFVs :: Vars -> Vars -> Vars }
