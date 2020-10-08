@@ -16,7 +16,7 @@ module Facet.Core.Expr
 ) where
 
 import           Control.Category ((>>>))
-import           Control.Lens.Prism (Prism', prism')
+import           Control.Lens (Prism', prism', review)
 import           Data.Coerce (coerce)
 import qualified Facet.Core as C
 import qualified Facet.Core.Pattern as P
@@ -53,13 +53,13 @@ bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
 
 
 tlam_ :: Prism' Expr (Name T, Expr)
-tlam_ = prism' (uncurry C.tlam) (\case{ In (TLam n b) -> Just (n, b) ; _ -> Nothing })
+tlam_ = prism' (In . uncurry TLam) (\case{ In (TLam n b) -> Just (n, b) ; _ -> Nothing })
 
 lam_ :: Prism' Expr (P.Pattern (Name E), Expr)
-lam_ = prism' (uncurry C.lam) (\case{ In (Lam p b) -> Just (p, b) ; _ -> Nothing })
+lam_ = prism' (In . uncurry Lam) (\case{ In (Lam p b) -> Just (p, b) ; _ -> Nothing })
 
 app_ :: Prism' Expr (Expr, Expr)
-app_ = prism' (uncurry (C.$$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
+app_ = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
 
 
 unit_ :: Prism' Expr ()
@@ -74,41 +74,41 @@ rename :: Name a -> Name a -> Expr -> Expr
 rename x y = go
   where
   go = out >>> \case
-    Free s        -> C.global s
+    Free s        -> review global_ s
     Bound z
-      | x `eqN` z -> C.bound (coerce y)
-      | otherwise -> C.bound z
+      | x `eqN` z -> review bound_ (coerce y)
+      | otherwise -> review bound_ z
     TLam z b
-      | z `eqN` x -> C.tlam z b
-      | otherwise -> C.tlam z (go b)
+      | z `eqN` x -> review tlam_ (z, b)
+      | otherwise -> review tlam_ (z, go b)
     Lam z b
-      | elemN x z -> C.lam z b
-      | otherwise -> C.lam z (go b)
-    f :$ a        -> go f C.$$ go a
-    Unit          -> C.unit
-    l :* r        -> go l C.** go r
+      | elemN x z -> review lam_ (z, b)
+      | otherwise -> review lam_ (z, go b)
+    f :$ a        -> review app_ (go f, go a)
+    Unit          -> review unit_ ()
+    l :* r        -> review prd_ (go l, go r)
 
 -- FIXME: this is pretty inefficient for multiple substitutions; we should try to fuse substitutions.
 subst :: Name a -> Expr -> Expr -> Expr
 subst x e = go
   where
   go = out >>> \case
-    Free s        -> C.global s
+    Free s        -> review global_ s
     Bound n
       | n `eqN` x -> e
-      | otherwise -> C.bound n
+      | otherwise -> review bound_ n
     TLam n b      ->
       let n' = prime (hint n) (fvs b <> fvs e)
           b' = go (rename n n' b)
-      in C.tlam n' b'
+      in review tlam_ (n', b')
     Lam p b       ->
       let vs = fvs b <> fvs e
           (re, p') = renameAccumL (\ i f n -> let n' = Name (hint n) i in (f . rename n n', n')) vs id p
           b' = go (re b)
-      in C.lam p' b'
-    f :$ a        -> go f C.$$ go a
-    Unit          -> C.unit
-    l :* r        -> go l C.** go r
+      in review lam_ (p', b')
+    f :$ a        -> review app_ (go f, go a)
+    Unit          -> review unit_ ()
+    l :* r        -> review prd_ (go l, go r)
 
 
 data ExprF e
