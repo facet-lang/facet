@@ -8,6 +8,7 @@ module Facet.Vars
 , Binding(..)
 , Binding1(..)
 , Substitute(..)
+, boundS
 , Scoped(..)
 , Scoped1(..)
 , fvsDefault
@@ -20,6 +21,7 @@ module Facet.Vars
 import           Data.Coerce
 import           Data.Functor.Const
 import qualified Data.IntSet as IntSet
+import           Data.Maybe (fromMaybe)
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import           Facet.Name
@@ -69,6 +71,10 @@ instance Functor (Substitute t) where
 instance Applicative (Substitute t) where
   pure a = Substitute $ \ _ -> a
   f <*> a = Substitute $ \ sub -> runSubstitute f sub (runSubstitute a sub)
+
+
+boundS :: Name a -> (Name a -> t) -> Substitute t t
+boundS n mk = Substitute $ \ sub -> fromMaybe (mk n) (Subst.lookup n sub)
 
 
 class Scoped t where
