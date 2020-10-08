@@ -2,3 +2,5 @@ cradle:
   cabal:
     - path: "./src"
       component: "lib:facet"
+    - path: "./test"
+      component: "test"
