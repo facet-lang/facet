@@ -1,2 +1,22 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Facet.Core.Type.Test
-() where
+( tests
+) where
+
+import qualified Facet.Core as C
+import           Facet.Core.Type
+import           Facet.Name
+import           Facet.Vars
+import           Hedgehog
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Range as Range
+
+tests :: IO Bool
+tests = checkParallel $$(discover)
+
+prop_fvs_tbound = property $ do
+  n <- forAll name
+  getFVs (fvs (C.tbound n :: Type)) === bound n
+
+name :: Gen (Name T)
+name = Name __ <$> Gen.int (Range.linear 0 100)
