@@ -111,7 +111,7 @@ rename x y = go
 subst :: Substitution Type -> Type -> Type
 subst sub = go
   where
-  go =  out >>> \case
+  go = out >>> \case
     Type            -> C._Type
     Void            -> C._Void
     Unit            -> C._Unit
