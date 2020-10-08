@@ -100,8 +100,8 @@ unify
   :: Has (Throw P.Print) sig m
   => Type
   -> Type
-  -> m ()
-unify t1 t2 = go t1 t2
+  -> m Type
+unify t1 t2 = t2 <$ go t1 t2
   where
   go t1 t2 = case (out t1, out t2) of
     (Type,      Type)       -> pure ()
