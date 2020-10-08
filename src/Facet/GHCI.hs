@@ -28,7 +28,7 @@ import           Data.Text (pack)
 import qualified Facet.Core as C
 import qualified Facet.Core.Module as Module
 import qualified Facet.Core.Type as T
-import           Facet.Elab
+import           Facet.Elab (elab, elabModule, implicit)
 import           Facet.Name (Name(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
