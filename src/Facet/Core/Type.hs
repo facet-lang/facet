@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
@@ -23,18 +22,17 @@ module Facet.Core.Type
 , fold
 ) where
 
-import           Control.Category ((>>>))
-import           Control.Lens (Iso', Prism', coerced, prism', review, _Left, _Right)
-import           Data.Foldable (foldl')
-import qualified Facet.Core as C
-import           Facet.Name
-import           Facet.Stack
-import           Facet.Substitution as Subst
-import           Facet.Syntax
-import           Facet.Vars
+import Control.Category ((>>>))
+import Control.Lens (Iso', Prism', coerced, prism', review, _Left, _Right)
+import Data.Foldable (foldl')
+import Facet.Name
+import Facet.Stack
+import Facet.Substitution as Subst
+import Facet.Syntax
+import Facet.Vars
 
 newtype Type = In { out :: TypeF Type }
-  deriving (C.Type, Show)
+  deriving (Show)
 
 instance Scoped Type where
   fvs = fvsDefault
@@ -127,17 +125,6 @@ infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
 infixl 7 :*
-
-instance C.Type (TypeF Type) where
-  tglobal n = Right n :$ Nil
-  tbound n = Left n :$ Nil
-  _Type = Type
-  _Void = Void
-  _Unit = Unit
-  t >=> b = fmap In t :=> In b
-  f .$  a = out $ In f $$ In a
-  a --> b = In a :-> In b
-  l .*  r = In l :* In r
 
 
 fold :: (TypeF a -> a) -> Type -> a

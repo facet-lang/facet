@@ -3,7 +3,7 @@ module Facet.Core.Type.Test
 ( tests
 ) where
 
-import qualified Facet.Core as C
+import           Control.Lens (review)
 import           Facet.Core.Type
 import           Facet.Name
 import           Facet.Vars
@@ -16,7 +16,7 @@ tests = checkParallel $$(discover)
 
 prop_fvs_tbound = property $ do
   n <- forAll name
-  getFVs (fvs (C.tbound n :: Type)) === bound n
+  getFVs (fvs (review bound_ n :: Type)) === bound n
 
 name :: MonadGen m => m (Name T)
 name = Name __ <$> Gen.int (Range.linear 0 100)

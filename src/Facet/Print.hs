@@ -38,7 +38,6 @@ import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
 import           Data.Semigroup (stimes)
 import           Data.Text (Text)
-import qualified Facet.Core as C
 import qualified Facet.Core.Expr as CE
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
@@ -163,18 +162,6 @@ prettyMName (N.MName s) = pretty s
 
 prettyQName :: PrecedencePrinter p => N.QName -> p
 prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
-
-
-instance C.Type Print where
-  tglobal = cfree
-  tbound = cbound
-  (-->) = (-->)
-  (.*) = (**)
-  (.$) = ($$)
-  _Type = _Type
-  _Void = _Void
-  _Unit = _Unit
-  t >=> b = first cbound t >~> b
 
 
 printCoreType :: CT.Type -> Print

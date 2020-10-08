@@ -39,7 +39,6 @@ library
   exposed-modules:
     Facet.Carrier.Error.Context
     Facet.CLI
-    Facet.Core
     Facet.Core.Decl
     Facet.Core.Expr
     Facet.Core.Module
@@ -100,6 +99,7 @@ test-suite test
     , base
     , facet
     , hedgehog ^>= 1
+    , lens
 
 
 executable facetc

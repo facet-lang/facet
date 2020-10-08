@@ -10,17 +10,10 @@ module Facet.GHCI
 , prettyAnn
   -- * Errors
 , toNotice
-  -- * Smart constructors
-, makeType
-, _Type
-, (>=>)
-, (-->)
 ) where
 
-import           Control.Applicative (liftA2)
 import           Control.Carrier.Lift (runM)
-import           Control.Carrier.Parser.Church (Has, Input(..), ParserC, errToNotice, run, runParser, runParserWithFile, runParserWithString)
-import           Control.Carrier.Reader (Reader, ReaderC, asks, local, runReader)
+import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, run, runParser, runParserWithFile, runParserWithString)
 import           Control.Carrier.Throw.Either (runThrow)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
@@ -28,12 +21,8 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
-import           Data.Functor.Identity
-import           Data.Text (pack)
-import qualified Facet.Core as C
 import qualified Facet.Core.Type as T
 import           Facet.Elab (elab, elabModule, implicit)
-import           Facet.Name (Name(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
@@ -81,24 +70,3 @@ prettyAnn (tm ::: ty) = tm S.<+> S.colon S.<+> P.printCoreType ty
 
 toNotice :: Maybe Level -> Source -> Span -> P.Print -> [PP.Doc ANSI.AnsiStyle] -> Notice
 toNotice lvl src span = Notice lvl (fromSourceAndSpan src span) . P.getPrint
-
-
--- Smart constructors
-
-makeType :: ReaderC Int Identity T.Type -> T.Type
-makeType = run . runReader 0
-
-_Type :: Applicative m => m T.Type
-_Type = pure C._Type
-
-(>=>) :: Has (Reader Int) sig m => (String ::: m T.Type) -> (m T.Type -> m T.Type) -> m T.Type
-s ::: t >=> b = do
-  n <- asks (Name (pack s))
-  (C.>=>) . (n :::) <$> t <*> local (+ (1 :: Int)) (b (pure (C.tbound n)))
-
-infixr 1 >=>
-
-(-->) :: Applicative m => m T.Type -> m T.Type -> m T.Type
-(-->) = liftA2 (C.-->)
-
-infixr 1 -->
