@@ -1,4 +1,3 @@
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core
 ( Type(..)
