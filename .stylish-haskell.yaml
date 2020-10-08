@@ -24,7 +24,7 @@ steps:
 
   - trailing_whitespace: {}
 
-columns: 120
+columns: 240
 
 newline: native
 
