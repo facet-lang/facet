@@ -39,7 +39,7 @@ instance Scoped Type where
     Void    -> mempty
     Unit    -> mempty
     t :=> b -> fvs (ty t) <> bind (tm t) (fvs b)
-    f :$ as -> either singleton (const mempty) f <> foldMap fvs as
+    f :$ as -> either bound (const mempty) f <> foldMap fvs as
     a :-> b -> fvs a <> fvs b
     l :* r  -> fvs l <> fvs r
 
@@ -49,7 +49,7 @@ instance Scoped1 Type where
     Void    -> pure C._Type
     Unit    -> pure C._Type
     t :=> b -> curry (review forAll_) <$> traverse fvs1 t <*> bind1 (tm t) (fvs1 b)
-    f :$ as -> curry (review app'_) <$> bitraverse singleton1 pure f <*> traverse fvs1 as
+    f :$ as -> curry (review app'_) <$> bitraverse bound1 pure f <*> traverse fvs1 as
     a :-> b -> curry (review arrow_) <$> fvs1 a <*> fvs1 b
     l :* r  -> curry (review prd_) <$> fvs1 l <*> fvs1 r
 

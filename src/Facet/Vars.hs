@@ -45,20 +45,20 @@ member = coerce (IntSet.member . id')
 
 -- https://www.haskell.org/ghc/blog/20190728-free-variable-traversals.html 🎩 bgamari
 class Monoid t => Binding t where
-  singleton :: Name a -> t
+  bound :: Name a -> t
   bind :: Name a -> t -> t
 
 instance Binding Vars where
-  singleton = Vars . IntSet.singleton . id'
+  bound = Vars . IntSet.singleton . id'
   bind = delete
 
 
 class Applicative t => Binding1 t where
-  singleton1 :: Name a -> t (Name a)
+  bound1 :: Name a -> t (Name a)
   bind1 :: Name a -> t b -> t b
 
 instance Binding a => Binding1 (Const a) where
-  singleton1 n = Const (singleton n)
+  bound1 n = Const (bound n)
   bind1 n (Const b) = Const (bind n b)
 
 
@@ -72,7 +72,7 @@ instance Applicative Rename where
   f <*> a = Rename $ \ x y -> runRename f x y (runRename a x y)
 
 instance Binding1 Rename where
-  singleton1 z = Rename $ \ x y -> if z == coerce x then coerce y else z
+  bound1 z = Rename $ \ x y -> if z == coerce x then coerce y else z
   -- FIXME: this is inefficient; it has to traverse the entirety of b even if it’s not going to do anything to it
   bind1 z b = Rename $ \ x y -> if z == coerce x then runRename b z z else runRename b x y
 
@@ -91,7 +91,7 @@ class Scoped t where
   fvs :: Binding vs => t -> vs
 
 instance Scoped (Name a) where
-  fvs = singleton
+  fvs = bound
 
 
 class Scoped1 t where
@@ -110,7 +110,7 @@ instance Monoid FVs where
   mempty = FVs (const id)
 
 instance Binding FVs where
-  singleton n = FVs $ \ b -> if n `member` b then id else insert n
+  bound n = FVs $ \ b -> if n `member` b then id else insert n
   bind n v = FVs $ runFVs v . insert n
 
 getFVs :: FVs -> Vars
