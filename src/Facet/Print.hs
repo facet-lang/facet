@@ -262,7 +262,7 @@ l ** r = tupled [l, r]
 ($$*) = fmap group . foldl' ($$)
 
 (>~>) :: (Print ::: Print) -> Print -> Print
-(n ::: t) >~> b = group (align (braces (space <> ann (var n ::: t) <> line))) </> arrow <+> prec FnR b
+(n ::: t) >~> b = prec FnR (group (align (braces (space <> ann (var n ::: t) <> line))) </> arrow <+> b)
 
 (>~~>) :: [Print ::: ST.Type] -> Print -> Print
 ts >~~> b = foldr go b (groupByType ST.aeq ts)
@@ -353,7 +353,7 @@ printSurfaceDecl = go
 t .= b = t </> b
 
 (>->) :: (Print ::: Print) -> Print -> Print
-(n ::: t) >-> b = group (align (parens (ann (n ::: t)))) </> arrow <+> prec FnR b
+(n ::: t) >-> b = prec FnR (group (align (parens (ann (n ::: t)))) </> arrow <+> b)
 
 
 printSurfaceModule :: SM.Module -> Print
