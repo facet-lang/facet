@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Facet.Substitution
 ( Substitution(..)
+, empty
 , singleton
 , insert
 , member
@@ -14,6 +15,9 @@ import           Prelude hiding (lookup)
 
 newtype Substitution a = Substitution { getSubstitution :: IntMap.IntMap a }
   deriving (Foldable, Functor)
+
+empty :: Substitution t
+empty = Substitution IntMap.empty
 
 singleton :: Name a -> t -> Substitution t
 singleton n = coerce . IntMap.singleton (id' n)
