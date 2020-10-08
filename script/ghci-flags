@@ -41,6 +41,7 @@ function flags {
   # .hs source dirs
   echo "-ifacetc"
   echo "-isrc"
+  echo "-itest"
 
   # disable automatic selection of packages
   echo "-hide-all-packages"
