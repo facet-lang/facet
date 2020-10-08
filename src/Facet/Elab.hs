@@ -250,8 +250,8 @@ elabExpr
 elabExpr (t ::: _T) = SE.fold alg t _T
   where
   alg = \case
-    SE.Free  n -> switch $ synth (C.global <$> global n)
-    SE.Bound n -> switch $ synth (C.bound <$> bound n)
+    SE.Free  n -> switch $ synth (review CE.global_ <$> global n)
+    SE.Bound n -> switch $ synth (review CE.bound_ <$> bound n)
     SE.Hole  n -> \ _T -> hole (n ::: _T)
     f SE.:$  a -> switch $ synth (_synth f $$ _check a)
     l SE.:*  r -> check (_check l ** _check r) (pretty "product")
@@ -265,48 +265,48 @@ elabExpr (t ::: _T) = SE.fold alg t _T
 
 
 ($$)
-  :: (Has (Throw P.Print) sig m, C.Expr expr)
-  => Synth m expr
-  -> Check m expr
-  -> Synth m expr
-($$) = app (C.$$)
+  :: Has (Throw P.Print) sig m
+  => Synth m CE.Expr
+  -> Check m CE.Expr
+  -> Synth m CE.Expr
+($$) = app (curry (review CE.app_))
 
 tlam
-  :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
+  :: Has (Reader Context :+: Throw P.Print) sig m
   => Name T
-  -> Check m expr
-  -> Check m expr
+  -> Check m CE.Expr
+  -> Check m CE.Expr
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  _T |- C.tlam n <$> check (b ::: _B)
+  _T |- curry (review CE.tlam_) n <$> check (b ::: _B)
 
 lam
-  :: (Has (Reader Context :+: Throw P.Print) sig m, C.Expr expr)
+  :: Has (Reader Context :+: Throw P.Print) sig m
   => Name E
-  -> Check m expr
-  -> Check m expr
+  -> Check m CE.Expr
+  -> Check m CE.Expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
-  n ::: _A |- C.lam (review CP.var_ n) <$> check (b ::: _B)
+  n ::: _A |- curry (review CE.lam_) (review CP.var_ n) <$> check (b ::: _B)
 
-unit :: (Applicative m, C.Expr t) => Synth m t
-unit = Synth . pure $ C.unit ::: C._Unit
+unit :: Applicative m => Synth m CE.Expr
+unit = Synth . pure $ review CE.unit_ () ::: C._Unit
 
 (**)
-  :: (Has (Throw P.Print) sig m, C.Expr expr)
-  => Check m expr
-  -> Check m expr
-  -> Check m expr
+  :: Has (Throw P.Print) sig m
+  => Check m CE.Expr
+  -> Check m CE.Expr
+  -> Check m CE.Expr
 l ** r = Check $ \ _T -> do
   (_L, _R) <- expectProductType (reflow "when checking product") _T
   l' <- check (l ::: _L)
   r' <- check (r ::: _R)
-  pure (l' C.** r')
+  pure (review CE.prd_ (l', r'))
 
 comp
-  :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m, C.Expr expr)
-  => [SC.Clause (Check m expr)]
-  -> Check m expr
+  :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m)
+  => [SC.Clause (Check m CE.Expr)]
+  -> Check m CE.Expr
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
@@ -314,14 +314,14 @@ comp cs = do
   pure $ head cs'
 
 clause
-  :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m, C.Expr expr)
-  => SC.Clause (Check m expr)
-  -> Check m expr
+  :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m)
+  => SC.Clause (Check m CE.Expr)
+  -> Check m CE.Expr
 clause = SC.fold $ \case
   SC.Clause p b -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
     p' <- check (pattern p ::: _A)
-    foldr (|-) (C.lam (tm <$> p') <$> check (b ::: _B)) p'
+    foldr (|-) (curry (review CE.lam_) (tm <$> p') <$> check (b ::: _B)) p'
   SC.Body e   -> e
   SC.Loc s c  -> local (const s) c
 

@@ -18,7 +18,6 @@ module Facet.Core.Expr
 import           Control.Category ((>>>))
 import           Control.Lens (Prism', prism', review)
 import           Data.Coerce (coerce)
-import qualified Facet.Core as C
 import qualified Facet.Core.Pattern as P
 import           Facet.Name
 import           Facet.Vars
@@ -34,15 +33,6 @@ instance Scoped Expr where
     f :$ a   -> fvs f <> fvs a
     Unit     -> mempty
     l :* r   -> fvs l <> fvs r
-
-instance C.Expr Expr where
-  global = In . Free
-  bound = In . Bound
-  tlam = fmap In . TLam
-  lam = fmap In . Lam
-  ($$) = fmap In . (:$)
-  unit = In Unit
-  (**) = fmap In . (:*)
 
 
 global_ :: Prism' Expr QName

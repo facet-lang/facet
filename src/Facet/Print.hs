@@ -176,15 +176,6 @@ instance C.Type Print where
   _Unit = _Unit
   t >=> b = first cbound t >~> b
 
-instance C.Expr Print where
-  global = cfree
-  bound = cbound
-  tlam = lam . braces . cbound
-  lam = lam . printCorePattern
-  ($$) = ($$)
-  unit = unit
-  (**) = (**)
-
 
 printCoreType :: CT.Type -> Print
 printCoreType = CT.fold $ \case

@@ -1,13 +1,11 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core
 ( Type(..)
-, Expr(..)
 , Def(..)
 ) where
 
-import qualified Facet.Core.Pattern as P
-import           Facet.Name (CName, E, Name, QName, T)
-import           Facet.Syntax ((:::)(..))
+import Facet.Name (CName, Name, QName, T)
+import Facet.Syntax ((:::)(..))
 
 class Type ty where
   tglobal :: QName -> ty
@@ -30,17 +28,6 @@ class Type ty where
   infixl 7 .*
 
   -- FIXME: tupling/unit should take a list of types
-
-
-class Expr expr where
-  global :: QName -> expr
-  bound :: Name E -> expr
-  tlam :: Name T -> expr -> expr
-  lam :: P.Pattern (Name E) -> expr -> expr
-  ($$) :: expr -> expr -> expr
-  infixl 9 $$
-  unit :: expr
-  (**) :: expr -> expr -> expr
 
 
 data Def expr ty
