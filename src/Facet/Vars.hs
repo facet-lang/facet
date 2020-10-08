@@ -20,8 +20,10 @@ module Facet.Vars
 , renameAccumL
 ) where
 
+import           Data.Bifunctor (first)
 import           Data.Coerce
 import           Data.Functor.Const
+import           Data.Functor.Identity
 import qualified Data.IntSet as IntSet
 import           Data.Maybe (fromMaybe)
 import           Data.Text (Text)
@@ -59,10 +61,13 @@ instance Binding Vars where
 class Applicative f => Binding1 t f where
   bound1 :: (Name a -> t) -> Name a -> f t
   bind1 :: (Name a -> t) -> Name a -> t -> f (Name a, t)
+  bind1 mk n b = first runIdentity <$> bindN mk (Identity n) b
+  bindN :: Traversable p => (Name a -> t) -> p (Name a) -> t -> f (p (Name a), t)
 
 instance (Scoped1 t, Binding a) => Binding1 t (Const a) where
   bound1 _ n = Const (bound n)
   bind1 _ n b = Const (bind n (getConst (fvs1 b)))
+  bindN _ p b = Const (foldr (\ n b -> bind n b) (getConst (fvs1 b)) p)
 
 
 substitute :: Subst.Substitution t -> Substitute t a -> a
@@ -84,6 +89,11 @@ instance Scoped1 t => Binding1 t (Substitute t) where
     let n' = prime (hint n) (fvsDefault b <> foldMap fvsDefault sub)
         b' = runSubstitute (fvs1 b) (Subst.insert n (mkBound n') sub)
     in (n', b')
+
+  bindN mkBound p b = Substitute $ \ sub ->
+    let (sub', p') = renameAccumL (\ i sub n -> let n' = Name (hint n) i in (Subst.insert n (mkBound n') sub, n')) (fvsDefault b <> foldMap fvsDefault sub) sub p
+        b' = runSubstitute (fvs1 b) sub'
+    in (p', b')
 
 
 class Scoped t where
