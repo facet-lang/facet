@@ -14,6 +14,7 @@ module Facet.Vars
 , Scoped1(..)
 , fvsDefault
 , Substitution(..)
+, instantiate
 , FVs(..)
 , getFVs
 , prime
@@ -104,6 +105,9 @@ fvsDefault = getConst . fvs1
 
 
 newtype Substitution a = Substitution { getSubstitution :: IntMap.IntMap a }
+
+instantiate :: Name a -> t -> Substitution t -> Substitution t
+instantiate n t = Substitution . IntMap.insert (id' n) t . getSubstitution
 
 
 newtype FVs = FVs { runFVs :: Vars -> Vars -> Vars }
