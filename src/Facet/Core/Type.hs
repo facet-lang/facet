@@ -119,11 +119,11 @@ subst sub = go
       let n' = prime (hint n) (fvs b <> foldMap fvs sub)
           b' = go (rename n n' b)
       in (n' ::: go t) C.>=> b'
-    f :$  as
-      | Left f <- f
-      , Just e <- Subst.lookup f sub
-                    -> e $$* fmap go as
-      | otherwise   -> either C.tbound C.tglobal f $$* fmap go as
+    f :$  as        -> f' $$* fmap go as
+      where
+      f' = case f of
+        Left f | Just e <- Subst.lookup f sub -> e
+        _                                     -> either C.tbound C.tglobal f
     a :-> b         -> go a C.--> go b
     l :*  r         -> go l C..*  go r
 
