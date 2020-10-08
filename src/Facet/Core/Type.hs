@@ -39,8 +39,8 @@ instance Scoped Type where
 instance Scoped1 Type where
   fvs1 = out >>> \case
     Type    -> pure C._Type
-    Void    -> pure C._Type
-    Unit    -> pure C._Type
+    Void    -> pure C._Void
+    Unit    -> pure C._Unit
     t :=> b -> mk <$> fvs1 (ty t) <*> bind1 C.tbound (tm t) b
       where
       mk t' (n', b') = review forAll_ (n' ::: t', b')
