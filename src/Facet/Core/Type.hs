@@ -14,7 +14,6 @@ module Facet.Core.Type
 , app'_
 , prd_
 , interpret
-, subst
 , TypeF(..)
 , fold
 ) where
