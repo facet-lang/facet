@@ -27,6 +27,7 @@ import           Data.Foldable (foldl')
 import qualified Facet.Core as C
 import           Facet.Name
 import           Facet.Stack
+import           Facet.Substitution as Subst
 import           Facet.Syntax
 import           Facet.Vars
 
@@ -85,7 +86,7 @@ interpret = go
 
 ($$) :: Type -> Type -> Type
 In (f :$ as) $$ a = In $ f :$ (as :> a)
-In (t :=> b) $$ a = subst (tm t) a b
+In (t :=> b) $$ a = subst (singleton (tm t) a) b
 _            $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: Foldable t => Type -> t Type -> Type
@@ -107,20 +108,21 @@ rename x y = go
     a :-> b       -> go a C.--> go b
     l :*  r       -> go l C..*  go r
 
-subst :: Name T -> Type -> Type -> Type
-subst x e = go
+subst :: Substitution Type -> Type -> Type
+subst sub = go
   where
   go =  out >>> \case
     Type            -> C._Type
     Void            -> C._Void
     Unit            -> C._Unit
     (n ::: t) :=> b ->
-      let n' = prime (hint n) (fvs b <> fvs e)
+      let n' = prime (hint n) (fvs b <> foldMap fvs sub)
           b' = go (rename n n' b)
       in (n' ::: go t) C.>=> b'
     f :$  as
       | Left f <- f
-      , f == x      -> e $$* fmap go as
+      , Just e <- Subst.lookup f sub
+                    -> e $$* fmap go as
       | otherwise   -> either C.tbound C.tglobal f $$* fmap go as
     a :-> b         -> go a C.--> go b
     l :*  r         -> go l C..*  go r
