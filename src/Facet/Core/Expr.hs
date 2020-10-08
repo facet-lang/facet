@@ -36,6 +36,17 @@ instance Scoped Expr where
     Unit     -> mempty
     l :* r   -> fvs l <> fvs r
 
+instance Scoped1 Expr where
+  fvs1 = out >>> \case
+    Free  v  -> pure (review global_ v)
+    Bound n  -> bound1 (review bound_) n
+    TLam n b -> review tlam_ <$> bind1 (review bound_ . coerce) n b
+    TApp f a -> curry (review tapp_) <$> fvs1 f <*> fvs1 a
+    Lam  p b -> review lam_ <$> bindN (review bound_) p b
+    f :$ a   -> curry (review app_) <$> fvs1 f <*> fvs1 a
+    Unit     -> pure (review unit_ ())
+    l :* r   -> curry (review prd_) <$> fvs1 l <*> fvs1 r
+
 
 global_ :: Prism' Expr QName
 global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
