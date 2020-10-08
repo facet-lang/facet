@@ -12,6 +12,7 @@ module Facet.Core.Type
 , global_
 , bound_
 , type_
+, unit_
 , forAll_
 , arrow_
 , app_
@@ -70,6 +71,9 @@ bound_ = var_ . _Left
 
 type_ :: Prism' Type ()
 type_ = out_ . prism' (const Type) (\case{ Type -> Just () ; _ -> Nothing })
+
+unit_ :: Prism' Type ()
+unit_ = out_ . prism' (const Unit) (\case{ Unit -> Just () ; _ -> Nothing })
 
 
 forAll_ :: Prism' Type (Name T ::: Type, Type)
