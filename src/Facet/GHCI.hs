@@ -101,3 +101,5 @@ infixr 1 >=>
 
 (-->) :: Applicative m => m T.Type -> m T.Type -> m T.Type
 (-->) = liftA2 (C.-->)
+
+infixr 1 -->
