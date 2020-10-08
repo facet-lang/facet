@@ -102,8 +102,8 @@ rename x y = go
     Void          -> C._Void
     Unit          -> C._Unit
     z ::: t :=> b
-      | x == z    -> (z ::: go t) C.>=>    b
-      | otherwise -> (z ::: go t) C.>=> go b
+      | x == z    -> z ::: go t C.>=>    b
+      | otherwise -> z ::: go t C.>=> go b
     f :$ as       -> either (\ z -> C.tbound (if z == x then y else z)) C.tglobal f $$* fmap go as
     a :-> b       -> go a C.--> go b
     l :*  r       -> go l C..*  go r
@@ -116,7 +116,7 @@ subst sub = out >>> \case
   n ::: t :=> b ->
     let n' = prime (hint n) (fvs b <> foldMap fvs sub)
         b' = subst sub (rename n n' b)
-    in (n' ::: subst sub t) C.>=> b'
+    in n' ::: subst sub t C.>=> b'
   f :$  as      -> f' $$* fmap (subst sub) as
     where
     f' = case f of
