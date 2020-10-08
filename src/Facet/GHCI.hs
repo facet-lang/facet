@@ -11,13 +11,14 @@ module Facet.GHCI
   -- * Errors
 , toNotice
   -- * Smart constructors
+, makeType
 , _Type
 , (>=>)
 ) where
 
 import           Control.Carrier.Lift (runM)
 import           Control.Carrier.Parser.Church (Has, Input(..), ParserC, errToNotice, run, runParser, runParserWithFile, runParserWithString)
-import           Control.Carrier.Reader (Reader, ask)
+import           Control.Carrier.Reader (Reader, ReaderC, ask, runReader)
 import           Control.Carrier.Throw.Either (runThrow)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
@@ -25,6 +26,7 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
+import           Data.Functor.Identity
 import           Data.Text (pack)
 import qualified Facet.Core as C
 import qualified Facet.Core.Module as Module
@@ -81,6 +83,9 @@ toNotice lvl src span = Notice lvl (fromSourceAndSpan src span) . P.getPrint
 
 
 -- Smart constructors
+
+makeType :: ReaderC Int Identity T.Type -> T.Type
+makeType = run . runReader 0
 
 _Type :: Applicative m => m T.Type
 _Type = pure C._Type
