@@ -100,6 +100,7 @@ subst sub = out >>> \case
   Void          -> C._Void
   Unit          -> C._Unit
   n ::: t :=> b ->
+    -- FIXME: we don’t need to traverse the body if the substitution won’t change it.
     let n' = prime (hint n) (fvs b <> foldMap fvs sub)
         b' = subst (Subst.insert n (C.tbound n') sub) b
     in n' ::: subst sub t C.>=> b'
