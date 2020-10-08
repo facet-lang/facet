@@ -35,6 +35,7 @@ import           Control.Lens (preview, to)
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
+import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Core.Expr as CE
@@ -262,7 +263,7 @@ l ** r = tupled [l, r]
 ($$*) = fmap group . foldl' ($$)
 
 (>~>) :: (Print ::: Print) -> Print -> Print
-(n ::: t) >~> b = prec FnR (group (align (braces (space <> ann (var n ::: t) <> line))) </> arrow <+> b)
+(n ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (braces (space <> ann (var n ::: t) <> line))) </> arrow <+> b)
 
 (>~~>) :: [Print ::: ST.Type] -> Print -> Print
 ts >~~> b = foldr go b (groupByType ST.aeq ts)
