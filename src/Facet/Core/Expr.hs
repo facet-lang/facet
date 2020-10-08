@@ -10,7 +10,6 @@ module Facet.Core.Expr
 , app_
 , unit_
 , prd_
-, interpret
 , subst
 , ExprF(..)
 , fold
@@ -69,16 +68,6 @@ unit_ = prism' (const (In Unit)) (\case{ In Unit -> Just () ; _ -> Nothing })
 prd_ :: Prism' Expr (Expr, Expr)
 prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
 
-
-interpret :: C.Expr r => Expr -> r
-interpret = out >>> \case
-  Free n -> C.global n
-  Bound n -> C.bound n
-  TLam n b -> C.tlam n (interpret b)
-  Lam n b -> C.lam n (interpret b)
-  f :$ a -> interpret f C.$$ interpret a
-  Unit -> C.unit
-  l :* r -> interpret l C.** interpret r
 
 -- FIXME: this is pretty inefficient for multiple renamings; we should try to fuse renamings.
 rename :: Name a -> Name a -> Expr -> Expr
