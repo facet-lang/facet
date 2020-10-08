@@ -37,9 +37,9 @@
 :seti -Wno-type-defaults
 :set -Wno-unused-packages
 
-:load Facet.Elab Facet.GHCI Facet.Parser Facet.Pretty Facet.Print Main
+:load Facet.CLI Facet.GHCI test/Test.hs
 
 import Facet.GHCI
 import Facet.Parser
 import Facet.Print
-import Main
+import qualified Main as Test
