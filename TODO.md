@@ -88,6 +88,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Can we deal with precedence in a more modular way, à la the approach the parser takes (cf https://ptival.github.io/2017/02/25/modular-parser-combinators/)?
 
+- Rainbow highlighting of local variables introductions & references.
+
 
 ### Evaluator
 
