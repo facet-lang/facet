@@ -30,7 +30,7 @@ import           Facet.Syntax
 import           Facet.Vars
 
 newtype Type = In { out :: TypeF Type }
-  deriving (C.Type)
+  deriving (C.Type, Show)
 
 instance Scoped Type where
   fvs = out >>> \case
