@@ -100,7 +100,7 @@ instance Substitutable Type where
     Unit          -> C._Unit
     n ::: t :=> b ->
       -- FIXME: we don’t need to traverse the body if the substitution won’t change it.
-      -- FIXME: we don’t need to rename the binder if the variable isn’t free in the substitution.
+      -- FIXME: we don’t need to rename the binder if the variable isn’t free in or bound by the substitution.
       let n' = prime (hint n) (fvs b <> foldMap fvs sub)
           b' = subst (Subst.insert n (C.tbound n') sub) b
       in n' ::: subst sub t C.>=> b'
