@@ -26,6 +26,7 @@ module Facet.Print
 , printCorePattern
 , printSurfacePattern
 , printSurfaceDecl
+, printCoreModule
 , printSurfaceModule
 ) where
 
@@ -39,6 +40,7 @@ import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Facet.Core as C
 import qualified Facet.Core.Expr as CE
+import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import qualified Facet.Core.Type as CT
 import qualified Facet.Name as N
@@ -355,6 +357,16 @@ t .= b = t </> b
 
 (>->) :: (Print ::: Print) -> Print -> Print
 (n ::: t) >-> b = prec FnR (group (align (parens (ann (n ::: t)))) </> arrow <+> b)
+
+
+printCoreModule :: CM.Module -> Print
+printCoreModule (CM.Module n ds) = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: printCoreType t) </> printCoreDef d) ds))
+
+printCoreDef :: C.Def CE.Expr CT.Type -> Print
+printCoreDef = \case
+  C.DTerm b  -> printCoreExpr b
+  C.DType b  -> printCoreType b
+  C.DData cs -> block (commaSep (map (ann . bimap pretty printCoreType) cs))
 
 
 printSurfaceModule :: SM.Module -> Print
