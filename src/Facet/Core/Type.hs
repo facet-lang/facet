@@ -16,7 +16,6 @@ module Facet.Core.Type
 , app_
 , app'_
 , prd_
-, interpret
 , TypeF(..)
 , fold
 ) where
@@ -81,19 +80,6 @@ app'_ = out_ . prism' (uncurry (:$)) (\case{ f :$ as -> Just (f, as) ; _ -> Noth
 
 prd_ :: Prism' Type (Type, Type)
 prd_ = out_ . prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
-
-
-interpret :: C.Type r => Type -> r
-interpret = go
-  where
-  go = out >>> \case
-    Type    -> C._Type
-    Void    -> C._Void
-    Unit    -> C._Unit
-    t :=> b -> fmap go t C.>=> go b
-    f :$ a  -> foldl' (\ f a -> f C..$ go a) (either C.tbound C.tglobal f) a
-    a :-> b -> go a C.--> go b
-    l :* r  -> go l C..*  go r
 
 
 ($$) :: Type -> Type -> Type
