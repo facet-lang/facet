@@ -25,6 +25,7 @@ import qualified Data.IntSet as IntSet
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import           Facet.Name
+import qualified Facet.Substitution as Subst
 import           GHC.Exts
 
 newtype Vars = Vars { getVars :: IntSet.IntSet }
@@ -77,14 +78,14 @@ instance Binding1 Rename where
   bind1 z b = Rename $ \ x y -> if z == coerce x then runRename b z z else runRename b x y
 
 
-newtype Substitute a = Substitute { runSubstitute :: forall x t . Scoped1 t => Name x -> t -> a }
+newtype Substitute a = Substitute { runSubstitute :: forall t . Scoped1 t => Subst.Substitution t -> a }
 
 instance Functor Substitute where
-  fmap f s = Substitute $ \ x e -> f (runSubstitute s x e)
+  fmap f s = Substitute $ \ sub -> f (runSubstitute s sub)
 
 instance Applicative Substitute where
-  pure a = Substitute $ \ _ _ -> a
-  f <*> a = Substitute $ \ x e -> runSubstitute f x e (runSubstitute a x e)
+  pure a = Substitute $ \ _ -> a
+  f <*> a = Substitute $ \ sub -> runSubstitute f sub (runSubstitute a sub)
 
 
 class Scoped t where
