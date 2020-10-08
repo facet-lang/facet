@@ -103,7 +103,7 @@ fvsDefault :: (Scoped1 t, Binding vs) => t -> vs
 fvsDefault = getConst . fvs1
 
 
-newtype Substitution a = Substitution (IntMap.IntMap a)
+newtype Substitution a = Substitution { getSubstitution :: IntMap.IntMap a }
 
 
 newtype FVs = FVs { runFVs :: Vars -> Vars -> Vars }
