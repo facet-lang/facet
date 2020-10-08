@@ -6,6 +6,7 @@ module Facet.Substitution
 , insert
 , member
 , lookup
+, Substitutable(..)
 ) where
 
 import           Data.Coerce
@@ -30,3 +31,7 @@ member n = IntMap.member (id' n) . getSubstitution
 
 lookup :: Name a -> Substitution t -> Maybe t
 lookup n = IntMap.lookup (id' n) . getSubstitution
+
+
+class Substitutable t where
+  subst :: Substitution t -> t -> t
