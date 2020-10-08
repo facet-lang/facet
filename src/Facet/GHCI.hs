@@ -31,7 +31,6 @@ import           Data.Bifunctor
 import           Data.Functor.Identity
 import           Data.Text (pack)
 import qualified Facet.Core as C
-import qualified Facet.Core.Module as Module
 import qualified Facet.Core.Type as T
 import           Facet.Elab (elab, elabModule, implicit)
 import           Facet.Name (Name(..))
@@ -64,7 +63,7 @@ elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) S.Module -> String -> m ()
 elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . run . elab (Span (Pos 0 0) (Pos 0 0)) implicit mempty . elabModule of
   Left err -> P.putDoc (prettyNotice err)
-  Right a  -> P.prettyPrint (Module.interpretModule a)
+  Right a  -> P.prettyPrint (P.printCoreModule a)
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s
