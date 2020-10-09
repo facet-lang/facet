@@ -320,13 +320,15 @@ clause
   :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m)
   => SC.Clause (Check m CE.Expr)
   -> Check m CE.Expr
-clause = SC.fold $ \case
-  SC.Clause p b -> Check $ \ _T -> do
-    (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
-    p' <- check (pattern p ::: _A)
-    foldr (|-) (CE.Lam (tm <$> p') <$> check (b ::: _B)) p'
-  SC.Body e   -> e
-  SC.Loc s c  -> local (const s) c
+clause = go
+  where
+  go = SC.out >>> \case
+    SC.Clause p b -> Check $ \ _T -> do
+      (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
+      p' <- check (pattern p ::: _A)
+      foldr (|-) (CE.Lam (tm <$> p') <$> check (go b ::: _B)) p'
+    SC.Body e   -> e
+    SC.Loc s c  -> local (const s) (go c)
 
 
 pattern

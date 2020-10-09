@@ -5,7 +5,6 @@ module Facet.Surface.Comp
 , clause_
 , body_
 , ClauseF(..)
-, fold
 ) where
 
 import Control.Category ((>>>))
@@ -62,9 +61,3 @@ instance Bitraversable ClauseF where
     Clause n c -> Clause n <$> g c
     Body e     -> Body <$> f e
     Loc s c    -> Loc s <$> g c
-
-
-fold :: (ClauseF e a -> a) -> Clause e -> a
-fold alg = go
-  where
-  go = alg . fmap go . out
