@@ -9,6 +9,8 @@ module Facet.Name
 , UName(..)
 , Index(..)
 , Level(..)
+, levelToIndex
+, indexToLevel
 , E
 , T
 , __
@@ -81,6 +83,12 @@ newtype Index = Index { getIndex :: Int }
 
 newtype Level = Level { getLevel :: Int }
   deriving (Eq, Ord, Show)
+
+levelToIndex :: Int -> Level -> Index
+levelToIndex d (Level level) = Index $ d - level - 1
+
+indexToLevel :: Int -> Index -> Level
+indexToLevel d (Index index) = Level $ d - index - 1
 
 
 data E
