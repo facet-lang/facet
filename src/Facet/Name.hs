@@ -62,6 +62,7 @@ elemN :: Foldable t => Name b -> t (Name a) -> Bool
 elemN = elem . coerce
 
 
+-- | User-supplied name.
 newtype UName = UName { getUName :: Text }
 
 
