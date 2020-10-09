@@ -12,6 +12,7 @@ module Facet.Name
 , levelToIndex
 , indexToLevel
 , incrLevel
+, incrLevelFor
 , E
 , T
 , __
@@ -32,6 +33,7 @@ import           Data.List.NonEmpty
 import           Data.String (IsString(..))
 import           Data.Text (Text, unpack)
 import qualified Data.Text as T
+import           Data.Traversable (mapAccumR)
 import           Facet.Pretty
 import qualified Prettyprinter as P
 import           Silkscreen
@@ -95,6 +97,9 @@ indexToLevel d (Index index) = Level $ d - index - 1
 
 incrLevel :: Level -> Level
 incrLevel (Level l) = Level (l + 1)
+
+incrLevelFor :: Traversable t => (Level -> expr) -> Level -> t UName -> (Level, t expr)
+incrLevelFor mk = mapAccumR $ \ l _ -> (incrLevel l, mk l)
 
 
 data E
