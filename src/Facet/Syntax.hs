@@ -13,7 +13,6 @@ module Facet.Syntax
 
 import Data.Bifunctor
 import Facet.Stack
-import Facet.Vars
 
 data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -22,9 +21,6 @@ infixr 2 :::
 
 instance Bifunctor (:::) where
   bimap f g (a ::: b) = f a ::: g b
-
-instance (Scoped a, Scoped b) => Scoped (a ::: b) where
-  fvs (a ::: b) = fvs a <> fvs b
 
 tm :: a ::: b -> a
 tm (a ::: _) = a

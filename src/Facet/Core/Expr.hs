@@ -11,8 +11,6 @@ import qualified Facet.Core.Pattern as P
 import           Facet.Core.Type (QType, Type)
 import qualified Facet.Core.Type as T
 import           Facet.Name
-import           Facet.Substitution as Subst
-import           Facet.Vars
 
 data Expr
   = Free QName
@@ -26,23 +24,6 @@ data Expr
 
 infixl 9 :$
 infixl 7 :*
-
-instance Scoped Expr where
-  fvs = fvsDefault
-
-instance Scoped1 Expr where
-  fvs1 =  \case
-    Free  v  -> pure (Free v)
-    Bound n  -> boundVar1 Bound n
-    TLam n b -> TLam n <$> fvs1 b
-    TApp f a -> TApp <$> fvs1 f <*> pure a
-    Lam  p b -> uncurry Lam <$> bindN Bound p (fvs b) (fvs1 b)
-    f :$ a   -> (:$) <$> fvs1 f <*> fvs1 a
-    Unit     -> pure Unit
-    l :* r   -> (:*) <$> fvs1 l <*> fvs1 r
-
-instance Substitutable Expr where
-  subst sub = substitute sub . fvs1
 
 
 data QExpr
