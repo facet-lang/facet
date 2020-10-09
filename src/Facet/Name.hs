@@ -7,6 +7,8 @@ module Facet.Name
 , eqN
 , elemN
 , UName(..)
+, Index(..)
+, Level(..)
 , E
 , T
 , __
@@ -72,6 +74,12 @@ instance Show UName where
 
 instance P.Pretty UName where
   pretty = P.pretty . getUName
+
+
+newtype Index = Index { getIndex :: Int }
+  deriving (Eq, Ord, Show)
+newtype Level = Level { getLevel :: Int }
+  deriving (Eq, Ord, Show)
 
 
 data E
