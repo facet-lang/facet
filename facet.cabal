@@ -45,6 +45,7 @@ library
     Facet.Core.Type
     Facet.Elab
     Facet.Env
+    Facet.Error
     Facet.Name
     Facet.Parser
     Facet.Parser.Table
