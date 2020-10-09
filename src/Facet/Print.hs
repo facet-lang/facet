@@ -13,7 +13,6 @@ module Facet.Print
 ( prettyPrint
 , getPrint
 , terminalStyle
-, runPrint
 , Print(..)
 , Context(..)
 , evar
@@ -68,7 +67,7 @@ getPrint :: Print -> PP.Doc ANSI.AnsiStyle
 getPrint = PP.reAnnotate terminalStyle . getPrint'
 
 getPrint' :: Print -> PP.Doc Highlight
-getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . runPrint 0 . group
+getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . runPrint . group
 
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
@@ -92,10 +91,7 @@ terminalStyle = \case
   len = length colours
 
 
-runPrint :: Int -> Print -> Prec Context (Rainbow (PP.Doc Highlight))
-runPrint i (Print p) = p i
-
-newtype Print = Print (Int -> Prec Context (Rainbow (PP.Doc Highlight)))
+newtype Print = Print { runPrint :: Prec Context (Rainbow (PP.Doc Highlight)) }
   deriving (Monoid, PrecedencePrinter, P.Printer, Semigroup)
 
 instance Show Print where
