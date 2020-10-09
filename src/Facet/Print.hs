@@ -266,7 +266,7 @@ printCoreExpr = go []
     CE.Bound n  -> sbound n
     CE.TLam n b -> let n' = cbound @N.T (N.Name n (length env)) in lam (braces n') (go (n':env) b)
     CE.TApp f a -> go env f $$ braces (printCoreQType env a)
-    CE.Lam  p b -> lam (printCorePattern p) (go env b)
+    CE.Lam  p b -> lam (printCorePattern (sbound <$> p)) (go env b)
     f CE.:$  a  -> go env f $$ go env a
     CE.Unit     -> unit
     l CE.:*  r  -> go env l **  go env r
@@ -297,10 +297,10 @@ printSurfaceClause = SC.out >>> \case
   SC.Body e     -> prec Expr (printSurfaceExpr e)
   SC.Loc _ c    -> printSurfaceClause c
 
-printCorePattern :: CP.Pattern (N.Name N.E) -> Print
+printCorePattern :: CP.Pattern Print -> Print
 printCorePattern = prec Pattern . \case
   CP.Wildcard -> pretty '_'
-  CP.Var n    -> sbound n
+  CP.Var n    -> n
   CP.Tuple p  -> tupled (map printCorePattern p)
 
 printSurfacePattern :: SP.Pattern (N.Name N.E) -> Print
