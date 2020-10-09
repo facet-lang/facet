@@ -7,7 +7,6 @@
 {-# OPTIONS_GHC -Wno-noncanonical-monad-instances #-}
 module Facet.Core.Type
 ( Type(..)
-, out_
 , global_
 , bound_
 , type_
@@ -23,7 +22,7 @@ module Facet.Core.Type
 , unfold
 ) where
 
-import Control.Lens (Iso', Prism', iso, prism', review, _Left, _Right)
+import Control.Lens (Prism', prism', review, _Left, _Right)
 import Data.Foldable (foldl')
 import Facet.Name
 import Facet.Stack
@@ -60,9 +59,6 @@ instance Scoped1 Type where
     a :-> b -> curry (review arrow_) <$> fvs1 a <*> fvs1 b
     l :* r  -> curry (review prd_) <$> fvs1 l <*> fvs1 r
 
-
-out_ :: Iso' Type (TypeF Type)
-out_ = iso out inn
 
 out :: Type -> TypeF Type
 out = \case
