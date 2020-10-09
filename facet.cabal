@@ -53,7 +53,6 @@ library
     Facet.REPL
     Facet.REPL.Parser
     Facet.Stack
-    Facet.Substitution
     Facet.Surface.Comp
     Facet.Surface.Decl
     Facet.Surface.Expr
