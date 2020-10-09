@@ -20,6 +20,7 @@ module Facet.Core.Type
 , prd_
 , TypeF(..)
 , fold
+, unfold
 ) where
 
 import Control.Lens (Iso', Prism', iso, prism', review, _Left, _Right)
@@ -157,3 +158,8 @@ fold :: (TypeF a -> a) -> Type -> a
 fold alg = go
   where
   go = alg . fmap go . out
+
+unfold :: (a -> TypeF a) -> a -> Type
+unfold coalg = go
+  where
+  go = inn . fmap go . coalg
