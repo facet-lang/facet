@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Facet.Name
 ( Name(..)
+, name
 , prettyNameWith
 , eqN
 , elemN
@@ -49,6 +50,9 @@ instance P.Pretty (Name E) where
 instance P.Pretty (Name T) where
   pretty = prettyNameWith tvar
 
+
+name :: Text -> Int -> Name a
+name = Name
 
 prettyNameWith :: Printer p => (Int -> p) -> Name a -> p
 prettyNameWith var n
