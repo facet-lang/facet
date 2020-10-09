@@ -44,7 +44,6 @@ import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Span (Span(..))
-import           Control.Lens (review)
 import           Data.Bifunctor (first)
 import           Data.Foldable (toList)
 import qualified Data.IntMap as IntMap
@@ -253,8 +252,8 @@ elabExpr
 elabExpr (t ::: _T) = SE.fold alg t _T
   where
   alg = \case
-    SE.Free  n -> switch $ synth (review CE.global_ <$> global n)
-    SE.Bound n -> switch $ synth (review CE.bound_ <$> bound n)
+    SE.Free  n -> switch $ synth (CE.Free  <$> global n)
+    SE.Bound n -> switch $ synth (CE.Bound <$> bound n)
     SE.Hole  n -> \ _T -> hole (n ::: _T)
     f SE.:$  a -> switch $ synth (_synth f $$ _check a)
     l SE.:*  r -> check (_check l ** _check r) (pretty "product")
@@ -272,7 +271,7 @@ elabExpr (t ::: _T) = SE.fold alg t _T
   => Synth m CE.Expr
   -> Check m CE.Expr
   -> Synth m CE.Expr
-($$) = app (curry (review CE.app_))
+($$) = app (CE.:$)
 
 tlam
   :: Has (Reader Context :+: Throw P.Print) sig m
@@ -281,7 +280,7 @@ tlam
   -> Check m CE.Expr
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  _T |-- \ v -> curry (review CE.tlam_) n <$> check (b ::: _B v)
+  _T |-- \ v -> CE.TLam n <$> check (b ::: _B v)
 
 lam
   :: Has (Reader Context :+: Throw P.Print) sig m
@@ -290,10 +289,10 @@ lam
   -> Check m CE.Expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
-  n ::: _A |- curry (review CE.lam_) (CP.Var n) <$> check (b ::: _B)
+  n ::: _A |- CE.Lam (CP.Var n) <$> check (b ::: _B)
 
 unit :: Applicative m => Synth m CE.Expr
-unit = Synth . pure $ review CE.unit_ () ::: Unit
+unit = Synth . pure $ CE.Unit ::: Unit
 
 (**)
   :: Has (Throw P.Print) sig m
@@ -304,7 +303,7 @@ l ** r = Check $ \ _T -> do
   (_L, _R) <- expectProductType (reflow "when checking product") _T
   l' <- check (l ::: _L)
   r' <- check (r ::: _R)
-  pure (review CE.prd_ (l', r'))
+  pure (l' CE.:* r')
 
 comp
   :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m)
@@ -324,7 +323,7 @@ clause = SC.fold $ \case
   SC.Clause p b -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
     p' <- check (pattern p ::: _A)
-    foldr (|-) (curry (review CE.lam_) (tm <$> p') <$> check (b ::: _B)) p'
+    foldr (|-) (CE.Lam (tm <$> p') <$> check (b ::: _B)) p'
   SC.Body e   -> e
   SC.Loc s c  -> local (const s) c
 

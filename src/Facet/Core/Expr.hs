@@ -3,18 +3,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Core.Expr
 ( Expr(..)
-, global_
-, bound_
-, tlam_
-, tapp_
-, lam_
-, app_
-, unit_
-, prd_
 , QExpr(..)
 ) where
 
-import           Control.Lens (Prism', prism', review)
 import qualified Facet.Core.Pattern as P
 import           Facet.Core.Type (QType)
 import           Facet.Name
@@ -36,42 +27,14 @@ instance Scoped Expr where
 
 instance Scoped1 Expr where
   fvs1 =  \case
-    Free  v  -> pure (review global_ v)
-    Bound n  -> boundVar1 (review bound_) n
-    TLam n b -> curry (review tlam_) n <$> fvs1 b
-    TApp f a -> curry (review tapp_) <$> fvs1 f <*> pure a
-    Lam  p b -> review lam_ <$> bindN (review bound_) p (fvs b) (fvs1 b)
-    f :$ a   -> curry (review app_) <$> fvs1 f <*> fvs1 a
-    Unit     -> pure (review unit_ ())
-    l :* r   -> curry (review prd_) <$> fvs1 l <*> fvs1 r
-
-
-global_ :: Prism' Expr QName
-global_ = prism' Free (\case{ Free n -> Just n ; _ -> Nothing })
-
-bound_ :: Prism' Expr (Name E)
-bound_ = prism' Bound (\case{ Bound n -> Just n ; _ -> Nothing })
-
-
-tlam_ :: Prism' Expr (UName, Expr)
-tlam_ = prism' (uncurry TLam) (\case{ TLam n b -> Just (n, b) ; _ -> Nothing })
-
-tapp_ :: Prism' Expr (Expr, QType)
-tapp_ = prism' (uncurry TApp) (\case{ TApp f a -> Just (f, a) ; _ -> Nothing })
-
-lam_ :: Prism' Expr (P.Pattern (Name E), Expr)
-lam_ = prism' (uncurry Lam) (\case{ Lam p b -> Just (p, b) ; _ -> Nothing })
-
-app_ :: Prism' Expr (Expr, Expr)
-app_ = prism' (uncurry (:$)) (\case{ f :$ a -> Just (f, a) ; _ -> Nothing })
-
-
-unit_ :: Prism' Expr ()
-unit_ = prism' (const Unit) (\case{ Unit -> Just () ; _ -> Nothing })
-
-prd_ :: Prism' Expr (Expr, Expr)
-prd_ = prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
-
+    Free  v  -> pure (Free v)
+    Bound n  -> boundVar1 Bound n
+    TLam n b -> TLam n <$> fvs1 b
+    TApp f a -> TApp <$> fvs1 f <*> pure a
+    Lam  p b -> uncurry Lam <$> bindN Bound p (fvs b) (fvs1 b)
+    f :$ a   -> (:$) <$> fvs1 f <*> fvs1 a
+    Unit     -> pure Unit
+    l :* r   -> (:*) <$> fvs1 l <*> fvs1 r
 
 instance Substitutable Expr where
   subst sub = substitute sub . fvs1
