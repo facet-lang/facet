@@ -353,17 +353,17 @@ elabDecl = SD.fold alg
   where
   alg s = local (const s) . \case
     (n ::: t) SD.:=> b -> do
-      _T ::: _  <- elabType (t ::: Just (Type))
+      _T ::: _  <- elabType (t ::: Just Type)
       b' ::: _B <- n ::: _T |- b
       pure $ tlam n b' ::: (n ::: _T :=> _B)
 
     (n ::: t) SD.:-> b -> do
-      _T ::: _  <- elabType (t ::: Just (Type))
+      _T ::: _  <- elabType (t ::: Just Type)
       b' ::: _B <- n ::: _T |- b
       pure $ lam n b' ::: (_T :-> _B)
 
     t SD.:= b -> do
-      _T ::: _ <- elabType (t ::: Just (Type))
+      _T ::: _ <- elabType (t ::: Just Type)
       pure $ _check (elabExpr . (b :::)) ::: _T
 
   _check r = tm <$> Check (r . Just)
