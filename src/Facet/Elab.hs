@@ -55,6 +55,7 @@ import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Type hiding (bound, global, (.$))
 import qualified Facet.Core.Type as CT
+import           Facet.Error
 import qualified Facet.Env as Env
 import           Facet.Name (Index(..), Level(..), MName(..), QName(..), UName, incrLevel, indexToLevel)
 import qualified Facet.Name as N
@@ -76,11 +77,11 @@ type Context = [UName ::: Type]
 implicit :: Env.Env
 implicit = Env.fromList [ (N.T (N.TName (T.pack "Type")), MName (T.pack "Facet") ::: Type) ]
 
-elab :: Applicative m => Span -> Env.Env -> Context -> Elab m a -> m (Either (Span, P.Print) a)
+elab :: Applicative m => Span -> Env.Env -> Context -> Elab m a -> m (Either (Span, Err) a)
 elab s e c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (m e c)
 
-newtype Elab m a = Elab (Env.Env -> Context -> ErrorC Span P.Print m a)
-  deriving (Algebra (Reader Env.Env :+: Reader Context :+: Error P.Print :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC Env.Env (ReaderC Context (ErrorC Span P.Print m))
+newtype Elab m a = Elab (Env.Env -> Context -> ErrorC Span Err m a)
+  deriving (Algebra (Reader Env.Env :+: Reader Context :+: Error Err :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC Env.Env (ReaderC Context (ErrorC Span Err m))
 
 
 newtype Check m a = Check { runCheck :: Type -> m a }
@@ -96,7 +97,7 @@ check = uncurryAnn runCheck
 
 
 unify
-  :: Has (Throw P.Print) sig m
+  :: Has (Throw Err) sig m
   => Type
   -> Type
   -> m Type
@@ -124,7 +125,7 @@ unify t1 t2 = t2 <$ go (Level 0) t1 t2
 -- General
 
 switch
-  :: Has (Throw P.Print) sig m
+  :: Has (Throw Err) sig m
   => m (a ::: Type)
   -> Maybe Type
   -> m (a ::: Type)
@@ -133,7 +134,7 @@ switch m = \case
   _       -> m
 
 global
-  :: (Has (Reader Env.Env :+: Throw P.Print) sig m)
+  :: (Has (Reader Env.Env :+: Throw Err) sig m)
   => N.DName
   -> Synth m QName
 global n = Synth $ asks (Env.lookup n) >>= \case
@@ -141,13 +142,13 @@ global n = Synth $ asks (Env.lookup n) >>= \case
   Nothing -> freeVariable (pretty n)
 
 bound
-  :: Has (Reader Context :+: Throw P.Print) sig m
+  :: Has (Reader Context :+: Throw Err) sig m
   => Index
   -> Synth m Index
 bound n = Synth $ asks @Context (first (const n) . (!! getIndex n))
 
 app
-  :: Has (Throw P.Print) sig m
+  :: Has (Throw Err) sig m
   => (a -> a -> a)
   -> Synth m a
   -> Check m a
@@ -162,7 +163,7 @@ app ($$) f a = Synth $ do
 -- Types
 
 elabType
-  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
+  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw Err) sig m
   => (ST.Type ::: Maybe Type)
   -> m (Type ::: Type)
 elabType (t ::: _K) = go t _K
@@ -196,7 +197,7 @@ _Unit :: Applicative m => Synth m Type
 _Unit = Synth $ pure $ Unit ::: Type
 
 (.$)
-  :: Has (Throw P.Print) sig m
+  :: Has (Throw Err) sig m
   => Synth m Type
   -> Check m Type
   -> Synth m Type
@@ -245,7 +246,7 @@ infixr 1 >~>
 -- Expressions
 
 elabExpr
-  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
+  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw Err) sig m
   => (SE.Expr ::: Maybe Type)
   -> m (CE.Expr ::: Type)
 elabExpr (t ::: _T) = go t _T
@@ -268,14 +269,14 @@ elabExpr (t ::: _T) = go t _T
 
 
 ($$)
-  :: Has (Throw P.Print) sig m
+  :: Has (Throw Err) sig m
   => Synth m CE.Expr
   -> Check m CE.Expr
   -> Synth m CE.Expr
 ($$) = app (CE.:$)
 
 tlam
-  :: Has (Reader Context :+: Throw P.Print) sig m
+  :: Has (Reader Context :+: Throw Err) sig m
   => UName
   -> Check m CE.Expr
   -> Check m CE.Expr
@@ -284,7 +285,7 @@ tlam n b = Check $ \ ty -> do
   _T |-- \ v -> CE.TLam n <$> check (b ::: _B v)
 
 lam
-  :: Has (Reader Context :+: Throw P.Print) sig m
+  :: Has (Reader Context :+: Throw Err) sig m
   => UName
   -> Check m CE.Expr
   -> Check m CE.Expr
@@ -296,7 +297,7 @@ unit :: Applicative m => Synth m CE.Expr
 unit = Synth . pure $ CE.Unit ::: Unit
 
 (**)
-  :: Has (Throw P.Print) sig m
+  :: Has (Throw Err) sig m
   => Check m CE.Expr
   -> Check m CE.Expr
   -> Check m CE.Expr
@@ -307,7 +308,7 @@ l ** r = Check $ \ _T -> do
   pure (l' CE.:* r')
 
 comp
-  :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m)
+  :: (Has (Reader Context :+: Reader Span :+: Throw Err) sig m)
   => [SC.Clause (Check m CE.Expr)]
   -> Check m CE.Expr
 comp cs = do
@@ -317,7 +318,7 @@ comp cs = do
   pure $ head cs'
 
 clause
-  :: (Has (Reader Context :+: Reader Span :+: Throw P.Print) sig m)
+  :: (Has (Reader Context :+: Reader Span :+: Throw Err) sig m)
   => SC.Clause (Check m CE.Expr)
   -> Check m CE.Expr
 clause = go
@@ -332,7 +333,7 @@ clause = go
 
 
 pattern
-  :: Has (Reader Span :+: Throw P.Print) sig m
+  :: Has (Reader Span :+: Throw Err) sig m
   => SP.Pattern (UName)
   -> Check m (CP.Pattern (UName ::: Type))
 pattern = go
@@ -353,7 +354,7 @@ pattern = go
 -- Declarations
 
 elabDecl
-  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
+  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw Err) sig m
   => SD.Decl
   -> m (Check m CE.Expr ::: Type)
 elabDecl = go
@@ -379,14 +380,14 @@ elabDecl = go
 -- Modules
 
 elabModule
-  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
+  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw Err) sig m
   => SM.Module
   -> m CM.Module
 -- FIXME: elaborate all the types first, and only then the terms
 elabModule (SM.Module s n ds) = local (const s) $ evalState (mempty @Env.Env) $ CM.Module n <$> traverse (elabDef n) ds
 
 elabDef
-  :: Has (Reader Context :+: Reader Span :+: State Env.Env :+: Throw P.Print) sig m
+  :: Has (Reader Context :+: Reader Span :+: State Env.Env :+: Throw Err) sig m
   => MName
   -> SM.Def
   -> m (QName, CM.Def ::: Type)
@@ -420,15 +421,15 @@ infix 1 |--
 
 -- Failures
 
-err :: Has (Throw P.Print) sig m => P.Print -> m a
-err = throwError . group
+err :: Has (Throw Err) sig m => ErrDoc -> m a
+err = throwError . (`Err` []) . group
 
-hole :: Has (Throw P.Print) sig m => (T.Text ::: Maybe Type) -> m (a ::: Type)
+hole :: Has (Throw Err) sig m => (T.Text ::: Maybe Type) -> m (a ::: Type)
 hole (n ::: t) = case t of
-  Just t  -> err $ fillSep [pretty "found", pretty "hole", pretty n, colon, P.printCoreType t]
+  Just t  -> err $ fillSep [pretty "found", pretty "hole", pretty n, colon, P.getPrint (P.printCoreType t)]
   Nothing -> couldNotSynthesize (fillSep [ pretty "hole", pretty n ])
 
-mismatch :: Has (Throw P.Print) sig m => P.Print -> P.Print -> P.Print -> m a
+mismatch :: Has (Throw Err) sig m => ErrDoc -> ErrDoc -> ErrDoc -> m a
 mismatch msg exp act = err $ msg
   </> pretty "expected:" <> print exp
   </> pretty "  actual:" <> print act
@@ -436,29 +437,29 @@ mismatch msg exp act = err $ msg
   -- line things up nicely for e.g. wrapped function types
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
-couldNotUnify :: Has (Throw P.Print) sig m => Type -> Type -> m a
-couldNotUnify t1 t2 = mismatch (reflow "mismatch") (P.printCoreType t2) (P.printCoreType t1)
+couldNotUnify :: Has (Throw Err) sig m => Type -> Type -> m a
+couldNotUnify t1 t2 = mismatch (reflow "mismatch") (P.getPrint (P.printCoreType t2)) (P.getPrint (P.printCoreType t1))
 
-couldNotSynthesize :: Has (Throw P.Print) sig m => P.Print -> m a
+couldNotSynthesize :: Has (Throw Err) sig m => ErrDoc -> m a
 couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softline <> msg
 
-freeVariable :: Has (Throw P.Print) sig m => P.Print -> m a
+freeVariable :: Has (Throw Err) sig m => ErrDoc -> m a
 freeVariable v = err $ fillSep [reflow "variable not in scope:", v]
 
-expectChecked :: Has (Throw P.Print) sig m => Maybe Type -> P.Print -> m Type
+expectChecked :: Has (Throw Err) sig m => Maybe Type -> ErrDoc -> m Type
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 
 -- Patterns
 
-expectMatch :: Has (Throw P.Print) sig m => (Type -> Maybe out) -> P.Print -> P.Print -> Type -> m out
-expectMatch pat exp s _T = maybe (mismatch s exp (P.printCoreType _T)) pure (pat _T)
+expectMatch :: Has (Throw Err) sig m => (Type -> Maybe out) -> ErrDoc -> ErrDoc -> Type -> m out
+expectMatch pat exp s _T = maybe (mismatch s exp (P.getPrint (P.printCoreType _T))) pure (pat _T)
 
-expectQuantifiedType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (UName ::: Type, Type -> Type)
+expectQuantifiedType :: Has (Throw Err) sig m => ErrDoc -> Type -> m (UName ::: Type, Type -> Type)
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)
+expectFunctionType :: Has (Throw Err) sig m => ErrDoc -> Type -> m (Type, Type)
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)
+expectProductType :: Has (Throw Err) sig m => ErrDoc -> Type -> m (Type, Type)
 expectProductType = expectMatch unProduct (pretty "(_, _)")

@@ -1,4 +1,6 @@
+{-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.GHCI
 ( -- * Parsing
@@ -23,13 +25,12 @@ import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
 import qualified Facet.Core.Type as T
 import           Facet.Elab (elab, elabModule, implicit)
+import           Facet.Error
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
 import qualified Facet.Surface.Module as S
 import           Facet.Syntax ((:::)(..))
-import qualified Prettyprinter as PP
-import qualified Prettyprinter.Render.Terminal as ANSI
 import qualified Silkscreen as S
 
 -- Parsing
@@ -50,7 +51,7 @@ elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) S.Module -> String -> m ()
-elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p []) . run . elab (Span (Pos 0 0) (Pos 0 0)) implicit mempty . elabModule of
+elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p) . run . elab (Span (Pos 0 0) (Pos 0 0)) implicit mempty . elabModule of
   Left err -> P.putDoc (prettyNotice err)
   Right a  -> P.prettyPrint (P.printCoreModule a)
   where
@@ -68,5 +69,5 @@ prettyAnn (tm ::: ty) = tm S.<+> S.colon S.<+> P.printCoreType ty
 
 -- Errors
 
-toNotice :: Maybe Level -> Source -> Span -> P.Print -> [PP.Doc ANSI.AnsiStyle] -> Notice
-toNotice lvl src span = Notice lvl (fromSourceAndSpan src span) . P.getPrint
+toNotice :: Maybe Level -> Source -> Span -> Err -> Notice
+toNotice lvl src span Err{ reason, context } = Notice lvl (fromSourceAndSpan src span) reason context
