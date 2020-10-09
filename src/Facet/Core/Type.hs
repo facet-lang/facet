@@ -19,6 +19,8 @@ module Facet.Core.Type
 , app_
 , app'_
 , prd_
+, (.$)
+, (.$*)
 , TypeF(..)
 , fold
 , unfold
