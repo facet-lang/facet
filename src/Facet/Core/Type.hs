@@ -24,7 +24,7 @@ module Facet.Core.Type
 , unfold
 ) where
 
-import Control.Lens (Prism', prism', review, _Left, _Right)
+import Control.Lens (Prism', prism', _Left, _Right)
 import Data.Foldable (foldl')
 import Facet.Name
 import Facet.Stack
@@ -47,19 +47,19 @@ instance Scoped Type where
 
 instance Scoped1 Type where
   fvs1 = \case
-    Type    -> pure (review type_ ())
-    Void    -> pure (review void_ ())
-    Unit    -> pure (review unit_ ())
-    t :=> b -> mk <$> fvs1 (ty t) <*> bind1 (review bound_) (tm t) (fvs b) (fvs1 b)
+    Type    -> pure Type
+    Void    -> pure Void
+    Unit    -> pure Unit
+    t :=> b -> mk <$> fvs1 (ty t) <*> bind1 bound (tm t) (fvs b) (fvs1 b)
       where
-      mk t' (n', b') = review forAll_ (n' ::: t', b')
+      mk t' (n', b') = n' ::: t' :=> b'
     f :$ as -> f' <*> traverse fvs1 as
       where
       f' = case f of
-        Left f -> ($$*) <$> boundVar1 (review bound_) f
-        _      -> pure (curry (review app'_) f)
-    a :-> b -> curry (review arrow_) <$> fvs1 a <*> fvs1 b
-    l :* r  -> curry (review prd_) <$> fvs1 l <*> fvs1 r
+        Left f -> ($$*) <$> boundVar1 bound f
+        _      -> pure (f :$)
+    a :-> b -> (:->) <$> fvs1 a <*> fvs1 b
+    l :*  r -> (:*)  <$> fvs1 l <*> fvs1 r
 
 
 out :: Type -> TypeF Type
