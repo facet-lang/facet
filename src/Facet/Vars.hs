@@ -27,7 +27,6 @@ import           Data.Functor.Const
 import           Data.Functor.Identity
 import qualified Data.IntSet as IntSet
 import           Data.Maybe (fromMaybe)
-import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import           Facet.Name
 import qualified Facet.Substitution as Subst
@@ -123,7 +122,7 @@ getFVs v = runFVs v mempty mempty
 
 
 -- | Construct a fresh name given the provided free variables.
-prime :: Text -> FVs -> Name a
+prime :: UName -> FVs -> Name a
 prime n = Name n . freshIdForFVs
 
 renameAccumL :: Traversable t => (Int -> a -> b -> (a, c)) -> FVs -> a -> t b -> (a, t c)

@@ -23,7 +23,6 @@ module Facet.Name
 ) where
 
 import           Data.Coerce
-import           Data.Function (on)
 import           Data.List.NonEmpty
 import           Data.String (IsString(..))
 import           Data.Text (Text, unpack)
@@ -32,16 +31,11 @@ import           Facet.Pretty
 import qualified Prettyprinter as P
 import           Silkscreen
 
-data Name a = Name { hint :: Text, id' :: Int }
-
-instance Eq (Name a) where
-  (==) = (==) `on` id'
-
-instance Ord (Name a) where
-  compare = compare `on` id'
+data Name a = Name { hint :: UName, id' :: Int }
+  deriving (Eq, Ord)
 
 instance Show (Name a) where
-  showsPrec _ (Name h i) = showString (unpack h) . shows i
+  showsPrec _ (Name h i) = shows h . shows i
 
 instance P.Pretty (Name E) where
   pretty = prettyNameWith evar
@@ -52,8 +46,8 @@ instance P.Pretty (Name T) where
 
 prettyNameWith :: Printer p => (Int -> p) -> Name a -> p
 prettyNameWith var n
-  | T.null (hint n) = var (id' n)
-  | otherwise       = pretty (hint n) <> pretty (id' n)
+  | T.null (getUName (hint n)) = var (id' n)
+  | otherwise                  = pretty (hint n) <> pretty (id' n)
 
 eqN :: Name a -> Name b -> Bool
 eqN = coerce ((==) :: Name a -> Name a -> Bool)

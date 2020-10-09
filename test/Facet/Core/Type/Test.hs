@@ -19,4 +19,4 @@ prop_fvs_tbound = property $ do
   getFVs (fvs (review bound_ n :: Type)) === bound n
 
 name :: MonadGen m => m (Name T)
-name = Name __ <$> Gen.int (Range.linear 0 100)
+name = Name (UName __) <$> Gen.int (Range.linear 0 100)
