@@ -6,6 +6,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -19,6 +20,7 @@ module Facet.Print
 , tvar
   -- * Interpreters
 , printCoreType
+, printCoreQType
 , printSurfaceType
 , printCoreExpr
 , printSurfaceExpr
@@ -166,14 +168,19 @@ prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
 printCoreType :: CT.Type -> Print
-printCoreType = CT.fold $ \case
-  CT.TypeF    -> _Type
-  CT.VoidF    -> _Void
-  CT.UnitF    -> _Unit
-  t CT.:==> b -> first cbound t >~> b
-  f CT.:$$ as -> foldl' ($$) (either cbound cfree f) as
-  a CT.:--> b -> a --> b
-  l CT.:**  r -> l **  r
+printCoreType = printCoreQType [] . CT.quote
+
+printCoreQType :: [Print] -> CT.QType -> Print
+printCoreQType = go
+  where
+  go env = \case
+    CT.QType    -> _Type
+    CT.QVoid    -> _Void
+    CT.QUnit    -> _Unit
+    t CT.:==> b -> let n' = cbound @N.T (N.Name (tm t) (length env)) in (n' ::: go env (ty t)) >~> go (n':env) b
+    f CT.:$$ as -> foldl' ($$) (either cfree ((env !!) . N.getIndex) f) (fmap (go env) as)
+    a CT.:--> b -> go env a --> go env b
+    l CT.:**  r -> go env l **  go env r
 
 
 printSurfaceType :: ST.Type -> Print
@@ -252,15 +259,17 @@ groupByType eq = \case
 
 
 printCoreExpr :: CE.Expr -> Print
-printCoreExpr = CE.fold $ \case
-  CE.Free n   -> cfree n
-  CE.Bound n  -> sbound n
-  CE.TLam n b -> lam (braces (cbound n)) b
-  CE.TApp f a -> f $$ braces (printCoreType a)
-  CE.Lam  p b -> lam (printCorePattern p) b
-  f CE.:$  a  -> f $$ a
-  CE.Unit     -> unit
-  l CE.:*  r  -> l **  r
+printCoreExpr e = CE.fold alg e []
+  where
+  alg = \ e env -> case e of
+    CE.Free n   -> cfree n
+    CE.Bound n  -> sbound n
+    CE.TLam n b -> let n' = cbound @N.T (N.Name n (length env)) in lam (braces n') (b (n':env))
+    CE.TApp f a -> f env $$ braces (printCoreQType env a)
+    CE.Lam  p b -> lam (printCorePattern p) (b env)
+    f CE.:$  a  -> f env $$ a env
+    CE.Unit     -> unit
+    l CE.:*  r  -> l env **  r env
 
 printSurfaceExpr :: SE.Expr -> Print
 printSurfaceExpr = go

@@ -57,7 +57,7 @@ import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Type hiding (bound, global, (.$))
 import qualified Facet.Core.Type as CT
 import qualified Facet.Env as Env
-import           Facet.Name (E, MName(..), Name(..), QName(..), T)
+import           Facet.Name (E, Level(..), MName(..), Name(..), QName(..), T, UName, incrLevel)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
@@ -101,24 +101,25 @@ unify
   => Type
   -> Type
   -> m Type
-unify t1 t2 = t2 <$ go t1 t2
+unify t1 t2 = t2 <$ go (Level 0) t1 t2
   where
-  go t1 t2 = case (t1, t2) of
+  go n t1 t2 = case (t1, t2) of
     (Type,      Type)       -> pure ()
     (Unit,      Unit)       -> pure ()
-    (l1 :* r1,  l2 :* r2)   -> go l1 l2 *> go r1 r2
+    (l1 :* r1,  l2 :* r2)   -> go n l1 l2 *> go n r1 r2
     -- FIXME: we try to unify Type-the-global with Type-the-constant
     -- FIXME: resolve globals to try to progress past certain inequalities
     (f1 :$ a1,  f2 :$ a2)
       | f1 == f2
       , Just _ <- goS a1 a2 -> pure ()
-    (a1 :-> b1, a2 :-> b2)  -> go a1 a2 *> go b1 b2
-    (t1 :=> b1, t2 :=> b2)  -> go (ty t1) (ty t2) *> go b1 b2
+    (a1 :-> b1, a2 :-> b2)  -> go n a1 a2 *> go n b1 b2
+    (t1 :=> b1, t2 :=> b2)  -> let v = CT.bound n in go n (ty t1) (ty t2) *> go (incrLevel n) (b1 v) (b2 v)
     -- FIXME: build and display a diff of the root types
     _                       -> couldNotUnify t1 t2
-  goS Nil        Nil        = Just (pure ())
-  goS (i1 :> l1) (i2 :> l2) = (*>) <$> goS i1 i2 <*> Just (go l1 l2)
-  goS _          _          = Nothing
+    where
+    goS Nil        Nil        = Just (pure ())
+    goS (i1 :> l1) (i2 :> l2) = (*>) <$> goS i1 i2 <*> Just (go n l1 l2)
+    goS _          _          = Nothing
 
 
 -- General
@@ -171,7 +172,8 @@ elabType (t ::: _K) = ST.fold alg t _K
   where
   alg = \case
     ST.Free  n -> switch $ synth (CT.global <$> global n)
-    ST.Bound n -> switch $ synth (CT.bound  <$> bound  n)
+    -- FIXME: there’s no way this is correct
+    ST.Bound n -> switch $ synth (CT.bound . Level . id' <$> bound  n)
     ST.Hole  n -> \ _K -> hole (n ::: _K)
     ST.Type    -> switch $ synth _Type
     ST.Void    -> switch $ synth _Void
@@ -235,8 +237,9 @@ infixr 2 -->
   -> Synth m Type
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
-  ftb' <- n ::: _T |- (n ::: _T :=>) <$> check (b ::: Type)
-  pure $ ftb' ::: Type
+  b' <- n ::: _T |- check (b ::: Type)
+  -- FIXME: there’s no way this is correct
+  pure $ (hint n ::: _T :=> (b' CT..$)) ::: Type
 
 infixr 1 >~>
 
@@ -273,12 +276,12 @@ elabExpr (t ::: _T) = SE.fold alg t _T
 
 tlam
   :: Has (Reader Context :+: Throw P.Print) sig m
-  => Name T
+  => UName
   -> Check m CE.Expr
   -> Check m CE.Expr
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  _T |- curry (review CE.tlam_) n <$> check (b ::: _B)
+  _T |-- \ v -> curry (review CE.tlam_) n <$> check (b ::: _B v)
 
 lam
   :: Has (Reader Context :+: Throw P.Print) sig m
@@ -355,7 +358,7 @@ elabDecl = SD.fold alg
     (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just Type)
       b' ::: _B <- n ::: _T |- b
-      pure $ tlam n b' ::: (n ::: _T :=> _B)
+      pure $ tlam (hint n) b' ::: (hint n ::: _T :=> (_B CT..$))
 
     (n ::: t) SD.:-> b -> do
       _T ::: _  <- elabType (t ::: Just Type)
@@ -403,6 +406,13 @@ n ::: t |- m = local (IntMap.insert (id' n) t) m
 
 infix 1 |-
 
+(|--) :: Has (Reader Context) sig m => UName ::: Type -> (Type -> m a) -> m a
+_ ::: t |-- m = do
+  i <- asks @Context length
+  local (IntMap.insert i t) (m (Right (Level i) :$ Nil)) -- FIXME: this is hopelessly broken, but exists as a temporary workaround until we get the indexing/levelling thing sorted out
+
+infix 1 |--
+
 
 -- Failures
 
@@ -440,7 +450,7 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 expectMatch :: Has (Throw P.Print) sig m => (Type -> Maybe out) -> P.Print -> P.Print -> Type -> m out
 expectMatch pat exp s _T = maybe (mismatch s exp (P.printCoreType _T)) pure (pat _T)
 
-expectQuantifiedType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Name T ::: Type, Type)
+expectQuantifiedType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (UName ::: Type, Type -> Type)
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
 expectFunctionType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)

@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
@@ -8,90 +7,48 @@
 module Facet.Core.Type
 ( Type(..)
 , global
-, Facet.Core.Type.bound
+, bound
 , unForAll
 , unArrow
 , unProduct
 , (.$)
 , (.$*)
-, TypeF(..)
-, fold
-, unfold
 , QType(..)
+, eval
+, quote
 ) where
 
 import Control.Effect.Empty
 import Data.Foldable (foldl')
 import Facet.Name
 import Facet.Stack
-import Facet.Substitution as Subst hiding (empty)
 import Facet.Syntax
-import Facet.Vars
 
+-- FIXME: computation types
+-- FIXME: effect signatures
 data Type
   = Type
   | Void
   | Unit
-  | (Name T ::: Type) :=> Type
-  | Either (Name T) QName :$ Stack Type
+  | (UName ::: Type) :=> (Type -> Type)
+  | Either QName Level :$ Stack (Type)
   | Type :-> Type
   | Type :*  Type
-  deriving (Show)
 
 infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
 infixl 7 :*
 
-instance Scoped Type where
-  fvs = fvsDefault
-
-instance Scoped1 Type where
-  fvs1 = \case
-    Type    -> pure Type
-    Void    -> pure Void
-    Unit    -> pure Unit
-    t :=> b -> mk <$> fvs1 (ty t) <*> bind1 bound (tm t) (fvs b) (fvs1 b)
-      where
-      mk t' (n', b') = n' ::: t' :=> b'
-    f :$ as -> f' <*> traverse fvs1 as
-      where
-      f' = case f of
-        Left f -> (.$*) <$> boundVar1 bound f
-        _      -> pure (f :$)
-    a :-> b -> (:->) <$> fvs1 a <*> fvs1 b
-    l :*  r -> (:*)  <$> fvs1 l <*> fvs1 r
-
-
-out :: Type -> TypeF Type
-out = \case
-  Type    -> TypeF
-  Void    -> VoidF
-  Unit    -> UnitF
-  f :$ as -> f :$$ as
-  t :=> b -> t :==> b
-  a :-> b -> a :--> b
-  l :*  r -> l :**  r
-
-inn :: TypeF Type -> Type
-inn = \case
-  TypeF    -> Type
-  VoidF    -> Void
-  UnitF    -> Unit
-  f :$$ as -> f :$ as
-  t :==> b -> t :=> b
-  a :--> b -> a :-> b
-  l :**  r -> l :*  r
-
 
 global :: QName -> Type
-global n = Right n :$ Nil
+global n = Left n :$ Nil
 
-bound :: Name T -> Type
-bound n = Left n :$ Nil
+bound :: Level -> Type
+bound n = Right n :$ Nil
 
 
-unForAll :: Has Empty sig m => Type -> m (Name T ::: Type, Type)
+unForAll :: Has Empty sig m => Type -> m (UName ::: Type, Type -> Type)
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
 unArrow :: Has Empty sig m => Type -> m (Type, Type)
@@ -103,7 +60,7 @@ unProduct = \case{ l :* r -> pure (l, r) ; _ -> empty }
 
 (.$) :: Type -> Type -> Type
 (f :$ as) .$ a = f :$ (as :> a)
-(t :=> b) .$ a = subst (singleton (tm t) a) b
+(_ :=> b) .$ a = b a
 _         .$ _ = error "can’t apply non-neutral/forall type"
 
 (.$*) :: Foldable t => Type -> t Type -> Type
@@ -112,21 +69,15 @@ f .$* as = foldl' (.$) f as
 infixl 9 .$, .$*
 
 
-instance Substitutable Type where
-  subst sub = substitute sub . fvs1
-
-
--- FIXME: computation types
--- FIXME: effect signatures
-data TypeF t
-  = TypeF
-  | VoidF
-  | UnitF
-  | (Name T ::: t) :==> t
-  | Either (Name T) QName :$$ Stack t
-  | t :--> t
-  | t :**  t
-  deriving (Foldable, Functor, Show, Traversable)
+data QType
+  = QType
+  | QVoid
+  | QUnit
+  | (UName ::: QType) :==> QType
+  | Either QName Index :$$ Stack (QType)
+  | QType :--> QType
+  | QType :**  QType
+  deriving (Eq, Ord, Show)
 
 infixr 0 :==>
 infixl 9 :$$
@@ -134,28 +85,24 @@ infixr 0 :-->
 infixl 7 :**
 
 
-fold :: (TypeF a -> a) -> Type -> a
-fold alg = go
+eval :: [Type] -> QType -> Type
+eval env = \case
+  QType    -> Type
+  QVoid    -> Void
+  QUnit    -> Unit
+  t :==> b -> fmap (eval env) t :=> \ v -> eval (v:env) b
+  f :$$ as -> fmap (indexToLevel (length env)) f :$ fmap (eval env) as
+  a :--> b -> eval env a :-> eval env b
+  l :**  r -> eval env l :*  eval env r
+
+quote :: Type -> QType
+quote = go (Level 0)
   where
-  go = alg . fmap go . out
-
-unfold :: (a -> TypeF a) -> a -> Type
-unfold coalg = go
-  where
-  go = inn . fmap go . coalg
-
-
-data QType
-  = QType
-  | QVoid
-  | QUnit
-  | (UName ::: QType) :===> QType
-  | Either QName Index :$$$ Stack (QType)
-  | QType :---> QType
-  | QType :***  QType
-  deriving (Eq, Ord, Show)
-
-infixr 0 :===>
-infixl 9 :$$$
-infixr 0 :--->
-infixl 7 :***
+  go n = \case
+    Type    -> QType
+    Void    -> QVoid
+    Unit    -> QUnit
+    t :=> b -> fmap (go n) t :==> go (incrLevel n) (b (Right n :$ Nil))
+    f :$ as -> fmap (levelToIndex n) f :$$ fmap (go n) as
+    a :-> b -> go n a :--> go n b
+    l :*  r -> go n l :**  go n r

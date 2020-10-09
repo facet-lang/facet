@@ -18,7 +18,7 @@ module Facet.Core.Expr
 import           Control.Category ((>>>))
 import           Control.Lens (Prism', prism', review)
 import qualified Facet.Core.Pattern as P
-import           Facet.Core.Type (Type)
+import           Facet.Core.Type (QType)
 import           Facet.Name
 import           Facet.Substitution as Subst
 import           Facet.Vars
@@ -47,10 +47,10 @@ bound_ :: Prism' Expr (Name E)
 bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
 
 
-tlam_ :: Prism' Expr (Name T, Expr)
+tlam_ :: Prism' Expr (UName, Expr)
 tlam_ = prism' (In . uncurry TLam) (\case{ In (TLam n b) -> Just (n, b) ; _ -> Nothing })
 
-tapp_ :: Prism' Expr (Expr, Type)
+tapp_ :: Prism' Expr (Expr, QType)
 tapp_ = prism' (In . uncurry TApp) (\case{ In (TApp f a) -> Just (f, a) ; _ -> Nothing })
 
 lam_ :: Prism' Expr (P.Pattern (Name E), Expr)
@@ -74,8 +74,8 @@ instance Substitutable Expr where
 data ExprF e
   = Free QName
   | Bound (Name E)
-  | TLam (Name T) e
-  | TApp e Type
+  | TLam UName e
+  | TApp e QType
   | Lam (P.Pattern (Name E)) e
   | e :$ e
   | Unit
