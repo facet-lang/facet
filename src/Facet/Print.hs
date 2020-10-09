@@ -337,7 +337,7 @@ printSurfaceDecl = go []
     t SD.:=> b ->
       let (t', b') = splitr (preview (SD.forAll_.to snd)) b
       in map (first sbound) (t:t') >~~> go (sbound (tm t):env) b'
-    t SD.:-> b -> bimap sbound (printSurfaceType []) t >-> go (sbound (tm t):env) b
+    t SD.:-> b -> bimap sbound (printSurfaceType env) t >-> go (sbound (tm t):env) b
 
 -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
 (.=) :: Print -> Print -> Print
