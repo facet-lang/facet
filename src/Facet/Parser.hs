@@ -23,8 +23,8 @@ import           Data.Char (isSpace)
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as Unicode
 import           Data.Foldable (foldl')
-import qualified Data.List.NonEmpty as NE
 import qualified Data.HashSet as HashSet
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Data.Text (Text, pack)
