@@ -6,7 +6,6 @@ module Facet.Surface.Pattern
 , var_
 , tuple_
 , PatternF(..)
-, fold
 ) where
 
 import Control.Lens (Prism', prism')
@@ -56,9 +55,3 @@ instance Bitraversable PatternF where
     Wildcard -> pure Wildcard
     Var a    -> Var <$> f a
     Tuple ps -> Tuple <$> traverse g ps
-
-
-fold :: (Span -> PatternF n a -> a) -> Pattern n -> a
-fold alg = go
-  where
-  go = alg . ann <*> fmap go . out

@@ -335,17 +335,19 @@ pattern
   :: Has (Reader Span :+: Throw P.Print) sig m
   => SP.Pattern (Name E)
   -> Check m (CP.Pattern (Name E ::: Type))
-pattern = SP.fold $ \ s -> local (const s) . \case
-  SP.Wildcard -> pure CP.Wildcard
-  SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
-  SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go _T (fromList ps)
-    where
-    go _T = \case
-      Nil      -> Nil      <$  unify Unit _T
-      Nil :> p -> (Nil :>) <$> check (p ::: _T)
-      ps  :> p -> do
-        (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
-        (:>) <$> go _L ps <*> check (p ::: _R)
+pattern = go
+  where
+  go (SP.In s p) = local (const s) $ case p of
+    SP.Wildcard -> pure CP.Wildcard
+    SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
+    SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go' _T (fromList ps)
+      where
+      go' _T = \case
+        Nil      -> Nil      <$  unify Unit _T
+        Nil :> p -> (Nil :>) <$> check (go p ::: _T)
+        ps  :> p -> do
+          (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
+          (:>) <$> go' _L ps <*> check (go p ::: _R)
 
 
 -- Declarations
