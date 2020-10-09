@@ -174,7 +174,7 @@ prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
 printCoreType :: CT.Type -> Print
-printCoreType = printCoreQType [] . CT.quote
+printCoreType = either printErr (printCoreQType []) . CT.quote
 
 printCoreQType :: [Print] -> CT.QType -> Print
 printCoreQType = go
@@ -268,7 +268,7 @@ groupByType eq = \case
 
 
 printCoreExpr :: CE.Expr -> Print
-printCoreExpr = printCoreQExpr [] . CE.quote
+printCoreExpr = either printErr (printCoreQExpr []) . CE.quote
 
 printCoreQExpr :: [Print] -> CE.QExpr -> Print
 printCoreQExpr = go

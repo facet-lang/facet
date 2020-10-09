@@ -10,6 +10,7 @@ module Facet.Core.Expr
 import qualified Facet.Core.Pattern as P
 import           Facet.Core.Type (QType, Type)
 import qualified Facet.Core.Type as T
+import           Facet.Error
 import           Facet.Name
 
 data Expr
@@ -41,15 +42,15 @@ infixl 9 :$$
 infixl 7 :**
 
 
-quote :: Expr -> QExpr
+quote :: Expr -> Either Err QExpr
 quote = go (Level 0)
   where
   go d = \case
-    Free  v  -> QFree v
-    Bound n  -> QBound (levelToIndex d n)
-    TLam n b -> QTLam n (go (incrLevel d) b)
-    TApp f a -> QTApp (go d f) (T.quote' d a)
-    Lam  p b -> QLam p (go (foldr (const incrLevel) d p) b)
-    f :$ a   -> go d f :$$ go d a
-    Unit     -> QUnit
-    l :* r   -> go d l :** go d r
+    Free  v  -> pure $ QFree v
+    Bound n  -> pure $ QBound (levelToIndex d n)
+    TLam n b -> QTLam n <$> go (incrLevel d) b
+    TApp f a -> QTApp <$> go d f <*> (T.quote' d a)
+    Lam  p b -> QLam p <$> go (foldr (const incrLevel) d p) b
+    f :$ a   -> (:$$) <$> go d f <*> go d a
+    Unit     -> pure QUnit
+    l :* r   -> (:**) <$> go d l <*> go d r

@@ -113,7 +113,12 @@ unify t1 t2 = t2 <$ go (Level 0) t1 t2
       | f1 == f2
       , Just _ <- goS a1 a2 -> pure ()
     (a1 :-> b1, a2 :-> b2)  -> go n a1 a2 *> go n b1 b2
-    (t1 :=> b1, t2 :=> b2)  -> let v = CT.bound n in go n (ty t1) (ty t2) *> go (incrLevel n) (b1 v) (b2 v)
+    (t1 :=> b1, t2 :=> b2)  -> do
+      let v = CT.bound n
+      go n (ty t1) (ty t2)
+      b1' <- rethrow $ b1 v
+      b2' <- rethrow $ b2 v
+      go (incrLevel n) b1' b2'
     -- FIXME: build and display a diff of the root types
     _                       -> couldNotUnify t1 t2
     where
@@ -201,7 +206,12 @@ _Unit = Synth $ pure $ Unit ::: Type
   => Synth m Type
   -> Check m Type
   -> Synth m Type
-(.$) = app (CT..$)
+f .$ a = Synth $ do
+  f' ::: _F <- synth f
+  (_A, _B) <- expectFunctionType (pretty "in application") _F
+  a' <- check (a ::: _A)
+  fa' <- rethrow $ f' CT..$ a'
+  pure $ fa' ::: _B
 
 infixl 9 .$
 
@@ -282,7 +292,9 @@ tlam
   -> Check m CE.Expr
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  _T |-- \ v -> CE.TLam n <$> check (b ::: _B v)
+  _T |-- \ v -> do
+    _B' <- rethrow $ _B v
+    CE.TLam n <$> check (b ::: _B')
 
 lam
   :: Has (Reader Context :+: Throw Err) sig m
@@ -421,6 +433,9 @@ infix 1 |--
 
 -- Failures
 
+rethrow :: Has (Throw Err) sig m => Either Err a -> m a
+rethrow = either throwError pure
+
 err :: Has (Throw Err) sig m => ErrDoc -> m a
 err = throwError . (`Err` []) . group
 
@@ -455,7 +470,7 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 expectMatch :: Has (Throw Err) sig m => (Type -> Maybe out) -> ErrDoc -> ErrDoc -> Type -> m out
 expectMatch pat exp s _T = maybe (mismatch s exp (P.getPrint (P.printCoreType _T))) pure (pat _T)
 
-expectQuantifiedType :: Has (Throw Err) sig m => ErrDoc -> Type -> m (UName ::: Type, Type -> Type)
+expectQuantifiedType :: Has (Throw Err) sig m => ErrDoc -> Type -> m (UName ::: Type, Type -> Either Err Type)
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
 expectFunctionType :: Has (Throw Err) sig m => ErrDoc -> Type -> m (Type, Type)
