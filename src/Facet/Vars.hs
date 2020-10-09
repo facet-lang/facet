@@ -87,7 +87,7 @@ instance Scoped1 t => Binding1 t (Substitute t) where
   bound1 mk n = Substitute $ \ sub -> fromMaybe (mk n) (Subst.lookup n sub)
 
   bindN mkBound p fvs b = Substitute $ \ sub ->
-    let (sub', p') = renameAccumL (\ i sub n -> let n' = Name (hint n) i in (Subst.insert n (mkBound n') sub, n')) (fvs <> foldMap fvsDefault sub) sub p
+    let (sub', p') = renameAccumL (\ i sub n -> let n' = name (hint n) i in (Subst.insert n (mkBound n') sub, n')) (fvs <> foldMap fvsDefault sub) sub p
         b' = runSubstitute b sub'
     in (p', b')
 
@@ -124,7 +124,7 @@ getFVs v = runFVs v mempty mempty
 
 -- | Construct a fresh name given the provided free variables.
 prime :: Text -> FVs -> Name a
-prime n = Name n . freshIdForFVs
+prime n = name n . freshIdForFVs
 
 renameAccumL :: Traversable t => (Int -> a -> b -> (a, c)) -> FVs -> a -> t b -> (a, t c)
 renameAccumL f fvs a t = let ((_, a'), t') = mapAccumL step (base, a) t in (a', t')
