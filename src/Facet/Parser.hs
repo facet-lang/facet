@@ -55,20 +55,20 @@ import           Text.Parser.Token.Style
 -- numeric literals
 -- forcing nullary computations
 
-runFacet :: [N.UName] -> Facet m a -> m a
+runFacet :: [Text] -> Facet m a -> m a
 runFacet env (Facet m) = m env
 
 bind :: Coercible t N.UName => t -> (N.UName -> Facet m a) -> Facet m a
-bind n b = Facet $ \ env -> let n' = coerce n in runFacet (n':env) (b n')
+bind n b = Facet $ \ env -> let n' = coerce n in runFacet (n':env) (b (N.UName n'))
 
-resolve :: Coercible t N.UName => t -> [N.UName] -> (Either t N.Index)
-resolve n = maybe (Left n) (Right . N.Index) . elemIndex @N.UName (coerce n)
+resolve :: Coercible t Text => t -> [Text] -> (Either t N.Index)
+resolve n = maybe (Left n) (Right . N.Index) . elemIndex (coerce n)
 
-env :: Applicative m => Facet m [N.UName]
+env :: Applicative m => Facet m [Text]
 env = Facet pure
 
-newtype Facet m a = Facet ([N.UName] -> m a)
-  deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC [N.UName] m
+newtype Facet m a = Facet ([Text] -> m a)
+  deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC [Text] m
 
 instance Selective m => Selective (Facet m) where
   select f a = Facet $ \ env -> select (runFacet env f) (runFacet env a)
