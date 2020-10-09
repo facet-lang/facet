@@ -43,6 +43,7 @@ module Facet.Elab
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
+import           Control.Category ((>>>))
 import           Control.Effect.Parser.Span (Span(..))
 import           Data.Bifunctor (first)
 import           Data.Foldable (toList)
@@ -167,9 +168,9 @@ elabType
   :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
   => (ST.Type ::: Maybe Type)
   -> m (Type ::: Type)
-elabType (t ::: _K) = ST.fold alg t _K
+elabType (t ::: _K) = go t _K
   where
-  alg = \case
+  go = ST.out >>> \case
     ST.Free  n -> switch $ synth (CT.global <$> global n)
     -- FIXME: there’s no way this is correct
     ST.Bound n -> switch $ synth (CT.bound . Level . id' <$> bound  n)
@@ -181,10 +182,10 @@ elabType (t ::: _K) = ST.fold alg t _K
     f ST.:$  a -> switch $ synth (_synth f .$  _check a)
     a ST.:-> b -> switch $ synth (_check a --> _check b)
     l ST.:*  r -> switch $ synth (_check l .*  _check r)
-    ST.Loc s b -> local (const s) . b
+    ST.Loc s b -> local (const s) . go b
     where
-    _check r = tm <$> Check (r . Just)
-    _synth r = Synth (r Nothing)
+    _check r = tm <$> Check (go r . Just)
+    _synth r = Synth (go r Nothing)
 
 
 _Type :: Applicative m => Synth m Type
