@@ -6,6 +6,7 @@ module Facet.Name
 , prettyNameWith
 , eqN
 , elemN
+, UName(..)
 , E
 , T
 , __
@@ -59,6 +60,9 @@ eqN = coerce ((==) :: Name a -> Name a -> Bool)
 
 elemN :: Foldable t => Name b -> t (Name a) -> Bool
 elemN = elem . coerce
+
+
+newtype UName = UName { getUName :: Text }
 
 
 data E
