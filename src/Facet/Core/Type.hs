@@ -54,7 +54,7 @@ instance Scoped1 Type where
     f :$ as -> f' <*> traverse fvs1 as
       where
       f' = case f of
-        Left f -> ($$*) <$> bound1 (review bound_) f
+        Left f -> ($$*) <$> boundVar1 (review bound_) f
         _      -> pure (curry (review app'_) f)
     a :-> b -> curry (review arrow_) <$> fvs1 a <*> fvs1 b
     l :* r  -> curry (review prd_) <$> fvs1 l <*> fvs1 r

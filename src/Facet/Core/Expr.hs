@@ -31,7 +31,7 @@ instance Scoped Expr where
 instance Scoped1 Expr where
   fvs1 = out >>> \case
     Free  v  -> pure (review global_ v)
-    Bound n  -> bound1 (review bound_) n
+    Bound n  -> boundVar1 (review bound_) n
     TLam n b -> curry (review tlam_) n <$> fvs1 b
     TApp f a -> curry (review tapp_) <$> fvs1 f <*> pure a
     Lam  p b -> review lam_ <$> bindN (review bound_) p (fvs b) (fvs1 b)

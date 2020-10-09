@@ -50,23 +50,23 @@ member = coerce (IntSet.member . id')
 
 -- https://www.haskell.org/ghc/blog/20190728-free-variable-traversals.html 🎩 bgamari
 class Monoid t => Binding t where
-  bound :: Name a -> t
+  boundVar :: Name a -> t
   bind :: Name a -> t -> t
 
 instance Binding Vars where
-  bound = Vars . IntSet.singleton . id'
+  boundVar = Vars . IntSet.singleton . id'
   bind = delete
 
 
 class Applicative f => Binding1 t f where
-  bound1 :: (Name a -> t) -> Name a -> f t
+  boundVar1 :: (Name a -> t) -> Name a -> f t
   bindN :: Traversable p => (Name a -> t) -> p (Name a) -> FVs -> f t -> f (p (Name a), t)
 
 bind1 :: Binding1 t f => (Name a -> t) -> Name a -> FVs -> f t -> f (Name a, t)
 bind1 mk n fvs b = first runIdentity <$> bindN mk (Identity n) fvs b
 
 instance Binding a => Binding1 t (Const a) where
-  bound1 _ n = Const (bound n)
+  boundVar1 _ n = Const (boundVar n)
   bindN _ p _ b = Const (foldr (\ n b -> bind n b) (getConst b) p)
 
 
@@ -83,7 +83,7 @@ instance Applicative (Substitute t) where
   f <*> a = Substitute $ \ sub -> runSubstitute f sub (runSubstitute a sub)
 
 instance Scoped1 t => Binding1 t (Substitute t) where
-  bound1 mk n = Substitute $ \ sub -> fromMaybe (mk n) (Subst.lookup n sub)
+  boundVar1 mk n = Substitute $ \ sub -> fromMaybe (mk n) (Subst.lookup n sub)
 
   bindN mkBound p fvs b = Substitute $ \ sub ->
     let (sub', p') = renameAccumL (\ i sub n -> let n' = Name (hint n) i in (Subst.insert n (mkBound n') sub, n')) (fvs <> foldMap fvsDefault sub) sub p
@@ -95,7 +95,7 @@ class Scoped t where
   fvs :: Binding vs => t -> vs
 
 instance Scoped (Name a) where
-  fvs = bound
+  fvs = boundVar
 
 
 class Scoped1 t where
@@ -114,7 +114,7 @@ instance Monoid FVs where
   mempty = FVs (const id)
 
 instance Binding FVs where
-  bound n = FVs $ \ b -> if n `member` b then id else insert n
+  boundVar n = FVs $ \ b -> if n `member` b then id else insert n
   bind n v = FVs $ runFVs v . insert n
 
 getFVs :: FVs -> Vars
