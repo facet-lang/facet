@@ -17,6 +17,7 @@ module Facet.Core.Type
 , TypeF(..)
 , fold
 , unfold
+, QType(..)
 ) where
 
 import Control.Effect.Empty
@@ -137,3 +138,19 @@ unfold :: (a -> TypeF a) -> a -> Type
 unfold coalg = go
   where
   go = inn . fmap go . coalg
+
+
+data QType
+  = QType
+  | QVoid
+  | QUnit
+  | (UName ::: QType) :===> QType
+  | Either QName Index :$$$ Stack (QType)
+  | QType :---> QType
+  | QType :***  QType
+  deriving (Eq, Ord, Show)
+
+infixr 0 :===>
+infixl 9 :$$$
+infixr 0 :--->
+infixl 7 :***
