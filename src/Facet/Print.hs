@@ -166,13 +166,13 @@ prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 printCoreType :: CT.Type -> Print
 printCoreType = CT.fold $ \case
-  CT.Type    -> _Type
-  CT.Void    -> _Void
-  CT.Unit    -> _Unit
-  t CT.:=> b -> first cbound t >~> b
-  f CT.:$ as -> foldl' ($$) (either cbound cfree f) as
-  a CT.:-> b -> a --> b
-  l CT.:*  r -> l **  r
+  CT.TypeF    -> _Type
+  CT.VoidF    -> _Void
+  CT.UnitF    -> _Unit
+  t CT.:==> b -> first cbound t >~> b
+  f CT.:$$ as -> foldl' ($$) (either cbound cfree f) as
+  a CT.:--> b -> a --> b
+  l CT.:**  r -> l **  r
 
 
 printSurfaceType :: ST.Type -> Print

@@ -22,8 +22,7 @@ module Facet.Core.Type
 , fold
 ) where
 
-import Control.Category ((>>>))
-import Control.Lens (Iso', Prism', coerced, prism', review, _Left, _Right)
+import Control.Lens (Iso', Prism', iso, prism', review, _Left, _Right)
 import Data.Foldable (foldl')
 import Facet.Name
 import Facet.Stack
@@ -31,14 +30,21 @@ import Facet.Substitution as Subst
 import Facet.Syntax
 import Facet.Vars
 
-newtype Type = In { out :: TypeF Type }
+data Type
+  = Type
+  | Void
+  | Unit
+  | (Name T ::: Type) :=> Type
+  | Either (Name T) QName :$ Stack Type
+  | Type :-> Type
+  | Type :*  Type
   deriving (Show)
 
 instance Scoped Type where
   fvs = fvsDefault
 
 instance Scoped1 Type where
-  fvs1 = out >>> \case
+  fvs1 = \case
     Type    -> pure (review type_ ())
     Void    -> pure (review void_ ())
     Unit    -> pure (review unit_ ())
@@ -55,11 +61,31 @@ instance Scoped1 Type where
 
 
 out_ :: Iso' Type (TypeF Type)
-out_ = coerced
+out_ = iso out inn
+
+out :: Type -> TypeF Type
+out = \case
+  Type    -> TypeF
+  Void    -> VoidF
+  Unit    -> UnitF
+  f :$ as -> f :$$ as
+  t :=> b -> t :==> b
+  a :-> b -> a :--> b
+  l :*  r -> l :**  r
+
+inn :: TypeF Type -> Type
+inn = \case
+  TypeF    -> Type
+  VoidF    -> Void
+  UnitF    -> Unit
+  f :$$ as -> f :$ as
+  t :==> b -> t :=> b
+  a :--> b -> a :-> b
+  l :**  r -> l :*  r
 
 
 var_ :: Prism' Type (Either (Name T) QName)
-var_ = out_ . prism' (:$ Nil) (\case { f :$ Nil -> Just f ; _ -> Nothing })
+var_ = prism' (:$ Nil) (\case { f :$ Nil -> Just f ; _ -> Nothing })
 
 global_ :: Prism' Type QName
 global_ = var_ . _Right
@@ -69,35 +95,35 @@ bound_ = var_ . _Left
 
 
 type_ :: Prism' Type ()
-type_ = out_ . prism' (const Type) (\case{ Type -> Just () ; _ -> Nothing })
+type_ = prism' (const Type) (\case{ Type -> Just () ; _ -> Nothing })
 
 unit_ :: Prism' Type ()
-unit_ = out_ . prism' (const Unit) (\case{ Unit -> Just () ; _ -> Nothing })
+unit_ = prism' (const Unit) (\case{ Unit -> Just () ; _ -> Nothing })
 
 void_ :: Prism' Type ()
-void_ = out_ . prism' (const Void) (\case{ Void -> Just () ; _ -> Nothing })
+void_ = prism' (const Void) (\case{ Void -> Just () ; _ -> Nothing })
 
 
 forAll_ :: Prism' Type (Name T ::: Type, Type)
-forAll_ = out_ . prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing })
+forAll_ = prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing })
 
 arrow_ :: Prism' Type (Type, Type)
-arrow_ = out_ . prism' (uncurry (:->)) (\case{ a :-> b -> Just (a, b) ; _ -> Nothing })
+arrow_ = prism' (uncurry (:->)) (\case{ a :-> b -> Just (a, b) ; _ -> Nothing })
 
 app_ :: Prism' Type (Type, Type)
-app_ = prism' (uncurry ($$)) (\case{ In (f :$ (as :> a)) -> Just (In (f :$ as), a) ; _ -> Nothing })
+app_ = prism' (uncurry ($$)) (\case{ f :$ (as :> a) -> Just (f :$ as, a) ; _ -> Nothing })
 
 app'_ :: Prism' Type (Either (Name T) QName, Stack Type)
-app'_ = out_ . prism' (uncurry (:$)) (\case{ f :$ as -> Just (f, as) ; _ -> Nothing })
+app'_ = prism' (uncurry (:$)) (\case{ f :$ as -> Just (f, as) ; _ -> Nothing })
 
 prd_ :: Prism' Type (Type, Type)
-prd_ = out_ . prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
+prd_ = prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
 
 
 ($$) :: Type -> Type -> Type
-In (f :$ as) $$ a = In $ f :$ (as :> a)
-In (t :=> b) $$ a = subst (singleton (tm t) a) b
-_            $$ _ = error "can’t apply non-neutral/forall type"
+(f :$ as) $$ a = f :$ (as :> a)
+(t :=> b) $$ a = subst (singleton (tm t) a) b
+_         $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: Foldable t => Type -> t Type -> Type
 f $$* as = foldl' ($$) f as
@@ -112,13 +138,13 @@ instance Substitutable Type where
 -- FIXME: computation types
 -- FIXME: effect signatures
 data TypeF t
-  = Type
-  | Void
-  | Unit
-  | (Name T ::: t) :=> t
-  | Either (Name T) QName :$ Stack t
-  | t :-> t
-  | t :*  t
+  = TypeF
+  | VoidF
+  | UnitF
+  | (Name T ::: t) :==> t
+  | Either (Name T) QName :$$ Stack t
+  | t :--> t
+  | t :**  t
   deriving (Foldable, Functor, Show, Traversable)
 
 infixr 0 :=>

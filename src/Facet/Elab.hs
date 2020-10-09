@@ -102,7 +102,7 @@ unify
   -> m Type
 unify t1 t2 = t2 <$ go t1 t2
   where
-  go t1 t2 = case (out t1, out t2) of
+  go t1 t2 = case (t1, t2) of
     (Type,      Type)       -> pure ()
     (Unit,      Unit)       -> pure ()
     (l1 :* r1,  l2 :* r2)   -> go l1 l2 *> go r1 r2
