@@ -73,6 +73,9 @@ instance Eq UName where
 instance Ord UName where
   compare _ _ = EQ
 
+instance Show UName where
+  showsPrec p = showsPrec p . getUName
+
 
 data E
 data T
