@@ -19,6 +19,7 @@ import           Control.Category ((>>>))
 import           Control.Lens (Prism', prism', review)
 import           Data.Coerce (coerce)
 import qualified Facet.Core.Pattern as P
+import           Facet.Core.Type (Type)
 import           Facet.Name
 import           Facet.Substitution as Subst
 import           Facet.Vars
@@ -58,7 +59,7 @@ bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
 tlam_ :: Prism' Expr (Name T, Expr)
 tlam_ = prism' (In . uncurry TLam) (\case{ In (TLam n b) -> Just (n, b) ; _ -> Nothing })
 
-tapp_ :: Prism' Expr (Expr, Expr)
+tapp_ :: Prism' Expr (Expr, Type)
 tapp_ = prism' (In . uncurry TApp) (\case{ In (TApp f a) -> Just (f, a) ; _ -> Nothing })
 
 lam_ :: Prism' Expr (P.Pattern (Name E), Expr)
@@ -83,7 +84,7 @@ data ExprF e
   = Free QName
   | Bound (Name E)
   | TLam (Name T) e
-  | TApp e e
+  | TApp e Type
   | Lam (P.Pattern (Name E)) e
   | e :$ e
   | Unit
