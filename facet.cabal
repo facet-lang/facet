@@ -99,7 +99,6 @@ test-suite test
     , base
     , facet
     , hedgehog ^>= 1
-    , lens
 
 
 executable facetc
