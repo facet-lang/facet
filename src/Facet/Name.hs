@@ -65,6 +65,9 @@ elemN = elem . coerce
 -- | User-supplied name.
 newtype UName = UName { getUName :: Text }
 
+instance Eq UName where
+  _ == _ = True
+
 
 data E
 data T
