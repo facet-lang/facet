@@ -76,6 +76,9 @@ instance Ord UName where
 instance Show UName where
   showsPrec p = showsPrec p . getUName
 
+instance P.Pretty UName where
+  pretty = P.pretty . getUName
+
 
 data E
 data T
