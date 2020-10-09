@@ -7,6 +7,8 @@
 {-# OPTIONS_GHC -Wno-noncanonical-monad-instances #-}
 module Facet.Core.Type
 ( Type(..)
+, global
+, Facet.Core.Type.bound
 , global_
 , bound_
 , type_
@@ -79,6 +81,13 @@ inn = \case
   t :==> b -> t :=> b
   a :--> b -> a :-> b
   l :**  r -> l :*  r
+
+
+global :: QName -> Type
+global n = Right n :$ Nil
+
+bound :: Name T -> Type
+bound n = Left n :$ Nil
 
 
 var_ :: Prism' Type (Either (Name T) QName)

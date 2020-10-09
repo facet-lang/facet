@@ -54,7 +54,8 @@ import           Facet.Carrier.Error.Context
 import qualified Facet.Core.Expr as CE
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
-import           Facet.Core.Type as CT
+import           Facet.Core.Type hiding (bound, global)
+import qualified Facet.Core.Type as CT
 import qualified Facet.Env as Env
 import           Facet.Name (E, MName(..), Name(..), QName(..), T)
 import qualified Facet.Name as N
