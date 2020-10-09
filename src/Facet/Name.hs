@@ -74,7 +74,7 @@ instance Ord UName where
   compare _ _ = EQ
 
 instance Show UName where
-  showsPrec p = showsPrec p . getUName
+  showsPrec _ = showString . unpack . getUName
 
 instance P.Pretty UName where
   pretty = P.pretty . getUName
