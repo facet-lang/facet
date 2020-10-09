@@ -38,6 +38,7 @@ import           Control.Lens (preview, to)
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
+import           Data.List (intersperse)
 import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -366,7 +367,7 @@ printSurfaceDef (SM.Def _ n d) = def (sfree n) (printSurfaceDecl d)
 
 
 module' :: N.MName -> [Print] -> Print
-module' n b = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep b)
+module' n b = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep (intersperse line b))
 
 def :: Print -> Print -> Print
 def n b = group $ ann (n ::: b)
