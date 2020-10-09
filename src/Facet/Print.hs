@@ -15,7 +15,6 @@ module Facet.Print
 , terminalStyle
 , runPrint
 , Print(..)
-, withVar
 , Context(..)
 , evar
 , tvar
@@ -101,10 +100,6 @@ newtype Print = Print (Int -> Prec Context (Rainbow (PP.Doc Highlight)))
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
-
-
-withVar :: (Int -> Print) -> Print
-withVar f = Print $ runPrint <*> f
 
 
 data Context
