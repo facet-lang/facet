@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Name
-( Name(..)
+( Name(hint, id')
 , name
 , prettyNameWith
 , eqN
