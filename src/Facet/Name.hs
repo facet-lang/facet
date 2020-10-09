@@ -11,6 +11,7 @@ module Facet.Name
 , Level(..)
 , levelToIndex
 , indexToLevel
+, incrLevel
 , E
 , T
 , __
@@ -89,6 +90,9 @@ levelToIndex (Level d) (Level level) = Index $ d - level - 1
 
 indexToLevel :: Int -> Index -> Level
 indexToLevel d (Index index) = Level $ d - index - 1
+
+incrLevel :: Level -> Level
+incrLevel (Level l) = Level (l + 1)
 
 
 data E
