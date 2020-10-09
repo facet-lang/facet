@@ -81,6 +81,7 @@ terminalStyle = \case
   Type   -> ANSI.color ANSI.Yellow
   Con    -> ANSI.color ANSI.Red
   Lit    -> ANSI.bold
+  ANSI s -> s
   where
   colours =
     [ ANSI.Red
@@ -121,6 +122,7 @@ data Highlight
   | Type
   | Op
   | Lit
+  | ANSI ANSI.AnsiStyle
   deriving (Eq, Ord, Show)
 
 op :: (P.Printer p, Ann p ~ Highlight) => p -> p
