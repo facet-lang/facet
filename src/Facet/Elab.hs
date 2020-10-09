@@ -375,7 +375,7 @@ elabDecl = go
     (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just Type)
       b' ::: _B <- n ::: _T |- go b
-      pure $ tlam (n) b' ::: (n ::: _T :=> (_B CT..$))
+      pure $ tlam n b' ::: (n ::: _T :=> (_B CT..$))
 
     (n ::: t) SD.:-> b -> do
       _T ::: _  <- elabType (t ::: Just Type)
