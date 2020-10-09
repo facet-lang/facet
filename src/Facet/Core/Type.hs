@@ -9,9 +9,9 @@ module Facet.Core.Type
 ( Type(..)
 , global
 , Facet.Core.Type.bound
-, forAll_
-, arrow_
-, prd_
+, unForAll
+, unArrow
+, unProduct
 , (.$)
 , (.$*)
 , TypeF(..)
@@ -19,11 +19,11 @@ module Facet.Core.Type
 , unfold
 ) where
 
-import Control.Lens (Prism', prism')
+import Control.Effect.Empty
 import Data.Foldable (foldl')
 import Facet.Name
 import Facet.Stack
-import Facet.Substitution as Subst
+import Facet.Substitution as Subst hiding (empty)
 import Facet.Syntax
 import Facet.Vars
 
@@ -85,14 +85,14 @@ bound :: Name T -> Type
 bound n = Left n :$ Nil
 
 
-forAll_ :: Prism' Type (Name T ::: Type, Type)
-forAll_ = prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing })
+unForAll :: Has Empty sig m => Type -> m (Name T ::: Type, Type)
+unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
-arrow_ :: Prism' Type (Type, Type)
-arrow_ = prism' (uncurry (:->)) (\case{ a :-> b -> Just (a, b) ; _ -> Nothing })
+unArrow :: Has Empty sig m => Type -> m (Type, Type)
+unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
 
-prd_ :: Prism' Type (Type, Type)
-prd_ = prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
+unProduct :: Has Empty sig m => Type -> m (Type, Type)
+unProduct = \case{ l :* r -> pure (l, r) ; _ -> empty }
 
 
 (.$) :: Type -> Type -> Type

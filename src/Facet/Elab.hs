@@ -44,7 +44,7 @@ import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Span (Span(..))
-import           Control.Lens (Prism', preview, review)
+import           Control.Lens (review)
 import           Data.Bifunctor (first)
 import           Data.Foldable (toList)
 import qualified Data.IntMap as IntMap
@@ -437,14 +437,14 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 -- Patterns
 
-expectMatch :: Has (Throw P.Print) sig m => Prism' Type out -> P.Print -> P.Print -> Type -> m out
-expectMatch pat exp s _T = maybe (mismatch s exp (P.printCoreType _T)) pure (preview pat _T)
+expectMatch :: Has (Throw P.Print) sig m => (Type -> Maybe out) -> P.Print -> P.Print -> Type -> m out
+expectMatch pat exp s _T = maybe (mismatch s exp (P.printCoreType _T)) pure (pat _T)
 
 expectQuantifiedType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Name T ::: Type, Type)
-expectQuantifiedType = expectMatch forAll_ (pretty "{_} -> _")
+expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
 expectFunctionType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)
-expectFunctionType = expectMatch arrow_ (pretty "_ -> _")
+expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
 expectProductType :: Has (Throw P.Print) sig m => P.Print -> Type -> m (Type, Type)
-expectProductType = expectMatch prd_ (pretty "(_, _)")
+expectProductType = expectMatch unProduct (pretty "(_, _)")
