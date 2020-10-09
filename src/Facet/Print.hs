@@ -40,6 +40,7 @@ import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
 import           Data.Semigroup (stimes)
 import           Data.Text (Text)
+import qualified Data.Text as T
 import qualified Facet.Core.Expr as CE
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
@@ -177,31 +178,31 @@ printCoreQType = go
     CT.QType    -> _Type
     CT.QVoid    -> _Void
     CT.QUnit    -> _Unit
-    t CT.:==> b -> let n' = cbound @N.T (N.Name (tm t) (length env)) in (n' ::: go env (ty t)) >~> go (n':env) b
+    t CT.:==> b -> let n' = cbound (tm t) (tvar (length env)) in (n' ::: go env (ty t)) >~> go (n':env) b
     f CT.:$$ as -> foldl' ($$) (either cfree ((env !!) . N.getIndex) f) (fmap (go env) as)
     a CT.:--> b -> go env a --> go env b
     l CT.:**  r -> go env l **  go env r
 
 
-printSurfaceType :: ST.Type -> Print
+printSurfaceType :: [Print] -> ST.Type -> Print
 printSurfaceType = go
   where
-  go = ST.out >>> \case
+  go env = ST.out >>> \case
     ST.Free n  -> sfree n
-    ST.Bound n -> sbound n
+    ST.Bound n -> env !! N.getIndex n
     ST.Hole n  -> hole n
     ST.Type    -> _Type
     ST.Void    -> _Void
     ST.Unit    -> _Unit
     t ST.:=> b ->
       let (t', b') = splitr (preview ST.forAll_ . dropSpan) b
-      in map (first sbound) (t:t') >~~> go b'
+      in map (first sbound) (t:t') >~~> go (sbound (tm t):env) b'
     f ST.:$  a ->
       let (f', a') = splitl (preview ST.app_ . dropSpan) f
-      in go f' $$* fmap go (a' :> a)
-    a ST.:-> b -> go a --> go b
-    l ST.:*  r -> go l **  go r
-    ST.Loc _ t -> go t
+      in go env f' $$* fmap (go env) (a' :> a)
+    a ST.:-> b -> go env a --> go env b
+    l ST.:*  r -> go env l **  go env r
+    ST.Loc _ t -> go env t
 
 sfree :: N.DName -> Print
 sfree = var . pretty
@@ -210,11 +211,13 @@ cfree :: N.QName -> Print
 cfree = var . prettyQName
 
 
-sbound :: N.Name a -> Print
-sbound = var . pretty . N.hint
+sbound :: N.UName -> Print
+sbound = var . pretty
 
-cbound :: Pretty (N.Name a) => N.Name a -> Print
-cbound = var . pretty
+cbound :: N.UName -> Print -> Print
+cbound h id'
+  | T.null (N.getUName h) = id'
+  | otherwise             = pretty h <> id'
 
 
 hole :: Text -> Print
@@ -248,7 +251,8 @@ l ** r = tupled [l, r]
 (>~~>) :: [Print ::: ST.Type] -> Print -> Print
 ts >~~> b = foldr go b (groupByType ST.aeq ts)
   where
-  go (t, ns) b = (commaSep ns ::: printSurfaceType t) >~> b
+  -- FIXME: this is horribly wrong and probably going to crash
+  go (t, ns) b = (commaSep ns ::: printSurfaceType [] t) >~> b
 
 groupByType :: (t -> t -> Bool) -> [(n ::: t)] -> [(t, [n])]
 groupByType eq = \case
@@ -267,38 +271,38 @@ printCoreQExpr = go
   go env = \case
     CE.QFree n   -> cfree n
     CE.QBound n  -> env !! N.getIndex n
-    CE.QTLam n b -> let n' = cbound @N.T (N.Name n (length env)) in lam (braces n') (go (n':env) b)
+    CE.QTLam n b -> let n' = cbound n (tvar (length env)) in lam (braces n') (go (n':env) b)
     CE.QTApp f a -> go env f $$ braces (printCoreQType env a)
-    CE.QLam  p b -> lam (printCorePattern (cbound @N.E . (`N.Name` (length env)) <$> p)) (go env b)
+    CE.QLam  p b -> lam (printCorePattern ((`cbound` evar (length env)) <$> p)) (go env b)
     f CE.:$$  a  -> go env f $$ go env a
     CE.QUnit     -> unit
     l CE.:**  r  -> go env l **  go env r
 
-printSurfaceExpr :: SE.Expr -> Print
+printSurfaceExpr :: [Print] -> SE.Expr -> Print
 printSurfaceExpr = go
   where
-  go = SE.out >>> \case
+  go env = SE.out >>> \case
     SE.Free n  -> sfree n
-    SE.Bound n -> sbound n
+    SE.Bound n -> env !! N.getIndex n
     SE.Hole n  -> hole n
     f SE.:$  a ->
       let (f', a') = splitl (preview SE.app_ . dropSpan) f
-      in go f' $$* fmap go (a' :> a)
+      in go env f' $$* fmap (go env) (a' :> a)
     SE.Unit    -> unit
-    l SE.:*  r -> go l **  go r
-    SE.Comp c  -> printSurfaceComp c
-    SE.Loc _ t -> go t
+    l SE.:*  r -> go env l **  go env r
+    SE.Comp c  -> printSurfaceComp env c
+    SE.Loc _ t -> go env t
 
-printSurfaceComp :: [SC.Clause SE.Expr] -> Print
-printSurfaceComp = comp . commaSep . map printSurfaceClause
+printSurfaceComp :: [Print] -> [SC.Clause SE.Expr] -> Print
+printSurfaceComp env = comp . commaSep . map (printSurfaceClause env)
 
-printSurfaceClause :: SC.Clause SE.Expr -> Print
-printSurfaceClause = SC.out >>> \case
-  SC.Clause p b -> printSurfacePattern p <+> case SC.out b of
-    SC.Body b   -> arrow <> group (nest 2 (line <> printSurfaceExpr b))
-    _           -> printSurfaceClause b
-  SC.Body e     -> prec Expr (printSurfaceExpr e)
-  SC.Loc _ c    -> printSurfaceClause c
+printSurfaceClause :: [Print] -> SC.Clause SE.Expr -> Print
+printSurfaceClause env = SC.out >>> \case
+  SC.Clause p b -> let { p' = sbound <$> p ; env' = foldr (:) env p' } in printSurfacePattern p' <+> case SC.out b of
+    SC.Body b -> arrow <> group (nest 2 (line <> printSurfaceExpr env' b))
+    _         -> printSurfaceClause env' b
+  SC.Body e     -> prec Expr (printSurfaceExpr env e)
+  SC.Loc _ c    -> printSurfaceClause env c
 
 printCorePattern :: CP.Pattern Print -> Print
 printCorePattern = prec Pattern . \case
@@ -306,10 +310,10 @@ printCorePattern = prec Pattern . \case
   CP.Var n    -> n
   CP.Tuple p  -> tupled (map printCorePattern p)
 
-printSurfacePattern :: SP.Pattern (N.Name N.E) -> Print
+printSurfacePattern :: SP.Pattern Print -> Print
 printSurfacePattern p = prec Pattern $ case SP.out p of
   SP.Wildcard -> pretty '_'
-  SP.Var n    -> sbound n
+  SP.Var n    -> n
   SP.Tuple p  -> tupled (map printSurfacePattern p)
 
 -- FIXME: Use _ in binding positions for unused variables
@@ -326,14 +330,14 @@ unit = annotate Con $ pretty "Unit"
 
 
 printSurfaceDecl :: SD.Decl -> Print
-printSurfaceDecl = go
+printSurfaceDecl = go []
   where
-  go = SD.out >>> \case
-    t SD.:=  e -> printSurfaceType t .= printSurfaceExpr e
+  go env = SD.out >>> \case
+    t SD.:=  e -> printSurfaceType env t .= printSurfaceExpr env e
     t SD.:=> b ->
       let (t', b') = splitr (preview (SD.forAll_.to snd)) b
-      in map (first sbound) (t:t') >~~> go b'
-    t SD.:-> b -> bimap sbound printSurfaceType t >-> go b
+      in map (first sbound) (t:t') >~~> go (sbound (tm t):env) b'
+    t SD.:-> b -> bimap sbound (printSurfaceType []) t >-> go (sbound (tm t):env) b
 
 -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
 (.=) :: Print -> Print -> Print

@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Parser
 ( runFacet
@@ -22,11 +23,11 @@ import           Data.Bool (bool)
 import           Data.Char (isSpace)
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as Unicode
+import           Data.Coerce (Coercible, coerce)
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
+import           Data.List (elemIndex)
 import qualified Data.List.NonEmpty as NE
-import qualified Data.Map as Map
-import           Data.Maybe (fromMaybe)
 import           Data.Text (Text, pack)
 import qualified Facet.Name as N
 import           Facet.Parser.Table as Op
@@ -54,37 +55,31 @@ import           Text.Parser.Token.Style
 -- numeric literals
 -- forcing nullary computations
 
-type EEnv = Map.Map N.EName E.Expr
-type TEnv = Map.Map N.TName T.Type
+runFacet :: [N.UName] -> Facet m a -> m a
+runFacet env (Facet m) = m env
 
-runFacet :: EEnv -> TEnv -> Facet m a -> m a
-runFacet e t (Facet m) = m e t
+bind :: Coercible t N.UName => t -> (N.UName -> Facet m a) -> Facet m a
+bind n b = Facet $ \ env -> let n' = coerce n in runFacet (n':env) (b n')
 
-bindE :: N.EName -> (N.Name N.E -> Facet m a) -> Facet m a
-bindE n b = Facet $ \ e t -> let n' = N.Name (N.UName (N.getEName n)) (length e + length t) in runFacet (Map.insert n (review E.bound_ n') e) t (b n')
+resolve :: Coercible t N.UName => t -> [N.UName] -> (Either t N.Index)
+resolve n = maybe (Left n) (Right . N.Index) . elemIndex @N.UName (coerce n)
 
-bindT :: N.TName -> (N.Name N.T -> Facet m a) -> Facet m a
-bindT n b = Facet $ \ e t -> let n' = N.Name (N.UName (N.getTName n)) (length e + length t) in runFacet e (Map.insert n (review T.bound_ n') t) (b n')
+env :: Applicative m => Facet m [N.UName]
+env = Facet pure
 
-newtype Facet m a = Facet (EEnv -> TEnv -> m a)
-  deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC EEnv (ReaderC TEnv m)
-
-eenv :: Applicative m => Facet m EEnv
-eenv = Facet $ \ e _ -> pure e
-
-tenv :: Applicative m => Facet m TEnv
-tenv = Facet $ \ _ t -> pure t
+newtype Facet m a = Facet ([N.UName] -> m a)
+  deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC [N.UName] m
 
 instance Selective m => Selective (Facet m) where
-  select f a = Facet $ \ e t -> select (runFacet e t f) (runFacet e t a)
+  select f a = Facet $ \ env -> select (runFacet env f) (runFacet env a)
 
 instance Parsing p => Parsing (Facet p) where
-  try (Facet m) = Facet $ \ e t -> try (m e t)
-  Facet m <?> l = Facet $ \ e t -> m e t <?> l
-  skipMany (Facet m) = Facet $ \ e t -> skipMany (m e t)
+  try (Facet m) = Facet $ \ env -> try (m env)
+  Facet m <?> l = Facet $ \ env -> m env <?> l
+  skipMany (Facet m) = Facet $ \ env -> skipMany (m env)
   unexpected = lift . unexpected
   eof = lift eof
-  notFollowedBy (Facet m) = Facet $ \ e t -> notFollowedBy (m e t)
+  notFollowedBy (Facet m) = Facet $ \ env -> notFollowedBy (m env)
 
 instance CharParsing p => CharParsing (Facet p) where
   satisfy = lift . satisfy
@@ -101,7 +96,7 @@ instance PositionParsing p => PositionParsing (Facet p) where
   position = lift position
 
 lift :: p a -> Facet p a
-lift = Facet . const . const
+lift = Facet . const
 
 
 whole :: TokenParsing p => p a -> p a
@@ -159,14 +154,14 @@ monotypeTable =
 
 forAll
   :: (Monad p, PositionParsing p)
-  => ((Span, ((N.Name N.T S.::: T.Type), res)) -> res)
+  => ((Span, ((N.UName S.::: T.Type), res)) -> res)
   -> OperatorParser (Facet p) res
 forAll mk self _ = do
   start <- position
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
   arrow *> foldr (loop start ty) self names
   where
-  loop start ty i rest = bindT i $ \ v -> mk' start . (,) (v S.::: ty) <$> rest <*> position
+  loop start ty i rest = bind i $ \ v -> mk' start . (,) (v S.::: ty) <$> rest <*> position
   mk' start a end = mk (Span start end, a)
 
 type' :: (Monad p, PositionParsing p) => Facet p T.Type
@@ -176,9 +171,7 @@ monotype :: (Monad p, PositionParsing p) => Facet p T.Type
 monotype = build monotypeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review T.prd_)))))
 
 tvar :: (Monad p, PositionParsing p) => Facet p T.Type
-tvar = token (settingSpan (runUnspaced (resolve <$> tname <*> Unspaced tenv <?> "variable")))
-  where
-  resolve n env = fromMaybe (review T.global_ (N.T n)) (Map.lookup n env)
+tvar = token (settingSpan (runUnspaced (fmap (either (review T.global_ . N.T) (review T.bound_)) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
 -- Expressions
@@ -216,23 +209,21 @@ body = review C.body_ <$> expr
 
 evar :: (Monad p, PositionParsing p) => Facet p E.Expr
 evar
-  =   token (settingSpan (runUnspaced (resolve <$> ename <*> Unspaced eenv <?> "variable")))
+  =   token (settingSpan (runUnspaced (fmap (either (review E.global_ . N.E) (review E.bound_)) . resolve <$> ename <*> Unspaced env <?> "variable")))
   <|> try (token (settingSpan (runUnspaced (review E.global_ . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
-  where
-  resolve n env = fromMaybe (review E.global_ (N.E n)) (Map.lookup n env)
 
 
 -- Patterns
 
-bindPattern :: PositionParsing p => P.Pattern N.EName -> (P.Pattern (N.Name N.E) -> Facet p a) -> Facet p a
+bindPattern :: PositionParsing p => P.Pattern N.EName -> (P.Pattern N.UName -> Facet p a) -> Facet p a
 bindPattern p f = case P.out p of
-  P.Wildcard -> bindE (N.EName N.__) (const (f (review P.wildcard_ (P.ann p))))
-  P.Var n    -> bindE n              (f . review P.var_ . (,) (P.ann p))
+  P.Wildcard -> bind (N.EName N.__) (const (f (review P.wildcard_ (P.ann p))))
+  P.Var n    -> bind n              (f . review P.var_ . (,) (P.ann p))
   P.Tuple ps -> foldr (\ p k ps -> bindPattern p $ \ p' -> k (ps . (p':))) (f . review P.tuple_ . (,) (P.ann p) . ($ [])) ps id
 
-bindVarPattern :: Maybe N.EName -> (N.Name N.E -> Facet p res) -> Facet p res
-bindVarPattern Nothing  = bindE (N.EName N.__)
-bindVarPattern (Just n) = bindE n
+bindVarPattern :: Maybe N.EName -> (N.UName -> Facet p res) -> Facet p res
+bindVarPattern Nothing  = bind (N.EName N.__)
+bindVarPattern (Just n) = bind n
 
 
 varPattern :: (Monad p, TokenParsing p) => p name -> p (Maybe name)

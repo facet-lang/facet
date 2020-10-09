@@ -35,10 +35,10 @@ import qualified Silkscreen as S
 -- Parsing
 
 parseString :: MonadIO m => Facet (ParserC (Either Notice)) P.Print -> String -> m ()
-parseString p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWithString (Pos 0 0) s (runFacet mempty mempty p))
+parseString p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWithString (Pos 0 0) s (runFacet [] p))
 
 printFile :: MonadIO m => FilePath -> m ()
-printFile path = runM (runThrow (runParserWithFile path (runFacet mempty mempty (whole module')))) >>= \case
+printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module')))) >>= \case
   Left err -> P.putDoc (prettyNotice err)
   Right m  -> P.prettyPrint (P.printSurfaceModule m)
 
@@ -56,7 +56,7 @@ elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Erro
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s
-  parsed = runParser (const Right) failure failure input (runFacet mempty mempty (whole p))
+  parsed = runParser (const Right) failure failure input (runFacet [] (whole p))
   failure = Left . errToNotice src
 
 

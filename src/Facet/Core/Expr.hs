@@ -14,10 +14,10 @@ import           Facet.Name
 
 data Expr
   = Free QName
-  | Bound (Name E)
+  | Bound Level
   | TLam UName Expr
   | TApp Expr Type
-  | Lam (P.Pattern (Name E)) Expr
+  | Lam (P.Pattern UName) Expr
   | Expr :$ Expr
   | Unit
   | Expr :* Expr
@@ -46,10 +46,10 @@ quote = go (Level 0)
   where
   go d = \case
     Free  v  -> QFree v
-    Bound n  -> QBound (levelToIndex d (Level (id' n)))
+    Bound n  -> QBound (levelToIndex d n)
     TLam n b -> QTLam n (go (incrLevel d) b)
     TApp f a -> QTApp (go d f) (T.quote' d a)
-    Lam  p b -> QLam (hint <$> p) (go (incrLevel d) b) -- FIXME: incr once for each variable bound in the pattern
+    Lam  p b -> QLam p (go (foldr (const incrLevel) d p) b)
     f :$ a   -> go d f :$$ go d a
     Unit     -> QUnit
     l :* r   -> go d l :** go d r

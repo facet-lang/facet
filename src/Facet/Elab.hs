@@ -47,7 +47,6 @@ import           Control.Category ((>>>))
 import           Control.Effect.Parser.Span (Span(..))
 import           Data.Bifunctor (first)
 import           Data.Foldable (toList)
-import qualified Data.IntMap as IntMap
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Facet.Carrier.Error.Context
@@ -57,7 +56,7 @@ import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Type hiding (bound, global, (.$))
 import qualified Facet.Core.Type as CT
 import qualified Facet.Env as Env
-import           Facet.Name (E, Level(..), MName(..), Name(..), QName(..), T, UName, incrLevel)
+import           Facet.Name (Index(..), Level(..), MName(..), QName(..), UName, incrLevel, indexToLevel)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
@@ -70,9 +69,9 @@ import qualified Facet.Surface.Pattern as SP
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Prelude hiding ((**))
-import           Silkscreen (Pretty, colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
+import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 
-type Context = IntMap.IntMap Type
+type Context = [UName ::: Type]
 
 implicit :: Env.Env
 implicit = Env.fromList [ (N.T (N.TName (T.pack "Type")), MName (T.pack "Facet") ::: Type) ]
@@ -142,12 +141,10 @@ global n = Synth $ asks (Env.lookup n) >>= \case
   Nothing -> freeVariable (pretty n)
 
 bound
-  :: (Has (Reader Context :+: Throw P.Print) sig m, Pretty (Name a))
-  => Name a
-  -> Synth m (Name a)
-bound n = Synth $ asks (IntMap.lookup (id' n)) >>= \case
-  Just b  -> pure (n ::: b)
-  Nothing -> freeVariable (pretty n)
+  :: Has (Reader Context :+: Throw P.Print) sig m
+  => Index
+  -> Synth m Index
+bound n = Synth $ asks @Context (first (const n) . (!! getIndex n))
 
 app
   :: Has (Throw P.Print) sig m
@@ -172,8 +169,9 @@ elabType (t ::: _K) = go t _K
   where
   go = ST.out >>> \case
     ST.Free  n -> switch $ synth (CT.global <$> global n)
-    -- FIXME: there’s no way this is correct
-    ST.Bound n -> switch $ synth (CT.bound . Level . id' <$> bound  n)
+    ST.Bound n -> switch $ do
+      depth <- asks @Context length
+      synth (CT.bound . indexToLevel depth <$> bound n)
     ST.Hole  n -> \ _K -> hole (n ::: _K)
     ST.Type    -> switch $ synth _Type
     ST.Void    -> switch $ synth _Void
@@ -232,14 +230,14 @@ infixr 2 -->
 
 (>~>)
   :: Has (Reader Context) sig m
-  => (Name T ::: Check m Type)
+  => (UName ::: Check m Type)
   -> Check m Type
   -> Synth m Type
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
   b' <- n ::: _T |- check (b ::: Type)
   -- FIXME: there’s no way this is correct
-  pure $ (hint n ::: _T :=> (b' CT..$)) ::: Type
+  pure $ (n ::: _T :=> (b' CT..$)) ::: Type
 
 infixr 1 >~>
 
@@ -254,7 +252,9 @@ elabExpr (t ::: _T) = go t _T
   where
   go = SE.out >>> \case
     SE.Free  n -> switch $ synth (CE.Free  <$> global n)
-    SE.Bound n -> switch $ synth (CE.Bound <$> bound n)
+    SE.Bound n -> switch $ do
+      depth <- asks @Context length
+      synth (CE.Bound . indexToLevel depth <$> bound n)
     SE.Hole  n -> \ _T -> hole (n ::: _T)
     f SE.:$  a -> switch $ synth (_synth f $$ _check a)
     l SE.:*  r -> check (_check l ** _check r) (pretty "product")
@@ -285,7 +285,7 @@ tlam n b = Check $ \ ty -> do
 
 lam
   :: Has (Reader Context :+: Throw P.Print) sig m
-  => Name E
+  => UName
   -> Check m CE.Expr
   -> Check m CE.Expr
 lam n b = Check $ \ _T -> do
@@ -333,8 +333,8 @@ clause = go
 
 pattern
   :: Has (Reader Span :+: Throw P.Print) sig m
-  => SP.Pattern (Name E)
-  -> Check m (CP.Pattern (Name E ::: Type))
+  => SP.Pattern (UName)
+  -> Check m (CP.Pattern (UName ::: Type))
 pattern = go
   where
   go (SP.In s p) = local (const s) $ case p of
@@ -362,7 +362,7 @@ elabDecl = go
     (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just Type)
       b' ::: _B <- n ::: _T |- go b
-      pure $ tlam (hint n) b' ::: (hint n ::: _T :=> (_B CT..$))
+      pure $ tlam (n) b' ::: (n ::: _T :=> (_B CT..$))
 
     (n ::: t) SD.:-> b -> do
       _T ::: _  <- elabType (t ::: Just Type)
@@ -405,15 +405,15 @@ elabDef mname (SM.Def s n d) = local (const s) $ do
 
 -- Context
 
-(|-) :: Has (Reader Context) sig m => Name b ::: Type -> m a -> m a
-n ::: t |- m = local (IntMap.insert (id' n) t) m
+(|-) :: Has (Reader Context) sig m => UName ::: Type -> m a -> m a
+t |- m = local (t:) m
 
 infix 1 |-
 
 (|--) :: Has (Reader Context) sig m => UName ::: Type -> (Type -> m a) -> m a
-_ ::: t |-- m = do
+t |-- m = do
   i <- asks @Context length
-  local (IntMap.insert i t) (m (Right (Level i) :$ Nil)) -- FIXME: this is hopelessly broken, but exists as a temporary workaround until we get the indexing/levelling thing sorted out
+  local (t:) (m (Right (Level i) :$ Nil)) -- FIXME: this is hopelessly broken, but exists as a temporary workaround until we get the indexing/levelling thing sorted out
 
 infix 1 |--
 

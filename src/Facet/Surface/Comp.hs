@@ -35,7 +35,7 @@ instance Spanned (Clause e) where
     d       -> In d
 
 
-clause_ :: Prism' (Clause e) (Pattern (Name E), Clause e)
+clause_ :: Prism' (Clause e) (Pattern UName, Clause e)
 clause_ = prism' (In . uncurry Clause) (\case{ In (Clause n b) -> Just (n, b) ; _ -> Nothing })
 
 body_ :: Prism' (Clause e) e
@@ -43,7 +43,7 @@ body_ = prism' (In . Body) (\case{ In (Body e) -> Just e ; _ -> Nothing })
 
 
 data ClauseF e c
-  = Clause (Pattern (Name E)) c
+  = Clause (Pattern UName) c
   | Body e
   | Loc Span c
   deriving (Foldable, Functor, Traversable)

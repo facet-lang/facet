@@ -68,7 +68,7 @@ loop = do
   (line, resp) <- prompt
   runError (print . prettyNotice) pure $ case resp of
     -- FIXME: evaluate expressions
-    Just resp -> runParserWithString (Pos line 0) resp (runFacet mempty mempty (whole commandParser)) >>= runAction
+    Just resp -> runParserWithString (Pos line 0) resp (runFacet [] (whole commandParser)) >>= runAction
     Nothing   -> pure ()
   loop
   where
@@ -79,8 +79,8 @@ loop = do
     Quit -> empty
     Load path -> load path
     Reload -> reload
-    Type e -> print (getPrint (printSurfaceExpr e)) -- FIXME: elaborate the expr & show the type
-    Kind e -> print (getPrint (printSurfaceType e)) -- FIXME: elaborate the type & show the kind
+    Type e -> print (getPrint (printSurfaceExpr [] e)) -- FIXME: elaborate the expr & show the type
+    Kind t -> print (getPrint (printSurfaceType [] t)) -- FIXME: elaborate the type & show the kind
 
 
 -- TODO:
@@ -101,8 +101,8 @@ load_ = Load <$> (stringLiteral <|> some (satisfy (not . isSpace)))
 
 type_, kind_ :: (PositionParsing p, Monad p) => p Action
 
-type_ = Type <$> runFacet mempty mempty (whole expr )
-kind_ = Kind <$> runFacet mempty mempty (whole type')
+type_ = Type <$> runFacet [] (whole expr )
+kind_ = Kind <$> runFacet [] (whole type')
 
 
 data Action
@@ -116,7 +116,7 @@ data Action
 load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
   files_ %= Map.insert path File{ loaded = False }
-  runParserWithFile path (runFacet mempty mempty (whole module')) >>= print . getPrint . printSurfaceModule
+  runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . printSurfaceModule
 
 reload :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 reload = do
@@ -126,7 +126,7 @@ reload = do
   for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
     print $ green (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
-    (runParserWithFile path (runFacet mempty mempty (whole module')) >>= print . getPrint . printSurfaceModule) `catchError` \ n -> print (indent 2 (prettyNotice n))
+    (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . printSurfaceModule) `catchError` \ n -> print (indent 2 (prettyNotice n))
 
 helpDoc :: Doc AnsiStyle
 helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries

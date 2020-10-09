@@ -19,10 +19,10 @@ import Text.Parser.Position (Span)
 
 data Decl = In { ann :: Span, out :: DeclF Decl }
 
-forAll_ :: Prism' Decl (Span, (Name T ::: Type, Decl))
+forAll_ :: Prism' Decl (Span, (UName ::: Type, Decl))
 forAll_ = prism' (uncurry In . fmap (uncurry (:=>))) (\case{ In s (t :=> b) -> Just (s, (t, b)) ; _ -> Nothing })
 
-bind_ :: Prism' Decl (Span, (Name E ::: Type, Decl))
+bind_ :: Prism' Decl (Span, (UName ::: Type, Decl))
 bind_ = prism' (uncurry In . fmap (uncurry (:->))) (\case{ In s (t :-> b) -> Just (s, (t, b)) ; _ -> Nothing })
 
 def_ :: Prism' Decl (Span, (Type, Expr))
@@ -30,8 +30,8 @@ def_ = prism' (uncurry In . fmap (uncurry (:=))) (\case{ In s (t := e) -> Just (
 
 
 data DeclF a
-  = (Name T ::: Type) :=> a
-  | (Name E ::: Type) :-> a
+  = (UName ::: Type) :=> a
+  | (UName ::: Type) :-> a
   | Type := Expr
   deriving (Foldable, Functor, Traversable)
 
