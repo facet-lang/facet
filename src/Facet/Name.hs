@@ -78,6 +78,7 @@ instance P.Pretty UName where
 
 newtype Index = Index { getIndex :: Int }
   deriving (Eq, Ord, Show)
+
 newtype Level = Level { getLevel :: Int }
   deriving (Eq, Ord, Show)
 
