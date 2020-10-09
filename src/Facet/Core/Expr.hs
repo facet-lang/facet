@@ -13,7 +13,6 @@ module Facet.Core.Expr
 , prd_
 , ExprF(..)
 , fold
-, OverTypes(..)
 ) where
 
 import           Control.Category ((>>>))
@@ -90,6 +89,3 @@ fold :: (ExprF a -> a) -> Expr -> a
 fold alg = go
   where
   go = alg . fmap go . out
-
-
-newtype OverTypes = OverTypes { runOverTypes :: Expr }
