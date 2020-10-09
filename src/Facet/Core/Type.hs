@@ -9,15 +9,8 @@ module Facet.Core.Type
 ( Type(..)
 , global
 , Facet.Core.Type.bound
-, global_
-, bound_
-, type_
-, unit_
-, void_
 , forAll_
 , arrow_
-, app_
-, app'_
 , prd_
 , (.$)
 , (.$*)
@@ -26,7 +19,7 @@ module Facet.Core.Type
 , unfold
 ) where
 
-import Control.Lens (Prism', prism', _Left, _Right)
+import Control.Lens (Prism', prism')
 import Data.Foldable (foldl')
 import Facet.Name
 import Facet.Stack
@@ -92,37 +85,11 @@ bound :: Name T -> Type
 bound n = Left n :$ Nil
 
 
-var_ :: Prism' Type (Either (Name T) QName)
-var_ = prism' (:$ Nil) (\case { f :$ Nil -> Just f ; _ -> Nothing })
-
-global_ :: Prism' Type QName
-global_ = var_ . _Right
-
-bound_ :: Prism' Type (Name T)
-bound_ = var_ . _Left
-
-
-type_ :: Prism' Type ()
-type_ = prism' (const Type) (\case{ Type -> Just () ; _ -> Nothing })
-
-unit_ :: Prism' Type ()
-unit_ = prism' (const Unit) (\case{ Unit -> Just () ; _ -> Nothing })
-
-void_ :: Prism' Type ()
-void_ = prism' (const Void) (\case{ Void -> Just () ; _ -> Nothing })
-
-
 forAll_ :: Prism' Type (Name T ::: Type, Type)
 forAll_ = prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing })
 
 arrow_ :: Prism' Type (Type, Type)
 arrow_ = prism' (uncurry (:->)) (\case{ a :-> b -> Just (a, b) ; _ -> Nothing })
-
-app_ :: Prism' Type (Type, Type)
-app_ = prism' (uncurry (.$)) (\case{ f :$ (as :> a) -> Just (f :$ as, a) ; _ -> Nothing })
-
-app'_ :: Prism' Type (Either (Name T) QName, Stack Type)
-app'_ = prism' (uncurry (:$)) (\case{ f :$ as -> Just (f, as) ; _ -> Nothing })
 
 prd_ :: Prism' Type (Type, Type)
 prd_ = prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
