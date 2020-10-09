@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
@@ -26,6 +27,7 @@ import Facet.Syntax
 import Text.Parser.Position (Span, Spanned(..))
 
 newtype Type = In { out :: TypeF Type }
+  deriving newtype (Show)
 
 instance Spanned Type where
   setSpan = fmap In . Loc
@@ -94,7 +96,7 @@ data TypeF t
   | t :-> t
   | t :*  t
   | Loc Span t
-  deriving (Foldable, Functor, Traversable)
+  deriving (Foldable, Functor, Show, Traversable)
 
 infixr 1 :=>
 infixl 9 :$
