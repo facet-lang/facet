@@ -16,6 +16,7 @@ module Facet.Print
 , runPrint
 , Print(..)
 , withVar
+, incrVar
 , Context(..)
 , evar
 , tvar
@@ -105,6 +106,9 @@ instance Show Print where
 
 withVar :: (Int -> Print) -> Print
 withVar f = Print $ runPrint <*> f
+
+incrVar :: Print -> Print
+incrVar p = Print $ \ v -> runPrint (v + 1) p
 
 
 data Context
