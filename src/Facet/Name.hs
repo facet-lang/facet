@@ -63,6 +63,8 @@ elemN = elem . coerce
 
 
 -- | User-supplied name.
+--
+-- These always compare as equal, and so are useful for /preserving/ variable names for e.g. error messages without compromising alpha-equivalence.
 newtype UName = UName { getUName :: Text }
 
 instance Eq UName where
