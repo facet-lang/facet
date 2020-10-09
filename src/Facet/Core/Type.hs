@@ -38,6 +38,11 @@ data Type
   | Type :*  Type
   deriving (Show)
 
+infixr 0 :=>
+infixl 9 :$
+infixr 0 :->
+infixl 7 :*
+
 instance Scoped Type where
   fvs = fvsDefault
 
@@ -123,10 +128,10 @@ data TypeF t
   | t :**  t
   deriving (Foldable, Functor, Show, Traversable)
 
-infixr 0 :=>
-infixl 9 :$
-infixr 0 :->
-infixl 7 :*
+infixr 0 :==>
+infixl 9 :$$
+infixr 0 :-->
+infixl 7 :**
 
 
 fold :: (TypeF a -> a) -> Type -> a
