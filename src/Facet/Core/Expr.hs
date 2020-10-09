@@ -17,7 +17,6 @@ module Facet.Core.Expr
 
 import           Control.Category ((>>>))
 import           Control.Lens (Prism', prism', review)
-import           Data.Coerce (coerce)
 import qualified Facet.Core.Pattern as P
 import           Facet.Core.Type (Type)
 import           Facet.Name
@@ -27,15 +26,7 @@ import           Facet.Vars
 newtype Expr = In { out :: ExprF Expr }
 
 instance Scoped Expr where
-  fvs = out >>> \case
-    Free _   -> mempty
-    Bound  n -> fvs n
-    TLam n b -> bind n (fvs b)
-    TApp f a -> fvs f <> fvs a
-    Lam p b  -> foldr bind (fvs b) p
-    f :$ a   -> fvs f <> fvs a
-    Unit     -> mempty
-    l :* r   -> fvs l <> fvs r
+  fvs = fvsDefault
 
 instance Scoped1 Expr where
   fvs1 = out >>> \case
