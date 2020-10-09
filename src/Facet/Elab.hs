@@ -290,7 +290,7 @@ lam
   -> Check m CE.Expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
-  n ::: _A |- curry (review CE.lam_) (review CP.var_ n) <$> check (b ::: _B)
+  n ::: _A |- curry (review CE.lam_) (CP.Var n) <$> check (b ::: _B)
 
 unit :: Applicative m => Synth m CE.Expr
 unit = Synth . pure $ review CE.unit_ () ::: Unit
@@ -334,9 +334,9 @@ pattern
   => SP.Pattern (Name E)
   -> Check m (CP.Pattern (Name E ::: Type))
 pattern = SP.fold $ \ s -> local (const s) . \case
-  SP.Wildcard -> pure (review CP.wildcard_ ())
-  SP.Var n    -> Check $ \ _T -> pure (review CP.var_ (n ::: _T))
-  SP.Tuple ps -> Check $ \ _T -> review CP.tuple_ . toList <$> go _T (fromList ps)
+  SP.Wildcard -> pure CP.Wildcard
+  SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
+  SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go _T (fromList ps)
     where
     go _T = \case
       Nil      -> Nil      <$  unify Unit _T
