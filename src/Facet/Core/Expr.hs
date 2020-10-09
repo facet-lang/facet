@@ -40,8 +40,8 @@ instance Scoped1 Expr where
   fvs1 = out >>> \case
     Free  v  -> pure (review global_ v)
     Bound n  -> bound1 (review bound_) n
-    TLam n b -> review tlam_ <$> bind1 (review bound_ . coerce) n b
-    TApp f a -> curry (review tapp_) <$> fvs1 f <*> fvs1 a
+    TLam n b -> curry (review tlam_) n <$> fvs1 b
+    TApp f a -> curry (review tapp_) <$> fvs1 f <*> pure a
     Lam  p b -> review lam_ <$> bindN (review bound_) p b
     f :$ a   -> curry (review app_) <$> fvs1 f <*> fvs1 a
     Unit     -> pure (review unit_ ())
