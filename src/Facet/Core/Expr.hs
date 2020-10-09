@@ -11,11 +11,8 @@ module Facet.Core.Expr
 , app_
 , unit_
 , prd_
-, ExprF(..)
-, fold
 ) where
 
-import           Control.Category ((>>>))
 import           Control.Lens (Prism', prism', review)
 import qualified Facet.Core.Pattern as P
 import           Facet.Core.Type (QType)
@@ -23,13 +20,21 @@ import           Facet.Name
 import           Facet.Substitution as Subst
 import           Facet.Vars
 
-newtype Expr = In { out :: ExprF Expr }
+data Expr
+  = Free QName
+  | Bound (Name E)
+  | TLam UName Expr
+  | TApp Expr QType
+  | Lam (P.Pattern (Name E)) Expr
+  | Expr :$ Expr
+  | Unit
+  | Expr :* Expr
 
 instance Scoped Expr where
   fvs = fvsDefault
 
 instance Scoped1 Expr where
-  fvs1 = out >>> \case
+  fvs1 =  \case
     Free  v  -> pure (review global_ v)
     Bound n  -> boundVar1 (review bound_) n
     TLam n b -> curry (review tlam_) n <$> fvs1 b
@@ -41,51 +46,31 @@ instance Scoped1 Expr where
 
 
 global_ :: Prism' Expr QName
-global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
+global_ = prism' Free (\case{ Free n -> Just n ; _ -> Nothing })
 
 bound_ :: Prism' Expr (Name E)
-bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
+bound_ = prism' Bound (\case{ Bound n -> Just n ; _ -> Nothing })
 
 
 tlam_ :: Prism' Expr (UName, Expr)
-tlam_ = prism' (In . uncurry TLam) (\case{ In (TLam n b) -> Just (n, b) ; _ -> Nothing })
+tlam_ = prism' (uncurry TLam) (\case{ TLam n b -> Just (n, b) ; _ -> Nothing })
 
 tapp_ :: Prism' Expr (Expr, QType)
-tapp_ = prism' (In . uncurry TApp) (\case{ In (TApp f a) -> Just (f, a) ; _ -> Nothing })
+tapp_ = prism' (uncurry TApp) (\case{ TApp f a -> Just (f, a) ; _ -> Nothing })
 
 lam_ :: Prism' Expr (P.Pattern (Name E), Expr)
-lam_ = prism' (In . uncurry Lam) (\case{ In (Lam p b) -> Just (p, b) ; _ -> Nothing })
+lam_ = prism' (uncurry Lam) (\case{ Lam p b -> Just (p, b) ; _ -> Nothing })
 
 app_ :: Prism' Expr (Expr, Expr)
-app_ = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
+app_ = prism' (uncurry (:$)) (\case{ f :$ a -> Just (f, a) ; _ -> Nothing })
 
 
 unit_ :: Prism' Expr ()
-unit_ = prism' (const (In Unit)) (\case{ In Unit -> Just () ; _ -> Nothing })
+unit_ = prism' (const Unit) (\case{ Unit -> Just () ; _ -> Nothing })
 
 prd_ :: Prism' Expr (Expr, Expr)
-prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
+prd_ = prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
 
 
 instance Substitutable Expr where
   subst sub = substitute sub . fvs1
-
-
-data ExprF e
-  = Free QName
-  | Bound (Name E)
-  | TLam UName e
-  | TApp e QType
-  | Lam (P.Pattern (Name E)) e
-  | e :$ e
-  | Unit
-  | e :* e
-  deriving (Foldable, Functor, Show, Traversable)
-
-infixl 9 :$
-infixl 7 :*
-
-fold :: (ExprF a -> a) -> Expr -> a
-fold alg = go
-  where
-  go = alg . fmap go . out

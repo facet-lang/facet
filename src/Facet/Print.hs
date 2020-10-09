@@ -259,17 +259,17 @@ groupByType eq = \case
 
 
 printCoreExpr :: CE.Expr -> Print
-printCoreExpr e = CE.fold alg e []
+printCoreExpr = go []
   where
-  alg = \ e env -> case e of
+  go env = \case
     CE.Free n   -> cfree n
     CE.Bound n  -> sbound n
-    CE.TLam n b -> let n' = cbound @N.T (N.Name n (length env)) in lam (braces n') (b (n':env))
-    CE.TApp f a -> f env $$ braces (printCoreQType env a)
-    CE.Lam  p b -> lam (printCorePattern p) (b env)
-    f CE.:$  a  -> f env $$ a env
+    CE.TLam n b -> let n' = cbound @N.T (N.Name n (length env)) in lam (braces n') (go (n':env) b)
+    CE.TApp f a -> go env f $$ braces (printCoreQType env a)
+    CE.Lam  p b -> lam (printCorePattern p) (go env b)
+    f CE.:$  a  -> go env f $$ go env a
     CE.Unit     -> unit
-    l CE.:*  r  -> l env **  r env
+    l CE.:*  r  -> go env l **  go env r
 
 printSurfaceExpr :: SE.Expr -> Print
 printSurfaceExpr = go
