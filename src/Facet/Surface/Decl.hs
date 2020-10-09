@@ -8,7 +8,6 @@ module Facet.Surface.Decl
 , bind_
 , def_
 , DeclF(..)
-, fold
 ) where
 
 import Control.Lens.Prism
@@ -39,9 +38,3 @@ data DeclF a
 infix 1 :=
 infixr 1 :=>
 infixr 1 :->
-
-
-fold :: (Span -> DeclF a -> a) -> Decl -> a
-fold alg = go
-  where
-  go = alg . ann <*> fmap go . out

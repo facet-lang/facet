@@ -356,17 +356,17 @@ elabDecl
   :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
   => SD.Decl
   -> m (Check m CE.Expr ::: Type)
-elabDecl = SD.fold alg
+elabDecl = go
   where
-  alg s = local (const s) . \case
+  go (SD.In s d) = local (const s) $ case d of
     (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just Type)
-      b' ::: _B <- n ::: _T |- b
+      b' ::: _B <- n ::: _T |- go b
       pure $ tlam (hint n) b' ::: (hint n ::: _T :=> (_B CT..$))
 
     (n ::: t) SD.:-> b -> do
       _T ::: _  <- elabType (t ::: Just Type)
-      b' ::: _B <- n ::: _T |- b
+      b' ::: _B <- n ::: _T |- go b
       pure $ lam n b' ::: (_T :-> _B)
 
     t SD.:= b -> do
