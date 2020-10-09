@@ -11,6 +11,7 @@ module Facet.Core.Expr
 , app_
 , unit_
 , prd_
+, QExpr(..)
 ) where
 
 import           Control.Lens (Prism', prism', review)
@@ -74,3 +75,18 @@ prd_ = prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
 
 instance Substitutable Expr where
   subst sub = substitute sub . fvs1
+
+
+data QExpr
+  = QFree QName
+  | QBound Index
+  | QTLam UName QExpr
+  | QTApp QExpr QType
+  | QLam (P.Pattern UName) QExpr
+  | QExpr :$$ QExpr
+  | QUnit
+  | QExpr :** QExpr
+  deriving (Show)
+
+infixl 9 :$$
+infixl 7 :**
