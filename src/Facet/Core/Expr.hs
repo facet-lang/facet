@@ -35,7 +35,7 @@ instance Scoped1 Expr where
     Bound n  -> bound1 (review bound_) n
     TLam n b -> curry (review tlam_) n <$> fvs1 b
     TApp f a -> curry (review tapp_) <$> fvs1 f <*> pure a
-    Lam  p b -> review lam_ <$> bindN (review bound_) p b
+    Lam  p b -> review lam_ <$> bindN (review bound_) p (fvs b) (fvs1 b)
     f :$ a   -> curry (review app_) <$> fvs1 f <*> fvs1 a
     Unit     -> pure (review unit_ ())
     l :* r   -> curry (review prd_) <$> fvs1 l <*> fvs1 r

@@ -61,14 +61,14 @@ instance Binding Vars where
 
 class Applicative f => Binding1 t f where
   bound1 :: (Name a -> t) -> Name a -> f t
-  bindN :: Traversable p => (Name a -> t) -> p (Name a) -> t -> f (p (Name a), t)
+  bindN :: Traversable p => (Name a -> t) -> p (Name a) -> FVs -> f t -> f (p (Name a), t)
 
-bind1 :: Binding1 t f => (Name a -> t) -> Name a -> t -> f (Name a, t)
-bind1 mk n b = first runIdentity <$> bindN mk (Identity n) b
+bind1 :: Binding1 t f => (Name a -> t) -> Name a -> FVs -> f t -> f (Name a, t)
+bind1 mk n fvs b = first runIdentity <$> bindN mk (Identity n) fvs b
 
-instance (Scoped1 t, Binding a) => Binding1 t (Const a) where
+instance Binding a => Binding1 t (Const a) where
   bound1 _ n = Const (bound n)
-  bindN _ p b = Const (foldr (\ n b -> bind n b) (getConst (fvs1 b)) p)
+  bindN _ p _ b = Const (foldr (\ n b -> bind n b) (getConst b) p)
 
 
 substitute :: Subst.Substitution t -> Substitute t a -> a
@@ -86,9 +86,9 @@ instance Applicative (Substitute t) where
 instance Scoped1 t => Binding1 t (Substitute t) where
   bound1 mk n = Substitute $ \ sub -> fromMaybe (mk n) (Subst.lookup n sub)
 
-  bindN mkBound p b = Substitute $ \ sub ->
-    let (sub', p') = renameAccumL (\ i sub n -> let n' = Name (hint n) i in (Subst.insert n (mkBound n') sub, n')) (fvsDefault b <> foldMap fvsDefault sub) sub p
-        b' = runSubstitute (fvs1 b) sub'
+  bindN mkBound p fvs b = Substitute $ \ sub ->
+    let (sub', p') = renameAccumL (\ i sub n -> let n' = Name (hint n) i in (Subst.insert n (mkBound n') sub, n')) (fvs <> foldMap fvsDefault sub) sub p
+        b' = runSubstitute b sub'
     in (p', b')
 
 

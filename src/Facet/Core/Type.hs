@@ -42,7 +42,7 @@ instance Scoped1 Type where
     Type    -> pure (review type_ ())
     Void    -> pure (review void_ ())
     Unit    -> pure (review unit_ ())
-    t :=> b -> mk <$> fvs1 (ty t) <*> bind1 (review bound_) (tm t) b
+    t :=> b -> mk <$> fvs1 (ty t) <*> bind1 (review bound_) (tm t) (fvs b) (fvs1 b)
       where
       mk t' (n', b') = review forAll_ (n' ::: t', b')
     f :$ as -> f' <*> traverse fvs1 as
