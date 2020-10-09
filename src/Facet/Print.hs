@@ -156,6 +156,7 @@ evar = var . P.evar
 tvar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
 tvar = var . P.tvar
 
+
 prettyMName :: P.Printer p => N.MName -> p
 prettyMName (n N.:. s)  = prettyMName n <> pretty '.' <> pretty s
 prettyMName (N.MName s) = pretty s
