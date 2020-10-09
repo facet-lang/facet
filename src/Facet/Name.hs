@@ -68,6 +68,9 @@ newtype UName = UName { getUName :: Text }
 instance Eq UName where
   _ == _ = True
 
+instance Ord UName where
+  compare _ _ = EQ
+
 
 data E
 data T
