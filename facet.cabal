@@ -61,7 +61,6 @@ library
     Facet.Surface.Pattern
     Facet.Surface.Type
     Facet.Syntax
-    Facet.Vars
   other-modules:
     Facet.GHCI
     Paths_facet
