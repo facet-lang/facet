@@ -75,7 +75,7 @@ import           Silkscreen (Pretty, colon, fillSep, flatAlt, group, line, nest,
 type Context = IntMap.IntMap Type
 
 implicit :: Env.Env
-implicit = Env.fromList [ (N.T (N.TName (T.pack "Type")), MName (T.pack "Facet") ::: review CT.type_ ()) ]
+implicit = Env.fromList [ (N.T (N.TName (T.pack "Type")), MName (T.pack "Facet") ::: Type) ]
 
 elab :: Applicative m => Span -> Env.Env -> Context -> Elab m a -> m (Either (Span, P.Print) a)
 elab s e c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (m e c)
@@ -170,8 +170,8 @@ elabType
 elabType (t ::: _K) = ST.fold alg t _K
   where
   alg = \case
-    ST.Free  n -> switch $ synth (review CT.global_ <$> global n)
-    ST.Bound n -> switch $ synth (review CT.bound_ <$> bound n)
+    ST.Free  n -> switch $ synth (CT.global <$> global n)
+    ST.Bound n -> switch $ synth (CT.bound  <$> bound  n)
     ST.Hole  n -> \ _K -> hole (n ::: _K)
     ST.Type    -> switch $ synth _Type
     ST.Void    -> switch $ synth _Void
@@ -187,20 +187,20 @@ elabType (t ::: _K) = ST.fold alg t _K
 
 
 _Type :: Applicative m => Synth m Type
-_Type = Synth $ pure $ review CT.type_ () ::: review CT.type_ ()
+_Type = Synth $ pure $ Type ::: Type
 
 _Void :: Applicative m => Synth m Type
-_Void = Synth $ pure $ review CT.void_ () ::: review CT.type_ ()
+_Void = Synth $ pure $ Void ::: Type
 
 _Unit :: Applicative m => Synth m Type
-_Unit = Synth $ pure $ review CT.unit_ () ::: review CT.type_ ()
+_Unit = Synth $ pure $ Unit ::: Type
 
 (.$)
   :: Has (Throw P.Print) sig m
   => Synth m Type
   -> Check m Type
   -> Synth m Type
-(.$) = app (curry (review CT.app_))
+(.$) = app (CT..$)
 
 infixl 9 .$
 
@@ -210,9 +210,9 @@ infixl 9 .$
   -> Check m Type
   -> Synth m Type
 a .* b = Synth $ do
-  a' <- check (a ::: review CT.type_ ())
-  b' <- check (b ::: review CT.type_ ())
-  pure $ review CT.prd_ (a', b') ::: review CT.type_ ()
+  a' <- check (a ::: Type)
+  b' <- check (b ::: Type)
+  pure $ (a' :* b') ::: Type
 
 infixl 7 .*
 
@@ -222,9 +222,9 @@ infixl 7 .*
   -> Check m Type
   -> Synth m Type
 a --> b = Synth $ do
-  a' <- check (a ::: review CT.type_ ())
-  b' <- check (b ::: review CT.type_ ())
-  pure $ review CT.arrow_ (a', b') ::: review CT.type_ ()
+  a' <- check (a ::: Type)
+  b' <- check (b ::: Type)
+  pure $ (a' :-> b') ::: Type
 
 infixr 2 -->
 
@@ -234,9 +234,9 @@ infixr 2 -->
   -> Check m Type
   -> Synth m Type
 (n ::: t) >~> b = Synth $ do
-  _T <- check (t ::: review CT.type_ ())
-  ftb' <- n ::: _T |- review CT.forAll_ . (,) (n ::: _T) <$> check (b ::: review CT.type_ ())
-  pure $ ftb' ::: review CT.type_ ()
+  _T <- check (t ::: Type)
+  ftb' <- n ::: _T |- (n ::: _T :=>) <$> check (b ::: Type)
+  pure $ ftb' ::: Type
 
 infixr 1 >~>
 
@@ -290,7 +290,7 @@ lam n b = Check $ \ _T -> do
   n ::: _A |- curry (review CE.lam_) (review CP.var_ n) <$> check (b ::: _B)
 
 unit :: Applicative m => Synth m CE.Expr
-unit = Synth . pure $ review CE.unit_ () ::: review CT.unit_ ()
+unit = Synth . pure $ review CE.unit_ () ::: Unit
 
 (**)
   :: Has (Throw P.Print) sig m
@@ -336,7 +336,7 @@ pattern = SP.fold $ \ s -> local (const s) . \case
   SP.Tuple ps -> Check $ \ _T -> review CP.tuple_ . toList <$> go _T (fromList ps)
     where
     go _T = \case
-      Nil      -> Nil      <$  unify (review CT.unit_ ()) _T
+      Nil      -> Nil      <$  unify Unit _T
       Nil :> p -> (Nil :>) <$> check (p ::: _T)
       ps  :> p -> do
         (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
@@ -353,17 +353,17 @@ elabDecl = SD.fold alg
   where
   alg s = local (const s) . \case
     (n ::: t) SD.:=> b -> do
-      _T ::: _  <- elabType (t ::: Just (review CT.type_ ()))
+      _T ::: _  <- elabType (t ::: Just (Type))
       b' ::: _B <- n ::: _T |- b
-      pure $ tlam n b' ::: review CT.forAll_ (n ::: _T, _B)
+      pure $ tlam n b' ::: (n ::: _T :=> _B)
 
     (n ::: t) SD.:-> b -> do
-      _T ::: _  <- elabType (t ::: Just (review CT.type_ ()))
+      _T ::: _  <- elabType (t ::: Just (Type))
       b' ::: _B <- n ::: _T |- b
-      pure $ lam n b' ::: review CT.arrow_ (_T, _B)
+      pure $ lam n b' ::: (_T :-> _B)
 
     t SD.:= b -> do
-      _T ::: _ <- elabType (t ::: Just (review CT.type_ ()))
+      _T ::: _ <- elabType (t ::: Just (Type))
       pure $ _check (elabExpr . (b :::)) ::: _T
 
   _check r = tm <$> Check (r . Just)
