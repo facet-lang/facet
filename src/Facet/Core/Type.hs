@@ -56,7 +56,7 @@ instance Scoped1 Type where
     f :$ as -> f' <*> traverse fvs1 as
       where
       f' = case f of
-        Left f -> ($$*) <$> boundVar1 bound f
+        Left f -> (.$*) <$> boundVar1 bound f
         _      -> pure (f :$)
     a :-> b -> (:->) <$> fvs1 a <*> fvs1 b
     l :*  r -> (:*)  <$> fvs1 l <*> fvs1 r
@@ -117,7 +117,7 @@ arrow_ :: Prism' Type (Type, Type)
 arrow_ = prism' (uncurry (:->)) (\case{ a :-> b -> Just (a, b) ; _ -> Nothing })
 
 app_ :: Prism' Type (Type, Type)
-app_ = prism' (uncurry ($$)) (\case{ f :$ (as :> a) -> Just (f :$ as, a) ; _ -> Nothing })
+app_ = prism' (uncurry (.$)) (\case{ f :$ (as :> a) -> Just (f :$ as, a) ; _ -> Nothing })
 
 app'_ :: Prism' Type (Either (Name T) QName, Stack Type)
 app'_ = prism' (uncurry (:$)) (\case{ f :$ as -> Just (f, as) ; _ -> Nothing })
@@ -126,15 +126,15 @@ prd_ :: Prism' Type (Type, Type)
 prd_ = prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
 
 
-($$) :: Type -> Type -> Type
-(f :$ as) $$ a = f :$ (as :> a)
-(t :=> b) $$ a = subst (singleton (tm t) a) b
-_         $$ _ = error "can’t apply non-neutral/forall type"
+(.$) :: Type -> Type -> Type
+(f :$ as) .$ a = f :$ (as :> a)
+(t :=> b) .$ a = subst (singleton (tm t) a) b
+_         .$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: Foldable t => Type -> t Type -> Type
-f $$* as = foldl' ($$) f as
+(.$*) :: Foldable t => Type -> t Type -> Type
+f .$* as = foldl' (.$) f as
 
-infixl 9 $$, $$*
+infixl 9 .$, .$*
 
 
 instance Substitutable Type where
