@@ -84,8 +84,8 @@ newtype Index = Index { getIndex :: Int }
 newtype Level = Level { getLevel :: Int }
   deriving (Eq, Ord, Show)
 
-levelToIndex :: Int -> Level -> Index
-levelToIndex d (Level level) = Index $ d - level - 1
+levelToIndex :: Level -> Level -> Index
+levelToIndex (Level d) (Level level) = Index $ d - level - 1
 
 indexToLevel :: Int -> Index -> Level
 indexToLevel d (Index index) = Level $ d - index - 1
