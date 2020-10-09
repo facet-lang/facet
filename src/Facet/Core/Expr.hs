@@ -22,6 +22,9 @@ data Expr
   | Unit
   | Expr :* Expr
 
+infixl 9 :$
+infixl 7 :*
+
 instance Scoped Expr where
   fvs = fvsDefault
 
