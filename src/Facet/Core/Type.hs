@@ -16,6 +16,7 @@ module Facet.Core.Type
 , QType(..)
 , eval
 , quote
+, quote'
 ) where
 
 import Control.Effect.Empty
@@ -96,13 +97,14 @@ eval env = \case
   l :**  r -> eval env l :*  eval env r
 
 quote :: Type -> QType
-quote = go (Level 0)
-  where
-  go n = \case
-    Type    -> QType
-    Void    -> QVoid
-    Unit    -> QUnit
-    t :=> b -> fmap (go n) t :==> go (incrLevel n) (b (Right n :$ Nil))
-    f :$ as -> fmap (levelToIndex n) f :$$ fmap (go n) as
-    a :-> b -> go n a :--> go n b
-    l :*  r -> go n l :**  go n r
+quote = quote' (Level 0)
+
+quote' :: Level -> Type -> QType
+quote' n = \case
+  Type    -> QType
+  Void    -> QVoid
+  Unit    -> QUnit
+  t :=> b -> fmap (quote' n) t :==> quote' (incrLevel n) (b (Right n :$ Nil))
+  f :$ as -> fmap (levelToIndex n) f :$$ fmap (quote' n) as
+  a :-> b -> quote' n a :--> quote' n b
+  l :*  r -> quote' n l :**  quote' n r
