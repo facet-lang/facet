@@ -50,6 +50,7 @@ library
     Facet.Parser.Table
     Facet.Pretty
     Facet.Print
+    Facet.Printer
     Facet.REPL
     Facet.REPL.Parser
     Facet.Stack
