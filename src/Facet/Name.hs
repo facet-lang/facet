@@ -79,9 +79,11 @@ instance P.Pretty UName where
   pretty = P.pretty . getUName
 
 
+-- | De Bruijn indices, counting up from the binding site to the reference site (“inside out”).
 newtype Index = Index { getIndex :: Int }
   deriving (Eq, Ord, Show)
 
+-- | De Bruijn indices, counting up from the root to the binding site (“outside in”).
 newtype Level = Level { getLevel :: Int }
   deriving (Eq, Ord, Show)
 
