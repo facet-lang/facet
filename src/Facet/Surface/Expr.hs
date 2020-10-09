@@ -11,7 +11,6 @@ module Facet.Surface.Expr
 , unit_
 , prd_
 , ExprF(..)
-, fold
 ) where
 
 import Control.Category ((>>>))
@@ -70,9 +69,3 @@ data ExprF e
 
 infixl 9 :$
 infixl 7 :*
-
-
-fold :: (ExprF a -> a) -> Expr -> a
-fold alg = go
-  where
-  go = alg . fmap go . out

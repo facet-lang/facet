@@ -250,9 +250,9 @@ elabExpr
   :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw P.Print) sig m
   => (SE.Expr ::: Maybe Type)
   -> m (CE.Expr ::: Type)
-elabExpr (t ::: _T) = SE.fold alg t _T
+elabExpr (t ::: _T) = go t _T
   where
-  alg = \case
+  go = SE.out >>> \case
     SE.Free  n -> switch $ synth (CE.Free  <$> global n)
     SE.Bound n -> switch $ synth (CE.Bound <$> bound n)
     SE.Hole  n -> \ _T -> hole (n ::: _T)
@@ -260,10 +260,10 @@ elabExpr (t ::: _T) = SE.fold alg t _T
     l SE.:*  r -> check (_check l ** _check r) (pretty "product")
     SE.Unit    -> switch $ synth unit
     SE.Comp cs -> check (comp (map (fmap _check) cs)) (pretty "computation")
-    SE.Loc s b -> local (const s) . b
+    SE.Loc s b -> local (const s) . go b
     where
-    _check r = tm <$> Check (r . Just)
-    _synth r = Synth (r Nothing)
+    _check r = tm <$> Check (go r . Just)
+    _synth r = Synth (go r Nothing)
     check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
 
