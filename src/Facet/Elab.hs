@@ -55,8 +55,8 @@ import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Type hiding (bound, global, (.$))
 import qualified Facet.Core.Type as CT
-import           Facet.Error
 import qualified Facet.Env as Env
+import           Facet.Error
 import           Facet.Name (Index(..), Level(..), MName(..), QName(..), UName, incrLevel, indexToLevel)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
