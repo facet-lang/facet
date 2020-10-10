@@ -33,6 +33,7 @@ import Prettyprinter (pretty)
 
 -- FIXME: computation types
 -- FIXME: effect signatures
+-- FIXME: do we need quotation? if we did the PHOAS thing we could interpret using free variables of whatever shape rather than forcing every interpreter to carry a context/use de bruijn indices.
 data Type f
   = Type
   | Void
