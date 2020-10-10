@@ -8,8 +8,6 @@ module Facet.GHCI
 , printFile
 , elabString
 , elabFile
-  -- * Pretty-printing
-, prettyAnn
   -- * Errors
 , toNotice
 ) where
@@ -23,15 +21,12 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
-import qualified Facet.Core.Type as T
 import           Facet.Elab (elab, elabModule)
 import           Facet.Error
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
 import qualified Facet.Surface.Module as S
-import           Facet.Syntax ((:::)(..))
-import qualified Silkscreen as S
 
 -- Parsing
 
@@ -59,12 +54,6 @@ elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Erro
   src = sourceFromString path s
   parsed = runParser (const Right) failure failure input (runFacet [] (whole p))
   failure = Left . errToNotice src
-
-
--- Pretty-printing
-
-prettyAnn :: (P.Print ::: T.Type (Either Err)) -> P.Print
-prettyAnn (tm ::: ty) = tm S.<+> S.colon S.<+> P.printCoreType ty
 
 
 -- Errors
