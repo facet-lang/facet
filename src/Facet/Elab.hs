@@ -370,27 +370,22 @@ pattern = go
 
 -- Declarations
 
--- FIXME: the shape of this is probably wrong. we should produce a Check or Synth for the type, I think?
 elabDecl
   :: SD.Decl
-  -> Elab (Check (CE.Expr Elab) ::: Type Elab)
+  -> Elab (Check (CE.Expr Elab) ::: Check (Type Elab))
 elabDecl = go
   where
   go (SD.In s d) = setSpan s $ case d of
     (n ::: t) SD.:=> b -> do
-      _T ::: _  <- elabType (t ::: Just Type)
-      b' ::: _B <- n ::: _T |- go b
-      -- FIXME: this is almost certainly broken
-      pure $ tlam n b' ::: (n ::: _T :=> (_B CT..$))
+      b' ::: _B <- go b
+      pure $ tlam n b' ::: _check (switch (synth (n ::: _check (elabType . (t :::)) >~> _B)))
 
     (n ::: t) SD.:-> b -> do
-      _T ::: _  <- elabType (t ::: Just Type)
-      b' ::: _B <- n ::: _T |- go b
-      pure $ lam n b' ::: (_T :-> _B)
+      b' ::: _B <- go b
+      pure $ lam n b' ::: _check (switch (synth (_check (elabType . (t :::)) --> _B)))
 
-    t SD.:= b -> do
-      _T ::: _ <- elabType (t ::: Just Type)
-      pure $ _check (elabExpr . (b :::)) ::: _T
+    t SD.:= b ->
+      pure $ _check (elabExpr . (b :::)) ::: _check (elabType . (t :::))
 
   _check r = tm <$> Check (r . Just)
 
@@ -407,7 +402,8 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab
   defs <- for ds $ \ (SM.Def s n d) -> setSpan s $ do
     env <- get @(Env.Env Elab)
     e' ::: _T <- runReader @Context [] . runReader env $ do
-      e ::: _T <- elab $ elabDecl d
+      e ::: t <- elab $ elabDecl d
+      _T <- elab $ check (t ::: Type)
       e' <- elab $ check (e ::: _T)
       pure $ e' ::: _T
 
