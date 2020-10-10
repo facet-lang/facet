@@ -338,7 +338,7 @@ pattern = go
 -- Declarations
 
 elabDecl
-  :: SD.Decl
+  :: SD.Decl Span
   -> Check (Expr Elab Level) ::: Check (Type Elab Level)
 elabDecl = go
   where

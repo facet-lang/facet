@@ -14,5 +14,5 @@ import Text.Parser.Position (Span)
 data Module a = Module { ann :: a, name :: MName, defs :: [Def a] }
   deriving (Foldable, Functor, Show, Traversable)
 
-data Def a = Def Span DName Decl
+data Def a = Def Span DName (Decl a)
   deriving (Foldable, Functor, Show, Traversable)

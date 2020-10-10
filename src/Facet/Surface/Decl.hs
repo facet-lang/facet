@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
@@ -16,29 +17,29 @@ import Facet.Surface.Type (Type)
 import Facet.Syntax ((:::)(..))
 import Text.Parser.Position (Span, Spanned(..))
 
-data Decl
-  = (UName ::: Type) :=> Decl
-  | (UName ::: Type) :-> Decl
+data Decl a
+  = (UName ::: Type) :=> Decl a
+  | (UName ::: Type) :-> Decl a
   | Type := Expr
-  | Loc Span Decl
-  deriving (Show)
+  | Loc a (Decl a)
+  deriving (Foldable, Functor, Show, Traversable)
 
 infix 1 :=
 infixr 1 :=>
 infixr 1 :->
 
-instance Spanned Decl where
+instance Spanned (Decl Span) where
   setSpan = Loc
 
   dropSpan = \case
     Loc _ d -> dropSpan d
     d       -> d
 
-forAll_ :: Prism' Decl (UName ::: Type, Decl)
+forAll_ :: Prism' (Decl a) (UName ::: Type, Decl a)
 forAll_ = prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing })
 
-bind_ :: Prism' Decl (UName ::: Type, Decl)
+bind_ :: Prism' (Decl a) (UName ::: Type, Decl a)
 bind_ = prism' (uncurry (:->)) (\case{ t :-> b -> Just (t, b) ; _ -> Nothing })
 
-def_ :: Prism' Decl (Type, Expr)
+def_ :: Prism' (Decl a) (Type, Expr)
 def_ = prism' (uncurry (:=)) (\case{ t := e -> Just (t, e) ; _ -> Nothing })

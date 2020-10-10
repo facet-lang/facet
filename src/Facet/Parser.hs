@@ -118,16 +118,16 @@ decl = mk <$> spanned ((,) <$> dname <* colon <*> sig)
 
 -- Declarations
 
-sigTable :: (Monad p, PositionParsing p) => Table (Facet p) D.Decl
+sigTable :: (Monad p, PositionParsing p) => Table (Facet p) (D.Decl Span)
 sigTable =
   [ [ Op.Operator (forAll (D.:=>)) ]
   , [ Op.Operator binder ]
   ]
 
-sig :: (Monad p, PositionParsing p) => Facet p D.Decl
+sig :: (Monad p, PositionParsing p) => Facet p (D.Decl Span)
 sig = build sigTable (const (settingSpan (review D.def_ <$> ((,) <$> monotype <*> comp)))) -- FIXME: parse type declarations too
 
-binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) D.Decl
+binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (D.Decl Span)
 binder self _ = do
   ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* symbolic '(' <*> varPattern ename) <* colon <*> type' <* symbolic ')'
   bindVarPattern i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
