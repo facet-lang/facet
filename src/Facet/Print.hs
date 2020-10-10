@@ -386,6 +386,7 @@ printSurfacePattern p = prec Pattern $ case p of
   SP.Wildcard -> pretty '_'
   SP.Var n    -> n
   SP.Tuple p  -> tupled (map printSurfacePattern p)
+  SP.Loc _ p  -> printSurfacePattern p
 
 -- FIXME: Use _ in binding positions for unused variables
 lam :: Print -> Print -> Print
