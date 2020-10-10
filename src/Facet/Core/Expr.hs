@@ -16,9 +16,9 @@ import           Facet.Name
 data Expr
   = Free QName
   | Bound Level
-  | TLam UName Expr
+  | TLam UName (Type -> Either Err Expr)
   | TApp Expr Type
-  | Lam (P.Pattern UName) Expr
+  | Lam (P.Pattern UName) (Expr -> Either Err Expr)
   | Expr :$ Expr
   | Unit
   | Expr :* Expr
@@ -48,9 +48,9 @@ quote = go (Level 0)
   go d = \case
     Free  v  -> pure $ QFree v
     Bound n  -> pure $ QBound (levelToIndex d n)
-    TLam n b -> QTLam n <$> go (incrLevel d) b
+    TLam n b -> QTLam n <$> (go (incrLevel d) =<< b (T.bound d))
     TApp f a -> QTApp <$> go d f <*> (T.quote' d a)
-    Lam  p b -> QLam p <$> go (foldr (const incrLevel) d p) b
+    Lam  p b -> QLam p <$> (go (foldr (const incrLevel) d p) =<< b (Bound d))
     f :$ a   -> (:$$) <$> go d f <*> go d a
     Unit     -> pure QUnit
     l :* r   -> (:**) <$> go d l <*> go d r

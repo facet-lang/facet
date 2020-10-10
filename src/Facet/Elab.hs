@@ -289,8 +289,10 @@ tlam
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
   _T |-- \ v -> do
+    -- FIXME: this is wrong, we should check under the binder
     _B' <- rethrow $ _B v
-    CE.TLam n <$> check (b ::: _B')
+    b' <- check (b ::: _B')
+    pure (CE.TLam n (pure . CE.TApp b'))
 
 lam
   :: Has (Reader Context :+: Throw Err) sig m
@@ -299,7 +301,10 @@ lam
   -> Check m CE.Expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
-  n ::: _A |- CE.Lam (CP.Var n) <$> check (b ::: _B)
+  n ::: _A |- do
+    -- FIXME: this is wrong, we should check under the binder
+    b' <- check (b ::: _B)
+    pure (CE.Lam (CP.Var n) (pure . (b' CE.:$)))
 
 unit :: Applicative m => Synth m CE.Expr
 unit = Synth . pure $ CE.Unit ::: Unit
@@ -335,7 +340,10 @@ clause = go
     SC.Clause p b -> Check $ \ _T -> do
       (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
       p' <- check (pattern p ::: _A)
-      foldr (|-) (CE.Lam (tm <$> p') <$> check (go b ::: _B)) p'
+      foldr (|-) (do
+        -- FIXME: this is wrong.
+        b' <- check (go b ::: _B)
+        pure (CE.Lam (tm <$> p') (pure . (b' CE.:$)))) p'
     SC.Body e   -> e
     SC.Loc s c  -> local (const s) (go c)
 
@@ -371,6 +379,7 @@ elabDecl = go
     (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just Type)
       b' ::: _B <- n ::: _T |- go b
+      -- FIXME: this is almost certainly broken
       pure $ tlam n b' ::: (n ::: _T :=> (_B CT..$))
 
     (n ::: t) SD.:-> b -> do
