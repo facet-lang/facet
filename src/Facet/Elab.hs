@@ -85,7 +85,7 @@ elab (Elab m) = do
   ctx <- ask
   env <- ask
   span <- ask
-  run (runError (\ s e -> pure (local (const s) (throwError e))) (pure . pure) span (runReader ctx (runReader env m)))
+  run (runError (\ s e -> pure (setSpan s (throwError e))) (pure . pure) span (runReader ctx (runReader env m)))
 
 -- FIXME: can we generalize this to a rank-n quantified action over any context providing these effects?
 newtype Elab a = Elab (ReaderC (Env.Env Elab) (ReaderC Context (ErrorC Span Err Identity)) a)
@@ -186,7 +186,7 @@ elabType (t ::: _K) = go t _K
     f ST.:$  a -> switch $ synth (_synth f .$  _check a)
     a ST.:-> b -> switch $ synth (_check a --> _check b)
     l ST.:*  r -> switch $ synth (_check l .*  _check r)
-    ST.Loc s b -> local (const s) . go b
+    ST.Loc s b -> setSpan s . go b
     where
     _check r = tm <$> Check (go r . Just)
     _synth r = Synth (go r Nothing)
@@ -264,7 +264,7 @@ elabExpr (t ::: _T) = go t _T
     l SE.:*  r -> check (_check l ** _check r) (pretty "product")
     SE.Unit    -> switch $ synth unit
     SE.Comp cs -> check (comp (map (fmap _check) cs)) (pretty "computation")
-    SE.Loc s b -> local (const s) . go b
+    SE.Loc s b -> setSpan s . go b
     where
     _check r = tm <$> Check (go r . Just)
     _synth r = Synth (go r Nothing)
@@ -334,7 +334,7 @@ clause = go
         b' <- check (go b ::: _B)
         pure (CE.Lam (tm <$> p') (pure . (b' CE.:$)))) p'
     SC.Body e   -> e
-    SC.Loc s c  -> local (const s) (go c)
+    SC.Loc s c  -> setSpan s (go c)
 
 
 pattern
@@ -342,7 +342,7 @@ pattern
   -> Check (CP.Pattern (UName ::: Type Elab))
 pattern = go
   where
-  go (SP.In s p) = local (const s) $ case p of
+  go (SP.In s p) = setSpan s $ case p of
     SP.Wildcard -> pure CP.Wildcard
     SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
     SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go' _T (fromList ps)
@@ -362,7 +362,7 @@ elabDecl
   -> Elab (Check (CE.Expr Elab) ::: Type Elab)
 elabDecl = go
   where
-  go (SD.In s d) = local (const s) $ case d of
+  go (SD.In s d) = setSpan s $ case d of
     (n ::: t) SD.:=> b -> do
       _T ::: _  <- elabType (t ::: Just Type)
       b' ::: _B <- n ::: _T |- go b
@@ -388,7 +388,7 @@ elabModule
   => SM.Module
   -> m (CM.Module Elab)
 -- FIXME: elaborate all the types first, and only then the terms
-elabModule (SM.Module s n ds) = local (const s) . evalState (mempty @(Env.Env Elab)) $ do
+elabModule (SM.Module s n ds) = setSpan s . evalState (mempty @(Env.Env Elab)) $ do
   defs <- traverse (elabDef n) ds
   pure $ CM.Module n defs
 
@@ -397,7 +397,7 @@ elabDef
   => MName
   -> SM.Def
   -> m (QName, CM.Def Elab ::: Type Elab)
-elabDef mname (SM.Def s n d) = local (const s) $ do
+elabDef mname (SM.Def s n d) = setSpan s $ do
   env <- get @(Env.Env Elab)
   e' ::: _T <- runReader @Context [] . runReader env $ do
     e ::: _T <- elab $ elabDecl d
@@ -419,6 +419,9 @@ infix 1 |-
 
 
 -- Failures
+
+setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
+setSpan = local . const
 
 printType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Type Elab -> m ErrDoc
 -- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
