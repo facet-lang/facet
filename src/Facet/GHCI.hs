@@ -29,6 +29,7 @@ import           Facet.Error
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
+import           Facet.Stack
 import qualified Facet.Surface.Module as S
 
 -- Parsing
@@ -53,7 +54,7 @@ elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
   first mkNotice $ runErrM (Span (Pos 0 0) (Pos 0 0)) $ do
     mod <- elabModule parsed
-    runReader @(Env Elab) mempty . runReader @Context [] . elab $ P.printCoreModule mod
+    runReader @(Env Elab) mempty . runReader @Context Nil . elab $ P.printCoreModule mod
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s

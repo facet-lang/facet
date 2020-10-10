@@ -65,7 +65,7 @@ import           Facet.Name (Index(..), Level(..), QName(..), UName, incrLevel, 
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
-import           Facet.Stack hiding ((!?))
+import           Facet.Stack
 import qualified Facet.Surface.Comp as SC
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
@@ -79,7 +79,7 @@ import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty,
 runErrM :: Span -> ErrorC Span Err Identity a -> Either (Span, Err) a
 runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
 
-type Context = [UName ::: Type Elab Level]
+type Context = Stack (UName ::: Type Elab Level)
 
 elab :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab (Elab m) = do
@@ -160,14 +160,6 @@ bound n = Synth $ do
   case ctx !? getIndex n of
     Just (_ ::: _T) -> pure (indexToLevel (length ctx) n ::: _T)
     Nothing         -> err (reflow "bad context")
-
-(!?) :: [a] -> Int -> Maybe a
-es !? n = go es n
-  where
-  go (a:as) i
-    | i <= 0    = Just a
-    | otherwise = go as (i - 1)
-  go []     _   = Nothing
 
 app
   :: (a -> a -> a)
@@ -403,7 +395,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (SM.Def s n d) -> setSpan s $ do
     env <- get @(Env.Env Elab)
-    e' ::: _T <- runReader @Context [] . runReader env $ do
+    e' ::: _T <- runReader @Context Nil . runReader env $ do
       let e ::: t = elabDecl d
       _T <- elab $ check (t ::: Type)
       e' <- elab $ check (e ::: _T)
@@ -420,7 +412,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab
 -- Context
 
 (|-) :: Has (Reader Context) sig m => UName ::: Type Elab Level -> m a -> m a
-t |- m = local (t:) m
+t |- m = local (:>t) m
 
 infix 1 |-
 
