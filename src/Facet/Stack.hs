@@ -39,6 +39,9 @@ as' ! i' = go as' i'
     | otherwise  = go as (i - 1)
   go _         _ = error $ "Facet.Stack.!: index (" <> show i' <> ") out of bounds (" <> show (length as') <> ")"
 
+-- | Safe indexing (returns 'Nothing' for out-of-bounds indices).
+--
+-- The index functions like a De Bruijn index, counting down from the /top/ of the stack (i.e. right-to-left).
 (!?) :: Stack a -> Int -> Maybe a
 (as :> a) !? i
   | i == 0     = Just a
