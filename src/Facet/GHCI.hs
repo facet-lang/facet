@@ -24,7 +24,7 @@ import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
 import qualified Facet.Core.Type as T
-import           Facet.Elab (elab, elabModule, implicit)
+import           Facet.Elab (elab, elabModule)
 import           Facet.Error
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
@@ -51,7 +51,7 @@ elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) S.Module -> String -> m ()
-elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p) . run . elab (Span (Pos 0 0) (Pos 0 0)) implicit mempty . elabModule of
+elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Error) src s p) . run . elab (Span (Pos 0 0) (Pos 0 0)) mempty . elabModule of
   Left err -> P.putDoc (prettyNotice err)
   Right a  -> P.prettyPrint (P.printCoreModule a)
   where

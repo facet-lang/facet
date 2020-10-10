@@ -78,11 +78,11 @@ type Context = [UName ::: Type (Either Err)]
 implicit :: Env.Env
 implicit = Env.fromList [ (N.T (N.TName (T.pack "Type")), MName (T.pack "Facet") ::: Type) ]
 
-elab :: Applicative m => Span -> Env.Env -> Context -> Elab m a -> m (Either (Span, Err) a)
-elab s e c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (runReader c (runReader e m))
+elab :: Applicative m => Span -> Context -> Elab m a -> m (Either (Span, Err) a)
+elab s c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (runReader c m)
 
-newtype Elab m a = Elab (ReaderC Env.Env (ReaderC Context (ErrorC Span Err m)) a)
-  deriving (Algebra (Reader Env.Env :+: Reader Context :+: Error Err :+: Reader Span :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab (ReaderC Context (ErrorC Span Err m) a)
+  deriving (Algebra (Reader Context :+: Error Err :+: Reader Span :+: sig), Applicative, Functor, Monad)
 
 
 newtype Check m a = Check { runCheck :: Type (Either Err) -> m a }
