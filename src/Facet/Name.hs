@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -82,15 +83,15 @@ moduleName (mname :.: _) = mname
 
 -- | Expression names, as provided by the user.
 newtype EName = EName { getEName :: Text }
-  deriving (Eq, IsString, Ord, P.Pretty, Show)
+  deriving newtype (Eq, IsString, Ord, P.Pretty, Show)
 
 -- | Constructor names, as provided by the user.
 newtype CName = CName { getCName :: Text }
-  deriving (Eq, IsString, Ord, P.Pretty, Show)
+  deriving newtype (Eq, IsString, Ord, P.Pretty, Show)
 
 -- | Type names, as provided by the user.
 newtype TName = TName { getTName :: Text }
-  deriving (Eq, IsString, Ord, P.Pretty, Show)
+  deriving newtype (Eq, IsString, Ord, P.Pretty, Show)
 
 -- | Declaration names; a choice of expression, term, or operator names.
 data DName
