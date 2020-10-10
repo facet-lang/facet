@@ -12,6 +12,6 @@ import           Facet.Syntax
 data Module f = Module MName [(QName, Def f ::: Type.Type f Level)]
 
 data Def f
-  = DTerm (Expr.Expr f)
+  = DTerm (Expr.Expr f Level)
   | DType (Type.Type f Level)
   | DData [CName ::: Type.Type f Level]

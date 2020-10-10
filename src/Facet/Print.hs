@@ -290,7 +290,7 @@ groupByType eq = \case
     (ys,zs) = span (eq (ty x) . ty) xs
 
 
-printCoreExpr :: Monad m => CE.Expr m -> m Print
+printCoreExpr :: Monad m => CE.Expr m N.Level -> m Print
 printCoreExpr = fmap (printCoreQExpr []) . CE.quote
 
 printCoreQExpr :: [Print] -> CE.QExpr -> Print

@@ -16,15 +16,15 @@ import           Facet.Error
 import           Facet.Name
 import           Facet.Pretty
 
-data Expr f
+data Expr f a
   = Free QName
-  | Bound Level
-  | TLam UName (Type f Level -> f (Expr f))
-  | TApp (Expr f) (Type f Level)
-  | Lam (P.Pattern UName) ((Expr f) -> f (Expr f))
-  | Expr f :$ Expr f
+  | Bound a
+  | TLam UName (Type f a -> f (Expr f a))
+  | TApp (Expr f a) (Type f a)
+  | Lam (P.Pattern UName) ((Expr f a) -> f (Expr f a))
+  | Expr f a :$ Expr f a
   | Unit
-  | Expr f :* Expr f
+  | Expr f a :* Expr f a
 
 infixl 9 :$
 infixl 7 :*
@@ -46,7 +46,7 @@ infixl 7 :**
 
 
 -- FIXME: consider merging Type and Expr into a single datatype.
-eval :: Has (Throw Err) sig m => [Either (Type m Level) (Expr m)] -> QExpr -> m (Expr m)
+eval :: Has (Throw Err) sig m => [Either (Type m Level) (Expr m Level)] -> QExpr -> m (Expr m Level)
 eval env = \case
   QFree  n  -> pure (Free n)
   QBound n  -> case env !! getIndex n of
@@ -59,7 +59,7 @@ eval env = \case
   QUnit     -> pure Unit
   l :** r   -> (:*) <$> eval env l <*> eval env r
 
-quote :: Monad m => Expr m -> m QExpr
+quote :: Monad m => Expr m Level -> m QExpr
 quote = go (Level 0)
   where
   go d = \case

@@ -266,7 +266,7 @@ infixr 1 >~>
 elabExpr
   :: SE.Expr
   -> Maybe (Type Elab Level)
-  -> Elab (CE.Expr Elab ::: Type Elab Level)
+  -> Elab (CE.Expr Elab Level ::: Type Elab Level)
 elabExpr = go
   where
   go = SE.out >>> \case
@@ -285,15 +285,15 @@ elabExpr = go
 
 
 ($$)
-  :: Synth (CE.Expr Elab)
-  -> Check (CE.Expr Elab)
-  -> Synth (CE.Expr Elab)
+  :: Synth (CE.Expr Elab Level)
+  -> Check (CE.Expr Elab Level)
+  -> Synth (CE.Expr Elab Level)
 ($$) = app (CE.:$)
 
 tlam
   :: UName
-  -> Check (CE.Expr Elab)
-  -> Check (CE.Expr Elab)
+  -> Check (CE.Expr Elab Level)
+  -> Check (CE.Expr Elab Level)
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
   pure (CE.TLam n (\ v -> _T |- do
@@ -302,8 +302,8 @@ tlam n b = Check $ \ ty -> do
 
 lam
   :: UName
-  -> Check (CE.Expr Elab)
-  -> Check (CE.Expr Elab)
+  -> Check (CE.Expr Elab Level)
+  -> Check (CE.Expr Elab Level)
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   n ::: _A |- do
@@ -311,13 +311,13 @@ lam n b = Check $ \ _T -> do
     b' <- check (b ::: _B)
     pure (CE.Lam (CP.Var n) (pure . (b' CE.:$)))
 
-unit :: Synth (CE.Expr Elab)
+unit :: Synth (CE.Expr Elab Level)
 unit = Synth . pure $ CE.Unit ::: Unit
 
 (**)
-  :: Check (CE.Expr Elab)
-  -> Check (CE.Expr Elab)
-  -> Check (CE.Expr Elab)
+  :: Check (CE.Expr Elab Level)
+  -> Check (CE.Expr Elab Level)
+  -> Check (CE.Expr Elab Level)
 l ** r = Check $ \ _T -> do
   (_L, _R) <- expectProductType (reflow "when checking product") _T
   l' <- check (l ::: _L)
@@ -325,8 +325,8 @@ l ** r = Check $ \ _T -> do
   pure (l' CE.:* r')
 
 comp
-  :: [SC.Clause (Check (CE.Expr Elab))]
-  -> Check (CE.Expr Elab)
+  :: [SC.Clause (Check (CE.Expr Elab Level))]
+  -> Check (CE.Expr Elab Level)
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
@@ -334,8 +334,8 @@ comp cs = do
   pure $ head cs'
 
 clause
-  :: SC.Clause (Check (CE.Expr Elab))
-  -> Check (CE.Expr Elab)
+  :: SC.Clause (Check (CE.Expr Elab Level))
+  -> Check (CE.Expr Elab Level)
 clause = go
   where
   go = SC.out >>> \case
@@ -372,7 +372,7 @@ pattern = go
 
 elabDecl
   :: SD.Decl
-  -> Check (CE.Expr Elab) ::: Check (Type Elab Level)
+  -> Check (CE.Expr Elab Level) ::: Check (Type Elab Level)
 elabDecl = go
   where
   go (SD.In s d) = setSpans s $ case d of
