@@ -450,15 +450,18 @@ rethrow m = do
   s <- ask
   either (\ (s, e) -> local (const s) (throwError e)) pure (runErrM s m)
 
+printType :: Has (Reader Span :+: Throw Err) sig m => Type ErrM -> m ErrDoc
+-- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
+printType t = P.getPrint <$> rethrow (P.printCoreType t)
+
 err :: Has (Throw Err) sig m => ErrDoc -> m a
 err = throwError . (`Err` []) . group
 
 hole :: Has (Reader Span :+: Throw Err) sig m => (T.Text ::: Maybe (Type ErrM)) -> m (a ::: Type ErrM)
 hole (n ::: t) = case t of
   Just t  -> do
-    -- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
-    t' <- rethrow (P.printCoreType t)
-    err $ fillSep [pretty "found", pretty "hole", pretty n, colon, P.getPrint t' ]
+    t' <- printType t
+    err $ fillSep [pretty "found", pretty "hole", pretty n, colon, t' ]
   Nothing -> couldNotSynthesize (fillSep [ pretty "hole", pretty n ])
 
 mismatch :: Has (Throw Err) sig m => ErrDoc -> ErrDoc -> ErrDoc -> m a
@@ -471,10 +474,9 @@ mismatch msg exp act = err $ msg
 
 couldNotUnify :: Has (Reader Span :+: Throw Err) sig m => Type ErrM -> Type ErrM -> m a
 couldNotUnify t1 t2 = do
-  -- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
-  t1' <- rethrow (P.printCoreType t1)
-  t2' <- rethrow (P.printCoreType t2)
-  mismatch (reflow "mismatch") (P.getPrint t2') (P.getPrint t1')
+  t1' <- printType t1
+  t2' <- printType t2
+  mismatch (reflow "mismatch") t2' t1'
 
 couldNotSynthesize :: Has (Throw Err) sig m => ErrDoc -> m a
 couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softline <> msg
@@ -490,9 +492,8 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 expectMatch :: Has (Reader Span :+: Throw Err) sig m => (Type ErrM -> Maybe out) -> ErrDoc -> ErrDoc -> Type ErrM -> m out
 expectMatch pat exp s _T = do
-  -- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
-  _T' <- rethrow (P.printCoreType _T)
-  maybe (mismatch s exp (P.getPrint _T')) pure (pat _T)
+  _T' <- printType _T
+  maybe (mismatch s exp _T') pure (pat _T)
 
 expectQuantifiedType :: Has (Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM -> m (UName ::: Type ErrM, Type ErrM -> ErrM (Type ErrM))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
