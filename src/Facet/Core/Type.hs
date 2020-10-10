@@ -5,7 +5,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-noncanonical-monad-instances #-}
 module Facet.Core.Type
-( Type(..)
+( AType(..)
+, Type(..)
 , global
 , bound
 , unForAll
@@ -30,6 +31,8 @@ import Facet.Pretty
 import Facet.Stack
 import Facet.Syntax
 import Prettyprinter (pretty)
+
+newtype AType f = AType { getAType :: forall a . Type f a }
 
 -- FIXME: computation types
 -- FIXME: effect signatures
