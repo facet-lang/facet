@@ -2,6 +2,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
@@ -78,10 +79,10 @@ implicit :: Env.Env
 implicit = Env.fromList [ (N.T (N.TName (T.pack "Type")), MName (T.pack "Facet") ::: Type) ]
 
 elab :: Applicative m => Span -> Env.Env -> Context -> Elab m a -> m (Either (Span, Err) a)
-elab s e c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (m e c)
+elab s e c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (runReader c (runReader e m))
 
-newtype Elab m a = Elab (Env.Env -> Context -> ErrorC Span Err m a)
-  deriving (Algebra (Reader Env.Env :+: Reader Context :+: Error Err :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC Env.Env (ReaderC Context (ErrorC Span Err m))
+newtype Elab m a = Elab (ReaderC Env.Env (ReaderC Context (ErrorC Span Err m)) a)
+  deriving (Algebra (Reader Env.Env :+: Reader Context :+: Error Err :+: Reader Span :+: sig), Applicative, Functor, Monad)
 
 
 newtype Check m a = Check { runCheck :: Type (Either Err) -> m a }
