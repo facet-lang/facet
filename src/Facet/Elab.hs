@@ -65,7 +65,7 @@ import           Facet.Name (Index(..), Level(..), QName(..), UName, incrLevel, 
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
-import           Facet.Stack
+import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface.Comp as SC
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
