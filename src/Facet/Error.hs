@@ -12,3 +12,4 @@ data Err = Err
   { reason  :: ErrDoc
   , context :: [ErrDoc]
   }
+  deriving (Show)
