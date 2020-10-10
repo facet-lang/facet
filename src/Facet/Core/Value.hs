@@ -67,7 +67,7 @@ infixl 9 $$, $$*
 
 
 -- FIXME: iterate this left-to-right over contexts.
-close :: Monad m => [Value m a] -> Value m Level -> m (Value m a)
+close :: Monad m => Stack (Value m a) -> Value m Level -> m (Value m a)
 close env = \case
   Type     -> pure Type
   Void     -> pure Void
@@ -75,12 +75,12 @@ close env = \case
   Unit     -> pure Unit
   t :=> b  -> do
     t' <- traverse (close env) t
-    pure $ t' :=> \ v -> close (v:env) =<< b (bound (Level (length env)))
+    pure $ t' :=> \ v -> close (env:>v) =<< b (bound (Level (length env)))
   a :-> b  -> (:->) <$> close env a <*> close env b
-  TLam n b -> pure $ TLam n $ \ v -> close (v:env) =<< b (bound (Level (length env)))
-  Lam  n b -> pure $ Lam  n $ \ v -> close (v:env) =<< b (bound (Level (length env)))
+  TLam n b -> pure $ TLam n $ \ v -> close (env:>v) =<< b (bound (Level (length env)))
+  Lam  n b -> pure $ Lam  n $ \ v -> close (env:>v) =<< b (bound (Level (length env)))
   f :$ as  -> do
-    let f' = either global ((env !!) . getIndex . levelToIndex (Level (length env))) f
+    let f' = either global ((env !) . getIndex . levelToIndex (Level (length env))) f
     as' <- traverse (close env) as
     f' $$* as'
   TPrd l r -> TPrd  <$> close env l <*> close env r
