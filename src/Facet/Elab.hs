@@ -48,6 +48,7 @@ import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Category ((>>>))
+import           Control.Effect.Lift
 import           Control.Effect.Parser.Span (Span(..))
 import           Data.Bifunctor (first)
 import           Data.Foldable (toList)
@@ -84,11 +85,11 @@ runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
 
 type Context = [UName ::: Type ErrM]
 
-elab :: Applicative m => Span -> Context -> Elab m a -> m (Either (Span, Err) a)
-elab s c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (runReader c m)
+elab :: Span -> Context -> Elab a -> Either (Span, Err) a
+elab s c (Elab m) = run (runError (curry (pure . Left)) (pure . Right) s (runReader c m))
 
-newtype Elab m a = Elab (ReaderC Context (ErrorC Span Err m) a)
-  deriving (Algebra (Reader Context :+: Error Err :+: Reader Span :+: sig), Applicative, Functor, Monad)
+newtype Elab a = Elab (ReaderC Context (ErrorC Span Err Identity) a)
+  deriving (Algebra (Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
 
 
 newtype Check m a = Check { runCheck :: Type ErrM -> m a }
