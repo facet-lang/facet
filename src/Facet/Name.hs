@@ -3,8 +3,6 @@
 {-# LANGUAGE LambdaCase #-}
 module Facet.Name
 ( Name(..)
-, eqN
-, elemN
 , UName(..)
 , Index(..)
 , Level(..)
@@ -25,7 +23,6 @@ module Facet.Name
 , OpN(..)
 ) where
 
-import           Data.Coerce
 import           Data.List.NonEmpty
 import           Data.String (IsString(..))
 import           Data.Text (Text, unpack)
@@ -39,13 +36,6 @@ data Name a = Name { hint :: UName, id' :: Int }
 
 instance Show (Name a) where
   showsPrec _ (Name h i) = shows h . shows i
-
-
-eqN :: Name a -> Name b -> Bool
-eqN = coerce ((==) :: Name a -> Name a -> Bool)
-
-elemN :: Foldable t => Name b -> t (Name a) -> Bool
-elemN = elem . coerce
 
 
 -- | User-supplied name.
