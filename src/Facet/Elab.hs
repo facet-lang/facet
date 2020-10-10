@@ -374,22 +374,24 @@ pattern = go
 
 elabDecl
   :: SD.Decl
-  -> Elab (Check (CE.Expr Elab) ::: Check (Type Elab))
+  -> Check (CE.Expr Elab) ::: Check (Type Elab)
 elabDecl = go
   where
-  go (SD.In s d) = setSpan s $ case d of
-    (n ::: t) SD.:=> b -> do
-      b' ::: _B <- go b
-      pure $ tlam n b' ::: _check (switch (synth (n ::: _check (elabType t) >~> _B)))
+  go (SD.In s d) = setSpans s $ case d of
+    (n ::: t) SD.:=> b ->
+      let b' ::: _B = go b
+      in tlam n b' ::: _check (switch (synth (n ::: _check (elabType t) >~> _B)))
 
-    (n ::: t) SD.:-> b -> do
-      b' ::: _B <- go b
-      pure $ lam n b' ::: _check (switch (synth (_check (elabType t) --> _B)))
+    (n ::: t) SD.:-> b ->
+      let b' ::: _B = go b
+      in lam n b' ::: _check (switch (synth (_check (elabType t) --> _B)))
 
     t SD.:= b ->
-      pure $ _check (elabExpr b) ::: _check (elabType t)
+      _check (elabExpr b) ::: _check (elabType t)
 
   _check r = tm <$> Check (r . Just)
+
+  setSpans s (t ::: _T) = setSpan s t ::: setSpan s _T
 
 
 -- Modules
@@ -404,7 +406,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab
   defs <- for ds $ \ (SM.Def s n d) -> setSpan s $ do
     env <- get @(Env.Env Elab)
     e' ::: _T <- runReader @Context [] . runReader env $ do
-      e ::: t <- elab $ elabDecl d
+      let e ::: t = elabDecl d
       _T <- elab $ check (t ::: Type)
       e' <- elab $ check (e ::: _T)
       pure $ e' ::: _T
