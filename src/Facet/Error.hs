@@ -2,6 +2,7 @@ module Facet.Error
 ( ErrDoc
 , Err(..)
 , ErrM
+, runErrM
 ) where
 
 import Control.Effect.Parser.Span (Span)
@@ -19,3 +20,6 @@ data Err = Err
   deriving (Show)
 
 type ErrM = ErrorC Span Err Identity
+
+runErrM :: Span -> ErrorC Span Err Identity a -> Either (Span, Err) a
+runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
