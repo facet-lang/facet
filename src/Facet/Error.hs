@@ -1,6 +1,6 @@
 module Facet.Error
-( Err(..)
-, ErrDoc
+( ErrDoc
+, Err(..)
 ) where
 
 import Prettyprinter (Doc)
