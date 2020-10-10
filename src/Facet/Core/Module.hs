@@ -10,9 +10,9 @@ import           Facet.Error
 import           Facet.Name
 import           Facet.Syntax
 
-data Module = Module MName [(QName, Def ::: Type.Type (Either Err))]
+data Module = Module MName [(QName, Def (Either Err) ::: Type.Type (Either Err))]
 
-data Def
-  = DTerm (Expr.Expr (Either Err))
-  | DType (Type.Type (Either Err))
-  | DData [CName ::: Type.Type (Either Err)]
+data Def f
+  = DTerm (Expr.Expr f)
+  | DType (Type.Type f)
+  | DData [CName ::: Type.Type f]

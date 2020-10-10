@@ -360,7 +360,7 @@ t .= b = t </> b
 printCoreModule :: CM.Module -> Print
 printCoreModule (CM.Module n ds) = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: printCoreType t) </> printCoreDef d) ds))
 
-printCoreDef :: CM.Def -> Print
+printCoreDef :: CM.Def (Either Err) -> Print
 printCoreDef = \case
   CM.DTerm b  -> printCoreExpr b
   CM.DType b  -> printCoreType b

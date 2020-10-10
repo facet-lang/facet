@@ -404,7 +404,7 @@ elabDef
   :: Has (Reader Context :+: Reader Span :+: State (Env.Env (Either Err)) :+: Throw Err) sig m
   => MName
   -> SM.Def
-  -> m (QName, CM.Def ::: Type (Either Err))
+  -> m (QName, CM.Def (Either Err) ::: Type (Either Err))
 elabDef mname (SM.Def s n d) = local (const s) $ do
   env <- get @(Env.Env (Either Err))
   e' ::: _T <- runReader env $ do
