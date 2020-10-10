@@ -180,7 +180,7 @@ elabType
   -> Elab (Type Elab Level ::: Type Elab Level)
 elabType = go
   where
-  go = ST.out >>> \case
+  go = \case
     ST.Free  n -> switch $ CV.global <$> global n
     ST.Bound n -> switch $ CV.bound  <$> bound n
     ST.Hole  n -> \ _K -> hole (n ::: _K)

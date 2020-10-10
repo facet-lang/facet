@@ -260,7 +260,7 @@ printCoreQType = go
 printSurfaceType :: Stack Print -> ST.Type -> Print
 printSurfaceType = go
   where
-  go env = ST.out >>> \case
+  go env = \case
     ST.Free n  -> sfree n
     ST.Bound n -> env ! N.getIndex n
     ST.Hole n  -> hole n

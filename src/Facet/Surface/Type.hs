@@ -16,61 +16,75 @@ module Facet.Surface.Type
 , _Void
 , _Unit
 , aeq
-, TypeF(..)
 ) where
 
-import Control.Category ((>>>))
 import Control.Lens.Prism hiding (_Void)
 import Data.Text (Text)
 import Facet.Name
 import Facet.Syntax
 import Text.Parser.Position (Span, Spanned(..))
 
-newtype Type = In { out :: TypeF Type }
-  deriving newtype (Show)
+data Type
+  = Free DName
+  | Bound Index
+  | Hole Text
+  | Type
+  | Void
+  | Unit
+  | (UName ::: Type) :=> Type
+  | Type :$ Type
+  | Type :-> Type
+  | Type :*  Type
+  | Loc Span Type
+  deriving (Show)
+
+infixr 1 :=>
+infixl 9 :$
+infixr 2 :->
+infixl 7 :*
 
 instance Spanned Type where
-  setSpan = fmap In . Loc
+  setSpan = Loc
 
-  dropSpan = out >>> \case
+  dropSpan = \case
     Loc _ d -> dropSpan d
-    d       -> In d
+    d       -> d
 
 global_ :: Prism' Type DName
-global_ = prism' (In . Free) (\case{ In (Free n) -> Just n ; _ -> Nothing })
+global_ = prism' Free (\case{ Free n -> Just n ; _ -> Nothing })
 
 bound_ :: Prism' Type Index
-bound_ = prism' (In . Bound) (\case{ In (Bound n) -> Just n ; _ -> Nothing })
+bound_ = prism' Bound (\case{ Bound n -> Just n ; _ -> Nothing })
 
 hole_ :: Prism' Type Text
-hole_ = prism' (In . Hole) (\case{ In (Hole n) -> Just n ; _ -> Nothing })
+hole_ = prism' Hole (\case{ Hole n -> Just n ; _ -> Nothing })
 
 
 forAll_ :: Prism' Type (UName ::: Type, Type)
-forAll_ = prism' (In . uncurry (:=>)) (\case{ In (t :=> b) -> Just (t, b) ; _ -> Nothing })
+forAll_ = prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing })
 
 arrow_ :: Prism' Type (Type, Type)
-arrow_ = prism' (In . uncurry (:->)) (\case{ In (a :-> b) -> Just (a, b) ; _ -> Nothing })
+arrow_ = prism' (uncurry (:->)) (\case{ a :-> b -> Just (a, b) ; _ -> Nothing })
 
 app_ :: Prism' Type (Type, Type)
-app_ = prism' (In . uncurry (:$)) (\case{ In (f :$ a) -> Just (f, a) ; _ -> Nothing })
+app_ = prism' (uncurry (:$)) (\case{ f :$ a -> Just (f, a) ; _ -> Nothing })
 
 prd_ :: Prism' Type (Type, Type)
-prd_ = prism' (In . uncurry (:*)) (\case{ In (l :* r) -> Just (l, r) ; _ -> Nothing })
+prd_ = prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
 
 
 _Type :: Type
-_Type = In Type
+_Type = Type
 
 _Void :: Type
-_Void = In Void
+_Void = Void
 
 _Unit :: Type
-_Unit = In Unit
+_Unit = Unit
 
 
 aeq :: Type -> Type -> Bool
-aeq t1 t2 = case (out t1, out t2) of
+aeq t1 t2 = case (t1, t2) of
   (Free  n1,           Free  n2)           -> n1 == n2
   (Bound n1,           Bound n2)           -> n1 == n2
   (Type,               Type)               -> True
@@ -82,23 +96,3 @@ aeq t1 t2 = case (out t1, out t2) of
   -- FIXME: skip spans one either side independently right up front
   (Loc _ t1,           Loc _ t2)           -> aeq t1 t2
   _                                        -> False
-
-
-data TypeF t
-  = Free DName
-  | Bound Index
-  | Hole Text
-  | Type
-  | Void
-  | Unit
-  | (UName ::: t) :=> t
-  | t :$ t
-  | t :-> t
-  | t :*  t
-  | Loc Span t
-  deriving (Foldable, Functor, Show, Traversable)
-
-infixr 1 :=>
-infixl 9 :$
-infixr 2 :->
-infixl 7 :*
