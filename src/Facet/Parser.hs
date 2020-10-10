@@ -125,14 +125,14 @@ sigTable =
   ]
 
 sig :: (Monad p, PositionParsing p) => Facet p (D.Decl Span)
-sig = build sigTable (const (settingSpan (review D.def_ <$> ((,) <$> monotype <*> comp)))) -- FIXME: parse type declarations too
+sig = build sigTable (const (settingSpan ((D.:=) <$> monotype <*> comp))) -- FIXME: parse type declarations too
 
 binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (D.Decl Span)
 binder self _ = do
   ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* symbolic '(' <*> varPattern ename) <* colon <*> type' <* symbolic ')'
   bindVarPattern i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
   where
-  mk start t b end = setSpan (Span start end) $ review D.bind_ (t, b)
+  mk start t b end = setSpan (Span start end) $ t D.:-> b
 
 
 -- Types

@@ -407,7 +407,7 @@ printSurfaceDecl = go Nil
   go env = \case
     t SD.:=  e -> printSurfaceType env t .= printSurfaceExpr env e
     t SD.:=> b ->
-      let (t', b') = splitr (preview SD.forAll_) b
+      let (t', b') = splitr SD.unForAll b
           ts = map (first sbound) (t:t')
       in ts >~~> go (foldl (\ as (a:::_) -> as :> a) env ts) b'
     t SD.:-> b -> bimap sbound (printSurfaceType env) t >-> go (env:>sbound (tm t)) b

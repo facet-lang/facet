@@ -5,12 +5,10 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Decl
 ( Decl(..)
-, forAll_
-, bind_
-, def_
+, unForAll
 ) where
 
-import Control.Lens.Prism
+import Control.Effect.Empty
 import Facet.Name
 import Facet.Surface.Expr (Expr)
 import Facet.Surface.Type (Type)
@@ -35,11 +33,6 @@ instance Spanned (Decl Span) where
     Loc _ d -> dropSpan d
     d       -> d
 
-forAll_ :: Prism' (Decl a) (UName ::: Type a, Decl a)
-forAll_ = prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing })
 
-bind_ :: Prism' (Decl a) (UName ::: Type a, Decl a)
-bind_ = prism' (uncurry (:->)) (\case{ t :-> b -> Just (t, b) ; _ -> Nothing })
-
-def_ :: Prism' (Decl a) (Type a, Expr a)
-def_ = prism' (uncurry (:=)) (\case{ t := e -> Just (t, e) ; _ -> Nothing })
+unForAll :: Has Empty sig m => Decl a -> m (UName ::: Type a, Decl a)
+unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
