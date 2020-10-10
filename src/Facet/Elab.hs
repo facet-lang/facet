@@ -298,8 +298,8 @@ tlam
   -> Check (CE.Expr Elab)
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  pure (CE.TLam n (\ v -> do
-    _B' <- _T |- elab (_B v)
+  pure (CE.TLam n (\ v -> _T |- do
+    _B' <- elab (_B v)
     check (b ::: _B')))
 
 lam
