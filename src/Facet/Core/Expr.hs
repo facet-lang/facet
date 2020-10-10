@@ -4,6 +4,7 @@
 module Facet.Core.Expr
 ( Expr(..)
 , QExpr(..)
+, eval
 , quote
 ) where
 
@@ -12,6 +13,7 @@ import           Facet.Core.Type (QType, Type)
 import qualified Facet.Core.Type as T
 import           Facet.Error
 import           Facet.Name
+import           Facet.Pretty
 
 data Expr
   = Free QName
@@ -41,6 +43,19 @@ data QExpr
 infixl 9 :$$
 infixl 7 :**
 
+
+eval :: [Either Type Expr] -> QExpr -> Either Err Expr
+eval env = \case
+  QFree  n  -> pure (Free n)
+  QBound n  -> case env !! getIndex n of
+    Right e -> pure e
+    Left _T -> Left $ Err (reflow "can’t use a type in an expression") []
+  QTLam n b -> pure $ TLam n (\ v -> eval (Left v:env) b)
+  QTApp f a -> TApp <$> eval env f <*> T.eval' (map (either Right (const (Left (Err (reflow "can’t use an expression in a type") [])))) env) a
+  QLam  p b -> pure $ Lam p (\ v -> eval (Right v:env) b)
+  f :$$ a   -> (:$) <$> eval env f <*> eval env a
+  QUnit     -> pure Unit
+  l :** r   -> (:*) <$> eval env l <*> eval env r
 
 quote :: Expr -> Either Err QExpr
 quote = go (Level 0)
