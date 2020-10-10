@@ -405,20 +405,20 @@ elabDecl = go
 -- Modules
 
 elabModule
-  :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m
+  :: Has (Reader Span :+: Throw Err) sig m
   => SM.Module
   -> m (CM.Module ErrM)
 -- FIXME: elaborate all the types first, and only then the terms
 elabModule (SM.Module s n ds) = local (const s) $ evalState (mempty @(Env.Env ErrM)) $ CM.Module n <$> traverse (elabDef n) ds
 
 elabDef
-  :: Has (Reader Context :+: Reader Span :+: State (Env.Env ErrM) :+: Throw Err) sig m
+  :: Has (Reader Span :+: State (Env.Env ErrM) :+: Throw Err) sig m
   => MName
   -> SM.Def
   -> m (QName, CM.Def ErrM ::: Type ErrM)
 elabDef mname (SM.Def s n d) = local (const s) $ do
   env <- get @(Env.Env ErrM)
-  e' ::: _T <- runReader env $ do
+  e' ::: _T <- runReader @Context [] . runReader env $ do
     e ::: _T <- elabDecl d
     e' <- check (e ::: _T)
     pure $ e' ::: _T
