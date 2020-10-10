@@ -398,7 +398,7 @@ elabDecl = go
 -- Modules
 
 elabModule
-  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw Err) sig m
+  :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m
   => SM.Module
   -> m CM.Module
 -- FIXME: elaborate all the types first, and only then the terms
