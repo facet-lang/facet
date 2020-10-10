@@ -92,6 +92,7 @@ elab (Elab m) = do
   rethrow (runReader ctx (runReader env m))
 
 -- FIXME: this should either use or subsume ErrM.
+-- FIXME: can we generalize this to a rank-n quantified action over any context providing these effects?
 newtype Elab a = Elab (ReaderC (Env.Env ErrM) (ReaderC Context (ErrorC Span Err Identity)) a)
   deriving (Algebra (Reader (Env.Env ErrM) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
 
