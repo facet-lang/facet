@@ -46,15 +46,12 @@ elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) S.Module -> String -> m ()
-elabPathString path p s = case res of
-  Left err -> P.putDoc (prettyNotice err)
-  Right a  -> P.prettyPrint a
+elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
+  parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
+  first mkNotice $ run $ elab (Span (Pos 0 0) (Pos 0 0)) mempty $ do
+    mod <- elabModule parsed
+    rethrow $ P.printCoreModule mod
   where
-  res = do
-    parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
-    first mkNotice $ run $ elab (Span (Pos 0 0) (Pos 0 0)) mempty $ do
-      mod <- elabModule parsed
-      rethrow $ P.printCoreModule mod
   input = Input (Pos 0 0) s
   src = sourceFromString path s
   failure = Left . errToNotice src
