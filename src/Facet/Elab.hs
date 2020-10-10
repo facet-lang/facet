@@ -256,9 +256,7 @@ infixr 2 -->
   -> Synth (Type Elab)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
-  b' <- n ::: _T |- check (b ::: Type)
-  -- FIXME: there’s no way this is correct
-  pure $ (n ::: _T :=> (b' CT..$)) ::: Type
+  pure $ (n ::: _T :=> \ v -> n ::: _T |- check (b ::: Type)) ::: Type
 
 infixr 1 >~>
 
