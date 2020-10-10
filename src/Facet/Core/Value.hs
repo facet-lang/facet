@@ -23,12 +23,11 @@ data Value f a
   | Value f a :-> Value f a
   | Lam (Pattern UName) (Pattern (Value f a) -> f (Value f a))
   | Either QName a :$ Stack (Value f a)
-  | Value f a :* Value f a
+  | Prd (Value f a) (Value f a)
 
 infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
-infixl 7 :*
 
 
 global :: QName -> Value f a
