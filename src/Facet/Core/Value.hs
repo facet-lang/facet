@@ -53,12 +53,12 @@ unProductT :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
 unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
 
 
-($$) :: Applicative f => Value f Level -> Value f Level -> f (Value f Level)
+($$) :: Applicative f => Value f a -> Value f a -> f (Value f a)
 (f :$ as) $$ a = pure (f :$ (as :> a))
 (_ :=> b) $$ a = b a
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (Foldable t, Monad f) => Value f Level -> t (Value f Level) -> f (Value f Level)
+($$*) :: (Foldable t, Monad f) => Value f a -> t (Value f a) -> f (Value f a)
 f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 
 infixl 9 $$, $$*
