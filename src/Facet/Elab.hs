@@ -443,7 +443,9 @@ err = throwError . (`Err` []) . group
 
 hole :: Has (Throw Err) sig m => (T.Text ::: Maybe (Type (Either Err))) -> m (a ::: Type (Either Err))
 hole (n ::: t) = case t of
-  Just t  -> err $ fillSep [pretty "found", pretty "hole", pretty n, colon, P.getPrint (P.printCoreType t)]
+  Just t  -> do
+    t' <- rethrow (P.printCoreType t)
+    err $ fillSep [pretty "found", pretty "hole", pretty n, colon, P.getPrint t' ]
   Nothing -> couldNotSynthesize (fillSep [ pretty "hole", pretty n ])
 
 mismatch :: Has (Throw Err) sig m => ErrDoc -> ErrDoc -> ErrDoc -> m a
@@ -455,7 +457,10 @@ mismatch msg exp act = err $ msg
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
 couldNotUnify :: Has (Throw Err) sig m => Type (Either Err) -> Type (Either Err) -> m a
-couldNotUnify t1 t2 = mismatch (reflow "mismatch") (P.getPrint (P.printCoreType t2)) (P.getPrint (P.printCoreType t1))
+couldNotUnify t1 t2 = do
+  t1' <- rethrow (P.printCoreType t1)
+  t2' <- rethrow (P.printCoreType t2)
+  mismatch (reflow "mismatch") (P.getPrint t2') (P.getPrint t1')
 
 couldNotSynthesize :: Has (Throw Err) sig m => ErrDoc -> m a
 couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softline <> msg
@@ -470,7 +475,9 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 -- Patterns
 
 expectMatch :: Has (Throw Err) sig m => (Type (Either Err) -> Maybe out) -> ErrDoc -> ErrDoc -> Type (Either Err) -> m out
-expectMatch pat exp s _T = maybe (mismatch s exp (P.getPrint (P.printCoreType _T))) pure (pat _T)
+expectMatch pat exp s _T = do
+  _T' <- rethrow (P.printCoreType _T)
+  maybe (mismatch s exp (P.getPrint _T')) pure (pat _T)
 
 expectQuantifiedType :: Has (Throw Err) sig m => ErrDoc -> Type (Either Err) -> m (UName ::: Type (Either Err), Type (Either Err) -> Either Err (Type (Either Err)))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")

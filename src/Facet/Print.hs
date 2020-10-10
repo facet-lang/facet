@@ -173,8 +173,8 @@ prettyQName :: PrecedencePrinter p => N.QName -> p
 prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
-printCoreType :: CT.Type (Either Err) -> Print
-printCoreType = either printErr (printCoreQType []) . CT.quote
+printCoreType :: Monad m => CT.Type m -> m Print
+printCoreType = fmap (printCoreQType []) . CT.quote
 
 printCoreQType :: [Print] -> CT.QType -> Print
 printCoreQType = go
@@ -271,8 +271,8 @@ groupByType eq = \case
     (ys,zs) = span (eq (ty x) . ty) xs
 
 
-printCoreExpr :: CE.Expr (Either Err) -> Print
-printCoreExpr = either printErr (printCoreQExpr []) . CE.quote
+printCoreExpr :: Monad m => CE.Expr m -> m Print
+printCoreExpr = fmap (printCoreQExpr []) . CE.quote
 
 printCoreQExpr :: [Print] -> CE.QExpr -> Print
 printCoreQExpr = go
@@ -357,14 +357,15 @@ t .= b = t </> b
 (n ::: t) >-> b = prec FnR (group (align (parens (ann (n ::: t)))) </> arrow <+> b)
 
 
-printCoreModule :: CM.Module (Either Err) -> Print
-printCoreModule (CM.Module n ds) = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: printCoreType t) </> printCoreDef d) ds))
+printCoreModule :: Monad m => CM.Module m -> m Print
+printCoreModule (CM.Module n ds)
+  =   (ann (var (prettyMName n) ::: pretty "Module") </>) . block . vsep <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> printCoreType t <*> printCoreDef d) ds
 
-printCoreDef :: CM.Def (Either Err) -> Print
+printCoreDef :: Monad m => CM.Def m -> m Print
 printCoreDef = \case
   CM.DTerm b  -> printCoreExpr b
   CM.DType b  -> printCoreType b
-  CM.DData cs -> block (commaSep (map (ann . bimap pretty printCoreType) cs))
+  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse printCoreType . first pretty) cs
 
 
 printSurfaceModule :: SM.Module -> Print
