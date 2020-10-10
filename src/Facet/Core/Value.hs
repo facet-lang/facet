@@ -13,7 +13,6 @@ module Facet.Core.Value
 
 import Control.Effect.Empty
 import Data.Foldable (foldl')
-import Facet.Core.Pattern
 import Facet.Name
 import Facet.Stack
 import Facet.Syntax
@@ -26,7 +25,7 @@ data Value f a
   | (UName ::: Value f a) :=> (Value f a -> f (Value f a))
   | TLam UName (Value f a -> f (Value f a))
   | Value f a :-> Value f a
-  | Lam (Pattern UName) (Pattern (Value f a) -> f (Value f a))
+  | Lam UName (Value f a -> f (Value f a))
   | Either QName a :$ Stack (Value f a)
   | TPrd (Value f a) (Value f a)
   | Prd (Value f a) (Value f a)
@@ -57,7 +56,7 @@ unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
 (f :$ as) $$ a = pure (f :$ (as :> a))
 (_ :=> b) $$ a = b a
 TLam _ b  $$ a = b a
-Lam  _ b  $$ a = b (Var a)
+Lam  _ b  $$ a = b a
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (Foldable t, Monad f) => Value f a -> t (Value f a) -> f (Value f a)
