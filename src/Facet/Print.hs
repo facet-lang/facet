@@ -171,7 +171,7 @@ prettyQName :: PrecedencePrinter p => N.QName -> p
 prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
-printCoreType :: Monad m => CT.Type m -> m Print
+printCoreType :: Monad m => CT.Type m N.Level -> m Print
 printCoreType = fmap (printCoreQType []) . CT.quote
 
 printCoreQType :: [Print] -> CT.QType -> Print

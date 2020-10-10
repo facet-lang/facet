@@ -34,14 +34,14 @@ import Prettyprinter (pretty)
 -- FIXME: computation types
 -- FIXME: effect signatures
 -- FIXME: do we need quotation? if we did the PHOAS thing we could interpret using free variables of whatever shape rather than forcing every interpreter to carry a context/use de bruijn indices, at the cost of making it harder to take the type apart for one purpose and put it back together for another.
-data Type f
+data Type f a
   = Type
   | Void
   | Unit
-  | (UName ::: Type f) :=> (Type f -> f (Type f))
-  | Either QName Level :$ Stack (Type f)
-  | Type f :-> Type f
-  | Type f :*  Type f
+  | (UName ::: Type f a) :=> (Type f a -> f (Type f a))
+  | Either QName Level :$ Stack (Type f a)
+  | Type f a :-> Type f a
+  | Type f a :*  Type f a
 
 infixr 0 :=>
 infixl 9 :$
@@ -49,24 +49,24 @@ infixr 0 :->
 infixl 7 :*
 
 
-global :: QName -> Type f
+global :: QName -> Type f a
 global n = Left n :$ Nil
 
-bound :: Level -> Type f
+bound :: Level -> Type f a
 bound n = Right n :$ Nil
 
 
-unForAll :: Has Empty sig m => Type f -> m (UName ::: Type f, Type f -> f (Type f))
+unForAll :: Has Empty sig m => Type f a -> m (UName ::: Type f a, Type f a -> f (Type f a))
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
-unArrow :: Has Empty sig m => Type f -> m (Type f, Type f)
+unArrow :: Has Empty sig m => Type f a -> m (Type f a, Type f a)
 unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
 
-unProduct :: Has Empty sig m => Type f -> m (Type f, Type f)
+unProduct :: Has Empty sig m => Type f a -> m (Type f a, Type f a)
 unProduct = \case{ l :* r -> pure (l, r) ; _ -> empty }
 
 
-(.$) :: Has (Throw Err) sig f => Type f -> Type f -> f (Type f)
+(.$) :: Has (Throw Err) sig f => Type f a -> Type f a -> f (Type f a)
 (f :$ as) .$ a = pure (f :$ (as :> a))
 (_ :=> b) .$ a = b a
 f         .$ a = do
@@ -76,7 +76,7 @@ f         .$ a = do
   -- FIXME: we probably require some sort of context to print them in?
   throwError $ Err (reflow "can’t apply non-neutral/forall type") [pretty (show f'), pretty (show a')]
 
-(.$*) :: (Foldable t, Has (Throw Err) sig f) => Type f -> t (Type f) -> f (Type f)
+(.$*) :: (Foldable t, Has (Throw Err) sig f) => Type f a -> t (Type f a) -> f (Type f a)
 f .$* as = foldl' (\ f a -> f >>= \ f' -> f' .$ a) (pure f) as
 
 infixl 9 .$, .$*
@@ -103,10 +103,10 @@ unQApp :: Has Empty sig m => QType -> m (QType, QType)
 unQApp = \case{ f :$$ a -> pure (f, a) ; _ -> empty }
 
 
-eval :: Has (Throw Err) sig m => [Type m] -> QType -> m (Type m)
+eval :: Has (Throw Err) sig m => [Type m a] -> QType -> m (Type m a)
 eval = eval' . map pure
 
-eval' :: Has (Throw Err) sig m => [m (Type m)] -> QType -> m (Type m)
+eval' :: Has (Throw Err) sig m => [m (Type m a)] -> QType -> m (Type m a)
 eval' env = \case
   QFree n  -> pure (global n)
   QBound n -> env !! getIndex n
@@ -123,10 +123,10 @@ eval' env = \case
   a :--> b -> (:->) <$> eval' env a <*> eval' env b
   l :**  r -> (:*)  <$> eval' env l <*> eval' env r
 
-quote :: Monad m => Type m -> m QType
+quote :: Monad m => Type m a -> m QType
 quote = quote' (Level 0)
 
-quote' :: Monad m => Level -> Type m -> m QType
+quote' :: Monad m => Level -> Type m a -> m QType
 quote' n = \case
   Type    -> pure QType
   Void    -> pure QVoid

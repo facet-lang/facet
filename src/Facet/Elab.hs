@@ -79,7 +79,7 @@ import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty,
 runErrM :: Span -> ErrorC Span Err Identity a -> Either (Span, Err) a
 runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
 
-type Context = [UName ::: Type Elab]
+type Context = [UName ::: Type Elab Level]
 
 elab :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab (Elab m) = do
@@ -93,22 +93,22 @@ newtype Elab a = Elab (ReaderC (Env.Env Elab) (ReaderC Context (ErrorC Span Err 
   deriving (Algebra (Reader (Env.Env Elab) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
 
 
-newtype Check a = Check { runCheck :: Type Elab -> Elab a }
-  deriving (Algebra (Reader (Type Elab) :+: Reader (Env.Env Elab) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad) via ReaderC (Type Elab) Elab
+newtype Check a = Check { runCheck :: Type Elab Level -> Elab a }
+  deriving (Algebra (Reader (Type Elab Level) :+: Reader (Env.Env Elab) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad) via ReaderC (Type Elab Level) Elab
 
-newtype Synth a = Synth { synth :: Elab (a ::: Type Elab) }
+newtype Synth a = Synth { synth :: Elab (a ::: Type Elab Level) }
 
 instance Functor Synth where
   fmap f (Synth m) = Synth (first f <$> m)
 
-check :: (Check a ::: Type Elab) -> Elab a
+check :: (Check a ::: Type Elab Level) -> Elab a
 check = uncurryAnn runCheck
 
 
 unify
-  :: Type Elab
-  -> Type Elab
-  -> Elab (Type Elab)
+  :: Type Elab Level
+  -> Type Elab Level
+  -> Elab (Type Elab Level)
 unify t1 t2 = t2 <$ go (Level 0) t1 t2
   where
   go n t1 t2 = case (t1, t2) of
@@ -138,9 +138,9 @@ unify t1 t2 = t2 <$ go (Level 0) t1 t2
 -- General
 
 switch
-  :: Elab (a ::: Type Elab)
-  -> Maybe (Type Elab)
-  -> Elab (a ::: Type Elab)
+  :: Elab (a ::: Type Elab Level)
+  -> Maybe (Type Elab Level)
+  -> Elab (a ::: Type Elab Level)
 switch m = \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify _K' _K
   _       -> m
@@ -185,8 +185,8 @@ app ($$) f a = Synth $ do
 
 elabType
   :: ST.Type
-  -> Maybe (Type Elab)
-  -> Elab (Type Elab ::: Type Elab)
+  -> Maybe (Type Elab Level)
+  -> Elab (Type Elab Level ::: Type Elab Level)
 elabType = go
   where
   go = ST.out >>> \case
@@ -206,19 +206,19 @@ elabType = go
     _synth r = Synth (go r Nothing)
 
 
-_Type :: Synth (Type Elab)
+_Type :: Synth (Type Elab Level)
 _Type = Synth $ pure $ Type ::: Type
 
-_Void :: Synth (Type Elab)
+_Void :: Synth (Type Elab Level)
 _Void = Synth $ pure $ Void ::: Type
 
-_Unit :: Synth (Type Elab)
+_Unit :: Synth (Type Elab Level)
 _Unit = Synth $ pure $ Unit ::: Type
 
 (.$)
-  :: Synth (Type Elab)
-  -> Check (Type Elab)
-  -> Synth (Type Elab)
+  :: Synth (Type Elab Level)
+  -> Check (Type Elab Level)
+  -> Synth (Type Elab Level)
 f .$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
@@ -229,9 +229,9 @@ f .$ a = Synth $ do
 infixl 9 .$
 
 (.*)
-  :: Check (Type Elab)
-  -> Check (Type Elab)
-  -> Synth (Type Elab)
+  :: Check (Type Elab Level)
+  -> Check (Type Elab Level)
+  -> Synth (Type Elab Level)
 a .* b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -240,9 +240,9 @@ a .* b = Synth $ do
 infixl 7 .*
 
 (-->)
-  :: Check (Type Elab)
-  -> Check (Type Elab)
-  -> Synth (Type Elab)
+  :: Check (Type Elab Level)
+  -> Check (Type Elab Level)
+  -> Synth (Type Elab Level)
 a --> b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -251,9 +251,9 @@ a --> b = Synth $ do
 infixr 2 -->
 
 (>~>)
-  :: (UName ::: Check (Type Elab))
-  -> Check (Type Elab)
-  -> Synth (Type Elab)
+  :: (UName ::: Check (Type Elab Level))
+  -> Check (Type Elab Level)
+  -> Synth (Type Elab Level)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
   pure $ (n ::: _T :=> \ v -> n ::: _T |- check (b ::: Type)) ::: Type
@@ -265,8 +265,8 @@ infixr 1 >~>
 
 elabExpr
   :: SE.Expr
-  -> Maybe (Type Elab)
-  -> Elab (CE.Expr Elab ::: Type Elab)
+  -> Maybe (Type Elab Level)
+  -> Elab (CE.Expr Elab ::: Type Elab Level)
 elabExpr = go
   where
   go = SE.out >>> \case
@@ -352,7 +352,7 @@ clause = go
 
 pattern
   :: SP.Pattern (UName)
-  -> Check (CP.Pattern (UName ::: Type Elab))
+  -> Check (CP.Pattern (UName ::: Type Elab Level))
 pattern = go
   where
   go (SP.In s p) = setSpan s $ case p of
@@ -372,7 +372,7 @@ pattern = go
 
 elabDecl
   :: SD.Decl
-  -> Check (CE.Expr Elab) ::: Check (Type Elab)
+  -> Check (CE.Expr Elab) ::: Check (Type Elab Level)
 elabDecl = go
   where
   go (SD.In s d) = setSpans s $ case d of
@@ -419,7 +419,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab
 
 -- Context
 
-(|-) :: Has (Reader Context) sig m => UName ::: Type Elab -> m a -> m a
+(|-) :: Has (Reader Context) sig m => UName ::: Type Elab Level -> m a -> m a
 t |- m = local (t:) m
 
 infix 1 |-
@@ -430,14 +430,14 @@ infix 1 |-
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
-printType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Type Elab -> m ErrDoc
+printType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Type Elab Level -> m ErrDoc
 -- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
 printType t = P.getPrint <$> elab (P.printCoreType t)
 
 err :: Has (Throw Err) sig m => ErrDoc -> m a
 err = throwError . (`Err` []) . group
 
-hole :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => (T.Text ::: Maybe (Type Elab)) -> m (a ::: Type Elab)
+hole :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => (T.Text ::: Maybe (Type Elab Level)) -> m (a ::: Type Elab Level)
 hole (n ::: t) = case t of
   Just t  -> do
     t' <- printType t
@@ -452,7 +452,7 @@ mismatch msg exp act = err $ msg
   -- line things up nicely for e.g. wrapped function types
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
-couldNotUnify :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Type Elab -> Type Elab -> m a
+couldNotUnify :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Type Elab Level -> Type Elab Level -> m a
 couldNotUnify t1 t2 = do
   t1' <- printType t1
   t2' <- printType t2
@@ -464,22 +464,22 @@ couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softl
 freeVariable :: Has (Throw Err) sig m => ErrDoc -> m a
 freeVariable v = err $ fillSep [reflow "variable not in scope:", v]
 
-expectChecked :: Has (Throw Err) sig m => Maybe (Type Elab) -> ErrDoc -> m (Type Elab)
+expectChecked :: Has (Throw Err) sig m => Maybe (Type Elab Level) -> ErrDoc -> m (Type Elab Level)
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 
 -- Patterns
 
-expectMatch :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => (Type Elab -> Maybe out) -> ErrDoc -> ErrDoc -> Type Elab -> m out
+expectMatch :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => (Type Elab Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type Elab Level -> m out
 expectMatch pat exp s _T = do
   _T' <- printType _T
   maybe (mismatch s exp _T') pure (pat _T)
 
-expectQuantifiedType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type Elab -> m (UName ::: Type Elab, Type Elab -> Elab (Type Elab))
+expectQuantifiedType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type Elab Level -> m (UName ::: Type Elab Level, Type Elab Level -> Elab (Type Elab Level))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type Elab -> m (Type Elab, Type Elab)
+expectFunctionType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type Elab Level -> m (Type Elab Level, Type Elab Level)
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type Elab -> m (Type Elab, Type Elab)
+expectProductType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type Elab Level -> m (Type Elab Level, Type Elab Level)
 expectProductType = expectMatch unProduct (pretty "(_, _)")

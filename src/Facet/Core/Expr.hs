@@ -19,8 +19,8 @@ import           Facet.Pretty
 data Expr f
   = Free QName
   | Bound Level
-  | TLam UName (Type f -> f (Expr f))
-  | TApp (Expr f) (Type f)
+  | TLam UName (Type f Level -> f (Expr f))
+  | TApp (Expr f) (Type f Level)
   | Lam (P.Pattern UName) ((Expr f) -> f (Expr f))
   | Expr f :$ Expr f
   | Unit
@@ -46,7 +46,7 @@ infixl 7 :**
 
 
 -- FIXME: consider merging Type and Expr into a single datatype.
-eval :: Has (Throw Err) sig m => [Either (Type m) (Expr m)] -> QExpr -> m (Expr m)
+eval :: Has (Throw Err) sig m => [Either (Type m Level) (Expr m)] -> QExpr -> m (Expr m)
 eval env = \case
   QFree  n  -> pure (Free n)
   QBound n  -> case env !! getIndex n of

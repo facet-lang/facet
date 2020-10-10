@@ -9,9 +9,9 @@ import qualified Facet.Core.Type as Type
 import           Facet.Name
 import           Facet.Syntax
 
-data Module f = Module MName [(QName, Def f ::: Type.Type f)]
+data Module f = Module MName [(QName, Def f ::: Type.Type f Level)]
 
 data Def f
   = DTerm (Expr.Expr f)
-  | DType (Type.Type f)
-  | DData [CName ::: Type.Type f]
+  | DType (Type.Type f Level)
+  | DData [CName ::: Type.Type f Level]
