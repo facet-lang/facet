@@ -3,6 +3,7 @@ module Facet.Core.Value
 ( Value(..)
 ) where
 
+import Facet.Core.Pattern
 import Facet.Name
 import Facet.Stack
 import Facet.Syntax
@@ -15,6 +16,8 @@ data Value f a
   | Either QName a :$ Stack (Value f a)
   | Value f a :-> Value f a
   | Value f a :*  Value f a
+  | TLam UName (Value f a -> f (Value f a))
+  | Lam (Pattern UName) (Pattern (Value f a) -> f (Value f a))
 
 infixr 0 :=>
 infixl 9 :$
