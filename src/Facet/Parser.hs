@@ -120,25 +120,25 @@ decl = mk <$> spanned ((,) <$> dname <* colon <*> sig)
 
 sigTable :: (Monad p, PositionParsing p) => Table (Facet p) D.Decl
 sigTable =
-  [ [ Op.Operator (forAll (review D.forAll_)) ]
+  [ [ Op.Operator (forAll (D.:=>)) ]
   , [ Op.Operator binder ]
   ]
 
 sig :: (Monad p, PositionParsing p) => Facet p D.Decl
-sig = build sigTable (const (review D.def_ <$> spanned ((,) <$> monotype <*> comp))) -- FIXME: parse type declarations too
+sig = build sigTable (const (settingSpan (review D.def_ <$> ((,) <$> monotype <*> comp)))) -- FIXME: parse type declarations too
 
 binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) D.Decl
 binder self _ = do
   ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* symbolic '(' <*> varPattern ename) <* colon <*> type' <* symbolic ')'
   bindVarPattern i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
   where
-  mk start t b end = review D.bind_ (Span start end, (t, b))
+  mk start t b end = setSpan (Span start end) $ review D.bind_ (t, b)
 
 
 -- Types
 
 typeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
-typeTable = [ Op.Operator (forAll (uncurry setSpan . fmap (review T.forAll_))) ] : monotypeTable
+typeTable = [ Op.Operator (forAll (curry (review T.forAll_))) ] : monotypeTable
 
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
 monotypeTable =
@@ -153,16 +153,16 @@ monotypeTable =
   ]
 
 forAll
-  :: (Monad p, PositionParsing p)
-  => ((Span, ((N.UName S.::: T.Type), res)) -> res)
+  :: (Monad p, PositionParsing p, Spanned res)
+  => ((N.UName S.::: T.Type) -> res -> res)
   -> OperatorParser (Facet p) res
 forAll mk self _ = do
   start <- position
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
   arrow *> foldr (loop start ty) self names
   where
-  loop start ty i rest = bind i $ \ v -> mk' start . (,) (v S.::: ty) <$> rest <*> position
-  mk' start a end = mk (Span start end, a)
+  loop start ty i rest = bind i $ \ v -> mk' start (v S.::: ty) <$> rest <*> position
+  mk' start t b end = setSpan (Span start end) $ mk t b
 
 type' :: (Monad p, PositionParsing p) => Facet p T.Type
 type' = build typeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review T.prd_)))))

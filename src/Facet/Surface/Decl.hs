@@ -7,7 +7,6 @@ module Facet.Surface.Decl
 , forAll_
 , bind_
 , def_
-, DeclF(..)
 ) where
 
 import Control.Lens.Prism
@@ -15,29 +14,31 @@ import Facet.Name
 import Facet.Surface.Expr (Expr)
 import Facet.Surface.Type (Type)
 import Facet.Syntax ((:::)(..))
-import Text.Parser.Position (Span)
+import Text.Parser.Position (Span, Spanned(..))
 
-data Decl = In { ann :: Span, out :: DeclF Decl }
-
-instance Show Decl where
-  showsPrec p = showsPrec p . out
-
-forAll_ :: Prism' Decl (Span, (UName ::: Type, Decl))
-forAll_ = prism' (uncurry In . fmap (uncurry (:=>))) (\case{ In s (t :=> b) -> Just (s, (t, b)) ; _ -> Nothing })
-
-bind_ :: Prism' Decl (Span, (UName ::: Type, Decl))
-bind_ = prism' (uncurry In . fmap (uncurry (:->))) (\case{ In s (t :-> b) -> Just (s, (t, b)) ; _ -> Nothing })
-
-def_ :: Prism' Decl (Span, (Type, Expr))
-def_ = prism' (uncurry In . fmap (uncurry (:=))) (\case{ In s (t := e) -> Just (s, (t, e)) ; _ -> Nothing })
-
-
-data DeclF a
-  = (UName ::: Type) :=> a
-  | (UName ::: Type) :-> a
+data Decl
+  = (UName ::: Type) :=> Decl
+  | (UName ::: Type) :-> Decl
   | Type := Expr
-  deriving (Foldable, Functor, Show, Traversable)
+  | Loc Span Decl
+  deriving (Show)
 
 infix 1 :=
 infixr 1 :=>
 infixr 1 :->
+
+instance Spanned Decl where
+  setSpan = Loc
+
+  dropSpan = \case
+    Loc _ d -> dropSpan d
+    d       -> d
+
+forAll_ :: Prism' Decl (UName ::: Type, Decl)
+forAll_ = prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing })
+
+bind_ :: Prism' Decl (UName ::: Type, Decl)
+bind_ = prism' (uncurry (:->)) (\case{ t :-> b -> Just (t, b) ; _ -> Nothing })
+
+def_ :: Prism' Decl (Type, Expr)
+def_ = prism' (uncurry (:=)) (\case{ t := e -> Just (t, e) ; _ -> Nothing })

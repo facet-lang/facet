@@ -342,7 +342,7 @@ elabDecl
   -> Check (Expr Elab Level) ::: Check (Type Elab Level)
 elabDecl = go
   where
-  go (SD.In s d) = setSpans s $ case d of
+  go = \case
     (n ::: t) SD.:=> b ->
       let b' ::: _B = go b
       in tlam n b' ::: _check (switch (n ::: _check (elabType t) >~> _B))
@@ -353,6 +353,8 @@ elabDecl = go
 
     t SD.:= b ->
       _check (elabExpr b) ::: _check (elabType t)
+
+    SD.Loc s d -> setSpans s (go d)
 
   _check r = tm <$> Check (r . Just)
 
