@@ -456,6 +456,7 @@ err = throwError . (`Err` []) . group
 hole :: Has (Reader Span :+: Throw Err) sig m => (T.Text ::: Maybe (Type ErrM)) -> m (a ::: Type ErrM)
 hole (n ::: t) = case t of
   Just t  -> do
+    -- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
     t' <- rethrow (P.printCoreType t)
     err $ fillSep [pretty "found", pretty "hole", pretty n, colon, P.getPrint t' ]
   Nothing -> couldNotSynthesize (fillSep [ pretty "hole", pretty n ])
@@ -470,6 +471,7 @@ mismatch msg exp act = err $ msg
 
 couldNotUnify :: Has (Reader Span :+: Throw Err) sig m => Type ErrM -> Type ErrM -> m a
 couldNotUnify t1 t2 = do
+  -- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
   t1' <- rethrow (P.printCoreType t1)
   t2' <- rethrow (P.printCoreType t2)
   mismatch (reflow "mismatch") (P.getPrint t2') (P.getPrint t1')
@@ -488,6 +490,7 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 expectMatch :: Has (Reader Span :+: Throw Err) sig m => (Type ErrM -> Maybe out) -> ErrDoc -> ErrDoc -> Type ErrM -> m out
 expectMatch pat exp s _T = do
+  -- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
   _T' <- rethrow (P.printCoreType _T)
   maybe (mismatch s exp (P.getPrint _T')) pure (pat _T)
 
