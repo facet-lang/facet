@@ -96,10 +96,10 @@ unQApp :: Has Empty sig m => QType -> m (QType, QType)
 unQApp = \case{ f :$$ a -> pure (f, a) ; _ -> empty }
 
 
-eval :: Has (Throw Err) sig f => [Type f] -> QType -> f (Type f)
+eval :: Has (Throw Err) sig m => [Type m] -> QType -> m (Type m)
 eval = eval' . map pure
 
-eval' :: Has (Throw Err) sig f => [f (Type f)] -> QType -> f (Type f)
+eval' :: Has (Throw Err) sig m => [m (Type m)] -> QType -> m (Type m)
 eval' env = \case
   QFree n  -> pure (global n)
   QBound n -> env !! getIndex n
@@ -116,10 +116,10 @@ eval' env = \case
   a :--> b -> (:->) <$> eval' env a <*> eval' env b
   l :**  r -> (:*)  <$> eval' env l <*> eval' env r
 
-quote :: Monad f => Type f -> f QType
+quote :: Monad m => Type m -> m QType
 quote = quote' (Level 0)
 
-quote' :: Monad f => Level -> Type f -> f QType
+quote' :: Monad m => Level -> Type m -> m QType
 quote' n = \case
   Type    -> pure QType
   Void    -> pure QVoid
