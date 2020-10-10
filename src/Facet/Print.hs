@@ -20,6 +20,7 @@ module Facet.Print
 , tvar
   -- * Interpreters
 , printCoreType
+, printCoreType'
 , printCoreQType
 , printSurfaceType
 , printCoreExpr
@@ -173,6 +174,22 @@ prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 printCoreType :: Monad m => CT.Type m N.Level -> m Print
 printCoreType = fmap (printCoreQType []) . CT.quote
+
+printCoreType' :: Monad m => CT.Type m Print -> m Print
+printCoreType' = go (N.Level 0)
+  where
+  go d = \case
+    CT.Type    -> pure _Type
+    CT.Void    -> pure _Void
+    CT.Unit    -> pure _Unit
+    t CT.:=> b -> do
+      let n' = cbound (tm t) (tvar (N.getLevel d))
+      t' <- go d (ty t)
+      b' <- go (N.incrLevel d) =<< b (CT.bound n')
+      pure $ (n' ::: t') >~> b'
+    f CT.:$  a -> (either cfree id f $$*) <$> traverse (go d) a
+    a CT.:-> b -> (-->) <$> go d a <*> go d b
+    l CT.:*  r -> (**)  <$> go d l <*> go d r
 
 printCoreQType :: [Print] -> CT.QType -> Print
 printCoreQType = go
