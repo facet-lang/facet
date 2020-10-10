@@ -21,7 +21,7 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
-import           Facet.Elab (elab, elabModule, runErrM)
+import           Facet.Elab (elab, elabModule, rethrow)
 import           Facet.Error
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
@@ -52,8 +52,9 @@ elabPathString path p s = case res of
   where
   res = do
     parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
-    mod <- first mkNotice $ run $ elab (Span (Pos 0 0) (Pos 0 0)) mempty $ elabModule parsed
-    first mkNotice $ runErrM (Span (Pos 0 0) (Pos 0 0)) $ P.printCoreModule mod
+    first mkNotice $ run $ elab (Span (Pos 0 0) (Pos 0 0)) mempty $ do
+      mod <- elabModule parsed
+      rethrow $ P.printCoreModule mod
   input = Input (Pos 0 0) s
   src = sourceFromString path s
   failure = Left . errToNotice src
