@@ -29,6 +29,7 @@ import Facet.Name
 import Facet.Pretty
 import Facet.Stack
 import Facet.Syntax
+import Prettyprinter (pretty)
 
 -- FIXME: computation types
 -- FIXME: effect signatures
@@ -67,7 +68,12 @@ unProduct = \case{ l :* r -> pure (l, r) ; _ -> empty }
 (.$) :: Has (Throw Err) sig f => Type f -> Type f -> f (Type f)
 (f :$ as) .$ a = pure (f :$ (as :> a))
 (_ :=> b) .$ a = b a
-_         .$ _ = throwError $ Err (reflow "can’t apply non-neutral/forall type") []
+f         .$ a = do
+  f' <- quote f
+  a' <- quote a
+  -- FIXME: prettyprint the types.
+  -- FIXME: we probably require some sort of context to print them in?
+  throwError $ Err (reflow "can’t apply non-neutral/forall type") [pretty (show f'), pretty (show a')]
 
 (.$*) :: (Foldable t, Has (Throw Err) sig f) => Type f -> t (Type f) -> f (Type f)
 f .$* as = foldl' (\ f a -> f >>= \ f' -> f' .$ a) (pure f) as
