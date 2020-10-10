@@ -283,11 +283,9 @@ tlam
   -> Check (CE.Expr Elab)
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  _T |-- \ v -> do
-    -- FIXME: this is wrong, we should check under the binder
-    _B' <- elab $ _B v
-    b' <- check (b ::: _B')
-    pure (CE.TLam n (pure . CE.TApp b'))
+  pure (CE.TLam n (\ v -> do
+    _B' <- _T |- elab (_B v)
+    check (b ::: _B')))
 
 lam
   :: UName
@@ -416,13 +414,6 @@ elabDef mname (SM.Def s n d) = local (const s) $ do
 t |- m = local (t:) m
 
 infix 1 |-
-
-(|--) :: Has (Reader Context) sig m => UName ::: Type Elab -> (Type Elab -> m a) -> m a
-t |-- m = do
-  i <- asks @Context length
-  local (t:) (m (CT.bound (Level i))) -- FIXME: this is hopelessly broken, but exists as a temporary workaround until we get the indexing/levelling thing sorted out
-
-infix 1 |--
 
 
 -- Failures
