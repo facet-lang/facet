@@ -7,6 +7,7 @@ module Facet.GHCI
 ( -- * Parsing
   parseString
 , printFile
+  -- * Elaborating
 , elabString
 , elabFile
   -- * Errors
@@ -42,6 +43,8 @@ printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole modu
   Left err -> P.putDoc (prettyNotice err)
   Right m  -> P.prettyPrint (P.printSurfaceModule m)
 
+
+-- Elaborating
 
 elabString :: MonadIO m => Facet (ParserC (Either Notice)) S.Module -> String -> m ()
 elabString = elabPathString Nothing
