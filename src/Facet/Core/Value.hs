@@ -57,6 +57,7 @@ unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
 (f :$ as) $$ a = pure (f :$ (as :> a))
 (_ :=> b) $$ a = b a
 TLam _ b  $$ a = b a
+Lam  _ b  $$ a = b (Var a)
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (Foldable t, Monad f) => Value f a -> t (Value f a) -> f (Value f a)
