@@ -6,11 +6,10 @@ module Facet.Core.Module
 
 import qualified Facet.Core.Expr as Expr
 import qualified Facet.Core.Type as Type
-import           Facet.Error
 import           Facet.Name
 import           Facet.Syntax
 
-data Module = Module MName [(QName, Def (Either Err) ::: Type.Type (Either Err))]
+data Module f = Module MName [(QName, Def f ::: Type.Type f)]
 
 data Def f
   = DTerm (Expr.Expr f)

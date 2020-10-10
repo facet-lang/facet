@@ -396,7 +396,7 @@ elabDecl = go
 elabModule
   :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m
   => SM.Module
-  -> m CM.Module
+  -> m (CM.Module (Either Err))
 -- FIXME: elaborate all the types first, and only then the terms
 elabModule (SM.Module s n ds) = local (const s) $ evalState (mempty @(Env.Env (Either Err))) $ CM.Module n <$> traverse (elabDef n) ds
 

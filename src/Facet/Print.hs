@@ -357,7 +357,7 @@ t .= b = t </> b
 (n ::: t) >-> b = prec FnR (group (align (parens (ann (n ::: t)))) </> arrow <+> b)
 
 
-printCoreModule :: CM.Module -> Print
+printCoreModule :: CM.Module (Either Err) -> Print
 printCoreModule (CM.Module n ds) = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep (map (\ (n, d ::: t) -> ann (cfree n ::: printCoreType t) </> printCoreDef d) ds))
 
 printCoreDef :: CM.Def (Either Err) -> Print
