@@ -21,7 +21,7 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
-import           Facet.Elab (elab, elabModule)
+import           Facet.Elab (elab, elabModule, runErrM)
 import           Facet.Error
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P

@@ -10,7 +10,9 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
-( Context
+( ErrM
+, runErrM
+, Context
 , elab
 , Elab(..)
 , Check(..)
@@ -47,6 +49,7 @@ import           Control.Category ((>>>))
 import           Control.Effect.Parser.Span (Span(..))
 import           Data.Bifunctor (first)
 import           Data.Foldable (toList)
+import           Data.Functor.Identity
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Facet.Carrier.Error.Context
@@ -71,6 +74,11 @@ import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
+
+type ErrM = ErrorC Span Err Identity
+
+runErrM :: Span -> ErrorC Span Err Identity a -> Either (Span, Err) a
+runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
 
 type Context = [UName ::: Type ErrM]
 
