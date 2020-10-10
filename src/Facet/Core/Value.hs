@@ -1,10 +1,13 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
 ( Value(..)
 , global
 , bound
+, unArrow
 ) where
 
+import Control.Effect.Empty
 import Facet.Core.Pattern
 import Facet.Name
 import Facet.Stack
@@ -32,3 +35,7 @@ global n = Left n :$ Nil
 
 bound :: a -> Value f a
 bound n = Right n :$ Nil
+
+
+unArrow :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
+unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
