@@ -3,7 +3,6 @@
 {-# LANGUAGE LambdaCase #-}
 module Facet.Name
 ( Name(..)
-, prettyNameWith
 , eqN
 , elemN
 , UName(..)
@@ -41,11 +40,6 @@ data Name a = Name { hint :: UName, id' :: Int }
 instance Show (Name a) where
   showsPrec _ (Name h i) = shows h . shows i
 
-
-prettyNameWith :: Printer p => (Int -> p) -> Name a -> p
-prettyNameWith var n
-  | T.null (getUName (hint n)) = var (id' n)
-  | otherwise                  = pretty (hint n) <> pretty (id' n)
 
 eqN :: Name a -> Name b -> Bool
 eqN = coerce ((==) :: Name a -> Name a -> Bool)
