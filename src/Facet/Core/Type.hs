@@ -14,6 +14,7 @@ module Facet.Core.Type
 , (.$)
 , (.$*)
 , QType(..)
+, unQApp
 , eval
 , quote
 , quote'
@@ -72,11 +73,13 @@ infixl 9 .$, .$*
 
 
 data QType
-  = QType
+  = QFree QName
+  | QBound Index
+  | QType
   | QVoid
   | QUnit
   | (UName ::: QType) :==> QType
-  | Either QName Index :$$ Stack (QType)
+  | QType :$$ QType
   | QType :--> QType
   | QType :**  QType
   deriving (Eq, Ord, Show)
@@ -86,14 +89,22 @@ infixl 9 :$$
 infixr 0 :-->
 infixl 7 :**
 
+unQApp :: Has Empty sig m => QType -> m (QType, QType)
+unQApp = \case{ f :$$ a -> pure (f, a) ; _ -> empty }
+
 
 eval :: [Type] -> QType -> Either Err Type
 eval env = \case
+  QFree n  -> pure (global n)
+  QBound n -> pure (env !! getIndex n)
   QType    -> pure Type
   QVoid    -> pure Void
   QUnit    -> pure Unit
   t :==> b -> (:=>) <$> traverse (eval env) t <*> pure (\ v -> eval (v:env) b)
-  f :$$ as -> (fmap (indexToLevel (length env)) f :$) <$> traverse (eval env) as
+  f :$$  a -> do
+    f' <- eval env f
+    a' <- eval env a
+    f' .$ a'
   a :--> b -> (:->) <$> eval env a <*> eval env b
   l :**  r -> (:*)  <$> eval env l <*> eval env r
 
@@ -106,6 +117,6 @@ quote' n = \case
   Void    -> pure QVoid
   Unit    -> pure QUnit
   t :=> b -> (:==>) <$> traverse (quote' n) t <*> (quote' (incrLevel n) =<< b (bound n))
-  f :$ as -> (fmap (levelToIndex n) f :$$) <$> traverse (quote' n) as
+  f :$ as -> foldl' (:$$) (either QFree (QBound . levelToIndex n) f) <$> traverse (quote' n) as
   a :-> b -> (:-->) <$> quote' n a <*> quote' n b
   l :*  r -> (:**)  <$> quote' n l <*> quote' n r

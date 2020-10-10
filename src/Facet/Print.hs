@@ -180,11 +180,15 @@ printCoreQType :: [Print] -> CT.QType -> Print
 printCoreQType = go
   where
   go env = \case
+    CT.QFree n  -> cfree n
+    CT.QBound n -> env !! N.getIndex n
     CT.QType    -> _Type
     CT.QVoid    -> _Void
     CT.QUnit    -> _Unit
     t CT.:==> b -> let n' = cbound (tm t) (tvar (length env)) in (n' ::: go env (ty t)) >~> go (n':env) b
-    f CT.:$$ as -> foldl' ($$) (either cfree ((env !!) . N.getIndex) f) (fmap (go env) as)
+    f CT.:$$  a ->
+      let (f', a') = splitl CT.unQApp f
+      in go env f' $$* fmap (go env) (a' :> a)
     a CT.:--> b -> go env a --> go env b
     l CT.:**  r -> go env l **  go env r
 
