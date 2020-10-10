@@ -63,7 +63,7 @@ elabPathString path p s = case parsed >>= first (\ (s, p) -> toNotice (Just Erro
 
 -- Pretty-printing
 
-prettyAnn :: (P.Print ::: T.Type) -> P.Print
+prettyAnn :: (P.Print ::: T.Type (Either Err)) -> P.Print
 prettyAnn (tm ::: ty) = tm S.<+> S.colon S.<+> P.printCoreType ty
 
 

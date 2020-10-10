@@ -173,7 +173,7 @@ prettyQName :: PrecedencePrinter p => N.QName -> p
 prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
-printCoreType :: CT.Type -> Print
+printCoreType :: CT.Type (Either Err) -> Print
 printCoreType = either printErr (printCoreQType []) . CT.quote
 
 printCoreQType :: [Print] -> CT.QType -> Print

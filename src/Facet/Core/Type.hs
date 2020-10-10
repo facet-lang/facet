@@ -22,6 +22,7 @@ module Facet.Core.Type
 ) where
 
 import Control.Effect.Empty
+import Control.Effect.Error
 import Data.Foldable (foldl')
 import Facet.Error
 import Facet.Name
@@ -31,14 +32,14 @@ import Facet.Syntax
 
 -- FIXME: computation types
 -- FIXME: effect signatures
-data Type
+data Type f
   = Type
   | Void
   | Unit
-  | (UName ::: Type) :=> (Type -> Either Err Type)
-  | Either QName Level :$ Stack (Type)
-  | Type :-> Type
-  | Type :*  Type
+  | (UName ::: Type f) :=> (Type f -> f (Type f))
+  | Either QName Level :$ Stack (Type f)
+  | Type f :-> Type f
+  | Type f :*  Type f
 
 infixr 0 :=>
 infixl 9 :$
@@ -46,30 +47,30 @@ infixr 0 :->
 infixl 7 :*
 
 
-global :: QName -> Type
+global :: QName -> Type f
 global n = Left n :$ Nil
 
-bound :: Level -> Type
+bound :: Level -> Type f
 bound n = Right n :$ Nil
 
 
-unForAll :: Has Empty sig m => Type -> m (UName ::: Type, Type -> Either Err Type)
+unForAll :: Has Empty sig m => Type f -> m (UName ::: Type f, Type f -> f (Type f))
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
-unArrow :: Has Empty sig m => Type -> m (Type, Type)
+unArrow :: Has Empty sig m => Type f -> m (Type f, Type f)
 unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
 
-unProduct :: Has Empty sig m => Type -> m (Type, Type)
+unProduct :: Has Empty sig m => Type f -> m (Type f, Type f)
 unProduct = \case{ l :* r -> pure (l, r) ; _ -> empty }
 
 
-(.$) :: Type -> Type -> Either Err Type
+(.$) :: Has (Throw Err) sig f => Type f -> Type f -> f (Type f)
 (f :$ as) .$ a = pure (f :$ (as :> a))
 (_ :=> b) .$ a = b a
-_         .$ _ = Left $ Err (reflow "can’t apply non-neutral/forall type") []
+_         .$ _ = throwError $ Err (reflow "can’t apply non-neutral/forall type") []
 
-(.$*) :: Foldable t => Type -> t Type -> Either Err Type
-f .$* as = foldl' (\ f a -> f >>= \ f' -> f' .$ a) (Right f) as
+(.$*) :: (Foldable t, Has (Throw Err) sig f) => Type f -> t (Type f) -> f (Type f)
+f .$* as = foldl' (\ f a -> f >>= \ f' -> f' .$ a) (pure f) as
 
 infixl 9 .$, .$*
 
@@ -95,10 +96,10 @@ unQApp :: Has Empty sig m => QType -> m (QType, QType)
 unQApp = \case{ f :$$ a -> pure (f, a) ; _ -> empty }
 
 
-eval :: [Type] -> QType -> Either Err Type
-eval = eval' . map Right
+eval :: Has (Throw Err) sig f => [Type f] -> QType -> f (Type f)
+eval = eval' . map pure
 
-eval' :: [Either Err Type] -> QType -> Either Err Type
+eval' :: Has (Throw Err) sig f => [f (Type f)] -> QType -> f (Type f)
 eval' env = \case
   QFree n  -> pure (global n)
   QBound n -> env !! getIndex n
@@ -107,7 +108,7 @@ eval' env = \case
   QUnit    -> pure Unit
   t :==> b -> do
     t' <- traverse (eval' env) t
-    pure (t' :=> \ v -> eval' (Right v:env) b)
+    pure (t' :=> \ v -> eval' (pure v:env) b)
   f :$$  a -> do
     f' <- eval' env f
     a' <- eval' env a
@@ -115,10 +116,10 @@ eval' env = \case
   a :--> b -> (:->) <$> eval' env a <*> eval' env b
   l :**  r -> (:*)  <$> eval' env l <*> eval' env r
 
-quote :: Type -> Either Err QType
+quote :: Monad f => Type f -> f QType
 quote = quote' (Level 0)
 
-quote' :: Level -> Type -> Either Err QType
+quote' :: Monad f => Level -> Type f -> f QType
 quote' n = \case
   Type    -> pure QType
   Void    -> pure QVoid

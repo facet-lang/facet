@@ -18,8 +18,8 @@ import           Facet.Pretty
 data Expr
   = Free QName
   | Bound Level
-  | TLam UName (Type -> Either Err Expr)
-  | TApp Expr Type
+  | TLam UName (Type (Either Err) -> Either Err Expr)
+  | TApp Expr (Type (Either Err))
   | Lam (P.Pattern UName) (Expr -> Either Err Expr)
   | Expr :$ Expr
   | Unit
@@ -44,7 +44,7 @@ infixl 9 :$$
 infixl 7 :**
 
 
-eval :: [Either Type Expr] -> QExpr -> Either Err Expr
+eval :: [Either (Type (Either Err)) Expr] -> QExpr -> Either Err Expr
 eval env = \case
   QFree  n  -> pure (Free n)
   QBound n  -> case env !! getIndex n of

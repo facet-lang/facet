@@ -72,7 +72,7 @@ import           Facet.Syntax
 import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 
-type Context = [UName ::: Type]
+type Context = [UName ::: Type (Either Err)]
 
 implicit :: Env.Env
 implicit = Env.fromList [ (N.T (N.TName (T.pack "Type")), MName (T.pack "Facet") ::: Type) ]
@@ -84,23 +84,23 @@ newtype Elab m a = Elab (Env.Env -> Context -> ErrorC Span Err m a)
   deriving (Algebra (Reader Env.Env :+: Reader Context :+: Error Err :+: Reader Span :+: sig), Applicative, Functor, Monad) via ReaderC Env.Env (ReaderC Context (ErrorC Span Err m))
 
 
-newtype Check m a = Check { runCheck :: Type -> m a }
-  deriving (Algebra (Reader Type :+: sig), Applicative, Functor, Monad) via ReaderC Type m
+newtype Check m a = Check { runCheck :: Type (Either Err) -> m a }
+  deriving (Algebra (Reader (Type (Either Err)) :+: sig), Applicative, Functor, Monad) via ReaderC (Type (Either Err)) m
 
-newtype Synth m a = Synth { synth :: m (a ::: Type) }
+newtype Synth m a = Synth { synth :: m (a ::: Type (Either Err)) }
 
 instance Functor m => Functor (Synth m) where
   fmap f (Synth m) = Synth (first f <$> m)
 
-check :: (Check m a ::: Type) -> m a
+check :: (Check m a ::: Type (Either Err)) -> m a
 check = uncurryAnn runCheck
 
 
 unify
   :: Has (Throw Err) sig m
-  => Type
-  -> Type
-  -> m Type
+  => Type (Either Err)
+  -> Type (Either Err)
+  -> m (Type (Either Err))
 unify t1 t2 = t2 <$ go (Level 0) t1 t2
   where
   go n t1 t2 = case (t1, t2) of
@@ -131,9 +131,9 @@ unify t1 t2 = t2 <$ go (Level 0) t1 t2
 
 switch
   :: Has (Throw Err) sig m
-  => m (a ::: Type)
-  -> Maybe Type
-  -> m (a ::: Type)
+  => m (a ::: Type (Either Err))
+  -> Maybe (Type (Either Err))
+  -> m (a ::: Type (Either Err))
 switch m = \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify _K' _K
   _       -> m
@@ -169,8 +169,8 @@ app ($$) f a = Synth $ do
 
 elabType
   :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw Err) sig m
-  => (ST.Type ::: Maybe Type)
-  -> m (Type ::: Type)
+  => (ST.Type ::: Maybe (Type (Either Err)))
+  -> m (Type (Either Err) ::: Type (Either Err))
 elabType (t ::: _K) = go t _K
   where
   go = ST.out >>> \case
@@ -190,20 +190,20 @@ elabType (t ::: _K) = go t _K
     _synth r = Synth (go r Nothing)
 
 
-_Type :: Applicative m => Synth m Type
+_Type :: Applicative m => Synth m (Type (Either Err))
 _Type = Synth $ pure $ Type ::: Type
 
-_Void :: Applicative m => Synth m Type
+_Void :: Applicative m => Synth m (Type (Either Err))
 _Void = Synth $ pure $ Void ::: Type
 
-_Unit :: Applicative m => Synth m Type
+_Unit :: Applicative m => Synth m (Type (Either Err))
 _Unit = Synth $ pure $ Unit ::: Type
 
 (.$)
   :: Has (Throw Err) sig m
-  => Synth m Type
-  -> Check m Type
-  -> Synth m Type
+  => Synth m (Type (Either Err))
+  -> Check m (Type (Either Err))
+  -> Synth m (Type (Either Err))
 f .$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
@@ -215,9 +215,9 @@ infixl 9 .$
 
 (.*)
   :: Applicative m
-  => Check m Type
-  -> Check m Type
-  -> Synth m Type
+  => Check m (Type (Either Err))
+  -> Check m (Type (Either Err))
+  -> Synth m (Type (Either Err))
 a .* b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -227,9 +227,9 @@ infixl 7 .*
 
 (-->)
   :: Applicative m
-  => Check m Type
-  -> Check m Type
-  -> Synth m Type
+  => Check m (Type (Either Err))
+  -> Check m (Type (Either Err))
+  -> Synth m (Type (Either Err))
 a --> b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -239,9 +239,9 @@ infixr 2 -->
 
 (>~>)
   :: Has (Reader Context) sig m
-  => (UName ::: Check m Type)
-  -> Check m Type
-  -> Synth m Type
+  => (UName ::: Check m (Type (Either Err)))
+  -> Check m (Type (Either Err))
+  -> Synth m (Type (Either Err))
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
   b' <- n ::: _T |- check (b ::: Type)
@@ -255,8 +255,8 @@ infixr 1 >~>
 
 elabExpr
   :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw Err) sig m
-  => (SE.Expr ::: Maybe Type)
-  -> m (CE.Expr ::: Type)
+  => (SE.Expr ::: Maybe (Type (Either Err)))
+  -> m (CE.Expr ::: Type (Either Err))
 elabExpr (t ::: _T) = go t _T
   where
   go = SE.out >>> \case
@@ -351,7 +351,7 @@ clause = go
 pattern
   :: Has (Reader Span :+: Throw Err) sig m
   => SP.Pattern (UName)
-  -> Check m (CP.Pattern (UName ::: Type))
+  -> Check m (CP.Pattern (UName ::: Type (Either Err)))
 pattern = go
   where
   go (SP.In s p) = local (const s) $ case p of
@@ -372,7 +372,7 @@ pattern = go
 elabDecl
   :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw Err) sig m
   => SD.Decl
-  -> m (Check m CE.Expr ::: Type)
+  -> m (Check m CE.Expr ::: Type (Either Err))
 elabDecl = go
   where
   go (SD.In s d) = local (const s) $ case d of
@@ -407,7 +407,7 @@ elabDef
   :: Has (Reader Context :+: Reader Span :+: State Env.Env :+: Throw Err) sig m
   => MName
   -> SM.Def
-  -> m (QName, CM.Def ::: Type)
+  -> m (QName, CM.Def ::: Type (Either Err))
 elabDef mname (SM.Def s n d) = local (const s) $ do
   env <- get @Env.Env
   e' ::: _T <- runReader env $ do
@@ -423,12 +423,12 @@ elabDef mname (SM.Def s n d) = local (const s) $ do
 
 -- Context
 
-(|-) :: Has (Reader Context) sig m => UName ::: Type -> m a -> m a
+(|-) :: Has (Reader Context) sig m => UName ::: Type (Either Err) -> m a -> m a
 t |- m = local (t:) m
 
 infix 1 |-
 
-(|--) :: Has (Reader Context) sig m => UName ::: Type -> (Type -> m a) -> m a
+(|--) :: Has (Reader Context) sig m => UName ::: Type (Either Err) -> (Type (Either Err) -> m a) -> m a
 t |-- m = do
   i <- asks @Context length
   local (t:) (m (CT.bound (Level i))) -- FIXME: this is hopelessly broken, but exists as a temporary workaround until we get the indexing/levelling thing sorted out
@@ -444,7 +444,7 @@ rethrow = either throwError pure
 err :: Has (Throw Err) sig m => ErrDoc -> m a
 err = throwError . (`Err` []) . group
 
-hole :: Has (Throw Err) sig m => (T.Text ::: Maybe Type) -> m (a ::: Type)
+hole :: Has (Throw Err) sig m => (T.Text ::: Maybe (Type (Either Err))) -> m (a ::: Type (Either Err))
 hole (n ::: t) = case t of
   Just t  -> err $ fillSep [pretty "found", pretty "hole", pretty n, colon, P.getPrint (P.printCoreType t)]
   Nothing -> couldNotSynthesize (fillSep [ pretty "hole", pretty n ])
@@ -457,7 +457,7 @@ mismatch msg exp act = err $ msg
   -- line things up nicely for e.g. wrapped function types
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
-couldNotUnify :: Has (Throw Err) sig m => Type -> Type -> m a
+couldNotUnify :: Has (Throw Err) sig m => Type (Either Err) -> Type (Either Err) -> m a
 couldNotUnify t1 t2 = mismatch (reflow "mismatch") (P.getPrint (P.printCoreType t2)) (P.getPrint (P.printCoreType t1))
 
 couldNotSynthesize :: Has (Throw Err) sig m => ErrDoc -> m a
@@ -466,20 +466,20 @@ couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softl
 freeVariable :: Has (Throw Err) sig m => ErrDoc -> m a
 freeVariable v = err $ fillSep [reflow "variable not in scope:", v]
 
-expectChecked :: Has (Throw Err) sig m => Maybe Type -> ErrDoc -> m Type
+expectChecked :: Has (Throw Err) sig m => Maybe (Type (Either Err)) -> ErrDoc -> m (Type (Either Err))
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 
 -- Patterns
 
-expectMatch :: Has (Throw Err) sig m => (Type -> Maybe out) -> ErrDoc -> ErrDoc -> Type -> m out
+expectMatch :: Has (Throw Err) sig m => (Type (Either Err) -> Maybe out) -> ErrDoc -> ErrDoc -> Type (Either Err) -> m out
 expectMatch pat exp s _T = maybe (mismatch s exp (P.getPrint (P.printCoreType _T))) pure (pat _T)
 
-expectQuantifiedType :: Has (Throw Err) sig m => ErrDoc -> Type -> m (UName ::: Type, Type -> Either Err Type)
+expectQuantifiedType :: Has (Throw Err) sig m => ErrDoc -> Type (Either Err) -> m (UName ::: Type (Either Err), Type (Either Err) -> Either Err (Type (Either Err)))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: Has (Throw Err) sig m => ErrDoc -> Type -> m (Type, Type)
+expectFunctionType :: Has (Throw Err) sig m => ErrDoc -> Type (Either Err) -> m (Type (Either Err), Type (Either Err))
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: Has (Throw Err) sig m => ErrDoc -> Type -> m (Type, Type)
+expectProductType :: Has (Throw Err) sig m => ErrDoc -> Type (Either Err) -> m (Type (Either Err), Type (Either Err))
 expectProductType = expectMatch unProduct (pretty "(_, _)")
