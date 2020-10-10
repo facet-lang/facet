@@ -2,8 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Name
-( Name(..)
-, UName(..)
+( UName(..)
 , Index(..)
 , Level(..)
 , levelToIndex
@@ -30,13 +29,6 @@ import qualified Data.Text as T
 import           Data.Traversable (mapAccumR)
 import qualified Prettyprinter as P
 import           Silkscreen
-
-data Name a = Name { hint :: UName, id' :: Int }
-  deriving (Eq, Ord)
-
-instance Show (Name a) where
-  showsPrec _ (Name h i) = shows h . shows i
-
 
 -- | User-supplied name.
 newtype UName = UName { getUName :: Text }
