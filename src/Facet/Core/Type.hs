@@ -14,6 +14,7 @@ module Facet.Core.Type
 , unProduct
 , (.$)
 , (.$*)
+, close
 , QType(..)
 , unQApp
 , eval
@@ -83,6 +84,27 @@ f         .$ a = do
 f .$* as = foldl' (\ f a -> f >>= \ f' -> f' .$ a) (pure f) as
 
 infixl 9 .$, .$*
+
+
+close :: Monad m => [Type m a] -> Type m Level -> m (Type m a)
+close env = \case
+  Type    -> pure Type
+  Void    -> pure Void
+  Unit    -> pure Unit
+  t :=> b -> do
+    t' <- traverse (close env) t
+    pure $ t' :=> \ v -> close (v:env) =<< b (bound (Level (length env)))
+  f :$ as -> do
+    let f' = either global ((env !!) . getIndex . levelToIndex (Level (length env))) f
+    as' <- traverse (close env) as
+    f' .$* as'
+  a :-> b -> (:->) <$> close env a <*> close env b
+  l :*  r -> (:*)  <$> close env l <*> close env r
+  where
+  (f :$ as) .$ a = pure (f :$ (as :> a))
+  (_ :=> b) .$ a = b a
+  _         .$ _ = error "can’t apply non-neutral/forall type"
+  f .$* as = foldl' (\ f a -> f >>= \ f' -> f' .$ a) (pure f) as
 
 
 data QType
