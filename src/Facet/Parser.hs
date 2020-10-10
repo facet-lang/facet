@@ -17,7 +17,6 @@ module Facet.Parser
 
 import           Control.Applicative (Alternative(..))
 import           Control.Carrier.Reader
-import           Control.Lens (review)
 import           Control.Selective
 import           Data.Bool (bool)
 import           Data.Char (isSpace)
@@ -200,12 +199,12 @@ clause :: (Monad p, PositionParsing p) => Facet p (C.Clause E.Expr Span)
 clause = (try (some ((,) <$> position <*> pattern) <* arrow) >>= foldr go body) <?> "clause"
   where
   go (start, p) rest = bindPattern p $ \ p' -> do
-    c <- review C.clause_ . (,) p' <$> rest
+    c <- C.Clause p' <$> rest
     end <- position
     pure $ setSpan (Span start end) c
 
 body :: (Monad p, PositionParsing p) => Facet p (C.Clause E.Expr Span)
-body = review C.body_ <$> expr
+body = C.Body <$> expr
 
 evar :: (Monad p, PositionParsing p) => Facet p (E.Expr Span)
 evar
