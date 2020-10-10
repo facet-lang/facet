@@ -18,7 +18,9 @@ import Facet.Syntax ((:::)(..))
 import Text.Parser.Position (Span)
 
 data Decl = In { ann :: Span, out :: DeclF Decl }
-  deriving (Show)
+
+instance Show Decl where
+  showsPrec p = showsPrec p . out
 
 forAll_ :: Prism' Decl (Span, (UName ::: Type, Decl))
 forAll_ = prism' (uncurry In . fmap (uncurry (:=>))) (\case{ In s (t :=> b) -> Just (s, (t, b)) ; _ -> Nothing })
