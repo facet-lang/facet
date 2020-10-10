@@ -45,6 +45,7 @@ infixl 9 :$$
 infixl 7 :**
 
 
+-- FIXME: consider merging Type and Expr into a single datatype.
 eval :: Has (Throw Err) sig m => [Either (Type m) (Expr m)] -> QExpr -> m (Expr m)
 eval env = \case
   QFree  n  -> pure (Free n)
