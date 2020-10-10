@@ -86,10 +86,10 @@ runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
 type Context = [UName ::: Type ErrM]
 
 elab :: Span -> Context -> Elab a -> Either (Span, Err) a
-elab s c (Elab m) = run (runError (curry (pure . Left)) (pure . Right) s (runReader mempty (runReader c m)))
+elab s c (Elab m) = run (runError (curry (pure . Left)) (pure . Right) s (runReader c (runReader mempty m)))
 
-newtype Elab a = Elab (ReaderC Context (ReaderC (Env.Env ErrM) (ErrorC Span Err Identity)) a)
-  deriving (Algebra (Reader Context :+: Reader (Env.Env ErrM) :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
+newtype Elab a = Elab (ReaderC (Env.Env ErrM) (ReaderC Context (ErrorC Span Err Identity)) a)
+  deriving (Algebra (Reader (Env.Env ErrM) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
 
 
 newtype Check m a = Check { runCheck :: Type ErrM -> m a }
