@@ -156,9 +156,10 @@ bound
   -> Synth Level
 bound n = Synth $ do
   ctx <- ask @Context
+  let level = indexToLevel (length ctx) n
   case ctx !? getIndex n of
-    Just (_ ::: _T) -> pure (indexToLevel (length ctx) n ::: _T)
-    Nothing         -> err (reflow "bad context")
+    Just (_ ::: _T) -> pure (level ::: _T)
+    Nothing         -> err $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (length ctx) ]
 
 ($$)
   :: Synth (Value Elab Level)
