@@ -390,6 +390,7 @@ elabModule
   -> m (CM.Module Elab)
 elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab)) $ do
   -- FIXME: elaborate all the types first, and only then the terms
+  -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (SM.Def s n d) -> setSpan s $ do
     env <- get @(Env.Env Elab)
     e' ::: _T <- runReader @Context [] . runReader env $ do
