@@ -247,7 +247,7 @@ elabExpr
   -> Elab (Expr Elab Level ::: Type Elab Level)
 elabExpr = go
   where
-  go = SE.out >>> \case
+  go = \case
     SE.Free  n -> switch $ CV.global <$> global n
     SE.Bound n -> switch $ CV.bound  <$> bound n
     SE.Hole  n -> \ _T -> hole (n ::: _T)

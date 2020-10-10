@@ -354,7 +354,7 @@ printCoreQExpr = go
 printSurfaceExpr :: Stack Print -> SE.Expr -> Print
 printSurfaceExpr = go
   where
-  go env = SE.out >>> \case
+  go env = \case
     SE.Free n  -> sfree n
     SE.Bound n -> env ! N.getIndex n
     SE.Hole n  -> hole n
