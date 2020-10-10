@@ -388,7 +388,9 @@ elabModule
   => SM.Module
   -> m (CM.Module Elab)
 -- FIXME: elaborate all the types first, and only then the terms
-elabModule (SM.Module s n ds) = local (const s) $ evalState (mempty @(Env.Env Elab)) $ CM.Module n <$> traverse (elabDef n) ds
+elabModule (SM.Module s n ds) = local (const s) . evalState (mempty @(Env.Env Elab)) $ do
+  defs <- traverse (elabDef n) ds
+  pure $ CM.Module n defs
 
 elabDef
   :: Has (Reader Span :+: State (Env.Env Elab) :+: Throw Err) sig m
