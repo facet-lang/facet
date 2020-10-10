@@ -11,7 +11,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
 ( Context
-, implicit
 , elab
 , Elab(..)
 , Check(..)
@@ -74,9 +73,6 @@ import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 
 type Context = [UName ::: Type (Either Err)]
-
-implicit :: Env.Env
-implicit = Env.fromList [ (N.T (N.TName (T.pack "Type")), MName (T.pack "Facet") ::: Type) ]
 
 elab :: Applicative m => Span -> Context -> Elab m a -> m (Either (Span, Err) a)
 elab s c (Elab m) = runError (curry (pure . Left)) (pure . Right) s (runReader c m)
