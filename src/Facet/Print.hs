@@ -20,6 +20,7 @@ module Facet.Print
 , tvar
   -- * Interpreters
 , printCoreValue
+, printCoreValue'
 , printCoreType
 , printCoreType'
 , printCoreQType
@@ -194,6 +195,29 @@ printCoreValue = go (N.Level 0)
     CV.TPrd l r -> (**)  <$> go d l <*> go d r
     CV.Prd  l r -> (**)  <$> go d l <*> go d r
     where
+    name n = cbound n (tvar (N.getLevel d))
+
+printCoreValue' :: Monad m => Stack Print -> CV.Value m N.Level -> m Print
+printCoreValue' = go
+  where
+  go env = \case
+    CV.Type     -> pure _Type
+    CV.Void     -> pure _Void
+    CV.UnitT    -> pure _Unit
+    CV.Unit     -> pure _Unit
+    t CV.:=> b  -> do
+      let n' = name (tm t)
+      t' <- go env (ty t)
+      b' <- go (env:>n') =<< b (CV.bound d)
+      pure $ (n' ::: t') >~> b'
+    CV.TLam n b -> let n' = name n in lam (braces n') <$> (go (env:>n') =<< b (CV.bound d))
+    CV.Lam  n b -> let n' = name n in lam         n'  <$> (go (env:>n') =<< b (CV.bound d))
+    f CV.:$ as  -> (either cfree ((env !) . N.getIndex . N.levelToIndex d) f $$*) <$> traverse (go env) as
+    a CV.:-> b  -> (-->) <$> go env a <*> go env b
+    CV.TPrd l r -> (**)  <$> go env l <*> go env r
+    CV.Prd  l r -> (**)  <$> go env l <*> go env r
+    where
+    d = N.Level (length env)
     name n = cbound n (tvar (N.getLevel d))
 
 
