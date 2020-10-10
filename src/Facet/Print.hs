@@ -21,7 +21,6 @@ module Facet.Print
   -- * Interpreters
 , printCoreValue
 , printCoreType
-, printAType
 , printCoreType'
 , printCoreQType
 , printSurfaceType
@@ -200,9 +199,6 @@ printCoreValue = go (N.Level 0)
 
 printCoreType :: Monad m => CT.Type m N.Level -> m Print
 printCoreType = fmap (printCoreQType []) . CT.quote
-
-printAType :: Monad m => CT.AType m -> m Print
-printAType = printCoreType' . CT.getAType
 
 printCoreType' :: Monad m => CT.Type m Print -> m Print
 printCoreType' = go (N.Level 0)
