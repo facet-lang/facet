@@ -97,15 +97,15 @@ newtype Elab a = Elab (ReaderC (Env.Env ErrM) (ReaderC Context (ErrorC Span Err 
   deriving (Algebra (Reader (Env.Env ErrM) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
 
 
-newtype Check m a = Check { runCheck :: Type ErrM -> m a }
-  deriving (Algebra (Reader (Type ErrM) :+: sig), Applicative, Functor, Monad) via ReaderC (Type ErrM) m
+newtype Check a = Check { runCheck :: Type ErrM -> Elab a }
+  deriving (Algebra (Reader (Type ErrM) :+: Reader (Env.Env ErrM) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad) via ReaderC (Type ErrM) Elab
 
-newtype Synth m a = Synth { synth :: m (a ::: Type ErrM) }
+newtype Synth a = Synth { synth :: Elab (a ::: Type ErrM) }
 
-instance Functor m => Functor (Synth m) where
+instance Functor Synth where
   fmap f (Synth m) = Synth (first f <$> m)
 
-check :: (Check m a ::: Type ErrM) -> m a
+check :: (Check a ::: Type ErrM) -> Elab a
 check = uncurryAnn runCheck
 
 
@@ -152,25 +152,22 @@ switch m = \case
   _       -> m
 
 global
-  :: (Has (Reader (Env.Env ErrM) :+: Throw Err) sig m)
-  => N.DName
-  -> Synth m QName
+  :: N.DName
+  -> Synth QName
 global n = Synth $ asks (Env.lookup n) >>= \case
   Just b  -> pure (tm b :.: n ::: ty b)
   Nothing -> freeVariable (pretty n)
 
 bound
-  :: Has (Reader Context :+: Throw Err) sig m
-  => Index
-  -> Synth m Level
+  :: Index
+  -> Synth Level
 bound n = Synth $ asks @Context (\ ctx -> first (const (indexToLevel (length ctx) n)) (ctx !! getIndex n))
 
 app
-  :: Has (Reader Span :+: Throw Err) sig m
-  => (a -> a -> a)
-  -> Synth m a
-  -> Check m a
-  -> Synth m a
+  :: (a -> a -> a)
+  -> Synth a
+  -> Check a
+  -> Synth a
 app ($$) f a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
@@ -181,9 +178,8 @@ app ($$) f a = Synth $ do
 -- Types
 
 elabType
-  :: Has (Reader Context :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m
-  => (ST.Type ::: Maybe (Type ErrM))
-  -> m (Type ErrM ::: Type ErrM)
+  :: (ST.Type ::: Maybe (Type ErrM))
+  -> Elab (Type ErrM ::: Type ErrM)
 elabType (t ::: _K) = go t _K
   where
   go = ST.out >>> \case
@@ -203,20 +199,19 @@ elabType (t ::: _K) = go t _K
     _synth r = Synth (go r Nothing)
 
 
-_Type :: Applicative m => Synth m (Type ErrM)
+_Type :: Synth (Type ErrM)
 _Type = Synth $ pure $ Type ::: Type
 
-_Void :: Applicative m => Synth m (Type ErrM)
+_Void :: Synth (Type ErrM)
 _Void = Synth $ pure $ Void ::: Type
 
-_Unit :: Applicative m => Synth m (Type ErrM)
+_Unit :: Synth (Type ErrM)
 _Unit = Synth $ pure $ Unit ::: Type
 
 (.$)
-  :: Has (Reader Span :+: Throw Err) sig m
-  => Synth m (Type ErrM)
-  -> Check m (Type ErrM)
-  -> Synth m (Type ErrM)
+  :: Synth (Type ErrM)
+  -> Check (Type ErrM)
+  -> Synth (Type ErrM)
 f .$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
@@ -227,10 +222,9 @@ f .$ a = Synth $ do
 infixl 9 .$
 
 (.*)
-  :: Applicative m
-  => Check m (Type ErrM)
-  -> Check m (Type ErrM)
-  -> Synth m (Type ErrM)
+  :: Check (Type ErrM)
+  -> Check (Type ErrM)
+  -> Synth (Type ErrM)
 a .* b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -239,10 +233,9 @@ a .* b = Synth $ do
 infixl 7 .*
 
 (-->)
-  :: Applicative m
-  => Check m (Type ErrM)
-  -> Check m (Type ErrM)
-  -> Synth m (Type ErrM)
+  :: Check (Type ErrM)
+  -> Check (Type ErrM)
+  -> Synth (Type ErrM)
 a --> b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -251,10 +244,9 @@ a --> b = Synth $ do
 infixr 2 -->
 
 (>~>)
-  :: Has (Reader Context) sig m
-  => (UName ::: Check m (Type ErrM))
-  -> Check m (Type ErrM)
-  -> Synth m (Type ErrM)
+  :: (UName ::: Check (Type ErrM))
+  -> Check (Type ErrM)
+  -> Synth (Type ErrM)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
   b' <- n ::: _T |- check (b ::: Type)
@@ -267,9 +259,8 @@ infixr 1 >~>
 -- Expressions
 
 elabExpr
-  :: Has (Reader Context :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m
-  => (SE.Expr ::: Maybe (Type ErrM))
-  -> m (CE.Expr ErrM ::: Type ErrM)
+  :: (SE.Expr ::: Maybe (Type ErrM))
+  -> Elab (CE.Expr ErrM ::: Type ErrM)
 elabExpr (t ::: _T) = go t _T
   where
   go = SE.out >>> \case
@@ -288,17 +279,15 @@ elabExpr (t ::: _T) = go t _T
 
 
 ($$)
-  :: Has (Reader Span :+: Throw Err) sig m
-  => Synth m (CE.Expr ErrM)
-  -> Check m (CE.Expr ErrM)
-  -> Synth m (CE.Expr ErrM)
+  :: Synth (CE.Expr ErrM)
+  -> Check (CE.Expr ErrM)
+  -> Synth (CE.Expr ErrM)
 ($$) = app (CE.:$)
 
 tlam
-  :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m
-  => UName
-  -> Check m (CE.Expr ErrM)
-  -> Check m (CE.Expr ErrM)
+  :: UName
+  -> Check (CE.Expr ErrM)
+  -> Check (CE.Expr ErrM)
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
   _T |-- \ v -> do
@@ -308,10 +297,9 @@ tlam n b = Check $ \ ty -> do
     pure (CE.TLam n (pure . CE.TApp b'))
 
 lam
-  :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m
-  => UName
-  -> Check m (CE.Expr ErrM)
-  -> Check m (CE.Expr ErrM)
+  :: UName
+  -> Check (CE.Expr ErrM)
+  -> Check (CE.Expr ErrM)
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   n ::: _A |- do
@@ -319,14 +307,13 @@ lam n b = Check $ \ _T -> do
     b' <- check (b ::: _B)
     pure (CE.Lam (CP.Var n) (pure . (b' CE.:$)))
 
-unit :: Applicative m => Synth m (CE.Expr ErrM)
+unit :: Synth (CE.Expr ErrM)
 unit = Synth . pure $ CE.Unit ::: Unit
 
 (**)
-  :: Has (Reader Span :+: Throw Err) sig m
-  => Check m (CE.Expr ErrM)
-  -> Check m (CE.Expr ErrM)
-  -> Check m (CE.Expr ErrM)
+  :: Check (CE.Expr ErrM)
+  -> Check (CE.Expr ErrM)
+  -> Check (CE.Expr ErrM)
 l ** r = Check $ \ _T -> do
   (_L, _R) <- expectProductType (reflow "when checking product") _T
   l' <- check (l ::: _L)
@@ -334,9 +321,8 @@ l ** r = Check $ \ _T -> do
   pure (l' CE.:* r')
 
 comp
-  :: (Has (Reader Context :+: Reader Span :+: Throw Err) sig m)
-  => [SC.Clause (Check m (CE.Expr ErrM))]
-  -> Check m (CE.Expr ErrM)
+  :: [SC.Clause (Check (CE.Expr ErrM))]
+  -> Check (CE.Expr ErrM)
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
@@ -344,9 +330,8 @@ comp cs = do
   pure $ head cs'
 
 clause
-  :: (Has (Reader Context :+: Reader Span :+: Throw Err) sig m)
-  => SC.Clause (Check m (CE.Expr ErrM))
-  -> Check m (CE.Expr ErrM)
+  :: SC.Clause (Check (CE.Expr ErrM))
+  -> Check (CE.Expr ErrM)
 clause = go
   where
   go = SC.out >>> \case
@@ -362,9 +347,8 @@ clause = go
 
 
 pattern
-  :: Has (Reader Span :+: Throw Err) sig m
-  => SP.Pattern (UName)
-  -> Check m (CP.Pattern (UName ::: Type ErrM))
+  :: SP.Pattern (UName)
+  -> Check (CP.Pattern (UName ::: Type ErrM))
 pattern = go
   where
   go (SP.In s p) = local (const s) $ case p of
@@ -383,9 +367,8 @@ pattern = go
 -- Declarations
 
 elabDecl
-  :: Has (Reader Context :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m
-  => SD.Decl
-  -> m (Check m (CE.Expr ErrM) ::: Type ErrM)
+  :: SD.Decl
+  -> Elab (Check (CE.Expr ErrM) ::: Type ErrM)
 elabDecl = go
   where
   go (SD.In s d) = local (const s) $ case d of
@@ -424,8 +407,8 @@ elabDef
 elabDef mname (SM.Def s n d) = local (const s) $ do
   env <- get @(Env.Env ErrM)
   e' ::: _T <- runReader @Context [] . runReader env $ do
-    e ::: _T <- elabDecl d
-    e' <- check (e ::: _T)
+    e ::: _T <- elab $ elabDecl d
+    e' <- elab $ check (e ::: _T)
     pure $ e' ::: _T
 
   modify $ Env.insert (mname :.: n ::: _T)
