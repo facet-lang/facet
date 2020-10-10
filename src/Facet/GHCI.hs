@@ -46,7 +46,7 @@ elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) S.Module -> String -> m ()
-elabPathString path p s = case parsed >>= first mkNotice . run . elab (Span (Pos 0 0) (Pos 0 0)) mempty . elabModule >>= first (mkNotice . (,) (Span (Pos 0 0) (Pos 0 0))) . P.printCoreModule of
+elabPathString path p s = case parsed >>= first mkNotice . run . elab (Span (Pos 0 0) (Pos 0 0)) mempty . elabModule >>= first mkNotice . runErrM (Span (Pos 0 0) (Pos 0 0)) . P.printCoreModule of
   Left err -> P.putDoc (prettyNotice err)
   Right a  -> P.prettyPrint a
   where
