@@ -36,7 +36,6 @@ module Facet.Print
 ) where
 
 import           Control.Applicative ((<**>))
-import           Control.Category ((>>>))
 import           Control.Lens (preview)
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
@@ -66,7 +65,6 @@ import qualified Prettyprinter.Render.Terminal as ANSI
 import qualified Silkscreen as P
 import           Silkscreen.Printer.Prec hiding (Printer)
 import           Silkscreen.Printer.Rainbow hiding (Printer)
-import           Text.Parser.Position
 
 prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = P.putDoc . getPrint
@@ -370,8 +368,8 @@ printSurfaceComp :: Stack Print -> [SC.Clause (SE.Expr a)] -> Print
 printSurfaceComp env = comp . commaSep . map (printSurfaceClause env)
 
 printSurfaceClause :: Stack Print -> SC.Clause (SE.Expr a) -> Print
-printSurfaceClause env = SC.out >>> \case
-  SC.Clause p b -> let { p' = sbound <$> p ; env' = foldl (:>) env p' } in printSurfacePattern p' <+> case SC.out b of
+printSurfaceClause env = \case
+  SC.Clause p b -> let { p' = sbound <$> p ; env' = foldl (:>) env p' } in printSurfacePattern p' <+> case b of
     SC.Body b -> arrow <> group (nest 2 (line <> printSurfaceExpr env' b))
     _         -> printSurfaceClause env' b
   SC.Body e     -> prec Expr (printSurfaceExpr env e)

@@ -43,7 +43,6 @@ module Facet.Elab
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Category ((>>>))
 import           Control.Effect.Lift
 import           Control.Effect.Parser.Span (Span(..))
 import           Data.Bifunctor (first)
@@ -307,7 +306,7 @@ clause
   -> Check (Expr Elab Level)
 clause = go
   where
-  go = SC.out >>> \case
+  go = \case
     -- FIXME: deal with other patterns.
     SC.Clause (SP.In _ (SP.Var n)) b -> Check $ \ _T -> do
       (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
