@@ -8,6 +8,7 @@ module Facet.Stack
 ) where
 
 import Data.Foldable (foldl')
+import GHC.Stack
 
 data Stack a
   = Nil
@@ -31,8 +32,8 @@ fromList = foldl' (:>) Nil
 -- | Unsafe indexing (throws an exception for out-of-bounds indices).
 --
 -- The index functions like a De Bruijn index, counting down from the /top/ of the stack (i.e. right-to-left).
-(!) :: Stack a -> Int -> a
-as' ! i' = go as' i'
+(!) :: HasCallStack => Stack a -> Int -> a
+as' ! i' = withFrozenCallStack $ go as' i'
   where
   go (as :> a) i
     | i == 0     = a
