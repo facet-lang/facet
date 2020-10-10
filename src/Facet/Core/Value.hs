@@ -8,7 +8,7 @@ import Facet.Stack
 import Facet.Syntax
 
 data Value f a
-  = Value
+  = Type
   | Void
   | Unit
   | (UName ::: Value f a) :=> (Value f a -> f (Value f a))
