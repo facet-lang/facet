@@ -423,13 +423,13 @@ t .= b = t </> b
 
 printCoreModule :: Monad m => CM.Module m -> m Print
 printCoreModule (CM.Module n ds)
-  =   (ann (var (prettyMName n) ::: pretty "Module") </>) . block . vsep <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> printCoreType t <*> printCoreDef d) ds
+  =   (ann (var (prettyMName n) ::: pretty "Module") </>) . block . vsep <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> printCoreValue' Nil t <*> printCoreDef d) ds
 
 printCoreDef :: Monad m => CM.Def m -> m Print
 printCoreDef = \case
-  CM.DTerm b  -> printCoreExpr b
-  CM.DType b  -> printCoreType b
-  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse printCoreType . first pretty) cs
+  CM.DTerm b  -> printCoreValue' Nil b
+  CM.DType b  -> printCoreValue' Nil b
+  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (printCoreValue' Nil) . first pretty) cs
 
 
 printSurfaceModule :: SM.Module -> Print

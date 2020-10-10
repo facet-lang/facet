@@ -24,7 +24,6 @@ module Facet.Elab
 , elabType
 , _Type
 , _Unit
-, (.$)
 , (.*)
 , (-->)
 , (>~>)
@@ -54,11 +53,10 @@ import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Data.Traversable (for)
 import           Facet.Carrier.Error.Context
-import qualified Facet.Core.Expr as CE
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
-import           Facet.Core.Type hiding (bound, global, (.$))
-import qualified Facet.Core.Type as CT
+import           Facet.Core.Value hiding (bound, global, ($$))
+import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
 import           Facet.Error
 import           Facet.Name (Index(..), Level(..), QName(..), UName, incrLevel, indexToLevel)
@@ -114,7 +112,6 @@ unify t1 t2 = t2 <$ go (Level 0) t1 t2
   go n t1 t2 = case (t1, t2) of
     (Type,      Type)       -> pure ()
     (Unit,      Unit)       -> pure ()
-    (l1 :* r1,  l2 :* r2)   -> go n l1 l2 *> go n r1 r2
     -- FIXME: we try to unify Type-the-global with Type-the-constant
     -- FIXME: resolve globals to try to progress past certain inequalities
     (f1 :$ a1,  f2 :$ a2)
@@ -122,11 +119,13 @@ unify t1 t2 = t2 <$ go (Level 0) t1 t2
       , Just _ <- goS a1 a2 -> pure ()
     (a1 :-> b1, a2 :-> b2)  -> go n a1 a2 *> go n b1 b2
     (t1 :=> b1, t2 :=> b2)  -> do
-      let v = CT.bound n
+      let v = CV.bound n
       go n (ty t1) (ty t2)
       b1' <- elab $ b1 v
       b2' <- elab $ b2 v
       go (incrLevel n) b1' b2'
+    (TPrd l1 r1, TPrd l2 r2)   -> go n l1 l2 *> go n r1 r2
+    (Prd  l1 r1, Prd  l2 r2)   -> go n l1 l2 *> go n r1 r2
     -- FIXME: build and display a diff of the root types
     _                       -> couldNotUnify t1 t2
     where
@@ -161,16 +160,15 @@ bound n = Synth $ do
     Just (_ ::: _T) -> pure (indexToLevel (length ctx) n ::: _T)
     Nothing         -> err (reflow "bad context")
 
-app
-  :: (a -> a -> a)
-  -> Synth a
-  -> Check a
-  -> Synth a
-app ($$) f a = Synth $ do
+($$)
+  :: Synth (Value Elab Level)
+  -> Check (Value Elab Level)
+  -> Synth (Value Elab Level)
+f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
   a' <- check (a ::: _A)
-  pure $ f' $$ a' ::: _B
+  (::: _B) <$> f' CV.$$ a'
 
 
 -- Types
@@ -182,14 +180,14 @@ elabType
 elabType = go
   where
   go = ST.out >>> \case
-    ST.Free  n -> switch $ CT.global <$> global n
-    ST.Bound n -> switch $ CT.bound <$> bound n
+    ST.Free  n -> switch $ CV.global <$> global n
+    ST.Bound n -> switch $ CV.bound  <$> bound n
     ST.Hole  n -> \ _K -> hole (n ::: _K)
     ST.Type    -> switch $ _Type
     ST.Void    -> switch $ _Void
     ST.Unit    -> switch $ _Unit
     t ST.:=> b -> switch $ fmap _check t >~> _check b
-    f ST.:$  a -> switch $ _synth f .$  _check a
+    f ST.:$  a -> switch $ _synth f $$  _check a
     a ST.:-> b -> switch $ _check a --> _check b
     l ST.:*  r -> switch $ _check l .*  _check r
     ST.Loc s b -> setSpan s . go b
@@ -207,19 +205,6 @@ _Void = Synth $ pure $ Void ::: Type
 _Unit :: Synth (Type Elab Level)
 _Unit = Synth $ pure $ Unit ::: Type
 
-(.$)
-  :: Synth (Type Elab Level)
-  -> Check (Type Elab Level)
-  -> Synth (Type Elab Level)
-f .$ a = Synth $ do
-  f' ::: _F <- synth f
-  (_A, _B) <- expectFunctionType (pretty "in application") _F
-  a' <- check (a ::: _A)
-  fa' <- elab $ f' CT..$ a'
-  pure $ fa' ::: _B
-
-infixl 9 .$
-
 (.*)
   :: Check (Type Elab Level)
   -> Check (Type Elab Level)
@@ -227,7 +212,7 @@ infixl 9 .$
 a .* b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
-  pure $ (a' :* b') ::: Type
+  pure $ (TPrd a' b') ::: Type
 
 infixl 7 .*
 
@@ -248,6 +233,7 @@ infixr 2 -->
   -> Synth (Type Elab Level)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
+  -- FIXME: this is wrong, we should push this onto the context
   pure $ (n ::: _T :=> \ v -> n ::: _T |- check (b ::: Type)) ::: Type
 
 infixr 1 >~>
@@ -258,12 +244,12 @@ infixr 1 >~>
 elabExpr
   :: SE.Expr
   -> Maybe (Type Elab Level)
-  -> Elab (CE.Expr Elab Level ::: Type Elab Level)
+  -> Elab (Expr Elab Level ::: Type Elab Level)
 elabExpr = go
   where
   go = SE.out >>> \case
-    SE.Free  n -> switch $ CE.Free  <$> global n
-    SE.Bound n -> switch $ CE.Bound <$> bound n
+    SE.Free  n -> switch $ CV.global <$> global n
+    SE.Bound n -> switch $ CV.bound  <$> bound n
     SE.Hole  n -> \ _T -> hole (n ::: _T)
     f SE.:$  a -> switch $ _synth f $$ _check a
     l SE.:*  r -> check (_check l ** _check r) (pretty "product")
@@ -276,49 +262,43 @@ elabExpr = go
     check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
 
-($$)
-  :: Synth (CE.Expr Elab Level)
-  -> Check (CE.Expr Elab Level)
-  -> Synth (CE.Expr Elab Level)
-($$) = app (CE.:$)
-
 tlam
   :: UName
-  -> Check (CE.Expr Elab Level)
-  -> Check (CE.Expr Elab Level)
+  -> Check (Expr Elab Level)
+  -> Check (Expr Elab Level)
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  pure (CE.TLam n (\ v -> _T |- do
+  pure (TLam n (\ v -> _T |- do
     _B' <- elab (_B v)
     check (b ::: _B')))
 
 lam
   :: UName
-  -> Check (CE.Expr Elab Level)
-  -> Check (CE.Expr Elab Level)
+  -> Check (Expr Elab Level)
+  -> Check (Expr Elab Level)
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   n ::: _A |- do
     -- FIXME: this is wrong, we should check under the binder
     b' <- check (b ::: _B)
-    pure (CE.Lam (CP.Var n) (pure . (b' CE.:$)))
+    pure (Lam n (b' CV.$$))
 
-unit :: Synth (CE.Expr Elab Level)
-unit = Synth . pure $ CE.Unit ::: Unit
+unit :: Synth (Expr Elab Level)
+unit = Synth . pure $ Unit ::: UnitT
 
 (**)
-  :: Check (CE.Expr Elab Level)
-  -> Check (CE.Expr Elab Level)
-  -> Check (CE.Expr Elab Level)
+  :: Check (Expr Elab Level)
+  -> Check (Expr Elab Level)
+  -> Check (Expr Elab Level)
 l ** r = Check $ \ _T -> do
   (_L, _R) <- expectProductType (reflow "when checking product") _T
   l' <- check (l ::: _L)
   r' <- check (r ::: _R)
-  pure (l' CE.:* r')
+  pure (Prd l' r')
 
 comp
-  :: [SC.Clause (Check (CE.Expr Elab Level))]
-  -> Check (CE.Expr Elab Level)
+  :: [SC.Clause (Check (Expr Elab Level))]
+  -> Check (Expr Elab Level)
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
@@ -326,18 +306,18 @@ comp cs = do
   pure $ head cs'
 
 clause
-  :: SC.Clause (Check (CE.Expr Elab Level))
-  -> Check (CE.Expr Elab Level)
+  :: SC.Clause (Check (Expr Elab Level))
+  -> Check (Expr Elab Level)
 clause = go
   where
   go = SC.out >>> \case
-    SC.Clause p b -> Check $ \ _T -> do
+    -- FIXME: deal with other patterns.
+    SC.Clause (SP.In _ (SP.Var n)) b -> Check $ \ _T -> do
       (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
-      p' <- check (pattern p ::: _A)
-      foldr (|-) (do
+      -- p' <- check (pattern p ::: _A)
+      n ::: _A |- do
         -- FIXME: this is wrong.
-        b' <- check (go b ::: _B)
-        pure (CE.Lam (tm <$> p') (pure . (b' CE.:$)))) p'
+        pure (Lam n (\ v -> check (go b ::: _B)))
     SC.Body e   -> e
     SC.Loc s c  -> setSpan s (go c)
 
@@ -364,7 +344,7 @@ pattern = go
 
 elabDecl
   :: SD.Decl
-  -> Check (CE.Expr Elab Level) ::: Check (Type Elab Level)
+  -> Check (Expr Elab Level) ::: Check (Type Elab Level)
 elabDecl = go
   where
   go (SD.In s d) = setSpans s $ case d of
@@ -424,7 +404,7 @@ setSpan = local . const
 
 printType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Type Elab Level -> m ErrDoc
 -- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
-printType t = P.getPrint <$> elab (P.printCoreType t)
+printType t = P.getPrint <$> elab (P.printCoreValue' Nil t)
 
 err :: Has (Throw Err) sig m => ErrDoc -> m a
 err = throwError . (`Err` []) . group
@@ -474,4 +454,4 @@ expectFunctionType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader S
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
 expectProductType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type Elab Level -> m (Type Elab Level, Type Elab Level)
-expectProductType = expectMatch unProduct (pretty "(_, _)")
+expectProductType = expectMatch unProductT (pretty "(_, _)")

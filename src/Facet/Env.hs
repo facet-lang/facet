@@ -10,7 +10,7 @@ module Facet.Env
 
 import           Data.Coerce
 import qualified Data.Map as Map
-import           Facet.Core.Type
+import           Facet.Core.Value
 import           Facet.Name
 import           Facet.Syntax
 import           Prelude hiding (lookup)

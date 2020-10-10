@@ -4,14 +4,13 @@ module Facet.Core.Module
 , Def(..)
 ) where
 
-import qualified Facet.Core.Expr as Expr
-import qualified Facet.Core.Type as Type
-import           Facet.Name
-import           Facet.Syntax
+import Facet.Core.Value (Expr, Type)
+import Facet.Name
+import Facet.Syntax
 
-data Module f = Module MName [(QName, Def f ::: Type.Type f Level)]
+data Module f = Module MName [(QName, Def f ::: Type f Level)]
 
 data Def f
-  = DTerm (Expr.Expr f Level)
-  | DType (Type.Type f Level)
-  | DData [CName ::: Type.Type f Level]
+  = DTerm (Expr f Level)
+  | DType (Type f Level)
+  | DData [CName ::: Type f Level]
