@@ -136,7 +136,7 @@ switch m = \case
   _       -> m
 
 global
-  :: (Has (Reader Env.Env :+: Throw Err) sig m)
+  :: (Has (Reader (Env.Env (Either Err)) :+: Throw Err) sig m)
   => N.DName
   -> Synth m QName
 global n = Synth $ asks (Env.lookup n) >>= \case
@@ -165,7 +165,7 @@ app ($$) f a = Synth $ do
 -- Types
 
 elabType
-  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw Err) sig m
+  :: Has (Reader Context :+: Reader (Env.Env (Either Err)) :+: Reader Span :+: Throw Err) sig m
   => (ST.Type ::: Maybe (Type (Either Err)))
   -> m (Type (Either Err) ::: Type (Either Err))
 elabType (t ::: _K) = go t _K
@@ -251,7 +251,7 @@ infixr 1 >~>
 -- Expressions
 
 elabExpr
-  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw Err) sig m
+  :: Has (Reader Context :+: Reader (Env.Env (Either Err)) :+: Reader Span :+: Throw Err) sig m
   => (SE.Expr ::: Maybe (Type (Either Err)))
   -> m (CE.Expr ::: Type (Either Err))
 elabExpr (t ::: _T) = go t _T
@@ -367,7 +367,7 @@ pattern = go
 -- Declarations
 
 elabDecl
-  :: Has (Reader Context :+: Reader Env.Env :+: Reader Span :+: Throw Err) sig m
+  :: Has (Reader Context :+: Reader (Env.Env (Either Err)) :+: Reader Span :+: Throw Err) sig m
   => SD.Decl
   -> m (Check m CE.Expr ::: Type (Either Err))
 elabDecl = go
@@ -398,15 +398,15 @@ elabModule
   => SM.Module
   -> m CM.Module
 -- FIXME: elaborate all the types first, and only then the terms
-elabModule (SM.Module s n ds) = local (const s) $ evalState (mempty @Env.Env) $ CM.Module n <$> traverse (elabDef n) ds
+elabModule (SM.Module s n ds) = local (const s) $ evalState (mempty @(Env.Env (Either Err))) $ CM.Module n <$> traverse (elabDef n) ds
 
 elabDef
-  :: Has (Reader Context :+: Reader Span :+: State Env.Env :+: Throw Err) sig m
+  :: Has (Reader Context :+: Reader Span :+: State (Env.Env (Either Err)) :+: Throw Err) sig m
   => MName
   -> SM.Def
   -> m (QName, CM.Def ::: Type (Either Err))
 elabDef mname (SM.Def s n d) = local (const s) $ do
-  env <- get @Env.Env
+  env <- get @(Env.Env (Either Err))
   e' ::: _T <- runReader env $ do
     e ::: _T <- elabDecl d
     e' <- check (e ::: _T)
