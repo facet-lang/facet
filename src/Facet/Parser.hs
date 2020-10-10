@@ -217,9 +217,9 @@ evar
 
 bindPattern :: PositionParsing p => P.Pattern N.EName -> (P.Pattern N.UName -> Facet p a) -> Facet p a
 bindPattern p f = case p of
-  P.Wildcard -> bind (N.EName N.__) (const (f (review P.wildcard_ ())))
-  P.Var n    -> bind n              (f . review P.var_)
-  P.Tuple ps -> foldr (\ p k ps -> bindPattern p $ \ p' -> k (ps . (p':))) (f . review P.tuple_ . ($ [])) ps id
+  P.Wildcard -> bind (N.EName N.__) (const (f P.Wildcard))
+  P.Var n    -> bind n              (f . P.Var)
+  P.Tuple ps -> foldr (\ p k ps -> bindPattern p $ \ p' -> k (ps . (p':))) (f . P.Tuple . ($ [])) ps id
   P.Loc _ p  -> bindPattern p f
 
 bindVarPattern :: Maybe N.EName -> (N.UName -> Facet p res) -> Facet p res
@@ -237,9 +237,9 @@ wildcard = reserve enameStyle "_"
 -- FIXME: patterns
 pattern :: (Monad p, PositionParsing p) => p (P.Pattern N.EName)
 pattern = settingSpan
-  $   review P.var_      <$> ename
-  <|> review P.wildcard_ <$> wildcard
-  <|> review P.tuple_    <$> parens (commaSep pattern)
+  $   P.Var      <$> ename
+  <|> P.Wildcard <$  wildcard
+  <|> P.Tuple    <$> parens (commaSep pattern)
   <?> "pattern"
 
 
