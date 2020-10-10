@@ -184,9 +184,10 @@ app ($$) f a = Synth $ do
 -- Types
 
 elabType
-  :: (ST.Type ::: Maybe (Type Elab))
+  :: ST.Type
+  -> Maybe (Type Elab)
   -> Elab (Type Elab ::: Type Elab)
-elabType (t ::: _K) = go t _K
+elabType = go
   where
   go = ST.out >>> \case
     ST.Free  n -> switch $ synth (CT.global <$> global n)
@@ -265,9 +266,10 @@ infixr 1 >~>
 -- Expressions
 
 elabExpr
-  :: (SE.Expr ::: Maybe (Type Elab))
+  :: SE.Expr
+  -> Maybe (Type Elab)
   -> Elab (CE.Expr Elab ::: Type Elab)
-elabExpr (t ::: _T) = go t _T
+elabExpr = go
   where
   go = SE.out >>> \case
     SE.Free  n -> switch $ synth (CE.Free  <$> global n)
@@ -378,14 +380,14 @@ elabDecl = go
   go (SD.In s d) = setSpan s $ case d of
     (n ::: t) SD.:=> b -> do
       b' ::: _B <- go b
-      pure $ tlam n b' ::: _check (switch (synth (n ::: _check (elabType . (t :::)) >~> _B)))
+      pure $ tlam n b' ::: _check (switch (synth (n ::: _check (elabType t) >~> _B)))
 
     (n ::: t) SD.:-> b -> do
       b' ::: _B <- go b
-      pure $ lam n b' ::: _check (switch (synth (_check (elabType . (t :::)) --> _B)))
+      pure $ lam n b' ::: _check (switch (synth (_check (elabType t) --> _B)))
 
     t SD.:= b ->
-      pure $ _check (elabExpr . (b :::)) ::: _check (elabType . (t :::))
+      pure $ _check (elabExpr b) ::: _check (elabType t)
 
   _check r = tm <$> Check (r . Just)
 
