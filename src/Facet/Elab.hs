@@ -138,10 +138,10 @@ unify t1 t2 = t2 <$ go (Level 0) t1 t2
 -- General
 
 switch
-  :: Elab (a ::: Type Elab Level)
+  :: Synth a
   -> Maybe (Type Elab Level)
   -> Elab (a ::: Type Elab Level)
-switch m = \case
+switch (Synth m) = \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify _K' _K
   _       -> m
 
@@ -190,16 +190,16 @@ elabType
 elabType = go
   where
   go = ST.out >>> \case
-    ST.Free  n -> switch $ synth (CT.global <$> global n)
-    ST.Bound n -> switch $ synth (CT.bound <$> bound n)
+    ST.Free  n -> switch $ CT.global <$> global n
+    ST.Bound n -> switch $ CT.bound <$> bound n
     ST.Hole  n -> \ _K -> hole (n ::: _K)
-    ST.Type    -> switch $ synth _Type
-    ST.Void    -> switch $ synth _Void
-    ST.Unit    -> switch $ synth _Unit
-    t ST.:=> b -> switch $ synth (fmap _check t >~> _check b)
-    f ST.:$  a -> switch $ synth (_synth f .$  _check a)
-    a ST.:-> b -> switch $ synth (_check a --> _check b)
-    l ST.:*  r -> switch $ synth (_check l .*  _check r)
+    ST.Type    -> switch $ _Type
+    ST.Void    -> switch $ _Void
+    ST.Unit    -> switch $ _Unit
+    t ST.:=> b -> switch $ fmap _check t >~> _check b
+    f ST.:$  a -> switch $ _synth f .$  _check a
+    a ST.:-> b -> switch $ _check a --> _check b
+    l ST.:*  r -> switch $ _check l .*  _check r
     ST.Loc s b -> setSpan s . go b
     where
     _check r = tm <$> Check (go r . Just)
@@ -270,12 +270,12 @@ elabExpr
 elabExpr = go
   where
   go = SE.out >>> \case
-    SE.Free  n -> switch $ synth (CE.Free  <$> global n)
-    SE.Bound n -> switch $ synth (CE.Bound <$> bound n)
+    SE.Free  n -> switch $ CE.Free  <$> global n
+    SE.Bound n -> switch $ CE.Bound <$> bound n
     SE.Hole  n -> \ _T -> hole (n ::: _T)
-    f SE.:$  a -> switch $ synth (_synth f $$ _check a)
+    f SE.:$  a -> switch $ _synth f $$ _check a
     l SE.:*  r -> check (_check l ** _check r) (pretty "product")
-    SE.Unit    -> switch $ synth unit
+    SE.Unit    -> switch unit
     SE.Comp cs -> check (comp (map (fmap _check) cs)) (pretty "computation")
     SE.Loc s b -> setSpan s . go b
     where
@@ -378,11 +378,11 @@ elabDecl = go
   go (SD.In s d) = setSpans s $ case d of
     (n ::: t) SD.:=> b ->
       let b' ::: _B = go b
-      in tlam n b' ::: _check (switch (synth (n ::: _check (elabType t) >~> _B)))
+      in tlam n b' ::: _check (switch (n ::: _check (elabType t) >~> _B))
 
     (n ::: t) SD.:-> b ->
       let b' ::: _B = go b
-      in lam n b' ::: _check (switch (synth (_check (elabType t) --> _B)))
+      in lam n b' ::: _check (switch (_check (elabType t) --> _B))
 
     t SD.:= b ->
       _check (elabExpr b) ::: _check (elabType t)
