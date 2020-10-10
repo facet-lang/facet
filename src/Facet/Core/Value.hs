@@ -2,6 +2,8 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
 ( Value(..)
+, Type
+, Expr
 , global
 , bound
 , unForAll
@@ -34,6 +36,10 @@ data Value f a
 infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
+
+
+type Type = Value
+type Expr = Value
 
 
 global :: QName -> Value f a
