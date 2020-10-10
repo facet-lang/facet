@@ -1,6 +1,7 @@
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.GHCI
 ( -- * Parsing
@@ -14,6 +15,7 @@ module Facet.GHCI
 
 import           Control.Carrier.Lift (runM)
 import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, runParser, runParserWithFile, runParserWithString)
+import           Control.Carrier.Reader (runReader)
 import           Control.Carrier.Throw.Either (runThrow)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
@@ -21,7 +23,8 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..), Span(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
-import           Facet.Elab (elabModule, rethrow, runErrM)
+import           Facet.Elab (Elab, Context, elab, elabModule, runErrM)
+import           Facet.Env
 import           Facet.Error
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
@@ -50,7 +53,7 @@ elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
   first mkNotice $ runErrM (Span (Pos 0 0) (Pos 0 0)) $ do
     mod <- elabModule parsed
-    rethrow $ P.printCoreModule mod
+    runReader @(Env Elab) mempty . runReader @Context [] . elab $ P.printCoreModule mod
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s
