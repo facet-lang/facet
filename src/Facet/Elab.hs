@@ -91,6 +91,7 @@ elab (Elab m) = do
   env <- ask
   rethrow (runReader ctx (runReader env m))
 
+-- FIXME: this should either use or subsume ErrM.
 newtype Elab a = Elab (ReaderC (Env.Env ErrM) (ReaderC Context (ErrorC Span Err Identity)) a)
   deriving (Algebra (Reader (Env.Env ErrM) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
 
