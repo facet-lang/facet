@@ -13,8 +13,6 @@ module Facet.Name
 , indexToLevel
 , incrLevel
 , incrLevelFor
-, E
-, T
 , __
 , MName(..)
 , QName(..)
@@ -34,7 +32,6 @@ import           Data.String (IsString(..))
 import           Data.Text (Text, unpack)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumR)
-import           Facet.Pretty
 import qualified Prettyprinter as P
 import           Silkscreen
 
@@ -43,12 +40,6 @@ data Name a = Name { hint :: UName, id' :: Int }
 
 instance Show (Name a) where
   showsPrec _ (Name h i) = shows h . shows i
-
-instance P.Pretty (Name E) where
-  pretty = prettyNameWith evar
-
-instance P.Pretty (Name T) where
-  pretty = prettyNameWith tvar
 
 
 prettyNameWith :: Printer p => (Int -> p) -> Name a -> p
@@ -93,10 +84,6 @@ incrLevel (Level l) = Level (l + 1)
 
 incrLevelFor :: Traversable t => (Level -> expr) -> Level -> t UName -> (Level, t expr)
 incrLevelFor mk = mapAccumR $ \ l _ -> (incrLevel l, mk l)
-
-
-data E
-data T
 
 
 __ :: Text
