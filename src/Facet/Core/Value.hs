@@ -66,6 +66,7 @@ f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 infixl 9 $$, $$*
 
 
+-- FIXME: iterate this left-to-right over contexts.
 close :: Monad m => [Value m a] -> Value m Level -> m (Value m a)
 close env = \case
   Type     -> pure Type
