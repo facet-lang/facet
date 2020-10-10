@@ -7,9 +7,12 @@ module Facet.Core.Value
 , unForAll
 , unArrow
 , unProductT
+, ($$)
+, ($$*)
 ) where
 
 import Control.Effect.Empty
+import Data.Foldable (foldl')
 import Facet.Core.Pattern
 import Facet.Name
 import Facet.Stack
@@ -48,3 +51,14 @@ unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
 
 unProductT :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
 unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
+
+
+($$) :: Applicative f => Value f Level -> Value f Level -> f (Value f Level)
+(f :$ as) $$ a = pure (f :$ (as :> a))
+(_ :=> b) $$ a = b a
+_         $$ _ = error "can’t apply non-neutral/forall type"
+
+($$*) :: (Foldable t, Monad f) => Value f Level -> t (Value f Level) -> f (Value f Level)
+f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
+
+infixl 9 $$, $$*
