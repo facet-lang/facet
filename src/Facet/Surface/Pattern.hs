@@ -15,6 +15,7 @@ import Data.Bitraversable
 import Text.Parser.Position (Span)
 
 data Pattern a = In { ann :: Span, out :: PatternF a (Pattern a) }
+  deriving (Show)
 
 instance Foldable Pattern where
   foldMap f = go where go = bifoldMap f go . out

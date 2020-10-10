@@ -12,5 +12,7 @@ import Text.Parser.Position (Span)
 
 -- FIXME: imports
 data Module = Module { ann :: Span, name :: MName, defs :: [Def] }
+  deriving (Show)
 
 data Def = Def Span DName Decl
+  deriving (Show)

@@ -18,6 +18,7 @@ import Facet.Syntax ((:::)(..))
 import Text.Parser.Position (Span)
 
 data Decl = In { ann :: Span, out :: DeclF Decl }
+  deriving (Show)
 
 forAll_ :: Prism' Decl (Span, (UName ::: Type, Decl))
 forAll_ = prism' (uncurry In . fmap (uncurry (:=>))) (\case{ In s (t :=> b) -> Just (s, (t, b)) ; _ -> Nothing })
@@ -33,7 +34,7 @@ data DeclF a
   = (UName ::: Type) :=> a
   | (UName ::: Type) :-> a
   | Type := Expr
-  deriving (Foldable, Functor, Traversable)
+  deriving (Foldable, Functor, Show, Traversable)
 
 infix 1 :=
 infixr 1 :=>

@@ -22,6 +22,7 @@ import Prelude hiding ((**))
 import Text.Parser.Position (Span, Spanned(..))
 
 newtype Expr = In { out :: ExprF Expr }
+  deriving (Show)
 
 instance Spanned Expr where
   setSpan = fmap In . Loc
@@ -65,7 +66,7 @@ data ExprF e
   | Unit
   | e :* e
   | Loc Span e
-  deriving (Foldable, Functor, Traversable)
+  deriving (Foldable, Functor, Show, Traversable)
 
 infixl 9 :$
 infixl 7 :*

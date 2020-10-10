@@ -17,6 +17,7 @@ import Facet.Surface.Pattern (Pattern)
 import Text.Parser.Position (Span, Spanned(..))
 
 newtype Clause e = In { out :: ClauseF e (Clause e) }
+  deriving (Show)
 
 instance Foldable Clause where
   foldMap f = go where go = bifoldMap f go . out
@@ -46,7 +47,7 @@ data ClauseF e c
   = Clause (Pattern UName) c
   | Body e
   | Loc Span c
-  deriving (Foldable, Functor, Traversable)
+  deriving (Foldable, Functor, Show, Traversable)
 
 instance Bifoldable ClauseF where
   bifoldMap = bifoldMapDefault
