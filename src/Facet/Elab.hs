@@ -308,7 +308,8 @@ clause = go
   where
   go = \case
     -- FIXME: deal with other patterns.
-    SC.Clause (SP.In _ (SP.Var n)) b -> Check $ \ _T -> do
+    SC.Clause (SP.Loc _ p) b -> go (SC.Clause p b)
+    SC.Clause (SP.Var n) b -> Check $ \ _T -> do
       (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
       -- p' <- check (pattern p ::: _A)
       pure (Lam n (\ v -> v ::: _A |- check (go b ::: _B)))
@@ -321,7 +322,7 @@ pattern
   -> Check (CP.Pattern (UName ::: Type Elab Level))
 pattern = go
   where
-  go (SP.In s p) = setSpan s $ case p of
+  go = \case
     SP.Wildcard -> pure CP.Wildcard
     SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
     SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go' _T (fromList ps)
@@ -332,6 +333,7 @@ pattern = go
         ps  :> p -> do
           (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
           (:>) <$> go' _L ps <*> check (go p ::: _R)
+    SP.Loc s p  -> setSpan s (go p)
 
 
 -- Declarations

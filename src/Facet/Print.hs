@@ -382,7 +382,7 @@ printCorePattern = prec Pattern . \case
   CP.Tuple p  -> tupled (map printCorePattern p)
 
 printSurfacePattern :: SP.Pattern Print -> Print
-printSurfacePattern p = prec Pattern $ case SP.out p of
+printSurfacePattern p = prec Pattern $ case p of
   SP.Wildcard -> pretty '_'
   SP.Var n    -> n
   SP.Tuple p  -> tupled (map printSurfacePattern p)
