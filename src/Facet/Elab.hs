@@ -77,7 +77,7 @@ import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty,
 runErrM :: Span -> ErrorC Span Err Identity a -> Either (Span, Err) a
 runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
 
-type Context = Stack (UName ::: Type Elab Level)
+type Context = Stack (Value Elab Level ::: Type Elab Level)
 
 elab :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab (Elab m) = do
@@ -233,8 +233,7 @@ infixr 2 -->
   -> Synth (Type Elab Level)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
-  -- FIXME: this is wrong, we should push this onto the context
-  pure $ (n ::: _T :=> \ v -> n ::: _T |- check (b ::: Type)) ::: Type
+  pure $ (n ::: _T :=> \ v -> v ::: _T |- check (b ::: Type)) ::: Type
 
 infixr 1 >~>
 
@@ -267,8 +266,8 @@ tlam
   -> Check (Expr Elab Level)
   -> Check (Expr Elab Level)
 tlam n b = Check $ \ ty -> do
-  (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  pure (TLam n (\ v -> _T |- do
+  (_ ::: _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
+  pure (TLam n (\ v -> v ::: _T |- do
     _B' <- elab (_B v)
     check (b ::: _B')))
 
@@ -278,10 +277,7 @@ lam
   -> Check (Expr Elab Level)
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
-  n ::: _A |- do
-    -- FIXME: this is wrong, we should check under the binder
-    b' <- check (b ::: _B)
-    pure (Lam n (b' CV.$$))
+  pure (Lam n (\ v -> v ::: _A |- check (b ::: _B)))
 
 unit :: Synth (Expr Elab Level)
 unit = Synth . pure $ Unit ::: UnitT
@@ -315,9 +311,7 @@ clause = go
     SC.Clause (SP.In _ (SP.Var n)) b -> Check $ \ _T -> do
       (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
       -- p' <- check (pattern p ::: _A)
-      n ::: _A |- do
-        -- FIXME: this is wrong.
-        pure (Lam n (\ v -> check (go b ::: _B)))
+      pure (Lam n (\ v -> v ::: _A |- check (go b ::: _B)))
     SC.Body e   -> e
     SC.Loc s c  -> setSpan s (go c)
 
@@ -391,7 +385,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab
 
 -- Context
 
-(|-) :: Has (Reader Context) sig m => UName ::: Type Elab Level -> m a -> m a
+(|-) :: Has (Reader Context) sig m => Value Elab Level ::: Type Elab Level -> m a -> m a
 t |- m = local (:>t) m
 
 infix 1 |-
