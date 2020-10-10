@@ -118,7 +118,10 @@ quote' n = \case
   Type    -> pure QType
   Void    -> pure QVoid
   Unit    -> pure QUnit
-  t :=> b -> (:==>) <$> traverse (quote' n) t <*> (quote' (incrLevel n) =<< b (bound n))
+  t :=> b -> do
+    t' <- traverse (quote' n) t
+    b' <- b (bound n)
+    (t' :==>) <$> quote' (incrLevel n) b'
   f :$ as -> foldl' (:$$) (either QFree (QBound . levelToIndex n) f) <$> traverse (quote' n) as
   a :-> b -> (:-->) <$> quote' n a <*> quote' n b
   l :*  r -> (:**)  <$> quote' n l <*> quote' n r
