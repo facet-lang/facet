@@ -24,6 +24,7 @@ import Control.Effect.Empty
 import Data.Foldable (foldl')
 import Facet.Error
 import Facet.Name
+import Facet.Pretty
 import Facet.Stack
 import Facet.Syntax
 
@@ -64,7 +65,7 @@ unProduct = \case{ l :* r -> pure (l, r) ; _ -> empty }
 (.$) :: Type -> Type -> Either Err Type
 (f :$ as) .$ a = pure (f :$ (as :> a))
 (_ :=> b) .$ a = b a
-_         .$ _ = error "can’t apply non-neutral/forall type"
+_         .$ _ = Left $ Err (reflow "can’t apply non-neutral/forall type") []
 
 (.$*) :: Foldable t => Type -> t Type -> Either Err Type
 f .$* as = foldl' (\ f a -> f >>= \ f' -> f' .$ a) (Right f) as
