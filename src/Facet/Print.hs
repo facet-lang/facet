@@ -19,6 +19,7 @@ module Facet.Print
 , evar
 , tvar
   -- * Interpreters
+, printCoreValue
 , printCoreType
 , printAType
 , printCoreType'
@@ -48,6 +49,7 @@ import qualified Facet.Core.Expr as CE
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import qualified Facet.Core.Type as CT
+import qualified Facet.Core.Value as CV
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
 import           Facet.Stack
@@ -171,6 +173,29 @@ prettyMName (N.MName s) = pretty s
 
 prettyQName :: PrecedencePrinter p => N.QName -> p
 prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
+
+
+printCoreValue :: Monad m => CV.Value m Print -> m Print
+printCoreValue = go (N.Level 0)
+  where
+  go d = \case
+    CV.Type     -> pure _Type
+    CV.Void     -> pure _Void
+    CV.UnitT    -> pure _Unit
+    CV.Unit     -> pure _Unit
+    t CV.:=> b  -> do
+      let n' = name (tm t)
+      t' <- go d (ty t)
+      b' <- go (N.incrLevel d) =<< b (CV.bound n')
+      pure $ (n' ::: t') >~> b'
+    CV.TLam n b -> let n' = name n in lam (braces n') <$> (go (N.incrLevel d) =<< b (CV.bound n'))
+    CV.Lam  n b -> let n' = name n in lam         n'  <$> (go (N.incrLevel d) =<< b (CV.bound n'))
+    f CV.:$ as  -> (either cfree id f $$*) <$> traverse (go d) as
+    a CV.:-> b  -> (-->) <$> go d a <*> go d b
+    CV.TPrd l r -> (**)  <$> go d l <*> go d r
+    CV.Prd  l r -> (**)  <$> go d l <*> go d r
+    where
+    name n = cbound n (tvar (N.getLevel d))
 
 
 printCoreType :: Monad m => CT.Type m N.Level -> m Print
