@@ -39,7 +39,7 @@ data Type f a
   | Void
   | Unit
   | (UName ::: Type f a) :=> (Type f a -> f (Type f a))
-  | Either QName Level :$ Stack (Type f a)
+  | Either QName a :$ Stack (Type f a)
   | Type f a :-> Type f a
   | Type f a :*  Type f a
 
@@ -52,7 +52,7 @@ infixl 7 :*
 global :: QName -> Type f a
 global n = Left n :$ Nil
 
-bound :: Level -> Type f a
+bound :: a -> Type f a
 bound n = Right n :$ Nil
 
 
@@ -66,7 +66,7 @@ unProduct :: Has Empty sig m => Type f a -> m (Type f a, Type f a)
 unProduct = \case{ l :* r -> pure (l, r) ; _ -> empty }
 
 
-(.$) :: Has (Throw Err) sig f => Type f a -> Type f a -> f (Type f a)
+(.$) :: Has (Throw Err) sig f => Type f Level -> Type f Level -> f (Type f Level)
 (f :$ as) .$ a = pure (f :$ (as :> a))
 (_ :=> b) .$ a = b a
 f         .$ a = do
@@ -76,7 +76,7 @@ f         .$ a = do
   -- FIXME: we probably require some sort of context to print them in?
   throwError $ Err (reflow "can’t apply non-neutral/forall type") [pretty (show f'), pretty (show a')]
 
-(.$*) :: (Foldable t, Has (Throw Err) sig f) => Type f a -> t (Type f a) -> f (Type f a)
+(.$*) :: (Foldable t, Has (Throw Err) sig f) => Type f Level -> t (Type f Level) -> f (Type f Level)
 f .$* as = foldl' (\ f a -> f >>= \ f' -> f' .$ a) (pure f) as
 
 infixl 9 .$, .$*
@@ -103,10 +103,10 @@ unQApp :: Has Empty sig m => QType -> m (QType, QType)
 unQApp = \case{ f :$$ a -> pure (f, a) ; _ -> empty }
 
 
-eval :: Has (Throw Err) sig m => [Type m a] -> QType -> m (Type m a)
+eval :: Has (Throw Err) sig m => [Type m Level] -> QType -> m (Type m Level)
 eval = eval' . map pure
 
-eval' :: Has (Throw Err) sig m => [m (Type m a)] -> QType -> m (Type m a)
+eval' :: Has (Throw Err) sig m => [m (Type m Level)] -> QType -> m (Type m Level)
 eval' env = \case
   QFree n  -> pure (global n)
   QBound n -> env !! getIndex n
@@ -123,10 +123,10 @@ eval' env = \case
   a :--> b -> (:->) <$> eval' env a <*> eval' env b
   l :**  r -> (:*)  <$> eval' env l <*> eval' env r
 
-quote :: Monad m => Type m a -> m QType
+quote :: Monad m => Type m Level -> m QType
 quote = quote' (Level 0)
 
-quote' :: Monad m => Level -> Type m a -> m QType
+quote' :: Monad m => Level -> Type m Level -> m QType
 quote' n = \case
   Type    -> pure QType
   Void    -> pure QVoid
