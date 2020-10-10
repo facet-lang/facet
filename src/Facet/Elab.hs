@@ -149,8 +149,8 @@ global n = Synth $ asks (Env.lookup n) >>= \case
 bound
   :: Has (Reader Context :+: Throw Err) sig m
   => Index
-  -> Synth m Index
-bound n = Synth $ asks @Context (first (const n) . (!! getIndex n))
+  -> Synth m Level
+bound n = Synth $ asks @Context (\ ctx -> first (const (indexToLevel (length ctx) n)) (ctx !! getIndex n))
 
 app
   :: Has (Throw Err) sig m
@@ -175,9 +175,7 @@ elabType (t ::: _K) = go t _K
   where
   go = ST.out >>> \case
     ST.Free  n -> switch $ synth (CT.global <$> global n)
-    ST.Bound n -> switch $ do
-      depth <- asks @Context length
-      synth (CT.bound . indexToLevel depth <$> bound n)
+    ST.Bound n -> switch $ synth (CT.bound <$> bound n)
     ST.Hole  n -> \ _K -> hole (n ::: _K)
     ST.Type    -> switch $ synth _Type
     ST.Void    -> switch $ synth _Void
@@ -263,9 +261,7 @@ elabExpr (t ::: _T) = go t _T
   where
   go = SE.out >>> \case
     SE.Free  n -> switch $ synth (CE.Free  <$> global n)
-    SE.Bound n -> switch $ do
-      depth <- asks @Context length
-      synth (CE.Bound . indexToLevel depth <$> bound n)
+    SE.Bound n -> switch $ synth (CE.Bound <$> bound n)
     SE.Hole  n -> \ _T -> hole (n ::: _T)
     f SE.:$  a -> switch $ synth (_synth f $$ _check a)
     l SE.:*  r -> check (_check l ** _check r) (pretty "product")
