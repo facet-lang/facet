@@ -178,18 +178,18 @@ tvar = token (settingSpan (runUnspaced (fmap (either (review T.global_ . N.T) (r
 
 exprTable :: (Monad p, PositionParsing p) => Table (Facet p) (E.Expr Span)
 exprTable =
-  [ [ Infix L mempty (\ s -> fmap (setSpan s) . curry (review E.app_)) ]
+  [ [ Infix L mempty (\ s -> fmap (setSpan s) . (E.:$)) ]
   , [ Atom comp
-    , Atom (review E.hole_ <$> hname)
+    , Atom (E.Hole <$> hname)
     , Atom evar
     ]
   ]
 
 expr :: (Monad p, PositionParsing p) => Facet p (E.Expr Span)
-expr = build exprTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review E.prd_)))))
+expr = build exprTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . (E.:*)))))
 
 comp :: (Monad p, PositionParsing p) => Facet p (E.Expr Span)
-comp = settingSpan (braces (review E.comp_ <$> clauses))
+comp = settingSpan (braces (E.Comp <$> clauses))
   where
   clauses
     =   sepBy1 clause comma
@@ -209,8 +209,8 @@ body = review C.body_ <$> expr
 
 evar :: (Monad p, PositionParsing p) => Facet p (E.Expr Span)
 evar
-  =   token (settingSpan (runUnspaced (fmap (either (review E.global_ . N.E) (review E.bound_)) . resolve <$> ename <*> Unspaced env <?> "variable")))
-  <|> try (token (settingSpan (runUnspaced (review E.global_ . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
+  =   token (settingSpan (runUnspaced (fmap (either (E.Free . N.E) E.Bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
+  <|> try (token (settingSpan (runUnspaced (E.Free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
 
 
 -- Patterns

@@ -357,7 +357,7 @@ printSurfaceExpr = go
     SE.Bound n -> env ! N.getIndex n
     SE.Hole n  -> hole n
     f SE.:$  a ->
-      let (f', a') = splitl (preview SE.app_) f
+      let (f', a') = splitl SE.unApp f
       in go env f' $$* fmap (go env) (a' :> a)
     SE.Unit    -> unit
     l SE.:*  r -> go env l **  go env r
