@@ -16,6 +16,7 @@ import Facet.Syntax
 data Value f a
   = Type
   | Void
+  | UnitT
   | Unit
   | (UName ::: Value f a) :=> (Value f a -> f (Value f a))
   | TLam UName (Value f a -> f (Value f a))
