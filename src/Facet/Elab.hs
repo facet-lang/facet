@@ -155,7 +155,19 @@ global n = Synth $ asks (Env.lookup n) >>= \case
 bound
   :: Index
   -> Synth Level
-bound n = Synth $ asks @Context (\ ctx -> first (const (indexToLevel (length ctx) n)) (ctx !! getIndex n))
+bound n = Synth $ do
+  ctx <- ask @Context
+  case ctx !? getIndex n of
+    Just (_ ::: _T) -> pure (indexToLevel (length ctx) n ::: _T)
+    Nothing         -> err (reflow "bad context")
+
+(!?) :: [a] -> Int -> Maybe a
+es !? n = go es n
+  where
+  go (a:as) i
+    | i <= 0    = Just a
+    | otherwise = go as (i - 1)
+  go []     _   = Nothing
 
 app
   :: (a -> a -> a)
