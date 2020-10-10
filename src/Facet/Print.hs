@@ -30,7 +30,6 @@ module Facet.Print
 , printSurfaceDecl
 , printCoreModule
 , printSurfaceModule
-, printErr
 ) where
 
 import           Control.Applicative ((<**>))
@@ -47,7 +46,6 @@ import qualified Facet.Core.Expr as CE
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import qualified Facet.Core.Type as CT
-import           Facet.Error
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
 import           Facet.Stack
@@ -380,7 +378,3 @@ module' n b = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep (int
 
 def :: Print -> Print -> Print
 def n b = group $ ann (n ::: b)
-
-
-printErr :: Err -> Print
-printErr (Err reason context) = vsep (map (liftDoc0 . PP.reAnnotate ANSI) (reason:context))
