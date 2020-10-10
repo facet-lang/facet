@@ -4,6 +4,7 @@ module Facet.Core.Value
 ( Value(..)
 , global
 , bound
+, unForAll
 , unArrow
 ) where
 
@@ -37,6 +38,9 @@ global n = Left n :$ Nil
 bound :: a -> Value f a
 bound n = Right n :$ Nil
 
+
+unForAll :: Has Empty sig m => Value f a -> m (UName ::: Value f a, Value f a -> f (Value f a))
+unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
 unArrow :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
 unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
