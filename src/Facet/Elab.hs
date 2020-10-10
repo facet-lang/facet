@@ -52,6 +52,7 @@ import           Data.Foldable (toList)
 import           Data.Functor.Identity
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
+import           Data.Traversable (for)
 import           Facet.Carrier.Error.Context
 import qualified Facet.Core.Expr as CE
 import qualified Facet.Core.Module as CM
@@ -60,7 +61,7 @@ import           Facet.Core.Type hiding (bound, global, (.$))
 import qualified Facet.Core.Type as CT
 import qualified Facet.Env as Env
 import           Facet.Error
-import           Facet.Name (Index(..), Level(..), MName(..), QName(..), UName, incrLevel, indexToLevel)
+import           Facet.Name (Index(..), Level(..), QName(..), UName, incrLevel, indexToLevel)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
@@ -387,27 +388,21 @@ elabModule
   :: Has (Reader Span :+: Throw Err) sig m
   => SM.Module
   -> m (CM.Module Elab)
--- FIXME: elaborate all the types first, and only then the terms
-elabModule (SM.Module s n ds) = setSpan s . evalState (mempty @(Env.Env Elab)) $ do
-  defs <- traverse (elabDef n) ds
-  pure $ CM.Module n defs
+elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab)) $ do
+  -- FIXME: elaborate all the types first, and only then the terms
+  defs <- for ds $ \ (SM.Def s n d) -> setSpan s $ do
+    env <- get @(Env.Env Elab)
+    e' ::: _T <- runReader @Context [] . runReader env $ do
+      e ::: _T <- elab $ elabDecl d
+      e' <- elab $ check (e ::: _T)
+      pure $ e' ::: _T
 
-elabDef
-  :: Has (Reader Span :+: State (Env.Env Elab) :+: Throw Err) sig m
-  => MName
-  -> SM.Def
-  -> m (QName, CM.Def Elab ::: Type Elab)
-elabDef mname (SM.Def s n d) = setSpan s $ do
-  env <- get @(Env.Env Elab)
-  e' ::: _T <- runReader @Context [] . runReader env $ do
-    e ::: _T <- elab $ elabDecl d
-    e' <- elab $ check (e ::: _T)
-    pure $ e' ::: _T
+    modify $ Env.insert (mname :.: n ::: _T)
+    -- FIXME: extend the module
+    -- FIXME: support defining types
+    pure (mname :.: n, CM.DTerm e' ::: _T)
 
-  modify $ Env.insert (mname :.: n ::: _T)
-  -- FIXME: extend the module
-  -- FIXME: support defining types
-  pure (mname :.: n, CM.DTerm e' ::: _T)
+  pure $ CM.Module mname defs
 
 
 -- Context
