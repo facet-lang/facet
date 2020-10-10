@@ -358,6 +358,7 @@ pattern = go
 
 -- Declarations
 
+-- FIXME: the shape of this is probably wrong. we should produce a Check or Synth for the type, I think?
 elabDecl
   :: SD.Decl
   -> Elab (Check (CE.Expr Elab) ::: Type Elab)
