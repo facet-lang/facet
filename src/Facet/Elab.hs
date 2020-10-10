@@ -426,7 +426,7 @@ infix 1 |-
 (|--) :: Has (Reader Context) sig m => UName ::: Type -> (Type -> m a) -> m a
 t |-- m = do
   i <- asks @Context length
-  local (t:) (m (Right (Level i) :$ Nil)) -- FIXME: this is hopelessly broken, but exists as a temporary workaround until we get the indexing/levelling thing sorted out
+  local (t:) (m (CT.bound (Level i))) -- FIXME: this is hopelessly broken, but exists as a temporary workaround until we get the indexing/levelling thing sorted out
 
 infix 1 |--
 
