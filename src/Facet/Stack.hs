@@ -31,6 +31,6 @@ fromList = foldl' (:>) Nil
 as' ! i' = go as' i'
   where
   go (as :> a) i
-    | i <= 0     = a
+    | i == 0     = a
     | otherwise  = go as (i - 1)
   go _         _ = error $ "Facet.Stack.!: index (" <> show i' <> ") out of bounds (" <> show (length as') <> ")"
