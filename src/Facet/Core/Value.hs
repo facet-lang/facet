@@ -1,6 +1,8 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
 ( Value(..)
+, global
+, bound
 ) where
 
 import Facet.Core.Pattern
@@ -23,3 +25,10 @@ infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
 infixl 7 :*
+
+
+global :: QName -> Value f a
+global n = Left n :$ Nil
+
+bound :: a -> Value f a
+bound n = Right n :$ Nil
