@@ -26,6 +26,7 @@ import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Print
 import           Facet.REPL.Parser
+import           Facet.Stack
 import           Facet.Surface.Expr (Expr)
 import           Facet.Surface.Type (Type)
 import           Prelude hiding (print)
@@ -79,8 +80,8 @@ loop = do
     Quit -> empty
     Load path -> load path
     Reload -> reload
-    Type e -> print (getPrint (printSurfaceExpr [] e)) -- FIXME: elaborate the expr & show the type
-    Kind t -> print (getPrint (printSurfaceType [] t)) -- FIXME: elaborate the type & show the kind
+    Type e -> print (getPrint (printSurfaceExpr Nil e)) -- FIXME: elaborate the expr & show the type
+    Kind t -> print (getPrint (printSurfaceType Nil t)) -- FIXME: elaborate the type & show the kind
 
 
 -- TODO:

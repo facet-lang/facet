@@ -222,7 +222,7 @@ printCoreValue' = go
 
 
 printCoreType :: Monad m => CT.Type m N.Level -> m Print
-printCoreType = fmap (printCoreQType []) . CT.quote
+printCoreType = fmap (printCoreQType Nil) . CT.quote
 
 printCoreType' :: Monad m => CT.Type m Print -> m Print
 printCoreType' = go (N.Level 0)
@@ -240,16 +240,16 @@ printCoreType' = go (N.Level 0)
     a CT.:-> b -> (-->) <$> go d a <*> go d b
     l CT.:*  r -> (**)  <$> go d l <*> go d r
 
-printCoreQType :: [Print] -> CT.QType -> Print
+printCoreQType :: Stack Print -> CT.QType -> Print
 printCoreQType = go
   where
   go env = \case
     CT.QFree n  -> cfree n
-    CT.QBound n -> env !! N.getIndex n
+    CT.QBound n -> env ! N.getIndex n
     CT.QType    -> _Type
     CT.QVoid    -> _Void
     CT.QUnit    -> _Unit
-    t CT.:==> b -> let n' = cbound (tm t) (tvar (length env)) in (n' ::: go env (ty t)) >~> go (n':env) b
+    t CT.:==> b -> let n' = cbound (tm t) (tvar (length env)) in (n' ::: go env (ty t)) >~> go (env:>n') b
     f CT.:$$  a ->
       let (f', a') = splitl CT.unQApp f
       in go env f' $$* fmap (go env) (a' :> a)
@@ -257,19 +257,19 @@ printCoreQType = go
     l CT.:**  r -> go env l **  go env r
 
 
-printSurfaceType :: [Print] -> ST.Type -> Print
+printSurfaceType :: Stack Print -> ST.Type -> Print
 printSurfaceType = go
   where
   go env = ST.out >>> \case
     ST.Free n  -> sfree n
-    ST.Bound n -> env !! N.getIndex n
+    ST.Bound n -> env ! N.getIndex n
     ST.Hole n  -> hole n
     ST.Type    -> _Type
     ST.Void    -> _Void
     ST.Unit    -> _Unit
     t ST.:=> b ->
       let (t', b') = splitr (preview ST.forAll_ . dropSpan) b
-      in map (first sbound) (t:t') >~~> go (sbound (tm t):env) b'
+      in map (first sbound) (t:t') >~~> go (env:>sbound (tm t)) b'
     f ST.:$  a ->
       let (f', a') = splitl (preview ST.app_ . dropSpan) f
       in go env f' $$* fmap (go env) (a' :> a)
@@ -325,7 +325,7 @@ l ** r = tupled [l, r]
 ts >~~> b = foldr go b (groupByType ST.aeq ts)
   where
   -- FIXME: this is horribly wrong and probably going to crash
-  go (t, ns) b = (commaSep ns ::: printSurfaceType [] t) >~> b
+  go (t, ns) b = (commaSep ns ::: printSurfaceType Nil t) >~> b
 
 groupByType :: (t -> t -> Bool) -> [(n ::: t)] -> [(t, [n])]
 groupByType eq = \case
@@ -336,27 +336,27 @@ groupByType eq = \case
 
 
 printCoreExpr :: Monad m => CE.Expr m N.Level -> m Print
-printCoreExpr = fmap (printCoreQExpr []) . CE.quote
+printCoreExpr = fmap (printCoreQExpr Nil) . CE.quote
 
-printCoreQExpr :: [Print] -> CE.QExpr -> Print
+printCoreQExpr :: Stack Print -> CE.QExpr -> Print
 printCoreQExpr = go
   where
   go env = \case
     CE.QFree n   -> cfree n
-    CE.QBound n  -> env !! N.getIndex n
-    CE.QTLam n b -> let n' = cbound n (tvar (length env)) in lam (braces n') (go (n':env) b)
+    CE.QBound n  -> env ! N.getIndex n
+    CE.QTLam n b -> let n' = cbound n (tvar (length env)) in lam (braces n') (go (env:>n') b)
     CE.QTApp f a -> go env f $$ braces (printCoreQType env a)
     CE.QLam  p b -> lam (printCorePattern ((`cbound` evar (length env)) <$> p)) (go env b)
     f CE.:$$  a  -> go env f $$ go env a
     CE.QUnit     -> unit
     l CE.:**  r  -> go env l **  go env r
 
-printSurfaceExpr :: [Print] -> SE.Expr -> Print
+printSurfaceExpr :: Stack Print -> SE.Expr -> Print
 printSurfaceExpr = go
   where
   go env = SE.out >>> \case
     SE.Free n  -> sfree n
-    SE.Bound n -> env !! N.getIndex n
+    SE.Bound n -> env ! N.getIndex n
     SE.Hole n  -> hole n
     f SE.:$  a ->
       let (f', a') = splitl (preview SE.app_ . dropSpan) f
@@ -366,12 +366,12 @@ printSurfaceExpr = go
     SE.Comp c  -> printSurfaceComp env c
     SE.Loc _ t -> go env t
 
-printSurfaceComp :: [Print] -> [SC.Clause SE.Expr] -> Print
+printSurfaceComp :: Stack Print -> [SC.Clause SE.Expr] -> Print
 printSurfaceComp env = comp . commaSep . map (printSurfaceClause env)
 
-printSurfaceClause :: [Print] -> SC.Clause SE.Expr -> Print
+printSurfaceClause :: Stack Print -> SC.Clause SE.Expr -> Print
 printSurfaceClause env = SC.out >>> \case
-  SC.Clause p b -> let { p' = sbound <$> p ; env' = foldr (:) env p' } in printSurfacePattern p' <+> case SC.out b of
+  SC.Clause p b -> let { p' = sbound <$> p ; env' = foldl (:>) env p' } in printSurfacePattern p' <+> case SC.out b of
     SC.Body b -> arrow <> group (nest 2 (line <> printSurfaceExpr env' b))
     _         -> printSurfaceClause env' b
   SC.Body e     -> prec Expr (printSurfaceExpr env e)
@@ -403,15 +403,15 @@ unit = annotate Con $ pretty "Unit"
 
 
 printSurfaceDecl :: SD.Decl -> Print
-printSurfaceDecl = go []
+printSurfaceDecl = go Nil
   where
   go env = SD.out >>> \case
     t SD.:=  e -> printSurfaceType env t .= printSurfaceExpr env e
     t SD.:=> b ->
       let (t', b') = splitr (preview (SD.forAll_.to snd)) b
           ts = map (first sbound) (t:t')
-      in ts >~~> go (foldr ((:) . tm) env ts) b'
-    t SD.:-> b -> bimap sbound (printSurfaceType env) t >-> go (sbound (tm t):env) b
+      in ts >~~> go (foldl (\ as (a:::_) -> as :> a) env ts) b'
+    t SD.:-> b -> bimap sbound (printSurfaceType env) t >-> go (env:>sbound (tm t)) b
 
 -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
 (.=) :: Print -> Print -> Print
