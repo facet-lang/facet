@@ -364,10 +364,10 @@ printSurfaceExpr = go
     SE.Comp c  -> printSurfaceComp env c
     SE.Loc _ t -> go env t
 
-printSurfaceComp :: Stack Print -> [SC.Clause (SE.Expr a)] -> Print
+printSurfaceComp :: Stack Print -> [SC.Clause SE.Expr a] -> Print
 printSurfaceComp env = comp . commaSep . map (printSurfaceClause env)
 
-printSurfaceClause :: Stack Print -> SC.Clause (SE.Expr a) -> Print
+printSurfaceClause :: Stack Print -> SC.Clause SE.Expr a -> Print
 printSurfaceClause env = \case
   SC.Clause p b -> let { p' = sbound <$> p ; env' = foldl (:>) env p' } in printSurfacePattern p' <+> case b of
     SC.Body b -> arrow <> group (nest 2 (line <> printSurfaceExpr env' b))

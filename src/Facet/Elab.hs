@@ -253,7 +253,7 @@ elabExpr = go
     f SE.:$  a -> switch $ _synth f $$ _check a
     l SE.:*  r -> check (_check l ** _check r) (pretty "product")
     SE.Unit    -> switch unit
-    SE.Comp cs -> check (comp (map (fmap _check) cs)) (pretty "computation")
+    SE.Comp cs -> check (comp (map (SC.mapComp _check) cs)) (pretty "computation")
     SE.Loc s b -> setSpan s . go b
     where
     _check r = tm <$> Check (go r . Just)
@@ -293,7 +293,7 @@ l ** r = Check $ \ _T -> do
   pure (Prd l' r')
 
 comp
-  :: [SC.Clause (Check (Expr Elab Level))]
+  :: [SC.Clause Check (Expr Elab Level)]
   -> Check (Expr Elab Level)
 comp cs = do
   cs' <- traverse clause cs
@@ -302,7 +302,7 @@ comp cs = do
   pure $ head cs'
 
 clause
-  :: SC.Clause (Check (Expr Elab Level))
+  :: SC.Clause Check (Expr Elab Level)
   -> Check (Expr Elab Level)
 clause = go
   where

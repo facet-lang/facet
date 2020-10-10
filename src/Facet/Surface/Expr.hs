@@ -24,7 +24,7 @@ data Expr a
   = Free DName
   | Bound Index
   | Hole Text
-  | Comp [Clause (Expr a)]
+  | Comp [Clause Expr a]
   | Expr a :$ Expr a
   | Unit
   | Expr a :* Expr a
@@ -51,7 +51,7 @@ hole_ :: Prism' (Expr a) Text
 hole_ = prism' Hole (\case{ (Hole n) -> Just n ; _ -> Nothing })
 
 
-comp_ :: Prism' (Expr a) [Clause (Expr a)]
+comp_ :: Prism' (Expr a) [Clause Expr a]
 comp_ = prism' Comp (\case{ Comp cs -> Just cs ; _ -> Nothing })
 
 app_ :: Prism' (Expr a) (Expr a, Expr a)
