@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Surface.Expr
@@ -22,7 +23,7 @@ import Prelude hiding ((**))
 import Text.Parser.Position (Span, Spanned(..))
 
 newtype Expr = In { out :: ExprF Expr }
-  deriving (Show)
+  deriving newtype (Show)
 
 instance Spanned Expr where
   setSpan = fmap In . Loc

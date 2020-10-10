@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 module Facet.Surface.Comp
 ( Clause(..)
@@ -17,7 +19,7 @@ import Facet.Surface.Pattern (Pattern)
 import Text.Parser.Position (Span, Spanned(..))
 
 newtype Clause e = In { out :: ClauseF e (Clause e) }
-  deriving (Show)
+  deriving newtype (Show)
 
 instance Foldable Clause where
   foldMap f = go where go = bifoldMap f go . out
