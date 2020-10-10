@@ -351,7 +351,7 @@ printCoreQExpr = go
     CE.QUnit     -> unit
     l CE.:**  r  -> go env l **  go env r
 
-printSurfaceExpr :: Stack Print -> SE.Expr -> Print
+printSurfaceExpr :: Stack Print -> SE.Expr a -> Print
 printSurfaceExpr = go
   where
   go env = \case
@@ -359,17 +359,17 @@ printSurfaceExpr = go
     SE.Bound n -> env ! N.getIndex n
     SE.Hole n  -> hole n
     f SE.:$  a ->
-      let (f', a') = splitl (preview SE.app_ . dropSpan) f
+      let (f', a') = splitl (preview SE.app_) f
       in go env f' $$* fmap (go env) (a' :> a)
     SE.Unit    -> unit
     l SE.:*  r -> go env l **  go env r
     SE.Comp c  -> printSurfaceComp env c
     SE.Loc _ t -> go env t
 
-printSurfaceComp :: Stack Print -> [SC.Clause SE.Expr] -> Print
+printSurfaceComp :: Stack Print -> [SC.Clause (SE.Expr a)] -> Print
 printSurfaceComp env = comp . commaSep . map (printSurfaceClause env)
 
-printSurfaceClause :: Stack Print -> SC.Clause SE.Expr -> Print
+printSurfaceClause :: Stack Print -> SC.Clause (SE.Expr a) -> Print
 printSurfaceClause env = SC.out >>> \case
   SC.Clause p b -> let { p' = sbound <$> p ; env' = foldl (:>) env p' } in printSurfacePattern p' <+> case SC.out b of
     SC.Body b -> arrow <> group (nest 2 (line <> printSurfaceExpr env' b))

@@ -176,7 +176,7 @@ tvar = token (settingSpan (runUnspaced (fmap (either (review T.global_ . N.T) (r
 
 -- Expressions
 
-exprTable :: (Monad p, PositionParsing p) => Table (Facet p) E.Expr
+exprTable :: (Monad p, PositionParsing p) => Table (Facet p) (E.Expr Span)
 exprTable =
   [ [ Infix L mempty (\ s -> fmap (setSpan s) . curry (review E.app_)) ]
   , [ Atom comp
@@ -185,10 +185,10 @@ exprTable =
     ]
   ]
 
-expr :: (Monad p, PositionParsing p) => Facet p E.Expr
+expr :: (Monad p, PositionParsing p) => Facet p (E.Expr Span)
 expr = build exprTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review E.prd_)))))
 
-comp :: (Monad p, PositionParsing p) => Facet p E.Expr
+comp :: (Monad p, PositionParsing p) => Facet p (E.Expr Span)
 comp = settingSpan (braces (review E.comp_ <$> clauses))
   where
   clauses
@@ -196,7 +196,7 @@ comp = settingSpan (braces (review E.comp_ <$> clauses))
     <|> pure <$> body
     <|> pure []
 
-clause :: (Monad p, PositionParsing p) => Facet p (C.Clause E.Expr)
+clause :: (Monad p, PositionParsing p) => Facet p (C.Clause (E.Expr Span))
 clause = (try (some ((,) <$> position <*> pattern) <* arrow) >>= foldr go body) <?> "clause"
   where
   go (start, p) rest = bindPattern p $ \ p' -> do
@@ -204,10 +204,10 @@ clause = (try (some ((,) <$> position <*> pattern) <* arrow) >>= foldr go body) 
     end <- position
     pure $ setSpan (Span start end) c
 
-body :: (Monad p, PositionParsing p) => Facet p (C.Clause E.Expr)
+body :: (Monad p, PositionParsing p) => Facet p (C.Clause (E.Expr Span))
 body = review C.body_ <$> expr
 
-evar :: (Monad p, PositionParsing p) => Facet p E.Expr
+evar :: (Monad p, PositionParsing p) => Facet p (E.Expr Span)
 evar
   =   token (settingSpan (runUnspaced (fmap (either (review E.global_ . N.E) (review E.bound_)) . resolve <$> ename <*> Unspaced env <?> "variable")))
   <|> try (token (settingSpan (runUnspaced (review E.global_ . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that

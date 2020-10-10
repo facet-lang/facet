@@ -20,7 +20,7 @@ import Text.Parser.Position (Span, Spanned(..))
 data Decl a
   = (UName ::: Type a) :=> Decl a
   | (UName ::: Type a) :-> Decl a
-  | Type a := Expr
+  | Type a := Expr a
   | Loc a (Decl a)
   deriving (Foldable, Functor, Show, Traversable)
 
@@ -41,5 +41,5 @@ forAll_ = prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing }
 bind_ :: Prism' (Decl a) (UName ::: Type a, Decl a)
 bind_ = prism' (uncurry (:->)) (\case{ t :-> b -> Just (t, b) ; _ -> Nothing })
 
-def_ :: Prism' (Decl a) (Type a, Expr)
+def_ :: Prism' (Decl a) (Type a, Expr a)
 def_ = prism' (uncurry (:=)) (\case{ t := e -> Just (t, e) ; _ -> Nothing })

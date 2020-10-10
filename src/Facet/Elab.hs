@@ -242,7 +242,7 @@ infixr 1 >~>
 -- Expressions
 
 elabExpr
-  :: SE.Expr
+  :: SE.Expr Span
   -> Maybe (Type Elab Level)
   -> Elab (Expr Elab Level ::: Type Elab Level)
 elabExpr = go
