@@ -8,6 +8,7 @@ module Facet.Core.Expr
 , quote
 ) where
 
+import           Control.Effect.Throw
 import qualified Facet.Core.Pattern as P
 import           Facet.Core.Type (QType, Type)
 import qualified Facet.Core.Type as T
@@ -15,15 +16,15 @@ import           Facet.Error
 import           Facet.Name
 import           Facet.Pretty
 
-data Expr
+data Expr f
   = Free QName
   | Bound Level
-  | TLam UName (Type (Either Err) -> Either Err Expr)
-  | TApp Expr (Type (Either Err))
-  | Lam (P.Pattern UName) (Expr -> Either Err Expr)
-  | Expr :$ Expr
+  | TLam UName (Type f -> f (Expr f))
+  | TApp (Expr f) (Type f)
+  | Lam (P.Pattern UName) ((Expr f) -> f (Expr f))
+  | Expr f :$ Expr f
   | Unit
-  | Expr :* Expr
+  | Expr f :* Expr f
 
 infixl 9 :$
 infixl 7 :*
@@ -44,20 +45,20 @@ infixl 9 :$$
 infixl 7 :**
 
 
-eval :: [Either (Type (Either Err)) Expr] -> QExpr -> Either Err Expr
+eval :: Has (Throw Err) sig m => [Either (Type m) (Expr m)] -> QExpr -> m (Expr m)
 eval env = \case
   QFree  n  -> pure (Free n)
   QBound n  -> case env !! getIndex n of
     Right e -> pure e
-    Left _T -> Left $ Err (reflow "can’t use a type in an expression") []
+    Left _T -> throwError $ Err (reflow "can’t use a type in an expression") []
   QTLam n b -> pure $ TLam n (\ v -> eval (Left v:env) b)
-  QTApp f a -> TApp <$> eval env f <*> T.eval' (map (either Right (const (Left (Err (reflow "can’t use an expression in a type") [])))) env) a
+  QTApp f a -> TApp <$> eval env f <*> T.eval' (map (either pure (const (throwError (Err (reflow "can’t use an expression in a type") [])))) env) a
   QLam  p b -> pure $ Lam p (\ v -> eval (Right v:env) b)
   f :$$ a   -> (:$) <$> eval env f <*> eval env a
   QUnit     -> pure Unit
   l :** r   -> (:*) <$> eval env l <*> eval env r
 
-quote :: Expr -> Either Err QExpr
+quote :: Monad m => Expr m -> m QExpr
 quote = go (Level 0)
   where
   go d = \case

@@ -253,7 +253,7 @@ infixr 1 >~>
 elabExpr
   :: Has (Reader Context :+: Reader (Env.Env (Either Err)) :+: Reader Span :+: Throw Err) sig m
   => (SE.Expr ::: Maybe (Type (Either Err)))
-  -> m (CE.Expr ::: Type (Either Err))
+  -> m (CE.Expr (Either Err) ::: Type (Either Err))
 elabExpr (t ::: _T) = go t _T
   where
   go = SE.out >>> \case
@@ -273,16 +273,16 @@ elabExpr (t ::: _T) = go t _T
 
 ($$)
   :: Has (Throw Err) sig m
-  => Synth m CE.Expr
-  -> Check m CE.Expr
-  -> Synth m CE.Expr
+  => Synth m (CE.Expr (Either Err))
+  -> Check m (CE.Expr (Either Err))
+  -> Synth m (CE.Expr (Either Err))
 ($$) = app (CE.:$)
 
 tlam
   :: Has (Reader Context :+: Throw Err) sig m
   => UName
-  -> Check m CE.Expr
-  -> Check m CE.Expr
+  -> Check m (CE.Expr (Either Err))
+  -> Check m (CE.Expr (Either Err))
 tlam n b = Check $ \ ty -> do
   (_T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
   _T |-- \ v -> do
@@ -294,8 +294,8 @@ tlam n b = Check $ \ ty -> do
 lam
   :: Has (Reader Context :+: Throw Err) sig m
   => UName
-  -> Check m CE.Expr
-  -> Check m CE.Expr
+  -> Check m (CE.Expr (Either Err))
+  -> Check m (CE.Expr (Either Err))
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   n ::: _A |- do
@@ -303,14 +303,14 @@ lam n b = Check $ \ _T -> do
     b' <- check (b ::: _B)
     pure (CE.Lam (CP.Var n) (pure . (b' CE.:$)))
 
-unit :: Applicative m => Synth m CE.Expr
+unit :: Applicative m => Synth m (CE.Expr (Either Err))
 unit = Synth . pure $ CE.Unit ::: Unit
 
 (**)
   :: Has (Throw Err) sig m
-  => Check m CE.Expr
-  -> Check m CE.Expr
-  -> Check m CE.Expr
+  => Check m (CE.Expr (Either Err))
+  -> Check m (CE.Expr (Either Err))
+  -> Check m (CE.Expr (Either Err))
 l ** r = Check $ \ _T -> do
   (_L, _R) <- expectProductType (reflow "when checking product") _T
   l' <- check (l ::: _L)
@@ -319,8 +319,8 @@ l ** r = Check $ \ _T -> do
 
 comp
   :: (Has (Reader Context :+: Reader Span :+: Throw Err) sig m)
-  => [SC.Clause (Check m CE.Expr)]
-  -> Check m CE.Expr
+  => [SC.Clause (Check m (CE.Expr (Either Err)))]
+  -> Check m (CE.Expr (Either Err))
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
@@ -329,8 +329,8 @@ comp cs = do
 
 clause
   :: (Has (Reader Context :+: Reader Span :+: Throw Err) sig m)
-  => SC.Clause (Check m CE.Expr)
-  -> Check m CE.Expr
+  => SC.Clause (Check m (CE.Expr (Either Err)))
+  -> Check m (CE.Expr (Either Err))
 clause = go
   where
   go = SC.out >>> \case
@@ -369,7 +369,7 @@ pattern = go
 elabDecl
   :: Has (Reader Context :+: Reader (Env.Env (Either Err)) :+: Reader Span :+: Throw Err) sig m
   => SD.Decl
-  -> m (Check m CE.Expr ::: Type (Either Err))
+  -> m (Check m (CE.Expr (Either Err)) ::: Type (Either Err))
 elabDecl = go
   where
   go (SD.In s d) = local (const s) $ case d of

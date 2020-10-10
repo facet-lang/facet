@@ -271,7 +271,7 @@ groupByType eq = \case
     (ys,zs) = span (eq (ty x) . ty) xs
 
 
-printCoreExpr :: CE.Expr -> Print
+printCoreExpr :: CE.Expr (Either Err) -> Print
 printCoreExpr = either printErr (printCoreQExpr []) . CE.quote
 
 printCoreQExpr :: [Print] -> CE.QExpr -> Print

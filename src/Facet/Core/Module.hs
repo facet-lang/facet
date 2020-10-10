@@ -13,6 +13,6 @@ import           Facet.Syntax
 data Module = Module MName [(QName, Def ::: Type.Type (Either Err))]
 
 data Def
-  = DTerm Expr.Expr
+  = DTerm (Expr.Expr (Either Err))
   | DType (Type.Type (Either Err))
   | DData [CName ::: Type.Type (Either Err)]
