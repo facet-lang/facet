@@ -40,6 +40,8 @@ module Facet.Elab
 , elabDecl
   -- * Modules
 , elabModule
+  -- * Failures
+, rethrow
 ) where
 
 import           Control.Algebra
