@@ -16,6 +16,7 @@ module Facet.Core.Type
 , QType(..)
 , unQApp
 , eval
+, eval'
 , quote
 , quote'
 ) where
@@ -95,21 +96,24 @@ unQApp = \case{ f :$$ a -> pure (f, a) ; _ -> empty }
 
 
 eval :: [Type] -> QType -> Either Err Type
-eval env = \case
+eval = eval' . map Right
+
+eval' :: [Either Err Type] -> QType -> Either Err Type
+eval' env = \case
   QFree n  -> pure (global n)
-  QBound n -> pure (env !! getIndex n)
+  QBound n -> env !! getIndex n
   QType    -> pure Type
   QVoid    -> pure Void
   QUnit    -> pure Unit
   t :==> b -> do
-    t' <- traverse (eval env) t
-    pure (t' :=> \ v -> eval (v:env) b)
+    t' <- traverse (eval' env) t
+    pure (t' :=> \ v -> eval' (Right v:env) b)
   f :$$  a -> do
-    f' <- eval env f
-    a' <- eval env a
+    f' <- eval' env f
+    a' <- eval' env a
     f' .$ a'
-  a :--> b -> (:->) <$> eval env a <*> eval env b
-  l :**  r -> (:*)  <$> eval env l <*> eval env r
+  a :--> b -> (:->) <$> eval' env a <*> eval' env b
+  l :**  r -> (:*)  <$> eval' env l <*> eval' env r
 
 quote :: Type -> Either Err QType
 quote = quote' (Level 0)
