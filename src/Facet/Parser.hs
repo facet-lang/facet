@@ -137,10 +137,10 @@ binder self _ = do
 
 -- Types
 
-typeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
+typeTable :: (Monad p, PositionParsing p) => Table (Facet p) (T.Type Span)
 typeTable = [ Op.Operator (forAll (curry (review T.forAll_))) ] : monotypeTable
 
-monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) T.Type
+monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) (T.Type Span)
 monotypeTable =
   [ [ Infix R (pack "->") (\ s -> fmap (setSpan s) . curry (review T.arrow_)) ]
   , [ Infix L mempty (\ s -> fmap (setSpan s) . curry (review T.app_)) ]
@@ -154,7 +154,7 @@ monotypeTable =
 
 forAll
   :: (Monad p, PositionParsing p, Spanned res)
-  => ((N.UName S.::: T.Type) -> res -> res)
+  => ((N.UName S.::: T.Type Span) -> res -> res)
   -> OperatorParser (Facet p) res
 forAll mk self _ = do
   start <- position
@@ -164,13 +164,13 @@ forAll mk self _ = do
   loop start ty i rest = bind i $ \ v -> mk' start (v S.::: ty) <$> rest <*> position
   mk' start t b end = setSpan (Span start end) $ mk t b
 
-type' :: (Monad p, PositionParsing p) => Facet p T.Type
+type' :: (Monad p, PositionParsing p) => Facet p (T.Type Span)
 type' = build typeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review T.prd_)))))
 
-monotype :: (Monad p, PositionParsing p) => Facet p T.Type
+monotype :: (Monad p, PositionParsing p) => Facet p (T.Type Span)
 monotype = build monotypeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review T.prd_)))))
 
-tvar :: (Monad p, PositionParsing p) => Facet p T.Type
+tvar :: (Monad p, PositionParsing p) => Facet p (T.Type Span)
 tvar = token (settingSpan (runUnspaced (fmap (either (review T.global_ . N.T) (review T.bound_)) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 

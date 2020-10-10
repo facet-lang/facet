@@ -257,7 +257,7 @@ printCoreQType = go
     l CT.:**  r -> go env l **  go env r
 
 
-printSurfaceType :: Stack Print -> ST.Type -> Print
+printSurfaceType :: Stack Print -> ST.Type a -> Print
 printSurfaceType = go
   where
   go env = \case
@@ -268,10 +268,10 @@ printSurfaceType = go
     ST.Void    -> _Void
     ST.Unit    -> _Unit
     t ST.:=> b ->
-      let (t', b') = splitr (preview ST.forAll_ . dropSpan) b
+      let (t', b') = splitr (preview ST.forAll_) b
       in map (first sbound) (t:t') >~~> go (env:>sbound (tm t)) b'
     f ST.:$  a ->
-      let (f', a') = splitl (preview ST.app_ . dropSpan) f
+      let (f', a') = splitl (preview ST.app_) f
       in go env f' $$* fmap (go env) (a' :> a)
     a ST.:-> b -> go env a --> go env b
     l ST.:*  r -> go env l **  go env r
@@ -321,7 +321,7 @@ l ** r = tupled [l, r]
 (>~>) :: (Print ::: Print) -> Print -> Print
 (n ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (braces (space <> ann (var n ::: t) <> line))) </> arrow <+> b)
 
-(>~~>) :: [Print ::: ST.Type] -> Print -> Print
+(>~~>) :: [Print ::: ST.Type a] -> Print -> Print
 ts >~~> b = foldr go b (groupByType ST.aeq ts)
   where
   -- FIXME: this is horribly wrong and probably going to crash

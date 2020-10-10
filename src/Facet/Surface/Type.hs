@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
@@ -24,66 +24,66 @@ import Facet.Name
 import Facet.Syntax
 import Text.Parser.Position (Span, Spanned(..))
 
-data Type
+data Type a
   = Free DName
   | Bound Index
   | Hole Text
   | Type
   | Void
   | Unit
-  | (UName ::: Type) :=> Type
-  | Type :$ Type
-  | Type :-> Type
-  | Type :*  Type
-  | Loc Span Type
-  deriving (Show)
+  | (UName ::: Type a) :=> Type a
+  | Type a :$ Type a
+  | Type a :-> Type a
+  | Type a :*  Type a
+  | Loc a (Type a)
+  deriving (Foldable, Functor, Show, Traversable)
 
 infixr 1 :=>
 infixl 9 :$
 infixr 2 :->
 infixl 7 :*
 
-instance Spanned Type where
+instance Spanned (Type Span) where
   setSpan = Loc
 
   dropSpan = \case
     Loc _ d -> dropSpan d
     d       -> d
 
-global_ :: Prism' Type DName
+global_ :: Prism' (Type a) DName
 global_ = prism' Free (\case{ Free n -> Just n ; _ -> Nothing })
 
-bound_ :: Prism' Type Index
+bound_ :: Prism' (Type a) Index
 bound_ = prism' Bound (\case{ Bound n -> Just n ; _ -> Nothing })
 
-hole_ :: Prism' Type Text
+hole_ :: Prism' (Type a) Text
 hole_ = prism' Hole (\case{ Hole n -> Just n ; _ -> Nothing })
 
 
-forAll_ :: Prism' Type (UName ::: Type, Type)
+forAll_ :: Prism' (Type a) (UName ::: Type a, Type a)
 forAll_ = prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing })
 
-arrow_ :: Prism' Type (Type, Type)
+arrow_ :: Prism' (Type a) (Type a, Type a)
 arrow_ = prism' (uncurry (:->)) (\case{ a :-> b -> Just (a, b) ; _ -> Nothing })
 
-app_ :: Prism' Type (Type, Type)
+app_ :: Prism' (Type a) (Type a, Type a)
 app_ = prism' (uncurry (:$)) (\case{ f :$ a -> Just (f, a) ; _ -> Nothing })
 
-prd_ :: Prism' Type (Type, Type)
+prd_ :: Prism' (Type a) (Type a, Type a)
 prd_ = prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
 
 
-_Type :: Type
+_Type :: Type a
 _Type = Type
 
-_Void :: Type
+_Void :: Type a
 _Void = Void
 
-_Unit :: Type
+_Unit :: Type a
 _Unit = Unit
 
 
-aeq :: Type -> Type -> Bool
+aeq :: Type a -> Type a -> Bool
 aeq t1 t2 = case (t1, t2) of
   (Free  n1,           Free  n2)           -> n1 == n2
   (Bound n1,           Bound n2)           -> n1 == n2

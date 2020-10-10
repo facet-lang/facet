@@ -175,7 +175,7 @@ f $$ a = Synth $ do
 -- Types
 
 elabType
-  :: ST.Type
+  :: ST.Type Span
   -> Maybe (Type Elab Level)
   -> Elab (Type Elab Level ::: Type Elab Level)
 elabType = go

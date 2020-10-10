@@ -112,7 +112,7 @@ data Action
   | Load FilePath
   | Reload
   | Type Expr
-  | Kind Type
+  | Kind (Type Span)
 
 load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
