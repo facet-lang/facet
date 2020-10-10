@@ -44,19 +44,19 @@ printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole modu
   Left err -> P.putDoc (prettyNotice err)
   Right m  -> P.prettyPrint (P.printSurfaceModule m)
 
-parseFile :: MonadIO m => FilePath -> m (Either Notice S.Module)
+parseFile :: MonadIO m => FilePath -> m (Either Notice (S.Module Span))
 parseFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module'))))
 
 
 -- Elaborating
 
-elabString :: MonadIO m => Facet (ParserC (Either Notice)) S.Module -> String -> m ()
+elabString :: MonadIO m => Facet (ParserC (Either Notice)) (S.Module Span) -> String -> m ()
 elabString = elabPathString Nothing
 
 elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
-elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) S.Module -> String -> m ()
+elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) (S.Module Span) -> String -> m ()
 elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
   first mkNotice $ runErrM (Span (Pos 0 0) (Pos 0 0)) $ do

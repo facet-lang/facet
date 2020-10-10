@@ -11,8 +11,8 @@ import Facet.Surface.Decl (Decl)
 import Text.Parser.Position (Span)
 
 -- FIXME: imports
-data Module = Module { ann :: Span, name :: MName, defs :: [Def] }
-  deriving (Show)
+data Module a = Module { ann :: a, name :: MName, defs :: [Def a] }
+  deriving (Foldable, Functor, Show, Traversable)
 
-data Def = Def Span DName Decl
-  deriving (Show)
+data Def a = Def Span DName Decl
+  deriving (Foldable, Functor, Show, Traversable)

@@ -365,7 +365,7 @@ elabDecl = go
 
 elabModule
   :: Has (Reader Span :+: Throw Err) sig m
-  => SM.Module
+  => SM.Module Span
   -> m (CM.Module Elab)
 elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab)) $ do
   -- FIXME: elaborate all the types first, and only then the terms

@@ -433,10 +433,10 @@ printCoreDef = \case
   CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (printCoreValue' Nil) . first pretty) cs
 
 
-printSurfaceModule :: SM.Module -> Print
+printSurfaceModule :: SM.Module a -> Print
 printSurfaceModule (SM.Module _ n ds) = module' n (map printSurfaceDef ds)
 
-printSurfaceDef :: SM.Def -> Print
+printSurfaceDef :: SM.Def a -> Print
 printSurfaceDef (SM.Def _ n d) = def (sfree n) (printSurfaceDecl d)
 
 
