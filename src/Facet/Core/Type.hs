@@ -100,7 +100,9 @@ eval env = \case
   QType    -> pure Type
   QVoid    -> pure Void
   QUnit    -> pure Unit
-  t :==> b -> (:=>) <$> traverse (eval env) t <*> pure (\ v -> eval (v:env) b)
+  t :==> b -> do
+    t' <- traverse (eval env) t
+    pure (t' :=> \ v -> eval (v:env) b)
   f :$$  a -> do
     f' <- eval env f
     a' <- eval env a
