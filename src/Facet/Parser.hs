@@ -138,16 +138,16 @@ binder self _ = do
 -- Types
 
 typeTable :: (Monad p, PositionParsing p) => Table (Facet p) (T.Type Span)
-typeTable = [ Op.Operator (forAll (curry (review T.forAll_))) ] : monotypeTable
+typeTable = [ Op.Operator (forAll (T.:=>)) ] : monotypeTable
 
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) (T.Type Span)
 monotypeTable =
-  [ [ Infix R (pack "->") (\ s -> fmap (setSpan s) . curry (review T.arrow_)) ]
-  , [ Infix L mempty (\ s -> fmap (setSpan s) . curry (review T.app_)) ]
+  [ [ Infix R (pack "->") (\ s -> fmap (setSpan s) . (T.:->)) ]
+  , [ Infix L mempty (\ s -> fmap (setSpan s) . (T.:$)) ]
   , [ -- FIXME: we should treat these as globals.
-      Atom (T._Type <$ token (string "Type"))
-    , Atom (T._Void <$ token (string "Void"))
-    , Atom (T._Unit <$ token (string "Unit"))
+      Atom (T.Type <$ token (string "Type"))
+    , Atom (T.Void <$ token (string "Void"))
+    , Atom (T.Unit <$ token (string "Unit"))
     , Atom tvar
     ]
   ]
@@ -165,13 +165,13 @@ forAll mk self _ = do
   mk' start t b end = setSpan (Span start end) $ mk t b
 
 type' :: (Monad p, PositionParsing p) => Facet p (T.Type Span)
-type' = build typeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review T.prd_)))))
+type' = build typeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . (T.:*)))))
 
 monotype :: (Monad p, PositionParsing p) => Facet p (T.Type Span)
-monotype = build monotypeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . curry (review T.prd_)))))
+monotype = build monotypeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap (setSpan s) . (T.:*)))))
 
 tvar :: (Monad p, PositionParsing p) => Facet p (T.Type Span)
-tvar = token (settingSpan (runUnspaced (fmap (either (review T.global_ . N.T) (review T.bound_)) . resolve <$> tname <*> Unspaced env <?> "variable")))
+tvar = token (settingSpan (runUnspaced (fmap (either (T.Free . N.T) (T.Bound)) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
 -- Expressions

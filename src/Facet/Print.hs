@@ -36,7 +36,6 @@ module Facet.Print
 ) where
 
 import           Control.Applicative ((<**>))
-import           Control.Lens (preview)
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
@@ -266,10 +265,10 @@ printSurfaceType = go
     ST.Void    -> _Void
     ST.Unit    -> _Unit
     t ST.:=> b ->
-      let (t', b') = splitr (preview ST.forAll_) b
+      let (t', b') = splitr ST.unForAll b
       in map (first sbound) (t:t') >~~> go (env:>sbound (tm t)) b'
     f ST.:$  a ->
-      let (f', a') = splitl (preview ST.app_) f
+      let (f', a') = splitl ST.unApp f
       in go env f' $$* fmap (go env) (a' :> a)
     a ST.:-> b -> go env a --> go env b
     l ST.:*  r -> go env l **  go env r

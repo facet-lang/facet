@@ -5,20 +5,12 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Type
 ( Type(..)
-, global_
-, bound_
-, hole_
-, forAll_
-, arrow_
-, app_
-, prd_
-, _Type
-, _Void
-, _Unit
+, unForAll
+, unApp
 , aeq
 ) where
 
-import Control.Lens.Prism hiding (_Void)
+import Control.Effect.Empty
 import Data.Text (Text)
 import Facet.Name
 import Facet.Syntax
@@ -50,37 +42,12 @@ instance Spanned (Type Span) where
     Loc _ d -> dropSpan d
     d       -> d
 
-global_ :: Prism' (Type a) DName
-global_ = prism' Free (\case{ Free n -> Just n ; _ -> Nothing })
 
-bound_ :: Prism' (Type a) Index
-bound_ = prism' Bound (\case{ Bound n -> Just n ; _ -> Nothing })
+unForAll :: Has Empty sig m => Type a -> m (UName ::: Type a, Type a)
+unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
-hole_ :: Prism' (Type a) Text
-hole_ = prism' Hole (\case{ Hole n -> Just n ; _ -> Nothing })
-
-
-forAll_ :: Prism' (Type a) (UName ::: Type a, Type a)
-forAll_ = prism' (uncurry (:=>)) (\case{ t :=> b -> Just (t, b) ; _ -> Nothing })
-
-arrow_ :: Prism' (Type a) (Type a, Type a)
-arrow_ = prism' (uncurry (:->)) (\case{ a :-> b -> Just (a, b) ; _ -> Nothing })
-
-app_ :: Prism' (Type a) (Type a, Type a)
-app_ = prism' (uncurry (:$)) (\case{ f :$ a -> Just (f, a) ; _ -> Nothing })
-
-prd_ :: Prism' (Type a) (Type a, Type a)
-prd_ = prism' (uncurry (:*)) (\case{ l :* r -> Just (l, r) ; _ -> Nothing })
-
-
-_Type :: Type a
-_Type = Type
-
-_Void :: Type a
-_Void = Void
-
-_Unit :: Type a
-_Unit = Unit
+unApp :: Has Empty sig m => Type a -> m (Type a, Type a)
+unApp = \case{ f :$ a -> pure (f, a) ; _ -> empty }
 
 
 aeq :: Type a -> Type a -> Bool
