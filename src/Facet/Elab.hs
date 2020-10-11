@@ -136,10 +136,10 @@ unify t1 t2 = go t1 t2
     (a1 :-> b1,  a2 :-> b2)  -> (:->) <$> go a1 a2 <*> go b1 b2
     (t1 :=> b1,  t2 :=> b2)  -> do
       t <- go (ty t1) (ty t2)
-      b <- tm t1 ::: t |- elabBinder (\ v -> do
+      b <- tm t1 ::: t |- \ v -> do
         b1' <- liftErr $ b1 v
         b2' <- liftErr $ b2 v
-        go b1' b2')
+        go b1' b2'
       pure $ tm t1 ::: t :=> b
     (TPrd l1 r1, TPrd l2 r2) -> TPrd <$> go l1 l2 <*> go r1 r2
     (Prd  l1 r1, Prd  l2 r2) -> Prd  <$> go l1 l2 <*> go r1 r2
@@ -200,17 +200,13 @@ f $$ a = Synth $ do
   (::: _B) <$> liftErr (f' CV.$$ a')
 
 
-(|-) :: Has (Reader (Context (Type ErrM Level))) sig m => UName ::: Type ErrM Level -> m b -> m b
-t |- m = local (|> t) m
+(|-) :: Has (Reader (Context (Type ErrM Level)) :+: Reader (Env.Env ErrM)) sig m => UName ::: Type ErrM Level -> (a -> Elab b) -> m (a -> ErrM b)
+t |- f = do
+  ctx <- ask
+  env <- ask
+  pure $ runReader (ctx |> t) . runReader env . runElab . f
 
 infix 1 |-
-
-
-elabBinder :: Has (Reader (Env.Env ErrM) :+: Reader (Context (Type ErrM Level))) sig m => (a -> Elab b) -> m (a -> ErrM b)
-elabBinder f = do
-  env <- ask
-  ctx <- ask
-  pure $ \ a -> runReader ctx (runReader env (runElab (f a)))
 
 
 -- Types
@@ -276,7 +272,7 @@ infixr 2 -->
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
   -- FIXME: shouldn’t we use the bound variable?
-  b' <- n ::: _T |- elabBinder (\ v -> check (b ::: Type))
+  b' <- n ::: _T |- \ v -> check (b ::: Type)
   pure $ (n ::: _T :=> b') ::: Type
 
 infixr 1 >~>
@@ -310,9 +306,9 @@ tlam
   -> Check (Expr ErrM Level)
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  b' <- n ::: _T |- elabBinder (\ v -> do
+  b' <- n ::: _T |- \ v -> do
     _B' <- liftErr (_B v)
-    check (b ::: _B'))
+    check (b ::: _B')
   pure (TLam n b')
 
 lam
@@ -322,7 +318,7 @@ lam
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   -- FIXME: shouldn’t we use the bound variable?
-  b' <- n ::: _A |- elabBinder (\ v -> check (b ::: _B))
+  b' <- n ::: _A |- \ v -> check (b ::: _B)
   pure (Lam n b')
 
 unit :: Synth (Expr ErrM Level)
@@ -357,7 +353,7 @@ clause = \case
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
     -- p' <- check (pattern p ::: _A)
     -- FIXME: shouldn’t we use the bound variable?
-    b' <- n ::: _A |- elabBinder (\ v -> check (clause b ::: _B))
+    b' <- n ::: _A |- \ v -> check (clause b ::: _B)
     pure (Lam n b')
   SC.Body e   -> e
   SC.Loc s c  -> setSpan s (clause c)
@@ -394,7 +390,7 @@ elabDecl = \case
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n b' ::: _check (switch (_check (elabType t) --> (__ ::: (Type :: Type ErrM Level) |- _B)))
+    in lam n b' ::: _check (switch (_check (elabType t) --> local (|> (__ ::: (Type :: Type ErrM Level))) _B))
 
   t SD.:= b ->
     _check (elabExpr b) ::: _check (elabType t)
