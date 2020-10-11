@@ -23,7 +23,7 @@ module Facet.Core.Value
 import Control.Effect.Empty
 import Control.Monad ((<=<))
 import Data.Foldable (foldl')
-import Facet.Name
+import Facet.Name (Level(..), QName, UName, getIndex, levelToIndex, shiftLevel)
 import Facet.Stack
 import Facet.Syntax
 import GHC.Stack
