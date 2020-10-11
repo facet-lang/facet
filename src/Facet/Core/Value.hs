@@ -15,8 +15,6 @@ module Facet.Core.Value
 , ($$*)
 , foldContext
 , foldContextAll
-, close
-, closeAll
 ) where
 
 import Control.Effect.Empty
@@ -123,33 +121,4 @@ foldContextAll fold = go
   go (as:>a) = do
     as' <- go as
     a'  <- foldContext fold as' a
-    pure $ as' :> a'
-
-
--- FIXME: these are pretty clearly broken; we should define them in terms of an interpreter.
-close :: Monad m => Stack (Value m a) -> Value m Level -> m (Value m a)
-close env = \case
-  Type     -> pure Type
-  Void     -> pure Void
-  UnitT    -> pure UnitT
-  Unit     -> pure Unit
-  t :=> b  -> do
-    t' <- traverse (close env) t
-    pure $ t' :=> \ v -> close (env:>v) =<< b (bound (Level (length env)))
-  a :-> b  -> (:->) <$> close env a <*> close env b
-  TLam n b -> pure $ TLam n $ \ v -> close (env:>v) =<< b (bound (Level (length env)))
-  Lam  n b -> pure $ Lam  n $ \ v -> close (env:>v) =<< b (bound (Level (length env)))
-  f :$ as  -> do
-    let f' = either global ((env !) . getIndex . levelToIndex (Level (length env))) f
-    as' <- traverse (close env) as
-    f' $$* as'
-  TPrd l r -> TPrd <$> close env l <*> close env r
-  Prd l r  -> Prd  <$> close env l <*> close env r
-
-closeAll :: Monad m => Stack (Value m Level) -> m (Stack (Value m a))
-closeAll = \case
-  Nil     -> pure Nil
-  as :> a -> do
-    as' <- closeAll as
-    a'  <- close as' a
     pure $ as' :> a'
