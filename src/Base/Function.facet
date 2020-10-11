@@ -54,6 +54,10 @@ _ |> _
 { f a }
 
 
+absurd : { A : Type } -> Void -> A
+{}
+
+
 case
 : { A, B : Type } -> A -> (A -> B) -> B
 { (_ |> _) }
