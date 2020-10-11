@@ -200,7 +200,7 @@ f $$ a = Synth $ do
   (::: _B) <$> liftErr (f' CV.$$ a')
 
 
-(|-) :: Has (Reader (Context a)) sig m => UName ::: a -> m b -> m b
+(|-) :: Has (Reader (Context (Type ErrM Level))) sig m => UName ::: Type ErrM Level -> m b -> m b
 t |- m = local (Context . (:> t) . getContext) m
 
 infix 1 |-
