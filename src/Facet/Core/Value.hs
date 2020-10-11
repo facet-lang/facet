@@ -1,7 +1,9 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
-( Value(..)
+( AValue(..)
+, Value(..)
 , Type
 , Expr
 , global
@@ -25,6 +27,8 @@ import Facet.Name
 import Facet.Stack
 import Facet.Syntax
 import GHC.Stack
+
+newtype AValue m = AValue { getAValue :: forall r . m (Value m r) }
 
 data Value f a
   = Type
