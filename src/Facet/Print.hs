@@ -194,7 +194,7 @@ printCoreValue = go (N.Level 0)
 
 printBinding :: Ctx.Context Print -> N.Level -> Print
 -- FIXME: there’s no way to recover whether this was a term or type variable binding.
-printBinding ctx l = let n ::: _T = ctx Ctx.! N.levelToIndex (Ctx.level ctx) l in ann (cbound n tvar l ::: _T)
+printBinding ctx l = prec Ann $ let n ::: _T = ctx Ctx.! N.levelToIndex (Ctx.level ctx) l in ann (cbound n tvar l ::: _T)
 
 printCoreValue' :: Monad m => Stack Print -> CV.Value m N.Level -> m Print
 printCoreValue' = go
