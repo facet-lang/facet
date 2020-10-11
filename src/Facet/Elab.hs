@@ -85,9 +85,9 @@ type ErrM = ErrorC Span Err Identity
 runErrM :: Span -> ErrM a -> Either (Span, Err) a
 runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
 
-type Context = Stack (UName ::: Type ErrM Level)
+type Context a = Stack (UName ::: a)
 
-elab :: Has (Reader Context :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
+elab :: Has (Reader (Context (Type ErrM Level)) :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab m = do
   ctx <- ask
   env <- ask
@@ -102,12 +102,12 @@ liftErr :: ErrM a -> Elab a
 liftErr = Elab . lift . lift
 
 -- FIXME: can we generalize this to a rank-n quantified action over any context providing these effects?
-newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC Context (ErrorC Span Err Identity)) a }
-  deriving (Algebra (Reader (Env.Env ErrM) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
+newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC (Context (Type ErrM Level)) (ErrorC Span Err Identity)) a }
+  deriving (Algebra (Reader (Env.Env ErrM) :+: Reader (Context (Type ErrM Level)) :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
 
 
 newtype Check a = Check { runCheck :: Type ErrM Level -> Elab a }
-  deriving (Algebra (Reader (Type ErrM Level) :+: Reader (Env.Env ErrM) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad) via ReaderC (Type ErrM Level) Elab
+  deriving (Algebra (Reader (Type ErrM Level) :+: Reader (Env.Env ErrM) :+: Reader (Context (Type ErrM Level)) :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad) via ReaderC (Type ErrM Level) Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type ErrM Level) }
 
@@ -168,7 +168,7 @@ global
   -> Synth (Value ErrM Level)
 global n = Synth $ asks (Env.lookup n) >>= \case
   Just b  -> do
-    ctx <- ask @Context
+    ctx <- ask @(Context (Type ErrM Level))
     pure (CV.global (tm b :.: n) ::: shift (Level (length ctx)) (ty b))
   Nothing -> freeVariable (pretty n)
 
@@ -176,7 +176,7 @@ bound
   :: Index
   -> Synth (Value ErrM Level)
 bound n = Synth $ do
-  ctx <- ask @Context
+  ctx <- ask @(Context (Type ErrM Level))
   let level = indexToLevel (length ctx) n
   case ctx !? getIndex n of
     Just (_ ::: _T) -> pure (CV.bound level ::: _T)
@@ -201,7 +201,7 @@ f $$ a = Synth $ do
   (::: _B) <$> liftErr (f' CV.$$ a')
 
 
-elabBinder :: Has (Reader (Env.Env ErrM) :+: Reader Context) sig m => (a -> Elab b) -> m (a -> ErrM b)
+elabBinder :: Has (Reader (Env.Env ErrM) :+: Reader (Context (Type ErrM Level))) sig m => (a -> Elab b) -> m (a -> ErrM b)
 elabBinder f = do
   env <- ask
   ctx <- ask
@@ -412,7 +412,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (SM.Def s n d) -> setSpan s $ do
     env <- get @(Env.Env ErrM)
-    e' ::: _T <- runReader @Context Nil . runReader env $ do
+    e' ::: _T <- runReader @(Context (Type ErrM Level)) Nil . runReader env $ do
       let e ::: t = elabDecl d
       _T <- elab $ check (t ::: Type)
       e' <- elab $ check (e ::: _T)
@@ -428,7 +428,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM
 
 -- Context
 
-(|-) :: Has (Reader Context) sig m => UName ::: Type ErrM Level -> m a -> m a
+(|-) :: Has (Reader (Context (Type ErrM Level))) sig m => UName ::: Type ErrM Level -> m a -> m a
 t |- m = local (:>t) m
 
 infix 1 |-
@@ -439,12 +439,12 @@ infix 1 |-
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
-printTypeInContext :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => Stack P.Print -> Type ErrM Level -> m ErrDoc
+printTypeInContext :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => Stack P.Print -> Type ErrM Level -> m ErrDoc
 printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printCoreValue ctx
 
-showContext :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => m String
+showContext :: Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m => m String
 showContext = do
-  ctx <- ask @Context
+  ctx <- ask @(Context (Type ErrM Level))
   let go Nil     = pure Nil
       go (as:>a) = do
         as' <- go as
@@ -453,13 +453,13 @@ showContext = do
   shown <- rethrow $ go ctx
   pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> shows t {-. showString " : " . _T-}) (toList shown))) $ "]"
 
-printContext :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => m (Stack P.Print)
+printContext :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => m (Stack P.Print)
 printContext = do
-  ctx <- ask @Context
+  ctx <- ask @(Context (Type ErrM Level))
   -- FIXME: this is wrong, but to be fair we probably shouldn’t print the context like this at all anyway.
   rethrow $ foldContextAll P.printCoreValue (ty <$> ctx)
 
-printType :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> m ErrDoc
+printType :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> m ErrDoc
 -- FIXME: this is still resulting in out of bounds printing
 printType t = do
   ctx <- printContext
@@ -476,7 +476,7 @@ mismatch msg exp act = err $ msg
   -- line things up nicely for e.g. wrapped function types
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
-couldNotUnify :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> Type ErrM Level -> m a
+couldNotUnify :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> Type ErrM Level -> m a
 couldNotUnify t1 t2 = do
   ctx <- printContext
   t1' <- printTypeInContext ctx t1
@@ -495,16 +495,16 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 -- Patterns
 
-expectMatch :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => (Type ErrM Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type ErrM Level -> m out
+expectMatch :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => (Type ErrM Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type ErrM Level -> m out
 expectMatch pat exp s _T = do
   _T' <- printType _T
   maybe (mismatch s exp _T') pure (pat _T)
 
-expectQuantifiedType :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (UName ::: Type ErrM Level, Type ErrM Level -> ErrM (Type ErrM Level))
+expectQuantifiedType :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (UName ::: Type ErrM Level, Type ErrM Level -> ErrM (Type ErrM Level))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
+expectFunctionType :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
+expectProductType :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
 expectProductType = expectMatch unProductT (pretty "(_, _)")
