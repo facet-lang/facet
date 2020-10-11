@@ -56,6 +56,7 @@ library
     Facet.Problem
     Facet.REPL
     Facet.REPL.Parser
+    Facet.Semiring
     Facet.Stack
     Facet.Surface.Comp
     Facet.Surface.Decl
