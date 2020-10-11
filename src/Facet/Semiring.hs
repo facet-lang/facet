@@ -29,3 +29,8 @@ instance Semigroup Few where
 
 instance Monoid Few where
   mempty = Zero
+
+instance Semiring Few where
+  Zero >< _    = Zero
+  _    >< Zero = Zero
+  a    >< b    = max a b
