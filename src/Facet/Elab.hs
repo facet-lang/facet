@@ -73,6 +73,7 @@ import qualified Facet.Surface.Module as SM
 import qualified Facet.Surface.Pattern as SP
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
+import           GHC.Stack
 import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 
@@ -428,7 +429,7 @@ infix 1 |-
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
-printType :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => Type ErrM Level -> m ErrDoc
+printType :: HasCallStack => Has (Reader Context :+: Reader Span :+: Throw Err) sig m => Type ErrM Level -> m ErrDoc
 -- FIXME: this is still resulting in out of bounds printing
 printType t = do
   ctx <- ask @Context
@@ -458,7 +459,7 @@ mismatch msg exp act = err $ msg
   -- line things up nicely for e.g. wrapped function types
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
-couldNotUnify :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => Type ErrM Level -> Type ErrM Level -> m a
+couldNotUnify :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> Type ErrM Level -> m a
 couldNotUnify t1 t2 = do
   t1' <- printType t1
   t2' <- printType t2
@@ -476,16 +477,16 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 -- Patterns
 
-expectMatch :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => (Type ErrM Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type ErrM Level -> m out
+expectMatch :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => (Type ErrM Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type ErrM Level -> m out
 expectMatch pat exp s _T = do
   _T' <- printType _T
   maybe (mismatch s exp _T') pure (pat _T)
 
-expectQuantifiedType :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (UName ::: Type ErrM Level, Type ErrM Level -> ErrM (Type ErrM Level))
+expectQuantifiedType :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (UName ::: Type ErrM Level, Type ErrM Level -> ErrM (Type ErrM Level))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
+expectFunctionType :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
+expectProductType :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
 expectProductType = expectMatch unProductT (pretty "(_, _)")

@@ -24,6 +24,7 @@ import Data.Foldable (foldl')
 import Facet.Name
 import Facet.Stack
 import Facet.Syntax
+import GHC.Stack
 
 -- FIXME: should the domain of the binders be f a instead of Value f a?
 -- FIXME: should bound variables be f a instead of a?
@@ -72,14 +73,14 @@ unProductT :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
 unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
 
 
-($$) :: Applicative f => Value f a -> Value f a -> f (Value f a)
+($$) :: (HasCallStack, Applicative f) => Value f a -> Value f a -> f (Value f a)
 (f :$ as) $$ a = pure (f :$ (as :> a))
 (_ :=> b) $$ a = b a
 TLam _ b  $$ a = b a
 Lam  _ b  $$ a = b a
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (Foldable t, Monad f) => Value f a -> t (Value f a) -> f (Value f a)
+($$*) :: (HasCallStack, Foldable t, Monad f) => Value f a -> t (Value f a) -> f (Value f a)
 f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 
 infixl 9 $$, $$*
@@ -107,7 +108,7 @@ shift d = go
     Prd l r -> Prd (go l) (go r)
 
 
-foldContext :: Monad m => (Value m a -> m a) -> Stack a -> Value m Level -> m a
+foldContext :: (HasCallStack, Monad m) => (Value m a -> m a) -> Stack a -> Value m Level -> m a
 foldContext fold env = fold <=< go env
   where
   go env = \case
@@ -137,7 +138,7 @@ foldContext fold env = fold <=< go env
     TPrd l r -> TPrd <$> go env l <*> go env r
     Prd  l r -> Prd  <$> go env l <*> go env r
 
-foldContextAll :: Monad m => (Value m a -> m a) -> Stack (Value m Level) -> m (Stack a)
+foldContextAll :: (HasCallStack, Monad m) => (Value m a -> m a) -> Stack (Value m Level) -> m (Stack a)
 foldContextAll fold = go
   where
   go Nil     = pure Nil
