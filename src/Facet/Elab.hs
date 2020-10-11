@@ -436,7 +436,7 @@ infix 1 |-
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
-printTypeInContext :: HasCallStack => Has (Reader Context :+: Reader Span :+: Throw Err) sig m => Stack P.Print -> Type ErrM Level -> m ErrDoc
+printTypeInContext :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => Stack P.Print -> Type ErrM Level -> m ErrDoc
 printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printCoreValue ctx
 
 showContext :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => m String
@@ -451,12 +451,12 @@ showContext = do
   shown <- rethrow $ go ctx
   pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> t {-. showString " : " . _T-}) (toList shown))) $ "]"
 
-printContext :: HasCallStack => Has (Reader Context :+: Reader Span :+: Throw Err) sig m => m (Stack P.Print)
+printContext :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => m (Stack P.Print)
 printContext = do
   ctx <- ask @Context
   rethrow $ foldContextAll P.printCoreValue (tm <$> ctx)
 
-printType :: HasCallStack => Has (Reader Context :+: Reader Span :+: Throw Err) sig m => Type ErrM Level -> m ErrDoc
+printType :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> m ErrDoc
 -- FIXME: this is still resulting in out of bounds printing
 printType t = do
   ctx <- printContext
