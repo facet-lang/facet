@@ -304,7 +304,7 @@ tlam
   -> Check (Expr ErrM Level)
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  b' <- elabBinder (\ v -> n ::: _T |- do
+  b' <- n ::: _T |- elabBinder (\ v -> do
     _B' <- liftErr (_B v)
     check (b ::: _B'))
   pure (TLam n b')
