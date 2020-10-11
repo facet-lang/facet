@@ -160,11 +160,11 @@ switch (Synth m) = \case
 
 global
   :: N.DName
-  -> Synth QName
+  -> Synth (Value ErrM Level)
 global n = Synth $ asks (Env.lookup n) >>= \case
   Just b  -> do
     ctx <- ask @Context
-    pure (tm b :.: n ::: shift (Level (length ctx)) (ty b))
+    pure (CV.global (tm b :.: n) ::: shift (Level (length ctx)) (ty b))
   Nothing -> freeVariable (pretty n)
 
 bound
@@ -204,7 +204,7 @@ elabType
 elabType = go
   where
   go = \case
-    ST.Free  n -> switch $ CV.global <$> global n
+    ST.Free  n -> switch $ global n
     ST.Bound n -> switch $ CV.bound  <$> bound n
     ST.Hole  n -> \ _K -> hole (n ::: _K)
     ST.Type    -> switch $ _Type
@@ -272,7 +272,7 @@ elabExpr
 elabExpr = go
   where
   go = \case
-    SE.Free  n -> switch $ CV.global <$> global n
+    SE.Free  n -> switch $ global n
     SE.Bound n -> switch $ CV.bound  <$> bound n
     SE.Hole  n -> \ _T -> hole (n ::: _T)
     f SE.:$  a -> switch $ _synth f $$ _check a
