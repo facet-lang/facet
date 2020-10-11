@@ -433,13 +433,9 @@ printType :: HasCallStack => Has (Reader Context :+: Reader Span :+: Throw Err) 
 -- FIXME: this is still resulting in out of bounds printing
 printType t = do
   ctx <- ask @Context
-  let go Nil = pure Nil
-      go (as:>a) = do
-        as' <- go as
-        a' <- P.printCoreValue' as' a
-        pure $ as' :> a'
-  ctx' <- rethrow $ go (tm <$> ctx)
-  P.getPrint <$> rethrow (P.printCoreValue' ctx' t)
+  ctx' <- rethrow $ foldContextAll P.printCoreValue (tm <$> ctx)
+  t'   <- rethrow $ foldContext P.printCoreValue ctx' t
+  pure $ P.getPrint t'
 
 err :: Has (Throw Err) sig m => ErrDoc -> m a
 err = throwError . (`Err` []) . group
