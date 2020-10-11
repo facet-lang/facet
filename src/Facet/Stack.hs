@@ -40,6 +40,12 @@ instance Applicative Stack where
     go accum Nil     _   = accum Nil
     go accum (fs:>f) as  = go (accum . flip (foldl (\ fas a -> fas :> f a)) as) fs as
 
+instance Monad Stack where
+  as >>= f = go id as
+    where
+    go accum Nil     = accum Nil
+    go accum (as:>a) = go (accum . (<> f a)) as
+
 
 singleton :: a -> Stack a
 singleton = (Nil :>)
