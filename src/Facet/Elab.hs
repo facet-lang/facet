@@ -343,6 +343,7 @@ comp [] = Check $ \ _T -> do
   _A <- unify _A Void
   b' <- __ ::: _A |- \ v -> pure $ Case v []
   pure $ Lam __ b'
+comp [ SC.Body e ] = e
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
