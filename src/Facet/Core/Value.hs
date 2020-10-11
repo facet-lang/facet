@@ -14,6 +14,7 @@ module Facet.Core.Value
 , ($$)
 , ($$*)
 , foldContext
+, foldContextAll
 , close
 , closeAll
 ) where
@@ -114,6 +115,15 @@ foldContext fold env = fold env <=< go env
       f' $$* as'
     TPrd l r -> TPrd <$> go env l <*> go env r
     Prd  l r -> Prd  <$> go env l <*> go env r
+
+foldContextAll :: Monad m => (Stack a -> Value m a -> m a) -> Stack (Value m Level) -> m (Stack a)
+foldContextAll fold = go
+  where
+  go Nil     = pure Nil
+  go (as:>a) = do
+    as' <- go as
+    a'  <- foldContext fold as' a
+    pure $ as' :> a'
 
 
 -- FIXME: these are pretty clearly broken; we should define them in terms of an interpreter.
