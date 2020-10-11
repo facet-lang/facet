@@ -32,6 +32,7 @@ import           Facet.Stack hiding ((!))
 import           Facet.Syntax
 import           GHC.Stack
 
+-- FIXME: eliminate TLam; track type introductions and applications with annotations in the context.
 data Value f a
   = Type
   | Void
