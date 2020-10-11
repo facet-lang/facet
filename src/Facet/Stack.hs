@@ -33,6 +33,13 @@ instance Semialign Stack where
   align as      Nil     = This <$> as
   align (as:>a) (bs:>b) = align as bs :> These a b
 
+instance Applicative Stack where
+  pure = singleton
+  fs <*> as = go id fs as
+    where
+    go accum Nil     _   = accum Nil
+    go accum (fs:>f) as  = go (accum . flip (foldl (\ fas a -> fas :> f a)) as) fs as
+
 
 singleton :: a -> Stack a
 singleton = (Nil :>)
