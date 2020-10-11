@@ -112,6 +112,7 @@ unify
 unify t1 t2 = t2 <$ go (Level 0) t1 t2
   where
   go n t1 t2 = case (t1, t2) of
+    -- FIXME: this is missing a lot of cases
     (Type,      Type)       -> pure ()
     (Unit,      Unit)       -> pure ()
     -- FIXME: we try to unify Type-the-global with Type-the-constant
