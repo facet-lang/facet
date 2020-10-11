@@ -30,5 +30,5 @@ infix 1 |-
 lookupBound :: Has (Reader (Context a)) sig m => Index -> m (Maybe (UName ::: a))
 lookupBound = asks . flip (!?)
 
-runContext :: ReaderC (Context a) m a -> m a
+runContext :: ReaderC (Context a) m b -> m b
 runContext = runReader (Context S.Nil)
