@@ -123,6 +123,7 @@ unify t1 t2 = go (Level 0) t1 t2
   go n t1 t2 = case (t1, t2) of
     -- FIXME: this is missing a lot of cases
     (Type,       Type)       -> pure Type
+    (Void,       Void)       -> pure Void
     (Unit,       Unit)       -> pure Unit
     -- FIXME: we try to unify Type-the-global with Type-the-constant
     -- FIXME: resolve globals to try to progress past certain inequalities
