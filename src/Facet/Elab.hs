@@ -58,6 +58,7 @@ import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Data.Traversable (for)
 import           Facet.Carrier.Error.Context
+import           Facet.Context
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Value hiding (bound, global, ($$))
@@ -68,7 +69,7 @@ import           Facet.Name (Index(..), Level(..), QName(..), UName, indexToLeve
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
-import           Facet.Stack
+import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface.Comp as SC
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
@@ -84,8 +85,6 @@ type ErrM = ErrorC Span Err Identity
 
 runErrM :: Span -> ErrM a -> Either (Span, Err) a
 runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
-
-type Context a = Stack (UName ::: a)
 
 elab :: Has (Reader (Context (Type ErrM Level)) :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab m = do
@@ -178,7 +177,7 @@ bound
 bound n = Synth $ do
   ctx <- ask @(Context (Type ErrM Level))
   let level = indexToLevel (length ctx) n
-  case ctx !? getIndex n of
+  case ctx !? n of
     Just (_ ::: _T) -> pure (CV.bound level ::: _T)
     Nothing         -> err $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (length ctx) ]
 
@@ -389,7 +388,7 @@ elabDecl = \case
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n b' ::: _check (switch (_check (elabType t) --> (__ ::: Type |- _B)))
+    in lam n b' ::: _check (switch (_check (elabType t) --> (__ ::: (Type :: Type ErrM Level) |- _B)))
 
   t SD.:= b ->
     _check (elabExpr b) ::: _check (elabType t)
@@ -412,7 +411,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (SM.Def s n d) -> setSpan s $ do
     env <- get @(Env.Env ErrM)
-    e' ::: _T <- runReader @(Context (Type ErrM Level)) Nil . runReader env $ do
+    e' ::: _T <- runContext @(Type ErrM Level) . runReader env $ do
       let e ::: t = elabDecl d
       _T <- elab $ check (t ::: Type)
       e' <- elab $ check (e ::: _T)
@@ -426,14 +425,6 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM
   pure $ CM.Module mname defs
 
 
--- Context
-
-(|-) :: Has (Reader (Context (Type ErrM Level))) sig m => UName ::: Type ErrM Level -> m a -> m a
-t |- m = local (:>t) m
-
-infix 1 |-
-
-
 -- Errors
 
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
@@ -444,7 +435,7 @@ printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printCoreValu
 
 showContext :: Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m => m String
 showContext = do
-  ctx <- ask @(Context (Type ErrM Level))
+  ctx <- asks @(Context (Type ErrM Level)) getContext
   let go Nil     = pure Nil
       go (as:>a) = do
         as' <- go as
@@ -455,7 +446,7 @@ showContext = do
 
 printContext :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => m (Stack P.Print)
 printContext = do
-  ctx <- ask @(Context (Type ErrM Level))
+  ctx <- asks @(Context (Type ErrM Level)) getContext
   -- FIXME: this is wrong, but to be fair we probably shouldn’t print the context like this at all anyway.
   rethrow $ foldContextAll P.printCoreValue (ty <$> ctx)
 
