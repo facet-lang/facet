@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
 ( Value(..)
+, showsPrecValue
 , Type
 , Expr
 , global
@@ -18,10 +19,13 @@ module Facet.Core.Value
 , foldContextAll
 ) where
 
+import Control.Applicative (liftA2)
 import Control.Effect.Empty
 import Control.Monad ((<=<))
-import Data.Foldable (foldl')
-import Facet.Name (Level(..), QName, UName, getIndex, levelToIndex, shiftLevel)
+import Data.Foldable (foldl', toList)
+import Data.List (intersperse)
+import Data.Monoid (Ap(..), Endo(..))
+import Facet.Name (Level(..), QName, UName, getIndex, incrLevel, levelToIndex, shiftLevel)
 import Facet.Stack
 import Facet.Syntax
 import GHC.Stack
@@ -42,6 +46,32 @@ data Value f a
 infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
+
+
+showsPrecValue :: Monad m => Level -> Int -> Value m Level -> m ShowS
+showsPrecValue d p = fmap appEndo . go d p
+  where
+  go d p = \case
+    Type     -> lit "Type"
+    Void     -> lit "Void"
+    UnitT    -> lit "UnitT"
+    Unit     -> lit "Unit"
+    t :=> b  -> prec 0  $ c (tm t) <+> lit ":::" <+> go d 1 (ty t) <+> lit ":=>" <+> lit "\\ _ ->" <+> (go (incrLevel d) 0 =<< b (bound d))
+    TLam n b -> prec 10 $ lit "TLam" <+> c n <+> (go (incrLevel d) 11 =<< b (bound d))
+    a :-> b  -> prec 0  $ go d 1 a <+> lit ":->" <+> go d 0 b
+    Lam  n b -> prec 10 $ lit "Lam"  <+> c n <+> (go (incrLevel d) 11 =<< b (bound d))
+    f :$ as  -> either c c f <+> lit ":$" <+> parens True (getAp (foldMap Ap (intersperse (lit ":>") (toList (fmap (go d 0) as)))))
+    TPrd l r -> prec 10 $ lit "TPrd" <+> go d 11 l <+> go d 11 r
+    Prd  l r -> prec 10 $ lit "Prd"  <+> go d 11 l <+> go d 11 r
+    where
+    prec d = parens (p > d)
+  parens c = fmap (Endo . showParen c . appEndo)
+  c :: (Show a, Applicative f) => a -> f (Endo String)
+  c = pure . Endo . shows
+  lit = pure . Endo . showString
+  sp = Endo (showChar ' ')
+  a <+> b = liftA2 (\ a b -> a <> sp <> b) a b
+  infixl 4 <+>
 
 
 type Type = Value
