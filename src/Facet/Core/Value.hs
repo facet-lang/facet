@@ -122,6 +122,7 @@ infixl 9 $$, $$*
 -- This should be used when inserting a closed 'Type' at a given 'Level', e.g. when resolving globals.
 shift :: Functor m => Level -> Value m Level -> Value m Level
 -- FIXME: my kingdom for a 'Functor' instance
+-- FIXME: can we make this cheaper by inserting explicit shifts that act as a delta on the level for whatever they contain?
 shift d = go
   where
   invd = Level (-getLevel d)
