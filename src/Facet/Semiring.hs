@@ -1,6 +1,7 @@
 module Facet.Semiring
 ( Semiring(..)
 , Unital(..)
+, Few(..)
 ) where
 
 class Semigroup s => Semiring s where
@@ -9,3 +10,10 @@ class Semigroup s => Semiring s where
 
 class (Monoid s, Semiring s) => Unital s where
   one :: s
+
+
+data Few
+  = Zero
+  | One
+  | Many
+  deriving (Bounded, Enum, Eq, Ord, Show)
