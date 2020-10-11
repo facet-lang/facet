@@ -129,6 +129,7 @@ unify t1 t2 = t2 <$ go (Level 0) t1 t2
       | f1 == f2
       , Just _ <- goS a1 a2 -> pure ()
     (a1 :-> b1, a2 :-> b2)  -> go n a1 a2 *> go n b1 b2
+    -- FIXME: extend the context when we go under the binder
     (t1 :=> b1, t2 :=> b2)  -> do
       let v = CV.bound n
       go n (ty t1) (ty t2)
