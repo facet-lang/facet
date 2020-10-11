@@ -10,7 +10,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
-( runErrM
+( ErrM
+, runErrM
 , Context
 , elab
 , Elab(..)
