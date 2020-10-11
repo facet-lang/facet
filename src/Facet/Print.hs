@@ -364,7 +364,7 @@ t .= b = t </> b
 
 printCoreModule :: Monad m => CM.Module m -> m Print
 printCoreModule (CM.Module n ds)
-  =   (ann (var (prettyMName n) ::: pretty "Module") </>) . block . vsep <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> printCoreValue' Nil t <*> printCoreDef d) ds
+  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> printCoreValue' Nil t <*> printCoreDef d) ds
 
 printCoreDef :: Monad m => CM.Def m -> m Print
 printCoreDef = \case
