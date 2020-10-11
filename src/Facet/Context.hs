@@ -4,6 +4,7 @@ module Facet.Context
 , (!?)
 , level
 , (|-)
+, lookupBound
 , runContext
 ) where
 
@@ -25,6 +26,9 @@ c !? i = getContext c S.!? getIndex i
 t |- m = local (Context . (S.:> t) . getContext) m
 
 infix 1 |-
+
+lookupBound :: Has (Reader (Context a)) sig m => Index -> m (Maybe (UName ::: a))
+lookupBound = asks . flip (!?)
 
 runContext :: ReaderC (Context a) m a -> m a
 runContext = runReader (Context S.Nil)
