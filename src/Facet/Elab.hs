@@ -64,7 +64,7 @@ import           Facet.Core.Value hiding (bound, global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
 import           Facet.Error
-import           Facet.Name (Index(..), Level(..), QName(..), UName, indexToLevel)
+import           Facet.Name (Index(..), Level(..), QName(..), UName, indexToLevel, __)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
@@ -85,7 +85,7 @@ type ErrM = ErrorC Span Err Identity
 runErrM :: Span -> ErrM a -> Either (Span, Err) a
 runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
 
-type Context = Stack (Value ErrM Level ::: Type ErrM Level)
+type Context = Stack (UName ::: Type ErrM Level)
 
 elab :: Has (Reader Context :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab m = do
@@ -137,7 +137,7 @@ unify t1 t2 = go t1 t2
     (a1 :-> b1,  a2 :-> b2)  -> (:->) <$> go a1 a2 <*> go b1 b2
     (t1 :=> b1,  t2 :=> b2)  -> do
       t <- go (ty t1) (ty t2)
-      b <- elabBinder $ \ v -> v ::: t |- do
+      b <- elabBinder $ \ v -> tm t1 ::: t |- do
         b1' <- liftErr $ b1 v
         b2' <- liftErr $ b2 v
         go b1' b2'
@@ -270,7 +270,8 @@ infixr 2 -->
   -> Synth (Type ErrM Level)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
-  b' <- elabBinder (\ v -> v ::: _T |- check (b ::: Type))
+  -- FIXME: shouldn’t we use the bound variable?
+  b' <- elabBinder (\ v -> n ::: _T |- check (b ::: Type))
   pure $ (n ::: _T :=> b') ::: Type
 
 infixr 1 >~>
@@ -304,7 +305,7 @@ tlam
   -> Check (Expr ErrM Level)
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  b' <- elabBinder (\ v -> v ::: _T |- do
+  b' <- elabBinder (\ v -> n ::: _T |- do
     _B' <- liftErr (_B v)
     check (b ::: _B'))
   pure (TLam n b')
@@ -315,7 +316,8 @@ lam
   -> Check (Expr ErrM Level)
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
-  b' <- elabBinder (\ v -> v ::: _A |- check (b ::: _B))
+  -- FIXME: shouldn’t we use the bound variable?
+  b' <- elabBinder (\ v -> n ::: _A |- check (b ::: _B))
   pure (Lam n b')
 
 unit :: Synth (Expr ErrM Level)
@@ -349,7 +351,8 @@ clause = \case
   SC.Clause (SP.Var n) b -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
     -- p' <- check (pattern p ::: _A)
-    b' <- elabBinder (\ v -> v ::: _A |- check (clause b ::: _B))
+    -- FIXME: shouldn’t we use the bound variable?
+    b' <- elabBinder (\ v -> n ::: _A |- check (clause b ::: _B))
     pure (Lam n b')
   SC.Body e   -> e
   SC.Loc s c  -> setSpan s (clause c)
@@ -386,7 +389,7 @@ elabDecl = \case
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n b' ::: _check (switch (_check (elabType t) --> (Type ::: Type |- _B)))
+    in lam n b' ::: _check (switch (_check (elabType t) --> (__ ::: Type |- _B)))
 
   t SD.:= b ->
     _check (elabExpr b) ::: _check (elabType t)
@@ -425,7 +428,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM
 
 -- Context
 
-(|-) :: Has (Reader Context) sig m => Value ErrM Level ::: Type ErrM Level -> m a -> m a
+(|-) :: Has (Reader Context) sig m => UName ::: Type ErrM Level -> m a -> m a
 t |- m = local (:>t) m
 
 infix 1 |-
@@ -445,16 +448,16 @@ showContext = do
   let go Nil     = pure Nil
       go (as:>a) = do
         as' <- go as
-        a'  <- showsPrecValue (Level (length as')) 0 (tm a)
         b'  <- showsPrecValue (Level (length as')) 0 (ty a)
-        pure $ as' :> (a' ::: b')
+        pure $ as' :> (tm a ::: b')
   shown <- rethrow $ go ctx
-  pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> t {-. showString " : " . _T-}) (toList shown))) $ "]"
+  pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> shows t {-. showString " : " . _T-}) (toList shown))) $ "]"
 
 printContext :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => m (Stack P.Print)
 printContext = do
   ctx <- ask @Context
-  rethrow $ foldContextAll P.printCoreValue (tm <$> ctx)
+  -- FIXME: this is wrong, but to be fair we probably shouldn’t print the context like this at all anyway.
+  rethrow $ foldContextAll P.printCoreValue (ty <$> ctx)
 
 printType :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> m ErrDoc
 -- FIXME: this is still resulting in out of bounds printing
