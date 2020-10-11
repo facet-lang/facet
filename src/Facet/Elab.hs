@@ -161,7 +161,9 @@ global
   :: N.DName
   -> Synth QName
 global n = Synth $ asks (Env.lookup n) >>= \case
-  Just b  -> pure (tm b :.: n ::: ty b)
+  Just b  -> do
+    ctx <- ask @Context
+    pure (tm b :.: n ::: shift (Level (length ctx)) (ty b))
   Nothing -> freeVariable (pretty n)
 
 bound
