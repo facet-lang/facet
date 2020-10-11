@@ -21,6 +21,8 @@ import Facet.Name
 import Facet.Stack
 import Facet.Syntax
 
+-- FIXME: should the domain of the binders be f a instead of Value f a?
+-- FIXME: should bound variables be f a instead of a?
 data Value f a
   = Type
   | Void
