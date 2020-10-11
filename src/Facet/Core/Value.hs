@@ -89,8 +89,8 @@ close env = \case
     let f' = either global ((env !) . getIndex . levelToIndex (Level (length env))) f
     as' <- traverse (close env) as
     f' $$* as'
-  TPrd l r -> TPrd  <$> close env l <*> close env r
-  Prd l r  -> Prd   <$> close env l <*> close env r
+  TPrd l r -> TPrd <$> close env l <*> close env r
+  Prd l r  -> Prd  <$> close env l <*> close env r
 
 closeAll :: Monad m => Stack (Value m Level) -> m (Stack (Value m a))
 closeAll = \case
