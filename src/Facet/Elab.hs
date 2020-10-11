@@ -61,7 +61,7 @@ import           Facet.Core.Value hiding (bound, global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
 import           Facet.Error
-import           Facet.Name (Index(..), Level(..), QName(..), UName, incrLevel, indexToLevel)
+import           Facet.Name (Index(..), Level(..), QName(..), UName, indexToLevel)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
@@ -118,9 +118,9 @@ unify
   :: Type ErrM Level
   -> Type ErrM Level
   -> Elab (Type ErrM Level)
-unify t1 t2 = go (Level 0) t1 t2
+unify t1 t2 = go t1 t2
   where
-  go n t1 t2 = case (t1, t2) of
+  go t1 t2 = case (t1, t2) of
     -- FIXME: this is missing a lot of cases
     (Type,       Type)       -> pure Type
     (Void,       Void)       -> pure Void
@@ -130,21 +130,21 @@ unify t1 t2 = go (Level 0) t1 t2
     (f1 :$ a1,   f2 :$ a2)
       | f1 == f2
       , Just a <- goS a1 a2 -> (f1 :$) <$> a
-    (a1 :-> b1,  a2 :-> b2)  -> (:->) <$> go n a1 a2 <*> go n b1 b2
+    (a1 :-> b1,  a2 :-> b2)  -> (:->) <$> go a1 a2 <*> go b1 b2
     (t1 :=> b1,  t2 :=> b2)  -> do
-      t <- go n (ty t1) (ty t2)
+      t <- go (ty t1) (ty t2)
       b <- elabBinder $ \ v -> v ::: t |- do
         b1' <- liftErr $ b1 v
         b2' <- liftErr $ b2 v
-        go (incrLevel n) b1' b2'
+        go b1' b2'
       pure $ tm t1 ::: t :=> b
-    (TPrd l1 r1, TPrd l2 r2) -> TPrd <$> go n l1 l2 <*> go n r1 r2
-    (Prd  l1 r1, Prd  l2 r2) -> Prd  <$> go n l1 l2 <*> go n r1 r2
+    (TPrd l1 r1, TPrd l2 r2) -> TPrd <$> go l1 l2 <*> go r1 r2
+    (Prd  l1 r1, Prd  l2 r2) -> Prd  <$> go l1 l2 <*> go r1 r2
     -- FIXME: build and display a diff of the root types
     _                       -> couldNotUnify t1 t2
     where
     goS Nil        Nil        = Just (pure Nil)
-    goS (i1 :> l1) (i2 :> l2) = liftA2 (:>) <$> goS i1 i2 <*> Just (go n l1 l2)
+    goS (i1 :> l1) (i2 :> l2) = liftA2 (:>) <$> goS i1 i2 <*> Just (go l1 l2)
     goS _          _          = Nothing
 
 
