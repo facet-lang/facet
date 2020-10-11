@@ -73,7 +73,9 @@ import           Facet.Syntax
 import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 
-runErrM :: Span -> ErrorC Span Err Identity a -> Either (Span, Err) a
+type ErrM = ErrorC Span Err Identity
+
+runErrM :: Span -> ErrM a -> Either (Span, Err) a
 runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
 
 type Context = Stack (Value Elab Level ::: Type Elab Level)
