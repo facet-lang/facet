@@ -463,8 +463,9 @@ mismatch msg exp act = err $ msg
 
 couldNotUnify :: (HasCallStack, Has (Reader Context :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> Type ErrM Level -> m a
 couldNotUnify t1 t2 = do
-  t1' <- printType t1
-  t2' <- printType t2
+  ctx <- printContext
+  t1' <- printTypeInContext ctx t1
+  t2' <- printTypeInContext ctx t2
   mismatch (reflow "mismatch") t2' t1'
 
 couldNotSynthesize :: Has (Throw Err) sig m => ErrDoc -> m a
