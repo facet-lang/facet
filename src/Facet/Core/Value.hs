@@ -13,6 +13,7 @@ module Facet.Core.Value
 , unProductT
 , ($$)
 , ($$*)
+, shift
 , foldContext
 , foldContextAll
 ) where
@@ -82,6 +83,28 @@ _         $$ _ = error "can’t apply non-neutral/forall type"
 f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 
 infixl 9 $$, $$*
+
+
+-- | Shift the bound variables in a 'Value' up by a certain amount.
+--
+-- This should be used when inserting a closed 'Type' at a given 'Level', e.g. when resolving globals.
+shift :: Functor m => Level -> Value m Level -> Value m Level
+-- FIXME: my kingdom for a 'Functor' instance
+shift d = go
+  where
+  invd = Level (-getLevel d)
+  go = \case
+    Type -> Type
+    Void -> Void
+    UnitT -> UnitT
+    Unit -> Unit
+    t :=> b -> fmap go t :=> fmap go . b . shift invd -- we /probably/ need to invert the shift here? how can we be sure?
+    a :-> b -> go a :-> go b
+    TLam n b -> TLam n (fmap go . b . shift invd)
+    Lam n b -> Lam n (fmap go . b . shift invd)
+    f :$ as -> fmap (shiftLevel d) f :$ fmap go as
+    TPrd l r -> TPrd (go l) (go r)
+    Prd l r -> Prd (go l) (go r)
 
 
 foldContext :: Monad m => (Value m a -> m a) -> Stack a -> Value m Level -> m a
