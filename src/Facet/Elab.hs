@@ -430,7 +430,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
-printTypeInContext :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => Stack P.Print -> Type ErrM Level -> m ErrDoc
+printTypeInContext :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => Context P.Print -> Type ErrM Level -> m ErrDoc
 printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printCoreValue ctx
 
 showContext :: Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m => m String
@@ -444,11 +444,11 @@ showContext = do
   shown <- rethrow $ go ctx
   pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> shows t {-. showString " : " . _T-}) (toList shown))) $ "]"
 
-printContext :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => m (Stack P.Print)
+printContext :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => m (Context P.Print)
 printContext = do
-  ctx <- asks @(Context (Type ErrM Level)) getContext
+  ctx <- ask @(Context (Type ErrM Level))
   -- FIXME: this is wrong, but to be fair we probably shouldn’t print the context like this at all anyway.
-  rethrow $ foldContextAll P.printCoreValue (ty <$> ctx)
+  rethrow $ foldContextAll P.printCoreValue ctx
 
 printType :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> m ErrDoc
 -- FIXME: this is still resulting in out of bounds printing

@@ -19,16 +19,18 @@ module Facet.Core.Value
 , foldContextAll
 ) where
 
-import Control.Applicative (liftA2)
-import Control.Effect.Empty
-import Control.Monad ((<=<))
-import Data.Foldable (foldl', toList)
-import Data.List (intersperse)
-import Data.Monoid (Ap(..), Endo(..))
-import Facet.Name (Level(..), QName, UName, getIndex, incrLevel, levelToIndex, shiftLevel)
-import Facet.Stack
-import Facet.Syntax
-import GHC.Stack
+import           Control.Applicative (liftA2)
+import           Control.Effect.Empty
+import           Control.Monad ((<=<))
+import           Data.Foldable (foldl', toList)
+import           Data.List (intersperse)
+import           Data.Monoid (Ap(..), Endo(..))
+import           Facet.Context hiding (empty)
+import qualified Facet.Context as C
+import           Facet.Name (Level(..), QName, UName, incrLevel, levelToIndex, shiftLevel)
+import           Facet.Stack hiding ((!))
+import           Facet.Syntax
+import           GHC.Stack
 
 data Value f a
   = Type
@@ -136,7 +138,7 @@ shift d = go
     Prd l r -> Prd (go l) (go r)
 
 
-foldContext :: (HasCallStack, Monad m) => (Value m a -> m a) -> Stack a -> Value m Level -> m a
+foldContext :: (HasCallStack, Monad m) => (Value m a -> m a) -> Context a -> Value m Level -> m a
 foldContext fold env = fold <=< go env
   where
   go env = \case
@@ -149,28 +151,28 @@ foldContext fold env = fold <=< go env
       pure $ t' :=> \ v -> do
         b' <- b (bound (Level (length env)))
         v' <- fold v
-        go (env:>v') b'
+        go (env |> (tm t' ::: v')) b'
     a :-> b  -> (:->) <$> go env a <*> go env b
     TLam n b -> pure $ TLam n $ \ v -> do
       b' <- b (bound (Level (length env)))
       v' <- fold v
-      go (env:>v') b'
+      go (env |> (n ::: v')) b'
     Lam  n b -> pure $ Lam  n $ \ v -> do
       b' <- b (bound (Level (length env)))
       v' <- fold v
-      go (env:>v') b'
+      go (env |> (n ::: v')) b'
     f :$ as  -> do
-      let f' = either global (bound . (env !) . getIndex . levelToIndex (Level (length env))) f
+      let f' = either global (bound . ty . (env !) . levelToIndex (Level (length env))) f
       as' <- traverse (go env) as
       f' $$* as'
     TPrd l r -> TPrd <$> go env l <*> go env r
     Prd  l r -> Prd  <$> go env l <*> go env r
 
-foldContextAll :: (HasCallStack, Monad m) => (Value m a -> m a) -> Stack (Value m Level) -> m (Stack a)
-foldContextAll fold = go
+foldContextAll :: (HasCallStack, Monad m) => (Value m a -> m a) -> Context (Value m Level) -> m (Context a)
+foldContextAll fold = go . getContext
   where
-  go Nil     = pure Nil
+  go Nil     = pure C.empty
   go (as:>a) = do
     as' <- go as
-    a'  <- foldContext fold as' a
-    pure $ as' :> a'
+    a'  <- foldContext fold as' (ty a)
+    pure $ as' |> (tm a ::: a')
