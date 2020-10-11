@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Context
 ( Context(..)
@@ -14,6 +15,7 @@ import qualified Facet.Stack as S
 import           Facet.Syntax
 
 newtype Context a = Context { getContext :: S.Stack (UName ::: a) }
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 level :: Context a -> Level
 level (Context c) = Level (length c)
