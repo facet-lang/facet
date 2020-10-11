@@ -150,25 +150,20 @@ foldContext bd fold env = fold <=< go env
     Unit     -> pure Unit
     t :=> b  -> do
       t' <- traverse (go env) t
-      pure $ t' :=> \ v -> do
-        b' <- b (bound (Level (length env)))
-        v' <- fold v
-        go (env |> (tm t' ::: v')) b'
+      pure $ t' :=> bind env (tm t') b
     a :-> b  -> (:->) <$> go env a <*> go env b
-    TLam n b -> pure $ TLam n $ \ v -> do
-      b' <- b (bound (Level (length env)))
-      v' <- fold v
-      go (env |> (n ::: v')) b'
-    Lam  n b -> pure $ Lam  n $ \ v -> do
-      b' <- b (bound (Level (length env)))
-      v' <- fold v
-      go (env |> (n ::: v')) b'
+    TLam n b -> pure $ TLam n $ bind env n b
+    Lam  n b -> pure $ Lam  n $ bind env n b
     f :$ as  -> do
       let f' = either global (bound . bd env) f
       as' <- traverse (go env) as
       f' $$* as'
     TPrd l r -> TPrd <$> go env l <*> go env r
     Prd  l r -> Prd  <$> go env l <*> go env r
+  bind env n b = \ v -> do
+    b' <- b (bound (Level (length env)))
+    v' <- fold v
+    go (env |> (n ::: v')) b'
 
 foldContextAll :: (HasCallStack, Monad m) => (Context a -> Level -> a) -> (Value m a -> m a) -> Context (Value m Level) -> m (Context a)
 foldContextAll bd fold = go . getContext
