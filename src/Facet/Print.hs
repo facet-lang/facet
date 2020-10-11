@@ -373,13 +373,13 @@ t .= b = t </> b
 
 printCoreModule :: Monad m => CM.Module m N.Level -> m Print
 printCoreModule (CM.Module n ds)
-  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> printCoreValue' Nil t <*> printCoreDef d) ds
+  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> CV.foldContext printBinding printCoreValue Ctx.empty t <*> printCoreDef d) ds
 
 printCoreDef :: Monad m => CM.Def m N.Level -> m Print
 printCoreDef = \case
-  CM.DTerm b  -> printCoreValue' Nil b
-  CM.DType b  -> printCoreValue' Nil b
-  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (printCoreValue' Nil) . first pretty) cs
+  CM.DTerm b  -> CV.foldContext printBinding printCoreValue Ctx.empty b
+  CM.DType b  -> CV.foldContext printBinding printCoreValue Ctx.empty b
+  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (CV.foldContext printBinding printCoreValue Ctx.empty) . first pretty) cs
 
 
 printSurfaceModule :: SM.Module a -> Print
