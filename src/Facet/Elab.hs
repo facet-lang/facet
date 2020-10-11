@@ -440,7 +440,7 @@ hole :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => (T.Text ::: 
 hole (n ::: t) = case t of
   Just t  -> do
     t' <- printType t
-    err $ fillSep [pretty "found", pretty "hole", pretty n, colon, t' ]
+    err $ fillSep [reflow "found hole", pretty n, colon, t' ]
   Nothing -> couldNotSynthesize (fillSep [ pretty "hole", pretty n ])
 
 mismatch :: Has (Throw Err) sig m => ErrDoc -> ErrDoc -> ErrDoc -> m a
