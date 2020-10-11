@@ -187,7 +187,7 @@ printCoreValue = go (N.Level 0)
     CV.TPrd l r -> (**)  <$> go d l <*> go d r
     CV.Prd  l r -> (**)  <$> go d l <*> go d r
     where
-    name n = cbound n (tvar (N.getLevel d))
+    name n = cbound n tvar d
 
 printCoreValue' :: Monad m => Stack Print -> CV.Value m N.Level -> m Print
 printCoreValue' = go
@@ -210,7 +210,7 @@ printCoreValue' = go
     CV.Prd  l r -> (**)  <$> go env l <*> go env r
     where
     d = N.Level (length env)
-    name n = cbound n (tvar (N.getLevel d))
+    name n = cbound n tvar d
 
 
 printSurfaceType :: Stack Print -> ST.Type a -> Print
@@ -243,10 +243,10 @@ cfree = var . prettyQName
 sbound :: N.UName -> Print
 sbound = var . pretty
 
-cbound :: N.UName -> Print -> Print
-cbound h id'
-  | T.null (N.getUName h) = id'
-  | otherwise             = pretty h <> id'
+cbound :: N.UName -> (Int -> Print) -> N.Level -> Print
+cbound h printLevel level
+  | T.null (N.getUName h) = printLevel (N.getLevel level)
+  | otherwise             = pretty h <> pretty (N.getLevel level)
 
 
 hole :: Text -> Print
