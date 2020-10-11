@@ -169,12 +169,12 @@ global n = Synth $ asks (Env.lookup n) >>= \case
 
 bound
   :: Index
-  -> Synth Level
+  -> Synth (Value ErrM Level)
 bound n = Synth $ do
   ctx <- ask @Context
   let level = indexToLevel (length ctx) n
   case ctx !? getIndex n of
-    Just (_ ::: _T) -> pure (level ::: _T)
+    Just (_ ::: _T) -> pure (CV.bound level ::: _T)
     Nothing         -> err $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (length ctx) ]
 
 ($$)
@@ -205,7 +205,7 @@ elabType = go
   where
   go = \case
     ST.Free  n -> switch $ global n
-    ST.Bound n -> switch $ CV.bound  <$> bound n
+    ST.Bound n -> switch $ bound n
     ST.Hole  n -> \ _K -> hole (n ::: _K)
     ST.Type    -> switch $ _Type
     ST.Void    -> switch $ _Void
@@ -273,7 +273,7 @@ elabExpr = go
   where
   go = \case
     SE.Free  n -> switch $ global n
-    SE.Bound n -> switch $ CV.bound  <$> bound n
+    SE.Bound n -> switch $ bound n
     SE.Hole  n -> \ _T -> hole (n ::: _T)
     f SE.:$  a -> switch $ _synth f $$ _check a
     l SE.:*  r -> check (_check l ** _check r) (pretty "product")
