@@ -36,6 +36,7 @@ import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
 import           Data.List (intersperse)
+import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -203,7 +204,7 @@ printCoreValue' = go
       pure $ (n' ::: t') >~> b'
     CV.TLam n b -> let n' = name n in lam (braces n') <$> (go (env:>n') =<< b (CV.bound d))
     CV.Lam  n b -> let n' = name n in lam         n'  <$> (go (env:>n') =<< b (CV.bound d))
-    f CV.:$ as  -> (either cfree ((env !) . N.getIndex . N.levelToIndex d) f $$*) <$> traverse (go env) as
+    f CV.:$ as  -> (either cfree (fromMaybe (pretty "??") . (env !?) . N.getIndex . N.levelToIndex d) f $$*) <$> traverse (go env) as
     a CV.:-> b  -> (-->) <$> go env a <*> go env b
     CV.TPrd l r -> (**)  <$> go env l <*> go env r
     CV.Prd  l r -> (**)  <$> go env l <*> go env r
