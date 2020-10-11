@@ -39,6 +39,8 @@ module Facet.Elab
 , elabDecl
   -- * Modules
 , elabModule
+  -- * Errors
+, showContext
 ) where
 
 import           Control.Algebra
@@ -51,6 +53,7 @@ import           Control.Monad.Trans.Class
 import           Data.Bifunctor (first)
 import           Data.Foldable (toList)
 import           Data.Functor.Identity
+import           Data.List (intersperse)
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Data.Traversable (for)
@@ -428,13 +431,25 @@ t |- m = local (:>t) m
 infix 1 |-
 
 
--- Failures
+-- Errors
 
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
 printTypeInContext :: HasCallStack => Has (Reader Context :+: Reader Span :+: Throw Err) sig m => Stack P.Print -> Type ErrM Level -> m ErrDoc
 printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printCoreValue ctx
+
+showContext :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => m String
+showContext = do
+  ctx <- ask @Context
+  let go Nil     = pure Nil
+      go (as:>a) = do
+        as' <- go as
+        a'  <- showsPrecValue (Level (length as')) 0 (tm a)
+        b'  <- showsPrecValue (Level (length as')) 0 (ty a)
+        pure $ as' :> (a' ::: b')
+  shown <- rethrow $ go ctx
+  pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> t {-. showString " : " . _T-}) (toList shown))) $ "]"
 
 printContext :: HasCallStack => Has (Reader Context :+: Reader Span :+: Throw Err) sig m => m (Stack P.Print)
 printContext = do
