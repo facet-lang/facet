@@ -15,7 +15,7 @@ module Facet.Print
 , getPrint
 , terminalStyle
 , Print(..)
-, Context(..)
+, Precedence(..)
 , evar
 , tvar
   -- * Interpreters
@@ -94,14 +94,14 @@ terminalStyle = \case
   len = length colours
 
 
-newtype Print = Print { runPrint :: Prec Context (Rainbow (PP.Doc Highlight)) }
+newtype Print = Print { runPrint :: Prec Precedence (Rainbow (PP.Doc Highlight)) }
   deriving (Monoid, PrecedencePrinter, P.Printer, Semigroup)
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
 
 
-data Context
+data Precedence
   = Null
   | Ann
   | FnR
@@ -152,13 +152,13 @@ cases vs b = foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (lin
 ann :: P.Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
 
-var :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => p -> p
+var :: (PrecedencePrinter p, Level p ~ Precedence, Ann p ~ Highlight) => p -> p
 var = setPrec Var . annotate Name
 
-evar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
+evar :: (PrecedencePrinter p, Level p ~ Precedence, Ann p ~ Highlight) => Int -> p
 evar = var . P.evar
 
-tvar :: (PrecedencePrinter p, Level p ~ Context, Ann p ~ Highlight) => Int -> p
+tvar :: (PrecedencePrinter p, Level p ~ Precedence, Ann p ~ Highlight) => Int -> p
 tvar = var . P.tvar
 
 
