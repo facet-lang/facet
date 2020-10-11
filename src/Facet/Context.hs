@@ -3,6 +3,7 @@
 module Facet.Context
 ( Context(..)
 , empty
+, (|>)
 , level
 , (!?)
 , (|-)
@@ -20,6 +21,11 @@ newtype Context a = Context { getContext :: S.Stack (UName ::: a) }
 
 empty :: Context a
 empty = Context S.Nil
+
+(|>) :: Context a -> UName ::: a -> Context a
+Context as |> a = Context (as S.:> a)
+
+infixl 5 |>
 
 level :: Context a -> Level
 level (Context c) = Level (length c)
