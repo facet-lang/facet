@@ -142,10 +142,10 @@ unify t1 t2 = go t1 t2
     (Prd  l1 r1, Prd  l2 r2) -> Prd  <$> go l1 l2 <*> go r1 r2
     -- FIXME: build and display a diff of the root types
     _                       -> couldNotUnify t1 t2
-    where
-    goS Nil        Nil        = Just (pure Nil)
-    goS (i1 :> l1) (i2 :> l2) = liftA2 (:>) <$> goS i1 i2 <*> Just (go l1 l2)
-    goS _          _          = Nothing
+
+  goS Nil        Nil        = Just (pure Nil)
+  goS (i1 :> l1) (i2 :> l2) = liftA2 (:>) <$> goS i1 i2 <*> Just (go l1 l2)
+  goS _          _          = Nothing
 
 
 -- General
