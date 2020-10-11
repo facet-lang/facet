@@ -1,2 +1,7 @@
 module Facet.Semiring
-() where
+( Semiring(..)
+) where
+
+class Semigroup s => Semiring s where
+  (><) :: s -> s -> s
+  infixr 7 ><
