@@ -12,6 +12,7 @@ module Facet.Core.Value
 , ($$)
 , ($$*)
 , close
+, closeAll
 ) where
 
 import Control.Effect.Empty
@@ -72,7 +73,6 @@ f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 infixl 9 $$, $$*
 
 
--- FIXME: iterate this left-to-right over contexts.
 close :: Monad m => Stack (Value m a) -> Value m Level -> m (Value m a)
 close env = \case
   Type     -> pure Type
@@ -91,3 +91,11 @@ close env = \case
     f' $$* as'
   TPrd l r -> TPrd  <$> close env l <*> close env r
   Prd l r  -> Prd   <$> close env l <*> close env r
+
+closeAll :: Monad m => Stack (Value m Level) -> m (Stack (Value m a))
+closeAll = \case
+  Nil     -> pure Nil
+  as :> a -> do
+    as' <- closeAll as
+    a'  <- close as' a
+    pure $ as' :> a'
