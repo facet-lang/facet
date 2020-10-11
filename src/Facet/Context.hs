@@ -2,8 +2,8 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Context
 ( Context(..)
-, (!?)
 , level
+, (!?)
 , (|-)
 , lookupBound
 , runContext
