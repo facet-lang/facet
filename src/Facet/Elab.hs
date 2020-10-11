@@ -432,12 +432,16 @@ setSpan = local . const
 printTypeInContext :: HasCallStack => Has (Reader Context :+: Reader Span :+: Throw Err) sig m => Stack P.Print -> Type ErrM Level -> m ErrDoc
 printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printCoreValue ctx
 
+printContext :: HasCallStack => Has (Reader Context :+: Reader Span :+: Throw Err) sig m => m (Stack P.Print)
+printContext = do
+  ctx <- ask @Context
+  rethrow $ foldContextAll P.printCoreValue (tm <$> ctx)
+
 printType :: HasCallStack => Has (Reader Context :+: Reader Span :+: Throw Err) sig m => Type ErrM Level -> m ErrDoc
 -- FIXME: this is still resulting in out of bounds printing
 printType t = do
-  ctx <- ask @Context
-  ctx' <- rethrow $ foldContextAll P.printCoreValue (tm <$> ctx)
-  printTypeInContext ctx' t
+  ctx <- printContext
+  printTypeInContext ctx t
 
 err :: Has (Throw Err) sig m => ErrDoc -> m a
 err = throwError . (`Err` []) . group
