@@ -366,10 +366,10 @@ elabDecl = go
 -- Modules
 
 elabModule
-  :: Has (Reader Span :+: Throw Err) sig m
+  :: Has (Throw Err) sig m
   => SM.Module Span
   -> m (CM.Module Elab)
-elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab)) $ do
+elabModule (SM.Module s mname ds) = runReader s . evalState (mempty @(Env.Env Elab)) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (SM.Def s n d) -> setSpan s $ do
