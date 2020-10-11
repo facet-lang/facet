@@ -103,6 +103,7 @@ instance Show Print where
 
 data Context
   = Null
+  | Ann
   | FnR
   | FnL
   | Comp
