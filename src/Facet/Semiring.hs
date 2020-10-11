@@ -26,3 +26,6 @@ instance Semigroup Few where
   Zero <> b    = b
   a    <> Zero = a
   _    <> _    = Many
+
+instance Monoid Few where
+  mempty = Zero
