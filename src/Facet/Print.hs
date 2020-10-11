@@ -21,11 +21,7 @@ module Facet.Print
   -- * Interpreters
 , printCoreValue
 , printCoreValue'
-, printCoreType
-, printCoreType'
-, printCoreQType
 , printSurfaceType
-, printCoreExpr
 , printSurfaceExpr
 , printSurfaceClause
 , printCorePattern
@@ -43,10 +39,8 @@ import           Data.List (intersperse)
 import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Data.Text as T
-import qualified Facet.Core.Expr as CE
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
-import qualified Facet.Core.Type as CT
 import qualified Facet.Core.Value as CV
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
@@ -218,42 +212,6 @@ printCoreValue' = go
     name n = cbound n (tvar (N.getLevel d))
 
 
-printCoreType :: Monad m => CT.Type m N.Level -> m Print
-printCoreType = fmap (printCoreQType Nil) . CT.quote
-
-printCoreType' :: Monad m => CT.Type m Print -> m Print
-printCoreType' = go (N.Level 0)
-  where
-  go d = \case
-    CT.Type    -> pure _Type
-    CT.Void    -> pure _Void
-    CT.Unit    -> pure _Unit
-    t CT.:=> b -> do
-      let n' = cbound (tm t) (tvar (N.getLevel d))
-      t' <- go d (ty t)
-      b' <- go (N.incrLevel d) =<< b (CT.bound n')
-      pure $ (n' ::: t') >~> b'
-    f CT.:$  a -> (either cfree id f $$*) <$> traverse (go d) a
-    a CT.:-> b -> (-->) <$> go d a <*> go d b
-    l CT.:*  r -> (**)  <$> go d l <*> go d r
-
-printCoreQType :: Stack Print -> CT.QType -> Print
-printCoreQType = go
-  where
-  go env = \case
-    CT.QFree n  -> cfree n
-    CT.QBound n -> env ! N.getIndex n
-    CT.QType    -> _Type
-    CT.QVoid    -> _Void
-    CT.QUnit    -> _Unit
-    t CT.:==> b -> let n' = cbound (tm t) (tvar (length env)) in (n' ::: go env (ty t)) >~> go (env:>n') b
-    f CT.:$$  a ->
-      let (f', a') = splitl CT.unQApp f
-      in go env f' $$* fmap (go env) (a' :> a)
-    a CT.:--> b -> go env a --> go env b
-    l CT.:**  r -> go env l **  go env r
-
-
 printSurfaceType :: Stack Print -> ST.Type a -> Print
 printSurfaceType = go
   where
@@ -331,22 +289,6 @@ groupByType eq = \case
     where
     (ys,zs) = span (eq (ty x) . ty) xs
 
-
-printCoreExpr :: Monad m => CE.Expr m N.Level -> m Print
-printCoreExpr = fmap (printCoreQExpr Nil) . CE.quote
-
-printCoreQExpr :: Stack Print -> CE.QExpr -> Print
-printCoreQExpr = go
-  where
-  go env = \case
-    CE.QFree n   -> cfree n
-    CE.QBound n  -> env ! N.getIndex n
-    CE.QTLam n b -> let n' = cbound n (tvar (length env)) in lam (braces n') (go (env:>n') b)
-    CE.QTApp f a -> go env f $$ braces (printCoreQType env a)
-    CE.QLam  p b -> lam (printCorePattern ((`cbound` evar (length env)) <$> p)) (go env b)
-    f CE.:$$  a  -> go env f $$ go env a
-    CE.QUnit     -> unit
-    l CE.:**  r  -> go env l **  go env r
 
 printSurfaceExpr :: Stack Print -> SE.Expr a -> Print
 printSurfaceExpr = go
