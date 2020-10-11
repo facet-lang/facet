@@ -21,7 +21,6 @@ module Facet.Print
   -- * Interpreters
 , printCoreValue
 , printBinding
-, printCoreValue'
 , printSurfaceType
 , printSurfaceExpr
 , printSurfaceClause
@@ -37,7 +36,6 @@ import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
 import           Data.List (intersperse)
-import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -195,29 +193,6 @@ printCoreValue = go (N.Level 0)
 printBinding :: Ctx.Context Print -> N.Level -> Print
 -- FIXME: there’s no way to recover whether this was a term or type variable binding.
 printBinding ctx l = prec Ann $ let n ::: _T = ctx Ctx.! N.levelToIndex (Ctx.level ctx) l in ann (cbound n tvar l ::: _T)
-
-printCoreValue' :: Monad m => Stack Print -> CV.Value m N.Level -> m Print
-printCoreValue' = go
-  where
-  go env = \case
-    CV.Type     -> pure _Type
-    CV.Void     -> pure _Void
-    CV.TUnit    -> pure _Unit
-    CV.Unit     -> pure _Unit
-    t CV.:=> b  -> do
-      let n' = name (tm t)
-      t' <- go env (ty t)
-      b' <- go (env:>n') =<< b (CV.bound d)
-      pure $ (n' ::: t') >~> b'
-    CV.TLam n b -> let n' = name n in lam (braces n') <$> (go (env:>n') =<< b (CV.bound d))
-    CV.Lam  n b -> let n' = name n in lam         n'  <$> (go (env:>n') =<< b (CV.bound d))
-    f CV.:$ as  -> (either cfree (fromMaybe (pretty "??") . (env !?) . N.getIndex . N.levelToIndex d) f $$*) <$> traverse (go env) as
-    a CV.:-> b  -> (-->) <$> go env a <*> go env b
-    CV.TPrd l r -> (**)  <$> go env l <*> go env r
-    CV.Prd  l r -> (**)  <$> go env l <*> go env r
-    where
-    d = N.Level (length env)
-    name n = cbound n tvar d
 
 
 printSurfaceType :: Stack Print -> ST.Type a -> Print
