@@ -125,7 +125,6 @@ unify t1 t2 = go t1 t2
     (Type,       Type)       -> pure Type
     (Void,       Void)       -> pure Void
     (Unit,       Unit)       -> pure Unit
-    -- FIXME: we try to unify Type-the-global with Type-the-constant
     -- FIXME: resolve globals to try to progress past certain inequalities
     (f1 :$ a1,   f2 :$ a2)
       | f1 == f2
