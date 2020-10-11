@@ -73,6 +73,7 @@ f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 infixl 9 $$, $$*
 
 
+-- FIXME: these are pretty clearly broken; we should define them in terms of an interpreter.
 close :: Monad m => Stack (Value m a) -> Value m Level -> m (Value m a)
 close env = \case
   Type     -> pure Type
