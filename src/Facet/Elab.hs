@@ -46,6 +46,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Lift
 import           Control.Effect.Parser.Span (Span(..))
+import           Control.Monad.Trans.Class
 import           Data.Bifunctor (first)
 import           Data.Foldable (toList)
 import           Data.Functor.Identity
@@ -79,36 +80,43 @@ type ErrM = ErrorC Span Err Identity
 runErrM :: Span -> ErrM a -> Either (Span, Err) a
 runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
 
-type Context = Stack (Value Elab Level ::: Type Elab Level)
+type Context = Stack (Value ErrM Level ::: Type ErrM Level)
 
-elab :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
-elab (Elab m) = do
+elab :: Has (Reader Context :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
+elab m = do
   ctx <- ask
   env <- ask
+  rethrow (runReader ctx (runReader env (runElab m)))
+
+rethrow :: Has (Reader Span :+: Throw Err) sig m => ErrM a -> m a
+rethrow m = do
   span <- ask
-  run (runError (\ s e -> pure (setSpan s (throwError e))) (pure . pure) span (runReader ctx (runReader env m)))
+  run (runError (\ s e -> pure (setSpan s (throwError e))) (pure . pure) span m)
+
+liftErr :: ErrM a -> Elab a
+liftErr = Elab . lift . lift
 
 -- FIXME: can we generalize this to a rank-n quantified action over any context providing these effects?
-newtype Elab a = Elab (ReaderC (Env.Env Elab) (ReaderC Context (ErrorC Span Err Identity)) a)
-  deriving (Algebra (Reader (Env.Env Elab) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
+newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC Context (ErrorC Span Err Identity)) a }
+  deriving (Algebra (Reader (Env.Env ErrM) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
 
 
-newtype Check a = Check { runCheck :: Type Elab Level -> Elab a }
-  deriving (Algebra (Reader (Type Elab Level) :+: Reader (Env.Env Elab) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad) via ReaderC (Type Elab Level) Elab
+newtype Check a = Check { runCheck :: Type ErrM Level -> Elab a }
+  deriving (Algebra (Reader (Type ErrM Level) :+: Reader (Env.Env ErrM) :+: Reader Context :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad) via ReaderC (Type ErrM Level) Elab
 
-newtype Synth a = Synth { synth :: Elab (a ::: Type Elab Level) }
+newtype Synth a = Synth { synth :: Elab (a ::: Type ErrM Level) }
 
 instance Functor Synth where
   fmap f (Synth m) = Synth (first f <$> m)
 
-check :: (Check a ::: Type Elab Level) -> Elab a
+check :: (Check a ::: Type ErrM Level) -> Elab a
 check = uncurryAnn runCheck
 
 
 unify
-  :: Type Elab Level
-  -> Type Elab Level
-  -> Elab (Type Elab Level)
+  :: Type ErrM Level
+  -> Type ErrM Level
+  -> Elab (Type ErrM Level)
 unify t1 t2 = t2 <$ go (Level 0) t1 t2
   where
   go n t1 t2 = case (t1, t2) of
@@ -124,8 +132,8 @@ unify t1 t2 = t2 <$ go (Level 0) t1 t2
     (t1 :=> b1, t2 :=> b2)  -> do
       let v = CV.bound n
       go n (ty t1) (ty t2)
-      b1' <- elab $ b1 v
-      b2' <- elab $ b2 v
+      b1' <- liftErr $ b1 v
+      b2' <- liftErr $ b2 v
       go (incrLevel n) b1' b2'
     (TPrd l1 r1, TPrd l2 r2)   -> go n l1 l2 *> go n r1 r2
     (Prd  l1 r1, Prd  l2 r2)   -> go n l1 l2 *> go n r1 r2
@@ -141,8 +149,8 @@ unify t1 t2 = t2 <$ go (Level 0) t1 t2
 
 switch
   :: Synth a
-  -> Maybe (Type Elab Level)
-  -> Elab (a ::: Type Elab Level)
+  -> Maybe (Type ErrM Level)
+  -> Elab (a ::: Type ErrM Level)
 switch (Synth m) = \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify _K' _K
   _       -> m
@@ -165,22 +173,29 @@ bound n = Synth $ do
     Nothing         -> err $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (length ctx) ]
 
 ($$)
-  :: Synth (Value Elab Level)
-  -> Check (Value Elab Level)
-  -> Synth (Value Elab Level)
+  :: Synth (Value ErrM Level)
+  -> Check (Value ErrM Level)
+  -> Synth (Value ErrM Level)
 f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
   a' <- check (a ::: _A)
-  (::: _B) <$> f' CV.$$ a'
+  (::: _B) <$> liftErr (f' CV.$$ a')
+
+
+elabBinder :: Has (Reader (Env.Env ErrM) :+: Reader Context) sig m => (a -> Elab b) -> m (a -> ErrM b)
+elabBinder f = do
+  env <- ask
+  ctx <- ask
+  pure $ \ a -> runReader ctx (runReader env (runElab (f a)))
 
 
 -- Types
 
 elabType
   :: ST.Type Span
-  -> Maybe (Type Elab Level)
-  -> Elab (Type Elab Level ::: Type Elab Level)
+  -> Maybe (Type ErrM Level)
+  -> Elab (Type ErrM Level ::: Type ErrM Level)
 elabType = go
   where
   go = \case
@@ -200,19 +215,19 @@ elabType = go
     _synth r = Synth (go r Nothing)
 
 
-_Type :: Synth (Type Elab Level)
+_Type :: Synth (Type ErrM Level)
 _Type = Synth $ pure $ Type ::: Type
 
-_Void :: Synth (Type Elab Level)
+_Void :: Synth (Type ErrM Level)
 _Void = Synth $ pure $ Void ::: Type
 
-_Unit :: Synth (Type Elab Level)
+_Unit :: Synth (Type ErrM Level)
 _Unit = Synth $ pure $ Unit ::: Type
 
 (.*)
-  :: Check (Type Elab Level)
-  -> Check (Type Elab Level)
-  -> Synth (Type Elab Level)
+  :: Check (Type ErrM Level)
+  -> Check (Type ErrM Level)
+  -> Synth (Type ErrM Level)
 a .* b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -221,9 +236,9 @@ a .* b = Synth $ do
 infixl 7 .*
 
 (-->)
-  :: Check (Type Elab Level)
-  -> Check (Type Elab Level)
-  -> Synth (Type Elab Level)
+  :: Check (Type ErrM Level)
+  -> Check (Type ErrM Level)
+  -> Synth (Type ErrM Level)
 a --> b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -232,13 +247,13 @@ a --> b = Synth $ do
 infixr 2 -->
 
 (>~>)
-  :: (UName ::: Check (Type Elab Level))
-  -> Check (Type Elab Level)
-  -> Synth (Type Elab Level)
+  :: (UName ::: Check (Type ErrM Level))
+  -> Check (Type ErrM Level)
+  -> Synth (Type ErrM Level)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
-  -- FIXME: this is constructing the body to extend the context, but it’s disconnected from the calling context. we need to retract the context (and env most likely, tho that shouldn’t change during the elaboration of a decl) to leave only the error handling
-  pure $ (n ::: _T :=> \ v -> v ::: _T |- check (b ::: Type)) ::: Type
+  b' <- elabBinder (\ v -> v ::: _T |- check (b ::: Type))
+  pure $ (n ::: _T :=> b') ::: Type
 
 infixr 1 >~>
 
@@ -247,8 +262,8 @@ infixr 1 >~>
 
 elabExpr
   :: SE.Expr Span
-  -> Maybe (Type Elab Level)
-  -> Elab (Expr Elab Level ::: Type Elab Level)
+  -> Maybe (Type ErrM Level)
+  -> Elab (Expr ErrM Level ::: Type ErrM Level)
 elabExpr = go
   where
   go = \case
@@ -268,29 +283,31 @@ elabExpr = go
 
 tlam
   :: UName
-  -> Check (Expr Elab Level)
-  -> Check (Expr Elab Level)
+  -> Check (Expr ErrM Level)
+  -> Check (Expr ErrM Level)
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
-  pure (TLam n (\ v -> v ::: _T |- do
-    _B' <- elab (_B v)
-    check (b ::: _B')))
+  b' <- elabBinder (\ v -> v ::: _T |- do
+    _B' <- liftErr (_B v)
+    check (b ::: _B'))
+  pure (TLam n b')
 
 lam
   :: UName
-  -> Check (Expr Elab Level)
-  -> Check (Expr Elab Level)
+  -> Check (Expr ErrM Level)
+  -> Check (Expr ErrM Level)
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
-  pure (Lam n (\ v -> v ::: _A |- check (b ::: _B)))
+  b' <- elabBinder (\ v -> v ::: _A |- check (b ::: _B))
+  pure (Lam n b')
 
-unit :: Synth (Expr Elab Level)
+unit :: Synth (Expr ErrM Level)
 unit = Synth . pure $ Unit ::: UnitT
 
 (**)
-  :: Check (Expr Elab Level)
-  -> Check (Expr Elab Level)
-  -> Check (Expr Elab Level)
+  :: Check (Expr ErrM Level)
+  -> Check (Expr ErrM Level)
+  -> Check (Expr ErrM Level)
 l ** r = Check $ \ _T -> do
   (_L, _R) <- expectProductType (reflow "when checking product") _T
   l' <- check (l ::: _L)
@@ -298,8 +315,8 @@ l ** r = Check $ \ _T -> do
   pure (Prd l' r')
 
 comp
-  :: [SC.Clause Check (Expr Elab Level)]
-  -> Check (Expr Elab Level)
+  :: [SC.Clause Check (Expr ErrM Level)]
+  -> Check (Expr ErrM Level)
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
@@ -307,8 +324,8 @@ comp cs = do
   pure $ head cs'
 
 clause
-  :: SC.Clause Check (Expr Elab Level)
-  -> Check (Expr Elab Level)
+  :: SC.Clause Check (Expr ErrM Level)
+  -> Check (Expr ErrM Level)
 clause = go
   where
   go = \case
@@ -317,14 +334,15 @@ clause = go
     SC.Clause (SP.Var n) b -> Check $ \ _T -> do
       (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
       -- p' <- check (pattern p ::: _A)
-      pure (Lam n (\ v -> v ::: _A |- check (go b ::: _B)))
+      b' <- elabBinder (\ v -> v ::: _A |- check (go b ::: _B))
+      pure (Lam n b')
     SC.Body e   -> e
     SC.Loc s c  -> setSpan s (go c)
 
 
 pattern
   :: SP.Pattern (UName)
-  -> Check (CP.Pattern (UName ::: Type Elab Level))
+  -> Check (CP.Pattern (UName ::: Type ErrM Level))
 pattern = go
   where
   go = \case
@@ -345,7 +363,7 @@ pattern = go
 
 elabDecl
   :: SD.Decl Span
-  -> Check (Expr Elab Level) ::: Check (Type Elab Level)
+  -> Check (Expr ErrM Level) ::: Check (Type ErrM Level)
 elabDecl = go
   where
   go = \case
@@ -373,12 +391,12 @@ elabDecl = go
 elabModule
   :: Has (Reader Span :+: Throw Err) sig m
   => SM.Module Span
-  -> m (CM.Module Elab)
-elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab)) $ do
+  -> m (CM.Module ErrM)
+elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM)) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (SM.Def s n d) -> setSpan s $ do
-    env <- get @(Env.Env Elab)
+    env <- get @(Env.Env ErrM)
     e' ::: _T <- runReader @Context Nil . runReader env $ do
       let e ::: t = elabDecl d
       _T <- elab $ check (t ::: Type)
@@ -395,7 +413,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env Elab
 
 -- Context
 
-(|-) :: Has (Reader Context) sig m => Value Elab Level ::: Type Elab Level -> m a -> m a
+(|-) :: Has (Reader Context) sig m => Value ErrM Level ::: Type ErrM Level -> m a -> m a
 t |- m = local (:>t) m
 
 infix 1 |-
@@ -406,14 +424,14 @@ infix 1 |-
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
-printType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Type Elab Level -> m ErrDoc
+printType :: Has (Reader Span :+: Throw Err) sig m => Type ErrM Level -> m ErrDoc
 -- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
-printType t = P.getPrint <$> elab (P.printCoreValue' Nil t)
+printType t = P.getPrint <$> rethrow (P.printCoreValue' Nil t)
 
 err :: Has (Throw Err) sig m => ErrDoc -> m a
 err = throwError . (`Err` []) . group
 
-hole :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => (T.Text ::: Maybe (Type Elab Level)) -> m (a ::: Type Elab Level)
+hole :: Has (Reader Span :+: Throw Err) sig m => (T.Text ::: Maybe (Type ErrM Level)) -> m (a ::: Type ErrM Level)
 hole (n ::: t) = case t of
   Just t  -> do
     t' <- printType t
@@ -428,7 +446,7 @@ mismatch msg exp act = err $ msg
   -- line things up nicely for e.g. wrapped function types
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
-couldNotUnify :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => Type Elab Level -> Type Elab Level -> m a
+couldNotUnify :: Has (Reader Span :+: Throw Err) sig m => Type ErrM Level -> Type ErrM Level -> m a
 couldNotUnify t1 t2 = do
   t1' <- printType t1
   t2' <- printType t2
@@ -440,22 +458,22 @@ couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softl
 freeVariable :: Has (Throw Err) sig m => ErrDoc -> m a
 freeVariable v = err $ fillSep [reflow "variable not in scope:", v]
 
-expectChecked :: Has (Throw Err) sig m => Maybe (Type Elab Level) -> ErrDoc -> m (Type Elab Level)
+expectChecked :: Has (Throw Err) sig m => Maybe (Type ErrM Level) -> ErrDoc -> m (Type ErrM Level)
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 
 -- Patterns
 
-expectMatch :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => (Type Elab Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type Elab Level -> m out
+expectMatch :: Has (Reader Span :+: Throw Err) sig m => (Type ErrM Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type ErrM Level -> m out
 expectMatch pat exp s _T = do
   _T' <- printType _T
   maybe (mismatch s exp _T') pure (pat _T)
 
-expectQuantifiedType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type Elab Level -> m (UName ::: Type Elab Level, Type Elab Level -> Elab (Type Elab Level))
+expectQuantifiedType :: Has (Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (UName ::: Type ErrM Level, Type ErrM Level -> ErrM (Type ErrM Level))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type Elab Level -> m (Type Elab Level, Type Elab Level)
+expectFunctionType :: Has (Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: Has (Reader Context :+: Reader (Env.Env Elab) :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type Elab Level -> m (Type Elab Level, Type Elab Level)
+expectProductType :: Has (Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
 expectProductType = expectMatch unProductT (pretty "(_, _)")
