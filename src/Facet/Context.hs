@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Context
 ( Context(..)
+, empty
 , level
 , (!?)
 , (|-)
@@ -16,6 +17,9 @@ import           Facet.Syntax
 
 newtype Context a = Context { getContext :: S.Stack (UName ::: a) }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+empty :: Context a
+empty = Context S.Nil
 
 level :: Context a -> Level
 level (Context c) = Level (length c)
