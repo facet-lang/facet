@@ -122,23 +122,23 @@ unify t1 t2 = go (Level 0) t1 t2
   where
   go n t1 t2 = case (t1, t2) of
     -- FIXME: this is missing a lot of cases
-    (Type,      Type)       -> pure Type
-    (Unit,      Unit)       -> pure Unit
+    (Type,       Type)       -> pure Type
+    (Unit,       Unit)       -> pure Unit
     -- FIXME: we try to unify Type-the-global with Type-the-constant
     -- FIXME: resolve globals to try to progress past certain inequalities
-    (f1 :$ a1,  f2 :$ a2)
+    (f1 :$ a1,   f2 :$ a2)
       | f1 == f2
       , Just a <- goS a1 a2 -> (f1 :$) <$> a
-    (a1 :-> b1, a2 :-> b2)  -> (:->) <$> go n a1 a2 <*> go n b1 b2
-    (t1 :=> b1, t2 :=> b2)  -> do
+    (a1 :-> b1,  a2 :-> b2)  -> (:->) <$> go n a1 a2 <*> go n b1 b2
+    (t1 :=> b1,  t2 :=> b2)  -> do
       t <- go n (ty t1) (ty t2)
       b <- elabBinder $ \ v -> v ::: t |- do
         b1' <- liftErr $ b1 v
         b2' <- liftErr $ b2 v
         go (incrLevel n) b1' b2'
       pure $ tm t1 ::: t :=> b
-    (TPrd l1 r1, TPrd l2 r2)   -> TPrd <$> go n l1 l2 <*> go n r1 r2
-    (Prd  l1 r1, Prd  l2 r2)   -> Prd  <$> go n l1 l2 <*> go n r1 r2
+    (TPrd l1 r1, TPrd l2 r2) -> TPrd <$> go n l1 l2 <*> go n r1 r2
+    (Prd  l1 r1, Prd  l2 r2) -> Prd  <$> go n l1 l2 <*> go n r1 r2
     -- FIXME: build and display a diff of the root types
     _                       -> couldNotUnify t1 t2
     where
