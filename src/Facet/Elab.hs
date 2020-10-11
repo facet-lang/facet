@@ -327,18 +327,16 @@ comp cs = do
 clause
   :: SC.Clause Check (Expr ErrM Level)
   -> Check (Expr ErrM Level)
-clause = go
-  where
-  go = \case
-    -- FIXME: deal with other patterns.
-    SC.Clause (SP.Loc _ p) b -> go (SC.Clause p b)
-    SC.Clause (SP.Var n) b -> Check $ \ _T -> do
-      (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
-      -- p' <- check (pattern p ::: _A)
-      b' <- elabBinder (\ v -> v ::: _A |- check (go b ::: _B))
-      pure (Lam n b')
-    SC.Body e   -> e
-    SC.Loc s c  -> setSpan s (go c)
+clause = \case
+  -- FIXME: deal with other patterns.
+  SC.Clause (SP.Loc _ p) b -> clause (SC.Clause p b)
+  SC.Clause (SP.Var n) b -> Check $ \ _T -> do
+    (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
+    -- p' <- check (pattern p ::: _A)
+    b' <- elabBinder (\ v -> v ::: _A |- check (clause b ::: _B))
+    pure (Lam n b')
+  SC.Body e   -> e
+  SC.Loc s c  -> setSpan s (clause c)
 
 
 pattern
