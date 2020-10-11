@@ -116,7 +116,8 @@ check = uncurryAnn runCheck
 
 
 unify
-  :: Type ErrM Level
+  :: HasCallStack
+  => Type ErrM Level
   -> Type ErrM Level
   -> Elab (Type ErrM Level)
 unify t1 t2 = go t1 t2
@@ -151,7 +152,8 @@ unify t1 t2 = go t1 t2
 -- General
 
 switch
-  :: Synth a
+  :: HasCallStack
+  => Synth a
   -> Maybe (Type ErrM Level)
   -> Elab (a ::: Type ErrM Level)
 switch (Synth m) = \case
