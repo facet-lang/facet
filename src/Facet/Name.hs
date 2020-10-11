@@ -35,7 +35,7 @@ import           Silkscreen
 
 -- | User-supplied name.
 newtype UName = UName { getUName :: Text }
-  deriving (Eq, Ord)
+  deriving (Eq, IsString, Ord)
 
 instance Show UName where
   showsPrec _ = showString . unpack . getUName
