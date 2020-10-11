@@ -27,7 +27,7 @@ import           Data.List (intersperse)
 import           Data.Monoid (Ap(..), Endo(..))
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as C
-import           Facet.Name (Level(..), QName, UName, incrLevel, levelToIndex, shiftLevel)
+import           Facet.Name (Level(..), QName, UName, incrLevel, shiftLevel)
 import           Facet.Stack hiding ((!))
 import           Facet.Syntax
 import           GHC.Stack
@@ -138,8 +138,8 @@ shift d = go
     Prd l r -> Prd (go l) (go r)
 
 
-foldContext :: (HasCallStack, Monad m) => (Value m a -> m a) -> Context a -> Value m Level -> m a
-foldContext fold env = fold <=< go env
+foldContext :: (HasCallStack, Monad m) => (Context a -> Level -> a) -> (Value m a -> m a) -> Context a -> Value m Level -> m a
+foldContext bd fold env = fold <=< go env
   where
   go env = \case
     Type     -> pure Type
@@ -162,17 +162,17 @@ foldContext fold env = fold <=< go env
       v' <- fold v
       go (env |> (n ::: v')) b'
     f :$ as  -> do
-      let f' = either global (bound . ty . (env !) . levelToIndex (Level (length env))) f
+      let f' = either global (bound . bd env) f
       as' <- traverse (go env) as
       f' $$* as'
     TPrd l r -> TPrd <$> go env l <*> go env r
     Prd  l r -> Prd  <$> go env l <*> go env r
 
-foldContextAll :: (HasCallStack, Monad m) => (Value m a -> m a) -> Context (Value m Level) -> m (Context a)
-foldContextAll fold = go . getContext
+foldContextAll :: (HasCallStack, Monad m) => (Context a -> Level -> a) -> (Value m a -> m a) -> Context (Value m Level) -> m (Context a)
+foldContextAll bd fold = go . getContext
   where
   go Nil     = pure C.empty
   go (as:>a) = do
     as' <- go as
-    a'  <- foldContext fold as' (ty a)
+    a'  <- foldContext bd fold as' (ty a)
     pure $ as' |> (tm a ::: a')

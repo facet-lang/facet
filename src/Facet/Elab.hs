@@ -431,7 +431,7 @@ setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
 printTypeInContext :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => Context P.Print -> Type ErrM Level -> m ErrDoc
-printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printCoreValue ctx
+printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printBinding P.printCoreValue ctx
 
 showContext :: Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m => m String
 showContext = do
@@ -448,7 +448,7 @@ printContext :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reade
 printContext = do
   ctx <- ask @(Context (Type ErrM Level))
   -- FIXME: this is wrong, but to be fair we probably shouldn’t print the context like this at all anyway.
-  rethrow $ foldContextAll P.printCoreValue ctx
+  rethrow $ foldContextAll P.printBinding P.printCoreValue ctx
 
 printType :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> m ErrDoc
 -- FIXME: this is still resulting in out of bounds printing
