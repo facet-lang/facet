@@ -130,10 +130,9 @@ unify t1 t2 = go (Level 0) t1 t2
       | f1 == f2
       , Just a <- goS a1 a2 -> (f1 :$) <$> a
     (a1 :-> b1, a2 :-> b2)  -> (:->) <$> go n a1 a2 <*> go n b1 b2
-    -- FIXME: extend the context when we go under the binder
     (t1 :=> b1, t2 :=> b2)  -> do
       t <- go n (ty t1) (ty t2)
-      b <- elabBinder $ \ v -> do
+      b <- elabBinder $ \ v -> v ::: t |- do
         b1' <- liftErr $ b1 v
         b2' <- liftErr $ b2 v
         go (incrLevel n) b1' b2'
