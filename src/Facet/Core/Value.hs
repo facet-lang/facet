@@ -36,7 +36,7 @@ import           GHC.Stack
 data Value f a
   = Type
   | Void
-  | UnitT
+  | TUnit
   | Unit
   | (UName ::: Value f a) :=> (Value f a -> f (Value f a))
   | TLam UName (Value f a -> f (Value f a))
@@ -57,7 +57,7 @@ showsPrecValue d p = fmap appEndo . go d p
   go d p = \case
     Type     -> lit "Type"
     Void     -> lit "Void"
-    UnitT    -> lit "UnitT"
+    TUnit    -> lit "TUnit"
     Unit     -> lit "Unit"
     t :=> b  -> prec 0  $ c (tm t) <+> lit ":::" <+> go d 1 (ty t) <+> lit ":=>" <+> lit "\\ _ ->" <+> (go (incrLevel d) 0 =<< b (bound d))
     TLam n b -> prec 10 $ lit "TLam" <+> c n <+> (go (incrLevel d) 11 =<< b (bound d))
@@ -128,7 +128,7 @@ shift d = go
   go = \case
     Type -> Type
     Void -> Void
-    UnitT -> UnitT
+    TUnit -> TUnit
     Unit -> Unit
     t :=> b -> fmap go t :=> fmap go . b . shift invd -- we /probably/ need to invert the shift here? how can we be sure?
     a :-> b -> go a :-> go b
@@ -145,7 +145,7 @@ foldContext bd fold env = fold <=< go env
   go env = \case
     Type     -> pure Type
     Void     -> pure Void
-    UnitT    -> pure UnitT
+    TUnit    -> pure TUnit
     Unit     -> pure Unit
     t :=> b  -> do
       t' <- traverse (go env) t

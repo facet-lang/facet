@@ -320,7 +320,7 @@ lam n b = Check $ \ _T -> do
   pure (Lam n b')
 
 unit :: Synth (Expr ErrM Level)
-unit = Synth . pure $ Unit ::: UnitT
+unit = Synth . pure $ Unit ::: TUnit
 
 (**)
   :: Check (Expr ErrM Level)

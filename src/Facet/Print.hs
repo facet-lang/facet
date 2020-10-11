@@ -176,7 +176,7 @@ printCoreValue = go (N.Level 0)
   go d = \case
     CV.Type     -> pure _Type
     CV.Void     -> pure _Void
-    CV.UnitT    -> pure _Unit
+    CV.TUnit    -> pure _Unit
     CV.Unit     -> pure _Unit
     t CV.:=> b  -> do
       let n' = name (tm t)
@@ -202,7 +202,7 @@ printCoreValue' = go
   go env = \case
     CV.Type     -> pure _Type
     CV.Void     -> pure _Void
-    CV.UnitT    -> pure _Unit
+    CV.TUnit    -> pure _Unit
     CV.Unit     -> pure _Unit
     t CV.:=> b  -> do
       let n' = name (tm t)
