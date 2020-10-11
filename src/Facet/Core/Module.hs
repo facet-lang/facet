@@ -5,12 +5,12 @@ module Facet.Core.Module
 ) where
 
 import Facet.Core.Value (Expr, Type)
-import Facet.Name
+import Facet.Name (CName, MName, QName)
 import Facet.Syntax
 
-data Module f = Module MName [(QName, Def f ::: Type f Level)]
+data Module f a = Module MName [(QName, Def f a ::: Type f a)]
 
-data Def f
-  = DTerm (Expr f Level)
-  | DType (Type f Level)
-  | DData [CName ::: Type f Level]
+data Def f a
+  = DTerm (Expr f a)
+  | DType (Type f a)
+  | DData [CName ::: Type f a]

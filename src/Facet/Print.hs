@@ -363,11 +363,11 @@ t .= b = t </> b
 (n ::: t) >-> b = prec FnR (group (align (parens (ann (n ::: t)))) </> arrow <+> b)
 
 
-printCoreModule :: Monad m => CM.Module m -> m Print
+printCoreModule :: Monad m => CM.Module m N.Level -> m Print
 printCoreModule (CM.Module n ds)
   = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> printCoreValue' Nil t <*> printCoreDef d) ds
 
-printCoreDef :: Monad m => CM.Def m -> m Print
+printCoreDef :: Monad m => CM.Def m N.Level -> m Print
 printCoreDef = \case
   CM.DTerm b  -> printCoreValue' Nil b
   CM.DType b  -> printCoreValue' Nil b

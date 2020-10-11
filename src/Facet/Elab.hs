@@ -396,7 +396,7 @@ elabDecl = go
 elabModule
   :: Has (Reader Span :+: Throw Err) sig m
   => SM.Module Span
-  -> m (CM.Module ErrM)
+  -> m (CM.Module ErrM Level)
 elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM)) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
