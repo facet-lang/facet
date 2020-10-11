@@ -21,3 +21,8 @@ data Few
   | One
   | Many
   deriving (Bounded, Enum, Eq, Ord, Show)
+
+instance Semigroup Few where
+  Zero <> b    = b
+  a    <> Zero = a
+  _    <> _    = Many
