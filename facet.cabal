@@ -53,6 +53,7 @@ library
     Facet.Parser.Table
     Facet.Pretty
     Facet.Print
+    Facet.Problem
     Facet.REPL
     Facet.REPL.Parser
     Facet.Stack
