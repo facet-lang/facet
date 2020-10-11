@@ -200,6 +200,12 @@ f $$ a = Synth $ do
   (::: _B) <$> liftErr (f' CV.$$ a')
 
 
+(|-) :: Has (Reader (Context a)) sig m => UName ::: a -> m b -> m b
+t |- m = local (Context . (:> t) . getContext) m
+
+infix 1 |-
+
+
 elabBinder :: Has (Reader (Env.Env ErrM) :+: Reader (Context (Type ErrM Level))) sig m => (a -> Elab b) -> m (a -> ErrM b)
 elabBinder f = do
   env <- ask

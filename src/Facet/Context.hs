@@ -7,10 +7,8 @@ module Facet.Context
 , level
 , (!?)
 , (!)
-, (|-)
 ) where
 
-import           Control.Carrier.Reader
 import           Facet.Name
 import qualified Facet.Stack as S
 import           Facet.Syntax
@@ -34,9 +32,3 @@ c !? i = getContext c S.!? getIndex i
 
 (!) :: Context a -> Index -> UName ::: a
 c ! i = getContext c S.! getIndex i
-
-
-(|-) :: Has (Reader (Context a)) sig m => UName ::: a -> m b -> m b
-t |- m = local (Context . (S.:> t) . getContext) m
-
-infix 1 |-
