@@ -74,8 +74,8 @@ shiftLevel :: Level -> Level -> Level
 shiftLevel (Level l) (Level r) = Level (l + r)
 
 
-__ :: Text
-__ = T.empty
+__ :: UName
+__ = UName T.empty
 
 
 -- | Module names.
@@ -93,15 +93,15 @@ moduleName (mname :.: _) = mname
 
 
 -- | Expression names, as provided by the user.
-newtype EName = EName { getEName :: Text }
+newtype EName = EName { getEName :: UName }
   deriving newtype (Eq, IsString, Ord, P.Pretty, Show)
 
 -- | Constructor names, as provided by the user.
-newtype CName = CName { getCName :: Text }
+newtype CName = CName { getCName :: UName }
   deriving newtype (Eq, IsString, Ord, P.Pretty, Show)
 
 -- | Type names, as provided by the user.
-newtype TName = TName { getTName :: Text }
+newtype TName = TName { getTName :: UName }
   deriving newtype (Eq, IsString, Ord, P.Pretty, Show)
 
 -- | Declaration names; a choice of expression, term, or operator names.
