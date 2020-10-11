@@ -344,20 +344,18 @@ clause = go
 pattern
   :: SP.Pattern (UName)
   -> Check (CP.Pattern (UName ::: Type ErrM Level))
-pattern = go
-  where
-  go = \case
-    SP.Wildcard -> pure CP.Wildcard
-    SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
-    SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go' _T (fromList ps)
-      where
-      go' _T = \case
-        Nil      -> Nil      <$  unify Unit _T
-        Nil :> p -> (Nil :>) <$> check (go p ::: _T)
-        ps  :> p -> do
-          (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
-          (:>) <$> go' _L ps <*> check (go p ::: _R)
-    SP.Loc s p  -> setSpan s (go p)
+pattern = \case
+  SP.Wildcard -> pure CP.Wildcard
+  SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
+  SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go _T (fromList ps)
+    where
+    go _T = \case
+      Nil      -> Nil      <$  unify Unit _T
+      Nil :> p -> (Nil :>) <$> check (pattern p ::: _T)
+      ps  :> p -> do
+        (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
+        (:>) <$> go _L ps <*> check (pattern p ::: _R)
+  SP.Loc s p  -> setSpan s (pattern p)
 
 
 -- Declarations
