@@ -161,7 +161,7 @@ foldContext bd fold env = fold <=< go env
     TPrd l r -> TPrd <$> go env l <*> go env r
     Prd  l r -> Prd  <$> go env l <*> go env r
   bind env n b = \ v -> do
-    b' <- b (bound (Level (length env)))
+    b' <- b (bound (level env))
     v' <- fold v
     go (env |> (n ::: v')) b'
 
