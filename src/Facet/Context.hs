@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Context
 ( Context(..)
+, level
 , (|-)
 , runContext
 ) where
@@ -11,6 +12,9 @@ import qualified Facet.Stack as S
 import           Facet.Syntax
 
 newtype Context a = Context { getContext :: S.Stack (UName ::: a) }
+
+level :: Context a -> Level
+level (Context c) = Level (length c)
 
 
 (|-) :: Has (Reader (Context a)) sig m => UName ::: a -> m b -> m b
