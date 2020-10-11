@@ -350,7 +350,8 @@ elabDecl = go
 
     (n ::: t) SD.:-> b ->
       let b' ::: _B = go b
-      in lam n b' ::: _check (switch (_check (elabType t) --> _B))
+      -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
+      in lam n b' ::: _check (switch (_check (elabType t) --> (Type ::: Type |- _B)))
 
     t SD.:= b ->
       _check (elabExpr b) ::: _check (elabType t)
