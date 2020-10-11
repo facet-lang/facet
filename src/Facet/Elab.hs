@@ -177,6 +177,13 @@ bound n = Synth $ do
     Just (_ ::: _T) -> pure (CV.bound level ::: _T)
     Nothing         -> err $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (length ctx) ]
 
+hole
+  :: T.Text
+  -> Check a
+hole n = Check $ \ _T -> do
+  _T' <- printType _T
+  err $ fillSep [reflow "found hole", pretty n, colon, _T' ]
+
 ($$)
   :: Synth (Value ErrM Level)
   -> Check (Value ErrM Level)
@@ -204,7 +211,7 @@ elabType
 elabType = \case
   ST.Free  n -> switch $ global n
   ST.Bound n -> switch $ bound n
-  ST.Hole  n -> \ _K -> hole (n ::: _K)
+  ST.Hole  n -> check (hole n) (pretty "hole")
   ST.Type    -> switch $ _Type
   ST.Void    -> switch $ _Void
   ST.Unit    -> switch $ _Unit
@@ -216,6 +223,7 @@ elabType = \case
   where
   _check r = tm <$> Check (elabType r . Just)
   _synth r = Synth (elabType r Nothing)
+  check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
 
 _Type :: Synth (Type ErrM Level)
@@ -270,7 +278,7 @@ elabExpr
 elabExpr = \case
   SE.Free  n -> switch $ global n
   SE.Bound n -> switch $ bound n
-  SE.Hole  n -> \ _T -> hole (n ::: _T)
+  SE.Hole  n -> check (hole n) (pretty "hole")
   f SE.:$  a -> switch $ _synth f $$ _check a
   l SE.:*  r -> check (_check l ** _check r) (pretty "product")
   SE.Unit    -> switch unit
@@ -435,13 +443,6 @@ printType t = do
 
 err :: Has (Throw Err) sig m => ErrDoc -> m a
 err = throwError . (`Err` []) . group
-
-hole :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => (T.Text ::: Maybe (Type ErrM Level)) -> m (a ::: Type ErrM Level)
-hole (n ::: t) = case t of
-  Just t  -> do
-    t' <- printType t
-    err $ fillSep [reflow "found hole", pretty n, colon, t' ]
-  Nothing -> couldNotSynthesize (fillSep [ pretty "hole", pretty n ])
 
 mismatch :: Has (Throw Err) sig m => ErrDoc -> ErrDoc -> ErrDoc -> m a
 mismatch msg exp act = err $ msg
