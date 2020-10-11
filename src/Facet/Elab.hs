@@ -369,7 +369,7 @@ pattern = \case
   SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go _T (fromList ps)
     where
     go _T = \case
-      Nil      -> Nil      <$  unify Unit _T
+      Nil      -> Nil      <$  unify TUnit _T
       Nil :> p -> (Nil :>) <$> check (pattern p ::: _T)
       ps  :> p -> do
         (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
