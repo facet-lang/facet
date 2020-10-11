@@ -10,6 +10,7 @@ module Facet.Name
 , indexToLevel
 , incrLevel
 , incrLevelFor
+, shiftLevel
 , __
 , MName(..)
 , QName(..)
@@ -68,6 +69,9 @@ incrLevel (Level l) = Level (l + 1)
 
 incrLevelFor :: Traversable t => (Level -> expr) -> Level -> t UName -> (Level, t expr)
 incrLevelFor mk = mapAccumR $ \ l _ -> (incrLevel l, mk l)
+
+shiftLevel :: Level -> Level -> Level
+shiftLevel (Level l) (Level r) = Level (l + r)
 
 
 __ :: Text
