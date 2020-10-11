@@ -271,7 +271,7 @@ infixr 2 -->
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
   -- FIXME: shouldn’t we use the bound variable?
-  b' <- elabBinder (\ v -> n ::: _T |- check (b ::: Type))
+  b' <- n ::: _T |- elabBinder (\ v -> check (b ::: Type))
   pure $ (n ::: _T :=> b') ::: Type
 
 infixr 1 >~>
@@ -317,7 +317,7 @@ lam
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   -- FIXME: shouldn’t we use the bound variable?
-  b' <- elabBinder (\ v -> n ::: _A |- check (b ::: _B))
+  b' <- n ::: _A |- elabBinder (\ v -> check (b ::: _B))
   pure (Lam n b')
 
 unit :: Synth (Expr ErrM Level)
@@ -352,7 +352,7 @@ clause = \case
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
     -- p' <- check (pattern p ::: _A)
     -- FIXME: shouldn’t we use the bound variable?
-    b' <- elabBinder (\ v -> n ::: _A |- check (clause b ::: _B))
+    b' <- n ::: _A |- elabBinder (\ v -> check (clause b ::: _B))
     pure (Lam n b')
   SC.Body e   -> e
   SC.Loc s c  -> setSpan s (clause c)
