@@ -34,3 +34,6 @@ instance Semiring Few where
   Zero >< _    = Zero
   _    >< Zero = Zero
   a    >< b    = max a b
+
+instance Unital Few where
+  one = One
