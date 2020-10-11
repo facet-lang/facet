@@ -267,21 +267,19 @@ elabExpr
   :: SE.Expr Span
   -> Maybe (Type ErrM Level)
   -> Elab (Expr ErrM Level ::: Type ErrM Level)
-elabExpr = go
+elabExpr = \case
+  SE.Free  n -> switch $ global n
+  SE.Bound n -> switch $ bound n
+  SE.Hole  n -> \ _T -> hole (n ::: _T)
+  f SE.:$  a -> switch $ _synth f $$ _check a
+  l SE.:*  r -> check (_check l ** _check r) (pretty "product")
+  SE.Unit    -> switch unit
+  SE.Comp cs -> check (comp (map (SC.mapComp _check) cs)) (pretty "computation")
+  SE.Loc s b -> setSpan s . elabExpr b
   where
-  go = \case
-    SE.Free  n -> switch $ global n
-    SE.Bound n -> switch $ bound n
-    SE.Hole  n -> \ _T -> hole (n ::: _T)
-    f SE.:$  a -> switch $ _synth f $$ _check a
-    l SE.:*  r -> check (_check l ** _check r) (pretty "product")
-    SE.Unit    -> switch unit
-    SE.Comp cs -> check (comp (map (SC.mapComp _check) cs)) (pretty "computation")
-    SE.Loc s b -> setSpan s . go b
-    where
-    _check r = tm <$> Check (go r . Just)
-    _synth r = Synth (go r Nothing)
-    check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
+  _check r = tm <$> Check (elabExpr r . Just)
+  _synth r = Synth (elabExpr r Nothing)
+  check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
 
 tlam
