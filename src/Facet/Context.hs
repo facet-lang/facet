@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Context
 ( Context(..)
+, (!?)
 , level
 , (|-)
 , runContext
@@ -15,6 +16,9 @@ newtype Context a = Context { getContext :: S.Stack (UName ::: a) }
 
 level :: Context a -> Level
 level (Context c) = Level (length c)
+
+(!?) :: Context a -> Index -> Maybe (UName ::: a)
+c !? i = getContext c S.!? getIndex i
 
 
 (|-) :: Has (Reader (Context a)) sig m => UName ::: a -> m b -> m b
