@@ -3,8 +3,8 @@ module Facet.Context
 ( Context(..)
 ) where
 
-import Facet.Name
-import Facet.Stack
-import Facet.Syntax
+import           Facet.Name
+import qualified Facet.Stack as S
+import           Facet.Syntax
 
-newtype Context a = Context { getContext :: Stack (UName ::: a) }
+newtype Context a = Context { getContext :: S.Stack (UName ::: a) }
