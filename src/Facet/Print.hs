@@ -39,12 +39,13 @@ import           Data.List (intersperse)
 import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Data.Text as T
+import           Data.Traversable (mapAccumL)
+import qualified Facet.Context as Ctx
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import qualified Facet.Core.Value as CV
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
-import qualified Facet.Context as Ctx
 import           Facet.Stack
 import qualified Facet.Surface.Comp as SC
 import qualified Facet.Surface.Decl as SD
@@ -177,18 +178,23 @@ printCoreValue = go (N.Level 0)
     CV.TUnit    -> pure _Unit
     CV.Unit     -> pure _Unit
     t CV.:=> b  -> do
-      let n' = name (tm t)
+      let n' = name (tm t) d
       t' <- go d (ty t)
       b' <- go (N.incrLevel d) =<< b (CV.bound n')
       pure $ (n' ::: t') >~> b'
-    CV.TLam n b -> let n' = name n in lam (braces n') <$> (go (N.incrLevel d) =<< b (CV.bound n'))
-    CV.Lam  n b -> let n' = name n in lam         n'  <$> (go (N.incrLevel d) =<< b (CV.bound n'))
+    CV.TLam n b -> let n' = name n d in lam (braces n') <$> (go (N.incrLevel d) =<< b (CV.bound n'))
+    CV.Lam  n b -> let n' = name n d in lam         n'  <$> (go (N.incrLevel d) =<< b (CV.bound n'))
     f CV.:$ as  -> (either cfree id f $$*) <$> traverse (go d) as
     a CV.:-> b  -> (-->) <$> go d a <*> go d b
     CV.TPrd l r -> (**)  <$> go d l <*> go d r
     CV.Prd  l r -> (**)  <$> go d l <*> go d r
-    where
-    name n = cbound n tvar d
+    CV.Case s p -> case' <$> go d s <*> traverse (clause d) p
+  name n d = cbound n tvar d
+  case' s cs = pretty "case" <+> s <+> block (commaSep cs)
+  clause d (p, b) = do
+    let p' = snd (mapAccumL (\ d n -> (N.incrLevel d, let n' = name n d in (n', CV.bound n'))) d p)
+    b' <- go (N.incrLevel d) =<< b (snd <$> p')
+    pure $ printCorePattern (fst <$> p') <+> arrow <+> b'
 
 printBinding :: Ctx.Context Print -> N.Level -> Print
 -- FIXME: there’s no way to recover whether this was a term or type variable binding.

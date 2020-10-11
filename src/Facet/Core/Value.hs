@@ -25,11 +25,14 @@ import           Control.Monad ((<=<))
 import           Data.Foldable (foldl', toList)
 import           Data.List (intersperse)
 import           Data.Monoid (Ap(..), Endo(..))
+import           Data.Traversable (mapAccumL)
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as C
+import           Facet.Core.Pattern
 import           Facet.Name (Level(..), QName, UName, incrLevel, shiftLevel)
 import           Facet.Stack hiding ((!))
 import           Facet.Syntax
+import           Text.Show (showListWith)
 import           GHC.Stack
 
 -- FIXME: eliminate TLam; track type introductions and applications with annotations in the context.
@@ -45,6 +48,8 @@ data Value f a
   | Either QName a :$ Stack (Value f a)
   | TPrd (Value f a) (Value f a)
   | Prd (Value f a) (Value f a)
+  -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
+  | Case (Value f a) [(Pattern UName, Pattern (Value f a) -> f (Value f a))]
 
 infixr 0 :=>
 infixl 9 :$
@@ -60,15 +65,17 @@ showsPrecValue d p = fmap appEndo . go d p
     TUnit    -> lit "TUnit"
     Unit     -> lit "Unit"
     t :=> b  -> prec 0  $ c (tm t) <+> lit ":::" <+> go d 1 (ty t) <+> lit ":=>" <+> lit "\\ _ ->" <+> (go (incrLevel d) 0 =<< b (bound d))
-    TLam n b -> prec 10 $ lit "TLam" <+> c n <+> (go (incrLevel d) 11 =<< b (bound d))
+    TLam n b -> prec 10 $ lit "TLam" <+> c n <+> lit "\\ _ ->" <+> (go (incrLevel d) 11 =<< b (bound d))
     a :-> b  -> prec 0  $ go d 1 a <+> lit ":->" <+> go d 0 b
-    Lam  n b -> prec 10 $ lit "Lam"  <+> c n <+> (go (incrLevel d) 11 =<< b (bound d))
+    Lam  n b -> prec 10 $ lit "Lam"  <+> c n <+> lit "\\ _ ->" <+> (go (incrLevel d) 11 =<< b (bound d))
     f :$ as  -> either c c f <+> lit ":$" <+> parens True (getAp (foldMap Ap (intersperse (lit ":>") (toList (fmap (go d 0) as)))))
     TPrd l r -> prec 10 $ lit "TPrd" <+> go d 11 l <+> go d 11 r
     Prd  l r -> prec 10 $ lit "Prd"  <+> go d 11 l <+> go d 11 r
+    Case s b -> prec 10 $ lit "Case" <+> go d 11 s <+> list (traverse (\ (p, b) -> parens True (c p <+> lit ", " <+> lit "\\ _ ->" <+> (go (incrLevel d) 0 =<< b (snd (mapAccumL (\ l _ -> (incrLevel l, bound l)) d p))))) b)
     where
     prec d = parens (p > d)
   parens c = fmap (Endo . showParen c . appEndo)
+  list = fmap (Endo . showListWith appEndo)
   c :: (Show a, Applicative f) => a -> f (Endo String)
   c = pure . Endo . shows
   lit = pure . Endo . showString
@@ -131,13 +138,16 @@ shift d = go
     Void -> Void
     TUnit -> TUnit
     Unit -> Unit
-    t :=> b -> fmap go t :=> fmap go . b . shift invd -- we /probably/ need to invert the shift here? how can we be sure?
+    t :=> b -> fmap go t :=> binder b
     a :-> b -> go a :-> go b
-    TLam n b -> TLam n (fmap go . b . shift invd)
-    Lam n b -> Lam n (fmap go . b . shift invd)
+    TLam n b -> TLam n (binder b)
+    Lam n b -> Lam n (binder b)
     f :$ as -> fmap (shiftLevel d) f :$ fmap go as
     TPrd l r -> TPrd (go l) (go r)
     Prd l r -> Prd (go l) (go r)
+    Case s ps -> Case (go s) (map (\ (p, b) -> (p, fmap go . b . fmap (shift invd))) ps)
+  -- FIXME: we /probably/ need to invert the shift here? how can we be sure?
+  binder b = fmap go . b . shift invd
 
 
 foldContext :: (HasCallStack, Monad m) => (Context a -> Level -> a) -> (Value m a -> m a) -> Context a -> Value m Level -> m a
@@ -160,10 +170,15 @@ foldContext bd fold env = fold <=< go env
       f' $$* as'
     TPrd l r -> TPrd <$> go env l <*> go env r
     Prd  l r -> Prd  <$> go env l <*> go env r
+    Case s ps -> Case <$> go env s <*> pure (map (\ (p, b) -> (p, bindP env p b)) ps)
   bind env n b = \ v -> do
     b' <- b (bound (level env))
     v' <- fold v
     go (env |> (n ::: v')) b'
+  bindP env p b = let names = toList p in names `seq` \ v -> do
+    b' <- b (snd (mapAccumL (\ l _ -> (incrLevel l, bound l)) (level env) v))
+    v' <- traverse fold v
+    go (foldl (|>) env (zipWith (:::) names (toList v'))) b'
 
 foldContextAll :: (HasCallStack, Monad m) => (Context a -> Level -> a) -> (Value m a -> m a) -> Context (Value m Level) -> m (Context a)
 foldContextAll bd fold = go . getContext
