@@ -20,6 +20,7 @@ module Facet.Print
 , tvar
   -- * Interpreters
 , printCoreValue
+, printBinding
 , printCoreValue'
 , printSurfaceType
 , printSurfaceExpr
@@ -45,6 +46,7 @@ import qualified Facet.Core.Pattern as CP
 import qualified Facet.Core.Value as CV
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
+import qualified Facet.Context as Ctx
 import           Facet.Stack
 import qualified Facet.Surface.Comp as SC
 import qualified Facet.Surface.Decl as SD
@@ -188,6 +190,10 @@ printCoreValue = go (N.Level 0)
     CV.Prd  l r -> (**)  <$> go d l <*> go d r
     where
     name n = cbound n tvar d
+
+printBinding :: Ctx.Context Print -> N.Level -> Print
+-- FIXME: there’s no way to recover whether this was a term or type variable binding.
+printBinding ctx l = let n ::: _T = ctx Ctx.! N.levelToIndex (Ctx.level ctx) l in ann (cbound n tvar l ::: _T)
 
 printCoreValue' :: Monad m => Stack Print -> CV.Value m N.Level -> m Print
 printCoreValue' = go
