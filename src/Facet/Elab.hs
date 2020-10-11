@@ -136,10 +136,10 @@ unify t1 t2 = go t1 t2
     (a1 :-> b1,  a2 :-> b2)  -> (:->) <$> go a1 a2 <*> go b1 b2
     (t1 :=> b1,  t2 :=> b2)  -> do
       t <- go (ty t1) (ty t2)
-      b <- elabBinder $ \ v -> tm t1 ::: t |- do
+      b <- tm t1 ::: t |- elabBinder (\ v -> do
         b1' <- liftErr $ b1 v
         b2' <- liftErr $ b2 v
-        go b1' b2'
+        go b1' b2')
       pure $ tm t1 ::: t :=> b
     (TPrd l1 r1, TPrd l2 r2) -> TPrd <$> go l1 l2 <*> go r1 r2
     (Prd  l1 r1, Prd  l2 r2) -> Prd  <$> go l1 l2 <*> go r1 r2
