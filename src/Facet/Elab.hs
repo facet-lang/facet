@@ -128,6 +128,7 @@ unify t1 t2 = go t1 t2
     -- FIXME: this is missing a lot of cases
     (Type,       Type)       -> pure Type
     (Void,       Void)       -> pure Void
+    (TUnit,      TUnit)      -> pure TUnit
     (Unit,       Unit)       -> pure Unit
     -- FIXME: resolve globals to try to progress past certain inequalities
     (f1 :$ a1,   f2 :$ a2)
