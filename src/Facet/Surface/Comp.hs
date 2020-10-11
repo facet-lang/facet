@@ -4,9 +4,11 @@
 {-# LANGUAGE LambdaCase #-}
 module Facet.Surface.Comp
 ( Clause(..)
+, unClause
 , mapComp
 ) where
 
+import Control.Effect.Empty
 import Facet.Name
 import Facet.Surface.Pattern (Pattern)
 import Text.Parser.Position (Span, Spanned(..))
@@ -23,6 +25,10 @@ instance Spanned (Clause f Span) where
   dropSpan = \case
     Loc _ d -> dropSpan d
     d       -> d
+
+
+unClause :: Has Empty sig m => Clause f a -> m (Pattern UName, Clause f a)
+unClause = \case{ Clause p c -> pure (p, c) ; _ -> empty }
 
 
 mapComp :: (f a -> g b) -> Clause f a -> Clause g b
