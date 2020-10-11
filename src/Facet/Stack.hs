@@ -8,6 +8,8 @@ module Facet.Stack
 ) where
 
 import Data.Foldable (foldl')
+import Data.Semialign
+import Data.These
 import GHC.Stack
 
 data Stack a
@@ -23,6 +25,12 @@ instance Semigroup (Stack a) where
 
 instance Monoid (Stack a) where
   mempty = Nil
+
+instance Semialign Stack where
+  align Nil     Nil     = Nil
+  align Nil     bs      = That <$> bs
+  align as      Nil     = This <$> as
+  align (as:>a) (bs:>b) = align as bs :> These a b
 
 
 fromList :: [a] -> Stack a

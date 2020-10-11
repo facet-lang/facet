@@ -80,9 +80,11 @@ library
     , prettyprinter
     , prettyprinter-ansi-terminal
     , selective
+    , semialign
     , silkscreen
     , terminal-size
     , text
+    , these
     , transformers
     , unordered-containers
   hs-source-dirs:      src
