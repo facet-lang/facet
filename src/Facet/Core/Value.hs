@@ -86,8 +86,8 @@ f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 infixl 9 $$, $$*
 
 
-foldContext :: Monad m => (Stack a -> Value m a -> m a) -> Stack a -> Value m Level -> m a
-foldContext fold env = fold env <=< go env
+foldContext :: Monad m => (Value m a -> m a) -> Stack a -> Value m Level -> m a
+foldContext fold env = fold <=< go env
   where
   go env = \case
     Type     -> pure Type
@@ -98,16 +98,16 @@ foldContext fold env = fold env <=< go env
       t' <- traverse (go env) t
       pure $ t' :=> \ v -> do
         b' <- b (bound (Level (length env)))
-        v' <- fold env v
+        v' <- fold v
         go (env:>v') b'
     a :-> b  -> (:->) <$> go env a <*> go env b
     TLam n b -> pure $ TLam n $ \ v -> do
       b' <- b (bound (Level (length env)))
-      v' <- fold env v
+      v' <- fold v
       go (env:>v') b'
     Lam  n b -> pure $ Lam  n $ \ v -> do
       b' <- b (bound (Level (length env)))
-      v' <- fold env v
+      v' <- fold v
       go (env:>v') b'
     f :$ as  -> do
       let f' = either global (bound . (env !) . getIndex . levelToIndex (Level (length env))) f
@@ -116,7 +116,7 @@ foldContext fold env = fold env <=< go env
     TPrd l r -> TPrd <$> go env l <*> go env r
     Prd  l r -> Prd  <$> go env l <*> go env r
 
-foldContextAll :: Monad m => (Stack a -> Value m a -> m a) -> Stack (Value m Level) -> m (Stack a)
+foldContextAll :: Monad m => (Value m a -> m a) -> Stack (Value m Level) -> m (Stack a)
 foldContextAll fold = go
   where
   go Nil     = pure Nil
