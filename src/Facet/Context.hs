@@ -8,7 +8,6 @@ module Facet.Context
 , (!?)
 , (!)
 , (|-)
-, lookupBound
 ) where
 
 import           Control.Carrier.Reader
@@ -41,6 +40,3 @@ c ! i = getContext c S.! getIndex i
 t |- m = local (Context . (S.:> t) . getContext) m
 
 infix 1 |-
-
-lookupBound :: Has (Reader (Context a)) sig m => Index -> m (Maybe (UName ::: a))
-lookupBound = asks . flip (!?)
