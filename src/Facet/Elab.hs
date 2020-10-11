@@ -201,7 +201,7 @@ f $$ a = Synth $ do
 
 
 (|-) :: Has (Reader (Context (Type ErrM Level))) sig m => UName ::: Type ErrM Level -> m b -> m b
-t |- m = local (Context . (:> t) . getContext) m
+t |- m = local (|> t) m
 
 infix 1 |-
 
