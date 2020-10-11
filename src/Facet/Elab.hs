@@ -233,6 +233,7 @@ infixr 2 -->
   -> Synth (Type Elab Level)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
+  -- FIXME: this is constructing the body to extend the context, but it’s disconnected from the calling context. we need to retract the context (and env most likely, tho that shouldn’t change during the elaboration of a decl) to leave only the error handling
   pure $ (n ::: _T :=> \ v -> v ::: _T |- check (b ::: Type)) ::: Type
 
 infixr 1 >~>
