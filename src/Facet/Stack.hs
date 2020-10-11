@@ -2,6 +2,7 @@
 -- | Really just a snoc list, but the shoe fits if you squish things up just right.
 module Facet.Stack
 ( Stack(..)
+, singleton
 , fromList
 , (!)
 , (!?)
@@ -32,6 +33,9 @@ instance Semialign Stack where
   align as      Nil     = This <$> as
   align (as:>a) (bs:>b) = align as bs :> These a b
 
+
+singleton :: a -> Stack a
+singleton = (Nil :>)
 
 fromList :: [a] -> Stack a
 fromList = foldl' (:>) Nil
