@@ -424,14 +424,22 @@ infix 1 |-
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
-printType :: Has (Reader Span :+: Throw Err) sig m => Type ErrM Level -> m ErrDoc
--- FIXME: this is almost certainly going to show the wrong thing because we don’t incorporate types from the context
-printType t = P.getPrint <$> rethrow (P.printCoreValue' Nil t)
+printType :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => Type ErrM Level -> m ErrDoc
+-- FIXME: this is still resulting in out of bounds printing
+printType t = do
+  ctx <- ask @Context
+  let go Nil = pure Nil
+      go (as:>a) = do
+        as' <- go as
+        a' <- P.printCoreValue' as' a
+        pure $ as' :> a'
+  ctx' <- rethrow $ go (tm <$> ctx)
+  P.getPrint <$> rethrow (P.printCoreValue' ctx' t)
 
 err :: Has (Throw Err) sig m => ErrDoc -> m a
 err = throwError . (`Err` []) . group
 
-hole :: Has (Reader Span :+: Throw Err) sig m => (T.Text ::: Maybe (Type ErrM Level)) -> m (a ::: Type ErrM Level)
+hole :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => (T.Text ::: Maybe (Type ErrM Level)) -> m (a ::: Type ErrM Level)
 hole (n ::: t) = case t of
   Just t  -> do
     t' <- printType t
@@ -446,7 +454,7 @@ mismatch msg exp act = err $ msg
   -- line things up nicely for e.g. wrapped function types
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
-couldNotUnify :: Has (Reader Span :+: Throw Err) sig m => Type ErrM Level -> Type ErrM Level -> m a
+couldNotUnify :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => Type ErrM Level -> Type ErrM Level -> m a
 couldNotUnify t1 t2 = do
   t1' <- printType t1
   t2' <- printType t2
@@ -464,16 +472,16 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 -- Patterns
 
-expectMatch :: Has (Reader Span :+: Throw Err) sig m => (Type ErrM Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type ErrM Level -> m out
+expectMatch :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => (Type ErrM Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type ErrM Level -> m out
 expectMatch pat exp s _T = do
   _T' <- printType _T
   maybe (mismatch s exp _T') pure (pat _T)
 
-expectQuantifiedType :: Has (Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (UName ::: Type ErrM Level, Type ErrM Level -> ErrM (Type ErrM Level))
+expectQuantifiedType :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (UName ::: Type ErrM Level, Type ErrM Level -> ErrM (Type ErrM Level))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: Has (Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
+expectFunctionType :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: Has (Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
+expectProductType :: Has (Reader Context :+: Reader Span :+: Throw Err) sig m => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
 expectProductType = expectMatch unProductT (pretty "(_, _)")
