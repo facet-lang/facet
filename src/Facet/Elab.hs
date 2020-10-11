@@ -338,6 +338,11 @@ l ** r = Check $ \ _T -> do
 comp
   :: [SC.Clause Check (Expr ErrM Level)]
   -> Check (Expr ErrM Level)
+comp [] = Check $ \ _T -> do
+  (_A, _B) <- expectFunctionType (reflow "when checking void computation") _T
+  _A <- unify _A Void
+  b' <- __ ::: _A |- \ v -> pure $ Case v []
+  pure $ Lam __ b'
 comp cs = do
   cs' <- traverse clause cs
   -- FIXME: extend Core to include pattern matching so this isn’t broken
