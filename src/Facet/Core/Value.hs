@@ -7,6 +7,7 @@ module Facet.Core.Value
 , global
 , bound
 , unForAll
+, unTLam
 , unArrow
 , unLam
 , unProductT
@@ -55,6 +56,9 @@ bound n = Right n :$ Nil
 
 unForAll :: Has Empty sig m => Value f a -> m (UName ::: Value f a, Value f a -> f (Value f a))
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
+
+unTLam :: Has Empty sig m => Value f a -> m (UName, Value f a -> f (Value f a))
+unTLam = \case{ TLam n b -> pure (n, b) ; _ -> empty }
 
 unArrow :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
 unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
