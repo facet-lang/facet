@@ -26,8 +26,7 @@ import Facet.Stack
 import Facet.Syntax
 import GHC.Stack
 
--- FIXME: should the domain of the binders be f a instead of Value f a?
--- FIXME: should bound variables be f a instead of a?
+-- FIXME: should the domain of the binders be a instead of Value f a?
 data Value f a
   = Type
   | Void
