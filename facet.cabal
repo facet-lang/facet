@@ -40,10 +40,8 @@ library
     Facet.Carrier.Error.Context
     Facet.CLI
     Facet.Context
-    Facet.Core.Expr
     Facet.Core.Module
     Facet.Core.Pattern
-    Facet.Core.Type
     Facet.Core.Value
     Facet.Elab
     Facet.Env
