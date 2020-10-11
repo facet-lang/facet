@@ -201,23 +201,21 @@ elabType
   :: ST.Type Span
   -> Maybe (Type ErrM Level)
   -> Elab (Type ErrM Level ::: Type ErrM Level)
-elabType = go
+elabType = \case
+  ST.Free  n -> switch $ global n
+  ST.Bound n -> switch $ bound n
+  ST.Hole  n -> \ _K -> hole (n ::: _K)
+  ST.Type    -> switch $ _Type
+  ST.Void    -> switch $ _Void
+  ST.Unit    -> switch $ _Unit
+  t ST.:=> b -> switch $ fmap _check t >~> _check b
+  f ST.:$  a -> switch $ _synth f $$  _check a
+  a ST.:-> b -> switch $ _check a --> _check b
+  l ST.:*  r -> switch $ _check l .*  _check r
+  ST.Loc s b -> setSpan s . elabType b
   where
-  go = \case
-    ST.Free  n -> switch $ global n
-    ST.Bound n -> switch $ bound n
-    ST.Hole  n -> \ _K -> hole (n ::: _K)
-    ST.Type    -> switch $ _Type
-    ST.Void    -> switch $ _Void
-    ST.Unit    -> switch $ _Unit
-    t ST.:=> b -> switch $ fmap _check t >~> _check b
-    f ST.:$  a -> switch $ _synth f $$  _check a
-    a ST.:-> b -> switch $ _check a --> _check b
-    l ST.:*  r -> switch $ _check l .*  _check r
-    ST.Loc s b -> setSpan s . go b
-    where
-    _check r = tm <$> Check (go r . Just)
-    _synth r = Synth (go r Nothing)
+  _check r = tm <$> Check (elabType r . Just)
+  _synth r = Synth (elabType r Nothing)
 
 
 _Type :: Synth (Type ErrM Level)
