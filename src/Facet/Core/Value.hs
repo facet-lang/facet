@@ -8,6 +8,7 @@ module Facet.Core.Value
 , bound
 , unForAll
 , unArrow
+, unLam
 , unProductT
 , ($$)
 , ($$*)
@@ -57,6 +58,9 @@ unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
 unArrow :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
 unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
+
+unLam :: Has Empty sig m => Value f a -> m (UName, Value f a -> f (Value f a))
+unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
 
 unProductT :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
 unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
