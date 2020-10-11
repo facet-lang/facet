@@ -178,7 +178,8 @@ bound n = Synth $ do
     Nothing         -> err $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (length ctx) ]
 
 hole
-  :: T.Text
+  :: HasCallStack
+  => T.Text
   -> Check a
 hole n = Check $ \ _T -> do
   _T' <- printType _T
@@ -205,7 +206,8 @@ elabBinder f = do
 -- Types
 
 elabType
-  :: ST.Type Span
+  :: HasCallStack
+  => ST.Type Span
   -> Maybe (Type ErrM Level)
   -> Elab (Type ErrM Level ::: Type ErrM Level)
 elabType = \case
@@ -272,7 +274,8 @@ infixr 1 >~>
 -- Expressions
 
 elabExpr
-  :: SE.Expr Span
+  :: HasCallStack
+  => SE.Expr Span
   -> Maybe (Type ErrM Level)
   -> Elab (Expr ErrM Level ::: Type ErrM Level)
 elabExpr = \case
@@ -367,7 +370,8 @@ pattern = \case
 -- Declarations
 
 elabDecl
-  :: SD.Decl Span
+  :: HasCallStack
+  => SD.Decl Span
   -> Check (Expr ErrM Level) ::: Check (Type ErrM Level)
 elabDecl = \case
   (n ::: t) SD.:=> b ->
@@ -392,7 +396,7 @@ elabDecl = \case
 -- Modules
 
 elabModule
-  :: Has (Reader Span :+: Throw Err) sig m
+  :: (HasCallStack, Has (Reader Span :+: Throw Err) sig m)
   => SM.Module Span
   -> m (CM.Module ErrM Level)
 elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM)) $ do
