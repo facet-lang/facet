@@ -8,7 +8,7 @@ module Facet.Stack
 , (!?)
 ) where
 
-import Data.Foldable (foldl')
+import Data.Foldable (foldl', toList)
 import Data.Semialign
 import Data.These
 import GHC.Stack
@@ -16,9 +16,12 @@ import GHC.Stack
 data Stack a
   = Nil
   | Stack a :> a
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+  deriving (Eq, Foldable, Functor, Ord, Traversable)
 
 infixl 5 :>
+
+instance Show a => Show (Stack a) where
+  showsPrec _ s = showString "fromList" . showChar ' ' . showList (toList s)
 
 instance Semigroup (Stack a) where
   a <> Nil       = a
