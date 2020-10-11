@@ -224,7 +224,7 @@ printSurfaceType = go
     ST.Unit    -> _Unit
     t ST.:=> b ->
       let (t', b') = splitr ST.unForAll b
-      in map (first sbound) (t:t') >~~> go (env:>sbound (tm t)) b'
+      in forAlls (map (first sbound) (t:t')) (go (env:>sbound (tm t)) b')
     f ST.:$  a ->
       let (f', a') = splitl ST.unApp f
       in go env f' $$* fmap (go env) (a' :> a)
@@ -276,8 +276,8 @@ l ** r = tupled [l, r]
 (>~>) :: (Print ::: Print) -> Print -> Print
 (n ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (braces (space <> ann (var n ::: t) <> line))) </> arrow <+> b)
 
-(>~~>) :: [Print ::: ST.Type a] -> Print -> Print
-ts >~~> b = foldr go b (groupByType ST.aeq ts)
+forAlls :: [Print ::: ST.Type a] -> Print -> Print
+forAlls ts b = foldr go b (groupByType ST.aeq ts)
   where
   -- FIXME: this is horribly wrong and probably going to crash
   go (t, ns) b = (commaSep ns ::: printSurfaceType Nil t) >~> b
@@ -350,7 +350,7 @@ printSurfaceDecl = go Nil
     t SD.:=> b ->
       let (t', b') = splitr SD.unForAll b
           ts = map (first sbound) (t:t')
-      in ts >~~> go (foldl (\ as (a:::_) -> as :> a) env ts) b'
+      in forAlls ts (go (foldl (\ as (a:::_) -> as :> a) env ts) b')
     t SD.:-> b -> bimap sbound (printSurfaceType env) t >-> go (env:>sbound (tm t)) b
     SD.Loc _ d -> go env d
 
