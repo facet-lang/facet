@@ -489,10 +489,12 @@ printType t = do
   ctx <- printContext
   printTypeInContext ctx t
 
-err :: Has (Throw Err) sig m => ErrDoc -> m a
-err = throwError . (`Err` []) . group
+err :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> m a
+err reason = do
+  ctx <- printContext
+  throwError $ Err (group reason) (zipWith (\ i -> P.getPrint . P.printContextEntry (Level i)) [0..] (toList (elems ctx)))
 
-mismatch :: Has (Throw Err) sig m => ErrDoc -> ErrDoc -> ErrDoc -> m a
+mismatch :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> ErrDoc -> ErrDoc -> m a
 mismatch msg exp act = err $ msg
   </> pretty "expected:" <> print exp
   </> pretty "  actual:" <> print act
@@ -507,13 +509,13 @@ couldNotUnify t1 t2 = do
   t2' <- printTypeInContext ctx t2
   mismatch (reflow "mismatch") t2' t1'
 
-couldNotSynthesize :: Has (Throw Err) sig m => ErrDoc -> m a
+couldNotSynthesize :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> m a
 couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softline <> msg
 
-freeVariable :: Has (Throw Err) sig m => ErrDoc -> m a
+freeVariable :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> m a
 freeVariable v = err $ fillSep [reflow "variable not in scope:", v]
 
-expectChecked :: Has (Throw Err) sig m => Maybe Type -> ErrDoc -> m Type
+expectChecked :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => Maybe Type -> ErrDoc -> m Type
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 
