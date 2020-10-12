@@ -37,7 +37,6 @@ common common
 library
   import: common
   exposed-modules:
-    Facet.Carrier.Error.Context
     Facet.CLI
     Facet.Context
     Facet.Core.Module
