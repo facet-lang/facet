@@ -48,7 +48,6 @@ import qualified Facet.Core.Value as CV
 import qualified Facet.Name as N
 import qualified Facet.Pretty as P
 import           Facet.Stack
-import qualified Facet.Surface.Comp as SC
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
 import qualified Facet.Surface.Module as SM
@@ -299,16 +298,16 @@ printSurfaceExpr = go
     SE.Comp c  -> printSurfaceComp env c
     SE.Loc _ t -> go env t
 
-printSurfaceComp :: Stack Print -> [SC.Clause SE.Expr a] -> Print
+printSurfaceComp :: Stack Print -> [SE.Clause SE.Expr a] -> Print
 printSurfaceComp env = comp . commaSep . map (printSurfaceClause env)
 
-printSurfaceClause :: Stack Print -> SC.Clause SE.Expr a -> Print
+printSurfaceClause :: Stack Print -> SE.Clause SE.Expr a -> Print
 printSurfaceClause env = \case
-  SC.Clause p b -> let { p' = sbound <$> p ; env' = foldl (:>) env p' } in printSurfacePattern p' <+> case b of
-    SC.Body b -> arrow <> group (nest 2 (line <> printSurfaceExpr env' b))
+  SE.Clause p b -> let { p' = sbound <$> p ; env' = foldl (:>) env p' } in printSurfacePattern p' <+> case b of
+    SE.Body b -> arrow <> group (nest 2 (line <> printSurfaceExpr env' b))
     _         -> printSurfaceClause env' b
-  SC.Body e     -> prec Expr (printSurfaceExpr env e)
-  SC.Loc _ c    -> printSurfaceClause env c
+  SE.Body e     -> prec Expr (printSurfaceExpr env e)
+  SE.CLoc _ c   -> printSurfaceClause env c
 
 printCorePattern :: CP.Pattern Print -> Print
 printCorePattern = prec Pattern . \case

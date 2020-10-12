@@ -69,7 +69,6 @@ import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
 import           Facet.Stack hiding ((!?))
-import qualified Facet.Surface.Comp as SC
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
 import qualified Facet.Surface.Module as SM
@@ -318,7 +317,7 @@ elabExpr = \case
   f SE.:$  a -> switch $ _synth f $$ _check a
   l SE.:*  r -> check (_check l ** _check r) (pretty "product")
   SE.Unit    -> switch unit
-  SE.Comp cs -> check (comp (map (SC.mapComp _check) cs)) (pretty "computation")
+  SE.Comp cs -> check (comp (map (SE.mapComp _check) cs)) (pretty "computation")
   SE.Loc s b -> setSpan s . elabExpr b
   where
   _check r = tm <$> Check (elabExpr r . Just)
@@ -361,15 +360,15 @@ l ** r = Check $ \ _T -> do
   pure (Prd l' r')
 
 comp
-  :: [SC.Clause Check Expr]
+  :: [SE.Clause Check Expr]
   -> Check Expr
 comp [] = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking void computation") _T
   _A <- unify _A Void
   b' <- __ ::: _A |- \ v -> pure $ Case v []
   pure $ Lam __ b'
-comp [ SC.Body e ] = e
-comp cs = case traverse (SC.unClause . skipLoc) cs of
+comp [ SE.Body e ] = e
+comp cs = case traverse (SE.unClause . skipLoc) cs of
   Just cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
     b' <- __ ::: _A |- \ v -> do
@@ -384,17 +383,17 @@ comp cs = case traverse (SC.unClause . skipLoc) cs of
     b' <- p' |-* \ v -> check (go c ::: _B)
     pure (tm <$> p', b')
   go = \case
-    SC.Clause p b -> Check $ \ _T -> do
+    SE.Clause p b -> Check $ \ _T -> do
       (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
       b' <- __ ::: _A |- \ v -> do
         c <- clause _A _B p b
         pure $ Case v [c]
       pure $ Lam __ b'
-    SC.Body e     -> e
-    SC.Loc s c    -> setSpan s (go c)
+    SE.Body e     -> e
+    SE.CLoc s c   -> setSpan s (go c)
   skipLoc = \case
-    SC.Loc _ c -> skipLoc c
-    c          -> c
+    SE.CLoc _ c -> skipLoc c
+    c           -> c
 
 pattern
   :: SP.Pattern (UName)

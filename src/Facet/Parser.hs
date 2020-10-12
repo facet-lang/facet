@@ -30,7 +30,6 @@ import qualified Data.List.NonEmpty as NE
 import           Data.Text (Text, pack)
 import qualified Facet.Name as N
 import           Facet.Parser.Table as Op
-import qualified Facet.Surface.Comp as C
 import qualified Facet.Surface.Decl as D
 import qualified Facet.Surface.Expr as E
 import qualified Facet.Surface.Module as M
@@ -195,16 +194,16 @@ comp = settingSpan (braces (E.Comp <$> clauses))
     <|> pure <$> body
     <|> pure []
 
-clause :: (Monad p, PositionParsing p) => Facet p (C.Clause E.Expr Span)
+clause :: (Monad p, PositionParsing p) => Facet p (E.Clause E.Expr Span)
 clause = (try (some ((,) <$> position <*> pattern) <* arrow) >>= foldr go body) <?> "clause"
   where
   go (start, p) rest = bindPattern p $ \ p' -> do
-    c <- C.Clause p' <$> rest
+    c <- E.Clause p' <$> rest
     end <- position
     pure $ setSpan (Span start end) c
 
-body :: (Monad p, PositionParsing p) => Facet p (C.Clause E.Expr Span)
-body = C.Body <$> expr
+body :: (Monad p, PositionParsing p) => Facet p (E.Clause E.Expr Span)
+body = E.Body <$> expr
 
 evar :: (Monad p, PositionParsing p) => Facet p (E.Expr Span)
 evar
