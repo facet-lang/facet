@@ -7,7 +7,6 @@ module Facet.Surface.Expr
 , unApp
 , Clause(..)
 , unClause
-, mapComp
 ) where
 
 import Control.Effect.Empty
@@ -21,7 +20,7 @@ data Expr a
   = Free DName
   | Bound Index
   | Hole Text
-  | Comp [Clause Expr a]
+  | Comp [Clause a]
   | Expr a :$ Expr a
   | Unit
   | Expr a :* Expr a
@@ -46,13 +45,13 @@ unApp = \case
   _      -> empty
 
 
-data Clause f a
-  = Clause (Pattern UName) (Clause f a)
-  | Body (f a)
-  | CLoc Span (Clause f a)
+data Clause a
+  = Clause (Pattern UName) (Clause a)
+  | Body (Expr a)
+  | CLoc Span (Clause a)
   deriving (Foldable, Functor, Show, Traversable)
 
-instance Spanned (Clause f Span) where
+instance Spanned (Clause Span) where
   setSpan = CLoc
 
   dropSpan = \case
@@ -60,14 +59,5 @@ instance Spanned (Clause f Span) where
     d        -> d
 
 
-unClause :: Has Empty sig m => Clause f a -> m (Pattern UName, Clause f a)
+unClause :: Has Empty sig m => Clause a -> m (Pattern UName, Clause a)
 unClause = \case{ Clause p c -> pure (p, c) ; _ -> empty }
-
-
-mapComp :: (f a -> g b) -> Clause f a -> Clause g b
-mapComp f = go
-  where
-  go = \case
-    Clause p c -> Clause p (go c)
-    Body e     -> Body (f e)
-    CLoc s c   -> CLoc s (go c)

@@ -322,7 +322,7 @@ elabExpr = \case
   f SE.:$  a -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
   l SE.:*  r -> check (checkElab (elabExpr l) ** checkElab (elabExpr r)) (pretty "product")
   SE.Unit    -> switch unit
-  SE.Comp cs -> check (comp (map (SE.mapComp (checkElab . elabExpr)) cs)) (pretty "computation")
+  SE.Comp cs -> check (comp cs) (pretty "computation")
   SE.Loc s b -> setSpan s . elabExpr b
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
@@ -363,14 +363,14 @@ l ** r = Check $ \ _T -> do
   pure (Prd l' r')
 
 comp
-  :: [SE.Clause Check Expr]
+  :: [SE.Clause Span]
   -> Check Expr
 comp [] = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking void computation") _T
   _A <- unify _A Void
   b' <- __ ::: _A |- \ v -> pure $ Case v []
   pure $ Lam __ b'
-comp [ SE.Body e ] = e
+comp [ SE.Body e ] = checkElab (elabExpr e)
 comp cs = case traverse (SE.unClause . skipLoc) cs of
   Just cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
@@ -392,7 +392,7 @@ comp cs = case traverse (SE.unClause . skipLoc) cs of
         c <- clause _A _B p b
         pure $ Case v [c]
       pure $ Lam __ b'
-    SE.Body e     -> e
+    SE.Body e     ->checkElab (elabExpr e)
     SE.CLoc s c   -> setSpan s (go c)
   skipLoc = \case
     SE.CLoc _ c -> skipLoc c

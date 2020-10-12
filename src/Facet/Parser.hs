@@ -194,7 +194,7 @@ comp = settingSpan (braces (E.Comp <$> clauses))
     <|> pure <$> body
     <|> pure []
 
-clause :: (Monad p, PositionParsing p) => Facet p (E.Clause E.Expr Span)
+clause :: (Monad p, PositionParsing p) => Facet p (E.Clause Span)
 clause = (try (some ((,) <$> position <*> pattern) <* arrow) >>= foldr go body) <?> "clause"
   where
   go (start, p) rest = bindPattern p $ \ p' -> do
@@ -202,7 +202,7 @@ clause = (try (some ((,) <$> position <*> pattern) <* arrow) >>= foldr go body) 
     end <- position
     pure $ setSpan (Span start end) c
 
-body :: (Monad p, PositionParsing p) => Facet p (E.Clause E.Expr Span)
+body :: (Monad p, PositionParsing p) => Facet p (E.Clause Span)
 body = E.Body <$> expr
 
 evar :: (Monad p, PositionParsing p) => Facet p (E.Expr Span)
