@@ -8,6 +8,6 @@ import Facet.Core.Value
 import Facet.Stack
 
 data Problem f a = Exists
-  { metas :: Context (Type f a)
+  { metas :: Context (Value f a)
   , solve :: Stack (Value f a) -> f (Value f a)
   }
