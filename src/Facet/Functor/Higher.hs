@@ -1,2 +1,7 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
 module Facet.Functor.Higher
-() where
+( type (~>)
+) where
+
+type f ~> g = forall x . f x -> g x
