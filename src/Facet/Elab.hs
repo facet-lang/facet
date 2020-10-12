@@ -387,10 +387,7 @@ comp = withSpan $ \case
   go []     b = checkElab (elabExpr b)
   go (p:ps) b = Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
-    b' <- __ ::: _A |- \ v -> do
-      c <- clause _A _B (p:|ps) b
-      pure $ Case v [c]
-    pure $ Lam __ b'
+    Lam __ <$> (__ ::: _A |- \ v -> Case v . pure <$> clause _A _B (p:|ps) b)
 
 
 pattern
