@@ -32,8 +32,8 @@ import           Facet.Core.Pattern
 import           Facet.Name (Level(..), QName, UName, incrLevel, shiftLevel)
 import           Facet.Stack hiding ((!))
 import           Facet.Syntax
-import           Text.Show (showListWith)
 import           GHC.Stack
+import           Text.Show (showListWith)
 
 -- FIXME: eliminate TLam; track type introductions and applications with annotations in the context.
 data Value f a
