@@ -423,7 +423,7 @@ elabDecl = withSpans $ \case
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n b' ::: checkElab (switch (checkElab (elabType t) --> local (|> (__ ::: (Type :: Type))) _B))
+    in lam n b' ::: checkElab (switch (checkElab (elabType t) --> local (|> (n ::: (Type :: Type))) _B))
 
   t SD.:= b ->
     checkElab (elabExpr b) ::: checkElab (elabType t)
