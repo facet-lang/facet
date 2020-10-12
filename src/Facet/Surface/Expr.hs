@@ -48,7 +48,7 @@ unApp = \case
 data Clause a
   = Clause (Pattern UName) (Clause a)
   | Body (Expr a)
-  | CLoc Span (Clause a)
+  | CLoc a (Clause a)
   deriving (Foldable, Functor, Show, Traversable)
 
 instance Spanned (Clause Span) where
