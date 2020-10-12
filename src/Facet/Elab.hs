@@ -481,7 +481,6 @@ showContext = do
 printContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => m (Context P.Print)
 printContext = do
   ctx <- ask @(Context Type)
-  -- FIXME: this is wrong, but to be fair we probably shouldn’t print the context like this at all anyway.
   rethrow $ foldContextAll P.printBinding P.printCoreValue ctx
 
 printType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => Type -> m ErrDoc
