@@ -205,7 +205,11 @@ f $$ a = Synth $ do
   (::: _B) <$> liftErr (f' CV.$$ a')
 
 
-(|-) :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM)) sig m => UName ::: Type -> (a -> Elab b) -> m (a -> ErrM b)
+(|-)
+  :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM)) sig m
+  => UName ::: Type
+  -> (a -> Elab b)
+  -> m (a -> ErrM b)
 t |- f = do
   ctx <- ask
   env <- ask
