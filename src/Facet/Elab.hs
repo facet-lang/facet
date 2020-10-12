@@ -3,17 +3,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
 module Facet.Elab
 ( ErrM(..)
-, rethrow
 , Context
 , elab
 , Elab(..)
@@ -54,7 +51,6 @@ import           Control.Effect.Parser.Span (Span(..))
 import           Control.Effect.Sum
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', toList)
-import qualified Data.Kind as K
 import           Data.List (intersperse)
 import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Semigroup (stimes)
@@ -86,40 +82,20 @@ import           Text.Parser.Position (Spanned)
 type Type = Value ErrM Level
 type Expr = Value ErrM Level
 
-class Members' (sub :: (K.Type -> K.Type) -> (K.Type -> K.Type)) sup where
-  inj' :: sub m a -> sup m a
+newtype ErrM a = ErrM { rethrow :: forall sig m . Has (Throw Err) sig m => m a }
 
-instance (Members' l sup, Members' r sup) => Members' (l :+: r) sup where
-  inj' = \case
-    L l -> inj' l
-    R r -> inj' r
+instance Functor ErrM where
+  fmap f (ErrM m) = ErrM (fmap f m)
 
-instance {-# OVERLAPPING #-} Member sub sup => Members' sub sup where
-  inj' = inj
+instance Applicative ErrM where
+  pure a = ErrM $ pure a
+  ErrM f <*> ErrM a = ErrM (f <*> a)
 
+instance Monad ErrM where
+  ErrM m >>= f = ErrM $ m >>= rethrow . f
 
-newtype Restrict eff a = Restrict { release :: forall sig m . (Members' eff sig, Algebra sig m) => m a }
-
-instance Functor (Restrict eff) where
-  fmap f (Restrict m) = Restrict (fmap f m)
-
-instance Applicative (Restrict eff) where
-  pure a = Restrict $ pure a
-  Restrict f <*> Restrict a = Restrict (f <*> a)
-
-instance Monad (Restrict eff) where
-  Restrict m >>= f = Restrict $ m >>= release . f
-
-instance Algebra eff (Restrict eff) where
-  alg hdl sig ctx = Restrict $ alg (release . hdl) (inj' sig) ctx
-
-
-newtype ErrM a = ErrM { runErrM :: Restrict (Throw Err) a }
-  deriving (Algebra (Throw Err), Applicative, Functor, Monad)
-
-rethrow :: Has (Throw Err) sig m => ErrM a -> m a
-rethrow = release . runErrM
-
+instance Algebra (Throw Err) ErrM where
+  alg hdl sig ctx = ErrM $ alg (rethrow . hdl) (inj sig) ctx
 
 elab :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab m = do
