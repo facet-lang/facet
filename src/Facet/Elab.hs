@@ -426,10 +426,10 @@ elabDecl = withSpans $ \case
 -- Modules
 
 elabModule
-  :: (HasCallStack, Has (Reader Span :+: Throw Err) sig m)
+  :: (HasCallStack, Has (Throw Err) sig m)
   => Spanned (SM.Module Spanned a)
   -> m (CM.Module ErrM Level)
-elabModule (s, (SM.Module mname ds)) = setSpan s . evalState (mempty @(Env.Env ErrM)) $ do
+elabModule (s, (SM.Module mname ds)) = runReader s . evalState (mempty @(Env.Env ErrM)) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do

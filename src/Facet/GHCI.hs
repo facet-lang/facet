@@ -17,7 +17,6 @@ module Facet.GHCI
 
 import           Control.Carrier.Lift (runM)
 import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, runParser, runParserWithFile, runParserWithString)
-import           Control.Carrier.Reader (runReader)
 import           Control.Carrier.Throw.Either (runThrow)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
@@ -58,9 +57,9 @@ elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) (Spanned (S.Module Spanned Index)) -> String -> m ()
 elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
-  (s, parsed) <- runParser (const Right) failure failure input (runFacet [] (whole p))
+  parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
   first mkNotice $ rethrow $ do
-    mod <- runReader s $ elabModule (s, parsed)
+    mod <- elabModule parsed
     P.printCoreModule mod
   where
   input = Input (Pos 0 0) s
