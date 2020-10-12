@@ -84,10 +84,11 @@ import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty,
 type Type = Value ErrM Level
 type Expr = Value ErrM Level
 
-type ErrM = ErrorC Span Err Identity
+newtype ErrM a = ErrM { runErrM' :: ErrorC Span Err Identity a }
+  deriving (Algebra (Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
 
 runErrM :: Span -> ErrM a -> Either (Span, Err) a
-runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
+runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s . runErrM'
 
 elab :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab m = do
@@ -98,13 +99,13 @@ elab m = do
 rethrow :: Has (Reader Span :+: Throw Err) sig m => ErrM a -> m a
 rethrow m = do
   span <- ask
-  run (runError (\ s e -> pure (setSpan s (throwError e))) (pure . pure) span m)
+  run (runError (\ s e -> pure (setSpan s (throwError e))) (pure . pure) span (runErrM' m))
 
 liftErr :: ErrM a -> Elab a
 liftErr = Elab . lift . lift
 
 -- FIXME: can we generalize this to a rank-n quantified action over any context providing these effects?
-newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC (Context Type) (ErrorC Span Err Identity)) a }
+newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC (Context Type) ErrM) a }
   deriving (Algebra (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
 
 
