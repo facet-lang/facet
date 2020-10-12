@@ -47,8 +47,8 @@ import           Control.Algebra
 import           Control.Applicative (liftA2)
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lift
 import           Control.Effect.Parser.Span (Span(..))
+import           Control.Effect.Sum
 import           Control.Monad.Trans.Class
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', toList)
@@ -84,8 +84,22 @@ import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty,
 type Type = Value ErrM Level
 type Expr = Value ErrM Level
 
-newtype ErrM a = ErrM { runErrM' :: ErrorC Span Err Identity a }
-  deriving (Algebra (Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
+newtype ErrM a = ErrM { runErrM' :: forall sig m . Has (Reader Span :+: Throw Err) sig m => m a }
+
+instance Functor ErrM where
+  fmap f (ErrM m) = ErrM (fmap f m)
+
+instance Applicative ErrM where
+  pure a = ErrM $ pure a
+  ErrM f <*> ErrM a = ErrM (f <*> a)
+
+instance Monad ErrM where
+  ErrM m >>= f = ErrM $ m >>= runErrM' . f
+
+instance Algebra (Reader Span :+: Throw Err) ErrM where
+  alg hdl sig ctx = case sig of
+    L reader -> ErrM $ alg (runErrM' . hdl) (inj reader) ctx
+    R throw  -> ErrM $ alg (runErrM' . hdl) (inj throw) ctx
 
 runErrM :: Span -> ErrM a -> Either (Span, Err) a
 runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s . runErrM'
@@ -97,20 +111,18 @@ elab m = do
   rethrow (runReader ctx (runReader env (runElab m)))
 
 rethrow :: Has (Reader Span :+: Throw Err) sig m => ErrM a -> m a
-rethrow m = do
-  span <- ask
-  run (runError (\ s e -> pure (setSpan s (throwError e))) (pure . pure) span (runErrM' m))
+rethrow = runErrM'
 
 liftErr :: ErrM a -> Elab a
 liftErr = Elab . lift . lift
 
 -- FIXME: can we generalize this to a rank-n quantified action over any context providing these effects?
 newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC (Context Type) ErrM) a }
-  deriving (Algebra (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
+  deriving (Algebra (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Reader Span :+: Throw Err), Applicative, Functor, Monad)
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
-  deriving (Algebra (Reader Type :+: Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad) via ReaderC Type Elab
+  deriving (Algebra (Reader Type :+: Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Reader Span :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
