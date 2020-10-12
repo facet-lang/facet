@@ -44,14 +44,11 @@ data Value f a
   | (UName ::: Value f a) :=> (Value f a -> f (Value f a))
   | TLam UName (Value f a -> f (Value f a))
   | Value f a :-> Value f a
-  -- FIXME: replace Case with this, and perform the elimination(s) in $$.
-  | Lam UName (Value f a -> f (Value f a))
+  -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
+  | Lam [(Pattern UName, Pattern (Value f a) -> f (Value f a))]
   | Either QName a :$ Stack (Value f a)
   | TPrd (Value f a) (Value f a)
   | Prd (Value f a) (Value f a)
-  -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
-  -- FIXME: this is an eliminator but it isn’t being dealt with by hereditary substitution.
-  | Case (Value f a) [(Pattern UName, Pattern (Value f a) -> f (Value f a))]
 
 infixr 0 :=>
 infixl 9 :$
@@ -69,11 +66,10 @@ showsPrecValue d p = fmap appEndo . go d p
     t :=> b  -> prec 0  $ c (tm t) <+> lit ":::" <+> go d 1 (ty t) <+> lit ":=>" <+> lit "\\ _ ->" <+> (go (incrLevel d) 0 =<< b (bound d))
     TLam n b -> prec 10 $ lit "TLam" <+> c n <+> lit "\\ _ ->" <+> (go (incrLevel d) 11 =<< b (bound d))
     a :-> b  -> prec 0  $ go d 1 a <+> lit ":->" <+> go d 0 b
-    Lam  n b -> prec 10 $ lit "Lam"  <+> c n <+> lit "\\ _ ->" <+> (go (incrLevel d) 11 =<< b (bound d))
+    Lam    b -> prec 10 $ lit "Lam"  <+> list (traverse (\ (p, b) -> parens True (c p <+> lit ", " <+> lit "\\ _ ->" <+> (go (incrLevel d) 0 =<< b (snd (mapAccumL (\ l _ -> (incrLevel l, bound l)) d p))))) b)
     f :$ as  -> either c c f <+> lit ":$" <+> parens True (getAp (foldMap Ap (intersperse (lit ":>") (toList (fmap (go d 0) as)))))
     TPrd l r -> prec 10 $ lit "TPrd" <+> go d 11 l <+> go d 11 r
     Prd  l r -> prec 10 $ lit "Prd"  <+> go d 11 l <+> go d 11 r
-    Case s b -> prec 10 $ lit "Case" <+> go d 11 s <+> list (traverse (\ (p, b) -> parens True (c p <+> lit ", " <+> lit "\\ _ ->" <+> (go (incrLevel d) 0 =<< b (snd (mapAccumL (\ l _ -> (incrLevel l, bound l)) d p))))) b)
     where
     prec d = parens (p > d)
   parens c = fmap (Endo . showParen c . appEndo)
@@ -102,8 +98,8 @@ unTLam = \case{ TLam n b -> pure (n, b) ; _ -> empty }
 unArrow :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
 unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
 
-unLam :: Has Empty sig m => Value f a -> m (UName, Value f a -> f (Value f a))
-unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
+unLam :: Has Empty sig m => Value f a -> m [(Pattern UName, Pattern (Value f a) -> f (Value f a))]
+unLam = \case{ Lam ps -> pure ps ; _ -> empty }
 
 unProductT :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
 unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
@@ -113,7 +109,7 @@ unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
 (f :$ as) $$ a = pure (f :$ (as :> a))
 (_ :=> b) $$ a = b a
 TLam _ b  $$ a = b a
-Lam  _ b  $$ a = b a
+Lam    ps $$ a = case' a ps
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (HasCallStack, Foldable t, Monad f) => Value f a -> t (Value f a) -> f (Value f a)
@@ -156,11 +152,10 @@ shift d = go
     t :=> b -> fmap go t :=> binder b
     a :-> b -> go a :-> go b
     TLam n b -> TLam n (binder b)
-    Lam n b -> Lam n (binder b)
+    Lam ps -> Lam (map (\ (p, b) -> (p, fmap go . b . fmap (shift invd))) ps)
     f :$ as -> fmap (shiftLevel d) f :$ fmap go as
     TPrd l r -> TPrd (go l) (go r)
     Prd l r -> Prd (go l) (go r)
-    Case s ps -> Case (go s) (map (\ (p, b) -> (p, fmap go . b . fmap (shift invd))) ps)
   -- FIXME: we /probably/ need to invert the shift here? how can we be sure?
   binder b = fmap go . b . shift invd
 
@@ -178,14 +173,13 @@ foldContext bd fold env = fold <=< go env
       pure $ t' :=> bind env (tm t') b
     a :-> b  -> (:->) <$> go env a <*> go env b
     TLam n b -> pure $ TLam n $ bind env n b
-    Lam  n b -> pure $ Lam  n $ bind env n b
+    Lam  ps  -> pure $ Lam $ map (\ (p, b) -> (p, bindP env p b)) ps
     f :$ as  -> do
       let f' = either global (bound . bd env) f
       as' <- traverse (go env) as
       f' $$* as'
     TPrd l r -> TPrd <$> go env l <*> go env r
     Prd  l r -> Prd  <$> go env l <*> go env r
-    Case s ps -> Case <$> go env s <*> pure (map (\ (p, b) -> (p, bindP env p b)) ps)
   bind env n b = \ v -> do
     b' <- b (bound (level env))
     v' <- fold v

@@ -62,7 +62,7 @@ import           Facet.Core.Value hiding (bound, global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
 import           Facet.Error
-import           Facet.Name (Index(..), Level(..), QName(..), UName, indexToLevel, __)
+import           Facet.Name (Index(..), Level(..), QName(..), UName, indexToLevel)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
@@ -351,7 +351,7 @@ lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   -- FIXME: shouldn’t we use the bound variable?
   b' <- n ::: _A |- \ v -> check (b ::: _B)
-  pure (Lam n b')
+  pure (Lam [(CP.Var n, b')])
 
 unit :: Synth Expr
 unit = Synth . pure $ Unit ::: TUnit
@@ -375,11 +375,9 @@ comp = withSpan $ \case
   -- e.g. in xor : Bool -> Bool -> Bool { False True -> True, True False -> True, _ _ -> False }, we should have the second column of cases appearing under each of the first, or else we’re inserting inexhaustive patterns
   SE.Clauses cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clauses") _T
-    Lam __ <$> case cs of
-      [] -> do
-        _A <- unify _A Void
-        __ ::: _A |- \ v -> pure $ Case v []
-      cs -> __ ::: _A |- \ v -> Case v <$> traverse (uncurry (clause _A _B)) cs
+    Lam <$> case cs of
+      [] -> [] <$ unify _A Void
+      cs -> traverse (uncurry (clause _A _B)) cs
   where
   clause _A _B (p:|ps) b = do
     p' <- check (pattern p ::: _A)
@@ -389,7 +387,7 @@ comp = withSpan $ \case
   go []     b = checkElab (elabExpr b)
   go (p:ps) b = Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
-    Lam __ <$> (__ ::: _A |- \ v -> Case v . pure <$> clause _A _B (p:|ps) b)
+    Lam <$> (pure <$> clause _A _B (p:|ps) b)
 
 
 pattern

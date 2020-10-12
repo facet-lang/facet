@@ -186,14 +186,12 @@ printCoreValue = go (N.Level 0)
       b' <- go (N.incrLevel d) =<< b (CV.bound n')
       pure $ (n' ::: t') >~> b'
     CV.TLam n b -> let n' = name n d in lam (braces n') <$> (go (N.incrLevel d) =<< b (CV.bound n'))
-    CV.Lam  n b -> let n' = name n d in lam         n'  <$> (go (N.incrLevel d) =<< b (CV.bound n'))
+    CV.Lam  p   -> block . commaSep <$> traverse (clause d) p
     f CV.:$ as  -> (either cfree id f $$*) <$> traverse (go d) as
     a CV.:-> b  -> (-->) <$> go d a <*> go d b
     CV.TPrd l r -> (**)  <$> go d l <*> go d r
     CV.Prd  l r -> (**)  <$> go d l <*> go d r
-    CV.Case s p -> case' <$> go d s <*> traverse (clause d) p
   name n d = cbound n tvar d
-  case' s cs = pretty "case" <+> s <+> block (commaSep cs)
   clause d (p, b) = do
     let p' = snd (mapAccumL (\ d n -> (N.incrLevel d, let n' = name n d in (n', CV.bound n'))) d p)
     b' <- go (N.incrLevel d) =<< b (snd <$> p')
