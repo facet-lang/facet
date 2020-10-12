@@ -364,27 +364,32 @@ comp [] = Check $ \ _T -> do
   b' <- __ ::: _A |- \ v -> pure $ Case v []
   pure $ Lam __ b'
 comp [ SC.Body e ] = e
-comp cs = do
-  cs' <- traverse clause cs
-  -- FIXME: extend Core to include pattern matching so this isn’t broken
-  -- FIXME: extend Core to include computation types
-  pure $ head cs'
-
-clause
-  :: SC.Clause Check Expr
-  -> Check Expr
-clause = \case
-  -- FIXME: deal with other patterns.
-  SC.Clause (SP.Loc _ p) b -> clause (SC.Clause p b)
-  SC.Clause (SP.Var n) b -> Check $ \ _T -> do
+comp cs = case traverse (SC.unClause . skipLoc) cs of
+  Just cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
-    -- p' <- check (pattern p ::: _A)
-    -- FIXME: shouldn’t we use the bound variable?
-    b' <- n ::: _A |- \ v -> check (clause b ::: _B)
-    pure (Lam n b')
-  SC.Body e   -> e
-  SC.Loc s c  -> setSpan s (clause c)
-
+    b' <- __ ::: _A |- \ v -> do
+      cs' <- traverse (uncurry (clause _A _B)) cs
+      pure $ Case v cs'
+    pure $ Lam __ b'
+  _ -> err $ reflow "computation with multiple clauseless bodies"
+  where
+  clause _A _B p c = do
+    p' <- check (pattern p ::: _A)
+    -- FIXME: shouldn’t we use the bound variable(s)?
+    b' <- p' |-* \ v -> check (go c ::: _B)
+    pure (tm <$> p', b')
+  go = \case
+    SC.Clause p b -> Check $ \ _T -> do
+      (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
+      b' <- __ ::: _A |- \ v -> do
+        c <- clause _A _B p b
+        pure $ Case v [c]
+      pure $ Lam __ b'
+    SC.Body e     -> e
+    SC.Loc s c    -> setSpan s (go c)
+  skipLoc = \case
+    SC.Loc _ c -> skipLoc c
+    c          -> c
 
 pattern
   :: SP.Pattern (UName)
