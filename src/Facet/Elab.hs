@@ -81,6 +81,9 @@ import           GHC.Stack
 import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 
+type Type = Value
+type Expr = Value
+
 type ErrM = ErrorC Span Err Identity
 
 runErrM :: Span -> ErrM a -> Either (Span, Err) a

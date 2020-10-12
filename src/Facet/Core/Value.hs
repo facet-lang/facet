@@ -3,8 +3,6 @@
 module Facet.Core.Value
 ( Value(..)
 , showsPrecValue
-, Type
-, Expr
 , global
 , bound
 , unForAll
@@ -82,10 +80,6 @@ showsPrecValue d p = fmap appEndo . go d p
   sp = Endo (showChar ' ')
   a <+> b = liftA2 (\ a b -> a <> sp <> b) a b
   infixl 4 <+>
-
-
-type Type = Value
-type Expr = Value
 
 
 global :: QName -> Value f a
