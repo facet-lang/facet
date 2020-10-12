@@ -38,6 +38,7 @@ import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
 import           Data.List (intersperse)
+import           Data.List.NonEmpty (NonEmpty)
 import           Data.Monoid (First(..))
 import           Data.Semigroup (stimes)
 import           Data.Text (Text)
@@ -296,14 +297,16 @@ printSurfaceExpr = go
       in foldMap (go env) f' $$* fmap (foldMap (go env)) (a' :> a)
     SE.Unit    -> unit
     l SE.:*  r -> foldMap (go env) l **  foldMap (go env) r
-    SE.Comp c  -> comp . commaSep $ map (foldMap (printSurfaceClause env)) c
+    SE.Comp c  -> comp . (`foldMap` c) $ \case
+      SE.Expr e     -> prec Expr $ foldMap (printSurfaceExpr env) e
+      SE.Clauses cs -> commaSep (map (uncurry (printSurfaceClause env)) cs)
+      -- comp . commaSep $ map (foldMap (printSurfaceClause env)) c
 
-printSurfaceClause :: (Foldable f, Functor f) => Stack Print -> SE.Clause f a -> Print
-printSurfaceClause env = \case
-  SE.Clause p b -> let { p' = fmap sbound <$> p ; env' = foldMap (foldl (:>) env) p' } in foldMap printSurfacePattern p' <+> case extract b of
-    Just (SE.Body b) -> arrow <> group (nest 2 (line <> foldMap (printSurfaceExpr env') b))
-    _                -> foldMap (printSurfaceClause env') b
-  SE.Body e     -> prec Expr (foldMap (printSurfaceExpr env) e)
+printSurfaceClause :: (Foldable f, Functor f) => Stack Print -> NonEmpty (f (SP.Pattern f N.UName)) -> f (SE.Expr f a) -> Print
+printSurfaceClause env ps b = foldMap (foldMap printSurfacePattern) ps' <+> arrow <> group (nest 2 (line <> prec Expr (foldMap (printSurfaceExpr env') b)))
+  where
+  ps' = fmap (fmap sbound) <$> ps
+  env' = foldl (foldl (foldl (:>))) env ps'
 
 printCorePattern :: CP.Pattern Print -> Print
 printCorePattern = prec Pattern . \case

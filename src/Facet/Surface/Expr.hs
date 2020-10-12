@@ -8,8 +8,6 @@ module Facet.Surface.Expr
 ( Expr(..)
 , unApp
 , Comp(..)
-, Clause(..)
-, unClause
 ) where
 
 import Control.Effect.Empty
@@ -23,8 +21,7 @@ data Expr f a
   = Free DName
   | Bound Index
   | Hole Text
-  -- FIXME: represent this more precisely: empty case (void), single expr case, or one or more clause cases consisting of one or more patterns and a body
-  | Comp [f (Clause f a)]
+  | Comp (f (Comp f a))
   | f (Expr f a) :$ f (Expr f a)
   | Unit
   | f (Expr f a) :* f (Expr f a)
@@ -49,15 +46,3 @@ data Comp f a
   deriving (Foldable, Functor, Traversable)
 
 deriving instance (Show a, forall a . Show a => Show (f a)) => Show (Comp f a)
-
-
-data Clause f a
-  = Clause (f (Pattern f UName)) (f (Clause f a))
-  | Body (f (Expr f a))
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance (Show a, forall a . Show a => Show (f a)) => Show (Clause f a)
-
-
-unClause :: Has Empty sig m => Clause f a -> m (f (Pattern f UName), f (Clause f a))
-unClause = \case{ Clause p c -> pure (p, c) ; _ -> empty }

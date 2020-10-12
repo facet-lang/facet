@@ -53,6 +53,7 @@ import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', toList)
 import           Data.Functor.Identity
 import           Data.List (intersperse)
+import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Data.Traversable (for)
@@ -362,36 +363,35 @@ l ** r = Check $ \ _T -> do
   pure (Prd l' r')
 
 comp
-  :: [Spanned (SE.Clause Spanned a)]
+  :: Spanned (SE.Comp Spanned a)
   -> Check Expr
-comp [] = Check $ \ _T -> do
-  (_A, _B) <- expectFunctionType (reflow "when checking void computation") _T
-  _A <- unify _A Void
-  b' <- __ ::: _A |- \ v -> pure $ Case v []
-  pure $ Lam __ b'
-comp [ (s, SE.Body e) ] = setSpan s $ checkElab (elabExpr e)
-comp cs = case traverse (SE.unClause . snd) cs of
-  Just cs -> Check $ \ _T -> do
-    (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
+comp = withSpan $ \case
+  SE.Expr    b  -> checkElab (elabExpr b)
+  SE.Clauses [] -> Check $ \ _T -> do
+    (_A, _B) <- expectFunctionType (reflow "when checking void computation") _T
+    _A <- unify _A Void
+    b' <- __ ::: _A |- \ v -> pure $ Case v []
+    pure $ Lam __ b'
+  SE.Clauses cs -> Check $ \ _T -> do
+    (_A, _B) <- expectFunctionType (reflow "when checking clauses") _T
     b' <- __ ::: _A |- \ v -> do
       cs' <- traverse (uncurry (clause _A _B)) cs
       pure $ Case v cs'
     pure $ Lam __ b'
-  _ -> err $ reflow "computation with multiple clauseless bodies"
   where
-  clause _A _B p c = do
+  clause _A _B (p:|ps) b = do
     p' <- check (pattern p ::: _A)
     -- FIXME: shouldn’t we use the bound variable(s)?
-    b' <- p' |-* \ v -> check (go c ::: _B)
+    b' <- p' |-* \ v -> check (go ps b ::: _B)
     pure (tm <$> p', b')
-  go = withSpan $ \case
-    SE.Clause p b -> Check $ \ _T -> do
-      (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
-      b' <- __ ::: _A |- \ v -> do
-        c <- clause _A _B p b
-        pure $ Case v [c]
-      pure $ Lam __ b'
-    SE.Body e     -> checkElab (elabExpr e)
+  go []     b = checkElab (elabExpr b)
+  go (p:ps) b = Check $ \ _T -> do
+    (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
+    b' <- __ ::: _A |- \ v -> do
+      c <- clause _A _B (p:|ps) b
+      pure $ Case v [c]
+    pure $ Lam __ b'
+
 
 pattern
   :: Spanned (SP.Pattern Spanned UName)
