@@ -51,7 +51,7 @@ import           Control.Effect.Lift
 import           Control.Effect.Parser.Span (Span(..))
 import           Control.Monad.Trans.Class
 import           Data.Bifunctor (first)
-import           Data.Foldable (toList)
+import           Data.Foldable (foldl', toList)
 import           Data.Functor.Identity
 import           Data.List (intersperse)
 import           Data.Semigroup (stimes)
@@ -216,6 +216,18 @@ t |- f = do
   pure $ runReader (ctx |> t) . runReader env . runElab . f
 
 infix 1 |-
+
+(|-*)
+  :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM)) sig m
+  => CP.Pattern (UName ::: Type)
+  -> (CP.Pattern a -> Elab b)
+  -> m (CP.Pattern a -> ErrM b)
+p |-* f = do
+  ctx <- ask
+  env <- ask
+  pure $ runReader (foldl' (|>) ctx p) . runReader env . runElab . f
+
+infix 1 |-*
 
 
 -- Types
