@@ -10,8 +10,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
-( ErrM
-, runErrM
+( ErrM(..)
 , Context
 , elab
 , Elab(..)
@@ -52,7 +51,6 @@ import           Control.Effect.Parser.Span (Span(..))
 import           Control.Effect.Sum
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', toList)
-import           Data.Functor.Identity
 import           Data.List (intersperse)
 import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Semigroup (stimes)
@@ -98,9 +96,6 @@ instance Monad ErrM where
 
 instance Algebra (Throw Err) ErrM where
   alg hdl sig ctx = ErrM $ alg (rethrow . hdl) (inj sig) ctx
-
-runErrM :: ErrM a -> Either Err a
-runErrM = run . runError (Identity . Left) (Identity . Right) . rethrow
 
 elab :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab m = do
