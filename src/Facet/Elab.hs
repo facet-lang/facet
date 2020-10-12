@@ -84,7 +84,7 @@ import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty,
 type Type = Value ErrM Level
 type Expr = Value ErrM Level
 
-newtype ErrM a = ErrM { runErrM' :: forall sig m . Has (Reader Span :+: Throw Err) sig m => m a }
+newtype ErrM a = ErrM { rethrow :: forall sig m . Has (Reader Span :+: Throw Err) sig m => m a }
 
 instance Functor ErrM where
   fmap f (ErrM m) = ErrM (fmap f m)
@@ -94,24 +94,21 @@ instance Applicative ErrM where
   ErrM f <*> ErrM a = ErrM (f <*> a)
 
 instance Monad ErrM where
-  ErrM m >>= f = ErrM $ m >>= runErrM' . f
+  ErrM m >>= f = ErrM $ m >>= rethrow . f
 
 instance Algebra (Reader Span :+: Throw Err) ErrM where
   alg hdl sig ctx = case sig of
-    L reader -> ErrM $ alg (runErrM' . hdl) (inj reader) ctx
-    R throw  -> ErrM $ alg (runErrM' . hdl) (inj throw) ctx
+    L reader -> ErrM $ alg (rethrow . hdl) (inj reader) ctx
+    R throw  -> ErrM $ alg (rethrow . hdl) (inj throw) ctx
 
 runErrM :: Span -> ErrM a -> Either (Span, Err) a
-runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s . runErrM'
+runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s . rethrow
 
 elab :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab m = do
   ctx <- ask
   env <- ask
   rethrow (runReader ctx (runReader env (runElab m)))
-
-rethrow :: Has (Reader Span :+: Throw Err) sig m => ErrM a -> m a
-rethrow = runErrM'
 
 liftErr :: ErrM a -> Elab a
 liftErr = Elab . lift . lift
