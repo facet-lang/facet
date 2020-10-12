@@ -22,7 +22,7 @@ data Expr a
   | Expr a :$ Expr a
   | Unit
   | Expr a :* Expr a
-  | Loc Span (Expr a)
+  | Loc a (Expr a)
   deriving (Foldable, Functor, Show, Traversable)
   -- FIXME: tupling/unit should take a list of expressions
 
