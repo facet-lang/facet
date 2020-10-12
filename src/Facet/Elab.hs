@@ -12,7 +12,6 @@
 module Facet.Elab
 ( ErrM(..)
 , Context
-, elab
 , Elab(..)
 , Check(..)
 , Synth(..)
@@ -97,16 +96,25 @@ instance Monad ErrM where
 instance Algebra (Throw Err) ErrM where
   alg hdl sig ctx = ErrM $ alg (rethrow . hdl) (inj sig) ctx
 
-elab :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
-elab m = do
-  span <- ask
-  ctx <- ask
-  env <- ask
-  rethrow (runReader span (runReader ctx (runReader env (runElab m))))
 
--- FIXME: can we generalize this to a rank-n quantified action over any context providing these effects?
-newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC (Context Type) (ReaderC Span ErrM)) a }
-  deriving (Algebra (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Reader Span :+: Throw Err), Applicative, Functor, Monad)
+newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Reader Span :+: Throw Err) sig m => m a }
+
+instance Functor Elab where
+  fmap f (Elab m) = Elab (fmap f m)
+
+instance Applicative Elab where
+  pure a = Elab $ pure a
+  Elab f <*> Elab a = Elab (f <*> a)
+
+instance Monad Elab where
+  Elab m >>= f = Elab $ m >>= elab . f
+
+instance Algebra (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Reader Span :+: Throw Err) Elab where
+  alg hdl sig ctx = case sig of
+    L renv -> Elab $ alg (elab . hdl) (inj renv) ctx
+    R (L rctx) -> Elab $ alg (elab . hdl) (inj rctx) ctx
+    R (R (L rspan)) -> Elab $ alg (elab . hdl) (inj rspan) ctx
+    R (R (R throw)) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
@@ -218,10 +226,10 @@ f $$ a = Synth $ do
   -> (a -> Elab b)
   -> m (a -> ErrM b)
 t |- f = do
-  span <- ask
+  span <- ask @Span
   ctx <- ask
-  env <- ask
-  pure $ runReader span . runReader (ctx |> t) . runReader env . runElab . f
+  env <- ask @(Env.Env ErrM)
+  pure $ runReader span . runReader (ctx |> t) . runReader env . elab . f
 
 infix 1 |-
 
@@ -231,10 +239,10 @@ infix 1 |-
   -> (CP.Pattern a -> Elab b)
   -> m (CP.Pattern a -> ErrM b)
 p |-* f = do
-  span <- ask
+  span <- ask @Span
   ctx <- ask
-  env <- ask
-  pure $ runReader span . runReader (foldl' (|>) ctx p) . runReader env . runElab . f
+  env <- ask @(Env.Env ErrM)
+  pure $ runReader span . runReader (foldl' (|>) ctx p) . runReader env . elab . f
 
 infix 1 |-*
 
