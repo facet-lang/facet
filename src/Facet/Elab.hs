@@ -78,6 +78,7 @@ import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 import           Text.Parser.Position (Spanned)
 
+type Val = Value ErrM Level
 type Type = Value ErrM Level
 type Expr = Value ErrM Level
 
@@ -184,7 +185,7 @@ switch (Synth m) = \case
 
 global
   :: N.DName
-  -> Synth (Value ErrM Level)
+  -> Synth Val
 global n = Synth $ asks (Env.lookup n) >>= \case
   Just b  -> do
     ctx <- ask @(Context Type)
@@ -193,7 +194,7 @@ global n = Synth $ asks (Env.lookup n) >>= \case
 
 bound
   :: Index
-  -> Synth (Value ErrM Level)
+  -> Synth Val
 bound n = Synth $ do
   ctx <- ask @(Context Type)
   let level = indexToLevel (length ctx) n
@@ -210,9 +211,9 @@ hole n = Check $ \ _T -> do
   err $ fillSep [reflow "found hole", pretty n, colon, _T' ]
 
 ($$)
-  :: Synth (Value ErrM Level)
-  -> Check (Value ErrM Level)
-  -> Synth (Value ErrM Level)
+  :: Synth Val
+  -> Check Val
+  -> Synth Val
 f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
