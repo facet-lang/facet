@@ -252,13 +252,12 @@ elabType = \case
   ST.Type    -> switch $ _Type
   ST.Void    -> switch $ _Void
   ST.Unit    -> switch $ _Unit
-  t ST.:=> b -> switch $ fmap _check t >~> _check b
-  f ST.:$  a -> switch $ _synth f $$  _check a
-  a ST.:-> b -> switch $ _check a --> _check b
-  l ST.:*  r -> switch $ _check l .*  _check r
+  t ST.:=> b -> switch $ fmap (checkElab . elabType) t >~> checkElab (elabType b)
+  f ST.:$  a -> switch $ _synth f $$  checkElab (elabType a)
+  a ST.:-> b -> switch $ checkElab (elabType a) --> checkElab (elabType b)
+  l ST.:*  r -> switch $ checkElab (elabType l) .*  checkElab (elabType r)
   ST.Loc s b -> setSpan s . elabType b
   where
-  _check = checkElab . elabType
   _synth r = Synth (elabType r Nothing)
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -318,13 +317,12 @@ elabExpr = \case
   SE.Free  n -> switch $ global n
   SE.Bound n -> switch $ bound n
   SE.Hole  n -> check (hole n) (pretty "hole")
-  f SE.:$  a -> switch $ _synth f $$ _check a
-  l SE.:*  r -> check (_check l ** _check r) (pretty "product")
+  f SE.:$  a -> switch $ _synth f $$ checkElab (elabExpr a)
+  l SE.:*  r -> check (checkElab (elabExpr l) ** checkElab (elabExpr r)) (pretty "product")
   SE.Unit    -> switch unit
-  SE.Comp cs -> check (comp (map (SE.mapComp _check) cs)) (pretty "computation")
+  SE.Comp cs -> check (comp (map (SE.mapComp (checkElab . elabExpr)) cs)) (pretty "computation")
   SE.Loc s b -> setSpan s . elabExpr b
   where
-  _check = checkElab . elabExpr
   _synth r = Synth (elabExpr r Nothing)
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
