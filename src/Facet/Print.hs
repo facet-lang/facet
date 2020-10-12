@@ -368,7 +368,7 @@ printCoreDef = \case
 
 
 printSurfaceModule :: (Foldable f, Functor f) => SM.Module f a -> Print
-printSurfaceModule (SM.Module n ds) = module' n (map (uncurry printSurfaceDef) ds)
+printSurfaceModule (SM.Module n ds) = module' n (map (foldMap (uncurry printSurfaceDef)) ds)
 
 printSurfaceDef :: (Foldable f, Functor f) => N.DName -> f (SD.Decl f a) -> Print
 printSurfaceDef n d = def (sfree n) (foldMap printSurfaceDecl d)

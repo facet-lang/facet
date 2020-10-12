@@ -106,8 +106,8 @@ whole p = whiteSpace *> p <* eof
 module' :: (Monad p, PositionParsing p) => Facet p (Spanned (M.Module Spanned N.Index))
 module' = spanned (M.Module <$> mname <* colon <* symbol "Module" <*> braces (many decl))
 
-decl :: (Monad p, PositionParsing p) => Facet p (N.DName, Spanned (D.Decl Spanned N.Index))
-decl = (,) <$> dname <* colon <*> sig
+decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned (D.Decl Spanned N.Index)))
+decl = spanned $ (,) <$> dname <* colon <*> sig
 
 
 -- Declarations

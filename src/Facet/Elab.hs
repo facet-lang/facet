@@ -432,7 +432,7 @@ elabModule
 elabModule (SM.Module mname ds) = evalState (mempty @(Env.Env ErrM)) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
-  defs <- for ds $ \ (n, d) -> do
+  defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
     env <- get @(Env.Env ErrM)
     e' ::: _T <- runReader @(Context Type) empty . runReader env $ do
       let e ::: t = elabDecl d
