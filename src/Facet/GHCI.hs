@@ -60,7 +60,7 @@ elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice))
 elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
   (s, parsed) <- runParser (const Right) failure failure input (runFacet [] (whole p))
   first mkNotice $ rethrow $ do
-    mod <- runReader s $ elabModule parsed
+    mod <- runReader s $ elabModule (s, parsed)
     P.printCoreModule mod
   where
   input = Input (Pos 0 0) s
