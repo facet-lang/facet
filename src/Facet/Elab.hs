@@ -392,7 +392,7 @@ comp cs = case traverse (SE.unClause . skipLoc) cs of
         c <- clause _A _B p b
         pure $ Case v [c]
       pure $ Lam __ b'
-    SE.Body e     ->checkElab (elabExpr e)
+    SE.Body e     -> checkElab (elabExpr e)
     SE.CLoc s c   -> setSpan s (go c)
   skipLoc = \case
     SE.CLoc _ c -> skipLoc c
