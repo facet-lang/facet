@@ -12,6 +12,7 @@ module Facet.Core.Value
 , unProductT
 , ($$)
 , ($$*)
+, match
 , shift
 , foldContext
 , foldContextAll
@@ -118,6 +119,18 @@ _         $$ _ = error "can’t apply non-neutral/forall type"
 f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 
 infixl 9 $$, $$*
+
+
+match :: Value f a -> Pattern UName -> Maybe (Pattern (Value f a))
+match s = \case
+  Wildcard         -> Just Wildcard
+  Var _            -> Just (Var s)
+  Tuple [pl, pr]
+    | Prd l r <- s -> do
+      l' <- match l pl
+      r' <- match r pr
+      Just $ Tuple [l', r']
+  _                -> Nothing
 
 
 -- | Shift the bound variables in a 'Value' up by a certain amount.
