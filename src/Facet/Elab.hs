@@ -10,7 +10,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
-( ErrM(..)
+( M(..)
 , Context
 , Elab(..)
 , Check(..)
@@ -78,27 +78,27 @@ import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 import           Text.Parser.Position (Spanned)
 
-type Val = Value ErrM Level
-type Type = Value ErrM Level
-type Expr = Value ErrM Level
+type Val = Value M Level
+type Type = Value M Level
+type Expr = Value M Level
 
-newtype ErrM a = ErrM { rethrow :: forall sig m . Has (Throw Err) sig m => m a }
+newtype M a = M { rethrow :: forall sig m . Has (Throw Err) sig m => m a }
 
-instance Functor ErrM where
-  fmap f (ErrM m) = ErrM (fmap f m)
+instance Functor M where
+  fmap f (M m) = M (fmap f m)
 
-instance Applicative ErrM where
-  pure a = ErrM $ pure a
-  ErrM f <*> ErrM a = ErrM (f <*> a)
+instance Applicative M where
+  pure a = M $ pure a
+  M f <*> M a = M (f <*> a)
 
-instance Monad ErrM where
-  ErrM m >>= f = ErrM $ m >>= rethrow . f
+instance Monad M where
+  M m >>= f = M $ m >>= rethrow . f
 
-instance Algebra (Throw Err) ErrM where
-  alg hdl sig ctx = ErrM $ alg (rethrow . hdl) (inj sig) ctx
+instance Algebra (Throw Err) M where
+  alg hdl sig ctx = M $ alg (rethrow . hdl) (inj sig) ctx
 
 
-newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Reader Span :+: Throw Err) sig m => m a }
+newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Env.Env M) :+: Reader (Context Type) :+: Reader Span :+: Throw Err) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -110,7 +110,7 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= elab . f
 
-instance Algebra (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Reader Span :+: Throw Err) Elab where
+instance Algebra (Reader (Env.Env M) :+: Reader (Context Type) :+: Reader Span :+: Throw Err) Elab where
   alg hdl sig ctx = case sig of
     L renv -> Elab $ alg (elab . hdl) (inj renv) ctx
     R (L rctx) -> Elab $ alg (elab . hdl) (inj rctx) ctx
@@ -119,7 +119,7 @@ instance Algebra (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Reader Spa
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
-  deriving (Algebra (Reader Type :+: Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Reader Span :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
+  deriving (Algebra (Reader Type :+: Reader (Env.Env M) :+: Reader (Context Type) :+: Reader Span :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
@@ -222,27 +222,27 @@ f $$ a = Synth $ do
 
 
 (|-)
-  :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM) :+: Reader Span) sig m
+  :: Has (Reader (Context Type) :+: Reader (Env.Env M) :+: Reader Span) sig m
   => UName ::: Type
   -> (a -> Elab b)
-  -> m (a -> ErrM b)
+  -> m (a -> M b)
 t |- f = do
   span <- ask @Span
   ctx <- ask
-  env <- ask @(Env.Env ErrM)
+  env <- ask @(Env.Env M)
   pure $ runReader span . runReader (ctx |> t) . runReader env . elab . f
 
 infix 1 |-
 
 (|-*)
-  :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM) :+: Reader Span) sig m
+  :: Has (Reader (Context Type) :+: Reader (Env.Env M) :+: Reader Span) sig m
   => CP.Pattern (UName ::: Type)
   -> (CP.Pattern a -> Elab b)
-  -> m (CP.Pattern a -> ErrM b)
+  -> m (CP.Pattern a -> M b)
 p |-* f = do
   span <- ask @Span
   ctx <- ask
-  env <- ask @(Env.Env ErrM)
+  env <- ask @(Env.Env M)
   pure $ runReader span . runReader (foldl' (|>) ctx p) . runReader env . elab . f
 
 infix 1 |-*
@@ -434,12 +434,12 @@ elabDecl = withSpans $ \case
 elabModule
   :: (HasCallStack, Has (Throw Err) sig m)
   => Spanned (SM.Module Spanned a)
-  -> m (CM.Module ErrM Level)
-elabModule (s, (SM.Module mname ds)) = runReader s . evalState (mempty @(Env.Env ErrM)) $ do
+  -> m (CM.Module M Level)
+elabModule (s, (SM.Module mname ds)) = runReader s . evalState (mempty @(Env.Env M)) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
-    env <- get @(Env.Env ErrM)
+    env <- get @(Env.Env M)
     e' ::: _T <- runReader @(Context Type) empty . runReader env $ do
       let e ::: t = elabDecl d
       _T <- elab $ check (t ::: Type)
@@ -528,7 +528,7 @@ expectMatch pat exp s _T = do
   _T' <- printType _T
   maybe (mismatch s exp _T') pure (pat _T)
 
-expectQuantifiedType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type -> m (UName ::: Type, Type -> ErrM Type)
+expectQuantifiedType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type -> m (UName ::: Type, Type -> M Type)
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
 expectFunctionType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type -> m (Type, Type)
