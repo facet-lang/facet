@@ -81,15 +81,15 @@ import           GHC.Stack
 import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 
-type Type = Value
-type Expr = Value
+type Type = Value ErrM Level
+type Expr = Value ErrM Level
 
 type ErrM = ErrorC Span Err Identity
 
 runErrM :: Span -> ErrM a -> Either (Span, Err) a
 runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s
 
-elab :: Has (Reader (Context (Type ErrM Level)) :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
+elab :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab m = do
   ctx <- ask
   env <- ask
@@ -104,27 +104,27 @@ liftErr :: ErrM a -> Elab a
 liftErr = Elab . lift . lift
 
 -- FIXME: can we generalize this to a rank-n quantified action over any context providing these effects?
-newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC (Context (Type ErrM Level)) (ErrorC Span Err Identity)) a }
-  deriving (Algebra (Reader (Env.Env ErrM) :+: Reader (Context (Type ErrM Level)) :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
+newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC (Context Type) (ErrorC Span Err Identity)) a }
+  deriving (Algebra (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad)
 
 
-newtype Check a = Check { runCheck :: Type ErrM Level -> Elab a }
-  deriving (Algebra (Reader (Type ErrM Level) :+: Reader (Env.Env ErrM) :+: Reader (Context (Type ErrM Level)) :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad) via ReaderC (Type ErrM Level) Elab
+newtype Check a = Check { runCheck :: Type -> Elab a }
+  deriving (Algebra (Reader Type :+: Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Error Err :+: Reader Span :+: Lift Identity), Applicative, Functor, Monad) via ReaderC Type Elab
 
-newtype Synth a = Synth { synth :: Elab (a ::: Type ErrM Level) }
+newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
 instance Functor Synth where
   fmap f (Synth m) = Synth (first f <$> m)
 
-check :: (Check a ::: Type ErrM Level) -> Elab a
+check :: (Check a ::: Type) -> Elab a
 check = uncurryAnn runCheck
 
 
 unify
   :: HasCallStack
-  => Type ErrM Level
-  -> Type ErrM Level
-  -> Elab (Type ErrM Level)
+  => Type
+  -> Type
+  -> Elab Type
 unify t1 t2 = go t1 t2
   where
   go t1 t2 = case (t1, t2) of
@@ -160,8 +160,8 @@ unify t1 t2 = go t1 t2
 switch
   :: HasCallStack
   => Synth a
-  -> Maybe (Type ErrM Level)
-  -> Elab (a ::: Type ErrM Level)
+  -> Maybe Type
+  -> Elab (a ::: Type)
 switch (Synth m) = \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify _K' _K
   _       -> m
@@ -171,7 +171,7 @@ global
   -> Synth (Value ErrM Level)
 global n = Synth $ asks (Env.lookup n) >>= \case
   Just b  -> do
-    ctx <- ask @(Context (Type ErrM Level))
+    ctx <- ask @(Context Type)
     pure (CV.global (tm b :.: n) ::: shift (Level (length ctx)) (ty b))
   Nothing -> freeVariable (pretty n)
 
@@ -179,7 +179,7 @@ bound
   :: Index
   -> Synth (Value ErrM Level)
 bound n = Synth $ do
-  ctx <- ask @(Context (Type ErrM Level))
+  ctx <- ask @(Context Type)
   let level = indexToLevel (length ctx) n
   case ctx !? n of
     Just (_ ::: _T) -> pure (CV.bound level ::: _T)
@@ -204,7 +204,7 @@ f $$ a = Synth $ do
   (::: _B) <$> liftErr (f' CV.$$ a')
 
 
-(|-) :: Has (Reader (Context (Type ErrM Level)) :+: Reader (Env.Env ErrM)) sig m => UName ::: Type ErrM Level -> (a -> Elab b) -> m (a -> ErrM b)
+(|-) :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM)) sig m => UName ::: Type -> (a -> Elab b) -> m (a -> ErrM b)
 t |- f = do
   ctx <- ask
   env <- ask
@@ -218,8 +218,8 @@ infix 1 |-
 elabType
   :: HasCallStack
   => ST.Type Span
-  -> Maybe (Type ErrM Level)
-  -> Elab (Type ErrM Level ::: Type ErrM Level)
+  -> Maybe Type
+  -> Elab (Type ::: Type)
 elabType = \case
   ST.Free  n -> switch $ global n
   ST.Bound n -> switch $ bound n
@@ -238,19 +238,19 @@ elabType = \case
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
 
-_Type :: Synth (Type ErrM Level)
+_Type :: Synth Type
 _Type = Synth $ pure $ Type ::: Type
 
-_Void :: Synth (Type ErrM Level)
+_Void :: Synth Type
 _Void = Synth $ pure $ Void ::: Type
 
-_Unit :: Synth (Type ErrM Level)
+_Unit :: Synth Type
 _Unit = Synth $ pure $ Unit ::: Type
 
 (.*)
-  :: Check (Type ErrM Level)
-  -> Check (Type ErrM Level)
-  -> Synth (Type ErrM Level)
+  :: Check Type
+  -> Check Type
+  -> Synth Type
 a .* b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -259,9 +259,9 @@ a .* b = Synth $ do
 infixl 7 .*
 
 (-->)
-  :: Check (Type ErrM Level)
-  -> Check (Type ErrM Level)
-  -> Synth (Type ErrM Level)
+  :: Check Type
+  -> Check Type
+  -> Synth Type
 a --> b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -270,9 +270,9 @@ a --> b = Synth $ do
 infixr 2 -->
 
 (>~>)
-  :: (UName ::: Check (Type ErrM Level))
-  -> Check (Type ErrM Level)
-  -> Synth (Type ErrM Level)
+  :: (UName ::: Check Type)
+  -> Check Type
+  -> Synth Type
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
   -- FIXME: shouldn’t we use the bound variable?
@@ -287,8 +287,8 @@ infixr 1 >~>
 elabExpr
   :: HasCallStack
   => SE.Expr Span
-  -> Maybe (Type ErrM Level)
-  -> Elab (Expr ErrM Level ::: Type ErrM Level)
+  -> Maybe Type
+  -> Elab (Expr ::: Type)
 elabExpr = \case
   SE.Free  n -> switch $ global n
   SE.Bound n -> switch $ bound n
@@ -306,8 +306,8 @@ elabExpr = \case
 
 tlam
   :: UName
-  -> Check (Expr ErrM Level)
-  -> Check (Expr ErrM Level)
+  -> Check Expr
+  -> Check Expr
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
   b' <- n ::: _T |- \ v -> do
@@ -317,21 +317,21 @@ tlam n b = Check $ \ ty -> do
 
 lam
   :: UName
-  -> Check (Expr ErrM Level)
-  -> Check (Expr ErrM Level)
+  -> Check Expr
+  -> Check Expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   -- FIXME: shouldn’t we use the bound variable?
   b' <- n ::: _A |- \ v -> check (b ::: _B)
   pure (Lam n b')
 
-unit :: Synth (Expr ErrM Level)
+unit :: Synth Expr
 unit = Synth . pure $ Unit ::: TUnit
 
 (**)
-  :: Check (Expr ErrM Level)
-  -> Check (Expr ErrM Level)
-  -> Check (Expr ErrM Level)
+  :: Check Expr
+  -> Check Expr
+  -> Check Expr
 l ** r = Check $ \ _T -> do
   (_L, _R) <- expectProductType (reflow "when checking product") _T
   l' <- check (l ::: _L)
@@ -339,8 +339,8 @@ l ** r = Check $ \ _T -> do
   pure (Prd l' r')
 
 comp
-  :: [SC.Clause Check (Expr ErrM Level)]
-  -> Check (Expr ErrM Level)
+  :: [SC.Clause Check Expr]
+  -> Check Expr
 comp [] = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking void computation") _T
   _A <- unify _A Void
@@ -354,8 +354,8 @@ comp cs = do
   pure $ head cs'
 
 clause
-  :: SC.Clause Check (Expr ErrM Level)
-  -> Check (Expr ErrM Level)
+  :: SC.Clause Check Expr
+  -> Check Expr
 clause = \case
   -- FIXME: deal with other patterns.
   SC.Clause (SP.Loc _ p) b -> clause (SC.Clause p b)
@@ -371,7 +371,7 @@ clause = \case
 
 pattern
   :: SP.Pattern (UName)
-  -> Check (CP.Pattern (UName ::: Type ErrM Level))
+  -> Check (CP.Pattern (UName ::: Type))
 pattern = \case
   SP.Wildcard -> pure CP.Wildcard
   SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
@@ -391,7 +391,7 @@ pattern = \case
 elabDecl
   :: HasCallStack
   => SD.Decl Span
-  -> Check (Expr ErrM Level) ::: Check (Type ErrM Level)
+  -> Check Expr ::: Check Type
 elabDecl = \case
   (n ::: t) SD.:=> b ->
     let b' ::: _B = elabDecl b
@@ -400,7 +400,7 @@ elabDecl = \case
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n b' ::: _check (switch (_check (elabType t) --> local (|> (__ ::: (Type :: Type ErrM Level))) _B))
+    in lam n b' ::: _check (switch (_check (elabType t) --> local (|> (__ ::: (Type :: Type))) _B))
 
   t SD.:= b ->
     _check (elabExpr b) ::: _check (elabType t)
@@ -423,7 +423,7 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (SM.Def s n d) -> setSpan s $ do
     env <- get @(Env.Env ErrM)
-    e' ::: _T <- runReader @(Context (Type ErrM Level)) empty . runReader env $ do
+    e' ::: _T <- runReader @(Context Type) empty . runReader env $ do
       let e ::: t = elabDecl d
       _T <- elab $ check (t ::: Type)
       e' <- elab $ check (e ::: _T)
@@ -442,12 +442,12 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
-printTypeInContext :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => Context P.Print -> Type ErrM Level -> m ErrDoc
+printTypeInContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => Context P.Print -> Type -> m ErrDoc
 printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printBinding P.printCoreValue ctx
 
-showContext :: Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m => m String
+showContext :: Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m => m String
 showContext = do
-  ctx <- asks @(Context (Type ErrM Level)) getContext
+  ctx <- asks @(Context Type) getContext
   let go Nil     = pure Nil
       go (as:>a) = do
         as' <- go as
@@ -456,13 +456,13 @@ showContext = do
   shown <- rethrow $ go ctx
   pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> shows t {-. showString " : " . _T-}) (toList shown))) $ "]"
 
-printContext :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => m (Context P.Print)
+printContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => m (Context P.Print)
 printContext = do
-  ctx <- ask @(Context (Type ErrM Level))
+  ctx <- ask @(Context Type)
   -- FIXME: this is wrong, but to be fair we probably shouldn’t print the context like this at all anyway.
   rethrow $ foldContextAll P.printBinding P.printCoreValue ctx
 
-printType :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> m ErrDoc
+printType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => Type -> m ErrDoc
 -- FIXME: this is still resulting in out of bounds printing
 printType t = do
   ctx <- printContext
@@ -479,7 +479,7 @@ mismatch msg exp act = err $ msg
   -- line things up nicely for e.g. wrapped function types
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
-couldNotUnify :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => Type ErrM Level -> Type ErrM Level -> m a
+couldNotUnify :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => Type -> Type -> m a
 couldNotUnify t1 t2 = do
   ctx <- printContext
   t1' <- printTypeInContext ctx t1
@@ -492,22 +492,22 @@ couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softl
 freeVariable :: Has (Throw Err) sig m => ErrDoc -> m a
 freeVariable v = err $ fillSep [reflow "variable not in scope:", v]
 
-expectChecked :: Has (Throw Err) sig m => Maybe (Type ErrM Level) -> ErrDoc -> m (Type ErrM Level)
+expectChecked :: Has (Throw Err) sig m => Maybe Type -> ErrDoc -> m Type
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 
 -- Patterns
 
-expectMatch :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => (Type ErrM Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type ErrM Level -> m out
+expectMatch :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => (Type -> Maybe out) -> ErrDoc -> ErrDoc -> Type -> m out
 expectMatch pat exp s _T = do
   _T' <- printType _T
   maybe (mismatch s exp _T') pure (pat _T)
 
-expectQuantifiedType :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (UName ::: Type ErrM Level, Type ErrM Level -> ErrM (Type ErrM Level))
+expectQuantifiedType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type -> m (UName ::: Type, Type -> ErrM Type)
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
+expectFunctionType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type -> m (Type, Type)
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: (HasCallStack, Has (Reader (Context (Type ErrM Level)) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type ErrM Level -> m (Type ErrM Level, Type ErrM Level)
+expectProductType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type -> m (Type, Type)
 expectProductType = expectMatch unProductT (pretty "(_, _)")
