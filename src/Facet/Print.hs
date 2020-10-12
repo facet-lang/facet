@@ -21,6 +21,7 @@ module Facet.Print
   -- * Interpreters
 , printCoreValue
 , printBinding
+, printContextEntry
 , printSurfaceType
 , printSurfaceExpr
 , printSurfaceClause
@@ -198,7 +199,10 @@ printCoreValue = go (N.Level 0)
 
 printBinding :: Ctx.Context Print -> N.Level -> Print
 -- FIXME: there’s no way to recover whether this was a term or type variable binding.
-printBinding ctx l = prec Ann $ let n ::: _T = ctx Ctx.! N.levelToIndex (Ctx.level ctx) l in ann (cbound n tvar l ::: _T)
+printBinding ctx l = prec Ann $ printContextEntry l (ctx Ctx.! N.levelToIndex (Ctx.level ctx) l)
+
+printContextEntry :: N.Level -> N.UName ::: Print -> Print
+printContextEntry l (n ::: _T) = ann (cbound n tvar l ::: _T)
 
 
 printSurfaceType :: Stack Print -> ST.Type a -> Print
