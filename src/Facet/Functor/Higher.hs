@@ -1,3 +1,4 @@
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Functor.Higher
@@ -7,5 +8,5 @@ module Facet.Functor.Higher
 
 type f ~> g = forall x . f x -> g x
 
-class HFunctor f where
+class (forall a . Functor a => Functor (f a)) => HFunctor f where
   hmap :: (a ~> b) -> f a ~> f b
