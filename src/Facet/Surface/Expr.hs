@@ -7,11 +7,13 @@
 module Facet.Surface.Expr
 ( Expr(..)
 , unApp
+, Comp(..)
 , Clause(..)
 , unClause
 ) where
 
 import Control.Effect.Empty
+import Data.List.NonEmpty
 import Data.Text (Text)
 import Facet.Name
 import Facet.Surface.Pattern (Pattern)
@@ -39,6 +41,14 @@ unApp :: Has Empty sig m => Expr f a -> m (f (Expr f a), f (Expr f a))
 unApp = \case
   f :$ a -> pure (f, a)
   _      -> empty
+
+
+data Comp f a
+  = Expr (f (Expr f a))
+  | Clauses [(NonEmpty (f (Pattern f UName)), f (Expr f a))]
+  deriving (Foldable, Functor, Traversable)
+
+deriving instance (Show a, forall a . Show a => Show (f a)) => Show (Comp f a)
 
 
 data Clause f a
