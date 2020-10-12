@@ -175,7 +175,7 @@ foldContext bd fold env = fold <=< go env
     go (foldl (|>) env (zipWith (:::) names (toList v'))) b'
 
 foldContextAll :: (HasCallStack, Monad m) => (Context a -> Level -> a) -> (Value m a -> m a) -> Context (Value m Level) -> m (Context a)
-foldContextAll bd fold = go . getContext
+foldContextAll bd fold = go . elems
   where
   go Nil     = pure C.empty
   go (as:>a) = do

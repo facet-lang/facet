@@ -469,7 +469,7 @@ printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printBinding 
 
 showContext :: Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m => m String
 showContext = do
-  ctx <- asks @(Context Type) getContext
+  ctx <- asks @(Context Type) elems
   let go Nil     = pure Nil
       go (as:>a) = do
         as' <- go as
