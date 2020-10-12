@@ -5,6 +5,7 @@ module Text.Parser.Position
 , Span(..)
 , spanning
 , spanned
+, Spanned'
 , Spanned(..)
 , settingSpan
 , chainl1Loc
@@ -28,6 +29,9 @@ spanned :: PositionParsing p => p a -> p (Span, a)
 spanned p = mk <$> position <*> p <*> position
   where
   mk s a e = (Span s e, a)
+
+
+type Spanned' = (,) Span
 
 
 class Spanned t where
