@@ -371,6 +371,8 @@ comp
   -> Check Expr
 comp = withSpan $ \case
   SE.Expr    b  -> checkElab (elabExpr b)
+  -- FIXME: this shape makes it hard to elaborate nested pattern matches, because we kind of need to transpose the table.
+  -- e.g. in xor : Bool -> Bool -> Bool { False True -> True, True False -> True, _ _ -> False }, we should have the second column of cases appearing under each of the first, or else we’re inserting inexhaustive patterns
   SE.Clauses cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clauses") _T
     Lam __ <$> case cs of
