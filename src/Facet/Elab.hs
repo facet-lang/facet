@@ -49,7 +49,6 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Span (Span(..))
 import           Control.Effect.Sum
-import           Control.Monad.Trans.Class
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', toList)
 import           Data.Functor.Identity
@@ -110,9 +109,6 @@ elab m = do
   env <- ask
   rethrow (runReader ctx (runReader env (runElab m)))
 
-liftErr :: ErrM a -> Elab a
-liftErr = Elab . lift . lift
-
 -- FIXME: can we generalize this to a rank-n quantified action over any context providing these effects?
 newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC (Context Type) ErrM) a }
   deriving (Algebra (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Reader Span :+: Throw Err), Applicative, Functor, Monad)
@@ -151,8 +147,8 @@ unify t1 t2 = go t1 t2
     (t1 :=> b1,  t2 :=> b2)  -> do
       t <- go (ty t1) (ty t2)
       b <- tm t1 ::: t |- \ v -> do
-        b1' <- liftErr $ b1 v
-        b2' <- liftErr $ b2 v
+        b1' <- rethrow $ b1 v
+        b2' <- rethrow $ b2 v
         go b1' b2'
       pure $ tm t1 ::: t :=> b
     (TPrd l1 r1, TPrd l2 r2) -> TPrd <$> go l1 l2 <*> go r1 r2
@@ -211,7 +207,7 @@ f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType (pretty "in application") _F
   a' <- check (a ::: _A)
-  (::: _B) <$> liftErr (f' CV.$$ a')
+  (::: _B) <$> rethrow (f' CV.$$ a')
 
 
 (|-)
@@ -337,7 +333,7 @@ tlam
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
   b' <- n ::: _T |- \ v -> do
-    _B' <- liftErr (_B v)
+    _B' <- rethrow (_B v)
     check (b ::: _B')
   pure (TLam n b')
 
