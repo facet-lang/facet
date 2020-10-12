@@ -22,6 +22,7 @@ import           Data.Foldable (for_)
 import qualified Data.Map as Map
 import           Data.Semigroup
 import           Data.Text.Lazy (unpack)
+import           Facet.Name (Index)
 import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Print
@@ -80,8 +81,8 @@ loop = do
     Quit -> empty
     Load path -> load path
     Reload -> reload
-    Type e -> print (getPrint (printSurfaceExpr Nil e)) -- FIXME: elaborate the expr & show the type
-    Kind t -> print (getPrint (printSurfaceType Nil t)) -- FIXME: elaborate the type & show the kind
+    Type e -> print (getPrint (printSurfaceExpr Nil (snd e))) -- FIXME: elaborate the expr & show the type
+    Kind t -> print (getPrint (printSurfaceType Nil (snd t))) -- FIXME: elaborate the type & show the kind
 
 
 -- TODO:
@@ -111,13 +112,13 @@ data Action
   | Quit
   | Load FilePath
   | Reload
-  | Type (Expr Span)
-  | Kind (Type Span)
+  | Type (Spanned (Expr Spanned Index))
+  | Kind (Spanned (Type Spanned Index))
 
 load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
   files_ %= Map.insert path File{ loaded = False }
-  runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . printSurfaceModule
+  runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . printSurfaceModule . snd
 
 reload :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 reload = do
@@ -127,7 +128,7 @@ reload = do
   for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
     print $ green (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
-    (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . printSurfaceModule) `catchError` \ n -> print (indent 2 (prettyNotice n))
+    (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . printSurfaceModule . snd) `catchError` \ n -> print (indent 2 (prettyNotice n))
 
 helpDoc :: Doc AnsiStyle
 helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries

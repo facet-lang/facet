@@ -1,17 +1,16 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module Facet.Surface.Module
 ( Module(..)
-, Def(..)
 ) where
 
 import Facet.Name
 import Facet.Surface.Decl (Decl)
 
 -- FIXME: imports
-data Module a = Module { ann :: a, name :: MName, defs :: [Def a] }
-  deriving (Foldable, Functor, Show, Traversable)
+data Module f a = Module { name :: MName, defs :: [(DName, f (Decl f a))] }
+  deriving (Foldable, Functor, Traversable)
 
-data Def a = Def a DName (Decl a)
-  deriving (Foldable, Functor, Show, Traversable)
+deriving instance (Show a, forall a . Show a => Show (f a)) => Show (Module f a)

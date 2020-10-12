@@ -78,6 +78,7 @@ import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding ((**))
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
+import           Text.Parser.Position (Spanned)
 
 type Type = Value ErrM Level
 type Expr = Value ErrM Level
@@ -245,10 +246,10 @@ infix 1 |-*
 
 elabType
   :: HasCallStack
-  => ST.Type Span
+  => Spanned (ST.Type Spanned a)
   -> Maybe Type
   -> Elab (Type ::: Type)
-elabType = \case
+elabType = withSpan' $ \case
   ST.Free  n -> switch $ global n
   ST.Bound n -> switch $ bound n
   ST.Hole  n -> check (hole n) (pretty "hole")
@@ -259,7 +260,6 @@ elabType = \case
   f ST.:$  a -> switch $ synthElab (elabType f) $$  checkElab (elabType a)
   a ST.:-> b -> switch $ checkElab (elabType a) --> checkElab (elabType b)
   l ST.:*  r -> switch $ checkElab (elabType l) .*  checkElab (elabType r)
-  ST.Loc s b -> setSpan s . elabType b
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -312,10 +312,10 @@ infixr 1 >~>
 
 elabExpr
   :: HasCallStack
-  => SE.Expr Span
+  => Spanned (SE.Expr Spanned a)
   -> Maybe Type
   -> Elab (Expr ::: Type)
-elabExpr = \case
+elabExpr = withSpan' $ \case
   SE.Free  n -> switch $ global n
   SE.Bound n -> switch $ bound n
   SE.Hole  n -> check (hole n) (pretty "hole")
@@ -323,7 +323,6 @@ elabExpr = \case
   l SE.:*  r -> check (checkElab (elabExpr l) ** checkElab (elabExpr r)) (pretty "product")
   SE.Unit    -> switch unit
   SE.Comp cs -> check (comp cs) (pretty "computation")
-  SE.Loc s b -> setSpan s . elabExpr b
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -363,15 +362,15 @@ l ** r = Check $ \ _T -> do
   pure (Prd l' r')
 
 comp
-  :: [SE.Clause Span]
+  :: [Spanned (SE.Clause Spanned a)]
   -> Check Expr
 comp [] = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking void computation") _T
   _A <- unify _A Void
   b' <- __ ::: _A |- \ v -> pure $ Case v []
   pure $ Lam __ b'
-comp [ SE.Body e ] = checkElab (elabExpr e)
-comp cs = case traverse (SE.unClause . skipLoc) cs of
+comp [ (s, SE.Body e) ] = setSpan s $ checkElab (elabExpr e)
+comp cs = case traverse (SE.unClause . snd) cs of
   Just cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
     b' <- __ ::: _A |- \ v -> do
@@ -385,7 +384,7 @@ comp cs = case traverse (SE.unClause . skipLoc) cs of
     -- FIXME: shouldn’t we use the bound variable(s)?
     b' <- p' |-* \ v -> check (go c ::: _B)
     pure (tm <$> p', b')
-  go = \case
+  go = withSpan $ \case
     SE.Clause p b -> Check $ \ _T -> do
       (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
       b' <- __ ::: _A |- \ v -> do
@@ -393,15 +392,11 @@ comp cs = case traverse (SE.unClause . skipLoc) cs of
         pure $ Case v [c]
       pure $ Lam __ b'
     SE.Body e     -> checkElab (elabExpr e)
-    SE.CLoc s c   -> setSpan s (go c)
-  skipLoc = \case
-    SE.CLoc _ c -> skipLoc c
-    c           -> c
 
 pattern
-  :: SP.Pattern (UName)
+  :: Spanned (SP.Pattern Spanned UName)
   -> Check (CP.Pattern (UName ::: Type))
-pattern = \case
+pattern = withSpan $ \case
   SP.Wildcard -> pure CP.Wildcard
   SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
   SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go _T (fromList ps)
@@ -412,16 +407,15 @@ pattern = \case
       ps  :> p -> do
         (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
         (:>) <$> go _L ps <*> check (pattern p ::: _R)
-  SP.Loc s p  -> setSpan s (pattern p)
 
 
 -- Declarations
 
 elabDecl
   :: HasCallStack
-  => SD.Decl Span
+  => Spanned (SD.Decl Spanned a)
   -> Check Expr ::: Check Type
-elabDecl = \case
+elabDecl = withSpans $ \case
   (n ::: t) SD.:=> b ->
     let b' ::: _B = elabDecl b
     in tlam n b' ::: checkElab (switch (n ::: checkElab (elabType t) >~> _B))
@@ -433,22 +427,20 @@ elabDecl = \case
 
   t SD.:= b ->
     checkElab (elabExpr b) ::: checkElab (elabType t)
-
-  SD.Loc s d -> setSpans s (elabDecl d)
   where
-  setSpans s (t ::: _T) = setSpan s t ::: setSpan s _T
+  withSpans f (s, d) = let t ::: _T = f d in setSpan s t ::: setSpan s _T
 
 
 -- Modules
 
 elabModule
   :: (HasCallStack, Has (Reader Span :+: Throw Err) sig m)
-  => SM.Module Span
+  => SM.Module Spanned a
   -> m (CM.Module ErrM Level)
-elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM)) $ do
+elabModule (SM.Module mname ds) = evalState (mempty @(Env.Env ErrM)) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
-  defs <- for ds $ \ (SM.Def s n d) -> setSpan s $ do
+  defs <- for ds $ \ (n, d) -> do
     env <- get @(Env.Env ErrM)
     e' ::: _T <- runReader @(Context Type) empty . runReader env $ do
       let e ::: t = elabDecl d
@@ -468,6 +460,12 @@ elabModule (SM.Module s mname ds) = setSpan s . evalState (mempty @(Env.Env ErrM
 
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
+
+withSpan :: Has (Reader Span) sig m => (a -> m b) -> (Span, a) -> m b
+withSpan k (s, a) = setSpan s (k a)
+
+withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (Span, a) -> b -> m c
+withSpan' k (s, a) b = setSpan s (k a b)
 
 printTypeInContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => Context P.Print -> Type -> m ErrDoc
 printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printBinding P.printCoreValue ctx

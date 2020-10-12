@@ -1,20 +1,14 @@
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module Facet.Surface.Pattern
 ( Pattern(..)
 ) where
 
-import Text.Parser.Position (Span, Spanned(..))
-
-data Pattern a
+data Pattern f a
   = Wildcard
   | Var a
-  | Tuple [Pattern a]
-  | Loc Span (Pattern a)
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+  | Tuple [f (Pattern f a)]
+  deriving (Foldable, Functor, Traversable)
 
-instance Spanned (Pattern a) where
-  setSpan = Loc
-  dropSpan = \case
-    Loc _ p -> p
-    p       -> p
+deriving instance (Show a, forall a . Show a => Show (f a)) => Show (Pattern f a)

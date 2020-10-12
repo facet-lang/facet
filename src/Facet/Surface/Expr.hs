@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module Facet.Surface.Expr
 ( Expr(..)
 , unApp
@@ -14,50 +16,37 @@ import Data.Text (Text)
 import Facet.Name
 import Facet.Surface.Pattern (Pattern)
 import Prelude hiding ((**))
-import Text.Parser.Position (Span, Spanned(..))
 
-data Expr a
+data Expr f a
   = Free DName
   | Bound Index
   | Hole Text
-  | Comp [Clause a]
-  | Expr a :$ Expr a
+  | Comp [f (Clause f a)]
+  | f (Expr f a) :$ f (Expr f a)
   | Unit
-  | Expr a :* Expr a
-  | Loc a (Expr a)
-  deriving (Foldable, Functor, Show, Traversable)
+  | f (Expr f a) :* f (Expr f a)
   -- FIXME: tupling/unit should take a list of expressions
+  deriving (Foldable, Functor, Traversable)
+
+deriving instance (Show a, forall a . Show a => Show (f a)) => Show (Expr f a)
 
 infixl 9 :$
 infixl 7 :*
 
-instance Spanned (Expr Span) where
-  setSpan = Loc
 
-  dropSpan = \case
-    Loc _ d -> dropSpan d
-    d       -> d
-
-
-unApp :: Has Empty sig m => Expr a -> m (Expr a, Expr a)
+unApp :: Has Empty sig m => Expr f a -> m (f (Expr f a), f (Expr f a))
 unApp = \case
   f :$ a -> pure (f, a)
   _      -> empty
 
 
-data Clause a
-  = Clause (Pattern UName) (Clause a)
-  | Body (Expr a)
-  | CLoc a (Clause a)
-  deriving (Foldable, Functor, Show, Traversable)
+data Clause f a
+  = Clause (f (Pattern f UName)) (f (Clause f a))
+  | Body (f (Expr f a))
+  deriving (Foldable, Functor, Traversable)
 
-instance Spanned (Clause Span) where
-  setSpan = CLoc
-
-  dropSpan = \case
-    CLoc _ d -> dropSpan d
-    d        -> d
+deriving instance (Show a, forall a . Show a => Show (f a)) => Show (Clause f a)
 
 
-unClause :: Has Empty sig m => Clause a -> m (Pattern UName, Clause a)
+unClause :: Has Empty sig m => Clause f a -> m (f (Pattern f UName), f (Clause f a))
 unClause = \case{ Clause p c -> pure (p, c) ; _ -> empty }

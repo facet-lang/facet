@@ -26,10 +26,12 @@ import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
 import           Facet.Elab (elabModule, runErrM)
 import           Facet.Error
+import           Facet.Name (Index)
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
 import qualified Facet.Surface.Module as S
+import           Text.Parser.Position (Spanned)
 
 -- Parsing
 
@@ -39,24 +41,24 @@ parseString p s = either (P.putDoc . prettyNotice) P.prettyPrint (runParserWithS
 printFile :: MonadIO m => FilePath -> m ()
 printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module')))) >>= \case
   Left err -> P.putDoc (prettyNotice err)
-  Right m  -> P.prettyPrint (P.printSurfaceModule m)
+  Right m  -> P.prettyPrint (P.printSurfaceModule (snd m))
 
-parseFile :: MonadIO m => FilePath -> m (Either Notice (S.Module Span))
+parseFile :: MonadIO m => FilePath -> m (Either Notice (Spanned (S.Module Spanned Index)))
 parseFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module'))))
 
 
 -- Elaborating
 
-elabString :: MonadIO m => Facet (ParserC (Either Notice)) (S.Module Span) -> String -> m ()
+elabString :: MonadIO m => Facet (ParserC (Either Notice)) (Spanned (S.Module Spanned Index)) -> String -> m ()
 elabString = elabPathString Nothing
 
 elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
-elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) (S.Module Span) -> String -> m ()
+elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) (Spanned (S.Module Spanned Index)) -> String -> m ()
 elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
-  parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
-  first mkNotice $ runErrM (Span (Pos 0 0) (Pos 0 0)) $ do
+  (s, parsed) <- runParser (const Right) failure failure input (runFacet [] (whole p))
+  first mkNotice $ runErrM s $ do
     mod <- elabModule parsed
     P.printCoreModule mod
   where
