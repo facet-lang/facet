@@ -42,6 +42,7 @@ data Value f a
   | (UName ::: Value f a) :=> (Value f a -> f (Value f a))
   | TLam UName (Value f a -> f (Value f a))
   | Value f a :-> Value f a
+  -- FIXME: replace Case with this, and perform the elimination(s) in $$.
   | Lam UName (Value f a -> f (Value f a))
   | Either QName a :$ Stack (Value f a)
   | TPrd (Value f a) (Value f a)
