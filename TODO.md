@@ -3,6 +3,13 @@
 _Caveat lector: there are no guarantees of correctness or completeness on the contents of this file._
 
 
+## Architecture
+
+- Now that we’ve got HOAS (more or less) under control, can we parse into it?
+
+- Can we skip adding `Span` annotations to the AST and instead carry it around in a `Reader` by parsing and elaborating in a single context?
+
+
 ## Language
 
 ### Core
@@ -88,7 +95,9 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Can we deal with precedence in a more modular way, à la the approach the parser takes (cf https://ptival.github.io/2017/02/25/modular-parser-combinators/)?
 
-- Rainbow highlighting of local variables introductions & references.
+- Rainbow highlighting of local variables introductions & references. Including in error contexts!
+
+- Increase the size of source excerpts so binding sites are visible; alternatively, have multiple excerpts when binding sites are far away.
 
 
 ### Evaluator
