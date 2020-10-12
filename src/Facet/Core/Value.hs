@@ -12,6 +12,7 @@ module Facet.Core.Value
 , unProductT
 , ($$)
 , ($$*)
+, case'
 , match
 , shift
 , foldContext
@@ -23,7 +24,7 @@ import           Control.Effect.Empty
 import           Control.Monad ((<=<))
 import           Data.Foldable (foldl', toList)
 import           Data.List (intersperse)
-import           Data.Monoid (Ap(..), Endo(..))
+import           Data.Monoid (Ap(..), Endo(..), First(..))
 import           Data.Traversable (mapAccumL)
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as C
@@ -120,6 +121,11 @@ f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 
 infixl 9 $$, $$*
 
+
+case' :: HasCallStack => Value f a -> [(Pattern UName, Pattern (Value f a) -> f (Value f a))] -> f (Value f a)
+case' s ps = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) ps) of
+  Just v -> v
+  _      -> error "non-exhaustive patterns in lambda"
 
 match :: Value f a -> Pattern UName -> Maybe (Pattern (Value f a))
 match s = \case
