@@ -367,17 +367,18 @@ comp
   -> Check Expr
 comp = withSpan $ \case
   SE.Expr    b  -> checkElab (elabExpr b)
-  SE.Clauses [] -> Check $ \ _T -> do
-    (_A, _B) <- expectFunctionType (reflow "when checking void computation") _T
-    _A <- unify _A Void
-    b' <- __ ::: _A |- \ v -> pure $ Case v []
-    pure $ Lam __ b'
-  SE.Clauses cs -> Check $ \ _T -> do
-    (_A, _B) <- expectFunctionType (reflow "when checking clauses") _T
-    b' <- __ ::: _A |- \ v -> do
-      cs' <- traverse (uncurry (clause _A _B)) cs
-      pure $ Case v cs'
-    pure $ Lam __ b'
+  SE.Clauses cs -> Check $ \ _T -> case cs of
+    [] -> do
+      (_A, _B) <- expectFunctionType (reflow "when checking void computation") _T
+      _A <- unify _A Void
+      b' <- __ ::: _A |- \ v -> pure $ Case v []
+      pure $ Lam __ b'
+    cs -> do
+      (_A, _B) <- expectFunctionType (reflow "when checking clauses") _T
+      b' <- __ ::: _A |- \ v -> do
+        cs' <- traverse (uncurry (clause _A _B)) cs
+        pure $ Case v cs'
+      pure $ Lam __ b'
   where
   clause _A _B (p:|ps) b = do
     p' <- check (pattern p ::: _A)
