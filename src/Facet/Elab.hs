@@ -125,6 +125,10 @@ check :: (Check a ::: Type) -> Elab a
 check = uncurryAnn runCheck
 
 
+checkElab :: (Maybe Type -> Elab (a ::: Type)) -> Check a
+checkElab f = tm <$> Check (f . Just)
+
+
 unify
   :: HasCallStack
   => Type
@@ -254,7 +258,7 @@ elabType = \case
   l ST.:*  r -> switch $ _check l .*  _check r
   ST.Loc s b -> setSpan s . elabType b
   where
-  _check r = tm <$> Check (elabType r . Just)
+  _check = checkElab . elabType
   _synth r = Synth (elabType r Nothing)
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -320,7 +324,7 @@ elabExpr = \case
   SE.Comp cs -> check (comp (map (SE.mapComp _check) cs)) (pretty "computation")
   SE.Loc s b -> setSpan s . elabExpr b
   where
-  _check r = tm <$> Check (elabExpr r . Just)
+  _check = checkElab . elabExpr
   _synth r = Synth (elabExpr r Nothing)
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -421,20 +425,18 @@ elabDecl
 elabDecl = \case
   (n ::: t) SD.:=> b ->
     let b' ::: _B = elabDecl b
-    in tlam n b' ::: _check (switch (n ::: _check (elabType t) >~> _B))
+    in tlam n b' ::: checkElab (switch (n ::: checkElab (elabType t) >~> _B))
 
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n b' ::: _check (switch (_check (elabType t) --> local (|> (__ ::: (Type :: Type))) _B))
+    in lam n b' ::: checkElab (switch (checkElab (elabType t) --> local (|> (__ ::: (Type :: Type))) _B))
 
   t SD.:= b ->
-    _check (elabExpr b) ::: _check (elabType t)
+    checkElab (elabExpr b) ::: checkElab (elabType t)
 
   SD.Loc s d -> setSpans s (elabDecl d)
   where
-  _check r = tm <$> Check (r . Just)
-
   setSpans s (t ::: _T) = setSpan s t ::: setSpan s _T
 
 
