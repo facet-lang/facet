@@ -17,11 +17,12 @@ module Facet.GHCI
 
 import           Control.Carrier.Lift (runM)
 import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, runParser, runParserWithFile, runParserWithString)
+import           Control.Carrier.Reader (runReader)
 import           Control.Carrier.Throw.Either (runThrow)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Notice(..), prettyNotice)
 import           Control.Effect.Parser.Source (Source(..), sourceFromString)
-import           Control.Effect.Parser.Span (Pos(..), Span(..))
+import           Control.Effect.Parser.Span (Pos(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
 import           Facet.Elab (elabModule, runErrM)
@@ -58,17 +59,17 @@ elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) (Spanned (S.Module Spanned Index)) -> String -> m ()
 elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
   (s, parsed) <- runParser (const Right) failure failure input (runFacet [] (whole p))
-  first mkNotice $ runErrM s $ do
-    mod <- elabModule parsed
+  first mkNotice $ runErrM $ do
+    mod <- runReader s $ elabModule parsed
     P.printCoreModule mod
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s
   failure = Left . errToNotice src
-  mkNotice (s, p) = toNotice (Just Error) src s p
+  mkNotice p = toNotice (Just Error) src p
 
 
 -- Errors
 
-toNotice :: Maybe Level -> Source -> Span -> Err -> Notice
-toNotice lvl src span Err{ reason, context } = Notice lvl (fromSourceAndSpan src span) reason context
+toNotice :: Maybe Level -> Source -> Err -> Notice
+toNotice lvl src Err{ span, reason, context } = Notice lvl (fromSourceAndSpan src span) reason context

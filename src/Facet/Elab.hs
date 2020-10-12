@@ -45,6 +45,7 @@ module Facet.Elab
 
 import           Control.Algebra
 import           Control.Applicative (liftA2)
+import           Control.Carrier.Error.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Span (Span(..))
@@ -57,7 +58,6 @@ import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Data.Traversable (for)
-import           Facet.Carrier.Error.Context
 import           Facet.Context
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
@@ -84,7 +84,7 @@ import           Text.Parser.Position (Spanned)
 type Type = Value ErrM Level
 type Expr = Value ErrM Level
 
-newtype ErrM a = ErrM { rethrow :: forall sig m . Has (Reader Span :+: Throw Err) sig m => m a }
+newtype ErrM a = ErrM { rethrow :: forall sig m . Has (Throw Err) sig m => m a }
 
 instance Functor ErrM where
   fmap f (ErrM m) = ErrM (fmap f m)
@@ -96,22 +96,21 @@ instance Applicative ErrM where
 instance Monad ErrM where
   ErrM m >>= f = ErrM $ m >>= rethrow . f
 
-instance Algebra (Reader Span :+: Throw Err) ErrM where
-  alg hdl sig ctx = case sig of
-    L reader -> ErrM $ alg (rethrow . hdl) (inj reader) ctx
-    R throw  -> ErrM $ alg (rethrow . hdl) (inj throw) ctx
+instance Algebra (Throw Err) ErrM where
+  alg hdl sig ctx = ErrM $ alg (rethrow . hdl) (inj sig) ctx
 
-runErrM :: Span -> ErrM a -> Either (Span, Err) a
-runErrM s = run . runError (curry (Identity . Left)) (Identity . Right) s . rethrow
+runErrM :: ErrM a -> Either Err a
+runErrM = run . runError (Identity . Left) (Identity . Right) . rethrow
 
 elab :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM) :+: Reader Span :+: Throw Err) sig m => Elab a -> m a
 elab m = do
+  span <- ask
   ctx <- ask
   env <- ask
-  rethrow (runReader ctx (runReader env (runElab m)))
+  rethrow (runReader span (runReader ctx (runReader env (runElab m))))
 
 -- FIXME: can we generalize this to a rank-n quantified action over any context providing these effects?
-newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC (Context Type) ErrM) a }
+newtype Elab a = Elab { runElab :: ReaderC (Env.Env ErrM) (ReaderC (Context Type) (ReaderC Span ErrM)) a }
   deriving (Algebra (Reader (Env.Env ErrM) :+: Reader (Context Type) :+: Reader Span :+: Throw Err), Applicative, Functor, Monad)
 
 
@@ -219,26 +218,28 @@ f $$ a = Synth $ do
 
 
 (|-)
-  :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM)) sig m
+  :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM) :+: Reader Span) sig m
   => UName ::: Type
   -> (a -> Elab b)
   -> m (a -> ErrM b)
 t |- f = do
+  span <- ask
   ctx <- ask
   env <- ask
-  pure $ runReader (ctx |> t) . runReader env . runElab . f
+  pure $ runReader span . runReader (ctx |> t) . runReader env . runElab . f
 
 infix 1 |-
 
 (|-*)
-  :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM)) sig m
+  :: Has (Reader (Context Type) :+: Reader (Env.Env ErrM) :+: Reader Span) sig m
   => CP.Pattern (UName ::: Type)
   -> (CP.Pattern a -> Elab b)
   -> m (CP.Pattern a -> ErrM b)
 p |-* f = do
+  span <- ask
   ctx <- ask
   env <- ask
-  pure $ runReader (foldl' (|>) ctx p) . runReader env . runElab . f
+  pure $ runReader span . runReader (foldl' (|>) ctx p) . runReader env . runElab . f
 
 infix 1 |-*
 
@@ -490,8 +491,9 @@ printType t = do
 
 err :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> m a
 err reason = do
+  span <- ask
   ctx <- printContext
-  throwError $ Err (group reason) (zipWith (\ i -> P.getPrint . P.printContextEntry (Level i)) [0..] (toList (elems ctx)))
+  throwError $ Err span (group reason) (zipWith (\ i -> P.getPrint . P.printContextEntry (Level i)) [0..] (toList (elems ctx)))
 
 mismatch :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> ErrDoc -> ErrDoc -> m a
 mismatch msg exp act = err $ msg
