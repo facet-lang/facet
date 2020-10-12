@@ -47,6 +47,7 @@ data Value f a
   | TPrd (Value f a) (Value f a)
   | Prd (Value f a) (Value f a)
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
+  -- FIXME: this is an eliminator but it isn’t being dealt with by hereditary substitution.
   | Case (Value f a) [(Pattern UName, Pattern (Value f a) -> f (Value f a))]
 
 infixr 0 :=>
