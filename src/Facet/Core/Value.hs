@@ -36,6 +36,7 @@ import qualified Facet.Context as C
 import           Facet.Core.Pattern
 import           Facet.Name (Index(..), Level(..), QName, UName, incrLevel, isMeta, levelToIndex, shiftLevel)
 import           Facet.Stack hiding ((!))
+import qualified Facet.Stack as S
 import           Facet.Syntax
 import           GHC.Stack
 import           Text.Show (showListWith)
@@ -224,7 +225,7 @@ foldContextAll bd fold mctx ctx = go (elems ctx)
     pure (mctx', as' |> (tm a ::: a'))
 
 
-mapValue :: (HasCallStack, Monad m) => Metacontext (Value m a) -> Context (Value m a) -> Value m Level -> m (Value m a)
+mapValue :: (HasCallStack, Monad m) => [Value m a] -> Stack (Value m a) -> Value m Level -> m (Value m a)
 mapValue mctx = go
   where
   go ctx = \case
@@ -234,26 +235,27 @@ mapValue mctx = go
     Unit     -> pure Unit
     t :=> b  -> do
       t' <- traverse (go ctx) t
-      pure $ t' :=> bind ctx (tm t') b
+      pure $ t' :=> bind ctx b
     a :-> b  -> (:->) <$> go ctx a <*> go ctx b
-    TLam n b -> pure $ TLam n $ bind ctx n b
-    Lam  ps  -> pure $ Lam $ map (\ (p, b) -> (p, bindP ctx p b)) ps
+    TLam n b -> pure $ TLam n $ bind ctx b
+    Lam  ps  -> pure $ Lam $ map (\ (p, b) -> (p, bindP ctx b)) ps
     f :$ as  -> do
-      let f' = unHead global (ty . lookupIn ctx) f
+      let f' = unHead global (lookupIn ctx) f
       as' <- traverse (go ctx) as
       f' $$* as'
     TPrd l r -> TPrd <$> go ctx l <*> go ctx r
     Prd  l r -> Prd  <$> go ctx l <*> go ctx r
-  bind ctx n b = \ v -> do
-    b' <- b (bound (level ctx))
-    go (ctx |> (n ::: v)) b'
-  bindP ctx p b = let names = toList p in names `seq` \ v -> do
-    let ((_, env'), v') = mapAccumL (\ (names, ctx) v -> ((tail names, ctx |> (head names ::: v)), (bound (level ctx)))) (names, ctx) v
+  bind ctx b = \ v -> do
+    b' <- b (bound (Level (length ctx)))
+    go (ctx :> v) b'
+  bindP ctx b = \ v -> do
+    let (ctx', v') = mapAccumL (\ ctx v -> (ctx :> v, bound (Level (length ctx)))) ctx v
     b' <- b v'
-    go env' b'
+    go ctx' b'
   lookupIn ctx l
-    | isMeta l  = getMetacontext mctx !! abs (getIndex (levelToIndex (metalevel mctx) l) + 1)
-    | otherwise = ctx ! levelToIndex (level ctx) l
+    | isMeta l  = mctx !! abs (getIndex (levelToIndex mlevel l) + 1)
+    | otherwise = ctx S.! getIndex (levelToIndex (Level (length ctx)) l)
+  mlevel = Level (length mctx)
 
 
 join :: Monad m => Value m (Value m a) -> m (Value m a)
