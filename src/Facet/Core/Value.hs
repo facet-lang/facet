@@ -20,6 +20,7 @@ module Facet.Core.Value
 , shift
 , foldContext
 , foldContextAll
+, close
 , join
 ) where
 
@@ -33,7 +34,7 @@ import           Data.Traversable (mapAccumL)
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as C
 import           Facet.Core.Pattern
-import           Facet.Name (Level(..), QName, UName, incrLevel, shiftLevel)
+import           Facet.Name (Level(..), QName, UName, incrLevel, levelToIndex, shiftLevel)
 import           Facet.Stack hiding ((!))
 import           Facet.Syntax
 import           GHC.Stack
@@ -220,6 +221,36 @@ foldContextAll bd fold mctx ctx = go (elems ctx)
     (mctx', as') <- go as
     a' <- foldContext bd fold mctx' as' (ty a)
     pure (mctx', as' |> (tm a ::: a'))
+
+
+close :: (HasCallStack, Monad m) => Metacontext (Value m a) -> Context (Value m a) -> Value m Level -> m (Value m a)
+close mctx = go
+  where
+  go ctx = \case
+    Type     -> pure Type
+    Void     -> pure Void
+    TUnit    -> pure TUnit
+    Unit     -> pure Unit
+    t :=> b  -> do
+      t' <- traverse (go ctx) t
+      pure $ t' :=> bind ctx (tm t') b
+    a :-> b  -> (:->) <$> go ctx a <*> go ctx b
+    TLam n b -> pure $ TLam n $ bind ctx n b
+    Lam  ps  -> pure $ Lam $ map (\ (p, b) -> (p, bindP ctx p b)) ps
+    f :$ as  -> do
+      let f' = unHead global (ty . lookupIn ctx) f
+      as' <- traverse (go ctx) as
+      f' $$* as'
+    TPrd l r -> TPrd <$> go ctx l <*> go ctx r
+    Prd  l r -> Prd  <$> go ctx l <*> go ctx r
+  bind ctx n b = \ v -> do
+    b' <- b (bound (level ctx))
+    go (ctx |> (n ::: v)) b'
+  bindP ctx p b = let names = toList p in names `seq` \ v -> do
+    b' <- b (snd (mapAccumL (\ l _ -> (incrLevel l, bound l)) (level ctx) v))
+    go (foldl (|>) ctx (zipWith (:::) names (toList v))) b'
+  -- FIXME: lookup in the metacontext.
+  lookupIn ctx l = ctx ! levelToIndex (level ctx) l
 
 
 join :: Monad m => Value m (Value m a) -> m (Value m a)
