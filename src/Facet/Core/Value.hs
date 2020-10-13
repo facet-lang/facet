@@ -21,6 +21,7 @@ module Facet.Core.Value
 , foldContext
 , foldContextAll
 , mapValue
+, mapValueAll
 , join
 ) where
 
@@ -257,6 +258,22 @@ mapValue mctx = go
     | isMeta l  = mctx !! abs (getIndex (levelToIndex mlevel l) + 1)
     | otherwise = ctx S.! getIndex (levelToIndex (Level (length ctx)) l)
   mlevel = Level (length mctx)
+
+mapValueAll :: (HasCallStack, Monad m) => [Value m Level] -> Stack (Value m Level) -> m ([Value m a], Stack (Value m a))
+mapValueAll mctx ctx = go ctx
+  where
+  metas []     = pure []
+  metas (m:ms) = do
+    ms' <- metas ms
+    m'  <- mapValue ms' Nil m
+    pure $ m' : ms'
+  go Nil     = do
+    mctx' <- metas mctx
+    pure (mctx', Nil)
+  go (as:>a) = do
+    (mctx', as') <- go as
+    a' <- mapValue mctx' as' a
+    pure (mctx', as' :> a')
 
 
 join :: Monad m => Value m (Value m a) -> m (Value m a)
