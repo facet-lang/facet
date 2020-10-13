@@ -16,8 +16,8 @@ module Facet.GHCI
 ) where
 
 import           Control.Carrier.Lift (runM)
-import           Control.Carrier.State.Church (evalState)
 import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, runParser, runParserWithFile, runParserWithString)
+import           Control.Carrier.State.Church (evalState)
 import           Control.Carrier.Throw.Either (runThrow)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import qualified Control.Effect.Parser.Notice as N
