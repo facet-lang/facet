@@ -28,6 +28,24 @@ module Facet.Print.Applicative
 , softline
 , softline'
 , hardline
+, lparen
+, rparen
+, lbracket
+, rbracket
+, lbrace
+, rbrace
+, langle
+, rangle
+, squote
+, dquote
+, semi
+, comma
+, colon
+, dot
+, slash
+, backslash
+, equals
+, pipe
 ) where
 
 import           Control.Applicative (liftA2)
@@ -151,3 +169,33 @@ softline' = pure S.softline'
 
 hardline :: (Applicative f, Printer p) => f p
 hardline = pure S.hardline
+
+lparen, rparen :: (Applicative f, Printer p) => f p
+lparen = pure S.lparen
+rparen = pure S.rparen
+
+lbracket, rbracket :: (Applicative f, Printer p) => f p
+lbracket = pure S.lbracket
+rbracket = pure S.rbracket
+
+lbrace, rbrace :: (Applicative f, Printer p) => f p
+lbrace = pure S.lbrace
+rbrace = pure S.rbrace
+
+langle, rangle :: (Applicative f, Printer p) => f p
+langle = pure S.langle
+rangle = pure S.rangle
+
+squote, dquote :: (Applicative f, Printer p) => f p
+squote = pure S.squote
+dquote = pure S.dquote
+
+semi, comma, colon, dot, slash, backslash, equals, pipe :: (Applicative f, Printer p) => f p
+semi = pure S.semi
+comma = pure S.comma
+colon = pure S.colon
+dot = pure S.dot
+slash = pure S.slash
+backslash = pure S.backslash
+equals = pure S.equals
+pipe = pure S.pipe
