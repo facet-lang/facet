@@ -6,6 +6,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -65,7 +66,7 @@ import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Value hiding (bound, global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
-import           Facet.Name (DName, Index(..), Level(..), QName(..), UName)
+import           Facet.Name (DName, Index(..), QName(..), UName)
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
@@ -453,18 +454,19 @@ elabDecl = withSpans $ \case
 -- Modules
 
 elabModule
-  :: (HasCallStack, Has (Throw (Err Level)) sig m)
+  :: forall v a m sig
+  .  (HasCallStack, Has (Throw (Err v)) sig m, Eq v)
   => Spanned (SM.Module Spanned a)
-  -> m (CM.Module (M Level) Level)
-elabModule (s, (SM.Module mname ds)) = runReader s . evalState (mempty @(Env.Env (Type Level))) $ do
+  -> m (CM.Module (M v) v)
+elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (Type v))) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
-    env <- get @(Env.Env (Type Level))
-    e' ::: _T <- runReader @(Context (Val Level ::: Type Level)) empty . runReader env $ do
+    env <- get @(Env.Env (Type v))
+    e' ::: _T <- runReader @(Context (Val v ::: Type v)) empty . runReader env $ do
       let e ::: t = elabDecl d
-      _T <- runState (\ _ -> pure) (Metacontext @(Val Level ::: Type Level) []) $ elab $ check (t ::: Type)
-      e' <- runState (\ _ -> pure) (Metacontext @(Val Level ::: Type Level) []) $ elab $ check (e ::: _T)
+      _T <- evalMeta $ elab $ check (t ::: Type)
+      e' <- evalMeta $ elab $ check (e ::: _T)
       pure $ e' ::: _T
 
     modify $ Env.insert (mname :.: n ::: _T)
@@ -473,6 +475,8 @@ elabModule (s, (SM.Module mname ds)) = runReader s . evalState (mempty @(Env.Env
     pure (mname :.: n, CM.DTerm e' ::: _T)
 
   pure $ CM.Module mname defs
+  where
+  evalMeta = evalState (Metacontext @(Val v ::: Type v) [])
 
 
 -- Errors
