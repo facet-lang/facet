@@ -59,6 +59,8 @@ module Facet.Print.Applicative
 , backslash
 , equals
 , pipe
+  -- * Re-exports
+, S.Pretty
 ) where
 
 import           Control.Applicative (liftA2, liftA3)
