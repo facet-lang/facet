@@ -540,11 +540,6 @@ printContext = do
   -- FIXME: This prints the wrong thing w.r.t. showing the types in error messages; e.g. it shows an expected type of Type -> (Type -> Type) -> Type when it should show the names A0/B1.
   rethrow $ mapValueAll (ty . ty <$> mctx) (ty . ty <$> ctx)
 
-printType :: HasCallStack => Type Level -> Elab Level ErrDoc
-printType t = do
-  (mctx, ctx) <- printContext
-  rethrow $ printTypeInContext mctx ctx t
-
 err :: HasCallStack => Reason -> Elab Level a
 err reason = do
   span <- ask
