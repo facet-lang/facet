@@ -88,7 +88,7 @@ type Val v = Value (M v) v
 type Type v = Value (M v) v
 type Expr v = Value (M v) v
 
-newtype M v a = M { rethrow :: forall sig m . Has (State (Metacontext (Val v ::: Type v)) :+: Throw Err) sig m => m a }
+newtype M v a = M { rethrow :: forall sig m . Has (State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig m => m a }
 
 instance Functor (M v) where
   fmap f (M m) = M (fmap f m)
@@ -100,13 +100,13 @@ instance Applicative (M v) where
 instance Monad (M v) where
   M m >>= f = M $ m >>= rethrow . f
 
-instance Algebra (State (Metacontext (Val v ::: Type v)) :+: Throw Err) (M v) where
+instance Algebra (State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) (M v) where
   alg hdl sig ctx = case sig of
     L smctx -> M $ alg (rethrow . hdl) (inj smctx) ctx
     R throw -> M $ alg (rethrow . hdl) (inj throw) ctx
 
 
-newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw Err) sig m => m a }
+newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig m => m a }
 
 instance Functor (Elab v) where
   fmap f (Elab m) = Elab (fmap f m)
@@ -118,7 +118,7 @@ instance Applicative (Elab v) where
 instance Monad (Elab v) where
   Elab m >>= f = Elab $ m >>= elab . f
 
-instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw Err) (Elab v) where
+instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) (Elab v) where
   alg hdl sig ctx = case sig of
     L renv              -> Elab $ alg (elab . hdl) (inj renv) ctx
     R (L rctx)          -> Elab $ alg (elab . hdl) (inj rctx) ctx
@@ -138,7 +138,7 @@ getMetacontext = get
 
 
 newtype Check v a = Check { runCheck :: Type v -> Elab v a }
-  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw Err), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
+  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
 
 newtype Synth v a = Synth { synth :: Elab v (a ::: Type v) }
 
@@ -455,7 +455,7 @@ elabDecl = withSpans $ \case
 -- Modules
 
 elabModule
-  :: (HasCallStack, Has (Throw Err) sig m)
+  :: (HasCallStack, Has (Throw (Err Level)) sig m)
   => Spanned (SM.Module Spanned a)
   -> m (CM.Module (M Level) Level)
 elabModule (s, (SM.Module mname ds)) = runReader s . evalState (mempty @(Env.Env (Type Level))) $ do
@@ -491,11 +491,11 @@ withSpan' k (s, a) b = setSpan s (k a b)
 
 type ErrDoc = Doc AnsiStyle
 
-data Err = Err
+data Err v = Err
   { span        :: Span
-  , reason      :: Reason Level
-  , metacontext :: Metacontext (Val Level ::: Type Level)
-  , context     :: Context (Val Level ::: Type Level)
+  , reason      :: Reason v
+  , metacontext :: Metacontext (Val v ::: Type v)
+  , context     :: Context (Val v ::: Type v)
   }
 
 data Reason v

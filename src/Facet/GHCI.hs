@@ -69,7 +69,7 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
 
   evalMeta = evalState (Metacontext [] :: Metacontext (Val Level ::: Type Level))
 
-  lower :: Either Err a -> Either N.Notice a
+  lower :: Either (Err Level) a -> Either N.Notice a
   lower = \case
     Left  e -> do
       e' <- lower $ evalMeta $ rethrow $ mkNotice e
@@ -79,7 +79,7 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
 
 -- Errors
 
-toNotice :: Maybe N.Level -> Source -> Err -> M Level N.Notice
+toNotice :: Maybe N.Level -> Source -> Err Level -> M Level N.Notice
 toNotice lvl src Err{ span, reason, metacontext, context } = do
   reason' <- printReason metacontext context reason
   -- FIXME: print the context
