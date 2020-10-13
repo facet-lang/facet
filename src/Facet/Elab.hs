@@ -229,7 +229,7 @@ bound n = Synth $ do
   let l = indexToLevel (length ctx) n
   case ctx !? n of
     Just (_ ::: (_ ::: _T)) -> pure (CV.bound l ::: _T)
-    Nothing                 -> err $ BadContext n (level ctx)
+    Nothing                 -> err $ BadContext n ctx
 
 hole
   :: HasCallStack
@@ -507,7 +507,7 @@ data Reason
   | CouldNotSynthesize ErrDoc
   | Mismatch ErrDoc (Contextual (Val Level ::: Type Level) (Either ErrDoc (Type Level), Type Level))
   | Hole T.Text (Contextual (Val Level ::: Type Level) (Type Level))
-  | BadContext Index Level
+  | BadContext Index (Context (Val Level ::: Type Level))
 
 printReason :: Reason -> M Level ErrDoc
 printReason = fmap group . \case
@@ -527,7 +527,7 @@ printReason = fmap group . \case
     (_, ctx') <- mapValueAll [] (ty . ty <$> elems ctx)
     _T' <- printTypeInContext [] ctx' _T
     pure $ fillSep [reflow "found hole", pretty n, colon, _T' ]
-  BadContext n l                     -> pure $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (getLevel l) ]
+  BadContext n ctx                   -> pure $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (getLevel (level ctx)) ]
 
 
 printTypeInContext :: HasCallStack => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> M Level ErrDoc
