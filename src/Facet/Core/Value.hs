@@ -174,6 +174,17 @@ shift d = go
   binder b = fmap go . b . shift invd
 
 
+-- | Map over the variables in a value bound by a given context & metacontext.
+--
+-- Note that this doesn’t have any argument mapping bound values to @a@; the idea is that instead, 'Level' can be mapped uniquely onto elements of the context and metacontext, and thus can resolve bound variables to their values in these contexts.
+--
+-- This can be iterated (cf 'mapValueAll') trivially, because:
+--
+-- 1. Only closed values can exist within an empty context and metacontext.
+-- 2. No dependencies are allowed between the contexts.
+-- 3. Values bound in a context can only depend on information earlier in the same context.
+--
+-- Thus, a value bound in the context is independent of anything following; so we can map the initial context values in the empty context, the next in the context consisting of the mapped initial values, and so on, all the way along.
 mapValue :: (HasCallStack, Monad m) => [Value m a] -> Stack (Value m a) -> Value m Level -> m (Value m a)
 -- FIXME: m can extend the metacontext, invalidating this as we move under binders.
 mapValue mctx = go
