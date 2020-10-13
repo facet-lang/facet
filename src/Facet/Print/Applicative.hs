@@ -108,6 +108,8 @@ punctuate s = go
 (<:>) :: (Applicative f, Semigroup s) => f s -> f s -> f s
 (<:>) = liftA2 (<>)
 
+infixr 6 <:>
+
 empty :: (Applicative f, Monoid s) => f s
 empty = pure mempty
 
