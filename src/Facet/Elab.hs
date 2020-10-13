@@ -354,8 +354,8 @@ elabExpr = withSpan' $ \case
 
 tlam
   :: UName
-  -> Check Level (Expr Level)
-  -> Check Level (Expr Level)
+  -> Check v (Expr v)
+  -> Check v (Expr v)
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
   b' <- n ::: _T |- \ v -> do
