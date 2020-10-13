@@ -50,6 +50,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Span (Span(..))
 import           Control.Effect.Sum
+import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', toList)
 import           Data.List (intersperse)
@@ -481,8 +482,8 @@ withSpan k (s, a) = setSpan s (k a)
 withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (Span, a) -> b -> m c
 withSpan' k (s, a) b = setSpan s (k a b)
 
-printTypeInContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => Metacontext P.Print -> Context P.Print -> Type -> m ErrDoc
-printTypeInContext mctx ctx = fmap P.getPrint . rethrow . foldContext P.printBinding P.printCoreValue mctx ctx
+printTypeInContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => [Value M P.Print] -> Stack (Value M P.Print) -> Type -> m ErrDoc
+printTypeInContext mctx ctx = fmap P.getPrint . rethrow . (P.printCoreValue (Level 0) <=< rethrow . mapValue mctx ctx)
 
 showContext :: Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m => m String
 showContext = do
@@ -495,11 +496,11 @@ showContext = do
   shown <- rethrow $ go ctx
   pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> shows t {-. showString " : " . _T-}) (toList shown))) $ "]"
 
-printContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => m (Metacontext P.Print, Context P.Print)
+printContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => m ([Value M P.Print], Stack (Value M P.Print))
 printContext = do
   mctx <- get @(Metacontext Type)
   ctx <- ask @(Context Type)
-  rethrow $ foldContextAll P.printBinding P.printCoreValue mctx ctx
+  rethrow $ mapValueAll (ty <$> getMetacontext mctx) (ty <$> elems ctx)
 
 printType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => Type -> m ErrDoc
 -- FIXME: this is still resulting in out of bounds printing
@@ -510,9 +511,11 @@ printType t = do
 err :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => ErrDoc -> m a
 err reason = do
   span <- ask
-  (mctx, ctx) <- printContext
+  ctx <- ask @(Context Type)
+  (mctx, ctx') <- printContext
+  ctx' <- rethrow $ traverse (P.printCoreValue (level ctx)) ctx'
   -- FIXME: show the metacontext
-  throwError $ Err span (group reason) (zipWith (\ i -> P.getPrint . P.printContextEntry (Level i)) [0..] (toList (elems ctx)))
+  throwError $ Err span (group reason) (zipWith3 (\ i n -> P.getPrint . P.printContextEntry (Level i) . (n :::)) [0..] (toList (names ctx)) (toList ctx'))
 
 mismatch :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => ErrDoc -> ErrDoc -> ErrDoc -> m a
 mismatch msg exp act = err $ msg
