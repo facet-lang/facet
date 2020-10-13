@@ -365,8 +365,8 @@ tlam n b = Check $ \ ty -> do
 
 lam
   :: UName
-  -> Check Level (Expr Level)
-  -> Check Level (Expr Level)
+  -> Check v (Expr v)
+  -> Check v (Expr v)
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType "when checking lambda" _T
   -- FIXME: shouldn’t we use the bound variable?
