@@ -499,6 +499,7 @@ type ErrDoc = Doc AnsiStyle
 data Err = Err
   { span    :: Span
   , reason  :: Reason
+  -- FIXME: replace this and the contexts in the reason with the actual Context
   , context :: [ErrDoc]
   }
 
