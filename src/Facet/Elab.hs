@@ -204,7 +204,7 @@ global
 global n = Synth $ asks (Env.lookup n) >>= \case
   Just b  -> do
     ctx <- ask @(Context Type)
-    pure (CV.global (tm b :.: n) ::: shift (Level (length ctx)) (ty b))
+    pure (CV.global (tm b :.: n) ::: shift (level ctx) (ty b))
   Nothing -> freeVariable (pretty n)
 
 bound
