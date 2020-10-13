@@ -58,7 +58,7 @@ import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Data.Traversable (for)
-import           Facet.Context
+import           Facet.Context hiding (getMetacontext)
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Value hiding (bound, global, ($$))
@@ -122,6 +122,16 @@ instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Type v)) :+: Re
     R (R (L rspan)) -> Elab $ alg (elab . hdl) (inj rspan) ctx
     R (R (R (L smctx))) -> Elab $ alg (elab . hdl) (inj smctx) ctx
     R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
+
+askEnv :: Elab v (Env.Env (Type v))
+askEnv = ask
+
+askContext :: Elab v (Context (Type v))
+askContext = ask
+
+getMetacontext :: Elab v (Metacontext (Type v))
+getMetacontext = get
+
 
 
 newtype Check v a = Check { runCheck :: Type v -> Elab v a }
@@ -498,10 +508,10 @@ showContext = do
 
 printContext :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => m ([Value (M Level) P.Print], Stack (Value (M Level) P.Print))
 printContext = do
-  mctx <- get @(Metacontext (Type _))
+  Metacontext mctx <- get @(Metacontext (Type _))
   ctx <- ask @(Context (Type _))
   -- FIXME: This prints the wrong thing w.r.t. showing the types in error messages; e.g. it shows an expected type of Type -> (Type -> Type) -> Type when it should show the names A0/B1.
-  rethrow $ mapValueAll (ty <$> getMetacontext mctx) (ty <$> elems ctx)
+  rethrow $ mapValueAll (ty <$> mctx) (ty <$> elems ctx)
 
 printType :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => Type Level -> m ErrDoc
 printType t = do
