@@ -42,9 +42,9 @@ module Facet.Elab
   -- * Modules
 , elabModule
   -- * Errors
+, ErrDoc
 , Err(..)
 , Reason(..)
-, printReason
 ) where
 
 import           Control.Algebra
@@ -54,11 +54,9 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Span (Span(..))
 import           Control.Effect.Sum
-import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', toList)
 import           Data.List.NonEmpty (NonEmpty(..))
-import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Data.Traversable (for)
 import           Facet.Context hiding (getMetacontext)
@@ -69,7 +67,6 @@ import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
 import           Facet.Name (DName, Index(..), Level(..), QName(..), UName, indexToLevel)
 import           Facet.Pretty (reflow)
-import qualified Facet.Print as P
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
@@ -81,7 +78,7 @@ import           GHC.Stack
 import           Prelude hiding ((**))
 import           Prettyprinter (Doc)
 import           Prettyprinter.Render.Terminal (AnsiStyle)
-import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
+import           Silkscreen (pretty)
 import           Text.Parser.Position (Spanned)
 
 type Val v = Value (M v) v
@@ -505,29 +502,6 @@ data Reason v
   | Hole T.Text (Type v)
   | BadContext Index
 
-printReason :: Metacontext (Val Level ::: Type Level) -> Context (Val Level ::: Type Level) -> Reason Level -> M Level ErrDoc
-printReason (Metacontext mctx) ctx = fmap group . \case
-  FreeVariable n         -> pure $ fillSep [reflow "variable not in scope:", pretty n]
-  CouldNotSynthesize msg -> pure $ reflow "could not synthesize a type for" <> softline <> msg
-  Mismatch msg exp act   -> do
-    (mctx', ctx') <- mapValueAll (ty . ty <$> mctx) (ty . ty <$> elems ctx)
-    exp' <- either pure (printTypeInContext mctx' ctx') exp
-    act' <- printTypeInContext mctx' ctx' act
-    pure $ msg
-      </> pretty "expected:" <> print exp'
-      </> pretty "  actual:" <> print act'
-    where
-    -- line things up nicely for e.g. wrapped function types
-    print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
-  Hole n _T              -> do
-    (mctx', ctx') <- mapValueAll (ty . ty <$> mctx) (ty . ty <$> elems ctx)
-    _T' <- printTypeInContext mctx' ctx' _T
-    pure $ fillSep [reflow "found hole", pretty n, colon, _T' ]
-  BadContext n           -> pure $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (getLevel (level ctx)) ]
-
-
-printTypeInContext :: HasCallStack => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> M Level ErrDoc
-printTypeInContext mctx ctx = fmap P.getPrint . (P.printCoreValue (Level 0) <=< rethrow . mapValue mctx ctx)
 
 err :: Reason Level -> Elab Level a
 err reason = do

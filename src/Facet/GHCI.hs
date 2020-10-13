@@ -22,15 +22,22 @@ import           Control.Carrier.Throw.Either
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import qualified Control.Effect.Parser.Notice as N
 import           Control.Effect.Parser.Source (Source(..), sourceFromString)
-import           Control.Effect.Parser.Span (Pos(..))
+import           Control.Effect.Parser.Span (Pos(Pos))
+import           Control.Monad ((<=<))
 import           Control.Monad.IO.Class (MonadIO(..))
-import           Facet.Elab (Err(..), M(..), Metacontext(..), Type, Val, elabModule, printReason)
-import           Facet.Name (Index, Level)
+import           Data.Semigroup (stimes)
+import           Facet.Context
+import qualified Facet.Core.Value as V
+import           Facet.Elab (Err(..), ErrDoc, M(..), Reason(..), Type, Val, elabModule)
+import           Facet.Name (Index(..), Level(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
+import           Facet.Stack
 import qualified Facet.Surface.Module as S
 import           Facet.Syntax
+import           GHC.Stack
+import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 import           Text.Parser.Position (Spanned)
 
 -- Parsing
@@ -84,3 +91,28 @@ toNotice lvl src Err{ span, reason, metacontext, context } = do
   reason' <- printReason metacontext context reason
   -- FIXME: print the context
   pure $ N.Notice lvl (fromSourceAndSpan src span) reason' []
+
+
+printReason :: Metacontext (Val Level ::: Type Level) -> Context (Val Level ::: Type Level) -> Reason Level -> M Level ErrDoc
+printReason (Metacontext mctx) ctx = fmap group . \case
+  FreeVariable n         -> pure $ fillSep [P.reflow "variable not in scope:", pretty n]
+  CouldNotSynthesize msg -> pure $ P.reflow "could not synthesize a type for" <> softline <> msg
+  Mismatch msg exp act   -> do
+    (mctx', ctx') <- V.mapValueAll (ty . ty <$> mctx) (ty . ty <$> elems ctx)
+    exp' <- either pure (printTypeInContext mctx' ctx') exp
+    act' <- printTypeInContext mctx' ctx' act
+    pure $ msg
+      </> pretty "expected:" <> print exp'
+      </> pretty "  actual:" <> print act'
+    where
+    -- line things up nicely for e.g. wrapped function types
+    print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
+  Hole n _T              -> do
+    (mctx', ctx') <- V.mapValueAll (ty . ty <$> mctx) (ty . ty <$> elems ctx)
+    _T' <- printTypeInContext mctx' ctx' _T
+    pure $ fillSep [P.reflow "found hole", pretty n, colon, _T' ]
+  BadContext n           -> pure $ fillSep [ P.reflow "no variable bound for index", pretty (getIndex n), P.reflow "in context of length", pretty (getLevel (level ctx)) ]
+
+
+printTypeInContext :: HasCallStack => [V.Value (M Level) P.Print] -> Stack (V.Value (M Level) P.Print) -> Type Level -> M Level ErrDoc
+printTypeInContext mctx ctx = fmap P.getPrint . (P.printCoreValue (Level 0) <=< rethrow . V.mapValue mctx ctx)
