@@ -493,19 +493,19 @@ type ErrDoc = Doc AnsiStyle
 
 data Err = Err
   { span        :: Span
-  , reason      :: Reason
+  , reason      :: Reason Level
   , metacontext :: Metacontext (Val Level ::: Type Level)
   , context     :: Context (Val Level ::: Type Level)
   }
 
-data Reason
+data Reason v
   = FreeVariable DName
   | CouldNotSynthesize ErrDoc
-  | Mismatch ErrDoc (Either ErrDoc (Type Level)) (Type Level)
-  | Hole T.Text (Type Level)
+  | Mismatch ErrDoc (Either ErrDoc (Type v)) (Type v)
+  | Hole T.Text (Type v)
   | BadContext Index
 
-printReason :: Metacontext (Val Level ::: Type Level) -> Context (Val Level ::: Type Level) -> Reason -> M Level ErrDoc
+printReason :: Metacontext (Val Level ::: Type Level) -> Context (Val Level ::: Type Level) -> Reason Level -> M Level ErrDoc
 printReason (Metacontext mctx) ctx = fmap group . \case
   FreeVariable n         -> pure $ fillSep [reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> pure $ reflow "could not synthesize a type for" <> softline <> msg
@@ -529,7 +529,7 @@ printReason (Metacontext mctx) ctx = fmap group . \case
 printTypeInContext :: HasCallStack => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> M Level ErrDoc
 printTypeInContext mctx ctx = fmap P.getPrint . (P.printCoreValue (Level 0) <=< rethrow . mapValue mctx ctx)
 
-err :: Reason -> Elab Level a
+err :: Reason Level -> Elab Level a
 err reason = do
   span <- ask
   mctx <- getMetacontext
