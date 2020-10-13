@@ -267,10 +267,10 @@ infix 1 |-*
 -- Types
 
 elabType
-  :: HasCallStack
+  :: (HasCallStack, Eq v)
   => Spanned (ST.Type Spanned a)
-  -> Maybe (Type Level)
-  -> Elab Level (Type Level ::: Type Level)
+  -> Maybe (Type v)
+  -> Elab v (Type v ::: Type v)
 elabType = withSpan' $ \case
   ST.Free  n -> switch $ global n
   ST.Bound n -> switch $ bound n
