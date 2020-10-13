@@ -279,5 +279,5 @@ pipe = pure S.pipe
 
 -- Precedence
 
-prec :: (Applicative f, S.PrecedencePrinter p, Ord (S.Level p)) => S.Level p -> f p -> f p
+prec :: (Functor f, S.PrecedencePrinter p, Ord (S.Level p)) => S.Level p -> f p -> f p
 prec l = fmap (S.prec l)
