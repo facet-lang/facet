@@ -34,7 +34,7 @@ import           Data.Traversable (mapAccumL)
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as C
 import           Facet.Core.Pattern
-import           Facet.Name (Level(..), QName, UName, incrLevel, levelToIndex, shiftLevel)
+import           Facet.Name (Index(..), Level(..), QName, UName, incrLevel, isMeta, levelToIndex, shiftLevel)
 import           Facet.Stack hiding ((!))
 import           Facet.Syntax
 import           GHC.Stack
@@ -249,8 +249,9 @@ close mctx = go
   bindP ctx p b = let names = toList p in names `seq` \ v -> do
     b' <- b (snd (mapAccumL (\ l _ -> (incrLevel l, bound l)) (level ctx) v))
     go (foldl (|>) ctx (zipWith (:::) names (toList v))) b'
-  -- FIXME: lookup in the metacontext.
-  lookupIn ctx l = ctx ! levelToIndex (level ctx) l
+  lookupIn ctx l
+    | isMeta l  = getMetacontext mctx !! abs (getIndex (levelToIndex (metalevel mctx) l) + 1)
+    | otherwise = ctx ! levelToIndex (level ctx) l
 
 
 join :: Monad m => Value m (Value m a) -> m (Value m a)
