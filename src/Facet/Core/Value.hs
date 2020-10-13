@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
 ( Value(..)
+, Head(..)
 , showsPrecValue
 , global
 , bound
@@ -53,6 +54,10 @@ data Value f a
 infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
+
+data Head a
+  = Global QName
+  | Local a
 
 
 showsPrecValue :: Monad m => Level -> Int -> Value m Level -> m ShowS
