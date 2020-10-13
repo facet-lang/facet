@@ -248,8 +248,9 @@ close mctx = go
     b' <- b (bound (level ctx))
     go (ctx |> (n ::: v)) b'
   bindP ctx p b = let names = toList p in names `seq` \ v -> do
-    b' <- b (snd (mapAccumL (\ l _ -> (incrLevel l, bound l)) (level ctx) v))
-    go (foldl (|>) ctx (zipWith (:::) names (toList v))) b'
+    let ((_, env'), v') = mapAccumL (\ (names, ctx) v -> ((tail names, ctx |> (head names ::: v)), (bound (level ctx)))) (names, ctx) v
+    b' <- b v'
+    go env' b'
   lookupIn ctx l
     | isMeta l  = getMetacontext mctx !! abs (getIndex (levelToIndex (metalevel mctx) l) + 1)
     | otherwise = ctx ! levelToIndex (level ctx) l
