@@ -492,9 +492,10 @@ withSpan' k (s, a) b = setSpan s (k a b)
 type ErrDoc = Doc AnsiStyle
 
 data Err = Err
-  { span    :: Span
-  , reason  :: Reason
-  , context :: Context (Val Level ::: Type Level)
+  { span        :: Span
+  , reason      :: Reason
+  , metacontext :: Metacontext (Val Level ::: Type Level)
+  , context     :: Context (Val Level ::: Type Level)
   }
 
 data Reason
@@ -531,9 +532,9 @@ printTypeInContext mctx ctx = fmap P.getPrint . (P.printCoreValue (Level 0) <=< 
 err :: Reason -> Elab Level a
 err reason = do
   span <- ask
+  mctx <- getMetacontext
   ctx <- askContext
-  -- FIXME: include the metacontext
-  throwError $ Err span reason ctx
+  throwError $ Err span reason mctx ctx
 
 mismatch :: ErrDoc -> Either ErrDoc (Type Level) -> Type Level -> Elab Level a
 mismatch msg exp act = err $ Mismatch msg exp act
