@@ -81,5 +81,6 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
 
 toNotice :: Maybe N.Level -> Source -> Err -> M Level N.Notice
 toNotice lvl src Err{ span, reason, context } = do
-  reason' <- printReason reason
-  pure $ N.Notice lvl (fromSourceAndSpan src span) reason' context
+  reason' <- printReason context reason
+  -- FIXME: print the context
+  pure $ N.Notice lvl (fromSourceAndSpan src span) reason' []

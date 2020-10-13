@@ -157,8 +157,7 @@ synthElab f = Synth (f Nothing)
 
 
 unify
-  :: HasCallStack
-  => Type Level
+  :: Type Level
   -> Type Level
   -> Elab Level (Type Level)
 unify t1 t2 = go t1 t2
@@ -204,8 +203,7 @@ meta t = do
 -- General
 
 switch
-  :: HasCallStack
-  => Synth Level a
+  :: Synth Level a
   -> Maybe (Type Level)
   -> Elab Level (a ::: Type Level)
 switch (Synth m) = \case
@@ -229,15 +227,12 @@ bound n = Synth $ do
   let l = indexToLevel (length ctx) n
   case ctx !? n of
     Just (_ ::: (_ ::: _T)) -> pure (CV.bound l ::: _T)
-    Nothing                 -> err $ BadContext n ctx
+    Nothing                 -> err $ BadContext n
 
 hole
-  :: HasCallStack
-  => T.Text
+  :: T.Text
   -> Check Level a
-hole n = Check $ \ _T -> do
-  ctx <- askContext
-  err $ Hole n (ctx :|-: _T)
+hole n = Check $ \ _T -> err $ Hole n _T
 
 ($$)
   :: Synth Level (Val Level)
@@ -499,22 +494,21 @@ type ErrDoc = Doc AnsiStyle
 data Err = Err
   { span    :: Span
   , reason  :: Reason
-  -- FIXME: replace this and the contexts in the reason with the actual Context
-  , context :: [ErrDoc]
+  , context :: Context (Val Level ::: Type Level)
   }
 
 data Reason
   = FreeVariable DName
-  | CouldNotSynthesize ErrDoc (Context (Val Level ::: Type Level))
-  | Mismatch ErrDoc (Contextual (Val Level ::: Type Level) (Either ErrDoc (Type Level), Type Level))
-  | Hole T.Text (Contextual (Val Level ::: Type Level) (Type Level))
-  | BadContext Index (Context (Val Level ::: Type Level))
+  | CouldNotSynthesize ErrDoc
+  | Mismatch ErrDoc (Either ErrDoc (Type Level)) (Type Level)
+  | Hole T.Text (Type Level)
+  | BadContext Index
 
-printReason :: Reason -> M Level ErrDoc
-printReason = fmap group . \case
-  FreeVariable n                     -> pure $ fillSep [reflow "variable not in scope:", pretty n]
-  CouldNotSynthesize msg _ctx        -> pure $ reflow "could not synthesize a type for" <> softline <> msg
-  Mismatch msg (ctx :|-: (exp, act)) -> do
+printReason :: Context (Val Level ::: Type Level) -> Reason -> M Level ErrDoc
+printReason ctx = fmap group . \case
+  FreeVariable n         -> pure $ fillSep [reflow "variable not in scope:", pretty n]
+  CouldNotSynthesize msg -> pure $ reflow "could not synthesize a type for" <> softline <> msg
+  Mismatch msg exp act   -> do
     (_, ctx') <- mapValueAll [] (ty . ty <$> elems ctx)
     exp' <- either pure (printTypeInContext [] ctx') exp
     act' <- printTypeInContext [] ctx' act
@@ -524,63 +518,49 @@ printReason = fmap group . \case
     where
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
-  Hole n (ctx :|-: _T)               -> do
+  Hole n _T              -> do
     (_, ctx') <- mapValueAll [] (ty . ty <$> elems ctx)
     _T' <- printTypeInContext [] ctx' _T
     pure $ fillSep [reflow "found hole", pretty n, colon, _T' ]
-  BadContext n ctx                   -> pure $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (getLevel (level ctx)) ]
+  BadContext n           -> pure $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (getLevel (level ctx)) ]
 
 
 printTypeInContext :: HasCallStack => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> M Level ErrDoc
 printTypeInContext mctx ctx = fmap P.getPrint . (P.printCoreValue (Level 0) <=< rethrow . mapValue mctx ctx)
 
-printContext :: HasCallStack => Elab Level ([Value (M Level) P.Print], Stack (Value (M Level) P.Print))
-printContext = do
-  Metacontext mctx <- getMetacontext
-  Context ctx <- askContext
-  -- FIXME: This prints the wrong thing w.r.t. showing the types in error messages; e.g. it shows an expected type of Type -> (Type -> Type) -> Type when it should show the names A0/B1.
-  rethrow $ mapValueAll (ty . ty <$> mctx) (ty . ty <$> ctx)
-
-err :: HasCallStack => Reason -> Elab Level a
+err :: Reason -> Elab Level a
 err reason = do
   span <- ask
   ctx <- askContext
-  (mctx, ctx') <- printContext
-  ctx' <- rethrow $ traverse (P.printCoreValue (level ctx)) ctx'
-  -- FIXME: show the metacontext
-  -- FIXME: show the types as well as the names
-  throwError $ Err span reason (zipWith3 (\ i n -> P.getPrint . P.printContextEntry (Level i) . (n :::)) [0..] (toList (names ctx)) (toList ctx'))
+  -- FIXME: include the metacontext
+  throwError $ Err span reason ctx
 
-mismatch :: HasCallStack => ErrDoc -> Either ErrDoc (Type Level) -> Type Level -> Elab Level a
-mismatch msg exp act = do
-  ctx <- askContext
-  err $ Mismatch msg (ctx :|-: (exp, act))
+mismatch :: ErrDoc -> Either ErrDoc (Type Level) -> Type Level -> Elab Level a
+mismatch msg exp act = err $ Mismatch msg exp act
 
-couldNotUnify :: HasCallStack => Type Level -> Type Level -> Elab Level a
+couldNotUnify :: Type Level -> Type Level -> Elab Level a
 couldNotUnify t1 t2 = mismatch (reflow "mismatch") (Right t2) t1
 
-couldNotSynthesize :: HasCallStack => ErrDoc -> Elab Level a
-couldNotSynthesize msg = do
-  ctx <- askContext
-  err $ CouldNotSynthesize msg ctx
+couldNotSynthesize :: ErrDoc -> Elab Level a
+couldNotSynthesize = err . CouldNotSynthesize
 
-freeVariable :: HasCallStack => DName -> Elab Level a
+freeVariable :: DName -> Elab Level a
 freeVariable = err . FreeVariable
 
-expectChecked :: HasCallStack => Maybe (Type Level) -> ErrDoc -> Elab Level (Type Level)
+expectChecked :: Maybe (Type Level) -> ErrDoc -> Elab Level (Type Level)
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 
 -- Patterns
 
-expectMatch :: HasCallStack => (Type Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type Level -> Elab Level out
+expectMatch :: (Type Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type Level -> Elab Level out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifiedType :: HasCallStack => ErrDoc -> Type Level -> Elab Level (UName ::: Type Level, Type Level -> M Level (Type Level))
+expectQuantifiedType :: ErrDoc -> Type Level -> Elab Level (UName ::: Type Level, Type Level -> M Level (Type Level))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: HasCallStack => ErrDoc -> Type Level -> Elab Level (Type Level, Type Level)
+expectFunctionType :: ErrDoc -> Type Level -> Elab Level (Type Level, Type Level)
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: HasCallStack => ErrDoc -> Type Level -> Elab Level (Type Level, Type Level)
+expectProductType :: ErrDoc -> Type Level -> Elab Level (Type Level, Type Level)
 expectProductType = expectMatch unProductT (pretty "(_, _)")
