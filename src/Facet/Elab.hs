@@ -44,6 +44,7 @@ module Facet.Elab
   -- * Errors
 , Err(..)
 , Reason(..)
+, printReason
 ) where
 
 import           Control.Algebra
@@ -509,6 +510,19 @@ data Reason
   | Hole T.Text ErrDoc
   | BadContext Index Level
   deriving (Show)
+
+printReason :: Reason -> ErrDoc
+printReason = \case
+  FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
+  CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> msg
+  Mismatch msg exp act   -> msg
+    </> pretty "expected:" <> print exp
+    </> pretty "  actual:" <> print act
+    where
+    -- line things up nicely for e.g. wrapped function types
+    print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
+  Hole n _T              -> fillSep [reflow "found hole", pretty n, colon, _T ]
+  BadContext n l         -> fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (getLevel l) ]
 
 
 printTypeInContext :: HasCallStack => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> Elab Level ErrDoc
