@@ -362,13 +362,13 @@ t .= b = t </> b
 
 printCoreModule :: Monad m => CM.Module m N.Level -> m Print
 printCoreModule (CM.Module n ds)
-  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> CV.foldContext printBinding printCoreValue (Ctx.Metacontext []) Ctx.empty t <*> printCoreDef d) ds
+  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> (printCoreValue (N.Level 0) =<< CV.mapValue [] Nil t) <*> printCoreDef d) ds
 
 printCoreDef :: Monad m => CM.Def m N.Level -> m Print
 printCoreDef = \case
-  CM.DTerm b  -> CV.foldContext printBinding printCoreValue (Ctx.Metacontext []) Ctx.empty b
-  CM.DType b  -> CV.foldContext printBinding printCoreValue (Ctx.Metacontext []) Ctx.empty b
-  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (CV.foldContext printBinding printCoreValue (Ctx.Metacontext []) Ctx.empty) . first pretty) cs
+  CM.DTerm b  -> printCoreValue (N.Level 0) =<< CV.mapValue [] Nil b
+  CM.DType b  -> printCoreValue (N.Level 0) =<< CV.mapValue [] Nil b
+  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (printCoreValue (N.Level 0) <=< CV.mapValue [] Nil) . first pretty) cs
 
 
 printSurfaceModule :: (Foldable f, Functor f) => SM.Module f a -> Print
