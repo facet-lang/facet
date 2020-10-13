@@ -25,6 +25,7 @@ module Facet.Print.Applicative
 , fillCat
 , cat
 , punctuate
+, times
 , (<:>)
 , empty
 , enclose
@@ -61,6 +62,7 @@ module Facet.Print.Applicative
 ) where
 
 import           Control.Applicative (liftA2, liftA3)
+import qualified Data.Semigroup as S
 import           Silkscreen (Printer)
 import qualified Silkscreen as S
 
@@ -165,6 +167,9 @@ punctuate s = go
   go [x]    = [x]
   go (x:xs) = x <:> s : go xs
 
+
+times :: (Functor f, Semigroup s) => Int -> f s -> f s
+times i = fmap (S.stimes i)
 
 (<:>) :: (Applicative f, Semigroup s) => f s -> f s -> f s
 (<:>) = liftA2 (<>)
