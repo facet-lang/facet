@@ -412,8 +412,9 @@ comp = withSpan $ \case
 
 
 pattern
-  :: Spanned (SP.Pattern Spanned UName)
-  -> Check Level (CP.Pattern (UName ::: Type Level))
+  :: Eq v
+  => Spanned (SP.Pattern Spanned UName)
+  -> Check v (CP.Pattern (UName ::: Type v))
 pattern = withSpan $ \case
   SP.Wildcard -> pure CP.Wildcard
   SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
