@@ -44,7 +44,6 @@ library
     Facet.Core.Value
     Facet.Elab
     Facet.Env
-    Facet.Error
     Facet.Functor.Higher
     Facet.Name
     Facet.Parser

@@ -41,6 +41,8 @@ module Facet.Elab
 , elabDecl
   -- * Modules
 , elabModule
+  -- * Errors
+, Err(..)
 ) where
 
 import           Control.Algebra
@@ -63,7 +65,6 @@ import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Value hiding (bound, global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
-import           Facet.Error
 import           Facet.Name (Index(..), Level(..), QName(..), UName, indexToLevel)
 import qualified Facet.Name as N
 import           Facet.Pretty (reflow)
@@ -77,6 +78,8 @@ import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding ((**))
+import           Prettyprinter (Doc)
+import           Prettyprinter.Render.Terminal (AnsiStyle)
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 import           Text.Parser.Position (Spanned)
 
@@ -116,9 +119,9 @@ instance Monad (Elab v) where
 
 instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw Err) (Elab v) where
   alg hdl sig ctx = case sig of
-    L renv -> Elab $ alg (elab . hdl) (inj renv) ctx
-    R (L rctx) -> Elab $ alg (elab . hdl) (inj rctx) ctx
-    R (R (L rspan)) -> Elab $ alg (elab . hdl) (inj rspan) ctx
+    L renv              -> Elab $ alg (elab . hdl) (inj renv) ctx
+    R (L rctx)          -> Elab $ alg (elab . hdl) (inj rctx) ctx
+    R (R (L rspan))     -> Elab $ alg (elab . hdl) (inj rspan) ctx
     R (R (R (L smctx))) -> Elab $ alg (elab . hdl) (inj smctx) ctx
     R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
@@ -488,6 +491,17 @@ withSpan k (s, a) = setSpan s (k a)
 
 withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (Span, a) -> b -> m c
 withSpan' k (s, a) b = setSpan s (k a b)
+
+
+type ErrDoc = Doc AnsiStyle
+
+data Err = Err
+  { span    :: Span
+  , reason  :: ErrDoc
+  , context :: [ErrDoc]
+  }
+  deriving (Show)
+
 
 printTypeInContext :: HasCallStack => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> Elab Level ErrDoc
 printTypeInContext mctx ctx = fmap P.getPrint . rethrow . (P.printCoreValue (Level 0) <=< rethrow . mapValue mctx ctx)
