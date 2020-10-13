@@ -100,7 +100,7 @@ annotate = fmap . S.annotate
 
 
 -- | Try to unwrap the argument, if it will fit.
-group :: (Applicative f, Printer p) => f p -> f p
+group :: (Functor f, Printer p) => f p -> f p
 group = fmap S.group
 
 -- | Print the first argument by default, or the second when an enclosing 'group' flattens it.
@@ -109,20 +109,20 @@ flatAlt = liftA2 S.flatAlt
 
 
 -- | Indent lines in the argument to the current column.
-align :: (Applicative f, Printer p) => f p -> f p
+align :: (Functor f, Printer p) => f p -> f p
 align = fmap S.align
 
 -- | Indent following lines in the argument to the current column + some delta.
-hang :: (Applicative f, Printer p) => Int -> f p -> f p
+hang :: (Functor f, Printer p) => Int -> f p -> f p
 hang = fmap . S.hang
 
 -- | Indent lines in the argument to the current column + some delta.
-indent :: (Applicative f, Printer p) => Int -> f p -> f p
+indent :: (Functor f, Printer p) => Int -> f p -> f p
 indent = fmap . S.indent
 
 
 -- | @'nest' i p@ changes the indentation level for new lines in @p@ by @i@.
-nest :: (Applicative f, Printer p) => Int -> f p -> f p
+nest :: (Functor f, Printer p) => Int -> f p -> f p
 nest = fmap . S.nest
 
 
