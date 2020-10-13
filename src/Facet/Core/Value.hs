@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
@@ -59,6 +60,7 @@ infixr 0 :->
 data Head a
   = Global QName
   | Local a
+  deriving (Foldable, Functor, Traversable)
 
 unHead :: (QName -> b) -> (a -> b) -> Head a -> b
 unHead f g = \case
