@@ -174,8 +174,8 @@ shift d = go
   binder b = fmap go . b . shift invd
 
 
-foldContext :: (HasCallStack, Monad m) => (Context a -> Level -> a) -> (Value m a -> m a) -> Context a -> Value m Level -> m a
-foldContext bd fold env = fold <=< go env
+foldContext :: (HasCallStack, Monad m) => (Metacontext a -> Context a -> Level -> a) -> (Value m a -> m a) -> Metacontext a -> Context a -> Value m Level -> m a
+foldContext bd fold mctx env = fold <=< go env
   where
   go env = \case
     Type     -> pure Type
@@ -189,7 +189,7 @@ foldContext bd fold env = fold <=< go env
     TLam n b -> pure $ TLam n $ bind env n b
     Lam  ps  -> pure $ Lam $ map (\ (p, b) -> (p, bindP env p b)) ps
     f :$ as  -> do
-      let f' = unHead global (bound . bd env) f
+      let f' = unHead global (bound . bd mctx env) f
       as' <- traverse (go env) as
       f' $$* as'
     TPrd l r -> TPrd <$> go env l <*> go env r
@@ -203,11 +203,18 @@ foldContext bd fold env = fold <=< go env
     v' <- traverse fold v
     go (foldl (|>) env (zipWith (:::) names (toList v'))) b'
 
-foldContextAll :: (HasCallStack, Monad m) => (Context a -> Level -> a) -> (Value m a -> m a) -> Context (Value m Level) -> m (Context a)
-foldContextAll bd fold = go . elems
+foldContextAll :: (HasCallStack, Monad m) => (Metacontext a -> Context a -> Level -> a) -> (Value m a -> m a) -> Metacontext (Value m Level) -> Context (Value m Level) -> m (Metacontext a, Context a)
+foldContextAll bd fold mctx ctx = go (elems ctx)
   where
-  go Nil     = pure C.empty
+  metas []     = pure (Metacontext [])
+  metas (m:ms) = do
+    ms' <- metas ms
+    m'  <- foldContext bd fold ms' C.empty (ty m)
+    pure $ (tm m ::: m') <| ms'
+  go Nil     = do
+    mctx' <- metas (getMetacontext mctx)
+    pure (mctx', C.empty)
   go (as:>a) = do
-    as' <- go as
-    a'  <- foldContext bd fold as' (ty a)
-    pure $ as' |> (tm a ::: a')
+    (mctx', as') <- go as
+    a' <- foldContext bd fold mctx' as' (ty a)
+    pure (mctx', as' |> (tm a ::: a'))

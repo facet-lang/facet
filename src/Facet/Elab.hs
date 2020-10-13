@@ -480,8 +480,8 @@ withSpan k (s, a) = setSpan s (k a)
 withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (Span, a) -> b -> m c
 withSpan' k (s, a) b = setSpan s (k a b)
 
-printTypeInContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => Context P.Print -> Type -> m ErrDoc
-printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printBinding P.printCoreValue ctx
+printTypeInContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => Metacontext P.Print -> Context P.Print -> Type -> m ErrDoc
+printTypeInContext mctx ctx = fmap P.getPrint . rethrow . foldContext P.printBinding P.printCoreValue mctx ctx
 
 showContext :: Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m => m String
 showContext = do
@@ -494,21 +494,23 @@ showContext = do
   shown <- rethrow $ go ctx
   pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> shows t {-. showString " : " . _T-}) (toList shown))) $ "]"
 
-printContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => m (Context P.Print)
+printContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => m (Metacontext P.Print, Context P.Print)
 printContext = do
+  mctx <- get @(Metacontext Type)
   ctx <- ask @(Context Type)
-  rethrow $ foldContextAll P.printBinding P.printCoreValue ctx
+  rethrow $ foldContextAll P.printBinding P.printCoreValue mctx ctx
 
 printType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => Type -> m ErrDoc
 -- FIXME: this is still resulting in out of bounds printing
 printType t = do
-  ctx <- printContext
-  printTypeInContext ctx t
+  (mctx, ctx) <- printContext
+  printTypeInContext mctx ctx t
 
 err :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => ErrDoc -> m a
 err reason = do
   span <- ask
-  ctx <- printContext
+  (mctx, ctx) <- printContext
+  -- FIXME: show the metacontext
   throwError $ Err span (group reason) (zipWith (\ i -> P.getPrint . P.printContextEntry (Level i)) [0..] (toList (elems ctx)))
 
 mismatch :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => ErrDoc -> ErrDoc -> ErrDoc -> m a
@@ -521,9 +523,9 @@ mismatch msg exp act = err $ msg
 
 couldNotUnify :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => Type -> Type -> m a
 couldNotUnify t1 t2 = do
-  ctx <- printContext
-  t1' <- printTypeInContext ctx t1
-  t2' <- printTypeInContext ctx t2
+  (mctx, ctx) <- printContext
+  t1' <- printTypeInContext mctx ctx t1
+  t2' <- printTypeInContext mctx ctx t2
   mismatch (reflow "mismatch") t2' t1'
 
 couldNotSynthesize :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => ErrDoc -> m a

@@ -197,9 +197,10 @@ printCoreValue = go (N.Level 0)
     b' <- go (N.incrLevel d) =<< b (snd <$> p')
     pure $ printCorePattern (fst <$> p') <+> arrow <+> b'
 
-printBinding :: Ctx.Context Print -> N.Level -> Print
+printBinding :: Ctx.Metacontext Print -> Ctx.Context Print -> N.Level -> Print
 -- FIXME: there’s no way to recover whether this was a term or type variable binding.
-printBinding ctx l = prec Ann $ printContextEntry l (ctx Ctx.! N.levelToIndex (Ctx.level ctx) l)
+-- FIXME: look up metas in mctx
+printBinding mctx ctx l = prec Ann $ printContextEntry l (ctx Ctx.! N.levelToIndex (Ctx.level ctx) l)
 
 printContextEntry :: N.Level -> N.UName ::: Print -> Print
 printContextEntry l (n ::: _T) = ann (cbound n tvar l ::: _T)
@@ -356,13 +357,13 @@ t .= b = t </> b
 
 printCoreModule :: Monad m => CM.Module m N.Level -> m Print
 printCoreModule (CM.Module n ds)
-  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> CV.foldContext printBinding printCoreValue Ctx.empty t <*> printCoreDef d) ds
+  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> CV.foldContext printBinding printCoreValue (Ctx.Metacontext []) Ctx.empty t <*> printCoreDef d) ds
 
 printCoreDef :: Monad m => CM.Def m N.Level -> m Print
 printCoreDef = \case
-  CM.DTerm b  -> CV.foldContext printBinding printCoreValue Ctx.empty b
-  CM.DType b  -> CV.foldContext printBinding printCoreValue Ctx.empty b
-  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (CV.foldContext printBinding printCoreValue Ctx.empty) . first pretty) cs
+  CM.DTerm b  -> CV.foldContext printBinding printCoreValue (Ctx.Metacontext []) Ctx.empty b
+  CM.DType b  -> CV.foldContext printBinding printCoreValue (Ctx.Metacontext []) Ctx.empty b
+  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (CV.foldContext printBinding printCoreValue (Ctx.Metacontext []) Ctx.empty) . first pretty) cs
 
 
 printSurfaceModule :: (Foldable f, Functor f) => SM.Module f a -> Print
