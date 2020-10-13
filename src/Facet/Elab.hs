@@ -512,7 +512,7 @@ data Reason
   deriving (Show)
 
 printReason :: Reason -> ErrDoc
-printReason = \case
+printReason = group . \case
   FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> msg
   Mismatch msg exp act   -> msg
