@@ -191,9 +191,9 @@ unify t1 t2 = go t1 t2
 -- FIXME: is it possible to do something clever with delimited continuations or coroutines to bind variables outside our scope?
 
 
-meta :: Has (State (Metacontext a)) sig m => UName ::: a -> m (Type Level)
+meta :: UName ::: Val Level -> Elab Level (Type Level)
 meta t = do
-  mctx <- get @(Metacontext _)
+  mctx <- getMetacontext
   put (t <| mctx)
   pure $ CV.bound (metalevel mctx)
 
@@ -212,7 +212,7 @@ switch (Synth m) = \case
 global
   :: N.DName
   -> Synth Level (Val Level)
-global n = Synth $ asks (Env.lookup n) >>= \case
+global n = Synth $ Env.lookup n <$> askEnv >>= \case
   Just b  -> do
     ctx <- ask @(Context (Type Level))
     pure (CV.global (tm b :.: n) ::: shift (level ctx) (ty b))
@@ -222,7 +222,7 @@ bound
   :: Index
   -> Synth Level (Val Level)
 bound n = Synth $ do
-  ctx <- ask @(Context (Type _))
+  ctx <- askContext
   let level = indexToLevel (length ctx) n
   case ctx !? n of
     Just (_ ::: _T) -> pure (CV.bound level ::: _T)
@@ -248,27 +248,25 @@ f $$ a = Synth $ do
 
 
 (|-)
-  :: Has (Reader (Context (Type Level)) :+: Reader (Env.Env (Type Level)) :+: Reader Span) sig m
-  => UName ::: Type Level
+  :: UName ::: Type Level
   -> (a -> Elab Level b)
-  -> m (a -> M Level b)
+  -> Elab Level (a -> M Level b)
 t |- f = do
   span <- ask @Span
   ctx <- ask
-  env <- ask @(Env.Env (Type Level))
+  env <- askEnv
   pure $ runReader span . runReader (ctx |> t) . runReader env . elab . f
 
 infix 1 |-
 
 (|-*)
-  :: Has (Reader (Context (Type Level)) :+: Reader (Env.Env (Type Level)) :+: Reader Span) sig m
-  => CP.Pattern (UName ::: Type Level)
+  :: CP.Pattern (UName ::: Type Level)
   -> (CP.Pattern a -> Elab Level b)
-  -> m (CP.Pattern a -> M Level b)
+  -> Elab Level (CP.Pattern a -> M Level b)
 p |-* f = do
   span <- ask @Span
-  ctx <- ask
-  env <- ask @(Env.Env (Type Level))
+  ctx <- askContext
+  env <- askEnv
   pure $ runReader span . runReader (foldl' (|>) ctx p) . runReader env . elab . f
 
 infix 1 |-*
@@ -495,9 +493,9 @@ withSpan' k (s, a) b = setSpan s (k a b)
 printTypeInContext :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> m ErrDoc
 printTypeInContext mctx ctx = fmap P.getPrint . rethrow . (P.printCoreValue (Level 0) <=< rethrow . mapValue mctx ctx)
 
-showContext :: Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m => m String
+showContext :: Elab Level String
 showContext = do
-  ctx <- asks @(Context (Type _)) elems
+  Context ctx <- askContext
   let go Nil     = pure Nil
       go (as:>a) = do
         as' <- go as
@@ -506,29 +504,29 @@ showContext = do
   shown <- rethrow $ go ctx
   pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> shows t {-. showString " : " . _T-}) (toList shown))) $ "]"
 
-printContext :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => m ([Value (M Level) P.Print], Stack (Value (M Level) P.Print))
+printContext :: HasCallStack => Elab Level ([Value (M Level) P.Print], Stack (Value (M Level) P.Print))
 printContext = do
-  Metacontext mctx <- get @(Metacontext (Type _))
-  ctx <- ask @(Context (Type _))
+  Metacontext mctx <- getMetacontext
+  Context ctx <- askContext
   -- FIXME: This prints the wrong thing w.r.t. showing the types in error messages; e.g. it shows an expected type of Type -> (Type -> Type) -> Type when it should show the names A0/B1.
-  rethrow $ mapValueAll (ty <$> mctx) (ty <$> elems ctx)
+  rethrow $ mapValueAll (ty <$> mctx) (ty <$> ctx)
 
-printType :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => Type Level -> m ErrDoc
+printType :: HasCallStack => Type Level -> Elab Level ErrDoc
 printType t = do
   (mctx, ctx) <- printContext
   printTypeInContext mctx ctx t
 
-err :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => ErrDoc -> m a
+err :: HasCallStack => ErrDoc -> Elab Level a
 err reason = do
   span <- ask
-  ctx <- ask @(Context (Type Level))
+  ctx <- askContext
   (mctx, ctx') <- printContext
   ctx' <- rethrow $ traverse (P.printCoreValue (level ctx)) ctx'
   -- FIXME: show the metacontext
   -- FIXME: show the types as well as the names
   throwError $ Err span (group reason) (zipWith3 (\ i n -> P.getPrint . P.printContextEntry (Level i) . (n :::)) [0..] (toList (names ctx)) (toList ctx'))
 
-mismatch :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => ErrDoc -> ErrDoc -> ErrDoc -> m a
+mismatch :: HasCallStack => ErrDoc -> ErrDoc -> ErrDoc -> Elab Level a
 mismatch msg exp act = err $ msg
   </> pretty "expected:" <> print exp
   </> pretty "  actual:" <> print act
@@ -536,35 +534,35 @@ mismatch msg exp act = err $ msg
   -- line things up nicely for e.g. wrapped function types
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
-couldNotUnify :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => Type Level -> Type Level -> m a
+couldNotUnify :: HasCallStack => Type Level -> Type Level -> Elab Level a
 couldNotUnify t1 t2 = do
   (mctx, ctx) <- printContext
   t1' <- printTypeInContext mctx ctx t1
   t2' <- printTypeInContext mctx ctx t2
   mismatch (reflow "mismatch") t2' t1'
 
-couldNotSynthesize :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => ErrDoc -> m a
+couldNotSynthesize :: HasCallStack => ErrDoc -> Elab Level a
 couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softline <> msg
 
-freeVariable :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => ErrDoc -> m a
+freeVariable :: HasCallStack => ErrDoc -> Elab Level a
 freeVariable v = err $ fillSep [reflow "variable not in scope:", v]
 
-expectChecked :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => Maybe (Type Level) -> ErrDoc -> m (Type Level)
+expectChecked :: HasCallStack => Maybe (Type Level) -> ErrDoc -> Elab Level (Type Level)
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 
 -- Patterns
 
-expectMatch :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => (Type Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type Level -> m out
+expectMatch :: HasCallStack => (Type Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type Level -> Elab Level out
 expectMatch pat exp s _T = do
   _T' <- printType _T
   maybe (mismatch s exp _T') pure (pat _T)
 
-expectQuantifiedType :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => ErrDoc -> Type Level -> m (UName ::: Type Level, Type Level -> M Level (Type Level))
+expectQuantifiedType :: HasCallStack => ErrDoc -> Type Level -> Elab Level (UName ::: Type Level, Type Level -> M Level (Type Level))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => ErrDoc -> Type Level -> m (Type Level, Type Level)
+expectFunctionType :: HasCallStack => ErrDoc -> Type Level -> Elab Level (Type Level, Type Level)
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => ErrDoc -> Type Level -> m (Type Level, Type Level)
+expectProductType :: HasCallStack => ErrDoc -> Type Level -> Elab Level (Type Level, Type Level)
 expectProductType = expectMatch unProductT (pretty "(_, _)")
