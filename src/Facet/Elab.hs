@@ -228,7 +228,7 @@ bound n = Synth $ do
 
 hole
   :: T.Text
-  -> Check Level a
+  -> Check v a
 hole n = Check $ \ _T -> err $ Hole n _T
 
 ($$)
