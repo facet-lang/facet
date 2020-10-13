@@ -428,9 +428,9 @@ pattern = withSpan $ \case
 -- Declarations
 
 elabDecl
-  :: HasCallStack
+  :: (HasCallStack, Eq v)
   => Spanned (SD.Decl Spanned a)
-  -> Check Level (Expr Level) ::: Check Level (Type Level)
+  -> Check v (Expr v) ::: Check v (Type v)
 elabDecl = withSpans $ \case
   (n ::: t) SD.:=> b ->
     let b' ::: _B = elabDecl b
@@ -439,12 +439,15 @@ elabDecl = withSpans $ \case
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n b' ::: checkElab (switch (checkElab (elabType t) --> local (|> (n ::: (Type :: Type Level) ::: (Type :: Type Level))) _B))
+    in lam n b' ::: checkElab (switch (checkElab (elabType t) --> local (|> (n ::: (Type `asParameterOf` b') ::: (Type `asParameterOf` b'))) _B))
 
   t SD.:= b ->
     checkElab (elabExpr b) ::: checkElab (elabType t)
   where
   withSpans f (s, d) = let t ::: _T = f d in setSpan s t ::: setSpan s _T
+
+  asParameterOf :: a -> f a -> a
+  asParameterOf = const
 
 
 -- Modules
