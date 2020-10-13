@@ -152,9 +152,10 @@ synthElab f = Synth (f Nothing)
 
 
 unify
-  :: Type Level
-  -> Type Level
-  -> Elab Level (Type Level)
+  :: Eq v
+  => Type v
+  -> Type v
+  -> Elab v (Type v)
 unify t1 t2 = go t1 t2
   where
   go t1 t2 = case (t1, t2) of
