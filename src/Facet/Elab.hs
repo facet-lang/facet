@@ -103,7 +103,7 @@ instance Algebra (State (Metacontext (Type v)) :+: Throw Err) (M v) where
     R throw -> M $ alg (rethrow . hdl) (inj throw) ctx
 
 
-newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (M v)) :+: Reader (Context (Type v)) :+: Reader Span :+: State (Metacontext (Type v)) :+: Throw Err) sig m => m a }
+newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Type v)) :+: Reader Span :+: State (Metacontext (Type v)) :+: Throw Err) sig m => m a }
 
 instance Functor (Elab v) where
   fmap f (Elab m) = Elab (fmap f m)
@@ -115,7 +115,7 @@ instance Applicative (Elab v) where
 instance Monad (Elab v) where
   Elab m >>= f = Elab $ m >>= elab . f
 
-instance Algebra (Reader (Env.Env (M v)) :+: Reader (Context (Type v)) :+: Reader Span :+: State (Metacontext (Type v)) :+: Throw Err) (Elab v) where
+instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Type v)) :+: Reader Span :+: State (Metacontext (Type v)) :+: Throw Err) (Elab v) where
   alg hdl sig ctx = case sig of
     L renv -> Elab $ alg (elab . hdl) (inj renv) ctx
     R (L rctx) -> Elab $ alg (elab . hdl) (inj rctx) ctx
@@ -125,7 +125,7 @@ instance Algebra (Reader (Env.Env (M v)) :+: Reader (Context (Type v)) :+: Reade
 
 
 newtype Check v a = Check { runCheck :: Type v -> Elab v a }
-  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (M v)) :+: Reader (Context (Type v)) :+: Reader Span :+: State (Metacontext (Type v)) :+: Throw Err), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
+  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (Type v)) :+: Reader (Context (Type v)) :+: Reader Span :+: State (Metacontext (Type v)) :+: Throw Err), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
 
 newtype Synth v a = Synth { synth :: Elab v (a ::: Type v) }
 
@@ -238,27 +238,27 @@ f $$ a = Synth $ do
 
 
 (|-)
-  :: Has (Reader (Context (Type Level)) :+: Reader (Env.Env (M Level)) :+: Reader Span) sig m
+  :: Has (Reader (Context (Type Level)) :+: Reader (Env.Env (Type Level)) :+: Reader Span) sig m
   => UName ::: Type Level
   -> (a -> Elab Level b)
   -> m (a -> M Level b)
 t |- f = do
   span <- ask @Span
   ctx <- ask
-  env <- ask @(Env.Env (M Level))
+  env <- ask @(Env.Env (Type Level))
   pure $ runReader span . runReader (ctx |> t) . runReader env . elab . f
 
 infix 1 |-
 
 (|-*)
-  :: Has (Reader (Context (Type Level)) :+: Reader (Env.Env (M Level)) :+: Reader Span) sig m
+  :: Has (Reader (Context (Type Level)) :+: Reader (Env.Env (Type Level)) :+: Reader Span) sig m
   => CP.Pattern (UName ::: Type Level)
   -> (CP.Pattern a -> Elab Level b)
   -> m (CP.Pattern a -> M Level b)
 p |-* f = do
   span <- ask @Span
   ctx <- ask
-  env <- ask @(Env.Env (M Level))
+  env <- ask @(Env.Env (Type Level))
   pure $ runReader span . runReader (foldl' (|>) ctx p) . runReader env . elab . f
 
 infix 1 |-*
@@ -452,11 +452,11 @@ elabModule
   :: (HasCallStack, Has (Throw Err) sig m)
   => Spanned (SM.Module Spanned a)
   -> m (CM.Module (M Level) Level)
-elabModule (s, (SM.Module mname ds)) = runReader s . evalState (mempty @(Env.Env (M Level))) $ do
+elabModule (s, (SM.Module mname ds)) = runReader s . evalState (mempty @(Env.Env (Type Level))) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
-    env <- get @(Env.Env (M Level))
+    env <- get @(Env.Env (Type Level))
     e' ::: _T <- runReader @(Context (Type Level)) empty . runReader env $ do
       let e ::: t = elabDecl d
       _T <- runState (\ _ -> pure) (Metacontext @(Type Level) []) $ elab $ check (t ::: Type)
