@@ -39,8 +39,6 @@ module Facet.Elab
 , elabDecl
   -- * Modules
 , elabModule
-  -- * Errors
-, showContext
 ) where
 
 import           Control.Algebra
@@ -53,7 +51,6 @@ import           Control.Effect.Sum
 import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', toList)
-import           Data.List (intersperse)
 import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
@@ -492,17 +489,6 @@ withSpan' k (s, a) b = setSpan s (k a b)
 
 printTypeInContext :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> m ErrDoc
 printTypeInContext mctx ctx = fmap P.getPrint . rethrow . (P.printCoreValue (Level 0) <=< rethrow . mapValue mctx ctx)
-
-showContext :: Elab Level String
-showContext = do
-  Context ctx <- askContext
-  let go Nil     = pure Nil
-      go (as:>a) = do
-        as' <- go as
-        b'  <- showsPrecValue (Level (length as')) 0 (ty a)
-        pure $ as' :> (tm a ::: b')
-  shown <- rethrow $ go ctx
-  pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> shows t {-. showString " : " . _T-}) (toList shown))) $ "]"
 
 printContext :: HasCallStack => Elab Level ([Value (M Level) P.Print], Stack (Value (M Level) P.Print))
 printContext = do
