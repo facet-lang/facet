@@ -218,7 +218,7 @@ global n = Synth $ Env.lookup n <$> askEnv >>= \case
   Just b  -> do
     ctx <- askContext
     pure (CV.global (tm b :.: n) ::: shift (level ctx) (ty b))
-  Nothing -> freeVariable (pretty n)
+  Nothing -> freeVariable n
 
 bound
   :: Index
@@ -553,8 +553,8 @@ couldNotUnify t1 t2 = do
 couldNotSynthesize :: HasCallStack => ErrDoc -> Elab Level a
 couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softline <> msg
 
-freeVariable :: HasCallStack => ErrDoc -> Elab Level a
-freeVariable v = err $ fillSep [reflow "variable not in scope:", v]
+freeVariable :: HasCallStack => DName -> Elab Level a
+freeVariable v = err $ fillSep [reflow "variable not in scope:", pretty v]
 
 expectChecked :: HasCallStack => Maybe (Type Level) -> ErrDoc -> Elab Level (Type Level)
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
