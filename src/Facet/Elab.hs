@@ -500,6 +500,7 @@ printContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: St
 printContext = do
   mctx <- get @(Metacontext Type)
   ctx <- ask @(Context Type)
+  -- FIXME: This prints the wrong thing w.r.t. showing the types in error messages; e.g. it shows an expected type of Type -> (Type -> Type) -> Type when it should show the names A0/B1.
   rethrow $ mapValueAll (ty <$> getMetacontext mctx) (ty <$> elems ctx)
 
 printType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => Type -> m ErrDoc
