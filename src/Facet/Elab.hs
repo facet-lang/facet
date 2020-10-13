@@ -236,8 +236,8 @@ hole
   => T.Text
   -> Check Level a
 hole n = Check $ \ _T -> do
-  _T' <- printType _T
-  err $ Hole n _T'
+  ctx <- askContext
+  err $ Hole n (ctx :|-: _T)
 
 ($$)
   :: Synth Level (Val Level)
@@ -501,28 +501,33 @@ data Err = Err
   , reason  :: Reason
   , context :: [ErrDoc]
   }
-  deriving (Show)
 
 data Reason
   = FreeVariable DName
   | CouldNotSynthesize ErrDoc
-  | Mismatch ErrDoc ErrDoc ErrDoc
-  | Hole T.Text ErrDoc
+  | Mismatch ErrDoc (Contextual (Val Level ::: Type Level) (Either ErrDoc (Type Level), Type Level))
+  | Hole T.Text (Contextual (Val Level ::: Type Level) (Type Level))
   | BadContext Index Level
-  deriving (Show)
 
-printReason :: Reason -> ErrDoc
-printReason = group . \case
-  FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
-  CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> msg
-  Mismatch msg exp act   -> msg
-    </> pretty "expected:" <> print exp
-    </> pretty "  actual:" <> print act
+printReason :: Reason -> M Level ErrDoc
+printReason = fmap group . \case
+  FreeVariable n                     -> pure $ fillSep [reflow "variable not in scope:", pretty n]
+  CouldNotSynthesize msg             -> pure $ reflow "could not synthesize a type for" <> softline <> msg
+  Mismatch msg (ctx :|-: (exp, act)) -> do
+    (_, ctx') <- mapValueAll [] (ty . ty <$> elems ctx)
+    exp' <- either pure (printTypeInContext [] ctx') exp
+    act' <- printTypeInContext [] ctx' act
+    pure $ msg
+      </> pretty "expected:" <> print exp'
+      </> pretty "  actual:" <> print act'
     where
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
-  Hole n _T              -> fillSep [reflow "found hole", pretty n, colon, _T ]
-  BadContext n l         -> fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (getLevel l) ]
+  Hole n (ctx :|-: _T)               -> do
+    (_, ctx') <- mapValueAll [] (ty . ty <$> elems ctx)
+    _T' <- printTypeInContext [] ctx' _T
+    pure $ fillSep [reflow "found hole", pretty n, colon, _T' ]
+  BadContext n l                     -> pure $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (getLevel l) ]
 
 
 printTypeInContext :: HasCallStack => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> M Level ErrDoc
@@ -550,15 +555,13 @@ err reason = do
   -- FIXME: show the types as well as the names
   throwError $ Err span reason (zipWith3 (\ i n -> P.getPrint . P.printContextEntry (Level i) . (n :::)) [0..] (toList (names ctx)) (toList ctx'))
 
-mismatch :: HasCallStack => ErrDoc -> ErrDoc -> ErrDoc -> Elab Level a
-mismatch msg exp act = err $ Mismatch msg exp act
+mismatch :: HasCallStack => ErrDoc -> Either ErrDoc (Type Level) -> Type Level -> Elab Level a
+mismatch msg exp act = do
+  ctx <- askContext
+  err $ Mismatch msg (ctx :|-: (exp, act))
 
 couldNotUnify :: HasCallStack => Type Level -> Type Level -> Elab Level a
-couldNotUnify t1 t2 = do
-  (mctx, ctx) <- printContext
-  t1' <- rethrow $ printTypeInContext mctx ctx t1
-  t2' <- rethrow $ printTypeInContext mctx ctx t2
-  mismatch (reflow "mismatch") t2' t1'
+couldNotUnify t1 t2 = mismatch (reflow "mismatch") (Right t2) t1
 
 couldNotSynthesize :: HasCallStack => ErrDoc -> Elab Level a
 couldNotSynthesize = err . CouldNotSynthesize
@@ -573,9 +576,7 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 -- Patterns
 
 expectMatch :: HasCallStack => (Type Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type Level -> Elab Level out
-expectMatch pat exp s _T = do
-  _T' <- printType _T
-  maybe (mismatch s exp _T') pure (pat _T)
+expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectQuantifiedType :: HasCallStack => ErrDoc -> Type Level -> Elab Level (UName ::: Type Level, Type Level -> M Level (Type Level))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
