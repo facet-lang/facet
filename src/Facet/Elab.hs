@@ -503,7 +503,6 @@ printContext = do
   rethrow $ mapValueAll (ty <$> getMetacontext mctx) (ty <$> elems ctx)
 
 printType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => Type -> m ErrDoc
--- FIXME: this is still resulting in out of bounds printing
 printType t = do
   (mctx, ctx) <- printContext
   printTypeInContext mctx ctx t
