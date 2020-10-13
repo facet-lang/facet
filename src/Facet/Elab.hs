@@ -12,7 +12,9 @@
 module Facet.Elab
 ( M(..)
 , Context
+, Val
 , Type
+, Expr
 , Elab(..)
 , Check(..)
 , Synth(..)
