@@ -62,6 +62,9 @@ module Facet.Print.Applicative
 , pipe
   -- * Precedence
 , prec
+, leftAssoc
+, rightAssoc
+, infix_
   -- * Re-exports
 , S.Pretty
 , S.Printer(S.Ann)
@@ -281,3 +284,12 @@ pipe = pure S.pipe
 
 prec :: (Functor f, S.PrecedencePrinter p, Ord (S.Level p)) => S.Level p -> f p -> f p
 prec l = fmap (S.prec l)
+
+leftAssoc :: (Functor f, S.PrecedencePrinter p, Ord (S.Level p)) => S.Level p -> S.Level p -> (f p -> f p -> f p) -> (f p -> f p -> f p)
+leftAssoc pl pr = infix_ pl id (prec pr)
+
+rightAssoc :: (Functor f, S.PrecedencePrinter p, Ord (S.Level p)) => S.Level p -> S.Level p -> (f p -> f p -> f p) -> (f p -> f p -> f p)
+rightAssoc pr pl = infix_ pr (prec pl) id
+
+infix_ :: (Functor f, S.PrecedencePrinter p, Ord (S.Level p)) => S.Level p -> (f p -> f p) -> (f p -> f p) -> (f p -> f p -> f p) -> (f p -> f p -> f p)
+infix_ p fl fr op l r = prec p $ fl l `op` fr r
