@@ -377,9 +377,9 @@ unit :: Synth v (Expr v)
 unit = Synth . pure $ Unit ::: TUnit
 
 (**)
-  :: Check Level (Expr Level)
-  -> Check Level (Expr Level)
-  -> Check Level (Expr Level)
+  :: Check v (Expr v)
+  -> Check v (Expr v)
+  -> Check v (Expr v)
 l ** r = Check $ \ _T -> do
   (_L, _R) <- expectProductType "when checking product" _T
   l' <- check (l ::: _L)
