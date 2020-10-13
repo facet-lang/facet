@@ -174,8 +174,8 @@ shift d = go
   binder b = fmap go . b . shift invd
 
 
--- FIXME: m can extend the metacontext, invalidating this as we move under binders.
 mapValue :: (HasCallStack, Monad m) => [Value m a] -> Stack (Value m a) -> Value m Level -> m (Value m a)
+-- FIXME: m can extend the metacontext, invalidating this as we move under binders.
 mapValue mctx = go
   where
   go ctx = \case
