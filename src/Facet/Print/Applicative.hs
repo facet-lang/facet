@@ -61,6 +61,7 @@ module Facet.Print.Applicative
 , equals
 , pipe
   -- * Precedence
+, setPrec
 , prec
 , leftAssoc
 , rightAssoc
@@ -281,6 +282,9 @@ pipe = pure S.pipe
 
 
 -- Precedence
+
+setPrec :: (Functor f, S.PrecedencePrinter p) => S.Level p -> f p -> f p
+setPrec p = fmap (S.setPrec p)
 
 prec :: (Functor f, S.PrecedencePrinter p, Ord (S.Level p)) => S.Level p -> f p -> f p
 prec l = fmap (S.prec l)
