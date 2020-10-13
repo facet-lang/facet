@@ -10,6 +10,7 @@ module Facet.Context
 , names
 , (!?)
 , (!)
+, Contextual(..)
   -- * Metacontexts
 , Metacontext(..)
 , (<|)
@@ -43,6 +44,10 @@ c !? i = elems c S.!? getIndex i
 
 (!) :: HasCallStack => Context a -> Index -> UName ::: a
 c ! i = elems c S.! getIndex i
+
+
+data Contextual a b = Context a :|-: b
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
 newtype Metacontext a = Metacontext { getMetacontext :: [UName ::: a] }
