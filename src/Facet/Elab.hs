@@ -17,6 +17,7 @@ module Facet.Elab
 , Synth(..)
 , check
 , unify
+, Metacontext(..)
   -- * General
 , global
   -- * Types
@@ -82,7 +83,7 @@ type Val = Value M Level
 type Type = Value M Level
 type Expr = Value M Level
 
-newtype M a = M { rethrow :: forall sig m . Has (Throw Err) sig m => m a }
+newtype M a = M { rethrow :: forall sig m . Has (State Metacontext :+: Throw Err) sig m => m a }
 
 instance Functor M where
   fmap f (M m) = M (fmap f m)
@@ -94,11 +95,13 @@ instance Applicative M where
 instance Monad M where
   M m >>= f = M $ m >>= rethrow . f
 
-instance Algebra (Throw Err) M where
-  alg hdl sig ctx = M $ alg (rethrow . hdl) (inj sig) ctx
+instance Algebra (State Metacontext :+: Throw Err) M where
+  alg hdl sig ctx = case sig of
+    L smctx -> M $ alg (rethrow . hdl) (inj smctx) ctx
+    R throw -> M $ alg (rethrow . hdl) (inj throw) ctx
 
 
-newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Env.Env M) :+: Reader (Context Type) :+: Reader Span :+: Throw Err) sig m => m a }
+newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Env.Env M) :+: Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -110,16 +113,17 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= elab . f
 
-instance Algebra (Reader (Env.Env M) :+: Reader (Context Type) :+: Reader Span :+: Throw Err) Elab where
+instance Algebra (Reader (Env.Env M) :+: Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) Elab where
   alg hdl sig ctx = case sig of
     L renv -> Elab $ alg (elab . hdl) (inj renv) ctx
     R (L rctx) -> Elab $ alg (elab . hdl) (inj rctx) ctx
     R (R (L rspan)) -> Elab $ alg (elab . hdl) (inj rspan) ctx
-    R (R (R throw)) -> Elab $ alg (elab . hdl) (inj throw) ctx
+    R (R (R (L smctx))) -> Elab $ alg (elab . hdl) (inj smctx) ctx
+    R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
-  deriving (Algebra (Reader Type :+: Reader (Env.Env M) :+: Reader (Context Type) :+: Reader Span :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
+  deriving (Algebra (Reader Type :+: Reader (Env.Env M) :+: Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
@@ -170,6 +174,26 @@ unify t1 t2 = go t1 t2
   goS Nil        Nil        = Just (pure Nil)
   goS (i1 :> l1) (i2 :> l2) = liftA2 (:>) <$> goS i1 i2 <*> Just (go l1 l2)
   goS _          _          = Nothing
+
+
+-- FIXME: is it possible to do something clever with delimited continuations or coroutines to bind variables outside our scope?
+
+
+newtype Metacontext = Metacontext { getMetaContext :: [UName ::: Type] }
+
+(<|) :: UName ::: Type -> Metacontext -> Metacontext
+a <| Metacontext as = Metacontext (a:as)
+
+infixl 5 <|
+
+metalevel :: Metacontext -> Level
+metalevel = Level . (`subtract` 1) . negate . length . getMetaContext
+
+meta :: Has (State Metacontext) sig m => UName ::: Type -> m Type
+meta t = do
+  mctx <- get @Metacontext
+  put (t <| mctx)
+  pure $ CV.bound (metalevel mctx)
 
 
 -- General
@@ -442,8 +466,8 @@ elabModule (s, (SM.Module mname ds)) = runReader s . evalState (mempty @(Env.Env
     env <- get @(Env.Env M)
     e' ::: _T <- runReader @(Context Type) empty . runReader env $ do
       let e ::: t = elabDecl d
-      _T <- elab $ check (t ::: Type)
-      e' <- elab $ check (e ::: _T)
+      _T <- runState (\ _ -> pure) (Metacontext []) $ elab $ check (t ::: Type)
+      e' <- runState (\ _ -> pure) (Metacontext []) $ elab $ check (e ::: _T)
       pure $ e' ::: _T
 
     modify $ Env.insert (mname :.: n ::: _T)
@@ -465,10 +489,10 @@ withSpan k (s, a) = setSpan s (k a)
 withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (Span, a) -> b -> m c
 withSpan' k (s, a) b = setSpan s (k a b)
 
-printTypeInContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => Context P.Print -> Type -> m ErrDoc
+printTypeInContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => Context P.Print -> Type -> m ErrDoc
 printTypeInContext ctx = fmap P.getPrint . rethrow . foldContext P.printBinding P.printCoreValue ctx
 
-showContext :: Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m => m String
+showContext :: Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m => m String
 showContext = do
   ctx <- asks @(Context Type) elems
   let go Nil     = pure Nil
@@ -479,24 +503,24 @@ showContext = do
   shown <- rethrow $ go ctx
   pure $ showChar '[' . foldr (.) id (intersperse (showString ", ") (map (\ (t ::: _T) -> shows t {-. showString " : " . _T-}) (toList shown))) $ "]"
 
-printContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => m (Context P.Print)
+printContext :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => m (Context P.Print)
 printContext = do
   ctx <- ask @(Context Type)
   rethrow $ foldContextAll P.printBinding P.printCoreValue ctx
 
-printType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => Type -> m ErrDoc
+printType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => Type -> m ErrDoc
 -- FIXME: this is still resulting in out of bounds printing
 printType t = do
   ctx <- printContext
   printTypeInContext ctx t
 
-err :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> m a
+err :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => ErrDoc -> m a
 err reason = do
   span <- ask
   ctx <- printContext
   throwError $ Err span (group reason) (zipWith (\ i -> P.getPrint . P.printContextEntry (Level i)) [0..] (toList (elems ctx)))
 
-mismatch :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> ErrDoc -> ErrDoc -> m a
+mismatch :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => ErrDoc -> ErrDoc -> ErrDoc -> m a
 mismatch msg exp act = err $ msg
   </> pretty "expected:" <> print exp
   </> pretty "  actual:" <> print act
@@ -504,35 +528,35 @@ mismatch msg exp act = err $ msg
   -- line things up nicely for e.g. wrapped function types
   print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
 
-couldNotUnify :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => Type -> Type -> m a
+couldNotUnify :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => Type -> Type -> m a
 couldNotUnify t1 t2 = do
   ctx <- printContext
   t1' <- printTypeInContext ctx t1
   t2' <- printTypeInContext ctx t2
   mismatch (reflow "mismatch") t2' t1'
 
-couldNotSynthesize :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> m a
+couldNotSynthesize :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => ErrDoc -> m a
 couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softline <> msg
 
-freeVariable :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> m a
+freeVariable :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => ErrDoc -> m a
 freeVariable v = err $ fillSep [reflow "variable not in scope:", v]
 
-expectChecked :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => Maybe Type -> ErrDoc -> m Type
+expectChecked :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => Maybe Type -> ErrDoc -> m Type
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 
 -- Patterns
 
-expectMatch :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => (Type -> Maybe out) -> ErrDoc -> ErrDoc -> Type -> m out
+expectMatch :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => (Type -> Maybe out) -> ErrDoc -> ErrDoc -> Type -> m out
 expectMatch pat exp s _T = do
   _T' <- printType _T
   maybe (mismatch s exp _T') pure (pat _T)
 
-expectQuantifiedType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type -> m (UName ::: Type, Type -> M Type)
+expectQuantifiedType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => ErrDoc -> Type -> m (UName ::: Type, Type -> M Type)
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type -> m (Type, Type)
+expectFunctionType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => ErrDoc -> Type -> m (Type, Type)
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: Throw Err) sig m) => ErrDoc -> Type -> m (Type, Type)
+expectProductType :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State Metacontext :+: Throw Err) sig m) => ErrDoc -> Type -> m (Type, Type)
 expectProductType = expectMatch unProductT (pretty "(_, _)")

@@ -16,6 +16,7 @@ module Facet.GHCI
 ) where
 
 import           Control.Carrier.Lift (runM)
+import           Control.Carrier.State.Church (evalState)
 import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, runParser, runParserWithFile, runParserWithString)
 import           Control.Carrier.Throw.Either (runThrow)
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
@@ -24,7 +25,7 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
-import           Facet.Elab (elabModule, rethrow)
+import           Facet.Elab (Metacontext(..), elabModule, rethrow)
 import           Facet.Error
 import           Facet.Name (Index)
 import           Facet.Parser (Facet(..), module', runFacet, whole)
@@ -58,9 +59,9 @@ elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either Notice)) (Spanned (S.Module Spanned Index)) -> String -> m ()
 elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
-  first mkNotice $ rethrow $ do
+  first mkNotice $ do
     mod <- elabModule parsed
-    P.printCoreModule mod
+    evalState (Metacontext []) $ rethrow $ P.printCoreModule mod
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s
