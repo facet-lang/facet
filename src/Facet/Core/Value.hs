@@ -20,6 +20,7 @@ module Facet.Core.Value
 , shift
 , foldContext
 , foldContextAll
+, join
 ) where
 
 import           Control.Applicative (liftA2)
@@ -218,3 +219,23 @@ foldContextAll bd fold mctx ctx = go (elems ctx)
     (mctx', as') <- go as
     a' <- foldContext bd fold mctx' as' (ty a)
     pure (mctx', as' |> (tm a ::: a'))
+
+
+join :: Monad m => Value m (Value m a) -> m (Value m a)
+join = \case
+  Type     -> pure Type
+  Void     -> pure Void
+  TUnit    -> pure TUnit
+  Unit     -> pure Unit
+  t :=> b  -> do
+    t' <- traverse join t
+    pure $ t' :=> bind b
+  TLam n b -> pure $ TLam n (bind b)
+  a :-> b  -> (:->) <$> join a <*> join b
+  Lam cs   -> pure $ Lam (map (fmap bindP) cs)
+  f :$ as  -> (unHead global id f $$*) =<< traverse join as
+  TPrd l r -> TPrd <$> join l <*> join r
+  Prd  l r -> Prd  <$> join l <*> join r
+  where
+  bind  b = join <=< b . bound
+  bindP b = join <=< b . fmap bound
