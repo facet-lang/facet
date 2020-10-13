@@ -43,6 +43,7 @@ module Facet.Elab
 , elabModule
   -- * Errors
 , Err(..)
+, Reason(..)
 ) where
 
 import           Control.Algebra
@@ -499,6 +500,12 @@ data Err = Err
   , reason  :: ErrDoc
   , context :: [ErrDoc]
   }
+  deriving (Show)
+
+data Reason
+  = FreeVariable DName
+  | CouldNotSynthesize ErrDoc
+  | Mismatch ErrDoc ErrDoc
   deriving (Show)
 
 
