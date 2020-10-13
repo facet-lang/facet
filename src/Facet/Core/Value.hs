@@ -3,6 +3,7 @@
 module Facet.Core.Value
 ( Value(..)
 , Head(..)
+, unHead
 , showsPrecValue
 , global
 , bound
@@ -58,6 +59,11 @@ infixr 0 :->
 data Head a
   = Global QName
   | Local a
+
+unHead :: (QName -> b) -> (a -> b) -> Head a -> b
+unHead f g = \case
+  Global n -> f n
+  Local  n -> g n
 
 
 showsPrecValue :: Monad m => Level -> Int -> Value m Level -> m ShowS
