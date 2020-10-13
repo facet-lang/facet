@@ -180,16 +180,6 @@ unify t1 t2 = go t1 t2
 -- FIXME: is it possible to do something clever with delimited continuations or coroutines to bind variables outside our scope?
 
 
-newtype Metacontext a = Metacontext { getMetaContext :: [UName ::: a] }
-
-(<|) :: UName ::: a -> Metacontext a -> Metacontext a
-a <| Metacontext as = Metacontext (a:as)
-
-infixl 5 <|
-
-metalevel :: Metacontext a -> Level
-metalevel = Level . (`subtract` 1) . negate . length . getMetaContext
-
 meta :: Has (State (Metacontext a)) sig m => UName ::: a -> m Type
 meta t = do
   mctx <- get @(Metacontext _)
