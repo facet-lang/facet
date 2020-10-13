@@ -241,9 +241,9 @@ f $$ a = Synth $ do
 
 
 (|-)
-  :: UName ::: Type Level
-  -> (Val Level -> Elab Level b)
-  -> Elab Level (Val Level -> M Level b)
+  :: UName ::: Type v
+  -> (Val v -> Elab v b)
+  -> Elab v (Val v -> M v b)
 n ::: _T |- f = do
   span <- ask @Span
   ctx <- ask
@@ -253,9 +253,9 @@ n ::: _T |- f = do
 infix 1 |-
 
 (|-*)
-  :: CP.Pattern (UName ::: Type Level)
-  -> (CP.Pattern (Val Level) -> Elab Level b)
-  -> Elab Level (CP.Pattern (Val Level) -> M Level b)
+  :: CP.Pattern (UName ::: Type v)
+  -> (CP.Pattern (Val v) -> Elab v b)
+  -> Elab v (CP.Pattern (Val v) -> M v b)
 p |-* f = do
   span <- ask @Span
   ctx <- askContext
