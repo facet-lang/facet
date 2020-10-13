@@ -514,6 +514,7 @@ err reason = do
   (mctx, ctx') <- printContext
   ctx' <- rethrow $ traverse (P.printCoreValue (level ctx)) ctx'
   -- FIXME: show the metacontext
+  -- FIXME: show the types as well as the names
   throwError $ Err span (group reason) (zipWith3 (\ i n -> P.getPrint . P.printContextEntry (Level i) . (n :::)) [0..] (toList (names ctx)) (toList ctx'))
 
 mismatch :: (HasCallStack, Has (Reader (Context Type) :+: Reader Span :+: State (Metacontext Type) :+: Throw Err) sig m) => ErrDoc -> ErrDoc -> ErrDoc -> m a
