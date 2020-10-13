@@ -208,7 +208,7 @@ printBinding mctx ctx l = printContextEntry l entry
     | otherwise  = ctx Ctx.! N.levelToIndex (Ctx.level ctx) l
 
 printContextEntry :: N.Level -> N.UName ::: Print -> Print
-printContextEntry l (n ::: _T) = prec Ann $ ann (cbound n tvar l ::: _T)
+printContextEntry l (n ::: _T) = cbound n tvar l
 
 
 printSurfaceType :: (Foldable f, Functor f) => Stack Print -> ST.Type f a -> Print
