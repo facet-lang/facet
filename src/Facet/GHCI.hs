@@ -96,7 +96,7 @@ toNotice lvl src Err{ span, reason, metacontext, context } = do
 printReason :: Metacontext (Val Level ::: Type Level) -> Context (Val Level ::: Type Level) -> Reason Level -> M Level ErrDoc
 printReason (Metacontext mctx) ctx = fmap group . \case
   FreeVariable n         -> pure $ fillSep [P.reflow "variable not in scope:", pretty n]
-  CouldNotSynthesize msg -> pure $ P.reflow "could not synthesize a type for" <> softline <> msg
+  CouldNotSynthesize msg -> pure $ P.reflow "could not synthesize a type for" <> softline <> P.reflow msg
   Mismatch msg exp act   -> do
     (mctx', ctx') <- V.mapValueAll (ty . ty <$> mctx) (ty . ty <$> elems ctx)
     exp' <- either (pure . P.reflow) (printTypeInContext mctx' ctx') exp

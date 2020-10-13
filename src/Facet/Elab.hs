@@ -77,7 +77,6 @@ import           GHC.Stack
 import           Prelude hiding ((**))
 import           Prettyprinter (Doc)
 import           Prettyprinter.Render.Terminal (AnsiStyle)
-import           Silkscreen (pretty)
 import           Text.Parser.Position (Spanned)
 
 type Val v = Value (M v) v
@@ -276,7 +275,7 @@ elabType
 elabType = withSpan' $ \case
   ST.Free  n -> switch $ global n
   ST.Bound n -> switch $ bound n
-  ST.Hole  n -> check (hole n) (pretty "hole")
+  ST.Hole  n -> check (hole n) "hole"
   ST.Type    -> switch $ _Type
   ST.Void    -> switch $ _Void
   ST.Unit    -> switch $ _Unit
@@ -342,11 +341,11 @@ elabExpr
 elabExpr = withSpan' $ \case
   SE.Free  n -> switch $ global n
   SE.Bound n -> switch $ bound n
-  SE.Hole  n -> check (hole n) (pretty "hole")
+  SE.Hole  n -> check (hole n) "hole"
   f SE.:$  a -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
-  l SE.:*  r -> check (checkElab (elabExpr l) ** checkElab (elabExpr r)) (pretty "product")
+  l SE.:*  r -> check (checkElab (elabExpr l) ** checkElab (elabExpr r)) "product"
   SE.Unit    -> switch unit
-  SE.Comp cs -> check (comp cs) (pretty "computation")
+  SE.Comp cs -> check (comp cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -496,7 +495,7 @@ data Err v = Err
 
 data Reason v
   = FreeVariable DName
-  | CouldNotSynthesize ErrDoc
+  | CouldNotSynthesize String
   | Mismatch String (Either String (Type v)) (Type v)
   | Hole T.Text (Type v)
   | BadContext Index
@@ -515,13 +514,13 @@ mismatch msg exp act = err $ Mismatch msg exp act
 couldNotUnify :: Type v -> Type v -> Elab v a
 couldNotUnify t1 t2 = mismatch "mismatch" (Right t2) t1
 
-couldNotSynthesize :: ErrDoc -> Elab v a
+couldNotSynthesize :: String -> Elab v a
 couldNotSynthesize = err . CouldNotSynthesize
 
 freeVariable :: DName -> Elab v a
 freeVariable = err . FreeVariable
 
-expectChecked :: Maybe (Type v) -> ErrDoc -> Elab v (Type v)
+expectChecked :: Maybe (Type v) -> String -> Elab v (Type v)
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 
