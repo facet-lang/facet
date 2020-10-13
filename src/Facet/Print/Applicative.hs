@@ -1,5 +1,7 @@
 module Facet.Print.Applicative
 ( pretty
+, prettyList
+, annotate
 , group
 , flatAlt
 , align
@@ -57,6 +59,14 @@ import qualified Silkscreen as S
 
 pretty :: (Applicative f, Printer p, S.Pretty a) => a -> f p
 pretty = pure . S.pretty
+
+prettyList :: (Applicative f, Printer p, S.Pretty t) => [t] -> f p
+prettyList = pure . S.prettyList
+
+
+-- | Annotate a 'Printer' with an @'Ann' p@.
+annotate :: (Functor f, Printer p) => S.Ann p -> f p -> f p
+annotate = fmap . S.annotate
 
 
 -- | Try to unwrap the argument, if it will fit.
