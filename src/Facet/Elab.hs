@@ -503,39 +503,39 @@ data Reason v
   | BadContext Index
 
 
-err :: Reason Level -> Elab Level a
+err :: Reason v -> Elab v a
 err reason = do
   span <- ask
   mctx <- getMetacontext
   ctx <- askContext
   throwError $ Err span reason mctx ctx
 
-mismatch :: ErrDoc -> Either ErrDoc (Type Level) -> Type Level -> Elab Level a
+mismatch :: ErrDoc -> Either ErrDoc (Type v) -> Type v -> Elab v a
 mismatch msg exp act = err $ Mismatch msg exp act
 
-couldNotUnify :: Type Level -> Type Level -> Elab Level a
+couldNotUnify :: Type v -> Type v -> Elab v a
 couldNotUnify t1 t2 = mismatch (reflow "mismatch") (Right t2) t1
 
-couldNotSynthesize :: ErrDoc -> Elab Level a
+couldNotSynthesize :: ErrDoc -> Elab v a
 couldNotSynthesize = err . CouldNotSynthesize
 
-freeVariable :: DName -> Elab Level a
+freeVariable :: DName -> Elab v a
 freeVariable = err . FreeVariable
 
-expectChecked :: Maybe (Type Level) -> ErrDoc -> Elab Level (Type Level)
+expectChecked :: Maybe (Type v) -> ErrDoc -> Elab v (Type v)
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 
 -- Patterns
 
-expectMatch :: (Type Level -> Maybe out) -> ErrDoc -> ErrDoc -> Type Level -> Elab Level out
+expectMatch :: (Type v -> Maybe out) -> ErrDoc -> ErrDoc -> Type v -> Elab v out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifiedType :: ErrDoc -> Type Level -> Elab Level (UName ::: Type Level, Type Level -> M Level (Type Level))
+expectQuantifiedType :: ErrDoc -> Type v -> Elab v (UName ::: Type v, Type v -> M v (Type v))
 expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
 
-expectFunctionType :: ErrDoc -> Type Level -> Elab Level (Type Level, Type Level)
+expectFunctionType :: ErrDoc -> Type v -> Elab v (Type v, Type v)
 expectFunctionType = expectMatch unArrow (pretty "_ -> _")
 
-expectProductType :: ErrDoc -> Type Level -> Elab Level (Type Level, Type Level)
+expectProductType :: ErrDoc -> Type v -> Elab v (Type v, Type v)
 expectProductType = expectMatch unProductT (pretty "(_, _)")
