@@ -99,9 +99,9 @@ printReason (Metacontext mctx) ctx = fmap group . \case
   CouldNotSynthesize msg -> pure $ P.reflow "could not synthesize a type for" <> softline <> msg
   Mismatch msg exp act   -> do
     (mctx', ctx') <- V.mapValueAll (ty . ty <$> mctx) (ty . ty <$> elems ctx)
-    exp' <- either (pure . pretty) (printTypeInContext mctx' ctx') exp
+    exp' <- either (pure . P.reflow) (printTypeInContext mctx' ctx') exp
     act' <- printTypeInContext mctx' ctx' act
-    pure $ pretty msg
+    pure $ P.reflow msg
       </> pretty "expected:" <> print exp'
       </> pretty "  actual:" <> print act'
     where
