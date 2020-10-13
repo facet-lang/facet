@@ -88,7 +88,7 @@ nest = fmap . S.nest
 
 concatWith :: (Applicative f, Monoid p, Foldable t) => (f p -> f p -> f p) -> t (f p) -> f p
 concatWith (<>) ds
-  | null ds   = pure mempty
+  | null ds   = empty
   | otherwise = foldr1 (<>) ds
 
 
@@ -123,7 +123,7 @@ punctuate s = go
   where
   go []     = []
   go [x]    = [x]
-  go (x:xs) = liftA2 (<>) x s : go xs
+  go (x:xs) = x <:> s : go xs
 
 
 (<:>) :: (Applicative f, Semigroup s) => f s -> f s -> f s
@@ -135,9 +135,7 @@ empty :: (Applicative f, Monoid s) => f s
 empty = pure mempty
 
 enclose :: (Applicative f, Printer p) => f p -> f p -> f p -> f p
-enclose l r x = l <> x <> r
-  where
-  (<>) = liftA2 (Prelude.<>)
+enclose l r x = l <:> x <:> r
 
 encloseSep :: (Applicative f, Printer p) => f p -> f p -> f p -> [f p] -> f p
 encloseSep l r s ps = enclose l r (group (concatWith (surround (line' <:> s)) ps))
