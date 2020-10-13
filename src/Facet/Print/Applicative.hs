@@ -61,7 +61,7 @@ module Facet.Print.Applicative
 , pipe
   -- * Re-exports
 , S.Pretty
-, S.Printer (S.Ann)
+, S.Printer(S.Ann)
 ) where
 
 import           Control.Applicative (liftA2, liftA3)
