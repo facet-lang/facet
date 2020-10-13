@@ -1,5 +1,12 @@
 module Facet.Print.Applicative
-( pretty
+( enclosing
+, squotes
+, dquotes
+, parens
+, brackets
+, braces
+, angles
+, pretty
 , prettyList
 , annotate
 , group
@@ -53,9 +60,32 @@ module Facet.Print.Applicative
 , pipe
 ) where
 
-import           Control.Applicative (liftA2)
+import           Control.Applicative (liftA2, liftA3)
 import           Silkscreen (Printer)
 import qualified Silkscreen as S
+
+enclosing :: (Applicative f, Printer p) => f p -> f p -> f p -> f p
+enclosing = liftA3 S.enclosing
+
+
+squotes :: (Functor f, Printer p) => f p -> f p
+squotes = fmap S.squotes
+
+dquotes :: (Functor f, Printer p) => f p -> f p
+dquotes = fmap S.dquotes
+
+parens :: (Functor f, Printer p) => f p -> f p
+parens = fmap S.parens
+
+brackets :: (Functor f, Printer p) => f p -> f p
+brackets = fmap S.brackets
+
+braces :: (Functor f, Printer p) => f p -> f p
+braces = fmap S.braces
+
+angles :: (Functor f, Printer p) => f p -> f p
+angles = fmap S.angles
+
 
 pretty :: (Applicative f, Printer p, S.Pretty a) => a -> f p
 pretty = pure . S.pretty
