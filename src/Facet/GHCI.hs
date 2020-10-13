@@ -25,13 +25,14 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
-import           Facet.Elab (Metacontext(..), Type, elabModule, rethrow)
+import           Facet.Elab (Metacontext(..), Type, Val, elabModule, rethrow)
 import           Facet.Error
 import           Facet.Name (Index, Level)
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
 import qualified Facet.Surface.Module as S
+import           Facet.Syntax
 import           Text.Parser.Position (Spanned)
 
 -- Parsing
@@ -61,7 +62,7 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
   first mkNotice $ do
     mod <- elabModule parsed
-    evalState (Metacontext [] :: Metacontext (Type Level)) $ rethrow $ (P.printCoreModule mod)
+    evalState (Metacontext [] :: Metacontext (Val Level ::: Type Level)) $ rethrow $ (P.printCoreModule mod)
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s

@@ -84,7 +84,7 @@ type Val v = Value (M v) v
 type Type v = Value (M v) v
 type Expr v = Value (M v) v
 
-newtype M v a = M { rethrow :: forall sig m . Has (State (Metacontext (Type v)) :+: Throw Err) sig m => m a }
+newtype M v a = M { rethrow :: forall sig m . Has (State (Metacontext (Val v ::: Type v)) :+: Throw Err) sig m => m a }
 
 instance Functor (M v) where
   fmap f (M m) = M (fmap f m)
@@ -96,13 +96,13 @@ instance Applicative (M v) where
 instance Monad (M v) where
   M m >>= f = M $ m >>= rethrow . f
 
-instance Algebra (State (Metacontext (Type v)) :+: Throw Err) (M v) where
+instance Algebra (State (Metacontext (Val v ::: Type v)) :+: Throw Err) (M v) where
   alg hdl sig ctx = case sig of
     L smctx -> M $ alg (rethrow . hdl) (inj smctx) ctx
     R throw -> M $ alg (rethrow . hdl) (inj throw) ctx
 
 
-newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Type v)) :+: Reader Span :+: State (Metacontext (Type v)) :+: Throw Err) sig m => m a }
+newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw Err) sig m => m a }
 
 instance Functor (Elab v) where
   fmap f (Elab m) = Elab (fmap f m)
@@ -114,7 +114,7 @@ instance Applicative (Elab v) where
 instance Monad (Elab v) where
   Elab m >>= f = Elab $ m >>= elab . f
 
-instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Type v)) :+: Reader Span :+: State (Metacontext (Type v)) :+: Throw Err) (Elab v) where
+instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw Err) (Elab v) where
   alg hdl sig ctx = case sig of
     L renv -> Elab $ alg (elab . hdl) (inj renv) ctx
     R (L rctx) -> Elab $ alg (elab . hdl) (inj rctx) ctx
@@ -125,16 +125,16 @@ instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Type v)) :+: Re
 askEnv :: Elab v (Env.Env (Type v))
 askEnv = ask
 
-askContext :: Elab v (Context (Type v))
+askContext :: Elab v (Context (Val v ::: Type v))
 askContext = ask
 
-getMetacontext :: Elab v (Metacontext (Type v))
+getMetacontext :: Elab v (Metacontext (Val v ::: Type v))
 getMetacontext = get
 
 
 
 newtype Check v a = Check { runCheck :: Type v -> Elab v a }
-  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (Type v)) :+: Reader (Context (Type v)) :+: Reader Span :+: State (Metacontext (Type v)) :+: Throw Err), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
+  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw Err), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
 
 newtype Synth v a = Synth { synth :: Elab v (a ::: Type v) }
 
@@ -190,7 +190,7 @@ unify t1 t2 = go t1 t2
 -- FIXME: is it possible to do something clever with delimited continuations or coroutines to bind variables outside our scope?
 
 
-meta :: UName ::: Val Level -> Elab Level (Type Level)
+meta :: UName ::: Val Level ::: Type Level -> Elab Level (Type Level)
 meta t = do
   mctx <- getMetacontext
   put (t <| mctx)
@@ -213,7 +213,7 @@ global
   -> Synth Level (Val Level)
 global n = Synth $ Env.lookup n <$> askEnv >>= \case
   Just b  -> do
-    ctx <- ask @(Context (Type Level))
+    ctx <- askContext
     pure (CV.global (tm b :.: n) ::: shift (level ctx) (ty b))
   Nothing -> freeVariable (pretty n)
 
@@ -224,8 +224,8 @@ bound n = Synth $ do
   ctx <- askContext
   let level = indexToLevel (length ctx) n
   case ctx !? n of
-    Just (_ ::: _T) -> pure (CV.bound level ::: _T)
-    Nothing         -> err $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (length ctx) ]
+    Just (_ ::: (_ ::: _T)) -> pure (CV.bound level ::: _T)
+    Nothing                 -> err $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (length ctx) ]
 
 hole
   :: HasCallStack
@@ -248,25 +248,25 @@ f $$ a = Synth $ do
 
 (|-)
   :: UName ::: Type Level
-  -> (a -> Elab Level b)
-  -> Elab Level (a -> M Level b)
-t |- f = do
+  -> (Val Level -> Elab Level b)
+  -> Elab Level (Val Level -> M Level b)
+n ::: _T |- f = do
   span <- ask @Span
   ctx <- ask
   env <- askEnv
-  pure $ runReader span . runReader (ctx |> t) . runReader env . elab . f
+  pure $ \ v -> runReader span (runReader (ctx |> (n ::: v ::: _T)) (runReader env (elab (f v))))
 
 infix 1 |-
 
 (|-*)
   :: CP.Pattern (UName ::: Type Level)
-  -> (CP.Pattern a -> Elab Level b)
-  -> Elab Level (CP.Pattern a -> M Level b)
+  -> (CP.Pattern (Val Level) -> Elab Level b)
+  -> Elab Level (CP.Pattern (Val Level) -> M Level b)
 p |-* f = do
   span <- ask @Span
   ctx <- askContext
   env <- askEnv
-  pure $ runReader span . runReader (foldl' (|>) ctx p) . runReader env . elab . f
+  pure $ \ v -> runReader span (runReader (foldl' (|>) ctx (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p) (toList v))) (runReader env (elab (f v))))
 
 infix 1 |-*
 
@@ -374,7 +374,7 @@ lam
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
   -- FIXME: shouldn’t we use the bound variable?
-  b' <- n ::: _A |- \ v -> check (b ::: _B)
+  b' <- CP.Var (n ::: _A) |-* \ v -> check (b ::: _B)
   pure (Lam [(CP.Var n, b')])
 
 unit :: Synth v (Expr v)
@@ -445,7 +445,7 @@ elabDecl = withSpans $ \case
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n b' ::: checkElab (switch (checkElab (elabType t) --> local (|> (n ::: (Type :: Type Level))) _B))
+    in lam n b' ::: checkElab (switch (checkElab (elabType t) --> local (|> (n ::: (Type :: Type Level) ::: (Type :: Type Level))) _B))
 
   t SD.:= b ->
     checkElab (elabExpr b) ::: checkElab (elabType t)
@@ -464,10 +464,10 @@ elabModule (s, (SM.Module mname ds)) = runReader s . evalState (mempty @(Env.Env
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
     env <- get @(Env.Env (Type Level))
-    e' ::: _T <- runReader @(Context (Type Level)) empty . runReader env $ do
+    e' ::: _T <- runReader @(Context (Val Level ::: Type Level)) empty . runReader env $ do
       let e ::: t = elabDecl d
-      _T <- runState (\ _ -> pure) (Metacontext @(Type Level) []) $ elab $ check (t ::: Type)
-      e' <- runState (\ _ -> pure) (Metacontext @(Type Level) []) $ elab $ check (e ::: _T)
+      _T <- runState (\ _ -> pure) (Metacontext @(Val Level ::: Type Level) []) $ elab $ check (t ::: Type)
+      e' <- runState (\ _ -> pure) (Metacontext @(Val Level ::: Type Level) []) $ elab $ check (e ::: _T)
       pure $ e' ::: _T
 
     modify $ Env.insert (mname :.: n ::: _T)
@@ -489,7 +489,7 @@ withSpan k (s, a) = setSpan s (k a)
 withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (Span, a) -> b -> m c
 withSpan' k (s, a) b = setSpan s (k a b)
 
-printTypeInContext :: (HasCallStack, Has (Reader (Context (Type Level)) :+: Reader Span :+: State (Metacontext (Type Level)) :+: Throw Err) sig m) => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> m ErrDoc
+printTypeInContext :: HasCallStack => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> Elab Level ErrDoc
 printTypeInContext mctx ctx = fmap P.getPrint . rethrow . (P.printCoreValue (Level 0) <=< rethrow . mapValue mctx ctx)
 
 printContext :: HasCallStack => Elab Level ([Value (M Level) P.Print], Stack (Value (M Level) P.Print))
@@ -497,7 +497,7 @@ printContext = do
   Metacontext mctx <- getMetacontext
   Context ctx <- askContext
   -- FIXME: This prints the wrong thing w.r.t. showing the types in error messages; e.g. it shows an expected type of Type -> (Type -> Type) -> Type when it should show the names A0/B1.
-  rethrow $ mapValueAll (ty <$> mctx) (ty <$> ctx)
+  rethrow $ mapValueAll (ty . ty <$> mctx) (ty . ty <$> ctx)
 
 printType :: HasCallStack => Type Level -> Elab Level ErrDoc
 printType t = do
