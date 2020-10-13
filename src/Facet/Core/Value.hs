@@ -60,7 +60,7 @@ infixr 0 :->
 data Head a
   = Global QName
   | Local a
-  deriving (Foldable, Functor, Traversable)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 unHead :: (QName -> b) -> (a -> b) -> Head a -> b
 unHead f g = \case
