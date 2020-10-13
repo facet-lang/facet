@@ -506,6 +506,7 @@ data Reason
   = FreeVariable DName
   | CouldNotSynthesize ErrDoc
   | Mismatch ErrDoc ErrDoc
+  | Hole T.Text ErrDoc
   deriving (Show)
 
 
