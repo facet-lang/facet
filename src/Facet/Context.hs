@@ -7,6 +7,7 @@ module Facet.Context
 , empty
 , (|>)
 , level
+, names
 , (!?)
 , (!)
   -- * Metacontexts
@@ -33,6 +34,9 @@ infixl 5 |>
 
 level :: Context a -> Level
 level (Context c) = Level (length c)
+
+names :: Context a -> S.Stack UName
+names = fmap tm . elems
 
 (!?) :: Context a -> Index -> Maybe (UName ::: a)
 c !? i = elems c S.!? getIndex i
