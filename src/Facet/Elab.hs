@@ -209,11 +209,9 @@ switch (Synth m) = \case
 
 global
   :: DName
-  -> Synth Level (Val Level)
+  -> Synth v (Val v)
 global n = Synth $ Env.lookup n <$> askEnv >>= \case
-  Just b  -> do
-    ctx <- askContext
-    pure (CV.global (tm b :.: n) ::: shift (level ctx) (ty b))
+  Just b  -> pure (CV.global (tm b :.: n) ::: ty b)
   Nothing -> freeVariable n
 
 bound
