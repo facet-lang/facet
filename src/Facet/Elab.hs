@@ -232,9 +232,9 @@ hole
 hole n = Check $ \ _T -> err $ Hole n _T
 
 ($$)
-  :: Synth Level (Val Level)
-  -> Check Level (Val Level)
-  -> Synth Level (Val Level)
+  :: Synth v (Val v)
+  -> Check v (Val v)
+  -> Synth v (Val v)
 f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType "in application" _F
