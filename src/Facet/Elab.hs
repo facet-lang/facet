@@ -507,6 +507,7 @@ data Reason
   | CouldNotSynthesize ErrDoc
   | Mismatch ErrDoc ErrDoc
   | Hole T.Text ErrDoc
+  | BadContext Index Level
   deriving (Show)
 
 
