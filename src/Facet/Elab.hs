@@ -199,9 +199,10 @@ unify t1 t2 = go t1 t2
 -- General
 
 switch
-  :: Synth Level a
-  -> Maybe (Type Level)
-  -> Elab Level (a ::: Type Level)
+  :: Eq v
+  => Synth v a
+  -> Maybe (Type v)
+  -> Elab v (a ::: Type v)
 switch (Synth m) = \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify _K' _K
   _       -> m
