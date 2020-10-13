@@ -504,7 +504,7 @@ data Err = Err
 
 data Reason
   = FreeVariable DName
-  | CouldNotSynthesize ErrDoc
+  | CouldNotSynthesize ErrDoc (Context (Val Level ::: Type Level))
   | Mismatch ErrDoc (Contextual (Val Level ::: Type Level) (Either ErrDoc (Type Level), Type Level))
   | Hole T.Text (Contextual (Val Level ::: Type Level) (Type Level))
   | BadContext Index (Context (Val Level ::: Type Level))
@@ -512,7 +512,7 @@ data Reason
 printReason :: Reason -> M Level ErrDoc
 printReason = fmap group . \case
   FreeVariable n                     -> pure $ fillSep [reflow "variable not in scope:", pretty n]
-  CouldNotSynthesize msg             -> pure $ reflow "could not synthesize a type for" <> softline <> msg
+  CouldNotSynthesize msg _ctx        -> pure $ reflow "could not synthesize a type for" <> softline <> msg
   Mismatch msg (ctx :|-: (exp, act)) -> do
     (_, ctx') <- mapValueAll [] (ty . ty <$> elems ctx)
     exp' <- either pure (printTypeInContext [] ctx') exp
@@ -559,7 +559,9 @@ couldNotUnify :: HasCallStack => Type Level -> Type Level -> Elab Level a
 couldNotUnify t1 t2 = mismatch (reflow "mismatch") (Right t2) t1
 
 couldNotSynthesize :: HasCallStack => ErrDoc -> Elab Level a
-couldNotSynthesize = err . CouldNotSynthesize
+couldNotSynthesize msg = do
+  ctx <- askContext
+  err $ CouldNotSynthesize msg ctx
 
 freeVariable :: HasCallStack => DName -> Elab Level a
 freeVariable = err . FreeVariable
