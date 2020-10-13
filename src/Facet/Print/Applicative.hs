@@ -16,6 +16,7 @@ module Facet.Print.Applicative
 , fillCat
 , cat
 , punctuate
+, (<:>)
 , enclose
 , surround
 , (<+>)
@@ -102,6 +103,9 @@ punctuate s = go
   go [x]    = [x]
   go (x:xs) = liftA2 (<>) x s : go xs
 
+
+(<:>) :: (Applicative f, Semigroup s) => f s -> f s -> f s
+(<:>) = liftA2 (<>)
 
 enclose :: (Applicative f, Printer p) => f p -> f p -> f p -> f p
 enclose l r x = l <> x <> r
