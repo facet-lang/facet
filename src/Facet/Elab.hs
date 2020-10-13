@@ -505,14 +505,14 @@ data Reason
   | Hole T.Text (Type Level)
   | BadContext Index
 
-printReason :: Context (Val Level ::: Type Level) -> Reason -> M Level ErrDoc
-printReason ctx = fmap group . \case
+printReason :: Metacontext (Val Level ::: Type Level) -> Context (Val Level ::: Type Level) -> Reason -> M Level ErrDoc
+printReason (Metacontext mctx) ctx = fmap group . \case
   FreeVariable n         -> pure $ fillSep [reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> pure $ reflow "could not synthesize a type for" <> softline <> msg
   Mismatch msg exp act   -> do
-    (_, ctx') <- mapValueAll [] (ty . ty <$> elems ctx)
-    exp' <- either pure (printTypeInContext [] ctx') exp
-    act' <- printTypeInContext [] ctx' act
+    (mctx', ctx') <- mapValueAll (ty . ty <$> mctx) (ty . ty <$> elems ctx)
+    exp' <- either pure (printTypeInContext mctx' ctx') exp
+    act' <- printTypeInContext mctx' ctx' act
     pure $ msg
       </> pretty "expected:" <> print exp'
       </> pretty "  actual:" <> print act'
@@ -520,8 +520,8 @@ printReason ctx = fmap group . \case
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T              -> do
-    (_, ctx') <- mapValueAll [] (ty . ty <$> elems ctx)
-    _T' <- printTypeInContext [] ctx' _T
+    (mctx', ctx') <- mapValueAll (ty . ty <$> mctx) (ty . ty <$> elems ctx)
+    _T' <- printTypeInContext mctx' ctx' _T
     pure $ fillSep [reflow "found hole", pretty n, colon, _T' ]
   BadContext n           -> pure $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (getLevel (level ctx)) ]
 
