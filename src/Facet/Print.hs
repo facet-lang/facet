@@ -57,6 +57,7 @@ import qualified Facet.Surface.Module as SM
 import qualified Facet.Surface.Pattern as SP
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
+import           GHC.Stack
 import           Prelude hiding ((**))
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
@@ -197,7 +198,7 @@ printCoreValue = go (N.Level 0)
     b' <- go (N.incrLevel d) =<< b (snd <$> p')
     pure $ printCorePattern (fst <$> p') <+> arrow <+> b'
 
-printBinding :: Ctx.Metacontext Print -> Ctx.Context Print -> N.Level -> Print
+printBinding :: HasCallStack => Ctx.Metacontext Print -> Ctx.Context Print -> N.Level -> Print
 -- FIXME: there’s no way to recover whether this was a term or type variable binding.
 -- FIXME: look up metas in mctx
 printBinding mctx ctx l = prec Ann $ printContextEntry l (ctx Ctx.! N.levelToIndex (Ctx.level ctx) l)
