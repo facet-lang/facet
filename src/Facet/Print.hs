@@ -200,7 +200,7 @@ printCoreValue = go (N.Level 0)
 
 printBinding :: HasCallStack => Ctx.Metacontext Print -> Ctx.Context Print -> N.Level -> Print
 -- FIXME: there’s no way to recover whether this was a term or type variable binding.
-printBinding mctx ctx l = prec Ann $ printContextEntry l entry
+printBinding mctx ctx l = printContextEntry l entry
   where
   entry
     | N.isMeta l = Ctx.getMetacontext mctx !!
@@ -208,7 +208,7 @@ printBinding mctx ctx l = prec Ann $ printContextEntry l entry
     | otherwise  = ctx Ctx.! N.levelToIndex (Ctx.level ctx) l
 
 printContextEntry :: N.Level -> N.UName ::: Print -> Print
-printContextEntry l (n ::: _T) = ann (cbound n tvar l ::: _T)
+printContextEntry l (n ::: _T) = prec Ann $ ann (cbound n tvar l ::: _T)
 
 
 printSurfaceType :: (Foldable f, Functor f) => Stack Print -> ST.Type f a -> Print
