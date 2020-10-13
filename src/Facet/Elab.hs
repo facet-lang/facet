@@ -505,7 +505,7 @@ data Err = Err
 data Reason
   = FreeVariable DName
   | CouldNotSynthesize ErrDoc
-  | Mismatch ErrDoc ErrDoc
+  | Mismatch ErrDoc ErrDoc ErrDoc
   | Hole T.Text ErrDoc
   | BadContext Index Level
   deriving (Show)
