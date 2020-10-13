@@ -25,7 +25,7 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
-import           Facet.Elab (Metacontext(..), elabModule, rethrow)
+import           Facet.Elab (Metacontext(..), Type, elabModule, rethrow)
 import           Facet.Error
 import           Facet.Name (Index)
 import           Facet.Parser (Facet(..), module', runFacet, whole)
@@ -61,7 +61,7 @@ elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
   first mkNotice $ do
     mod <- elabModule parsed
-    evalState (Metacontext []) $ rethrow $ P.printCoreModule mod
+    evalState (Metacontext @Type []) $ rethrow $ P.printCoreModule mod
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s
