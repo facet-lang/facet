@@ -52,7 +52,6 @@ library
     Facet.Pretty
     Facet.Print
     Facet.Print.Applicative
-    Facet.Problem
     Facet.REPL
     Facet.REPL.Parser
     Facet.Semiring
