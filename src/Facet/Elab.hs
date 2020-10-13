@@ -383,7 +383,8 @@ l ** r = Check $ \ _T -> do
   pure (Prd l' r')
 
 comp
-  :: Spanned (SE.Comp Spanned a)
+  :: HasCallStack
+  => Spanned (SE.Comp Spanned a)
   -> Check Expr
 comp = withSpan $ \case
   SE.Expr    b  -> checkElab (elabExpr b)
