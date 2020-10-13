@@ -19,6 +19,9 @@ module Facet.Print.Applicative
 , (<:>)
 , empty
 , enclose
+, encloseSep
+, list
+, tupled
 , surround
 , (<+>)
 , (</>)
@@ -135,6 +138,28 @@ enclose :: (Applicative f, Printer p) => f p -> f p -> f p -> f p
 enclose l r x = l <> x <> r
   where
   (<>) = liftA2 (Prelude.<>)
+
+encloseSep :: (Applicative f, Printer p) => f p -> f p -> f p -> [f p] -> f p
+encloseSep l r s ps = enclose l r (group (concatWith (surround (line' <:> s)) ps))
+
+
+list :: (Applicative f, Printer p) => [f p] -> f p
+list
+  = group
+  . fmap S.brackets
+  . encloseSep
+    (flatAlt space empty)
+    (flatAlt space empty)
+    (comma <:> space)
+
+tupled :: (Applicative f, Printer p) => [f p] -> f p
+tupled
+  = group
+  . fmap S.parens
+  . encloseSep
+    (flatAlt space empty)
+    (flatAlt space empty)
+    (comma <:> space)
 
 
 surround :: (Applicative f, Printer p) => f p -> f p -> f p -> f p
