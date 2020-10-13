@@ -204,6 +204,7 @@ foldContext bd fold mctx env = fold <=< go env
     v' <- traverse fold v
     go (foldl (|>) env (zipWith (:::) names (toList v'))) b'
 
+-- FIXME: we don’t extend the context & metacontext the way the algebra would (if it would at all). hence, the algebra _can’t_ make a consistently correct decision about what to print, leading to it e.g. sometimes printing types and sometimes printing names, showing quantifiers starting from the wrong level, etc.
 foldContextAll :: (HasCallStack, Monad m) => (Metacontext a -> Context a -> Level -> a) -> (Value m a -> m a) -> Metacontext (Value m Level) -> Context (Value m Level) -> m (Metacontext a, Context a)
 foldContextAll bd fold mctx ctx = go (elems ctx)
   where
