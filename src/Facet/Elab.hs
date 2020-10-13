@@ -65,8 +65,7 @@ import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Value hiding (bound, global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
-import           Facet.Name (Index(..), Level(..), QName(..), UName, indexToLevel)
-import qualified Facet.Name as N
+import           Facet.Name (DName, Index(..), Level(..), QName(..), UName, indexToLevel)
 import           Facet.Pretty (reflow)
 import qualified Facet.Print as P
 import           Facet.Stack hiding ((!?))
@@ -212,7 +211,7 @@ switch (Synth m) = \case
   _       -> m
 
 global
-  :: N.DName
+  :: DName
   -> Synth Level (Val Level)
 global n = Synth $ Env.lookup n <$> askEnv >>= \case
   Just b  -> do
