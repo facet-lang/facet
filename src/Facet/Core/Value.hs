@@ -176,8 +176,8 @@ shift d = go
   binder b = fmap go . b . shift invd
 
 
-foldContext :: (HasCallStack, Monad m) => (Metacontext a -> Context a -> Level -> a) -> (Value m a -> m a) -> Metacontext a -> Context a -> Value m Level -> m a
-foldContext bd fold mctx env = fold <=< go env
+foldContext :: (HasCallStack, Monad m) => (Metacontext a -> Context a -> Level -> a) -> (Level -> Value m a -> m a) -> Metacontext a -> Context a -> Value m Level -> m a
+foldContext bd fold mctx env = fold (level env) <=< go env
   where
   go env = \case
     Type     -> pure Type
@@ -197,16 +197,17 @@ foldContext bd fold mctx env = fold <=< go env
     TPrd l r -> TPrd <$> go env l <*> go env r
     Prd  l r -> Prd  <$> go env l <*> go env r
   bind env n b = \ v -> do
-    b' <- b (bound (level env))
-    v' <- fold v
+    let d = level env
+    b' <- b (bound d)
+    v' <- fold d v
     go (env |> (n ::: v')) b'
   bindP env p b = let names = toList p in names `seq` \ v -> do
-    b' <- b (snd (mapAccumL (\ l _ -> (incrLevel l, bound l)) (level env) v))
-    v' <- traverse fold v
+    let (_, v') = mapAccumL (\ l v -> (incrLevel l, (fold l v, bound l))) (level env) v
+    b' <- b (snd <$> v')
+    v' <- traverse fst v'
     go (foldl (|>) env (zipWith (:::) names (toList v'))) b'
 
--- FIXME: we don’t extend the context & metacontext the way the algebra would (if it would at all). hence, the algebra _can’t_ make a consistently correct decision about what to print, leading to it e.g. sometimes printing types and sometimes printing names, showing quantifiers starting from the wrong level, etc.
-foldContextAll :: (HasCallStack, Monad m) => (Metacontext a -> Context a -> Level -> a) -> (Value m a -> m a) -> Metacontext (Value m Level) -> Context (Value m Level) -> m (Metacontext a, Context a)
+foldContextAll :: (HasCallStack, Monad m) => (Metacontext a -> Context a -> Level -> a) -> (Level -> Value m a -> m a) -> Metacontext (Value m Level) -> Context (Value m Level) -> m (Metacontext a, Context a)
 foldContextAll bd fold mctx ctx = go (elems ctx)
   where
   metas []     = pure (Metacontext [])

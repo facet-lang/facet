@@ -173,8 +173,8 @@ prettyQName :: PrecedencePrinter p => N.QName -> p
 prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
-printCoreValue :: Monad m => CV.Value m Print -> m Print
-printCoreValue = go (N.Level 0)
+printCoreValue :: Monad m => N.Level -> CV.Value m Print -> m Print
+printCoreValue = go
   where
   go d = \case
     CV.Type     -> pure _Type
