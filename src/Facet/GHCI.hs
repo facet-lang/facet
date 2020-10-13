@@ -25,7 +25,7 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Bifunctor
-import           Facet.Elab (Err(..), Metacontext(..), Type, Val, elabModule, rethrow)
+import           Facet.Elab (Err(..), Metacontext(..), Type, Val, elabModule, printReason, rethrow)
 import           Facet.Name (Index, Level)
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
@@ -72,4 +72,4 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
 -- Errors
 
 toNotice :: Maybe N.Level -> Source -> Err -> N.Notice
-toNotice lvl src Err{ span, reason, context } = N.Notice lvl (fromSourceAndSpan src span) reason context
+toNotice lvl src Err{ span, reason, context } = N.Notice lvl (fromSourceAndSpan src span) (printReason reason) context

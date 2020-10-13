@@ -226,10 +226,10 @@ bound
   -> Synth Level (Val Level)
 bound n = Synth $ do
   ctx <- askContext
-  let level = indexToLevel (length ctx) n
+  let l = indexToLevel (length ctx) n
   case ctx !? n of
-    Just (_ ::: (_ ::: _T)) -> pure (CV.bound level ::: _T)
-    Nothing                 -> err $ fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (length ctx) ]
+    Just (_ ::: (_ ::: _T)) -> pure (CV.bound l ::: _T)
+    Nothing                 -> err $ BadContext n (level ctx)
 
 hole
   :: HasCallStack
@@ -237,7 +237,7 @@ hole
   -> Check Level a
 hole n = Check $ \ _T -> do
   _T' <- printType _T
-  err $ fillSep [reflow "found hole", pretty n, colon, _T' ]
+  err $ Hole n _T'
 
 ($$)
   :: Synth Level (Val Level)
@@ -498,7 +498,7 @@ type ErrDoc = Doc AnsiStyle
 
 data Err = Err
   { span    :: Span
-  , reason  :: ErrDoc
+  , reason  :: Reason
   , context :: [ErrDoc]
   }
   deriving (Show)
@@ -540,7 +540,7 @@ printType t = do
   (mctx, ctx) <- printContext
   printTypeInContext mctx ctx t
 
-err :: HasCallStack => ErrDoc -> Elab Level a
+err :: HasCallStack => Reason -> Elab Level a
 err reason = do
   span <- ask
   ctx <- askContext
@@ -548,15 +548,10 @@ err reason = do
   ctx' <- rethrow $ traverse (P.printCoreValue (level ctx)) ctx'
   -- FIXME: show the metacontext
   -- FIXME: show the types as well as the names
-  throwError $ Err span (group reason) (zipWith3 (\ i n -> P.getPrint . P.printContextEntry (Level i) . (n :::)) [0..] (toList (names ctx)) (toList ctx'))
+  throwError $ Err span reason (zipWith3 (\ i n -> P.getPrint . P.printContextEntry (Level i) . (n :::)) [0..] (toList (names ctx)) (toList ctx'))
 
 mismatch :: HasCallStack => ErrDoc -> ErrDoc -> ErrDoc -> Elab Level a
-mismatch msg exp act = err $ msg
-  </> pretty "expected:" <> print exp
-  </> pretty "  actual:" <> print act
-  where
-  -- line things up nicely for e.g. wrapped function types
-  print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
+mismatch msg exp act = err $ Mismatch msg exp act
 
 couldNotUnify :: HasCallStack => Type Level -> Type Level -> Elab Level a
 couldNotUnify t1 t2 = do
@@ -566,10 +561,10 @@ couldNotUnify t1 t2 = do
   mismatch (reflow "mismatch") t2' t1'
 
 couldNotSynthesize :: HasCallStack => ErrDoc -> Elab Level a
-couldNotSynthesize msg = err $ reflow "could not synthesize a type for" <> softline <> msg
+couldNotSynthesize = err . CouldNotSynthesize
 
 freeVariable :: HasCallStack => DName -> Elab Level a
-freeVariable v = err $ fillSep [reflow "variable not in scope:", pretty v]
+freeVariable = err . FreeVariable
 
 expectChecked :: HasCallStack => Maybe (Type Level) -> ErrDoc -> Elab Level (Type Level)
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
