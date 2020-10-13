@@ -48,7 +48,7 @@ import qualified Facet.Context as Ctx
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import qualified Facet.Core.Value as CV
-import qualified Facet.Name as N
+import           Facet.Name
 import qualified Facet.Pretty as P
 import           Facet.Stack
 import qualified Facet.Surface.Decl as SD
@@ -61,9 +61,10 @@ import           GHC.Stack
 import           Prelude hiding ((**))
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
-import qualified Silkscreen as P
-import           Silkscreen.Printer.Prec hiding (Printer)
-import           Silkscreen.Printer.Rainbow hiding (Printer)
+import           Silkscreen as P
+import           Silkscreen.Printer.Prec hiding (Level)
+import qualified Silkscreen.Printer.Prec as P
+import           Silkscreen.Printer.Rainbow as P
 
 prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = P.putDoc . getPrint
@@ -98,7 +99,7 @@ terminalStyle = \case
 
 
 newtype Print = Print { runPrint :: Prec Precedence (Rainbow (PP.Doc Highlight)) }
-  deriving (Monoid, PrecedencePrinter, P.Printer, Semigroup)
+  deriving (Monoid, PrecedencePrinter, Printer, Semigroup)
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
@@ -127,11 +128,11 @@ data Highlight
   | ANSI ANSI.AnsiStyle
   deriving (Eq, Ord, Show)
 
-op :: (P.Printer p, Ann p ~ Highlight) => p -> p
+op :: (Printer p, Ann p ~ Highlight) => p -> p
 op = annotate Op
 
 
-arrow :: (P.Printer p, Ann p ~ Highlight) => p
+arrow :: (Printer p, Ann p ~ Highlight) => p
 arrow = op (pretty "->")
 
 comp :: Print -> Print
@@ -152,28 +153,28 @@ commaSep = encloseSep mempty mempty (comma <> space)
 cases :: [Print] -> Print -> Print
 cases vs b = foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> prec Expr b))) vs
 
-ann :: P.Printer p => (p ::: p) -> p
+ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
 
-var :: (PrecedencePrinter p, Level p ~ Precedence, Ann p ~ Highlight) => p -> p
+var :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => p -> p
 var = setPrec Var . annotate Name
 
-evar :: (PrecedencePrinter p, Level p ~ Precedence, Ann p ~ Highlight) => Int -> p
+evar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Int -> p
 evar = var . P.evar
 
-tvar :: (PrecedencePrinter p, Level p ~ Precedence, Ann p ~ Highlight) => Int -> p
+tvar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Int -> p
 tvar = var . P.tvar
 
 
-prettyMName :: P.Printer p => N.MName -> p
-prettyMName (n N.:. s)  = prettyMName n <> pretty '.' <> pretty s
-prettyMName (N.MName s) = pretty s
+prettyMName :: Printer p => MName -> p
+prettyMName (n :. s)  = prettyMName n <> pretty '.' <> pretty s
+prettyMName (MName s) = pretty s
 
-prettyQName :: PrecedencePrinter p => N.QName -> p
-prettyQName (mname N.:.: n) = prettyMName mname <> pretty '.' <> pretty n
+prettyQName :: PrecedencePrinter p => QName -> p
+prettyQName (mname :.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
-printCoreValue :: Monad m => N.Level -> CV.Value m Print -> m Print
+printCoreValue :: Monad m => Level -> CV.Value m Print -> m Print
 printCoreValue = go
   where
   go d = \case
@@ -184,9 +185,9 @@ printCoreValue = go
     t CV.:=> b  -> do
       let n' = name (tm t) d
       t' <- go d (ty t)
-      b' <- go (N.incrLevel d) =<< b (CV.bound n')
+      b' <- go (incrLevel d) =<< b (CV.bound n')
       pure $ (n' ::: t') >~> b'
-    CV.TLam n b -> let n' = name n d in lam (braces n') <$> (go (N.incrLevel d) =<< b (CV.bound n'))
+    CV.TLam n b -> let n' = name n d in lam (braces n') <$> (go (incrLevel d) =<< b (CV.bound n'))
     CV.Lam  p   -> block . commaSep <$> traverse (clause d) p
     f CV.:$ as  -> (CV.unHead cfree id f $$*) <$> traverse (go d) as
     a CV.:-> b  -> (-->) <$> go d a <*> go d b
@@ -194,20 +195,20 @@ printCoreValue = go
     CV.Prd  l r -> (**)  <$> go d l <*> go d r
   name n d = cbound n tvar d
   clause d (p, b) = do
-    let p' = snd (mapAccumL (\ d n -> (N.incrLevel d, let n' = name n d in (n', CV.bound n'))) d p)
-    b' <- go (N.incrLevel d) =<< b (snd <$> p')
+    let p' = snd (mapAccumL (\ d n -> (incrLevel d, let n' = name n d in (n', CV.bound n'))) d p)
+    b' <- go (incrLevel d) =<< b (snd <$> p')
     pure $ printCorePattern (fst <$> p') <+> arrow <+> b'
 
-printBinding :: HasCallStack => Ctx.Metacontext Print -> Ctx.Context Print -> N.Level -> Print
+printBinding :: HasCallStack => Ctx.Metacontext Print -> Ctx.Context Print -> Level -> Print
 -- FIXME: there’s no way to recover whether this was a term or type variable binding.
 printBinding mctx ctx l = printContextEntry l entry
   where
   entry
-    | N.isMeta l = Ctx.getMetacontext mctx !!
-      abs (N.getIndex (N.levelToIndex (Ctx.metalevel mctx) l) + 1)
-    | otherwise  = ctx Ctx.! N.levelToIndex (Ctx.level ctx) l
+    | isMeta l = Ctx.getMetacontext mctx !!
+      abs (getIndex (levelToIndex (Ctx.metalevel mctx) l) + 1)
+    | otherwise  = ctx Ctx.! levelToIndex (Ctx.level ctx) l
 
-printContextEntry :: N.Level -> N.UName ::: Print -> Print
+printContextEntry :: Level -> UName ::: Print -> Print
 printContextEntry l (n ::: _T) = cbound n tvar l
 
 
@@ -216,7 +217,7 @@ printSurfaceType = go
   where
   go env = \case
     ST.Free n  -> sfree n
-    ST.Bound n -> env ! N.getIndex n
+    ST.Bound n -> env ! getIndex n
     ST.Hole n  -> hole n
     ST.Type    -> _Type
     ST.Void    -> _Void
@@ -230,20 +231,20 @@ printSurfaceType = go
     a ST.:-> b -> foldMap (go env) a --> foldMap (go env) b
     l ST.:*  r -> foldMap (go env) l **  foldMap (go env) r
 
-sfree :: N.DName -> Print
+sfree :: DName -> Print
 sfree = var . pretty
 
-cfree :: N.QName -> Print
+cfree :: QName -> Print
 cfree = var . prettyQName
 
 
-sbound :: N.UName -> Print
+sbound :: UName -> Print
 sbound = var . pretty
 
-cbound :: N.UName -> (Int -> Print) -> N.Level -> Print
+cbound :: UName -> (Int -> Print) -> Level -> Print
 cbound h printLevel level
-  | T.null (N.getUName h) = printLevel (N.getLevel level)
-  | otherwise             = pretty h <> pretty (N.getLevel level)
+  | T.null (getUName h) = printLevel (getLevel level)
+  | otherwise             = pretty h <> pretty (getLevel level)
 
 
 hole :: Text -> Print
@@ -294,7 +295,7 @@ printSurfaceExpr = go
   where
   go env = \case
     SE.Free n  -> sfree n
-    SE.Bound n -> env ! N.getIndex n
+    SE.Bound n -> env ! getIndex n
     SE.Hole n  -> hole n
     f SE.:$  a ->
       let (f', a') = splitl (SE.unApp <=< extract) f
@@ -306,7 +307,7 @@ printSurfaceExpr = go
       SE.Clauses cs -> commaSep (map (uncurry (printSurfaceClause env)) cs)
       -- comp . commaSep $ map (foldMap (printSurfaceClause env)) c
 
-printSurfaceClause :: (Foldable f, Functor f) => Stack Print -> NonEmpty (f (SP.Pattern f N.UName)) -> f (SE.Expr f a) -> Print
+printSurfaceClause :: (Foldable f, Functor f) => Stack Print -> NonEmpty (f (SP.Pattern f UName)) -> f (SE.Expr f a) -> Print
 printSurfaceClause env ps b = foldMap (foldMap printSurfacePattern) ps' <+> arrow <> group (nest 2 (line <> prec Expr (foldMap (printSurfaceExpr env') b)))
   where
   ps' = fmap (fmap sbound) <$> ps
@@ -360,25 +361,25 @@ t .= b = t </> b
 (n ::: t) >-> b = prec FnR (group (align (parens (ann (n ::: t)))) </> arrow <+> b)
 
 
-printCoreModule :: Monad m => CM.Module m N.Level -> m Print
+printCoreModule :: Monad m => CM.Module m Level -> m Print
 printCoreModule (CM.Module n ds)
-  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> (printCoreValue (N.Level 0) =<< CV.mapValue [] Nil t) <*> printCoreDef d) ds
+  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> (printCoreValue (Level 0) =<< CV.mapValue [] Nil t) <*> printCoreDef d) ds
 
-printCoreDef :: Monad m => CM.Def m N.Level -> m Print
+printCoreDef :: Monad m => CM.Def m Level -> m Print
 printCoreDef = \case
-  CM.DTerm b  -> printCoreValue (N.Level 0) =<< CV.mapValue [] Nil b
-  CM.DType b  -> printCoreValue (N.Level 0) =<< CV.mapValue [] Nil b
-  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (printCoreValue (N.Level 0) <=< CV.mapValue [] Nil) . first pretty) cs
+  CM.DTerm b  -> printCoreValue (Level 0) =<< CV.mapValue [] Nil b
+  CM.DType b  -> printCoreValue (Level 0) =<< CV.mapValue [] Nil b
+  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (printCoreValue (Level 0) <=< CV.mapValue [] Nil) . first pretty) cs
 
 
 printSurfaceModule :: (Foldable f, Functor f) => SM.Module f a -> Print
 printSurfaceModule (SM.Module n ds) = module' n (map (foldMap (uncurry printSurfaceDef)) ds)
 
-printSurfaceDef :: (Foldable f, Functor f) => N.DName -> f (SD.Decl f a) -> Print
+printSurfaceDef :: (Foldable f, Functor f) => DName -> f (SD.Decl f a) -> Print
 printSurfaceDef n d = def (sfree n) (foldMap printSurfaceDecl d)
 
 
-module' :: N.MName -> [Print] -> Print
+module' :: MName -> [Print] -> Print
 module' n b = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep (intersperse line b))
 
 def :: Print -> Print -> Print
