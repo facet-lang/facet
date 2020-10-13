@@ -49,7 +49,7 @@ data Value f a
   | Value f a :-> Value f a
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
   | Lam [(Pattern UName, Pattern (Value f a) -> f (Value f a))]
-  | Either QName a :$ Stack (Value f a)
+  | Head a :$ Stack (Value f a)
   | TPrd (Value f a) (Value f a)
   | Prd (Value f a) (Value f a)
 
@@ -80,7 +80,7 @@ showsPrecValue d p = fmap appEndo . go d p
     TLam n b -> prec 10 $ lit "TLam" <+> c n <+> lit "\\ _ ->" <+> (go (incrLevel d) 11 =<< b (bound d))
     a :-> b  -> prec 0  $ go d 1 a <+> lit ":->" <+> go d 0 b
     Lam    b -> prec 10 $ lit "Lam"  <+> list (traverse (\ (p, b) -> parens True (c p <+> lit ", " <+> lit "\\ _ ->" <+> (go (incrLevel d) 0 =<< b (snd (mapAccumL (\ l _ -> (incrLevel l, bound l)) d p))))) b)
-    f :$ as  -> either c c f <+> lit ":$" <+> parens True (getAp (foldMap Ap (intersperse (lit ":>") (toList (fmap (go d 0) as)))))
+    f :$ as  -> unHead c c f <+> lit ":$" <+> parens True (getAp (foldMap Ap (intersperse (lit ":>") (toList (fmap (go d 0) as)))))
     TPrd l r -> prec 10 $ lit "TPrd" <+> go d 11 l <+> go d 11 r
     Prd  l r -> prec 10 $ lit "Prd"  <+> go d 11 l <+> go d 11 r
     where
@@ -96,10 +96,10 @@ showsPrecValue d p = fmap appEndo . go d p
 
 
 global :: QName -> Value f a
-global n = Left n :$ Nil
+global n = Global n :$ Nil
 
 bound :: a -> Value f a
-bound n = Right n :$ Nil
+bound n = Local n :$ Nil
 
 
 unForAll :: Has Empty sig m => Value f a -> m (UName ::: Value f a, Value f a -> f (Value f a))
@@ -188,7 +188,7 @@ foldContext bd fold env = fold <=< go env
     TLam n b -> pure $ TLam n $ bind env n b
     Lam  ps  -> pure $ Lam $ map (\ (p, b) -> (p, bindP env p b)) ps
     f :$ as  -> do
-      let f' = either global (bound . bd env) f
+      let f' = unHead global (bound . bd env) f
       as' <- traverse (go env) as
       f' $$* as'
     TPrd l r -> TPrd <$> go env l <*> go env r
