@@ -77,11 +77,7 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
   evalMeta = evalState (Metacontext [] :: Metacontext (Val Level ::: Type Level))
 
   lower :: Either (Err Level) a -> Either N.Notice a
-  lower = \case
-    Left  e -> do
-      e' <- lower $ evalMeta $ rethrow $ mkNotice e
-      throwError e'
-    Right a -> pure a
+  lower = either (throwError <=< lower . evalMeta . rethrow . mkNotice) pure
 
 
 -- Errors
