@@ -225,6 +225,7 @@ foldContextAll bd fold mctx ctx = go (elems ctx)
     pure (mctx', as' |> (tm a ::: a'))
 
 
+-- FIXME: m can extend the metacontext, invalidating this as we move under binders.
 mapValue :: (HasCallStack, Monad m) => [Value m a] -> Stack (Value m a) -> Value m Level -> m (Value m a)
 mapValue mctx = go
   where
