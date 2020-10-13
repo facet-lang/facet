@@ -333,10 +333,10 @@ infixr 1 >~>
 -- Expressions
 
 elabExpr
-  :: HasCallStack
+  :: (HasCallStack, Eq v)
   => Spanned (SE.Expr Spanned a)
-  -> Maybe (Type Level)
-  -> Elab Level (Expr Level ::: Type Level)
+  -> Maybe (Type v)
+  -> Elab v (Expr v ::: Type v)
 elabExpr = withSpan' $ \case
   SE.Free  n -> switch $ global n
   SE.Bound n -> switch $ bound n
@@ -384,9 +384,9 @@ l ** r = Check $ \ _T -> do
   pure (Prd l' r')
 
 comp
-  :: HasCallStack
+  :: (HasCallStack, Eq v)
   => Spanned (SE.Comp Spanned a)
-  -> Check Level (Expr Level)
+  -> Check v (Expr v)
 comp = withSpan $ \case
   SE.Expr    b  -> checkElab (elabExpr b)
   -- FIXME: this shape makes it hard to elaborate nested pattern matches, because we kind of need to transpose the table.
