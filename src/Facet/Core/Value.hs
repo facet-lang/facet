@@ -20,7 +20,7 @@ module Facet.Core.Value
 , shift
 , foldContext
 , foldContextAll
-, close
+, mapValue
 , join
 ) where
 
@@ -224,8 +224,8 @@ foldContextAll bd fold mctx ctx = go (elems ctx)
     pure (mctx', as' |> (tm a ::: a'))
 
 
-close :: (HasCallStack, Monad m) => Metacontext (Value m a) -> Context (Value m a) -> Value m Level -> m (Value m a)
-close mctx = go
+mapValue :: (HasCallStack, Monad m) => Metacontext (Value m a) -> Context (Value m a) -> Value m Level -> m (Value m a)
+mapValue mctx = go
   where
   go ctx = \case
     Type     -> pure Type
