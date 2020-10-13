@@ -62,12 +62,14 @@ module Facet.Print.Applicative
   -- * Re-exports
 , S.Pretty
 , S.Printer(S.Ann)
+, S.PrecedencePrinter(Level)
 ) where
 
 import           Control.Applicative (liftA2, liftA3)
 import qualified Data.Semigroup as S
 import           Silkscreen (Printer)
 import qualified Silkscreen as S
+import qualified Silkscreen.Precedence as S
 
 enclosing :: (Applicative f, Printer p) => f p -> f p -> f p -> f p
 enclosing = liftA3 S.enclosing
