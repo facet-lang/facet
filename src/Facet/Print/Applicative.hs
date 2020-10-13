@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Facet.Print.Applicative
 ( enclosing
 , squotes
@@ -59,6 +60,8 @@ module Facet.Print.Applicative
 , backslash
 , equals
 , pipe
+  -- * Precedence
+, prec
   -- * Re-exports
 , S.Pretty
 , S.Printer(S.Ann)
@@ -272,3 +275,9 @@ slash = pure S.slash
 backslash = pure S.backslash
 equals = pure S.equals
 pipe = pure S.pipe
+
+
+-- Precedence
+
+prec :: (Applicative f, S.PrecedencePrinter p, Ord (S.Level p)) => S.Level p -> f p -> f p
+prec l = fmap (S.prec l)
