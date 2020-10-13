@@ -321,9 +321,9 @@ a --> b = Synth $ do
 infixr 2 -->
 
 (>~>)
-  :: (UName ::: Check Level (Type Level))
-  -> Check Level (Type Level)
-  -> Synth Level (Type Level)
+  :: (UName ::: Check v (Type v))
+  -> Check v (Type v)
+  -> Synth v (Type v)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
   -- FIXME: shouldn’t we use the bound variable?
