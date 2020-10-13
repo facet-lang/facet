@@ -65,7 +65,7 @@ import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Value hiding (bound, global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
-import           Facet.Name (DName, Index(..), Level(..), QName(..), UName, indexToLevel)
+import           Facet.Name (DName, Index(..), Level(..), QName(..), UName)
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
@@ -216,12 +216,11 @@ global n = Synth $ Env.lookup n <$> askEnv >>= \case
 
 bound
   :: Index
-  -> Synth Level (Val Level)
+  -> Synth v (Val v)
 bound n = Synth $ do
   ctx <- askContext
-  let l = indexToLevel (length ctx) n
   case ctx !? n of
-    Just (_ ::: (_ ::: _T)) -> pure (CV.bound l ::: _T)
+    Just (_ ::: (v ::: _T)) -> pure (v ::: _T)
     Nothing                 -> err $ BadContext n
 
 hole
