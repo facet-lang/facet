@@ -9,6 +9,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Can we skip adding `Span` annotations to the AST and instead carry it around in a `Reader` by parsing and elaborating in a single context?
 
+- Provide a more systematic treatment of types/expressions in (meta)context.
+
 
 ## Language
 
