@@ -119,6 +119,7 @@ unProductT :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
 unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
 
 
+-- FIXME: how should this work in weak/parametric HOAS?
 ($$) :: (HasCallStack, Applicative f) => Value f a -> Value f a -> f (Value f a)
 (f :$ as) $$ a = pure (f :$ (as :> a))
 (_ :=> b) $$ a = b a
@@ -186,6 +187,7 @@ shift d = go
 --
 -- Thus, a value bound in the context is independent of anything following; so we can map the initial context values in the empty context, the next in the context consisting of the mapped initial values, and so on, all the way along.
 mapValue :: (HasCallStack, Monad m) => [Value m a] -> Stack (Value m a) -> Value m Level -> m (Value m a)
+-- FIXME: model contextualized values explicitly.
 -- FIXME: m can extend the metacontext, invalidating this as we move under binders.
 mapValue mctx = go
   where
