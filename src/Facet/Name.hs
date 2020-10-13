@@ -11,6 +11,7 @@ module Facet.Name
 , incrLevel
 , incrLevelFor
 , shiftLevel
+, isMeta
 , __
 , MName(..)
 , QName(..)
@@ -72,6 +73,9 @@ incrLevelFor mk = mapAccumR $ \ l _ -> (incrLevel l, mk l)
 
 shiftLevel :: Level -> Level -> Level
 shiftLevel (Level l) (Level r) = Level (l + r)
+
+isMeta :: Level -> Bool
+isMeta (Level l) = l < 0
 
 
 __ :: UName
