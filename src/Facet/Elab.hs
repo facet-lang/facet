@@ -525,8 +525,8 @@ printReason = group . \case
   BadContext n l         -> fillSep [ reflow "no variable bound for index", pretty (getIndex n), reflow "in context of length", pretty (getLevel l) ]
 
 
-printTypeInContext :: HasCallStack => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> Elab Level ErrDoc
-printTypeInContext mctx ctx = fmap P.getPrint . rethrow . (P.printCoreValue (Level 0) <=< rethrow . mapValue mctx ctx)
+printTypeInContext :: HasCallStack => [Value (M Level) P.Print] -> Stack (Value (M Level) P.Print) -> Type Level -> M Level ErrDoc
+printTypeInContext mctx ctx = fmap P.getPrint . (P.printCoreValue (Level 0) <=< rethrow . mapValue mctx ctx)
 
 printContext :: HasCallStack => Elab Level ([Value (M Level) P.Print], Stack (Value (M Level) P.Print))
 printContext = do
@@ -538,7 +538,7 @@ printContext = do
 printType :: HasCallStack => Type Level -> Elab Level ErrDoc
 printType t = do
   (mctx, ctx) <- printContext
-  printTypeInContext mctx ctx t
+  rethrow $ printTypeInContext mctx ctx t
 
 err :: HasCallStack => Reason -> Elab Level a
 err reason = do
@@ -556,8 +556,8 @@ mismatch msg exp act = err $ Mismatch msg exp act
 couldNotUnify :: HasCallStack => Type Level -> Type Level -> Elab Level a
 couldNotUnify t1 t2 = do
   (mctx, ctx) <- printContext
-  t1' <- printTypeInContext mctx ctx t1
-  t2' <- printTypeInContext mctx ctx t2
+  t1' <- rethrow $ printTypeInContext mctx ctx t1
+  t2' <- rethrow $ printTypeInContext mctx ctx t2
   mismatch (reflow "mismatch") t2' t1'
 
 couldNotSynthesize :: HasCallStack => ErrDoc -> Elab Level a
