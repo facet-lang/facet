@@ -66,7 +66,6 @@ import           Facet.Core.Value hiding (bound, global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
 import           Facet.Name (DName, Index(..), Level(..), QName(..), UName, indexToLevel)
-import           Facet.Pretty (reflow)
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
@@ -237,7 +236,7 @@ hole n = Check $ \ _T -> err $ Hole n _T
   -> Synth Level (Val Level)
 f $$ a = Synth $ do
   f' ::: _F <- synth f
-  (_A, _B) <- expectFunctionType (pretty "in application") _F
+  (_A, _B) <- expectFunctionType "in application" _F
   a' <- check (a ::: _A)
   (::: _B) <$> rethrow (f' CV.$$ a')
 
@@ -357,7 +356,7 @@ tlam
   -> Check Level (Expr Level)
   -> Check Level (Expr Level)
 tlam n b = Check $ \ ty -> do
-  (_ ::: _T, _B) <- expectQuantifiedType (reflow "when checking type lambda") ty
+  (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
   b' <- n ::: _T |- \ v -> do
     _B' <- rethrow (_B v)
     check (b ::: _B')
@@ -368,7 +367,7 @@ lam
   -> Check Level (Expr Level)
   -> Check Level (Expr Level)
 lam n b = Check $ \ _T -> do
-  (_A, _B) <- expectFunctionType (reflow "when checking lambda") _T
+  (_A, _B) <- expectFunctionType "when checking lambda" _T
   -- FIXME: shouldn’t we use the bound variable?
   b' <- CP.Var (n ::: _A) |-* \ v -> check (b ::: _B)
   pure (Lam [(CP.Var n, b')])
@@ -381,7 +380,7 @@ unit = Synth . pure $ Unit ::: TUnit
   -> Check Level (Expr Level)
   -> Check Level (Expr Level)
 l ** r = Check $ \ _T -> do
-  (_L, _R) <- expectProductType (reflow "when checking product") _T
+  (_L, _R) <- expectProductType "when checking product" _T
   l' <- check (l ::: _L)
   r' <- check (r ::: _R)
   pure (Prd l' r')
@@ -395,7 +394,7 @@ comp = withSpan $ \case
   -- FIXME: this shape makes it hard to elaborate nested pattern matches, because we kind of need to transpose the table.
   -- e.g. in xor : Bool -> Bool -> Bool { False True -> True, True False -> True, _ _ -> False }, we should have the second column of cases appearing under each of the first, or else we’re inserting inexhaustive patterns
   SE.Clauses cs -> Check $ \ _T -> do
-    (_A, _B) <- expectFunctionType (reflow "when checking clauses") _T
+    (_A, _B) <- expectFunctionType "when checking clauses" _T
     Lam <$> case cs of
       [] -> [] <$ unify _A Void
       cs -> traverse (uncurry (clause _A _B)) cs
@@ -407,7 +406,7 @@ comp = withSpan $ \case
     pure (tm <$> p', b')
   go []     b = checkElab (elabExpr b)
   go (p:ps) b = Check $ \ _T -> do
-    (_A, _B) <- expectFunctionType (reflow "when checking clause") _T
+    (_A, _B) <- expectFunctionType "when checking clause" _T
     Lam <$> (pure <$> clause _A _B (p:|ps) b)
 
 
@@ -423,7 +422,7 @@ pattern = withSpan $ \case
       Nil      -> Nil      <$  unify TUnit _T
       Nil :> p -> (Nil :>) <$> check (pattern p ::: _T)
       ps  :> p -> do
-        (_L, _R) <- expectProductType (reflow "when checking tuple pattern") _T
+        (_L, _R) <- expectProductType "when checking tuple pattern" _T
         (:>) <$> go _L ps <*> check (pattern p ::: _R)
 
 
@@ -498,7 +497,7 @@ data Err v = Err
 data Reason v
   = FreeVariable DName
   | CouldNotSynthesize ErrDoc
-  | Mismatch ErrDoc (Either ErrDoc (Type v)) (Type v)
+  | Mismatch String (Either String (Type v)) (Type v)
   | Hole T.Text (Type v)
   | BadContext Index
 
@@ -510,11 +509,11 @@ err reason = do
   ctx <- askContext
   throwError $ Err span reason mctx ctx
 
-mismatch :: ErrDoc -> Either ErrDoc (Type v) -> Type v -> Elab v a
+mismatch :: String -> Either String (Type v) -> Type v -> Elab v a
 mismatch msg exp act = err $ Mismatch msg exp act
 
 couldNotUnify :: Type v -> Type v -> Elab v a
-couldNotUnify t1 t2 = mismatch (reflow "mismatch") (Right t2) t1
+couldNotUnify t1 t2 = mismatch "mismatch" (Right t2) t1
 
 couldNotSynthesize :: ErrDoc -> Elab v a
 couldNotSynthesize = err . CouldNotSynthesize
@@ -528,14 +527,14 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
 -- Patterns
 
-expectMatch :: (Type v -> Maybe out) -> ErrDoc -> ErrDoc -> Type v -> Elab v out
+expectMatch :: (Type v -> Maybe out) -> String -> String -> Type v -> Elab v out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifiedType :: ErrDoc -> Type v -> Elab v (UName ::: Type v, Type v -> M v (Type v))
-expectQuantifiedType = expectMatch unForAll (pretty "{_} -> _")
+expectQuantifiedType :: String -> Type v -> Elab v (UName ::: Type v, Type v -> M v (Type v))
+expectQuantifiedType = expectMatch unForAll "{_} -> _"
 
-expectFunctionType :: ErrDoc -> Type v -> Elab v (Type v, Type v)
-expectFunctionType = expectMatch unArrow (pretty "_ -> _")
+expectFunctionType :: String -> Type v -> Elab v (Type v, Type v)
+expectFunctionType = expectMatch unArrow "_ -> _"
 
-expectProductType :: ErrDoc -> Type v -> Elab v (Type v, Type v)
-expectProductType = expectMatch unProductT (pretty "(_, _)")
+expectProductType :: String -> Type v -> Elab v (Type v, Type v)
+expectProductType = expectMatch unProductT "(_, _)"
