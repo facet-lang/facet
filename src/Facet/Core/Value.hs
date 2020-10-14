@@ -21,7 +21,6 @@ module Facet.Core.Value
 , ($$*)
 , case'
 , match
-, shift
 , mapValue
 , mapValueAll
 , join
@@ -38,7 +37,7 @@ import           Data.Monoid (First(..))
 import           Data.Traversable (mapAccumL)
 import           Facet.Core.Pattern
 import           Facet.Functor.Eq
-import           Facet.Name (Index(..), Level(..), QName, UName, isMeta, levelToIndex, shiftLevel)
+import           Facet.Name (Index(..), Level(..), QName, UName, isMeta, levelToIndex)
 import           Facet.Stack hiding ((!))
 import qualified Facet.Stack as S
 import           Facet.Syntax
@@ -173,31 +172,6 @@ match s = \case
       r' <- match r pr
       Just $ Tuple [l', r']
   _                -> Nothing
-
-
--- | Shift the bound variables in a 'Value' up by a certain amount.
---
--- This should be used when inserting a closed 'Type' at a given 'Level', e.g. when resolving globals.
-shift :: Functor m => Level -> Value m Level -> Value m Level
--- FIXME: my kingdom for a 'Functor' instance
--- FIXME: can we make this cheaper by inserting explicit shifts that act as a delta on the level for whatever they contain?
-shift d = go
-  where
-  invd = Level (-getLevel d)
-  go = \case
-    Type -> Type
-    Void -> Void
-    TUnit -> TUnit
-    Unit -> Unit
-    t :=> b -> fmap go t :=> binder b
-    a :-> b -> go a :-> go b
-    TLam n b -> TLam n (binder b)
-    Lam ps -> Lam (map (\ (p, b) -> (p, fmap go . b . fmap (shift invd))) ps)
-    f :$ as -> fmap (shiftLevel d) f :$ fmap go as
-    TPrd l r -> TPrd (go l) (go r)
-    Prd l r -> Prd (go l) (go r)
-  -- FIXME: we /probably/ need to invert the shift here? how can we be sure?
-  binder b = fmap go . b . shift invd
 
 
 -- | Map over the variables in a value bound by a given context & metacontext.
