@@ -3,16 +3,16 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Problem
 ( Solve(..)
 , Err(..)
 , Problem(..)
-, Meta(..)
 , Head(..)
 , unHead
 , global
-, bound
+-- , bound
 , ($$)
 , ($$*)
 , unify
@@ -21,85 +21,85 @@ module Facet.Core.Problem
 ) where
 
 import Control.Algebra
-import Control.Applicative (liftA2)
+import Control.Effect.State
+import Control.Effect.Sum
 import Control.Effect.Throw
-import Control.Monad.ST
 import Data.Foldable (foldl', toList)
 import Data.Monoid (First(..))
-import Data.STRef
 import Facet.Core.Pattern
 import Facet.Name hiding (L, R)
 import Facet.Stack
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
 
-data Err s v
-  = Problem s v :=/=: Problem s v
-  | UnsolvedMeta (Meta s v)
+data Err v
+  = Problem v :=/=: Problem v
+  | UnsolvedMeta Level
 
 infix 1 :=/=:
 
 
-newtype Solve s v a = Solve { runSolve :: ST s (Either (Err s v) a) }
+type Subst v = [Maybe (Problem v) ::: Problem v]
+
+newtype Solve v a = Solve { runSolve :: forall sig m . Has (State (Subst v) :+: Throw (Err v)) sig m => m a }
   deriving (Functor)
 
-instance Applicative (Solve s v) where
-  pure a = Solve $ pure (pure a)
-  Solve f <*> Solve a = Solve (liftA2 (<*>) f a)
+instance Applicative (Solve v) where
+  pure a = Solve $ pure a
+  Solve f <*> Solve a = Solve (f <*> a)
 
-instance Monad (Solve s v) where
-  Solve m >>= f = Solve $ m >>= either (pure . throwError) (runSolve . f)
+instance Monad (Solve v) where
+  Solve m >>= f = Solve $ m >>= runSolve . f
 
-instance Algebra (Throw (Err s v)) (Solve s v) where
-  alg _ (Throw e) _ = Solve $ pure (Left e)
+instance Algebra (State (Subst v) :+: Throw (Err v)) (Solve v) where
+  alg hdl sig ctx = case sig of
+    L subst -> Solve $ alg (runSolve . hdl) (inj subst) ctx
+    R throw -> Solve $ alg (runSolve . hdl) (inj throw) ctx
 
 
-data Problem s a
+data Problem a
   = Type
-  | (UName ::: Problem s a) :=> (Problem s a -> Solve s a (Problem s a))
-  | Lam [(Pattern UName, Pattern (Problem s a) -> Solve s a (Problem s a))]
-  | Head s a :$ Stack (Problem s a)
+  | (UName ::: Problem a) :=> (Problem a -> Solve a (Problem a))
+  | Lam [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))]
+  | Head a :$ Stack (Problem a)
 
 infixr 1 :=>
 infixl 9 :$
 
 
-newtype Meta s a = Meta { getMeta :: STRef s (Maybe (Problem s a) ::: Problem s a) }
-  deriving (Eq)
-
-data Head s a
+data Head a
   = Global QName
   | Local a
-  | Metavar (Meta s a)
+  | Metavar Level
   deriving (Eq)
 
-unHead :: (QName -> b) -> (a -> b) -> (Meta s a -> b) -> Head s a -> b
+unHead :: (QName -> b) -> (a -> b) -> (Level -> b) -> Head a -> b
 unHead f g h = \case
   Global  n -> f n
   Local   n -> g n
   Metavar n -> h n
 
 
-var :: Head s a -> Problem s a
+var :: Head a -> Problem a
 var = (:$ Nil)
 
-global :: QName -> Problem s a
+global :: QName -> Problem a
 global = var . Global
 
-bound :: a -> Problem s a
+bound :: a -> Problem a
 bound = var . Local
 
-metavar :: Meta s a -> Problem s a
+metavar :: Level -> Problem a
 metavar = var . Metavar
 
 
-($$) :: HasCallStack => Problem s a -> Problem s a -> Solve s a (Problem s a)
+($$) :: HasCallStack => Problem a -> Problem a -> Solve a (Problem a)
 (f :$ as) $$ a = pure (f :$ (as :> a))
 (_ :=> b) $$ a = b a
 Lam    ps $$ a = case' a ps
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (HasCallStack, Foldable t) => Problem s a -> t (Problem s a) -> Solve s a (Problem s a)
+($$*) :: (HasCallStack, Foldable t) => Problem a -> t (Problem a) -> Solve a (Problem a)
 f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 
 infixl 9 $$, $$*
@@ -107,14 +107,14 @@ infixl 9 $$, $$*
 
 unify
   :: Eq a
-  => Problem s a :===: Problem s a
-  -> Solve s a (Problem s a)
-unify p = go p
+  => Problem a :===: Problem a
+  -> Solve a (Problem a)
+unify = go
   where
   go
     :: Eq v
-    => Problem s v :===: Problem s v
-    -> Solve s v (Problem s v)
+    => Problem v :===: Problem v
+    -> Solve v (Problem v)
   go = \case
     Type :===: Type -> pure Type
     t1 :=> b1 :===: t2 :=> b2 -> do
@@ -139,22 +139,32 @@ unify p = go p
       solve (n2 := x)
     t1 :===: t2 -> throwError $ t1 :=/=: t2
 
-  meta _T = Solve (Right . Meta <$> newSTRef (Nothing ::: _T))
-  solve :: Eq v => Meta s v := Problem s v -> Solve s v (Problem s v)
-  solve (Meta ref := val') = Solve $ do
-    val ::: _T <- readSTRef ref
+  meta _T = do
+    subst <- getSubst
+    put ((Nothing ::: _T):subst)
+    pure (Level (length subst))
+  solve :: Eq v => Level := Problem v -> Solve v (Problem v)
+  solve (m := val') = do
+    subst <- getSubst
+    let n = levelToIndex (Level (length subst)) m
     -- FIXME: occurs check
-    case val of
-      Just val -> runSolve (go (val :===: val'))
-      Nothing  -> Right val' <$ writeSTRef ref (Just val' ::: _T)
+    case subst !! getIndex n of
+      Just val ::: _T -> go (val :===: val')
+      Nothing  ::: _T -> val' <$ put (insertSubst n (val' ::: _T) subst)
+  getSubst :: Solve v (Subst v)
+  getSubst = get
+
+  insertSubst :: Index -> Problem v ::: Problem v -> Subst v -> Subst v
+  insertSubst n (v ::: _T) s = take (getIndex n - 1) s <> ((Just v ::: _T) : drop (getIndex n) s)
 
 
-case' :: HasCallStack => Problem s a -> [(Pattern UName, Pattern (Problem s a) -> Solve s a (Problem s a))] -> Solve s a (Problem s a)
+
+case' :: HasCallStack => Problem a -> [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))] -> Solve a (Problem a)
 case' s ps = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) ps) of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
-match :: Problem s a -> Pattern UName -> Maybe (Pattern (Problem s a))
+match :: Problem a -> Pattern UName -> Maybe (Pattern (Problem a))
 match s = \case
   Wildcard -> Just Wildcard
   Var _    -> Just (Var s)
