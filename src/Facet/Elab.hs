@@ -342,7 +342,7 @@ elabExpr = withSpan' $ \case
   f SE.:$  a -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
   l SE.:*  r -> check (checkElab (elabExpr l) ** checkElab (elabExpr r)) "product"
   SE.Unit    -> switch unit
-  SE.Comp cs -> check (comp cs) "computation"
+  SE.Comp cs -> check (elabComp cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -381,11 +381,11 @@ l ** r = Check $ \ _T -> do
   r' <- check (r ::: _R)
   pure (Prd l' r')
 
-comp
+elabComp
   :: (HasCallStack, Eq v)
   => Spanned (SE.Comp Spanned a)
   -> Check v (Expr v)
-comp = withSpan $ \case
+elabComp = withSpan $ \case
   SE.Expr    b  -> checkElab (elabExpr b)
   -- FIXME: this shape makes it hard to elaborate nested pattern matches, because we kind of need to transpose the table.
   -- e.g. in xor : Bool -> Bool -> Bool { False True -> True, True False -> True, _ _ -> False }, we should have the second column of cases appearing under each of the first, or else we’re inserting inexhaustive patterns
