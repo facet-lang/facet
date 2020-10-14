@@ -118,7 +118,11 @@ unify
   -> Solve a (Problem a)
 unify p = Solve $ go zeroMeta p
   where
-  go :: (Eq v, Has (Throw (Err v)) sig m) => Meta -> Problem v :===: Problem v -> m (Problem v)
+  go
+    :: (Eq v, Has (Throw (Err v)) sig m)
+    => Meta
+    -> Problem v :===: Problem v
+    -> m (Problem v)
   go i = \case
     Type :===: Type -> pure Type
     t1 :=> b1 :===: t2 :=> b2 -> do
