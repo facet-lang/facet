@@ -1,4 +1,9 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Carrier.Coro.Simple
 ( -- * Coro carrier
   runCoro
@@ -7,6 +12,7 @@ module Facet.Carrier.Coro.Simple
 , module Facet.Effect.Coro
 ) where
 
+import Control.Algebra
 import Facet.Effect.Coro
 
 runCoro :: (a -> m b) -> CoroC a b m k -> m k
@@ -21,3 +27,8 @@ instance Applicative m => Applicative (CoroC a b m) where
 
 instance Monad m => Monad (CoroC a b m) where
   a >>= f = CoroC $ \ k -> runCoro k a >>= runCoro k . f
+
+instance Algebra sig m => Algebra (Coro a b :+: sig) (CoroC a b m) where
+  alg hdl sig ctx = case sig of
+    L (Yield a) -> CoroC $ \ k -> (<$ ctx) <$> k a
+    R other     -> CoroC $ \ k -> alg (runCoro k . hdl) other ctx
