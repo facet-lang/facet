@@ -129,7 +129,7 @@ unify p = Solve $ go zeroMeta p
         _B1' <- b1 v
         _B2' <- b2 v
         go i (_B1' :===: _B2')
-    t :=> b :===: x ->
+    t :=> b :===: x -> do
       -- FIXME: solve metavars.
       -- FIXME: how do we communicate a solution?
       -- - statefully, we’d write the solution to a substitution, continue unifying, and at the end substitute all the metavars at once
@@ -137,9 +137,9 @@ unify p = Solve $ go zeroMeta p
       -- - listening sounds like some sort of coroutining thing?
       -- - unify could return the set of solved metas, but communicating that from the body of a binder outwards sounds tricky
       -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
-      pure $ Ex t $ \ v -> do
-        _B' <- b v
-        go (incrMeta i) (_B' :===: x)
+      -- FIXME: shouldn’t something know about the type?
+      _B' <- runSolve $ b (meta i)
+      go (incrMeta i) (_B' :===: x)
     f1 :$ as1 :===: f2 :$ as2
       | f1 == f2
       , length as1 == length as2 -> do
