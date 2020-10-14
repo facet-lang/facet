@@ -4,6 +4,10 @@ module Facet.Effect.Coro
 ( -- * Coro effect
   Coro(..)
 , yield
+  -- * Re-exports
+, Algebra
+, Has
+, run
 ) where
 
 import Control.Algebra
