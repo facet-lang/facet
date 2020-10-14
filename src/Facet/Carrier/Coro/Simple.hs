@@ -3,7 +3,11 @@ module Facet.Carrier.Coro.Simple
 ( -- * Coro carrier
   runCoro
 , CoroC(..)
+  -- * Coro effect
+, module Facet.Effect.Coro
 ) where
+
+import Facet.Effect.Coro
 
 runCoro :: (a -> m b) -> CoroC a b m k -> m k
 runCoro k (CoroC m) = m k
