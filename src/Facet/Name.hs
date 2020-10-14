@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -12,6 +13,7 @@ module Facet.Name
 , incrLevelFor
 , shiftLevel
 , isMeta
+, WithAnn(..)
 , __
 , MName(..)
 , QName(..)
@@ -76,6 +78,13 @@ shiftLevel (Level l) (Level r) = Level (l + r)
 
 isMeta :: Level -> Bool
 isMeta (Level l) = l < 0
+
+
+data WithAnn a b = WithAnn
+  { ann :: a
+  , val :: b
+  }
+  deriving (Foldable, Functor, Traversable)
 
 
 __ :: UName
