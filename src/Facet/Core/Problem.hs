@@ -67,9 +67,6 @@ infixl 9 :$
 newtype Meta = Meta { getMeta :: Int }
   deriving (Eq, Ord, Show)
 
-zeroMeta :: Meta
-zeroMeta = Meta 0
-
 data Head a
   = Global QName
   | Local a
