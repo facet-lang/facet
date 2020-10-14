@@ -157,33 +157,31 @@ unify
   => Type v
   -> Type v
   -> Elab v (Type v)
-unify t1 t2 = go t1 t2
+unify t1 t2 = case (t1, t2) of
+  -- FIXME: this is missing a lot of cases
+  (Type,       Type)       -> pure Type
+  (Void,       Void)       -> pure Void
+  (TUnit,      TUnit)      -> pure TUnit
+  (Unit,       Unit)       -> pure Unit
+  -- FIXME: resolve globals to try to progress past certain inequalities
+  (f1 :$ a1,   f2 :$ a2)
+    | f1 == f2
+    , Just a <- goS a1 a2 -> (f1 :$) <$> a
+  (a1 :-> b1,  a2 :-> b2)  -> (:->) <$> unify a1 a2 <*> unify b1 b2
+  (t1 :=> b1,  t2 :=> b2)  -> do
+    t <- unify (ty t1) (ty t2)
+    b <- tm t1 ::: t |- \ v -> do
+      b1' <- rethrow $ b1 v
+      b2' <- rethrow $ b2 v
+      unify b1' b2'
+    pure $ tm t1 ::: t :=> b
+  (TPrd l1 r1, TPrd l2 r2) -> TPrd <$> unify l1 l2 <*> unify r1 r2
+  (Prd  l1 r1, Prd  l2 r2) -> Prd  <$> unify l1 l2 <*> unify r1 r2
+  -- FIXME: build and display a diff of the root types
+  _                       -> couldNotUnify t1 t2
   where
-  go t1 t2 = case (t1, t2) of
-    -- FIXME: this is missing a lot of cases
-    (Type,       Type)       -> pure Type
-    (Void,       Void)       -> pure Void
-    (TUnit,      TUnit)      -> pure TUnit
-    (Unit,       Unit)       -> pure Unit
-    -- FIXME: resolve globals to try to progress past certain inequalities
-    (f1 :$ a1,   f2 :$ a2)
-      | f1 == f2
-      , Just a <- goS a1 a2 -> (f1 :$) <$> a
-    (a1 :-> b1,  a2 :-> b2)  -> (:->) <$> go a1 a2 <*> go b1 b2
-    (t1 :=> b1,  t2 :=> b2)  -> do
-      t <- go (ty t1) (ty t2)
-      b <- tm t1 ::: t |- \ v -> do
-        b1' <- rethrow $ b1 v
-        b2' <- rethrow $ b2 v
-        go b1' b2'
-      pure $ tm t1 ::: t :=> b
-    (TPrd l1 r1, TPrd l2 r2) -> TPrd <$> go l1 l2 <*> go r1 r2
-    (Prd  l1 r1, Prd  l2 r2) -> Prd  <$> go l1 l2 <*> go r1 r2
-    -- FIXME: build and display a diff of the root types
-    _                       -> couldNotUnify t1 t2
-
   goS Nil        Nil        = Just (pure Nil)
-  goS (i1 :> l1) (i2 :> l2) = liftA2 (:>) <$> goS i1 i2 <*> Just (go l1 l2)
+  goS (i1 :> l1) (i2 :> l2) = liftA2 (:>) <$> goS i1 i2 <*> Just (unify l1 l2)
   goS _          _          = Nothing
 
 
