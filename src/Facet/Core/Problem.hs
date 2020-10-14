@@ -13,6 +13,7 @@ module Facet.Core.Problem
 , global
 , bound
 , ($$)
+, ($$*)
 , case'
 , match
 ) where
@@ -20,6 +21,7 @@ module Facet.Core.Problem
 import Control.Algebra
 import Control.Effect.Sum
 import Control.Effect.Throw
+import Data.Foldable (foldl')
 import Data.Monoid (First(..))
 import Facet.Core.Pattern
 import Facet.Name
@@ -80,6 +82,9 @@ bound n = Local n :$ Nil
 (_ :=> b) $$ a = b a
 Lam    ps $$ a = case' a ps
 _         $$ _ = error "can’t apply non-neutral/forall type"
+
+($$*) :: (HasCallStack, Foldable t) => Problem a -> t (Problem a) -> Solve a (Problem a)
+f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 
 
 case' :: HasCallStack => Problem a -> [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))] -> Solve a (Problem a)
