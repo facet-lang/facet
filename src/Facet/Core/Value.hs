@@ -40,6 +40,7 @@ import           Text.Show (showListWith)
 
 -- FIXME: eliminate TLam; track type introductions and applications with annotations in the context.
 -- FIXME: replace :-> with syntax sugar for :=>.
+-- FIXME: replace products, void, and unit with references to constant datatypes.
 data Value f a
   = Type
   | Void
