@@ -82,7 +82,7 @@ var :: Head a -> Problem a
 var = (:$ Nil)
 
 global :: QName -> Problem a
-global n = Global n :$ Nil
+global = var . Global
 
 bound :: a -> Problem a
 bound n = Local n :$ Nil
