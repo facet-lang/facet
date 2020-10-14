@@ -26,7 +26,8 @@ import Control.Effect.Throw
 import Data.Foldable (foldl', toList)
 import Data.Monoid (First(..))
 import Facet.Core.Pattern
-import Facet.Name
+import Facet.Effect.Coro
+import Facet.Name hiding (L, R)
 import Facet.Stack
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
@@ -36,7 +37,7 @@ data Err v = Problem v :=/=: Problem v
 infix 1 :=/=:
 
 
-newtype Solve v a = Solve { runSolve :: forall sig m . Has (Throw (Err v)) sig m => m a }
+newtype Solve v a = Solve { runSolve :: forall sig m . Has (Coro (Meta := Problem v) (Problem v) :+: Throw (Err v)) sig m => m a }
 
 instance Functor (Solve v) where
   fmap f (Solve m) = Solve (fmap f m)
@@ -48,8 +49,10 @@ instance Applicative (Solve v) where
 instance Monad (Solve v) where
   Solve m >>= f = Solve $ m >>= runSolve . f
 
-instance Algebra (Throw (Err v)) (Solve v) where
-  alg hdl sig ctx = Solve $ alg (runSolve . hdl) (inj sig) ctx
+instance Algebra (Coro (Meta := Problem v) (Problem v) :+: Throw (Err v)) (Solve v) where
+  alg hdl sig ctx = case sig of
+    L yield -> Solve $ alg (runSolve . hdl) (inj yield) ctx
+    R throw -> Solve $ alg (runSolve . hdl) (inj throw) ctx
 
 
 data Problem a
@@ -111,7 +114,7 @@ unify
   -> Solve a (Problem a)
 unify p = Solve $ go p
   where
-  go :: (Eq v, Has (Throw (Err v)) sig m) => Problem v :===: Problem v -> m (Problem v)
+  go :: (Eq v, Has (Coro (Meta := Problem v) (Problem v) :+: Throw (Err v)) sig m) => Problem v :===: Problem v -> m (Problem v)
   go = \case
     Type :===: Type -> pure Type
     t1 :=> b1 :===: t2 :=> b2 -> do
