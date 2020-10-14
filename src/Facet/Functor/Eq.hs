@@ -1,6 +1,7 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Facet.Functor.Eq
 ( EqM(..)
 ) where
 
-class EqM f where
-  eqM :: (Monad m, Eq a) => f m a -> f m a -> m Bool
+class EqM f a where
+  eqM :: Monad m => f m a -> f m a -> m Bool
