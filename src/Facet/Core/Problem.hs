@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Problem
@@ -8,6 +10,8 @@ module Facet.Core.Problem
 , Head(..)
 ) where
 
+import Control.Algebra
+import Control.Effect.Sum
 import Control.Effect.Throw
 import Facet.Core.Pattern
 import Facet.Name
@@ -27,6 +31,9 @@ instance Applicative (Solve v) where
 
 instance Monad (Solve v) where
   Solve m >>= f = Solve $ m >>= runSolve . f
+
+instance Algebra (Throw (Err v)) (Solve v) where
+  alg hdl sig ctx = Solve $ alg (runSolve . hdl) (inj sig) ctx
 
 
 data Problem a
