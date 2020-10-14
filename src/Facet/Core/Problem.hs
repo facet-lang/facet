@@ -141,10 +141,10 @@ unify p = go p
       , length as1 == length as2 -> do
         as' <- traverse (go) (zipWith (:===:) (toList as1) (toList as2))
         unHead global bound metavar f1 $$* as'
-    -- Metavar n1 :$ Nil :===: x ->
-    --   k (n1 := x)
-    -- x :===: Metavar n2 :$ Nil ->
-    --   k (n2 := x)
+    Metavar n1 :$ Nil :===: x ->
+      solve (n1 := x)
+    x :===: Metavar n2 :$ Nil ->
+      solve (n2 := x)
     Let (n1 := v1 ::: t1) b1 :===: Let (_ := v2 ::: t2) b2 -> do
       _T' <- go (t1 :===: t2)
       v' <- go (v1 :===: v2)
@@ -155,6 +155,13 @@ unify p = go p
     t1 :===: t2 -> throwError $ t1 :=/=: t2
 
   meta _T = Solve (Right . Meta <$> newSTRef (Nothing ::: _T))
+  solve :: Eq v => Meta v := Problem v -> Solve v (Problem v)
+  solve (Meta ref := val') = Solve $ do
+    val ::: _T <- readSTRef ref
+    -- FIXME: occurs check
+    case val of
+      Just val -> runSolve (go (val :===: val'))
+      Nothing  -> Right val' <$ writeSTRef ref (Just val' ::: _T)
 
 
 case' :: HasCallStack => Problem a -> [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))] -> Solve a (Problem a)
