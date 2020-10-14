@@ -25,6 +25,7 @@ data Problem a
   | Lam [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))]
   | Head a :$ Stack (Problem a)
   | Ex (Problem a) (Problem a -> Solve a (Problem a))
+  | Let (Problem a ::: Problem a) (Problem a -> Solve a (Problem a))
 
 infixr 0 :=>
 infixl 9 :$
