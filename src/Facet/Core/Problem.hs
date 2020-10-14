@@ -21,6 +21,10 @@ newtype Solve v a = Solve { runSolve :: forall sig m . Has (Throw (Err v)) sig m
 instance Functor (Solve v) where
   fmap f (Solve m) = Solve (fmap f m)
 
+instance Applicative (Solve v) where
+  pure a = Solve $ pure a
+  Solve f <*> Solve a = Solve (f <*> a)
+
 
 data Problem a
   = Type
