@@ -10,3 +10,7 @@ runCoro k (CoroC m) = m k
 
 newtype CoroC a b m k = CoroC ((a -> m b) -> m k)
   deriving (Functor)
+
+instance Applicative m => Applicative (CoroC a b m) where
+  pure a = CoroC $ \ _ -> pure a
+  f <*> a = CoroC $ \ k -> runCoro k f <*> runCoro k a
