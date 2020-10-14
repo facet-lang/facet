@@ -39,7 +39,7 @@ curryAnn f a b = f (a ::: b)
 data a := b = a := b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-infix 2 :=
+infixr 2 :=
 
 instance Bifunctor (:=) where
   bimap f g (a := b) = f a := g b
