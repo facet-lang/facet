@@ -78,6 +78,9 @@ unHead f g = \case
   Local  n -> g n
 
 
+var :: Head a -> Problem a
+var = (:$ Nil)
+
 global :: QName -> Problem a
 global n = Global n :$ Nil
 
