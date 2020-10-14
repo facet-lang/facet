@@ -59,7 +59,6 @@ data Problem a
   | (UName ::: Problem a) :=> (Problem a -> Solve a (Problem a))
   | Lam [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))]
   | Head a :$ Stack (Problem a)
-  | Let (UName := Problem a ::: Problem a) (Problem a -> Solve a (Problem a))
 
 infixr 1 :=>
 infixl 9 :$
@@ -145,13 +144,6 @@ unify p = go p
       solve (n1 := x)
     x :===: Metavar n2 :$ Nil ->
       solve (n2 := x)
-    Let (n1 := v1 ::: t1) b1 :===: Let (_ := v2 ::: t2) b2 -> do
-      _T' <- go (t1 :===: t2)
-      v' <- go (v1 :===: v2)
-      pure $ Let (n1 := v' ::: _T') $ \ v -> do
-        _B1' <- b1 v
-        _B2' <- b2 v
-        go (_B1' :===: _B2')
     t1 :===: t2 -> throwError $ t1 :=/=: t2
 
   meta _T = Solve (Right . Meta <$> newSTRef (Nothing ::: _T))
