@@ -115,48 +115,47 @@ unify
   :: Eq a
   => Problem a :===: Problem a
   -> Solve a (Problem a)
-unify p = go zeroMeta p
+unify p = go p
   where
   go
     :: Eq v
-    => Meta
-    -> Problem v :===: Problem v
+    => Problem v :===: Problem v
     -> Solve v (Problem v)
-  go i = \case
+  go = \case
     Type :===: Type -> pure Type
     t1 :=> b1 :===: t2 :=> b2 -> do
-      _T' <- go i (ty t1 :===: ty t2)
+      _T' <- go (ty t1 :===: ty t2)
       pure $ tm t1 ::: _T' :=> \ v -> do
         _B1' <- b1 v
         _B2' <- b2 v
-        go i (_B1' :===: _B2')
-    t :=> b :===: x -> do
-      -- FIXME: solve metavars.
-      -- FIXME: how do we communicate a solution?
-      -- - statefully, we’d write the solution to a substitution, continue unifying, and at the end substitute all the metavars at once
-      -- - locally, we could listen for the solution and either apply it or push the existential outwards.
-      -- - listening sounds like some sort of coroutining thing?
-      -- - unify could return the set of solved metas, but communicating that from the body of a binder outwards sounds tricky
-      -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
-      -- FIXME: shouldn’t something know about the type?
-      _B' <- b (meta i)
-      go (incrMeta i) (_B' :===: x)
+        go (_B1' :===: _B2')
+    -- t :=> b :===: x -> do
+    --   -- FIXME: solve metavars.
+    --   -- FIXME: how do we communicate a solution?
+    --   -- - statefully, we’d write the solution to a substitution, continue unifying, and at the end substitute all the metavars at once
+    --   -- - locally, we could listen for the solution and either apply it or push the existential outwards.
+    --   -- - listening sounds like some sort of coroutining thing?
+    --   -- - unify could return the set of solved metas, but communicating that from the body of a binder outwards sounds tricky
+    --   -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
+    --   -- FIXME: shouldn’t something know about the type?
+    --   _B' <- b (meta i)
+    --   go (_B' :===: x)
     f1 :$ as1 :===: f2 :$ as2
       | f1 == f2
       , length as1 == length as2 -> do
-        as' <- traverse (go i) (zipWith (:===:) (toList as1) (toList as2))
+        as' <- traverse (go) (zipWith (:===:) (toList as1) (toList as2))
         unHead global bound meta f1 $$* as'
     -- Metavar n1 :$ Nil :===: x ->
     --   k (n1 := x)
     -- x :===: Metavar n2 :$ Nil ->
     --   k (n2 := x)
     Let (n1 := v1 ::: t1) b1 :===: Let (_ := v2 ::: t2) b2 -> do
-      _T' <- go i (t1 :===: t2)
-      v' <- go i (v1 :===: v2)
+      _T' <- go (t1 :===: t2)
+      v' <- go (v1 :===: v2)
       pure $ Let (n1 := v' ::: _T') $ \ v -> do
         _B1' <- b1 v
         _B2' <- b2 v
-        go i (_B1' :===: _B2')
+        go (_B1' :===: _B2')
     t1 :===: t2 -> throwError $ t1 :=/=: t2
 
 
