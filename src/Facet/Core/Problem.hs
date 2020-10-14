@@ -56,7 +56,7 @@ data Problem a
   | Ex (UName ::: Problem a) (Problem a -> Solve a (Problem a))
   | Let (UName := Problem a ::: Problem a) (Problem a -> Solve a (Problem a))
 
-infixr 0 :=>
+infixr 1 :=>
 infixl 9 :$
 
 
@@ -92,43 +92,42 @@ infixl 9 $$, $$*
 
 unify
   :: Eq a
-  => Problem a
-  -> Problem a
+  => Problem a :===: Problem a
   -> Solve a (Problem a)
-unify = curry $ \case
-  (Type, Type) -> pure Type
-  (t1 :=> b1, t2 :=> b2) -> do
-    _T' <- unify (ty t1) (ty t2)
+unify = \case
+  Type :===: Type -> pure Type
+  t1 :=> b1 :===: t2 :=> b2 -> do
+    _T' <- unify (ty t1 :===: ty t2)
     pure $ tm t1 ::: _T' :=> \ v -> do
       _B1' <- b1 v
       _B2' <- b2 v
-      unify _B1' _B2'
-  (t :=> b, x) -> do
+      unify (_B1' :===: _B2')
+  t :=> b :===: x -> do
     -- FIXME: solve metavars.
     -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
     -- FIXME: there’s no way to know that v is a metavariable.
     pure $ Ex t $ \ v -> do
       _B' <- b v
-      unify _B' x
-  (f1 :$ as1, f2 :$ as2)
+      unify (_B' :===: x)
+  f1 :$ as1 :===: f2 :$ as2
     | f1 == f2
     , length as1 == length as2 -> do
-      as' <- sequenceA (zipWith unify (toList as1) (toList as2))
+      as' <- traverse unify (zipWith (:===:) (toList as1) (toList as2))
       unHead global bound f1 $$* as'
-  (Ex t1 b1, Ex t2 b2) -> do
-    _T' <- unify (ty t1) (ty t2)
+  Ex t1 b1 :===: Ex t2 b2 -> do
+    _T' <- unify (ty t1 :===: ty t2)
     pure $ Ex (tm t1 ::: _T') $ \ v -> do
       _B1' <- b1 v
       _B2' <- b2 v
-      unify _B1' _B2'
-  (Let (n1 := v1 ::: t1) b1, Let (_ := v2 ::: t2) b2) -> do
-    _T' <- unify t1 t2
-    v' <- unify v1 v2
+      unify (_B1' :===: _B2')
+  Let (n1 := v1 ::: t1) b1 :===: Let (_ := v2 ::: t2) b2 -> do
+    _T' <- unify (t1 :===: t2)
+    v' <- unify (v1 :===: v2)
     pure $ Let (n1 := v' ::: _T') $ \ v -> do
       _B1' <- b1 v
       _B2' <- b2 v
-      unify _B1' _B2'
-  (t1, t2) -> throwError $ Mismatch t1 t2
+      unify (_B1' :===: _B2')
+  t1 :===: t2 -> throwError $ Mismatch t1 t2
 
 
 case' :: HasCallStack => Problem a -> [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))] -> Solve a (Problem a)
