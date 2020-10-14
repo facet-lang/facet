@@ -70,12 +70,14 @@ newtype Meta = Meta { getMeta :: Int }
 data Head a
   = Global QName
   | Local a
+  | Metavar Meta
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-unHead :: (QName -> b) -> (a -> b) -> Head a -> b
-unHead f g = \case
-  Global n -> f n
-  Local  n -> g n
+unHead :: (QName -> b) -> (a -> b) -> (Meta -> b) -> Head a -> b
+unHead f g h = \case
+  Global  n -> f n
+  Local   n -> g n
+  Metavar n -> h n
 
 
 var :: Head a -> Problem a
@@ -86,6 +88,9 @@ global = var . Global
 
 bound :: a -> Problem a
 bound = var . Local
+
+meta :: Meta -> Problem a
+meta = var . Metavar
 
 
 ($$) :: HasCallStack => Problem a -> Problem a -> Solve a (Problem a)
@@ -128,7 +133,7 @@ unify = \case
     | f1 == f2
     , length as1 == length as2 -> do
       as' <- traverse unify (zipWith (:===:) (toList as1) (toList as2))
-      unHead global bound f1 $$* as'
+      unHead global bound meta f1 $$* as'
   Ex t1 b1 :===: Ex t2 b2 -> do
     _T' <- unify (ty t1 :===: ty t2)
     pure $ Ex (tm t1 ::: _T') $ \ v -> do
