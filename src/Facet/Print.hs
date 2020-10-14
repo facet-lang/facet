@@ -37,6 +37,7 @@ import           Control.Monad ((<=<))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
+import           Data.Function (on)
 import           Data.List (intersperse)
 import           Data.List.NonEmpty (NonEmpty)
 import           Data.Monoid (First(..))
@@ -103,6 +104,10 @@ newtype Print = Print { runPrint :: Prec Precedence (Rainbow (PP.Doc Highlight))
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
+
+-- FIXME: NO. BAD.
+instance Eq Print where
+  (==) = (==) `on` show
 
 
 data Precedence
