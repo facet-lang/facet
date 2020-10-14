@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
@@ -8,6 +9,7 @@ module Facet.Core.Problem
 , Err(..)
 , Problem(..)
 , Head(..)
+, unHead
 ) where
 
 import Control.Algebra
@@ -52,3 +54,8 @@ data Head a
   = Global QName
   | Local a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+unHead :: (QName -> b) -> (a -> b) -> Head a -> b
+unHead f g = \case
+  Global n -> f n
+  Local  n -> g n
