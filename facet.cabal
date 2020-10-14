@@ -43,6 +43,7 @@ library
     Facet.Core.Pattern
     Facet.Core.Problem
     Facet.Core.Value
+    Facet.Effect.Coro
     Facet.Elab
     Facet.Env
     Facet.Functor.Eq
