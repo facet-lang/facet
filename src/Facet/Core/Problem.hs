@@ -142,6 +142,8 @@ unify p = Solve $ go p
         runSolve $ unHead global bound meta f1 $$* as'
     Metavar n1 :$ Nil :===: x ->
       yield (n1 := x)
+    x :===: Metavar n2 :$ Nil ->
+      yield (n2 := x)
     Ex t1 b1 :===: Ex t2 b2 -> do
       _T' <- go (ty t1 :===: ty t2)
       pure $ Ex (tm t1 ::: _T') $ \ v -> do
