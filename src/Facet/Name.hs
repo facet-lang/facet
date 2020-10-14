@@ -86,6 +86,9 @@ data WithAnn a b = WithAnn
   }
   deriving (Foldable, Functor, Traversable)
 
+instance Show b => Show (WithAnn a b) where
+  showsPrec p = showsPrec p . val
+
 
 __ :: UName
 __ = UName T.empty
