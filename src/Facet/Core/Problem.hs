@@ -131,7 +131,7 @@ unify p = go p
     f1 :$ as1 :===: f2 :$ as2
       | f1 == f2
       , length as1 == length as2 -> do
-        as' <- traverse (go) (zipWith (:===:) (toList as1) (toList as2))
+        as' <- traverse go (zipWith (:===:) (toList as1) (toList as2))
         unHead global bound metavar f1 $$* as'
     Metavar n1 :$ Nil :===: x ->
       solve (n1 := x)
