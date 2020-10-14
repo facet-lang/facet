@@ -11,6 +11,7 @@ module Facet.Core.Problem
 , Head(..)
 , unHead
 , global
+, bound
 ) where
 
 import Control.Algebra
@@ -64,3 +65,6 @@ unHead f g = \case
 
 global :: QName -> Problem a
 global n = Global n :$ Nil
+
+bound :: a -> Problem a
+bound n = Local n :$ Nil
