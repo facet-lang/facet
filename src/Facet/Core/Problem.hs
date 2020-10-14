@@ -60,7 +60,6 @@ data Problem a
   | (UName ::: Problem a) :=> (Problem a -> Solve a (Problem a))
   | Lam [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))]
   | Head a :$ Stack (Problem a)
-  | Ex (UName ::: Problem a) (Problem a -> Solve a (Problem a))
   | Let (UName := Problem a ::: Problem a) (Problem a -> Solve a (Problem a))
 
 infixr 1 :=>
@@ -149,12 +148,6 @@ unify p = Solve $ go zeroMeta p
       yield (n1 := x)
     x :===: Metavar n2 :$ Nil ->
       yield (n2 := x)
-    Ex t1 b1 :===: Ex t2 b2 -> do
-      _T' <- go i (ty t1 :===: ty t2)
-      pure $ Ex (tm t1 ::: _T') $ \ v -> do
-        _B1' <- b1 v
-        _B2' <- b2 v
-        go i (_B1' :===: _B2')
     Let (n1 := v1 ::: t1) b1 :===: Let (_ := v2 ::: t2) b2 -> do
       _T' <- go i (t1 :===: t2)
       v' <- go i (v1 :===: v2)
