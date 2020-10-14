@@ -86,6 +86,8 @@ _         $$ _ = error "can’t apply non-neutral/forall type"
 ($$*) :: (HasCallStack, Foldable t) => Problem a -> t (Problem a) -> Solve a (Problem a)
 f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 
+infixl 9 $$, $$*
+
 
 case' :: HasCallStack => Problem a -> [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))] -> Solve a (Problem a)
 case' s ps = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) ps) of
