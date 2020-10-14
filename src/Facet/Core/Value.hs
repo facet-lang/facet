@@ -10,7 +10,6 @@ module Facet.Core.Value
 ( Value(..)
 , Head(..)
 , unHead
-, showsPrecValue
 , global
 , bound
 , unForAll
@@ -30,23 +29,20 @@ module Facet.Core.Value
 , eq
 ) where
 
-import           Control.Applicative (liftA2)
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Lift
 import           Control.Monad ((<=<))
 import           Data.Foldable (foldl', for_, toList)
 import           Data.Functor (void)
-import           Data.List (intersperse)
-import           Data.Monoid (Ap(..), Endo(..), First(..))
+import           Data.Monoid (First(..))
 import           Data.Traversable (mapAccumL)
 import           Facet.Core.Pattern
 import           Facet.Functor.Eq
-import           Facet.Name (Index(..), Level(..), QName, UName, incrLevel, isMeta, levelToIndex, shiftLevel)
+import           Facet.Name (Index(..), Level(..), QName, UName, isMeta, levelToIndex, shiftLevel)
 import           Facet.Stack hiding ((!))
 import qualified Facet.Stack as S
 import           Facet.Syntax
 import           GHC.Stack
-import           Text.Show (showListWith)
 
 -- FIXME: eliminate TLam; track type introductions and applications with annotations in the context.
 -- FIXME: replace :-> with syntax sugar for :=>.
@@ -123,33 +119,6 @@ unHead :: (QName -> b) -> (a -> b) -> Head a -> b
 unHead f g = \case
   Global n -> f n
   Local  n -> g n
-
-
-showsPrecValue :: Monad m => Level -> Int -> Value m Level -> m ShowS
-showsPrecValue d p = fmap appEndo . go d p
-  where
-  go d p = \case
-    Type     -> lit "Type"
-    Void     -> lit "Void"
-    TUnit    -> lit "TUnit"
-    Unit     -> lit "Unit"
-    t :=> b  -> prec 0  $ c (tm t) <+> lit ":::" <+> go d 1 (ty t) <+> lit ":=>" <+> lit "\\ _ ->" <+> (go (incrLevel d) 0 =<< b (bound d))
-    TLam n b -> prec 10 $ lit "TLam" <+> c n <+> lit "\\ _ ->" <+> (go (incrLevel d) 11 =<< b (bound d))
-    a :-> b  -> prec 0  $ go d 1 a <+> lit ":->" <+> go d 0 b
-    Lam    b -> prec 10 $ lit "Lam"  <+> list (traverse (\ (p, b) -> parens True (c p <+> lit ", " <+> lit "\\ _ ->" <+> (go (incrLevel d) 0 =<< b (snd (mapAccumL (\ l _ -> (incrLevel l, bound l)) d p))))) b)
-    f :$ as  -> unHead c c f <+> lit ":$" <+> parens True (getAp (foldMap Ap (intersperse (lit ":>") (toList (fmap (go d 0) as)))))
-    TPrd l r -> prec 10 $ lit "TPrd" <+> go d 11 l <+> go d 11 r
-    Prd  l r -> prec 10 $ lit "Prd"  <+> go d 11 l <+> go d 11 r
-    where
-    prec d = parens (p > d)
-  parens c = fmap (Endo . showParen c . appEndo)
-  list = fmap (Endo . showListWith appEndo)
-  c :: (Show a, Applicative f) => a -> f (Endo String)
-  c = pure . Endo . shows
-  lit = pure . Endo . showString
-  sp = Endo (showChar ' ')
-  a <+> b = liftA2 (\ a b -> a <> sp <> b) a b
-  infixl 4 <+>
 
 
 global :: QName -> Value f a
