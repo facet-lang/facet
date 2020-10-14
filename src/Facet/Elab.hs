@@ -166,7 +166,7 @@ unify t1 t2 = case (t1, t2) of
   -- FIXME: resolve globals to try to progress past certain inequalities
   (f1 :$ a1,   f2 :$ a2)
     | f1 == f2
-    , Just a <- goS a1 a2 -> (f1 :$) <$> a
+    , Just a <- unifyS a1 a2 -> (f1 :$) <$> a
   (a1 :-> b1,  a2 :-> b2)  -> (:->) <$> unify a1 a2 <*> unify b1 b2
   (t1 :=> b1,  t2 :=> b2)  -> do
     t <- unify (ty t1) (ty t2)
@@ -180,9 +180,9 @@ unify t1 t2 = case (t1, t2) of
   -- FIXME: build and display a diff of the root types
   _                       -> couldNotUnify t1 t2
   where
-  goS Nil        Nil        = Just (pure Nil)
-  goS (i1 :> l1) (i2 :> l2) = liftA2 (:>) <$> goS i1 i2 <*> Just (unify l1 l2)
-  goS _          _          = Nothing
+  unifyS Nil        Nil        = Just (pure Nil)
+  unifyS (i1 :> l1) (i2 :> l2) = liftA2 (:>) <$> unifyS i1 i2 <*> Just (unify l1 l2)
+  unifyS _          _          = Nothing
 
 
 -- FIXME: is it possible to do something clever with delimited continuations or coroutines to bind variables outside our scope?
