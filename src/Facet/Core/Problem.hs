@@ -107,6 +107,10 @@ unify = \case
       unify (_B1' :===: _B2')
   t :=> b :===: x -> do
     -- FIXME: solve metavars.
+    -- FIXME: how do we communicate a solution?
+    -- - statefully, we’d write the solution to a substitution, continue unifying, and at the end substitute all the metavars at once
+    -- - locally, we could listen for the solution and either apply it or push the existential outwards.
+    -- - listening sounds like some sort of coroutining thing?
     -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
     -- FIXME: there’s no way to know that v is a metavariable.
     pure $ Ex t $ \ v -> do
