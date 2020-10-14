@@ -30,7 +30,10 @@ import Facet.Stack
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
 
-data Err v = Mismatch (Problem v) (Problem v)
+data Err v = Problem v :=/=: Problem v
+
+infix 1 :=/=:
+
 
 newtype Solve v a = Solve { runSolve :: forall sig m . Has (Throw (Err v)) sig m => m a }
 
@@ -127,7 +130,7 @@ unify = \case
       _B1' <- b1 v
       _B2' <- b2 v
       unify (_B1' :===: _B2')
-  t1 :===: t2 -> throwError $ Mismatch t1 t2
+  t1 :===: t2 -> throwError $ t1 :=/=: t2
 
 
 case' :: HasCallStack => Problem a -> [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))] -> Solve a (Problem a)
