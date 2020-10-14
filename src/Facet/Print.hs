@@ -48,7 +48,7 @@ import qualified Facet.Context as Ctx
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import qualified Facet.Core.Value as CV
-import           Facet.Name hiding (Silent(..))
+import           Facet.Name hiding (ann)
 import qualified Facet.Pretty as P
 import           Facet.Stack
 import qualified Facet.Surface.Decl as SD
