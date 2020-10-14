@@ -109,45 +109,48 @@ unify
   :: Eq a
   => Problem a :===: Problem a
   -> Solve a (Problem a)
-unify = \case
-  Type :===: Type -> pure Type
-  t1 :=> b1 :===: t2 :=> b2 -> do
-    _T' <- unify (ty t1 :===: ty t2)
-    pure $ tm t1 ::: _T' :=> \ v -> do
-      _B1' <- b1 v
-      _B2' <- b2 v
-      unify (_B1' :===: _B2')
-  t :=> b :===: x ->
-    -- FIXME: solve metavars.
-    -- FIXME: how do we communicate a solution?
-    -- - statefully, we’d write the solution to a substitution, continue unifying, and at the end substitute all the metavars at once
-    -- - locally, we could listen for the solution and either apply it or push the existential outwards.
-    -- - listening sounds like some sort of coroutining thing?
-    -- - unify could return the set of solved metas, but communicating that from the body of a binder outwards sounds tricky
-    -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
-    -- FIXME: there’s no way to know that v is a metavariable.
-    pure $ Ex t $ \ v -> do
-      _B' <- b v
-      unify (_B' :===: x)
-  f1 :$ as1 :===: f2 :$ as2
-    | f1 == f2
-    , length as1 == length as2 -> do
-      as' <- traverse unify (zipWith (:===:) (toList as1) (toList as2))
-      unHead global bound meta f1 $$* as'
-  Ex t1 b1 :===: Ex t2 b2 -> do
-    _T' <- unify (ty t1 :===: ty t2)
-    pure $ Ex (tm t1 ::: _T') $ \ v -> do
-      _B1' <- b1 v
-      _B2' <- b2 v
-      unify (_B1' :===: _B2')
-  Let (n1 := v1 ::: t1) b1 :===: Let (_ := v2 ::: t2) b2 -> do
-    _T' <- unify (t1 :===: t2)
-    v' <- unify (v1 :===: v2)
-    pure $ Let (n1 := v' ::: _T') $ \ v -> do
-      _B1' <- b1 v
-      _B2' <- b2 v
-      unify (_B1' :===: _B2')
-  t1 :===: t2 -> throwError $ t1 :=/=: t2
+unify p = Solve $ go p
+  where
+  go :: (Eq v, Has (Throw (Err v)) sig m) => Problem v :===: Problem v -> m (Problem v)
+  go = \case
+    Type :===: Type -> pure Type
+    t1 :=> b1 :===: t2 :=> b2 -> do
+      _T' <- go (ty t1 :===: ty t2)
+      pure $ tm t1 ::: _T' :=> \ v -> do
+        _B1' <- b1 v
+        _B2' <- b2 v
+        go (_B1' :===: _B2')
+    t :=> b :===: x ->
+      -- FIXME: solve metavars.
+      -- FIXME: how do we communicate a solution?
+      -- - statefully, we’d write the solution to a substitution, continue unifying, and at the end substitute all the metavars at once
+      -- - locally, we could listen for the solution and either apply it or push the existential outwards.
+      -- - listening sounds like some sort of coroutining thing?
+      -- - unify could return the set of solved metas, but communicating that from the body of a binder outwards sounds tricky
+      -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
+      -- FIXME: there’s no way to know that v is a metavariable.
+      pure $ Ex t $ \ v -> do
+        _B' <- b v
+        go (_B' :===: x)
+    f1 :$ as1 :===: f2 :$ as2
+      | f1 == f2
+      , length as1 == length as2 -> do
+        as' <- traverse go (zipWith (:===:) (toList as1) (toList as2))
+        runSolve $ unHead global bound meta f1 $$* as'
+    Ex t1 b1 :===: Ex t2 b2 -> do
+      _T' <- go (ty t1 :===: ty t2)
+      pure $ Ex (tm t1 ::: _T') $ \ v -> do
+        _B1' <- b1 v
+        _B2' <- b2 v
+        go (_B1' :===: _B2')
+    Let (n1 := v1 ::: t1) b1 :===: Let (_ := v2 ::: t2) b2 -> do
+      _T' <- go (t1 :===: t2)
+      v' <- go (v1 :===: v2)
+      pure $ Let (n1 := v' ::: _T') $ \ v -> do
+        _B1' <- b1 v
+        _B2' <- b2 v
+        go (_B1' :===: _B2')
+    t1 :===: t2 -> throwError $ t1 :=/=: t2
 
 
 case' :: HasCallStack => Problem a -> [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))] -> Solve a (Problem a)
