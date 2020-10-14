@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+-- | A 'Coro' carrier providing simple resumable exception semantics.
 module Facet.Carrier.Coro.Simple
 ( -- * Coro carrier
   runCoro
