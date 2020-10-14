@@ -105,7 +105,7 @@ unify = \case
       _B1' <- b1 v
       _B2' <- b2 v
       unify (_B1' :===: _B2')
-  t :=> b :===: x -> do
+  t :=> b :===: x ->
     -- FIXME: solve metavars.
     -- FIXME: how do we communicate a solution?
     -- - statefully, we’d write the solution to a substitution, continue unifying, and at the end substitute all the metavars at once
