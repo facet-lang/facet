@@ -85,7 +85,7 @@ global :: QName -> Problem a
 global = var . Global
 
 bound :: a -> Problem a
-bound n = Local n :$ Nil
+bound = var . Local
 
 
 ($$) :: HasCallStack => Problem a -> Problem a -> Solve a (Problem a)
