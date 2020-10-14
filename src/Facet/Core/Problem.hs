@@ -148,10 +148,10 @@ unify p = Solve $ go (\ (_ := v) -> pure v) zeroMeta p -- FIXME: this should pro
       , length as1 == length as2 -> do
         as' <- traverse (go k i) (zipWith (:===:) (toList as1) (toList as2))
         runSolve $ unHead global bound meta f1 $$* as'
-    -- Metavar n1 :$ Nil :===: x ->
-    --   yield (n1 := x)
-    -- x :===: Metavar n2 :$ Nil ->
-    --   yield (n2 := x)
+    Metavar n1 :$ Nil :===: x ->
+      runSolve $ k (n1 := x)
+    x :===: Metavar n2 :$ Nil ->
+      runSolve $ k (n2 := x)
     Let (n1 := v1 ::: t1) b1 :===: Let (_ := v2 ::: t2) b2 -> do
       _T' <- go k i (t1 :===: t2)
       v' <- go k i (v1 :===: v2)
