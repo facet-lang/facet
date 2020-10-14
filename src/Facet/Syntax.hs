@@ -7,6 +7,7 @@ module Facet.Syntax
 , uncurryAnn
 , curryAnn
 , (:=)(..)
+, (:===:)(..)
 , splitl
 , splitr
 ) where
@@ -34,6 +35,15 @@ uncurryAnn f ~(a ::: b) = f a b
 
 curryAnn :: ((a ::: b) -> c) -> (a -> b -> c)
 curryAnn f a b = f (a ::: b)
+
+
+data a :===: b = a :===: b
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+infixr 2 :===:
+
+instance Bifunctor (:===:) where
+  bimap f g (a :===: b) = f a :===: g b
 
 
 data a := b = a := b
