@@ -8,6 +8,7 @@ module Facet.Core.Problem
 ( Solve(..)
 , Err(..)
 , Problem(..)
+, Meta(..)
 , Head(..)
 , unHead
 , global
@@ -62,6 +63,9 @@ data Problem a
 infixr 1 :=>
 infixl 9 :$
 
+
+newtype Meta = Meta { getMeta :: Int }
+  deriving (Eq, Ord, Show)
 
 data Head a
   = Global QName
