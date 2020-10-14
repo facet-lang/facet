@@ -25,6 +25,9 @@ instance Applicative (Solve v) where
   pure a = Solve $ pure a
   Solve f <*> Solve a = Solve (f <*> a)
 
+instance Monad (Solve v) where
+  Solve m >>= f = Solve $ m >>= runSolve . f
+
 
 data Problem a
   = Type
