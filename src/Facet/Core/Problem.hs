@@ -12,16 +12,19 @@ module Facet.Core.Problem
 , unHead
 , global
 , bound
+, case'
 , match
 ) where
 
 import Control.Algebra
 import Control.Effect.Sum
 import Control.Effect.Throw
+import Data.Monoid (First(..))
 import Facet.Core.Pattern
 import Facet.Name
 import Facet.Stack
 import Facet.Syntax
+import GHC.Stack (HasCallStack)
 
 data Err v = Mismatch (Problem v) (Problem v)
 
@@ -70,6 +73,11 @@ global n = Global n :$ Nil
 bound :: a -> Problem a
 bound n = Local n :$ Nil
 
+
+case' :: HasCallStack => Problem a -> [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))] -> Solve a (Problem a)
+case' s ps = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) ps) of
+  Just v -> v
+  _      -> error "non-exhaustive patterns in lambda"
 
 match :: Problem a -> Pattern UName -> Maybe (Pattern (Problem a))
 match s = \case
