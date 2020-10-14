@@ -61,9 +61,9 @@ data Value f a
   | TPrd (Value f a) (Value f a)
   | Prd (Value f a) (Value f a)
 
-infixr 0 :=>
+infixr 1 :=>
 infixl 9 :$
-infixr 0 :->
+infixr 1 :->
 
 instance (Eq a, Num a) => EqM Value a where
   eqM v1 v2 = runM (execEmpty (go 0 v1 v2))
