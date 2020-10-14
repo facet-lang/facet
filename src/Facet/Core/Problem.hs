@@ -14,6 +14,7 @@ module Facet.Core.Problem
 , bound
 , ($$)
 , ($$*)
+, unify
 , case'
 , match
 ) where
@@ -21,7 +22,7 @@ module Facet.Core.Problem
 import Control.Algebra
 import Control.Effect.Sum
 import Control.Effect.Throw
-import Data.Foldable (foldl')
+import Data.Foldable (foldl', toList)
 import Data.Monoid (First(..))
 import Facet.Core.Pattern
 import Facet.Name
@@ -87,6 +88,40 @@ _         $$ _ = error "can’t apply non-neutral/forall type"
 f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 
 infixl 9 $$, $$*
+
+
+unify
+  :: Eq a
+  => Problem a
+  -> Problem a
+  -> Solve a (Problem a)
+unify = curry $ \case
+  (Type, Type) -> pure Type
+  (t1 :=> b1, t2 :=> b2) -> do
+    _T' <- unify (ty t1) (ty t2)
+    pure $ tm t1 ::: _T' :=> \ v -> do
+      _B1' <- b1 v
+      _B2' <- b2 v
+      unify _B1' _B2'
+  (f1 :$ as1, f2 :$ as2)
+    | f1 == f2
+    , length as1 == length as2 -> do
+      as' <- sequenceA (zipWith unify (toList as1) (toList as2))
+      unHead global bound f1 $$* as'
+  (Ex t1 b1, Ex t2 b2) -> do
+    _T' <- unify (ty t1) (ty t2)
+    pure $ Ex (tm t1 ::: _T') $ \ v -> do
+      _B1' <- b1 v
+      _B2' <- b2 v
+      unify _B1' _B2'
+  (Let (n1 := v1 ::: t1) b1, Let (_ := v2 ::: t2) b2) -> do
+    _T' <- unify t1 t2
+    v' <- unify v1 v2
+    pure $ Let (n1 := v' ::: _T') $ \ v -> do
+      _B1' <- b1 v
+      _B2' <- b2 v
+      unify _B1' _B2'
+  (t1, t2) -> throwError $ Mismatch t1 t2
 
 
 case' :: HasCallStack => Problem a -> [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))] -> Solve a (Problem a)
