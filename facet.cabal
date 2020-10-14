@@ -41,6 +41,7 @@ library
     Facet.Context
     Facet.Core.Module
     Facet.Core.Pattern
+    Facet.Core.Problem
     Facet.Core.Value
     Facet.Elab
     Facet.Env
