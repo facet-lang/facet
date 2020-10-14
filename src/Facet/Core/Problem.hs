@@ -12,6 +12,7 @@ module Facet.Core.Problem
 , unHead
 , global
 , bound
+, ($$)
 , case'
 , match
 ) where
@@ -72,6 +73,13 @@ global n = Global n :$ Nil
 
 bound :: a -> Problem a
 bound n = Local n :$ Nil
+
+
+($$) :: HasCallStack => Problem a -> Problem a -> Solve a (Problem a)
+(f :$ as) $$ a = pure (f :$ (as :> a))
+(_ :=> b) $$ a = b a
+Lam    ps $$ a = case' a ps
+_         $$ _ = error "can’t apply non-neutral/forall type"
 
 
 case' :: HasCallStack => Problem a -> [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))] -> Solve a (Problem a)
