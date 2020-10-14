@@ -33,73 +33,73 @@ import Facet.Stack
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
 
-data Err v
-  = Problem v :=/=: Problem v
-  | UnsolvedMeta (Meta v)
+data Err s v
+  = Problem s v :=/=: Problem s v
+  | UnsolvedMeta (Meta s v)
 
 infix 1 :=/=:
 
 
-newtype Solve v a = Solve { runSolve :: ST v (Either (Err v) a) }
+newtype Solve s v a = Solve { runSolve :: ST s (Either (Err s v) a) }
   deriving (Functor)
 
-instance Applicative (Solve v) where
+instance Applicative (Solve s v) where
   pure a = Solve $ pure (pure a)
   Solve f <*> Solve a = Solve (liftA2 (<*>) f a)
 
-instance Monad (Solve v) where
+instance Monad (Solve s v) where
   Solve m >>= f = Solve $ m >>= either (pure . throwError) (runSolve . f)
 
-instance Algebra (Throw (Err v)) (Solve v) where
+instance Algebra (Throw (Err s v)) (Solve s v) where
   alg _ (Throw e) _ = Solve $ pure (Left e)
 
 
-data Problem a
+data Problem s a
   = Type
-  | (UName ::: Problem a) :=> (Problem a -> Solve a (Problem a))
-  | Lam [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))]
-  | Head a :$ Stack (Problem a)
+  | (UName ::: Problem s a) :=> (Problem s a -> Solve s a (Problem s a))
+  | Lam [(Pattern UName, Pattern (Problem s a) -> Solve s a (Problem s a))]
+  | Head s a :$ Stack (Problem s a)
 
 infixr 1 :=>
 infixl 9 :$
 
 
-newtype Meta a = Meta { getMeta :: STRef a (Maybe (Problem a) ::: Problem a) }
+newtype Meta s a = Meta { getMeta :: STRef s (Maybe (Problem s a) ::: Problem s a) }
   deriving (Eq)
 
-data Head a
+data Head s a
   = Global QName
   | Local a
-  | Metavar (Meta a)
+  | Metavar (Meta s a)
   deriving (Eq)
 
-unHead :: (QName -> b) -> (a -> b) -> (Meta a -> b) -> Head a -> b
+unHead :: (QName -> b) -> (a -> b) -> (Meta s a -> b) -> Head s a -> b
 unHead f g h = \case
   Global  n -> f n
   Local   n -> g n
   Metavar n -> h n
 
 
-var :: Head a -> Problem a
+var :: Head s a -> Problem s a
 var = (:$ Nil)
 
-global :: QName -> Problem a
+global :: QName -> Problem s a
 global = var . Global
 
-bound :: a -> Problem a
+bound :: a -> Problem s a
 bound = var . Local
 
-metavar :: Meta a -> Problem a
+metavar :: Meta s a -> Problem s a
 metavar = var . Metavar
 
 
-($$) :: HasCallStack => Problem a -> Problem a -> Solve a (Problem a)
+($$) :: HasCallStack => Problem s a -> Problem s a -> Solve s a (Problem s a)
 (f :$ as) $$ a = pure (f :$ (as :> a))
 (_ :=> b) $$ a = b a
 Lam    ps $$ a = case' a ps
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (HasCallStack, Foldable t) => Problem a -> t (Problem a) -> Solve a (Problem a)
+($$*) :: (HasCallStack, Foldable t) => Problem s a -> t (Problem s a) -> Solve s a (Problem s a)
 f $$* as = foldl' (\ f a -> f >>= ($$ a)) (pure f) as
 
 infixl 9 $$, $$*
@@ -107,14 +107,14 @@ infixl 9 $$, $$*
 
 unify
   :: Eq a
-  => Problem a :===: Problem a
-  -> Solve a (Problem a)
+  => Problem s a :===: Problem s a
+  -> Solve s a (Problem s a)
 unify p = go p
   where
   go
     :: Eq v
-    => Problem v :===: Problem v
-    -> Solve v (Problem v)
+    => Problem s v :===: Problem s v
+    -> Solve s v (Problem s v)
   go = \case
     Type :===: Type -> pure Type
     t1 :=> b1 :===: t2 :=> b2 -> do
@@ -147,7 +147,7 @@ unify p = go p
     t1 :===: t2 -> throwError $ t1 :=/=: t2
 
   meta _T = Solve (Right . Meta <$> newSTRef (Nothing ::: _T))
-  solve :: Eq v => Meta v := Problem v -> Solve v (Problem v)
+  solve :: Eq v => Meta s v := Problem s v -> Solve s v (Problem s v)
   solve (Meta ref := val') = Solve $ do
     val ::: _T <- readSTRef ref
     -- FIXME: occurs check
@@ -156,12 +156,12 @@ unify p = go p
       Nothing  -> Right val' <$ writeSTRef ref (Just val' ::: _T)
 
 
-case' :: HasCallStack => Problem a -> [(Pattern UName, Pattern (Problem a) -> Solve a (Problem a))] -> Solve a (Problem a)
+case' :: HasCallStack => Problem s a -> [(Pattern UName, Pattern (Problem s a) -> Solve s a (Problem s a))] -> Solve s a (Problem s a)
 case' s ps = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) ps) of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
-match :: Problem a -> Pattern UName -> Maybe (Pattern (Problem a))
+match :: Problem s a -> Pattern UName -> Maybe (Pattern (Problem s a))
 match s = \case
   Wildcard -> Just Wildcard
   Var _    -> Just (Var s)
