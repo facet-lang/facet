@@ -90,6 +90,9 @@ data WithAnn a b = WithAnn
 instance Eq b => Eq (WithAnn a b) where
   (==) = (==) `on` val
 
+instance Ord b => Ord (WithAnn a b) where
+  compare = compare `on` val
+
 instance Show b => Show (WithAnn a b) where
   showsPrec p = showsPrec p . val
 
