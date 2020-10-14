@@ -31,7 +31,9 @@ import Facet.Stack
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
 
-data Err v = Problem v :=/=: Problem v
+data Err v
+  = Problem v :=/=: Problem v
+  | UnsolvedMeta Meta
 
 infix 1 :=/=:
 
