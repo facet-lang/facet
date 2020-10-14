@@ -396,7 +396,7 @@ elabComp = withSpan $ \case
       cs -> traverse (uncurry (clause _A _B)) cs
   where
   clause _A _B (p:|ps) b = do
-    p' <- check (pattern p ::: _A)
+    p' <- check (elabPattern p ::: _A)
     -- FIXME: shouldn’t we use the bound variable(s)?
     b' <- p' |-* \ v -> check (go ps b ::: _B)
     pure (tm <$> p', b')
@@ -406,21 +406,21 @@ elabComp = withSpan $ \case
     Lam <$> (pure <$> clause _A _B (p:|ps) b)
 
 
-pattern
+elabPattern
   :: Eq v
   => Spanned (SP.Pattern Spanned UName)
   -> Check v (CP.Pattern (UName ::: Type v))
-pattern = withSpan $ \case
+elabPattern = withSpan $ \case
   SP.Wildcard -> pure CP.Wildcard
   SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
   SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go _T (fromList ps)
     where
     go _T = \case
       Nil      -> Nil      <$  unify (TUnit :===: _T)
-      Nil :> p -> (Nil :>) <$> check (pattern p ::: _T)
+      Nil :> p -> (Nil :>) <$> check (elabPattern p ::: _T)
       ps  :> p -> do
         (_L, _R) <- expectProductType "when checking tuple pattern" _T
-        (:>) <$> go _L ps <*> check (pattern p ::: _R)
+        (:>) <$> go _L ps <*> check (elabPattern p ::: _R)
 
 
 -- Declarations
