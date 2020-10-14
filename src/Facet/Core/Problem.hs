@@ -70,9 +70,6 @@ newtype Meta = Meta { getMeta :: Int }
 zeroMeta :: Meta
 zeroMeta = Meta 0
 
-incrMeta :: Meta -> Meta
-incrMeta = Meta . (+ 1) . getMeta
-
 data Head a
   = Global QName
   | Local a
