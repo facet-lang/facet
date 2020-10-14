@@ -21,8 +21,9 @@ module Facet.Core.Problem
 ) where
 
 import Control.Algebra
-import Control.Effect.Sum
+import Control.Applicative (liftA2)
 import Control.Effect.Throw
+import Control.Monad.ST
 import Data.Foldable (foldl', toList)
 import Data.Monoid (First(..))
 import Facet.Core.Pattern
@@ -38,20 +39,18 @@ data Err v
 infix 1 :=/=:
 
 
-newtype Solve v a = Solve { runSolve :: forall sig m . Has (Throw (Err v)) sig m => m a }
-
-instance Functor (Solve v) where
-  fmap f (Solve m) = Solve (fmap f m)
+newtype Solve v a = Solve { runSolve :: ST v (Either (Err v) a) }
+  deriving (Functor)
 
 instance Applicative (Solve v) where
-  pure a = Solve $ pure a
-  Solve f <*> Solve a = Solve (f <*> a)
+  pure a = Solve $ pure (pure a)
+  Solve f <*> Solve a = Solve (liftA2 (<*>) f a)
 
 instance Monad (Solve v) where
-  Solve m >>= f = Solve $ m >>= runSolve . f
+  Solve m >>= f = Solve $ m >>= either (pure . throwError) (runSolve . f)
 
 instance Algebra (Throw (Err v)) (Solve v) where
-  alg hdl sig ctx = Solve $ alg (runSolve . hdl) (inj sig) ctx
+  alg _ (Throw e) _ = Solve $ pure (Left e)
 
 
 data Problem a
@@ -116,14 +115,14 @@ unify
   :: Eq a
   => Problem a :===: Problem a
   -> Solve a (Problem a)
-unify p = Solve $ go (\ (_ := v) -> pure v) zeroMeta p -- FIXME: this should probably be an error about solving a metavariable nonlocally or something
+unify p = go (\ (_ := v) -> pure v) zeroMeta p -- FIXME: this should probably be an error about solving a metavariable nonlocally or something
   where
   go
-    :: (Eq v, Has (Throw (Err v)) sig m)
+    :: Eq v
     => (Meta := Problem v -> Solve v (Problem v))
     -> Meta
     -> Problem v :===: Problem v
-    -> m (Problem v)
+    -> Solve v (Problem v)
   go k i = \case
     Type :===: Type -> pure Type
     t1 :=> b1 :===: t2 :=> b2 -> do
@@ -141,17 +140,17 @@ unify p = Solve $ go (\ (_ := v) -> pure v) zeroMeta p -- FIXME: this should pro
       -- - unify could return the set of solved metas, but communicating that from the body of a binder outwards sounds tricky
       -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
       -- FIXME: shouldn’t something know about the type?
-      _B' <- runSolve $ b (meta i)
+      _B' <- b (meta i)
       go k (incrMeta i) (_B' :===: x)
     f1 :$ as1 :===: f2 :$ as2
       | f1 == f2
       , length as1 == length as2 -> do
         as' <- traverse (go k i) (zipWith (:===:) (toList as1) (toList as2))
-        runSolve $ unHead global bound meta f1 $$* as'
+        unHead global bound meta f1 $$* as'
     Metavar n1 :$ Nil :===: x ->
-      runSolve $ k (n1 := x)
+      k (n1 := x)
     x :===: Metavar n2 :$ Nil ->
-      runSolve $ k (n2 := x)
+      k (n2 := x)
     Let (n1 := v1 ::: t1) b1 :===: Let (_ := v2 ::: t2) b2 -> do
       _T' <- go k i (t1 :===: t2)
       v' <- go k i (v1 :===: v2)
