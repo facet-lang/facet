@@ -26,6 +26,7 @@ import Control.Effect.Throw
 import Control.Monad.ST
 import Data.Foldable (foldl', toList)
 import Data.Monoid (First(..))
+import Data.STRef
 import Facet.Core.Pattern
 import Facet.Name hiding (L, R)
 import Facet.Stack
@@ -34,7 +35,7 @@ import GHC.Stack (HasCallStack)
 
 data Err v
   = Problem v :=/=: Problem v
-  | UnsolvedMeta Meta
+  | UnsolvedMeta (Meta v)
 
 infix 1 :=/=:
 
@@ -64,16 +65,16 @@ infixr 1 :=>
 infixl 9 :$
 
 
-newtype Meta = Meta { getMeta :: Int }
-  deriving (Eq, Ord, Show)
+newtype Meta a = Meta { getMeta :: STRef a (Maybe (Problem a) ::: Problem a) }
+  deriving (Eq)
 
 data Head a
   = Global QName
   | Local a
-  | Metavar Meta
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+  | Metavar (Meta a)
+  deriving (Eq)
 
-unHead :: (QName -> b) -> (a -> b) -> (Meta -> b) -> Head a -> b
+unHead :: (QName -> b) -> (a -> b) -> (Meta a -> b) -> Head a -> b
 unHead f g h = \case
   Global  n -> f n
   Local   n -> g n
@@ -89,8 +90,8 @@ global = var . Global
 bound :: a -> Problem a
 bound = var . Local
 
-meta :: Meta -> Problem a
-meta = var . Metavar
+metavar :: Meta a -> Problem a
+metavar = var . Metavar
 
 
 ($$) :: HasCallStack => Problem a -> Problem a -> Solve a (Problem a)
@@ -138,7 +139,7 @@ unify p = go p
       | f1 == f2
       , length as1 == length as2 -> do
         as' <- traverse (go) (zipWith (:===:) (toList as1) (toList as2))
-        unHead global bound meta f1 $$* as'
+        unHead global bound metavar f1 $$* as'
     -- Metavar n1 :$ Nil :===: x ->
     --   k (n1 := x)
     -- x :===: Metavar n2 :$ Nil ->
