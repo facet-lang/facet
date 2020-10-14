@@ -103,6 +103,13 @@ unify = curry $ \case
       _B1' <- b1 v
       _B2' <- b2 v
       unify _B1' _B2'
+  (t :=> b, x) -> do
+    -- FIXME: solve metavars.
+    -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
+    -- FIXME: there’s no way to know that v is a metavariable.
+    pure $ Ex t $ \ v -> do
+      _B' <- b v
+      unify _B' x
   (f1 :$ as1, f2 :$ as2)
     | f1 == f2
     , length as1 == length as2 -> do
