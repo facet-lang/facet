@@ -27,6 +27,7 @@ module Facet.Name
 , OpN(..)
 ) where
 
+import           Data.Function (on)
 import           Data.Functor.Classes (showsUnaryWith)
 import           Data.List.NonEmpty
 import           Data.String (IsString(..))
@@ -85,6 +86,9 @@ data WithAnn a b = WithAnn
   , val :: b
   }
   deriving (Foldable, Functor, Traversable)
+
+instance Eq b => Eq (WithAnn a b) where
+  (==) = (==) `on` val
 
 instance Show b => Show (WithAnn a b) where
   showsPrec p = showsPrec p . val
