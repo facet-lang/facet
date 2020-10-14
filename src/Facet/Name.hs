@@ -13,7 +13,7 @@ module Facet.Name
 , incrLevelFor
 , shiftLevel
 , isMeta
-, WithAnn(..)
+, Silent(..)
 , __
 , MName(..)
 , QName(..)
@@ -81,19 +81,19 @@ isMeta :: Level -> Bool
 isMeta (Level l) = l < 0
 
 
-data WithAnn a b = WithAnn
+data Silent a b = Silent
   { ann :: a
   , val :: b
   }
   deriving (Foldable, Functor, Traversable)
 
-instance Eq b => Eq (WithAnn a b) where
+instance Eq b => Eq (Silent a b) where
   (==) = (==) `on` val
 
-instance Ord b => Ord (WithAnn a b) where
+instance Ord b => Ord (Silent a b) where
   compare = compare `on` val
 
-instance Show b => Show (WithAnn a b) where
+instance Show b => Show (Silent a b) where
   showsPrec p = showsPrec p . val
 
 
