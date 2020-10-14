@@ -18,6 +18,9 @@ data Err v = Mismatch (Problem v) (Problem v)
 
 newtype Solve v a = Solve { runSolve :: forall sig m . Has (Throw (Err v)) sig m => m a }
 
+instance Functor (Solve v) where
+  fmap f (Solve m) = Solve (fmap f m)
+
 
 data Problem a
   = Type
