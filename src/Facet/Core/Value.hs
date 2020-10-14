@@ -1,7 +1,10 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
 ( Value(..)
@@ -37,6 +40,7 @@ import           Data.List (intersperse)
 import           Data.Monoid (Ap(..), Endo(..), First(..))
 import           Data.Traversable (mapAccumL)
 import           Facet.Core.Pattern
+import           Facet.Functor.Eq
 import           Facet.Name (Index(..), Level(..), QName, UName, incrLevel, isMeta, levelToIndex, shiftLevel)
 import           Facet.Stack hiding ((!))
 import qualified Facet.Stack as S
@@ -64,6 +68,51 @@ data Value f a
 infixr 0 :=>
 infixl 9 :$
 infixr 0 :->
+
+instance (Eq a, Num a) => EqM Value a where
+  eqM v1 v2 = runM (execEmpty (go 0 v1 v2))
+    where
+    -- defined thus to get the exhaustiveness checker to ensure I don’t miss adding new cases
+    go n = curry $ \case
+      (Type, Type) -> pure ()
+      (Type, _) -> empty
+      (Void, Void) -> pure ()
+      (Void, _) -> empty
+      (TUnit, TUnit) -> pure ()
+      (TUnit, _) -> empty
+      (Unit, Unit) -> pure ()
+      (Unit, _) -> empty
+      (t1 :=> b1, t2 :=> b2) -> do
+        go n (ty t1) (ty t2)
+        b1' <- sendM $ b1 (bound n)
+        b2' <- sendM $ b2 (bound n)
+        go (n + 1) b1' b2'
+      (_ :=> _, _) -> empty
+      (TLam _ b1, TLam _ b2) -> do
+        b1' <- sendM $ b1 (bound n)
+        b2' <- sendM $ b2 (bound n)
+        go (n + 1) b1' b2'
+      (TLam _ _, _) -> empty
+      (Lam c1, Lam c2)
+        | length c1 == length c2 -> do
+          for_ (zip c1 c2) $ \ ((p1, b1), (p2, b2)) -> guard (void p1 == void p2) *> do
+            let (n', p') = mapAccumL (\ n _ -> (n + 1, bound n)) n p2
+            b1' <- sendM $ b1 p'
+            b2' <- sendM $ b2 p'
+            go n' b1' b2'
+      (Lam _, _) -> empty
+      (f1 :$ as1, f2 :$ as2)
+        | f1 == f2
+        , length as1 == length as2 ->
+          for_ (zip (toList as1) (toList as2)) (uncurry (go n))
+      (_ :$ _, _) -> empty
+      (a1 :-> b1, a2 :-> b2) -> go n a1 a2 *> go n b1 b2
+      (_ :-> _, _) -> empty
+      (TPrd l1 r1, TPrd l2 r2) -> go n l1 l2 *> go n r1 r2
+      (TPrd _ _, _) -> empty
+      (Prd l1 r1, Prd l2 r2) -> go n l1 l2 *> go n r1 r2
+      (Prd _ _, _) -> empty
+
 
 data Head a
   = Global QName
@@ -268,45 +317,4 @@ newtype AValue f = AValue { runAValue :: forall x . Value f x }
 
 
 eq :: Monad m => AValue m -> AValue m -> m Bool
-eq v1 v2 = runM (execEmpty (go (0 :: Int) (runAValue v1) (runAValue v2)))
-  where
-  -- defined thus to get the exhaustiveness checker to ensure I don’t miss adding new cases
-  go n = curry $ \case
-    (Type, Type) -> pure ()
-    (Type, _) -> empty
-    (Void, Void) -> pure ()
-    (Void, _) -> empty
-    (TUnit, TUnit) -> pure ()
-    (TUnit, _) -> empty
-    (Unit, Unit) -> pure ()
-    (Unit, _) -> empty
-    (t1 :=> b1, t2 :=> b2) -> do
-      go n (ty t1) (ty t2)
-      b1' <- sendM $ b1 (bound n)
-      b2' <- sendM $ b2 (bound n)
-      go (n + 1) b1' b2'
-    (_ :=> _, _) -> empty
-    (TLam _ b1, TLam _ b2) -> do
-      b1' <- sendM $ b1 (bound n)
-      b2' <- sendM $ b2 (bound n)
-      go (n + 1) b1' b2'
-    (TLam _ _, _) -> empty
-    (Lam c1, Lam c2)
-      | length c1 == length c2 -> do
-        for_ (zip c1 c2) $ \ ((p1, b1), (p2, b2)) -> guard (void p1 == void p2) *> do
-          let (n', p') = mapAccumL (\ n _ -> (n + 1, bound n)) n p2
-          b1' <- sendM $ b1 p'
-          b2' <- sendM $ b2 p'
-          go n' b1' b2'
-    (Lam _, _) -> empty
-    (f1 :$ as1, f2 :$ as2)
-      | f1 == f2
-      , length as1 == length as2 ->
-        for_ (zip (toList as1) (toList as2)) (uncurry (go n))
-    (_ :$ _, _) -> empty
-    (a1 :-> b1, a2 :-> b2) -> go n a1 a2 *> go n b1 b2
-    (_ :-> _, _) -> empty
-    (TPrd l1 r1, TPrd l2 r2) -> go n l1 l2 *> go n r1 r2
-    (TPrd _ _, _) -> empty
-    (Prd l1 r1, Prd l2 r2) -> go n l1 l2 *> go n r1 r2
-    (Prd _ _, _) -> empty
+eq v1 v2 = eqM @_ @Int (runAValue v1) (runAValue v2)
