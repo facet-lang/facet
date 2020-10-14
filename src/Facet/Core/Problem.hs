@@ -12,6 +12,7 @@ module Facet.Core.Problem
 , unHead
 , global
 , bound
+, match
 ) where
 
 import Control.Algebra
@@ -68,3 +69,10 @@ global n = Global n :$ Nil
 
 bound :: a -> Problem a
 bound n = Local n :$ Nil
+
+
+match :: Problem a -> Pattern UName -> Maybe (Pattern (Problem a))
+match s = \case
+  Wildcard -> Just Wildcard
+  Var _    -> Just (Var s)
+  _        -> Nothing
