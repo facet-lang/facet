@@ -3,4 +3,4 @@ module Facet.Functor.Eq
 ) where
 
 class EqM f where
-  eqM :: Monad m => f m a -> f m a -> m Bool
+  eqM :: (Monad m, Eq a) => f m a -> f m a -> m Bool
