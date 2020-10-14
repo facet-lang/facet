@@ -139,7 +139,7 @@ unify p = Solve $ go zeroMeta p
       -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
       pure $ Ex t $ \ v -> do
         _B' <- b v
-        go i (_B' :===: x)
+        go (incrMeta i) (_B' :===: x)
     f1 :$ as1 :===: f2 :$ as2
       | f1 == f2
       , length as1 == length as2 -> do
