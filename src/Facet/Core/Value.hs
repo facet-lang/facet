@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
 ( Value(..)
@@ -21,6 +22,7 @@ module Facet.Core.Value
 , mapValue
 , mapValueAll
 , join
+, AValue(..)
 ) where
 
 import           Control.Applicative (liftA2)
@@ -256,3 +258,6 @@ join = \case
   where
   bind  b = join <=< b . bound
   bindP b = join <=< b . fmap bound
+
+
+newtype AValue f = AValue { runAValue :: forall x . Value f x }
