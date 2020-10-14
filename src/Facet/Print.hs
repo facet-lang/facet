@@ -366,15 +366,15 @@ t .= b = t </> b
 (n ::: t) >-> b = prec FnR (group (align (parens (ann (n ::: t)))) </> arrow <+> b)
 
 
-printCoreModule :: Monad m => CM.Module m Level -> m Print
+printCoreModule :: Monad m => CM.Module m Print -> m Print
 printCoreModule (CM.Module n ds)
-  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> (printCoreValue (Level 0) =<< CV.mapValue [] Nil t) <*> printCoreDef d) ds
+  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> printCoreValue (Level 0) t <*> printCoreDef d) ds
 
-printCoreDef :: Monad m => CM.Def m Level -> m Print
+printCoreDef :: Monad m => CM.Def m Print -> m Print
 printCoreDef = \case
-  CM.DTerm b  -> printCoreValue (Level 0) =<< CV.mapValue [] Nil b
-  CM.DType b  -> printCoreValue (Level 0) =<< CV.mapValue [] Nil b
-  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (printCoreValue (Level 0) <=< CV.mapValue [] Nil) . first pretty) cs
+  CM.DTerm b  -> printCoreValue (Level 0) b
+  CM.DType b  -> printCoreValue (Level 0) b
+  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (printCoreValue (Level 0)) . first pretty) cs
 
 
 printSurfaceModule :: (Foldable f, Functor f) => SM.Module f a -> Print

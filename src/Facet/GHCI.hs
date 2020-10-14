@@ -27,16 +27,13 @@ import           Control.Monad ((<=<))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Semigroup (stimes)
 import           Facet.Context
-import qualified Facet.Core.Value as V
 import           Facet.Elab (Err(..), ErrDoc, M(..), Reason(..), Type, Val, elabModule)
 import           Facet.Name (Index(..), Level(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
-import           Facet.Stack
 import qualified Facet.Surface.Module as S
 import           Facet.Syntax
-import           GHC.Stack
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 import           Text.Parser.Position (Spanned)
 
@@ -74,29 +71,28 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
   failure = Left . errToNotice src
   mkNotice p = toNotice (Just N.Error) src p
 
-  evalMeta = evalState (Metacontext [] :: Metacontext (Val Level ::: Type Level))
+  evalMeta = evalState (Metacontext [] :: Metacontext (Val P.Print ::: Type P.Print))
 
-  lower :: Either (Err Level) a -> Either N.Notice a
+  lower :: Either (Err P.Print) a -> Either N.Notice a
   lower = either (throwError <=< lower . evalMeta . rethrow . mkNotice) pure
 
 
 -- Errors
 
-toNotice :: Maybe N.Level -> Source -> Err Level -> M Level N.Notice
+toNotice :: Maybe N.Level -> Source -> Err P.Print -> M P.Print N.Notice
 toNotice lvl src Err{ span, reason, metacontext, context } = do
   reason' <- printReason metacontext context reason
   -- FIXME: print the context
   pure $ N.Notice lvl (fromSourceAndSpan src span) reason' []
 
 
-printReason :: Metacontext (Val Level ::: Type Level) -> Context (Val Level ::: Type Level) -> Reason Level -> M Level ErrDoc
-printReason (Metacontext mctx) ctx = fmap group . \case
+printReason :: Metacontext (Val P.Print ::: Type P.Print) -> Context (Val P.Print ::: Type P.Print) -> Reason P.Print -> M P.Print ErrDoc
+printReason _ ctx = fmap group . \case
   FreeVariable n         -> pure $ fillSep [P.reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> pure $ P.reflow "could not synthesize a type for" <> softline <> P.reflow msg
   Mismatch msg exp act   -> do
-    (mctx', ctx') <- V.mapValueAll (ty . ty <$> mctx) (ty . ty <$> elems ctx)
-    exp' <- either (pure . P.reflow) (printTypeInContext mctx' ctx') exp
-    act' <- printTypeInContext mctx' ctx' act
+    exp' <- either (pure . P.reflow) printType exp
+    act' <- printType act
     pure $ P.reflow msg
       </> pretty "expected:" <> print exp'
       </> pretty "  actual:" <> print act'
@@ -104,11 +100,10 @@ printReason (Metacontext mctx) ctx = fmap group . \case
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T              -> do
-    (mctx', ctx') <- V.mapValueAll (ty . ty <$> mctx) (ty . ty <$> elems ctx)
-    _T' <- printTypeInContext mctx' ctx' _T
+    _T' <- printType _T
     pure $ fillSep [P.reflow "found hole", pretty n, colon, _T' ]
-  BadContext n           -> pure $ fillSep [ P.reflow "no variable bound for index", pretty (getIndex n), P.reflow "in context of length", pretty (getLevel (level ctx)) ]
+  BadContext n           -> pure $ fillSep [ P.reflow "no variable bound for index", pretty (getIndex n), P.reflow "in context of length", pretty (length ctx) ]
 
 
-printTypeInContext :: HasCallStack => [V.Value (M Level) P.Print] -> Stack (V.Value (M Level) P.Print) -> Type Level -> M Level ErrDoc
-printTypeInContext mctx ctx = fmap P.getPrint . (P.printCoreValue (Level 0) <=< rethrow . V.mapValue mctx ctx)
+printType :: Type P.Print -> M P.Print ErrDoc
+printType = fmap P.getPrint . P.printCoreValue (Level 0)
