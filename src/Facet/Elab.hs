@@ -361,7 +361,7 @@ a --> b = Synth $ do
   b' <- check (b ::: Type)
   pure $ (a' :-> b') ::: Type
 
-infixr 2 -->
+infixr 1 -->
 
 (>~>)
   :: (UName ::: Check v (Type v))
