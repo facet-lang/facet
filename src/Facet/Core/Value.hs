@@ -19,7 +19,6 @@ module Facet.Core.Value
 , unLam
 , unProductT
 , ($$)
-, ($$*)
 , case'
 , match
 , handleBinder
