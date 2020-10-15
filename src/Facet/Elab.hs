@@ -82,7 +82,6 @@ import           Prettyprinter.Render.Terminal (AnsiStyle)
 import           Text.Parser.Position (Spanned)
 
 type I = Identity
-type Solved = Value I
 type Val v = Value (M v) v
 type Type v = Value (M v) v
 type Expr v = Value (M v) v
