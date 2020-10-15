@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
 ( Value(..)
-, Head(Global, Local)
+, Head(Global, Local, Metavar)
 , unHead
 , global
 , bound
