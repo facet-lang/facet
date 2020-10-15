@@ -85,7 +85,7 @@ type Type = Value I
 type Expr = Value I
 type Prob v = Value (M v) v
 
-newtype M v a = M { rethrow :: forall sig m . Has (State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig m => m a }
+newtype M v a = M { rethrow :: forall sig m . Has (State (Metacontext (Maybe (Val v) ::: Type v)) :+: Throw (Err v)) sig m => m a }
 
 instance Functor (M v) where
   fmap f (M m) = M (fmap f m)
@@ -97,7 +97,7 @@ instance Applicative (M v) where
 instance Monad (M v) where
   M m >>= f = M $ m >>= rethrow . f
 
-instance Algebra (State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) (M v) where
+instance Algebra (State (Metacontext (Maybe (Val v) ::: Type v)) :+: Throw (Err v)) (M v) where
   alg hdl sig ctx = case sig of
     L smctx -> M $ alg (rethrow . hdl) (inj smctx) ctx
     R throw -> M $ alg (rethrow . hdl) (inj throw) ctx
@@ -123,7 +123,7 @@ instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type 
     R (R (R throw)) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
-newtype Unify v a = Unify { runUnify :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig m => m a }
+newtype Unify v a = Unify { runUnify :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Maybe (Val v) ::: Type v)) :+: Throw (Err v)) sig m => m a }
 
 instance Functor (Unify v) where
   fmap f (Unify m) = Unify (fmap f m)
@@ -135,7 +135,7 @@ instance Applicative (Unify v) where
 instance Monad (Unify v) where
   Unify m >>= f = Unify $ m >>= runUnify . f
 
-instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) (Unify v) where
+instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Maybe (Val v) ::: Type v)) :+: Throw (Err v)) (Unify v) where
   alg hdl sig ctx = case sig of
     L renv              -> Unify $ alg (runUnify . hdl) (inj renv) ctx
     R (L rctx)          -> Unify $ alg (runUnify . hdl) (inj rctx) ctx
@@ -150,7 +150,7 @@ askEnv = ask
 askContext :: Has (Reader (Context (Val v ::: Type v))) sig (t v) => t v (Context (Val v ::: Type v))
 askContext = ask
 
-getMetacontext :: Has (State (Metacontext (Val v ::: Type v))) sig (t v) => t v (Metacontext (Val v ::: Type v))
+getMetacontext :: Has (State (Metacontext (Maybe (Val v) ::: Type v))) sig (t v) => t v (Metacontext (Maybe (Val v) ::: Type v))
 getMetacontext = get
 
 
@@ -182,7 +182,7 @@ unify
 unify (t1 :===: t2) = do
   let t1' = run $ handle t1
       t2' = run $ handle t2
-  evalState (Metacontext @(Val v ::: Type v) []) . runUnify $ go (t1' :===: t2')
+  evalState (Metacontext @(Maybe (Val v) ::: Type v) []) . runUnify $ go (t1' :===: t2')
   where
   go
     :: Prob v :===: Prob v
@@ -221,10 +221,10 @@ unify (t1 :===: t2) = do
 -- FIXME: is it possible to do something clever with delimited continuations or coroutines to bind variables outside our scope?
 
 
-meta :: Val v ::: Type v -> Unify v (Type v)
-meta t = do
+meta :: Type v -> Unify v (Type v)
+meta _T = do
   mctx <- getMetacontext
-  put (t <| mctx)
+  put ((Nothing ::: _T) <| mctx)
   pure $ CV.metavar (metalevel mctx)
 
 
