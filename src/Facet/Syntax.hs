@@ -6,8 +6,8 @@ module Facet.Syntax
 , ty
 , uncurryAnn
 , curryAnn
-, (:=)(..)
 , (:===:)(..)
+, (:=)(..)
 , (:|-:)(..)
 , splitl
 , splitr
