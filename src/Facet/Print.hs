@@ -208,7 +208,7 @@ printCoreValue = go
 
 
 printContextEntry :: Level -> UName ::: Print -> Print
-printContextEntry l (n ::: _T) = cbound n tvar l
+printContextEntry l (n ::: _T) = ann (cbound n tvar l ::: _T)
 
 
 printSurfaceType :: (Foldable f, Functor f) => Stack Print -> ST.Type f a -> Print

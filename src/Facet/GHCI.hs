@@ -23,6 +23,7 @@ import qualified Control.Effect.Parser.Notice as N
 import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(Pos))
 import           Control.Monad.IO.Class (MonadIO(..))
+import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
 import           Facet.Context
 import           Facet.Elab (Err(..), ErrDoc, Reason(..), Type, Val, elabModule)
@@ -78,8 +79,10 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
 toNotice :: Maybe N.Level -> Source -> Err P.Print -> N.Notice
 toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason
-  -- FIXME: print the context
-  in N.Notice lvl (fromSourceAndSpan src span) reason' []
+  in N.Notice lvl (fromSourceAndSpan src span) reason' $
+    [ P.getPrint $ P.printContextEntry (Level l) (n ::: P.printCoreValue (Level l) _T)
+    | (l, n ::: _ ::: _T) <- zip [0..] (toList (elems context))
+    ]
 
 
 printReason :: Context (Val P.Print ::: Type P.Print) -> Reason P.Print -> ErrDoc
