@@ -125,13 +125,13 @@ instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type 
     R (R (R (L smctx))) -> Elab $ alg (elab . hdl) (inj smctx) ctx -- FIXME: 🔥
     R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
-askEnv :: Elab v (Env.Env (Type v))
+askEnv :: Has (Reader (Env.Env (Type v))) sig (t v) => t v (Env.Env (Type v))
 askEnv = ask
 
-askContext :: Elab v (Context (Val v ::: Type v))
+askContext :: Has (Reader (Context (Val v ::: Type v))) sig (t v) => t v (Context (Val v ::: Type v))
 askContext = ask
 
-getMetacontext :: Elab v (Metacontext (Val v ::: Type v))
+getMetacontext :: Has (State (Metacontext (Val v ::: Type v))) sig (t v) => t v (Metacontext (Val v ::: Type v))
 getMetacontext = get
 
 
