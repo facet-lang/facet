@@ -223,11 +223,11 @@ unify (t1 :===: t2) = do
 -- FIXME: is it possible to do something clever with delimited continuations or coroutines to bind variables outside our scope?
 
 
--- meta :: UName ::: Val Level ::: Type Level -> Elab Level (Type Level)
--- meta t = do
---   mctx <- getMetacontext
---   put (t <| mctx)
---   pure $ CV.bound (metalevel mctx)
+meta :: UName ::: Val v ::: Type v -> Unify v (Type v)
+meta t = do
+  mctx <- getMetacontext
+  put (t <| mctx)
+  pure $ CV.metavar (metalevel mctx)
 
 
 -- General
