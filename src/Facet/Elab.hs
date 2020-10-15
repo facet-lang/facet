@@ -12,7 +12,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
 ( M(..)
-, Context
 , Val
 , Type
 , Expr
@@ -21,7 +20,6 @@ module Facet.Elab
 , Synth(..)
 , check
 , unify
-, Metacontext(..)
   -- * General
 , global
   -- * Types
