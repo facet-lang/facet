@@ -527,10 +527,9 @@ withSpan' k (s, a) b = setSpan s (k a b)
 type ErrDoc = Doc AnsiStyle
 
 data Err v = Err
-  { span        :: Span
-  , reason      :: Reason v
-  , metacontext :: Metacontext (Val v ::: Type v)
-  , context     :: Context (Val v ::: Type v)
+  { span    :: Span
+  , reason  :: Reason v
+  , context :: Context (Val v ::: Type v)
   }
 
 data Reason v
@@ -541,17 +540,16 @@ data Reason v
   | BadContext Index
 
 
-err :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig (t v) => Reason v -> t v a
+err :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)) sig (t v) => Reason v -> t v a
 err reason = do
   span <- ask
-  mctx <- getMetacontext
   ctx <- askContext
-  throwError $ Err span reason mctx ctx
+  throwError $ Err span reason ctx
 
-mismatch :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig (t v) => String -> Either String (Type v) -> Type v -> t v a
+mismatch :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)) sig (t v) => String -> Either String (Type v) -> Type v -> t v a
 mismatch msg exp act = err $ Mismatch msg exp act
 
-couldNotUnify :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig (t v) => Type v -> Type v -> t v a
+couldNotUnify :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)) sig (t v) => Type v -> Type v -> t v a
 couldNotUnify t1 t2 = mismatch "mismatch" (Right t2) t1
 
 couldNotSynthesize :: String -> Elab v a
