@@ -112,12 +112,14 @@ instance (Eq a, Num a) => EqM Value a where
 data Head a
   = Global QName
   | Local a
+  | Quote Level
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-unHead :: (QName -> b) -> (a -> b) -> Head a -> b
-unHead f g = \case
+unHead :: (QName -> b) -> (a -> b) -> (Level -> b) -> Head a -> b
+unHead f g h = \case
   Global n -> f n
   Local  n -> g n
+  Quote  n -> h n
 
 
 global :: QName -> Value f a
@@ -125,6 +127,9 @@ global = var . Global
 
 bound :: a -> Value f a
 bound = var . Local
+
+quote :: Level -> Value f a
+quote = var . Quote
 
 
 var :: Head a -> Value f a
@@ -206,7 +211,7 @@ mapValue mctx = go
     TLam n b -> pure $ TLam n $ bind ctx b
     Lam  ps  -> pure $ Lam $ map (\ (p, b) -> (p, bindP ctx b)) ps
     f :$ as  -> do
-      let f' = unHead global (lookupIn ctx) f
+      let f' = unHead global (lookupIn ctx) quote f
       as' <- traverse (go ctx) as
       f' $$* as'
     TPrd l r -> TPrd <$> go ctx l <*> go ctx r
@@ -252,7 +257,7 @@ join = \case
   TLam n b -> pure $ TLam n (bind b)
   a :-> b  -> (:->) <$> join a <*> join b
   Lam cs   -> pure $ Lam (map (fmap bindP) cs)
-  f :$ as  -> (unHead global id f $$*) =<< traverse join as
+  f :$ as  -> (unHead global id quote f $$*) =<< traverse join as
   TPrd l r -> TPrd <$> join l <*> join r
   Prd  l r -> Prd  <$> join l <*> join r
   where
