@@ -325,7 +325,7 @@ elabType ctx = withSpan' $ \case
   ST.Type    -> switch $ _Type
   ST.Void    -> switch $ _Void
   ST.Unit    -> switch $ _Unit
-  t ST.:=> b -> switch $ fmap (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> (tm t ::: v)) b)
+  t ST.:=> b -> switch $ fmap (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
   f ST.:$  a -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
   a ST.:-> b -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
   l ST.:*  r -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
@@ -366,11 +366,11 @@ infixr 1 -->
 
 (>~>)
   :: (UName ::: Check v (Type v))
-  -> (Val v ::: Type v -> Check v (Type v))
+  -> (UName ::: Val v ::: Type v -> Check v (Type v))
   -> Synth v (Type v)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
-  b' <- n ::: _T |- \ v -> check (b (v ::: _T) ::: Type)
+  b' <- n ::: _T |- \ v -> check (b (n ::: v ::: _T) ::: Type)
   pure $ (n ::: _T :=> b') ::: Type
 
 infixr 1 >~>
@@ -398,20 +398,20 @@ elabExpr ctx = withSpan' $ \case
 
 tlam
   :: UName
-  -> (Type v ::: Type v -> Check v (Expr v))
+  -> (UName ::: Type v ::: Type v -> Check v (Expr v))
   -> Check v (Expr v)
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
-  b' <- n ::: _T |- \ v -> check (b (v ::: _T) ::: _B v)
+  b' <- n ::: _T |- \ v -> check (b (n ::: v ::: _T) ::: _B v)
   pure (Lam n b')
 
 lam
   :: UName
-  -> (Expr v ::: Type v -> Check v (Expr v))
+  -> (UName ::: Expr v ::: Type v -> Check v (Expr v))
   -> Check v (Expr v)
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType "when checking lambda" _T
-  b' <- (n ::: _A) |- \ v -> check (b (v ::: _A) ::: _B)
+  b' <- (n ::: _A) |- \ v -> check (b (n ::: v ::: _A) ::: _B)
   pure (Lam n b')
 
 unit :: Synth v (Expr v)
@@ -504,12 +504,12 @@ elabDecl
 elabDecl = withSpans $ \case
   (n ::: t) SD.:=> b ->
     let b' ::: _B = elabDecl b
-    in (\ ctx -> tlam n (\ v -> b' (ctx |> (n ::: v)))) ::: \ ctx -> checkElab (switch (n ::: checkElab (elabType ctx t) >~> \ v -> _B (ctx |> (n ::: v))))
+    in (\ ctx -> tlam n (\ v -> b' (ctx |> v))) ::: \ ctx -> checkElab (switch (n ::: checkElab (elabType ctx t) >~> \ v -> _B (ctx |> v)))
 
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in (\ ctx -> lam n (\ v -> b' (ctx |> (n ::: v)))) ::: \ ctx -> checkElab (switch (checkElab (elabType ctx t) --> _B (ctx |> (__ ::: Type ::: Type))))
+    in (\ ctx -> lam n (\ v -> b' (ctx |> v))) ::: \ ctx -> checkElab (switch (checkElab (elabType ctx t) --> _B (ctx |> (__ ::: Type ::: Type))))
 
   t SD.:= b ->
     (\ ctx -> checkElab (elabExpr ctx b)) ::: (\ ctx -> checkElab (elabType ctx t))
