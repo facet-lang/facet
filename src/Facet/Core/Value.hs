@@ -242,7 +242,7 @@ subst s = go
     Prd  l r -> Prd  <$> go l <*> go r
   s ! l = case IntMap.lookup (getLevel l) s of
     Just a  -> a
-    Nothing -> error $ "qvar " <> show (getLevel l) <> " is not an element of the substitution " <> show (IntMap.keys s) <> ""
+    Nothing -> quote l
 
 
 newtype AValue f = AValue { runAValue :: forall x . Value f x }
