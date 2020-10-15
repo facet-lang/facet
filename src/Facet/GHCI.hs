@@ -76,14 +76,14 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
 -- Errors
 
 toNotice :: Maybe N.Level -> Source -> Err P.Print -> N.Notice
-toNotice lvl src Err{ span, reason, metacontext, context } =
-  let reason' = printReason metacontext context reason
+toNotice lvl src Err{ span, reason, context } =
+  let reason' = printReason context reason
   -- FIXME: print the context
   in N.Notice lvl (fromSourceAndSpan src span) reason' []
 
 
-printReason :: Metacontext (Val P.Print ::: Type P.Print) -> Context (Val P.Print ::: Type P.Print) -> Reason P.Print -> ErrDoc
-printReason _ ctx = group . \case
+printReason :: Context (Val P.Print ::: Type P.Print) -> Reason P.Print -> ErrDoc
+printReason ctx = group . \case
   FreeVariable n         -> fillSep [P.reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> P.reflow "could not synthesize a type for" <> softline <> P.reflow msg
   Mismatch msg exp act   ->
