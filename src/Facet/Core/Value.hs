@@ -209,6 +209,7 @@ handle = go (Level 0)
     Prd  l r -> Prd  <$> go d l <*> go d r
   bind d b = (`subst` b) . IntMap.singleton (getLevel d)
 
+-- FIXME: is it possible to instead perform one complete substitution at the end of handle?
 subst :: Monad m => IntMap.IntMap (Value m a) -> Value m a -> m (Value m a)
 subst s = go
   where
