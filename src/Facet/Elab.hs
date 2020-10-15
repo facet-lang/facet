@@ -124,7 +124,7 @@ instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type 
     R (R (R throw)) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
-type Subst v = IntMap.IntMap (Maybe (Val v) ::: Type v)
+type Subst v = IntMap.IntMap (Maybe (Prob v) ::: Type v)
 
 newtype Unify v a = Unify { runUnify :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)) sig m => m a }
 
@@ -181,7 +181,7 @@ unify
 unify (t1 :===: t2) = do
   let t1' = run $ handle t1
       t2' = run $ handle t2
-  evalState (IntMap.empty @(Maybe (Val v) ::: Type v)) . runUnify $ go (t1' :===: t2')
+  evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . runUnify $ go (t1' :===: t2')
   where
   go
     :: Prob v :===: Prob v
@@ -216,14 +216,15 @@ unify (t1 :===: t2) = do
   unifyS (i1 :> l1 :===: i2 :> l2) = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (go (l1 :===: l2))
   unifyS _                         = Nothing
 
-  -- FIXME: this should probably be taking Probs otherwise we’re just creating lots of extra work.
-  solve :: Level := Val v -> Unify v (Val v)
+  solve :: Level := Prob v -> Unify v (Val v)
   solve (n := val') = do
     subst <- getSubst
     -- FIXME: occurs check
     case subst IntMap.! getLevel n of
-      Just val ::: _T -> elab $ unify (val :===: val')
-      Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
+      Just val ::: _T -> go (val :===: val')
+      Nothing  ::: _T -> do
+        put (insertSubst n (Just val' ::: _T) subst)
+        rethrow $ handle val'
 
 
 -- FIXME: is it possible to do something clever with delimited continuations or coroutines to bind variables outside our scope?
@@ -236,7 +237,7 @@ meta _T = do
   put (insertSubst m (Nothing ::: _T) subst)
   pure $ CV.metavar m
 
-insertSubst :: Level -> Maybe (Val v) ::: Type v -> Subst v -> Subst v
+insertSubst :: Level -> Maybe (Prob v) ::: Type v -> Subst v -> Subst v
 insertSubst n (v ::: _T) = IntMap.insert (getLevel n) (v ::: _T)
 
 getSubst :: Has (State (Subst v)) sig (t v) => t v (Subst v)
