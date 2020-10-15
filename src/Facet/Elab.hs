@@ -56,16 +56,17 @@ import           Control.Effect.Sum
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', toList)
 import           Data.Functor.Identity
+import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Text as T
 import           Data.Traversable (for)
-import           Facet.Context hiding (getMetacontext)
+import           Facet.Context
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Value hiding (bound, global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
-import           Facet.Name (DName, Index(..), QName(..), UName)
+import           Facet.Name (DName, Index(..), Level(..), QName(..), UName)
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
@@ -85,7 +86,7 @@ type Type = Value I
 type Expr = Value I
 type Prob v = Value (M v) v
 
-newtype M v a = M { rethrow :: forall sig m . Has (State (Metacontext (Maybe (Val v) ::: Type v)) :+: Throw (Err v)) sig m => m a }
+newtype M v a = M { rethrow :: forall sig m . Has (State (Subst v) :+: Throw (Err v)) sig m => m a }
 
 instance Functor (M v) where
   fmap f (M m) = M (fmap f m)
@@ -97,7 +98,7 @@ instance Applicative (M v) where
 instance Monad (M v) where
   M m >>= f = M $ m >>= rethrow . f
 
-instance Algebra (State (Metacontext (Maybe (Val v) ::: Type v)) :+: Throw (Err v)) (M v) where
+instance Algebra (State (Subst v) :+: Throw (Err v)) (M v) where
   alg hdl sig ctx = case sig of
     L smctx -> M $ alg (rethrow . hdl) (inj smctx) ctx
     R throw -> M $ alg (rethrow . hdl) (inj throw) ctx
@@ -123,7 +124,9 @@ instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type 
     R (R (R throw)) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
-newtype Unify v a = Unify { runUnify :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Maybe (Val v) ::: Type v)) :+: Throw (Err v)) sig m => m a }
+type Subst v = IntMap.IntMap (Maybe (Val v) ::: Type v)
+
+newtype Unify v a = Unify { runUnify :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)) sig m => m a }
 
 instance Functor (Unify v) where
   fmap f (Unify m) = Unify (fmap f m)
@@ -135,7 +138,7 @@ instance Applicative (Unify v) where
 instance Monad (Unify v) where
   Unify m >>= f = Unify $ m >>= runUnify . f
 
-instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Maybe (Val v) ::: Type v)) :+: Throw (Err v)) (Unify v) where
+instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)) (Unify v) where
   alg hdl sig ctx = case sig of
     L renv              -> Unify $ alg (runUnify . hdl) (inj renv) ctx
     R (L rctx)          -> Unify $ alg (runUnify . hdl) (inj rctx) ctx
@@ -149,10 +152,6 @@ askEnv = ask
 
 askContext :: Has (Reader (Context (Val v ::: Type v))) sig (t v) => t v (Context (Val v ::: Type v))
 askContext = ask
-
-getMetacontext :: Has (State (Metacontext (Maybe (Val v) ::: Type v))) sig (t v) => t v (Metacontext (Maybe (Val v) ::: Type v))
-getMetacontext = get
-
 
 
 newtype Check v a = Check { runCheck :: Type v -> Elab v a }
@@ -182,7 +181,7 @@ unify
 unify (t1 :===: t2) = do
   let t1' = run $ handle t1
       t2' = run $ handle t2
-  evalState (Metacontext @(Maybe (Val v) ::: Type v) []) . runUnify $ go (t1' :===: t2')
+  evalState (IntMap.empty @(Maybe (Val v) ::: Type v)) . runUnify $ go (t1' :===: t2')
   where
   go
     :: Prob v :===: Prob v
@@ -223,9 +222,17 @@ unify (t1 :===: t2) = do
 
 meta :: Type v -> Unify v (Type v)
 meta _T = do
-  mctx <- getMetacontext
-  put ((Nothing ::: _T) <| mctx)
-  pure $ CV.metavar (metalevel mctx)
+  subst <- getSubst
+  let m = Level (length subst)
+  put (insertSubst m (Nothing ::: _T) subst)
+  pure $ CV.metavar m
+
+insertSubst :: Level -> Maybe (Val v) ::: Type v -> Subst v -> Subst v
+insertSubst n (v ::: _T) = IntMap.insert (getLevel n) (v ::: _T)
+
+getSubst :: Has (State (Subst v)) sig (t v) => t v (Subst v)
+getSubst = get
+
 
 
 -- General
