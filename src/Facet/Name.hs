@@ -47,6 +47,7 @@ instance P.Pretty UName where
 
 -- | User-supplied name paired with a 'Pl' describing whether it should be supplied implicitly (by unification) or explicitly (e.g. by juxtaposition).
 data PlName = P { pl :: Pl, uname :: UName }
+  deriving (Eq, Ord)
 
 instance Show PlName where
   showsPrec p (P pl uname) = showsBinaryWith showsPrec showsPrec "P" p pl uname
