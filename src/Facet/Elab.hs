@@ -216,6 +216,7 @@ unify (t1 :===: t2) = do
   unifyS (i1 :> l1 :===: i2 :> l2) = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (go (l1 :===: l2))
   unifyS _                         = Nothing
 
+  -- FIXME: this should probably be taking Probs otherwise we’re just creating lots of extra work.
   solve :: Level := Val v -> Unify v (Val v)
   solve (n := val') = do
     subst <- getSubst
