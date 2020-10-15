@@ -227,9 +227,6 @@ unify (t1 :===: t2) = do
         rethrow $ handle val'
 
 
--- FIXME: is it possible to do something clever with delimited continuations or coroutines to bind variables outside our scope?
-
-
 meta :: Type v -> Unify v (Type v)
 meta _T = do
   subst <- getSubst
