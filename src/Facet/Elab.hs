@@ -105,7 +105,7 @@ instance Algebra (State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) (M v
     R throw -> M $ alg (rethrow . hdl) (inj throw) ctx
 
 
-newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig m => m a }
+newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)) sig m => m a }
 
 instance Functor (Elab v) where
   fmap f (Elab m) = Elab (fmap f m)
@@ -497,8 +497,8 @@ elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (
     env <- get @(Env.Env (Type v))
     e' ::: _T <- runReader @(Context (Val v ::: Type v)) empty . runReader env $ do
       let e ::: t = elabDecl d
-      _T <- evalMeta $ elab $ check (t ::: Type)
-      e' <- evalMeta $ elab $ check (e ::: _T)
+      _T <- elab $ check (t ::: Type)
+      e' <- elab $ check (e ::: _T)
       pure $ e' ::: _T
 
     modify $ Env.insert (mname :.: n ::: _T)
@@ -507,8 +507,6 @@ elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (
     pure (mname :.: n, CM.DTerm e' ::: _T)
 
   pure $ CM.Module mname defs
-  where
-  evalMeta = evalState (Metacontext @(Val v ::: Type v) [])
 
 
 -- Errors
