@@ -441,7 +441,6 @@ elabClauses ctx cs = Check $ \ _T -> do
     let _B' = _B v
     cs' <- for cs $ \ (p:|_, b) -> do
       p' <- check (elabPattern p ::: ty _A)
-    -- FIXME: shouldn’t this be doing smething with the variable? I mean come on
       b' <- p' |-* \ v ->
         let ctx' = foldl' (|>) ctx (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p') (toList v))
         in check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx') rest ::: _B')
