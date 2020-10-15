@@ -26,6 +26,7 @@ module Facet.Core.Value
 , handleBinderP
 , AValue(..)
 , eq
+, Contextual(..)
 ) where
 
 import           Control.Carrier.Empty.Church
@@ -36,6 +37,7 @@ import           Data.Functor (void)
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Traversable (mapAccumL)
+import qualified Facet.Context as Ctx
 import           Facet.Core.Pattern
 import           Facet.Functor.Eq
 import           Facet.Name (Level(..), QName, UName, incrLevel)
@@ -251,3 +253,6 @@ newtype AValue f = AValue { runAValue :: forall x . Value f x }
 
 eq :: Monad m => AValue m -> AValue m -> m Bool
 eq v1 v2 = eqM @_ @Int (runAValue v1) (runAValue v2)
+
+
+newtype Contextual m = Contextual { runContextual :: forall x . Ctx.Context (Value m x ::: Value m x) :|-: Value m x }
