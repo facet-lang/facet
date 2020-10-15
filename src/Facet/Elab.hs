@@ -210,7 +210,7 @@ unify (t1 :===: t2) = evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . ru
     TPrd l1 r1 :===: TPrd l2 r2 -> TPrd <$> go (l1 :===: l2) <*> go (r1 :===: r2)
     Prd  l1 r1 :===: Prd  l2 r2 -> Prd  <$> go (l1 :===: l2) <*> go (r1 :===: r2)
     -- FIXME: build and display a diff of the root types
-    t1 :===: t2                       -> couldNotUnify t1 t2
+    t1 :===: t2                 -> couldNotUnify t1 t2
 
   unifyS (Nil          :===: Nil)          = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
