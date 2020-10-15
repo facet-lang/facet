@@ -127,6 +127,10 @@ bound :: a -> Value f a
 bound n = Local n :$ Nil
 
 
+var :: Head a -> Value f a
+var = (:$ Nil)
+
+
 unForAll :: Has Empty sig m => Value f a -> m (UName ::: Value f a, Value f a -> f (Value f a))
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
