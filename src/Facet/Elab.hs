@@ -216,6 +216,14 @@ unify (t1 :===: t2) = do
   unifyS (i1 :> l1 :===: i2 :> l2) = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (go (l1 :===: l2))
   unifyS _                         = Nothing
 
+  solve :: Level := Val v -> Unify v (Val v)
+  solve (n := val') = do
+    subst <- getSubst
+    -- FIXME: occurs check
+    case subst IntMap.! getLevel n of
+      Just val ::: _T -> elab $ unify (val :===: val')
+      Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
+
 
 -- FIXME: is it possible to do something clever with delimited continuations or coroutines to bind variables outside our scope?
 
