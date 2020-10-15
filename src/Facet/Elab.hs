@@ -230,7 +230,7 @@ unify (t1 :===: t2) = do
         rethrow $ handle val'
 
 
-meta :: Type v -> Unify v (Type v)
+meta :: Type v -> Unify v (Prob v)
 meta _T = do
   subst <- getSubst
   let m = Level (length subst)
