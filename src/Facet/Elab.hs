@@ -275,9 +275,10 @@ f $$ a = Synth $ do
 
 
 (|-)
-  :: UName ::: Type v
-  -> (Val v -> Elab v (Val v))
-  -> Elab v (Val v -> I (Val v))
+  :: Has (Reader (Context (Val v ::: Type v))) sig (t v)
+  => UName ::: Type v
+  -> (Val v -> t v (Val v))
+  -> t v (Val v -> I (Val v))
 n ::: _T |- f = do
   ctx <- askContext
   handleBinder (level ctx) (\ v -> local (|> (n ::: v ::: _T)) (f v))
@@ -285,9 +286,10 @@ n ::: _T |- f = do
 infix 1 |-
 
 (|-*)
-  :: CP.Pattern (UName ::: Type v)
-  -> (CP.Pattern (Val v) -> Elab v (Val v))
-  -> Elab v (CP.Pattern (Val v) -> I (Val v))
+  :: Has (Reader (Context (Val v ::: Type v))) sig (t v)
+  => CP.Pattern (UName ::: Type v)
+  -> (CP.Pattern (Val v) -> t v (Val v))
+  -> t v (CP.Pattern (Val v) -> I (Val v))
 p |-* f = do
   ctx <- askContext
   handleBinderP (level ctx) p (\ v ->
