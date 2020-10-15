@@ -47,6 +47,7 @@ instance P.Pretty UName where
 
 -- | User-supplied name paired with a 'Pl' describing whether it should be supplied implicitly (by unification) or explicitly (e.g. by juxtaposition).
 data PlName = P { pl :: Pl, uname :: UName }
+  deriving (Show)
 
 
 -- | De Bruijn indices, counting up from the binding site to the reference site (“inside out”).
