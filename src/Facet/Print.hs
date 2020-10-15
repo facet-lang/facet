@@ -175,31 +175,31 @@ prettyQName :: PrecedencePrinter p => QName -> p
 prettyQName (mname :.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
-printCoreValue :: Monad m => Level -> CV.Value m Print -> m Print
+printCoreValue :: Level -> CV.Value Print -> Print
 printCoreValue = go
   where
   go d = \case
-    CV.Type     -> pure _Type
-    CV.Void     -> pure _Void
-    CV.TUnit    -> pure _Unit
-    CV.Unit     -> pure _Unit
-    t CV.:=> b  -> do
+    CV.Type     -> _Type
+    CV.Void     -> _Void
+    CV.TUnit    -> _Unit
+    CV.Unit     -> _Unit
+    t CV.:=> b  ->
       let n' = name (tm t) d
-      t' <- go d (ty t)
-      b' <- go (succ d) =<< b (CV.bound n')
-      pure $ (n' ::: t') >~> b'
-    CV.Lam  p   -> block . commaSep <$> traverse (clause d) p
+          t' = go d (ty t)
+          b' = go (succ d) (b (CV.bound n'))
+      in (n' ::: t') >~> b'
+    CV.Lam  p   -> block . commaSep $ map (clause d) p
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: it shouldn’t be possible to get quote vars here, I think?
-    f CV.:$ as  -> (CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) f $$*) <$> traverse (go d) as
-    a CV.:-> b  -> (-->) <$> go d a <*> go d b
-    CV.TPrd l r -> (**)  <$> go d l <*> go d r
-    CV.Prd  l r -> (**)  <$> go d l <*> go d r
+    f CV.:$ as  -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) f $$* fmap (go d) as
+    a CV.:-> b  -> go d a --> go d b
+    CV.TPrd l r -> go d l **  go d r
+    CV.Prd  l r -> go d l **  go d r
   name n d = cbound n tvar d
-  clause d (p, b) = do
+  clause d (p, b) =
     let p' = snd (mapAccumL (\ d n -> (succ d, let n' = name n d in (n', CV.bound n'))) d p)
-    b' <- go (succ d) =<< b (snd <$> p')
-    pure $ printCorePattern (fst <$> p') <+> arrow <+> b'
+        b' = go (succ d) (b (snd <$> p'))
+    in printCorePattern (fst <$> p') <+> arrow <+> b'
 
 
 printContextEntry :: Level -> UName ::: Print -> Print
@@ -346,15 +346,15 @@ t .= b = t </> b
 (n ::: t) >-> b = prec FnR (group (align (parens (ann (n ::: t)))) </> arrow <+> b)
 
 
-printCoreModule :: Monad m => CM.Module m Print -> m Print
+printCoreModule :: CM.Module Print -> Print
 printCoreModule (CM.Module n ds)
-  = module' n <$> traverse (\ (n, d ::: t) -> (</>) . ann . (cfree n :::) <$> printCoreValue (Level 0) t <*> printCoreDef d) ds
+  = module' n $ map (\ (n, d ::: t) -> ann (cfree n ::: printCoreValue (Level 0) t) </> printCoreDef d) ds
 
-printCoreDef :: Monad m => CM.Def m Print -> m Print
+printCoreDef :: CM.Def Print -> Print
 printCoreDef = \case
   CM.DTerm b  -> printCoreValue (Level 0) b
   CM.DType b  -> printCoreValue (Level 0) b
-  CM.DData cs -> block . commaSep <$> traverse (fmap ann . traverse (printCoreValue (Level 0)) . first pretty) cs
+  CM.DData cs -> block . commaSep $ map (ann . fmap (printCoreValue (Level 0)) . first pretty) cs
 
 
 printSurfaceModule :: (Foldable f, Functor f) => SM.Module f a -> Print

@@ -8,9 +8,9 @@ import Facet.Core.Value (Value)
 import Facet.Name (CName, MName, QName)
 import Facet.Syntax
 
-data Module f a = Module MName [(QName, Def f a ::: Value f a)]
+data Module a = Module MName [(QName, Def a ::: Value a)]
 
-data Def f a
-  = DTerm (Value f a)
-  | DType (Value f a)
-  | DData [CName ::: Value f a]
+data Def a
+  = DTerm (Value a)
+  | DType (Value a)
+  | DData [CName ::: Value a]

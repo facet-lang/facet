@@ -55,7 +55,6 @@ import           Control.Effect.Parser.Span (Span(..))
 import           Control.Effect.Sum
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', toList)
-import           Data.Functor.Identity
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Text as T
@@ -80,11 +79,10 @@ import           Prettyprinter (Doc)
 import           Prettyprinter.Render.Terminal (AnsiStyle)
 import           Text.Parser.Position (Spanned)
 
-type I = Identity
-type Val = Value I
-type Type = Value I
-type Expr = Value I
-type Prob v = Value (M v) v
+type Val = Value
+type Type = Value
+type Expr = Value
+type Prob = Value
 
 newtype M v a = M { rethrow :: forall sig m . Has (State (Subst v) :+: Throw (Err v)) sig m => m a }
 
@@ -178,10 +176,7 @@ unify
   .  Eq v
   => Type v :===: Type v
   -> Elab v (Type v)
-unify (t1 :===: t2) = do
-  let t1' = run $ handle t1
-      t2' = run $ handle t2
-  evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . runUnify $ go (t1' :===: t2')
+unify (t1 :===: t2) = evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . runUnify $ go (t1 :===: t2)
   where
   go
     :: Prob v :===: Prob v
@@ -202,24 +197,20 @@ unify (t1 :===: t2) = do
     t1 :=> b1  :===: t2 :=> b2  -> do
       t <- go (ty t1 :===: ty t2)
       b <- tm t1 ::: t |- \ v -> do
-        let v' = run (handle v)
-        b1' <- rethrow $ b1 v'
-        b2' <- rethrow $ b2 v'
+        let b1' = b1 v
+            b2' = b2 v
         go (b1' :===: b2')
       pure $ tm t1 ::: t :=> b
     t :=> b :===: x -> do
       -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
-      _T <- rethrow $ handle $ ty t
+      let _T = ty t
       v <- meta _T
-      _B' <- rethrow $ b v
+      let _B' = b v
       go (_B' :===: x)
     TPrd l1 r1 :===: TPrd l2 r2 -> TPrd <$> go (l1 :===: l2) <*> go (r1 :===: r2)
     Prd  l1 r1 :===: Prd  l2 r2 -> Prd  <$> go (l1 :===: l2) <*> go (r1 :===: r2)
     -- FIXME: build and display a diff of the root types
-    t1 :===: t2                       -> do
-      t1' <- rethrow $ handle t1
-      t2' <- rethrow $ handle t2
-      couldNotUnify t1' t2'
+    t1 :===: t2                       -> couldNotUnify t1 t2
 
   unifyS (Nil      :===: Nil)      = Just (pure Nil)
   unifyS (i1 :> l1 :===: i2 :> l2) = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (go (l1 :===: l2))
@@ -231,9 +222,7 @@ unify (t1 :===: t2) = do
     -- FIXME: occurs check
     case subst IntMap.! getLevel n of
       Just val ::: _T -> go (val :===: val')
-      Nothing  ::: _T -> do
-        put (insertSubst n (Just val' ::: _T) subst)
-        rethrow $ handle val'
+      Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
 
 
 meta :: Type v -> Unify v (Prob v)
@@ -291,14 +280,14 @@ f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType "in application" _F
   a' <- check (a ::: _A)
-  pure $ run (f' CV.$$ a') ::: _B
+  pure $ (f' CV.$$ a') ::: _B
 
 
 (|-)
   :: Has (Reader (Context (Val v ::: Type v))) sig (t v)
   => UName ::: Type v
   -> (Val v -> t v (Val v))
-  -> t v (Val v -> I (Val v))
+  -> t v (Val v -> Val v)
 n ::: _T |- f = do
   ctx <- askContext
   handleBinder (level ctx) (\ v -> local (|> (n ::: v ::: _T)) (f v))
@@ -309,7 +298,7 @@ infix 1 |-
   :: Has (Reader (Context (Val v ::: Type v))) sig (t v)
   => CP.Pattern (UName ::: Type v)
   -> (CP.Pattern (Val v) -> t v (Val v))
-  -> t v (CP.Pattern (Val v) -> I (Val v))
+  -> t v (CP.Pattern (Val v) -> Val v)
 p |-* f = do
   ctx <- askContext
   handleBinderP (level ctx) p (\ v ->
@@ -410,7 +399,7 @@ tlam
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
   b' <- n ::: _T |- \ v -> do
-    let _B' = run (_B v)
+    let _B' = _B v
     check (b ::: _B')
   pure (Lam [(CP.Var n, b' . CP.unsafeGetVar)])
 
@@ -514,7 +503,7 @@ elabModule
   :: forall v a m sig
   .  (HasCallStack, Has (Throw (Err v)) sig m, Eq v)
   => Spanned (SM.Module Spanned a)
-  -> m (CM.Module I v)
+  -> m (CM.Module v)
 elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (Type v))) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
@@ -589,7 +578,7 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 expectMatch :: (Type v -> Maybe out) -> String -> String -> Type v -> Elab v out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifiedType :: String -> Type v -> Elab v (UName ::: Type v, Type v -> I (Type v))
+expectQuantifiedType :: String -> Type v -> Elab v (UName ::: Type v, Type v -> Type v)
 expectQuantifiedType = expectMatch unForAll "{_} -> _"
 
 expectFunctionType :: String -> Type v -> Elab v (Type v, Type v)

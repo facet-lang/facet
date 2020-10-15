@@ -62,7 +62,7 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
   lower $ do
     mod <- elabModule parsed
-    pure . run $ P.printCoreModule mod
+    pure $ P.printCoreModule mod
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s
@@ -102,4 +102,4 @@ printReason ctx = group . \case
 
 
 printType :: Type P.Print -> ErrDoc
-printType = P.getPrint . run . P.printCoreValue (Level 0)
+printType = P.getPrint . P.printCoreValue (Level 0)
