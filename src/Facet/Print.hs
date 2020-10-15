@@ -192,7 +192,7 @@ printCoreValue = go
     CV.Lam n b  -> block $
       let n' = name (uname n) d
           b' = go (succ d) (b (CV.bound n'))
-      in n' <+> arrow </> b'
+      in case pl n of { Im -> braces n' ; Ex -> n' } <+> arrow </> b'
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap (elim d) e
     CV.TPrd l r -> go d l ** go d r
