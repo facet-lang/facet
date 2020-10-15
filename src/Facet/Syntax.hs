@@ -90,3 +90,6 @@ data Pl
 instance Semigroup Pl where
   Im <> Im = Im
   _  <> _  = Ex
+
+instance Monoid Pl where
+  mempty = Im
