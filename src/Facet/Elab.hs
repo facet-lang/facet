@@ -398,13 +398,11 @@ elabExpr ctx = withSpan' $ \case
 
 tlam
   :: UName
-  -> Check v (Expr v)
+  -> (Expr v -> Check v (Expr v))
   -> Check v (Expr v)
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
-  b' <- n ::: _T |- \ v -> do
-    let _B' = _B v
-    check (b ::: _B')
+  b' <- n ::: _T |- \ v -> check (b v ::: _B v)
   pure (Lam n b')
 
 lam
@@ -505,7 +503,7 @@ elabDecl
 elabDecl = withSpans $ \case
   (n ::: t) SD.:=> b ->
     let b' ::: _B = elabDecl b
-    in tlam n . b' ::: \ ctx -> checkElab (switch (n ::: checkElab (elabType ctx t) >~> _B ctx))
+    in (\ ctx -> tlam n (\ v -> b' (ctx |> (n ::: v)))) ::: \ ctx -> checkElab (switch (n ::: checkElab (elabType ctx t) >~> _B ctx))
 
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
