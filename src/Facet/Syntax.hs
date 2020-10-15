@@ -85,3 +85,4 @@ splitr un = go id
 data Pl
   = Im
   | Ex
+  deriving (Bounded, Enum, Eq, Ord, Show)
