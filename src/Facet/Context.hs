@@ -10,10 +10,6 @@ module Facet.Context
 , names
 , (!?)
 , (!)
-  -- * Metacontexts
-, Metacontext(..)
-, (<|)
-, metalevel
 ) where
 
 import           Facet.Name
@@ -43,14 +39,3 @@ c !? i = elems c S.!? getIndex i
 
 (!) :: HasCallStack => Context a -> Index -> UName ::: a
 c ! i = elems c S.! getIndex i
-
-
-newtype Metacontext a = Metacontext { getMetacontext :: [a] }
-
-(<|) :: a -> Metacontext a -> Metacontext a
-a <| Metacontext as = Metacontext (a:as)
-
-infixl 5 <|
-
-metalevel :: Metacontext a -> Level
-metalevel = Level . length . getMetacontext
