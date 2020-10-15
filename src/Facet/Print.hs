@@ -246,7 +246,7 @@ cbound h printLevel level
 
 
 hole :: Text -> Print
-hole n = pretty '?' <> pretty n
+hole n = annotate Hole $ pretty '?' <> pretty n
 
 
 _Type, _Void, _Unit :: Print
