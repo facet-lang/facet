@@ -8,6 +8,7 @@ module Facet.Syntax
 , curryAnn
 , (:=)(..)
 , (:===:)(..)
+, (:|-:)(..)
 , splitl
 , splitr
 ) where
@@ -53,6 +54,15 @@ infixr 2 :=
 
 instance Bifunctor (:=) where
   bimap f g (a := b) = f a := g b
+
+
+data a :|-: b = a :|-: b
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+infix 0 :|-:
+
+instance Bifunctor (:|-:) where
+  bimap f g (a :|-: b) = f a :|-: g b
 
 
 splitl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)
