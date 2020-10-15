@@ -190,7 +190,7 @@ handleBinderP d p b = do
   b' <- b p'
   pure $ \ v -> subst (snd (foldr (\ v (d, s) -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
--- FIXME: is it possible to instead perform one complete substitution at the end of handle?
+-- FIXME: is it possible to instead perform one complete substitution at the end of <whatever>?
 subst :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
 subst s = go
   where
