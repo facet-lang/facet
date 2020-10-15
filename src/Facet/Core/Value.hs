@@ -120,7 +120,7 @@ unHead f g h i = \case
 
 
 data Elim a
-  = App a
+  = App a -- FIXME: this is our one codata case; should we generalize this to copattern matching?
   | Case [(Pattern UName, Pattern a -> a)]
 
 
