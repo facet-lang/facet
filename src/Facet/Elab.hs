@@ -260,10 +260,11 @@ global n = Synth $ Env.lookup n <$> askEnv >>= \case
   Nothing -> freeVariable n
 
 bound
-  :: Index
+  :: Context (Val v ::: Type v)
+  -> Index
   -> Synth v (Val v)
-bound n = Synth $ do
-  ctx <- askContext
+bound ctx n = Synth $ do
+  -- ctx <- askContext
   -- FIXME: this assumes that the core & surface languages have identical binding structure, which in general they do not.
   case ctx !? n of
     Just (_ ::: (v ::: _T)) -> pure (v ::: _T)
@@ -313,20 +314,20 @@ infix 1 |-*
 
 elabType
   :: (HasCallStack, Eq v)
-  => Context (Type v)
+  => Context (Val v ::: Type v)
   -> Spanned (ST.Type Spanned a)
   -> Maybe (Type v)
   -> Elab v (Type v ::: Type v)
 elabType ctx = withSpan' $ \case
   ST.Free  n -> switch $ global n
-  ST.Bound n -> switch $ bound n
+  ST.Bound n -> switch $ bound ctx n
   ST.Hole  n -> check (hole n) "hole"
   ST.Type    -> switch $ _Type
   ST.Void    -> switch $ _Void
   ST.Unit    -> switch $ _Unit
-  t ST.:=> b -> switch $ fmap (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx|>(tm t ::: v)) b)
+  t ST.:=> b -> switch $ fmap (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> (tm t ::: v)) b)
   f ST.:$  a -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
-  a ST.:-> b -> switch $ __ ::: checkElab (elabType ctx a) --> \ _ -> checkElab (elabType ctx b)
+  a ST.:-> b -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
   l ST.:*  r -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
@@ -353,23 +354,23 @@ a .* b = Synth $ do
 infixl 7 .*
 
 (-->)
-  :: UName ::: Check v (Type v)
-  -> (Type v -> Check v (Type v))
+  :: Check v (Type v)
+  -> Check v (Type v)
   -> Synth v (Type v)
-(_ ::: a) --> b = Synth $ do
+a --> b = Synth $ do
   a' <- check (a ::: Type)
-  b' <- check (b a' ::: Type)
+  b' <- check (b ::: Type)
   pure $ (a' :-> b') ::: Type
 
 infixr 1 -->
 
 (>~>)
   :: (UName ::: Check v (Type v))
-  -> (Type v -> Check v (Type v))
+  -> (Val v ::: Type v -> Check v (Type v))
   -> Synth v (Type v)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
-  b' <- n ::: _T |- \ v -> check (b v ::: Type)
+  b' <- n ::: _T |- \ v -> check (b (v ::: _T) ::: Type)
   pure $ (n ::: _T :=> b') ::: Type
 
 infixr 1 >~>
@@ -379,13 +380,13 @@ infixr 1 >~>
 
 elabExpr
   :: (HasCallStack, Eq v)
-  => Context (Type v)
+  => Context (Val v ::: Type v)
   -> Spanned (SE.Expr Spanned a)
   -> Maybe (Type v)
   -> Elab v (Expr v ::: Type v)
 elabExpr ctx = withSpan' $ \case
   SE.Free  n -> switch $ global n
-  SE.Bound n -> switch $ bound n
+  SE.Bound n -> switch $ bound ctx n
   SE.Hole  n -> check (hole n) "hole"
   f SE.:$  a -> switch $ synthElab (elabExpr ctx f) $$ checkElab (elabExpr ctx a)
   l SE.:*  r -> check (checkElab (elabExpr ctx l) ** checkElab (elabExpr ctx r)) "product"
@@ -397,20 +398,20 @@ elabExpr ctx = withSpan' $ \case
 
 tlam
   :: UName
-  -> (Expr v -> Check v (Expr v))
+  -> (Type v ::: Type v -> Check v (Expr v))
   -> Check v (Expr v)
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
-  b' <- n ::: _T |- \ v -> check (b v ::: _B v)
+  b' <- n ::: _T |- \ v -> check (b (v ::: _T) ::: _B v)
   pure (Lam n b')
 
 lam
   :: UName
-  -> (Expr v -> Check v (Expr v))
+  -> (Expr v ::: Type v -> Check v (Expr v))
   -> Check v (Expr v)
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType "when checking lambda" _T
-  b' <- (n ::: _A) |- \ v -> check (b v ::: _B)
+  b' <- (n ::: _A) |- \ v -> check (b (v ::: _A) ::: _B)
   pure (Lam n b')
 
 unit :: Synth v (Expr v)
@@ -428,7 +429,7 @@ l ** r = Check $ \ _T -> do
 
 elabComp
   :: (HasCallStack, Eq v)
-  => Context (Type v)
+  => Context (Val v ::: Type v)
   -> Spanned (SE.Comp Spanned a)
   -> Check v (Expr v)
 elabComp ctx = withSpan $ \case
@@ -451,7 +452,7 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
-elabClauses :: Eq v => Context (Type v) -> [(NonEmpty (Spanned (SP.Pattern Spanned UName)), Spanned (SE.Expr Spanned a))] -> Check v (Expr v)
+elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned (SP.Pattern Spanned UName)), Spanned (SE.Expr Spanned a))] -> Check v (Expr v)
 elabClauses ctx cs = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
@@ -462,7 +463,9 @@ elabClauses ctx cs = Check $ \ _T -> do
   cs' <- for cs $ \ (p:|_, b) -> do
     p' <- check (elabPattern p ::: _A)
     -- FIXME: shouldn’t this be doing smething with the variable? I mean come on
-    b' <- p' |-* \ v -> check (maybe (checkElab (elabExpr ctx b)) (elabClauses ctx) rest ::: _B)
+    b' <- p' |-* \ v ->
+      let ctx' = foldl' (|>) ctx (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p') (toList v))
+      in check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx') rest ::: _B)
     pure (tm <$> p', b')
   b' <- __ ::: _A |- \ v -> pure (case' v cs')
   pure $ Lam __ b'
@@ -497,7 +500,7 @@ elabDecl
   :: forall a v
   .  (HasCallStack, Eq v)
   => Spanned (SD.Decl Spanned a)
-  -> (Context (Type v) -> Check v (Expr v)) ::: (Context (Type v) -> Check v (Type v))
+  -> (Context (Val v ::: Type v) -> Check v (Expr v)) ::: (Context (Val v ::: Type v) -> Check v (Type v))
 elabDecl = withSpans $ \case
   (n ::: t) SD.:=> b ->
     let b' ::: _B = elabDecl b
@@ -506,7 +509,7 @@ elabDecl = withSpans $ \case
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in (\ ctx -> lam n (\ v -> b' (ctx |> (n ::: v)))) ::: \ ctx -> checkElab (switch (__ ::: checkElab (elabType ctx t) --> \ v -> local (|> (n ::: Type @v ::: Type @v)) (_B (ctx |> (__ ::: v)))))
+    in (\ ctx -> lam n (\ v -> b' (ctx |> (n ::: v)))) ::: \ ctx -> checkElab (switch (checkElab (elabType ctx t) --> _B (ctx |> (__ ::: Type ::: Type))))
 
   t SD.:= b ->
     (\ ctx -> checkElab (elabExpr ctx b)) ::: (\ ctx -> checkElab (elabType ctx t))
