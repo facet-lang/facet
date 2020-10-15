@@ -12,6 +12,7 @@ module Facet.Core.Value
 , unHead
 , global
 , bound
+, metavar
 , unForAll
 , unTLam
 , unArrow
@@ -116,13 +117,15 @@ data Head a
   = Global QName
   | Local a -- FIXME: this should actually be Free
   | Quote Level
+  | Metavar Level
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-unHead :: (QName -> b) -> (a -> b) -> (Level -> b) -> Head a -> b
-unHead f g h = \case
-  Global n -> f n
-  Local  n -> g n
-  Quote  n -> h n
+unHead :: (QName -> b) -> (a -> b) -> (Level -> b) -> (Level -> b) -> Head a -> b
+unHead f g h i = \case
+  Global  n -> f n
+  Local   n -> g n
+  Quote   n -> h n
+  Metavar n -> i n
 
 
 global :: QName -> Value f a
@@ -134,6 +137,9 @@ bound = var . Local
 
 quote :: Level -> Value f a
 quote = var . Quote
+
+metavar :: Level -> Value f a
+metavar = var . Metavar
 
 
 var :: Head a -> Value f a
@@ -240,7 +246,7 @@ subst s = go
     TLam n b -> pure $ TLam n (go <=< b)
     a :-> b  -> (:->) <$> go a <*> go b
     Lam cs   -> pure $ Lam (map (fmap (go <=<)) cs)
-    f :$ as  -> (unHead global bound (s !) f $$*) =<< traverse go as
+    f :$ as  -> (unHead global bound (s !) metavar f $$*) =<< traverse go as
     TPrd l r -> TPrd <$> go l <*> go r
     Prd  l r -> Prd  <$> go l <*> go r
   s ! l = case IntMap.lookup (getLevel l) s of

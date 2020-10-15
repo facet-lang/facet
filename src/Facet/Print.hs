@@ -195,7 +195,7 @@ printCoreValue = go
     CV.Lam  p   -> block . commaSep <$> traverse (clause d) p
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: it shouldn’t be possible to get quote vars here, I think?
-    f CV.:$ as  -> (CV.unHead cfree id (tvar . getLevel) f $$*) <$> traverse (go d) as
+    f CV.:$ as  -> (CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) f $$*) <$> traverse (go d) as
     a CV.:-> b  -> (-->) <$> go d a <*> go d b
     CV.TPrd l r -> (**)  <$> go d l <*> go d r
     CV.Prd  l r -> (**)  <$> go d l <*> go d r
