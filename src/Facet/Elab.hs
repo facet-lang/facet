@@ -500,23 +500,22 @@ elabPattern = withSpan $ \case
 elabDecl
   :: forall a v
   .  (HasCallStack, Eq v)
-  => Context (Type v)
-  -> Spanned (SD.Decl Spanned a)
-  -> Check v (Expr v) ::: Check v (Type v)
-elabDecl ctx = withSpans $ \case
+  => Spanned (SD.Decl Spanned a)
+  -> (Context (Type v) -> Check v (Expr v)) ::: (Context (Type v) -> Check v (Type v))
+elabDecl = withSpans $ \case
   (n ::: t) SD.:=> b ->
-    let b' ::: _B = elabDecl ctx b
-    in tlam n b' ::: checkElab (switch (n ::: checkElab (elabType ctx t) >~> _B))
+    let b' ::: _B = elabDecl b
+    in tlam n . b' ::: \ ctx -> checkElab (switch (n ::: checkElab (elabType ctx t) >~> _B ctx))
 
   (n ::: t) SD.:-> b ->
-    let b' ::: _B = elabDecl ctx b
+    let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n b' ::: checkElab (switch (checkElab (elabType ctx t) --> local (|> (n ::: Type @v ::: Type @v)) _B))
+    in lam n . b' ::: \ ctx -> checkElab (switch (checkElab (elabType ctx t) --> local (|> (n ::: Type @v ::: Type @v)) (_B ctx)))
 
   t SD.:= b ->
-    checkElab (elabExpr ctx b) ::: checkElab (elabType empty t)
+    (\ ctx -> checkElab (elabExpr ctx b)) ::: (\ ctx -> checkElab (elabType ctx t))
   where
-  withSpans f (s, d) = let t ::: _T = f d in setSpan s t ::: setSpan s _T
+  withSpans f (s, d) = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
 
 
 -- Modules
@@ -532,9 +531,9 @@ elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
     env <- get @(Env.Env (Type v))
     e' ::: _T <- runReader @(Context (Val v ::: Type v)) empty . runReader env $ do
-      let e ::: t = elabDecl empty d
-      _T <- elab $ check (t ::: Type)
-      e' <- elab $ check (e ::: _T)
+      let e ::: t = elabDecl d
+      _T <- elab $ check (t empty ::: Type)
+      e' <- elab $ check (e empty ::: _T)
       pure $ e' ::: _T
 
     modify $ Env.insert (mname :.: n ::: _T)
