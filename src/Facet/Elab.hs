@@ -102,7 +102,9 @@ instance Algebra (State (Subst v) :+: Throw (Err v)) (M v) where
     R throw -> M $ alg (rethrow . hdl) (inj throw) ctx
 
 
-newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)) sig m => m a }
+type Subst v = IntMap.IntMap (Maybe (Prob v) ::: Type v)
+
+newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)) sig m => m a }
 
 instance Functor (Elab v) where
   fmap f (Elab m) = Elab (fmap f m)
@@ -114,35 +116,13 @@ instance Applicative (Elab v) where
 instance Monad (Elab v) where
   Elab m >>= f = Elab $ m >>= elab . f
 
-instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)) (Elab v) where
+instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)) (Elab v) where
   alg hdl sig ctx = case sig of
-    L renv          -> Elab $ alg (elab . hdl) (inj renv) ctx
-    R (L rctx)      -> Elab $ alg (elab . hdl) (inj rctx) ctx
-    R (R (L rspan)) -> Elab $ alg (elab . hdl) (inj rspan) ctx
-    R (R (R throw)) -> Elab $ alg (elab . hdl) (inj throw) ctx
-
-
-type Subst v = IntMap.IntMap (Maybe (Prob v) ::: Type v)
-
-newtype Unify v a = Unify { runUnify :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)) sig m => m a }
-
-instance Functor (Unify v) where
-  fmap f (Unify m) = Unify (fmap f m)
-
-instance Applicative (Unify v) where
-  pure a = Unify $ pure a
-  Unify f <*> Unify a = Unify (f <*> a)
-
-instance Monad (Unify v) where
-  Unify m >>= f = Unify $ m >>= runUnify . f
-
-instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)) (Unify v) where
-  alg hdl sig ctx = case sig of
-    L renv              -> Unify $ alg (runUnify . hdl) (inj renv) ctx
-    R (L rctx)          -> Unify $ alg (runUnify . hdl) (inj rctx) ctx
-    R (R (L rspan))     -> Unify $ alg (runUnify . hdl) (inj rspan) ctx
-    R (R (R (L smctx))) -> Unify $ alg (runUnify . hdl) (inj smctx) ctx
-    R (R (R (R throw))) -> Unify $ alg (runUnify . hdl) (inj throw) ctx
+    L renv              -> Elab $ alg (elab . hdl) (inj renv) ctx
+    R (L rctx)          -> Elab $ alg (elab . hdl) (inj rctx) ctx
+    R (R (L rspan))     -> Elab $ alg (elab . hdl) (inj rspan) ctx
+    R (R (R (L smctx))) -> Elab $ alg (elab . hdl) (inj smctx) ctx
+    R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
 askEnv :: Has (Reader (Env.Env (Type v))) sig (t v) => t v (Env.Env (Type v))
@@ -153,7 +133,7 @@ askContext = ask
 
 
 newtype Check v a = Check { runCheck :: Type v -> Elab v a }
-  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
+  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
 
 newtype Synth v a = Synth { synth :: Elab v (a ::: Type v) }
 
@@ -176,11 +156,11 @@ unify
   .  Eq v
   => Type v :===: Type v
   -> Elab v (Type v)
-unify (t1 :===: t2) = evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . runUnify $ go (t1 :===: t2)
+unify (t1 :===: t2) = go (t1 :===: t2)
   where
   go
     :: Prob v :===: Prob v
-    -> Unify v (Type v)
+    -> Elab v (Type v)
   go = \case
     -- FIXME: this is missing a lot of cases
     Type       :===: Type       -> pure Type
@@ -216,7 +196,7 @@ unify (t1 :===: t2) = evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . ru
   unifyS (i1 :> App l1 :===: i2 :> App l2) = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (App <$> go (l1 :===: l2))
   unifyS _                                 = Nothing
 
-  solve :: Level := Prob v -> Unify v (Val v)
+  solve :: Level := Prob v -> Elab v (Val v)
   solve (n := val') = do
     subst <- getSubst
     -- FIXME: occurs check
@@ -225,7 +205,7 @@ unify (t1 :===: t2) = evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . ru
       Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
 
 
-meta :: Type v -> Unify v (Prob v)
+meta :: Type v -> Elab v (Prob v)
 meta _T = do
   subst <- getSubst
   let m = Level (length subst)
@@ -529,8 +509,8 @@ elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (
     env <- get @(Env.Env (Type v))
     e' ::: _T <- runReader @(Context (Val v ::: Type v)) empty . runReader env $ do
       let e ::: t = elabDecl d
-      _T <- elab $ check (t empty ::: Type)
-      e' <- elab $ check (e empty ::: _T)
+      _T <- evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . elab $ check (t empty ::: Type)
+      e' <- evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . elab $ check (e empty ::: _T)
       pure $ e' ::: _T
 
     modify $ Env.insert (mname :.: n ::: _T)
