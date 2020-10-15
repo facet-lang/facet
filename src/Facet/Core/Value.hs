@@ -21,27 +21,22 @@ module Facet.Core.Value
 , ($$*)
 , case'
 , match
-, mapValue
-, mapValueAll
-, join
 , AValue(..)
 , eq
 ) where
 
-import           Control.Carrier.Empty.Church
-import           Control.Carrier.Lift
-import           Control.Monad ((<=<))
-import           Data.Foldable (foldl', for_, toList)
-import           Data.Functor (void)
-import           Data.Monoid (First(..))
-import           Data.Traversable (mapAccumL)
-import           Facet.Core.Pattern
-import           Facet.Functor.Eq
-import           Facet.Name (Index(..), Level(..), QName, UName, isMeta, levelToIndex)
-import           Facet.Stack hiding ((!))
-import qualified Facet.Stack as S
-import           Facet.Syntax
-import           GHC.Stack
+import Control.Carrier.Empty.Church
+import Control.Carrier.Lift
+import Data.Foldable (foldl', for_, toList)
+import Data.Functor (void)
+import Data.Monoid (First(..))
+import Data.Traversable (mapAccumL)
+import Facet.Core.Pattern
+import Facet.Functor.Eq
+import Facet.Name (Level(..), QName, UName)
+import Facet.Stack hiding ((!))
+import Facet.Syntax
+import GHC.Stack
 
 -- FIXME: eliminate TLam; track type introductions and applications with annotations in the context.
 -- FIXME: replace :-> with syntax sugar for :=>.
@@ -181,88 +176,6 @@ match s = \case
       r' <- match r pr
       Just $ Tuple [l', r']
   _                -> Nothing
-
-
--- | Map over the variables in a value bound by a given context & metacontext.
---
--- Note that this doesn’t have any argument mapping bound values to @a@; the idea is that instead, 'Level' can be mapped uniquely onto elements of the context and metacontext, and thus can resolve bound variables to their values in these contexts.
---
--- This can be iterated (cf 'mapValueAll') trivially, because:
---
--- 1. Only closed values can exist within an empty context and metacontext.
--- 2. No dependencies are allowed between the contexts.
--- 3. Values bound in a context can only depend on information earlier in the same context.
---
--- Thus, a value bound in the context is independent of anything following; so we can map the initial context values in the empty context, the next in the context consisting of the mapped initial values, and so on, all the way along.
-mapValue :: (HasCallStack, Monad m) => [Value m a] -> Stack (Value m a) -> Value m Level -> m (Value m a)
--- FIXME: model contextualized values explicitly.
--- FIXME: m can extend the metacontext, invalidating this as we move under binders.
-mapValue mctx = go
-  where
-  go ctx = \case
-    Type     -> pure Type
-    Void     -> pure Void
-    TUnit    -> pure TUnit
-    Unit     -> pure Unit
-    t :=> b  -> do
-      t' <- traverse (go ctx) t
-      pure $ t' :=> bind ctx b
-    a :-> b  -> (:->) <$> go ctx a <*> go ctx b
-    TLam n b -> pure $ TLam n $ bind ctx b
-    Lam  ps  -> pure $ Lam $ map (\ (p, b) -> (p, bindP ctx b)) ps
-    f :$ as  -> do
-      let f' = unHead global (lookupIn ctx) quote f
-      as' <- traverse (go ctx) as
-      f' $$* as'
-    TPrd l r -> TPrd <$> go ctx l <*> go ctx r
-    Prd  l r -> Prd  <$> go ctx l <*> go ctx r
-  bind ctx b = \ v -> do
-    b' <- b (bound (Level (length ctx)))
-    go (ctx :> v) b'
-  bindP ctx b = \ v -> do
-    let (ctx', v') = mapAccumL (\ ctx v -> (ctx :> v, bound (Level (length ctx)))) ctx v
-    b' <- b v'
-    go ctx' b'
-  lookupIn ctx l
-    | isMeta l  = mctx !! abs (getIndex (levelToIndex mlevel l) + 1)
-    | otherwise = ctx S.! getIndex (levelToIndex (Level (length ctx)) l)
-  mlevel = Level (length mctx)
-
-mapValueAll :: (HasCallStack, Monad m) => [Value m Level] -> Stack (Value m Level) -> m ([Value m a], Stack (Value m a))
-mapValueAll mctx ctx = go ctx
-  where
-  metas []     = pure []
-  metas (m:ms) = do
-    ms' <- metas ms
-    m'  <- mapValue ms' Nil m
-    pure $ m' : ms'
-  go Nil     = do
-    mctx' <- metas mctx
-    pure (mctx', Nil)
-  go (as:>a) = do
-    (mctx', as') <- go as
-    a' <- mapValue mctx' as' a
-    pure (mctx', as' :> a')
-
-
-join :: Monad m => Value m (Value m a) -> m (Value m a)
-join = \case
-  Type     -> pure Type
-  Void     -> pure Void
-  TUnit    -> pure TUnit
-  Unit     -> pure Unit
-  t :=> b  -> do
-    t' <- traverse join t
-    pure $ t' :=> bind b
-  TLam n b -> pure $ TLam n (bind b)
-  a :-> b  -> (:->) <$> join a <*> join b
-  Lam cs   -> pure $ Lam (map (fmap bindP) cs)
-  f :$ as  -> (unHead global id quote f $$*) =<< traverse join as
-  TPrd l r -> TPrd <$> join l <*> join r
-  Prd  l r -> Prd  <$> join l <*> join r
-  where
-  bind  b = join <=< b . bound
-  bindP b = join <=< b . fmap bound
 
 
 newtype AValue f = AValue { runAValue :: forall x . Value f x }
