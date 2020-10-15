@@ -215,7 +215,7 @@ getSubst = get
 -- FIXME: this is wrong; we have no reliable way to differentiate between type quantifiers and regular function arrows.
 instantiate :: Expr v ::: Type v -> Elab v (Expr v ::: Type v)
 instantiate (e ::: _T) = case unForAll _T of
-  Just (_ ::: _T, _B) -> do
+  Just (P Im _ ::: _T, _B) -> do
     m <- meta _T
     instantiate (e CV.$$ m ::: _B m)
   _             -> pure $ e ::: _T
