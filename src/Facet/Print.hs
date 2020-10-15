@@ -185,7 +185,7 @@ printCoreValue = go
     CV.Unit     -> _Unit
     -- FIXME: print as --> when the bound variable is unused
     t CV.:=> b  ->
-      let n' = name (uname (tm t)) d
+      let n' = tvar (getLevel d)
           t' = go d (ty t)
           b' = go (succ d) (b (CV.bound n'))
       in ((pl (tm t), n') ::: t') >~> b'
@@ -205,7 +205,7 @@ printCoreValue = go
 
 unLam' :: (Level, CV.Value Print) -> Maybe (Print, (Level, CV.Value Print))
 unLam' (d, v) = case CV.unLam v of
-  Just (n, t) -> let n' = unPl braces id (pl n) $ cbound (uname n) tvar d in Just (n', (succ d, t (CV.bound n')))
+  Just (n, t) -> let n' = unPl (braces . tvar) evar (pl n) (getLevel d) in Just (n', (succ d, t (CV.bound n')))
   Nothing     -> Nothing
 
 lam
