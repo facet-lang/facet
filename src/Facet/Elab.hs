@@ -326,7 +326,7 @@ elabType ctx = withSpan' $ \case
   ST.Unit    -> switch $ _Unit
   t ST.:=> b -> switch $ fmap (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx|>(tm t ::: v)) b)
   f ST.:$  a -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
-  a ST.:-> b -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
+  a ST.:-> b -> switch $ __ ::: checkElab (elabType ctx a) --> \ _ -> checkElab (elabType ctx b)
   l ST.:*  r -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
@@ -353,12 +353,12 @@ a .* b = Synth $ do
 infixl 7 .*
 
 (-->)
-  :: Check v (Type v)
-  -> Check v (Type v)
+  :: UName ::: Check v (Type v)
+  -> (Type v -> Check v (Type v))
   -> Synth v (Type v)
-a --> b = Synth $ do
+(_ ::: a) --> b = Synth $ do
   a' <- check (a ::: Type)
-  b' <- check (b ::: Type)
+  b' <- check (b a' ::: Type)
   pure $ (a' :-> b') ::: Type
 
 infixr 1 -->
@@ -506,7 +506,7 @@ elabDecl = withSpans $ \case
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in (\ ctx -> lam n (\ v -> b' (ctx |> (n ::: v)))) ::: \ ctx -> checkElab (switch (checkElab (elabType ctx t) --> local (|> (n ::: Type @v ::: Type @v)) (_B ctx)))
+    in (\ ctx -> lam n (\ v -> b' (ctx |> (n ::: v)))) ::: \ ctx -> checkElab (switch (__ ::: checkElab (elabType ctx t) --> \ v -> local (|> (n ::: Type @v ::: Type @v)) (_B (ctx |> (__ ::: v)))))
 
   t SD.:= b ->
     (\ ctx -> checkElab (elabExpr ctx b)) ::: (\ ctx -> checkElab (elabType ctx t))
