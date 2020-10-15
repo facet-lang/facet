@@ -189,10 +189,7 @@ printCoreValue = go
           t' = go d (ty t)
           b' = go (succ d) (b (CV.bound n'))
       in ((pl (tm t), n') ::: t') >~> b'
-    CV.Lam n b  -> block $
-      let n' = name (uname n) d
-          b' = go (succ d) (b (CV.bound n'))
-      in unPl braces id (pl n) n' <+> arrow </> b'
+    CV.Lam n b  -> let (vs, (d', b')) = splitr unLam' (d, CV.Lam n b) in lam vs (go d' b')
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap (elim d) e
     CV.TPrd l r -> go d l ** go d r
@@ -205,6 +202,17 @@ printCoreValue = go
   elim d = \case
     CV.App  a -> go d a
     CV.Case p -> block . commaSep $ map (clause d) p
+
+unLam' :: (Level, CV.Value Print) -> Maybe (Print, (Level, CV.Value Print))
+unLam' (d, v) = case CV.unLam v of
+  Just (n, t) -> let n' = unPl braces id (pl n) $ cbound (uname n) tvar d in Just (n', (succ d, t (CV.bound n')))
+  Nothing     -> Nothing
+
+lam
+  :: [Print] -- ^ the bound variables.
+  -> Print   -- ^ the body.
+  -> Print
+lam vs b = block $ hsep vs <+> arrow <> nest 2 (line <> b)
 
 
 printContextEntry :: Level -> UName ::: Print -> Print
