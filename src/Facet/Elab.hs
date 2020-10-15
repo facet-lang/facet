@@ -83,6 +83,7 @@ import           Text.Parser.Position (Spanned)
 type Val v = Value (M v) v
 type Type v = Value (M v) v
 type Expr v = Value (M v) v
+type Prob v = Value (M v) v
 
 newtype M v a = M { rethrow :: forall sig m . Has (State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig m => m a }
 
