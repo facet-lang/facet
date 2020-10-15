@@ -243,7 +243,7 @@ sbound = var . pretty
 cbound :: UName -> (Int -> Print) -> Level -> Print
 cbound h printLevel level
   | T.null (getUName h) = printLevel (getLevel level)
-  | otherwise             = pretty h <> pretty (getLevel level)
+  | otherwise           = pretty h <> pretty (getLevel level)
 
 
 hole :: Text -> Print
