@@ -9,6 +9,7 @@
 module Facet.Core.Value
 ( Value(..)
 , Head(Global, Local, Metavar)
+, Elim(..)
 , unHead
 , global
 , bound
@@ -116,6 +117,11 @@ unHead f g h i = \case
   Local   n -> g n
   Quote   n -> h n
   Metavar n -> i n
+
+
+data Elim a
+  = App a
+  | Case [(Pattern UName, Pattern a -> a)]
 
 
 global :: QName -> Value a
