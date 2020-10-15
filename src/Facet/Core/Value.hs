@@ -15,7 +15,6 @@ module Facet.Core.Value
 , bound
 , metavar
 , unForAll
-, unArrow
 , unLam
 , unProductT
 , ($$)
@@ -41,7 +40,6 @@ import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
 
--- FIXME: replace :-> with syntax sugar for :=>.
 -- FIXME: replace products, void, and unit with references to constant datatypes.
 -- FIXME: represent closed portions of the tree explicitly?
 data Value a
@@ -50,7 +48,6 @@ data Value a
   | TUnit
   | Unit
   | (UName ::: Value a) :=> (Value a -> Value a)
-  | Value a :-> Value a
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
   | Lam UName (Value a -> Value a)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
@@ -59,7 +56,6 @@ data Value a
   | Prd (Value a) (Value a)
 
 infixr 1 :=>
-infixr 1 :->
 
 instance (Eq a, Num a) => Eq (Value a) where
   v1 == v2 = go 0 v1 v2
@@ -87,8 +83,6 @@ instance (Eq a, Num a) => Eq (Value a) where
       (Lam _ _, _) -> False
       (Neut h1 sp1, Neut h2 sp2) -> h1 == h2 && eqSp n sp1 sp2
       (Neut _ _, _) -> False
-      (a1 :-> b1, a2 :-> b2) -> go n a1 a2 && go n b1 b2
-      (_ :-> _, _) -> False
       (TPrd l1 r1, TPrd l2 r2) -> go n l1 l2 && go n r1 r2
       (TPrd _ _, _) -> False
       (Prd l1 r1, Prd l2 r2) -> go n l1 l2 && go n r1 r2
@@ -150,9 +144,6 @@ var = (`Neut` Nil)
 
 unForAll :: Has Empty sig m => Value a -> m (UName ::: Value a, Value a -> Value a)
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
-
-unArrow :: Has Empty sig m => Value a -> m (Value a, Value a)
-unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
 
 unLam :: Has Empty sig m => Value a -> m (UName, Value a -> Value a)
 unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
@@ -221,7 +212,6 @@ subst s = go
     t :=> b  ->
       let t' = fmap go t
       in t' :=> go . b
-    a :-> b  -> go a :-> go b
     Lam n b  -> Lam n (go . b)
     Neut f a -> unHead global bound (s !) metavar f `elimN` fmap substElim a
     TPrd l r -> TPrd (go l) (go r)

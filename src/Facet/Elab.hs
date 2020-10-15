@@ -193,7 +193,6 @@ unify (t1 :===: t2) = evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . ru
       , Just e' <- unifyS (e1 :===: e2) -> Neut h1 <$> e'
     Neut (Metavar v) Nil :===: x -> solve (v := x)
     x :===: Neut (Metavar v) Nil -> solve (v := x)
-    a1 :-> b1  :===: a2 :-> b2  -> (:->) <$> go (a1 :===: a2) <*> go (b1 :===: b2)
     t1 :=> b1  :===: t2 :=> b2  -> do
       t <- go (ty t1 :===: ty t2)
       b <- tm t1 ::: t |- \ v -> do
@@ -281,9 +280,9 @@ hole n = Check $ \ _T -> err $ Hole n _T
   -> Synth v (Val v)
 f $$ a = Synth $ do
   f' ::: _F <- synth f
-  (_A, _B) <- expectFunctionType "in application" _F
-  a' <- check (a ::: _A)
-  pure $ (f' CV.$$ a') ::: _B
+  (_A, _B) <- expectQuantifiedType "in application" _F
+  a' <- check (a ::: ty _A)
+  pure $ (f' CV.$$ a') ::: _B a'
 
 
 (|-)
@@ -357,10 +356,7 @@ infixl 7 .*
   :: Check v (Type v)
   -> Check v (Type v)
   -> Synth v (Type v)
-a --> b = Synth $ do
-  a' <- check (a ::: Type)
-  b' <- check (b ::: Type)
-  pure $ (a' :-> b') ::: Type
+a --> b = __ ::: a >~> const b
 
 infixr 1 -->
 
@@ -410,8 +406,8 @@ lam
   -> (UName ::: Expr v ::: Type v -> Check v (Expr v))
   -> Check v (Expr v)
 lam n b = Check $ \ _T -> do
-  (_A, _B) <- expectFunctionType "when checking lambda" _T
-  b' <- (n ::: _A) |- \ v -> check (b (n ::: v ::: _A) ::: _B)
+  (_A, _B) <- expectQuantifiedType "when checking lambda" _T
+  b' <- n ::: ty _A |- \ v -> check (b (n ::: v ::: ty _A) ::: _B v)
   pure (Lam n b')
 
 unit :: Synth v (Expr v)
@@ -454,20 +450,22 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 
 elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned (SP.Pattern Spanned UName)), Spanned (SE.Expr Spanned a))] -> Check v (Expr v)
 elabClauses ctx cs = Check $ \ _T -> do
-  (_A, _B) <- expectFunctionType "when checking clauses" _T
+  (_A, _B) <- expectQuantifiedType "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
     XB    -> pure $ Nothing
     XL _  -> pure $ Nothing
     XR cs -> pure $ Just cs
     XT    -> error "mixed" -- FIXME: throw a proper error
-  cs' <- for cs $ \ (p:|_, b) -> do
-    p' <- check (elabPattern p ::: _A)
+  b' <- _A |- \ v -> do
+    let _B' = _B v
+    cs' <- for cs $ \ (p:|_, b) -> do
+      p' <- check (elabPattern p ::: ty _A)
     -- FIXME: shouldn’t this be doing smething with the variable? I mean come on
-    b' <- p' |-* \ v ->
-      let ctx' = foldl' (|>) ctx (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p') (toList v))
-      in check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx') rest ::: _B)
-    pure (tm <$> p', b')
-  b' <- __ ::: _A |- \ v -> pure (case' v cs')
+      b' <- p' |-* \ v ->
+        let ctx' = foldl' (|>) ctx (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p') (toList v))
+        in check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx') rest ::: _B')
+      pure (tm <$> p', b')
+    pure $ case' v cs'
   pure $ Lam __ b'
   where
   partitionClause (_:|ps, b) = case ps of
@@ -509,7 +507,7 @@ elabDecl = withSpans $ \case
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in (\ ctx -> lam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (checkElab (elabType ctx t) --> _B (ctx |> (__ ::: Type ::: Type))))
+    in (\ ctx -> lam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (__ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
 
   t SD.:= b ->
     (\ ctx -> checkElab (elabExpr ctx b)) ::: (\ ctx -> checkElab (elabType ctx t))
@@ -600,9 +598,6 @@ expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectQuantifiedType :: String -> Type v -> Elab v (UName ::: Type v, Type v -> Type v)
 expectQuantifiedType = expectMatch unForAll "{_} -> _"
-
-expectFunctionType :: String -> Type v -> Elab v (Type v, Type v)
-expectFunctionType = expectMatch unArrow "_ -> _"
 
 expectProductType :: String -> Type v -> Elab v (Type v, Type v)
 expectProductType = expectMatch unProductT "(_, _)"

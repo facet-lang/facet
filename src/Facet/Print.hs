@@ -183,6 +183,7 @@ printCoreValue = go
     CV.Void     -> _Void
     CV.TUnit    -> _Unit
     CV.Unit     -> _Unit
+    -- FIXME: print as --> when the bound variable is unused
     t CV.:=> b  ->
       let n' = name (tm t) d
           t' = go d (ty t)
@@ -194,9 +195,8 @@ printCoreValue = go
       in n' <+> arrow </> b'
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap (elim d) e
-    a CV.:-> b  -> go d a --> go d b
-    CV.TPrd l r -> go d l **  go d r
-    CV.Prd  l r -> go d l **  go d r
+    CV.TPrd l r -> go d l ** go d r
+    CV.Prd  l r -> go d l ** go d r
   name n d = cbound n tvar d
   clause d (p, b) =
     let p' = snd (mapAccumL (\ d n -> (succ d, let n' = name n d in (n', CV.bound n'))) d p)
