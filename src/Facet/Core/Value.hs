@@ -21,22 +21,25 @@ module Facet.Core.Value
 , ($$*)
 , case'
 , match
+, handle
 , AValue(..)
 , eq
 ) where
 
-import Control.Carrier.Empty.Church
-import Control.Carrier.Lift
-import Data.Foldable (foldl', for_, toList)
-import Data.Functor (void)
-import Data.Monoid (First(..))
-import Data.Traversable (mapAccumL)
-import Facet.Core.Pattern
-import Facet.Functor.Eq
-import Facet.Name (Level(..), QName, UName)
-import Facet.Stack hiding ((!))
-import Facet.Syntax
-import GHC.Stack
+import           Control.Carrier.Empty.Church
+import           Control.Carrier.Lift
+import           Control.Monad ((<=<))
+import           Data.Foldable (foldl', for_, toList)
+import           Data.Functor (void)
+import qualified Data.IntMap as IntMap
+import           Data.Monoid (First(..))
+import           Data.Traversable (mapAccumL)
+import           Facet.Core.Pattern
+import           Facet.Functor.Eq
+import           Facet.Name (Level(..), QName, UName, incrLevel)
+import           Facet.Stack
+import           Facet.Syntax
+import           GHC.Stack
 
 -- FIXME: eliminate TLam; track type introductions and applications with annotations in the context.
 -- FIXME: replace :-> with syntax sugar for :=>.
@@ -177,6 +180,52 @@ match s = \case
       r' <- match r pr
       Just $ Tuple [l', r']
   _                -> Nothing
+
+
+handle :: (Monad m, Monad n) => Value m a -> m (Value n a)
+handle = go (Level 0)
+  where
+  go d = \case
+    Type     -> pure Type
+    Void     -> pure Void
+    TUnit    -> pure TUnit
+    Unit     -> pure Unit
+    t :=> b  -> do
+      t' <- traverse (go d) t
+      b' <- go (incrLevel d) =<< b (quote d)
+      pure $ t' :=> bind d b'
+    TLam n b -> do
+      b' <- go (incrLevel d) =<< b (quote d)
+      pure $ TLam n (bind d b')
+    a :-> b  -> (:->) <$> go d a <*> go d b
+    Lam cs   -> do
+      cs' <- traverse (\ (p, b) -> do
+        let (d', p') = mapAccumL (\ d _ -> (incrLevel d, quote d)) d p
+        b' <- go d' =<< b p'
+        pure (p, \ v -> subst (snd (foldr (\ v (d, s) -> (incrLevel d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b')) cs
+      pure $ Lam cs'
+    f :$ as  -> (f :$) <$> traverse (go d) as
+    TPrd l r -> TPrd <$> go d l <*> go d r
+    Prd  l r -> Prd  <$> go d l <*> go d r
+  bind d b = (`subst` b) . IntMap.singleton (getLevel d)
+
+subst :: Monad m => IntMap.IntMap (Value m a) -> Value m a -> m (Value m a)
+subst s = go
+  where
+  go = \case
+    Type     -> pure Type
+    Void     -> pure Void
+    TUnit    -> pure TUnit
+    Unit     -> pure Unit
+    t :=> b  -> do
+      t' <- traverse go t
+      pure $ t' :=> go <=< b
+    TLam n b -> pure $ TLam n (go <=< b)
+    a :-> b  -> (:->) <$> go a <*> go b
+    Lam cs   -> pure $ Lam (map (fmap (go <=<)) cs)
+    f :$ as  -> (unHead global bound ((s IntMap.!) . getLevel) f $$*) =<< traverse go as
+    TPrd l r -> TPrd <$> go l <*> go r
+    Prd  l r -> Prd <$> go l <*> go r
 
 
 newtype AValue f = AValue { runAValue :: forall x . Value f x }
