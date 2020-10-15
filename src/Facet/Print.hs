@@ -81,7 +81,7 @@ terminalStyle = \case
   Type   -> ANSI.color ANSI.Yellow
   Con    -> ANSI.color ANSI.Red
   Lit    -> ANSI.bold
-  Hole   -> ANSI.bold <> ANSI.colorDull ANSI.White
+  Hole   -> ANSI.bold <> ANSI.color ANSI.Black
   ANSI s -> s
   where
   colours =
