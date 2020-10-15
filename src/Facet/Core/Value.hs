@@ -14,7 +14,6 @@ module Facet.Core.Value
 , bound
 , metavar
 , unForAll
-, unTLam
 , unArrow
 , unLam
 , unProductT
@@ -46,7 +45,6 @@ import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
 
--- FIXME: eliminate TLam; track type introductions and applications with annotations in the context.
 -- FIXME: replace :-> with syntax sugar for :=>.
 -- FIXME: replace products, void, and unit with references to constant datatypes.
 -- FIXME: represent closed portions of the tree explicitly?
@@ -56,7 +54,6 @@ data Value f a
   | TUnit
   | Unit
   | (UName ::: Value f a) :=> (Value f a -> f (Value f a))
-  | TLam UName (Value f a -> f (Value f a))
   | Value f a :-> Value f a
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
   | Lam [(Pattern UName, Pattern (Value f a) -> f (Value f a))]
@@ -87,11 +84,6 @@ instance (Eq a, Num a) => EqM Value a where
         b2' <- sendM $ b2 (bound n)
         go (n + 1) b1' b2'
       (_ :=> _, _) -> empty
-      (TLam _ b1, TLam _ b2) -> do
-        b1' <- sendM $ b1 (bound n)
-        b2' <- sendM $ b2 (bound n)
-        go (n + 1) b1' b2'
-      (TLam _ _, _) -> empty
       (Lam c1, Lam c2)
         | length c1 == length c2 -> do
           for_ (zip c1 c2) $ \ ((p1, b1), (p2, b2)) -> guard (void p1 == void p2) *> do
@@ -149,9 +141,6 @@ var = (:$ Nil)
 unForAll :: Has Empty sig m => Value f a -> m (UName ::: Value f a, Value f a -> f (Value f a))
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
-unTLam :: Has Empty sig m => Value f a -> m (UName, Value f a -> f (Value f a))
-unTLam = \case{ TLam n b -> pure (n, b) ; _ -> empty }
-
 unArrow :: Has Empty sig m => Value f a -> m (Value f a, Value f a)
 unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
 
@@ -166,7 +155,6 @@ unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
 ($$) :: (HasCallStack, Applicative f) => Value f a -> Value f a -> f (Value f a)
 (f :$ as) $$ a = pure (f :$ (as :> a))
 (_ :=> b) $$ a = b a
-TLam _ b  $$ a = b a
 Lam    ps $$ a = case' a ps
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
@@ -205,9 +193,6 @@ handle = go (Level 0)
       t' <- traverse (go d) t
       b' <- go (succ d) =<< b (quote d)
       pure $ t' :=> bind d b'
-    TLam n b -> do
-      b' <- go (succ d) =<< b (quote d)
-      pure $ TLam n (bind d b')
     a :-> b  -> (:->) <$> go d a <*> go d b
     Lam cs   -> do
       cs' <- traverse (\ (p, b) -> do
@@ -243,7 +228,6 @@ subst s = go
     t :=> b  -> do
       t' <- traverse go t
       pure $ t' :=> go <=< b
-    TLam n b -> pure $ TLam n (go <=< b)
     a :-> b  -> (:->) <$> go a <*> go b
     Lam cs   -> pure $ Lam (map (fmap (go <=<)) cs)
     f :$ as  -> (unHead global bound (s !) metavar f $$*) =<< traverse go as

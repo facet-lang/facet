@@ -412,7 +412,7 @@ tlam n b = Check $ \ ty -> do
   b' <- n ::: _T |- \ v -> do
     let _B' = run (_B v)
     check (b ::: _B')
-  pure (TLam n b')
+  pure (Lam [(CP.Var n, b' . CP.unsafeGetVar)])
 
 lam
   :: UName

@@ -154,9 +154,6 @@ block
 commaSep :: [Print] -> Print
 commaSep = encloseSep mempty mempty (comma <> space)
 
-cases :: [Print] -> Print -> Print
-cases vs b = foldr (\ v r -> prec Pattern v <+> r) (arrow <+> group (nest 2 (line' <> prec Expr b))) vs
-
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
 
@@ -191,7 +188,6 @@ printCoreValue = go
       t' <- go d (ty t)
       b' <- go (succ d) =<< b (CV.bound n')
       pure $ (n' ::: t') >~> b'
-    CV.TLam n b -> let n' = name n d in lam (braces n') <$> (go (succ d) =<< b (CV.bound n'))
     CV.Lam  p   -> block . commaSep <$> traverse (clause d) p
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: it shouldn’t be possible to get quote vars here, I think?
@@ -322,15 +318,6 @@ printSurfacePattern p = prec Pattern $ case p of
   SP.Wildcard -> pretty '_'
   SP.Var n    -> n
   SP.Tuple p  -> tupled (map (foldMap printSurfacePattern) p)
-
--- FIXME: Use _ in binding positions for unused variables
-lam :: Print -> Print -> Print
-lam n = lams [n]
-
-lams :: [Print] -> Print -> Print
-lams ns b = askingPrec $ \case
-  Comp -> cases ns b
-  _    -> comp (cases ns b)
 
 unit :: Print
 unit = annotate Con $ pretty "Unit"
