@@ -40,7 +40,7 @@ import           Data.Traversable (mapAccumL)
 import qualified Facet.Context as Ctx
 import           Facet.Core.Pattern
 import           Facet.Functor.Eq
-import           Facet.Name (Level(..), QName, UName, incrLevel)
+import           Facet.Name (Level(..), QName, UName)
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
@@ -197,17 +197,17 @@ handle = go (Level 0)
     Unit     -> pure Unit
     t :=> b  -> do
       t' <- traverse (go d) t
-      b' <- go (incrLevel d) =<< b (quote d)
+      b' <- go (succ d) =<< b (quote d)
       pure $ t' :=> bind d b'
     TLam n b -> do
-      b' <- go (incrLevel d) =<< b (quote d)
+      b' <- go (succ d) =<< b (quote d)
       pure $ TLam n (bind d b')
     a :-> b  -> (:->) <$> go d a <*> go d b
     Lam cs   -> do
       cs' <- traverse (\ (p, b) -> do
-        let (d', p') = mapAccumL (\ d _ -> (incrLevel d, quote d)) d p
+        let (d', p') = mapAccumL (\ d _ -> (succ d, quote d)) d p
         b' <- go d' =<< b p'
-        pure (p, \ v -> subst (snd (foldr (\ v (d, s) -> (incrLevel d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b')) cs
+        pure (p, \ v -> subst (snd (foldr (\ v (d, s) -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b')) cs
       pure $ Lam cs'
     f :$ as  -> (f :$) <$> traverse (go d) as
     TPrd l r -> TPrd <$> go d l <*> go d r
@@ -221,9 +221,9 @@ handleBinder d b = do
 
 handleBinderP :: (HasCallStack, Monad m, Monad n, Traversable t) => Level -> t x -> (t (Value n a) -> m (Value n a)) -> m (t (Value n a) -> n (Value n a))
 handleBinderP d p b = do
-  let (_, p') = mapAccumL (\ d _ -> (incrLevel d, quote d)) d p
+  let (_, p') = mapAccumL (\ d _ -> (succ d, quote d)) d p
   b' <- b p'
-  pure $ \ v -> subst (snd (foldr (\ v (d, s) -> (incrLevel d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
+  pure $ \ v -> subst (snd (foldr (\ v (d, s) -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
 -- FIXME: is it possible to instead perform one complete substitution at the end of handle?
 subst :: (HasCallStack, Monad m) => IntMap.IntMap (Value m a) -> Value m a -> m (Value m a)

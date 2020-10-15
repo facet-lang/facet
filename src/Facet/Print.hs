@@ -187,9 +187,9 @@ printCoreValue = go
     t CV.:=> b  -> do
       let n' = name (tm t) d
       t' <- go d (ty t)
-      b' <- go (incrLevel d) =<< b (CV.bound n')
+      b' <- go (succ d) =<< b (CV.bound n')
       pure $ (n' ::: t') >~> b'
-    CV.TLam n b -> let n' = name n d in lam (braces n') <$> (go (incrLevel d) =<< b (CV.bound n'))
+    CV.TLam n b -> let n' = name n d in lam (braces n') <$> (go (succ d) =<< b (CV.bound n'))
     CV.Lam  p   -> block . commaSep <$> traverse (clause d) p
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: it shouldn’t be possible to get quote vars here, I think?
@@ -199,8 +199,8 @@ printCoreValue = go
     CV.Prd  l r -> (**)  <$> go d l <*> go d r
   name n d = cbound n tvar d
   clause d (p, b) = do
-    let p' = snd (mapAccumL (\ d n -> (incrLevel d, let n' = name n d in (n', CV.bound n'))) d p)
-    b' <- go (incrLevel d) =<< b (snd <$> p')
+    let p' = snd (mapAccumL (\ d n -> (succ d, let n' = name n d in (n', CV.bound n'))) d p)
+    b' <- go (succ d) =<< b (snd <$> p')
     pure $ printCorePattern (fst <$> p') <+> arrow <+> b'
 
 

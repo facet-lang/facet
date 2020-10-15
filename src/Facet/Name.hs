@@ -9,7 +9,6 @@ module Facet.Name
 , Level(..)
 , levelToIndex
 , indexToLevel
-, incrLevel
 , incrLevelFor
 , shiftLevel
 , Silent(..)
@@ -67,11 +66,8 @@ levelToIndex (Level d) (Level level) = Index $ d - level - 1
 indexToLevel :: Int -> Index -> Level
 indexToLevel d (Index index) = Level $ d - index - 1
 
-incrLevel :: Level -> Level
-incrLevel (Level l) = Level (l + 1)
-
 incrLevelFor :: Traversable t => (Level -> expr) -> Level -> t UName -> (Level, t expr)
-incrLevelFor mk = mapAccumR $ \ l _ -> (incrLevel l, mk l)
+incrLevelFor mk = mapAccumR $ \ l _ -> (succ l, mk l)
 
 shiftLevel :: Level -> Level -> Level
 shiftLevel (Level l) (Level r) = Level (l + r)
