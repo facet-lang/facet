@@ -86,3 +86,7 @@ data Pl
   = Im
   | Ex
   deriving (Bounded, Enum, Eq, Ord, Show)
+
+instance Semigroup Pl where
+  Im <> Im = Im
+  _  <> _  = Ex
