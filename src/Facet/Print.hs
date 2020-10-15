@@ -188,11 +188,11 @@ printCoreValue = go
       let n' = name (uname (tm t)) d
           t' = go d (ty t)
           b' = go (succ d) (b (CV.bound n'))
-      in (n' ::: t') >~> b'
+      in ((pl (tm t), n') ::: t') >~> b'
     CV.Lam n b  -> block $
       let n' = name (uname n) d
           b' = go (succ d) (b (CV.bound n'))
-      in case pl n of { Im -> braces n' ; Ex -> n' } <+> arrow </> b'
+      in unPl braces id (pl n) n' <+> arrow </> b'
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap (elim d) e
     CV.TPrd l r -> go d l ** go d r
@@ -272,14 +272,14 @@ l ** r = tupled [l, r]
 ($$*) :: Print -> Stack Print -> Print
 ($$*) = fmap group . foldl' ($$)
 
-(>~>) :: (Print ::: Print) -> Print -> Print
-(n ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (braces (space <> ann (var n ::: t) <> line))) </> arrow <+> b)
+(>~>) :: ((Pl, Print) ::: Print) -> Print -> Print
+((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (var n ::: t) <> line))) </> arrow <+> b)
 
 forAlls :: (Foldable f, Functor f) => [Print ::: f (ST.Type f a)] -> Print -> Print
 forAlls ts b = foldr go b (groupByType ST.aeq ts)
   where
   -- FIXME: this is horribly wrong and probably going to crash
-  go (t, ns) b = (commaSep ns ::: foldMap (printSurfaceType Nil) t) >~> b
+  go (t, ns) b = ((Im, commaSep ns) ::: foldMap (printSurfaceType Nil) t) >~> b
 
 groupByType :: (Foldable f, Functor f) => (t -> t -> Bool) -> [(n ::: f t)] -> [(f t, [n])]
 groupByType eq = \case
