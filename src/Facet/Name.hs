@@ -9,7 +9,6 @@ module Facet.Name
 , Level(..)
 , levelToIndex
 , indexToLevel
-, shiftLevel
 , Silent(..)
 , __
 , MName(..)
@@ -63,9 +62,6 @@ levelToIndex (Level d) (Level level) = Index $ d - level - 1
 
 indexToLevel :: Int -> Index -> Level
 indexToLevel d (Index index) = Level $ d - index - 1
-
-shiftLevel :: Level -> Level -> Level
-shiftLevel (Level l) (Level r) = Level (l + r)
 
 
 data Silent a b = Silent
