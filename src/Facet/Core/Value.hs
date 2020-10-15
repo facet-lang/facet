@@ -106,7 +106,7 @@ instance (Eq a, Num a) => EqM Value a where
 
 data Head a
   = Global QName
-  | Local a
+  | Local a -- FIXME: this should actually be Free
   | Quote Level
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
@@ -120,6 +120,7 @@ unHead f g h = \case
 global :: QName -> Value f a
 global = var . Global
 
+-- FIXME: this should actually be free
 bound :: a -> Value f a
 bound = var . Local
 
