@@ -407,12 +407,11 @@ tlam n b = Check $ \ ty -> do
 
 lam
   :: UName
-  -> Check v (Expr v)
+  -> (Expr v -> Check v (Expr v))
   -> Check v (Expr v)
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType "when checking lambda" _T
-  -- FIXME: shouldn’t we use the bound variable?
-  b' <- (n ::: _A) |- \ v -> check (b ::: _B)
+  b' <- (n ::: _A) |- \ v -> check (b v ::: _B)
   pure (Lam n b')
 
 unit :: Synth v (Expr v)
@@ -508,7 +507,7 @@ elabDecl = withSpans $ \case
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n . b' ::: \ ctx -> checkElab (switch (checkElab (elabType ctx t) --> local (|> (n ::: Type @v ::: Type @v)) (_B ctx)))
+    in (\ ctx -> lam n (\ v -> b' (ctx |> (n ::: v)))) ::: \ ctx -> checkElab (switch (checkElab (elabType ctx t) --> local (|> (n ::: Type @v ::: Type @v)) (_B ctx)))
 
   t SD.:= b ->
     (\ ctx -> checkElab (elabExpr ctx b)) ::: (\ ctx -> checkElab (elabType ctx t))
