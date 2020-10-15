@@ -180,12 +180,6 @@ unify (t1 :===: t2) = go (t1 :===: t2)
             b2' = b2 v
         go (b1' :===: b2')
       pure $ tm t1 ::: t :=> b
-    t :=> b :===: x -> do
-      -- FIXME: how do we eliminate type lambdas in the value? we don’t _have_ the value here, so we can’t apply the meta.
-      let _T = ty t
-      v <- meta _T
-      let _B' = b v
-      go (_B' :===: x)
     TPrd l1 r1 :===: TPrd l2 r2 -> TPrd <$> go (l1 :===: l2) <*> go (r1 :===: r2)
     Prd  l1 r1 :===: Prd  l2 r2 -> Prd  <$> go (l1 :===: l2) <*> go (r1 :===: r2)
     -- FIXME: build and display a diff of the root types
