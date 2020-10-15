@@ -201,7 +201,7 @@ printCoreValue = go
     in printCorePattern (fst <$> p') <+> arrow <+> b'
   elim d = \case
     CV.App  a -> go d a
-    CV.Case p -> block . commaSep $ map (clause d) p
+    CV.Case p -> (pretty "case" <>) . block . commaSep $ map (clause d) p
 
 unLam' :: (Level, CV.Value Print) -> Maybe (Print, (Level, CV.Value Print))
 unLam' (d, v) = case CV.unLam v of
