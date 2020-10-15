@@ -52,13 +52,13 @@ data Value a
   | (UName ::: Value a) :=> (Value a -> Value a)
   | Value a :-> Value a
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
-  | Lam [(Pattern UName, Pattern (Value a) -> (Value a))]
-  | Head a :$ Stack (Value a)
+  | Lam UName (Value a -> Value a)
+  -- | Neutral terms are an unreduced head followed by a stack of eliminators.
+  | Neut (Head a) (Stack (Elim (Value a)))
   | TPrd (Value a) (Value a)
   | Prd (Value a) (Value a)
 
 infixr 1 :=>
-infixl 9 :$
 infixr 1 :->
 
 instance (Eq a, Num a) => Eq (Value a) where
@@ -80,21 +80,28 @@ instance (Eq a, Num a) => Eq (Value a) where
                 b2' = b2 (bound n)
             in go (n + 1) b1' b2'
       (_ :=> _, _) -> False
-      (Lam c1, Lam c2)
-        | length c1 == length c2 -> do
-          and (zipWith (eqPat n) c1 c2)
-      (Lam _, _) -> False
-      (f1 :$ as1, f2 :$ as2)
-        | f1 == f2
-        , length as1 == length as2 ->
-          and (zipWith (go n) (toList as1) (toList as2))
-      (_ :$ _, _) -> False
+      (Lam _ b1, Lam _ b2) ->
+        let b1' = b1 (bound n)
+            b2' = b2 (bound n)
+        in go (n + 1) b1' b2'
+      (Lam _ _, _) -> False
+      (Neut h1 sp1, Neut h2 sp2) -> h1 == h2 && eqSp n sp1 sp2
+      (Neut _ _, _) -> False
       (a1 :-> b1, a2 :-> b2) -> go n a1 a2 && go n b1 b2
       (_ :-> _, _) -> False
       (TPrd l1 r1, TPrd l2 r2) -> go n l1 l2 && go n r1 r2
       (TPrd _ _, _) -> False
       (Prd l1 r1, Prd l2 r2) -> go n l1 l2 && go n r1 r2
       (Prd _ _, _) -> False
+    eqSp n (sp1:>e1) (sp2:>e2) = eqSp n sp1 sp2 && eqElim n e1 e2
+    eqSp _ Nil       Nil       = True
+    eqSp _ _         _         = False
+    eqElim n = curry $ \case
+      (App a1, App a2) -> go n a1 a2
+      (App _, _) -> False
+      (Case cs1, Case cs2)
+        | length cs1 == length cs2 -> and (zipWith (eqPat n) (toList cs1) (toList cs2))
+      (Case _, _) -> False
     eqPat n (p1, b1) (p2, b2)
       =   void p1 == void p2
       &&  let (n', p') = mapAccumL (\ n _ -> (n + 1, bound n)) n p2
@@ -138,7 +145,7 @@ metavar = var . Metavar
 
 
 var :: Head a -> Value a
-var = (:$ Nil)
+var = (`Neut` Nil)
 
 
 unForAll :: Has Empty sig m => Value a -> m (UName ::: Value a, Value a -> Value a)
@@ -147,8 +154,8 @@ unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 unArrow :: Has Empty sig m => Value a -> m (Value a, Value a)
 unArrow = \case{ a :-> b -> pure (a, b) ; _ -> empty }
 
-unLam :: Has Empty sig m => Value a -> m [(Pattern UName, Pattern (Value a) -> Value a)]
-unLam = \case{ Lam ps -> pure ps ; _ -> empty }
+unLam :: Has Empty sig m => Value a -> m (UName, Value a -> Value a)
+unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
 
 unProductT :: Has Empty sig m => Value a -> m (Value a, Value a)
 unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
@@ -156,19 +163,17 @@ unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
 
 -- FIXME: how should this work in weak/parametric HOAS?
 ($$) :: HasCallStack => Value a -> Value a -> Value a
-(f :$ as) $$ a = f :$ (as :> a)
+Neut h es $$ a = Neut h (es :> App a)
 (_ :=> b) $$ a = b a
-Lam    ps $$ a = case' a ps
+Lam _  b  $$ a = b a
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (HasCallStack, Foldable t) => Value a -> t (Value a) -> Value a
-f $$* as = foldl' ($$) f as
-
-infixl 9 $$, $$*
+infixl 9 $$
 
 
 case' :: HasCallStack => Value a -> [(Pattern UName, Pattern (Value a) -> Value a)] -> Value a
-case' s ps = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) ps) of
+case' (Neut h es) cs = Neut h (es :> Case cs)
+case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) cs) of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
@@ -182,6 +187,15 @@ match s = \case
       r' <- match r pr
       Just $ Tuple [l', r']
   _                -> Nothing
+
+
+elim :: HasCallStack => Value a -> Elim (Value a) -> Value a
+elim v = \case
+  App a   -> v $$ a
+  Case cs -> case' v cs
+
+elimN :: (HasCallStack, Foldable t) => Value a -> t (Elim (Value a)) -> Value a
+elimN f as = foldl' elim f as
 
 
 handleBinder :: (HasCallStack, Monad m) => Level -> (Value a -> m (Value a)) -> m (Value a -> Value a)
@@ -208,10 +222,13 @@ subst s = go
       let t' = fmap go t
       in t' :=> go . b
     a :-> b  -> go a :-> go b
-    Lam cs   -> Lam (map (fmap (go .)) cs)
-    f :$ as  -> unHead global bound (s !) metavar f $$* fmap go as
+    Lam n b  -> Lam n (go . b)
+    Neut f a -> unHead global bound (s !) metavar f `elimN` fmap substElim a
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
+  substElim = \case
+    App a   -> App (go a)
+    Case cs -> Case (map (fmap (go .)) cs)
   s ! l = case IntMap.lookup (getLevel l) s of
     Just a  -> a
     Nothing -> quote l

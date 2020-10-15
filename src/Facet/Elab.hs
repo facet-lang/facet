@@ -65,7 +65,7 @@ import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Value hiding (bound, global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
-import           Facet.Name (DName, Index(..), Level(..), QName(..), UName)
+import           Facet.Name (DName, Index(..), Level(..), QName(..), UName, __)
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
@@ -188,11 +188,11 @@ unify (t1 :===: t2) = evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . ru
     TUnit      :===: TUnit      -> pure TUnit
     Unit       :===: Unit       -> pure Unit
     -- FIXME: resolve globals to try to progress past certain inequalities
-    f1 :$ a1   :===: f2 :$ a2
-      | f1 == f2
-      , Just a <- unifyS (a1 :===: a2) -> (f1 :$) <$> a
-    Metavar v :$ Nil :===: x -> solve (v := x)
-    x :===: Metavar v :$ Nil -> solve (v := x)
+    Neut h1 e1 :===: Neut h2 e2
+      | h1 == h2
+      , Just e' <- unifyS (e1 :===: e2) -> Neut h1 <$> e'
+    Neut (Metavar v) Nil :===: x -> solve (v := x)
+    x :===: Neut (Metavar v) Nil -> solve (v := x)
     a1 :-> b1  :===: a2 :-> b2  -> (:->) <$> go (a1 :===: a2) <*> go (b1 :===: b2)
     t1 :=> b1  :===: t2 :=> b2  -> do
       t <- go (ty t1 :===: ty t2)
@@ -212,9 +212,10 @@ unify (t1 :===: t2) = evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . ru
     -- FIXME: build and display a diff of the root types
     t1 :===: t2                       -> couldNotUnify t1 t2
 
-  unifyS (Nil      :===: Nil)      = Just (pure Nil)
-  unifyS (i1 :> l1 :===: i2 :> l2) = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (go (l1 :===: l2))
-  unifyS _                         = Nothing
+  unifyS (Nil          :===: Nil)          = Just (pure Nil)
+  -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
+  unifyS (i1 :> App l1 :===: i2 :> App l2) = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (App <$> go (l1 :===: l2))
+  unifyS _                                 = Nothing
 
   solve :: Level := Prob v -> Unify v (Val v)
   solve (n := val') = do
@@ -401,7 +402,7 @@ tlam n b = Check $ \ ty -> do
   b' <- n ::: _T |- \ v -> do
     let _B' = _B v
     check (b ::: _B')
-  pure (Lam [(CP.Var n, b' . CP.unsafeGetVar)])
+  pure (Lam n b')
 
 lam
   :: UName
@@ -410,8 +411,8 @@ lam
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType "when checking lambda" _T
   -- FIXME: shouldn’t we use the bound variable?
-  b' <- CP.Var (n ::: _A) |-* \ v -> check (b ::: _B)
-  pure (Lam [(CP.Var n, b')])
+  b' <- (n ::: _A) |- \ v -> check (b ::: _B)
+  pure (Lam n b')
 
 unit :: Synth v (Expr v)
 unit = Synth . pure $ Unit ::: TUnit
@@ -432,25 +433,43 @@ elabComp
   -> Check v (Expr v)
 elabComp = withSpan $ \case
   SE.Expr    b  -> checkElab (elabExpr b)
-  -- FIXME: this shape makes it hard to elaborate nested pattern matches, because we kind of need to transpose the table.
-  -- e.g. in xor : Bool -> Bool -> Bool { False True -> True, True False -> True, _ _ -> False }, we should have the second column of cases appearing under each of the first, or else we’re inserting inexhaustive patterns
-  SE.Clauses cs -> Check $ \ _T -> do
-    (_A, _B) <- expectFunctionType "when checking clauses" _T
-    Lam <$> case cs of
-      [] -> case _A of
-        Void -> pure []
-        _    -> mismatch "when checking empty computation" (Right Void) _A
-      cs -> traverse (uncurry (clause _A _B)) cs
-  where
-  clause _A _B (p:|ps) b = do
+  SE.Clauses cs -> elabClauses cs
+
+data XOr a b
+  = XB
+  | XL a
+  | XR b
+  | XT
+
+instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
+  XB   <> b    = b
+  a    <> XB   = a
+  XL a <> XL b = XL (a <> b)
+  XR a <> XR b = XR (a <> b)
+  _    <> _    = XT
+
+instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
+  mempty = XB
+
+elabClauses :: Eq v => [(NonEmpty (Spanned (SP.Pattern Spanned UName)), Spanned (SE.Expr Spanned a))] -> Check v (Expr v)
+elabClauses cs = Check $ \ _T -> do
+  (_A, _B) <- expectFunctionType "when checking clauses" _T
+  rest <- case foldMap partitionClause cs of
+    XB    -> pure $ Nothing
+    XL _  -> pure $ Nothing
+    XR cs -> pure $ Just cs
+    XT    -> error "mixed" -- FIXME: throw a proper error
+  cs' <- for cs $ \ (p:|_, b) -> do
     p' <- check (elabPattern p ::: _A)
-    -- FIXME: shouldn’t we use the bound variable(s)?
-    b' <- p' |-* \ v -> check (go ps b ::: _B)
+    -- FIXME: shouldn’t this be doing smething with the variable? I mean come on
+    b' <- p' |-* \ v -> check (maybe (checkElab (elabExpr b)) elabClauses rest ::: _B)
     pure (tm <$> p', b')
-  go []     b = checkElab (elabExpr b)
-  go (p:ps) b = Check $ \ _T -> do
-    (_A, _B) <- expectFunctionType "when checking clause" _T
-    Lam . pure <$> clause _A _B (p:|ps) b
+  b' <- __ ::: _A |- \ v -> pure (case' v cs')
+  pure $ Lam __ b'
+  where
+  partitionClause (_:|ps, b) = case ps of
+    []   -> XL ()
+    p:ps -> XR [(p:|ps, b)]
 
 
 elabPattern

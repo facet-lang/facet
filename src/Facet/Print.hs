@@ -188,9 +188,12 @@ printCoreValue = go
           t' = go d (ty t)
           b' = go (succ d) (b (CV.bound n'))
       in (n' ::: t') >~> b'
-    CV.Lam  p   -> block . commaSep $ map (clause d) p
+    CV.Lam n b  -> block $
+      let n' = name n d
+          b' = go (succ d) (b (CV.bound n'))
+      in n' <+> arrow </> b'
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
-    f CV.:$ as  -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) f $$* fmap (go d) as
+    CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap (elim d) e
     a CV.:-> b  -> go d a --> go d b
     CV.TPrd l r -> go d l **  go d r
     CV.Prd  l r -> go d l **  go d r
@@ -199,6 +202,9 @@ printCoreValue = go
     let p' = snd (mapAccumL (\ d n -> (succ d, let n' = name n d in (n', CV.bound n'))) d p)
         b' = go (succ d) (b (snd <$> p'))
     in printCorePattern (fst <$> p') <+> arrow <+> b'
+  elim d = \case
+    CV.App  a -> go d a
+    CV.Case p -> block . commaSep $ map (clause d) p
 
 
 printContextEntry :: Level -> UName ::: Print -> Print
