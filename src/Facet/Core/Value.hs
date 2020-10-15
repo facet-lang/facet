@@ -255,4 +255,4 @@ eq :: Monad m => AValue m -> AValue m -> m Bool
 eq v1 v2 = eqM @_ @Int (runAValue v1) (runAValue v2)
 
 
-newtype Contextual m = Contextual { runContextual :: forall x . Ctx.Context (Value m x ::: Value m x) :|-: Value m x }
+newtype Contextual m f = Contextual { runContextual :: forall x . Ctx.Context (Value m x ::: Value m x) :|-: f x }
