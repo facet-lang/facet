@@ -236,7 +236,7 @@ global
   :: DName
   -> Synth v (Val v)
 global n = Synth $ Env.lookup n <$> askEnv >>= \case
-  Just b  -> pure (CV.global (tm b :.: n) ::: ty b)
+  Just b  -> instantiate (CV.global (tm b :.: n) ::: ty b)
   Nothing -> freeVariable n
 
 bound
