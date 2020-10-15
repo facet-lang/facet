@@ -11,6 +11,7 @@ module Facet.Syntax
 , (:|-:)(..)
 , splitl
 , splitr
+, Pl(..)
 ) where
 
 import Data.Bifunctor
@@ -78,3 +79,9 @@ splitr un = go id
   go as t = case un t of
     Just (a, t') -> go (as . (a:)) t'
     Nothing      -> (as [], t)
+
+
+-- | Im/explicit.
+data Pl
+  = Im
+  | Ex
