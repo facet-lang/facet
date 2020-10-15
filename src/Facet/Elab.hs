@@ -125,6 +125,7 @@ instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type 
     R (R (R (L smctx))) -> Elab $ alg (elab . hdl) (inj smctx) ctx -- FIXME: 🔥
     R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
+
 askEnv :: Has (Reader (Env.Env (Type v))) sig (t v) => t v (Env.Env (Type v))
 askEnv = ask
 
