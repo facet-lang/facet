@@ -212,6 +212,7 @@ unify (t1 :===: t2) = do
       t1' <- rethrow $ handle t1
       t2' <- rethrow $ handle t2
       couldNotUnify t1' t2'
+
   unifyS (Nil      :===: Nil)      = Just (pure Nil)
   unifyS (i1 :> l1 :===: i2 :> l2) = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (go (l1 :===: l2))
   unifyS _                         = Nothing
