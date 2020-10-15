@@ -126,6 +126,27 @@ instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type 
     R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
+newtype Unify v a = Unify { runUnify :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig m => m a }
+
+instance Functor (Unify v) where
+  fmap f (Unify m) = Unify (fmap f m)
+
+instance Applicative (Unify v) where
+  pure a = Unify $ pure a
+  Unify f <*> Unify a = Unify (f <*> a)
+
+instance Monad (Unify v) where
+  Unify m >>= f = Unify $ m >>= runUnify . f
+
+instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) (Unify v) where
+  alg hdl sig ctx = case sig of
+    L renv              -> Unify $ alg (runUnify . hdl) (inj renv) ctx
+    R (L rctx)          -> Unify $ alg (runUnify . hdl) (inj rctx) ctx
+    R (R (L rspan))     -> Unify $ alg (runUnify . hdl) (inj rspan) ctx
+    R (R (R (L smctx))) -> Unify $ alg (runUnify . hdl) (inj smctx) ctx
+    R (R (R (R throw))) -> Unify $ alg (runUnify . hdl) (inj throw) ctx
+
+
 askEnv :: Has (Reader (Env.Env (Type v))) sig (t v) => t v (Env.Env (Type v))
 askEnv = ask
 
