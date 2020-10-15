@@ -212,6 +212,12 @@ insertSubst n (v ::: _T) = IntMap.insert (getLevel n) (v ::: _T)
 getSubst :: Has (State (Subst v)) sig (t v) => t v (Subst v)
 getSubst = get
 
+instantiate :: Expr v ::: Type v -> Elab v (Expr v ::: Type v)
+instantiate (e ::: _T) = case unForAll _T of
+  Just (_T, _B) -> do
+    m <- meta (ty _T)
+    instantiate (e CV.$$ m ::: _B m)
+  _             -> pure $ e ::: _T
 
 
 -- General
