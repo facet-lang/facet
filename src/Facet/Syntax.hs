@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Syntax
 ( (:::)(..)
@@ -12,6 +13,7 @@ module Facet.Syntax
 , splitl
 , splitr
 , Pl(..)
+, unPl
 ) where
 
 import Data.Bifunctor
@@ -101,3 +103,8 @@ instance Semiring Pl where
 
 instance Unital Pl where
   one = Ex
+
+unPl :: a -> a -> Pl -> a
+unPl im ex = \case
+  Im -> im
+  Ex -> ex
