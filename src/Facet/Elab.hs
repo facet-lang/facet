@@ -255,9 +255,9 @@ getSubst = get
 
 switch
   :: Eq v
-  => Synth v a
+  => Synth v (Val v)
   -> Maybe (Type v)
-  -> Elab v (a ::: Type v)
+  -> Elab v (Val v ::: Type v)
 switch (Synth m) = \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify (_K' :===: _K)
   _       -> m
