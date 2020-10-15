@@ -448,7 +448,9 @@ elabComp = withSpan $ \case
   SE.Clauses cs -> Check $ \ _T -> do
     (_A, _B) <- expectFunctionType "when checking clauses" _T
     Lam <$> case cs of
-      [] -> [] <$ unify (_A :===: Void)
+      [] -> case _A of
+        Void -> pure []
+        _    -> mismatch "when checking empty computation" (Right Void) _A
       cs -> traverse (uncurry (clause _A _B)) cs
   where
   clause _A _B (p:|ps) b = do
