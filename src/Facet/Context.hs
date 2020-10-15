@@ -53,4 +53,4 @@ a <| Metacontext as = Metacontext (a:as)
 infixl 5 <|
 
 metalevel :: Metacontext a -> Level
-metalevel = Level . negate . (+ 1) . length . getMetacontext
+metalevel = Level . length . getMetacontext
