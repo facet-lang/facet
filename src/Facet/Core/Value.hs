@@ -121,10 +121,10 @@ unHead f g = \case
 
 
 global :: QName -> Value f a
-global n = Global n :$ Nil
+global = var . Global
 
 bound :: a -> Value f a
-bound n = Local n :$ Nil
+bound = var . Local
 
 
 var :: Head a -> Value f a
