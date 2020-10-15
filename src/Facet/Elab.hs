@@ -117,13 +117,12 @@ instance Applicative (Elab v) where
 instance Monad (Elab v) where
   Elab m >>= f = Elab $ m >>= elab . f
 
-instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) (Elab v) where
+instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)) (Elab v) where
   alg hdl sig ctx = case sig of
-    L renv              -> Elab $ alg (elab . hdl) (inj renv) ctx
-    R (L rctx)          -> Elab $ alg (elab . hdl) (inj rctx) ctx
-    R (R (L rspan))     -> Elab $ alg (elab . hdl) (inj rspan) ctx
-    R (R (R (L smctx))) -> Elab $ alg (elab . hdl) (inj smctx) ctx -- FIXME: 🔥
-    R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
+    L renv          -> Elab $ alg (elab . hdl) (inj renv) ctx
+    R (L rctx)      -> Elab $ alg (elab . hdl) (inj rctx) ctx
+    R (R (L rspan)) -> Elab $ alg (elab . hdl) (inj rspan) ctx
+    R (R (R throw)) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
 newtype Unify v a = Unify { runUnify :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig m => m a }
@@ -159,7 +158,7 @@ getMetacontext = get
 
 
 newtype Check v a = Check { runCheck :: Type v -> Elab v a }
-  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
+  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
 
 newtype Synth v a = Synth { synth :: Elab v (a ::: Type v) }
 
@@ -178,17 +177,17 @@ synthElab f = Synth (f Nothing)
 
 
 unify
-  :: Eq v
+  :: forall v
+  .  Eq v
   => Type v :===: Type v
   -> Elab v (Type v)
 unify (t1 :===: t2) = do
   let t1' = run $ handle t1
       t2' = run $ handle t2
-  runUnify $ go (t1' :===: t2')
+  evalState (Metacontext @(Val v ::: Type v) []) . runUnify $ go (t1' :===: t2')
   where
   go
-    :: Eq v
-    => Prob v :===: Prob v
+    :: Prob v :===: Prob v
     -> Unify v (Type v)
   go = \case
     -- FIXME: this is missing a lot of cases
