@@ -196,6 +196,7 @@ unify (t1 :===: t2) = do
     f1 :$ a1   :===: f2 :$ a2
       | f1 == f2
       , Just a <- unifyS (a1 :===: a2) -> (f1 :$) <$> a
+    Metavar v :$ Nil :===: x -> solve (v := x)
     a1 :-> b1  :===: a2 :-> b2  -> (:->) <$> go (a1 :===: a2) <*> go (b1 :===: b2)
     t1 :=> b1  :===: t2 :=> b2  -> do
       t <- go (ty t1 :===: ty t2)
