@@ -46,6 +46,7 @@ import           GHC.Stack
 -- FIXME: eliminate TLam; track type introductions and applications with annotations in the context.
 -- FIXME: replace :-> with syntax sugar for :=>.
 -- FIXME: replace products, void, and unit with references to constant datatypes.
+-- FIXME: represent closed portions of the tree explicitly?
 data Value f a
   = Type
   | Void
