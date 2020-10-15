@@ -25,7 +25,7 @@ module Facet.Name
 ) where
 
 import           Data.Function (on)
-import           Data.Functor.Classes (showsUnaryWith)
+import           Data.Functor.Classes (showsBinaryWith, showsUnaryWith)
 import           Data.List.NonEmpty
 import           Data.String (IsString(..))
 import           Data.Text (Text, unpack)
@@ -47,7 +47,9 @@ instance P.Pretty UName where
 
 -- | User-supplied name paired with a 'Pl' describing whether it should be supplied implicitly (by unification) or explicitly (e.g. by juxtaposition).
 data PlName = P { pl :: Pl, uname :: UName }
-  deriving (Show)
+
+instance Show PlName where
+  showsPrec p (P pl uname) = showsBinaryWith showsPrec showsPrec "P" p pl uname
 
 
 -- | De Bruijn indices, counting up from the binding site to the reference site (“inside out”).
