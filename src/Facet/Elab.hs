@@ -57,6 +57,7 @@ import           Control.Effect.Parser.Span (Span(..))
 import           Control.Effect.Sum
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', toList)
+import           Data.Functor.Identity
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Text as T
 import           Data.Traversable (for)
@@ -80,6 +81,7 @@ import           Prettyprinter (Doc)
 import           Prettyprinter.Render.Terminal (AnsiStyle)
 import           Text.Parser.Position (Spanned)
 
+type I = Identity
 type Val v = Value (M v) v
 type Type v = Value (M v) v
 type Expr v = Value (M v) v
