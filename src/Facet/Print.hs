@@ -20,7 +20,6 @@ module Facet.Print
 , tvar
   -- * Interpreters
 , printCoreValue
-, printBinding
 , printContextEntry
 , printSurfaceType
 , printSurfaceExpr
@@ -45,7 +44,6 @@ import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
-import qualified Facet.Context as Ctx
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
 import qualified Facet.Core.Value as CV
@@ -58,7 +56,6 @@ import qualified Facet.Surface.Module as SM
 import qualified Facet.Surface.Pattern as SP
 import qualified Facet.Surface.Type as ST
 import           Facet.Syntax
-import           GHC.Stack
 import           Prelude hiding ((**))
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
@@ -206,14 +203,6 @@ printCoreValue = go
     b' <- go (incrLevel d) =<< b (snd <$> p')
     pure $ printCorePattern (fst <$> p') <+> arrow <+> b'
 
-printBinding :: HasCallStack => Ctx.Metacontext Print -> Ctx.Context Print -> Level -> Print
--- FIXME: there’s no way to recover whether this was a term or type variable binding.
-printBinding mctx ctx l = printContextEntry l entry
-  where
-  entry
-    | isMeta l = Ctx.getMetacontext mctx !!
-      abs (getIndex (levelToIndex (Ctx.metalevel mctx) l) + 1)
-    | otherwise  = ctx Ctx.! levelToIndex (Ctx.level ctx) l
 
 printContextEntry :: Level -> UName ::: Print -> Print
 printContextEntry l (n ::: _T) = cbound n tvar l
