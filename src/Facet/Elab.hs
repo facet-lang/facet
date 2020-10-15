@@ -324,7 +324,7 @@ elabType ctx = withSpan' $ \case
   ST.Type    -> switch $ _Type
   ST.Void    -> switch $ _Void
   ST.Unit    -> switch $ _Unit
-  t ST.:=> b -> switch $ fmap (checkElab . elabType ctx) t >~> checkElab (elabType ctx b)
+  t ST.:=> b -> switch $ fmap (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx|>(tm t ::: v)) b)
   f ST.:$  a -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
   a ST.:-> b -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
   l ST.:*  r -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
@@ -365,12 +365,11 @@ infixr 2 -->
 
 (>~>)
   :: (UName ::: Check v (Type v))
-  -> Check v (Type v)
+  -> (Type v -> Check v (Type v))
   -> Synth v (Type v)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
-  -- FIXME: shouldn’t we use the bound variable?
-  b' <- n ::: _T |- \ v -> check (b ::: Type)
+  b' <- n ::: _T |- \ v -> check (b v ::: Type)
   pure $ (n ::: _T :=> b') ::: Type
 
 infixr 1 >~>
@@ -502,7 +501,7 @@ elabDecl
 elabDecl = withSpans $ \case
   (n ::: t) SD.:=> b ->
     let b' ::: _B = elabDecl b
-    in (\ ctx -> tlam n (\ v -> b' (ctx |> (n ::: v)))) ::: \ ctx -> checkElab (switch (n ::: checkElab (elabType ctx t) >~> _B ctx))
+    in (\ ctx -> tlam n (\ v -> b' (ctx |> (n ::: v)))) ::: \ ctx -> checkElab (switch (n ::: checkElab (elabType ctx t) >~> \ v -> _B (ctx |> (n ::: v))))
 
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
