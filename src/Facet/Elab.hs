@@ -313,20 +313,21 @@ infix 1 |-*
 
 elabType
   :: (HasCallStack, Eq v)
-  => Spanned (ST.Type Spanned a)
+  => Context (Type v)
+  -> Spanned (ST.Type Spanned a)
   -> Maybe (Type v)
   -> Elab v (Type v ::: Type v)
-elabType = withSpan' $ \case
+elabType ctx = withSpan' $ \case
   ST.Free  n -> switch $ global n
   ST.Bound n -> switch $ bound n
   ST.Hole  n -> check (hole n) "hole"
   ST.Type    -> switch $ _Type
   ST.Void    -> switch $ _Void
   ST.Unit    -> switch $ _Unit
-  t ST.:=> b -> switch $ fmap (checkElab . elabType) t >~> checkElab (elabType b)
-  f ST.:$  a -> switch $ synthElab (elabType f) $$  checkElab (elabType a)
-  a ST.:-> b -> switch $ checkElab (elabType a) --> checkElab (elabType b)
-  l ST.:*  r -> switch $ checkElab (elabType l) .*  checkElab (elabType r)
+  t ST.:=> b -> switch $ fmap (checkElab . elabType ctx) t >~> checkElab (elabType ctx b)
+  f ST.:$  a -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
+  a ST.:-> b -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
+  l ST.:*  r -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -501,15 +502,15 @@ elabDecl
 elabDecl = withSpans $ \case
   (n ::: t) SD.:=> b ->
     let b' ::: _B = elabDecl b
-    in tlam n b' ::: checkElab (switch (n ::: checkElab (elabType t) >~> _B))
+    in tlam n b' ::: checkElab (switch (n ::: checkElab (elabType empty t) >~> _B))
 
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n b' ::: checkElab (switch (checkElab (elabType t) --> local (|> (n ::: (Type `asParameterOf` b') ::: (Type `asParameterOf` b'))) _B))
+    in lam n b' ::: checkElab (switch (checkElab (elabType empty t) --> local (|> (n ::: (Type `asParameterOf` b') ::: (Type `asParameterOf` b'))) _B))
 
   t SD.:= b ->
-    checkElab (elabExpr b) ::: checkElab (elabType t)
+    checkElab (elabExpr b) ::: checkElab (elabType empty t)
   where
   withSpans f (s, d) = let t ::: _T = f d in setSpan s t ::: setSpan s _T
 
