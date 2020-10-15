@@ -472,7 +472,9 @@ elabPattern = withSpan $ \case
   SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go _T (fromList ps)
     where
     go _T = \case
-      Nil      -> Nil      <$  unify (TUnit :===: _T)
+      Nil      -> case _T of
+        TUnit -> pure Nil
+        _     -> mismatch "when checking empty tuple pattern" (Right TUnit) _T
       Nil :> p -> (Nil :>) <$> check (elabPattern p ::: _T)
       ps  :> p -> do
         (_L, _R) <- expectProductType "when checking tuple pattern" _T
