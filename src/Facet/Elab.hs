@@ -539,17 +539,17 @@ data Reason v
   | BadContext Index
 
 
-err :: Reason v -> Elab v a
+err :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig (t v) => Reason v -> t v a
 err reason = do
   span <- ask
   mctx <- getMetacontext
   ctx <- askContext
   throwError $ Err span reason mctx ctx
 
-mismatch :: String -> Either String (Type v) -> Type v -> Elab v a
+mismatch :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig (t v) => String -> Either String (Type v) -> Type v -> t v a
 mismatch msg exp act = err $ Mismatch msg exp act
 
-couldNotUnify :: Type v -> Type v -> Elab v a
+couldNotUnify :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig (t v) => Type v -> Type v -> t v a
 couldNotUnify t1 t2 = mismatch "mismatch" (Right t2) t1
 
 couldNotSynthesize :: String -> Elab v a
