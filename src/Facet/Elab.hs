@@ -7,6 +7,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -56,7 +57,7 @@ import           Control.Effect.Sum
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl', toList)
 import qualified Data.IntMap as IntMap
-import           Data.List.NonEmpty (NonEmpty(..))
+import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import qualified Data.Text as T
 import           Data.Traversable (for)
 import           Facet.Context
@@ -430,6 +431,12 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
 elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned (SP.Pattern Spanned UName)), Spanned (SE.Expr Spanned a))] -> Check v (Expr v)
+elabClauses ctx [((_, SP.Var n):|ps, b)] = Check $ \ _T -> do
+  (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
+  b' <- n ::: _A |- \ v -> do
+    let ctx' = ctx |> (n ::: v ::: _A)
+    check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx' . pure . (,b)) (nonEmpty ps) ::: _B v)
+  pure $ Lam (P pl n) b'
 elabClauses ctx cs = Check $ \ _T -> do
   (P _ n ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
