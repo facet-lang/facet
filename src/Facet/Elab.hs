@@ -380,17 +380,18 @@ infixr 1 >~>
 
 elabExpr
   :: (HasCallStack, Eq v)
-  => Spanned (SE.Expr Spanned a)
+  => Context (Type v)
+  -> Spanned (SE.Expr Spanned a)
   -> Maybe (Type v)
   -> Elab v (Expr v ::: Type v)
-elabExpr = withSpan' $ \case
+elabExpr ctx = withSpan' $ \case
   SE.Free  n -> switch $ global n
   SE.Bound n -> switch $ bound n
   SE.Hole  n -> check (hole n) "hole"
-  f SE.:$  a -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
-  l SE.:*  r -> check (checkElab (elabExpr l) ** checkElab (elabExpr r)) "product"
+  f SE.:$  a -> switch $ synthElab (elabExpr ctx f) $$ checkElab (elabExpr ctx a)
+  l SE.:*  r -> check (checkElab (elabExpr ctx l) ** checkElab (elabExpr ctx r)) "product"
   SE.Unit    -> switch unit
-  SE.Comp cs -> check (elabComp cs) "computation"
+  SE.Comp cs -> check (elabComp ctx cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -431,11 +432,12 @@ l ** r = Check $ \ _T -> do
 
 elabComp
   :: (HasCallStack, Eq v)
-  => Spanned (SE.Comp Spanned a)
+  => Context (Type v)
+  -> Spanned (SE.Comp Spanned a)
   -> Check v (Expr v)
-elabComp = withSpan $ \case
-  SE.Expr    b  -> checkElab (elabExpr b)
-  SE.Clauses cs -> elabClauses cs
+elabComp ctx = withSpan $ \case
+  SE.Expr    b  -> checkElab (elabExpr ctx b)
+  SE.Clauses cs -> elabClauses ctx cs
 
 data XOr a b
   = XB
@@ -453,8 +455,8 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
-elabClauses :: Eq v => [(NonEmpty (Spanned (SP.Pattern Spanned UName)), Spanned (SE.Expr Spanned a))] -> Check v (Expr v)
-elabClauses cs = Check $ \ _T -> do
+elabClauses :: Eq v => Context (Type v) -> [(NonEmpty (Spanned (SP.Pattern Spanned UName)), Spanned (SE.Expr Spanned a))] -> Check v (Expr v)
+elabClauses ctx cs = Check $ \ _T -> do
   (_A, _B) <- expectFunctionType "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
     XB    -> pure $ Nothing
@@ -464,7 +466,7 @@ elabClauses cs = Check $ \ _T -> do
   cs' <- for cs $ \ (p:|_, b) -> do
     p' <- check (elabPattern p ::: _A)
     -- FIXME: shouldn’t this be doing smething with the variable? I mean come on
-    b' <- p' |-* \ v -> check (maybe (checkElab (elabExpr b)) elabClauses rest ::: _B)
+    b' <- p' |-* \ v -> check (maybe (checkElab (elabExpr ctx b)) (elabClauses ctx) rest ::: _B)
     pure (tm <$> p', b')
   b' <- __ ::: _A |- \ v -> pure (case' v cs')
   pure $ Lam __ b'
@@ -511,7 +513,7 @@ elabDecl ctx = withSpans $ \case
     in lam n b' ::: checkElab (switch (checkElab (elabType ctx t) --> local (|> (n ::: (Type `asParameterOf` b') ::: (Type `asParameterOf` b'))) _B))
 
   t SD.:= b ->
-    checkElab (elabExpr b) ::: checkElab (elabType empty t)
+    checkElab (elabExpr ctx b) ::: checkElab (elabType empty t)
   where
   withSpans f (s, d) = let t ::: _T = f d in setSpan s t ::: setSpan s _T
 
