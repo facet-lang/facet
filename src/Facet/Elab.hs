@@ -407,7 +407,7 @@ elabComp = withSpan $ \case
   go []     b = checkElab (elabExpr b)
   go (p:ps) b = Check $ \ _T -> do
     (_A, _B) <- expectFunctionType "when checking clause" _T
-    Lam <$> (pure <$> clause _A _B (p:|ps) b)
+    Lam . pure <$> clause _A _B (p:|ps) b
 
 
 elabPattern
