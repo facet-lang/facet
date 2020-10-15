@@ -184,12 +184,12 @@ unify
 unify (t1 :===: t2) = do
   let t1' = run $ handle t1
       t2' = run $ handle t2
-  go (t1' :===: t2')
+  runUnify $ go (t1' :===: t2')
   where
   go
     :: Eq v
     => Prob v :===: Prob v
-    -> Elab v (Type v)
+    -> Unify v (Type v)
   go = \case
     -- FIXME: this is missing a lot of cases
     Type       :===: Type       -> pure Type
