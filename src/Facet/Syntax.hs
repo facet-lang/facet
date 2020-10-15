@@ -15,6 +15,7 @@ module Facet.Syntax
 ) where
 
 import Data.Bifunctor
+import Facet.Semiring
 import Facet.Stack
 
 data a ::: b = a ::: b
@@ -93,3 +94,7 @@ instance Semigroup Pl where
 
 instance Monoid Pl where
   mempty = Im
+
+instance Semiring Pl where
+  Ex >< Ex = Ex
+  _  >< _  = Im
