@@ -45,9 +45,9 @@ c !? i = elems c S.!? getIndex i
 c ! i = elems c S.! getIndex i
 
 
-newtype Metacontext a = Metacontext { getMetacontext :: [UName ::: a] }
+newtype Metacontext a = Metacontext { getMetacontext :: [a] }
 
-(<|) :: UName ::: a -> Metacontext a -> Metacontext a
+(<|) :: a -> Metacontext a -> Metacontext a
 a <| Metacontext as = Metacontext (a:as)
 
 infixl 5 <|

@@ -221,7 +221,7 @@ unify (t1 :===: t2) = do
 -- FIXME: is it possible to do something clever with delimited continuations or coroutines to bind variables outside our scope?
 
 
-meta :: UName ::: Val v ::: Type v -> Unify v (Type v)
+meta :: Val v ::: Type v -> Unify v (Type v)
 meta t = do
   mctx <- getMetacontext
   put (t <| mctx)
