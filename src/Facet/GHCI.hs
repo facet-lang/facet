@@ -17,17 +17,15 @@ module Facet.GHCI
 
 import           Control.Carrier.Lift (runM)
 import           Control.Carrier.Parser.Church (Input(..), ParserC, errToNotice, runParser, runParserWithFile, runParserWithString)
-import           Control.Carrier.State.Church (evalState)
 import           Control.Carrier.Throw.Either
 import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import qualified Control.Effect.Parser.Notice as N
 import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Effect.Parser.Span (Pos(Pos))
-import           Control.Monad ((<=<))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Semigroup (stimes)
 import           Facet.Context
-import           Facet.Elab (Err(..), ErrDoc, M(..), Reason(..), Type, Val, elabModule)
+import           Facet.Elab (Err(..), ErrDoc, Reason(..), Type, Val, elabModule)
 import           Facet.Name (Index(..), Level(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
@@ -64,46 +62,44 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
   lower $ do
     mod <- elabModule parsed
-    evalMeta $ rethrow $ P.printCoreModule mod
+    pure . run $ P.printCoreModule mod
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s
   failure = Left . errToNotice src
   mkNotice p = toNotice (Just N.Error) src p
 
-  evalMeta = evalState (Metacontext [] :: Metacontext (Val P.Print ::: Type P.Print))
-
   lower :: Either (Err P.Print) a -> Either N.Notice a
-  lower = either (throwError <=< lower . evalMeta . rethrow . mkNotice) pure
+  lower = either (throwError . mkNotice) pure
 
 
 -- Errors
 
-toNotice :: Maybe N.Level -> Source -> Err P.Print -> M P.Print N.Notice
-toNotice lvl src Err{ span, reason, metacontext, context } = do
-  reason' <- printReason metacontext context reason
+toNotice :: Maybe N.Level -> Source -> Err P.Print -> N.Notice
+toNotice lvl src Err{ span, reason, metacontext, context } =
+  let reason' = printReason metacontext context reason
   -- FIXME: print the context
-  pure $ N.Notice lvl (fromSourceAndSpan src span) reason' []
+  in N.Notice lvl (fromSourceAndSpan src span) reason' []
 
 
-printReason :: Metacontext (Val P.Print ::: Type P.Print) -> Context (Val P.Print ::: Type P.Print) -> Reason P.Print -> M P.Print ErrDoc
-printReason _ ctx = fmap group . \case
-  FreeVariable n         -> pure $ fillSep [P.reflow "variable not in scope:", pretty n]
-  CouldNotSynthesize msg -> pure $ P.reflow "could not synthesize a type for" <> softline <> P.reflow msg
-  Mismatch msg exp act   -> do
-    exp' <- either (pure . P.reflow) printType exp
-    act' <- printType act
-    pure $ P.reflow msg
+printReason :: Metacontext (Val P.Print ::: Type P.Print) -> Context (Val P.Print ::: Type P.Print) -> Reason P.Print -> ErrDoc
+printReason _ ctx = group . \case
+  FreeVariable n         -> fillSep [P.reflow "variable not in scope:", pretty n]
+  CouldNotSynthesize msg -> P.reflow "could not synthesize a type for" <> softline <> P.reflow msg
+  Mismatch msg exp act   ->
+    let exp' = either P.reflow printType exp
+        act' = printType act
+    in P.reflow msg
       </> pretty "expected:" <> print exp'
       </> pretty "  actual:" <> print act'
     where
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
-  Hole n _T              -> do
-    _T' <- printType _T
-    pure $ fillSep [P.reflow "found hole", pretty n, colon, _T' ]
-  BadContext n           -> pure $ fillSep [ P.reflow "no variable bound for index", pretty (getIndex n), P.reflow "in context of length", pretty (length ctx) ]
+  Hole n _T              ->
+    let _T' = printType _T
+    in fillSep [P.reflow "found hole", pretty n, colon, _T' ]
+  BadContext n           -> fillSep [ P.reflow "no variable bound for index", pretty (getIndex n), P.reflow "in context of length", pretty (length ctx) ]
 
 
-printType :: Type P.Print -> M P.Print ErrDoc
-printType = fmap P.getPrint . P.printCoreValue (Level 0)
+printType :: Type P.Print -> ErrDoc
+printType = P.getPrint . run . P.printCoreValue (Level 0)

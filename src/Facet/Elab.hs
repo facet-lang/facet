@@ -82,9 +82,9 @@ import           Prettyprinter.Render.Terminal (AnsiStyle)
 import           Text.Parser.Position (Spanned)
 
 type I = Identity
-type Val v = Value (M v) v
-type Type v = Value (M v) v
-type Expr v = Value (M v) v
+type Val = Value I
+type Type = Value I
+type Expr = Value I
 type Prob v = Value (M v) v
 
 newtype M v a = M { rethrow :: forall sig m . Has (State (Metacontext (Val v ::: Type v)) :+: Throw (Err v)) sig m => m a }
@@ -122,7 +122,7 @@ instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type 
     L renv              -> Elab $ alg (elab . hdl) (inj renv) ctx
     R (L rctx)          -> Elab $ alg (elab . hdl) (inj rctx) ctx
     R (R (L rspan))     -> Elab $ alg (elab . hdl) (inj rspan) ctx
-    R (R (R (L smctx))) -> Elab $ alg (elab . hdl) (inj smctx) ctx
+    R (R (R (L smctx))) -> Elab $ alg (elab . hdl) (inj smctx) ctx -- FIXME: 🔥
     R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 askEnv :: Elab v (Env.Env (Type v))
@@ -159,31 +159,43 @@ unify
   :: Eq v
   => Type v :===: Type v
   -> Elab v (Type v)
-unify = \case
-  -- FIXME: this is missing a lot of cases
-  Type       :===: Type       -> pure Type
-  Void       :===: Void       -> pure Void
-  TUnit      :===: TUnit      -> pure TUnit
-  Unit       :===: Unit       -> pure Unit
-  -- FIXME: resolve globals to try to progress past certain inequalities
-  f1 :$ a1   :===: f2 :$ a2
-    | f1 == f2
-    , Just a <- unifyS (a1 :===: a2) -> (f1 :$) <$> a
-  a1 :-> b1  :===: a2 :-> b2  -> (:->) <$> unify (a1 :===: a2) <*> unify (b1 :===: b2)
-  t1 :=> b1  :===: t2 :=> b2  -> do
-    t <- unify (ty t1 :===: ty t2)
-    b <- tm t1 ::: t |- \ v -> do
-      b1' <- rethrow $ b1 v
-      b2' <- rethrow $ b2 v
-      unify (b1' :===: b2')
-    pure $ tm t1 ::: t :=> b
-  TPrd l1 r1 :===: TPrd l2 r2 -> TPrd <$> unify (l1 :===: l2) <*> unify (r1 :===: r2)
-  Prd  l1 r1 :===: Prd  l2 r2 -> Prd  <$> unify (l1 :===: l2) <*> unify (r1 :===: r2)
-  -- FIXME: build and display a diff of the root types
-  t1 :===: t2                       -> couldNotUnify t1 t2
+unify (t1 :===: t2) = do
+  let t1' = run $ handle t1
+      t2' = run $ handle t2
+  go (t1' :===: t2')
   where
+  go
+    :: Eq v
+    => Prob v :===: Prob v
+    -> Elab v (Type v)
+  go = \case
+    -- FIXME: this is missing a lot of cases
+    Type       :===: Type       -> pure Type
+    Void       :===: Void       -> pure Void
+    TUnit      :===: TUnit      -> pure TUnit
+    Unit       :===: Unit       -> pure Unit
+    -- FIXME: resolve globals to try to progress past certain inequalities
+    f1 :$ a1   :===: f2 :$ a2
+      | f1 == f2
+      , Just a <- unifyS (a1 :===: a2) -> (f1 :$) <$> a
+    a1 :-> b1  :===: a2 :-> b2  -> (:->) <$> go (a1 :===: a2) <*> go (b1 :===: b2)
+    t1 :=> b1  :===: t2 :=> b2  -> do
+      t <- go (ty t1 :===: ty t2)
+      b <- tm t1 ::: t |- \ v -> do
+        let v' = run (handle v)
+        b1' <- rethrow $ b1 v'
+        b2' <- rethrow $ b2 v'
+        go (b1' :===: b2')
+      pure $ tm t1 ::: t :=> b
+    TPrd l1 r1 :===: TPrd l2 r2 -> TPrd <$> go (l1 :===: l2) <*> go (r1 :===: r2)
+    Prd  l1 r1 :===: Prd  l2 r2 -> Prd  <$> go (l1 :===: l2) <*> go (r1 :===: r2)
+    -- FIXME: build and display a diff of the root types
+    t1 :===: t2                       -> do
+      t1' <- rethrow $ handle t1
+      t2' <- rethrow $ handle t2
+      couldNotUnify t1' t2'
   unifyS (Nil      :===: Nil)      = Just (pure Nil)
-  unifyS (i1 :> l1 :===: i2 :> l2) = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (unify (l1 :===: l2))
+  unifyS (i1 :> l1 :===: i2 :> l2) = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (go (l1 :===: l2))
   unifyS _                         = Nothing
 
 
@@ -237,30 +249,27 @@ f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectFunctionType "in application" _F
   a' <- check (a ::: _A)
-  (::: _B) <$> rethrow (f' CV.$$ a')
+  pure $ run (f' CV.$$ a') ::: _B
 
 
 (|-)
   :: UName ::: Type v
-  -> (Val v -> Elab v b)
-  -> Elab v (Val v -> M v b)
+  -> (Val v -> Elab v (Val v))
+  -> Elab v (Val v -> I (Val v))
 n ::: _T |- f = do
-  span <- ask @Span
-  ctx <- ask
-  env <- askEnv
-  pure $ \ v -> runReader span (runReader (ctx |> (n ::: v ::: _T)) (runReader env (elab (f v))))
+  ctx <- askContext
+  handleBinder (level ctx) (\ v -> local (|> (n ::: v ::: _T)) (f v))
 
 infix 1 |-
 
 (|-*)
   :: CP.Pattern (UName ::: Type v)
-  -> (CP.Pattern (Val v) -> Elab v b)
-  -> Elab v (CP.Pattern (Val v) -> M v b)
+  -> (CP.Pattern (Val v) -> Elab v (Val v))
+  -> Elab v (CP.Pattern (Val v) -> I (Val v))
 p |-* f = do
-  span <- ask @Span
   ctx <- askContext
-  env <- askEnv
-  pure $ \ v -> runReader span (runReader (foldl' (|>) ctx (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p) (toList v))) (runReader env (elab (f v))))
+  handleBinderP (level ctx) p (\ v ->
+    local (flip (foldl' (|>)) (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p) (toList v))) (f v))
 
 infix 1 |-*
 
@@ -357,7 +366,7 @@ tlam
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
   b' <- n ::: _T |- \ v -> do
-    _B' <- rethrow (_B v)
+    let _B' = run (_B v)
     check (b ::: _B')
   pure (TLam n b')
 
@@ -457,7 +466,7 @@ elabModule
   :: forall v a m sig
   .  (HasCallStack, Has (Throw (Err v)) sig m, Eq v)
   => Spanned (SM.Module Spanned a)
-  -> m (CM.Module (M v) v)
+  -> m (CM.Module I v)
 elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (Type v))) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
@@ -536,7 +545,7 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 expectMatch :: (Type v -> Maybe out) -> String -> String -> Type v -> Elab v out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifiedType :: String -> Type v -> Elab v (UName ::: Type v, Type v -> M v (Type v))
+expectQuantifiedType :: String -> Type v -> Elab v (UName ::: Type v, Type v -> I (Type v))
 expectQuantifiedType = expectMatch unForAll "{_} -> _"
 
 expectFunctionType :: String -> Type v -> Elab v (Type v, Type v)

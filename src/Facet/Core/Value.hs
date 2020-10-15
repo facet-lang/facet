@@ -22,6 +22,8 @@ module Facet.Core.Value
 , case'
 , match
 , handle
+, handleBinder
+, handleBinderP
 , AValue(..)
 , eq
 ) where
@@ -182,7 +184,7 @@ match s = \case
   _                -> Nothing
 
 
-handle :: (Monad m, Monad n) => Value m a -> m (Value n a)
+handle :: (HasCallStack, Monad m, Monad n) => Value m a -> m (Value n a)
 handle = go (Level 0)
   where
   go d = \case
@@ -209,8 +211,19 @@ handle = go (Level 0)
     Prd  l r -> Prd  <$> go d l <*> go d r
   bind d b = (`subst` b) . IntMap.singleton (getLevel d)
 
+handleBinder :: (HasCallStack, Monad m, Monad n) => Level -> (Value n a -> m (Value n a)) -> m (Value n a -> n (Value n a))
+handleBinder d b = do
+  b' <- b (quote d)
+  pure $ (`subst` b') . IntMap.singleton (getLevel d)
+
+handleBinderP :: (HasCallStack, Monad m, Monad n, Traversable t) => Level -> t x -> (t (Value n a) -> m (Value n a)) -> m (t (Value n a) -> n (Value n a))
+handleBinderP d p b = do
+  let (_, p') = mapAccumL (\ d _ -> (incrLevel d, quote d)) d p
+  b' <- b p'
+  pure $ \ v -> subst (snd (foldr (\ v (d, s) -> (incrLevel d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
+
 -- FIXME: is it possible to instead perform one complete substitution at the end of handle?
-subst :: Monad m => IntMap.IntMap (Value m a) -> Value m a -> m (Value m a)
+subst :: (HasCallStack, Monad m) => IntMap.IntMap (Value m a) -> Value m a -> m (Value m a)
 subst s = go
   where
   go = \case
@@ -224,9 +237,12 @@ subst s = go
     TLam n b -> pure $ TLam n (go <=< b)
     a :-> b  -> (:->) <$> go a <*> go b
     Lam cs   -> pure $ Lam (map (fmap (go <=<)) cs)
-    f :$ as  -> (unHead global bound ((s IntMap.!) . getLevel) f $$*) =<< traverse go as
+    f :$ as  -> (unHead global bound (s !) f $$*) =<< traverse go as
     TPrd l r -> TPrd <$> go l <*> go r
     Prd  l r -> Prd <$> go l <*> go r
+  s ! l = case IntMap.lookup (getLevel l) s of
+    Just a  -> a
+    Nothing -> error $ "qvar " <> show (getLevel l) <> " is not an element of the substitution " <> show (IntMap.keys s) <> ""
 
 
 newtype AValue f = AValue { runAValue :: forall x . Value f x }
