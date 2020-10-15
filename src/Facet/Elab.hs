@@ -53,7 +53,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Span (Span(..))
 import           Control.Effect.Sum
-import           Data.Bifunctor (first)
+import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl', toList)
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..))
@@ -65,7 +65,7 @@ import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Value hiding (bound, global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
-import           Facet.Name (DName, Index(..), Level(..), QName(..), UName, __)
+import           Facet.Name (DName, Index(..), Level(..), PlName(..), QName(..), UName, __)
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface.Decl as SD
 import qualified Facet.Surface.Expr as SE
@@ -175,7 +175,7 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     x :===: Neut (Metavar v) Nil -> solve (v := x)
     t1 :=> b1  :===: t2 :=> b2  -> do
       t <- go (ty t1 :===: ty t2)
-      b <- tm t1 ::: t |- \ v -> do
+      b <- uname (tm t1) ::: t |- \ v -> do
         let b1' = b1 v
             b2' = b2 v
         go (b1' :===: b2')
@@ -305,7 +305,7 @@ elabType ctx = withSpan' $ \case
   ST.Type    -> switch $ _Type
   ST.Void    -> switch $ _Void
   ST.Unit    -> switch $ _Unit
-  t ST.:=> b -> switch $ fmap (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
+  t ST.:=> b -> switch $ bimap (P Im) (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
   f ST.:$  a -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
   a ST.:-> b -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
   l ST.:*  r -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
@@ -337,17 +337,17 @@ infixl 7 .*
   :: Check v (Type v)
   -> Check v (Type v)
   -> Synth v (Type v)
-a --> b = __ ::: a >~> const b
+a --> b = P Ex __ ::: a >~> const b
 
 infixr 1 -->
 
 (>~>)
-  :: (UName ::: Check v (Type v))
+  :: (PlName ::: Check v (Type v))
   -> (UName ::: Val v ::: Type v -> Check v (Type v))
   -> Synth v (Type v)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
-  b' <- n ::: _T |- \ v -> check (b (n ::: v ::: _T) ::: Type)
+  b' <- uname n ::: _T |- \ v -> check (b (uname n ::: v ::: _T) ::: Type)
   pure $ (n ::: _T :=> b') ::: Type
 
 infixr 1 >~>
@@ -380,7 +380,7 @@ tlam
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
   b' <- n ::: _T |- \ v -> check (b (n ::: v ::: _T) ::: _B v)
-  pure (Lam n b')
+  pure (Lam (P Im n) b')
 
 lam
   :: UName
@@ -389,7 +389,7 @@ lam
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectQuantifiedType "when checking lambda" _T
   b' <- n ::: ty _A |- \ v -> check (b (n ::: v ::: ty _A) ::: _B v)
-  pure (Lam n b')
+  pure (Lam (P Ex n) b')
 
 unit :: Synth v (Expr v)
 unit = Synth . pure $ Unit ::: TUnit
@@ -431,22 +431,22 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 
 elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned (SP.Pattern Spanned UName)), Spanned (SE.Expr Spanned a))] -> Check v (Expr v)
 elabClauses ctx cs = Check $ \ _T -> do
-  (_A, _B) <- expectQuantifiedType "when checking clauses" _T
+  (P _ n ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
     XB    -> pure $ Nothing
     XL _  -> pure $ Nothing
     XR cs -> pure $ Just cs
     XT    -> error "mixed" -- FIXME: throw a proper error
-  b' <- _A |- \ v -> do
+  b' <- n ::: _A |- \ v -> do
     let _B' = _B v
     cs' <- for cs $ \ (p:|_, b) -> do
-      p' <- check (elabPattern p ::: ty _A)
+      p' <- check (elabPattern p ::: _A)
       b' <- p' |-* \ v ->
         let ctx' = foldl' (|>) ctx (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p') (toList v))
         in check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx') rest ::: _B')
       pure (tm <$> p', b')
     pure $ case' v cs'
-  pure $ Lam __ b'
+  pure $ Lam (P Ex __) b'
   where
   partitionClause (_:|ps, b) = case ps of
     []   -> XL ()
@@ -482,12 +482,12 @@ elabDecl
 elabDecl = withSpans $ \case
   (n ::: t) SD.:=> b ->
     let b' ::: _B = elabDecl b
-    in (\ ctx -> tlam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
+    in (\ ctx -> tlam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Im n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
 
   (n ::: t) SD.:-> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in (\ ctx -> lam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (__ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
+    in (\ ctx -> lam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
 
   t SD.:= b ->
     (\ ctx -> checkElab (elabExpr ctx b)) ::: (\ ctx -> checkElab (elabType ctx t))
@@ -576,7 +576,7 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 expectMatch :: (Type v -> Maybe out) -> String -> String -> Type v -> Elab v out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifiedType :: String -> Type v -> Elab v (UName ::: Type v, Type v -> Type v)
+expectQuantifiedType :: String -> Type v -> Elab v (PlName ::: Type v, Type v -> Type v)
 expectQuantifiedType = expectMatch unForAll "{_} -> _"
 
 expectProductType :: String -> Type v -> Elab v (Type v, Type v)

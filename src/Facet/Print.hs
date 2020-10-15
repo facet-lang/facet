@@ -185,12 +185,12 @@ printCoreValue = go
     CV.Unit     -> _Unit
     -- FIXME: print as --> when the bound variable is unused
     t CV.:=> b  ->
-      let n' = name (tm t) d
+      let n' = name (uname (tm t)) d
           t' = go d (ty t)
           b' = go (succ d) (b (CV.bound n'))
       in (n' ::: t') >~> b'
     CV.Lam n b  -> block $
-      let n' = name n d
+      let n' = name (uname n) d
           b' = go (succ d) (b (CV.bound n'))
       in n' <+> arrow </> b'
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable

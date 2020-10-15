@@ -35,7 +35,7 @@ import           Data.Monoid (First(..))
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Context as Ctx
 import           Facet.Core.Pattern
-import           Facet.Name (Level(..), QName, UName)
+import           Facet.Name (Level(..), QName, PlName(..), UName)
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
@@ -47,9 +47,9 @@ data Value a
   | Void
   | TUnit
   | Unit
-  | (UName ::: Value a) :=> (Value a -> Value a)
+  | (PlName ::: Value a) :=> (Value a -> Value a)
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
-  | Lam UName (Value a -> Value a)
+  | Lam PlName (Value a -> Value a)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | Neut (Head a) (Stack (Elim (Value a)))
   | TPrd (Value a) (Value a)
@@ -71,7 +71,7 @@ instance (Eq a, Num a) => Eq (Value a) where
       (Unit, Unit) -> True
       (Unit, _) -> False
       (t1 :=> b1, t2 :=> b2) ->
-        go n (ty t1) (ty t2)
+        pl (tm t1) == pl (tm t2) && go n (ty t1) (ty t2)
         &&  let b1' = b1 (bound n)
                 b2' = b2 (bound n)
             in go (n + 1) b1' b2'
@@ -142,10 +142,10 @@ var :: Head a -> Value a
 var = (`Neut` Nil)
 
 
-unForAll :: Has Empty sig m => Value a -> m (UName ::: Value a, Value a -> Value a)
+unForAll :: Has Empty sig m => Value a -> m (PlName ::: Value a, Value a -> Value a)
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
-unLam :: Has Empty sig m => Value a -> m (UName, Value a -> Value a)
+unLam :: Has Empty sig m => Value a -> m (PlName, Value a -> Value a)
 unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
 
 unProductT :: Has Empty sig m => Value a -> m (Value a, Value a)
