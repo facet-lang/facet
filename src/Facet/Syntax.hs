@@ -98,3 +98,6 @@ instance Monoid Pl where
 instance Semiring Pl where
   Ex >< Ex = Ex
   _  >< _  = Im
+
+instance Unital Pl where
+  one = Ex
