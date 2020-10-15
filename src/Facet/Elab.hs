@@ -497,17 +497,18 @@ elabPattern = withSpan $ \case
 
 elabDecl
   :: (HasCallStack, Eq v)
-  => Spanned (SD.Decl Spanned a)
+  => Context (Type v)
+  -> Spanned (SD.Decl Spanned a)
   -> Check v (Expr v) ::: Check v (Type v)
-elabDecl = withSpans $ \case
+elabDecl ctx = withSpans $ \case
   (n ::: t) SD.:=> b ->
-    let b' ::: _B = elabDecl b
-    in tlam n b' ::: checkElab (switch (n ::: checkElab (elabType empty t) >~> _B))
+    let b' ::: _B = elabDecl ctx b
+    in tlam n b' ::: checkElab (switch (n ::: checkElab (elabType ctx t) >~> _B))
 
   (n ::: t) SD.:-> b ->
-    let b' ::: _B = elabDecl b
+    let b' ::: _B = elabDecl ctx b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in lam n b' ::: checkElab (switch (checkElab (elabType empty t) --> local (|> (n ::: (Type `asParameterOf` b') ::: (Type `asParameterOf` b'))) _B))
+    in lam n b' ::: checkElab (switch (checkElab (elabType ctx t) --> local (|> (n ::: (Type `asParameterOf` b') ::: (Type `asParameterOf` b'))) _B))
 
   t SD.:= b ->
     checkElab (elabExpr b) ::: checkElab (elabType empty t)
@@ -531,7 +532,7 @@ elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
     env <- get @(Env.Env (Type v))
     e' ::: _T <- runReader @(Context (Val v ::: Type v)) empty . runReader env $ do
-      let e ::: t = elabDecl d
+      let e ::: t = elabDecl empty d
       _T <- elab $ check (t ::: Type)
       e' <- elab $ check (e ::: _T)
       pure $ e' ::: _T
