@@ -42,7 +42,6 @@ library
     Facet.Core
     Facet.Elab
     Facet.Env
-    Facet.Functor.Higher
     Facet.Name
     Facet.Parser
     Facet.Parser.Table
