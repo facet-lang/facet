@@ -267,7 +267,7 @@ lam vs b = block $ hsep vs <+> arrow <> nest 2 (line <> b)
 
 
 printContextEntry :: Level -> UName ::: Print -> Print
-printContextEntry l (n ::: _T) = ann (cbound n l ::: _T)
+printContextEntry l (n ::: _T) = setLevel l $ ann (cbound n l ::: _T)
 
 
 printSurfaceType :: (Foldable f, Functor f) => Stack Print -> ST.Type f a -> Print
