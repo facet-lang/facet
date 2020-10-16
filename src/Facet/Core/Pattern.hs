@@ -7,6 +7,7 @@ module Facet.Core.Pattern
 
 import GHC.Stack
 
+-- FIXME: represent wildcard patterns as var patterns with an empty name.
 data Pattern a
   = Wildcard
   | Var a
