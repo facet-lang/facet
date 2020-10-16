@@ -10,6 +10,7 @@ module Facet.Name
 , Level(..)
 , levelToIndex
 , indexToLevel
+, Vars(..)
 , Silent(..)
 , __
 , MName(..)
@@ -72,6 +73,11 @@ levelToIndex (Level d) (Level level) = Index $ d - level - 1
 
 indexToLevel :: Int -> Index -> Level
 indexToLevel d (Index index) = Level $ d - index - 1
+
+
+class Monoid v => Vars v where
+  use :: Level -> v
+  bind :: Level -> v -> v
 
 
 data Silent a b = Silent
