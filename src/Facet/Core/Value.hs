@@ -49,7 +49,7 @@ data Value a
   | Unit
   | (PlName ::: Value a) :=> (Value a -> Value a)
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
-  | Lam PlName (Value a -> Value a)
+  | Lam (PlName ::: Value a) (Value a -> Value a)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | Neut (Head a) (Stack (Elim (Value a)))
   | TPrd (Value a) (Value a)
@@ -145,7 +145,7 @@ var = (`Neut` Nil)
 unForAll :: Has Empty sig m => Value a -> m (PlName ::: Value a, Value a -> Value a)
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
-unLam :: Has Empty sig m => Value a -> m (PlName, Value a -> Value a)
+unLam :: Has Empty sig m => Value a -> m (PlName ::: Value a, Value a -> Value a)
 unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
 
 unProductT :: Has Empty sig m => Value a -> m (Value a, Value a)

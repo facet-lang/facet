@@ -381,7 +381,7 @@ tlam
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
   b' <- n ::: _T |- \ v -> check (b (n ::: v ::: _T) ::: _B v)
-  pure (Lam (P Im n) b')
+  pure (Lam (P Im n ::: _T) b')
 
 lam
   :: UName
@@ -390,7 +390,7 @@ lam
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectQuantifiedType "when checking lambda" _T
   b' <- n ::: ty _A |- \ v -> check (b (n ::: v ::: ty _A) ::: _B v)
-  pure (Lam (P Ex n) b')
+  pure (Lam (P Ex n ::: ty _A) b')
 
 unit :: Synth v (Expr v)
 unit = Synth . pure $ Unit ::: TUnit
@@ -437,7 +437,7 @@ elabClauses ctx [((_, SP.Var n):|ps, b)] = Check $ \ _T -> do
   b' <- n ::: _A |- \ v -> do
     let ctx' = ctx |> (n ::: v ::: _A)
     check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx' . pure . (,b)) (nonEmpty ps) ::: _B v)
-  pure $ Lam (P pl n) b'
+  pure $ Lam (P pl n ::: _A) b'
 elabClauses ctx cs = Check $ \ _T -> do
   (P _ n ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
@@ -454,7 +454,7 @@ elabClauses ctx cs = Check $ \ _T -> do
         in check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx') rest ::: _B')
       pure (tm <$> p', b')
     pure $ case' v cs'
-  pure $ Lam (P Ex __) b'
+  pure $ Lam (P Ex __ ::: _A) b'
   where
   partitionClause (_:|ps, b) = case ps of
     []   -> XL ()
