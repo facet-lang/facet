@@ -83,6 +83,9 @@ newtype FVs = FVs { runFVs :: IntSet.IntSet -> IntSet.IntSet -> IntSet.IntSet }
 getFVs :: FVs -> IntSet.IntSet
 getFVs v = runFVs v mempty mempty
 
+instance Semigroup FVs where
+  FVs v1 <> FVs v2 = FVs $ \ b -> v1 b . v2 b
+
 
 class Monoid v => Vars v where
   use :: Level -> v
