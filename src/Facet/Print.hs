@@ -288,7 +288,7 @@ sbound :: UName -> Print
 sbound = var . pretty
 
 cbound :: UName -> Level -> Print
-cbound h level = h' <> pretty (getLevel level)
+cbound h level = cons level (h' <> pretty (getLevel level))
   where
   h'
     | T.null (getUName h) = pretty '_'
