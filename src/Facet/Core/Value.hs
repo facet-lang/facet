@@ -35,7 +35,7 @@ import           Data.Monoid (First(..))
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Context as Ctx
 import           Facet.Core.Pattern
-import           Facet.Name (Level(..), QName, PlName(..), UName)
+import           Facet.Name (Level(..), PlName(..), QName, UName)
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
@@ -189,6 +189,7 @@ elimN :: (HasCallStack, Foldable t) => Value a -> t (Elim (Value a)) -> Value a
 elimN f as = foldl' elim f as
 
 
+-- FIXME: should we use metavars for quoted variables instead? they’d stand out and we’re going to substitute for them anyway…
 handleBinder :: (HasCallStack, Monad m) => Level -> (Value a -> m (Value a)) -> m (Value a -> Value a)
 handleBinder d b = do
   b' <- b (quote d)
