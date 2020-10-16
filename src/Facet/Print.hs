@@ -6,6 +6,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -97,8 +99,42 @@ terminalStyle = \case
   len = length colours
 
 
-newtype Print = Print { runPrint :: Prec Precedence (Rainbow (PP.Doc Highlight)) }
-  deriving (Monoid, PrecedencePrinter, Printer, Semigroup)
+data Print = Print { fvs :: FVs, runPrint :: Prec Precedence (Rainbow (PP.Doc Highlight)) }
+
+instance Semigroup Print where
+  Print fvs1 d1 <> Print fvs2 d2 = Print (fvs1 <> fvs2) (d1 <> d2)
+
+instance Monoid Print where
+  mempty = Print mempty mempty
+
+instance Printer Print where
+  type Ann Print = Highlight
+
+  liftDoc0 a = Print mempty (liftDoc0 a)
+  liftDoc1 f p = Print (fvs p) (liftDoc1 f (runPrint p))
+  liftDoc2 f p1 p2 = Print (fvs p1 <> fvs p2) (liftDoc2 f (runPrint p1) (runPrint p2))
+
+  -- NB: column, nesting, & pageWidth all destroy fvs.
+  column f = Print mempty (column (runPrint . f))
+  nesting f = Print mempty (nesting (runPrint . f))
+  pageWidth f = Print mempty (pageWidth (runPrint . f))
+
+  enclosing (Print fvsl pl) (Print fvsr pr) (Print fvsx px) = Print (fvsl <> fvsr <> fvsx) (enclosing pl pr px)
+
+  brackets (Print fvs p) = Print fvs (brackets p)
+  braces   (Print fvs p) = Print fvs (braces p)
+  parens   (Print fvs p) = Print fvs (parens p)
+  angles   (Print fvs p) = Print fvs (angles p)
+  squotes  (Print fvs p) = Print fvs (squotes p)
+  dquotes  (Print fvs p) = Print fvs (dquotes p)
+
+instance PrecedencePrinter Print where
+  type Level Print = Precedence
+
+  -- NB: askingPrec destroys fvs.
+  askingPrec f = Print mempty (askingPrec (runPrint . f))
+  localPrec f p = Print (fvs p) (localPrec f (runPrint p))
+
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
