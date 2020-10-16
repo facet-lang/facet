@@ -56,7 +56,6 @@ aeq t1 t2 = case (t1, t2) of
   (f1 :$ a1,           f2 :$ a2)           -> aeq' f1 f2 && aeq' a1 a2
   (a1 :-> b1,          a2 :-> b2)          -> aeq' a1 a2 && aeq' b1 b2
   (l1 :* r1,           l2 :* r2)           -> aeq' l1 l2 && aeq' r1 r2
-  -- FIXME: skip spans one either side independently right up front
   _                                        -> False
   where
   aeq' = fmap and . (liftA2 aeq `on` extract)
