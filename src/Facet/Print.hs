@@ -263,7 +263,7 @@ var' u (Level d) n = var $ annotate (Name d) $ unPl (braces (p <> P.tvar d)) (p 
   p | u         = mempty
     | otherwise = pretty '_'
 
-unLam' :: (Level -> PlName -> Print) -> (Level, CV.Value Print) -> Maybe ((Level, PlName), (Level, CV.Value Print))
+unLam' :: Vars a => (Level -> PlName -> a) -> (Level, CV.Value a) -> Maybe ((Level, PlName), (Level, CV.Value a))
 unLam' var (d, v) = case CV.unLam v of
   Just (n, t) -> let n' = var d n in Just ((d, n), (succ d, t (CV.bound (cons d n'))))
   Nothing     -> Nothing
