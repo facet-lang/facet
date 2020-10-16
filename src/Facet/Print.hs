@@ -246,7 +246,8 @@ printCoreValue = go
         b' = foldr bind (go d' (b (C.free <$> p'))) [d..d']
     in nest 2 $ group (prec Pattern (printCorePattern p') </> arrow) </> b'
   elim d f = \case
-    C.App  a -> f $$ go d a
+    -- FIXME: wrap braces around implicit arguments
+    C.App  a -> f $$ go d (out a)
     C.Case p -> nest 2 $ group $ pretty "case" <+> setPrec Expr f </> block (commaSep (map (clause d) p))
 
 var' :: Bool -> Level -> Pl_ UName ::: C.Value Print -> Print

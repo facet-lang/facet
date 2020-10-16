@@ -186,7 +186,8 @@ unify (t1 :===: t2) = go (t1 :===: t2)
 
   unifyS (Nil          :===: Nil)          = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
-  unifyS (i1 :> App l1 :===: i2 :> App l2) = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (App <$> go (l1 :===: l2))
+  unifyS (i1 :> App l1 :===: i2 :> App l2)
+    | pl l1 == pl l2                       = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (App . P (pl l1) <$> go (out l1 :===: out l2))
   unifyS _                                 = Nothing
 
   solve :: Level :=: Prob v -> Elab v (Val v)
@@ -216,7 +217,7 @@ instantiate :: Expr v ::: Type v -> Elab v (Expr v ::: Type v)
 instantiate (e ::: _T) = case unForAll _T of
   Just (P Im _ ::: _T, _B) -> do
     m <- meta _T
-    instantiate (e C.$$ m ::: _B m)
+    instantiate (e C.$$ P Im m ::: _B m)
   _                        -> pure $ e ::: _T
 
 
@@ -260,7 +261,7 @@ f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectQuantifiedType "in application" _F
   a' <- check (a ::: ty _A)
-  pure $ (f' C.$$ a') ::: _B a'
+  pure $ (f' C.$$ P Ex a') ::: _B a'
 
 
 (|-)

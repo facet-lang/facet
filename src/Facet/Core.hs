@@ -94,7 +94,7 @@ instance (Eq a, Num a) => Eq (Value a) where
     eqSp _ Nil       Nil       = True
     eqSp _ _         _         = False
     eqElim n = curry $ \case
-      (App a1, App a2) -> go n a1 a2
+      (App a1, App a2) -> pl a1 == pl a2 && go n (out a1) (out a2)
       (App _, _) -> False
       (Case cs1, Case cs2)
         | length cs1 == length cs2 -> and (zipWith (eqPat n) (toList cs1) (toList cs2))
@@ -132,7 +132,7 @@ unHead f g h i = \case
 
 
 data Elim a
-  = App a -- FIXME: this is our one codata case; should we generalize this to copattern matching?
+  = App (Pl_ a) -- FIXME: this is our one codata case; should we generalize this to copattern matching?
   | Case [(Pattern (UName ::: a), Pattern a -> a)]
 
 
@@ -164,10 +164,10 @@ unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
 
 
 -- FIXME: how should this work in weak/parametric HOAS?
-($$) :: HasCallStack => Value a -> Value a -> Value a
+($$) :: HasCallStack => Value a -> Pl_ (Value a) -> Value a
 Neut h es $$ a = Neut h (es :> App a)
-(_ :=> b) $$ a = b a
-Lam _  b  $$ a = b a
+(_ :=> b) $$ a = b (out a)
+Lam _  b  $$ a = b (out a)
 _         $$ _ = error "can’t apply non-neutral/forall type"
 
 infixl 9 $$
@@ -229,7 +229,7 @@ substQ s = go
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
   substElim = \case
-    App a   -> App (go a)
+    App a   -> App (fmap go a)
     Case cs -> Case (map (fmap (go .)) cs)
   s ! l = case IntMap.lookup (getLevel l) s of
     Just a  -> a
@@ -252,7 +252,7 @@ subst s = go
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
   substElim = \case
-    App a   -> App (go a)
+    App a   -> App (fmap go a)
     Case cs -> Case (map (fmap (go .)) cs)
   s ! l = case IntMap.lookup (getLevel (tm l)) s of
     Just a  -> a
