@@ -2,8 +2,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Decl
 ( Decl(..)
@@ -15,19 +15,18 @@ import Facet.Name
 import Facet.Surface.Expr (Expr)
 import Facet.Surface.Type (Type)
 import Facet.Syntax ((:::)(..))
+import Text.Parser.Position
 
-data Decl f a
-  = (UName ::: f (Type f a)) :=> f (Decl f a)
-  | (UName ::: f (Type f a)) :-> f (Decl f a)
-  | f (Type f a) := f (Expr f a)
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance (Show a, forall a . Show a => Show (f a)) => Show (Decl f a)
+data Decl a
+  = (UName ::: Spanned (Type Spanned a)) :=> Spanned (Decl a)
+  | (UName ::: Spanned (Type Spanned a)) :-> Spanned (Decl a)
+  | Spanned (Type Spanned a) := Spanned (Expr Spanned a)
+  deriving (Foldable, Functor, Show, Traversable)
 
 infix 1 :=
 infixr 1 :=>
 infixr 1 :->
 
 
-unForAll :: Has Empty sig m => Decl f a -> m (UName ::: f (Type f a), f (Decl f a))
+unForAll :: Has Empty sig m => Decl a -> m (UName ::: Spanned (Type Spanned a), Spanned (Decl a))
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }

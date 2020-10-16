@@ -106,22 +106,22 @@ whole p = whiteSpace *> p <* eof
 module' :: (Monad p, PositionParsing p) => Facet p (Spanned (M.Module N.Index))
 module' = spanned (M.Module <$> mname <* colon <* symbol "Module" <*> braces (many decl))
 
-decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned (D.Decl Spanned N.Index)))
+decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned (D.Decl N.Index)))
 decl = spanned $ (,) <$> dname <* colon <*> sig
 
 
 -- Declarations
 
-sigTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned (D.Decl Spanned N.Index))
+sigTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned (D.Decl N.Index))
 sigTable =
   [ [ Op.Operator (forAll (D.:=>)) ]
   , [ Op.Operator binder ]
   ]
 
-sig :: (Monad p, PositionParsing p) => Facet p (Spanned (D.Decl Spanned N.Index))
+sig :: (Monad p, PositionParsing p) => Facet p (Spanned (D.Decl N.Index))
 sig = build sigTable (const (spanned ((D.:=) <$> monotype <*> comp))) -- FIXME: parse type declarations too
 
-binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (Spanned (D.Decl Spanned N.Index))
+binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (Spanned (D.Decl N.Index))
 binder self _ = do
   ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* symbolic '(' <*> varPattern ename) <* colon <*> type' <* symbolic ')'
   bindVarPattern i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position

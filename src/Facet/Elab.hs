@@ -483,7 +483,7 @@ elabPattern = withSpan $ \case
 elabDecl
   :: forall a v
   .  (HasCallStack, Eq v)
-  => Spanned (SD.Decl Spanned a)
+  => Spanned (SD.Decl a)
   -> (Context (Val v ::: Type v) -> Check v (Expr v)) ::: (Context (Val v ::: Type v) -> Check v (Type v))
 elabDecl = withSpans $ \case
   (n ::: t) SD.:=> b ->

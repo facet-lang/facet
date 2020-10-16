@@ -392,7 +392,7 @@ unit :: Print
 unit = annotate Con $ pretty "Unit"
 
 
-printSurfaceDecl :: (Foldable f, Functor f) => SD.Decl f a -> Print
+printSurfaceDecl :: SD.Decl a -> Print
 printSurfaceDecl = go Nil
   where
   go env = \case
@@ -429,7 +429,7 @@ printCoreDef = \case
 printSurfaceModule :: SM.Module a -> Print
 printSurfaceModule (SM.Module n ds) = module' n (map (foldMap (uncurry printSurfaceDef)) ds)
 
-printSurfaceDef :: (Foldable f, Functor f) => DName -> f (SD.Decl f a) -> Print
+printSurfaceDef :: Foldable f => DName -> f (SD.Decl a) -> Print
 printSurfaceDef n d = def (sfree n) (foldMap printSurfaceDecl d)
 
 
