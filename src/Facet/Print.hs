@@ -288,9 +288,11 @@ sbound :: UName -> Print
 sbound = var . pretty
 
 cbound :: UName -> Level -> Print
-cbound h level
-  | T.null (getUName h) = pretty '_' <> pretty (getLevel level)
-  | otherwise           = pretty h   <> pretty (getLevel level)
+cbound h level = h' <> pretty (getLevel level)
+  where
+  h'
+    | T.null (getUName h) = pretty '_'
+    | otherwise           = pretty h
 
 
 hole :: Text -> Print
