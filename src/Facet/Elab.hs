@@ -63,7 +63,6 @@ import           Data.Traversable (for)
 import           Facet.Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
-import qualified Facet.Core.Pattern as CP
 import qualified Facet.Env as Env
 import           Facet.Name (DName, Index(..), Level(..), PlName(..), QName(..), UName, __)
 import           Facet.Stack hiding ((!?))
@@ -277,9 +276,9 @@ infix 1 |-
 
 (|-*)
   :: Has (Reader (Context (Val v ::: Type v))) sig (t v)
-  => CP.Pattern (UName ::: Type v)
-  -> (CP.Pattern (Val v) -> t v (Val v))
-  -> t v (CP.Pattern (Val v) -> Val v)
+  => C.Pattern (UName ::: Type v)
+  -> (C.Pattern (Val v) -> t v (Val v))
+  -> t v (C.Pattern (Val v) -> Val v)
 p |-* f = do
   ctx <- askContext
   handleBinderP (level ctx) p (\ v ->
@@ -461,11 +460,11 @@ elabClauses ctx cs = Check $ \ _T -> do
 elabPattern
   :: Eq v
   => Spanned (SP.Pattern UName)
-  -> Check v (CP.Pattern (UName ::: Type v))
+  -> Check v (C.Pattern (UName ::: Type v))
 elabPattern = withSpan $ \case
-  SP.Wildcard -> pure CP.Wildcard
-  SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
-  SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go _T (fromList ps)
+  SP.Wildcard -> pure C.Wildcard
+  SP.Var n    -> Check $ \ _T -> pure (C.Var (n ::: _T))
+  SP.Tuple ps -> Check $ \ _T -> C.Tuple . toList <$> go _T (fromList ps)
     where
     go _T = \case
       Nil      -> case _T of

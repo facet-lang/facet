@@ -48,7 +48,6 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
-import qualified Facet.Core.Pattern as CP
 import           Facet.Name hiding (ann)
 import qualified Facet.Pretty as P
 import           Facet.Stack
@@ -375,11 +374,11 @@ printSurfaceClause env ps b = foldMap (foldMap printSurfacePattern) ps' <+> arro
   ps' = fmap (fmap sbound) <$> ps
   env' = foldl (foldl (foldl (:>))) env ps'
 
-printCorePattern :: CP.Pattern Print -> Print
+printCorePattern :: C.Pattern Print -> Print
 printCorePattern = \case
-  CP.Wildcard -> pretty '_'
-  CP.Var n    -> n
-  CP.Tuple p  -> tupled (map printCorePattern p)
+  C.Wildcard -> pretty '_'
+  C.Var n    -> n
+  C.Tuple p  -> tupled (map printCorePattern p)
 
 printSurfacePattern :: SP.Pattern Print -> Print
 printSurfacePattern p = prec Pattern $ case p of

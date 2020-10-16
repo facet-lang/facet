@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
@@ -21,6 +22,8 @@ module Facet.Core
 , subst
 , AValue(..)
 , Contextual(..)
+  -- * Patterns
+, Pattern(..)
   -- * Modules
 , Module(..)
 , Def(..)
@@ -33,7 +36,6 @@ import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Context as Ctx
-import           Facet.Core.Pattern
 import           Facet.Name (CName, Level(..), MName, PlName(..), QName, UName)
 import           Facet.Stack
 import           Facet.Syntax
@@ -264,6 +266,16 @@ instance Eq AValue where
 
 
 newtype Contextual f = Contextual { runContextual :: forall x . Ctx.Context (Value x ::: Value x) :|-: f x }
+
+
+-- Patterns
+
+-- FIXME: represent wildcard patterns as var patterns with an empty name.
+data Pattern a
+  = Wildcard
+  | Var a
+  | Tuple [Pattern a]
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
 -- Modules
