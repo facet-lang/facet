@@ -196,7 +196,7 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     subst <- getSubst
     -- FIXME: occurs check
     case subst IntMap.! getLevel n of
-      Just val ::: _T -> go (val :===: val')
+      Just val ::: _T -> go (val' :===: val)
       Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
 
 
