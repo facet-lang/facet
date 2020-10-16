@@ -61,7 +61,7 @@ import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import qualified Data.Text as T
 import           Data.Traversable (for)
 import           Facet.Context
-import qualified Facet.Core.Module as CM
+import qualified Facet.Core as C
 import qualified Facet.Core.Pattern as CP
 import           Facet.Core.Value hiding (global, ($$))
 import qualified Facet.Core.Value as CV
@@ -507,7 +507,7 @@ elabModule
   :: forall v a m sig
   .  (HasCallStack, Has (Throw (Err v)) sig m, Eq v)
   => Spanned (SM.Module a)
-  -> m (CM.Module v)
+  -> m (C.Module v)
 elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (Type v))) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
@@ -523,9 +523,9 @@ elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (
     modify $ Env.insert (qname ::: _T)
     -- FIXME: extend the module
     -- FIXME: support defining types
-    pure (qname, CM.DTerm e' ::: _T)
+    pure (qname, C.DTerm e' ::: _T)
 
-  pure $ CM.Module mname defs
+  pure $ C.Module mname defs
   where
   -- Apply the substitution to the value.
   -- FIXME: error if the substitution has holes.

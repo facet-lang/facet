@@ -47,7 +47,7 @@ import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
-import qualified Facet.Core.Module as CM
+import qualified Facet.Core as C
 import qualified Facet.Core.Pattern as CP
 import qualified Facet.Core.Value as CV
 import           Facet.Name hiding (ann)
@@ -415,15 +415,15 @@ t .= b = t </> b
 (n ::: t) >-> b = prec FnR (group (align (parens (ann (n ::: t)))) </> arrow <+> b)
 
 
-printCoreModule :: CM.Module Print -> Print
-printCoreModule (CM.Module n ds)
+printCoreModule :: C.Module Print -> Print
+printCoreModule (C.Module n ds)
   = module' n $ map (\ (n, d ::: t) -> ann (cfree n ::: printCoreValue (Level 0) t) </> printCoreDef d) ds
 
-printCoreDef :: CM.Def Print -> Print
+printCoreDef :: C.Def Print -> Print
 printCoreDef = \case
-  CM.DTerm b  -> printCoreValue (Level 0) b
-  CM.DType b  -> printCoreValue (Level 0) b
-  CM.DData cs -> block . commaSep $ map (ann . fmap (printCoreValue (Level 0)) . first pretty) cs
+  C.DTerm b  -> printCoreValue (Level 0) b
+  C.DType b  -> printCoreValue (Level 0) b
+  C.DData cs -> block . commaSep $ map (ann . fmap (printCoreValue (Level 0)) . first pretty) cs
 
 
 printSurfaceModule :: SM.Module a -> Print
