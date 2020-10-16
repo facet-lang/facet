@@ -239,7 +239,7 @@ printCoreValue = go
       in lam (map (\ (d, n) -> var' (IntSet.member (getLevel d) (getFVs (fvs b''))) d n) vs) b''
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
-    CV.Neut h e -> group $ foldl' (elim d) (CV.unHead cfree id tvar (ann . bimap (annotate Hole . (pretty '?' <>) . evar) (go d)) h) e
+    CV.Neut h e -> group $ foldl' (elim d) (CV.unHead (ann . bimap cfree (go d)) id tvar (ann . bimap (annotate Hole . (pretty '?' <>) . evar) (go d)) h) e
     CV.TPrd l r -> go d l ** go d r
     CV.Prd  l r -> go d l ** go d r
   name d = cons d (tvar d)

@@ -105,13 +105,13 @@ instance (Eq a, Num a) => Eq (Value a) where
 
 
 data Head a
-  = Global QName
+  = Global (QName ::: Value a) -- ^ Global variables, considered equal by 'QName'.
   | Free a
   | Quote Level
   | Metavar (Level ::: Value a) -- ^ Metavariables, considered equal by 'Level'.
 
 instance Eq a => Eq (Head a) where
-  Global q1  == Global q2  = q1 == q2
+  Global q1  == Global q2  = tm q1 == tm q2
   Global _   == _          = False
   Free a1    == Free a2    = a1 == a2
   Free _     == _          = False
@@ -120,7 +120,7 @@ instance Eq a => Eq (Head a) where
   Metavar m1 == Metavar m2 = tm m1 == tm m2
   Metavar _  == _          = False
 
-unHead :: (QName -> b) -> (a -> b) -> (Level -> b) -> (Level ::: Value a -> b) -> Head a -> b
+unHead :: (QName ::: Value a -> b) -> (a -> b) -> (Level -> b) -> (Level ::: Value a -> b) -> Head a -> b
 unHead f g h i = \case
   Global  n -> f n
   Free    n -> g n
@@ -133,7 +133,7 @@ data Elim a
   | Case [(Pattern (UName ::: a), Pattern a -> a)]
 
 
-global :: QName -> Value a
+global :: QName ::: Value a -> Value a
 global = var . Global
 
 free :: a -> Value a
