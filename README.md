@@ -161,7 +161,7 @@ Bool : Type
 
 Constructors with fields include them in their types:
 
-```
+```facet
 BoolPair : Type
 { boolPair : Bool -> Bool -> BoolPair
 }
