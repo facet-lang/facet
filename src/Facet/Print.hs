@@ -189,7 +189,7 @@ block
   = group
   . align
   . braces
-  . enclose space line
+  . enclose space space
 
 commaSep :: [Print] -> Print
 commaSep = encloseSep mempty mempty (comma <> space)
@@ -432,7 +432,7 @@ printSurfaceDef n d = def (sfree n) (foldMap printSurfaceDecl d)
 
 
 module' :: MName -> [Print] -> Print
-module' n b = ann (var (prettyMName n) ::: pretty "Module") </> block (vsep (line:intersperse mempty b) <> line)
+module' n b = ann (var (prettyMName n) ::: pretty "Module") </> group (align (braces (enclose space line (vsep (line:intersperse mempty b) <> line))))
 
 def :: Print -> Print -> Print
 def n b = group $ ann (n ::: b)
