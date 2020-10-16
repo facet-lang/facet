@@ -22,7 +22,6 @@ module Facet.Core.Value
 , match
 , handleBinder
 , handleBinderP
-, subst
 , AValue(..)
 , Contextual(..)
 ) where
