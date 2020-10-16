@@ -452,7 +452,7 @@ elabClauses ctx cs = Check $ \ _T -> do
       b' <- p' |-* \ v ->
         let ctx' = foldl' (|>) ctx (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p') (toList v))
         in check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx') rest ::: _B')
-      pure (tm <$> p', b')
+      pure (p', b')
     pure $ case' v cs'
   pure $ Lam (P Ex __ ::: _A) b'
   where

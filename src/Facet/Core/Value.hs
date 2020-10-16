@@ -121,7 +121,7 @@ unHead f g h i = \case
 
 data Elim a
   = App a -- FIXME: this is our one codata case; should we generalize this to copattern matching?
-  | Case [(Pattern UName, Pattern a -> a)]
+  | Case [(Pattern (UName ::: a), Pattern a -> a)]
 
 
 global :: QName -> Value a
@@ -162,7 +162,7 @@ _         $$ _ = error "can’t apply non-neutral/forall type"
 infixl 9 $$
 
 
-case' :: HasCallStack => Value a -> [(Pattern UName, Pattern (Value a) -> Value a)] -> Value a
+case' :: HasCallStack => Value a -> [(Pattern (UName ::: Value a), Pattern (Value a) -> Value a)] -> Value a
 case' (Neut h es) cs = Neut h (es :> Case cs)
 case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) cs) of
   Just v -> v
