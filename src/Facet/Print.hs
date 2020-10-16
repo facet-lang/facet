@@ -246,7 +246,7 @@ printCoreValue = go
   clause d (p, b) =
     let (d', p') = mapAccumL (\ d _ -> (succ d, let n' = evar d in (n', CV.bound n'))) d p
         b' = foldr bind (go d' (b (snd <$> p'))) [d..d']
-    in printCorePattern (fst <$> p') <+> arrow <+> b'
+    in prec Pattern (printCorePattern (ann . uncurry (:::) . fmap (go d) <$> p')) <+> arrow <+> b'
   elim d f = \case
     CV.App  a -> f $$ go d a
     CV.Case p -> pretty "case" <+> setPrec Expr f <+> block (commaSep (map (clause d) p))
@@ -377,7 +377,7 @@ printSurfaceClause env ps b = foldMap (foldMap printSurfacePattern) ps' <+> arro
   env' = foldl (foldl (foldl (:>))) env ps'
 
 printCorePattern :: CP.Pattern Print -> Print
-printCorePattern = prec Pattern . \case
+printCorePattern = \case
   CP.Wildcard -> pretty '_'
   CP.Var n    -> n
   CP.Tuple p  -> tupled (map printCorePattern p)
