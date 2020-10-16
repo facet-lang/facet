@@ -14,6 +14,7 @@ module Facet.Syntax
 , splitr
 , Pl(..)
 , unPl
+, Pl_(..)
 ) where
 
 import Data.Bifunctor
@@ -108,3 +109,10 @@ unPl :: a -> a -> Pl -> a
 unPl im ex = \case
   Im -> im
   Ex -> ex
+
+
+data Pl_ a = Pl_
+  { pl_ :: Pl
+  , out :: a
+  }
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
