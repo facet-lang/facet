@@ -244,7 +244,7 @@ printCoreValue = go
     CV.Prd  l r -> go d l ** go d r
   name d = cons d (tvar d)
   clause d (p, b) =
-    let (d', p') = mapAccumL (\ d' (_ ::: _T) -> (succ d', let n' = evar d in (n' ::: go d _T, CV.bound n'))) d p
+    let (d', p') = mapAccumL (\ d' (_ ::: _T) -> (succ d', let n' = evar d' in (n' ::: go d _T, CV.bound n'))) d p
         b' = foldr bind (go d' (b (snd <$> p'))) [d..d']
     in prec Pattern (printCorePattern (ann . fst <$> p')) <+> arrow <+> b'
   elim d f = \case
