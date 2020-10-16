@@ -74,7 +74,7 @@ getPrint :: Print -> PP.Doc ANSI.AnsiStyle
 getPrint = PP.reAnnotate terminalStyle . getPrint'
 
 getPrint' :: Print -> PP.Doc Highlight
-getPrint' = doc . runRainbow (annotate . Nest) 0 . runPrec Null . ($ (Level 0)) . runPrint . group
+getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . ($ (Level 0)) . doc . group
 
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
@@ -100,51 +100,47 @@ terminalStyle = \case
   len = length colours
 
 
-data Doc = Doc
-  { fvs :: FVs
-  , doc :: PP.Doc Highlight
-  }
+data Print = Print { fvs :: FVs, doc :: Level -> Prec Precedence (Rainbow (PP.Doc Highlight)) }
 
-instance Semigroup Doc where
-  Doc v1 d1 <> Doc v2 d2 = Doc (v1 <> v2) (d1 <> d2)
-  stimes n (Doc v d) = Doc (stimes n v) (stimes n d)
+instance Semigroup Print where
+  Print v1 d1 <> Print v2 d2 = Print (v1 <> v2) (d1 <> d2)
+  stimes n (Print v d) = Print (stimes n v) (stimes n d)
 
-instance Monoid Doc where
-  mempty = Doc mempty mempty
-
-instance Vars Doc where
-  use l = Doc (use l) mempty
-  cons l d = Doc (cons l (fvs d)) (doc d)
-  bind l d = Doc (bind l (fvs d)) (doc d)
-
-instance Printer Doc where
-  type Ann Doc = Highlight
-
-  liftDoc0 a = Doc mempty a
-  liftDoc1 f (Doc v d) = Doc v (f d)
-  liftDoc2 f (Doc v1 d1) (Doc v2 d2) = Doc (v1 <> v2) (f d1 d2)
-
-  -- NB: FIXME: these run everything twice which seems bad.
-  column    f = Doc (fvs (f 0))         (column    (doc . f))
-  nesting   f = Doc (fvs (f 0))         (nesting   (doc . f))
-  pageWidth f = Doc (fvs (f Unbounded)) (pageWidth (doc . f))
-
-  enclosing (Doc vl dl) (Doc vr dr) (Doc vx dx) = Doc (vl <> vr <> vx) (enclosing dl dr dx)
-
-  brackets (Doc v d) = Doc v (brackets d)
-  braces   (Doc v d) = Doc v (braces   d)
-  parens   (Doc v d) = Doc v (parens   d)
-  angles   (Doc v d) = Doc v (angles   d)
-  squotes  (Doc v d) = Doc v (squotes  d)
-  dquotes  (Doc v d) = Doc v (dquotes  d)
-
-newtype Print = Print { runPrint :: Level -> Prec Precedence (Rainbow Doc) }
-  deriving (Monoid, PrecedencePrinter, Printer, Semigroup)
+instance Monoid Print where
+  mempty = Print mempty mempty
 
 instance Vars Print where
-  use l = Print $ \ _ -> pure (Rainbow (use l))
-  cons l (Print b) = Print $ \ d -> Prec $ \ p -> Rainbow $ \ t n -> cons l (runRainbow t n (runPrec p (b d)))
-  bind l (Print b) = Print $ \ d -> Prec $ \ p -> Rainbow $ \ t n -> bind l (runRainbow t n (runPrec p (b (succ d))))
+  use l = Print (use l) mempty
+  cons l d = Print (cons l (fvs d)) (doc d)
+  bind l d = Print (bind l (fvs d)) (doc d)
+
+instance Printer Print where
+  type Ann Print = Highlight
+
+  liftDoc0 a = Print mempty (liftDoc0 a)
+  liftDoc1 f (Print v d) = Print v (liftDoc1 f d)
+  liftDoc2 f (Print v1 d1) (Print v2 d2) = Print (v1 <> v2) (liftDoc2 f d1 d2)
+
+  -- NB: FIXME: these run everything twice which seems bad.
+  column    f = Print (fvs (f 0))         (column    (doc . f))
+  nesting   f = Print (fvs (f 0))         (nesting   (doc . f))
+  pageWidth f = Print (fvs (f Unbounded)) (pageWidth (doc . f))
+
+  enclosing (Print vl dl) (Print vr dr) (Print vx dx) = Print (vl <> vr <> vx) (enclosing dl dr dx)
+
+  brackets (Print v d) = Print v (brackets d)
+  braces   (Print v d) = Print v (braces   d)
+  parens   (Print v d) = Print v (parens   d)
+  angles   (Print v d) = Print v (angles   d)
+  squotes  (Print v d) = Print v (squotes  d)
+  dquotes  (Print v d) = Print v (dquotes  d)
+
+instance PrecedencePrinter Print where
+  type Level Print = Precedence
+
+  -- FIXME: this is running things twice.
+  askingPrec f = Print (fvs (f minBound)) (askingPrec (doc . f))
+  localPrec f (Print v d) = Print v (localPrec f . d)
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
@@ -154,10 +150,10 @@ instance Eq Print where
   (==) = (==) `on` show
 
 withLevel :: (Level -> Print) -> Print
-withLevel f = Print $ \ d -> runPrint (f d) d
+withLevel f = Print (fvs (f (Level 0))) (doc . f <*> id)
 
 setLevel :: Level -> Print -> Print
-setLevel l p = Print $ \ _ -> runPrint p l
+setLevel l p = Print (fvs p) (\ _ -> doc p l)
 
 
 data Precedence
@@ -227,10 +223,6 @@ prettyQName :: PrecedencePrinter p => QName -> p
 prettyQName (mname :.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
--- FIXME: this is what happens when you can’t track state statically.
-withFVsIn :: Print -> (IntSet.IntSet -> Print -> Print) -> Print
-withFVsIn (Print r) f = Print $ \ d -> Prec $ \ l -> Rainbow $ \ t n -> let Doc v p = runRainbow t n (runPrec l (r d)) in runRainbow t n (runPrec l (runPrint (f (getFVs v) (Print (pure (pure (Rainbow (\ _ _ -> Doc v p)))))) d))
-
 printCoreValue ::  CV.Value Print -> Print
 printCoreValue = go
   where
@@ -247,7 +239,8 @@ printCoreValue = go
       in ((pl (tm t), n') ::: t') >~> b'
     CV.Lam n b  -> withLevel $ \ d ->
       let (vs, (_, b')) = splitr (unLam' (cons <*> var' True)) (d, CV.Lam n b)
-      in withFVsIn (go b') $ \ fvs b'' -> lam (map (\ (d, n) -> var' (IntSet.member (getLevel d) fvs) d n) vs) b''
+          b'' = go b'
+      in lam (map (\ (d, n) -> var' (IntSet.member (getLevel d) (getFVs (fvs b''))) d n) vs) b''
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap elim e
