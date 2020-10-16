@@ -246,7 +246,7 @@ printCoreValue = go
   clause d (p, b) =
     let (d', p') = mapAccumL (\ d' (_ ::: _T) -> (succ d', ann (evar d' ::: go d _T))) d p
         b' = foldr bind (go d' (b (CV.bound <$> p'))) [d..d']
-    in prec Pattern (printCorePattern p') <+> arrow <+> b'
+    in nest 2 $ group (prec Pattern (printCorePattern p') </> arrow) </> b'
   elim d f = \case
     CV.App  a -> f $$ go d a
     CV.Case p -> pretty "case" <+> setPrec Expr f <+> block (commaSep (map (clause d) p))
