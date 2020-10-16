@@ -31,7 +31,7 @@ import           Facet.Name (Index(..), Level(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
-import qualified Facet.Surface.Module as S
+import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 import           Text.Parser.Position (Spanned)

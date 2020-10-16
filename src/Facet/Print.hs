@@ -53,11 +53,11 @@ import qualified Facet.Core.Value as CV
 import           Facet.Name hiding (ann)
 import qualified Facet.Pretty as P
 import           Facet.Stack
-import qualified Facet.Surface.Decl as SD
-import qualified Facet.Surface.Expr as SE
-import qualified Facet.Surface.Module as SM
-import qualified Facet.Surface.Pattern as SP
-import qualified Facet.Surface.Type as ST
+import qualified Facet.Surface as SD
+import qualified Facet.Surface as SE
+import qualified Facet.Surface as SM
+import qualified Facet.Surface as SP
+import qualified Facet.Surface as ST
 import           Facet.Syntax
 import           Prelude hiding ((**))
 import qualified Prettyprinter as PP
@@ -277,20 +277,20 @@ printSurfaceType :: Stack Print -> ST.Type a -> Print
 printSurfaceType = go
   where
   go env = \case
-    ST.Free n  -> sfree n
-    ST.Bound n -> env ! getIndex n
-    ST.Hole n  -> hole n
-    ST.Type    -> _Type
-    ST.Void    -> _Void
-    ST.Unit    -> _Unit
+    ST.TFree n  -> sfree n
+    ST.TBound n -> env ! getIndex n
+    ST.THole n  -> hole n
+    ST.Type     -> _Type
+    ST.Void     -> _Void
+    ST.TUnit    -> _Unit
     t ST.:=> b ->
       let (t', b') = splitr (ST.unForAll <=< extract) b
       in forAlls (map (first sbound) (t:t')) (foldMap (go (env:>sbound (tm t))) b')
-    f ST.:$  a ->
-      let (f', a') = splitl (ST.unApp <=< extract) f
+    f ST.:$$ a ->
+      let (f', a') = splitl (ST.unTApp <=< extract) f
       in foldMap (go env) f' $$* fmap (foldMap (go env)) (a' :> a)
     a ST.:-> b -> foldMap (go env) a --> foldMap (go env) b
-    l ST.:*  r -> foldMap (go env) l **  foldMap (go env) r
+    l ST.:** r -> foldMap (go env) l **  foldMap (go env) r
 
 sfree :: DName -> Print
 sfree = var . pretty
@@ -396,12 +396,12 @@ printSurfaceDecl :: SD.Decl a -> Print
 printSurfaceDecl = go Nil
   where
   go env = \case
-    t SD.:=  e -> foldMap (printSurfaceType env) t .= foldMap (printSurfaceExpr env) e
-    t SD.:=> b ->
-      let (t', b') = splitr (SD.unForAll <=< extract) b
+    t SD.:=   e -> foldMap (printSurfaceType env) t .= foldMap (printSurfaceExpr env) e
+    t SD.:==> b ->
+      let (t', b') = splitr (SD.unDForAll <=< extract) b
           ts = map (first sbound) (t:t')
       in forAlls ts (foldMap (go (foldl (\ as (a:::_) -> as :> a) env ts)) b')
-    t SD.:-> b -> bimap sbound (foldMap (printSurfaceType env)) t >-> foldMap (go (env:>sbound (tm t))) b
+    t SD.:--> b -> bimap sbound (foldMap (printSurfaceType env)) t >-> foldMap (go (env:>sbound (tm t))) b
 
 extract :: Foldable f => f t -> Maybe t
 extract = getFirst . foldMap (First . Just)

@@ -28,8 +28,7 @@ import           Facet.Pretty
 import           Facet.Print
 import           Facet.REPL.Parser
 import           Facet.Stack
-import           Facet.Surface.Expr (Expr)
-import           Facet.Surface.Type (Type)
+import           Facet.Surface (Expr, Type)
 import           Prelude hiding (print)
 import           Prettyprinter as P hiding (column, width)
 import           Prettyprinter.Render.Terminal (AnsiStyle, renderLazy)

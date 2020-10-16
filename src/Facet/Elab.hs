@@ -68,11 +68,11 @@ import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
 import           Facet.Name (DName, Index(..), Level(..), PlName(..), QName(..), UName, __)
 import           Facet.Stack hiding ((!?))
-import qualified Facet.Surface.Decl as SD
-import qualified Facet.Surface.Expr as SE
-import qualified Facet.Surface.Module as SM
-import qualified Facet.Surface.Pattern as SP
-import qualified Facet.Surface.Type as ST
+import qualified Facet.Surface as SD
+import qualified Facet.Surface as SE
+import qualified Facet.Surface as SM
+import qualified Facet.Surface as SP
+import qualified Facet.Surface as ST
 import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding ((**))
@@ -298,16 +298,16 @@ elabType
   -> Maybe (Type v)
   -> Elab v (Type v ::: Type v)
 elabType ctx = withSpan' $ \case
-  ST.Free  n -> switch $ global n
-  ST.Bound n -> switch $ bound ctx n
-  ST.Hole  n -> check (hole n) "hole"
-  ST.Type    -> switch $ _Type
-  ST.Void    -> switch $ _Void
-  ST.Unit    -> switch $ _Unit
-  t ST.:=> b -> switch $ bimap (P Im) (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
-  f ST.:$  a -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
-  a ST.:-> b -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
-  l ST.:*  r -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
+  ST.TFree  n -> switch $ global n
+  ST.TBound n -> switch $ bound ctx n
+  ST.THole  n -> check (hole n) "hole"
+  ST.Type     -> switch $ _Type
+  ST.Void     -> switch $ _Void
+  ST.TUnit    -> switch $ _Unit
+  t ST.:=> b  -> switch $ bimap (P Im) (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
+  f ST.:$$ a  -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
+  a ST.:-> b  -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
+  l ST.:** r  -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -486,11 +486,11 @@ elabDecl
   => Spanned (SD.Decl a)
   -> (Context (Val v ::: Type v) -> Check v (Expr v)) ::: (Context (Val v ::: Type v) -> Check v (Type v))
 elabDecl = withSpans $ \case
-  (n ::: t) SD.:=> b ->
+  (n ::: t) SD.:==> b ->
     let b' ::: _B = elabDecl b
     in (\ ctx -> tlam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Im n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
 
-  (n ::: t) SD.:-> b ->
+  (n ::: t) SD.:--> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
     in (\ ctx -> lam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
