@@ -394,7 +394,9 @@ printSurfaceDecl :: SD.Decl a -> Print
 printSurfaceDecl = go Nil
   where
   go env = \case
-    t SD.:=   e -> foldMap (printSurfaceType env) t .= foldMap (printSurfaceExpr env) e
+    t SD.:=   b -> foldMap (printSurfaceType env) t .= case b of
+      SD.DExpr e -> foldMap (printSurfaceExpr env) e
+      SD.DType t -> foldMap (printSurfaceType env) t
     t SD.:==> b ->
       let (t', b') = splitr (SD.unDForAll <=< extract) b
           ts = map (first sbound) (t:t')

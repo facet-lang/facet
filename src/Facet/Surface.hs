@@ -15,6 +15,7 @@ module Facet.Surface
   -- * Declarations
 , Decl(..)
 , unDForAll
+, DeclBody(..)
   -- * Modules
 , Module(..)
 ) where
@@ -114,7 +115,7 @@ aeq t1 t2 = case (t1, t2) of
 data Decl a
   = (UName ::: Spanned (Type a)) :==> Spanned (Decl a)
   | (UName ::: Spanned (Type a)) :--> Spanned (Decl a)
-  | Spanned (Type a) := Spanned (Expr a)
+  | Spanned (Type a) := DeclBody a
   deriving (Foldable, Functor, Show, Traversable)
 
 infix 1 :=
@@ -124,6 +125,12 @@ infixr 1 :-->
 
 unDForAll :: Has Empty sig m => Decl a -> m (UName ::: Spanned (Type a), Spanned (Decl a))
 unDForAll = \case{ t :==> b -> pure (t, b) ; _ -> empty }
+
+
+data DeclBody a
+  = DExpr (Spanned (Expr a))
+  | DType (Spanned (Type a))
+  deriving (Foldable, Functor, Show, Traversable)
 
 
 -- Modules

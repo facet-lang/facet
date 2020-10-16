@@ -495,7 +495,9 @@ elabDecl = withSpans $ \case
     in (\ ctx -> lam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
 
   t SD.:= b ->
-    (\ ctx -> checkElab (elabExpr ctx b)) ::: (\ ctx -> checkElab (elabType ctx t))
+    (\ ctx -> case b of
+      SD.DExpr b -> checkElab (elabExpr ctx b)
+      SD.DType b -> checkElab (elabType ctx b)) ::: (\ ctx -> checkElab (elabType ctx t))
   where
   withSpans f (s, d) = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
 

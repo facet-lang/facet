@@ -106,7 +106,7 @@ module' = spanned (S.Module <$> mname <* colon <* symbol "Module" <*> braces (ma
 -- Declarations
 
 decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned (S.Decl N.Index)))
-decl = spanned $ (,) <$> dename <* colon <*> sig (flip (S.:=) <$> comp)
+decl = spanned $ (,) <$> dename <* colon <*> sig (flip (S.:=) . S.DExpr <$> comp)
 
 sigTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned (S.Decl N.Index))
 sigTable =
