@@ -61,10 +61,9 @@ import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import qualified Data.Text as T
 import           Data.Traversable (for)
 import           Facet.Context
+import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
 import qualified Facet.Core.Pattern as CP
-import           Facet.Core.Value hiding (global, ($$))
-import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
 import           Facet.Name (DName, Index(..), Level(..), PlName(..), QName(..), UName, __)
 import           Facet.Stack hiding ((!?))
@@ -205,7 +204,7 @@ meta _T = do
   subst <- getSubst
   let m = Level (length subst)
   put (insertSubst m (Nothing ::: _T) subst)
-  pure $ CV.metavar (m ::: _T)
+  pure $ metavar (m ::: _T)
 
 insertSubst :: Level -> Maybe (Prob v) ::: Type v -> Subst v -> Subst v
 insertSubst n (v ::: _T) = IntMap.insert (getLevel n) (v ::: _T)
@@ -218,7 +217,7 @@ instantiate :: Expr v ::: Type v -> Elab v (Expr v ::: Type v)
 instantiate (e ::: _T) = case unForAll _T of
   Just (P Im _ ::: _T, _B) -> do
     m <- meta _T
-    instantiate (e CV.$$ m ::: _B m)
+    instantiate (e C.$$ m ::: _B m)
   _                        -> pure $ e ::: _T
 
 
@@ -237,7 +236,7 @@ global
   :: DName
   -> Synth v (Val v)
 global n = Synth $ Env.lookup n <$> askEnv >>= \case
-  Just b  -> instantiate (CV.global (tm b :.: n ::: ty b) ::: ty b)
+  Just b  -> instantiate (C.global (tm b :.: n ::: ty b) ::: ty b)
   Nothing -> freeVariable n
 
 bound
@@ -262,7 +261,7 @@ f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectQuantifiedType "in application" _F
   a' <- check (a ::: ty _A)
-  pure $ (f' CV.$$ a') ::: _B a'
+  pure $ (f' C.$$ a') ::: _B a'
 
 
 (|-)

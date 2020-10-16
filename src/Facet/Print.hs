@@ -49,7 +49,6 @@ import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
 import qualified Facet.Core.Pattern as CP
-import qualified Facet.Core.Value as CV
 import           Facet.Name hiding (ann)
 import qualified Facet.Pretty as P
 import           Facet.Stack
@@ -217,49 +216,49 @@ prettyQName :: PrecedencePrinter p => QName -> p
 prettyQName (mname :.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
-printCoreValue ::  Level -> CV.Value Print -> Print
+printCoreValue ::  Level -> C.Value Print -> Print
 printCoreValue = go
   where
   go d = \case
-    CV.Type     -> _Type
-    CV.Void     -> _Void
-    CV.TUnit    -> _Unit
-    CV.Unit     -> _Unit
-    t CV.:=> b  ->
+    C.Type     -> _Type
+    C.Void     -> _Void
+    C.TUnit    -> _Unit
+    C.Unit     -> _Unit
+    t C.:=> b  ->
       let n' = name d
           t' = go d (ty t)
-          b' = go (succ d) (b (CV.free n'))
+          b' = go (succ d) (b (C.free n'))
       in if IntSet.member (getLevel d) (getFVs (fvs b')) then
         ((pl (tm t), n') ::: t') >~> bind d b'
       else
         unPl braces id (pl (tm t)) t' --> bind d b'
-    CV.Lam n b  ->
-      let (vs, (d', b')) = splitr (unLam' (cons <*> var' True)) (d, CV.Lam n b)
+    C.Lam n b  ->
+      let (vs, (d', b')) = splitr (unLam' (cons <*> var' True)) (d, C.Lam n b)
           b'' = go d' b'
       in lam (map (\ (d, n) -> var' (IntSet.member (getLevel d) (getFVs (fvs b''))) d n) vs) b''
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
-    CV.Neut h e -> group $ foldl' (elim d) (CV.unHead (ann . bimap cfree (go d)) id tvar (ann . bimap (annotate Hole . (pretty '?' <>) . evar) (go d)) h) e
-    CV.TPrd l r -> go d l ** go d r
-    CV.Prd  l r -> go d l ** go d r
+    C.Neut h e -> group $ foldl' (elim d) (C.unHead (ann . bimap cfree (go d)) id tvar (ann . bimap (annotate Hole . (pretty '?' <>) . evar) (go d)) h) e
+    C.TPrd l r -> go d l ** go d r
+    C.Prd  l r -> go d l ** go d r
   name d = cons d (tvar d)
   clause d (p, b) =
     let (d', p') = mapAccumL (\ d' (_ ::: _T) -> (succ d', ann (evar d' ::: go d _T))) d p
-        b' = foldr bind (go d' (b (CV.free <$> p'))) [d..d']
+        b' = foldr bind (go d' (b (C.free <$> p'))) [d..d']
     in nest 2 $ group (prec Pattern (printCorePattern p') </> arrow) </> b'
   elim d f = \case
-    CV.App  a -> f $$ go d a
-    CV.Case p -> nest 2 $ group $ pretty "case" <+> setPrec Expr f </> block (commaSep (map (clause d) p))
+    C.App  a -> f $$ go d a
+    C.Case p -> nest 2 $ group $ pretty "case" <+> setPrec Expr f </> block (commaSep (map (clause d) p))
 
-var' :: Bool -> Level -> PlName ::: CV.Value Print -> Print
+var' :: Bool -> Level -> PlName ::: C.Value Print -> Print
 var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ var (annotate (Name d) (p <> unPl tvar evar (pl n) d)) ::: printCoreValue d _T
   where
   p | u         = mempty
     | otherwise = pretty '_'
 
-unLam' :: (Level -> PlName ::: CV.Value a -> a) -> (Level, CV.Value a) -> Maybe ((Level, PlName ::: CV.Value a), (Level, CV.Value a))
-unLam' var (d, v) = case CV.unLam v of
-  Just (n, t) -> let n' = var d n in Just ((d, n), (succ d, t (CV.free n')))
+unLam' :: (Level -> PlName ::: C.Value a -> a) -> (Level, C.Value a) -> Maybe ((Level, PlName ::: C.Value a), (Level, C.Value a))
+unLam' var (d, v) = case C.unLam v of
+  Just (n, t) -> let n' = var d n in Just ((d, n), (succ d, t (C.free n')))
   Nothing     -> Nothing
 
 lam
