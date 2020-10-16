@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
 ( Value(..)
-, Head(Global, Local, Metavar)
+, Head(Global, Free, Metavar)
 , Elim(..)
 , unHead
 , global
@@ -106,7 +106,7 @@ instance (Eq a, Num a) => Eq (Value a) where
 
 data Head a
   = Global QName
-  | Local a -- FIXME: this should actually be Free
+  | Free a
   | Quote Level
   | Metavar Level
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -114,7 +114,7 @@ data Head a
 unHead :: (QName -> b) -> (a -> b) -> (Level -> b) -> (Level -> b) -> Head a -> b
 unHead f g h i = \case
   Global  n -> f n
-  Local   n -> g n
+  Free    n -> g n
   Quote   n -> h n
   Metavar n -> i n
 
@@ -129,7 +129,7 @@ global = var . Global
 
 -- FIXME: this should actually be free
 bound :: a -> Value a
-bound = var . Local
+bound = var . Free
 
 quote :: Level -> Value a
 quote = var . Quote
