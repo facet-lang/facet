@@ -196,8 +196,8 @@ block
 commaSep :: [Print] -> Print
 commaSep = encloseSep mempty mempty (comma <> space)
 
-ann :: Printer p => (p ::: p) -> p
-ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
+ann :: (PrecedencePrinter p, P.Level p ~ Precedence) => (p ::: p) -> p
+ann (n ::: t) = prec Ann $ n </> group (align (colon <+> flatAlt space mempty <> t))
 
 var :: (PrecedencePrinter p, P.Level p ~ Precedence) => p -> p
 var = setPrec Var
