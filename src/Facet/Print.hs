@@ -79,7 +79,7 @@ getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
   Nest i -> colours !! (i `mod` len)
-  Name i -> reverse colours !! (i `mod` len)
+  Name i -> reverse colours !! (getLevel i `mod` len)
   Op     -> ANSI.color ANSI.Cyan
   Type   -> ANSI.color ANSI.Yellow
   Con    -> ANSI.color ANSI.Red
@@ -165,7 +165,7 @@ data Precedence
 
 data Highlight
   = Nest Int
-  | Name Int
+  | Name Level
   | Con
   | Type
   | Op
@@ -203,10 +203,10 @@ var :: (PrecedencePrinter p, P.Level p ~ Precedence) => p -> p
 var = setPrec Var
 
 evar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Level -> p
-evar = var . annotate . Name . getLevel <*> P.evar . getLevel
+evar = var . annotate . Name <*> P.evar . getLevel
 
 tvar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Level -> p
-tvar = var . annotate . Name . getLevel <*> P.tvar . getLevel
+tvar = var . annotate . Name <*> P.tvar . getLevel
 
 
 prettyMName :: Printer p => MName -> p
@@ -250,7 +250,7 @@ printCoreValue = go
     CV.Case p -> (pretty "case" <>) . block . commaSep $ map (clause d) p
 
 var' :: Bool -> Level -> PlName -> Print
-var' u (Level d) n = var $ annotate (Name d) $ unPl (braces (p <> P.tvar d)) (p <> P.evar d) (pl n)
+var' u d n = var $ annotate (Name d) $ unPl (braces (p <> tvar d)) (p <> evar d) (pl n)
   where
   p | u         = mempty
     | otherwise = pretty '_'
