@@ -8,7 +8,7 @@ module Facet.Syntax
 , uncurryAnn
 , curryAnn
 , (:===:)(..)
-, (:=)(..)
+, (:=:)(..)
 , (:|-:)(..)
 , splitl
 , splitr
@@ -51,13 +51,13 @@ instance Bifunctor (:===:) where
   bimap f g (a :===: b) = f a :===: g b
 
 
-data a := b = a := b
+data a :=: b = a :=: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-infixr 2 :=
+infixr 2 :=:
 
-instance Bifunctor (:=) where
-  bimap f g (a := b) = f a := g b
+instance Bifunctor (:=:) where
+  bimap f g (a :=: b) = f a :=: g b
 
 
 data a :|-: b = a :|-: b
