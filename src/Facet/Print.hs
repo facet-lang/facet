@@ -76,7 +76,7 @@ getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . runPrint . group
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
   Nest i -> colours !! (i `mod` len)
-  Name   -> mempty
+  Name i -> reverse colours !! (i `mod` len)
   Op     -> ANSI.color ANSI.Cyan
   Type   -> ANSI.color ANSI.Yellow
   Con    -> ANSI.color ANSI.Red
@@ -123,7 +123,7 @@ data Precedence
 
 data Highlight
   = Nest Int
-  | Name
+  | Name Int
   | Con
   | Type
   | Op
@@ -157,14 +157,14 @@ commaSep = encloseSep mempty mempty (comma <> space)
 ann :: Printer p => (p ::: p) -> p
 ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
 
-var :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => p -> p
-var = setPrec Var . annotate Name
+var :: (PrecedencePrinter p, P.Level p ~ Precedence) => p -> p
+var = setPrec Var
 
 evar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Int -> p
-evar = var . P.evar
+evar = var . annotate . Name <*> P.evar
 
 tvar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Int -> p
-tvar = var . P.tvar
+tvar = var . annotate . Name <*> P.tvar
 
 
 prettyMName :: Printer p => MName -> p
