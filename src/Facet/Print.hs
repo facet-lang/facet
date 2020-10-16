@@ -257,7 +257,7 @@ printCoreValue = go
 
 unLam' :: (Level, CV.Value Print) -> Maybe ((Level, Print), (Level, CV.Value Print))
 unLam' (d, v) = case CV.unLam v of
-  Just (n, t) -> let n' = unPl (braces . tvar) evar (pl n) (getLevel d) in Just ((d, n'), (succ d, t (CV.bound n')))
+  Just (n, t) -> let n' = unPl (braces . tvar) evar (pl n) (getLevel d) in Just ((d, n'), (succ d, t (CV.bound (cons d n'))))
   Nothing     -> Nothing
 
 lam
