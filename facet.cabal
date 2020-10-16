@@ -51,7 +51,6 @@ library
     Facet.Parser.Table
     Facet.Pretty
     Facet.Print
-    Facet.Print.Applicative
     Facet.REPL
     Facet.REPL.Parser
     Facet.Semiring
