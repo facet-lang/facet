@@ -73,7 +73,7 @@ getPrint :: Print -> PP.Doc ANSI.AnsiStyle
 getPrint = PP.reAnnotate terminalStyle . getPrint'
 
 getPrint' :: Print -> PP.Doc Highlight
-getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . runPrint . group
+getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . ($ (Level 0)) . runPrint . group
 
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
@@ -99,7 +99,7 @@ terminalStyle = \case
   len = length colours
 
 
-data Print = Print { fvs :: FVs, runPrint :: Prec Precedence (Rainbow (PP.Doc Highlight)) }
+data Print = Print { fvs :: FVs, runPrint :: Level -> Prec Precedence (Rainbow (PP.Doc Highlight)) }
 
 instance Semigroup Print where
   Print fvs1 d1 <> Print fvs2 d2 = Print (fvs1 <> fvs2) (d1 <> d2)
