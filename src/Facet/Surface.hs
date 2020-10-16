@@ -15,6 +15,8 @@ module Facet.Surface
   -- * Declarations
 , Decl(..)
 , unDForAll
+  -- * Modules
+, Module(..)
 ) where
 
 import Control.Applicative (liftA2)
@@ -116,3 +118,8 @@ infixr 1 :-->
 
 unDForAll :: Has Empty sig m => Decl a -> m (UName ::: Spanned (Type a), Spanned (Decl a))
 unDForAll = \case{ t :==> b -> pure (t, b) ; _ -> empty }
+
+
+-- FIXME: imports
+data Module a = Module { name :: MName, defs :: [Spanned (DName, Spanned (Decl a))] }
+  deriving (Foldable, Functor, Show, Traversable)
