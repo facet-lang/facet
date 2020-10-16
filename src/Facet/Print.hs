@@ -135,7 +135,6 @@ instance PrecedencePrinter Print where
   askingPrec f = Print mempty (askingPrec (runPrint . f))
   localPrec f p = Print (fvs p) (localPrec f (runPrint p))
 
-
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
 
