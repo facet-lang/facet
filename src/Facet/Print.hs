@@ -258,7 +258,7 @@ printCoreValue = go
     CV.Case p -> (pretty "case" <>) . block . commaSep $ map clause p
 
 var' :: Level -> PlName -> Print
-var' d n = unPl (braces . tvar) evar (pl n) (getLevel d)
+var' (Level d) n = unPl (braces (tvar d)) (evar d) (pl n)
 
 unLam' :: (Level, CV.Value Print) -> Maybe ((Level, Print), (Level, CV.Value Print))
 unLam' (d, v) = case CV.unLam v of
