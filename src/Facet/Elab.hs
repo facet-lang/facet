@@ -294,7 +294,7 @@ infix 1 |-*
 elabType
   :: (HasCallStack, Eq v)
   => Context (Val v ::: Type v)
-  -> Spanned (ST.Type Spanned a)
+  -> Spanned (ST.Type a)
   -> Maybe (Type v)
   -> Elab v (Type v ::: Type v)
 elabType ctx = withSpan' $ \case

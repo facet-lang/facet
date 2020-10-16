@@ -18,9 +18,9 @@ import Facet.Syntax ((:::)(..))
 import Text.Parser.Position
 
 data Decl a
-  = (UName ::: Spanned (Type Spanned a)) :=> Spanned (Decl a)
-  | (UName ::: Spanned (Type Spanned a)) :-> Spanned (Decl a)
-  | Spanned (Type Spanned a) := Spanned (Expr Spanned a)
+  = (UName ::: Spanned (Type a)) :=> Spanned (Decl a)
+  | (UName ::: Spanned (Type a)) :-> Spanned (Decl a)
+  | Spanned (Type a) := Spanned (Expr Spanned a)
   deriving (Foldable, Functor, Show, Traversable)
 
 infix 1 :=
@@ -28,5 +28,5 @@ infixr 1 :=>
 infixr 1 :->
 
 
-unForAll :: Has Empty sig m => Decl a -> m (UName ::: Spanned (Type Spanned a), Spanned (Decl a))
+unForAll :: Has Empty sig m => Decl a -> m (UName ::: Spanned (Type a), Spanned (Decl a))
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }

@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface.Type
@@ -19,21 +18,20 @@ import Data.Monoid (First(..))
 import Data.Text (Text)
 import Facet.Name
 import Facet.Syntax
+import Text.Parser.Position
 
-data Type f a
+data Type a
   = Free DName
   | Bound Index
   | Hole Text
   | Type
   | Void
   | Unit
-  | (UName ::: f (Type f a)) :=> f (Type f a)
-  | f (Type f a) :$ f (Type f a)
-  | f (Type f a) :-> f (Type f a)
-  | f (Type f a) :*  f (Type f a)
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance (Show a, forall a . Show a => Show (f a)) => Show (Type f a)
+  | (UName ::: Spanned (Type a)) :=> Spanned (Type a)
+  | Spanned (Type a) :$ Spanned (Type a)
+  | Spanned (Type a) :-> Spanned (Type a)
+  | Spanned (Type a) :*  Spanned (Type a)
+  deriving (Foldable, Functor, Show, Traversable)
 
 infixr 1 :=>
 infixl 9 :$
@@ -41,14 +39,14 @@ infixr 2 :->
 infixl 7 :*
 
 
-unForAll :: Has Empty sig m => Type f a -> m (UName ::: f (Type f a), f (Type f a))
+unForAll :: Has Empty sig m => Type a -> m (UName ::: Spanned (Type a), Spanned (Type a))
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
-unApp :: Has Empty sig m => Type f a -> m (f (Type f a), f (Type f a))
+unApp :: Has Empty sig m => Type a -> m (Spanned (Type a), Spanned (Type a))
 unApp = \case{ f :$ a -> pure (f, a) ; _ -> empty }
 
 
-aeq :: Foldable f => Type f a -> Type f a -> Bool
+aeq :: Type a -> Type a -> Bool
 aeq t1 t2 = case (t1, t2) of
   (Free  n1,           Free  n2)           -> n1 == n2
   (Bound n1,           Bound n2)           -> n1 == n2

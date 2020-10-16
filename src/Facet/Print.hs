@@ -273,7 +273,7 @@ printContextEntry :: Level -> UName ::: Print -> Print
 printContextEntry l (n ::: _T) = ann (cbound n l ::: _T)
 
 
-printSurfaceType :: (Foldable f, Functor f) => Stack Print -> ST.Type f a -> Print
+printSurfaceType :: Stack Print -> ST.Type a -> Print
 printSurfaceType = go
   where
   go env = \case
@@ -339,7 +339,7 @@ l ** r = tupled [l, r]
 (>~>) :: ((Pl, Print) ::: Print) -> Print -> Print
 ((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (var n ::: t) <> line))) </> arrow <+> b)
 
-forAlls :: (Foldable f, Functor f) => [Print ::: f (ST.Type f a)] -> Print -> Print
+forAlls :: (Foldable f, Functor f) => [Print ::: f (ST.Type a)] -> Print -> Print
 forAlls ts b = foldr go b (groupByType ST.aeq ts)
   where
   -- FIXME: this is horribly wrong and probably going to crash
