@@ -225,12 +225,14 @@ printCoreValue = go
     CV.Void     -> _Void
     CV.TUnit    -> _Unit
     CV.Unit     -> _Unit
-    -- FIXME: print as --> when the bound variable is unused
     t CV.:=> b  ->
       let n' = name d
           t' = go d (ty t)
-          b' = bind d (go (succ d) (b (CV.bound n')))
-      in ((pl (tm t), n') ::: t') >~> b'
+          b' = go (succ d) (b (CV.bound n'))
+      in if IntSet.member (getLevel d) (getFVs (fvs b')) then
+        ((pl (tm t), n') ::: t') >~> bind d b'
+      else
+        unPl braces id (pl (tm t)) t' --> bind d b'
     CV.Lam n b  ->
       let (vs, (d', b')) = splitr (unLam' (cons <*> var' True)) (d, CV.Lam n b)
           b'' = go d' b'
