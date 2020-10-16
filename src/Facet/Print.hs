@@ -124,10 +124,10 @@ instance Printer Doc where
   liftDoc1 f (Doc v d) = Doc v (f d)
   liftDoc2 f (Doc v1 d1) (Doc v2 d2) = Doc (v1 <> v2) (f d1 d2)
 
-  -- NB: column, nesting, & pageWidth all destroy fvs.
-  column    f = Doc mempty (column    (doc . f))
-  nesting   f = Doc mempty (nesting   (doc . f))
-  pageWidth f = Doc mempty (pageWidth (doc . f))
+  -- NB: FIXME: these run everything twice which seems bad.
+  column    f = Doc (fvs (f 0))         (column    (doc . f))
+  nesting   f = Doc (fvs (f 0))         (nesting   (doc . f))
+  pageWidth f = Doc (fvs (f Unbounded)) (pageWidth (doc . f))
 
   enclosing (Doc vl dl) (Doc vr dr) (Doc vx dx) = Doc (vl <> vr <> vx) (enclosing dl dr dx)
 
