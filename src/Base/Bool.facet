@@ -2,8 +2,8 @@ Base.Bool : Module
 {
 
 Bool : Type
-{ False : Bool
-, True : Bool
+{ false : Bool
+, true : Bool
 }
 
 }
