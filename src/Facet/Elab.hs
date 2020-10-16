@@ -164,27 +164,27 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     -> Elab v (Type v)
   go = \case
     -- FIXME: this is missing a lot of cases
-    Type       :===: Type       -> pure Type
-    Void       :===: Void       -> pure Void
-    TUnit      :===: TUnit      -> pure TUnit
-    Unit       :===: Unit       -> pure Unit
+    Type              :===: Type              -> pure Type
+    Void              :===: Void              -> pure Void
+    TUnit             :===: TUnit             -> pure TUnit
+    Unit              :===: Unit              -> pure Unit
     -- FIXME: resolve globals to try to progress past certain inequalities
-    Neut h1 e1 :===: Neut h2 e2
+    Neut h1 e1        :===: Neut h2 e2
       | h1 == h2
       , Just e' <- unifyS (e1 :===: e2) -> Neut h1 <$> e'
     Neut (Meta v) Nil :===: x                 -> solve (tm v := x)
     x                 :===: Neut (Meta v) Nil -> solve (tm v := x)
-    t1 :=> b1  :===: t2 :=> b2  -> do
+    t1 :=> b1         :===: t2 :=> b2         -> do
       t <- go (ty t1 :===: ty t2)
       b <- uname (tm t1) ::: t |- \ v -> do
         let b1' = b1 v
             b2' = b2 v
         go (b1' :===: b2')
       pure $ tm t1 ::: t :=> b
-    TPrd l1 r1 :===: TPrd l2 r2 -> TPrd <$> go (l1 :===: l2) <*> go (r1 :===: r2)
-    Prd  l1 r1 :===: Prd  l2 r2 -> Prd  <$> go (l1 :===: l2) <*> go (r1 :===: r2)
+    TPrd l1 r1        :===: TPrd l2 r2        -> TPrd <$> go (l1 :===: l2) <*> go (r1 :===: r2)
+    Prd  l1 r1        :===: Prd  l2 r2        -> Prd  <$> go (l1 :===: l2) <*> go (r1 :===: r2)
     -- FIXME: build and display a diff of the root types
-    t1 :===: t2                 -> couldNotUnify t1 t2
+    t1                :===: t2                -> couldNotUnify t1 t2
 
   unifyS (Nil          :===: Nil)          = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
