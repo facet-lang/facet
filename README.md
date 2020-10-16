@@ -170,6 +170,35 @@ BoolPair : Type
 
 ### Patterns
 
+Values can be examined and destructured by means of pattern matching. Function arguments—in curly braces, to the left of the arrow—are matched with patterns. The simplest case is a variable:
+
+```facet
+id : { A : Type } -> A -> A
+{ x -> x }
+```
+
+If you don’t need to use the argument, you can also use a _wildcard_, written as an underscore (`_`), to ignore it:
+
+```facet
+const : { A, B : Type } -> A -> B -> A
+{ a _ -> a }
+```
+
+Data constructors, introduced by datatypes, can be matched by mentioning their names (and further patterns for any fields) within parentheses; multiple pattern-matching _clauses_ are separated by commas:
+
+```facet
+not : Bool -> Bool
+{ (false) -> true
+, (true)  -> false
+}
+```
+
+(Requiring parentheses around constructor patterns allows us to distinguish them from variable patterns, and thus to avoid accidentally introducing bugs when a constructor is renamed or typo’d.)
+
+Patterns are matched in top-down order; the first matching clause will be executed. It is an error for no patterns to match.
+
+_TBD: exhaustiveness_
+
 
 ### Effects
 
