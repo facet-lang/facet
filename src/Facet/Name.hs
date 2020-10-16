@@ -109,6 +109,11 @@ instance Vars b => Vars (a -> b) where
   cons l = fmap (cons l)
   bind l = fmap (cons l)
 
+instance (Vars a, Vars b) => Vars (a, b) where
+  use l = (use l, use l)
+  cons l (a, b) = (cons l a, cons l b)
+  bind l (a, b) = (bind l a, bind l b)
+
 
 data Silent a b = Silent
   { ann :: a
