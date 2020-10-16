@@ -10,6 +10,7 @@ module Facet.Name
 , Level(..)
 , levelToIndex
 , indexToLevel
+, FVs(..)
 , Vars(..)
 , Silent(..)
 , __
@@ -27,6 +28,7 @@ module Facet.Name
 
 import           Data.Function (on)
 import           Data.Functor.Classes (showsBinaryWith, showsUnaryWith)
+import qualified Data.IntSet as IntSet
 import           Data.List.NonEmpty
 import           Data.String (IsString(..))
 import           Data.Text (Text, unpack)
@@ -73,6 +75,9 @@ levelToIndex (Level d) (Level level) = Index $ d - level - 1
 
 indexToLevel :: Int -> Index -> Level
 indexToLevel d (Index index) = Level $ d - index - 1
+
+
+newtype FVs = FVs { runFVs :: IntSet.IntSet -> IntSet.IntSet -> IntSet.IntSet }
 
 
 class Monoid v => Vars v where
