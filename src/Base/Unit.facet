@@ -1,6 +1,8 @@
 Base.Unit : Module
 {
 
-
+Unit : Type
+{ Unit : Unit
+}
 
 }
