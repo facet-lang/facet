@@ -202,11 +202,11 @@ ann (n ::: t) = n </> group (align (colon <+> flatAlt space mempty <> t))
 var :: (PrecedencePrinter p, P.Level p ~ Precedence) => p -> p
 var = setPrec Var
 
-evar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Int -> p
-evar = var . annotate . Name <*> P.evar
+evar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Level -> p
+evar = var . annotate . Name . getLevel <*> P.evar . getLevel
 
-tvar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Int -> p
-tvar = var . annotate . Name <*> P.tvar
+tvar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Level -> p
+tvar = var . annotate . Name . getLevel <*> P.tvar . getLevel
 
 
 prettyMName :: Printer p => MName -> p
@@ -237,12 +237,12 @@ printCoreValue = go
       in lam (map (\ (d, n) -> var' (IntSet.member (getLevel d) (getFVs (fvs b''))) d n) vs) b''
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
-    CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap (elim d) e
+    CV.Neut h e -> CV.unHead cfree id tvar (annotate Hole . (pretty '?' <>) . evar) h $$* fmap (elim d) e
     CV.TPrd l r -> go d l ** go d r
     CV.Prd  l r -> go d l ** go d r
-  name d = cons d (tvar (getLevel d))
+  name d = cons d (tvar d)
   clause d (p, b) =
-    let (d', p') = mapAccumL (\ d _ -> (succ d, let n' = evar (getLevel d) in (n', CV.bound n'))) d p
+    let (d', p') = mapAccumL (\ d _ -> (succ d, let n' = evar d in (n', CV.bound n'))) d p
         b' = foldr bind (go d' (b (snd <$> p'))) [d..d']
     in printCorePattern (fst <$> p') <+> arrow <+> b'
   elim d = \case
