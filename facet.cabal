@@ -55,6 +55,7 @@ library
     Facet.REPL.Parser
     Facet.Semiring
     Facet.Stack
+    Facet.Surface
     Facet.Surface.Decl
     Facet.Surface.Expr
     Facet.Surface.Module
