@@ -242,6 +242,7 @@ printCoreValue = go
       in ((pl (tm t), n') ::: t') >~> b'
     CV.Lam n b  -> withLevel $ \ d -> let (vs, (_, b')) = splitr unLam' (d, CV.Lam n b) in foldr bind (lam (map snd vs) (go b')) (map fst vs)
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
+    -- FIXME: should maybe print the quoted variable differently so it stands out.
     CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap elim e
     CV.TPrd l r -> go l ** go r
     CV.Prd  l r -> go l ** go r
