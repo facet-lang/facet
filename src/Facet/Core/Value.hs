@@ -207,7 +207,7 @@ handleBinderP :: (HasCallStack, Monad m, Traversable t) => Level -> t x -> (t (V
 handleBinderP d p b = do
   let (_, p') = mapAccumL (\ d _ -> (succ d, quote d)) d p
   b' <- b p'
-  pure $ \ v -> substQ (snd (foldr (\ v (d, s) -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
+  pure $ \ v -> substQ (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
 -- FIXME: is it possible to instead perform one complete substitution at the end of <whatever>?
 substQ :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a

@@ -466,7 +466,6 @@ elabPattern
 elabPattern = withSpan $ \case
   SP.Wildcard -> pure CP.Wildcard
   SP.Var n    -> Check $ \ _T -> pure (CP.Var (n ::: _T))
-  -- FIXME: tuple patterns seem to be getting elaborated backwards, cf uncurry.
   SP.Tuple ps -> Check $ \ _T -> CP.Tuple . toList <$> go _T (fromList ps)
     where
     go _T = \case
