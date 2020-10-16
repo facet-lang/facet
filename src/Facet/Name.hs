@@ -104,6 +104,11 @@ instance Vars FVs where
   cons (Level l) (FVs v) = FVs $ \ b -> v b . if l `IntSet.member` b then IntSet.insert l else id
   bind (Level l) (FVs r) = FVs $ \ b -> r (IntSet.insert l b)
 
+instance Vars b => Vars (a -> b) where
+  use l = pure (use l)
+  cons l = fmap (cons l)
+  bind l = fmap (cons l)
+
 
 data Silent a b = Silent
   { ann :: a
