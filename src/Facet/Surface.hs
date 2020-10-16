@@ -1,2 +1,12 @@
+{-# LANGUAGE DeriveTraversable #-}
 module Facet.Surface
-() where
+( Pattern(..)
+) where
+
+import Text.Parser.Position
+
+data Pattern a
+  = Wildcard
+  | Var a
+  | Tuple [Spanned (Pattern a)]
+  deriving (Foldable, Functor, Show, Traversable)
