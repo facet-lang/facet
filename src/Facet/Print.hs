@@ -426,7 +426,7 @@ printCoreDef = \case
   CM.DData cs -> block . commaSep $ map (ann . fmap (printCoreValue (Level 0)) . first pretty) cs
 
 
-printSurfaceModule :: (Foldable f, Functor f) => SM.Module f a -> Print
+printSurfaceModule :: SM.Module a -> Print
 printSurfaceModule (SM.Module n ds) = module' n (map (foldMap (uncurry printSurfaceDef)) ds)
 
 printSurfaceDef :: (Foldable f, Functor f) => DName -> f (SD.Decl f a) -> Print

@@ -8,9 +8,8 @@ module Facet.Surface.Module
 
 import Facet.Name
 import Facet.Surface.Decl (Decl)
+import Text.Parser.Position
 
 -- FIXME: imports
-data Module f a = Module { name :: MName, defs :: [f (DName, f (Decl f a))] }
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance (Show a, forall a . Show a => Show (f a)) => Show (Module f a)
+data Module a = Module { name :: MName, defs :: [Spanned (DName, Spanned (Decl Spanned a))] }
+  deriving (Foldable, Functor, Show, Traversable)

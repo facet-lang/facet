@@ -506,7 +506,7 @@ elabDecl = withSpans $ \case
 elabModule
   :: forall v a m sig
   .  (HasCallStack, Has (Throw (Err v)) sig m, Eq v)
-  => Spanned (SM.Module Spanned a)
+  => Spanned (SM.Module a)
   -> m (CM.Module v)
 elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (Type v))) $ do
   -- FIXME: elaborate all the types first, and only then the terms

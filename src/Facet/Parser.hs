@@ -103,7 +103,7 @@ whole p = whiteSpace *> p <* eof
 
 -- Modules
 
-module' :: (Monad p, PositionParsing p) => Facet p (Spanned (M.Module Spanned N.Index))
+module' :: (Monad p, PositionParsing p) => Facet p (Spanned (M.Module N.Index))
 module' = spanned (M.Module <$> mname <* colon <* symbol "Module" <*> braces (many decl))
 
 decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned (D.Decl Spanned N.Index)))
