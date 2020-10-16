@@ -42,7 +42,7 @@ unApp = \case
 
 data Comp f a
   = Expr (f (Expr f a))
-  | Clauses [(NonEmpty (f (Pattern f UName)), f (Expr f a))]
+  | Clauses [(NonEmpty (f (Pattern UName)), f (Expr f a))]
   deriving (Foldable, Functor, Traversable)
 
 deriving instance (Show a, forall a . Show a => Show (f a)) => Show (Comp f a)

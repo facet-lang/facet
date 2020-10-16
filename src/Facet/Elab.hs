@@ -428,7 +428,7 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
-elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned (SP.Pattern Spanned UName)), Spanned (SE.Expr Spanned a))] -> Check v (Expr v)
+elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned (SP.Pattern UName)), Spanned (SE.Expr Spanned a))] -> Check v (Expr v)
 -- FIXME: do the same thing for wildcards
 elabClauses ctx [((_, SP.Var n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
@@ -461,7 +461,7 @@ elabClauses ctx cs = Check $ \ _T -> do
 
 elabPattern
   :: Eq v
-  => Spanned (SP.Pattern Spanned UName)
+  => Spanned (SP.Pattern UName)
   -> Check v (CP.Pattern (UName ::: Type v))
 elabPattern = withSpan $ \case
   SP.Wildcard -> pure CP.Wildcard

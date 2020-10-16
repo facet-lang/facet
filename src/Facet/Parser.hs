@@ -186,7 +186,7 @@ comp :: (Monad p, PositionParsing p) => Facet p (Spanned (E.Expr Spanned N.Index
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
 comp = spanned (E.Comp <$> spanned (braces (E.Clauses <$> sepBy1 clause comma <|> E.Expr <$> expr <|> pure (E.Clauses []))))
 
-clause :: (Monad p, PositionParsing p) => Facet p (NE.NonEmpty (Spanned (P.Pattern Spanned N.UName)), Spanned (E.Expr Spanned N.Index))
+clause :: (Monad p, PositionParsing p) => Facet p (NE.NonEmpty (Spanned (P.Pattern N.UName)), Spanned (E.Expr Spanned N.Index))
 clause = (do
   ps <- try (NE.some1 pattern <* arrow)
   b' <- foldr (bindPattern . snd) expr ps
@@ -200,7 +200,7 @@ evar
 
 -- Patterns
 
-bindPattern :: PositionParsing p => P.Pattern Spanned N.UName -> Facet p a -> Facet p a
+bindPattern :: PositionParsing p => P.Pattern N.UName -> Facet p a -> Facet p a
 bindPattern p m = case p of
   P.Wildcard -> bind N.__ (const m)
   P.Var n    -> bind n    (const m)
@@ -219,7 +219,7 @@ wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
 
 -- FIXME: patterns
-pattern :: (Monad p, PositionParsing p) => p (Spanned (P.Pattern Spanned N.UName))
+pattern :: (Monad p, PositionParsing p) => p (Spanned (P.Pattern N.UName))
 pattern = spanned
   $   P.Var . N.getEName <$> ename
   <|> P.Wildcard <$  wildcard

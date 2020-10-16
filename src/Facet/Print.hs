@@ -370,7 +370,7 @@ printSurfaceExpr = go
       SE.Clauses cs -> commaSep (map (uncurry (printSurfaceClause env)) cs)
       -- comp . commaSep $ map (foldMap (printSurfaceClause env)) c
 
-printSurfaceClause :: (Foldable f, Functor f) => Stack Print -> NonEmpty (f (SP.Pattern f UName)) -> f (SE.Expr f a) -> Print
+printSurfaceClause :: (Foldable f, Functor f) => Stack Print -> NonEmpty (f (SP.Pattern UName)) -> f (SE.Expr f a) -> Print
 printSurfaceClause env ps b = foldMap (foldMap printSurfacePattern) ps' <+> arrow <> group (nest 2 (line <> prec Expr (foldMap (printSurfaceExpr env') b)))
   where
   ps' = fmap (fmap sbound) <$> ps
@@ -382,7 +382,7 @@ printCorePattern = \case
   CP.Var n    -> n
   CP.Tuple p  -> tupled (map printCorePattern p)
 
-printSurfacePattern :: (Foldable f, Functor f) => SP.Pattern f Print -> Print
+printSurfacePattern :: SP.Pattern Print -> Print
 printSurfacePattern p = prec Pattern $ case p of
   SP.Wildcard -> pretty '_'
   SP.Var n    -> n
