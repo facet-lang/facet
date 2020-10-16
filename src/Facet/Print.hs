@@ -109,6 +109,7 @@ instance Monoid Print where
 
 instance Vars Print where
   use l = Print (use l) mempty
+  cons l (Print fvs b) = Print (cons l fvs) b
   bind l (Print fvs b) = Print (bind l fvs) b
 
 instance Printer Print where
