@@ -101,6 +101,7 @@ class Monoid v => Vars v where
 
 instance Vars FVs where
   use (Level l) = FVs $ \ b f -> if l `IntSet.member` b then IntSet.insert l f else f
+  cons (Level l) (FVs v) = FVs $ \ b f -> v b (if l `IntSet.member` b then IntSet.insert l f else f)
   bind (Level l) (FVs r) = FVs $ \ b f -> r (IntSet.insert l b) f
 
 
