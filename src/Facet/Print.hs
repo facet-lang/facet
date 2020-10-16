@@ -194,9 +194,8 @@ printCoreValue = go
     CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap (elim d) e
     CV.TPrd l r -> go d l ** go d r
     CV.Prd  l r -> go d l ** go d r
-  name n d = cbound n tvar d
   clause d (p, b) =
-    let p' = snd (mapAccumL (\ d n -> (succ d, let n' = name n d in (n', CV.bound n'))) d p)
+    let p' = snd (mapAccumL (\ d n -> (succ d, let n' = cbound n d in (n', CV.bound n'))) d p)
         b' = go (succ d) (b (snd <$> p'))
     in printCorePattern (fst <$> p') <+> arrow <+> b'
   elim d = \case
@@ -216,7 +215,7 @@ lam vs b = block $ hsep vs <+> arrow <> nest 2 (line <> b)
 
 
 printContextEntry :: Level -> UName ::: Print -> Print
-printContextEntry l (n ::: _T) = ann (cbound n tvar l ::: _T)
+printContextEntry l (n ::: _T) = ann (cbound n l ::: _T)
 
 
 printSurfaceType :: (Foldable f, Functor f) => Stack Print -> ST.Type f a -> Print
@@ -248,8 +247,8 @@ cfree = var . prettyQName
 sbound :: UName -> Print
 sbound = var . pretty
 
-cbound :: UName -> (Int -> Print) -> Level -> Print
-cbound h printLevel level
+cbound :: UName -> Level -> Print
+cbound h level
   | T.null (getUName h) = pretty '_' <> pretty (getLevel level)
   | otherwise           = pretty h   <> pretty (getLevel level)
 
