@@ -149,6 +149,9 @@ instance Show Print where
 instance Eq Print where
   (==) = (==) `on` show
 
+withLevel :: (Level -> Print) -> Print
+withLevel f = Print $ \ d -> runPrint (f d) d
+
 
 data Precedence
   = Null
