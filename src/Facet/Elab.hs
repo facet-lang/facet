@@ -244,12 +244,9 @@ bound
   :: Context (Val v ::: Type v)
   -> Index
   -> Synth v (Val v)
-bound ctx n = Synth $ do
-  -- ctx <- askContext
-  -- FIXME: this assumes that the core & surface languages have identical binding structure, which in general they do not.
-  case ctx !? n of
-    Just (_ ::: (v ::: _T)) -> pure (v ::: _T)
-    Nothing                 -> err $ BadContext n
+bound ctx n = Synth $ case ctx !? n of
+  Just (_ ::: (v ::: _T)) -> pure (v ::: _T)
+  Nothing                 -> err $ BadContext n
 
 hole
   :: T.Text
