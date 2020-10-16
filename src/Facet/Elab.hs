@@ -172,8 +172,8 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     Neut h1 e1 :===: Neut h2 e2
       | h1 == h2
       , Just e' <- unifyS (e1 :===: e2) -> Neut h1 <$> e'
-    Neut (Metavar v) Nil :===: x -> solve (v := x)
-    x :===: Neut (Metavar v) Nil -> solve (v := x)
+    Neut (Metavar v) Nil :===: x -> solve (tm v := x)
+    x :===: Neut (Metavar v) Nil -> solve (tm v := x)
     t1 :=> b1  :===: t2 :=> b2  -> do
       t <- go (ty t1 :===: ty t2)
       b <- uname (tm t1) ::: t |- \ v -> do
@@ -205,7 +205,7 @@ meta _T = do
   subst <- getSubst
   let m = Level (length subst)
   put (insertSubst m (Nothing ::: _T) subst)
-  pure $ CV.metavar m
+  pure $ CV.metavar (m ::: _T)
 
 insertSubst :: Level -> Maybe (Prob v) ::: Type v -> Subst v -> Subst v
 insertSubst n (v ::: _T) = IntMap.insert (getLevel n) (v ::: _T)

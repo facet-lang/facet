@@ -108,10 +108,19 @@ data Head a
   = Global QName
   | Free a
   | Quote Level
-  | Metavar Level
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+  | Metavar (Level ::: Value a) -- ^ Metavariables, considered equal by 'Level'.
 
-unHead :: (QName -> b) -> (a -> b) -> (Level -> b) -> (Level -> b) -> Head a -> b
+instance Eq a => Eq (Head a) where
+  Global q1  == Global q2  = q1 == q2
+  Global _   == _          = False
+  Free a1    == Free a2    = a1 == a2
+  Free _     == _          = False
+  Quote l1   == Quote l2   = l1 == l2
+  Quote _    == _          = False
+  Metavar m1 == Metavar m2 = tm m1 == tm m2
+  Metavar _  == _          = False
+
+unHead :: (QName -> b) -> (a -> b) -> (Level -> b) -> (Level ::: Value a -> b) -> Head a -> b
 unHead f g h i = \case
   Global  n -> f n
   Free    n -> g n
@@ -133,7 +142,7 @@ free = var . Free
 quote :: Level -> Value a
 quote = var . Quote
 
-metavar :: Level -> Value a
+metavar :: Level ::: Value a -> Value a
 metavar = var . Metavar
 
 
