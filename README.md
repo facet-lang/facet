@@ -150,6 +150,23 @@ const7 : { A, B : Type } -> (a : A) -> (b : B) -> A
 
 ### Data
 
+Data types are defined using a similar syntax to other declarations, but with init-caps names (like all Facet types). The block contains a comma-separated list of zero or more _constructors_, with init-lowercase names (like all Facet terms) followed by their types. For example, here is how you would define a boolean type (if one weren’t already defined for you):
+
+```facet
+Bool : Type
+{ false : Bool
+, true  : Bool
+}
+```
+
+Constructors with fields include them in their types:
+
+```
+BoolPair : Type
+{ boolPair : Bool -> Bool -> BoolPair
+}
+```
+
 
 ### Patterns
 
