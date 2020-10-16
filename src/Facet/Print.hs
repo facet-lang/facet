@@ -39,6 +39,7 @@ import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
 import           Data.Function (on)
+import qualified Data.IntSet as IntSet
 import           Data.List (intersperse)
 import           Data.List.NonEmpty (NonEmpty)
 import           Data.Monoid (First(..))
@@ -226,6 +227,10 @@ prettyQName :: PrecedencePrinter p => QName -> p
 prettyQName (mname :.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
+-- FIXME: this is what happens when you can’t track state statically.
+withFVsIn :: Print -> (IntSet.IntSet -> Print -> Print) -> Print
+withFVsIn (Print r) f = Print $ \ d -> Prec $ \ l -> Rainbow $ \ t n -> let Doc v p = runRainbow t n (runPrec l (r d)) in runRainbow t n (runPrec l (runPrint (f (getFVs v) (Print (pure (pure (Rainbow (\ _ _ -> Doc v p)))))) d))
+
 printCoreValue ::  CV.Value Print -> Print
 printCoreValue = go
   where
@@ -241,8 +246,8 @@ printCoreValue = go
           b' = bind d (go (b (CV.bound n')))
       in ((pl (tm t), n') ::: t') >~> b'
     CV.Lam n b  -> withLevel $ \ d ->
-      let (vs, (_, b')) = splitr (unLam' (var' True)) (d, CV.Lam n b)
-      in lam (map (\ (d, n) -> var' True d n) vs) (foldr (bind . fst) (go b') vs)
+      let (vs, (_, b')) = splitr (unLam' (cons <*> var' True)) (d, CV.Lam n b)
+      in withFVsIn (go b') $ \ fvs b'' -> lam (map (\ (d, n) -> var' (IntSet.member (getLevel d) fvs) d n) vs) b''
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap elim e
@@ -263,9 +268,9 @@ var' u (Level d) n = var $ annotate (Name d) $ unPl (braces (p <> P.tvar d)) (p 
   p | u         = mempty
     | otherwise = pretty '_'
 
-unLam' :: Vars a => (Level -> PlName -> a) -> (Level, CV.Value a) -> Maybe ((Level, PlName), (Level, CV.Value a))
+unLam' :: (Level -> PlName -> a) -> (Level, CV.Value a) -> Maybe ((Level, PlName), (Level, CV.Value a))
 unLam' var (d, v) = case CV.unLam v of
-  Just (n, t) -> let n' = var d n in Just ((d, n), (succ d, t (CV.bound (cons d n'))))
+  Just (n, t) -> let n' = var d n in Just ((d, n), (succ d, t (CV.bound n')))
   Nothing     -> Nothing
 
 lam
