@@ -11,6 +11,15 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Provide a more systematic treatment of types/expressions in (meta)context.
 
+- LSP.
+
+- Enriched intermediate languages for optimization.
+
+- Definition-level incremental computation.
+  - Definitional-level dependency tracking.
+
+- Self-host.
+
 
 ## Language
 
