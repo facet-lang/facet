@@ -266,7 +266,7 @@ lam
   :: [Print] -- ^ the bound variables.
   -> Print   -- ^ the body.
   -> Print
-lam vs b = block $ hsep vs <+> arrow <> nest 2 (line <> b)
+lam vs b = block $ nest 2 $ group (setPrec Pattern (vsep vs) </> arrow) </> b
 
 
 printContextEntry :: Level -> UName ::: Print -> Print
