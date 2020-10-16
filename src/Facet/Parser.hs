@@ -170,7 +170,7 @@ tvar = token (spanned (runUnspaced (fmap (either (T.Free . N.T) (T.Bound)) . res
 
 -- Expressions
 
-exprTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned (E.Expr Spanned N.Index))
+exprTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned (E.Expr N.Index))
 exprTable =
   [ [ Infix L mempty (\ s -> fmap ((,) s) . (E.:$)) ]
   , [ Atom comp
@@ -179,20 +179,20 @@ exprTable =
     ]
   ]
 
-expr :: (Monad p, PositionParsing p) => Facet p (Spanned (E.Expr Spanned N.Index))
+expr :: (Monad p, PositionParsing p) => Facet p (Spanned (E.Expr N.Index))
 expr = build exprTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap ((,) s) . (E.:*)))))
 
-comp :: (Monad p, PositionParsing p) => Facet p (Spanned (E.Expr Spanned N.Index))
+comp :: (Monad p, PositionParsing p) => Facet p (Spanned (E.Expr N.Index))
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
 comp = spanned (E.Comp <$> spanned (braces (E.Clauses <$> sepBy1 clause comma <|> E.Expr <$> expr <|> pure (E.Clauses []))))
 
-clause :: (Monad p, PositionParsing p) => Facet p (NE.NonEmpty (Spanned (P.Pattern N.UName)), Spanned (E.Expr Spanned N.Index))
+clause :: (Monad p, PositionParsing p) => Facet p (NE.NonEmpty (Spanned (P.Pattern N.UName)), Spanned (E.Expr N.Index))
 clause = (do
   ps <- try (NE.some1 pattern <* arrow)
   b' <- foldr (bindPattern . snd) expr ps
   pure (ps, b')) <?> "clause"
 
-evar :: (Monad p, PositionParsing p) => Facet p (Spanned (E.Expr Spanned N.Index))
+evar :: (Monad p, PositionParsing p) => Facet p (Spanned (E.Expr N.Index))
 evar
   =   token (spanned (runUnspaced (fmap (either (E.Free . N.E) E.Bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
   <|> try (token (spanned (runUnspaced (E.Free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that

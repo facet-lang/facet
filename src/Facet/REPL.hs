@@ -112,7 +112,7 @@ data Action
   | Quit
   | Load FilePath
   | Reload
-  | Type (Spanned (Expr Spanned Index))
+  | Type (Spanned (Expr Index))
   | Kind (Spanned (Type Index))
 
 load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()

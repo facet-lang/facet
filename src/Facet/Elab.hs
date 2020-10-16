@@ -357,7 +357,7 @@ infixr 1 >~>
 elabExpr
   :: (HasCallStack, Eq v)
   => Context (Val v ::: Type v)
-  -> Spanned (SE.Expr Spanned a)
+  -> Spanned (SE.Expr a)
   -> Maybe (Type v)
   -> Elab v (Expr v ::: Type v)
 elabExpr ctx = withSpan' $ \case
@@ -406,7 +406,7 @@ l ** r = Check $ \ _T -> do
 elabComp
   :: (HasCallStack, Eq v)
   => Context (Val v ::: Type v)
-  -> Spanned (SE.Comp Spanned a)
+  -> Spanned (SE.Comp a)
   -> Check v (Expr v)
 elabComp ctx = withSpan $ \case
   SE.Expr    b  -> checkElab (elabExpr ctx b)
@@ -428,7 +428,7 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
-elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned (SP.Pattern UName)), Spanned (SE.Expr Spanned a))] -> Check v (Expr v)
+elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned (SP.Pattern UName)), Spanned (SE.Expr a))] -> Check v (Expr v)
 -- FIXME: do the same thing for wildcards
 elabClauses ctx [((_, SP.Var n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T

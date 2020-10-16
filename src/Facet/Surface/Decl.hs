@@ -20,7 +20,7 @@ import Text.Parser.Position
 data Decl a
   = (UName ::: Spanned (Type a)) :=> Spanned (Decl a)
   | (UName ::: Spanned (Type a)) :-> Spanned (Decl a)
-  | Spanned (Type a) := Spanned (Expr Spanned a)
+  | Spanned (Type a) := Spanned (Expr a)
   deriving (Foldable, Functor, Show, Traversable)
 
 infix 1 :=
