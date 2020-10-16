@@ -103,8 +103,8 @@ class Monoid v => Vars v where
   {-# MINIMAL (use|cons), bind #-}
 
 instance Vars FVs where
-  use (Level l) = FVs $ \ b -> if l `IntSet.member` b then IntSet.insert l else id
-  cons (Level l) (FVs v) = FVs $ \ b -> v b . if l `IntSet.member` b then IntSet.insert l else id
+  use (Level l) = FVs $ \ b -> if l `IntSet.member` b then id else IntSet.insert l
+  cons (Level l) (FVs v) = FVs $ \ b -> v b . if l `IntSet.member` b then id else IntSet.insert l
   bind (Level l) (FVs r) = FVs $ \ b -> r (IntSet.insert l b)
 
 instance Vars b => Vars (a -> b) where
