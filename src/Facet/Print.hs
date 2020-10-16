@@ -155,9 +155,6 @@ withLevel f = Print $ \ d -> runPrint (f d) d
 setLevel :: Level -> Print -> Print
 setLevel l p = Print $ \ _ -> runPrint p l
 
-withFVsIn :: Print -> (IntSet.IntSet -> Print -> Print) -> Print
-withFVsIn (Print r) f = Print $ \ d -> let (v, b) = r d in runPrint (f (getFVs v) (Print (const (v, b)))) d
-
 
 data Precedence
   = Null
