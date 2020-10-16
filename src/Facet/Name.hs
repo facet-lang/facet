@@ -5,7 +5,6 @@
 {-# LANGUAGE LambdaCase #-}
 module Facet.Name
 ( UName(..)
-, PlName(..)
 , Index(..)
 , Level(..)
 , levelToIndex
@@ -28,14 +27,13 @@ module Facet.Name
 ) where
 
 import           Data.Function (on)
-import           Data.Functor.Classes (showsBinaryWith, showsUnaryWith)
+import           Data.Functor.Classes (showsUnaryWith)
 import qualified Data.IntSet as IntSet
 import           Data.List.NonEmpty hiding (cons)
 import           Data.Semigroup
 import           Data.String (IsString(..))
 import           Data.Text (Text, unpack)
 import qualified Data.Text as T
-import           Facet.Syntax
 import qualified Prettyprinter as P
 import           Silkscreen
 
@@ -48,14 +46,6 @@ instance Show UName where
 
 instance P.Pretty UName where
   pretty = P.pretty . getUName
-
-
--- | User-supplied name paired with a 'Pl' describing whether it should be supplied implicitly (by unification) or explicitly (e.g. by juxtaposition).
-data PlName = P { pl :: Pl, uname :: UName }
-  deriving (Eq, Ord)
-
-instance Show PlName where
-  showsPrec p (P pl uname) = showsBinaryWith showsPrec showsPrec "P" p pl uname
 
 
 -- | De Bruijn indices, counting up from the binding site to the reference site (“inside out”).

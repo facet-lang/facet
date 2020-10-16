@@ -111,8 +111,8 @@ unPl im ex = \case
   Ex -> ex
 
 
-data Pl_ a = Pl_
-  { pl_ :: Pl
+data Pl_ a = P
+  { pl  :: Pl
   , out :: a
   }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)

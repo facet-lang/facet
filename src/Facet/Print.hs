@@ -249,13 +249,13 @@ printCoreValue = go
     C.App  a -> f $$ go d a
     C.Case p -> nest 2 $ group $ pretty "case" <+> setPrec Expr f </> block (commaSep (map (clause d) p))
 
-var' :: Bool -> Level -> PlName ::: C.Value Print -> Print
+var' :: Bool -> Level -> Pl_ UName ::: C.Value Print -> Print
 var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ var (annotate (Name d) (p <> unPl tvar evar (pl n) d)) ::: printCoreValue d _T
   where
   p | u         = mempty
     | otherwise = pretty '_'
 
-unLam' :: (Level -> PlName ::: C.Value a -> a) -> (Level, C.Value a) -> Maybe ((Level, PlName ::: C.Value a), (Level, C.Value a))
+unLam' :: (Level -> Pl_ UName ::: C.Value a -> a) -> (Level, C.Value a) -> Maybe ((Level, Pl_ UName ::: C.Value a), (Level, C.Value a))
 unLam' var (d, v) = case C.unLam v of
   Just (n, t) -> let n' = var d n in Just ((d, n), (succ d, t (C.free n')))
   Nothing     -> Nothing

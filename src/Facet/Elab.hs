@@ -64,7 +64,7 @@ import           Facet.Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
 import qualified Facet.Env as Env
-import           Facet.Name (DName, Index(..), Level(..), PlName(..), QName(..), UName, __)
+import           Facet.Name (DName, Index(..), Level(..), QName(..), UName, __)
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as SD
 import qualified Facet.Surface as SE
@@ -174,7 +174,7 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     x                 :===: Neut (Meta v) Nil -> solve (tm v :=: x)
     t1 :=> b1         :===: t2 :=> b2         -> do
       t <- go (ty t1 :===: ty t2)
-      b <- uname (tm t1) ::: t |- \ v -> do
+      b <- out (tm t1) ::: t |- \ v -> do
         let b1' = b1 v
             b2' = b2 v
         go (b1' :===: b2')
@@ -339,12 +339,12 @@ a --> b = P Ex __ ::: a >~> const b
 infixr 1 -->
 
 (>~>)
-  :: (PlName ::: Check v (Type v))
+  :: (Pl_ UName ::: Check v (Type v))
   -> (UName ::: Val v ::: Type v -> Check v (Type v))
   -> Synth v (Type v)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
-  b' <- uname n ::: _T |- \ v -> check (b (uname n ::: v ::: _T) ::: Type)
+  b' <- out n ::: _T |- \ v -> check (b (out n ::: v ::: _T) ::: Type)
   pure $ (n ::: _T :=> b') ::: Type
 
 infixr 1 >~>
@@ -586,7 +586,7 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 expectMatch :: (Type v -> Maybe out) -> String -> String -> Type v -> Elab v out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifiedType :: String -> Type v -> Elab v (PlName ::: Type v, Type v -> Type v)
+expectQuantifiedType :: String -> Type v -> Elab v (Pl_ UName ::: Type v, Type v -> Type v)
 expectQuantifiedType = expectMatch unForAll "{_} -> _"
 
 expectProductType :: String -> Type v -> Elab v (Type v, Type v)
