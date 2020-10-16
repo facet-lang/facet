@@ -17,21 +17,21 @@ Base.Bool : Module
 # testing
 
 Bool : Type
-{ False : Bool
-, True  : Bool
+{ false : Bool
+, true  : Bool
 }
 
 not : Bool -> Bool
-{ False -> True
-, True  -> False
+{ (false) -> true
+, (true)  -> false
 }
 
 not : Doc # fixme: annotate to indicate it’s only available at doc time
 # fixme: would be nice to somehow attach this to the definition above in the syntax tree too
 { line "negate a Bool"
 , examples # these would presumably be automatically tested
-  [ not True  ==> False
-  , not False ==> True
+  [ not true  ==> false
+  , not false ==> true
   ]
 , properties # these would presumably be automatically property tested
   [ prop "anti-idempotence" : Bool -> Prop { x -> not x =/= not (not x) }
@@ -41,15 +41,15 @@ not : Doc # fixme: annotate to indicate it’s only available at doc time
 
 bool
 : (e : {a}) -> (t : {a}) -> Bool -> a
-{ False -> e!
-, True  -> t!
+{ (false) -> e!
+, (true)  -> t!
 }
 
 # fixme: what would be a good syntax for linearity annotations?
 # fixme: how do we describe the compilation of this down to a branch instruction?
 if
 : (c : Bool) -> (t : {a}) -> (e : {a}) -> a
-{ case c { True -> t! , False -> e! } }
+{ case c { (true) -> t! , (false) -> e! } }
 
 # fixme: can we type terms in declaration scope as having compile-time phasing using QTT–style annotations on the context?
 # fixme: can we just sort of assume that stuff has the same phase as its module? (or “no earlier than” perhaps?)
