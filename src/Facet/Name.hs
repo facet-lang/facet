@@ -31,6 +31,7 @@ import           Data.Function (on)
 import           Data.Functor.Classes (showsBinaryWith, showsUnaryWith)
 import qualified Data.IntSet as IntSet
 import           Data.List.NonEmpty hiding (cons)
+import           Data.Semigroup
 import           Data.String (IsString(..))
 import           Data.Text (Text, unpack)
 import qualified Data.Text as T
@@ -85,6 +86,8 @@ getFVs v = runFVs v mempty mempty
 
 instance Semigroup FVs where
   FVs v1 <> FVs v2 = FVs $ \ b -> v1 b . v2 b
+
+  stimes = stimesIdempotentMonoid
 
 instance Monoid FVs where
   mempty = FVs $ const id
