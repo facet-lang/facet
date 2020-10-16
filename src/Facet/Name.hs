@@ -94,6 +94,10 @@ class Monoid v => Vars v where
   use :: Level -> v
   bind :: Level -> v -> v
 
+instance Vars FVs where
+  use (Level l) = FVs $ \ b f -> if l `IntSet.member` b then IntSet.insert l f else f
+  bind (Level l) (FVs r) = FVs $ \ b f -> r (IntSet.insert l b) f
+
 
 data Silent a b = Silent
   { ann :: a
