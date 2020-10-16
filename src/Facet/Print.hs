@@ -152,6 +152,9 @@ instance Eq Print where
 withLevel :: (Level -> Print) -> Print
 withLevel f = Print $ \ d -> runPrint (f d) d
 
+setLevel :: Level -> Print -> Print
+setLevel l p = Print $ \ _ -> runPrint p l
+
 withFVsIn :: Print -> (FVs -> Print) -> Print
 withFVsIn (Print r) f = Print $ \ d -> let (v, b) = r d in fmap (b <>) (runPrint (f v) d)
 
