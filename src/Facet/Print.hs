@@ -239,7 +239,7 @@ printCoreValue = go
       in lam (map (\ (d, n) -> var' (IntSet.member (getLevel d) (getFVs (fvs b''))) d n) vs) b''
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
-    CV.Neut h e -> CV.unHead cfree id tvar (annotate Hole . (pretty '?' <>) . evar) h $$* fmap (elim d) e
+    CV.Neut h e -> group $ foldl' (elim d) (CV.unHead cfree id tvar (annotate Hole . (pretty '?' <>) . evar) h) e
     CV.TPrd l r -> go d l ** go d r
     CV.Prd  l r -> go d l ** go d r
   name d = cons d (tvar d)
@@ -247,9 +247,9 @@ printCoreValue = go
     let (d', p') = mapAccumL (\ d _ -> (succ d, let n' = evar d in (n', CV.bound n'))) d p
         b' = foldr bind (go d' (b (snd <$> p'))) [d..d']
     in printCorePattern (fst <$> p') <+> arrow <+> b'
-  elim d = \case
-    CV.App  a -> go d a
-    CV.Case p -> (pretty "case" <>) . block . commaSep $ map (clause d) p
+  elim d f = \case
+    CV.App  a -> f $$ go d a
+    CV.Case p -> pretty "case" <+> setPrec Expr f <+> block (commaSep (map (clause d) p))
 
 var' :: Bool -> Level -> PlName ::: CV.Value Print -> Print
 var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ var (annotate (Name d) (p <> unPl tvar evar (pl n) d)) ::: printCoreValue d _T
