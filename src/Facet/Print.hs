@@ -249,7 +249,7 @@ printCoreValue = go
     in nest 2 $ group (prec Pattern (printCorePattern p') </> arrow) </> b'
   elim d f = \case
     CV.App  a -> f $$ go d a
-    CV.Case p -> pretty "case" <+> setPrec Expr f <+> block (commaSep (map (clause d) p))
+    CV.Case p -> nest 2 $ group $ pretty "case" <+> setPrec Expr f </> block (commaSep (map (clause d) p))
 
 var' :: Bool -> Level -> PlName ::: CV.Value Print -> Print
 var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ var (annotate (Name d) (p <> unPl tvar evar (pl n) d)) ::: printCoreValue d _T
