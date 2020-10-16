@@ -29,6 +29,8 @@ import Facet.Name
 import Facet.Syntax
 import Text.Parser.Position
 
+-- Expressions
+
 data Expr a
   = Free DName
   | Bound Index
@@ -62,6 +64,8 @@ data Pattern a
   | Tuple [Spanned (Pattern a)]
   deriving (Foldable, Functor, Show, Traversable)
 
+
+-- Types
 
 data Type a
   = TFree DName
@@ -105,6 +109,8 @@ aeq t1 t2 = case (t1, t2) of
   extract = getFirst . foldMap (First . Just)
 
 
+-- Declarations
+
 data Decl a
   = (UName ::: Spanned (Type a)) :==> Spanned (Decl a)
   | (UName ::: Spanned (Type a)) :--> Spanned (Decl a)
@@ -119,6 +125,8 @@ infixr 1 :-->
 unDForAll :: Has Empty sig m => Decl a -> m (UName ::: Spanned (Type a), Spanned (Decl a))
 unDForAll = \case{ t :==> b -> pure (t, b) ; _ -> empty }
 
+
+-- Modules
 
 -- FIXME: imports
 data Module a = Module { name :: MName, defs :: [Spanned (DName, Spanned (Decl a))] }
