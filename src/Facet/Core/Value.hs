@@ -12,7 +12,7 @@ module Facet.Core.Value
 , Elim(..)
 , unHead
 , global
-, bound
+, free
 , metavar
 , unForAll
 , unLam
@@ -72,13 +72,13 @@ instance (Eq a, Num a) => Eq (Value a) where
       (Unit, _) -> False
       (t1 :=> b1, t2 :=> b2) ->
         pl (tm t1) == pl (tm t2) && go n (ty t1) (ty t2)
-        &&  let b1' = b1 (bound n)
-                b2' = b2 (bound n)
+        &&  let b1' = b1 (free n)
+                b2' = b2 (free n)
             in go (n + 1) b1' b2'
       (_ :=> _, _) -> False
       (Lam _ b1, Lam _ b2) ->
-        let b1' = b1 (bound n)
-            b2' = b2 (bound n)
+        let b1' = b1 (free n)
+            b2' = b2 (free n)
         in go (n + 1) b1' b2'
       (Lam _ _, _) -> False
       (Neut h1 sp1, Neut h2 sp2) -> h1 == h2 && eqSp n sp1 sp2
@@ -98,7 +98,7 @@ instance (Eq a, Num a) => Eq (Value a) where
       (Case _, _) -> False
     eqPat n (p1, b1) (p2, b2)
       =   void p1 == void p2
-      &&  let (n', p') = mapAccumL (\ n _ -> (n + 1, bound n)) n p2
+      &&  let (n', p') = mapAccumL (\ n _ -> (n + 1, free n)) n p2
               b1' = b1 p'
               b2' = b2 p'
           in go n' b1' b2'
@@ -127,9 +127,8 @@ data Elim a
 global :: QName -> Value a
 global = var . Global
 
--- FIXME: this should actually be free
-bound :: a -> Value a
-bound = var . Free
+free :: a -> Value a
+free = var . Free
 
 quote :: Level -> Value a
 quote = var . Quote
@@ -214,7 +213,7 @@ subst s = go
       let t' = fmap go t
       in t' :=> go . b
     Lam n b  -> Lam n (go . b)
-    Neut f a -> unHead global bound (s !) metavar f `elimN` fmap substElim a
+    Neut f a -> unHead global free (s !) metavar f `elimN` fmap substElim a
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
   substElim = \case

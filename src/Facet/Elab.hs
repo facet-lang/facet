@@ -63,7 +63,7 @@ import           Data.Traversable (for)
 import           Facet.Context
 import qualified Facet.Core.Module as CM
 import qualified Facet.Core.Pattern as CP
-import           Facet.Core.Value hiding (bound, global, ($$))
+import           Facet.Core.Value hiding (global, ($$))
 import qualified Facet.Core.Value as CV
 import qualified Facet.Env as Env
 import           Facet.Name (DName, Index(..), Level(..), PlName(..), QName(..), UName, __)

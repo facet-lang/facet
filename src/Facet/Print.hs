@@ -228,7 +228,7 @@ printCoreValue = go
     t CV.:=> b  ->
       let n' = name d
           t' = go d (ty t)
-          b' = go (succ d) (b (CV.bound n'))
+          b' = go (succ d) (b (CV.free n'))
       in if IntSet.member (getLevel d) (getFVs (fvs b')) then
         ((pl (tm t), n') ::: t') >~> bind d b'
       else
@@ -245,7 +245,7 @@ printCoreValue = go
   name d = cons d (tvar d)
   clause d (p, b) =
     let (d', p') = mapAccumL (\ d' (_ ::: _T) -> (succ d', ann (evar d' ::: go d _T))) d p
-        b' = foldr bind (go d' (b (CV.bound <$> p'))) [d..d']
+        b' = foldr bind (go d' (b (CV.free <$> p'))) [d..d']
     in nest 2 $ group (prec Pattern (printCorePattern p') </> arrow) </> b'
   elim d f = \case
     CV.App  a -> f $$ go d a
@@ -259,7 +259,7 @@ var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ var (annotat
 
 unLam' :: (Level -> PlName ::: CV.Value a -> a) -> (Level, CV.Value a) -> Maybe ((Level, PlName ::: CV.Value a), (Level, CV.Value a))
 unLam' var (d, v) = case CV.unLam v of
-  Just (n, t) -> let n' = var d n in Just ((d, n), (succ d, t (CV.bound n')))
+  Just (n, t) -> let n' = var d n in Just ((d, n), (succ d, t (CV.free n')))
   Nothing     -> Nothing
 
 lam
