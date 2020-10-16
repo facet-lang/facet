@@ -73,7 +73,7 @@ getPrint :: Print -> PP.Doc ANSI.AnsiStyle
 getPrint = PP.reAnnotate terminalStyle . getPrint'
 
 getPrint' :: Print -> PP.Doc Highlight
-getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . snd . ($ (Level 0)) . runPrint . group
+getPrint' = doc . runRainbow (annotate . Nest) 0 . runPrec Null . ($ (Level 0)) . runPrint . group
 
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
@@ -99,48 +99,51 @@ terminalStyle = \case
   len = length colours
 
 
-newtype Print = Print { runPrint :: Level -> (FVs, Prec Precedence (Rainbow (PP.Doc Highlight))) }
-  deriving (Monoid, Semigroup)
+data Doc = Doc
+  { fvs :: FVs
+  , doc :: PP.Doc Highlight
+  }
 
-instance Vars Print where
-  use l = Print $ \ _ -> (use l, mempty)
-  cons l (Print b) = Print $ first (cons l) . b
-  bind l (Print b) = Print $ first (bind l) . b . succ
+instance Semigroup Doc where
+  Doc v1 d1 <> Doc v2 d2 = Doc (v1 <> v2) (d1 <> d2)
+  stimes n (Doc v d) = Doc (stimes n v) (stimes n d)
 
-instance Printer Print where
-  type Ann Print = Highlight
+instance Monoid Doc where
+  mempty = Doc mempty mempty
 
-  liftDoc0 a = Print $ \ d -> (mempty, liftDoc0 a d)
-  liftDoc1 f p = Print $ fmap (liftDoc1 f) . runPrint p
-  liftDoc2 f p1 p2 = Print $ \ d ->
-    let (v1, b1) = runPrint p1 d
-        (v2, b2) = runPrint p2 d
-    in (v1 <> v2, liftDoc2 f b1 b2)
+instance Vars Doc where
+  use l = Doc (use l) mempty
+  cons l d = Doc (cons l (fvs d)) (doc d)
+  bind l d = Doc (bind l (fvs d)) (doc d)
+
+instance Printer Doc where
+  type Ann Doc = Highlight
+
+  liftDoc0 a = Doc mempty a
+  liftDoc1 f (Doc v d) = Doc v (f d)
+  liftDoc2 f (Doc v1 d1) (Doc v2 d2) = Doc (v1 <> v2) (f d1 d2)
 
   -- NB: column, nesting, & pageWidth all destroy fvs.
-  column    f = Print $ \ d -> (mempty, column    (snd . ($ d) . runPrint . f))
-  nesting   f = Print $ \ d -> (mempty, nesting   (snd . ($ d) . runPrint . f))
-  pageWidth f = Print $ \ d -> (mempty, pageWidth (snd . ($ d) . runPrint . f))
+  column    f = Doc mempty (column    (doc . f))
+  nesting   f = Doc mempty (nesting   (doc . f))
+  pageWidth f = Doc mempty (pageWidth (doc . f))
 
-  enclosing (Print pl) (Print pr) (Print px) = Print $ \ d ->
-    let (vl, bl) = pl d
-        (vr, br) = pr d
-        (vx, bx) = px d
-    in (vl <> vr <> vx, enclosing bl br bx)
+  enclosing (Doc vl dl) (Doc vr dr) (Doc vx dx) = Doc (vl <> vr <> vx) (enclosing dl dr dx)
 
-  brackets (Print p) = Print $ fmap brackets . p
-  braces   (Print p) = Print $ fmap braces   . p
-  parens   (Print p) = Print $ fmap parens   . p
-  angles   (Print p) = Print $ fmap angles   . p
-  squotes  (Print p) = Print $ fmap squotes  . p
-  dquotes  (Print p) = Print $ fmap dquotes  . p
+  brackets (Doc v d) = Doc v (brackets d)
+  braces   (Doc v d) = Doc v (braces   d)
+  parens   (Doc v d) = Doc v (parens   d)
+  angles   (Doc v d) = Doc v (angles   d)
+  squotes  (Doc v d) = Doc v (squotes  d)
+  dquotes  (Doc v d) = Doc v (dquotes  d)
 
-instance PrecedencePrinter Print where
-  type Level Print = Precedence
+newtype Print = Print { runPrint :: Level -> Prec Precedence (Rainbow Doc) }
+  deriving (Monoid, PrecedencePrinter, Printer, Semigroup)
 
-  -- NB: askingPrec destroys fvs.
-  askingPrec f = Print $ \ d -> (mempty, askingPrec (snd . ($ d) . runPrint . f))
-  localPrec f p = Print $ fmap (localPrec f) . runPrint p
+instance Vars Print where
+  use l = Print $ \ _ -> pure (Rainbow (use l))
+  cons l (Print b) = Print $ \ d -> Prec $ \ p -> Rainbow $ \ t n -> cons l (runRainbow t n (runPrec p (b d)))
+  bind l (Print b) = Print $ \ d -> Prec $ \ p -> Rainbow $ \ t n -> bind l (runRainbow t n (runPrec p (b (succ d))))
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
