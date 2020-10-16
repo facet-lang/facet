@@ -11,6 +11,7 @@ module Facet.Name
 , levelToIndex
 , indexToLevel
 , FVs(..)
+, getFVs
 , Vars(..)
 , Silent(..)
 , __
@@ -78,6 +79,9 @@ indexToLevel d (Index index) = Level $ d - index - 1
 
 
 newtype FVs = FVs { runFVs :: IntSet.IntSet -> IntSet.IntSet -> IntSet.IntSet }
+
+getFVs :: FVs -> IntSet.IntSet
+getFVs v = runFVs v mempty mempty
 
 
 class Monoid v => Vars v where
