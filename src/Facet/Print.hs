@@ -251,8 +251,8 @@ printCoreValue = go
     CV.App  a -> go d a
     CV.Case p -> (pretty "case" <>) . block . commaSep $ map (clause d) p
 
-var' :: Bool -> Level -> PlName ::: CV.Value a -> Print
-var' u d (n ::: _T) = var $ annotate (Name d) $ unPl (braces (p <> tvar d)) (p <> evar d) (pl n)
+var' :: Bool -> Level -> PlName ::: CV.Value Print -> Print
+var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ var (annotate (Name d) (p <> unPl tvar evar (pl n) d)) ::: printCoreValue d _T
   where
   p | u         = mempty
     | otherwise = pretty '_'
