@@ -200,17 +200,17 @@ elimN f as = foldl' elim f as
 handleBinder :: (HasCallStack, Monad m) => Level -> (Value a -> m (Value a)) -> m (Value a -> Value a)
 handleBinder d b = do
   b' <- b (quote d)
-  pure $ (`subst` b') . IntMap.singleton (getLevel d)
+  pure $ (`substQ` b') . IntMap.singleton (getLevel d)
 
 handleBinderP :: (HasCallStack, Monad m, Traversable t) => Level -> t x -> (t (Value a) -> m (Value a)) -> m (t (Value a) -> Value a)
 handleBinderP d p b = do
   let (_, p') = mapAccumL (\ d _ -> (succ d, quote d)) d p
   b' <- b p'
-  pure $ \ v -> subst (snd (foldr (\ v (d, s) -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
+  pure $ \ v -> substQ (snd (foldr (\ v (d, s) -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
 -- FIXME: is it possible to instead perform one complete substitution at the end of <whatever>?
-subst :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
-subst s = go
+substQ :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
+substQ s = go
   where
   go = \case
     Type     -> Type
