@@ -218,7 +218,7 @@ instantiate (e ::: _T) = case unForAll _T of
   Just (P Im _ ::: _T, _B) -> do
     m <- meta _T
     instantiate (e CV.$$ m ::: _B m)
-  _             -> pure $ e ::: _T
+  _                        -> pure $ e ::: _T
 
 
 -- General
