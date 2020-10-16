@@ -39,6 +39,7 @@ library
   exposed-modules:
     Facet.CLI
     Facet.Context
+    Facet.Core
     Facet.Core.Module
     Facet.Core.Pattern
     Facet.Core.Value
