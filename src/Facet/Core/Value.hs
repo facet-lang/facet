@@ -168,7 +168,7 @@ case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
-match :: Value a -> Pattern UName -> Maybe (Pattern (Value a))
+match :: Value a -> Pattern b -> Maybe (Pattern (Value a))
 match s = \case
   Wildcard         -> Just Wildcard
   Var _            -> Just (Var s)
