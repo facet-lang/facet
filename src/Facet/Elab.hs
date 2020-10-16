@@ -517,8 +517,8 @@ elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (
     env <- get @(Env.Env (Type v))
     e' ::: _T <- runReader @(Context (Val v ::: Type v)) empty . runReader env $ do
       let e ::: t = elabDecl d
-      _T <- evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . elab $ check (t empty ::: Type)
-      e' <- evalState (IntMap.empty @(Maybe (Prob v) ::: Type v)) . elab $ check (e empty ::: _T)
+      _T <- runState apply (IntMap.empty @(Maybe (Prob v) ::: Type v)) . elab $ check (t empty ::: Type)
+      e' <- runState apply (IntMap.empty @(Maybe (Prob v) ::: Type v)) . elab $ check (e empty ::: _T)
       pure $ e' ::: _T
 
     modify $ Env.insert (qname ::: _T)
@@ -527,6 +527,11 @@ elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (
     pure (qname, CM.DTerm e' ::: _T)
 
   pure $ CM.Module mname defs
+  where
+  -- Apply the substitution to the value.
+  -- FIXME: error if the substitution has holes.
+  apply s v = pure $ subst (IntMap.mapMaybe tm s) v
+
 
 
 -- Errors
