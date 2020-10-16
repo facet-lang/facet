@@ -195,7 +195,7 @@ printCoreValue = go
     CV.TPrd l r -> go d l ** go d r
     CV.Prd  l r -> go d l ** go d r
   clause d (p, b) =
-    let p' = snd (mapAccumL (\ d n -> (succ d, let n' = cbound n d in (n', CV.bound n'))) d p)
+    let p' = snd (mapAccumL (\ d _ -> (succ d, let n' = evar (getLevel d) in (n', CV.bound n'))) d p)
         b' = go (succ d) (b (snd <$> p'))
     in printCorePattern (fst <$> p') <+> arrow <+> b'
   elim d = \case
