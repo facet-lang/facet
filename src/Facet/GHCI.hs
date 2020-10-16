@@ -80,7 +80,7 @@ toNotice :: Maybe N.Level -> Source -> Err P.Print -> N.Notice
 toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason
   in N.Notice lvl (fromSourceAndSpan src span) reason' $
-    [ P.getPrint $ P.printContextEntry (Level l) (n ::: P.printCoreValue _T)
+    [ P.getPrint $ P.printContextEntry (Level l) (n ::: P.printCoreValue (Level l) _T)
     | (l, n ::: _ ::: _T) <- zip [0..] (toList (elems context))
     ]
 
@@ -90,8 +90,8 @@ printReason ctx = group . \case
   FreeVariable n         -> fillSep [P.reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> P.reflow "could not synthesize a type for" <> softline <> P.reflow msg
   Mismatch msg exp act   ->
-    let exp' = either P.reflow printType exp
-        act' = printType act
+    let exp' = either P.reflow (printType l) exp
+        act' = printType l act
     in P.reflow msg
       </> pretty "expected:" <> print exp'
       </> pretty "  actual:" <> print act'
@@ -99,10 +99,12 @@ printReason ctx = group . \case
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T              ->
-    let _T' = printType _T
+    let _T' = printType l _T
     in fillSep [P.reflow "found hole", pretty n, colon, _T' ]
   BadContext n           -> fillSep [ P.reflow "no variable bound for index", pretty (getIndex n), P.reflow "in context of length", pretty (length ctx) ]
+  where
+  l = level ctx
 
 
-printType :: Type P.Print -> ErrDoc
-printType = P.getPrint . P.printCoreValue
+printType :: Level -> Type P.Print -> ErrDoc
+printType l = P.getPrint . P.printCoreValue l

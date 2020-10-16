@@ -74,7 +74,7 @@ getPrint :: Print -> PP.Doc ANSI.AnsiStyle
 getPrint = PP.reAnnotate terminalStyle . getPrint'
 
 getPrint' :: Print -> PP.Doc Highlight
-getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . ($ (Level 0)) . doc . group
+getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
 
 terminalStyle :: Highlight -> ANSI.AnsiStyle
 terminalStyle = \case
@@ -100,7 +100,7 @@ terminalStyle = \case
   len = length colours
 
 
-data Print = Print { fvs :: FVs, doc :: Level -> Prec Precedence (Rainbow (PP.Doc Highlight)) }
+data Print = Print { fvs :: FVs, doc :: Prec Precedence (Rainbow (PP.Doc Highlight)) }
 
 instance Semigroup Print where
   Print v1 d1 <> Print v2 d2 = Print (v1 <> v2) (d1 <> d2)
@@ -140,7 +140,7 @@ instance PrecedencePrinter Print where
 
   -- FIXME: this is running things twice.
   askingPrec f = Print (fvs (f minBound)) (askingPrec (doc . f))
-  localPrec f (Print v d) = Print v (localPrec f . d)
+  localPrec f (Print v d) = Print v (localPrec f d)
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
@@ -148,12 +148,6 @@ instance Show Print where
 -- FIXME: NO. BAD.
 instance Eq Print where
   (==) = (==) `on` show
-
-withLevel :: (Level -> Print) -> Print
-withLevel f = Print (fvs (f (Level 0))) (doc . f <*> id)
-
-setLevel :: Level -> Print -> Print
-setLevel l p = Print (fvs p) (\ _ -> doc p l)
 
 
 data Precedence
@@ -223,37 +217,37 @@ prettyQName :: PrecedencePrinter p => QName -> p
 prettyQName (mname :.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
-printCoreValue ::  CV.Value Print -> Print
+printCoreValue ::  Level -> CV.Value Print -> Print
 printCoreValue = go
   where
-  go = \case
+  go d = \case
     CV.Type     -> _Type
     CV.Void     -> _Void
     CV.TUnit    -> _Unit
     CV.Unit     -> _Unit
     -- FIXME: print as --> when the bound variable is unused
-    t CV.:=> b  -> withLevel $ \ d ->
+    t CV.:=> b  ->
       let n' = name d
-          t' = go (ty t)
-          b' = bind d (go (b (CV.bound n')))
+          t' = go d (ty t)
+          b' = bind d (go (succ d) (b (CV.bound n')))
       in ((pl (tm t), n') ::: t') >~> b'
-    CV.Lam n b  -> withLevel $ \ d ->
-      let (vs, (_, b')) = splitr (unLam' (cons <*> var' True)) (d, CV.Lam n b)
-          b'' = go b'
+    CV.Lam n b  ->
+      let (vs, (d', b')) = splitr (unLam' (cons <*> var' True)) (d, CV.Lam n b)
+          b'' = go d' b'
       in lam (map (\ (d, n) -> var' (IntSet.member (getLevel d) (getFVs (fvs b''))) d n) vs) b''
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
-    CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap elim e
-    CV.TPrd l r -> go l ** go r
-    CV.Prd  l r -> go l ** go r
+    CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap (elim d) e
+    CV.TPrd l r -> go d l ** go d r
+    CV.Prd  l r -> go d l ** go d r
   name d = cons d (tvar (getLevel d))
-  clause (p, b) = withLevel $ \ d ->
+  clause d (p, b) =
     let (d', p') = mapAccumL (\ d _ -> (succ d, let n' = evar (getLevel d) in (n', CV.bound n'))) d p
-        b' = foldr bind (go (b (snd <$> p'))) [d..d']
+        b' = foldr bind (go d' (b (snd <$> p'))) [d..d']
     in printCorePattern (fst <$> p') <+> arrow <+> b'
-  elim = \case
-    CV.App  a -> go a
-    CV.Case p -> (pretty "case" <>) . block . commaSep $ map clause p
+  elim d = \case
+    CV.App  a -> go d a
+    CV.Case p -> (pretty "case" <>) . block . commaSep $ map (clause d) p
 
 var' :: Bool -> Level -> PlName -> Print
 var' u (Level d) n = var $ annotate (Name d) $ unPl (braces (p <> P.tvar d)) (p <> P.evar d) (pl n)
@@ -274,7 +268,7 @@ lam vs b = block $ hsep vs <+> arrow <> nest 2 (line <> b)
 
 
 printContextEntry :: Level -> UName ::: Print -> Print
-printContextEntry l (n ::: _T) = setLevel l $ ann (cbound n l ::: _T)
+printContextEntry l (n ::: _T) = ann (cbound n l ::: _T)
 
 
 printSurfaceType :: (Foldable f, Functor f) => Stack Print -> ST.Type f a -> Print
@@ -421,13 +415,13 @@ t .= b = t </> b
 
 printCoreModule :: CM.Module Print -> Print
 printCoreModule (CM.Module n ds)
-  = module' n $ map (\ (n, d ::: t) -> ann (cfree n ::: printCoreValue t) </> printCoreDef d) ds
+  = module' n $ map (\ (n, d ::: t) -> ann (cfree n ::: printCoreValue (Level 0) t) </> printCoreDef d) ds
 
 printCoreDef :: CM.Def Print -> Print
 printCoreDef = \case
-  CM.DTerm b  -> printCoreValue b
-  CM.DType b  -> printCoreValue b
-  CM.DData cs -> block . commaSep $ map (ann . fmap printCoreValue . first pretty) cs
+  CM.DTerm b  -> printCoreValue (Level 0) b
+  CM.DType b  -> printCoreValue (Level 0) b
+  CM.DData cs -> block . commaSep $ map (ann . fmap (printCoreValue (Level 0)) . first pretty) cs
 
 
 printSurfaceModule :: (Foldable f, Functor f) => SM.Module f a -> Print
