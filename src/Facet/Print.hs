@@ -223,36 +223,37 @@ prettyQName :: PrecedencePrinter p => QName -> p
 prettyQName (mname :.: n) = prettyMName mname <> pretty '.' <> pretty n
 
 
-printCoreValue :: Level -> CV.Value Print -> Print
+printCoreValue ::  CV.Value Print -> Print
 printCoreValue = go
   where
-  go d = \case
+  go = \case
     CV.Type     -> _Type
     CV.Void     -> _Void
     CV.TUnit    -> _Unit
     CV.Unit     -> _Unit
     -- FIXME: print as --> when the bound variable is unused
-    t CV.:=> b  ->
-      let n' = tvar (getLevel d)
-          t' = go d (ty t)
-          b' = go (succ d) (b (CV.bound n'))
+    t CV.:=> b  -> withLevel $ \ d ->
+      let n' = name d
+          t' = go (ty t)
+          b' = bind d (go (b (CV.bound n')))
       in ((pl (tm t), n') ::: t') >~> b'
-    CV.Lam n b  -> let (vs, (d', b')) = splitr unLam' (d, CV.Lam n b) in lam vs (go d' b')
+    CV.Lam n b  -> withLevel $ \ d -> let (vs, (_, b')) = splitr unLam' (d, CV.Lam n b) in foldr bind (lam (map snd vs) (go b')) (map fst vs)
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
-    CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap (elim d) e
-    CV.TPrd l r -> go d l ** go d r
-    CV.Prd  l r -> go d l ** go d r
-  clause d (p, b) =
-    let p' = snd (mapAccumL (\ d _ -> (succ d, let n' = evar (getLevel d) in (n', CV.bound n'))) d p)
-        b' = go (succ d) (b (snd <$> p'))
+    CV.Neut h e -> CV.unHead cfree id (tvar . getLevel) (annotate Hole . (pretty '?' <>) . evar . getLevel) h $$* fmap elim e
+    CV.TPrd l r -> go l ** go r
+    CV.Prd  l r -> go l ** go r
+  name d = cons d (tvar (getLevel d))
+  clause (p, b) = withLevel $ \ d ->
+    let (d', p') = mapAccumL (\ d _ -> (succ d, let n' = evar (getLevel d) in (n', CV.bound n'))) d p
+        b' = foldr bind (go (b (snd <$> p'))) [d..d']
     in printCorePattern (fst <$> p') <+> arrow <+> b'
-  elim d = \case
-    CV.App  a -> go d a
-    CV.Case p -> (pretty "case" <>) . block . commaSep $ map (clause d) p
+  elim = \case
+    CV.App  a -> go a
+    CV.Case p -> (pretty "case" <>) . block . commaSep $ map clause p
 
-unLam' :: (Level, CV.Value Print) -> Maybe (Print, (Level, CV.Value Print))
+unLam' :: (Level, CV.Value Print) -> Maybe ((Level, Print), (Level, CV.Value Print))
 unLam' (d, v) = case CV.unLam v of
-  Just (n, t) -> let n' = unPl (braces . tvar) evar (pl n) (getLevel d) in Just (n', (succ d, t (CV.bound n')))
+  Just (n, t) -> let n' = unPl (braces . tvar) evar (pl n) (getLevel d) in Just ((d, n'), (succ d, t (CV.bound n')))
   Nothing     -> Nothing
 
 lam
@@ -410,13 +411,13 @@ t .= b = t </> b
 
 printCoreModule :: CM.Module Print -> Print
 printCoreModule (CM.Module n ds)
-  = module' n $ map (\ (n, d ::: t) -> ann (cfree n ::: printCoreValue (Level 0) t) </> printCoreDef d) ds
+  = module' n $ map (\ (n, d ::: t) -> ann (cfree n ::: printCoreValue t) </> printCoreDef d) ds
 
 printCoreDef :: CM.Def Print -> Print
 printCoreDef = \case
-  CM.DTerm b  -> printCoreValue (Level 0) b
-  CM.DType b  -> printCoreValue (Level 0) b
-  CM.DData cs -> block . commaSep $ map (ann . fmap (printCoreValue (Level 0)) . first pretty) cs
+  CM.DTerm b  -> printCoreValue b
+  CM.DType b  -> printCoreValue b
+  CM.DData cs -> block . commaSep $ map (ann . fmap printCoreValue . first pretty) cs
 
 
 printSurfaceModule :: (Foldable f, Functor f) => SM.Module f a -> Print

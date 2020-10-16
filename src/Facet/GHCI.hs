@@ -80,7 +80,7 @@ toNotice :: Maybe N.Level -> Source -> Err P.Print -> N.Notice
 toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason
   in N.Notice lvl (fromSourceAndSpan src span) reason' $
-    [ P.getPrint $ P.printContextEntry (Level l) (n ::: P.printCoreValue (Level l) _T)
+    [ P.getPrint $ P.printContextEntry (Level l) (n ::: P.printCoreValue _T)
     | (l, n ::: _ ::: _T) <- zip [0..] (toList (elems context))
     ]
 
@@ -105,4 +105,4 @@ printReason ctx = group . \case
 
 
 printType :: Type P.Print -> ErrDoc
-printType = P.getPrint . P.printCoreValue (Level 0)
+printType = P.getPrint . P.printCoreValue
