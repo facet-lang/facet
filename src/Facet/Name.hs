@@ -86,6 +86,9 @@ getFVs v = runFVs v mempty mempty
 instance Semigroup FVs where
   FVs v1 <> FVs v2 = FVs $ \ b -> v1 b . v2 b
 
+instance Monoid FVs where
+  mempty = FVs $ const id
+
 
 class Monoid v => Vars v where
   use :: Level -> v
