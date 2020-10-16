@@ -22,6 +22,7 @@ module Facet.Core.Value
 , match
 , handleBinder
 , handleBinderP
+, subst
 , AValue(..)
 , Contextual(..)
 ) where
@@ -230,6 +231,29 @@ substQ s = go
   s ! l = case IntMap.lookup (getLevel l) s of
     Just a  -> a
     Nothing -> quote l
+
+-- | Substitute metavars.
+subst :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
+subst s = go
+  where
+  go = \case
+    Type     -> Type
+    Void     -> Void
+    TUnit    -> TUnit
+    Unit     -> Unit
+    t :=> b  ->
+      let t' = fmap go t
+      in t' :=> go . b
+    Lam n b  -> Lam n (go . b)
+    Neut f a -> unHead global free quote (s !) f `elimN` fmap substElim a
+    TPrd l r -> TPrd (go l) (go r)
+    Prd  l r -> Prd  (go l) (go r)
+  substElim = \case
+    App a   -> App (go a)
+    Case cs -> Case (map (fmap (go .)) cs)
+  s ! l = case IntMap.lookup (getLevel (tm l)) s of
+    Just a  -> a
+    Nothing -> metavar l
 
 
 newtype AValue = AValue { runAValue :: forall x . Value x }
