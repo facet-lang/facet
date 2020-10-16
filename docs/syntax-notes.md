@@ -3,8 +3,8 @@
 ```
 map
 : (f : a -> b) -> List a -> List b
-{ Nil       -> Nil
-| Cons x xs -> Cons (f x) (map f xs)
+{ (nil)       -> nil
+, (cons x xs) -> cons (f x) (map f xs)
 }
 
 (;) : (_ : b) -> (a : a) -> a
@@ -12,8 +12,8 @@ map
 
 
 List : (a : Type) -> Type # NB: implicit Mu here
-{ Nil  : List a
-, Cons : a -> List a -> List a
+{ nil  : List a
+, cons : a -> List a -> List a
 }
 
 Void : Type
@@ -23,21 +23,21 @@ absurd : Void -> a
 {}
 
 Bool : Type
-{ False : Bool
-, True  : Bool
+{ false : Bool
+, true  : Bool
 }
 
 not : Bool -> Bool
-{ False -> True
-, True  -> False
+{ (false) -> true
+, (true)  -> false
 }
 
 And : (a : Type) -> (b : Type) -> Type
-{ And : a -> b -> And a b }
+{ and : a -> b -> And a b }
 
 Or : (a : Type) -> (b : Type) -> Type
-{ OrL : a -> Or a b
-, OrR : b -> Or a b
+{ orL : a -> Or a b
+, orR : b -> Or a b
 }
 
 # Abort : (a : Type) -> Interface
@@ -50,14 +50,14 @@ Abort : (a : Type) -> Interface
 { abort : a }
 
 Option : (a : Type) -> Type # kinda seems like this should be derivable from Abort
-{ None :      Option a
-, Some : a -> Option a
+{ none :      Option a
+, some : a -> Option a
 }
 
 # an Implementation is a well-known handler
 Abort : { a : Type } -> Implementation (Abort (Option a)) # give it a name so we can export it I guess
-{ x            -> Some x
-, <abort -> k> -> None
+{ x            -> some x
+, <abort -> k> -> none
 }
 
 
@@ -79,9 +79,9 @@ Map : (f : Type -> Type) -> Interface
 # if you’re good with ruining coherence for everybody, I mean
 Map : (f : Type -> Type) -> Implementation # this has to be typechecked as an open definition… somehow
 { Option -> # here we’re reusing the usual lambda syntax for a Λ-abstraction, “pattern matching” (perhaps literally?) on the type constructor
-  { map : (f : a -> b) -> Option a -> Option b # giving the type again allows us to bind variables, otherwise we’d have to do something like (<$>) = { f None -> …, f (Some a) -> … }
-    { None   -> None
-    , Some a -> Some (f a)
+  { map : (f : a -> b) -> Option a -> Option b # giving the type again allows us to bind variables, otherwise we’d have to do something like (<$>) = { f none -> …, f (some a) -> … }
+    { (none)   -> none
+    , (some a) -> some (f a)
     }
   }
 }
@@ -89,9 +89,9 @@ Map : (f : Type -> Type) -> Implementation # this has to be typechecked as an op
 # can we prevent local overrides? can we say “oh hey this is a global implementation so we’re gonna enforce coherence” instead?
 
 Map : Implementation (Map Option) # this has to be typechecked as an open definition… somehow
-{ map : (f : a -> b) -> Option a -> Option b # giving the type again allows us to bind variables, otherwise we’d have to do something like (<$>) = { f None -> …, f (Some a) -> … }
-  { None   -> None
-  , Some a -> Some (f a)
+{ map : (f : a -> b) -> Option a -> Option b # giving the type again allows us to bind variables, otherwise we’d have to do something like (<$>) = { f none -> …, f (some a) -> … }
+  { none   -> none
+  , some a -> some (f a)
   }
 }
 
@@ -100,14 +100,14 @@ Implementation : { a, b : Type } -> (i : Interface) -> (handle : <i>a -> b) -> ?
 
 Map : Implementation (Map Option)
 { <map f o -> k> -> case o
-  { None   -> None
-  , Some a -> k (f a)
+  { (none)   -> none
+  , (some a) -> k (f a)
   }
 }
 
 Map : Implementation (Map Option)
-{ <map _ None     -> _> -> None
-, <map f (Some a) -> k> -> k (f a)
+{ <map _ none     -> _> -> none
+, <map f (some a) -> k> -> k (f a)
 }
 
 
@@ -135,20 +135,20 @@ Unital : (A : Type) -> [Semiring A, Monoid A]Interface
 
 if
 : { A : Type } -> (c : Bool) -> (t : {A}) -> (e : {A}) -> A
-{ case c { True -> t! | False -> e! } }
+{ case c { (true) -> t! , (false) -> e! } }
 
 bool
 : { A : Type } -> (e : {A}) -> (t : {A}) -> Bool -> A
-{ False -> e!
-, True  -> t!
+{ (false) -> e!
+, (true)  -> t!
 }
 
 
 
 
 # data Expr
-# { Lam : (Expr a -> Expr b) -> Expr (a -> b)
-# | (:$) : Expr (a -> b) -> Expr a -> Expr b
+# { lam : (Expr a -> Expr b) -> Expr (a -> b)
+# | _ $ _ : Expr (a -> b) -> Expr a -> Expr b
 # }
 
 
@@ -291,24 +291,24 @@ Base : Module
 
 Base.Bool : Module
 { Bool : Type
-  { False : Bool
-  , True  : Bool
+  { false : Bool
+  , true  : Bool
   }
 
   not : Bool -> Bool
-  { False -> True
-  , True  -> False
+  { (false) -> true
+  , (true)  -> false
   }
 
   bool
   : (e : {a}) -> (t : {a}) -> Bool -> a
-  { False -> e!
-  , True  -> t!
+  { (false) -> e!
+  , (true)  -> t!
   }
 
   if
   : (c : Bool) -> (t : {a}) -> (e : {a}) -> a
-  { case c { True -> t! | False -> e! } }
+  { case c { (true) -> t! , (false) -> e! } }
 }
 ```
 
