@@ -44,16 +44,16 @@ import           GHC.Stack
 -- FIXME: represent closed portions of the tree explicitly?
 data Value a
   = Type
-  | Void
-  | TUnit
-  | Unit
+  | Void  -- FIXME: 🔥
+  | TUnit -- FIXME: 🔥
+  | Unit  -- FIXME: 🔥
   | (PlName ::: Value a) :=> (Value a -> Value a)
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
   | Lam (PlName ::: Value a) (Value a -> Value a)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | Neut (Head a) (Stack (Elim (Value a)))
-  | TPrd (Value a) (Value a)
-  | Prd (Value a) (Value a)
+  | TPrd (Value a) (Value a) -- FIXME: 🔥
+  | Prd (Value a) (Value a)  -- FIXME: 🔥
 
 infixr 1 :=>
 
