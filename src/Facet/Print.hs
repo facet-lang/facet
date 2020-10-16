@@ -241,7 +241,7 @@ printCoreValue = go
           b' = bind d (go (b (CV.bound n')))
       in ((pl (tm t), n') ::: t') >~> b'
     CV.Lam n b  -> withLevel $ \ d ->
-      let (vs, (_, b')) = splitr unLam' (d, CV.Lam n b)
+      let (vs, (_, b')) = splitr (unLam' (var' True)) (d, CV.Lam n b)
       in lam (map (\ (d, n) -> var' True d n) vs) (foldr (bind . fst) (go b') vs)
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
@@ -263,9 +263,9 @@ var' u (Level d) n = var $ annotate (Name d) $ unPl (braces (p <> P.tvar d)) (p 
   p | u         = mempty
     | otherwise = pretty '_'
 
-unLam' :: (Level, CV.Value Print) -> Maybe ((Level, PlName), (Level, CV.Value Print))
-unLam' (d, v) = case CV.unLam v of
-  Just (n, t) -> let n' = var' True d n in Just ((d, n), (succ d, t (CV.bound (cons d n'))))
+unLam' :: (Level -> PlName -> Print) -> (Level, CV.Value Print) -> Maybe ((Level, PlName), (Level, CV.Value Print))
+unLam' var (d, v) = case CV.unLam v of
+  Just (n, t) -> let n' = var d n in Just ((d, n), (succ d, t (CV.bound (cons d n'))))
   Nothing     -> Nothing
 
 lam
