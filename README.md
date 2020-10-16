@@ -197,7 +197,7 @@ not : Bool -> Bool
 
 Patterns are matched in top-down order; the first matching clause will be executed. It is an error for no patterns to match.
 
-_TBD: exhaustiveness_
+_TBD: exhaustiveness; tuples; effect constructors_
 
 
 ### Effects
