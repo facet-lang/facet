@@ -30,7 +30,7 @@ module Facet.Name
 import           Data.Function (on)
 import           Data.Functor.Classes (showsBinaryWith, showsUnaryWith)
 import qualified Data.IntSet as IntSet
-import           Data.List.NonEmpty
+import           Data.List.NonEmpty hiding (cons)
 import           Data.String (IsString(..))
 import           Data.Text (Text, unpack)
 import qualified Data.Text as T
@@ -92,6 +92,9 @@ instance Monoid FVs where
 
 class Monoid v => Vars v where
   use :: Level -> v
+  use l = cons l mempty
+  cons :: Level -> v -> v
+  cons l v = use l <> v
   bind :: Level -> v -> v
 
 instance Vars FVs where
