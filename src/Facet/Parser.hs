@@ -103,7 +103,7 @@ module' :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Module N.Index))
 module' = spanned (S.Module <$> mname <* colon <* symbol "Module" <*> braces (many decl))
 
 decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned (S.Decl N.Index)))
-decl = spanned $ (,) <$> dname <* colon <*> sig
+decl = spanned $ (,) <$> dename <* colon <*> sig
 
 
 -- Declarations
@@ -256,8 +256,11 @@ hname = ident hnameStyle
 tname :: (Monad p, TokenParsing p) => p N.TName
 tname = ident tnameStyle
 
-dname :: (Monad p, TokenParsing p) => p N.DName
-dname  = N.E <$> ename <|> N.T <$> tname <|> N.O <$> oname
+dename :: (Monad p, TokenParsing p) => p N.DName
+dename  = N.E <$> ename <|> N.O <$> oname
+
+dtname :: (Monad p, TokenParsing p) => p N.DName
+dtname  = N.T <$> tname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
 mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy comp dot))
