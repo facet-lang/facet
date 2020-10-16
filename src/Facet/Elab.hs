@@ -172,8 +172,8 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     Neut h1 e1 :===: Neut h2 e2
       | h1 == h2
       , Just e' <- unifyS (e1 :===: e2) -> Neut h1 <$> e'
-    Neut (Metavar v) Nil :===: x -> solve (tm v := x)
-    x :===: Neut (Metavar v) Nil -> solve (tm v := x)
+    Neut (Meta v) Nil :===: x                 -> solve (tm v := x)
+    x                 :===: Neut (Meta v) Nil -> solve (tm v := x)
     t1 :=> b1  :===: t2 :=> b2  -> do
       t <- go (ty t1 :===: ty t2)
       b <- uname (tm t1) ::: t |- \ v -> do

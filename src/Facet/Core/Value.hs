@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Facet.Core.Value
 ( Value(..)
-, Head(Global, Free, Metavar)
+, Head(Global, Free, Meta)
 , Elim(..)
 , unHead
 , global
@@ -108,24 +108,24 @@ data Head a
   = Global (QName ::: Value a) -- ^ Global variables, considered equal by 'QName'.
   | Free a
   | Quote Level
-  | Metavar (Level ::: Value a) -- ^ Metavariables, considered equal by 'Level'.
+  | Meta (Level ::: Value a) -- ^ Metavariables, considered equal by 'Level'.
 
 instance Eq a => Eq (Head a) where
-  Global q1  == Global q2  = tm q1 == tm q2
-  Global _   == _          = False
-  Free a1    == Free a2    = a1 == a2
-  Free _     == _          = False
-  Quote l1   == Quote l2   = l1 == l2
-  Quote _    == _          = False
-  Metavar m1 == Metavar m2 = tm m1 == tm m2
-  Metavar _  == _          = False
+  Global q1 == Global q2 = tm q1 == tm q2
+  Global _  == _         = False
+  Free a1   == Free a2   = a1 == a2
+  Free _    == _         = False
+  Quote l1  == Quote l2  = l1 == l2
+  Quote _   == _         = False
+  Meta m1   == Meta m2   = tm m1 == tm m2
+  Meta _    == _         = False
 
 unHead :: (QName ::: Value a -> b) -> (a -> b) -> (Level -> b) -> (Level ::: Value a -> b) -> Head a -> b
 unHead f g h i = \case
-  Global  n -> f n
-  Free    n -> g n
-  Quote   n -> h n
-  Metavar n -> i n
+  Global n -> f n
+  Free   n -> g n
+  Quote  n -> h n
+  Meta   n -> i n
 
 
 data Elim a
@@ -143,7 +143,7 @@ quote :: Level -> Value a
 quote = var . Quote
 
 metavar :: Level ::: Value a -> Value a
-metavar = var . Metavar
+metavar = var . Meta
 
 
 var :: Head a -> Value a
