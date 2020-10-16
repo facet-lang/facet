@@ -213,6 +213,7 @@ insertSubst n (v ::: _T) = IntMap.insert (getLevel n) (v ::: _T)
 getSubst :: Has (State (Subst v)) sig (t v) => t v (Subst v)
 getSubst = get
 
+-- FIXME: does instantiation need to be guided by the expected type?
 instantiate :: Expr v ::: Type v -> Elab v (Expr v ::: Type v)
 instantiate (e ::: _T) = case unForAll _T of
   Just (P Im _ ::: _T, _B) -> do
@@ -244,6 +245,7 @@ bound
   -> Index
   -> Synth v (Val v)
 bound ctx n = Synth $ case ctx !? n of
+  -- FIXME: do we need to instantiate here to deal with rank-n applications?
   Just (_ ::: (v ::: _T)) -> pure (v ::: _T)
   Nothing                 -> err $ BadContext n
 
