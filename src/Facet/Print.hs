@@ -107,6 +107,10 @@ instance Semigroup Print where
 instance Monoid Print where
   mempty = Print mempty mempty
 
+instance Vars Print where
+  use l = Print (use l) mempty
+  bind l (Print fvs b) = Print (bind l fvs) b
+
 instance Printer Print where
   type Ann Print = Highlight
 
