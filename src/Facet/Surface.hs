@@ -12,6 +12,9 @@ module Facet.Surface
 , unForAll
 , unTApp
 , aeq
+  -- * Declarations
+, Decl(..)
+, unDForAll
 ) where
 
 import Control.Applicative (liftA2)
@@ -98,3 +101,18 @@ aeq t1 t2 = case (t1, t2) of
   where
   aeq' = fmap and . (liftA2 aeq `on` extract)
   extract = getFirst . foldMap (First . Just)
+
+
+data Decl a
+  = (UName ::: Spanned (Type a)) :==> Spanned (Decl a)
+  | (UName ::: Spanned (Type a)) :--> Spanned (Decl a)
+  | Spanned (Type a) := Spanned (Expr a)
+  deriving (Foldable, Functor, Show, Traversable)
+
+infix 1 :=
+infixr 1 :==>
+infixr 1 :-->
+
+
+unDForAll :: Has Empty sig m => Decl a -> m (UName ::: Spanned (Type a), Spanned (Decl a))
+unDForAll = \case{ t :==> b -> pure (t, b) ; _ -> empty }
