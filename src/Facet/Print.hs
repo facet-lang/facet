@@ -203,10 +203,10 @@ var :: (PrecedencePrinter p, P.Level p ~ Precedence) => p -> p
 var = setPrec Var
 
 evar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Level -> p
-evar = var . annotate . Name <*> P.evar . getLevel
+evar = var . annotate . Name <*> P.lower . getLevel
 
 tvar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Level -> p
-tvar = var . annotate . Name <*> P.tvar . getLevel
+tvar = var . annotate . Name <*> P.upper . getLevel
 
 
 prettyMName :: Printer p => MName -> p
