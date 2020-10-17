@@ -220,7 +220,6 @@ varPattern n = Just <$> n <|> Nothing <$ wildcard
 wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
 
--- FIXME: patterns
 pattern :: (Monad p, PositionParsing p) => p (Spanned (S.Pattern N.UName))
 pattern = spanned
   $   S.Var . N.getEName <$> ename
