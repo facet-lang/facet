@@ -528,8 +528,8 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (T
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
     let qname = mname :.: n
     env <- get @(Env.Env (Type v))
+    let e ::: t = elabDecl d
     e' ::: _T <- runReader @(Context (Val v ::: Type v)) empty . runReader env $ do
-      let e ::: t = elabDecl d
       _T <- runState apply (IntMap.empty @(Maybe (Prob v) ::: Type v)) . elab $ check (t empty ::: Type)
       e' <- runState apply (IntMap.empty @(Maybe (Prob v) ::: Type v)) . elab $ check (e empty ::: _T)
       pure $ e' ::: _T
