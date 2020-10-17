@@ -6,6 +6,7 @@ module Facet.Algebra
 , ExprAlg(..)
 , PatternAlg(..)
 , foldValue
+, foldSType
 ) where
 
 import           Data.Bifunctor (bimap)
@@ -15,7 +16,9 @@ import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
 import           Facet.Name
 import           Facet.Stack
+import qualified Facet.Surface as S
 import           Facet.Syntax
+import           Text.Parser.Position
 
 data Var
   = Global (Maybe MName) DName
@@ -98,3 +101,26 @@ foldValue alg = go
       let ((d', p'), ps') = subpatterns d ps
       in ((d', tuple (pattern alg) (toList p')), C.Tuple ps')
   subpatterns d ps = mapAccumL (\ (d', ps) p -> let ((d'', v), p') = pat d' p in ((d'', ps:>v), p')) (d, Nil) ps
+
+
+foldSType :: ExprAlg p -> Stack p -> Spanned (S.Type a) -> p
+foldSType alg = go
+  where
+  go env (s, t) = case t of
+    S.TFree n  -> var alg (Global Nothing n)
+    S.TBound n -> env ! getIndex n
+    S.THole n  -> hole alg n
+    S.Type     -> _Type alg
+    S.Void     -> _Void alg
+    S.TUnit    -> _Unit alg
+    t S.:=> b ->
+      let (ts, b') = splitr (S.unForAll . snd) (s, t S.:=> b)
+          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local n d) in ((succ d, env :> v), im (Just v ::: go env t))) (level, env) ts
+      in fn alg ts' (go env' b')
+    f S.:$$ a ->
+      let (f', a') = splitl (S.unTApp . snd) f
+      in app alg (go env f') (fmap (ex . go env) (a' :> a))
+    a S.:-> b -> fn alg [ex (Nothing ::: go env a)] (go env b)
+    l S.:** r -> prd alg [go env l, go env r]
+    where
+    level = Level (length env)
