@@ -373,6 +373,7 @@ printCorePattern :: C.Pattern Print -> Print
 printCorePattern = \case
   C.Wildcard -> pretty '_'
   C.Var n    -> n
+  C.Con n ps -> parens (hsep (pretty n:map printCorePattern ps))
   C.Tuple p  -> tupled (map printCorePattern p)
 
 printSurfacePattern :: Spanned (S.Pattern Print) -> Print
