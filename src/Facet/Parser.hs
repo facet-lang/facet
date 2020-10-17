@@ -106,7 +106,9 @@ module' = spanned (S.Module <$> mname <* colon <* symbol "Module" <*> braces (ma
 -- Declarations
 
 decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned (S.Decl N.Index)))
-decl = spanned $ (,) <$> dename <* colon <*> sig (S.DExpr <$> comp)
+decl = spanned
+  $   (,) <$> dename <* colon <*> sig (S.DExpr <$> comp)
+  <|> (,) <$> dtname <* colon <*> sig (S.DData <$> braces (commaSep con))
 
 sigTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned (S.Decl N.Index))
 sigTable =
@@ -115,7 +117,7 @@ sigTable =
   ]
 
 sig :: (Monad p, PositionParsing p) => Facet p (S.DeclBody N.Index) -> Facet p (Spanned (S.Decl N.Index))
-sig body = build sigTable (const (spanned ((S.:=) <$> monotype <*> body))) -- FIXME: parse type declarations too
+sig body = build sigTable (const (spanned ((S.:=) <$> monotype <*> body)))
 
 binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (Spanned (S.Decl N.Index))
 binder self _ = do
@@ -123,6 +125,9 @@ binder self _ = do
   bindVarPattern i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
   where
   mk start t b end = (Span start end, t S.:--> b)
+
+con :: (Monad p, PositionParsing p) => Facet p (Spanned (N.CName S.::: Spanned (S.Type N.Index)))
+con = spanned ((S.:::) <$> cname <* colon <*> type')
 
 
 -- Types
