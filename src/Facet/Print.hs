@@ -33,6 +33,7 @@ module Facet.Print
 , printSurfaceModule
   -- * Algebras
 , surface
+, explicit
 ) where
 
 import           Control.Applicative ((<**>))
@@ -468,3 +469,42 @@ surface = Algebra
     pretty '_' <> f (getLevel d)
   else
     pretty n
+
+-- FIXME: elide unused vars
+explicit :: Algebra Print
+explicit = Algebra
+  { var = \case
+    Global _ n -> setPrec Var (pretty n)
+    Local  n d -> name P.lower n d
+    Meta     d -> setPrec Var (annotate Hole (pretty '?' <> evar d))
+    Cons     n -> setPrec Var (annotate Con (pretty n))
+  , tintro = name P.upper
+  , intro = name P.lower
+  , lam = comp . embed . commaSep
+  , clause = \ ns b -> embed (setPrec Pattern (vsep (map (unPl_ (braces . tm) tm) ns)) </> arrow) </> b
+  -- FIXME: group quantifiers by kind again.
+  , fn = \ as b -> foldr (\ (P pl (n ::: _T)) b -> case n of
+    Just n -> ((pl, n) ::: _T) >~> b
+    _      -> _T --> b) b as
+  , app = \ f as -> group f $$* fmap (group . unPl_ braces id) as
+  , prd = \ as -> case as of
+    [] -> parens mempty
+    as -> foldl1 (**) as
+  , hole = \ n -> annotate Hole $ pretty '?' <> pretty n
+  , _Type = annotate Type $ pretty "Type"
+  , _Void = annotate Type $ pretty "Void"
+  , _Unit = annotate Type $ pretty "Unit"
+  , unit = annotate Con $ pretty "Unit"
+  , ann' = ann
+  , case' = \ s ps -> embed $ pretty "case" <+> setPrec Expr s </> block (commaSep (map (\ (p, b) -> embed (prec Pattern p </> arrow) </> b) ps))
+  , wildcard = pretty '_'
+  , pcon = \ n ps -> parens (hsep (annotate Con n:toList ps))
+  , tuple = tupled
+  , decl = ann
+  , defn = \ (a :=: b) -> a </> b
+  , data' = block . commaSep
+  , module_ = \ (n ::: t :=: ds) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (embed (vsep (intersperse mempty ds)))
+  }
+  where
+  embed = nest 2 . group
+  name f _ d = setPrec Var (annotate (Name d) (cons d (f (getLevel d))))
