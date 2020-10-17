@@ -480,29 +480,27 @@ elabDecl
   .  (HasCallStack, Eq v)
   => Spanned (S.Decl a)
   -> (Context (Val v ::: Type v) -> Check v (Val v)) ::: (Context (Val v ::: Type v) -> Check v (Type v))
-elabDecl = go id id
+elabDecl d = go d id id
   where
   go
-    :: ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v)))
+    :: Spanned (S.Decl a)
     -> ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v)))
-    -> Spanned (S.Decl a)
+    -> ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v)))
     -> (Context (Val v ::: Type v) -> Check v (Val v)) ::: (Context (Val v ::: Type v) -> Check v (Type v))
-  go km kt = withSpans $ \case
+  go d km kt = withSpans d $ \case
     (n ::: t) S.:==> b ->
-      go
+      go b
         (km . (\ b  ctx -> tlam n (b . (ctx |>))))
         (kt . (\ _B ctx -> checkElab (switch (P Im n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
-        b
 
     (n ::: t) S.:--> b ->
-      go
+      go b
         (km . (\ b  ctx -> lam n (b . (ctx |>))))
         (kt . (\ _B ctx -> checkElab (switch (P Ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
-        b
 
     t S.:= b -> km (\ ctx -> elabDeclBody ctx b) ::: kt (\ ctx -> checkElab (elabType ctx t))
 
-  withSpans f (s, d) = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
+  withSpans (s, d) f = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
 
 elabDeclBody :: (HasCallStack, Eq v) => Context (Val v ::: Type v) -> S.DeclBody a -> Check v (Val v)
 elabDeclBody ctx = \case
