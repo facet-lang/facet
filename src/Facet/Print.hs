@@ -34,6 +34,7 @@ module Facet.Print
 ) where
 
 import           Control.Applicative ((<**>))
+import           Control.Category ((>>>))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
@@ -266,10 +267,10 @@ printContextEntry :: Level -> UName ::: Print -> Print
 printContextEntry l (n ::: _T) = ann (cbound n l ::: _T)
 
 
-printSurfaceType :: Stack Print -> S.Type a -> Print
+printSurfaceType :: Stack Print -> Spanned (S.Type a) -> Print
 printSurfaceType = go
   where
-  go env = \case
+  go env = snd >>> \case
     S.TFree n  -> sfree n
     S.TBound n -> env ! getIndex n
     S.THole n  -> hole n
@@ -278,12 +279,12 @@ printSurfaceType = go
     S.TUnit    -> _Unit
     t S.:=> b ->
       let (t', b') = splitr (S.unForAll . snd) b
-      in forAlls (map (first sbound) (t:t')) (foldMap (go (env:>sbound (tm t))) b')
+      in forAlls (map (first sbound) (t:t')) (go (env:>sbound (tm t)) b')
     f S.:$$ a ->
       let (f', a') = splitl (S.unTApp . snd) f
-      in foldMap (go env) f' $$* fmap (foldMap (go env)) (a' :> a)
-    a S.:-> b -> foldMap (go env) a --> foldMap (go env) b
-    l S.:** r -> foldMap (go env) l **  foldMap (go env) r
+      in go env f' $$* fmap (go env) (a' :> a)
+    a S.:-> b -> go env a --> go env b
+    l S.:** r -> go env l **  go env r
 
 sfree :: Pretty n => n -> Print
 sfree = var . pretty
@@ -336,7 +337,7 @@ forAlls :: [Print ::: Spanned (S.Type a)] -> Print -> Print
 forAlls ts b = foldr go b (groupByType S.aeq ts)
   where
   -- FIXME: this is horribly wrong and probably going to crash
-  go (t, ns) b = ((Im, commaSep ns) ::: foldMap (printSurfaceType Nil) t) >~> b
+  go (t, ns) b = ((Im, commaSep ns) ::: printSurfaceType Nil t) >~> b
 
 groupByType :: (t -> t -> Bool) -> [n ::: Spanned t] -> [(Spanned t, [n])]
 groupByType eq = \case
@@ -346,24 +347,24 @@ groupByType eq = \case
     (ys,zs) = span (eq (snd t) . snd . ty) xs
 
 
-printSurfaceExpr :: Stack Print -> S.Expr a -> Print
+printSurfaceExpr :: Stack Print -> Spanned (S.Expr a) -> Print
 printSurfaceExpr = go
   where
-  go env = \case
+  go env = snd >>> \case
     S.Free n  -> sfree n
     S.Bound n -> env ! getIndex n
     S.Hole n  -> hole n
     f S.:$  a ->
       let (f', a') = splitl (S.unApp . snd) f
-      in foldMap (go env) f' $$* fmap (foldMap (go env)) (a' :> a)
+      in go env f' $$* fmap (go env) (a' :> a)
     S.Unit    -> unit
-    l S.:*  r -> foldMap (go env) l **  foldMap (go env) r
-    S.Comp c  -> comp . (`foldMap` c) $ \case
-      S.Expr e     -> prec Expr $ foldMap (printSurfaceExpr env) e
+    l S.:*  r -> go env l **  go env r
+    S.Comp c  -> comp $ case snd c of
+      S.Expr e     -> prec Expr $ printSurfaceExpr env e
       S.Clauses cs -> commaSep (map (uncurry (printSurfaceClause env)) cs)
 
 printSurfaceClause :: Stack Print -> NonEmpty (Spanned (S.Pattern UName)) -> Spanned (S.Expr a) -> Print
-printSurfaceClause env ps b = foldMap (printSurfacePattern . snd) ps' <+> arrow <> group (nest 2 (line <> prec Expr (printSurfaceExpr env' (snd b))))
+printSurfaceClause env ps b = foldMap printSurfacePattern ps' <+> arrow <> group (nest 2 (line <> prec Expr (printSurfaceExpr env' b)))
   where
   ps' = fmap (fmap sbound) <$> ps
   env' = foldl (foldl (foldl (:>))) env ps'
@@ -374,33 +375,33 @@ printCorePattern = \case
   C.Var n    -> n
   C.Tuple p  -> tupled (map printCorePattern p)
 
-printSurfacePattern :: S.Pattern Print -> Print
-printSurfacePattern p = prec Pattern $ case p of
+printSurfacePattern :: Spanned (S.Pattern Print) -> Print
+printSurfacePattern p = prec Pattern $ case snd p of
   S.Wildcard -> pretty '_'
   S.Var n    -> n
-  S.Tuple p  -> tupled (map (foldMap printSurfacePattern) p)
+  S.Tuple p  -> tupled (map printSurfacePattern p)
 
 unit :: Print
 unit = annotate Con $ pretty "Unit"
 
 
 printSurfaceData :: Stack Print -> [Spanned (CName ::: Spanned (S.Type a))] -> Print
-printSurfaceData env cs = block . commaSep $ map (ann . bimap sfree (foldMap (printSurfaceType env)) . snd) cs
+printSurfaceData env cs = block . commaSep $ map (ann . bimap sfree (printSurfaceType env) . snd) cs
 
 
-printSurfaceDecl :: S.Decl a -> Print
+printSurfaceDecl :: Spanned (S.Decl a) -> Print
 printSurfaceDecl = go Nil
   where
-  go env = \case
-    t S.:=   b -> foldMap (printSurfaceType env) t .= case b of
-      S.DExpr e -> foldMap (printSurfaceExpr env) e
-      S.DType t -> foldMap (printSurfaceType env) t
+  go env = snd >>> \case
+    t S.:=   b -> printSurfaceType env t .= case b of
+      S.DExpr e -> printSurfaceExpr env e
+      S.DType t -> printSurfaceType env t
       S.DData c -> printSurfaceData env c
     t S.:==> b ->
       let (t', b') = splitr (S.unDForAll . snd) b
           ts = map (first sbound) (t:t')
-      in forAlls ts (foldMap (go (foldl (\ as (a:::_) -> as :> a) env ts)) b')
-    t S.:--> b -> bimap sbound (foldMap (printSurfaceType env)) t >-> foldMap (go (env:>sbound (tm t))) b
+      in forAlls ts (go (foldl (\ as (a:::_) -> as :> a) env ts) b')
+    t S.:--> b -> bimap sbound (printSurfaceType env) t >-> go (env:>sbound (tm t)) b
 
 
 -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
@@ -422,11 +423,11 @@ printCoreDef = \case
   C.DData cs -> block . commaSep $ map (ann . fmap (printCoreValue (Level 0)) . first pretty) cs
 
 
-printSurfaceModule :: S.Module a -> Print
-printSurfaceModule (S.Module n ds) = module' n (map (foldMap (uncurry printSurfaceDef)) ds)
+printSurfaceModule :: Spanned (S.Module a) -> Print
+printSurfaceModule (_, S.Module n ds) = module' n (map (uncurry printSurfaceDef . snd) ds)
 
 printSurfaceDef :: DName -> Spanned (S.Decl a) -> Print
-printSurfaceDef n d = def (sfree n) (printSurfaceDecl (snd d))
+printSurfaceDef n d = def (sfree n) (printSurfaceDecl d)
 
 
 module' :: MName -> [Print] -> Print

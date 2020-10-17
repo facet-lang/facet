@@ -44,7 +44,7 @@ parseString p s = either (P.putDoc . N.prettyNotice) P.prettyPrint (runParserWit
 printFile :: MonadIO m => FilePath -> m ()
 printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module')))) >>= \case
   Left err -> P.putDoc (N.prettyNotice err)
-  Right m  -> P.prettyPrint (P.printSurfaceModule (snd m))
+  Right m  -> P.prettyPrint (P.printSurfaceModule m)
 
 parseFile :: MonadIO m => FilePath -> m (Either N.Notice (Spanned (S.Module Index)))
 parseFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module'))))
