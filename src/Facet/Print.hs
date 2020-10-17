@@ -33,8 +33,7 @@ module Facet.Print
 , printSurfaceModule
 ) where
 
-import           Control.Applicative (liftA2, (<**>))
-import           Control.Monad ((<=<))
+import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
@@ -42,7 +41,6 @@ import           Data.Function (on)
 import qualified Data.IntSet as IntSet
 import           Data.List (intersperse)
 import           Data.List.NonEmpty (NonEmpty)
-import           Data.Monoid (First(..))
 import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -60,6 +58,7 @@ import           Silkscreen as P
 import           Silkscreen.Printer.Prec hiding (Level)
 import qualified Silkscreen.Printer.Prec as P
 import           Silkscreen.Printer.Rainbow as P
+import           Text.Parser.Position
 
 prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = P.putDoc . getPrint
@@ -278,10 +277,10 @@ printSurfaceType = go
     S.Void     -> _Void
     S.TUnit    -> _Unit
     t S.:=> b ->
-      let (t', b') = splitr (S.unForAll <=< extract) b
+      let (t', b') = splitr (S.unForAll . snd) b
       in forAlls (map (first sbound) (t:t')) (foldMap (go (env:>sbound (tm t))) b')
     f S.:$$ a ->
-      let (f', a') = splitl (S.unTApp <=< extract) f
+      let (f', a') = splitl (S.unTApp . snd) f
       in foldMap (go env) f' $$* fmap (foldMap (go env)) (a' :> a)
     a S.:-> b -> foldMap (go env) a --> foldMap (go env) b
     l S.:** r -> foldMap (go env) l **  foldMap (go env) r
@@ -333,18 +332,18 @@ l ** r = tupled [l, r]
 (>~>) :: ((Pl, Print) ::: Print) -> Print -> Print
 ((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (var n ::: t) <> line))) </> arrow <+> b)
 
-forAlls :: (Foldable f, Functor f) => [Print ::: f (S.Type a)] -> Print -> Print
+forAlls :: [Print ::: Spanned (S.Type a)] -> Print -> Print
 forAlls ts b = foldr go b (groupByType S.aeq ts)
   where
   -- FIXME: this is horribly wrong and probably going to crash
   go (t, ns) b = ((Im, commaSep ns) ::: foldMap (printSurfaceType Nil) t) >~> b
 
-groupByType :: (Foldable f, Functor f) => (t -> t -> Bool) -> [(n ::: f t)] -> [(f t, [n])]
+groupByType :: (t -> t -> Bool) -> [n ::: Spanned t] -> [(Spanned t, [n])]
 groupByType eq = \case
   []   -> []
-  x:xs -> (ty x, tm x:map tm ys) : groupByType eq zs
+  (n ::: t):xs -> (t, n:map tm ys) : groupByType eq zs
     where
-    (ys,zs) = span (and . liftA2 eq (extract (ty x)) . extract . ty) xs
+    (ys,zs) = span (eq (snd t) . snd . ty) xs
 
 
 printSurfaceExpr :: Stack Print -> S.Expr a -> Print
@@ -355,7 +354,7 @@ printSurfaceExpr = go
     S.Bound n -> env ! getIndex n
     S.Hole n  -> hole n
     f S.:$  a ->
-      let (f', a') = splitl (S.unApp <=< extract) f
+      let (f', a') = splitl (S.unApp . snd) f
       in foldMap (go env) f' $$* fmap (foldMap (go env)) (a' :> a)
     S.Unit    -> unit
     l S.:*  r -> foldMap (go env) l **  foldMap (go env) r
@@ -363,8 +362,8 @@ printSurfaceExpr = go
       S.Expr e     -> prec Expr $ foldMap (printSurfaceExpr env) e
       S.Clauses cs -> commaSep (map (uncurry (printSurfaceClause env)) cs)
 
-printSurfaceClause :: (Foldable f, Functor f) => Stack Print -> NonEmpty (f (S.Pattern UName)) -> f (S.Expr a) -> Print
-printSurfaceClause env ps b = foldMap (foldMap printSurfacePattern) ps' <+> arrow <> group (nest 2 (line <> prec Expr (foldMap (printSurfaceExpr env') b)))
+printSurfaceClause :: Stack Print -> NonEmpty (Spanned (S.Pattern UName)) -> Spanned (S.Expr a) -> Print
+printSurfaceClause env ps b = foldMap (printSurfacePattern . snd) ps' <+> arrow <> group (nest 2 (line <> prec Expr (printSurfaceExpr env' (snd b))))
   where
   ps' = fmap (fmap sbound) <$> ps
   env' = foldl (foldl (foldl (:>))) env ps'
@@ -385,8 +384,8 @@ unit :: Print
 unit = annotate Con $ pretty "Unit"
 
 
-printSurfaceData :: Foldable f => Stack Print -> [f (CName ::: f (S.Type a))] -> Print
-printSurfaceData env cs = block . commaSep $ map (foldMap (ann . bimap sfree (foldMap (printSurfaceType env)))) cs
+printSurfaceData :: Stack Print -> [Spanned (CName ::: Spanned (S.Type a))] -> Print
+printSurfaceData env cs = block . commaSep $ map (ann . bimap sfree (foldMap (printSurfaceType env)) . snd) cs
 
 
 printSurfaceDecl :: S.Decl a -> Print
@@ -398,13 +397,10 @@ printSurfaceDecl = go Nil
       S.DType t -> foldMap (printSurfaceType env) t
       S.DData c -> printSurfaceData env c
     t S.:==> b ->
-      let (t', b') = splitr (S.unDForAll <=< extract) b
+      let (t', b') = splitr (S.unDForAll . snd) b
           ts = map (first sbound) (t:t')
       in forAlls ts (foldMap (go (foldl (\ as (a:::_) -> as :> a) env ts)) b')
     t S.:--> b -> bimap sbound (foldMap (printSurfaceType env)) t >-> foldMap (go (env:>sbound (tm t))) b
-
-extract :: Foldable f => f t -> Maybe t
-extract = getFirst . foldMap (First . Just)
 
 
 -- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
@@ -429,8 +425,8 @@ printCoreDef = \case
 printSurfaceModule :: S.Module a -> Print
 printSurfaceModule (S.Module n ds) = module' n (map (foldMap (uncurry printSurfaceDef)) ds)
 
-printSurfaceDef :: Foldable f => DName -> f (S.Decl a) -> Print
-printSurfaceDef n d = def (sfree n) (foldMap printSurfaceDecl d)
+printSurfaceDef :: DName -> Spanned (S.Decl a) -> Print
+printSurfaceDef n d = def (sfree n) (printSurfaceDecl (snd d))
 
 
 module' :: MName -> [Print] -> Print
