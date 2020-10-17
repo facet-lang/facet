@@ -34,6 +34,7 @@ module Facet.Print
   -- * Formatters
 , Var(..)
 , Expr(..)
+, Pattern(..)
 ) where
 
 import           Control.Applicative ((<**>))
@@ -459,4 +460,10 @@ data Expr p = FoldExpr
   , fvsIn :: p -> IntSet.IntSet
   , ann' :: (p ::: p) -> p
   , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
+  }
+
+data Pattern p = FoldPattern
+  { wildcard :: p
+  , variable :: UName -> p
+  , pcon     :: p -> Stack p -> p
   }
