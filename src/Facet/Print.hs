@@ -272,7 +272,7 @@ printSurfaceType :: Stack Print -> Spanned (S.Type a) -> Print
 printSurfaceType = go
   where
   go env = snd >>> \case
-    S.TFree n  -> sfree n
+    S.TFree n  -> sglobal n
     S.TBound n -> env ! getIndex n
     S.THole n  -> hole n
     S.Type     -> _Type
@@ -287,8 +287,8 @@ printSurfaceType = go
     a S.:-> b -> go env a --> go env b
     l S.:** r -> go env l **  go env r
 
-sfree :: Pretty n => n -> Print
-sfree = var . pretty
+sglobal :: Pretty n => n -> Print
+sglobal = var . pretty
 
 cglobal :: QName -> Print
 cglobal = var . prettyQName
@@ -352,7 +352,7 @@ printSurfaceExpr :: Stack Print -> Spanned (S.Expr a) -> Print
 printSurfaceExpr = go
   where
   go env = snd >>> \case
-    S.Free n  -> sfree n
+    S.Free n  -> sglobal n
     S.Bound n -> env ! getIndex n
     S.Hole n  -> hole n
     f S.:$  a ->
@@ -430,7 +430,7 @@ printSurfaceModule :: Spanned (S.Module a) -> Print
 printSurfaceModule (_, S.Module n ds) = module' n (map (uncurry printSurfaceDef . snd) ds)
 
 printSurfaceDef :: DName -> Spanned (S.Decl a) -> Print
-printSurfaceDef n d = def (sfree n) (printSurfaceDecl d)
+printSurfaceDef n d = def (sglobal n) (printSurfaceDecl d)
 
 
 module' :: MName -> [Print] -> Print
