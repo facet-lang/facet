@@ -387,7 +387,7 @@ unit = annotate Con $ pretty "Unit"
 
 
 printSurfaceData :: Stack Print -> [Spanned (CName ::: Spanned (S.Type a))] -> Print
-printSurfaceData env cs = block . commaSep $ map (ann . bimap sfree (printSurfaceType env) . snd) cs
+printSurfaceData env cs = block . commaSep $ map (ann . bimap (annotate Con . sfree) (printSurfaceType env) . snd) cs
 
 
 printSurfaceDecl :: Spanned (S.Decl a) -> Print
