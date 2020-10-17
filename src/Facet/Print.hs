@@ -438,6 +438,7 @@ surface = Algebra
   , intro = \ n _ -> setPrec Var (pretty n)
   , lam = comp . nest 2 . group . commaSep
   , clause = \ ns b -> nest 2 $ group (setPrec Pattern (vsep (map (tm . out) ns)) </> arrow) </> b
+  -- FIXME: group quantifiers by type again.
   , fn = \ as b -> foldr (\ (P pl (n ::: _T)) b -> case n of
     Just n -> ((pl, n) ::: _T) >~> b
     _      -> _T --> b) b as
