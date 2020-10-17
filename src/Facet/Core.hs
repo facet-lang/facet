@@ -274,7 +274,7 @@ newtype Contextual f = Contextual { runContextual :: forall x . Ctx.Context (Val
 data Pattern a
   = Wildcard
   | Var a
-  | Con CName [Pattern a]
+  | Con QName [Pattern a]
   | Tuple [Pattern a]
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
