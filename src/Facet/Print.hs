@@ -451,8 +451,8 @@ data ExprAlg p = ExprAlg
     -> p   -- the body.
     -> p
   , fn
-    :: [p ::: p] -- the argument types/bindings
-    -> p         -- the return type
+    :: [Maybe p ::: p] -- the argument types/bindings
+    -> p               -- the return type
     -> p
   , app :: p -> Stack (Pl_ p) -> p
   , prd :: [p] -> p
@@ -483,7 +483,7 @@ foldValue alg = go
     C.Unit  -> prd alg []
     t C.:=> b  ->
       let (vs, (d', b')) = splitr (C.unLam' var') (d, t C.:=> b)
-      in fn alg (map (\ (d, n ::: _T) -> intro alg n d ::: go d _T) vs) (go d' b')
+      in fn alg (map (\ (d, n ::: _T) -> Just (intro alg n d) ::: go d _T) vs) (go d' b')
     C.Lam n b  ->
       let (vs, (d', b')) = splitr (C.unLam' var') (d, C.Lam n b)
       in lam alg (map (\ (d, n) -> var' d n) vs) (go d' b')
