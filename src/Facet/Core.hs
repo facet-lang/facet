@@ -60,7 +60,7 @@ data Value a
   | Neut (Head a) (Stack (Elim (Value a)))
   | TPrd (Value a) (Value a) -- FIXME: 🔥
   | Prd (Value a) (Value a)  -- FIXME: 🔥
-  | VCon (QName ::: Value a) [Value a]
+  | VCon (QName ::: Value a) (Stack (Value a))
 
 infixr 1 :=>
 
@@ -95,7 +95,7 @@ instance (Eq a, Num a) => Eq (Value a) where
       (Prd l1 r1, Prd l2 r2) -> go n l1 l2 && go n r1 r2
       (Prd _ _, _) -> False
       (VCon n1 p1, VCon n2 p2)
-        | length p1 == length p2 -> go n (ty n1) (ty n2) && and (zipWith (go n) p1 p2)
+        | length p1 == length p2 -> go n (ty n1) (ty n2) && and (zipWith (go n) (toList p1) (toList p2))
       (VCon _ _, _) -> False
 
     eqSp n (sp1:>e1) (sp2:>e2) = eqSp n sp1 sp2 && eqElim n e1 e2
