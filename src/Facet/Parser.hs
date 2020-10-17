@@ -337,4 +337,4 @@ lparen :: TokenParsing p => p Char
 lparen = symbolic '('
 
 rparen :: TokenParsing p => p Char
-rparen = symbolic '('
+rparen = symbolic ')'
