@@ -479,14 +479,14 @@ elabDecl
   :: forall a v
   .  (HasCallStack, Eq v)
   => Spanned (S.Decl a)
-  -> (Context (Val v ::: Type v) -> Check v (Val v)) ::: (Context (Val v ::: Type v) -> Check v (Type v))
+  -> (Context (Val v ::: Type v) -> Check v (Either [CName ::: Val v] (Val v))) ::: (Context (Val v ::: Type v) -> Check v (Type v))
 elabDecl d = go d id id
   where
   go
     :: Spanned (S.Decl a)
     -> ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v)))
     -> ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v)))
-    -> (Context (Val v ::: Type v) -> Check v (Val v)) ::: (Context (Val v ::: Type v) -> Check v (Type v))
+    -> (Context (Val v ::: Type v) -> Check v (Either [CName ::: Val v] (Val v))) ::: (Context (Val v ::: Type v) -> Check v (Type v))
   go d km kt = withSpans d $ \case
     (n ::: t) S.:==> b ->
       go b
@@ -498,15 +498,15 @@ elabDecl d = go d id id
         (km . (\ b  ctx -> lam n (b . (ctx |>))))
         (kt . (\ _B ctx -> checkElab (switch (P Ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
 
-    t S.:= b -> km (\ ctx -> elabDeclBody ctx b) ::: kt (\ ctx -> checkElab (elabType ctx t))
+    t S.:= b -> (\ ctx -> elabDeclBody km ctx b) ::: kt (\ ctx -> checkElab (elabType ctx t))
 
   withSpans (s, d) f = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
 
-elabDeclBody :: (HasCallStack, Eq v) => Context (Val v ::: Type v) -> S.DeclBody a -> Check v (Val v)
-elabDeclBody ctx = \case
-  S.DExpr b -> checkElab (elabExpr ctx b)
-  S.DType b -> checkElab (elabType ctx b)
-  S.DData c -> elabData ctx c
+elabDeclBody :: (HasCallStack, Eq v) => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> S.DeclBody a -> Check v (Either [CName ::: Val v] (Val v))
+elabDeclBody k ctx = \case
+  S.DExpr b -> Right <$> k (checkElab . (`elabExpr` b)) ctx
+  S.DType b -> Right <$> k (checkElab . (`elabType` b)) ctx
+  S.DData c -> Right <$> elabData ctx c
 
 
 elabData :: Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned (S.Type a))] -> Check v (Val v)
@@ -532,22 +532,26 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (T
 
       modify $ Env.insert (qname :=: Nothing ::: _T)
 
-      e' <- runReader env . runSubst . elab $ check (e empty ::: _T)
-
-      modify $ Env.insert (qname :=: Just e' ::: _T)
+      (s, e') <- runReader env . runState (fmap pure . (,)) emptySubst . elab $ check (e empty ::: _T)
+      case e' of
+        Left cs  -> do
+          error "TBD"
+        Right e' -> do
+          modify $ Env.insert (qname :=: Just (apply s e') ::: _T)
+          pure (qname, C.DTerm e' ::: _T)
 
       -- FIXME: extend the module
       -- FIXME: support defining types
-      pure (qname, C.DTerm e' ::: _T)
 
   pure $ C.Module mname defs
   where
   -- Apply the substitution to the value.
   -- FIXME: error if the substitution has holes.
-  apply s v = pure $ subst (IntMap.mapMaybe tm s) v
+  apply s v = subst (IntMap.mapMaybe tm s) v
+  emptySubst = IntMap.empty @(Maybe (Prob v) ::: Type v)
 
   runContext = runReader @(Context (Val v ::: Type v)) empty
-  runSubst = runState apply (IntMap.empty @(Maybe (Prob v) ::: Type v))
+  runSubst = runState (fmap pure . apply) emptySubst
 
 
 
