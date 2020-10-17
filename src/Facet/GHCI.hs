@@ -62,9 +62,7 @@ elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either N.Notice)) (Spanned (S.Module Index)) -> String -> m ()
 elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
-  lower $ do
-    mod <- elabModule parsed
-    pure $ P.printCoreModule mod
+  lower $ P.printCoreModule <$> elabModule parsed
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s
