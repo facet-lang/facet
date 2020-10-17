@@ -25,7 +25,7 @@ import           Control.Effect.Parser.Span (Pos(Pos))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
-import           Facet.Algebra (foldCModule, foldSModule)
+import           Facet.Algebra (foldCModule, foldCValue, foldSModule)
 import           Facet.Context
 import           Facet.Elab (Err(..), ErrDoc, Reason(..), Type, Val, elabModule)
 import           Facet.Name (Index(..), Level(..))
@@ -79,7 +79,7 @@ toNotice :: Maybe N.Level -> Source -> Err P.Print -> N.Notice
 toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason
   in N.Notice lvl (fromSourceAndSpan src span) reason' $
-    [ P.getPrint $ P.printContextEntry l (n ::: P.printCoreValue l _T)
+    [ P.getPrint $ P.printContextEntry l (n ::: foldCValue P.explicit l _T)
     | (l, n ::: _ ::: _T) <- zip [Level 0..] (toList (elems context))
     ]
 
@@ -106,4 +106,4 @@ printReason ctx = group . \case
 
 
 printType :: Level -> Type P.Print -> ErrDoc
-printType l = P.getPrint . P.printCoreValue l
+printType l = P.getPrint . foldCValue P.explicit l
