@@ -4,10 +4,11 @@ module Facet.Env
 ( Env(..)
 , fromList
 , lookup
+, lookupQ
 , insert
 ) where
 
-import           Control.Monad (guard)
+import           Control.Monad (guard, (<=<))
 import           Data.List (uncons)
 import qualified Data.Map as Map
 import           Facet.Name
@@ -25,6 +26,9 @@ lookup k (Env env) = do
   mod <- Map.lookup k env
   ((mn, v), t) <- uncons (Map.toList mod)
   (mn :=: v) <$ guard (null t)
+
+lookupQ :: QName -> Env a -> Maybe (Maybe a ::: a)
+lookupQ (m :.: d) = Map.lookup m <=< Map.lookup d . getEnv
 
 insert :: QName :=: Maybe a ::: a -> Env a -> Env a
 insert (m :.: d :=: v) = Env . Map.insertWith (<>) d (Map.singleton m v) . getEnv
