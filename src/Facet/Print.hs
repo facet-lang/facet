@@ -421,7 +421,7 @@ printCoreDef :: C.Def Print -> Print
 printCoreDef = \case
   C.DTerm b  -> printCoreValue (Level 0) b
   C.DType b  -> printCoreValue (Level 0) b
-  C.DData cs -> block . commaSep $ map (ann . bimap pretty (printCoreValue (Level 0))) cs
+  C.DData cs -> block . commaSep $ map (ann . bimap (annotate Con . pretty) (printCoreValue (Level 0))) cs
 
 
 printSurfaceModule :: Spanned (S.Module a) -> Print
