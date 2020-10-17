@@ -64,7 +64,7 @@ import           Facet.Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
 import qualified Facet.Env as Env
-import           Facet.Name (CName, DName(C), Index(..), Level(..), QName(..), UName, __)
+import           Facet.Name hiding (L, R)
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as S
 import           Facet.Syntax
