@@ -253,7 +253,7 @@ substQ s = go
     VCon n p -> VCon (fmap go n) (fmap go p)
   substElim = \case
     App a   -> App (fmap go a)
-    Case cs -> Case (map (fmap (go .)) cs)
+    Case cs -> Case (map (bimap (bimap go (fmap go)) (go .)) cs)
   s ! l = case IntMap.lookup (getLevel l) s of
     Just a  -> a
     Nothing -> quote l
@@ -277,7 +277,7 @@ subst s = go
     VCon n p -> VCon (fmap go n) (fmap go p)
   substElim = \case
     App a   -> App (fmap go a)
-    Case cs -> Case (map (fmap (go .)) cs)
+    Case cs -> Case (map (bimap (bimap go (fmap go)) (go .)) cs)
   s ! l = case IntMap.lookup (getLevel (tm l)) s of
     Just a  -> a
     Nothing -> metavar l
