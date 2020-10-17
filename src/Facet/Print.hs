@@ -246,17 +246,12 @@ printCoreValue = go
     C.App  a -> f $$ unPl_ (braces . go d) (go d) a
     C.Case p -> nest 2 $ group $ pretty "case" <+> setPrec Expr f </> block (commaSep (map (clause d) p))
 
-var' :: Bool -> Level -> Pl_ UName ::: C.Value Print -> Print
-var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ setPrec Var (annotate (Name d) (p <> unPl tvar evar (pl n) d)) ::: printCoreValue d _T
-  where
-  p | u         = mempty
-    | otherwise = pretty '_'
+  var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ setPrec Var (annotate (Name d) (p <> unPl tvar evar (pl n) d)) ::: printCoreValue d _T
+    where
+    p | u         = mempty
+      | otherwise = pretty '_'
 
-lam
-  :: [Print] -- ^ the bound variables.
-  -> Print   -- ^ the body.
-  -> Print
-lam vs b = block $ nest 2 $ group (setPrec Pattern (vsep vs) </> arrow) </> b
+  lam vs b = block $ nest 2 $ group (setPrec Pattern (vsep vs) </> arrow) </> b
 
 
 printContextEntry :: Level -> UName ::: Print -> Print
