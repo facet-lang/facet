@@ -48,6 +48,7 @@ import           GHC.Stack
 
 -- FIXME: replace products, void, and unit with references to constant datatypes.
 -- FIXME: represent closed portions of the tree explicitly?
+-- FIXME: represent constructors
 data Value a
   = Type
   | Void  -- FIXME: 🔥
