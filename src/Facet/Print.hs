@@ -35,6 +35,7 @@ module Facet.Print
 , Var(..)
 , ExprAlg(..)
 , PatternAlg(..)
+, foldValue
 ) where
 
 import           Control.Applicative ((<**>))
@@ -42,7 +43,7 @@ import           Control.Category ((>>>))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Bitraversable (bimapAccumL)
-import           Data.Foldable (foldl')
+import           Data.Foldable (foldl', toList)
 import           Data.Function (on)
 import qualified Data.IntSet as IntSet
 import           Data.List (intersperse)
@@ -50,6 +51,7 @@ import           Data.List.NonEmpty (NonEmpty)
 import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Data.Text as T
+import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
 import           Facet.Name hiding (ann)
 import qualified Facet.Pretty as P
@@ -469,3 +471,47 @@ data PatternAlg p = PatternAlg
   , pcon     :: p -> Stack p -> p
   , tuple    :: [p] -> p
   }
+
+
+foldValue :: ExprAlg p -> Level -> C.Value p -> p
+foldValue f = go
+  where
+  go d = \case
+    C.Type  -> _Type f
+    C.Void  -> _Void f
+    C.TUnit -> _Unit f
+    C.Unit  -> prd f []
+    t C.:=> b  ->
+      let (vs, (d', b')) = splitr (C.unLam' var') (d, t C.:=> b)
+      in fn f (map (\ (d, n ::: _T) -> intro f n d ::: go d _T) vs) (go d' b')
+    C.Lam n b  ->
+      let (vs, (d', b')) = splitr (C.unLam' var') (d, C.Lam n b)
+      in lam f (map (\ (d, n) -> var' d n) vs) (go d' b')
+    -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
+    -- FIXME: should maybe print the quoted variable differently so it stands out.
+    C.Neut h e ->
+      let elim h Nil Nil     = h
+          elim h sp  Nil     = app f h sp
+          elim h sp  (es:>e) = case e of
+            C.App a   -> elim h (sp:>fmap (go d) a) es
+            C.Case ps -> case' f (elim h Nil es) (map clause ps)
+          h' = C.unHead (ann' f . bimap (var f . qvar) (go d)) id (var f . Local __) (ann' f . bimap (var f . Meta) (go d)) h
+          clause (p, b) =
+            let ((d', p'), v) = pat d p
+            in (p', go d' (b v))
+      in elim h' Nil e
+    C.TPrd l r -> prd f [go d l, go d r]
+    C.Prd  l r -> prd f [go d l, go d r]
+    C.VCon n p -> app f (ann' f (bimap (var f . qvar) (go d) n)) (fmap (ex . go d) p)
+  var' d n = ann' f (intro f (tm n) d ::: go d (ty n))
+
+  pat d = \case
+    C.Wildcard -> ((d, wildcard (pattern f)), C.Wildcard)
+    C.Var n    -> let v = ann' f (var f (Local (tm n) d) ::: foldValue f d (ty n)) in ((succ d, v), C.Var (C.free v))
+    C.Con n ps ->
+      let ((d', p'), ps') = subpatterns d ps
+      in ((d', pcon (pattern f) (ann' f (bimap (var f . qvar) (foldValue f d) n)) p'), C.Con n ps')
+    C.Tuple ps ->
+      let ((d', p'), ps') = subpatterns d ps
+      in ((d', tuple (pattern f) (toList p')), C.Tuple ps')
+  subpatterns d ps = mapAccumL (\ (d', ps) p -> let ((d'', v), p') = pat d' p in ((d'', ps:>v), p')) (d, Nil) ps
