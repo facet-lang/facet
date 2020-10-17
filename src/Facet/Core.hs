@@ -244,7 +244,13 @@ substHead subst = go
     Unit     -> Unit
     t :=> b  -> fmap go t :=> go . b
     Lam n b  -> Lam (fmap go n) (go . b)
-    Neut f a -> subst f `elimN` fmap substElim a
+    Neut f a -> subst f' `elimN` fmap substElim a
+      where
+      f' = case f of
+        Global (n ::: _T) -> Global (n ::: go _T)
+        Free   v          -> Free   v
+        Quote  v          -> Quote  v
+        Meta   (d ::: _T) -> Meta   (d ::: go _T)
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
     VCon n p -> VCon (fmap go n) (fmap go p)
