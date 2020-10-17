@@ -474,44 +474,44 @@ data PatternAlg p = PatternAlg
 
 
 foldValue :: ExprAlg p -> Level -> C.Value p -> p
-foldValue f = go
+foldValue alg = go
   where
   go d = \case
-    C.Type  -> _Type f
-    C.Void  -> _Void f
-    C.TUnit -> _Unit f
-    C.Unit  -> prd f []
+    C.Type  -> _Type alg
+    C.Void  -> _Void alg
+    C.TUnit -> _Unit alg
+    C.Unit  -> prd alg []
     t C.:=> b  ->
       let (vs, (d', b')) = splitr (C.unLam' var') (d, t C.:=> b)
-      in fn f (map (\ (d, n ::: _T) -> intro f n d ::: go d _T) vs) (go d' b')
+      in fn alg (map (\ (d, n ::: _T) -> intro alg n d ::: go d _T) vs) (go d' b')
     C.Lam n b  ->
       let (vs, (d', b')) = splitr (C.unLam' var') (d, C.Lam n b)
-      in lam f (map (\ (d, n) -> var' d n) vs) (go d' b')
+      in lam alg (map (\ (d, n) -> var' d n) vs) (go d' b')
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     C.Neut h e ->
       let elim h Nil Nil     = h
-          elim h sp  Nil     = app f h sp
+          elim h sp  Nil     = app alg h sp
           elim h sp  (es:>e) = case e of
             C.App a   -> elim h (sp:>fmap (go d) a) es
-            C.Case ps -> case' f (elim h Nil es) (map clause ps)
-          h' = C.unHead (ann' f . bimap (var f . qvar) (go d)) id (var f . Local __) (ann' f . bimap (var f . Meta) (go d)) h
+            C.Case ps -> case' alg (elim h Nil es) (map clause ps)
+          h' = C.unHead (ann' alg . bimap (var alg . qvar) (go d)) id (var alg . Local __) (ann' alg . bimap (var alg . Meta) (go d)) h
           clause (p, b) =
             let ((d', p'), v) = pat d p
             in (p', go d' (b v))
       in elim h' Nil e
-    C.TPrd l r -> prd f [go d l, go d r]
-    C.Prd  l r -> prd f [go d l, go d r]
-    C.VCon n p -> app f (ann' f (bimap (var f . qvar) (go d) n)) (fmap (ex . go d) p)
-  var' d n = ann' f (intro f (tm n) d ::: go d (ty n))
+    C.TPrd l r -> prd alg [go d l, go d r]
+    C.Prd  l r -> prd alg [go d l, go d r]
+    C.VCon n p -> app alg (ann' alg (bimap (var alg . qvar) (go d) n)) (fmap (ex . go d) p)
+  var' d n = ann' alg (intro alg (tm n) d ::: go d (ty n))
 
   pat d = \case
-    C.Wildcard -> ((d, wildcard (pattern f)), C.Wildcard)
-    C.Var n    -> let v = ann' f (var f (Local (tm n) d) ::: foldValue f d (ty n)) in ((succ d, v), C.Var (C.free v))
+    C.Wildcard -> ((d, wildcard (pattern alg)), C.Wildcard)
+    C.Var n    -> let v = ann' alg (var alg (Local (tm n) d) ::: foldValue alg d (ty n)) in ((succ d, v), C.Var (C.free v))
     C.Con n ps ->
       let ((d', p'), ps') = subpatterns d ps
-      in ((d', pcon (pattern f) (ann' f (bimap (var f . qvar) (foldValue f d) n)) p'), C.Con n ps')
+      in ((d', pcon (pattern alg) (ann' alg (bimap (var alg . qvar) (foldValue alg d) n)) p'), C.Con n ps')
     C.Tuple ps ->
       let ((d', p'), ps') = subpatterns d ps
-      in ((d', tuple (pattern f) (toList p')), C.Tuple ps')
+      in ((d', tuple (pattern alg) (toList p')), C.Tuple ps')
   subpatterns d ps = mapAccumL (\ (d', ps) p -> let ((d'', v), p') = pat d' p in ((d'', ps:>v), p')) (d, Nil) ps
