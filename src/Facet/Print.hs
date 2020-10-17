@@ -433,6 +433,7 @@ surface :: Algebra Print
 surface = Algebra
   { var = \case
     Global _ n -> setPrec Var (pretty n)
+    TLocal n d -> name P.upper n d
     Local  n d -> name P.lower n d
     Meta     d -> setPrec Var (annotate Hole (pretty '?' <> evar d))
     Cons     n -> setPrec Var (annotate Con (pretty n))
@@ -475,6 +476,7 @@ explicit :: Algebra Print
 explicit = Algebra
   { var = \case
     Global _ n -> setPrec Var (pretty n)
+    TLocal n d -> name P.upper n d
     Local  n d -> name P.lower n d
     Meta     d -> setPrec Var (annotate Hole (pretty '?' <> evar d))
     Cons     n -> setPrec Var (annotate Con (pretty n))

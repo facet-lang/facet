@@ -26,6 +26,7 @@ import           Text.Parser.Position
 
 data Var
   = Global (Maybe MName) DName
+  | TLocal UName Level
   | Local UName Level
   | Meta Level
   | Cons CName
@@ -76,10 +77,10 @@ foldCValue alg = go
     C.TUnit -> _Unit alg
     C.Unit  -> prd alg []
     t C.:=> b  ->
-      let (vs, (d', b')) = splitr (C.unForAll' var') (d, t C.:=> b)
+      let (vs, (d', b')) = splitr (C.unForAll' (var' TLocal)) (d, t C.:=> b)
       in fn alg (map (\ (d, n ::: _T) -> let n' = if T.null (getUName (out n)) then Nothing else Just (tintro alg (out n) d) in P (pl n) (n' ::: go d _T)) vs) (go d' b')
     C.Lam n b  ->
-      let (vs, (d', b')) = splitr (C.unLam' var') (d, C.Lam n b)
+      let (vs, (d', b')) = splitr (C.unLam' (var' Local)) (d, C.Lam n b)
       in lam alg [clause alg (map (\ (d, n) -> P (pl (tm n)) (unPl tintro intro (pl (tm n)) alg (out (tm n)) d ::: Just (go d (ty n)))) vs) (go d' b')]
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
@@ -98,7 +99,7 @@ foldCValue alg = go
     C.TPrd l r -> prd alg [go d l, go d r]
     C.Prd  l r -> prd alg [go d l, go d r]
     C.VCon n p -> app alg (ann' alg (bimap (var alg . qvar) (go d) n)) (fmap (ex . go d) p)
-  var' d n = ann' alg (var alg (Local (out (tm n)) d) ::: go d (ty n))
+  var' f d n = ann' alg (var alg (f (out (tm n)) d) ::: go d (ty n))
 
   pat d = \case
     C.Wildcard -> ((d, wildcard alg), C.Wildcard)
