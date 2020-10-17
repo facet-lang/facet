@@ -260,7 +260,7 @@ printCoreValue = go
 
 
 printContextEntry :: Level -> UName ::: Print -> Print
-printContextEntry l (n ::: _T) = ann (cbound n l ::: _T)
+printContextEntry l (n ::: _T) = ann (intro explicit n l ::: _T)
 
 
 printSurfaceType :: Stack Print -> Spanned (S.Type a) -> Print
