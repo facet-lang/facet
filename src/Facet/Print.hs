@@ -436,8 +436,8 @@ surface = Algebra
     Meta     d -> setPrec Var (annotate Hole (pretty '?' <> evar d))
     Cons     n -> setPrec Var (annotate Con (pretty n))
   , intro = \ n _ -> setPrec Var (pretty n)
-  , lam = comp . nest 2 . group . commaSep
-  , clause = \ ns b -> nest 2 $ group (setPrec Pattern (vsep (map (tm . out) ns)) </> arrow) </> b
+  , lam = comp . embed . commaSep
+  , clause = \ ns b -> embed (setPrec Pattern (vsep (map (tm . out) ns)) </> arrow) </> b
   -- FIXME: group quantifiers by kind again.
   , fn = \ as b -> foldr (\ (P pl (n ::: _T)) b -> case n of
     Just n -> ((pl, n) ::: _T) >~> b
@@ -452,12 +452,14 @@ surface = Algebra
   , _Unit = annotate Type $ pretty "Unit"
   , unit = annotate Con $ pretty "Unit"
   , ann' = tm
-  , case' = \ s ps -> nest 2 $ group $ pretty "case" <+> setPrec Expr s </> block (commaSep (map (\ (p, b) -> nest 2 $ group (prec Pattern p </> arrow) </> b) ps))
+  , case' = \ s ps -> embed $ pretty "case" <+> setPrec Expr s </> block (commaSep (map (\ (p, b) -> embed (prec Pattern p </> arrow) </> b) ps))
   , wildcard = pretty '_'
   , pcon = \ n ps -> parens (hsep (annotate Con n:toList ps))
   , tuple = tupled
   , decl = ann
   , defn = \ (a :=: b) -> a </> b
   , data' = block . commaSep
-  , module_ = \ (n ::: t :=: ds) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (nest 2 (vsep (intersperse mempty ds)))
+  , module_ = \ (n ::: t :=: ds) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (embed (vsep (intersperse mempty ds)))
   }
+  where
+  embed = nest 2 . group
