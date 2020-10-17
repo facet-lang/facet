@@ -170,9 +170,9 @@ unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
 
 -- | A variation on 'unLam' which can be conveniently chained with 'splitr' to strip a prefix of lambdas off their eventual body.
 unLam' :: Has Empty sig m => (Level -> Pl_ UName ::: Value a -> a) -> (Level, Value a) -> m ((Level, Pl_ UName ::: Value a), (Level, Value a))
-unLam' var (d, v) = case unLam v of
-  Just (n, t) -> let n' = var d n in pure ((d, n), (succ d, t (free n')))
-  Nothing     -> empty
+unLam' var (d, v) = do
+  (n, t) <- unLam v
+  pure ((d, n), (succ d, t (free (var d n))))
 
 unProductT :: Has Empty sig m => Value a -> m (Value a, Value a)
 unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
