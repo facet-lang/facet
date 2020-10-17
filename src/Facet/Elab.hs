@@ -482,6 +482,9 @@ elabDecl
   -> (Context (Val v ::: Type v) -> Check v (Val v)) ::: (Context (Val v ::: Type v) -> Check v (Type v))
 elabDecl = go
   where
+  go
+    :: Spanned (S.Decl a)
+    -> (Context (Val v ::: Type v) -> Check v (Val v)) ::: (Context (Val v ::: Type v) -> Check v (Type v))
   go = withSpans $ \case
     (n ::: t) S.:==> b ->
       let b' ::: _B = go b
