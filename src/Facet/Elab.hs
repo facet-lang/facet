@@ -526,14 +526,13 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (T
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
     let qname = mname :.: n
-    env <- get @(Env.Env (Type v))
-    let e ::: t = elabDecl d
+        e ::: t = elabDecl d
     runContext $ do
-      _T <- runReader env . runSubst . elab $ check (t empty ::: Type)
+      _T <- runEnv . runSubst . elab $ check (t empty ::: Type)
 
       modify $ Env.insert (qname :=: Nothing ::: _T)
 
-      (s, e') <- runReader env . runState (fmap pure . (,)) emptySubst . elab $ check (e empty ::: _T)
+      (s, e') <- runEnv . runState (fmap pure . (,)) emptySubst . elab $ check (e empty ::: _T)
       case e' of
         Left cs  -> do
           cs' <- for cs $ \ (n ::: _T) -> do
@@ -556,6 +555,10 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (T
 
   runContext = runReader @(Context (Val v ::: Type v)) empty
   runSubst = runState (fmap pure . apply) emptySubst
+
+  runEnv m = do
+    env <- get @(Env.Env (Type v))
+    runReader env m
 
 
 
