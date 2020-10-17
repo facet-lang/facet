@@ -463,7 +463,7 @@ surface = Algebra
   }
   where
   embed = nest 2 . group
-  name n d = setPrec Var $ if T.null (getUName n) then
+  name n d = setPrec Var . annotate (Name d) $ if T.null (getUName n) then
     pretty '_' <> P.lower (getLevel d)
   else
     pretty n
