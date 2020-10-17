@@ -242,9 +242,7 @@ substHead subst = go
     Void     -> Void
     TUnit    -> TUnit
     Unit     -> Unit
-    t :=> b  ->
-      let t' = fmap go t
-      in t' :=> go . b
+    t :=> b  -> fmap go t :=> go . b
     Lam n b  -> Lam (fmap go n) (go . b)
     Neut f a -> subst f `elimN` fmap substElim a
     TPrd l r -> TPrd (go l) (go r)
