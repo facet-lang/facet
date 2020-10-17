@@ -286,6 +286,7 @@ printSurfaceType = go
   _Type = annotate Type $ pretty "Type"
   _Void = annotate Type $ pretty "Void"
   _Unit = annotate Type $ pretty "Unit"
+  hole n = annotate Hole $ pretty '?' <> pretty n
 
 
 sglobal :: Pretty n => n -> Print
@@ -305,9 +306,6 @@ cbound h level = cons level (h' <> pretty (getLevel level))
     | T.null (getUName h) = pretty '_'
     | otherwise           = pretty h
 
-
-hole :: Text -> Print
-hole n = annotate Hole $ pretty '?' <> pretty n
 
 ($$), (-->), (**) :: Print -> Print -> Print
 f $$ a = askingPrec $ \case
@@ -358,6 +356,7 @@ printSurfaceExpr = go
     S.Comp c  -> comp $ case snd c of
       S.Expr e     -> prec Expr $ printSurfaceExpr env e
       S.Clauses cs -> commaSep (map (uncurry (printSurfaceClause env)) cs)
+  hole n = annotate Hole $ pretty '?' <> pretty n
 
 printSurfaceClause :: Stack Print -> NonEmpty (Spanned (S.Pattern UName)) -> Spanned (S.Expr a) -> Print
 printSurfaceClause env ps b = foldMap printSurfacePattern ps' <+> arrow <> group (nest 2 (line <> prec Expr (printSurfaceExpr env' b)))
