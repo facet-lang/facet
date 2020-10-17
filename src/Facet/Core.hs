@@ -12,7 +12,9 @@ module Facet.Core
 , free
 , metavar
 , unForAll
+, unForAll'
 , unLam
+, unLam'
 , unProductT
 , ($$)
 , case'
@@ -164,8 +166,20 @@ var = (`Neut` Nil)
 unForAll :: Has Empty sig m => Value a -> m (Pl_ UName ::: Value a, Value a -> Value a)
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
+-- | A variation on 'unForAll' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
+unForAll' :: Has Empty sig m => (Level -> Pl_ UName ::: Value a -> a) -> (Level, Value a) -> m ((Level, Pl_ UName ::: Value a), (Level, Value a))
+unForAll' var (d, v) = do
+  (_T, _B) <- unForAll v
+  pure ((d, _T), (succ d, _B (free (var d _T))))
+
 unLam :: Has Empty sig m => Value a -> m (Pl_ UName ::: Value a, Value a -> Value a)
 unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
+
+-- | A variation on 'unLam' which can be conveniently chained with 'splitr' to strip a prefix of lambdas off their eventual body.
+unLam' :: Has Empty sig m => (Level -> Pl_ UName ::: Value a -> a) -> (Level, Value a) -> m ((Level, Pl_ UName ::: Value a), (Level, Value a))
+unLam' var (d, v) = do
+  (n, t) <- unLam v
+  pure ((d, n), (succ d, t (free (var d n))))
 
 unProductT :: Has Empty sig m => Value a -> m (Value a, Value a)
 unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
@@ -220,50 +234,44 @@ handleBinderP d p b = do
   b' <- b p'
   pure $ \ v -> substQ (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
--- FIXME: is it possible to instead perform one complete substitution at the end of <whatever>?
-substQ :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
-substQ s = go
+substHead :: HasCallStack => (Head a -> Value a) -> Value a -> Value a
+substHead subst = go
   where
   go = \case
     Type     -> Type
     Void     -> Void
     TUnit    -> TUnit
     Unit     -> Unit
-    t :=> b  ->
-      let t' = fmap go t
-      in t' :=> go . b
-    Lam n b  -> Lam n (go . b)
-    Neut f a -> unHead global free (s !) metavar f `elimN` fmap substElim a
+    t :=> b  -> fmap go t :=> go . b
+    Lam n b  -> Lam (fmap go n) (go . b)
+    Neut f a -> subst f' `elimN` fmap substElim a
+      where
+      f' = case f of
+        Global (n ::: _T) -> Global (n ::: go _T)
+        Free   v          -> Free   v
+        Quote  v          -> Quote  v
+        Meta   (d ::: _T) -> Meta   (d ::: go _T)
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
     VCon n p -> VCon (fmap go n) (fmap go p)
   substElim = \case
     App a   -> App (fmap go a)
-    Case cs -> Case (map (fmap (go .)) cs)
+    Case cs -> Case (map (bimap (bimap go (fmap go)) (go .)) cs)
+
+-- FIXME: is it possible to instead perform one complete substitution at the end of <whatever>?
+substQ :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
+substQ s = substHead (unHead global free (s !) metavar)
+  where
   s ! l = case IntMap.lookup (getLevel l) s of
     Just a  -> a
     Nothing -> quote l
 
 -- | Substitute metavars.
 subst :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
-subst s = go
+subst s
+  | IntMap.null s = id
+  | otherwise     = substHead (unHead global free quote (s !))
   where
-  go = \case
-    Type     -> Type
-    Void     -> Void
-    TUnit    -> TUnit
-    Unit     -> Unit
-    t :=> b  ->
-      let t' = fmap go t
-      in t' :=> go . b
-    Lam n b  -> Lam n (go . b)
-    Neut f a -> unHead global free quote (s !) f `elimN` fmap substElim a
-    TPrd l r -> TPrd (go l) (go r)
-    Prd  l r -> Prd  (go l) (go r)
-    VCon n p -> VCon (fmap go n) (fmap go p)
-  substElim = \case
-    App a   -> App (fmap go a)
-    Case cs -> Case (map (fmap (go .)) cs)
   s ! l = case IntMap.lookup (getLevel (tm l)) s of
     Just a  -> a
     Nothing -> metavar l

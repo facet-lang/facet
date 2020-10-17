@@ -25,6 +25,7 @@ import           Control.Effect.Parser.Span (Pos(Pos))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
+import           Facet.Algebra (foldCModule, foldCValue, foldSModule)
 import           Facet.Context
 import           Facet.Elab (Err(..), ErrDoc, Reason(..), Type, Val, elabModule)
 import           Facet.Name (Index(..), Level(..))
@@ -44,7 +45,7 @@ parseString p s = either (P.putDoc . N.prettyNotice) P.prettyPrint (runParserWit
 printFile :: MonadIO m => FilePath -> m ()
 printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module')))) >>= \case
   Left err -> P.putDoc (N.prettyNotice err)
-  Right m  -> P.prettyPrint (P.printSurfaceModule m)
+  Right m  -> P.prettyPrint (foldSModule P.surface m)
 
 parseFile :: MonadIO m => FilePath -> m (Either N.Notice (Spanned (S.Module Index)))
 parseFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module'))))
@@ -61,9 +62,7 @@ elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either N.Notice)) (Spanned (S.Module Index)) -> String -> m ()
 elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
-  lower $ do
-    mod <- elabModule parsed
-    pure $ P.printCoreModule mod
+  lower $ foldCModule P.explicit <$> elabModule parsed
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s
@@ -80,7 +79,7 @@ toNotice :: Maybe N.Level -> Source -> Err P.Print -> N.Notice
 toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason
   in N.Notice lvl (fromSourceAndSpan src span) reason' $
-    [ P.getPrint $ P.printContextEntry l (n ::: P.printCoreValue l _T)
+    [ P.getPrint $ P.printContextEntry l (n ::: foldCValue P.explicit l _T)
     | (l, n ::: _ ::: _T) <- zip [Level 0..] (toList (elems context))
     ]
 
@@ -107,4 +106,4 @@ printReason ctx = group . \case
 
 
 printType :: Level -> Type P.Print -> ErrDoc
-printType l = P.getPrint . P.printCoreValue l
+printType l = P.getPrint . foldCValue P.explicit l

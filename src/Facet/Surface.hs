@@ -15,6 +15,7 @@ module Facet.Surface
   -- * Declarations
 , Decl(..)
 , unDForAll
+, unDArrow
 , DeclBody(..)
   -- * Modules
 , Module(..)
@@ -126,6 +127,9 @@ infixr 1 :-->
 
 unDForAll :: Has Empty sig m => Decl a -> m (UName ::: Spanned (Type a), Spanned (Decl a))
 unDForAll = \case{ t :==> b -> pure (t, b) ; _ -> empty }
+
+unDArrow :: Has Empty sig m => Decl a -> m (UName ::: Spanned (Type a), Spanned (Decl a))
+unDArrow = \case{ t :--> b -> pure (t, b) ; _ -> empty }
 
 
 data DeclBody a
