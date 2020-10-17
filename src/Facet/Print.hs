@@ -233,10 +233,10 @@ printCoreValue = go
       in lam (map (\ (d, n) -> var' (IntSet.member (getLevel d) (getFVs (fvs b''))) d n) vs) b''
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
-    C.Neut h e -> group $ foldl' (elim d) (C.unHead (ann . bimap cfree (go d)) id tvar (ann . bimap (annotate Hole . (pretty '?' <>) . evar) (go d)) h) e
+    C.Neut h e -> group $ foldl' (elim d) (C.unHead (ann . bimap cglobal (go d)) id tvar (ann . bimap (annotate Hole . (pretty '?' <>) . evar) (go d)) h) e
     C.TPrd l r -> go d l ** go d r
     C.Prd  l r -> go d l ** go d r
-    C.VCon n p -> ann (bimap cfree (go d) n) $$* fmap (go d) p
+    C.VCon n p -> ann (bimap cglobal (go d) n) $$* fmap (go d) p
   name d = cons d (tvar d)
   clause d (p, b) =
     let (d', p') = bimapAccumL (\ d' v -> (d', go d v)) (\ d' (_ ::: _T) -> (succ d', ann (evar d' ::: go d _T))) d p
@@ -290,8 +290,8 @@ printSurfaceType = go
 sfree :: Pretty n => n -> Print
 sfree = var . pretty
 
-cfree :: QName -> Print
-cfree = var . prettyQName
+cglobal :: QName -> Print
+cglobal = var . prettyQName
 
 
 sbound :: UName -> Print
@@ -417,7 +417,7 @@ t .= b = t </> b
 
 printCoreModule :: C.Module Print -> Print
 printCoreModule (C.Module n ds)
-  = module' n $ map (\ (n, d ::: t) -> ann (cfree n ::: printCoreValue (Level 0) t) </> printCoreDef d) ds
+  = module' n $ map (\ (n, d ::: t) -> ann (cglobal n ::: printCoreValue (Level 0) t) </> printCoreDef d) ds
 
 printCoreDef :: C.Def Print -> Print
 printCoreDef = \case
