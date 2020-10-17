@@ -35,6 +35,10 @@ data ExprAlg p = ExprAlg
     :: [Pl_ (p ::: Maybe p)] -- the bound variables.
     -> p                     -- the body.
     -> p
+  , clause
+    :: [Pl_ (p ::: Maybe p)] -- the patterns.
+    -> p                     -- the body.
+    -> p
   , fn
     :: [Pl_ (Maybe p ::: p)] -- the argument types/bindings
     -> p                     -- the return type

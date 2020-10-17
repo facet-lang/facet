@@ -439,6 +439,7 @@ surface = ExprAlg
     Cons     n -> setPrec Var (annotate Con (pretty n))
   , intro = \ n _ -> setPrec Var (pretty n)
   , lam = \ ns b -> comp $ nest 2 $ group (setPrec Pattern (vsep (map (tm . out) ns)) </> arrow) </> b
+  , clause = \ ns b -> nest 2 $ group (setPrec Pattern (vsep (map (tm . out) ns)) </> arrow) </> b
   , fn = \ as b -> foldr (\ (P pl (n ::: _T)) b -> case n of
     Just n -> ((pl, n) ::: _T) >~> b
     _      -> _T --> b) b as
