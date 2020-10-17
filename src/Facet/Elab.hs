@@ -510,6 +510,7 @@ elabDeclBody k ctx = \case
 
 
 elabData :: Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned (S.Type a))] -> Check v (Val v)
+-- FIXME: check that all constructors return the datatype.
 elabData ctx cs = error "TBD"
 
 
