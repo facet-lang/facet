@@ -442,7 +442,7 @@ surface = Algebra
   , fn = \ as b -> foldr (\ (P pl (n ::: _T)) b -> case n of
     Just n -> ((pl, n) ::: _T) >~> b
     _      -> _T --> b) b as
-  , app = \ f as -> f $$* fmap out as
+  , app = \ f as -> f $$* fmap (unPl_ braces id) as
   , prd = \ as -> case as of
     [] -> parens mempty
     as -> foldl1 (**) as
