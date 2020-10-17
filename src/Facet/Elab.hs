@@ -66,11 +66,7 @@ import qualified Facet.Core as C
 import qualified Facet.Env as Env
 import           Facet.Name (CName, DName, Index(..), Level(..), QName(..), UName, __)
 import           Facet.Stack hiding ((!?))
-import qualified Facet.Surface as SD
-import qualified Facet.Surface as SE
-import qualified Facet.Surface as SM
-import qualified Facet.Surface as SP
-import qualified Facet.Surface as ST
+import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding ((**))
@@ -293,20 +289,20 @@ infix 1 |-*
 elabType
   :: (HasCallStack, Eq v)
   => Context (Val v ::: Type v)
-  -> Spanned (ST.Type a)
+  -> Spanned (S.Type a)
   -> Maybe (Type v)
   -> Elab v (Type v ::: Type v)
 elabType ctx = withSpan' $ \case
-  ST.TFree  n -> switch $ global n
-  ST.TBound n -> switch $ bound ctx n
-  ST.THole  n -> check (hole n) "hole"
-  ST.Type     -> switch $ _Type
-  ST.Void     -> switch $ _Void
-  ST.TUnit    -> switch $ _Unit
-  t ST.:=> b  -> switch $ bimap (P Im) (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
-  f ST.:$$ a  -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
-  a ST.:-> b  -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
-  l ST.:** r  -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
+  S.TFree  n -> switch $ global n
+  S.TBound n -> switch $ bound ctx n
+  S.THole  n -> check (hole n) "hole"
+  S.Type     -> switch $ _Type
+  S.Void     -> switch $ _Void
+  S.TUnit    -> switch $ _Unit
+  t S.:=> b  -> switch $ bimap (P Im) (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
+  f S.:$$ a  -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
+  a S.:-> b  -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
+  l S.:** r  -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -356,17 +352,17 @@ infixr 1 >~>
 elabExpr
   :: (HasCallStack, Eq v)
   => Context (Val v ::: Type v)
-  -> Spanned (SE.Expr a)
+  -> Spanned (S.Expr a)
   -> Maybe (Type v)
   -> Elab v (Expr v ::: Type v)
 elabExpr ctx = withSpan' $ \case
-  SE.Free  n -> switch $ global n
-  SE.Bound n -> switch $ bound ctx n
-  SE.Hole  n -> check (hole n) "hole"
-  f SE.:$  a -> switch $ synthElab (elabExpr ctx f) $$ checkElab (elabExpr ctx a)
-  l SE.:*  r -> check (checkElab (elabExpr ctx l) ** checkElab (elabExpr ctx r)) "product"
-  SE.Unit    -> switch unit
-  SE.Comp cs -> check (elabComp ctx cs) "computation"
+  S.Free  n -> switch $ global n
+  S.Bound n -> switch $ bound ctx n
+  S.Hole  n -> check (hole n) "hole"
+  f S.:$  a -> switch $ synthElab (elabExpr ctx f) $$ checkElab (elabExpr ctx a)
+  l S.:*  r -> check (checkElab (elabExpr ctx l) ** checkElab (elabExpr ctx r)) "product"
+  S.Unit    -> switch unit
+  S.Comp cs -> check (elabComp ctx cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -405,11 +401,11 @@ l ** r = Check $ \ _T -> do
 elabComp
   :: (HasCallStack, Eq v)
   => Context (Val v ::: Type v)
-  -> Spanned (SE.Comp a)
+  -> Spanned (S.Comp a)
   -> Check v (Expr v)
 elabComp ctx = withSpan $ \case
-  SE.Expr    b  -> checkElab (elabExpr ctx b)
-  SE.Clauses cs -> elabClauses ctx cs
+  S.Expr    b  -> checkElab (elabExpr ctx b)
+  S.Clauses cs -> elabClauses ctx cs
 
 data XOr a b
   = XB
@@ -427,9 +423,9 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
-elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned (SP.Pattern UName)), Spanned (SE.Expr a))] -> Check v (Expr v)
+elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned (S.Pattern UName)), Spanned (S.Expr a))] -> Check v (Expr v)
 -- FIXME: do the same thing for wildcards
-elabClauses ctx [((_, SP.Var n):|ps, b)] = Check $ \ _T -> do
+elabClauses ctx [((_, S.Var n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
   b' <- n ::: _A |- \ v -> do
     let ctx' = ctx |> (n ::: v ::: _A)
@@ -460,12 +456,12 @@ elabClauses ctx cs = Check $ \ _T -> do
 
 elabPattern
   :: Eq v
-  => Spanned (SP.Pattern UName)
+  => Spanned (S.Pattern UName)
   -> Check v (C.Pattern (UName ::: Type v))
 elabPattern = withSpan $ \case
-  SP.Wildcard -> pure C.Wildcard
-  SP.Var n    -> Check $ \ _T -> pure (C.Var (n ::: _T))
-  SP.Tuple ps -> Check $ \ _T -> C.Tuple . toList <$> go _T (fromList ps)
+  S.Wildcard -> pure C.Wildcard
+  S.Var n    -> Check $ \ _T -> pure (C.Var (n ::: _T))
+  S.Tuple ps -> Check $ \ _T -> C.Tuple . toList <$> go _T (fromList ps)
     where
     go _T = \case
       Nil      -> case _T of
@@ -482,28 +478,28 @@ elabPattern = withSpan $ \case
 elabDecl
   :: forall a v
   .  (HasCallStack, Eq v)
-  => Spanned (SD.Decl a)
+  => Spanned (S.Decl a)
   -> (Context (Val v ::: Type v) -> Check v (Val v)) ::: (Context (Val v ::: Type v) -> Check v (Type v))
 elabDecl = withSpans $ \case
-  (n ::: t) SD.:==> b ->
+  (n ::: t) S.:==> b ->
     let b' ::: _B = elabDecl b
     in (\ ctx -> tlam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Im n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
 
-  (n ::: t) SD.:--> b ->
+  (n ::: t) S.:--> b ->
     let b' ::: _B = elabDecl b
     -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
     in (\ ctx -> lam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
 
-  t SD.:= b ->
+  t S.:= b ->
     (\ ctx -> case b of
-      SD.DExpr b -> checkElab (elabExpr ctx b)
-      SD.DType b -> checkElab (elabType ctx b)
-      SD.DData c -> elabData ctx c) ::: (\ ctx -> checkElab (elabType ctx t))
+      S.DExpr b -> checkElab (elabExpr ctx b)
+      S.DType b -> checkElab (elabType ctx b)
+      S.DData c -> elabData ctx c) ::: (\ ctx -> checkElab (elabType ctx t))
   where
   withSpans f (s, d) = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
 
 
-elabData :: Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned (ST.Type a))] -> Check v (Val v)
+elabData :: Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned (S.Type a))] -> Check v (Val v)
 elabData ctx cs = error "TBD"
 
 
@@ -512,9 +508,9 @@ elabData ctx cs = error "TBD"
 elabModule
   :: forall v a m sig
   .  (HasCallStack, Has (Throw (Err v)) sig m, Eq v)
-  => Spanned (SM.Module a)
+  => Spanned (S.Module a)
   -> m (C.Module v)
-elabModule (s, SM.Module mname ds) = runReader s . evalState (mempty @(Env.Env (Type v))) $ do
+elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (Type v))) $ do
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
