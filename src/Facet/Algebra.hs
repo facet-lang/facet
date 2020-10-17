@@ -3,7 +3,7 @@
 module Facet.Algebra
 ( -- * Folds
   Var(..)
-, ExprAlg(..)
+, Algebra(..)
 , foldCValue
 , foldSType
 , foldSExpr
@@ -29,7 +29,7 @@ data Var
 qvar :: QName -> Var
 qvar (m :.: n) = Global (Just m) n
 
-data ExprAlg p = ExprAlg
+data Algebra p = Algebra
   { var :: Var -> p
   , intro :: UName -> Level -> p
   , lam
@@ -58,7 +58,7 @@ data ExprAlg p = ExprAlg
   }
 
 
-foldCValue :: ExprAlg p -> Level -> C.Value p -> p
+foldCValue :: Algebra p -> Level -> C.Value p -> p
 foldCValue alg = go
   where
   go d = \case
@@ -102,7 +102,7 @@ foldCValue alg = go
   subpatterns d ps = mapAccumL (\ (d', ps) p -> let ((d'', v), p') = pat d' p in ((d'', ps:>v), p')) (d, Nil) ps
 
 
-foldSType :: ExprAlg p -> Stack p -> Spanned (S.Type a) -> p
+foldSType :: Algebra p -> Stack p -> Spanned (S.Type a) -> p
 foldSType alg = go
   where
   go env (s, t) = case t of
@@ -124,7 +124,7 @@ foldSType alg = go
     where
     level = Level (length env)
 
-foldSExpr :: ExprAlg p -> Stack p -> Spanned (S.Expr a) -> p
+foldSExpr :: Algebra p -> Stack p -> Spanned (S.Expr a) -> p
 foldSExpr alg = go
   where
   go env (s, e) = case e of

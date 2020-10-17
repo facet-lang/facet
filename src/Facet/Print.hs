@@ -427,8 +427,8 @@ def :: Print -> Print -> Print
 def n b = group $ ann (n ::: b)
 
 
-surface :: ExprAlg Print
-surface = ExprAlg
+surface :: Algebra Print
+surface = Algebra
   { var = \case
     Global _ n -> setPrec Var (pretty n)
     Local  n _ -> setPrec Var (pretty n)
