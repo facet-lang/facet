@@ -195,14 +195,11 @@ commaSep = encloseSep mempty mempty (comma <> space)
 ann :: (PrecedencePrinter p, P.Level p ~ Precedence) => (p ::: p) -> p
 ann (n ::: t) = align . prec Ann $ n </> group (align (colon <+> flatAlt space mempty <> t))
 
-var :: (PrecedencePrinter p, P.Level p ~ Precedence) => p -> p
-var = setPrec Var
-
 evar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Level -> p
-evar = var . annotate . Name <*> P.lower . getLevel
+evar = setPrec Var . annotate . Name <*> P.lower . getLevel
 
 tvar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Level -> p
-tvar = var . annotate . Name <*> P.upper . getLevel
+tvar = setPrec Var . annotate . Name <*> P.upper . getLevel
 
 
 prettyMName :: Printer p => MName -> p
@@ -249,7 +246,7 @@ printCoreValue = go
     C.Case p -> nest 2 $ group $ pretty "case" <+> setPrec Expr f </> block (commaSep (map (clause d) p))
 
 var' :: Bool -> Level -> Pl_ UName ::: C.Value Print -> Print
-var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ var (annotate (Name d) (p <> unPl tvar evar (pl n) d)) ::: printCoreValue d _T
+var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ setPrec Var (annotate (Name d) (p <> unPl tvar evar (pl n) d)) ::: printCoreValue d _T
   where
   p | u         = mempty
     | otherwise = pretty '_'
@@ -290,14 +287,14 @@ printSurfaceType = go
     l S.:** r -> go env l **  go env r
 
 sglobal :: Pretty n => n -> Print
-sglobal = var . pretty
+sglobal = setPrec Var . pretty
 
 cglobal :: QName -> Print
-cglobal = var . prettyQName
+cglobal = setPrec Var . prettyQName
 
 
 sbound :: UName -> Print
-sbound = var . pretty
+sbound = setPrec Var . pretty
 
 cbound :: UName -> Level -> Print
 cbound h level = cons level (h' <> pretty (getLevel level))
@@ -334,7 +331,7 @@ l ** r = tupled [l, r]
 ($$*) = fmap group . foldl' ($$)
 
 (>~>) :: ((Pl, Print) ::: Print) -> Print -> Print
-((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (var n ::: t) <> line))) </> arrow <+> b)
+((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (setPrec Var n ::: t) <> line))) </> arrow <+> b)
 
 forAlls :: [Print ::: Spanned (S.Type a)] -> Print -> Print
 forAlls ts b = foldr go b (groupByType S.aeq ts)
@@ -436,7 +433,7 @@ printSurfaceDef n d = def (sglobal n) (printSurfaceDecl d)
 
 
 module' :: MName -> [Print] -> Print
-module' n b = ann (var (prettyMName n) ::: pretty "Module") </> block (nest 2 (vsep (intersperse mempty b)))
+module' n b = ann (setPrec Var (prettyMName n) ::: pretty "Module") </> block (nest 2 (vsep (intersperse mempty b)))
 
 def :: Print -> Print -> Print
 def n b = group $ ann (n ::: b)
