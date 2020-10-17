@@ -75,7 +75,7 @@ foldCValue alg = go
     C.TUnit -> _Unit alg
     C.Unit  -> prd alg []
     t C.:=> b  ->
-      let (vs, (d', b')) = splitr (C.unLam' var') (d, t C.:=> b)
+      let (vs, (d', b')) = splitr (C.unForAll' var') (d, t C.:=> b)
       in fn alg (map (\ (d, n ::: _T) -> P (pl n) (Just (intro alg (out n) d) ::: go d _T)) vs) (go d' b')
     C.Lam n b  ->
       let (vs, (d', b')) = splitr (C.unLam' var') (d, C.Lam n b)
