@@ -116,8 +116,8 @@ foldSType alg = go
           ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local n d) in ((succ d, env :> v), im (Just v ::: go env t))) (level, env) ts
       in fn alg ts' (go env' b')
     f S.:$$ a ->
-      let (f', a') = splitl (S.unTApp . snd) f
-      in app alg (go env f') (fmap (ex . go env) (a' :> a))
+      let (f', a') = splitl (S.unTApp . snd) (s, f S.:$$ a)
+      in app alg (go env f') (fmap (ex . go env) a')
     a S.:-> b -> fn alg [ex (Nothing ::: go env a)] (go env b)
     l S.:** r -> prd alg [go env l, go env r]
     where
