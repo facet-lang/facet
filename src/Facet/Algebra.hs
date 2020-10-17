@@ -55,6 +55,9 @@ data Algebra p = Algebra
   , wildcard :: p
   , pcon     :: p -> Stack p -> p
   , tuple    :: [p] -> p
+  , decl :: p ::: p -> p
+  , defn :: p :=: p -> p
+  , data' :: [p] -> p
   }
 
 

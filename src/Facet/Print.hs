@@ -454,4 +454,7 @@ surface = Algebra
   , wildcard = pretty '_'
   , pcon = \ n ps -> parens (hsep (annotate Con n:toList ps))
   , tuple = tupled
+  , decl = ann
+  , defn = \ (a :=: b) -> a </> b
+  , data' = block . commaSep
   }
