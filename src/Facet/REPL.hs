@@ -25,7 +25,7 @@ import           Data.Text.Lazy (unpack)
 import           Facet.Name (Index)
 import           Facet.Parser
 import           Facet.Pretty
-import           Facet.Print
+import           Facet.Print hiding (Meta)
 import           Facet.REPL.Parser
 import           Facet.Stack
 import           Facet.Surface (Expr, Type)
