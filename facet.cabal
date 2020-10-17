@@ -37,6 +37,7 @@ common common
 library
   import: common
   exposed-modules:
+    Facet.Algebra
     Facet.CLI
     Facet.Context
     Facet.Core
