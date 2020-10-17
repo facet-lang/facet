@@ -456,4 +456,5 @@ data Formatter p = Formatter
   , _Void :: p
   , _Unit :: p
   , fvsIn :: p -> IntSet.IntSet
+  , ann' :: (p ::: p) -> p
   }
