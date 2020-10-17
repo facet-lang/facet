@@ -362,7 +362,6 @@ printSurfaceExpr = go
     S.Comp c  -> comp . (`foldMap` c) $ \case
       S.Expr e     -> prec Expr $ foldMap (printSurfaceExpr env) e
       S.Clauses cs -> commaSep (map (uncurry (printSurfaceClause env)) cs)
-      -- comp . commaSep $ map (foldMap (printSurfaceClause env)) c
 
 printSurfaceClause :: (Foldable f, Functor f) => Stack Print -> NonEmpty (f (S.Pattern UName)) -> f (S.Expr a) -> Print
 printSurfaceClause env ps b = foldMap (foldMap printSurfacePattern) ps' <+> arrow <> group (nest 2 (line <> prec Expr (foldMap (printSurfaceExpr env') b)))
