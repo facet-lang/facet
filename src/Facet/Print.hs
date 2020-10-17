@@ -457,5 +457,5 @@ data Formatter p = Formatter
   , _Unit :: p
   , fvsIn :: p -> IntSet.IntSet
   , ann' :: (p ::: p) -> p
-  , case' :: p -> [(p, p)] -> p
+  , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
   }
