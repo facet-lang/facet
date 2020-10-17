@@ -31,6 +31,8 @@ module Facet.Print
 , printSurfaceDecl
 , printCoreModule
 , printSurfaceModule
+  -- * Algebras
+, surface
 ) where
 
 import           Control.Applicative ((<**>))
@@ -38,13 +40,14 @@ import           Control.Category ((>>>))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
 import           Data.Bitraversable (bimapAccumL)
-import           Data.Foldable (foldl')
+import           Data.Foldable (foldl', toList)
 import           Data.Function (on)
 import qualified Data.IntSet as IntSet
 import           Data.List (intersperse)
 import           Data.List.NonEmpty (NonEmpty)
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
+import           Facet.Algebra
 import qualified Facet.Core as C
 import           Facet.Name hiding (ann)
 import qualified Facet.Pretty as P
@@ -425,3 +428,31 @@ module' n b = ann (setPrec Var (prettyMName n) ::: pretty "Module") </> block (n
 
 def :: Print -> Print -> Print
 def n b = group $ ann (n ::: b)
+
+
+surface :: ExprAlg Print
+surface = ExprAlg
+  { var = \case
+    Global _ n -> setPrec Var (pretty n)
+    Local  n _ -> setPrec Var (pretty n)
+    Meta     d -> setPrec Var (annotate Hole (pretty '?' <> evar d))
+    Cons     n -> setPrec Var (annotate Con (pretty n))
+  , intro = \ n _ -> setPrec Var (pretty n)
+  , lam = \ ns b -> comp $ nest 2 $ group (setPrec Pattern (vsep (map (tm . out) ns)) </> arrow) </> b
+  , fn = \ as b -> foldr (\ (P pl (n ::: _T)) b -> case n of
+    Just n -> ((pl, n) ::: _T) >~> b
+    _      -> _T --> b) b as
+  , app = \ f as -> f $$* fmap out as
+  , prd = \ as -> case as of
+    [] -> parens mempty
+    as -> foldl1 (**) as
+  , hole = \ n -> annotate Hole $ pretty '?' <> pretty n
+  , _Type = annotate Type $ pretty "Type"
+  , _Void = annotate Type $ pretty "Void"
+  , _Unit = annotate Type $ pretty "Unit"
+  , ann' = tm
+  , case' = \ s ps -> nest 2 $ group $ pretty "case" <+> setPrec Expr s </> block (commaSep (map (\ (p, b) -> nest 2 $ group (prec Pattern p </> arrow) </> b) ps))
+  , wildcard = pretty '_'
+  , pcon = \ n ps -> parens (hsep (annotate Con n:toList ps))
+  , tuple = tupled
+  }
