@@ -436,6 +436,9 @@ data Var
   = Global (Maybe MName) DName
   | Local UName Level
 
+qvar :: QName -> Var
+qvar (m :.: n) = Global (Just m) n
+
 data Formatter p = Formatter
   { var :: Var -> p
   , lam
