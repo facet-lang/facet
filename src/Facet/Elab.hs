@@ -213,7 +213,7 @@ instantiate :: Expr v ::: Type v -> Elab v (Expr v ::: Type v)
 instantiate (e ::: _T) = case unForAll _T of
   Just (P Im _ ::: _T, _B) -> do
     m <- meta _T
-    instantiate (e C.$$ P Im m ::: _B m)
+    instantiate (e C.$$ im m ::: _B m)
   _                        -> pure $ e ::: _T
 
 
@@ -264,7 +264,7 @@ f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectQuantifiedType "in application" _F
   a' <- check (a ::: ty _A)
-  pure $ (f' C.$$ P Ex a') ::: _B a'
+  pure $ (f' C.$$ ex a') ::: _B a'
 
 
 (|-)
@@ -304,7 +304,7 @@ elabType ctx = withSpan' $ \case
   S.Type     -> switch $ _Type
   S.Void     -> switch $ _Void
   S.TUnit    -> switch $ _Unit
-  t S.:=> b  -> switch $ bimap (P Im) (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
+  t S.:=> b  -> switch $ bimap im (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
   f S.:$$ a  -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
   a S.:-> b  -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
   l S.:** r  -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
@@ -336,7 +336,7 @@ infixl 7 .*
   :: Check v (Type v)
   -> Check v (Type v)
   -> Synth v (Type v)
-a --> b = P Ex __ ::: a >~> const b
+a --> b = ex __ ::: a >~> const b
 
 infixr 1 -->
 
@@ -379,7 +379,7 @@ tlam
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
   b' <- n ::: _T |- \ v -> check (b (n ::: v ::: _T) ::: _B v)
-  pure (Lam (P Im n ::: _T) b')
+  pure (Lam (im n ::: _T) b')
 
 lam
   :: UName
@@ -388,7 +388,7 @@ lam
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectQuantifiedType "when checking lambda" _T
   b' <- n ::: ty _A |- \ v -> check (b (n ::: v ::: ty _A) ::: _B v)
-  pure (Lam (P Ex n ::: ty _A) b')
+  pure (Lam (ex n ::: ty _A) b')
 
 unit :: Synth v (Expr v)
 unit = Synth . pure $ Unit ::: TUnit
@@ -452,7 +452,7 @@ elabClauses ctx cs = Check $ \ _T -> do
         in check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx') rest ::: _B')
       pure (p', b')
     pure $ case' v cs'
-  pure $ Lam (P Ex __ ::: _A) b'
+  pure $ Lam (ex __ ::: _A) b'
   where
   partitionClause (_:|ps, b) = case ps of
     []   -> XL ()
@@ -508,12 +508,12 @@ elabDecl d = go d id id
     (n ::: t) S.:==> b ->
       go b
         (km . (\ b  ctx -> tlam n (b . (ctx |>))))
-        (kt . (\ _B ctx -> checkElab (switch (P Im n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
+        (kt . (\ _B ctx -> checkElab (switch (im n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
 
     (n ::: t) S.:--> b ->
       go b
         (km . (\ b  ctx -> lam n (b . (ctx |>))))
-        (kt . (\ _B ctx -> checkElab (switch (P Ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
+        (kt . (\ _B ctx -> checkElab (switch (ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
 
     t S.:= b -> (\ ctx -> elabDeclBody km ctx b) ::: kt (\ ctx -> checkElab (elabType ctx t))
 
