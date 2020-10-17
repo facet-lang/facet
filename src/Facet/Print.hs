@@ -33,7 +33,7 @@ module Facet.Print
 , printSurfaceModule
   -- * Formatters
 , Var(..)
-, Expr(..)
+, ExprAlg(..)
 , PatternAlg(..)
 ) where
 
@@ -442,7 +442,7 @@ data Var
 qvar :: QName -> Var
 qvar (m :.: n) = Global (Just m) n
 
-data Expr p = FoldExpr
+data ExprAlg p = ExprAlg
   { var :: Var -> p
   , lam
     :: [p] -- the bound variables.
