@@ -12,6 +12,7 @@ module Facet.Core
 , free
 , metavar
 , unForAll
+, unForAll'
 , unLam
 , unLam'
 , unProductT
@@ -164,6 +165,12 @@ var = (`Neut` Nil)
 
 unForAll :: Has Empty sig m => Value a -> m (Pl_ UName ::: Value a, Value a -> Value a)
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
+
+-- | A variation on 'unForAll' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
+unForAll' :: Has Empty sig m => (Level -> Pl_ UName ::: Value a -> a) -> (Level, Value a) -> m ((Level, Pl_ UName ::: Value a), (Level, Value a))
+unForAll' var (d, v) = do
+  (_T, _B) <- unForAll v
+  pure ((d, _T), (succ d, _B (free (var d _T))))
 
 unLam :: Has Empty sig m => Value a -> m (Pl_ UName ::: Value a, Value a -> Value a)
 unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
