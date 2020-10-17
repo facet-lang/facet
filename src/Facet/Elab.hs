@@ -64,7 +64,7 @@ import           Facet.Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
 import qualified Facet.Env as Env
-import           Facet.Name (CName, DName, Index(..), Level(..), QName(..), UName, __)
+import           Facet.Name (CName, DName(C), Index(..), Level(..), QName(..), UName, __)
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -535,7 +535,11 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (T
       (s, e') <- runReader env . runState (fmap pure . (,)) emptySubst . elab $ check (e empty ::: _T)
       case e' of
         Left cs  -> do
-          error "TBD"
+          cs' <- for cs $ \ (n ::: _T) -> do
+            let qname = mname :.: C n
+            modify $ Env.insert (qname :=: Nothing ::: apply s _T)
+            pure $ n ::: _T
+          pure (qname, C.DData cs' ::: _T)
         Right e' -> do
           modify $ Env.insert (qname :=: Just (apply s e') ::: _T)
           pure (qname, C.DTerm e' ::: _T)
