@@ -238,9 +238,9 @@ resolve n = Synth $ Env.lookup n <$> askEnv >>= \case
 global
   :: DName
   -> Synth v (Val v)
-global n = Synth $ Env.lookup n <$> askEnv >>= \case
-  Just (m :=: _ ::: _T) -> instantiate (C.global (m :.: n ::: _T) ::: _T)
-  Nothing               -> freeVariable n
+global n = Synth $ do
+  q <- synth (resolve n)
+  instantiate (C.global q ::: ty q)
 
 bound
   :: Context (Val v ::: Type v)
