@@ -449,7 +449,7 @@ data Formatter p = Formatter
     :: [p] -- the argument types/bindings
     -> p   -- the return type
     -> p
-  , app :: p -> Stack p -> p
+  , app :: p -> Stack (Pl_ p) -> p
   , prd :: [p] -> p
   , _Type :: p
   , _Void :: p
