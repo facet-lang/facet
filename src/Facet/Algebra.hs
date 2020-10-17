@@ -60,6 +60,7 @@ data Algebra p = Algebra
   , decl :: p ::: p -> p
   , defn :: p :=: p -> p
   , data' :: [p] -> p
+  , module_ :: MName ::: Maybe p :=: [p] -> p
   }
 
 

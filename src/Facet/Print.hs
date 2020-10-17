@@ -45,6 +45,7 @@ import           Data.Function (on)
 import qualified Data.IntSet as IntSet
 import           Data.List (intersperse)
 import           Data.List.NonEmpty (NonEmpty)
+import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Facet.Algebra
@@ -457,4 +458,5 @@ surface = Algebra
   , decl = ann
   , defn = \ (a :=: b) -> a </> b
   , data' = block . commaSep
+  , module_ = \ (n ::: t :=: ds) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (nest 2 (vsep (intersperse mempty ds)))
   }
