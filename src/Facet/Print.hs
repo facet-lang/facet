@@ -353,6 +353,7 @@ printSurfaceExpr = go
       S.Expr e     -> prec Expr $ printSurfaceExpr env e
       S.Clauses cs -> commaSep (map (uncurry (printSurfaceClause env)) cs)
   hole n = annotate Hole $ pretty '?' <> pretty n
+  unit = annotate Con $ pretty "Unit"
 
 printSurfaceClause :: Stack Print -> NonEmpty (Spanned (S.Pattern UName)) -> Spanned (S.Expr a) -> Print
 printSurfaceClause env ps b = foldMap printSurfacePattern ps' <+> arrow <> group (nest 2 (line <> prec Expr (printSurfaceExpr env' b)))
@@ -373,10 +374,6 @@ printSurfacePattern p = prec Pattern $ case snd p of
   S.Var n    -> n
   S.Con n ps -> parens (hsep (annotate Con (pretty n):map printSurfacePattern ps))
   S.Tuple p  -> tupled (map printSurfacePattern p)
-
-unit :: Print
-unit = annotate Con $ pretty "Unit"
-
 
 printSurfaceData :: Stack Print -> [Spanned (CName ::: Spanned (S.Type a))] -> Print
 printSurfaceData env cs = block . commaSep $ map (ann . bimap (annotate Con . pretty) (printSurfaceType env) . snd) cs
