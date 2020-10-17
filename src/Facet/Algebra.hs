@@ -92,10 +92,10 @@ foldCValue alg = go
 
   pat d = \case
     C.Wildcard -> ((d, wildcard alg), C.Wildcard)
-    C.Var n    -> let v = ann' alg (var alg (Local (tm n) d) ::: foldCValue alg d (ty n)) in ((succ d, v), C.Var (C.free v))
+    C.Var n    -> let v = ann' alg (var alg (Local (tm n) d) ::: go d (ty n)) in ((succ d, v), C.Var (C.free v))
     C.Con n ps ->
       let ((d', p'), ps') = subpatterns d ps
-      in ((d', pcon alg (ann' alg (bimap (var alg . qvar) (foldCValue alg d) n)) p'), C.Con n ps')
+      in ((d', pcon alg (ann' alg (bimap (var alg . qvar) (go d) n)) p'), C.Con n ps')
     C.Tuple ps ->
       let ((d', p'), ps') = subpatterns d ps
       in ((d', tuple alg (toList p')), C.Tuple ps')
