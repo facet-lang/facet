@@ -437,21 +437,19 @@ data Var
   | Local UName Level
 
 data Formatter p = Formatter
-  { var :: Formatter p -> Var -> p
+  { var :: Var -> p
   , lam
-    :: Formatter p
-    -> [p] -- the bound variables.
+    :: [p] -- the bound variables.
     -> p   -- the body.
     -> p
   , fn
-    :: Formatter p
-    -> [p] -- the argument types/bindings
+    :: [p] -- the argument types/bindings
     -> p   -- the return type
     -> p
-  , app :: Formatter p -> p -> Stack p -> p
-  , prd :: Formatter p -> [p] -> p
-  , _Type :: Formatter p -> p
-  , _Void :: Formatter p -> p
-  , _Unit :: Formatter p -> p
-  , fvsIn :: Formatter p -> p -> IntSet.IntSet
+  , app :: p -> Stack p -> p
+  , prd :: [p] -> p
+  , _Type :: p
+  , _Void :: p
+  , _Unit :: p
+  , fvsIn :: p -> IntSet.IntSet
   }
