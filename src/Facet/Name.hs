@@ -157,6 +157,7 @@ newtype TName = TName { getTName :: UName }
 -- | Declaration names; a choice of expression, term, or operator names.
 data DName
   = E EName
+  | C CName
   | T TName
   | O Op
   deriving (Eq, Ord, Show)
@@ -164,6 +165,7 @@ data DName
 instance P.Pretty DName where
   pretty = \case
     E n -> P.pretty n
+    C n -> P.pretty n
     T n -> P.pretty n
     O o -> P.pretty o
 
