@@ -31,7 +31,7 @@ module Facet.Print
 , printSurfaceDecl
 , printCoreModule
 , printSurfaceModule
-  -- * Formatters
+  -- * Folds
 , Var(..)
 , ExprAlg(..)
 , PatternAlg(..)
