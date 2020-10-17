@@ -253,6 +253,10 @@ printCoreValue = go
 
   lam vs b = block $ nest 2 $ group (setPrec Pattern (vsep vs) </> arrow) </> b
 
+  _Type = annotate Type $ pretty "Type"
+  _Void = annotate Type $ pretty "Void"
+  _Unit = annotate Type $ pretty "Unit"
+
 
 printContextEntry :: Level -> UName ::: Print -> Print
 printContextEntry l (n ::: _T) = ann (cbound n l ::: _T)
@@ -276,6 +280,10 @@ printSurfaceType = go
       in go env f' $$* fmap (go env) (a' :> a)
     a S.:-> b -> go env a --> go env b
     l S.:** r -> go env l **  go env r
+  _Type = annotate Type $ pretty "Type"
+  _Void = annotate Type $ pretty "Void"
+  _Unit = annotate Type $ pretty "Unit"
+
 
 sglobal :: Pretty n => n -> Print
 sglobal = setPrec Var . pretty
@@ -297,12 +305,6 @@ cbound h level = cons level (h' <> pretty (getLevel level))
 
 hole :: Text -> Print
 hole n = annotate Hole $ pretty '?' <> pretty n
-
-
-_Type, _Void, _Unit :: Print
-_Type = annotate Type $ pretty "Type"
-_Void = annotate Type $ pretty "Void"
-_Unit = annotate Type $ pretty "Unit"
 
 ($$), (-->), (**) :: Print -> Print -> Print
 f $$ a = askingPrec $ \case
