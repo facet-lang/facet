@@ -40,8 +40,8 @@ instance Applicative Stack where
   pure = singleton
   fs <*> as = go id fs as
     where
-    go accum Nil     _   = accum Nil
-    go accum (fs:>f) as  = go (accum . flip (foldl (\ fas a -> fas :> f a)) as) fs as
+    go accum Nil     _  = accum Nil
+    go accum (fs:>f) as = go (accum . flip (foldl (\ fas a -> fas :> f a)) as) fs as
 
 instance Monad Stack where
   as >>= f = go id as
