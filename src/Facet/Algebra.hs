@@ -48,6 +48,7 @@ data ExprAlg p = ExprAlg
   , _Type :: p
   , _Void :: p
   , _Unit :: p
+  , unit :: p
   , ann' :: (p ::: p) -> p
   , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
   , wildcard :: p

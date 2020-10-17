@@ -448,6 +448,7 @@ surface = ExprAlg
   , _Type = annotate Type $ pretty "Type"
   , _Void = annotate Type $ pretty "Void"
   , _Unit = annotate Type $ pretty "Unit"
+  , unit = annotate Con $ pretty "Unit"
   , ann' = tm
   , case' = \ s ps -> nest 2 $ group $ pretty "case" <+> setPrec Expr s </> block (commaSep (map (\ (p, b) -> nest 2 $ group (prec Pattern p </> arrow) </> b) ps))
   , wildcard = pretty '_'
