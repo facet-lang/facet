@@ -438,7 +438,7 @@ data Formatter p = Formatter
   { var :: Formatter p -> Var -> p
   , lam
     :: Formatter p
-    -> [Print] -- the bound variables.
-    -> Print   -- the body.
-    -> Print
+    -> [p] -- the bound variables.
+    -> p   -- the body.
+    -> p
   }
