@@ -236,6 +236,7 @@ printCoreValue = go
     C.Neut h e -> group $ foldl' (elim d) (C.unHead (ann . bimap cfree (go d)) id tvar (ann . bimap (annotate Hole . (pretty '?' <>) . evar) (go d)) h) e
     C.TPrd l r -> go d l ** go d r
     C.Prd  l r -> go d l ** go d r
+    C.VCon n p -> ann (bimap cfree (go d) n) $$* map (go d) p
   name d = cons d (tvar d)
   clause d (p, b) =
     let (d', p') = bimapAccumL (\ d' v -> (d', go d v)) (\ d' (_ ::: _T) -> (succ d', ann (evar d' ::: go d _T))) d p

@@ -48,7 +48,6 @@ import           GHC.Stack
 
 -- FIXME: replace products, void, and unit with references to constant datatypes.
 -- FIXME: represent closed portions of the tree explicitly?
--- FIXME: represent constructors
 data Value a
   = Type
   | Void  -- FIXME: 🔥
@@ -61,6 +60,7 @@ data Value a
   | Neut (Head a) (Stack (Elim (Value a)))
   | TPrd (Value a) (Value a) -- FIXME: 🔥
   | Prd (Value a) (Value a)  -- FIXME: 🔥
+  | VCon (QName ::: Value a) [Value a]
 
 infixr 1 :=>
 
@@ -94,6 +94,10 @@ instance (Eq a, Num a) => Eq (Value a) where
       (TPrd _ _, _) -> False
       (Prd l1 r1, Prd l2 r2) -> go n l1 l2 && go n r1 r2
       (Prd _ _, _) -> False
+      (VCon n1 p1, VCon n2 p2)
+        | length p1 == length p2 -> go n (ty n1) (ty n2) && and (zipWith (go n) p1 p2)
+      (VCon _ _, _) -> False
+
     eqSp n (sp1:>e1) (sp2:>e2) = eqSp n sp1 sp2 && eqElim n e1 e2
     eqSp _ Nil       Nil       = True
     eqSp _ _         _         = False
@@ -232,6 +236,7 @@ substQ s = go
     Neut f a -> unHead global free (s !) metavar f `elimN` fmap substElim a
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
+    VCon n p -> VCon (fmap go n) (fmap go p)
   substElim = \case
     App a   -> App (fmap go a)
     Case cs -> Case (map (fmap (go .)) cs)
@@ -255,6 +260,7 @@ subst s = go
     Neut f a -> unHead global free quote (s !) f `elimN` fmap substElim a
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
+    VCon n p -> VCon (fmap go n) (fmap go p)
   substElim = \case
     App a   -> App (fmap go a)
     Case cs -> Case (map (fmap (go .)) cs)
