@@ -16,6 +16,8 @@ module Facet.Syntax
 , unPl
 , Pl_(..)
 , unPl_
+, im
+, ex
 ) where
 
 import Data.Bifunctor
@@ -120,3 +122,7 @@ data Pl_ a = P
 
 unPl_ :: (a -> b) -> (a -> b) -> Pl_ a -> b
 unPl_ im ex = unPl im ex . pl <*> out
+
+im, ex :: a -> Pl_ a
+im = P Im
+ex = P Ex
