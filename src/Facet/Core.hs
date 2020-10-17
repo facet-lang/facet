@@ -13,6 +13,7 @@ module Facet.Core
 , metavar
 , unForAll
 , unLam
+, unLam'
 , unProductT
 , ($$)
 , case'
@@ -166,6 +167,12 @@ unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
 unLam :: Has Empty sig m => Value a -> m (Pl_ UName ::: Value a, Value a -> Value a)
 unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
+
+-- | A variation on 'unLam' which can be conveniently chained with 'splitr' to strip a prefix of lambdas off their eventual body.
+unLam' :: (Level -> Pl_ UName ::: Value a -> a) -> (Level, Value a) -> Maybe ((Level, Pl_ UName ::: Value a), (Level, Value a))
+unLam' var (d, v) = case unLam v of
+  Just (n, t) -> let n' = var d n in Just ((d, n), (succ d, t (free n')))
+  Nothing     -> Nothing
 
 unProductT :: Has Empty sig m => Value a -> m (Value a, Value a)
 unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }

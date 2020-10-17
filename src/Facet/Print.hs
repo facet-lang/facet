@@ -228,7 +228,7 @@ printCoreValue = go
       else
         unPl braces id (pl (tm t)) t' --> bind d b'
     C.Lam n b  ->
-      let (vs, (d', b')) = splitr (unLam' (cons <*> var' True)) (d, C.Lam n b)
+      let (vs, (d', b')) = splitr (C.unLam' (cons <*> var' True)) (d, C.Lam n b)
           b'' = go d' b'
       in lam (map (\ (d, n) -> var' (IntSet.member (getLevel d) (getFVs (fvs b''))) d n) vs) b''
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
@@ -251,11 +251,6 @@ var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ setPrec Var 
   where
   p | u         = mempty
     | otherwise = pretty '_'
-
-unLam' :: (Level -> Pl_ UName ::: C.Value a -> a) -> (Level, C.Value a) -> Maybe ((Level, Pl_ UName ::: C.Value a), (Level, C.Value a))
-unLam' var (d, v) = case C.unLam v of
-  Just (n, t) -> let n' = var d n in Just ((d, n), (succ d, t (C.free n')))
-  Nothing     -> Nothing
 
 lam
   :: [Print] -- ^ the bound variables.
