@@ -506,12 +506,12 @@ elabDeclBody :: (HasCallStack, Eq v) => ((Context (Val v ::: Type v) -> Check v 
 elabDeclBody k ctx = \case
   S.DExpr b -> Right <$> k (checkElab . (`elabExpr` b)) ctx
   S.DType b -> Right <$> k (checkElab . (`elabType` b)) ctx
-  S.DData c -> Right <$> elabData ctx c
+  S.DData c -> Left <$> elabData k ctx c
 
 
-elabData :: Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned (S.Type a))] -> Check v (Val v)
+elabData :: Eq v => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned (S.Type a))] -> Check v [CName ::: Val v]
 -- FIXME: check that all constructors return the datatype.
-elabData ctx cs = error "TBD"
+elabData k ctx cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab . (`elabType` t)) ctx
 
 
 -- Modules
