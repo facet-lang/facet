@@ -390,6 +390,10 @@ unit :: Print
 unit = annotate Con $ pretty "Unit"
 
 
+printSurfaceData :: Foldable f => Stack Print -> [f (CName ::: f (ST.Type a))] -> Print
+printSurfaceData env cs = block . commaSep $ map (foldMap (ann . bimap sfree (foldMap (printSurfaceType env)))) cs
+
+
 printSurfaceDecl :: SD.Decl a -> Print
 printSurfaceDecl = go Nil
   where
@@ -397,6 +401,7 @@ printSurfaceDecl = go Nil
     t SD.:=   b -> foldMap (printSurfaceType env) t .= case b of
       SD.DExpr e -> foldMap (printSurfaceExpr env) e
       SD.DType t -> foldMap (printSurfaceType env) t
+      SD.DData c -> printSurfaceData env c
     t SD.:==> b ->
       let (t', b') = splitr (SD.unDForAll <=< extract) b
           ts = map (first sbound) (t:t')

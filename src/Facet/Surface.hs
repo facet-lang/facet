@@ -130,6 +130,7 @@ unDForAll = \case{ t :==> b -> pure (t, b) ; _ -> empty }
 data DeclBody a
   = DExpr (Spanned (Expr a))
   | DType (Spanned (Type a))
+  | DData [Spanned (CName ::: Spanned (Type a))]
   deriving (Foldable, Functor, Show, Traversable)
 
 

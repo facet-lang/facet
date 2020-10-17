@@ -64,7 +64,7 @@ import           Facet.Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
 import qualified Facet.Env as Env
-import           Facet.Name (DName, Index(..), Level(..), QName(..), UName, __)
+import           Facet.Name (CName, DName, Index(..), Level(..), QName(..), UName, __)
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as SD
 import qualified Facet.Surface as SE
@@ -497,9 +497,14 @@ elabDecl = withSpans $ \case
   t SD.:= b ->
     (\ ctx -> case b of
       SD.DExpr b -> checkElab (elabExpr ctx b)
-      SD.DType b -> checkElab (elabType ctx b)) ::: (\ ctx -> checkElab (elabType ctx t))
+      SD.DType b -> checkElab (elabType ctx b)
+      SD.DData c -> elabData ctx c) ::: (\ ctx -> checkElab (elabType ctx t))
   where
   withSpans f (s, d) = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
+
+
+elabData :: Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned (ST.Type a))] -> Check v (Val v)
+elabData ctx cs = error "TBD"
 
 
 -- Modules
