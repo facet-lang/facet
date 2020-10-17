@@ -466,6 +466,18 @@ elabPattern
 elabPattern = withSpan $ \case
   S.Wildcard -> pure C.Wildcard
   S.Var n    -> Check $ \ _T -> pure (C.Var (n ::: _T))
+  S.Con n ps -> Check $ \ _T -> do
+    q ::: _T' <- synth (resolve (C n))
+    let go _T' = \case
+          []   -> [] <$ unify (_T' :===: _T)
+          p:ps -> do
+            (_A, _B) <- expectQuantifiedType "when checking constructor pattern" _T'
+            p' <- check (elabPattern p ::: ty _A)
+            -- FIXME: there’s no way this is going to work, let alone a good idea
+            v <- meta (ty _A)
+            ps' <- go (_B v) ps
+            pure $ p' : ps'
+    C.Con (q ::: _T') <$> go _T' ps
   S.Tuple ps -> Check $ \ _T -> C.Tuple . toList <$> go _T (fromList ps)
     where
     go _T = \case

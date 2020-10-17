@@ -380,6 +380,7 @@ printSurfacePattern :: Spanned (S.Pattern Print) -> Print
 printSurfacePattern p = prec Pattern $ case snd p of
   S.Wildcard -> pretty '_'
   S.Var n    -> n
+  S.Con n ps -> parens (hsep (annotate Con (pretty n):map printSurfacePattern ps))
   S.Tuple p  -> tupled (map printSurfacePattern p)
 
 unit :: Print

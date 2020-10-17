@@ -205,6 +205,7 @@ bindPattern :: PositionParsing p => S.Pattern N.UName -> Facet p a -> Facet p a
 bindPattern p m = case p of
   S.Wildcard -> bind N.__ (const m)
   S.Var n    -> bind n    (const m)
+  S.Con _ ps -> foldr (bindPattern . snd) m ps
   S.Tuple ps -> foldr (bindPattern . snd) m ps
 
 bindVarPattern :: Maybe N.EName -> (N.UName -> Facet p res) -> Facet p res

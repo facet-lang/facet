@@ -62,6 +62,7 @@ data Comp a
 data Pattern a
   = Wildcard
   | Var a
+  | Con CName [Spanned (Pattern a)]
   | Tuple [Spanned (Pattern a)]
   deriving (Foldable, Functor, Show, Traversable)
 
