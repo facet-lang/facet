@@ -31,6 +31,8 @@ module Facet.Print
 , printSurfaceDecl
 , printCoreModule
 , printSurfaceModule
+  -- * Formatters
+, Formatter(..)
 ) where
 
 import           Control.Applicative ((<**>))
@@ -438,3 +440,8 @@ module' n b = ann (var (prettyMName n) ::: pretty "Module") </> block (nest 2 (v
 
 def :: Print -> Print -> Print
 def n b = group $ ann (n ::: b)
+
+
+data Formatter p = Formatter
+  { global :: Maybe MName -> DName -> p
+  }
