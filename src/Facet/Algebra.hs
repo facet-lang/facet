@@ -4,7 +4,7 @@ module Facet.Algebra
 ( -- * Folds
   Var(..)
 , ExprAlg(..)
-, foldValue
+, foldCValue
 , foldSType
 , foldSExpr
 ) where
@@ -58,8 +58,8 @@ data ExprAlg p = ExprAlg
   }
 
 
-foldValue :: ExprAlg p -> Level -> C.Value p -> p
-foldValue alg = go
+foldCValue :: ExprAlg p -> Level -> C.Value p -> p
+foldCValue alg = go
   where
   go d = \case
     C.Type  -> _Type alg
@@ -92,10 +92,10 @@ foldValue alg = go
 
   pat d = \case
     C.Wildcard -> ((d, wildcard alg), C.Wildcard)
-    C.Var n    -> let v = ann' alg (var alg (Local (tm n) d) ::: foldValue alg d (ty n)) in ((succ d, v), C.Var (C.free v))
+    C.Var n    -> let v = ann' alg (var alg (Local (tm n) d) ::: foldCValue alg d (ty n)) in ((succ d, v), C.Var (C.free v))
     C.Con n ps ->
       let ((d', p'), ps') = subpatterns d ps
-      in ((d', pcon alg (ann' alg (bimap (var alg . qvar) (foldValue alg d) n)) p'), C.Con n ps')
+      in ((d', pcon alg (ann' alg (bimap (var alg . qvar) (foldCValue alg d) n)) p'), C.Con n ps')
     C.Tuple ps ->
       let ((d', p'), ps') = subpatterns d ps
       in ((d', tuple alg (toList p')), C.Tuple ps')
