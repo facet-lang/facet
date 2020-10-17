@@ -72,7 +72,7 @@ foldValue alg = go
       in fn alg (map (\ (d, n ::: _T) -> P (pl n) (Just (intro alg n d) ::: go d _T)) vs) (go d' b')
     C.Lam n b  ->
       let (vs, (d', b')) = splitr (C.unLam' var') (d, C.Lam n b)
-      in lam alg (map (\ (d, n) -> P (pl (tm n)) (var' d n)) vs) (go d' b')
+      in lam alg (map (\ (d, n) -> P (pl (tm n)) (intro alg (tm n) d)) vs) (go d' b')
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     C.Neut h e ->
@@ -89,7 +89,7 @@ foldValue alg = go
     C.TPrd l r -> prd alg [go d l, go d r]
     C.Prd  l r -> prd alg [go d l, go d r]
     C.VCon n p -> app alg (ann' alg (bimap (var alg . qvar) (go d) n)) (fmap (ex . go d) p)
-  var' d n = ann' alg (intro alg (tm n) d ::: go d (ty n))
+  var' d n = ann' alg (var alg (Local (out (tm n)) d) ::: go d (ty n))
 
   pat d = \case
     C.Wildcard -> ((d, wildcard (pattern alg)), C.Wildcard)
