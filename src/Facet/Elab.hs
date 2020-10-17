@@ -496,14 +496,14 @@ elabDecl
   :: forall a v
   .  (HasCallStack, Eq v)
   => Spanned (S.Decl a)
-  -> (Context (Val v ::: Type v) -> Check v (Either [CName ::: Val v] (Val v))) ::: (Context (Val v ::: Type v) -> Check v (Type v))
+  -> (Context (Val v ::: Type v) -> Check v (Either [CName ::: Type v] (Val v))) ::: (Context (Val v ::: Type v) -> Check v (Type v))
 elabDecl d = go d id id
   where
   go
     :: Spanned (S.Decl a)
     -> ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v)))
     -> ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v)))
-    -> (Context (Val v ::: Type v) -> Check v (Either [CName ::: Val v] (Val v))) ::: (Context (Val v ::: Type v) -> Check v (Type v))
+    -> (Context (Val v ::: Type v) -> Check v (Either [CName ::: Type v] (Val v))) ::: (Context (Val v ::: Type v) -> Check v (Type v))
   go d km kt = withSpans d $ \case
     (n ::: t) S.:==> b ->
       go b
@@ -519,14 +519,14 @@ elabDecl d = go d id id
 
   withSpans (s, d) f = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
 
-elabDeclBody :: (HasCallStack, Eq v) => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> S.DeclBody a -> Check v (Either [CName ::: Val v] (Val v))
+elabDeclBody :: (HasCallStack, Eq v) => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> S.DeclBody a -> Check v (Either [CName ::: Type v] (Val v))
 elabDeclBody k ctx = \case
   S.DExpr b -> Right <$> k (checkElab . (`elabExpr` b)) ctx
   S.DType b -> Right <$> k (checkElab . (`elabType` b)) ctx
   S.DData c -> Left <$> elabData k ctx c
 
 
-elabData :: Eq v => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned (S.Type a))] -> Check v [CName ::: Val v]
+elabData :: Eq v => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned (S.Type a))] -> Check v [CName ::: Type v]
 -- FIXME: check that all constructors return the datatype.
 elabData k ctx cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab . (`elabType` t)) ctx
 
