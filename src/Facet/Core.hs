@@ -210,12 +210,13 @@ match s = \case
       l' <- match l pl
       r' <- match r pr
       Just $ Tuple [l', r']
+  Tuple _          -> Nothing
   Con n ps
     | VCon n' fs <- s -> do
       guard (tm n == tm n')
       -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
       Con n' <$> sequenceA (zipWith match (toList fs) ps)
-  _                -> Nothing
+    | otherwise    -> Nothing
 
 
 elim :: HasCallStack => Value a -> Elim (Value a) -> Value a
