@@ -529,15 +529,14 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (T
     let qname = mname :.: n
     env <- get @(Env.Env (Type v))
     let e ::: t = elabDecl d
-    e' ::: _T <- runContext . runReader env $ do
-      _T <- runSubst . elab $ check (t empty ::: Type)
-      e' <- runSubst . elab $ check (e empty ::: _T)
-      pure $ e' ::: _T
+    runContext $ do
+      _T <- runReader env . runSubst . elab $ check (t empty ::: Type)
+      e' <- runReader env . runSubst . elab $ check (e empty ::: _T)
 
-    modify $ Env.insert (qname ::: _T)
-    -- FIXME: extend the module
-    -- FIXME: support defining types
-    pure (qname, C.DTerm e' ::: _T)
+      modify $ Env.insert (qname ::: _T)
+      -- FIXME: extend the module
+      -- FIXME: support defining types
+      pure (qname, C.DTerm e' ::: _T)
 
   pure $ C.Module mname defs
   where
