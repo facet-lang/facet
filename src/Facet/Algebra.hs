@@ -4,7 +4,6 @@ module Facet.Algebra
 ( -- * Folds
   Var(..)
 , ExprAlg(..)
-, PatternAlg(..)
 , foldValue
 , foldSType
 ) where
@@ -48,11 +47,7 @@ data ExprAlg p = ExprAlg
   , _Unit :: p
   , ann' :: (p ::: p) -> p
   , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
-  , pattern :: PatternAlg p
-  }
-
-data PatternAlg p = PatternAlg
-  { wildcard :: p
+  , wildcard :: p
   , pcon     :: p -> Stack p -> p
   , tuple    :: [p] -> p
   }
@@ -91,14 +86,14 @@ foldValue alg = go
   var' d n = ann' alg (var alg (Local (out (tm n)) d) ::: go d (ty n))
 
   pat d = \case
-    C.Wildcard -> ((d, wildcard (pattern alg)), C.Wildcard)
+    C.Wildcard -> ((d, wildcard alg), C.Wildcard)
     C.Var n    -> let v = ann' alg (var alg (Local (tm n) d) ::: foldValue alg d (ty n)) in ((succ d, v), C.Var (C.free v))
     C.Con n ps ->
       let ((d', p'), ps') = subpatterns d ps
-      in ((d', pcon (pattern alg) (ann' alg (bimap (var alg . qvar) (foldValue alg d) n)) p'), C.Con n ps')
+      in ((d', pcon alg (ann' alg (bimap (var alg . qvar) (foldValue alg d) n)) p'), C.Con n ps')
     C.Tuple ps ->
       let ((d', p'), ps') = subpatterns d ps
-      in ((d', tuple (pattern alg) (toList p')), C.Tuple ps')
+      in ((d', tuple alg (toList p')), C.Tuple ps')
   subpatterns d ps = mapAccumL (\ (d', ps) p -> let ((d'', v), p') = pat d' p in ((d'', ps:>v), p')) (d, Nil) ps
 
 
