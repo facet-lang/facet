@@ -437,7 +437,7 @@ surface = Algebra
     Cons     n -> setPrec Var (annotate Con (pretty n))
   , intro = \ n d -> name n d
   , lam = comp . embed . commaSep
-  , clause = \ ns b -> embed (setPrec Pattern (vsep (map (tm . out) ns)) </> arrow) </> b
+  , clause = \ ns b -> embed (setPrec Pattern (vsep (map (unPl_ (braces . tm) tm) ns)) </> arrow) </> b
   -- FIXME: group quantifiers by kind again.
   , fn = \ as b -> foldr (\ (P pl (n ::: _T)) b -> case n of
     Just n -> ((pl, n) ::: _T) >~> b
