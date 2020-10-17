@@ -443,6 +443,7 @@ data Formatter p = Formatter
     -> [p] -- the bound variables.
     -> p   -- the body.
     -> p
+  , app :: Formatter p -> p -> Stack p -> p
   , _Type :: Formatter p -> p
   , _Void :: Formatter p -> p
   , _Unit :: Formatter p -> p
