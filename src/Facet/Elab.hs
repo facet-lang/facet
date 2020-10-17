@@ -228,6 +228,13 @@ switch (Synth m) = \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify (_K' :===: _K)
   _       -> m
 
+resolve
+  :: DName
+  -> Synth v QName
+resolve n = Synth $ Env.lookup n <$> askEnv >>= \case
+  Just (m :=: _ ::: _T) -> pure $ m :.: n ::: _T
+  Nothing               -> freeVariable n
+
 global
   :: DName
   -> Synth v (Val v)
