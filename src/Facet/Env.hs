@@ -13,14 +13,14 @@ import           Facet.Name
 import           Facet.Syntax
 import           Prelude hiding (lookup)
 
-newtype Env a = Env { getEnv :: Map.Map DName (MName ::: a) }
+newtype Env a = Env { getEnv :: Map.Map DName (MName :=: Maybe a ::: a) }
   deriving (Monoid, Semigroup)
 
-fromList :: [(DName, MName ::: a)] -> Env a
-fromList = Env . Map.fromList @DName @(MName ::: _)
+fromList :: [(DName, MName :=: Maybe a ::: a)] -> Env a
+fromList = Env . Map.fromList @DName @(MName :=: Maybe _ ::: _)
 
-lookup :: DName -> Env a -> Maybe (MName ::: a)
-lookup k = Map.lookup @DName @(MName ::: _) k . getEnv
+lookup :: DName -> Env a -> Maybe (MName :=: Maybe a ::: a)
+lookup k = Map.lookup @DName @(MName :=: Maybe _ ::: _) k . getEnv
 
-insert :: QName ::: a -> Env a -> Env a
-insert (m :.: d ::: _T) = Env . Map.insert d (m ::: _T) . getEnv
+insert :: QName :=: Maybe a ::: a -> Env a -> Env a
+insert (m :.: d :=: v ::: _T) = Env . Map.insert d (m :=: v ::: _T) . getEnv

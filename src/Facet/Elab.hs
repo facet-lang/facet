@@ -232,8 +232,8 @@ global
   :: DName
   -> Synth v (Val v)
 global n = Synth $ Env.lookup n <$> askEnv >>= \case
-  Just b  -> instantiate (C.global (tm b :.: n ::: ty b) ::: ty b)
-  Nothing -> freeVariable n
+  Just (m :=: _ ::: _T) -> instantiate (C.global (m :.: n ::: _T) ::: _T)
+  Nothing               -> freeVariable n
 
 bound
   :: Context (Val v ::: Type v)
@@ -532,7 +532,7 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (T
     runContext $ do
       _T <- runReader env . runSubst . elab $ check (t empty ::: Type)
 
-      modify $ Env.insert (qname ::: _T)
+      modify $ Env.insert (qname :=: Nothing ::: _T)
 
       e' <- runReader env . runSubst . elab $ check (e empty ::: _T)
 
