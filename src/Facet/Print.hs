@@ -466,4 +466,5 @@ data Pattern p = FoldPattern
   { wildcard :: p
   , variable :: UName -> p
   , pcon     :: p -> Stack p -> p
+  , tuple    :: [p] -> p
   }
