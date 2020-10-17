@@ -25,6 +25,7 @@ import           Control.Effect.Parser.Span (Pos(Pos))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
+import           Facet.Algebra (foldSModule)
 import           Facet.Context
 import           Facet.Elab (Err(..), ErrDoc, Reason(..), Type, Val, elabModule)
 import           Facet.Name (Index(..), Level(..))
@@ -44,7 +45,7 @@ parseString p s = either (P.putDoc . N.prettyNotice) P.prettyPrint (runParserWit
 printFile :: MonadIO m => FilePath -> m ()
 printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module')))) >>= \case
   Left err -> P.putDoc (N.prettyNotice err)
-  Right m  -> P.prettyPrint (P.printSurfaceModule m)
+  Right m  -> P.prettyPrint (foldSModule P.surface m)
 
 parseFile :: MonadIO m => FilePath -> m (Either N.Notice (Spanned (S.Module Index)))
 parseFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module'))))
