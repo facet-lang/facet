@@ -21,40 +21,23 @@ module Facet.Print
 , evar
 , tvar
   -- * Interpreters
-, printCoreValue
 , printContextEntry
-, printSurfaceType
-, printSurfaceExpr
-, printSurfaceClause
-, printCorePattern
-, printSurfacePattern
-, printSurfaceDecl
-, printCoreModule
-, printSurfaceModule
   -- * Algebras
 , surface
 , explicit
 ) where
 
 import           Control.Applicative ((<**>))
-import           Control.Category ((>>>))
 import           Control.Monad.IO.Class
-import           Data.Bifunctor (bimap, first)
-import           Data.Bitraversable (bimapAccumL)
 import           Data.Foldable (foldl', toList)
 import           Data.Function (on)
-import qualified Data.IntSet as IntSet
 import           Data.List (intersperse)
-import           Data.List.NonEmpty (NonEmpty)
 import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Facet.Algebra
-import qualified Facet.Core as C
 import           Facet.Name hiding (ann)
 import qualified Facet.Pretty as P
-import           Facet.Stack
-import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Prelude hiding ((**))
 import qualified Prettyprinter as PP
@@ -63,7 +46,6 @@ import           Silkscreen as P
 import           Silkscreen.Printer.Prec hiding (Level)
 import qualified Silkscreen.Printer.Prec as P
 import           Silkscreen.Printer.Rainbow as P
-import           Text.Parser.Position
 
 prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = P.putDoc . getPrint
@@ -208,94 +190,9 @@ prettyMName :: Printer p => MName -> p
 prettyMName (n :. s)  = prettyMName n <> pretty '.' <> pretty s
 prettyMName (MName s) = pretty s
 
-prettyQName :: PrecedencePrinter p => QName -> p
-prettyQName (mname :.: n) = prettyMName mname <> pretty '.' <> pretty n
-
-
-printCoreValue ::  Level -> C.Value Print -> Print
-printCoreValue = go
-  where
-  go d = \case
-    C.Type     -> _Type
-    C.Void     -> _Void
-    C.TUnit    -> _Unit
-    C.Unit     -> _Unit
-    t C.:=> b  ->
-      let n' = name d
-          t' = go d (ty t)
-          b' = go (succ d) (b (C.free n'))
-      in if IntSet.member (getLevel d) (getFVs (fvs b')) then
-        ((pl (tm t), n') ::: t') >~> bind d b'
-      else
-        unPl braces id (pl (tm t)) t' --> bind d b'
-    C.Lam n b  ->
-      let (vs, (d', b')) = splitr (C.unLam' (cons <*> var' True)) (d, C.Lam n b)
-          b'' = go d' b'
-      in lam (map (\ (d, n) -> var' (IntSet.member (getLevel d) (getFVs (fvs b''))) d n) vs) b''
-    -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
-    -- FIXME: should maybe print the quoted variable differently so it stands out.
-    C.Neut h e -> group $ foldl' (elim d) (C.unHead (ann . bimap cglobal (go d)) id tvar (ann . bimap (annotate Hole . (pretty '?' <>) . evar) (go d)) h) e
-    C.TPrd l r -> go d l ** go d r
-    C.Prd  l r -> go d l ** go d r
-    C.VCon n p -> ann (bimap cglobal (go d) n) $$* fmap (go d) p
-  name d = cons d (tvar d)
-  clause d (p, b) =
-    let (d', p') = bimapAccumL (\ d' v -> (d', go d v)) (\ d' (_ ::: _T) -> (succ d', ann (evar d' ::: go d _T))) d p
-        b' = foldr bind (go d' (b (bimap C.free C.free p'))) [d..d']
-    in nest 2 $ group (prec Pattern (printCorePattern p') </> arrow) </> b'
-  elim d f = \case
-    C.App  a -> f $$ unPl_ (braces . go d) (go d) a
-    C.Case p -> nest 2 $ group $ pretty "case" <+> setPrec Expr f </> block (commaSep (map (clause d) p))
-
-  var' u d (n ::: _T) = group . align $ unPl braces id (pl n) $ ann $ setPrec Var (annotate (Name d) (p <> unPl tvar evar (pl n) d)) ::: printCoreValue d _T
-    where
-    p | u         = mempty
-      | otherwise = pretty '_'
-
-  lam vs b = block $ nest 2 $ group (setPrec Pattern (vsep vs) </> arrow) </> b
-
-  _Type = annotate Type $ pretty "Type"
-  _Void = annotate Type $ pretty "Void"
-  _Unit = annotate Type $ pretty "Unit"
-
 
 printContextEntry :: Level -> UName ::: Print -> Print
 printContextEntry l (n ::: _T) = ann (intro explicit n l ::: _T)
-
-
-printSurfaceType :: Stack Print -> Spanned (S.Type a) -> Print
-printSurfaceType = go
-  where
-  go env = snd >>> \case
-    S.TFree n  -> sglobal n
-    S.TBound n -> env ! getIndex n
-    S.THole n  -> hole n
-    S.Type     -> _Type
-    S.Void     -> _Void
-    S.TUnit    -> _Unit
-    t S.:=> b ->
-      let (t', b') = splitr (S.unForAll . snd) b
-      in forAlls (map (first sbound) (t:t')) (go (env:>sbound (tm t)) b')
-    f S.:$$ a ->
-      let (f', a') = splitl (S.unTApp . snd) f
-      in go env f' $$* fmap (go env) (a' :> a)
-    a S.:-> b -> go env a --> go env b
-    l S.:** r -> go env l **  go env r
-  _Type = annotate Type $ pretty "Type"
-  _Void = annotate Type $ pretty "Void"
-  _Unit = annotate Type $ pretty "Unit"
-  hole n = annotate Hole $ pretty '?' <> pretty n
-
-
-sglobal :: Pretty n => n -> Print
-sglobal = setPrec Var . pretty
-
-cglobal :: QName -> Print
-cglobal = setPrec Var . prettyQName
-
-
-sbound :: UName -> Print
-sbound = setPrec Var . pretty
 
 
 ($$), (-->), (**) :: Print -> Print -> Print
@@ -317,109 +214,6 @@ l ** r = tupled [l, r]
 
 (>~>) :: ((Pl, Print) ::: Print) -> Print -> Print
 ((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (setPrec Var n ::: t) <> line))) </> arrow <+> b)
-
-forAlls :: [Print ::: Spanned (S.Type a)] -> Print -> Print
-forAlls ts b = foldr go b (groupByType S.aeq ts)
-  where
-  -- FIXME: this is horribly wrong and probably going to crash
-  go (t, ns) b = ((Im, commaSep ns) ::: printSurfaceType Nil t) >~> b
-
-groupByType :: (t -> t -> Bool) -> [n ::: Spanned t] -> [(Spanned t, [n])]
-groupByType eq = \case
-  []   -> []
-  (n ::: t):xs -> (t, n:map tm ys) : groupByType eq zs
-    where
-    (ys,zs) = span (eq (snd t) . snd . ty) xs
-
-
-printSurfaceExpr :: Stack Print -> Spanned (S.Expr a) -> Print
-printSurfaceExpr = go
-  where
-  go env = snd >>> \case
-    S.Free n  -> sglobal n
-    S.Bound n -> env ! getIndex n
-    S.Hole n  -> hole n
-    f S.:$  a ->
-      let (f', a') = splitl (S.unApp . snd) f
-      in go env f' $$* fmap (go env) (a' :> a)
-    S.Unit    -> unit
-    l S.:*  r -> go env l **  go env r
-    S.Comp c  -> comp $ case snd c of
-      S.Expr e     -> prec Expr $ printSurfaceExpr env e
-      S.Clauses cs -> commaSep (map (uncurry (printSurfaceClause env)) cs)
-  hole n = annotate Hole $ pretty '?' <> pretty n
-  unit = annotate Con $ pretty "Unit"
-
-printSurfaceClause :: Stack Print -> NonEmpty (Spanned (S.Pattern UName)) -> Spanned (S.Expr a) -> Print
-printSurfaceClause env ps b = foldMap printSurfacePattern ps' <+> arrow <> group (nest 2 (line <> prec Expr (printSurfaceExpr env' b)))
-  where
-  ps' = fmap (fmap sbound) <$> ps
-  env' = foldl (foldl (foldl (:>))) env ps'
-
-printCorePattern :: C.Pattern Print Print -> Print
-printCorePattern = \case
-  C.Wildcard -> pretty '_'
-  C.Var n    -> n
-  C.Con n ps -> parens (hsep (annotate Con (ann (first prettyQName n)):map printCorePattern ps))
-  C.Tuple p  -> tupled (map printCorePattern p)
-
-printSurfacePattern :: Spanned (S.Pattern Print) -> Print
-printSurfacePattern p = prec Pattern $ case snd p of
-  S.Wildcard -> pretty '_'
-  S.Var n    -> n
-  S.Con n ps -> parens (hsep (annotate Con (pretty n):map printSurfacePattern ps))
-  S.Tuple p  -> tupled (map printSurfacePattern p)
-
-printSurfaceData :: Stack Print -> [Spanned (CName ::: Spanned (S.Type a))] -> Print
-printSurfaceData env cs = block . commaSep $ map (ann . bimap (annotate Con . pretty) (printSurfaceType env) . snd) cs
-
-
-printSurfaceDecl :: Spanned (S.Decl a) -> Print
-printSurfaceDecl = go Nil
-  where
-  go env = snd >>> \case
-    t S.:=   b -> printSurfaceType env t .= case b of
-      S.DExpr e -> printSurfaceExpr env e
-      S.DType t -> printSurfaceType env t
-      S.DData c -> printSurfaceData env c
-    t S.:==> b ->
-      let (t', b') = splitr (S.unDForAll . snd) b
-          ts = map (first sbound) (t:t')
-      in forAlls ts (go (foldl (\ as (a:::_) -> as :> a) env ts) b')
-    t S.:--> b -> bimap sbound (printSurfaceType env) t >-> go (env:>sbound (tm t)) b
-
-
--- FIXME: it would be nice to ensure that this gets wrapped if the : in the same decl got wrapped.
-(.=) :: Print -> Print -> Print
-t .= b = t </> b
-
-(>->) :: (Print ::: Print) -> Print -> Print
-(n ::: t) >-> b = prec FnR (group (align (parens (ann (n ::: t)))) </> arrow <+> b)
-
-
-printCoreModule :: C.Module Print -> Print
-printCoreModule (C.Module n ds)
-  = module' n $ map (\ (n, d ::: t) -> ann (cglobal n ::: printCoreValue (Level 0) t) </> printCoreDef d) ds
-
-printCoreDef :: C.Def Print -> Print
-printCoreDef = \case
-  C.DTerm b  -> printCoreValue (Level 0) b
-  C.DType b  -> printCoreValue (Level 0) b
-  C.DData cs -> block . commaSep $ map (ann . bimap (annotate Con . pretty) (printCoreValue (Level 0))) cs
-
-
-printSurfaceModule :: Spanned (S.Module a) -> Print
-printSurfaceModule (_, S.Module n ds) = module' n (map (uncurry printSurfaceDef . snd) ds)
-
-printSurfaceDef :: DName -> Spanned (S.Decl a) -> Print
-printSurfaceDef n d = def (sglobal n) (printSurfaceDecl d)
-
-
-module' :: MName -> [Print] -> Print
-module' n b = ann (setPrec Var (prettyMName n) ::: pretty "Module") </> block (nest 2 (vsep (intersperse mempty b)))
-
-def :: Print -> Print -> Print
-def n b = group $ ann (n ::: b)
 
 
 surface :: Algebra Print
