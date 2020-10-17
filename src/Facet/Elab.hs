@@ -495,13 +495,15 @@ elabDecl = go
       -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
       in (\ ctx -> lam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
 
-    t S.:= b ->
-      (\ ctx -> case b of
-        S.DExpr b -> checkElab (elabExpr ctx b)
-        S.DType b -> checkElab (elabType ctx b)
-        S.DData c -> elabData ctx c) ::: (\ ctx -> checkElab (elabType ctx t))
+    t S.:= b -> (\ ctx -> elabDeclBody ctx b) ::: (\ ctx -> checkElab (elabType ctx t))
 
   withSpans f (s, d) = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
+
+elabDeclBody :: (HasCallStack, Eq v) => Context (Val v ::: Type v) -> S.DeclBody a -> Check v (Val v)
+elabDeclBody ctx = \case
+  S.DExpr b -> checkElab (elabExpr ctx b)
+  S.DType b -> checkElab (elabType ctx b)
+  S.DData c -> elabData ctx c
 
 
 elabData :: Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned (S.Type a))] -> Check v (Val v)
