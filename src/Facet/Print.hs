@@ -456,6 +456,7 @@ data ExprAlg p = ExprAlg
     -> p
   , app :: p -> Stack (Pl_ p) -> p
   , prd :: [p] -> p
+  , hole :: Text -> p
   , _Type :: p
   , _Void :: p
   , _Unit :: p
