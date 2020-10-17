@@ -8,7 +8,6 @@ _Caveat lector:_ facet is quite new, and this document is primarily aspirational
 - 📈 functional programming!
 - ✋🏻 strict (call-by-value) evaluation order
 - 👷🏻‍♀️ algebraic effects
-- ℹ️ (currently) embedded in Haskell as a (typed) EDSL
 
 
 ## Goals
