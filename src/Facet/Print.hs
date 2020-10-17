@@ -191,7 +191,7 @@ commaSep :: [Print] -> Print
 commaSep = encloseSep mempty mempty (comma <> space)
 
 ann :: (PrecedencePrinter p, P.Level p ~ Precedence) => (p ::: p) -> p
-ann (n ::: t) = prec Ann $ n </> group (align (colon <+> flatAlt space mempty <> t))
+ann (n ::: t) = prec Ann $ align (n </> group (align (colon <+> flatAlt space mempty <> t)))
 
 var :: (PrecedencePrinter p, P.Level p ~ Precedence) => p -> p
 var = setPrec Var
@@ -431,7 +431,7 @@ printSurfaceDef n d = def (sfree n) (printSurfaceDecl d)
 
 
 module' :: MName -> [Print] -> Print
-module' n b = ann (var (prettyMName n) ::: pretty "Module") </> group (align (braces (enclose space line (vsep (line:intersperse mempty b) <> line))))
+module' n b = ann (var (prettyMName n) ::: pretty "Module") </> block (nest 2 (vsep (intersperse mempty b)))
 
 def :: Print -> Print -> Print
 def n b = group $ ann (n ::: b)
