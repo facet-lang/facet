@@ -6,6 +6,7 @@ module Facet.Algebra
 , ExprAlg(..)
 , foldValue
 , foldSType
+, foldSExpr
 ) where
 
 import           Data.Bifunctor (bimap)
@@ -122,3 +123,32 @@ foldSType alg = go
     l S.:** r -> prd alg [go env l, go env r]
     where
     level = Level (length env)
+
+foldSExpr :: ExprAlg p -> Stack p -> Spanned (S.Expr a) -> p
+foldSExpr alg = go
+  where
+  go env (s, e) = case e of
+    S.Free  n -> var alg (Global Nothing n)
+    S.Bound n -> env ! getIndex n
+    S.Hole  n -> hole alg n
+    f S.:$  a ->
+      let (f', a') = splitl (S.unApp . snd) (s, f S.:$ a)
+      in app alg (go env f') (fmap (ex . go env) a')
+    S.Unit    -> unit alg
+    l S.:*  r -> prd alg [go env l, go env r]
+    S.Comp c  -> case snd c of
+      S.Expr e     -> lam alg [ go env e ]
+      S.Clauses cs -> lam alg (map (uncurry (cls env)) cs)
+
+  cls env ps b = let ((_, env'), ps') = mapAccumL (\ (d, env) -> fmap (ex . (::: Nothing)) . pat d env) (Level (length env), env) ps in clause alg (toList ps') (go env' b)
+
+  pat d env (_, p) = case p of
+    S.Wildcard -> ((d, env), wildcard alg)
+    S.Var n    -> let v = var alg (Local n d) in ((succ d, env:>v), v)
+    S.Con n ps ->
+      let ((d', env'), ps') = subpatterns d env ps
+      in ((d', env'), pcon alg (var alg (Cons n)) (fromList ps'))
+    S.Tuple ps ->
+      let ((d', env'), ps') = subpatterns d env ps
+      in ((d', env'), tuple alg ps')
+  subpatterns d env ps = mapAccumL (\ (d', env') p -> pat d' env' p) (d, env) ps
