@@ -5,6 +5,7 @@ module Facet.Algebra
   Var(..)
 , Algebra(..)
 , foldCValue
+, foldCModule
 , foldSType
 , foldSExpr
 , foldSCons
@@ -13,7 +14,7 @@ module Facet.Algebra
 
 import           Data.Bifunctor (bimap)
 import           Data.Foldable (toList)
-import           Data.Text (Text)
+import           Data.Text (Text, pack)
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
 import           Facet.Name
@@ -106,6 +107,12 @@ foldCValue alg = go
       let ((d', p'), ps') = subpatterns d ps
       in ((d', tuple alg (toList p')), C.Tuple ps')
   subpatterns d ps = mapAccumL (\ (d', ps) p -> let ((d'', v), p') = pat d' p in ((d'', ps:>v), p')) (d, Nil) ps
+
+foldCModule :: Algebra p -> C.Module p -> p
+foldCModule alg (C.Module n ds) = module_ alg $ n ::: Just (var alg (Global (Just (MName (pack "Kernel"))) (T (TName (UName (pack "Module")))))) :=: map (\ (m :.: n, d ::: t) -> decl alg $ var alg (Global (Just m) n) ::: (defn alg (foldCValue alg (Level 0) t :=: case d of
+  C.DTerm b  -> foldCValue alg (Level 0) b
+  C.DType b  -> foldCValue alg (Level 0) b
+  C.DData cs -> data' alg $ map (decl alg . bimap (var alg . Cons) (foldCValue alg (Level 0))) cs))) ds
 
 
 foldSType :: Algebra p -> Stack p -> Spanned (S.Type a) -> p
