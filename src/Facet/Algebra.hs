@@ -10,6 +10,7 @@ module Facet.Algebra
 , foldSExpr
 , foldSCons
 , foldSDecl
+, foldSModule
 ) where
 
 import           Data.Bifunctor (bimap)
@@ -187,3 +188,6 @@ foldSDecl alg = go Nil
       in fn alg ts' (go env' b')
     where
     level = Level (length env)
+
+foldSModule :: Algebra p -> Spanned (S.Module a) -> p
+foldSModule alg (_, S.Module m ds) = module_ alg $ m ::: Just (var alg (Global (Just (MName (pack "Kernel"))) (T (TName (UName (pack "Module")))))) :=: map (\ (_, (n, d)) -> decl alg (var alg (Global (Just m) n) ::: foldSDecl alg d)) ds
