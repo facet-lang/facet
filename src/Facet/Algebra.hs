@@ -7,6 +7,8 @@ module Facet.Algebra
 , foldCValue
 , foldSType
 , foldSExpr
+, foldSCons
+, foldSDecl
 ) where
 
 import           Data.Bifunctor (bimap)
@@ -155,3 +157,25 @@ foldSExpr alg = go
       let ((d', env'), ps') = subpatterns d env ps
       in ((d', env'), tuple alg ps')
   subpatterns d env ps = mapAccumL (\ (d', env') p -> pat d' env' p) (d, env) ps
+
+foldSCons :: Algebra p -> Stack p -> Spanned (CName ::: Spanned (S.Type a)) -> p
+foldSCons alg env = decl alg . bimap (var alg . Cons) (foldSType alg env) . snd
+
+foldSDecl :: Algebra p -> Spanned (S.Decl a) -> p
+foldSDecl alg = go Nil
+  where
+  go env (s, d) = case d of
+    t S.:=   b -> defn alg $ foldSType alg env t :=: case b of
+      S.DExpr e -> foldSExpr alg env e
+      S.DType t -> foldSType alg env t
+      S.DData c -> data' alg $ map (foldSCons alg env) c
+    t S.:==> b ->
+      let (ts, b') = splitr (S.unDForAll . snd) (s, t S.:==> b)
+          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local n d) in ((succ d, env :> v), im (Just v ::: foldSType alg env t))) (level, env) ts
+      in fn alg ts' (go env' b')
+    t S.:--> b ->
+      let (ts, b') = splitr (S.unDArrow . snd) (s, t S.:--> b)
+          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local n d) in ((succ d, env :> v), ex (Just v ::: foldSType alg env t))) (level, env) ts
+      in fn alg ts' (go env' b')
+    where
+    level = Level (length env)
