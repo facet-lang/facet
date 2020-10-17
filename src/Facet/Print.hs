@@ -436,6 +436,7 @@ data Var
   = Global (Maybe MName) DName
   | Local UName Level
   | Meta Level
+  | Cons CName
 
 qvar :: QName -> Var
 qvar (m :.: n) = Global (Just m) n
