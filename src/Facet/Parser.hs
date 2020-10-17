@@ -294,6 +294,15 @@ onameStyle = IdentifierStyle
   Highlight.Operator
   ReservedOperator
 
+cnameStyle :: CharParsing p => IdentifierStyle p
+cnameStyle = IdentifierStyle
+  "constructor name"
+  lower
+  nameChar
+  reserved
+  Identifier
+  ReservedIdentifier
+
 tnameStyle :: CharParsing p => IdentifierStyle p
 tnameStyle = IdentifierStyle
   "type name"
