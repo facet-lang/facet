@@ -121,7 +121,7 @@ sig body = build sigTable (const (spanned ((S.:=) <$> monotype <*> body)))
 
 binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (Spanned (S.Decl N.Index))
 binder self _ = do
-  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* symbolic '(' <*> varPattern ename) <* colon <*> type' <* symbolic ')'
+  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> varPattern ename) <* colon <*> type' <* rparen
   bindVarPattern i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
   where
   mk start t b end = (Span start end, t S.:--> b)
@@ -331,3 +331,9 @@ hnameStyle = IdentifierStyle
 
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
+
+lparen :: TokenParsing p => p Char
+lparen = symbolic '('
+
+rparen :: TokenParsing p => p Char
+rparen = symbolic '('
