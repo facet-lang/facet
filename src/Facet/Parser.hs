@@ -224,6 +224,7 @@ pattern :: (Monad p, PositionParsing p) => p (Spanned (S.Pattern N.UName))
 pattern = spanned
   $   S.Var . N.getEName <$> ename
   <|> S.Wildcard <$  wildcard
+  <|> try (parens (S.Con <$> cname <*> many pattern))
   <|> S.Tuple    <$> parens (commaSep pattern)
   <?> "pattern"
 
