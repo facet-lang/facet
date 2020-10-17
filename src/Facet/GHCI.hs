@@ -25,7 +25,7 @@ import           Control.Effect.Parser.Span (Pos(Pos))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
-import           Facet.Algebra (foldSModule)
+import           Facet.Algebra (foldCModule, foldSModule)
 import           Facet.Context
 import           Facet.Elab (Err(..), ErrDoc, Reason(..), Type, Val, elabModule)
 import           Facet.Name (Index(..), Level(..))
@@ -62,7 +62,7 @@ elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either N.Notice)) (Spanned (S.Module Index)) -> String -> m ()
 elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
-  lower $ P.printCoreModule <$> elabModule parsed
+  lower $ foldCModule P.surface <$> elabModule parsed
   where
   input = Input (Pos 0 0) s
   src = sourceFromString path s
