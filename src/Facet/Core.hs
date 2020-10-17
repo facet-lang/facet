@@ -202,21 +202,19 @@ case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s
   _      -> error "non-exhaustive patterns in lambda"
 
 match :: Value a -> Pattern (Value a) b -> Maybe (Pattern (Value a) (Value a))
-match s = \case
-  Wildcard         -> Just Wildcard
-  Var _            -> Just (Var s)
-  Tuple [pl, pr]
-    | Prd l r <- s -> do
-      l' <- match l pl
-      r' <- match r pr
-      Just $ Tuple [l', r']
-  Tuple _          -> Nothing
-  Con n ps
-    | VCon n' fs <- s -> do
-      guard (tm n == tm n')
-      -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
-      Con n' <$> sequenceA (zipWith match (toList fs) ps)
-    | otherwise    -> Nothing
+match = curry $ \case
+  (_,          Wildcard)       -> Just Wildcard
+  (s,          Var _)          -> Just (Var s)
+  (Prd l r,    Tuple [pl, pr]) -> do
+    l' <- match l pl
+    r' <- match r pr
+    Just $ Tuple [l', r']
+  (_, Tuple _)                 -> Nothing
+  (VCon n' fs, Con n ps)       -> do
+    guard (tm n == tm n')
+    -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
+    Con n' <$> sequenceA (zipWith match (toList fs) ps)
+  (_,          Con _ _)        -> Nothing
 
 
 elim :: HasCallStack => Value a -> Elim (Value a) -> Value a
