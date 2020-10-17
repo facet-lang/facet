@@ -435,9 +435,10 @@ data Var
   | Local UName Level
 
 data Formatter p = Formatter
-  { var :: Var -> p
+  { var :: Formatter p -> Var -> p
   , lam
-    :: [Print] -- the bound variables.
+    :: Formatter p
+    -> [Print] -- the bound variables.
     -> Print   -- the body.
     -> Print
   }
