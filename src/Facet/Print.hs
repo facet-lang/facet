@@ -432,10 +432,10 @@ surface :: Algebra Print
 surface = Algebra
   { var = \case
     Global _ n -> setPrec Var (pretty n)
-    Local  n _ -> setPrec Var (pretty n)
+    Local  n d -> name n d
     Meta     d -> setPrec Var (annotate Hole (pretty '?' <> evar d))
     Cons     n -> setPrec Var (annotate Con (pretty n))
-  , intro = \ n _ -> setPrec Var (pretty n)
+  , intro = \ n d -> name n d
   , lam = comp . embed . commaSep
   , clause = \ ns b -> embed (setPrec Pattern (vsep (map (tm . out) ns)) </> arrow) </> b
   -- FIXME: group quantifiers by kind again.
@@ -463,3 +463,7 @@ surface = Algebra
   }
   where
   embed = nest 2 . group
+  name n d = setPrec Var $ if T.null (getUName n) then
+    pretty '_' <> P.lower (getLevel d)
+  else
+    pretty n
