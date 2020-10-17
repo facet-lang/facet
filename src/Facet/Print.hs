@@ -32,6 +32,7 @@ module Facet.Print
 , printCoreModule
 , printSurfaceModule
   -- * Formatters
+, Var(..)
 , Formatter(..)
 ) where
 
@@ -439,6 +440,10 @@ def :: Print -> Print -> Print
 def n b = group $ ann (n ::: b)
 
 
+data Var
+  = Global (Maybe MName) DName
+  | Local UName Level
+
 data Formatter p = Formatter
-  { global :: Maybe MName -> DName -> p
+  { var :: Var -> p
   }
