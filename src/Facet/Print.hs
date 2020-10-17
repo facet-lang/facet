@@ -483,7 +483,7 @@ explicit = Algebra
   , tintro = name P.upper
   , intro = name P.lower
   , lam = comp . embed . commaSep
-  , clause = \ ns b -> embed (setPrec Pattern (vsep (map (unPl_ (braces . tm) tm) ns)) </> arrow) </> b
+  , clause = \ ns b -> embed (setPrec Pattern (vsep (map (\ (P pl (n ::: _T)) -> unPl braces id pl (maybe n (ann . (n :::)) _T)) ns)) </> arrow) </> b
   -- FIXME: group quantifiers by kind again.
   , fn = \ as b -> foldr (\ (P pl (n ::: _T)) b -> case n of
     Just n -> ((pl, n) ::: _T) >~> b
