@@ -233,7 +233,9 @@ resolve
   -> Synth v QName
 resolve n = Synth $ Env.lookup n <$> askEnv >>= \case
   Just (m :=: _ ::: _T) -> pure $ m :.: n ::: _T
-  Nothing               -> freeVariable n
+  Nothing
+    | E (EName n) <- n  -> synth (resolve (C (CName n)))
+    | otherwise         -> freeVariable n
 
 global
   :: DName
