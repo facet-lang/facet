@@ -6,4 +6,9 @@ Bool : Type
 , true : Bool
 }
 
+not : Bool -> Bool
+{ (true)  -> false
+, (false) -> true
+}
+
 }
