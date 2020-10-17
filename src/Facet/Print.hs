@@ -327,7 +327,7 @@ f $$ a = askingPrec $ \case
 -- FIXME: left-flatten products
 l ** r = tupled [l, r]
 
-($$*) :: Print -> Stack Print -> Print
+($$*) :: Foldable t => Print -> t Print -> Print
 ($$*) = fmap group . foldl' ($$)
 
 (>~>) :: ((Pl, Print) ::: Print) -> Print -> Print
