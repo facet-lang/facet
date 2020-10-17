@@ -536,6 +536,8 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (T
 
       e' <- runReader env . runSubst . elab $ check (e empty ::: _T)
 
+      modify $ Env.insert (qname :=: Just e' ::: _T)
+
       -- FIXME: extend the module
       -- FIXME: support defining types
       pure (qname, C.DTerm e' ::: _T)
