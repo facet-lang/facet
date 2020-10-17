@@ -447,8 +447,8 @@ data ExprAlg p = ExprAlg
   { var :: Var -> p
   , intro :: Pl_ UName -> Level -> p
   , lam
-    :: [p] -- the bound variables.
-    -> p   -- the body.
+    :: [Pl_ p] -- the bound variables.
+    -> p       -- the body.
     -> p
   , fn
     :: [Pl_ (Maybe p ::: p)] -- the argument types/bindings
@@ -486,7 +486,7 @@ foldValue alg = go
       in fn alg (map (\ (d, n ::: _T) -> P (pl n) (Just (intro alg n d) ::: go d _T)) vs) (go d' b')
     C.Lam n b  ->
       let (vs, (d', b')) = splitr (C.unLam' var') (d, C.Lam n b)
-      in lam alg (map (\ (d, n) -> var' d n) vs) (go d' b')
+      in lam alg (map (\ (d, n) -> P (pl (tm n)) (var' d n)) vs) (go d' b')
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     C.Neut h e ->
