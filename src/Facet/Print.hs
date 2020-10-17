@@ -450,8 +450,8 @@ data ExprAlg p = ExprAlg
     -> p   -- the body.
     -> p
   , fn
-    :: [p] -- the argument types/bindings
-    -> p   -- the return type
+    :: [p ::: p] -- the argument types/bindings
+    -> p         -- the return type
     -> p
   , app :: p -> Stack (Pl_ p) -> p
   , prd :: [p] -> p
