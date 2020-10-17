@@ -245,7 +245,7 @@ substHead subst = go
     t :=> b  ->
       let t' = fmap go t
       in t' :=> go . b
-    Lam n b  -> Lam n (go . b)
+    Lam n b  -> Lam (fmap go n) (go . b)
     Neut f a -> subst f `elimN` fmap substElim a
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
