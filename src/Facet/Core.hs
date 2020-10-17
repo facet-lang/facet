@@ -234,9 +234,8 @@ handleBinderP d p b = do
   b' <- b p'
   pure $ \ v -> substQ (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
--- FIXME: is it possible to instead perform one complete substitution at the end of <whatever>?
-substQ :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
-substQ s = go
+substHead :: HasCallStack => (Head a -> Value a) -> Value a -> Value a
+substHead subst = go
   where
   go = \case
     Type     -> Type
@@ -247,37 +246,26 @@ substQ s = go
       let t' = fmap go t
       in t' :=> go . b
     Lam n b  -> Lam n (go . b)
-    Neut f a -> unHead global free (s !) metavar f `elimN` fmap substElim a
+    Neut f a -> subst f `elimN` fmap substElim a
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
     VCon n p -> VCon (fmap go n) (fmap go p)
   substElim = \case
     App a   -> App (fmap go a)
     Case cs -> Case (map (bimap (bimap go (fmap go)) (go .)) cs)
+
+-- FIXME: is it possible to instead perform one complete substitution at the end of <whatever>?
+substQ :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
+substQ s = substHead (unHead global free (s !) metavar)
+  where
   s ! l = case IntMap.lookup (getLevel l) s of
     Just a  -> a
     Nothing -> quote l
 
 -- | Substitute metavars.
 subst :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
-subst s = go
+subst s = substHead (unHead global free quote (s !))
   where
-  go = \case
-    Type     -> Type
-    Void     -> Void
-    TUnit    -> TUnit
-    Unit     -> Unit
-    t :=> b  ->
-      let t' = fmap go t
-      in t' :=> go . b
-    Lam n b  -> Lam n (go . b)
-    Neut f a -> unHead global free quote (s !) f `elimN` fmap substElim a
-    TPrd l r -> TPrd (go l) (go r)
-    Prd  l r -> Prd  (go l) (go r)
-    VCon n p -> VCon (fmap go n) (fmap go p)
-  substElim = \case
-    App a   -> App (fmap go a)
-    Case cs -> Case (map (bimap (bimap go (fmap go)) (go .)) cs)
   s ! l = case IntMap.lookup (getLevel (tm l)) s of
     Just a  -> a
     Nothing -> metavar l
