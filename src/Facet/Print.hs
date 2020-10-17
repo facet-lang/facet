@@ -297,13 +297,6 @@ cglobal = setPrec Var . prettyQName
 sbound :: UName -> Print
 sbound = setPrec Var . pretty
 
-cbound :: UName -> Level -> Print
-cbound h level = cons level (h' <> pretty (getLevel level))
-  where
-  h'
-    | T.null (getUName h) = pretty '_'
-    | otherwise           = pretty h
-
 
 ($$), (-->), (**) :: Print -> Print -> Print
 f $$ a = askingPrec $ \case
