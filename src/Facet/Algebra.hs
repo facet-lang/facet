@@ -35,6 +35,7 @@ qvar (m :.: n) = Global (Just m) n
 
 data Algebra p = Algebra
   { var :: Var -> p
+  , tintro :: UName -> Level -> p
   , intro :: UName -> Level -> p
   , lam
     :: [p] -- the clauses.
@@ -76,10 +77,10 @@ foldCValue alg = go
     C.Unit  -> prd alg []
     t C.:=> b  ->
       let (vs, (d', b')) = splitr (C.unForAll' var') (d, t C.:=> b)
-      in fn alg (map (\ (d, n ::: _T) -> let n' = if T.null (getUName (out n)) then Nothing else Just (intro alg (out n) d) in P (pl n) (n' ::: go d _T)) vs) (go d' b')
+      in fn alg (map (\ (d, n ::: _T) -> let n' = if T.null (getUName (out n)) then Nothing else Just (tintro alg (out n) d) in P (pl n) (n' ::: go d _T)) vs) (go d' b')
     C.Lam n b  ->
       let (vs, (d', b')) = splitr (C.unLam' var') (d, C.Lam n b)
-      in lam alg [clause alg (map (\ (d, n) -> P (pl (tm n)) (intro alg (out (tm n)) d ::: Just (go d (ty n)))) vs) (go d' b')]
+      in lam alg [clause alg (map (\ (d, n) -> P (pl (tm n)) (unPl tintro intro (pl (tm n)) alg (out (tm n)) d ::: Just (go d (ty n)))) vs) (go d' b')]
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     C.Neut h e ->
@@ -138,7 +139,7 @@ foldSType alg = go
     S.TUnit    -> _Unit alg
     t S.:=> b ->
       let (ts, b') = splitr (S.unForAll . snd) (s, t S.:=> b)
-          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local n d) in ((succ d, env :> v), im (Just v ::: go env t))) (level, env) ts
+          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = tintro alg n d in ((succ d, env :> v), im (Just v ::: go env t))) (level, env) ts
       in fn alg ts' (go env' b')
     f S.:$$ a ->
       let (f', a') = splitl (S.unTApp . snd) (s, f S.:$$ a)
@@ -168,7 +169,7 @@ foldSExpr alg = go
 
   pat d env (_, p) = case p of
     S.Wildcard -> ((d, env), wildcard alg)
-    S.Var n    -> let v = var alg (Local n d) in ((succ d, env:>v), v)
+    S.Var n    -> let v = intro alg n d in ((succ d, env:>v), v)
     S.Con n ps ->
       let ((d', env'), ps') = subpatterns d env ps
       in ((d', env'), pcon alg (var alg (Cons n)) (fromList ps'))
