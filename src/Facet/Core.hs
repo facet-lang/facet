@@ -268,7 +268,9 @@ substQ s = substHead (unHead global free (s !) metavar)
 
 -- | Substitute metavars.
 subst :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
-subst s = substHead (unHead global free quote (s !))
+subst s
+  | IntMap.null s = id
+  | otherwise     = substHead (unHead global free quote (s !))
   where
   s ! l = case IntMap.lookup (getLevel (tm l)) s of
     Just a  -> a
