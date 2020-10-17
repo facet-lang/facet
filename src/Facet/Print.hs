@@ -20,7 +20,6 @@ module Facet.Print
 , Precedence(..)
 , evar
 , tvar
-  -- * Interpreters
 , printContextEntry
   -- * Algebras
 , surface
