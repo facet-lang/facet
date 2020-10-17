@@ -457,7 +457,6 @@ data ExprAlg p = ExprAlg
   , _Type :: p
   , _Void :: p
   , _Unit :: p
-  , fvsIn :: p -> IntSet.IntSet
   , ann' :: (p ::: p) -> p
   , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
   , pattern :: PatternAlg p
