@@ -444,6 +444,7 @@ qvar (m :.: n) = Global (Just m) n
 
 data ExprAlg p = ExprAlg
   { var :: Var -> p
+  , intro :: Pl_ UName -> Level -> p
   , lam
     :: [p] -- the bound variables.
     -> p   -- the body.
