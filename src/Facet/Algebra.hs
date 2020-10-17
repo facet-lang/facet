@@ -15,7 +15,7 @@ module Facet.Algebra
 
 import           Data.Bifunctor (bimap)
 import           Data.Foldable (toList)
-import           Data.Text (Text, pack)
+import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
 import           Facet.Name
@@ -49,7 +49,7 @@ data Algebra p = Algebra
     -> p
   , app :: p -> Stack (Pl_ p) -> p
   , prd :: [p] -> p
-  , hole :: Text -> p
+  , hole :: T.Text -> p
   , _Type :: p
   , _Void :: p
   , _Unit :: p
@@ -112,7 +112,7 @@ foldCValue alg = go
 foldCModule :: Algebra p -> C.Module p -> p
 foldCModule alg (C.Module n ds) = module_ alg
   $   n
-  ::: Just (var alg (Global (Just (MName (pack "Kernel"))) (T (TName (UName (pack "Module"))))))
+  ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (TName (UName (T.pack "Module"))))))
   :=: map def ds
   where
   def (m :.: n, d ::: t) = decl alg
@@ -199,4 +199,4 @@ foldSDecl alg = go Nil
     level = Level (length env)
 
 foldSModule :: Algebra p -> Spanned (S.Module a) -> p
-foldSModule alg (_, S.Module m ds) = module_ alg $ m ::: Just (var alg (Global (Just (MName (pack "Kernel"))) (T (TName (UName (pack "Module")))))) :=: map (\ (_, (n, d)) -> decl alg (var alg (Global (Just m) n) ::: foldSDecl alg d)) ds
+foldSModule alg (_, S.Module m ds) = module_ alg $ m ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (TName (UName (T.pack "Module")))))) :=: map (\ (_, (n, d)) -> decl alg (var alg (Global (Just m) n) ::: foldSDecl alg d)) ds
