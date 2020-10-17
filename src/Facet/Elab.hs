@@ -538,12 +538,12 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (T
           error "TBD"
         Right e' -> do
           modify $ Env.insert (qname :=: Just (apply s e') ::: _T)
-          pure (qname, C.DTerm e' ::: _T)
+          pure [(qname, C.DTerm e' ::: _T)]
 
       -- FIXME: extend the module
       -- FIXME: support defining types
 
-  pure $ C.Module mname defs
+  pure $ C.Module mname (concat defs)
   where
   -- Apply the substitution to the value.
   -- FIXME: error if the substitution has holes.
