@@ -480,22 +480,24 @@ elabDecl
   .  (HasCallStack, Eq v)
   => Spanned (S.Decl a)
   -> (Context (Val v ::: Type v) -> Check v (Val v)) ::: (Context (Val v ::: Type v) -> Check v (Type v))
-elabDecl = withSpans $ \case
-  (n ::: t) S.:==> b ->
-    let b' ::: _B = elabDecl b
-    in (\ ctx -> tlam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Im n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
-
-  (n ::: t) S.:--> b ->
-    let b' ::: _B = elabDecl b
-    -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
-    in (\ ctx -> lam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
-
-  t S.:= b ->
-    (\ ctx -> case b of
-      S.DExpr b -> checkElab (elabExpr ctx b)
-      S.DType b -> checkElab (elabType ctx b)
-      S.DData c -> elabData ctx c) ::: (\ ctx -> checkElab (elabType ctx t))
+elabDecl = go
   where
+  go = withSpans $ \case
+    (n ::: t) S.:==> b ->
+      let b' ::: _B = go b
+      in (\ ctx -> tlam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Im n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
+
+    (n ::: t) S.:--> b ->
+      let b' ::: _B = go b
+      -- FIXME: types and terms are bound with the same context, so the indices in the type are incremented, but arrow types don’t extend the context, so we were mishandling them.
+      in (\ ctx -> lam n (b' . (ctx |>))) ::: \ ctx -> checkElab (switch (P Ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))
+
+    t S.:= b ->
+      (\ ctx -> case b of
+        S.DExpr b -> checkElab (elabExpr ctx b)
+        S.DType b -> checkElab (elabType ctx b)
+        S.DData c -> elabData ctx c) ::: (\ ctx -> checkElab (elabType ctx t))
+
   withSpans f (s, d) = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
 
 
