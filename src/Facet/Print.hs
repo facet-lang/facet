@@ -37,6 +37,7 @@ import           Control.Applicative ((<**>))
 import           Control.Category ((>>>))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (bimap, first)
+import           Data.Bitraversable (bimapAccumL)
 import           Data.Foldable (foldl')
 import           Data.Function (on)
 import qualified Data.IntSet as IntSet
@@ -45,7 +46,6 @@ import           Data.List.NonEmpty (NonEmpty)
 import           Data.Semigroup (stimes)
 import           Data.Text (Text)
 import qualified Data.Text as T
-import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
 import           Facet.Name hiding (ann)
 import qualified Facet.Pretty as P
@@ -238,8 +238,8 @@ printCoreValue = go
     C.Prd  l r -> go d l ** go d r
   name d = cons d (tvar d)
   clause d (p, b) =
-    let (d', p') = mapAccumL (\ d' (_ ::: _T) -> (succ d', ann (evar d' ::: go d _T))) d p
-        b' = foldr bind (go d' (b (C.free <$> p'))) [d..d']
+    let (d', p') = bimapAccumL (\ d' v -> (d', go d v)) (\ d' (_ ::: _T) -> (succ d', ann (evar d' ::: go d _T))) d p
+        b' = foldr bind (go d' (b (bimap C.free C.free p'))) [d..d']
     in nest 2 $ group (prec Pattern (printCorePattern p') </> arrow) </> b'
   elim d f = \case
     C.App  a -> f $$ unPl_ (braces . go d) (go d) a
@@ -369,11 +369,11 @@ printSurfaceClause env ps b = foldMap printSurfacePattern ps' <+> arrow <> group
   ps' = fmap (fmap sbound) <$> ps
   env' = foldl (foldl (foldl (:>))) env ps'
 
-printCorePattern :: C.Pattern Print -> Print
+printCorePattern :: C.Pattern Print Print -> Print
 printCorePattern = \case
   C.Wildcard -> pretty '_'
   C.Var n    -> n
-  C.Con n ps -> parens (hsep (annotate Con (prettyQName n):map printCorePattern ps))
+  C.Con n ps -> parens (hsep (annotate Con (ann (first prettyQName n)):map printCorePattern ps))
   C.Tuple p  -> tupled (map printCorePattern p)
 
 printSurfacePattern :: Spanned (S.Pattern Print) -> Print

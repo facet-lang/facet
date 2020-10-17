@@ -30,6 +30,9 @@ module Facet.Core
 ) where
 
 import           Control.Effect.Empty
+import           Data.Bifoldable
+import           Data.Bifunctor
+import           Data.Bitraversable
 import           Data.Foldable (foldl', toList)
 import           Data.Functor (void)
 import qualified Data.IntMap as IntMap
@@ -133,7 +136,7 @@ unHead f g h i = \case
 
 data Elim a
   = App (Pl_ a) -- FIXME: this is our one codata case; should we generalize this to copattern matching?
-  | Case [(Pattern (UName ::: a), Pattern a -> a)]
+  | Case [(Pattern a (UName ::: a), Pattern a a -> a)]
 
 
 global :: QName ::: Value a -> Value a
@@ -173,13 +176,13 @@ _         $$ _ = error "can’t apply non-neutral/forall type"
 infixl 9 $$
 
 
-case' :: HasCallStack => Value a -> [(Pattern (UName ::: Value a), Pattern (Value a) -> Value a)] -> Value a
+case' :: HasCallStack => Value a -> [(Pattern (Value a) (UName ::: Value a), Pattern (Value a) (Value a) -> Value a)] -> Value a
 case' (Neut h es) cs = Neut h (es :> Case cs)
 case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) cs) of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
-match :: Value a -> Pattern b -> Maybe (Pattern (Value a))
+match :: Value a -> Pattern (Value a) b -> Maybe (Pattern (Value a) (Value a))
 match s = \case
   Wildcard         -> Just Wildcard
   Var _            -> Just (Var s)
@@ -271,12 +274,27 @@ newtype Contextual f = Contextual { runContextual :: forall x . Ctx.Context (Val
 -- Patterns
 
 -- FIXME: represent wildcard patterns as var patterns with an empty name.
-data Pattern a
+data Pattern t a
   = Wildcard
   | Var a
-  | Con QName [Pattern a]
-  | Tuple [Pattern a]
+  | Con (QName ::: t) [Pattern t a]
+  | Tuple [Pattern t a]
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+instance Bifoldable Pattern where
+  bifoldMap = bifoldMapDefault
+
+instance Bifunctor Pattern where
+  bimap = bimapDefault
+
+instance Bitraversable Pattern where
+  bitraverse f g = go
+    where
+    go = \case
+      Wildcard -> pure Wildcard
+      Var a -> Var <$> g a
+      Con (n ::: t) ps -> Con . (n :::) <$> f t <*> traverse go ps
+      Tuple ps -> Tuple <$> traverse go ps
 
 
 -- Modules

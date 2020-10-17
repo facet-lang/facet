@@ -273,9 +273,9 @@ infix 1 |-
 
 (|-*)
   :: Has (Reader (Context (Val v ::: Type v))) sig (t v)
-  => C.Pattern (UName ::: Type v)
-  -> (C.Pattern (Val v) -> t v (Val v))
-  -> t v (C.Pattern (Val v) -> Val v)
+  => C.Pattern (Type v) (UName ::: Type v)
+  -> (C.Pattern (Type v) (Val v) -> t v (Val v))
+  -> t v (C.Pattern (Type v) (Val v) -> Val v)
 p |-* f = do
   ctx <- askContext
   handleBinderP (level ctx) p (\ v ->
@@ -457,7 +457,7 @@ elabClauses ctx cs = Check $ \ _T -> do
 elabPattern
   :: Eq v
   => Spanned (S.Pattern UName)
-  -> Check v (C.Pattern (UName ::: Type v))
+  -> Check v (C.Pattern (Type v) (UName ::: Type v))
 elabPattern = withSpan $ \case
   S.Wildcard -> pure C.Wildcard
   S.Var n    -> Check $ \ _T -> pure (C.Var (n ::: _T))
