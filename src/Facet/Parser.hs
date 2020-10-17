@@ -253,6 +253,9 @@ _onameN
 hname :: (Monad p, TokenParsing p) => p Text
 hname = ident hnameStyle
 
+cname :: (Monad p, TokenParsing p) => p N.CName
+cname = ident cnameStyle
+
 tname :: (Monad p, TokenParsing p) => p N.TName
 tname = ident tnameStyle
 
