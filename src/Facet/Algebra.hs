@@ -83,16 +83,17 @@ foldCValue alg = go
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     C.Neut h e ->
-      let elim h Nil Nil     = h
-          elim h sp  Nil     = app alg h sp
+      let elim h sp  Nil     = case sp Nil of
+            Nil -> h
+            sp  -> app alg h sp
           elim h sp  (es:>e) = case e of
-            C.App a   -> elim h (sp:>fmap (go d) a) es
-            C.Case ps -> case' alg (elim h Nil es) (map clause ps)
+            C.App a   -> elim h (sp . (:> fmap (go d) a)) es
+            C.Case ps -> case' alg (elim h id es) (map clause ps)
           h' = C.unHead (ann' alg . bimap (var alg . qvar) (go d)) id (var alg . Local __) (ann' alg . bimap (var alg . Meta) (go d)) h
           clause (p, b) =
             let ((d', p'), v) = pat d p
             in (p', go d' (b v))
-      in elim h' Nil e
+      in elim h' id e
     C.TPrd l r -> prd alg [go d l, go d r]
     C.Prd  l r -> prd alg [go d l, go d r]
     C.VCon n p -> app alg (ann' alg (bimap (var alg . qvar) (go d) n)) (fmap (ex . go d) p)
