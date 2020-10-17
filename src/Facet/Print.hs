@@ -443,4 +443,7 @@ data Formatter p = Formatter
     -> [p] -- the bound variables.
     -> p   -- the body.
     -> p
+  , _Type :: Formatter p -> p
+  , _Void :: Formatter p -> p
+  , _Unit :: Formatter p -> p
   }
