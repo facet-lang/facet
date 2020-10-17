@@ -290,7 +290,7 @@ printSurfaceType = go
     a ST.:-> b -> foldMap (go env) a --> foldMap (go env) b
     l ST.:** r -> foldMap (go env) l **  foldMap (go env) r
 
-sfree :: DName -> Print
+sfree :: Pretty n => n -> Print
 sfree = var . pretty
 
 cfree :: QName -> Print
