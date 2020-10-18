@@ -100,7 +100,7 @@ foldCValue alg = go
             let ((env', p'), v) = pat env p
             in (p', go env' (b v))
       in elim h' id e
-    C.VCon n p -> app alg (ann' alg (bimap (var alg . qvar) (go env) n)) (fmap (ex . go env) p)
+    C.VCon (C.Con n p) -> app alg (ann' alg (bimap (var alg . qvar) (go env) n)) (fmap (ex . go env) p)
     where
     d = Level (length env)
   tvar env n = ann' alg (var alg (TLocal (out (tm n)) (Level (length env))) ::: go env (ty n))

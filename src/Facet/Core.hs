@@ -57,7 +57,7 @@ data Value
   | Lam (Pl_ UName ::: Value) (Value -> Value)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | Neut (Head Value Level) (Stack (Elim Value))
-  | VCon (QName ::: Value) (Stack Value)
+  | VCon (Con Value Value)
 
 infixr 1 :=>
 
@@ -81,9 +81,9 @@ instance Eq Value where
       (Lam _ _, _) -> False
       (Neut h1 sp1, Neut h2 sp2) -> h1 == h2 && eqSp n sp1 sp2
       (Neut _ _, _) -> False
-      (VCon n1 p1, VCon n2 p2)
+      (VCon (Con n1 p1), VCon (Con n2 p2))
         | length p1 == length p2 -> go n (ty n1) (ty n2) && and (zipWith (go n) (toList p1) (toList p2))
-      (VCon _ _, _) -> False
+      (VCon _, _) -> False
 
     eqSp n (sp1:>e1) (sp2:>e2) = eqSp n sp1 sp2 && eqElim n e1 e2
     eqSp _ Nil       Nil       = True
@@ -185,7 +185,7 @@ case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s
 match :: Value -> Pattern Value b -> Maybe (Pattern Value Value)
 match = curry $ \case
   (s,          PVar _)          -> Just (PVar s)
-  (VCon n' fs, PCon n ps)       -> do
+  (VCon (Con n' fs), PCon n ps) -> do
     guard (tm n == tm n')
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
     PCon n' <$> sequenceA (zipWith match (toList fs) ps)
@@ -227,7 +227,7 @@ subst s
         Global  (n ::: _T) -> Global  (n ::: go _T)
         Free    v          -> Free    v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
-    VCon n p -> VCon (fmap go n) (fmap go p)
+    VCon c   -> VCon (bimap go go c)
 
   substElim = \case
     App a   -> App (fmap go a)
@@ -284,7 +284,7 @@ data QExpr
 quote :: Level -> Value -> QExpr
 quote d = \case
   Type -> QType
-  VCon (n ::: t) fs -> QCon (n ::: quote d t) (fmap (quote d) fs)
+  VCon (Con (n ::: t) fs) -> QCon (n ::: quote d t) (fmap (quote d) fs)
   Lam (n ::: t) b -> QLam (n ::: quote d t) (quote (succ d) (b (var (Free d))))
   n ::: t :=> b -> QForAll (n ::: quote d t) (quote (succ d) (b (var (Free d))))
   Neut h sp ->
@@ -301,7 +301,7 @@ quote d = \case
 eval :: Stack Value -> QExpr -> Value
 eval env = \case
   QType -> Type
-  QCon (n ::: t) fs -> VCon (n ::: eval env t) (fmap (eval env) fs)
+  QCon (n ::: t) fs -> VCon (Con (n ::: eval env t) (fmap (eval env) fs))
   QLam (n ::: t) b -> Lam (n ::: eval env t) (\ v -> eval (env:>v) b)
   QForAll (n ::: t) b -> n ::: eval env t :=> \ v -> eval (env:>v) b
   QVar h -> unHead (global . fmap (eval env)) ((env !) . getIndex) (metavar . fmap (eval env)) h

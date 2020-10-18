@@ -472,7 +472,7 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
             let _T' = apply s _T
                 go fs = \case
                   _T :=> _B -> Lam _T (\ v -> go (fs :> v) (_B v))
-                  _T        -> VCon (mname :.: C n ::: _T) fs
+                  _T        -> VCon (Con (mname :.: C n ::: _T) fs)
             modify $ Env.insert (mname :.: C n :=: Just (apply s (go Nil _T')) ::: _T')
             pure $ n ::: _T'
           pure (qname, C.DData cs' ::: _T)
