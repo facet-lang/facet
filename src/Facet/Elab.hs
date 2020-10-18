@@ -356,7 +356,6 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
 elabClauses :: Context (Value ::: Type) -> [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check Expr
--- FIXME: do the same thing for wildcards
 elabClauses ctx [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
   b' <- n ::: _A |- \ v -> do
