@@ -21,8 +21,6 @@ module Facet.Core
 , handleBinder
 , handleBinderP
 , subst
-, AValue(..)
-, Contextual(..)
   -- * Patterns
 , Pattern(..)
   -- * Modules
@@ -43,7 +41,6 @@ import           Data.Functor (void)
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Traversable (mapAccumL)
-import qualified Facet.Context as Ctx
 import           Facet.Name (CName, Index(..), Level(..), MName, Meta(..), QName, UName, levelToIndex)
 import           Facet.Stack
 import           Facet.Syntax
@@ -238,15 +235,6 @@ subst s
   s ! l = case IntMap.lookup (getMeta (tm l)) s of
     Just a  -> a
     Nothing -> metavar l
-
-
-newtype AValue = AValue { runAValue :: forall x . Value x }
-
-instance Eq AValue where
-  v1 == v2 = (runAValue v1 :: Value Int) == (runAValue v2)
-
-
-newtype Contextual f = Contextual { runContextual :: forall x . Ctx.Context (Value x ::: Value x) :|-: f x }
 
 
 -- Patterns
