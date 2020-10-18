@@ -196,12 +196,11 @@ unify (t1 :===: t2) = go (t1 :===: t2)
       Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
 
 
-meta :: Type v -> Elab v (Prob v)
+meta :: Type v -> Elab v Meta
 meta _T = do
   subst <- getSubst
   let m = Meta (length subst)
-  put (insertSubst m (Nothing ::: _T) subst)
-  pure $ metavar (m ::: _T)
+  m <$ put (insertSubst m (Nothing ::: _T) subst)
 
 insertSubst :: Meta -> Maybe (Prob v) ::: Type v -> Subst v -> Subst v
 insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
@@ -213,7 +212,7 @@ getSubst = get
 instantiate :: Expr v ::: Type v -> Elab v (Expr v ::: Type v)
 instantiate (e ::: _T) = case unForAll _T of
   Just (P Im _ ::: _T, _B) -> do
-    m <- meta _T
+    m <- metavar . (::: _T) <$> meta _T
     instantiate (e C.$$ im m ::: _B m)
   _                        -> pure $ e ::: _T
 
@@ -477,7 +476,7 @@ elabPattern = withSpan $ \case
             (_A, _B) <- expectQuantifiedType "when checking constructor pattern" _T'
             p' <- check (elabPattern p ::: ty _A)
             -- FIXME: there’s no way this is going to work, let alone a good idea
-            v <- meta (ty _A)
+            v <- metavar . (::: ty _A) <$> meta (ty _A)
             ps' <- go (_B v) ps
             pure $ p' : ps'
     C.Con (q ::: _T') <$> go _T' ps
