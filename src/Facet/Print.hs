@@ -54,16 +54,16 @@ getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
 
 terminalStyle :: Highlight -> [ANSI.SGR]
 terminalStyle = \case
-  Nest i -> colours !! (i `mod` len)
-  Name i -> reverse colours !! (getLevel i `mod` len)
+  Nest i -> [colours !! (i `mod` len)]
+  Name i -> [reverse colours !! (getLevel i `mod` len)]
   Op     -> [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Cyan]
   Type   -> [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Yellow]
   Con    -> [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
   Lit    -> [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
-  Hole m -> ANSI.SetConsoleIntensity ANSI.BoldIntensity : reverse colours !! (getMeta m `mod` len)
+  Hole m -> ANSI.SetConsoleIntensity ANSI.BoldIntensity : [reverse colours !! (getMeta m `mod` len)]
   ANSI s -> s
   where
-  colours = pure $
+  colours =
     [ ANSI.Red
     , ANSI.Green
     , ANSI.Yellow
