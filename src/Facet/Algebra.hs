@@ -75,7 +75,7 @@ foldCValue alg = go
     C.Type  -> _Type alg
     t C.:=> b  ->
       let (vs, (_, b')) = splitr C.unForAll' (d, t C.:=> b)
-          binding env (n ::: _T) = (env :> tvar env (n ::: _T), P (pl n) (name (out n) d ::: go env _T))
+          binding env (n ::: _T) = (env :> tvar env (n ::: _T), P (pl n) (name (out n) (Level (length env)) ::: go env _T))
           name n d
             | T.null (getUName n) = Nothing
             | otherwise           = Just (tintro alg n d)
