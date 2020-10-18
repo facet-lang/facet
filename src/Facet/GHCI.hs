@@ -70,13 +70,13 @@ elabPathString path p s = either (P.putDoc . N.prettyNotice) P.prettyPrint $ do
   failure = Left . errToNotice src
   mkNotice p = toNotice (Just N.Error) src p
 
-  lower :: Either (Err P.Print) a -> Either N.Notice a
+  lower :: Either Err a -> Either N.Notice a
   lower = either (throwError . mkNotice) pure
 
 
 -- Errors
 
-toNotice :: Maybe N.Level -> Source -> Err P.Print -> N.Notice
+toNotice :: Maybe N.Level -> Source -> Err -> N.Notice
 toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason
   in N.Notice lvl (fromSourceAndSpan src span) reason' $
@@ -85,7 +85,7 @@ toNotice lvl src Err{ span, reason, context } =
     ]
 
 
-printReason :: Context (Value P.Print ::: Type P.Print) -> Reason P.Print -> ErrDoc
+printReason :: Context (Value ::: Type) -> Reason -> ErrDoc
 printReason ctx = group . \case
   FreeVariable n         -> fillSep [P.reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> P.reflow "could not synthesize a type for" <> softline <> P.reflow msg
@@ -106,5 +106,5 @@ printReason ctx = group . \case
   l = level ctx
 
 
-printType :: Level -> Type P.Print -> ErrDoc
+printType :: Level -> Type -> ErrDoc
 printType l = P.getPrint . foldCValue P.explicit l

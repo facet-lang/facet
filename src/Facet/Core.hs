@@ -5,7 +5,7 @@
 module Facet.Core
 ( -- * Values
   Value(..)
-, Head(Global, Free, Metavar)
+, Head(..)
 , Elim(..)
 , unHead
 , global
@@ -49,19 +49,19 @@ import           GHC.Stack
 -- Values
 
 -- FIXME: represent closed portions of the tree explicitly?
-data Value a
+data Value
   = Type
-  | (Pl_ UName ::: Value a) :=> (Value a -> Value a)
+  | (Pl_ UName ::: Value) :=> (Value -> Value)
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
-  | Lam (Pl_ UName ::: Value a) (Value a -> Value a)
+  | Lam (Pl_ UName ::: Value) (Value -> Value)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | Neut (Head Level a) (Stack (Elim (Value a)))
-  | VCon (QName ::: Value a) (Stack (Value a))
+  | Neut (Head Value Level) (Stack (Elim Value))
+  | VCon (QName ::: Value) (Stack Value)
 
 infixr 1 :=>
 
-instance (Eq a, Num a) => Eq (Value a) where
-  v1 == v2 = go 0 v1 v2
+instance Eq Value where
+  v1 == v2 = go (Level 0) v1 v2
     where
     -- defined thus to get the exhaustiveness checker to ensure I don’t miss adding new cases
     go n = curry $ \case
@@ -71,12 +71,12 @@ instance (Eq a, Num a) => Eq (Value a) where
         pl (tm t1) == pl (tm t2) && go n (ty t1) (ty t2)
         &&  let b1' = b1 (free n)
                 b2' = b2 (free n)
-            in go (n + 1) b1' b2'
+            in go (succ n) b1' b2'
       (_ :=> _, _) -> False
       (Lam _ b1, Lam _ b2) ->
         let b1' = b1 (free n)
             b2' = b2 (free n)
-        in go (n + 1) b1' b2'
+        in go (succ n) b1' b2'
       (Lam _ _, _) -> False
       (Neut h1 sp1, Neut h2 sp2) -> h1 == h2 && eqSp n sp1 sp2
       (Neut _ _, _) -> False
@@ -95,34 +95,31 @@ instance (Eq a, Num a) => Eq (Value a) where
       (Case _, _) -> False
     eqPat n (p1, b1) (p2, b2)
       =   void p1 == void p2
-      &&  let (n', p') = mapAccumL (\ n _ -> (n + 1, free n)) n p2
+      &&  let (n', p') = mapAccumL (\ n _ -> (succ n, free n)) n p2
               b1' = b1 p'
               b2' = b2 p'
           in go n' b1' b2'
 
 
-data Head a b
-  = Global (QName ::: Value b) -- ^ Global variables, considered equal by 'QName'.
-  | Free b
-  | Bound a
-  | Metavar (Meta ::: Value b) -- ^ Metavariables, considered equal by 'Level'.
+data Head t a
+  = Global (QName ::: t) -- ^ Global variables, considered equal by 'QName'.
+  | Free a
+  | Metavar (Meta ::: t) -- ^ Metavariables, considered equal by 'Level'.
+  deriving (Foldable, Functor, Traversable)
 
-instance (Eq a, Eq b) => Eq (Head a b) where
+instance Eq a => Eq (Head t a) where
   Global q1  == Global q2  = tm q1 == tm q2
   Global _   == _          = False
-  Free a1    == Free a2    = a1 == a2
+  Free l1    == Free l2    = l1 == l2
   Free _     == _          = False
-  Bound l1   == Bound l2   = l1 == l2
-  Bound _    == _          = False
   Metavar m1 == Metavar m2 = tm m1 == tm m2
   Metavar _  == _          = False
 
-unHead :: (QName ::: Value b -> c) -> (b -> c) -> (a -> c) -> (Meta ::: Value b -> c) -> Head a b -> c
-unHead f g h i = \case
+unHead :: (QName ::: t -> b) -> (a -> b) -> (Meta ::: t -> b) -> Head t a -> b
+unHead f g h = \case
   Global  n -> f n
   Free    n -> g n
-  Bound   n -> h n
-  Metavar n -> i n
+  Metavar n -> h n
 
 
 data Elim a
@@ -130,41 +127,41 @@ data Elim a
   | Case [(Pattern a (UName ::: a), Pattern a a -> a)]
 
 
-global :: QName ::: Value a -> Value a
+global :: QName ::: Value -> Value
 global = var . Global
 
-free :: a -> Value a
+free :: Level -> Value
 free = var . Free
 
-metavar :: Meta ::: Value a -> Value a
+metavar :: Meta ::: Value -> Value
 metavar = var . Metavar
 
 
-var :: Head Level a -> Value a
+var :: Head Value Level -> Value
 var = (`Neut` Nil)
 
 
-unForAll :: Has Empty sig m => Value a -> m (Pl_ UName ::: Value a, Value a -> Value a)
+unForAll :: Has Empty sig m => Value -> m (Pl_ UName ::: Value, Value -> Value)
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unForAll' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unForAll' :: Has Empty sig m => (Level -> Pl_ UName ::: Value a -> a) -> (Level, Value a) -> m ((Level, Pl_ UName ::: Value a), (Level, Value a))
+unForAll' :: Has Empty sig m => (Level -> Pl_ UName ::: Value -> Value) -> (Level, Value) -> m ((Level, Pl_ UName ::: Value), (Level, Value))
 unForAll' var (d, v) = do
   (_T, _B) <- unForAll v
-  pure ((d, _T), (succ d, _B (free (var d _T))))
+  pure ((d, _T), (succ d, _B (var d _T)))
 
-unLam :: Has Empty sig m => Value a -> m (Pl_ UName ::: Value a, Value a -> Value a)
+unLam :: Has Empty sig m => Value -> m (Pl_ UName ::: Value, Value -> Value)
 unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
 
 -- | A variation on 'unLam' which can be conveniently chained with 'splitr' to strip a prefix of lambdas off their eventual body.
-unLam' :: Has Empty sig m => (Level -> Pl_ UName ::: Value a -> a) -> (Level, Value a) -> m ((Level, Pl_ UName ::: Value a), (Level, Value a))
+unLam' :: Has Empty sig m => (Level -> Pl_ UName ::: Value -> Value) -> (Level, Value) -> m ((Level, Pl_ UName ::: Value), (Level, Value))
 unLam' var (d, v) = do
   (n, t) <- unLam v
-  pure ((d, n), (succ d, t (free (var d n))))
+  pure ((d, n), (succ d, t (var d n)))
 
 
 -- FIXME: how should this work in weak/parametric HOAS?
-($$) :: HasCallStack => Value a -> Pl_ (Value a) -> Value a
+($$) :: HasCallStack => Value -> Pl_ Value -> Value
 Neut h es $$ a = Neut h (es :> App a)
 (_ :=> b) $$ a = b (out a)
 Lam _  b  $$ a = b (out a)
@@ -173,13 +170,13 @@ _         $$ _ = error "can’t apply non-neutral/forall type"
 infixl 9 $$
 
 
-case' :: HasCallStack => Value a -> [(Pattern (Value a) (UName ::: Value a), Pattern (Value a) (Value a) -> Value a)] -> Value a
+case' :: HasCallStack => Value -> [(Pattern Value (UName ::: Value), Pattern Value Value -> Value)] -> Value
 case' (Neut h es) cs = Neut h (es :> Case cs)
 case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) cs) of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
-match :: Value a -> Pattern (Value a) b -> Maybe (Pattern (Value a) (Value a))
+match :: Value -> Pattern Value b -> Maybe (Pattern Value Value)
 match = curry $ \case
   (_,          Wildcard)       -> Just Wildcard
   (s,          Var _)          -> Just (Var s)
@@ -190,27 +187,27 @@ match = curry $ \case
   (_,          Con _ _)        -> Nothing
 
 
-elim :: HasCallStack => Value a -> Elim (Value a) -> Value a
+elim :: HasCallStack => Value -> Elim Value -> Value
 elim v = \case
   App a   -> v $$ a
   Case cs -> case' v cs
 
-elimN :: (HasCallStack, Foldable t) => Value a -> t (Elim (Value a)) -> Value a
+elimN :: (HasCallStack, Foldable t) => Value -> t (Elim Value) -> Value
 elimN f as = foldl' elim f as
 
 
-handleBinder :: (HasCallStack, Monad m) => Meta ::: Value a -> (Value a -> m (Value a)) -> m (Value a -> Value a)
+handleBinder :: (HasCallStack, Monad m) => Meta ::: Value -> (Value -> m Value) -> m (Value -> Value)
 handleBinder d b = do
   b' <- b (metavar d)
   pure $ (`subst` b') . IntMap.singleton (getMeta (tm d))
 
-handleBinderP :: (HasCallStack, Monad m, Traversable t) => t (Meta ::: Value a) -> (t (Value a) -> m (Value a)) -> m (t (Value a) -> Value a)
+handleBinderP :: (HasCallStack, Monad m, Traversable t) => t (Meta ::: Value) -> (t Value -> m Value) -> m (t Value -> Value)
 handleBinderP p b = do
   b' <- b (metavar <$> p)
   pure $ \ v -> subst (foldl' (\ s (m ::: _, v) -> IntMap.insert (getMeta m) v s) IntMap.empty (zip (toList p) (toList v))) b'
 
 -- | Substitute metavars.
-subst :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
+subst :: HasCallStack => IntMap.IntMap Value -> Value -> Value
 subst s
   | IntMap.null s = id
   | otherwise     = go
@@ -219,12 +216,11 @@ subst s
     Type     -> Type
     t :=> b  -> fmap go t :=> go . b
     Lam n b  -> Lam (fmap go n) (go . b)
-    Neut f a -> unHead global free (var . Bound) (s !) f' `elimN` fmap substElim a
+    Neut f a -> unHead global free (s !) f' `elimN` fmap substElim a
       where
       f' = case f of
         Global  (n ::: _T) -> Global  (n ::: go _T)
         Free    v          -> Free    v
-        Bound   v          -> Bound   v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
     VCon n p -> VCon (fmap go n) (fmap go p)
 
@@ -263,55 +259,54 @@ instance Bitraversable Pattern where
 
 -- Modules
 
-data Module a = Module MName [(QName, Def a ::: Value a)]
+data Module = Module MName [(QName, Def ::: Value)]
 
-data Def a
-  = DTerm (Value a)
-  | DType (Value a)
-  | DData [CName ::: Value a]
+data Def
+  = DTerm Value
+  | DType Value
+  | DData [CName ::: Value]
 
 
 -- Quotation
 
-data QExpr a
-  = QGlobal (QName ::: QExpr a)
-  | QVar Index
-  | QFree a
-  | QMeta (Meta ::: QExpr a)
+-- FIXME: use Head.
+data QExpr
+  = QGlobal (QName ::: QExpr)
+  | QFree Index
+  | QMeta (Meta ::: QExpr)
   | QType
-  | QForAll (Pl_ UName ::: QExpr a) (QExpr a)
-  | QLam (Pl_ UName ::: (QExpr a)) (QExpr a)
-  | QApp (QExpr a) (Pl_ (QExpr a))
-  | QCase (QExpr a) [(Pattern (QExpr a) (UName ::: QExpr a), QExpr a)]
-  | QCon (QName ::: QExpr a) (Stack (QExpr a))
+  | QForAll (Pl_ UName ::: QExpr) QExpr
+  | QLam (Pl_ UName ::: QExpr) QExpr
+  | QApp QExpr (Pl_ QExpr)
+  | QCase QExpr [(Pattern QExpr (UName ::: QExpr), QExpr)]
+  | QCon (QName ::: QExpr) (Stack QExpr)
   deriving (Eq, Ord, Show)
 
-quote :: Level -> Value a -> QExpr a
+quote :: Level -> Value -> QExpr
 quote d = \case
   Type -> QType
   VCon (n ::: t) fs -> QCon (n ::: quote d t) (fmap (quote d) fs)
-  Lam (n ::: t) b -> QLam (n ::: quote d t) (quote (succ d) (b (var (Bound d))))
-  n ::: t :=> b -> QForAll (n ::: quote d t) (quote (succ d) (b (var (Bound d))))
+  Lam (n ::: t) b -> QLam (n ::: quote d t) (quote (succ d) (b (var (Free d))))
+  n ::: t :=> b -> QForAll (n ::: quote d t) (quote (succ d) (b (var (Free d))))
   Neut h sp ->
     let qSp h Nil     = h
         qSp h (sp:>e) = case e of
           App a   -> QApp (qSp h sp) (fmap (quote d) a)
           Case cs -> QCase (qSp h sp) (map qClause cs)
         qClause (p, b)
-          | let (d', p') = mapAccumL (\ d _ -> (succ d, var (Bound d))) d p
+          | let (d', p') = mapAccumL (\ d _ -> (succ d, var (Free d))) d p
           = ( bimap (quote d) (fmap (quote d)) p
             , quote d' (b p'))
-    in qSp (unHead (QGlobal . fmap (quote d)) QFree (QVar . levelToIndex d) (QMeta . fmap (quote d)) h) sp
+    in qSp (unHead (QGlobal . fmap (quote d)) (QFree . levelToIndex d) (QMeta . fmap (quote d)) h) sp
 
-eval :: Stack (Value a) -> QExpr a -> Value a
+eval :: Stack Value -> QExpr -> Value
 eval env = \case
   QType -> Type
   QCon (n ::: t) fs -> VCon (n ::: eval env t) (fmap (eval env) fs)
   QLam (n ::: t) b -> Lam (n ::: eval env t) (\ v -> eval (env:>v) b)
   QForAll (n ::: t) b -> n ::: eval env t :=> \ v -> eval (env:>v) b
   QGlobal (n ::: t) -> global (n ::: eval env t)
-  QFree a -> free a
-  QVar n -> env ! getIndex n
+  QFree n -> env ! getIndex n
   QMeta (n ::: t) -> metavar (n ::: eval env t)
   QApp f a -> eval env f $$ fmap (eval env) a
   QCase s cs -> case' (eval env s) (map (evalClause env) cs)
