@@ -123,6 +123,9 @@ data Elim a
 data Con t a = Con (QName ::: t) (Stack a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+instance Bifunctor Con where
+  bimap f g (Con t b) = Con (fmap f t) (fmap g b)
+
 
 global :: QName ::: Value -> Value
 global = var . Global
