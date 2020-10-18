@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE LambdaCase #-}
 -- | Really just a snoc list, but the shoe fits if you squish things up just right.
 module Facet.Stack
 ( Stack(..)
@@ -35,6 +36,13 @@ instance Semialign Stack where
   align Nil     bs      = That <$> bs
   align as      Nil     = This <$> as
   align (as:>a) (bs:>b) = align as bs :> These a b
+
+instance Zip Stack where
+  zipWith f = go
+    where
+    go = curry $ \case
+      (as:>a, bs:>b) -> go as bs :> f a b
+      _              -> Nil
 
 instance Applicative Stack where
   pure = singleton
