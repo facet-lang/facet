@@ -158,7 +158,6 @@ unify (t1 :===: t2) = go (t1 :===: t2)
   go = \case
     -- FIXME: this is missing a lot of cases
     Type                 :===: Type                 -> pure Type
-    Void                 :===: Void                 -> pure Void
     -- FIXME: resolve globals to try to progress past certain inequalities
     Neut h1 e1           :===: Neut h2 e2
       | h1 == h2
@@ -302,7 +301,6 @@ elabType ctx = withSpan' $ \case
   S.TBound n -> switch $ bound ctx n
   S.THole  n -> check (hole n) "hole"
   S.Type     -> switch $ _Type
-  S.Void     -> switch $ _Void
   t S.:=> b  -> switch $ bimap im (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
   f S.:$$ a  -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
   a S.:-> b  -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
@@ -313,9 +311,6 @@ elabType ctx = withSpan' $ \case
 
 _Type :: Synth v (Type v)
 _Type = Synth $ pure $ Type ::: Type
-
-_Void :: Synth v (Type v)
-_Void = Synth $ pure $ Void ::: Type
 
 (.*)
   :: Check v (Type v)

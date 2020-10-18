@@ -72,7 +72,6 @@ foldCValue alg = go
   where
   go d = \case
     C.Type  -> _Type alg
-    C.Void  -> _Void alg
     t C.:=> b  ->
       let (vs, (d', b')) = splitr (C.unForAll' tvar) (d, t C.:=> b)
       in fn alg (map (\ (d, n ::: _T) -> let n' = if T.null (getUName (out n)) then Nothing else Just (tintro alg (out n) d) in P (pl n) (n' ::: go d _T)) vs) (go d' b')
@@ -134,7 +133,6 @@ foldSType alg = go
     S.TBound n -> env ! getIndex n
     S.THole n  -> hole alg n
     S.Type     -> _Type alg
-    S.Void     -> _Void alg
     t S.:=> b ->
       let (ts, b') = splitr (S.unForAll . snd) (s, t S.:=> b)
           ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = tintro alg n d in ((succ d, env :> v), im (Just v ::: go env t))) (level, env) ts

@@ -74,7 +74,6 @@ data Type a
   | TBound Index
   | THole Text
   | Type
-  | Void
   | (UName ::: Spanned (Type a)) :=> Spanned (Type a)
   | Spanned (Type a) :$$ Spanned (Type a)
   | Spanned (Type a) :-> Spanned (Type a)
