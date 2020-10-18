@@ -34,7 +34,7 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import           Facet.Stack
 import qualified Prettyprinter as PP
-import qualified Prettyprinter.Render.Terminal as ANSI
+import qualified Prettyprinter.Render.Terminal as PP
 import qualified Prettyprinter.Render.Terminal.Internal as PPI
 import           Silkscreen hiding (column, width)
 import qualified System.Console.ANSI as ANSI
@@ -48,18 +48,18 @@ layoutOptionsForTerminal = do
   s <- maybe 80 Size.width <$> Size.size
   pure PP.defaultLayoutOptions{ PP.layoutPageWidth = PP.AvailablePerLine s 0.8 }
 
-hPutDoc :: MonadIO m => Handle -> PP.Doc ANSI.AnsiStyle -> m ()
+hPutDoc :: MonadIO m => Handle -> PP.Doc PP.AnsiStyle -> m ()
 hPutDoc handle doc = liftIO $ do
   opts <- layoutOptionsForTerminal
-  ANSI.renderIO handle (PP.layoutSmart opts (doc <> PP.line))
+  PP.renderIO handle (PP.layoutSmart opts (doc <> PP.line))
 
-hPutDocWith :: MonadIO m => Handle -> (a -> ANSI.AnsiStyle) -> PP.Doc a -> m ()
+hPutDocWith :: MonadIO m => Handle -> (a -> PP.AnsiStyle) -> PP.Doc a -> m ()
 hPutDocWith handle style = hPutDoc handle . PP.reAnnotate style
 
-putDoc :: MonadIO m => PP.Doc ANSI.AnsiStyle -> m ()
+putDoc :: MonadIO m => PP.Doc PP.AnsiStyle -> m ()
 putDoc = hPutDoc stdout
 
-putDocWith :: MonadIO m => (a -> ANSI.AnsiStyle) -> PP.Doc a -> m ()
+putDocWith :: MonadIO m => (a -> PP.AnsiStyle) -> PP.Doc a -> m ()
 putDocWith = hPutDocWith stdout
 
 
