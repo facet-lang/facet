@@ -27,7 +27,8 @@ import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
 import           Facet.Algebra (foldCModule, foldCValue, foldSModule)
 import           Facet.Context
-import           Facet.Elab (Err(..), ErrDoc, Reason(..), Type, Val, elabModule)
+import           Facet.Core (Value)
+import           Facet.Elab (Err(..), ErrDoc, Reason(..), Type, elabModule)
 import           Facet.Name (Index(..), Level(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
@@ -84,7 +85,7 @@ toNotice lvl src Err{ span, reason, context } =
     ]
 
 
-printReason :: Context (Val P.Print ::: Type P.Print) -> Reason P.Print -> ErrDoc
+printReason :: Context (Value P.Print ::: Type P.Print) -> Reason P.Print -> ErrDoc
 printReason ctx = group . \case
   FreeVariable n         -> fillSep [P.reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> P.reflow "could not synthesize a type for" <> softline <> P.reflow msg

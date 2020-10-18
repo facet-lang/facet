@@ -14,7 +14,6 @@
 {-# LANGUAGE ViewPatterns #-}
 module Facet.Elab
 ( M(..)
-, Val
 , Type
 , Expr
 , Elab(..)
@@ -70,7 +69,6 @@ import           Prettyprinter (Doc)
 import           Prettyprinter.Render.Terminal (AnsiStyle)
 import           Text.Parser.Position (Spanned)
 
-type Val = Value
 type Type = Value
 type Expr = Value
 type Prob = Value
@@ -95,7 +93,7 @@ instance Algebra (State (Subst v) :+: Throw (Err v)) (M v) where
 
 type Subst v = IntMap.IntMap (Maybe (Prob v) ::: Type v)
 
-newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)) sig m => m a }
+newtype Elab v a = Elab { elab :: forall sig m . Has (Reader (Env.Env (Type v)) :+: Reader (Context (Value v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)) sig m => m a }
 
 instance Functor (Elab v) where
   fmap f (Elab m) = Elab (fmap f m)
@@ -107,7 +105,7 @@ instance Applicative (Elab v) where
 instance Monad (Elab v) where
   Elab m >>= f = Elab $ m >>= elab . f
 
-instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)) (Elab v) where
+instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Value v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)) (Elab v) where
   alg hdl sig ctx = case sig of
     L renv              -> Elab $ alg (elab . hdl) (inj renv) ctx
     R (L rctx)          -> Elab $ alg (elab . hdl) (inj rctx) ctx
@@ -119,12 +117,12 @@ instance Algebra (Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type 
 askEnv :: Has (Reader (Env.Env (Type v))) sig (t v) => t v (Env.Env (Type v))
 askEnv = ask
 
-askContext :: Has (Reader (Context (Val v ::: Type v))) sig (t v) => t v (Context (Val v ::: Type v))
+askContext :: Has (Reader (Context (Value v ::: Type v))) sig (t v) => t v (Context (Value v ::: Type v))
 askContext = ask
 
 
 newtype Check v a = Check { runCheck :: Type v -> Elab v a }
-  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (Type v)) :+: Reader (Context (Val v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
+  deriving (Algebra (Reader (Type v) :+: Reader (Env.Env (Type v)) :+: Reader (Context (Value v ::: Type v)) :+: Reader Span :+: State (Subst v) :+: Throw (Err v)), Applicative, Functor, Monad) via ReaderC (Type v) (Elab v)
 
 newtype Synth v a = Synth { synth :: Elab v (a ::: Type v) }
 
@@ -178,7 +176,7 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     | pl l1 == pl l2                       = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (App . P (pl l1) <$> go (out l1 :===: out l2))
   unifyS _                                 = Nothing
 
-  solve :: Meta :=: Prob v -> Elab v (Val v)
+  solve :: Meta :=: Prob v -> Elab v (Value v)
   solve (n :=: val') = do
     subst <- getSubst
     -- FIXME: occurs check
@@ -213,9 +211,9 @@ instantiate (e ::: _T) = case unForAll _T of
 
 switch
   :: Eq v
-  => Synth v (Val v)
+  => Synth v (Value v)
   -> Maybe (Type v)
-  -> Elab v (Val v ::: Type v)
+  -> Elab v (Value v ::: Type v)
 switch (Synth m) = \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify (_K' :===: _K)
   _       -> m
@@ -231,15 +229,15 @@ resolve n = Synth $ Env.lookup n <$> askEnv >>= \case
 
 global
   :: DName
-  -> Synth v (Val v)
+  -> Synth v (Value v)
 global n = Synth $ do
   q <- synth (resolve n)
   instantiate (C.global q ::: ty q)
 
 bound
-  :: Context (Val v ::: Type v)
+  :: Context (Value v ::: Type v)
   -> Index
-  -> Synth v (Val v)
+  -> Synth v (Value v)
 bound ctx n = Synth $ case ctx !? n of
   -- FIXME: do we need to instantiate here to deal with rank-n applications?
   Just (_ ::: (v ::: _T)) -> pure (v ::: _T)
@@ -251,9 +249,9 @@ hole
 hole n = Check $ \ _T -> err $ Hole n _T
 
 ($$)
-  :: Synth v (Val v)
-  -> Check v (Val v)
-  -> Synth v (Val v)
+  :: Synth v (Value v)
+  -> Check v (Value v)
+  -> Synth v (Value v)
 f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectQuantifiedType "in application" _F
@@ -263,8 +261,8 @@ f $$ a = Synth $ do
 
 (|-)
   :: UName ::: Type v
-  -> (Val v -> Elab v (Val v))
-  -> Elab v (Val v -> Val v)
+  -> (Value v -> Elab v (Value v))
+  -> Elab v (Value v -> Value v)
 n ::: _T |- f = do
   m <- meta _T
   handleBinder m (\ v -> local (|> (n ::: v ::: _T)) (f v))
@@ -273,8 +271,8 @@ infix 1 |-
 
 (|-*)
   :: C.Pattern (Type v) (UName ::: Type v)
-  -> (C.Pattern (Type v) (Val v) -> Elab v (Val v))
-  -> Elab v (C.Pattern (Type v) (Val v) -> Val v)
+  -> (C.Pattern (Type v) (Value v) -> Elab v (Value v))
+  -> Elab v (C.Pattern (Type v) (Value v) -> Value v)
 p |-* f = do
   mp <- traverse (meta . ty) p
   handleBinderP mp (\ v ->
@@ -287,7 +285,7 @@ infix 1 |-*
 
 elabType
   :: (HasCallStack, Eq v)
-  => Context (Val v ::: Type v)
+  => Context (Value v ::: Type v)
   -> Spanned S.Type
   -> Maybe (Type v)
   -> Elab v (Type v ::: Type v)
@@ -316,7 +314,7 @@ infixr 1 -->
 
 (>~>)
   :: (Pl_ UName ::: Check v (Type v))
-  -> (UName ::: Val v ::: Type v -> Check v (Type v))
+  -> (UName ::: Value v ::: Type v -> Check v (Type v))
   -> Synth v (Type v)
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: Type)
@@ -330,7 +328,7 @@ infixr 1 >~>
 
 elabExpr
   :: (HasCallStack, Eq v)
-  => Context (Val v ::: Type v)
+  => Context (Value v ::: Type v)
   -> Spanned S.Expr
   -> Maybe (Type v)
   -> Elab v (Expr v ::: Type v)
@@ -364,7 +362,7 @@ lam n b = Check $ \ _T -> do
 
 elabComp
   :: (HasCallStack, Eq v)
-  => Context (Val v ::: Type v)
+  => Context (Value v ::: Type v)
   -> Spanned S.Comp
   -> Check v (Expr v)
 elabComp ctx = withSpan $ \case
@@ -387,7 +385,7 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
-elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check v (Expr v)
+elabClauses :: Eq v => Context (Value v ::: Type v) -> [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check v (Expr v)
 -- FIXME: do the same thing for wildcards
 elabClauses ctx [((_, S.Var n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
@@ -445,14 +443,14 @@ elabDecl
   :: forall v
   .  (HasCallStack, Eq v)
   => Spanned S.Decl
-  -> (Context (Val v ::: Type v) -> Check v (Either [CName ::: Type v] (Val v))) ::: (Context (Val v ::: Type v) -> Check v (Type v))
+  -> (Context (Value v ::: Type v) -> Check v (Either [CName ::: Type v] (Value v))) ::: (Context (Value v ::: Type v) -> Check v (Type v))
 elabDecl d = go d id id
   where
   go
     :: Spanned S.Decl
-    -> ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v)))
-    -> ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v)))
-    -> (Context (Val v ::: Type v) -> Check v (Either [CName ::: Type v] (Val v))) ::: (Context (Val v ::: Type v) -> Check v (Type v))
+    -> ((Context (Value v ::: Type v) -> Check v (Value v)) -> (Context (Value v ::: Type v) -> Check v (Value v)))
+    -> ((Context (Value v ::: Type v) -> Check v (Value v)) -> (Context (Value v ::: Type v) -> Check v (Value v)))
+    -> (Context (Value v ::: Type v) -> Check v (Either [CName ::: Type v] (Value v))) ::: (Context (Value v ::: Type v) -> Check v (Type v))
   go d km kt = withSpans d $ \case
     (n ::: t) S.:==> b ->
       go b
@@ -468,14 +466,14 @@ elabDecl d = go d id id
 
   withSpans (s, d) f = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
 
-elabDeclBody :: (HasCallStack, Eq v) => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> S.DeclBody -> Check v (Either [CName ::: Type v] (Val v))
+elabDeclBody :: (HasCallStack, Eq v) => ((Context (Value v ::: Type v) -> Check v (Value v)) -> (Context (Value v ::: Type v) -> Check v (Value v))) -> Context (Value v ::: Type v) -> S.DeclBody -> Check v (Either [CName ::: Type v] (Value v))
 elabDeclBody k ctx = \case
   S.DExpr b -> Right <$> k (checkElab . (`elabExpr` b)) ctx
   S.DType b -> Right <$> k (checkElab . (`elabType` b)) ctx
   S.DData c -> Left <$> elabData k ctx c
 
 
-elabData :: Eq v => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned S.Type)] -> Check v [CName ::: Type v]
+elabData :: Eq v => ((Context (Value v ::: Type v) -> Check v (Value v)) -> (Context (Value v ::: Type v) -> Check v (Value v))) -> Context (Value v ::: Type v) -> [Spanned (CName ::: Spanned S.Type)] -> Check v [CName ::: Type v]
 -- FIXME: check that all constructors return the datatype.
 elabData k ctx cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab . (`elabType` t)) ctx
 
@@ -523,7 +521,7 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (T
   apply s v = subst (IntMap.mapMaybe tm s) v
   emptySubst = IntMap.empty @(Maybe (Prob v) ::: Type v)
 
-  runContext = runReader @(Context (Val v ::: Type v)) empty
+  runContext = runReader @(Context (Value v ::: Type v)) empty
   runSubst = runState (fmap pure . apply) emptySubst
 
   runEnv m = do
@@ -549,7 +547,7 @@ type ErrDoc = Doc AnsiStyle
 data Err v = Err
   { span    :: Span
   , reason  :: Reason v
-  , context :: Context (Val v ::: Type v)
+  , context :: Context (Value v ::: Type v)
   }
 
 data Reason v
@@ -560,16 +558,16 @@ data Reason v
   | BadContext Index
 
 
-err :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)) sig (t v) => Reason v -> t v a
+err :: Has (Reader (Context (Value v ::: Type v)) :+: Reader Span :+: Throw (Err v)) sig (t v) => Reason v -> t v a
 err reason = do
   span <- ask
   ctx <- askContext
   throwError $ Err span reason ctx
 
-mismatch :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)) sig (t v) => String -> Either String (Type v) -> Type v -> t v a
+mismatch :: Has (Reader (Context (Value v ::: Type v)) :+: Reader Span :+: Throw (Err v)) sig (t v) => String -> Either String (Type v) -> Type v -> t v a
 mismatch msg exp act = err $ Mismatch msg exp act
 
-couldNotUnify :: Has (Reader (Context (Val v ::: Type v)) :+: Reader Span :+: Throw (Err v)) sig (t v) => Type v -> Type v -> t v a
+couldNotUnify :: Has (Reader (Context (Value v ::: Type v)) :+: Reader Span :+: Throw (Err v)) sig (t v) => Type v -> Type v -> t v a
 couldNotUnify t1 t2 = mismatch "mismatch" (Right t2) t1
 
 couldNotSynthesize :: String -> Elab v a
