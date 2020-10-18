@@ -196,6 +196,7 @@ unify (t1 :===: t2) = go (t1 :===: t2)
       Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
 
 
+-- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
 meta :: Type v -> Elab v Meta
 meta _T = do
   subst <- getSubst
