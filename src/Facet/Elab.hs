@@ -138,10 +138,8 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     t1 :=> b1            :===: t2 :=> b2
       | pl (tm t1) == pl (tm t2) -> do
         t <- go (ty t1 :===: ty t2)
-        b <- out (tm t1) ::: t |- \ v -> do
-          let b1' = b1 v
-              b2' = b2 v
-          go (b1' :===: b2')
+        b <- out (tm t1) ::: t |- \ v ->
+          go (b1 v :===: b2 v)
         pure $ tm t1 ::: t :=> b
     -- FIXME: build and display a diff of the root types
     t1                   :===: t2                   -> couldNotUnify t1 t2
