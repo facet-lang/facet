@@ -329,6 +329,6 @@ data QExpr a
   | QForAll (Pl_ UName ::: QExpr a) (QExpr a)
   | QLam (Pl_ UName ::: (QExpr a)) (QExpr a)
   | QApp (QExpr a) (Pl_ (QExpr a))
-  | QCase (QExpr a) (Pattern (QExpr a) (UName ::: QExpr a)) (QExpr a)
+  | QCase (QExpr a) [(Pattern (QExpr a) (UName ::: QExpr a), QExpr a)]
   | QCon (QName ::: QExpr a) (Stack (QExpr a))
   deriving (Eq, Ord, Show)
