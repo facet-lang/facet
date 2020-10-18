@@ -123,7 +123,7 @@ instance (Eq a, Num a) => Eq (Value a) where
 data Head a b
   = Global (QName ::: Value b) -- ^ Global variables, considered equal by 'QName'.
   | Free b
-  | Quote a
+  | Bound a
   | Metavar (Meta ::: Value b) -- ^ Metavariables, considered equal by 'Level'.
 
 instance (Eq a, Eq b) => Eq (Head a b) where
@@ -131,8 +131,8 @@ instance (Eq a, Eq b) => Eq (Head a b) where
   Global _   == _          = False
   Free a1    == Free a2    = a1 == a2
   Free _     == _          = False
-  Quote l1   == Quote l2   = l1 == l2
-  Quote _    == _          = False
+  Bound l1   == Bound l2   = l1 == l2
+  Bound _    == _          = False
   Metavar m1 == Metavar m2 = tm m1 == tm m2
   Metavar _  == _          = False
 
@@ -140,7 +140,7 @@ unHead :: (QName ::: Value b -> c) -> (b -> c) -> (a -> c) -> (Meta ::: Value b 
 unHead f g h i = \case
   Global  n -> f n
   Free    n -> g n
-  Quote   n -> h n
+  Bound   n -> h n
   Metavar n -> i n
 
 
@@ -249,12 +249,12 @@ subst s
     Unit     -> Unit
     t :=> b  -> fmap go t :=> go . b
     Lam n b  -> Lam (fmap go n) (go . b)
-    Neut f a -> unHead global free (var . Quote) (s !) f' `elimN` fmap substElim a
+    Neut f a -> unHead global free (var . Bound) (s !) f' `elimN` fmap substElim a
       where
       f' = case f of
         Global  (n ::: _T) -> Global  (n ::: go _T)
         Free    v          -> Free    v
-        Quote   v          -> Quote   v
+        Bound   v          -> Bound   v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
@@ -343,15 +343,15 @@ quote d = \case
   TPrd l r -> QTPrd (quote d l) (quote d r)
   Prd l r -> QPrd (quote d l) (quote d r)
   VCon (n ::: t) fs -> QCon (n ::: quote d t) (fmap (quote d) fs)
-  Lam (n ::: t) b -> QLam (n ::: quote d t) (quote (succ d) (b (var (Quote d))))
-  n ::: t :=> b -> QForAll (n ::: quote d t) (quote (succ d) (b (var (Quote d))))
+  Lam (n ::: t) b -> QLam (n ::: quote d t) (quote (succ d) (b (var (Bound d))))
+  n ::: t :=> b -> QForAll (n ::: quote d t) (quote (succ d) (b (var (Bound d))))
   Neut h sp ->
     let qSp h Nil     = h
         qSp h (sp:>e) = case e of
           App a   -> QApp (qSp h sp) (fmap (quote d) a)
           Case cs -> QCase (qSp h sp) (map qPat cs)
         qPat (p, b)
-          | let (d', p') = mapAccumL (\ d _ -> (succ d, var (Quote d))) d p
+          | let (d', p') = mapAccumL (\ d _ -> (succ d, var (Bound d))) d p
           = ( bimap (quote d) (fmap (quote d)) p
             , quote d' (b p'))
     in qSp (unHead (QGlobal . fmap (quote d)) QFree (QVar . levelToIndex d) (QMeta . fmap (quote d)) h) sp
