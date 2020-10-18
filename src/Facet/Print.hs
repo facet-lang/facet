@@ -38,7 +38,6 @@ import           Facet.Algebra
 import           Facet.Name hiding (ann)
 import qualified Facet.Pretty as P
 import           Facet.Syntax
-import           Prelude hiding ((**))
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
 import           Silkscreen as P
@@ -194,7 +193,7 @@ printContextEntry :: Level -> UName ::: Print -> Print
 printContextEntry l (n ::: _T) = ann (intro explicit n l ::: _T)
 
 
-($$), (-->), (**) :: Print -> Print -> Print
+($$), (-->) :: Print -> Print -> Print
 f $$ a = askingPrec $ \case
   AppL -> op
   _    -> group op
@@ -204,9 +203,6 @@ f $$ a = askingPrec $ \case
 
 -- FIXME: I think the precedence is being reset by the parens or something and thus we aren’t parenthesizing the body?
 (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
-
--- FIXME: left-flatten products
-l ** r = tupled [l, r]
 
 ($$*) :: Foldable t => Print -> t Print -> Print
 ($$*) = fmap group . foldl' ($$)
@@ -233,9 +229,6 @@ surface = Algebra
     Just n -> ((pl, n) ::: _T) >~> b
     _      -> _T --> b) b as
   , app = \ f as -> f $$* fmap (unPl_ braces id) as
-  , prd = \ as -> case as of
-    [] -> parens mempty
-    as -> foldl1 (**) as
   , hole = \ n -> annotate Hole $ pretty '?' <> pretty n
   , _Type = annotate Type $ pretty "Type"
   , _Void = annotate Type $ pretty "Void"
@@ -275,9 +268,6 @@ explicit = Algebra
     Just n -> ((pl, n) ::: _T) >~> b
     _      -> _T --> b) b as
   , app = \ f as -> group f $$* fmap (group . unPl_ braces id) as
-  , prd = \ as -> case as of
-    [] -> parens mempty
-    as -> foldl1 (**) as
   , hole = \ n -> annotate Hole $ pretty '?' <> pretty n
   , _Type = annotate Type $ pretty "Type"
   , _Void = annotate Type $ pretty "Void"

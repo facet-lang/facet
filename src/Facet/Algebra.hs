@@ -51,7 +51,6 @@ data Algebra p = Algebra
     -> p                     -- the return type
     -> p
   , app :: p -> Stack (Pl_ p) -> p
-  , prd :: [p] -> p
   , hole :: T.Text -> p
   , _Type :: p
   , _Void :: p
@@ -92,8 +91,6 @@ foldCValue alg = go
             let ((d', p'), v) = pat d p
             in (p', go d' (b v))
       in elim h' id e
-    C.TPrd l r -> prd alg [go d l, go d r]
-    C.Prd  l r -> prd alg [go d l, go d r]
     C.VCon n p -> app alg (ann' alg (bimap (var alg . qvar) (go d) n)) (fmap (ex . go d) p)
   tvar d n = ann' alg (var alg (TLocal (out (tm n)) d) ::: go d (ty n))
   lvar d n = ann' alg (var alg (unPl_ TLocal Local (tm n) d) ::: go d (ty n))
@@ -104,9 +101,6 @@ foldCValue alg = go
     C.Con n ps ->
       let ((d', p'), ps') = subpatterns d ps
       in ((d', pcon alg (ann' alg (bimap (var alg . qvar) (go d) n)) p'), C.Con n ps')
-    C.Tuple ps ->
-      let ((d', p'), ps') = subpatterns d ps
-      in ((d', tuple alg (toList p')), C.Tuple ps')
   subpatterns d ps = mapAccumL (\ (d', ps) p -> let ((d'', v), p') = pat d' p in ((d'', ps:>v), p')) (d, Nil) ps
 
 foldCModule :: Algebra p -> C.Module p -> p
@@ -141,7 +135,6 @@ foldSType alg = go
       let (f', a') = splitl (S.unTApp . snd) (s, f S.:$$ a)
       in app alg (go env f') (fmap (ex . go env) a')
     a S.:-> b -> fn alg [ex (Nothing ::: go env a)] (go env b)
-    l S.:** r -> prd alg [go env l, go env r]
     where
     level = Level (length env)
 
@@ -155,7 +148,6 @@ foldSExpr alg = go
     f S.:$  a ->
       let (f', a') = splitl (S.unApp . snd) (s, f S.:$ a)
       in app alg (go env f') (fmap (ex . go env) a')
-    l S.:*  r -> prd alg [go env l, go env r]
     S.Comp c  -> case snd c of
       S.Expr e     -> lam alg [ go env e ]
       S.Clauses cs -> lam alg (map (uncurry (cls env)) cs)
@@ -168,9 +160,6 @@ foldSExpr alg = go
     S.Con n ps ->
       let ((d', env'), ps') = subpatterns d env ps
       in ((d', env'), pcon alg (var alg (Cons n)) (fromList ps'))
-    S.Tuple ps ->
-      let ((d', env'), ps') = subpatterns d env ps
-      in ((d', env'), tuple alg ps')
   subpatterns d env ps = mapAccumL (\ (d', env') p -> pat d' env' p) (d, env) ps
 
 foldSCons :: Algebra p -> Stack p -> Spanned (CName ::: Spanned (S.Type a)) -> p

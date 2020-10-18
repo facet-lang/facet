@@ -27,7 +27,6 @@ module Facet.Elab
   -- * Types
 , elabType
 , _Type
-, (.*)
 , (-->)
 , (>~>)
   -- * Expressions
@@ -35,7 +34,6 @@ module Facet.Elab
 , ($$)
 , tlam
 , lam
-, (**)
   -- * Declarations
 , elabDecl
   -- * Modules
@@ -68,7 +66,6 @@ import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
-import           Prelude hiding ((**))
 import           Prettyprinter (Doc)
 import           Prettyprinter.Render.Terminal (AnsiStyle)
 import           Text.Parser.Position (Spanned)
@@ -172,8 +169,6 @@ unify (t1 :===: t2) = go (t1 :===: t2)
               b2' = b2 v
           go (b1' :===: b2')
         pure $ tm t1 ::: t :=> b
-    TPrd l1 r1           :===: TPrd l2 r2           -> TPrd <$> go (l1 :===: l2) <*> go (r1 :===: r2)
-    Prd  l1 r1           :===: Prd  l2 r2           -> Prd  <$> go (l1 :===: l2) <*> go (r1 :===: r2)
     -- FIXME: build and display a diff of the root types
     t1                   :===: t2                   -> couldNotUnify t1 t2
 
@@ -304,24 +299,12 @@ elabType ctx = withSpan' $ \case
   t S.:=> b  -> switch $ bimap im (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
   f S.:$$ a  -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
   a S.:-> b  -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
-  l S.:** r  -> switch $ checkElab (elabType ctx l) .*  checkElab (elabType ctx r)
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
 
 _Type :: Synth v (Type v)
 _Type = Synth $ pure $ Type ::: Type
-
-(.*)
-  :: Check v (Type v)
-  -> Check v (Type v)
-  -> Synth v (Type v)
-a .* b = Synth $ do
-  a' <- check (a ::: Type)
-  b' <- check (b ::: Type)
-  pure $ (TPrd a' b') ::: Type
-
-infixl 7 .*
 
 (-->)
   :: Check v (Type v)
@@ -356,7 +339,6 @@ elabExpr ctx = withSpan' $ \case
   S.Bound n -> switch $ bound ctx n
   S.Hole  n -> check (hole n) "hole"
   f S.:$  a -> switch $ synthElab (elabExpr ctx f) $$ checkElab (elabExpr ctx a)
-  l S.:*  r -> check (checkElab (elabExpr ctx l) ** checkElab (elabExpr ctx r)) "product"
   S.Comp cs -> check (elabComp ctx cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
@@ -379,16 +361,6 @@ lam n b = Check $ \ _T -> do
   (_A, _B) <- expectQuantifiedType "when checking lambda" _T
   b' <- n ::: ty _A |- \ v -> check (b (n ::: v ::: ty _A) ::: _B v)
   pure (Lam (ex n ::: ty _A) b')
-
-(**)
-  :: Check v (Expr v)
-  -> Check v (Expr v)
-  -> Check v (Expr v)
-l ** r = Check $ \ _T -> do
-  (_L, _R) <- expectProductType "when checking product" _T
-  l' <- check (l ::: _L)
-  r' <- check (r ::: _R)
-  pure (Prd l' r')
 
 elabComp
   :: (HasCallStack, Eq v)
@@ -465,14 +437,6 @@ elabPattern = withSpan $ \case
             ps' <- go (_B v) ps
             pure $ p' : ps'
     C.Con (q ::: _T') <$> go _T' ps
-  S.Tuple ps -> Check $ \ _T -> C.Tuple . toList <$> go _T (fromList ps)
-    where
-    go _T = \case
-      Nil      -> mismatch "when checking empty tuple pattern" (Left "patterns") _T
-      Nil :> p -> (Nil :>) <$> check (elabPattern p ::: _T)
-      ps  :> p -> do
-        (_L, _R) <- expectProductType "when checking tuple pattern" _T
-        (:>) <$> go _L ps <*> check (elabPattern p ::: _R)
 
 
 -- Declarations
@@ -625,6 +589,3 @@ expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectQuantifiedType :: String -> Type v -> Elab v (Pl_ UName ::: Type v, Type v -> Type v)
 expectQuantifiedType = expectMatch unForAll "{_} -> _"
-
-expectProductType :: String -> Type v -> Elab v (Type v, Type v)
-expectProductType = expectMatch unProductT "(_, _)"

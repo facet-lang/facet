@@ -39,12 +39,10 @@ data Expr a
   | Hole Text
   | Comp (Spanned (Comp a))
   | Spanned (Expr a) :$ Spanned (Expr a)
-  | Spanned (Expr a) :* Spanned (Expr a)
   -- FIXME: tupling/unit should take a list of expressions
   deriving (Foldable, Functor, Show, Traversable)
 
 infixl 9 :$
-infixl 7 :*
 
 
 unApp :: Has Empty sig m => Expr a -> m (Spanned (Expr a), Spanned (Expr a))
@@ -63,7 +61,6 @@ data Pattern a
   = Wildcard
   | Var a
   | Con CName [Spanned (Pattern a)]
-  | Tuple [Spanned (Pattern a)]
   deriving (Foldable, Functor, Show, Traversable)
 
 
@@ -77,13 +74,11 @@ data Type a
   | (UName ::: Spanned (Type a)) :=> Spanned (Type a)
   | Spanned (Type a) :$$ Spanned (Type a)
   | Spanned (Type a) :-> Spanned (Type a)
-  | Spanned (Type a) :** Spanned (Type a)
   deriving (Foldable, Functor, Show, Traversable)
 
 infixr 1 :=>
 infixl 9 :$$
 infixr 2 :->
-infixl 7 :**
 
 
 unForAll :: Has Empty sig m => Type a -> m (UName ::: Spanned (Type a), Spanned (Type a))
@@ -101,7 +96,6 @@ aeq t1 t2 = case (t1, t2) of
   ((n1 ::: t1) :=> b1, (n2 ::: t2) :=> b2) -> n1 == n2 && aeq' t1 t2 && aeq' b1 b2
   (f1 :$$ a1,          f2 :$$ a2)          -> aeq' f1 f2 && aeq' a1 a2
   (a1 :-> b1,          a2 :-> b2)          -> aeq' a1 a2 && aeq' b1 b2
-  (l1 :** r1,          l2 :** r2)          -> aeq' l1 l2 && aeq' r1 r2
   _                                        -> False
   where
   aeq' = fmap and . (liftA2 aeq `on` extract)

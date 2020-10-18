@@ -15,7 +15,6 @@ module Facet.Core
 , unForAll'
 , unLam
 , unLam'
-, unProductT
 , ($$)
 , case'
 , match
@@ -52,7 +51,6 @@ import           GHC.Stack
 
 -- Values
 
--- FIXME: replace products, void, and unit with references to constant datatypes.
 -- FIXME: represent closed portions of the tree explicitly?
 data Value a
   = Type
@@ -61,8 +59,6 @@ data Value a
   | Lam (Pl_ UName ::: Value a) (Value a -> Value a)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | Neut (Head Level a) (Stack (Elim (Value a)))
-  | TPrd (Value a) (Value a) -- FIXME: 🔥
-  | Prd (Value a) (Value a)  -- FIXME: 🔥
   | VCon (QName ::: Value a) (Stack (Value a))
 
 infixr 1 :=>
@@ -87,10 +83,6 @@ instance (Eq a, Num a) => Eq (Value a) where
       (Lam _ _, _) -> False
       (Neut h1 sp1, Neut h2 sp2) -> h1 == h2 && eqSp n sp1 sp2
       (Neut _ _, _) -> False
-      (TPrd l1 r1, TPrd l2 r2) -> go n l1 l2 && go n r1 r2
-      (TPrd _ _, _) -> False
-      (Prd l1 r1, Prd l2 r2) -> go n l1 l2 && go n r1 r2
-      (Prd _ _, _) -> False
       (VCon n1 p1, VCon n2 p2)
         | length p1 == length p2 -> go n (ty n1) (ty n2) && and (zipWith (go n) (toList p1) (toList p2))
       (VCon _ _, _) -> False
@@ -173,9 +165,6 @@ unLam' var (d, v) = do
   (n, t) <- unLam v
   pure ((d, n), (succ d, t (free (var d n))))
 
-unProductT :: Has Empty sig m => Value a -> m (Value a, Value a)
-unProductT = \case{ TPrd l r -> pure (l, r) ; _ -> empty }
-
 
 -- FIXME: how should this work in weak/parametric HOAS?
 ($$) :: HasCallStack => Value a -> Pl_ (Value a) -> Value a
@@ -197,11 +186,6 @@ match :: Value a -> Pattern (Value a) b -> Maybe (Pattern (Value a) (Value a))
 match = curry $ \case
   (_,          Wildcard)       -> Just Wildcard
   (s,          Var _)          -> Just (Var s)
-  (Prd l r,    Tuple [pl, pr]) -> do
-    l' <- match l pl
-    r' <- match r pr
-    Just $ Tuple [l', r']
-  (_, Tuple _)                 -> Nothing
   (VCon n' fs, Con n ps)       -> do
     guard (tm n == tm n')
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
@@ -245,8 +229,6 @@ subst s
         Free    v          -> Free    v
         Bound   v          -> Bound   v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
-    TPrd l r -> TPrd (go l) (go r)
-    Prd  l r -> Prd  (go l) (go r)
     VCon n p -> VCon (fmap go n) (fmap go p)
 
   substElim = \case
@@ -274,7 +256,6 @@ data Pattern t a
   = Wildcard
   | Var a
   | Con (QName ::: t) [Pattern t a]
-  | Tuple [Pattern t a]
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 instance Bifoldable Pattern where
@@ -290,7 +271,6 @@ instance Bitraversable Pattern where
       Wildcard -> pure Wildcard
       Var a -> Var <$> g a
       Con (n ::: t) ps -> Con . (n :::) <$> f t <*> traverse go ps
-      Tuple ps -> Tuple <$> traverse go ps
 
 
 -- Modules
@@ -311,8 +291,6 @@ data QExpr a
   | QFree a
   | QMeta (Meta ::: QExpr a)
   | QType
-  | QTPrd (QExpr a) (QExpr a)
-  | QPrd (QExpr a) (QExpr a)
   | QForAll (Pl_ UName ::: QExpr a) (QExpr a)
   | QLam (Pl_ UName ::: (QExpr a)) (QExpr a)
   | QApp (QExpr a) (Pl_ (QExpr a))
@@ -323,8 +301,6 @@ data QExpr a
 quote :: Level -> Value a -> QExpr a
 quote d = \case
   Type -> QType
-  TPrd l r -> QTPrd (quote d l) (quote d r)
-  Prd l r -> QPrd (quote d l) (quote d r)
   VCon (n ::: t) fs -> QCon (n ::: quote d t) (fmap (quote d) fs)
   Lam (n ::: t) b -> QLam (n ::: quote d t) (quote (succ d) (b (var (Bound d))))
   n ::: t :=> b -> QForAll (n ::: quote d t) (quote (succ d) (b (var (Bound d))))
@@ -342,8 +318,6 @@ quote d = \case
 eval :: Stack (Value a) -> QExpr a -> Value a
 eval env = \case
   QType -> Type
-  QTPrd l r -> TPrd (eval env l) (eval env r)
-  QPrd l r -> Prd (eval env l) (eval env r)
   QCon (n ::: t) fs -> VCon (n ::: eval env t) (fmap (eval env) fs)
   QLam (n ::: t) b -> Lam (n ::: eval env t) (\ v -> eval (env:>v) b)
   QForAll (n ::: t) b -> n ::: eval env t :=> \ v -> eval (env:>v) b

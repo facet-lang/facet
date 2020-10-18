@@ -158,10 +158,10 @@ forAll mk self _ = do
   mk' start t b end = (Span start end, mk t b)
 
 type' :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Type N.Index))
-type' = build typeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap ((,) s) . (S.:**)))))
+type' = build typeTable parens
 
 monotype :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Type N.Index))
-monotype = build monotypeTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap ((,) s) . (S.:**)))))
+monotype = build monotypeTable parens
 
 tvar :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Type N.Index))
 tvar = token (spanned (runUnspaced (fmap (either (S.TFree . N.T) (S.TBound)) . resolve <$> tname <*> Unspaced env <?> "variable")))
@@ -179,7 +179,7 @@ exprTable =
   ]
 
 expr :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Expr N.Index))
-expr = build exprTable (terminate parens (parseOperator (Infix L (pack ",") (\ s -> fmap ((,) s) . (S.:*)))))
+expr = build exprTable parens
 
 comp :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Expr N.Index))
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
@@ -204,7 +204,6 @@ bindPattern p m = case p of
   S.Wildcard -> bind N.__ (const m)
   S.Var n    -> bind n    (const m)
   S.Con _ ps -> foldr (bindPattern . snd) m ps
-  S.Tuple ps -> foldr (bindPattern . snd) m ps
 
 bindVarPattern :: Maybe N.EName -> (N.UName -> Facet p res) -> Facet p res
 bindVarPattern Nothing  = bind (N.EName N.__)
@@ -223,7 +222,6 @@ pattern = spanned
   $   S.Var . N.getEName <$> ename
   <|> S.Wildcard <$  wildcard
   <|> try (parens (S.Con <$> cname <*> many pattern))
-  <|> S.Tuple    <$> parens (commaSep pattern)
   <?> "pattern"
 
 
