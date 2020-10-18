@@ -80,16 +80,16 @@ varFrom alpha i = pretty (toAlpha alpha i)
 
 -- Columnar layout
 
-tabulate2 :: PP.Doc ANSI.AnsiStyle -> [(PP.Doc ANSI.AnsiStyle, PP.Doc ANSI.AnsiStyle)] -> PP.Doc ANSI.AnsiStyle
+tabulate2 :: PP.Doc a -> [(PP.Doc a, PP.Doc a)] -> PP.Doc a
 tabulate2 _ [] = mempty
 tabulate2 s cs = vsep (map (uncurry entry) cs')
   where entry a b = PP.fill w (doc a) <> s <> b
         w = maximum (map (width . fst) cs')
         cs' = map (first column) cs
 
-data Column = Column { width :: Int, doc :: PP.Doc ANSI.AnsiStyle }
+data Column a = Column { width :: Int, doc :: PP.Doc a }
 
-column :: PP.Doc ANSI.AnsiStyle -> Column
+column :: PP.Doc a -> Column a
 column a = Column (length (show (PP.unAnnotate a))) a
 
 
