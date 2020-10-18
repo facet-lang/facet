@@ -316,7 +316,7 @@ data Def a
 -- Quotation
 
 data QExpr
-  = QGlobal QName QExpr
+  = QGlobal (QName ::: QExpr)
   | QVar Index
   | QType
   | QVoid
