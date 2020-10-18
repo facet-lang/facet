@@ -236,8 +236,11 @@ handleBinderP p b = do
   b' <- b (metavar <$> p)
   pure $ \ v -> subst (foldl' (\ s (m ::: _, v) -> IntMap.insert (getMeta m) v s) IntMap.empty (zip (toList p) (toList v))) b'
 
-substHead :: HasCallStack => (Head a -> Value a) -> Value a -> Value a
-substHead subst = go
+-- | Substitute metavars.
+subst :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
+subst s
+  | IntMap.null s = id
+  | otherwise     = go
   where
   go = \case
     Type     -> Type
@@ -246,7 +249,7 @@ substHead subst = go
     Unit     -> Unit
     t :=> b  -> fmap go t :=> go . b
     Lam n b  -> Lam (fmap go n) (go . b)
-    Neut f a -> subst f' `elimN` fmap substElim a
+    Neut f a -> unHead global free quote (s !) f' `elimN` fmap substElim a
       where
       f' = case f of
         Global  (n ::: _T) -> Global  (n ::: go _T)
@@ -261,12 +264,6 @@ substHead subst = go
     App a   -> App (fmap go a)
     Case cs -> Case (map (bimap (bimap go (fmap go)) (go .)) cs)
 
--- | Substitute metavars.
-subst :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
-subst s
-  | IntMap.null s = id
-  | otherwise     = substHead (unHead global free quote (s !))
-  where
   s ! l = case IntMap.lookup (getMeta (tm l)) s of
     Just a  -> a
     Nothing -> metavar l
