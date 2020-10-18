@@ -39,7 +39,6 @@ data Expr a
   | Hole Text
   | Comp (Spanned (Comp a))
   | Spanned (Expr a) :$ Spanned (Expr a)
-  | Unit
   | Spanned (Expr a) :* Spanned (Expr a)
   -- FIXME: tupling/unit should take a list of expressions
   deriving (Foldable, Functor, Show, Traversable)
@@ -76,7 +75,6 @@ data Type a
   | THole Text
   | Type
   | Void
-  | TUnit
   | (UName ::: Spanned (Type a)) :=> Spanned (Type a)
   | Spanned (Type a) :$$ Spanned (Type a)
   | Spanned (Type a) :-> Spanned (Type a)
@@ -101,7 +99,6 @@ aeq t1 t2 = case (t1, t2) of
   (TFree  n1,          TFree  n2)          -> n1 == n2
   (TBound n1,          TBound n2)          -> n1 == n2
   (Type,               Type)               -> True
-  (TUnit,              TUnit)              -> True
   ((n1 ::: t1) :=> b1, (n2 ::: t2) :=> b2) -> n1 == n2 && aeq' t1 t2 && aeq' b1 b2
   (f1 :$$ a1,          f2 :$$ a2)          -> aeq' f1 f2 && aeq' a1 a2
   (a1 :-> b1,          a2 :-> b2)          -> aeq' a1 a2 && aeq' b1 b2

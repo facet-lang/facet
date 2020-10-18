@@ -27,7 +27,6 @@ module Facet.Elab
   -- * Types
 , elabType
 , _Type
-, _Unit
 , (.*)
 , (-->)
 , (>~>)
@@ -36,7 +35,6 @@ module Facet.Elab
 , ($$)
 , tlam
 , lam
-, unit
 , (**)
   -- * Declarations
 , elabDecl
@@ -161,8 +159,6 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     -- FIXME: this is missing a lot of cases
     Type                 :===: Type                 -> pure Type
     Void                 :===: Void                 -> pure Void
-    TUnit                :===: TUnit                -> pure TUnit
-    Unit                 :===: Unit                 -> pure Unit
     -- FIXME: resolve globals to try to progress past certain inequalities
     Neut h1 e1           :===: Neut h2 e2
       | h1 == h2
@@ -307,7 +303,6 @@ elabType ctx = withSpan' $ \case
   S.THole  n -> check (hole n) "hole"
   S.Type     -> switch $ _Type
   S.Void     -> switch $ _Void
-  S.TUnit    -> switch $ _Unit
   t S.:=> b  -> switch $ bimap im (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
   f S.:$$ a  -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
   a S.:-> b  -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
@@ -321,9 +316,6 @@ _Type = Synth $ pure $ Type ::: Type
 
 _Void :: Synth v (Type v)
 _Void = Synth $ pure $ Void ::: Type
-
-_Unit :: Synth v (Type v)
-_Unit = Synth $ pure $ Unit ::: Type
 
 (.*)
   :: Check v (Type v)
@@ -370,7 +362,6 @@ elabExpr ctx = withSpan' $ \case
   S.Hole  n -> check (hole n) "hole"
   f S.:$  a -> switch $ synthElab (elabExpr ctx f) $$ checkElab (elabExpr ctx a)
   l S.:*  r -> check (checkElab (elabExpr ctx l) ** checkElab (elabExpr ctx r)) "product"
-  S.Unit    -> switch unit
   S.Comp cs -> check (elabComp ctx cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
@@ -393,9 +384,6 @@ lam n b = Check $ \ _T -> do
   (_A, _B) <- expectQuantifiedType "when checking lambda" _T
   b' <- n ::: ty _A |- \ v -> check (b (n ::: v ::: ty _A) ::: _B v)
   pure (Lam (ex n ::: ty _A) b')
-
-unit :: Synth v (Expr v)
-unit = Synth . pure $ Unit ::: TUnit
 
 (**)
   :: Check v (Expr v)
@@ -485,9 +473,7 @@ elabPattern = withSpan $ \case
   S.Tuple ps -> Check $ \ _T -> C.Tuple . toList <$> go _T (fromList ps)
     where
     go _T = \case
-      Nil      -> case _T of
-        TUnit -> pure Nil
-        _     -> mismatch "when checking empty tuple pattern" (Right TUnit) _T
+      Nil      -> mismatch "when checking empty tuple pattern" (Left "patterns") _T
       Nil :> p -> (Nil :>) <$> check (elabPattern p ::: _T)
       ps  :> p -> do
         (_L, _R) <- expectProductType "when checking tuple pattern" _T

@@ -142,7 +142,6 @@ monotypeTable =
   , [ -- FIXME: we should treat these as globals.
       Atom (spanned (S.Type  <$ token (string "Type")))
     , Atom (spanned (S.Void  <$ token (string "Void")))
-    , Atom (spanned (S.TUnit <$ token (string "Unit")))
     , Atom tvar
     ]
   ]

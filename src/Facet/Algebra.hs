@@ -55,8 +55,6 @@ data Algebra p = Algebra
   , hole :: T.Text -> p
   , _Type :: p
   , _Void :: p
-  , _Unit :: p
-  , unit :: p
   , ann' :: (p ::: p) -> p
   , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
   , wildcard :: p
@@ -75,8 +73,6 @@ foldCValue alg = go
   go d = \case
     C.Type  -> _Type alg
     C.Void  -> _Void alg
-    C.TUnit -> _Unit alg
-    C.Unit  -> prd alg []
     t C.:=> b  ->
       let (vs, (d', b')) = splitr (C.unForAll' tvar) (d, t C.:=> b)
       in fn alg (map (\ (d, n ::: _T) -> let n' = if T.null (getUName (out n)) then Nothing else Just (tintro alg (out n) d) in P (pl n) (n' ::: go d _T)) vs) (go d' b')
@@ -139,7 +135,6 @@ foldSType alg = go
     S.THole n  -> hole alg n
     S.Type     -> _Type alg
     S.Void     -> _Void alg
-    S.TUnit    -> _Unit alg
     t S.:=> b ->
       let (ts, b') = splitr (S.unForAll . snd) (s, t S.:=> b)
           ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = tintro alg n d in ((succ d, env :> v), im (Just v ::: go env t))) (level, env) ts
@@ -162,7 +157,6 @@ foldSExpr alg = go
     f S.:$  a ->
       let (f', a') = splitl (S.unApp . snd) (s, f S.:$ a)
       in app alg (go env f') (fmap (ex . go env) a')
-    S.Unit    -> unit alg
     l S.:*  r -> prd alg [go env l, go env r]
     S.Comp c  -> case snd c of
       S.Expr e     -> lam alg [ go env e ]

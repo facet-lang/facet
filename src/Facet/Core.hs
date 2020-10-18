@@ -57,8 +57,6 @@ import           GHC.Stack
 data Value a
   = Type
   | Void  -- FIXME: 🔥
-  | TUnit -- FIXME: 🔥
-  | Unit  -- FIXME: 🔥
   | (Pl_ UName ::: Value a) :=> (Value a -> Value a)
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
   | Lam (Pl_ UName ::: Value a) (Value a -> Value a)
@@ -79,10 +77,6 @@ instance (Eq a, Num a) => Eq (Value a) where
       (Type, _) -> False
       (Void, Void) -> True
       (Void, _) -> False
-      (TUnit, TUnit) -> True
-      (TUnit, _) -> False
-      (Unit, Unit) -> True
-      (Unit, _) -> False
       (t1 :=> b1, t2 :=> b2) ->
         pl (tm t1) == pl (tm t2) && go n (ty t1) (ty t2)
         &&  let b1' = b1 (free n)
@@ -246,8 +240,6 @@ subst s
   go = \case
     Type     -> Type
     Void     -> Void
-    TUnit    -> TUnit
-    Unit     -> Unit
     t :=> b  -> fmap go t :=> go . b
     Lam n b  -> Lam (fmap go n) (go . b)
     Neut f a -> unHead global free (var . Bound) (s !) f' `elimN` fmap substElim a
@@ -324,8 +316,6 @@ data QExpr a
   | QMeta (Meta ::: QExpr a)
   | QType
   | QVoid
-  | QTUnit
-  | QUnit
   | QTPrd (QExpr a) (QExpr a)
   | QPrd (QExpr a) (QExpr a)
   | QForAll (Pl_ UName ::: QExpr a) (QExpr a)
@@ -339,8 +329,6 @@ quote :: Level -> Value a -> QExpr a
 quote d = \case
   Type -> QType
   Void -> QVoid
-  TUnit -> QTUnit
-  Unit -> QUnit
   TPrd l r -> QTPrd (quote d l) (quote d r)
   Prd l r -> QPrd (quote d l) (quote d r)
   VCon (n ::: t) fs -> QCon (n ::: quote d t) (fmap (quote d) fs)
@@ -361,8 +349,6 @@ eval :: Stack (Value a) -> QExpr a -> Value a
 eval env = \case
   QType -> Type
   QVoid -> Void
-  QTUnit -> TUnit
-  QUnit -> Unit
   QTPrd l r -> TPrd (eval env l) (eval env r)
   QPrd l r -> Prd (eval env l) (eval env r)
   QCon (n ::: t) fs -> VCon (n ::: eval env t) (fmap (eval env) fs)
