@@ -170,7 +170,6 @@ case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s
 
 match :: Value -> Pattern Value b -> Maybe (Pattern Value Value)
 match = curry $ \case
-  (_,          Wildcard)       -> Just Wildcard
   (s,          Var _)          -> Just (Var s)
   (VCon n' fs, Con n ps)       -> do
     guard (tm n == tm n')
@@ -227,10 +226,8 @@ subst s
 
 -- Patterns
 
--- FIXME: represent wildcard patterns as var patterns with an empty name.
 data Pattern t a
-  = Wildcard
-  | Var a
+  = Var a
   | Con (QName ::: t) [Pattern t a]
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
@@ -244,7 +241,6 @@ instance Bitraversable Pattern where
   bitraverse f g = go
     where
     go = \case
-      Wildcard -> pure Wildcard
       Var a -> Var <$> g a
       Con (n ::: t) ps -> Con . (n :::) <$> f t <*> traverse go ps
 

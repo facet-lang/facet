@@ -390,7 +390,7 @@ elabPattern
   :: Spanned S.Pattern
   -> Check (C.Pattern Type (UName ::: Type))
 elabPattern = withSpan $ \case
-  S.Wildcard -> pure C.Wildcard
+  S.Wildcard -> Check $ \ _T -> pure (C.Var (__ ::: _T))
   S.Var n    -> Check $ \ _T -> pure (C.Var (n ::: _T))
   S.Con n ps -> Check $ \ _T -> do
     q ::: _T' <- synth (resolve (C n))

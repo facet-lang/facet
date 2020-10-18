@@ -107,7 +107,6 @@ foldCValue alg = go
   lvar env n = ann' alg (var alg (unPl_ TLocal Local (tm n) (Level (length env))) ::: go env (ty n))
 
   pat env = \case
-    C.Wildcard -> ((env, wildcard alg), C.Wildcard)
     C.Var n    -> let { d = Level (length env) ; v = ann' alg (var alg (Local (tm n) d) ::: go env (ty n)) } in ((env :> v, v), C.Var (C.free d))
     C.Con n ps ->
       let ((env', p'), ps') = subpatterns env ps
