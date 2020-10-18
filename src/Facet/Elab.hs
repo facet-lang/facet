@@ -13,8 +13,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 module Facet.Elab
-( M(..)
-, Type
+( Type
 , Expr
 , Elab(..)
 , Check(..)
@@ -72,24 +71,6 @@ import           Text.Parser.Position (Spanned)
 type Type = Value
 type Expr = Value
 type Prob = Value
-
-newtype M v a = M { rethrow :: forall sig m . Has (State (Subst v) :+: Throw (Err v)) sig m => m a }
-
-instance Functor (M v) where
-  fmap f (M m) = M (fmap f m)
-
-instance Applicative (M v) where
-  pure a = M $ pure a
-  M f <*> M a = M (f <*> a)
-
-instance Monad (M v) where
-  M m >>= f = M $ m >>= rethrow . f
-
-instance Algebra (State (Subst v) :+: Throw (Err v)) (M v) where
-  alg hdl sig ctx = case sig of
-    L smctx -> M $ alg (rethrow . hdl) (inj smctx) ctx
-    R throw -> M $ alg (rethrow . hdl) (inj throw) ctx
-
 
 type Subst v = IntMap.IntMap (Maybe (Prob v) ::: Type v)
 
