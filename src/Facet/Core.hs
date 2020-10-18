@@ -349,8 +349,8 @@ quote d = \case
     let qSp h Nil     = h
         qSp h (sp:>e) = case e of
           App a   -> QApp (qSp h sp) (fmap (quote d) a)
-          Case cs -> QCase (qSp h sp) (map qPat cs)
-        qPat (p, b)
+          Case cs -> QCase (qSp h sp) (map qClause cs)
+        qClause (p, b)
           | let (d', p') = mapAccumL (\ d _ -> (succ d, var (Bound d))) d p
           = ( bimap (quote d) (fmap (quote d)) p
             , quote d' (b p'))
