@@ -326,7 +326,7 @@ data QExpr
   | QPrd QExpr QExpr
   | QForAll (Pl_ UName ::: QExpr) QExpr
   | QLam (Pl_ UName ::: QExpr) QExpr
-  | QApp QExpr QExpr
+  | QApp QExpr (Pl_ QExpr)
   | QCase QExpr (Pattern QExpr (UName ::: QExpr)) QExpr
   | QCon (QName ::: QExpr) (Stack QExpr)
   deriving (Eq, Ord, Show)
