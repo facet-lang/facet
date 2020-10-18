@@ -11,8 +11,6 @@ module Facet.GHCI
   -- * Elaborating
 , elabString
 , elabFile
-  -- * Errors
-, toNotice
 ) where
 
 import           Control.Carrier.Lift (runM)
