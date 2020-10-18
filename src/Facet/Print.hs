@@ -24,7 +24,6 @@ module Facet.Print
 , explicit
 ) where
 
-import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
 import           Data.Colour.Names
 import           Data.Colour.RGBSpace
@@ -58,28 +57,19 @@ getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
 
 terminalStyle :: Highlight -> [ANSI.SGR]
 terminalStyle = \case
-  Nest i -> [colours !! (i `mod` len)]
-  Name i -> [reverse colours !! (getLevel i `mod` len)]
+  Nest i -> [setRGB (pick i 0.5 0.6)]
+  Name i -> [setRGB (pick (-getLevel i) 0.8 0.6)]
   Op     -> [setRGB cyan]
   Type   -> [setRGB yellow]
   Con    -> [setRGB red]
   Lit    -> [bold]
-  Hole m -> [bold, reverse colours !! (getMeta m `mod` len)]
+  Hole m -> [bold, setRGB (pick (-getMeta m) 0.7 0.3)]
   ANSI s -> s
   where
   setRGB = ANSI.SetRGBColor ANSI.Foreground
   bold = ANSI.SetConsoleIntensity ANSI.BoldIntensity
-  colours =
-    [ ANSI.Red
-    , ANSI.Green
-    , ANSI.Yellow
-    , ANSI.Blue
-    , ANSI.Magenta
-    , ANSI.Cyan
-    ]
-    <**>
-    [ANSI.SetColor ANSI.Foreground ANSI.Vivid, ANSI.SetColor ANSI.Foreground ANSI.Dull]
-  len = length colours
+  pick i s l = uncurryRGB sRGB (hsl (fromIntegral i * phi * 36) s l)
+  phi = 1.618033988749895
 
 
 data Print = Print { fvs :: FVs, doc :: Prec Precedence (Rainbow (PP.Doc Highlight)) }
