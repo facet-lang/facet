@@ -18,6 +18,7 @@ module Facet.Pretty
 , tabulate2
   -- * Rendering
 , renderIO
+, renderLazy
 ) where
 
 import           Control.Carrier.Lift
@@ -26,6 +27,8 @@ import           Control.Monad.IO.Class
 import           Data.Bifunctor (first)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Builder as TLB
 import           Facet.Stack
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
@@ -134,3 +137,31 @@ renderIO h stream = do
   unsafePop = do
     i :> _ <- get
     put (i :: Stack [ANSI.SGR])
+
+renderLazy :: PP.SimpleDocStream [ANSI.SGR] -> TL.Text
+renderLazy =
+  let push x = (:>x)
+
+      unsafePeek Nil    = error "peeking an empty stack"
+      unsafePeek (_:>x) = x
+
+      unsafePop Nil     = error "popping an empty stack"
+      unsafePop (xs:>x) = (x, xs)
+
+      go :: Stack [ANSI.SGR] -> PP.SimpleDocStream [ANSI.SGR] -> TLB.Builder
+      go s sds = case sds of
+        PP.SFail -> error "fail"
+        PP.SEmpty -> mempty
+        PP.SChar c rest -> TLB.singleton c <> go s rest
+        PP.SText _ t rest -> TLB.fromText t <> go s rest
+        PP.SLine i rest -> TLB.singleton '\n' <> TLB.fromText (T.replicate i (T.pack " ")) <> go s rest
+        PP.SAnnPush style rest ->
+            let currentStyle = unsafePeek s
+                newStyle = style <> currentStyle
+            in  TLB.fromText (T.pack (ANSI.setSGRCode newStyle)) <> go (push style s) rest
+        PP.SAnnPop rest ->
+            let (_currentStyle, s') = unsafePop s
+                newStyle = unsafePeek s'
+            in  TLB.fromText (T.pack (ANSI.setSGRCode newStyle)) <> go s' rest
+
+  in TLB.toLazyText . go Nil
