@@ -222,7 +222,7 @@ surface = Algebra
     TLocal n d -> name P.upper n d
     Local  n d -> name P.lower n d
     Quote  n d -> stimes (3 :: Int) $ name P.lower n d
-    Metavar  d -> setPrec Var (annotate Hole (pretty '?' <> evar d))
+    Metavar  d -> setPrec Var (annotate Hole (pretty '?' <> evar (Level (getMeta d))))
     Cons     n -> setPrec Var (annotate Con (pretty n))
   , tintro = name P.upper
   , intro = name P.lower
@@ -266,7 +266,7 @@ explicit = Algebra
     TLocal n d -> name P.upper n d
     Local  n d -> name P.lower n d
     Quote  n d -> stimes (3 :: Int) $ name P.lower n d
-    Metavar  d -> setPrec Var (annotate Hole (pretty '?' <> evar d))
+    Metavar  d -> setPrec Var (annotate Hole (pretty '?' <> evar (Level (getMeta d))))
     Cons     n -> setPrec Var (annotate Con (pretty n))
   , tintro = name P.upper
   , intro = name P.lower

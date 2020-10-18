@@ -29,7 +29,7 @@ data Var
   | TLocal UName Level
   | Local UName Level
   | Quote UName Level
-  | Metavar Level
+  | Metavar Meta
   | Cons CName
 
 qvar :: QName -> Var

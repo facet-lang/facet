@@ -187,11 +187,11 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     | pl l1 == pl l2                       = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (App . P (pl l1) <$> go (out l1 :===: out l2))
   unifyS _                                 = Nothing
 
-  solve :: Level :=: Prob v -> Elab v (Val v)
+  solve :: Meta :=: Prob v -> Elab v (Val v)
   solve (n :=: val') = do
     subst <- getSubst
     -- FIXME: occurs check
-    case subst IntMap.! getLevel n of
+    case subst IntMap.! getMeta n of
       Just val ::: _T -> go (val' :===: val)
       Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
 
@@ -199,12 +199,12 @@ unify (t1 :===: t2) = go (t1 :===: t2)
 meta :: Type v -> Elab v (Prob v)
 meta _T = do
   subst <- getSubst
-  let m = Level (length subst)
+  let m = Meta (length subst)
   put (insertSubst m (Nothing ::: _T) subst)
   pure $ metavar (m ::: _T)
 
-insertSubst :: Level -> Maybe (Prob v) ::: Type v -> Subst v -> Subst v
-insertSubst n (v ::: _T) = IntMap.insert (getLevel n) (v ::: _T)
+insertSubst :: Meta -> Maybe (Prob v) ::: Type v -> Subst v -> Subst v
+insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
 
 getSubst :: Has (State (Subst v)) sig (t v) => t v (Subst v)
 getSubst = get

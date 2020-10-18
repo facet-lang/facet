@@ -41,7 +41,7 @@ import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Context as Ctx
-import           Facet.Name (CName, Level(..), MName, QName, UName)
+import           Facet.Name (CName, Level(..), MName, Meta(..), QName, UName)
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
@@ -121,7 +121,7 @@ data Head a
   = Global (QName ::: Value a) -- ^ Global variables, considered equal by 'QName'.
   | Free a
   | Quote Level
-  | Metavar (Level ::: Value a) -- ^ Metavariables, considered equal by 'Level'.
+  | Metavar (Meta ::: Value a) -- ^ Metavariables, considered equal by 'Level'.
 
 instance Eq a => Eq (Head a) where
   Global q1  == Global q2  = tm q1 == tm q2
@@ -133,7 +133,7 @@ instance Eq a => Eq (Head a) where
   Metavar m1 == Metavar m2 = tm m1 == tm m2
   Metavar _  == _          = False
 
-unHead :: (QName ::: Value a -> b) -> (a -> b) -> (Level -> b) -> (Level ::: Value a -> b) -> Head a -> b
+unHead :: (QName ::: Value a -> b) -> (a -> b) -> (Level -> b) -> (Meta ::: Value a -> b) -> Head a -> b
 unHead f g h i = \case
   Global  n -> f n
   Free    n -> g n
@@ -155,7 +155,7 @@ free = var . Free
 quote :: Level -> Value a
 quote = var . Quote
 
-metavar :: Level ::: Value a -> Value a
+metavar :: Meta ::: Value a -> Value a
 metavar = var . Metavar
 
 
@@ -276,7 +276,7 @@ subst s
   | IntMap.null s = id
   | otherwise     = substHead (unHead global free quote (s !))
   where
-  s ! l = case IntMap.lookup (getLevel (tm l)) s of
+  s ! l = case IntMap.lookup (getMeta (tm l)) s of
     Just a  -> a
     Nothing -> metavar l
 
