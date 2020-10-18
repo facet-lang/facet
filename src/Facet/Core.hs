@@ -145,19 +145,19 @@ unForAll :: Has Empty sig m => Value -> m (Pl_ UName ::: Value, Value -> Value)
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unForAll' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unForAll' :: Has Empty sig m => (Level -> Pl_ UName ::: Value -> Value) -> (Level, Value) -> m ((Level, Pl_ UName ::: Value), (Level, Value))
-unForAll' var (d, v) = do
+unForAll' :: Has Empty sig m => (Level, Value) -> m (Pl_ UName ::: Value, (Level, Value))
+unForAll' (d, v) = do
   (_T, _B) <- unForAll v
-  pure ((d, _T), (succ d, _B (var d _T)))
+  pure (_T, (succ d, _B (free d)))
 
 unLam :: Has Empty sig m => Value -> m (Pl_ UName ::: Value, Value -> Value)
 unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
 
 -- | A variation on 'unLam' which can be conveniently chained with 'splitr' to strip a prefix of lambdas off their eventual body.
-unLam' :: Has Empty sig m => (Level -> Pl_ UName ::: Value -> Value) -> (Level, Value) -> m ((Level, Pl_ UName ::: Value), (Level, Value))
-unLam' var (d, v) = do
+unLam' :: Has Empty sig m => (Level, Value) -> m (Pl_ UName ::: Value, (Level, Value))
+unLam' (d, v) = do
   (n, t) <- unLam v
-  pure ((d, n), (succ d, t (var d n)))
+  pure (n, (succ d, t (free d)))
 
 
 -- FIXME: how should this work in weak/parametric HOAS?

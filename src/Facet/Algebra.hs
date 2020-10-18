@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Algebra
 ( -- * Folds
@@ -66,17 +67,25 @@ data Algebra p = Algebra
   }
 
 
-foldCValue :: Algebra p -> Level -> C.Value -> p
+foldCValue :: forall p . Algebra p -> Stack p -> C.Value -> p
 foldCValue alg = go
   where
-  go d = \case
+  go :: Stack p -> C.Value -> p
+  go env = \case
     C.Type  -> _Type alg
     t C.:=> b  ->
-      let (vs, (d', b')) = splitr (C.unForAll' (const . C.free)) (d, t C.:=> b)
-      in fn alg (map (\ (d, n ::: _T) -> let n' = if T.null (getUName (out n)) then Nothing else Just (tintro alg (out n) d) in P (pl n) (n' ::: go d _T)) vs) (go d' b')
+      let (vs, (_, b')) = splitr C.unForAll' (d, t C.:=> b)
+          binding env (n ::: _T) = (env :> tvar env (n ::: _T), P (pl n) (name (out n) d ::: go env _T))
+          name n d
+            | T.null (getUName n) = Nothing
+            | otherwise           = Just (tintro alg n d)
+          (env', vs') = mapAccumL binding env vs
+      in fn alg vs' (go env' b')
     C.Lam n b  ->
-      let (vs, (d', b')) = splitr (C.unLam' (const . C.free)) (d, C.Lam n b)
-      in lam alg [clause alg (map (\ (d, n) -> P (pl (tm n)) (unPl tintro intro (pl (tm n)) alg (out (tm n)) d ::: Just (go d (ty n)))) vs) (go d' b')]
+      let (vs, (_, b')) = splitr C.unLam' (d, C.Lam n b)
+          binding env (n ::: _T) = (env :> lvar env (n ::: _T), P (pl n) (unPl_ (tintro alg) (intro alg) n (Level (length env)) ::: Just (go env _T)))
+          (env', vs') = mapAccumL binding env vs
+      in lam alg [clause alg vs' (go env' b')]
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     C.Neut h e ->
@@ -84,22 +93,26 @@ foldCValue alg = go
             Nil -> h
             sp  -> app alg h sp
           elim h sp  (es:>e) = case e of
-            C.App a   -> elim h (sp . (:> fmap (go d) a)) es
+            C.App a   -> elim h (sp . (:> fmap (go env) a)) es
             C.Case ps -> case' alg (elim h id es) (map clause ps)
-          h' = C.unHead (ann' alg . bimap (var alg . qvar) (go d)) (var alg . Quote __) (ann' alg . bimap (var alg . Metavar) (go d)) h
+          h' = C.unHead (ann' alg . bimap (var alg . qvar) (go env)) (var alg . Quote __) (ann' alg . bimap (var alg . Metavar) (go env)) h
           clause (p, b) =
-            let ((d', p'), v) = pat d p
-            in (p', go d' (b v))
+            let ((env', p'), v) = pat env p
+            in (p', go env' (b v))
       in elim h' id e
-    C.VCon n p -> app alg (ann' alg (bimap (var alg . qvar) (go d) n)) (fmap (ex . go d) p)
+    C.VCon n p -> app alg (ann' alg (bimap (var alg . qvar) (go env) n)) (fmap (ex . go env) p)
+    where
+    d = Level (length env)
+  tvar env n = ann' alg (var alg (TLocal (out (tm n)) (Level (length env))) ::: go env (ty n))
+  lvar env n = ann' alg (var alg (unPl_ TLocal Local (tm n) (Level (length env))) ::: go env (ty n))
 
-  pat d = \case
-    C.Wildcard -> ((d, wildcard alg), C.Wildcard)
-    C.Var n    -> let v = ann' alg (var alg (Local (tm n) d) ::: go d (ty n)) in ((succ d, v), C.Var (C.free d))
+  pat env = \case
+    C.Wildcard -> ((env, wildcard alg), C.Wildcard)
+    C.Var n    -> let { d = Level (length env) ; v = ann' alg (var alg (Local (tm n) d) ::: go env (ty n)) } in ((env :> v, v), C.Var (C.free d))
     C.Con n ps ->
-      let ((d', p'), ps') = subpatterns d ps
-      in ((d', pcon alg (ann' alg (bimap (var alg . qvar) (go d) n)) p'), C.Con n ps')
-  subpatterns d ps = mapAccumL (\ (d', ps) p -> let ((d'', v), p') = pat d' p in ((d'', ps:>v), p')) (d, Nil) ps
+      let ((env', p'), ps') = subpatterns env ps
+      in ((env', pcon alg (ann' alg (bimap (var alg . qvar) (go env) n)) p'), C.Con n ps')
+  subpatterns env ps = mapAccumL (\ (env', ps) p -> let ((env'', v), p') = pat env' p in ((env'', ps:>v), p')) (env, Nil) ps
 
 foldCModule :: Algebra p -> C.Module -> p
 foldCModule alg (C.Module n ds) = module_ alg
@@ -109,12 +122,12 @@ foldCModule alg (C.Module n ds) = module_ alg
   where
   def (m :.: n, d ::: t) = decl alg
     $   var alg (Global (Just m) n)
-    ::: defn alg (foldCValue alg (Level 0) t
+    ::: defn alg (foldCValue alg Nil t
     :=: case d of
-      C.DTerm b  -> foldCValue alg (Level 0) b
-      C.DType b  -> foldCValue alg (Level 0) b
+      C.DTerm b  -> foldCValue alg Nil b
+      C.DType b  -> foldCValue alg Nil b
       C.DData cs -> data' alg
-        $ map (decl alg . bimap (var alg . Cons) (foldCValue alg (Level 0))) cs)
+        $ map (decl alg . bimap (var alg . Cons) (foldCValue alg Nil)) cs)
 
 
 foldSType :: Algebra p -> Stack p -> Spanned S.Type -> p

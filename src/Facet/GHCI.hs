@@ -31,6 +31,7 @@ import           Facet.Name (Index(..), Level(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
+import           Facet.Stack (Stack(..))
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
@@ -78,9 +79,10 @@ toNotice :: Maybe N.Level -> Source -> Err -> N.Notice
 toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason
   in N.Notice lvl (fromSourceAndSpan src span) reason' $
-    [ P.getPrint $ P.printContextEntry l (n ::: foldCValue P.explicit l _T)
+    [ P.getPrint $ P.printContextEntry l (n ::: foldCValue P.explicit Nil _T)
     | (l, n ::: _ ::: _T) <- zip [Level 0..] (toList (elems context))
     ]
+    -- FIXME: foldl over the context printing each element in the smaller context before it.
 
 
 printReason :: Context (Value ::: Type) -> Reason -> ErrDoc
@@ -88,8 +90,8 @@ printReason ctx = group . \case
   FreeVariable n         -> fillSep [P.reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> P.reflow "could not synthesize a type for" <> softline <> P.reflow msg
   Mismatch msg exp act   ->
-    let exp' = either P.reflow (printType l) exp
-        act' = printType l act
+    let exp' = either P.reflow (printType Nil) exp
+        act' = printType Nil act
     in P.reflow msg
       </> pretty "expected:" <> print exp'
       </> pretty "  actual:" <> print act'
@@ -97,12 +99,13 @@ printReason ctx = group . \case
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T              ->
-    let _T' = printType l _T
+    let _T' = printType Nil _T
     in fillSep [P.reflow "found hole", pretty n, colon, _T' ]
   BadContext n           -> fillSep [ P.reflow "no variable bound for index", pretty (getIndex n), P.reflow "in context of length", pretty (length ctx) ]
   where
-  l = level ctx
+  -- FIXME: foldl over the context printing each element in the smaller context before it.
+  env = elems ctx
 
 
-printType :: Level -> Type -> ErrDoc
-printType l = P.getPrint . foldCValue P.explicit l
+printType :: Stack P.Print -> Type -> ErrDoc
+printType env = P.getPrint . foldCValue P.explicit env
