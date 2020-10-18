@@ -27,7 +27,7 @@ import           Data.Semigroup (stimes)
 import           Facet.Algebra (foldCModule, foldCValue, foldSModule)
 import           Facet.Context
 import           Facet.Core (Value)
-import           Facet.Elab as Elab (Err(..), ErrDoc, Reason(..), Type, elabModule)
+import           Facet.Elab as Elab (Err(..), Reason(..), Type, elabModule)
 import           Facet.Name (Index(..), Level(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
@@ -35,6 +35,7 @@ import qualified Facet.Print as P
 import           Facet.Stack (Stack(..))
 import qualified Facet.Surface as S
 import           Facet.Syntax
+import           Prettyprinter (Doc)
 import           Prettyprinter.Render.Terminal (AnsiStyle, Color(..), bold, color)
 import           Silkscreen (annotate, colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 import           Text.Parser.Position (Spanned)
@@ -87,7 +88,7 @@ toNotice lvl src Err{ span, reason, context } =
     -- FIXME: foldl over the context printing each element in the smaller context before it.
 
 
-printReason :: Context (Value ::: Type) -> Reason -> ErrDoc
+printReason :: Context (Value ::: Type) -> Reason -> Doc AnsiStyle
 printReason ctx = group . \case
   FreeVariable n         -> fillSep [P.reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> P.reflow "could not synthesize a type for" <> softline <> P.reflow msg
@@ -109,7 +110,7 @@ printReason ctx = group . \case
   env = elems ctx
 
 
-printType :: Stack P.Print -> Type -> ErrDoc
+printType :: Stack P.Print -> Type -> Doc AnsiStyle
 printType env = P.getPrint . foldCValue P.explicit env
 
 

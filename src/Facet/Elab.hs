@@ -37,7 +37,6 @@ module Facet.Elab
   -- * Modules
 , elabModule
   -- * Errors
-, ErrDoc
 , Err(..)
 , Reason(..)
 ) where
@@ -64,8 +63,6 @@ import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
-import           Prettyprinter (Doc)
-import           Prettyprinter.Render.Terminal (AnsiStyle)
 import           Text.Parser.Position (Spanned)
 
 type Type = Value
@@ -517,8 +514,6 @@ withSpan k (s, a) = setSpan s (k a)
 withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (Span, a) -> b -> m c
 withSpan' k (s, a) b = setSpan s (k a b)
 
-
-type ErrDoc = Doc AnsiStyle
 
 data Err = Err
   { span    :: Span
