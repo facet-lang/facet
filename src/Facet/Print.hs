@@ -57,7 +57,7 @@ getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
 
 terminalStyle :: Highlight -> [ANSI.SGR]
 terminalStyle = \case
-  Nest i -> [setRGB (pick i 0.5 0.6)]
+  Nest i -> [setRGB (pick i 0.4 0.8)]
   Name i -> [setRGB (pick (-getLevel i) 0.8 0.6)]
   Op     -> [setRGB cyan]
   Type   -> [setRGB yellow]
