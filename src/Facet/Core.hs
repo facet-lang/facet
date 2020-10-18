@@ -256,6 +256,7 @@ substHead subst = go
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
     VCon n p -> VCon (fmap go n) (fmap go p)
+
   substElim = \case
     App a   -> App (fmap go a)
     Case cs -> Case (map (bimap (bimap go (fmap go)) (go .)) cs)
