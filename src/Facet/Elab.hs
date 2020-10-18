@@ -357,7 +357,7 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 
 elabClauses :: Context (Value ::: Type) -> [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check Expr
 -- FIXME: do the same thing for wildcards
-elabClauses ctx [((_, S.Var n):|ps, b)] = Check $ \ _T -> do
+elabClauses ctx [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
   b' <- n ::: _A |- \ v -> do
     let ctx' = ctx |> (n ::: v ::: _A)
@@ -390,8 +390,8 @@ elabPattern
   :: Spanned S.Pattern
   -> Check (C.Pattern Type (UName ::: Type))
 elabPattern = withSpan $ \case
-  S.Var n    -> Check $ \ _T -> pure (C.PVar (n ::: _T))
-  S.Con n ps -> Check $ \ _T -> do
+  S.PVar n    -> Check $ \ _T -> pure (C.PVar (n ::: _T))
+  S.PCon n ps -> Check $ \ _T -> do
     q ::: _T' <- synth (resolve (C n))
     let go _T' = \case
           Nil   -> Nil <$ unify (_T' :===: _T)

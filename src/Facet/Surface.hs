@@ -58,8 +58,8 @@ data Comp
 
 
 data Pattern
-  = Var UName
-  | Con CName [Spanned Pattern]
+  = PVar UName
+  | PCon CName [Spanned Pattern]
   deriving (Show)
 
 
