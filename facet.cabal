@@ -72,7 +72,6 @@ library
     , optparse-applicative
     , parsers
     , prettyprinter
-    , prettyprinter-ansi-terminal
     , selective
     , semialign
     , silkscreen
