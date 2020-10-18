@@ -92,8 +92,8 @@ foldCValue alg = go
             Nil -> h
             sp  -> app alg h sp
           elim h sp  (es:>e) = case e of
-            C.App a   -> elim h (sp . (:> fmap (go env) a)) es
-            C.Case ps -> case' alg (elim h id es) (map clause ps)
+            C.EApp a   -> elim h (sp . (:> fmap (go env) a)) es
+            C.ECase ps -> case' alg (elim h id es) (map clause ps)
           h' = C.unHead (ann' alg . bimap (var alg . qvar) (go env)) ((env !) . getIndex . levelToIndex d) (ann' alg . bimap (var alg . Metavar) (go env)) h
           clause (p, b) =
             let ((env', p'), v) = pat env p

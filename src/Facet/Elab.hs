@@ -144,11 +144,11 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     -- FIXME: build and display a diff of the root types
     t1                   :===: t2                   -> couldNotUnify t1 t2
 
-  unifyS (Nil          :===: Nil)          = Just (pure Nil)
+  unifyS (Nil           :===: Nil)           = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
-  unifyS (i1 :> App l1 :===: i2 :> App l2)
-    | pl l1 == pl l2                       = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (App . P (pl l1) <$> go (out l1 :===: out l2))
-  unifyS _                                 = Nothing
+  unifyS (i1 :> EApp l1 :===: i2 :> EApp l2)
+    | pl l1 == pl l2                         = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (EApp . P (pl l1) <$> go (out l1 :===: out l2))
+  unifyS _                                   = Nothing
 
   solve :: Meta :=: Prob -> Elab Value
   solve (n :=: val') = do

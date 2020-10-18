@@ -91,11 +91,11 @@ instance Eq Value where
     eqSp _ Nil       Nil       = True
     eqSp _ _         _         = False
     eqElim n = curry $ \case
-      (App a1, App a2) -> pl a1 == pl a2 && go n (out a1) (out a2)
-      (App _, _) -> False
-      (Case cs1, Case cs2)
+      (EApp a1, EApp a2) -> pl a1 == pl a2 && go n (out a1) (out a2)
+      (EApp _, _) -> False
+      (ECase cs1, ECase cs2)
         | length cs1 == length cs2 -> and (zipWith (eqPat n) (toList cs1) (toList cs2))
-      (Case _, _) -> False
+      (ECase _, _) -> False
     eqPat n (p1, b1) (p2, b2)
       =   void p1 == void p2
       &&  let (n', p') = mapAccumL (\ n _ -> (succ n, free n)) n p2
@@ -116,8 +116,8 @@ unHead f g h = \case
 
 
 data Elim a
-  = App (Pl_ a) -- FIXME: this is our one codata case; should we generalize this to copattern matching?
-  | Case [(Pattern a (UName ::: a), Pattern a a -> a)] -- FIXME: we can (and should) eliminate var patterns eagerly.
+  = EApp (Pl_ a) -- FIXME: this is our one codata case; should we generalize this to copattern matching?
+  | ECase [(Pattern a (UName ::: a), Pattern a a -> a)] -- FIXME: we can (and should) eliminate var patterns eagerly.
 
 
 data Con t a = Con (QName ::: t) (Stack a)
@@ -168,7 +168,7 @@ unLam' (d, v) = do
 
 -- FIXME: how should this work in weak/parametric HOAS?
 ($$) :: HasCallStack => Value -> Pl_ Value -> Value
-Neut h es $$ a = Neut h (es :> App a)
+Neut h es $$ a = Neut h (es :> EApp a)
 (_ :=> b) $$ a = b (out a)
 Lam _  b  $$ a = b (out a)
 _         $$ _ = error "can’t apply non-neutral/forall type"
@@ -177,7 +177,7 @@ infixl 9 $$
 
 
 case' :: HasCallStack => Value -> [(Pattern Value (UName ::: Value), Pattern Value Value -> Value)] -> Value
-case' (Neut h es) cs = Neut h (es :> Case cs)
+case' (Neut h es) cs = Neut h (es :> ECase cs)
 case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) cs) of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
@@ -194,8 +194,8 @@ match = curry $ \case
 
 elim :: HasCallStack => Value -> Elim Value -> Value
 elim v = \case
-  App a   -> v $$ a
-  Case cs -> case' v cs
+  EApp a   -> v $$ a
+  ECase cs -> case' v cs
 
 elimN :: (HasCallStack, Foldable t) => Value -> t (Elim Value) -> Value
 elimN f as = foldl' elim f as
@@ -230,8 +230,8 @@ subst s
     VCon c   -> VCon (bimap go go c)
 
   substElim = \case
-    App a   -> App (fmap go a)
-    Case cs -> Case (map (bimap (bimap go (fmap go)) (go .)) cs)
+    EApp a   -> EApp (fmap go a)
+    ECase cs -> ECase (map (bimap (bimap go (fmap go)) (go .)) cs)
 
   s ! l = case IntMap.lookup (getMeta (tm l)) s of
     Just a  -> a
@@ -290,8 +290,8 @@ quote d = \case
   Neut h sp ->
     let qSp h Nil     = h
         qSp h (sp:>e) = case e of
-          App a   -> QApp (qSp h sp) (fmap (quote d) a)
-          Case cs -> QCase (qSp h sp) (map qClause cs)
+          EApp a   -> QApp (qSp h sp) (fmap (quote d) a)
+          ECase cs -> QCase (qSp h sp) (map qClause cs)
         qClause (p, b)
           | let (d', p') = mapAccumL (\ d _ -> (succ d, var (Free d))) d p
           = ( bimap (quote d) (fmap (quote d)) p
