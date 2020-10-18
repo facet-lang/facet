@@ -122,6 +122,7 @@ instance (Eq a, Num a) => Eq (Value a) where
 data Head a
   = Global (QName ::: Value a) -- ^ Global variables, considered equal by 'QName'.
   | Free a
+  | Quote Level
   | Metavar (Meta ::: Value a) -- ^ Metavariables, considered equal by 'Level'.
 
 instance Eq a => Eq (Head a) where
@@ -129,14 +130,17 @@ instance Eq a => Eq (Head a) where
   Global _   == _          = False
   Free a1    == Free a2    = a1 == a2
   Free _     == _          = False
+  Quote l1   == Quote l2   = l1 == l2
+  Quote _    == _          = False
   Metavar m1 == Metavar m2 = tm m1 == tm m2
   Metavar _  == _          = False
 
-unHead :: (QName ::: Value a -> b) -> (a -> b) -> (Meta ::: Value a -> b) -> Head a -> b
-unHead f g h = \case
+unHead :: (QName ::: Value a -> b) -> (a -> b) -> (Level -> b) -> (Meta ::: Value a -> b) -> Head a -> b
+unHead f g h i = \case
   Global  n -> f n
   Free    n -> g n
-  Metavar n -> h n
+  Quote   n -> h n
+  Metavar n -> i n
 
 
 data Elim a
@@ -149,6 +153,9 @@ global = var . Global
 
 free :: a -> Value a
 free = var . Free
+
+quote :: Level -> Value a
+quote = var . Quote
 
 metavar :: Meta ::: Value a -> Value a
 metavar = var . Metavar
@@ -244,11 +251,12 @@ subst s
     Unit     -> Unit
     t :=> b  -> fmap go t :=> go . b
     Lam n b  -> Lam (fmap go n) (go . b)
-    Neut f a -> unHead global free (s !) f' `elimN` fmap substElim a
+    Neut f a -> unHead global free quote (s !) f' `elimN` fmap substElim a
       where
       f' = case f of
         Global  (n ::: _T) -> Global  (n ::: go _T)
         Free    v          -> Free    v
+        Quote   v          -> Quote   v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
     TPrd l r -> TPrd (go l) (go r)
     Prd  l r -> Prd  (go l) (go r)
