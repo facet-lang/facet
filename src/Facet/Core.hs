@@ -7,6 +7,7 @@ module Facet.Core
   Value(..)
 , Head(..)
 , Elim(..)
+, Con(..)
 , unHead
 , global
 , free
@@ -117,6 +118,9 @@ unHead f g h = \case
 data Elim a
   = App (Pl_ a) -- FIXME: this is our one codata case; should we generalize this to copattern matching?
   | Case [(Pattern a (UName ::: a), Pattern a a -> a)]
+
+
+data Con t a = Con (QName ::: t) (Stack a)
 
 
 global :: QName ::: Value -> Value
