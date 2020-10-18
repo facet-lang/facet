@@ -169,13 +169,14 @@ unify (t1 :===: t2) = go (t1 :===: t2)
       , Just e' <- unifyS (e1 :===: e2) -> Neut h1 <$> e'
     Neut (Metavar v) Nil :===: x                    -> solve (tm v :=: x)
     x                    :===: Neut (Metavar v) Nil -> solve (tm v :=: x)
-    t1 :=> b1            :===: t2 :=> b2            -> do
-      t <- go (ty t1 :===: ty t2)
-      b <- out (tm t1) ::: t |- \ v -> do
-        let b1' = b1 v
-            b2' = b2 v
-        go (b1' :===: b2')
-      pure $ tm t1 ::: t :=> b
+    t1 :=> b1            :===: t2 :=> b2
+      | pl (tm t1) == pl (tm t2) -> do
+        t <- go (ty t1 :===: ty t2)
+        b <- out (tm t1) ::: t |- \ v -> do
+          let b1' = b1 v
+              b2' = b2 v
+          go (b1' :===: b2')
+        pure $ tm t1 ::: t :=> b
     TPrd l1 r1           :===: TPrd l2 r2           -> TPrd <$> go (l1 :===: l2) <*> go (r1 :===: r2)
     Prd  l1 r1           :===: Prd  l2 r2           -> Prd  <$> go (l1 :===: l2) <*> go (r1 :===: r2)
     -- FIXME: build and display a diff of the root types
