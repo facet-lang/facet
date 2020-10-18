@@ -31,7 +31,7 @@ import           Facet.Stack
 import           Facet.Surface (Expr, Type)
 import           Prelude hiding (print)
 import           Prettyprinter as P hiding (column, width)
-import           Prettyprinter.Render.Terminal (AnsiStyle, renderLazy)
+import           Prettyprinter.Render.Terminal (AnsiStyle, Color(..), color, renderLazy)
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Position
@@ -126,7 +126,7 @@ reload = do
   let ln = length files
   for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
-    print $ green (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
+    print $ annotate (color Green) (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
     (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNotice n))
 
 helpDoc :: Doc AnsiStyle

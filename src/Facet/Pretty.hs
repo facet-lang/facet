@@ -14,13 +14,6 @@ module Facet.Pretty
 , varFrom
   -- * Columnar layout
 , tabulate2
-  -- * ANSI terminal colours
-, red
-, yellow
-, green
-, cyan
-, blue
-, magenta
 ) where
 
 import           Control.Monad.IO.Class
@@ -91,14 +84,3 @@ data Column a = Column { width :: Int, doc :: PP.Doc a }
 
 column :: PP.Doc a -> Column a
 column a = Column (length (show (PP.unAnnotate a))) a
-
-
--- ANSI terminal colours
-
-red, yellow, green, cyan, blue, magenta :: PP.Doc ANSI.AnsiStyle -> PP.Doc ANSI.AnsiStyle
-red     = annotate $ ANSI.color ANSI.Red
-yellow  = annotate $ ANSI.color ANSI.Yellow
-green   = annotate $ ANSI.color ANSI.Green
-cyan    = annotate $ ANSI.color ANSI.Cyan
-blue    = annotate $ ANSI.color ANSI.Blue
-magenta = annotate $ ANSI.color ANSI.Magenta
