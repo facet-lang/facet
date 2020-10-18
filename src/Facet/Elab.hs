@@ -120,9 +120,6 @@ unify
   -> Elab Type
 unify (t1 :===: t2) = go (t1 :===: t2)
   where
-  go
-    :: Prob :===: Prob
-    -> Elab Type
   go = \case
     -- FIXME: this is missing a lot of cases
     Type                 :===: Type                 -> pure Type
@@ -147,7 +144,6 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     | pl l1 == pl l2                         = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (EApp . P (pl l1) <$> go (out l1 :===: out l2))
   unifyS _                                   = Nothing
 
-  solve :: Meta :=: Prob -> Elab Value
   solve (n :=: val') = do
     subst <- get
     -- FIXME: occurs check
