@@ -26,6 +26,10 @@ module Facet.Print
 
 import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
+import           Data.Colour.Names
+import           Data.Colour.RGBSpace
+import           Data.Colour.RGBSpace.HSL
+import           Data.Colour.SRGB
 import           Data.Foldable (foldl', toList)
 import           Data.Function (on)
 import           Data.List (intersperse)
@@ -56,13 +60,14 @@ terminalStyle :: Highlight -> [ANSI.SGR]
 terminalStyle = \case
   Nest i -> [colours !! (i `mod` len)]
   Name i -> [reverse colours !! (getLevel i `mod` len)]
-  Op     -> [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Cyan]
-  Type   -> [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Yellow]
-  Con    -> [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
+  Op     -> [setRGB cyan]
+  Type   -> [setRGB yellow]
+  Con    -> [setRGB red]
   Lit    -> [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
   Hole m -> ANSI.SetConsoleIntensity ANSI.BoldIntensity : [reverse colours !! (getMeta m `mod` len)]
   ANSI s -> s
   where
+  setRGB = ANSI.SetRGBColor ANSI.Foreground
   colours =
     [ ANSI.Red
     , ANSI.Green

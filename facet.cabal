@@ -62,6 +62,7 @@ library
     , ansi-terminal
     , base ^>= 4.14
     , charset
+    , colour
     , containers
     , fused-effects
     , fused-effects-lens
