@@ -260,14 +260,6 @@ substHead subst = go
     App a   -> App (fmap go a)
     Case cs -> Case (map (bimap (bimap go (fmap go)) (go .)) cs)
 
--- FIXME: is it possible to instead perform one complete substitution at the end of <whatever>?
-substQ :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
-substQ s = substHead (unHead global free (s !) metavar)
-  where
-  s ! l = case IntMap.lookup (getLevel l) s of
-    Just a  -> a
-    Nothing -> quote l
-
 -- | Substitute metavars.
 subst :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
 subst s
