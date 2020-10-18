@@ -11,6 +11,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 module Facet.Elab
 ( M(..)
 , Val
@@ -562,8 +563,8 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (T
             modify $ Env.insert (mname :.: C n :=: Just (apply s (go Nil _T')) ::: _T')
             pure $ n ::: _T'
           pure (qname, C.DData cs' ::: _T)
-        Right e' -> do
-          modify $ Env.insert (qname :=: Just (apply s e') ::: _T)
+        Right (apply s -> e') -> do
+          modify $ Env.insert (qname :=: Just e' ::: _T)
           pure (qname, C.DTerm e' ::: _T)
 
       -- FIXME: support defining types
