@@ -87,7 +87,7 @@ instance Algebra (Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Thro
   alg hdl sig ctx = case sig of
     L renv          -> Elab $ alg (elab . hdl) (inj renv) ctx
     R (L rspan)     -> Elab $ alg (elab . hdl) (inj rspan) ctx
-    R (R (L smctx)) -> Elab $ alg (elab . hdl) (inj smctx) ctx
+    R (R (L subst)) -> Elab $ alg (elab . hdl) (inj subst) ctx
     R (R (R throw)) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
