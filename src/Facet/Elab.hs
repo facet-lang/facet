@@ -113,21 +113,21 @@ unify (t1 :===: t2) = go (t1 :===: t2)
   where
   go = \case
     -- FIXME: this is missing a lot of cases
-    Type                 :===: Type                 -> pure Type
+    VType                 :===: VType                 -> pure VType
     -- FIXME: resolve globals to try to progress past certain inequalities
-    Neut h1 e1           :===: Neut h2 e2
+    VNeut h1 e1           :===: VNeut h2 e2
       | h1 == h2
-      , Just e' <- unifyS (e1 :===: e2) -> Neut h1 <$> e'
-    Neut (Metavar v) Nil :===: x                    -> solve (tm v :=: x)
-    x                    :===: Neut (Metavar v) Nil -> solve (tm v :=: x)
-    t1 :=> b1            :===: t2 :=> b2
+      , Just e' <- unifyS (e1 :===: e2)               -> VNeut h1 <$> e'
+    VNeut (Metavar v) Nil :===: x                     -> solve (tm v :=: x)
+    x                     :===: VNeut (Metavar v) Nil -> solve (tm v :=: x)
+    VForAll t1 b1         :===: VForAll t2 b2
       | pl (tm t1) == pl (tm t2) -> do
         t <- go (ty t1 :===: ty t2)
         b <- out (tm t1) ::: t |- \ v ->
           go (b1 v :===: b2 v)
-        pure $ tm t1 ::: t :=> b
+        pure $ VForAll (tm t1 ::: t) b
     -- FIXME: build and display a diff of the root types
-    t1                   :===: t2                   -> couldNotUnify t1 t2
+    t1                    :===: t2                    -> couldNotUnify t1 t2
 
   unifyS (Nil           :===: Nil)           = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
@@ -255,16 +255,16 @@ elabType ctx = withSpan' $ \case
 
 
 _Type :: Synth Type
-_Type = Synth $ pure $ Type ::: Type
+_Type = Synth $ pure $ VType ::: VType
 
 (>~>)
   :: (Pl_ UName ::: Check Type)
   -> (UName ::: Value ::: Type -> Check Type)
   -> Synth Type
 (n ::: t) >~> b = Synth $ do
-  _T <- check (t ::: Type)
-  b' <- out n ::: _T |- \ v -> check (b (out n ::: v ::: _T) ::: Type)
-  pure $ (n ::: _T :=> b') ::: Type
+  _T <- check (t ::: VType)
+  b' <- out n ::: _T |- \ v -> check (b (out n ::: v ::: _T) ::: VType)
+  pure $ (VForAll (n ::: _T) b') ::: VType
 
 infixr 1 >~>
 
@@ -294,7 +294,7 @@ lam
 lam n b = Check $ \ _T -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking lambda" _T
   b' <- out n ::: _T |- \ v -> check (b (out n ::: v ::: _T) ::: _B v)
-  pure (Lam (n ::: _T) b')
+  pure (VLam (n ::: _T) b')
 
 elabComp
   :: HasCallStack
@@ -327,7 +327,7 @@ elabClauses ctx [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
   b' <- n ::: _A |- \ v -> do
     let ctx' = ctx |> (n ::: v ::: _A)
     check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx' . pure . (,b)) (nonEmpty ps) ::: _B v)
-  pure $ Lam (P pl n ::: _A) b'
+  pure $ VLam (P pl n ::: _A) b'
 elabClauses ctx cs = Check $ \ _T -> do
   (P _ n ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
@@ -344,7 +344,7 @@ elabClauses ctx cs = Check $ \ _T -> do
         in check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx') rest ::: _B')
       pure (p', b')
     pure $ case' v cs'
-  pure $ Lam (ex __ ::: _A) b'
+  pure $ VLam (ex __ ::: _A) b'
   where
   partitionClause (_:|ps, b) = case ps of
     []   -> XL ()
@@ -425,7 +425,7 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
     let qname = mname :.: n
         e ::: t = elabDecl d
 
-    _T <- runEnv . runSubst . elab $ check (t empty ::: Type)
+    _T <- runEnv . runSubst . elab $ check (t empty ::: VType)
 
     modify $ Env.insert (qname :=: Nothing ::: _T)
 
@@ -435,8 +435,8 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
         cs' <- for cs $ \ (n ::: _T) -> do
           let _T' = apply s _T
               go fs = \case
-                _T :=> _B -> Lam _T (\ v -> go (fs :> v) (_B v))
-                _T        -> VCon (Con (mname :.: C n ::: _T) fs)
+                VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
+                _T            -> VCon (Con (mname :.: C n ::: _T) fs)
           modify $ Env.insert (mname :.: C n :=: Just (apply s (go Nil _T')) ::: _T')
           pure $ n ::: _T'
         pure (qname, C.DData cs' ::: _T)

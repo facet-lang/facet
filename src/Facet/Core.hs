@@ -53,15 +53,13 @@ import           Prelude hiding (zip, zipWith)
 
 -- FIXME: represent closed portions of the tree explicitly?
 data Value
-  = Type
-  | (Pl_ UName ::: Value) :=> (Value -> Value)
+  = VType
+  | VForAll (Pl_ UName ::: Value) (Value -> Value)
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
-  | Lam (Pl_ UName ::: Value) (Value -> Value)
+  | VLam (Pl_ UName ::: Value) (Value -> Value)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | Neut (Head Value Level) (Stack Elim)
+  | VNeut (Head Value Level) (Stack Elim)
   | VCon (Con Value Value)
-
-infixr 1 :=>
 
 instance Eq Value where
   (==) = (==) `on` quote (Level 0)
@@ -109,11 +107,11 @@ metavar = var . Metavar
 
 
 var :: Head Value Level -> Value
-var = (`Neut` Nil)
+var = (`VNeut` Nil)
 
 
 unForAll :: Has Empty sig m => Value -> m (Pl_ UName ::: Value, Value -> Value)
-unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
+unForAll = \case{ VForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unForAll' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
 unForAll' :: Has Empty sig m => (Level, Value) -> m (Pl_ UName ::: Value, (Level, Value))
@@ -122,7 +120,7 @@ unForAll' (d, v) = do
   pure (_T, (succ d, _B (free d)))
 
 unLam :: Has Empty sig m => Value -> m (Pl_ UName ::: Value, Value -> Value)
-unLam = \case{ Lam n b -> pure (n, b) ; _ -> empty }
+unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 
 -- | A variation on 'unLam' which can be conveniently chained with 'splitr' to strip a prefix of lambdas off their eventual body.
 unLam' :: Has Empty sig m => (Level, Value) -> m (Pl_ UName ::: Value, (Level, Value))
@@ -133,17 +131,17 @@ unLam' (d, v) = do
 
 -- FIXME: how should this work in weak/parametric HOAS?
 ($$) :: HasCallStack => Value -> Pl_ Value -> Value
-Neut h es $$ a = Neut h (es :> EApp a)
-(_ :=> b) $$ a = b (out a)
-Lam _  b  $$ a = b (out a)
-_         $$ _ = error "can’t apply non-neutral/forall type"
+VNeut h es  $$ a = VNeut h (es :> EApp a)
+VForAll _ b $$ a = b (out a)
+VLam _    b $$ a = b (out a)
+_           $$ _ = error "can’t apply non-neutral/forall type"
 
 infixl 9 $$
 
 
 case' :: HasCallStack => Value -> [(Pattern Value (UName ::: Value), Pattern Value Value -> Value)] -> Value
-case' (Neut h es) cs = Neut h (es :> ECase cs)
-case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) cs) of
+case' (VNeut h es) cs = VNeut h (es :> ECase cs)
+case' s            cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) cs) of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
@@ -183,16 +181,16 @@ subst s
   | otherwise     = go
   where
   go = \case
-    Type     -> Type
-    t :=> b  -> fmap go t :=> go . b
-    Lam n b  -> Lam (fmap go n) (go . b)
-    Neut f a -> unHead global free (s !) f' `elimN` fmap substElim a
+    VType       -> VType
+    VForAll t b -> VForAll (fmap go t) (go . b)
+    VLam    n b -> VLam (fmap go n) (go . b)
+    VNeut f a   -> unHead global free (s !) f' `elimN` fmap substElim a
       where
       f' = case f of
         Global  (n ::: _T) -> Global  (n ::: go _T)
         Free    v          -> Free    v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
-    VCon c   -> VCon (bimap go go c)
+    VCon c      -> VCon (bimap go go c)
 
   substElim = \case
     EApp a   -> EApp (fmap go a)
@@ -249,11 +247,11 @@ data QExpr
 
 quote :: Level -> Value -> QExpr
 quote d = \case
-  Type -> QType
+  VType -> QType
   VCon c -> QCon (bimap (quote d) (quote d) c)
-  Lam (n ::: t) b -> QLam (n ::: quote d t) (quote (succ d) (b (var (Free d))))
-  n ::: t :=> b -> QForAll (n ::: quote d t) (quote (succ d) (b (var (Free d))))
-  Neut h sp ->
+  VLam (n ::: t) b -> QLam (n ::: quote d t) (quote (succ d) (b (var (Free d))))
+  VForAll (n ::: t) b -> QForAll (n ::: quote d t) (quote (succ d) (b (var (Free d))))
+  VNeut h sp ->
     let qSp h Nil     = h
         qSp h (sp:>e) = case e of
           EApp a   -> QApp (qSp h sp) (fmap (quote d) a)
@@ -266,10 +264,10 @@ quote d = \case
 
 eval :: Stack Value -> QExpr -> Value
 eval env = \case
-  QType -> Type
+  QType -> VType
   QCon c -> VCon (bimap (eval env) (eval env) c)
-  QLam (n ::: t) b -> Lam (n ::: eval env t) (\ v -> eval (env:>v) b)
-  QForAll (n ::: t) b -> n ::: eval env t :=> \ v -> eval (env:>v) b
+  QLam (n ::: t) b -> VLam (n ::: eval env t) (\ v -> eval (env:>v) b)
+  QForAll (n ::: t) b -> VForAll (n ::: eval env t) (\ v -> eval (env:>v) b)
   QVar h -> unHead (global . fmap (eval env)) ((env !) . getIndex) (metavar . fmap (eval env)) h
   QApp f a -> eval env f $$ fmap (eval env) a
   QCase s cs -> case' (eval env s) (map (evalClause env) cs)

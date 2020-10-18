@@ -71,23 +71,23 @@ foldCValue alg = go
   where
   go :: Stack p -> C.Value -> p
   go env = \case
-    C.Type  -> _Type alg
-    t C.:=> b  ->
-      let (vs, (_, b')) = splitr C.unForAll' (d, t C.:=> b)
+    C.VType -> _Type alg
+    C.VForAll t b ->
+      let (vs, (_, b')) = splitr C.unForAll' (d, C.VForAll t b)
           binding env (n ::: _T) = (env :> tvar env (n ::: _T), P (pl n) (name (out n) (Level (length env)) ::: go env _T))
           name n d
             | T.null (getUName n) = Nothing
             | otherwise           = Just (tintro alg n d)
           (env', vs') = mapAccumL binding env vs
       in fn alg vs' (go env' b')
-    C.Lam n b  ->
-      let (vs, (_, b')) = splitr C.unLam' (d, C.Lam n b)
+    C.VLam n b ->
+      let (vs, (_, b')) = splitr C.unLam' (d, C.VLam n b)
           binding env (n ::: _T) = (env :> lvar env (n ::: _T), P (pl n) (unPl_ (tintro alg) (intro alg) n (Level (length env)) ::: Just (go env _T)))
           (env', vs') = mapAccumL binding env vs
       in lam alg [clause alg vs' (go env' b')]
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
-    C.Neut h e ->
+    C.VNeut h e ->
       let elim h sp  Nil     = case sp Nil of
             Nil -> h
             sp  -> app alg h sp
