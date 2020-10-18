@@ -311,9 +311,9 @@ lam
   -> (UName ::: Expr ::: Type -> Check Expr)
   -> Check Expr
 lam n b = Check $ \ _T -> do
-  (_T, _B) <- expectQuantifiedType "when checking lambda" _T
-  b' <- n ::: ty _T |- \ v -> check (b (n ::: v ::: ty _T) ::: _B v)
-  pure (Lam (ex n ::: ty _T) b')
+  (_ ::: _T, _B) <- expectQuantifiedType "when checking lambda" _T
+  b' <- n ::: _T |- \ v -> check (b (n ::: v ::: _T) ::: _B v)
+  pure (Lam (ex n ::: _T) b')
 
 elabComp
   :: HasCallStack
