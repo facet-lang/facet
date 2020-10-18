@@ -63,7 +63,7 @@ terminalStyle = \case
   Type   -> [setRGB yellow]
   Con    -> [setRGB red]
   Lit    -> [bold]
-  Hole m -> [bold, setRGB (pick (-getMeta m) 0.7 0.3)]
+  Hole m -> [bold, setRGB (pick (-getMeta m) 0.5 0.45)]
   ANSI s -> s
   where
   setRGB = ANSI.SetRGBColor ANSI.Foreground
