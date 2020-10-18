@@ -525,8 +525,7 @@ data Reason
 err :: Has (Reader (Context (Value ::: Type)) :+: Reader Span :+: Throw Err) sig m => Reason -> m a
 err reason = do
   span <- ask
-  ctx <- askContext
-  throwError $ Err span reason ctx
+  throwError $ Err span reason empty -- FIXME: we should either eliminate the context or pass it in
 
 mismatch :: Has (Reader (Context (Value ::: Type)) :+: Reader Span :+: Throw Err) sig m => String -> Either String Type -> Type -> m a
 mismatch msg exp act = err $ Mismatch msg exp act
