@@ -57,7 +57,6 @@ data Algebra p = Algebra
   , _Void :: p
   , ann' :: (p ::: p) -> p
   , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
-  , wildcard :: p
   , pcon     :: p -> Stack p -> p
   , tuple    :: [p] -> p
   , decl :: p ::: p -> p
