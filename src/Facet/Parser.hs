@@ -201,8 +201,7 @@ evar
 
 bindPattern :: PositionParsing p => S.Pattern -> Facet p a -> Facet p a
 bindPattern p m = case p of
-  S.Wildcard -> bind N.__ (const m)
-  S.Var n    -> bind n    (const m)
+  S.Var n    -> bind n (const m)
   S.Con _ ps -> foldr (bindPattern . snd) m ps
 
 bindVarPattern :: Maybe N.EName -> (N.UName -> Facet p res) -> Facet p res
@@ -220,7 +219,7 @@ wildcard = reserve enameStyle "_"
 pattern :: (Monad p, PositionParsing p) => p (Spanned S.Pattern)
 pattern = spanned
   $   S.Var . N.getEName <$> ename
-  <|> S.Wildcard <$  wildcard
+  <|> S.Var N.__         <$  wildcard
   <|> try (parens (S.Con <$> cname <*> many pattern))
   <?> "pattern"
 

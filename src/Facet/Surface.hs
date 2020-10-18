@@ -58,8 +58,7 @@ data Comp
 
 
 data Pattern
-  = Wildcard
-  | Var UName
+  = Var UName
   | Con CName [Spanned Pattern]
   deriving (Show)
 

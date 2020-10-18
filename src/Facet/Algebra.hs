@@ -165,7 +165,6 @@ foldSExpr alg = go
   cls env ps b = let ((_, env'), ps') = mapAccumL (\ (d, env) -> fmap (ex . (::: Nothing)) . pat d env) (Level (length env), env) ps in clause alg (toList ps') (go env' b)
 
   pat d env (_, p) = case p of
-    S.Wildcard -> ((d, env), wildcard alg)
     S.Var n    -> let v = intro alg n d in ((succ d, env:>v), v)
     S.Con n ps ->
       let ((d', env'), ps') = subpatterns d env ps
