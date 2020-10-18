@@ -197,11 +197,11 @@ unify (t1 :===: t2) = go (t1 :===: t2)
 
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Type v -> Elab v Meta
+meta :: Type v -> Elab v (Meta ::: Type v)
 meta _T = do
   subst <- getSubst
   let m = Meta (length subst)
-  m <$ put (insertSubst m (Nothing ::: _T) subst)
+  (m ::: _T) <$ put (insertSubst m (Nothing ::: _T) subst)
 
 insertSubst :: Meta -> Maybe (Prob v) ::: Type v -> Subst v -> Subst v
 insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
@@ -213,7 +213,7 @@ getSubst = get
 instantiate :: Expr v ::: Type v -> Elab v (Expr v ::: Type v)
 instantiate (e ::: _T) = case unForAll _T of
   Just (P Im _ ::: _T, _B) -> do
-    m <- metavar . (::: _T) <$> meta _T
+    m <- metavar <$> meta _T
     instantiate (e C.$$ im m ::: _B m)
   _                        -> pure $ e ::: _T
 
@@ -276,7 +276,7 @@ f $$ a = Synth $ do
   -> Elab v (Val v -> Val v)
 n ::: _T |- f = do
   m <- meta _T
-  handleBinder (m ::: _T) (\ v -> local (|> (n ::: v ::: _T)) (f v))
+  handleBinder m (\ v -> local (|> (n ::: v ::: _T)) (f v))
 
 infix 1 |-
 
@@ -477,7 +477,7 @@ elabPattern = withSpan $ \case
             (_A, _B) <- expectQuantifiedType "when checking constructor pattern" _T'
             p' <- check (elabPattern p ::: ty _A)
             -- FIXME: there’s no way this is going to work, let alone a good idea
-            v <- metavar . (::: ty _A) <$> meta (ty _A)
+            v <- metavar <$> meta (ty _A)
             ps' <- go (_B v) ps
             pure $ p' : ps'
     C.Con (q ::: _T') <$> go _T' ps
