@@ -250,6 +250,7 @@ surface = Algebra
   , defn = \ (a :=: b) -> a </> b
   , data' = block . commaSep
   , module_ = \ (n ::: t :=: ds) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (embed (vsep (intersperse mempty ds)))
+  , let_ = \ (m ::: t :=: v) b -> embed $ pretty "let" <+> align (braces (ann (var surface (Metavar m) ::: t) </> pretty '=' <+> v)) <+> b
   }
   where
   embed = nest 2 . group
@@ -294,6 +295,7 @@ explicit = Algebra
   , defn = \ (a :=: b) -> a </> b
   , data' = block . commaSep
   , module_ = \ (n ::: t :=: ds) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (embed (vsep (intersperse mempty ds)))
+  , let_ = \ (m ::: t :=: v) b -> embed $ pretty "let" <+> align (braces (ann (var surface (Metavar m) ::: t) </> pretty '=' <+> v)) <+> b
   }
   where
   embed = nest 2 . group
