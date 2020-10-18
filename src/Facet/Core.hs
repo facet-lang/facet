@@ -99,9 +99,7 @@ instance Eq Value where
     eqPat n (p1, b1) (p2, b2)
       =   void p1 == void p2
       &&  let (n', p') = mapAccumL (\ n _ -> (succ n, free n)) n p2
-              b1' = b1 p'
-              b2' = b2 p'
-          in go n' b1' b2'
+          in go n' (b1 p') (b2 p')
 
 
 data Head t a
