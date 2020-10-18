@@ -93,7 +93,8 @@ instance Printer Print where
   liftDoc1 f (Print v d) = Print v (liftDoc1 f d)
   liftDoc2 f (Print v1 d1) (Print v2 d2) = Print (v1 <> v2) (liftDoc2 f d1 d2)
 
-  -- NB: FIXME: these run everything twice which seems bad.
+  -- FIXME: these run everything twice which seems bad.
+  -- but then again, laziness.
   column    f = Print (fvs (f 0))         (column    (doc . f))
   nesting   f = Print (fvs (f 0))         (nesting   (doc . f))
   pageWidth f = Print (fvs (f Unbounded)) (pageWidth (doc . f))
