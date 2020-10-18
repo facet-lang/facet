@@ -278,13 +278,13 @@ data QExpr
   | QLam (Pl_ UName ::: QExpr) QExpr
   | QApp QExpr (Pl_ QExpr)
   | QCase QExpr [(Pattern QExpr (UName ::: QExpr), QExpr)]
-  | QCon (QName ::: QExpr) (Stack QExpr)
+  | QCon (Con QExpr QExpr)
   deriving (Eq, Ord, Show)
 
 quote :: Level -> Value -> QExpr
 quote d = \case
   Type -> QType
-  VCon (Con (n ::: t) fs) -> QCon (n ::: quote d t) (fmap (quote d) fs)
+  VCon c -> QCon (bimap (quote d) (quote d) c)
   Lam (n ::: t) b -> QLam (n ::: quote d t) (quote (succ d) (b (var (Free d))))
   n ::: t :=> b -> QForAll (n ::: quote d t) (quote (succ d) (b (var (Free d))))
   Neut h sp ->
@@ -301,7 +301,7 @@ quote d = \case
 eval :: Stack Value -> QExpr -> Value
 eval env = \case
   QType -> Type
-  QCon (n ::: t) fs -> VCon (Con (n ::: eval env t) (fmap (eval env) fs))
+  QCon c -> VCon (bimap (eval env) (eval env) c)
   QLam (n ::: t) b -> Lam (n ::: eval env t) (\ v -> eval (env:>v) b)
   QForAll (n ::: t) b -> n ::: eval env t :=> \ v -> eval (env:>v) b
   QVar h -> unHead (global . fmap (eval env)) ((env !) . getIndex) (metavar . fmap (eval env)) h
