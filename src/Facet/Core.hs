@@ -154,9 +154,6 @@ global = var . Global
 free :: a -> Value a
 free = var . Free
 
-quote :: Level -> Value a
-quote = var . Quote
-
 metavar :: Meta ::: Value a -> Value a
 metavar = var . Metavar
 
@@ -251,7 +248,7 @@ subst s
     Unit     -> Unit
     t :=> b  -> fmap go t :=> go . b
     Lam n b  -> Lam (fmap go n) (go . b)
-    Neut f a -> unHead global free quote (s !) f' `elimN` fmap substElim a
+    Neut f a -> unHead global free (var . Quote) (s !) f' `elimN` fmap substElim a
       where
       f' = case f of
         Global  (n ::: _T) -> Global  (n ::: go _T)
