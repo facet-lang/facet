@@ -25,7 +25,6 @@ module Facet.Elab
   -- * Types
 , elabType
 , _Type
-, (-->)
 , (>~>)
   -- * Expressions
 , elabExpr
@@ -257,14 +256,6 @@ elabType ctx = withSpan' $ \case
 
 _Type :: Synth Type
 _Type = Synth $ pure $ Type ::: Type
-
-(-->)
-  :: Check Type
-  -> Check Type
-  -> Synth Type
-a --> b = ex __ ::: a >~> const b
-
-infixr 1 -->
 
 (>~>)
   :: (Pl_ UName ::: Check Type)
