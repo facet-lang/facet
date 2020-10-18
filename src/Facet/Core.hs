@@ -121,6 +121,7 @@ data Elim a
 
 
 data Con t a = Con (QName ::: t) (Stack a)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
 global :: QName ::: Value -> Value
