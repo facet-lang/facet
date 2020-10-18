@@ -91,10 +91,6 @@ instance Algebra (Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Thro
     R (R (R throw)) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
-askEnv :: Has (Reader (Env.Env Type)) sig m => m (Env.Env Type)
-askEnv = ask
-
-
 newtype Check a = Check { runCheck :: Type -> Elab a }
   deriving (Algebra (Reader Type :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
 
@@ -181,7 +177,7 @@ switch (Synth m) = \case
 resolve
   :: DName
   -> Synth QName
-resolve n = Synth $ Env.lookup n <$> askEnv >>= \case
+resolve n = Synth $ Env.lookup n <$> ask >>= \case
   Just (m :=: _ ::: _T) -> pure $ m :.: n ::: _T
   Nothing
     | E (EName n) <- n  -> synth (resolve (C (CName n)))
