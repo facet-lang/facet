@@ -29,6 +29,8 @@ module Facet.Core
   -- * Modules
 , Module(..)
 , Def(..)
+  -- * Quotation
+, QExpr(..)
 ) where
 
 import           Control.Effect.Empty
@@ -41,7 +43,7 @@ import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Context as Ctx
-import           Facet.Name (CName, Level(..), MName, Meta(..), QName, UName)
+import           Facet.Name (CName, Index, Level(..), MName, Meta(..), QName, UName)
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
@@ -304,3 +306,22 @@ data Def a
   = DTerm (Value a)
   | DType (Value a)
   | DData [CName ::: Value a]
+
+
+-- Quotation
+
+data QExpr
+  = QGlobal QName QExpr
+  | QVar Index
+  | QType
+  | QVoid
+  | QTUnit
+  | QUnit
+  | QTPrd QExpr QExpr
+  | QPrd QExpr QExpr
+  | QForAll (Pl_ UName ::: QExpr)
+  | QLam (Pl_ UName ::: QExpr) QExpr
+  | QApp QExpr QExpr
+  | QCase QExpr (Pattern QExpr (UName ::: QExpr)) QExpr
+  | QCon (QName ::: QExpr) (Stack QExpr)
+  deriving (Eq, Ord, Show)
