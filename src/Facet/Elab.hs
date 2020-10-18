@@ -95,9 +95,6 @@ instance Algebra (Reader (Env.Env Type) :+: Reader (Context (Value ::: Type)) :+
 askEnv :: Has (Reader (Env.Env Type)) sig m => m (Env.Env Type)
 askEnv = ask
 
-askContext :: Has (Reader (Context (Value ::: Type))) sig m => m (Context (Value ::: Type))
-askContext = ask
-
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
   deriving (Algebra (Reader Type :+: Reader (Env.Env Type) :+: Reader (Context (Value ::: Type)) :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
