@@ -108,9 +108,9 @@ foldCValue alg = go
 
   pat env = \case
     C.PVar n    -> let { d = Level (length env) ; v = ann' alg (var alg (Local (tm n) d) ::: go env (ty n)) } in ((env :> v, v), C.PVar (C.free d))
-    C.PCon n ps ->
+    C.PCon (C.Con n ps) ->
       let ((env', p'), ps') = subpatterns env ps
-      in ((env', pcon alg (ann' alg (bimap (var alg . qvar) (go env) n)) p'), C.PCon n ps')
+      in ((env', pcon alg (ann' alg (bimap (var alg . qvar) (go env) n)) p'), C.PCon (C.Con n ps'))
   subpatterns env ps = mapAccumL (\ (env', ps) p -> let ((env'', v), p') = pat env' p in ((env'', ps:>v), p')) (env, Nil) ps
 
 foldCModule :: Algebra p -> C.Module -> p

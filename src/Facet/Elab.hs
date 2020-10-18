@@ -395,15 +395,15 @@ elabPattern = withSpan $ \case
   S.Con n ps -> Check $ \ _T -> do
     q ::: _T' <- synth (resolve (C n))
     let go _T' = \case
-          []   -> [] <$ unify (_T' :===: _T)
-          p:ps -> do
+          Nil   -> Nil <$ unify (_T' :===: _T)
+          ps:>p -> do
             (_A, _B) <- expectQuantifiedType "when checking constructor pattern" _T'
-            p' <- check (elabPattern p ::: ty _A)
             -- FIXME: there’s no way this is going to work, let alone a good idea
             v <- metavar <$> meta (ty _A)
             ps' <- go (_B v) ps
-            pure $ p' : ps'
-    C.PCon (q ::: _T') <$> go _T' ps
+            p' <- check (elabPattern p ::: ty _A)
+            pure $ ps' :> p'
+    C.PCon . Con (q ::: _T') <$> go _T' (fromList ps)
 
 
 -- Declarations

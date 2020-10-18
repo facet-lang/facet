@@ -41,11 +41,13 @@ import           Data.Foldable (foldl', toList)
 import           Data.Functor (void)
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
+import           Data.Semialign
 import           Data.Traversable (mapAccumL)
 import           Facet.Name (CName, Index(..), Level(..), MName, Meta(..), QName, UName, levelToIndex)
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
+import           Prelude hiding (zip, zipWith)
 
 -- Values
 
@@ -184,12 +186,12 @@ case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s
 
 match :: Value -> Pattern Value b -> Maybe (Pattern Value Value)
 match = curry $ \case
-  (s,          PVar _)          -> Just (PVar s)
-  (VCon (Con n' fs), PCon n ps) -> do
+  (s,          PVar _)                -> Just (PVar s)
+  (VCon (Con n' fs), PCon (Con n ps)) -> do
     guard (tm n == tm n')
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
-    PCon n' <$> sequenceA (zipWith match (toList fs) ps)
-  (_,          PCon _ _)        -> Nothing
+    PCon . Con n' <$> sequenceA (zipWith match fs ps)
+  (_,          PCon _)                -> Nothing
 
 
 elim :: HasCallStack => Value -> Elim Value -> Value
@@ -242,7 +244,7 @@ subst s
 
 data Pattern t a
   = PVar a
-  | PCon (QName ::: t) [Pattern t a]
+  | PCon (Con t (Pattern t a))
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 instance Bifoldable Pattern where
@@ -256,7 +258,7 @@ instance Bitraversable Pattern where
     where
     go = \case
       PVar a -> PVar <$> g a
-      PCon (n ::: t) ps -> PCon . (n :::) <$> f t <*> traverse go ps
+      PCon c -> PCon <$> bitraverse f go c
 
 
 -- Modules
