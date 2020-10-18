@@ -307,13 +307,13 @@ tlam n b = Check $ \ _T -> do
   pure (Lam (im n ::: _T) b')
 
 lam
-  :: UName
+  :: Pl_ UName
   -> (UName ::: Expr ::: Type -> Check Expr)
   -> Check Expr
 lam n b = Check $ \ _T -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking lambda" _T
-  b' <- n ::: _T |- \ v -> check (b (n ::: v ::: _T) ::: _B v)
-  pure (Lam (ex n ::: _T) b')
+  b' <- out n ::: _T |- \ v -> check (b (out n ::: v ::: _T) ::: _B v)
+  pure (Lam (n ::: _T) b')
 
 elabComp
   :: HasCallStack
@@ -410,7 +410,7 @@ elabDecl d = go d id id
 
     (n ::: t) S.:--> b ->
       go b
-        (km . (\ b  ctx -> lam n (b . (ctx |>))))
+        (km . (\ b  ctx -> lam (ex n) (b . (ctx |>))))
         (kt . (\ _B ctx -> checkElab (switch (ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
 
     t S.:= b -> (\ ctx -> elabDeclBody km ctx b) ::: kt (\ ctx -> checkElab (elabType ctx t))
