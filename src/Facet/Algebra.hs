@@ -28,7 +28,6 @@ data Var
   = Global (Maybe MName) DName
   | TLocal UName Level
   | Local UName Level
-  | Quote UName Level
   | Metavar Meta
   | Cons CName
 
@@ -92,7 +91,7 @@ foldCValue alg = go
           elim h sp  (es:>e) = case e of
             C.App a   -> elim h (sp . (:> fmap (go d) a)) es
             C.Case ps -> case' alg (elim h id es) (map clause ps)
-          h' = C.unHead (ann' alg . bimap (var alg . qvar) (go d)) id (var alg . Quote __) (ann' alg . bimap (var alg . Metavar) (go d)) h
+          h' = C.unHead (ann' alg . bimap (var alg . qvar) (go d)) id (ann' alg . bimap (var alg . Metavar) (go d)) h
           clause (p, b) =
             let ((d', p'), v) = pat d p
             in (p', go d' (b v))
