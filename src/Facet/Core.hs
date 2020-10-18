@@ -58,7 +58,7 @@ data Value
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
   | Lam (Pl_ UName ::: Value) (Value -> Value)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | Neut (Head Value Level) (Stack (Elim Value))
+  | Neut (Head Value Level) (Stack Elim)
   | VCon (Con Value Value)
 
 infixr 1 :=>
@@ -115,9 +115,9 @@ unHead f g h = \case
   Metavar n -> h n
 
 
-data Elim a
-  = EApp (Pl_ a) -- FIXME: this is our one codata case; should we generalize this to copattern matching?
-  | ECase [(Pattern a (UName ::: a), Pattern a a -> a)] -- FIXME: we can (and should) eliminate var patterns eagerly.
+data Elim
+  = EApp (Pl_ Value) -- FIXME: this is our one codata case; should we generalize this to copattern matching?
+  | ECase [(Pattern Value (UName ::: Value), Pattern Value Value -> Value)] -- FIXME: we can (and should) eliminate var patterns eagerly.
 
 
 data Con t a = Con (QName ::: t) (Stack a)
@@ -192,12 +192,12 @@ match = curry $ \case
   (_,          PCon _)                -> Nothing
 
 
-elim :: HasCallStack => Value -> Elim Value -> Value
+elim :: HasCallStack => Value -> Elim -> Value
 elim v = \case
   EApp a   -> v $$ a
   ECase cs -> case' v cs
 
-elimN :: (HasCallStack, Foldable t) => Value -> t (Elim Value) -> Value
+elimN :: (HasCallStack, Foldable t) => Value -> t Elim -> Value
 elimN f as = foldl' elim f as
 
 
