@@ -60,7 +60,7 @@ terminalStyle = \case
   Type   -> ANSI.color ANSI.Yellow
   Con    -> ANSI.color ANSI.Red
   Lit    -> ANSI.bold
-  Hole   -> ANSI.bold <> ANSI.color ANSI.Black
+  Hole m -> ANSI.bold <> reverse colours !! (getMeta m `mod` len)
   ANSI s -> s
   where
   colours =
@@ -146,7 +146,7 @@ data Highlight
   | Type
   | Op
   | Lit
-  | Hole
+  | Hole Meta
   | ANSI ANSI.AnsiStyle
   deriving (Eq, Ord, Show)
 
@@ -210,7 +210,7 @@ surface = Algebra
     TLocal n d -> name P.upper n d
     Local  n d -> name P.lower n d
     Quote  n d -> stimes (3 :: Int) $ name P.lower n d
-    Metavar  d -> setPrec Var (annotate Hole (pretty '?' <> P.upper (getMeta d)))
+    Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> P.upper (getMeta m)))
     Cons     n -> setPrec Var (annotate Con (pretty n))
   , tintro = name P.upper
   , intro = name P.lower
@@ -221,7 +221,7 @@ surface = Algebra
     Just n -> ((pl, n) ::: _T) >~> b
     _      -> _T --> b) b as
   , app = \ f as -> f $$* fmap (unPl_ braces id) as
-  , hole = \ n -> annotate Hole $ pretty '?' <> pretty n
+  , hole = \ n -> annotate (Hole (Meta 0)) $ pretty '?' <> pretty n
   , _Type = annotate Type $ pretty "Type"
   , _Void = annotate Type $ pretty "Void"
   , ann' = tm
@@ -249,7 +249,7 @@ explicit = Algebra
     TLocal n d -> name P.upper n d
     Local  n d -> name P.lower n d
     Quote  n d -> stimes (3 :: Int) $ name P.lower n d
-    Metavar  d -> setPrec Var (annotate Hole (pretty '?' <> P.upper (getMeta d)))
+    Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> P.upper (getMeta m)))
     Cons     n -> setPrec Var (annotate Con (pretty n))
   , tintro = name P.upper
   , intro = name P.lower
@@ -260,7 +260,7 @@ explicit = Algebra
     Just n -> ((pl, n) ::: _T) >~> b
     _      -> _T --> b) b as
   , app = \ f as -> group f $$* fmap (group . unPl_ braces id) as
-  , hole = \ n -> annotate Hole $ pretty '?' <> pretty n
+  , hole = \ n -> annotate (Hole (Meta 0)) $ pretty '?' <> pretty n
   , _Type = annotate Type $ pretty "Type"
   , _Void = annotate Type $ pretty "Void"
   , ann' = group . tm
