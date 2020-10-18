@@ -52,6 +52,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Allow binding operator names as local variables.
 
+- Don’t require parens around qualified constructor patterns?
+
 
 ### Modules
 
