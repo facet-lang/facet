@@ -301,8 +301,8 @@ tlam
   :: UName
   -> (UName ::: Type ::: Type -> Check Expr)
   -> Check Expr
-tlam n b = Check $ \ ty -> do
-  (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
+tlam n b = Check $ \ _T -> do
+  (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" _T
   b' <- n ::: _T |- \ v -> check (b (n ::: v ::: _T) ::: _B v)
   pure (Lam (im n ::: _T) b')
 
