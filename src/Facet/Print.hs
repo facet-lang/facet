@@ -63,11 +63,12 @@ terminalStyle = \case
   Op     -> [setRGB cyan]
   Type   -> [setRGB yellow]
   Con    -> [setRGB red]
-  Lit    -> [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
-  Hole m -> ANSI.SetConsoleIntensity ANSI.BoldIntensity : [reverse colours !! (getMeta m `mod` len)]
+  Lit    -> [bold]
+  Hole m -> [bold, reverse colours !! (getMeta m `mod` len)]
   ANSI s -> s
   where
   setRGB = ANSI.SetRGBColor ANSI.Foreground
+  bold = ANSI.SetConsoleIntensity ANSI.BoldIntensity
   colours =
     [ ANSI.Red
     , ANSI.Green
