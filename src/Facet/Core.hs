@@ -231,11 +231,10 @@ handleBinder d b = do
   b' <- b (metavar d)
   pure $ (`subst` b') . IntMap.singleton (getMeta (tm d))
 
-handleBinderP :: (HasCallStack, Monad m, Traversable t) => Level -> t x -> (t (Value a) -> m (Value a)) -> m (t (Value a) -> Value a)
-handleBinderP d p b = do
-  let (_, p') = mapAccumL (\ d _ -> (succ d, quote d)) d p
-  b' <- b p'
-  pure $ \ v -> substQ (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
+handleBinderP :: (HasCallStack, Monad m, Traversable t) => t (Meta ::: Value a) -> (t (Value a) -> m (Value a)) -> m (t (Value a) -> Value a)
+handleBinderP p b = do
+  b' <- b (metavar <$> p)
+  pure $ \ v -> subst (foldl' (\ s (m ::: _, v) -> IntMap.insert (getMeta m) v s) IntMap.empty (zip (toList p) (toList v))) b'
 
 substHead :: HasCallStack => (Head a -> Value a) -> Value a -> Value a
 substHead subst = go

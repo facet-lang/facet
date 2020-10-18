@@ -285,8 +285,8 @@ infix 1 |-
   -> (C.Pattern (Type v) (Val v) -> Elab v (Val v))
   -> Elab v (C.Pattern (Type v) (Val v) -> Val v)
 p |-* f = do
-  ctx <- askContext
-  handleBinderP (level ctx) p (\ v ->
+  mp <- traverse (meta . ty) p
+  handleBinderP mp (\ v ->
     local (flip (foldl' (|>)) (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p) (toList v))) (f v))
 
 infix 1 |-*
