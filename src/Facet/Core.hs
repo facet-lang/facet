@@ -62,7 +62,7 @@ data Value a
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
   | Lam (Pl_ UName ::: Value a) (Value a -> Value a)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | Neut (Head a) (Stack (Elim (Value a)))
+  | Neut (Head Level a) (Stack (Elim (Value a)))
   | TPrd (Value a) (Value a) -- FIXME: 🔥
   | Prd (Value a) (Value a)  -- FIXME: 🔥
   | VCon (QName ::: Value a) (Stack (Value a))
@@ -120,13 +120,13 @@ instance (Eq a, Num a) => Eq (Value a) where
           in go n' b1' b2'
 
 
-data Head a
-  = Global (QName ::: Value a) -- ^ Global variables, considered equal by 'QName'.
-  | Free a
-  | Quote Level
-  | Metavar (Meta ::: Value a) -- ^ Metavariables, considered equal by 'Level'.
+data Head a b
+  = Global (QName ::: Value b) -- ^ Global variables, considered equal by 'QName'.
+  | Free b
+  | Quote a
+  | Metavar (Meta ::: Value b) -- ^ Metavariables, considered equal by 'Level'.
 
-instance Eq a => Eq (Head a) where
+instance (Eq a, Eq b) => Eq (Head a b) where
   Global q1  == Global q2  = tm q1 == tm q2
   Global _   == _          = False
   Free a1    == Free a2    = a1 == a2
@@ -136,7 +136,7 @@ instance Eq a => Eq (Head a) where
   Metavar m1 == Metavar m2 = tm m1 == tm m2
   Metavar _  == _          = False
 
-unHead :: (QName ::: Value a -> b) -> (a -> b) -> (Level -> b) -> (Meta ::: Value a -> b) -> Head a -> b
+unHead :: (QName ::: Value b -> c) -> (b -> c) -> (a -> c) -> (Meta ::: Value b -> c) -> Head a b -> c
 unHead f g h i = \case
   Global  n -> f n
   Free    n -> g n
@@ -159,7 +159,7 @@ metavar :: Meta ::: Value a -> Value a
 metavar = var . Metavar
 
 
-var :: Head a -> Value a
+var :: Head Level a -> Value a
 var = (`Neut` Nil)
 
 
