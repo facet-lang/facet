@@ -205,6 +205,7 @@ subst s
 
 -- Patterns
 
+-- FIXME: eliminate this by unrolling cases into shallow, constructor-headed matches
 data Pattern t a
   = PVar a
   | PCon (Con t (Pattern t a))
