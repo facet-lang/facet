@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 module Facet.REPL
 ( repl
 ) where
@@ -9,11 +10,12 @@ import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Fresh.Church
-import           Control.Carrier.Parser.Church
+import           Control.Carrier.Parser.Church hiding (runParserWith, runParserWithFile, runParserWithString)
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=))
-import           Control.Effect.Parser.Notice (Notice, prettyNotice)
+import           Control.Effect.Parser.Notice (Level(..), Notice, Style(..), prettyNoticeWith)
+import           Control.Effect.Parser.Source (sourceFromString)
 import           Control.Effect.Parser.Span (Pos(..))
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
@@ -31,7 +33,7 @@ import           Facet.Stack
 import           Facet.Surface (Expr, Type)
 import           Prelude hiding (print)
 import           Prettyprinter as P hiding (column, width)
-import           Prettyprinter.Render.Terminal (AnsiStyle, Color(..), color, renderLazy)
+import qualified System.Console.ANSI as ANSI
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Position
@@ -67,7 +69,7 @@ files_ = lens files (\ r files -> r{ files })
 loop :: (Has Empty sig m, Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
   (line, resp) <- prompt
-  runError (print . prettyNotice) pure $ case resp of
+  runError (print . prettyNoticeWith sgrStyle) pure $ case resp of
     -- FIXME: evaluate expressions
     Just resp -> runParserWithString (Pos line 0) resp (runFacet [] (whole commandParser)) >>= runAction
     Nothing   -> pure ()
@@ -114,22 +116,22 @@ data Action
   | Type (Spanned Expr)
   | Kind (Spanned Type)
 
-load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
+load :: (Has (Error (Notice [ANSI.SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
   files_ %= Map.insert path File{ loaded = False }
   runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface
 
-reload :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
+reload :: (Has (Error (Notice [ANSI.SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 reload = do
   files <- use files_
   -- FIXME: topological sort
   let ln = length files
   for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
-    print $ annotate (color Green) (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
-    (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNotice n))
+    print $ annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green] (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
+    (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNoticeWith sgrStyle n))
 
-helpDoc :: Doc AnsiStyle
+helpDoc :: Doc [ANSI.SGR]
 helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
   where
   entries = map entry commands
@@ -144,7 +146,39 @@ prompt = do
   p <- liftIO $ fn line
   (,) line <$> getInputLine p
 
-print :: (Has Readline sig m, MonadIO m) => Doc AnsiStyle -> m ()
+print :: (Has Readline sig m, MonadIO m) => Doc [ANSI.SGR] -> m ()
 print d = do
   opts <- liftIO layoutOptionsForTerminal
   outputStrLn (unpack (renderLazy (layoutSmart opts d)))
+
+
+sgrStyle :: Style [ANSI.SGR]
+sgrStyle = Style
+  { pathStyle   = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  , levelStyle  = \case
+    Warn  -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Magenta]
+    Error -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
+  , posStyle    = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  , gutterStyle = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
+  , eofStyle    = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
+  , caretStyle  = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
+  }
+
+
+
+runParserWithString :: Has (Throw (Notice [ANSI.SGR])) sig m => Pos -> String -> ParserC m a -> m a
+runParserWithString pos str = runParserWith Nothing (Input pos str)
+{-# INLINE runParserWithString #-}
+
+runParserWithFile :: (Has (Throw (Notice [ANSI.SGR])) sig m, MonadIO m) => FilePath -> ParserC m a -> m a
+runParserWithFile path p = do
+  input <- liftIO (readFile path)
+  runParserWith (Just path) (Input (Pos 0 0) input) p
+{-# INLINE runParserWithFile #-}
+
+runParserWith :: Has (Throw (Notice [ANSI.SGR])) sig m => Maybe FilePath -> Input -> ParserC m a -> m a
+runParserWith path input = runParser (const pure) failure failure input
+  where
+  src = sourceFromString path (str input)
+  failure = throwError @(Notice [ANSI.SGR]) . errToNotice src
+{-# INLINE runParserWith #-}

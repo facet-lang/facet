@@ -59,8 +59,10 @@ library
     Paths_facet
     Text.Parser.Position
   build-depends:
+    , ansi-terminal
     , base ^>= 4.14
     , charset
+    , colour
     , containers
     , fused-effects
     , fused-effects-lens
@@ -70,7 +72,6 @@ library
     , optparse-applicative
     , parsers
     , prettyprinter
-    , prettyprinter-ansi-terminal
     , selective
     , semialign
     , silkscreen

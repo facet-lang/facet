@@ -24,8 +24,11 @@ module Facet.Print
 , explicit
 ) where
 
-import           Control.Applicative ((<**>))
 import           Control.Monad.IO.Class
+import           Data.Colour.Names
+import           Data.Colour.RGBSpace
+import           Data.Colour.RGBSpace.HSL
+import           Data.Colour.SRGB
 import           Data.Foldable (foldl', toList)
 import           Data.Function (on)
 import           Data.List (intersperse)
@@ -37,43 +40,36 @@ import           Facet.Name hiding (ann)
 import qualified Facet.Pretty as P
 import           Facet.Syntax
 import qualified Prettyprinter as PP
-import qualified Prettyprinter.Render.Terminal as ANSI
 import           Silkscreen as P
 import           Silkscreen.Printer.Prec hiding (Level)
 import qualified Silkscreen.Printer.Prec as P
 import           Silkscreen.Printer.Rainbow as P
+import qualified System.Console.ANSI as ANSI
 
 prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = P.putDoc . getPrint
 
-getPrint :: Print -> PP.Doc ANSI.AnsiStyle
+getPrint :: Print -> PP.Doc [ANSI.SGR]
 getPrint = PP.reAnnotate terminalStyle . getPrint'
 
 getPrint' :: Print -> PP.Doc Highlight
 getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
 
-terminalStyle :: Highlight -> ANSI.AnsiStyle
+terminalStyle :: Highlight -> [ANSI.SGR]
 terminalStyle = \case
-  Nest i -> colours !! (i `mod` len)
-  Name i -> reverse colours !! (getLevel i `mod` len)
-  Op     -> ANSI.color ANSI.Cyan
-  Type   -> ANSI.color ANSI.Yellow
-  Con    -> ANSI.color ANSI.Red
-  Lit    -> ANSI.bold
-  Hole m -> ANSI.bold <> reverse colours !! (getMeta m `mod` len)
+  Nest i -> [setRGB (pick i 0.4 0.8)]
+  Name i -> [setRGB (pick (-getLevel i) 0.8 0.6)]
+  Op     -> [setRGB cyan]
+  Type   -> [setRGB yellow]
+  Con    -> [setRGB red]
+  Lit    -> [bold]
+  Hole m -> [bold, setRGB (pick (-getMeta m) 0.5 0.45)]
   ANSI s -> s
   where
-  colours =
-    [ ANSI.Red
-    , ANSI.Green
-    , ANSI.Yellow
-    , ANSI.Blue
-    , ANSI.Magenta
-    , ANSI.Cyan
-    ]
-    <**>
-    [ANSI.color, ANSI.colorDull]
-  len = length colours
+  setRGB = ANSI.SetRGBColor ANSI.Foreground
+  bold = ANSI.SetConsoleIntensity ANSI.BoldIntensity
+  pick i s l = uncurryRGB sRGB (hsl (fromIntegral i * phi * 30) s l)
+  phi = 1.618033988749895
 
 
 data Print = Print { fvs :: FVs, doc :: Prec Precedence (Rainbow (PP.Doc Highlight)) }
@@ -147,8 +143,8 @@ data Highlight
   | Op
   | Lit
   | Hole Meta
-  | ANSI ANSI.AnsiStyle
-  deriving (Eq, Ord, Show)
+  | ANSI [ANSI.SGR]
+  deriving (Eq, Show)
 
 op :: (Printer p, Ann p ~ Highlight) => p -> p
 op = annotate Op
