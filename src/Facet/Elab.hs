@@ -386,7 +386,12 @@ elabDecl d = go d id id
   go d km kt = withSpans d $ \case
     (n ::: t) S.:==> b ->
       go b
-        (km . (\ b  ctx -> lam (im n) (b . (ctx |>))))
+        (km . (\ b ctx -> Check $ \ _T -> do
+          (_ ::: _T, _B) <- expectQuantifiedType "when checking lambda" _T
+          let d = level ctx
+              v = free d
+          b' <- check (b (ctx |> (n ::: v ::: _T)) ::: _B v)
+          pure (VLam (im n ::: _T) (\ v -> C.bind d v b'))))
         (kt . (\ _B ctx -> checkElab (switch (im n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
 
     (n ::: t) S.:--> b ->
