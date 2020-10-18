@@ -250,7 +250,7 @@ elabType ctx = withSpan' $ \case
   S.Type     -> switch $ _Type
   t S.:=> b  -> switch $ bimap im (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
   f S.:$$ a  -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
-  a S.:-> b  -> switch $ checkElab (elabType ctx a) --> checkElab (elabType ctx b)
+  a S.:-> b  -> switch $ ex __ ::: checkElab (elabType ctx a) >~> \ _ -> checkElab (elabType ctx b)
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
