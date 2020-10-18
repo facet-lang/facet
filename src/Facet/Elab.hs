@@ -390,8 +390,8 @@ elabPattern
   :: Spanned S.Pattern
   -> Check (C.Pattern Type (UName ::: Type))
 elabPattern = withSpan $ \case
-  S.Wildcard -> Check $ \ _T -> pure (C.Var (__ ::: _T))
-  S.Var n    -> Check $ \ _T -> pure (C.Var (n ::: _T))
+  S.Wildcard -> Check $ \ _T -> pure (C.PVar (__ ::: _T))
+  S.Var n    -> Check $ \ _T -> pure (C.PVar (n ::: _T))
   S.Con n ps -> Check $ \ _T -> do
     q ::: _T' <- synth (resolve (C n))
     let go _T' = \case
@@ -403,7 +403,7 @@ elabPattern = withSpan $ \case
             v <- metavar <$> meta (ty _A)
             ps' <- go (_B v) ps
             pure $ p' : ps'
-    C.Con (q ::: _T') <$> go _T' ps
+    C.PCon (q ::: _T') <$> go _T' ps
 
 
 -- Declarations

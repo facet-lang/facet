@@ -170,12 +170,12 @@ case' s           cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s
 
 match :: Value -> Pattern Value b -> Maybe (Pattern Value Value)
 match = curry $ \case
-  (s,          Var _)          -> Just (Var s)
-  (VCon n' fs, Con n ps)       -> do
+  (s,          PVar _)          -> Just (PVar s)
+  (VCon n' fs, PCon n ps)       -> do
     guard (tm n == tm n')
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
-    Con n' <$> sequenceA (zipWith match (toList fs) ps)
-  (_,          Con _ _)        -> Nothing
+    PCon n' <$> sequenceA (zipWith match (toList fs) ps)
+  (_,          PCon _ _)        -> Nothing
 
 
 elim :: HasCallStack => Value -> Elim Value -> Value
@@ -227,8 +227,8 @@ subst s
 -- Patterns
 
 data Pattern t a
-  = Var a
-  | Con (QName ::: t) [Pattern t a]
+  = PVar a
+  | PCon (QName ::: t) [Pattern t a]
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 instance Bifoldable Pattern where
@@ -241,8 +241,8 @@ instance Bitraversable Pattern where
   bitraverse f g = go
     where
     go = \case
-      Var a -> Var <$> g a
-      Con (n ::: t) ps -> Con . (n :::) <$> f t <*> traverse go ps
+      PVar a -> PVar <$> g a
+      PCon (n ::: t) ps -> PCon . (n :::) <$> f t <*> traverse go ps
 
 
 -- Modules
