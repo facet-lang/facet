@@ -319,6 +319,7 @@ data QExpr a
   = QGlobal (QName ::: QExpr a)
   | QVar Index
   | QFree a
+  | QMeta (Meta ::: QExpr a)
   | QType
   | QVoid
   | QTUnit
