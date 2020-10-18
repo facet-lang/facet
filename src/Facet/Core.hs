@@ -261,7 +261,6 @@ data Def
 
 -- Quotation
 
--- FIXME: use Head.
 data QExpr
   = QVar (Head QExpr Index)
   | QType
