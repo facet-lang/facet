@@ -63,7 +63,6 @@ data Value a
   | TPrd (Value a) (Value a) -- FIXME: 🔥
   | Prd (Value a) (Value a)  -- FIXME: 🔥
   | VCon (QName ::: Value a) (Stack (Value a))
-  | Let (Meta ::: Value a :=: Value a) (Value a -> Value a)
 
 infixr 1 :=>
 
@@ -100,14 +99,6 @@ instance (Eq a, Num a) => Eq (Value a) where
       (VCon n1 p1, VCon n2 p2)
         | length p1 == length p2 -> go n (ty n1) (ty n2) && and (zipWith (go n) (toList p1) (toList p2))
       (VCon _ _, _) -> False
-      (Let (m1 ::: t1 :=: v1) b1, Let (m2 ::: t2 :=: v2) b2)
-        -> m1 == m2
-        && go n t1 t2
-        && go n v1 v2
-        && let b1' = b1 (free n)
-               b2' = b2 (free n)
-           in go (n + 1) b1' b2'
-      (Let{}, _) -> False
 
     eqSp n (sp1:>e1) (sp2:>e2) = eqSp n sp1 sp2 && eqElim n e1 e2
     eqSp _ Nil       Nil       = True
@@ -247,33 +238,31 @@ handleBinderP p b = do
 
 -- | Substitute metavars.
 subst :: HasCallStack => IntMap.IntMap (Value a) -> Value a -> Value a
-subst = go
+subst s
+  | IntMap.null s = id
+  | otherwise     = go
   where
-  go s
-    | IntMap.null s = id
-    | otherwise     = \case
-      Type     -> Type
-      Void     -> Void
-      TUnit    -> TUnit
-      Unit     -> Unit
-      t :=> b  -> fmap (go s) t :=> go s . b
-      Lam n b  -> Lam (fmap (go s) n) (go s . b)
-      Neut f a -> unHead global free quote (s !) f' `elimN` fmap (substElim s) a
-        where
-        f' = case f of
-          Global  (n ::: _T) -> Global  (n ::: go s _T)
-          Free    v          -> Free    v
-          Quote   v          -> Quote   v
-          Metavar (d ::: _T) -> Metavar (d ::: go s _T)
-      TPrd l r -> TPrd (go s l) (go s r)
-      Prd  l r -> Prd  (go s l) (go s r)
-      VCon n p -> VCon (fmap (go s) n) (fmap (go s) p)
-      Let (m ::: t :=: v) b ->
-        Let (m ::: go s t :=: go s v) (go (IntMap.delete (getMeta m) s) . b)
+  go = \case
+    Type     -> Type
+    Void     -> Void
+    TUnit    -> TUnit
+    Unit     -> Unit
+    t :=> b  -> fmap go t :=> go . b
+    Lam n b  -> Lam (fmap go n) (go . b)
+    Neut f a -> unHead global free quote (s !) f' `elimN` fmap substElim a
+      where
+      f' = case f of
+        Global  (n ::: _T) -> Global  (n ::: go _T)
+        Free    v          -> Free    v
+        Quote   v          -> Quote   v
+        Metavar (d ::: _T) -> Metavar (d ::: go _T)
+    TPrd l r -> TPrd (go l) (go r)
+    Prd  l r -> Prd  (go l) (go r)
+    VCon n p -> VCon (fmap go n) (fmap go p)
 
-  substElim s = \case
-    App a   -> App (fmap (go s) a)
-    Case cs -> Case (map (bimap (bimap (go s) (fmap (go s))) (go s .)) cs)
+  substElim = \case
+    App a   -> App (fmap go a)
+    Case cs -> Case (map (bimap (bimap go (fmap go)) (go .)) cs)
 
   s ! l = case IntMap.lookup (getMeta (tm l)) s of
     Just a  -> a

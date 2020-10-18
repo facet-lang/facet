@@ -58,7 +58,6 @@ data Algebra p = Algebra
   , _Unit :: p
   , unit :: p
   , ann' :: (p ::: p) -> p
-  -- FIXME: rename to case_ to match module_ and let_
   , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
   , wildcard :: p
   , pcon     :: p -> Stack p -> p
@@ -67,7 +66,6 @@ data Algebra p = Algebra
   , defn :: p :=: p -> p
   , data' :: [p] -> p
   , module_ :: MName ::: Maybe p :=: [p] -> p
-  , let_ :: Meta ::: p :=: p -> p -> p
   }
 
 
@@ -102,7 +100,6 @@ foldCValue alg = go
     C.TPrd l r -> prd alg [go d l, go d r]
     C.Prd  l r -> prd alg [go d l, go d r]
     C.VCon n p -> app alg (ann' alg (bimap (var alg . qvar) (go d) n)) (fmap (ex . go d) p)
-    C.Let (m ::: t :=: v) b -> let_ alg (m ::: go d t :=: go d v) (go (succ d) (b (C.metavar (m ::: t))))
   tvar d n = ann' alg (var alg (TLocal (out (tm n)) d) ::: go d (ty n))
   lvar d n = ann' alg (var alg (unPl_ TLocal Local (tm n) d) ::: go d (ty n))
 
