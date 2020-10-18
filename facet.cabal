@@ -59,6 +59,7 @@ library
     Paths_facet
     Text.Parser.Position
   build-depends:
+    , ansi-terminal
     , base ^>= 4.14
     , charset
     , containers
