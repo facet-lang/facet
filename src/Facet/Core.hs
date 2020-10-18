@@ -31,6 +31,7 @@ module Facet.Core
 , Def(..)
   -- * Quotation
 , QExpr(..)
+, quote
 ) where
 
 import           Control.Effect.Empty
@@ -43,7 +44,7 @@ import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Context as Ctx
-import           Facet.Name (CName, Index, Level(..), MName, Meta(..), QName, UName)
+import           Facet.Name (CName, Index(..), Level(..), MName, Meta(..), QName, UName, levelToIndex)
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
@@ -332,3 +333,25 @@ data QExpr a
   | QCase (QExpr a) [(Pattern (QExpr a) (UName ::: QExpr a), QExpr a)]
   | QCon (QName ::: QExpr a) (Stack (QExpr a))
   deriving (Eq, Ord, Show)
+
+quote :: Level -> Value a -> QExpr a
+quote d = \case
+  Type -> QType
+  Void -> QVoid
+  TUnit -> QTUnit
+  Unit -> QUnit
+  TPrd l r -> QTPrd (quote d l) (quote d r)
+  Prd l r -> QPrd (quote d l) (quote d r)
+  VCon (n ::: t) fs -> QCon (n ::: quote d t) (fmap (quote d) fs)
+  Lam (n ::: t) b -> QLam (n ::: quote d t) (quote (succ d) (b (var (Quote d))))
+  n ::: t :=> b -> QForAll (n ::: quote d t) (quote (succ d) (b (var (Quote d))))
+  Neut h sp ->
+    let qSp h Nil     = h
+        qSp h (sp:>e) = case e of
+          App a   -> QApp (qSp h sp) (fmap (quote d) a)
+          Case cs -> QCase (qSp h sp) (map qPat cs)
+        qPat (p, b)
+          | let (d', p') = mapAccumL (\ d _ -> (succ d, var (Quote d))) d p
+          = ( bimap (quote d) (fmap (quote d)) p
+            , quote d' (b p'))
+    in qSp (unHead (QGlobal . fmap (quote d)) QFree (QVar . levelToIndex d) (QMeta . fmap (quote d)) h) sp
