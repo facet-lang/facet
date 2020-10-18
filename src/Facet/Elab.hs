@@ -30,7 +30,6 @@ module Facet.Elab
   -- * Expressions
 , elabExpr
 , ($$)
-, tlam
 , lam
   -- * Declarations
 , elabDecl
@@ -296,15 +295,6 @@ elabExpr ctx = withSpan' $ \case
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
-
-tlam
-  :: UName
-  -> (UName ::: Type ::: Type -> Check Expr)
-  -> Check Expr
-tlam n b = Check $ \ _T -> do
-  (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" _T
-  b' <- n ::: _T |- \ v -> check (b (n ::: v ::: _T) ::: _B v)
-  pure (Lam (im n ::: _T) b')
 
 lam
   :: Pl_ UName
