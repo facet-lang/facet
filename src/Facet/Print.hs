@@ -68,7 +68,7 @@ terminalStyle = \case
   where
   setRGB = ANSI.SetRGBColor ANSI.Foreground
   bold = ANSI.SetConsoleIntensity ANSI.BoldIntensity
-  pick i s l = uncurryRGB sRGB (hsl (fromIntegral i * phi * 36) s l)
+  pick i s l = uncurryRGB sRGB (hsl (fromIntegral i * phi * 30) s l)
   phi = 1.618033988749895
 
 
