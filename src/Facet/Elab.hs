@@ -468,8 +468,6 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
           modify $ Env.insert (qname :=: Just e' ::: _T)
           pure (qname, C.DTerm e' ::: _T)
 
-      -- FIXME: support defining types
-
   pure $ C.Module mname defs
   where
   -- Apply the substitution to the value.
