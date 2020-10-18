@@ -115,9 +115,7 @@ synthElab :: (Maybe Type -> Elab (a ::: Type)) -> Synth a
 synthElab f = Synth (f Nothing)
 
 
-unify
-  :: Type :===: Type
-  -> Elab Type
+unify :: Type :===: Type -> Elab Type
 unify (t1 :===: t2) = go (t1 :===: t2)
   where
   go = \case
