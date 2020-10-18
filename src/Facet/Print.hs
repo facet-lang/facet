@@ -18,8 +18,6 @@ module Facet.Print
 , terminalStyle
 , Print(..)
 , Precedence(..)
-, evar
-, tvar
 , printContextEntry
   -- * Algebras
 , surface
@@ -177,12 +175,6 @@ commaSep = encloseSep mempty mempty (comma <> space)
 ann :: (PrecedencePrinter p, P.Level p ~ Precedence) => (p ::: p) -> p
 ann (n ::: t) = align . prec Ann $ n </> group (align (colon <+> flatAlt space mempty <> t))
 
-evar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Level -> p
-evar = setPrec Var . annotate . Name <*> P.lower . getLevel
-
-tvar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Level -> p
-tvar = setPrec Var . annotate . Name <*> P.upper . getLevel
-
 
 prettyMName :: Printer p => MName -> p
 prettyMName (n :. s)  = prettyMName n <> pretty '.' <> pretty s
@@ -218,7 +210,7 @@ surface = Algebra
     TLocal n d -> name P.upper n d
     Local  n d -> name P.lower n d
     Quote  n d -> stimes (3 :: Int) $ name P.lower n d
-    Metavar  d -> setPrec Var (annotate Hole (pretty '?' <> evar (Level (getMeta d))))
+    Metavar  d -> setPrec Var (annotate Hole (pretty '?' <> P.upper (getMeta d)))
     Cons     n -> setPrec Var (annotate Con (pretty n))
   , tintro = name P.upper
   , intro = name P.lower
@@ -257,7 +249,7 @@ explicit = Algebra
     TLocal n d -> name P.upper n d
     Local  n d -> name P.lower n d
     Quote  n d -> stimes (3 :: Int) $ name P.lower n d
-    Metavar  d -> setPrec Var (annotate Hole (pretty '?' <> evar (Level (getMeta d))))
+    Metavar  d -> setPrec Var (annotate Hole (pretty '?' <> P.upper (getMeta d)))
     Cons     n -> setPrec Var (annotate Con (pretty n))
   , tintro = name P.upper
   , intro = name P.lower
