@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Facet.Pretty
 ( -- * Output
   layoutOptionsForTerminal
@@ -17,6 +18,7 @@ module Facet.Pretty
   -- * Columnar layout
 , tabulate2
   -- * Rendering
+, toSGR
 , renderIO
 , renderLazy
 ) where
@@ -25,6 +27,7 @@ import           Control.Carrier.Lift
 import           Control.Carrier.State.Church
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (first)
+import           Data.Maybe (catMaybes)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
@@ -32,6 +35,7 @@ import qualified Data.Text.Lazy.Builder as TLB
 import           Facet.Stack
 import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as ANSI
+import qualified Prettyprinter.Render.Terminal.Internal as PPI
 import           Silkscreen hiding (column, width)
 import qualified System.Console.ANSI as ANSI
 import qualified System.Console.Terminal.Size as Size
@@ -100,6 +104,25 @@ column a = Column (length (show (PP.unAnnotate a))) a
 
 
 -- Rendering
+
+toSGR :: PPI.AnsiStyle -> [ANSI.SGR]
+toSGR (PPI.SetAnsiStyle{ PPI.ansiBold, PPI.ansiForeground }) = catMaybes
+  [ ANSI.SetConsoleIntensity ANSI.BoldIntensity <$ ansiBold
+  , (\ (i, c) -> ANSI.SetColor ANSI.Foreground (intensity i) (colour c)) <$> ansiForeground
+  ]
+  where
+  intensity = \case
+    PPI.Dull  -> ANSI.Dull
+    PPI.Vivid -> ANSI.Vivid
+  colour = \case
+    PPI.Black   -> ANSI.Black
+    PPI.Red     -> ANSI.Red
+    PPI.Green   -> ANSI.Green
+    PPI.Yellow  -> ANSI.Yellow
+    PPI.Blue    -> ANSI.Blue
+    PPI.Magenta -> ANSI.Magenta
+    PPI.Cyan    -> ANSI.Cyan
+    PPI.White   -> ANSI.White
 
 -- | Render a 'PP.SimpleDocStream' to a 'Handle' using 'ANSI.SGR' codes as the annotation type.
 renderIO :: MonadIO m => Handle -> PP.SimpleDocStream [ANSI.SGR] -> m ()
