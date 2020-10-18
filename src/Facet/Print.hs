@@ -37,33 +37,33 @@ import           Facet.Name hiding (ann)
 import qualified Facet.Pretty as P
 import           Facet.Syntax
 import qualified Prettyprinter as PP
-import qualified Prettyprinter.Render.Terminal as ANSI
 import           Silkscreen as P
 import           Silkscreen.Printer.Prec hiding (Level)
 import qualified Silkscreen.Printer.Prec as P
 import           Silkscreen.Printer.Rainbow as P
+import qualified System.Console.ANSI as ANSI
 
 prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = P.putDoc . getPrint
 
-getPrint :: Print -> PP.Doc ANSI.AnsiStyle
+getPrint :: Print -> PP.Doc [ANSI.SGR]
 getPrint = PP.reAnnotate terminalStyle . getPrint'
 
 getPrint' :: Print -> PP.Doc Highlight
 getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
 
-terminalStyle :: Highlight -> ANSI.AnsiStyle
+terminalStyle :: Highlight -> [ANSI.SGR]
 terminalStyle = \case
   Nest i -> colours !! (i `mod` len)
   Name i -> reverse colours !! (getLevel i `mod` len)
-  Op     -> ANSI.color ANSI.Cyan
-  Type   -> ANSI.color ANSI.Yellow
-  Con    -> ANSI.color ANSI.Red
-  Lit    -> ANSI.bold
-  Hole m -> ANSI.bold <> reverse colours !! (getMeta m `mod` len)
+  Op     -> [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Cyan]
+  Type   -> [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Yellow]
+  Con    -> [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
+  Lit    -> [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  Hole m -> ANSI.SetConsoleIntensity ANSI.BoldIntensity : reverse colours !! (getMeta m `mod` len)
   ANSI s -> s
   where
-  colours =
+  colours = pure $
     [ ANSI.Red
     , ANSI.Green
     , ANSI.Yellow
@@ -72,7 +72,7 @@ terminalStyle = \case
     , ANSI.Cyan
     ]
     <**>
-    [ANSI.color, ANSI.colorDull]
+    [ANSI.SetColor ANSI.Foreground ANSI.Vivid, ANSI.SetColor ANSI.Foreground ANSI.Dull]
   len = length colours
 
 
@@ -147,8 +147,8 @@ data Highlight
   | Op
   | Lit
   | Hole Meta
-  | ANSI ANSI.AnsiStyle
-  deriving (Eq, Ord, Show)
+  | ANSI [ANSI.SGR]
+  deriving (Eq, Show)
 
 op :: (Printer p, Ann p ~ Highlight) => p -> p
 op = annotate Op

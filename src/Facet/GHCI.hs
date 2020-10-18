@@ -35,19 +35,19 @@ import qualified Facet.Print as P
 import           Facet.Stack (Stack(..))
 import qualified Facet.Surface as S
 import           Facet.Syntax
-import           Prettyprinter (Doc)
-import           Prettyprinter.Render.Terminal (AnsiStyle, Color(..), bold, color)
+import qualified Prettyprinter as PP
 import           Silkscreen (annotate, colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
+import qualified System.Console.ANSI as ANSI
 import           Text.Parser.Position (Spanned)
 
 -- Parsing
 
 parseString :: MonadIO m => Facet (ParserC (Either (Source, Parse.Err))) P.Print -> String -> m ()
-parseString p s = either (P.putDoc . N.prettyNoticeWith ansiStyle . uncurry errToNotice) P.prettyPrint (runParserWithString (Pos 0 0) s (runFacet [] p))
+parseString p s = either (P.putDoc . N.prettyNoticeWith sgrStyle . uncurry errToNotice) P.prettyPrint (runParserWithString (Pos 0 0) s (runFacet [] p))
 
 printFile :: MonadIO m => FilePath -> m ()
 printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module')))) >>= \case
-  Left err -> P.putDoc (N.prettyNoticeWith ansiStyle (uncurry errToNotice err))
+  Left err -> P.putDoc (N.prettyNoticeWith sgrStyle (uncurry errToNotice err))
   Right m  -> P.prettyPrint (foldSModule P.surface m)
 
 parseFile :: MonadIO m => FilePath -> m (Either (Source, Parse.Err) (Spanned S.Module))
@@ -56,14 +56,14 @@ parseFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole modu
 
 -- Elaborating
 
-elabString :: MonadIO m => Facet (ParserC (Either (N.Notice AnsiStyle))) (Spanned S.Module) -> String -> m ()
+elabString :: MonadIO m => Facet (ParserC (Either (N.Notice [ANSI.SGR]))) (Spanned S.Module) -> String -> m ()
 elabString = elabPathString Nothing
 
 elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
-elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either (N.Notice AnsiStyle))) (Spanned S.Module) -> String -> m ()
-elabPathString path p s = either (P.putDoc . N.prettyNoticeWith ansiStyle) P.prettyPrint $ do
+elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either (N.Notice [ANSI.SGR]))) (Spanned S.Module) -> String -> m ()
+elabPathString path p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.prettyPrint $ do
   parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
   lower $ foldCModule P.explicit <$> elabModule parsed
   where
@@ -72,13 +72,13 @@ elabPathString path p s = either (P.putDoc . N.prettyNoticeWith ansiStyle) P.pre
   failure = Left . errToNotice src
   mkNotice p = toNotice (Just N.Error) src p
 
-  lower :: Either Elab.Err a -> Either (N.Notice AnsiStyle) a
+  lower :: Either Elab.Err a -> Either (N.Notice [ANSI.SGR]) a
   lower = either (throwError . mkNotice) pure
 
 
 -- Errors
 
-toNotice :: Maybe N.Level -> Source -> Elab.Err -> N.Notice AnsiStyle
+toNotice :: Maybe N.Level -> Source -> Elab.Err -> N.Notice [ANSI.SGR]
 toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason
   in N.Notice lvl (fromSourceAndSpan src span) reason' $
@@ -88,7 +88,7 @@ toNotice lvl src Err{ span, reason, context } =
     -- FIXME: foldl over the context printing each element in the smaller context before it.
 
 
-printReason :: Context (Value ::: Type) -> Reason -> Doc AnsiStyle
+printReason :: Context (Value ::: Type) -> Reason -> PP.Doc [ANSI.SGR]
 printReason ctx = group . \case
   FreeVariable n         -> fillSep [P.reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> P.reflow "could not synthesize a type for" <> softline <> P.reflow msg
@@ -110,18 +110,18 @@ printReason ctx = group . \case
   env = elems ctx
 
 
-printType :: Stack P.Print -> Type -> Doc AnsiStyle
+printType :: Stack P.Print -> Type -> PP.Doc [ANSI.SGR]
 printType env = P.getPrint . foldCValue P.explicit env
 
 
-ansiStyle :: Style AnsiStyle
-ansiStyle = Style
-  { pathStyle   = annotate bold
+sgrStyle :: Style [ANSI.SGR]
+sgrStyle = Style
+  { pathStyle   = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
   , levelStyle  = \case
-    Warn  -> annotate (color Magenta)
-    Error -> annotate (color Red)
-  , posStyle    = annotate bold
-  , gutterStyle = annotate (color Blue)
-  , eofStyle    = annotate (color Blue)
-  , caretStyle  = annotate (color Green)
+    Warn  -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Magenta]
+    Error -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
+  , posStyle    = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  , gutterStyle = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
+  , eofStyle    = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
+  , caretStyle  = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
   }
