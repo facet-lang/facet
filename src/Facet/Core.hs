@@ -130,7 +130,7 @@ instance Bifunctor Con where
   bimap = bimapDefault
 
 instance Bitraversable Con where
-  bitraverse f g (Con t b) = Con <$> fmap f t <*> fmap g b
+  bitraverse f g (Con t b) = Con <$> traverse f t <*> traverse g b
 
 
 global :: QName ::: Value -> Value
