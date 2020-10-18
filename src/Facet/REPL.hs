@@ -22,7 +22,7 @@ import           Data.Foldable (for_)
 import qualified Data.Map as Map
 import           Data.Semigroup
 import           Data.Text.Lazy (unpack)
-import           Facet.Algebra hiding (Meta)
+import           Facet.Algebra
 import           Facet.Name (Index)
 import           Facet.Parser
 import           Facet.Pretty
