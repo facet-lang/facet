@@ -154,7 +154,7 @@ unify (t1 :===: t2) = go (t1 :===: t2)
 
   solve :: Meta :=: Prob -> Elab Value
   solve (n :=: val') = do
-    subst <- getSubst
+    subst <- get
     -- FIXME: occurs check
     case subst IntMap.! getMeta n of
       Just val ::: _T -> go (val' :===: val)
@@ -164,15 +164,12 @@ unify (t1 :===: t2) = go (t1 :===: t2)
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
 meta :: Type -> Elab (Meta ::: Type)
 meta _T = do
-  subst <- getSubst
+  subst <- get
   let m = Meta (length subst)
   (m ::: _T) <$ put (insertSubst m (Nothing ::: _T) subst)
 
 insertSubst :: Meta -> Maybe Prob ::: Type -> Subst -> Subst
 insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
-
-getSubst :: Has (State Subst) sig m => m Subst
-getSubst = get
 
 -- FIXME: does instantiation need to be guided by the expected type?
 instantiate :: Expr ::: Type -> Elab (Expr ::: Type)
