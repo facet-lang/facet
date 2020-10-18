@@ -71,7 +71,7 @@ type Prob = Value
 
 type Subst = IntMap.IntMap (Maybe Prob ::: Type)
 
-newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Env.Env Type) :+: Reader (Context (Value ::: Type)) :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
+newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -83,13 +83,12 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= elab . f
 
-instance Algebra (Reader (Env.Env Type) :+: Reader (Context (Value ::: Type)) :+: Reader Span :+: State Subst :+: Throw Err) Elab where
+instance Algebra (Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) Elab where
   alg hdl sig ctx = case sig of
-    L renv              -> Elab $ alg (elab . hdl) (inj renv) ctx
-    R (L rctx)          -> Elab $ alg (elab . hdl) (inj rctx) ctx
-    R (R (L rspan))     -> Elab $ alg (elab . hdl) (inj rspan) ctx
-    R (R (R (L smctx))) -> Elab $ alg (elab . hdl) (inj smctx) ctx
-    R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
+    L renv          -> Elab $ alg (elab . hdl) (inj renv) ctx
+    R (L rspan)     -> Elab $ alg (elab . hdl) (inj rspan) ctx
+    R (R (L smctx)) -> Elab $ alg (elab . hdl) (inj smctx) ctx
+    R (R (R throw)) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
 askEnv :: Has (Reader (Env.Env Type)) sig m => m (Env.Env Type)
@@ -97,7 +96,7 @@ askEnv = ask
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
-  deriving (Algebra (Reader Type :+: Reader (Env.Env Type) :+: Reader (Context (Value ::: Type)) :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
+  deriving (Algebra (Reader Type :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
@@ -448,25 +447,25 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
     let qname = mname :.: n
         e ::: t = elabDecl d
-    runContext $ do
-      _T <- runEnv . runSubst . elab $ check (t empty ::: Type)
 
-      modify $ Env.insert (qname :=: Nothing ::: _T)
+    _T <- runEnv . runSubst . elab $ check (t empty ::: Type)
 
-      (s, e') <- runEnv . runState (fmap pure . (,)) emptySubst . elab $ check (e empty ::: _T)
-      case e' of
-        Left cs  -> do
-          cs' <- for cs $ \ (n ::: _T) -> do
-            let _T' = apply s _T
-                go fs = \case
-                  _T :=> _B -> Lam _T (\ v -> go (fs :> v) (_B v))
-                  _T        -> VCon (Con (mname :.: C n ::: _T) fs)
-            modify $ Env.insert (mname :.: C n :=: Just (apply s (go Nil _T')) ::: _T')
-            pure $ n ::: _T'
-          pure (qname, C.DData cs' ::: _T)
-        Right (apply s -> e') -> do
-          modify $ Env.insert (qname :=: Just e' ::: _T)
-          pure (qname, C.DTerm e' ::: _T)
+    modify $ Env.insert (qname :=: Nothing ::: _T)
+
+    (s, e') <- runEnv . runState (fmap pure . (,)) emptySubst . elab $ check (e empty ::: _T)
+    case e' of
+      Left cs  -> do
+        cs' <- for cs $ \ (n ::: _T) -> do
+          let _T' = apply s _T
+              go fs = \case
+                _T :=> _B -> Lam _T (\ v -> go (fs :> v) (_B v))
+                _T        -> VCon (Con (mname :.: C n ::: _T) fs)
+          modify $ Env.insert (mname :.: C n :=: Just (apply s (go Nil _T')) ::: _T')
+          pure $ n ::: _T'
+        pure (qname, C.DData cs' ::: _T)
+      Right (apply s -> e') -> do
+        modify $ Env.insert (qname :=: Just e' ::: _T)
+        pure (qname, C.DTerm e' ::: _T)
 
   pure $ C.Module mname defs
   where
@@ -475,7 +474,6 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
   apply s v = subst (IntMap.mapMaybe tm s) v
   emptySubst = IntMap.empty @(Maybe Prob ::: Type)
 
-  runContext = runReader @(Context (Value ::: Type)) empty
   runSubst = runState (fmap pure . apply) emptySubst
 
   runEnv m = do
