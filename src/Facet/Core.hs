@@ -327,7 +327,7 @@ data QExpr
   | QUnit
   | QTPrd QExpr QExpr
   | QPrd QExpr QExpr
-  | QForAll (Pl_ UName ::: QExpr)
+  | QForAll (Pl_ UName ::: QExpr) QExpr
   | QLam (Pl_ UName ::: QExpr) QExpr
   | QApp QExpr QExpr
   | QCase QExpr (Pattern QExpr (UName ::: QExpr)) QExpr
