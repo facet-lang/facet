@@ -105,15 +105,7 @@ data Head t a
   = Global (QName ::: t) -- ^ Global variables, considered equal by 'QName'.
   | Free a
   | Metavar (Meta ::: t) -- ^ Metavariables, considered equal by 'Level'.
-  deriving (Foldable, Functor, Traversable)
-
-instance Eq a => Eq (Head t a) where
-  Global q1  == Global q2  = tm q1 == tm q2
-  Global _   == _          = False
-  Free l1    == Free l2    = l1 == l2
-  Free _     == _          = False
-  Metavar m1 == Metavar m2 = tm m1 == tm m2
-  Metavar _  == _          = False
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 unHead :: (QName ::: t -> b) -> (a -> b) -> (Meta ::: t -> b) -> Head t a -> b
 unHead f g h = \case
@@ -271,9 +263,7 @@ data Def
 
 -- FIXME: use Head.
 data QExpr
-  = QGlobal (QName ::: QExpr)
-  | QFree Index
-  | QMeta (Meta ::: QExpr)
+  = QVar (Head QExpr Index)
   | QType
   | QForAll (Pl_ UName ::: QExpr) QExpr
   | QLam (Pl_ UName ::: QExpr) QExpr
@@ -297,7 +287,7 @@ quote d = \case
           | let (d', p') = mapAccumL (\ d _ -> (succ d, var (Free d))) d p
           = ( bimap (quote d) (fmap (quote d)) p
             , quote d' (b p'))
-    in qSp (unHead (QGlobal . fmap (quote d)) (QFree . levelToIndex d) (QMeta . fmap (quote d)) h) sp
+    in qSp (QVar (unHead (Global . fmap (quote d)) (Free . levelToIndex d) (Metavar . fmap (quote d)) h)) sp
 
 eval :: Stack Value -> QExpr -> Value
 eval env = \case
@@ -305,9 +295,7 @@ eval env = \case
   QCon (n ::: t) fs -> VCon (n ::: eval env t) (fmap (eval env) fs)
   QLam (n ::: t) b -> Lam (n ::: eval env t) (\ v -> eval (env:>v) b)
   QForAll (n ::: t) b -> n ::: eval env t :=> \ v -> eval (env:>v) b
-  QGlobal (n ::: t) -> global (n ::: eval env t)
-  QFree n -> env ! getIndex n
-  QMeta (n ::: t) -> metavar (n ::: eval env t)
+  QVar h -> unHead (global . fmap (eval env)) ((env !) . getIndex) (metavar . fmap (eval env)) h
   QApp f a -> eval env f $$ fmap (eval env) a
   QCase s cs -> case' (eval env s) (map (evalClause env) cs)
     where
