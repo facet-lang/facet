@@ -32,6 +32,7 @@ module Facet.Core
   -- * Quotation
 , QExpr(..)
 , quote
+, eval
 ) where
 
 import           Control.Effect.Empty
@@ -355,3 +356,23 @@ quote d = \case
           = ( bimap (quote d) (fmap (quote d)) p
             , quote d' (b p'))
     in qSp (unHead (QGlobal . fmap (quote d)) QFree (QVar . levelToIndex d) (QMeta . fmap (quote d)) h) sp
+
+eval :: Stack (Value a) -> QExpr a -> Value a
+eval env = \case
+  QType -> Type
+  QVoid -> Void
+  QTUnit -> TUnit
+  QUnit -> Unit
+  QTPrd l r -> TPrd (eval env l) (eval env r)
+  QPrd l r -> Prd (eval env l) (eval env r)
+  QCon (n ::: t) fs -> VCon (n ::: eval env t) (fmap (eval env) fs)
+  QLam (n ::: t) b -> Lam (n ::: eval env t) (\ v -> eval (env:>v) b)
+  QForAll (n ::: t) b -> n ::: eval env t :=> \ v -> eval (env:>v) b
+  QGlobal (n ::: t) -> global (n ::: eval env t)
+  QFree a -> free a
+  QVar n -> env ! getIndex n
+  QMeta (n ::: t) -> metavar (n ::: eval env t)
+  QApp f a -> eval env f $$ fmap (eval env) a
+  QCase s cs -> case' (eval env s) (map (evalClause env) cs)
+    where
+    evalClause env (p, b) = (bimap (eval env) (fmap (eval env)) p, \ p -> eval (foldl' (:>) env p) b)
