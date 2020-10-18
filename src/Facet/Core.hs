@@ -38,7 +38,7 @@ import           Data.Bifoldable
 import           Data.Bifunctor
 import           Data.Bitraversable
 import           Data.Foldable (foldl', toList)
-import           Data.Functor (void)
+import           Data.Function (on)
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Semialign
@@ -64,42 +64,7 @@ data Value
 infixr 1 :=>
 
 instance Eq Value where
-  v1 == v2 = go (Level 0) v1 v2
-    where
-    -- defined thus to get the exhaustiveness checker to ensure I don’t miss adding new cases
-    go n = curry $ \case
-      (Type, Type) -> True
-      (Type, _) -> False
-      (t1 :=> b1, t2 :=> b2) ->
-        pl (tm t1) == pl (tm t2) && go n (ty t1) (ty t2)
-        &&  let b1' = b1 (free n)
-                b2' = b2 (free n)
-            in go (succ n) b1' b2'
-      (_ :=> _, _) -> False
-      (Lam _ b1, Lam _ b2) ->
-        let b1' = b1 (free n)
-            b2' = b2 (free n)
-        in go (succ n) b1' b2'
-      (Lam _ _, _) -> False
-      (Neut h1 sp1, Neut h2 sp2) -> h1 == h2 && eqSp n sp1 sp2
-      (Neut _ _, _) -> False
-      (VCon (Con n1 p1), VCon (Con n2 p2))
-        | length p1 == length p2 -> go n (ty n1) (ty n2) && and (zipWith (go n) (toList p1) (toList p2))
-      (VCon _, _) -> False
-
-    eqSp n (sp1:>e1) (sp2:>e2) = eqSp n sp1 sp2 && eqElim n e1 e2
-    eqSp _ Nil       Nil       = True
-    eqSp _ _         _         = False
-    eqElim n = curry $ \case
-      (EApp a1, EApp a2) -> pl a1 == pl a2 && go n (out a1) (out a2)
-      (EApp _, _) -> False
-      (ECase cs1, ECase cs2)
-        | length cs1 == length cs2 -> and (zipWith (eqPat n) (toList cs1) (toList cs2))
-      (ECase _, _) -> False
-    eqPat n (p1, b1) (p2, b2)
-      =   void p1 == void p2
-      &&  let (n', p') = mapAccumL (\ n _ -> (succ n, free n)) n p2
-          in go n' (b1 p') (b2 p')
+  (==) = (==) `on` quote (Level 0)
 
 
 data Head t a
