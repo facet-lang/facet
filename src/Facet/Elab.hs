@@ -405,7 +405,7 @@ elabDecl d = go d id id
   go d km kt = withSpans d $ \case
     (n ::: t) S.:==> b ->
       go b
-        (km . (\ b  ctx -> tlam n (b . (ctx |>))))
+        (km . (\ b  ctx -> lam (im n) (b . (ctx |>))))
         (kt . (\ _B ctx -> checkElab (switch (im n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
 
     (n ::: t) S.:--> b ->
