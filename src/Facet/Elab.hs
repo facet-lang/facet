@@ -314,8 +314,8 @@ elabExpr ctx = withSpan' $ \case
 
 tlam
   :: UName
-  -> (UName ::: Type ::: Type -> Check (Expr))
-  -> Check (Expr)
+  -> (UName ::: Type ::: Type -> Check Expr)
+  -> Check Expr
 tlam n b = Check $ \ ty -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking type lambda" ty
   b' <- n ::: _T |- \ v -> check (b (n ::: v ::: _T) ::: _B v)
@@ -323,8 +323,8 @@ tlam n b = Check $ \ ty -> do
 
 lam
   :: UName
-  -> (UName ::: Expr ::: Type -> Check (Expr))
-  -> Check (Expr)
+  -> (UName ::: Expr ::: Type -> Check Expr)
+  -> Check Expr
 lam n b = Check $ \ _T -> do
   (_A, _B) <- expectQuantifiedType "when checking lambda" _T
   b' <- n ::: ty _A |- \ v -> check (b (n ::: v ::: ty _A) ::: _B v)
@@ -334,7 +334,7 @@ elabComp
   :: HasCallStack
   => Context (Value ::: Type)
   -> Spanned S.Comp
-  -> Check (Expr)
+  -> Check Expr
 elabComp ctx = withSpan $ \case
   S.Expr    b  -> checkElab (elabExpr ctx b)
   S.Clauses cs -> elabClauses ctx cs
@@ -355,7 +355,7 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
-elabClauses :: Context (Value ::: Type) -> [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check (Expr)
+elabClauses :: Context (Value ::: Type) -> [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check Expr
 -- FIXME: do the same thing for wildcards
 elabClauses ctx [((_, S.Var n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
