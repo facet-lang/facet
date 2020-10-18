@@ -224,9 +224,9 @@ f $$ a = Synth $ do
   :: UName ::: Type
   -> (Value -> Elab Value)
   -> Elab (Value -> Value)
-n ::: _T |- f = do
+_ ::: _T |- f = do
   m <- meta _T
-  handleBinder m (\ v -> local (|> (n ::: v ::: _T)) (f v))
+  handleBinder m f
 
 infix 1 |-
 
@@ -236,8 +236,7 @@ infix 1 |-
   -> Elab (C.Pattern Type Value -> Value)
 p |-* f = do
   mp <- traverse (meta . ty) p
-  handleBinderP mp (\ v ->
-    local (flip (foldl' (|>)) (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p) (toList v))) (f v))
+  handleBinderP mp f
 
 infix 1 |-*
 
