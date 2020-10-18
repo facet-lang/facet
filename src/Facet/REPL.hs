@@ -13,7 +13,8 @@ import           Control.Carrier.Parser.Church
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=))
-import           Control.Effect.Parser.Notice (Notice, prettyNotice)
+import           Control.Effect.Parser.Notice (Level(..), Style(..), prettyNoticeWith)
+import           Control.Effect.Parser.Source (Source(..))
 import           Control.Effect.Parser.Span (Pos(..))
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
@@ -24,14 +25,14 @@ import           Data.Semigroup
 import           Data.Text.Lazy (unpack)
 import           Facet.Algebra
 import           Facet.Parser
-import           Facet.Pretty
+import           Facet.Pretty hiding (renderLazy)
 import           Facet.Print
 import           Facet.REPL.Parser
 import           Facet.Stack
 import           Facet.Surface (Expr, Type)
 import           Prelude hiding (print)
 import           Prettyprinter as P hiding (column, width)
-import           Prettyprinter.Render.Terminal (AnsiStyle, Color(..), color, renderLazy)
+import           Prettyprinter.Render.Terminal (AnsiStyle, Color(..), bold, color, renderLazy)
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Position
@@ -67,7 +68,7 @@ files_ = lens files (\ r files -> r{ files })
 loop :: (Has Empty sig m, Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
   (line, resp) <- prompt
-  runError (print . prettyNotice) pure $ case resp of
+  runError (print . prettyNoticeWith ansiStyle . uncurry errToNotice) pure $ case resp of
     -- FIXME: evaluate expressions
     Just resp -> runParserWithString (Pos line 0) resp (runFacet [] (whole commandParser)) >>= runAction
     Nothing   -> pure ()
@@ -114,12 +115,12 @@ data Action
   | Type (Spanned Expr)
   | Kind (Spanned Type)
 
-load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
+load :: (Has (Error (Source, Err)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
   files_ %= Map.insert path File{ loaded = False }
   runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface
 
-reload :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
+reload :: (Has (Error (Source, Err)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 reload = do
   files <- use files_
   -- FIXME: topological sort
@@ -127,7 +128,7 @@ reload = do
   for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
     print $ annotate (color Green) (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
-    (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNotice n))
+    (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNoticeWith ansiStyle (uncurry errToNotice n)))
 
 helpDoc :: Doc AnsiStyle
 helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
@@ -148,3 +149,16 @@ print :: (Has Readline sig m, MonadIO m) => Doc AnsiStyle -> m ()
 print d = do
   opts <- liftIO layoutOptionsForTerminal
   outputStrLn (unpack (renderLazy (layoutSmart opts d)))
+
+
+ansiStyle :: Style AnsiStyle
+ansiStyle = Style
+  { pathStyle   = annotate bold
+  , levelStyle  = \case
+    Warn  -> annotate (color Magenta)
+    Error -> annotate (color Red)
+  , posStyle    = annotate bold
+  , gutterStyle = annotate (color Blue)
+  , eofStyle    = annotate (color Blue)
+  , caretStyle  = annotate (color Green)
+  }
