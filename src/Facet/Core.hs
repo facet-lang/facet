@@ -315,18 +315,19 @@ data Def a
 
 -- Quotation
 
-data QExpr
-  = QGlobal (QName ::: QExpr)
+data QExpr a
+  = QGlobal (QName ::: QExpr a)
   | QVar Index
+  | QFree a
   | QType
   | QVoid
   | QTUnit
   | QUnit
-  | QTPrd QExpr QExpr
-  | QPrd QExpr QExpr
-  | QForAll (Pl_ UName ::: QExpr) QExpr
-  | QLam (Pl_ UName ::: QExpr) QExpr
-  | QApp QExpr (Pl_ QExpr)
-  | QCase QExpr (Pattern QExpr (UName ::: QExpr)) QExpr
-  | QCon (QName ::: QExpr) (Stack QExpr)
+  | QTPrd (QExpr a) (QExpr a)
+  | QPrd (QExpr a) (QExpr a)
+  | QForAll (Pl_ UName ::: QExpr a) (QExpr a)
+  | QLam (Pl_ UName ::: (QExpr a)) (QExpr a)
+  | QApp (QExpr a) (Pl_ (QExpr a))
+  | QCase (QExpr a) (Pattern (QExpr a) (UName ::: QExpr a)) (QExpr a)
+  | QCon (QName ::: QExpr a) (Stack (QExpr a))
   deriving (Eq, Ord, Show)
