@@ -22,6 +22,7 @@ module Facet.Core
 , handleBinder
 , handleBinderP
 , subst
+, bind
   -- * Patterns
 , Pattern(..)
   -- * Modules
@@ -199,6 +200,26 @@ subst s
   s ! l = case IntMap.lookup (getMeta (tm l)) s of
     Just a  -> a
     Nothing -> metavar l
+
+-- | Bind a free variable.
+bind :: HasCallStack => Level -> Value -> Value -> Value
+bind target with = go
+  where
+  go = \case
+    VType       -> VType
+    VForAll t b -> VForAll (fmap go t) (go . b)
+    VLam    n b -> VLam (fmap go n) (go . b)
+    VNeut f a   -> unHead global (\ v -> if v == target then with else free v) metavar f' `elimN` fmap elim a
+      where
+      f' = case f of
+        Global  (n ::: _T) -> Global  (n ::: go _T)
+        Free    v          -> Free    v
+        Metavar (d ::: _T) -> Metavar (d ::: go _T)
+    VCon c      -> VCon (bimap go go c)
+
+  elim = \case
+    EApp a   -> EApp (fmap go a)
+    ECase cs -> ECase (map (bimap (bimap go (fmap go)) (go .)) cs)
 
 
 -- Patterns
