@@ -33,62 +33,62 @@ import Text.Parser.Position
 
 -- Expressions
 
-data Expr a
+data Expr
   = Free DName
   | Bound Index
   | Hole Text
-  | Comp (Spanned (Comp a))
-  | Spanned (Expr a) :$ Spanned (Expr a)
+  | Comp (Spanned Comp)
+  | Spanned Expr :$ Spanned Expr
   -- FIXME: tupling/unit should take a list of expressions
-  deriving (Foldable, Functor, Show, Traversable)
+  deriving (Show)
 
 infixl 9 :$
 
 
-unApp :: Has Empty sig m => Expr a -> m (Spanned (Expr a), Spanned (Expr a))
+unApp :: Has Empty sig m => Expr -> m (Spanned Expr, Spanned Expr)
 unApp = \case
   f :$ a -> pure (f, a)
   _      -> empty
 
 
-data Comp a
-  = Expr (Spanned (Expr a))
-  | Clauses [(NonEmpty (Spanned (Pattern UName)), Spanned (Expr a))]
-  deriving (Foldable, Functor, Show, Traversable)
+data Comp
+  = Expr (Spanned Expr)
+  | Clauses [(NonEmpty (Spanned Pattern), Spanned Expr)]
+  deriving (Show)
 
 
-data Pattern a
+data Pattern
   = Wildcard
-  | Var a
-  | Con CName [Spanned (Pattern a)]
-  deriving (Foldable, Functor, Show, Traversable)
+  | Var UName
+  | Con CName [Spanned Pattern]
+  deriving (Show)
 
 
 -- Types
 
-data Type a
+data Type
   = TFree DName
   | TBound Index
   | THole Text
   | Type
-  | (UName ::: Spanned (Type a)) :=> Spanned (Type a)
-  | Spanned (Type a) :$$ Spanned (Type a)
-  | Spanned (Type a) :-> Spanned (Type a)
-  deriving (Foldable, Functor, Show, Traversable)
+  | (UName ::: Spanned Type) :=> Spanned Type
+  | Spanned Type :$$ Spanned Type
+  | Spanned Type :-> Spanned Type
+  deriving (Show)
 
 infixr 1 :=>
 infixl 9 :$$
 infixr 2 :->
 
 
-unForAll :: Has Empty sig m => Type a -> m (UName ::: Spanned (Type a), Spanned (Type a))
+unForAll :: Has Empty sig m => Type -> m (UName ::: Spanned Type, Spanned Type)
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
-unTApp :: Has Empty sig m => Type a -> m (Spanned (Type a), Spanned (Type a))
+unTApp :: Has Empty sig m => Type -> m (Spanned Type, Spanned Type)
 unTApp = \case{ f :$$ a -> pure (f, a) ; _ -> empty }
 
 
-aeq :: Type a -> Type a -> Bool
+aeq :: Type -> Type -> Bool
 aeq t1 t2 = case (t1, t2) of
   (TFree  n1,          TFree  n2)          -> n1 == n2
   (TBound n1,          TBound n2)          -> n1 == n2
@@ -104,33 +104,33 @@ aeq t1 t2 = case (t1, t2) of
 
 -- Declarations
 
-data Decl a
-  = (UName ::: Spanned (Type a)) :==> Spanned (Decl a)
-  | (UName ::: Spanned (Type a)) :--> Spanned (Decl a)
-  | Spanned (Type a) := DeclBody a
-  deriving (Foldable, Functor, Show, Traversable)
+data Decl
+  = (UName ::: Spanned Type) :==> Spanned Decl
+  | (UName ::: Spanned Type) :--> Spanned Decl
+  | Spanned Type := DeclBody
+  deriving (Show)
 
 infix 1 :=
 infixr 1 :==>
 infixr 1 :-->
 
 
-unDForAll :: Has Empty sig m => Decl a -> m (UName ::: Spanned (Type a), Spanned (Decl a))
+unDForAll :: Has Empty sig m => Decl -> m (UName ::: Spanned Type, Spanned Decl)
 unDForAll = \case{ t :==> b -> pure (t, b) ; _ -> empty }
 
-unDArrow :: Has Empty sig m => Decl a -> m (UName ::: Spanned (Type a), Spanned (Decl a))
+unDArrow :: Has Empty sig m => Decl -> m (UName ::: Spanned Type, Spanned Decl)
 unDArrow = \case{ t :--> b -> pure (t, b) ; _ -> empty }
 
 
-data DeclBody a
-  = DExpr (Spanned (Expr a))
-  | DType (Spanned (Type a))
-  | DData [Spanned (CName ::: Spanned (Type a))]
-  deriving (Foldable, Functor, Show, Traversable)
+data DeclBody
+  = DExpr (Spanned Expr)
+  | DType (Spanned Type)
+  | DData [Spanned (CName ::: Spanned Type)]
+  deriving (Show)
 
 
 -- Modules
 
 -- FIXME: imports
-data Module a = Module { name :: MName, defs :: [Spanned (DName, Spanned (Decl a))] }
-  deriving (Foldable, Functor, Show, Traversable)
+data Module = Module { name :: MName, defs :: [Spanned (DName, Spanned Decl)] }
+  deriving (Show)

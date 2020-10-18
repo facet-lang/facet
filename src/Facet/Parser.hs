@@ -99,43 +99,43 @@ whole p = whiteSpace *> p <* eof
 
 -- Modules
 
-module' :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Module N.Index))
+module' :: (Monad p, PositionParsing p) => Facet p (Spanned S.Module)
 module' = spanned (S.Module <$> mname <* colon <* symbol "Module" <*> braces (many decl))
 
 
 -- Declarations
 
-decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned (S.Decl N.Index)))
+decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned S.Decl))
 decl = spanned
   $   (,) <$> dename <* colon <*> sig (S.DExpr <$> comp)
   <|> (,) <$> dtname <* colon <*> sig (S.DData <$> braces (commaSep con))
 
-sigTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned (S.Decl N.Index))
+sigTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned S.Decl)
 sigTable =
   [ [ Op.Operator (forAll (S.:==>)) ]
   , [ Op.Operator binder ]
   ]
 
-sig :: (Monad p, PositionParsing p) => Facet p (S.DeclBody N.Index) -> Facet p (Spanned (S.Decl N.Index))
+sig :: (Monad p, PositionParsing p) => Facet p S.DeclBody -> Facet p (Spanned S.Decl)
 sig body = build sigTable (const (spanned ((S.:=) <$> monotype <*> body)))
 
-binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (Spanned (S.Decl N.Index))
+binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (Spanned S.Decl)
 binder self _ = do
   ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> varPattern ename) <* colon <*> type' <* rparen
   bindVarPattern i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
   where
   mk start t b end = (Span start end, t S.:--> b)
 
-con :: (Monad p, PositionParsing p) => Facet p (Spanned (N.CName S.::: Spanned (S.Type N.Index)))
+con :: (Monad p, PositionParsing p) => Facet p (Spanned (N.CName S.::: Spanned S.Type))
 con = spanned ((S.:::) <$> cname <* colon <*> type')
 
 
 -- Types
 
-typeTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned (S.Type N.Index))
+typeTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned S.Type)
 typeTable = [ Op.Operator (forAll (S.:=>)) ] : monotypeTable
 
-monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned (S.Type N.Index))
+monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned S.Type)
 monotypeTable =
   [ [ Infix R (pack "->") (\ s -> fmap ((,) s) . (S.:->)) ]
   , [ Infix L mempty (\ s -> fmap ((,) s) . (S.:$$)) ]
@@ -147,7 +147,7 @@ monotypeTable =
 
 forAll
   :: (Monad p, PositionParsing p)
-  => ((N.UName S.::: Spanned (S.Type N.Index)) -> Spanned res -> res)
+  => ((N.UName S.::: Spanned S.Type) -> Spanned res -> res)
   -> OperatorParser (Facet p) (Spanned res)
 forAll mk self _ = do
   start <- position
@@ -157,19 +157,19 @@ forAll mk self _ = do
   loop start ty i rest = bind i $ \ v -> mk' start (v S.::: ty) <$> rest <*> position
   mk' start t b end = (Span start end, mk t b)
 
-type' :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Type N.Index))
+type' :: (Monad p, PositionParsing p) => Facet p (Spanned S.Type)
 type' = build typeTable parens
 
-monotype :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Type N.Index))
+monotype :: (Monad p, PositionParsing p) => Facet p (Spanned S.Type)
 monotype = build monotypeTable parens
 
-tvar :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Type N.Index))
+tvar :: (Monad p, PositionParsing p) => Facet p (Spanned S.Type)
 tvar = token (spanned (runUnspaced (fmap (either (S.TFree . N.T) (S.TBound)) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
 -- Expressions
 
-exprTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned (S.Expr N.Index))
+exprTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned S.Expr)
 exprTable =
   [ [ Infix L mempty (\ s -> fmap ((,) s) . (S.:$)) ]
   , [ Atom comp
@@ -178,20 +178,20 @@ exprTable =
     ]
   ]
 
-expr :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Expr N.Index))
+expr :: (Monad p, PositionParsing p) => Facet p (Spanned S.Expr)
 expr = build exprTable parens
 
-comp :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Expr N.Index))
+comp :: (Monad p, PositionParsing p) => Facet p (Spanned S.Expr)
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
 comp = spanned (S.Comp <$> spanned (braces (S.Clauses <$> sepBy1 clause comma <|> S.Expr <$> expr <|> pure (S.Clauses []))))
 
-clause :: (Monad p, PositionParsing p) => Facet p (NE.NonEmpty (Spanned (S.Pattern N.UName)), Spanned (S.Expr N.Index))
+clause :: (Monad p, PositionParsing p) => Facet p (NE.NonEmpty (Spanned S.Pattern), Spanned S.Expr)
 clause = (do
   ps <- try (NE.some1 pattern <* arrow)
   b' <- foldr (bindPattern . snd) expr ps
   pure (ps, b')) <?> "clause"
 
-evar :: (Monad p, PositionParsing p) => Facet p (Spanned (S.Expr N.Index))
+evar :: (Monad p, PositionParsing p) => Facet p (Spanned S.Expr)
 evar
   =   token (spanned (runUnspaced (fmap (either (S.Free . N.E) S.Bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
   <|> try (token (spanned (runUnspaced (S.Free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
@@ -199,7 +199,7 @@ evar
 
 -- Patterns
 
-bindPattern :: PositionParsing p => S.Pattern N.UName -> Facet p a -> Facet p a
+bindPattern :: PositionParsing p => S.Pattern -> Facet p a -> Facet p a
 bindPattern p m = case p of
   S.Wildcard -> bind N.__ (const m)
   S.Var n    -> bind n    (const m)
@@ -217,7 +217,7 @@ varPattern n = Just <$> n <|> Nothing <$ wildcard
 wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
 
-pattern :: (Monad p, PositionParsing p) => p (Spanned (S.Pattern N.UName))
+pattern :: (Monad p, PositionParsing p) => p (Spanned S.Pattern)
 pattern = spanned
   $   S.Var . N.getEName <$> ename
   <|> S.Wildcard <$  wildcard

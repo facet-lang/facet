@@ -288,7 +288,7 @@ infix 1 |-*
 elabType
   :: (HasCallStack, Eq v)
   => Context (Val v ::: Type v)
-  -> Spanned (S.Type a)
+  -> Spanned S.Type
   -> Maybe (Type v)
   -> Elab v (Type v ::: Type v)
 elabType ctx = withSpan' $ \case
@@ -331,7 +331,7 @@ infixr 1 >~>
 elabExpr
   :: (HasCallStack, Eq v)
   => Context (Val v ::: Type v)
-  -> Spanned (S.Expr a)
+  -> Spanned S.Expr
   -> Maybe (Type v)
   -> Elab v (Expr v ::: Type v)
 elabExpr ctx = withSpan' $ \case
@@ -365,7 +365,7 @@ lam n b = Check $ \ _T -> do
 elabComp
   :: (HasCallStack, Eq v)
   => Context (Val v ::: Type v)
-  -> Spanned (S.Comp a)
+  -> Spanned S.Comp
   -> Check v (Expr v)
 elabComp ctx = withSpan $ \case
   S.Expr    b  -> checkElab (elabExpr ctx b)
@@ -387,7 +387,7 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
-elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned (S.Pattern UName)), Spanned (S.Expr a))] -> Check v (Expr v)
+elabClauses :: Eq v => Context (Val v ::: Type v) -> [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check v (Expr v)
 -- FIXME: do the same thing for wildcards
 elabClauses ctx [((_, S.Var n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
@@ -420,7 +420,7 @@ elabClauses ctx cs = Check $ \ _T -> do
 
 elabPattern
   :: Eq v
-  => Spanned (S.Pattern UName)
+  => Spanned S.Pattern
   -> Check v (C.Pattern (Type v) (UName ::: Type v))
 elabPattern = withSpan $ \case
   S.Wildcard -> pure C.Wildcard
@@ -442,14 +442,14 @@ elabPattern = withSpan $ \case
 -- Declarations
 
 elabDecl
-  :: forall a v
+  :: forall v
   .  (HasCallStack, Eq v)
-  => Spanned (S.Decl a)
+  => Spanned S.Decl
   -> (Context (Val v ::: Type v) -> Check v (Either [CName ::: Type v] (Val v))) ::: (Context (Val v ::: Type v) -> Check v (Type v))
 elabDecl d = go d id id
   where
   go
-    :: Spanned (S.Decl a)
+    :: Spanned S.Decl
     -> ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v)))
     -> ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v)))
     -> (Context (Val v ::: Type v) -> Check v (Either [CName ::: Type v] (Val v))) ::: (Context (Val v ::: Type v) -> Check v (Type v))
@@ -468,14 +468,14 @@ elabDecl d = go d id id
 
   withSpans (s, d) f = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
 
-elabDeclBody :: (HasCallStack, Eq v) => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> S.DeclBody a -> Check v (Either [CName ::: Type v] (Val v))
+elabDeclBody :: (HasCallStack, Eq v) => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> S.DeclBody -> Check v (Either [CName ::: Type v] (Val v))
 elabDeclBody k ctx = \case
   S.DExpr b -> Right <$> k (checkElab . (`elabExpr` b)) ctx
   S.DType b -> Right <$> k (checkElab . (`elabType` b)) ctx
   S.DData c -> Left <$> elabData k ctx c
 
 
-elabData :: Eq v => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned (S.Type a))] -> Check v [CName ::: Type v]
+elabData :: Eq v => ((Context (Val v ::: Type v) -> Check v (Val v)) -> (Context (Val v ::: Type v) -> Check v (Val v))) -> Context (Val v ::: Type v) -> [Spanned (CName ::: Spanned S.Type)] -> Check v [CName ::: Type v]
 -- FIXME: check that all constructors return the datatype.
 elabData k ctx cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab . (`elabType` t)) ctx
 
@@ -483,9 +483,9 @@ elabData k ctx cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab 
 -- Modules
 
 elabModule
-  :: forall v a m sig
+  :: forall v m sig
   .  (HasCallStack, Has (Throw (Err v)) sig m, Eq v)
-  => Spanned (S.Module a)
+  => Spanned S.Module
   -> m (C.Module v)
 elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (Type v))) $ do
   -- FIXME: trace the defs as we elaborate them

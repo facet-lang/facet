@@ -23,7 +23,6 @@ import qualified Data.Map as Map
 import           Data.Semigroup
 import           Data.Text.Lazy (unpack)
 import           Facet.Algebra
-import           Facet.Name (Index)
 import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Print
@@ -112,8 +111,8 @@ data Action
   | Quit
   | Load FilePath
   | Reload
-  | Type (Spanned (Expr Index))
-  | Kind (Spanned (Type Index))
+  | Type (Spanned Expr)
+  | Kind (Spanned Type)
 
 load :: (Has (Error Notice) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do

@@ -119,7 +119,7 @@ foldCModule alg (C.Module n ds) = module_ alg
         $ map (decl alg . bimap (var alg . Cons) (foldCValue alg (Level 0))) cs)
 
 
-foldSType :: Algebra p -> Stack p -> Spanned (S.Type a) -> p
+foldSType :: Algebra p -> Stack p -> Spanned S.Type -> p
 foldSType alg = go
   where
   go env (s, t) = case t of
@@ -138,7 +138,7 @@ foldSType alg = go
     where
     level = Level (length env)
 
-foldSExpr :: Algebra p -> Stack p -> Spanned (S.Expr a) -> p
+foldSExpr :: Algebra p -> Stack p -> Spanned S.Expr -> p
 foldSExpr alg = go
   where
   go env (s, e) = case e of
@@ -162,10 +162,10 @@ foldSExpr alg = go
       in ((d', env'), pcon alg (var alg (Cons n)) (fromList ps'))
   subpatterns d env ps = mapAccumL (\ (d', env') p -> pat d' env' p) (d, env) ps
 
-foldSCons :: Algebra p -> Stack p -> Spanned (CName ::: Spanned (S.Type a)) -> p
+foldSCons :: Algebra p -> Stack p -> Spanned (CName ::: Spanned S.Type) -> p
 foldSCons alg env = decl alg . bimap (var alg . Cons) (foldSType alg env) . snd
 
-foldSDecl :: Algebra p -> Spanned (S.Decl a) -> p
+foldSDecl :: Algebra p -> Spanned S.Decl -> p
 foldSDecl alg = go Nil
   where
   go env (s, d) = case d of
@@ -184,5 +184,5 @@ foldSDecl alg = go Nil
     where
     level = Level (length env)
 
-foldSModule :: Algebra p -> Spanned (S.Module a) -> p
+foldSModule :: Algebra p -> Spanned S.Module -> p
 foldSModule alg (_, S.Module m ds) = module_ alg $ m ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (TName (UName (T.pack "Module")))))) :=: map (\ (_, (n, d)) -> decl alg (var alg (Global (Just m) n) ::: foldSDecl alg d)) ds
