@@ -543,6 +543,7 @@ elabModule
   => Spanned (S.Module a)
   -> m (C.Module v)
 elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env (Type v))) $ do
+  -- FIXME: trace the defs as we elaborate them
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
