@@ -274,8 +274,8 @@ f $$ a = Synth $ do
   -> (Val v -> Elab v (Val v))
   -> Elab v (Val v -> Val v)
 n ::: _T |- f = do
-  ctx <- askContext
-  handleBinder (level ctx) (\ v -> local (|> (n ::: v ::: _T)) (f v))
+  m <- meta _T
+  handleBinder (m ::: _T) (\ v -> local (|> (n ::: v ::: _T)) (f v))
 
 infix 1 |-
 

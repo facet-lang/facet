@@ -226,11 +226,10 @@ elimN :: (HasCallStack, Foldable t) => Value a -> t (Elim (Value a)) -> Value a
 elimN f as = foldl' elim f as
 
 
--- FIXME: should we use metavars for quoted variables instead? they’d stand out and we’re going to substitute for them anyway…
-handleBinder :: (HasCallStack, Monad m) => Level -> (Value a -> m (Value a)) -> m (Value a -> Value a)
+handleBinder :: (HasCallStack, Monad m) => Meta ::: Value a -> (Value a -> m (Value a)) -> m (Value a -> Value a)
 handleBinder d b = do
-  b' <- b (quote d)
-  pure $ (`substQ` b') . IntMap.singleton (getLevel d)
+  b' <- b (metavar d)
+  pure $ (`subst` b') . IntMap.singleton (getMeta (tm d))
 
 handleBinderP :: (HasCallStack, Monad m, Traversable t) => Level -> t x -> (t (Value a) -> m (Value a)) -> m (t (Value a) -> Value a)
 handleBinderP d p b = do
