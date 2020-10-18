@@ -129,6 +129,9 @@ instance Bifoldable Con where
 instance Bifunctor Con where
   bimap f g (Con t b) = Con (fmap f t) (fmap g b)
 
+instance Bitraversable Con where
+  bitraverse f g (Con t b) = Con <$> fmap f t <*> fmap g b
+
 
 global :: QName ::: Value -> Value
 global = var . Global
