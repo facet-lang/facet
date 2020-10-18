@@ -151,7 +151,7 @@ renderIO h stream = do
             newStyle <- unsafePeek
             sendM $ ANSI.setSGR newStyle
             go rest
-  liftIO $ runM $ evalState (Nil :: Stack [ANSI.SGR]) $ go stream
+  liftIO $ runM $ evalState (Nil :> ([] :: [ANSI.SGR])) $ go stream
   where
   push x = modify (:>x)
   unsafePeek = do
@@ -187,4 +187,4 @@ renderLazy =
                 newStyle = unsafePeek s'
             in  TLB.fromText (T.pack (ANSI.setSGRCode newStyle)) <> go s' rest
 
-  in TLB.toLazyText . go Nil
+  in TLB.toLazyText . go (Nil :> [])
