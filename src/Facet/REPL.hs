@@ -145,7 +145,11 @@ reload = do
     -- FIXME: check whether files need reloading
     -- FIXME: module name
     print $ success (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
-    rethrowParseErrors (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNotice n))
+    rethrowParseErrors (do
+      m <- runParserWithFile path (runFacet [] (whole module'))
+      print $ getPrint (foldSModule surface m))
+      `catchError` \ n ->
+        print (indent 2 (prettyNotice n))
 
 success :: Doc [SGR] -> Doc [SGR]
 success = annotate [SetColor Foreground Vivid Green]
