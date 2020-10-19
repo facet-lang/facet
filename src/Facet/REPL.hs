@@ -143,8 +143,11 @@ reload = do
   let ln = length files
   for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
-    print $ annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green] (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
+    print $ success (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
     rethrowParseErrors (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNotice n))
+
+success :: Doc [ANSI.SGR] -> Doc [ANSI.SGR]
+success = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
 
 helpDoc :: Doc [ANSI.SGR]
 helpDoc = tabulate2 (stimes (3 :: Int) space) entries
