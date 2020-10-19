@@ -17,7 +17,7 @@ import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=), (.=))
 import           Control.Effect.Parser.Source (Source(..), sourceFromString)
-import           Control.Lens (Lens', ix, lens)
+import           Control.Lens (Getting, Lens', ix, lens)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Foldable (for_)
@@ -185,3 +185,10 @@ print d = do
 
 elab :: Source -> I.ThrowC (Notice [SGR]) Elab.Err (L.StateC REPL (Env.Env Elab.Type) (ReaderC Span m)) a -> m a
 elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src
+
+
+-- | Compose a getter onto the input of a Kleisli arrow and run it on the 'State'.
+(~>) :: Has (State s) sig m => Getting a s a -> (a -> m b) -> m b
+lens ~> act = use lens >>= act
+
+infixr 2 ~>
