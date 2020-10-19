@@ -56,7 +56,7 @@ defaultPromptFunction :: Int -> IO String
 defaultPromptFunction _ = pure $ ANSI.setTitleCode "facet" <> cyan <> "λ " <> plain
   where
   cyan = "\ESC[1;36m\STX"
-  plain = "\ESC[0m\STX"
+  plain = ANSI.setSGRCode []
 
 
 data REPL = REPL
