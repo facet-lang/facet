@@ -43,7 +43,7 @@ rethrowParseErrors = L.runThrow (uncurry Parse.errToNotice)
 rethrowElabErrors :: Source -> L.ThrowC (Notice [SGR]) Elab.Err m a -> m a
 rethrowElabErrors src = L.runThrow $ \ Elab.Err{ Elab.span, Elab.reason, Elab.context } ->
   let reason' = printReason context reason
-  in Notice (Just Error) (slice src span) reason' $
+  in Notice (Just Error) (slice src span) reason'
     [ getPrint $ printContextEntry l (n ::: foldCValue explicit Nil _T)
     | (l, n ::: _T) <- zip [N.Level 0..] (toList (elems context))
     ]
