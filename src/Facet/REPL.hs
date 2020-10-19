@@ -37,7 +37,7 @@ import           Facet.REPL.Parser
 import           Facet.Stack
 import           Facet.Surface (Expr, Type)
 import           Prelude hiding (print, span)
-import           Silkscreen hiding (column, line, width)
+import           Silkscreen hiding (line)
 import qualified System.Console.ANSI as ANSI
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
