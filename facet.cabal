@@ -48,6 +48,7 @@ library
     Facet.Env
     Facet.Eval
     Facet.Name
+    Facet.Notice
     Facet.Parser
     Facet.Parser.Table
     Facet.Pretty
