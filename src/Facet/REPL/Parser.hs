@@ -36,7 +36,7 @@ parseCommands = choice . map go
   parseSymbols = \case
     [] -> pure ""
     ss -> choice (map parseSymbol ss)
-  parseSymbol s = token (string (':':s) <* (eof <|> someSpace)) <?> (':':s)
+  parseSymbol s = token (try (string (':':s) <* (eof <|> someSpace))) <?> (':':s)
   parseValue = \case
     Pure a   -> pure a
     Meta _ p -> p
