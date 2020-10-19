@@ -80,7 +80,6 @@ library
     , selective
     , semialign
     , silkscreen
-    , terminal-size
     , text
     , these
     , transformers

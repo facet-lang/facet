@@ -38,14 +38,13 @@ import           Facet.Stack
 import qualified Prettyprinter as PP
 import           Silkscreen hiding (column, width)
 import qualified System.Console.ANSI as ANSI
-import qualified System.Console.Terminal.Size as Size
 import           System.IO (Handle, hPutChar, stdout)
 
 -- Output
 
 layoutOptionsForTerminal :: IO PP.LayoutOptions
 layoutOptionsForTerminal = do
-  s <- maybe 80 Size.width <$> Size.size
+  s <- maybe 80 fst <$> ANSI.getTerminalSize
   pure PP.defaultLayoutOptions{ PP.layoutPageWidth = PP.AvailablePerLine s 0.8 }
 
 hPutDoc :: MonadIO m => Handle -> PP.Doc [ANSI.SGR] -> m ()
