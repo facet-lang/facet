@@ -65,7 +65,6 @@ terminalStyle = \case
   Con    -> [setRGB red]
   Lit    -> [bold]
   Hole m -> [bold, setRGB (pick (-getMeta m) 0.5 0.45)]
-  ANSI s -> s
   where
   setRGB = ANSI.SetRGBColor ANSI.Foreground
   bold = ANSI.SetConsoleIntensity ANSI.BoldIntensity
@@ -145,7 +144,6 @@ data Highlight
   | Op
   | Lit
   | Hole Meta
-  | ANSI [ANSI.SGR]
   deriving (Eq, Show)
 
 op :: (Printer p, Ann p ~ Highlight) => p -> p
