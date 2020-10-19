@@ -26,6 +26,7 @@ import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
 import           Facet.Elab as Elab (Err(..), Reason(..), Type, elabModule)
 import           Facet.Name (Index(..), Level(..))
+import           Facet.Notice
 import           Facet.Parser (Facet(..), module', runFacet, whole)
 import qualified Facet.Pretty as P
 import qualified Facet.Print as P
@@ -39,7 +40,7 @@ import           Text.Parser.Position (Spanned)
 
 -- Parsing
 
-parseString :: MonadIO m => Facet (ParserC (L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) (Either (N.Notice [ANSI.SGR])))) P.Print -> String -> m ()
+parseString :: MonadIO m => Facet (ParserC (L.ThrowC (Notice [ANSI.SGR]) (Source, Parse.Err) (Either (Notice [ANSI.SGR])))) P.Print -> String -> m ()
 parseString p s = either (P.putDoc . N.prettyNoticeWith P.sgrStyle) P.prettyPrint (rethrowParseErrors(runParserWithString 0 s (runFacet [] p)))
 
 printFile :: MonadIO m => FilePath -> m ()
@@ -47,19 +48,19 @@ printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole modu
   Left err -> P.putDoc (N.prettyNoticeWith P.sgrStyle (uncurry errToNotice err))
   Right m  -> P.prettyPrint (foldSModule P.surface m)
 
-parseFile :: MonadIO m => FilePath -> m (Either (N.Notice [ANSI.SGR]) (Spanned S.Module))
+parseFile :: MonadIO m => FilePath -> m (Either (Notice [ANSI.SGR]) (Spanned S.Module))
 parseFile path = runM (runThrow (rethrowParseErrors (runParserWithFile path (runFacet [] (whole module')))))
 
 
 -- Elaborating
 
-elabString :: MonadIO m => Facet (ParserC (L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) (Either (N.Notice [ANSI.SGR])))) (Spanned S.Module) -> String -> m ()
+elabString :: MonadIO m => Facet (ParserC (L.ThrowC (Notice [ANSI.SGR]) (Source, Parse.Err) (Either (Notice [ANSI.SGR])))) (Spanned S.Module) -> String -> m ()
 elabString = elabPathString Nothing
 
 elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
-elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) (Either (N.Notice [ANSI.SGR])))) (Spanned S.Module) -> String -> m ()
+elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (L.ThrowC (Notice [ANSI.SGR]) (Source, Parse.Err) (Either (Notice [ANSI.SGR])))) (Spanned S.Module) -> String -> m ()
 elabPathString path p s = either (P.putDoc . N.prettyNoticeWith P.sgrStyle) P.prettyPrint $ do
   parsed <- rethrowParseErrors $ runParserWithSource src (runFacet [] (whole p))
   L.runThrow mkNotice $ foldCModule P.explicit <$> elabModule parsed
@@ -70,13 +71,13 @@ elabPathString path p s = either (P.putDoc . N.prettyNoticeWith P.sgrStyle) P.pr
 
 -- Errors
 
-rethrowParseErrors :: L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) m a -> m a
+rethrowParseErrors :: L.ThrowC (Notice [ANSI.SGR]) (Source, Parse.Err) m a -> m a
 rethrowParseErrors = L.runThrow (uncurry errToNotice)
 
-toNotice :: Maybe N.Level -> Source -> Elab.Err -> N.Notice [ANSI.SGR]
+toNotice :: Maybe N.Level -> Source -> Elab.Err -> Notice [ANSI.SGR]
 toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason
-  in N.Notice lvl (slice src span) reason' $
+  in Notice lvl (slice src span) reason' $
     [ P.getPrint $ P.printContextEntry l (n ::: foldCValue P.explicit Nil _T)
     | (l, n ::: _T) <- zip [Level 0..] (toList (elems context))
     ]
