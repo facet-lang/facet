@@ -209,7 +209,7 @@ hole n = Check $ \ _T -> err $ Hole n _T
   -> Synth Value
 f $$ a = Synth $ do
   f' ::: _F <- synth f
-  (_A, _B) <- expectQuantifiedType "in application" _F
+  (_A, _B) <- expectQuantifier "in application" _F
   a' <- check (a ::: ty _A)
   pure $ (f' C.$$ ex a') ::: _B a'
 
@@ -303,7 +303,7 @@ lam
   -> (UName ::: Type -> Check Expr)
   -> Check Expr
 lam n b = Check $ \ _T -> do
-  (_ ::: _T, _B) <- expectQuantifiedType "when checking lambda" _T
+  (_ ::: _T, _B) <- expectQuantifier "when checking lambda" _T
   b' <- elabBinder $ \ v -> check (b (out n ::: _T) ::: _B v)
   pure $ VLam (n ::: _T) b'
 
@@ -334,12 +334,12 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 
 elabClauses :: [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check Expr
 elabClauses [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
-  (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
+  (P pl _ ::: _A, _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> n ::: _A |- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
   pure $ VLam (P pl n ::: _A) b'
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
 elabClauses cs = Check $ \ _T -> do
-  (_ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
+  (_ ::: _A, _B) <- expectQuantifier "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
     XB    -> pure $ Nothing
     XL _  -> pure $ Nothing
@@ -369,7 +369,7 @@ elabPattern = withSpan $ \case
     let go _T' = \case
           Nil   -> Nil <$ unify (_T' :===: _T)
           ps:>p -> do
-            (_A, _B) <- expectQuantifiedType "when checking constructor pattern" _T'
+            (_A, _B) <- expectQuantifier "when checking constructor pattern" _T'
             -- FIXME: there’s no way this is going to work, let alone a good idea
             -- FIXME: elaborate patterns in CPS, binding locally with elabBinder, & obviating the need for |-*.
             v <- metavar <$> meta (ty _A)
@@ -523,5 +523,5 @@ expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 expectMatch :: (Type -> Maybe out) -> String -> String -> Type -> Elab out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifiedType :: String -> Type -> Elab (Pl_ UName ::: Type, Type -> Type)
-expectQuantifiedType = expectMatch unForAll "{_} -> _"
+expectQuantifier :: String -> Type -> Elab (Pl_ UName ::: Type, Type -> Type)
+expectQuantifier = expectMatch unForAll "{_} -> _"
