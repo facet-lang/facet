@@ -454,19 +454,25 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
         pure (qname, C.DTerm e' ::: _T)
 
   pure $ C.Module mname defs
-  where
-  -- Apply the substitution to the value.
-  -- FIXME: error if the substitution has holes.
-  apply s v = subst (IntMap.mapMaybe tm s) v
-  emptySubst = IntMap.empty @(Maybe Prob ::: Type)
 
-  runSubst = runState (fmap pure . apply) emptySubst
 
-  runContext = runReader @(Context Type) empty
+-- | Apply the substitution to the value.
+apply :: Subst -> Value -> Value
+apply s v = subst (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
 
-  runEnv m = do
-    env <- get @(Env.Env Type)
-    runReader env m
+emptySubst :: Subst
+emptySubst = IntMap.empty
+
+runSubst :: Applicative m => StateC Subst m Value -> m Value
+runSubst = runState (fmap pure . apply) emptySubst
+
+runContext :: ReaderC (Context Type) m a -> m a
+runContext = runReader empty
+
+runEnv :: Has (State (Env.Env Type)) sig m => ReaderC (Env.Env Type) m a -> m a
+runEnv m = do
+  env <- get @(Env.Env Type)
+  runReader env m
 
 
 
