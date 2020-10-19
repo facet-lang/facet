@@ -41,11 +41,11 @@ import           Text.Parser.Position (Spanned)
 -- Parsing
 
 parseString :: MonadIO m => Facet (ParserC (L.ThrowC (Notice [ANSI.SGR]) (Source, Parse.Err) (Either (Notice [ANSI.SGR])))) P.Print -> String -> m ()
-parseString p s = either (P.putDoc . N.prettyNoticeWith P.sgrStyle) P.prettyPrint (rethrowParseErrors(runParserWithString 0 s (runFacet [] p)))
+parseString p s = either (P.putDoc . prettyNotice) P.prettyPrint (rethrowParseErrors(runParserWithString 0 s (runFacet [] p)))
 
 printFile :: MonadIO m => FilePath -> m ()
 printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module')))) >>= \case
-  Left err -> P.putDoc (N.prettyNoticeWith P.sgrStyle (uncurry errToNotice err))
+  Left err -> P.putDoc (prettyNotice (uncurry errToNotice err))
   Right m  -> P.prettyPrint (foldSModule P.surface m)
 
 parseFile :: MonadIO m => FilePath -> m (Either (Notice [ANSI.SGR]) (Spanned S.Module))
@@ -61,7 +61,7 @@ elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (L.ThrowC (Notice [ANSI.SGR]) (Source, Parse.Err) (Either (Notice [ANSI.SGR])))) (Spanned S.Module) -> String -> m ()
-elabPathString path p s = either (P.putDoc . N.prettyNoticeWith P.sgrStyle) P.prettyPrint $ do
+elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
   parsed <- rethrowParseErrors $ runParserWithSource src (runFacet [] (whole p))
   L.runThrow mkNotice $ foldCModule P.explicit <$> elabModule parsed
   where
