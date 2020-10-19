@@ -119,10 +119,10 @@ sig name body = go
 
 binder
   :: (Monad p, PositionParsing p)
-  => ((N.UName S.::: Spanned S.Type) -> Spanned S.Decl -> S.Decl)
+  => ((N.UName S.::: Spanned S.Type) -> Spanned res -> res)
   -> Facet p N.UName
-  -> Facet p (Spanned S.Decl)
-  -> Facet p (Spanned S.Decl)
+  -> Facet p (Spanned res)
+  -> Facet p (Spanned res)
 binder (-->) name k = do
   ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (coerce <$> name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
   bind i $ \ v -> mk start (v S.::: t) <$ arrow <*> k <*> position
