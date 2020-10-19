@@ -18,6 +18,7 @@ module Facet.Print
 , terminalStyle
 , Print(..)
 , Precedence(..)
+, ann
 , printContextEntry
   -- * Algebras
 , surface
