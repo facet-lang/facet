@@ -463,7 +463,7 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
         modify $ Env.insert (qname :=: Just e'' ::: _T)
         pure (qname, C.DTerm e'' ::: _T)
 
-  pure $ C.Module mname defs
+  pure $ C.Module mname [] defs
 
 
 -- | Apply the substitution to the value.

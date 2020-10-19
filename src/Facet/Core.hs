@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
@@ -25,6 +26,7 @@ module Facet.Core
 , Pattern(..)
   -- * Modules
 , Module(..)
+, Import(..)
 , Def(..)
   -- * Quotation
 , QExpr(..)
@@ -235,9 +237,12 @@ instance Bitraversable Pattern where
 -- Modules
 
 data Module = Module
-  { name :: MName
-  , defs :: [(QName, Def ::: Value)]
+  { name    :: MName
+  , imports :: [Import]
+  , defs    :: [(QName, Def ::: Value)]
   }
+
+newtype Import = Import { name :: MName }
 
 data Def
   = DTerm Value

@@ -62,7 +62,8 @@ data Algebra p = Algebra
   , decl :: p ::: p -> p
   , defn :: p :=: p -> p
   , data' :: [p] -> p
-  , module_ :: MName ::: Maybe p :=: [p] -> p
+  , module_ :: MName ::: Maybe p :=: ([p], [p]) -> p
+  , import' :: MName -> p
   }
 
 
@@ -113,10 +114,10 @@ foldCValue alg = go
   subpatterns env ps = mapAccumL (\ (env', ps) p -> let ((env'', v), p') = pat env' p in ((env'', ps:>v), p')) (env, Nil) ps
 
 foldCModule :: Algebra p -> C.Module -> p
-foldCModule alg (C.Module n ds) = module_ alg
+foldCModule alg (C.Module n is ds) = module_ alg
   $   n
   ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (TName (UName (T.pack "Module"))))))
-  :=: map def ds
+  :=: (map (\ (C.Import n) -> import' alg n) is, map def ds)
   where
   def (m :.: n, d ::: t) = decl alg
     $   var alg (Global (Just m) n)
@@ -193,4 +194,4 @@ foldSDecl alg = go Nil
     level = Level (length env)
 
 foldSModule :: Algebra p -> Spanned S.Module -> p
-foldSModule alg (_, S.Module m ds) = module_ alg $ m ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (TName (UName (T.pack "Module")))))) :=: map (\ (_, (n, d)) -> decl alg (var alg (Global (Just m) n) ::: foldSDecl alg d)) ds
+foldSModule alg (_, S.Module m ds) = module_ alg $ m ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (TName (UName (T.pack "Module")))))) :=: ([], map (\ (_, (n, d)) -> decl alg (var alg (Global (Just m) n) ::: foldSDecl alg d)) ds)

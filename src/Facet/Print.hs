@@ -29,7 +29,6 @@ import           Control.Monad.IO.Class
 import           Data.Colour.RGBSpace.HSL
 import           Data.Foldable (foldl', toList)
 import           Data.Function (on)
-import           Data.List (intersperse)
 import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
@@ -222,7 +221,8 @@ surface = Algebra
   , decl = ann
   , defn = \ (a :=: b) -> a </> b
   , data' = block . commaSep
-  , module_ = \ (n ::: t :=: ds) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (embed (vsep (intersperse mempty ds)))
+  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (embed (concatWith (surround hardline) (is ++ map (hardline <>) ds)))
+  , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (prettyMName n)))
   }
   where
   embed = nest 2 . group
@@ -260,7 +260,8 @@ explicit = Algebra
   , decl = ann
   , defn = \ (a :=: b) -> a </> b
   , data' = block . commaSep
-  , module_ = \ (n ::: t :=: ds) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (embed (vsep (intersperse mempty ds)))
+  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (embed (concatWith (surround hardline) (is ++ map (hardline <>) ds)))
+  , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (prettyMName n)))
   }
   where
   embed = nest 2 . group
