@@ -203,5 +203,5 @@ setBold = SetConsoleIntensity BoldIntensity
 _sRGB :: Iso' (Float, Float, Float) (Colour Float)
 _sRGB = iso (\ (r,g,b) -> sRGB r g b) (uncurryRGB (,,) . toSRGB)
 
-_HSL :: Iso' (Float, Float, Float) (Colour Float)
-_HSL = iso (\ (h,s,l) -> uncurryRGB sRGB (hsl h s l)) (hslView.toSRGB)
+_HSL :: Iso' (Float, Float, Float) (RGB Float)
+_HSL = iso (\ (h,s,l) -> hsl h s l) hslView
