@@ -16,7 +16,6 @@ module Facet.GHCI
 import           Control.Carrier.Lift (runM)
 import           Control.Carrier.Parser.Church as Parse (Err, ParserC, errToNotice, runParserWithFile, runParserWithSource, runParserWithString)
 import           Control.Carrier.Throw.Either
-import           Control.Effect.Parser.Notice (Level(..), Style(..))
 import qualified Control.Effect.Parser.Notice as N
 import           Control.Effect.Parser.Source (Source(..), slice, sourceFromString)
 import           Control.Monad.IO.Class (MonadIO(..))
@@ -34,18 +33,18 @@ import           Facet.Stack (Stack(..))
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import qualified Prettyprinter as PP
-import           Silkscreen (annotate, colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
+import           Silkscreen (colon, fillSep, flatAlt, group, line, nest, pretty, softline, space, (</>))
 import qualified System.Console.ANSI as ANSI
 import           Text.Parser.Position (Spanned)
 
 -- Parsing
 
 parseString :: MonadIO m => Facet (ParserC (L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) (Either (N.Notice [ANSI.SGR])))) P.Print -> String -> m ()
-parseString p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.prettyPrint (rethrowParseErrors(runParserWithString 0 s (runFacet [] p)))
+parseString p s = either (P.putDoc . N.prettyNoticeWith P.sgrStyle) P.prettyPrint (rethrowParseErrors(runParserWithString 0 s (runFacet [] p)))
 
 printFile :: MonadIO m => FilePath -> m ()
 printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module')))) >>= \case
-  Left err -> P.putDoc (N.prettyNoticeWith sgrStyle (uncurry errToNotice err))
+  Left err -> P.putDoc (N.prettyNoticeWith P.sgrStyle (uncurry errToNotice err))
   Right m  -> P.prettyPrint (foldSModule P.surface m)
 
 parseFile :: MonadIO m => FilePath -> m (Either (N.Notice [ANSI.SGR]) (Spanned S.Module))
@@ -61,7 +60,7 @@ elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) (Either (N.Notice [ANSI.SGR])))) (Spanned S.Module) -> String -> m ()
-elabPathString path p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.prettyPrint $ do
+elabPathString path p s = either (P.putDoc . N.prettyNoticeWith P.sgrStyle) P.prettyPrint $ do
   parsed <- rethrowParseErrors $ runParserWithSource src (runFacet [] (whole p))
   L.runThrow mkNotice $ foldCModule P.explicit <$> elabModule parsed
   where
@@ -108,16 +107,3 @@ printReason ctx = group . \case
 
 printType :: Stack P.Print -> Type -> PP.Doc [ANSI.SGR]
 printType env = P.getPrint . foldCValue P.explicit env
-
-
-sgrStyle :: Style [ANSI.SGR]
-sgrStyle = Style
-  { pathStyle   = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
-  , levelStyle  = \case
-    Warn  -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Magenta]
-    Error -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
-  , posStyle    = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
-  , gutterStyle = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
-  , eofStyle    = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
-  , caretStyle  = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
-  }

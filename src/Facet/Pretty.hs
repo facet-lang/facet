@@ -20,10 +20,12 @@ module Facet.Pretty
   -- * Rendering
 , renderIO
 , renderLazy
+, sgrStyle
 ) where
 
 import           Control.Carrier.Lift
 import           Control.Carrier.State.Church
+import           Control.Effect.Parser.Notice (Level(..), Style(..))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (first)
 import qualified Data.Text as T
@@ -165,3 +167,16 @@ renderLazy =
             in  TLB.fromText (T.pack (ANSI.setSGRCode newStyle)) <> go s' rest
 
   in TLB.toLazyText . go (Nil :> [])
+
+
+sgrStyle :: Style [ANSI.SGR]
+sgrStyle = Style
+  { pathStyle   = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  , levelStyle  = \case
+    Warn  -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Magenta]
+    Error -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
+  , posStyle    = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  , gutterStyle = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
+  , eofStyle    = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
+  , caretStyle  = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
+  }

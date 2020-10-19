@@ -14,7 +14,7 @@ import           Control.Carrier.Parser.Church
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=))
-import           Control.Effect.Parser.Notice (Level(..), Notice, Style(..), prettyNoticeWith)
+import           Control.Effect.Parser.Notice (Notice, prettyNoticeWith)
 import           Control.Effect.Parser.Source (Source)
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
@@ -164,16 +164,3 @@ print d = do
 
 rethrowParseErrors :: L.ThrowC (Notice [ANSI.SGR]) (Source, Err) m a -> m a
 rethrowParseErrors = L.runThrow (uncurry errToNotice)
-
-
-sgrStyle :: Style [ANSI.SGR]
-sgrStyle = Style
-  { pathStyle   = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
-  , levelStyle  = \case
-    Warn  -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Magenta]
-    Error -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
-  , posStyle    = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
-  , gutterStyle = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
-  , eofStyle    = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
-  , caretStyle  = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
-  }
