@@ -52,7 +52,7 @@ import           System.IO (Handle, hPutChar, stdout)
 layoutOptionsForTerminal :: IO PP.LayoutOptions
 layoutOptionsForTerminal = do
   s <- maybe 80 snd <$> getTerminalSize
-  pure PP.defaultLayoutOptions{ PP.layoutPageWidth = PP.AvailablePerLine s 0.8 }
+  pure PP.defaultLayoutOptions{ PP.layoutPageWidth = PP.AvailablePerLine s 1 }
 
 hPutDoc :: MonadIO m => Handle -> PP.Doc [SGR] -> m ()
 hPutDoc handle doc = liftIO $ do
