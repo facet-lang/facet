@@ -66,8 +66,8 @@ instance Show Level where
 levelToIndex :: Level -> Level -> Index
 levelToIndex (Level d) (Level level) = Index $ d - level - 1
 
-indexToLevel :: Int -> Index -> Level
-indexToLevel d (Index index) = Level $ d - index - 1
+indexToLevel :: Level -> Index -> Level
+indexToLevel (Level d) (Index index) = Level $ d - index - 1
 
 
 newtype Meta = Meta { getMeta :: Int }
