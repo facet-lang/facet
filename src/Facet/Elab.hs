@@ -494,15 +494,15 @@ data Reason
   | BadContext Index
 
 
-err :: Has (Reader Span :+: Throw Err) sig m => Reason -> m a
+err :: Reason -> Elab a
 err reason = do
   span <- ask
   throwError $ Err span reason empty -- FIXME: we should either eliminate the context or pass it in
 
-mismatch :: Has (Reader Span :+: Throw Err) sig m => String -> Either String Type -> Type -> m a
+mismatch :: String -> Either String Type -> Type -> Elab a
 mismatch msg exp act = err $ Mismatch msg exp act
 
-couldNotUnify :: Has (Reader Span :+: Throw Err) sig m => Type -> Type -> m a
+couldNotUnify :: Type -> Type -> Elab a
 couldNotUnify t1 t2 = mismatch "mismatch" (Right t2) t1
 
 couldNotSynthesize :: String -> Elab a
