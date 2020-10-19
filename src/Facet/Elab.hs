@@ -442,7 +442,7 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
 
     modify $ Env.insert (qname :=: Nothing ::: _T)
 
-    (s, e') <- runContext . runEnv . runState (fmap pure . (,)) emptySubst . runElab $ check (e ::: _T)
+    (s, e') <- runContext . runEnv . runSubstWith (fmap pure . (,)) . runElab $ check (e ::: _T)
     case e' of
       Left cs  -> do
         cs' <- for cs $ \ (n ::: _T) -> do
@@ -468,7 +468,10 @@ emptySubst :: Subst
 emptySubst = IntMap.empty
 
 runSubst :: Applicative m => StateC Subst m Value -> m Value
-runSubst = runState (fmap pure . apply) emptySubst
+runSubst = runSubstWith (fmap pure . apply)
+
+runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
+runSubstWith with = runState with emptySubst
 
 runContext :: ReaderC (Context Type) m a -> m a
 runContext = runReader empty
