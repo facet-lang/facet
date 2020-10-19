@@ -28,3 +28,4 @@ instance Has (State s) sig m => Algebra (State t :+: sig) (StateC s t m) where
     L Get     -> (<$ ctx) <$> gets (^# lens)
     L (Put s) -> (<$ ctx) <$> modify (storing lens s)
     R other   -> alg (runState lens . hdl) other ctx
+  {-# INLINABLE alg #-}
