@@ -22,6 +22,7 @@ import           Control.Lens (Getting, Lens', itraverse, lens)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
+import           Data.Foldable (toList)
 import qualified Data.Map as Map
 import           Data.Semigroup
 import           Data.Text.Lazy (unpack)
@@ -154,12 +155,17 @@ reload :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL
 reload = do
   -- FIXME: order with a topological sort on imports, once those exist
   evalFresh 1 $ files_ <~> \ files -> itraverse (reloadFile (length files)) files
+  files <- use files_
+  let lnAll = length files
+      lnLoaded = length (filter loaded (toList files))
+      style = if lnLoaded == lnAll then success else failure
+  print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
   where
   -- FIXME: check whether files need reloading
   reloadFile ln path file = if loaded file then pure file else do
     i <- fresh
     -- FIXME: print the module name
-    print $ heading (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
+    print $ annotate info (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
     rethrowParseErrors (do
       src <- liftIO (readSourceFromFile path)
@@ -169,8 +175,14 @@ reload = do
       `catchError` \ n ->
         file <$ print (indent 2 (prettyNotice n))
 
-heading :: Doc [SGR] -> Doc [SGR]
-heading = annotate [setRGB (hsl 120 1 0.5), setBold]
+failure :: [SGR]
+failure = [setRGB (hsl 0 1 0.5), setBold]
+
+success :: [SGR]
+success = [setRGB (hsl 120 1 0.5), setBold]
+
+info :: [SGR]
+info = [setRGB (hsl 0 0 0.5), setBold]
 
 helpDoc :: Doc [SGR]
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
