@@ -50,6 +50,7 @@ library
     Facet.Name
     Facet.Notice
     Facet.Notice.Elab
+    Facet.Notice.Parser
     Facet.Parser
     Facet.Parser.Table
     Facet.Pretty
