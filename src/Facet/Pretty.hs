@@ -33,6 +33,7 @@ module Facet.Pretty
 import           Control.Carrier.Lift
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Notice (Level(..), Style(..))
+import           Control.Lens (Iso', iso)
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (first)
 import           Data.Colour.RGBSpace
@@ -198,5 +199,5 @@ setRGB = SetRGBColor Foreground
 setBold :: SGR
 setBold = SetConsoleIntensity BoldIntensity
 
-_HSL :: Float -> Float -> Float -> Colour Float
-_HSL h s l = uncurryRGB sRGB $ hsl h s l
+_HSL :: Iso' (Float, Float, Float) (Colour Float)
+_HSL = iso (\ (h,s,l) -> uncurryRGB sRGB (hsl h s l)) (hslView.toSRGB)
