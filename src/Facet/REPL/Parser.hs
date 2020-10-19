@@ -3,7 +3,7 @@
 module Facet.REPL.Parser
 ( Command(..)
 , meta
-, Value(..)
+, Arg(..)
 , parseCommands
 ) where
 
@@ -17,7 +17,7 @@ import Text.Parser.Token hiding (brackets, comma)
 data Command a = Command
   { symbols :: [String]
   , usage   :: String
-  , value   :: Value a
+  , value   :: Arg a
   }
 
 meta :: Command a -> Maybe String
@@ -25,7 +25,7 @@ meta c = case value c of
   Meta s _ -> Just s
   _        -> Nothing
 
-data Value a
+data Arg a
   = Pure a
   | Meta String (forall p . (PositionParsing p, Monad p) => p a)
 
