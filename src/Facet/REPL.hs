@@ -82,7 +82,7 @@ loop = do
   (line, resp) <- prompt
   runError (print . prettyNoticeWith sgrStyle) pure $ case resp of
     -- FIXME: evaluate expressions
-    Just resp -> runParserWithString (Pos line 0) resp (runFacet [] (whole commandParser)) >>= runAction
+    Just resp -> runParserWithString line resp (runFacet [] (whole commandParser)) >>= runAction
     Nothing   -> pure ()
   loop
   where
@@ -182,8 +182,8 @@ sgrStyle = Style
 
 
 
-runParserWithString :: Has (Throw (Notice [ANSI.SGR])) sig m => Pos -> String -> ParserC m a -> m a
-runParserWithString pos str = runParserWith Nothing (Input pos str)
+runParserWithString :: Has (Throw (Notice [ANSI.SGR])) sig m => Int -> String -> ParserC m a -> m a
+runParserWithString line str = runParserWith Nothing (Input (Pos line 0) str)
 {-# INLINE runParserWithString #-}
 
 runParserWithFile :: (Has (Throw (Notice [ANSI.SGR])) sig m, MonadIO m) => FilePath -> ParserC m a -> m a
