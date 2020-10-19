@@ -17,7 +17,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=), (<~))
-import           Control.Effect.Parser.Source (Source(..), sourceFromString)
+import           Control.Effect.Parser.Source (Source(..), readSourceFromFile, sourceFromString)
 import           Control.Lens (Getting, Lens', itraverse, lens)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -161,8 +161,10 @@ reload = evalFresh 1 $ files_ <~> \ files -> itraverse (reloadFile (length files
     print $ heading (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
     rethrowParseErrors (do
-      m <- runParserWithFile path (runFacet [] (whole module'))
-      file{ loaded = True } <$ print (getPrint (foldSModule surface m)))
+      src <- liftIO (readSourceFromFile path)
+      m <- runParserWithSource src (runFacet [] (whole module'))
+      m' <- elab src $ Elab.elabModule m
+      file{ loaded = True } <$ print (getPrint (foldCModule surface m')))
       `catchError` \ n ->
         file <$ print (indent 2 (prettyNotice n))
 
