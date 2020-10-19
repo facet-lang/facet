@@ -80,7 +80,7 @@ data File = File
   }
 
 loaded_ :: Lens' File Bool
-loaded_ = lens loaded (\ f loaded-> f{ loaded })
+loaded_ = lens loaded (\ f loaded -> f{ loaded })
 
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
