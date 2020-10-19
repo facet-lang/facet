@@ -8,6 +8,7 @@ module Facet.REPL.Parser
 ) where
 
 import Control.Applicative (Alternative(..))
+import Data.Functor (void)
 import Text.Parser.Char
 import Text.Parser.Combinators
 import Text.Parser.Position
@@ -34,9 +35,9 @@ parseCommands = choice . map go
   where
   go c = parseSymbols (symbols c) *> parseValue (value c)
   parseSymbols = \case
-    [] -> pure ""
+    [] -> pure ()
     ss -> choice (map parseSymbol ss)
-  parseSymbol s = token (try (string (':':s) <* (eof <|> someSpace))) <?> (':':s)
+  parseSymbol s = void $ token (try (string (':':s) <* (eof <|> someSpace))) <?> (':':s)
   parseValue = \case
     Pure a   -> pure a
     Meta _ p -> p
