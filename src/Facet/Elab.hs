@@ -393,13 +393,13 @@ elabDecl d = go d id id
   go d km kt = withSpans d $ \case
     (n ::: t) S.:==> b ->
       go b
-        (km . (\ b  -> lam (im n) (\ v -> v |- b)))
-        (kt . (\ _B -> checkElab (switch (im n ::: checkElab (elabType t) >~> \ v -> v |- _B))))
+        (km . (\ b  -> lam (im n) (|- b)))
+        (kt . (\ _B -> checkElab (switch (im n ::: checkElab (elabType t) >~> (|- _B)))))
 
     (n ::: t) S.:--> b ->
       go b
-        (km . (\ b  -> lam (ex n) (\ v -> v |- b)))
-        (kt . (\ _B -> checkElab (switch (ex __ ::: checkElab (elabType t) >~> \ v -> v |- _B))))
+        (km . (\ b  -> lam (ex n) (|- b)))
+        (kt . (\ _B -> checkElab (switch (ex __ ::: checkElab (elabType t) >~> (|- _B)))))
 
     t S.:= b -> elabDeclBody km b ::: kt (checkElab (elabType t))
 
