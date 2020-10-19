@@ -234,7 +234,10 @@ instance Bitraversable Pattern where
 
 -- Modules
 
-data Module = Module MName [(QName, Def ::: Value)]
+data Module = Module
+  { name :: MName
+  , defs :: [(QName, Def ::: Value)]
+  }
 
 data Def
   = DTerm Value
