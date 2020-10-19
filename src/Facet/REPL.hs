@@ -14,7 +14,6 @@ import           Control.Carrier.Parser.Church
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=))
-import           Control.Effect.Parser.Notice (prettyNoticeWith)
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -77,7 +76,7 @@ env_ = lens env (\ r env -> r{ env })
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
   (line, resp) <- prompt
-  runError (print . prettyNoticeWith sgrStyle) pure $ case resp of
+  runError (print . prettyNotice) pure $ case resp of
     -- FIXME: evaluate expressions
     Just resp -> rethrowParseErrors (runParserWithString line resp (runFacet [] (whole commandParser))) >>= runAction
     Nothing   -> pure ()
@@ -137,7 +136,7 @@ reload = do
   for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
     print $ annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green] (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
-    rethrowParseErrors (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNoticeWith sgrStyle n))
+    rethrowParseErrors (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNotice n))
 
 helpDoc :: Doc [ANSI.SGR]
 helpDoc = tabulate2 (stimes (3 :: Int) space) entries
