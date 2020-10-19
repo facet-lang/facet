@@ -226,8 +226,8 @@ elabBinder b = do
 (|-)
   :: Has (Reader (Context Type)) sig m
   => UName ::: Type
-  -> m Value
-  -> m Value
+  -> m a
+  -> m a
 t |- b = local @(Context Type) (|> t) b
 
 infix 1 |-
