@@ -27,6 +27,7 @@ module Facet.Pretty
   -- * Re-exports
 , PP.Doc
 , PP.layoutSmart
+, SGR
 ) where
 
 import           Control.Carrier.Lift

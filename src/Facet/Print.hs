@@ -42,7 +42,6 @@ import           Silkscreen as P
 import           Silkscreen.Printer.Prec hiding (Level)
 import qualified Silkscreen.Printer.Prec as P
 import           Silkscreen.Printer.Rainbow as P
-import           System.Console.ANSI
 
 prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = putDoc . getPrint

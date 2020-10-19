@@ -25,7 +25,6 @@ import           Facet.Print
 import           Facet.Stack
 import           Facet.Syntax
 import           Silkscreen
-import           System.Console.ANSI (SGR)
 
 -- Notices
 
