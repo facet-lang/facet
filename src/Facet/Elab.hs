@@ -69,7 +69,7 @@ type Prob = Value
 
 type Subst = IntMap.IntMap (Maybe Prob ::: Type)
 
-newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Context Type) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -79,15 +79,15 @@ instance Applicative Elab where
   Elab f <*> Elab a = Elab (f <*> a)
 
 instance Monad Elab where
-  Elab m >>= f = Elab $ m >>= elab . f
+  Elab m >>= f = Elab $ m >>= runElab . f
 
 instance Algebra (Reader (Context Type) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) Elab where
   alg hdl sig ctx = case sig of
-    L rctx              -> Elab $ alg (elab . hdl) (inj rctx) ctx
-    R (L renv)          -> Elab $ alg (elab . hdl) (inj renv) ctx
-    R (R (L rspan))     -> Elab $ alg (elab . hdl) (inj rspan) ctx
-    R (R (R (L subst))) -> Elab $ alg (elab . hdl) (inj subst) ctx
-    R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
+    L rctx              -> Elab $ alg (runElab . hdl) (inj rctx) ctx
+    R (L renv)          -> Elab $ alg (runElab . hdl) (inj renv) ctx
+    R (R (L rspan))     -> Elab $ alg (runElab . hdl) (inj rspan) ctx
+    R (R (R (L subst))) -> Elab $ alg (runElab . hdl) (inj subst) ctx
+    R (R (R (R throw))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
@@ -434,11 +434,11 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
     let qname = mname :.: n
         e ::: t = elabDecl d
 
-    _T <- runContext . runEnv . runSubst . elab $ check (t ::: VType)
+    _T <- runContext . runEnv . runSubst . runElab $ check (t ::: VType)
 
     modify $ Env.insert (qname :=: Nothing ::: _T)
 
-    (s, e') <- runContext . runEnv . runState (fmap pure . (,)) emptySubst . elab $ check (e ::: _T)
+    (s, e') <- runContext . runEnv . runState (fmap pure . (,)) emptySubst . runElab $ check (e ::: _T)
     case e' of
       Left cs  -> do
         cs' <- for cs $ \ (n ::: _T) -> do
