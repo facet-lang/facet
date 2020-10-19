@@ -3,9 +3,12 @@ module Facet.Carrier.Error.Lens
 ( -- * Error carrier
   runError
 , ErrorC(..)
+  -- * Error effect
+, module Control.Effect.Error
 ) where
 
 import Control.Carrier.Reader
+import Control.Effect.Error
 import Control.Lens (APrism')
 
 runError :: APrism' e f -> ErrorC e f m a -> m a
