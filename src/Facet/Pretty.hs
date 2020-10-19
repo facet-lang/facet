@@ -200,8 +200,8 @@ setRGB = SetRGBColor Foreground
 setBold :: SGR
 setBold = SetConsoleIntensity BoldIntensity
 
-_sRGB :: Iso' (Float, Float, Float) (Colour Float)
-_sRGB = iso (\ (r,g,b) -> sRGB r g b) (uncurryRGB (,,) . toSRGB)
+_sRGB :: Iso' (RGB Float) (Colour Float)
+_sRGB = iso (uncurryRGB sRGB) toSRGB
 
 _HSL :: Iso' (Float, Float, Float) (RGB Float)
 _HSL = iso (\ (h,s,l) -> hsl h s l) hslView
