@@ -63,6 +63,9 @@ data File = File
   { loaded :: Bool
   }
 
+line_ :: Lens' REPL Int
+line_ = lens line (\ r line -> r{ line })
+
 files_ :: Lens' REPL (Map.Map FilePath File)
 files_ = lens files (\ r files -> r{ files })
 
