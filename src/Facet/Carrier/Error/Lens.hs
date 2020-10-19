@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Facet.Carrier.Error.Lens
-( ErrorC(..)
+( -- * Error carrier
+  ErrorC(..)
 ) where
 
 import Control.Carrier.Reader
