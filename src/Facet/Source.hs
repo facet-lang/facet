@@ -123,7 +123,7 @@ infixl 9 !..
 
 
 slice :: Source -> Span.Span -> Source
-slice (Source path span _ lines) span' = Source path span' contents' lines'
+slice (Source path _ _ lines) span' = Source path span' contents' lines'
   where
   contents' = appEndo (foldMap (\ (Line _ s e) -> Endo (s <>) <> case e of
     EOF  -> mempty
@@ -134,7 +134,7 @@ slice (Source path span _ lines) span' = Source path span' contents' lines'
     $ NE.fromList
     $ takeWhile    (\ (Line i _ _) -> i <= endLine)
     $ NE.dropWhile (\ (Line i _ _) -> i < startLine) lines
-  startLine = Span.line (Span.start span)
-  endLine   = Span.line (Span.end   span)
+  startLine = Span.line (Span.start span')
+  endLine   = Span.line (Span.end   span')
   cr = Endo ('\r':)
   lf = Endo ('\n':)
