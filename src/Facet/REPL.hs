@@ -11,6 +11,7 @@ module Facet.REPL
 import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
+import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Parser.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
@@ -151,11 +152,11 @@ load path = do
 
 reload :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 -- FIXME: topological sort
-reload = files_ <~> \ files -> itraverse (reloadFile (length files)) files
+reload = evalFresh 1 $ files_ <~> \ files -> itraverse (reloadFile (length files)) files
   where
   -- FIXME: check whether files need reloading
   reloadFile ln path file = if loaded file then pure file else do
-    let i = 0 :: Int
+    i <- fresh
     -- FIXME: print the module name
     print $ heading (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
