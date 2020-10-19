@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
 module Facet.Surface
@@ -19,6 +20,7 @@ module Facet.Surface
 , DeclBody(..)
   -- * Modules
 , Module(..)
+, Import(..)
 ) where
 
 import Control.Applicative (liftA2)
@@ -130,6 +132,8 @@ data DeclBody
 
 -- Modules
 
--- FIXME: imports
-data Module = Module { name :: MName, defs :: [Spanned (DName, Spanned Decl)] }
+data Module = Module { name :: MName, imports :: [Spanned Import], defs :: [Spanned (DName, Spanned Decl)] }
+  deriving (Show)
+
+newtype Import = Import { name :: MName }
   deriving (Show)
