@@ -4,7 +4,7 @@ tests: True
 source-repository-package
   type: git
   location: https://github.com/fused-effects/fused-effects-parser.git
-  tag: 4ced42072167928dd514e5c0499d47e6f5f97f21
+  tag: e295775e4b68e013862428abe048b593bd332d4f
 
 source-repository-package
   type: git

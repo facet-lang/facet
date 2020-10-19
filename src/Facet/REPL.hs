@@ -17,6 +17,7 @@ import           Control.Effect.Lens (use, (%=))
 import           Control.Effect.Parser.Notice (Level(..), Notice, Style(..), prettyNoticeWith)
 import           Control.Effect.Parser.Source (sourceFromString)
 import           Control.Effect.Parser.Span (Pos(Pos))
+import qualified Control.Effect.Parser.Span as Span
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -183,6 +184,6 @@ runParserWithFile path p = do
 runParserWith :: Has (Throw (Notice [ANSI.SGR])) sig m => Maybe FilePath -> Input -> ParserC m a -> m a
 runParserWith path input = runParser (const pure) failure failure input
   where
-  src = sourceFromString path (str input)
+  src = sourceFromString path (Span.line (pos input)) (str input)
   failure = throwError @(Notice [ANSI.SGR]) . errToNotice src
 {-# INLINE runParserWith #-}

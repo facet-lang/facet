@@ -67,7 +67,7 @@ elabPathString path p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.pret
   lower $ foldCModule P.explicit <$> elabModule parsed
   where
   input = Input (Pos 0 0) s
-  src = sourceFromString path s
+  src = sourceFromString path 0 s
   failure = Left . errToNotice src
   mkNotice p = toNotice (Just N.Error) src p
 
