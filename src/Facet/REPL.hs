@@ -150,9 +150,8 @@ success :: Doc [ANSI.SGR] -> Doc [ANSI.SGR]
 success = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
 
 helpDoc :: Doc [ANSI.SGR]
-helpDoc = tabulate2 (stimes (3 :: Int) space) entries
+helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
   where
-  entries = map entry commands
   entry c =
     ( concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)) <> maybe mempty ((space <>) . enclose (pretty '<') (pretty '>') . pretty) (meta c)
     , w (usage c))
