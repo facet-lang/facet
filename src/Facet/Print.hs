@@ -200,6 +200,7 @@ f $$ a = askingPrec $ \case
 ((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (setPrec Var n ::: t) <> line))) </> arrow <+> b)
 
 
+-- FIXME: these are poorly factored. Most of the structure can be shared, we just want to override a few in each.
 surface :: Algebra Print
 surface = Algebra
   { var = \case
