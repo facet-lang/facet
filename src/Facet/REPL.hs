@@ -1,4 +1,5 @@
 {-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -82,13 +83,13 @@ loop = do
   resp <- prompt
   runError (print . prettyNotice) pure $ case resp of
     -- FIXME: evaluate expressions
-    Just src -> rethrowParseErrors (runParserWithSource src (runFacet [] (whole commandParser))) >>= runAction
+    Just src -> rethrowParseErrors (runParserWithSource src (runFacet [] (whole commandParser))) >>= runAction src
     Nothing  -> pure ()
   loop
   where
   commandParser = parseCommands commands
 
-  runAction = \case
+  runAction _ = \case
     Help -> print helpDoc
     Quit -> empty
     Load path -> load path
