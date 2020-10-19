@@ -149,10 +149,8 @@ load path = do
   reload
 
 reload :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
-reload = do
-  files <- use files_
-  -- FIXME: topological sort
-  files_ <~> itraverse (reloadFile (length files))
+-- FIXME: topological sort
+reload = files_ <~> \ files -> itraverse (reloadFile (length files)) files
   where
   -- FIXME: check whether files need reloading
   reloadFile ln path file = if loaded file then pure file else do
