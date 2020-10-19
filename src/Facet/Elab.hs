@@ -51,7 +51,7 @@ import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import qualified Data.Text as T
-import           Data.Traversable (for)
+import           Data.Traversable (for, mapAccumL)
 import           Facet.Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
@@ -216,23 +216,36 @@ f $$ a = Synth $ do
 
 (|-)
   :: Has (Reader (Context (Value ::: Type))) sig m
-  => UName ::: Expr ::: Type
-  -> m Value
-  -> m Value
-v |- b = local @(Context (Value ::: Type)) (|> v) b
+  => UName ::: Type
+  -> (Value -> m Value)
+  -> m (Value -> Value)
+(_n ::: _T) |- b = do
+  d <- asks @(Context (Value ::: Type)) level
+  b' <- b (free d)
+  pure $ \ v -> C.bind d v b'
 
 infix 1 |-
 
+(||-)
+  :: Has (Reader (Context (Value ::: Type))) sig m
+  => UName ::: Value ::: Type
+  -> m Value
+  -> m Value
+(n ::: v ::: _T) ||- b = local @(Context (Value ::: Type)) (|> (n ::: v ::: _T)) b
+
+infix 1 ||-
+
 (|-*)
-  :: (Has (Reader (Context (Value ::: Type))) sig m, Foldable t)
+  :: (Has (Reader (Context (Value ::: Type))) sig m, Traversable t)
   => t (UName ::: Type)
-  -> m Value
-  -> m Value
+  -> (t Value -> m Value)
+  -> m (t Value -> Value)
 p |-* b = do
   ctx <- ask @(Context (Value ::: Type))
   let d = level ctx
-      (_, ext) = foldl' (\ (d, ctx) (n ::: _T) -> (succ d, ctx . (|> (n ::: free d ::: _T)))) (d, id) p
-  local ext b
+      ((_, ext), p') = mapAccumL (\ (d, ctx) (n ::: _T) -> ((succ d, ctx . (|> (n ::: free d ::: _T))), free d)) (d, id) p
+  b' <- local ext (b p')
+  pure $ \ p -> snd (foldl' (\ (d, b') v -> (succ d, C.bind d v b')) (succ d, b') p)
 
 infix 1 |-*
 
@@ -249,7 +262,7 @@ elabType = withSpan' $ \case
   S.TBound n -> switch $ bound n
   S.THole  n -> check (hole n) "hole"
   S.Type     -> switch $ _Type
-  t S.:=> b  -> switch $ bimap im (checkElab . elabType) t >~> \ v -> v |- checkElab (elabType b)
+  t S.:=> b  -> switch $ bimap im (checkElab . elabType) t >~> \ v -> v ||- checkElab (elabType b)
   f S.:$$ a  -> switch $ synthElab (elabType f) $$  checkElab (elabType a)
   a S.:-> b  -> switch $ ex __ ::: checkElab (elabType a) >~> \ _ -> checkElab (elabType b)
   where
@@ -265,10 +278,8 @@ _Type = Synth $ pure $ VType ::: VType
   -> Synth Type
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: VType)
-  d <- asks @(Context (Value ::: Type)) level
-  let v = free d
-  b' <- check (b (out n ::: v ::: _T) ::: VType)
-  pure $ (VForAll (n ::: _T) (\ v -> C.bind d v b')) ::: VType
+  b' <- out n ::: _T |- \ v -> check (b (out n ::: v ::: _T) ::: VType)
+  pure $ VForAll (n ::: _T) b' ::: VType
 
 infixr 1 >~>
 
@@ -296,10 +307,8 @@ lam
   -> Check Expr
 lam n b = Check $ \ _T -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking lambda" _T
-  d <- asks @(Context (Value ::: Type)) level
-  let v = free d
-  b' <- check (b (out n ::: v ::: _T) ::: _B v)
-  pure (VLam (n ::: _T) (\ v -> C.bind d v b'))
+  b' <- out n ::: _T |- \ v -> check (b (out n ::: v ::: _T) ::: _B v)
+  pure $ VLam (n ::: _T) b'
 
 
 elabComp
@@ -329,10 +338,8 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 elabClauses :: [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check Expr
 elabClauses [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
-  d <- asks @(Context (Value ::: Type)) level
-  let v = free d
-  b' <- n ::: v ::: _A |- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
-  pure $ VLam (P pl n ::: _A) (\ v -> C.bind d v b')
+  b' <- n ::: _A |- \ v -> n ::: v ::: _A ||- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
+  pure $ VLam (P pl n ::: _A) b'
 elabClauses cs = Check $ \ _T -> do
   (P _ n ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
@@ -340,16 +347,14 @@ elabClauses cs = Check $ \ _T -> do
     XL _  -> pure $ Nothing
     XR cs -> pure $ Just cs
     XT    -> error "mixed" -- FIXME: throw a proper error
-  d <- asks @(Context (Value ::: Type)) level
-  let v = free d
-  b' <- n ::: v ::: _A |- do
+  b' <- n ::: _A |- \ v -> do
     let _B' = _B v
     cs' <- for cs $ \ (p:|_, b) -> do
       p' <- check (elabPattern p ::: _A)
-      b' <- p' |-* check (maybe (checkElab (elabExpr b)) elabClauses rest ::: _B')
-      pure (p', \ p -> snd (foldl' (\ (d, b') v -> (succ d, C.bind d v b')) (succ d, b') p))
+      b' <- p' |-* \ _ -> check (maybe (checkElab (elabExpr b)) elabClauses rest ::: _B')
+      pure (p', b')
     pure $ case' v cs'
-  pure $ VLam (ex __ ::: _A) (\ v -> C.bind d v b')
+  pure $ VLam (ex __ ::: _A) b'
   where
   partitionClause (_:|ps, b) = case ps of
     []   -> XL ()
@@ -391,13 +396,13 @@ elabDecl d = go d id id
   go d km kt = withSpans d $ \case
     (n ::: t) S.:==> b ->
       go b
-        (km . (\ b  -> lam (im n) (\ v -> v |- b)))
-        (kt . (\ _B -> checkElab (switch (im n ::: checkElab (elabType t) >~> \ v -> v |- _B))))
+        (km . (\ b  -> lam (im n) (\ v -> v ||- b)))
+        (kt . (\ _B -> checkElab (switch (im n ::: checkElab (elabType t) >~> \ v -> v ||- _B))))
 
     (n ::: t) S.:--> b ->
       go b
-        (km . (\ b  -> lam (ex n) (\ v -> v |- b)))
-        (kt . (\ _B -> checkElab (switch (ex __ ::: checkElab (elabType t) >~> \ v -> v |- _B))))
+        (km . (\ b  -> lam (ex n) (\ v -> v ||- b)))
+        (kt . (\ _B -> checkElab (switch (ex __ ::: checkElab (elabType t) >~> \ v -> v ||- _B))))
 
     t S.:= b -> elabDeclBody km b ::: kt (checkElab (elabType t))
 
