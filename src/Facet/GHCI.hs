@@ -63,13 +63,10 @@ elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) (Either (N.Notice [ANSI.SGR])))) (Spanned S.Module) -> String -> m ()
 elabPathString path p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.prettyPrint $ do
   parsed <- rethrowingFromParser $ runParserWithSource src (runFacet [] (whole p))
-  lower $ foldCModule P.explicit <$> elabModule parsed
+  L.runThrow mkNotice $ foldCModule P.explicit <$> elabModule parsed
   where
   src = sourceFromString path 0 s
   mkNotice p = toNotice (Just N.Error) src p
-
-  lower :: Either Elab.Err a -> Either (N.Notice [ANSI.SGR]) a
-  lower = either (throwError . mkNotice) pure
 
 
 -- Errors
