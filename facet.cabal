@@ -58,6 +58,7 @@ library
     Facet.REPL
     Facet.REPL.Parser
     Facet.Semiring
+    Facet.Span
     Facet.Stack
     Facet.Surface
     Facet.Syntax
