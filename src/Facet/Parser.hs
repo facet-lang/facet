@@ -99,6 +99,7 @@ whole p = whiteSpace *> p <* eof
 
 -- Modules
 
+-- FIXME: preserve comments; maybe replace Spanned with something that can capture comments.
 module' :: (Monad p, PositionParsing p) => Facet p (Spanned S.Module)
 module' = spanned (S.Module <$> mname <* colon <* symbol "Module" <*> braces (many decl))
 
