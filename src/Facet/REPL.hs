@@ -10,7 +10,7 @@ module Facet.REPL
 import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
-import           Control.Carrier.Parser.Church hiding (runParserWithFile, runParserWithString)
+import           Control.Carrier.Parser.Church hiding (runParserWithFile)
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=))
@@ -82,7 +82,7 @@ loop = do
   (line, resp) <- prompt
   runError (print . prettyNoticeWith sgrStyle) pure $ case resp of
     -- FIXME: evaluate expressions
-    Just resp -> runParserWithString line resp (runFacet [] (whole commandParser)) >>= runAction
+    Just resp -> rethrowingFromParser (runParserWithString line resp (runFacet [] (whole commandParser))) >>= runAction
     Nothing   -> pure ()
   loop
   where
@@ -180,10 +180,6 @@ sgrStyle = Style
   , caretStyle  = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
   }
 
-
-runParserWithString :: Has (Throw (Notice [ANSI.SGR])) sig m => Int -> String -> ParserC m a -> m a
-runParserWithString line str = runParserWith Nothing (Input (Pos line 0) str)
-{-# INLINE runParserWithString #-}
 
 runParserWithFile :: (Has (Throw (Notice [ANSI.SGR])) sig m, MonadIO m) => FilePath -> ParserC m a -> m a
 runParserWithFile path p = do
