@@ -1,3 +1,4 @@
+{-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -9,14 +10,13 @@ module Facet.REPL
 import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
-import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Parser.Church hiding (runParserWith, runParserWithFile, runParserWithString)
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=))
 import           Control.Effect.Parser.Notice (Level(..), Notice, Style(..), prettyNoticeWith)
 import           Control.Effect.Parser.Source (sourceFromString)
-import           Control.Effect.Parser.Span (Pos(..))
+import           Control.Effect.Parser.Span (Pos(Pos))
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -32,7 +32,7 @@ import           Facet.REPL.Parser
 import           Facet.Stack
 import           Facet.Surface (Expr, Type)
 import           Prelude hiding (print)
-import           Prettyprinter as P hiding (column, width)
+import           Prettyprinter as P hiding (column, line, width)
 import qualified System.Console.ANSI as ANSI
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
@@ -42,9 +42,8 @@ import           Text.Parser.Token hiding (brackets, comma)
 repl :: IO ()
 repl
   = runReadlineWithHistory
-  . evalState REPL{ files = mempty, promptFunction = defaultPromptFunction }
+  . evalState REPL{ line = 0, files = mempty, promptFunction = defaultPromptFunction }
   . evalEmpty
-  . evalFresh 0
   $ loop
 
 defaultPromptFunction :: Int -> IO String
@@ -55,7 +54,8 @@ defaultPromptFunction _ = pure $ "\ESC]0;facet\x7" <> cyan <> "λ " <> plain
 
 
 data REPL = REPL
-  { files          :: Map.Map FilePath File
+  { line           :: Int
+  , files          :: Map.Map FilePath File
   , promptFunction :: Int -> IO String
   }
 
@@ -66,7 +66,7 @@ data File = File
 files_ :: Lens' REPL (Map.Map FilePath File)
 files_ = lens files (\ r files -> r{ files })
 
-loop :: (Has Empty sig m, Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
+loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
   (line, resp) <- prompt
   runError (print . prettyNoticeWith sgrStyle) pure $ case resp of
@@ -139,9 +139,9 @@ helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
   w = align . fillSep . map pretty . words
 
 
-prompt :: (Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m (Int, Maybe String)
+prompt :: (Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m (Int, Maybe String)
 prompt = do
-  line <- fresh
+  line <- gets line
   fn <- gets promptFunction
   p <- liftIO $ fn line
   (,) line <$> getInputLine p
