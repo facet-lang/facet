@@ -111,19 +111,16 @@ decl = spanned
   $   (,) <$> dename <* colon <*> sig (S.DExpr <$> comp)
   <|> (,) <$> dtname <* colon <*> sig (S.DData <$> braces (commaSep con))
 
-sigTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned S.Decl)
-sigTable =
-  [ [ Op.Operator (forAll (S.:==>)) ]
-  , [ Op.Operator binder ]
-  ]
 
 sig :: (Monad p, PositionParsing p) => Facet p S.DeclBody -> Facet p (Spanned S.Decl)
-sig body = build sigTable (const (spanned ((S.:=) <$> monotype <*> body)))
+sig body = go
+  where
+  go = forAll (S.:==>) go <|> binder go <|> spanned ((S.:=) <$> monotype <*> body)
 
-binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (Spanned S.Decl)
-binder self _ = do
-  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (N.getEName <$> ename <|> N.getTName <$> tname <|> N.__ <$ wildcard)) <* colon <*> type' <* rparen
-  bind i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
+binder :: (Monad p, PositionParsing p) => Facet p (Spanned S.Decl) -> Facet p (Spanned S.Decl)
+binder k = do
+  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (N.getEName <$> ename <|> N.getTName <$> tname <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
+  bind i $ \ v -> mk start (v S.::: t) <$ arrow <*> k <*> position
   where
   mk start t b end = (Span start end, t S.:--> b)
 
@@ -132,9 +129,6 @@ con = spanned ((S.:::) <$> cname <* colon <*> type')
 
 
 -- Types
-
-typeTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned S.Type)
-typeTable = [ Op.Operator (forAll (S.:=>)) ] : monotypeTable
 
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned S.Type)
 monotypeTable =
@@ -149,17 +143,17 @@ monotypeTable =
 forAll
   :: (Monad p, PositionParsing p)
   => ((N.UName S.::: Spanned S.Type) -> Spanned res -> res)
-  -> OperatorParser (Facet p) (Spanned res)
-forAll mk self _ = do
+  -> Facet p (Spanned res) -> Facet p (Spanned res)
+forAll mk k = do
   start <- position
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
-  arrow *> foldr (loop start ty) self names
+  arrow *> foldr (loop start ty) k names
   where
   loop start ty i rest = bind i $ \ v -> mk' start (v S.::: ty) <$> rest <*> position
   mk' start t b end = (Span start end, mk t b)
 
 type' :: (Monad p, PositionParsing p) => Facet p (Spanned S.Type)
-type' = build typeTable parens
+type' = forAll (S.:=>) type' <|> monotype
 
 monotype :: (Monad p, PositionParsing p) => Facet p (Spanned S.Type)
 monotype = build monotypeTable parens
