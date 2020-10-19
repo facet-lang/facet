@@ -38,6 +38,7 @@ library
   import: common
   exposed-modules:
     Facet.Algebra
+    Facet.Carrier.State.Lens
     Facet.CLI
     Facet.Context
     Facet.Core
