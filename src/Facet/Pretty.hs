@@ -37,28 +37,28 @@ import qualified Data.Text.Lazy.Builder as TLB
 import           Facet.Stack
 import qualified Prettyprinter as PP
 import           Silkscreen hiding (column, width)
-import qualified System.Console.ANSI as ANSI
+import           System.Console.ANSI
 import           System.IO (Handle, hPutChar, stdout)
 
 -- Output
 
 layoutOptionsForTerminal :: IO PP.LayoutOptions
 layoutOptionsForTerminal = do
-  s <- maybe 80 fst <$> ANSI.getTerminalSize
+  s <- maybe 80 fst <$> getTerminalSize
   pure PP.defaultLayoutOptions{ PP.layoutPageWidth = PP.AvailablePerLine s 0.8 }
 
-hPutDoc :: MonadIO m => Handle -> PP.Doc [ANSI.SGR] -> m ()
+hPutDoc :: MonadIO m => Handle -> PP.Doc [SGR] -> m ()
 hPutDoc handle doc = liftIO $ do
   opts <- layoutOptionsForTerminal
   renderIO handle (PP.layoutSmart opts (doc <> PP.line))
 
-hPutDocWith :: MonadIO m => Handle -> (a -> [ANSI.SGR]) -> PP.Doc a -> m ()
+hPutDocWith :: MonadIO m => Handle -> (a -> [SGR]) -> PP.Doc a -> m ()
 hPutDocWith handle style = hPutDoc handle . PP.reAnnotate style
 
-putDoc :: MonadIO m => PP.Doc [ANSI.SGR] -> m ()
+putDoc :: MonadIO m => PP.Doc [SGR] -> m ()
 putDoc = hPutDoc stdout
 
-putDocWith :: MonadIO m => (a -> [ANSI.SGR]) -> PP.Doc a -> m ()
+putDocWith :: MonadIO m => (a -> [SGR]) -> PP.Doc a -> m ()
 putDocWith = hPutDocWith stdout
 
 
@@ -104,8 +104,8 @@ column a = Column (length (show (PP.unAnnotate a))) a
 
 -- Rendering
 
--- | Render a 'PP.SimpleDocStream' to a 'Handle' using 'ANSI.SGR' codes as the annotation type.
-renderIO :: MonadIO m => Handle -> PP.SimpleDocStream [ANSI.SGR] -> m ()
+-- | Render a 'PP.SimpleDocStream' to a 'Handle' using 'SGR' codes as the annotation type.
+renderIO :: MonadIO m => Handle -> PP.SimpleDocStream [SGR] -> m ()
 renderIO h stream = do
   let go = \case
         PP.SFail -> error "fail"
@@ -124,14 +124,14 @@ renderIO h stream = do
             currentStyle <- unsafePeek
             let newStyle = style <> currentStyle
             push newStyle
-            sendM $ ANSI.setSGR newStyle
+            sendM $ setSGR newStyle
             go rest
         PP.SAnnPop rest -> do
             _currentStyle <- unsafePop
             newStyle <- unsafePeek
-            sendM $ ANSI.setSGR newStyle
+            sendM $ setSGR newStyle
             go rest
-  liftIO $ runM $ evalState (Nil :> ([] :: [ANSI.SGR])) $ go stream
+  liftIO $ runM $ evalState (Nil :> ([] :: [SGR])) $ go stream
   where
   push x = modify (:>x)
   unsafePeek = do
@@ -139,9 +139,9 @@ renderIO h stream = do
     pure l
   unsafePop = do
     i :> _ <- get
-    put (i :: Stack [ANSI.SGR])
+    put (i :: Stack [SGR])
 
-renderLazy :: PP.SimpleDocStream [ANSI.SGR] -> TL.Text
+renderLazy :: PP.SimpleDocStream [SGR] -> TL.Text
 renderLazy =
   let push x = (:>x)
 
@@ -151,7 +151,7 @@ renderLazy =
       unsafePop Nil     = error "popping an empty stack"
       unsafePop (xs:>x) = (x, xs)
 
-      go :: Stack [ANSI.SGR] -> PP.SimpleDocStream [ANSI.SGR] -> TLB.Builder
+      go :: Stack [SGR] -> PP.SimpleDocStream [SGR] -> TLB.Builder
       go s sds = case sds of
         PP.SFail -> error "fail"
         PP.SEmpty -> mempty
@@ -161,23 +161,23 @@ renderLazy =
         PP.SAnnPush style rest ->
             let currentStyle = unsafePeek s
                 newStyle = style <> currentStyle
-            in  TLB.fromText (T.pack (ANSI.setSGRCode newStyle)) <> go (push style s) rest
+            in  TLB.fromText (T.pack (setSGRCode newStyle)) <> go (push style s) rest
         PP.SAnnPop rest ->
             let (_currentStyle, s') = unsafePop s
                 newStyle = unsafePeek s'
-            in  TLB.fromText (T.pack (ANSI.setSGRCode newStyle)) <> go s' rest
+            in  TLB.fromText (T.pack (setSGRCode newStyle)) <> go s' rest
 
   in TLB.toLazyText . go (Nil :> [])
 
 
-sgrStyle :: Style [ANSI.SGR]
+sgrStyle :: Style [SGR]
 sgrStyle = Style
-  { pathStyle   = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  { pathStyle   = annotate [SetConsoleIntensity BoldIntensity]
   , levelStyle  = \case
-    Warn  -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Magenta]
-    Error -> annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
-  , posStyle    = annotate [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
-  , gutterStyle = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
-  , eofStyle    = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
-  , caretStyle  = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
+    Warn  -> annotate [SetColor Foreground Vivid Magenta]
+    Error -> annotate [SetColor Foreground Vivid Red]
+  , posStyle    = annotate [SetConsoleIntensity BoldIntensity]
+  , gutterStyle = annotate [SetColor Foreground Vivid Blue]
+  , eofStyle    = annotate [SetColor Foreground Vivid Blue]
+  , caretStyle  = annotate [SetColor Foreground Vivid Green]
   }
