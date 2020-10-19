@@ -26,7 +26,6 @@ module Facet.Print
 ) where
 
 import           Control.Monad.IO.Class
-import           Data.Colour.Names
 import           Data.Colour.RGBSpace
 import           Data.Colour.RGBSpace.HSL
 import           Data.Colour.SRGB
@@ -60,7 +59,7 @@ terminalStyle :: Highlight -> [ANSI.SGR]
 terminalStyle = \case
   Nest i -> [setRGB (pick i 0.4 0.8)]
   Name i -> [setRGB (pick (-getLevel i) 0.8 0.6)]
-  Op     -> [setRGB cyan]
+  Op     -> [setRGB (uncurryRGB sRGB (hsl 180 0.7 0.4))]
   Type   -> [setRGB (uncurryRGB sRGB (hsl 60 0.5 0.5))]
   Con    -> [setRGB (uncurryRGB sRGB (hsl 15 0.8 0.5))]
   Lit    -> [bold]
