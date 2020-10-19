@@ -20,6 +20,7 @@ module Facet.Pretty
   -- * Rendering
 , renderIO
 , renderLazy
+  -- * ANSI codes
 , sgrStyle
   -- * Re-exports
 , PP.Doc
@@ -170,6 +171,8 @@ renderLazy =
 
   in TLB.toLazyText . go (Nil :> [])
 
+
+-- ANSI codes
 
 sgrStyle :: Style [SGR]
 sgrStyle = Style
