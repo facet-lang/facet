@@ -24,7 +24,7 @@ module Facet.Pretty
 , sgrStyle
 , setRGB
 , setBold
-, setHSL
+, _HSL
   -- * Re-exports
 , PP.Doc
 , PP.layoutSmart
@@ -198,5 +198,5 @@ setRGB = SetRGBColor Foreground
 setBold :: SGR
 setBold = SetConsoleIntensity BoldIntensity
 
-setHSL :: Float -> Float -> Float -> SGR
-setHSL h s l = setRGB $ uncurryRGB sRGB $ hsl h s l
+_HSL :: Float -> Float -> Float -> Colour Float
+_HSL h s l = uncurryRGB sRGB $ hsl h s l
