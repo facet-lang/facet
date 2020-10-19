@@ -69,7 +69,7 @@ type Prob = Value
 
 type Subst = IntMap.IntMap (Maybe Prob ::: Type)
 
-newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Context (Value ::: Type)) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
+newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Context Type) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -81,7 +81,7 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= elab . f
 
-instance Algebra (Reader (Context (Value ::: Type)) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) Elab where
+instance Algebra (Reader (Context Type) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) Elab where
   alg hdl sig ctx = case sig of
     L rctx              -> Elab $ alg (elab . hdl) (inj rctx) ctx
     R (L renv)          -> Elab $ alg (elab . hdl) (inj renv) ctx
@@ -91,7 +91,7 @@ instance Algebra (Reader (Context (Value ::: Type)) :+: Reader (Env.Env Type) :+
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
-  deriving (Algebra (Reader Type :+: Reader (Context (Value ::: Type)) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
+  deriving (Algebra (Reader Type :+: Reader (Context Type) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
@@ -124,7 +124,7 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     VForAll t1 b1         :===: VForAll t2 b2
       | pl (tm t1) == pl (tm t2) -> do
         t <- go (ty t1 :===: ty t2)
-        d <- asks @(Context (Value ::: Type)) level
+        d <- asks @(Context Type) level
         let v = free d
         b <- go (b1 v :===: b2 v)
         pure $ VForAll (tm t1 ::: t) (\ v -> C.bind d v b)
@@ -193,10 +193,10 @@ global n = Synth $ do
 bound
   :: Index
   -> Synth Value
-bound n = Synth $ asks (!? n) >>= \case
+bound n = Synth $ ask >>= \ ctx -> case ctx !? n of
   -- FIXME: do we need to instantiate here to deal with rank-n applications?
-  Just (_ ::: (v ::: _T)) -> pure (v ::: _T)
-  Nothing                 -> err $ BadContext n
+  Just (_ ::: _T) -> pure (free (indexToLevel (level ctx) n) ::: _T)
+  Nothing         -> err $ BadContext n
 
 hole
   :: T.Text
@@ -215,32 +215,32 @@ f $$ a = Synth $ do
 
 
 elabBinder
-  :: Has (Reader (Context (Value ::: Type))) sig m
+  :: Has (Reader (Context Type)) sig m
   => (Value -> m Value)
   -> m (Value -> Value)
 elabBinder b = do
-  d <- asks @(Context (Value ::: Type)) level
+  d <- asks @(Context Type) level
   b' <- b (free d)
   pure $ \ v -> C.bind d v b'
 
 (|-)
-  :: Has (Reader (Context (Value ::: Type))) sig m
-  => UName ::: Value ::: Type
+  :: Has (Reader (Context Type)) sig m
+  => UName ::: Type
   -> m Value
   -> m Value
-(n ::: v ::: _T) |- b = local @(Context (Value ::: Type)) (|> (n ::: v ::: _T)) b
+t |- b = local @(Context Type) (|> t) b
 
 infix 1 |-
 
 (|-*)
-  :: (Has (Reader (Context (Value ::: Type))) sig m, Traversable t)
+  :: (Has (Reader (Context Type)) sig m, Traversable t)
   => t (UName ::: Type)
   -> (t Value -> m Value)
   -> m (t Value -> Value)
 p |-* b = do
-  ctx <- ask @(Context (Value ::: Type))
+  ctx <- ask @(Context Type)
   let d = level ctx
-      ((_, ext), p') = mapAccumL (\ (d, ctx) (n ::: _T) -> ((succ d, ctx . (|> (n ::: free d ::: _T))), free d)) (d, id) p
+      ((_, ext), p') = mapAccumL (\ (d, ctx) t -> ((succ d, ctx . (|> t)), free d)) (d, id) p
   b' <- local ext (b p')
   pure $ \ p -> snd (foldl' (\ (d, b') v -> (succ d, C.bind d v b')) (succ d, b') p)
 
@@ -271,11 +271,11 @@ _Type = Synth $ pure $ VType ::: VType
 
 (>~>)
   :: (Pl_ UName ::: Check Type)
-  -> (UName ::: Value ::: Type -> Check Type)
+  -> (UName ::: Type -> Check Type)
   -> Synth Type
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: VType)
-  b' <- elabBinder $ \ v -> check (b (out n ::: v ::: _T) ::: VType)
+  b' <- elabBinder $ \ _ -> check (b (out n ::: _T) ::: VType)
   pure $ VForAll (n ::: _T) b' ::: VType
 
 infixr 1 >~>
@@ -300,11 +300,11 @@ elabExpr = withSpan' $ \case
 
 lam
   :: Pl_ UName
-  -> (UName ::: Expr ::: Type -> Check Expr)
+  -> (UName ::: Type -> Check Expr)
   -> Check Expr
 lam n b = Check $ \ _T -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking lambda" _T
-  b' <- elabBinder $ \ v -> check (b (out n ::: v ::: _T) ::: _B v)
+  b' <- elabBinder $ \ v -> check (b (out n ::: _T) ::: _B v)
   pure $ VLam (n ::: _T) b'
 
 
@@ -335,7 +335,7 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 elabClauses :: [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check Expr
 elabClauses [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
-  b' <- elabBinder $ \ v -> n ::: v ::: _A |- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
+  b' <- elabBinder $ \ v -> n ::: _A |- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
   pure $ VLam (P pl n ::: _A) b'
 elabClauses cs = Check $ \ _T -> do
   (_ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
@@ -460,7 +460,7 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
 
   runSubst = runState (fmap pure . apply) emptySubst
 
-  runContext = runReader @(Context (Value ::: Type)) empty
+  runContext = runReader @(Context Type) empty
 
   runEnv m = do
     env <- get @(Env.Env Type)
@@ -483,7 +483,7 @@ withSpan' k (s, a) b = setSpan s (k a b)
 data Err = Err
   { span    :: Span
   , reason  :: Reason
-  , context :: Context (Value ::: Type)
+  , context :: Context Type
   }
 
 data Reason

@@ -26,7 +26,6 @@ import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
 import           Facet.Algebra (foldCModule, foldCValue, foldSModule)
 import           Facet.Context
-import           Facet.Core (Value)
 import           Facet.Elab as Elab (Err(..), Reason(..), Type, elabModule)
 import           Facet.Name (Index(..), Level(..))
 import           Facet.Parser (Facet(..), module', runFacet, whole)
@@ -83,12 +82,12 @@ toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason
   in N.Notice lvl (fromSourceAndSpan src span) reason' $
     [ P.getPrint $ P.printContextEntry l (n ::: foldCValue P.explicit Nil _T)
-    | (l, n ::: _ ::: _T) <- zip [Level 0..] (toList (elems context))
+    | (l, n ::: _T) <- zip [Level 0..] (toList (elems context))
     ]
     -- FIXME: foldl over the context printing each element in the smaller context before it.
 
 
-printReason :: Context (Value ::: Type) -> Reason -> PP.Doc [ANSI.SGR]
+printReason :: Context Type -> Reason -> PP.Doc [ANSI.SGR]
 printReason ctx = group . \case
   FreeVariable n         -> fillSep [P.reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> P.reflow "could not synthesize a type for" <> softline <> P.reflow msg
