@@ -80,7 +80,7 @@ loop = do
   (line, resp) <- prompt
   runError (print . prettyNoticeWith sgrStyle) pure $ case resp of
     -- FIXME: evaluate expressions
-    Just resp -> rethrowingFromParser (runParserWithString line resp (runFacet [] (whole commandParser))) >>= runAction
+    Just resp -> rethrowParseErrors (runParserWithString line resp (runFacet [] (whole commandParser))) >>= runAction
     Nothing   -> pure ()
   loop
   where
@@ -128,7 +128,7 @@ data Action
 load :: (Has (Error (Notice [ANSI.SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
   files_ %= Map.insert path File{ loaded = False }
-  rethrowingFromParser (runParserWithFile path (runFacet [] (whole module'))) >>= print . getPrint . foldSModule surface
+  rethrowParseErrors (runParserWithFile path (runFacet [] (whole module'))) >>= print . getPrint . foldSModule surface
 
 reload :: (Has (Error (Notice [ANSI.SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 reload = do
@@ -138,7 +138,7 @@ reload = do
   for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
     print $ annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green] (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
-    rethrowingFromParser (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNoticeWith sgrStyle n))
+    rethrowParseErrors (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNoticeWith sgrStyle n))
 
 helpDoc :: Doc [ANSI.SGR]
 helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
@@ -162,8 +162,8 @@ print d = do
   outputStrLn (unpack (renderLazy (layoutSmart opts d)))
 
 
-rethrowingFromParser :: L.ThrowC (Notice [ANSI.SGR]) (Source, Err) m a -> m a
-rethrowingFromParser = L.runThrow (uncurry errToNotice)
+rethrowParseErrors :: L.ThrowC (Notice [ANSI.SGR]) (Source, Err) m a -> m a
+rethrowParseErrors = L.runThrow (uncurry errToNotice)
 
 
 sgrStyle :: Style [ANSI.SGR]

@@ -41,7 +41,7 @@ import           Text.Parser.Position (Spanned)
 -- Parsing
 
 parseString :: MonadIO m => Facet (ParserC (L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) (Either (N.Notice [ANSI.SGR])))) P.Print -> String -> m ()
-parseString p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.prettyPrint (rethrowingFromParser(runParserWithString 0 s (runFacet [] p)))
+parseString p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.prettyPrint (rethrowParseErrors(runParserWithString 0 s (runFacet [] p)))
 
 printFile :: MonadIO m => FilePath -> m ()
 printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module')))) >>= \case
@@ -49,7 +49,7 @@ printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole modu
   Right m  -> P.prettyPrint (foldSModule P.surface m)
 
 parseFile :: MonadIO m => FilePath -> m (Either (N.Notice [ANSI.SGR]) (Spanned S.Module))
-parseFile path = runM (runThrow (rethrowingFromParser (runParserWithFile path (runFacet [] (whole module')))))
+parseFile path = runM (runThrow (rethrowParseErrors (runParserWithFile path (runFacet [] (whole module')))))
 
 
 -- Elaborating
@@ -62,7 +62,7 @@ elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) (Either (N.Notice [ANSI.SGR])))) (Spanned S.Module) -> String -> m ()
 elabPathString path p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.prettyPrint $ do
-  parsed <- rethrowingFromParser $ runParserWithSource src (runFacet [] (whole p))
+  parsed <- rethrowParseErrors $ runParserWithSource src (runFacet [] (whole p))
   L.runThrow mkNotice $ foldCModule P.explicit <$> elabModule parsed
   where
   src = sourceFromString path 0 s
@@ -71,8 +71,8 @@ elabPathString path p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.pret
 
 -- Errors
 
-rethrowingFromParser :: L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) m a -> m a
-rethrowingFromParser = L.runThrow (uncurry errToNotice)
+rethrowParseErrors :: L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) m a -> m a
+rethrowParseErrors = L.runThrow (uncurry errToNotice)
 
 toNotice :: Maybe N.Level -> Source -> Elab.Err -> N.Notice [ANSI.SGR]
 toNotice lvl src Err{ span, reason, context } =
