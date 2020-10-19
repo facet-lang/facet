@@ -114,7 +114,9 @@ loop = do
     Type e -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
       print (getPrint (ann (foldSExpr surface Nil e ::: foldCValue surface Nil _T)))
-    Kind t -> print (getPrint (foldSType surface Nil t)) -- FIXME: elaborate the type & show the kind
+    Kind t -> do
+      _ ::: _T <- elab src $ Elab.elabWith (\ s (t ::: _T) -> (:::) <$> Elab.apply s t <*> Elab.apply s _T) (Elab.elabType t Nothing)
+      print (getPrint (ann (foldSType surface Nil t ::: foldCValue surface Nil _T)))
 
 
 -- TODO:
