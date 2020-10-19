@@ -1,2 +1,8 @@
 module Facet.Carrier.Error.Lens
-() where
+( ErrorC(..)
+) where
+
+import Control.Carrier.Reader
+import Control.Lens (APrism')
+
+newtype ErrorC e f m a = ErrorC (ReaderC (APrism' e f) m a)
