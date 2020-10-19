@@ -1,5 +1,6 @@
 module Facet.Carrier.Throw.Inject
-( ThrowC(..)
+( -- * Throw carrier
+  ThrowC(..)
 ) where
 
 import Control.Carrier.Reader
