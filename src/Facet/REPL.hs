@@ -15,9 +15,9 @@ import           Control.Carrier.Parser.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, (%=))
+import           Control.Effect.Lens (use, (%=), (.=))
 import           Control.Effect.Parser.Source (Source(..), sourceFromString)
-import           Control.Lens (Lens', lens)
+import           Control.Lens (Lens', ix, lens)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Foldable (for_)
@@ -152,6 +152,7 @@ reload = do
     print $ success (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
     rethrowParseErrors (do
       m <- runParserWithFile path (runFacet [] (whole module'))
+      files_.ix path.loaded_ .= True
       print $ getPrint (foldSModule surface m))
       `catchError` \ n ->
         print (indent 2 (prettyNotice n))
