@@ -47,7 +47,7 @@ import           Text.Parser.Token hiding (brackets, comma)
 repl :: IO ()
 repl
   = runReadlineWithHistory
-  . evalState REPL{ line = 0, files = mempty, promptFunction = defaultPromptFunction, env = mempty }
+  . evalState defaultREPLState
   . evalEmpty
   $ loop
 
@@ -67,6 +67,14 @@ files_ = lens files (\ r files -> r{ files })
 
 env_ :: Lens' REPL (Env.Env Elab.Type)
 env_ = lens env (\ r env -> r{ env })
+
+defaultREPLState :: REPL
+defaultREPLState = REPL
+  { line           = 0
+  , files          = mempty
+  , promptFunction = defaultPromptFunction
+  , env            = mempty
+  }
 
 defaultPromptFunction :: Int -> IO String
 defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
