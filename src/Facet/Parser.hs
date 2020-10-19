@@ -115,11 +115,11 @@ decl = spanned
 sig :: (Monad p, PositionParsing p) => Facet p S.DeclBody -> Facet p (Spanned S.Decl)
 sig body = go
   where
-  go = forAll (S.:==>) go <|> binder go <|> spanned ((S.:=) <$> monotype <*> body)
+  go = forAll (S.:==>) go <|> binder (N.getEName <$> ename) go <|> spanned ((S.:=) <$> monotype <*> body)
 
-binder :: (Monad p, PositionParsing p) => Facet p (Spanned S.Decl) -> Facet p (Spanned S.Decl)
-binder k = do
-  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (N.getEName <$> ename <|> N.getTName <$> tname <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
+binder :: (Monad p, PositionParsing p) => Facet p N.UName -> Facet p (Spanned S.Decl) -> Facet p (Spanned S.Decl)
+binder name k = do
+  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (coerce <$> name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
   bind i $ \ v -> mk start (v S.::: t) <$ arrow <*> k <*> position
   where
   mk start t b end = (Span start end, t S.:--> b)
