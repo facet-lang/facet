@@ -26,6 +26,8 @@ import qualified Data.Map as Map
 import           Data.Semigroup
 import           Data.Text.Lazy (unpack)
 import           Facet.Algebra
+import qualified Facet.Elab as Elab
+import qualified Facet.Env as Env
 import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Print
@@ -43,7 +45,7 @@ import           Text.Parser.Token hiding (brackets, comma)
 repl :: IO ()
 repl
   = runReadlineWithHistory
-  . evalState REPL{ line = 0, files = mempty, promptFunction = defaultPromptFunction }
+  . evalState REPL{ line = 0, files = mempty, promptFunction = defaultPromptFunction, env = mempty }
   . evalEmpty
   $ loop
 
@@ -58,6 +60,7 @@ data REPL = REPL
   { line           :: Int
   , files          :: Map.Map FilePath File
   , promptFunction :: Int -> IO String
+  , env            :: Env.Env Elab.Type
   }
 
 data File = File
