@@ -22,6 +22,8 @@ module Facet.Pretty
 , renderLazy
   -- * ANSI codes
 , sgrStyle
+, setRGB
+, bold
   -- * Re-exports
 , PP.Doc
 , PP.layoutSmart
@@ -32,6 +34,7 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Notice (Level(..), Style(..))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (first)
+import           Data.Colour (Colour)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
@@ -185,3 +188,9 @@ sgrStyle = Style
   , eofStyle    = annotate [SetColor Foreground Vivid Blue]
   , caretStyle  = annotate [SetColor Foreground Vivid Green]
   }
+
+setRGB :: Colour Float -> SGR
+setRGB = SetRGBColor Foreground
+
+bold :: SGR
+bold = SetConsoleIntensity BoldIntensity

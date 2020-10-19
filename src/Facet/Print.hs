@@ -65,8 +65,6 @@ terminalStyle = \case
   Lit    -> [bold]
   Hole m -> [bold, setRGB (pick (-getMeta m) 0.5 0.45)]
   where
-  setRGB = SetRGBColor Foreground
-  bold = SetConsoleIntensity BoldIntensity
   pick i s l = uncurryRGB sRGB (hsl (fromIntegral i * phi * 30) s l)
   phi = 1.618033988749895
 
