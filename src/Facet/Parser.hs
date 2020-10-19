@@ -110,12 +110,10 @@ decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned S.Dec
 decl = spanned
   $   (,) <$> dename <* colon <*> sig (S.DExpr <$> comp)
   <|> (,) <$> dtname <* colon <*> sig (S.DData <$> braces (commaSep con))
-
-
-sig :: (Monad p, PositionParsing p) => Facet p S.DeclBody -> Facet p (Spanned S.Decl)
-sig body = go
   where
-  go = forAll (S.:==>) go <|> binder go <|> spanned ((S.:=) <$> monotype <*> body)
+  sig body = go
+    where
+    go = forAll (S.:==>) go <|> binder go <|> spanned ((S.:=) <$> monotype <*> body)
 
 binder :: (Monad p, PositionParsing p) => Facet p (Spanned S.Decl) -> Facet p (Spanned S.Decl)
 binder k = do
