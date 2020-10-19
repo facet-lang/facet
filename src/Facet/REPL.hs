@@ -14,6 +14,7 @@ import           Control.Carrier.Parser.Church
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=))
+import           Control.Effect.Parser.Source (Source, sourceFromString)
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -75,11 +76,11 @@ env_ = lens env (\ r env -> r{ env })
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
-  (line, resp) <- prompt
+  resp <- prompt
   runError (print . prettyNotice) pure $ case resp of
     -- FIXME: evaluate expressions
-    Just resp -> rethrowParseErrors (runParserWithString line resp (runFacet [] (whole commandParser))) >>= runAction
-    Nothing   -> pure ()
+    Just src -> rethrowParseErrors (runParserWithSource src (runFacet [] (whole commandParser))) >>= runAction
+    Nothing  -> pure ()
   loop
   where
   commandParser = parseCommands commands
@@ -146,13 +147,13 @@ helpDoc = tabulate2 (stimes (3 :: Int) space) entries
   w = align . fillSep . map pretty . words
 
 
-prompt :: (Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m (Int, Maybe String)
+prompt :: (Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m (Maybe Source)
 prompt = do
   line <- gets line
   line_ %= (+ 1)
   fn <- gets promptFunction
   p <- liftIO $ fn line
-  (,) line <$> getInputLine p
+  fmap (sourceFromString Nothing line) <$> getInputLine p
 
 print :: (Has Readline sig m, MonadIO m) => Doc [ANSI.SGR] -> m ()
 print d = do
