@@ -20,6 +20,7 @@ import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Lens (Getting, Lens', itraverse, lens)
 import           Control.Monad.IO.Class
 import           Data.Char
+import           Data.Colour.RGBSpace.HSL (hsl)
 import qualified Data.Map as Map
 import           Data.Semigroup
 import           Data.Text.Lazy (unpack)
@@ -79,7 +80,7 @@ defaultREPLState = REPL
 defaultPromptFunction :: Int -> IO String
 defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
   where
-  cyan = setSGRCode [SetColor Foreground Vivid Cyan]
+  cyan = setSGRCode [setRGB (hsl 180 1 0.5)]
   plain = setSGRCode []
 
 
