@@ -145,6 +145,7 @@ helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
 prompt :: (Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m (Int, Maybe String)
 prompt = do
   line <- gets line
+  line_ %= (+ 1)
   fn <- gets promptFunction
   p <- liftIO $ fn line
   (,) line <$> getInputLine p
