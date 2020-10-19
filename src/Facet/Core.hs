@@ -19,8 +19,6 @@ module Facet.Core
 , ($$)
 , case'
 , match
-, handleBinder
-, handleBinderP
 , subst
 , bind
   -- * Patterns
@@ -38,7 +36,7 @@ import           Control.Effect.Empty
 import           Data.Bifoldable
 import           Data.Bifunctor
 import           Data.Bitraversable
-import           Data.Foldable (foldl', toList)
+import           Data.Foldable (foldl')
 import           Data.Function (on)
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
@@ -164,16 +162,6 @@ elim v = \case
 elimN :: (HasCallStack, Foldable t) => Value -> t Elim -> Value
 elimN f as = foldl' elim f as
 
-
-handleBinder :: (HasCallStack, Monad m) => Meta ::: Value -> (Value -> m Value) -> m (Value -> Value)
-handleBinder d b = do
-  b' <- b (metavar d)
-  pure $ (`subst` b') . IntMap.singleton (getMeta (tm d))
-
-handleBinderP :: (HasCallStack, Monad m, Traversable t) => t (Meta ::: Value) -> (t Value -> m Value) -> m (t Value -> Value)
-handleBinderP p b = do
-  b' <- b (metavar <$> p)
-  pure $ \ v -> subst (foldl' (\ s (m ::: _, v) -> IntMap.insert (getMeta m) v s) IntMap.empty (zip (toList p) (toList v))) b'
 
 -- | Substitute metavars.
 subst :: HasCallStack => IntMap.IntMap Value -> Value -> Value
