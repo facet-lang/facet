@@ -122,8 +122,8 @@ sig body = build sigTable (const (spanned ((S.:=) <$> monotype <*> body)))
 
 binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (Spanned S.Decl)
 binder self _ = do
-  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> varPattern (N.getEName <$> ename <|> N.getTName <$> tname)) <* colon <*> type' <* rparen
-  bindVarPattern i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
+  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (N.getEName <$> ename <|> N.getTName <$> tname <|> N.__ <$ wildcard)) <* colon <*> type' <* rparen
+  bind i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
   where
   mk start t b end = (Span start end, t S.:--> b)
 
@@ -204,14 +204,6 @@ bindPattern :: PositionParsing p => S.Pattern -> Facet p a -> Facet p a
 bindPattern p m = case p of
   S.PVar n    -> bind n (const m)
   S.PCon _ ps -> foldr (bindPattern . snd) m ps
-
-bindVarPattern :: Coercible n N.UName => Maybe n -> (N.UName -> Facet p res) -> Facet p res
-bindVarPattern Nothing  = bind N.__
-bindVarPattern (Just n) = bind n
-
-
-varPattern :: (Monad p, TokenParsing p) => p name -> p (Maybe name)
-varPattern n = Just <$> n <|> Nothing <$ wildcard
 
 
 wildcard :: (Monad p, TokenParsing p) => p ()
