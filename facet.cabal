@@ -39,11 +39,13 @@ library
   exposed-modules:
     Facet.Algebra
     Facet.Carrier.Error.Lens
+    Facet.Carrier.Parser.Church
     Facet.Carrier.State.Lens
     Facet.Carrier.Throw.Inject
     Facet.CLI
     Facet.Context
     Facet.Core
+    Facet.Effect.Parser
     Facet.Elab
     Facet.Env
     Facet.Eval
@@ -75,7 +77,6 @@ library
     , containers
     , fused-effects
     , fused-effects-lens
-    , fused-effects-parser
     , fused-effects-readline
     , lens
     , optparse-applicative
@@ -95,11 +96,16 @@ test-suite test
   import: common
   type: exitcode-stdio-1.0
   hs-source-dirs: test
+  other-modules:
+    Facet.Carrier.Parser.Church.Test
+    Facet.Source.Test
   main-is: Test.hs
   build-depends:
     , base
+    , containers
     , facet
     , hedgehog ^>= 1
+    , parsers
 
 
 executable facetc

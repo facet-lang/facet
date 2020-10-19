@@ -10,8 +10,8 @@ module Text.Parser.Position
 ) where
 
 import           Control.Applicative ((<**>), (<|>))
-import qualified Control.Carrier.Parser.Church as P
-import           Control.Effect.Parser.Span (Pos, Span(..))
+import qualified Facet.Carrier.Parser.Church as P
+import           Facet.Span (Pos, Span(..))
 import           Text.Parser.Token (TokenParsing)
 
 class TokenParsing p => PositionParsing p where
