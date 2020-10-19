@@ -370,6 +370,7 @@ elabPattern = withSpan $ \case
           ps:>p -> do
             (_A, _B) <- expectQuantifiedType "when checking constructor pattern" _T'
             -- FIXME: there’s no way this is going to work, let alone a good idea
+            -- FIXME: elaborate patterns in CPS, binding locally with elabBinder, & obviating the need for |-*.
             v <- metavar <$> meta (ty _A)
             ps' <- go (_B v) ps
             p' <- check (elabPattern p ::: ty _A)
