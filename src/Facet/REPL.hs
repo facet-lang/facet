@@ -42,6 +42,7 @@ import           Facet.Syntax
 import           Prelude hiding (print, span)
 import           Silkscreen hiding (line)
 import           System.Console.ANSI
+import           System.IO.Error
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Position
@@ -108,8 +109,8 @@ loop = do
   runAction src = \case
     Help -> print helpDoc
     Quit -> empty
-    Load path -> load path
-    Reload -> reload
+    Load path -> load src path
+    Reload -> reload src
     Type e -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
       print (getPrint (ann (foldSExpr surface Nil e ::: foldCValue surface Nil _T)))
@@ -146,13 +147,13 @@ data Action
   | Type (Spanned Expr)
   | Kind (Spanned Type)
 
-load :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
-load path = do
+load :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
+load src path = do
   files_ %= Map.insert path File{ loaded = False }
-  reload
+  reload src
 
-reload :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
-reload = do
+reload :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
+reload src = do
   -- FIXME: order with a topological sort on imports, once those exist
   evalFresh 1 $ files_ <~> \ files -> itraverse (reloadFile (length files)) files
   files <- use files_
@@ -167,9 +168,9 @@ reload = do
     -- FIXME: print the module name
     print $ annotate info (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
-    rethrowParseErrors (do
-      src <- liftIO (readSourceFromFile path)
-      m <- runParserWithSource src (runFacet [] (whole module'))
+    (do
+      src <- rethrowIOErrors src $ liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left)) >>= either throwError pure
+      m <- rethrowParseErrors (runParserWithSource src (runFacet [] (whole module')))
       m' <- elab src $ Elab.elabModule m
       file{ loaded = True } <$ print (getPrint (foldCModule surface m')))
       `catchError` \ n ->
