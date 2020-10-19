@@ -150,6 +150,7 @@ reload = do
     -- FIXME: check whether files need reloading
     -- FIXME: module name
     print $ success (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
+
     rethrowParseErrors (do
       m <- runParserWithFile path (runFacet [] (whole module'))
       files_.ix path.loaded_ .= True
