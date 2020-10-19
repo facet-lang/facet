@@ -170,7 +170,7 @@ reload = do
         file <$ print (indent 2 (prettyNotice n))
 
 heading :: Doc [SGR] -> Doc [SGR]
-heading = annotate [setRGB (hsl 120 1 0.5)]
+heading = annotate [setRGB (hsl 120 1 0.5), setBold]
 
 helpDoc :: Doc [SGR]
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
