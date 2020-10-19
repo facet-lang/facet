@@ -19,6 +19,7 @@ import Control.Lens (ALens', storing, (^#))
 
 runState :: ALens' s t -> StateC s t m a -> m a
 runState lens (StateC m) = runReader lens m
+{-# INLINE runState #-}
 
 newtype StateC s t m a = StateC (ReaderC (ALens' s t) m a)
   deriving (Applicative, Functor, Monad, MonadFail)
