@@ -37,7 +37,7 @@ import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Facet.Algebra
 import           Facet.Name hiding (ann)
-import qualified Facet.Pretty as P
+import           Facet.Pretty as P
 import           Facet.Syntax
 import qualified Prettyprinter as PP
 import           Silkscreen as P
