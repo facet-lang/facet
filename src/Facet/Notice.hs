@@ -8,6 +8,8 @@ module Facet.Notice
 , rethrowParseErrors
   -- * Elaboration
 , rethrowElabErrors
+  -- * IO
+, rethrowIOErrors
 ) where
 
 import qualified Control.Carrier.Parser.Church as Parse
@@ -25,6 +27,7 @@ import           Facet.Print
 import           Facet.Stack
 import           Facet.Syntax
 import           Silkscreen
+import           System.IO.Error
 
 -- Notices
 
@@ -74,3 +77,10 @@ printReason ctx = group . \case
 
 printType :: Stack Print -> Elab.Type -> Doc [SGR]
 printType env = getPrint . foldCValue explicit env
+
+
+-- IO
+
+rethrowIOErrors :: Source -> L.ThrowC (Notice [SGR]) IOError m a -> m a
+rethrowIOErrors src = L.runThrow $ \ err ->
+  Notice (Just Error) src (pretty (ioeGetErrorString err)) []
