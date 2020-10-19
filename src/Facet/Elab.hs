@@ -441,11 +441,11 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
     let qname = mname :.: n
         e ::: t = elabDecl d
 
-    _T <- runContext . runEnv . runSubst . runElab $ check (t ::: VType)
+    _T <- elab $ check (t ::: VType)
 
     modify $ Env.insert (qname :=: Nothing ::: _T)
 
-    (s, e') <- runContext . runEnv . runSubstWith (fmap pure . (,)) . runElab $ check (e ::: _T)
+    (s, e') <- elabWith (fmap pure . (,)) $ check (e ::: _T)
     case e' of
       Left cs  -> do
         cs' <- for cs $ \ (n ::: _T) -> do
@@ -471,9 +471,6 @@ apply s v = pure $ subst (IntMap.mapMaybe tm s) v -- FIXME: error if the substit
 
 emptySubst :: Subst
 emptySubst = IntMap.empty
-
-runSubst :: Applicative m => StateC Subst m Value -> m Value
-runSubst = runSubstWith apply
 
 runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
 runSubstWith with = runState with emptySubst
