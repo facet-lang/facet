@@ -62,8 +62,8 @@ terminalStyle = \case
   Op     -> [setRGB (uncurryRGB sRGB (hsl 180 0.7 0.4))]
   Type   -> [setRGB (uncurryRGB sRGB (hsl 60 0.5 0.5))]
   Con    -> [setRGB (uncurryRGB sRGB (hsl 15 0.8 0.5))]
-  Lit    -> [bold]
-  Hole m -> [bold, setRGB (pick (-getMeta m) 0.5 0.45)]
+  Lit    -> [setBold]
+  Hole m -> [setBold, setRGB (pick (-getMeta m) 0.5 0.45)]
   where
   pick i s l = uncurryRGB sRGB (hsl (fromIntegral i * phi * 30) s l)
   phi = 1.618033988749895

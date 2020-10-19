@@ -23,7 +23,7 @@ module Facet.Pretty
   -- * ANSI codes
 , sgrStyle
 , setRGB
-, bold
+, setBold
   -- * Re-exports
 , PP.Doc
 , PP.layoutSmart
@@ -192,5 +192,5 @@ sgrStyle = Style
 setRGB :: Colour Float -> SGR
 setRGB = SetRGBColor Foreground
 
-bold :: SGR
-bold = SetConsoleIntensity BoldIntensity
+setBold :: SGR
+setBold = SetConsoleIntensity BoldIntensity
