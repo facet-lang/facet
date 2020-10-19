@@ -11,4 +11,9 @@ not : Bool -> Bool
 , (false) -> true
 }
 
+and : Bool -> Bool -> Bool
+{ (true) (true) -> true
+, _      _      -> false
+}
+
 }
