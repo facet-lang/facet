@@ -44,18 +44,18 @@ import           Silkscreen as P
 import           Silkscreen.Printer.Prec hiding (Level)
 import qualified Silkscreen.Printer.Prec as P
 import           Silkscreen.Printer.Rainbow as P
-import qualified System.Console.ANSI as ANSI
+import           System.Console.ANSI
 
 prettyPrint :: MonadIO m => Print -> m ()
 prettyPrint = putDoc . getPrint
 
-getPrint :: Print -> PP.Doc [ANSI.SGR]
+getPrint :: Print -> PP.Doc [SGR]
 getPrint = PP.reAnnotate terminalStyle . getPrint'
 
 getPrint' :: Print -> PP.Doc Highlight
 getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
 
-terminalStyle :: Highlight -> [ANSI.SGR]
+terminalStyle :: Highlight -> [SGR]
 terminalStyle = \case
   Nest i -> [setRGB (pick i 0.4 0.8)]
   Name i -> [setRGB (pick (-getLevel i) 0.8 0.6)]
@@ -65,8 +65,8 @@ terminalStyle = \case
   Lit    -> [bold]
   Hole m -> [bold, setRGB (pick (-getMeta m) 0.5 0.45)]
   where
-  setRGB = ANSI.SetRGBColor ANSI.Foreground
-  bold = ANSI.SetConsoleIntensity ANSI.BoldIntensity
+  setRGB = SetRGBColor Foreground
+  bold = SetConsoleIntensity BoldIntensity
   pick i s l = uncurryRGB sRGB (hsl (fromIntegral i * phi * 30) s l)
   phi = 1.618033988749895
 
