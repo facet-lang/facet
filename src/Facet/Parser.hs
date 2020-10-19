@@ -141,7 +141,7 @@ monotypeTable =
   [ [ Infix R (pack "->") (\ s -> fmap ((,) s) . (S.:->)) ]
   , [ Infix L mempty (\ s -> fmap ((,) s) . (S.:$$)) ]
   , [ -- FIXME: we should treat these as globals.
-      Atom (spanned (S.Type  <$ token (string "Type")))
+      Atom (spanned (S.Type <$ token (string "Type")))
     , Atom tvar
     ]
   ]
