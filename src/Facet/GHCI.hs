@@ -14,16 +14,16 @@ module Facet.GHCI
 ) where
 
 import           Control.Carrier.Lift (runM)
-import           Control.Carrier.Parser.Church as Parse (Err, Input(..), ParserC, errToNotice, runParser, runParserWithFile, runParserWithString)
+import           Control.Carrier.Parser.Church as Parse (Err, ParserC, errToNotice, runParserWithFile, runParserWithSource, runParserWithString)
 import           Control.Carrier.Throw.Either
 import           Control.Effect.Parser.Notice (Level(..), Style(..))
 import qualified Control.Effect.Parser.Notice as N
 import           Control.Effect.Parser.Source (Source(..), slice, sourceFromString)
-import           Control.Effect.Parser.Span (Pos(Pos))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
 import           Facet.Algebra (foldCModule, foldCValue, foldSModule)
+import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
 import           Facet.Elab as Elab (Err(..), Reason(..), Type, elabModule)
 import           Facet.Name (Index(..), Level(..))
@@ -40,34 +40,32 @@ import           Text.Parser.Position (Spanned)
 
 -- Parsing
 
-parseString :: MonadIO m => Facet (ParserC (Either (Source, Parse.Err))) P.Print -> String -> m ()
-parseString p s = either (P.putDoc . N.prettyNoticeWith sgrStyle . uncurry errToNotice) P.prettyPrint (runParserWithString 0 s (runFacet [] p))
+parseString :: MonadIO m => Facet (ParserC (L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) (Either (N.Notice [ANSI.SGR])))) P.Print -> String -> m ()
+parseString p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.prettyPrint (rethrowingFromParser(runParserWithString 0 s (runFacet [] p)))
 
 printFile :: MonadIO m => FilePath -> m ()
 printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module')))) >>= \case
   Left err -> P.putDoc (N.prettyNoticeWith sgrStyle (uncurry errToNotice err))
   Right m  -> P.prettyPrint (foldSModule P.surface m)
 
-parseFile :: MonadIO m => FilePath -> m (Either (Source, Parse.Err) (Spanned S.Module))
-parseFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module'))))
+parseFile :: MonadIO m => FilePath -> m (Either (N.Notice [ANSI.SGR]) (Spanned S.Module))
+parseFile path = runM (runThrow (rethrowingFromParser (runParserWithFile path (runFacet [] (whole module')))))
 
 
 -- Elaborating
 
-elabString :: MonadIO m => Facet (ParserC (Either (N.Notice [ANSI.SGR]))) (Spanned S.Module) -> String -> m ()
+elabString :: MonadIO m => Facet (ParserC (L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) (Either (N.Notice [ANSI.SGR])))) (Spanned S.Module) -> String -> m ()
 elabString = elabPathString Nothing
 
 elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
-elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (Either (N.Notice [ANSI.SGR]))) (Spanned S.Module) -> String -> m ()
+elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) (Either (N.Notice [ANSI.SGR])))) (Spanned S.Module) -> String -> m ()
 elabPathString path p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.prettyPrint $ do
-  parsed <- runParser (const Right) failure failure input (runFacet [] (whole p))
+  parsed <- rethrowingFromParser $ runParserWithSource src (runFacet [] (whole p))
   lower $ foldCModule P.explicit <$> elabModule parsed
   where
-  input = Input (Pos 0 0) s
   src = sourceFromString path 0 s
-  failure = Left . errToNotice src
   mkNotice p = toNotice (Just N.Error) src p
 
   lower :: Either Elab.Err a -> Either (N.Notice [ANSI.SGR]) a
@@ -75,6 +73,9 @@ elabPathString path p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.pret
 
 
 -- Errors
+
+rethrowingFromParser :: L.ThrowC (N.Notice [ANSI.SGR]) (Source, Parse.Err) m a -> m a
+rethrowingFromParser = L.runThrow (uncurry errToNotice)
 
 toNotice :: Maybe N.Level -> Source -> Elab.Err -> N.Notice [ANSI.SGR]
 toNotice lvl src Err{ span, reason, context } =
