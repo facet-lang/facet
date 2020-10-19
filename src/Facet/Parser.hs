@@ -117,7 +117,11 @@ sig name body = go
   where
   go = forAll (S.:==>) go <|> binder name go <|> spanned ((S.:=) <$> monotype <*> body)
 
-binder :: (Monad p, PositionParsing p) => Facet p N.UName -> Facet p (Spanned S.Decl) -> Facet p (Spanned S.Decl)
+binder
+  :: (Monad p, PositionParsing p)
+  => Facet p N.UName
+  -> Facet p (Spanned S.Decl)
+  -> Facet p (Spanned S.Decl)
 binder name k = do
   ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (coerce <$> name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
   bind i $ \ v -> mk start (v S.::: t) <$ arrow <*> k <*> position
