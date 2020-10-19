@@ -47,7 +47,7 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Span (Span(..))
 import           Control.Effect.Sum
 import           Data.Bifunctor (bimap, first)
-import           Data.Foldable (foldl', toList)
+import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import qualified Data.Text as T
@@ -69,7 +69,7 @@ type Prob = Value
 
 type Subst = IntMap.IntMap (Maybe Prob ::: Type)
 
-newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
+newtype Elab a = Elab { elab :: forall sig m . Has (Reader (Context (Value ::: Type)) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -81,16 +81,17 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= elab . f
 
-instance Algebra (Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) Elab where
+instance Algebra (Reader (Context (Value ::: Type)) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) Elab where
   alg hdl sig ctx = case sig of
-    L renv          -> Elab $ alg (elab . hdl) (inj renv) ctx
-    R (L rspan)     -> Elab $ alg (elab . hdl) (inj rspan) ctx
-    R (R (L subst)) -> Elab $ alg (elab . hdl) (inj subst) ctx
-    R (R (R throw)) -> Elab $ alg (elab . hdl) (inj throw) ctx
+    L rctx              -> Elab $ alg (elab . hdl) (inj rctx) ctx
+    R (L renv)          -> Elab $ alg (elab . hdl) (inj renv) ctx
+    R (R (L rspan))     -> Elab $ alg (elab . hdl) (inj rspan) ctx
+    R (R (R (L subst))) -> Elab $ alg (elab . hdl) (inj subst) ctx
+    R (R (R (R throw))) -> Elab $ alg (elab . hdl) (inj throw) ctx
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
-  deriving (Algebra (Reader Type :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
+  deriving (Algebra (Reader Type :+: Reader (Context (Value ::: Type)) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
@@ -123,9 +124,10 @@ unify (t1 :===: t2) = go (t1 :===: t2)
     VForAll t1 b1         :===: VForAll t2 b2
       | pl (tm t1) == pl (tm t2) -> do
         t <- go (ty t1 :===: ty t2)
-        b <- out (tm t1) ::: t |- \ v ->
-          go (b1 v :===: b2 v)
-        pure $ VForAll (tm t1 ::: t) b
+        d <- asks @(Context (Value ::: Type)) level
+        let v = free d
+        b <- go (b1 v :===: b2 v)
+        pure $ VForAll (tm t1 ::: t) (\ v -> C.bind d v b)
     -- FIXME: build and display a diff of the root types
     t1                    :===: t2                    -> couldNotUnify t1 t2
 
@@ -189,10 +191,9 @@ global n = Synth $ do
   instantiate (C.global q ::: ty q)
 
 bound
-  :: Context (Value ::: Type)
-  -> Index
+  :: Index
   -> Synth Value
-bound ctx n = Synth $ case ctx !? n of
+bound n = Synth $ asks (!? n) >>= \case
   -- FIXME: do we need to instantiate here to deal with rank-n applications?
   Just (_ ::: (v ::: _T)) -> pure (v ::: _T)
   Nothing                 -> err $ BadContext n
@@ -214,22 +215,24 @@ f $$ a = Synth $ do
 
 
 (|-)
-  :: UName ::: Type
-  -> (Value -> Elab Value)
-  -> Elab (Value -> Value)
-_ ::: _T |- f = do
-  m <- meta _T
-  handleBinder m f
+  :: Has (Reader (Context (Value ::: Type))) sig m
+  => UName ::: Expr ::: Type
+  -> m Value
+  -> m Value
+v |- b = local @(Context (Value ::: Type)) (|> v) b
 
 infix 1 |-
 
 (|-*)
-  :: C.Pattern Type (UName ::: Type)
-  -> (C.Pattern Type Value -> Elab Value)
-  -> Elab (C.Pattern Type Value -> Value)
-p |-* f = do
-  mp <- traverse (meta . ty) p
-  handleBinderP mp f
+  :: (Has (Reader (Context (Value ::: Type))) sig m, Foldable t)
+  => t (UName ::: Type)
+  -> m Value
+  -> m Value
+p |-* b = do
+  ctx <- ask @(Context (Value ::: Type))
+  let d = level ctx
+      (_, ext) = foldl' (\ (d, ctx) (n ::: _T) -> (succ d, ctx . (|> (n ::: free d ::: _T)))) (d, id) p
+  local ext b
 
 infix 1 |-*
 
@@ -238,18 +241,17 @@ infix 1 |-*
 
 elabType
   :: HasCallStack
-  => Context (Value ::: Type)
-  -> Spanned S.Type
+  => Spanned S.Type
   -> Maybe Type
   -> Elab (Type ::: Type)
-elabType ctx = withSpan' $ \case
+elabType = withSpan' $ \case
   S.TFree  n -> switch $ global n
-  S.TBound n -> switch $ bound ctx n
+  S.TBound n -> switch $ bound n
   S.THole  n -> check (hole n) "hole"
   S.Type     -> switch $ _Type
-  t S.:=> b  -> switch $ bimap im (checkElab . elabType ctx) t >~> \ v -> checkElab (elabType (ctx |> v) b)
-  f S.:$$ a  -> switch $ synthElab (elabType ctx f) $$  checkElab (elabType ctx a)
-  a S.:-> b  -> switch $ ex __ ::: checkElab (elabType ctx a) >~> \ _ -> checkElab (elabType ctx b)
+  t S.:=> b  -> switch $ bimap im (checkElab . elabType) t >~> \ v -> v |- checkElab (elabType b)
+  f S.:$$ a  -> switch $ synthElab (elabType f) $$  checkElab (elabType a)
+  a S.:-> b  -> switch $ ex __ ::: checkElab (elabType a) >~> \ _ -> checkElab (elabType b)
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -263,8 +265,10 @@ _Type = Synth $ pure $ VType ::: VType
   -> Synth Type
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: VType)
-  b' <- out n ::: _T |- \ v -> check (b (out n ::: v ::: _T) ::: VType)
-  pure $ (VForAll (n ::: _T) b') ::: VType
+  d <- asks @(Context (Value ::: Type)) level
+  let v = free d
+  b' <- check (b (out n ::: v ::: _T) ::: VType)
+  pure $ (VForAll (n ::: _T) (\ v -> C.bind d v b')) ::: VType
 
 infixr 1 >~>
 
@@ -273,16 +277,15 @@ infixr 1 >~>
 
 elabExpr
   :: HasCallStack
-  => Context (Value ::: Type)
-  -> Spanned S.Expr
+  => Spanned S.Expr
   -> Maybe Type
   -> Elab (Expr ::: Type)
-elabExpr ctx = withSpan' $ \case
+elabExpr = withSpan' $ \case
   S.Free  n -> switch $ global n
-  S.Bound n -> switch $ bound ctx n
+  S.Bound n -> switch $ bound n
   S.Hole  n -> check (hole n) "hole"
-  f S.:$  a -> switch $ synthElab (elabExpr ctx f) $$ checkElab (elabExpr ctx a)
-  S.Comp cs -> check (elabComp ctx cs) "computation"
+  f S.:$  a -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
+  S.Comp cs -> check (elabComp cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -293,17 +296,19 @@ lam
   -> Check Expr
 lam n b = Check $ \ _T -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking lambda" _T
-  b' <- out n ::: _T |- \ v -> check (b (out n ::: v ::: _T) ::: _B v)
-  pure (VLam (n ::: _T) b')
+  d <- asks @(Context (Value ::: Type)) level
+  let v = free d
+  b' <- check (b (out n ::: v ::: _T) ::: _B v)
+  pure (VLam (n ::: _T) (\ v -> C.bind d v b'))
+
 
 elabComp
   :: HasCallStack
-  => Context (Value ::: Type)
-  -> Spanned S.Comp
+  => Spanned S.Comp
   -> Check Expr
-elabComp ctx = withSpan $ \case
-  S.Expr    b  -> checkElab (elabExpr ctx b)
-  S.Clauses cs -> elabClauses ctx cs
+elabComp = withSpan $ \case
+  S.Expr    b  -> checkElab (elabExpr b)
+  S.Clauses cs -> elabClauses cs
 
 data XOr a b
   = XB
@@ -321,30 +326,30 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
-elabClauses :: Context (Value ::: Type) -> [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check Expr
-elabClauses ctx [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
+elabClauses :: [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check Expr
+elabClauses [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
-  b' <- n ::: _A |- \ v -> do
-    let ctx' = ctx |> (n ::: v ::: _A)
-    check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx' . pure . (,b)) (nonEmpty ps) ::: _B v)
-  pure $ VLam (P pl n ::: _A) b'
-elabClauses ctx cs = Check $ \ _T -> do
+  d <- asks @(Context (Value ::: Type)) level
+  let v = free d
+  b' <- n ::: v ::: _A |- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
+  pure $ VLam (P pl n ::: _A) (\ v -> C.bind d v b')
+elabClauses cs = Check $ \ _T -> do
   (P _ n ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
     XB    -> pure $ Nothing
     XL _  -> pure $ Nothing
     XR cs -> pure $ Just cs
     XT    -> error "mixed" -- FIXME: throw a proper error
-  b' <- n ::: _A |- \ v -> do
+  d <- asks @(Context (Value ::: Type)) level
+  let v = free d
+  b' <- n ::: v ::: _A |- do
     let _B' = _B v
     cs' <- for cs $ \ (p:|_, b) -> do
       p' <- check (elabPattern p ::: _A)
-      b' <- p' |-* \ v ->
-        let ctx' = foldl' (|>) ctx (zipWith (\ (n ::: _T) v -> n ::: v ::: _T) (toList p') (toList v))
-        in check (maybe (checkElab (elabExpr ctx' b)) (elabClauses ctx') rest ::: _B')
-      pure (p', b')
+      b' <- p' |-* check (maybe (checkElab (elabExpr b)) elabClauses rest ::: _B')
+      pure (p', \ p -> snd (foldl' (\ (d, b') v -> (succ d, C.bind d v b')) (succ d, b') p))
     pure $ case' v cs'
-  pure $ VLam (ex __ ::: _A) b'
+  pure $ VLam (ex __ ::: _A) (\ v -> C.bind d v b')
   where
   partitionClause (_:|ps, b) = case ps of
     []   -> XL ()
@@ -375,44 +380,39 @@ elabPattern = withSpan $ \case
 elabDecl
   :: HasCallStack
   => Spanned S.Decl
-  -> (Context (Value ::: Type) -> Check (Either [CName ::: Type] Value)) ::: (Context (Value ::: Type) -> Check Type)
+  -> Check (Either [CName ::: Type] Value) ::: Check Type
 elabDecl d = go d id id
   where
   go
     :: Spanned S.Decl
-    -> ((Context (Value ::: Type) -> Check Value) -> (Context (Value ::: Type) -> Check Value))
-    -> ((Context (Value ::: Type) -> Check Value) -> (Context (Value ::: Type) -> Check Value))
-    -> (Context (Value ::: Type) -> Check (Either [CName ::: Type] Value)) ::: (Context (Value ::: Type) -> Check Type)
+    -> (Check Value -> Check Value)
+    -> (Check Value -> Check Value)
+    -> Check (Either [CName ::: Type] Value) ::: Check Type
   go d km kt = withSpans d $ \case
     (n ::: t) S.:==> b ->
       go b
-        (km . (\ b ctx -> Check $ \ _T -> do
-          (_ ::: _T, _B) <- expectQuantifiedType "when checking lambda" _T
-          let d = level ctx
-              v = free d
-          b' <- check (b (ctx |> (n ::: v ::: _T)) ::: _B v)
-          pure (VLam (im n ::: _T) (\ v -> C.bind d v b'))))
-        (kt . (\ _B ctx -> checkElab (switch (im n ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
+        (km . (\ b  -> lam (im n) (\ v -> v |- b)))
+        (kt . (\ _B -> checkElab (switch (im n ::: checkElab (elabType t) >~> \ v -> v |- _B))))
 
     (n ::: t) S.:--> b ->
       go b
-        (km . (\ b  ctx -> lam (ex n) (b . (ctx |>))))
-        (kt . (\ _B ctx -> checkElab (switch (ex __ ::: checkElab (elabType ctx t) >~> _B . (ctx |>)))))
+        (km . (\ b  -> lam (ex n) (\ v -> v |- b)))
+        (kt . (\ _B -> checkElab (switch (ex __ ::: checkElab (elabType t) >~> \ v -> v |- _B))))
 
-    t S.:= b -> (\ ctx -> elabDeclBody km ctx b) ::: kt (\ ctx -> checkElab (elabType ctx t))
+    t S.:= b -> elabDeclBody km b ::: kt (checkElab (elabType t))
 
-  withSpans (s, d) f = let t ::: _T = f d in setSpan s . t ::: setSpan s . _T
+  withSpans (s, d) f = let t ::: _T = f d in setSpan s t ::: setSpan s _T
 
-elabDeclBody :: HasCallStack => ((Context (Value ::: Type) -> Check Value) -> (Context (Value ::: Type) -> Check Value)) -> Context (Value ::: Type) -> S.DeclBody -> Check (Either [CName ::: Type] Value)
-elabDeclBody k ctx = \case
-  S.DExpr b -> Right <$> k (checkElab . (`elabExpr` b)) ctx
-  S.DType b -> Right <$> k (checkElab . (`elabType` b)) ctx
-  S.DData c -> Left <$> elabData k ctx c
+elabDeclBody :: HasCallStack => (Check Value -> Check Value) -> S.DeclBody -> Check (Either [CName ::: Type] Value)
+elabDeclBody k = \case
+  S.DExpr b -> Right <$> k (checkElab (elabExpr b))
+  S.DType b -> Right <$> k (checkElab (elabType b))
+  S.DData c -> Left <$> elabData k c
 
 
-elabData :: ((Context (Value ::: Type) -> Check Value) -> (Context (Value ::: Type) -> Check Value)) -> Context (Value ::: Type) -> [Spanned (CName ::: Spanned S.Type)] -> Check [CName ::: Type]
+elabData :: (Check Value -> Check Value) -> [Spanned (CName ::: Spanned S.Type)] -> Check [CName ::: Type]
 -- FIXME: check that all constructors return the datatype.
-elabData k ctx cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab . (`elabType` t)) ctx
+elabData k cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab (elabType t))
 
 
 -- Modules
@@ -430,11 +430,11 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
     let qname = mname :.: n
         e ::: t = elabDecl d
 
-    _T <- runEnv . runSubst . elab $ check (t empty ::: VType)
+    _T <- runContext . runEnv . runSubst . elab $ check (t ::: VType)
 
     modify $ Env.insert (qname :=: Nothing ::: _T)
 
-    (s, e') <- runEnv . runState (fmap pure . (,)) emptySubst . elab $ check (e empty ::: _T)
+    (s, e') <- runContext . runEnv . runState (fmap pure . (,)) emptySubst . elab $ check (e ::: _T)
     case e' of
       Left cs  -> do
         cs' <- for cs $ \ (n ::: _T) -> do
@@ -457,6 +457,8 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
   emptySubst = IntMap.empty @(Maybe Prob ::: Type)
 
   runSubst = runState (fmap pure . apply) emptySubst
+
+  runContext = runReader @(Context (Value ::: Type)) empty
 
   runEnv m = do
     env <- get @(Env.Env Type)
