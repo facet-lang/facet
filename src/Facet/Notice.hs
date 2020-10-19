@@ -27,7 +27,6 @@ import           Facet.Print
 import           Facet.Stack
 import           Facet.Syntax
 import           Silkscreen
-import           System.IO.Error
 
 -- Notices
 
@@ -83,4 +82,4 @@ printType env = getPrint . foldCValue explicit env
 
 rethrowIOErrors :: Source -> L.ThrowC (Notice [SGR]) IOError m a -> m a
 rethrowIOErrors src = L.runThrow $ \ err ->
-  Notice (Just Error) src (pretty (ioeGetErrorString err)) []
+  Notice (Just Error) src (group (reflow (show err))) []
