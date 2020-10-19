@@ -22,6 +22,7 @@ module Facet.Pretty
 , renderLazy
 , sgrStyle
 , PP.Doc
+, PP.layoutSmart
 ) where
 
 import           Control.Carrier.Lift
