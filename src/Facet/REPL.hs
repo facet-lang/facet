@@ -156,7 +156,7 @@ reload = files_ <~> \ files -> itraverse (reloadFile (length files)) files
   reloadFile ln path file = if loaded file then pure file else do
     let i = 0 :: Int
     -- FIXME: print the module name
-    print $ success (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
+    print $ heading (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
     rethrowParseErrors (do
       m <- runParserWithFile path (runFacet [] (whole module'))
@@ -164,8 +164,8 @@ reload = files_ <~> \ files -> itraverse (reloadFile (length files)) files
       `catchError` \ n ->
         file <$ print (indent 2 (prettyNotice n))
 
-success :: Doc [SGR] -> Doc [SGR]
-success = annotate [SetColor Foreground Vivid Green]
+heading :: Doc [SGR] -> Doc [SGR]
+heading = annotate [SetColor Foreground Vivid Green]
 
 helpDoc :: Doc [SGR]
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
