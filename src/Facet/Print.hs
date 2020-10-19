@@ -61,7 +61,7 @@ terminalStyle = \case
   Nest i -> [setRGB (pick i 0.4 0.8)]
   Name i -> [setRGB (pick (-getLevel i) 0.8 0.6)]
   Op     -> [setRGB cyan]
-  Type   -> [setRGB yellow]
+  Type   -> [setRGB (uncurryRGB sRGB (hsl 60 0.5 0.5))]
   Con    -> [setRGB (uncurryRGB sRGB (hsl 15 0.8 0.5))]
   Lit    -> [bold]
   Hole m -> [bold, setRGB (pick (-getMeta m) 0.5 0.45)]
