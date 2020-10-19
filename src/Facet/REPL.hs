@@ -10,14 +10,12 @@ module Facet.REPL
 import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
-import           Control.Carrier.Parser.Church hiding (runParserWithFile)
+import           Control.Carrier.Parser.Church
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=))
 import           Control.Effect.Parser.Notice (Level(..), Notice, Style(..), prettyNoticeWith)
-import           Control.Effect.Parser.Source (Source, sourceFromString)
-import           Control.Effect.Parser.Span (Pos(Pos))
-import qualified Control.Effect.Parser.Span as Span
+import           Control.Effect.Parser.Source (Source)
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -130,7 +128,7 @@ data Action
 load :: (Has (Error (Notice [ANSI.SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
   files_ %= Map.insert path File{ loaded = False }
-  runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface
+  rethrowingFromParser (runParserWithFile path (runFacet [] (whole module'))) >>= print . getPrint . foldSModule surface
 
 reload :: (Has (Error (Notice [ANSI.SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 reload = do
@@ -140,7 +138,7 @@ reload = do
   for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
     -- FIXME: module name
     print $ annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green] (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
-    (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNoticeWith sgrStyle n))
+    rethrowingFromParser (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNoticeWith sgrStyle n))
 
 helpDoc :: Doc [ANSI.SGR]
 helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
@@ -179,17 +177,3 @@ sgrStyle = Style
   , eofStyle    = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Blue]
   , caretStyle  = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
   }
-
-
-runParserWithFile :: (Has (Throw (Notice [ANSI.SGR])) sig m, MonadIO m) => FilePath -> ParserC m a -> m a
-runParserWithFile path p = do
-  input <- liftIO (readFile path)
-  runParserWith (Just path) (Input (Pos 0 0) input) p
-{-# INLINE runParserWithFile #-}
-
-runParserWith :: Has (Throw (Notice [ANSI.SGR])) sig m => Maybe FilePath -> Input -> ParserC m a -> m a
-runParserWith path input = runParser (const pure) failure failure input
-  where
-  src = sourceFromString path (Span.line (pos input)) (str input)
-  failure = throwError @(Notice [ANSI.SGR]) . errToNotice src
-{-# INLINE runParserWith #-}
