@@ -14,8 +14,7 @@ import           Control.Carrier.Parser.Church
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=))
-import           Control.Effect.Parser.Notice (Notice, prettyNoticeWith)
-import           Control.Effect.Parser.Source (Source)
+import           Control.Effect.Parser.Notice (prettyNoticeWith)
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -24,9 +23,9 @@ import qualified Data.Map as Map
 import           Data.Semigroup
 import           Data.Text.Lazy (unpack)
 import           Facet.Algebra
-import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Elab as Elab
 import qualified Facet.Env as Env
+import           Facet.Notice
 import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Print
@@ -160,7 +159,3 @@ print :: (Has Readline sig m, MonadIO m) => Doc [ANSI.SGR] -> m ()
 print d = do
   opts <- liftIO layoutOptionsForTerminal
   outputStrLn (unpack (renderLazy (layoutSmart opts d)))
-
-
-rethrowParseErrors :: L.ThrowC (Notice [ANSI.SGR]) (Source, Err) m a -> m a
-rethrowParseErrors = L.runThrow (uncurry errToNotice)

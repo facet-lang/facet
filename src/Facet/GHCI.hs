@@ -71,9 +71,6 @@ elabPathString path p s = either (P.putDoc . prettyNotice) P.prettyPrint $ do
 
 -- Errors
 
-rethrowParseErrors :: L.ThrowC (Notice [ANSI.SGR]) (Source, Parse.Err) m a -> m a
-rethrowParseErrors = L.runThrow (uncurry errToNotice)
-
 toNotice :: Maybe N.Level -> Source -> Elab.Err -> Notice [ANSI.SGR]
 toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason

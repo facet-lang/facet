@@ -1,11 +1,18 @@
 module Facet.Notice
 ( Notice(..)
 , prettyNotice
+, rethrowParseErrors
 ) where
 
-import Control.Effect.Parser.Notice hiding (prettyNotice)
-import Facet.Pretty
-import System.Console.ANSI (SGR)
+import qualified Control.Carrier.Parser.Church as Parse
+import           Control.Effect.Parser.Notice hiding (prettyNotice)
+import           Control.Effect.Parser.Source (Source)
+import qualified Facet.Carrier.Throw.Inject as L
+import           Facet.Pretty
+import           System.Console.ANSI (SGR)
 
 prettyNotice :: Notice [SGR] -> Doc [SGR]
 prettyNotice = prettyNoticeWith sgrStyle
+
+rethrowParseErrors :: L.ThrowC (Notice [SGR]) (Source, Parse.Err) m a -> m a
+rethrowParseErrors = L.runThrow (uncurry Parse.errToNotice)
