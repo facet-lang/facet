@@ -24,6 +24,7 @@ module Facet.Pretty
 , sgrStyle
 , setRGB
 , setBold
+, setHSL
   -- * Re-exports
 , PP.Doc
 , PP.layoutSmart
@@ -34,7 +35,9 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Notice (Level(..), Style(..))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (first)
-import           Data.Colour (Colour)
+import           Data.Colour.RGBSpace
+import           Data.Colour.RGBSpace.HSL
+import           Data.Colour.SRGB
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
@@ -194,3 +197,6 @@ setRGB = SetRGBColor Foreground
 
 setBold :: SGR
 setBold = SetConsoleIntensity BoldIntensity
+
+setHSL :: Float -> Float -> Float -> SGR
+setHSL h s l = setRGB $ uncurryRGB sRGB $ hsl h s l
