@@ -15,12 +15,11 @@ import           Control.Carrier.Parser.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, (%=), (.=), (<~))
+import           Control.Effect.Lens (use, (%=), (<~))
 import           Control.Effect.Parser.Source (Source(..), sourceFromString)
-import           Control.Lens (Getting, Lens', ix, lens)
+import           Control.Lens (Getting, Lens', itraverse, lens)
 import           Control.Monad.IO.Class
 import           Data.Char
-import           Data.Foldable (for_)
 import qualified Data.Map as Map
 import           Data.Semigroup
 import           Data.Text.Lazy (unpack)
@@ -145,18 +144,19 @@ reload :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL
 reload = do
   files <- use files_
   -- FIXME: topological sort
-  let ln = length files
-  for_ (zip [(1 :: Int)..] (Map.keys files)) $ \ (i, path) -> do
-    -- FIXME: check whether files need reloading
-    -- FIXME: module name
+  files_ <~> itraverse (reloadFile (length files))
+  where
+  -- FIXME: check whether files need reloading
+  reloadFile ln path file = if loaded file then pure file else do
+    let i = 0 :: Int
+    -- FIXME: print the module name
     print $ success (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
     rethrowParseErrors (do
       m <- runParserWithFile path (runFacet [] (whole module'))
-      files_.ix path.loaded_ .= True
-      print $ getPrint (foldSModule surface m))
+      file{ loaded = True } <$ print (getPrint (foldSModule surface m)))
       `catchError` \ n ->
-        print (indent 2 (prettyNotice n))
+        file <$ print (indent 2 (prettyNotice n))
 
 success :: Doc [SGR] -> Doc [SGR]
 success = annotate [SetColor Foreground Vivid Green]
