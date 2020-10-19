@@ -37,7 +37,7 @@ import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Facet.Algebra
 import           Facet.Name hiding (ann)
-import           Facet.Pretty as P
+import           Facet.Pretty
 import           Facet.Syntax
 import qualified Prettyprinter as PP
 import           Silkscreen as P
@@ -47,7 +47,7 @@ import           Silkscreen.Printer.Rainbow as P
 import qualified System.Console.ANSI as ANSI
 
 prettyPrint :: MonadIO m => Print -> m ()
-prettyPrint = P.putDoc . getPrint
+prettyPrint = putDoc . getPrint
 
 getPrint :: Print -> PP.Doc [ANSI.SGR]
 getPrint = PP.reAnnotate terminalStyle . getPrint'
@@ -203,13 +203,13 @@ surface :: Algebra Print
 surface = Algebra
   { var = \case
     Global _ n -> setPrec Var (pretty n)
-    TLocal n d -> name P.upper n d
-    Local  n d -> name P.lower n d
-    Quote  n d -> stimes (3 :: Int) $ name P.lower n d
-    Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> P.upper (getMeta m)))
+    TLocal n d -> name upper n d
+    Local  n d -> name lower n d
+    Quote  n d -> stimes (3 :: Int) $ name lower n d
+    Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
     Cons     n -> setPrec Var (annotate Con (pretty n))
-  , tintro = name P.upper
-  , intro = name P.lower
+  , tintro = name upper
+  , intro = name lower
   , lam = comp . embed . commaSep
   , clause = \ ns b -> embed (setPrec Pattern (vsep (map (unPl_ (braces . tm) tm) ns)) </> arrow) </> b
   -- FIXME: group quantifiers by kind again.
@@ -241,13 +241,13 @@ explicit :: Algebra Print
 explicit = Algebra
   { var = \case
     Global _ n -> setPrec Var (pretty n)
-    TLocal n d -> name P.upper n d
-    Local  n d -> name P.lower n d
-    Quote  n d -> stimes (3 :: Int) $ name P.lower n d
-    Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> P.upper (getMeta m)))
+    TLocal n d -> name upper n d
+    Local  n d -> name lower n d
+    Quote  n d -> stimes (3 :: Int) $ name lower n d
+    Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
     Cons     n -> setPrec Var (annotate Con (pretty n))
-  , tintro = name P.upper
-  , intro = name P.lower
+  , tintro = name upper
+  , intro = name lower
   , lam = comp . embed . commaSep
   , clause = \ ns b -> group (align (setPrec Pattern (vsep (map (\ (P pl (n ::: _T)) -> group $ unPl braces id pl (maybe n (ann . (n :::)) _T)) ns)) </> arrow)) </> b
   -- FIXME: group quantifiers by kind again.
