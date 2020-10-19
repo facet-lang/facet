@@ -24,9 +24,6 @@ module Facet.Pretty
 , sgrStyle
 , setRGB
 , setBold
-, setFg
-, _sRGB
-, _HSL
   -- * Re-exports
 , PP.Doc
 , PP.layoutSmart
@@ -35,11 +32,9 @@ module Facet.Pretty
 import           Control.Carrier.Lift
 import           Control.Carrier.State.Church
 import           Control.Effect.Parser.Notice (Level(..), Style(..))
-import           Control.Lens (Iso', iso)
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (first)
 import           Data.Colour.RGBSpace
-import           Data.Colour.RGBSpace.HSL
 import           Data.Colour.SRGB
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -195,17 +190,8 @@ sgrStyle = Style
   , caretStyle  = annotate [SetColor Foreground Vivid Green]
   }
 
-setFg :: (a -> Colour Float) -> a -> SGR
-setFg iso a = SetRGBColor Foreground $ iso a
-
-setRGB :: Colour Float -> SGR
-setRGB = SetRGBColor Foreground
+setRGB :: RGB Float -> SGR
+setRGB = SetRGBColor Foreground . uncurryRGB sRGB
 
 setBold :: SGR
 setBold = SetConsoleIntensity BoldIntensity
-
-_sRGB :: (Floating a, Ord a) => Iso' (RGB a) (Colour a)
-_sRGB = iso (uncurryRGB sRGB) toSRGB
-
-_HSL :: RealFrac a => Iso' (a, a, a) (RGB a)
-_HSL = iso (\ (h,s,l) -> hsl h s l) hslView
