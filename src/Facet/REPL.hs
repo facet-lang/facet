@@ -181,7 +181,6 @@ sgrStyle = Style
   }
 
 
-
 runParserWithString :: Has (Throw (Notice [ANSI.SGR])) sig m => Int -> String -> ParserC m a -> m a
 runParserWithString line str = runParserWith Nothing (Input (Pos line 0) str)
 {-# INLINE runParserWithString #-}
