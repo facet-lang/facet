@@ -214,17 +214,14 @@ f $$ a = Synth $ do
   pure $ (f' C.$$ ex a') ::: _B a'
 
 
-(|-)
+elabBinder
   :: Has (Reader (Context (Value ::: Type))) sig m
-  => UName ::: Type
-  -> (Value -> m Value)
+  => (Value -> m Value)
   -> m (Value -> Value)
-(_n ::: _T) |- b = do
+elabBinder b = do
   d <- asks @(Context (Value ::: Type)) level
   b' <- b (free d)
   pure $ \ v -> C.bind d v b'
-
-infix 1 |-
 
 (||-)
   :: Has (Reader (Context (Value ::: Type))) sig m
@@ -278,7 +275,7 @@ _Type = Synth $ pure $ VType ::: VType
   -> Synth Type
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: VType)
-  b' <- out n ::: _T |- \ v -> check (b (out n ::: v ::: _T) ::: VType)
+  b' <- elabBinder $ \ v -> check (b (out n ::: v ::: _T) ::: VType)
   pure $ VForAll (n ::: _T) b' ::: VType
 
 infixr 1 >~>
@@ -307,7 +304,7 @@ lam
   -> Check Expr
 lam n b = Check $ \ _T -> do
   (_ ::: _T, _B) <- expectQuantifiedType "when checking lambda" _T
-  b' <- out n ::: _T |- \ v -> check (b (out n ::: v ::: _T) ::: _B v)
+  b' <- elabBinder $ \ v -> check (b (out n ::: v ::: _T) ::: _B v)
   pure $ VLam (n ::: _T) b'
 
 
@@ -338,16 +335,16 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 elabClauses :: [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check Expr
 elabClauses [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
-  b' <- n ::: _A |- \ v -> n ::: v ::: _A ||- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
+  b' <- elabBinder $ \ v -> n ::: v ::: _A ||- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
   pure $ VLam (P pl n ::: _A) b'
 elabClauses cs = Check $ \ _T -> do
-  (P _ n ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
+  (_ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
     XB    -> pure $ Nothing
     XL _  -> pure $ Nothing
     XR cs -> pure $ Just cs
     XT    -> error "mixed" -- FIXME: throw a proper error
-  b' <- n ::: _A |- \ v -> do
+  b' <- elabBinder $ \ v -> do
     let _B' = _B v
     cs' <- for cs $ \ (p:|_, b) -> do
       p' <- check (elabPattern p ::: _A)
