@@ -34,7 +34,7 @@ import           Facet.REPL.Parser
 import           Facet.Stack
 import           Facet.Surface (Expr, Type)
 import           Prelude hiding (print)
-import           Prettyprinter as P hiding (column, line, width)
+import           Prettyprinter hiding (column, line, width)
 import qualified System.Console.ANSI as ANSI
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
@@ -141,7 +141,7 @@ reload = do
     rethrowParseErrors (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNoticeWith sgrStyle n))
 
 helpDoc :: Doc [ANSI.SGR]
-helpDoc = tabulate2 (stimes (3 :: Int) P.space) entries
+helpDoc = tabulate2 (stimes (3 :: Int) space) entries
   where
   entries = map entry commands
   entry c = (concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)) <> maybe mempty ((space <>) . enclose (pretty '<') (pretty '>') . pretty) (meta c), w (usage c))
