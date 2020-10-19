@@ -33,7 +33,8 @@ parseCommands = choice . map go
   go c = parseSymbols (symbols c) *> parseValue (value c)
   parseSymbols = \case
     [] -> pure ""
-    ss -> choice (map (\ s -> symbol (':':s) <?> (':':s)) ss)
+    ss -> choice (map parseSymbol ss)
+  parseSymbol s = symbol (':':s) <?> (':':s)
   parseValue = \case
     Pure a   -> pure a
     Meta _ p -> p
