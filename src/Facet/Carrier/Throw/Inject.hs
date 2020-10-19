@@ -3,9 +3,12 @@ module Facet.Carrier.Throw.Inject
 ( -- * Throw carrier
   runThrow
 , ThrowC(..)
+  -- * Throw effect
+, module Control.Effect.Throw
 ) where
 
 import Control.Carrier.Reader
+import Control.Effect.Throw
 
 runThrow :: (f -> e) -> ThrowC e f m a -> m a
 runThrow inject (ThrowC m) = runReader inject m
