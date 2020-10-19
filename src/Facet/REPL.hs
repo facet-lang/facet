@@ -134,7 +134,7 @@ data Action
 load :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
   files_ %= Map.insert path File{ loaded = False }
-  rethrowParseErrors (runParserWithFile path (runFacet [] (whole module'))) >>= print . getPrint . foldSModule surface
+  reload
 
 reload :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 reload = do
