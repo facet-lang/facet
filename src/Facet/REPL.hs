@@ -36,6 +36,7 @@ import           Facet.Print
 import           Facet.REPL.Parser
 import           Facet.Stack
 import           Facet.Surface (Expr, Type)
+import           Facet.Syntax
 import           Prelude hiding (print, span)
 import           Silkscreen hiding (line)
 import qualified System.Console.ANSI as ANSI
@@ -89,12 +90,14 @@ loop = do
   where
   commandParser = parseCommands commands
 
-  runAction _ = \case
+  runAction src = \case
     Help -> print helpDoc
     Quit -> empty
     Load path -> load path
     Reload -> reload
-    Type e -> print (getPrint (foldSExpr surface Nil e)) -- FIXME: elaborate the expr & show the type
+    Type e -> do
+      _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
+      print (getPrint (ann (foldSExpr surface Nil e ::: foldCValue surface Nil _T)))
     Kind t -> print (getPrint (foldSType surface Nil t)) -- FIXME: elaborate the type & show the kind
 
 
