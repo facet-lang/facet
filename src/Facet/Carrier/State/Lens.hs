@@ -1,2 +1,9 @@
 module Facet.Carrier.State.Lens
-() where
+( -- * State carrier
+  StateC(..)
+) where
+
+import Control.Carrier.Reader
+import Control.Lens (ALens')
+
+newtype StateC s t m a = StateC (ReaderC (ALens' s t) m a)
