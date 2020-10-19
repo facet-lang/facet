@@ -35,6 +35,7 @@ module Facet.Elab
 , elabDecl
   -- * Modules
 , elabModule
+, apply
   -- * Errors
 , Err(..)
 , Reason(..)
