@@ -39,7 +39,7 @@ import           Facet.Surface (Expr, Type)
 import           Facet.Syntax
 import           Prelude hiding (print, span)
 import           Silkscreen hiding (line)
-import qualified System.Console.ANSI as ANSI
+import           System.Console.ANSI
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Position
@@ -53,10 +53,10 @@ repl
   $ loop
 
 defaultPromptFunction :: Int -> IO String
-defaultPromptFunction _ = pure $ ANSI.setTitleCode "facet" <> cyan <> "λ " <> plain
+defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
   where
-  cyan = ANSI.setSGRCode [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Cyan]
-  plain = ANSI.setSGRCode []
+  cyan = setSGRCode [SetColor Foreground Vivid Cyan]
+  plain = setSGRCode []
 
 
 data REPL = REPL
@@ -131,12 +131,12 @@ data Action
   | Type (Spanned Expr)
   | Kind (Spanned Type)
 
-load :: (Has (Error (Notice [ANSI.SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
+load :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => FilePath -> m ()
 load path = do
   files_ %= Map.insert path File{ loaded = False }
   rethrowParseErrors (runParserWithFile path (runFacet [] (whole module'))) >>= print . getPrint . foldSModule surface
 
-reload :: (Has (Error (Notice [ANSI.SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
+reload :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 reload = do
   files <- use files_
   -- FIXME: topological sort
@@ -146,10 +146,10 @@ reload = do
     print $ success (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
     rethrowParseErrors (runParserWithFile path (runFacet [] (whole module')) >>= print . getPrint . foldSModule surface) `catchError` \ n -> print (indent 2 (prettyNotice n))
 
-success :: Doc [ANSI.SGR] -> Doc [ANSI.SGR]
-success = annotate [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
+success :: Doc [SGR] -> Doc [SGR]
+success = annotate [SetColor Foreground Vivid Green]
 
-helpDoc :: Doc [ANSI.SGR]
+helpDoc :: Doc [SGR]
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
   where
   entry c =
@@ -166,10 +166,10 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-print :: (Has Readline sig m, MonadIO m) => Doc [ANSI.SGR] -> m ()
+print :: (Has Readline sig m, MonadIO m) => Doc [SGR] -> m ()
 print d = do
   opts <- liftIO layoutOptionsForTerminal
   outputStrLn (unpack (renderLazy (layoutSmart opts d)))
 
-elab :: Source -> I.ThrowC (Notice [ANSI.SGR]) Elab.Err (L.StateC REPL (Env.Env Elab.Type) (ReaderC Span m)) a -> m a
+elab :: Source -> I.ThrowC (Notice [SGR]) Elab.Err (L.StateC REPL (Env.Env Elab.Type) (ReaderC Span m)) a -> m a
 elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src
