@@ -1,5 +1,5 @@
 module Facet.Notice
-( Notice
+( Notice(..)
 ) where
 
 import Control.Effect.Parser.Notice
