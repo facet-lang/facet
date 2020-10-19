@@ -122,7 +122,7 @@ sig body = build sigTable (const (spanned ((S.:=) <$> monotype <*> body)))
 
 binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (Spanned S.Decl)
 binder self _ = do
-  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> varPattern ename) <* colon <*> type' <* rparen
+  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> varPattern (N.getEName <$> ename <|> N.getTName <$> tname)) <* colon <*> type' <* rparen
   bindVarPattern i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
   where
   mk start t b end = (Span start end, t S.:--> b)
@@ -205,8 +205,8 @@ bindPattern p m = case p of
   S.PVar n    -> bind n (const m)
   S.PCon _ ps -> foldr (bindPattern . snd) m ps
 
-bindVarPattern :: Maybe N.EName -> (N.UName -> Facet p res) -> Facet p res
-bindVarPattern Nothing  = bind (N.EName N.__)
+bindVarPattern :: Coercible n N.UName => Maybe n -> (N.UName -> Facet p res) -> Facet p res
+bindVarPattern Nothing  = bind N.__
 bindVarPattern (Just n) = bind n
 
 
