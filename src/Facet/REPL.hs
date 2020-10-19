@@ -10,7 +10,7 @@ module Facet.REPL
 import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
-import           Control.Carrier.Parser.Church hiding (runParserWith, runParserWithFile, runParserWithString)
+import           Control.Carrier.Parser.Church hiding (runParserWithFile, runParserWithString)
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=))

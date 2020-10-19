@@ -16,10 +16,9 @@ module Facet.GHCI
 import           Control.Carrier.Lift (runM)
 import           Control.Carrier.Parser.Church as Parse (Err, Input(..), ParserC, errToNotice, runParser, runParserWithFile, runParserWithString)
 import           Control.Carrier.Throw.Either
-import           Control.Effect.Parser.Excerpt (fromSourceAndSpan)
 import           Control.Effect.Parser.Notice (Level(..), Style(..))
 import qualified Control.Effect.Parser.Notice as N
-import           Control.Effect.Parser.Source (Source(..), sourceFromString)
+import           Control.Effect.Parser.Source (Source(..), slice, sourceFromString)
 import           Control.Effect.Parser.Span (Pos(Pos))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Foldable (toList)
@@ -42,7 +41,7 @@ import           Text.Parser.Position (Spanned)
 -- Parsing
 
 parseString :: MonadIO m => Facet (ParserC (Either (Source, Parse.Err))) P.Print -> String -> m ()
-parseString p s = either (P.putDoc . N.prettyNoticeWith sgrStyle . uncurry errToNotice) P.prettyPrint (runParserWithString (Pos 0 0) s (runFacet [] p))
+parseString p s = either (P.putDoc . N.prettyNoticeWith sgrStyle . uncurry errToNotice) P.prettyPrint (runParserWithString 0 s (runFacet [] p))
 
 printFile :: MonadIO m => FilePath -> m ()
 printFile path = runM (runThrow (runParserWithFile path (runFacet [] (whole module')))) >>= \case
@@ -80,7 +79,7 @@ elabPathString path p s = either (P.putDoc . N.prettyNoticeWith sgrStyle) P.pret
 toNotice :: Maybe N.Level -> Source -> Elab.Err -> N.Notice [ANSI.SGR]
 toNotice lvl src Err{ span, reason, context } =
   let reason' = printReason context reason
-  in N.Notice lvl (fromSourceAndSpan src span) reason' $
+  in N.Notice lvl (slice src span) reason' $
     [ P.getPrint $ P.printContextEntry l (n ::: foldCValue P.explicit Nil _T)
     | (l, n ::: _T) <- zip [Level 0..] (toList (elems context))
     ]
