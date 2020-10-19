@@ -7,9 +7,9 @@ module Facet.REPL.Parser
 , parseCommands
 ) where
 
-import           Text.Parser.Combinators
-import           Text.Parser.Position
-import           Text.Parser.Token hiding (brackets, comma)
+import Text.Parser.Combinators
+import Text.Parser.Position
+import Text.Parser.Token hiding (brackets, comma)
 
 data Command a = Command
   { symbols :: [String]
