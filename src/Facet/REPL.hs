@@ -51,12 +51,6 @@ repl
   . evalEmpty
   $ loop
 
-defaultPromptFunction :: Int -> IO String
-defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
-  where
-  cyan = setSGRCode [SetColor Foreground Vivid Cyan]
-  plain = setSGRCode []
-
 
 data REPL = REPL
   { line           :: Int
@@ -73,6 +67,12 @@ files_ = lens files (\ r files -> r{ files })
 
 env_ :: Lens' REPL (Env.Env Elab.Type)
 env_ = lens env (\ r env -> r{ env })
+
+defaultPromptFunction :: Int -> IO String
+defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
+  where
+  cyan = setSGRCode [SetColor Foreground Vivid Cyan]
+  plain = setSGRCode []
 
 
 data File = File
