@@ -166,7 +166,7 @@ reload = files_ <~> \ files -> itraverse (reloadFile (length files)) files
         file <$ print (indent 2 (prettyNotice n))
 
 heading :: Doc [SGR] -> Doc [SGR]
-heading = annotate [SetColor Foreground Vivid Green]
+heading = annotate [setRGB (hsl 120 1 0.5)]
 
 helpDoc :: Doc [SGR]
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
