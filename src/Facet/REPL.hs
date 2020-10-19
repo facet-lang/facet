@@ -73,6 +73,9 @@ line_ = lens line (\ r line -> r{ line })
 files_ :: Lens' REPL (Map.Map FilePath File)
 files_ = lens files (\ r files -> r{ files })
 
+env_ :: Lens' REPL (Env.Env Elab.Type)
+env_ = lens env (\ r env -> r{ env })
+
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
   (line, resp) <- prompt
