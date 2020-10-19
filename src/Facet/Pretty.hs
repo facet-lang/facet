@@ -24,6 +24,7 @@ module Facet.Pretty
 , sgrStyle
 , setRGB
 , setBold
+, setFg
 , _sRGB
 , _HSL
   -- * Re-exports
@@ -193,6 +194,9 @@ sgrStyle = Style
   , eofStyle    = annotate [SetColor Foreground Vivid Blue]
   , caretStyle  = annotate [SetColor Foreground Vivid Green]
   }
+
+setFg :: (a -> Colour Float) -> a -> SGR
+setFg iso a = SetRGBColor Foreground $ iso a
 
 setRGB :: Colour Float -> SGR
 setRGB = SetRGBColor Foreground
