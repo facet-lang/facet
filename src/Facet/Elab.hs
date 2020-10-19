@@ -16,6 +16,7 @@ module Facet.Elab
 , Expr
 , Elab(..)
 , elab
+, elabWith
 , Check(..)
 , Synth(..)
 , check
@@ -90,7 +91,10 @@ instance Algebra (Reader (Context Type) :+: Reader (Env.Env Type) :+: Reader Spa
     R (R (R (R throw))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
 
 elab :: Has (Reader Span :+: State (Env.Env Type) :+: Throw Err) sig m => Elab Value -> m Value
-elab = runContext . runEnv . runSubst . runElab
+elab = elabWith apply
+
+elabWith :: Has (Reader Span :+: State (Env.Env Type) :+: Throw Err) sig m => (Subst -> a -> m b) -> Elab a -> m b
+elabWith f = runSubstWith f . runContext . runEnv . runElab
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
