@@ -223,14 +223,14 @@ elabBinder b = do
   b' <- b (free d)
   pure $ \ v -> C.bind d v b'
 
-(||-)
+(|-)
   :: Has (Reader (Context (Value ::: Type))) sig m
   => UName ::: Value ::: Type
   -> m Value
   -> m Value
-(n ::: v ::: _T) ||- b = local @(Context (Value ::: Type)) (|> (n ::: v ::: _T)) b
+(n ::: v ::: _T) |- b = local @(Context (Value ::: Type)) (|> (n ::: v ::: _T)) b
 
-infix 1 ||-
+infix 1 |-
 
 (|-*)
   :: (Has (Reader (Context (Value ::: Type))) sig m, Traversable t)
@@ -259,7 +259,7 @@ elabType = withSpan' $ \case
   S.TBound n -> switch $ bound n
   S.THole  n -> check (hole n) "hole"
   S.Type     -> switch $ _Type
-  t S.:=> b  -> switch $ bimap im (checkElab . elabType) t >~> \ v -> v ||- checkElab (elabType b)
+  t S.:=> b  -> switch $ bimap im (checkElab . elabType) t >~> \ v -> v |- checkElab (elabType b)
   f S.:$$ a  -> switch $ synthElab (elabType f) $$  checkElab (elabType a)
   a S.:-> b  -> switch $ ex __ ::: checkElab (elabType a) >~> \ _ -> checkElab (elabType b)
   where
@@ -335,7 +335,7 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 elabClauses :: [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check Expr
 elabClauses [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
-  b' <- elabBinder $ \ v -> n ::: v ::: _A ||- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
+  b' <- elabBinder $ \ v -> n ::: v ::: _A |- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
   pure $ VLam (P pl n ::: _A) b'
 elabClauses cs = Check $ \ _T -> do
   (_ ::: _A, _B) <- expectQuantifiedType "when checking clauses" _T
@@ -393,13 +393,13 @@ elabDecl d = go d id id
   go d km kt = withSpans d $ \case
     (n ::: t) S.:==> b ->
       go b
-        (km . (\ b  -> lam (im n) (\ v -> v ||- b)))
-        (kt . (\ _B -> checkElab (switch (im n ::: checkElab (elabType t) >~> \ v -> v ||- _B))))
+        (km . (\ b  -> lam (im n) (\ v -> v |- b)))
+        (kt . (\ _B -> checkElab (switch (im n ::: checkElab (elabType t) >~> \ v -> v |- _B))))
 
     (n ::: t) S.:--> b ->
       go b
-        (km . (\ b  -> lam (ex n) (\ v -> v ||- b)))
-        (kt . (\ _B -> checkElab (switch (ex __ ::: checkElab (elabType t) >~> \ v -> v ||- _B))))
+        (km . (\ b  -> lam (ex n) (\ v -> v |- b)))
+        (kt . (\ _B -> checkElab (switch (ex __ ::: checkElab (elabType t) >~> \ v -> v |- _B))))
 
     t S.:= b -> elabDeclBody km b ::: kt (checkElab (elabType t))
 
