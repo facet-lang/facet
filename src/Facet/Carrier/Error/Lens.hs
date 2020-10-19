@@ -16,12 +16,13 @@ import Control.Algebra
 import Control.Carrier.Reader
 import Control.Effect.Error
 import Control.Lens (APrism', withPrism)
+import Control.Monad.IO.Class
 
 runError :: APrism' e f -> ErrorC e f m a -> m a
 runError prism (ErrorC m) = runReader prism m
 
 newtype ErrorC e f m a = ErrorC (ReaderC (APrism' e f) m a)
-  deriving (Applicative, Functor, Monad, MonadFail)
+  deriving (Applicative, Functor, Monad, MonadFail, MonadIO)
 
 instance Has (Error e) sig m => Algebra (Error f :+: sig) (ErrorC e f m) where
   alg hdl sig ctx = ErrorC $ ReaderC $ \ prism -> case sig of
