@@ -11,10 +11,11 @@ import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Parser.Church
+import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=))
-import           Control.Effect.Parser.Source (Source, sourceFromString)
+import           Control.Effect.Parser.Source (Source(..), sourceFromString)
 import           Control.Lens (Lens', lens)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -22,7 +23,9 @@ import           Data.Foldable (for_)
 import qualified Data.Map as Map
 import           Data.Semigroup
 import           Data.Text.Lazy (unpack)
-import           Facet.Algebra
+import           Facet.Algebra hiding (Algebra)
+import qualified Facet.Carrier.State.Lens as L
+import qualified Facet.Carrier.Throw.Inject as I
 import qualified Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Notice
@@ -32,7 +35,7 @@ import           Facet.Print
 import           Facet.REPL.Parser
 import           Facet.Stack
 import           Facet.Surface (Expr, Type)
-import           Prelude hiding (print)
+import           Prelude hiding (print, span)
 import           Silkscreen hiding (column, line, width)
 import qualified System.Console.ANSI as ANSI
 import           Text.Parser.Char hiding (space)
@@ -159,3 +162,6 @@ print :: (Has Readline sig m, MonadIO m) => Doc [ANSI.SGR] -> m ()
 print d = do
   opts <- liftIO layoutOptionsForTerminal
   outputStrLn (unpack (renderLazy (layoutSmart opts d)))
+
+elab :: Source -> I.ThrowC (Notice [ANSI.SGR]) Elab.Err (L.StateC REPL (Env.Env Elab.Type) (ReaderC Span m)) a -> m a
+elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src
