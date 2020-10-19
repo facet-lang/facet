@@ -7,6 +7,8 @@ module Facet.REPL.Parser
 , parseCommands
 ) where
 
+import Control.Applicative (Alternative(..))
+import Text.Parser.Char
 import Text.Parser.Combinators
 import Text.Parser.Position
 import Text.Parser.Token hiding (brackets, comma)
@@ -34,7 +36,7 @@ parseCommands = choice . map go
   parseSymbols = \case
     [] -> pure ""
     ss -> choice (map parseSymbol ss)
-  parseSymbol s = symbol (':':s) <?> (':':s)
+  parseSymbol s = token (string (':':s) <* (eof <|> someSpace)) <?> (':':s)
   parseValue = \case
     Pure a   -> pure a
     Meta _ p -> p
