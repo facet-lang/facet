@@ -11,7 +11,6 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns #-}
 module Facet.Elab
 ( Type
 , Expr
@@ -446,29 +445,31 @@ elabModule (s, S.Module mname ds) = runReader s . evalState (mempty @(Env.Env Ty
     case e' of
       Left cs  -> do
         cs' <- for cs $ \ (n ::: _T) -> do
-          let _T' = apply s _T
-              go fs = \case
+          _T' <- apply s _T
+          let go fs = \case
                 VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
                 _T            -> VCon (Con (mname :.: C n ::: _T) fs)
-          modify $ Env.insert (mname :.: C n :=: Just (apply s (go Nil _T')) ::: _T')
+          c <- apply s (go Nil _T')
+          modify $ Env.insert (mname :.: C n :=: Just c ::: _T')
           pure $ n ::: _T'
         pure (qname, C.DData cs' ::: _T)
-      Right (apply s -> e') -> do
-        modify $ Env.insert (qname :=: Just e' ::: _T)
-        pure (qname, C.DTerm e' ::: _T)
+      Right e' -> do
+        e'' <- apply s e'
+        modify $ Env.insert (qname :=: Just e'' ::: _T)
+        pure (qname, C.DTerm e'' ::: _T)
 
   pure $ C.Module mname defs
 
 
 -- | Apply the substitution to the value.
-apply :: Subst -> Value -> Value
-apply s v = subst (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
+apply :: Applicative m => Subst -> Value -> m Value
+apply s v = pure $ subst (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
 
 emptySubst :: Subst
 emptySubst = IntMap.empty
 
 runSubst :: Applicative m => StateC Subst m Value -> m Value
-runSubst = runSubstWith (fmap pure . apply)
+runSubst = runSubstWith apply
 
 runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
 runSubstWith with = runState with emptySubst
