@@ -21,6 +21,7 @@ module Facet.Pretty
 , renderIO
 , renderLazy
 , sgrStyle
+  -- * Re-exports
 , PP.Doc
 , PP.layoutSmart
 ) where
