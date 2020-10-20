@@ -20,6 +20,8 @@ module Facet.Core
 , ($$)
 , case'
 , match
+, elim
+, elimN
 , subst
 , bind
   -- * Patterns
