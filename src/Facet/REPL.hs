@@ -93,9 +93,6 @@ data File = File
   { loaded :: Bool
   }
 
-loaded_ :: Lens' File Bool
-loaded_ = lens loaded (\ f loaded -> f{ loaded })
-
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
