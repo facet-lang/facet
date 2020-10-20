@@ -1,5 +1,6 @@
 Effect.State
-: [Base.Unit]
+: [ Base.Pair
+  , Base.Unit ]
   Module
 {
 
@@ -16,5 +17,10 @@ evalState : { S, A : Type } -> (s : S) -> [State S]A -> A
 { [ get   ; k ] -> evalState s (k s)
 , [ put s ; k ] -> evalState s (k unit)
 , a             -> a }
+
+state : { S, A : Type } -> (s : S) -> [State S]A -> Pair S A
+{ [ get   ; k ] -> state s (k s)
+, [ put s ; k ] -> state s (k unit)
+, a             -> pair s a }
 
 }
