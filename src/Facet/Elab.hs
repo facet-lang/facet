@@ -371,6 +371,7 @@ elabPattern
 elabPattern = withSpan $ \case
   S.PVar n    -> Check $ \ _T -> pure (C.PVar (n ::: _T))
   S.PCon n ps -> Check $ \ _T -> do
+    -- FIXME: we probably need to instantiate implicits here
     q ::: _T' <- synth (resolve (C n))
     let go _T' = \case
           Nil   -> Nil <$ unify (_T' :===: _T)
