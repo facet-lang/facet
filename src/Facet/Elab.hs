@@ -382,7 +382,7 @@ elabPattern = withSpan $ \case
             ps' <- go (_B v) ps
             p' <- check (elabPattern p ::: ty _A)
             pure $ ps' :> p'
-    C.PCon . Con (q ::: _T') <$> go _T' (fromList ps)
+    C.PCon . Con (q ::: _T') <$> go _T' ps
 
 
 -- Declarations

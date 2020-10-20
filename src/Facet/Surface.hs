@@ -22,6 +22,7 @@ module Facet.Surface
 import Control.Effect.Empty
 import Data.List.NonEmpty (NonEmpty)
 import Facet.Name
+import Facet.Stack
 import Facet.Syntax
 import Text.Parser.Position
 
@@ -54,7 +55,7 @@ data Comp
 
 data Pattern
   = PVar UName
-  | PCon CName [Spanned Pattern]
+  | PCon CName (Stack (Spanned Pattern))
   deriving (Show)
 
 

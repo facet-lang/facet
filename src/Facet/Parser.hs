@@ -23,6 +23,7 @@ import qualified Data.List.NonEmpty as NE
 import           Data.Text (pack)
 import qualified Facet.Name as N
 import           Facet.Parser.Table as Op
+import           Facet.Stack
 import qualified Facet.Surface as S
 import qualified Facet.Syntax as S
 import           Prelude hiding (lines, null, product, span)
@@ -212,7 +213,7 @@ pattern :: (Monad p, PositionParsing p) => p (Spanned S.Pattern)
 pattern = spanned
   $   S.PVar . N.getEName <$> ename
   <|> S.PVar N.__         <$  wildcard
-  <|> try (parens (S.PCon <$> cname <*> many pattern))
+  <|> try (parens (S.PCon <$> cname <*> (fromList <$> many pattern)))
   <?> "pattern"
 
 
