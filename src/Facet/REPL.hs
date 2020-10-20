@@ -116,6 +116,9 @@ loop = do
     Kind t -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (t ::: _T) -> (:::) <$> Elab.apply s t <*> Elab.apply s _T) (Elab.elabType t Nothing)
       print (getPrint (ann (foldSType surface Nil t ::: foldCValue surface Nil _T)))
+    Eval e -> do -- FIXME: actually evaluate
+      _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
+      print (getPrint (ann (foldSExpr surface Nil e ::: foldCValue surface Nil _T)))
 
 
 -- TODO:
@@ -147,6 +150,7 @@ data Action
   | Reload
   | Type (Spanned Expr)
   | Kind (Spanned Type)
+  | Eval (Spanned Expr)
 
 load :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
 load src path = do
