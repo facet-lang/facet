@@ -12,9 +12,9 @@ module Text.Parser.Position
 import           Control.Applicative ((<**>), (<|>))
 import qualified Facet.Carrier.Parser.Church as P
 import           Facet.Span (Pos, Span(..))
-import           Text.Parser.Token (TokenParsing)
+import           Text.Parser.Combinators (Parsing)
 
-class TokenParsing p => PositionParsing p where
+class Parsing p => PositionParsing p where
   position :: p Pos
 
 instance P.Algebra sig m => PositionParsing (P.ParserC m) where

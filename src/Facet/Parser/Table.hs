@@ -29,7 +29,7 @@ data Operator p a
   | Operator (OperatorParser p a)
   | Atom (p a)
 
-parseOperator :: PositionParsing p => Operator p a -> OperatorParser p a
+parseOperator :: (PositionParsing p, TokenParsing p) => Operator p a -> OperatorParser p a
 parseOperator = \case
   Prefix   s op -> \ self _    -> op <$ textSymbol s <*> self
   Postfix  s op -> \ _    next -> foldl' (&) <$> next <*> many (op <$ textSymbol s)
@@ -46,7 +46,7 @@ type OperatorParser p a = p a -> p a -> p a
 type Table p a = [[Operator p a]]
 
 -- | Build a parser for a Table.
-build :: PositionParsing p => Table p a -> (p a -> p a) -> p a
+build :: (PositionParsing p, TokenParsing p) => Table p a -> (p a -> p a) -> p a
 build ts end = root
   where
   root = foldr chain (end root) ts

@@ -25,10 +25,10 @@ meta c = case value c of
 
 data Arg a
   = Pure a
-  | Meta String (forall p . (PositionParsing p, Monad p) => p a)
+  | Meta String (forall p . (Monad p, PositionParsing p, TokenParsing p) => p a)
 
 
-parseCommands :: (PositionParsing p, Monad p) => [Command a] -> p a
+parseCommands :: (Monad p, PositionParsing p, TokenParsing p) => [Command a] -> p a
 parseCommands cs = choice (map go cs) <?> "command"
   where
   go c = parseSymbols (symbols c) *> parseValue (value c)
