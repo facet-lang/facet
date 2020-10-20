@@ -62,6 +62,7 @@ kind_ = choice
   , LAngle     <$  char '<' <?> "open angle bracket"
   , RAngle     <$  char '>' <?> "close angle bracket"
   , EIdent     <$> ident (choice [ lower, char '_' ]) nameChar <?> "term name"
+  , TIdent     <$> ident (choice [ upper, char '_' ]) nameChar <?> "type name"
   ]
 
 ident :: (Coercible t Text, CharParsing p) => p Char -> p Char -> p t
