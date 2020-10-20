@@ -190,6 +190,15 @@ resolve n = Synth $ Env.lookup n <$> ask >>= \case
     | E (EName n) <- n  -> synth (resolve (C (CName n)))
     | otherwise         -> freeVariable Nothing n
 
+resolveQ
+  :: QName
+  -> Synth QName
+resolveQ q@(m :.: n) = Synth $ Env.lookupQ q <$> ask >>= \case
+  Just (_ ::: _T) -> pure $ q ::: _T
+  Nothing
+    | E (EName n) <- n  -> synth (resolveQ (m :.: C (CName n)))
+    | otherwise         -> freeVariable (Just m) n
+
 global
   :: DName
   -> Synth Value
