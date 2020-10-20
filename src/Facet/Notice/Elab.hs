@@ -1,6 +1,7 @@
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TypeOperators #-}
 module Facet.Notice.Elab
 ( -- * Notices
   Notice(..)
@@ -40,8 +41,8 @@ printReason ctx = group . \case
   FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
   Mismatch msg exp act   ->
-    let exp' = either reflow (printType Nil) exp
-        act' = printType Nil act
+    let exp' = either reflow (printType env) exp
+        act' = printType env act
     in reflow msg
       </> pretty "expected:" <> print exp'
       </> pretty "  actual:" <> print act'
@@ -49,13 +50,15 @@ printReason ctx = group . \case
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T              ->
-    let _T' = printType Nil _T
+    let _T' = printType env _T
     in fillSep [reflow "found hole", pretty n, colon, _T' ]
   BadContext n           -> fillSep [ reflow "no variable bound for index", pretty (N.getIndex n), reflow "in context of length", pretty (length ctx) ]
   where
-  -- FIXME: foldl over the context printing each element in the smaller context before it.
-  env = elems ctx
+  env = printContext ctx
 
 
 printType :: Stack Print -> Type -> Doc [SGR]
 printType env = getPrint . foldCValue explicit env
+
+printContext :: Context Type -> Stack Print
+printContext ctx = snd (foldl (\ (d, ctx) _T -> (succ d, ctx :> foldCValue explicit ctx _T)) (N.Level 0, Nil) ctx)
