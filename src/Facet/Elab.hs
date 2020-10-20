@@ -418,6 +418,10 @@ elabDDecl d = go d id
 
     S.DDBody t b -> elabData km b ::: checkElab (elabType t)
 
+  -- FIXME: check that all constructors return the datatype.
+  elabData k cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab (elabType t))
+
+
 elabTDecl
   :: HasCallStack
   => Spanned S.TDecl
@@ -434,11 +438,6 @@ elabTDecl d = go d
           checkElab (switch (__ <$ n ::: checkElab (elabType t) >~> (|- _B)))
 
     S.TDBody t b -> checkElab (elabExpr b) ::: checkElab (elabType t)
-
-
-elabData :: (Check Value -> Check Value) -> [Spanned (CName ::: Spanned S.Type)] -> Check [CName ::: Type]
--- FIXME: check that all constructors return the datatype.
-elabData k cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab (elabType t))
 
 
 -- Modules
