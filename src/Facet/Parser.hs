@@ -210,10 +210,10 @@ wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
 
 pattern :: (Monad p, PositionParsing p) => p (Spanned S.Pattern)
-pattern = spanned
-  $   S.PVar . N.getEName <$> ename
-  <|> S.PVar N.__         <$  wildcard
-  <|> try (parens (S.PCon <$> cname <*> (fromList <$> many pattern)))
+pattern
+  =   spanned (S.PVar . N.getEName <$> ename)
+  <|> spanned (S.PVar N.__         <$  wildcard)
+  <|> try (parens (spanned (S.PCon <$> cname <*> (fromList <$> many pattern))))
   <?> "pattern"
 
 
