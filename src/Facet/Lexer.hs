@@ -66,6 +66,7 @@ kind_ = choice
   , MIdent     <$> mname
   , EIdent     <$> ecomp <?> "term name"
   , TIdent     <$> tcomp <?> "type name"
+  , HIdent     <$> ident (char '?') nameChar <?> "hole name"
   ]
   where
   mname = foldl' (:.) . MName <$> tcomp <* dot <*> sepBy tcomp dot <?> "module name"
