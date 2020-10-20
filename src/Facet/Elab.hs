@@ -51,7 +51,6 @@ import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
-import qualified Data.Text as T
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Context
 import           Facet.Core hiding (global, ($$))
@@ -207,7 +206,7 @@ bound n = Synth $ ask >>= \ ctx -> case ctx !? n of
   Nothing         -> err $ BadContext n
 
 hole
-  :: T.Text
+  :: UName
   -> Check a
 hole n = Check $ \ _T -> err $ Hole n _T
 
@@ -524,7 +523,7 @@ data Reason
   = FreeVariable DName
   | CouldNotSynthesize String
   | Mismatch String (Either String Type) Type
-  | Hole T.Text Type
+  | Hole UName Type
   | BadContext Index
 
 

@@ -52,7 +52,7 @@ data Algebra p = Algebra
     -> p                     -- the return type
     -> p
   , app :: p -> Stack (Pl_ p) -> p
-  , hole :: T.Text -> p
+  , hole :: UName -> p
   , _Type :: p
   , _Void :: p
   , ann' :: (p ::: p) -> p

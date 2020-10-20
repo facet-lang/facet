@@ -29,7 +29,6 @@ import Control.Effect.Empty
 import Data.Function (on)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Monoid (First(..))
-import Data.Text (Text)
 import Facet.Name
 import Facet.Syntax
 import Text.Parser.Position
@@ -39,7 +38,7 @@ import Text.Parser.Position
 data Expr
   = Free DName
   | Bound Index
-  | Hole Text
+  | Hole UName
   | Comp (Spanned Comp)
   | Spanned Expr :$ Spanned Expr
   -- FIXME: tupling/unit should take a list of expressions
@@ -71,7 +70,7 @@ data Pattern
 data Type
   = TFree DName
   | TBound Index
-  | THole Text
+  | THole UName
   | Type
   | (UName ::: Spanned Type) :=> Spanned Type
   | Spanned Type :$$ Spanned Type

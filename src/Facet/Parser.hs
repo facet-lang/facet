@@ -27,7 +27,7 @@ import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
 import           Data.List (elemIndex)
 import qualified Data.List.NonEmpty as NE
-import           Data.Text (Text, pack)
+import           Data.Text (pack)
 import qualified Facet.Name as N
 import           Facet.Parser.Table as Op
 import qualified Facet.Surface as S
@@ -248,7 +248,7 @@ _onameN
   -- FIXME: how should we specify associativity?
   postOrIn cs = bool (N.PostfixN (NE.init cs) (NE.last cs)) (N.InfixN N.N cs)
 
-hname :: (Monad p, TokenParsing p) => p Text
+hname :: (Monad p, TokenParsing p) => p N.UName
 hname = ident hnameStyle
 
 cname :: (Monad p, TokenParsing p) => p N.CName
