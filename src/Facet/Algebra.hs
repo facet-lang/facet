@@ -124,7 +124,6 @@ foldCModule alg (C.Module n is ds) = module_ alg
     ::: defn alg (foldCValue alg Nil t
     :=: case d of
       C.DTerm b  -> foldCValue alg Nil b
-      C.DType b  -> foldCValue alg Nil b
       C.DData cs -> data' alg
         $ map (decl alg . bimap (var alg . Cons) (foldCValue alg Nil)) cs)
 
@@ -180,7 +179,6 @@ foldSDecl alg = go Nil
   go env (s, d) = case d of
     t S.:=   b -> defn alg $ foldSType alg env t :=: case b of
       S.DExpr e -> foldSExpr alg env e
-      S.DType t -> foldSType alg env t
       S.DData c -> data' alg $ map (foldSCons alg env) c
     t S.:==> b ->
       let (ts, b') = splitr (S.unDForAll . snd) (s, t S.:==> b)

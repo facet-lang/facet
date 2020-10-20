@@ -136,7 +136,6 @@ unDArrow = \case{ t :--> b -> pure (t, b) ; _ -> empty }
 
 data DeclBody
   = DExpr (Spanned Expr)
-  | DType (Spanned Type)
   | DData [Spanned (CName ::: Spanned Type)]
   deriving (Show)
 

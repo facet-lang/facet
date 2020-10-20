@@ -424,7 +424,6 @@ elabDecl d = go d id id
 elabDeclBody :: HasCallStack => (Check Value -> Check Value) -> S.DeclBody -> Check (Either [CName ::: Type] Value)
 elabDeclBody k = \case
   S.DExpr b -> Right <$> k (checkElab (elabExpr b))
-  S.DType b -> Right <$> k (checkElab (elabType b))
   S.DData c -> Left <$> elabData k c
 
 
