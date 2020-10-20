@@ -8,4 +8,9 @@ Reader : (R : Type) -> Interface
 , local : {A : Type} -> (R -> R) -> A -> A
 }
 
+reader : { R, A : Type } -> (r : R) -> [Reader R]A -> A
+{ a               -> a
+, [ask       ; k] -> reader r (k r)
+, [local f m ; k] -> reader r (reader (f r) m) }
+
 }
