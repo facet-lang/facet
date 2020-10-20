@@ -393,38 +393,47 @@ elabDecl
   :: HasCallStack
   => Spanned S.Decl
   -> Check (Either [CName ::: Type] Value) ::: Check Type
-elabDecl d = go d id id
+elabDecl d = withSpans d $ \case
+  S.DDecl d -> first (fmap Left)  (elabDDecl d)
+  S.TDecl t -> first (fmap Right) (elabTDecl t)
+
+elabDDecl
+  :: HasCallStack
+  => Spanned S.DDecl
+  -> Check [CName ::: Type] ::: Check Type
+elabDDecl d = go d id
   where
   go
-    :: Spanned S.Decl
+    :: Spanned S.DDecl
     -> (Check Value -> Check Value)
-    -> (Check Value -> Check Value)
-    -> Check (Either [CName ::: Type] Value) ::: Check Type
-  go d km kt = withSpans d $ \case
-    (n ::: t) S.:==> b ->
-      go b
-        -- implicit quantifiers generate lambdas, explicit quantifiers (e.g. on datatypes) generate implicit quantifiers
-        (km . (\ b  -> case pl n of
-          Im -> lam n (|- b)
-          Ex -> Check $ \ _T -> do
-            (_ ::: _T, _B) <- expectQuantifier "in type quantifier" _T
-            b' <- elabBinder $ \ _ -> check ((out n ::: _T |- b) ::: VType)
-            pure $ VForAll (im (out n) ::: _T) b'))
-        (kt . (\ _B -> checkElab (switch (n ::: checkElab (elabType t) >~> (|- _B)))))
+    -> Check [CName ::: Type] ::: Check Type
+  go d km = withSpans d $ \case
+    S.DDForAll (n ::: t) b ->
+      let b' ::: _B = go b
+            (km . (\ b  -> Check $ \ _T -> do
+              (_ ::: _T, _B) <- expectQuantifier "in type quantifier" _T
+              b' <- elabBinder $ \ _ -> check ((out n ::: _T |- b) ::: VType)
+              pure $ VForAll (im (out n) ::: _T) b'))
+      in b' ::: checkElab (switch (n ::: checkElab (elabType t) >~> (|- _B)))
 
-    (n ::: t) S.:--> b ->
-      go b
-        (km . (\ b  -> lam (ex n) (|- b)))
-        (kt . (\ _B -> checkElab (switch (ex __ ::: checkElab (elabType t) >~> (|- _B)))))
+    S.DDBody t b -> elabData km b ::: checkElab (elabType t)
 
-    t S.:= b -> elabDeclBody km b ::: kt (checkElab (elabType t))
+elabTDecl
+  :: HasCallStack
+  => Spanned S.TDecl
+  -> Check Value ::: Check Type
+elabTDecl d = go d
+  where
+  go
+    :: Spanned S.TDecl
+    -> Check Value ::: Check Type
+  go d = withSpans d $ \case
+    S.TDForAll (n ::: t) b ->
+      let b' ::: _B = go b
+      in lam n (|- b') :::
+          checkElab (switch (__ <$ n ::: checkElab (elabType t) >~> (|- _B)))
 
-  withSpans (s, d) f = let t ::: _T = f d in setSpan s t ::: setSpan s _T
-
-elabDeclBody :: HasCallStack => (Check Value -> Check Value) -> S.DeclBody -> Check (Either [CName ::: Type] Value)
-elabDeclBody k = \case
-  S.DExpr b -> Right <$> k (checkElab (elabExpr b))
-  S.DData c -> Left <$> elabData k c
+    S.TDBody t b -> checkElab (elabExpr b) ::: checkElab (elabType t)
 
 
 elabData :: (Check Value -> Check Value) -> [Spanned (CName ::: Spanned S.Type)] -> Check [CName ::: Type]
@@ -501,6 +510,9 @@ withSpan k (s, a) = setSpan s (k a)
 
 withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (Span, a) -> b -> m c
 withSpan' k (s, a) b = setSpan s (k a b)
+
+withSpans :: Has (Reader Span) sig m => (Span, a) -> (a -> m b ::: m c) -> m b ::: m c
+withSpans (s, d) f = let t ::: _T = f d in setSpan s t ::: setSpan s _T
 
 
 data Err = Err

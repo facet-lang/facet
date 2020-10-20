@@ -174,19 +174,30 @@ foldSCons :: Algebra p -> Stack p -> Spanned (CName ::: Spanned S.Type) -> p
 foldSCons alg env = decl alg . bimap (var alg . Cons) (foldSType alg env) . snd
 
 foldSDecl :: Algebra p -> Spanned S.Decl -> p
-foldSDecl alg = go Nil
+foldSDecl alg (_, d) = case d of
+  S.DDecl d -> foldSDDecl alg d
+  S.TDecl t -> foldSTDecl alg t
+
+foldSDDecl :: Algebra p -> Spanned S.DDecl -> p
+foldSDDecl alg = go Nil
   where
   go env (s, d) = case d of
-    t S.:=   b -> defn alg $ foldSType alg env t :=: case b of
-      S.DExpr e -> foldSExpr alg env e
-      S.DData c -> data' alg $ map (foldSCons alg env) c
-    t S.:==> b ->
-      let (ts, b') = splitr (S.unDForAll . snd) (s, t S.:==> b)
+    S.DDBody t b -> defn alg $ foldSType alg env t :=: data' alg (map (foldSCons alg env) b)
+    S.DDForAll t b ->
+      let (ts, b') = splitr (S.unDDForAll . snd) (s, S.DDForAll t b)
           ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local (out n) d) in ((succ d, env :> v), (Just v ::: foldSType alg env t) <$ n)) (level, env) ts
       in fn alg ts' (go env' b')
-    t S.:--> b ->
-      let (ts, b') = splitr (S.unDArrow . snd) (s, t S.:--> b)
-          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local n d) in ((succ d, env :> v), ex (Just v ::: foldSType alg env t))) (level, env) ts
+    where
+    level = Level (length env)
+
+foldSTDecl :: Algebra p -> Spanned S.TDecl -> p
+foldSTDecl alg = go Nil
+  where
+  go env (s, d) = case d of
+    S.TDBody t b -> defn alg $ foldSType alg env t :=: foldSExpr alg env b
+    S.TDForAll t b ->
+      let (ts, b') = splitr (S.unTDForAll . snd) (s, S.TDForAll t b)
+          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local (out n) d) in ((succ d, env :> v), (Just v ::: foldSType alg env t) <$ n)) (level, env) ts
       in fn alg ts' (go env' b')
     where
     level = Level (length env)
