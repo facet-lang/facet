@@ -63,3 +63,5 @@ I need fast, bulletproof substitution, or I wouldn’t be using HOAS at all. But
 In other words, given `Type -> [Err]{Type}` (placing the signature outside the computation for brevity), I need to be able to produce `[Err]{Type -> Type}`. That’s a tall order if `->` describes a real function arrow; but perhaps computation types give me a lever to reach it.
 
 (Aside: what do Twelf & friends do? I’m given to understand that they are quite different, but I don’t know how to characterize those differences beyond “the function arrow is different.”)
+
+_TBD: scoped effects._
