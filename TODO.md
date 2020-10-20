@@ -61,6 +61,12 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Write signature patterns with square brackets.
 
+- First-class documentation.
+
+- First-class literate programming?
+
+- Simplify/abbreviate module syntax.
+
 
 ### Modules
 
