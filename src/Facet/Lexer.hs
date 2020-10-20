@@ -6,6 +6,8 @@ module Facet.Lexer
 ) where
 
 import Data.Char (isSpace)
+import Data.Coerce
+import Data.Text (Text, pack)
 import Facet.Name
 import Facet.Span
 import Text.Parser.Char
@@ -47,15 +49,22 @@ skipSpace = skipMany (satisfy isSpace)
 
 kind_ :: CharParsing p => p TokenKind
 kind_ = choice
-  [ Comment    <$ char '#' <*> many (satisfy (/= '\n')) <?> "line comment"
-  , Underscore <$ char '_' <?> "underscore"
-  , Colon      <$ char ':' <?> "colon"
-  , LParen     <$ char '(' <?> "open paren"
-  , RParen     <$ char ')' <?> "close paren"
-  , LBrace     <$ char '{' <?> "open brace"
-  , RBrace     <$ char '}' <?> "close brace"
-  , LBracket   <$ char '[' <?> "open bracket"
-  , RBracket   <$ char ']' <?> "close bracket"
-  , LAngle     <$ char '<' <?> "open angle bracket"
-  , RAngle     <$ char '>' <?> "close angle bracket"
+  [ Comment    <$  char '#' <*> many (satisfy (/= '\n')) <?> "line comment"
+  , Underscore <$  char '_' <?> "underscore"
+  , Colon      <$  char ':' <?> "colon"
+  , LParen     <$  char '(' <?> "open paren"
+  , RParen     <$  char ')' <?> "close paren"
+  , LBrace     <$  char '{' <?> "open brace"
+  , RBrace     <$  char '}' <?> "close brace"
+  , LBracket   <$  char '[' <?> "open bracket"
+  , RBracket   <$  char ']' <?> "close bracket"
+  , LAngle     <$  char '<' <?> "open angle bracket"
+  , RAngle     <$  char '>' <?> "close angle bracket"
+  , EIdent     <$> ident (choice [ lower, char '_' ]) nameChar <?> "term name"
   ]
+
+ident :: (Coercible t Text, CharParsing p) => p Char -> p Char -> p t
+ident i r = fmap (coerce . pack) . (:) <$> i <*> many r
+
+nameChar :: CharParsing p => p Char
+nameChar = choice [ alphaNum, char '_' ]
