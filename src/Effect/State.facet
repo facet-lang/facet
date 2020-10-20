@@ -4,8 +4,8 @@ Effect.State
 {
 
 State : (S : Type) -> Interface
-{ get : S
-, put : S -> Unit
+{ get : S         # [State S]{S}
+, put : S -> Unit # S -> [State S]{Unit}
 }
 
 }
