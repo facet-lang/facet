@@ -3,8 +3,10 @@ module Facet.Lexer
 , TokenKind(..)
 ) where
 
+import Control.Applicative (Alternative(..))
 import Facet.Name
 import Facet.Span
+import Text.Parser.Char
 
 -- Lexer
 
@@ -25,3 +27,9 @@ data TokenKind
   | MIdent MName
   | EIdent EName
   | TIdent TName
+
+
+kind_ :: CharParsing p => p TokenKind
+kind_ = comment
+  where
+  comment = Comment <$ char '#' <*> many (satisfy (/= '\n'))
