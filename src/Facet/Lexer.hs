@@ -4,10 +4,11 @@ module Facet.Lexer
 , token
 ) where
 
-import Control.Applicative (Alternative(..))
+import Data.Char (isSpace)
 import Facet.Name
 import Facet.Span
 import Text.Parser.Char
+import Text.Parser.Combinators
 import Text.Parser.Position
 
 -- Lexer
@@ -32,9 +33,12 @@ data TokenKind
 
 
 token :: (CharParsing p, PositionParsing p) => p Token
-token = mk <$> spanned kind_
+token = mk <$> spanned kind_ <* skipSpace
   where
   mk (s, k) = Token k s
+
+skipSpace :: CharParsing p => p ()
+skipSpace = skipMany (satisfy isSpace)
 
 kind_ :: CharParsing p => p TokenKind
 kind_ = comment
