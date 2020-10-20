@@ -23,4 +23,9 @@ state : { S, A : Type } -> (s : S) -> [State S]A -> Pair S A
 , [ put s ; k ] -> state s (k unit)
 , a             -> pair s a }
 
+church : { S, A, R : Type } -> (k : S -> A -> R) -> (s : S) -> [State S]A -> R
+{ [ get   ; k ] -> church k s (k s)
+, [ put s ; k ] -> church k s (k unit)
+, a             -> k s a }
+
 }
