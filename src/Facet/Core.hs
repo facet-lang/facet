@@ -36,7 +36,6 @@ import           Data.Bifoldable
 import           Data.Bifunctor
 import           Data.Bitraversable
 import           Data.Foldable (foldl')
-import           Data.Function (on)
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Semialign
@@ -60,7 +59,41 @@ data Value
   | VCon (Con Value Value)
 
 instance Eq Value where
-  (==) = (==) `on` quote (Level 0)
+  (==) = go (Level 0)
+    where
+    -- defined thus instead of w/ fallback case to have exhaustiveness checks kick in when adding constructors.
+    go d = curry $ \case
+      (VType, VType)                                           -> True
+      (VType, _)                                               -> False
+      (VForAll (P p1 _ ::: t1) b1, VForAll (P p2 _ ::: t2) b2) -> p1 == p2 && go d t1 t2 && go (succ d) (b1 (free d)) (b2 (free d))
+      (VForAll{}, _)                                           -> False
+      (VLam (P p1 _ ::: t1) b1, VLam (P p2 _ ::: t2) b2)       -> p1 == p2 && go d t1 t2 && go (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
+      (VLam{}, _)                                              -> False
+      (VNeut h1 sp1, VNeut h2 sp2)                             -> eqH d h1 h2 && eqSp d sp1 sp2
+      (VNeut{}, _)                                             -> False
+      (VCon c1, VCon c2)                                       -> eqCon go d c1 c2
+      (VCon _, _)                                              -> False
+    eqH d = curry $ \case
+      (Global (q1 ::: t1), Global (q2 ::: t2))   -> q1 == q2 && go d t1 t2
+      (Global _, _)                              -> False
+      (Free d1, Free d2)                         -> d1 == d2
+      (Free _, _)                                -> False
+      (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> m1 == m2 && go d t1 t2
+      (Metavar _, _)                             -> False
+    eqSp d sp1 sp2 = length sp1 == length sp2 && and (zipWith (eqElim d) sp1 sp2)
+    eqElim d = curry $ \case
+      (EApp (P p1 a1), EApp (P p2 a2)) -> p1 == p2 && go d a1 a2
+      (EApp _, _)                      -> False
+      (ECase cs1, ECase cs2)           -> length cs1 == length cs2 && and (zipWith (eqClause d) cs1 cs2)
+      (ECase _, _)                     -> False
+    eqClause d (p1, b1) (p2, b2) = eqPat d p1 p2 && go (succ d) (b1 (PVar (free d))) (b2 (PVar (free d)))
+    eqPat d = curry $ \case
+      (PVar (_ ::: t1), PVar (_ ::: t2)) -> go d t1 t2
+      (PVar _, _)                        -> False
+      (PCon c1, PCon c2)                 -> eqCon eqPat d c1 c2
+      (PCon _, _)                        -> False
+    eqCon :: (Level -> a -> b -> Bool) -> Level -> Con Value a -> Con Value b -> Bool
+    eqCon eq d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = n1 == n2 && go d t1 t2 && length fs1 == length fs2 && and (zipWith (eq d) fs1 fs2)
 
 
 data Head t a
