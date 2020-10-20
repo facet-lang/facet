@@ -1,6 +1,6 @@
 # NB: this file and its syntax is entirely aspirational.
 
-Effect.Reader : Module
+Interface.Reader : Module
 {
 
 Reader : (R : Type) -> Interface

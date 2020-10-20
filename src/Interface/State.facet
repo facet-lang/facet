@@ -1,6 +1,6 @@
-Effect.State
-: [ Base.Pair
-  , Base.Unit ]
+Interface.State
+: [ Data.Pair
+  , Data.Unit ]
   Module
 {
 

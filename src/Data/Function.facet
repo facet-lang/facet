@@ -1,6 +1,6 @@
 # NB: this file and its syntax is entirely aspirational.
 
-Base.Function : Module
+Data.Function : Module
 {
 
 id
