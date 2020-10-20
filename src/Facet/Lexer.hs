@@ -42,7 +42,8 @@ skipSpace :: CharParsing p => p ()
 skipSpace = skipMany (satisfy isSpace)
 
 kind_ :: CharParsing p => p TokenKind
-kind_ = comment <|> underscore
+kind_ = comment <|> underscore <|> colon
   where
   comment = Comment <$ char '#' <*> many (satisfy (/= '\n'))
   underscore = Underscore <$ char '_'
+  colon = Colon <$ char ':'
