@@ -148,6 +148,9 @@ instance P.Pretty MName where
 data QName = MName :.: DName
   deriving (Eq, Ord, Show)
 
+instance P.Pretty QName where
+  pretty (m :.: n) = pretty m <> dot <> pretty n
+
 moduleName :: QName -> MName
 moduleName (mname :.: _) = mname
 
