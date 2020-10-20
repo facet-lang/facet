@@ -56,6 +56,9 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Warn if binding a variable with the same name as an in-scope constructor in a pattern match? We can still write `true` when we mean to write `(true)` and be surprised at the results, it just can’t break out from under us.
 
+- Write signatures in positive and negative positions with the same syntax?
+  - Frank uses <…> for handled effects, and […] for required ones; I’m not sure the distinction is necessary.
+
 
 ### Modules
 
