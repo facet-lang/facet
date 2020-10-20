@@ -1,9 +1,3 @@
-{-# LANGUAGE DisambiguateRecordFields #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
 module Facet.REPL
 ( repl
 ) where

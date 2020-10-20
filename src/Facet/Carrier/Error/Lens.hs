@@ -1,8 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Carrier.Error.Lens
 ( -- * Error carrier

@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 module Facet.Context
 ( -- * Contexts
   Context(..)

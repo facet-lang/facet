@@ -1,5 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeOperators #-}
 module Facet.Env
 ( Env(..)
 , fromList

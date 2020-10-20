@@ -1,4 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
 module Facet.Notice.Parser
 ( -- * Notices
   Notice(..)

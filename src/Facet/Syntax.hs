@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TypeOperators #-}
 module Facet.Syntax
 ( (:::)(..)
 , tm

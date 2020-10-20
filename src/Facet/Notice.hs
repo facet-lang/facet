@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 module Facet.Notice
 ( -- * Notices
   Level(..)

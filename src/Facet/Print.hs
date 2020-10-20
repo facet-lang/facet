@@ -1,17 +1,4 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
 module Facet.Print
 ( prettyPrint
 , getPrint
