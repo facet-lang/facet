@@ -37,6 +37,7 @@ data TokenKind
   | MIdent MName
   | EIdent EName
   | TIdent TName
+  | HIdent UName
 
 
 token :: (CharParsing p, PositionParsing p) => p Token
