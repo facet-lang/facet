@@ -1,10 +1,3 @@
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE DisambiguateRecordFields #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 module Facet.Parser
 ( runFacet
 , Facet(..)

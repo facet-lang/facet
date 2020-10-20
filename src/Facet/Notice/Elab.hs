@@ -1,7 +1,3 @@
-{-# LANGUAGE DisambiguateRecordFields #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE TypeOperators #-}
 module Facet.Notice.Elab
 ( -- * Notices
   Notice(..)

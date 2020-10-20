@@ -1,8 +1,3 @@
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeOperators #-}
 module Facet.Core
 ( -- * Values
   Value(..)

@@ -1,7 +1,3 @@
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TypeOperators #-}
 module Facet.Surface
 ( -- * Expressions
   Expr(..)

@@ -33,6 +33,23 @@ common common
     ghc-options:
       -Wno-missing-safe-haskell-mode
       -Wno-prepositive-qualified-module
+  default-extensions:
+    DeriveTraversable
+    DerivingStrategies
+    DerivingVia
+    DisambiguateRecordFields
+    DuplicateRecordFields
+    FlexibleContexts
+    FlexibleInstances
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    NamedFieldPuns
+    RankNTypes
+    TupleSections
+    TypeApplications
+    TypeOperators
 
 library
   import: common
@@ -90,7 +107,7 @@ library
     , these
     , transformers
     , unordered-containers
-  hs-source-dirs:      src
+  hs-source-dirs: src
 
 
 test-suite test

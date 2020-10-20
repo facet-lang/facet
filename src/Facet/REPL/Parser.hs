@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RankNTypes #-}
 module Facet.REPL.Parser
 ( Command(..)
 , meta
