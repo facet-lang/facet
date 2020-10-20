@@ -258,7 +258,7 @@ explicit = Algebra
   , pcon = \ n ps -> parens (hsep (annotate Con n:toList ps))
   , tuple = tupled
   , decl = ann
-  , defn = \ (a :=: b) -> group a </> b
+  , defn = \ (a :=: b) -> group a <> hardline <> group b
   , data' = block . group . concatWith (surround (hardline <> comma <> space)) . map group
   , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (embed (concatWith (surround hardline) (is ++ map (hardline <>) ds)))
   , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (prettyMName n)))
