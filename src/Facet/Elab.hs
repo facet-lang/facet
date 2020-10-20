@@ -271,6 +271,7 @@ elabType
   -> Maybe Type
   -> Elab (Type ::: Type)
 elabType = withSpan' $ \case
+  S.TQual  q -> switch $ global (resolveQ q)
   S.TFree  n -> switch $ global (resolve n)
   S.TBound n -> switch $ bound n
   S.THole  n -> check (hole n) "hole"
@@ -305,6 +306,7 @@ elabExpr
   -> Maybe Type
   -> Elab (Expr ::: Type)
 elabExpr = withSpan' $ \case
+  S.Qual  q -> switch $ global (resolveQ q)
   S.Free  n -> switch $ global (resolve n)
   S.Bound n -> switch $ bound n
   S.Hole  n -> check (hole n) "hole"

@@ -32,7 +32,8 @@ import Text.Parser.Position
 -- Expressions
 
 data Expr
-  = Free DName
+  = Qual QName
+  | Free DName
   | Bound Index
   | Hole UName
   | Comp (Spanned Comp)
@@ -64,7 +65,8 @@ data Pattern
 -- Types
 
 data Type
-  = TFree DName
+  = TQual QName
+  | TFree DName
   | TBound Index
   | THole UName
   | Type

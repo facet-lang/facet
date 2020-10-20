@@ -132,6 +132,7 @@ foldSType :: Algebra p -> Stack p -> Spanned S.Type -> p
 foldSType alg = go
   where
   go env (s, t) = case t of
+    S.TQual q  -> var alg (qvar q)
     S.TFree n  -> var alg (Global Nothing n)
     S.TBound n -> env ! getIndex n
     S.THole n  -> hole alg n
@@ -151,6 +152,7 @@ foldSExpr :: Algebra p -> Stack p -> Spanned S.Expr -> p
 foldSExpr alg = go
   where
   go env (s, e) = case e of
+    S.Qual  q -> var alg (qvar q)
     S.Free  n -> var alg (Global Nothing n)
     S.Bound n -> env ! getIndex n
     S.Hole  n -> hole alg n
