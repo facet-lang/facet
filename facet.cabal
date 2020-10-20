@@ -71,6 +71,7 @@ library
     Facet.Notice
     Facet.Notice.Elab
     Facet.Notice.Parser
+    Facet.Lexer
     Facet.Parser
     Facet.Parser.Table
     Facet.Pretty
