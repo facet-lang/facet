@@ -139,7 +139,7 @@ load_ = Load <$> (stringLiteral <|> some (satisfy (not . isSpace)))
 
 type_, kind_ :: (PositionParsing p, Monad p) => p Action
 
-type_ = Type <$> runFacet [] (whole expr )
+type_ = Type <$> runFacet [] (whole expr)
 kind_ = Kind <$> runFacet [] (whole type')
 
 
