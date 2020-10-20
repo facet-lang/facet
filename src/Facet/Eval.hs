@@ -3,7 +3,7 @@ module Facet.Eval
 ) where
 
 import Control.Effect.Reader
-import Facet.Core hiding (eval)
+import Facet.Core
 import Facet.Env as E
 import Facet.Syntax
 

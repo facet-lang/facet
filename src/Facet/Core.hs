@@ -25,10 +25,6 @@ module Facet.Core
 , Module(..)
 , Import(..)
 , Def(..)
-  -- * Quotation
-, QExpr(..)
-, quote
-, eval
 ) where
 
 import           Control.Effect.Empty
@@ -39,8 +35,7 @@ import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Semialign
-import           Data.Traversable (mapAccumL)
-import           Facet.Name (CName, Index(..), Level(..), MName, Meta(..), QName, UName, levelToIndex)
+import           Facet.Name (CName, Level(..), MName, Meta(..), QName, UName)
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
@@ -280,45 +275,3 @@ newtype Import = Import { name :: MName }
 data Def
   = DTerm Value
   | DData [CName ::: Value]
-
-
--- Quotation
-
-data QExpr
-  = QVar (Head QExpr Index)
-  | QType
-  | QForAll (Pl_ UName ::: QExpr) QExpr
-  | QLam (Pl_ UName ::: QExpr) QExpr
-  | QApp QExpr (Pl_ QExpr)
-  | QCase QExpr [(Pattern QExpr (UName ::: QExpr), QExpr)]
-  | QCon (Con QExpr QExpr)
-  deriving (Eq, Ord, Show)
-
-quote :: Level -> Value -> QExpr
-quote d = \case
-  VType -> QType
-  VCon c -> QCon (bimap (quote d) (quote d) c)
-  VLam (n ::: t) b -> QLam (n ::: quote d t) (quote (succ d) (b (var (Free d))))
-  VForAll (n ::: t) b -> QForAll (n ::: quote d t) (quote (succ d) (b (var (Free d))))
-  VNeut h sp ->
-    let qSp h Nil     = h
-        qSp h (sp:>e) = case e of
-          EApp a   -> QApp (qSp h sp) (fmap (quote d) a)
-          ECase cs -> QCase (qSp h sp) (map qClause cs)
-        qClause (p, b)
-          | let (d', p') = mapAccumL (\ d _ -> (succ d, var (Free d))) d p
-          = ( bimap (quote d) (fmap (quote d)) p
-            , quote d' (b p'))
-    in qSp (QVar (unHead (Global . fmap (quote d)) (Free . levelToIndex d) (Metavar . fmap (quote d)) h)) sp
-
-eval :: Stack Value -> QExpr -> Value
-eval env = \case
-  QType -> VType
-  QCon c -> VCon (bimap (eval env) (eval env) c)
-  QLam (n ::: t) b -> VLam (n ::: eval env t) (\ v -> eval (env:>v) b)
-  QForAll (n ::: t) b -> VForAll (n ::: eval env t) (\ v -> eval (env:>v) b)
-  QVar h -> unHead (global . fmap (eval env)) ((env !) . getIndex) (metavar . fmap (eval env)) h
-  QApp f a -> eval env f $$ fmap (eval env) a
-  QCase s cs -> case' (eval env s) (map (evalClause env) cs)
-    where
-    evalClause env (p, b) = (bimap (eval env) (fmap (eval env)) p, \ p -> eval (foldl' (:>) env p) b)
