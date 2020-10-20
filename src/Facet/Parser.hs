@@ -147,6 +147,7 @@ monotypeTable =
   , [ -- FIXME: we should treat this as a global.
       Atom (spanned (S.Type <$ token (string "Type")))
     , Atom tvar
+    , Atom (spanned (S.TQual <$> qname))
     ]
   ]
 
