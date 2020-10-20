@@ -7,6 +7,7 @@ module Facet.Lexer
 
 import Data.Char (isSpace)
 import Data.Coerce
+import Data.Foldable (foldl')
 import Data.Text (Text, pack)
 import Facet.Name
 import Facet.Span
@@ -62,11 +63,14 @@ kind_ = choice
   , RBracket   <$  char ']' <?> "]"
   , LAngle     <$  char '<' <?> "<"
   , RAngle     <$  char '>' <?> ">"
+  , MIdent     <$> (foldl' (:.) . MName <$> tcomp <* dot <*> sepBy tcomp dot) <?> "module name"
   , EIdent     <$> ecomp <?> "term name"
   , TIdent     <$> tcomp <?> "type name"
   ]
   where
+  dot = char '.' <?> "."
   ecomp = ident (choice [ lower, char '_' ]) nameChar
+  tcomp :: (Coercible t Text, CharParsing p) => p t
   tcomp = ident (choice [ upper, char '_' ]) nameChar
 
 ident :: (Coercible t Text, CharParsing p) => p Char -> p Char -> p t
