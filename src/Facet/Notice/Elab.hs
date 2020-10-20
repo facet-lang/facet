@@ -29,11 +29,11 @@ import           Silkscreen
 rethrowElabErrors :: Source -> L.ThrowC (Notice [SGR]) Err m a -> m a
 rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context } ->
   let reason' = printReason context reason
+      (_, _, ctx) = foldl (\ (d, print, ctx) (n ::: _T) -> let entry = foldCValue explicit print _T in (succ d, print :> entry, ctx :> (d, n ::: entry))) (N.Level 0, Nil, Nil) (elems context)
   in Notice (Just Error) (slice src span) reason'
-    [ getPrint $ printContextEntry l (n ::: foldCValue explicit Nil _T)
-    | (l, n ::: _T) <- zip [N.Level 0..] (toList (elems context))
+    [ getPrint $ printContextEntry l (n ::: _T)
+    | (l, n ::: _T) <- toList ctx
     ]
-    -- FIXME: foldl over the context printing each element in the smaller context before it.
 
 
 printReason :: Context Type -> Reason -> Doc [SGR]
