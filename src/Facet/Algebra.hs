@@ -1,10 +1,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Facet.Algebra
-( -- * Folds
+( -- * Algebras
   Var(..)
 , Algebra(..)
+  -- * Folds
+  -- ** Core
 , foldCValue
 , foldCModule
+  -- ** Surface
 , foldSType
 , foldSExpr
 , foldSCons
@@ -22,6 +25,8 @@ import           Facet.Stack
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Text.Parser.Position
+
+-- Algebras
 
 data Var
   = Global (Maybe MName) DName
@@ -64,6 +69,10 @@ data Algebra p = Algebra
   , import' :: MName -> p
   }
 
+
+-- * Folds
+
+-- ** Core
 
 foldCValue :: forall p . Algebra p -> Stack p -> C.Value -> p
 foldCValue alg = go
@@ -125,6 +134,8 @@ foldCModule alg (C.Module n is ds) = module_ alg
       C.DData cs -> data' alg
         $ map (decl alg . bimap (var alg . Cons) (foldCValue alg Nil)) cs)
 
+
+-- ** Surface
 
 foldSType :: Algebra p -> Stack p -> Spanned S.Type -> p
 foldSType alg = go
