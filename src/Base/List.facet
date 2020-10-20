@@ -7,4 +7,8 @@ List : (A : Type) -> Type
 , cons : A -> List A -> List A
 }
 
+map : { A, B : Type } -> (f : A -> B) -> (List A -> List B)
+{ (nil)       -> nil
+, (cons a as) -> cons (f a) (map f as) }
+
 }
