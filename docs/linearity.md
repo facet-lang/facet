@@ -94,6 +94,7 @@ Negative conjunction instead has a single elimination rule:
 
 Proving something from a negative conjunction requires that we prove the conjunction (as before), but additionally that we take the truth of both halves as assumptions for the proof of the conclusion. There’s no use of weakening, tho it surprises me a little that neither A nor B appears in the conclusion. (The type-theoretic presentation (i.e. involving explicit proof terms) Harper goes on to give shares this property.)
 
+_TBD: figure out how these behave._
 
 [Polarity in Type Theory]: https://existentialtype.wordpress.com/2012/08/25/polarity-in-type-theory/
 
@@ -120,3 +121,6 @@ sumNegToPos (NSum fg) = fg PS1 PS2
 ```
 
 In linear logic, the positive and negative disjunctions are written as ⊕ (additive) and ⅋ (multiplicative), respectively.
+
+_TBD: figure out how these behave._
+_TBD: how do polarity, data/codata, the multiplicative/additive distinctions, and the conjunctive/disjunctive distinctions relate to one another (if they even do)?_
