@@ -139,6 +139,11 @@ data MName
   | MName :. Text
   deriving (Eq, Ord, Show)
 
+instance P.Pretty MName where
+  pretty (n :. s)  = pretty n <> pretty '.' <> pretty s
+  pretty (MName s) = pretty s
+
+
 -- | Qualified names, consisting of a module name and declaration name.
 data QName = MName :.: DName
   deriving (Eq, Ord, Show)
