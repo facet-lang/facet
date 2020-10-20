@@ -38,7 +38,7 @@ import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
-import           Data.Traversable (for, mapAccumL)
+import           Data.Traversable (for)
 import           Facet.Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
@@ -239,13 +239,13 @@ infix 1 |-
 (|-*)
   :: (Has (Reader (Context Type)) sig m, Traversable t)
   => t (UName ::: Type)
-  -> (t Value -> m Value)
+  -> m Value
   -> m (t Value -> Value)
 p |-* b = do
   ctx <- ask @(Context Type)
   let d = level ctx
-      ((_, ext), p') = mapAccumL (\ (d, ctx) t -> ((succ d, ctx . (|> t)), free d)) (d, id) p
-  b' <- local ext (b p')
+      (_, ext) = foldl' (\ (d, ctx) t -> (succ d, ctx . (|> t))) (d, id) p
+  b' <- local ext b
   pure $ \ p -> snd (foldl' (\ (d, b') v -> (succ d, C.bind d v b')) (succ d, b') p)
 
 infix 1 |-*
@@ -355,7 +355,7 @@ elabClauses cs = Check $ \ _T -> do
     let _B' = _B v
     cs' <- for cs $ \ (p:|_, b) -> do
       p' <- check (elabPattern p ::: _A)
-      b' <- p' |-* \ _ -> check (maybe (checkElab (elabExpr b)) elabClauses rest ::: _B')
+      b' <- p' |-* check (maybe (checkElab (elabExpr b)) elabClauses rest ::: _B')
       pure (p', b')
     pure $ case' v cs'
   pure $ VLam (ex __ ::: _A) b'
