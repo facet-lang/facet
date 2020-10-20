@@ -200,10 +200,10 @@ resolveQ q@(m :.: n) = Synth $ Env.lookupQ q <$> ask >>= \case
     | otherwise         -> freeVariable (Just m) n
 
 global
-  :: DName
+  :: Synth QName
   -> Synth Value
 global n = Synth $ do
-  q <- synth (resolve n)
+  q <- synth n
   instantiate (C.global q ::: ty q)
 
 bound
@@ -271,7 +271,7 @@ elabType
   -> Maybe Type
   -> Elab (Type ::: Type)
 elabType = withSpan' $ \case
-  S.TFree  n -> switch $ global n
+  S.TFree  n -> switch $ global (resolve n)
   S.TBound n -> switch $ bound n
   S.THole  n -> check (hole n) "hole"
   S.Type     -> switch $ _Type
@@ -305,7 +305,7 @@ elabExpr
   -> Maybe Type
   -> Elab (Expr ::: Type)
 elabExpr = withSpan' $ \case
-  S.Free  n -> switch $ global n
+  S.Free  n -> switch $ global (resolve n)
   S.Bound n -> switch $ bound n
   S.Hole  n -> check (hole n) "hole"
   f S.:$  a -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
