@@ -165,11 +165,6 @@ ann :: (PrecedencePrinter p, P.Level p ~ Precedence) => (p ::: p) -> p
 ann (n ::: t) = align . prec Ann $ n </> group (align (colon <+> flatAlt space mempty <> t))
 
 
-prettyMName :: Printer p => MName -> p
-prettyMName (n :. s)  = prettyMName n <> pretty '.' <> pretty s
-prettyMName (MName s) = pretty s
-
-
 printContextEntry :: Level -> UName ::: Print -> Print
 printContextEntry l (n ::: _T) = ann (intro explicit n l ::: _T)
 
@@ -221,8 +216,8 @@ surface = Algebra
   , decl = ann
   , defn = \ (a :=: b) -> a </> b
   , data' = block . group . concatWith (surround (hardline <> comma <> space)) . map group
-  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (embed (concatWith (surround hardline) (is ++ map (hardline <>) ds)))
-  , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (prettyMName n)))
+  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> block (embed (concatWith (surround hardline) (is ++ map (hardline <>) ds)))
+  , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
   }
   where
   embed = nest 2 . group
@@ -260,8 +255,8 @@ explicit = Algebra
   , decl = ann
   , defn = \ (a :=: b) -> group a <> hardline <> group b
   , data' = block . group . concatWith (surround (hardline <> comma <> space)) . map group
-  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> block (embed (concatWith (surround hardline) (is ++ map (hardline <>) ds)))
-  , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (prettyMName n)))
+  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> block (embed (concatWith (surround hardline) (is ++ map (hardline <>) ds)))
+  , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
   }
   where
   embed = nest 2 . group
