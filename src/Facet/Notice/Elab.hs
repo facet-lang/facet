@@ -37,7 +37,7 @@ rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context } ->
 
 printReason :: Stack Print -> Reason -> Doc [SGR]
 printReason ctx = group . \case
-  FreeVariable _ n       -> fillSep [reflow "variable not in scope:", pretty n]
+  FreeVariable m n       -> fillSep [reflow "variable not in scope:", maybe (pretty n) (pretty . (N.:.: n)) m]
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
   Mismatch msg exp act   ->
     let exp' = either reflow (printType ctx) exp
