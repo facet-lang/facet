@@ -112,7 +112,12 @@ decl = spanned
   <|> (,) <$> dtname <* colon <*> sig (S.==>) (N.getTName <$> tname) (S.DData <$> braces (commaSep con))
 
 
-sig :: (Monad p, PositionParsing p) => ((N.UName S.::: Spanned S.Type) -> Spanned S.Decl -> S.Decl) -> Facet p N.UName -> Facet p S.DeclBody -> Facet p (Spanned S.Decl)
+sig
+  :: (Monad p, PositionParsing p)
+  => ((N.UName S.::: Spanned S.Type) -> Spanned S.Decl -> S.Decl)
+  -> Facet p N.UName
+  -> Facet p S.DeclBody
+  -> Facet p (Spanned S.Decl)
 sig (-->) name body = go
   where
   go = forAll (S.~~>) go <|> binder (-->) name go <|> spanned ((S.:=) <$> monotype <*> body)
