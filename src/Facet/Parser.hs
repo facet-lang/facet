@@ -115,7 +115,7 @@ decl = spanned
 sig :: (Monad p, PositionParsing p) => ((N.UName S.::: Spanned S.Type) -> Spanned S.Decl -> S.Decl) -> Facet p N.UName -> Facet p S.DeclBody -> Facet p (Spanned S.Decl)
 sig (-->) name body = go
   where
-  go = forAll (S.:==>) go <|> binder (-->) name go <|> spanned ((S.:=) <$> monotype <*> body)
+  go = forAll (\ (n S.::: t) b -> S.im n S.::: t S.:==> b) go <|> binder (-->) name go <|> spanned ((S.:=) <$> monotype <*> body)
 
 binder
   :: (Monad p, PositionParsing p)

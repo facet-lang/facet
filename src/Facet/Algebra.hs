@@ -184,7 +184,7 @@ foldSDecl alg = go Nil
       S.DData c -> data' alg $ map (foldSCons alg env) c
     t S.:==> b ->
       let (ts, b') = splitr (S.unDForAll . snd) (s, t S.:==> b)
-          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local n d) in ((succ d, env :> v), im (Just v ::: foldSType alg env t))) (level, env) ts
+          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local (out n) d) in ((succ d, env :> v), (Just v ::: foldSType alg env t) <$ n)) (level, env) ts
       in fn alg ts' (go env' b')
     t S.:--> b ->
       let (ts, b') = splitr (S.unDArrow . snd) (s, t S.:--> b)

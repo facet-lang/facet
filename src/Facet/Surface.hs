@@ -106,7 +106,7 @@ aeq t1 t2 = case (t1, t2) of
 -- Declarations
 
 data Decl
-  = (UName ::: Spanned Type) :==> Spanned Decl
+  = (Pl_ UName ::: Spanned Type) :==> Spanned Decl
   | (UName ::: Spanned Type) :--> Spanned Decl
   | Spanned Type := DeclBody
   deriving (Show)
@@ -116,7 +116,7 @@ infixr 1 :==>
 infixr 1 :-->
 
 
-unDForAll :: Has Empty sig m => Decl -> m (UName ::: Spanned Type, Spanned Decl)
+unDForAll :: Has Empty sig m => Decl -> m (Pl_ UName ::: Spanned Type, Spanned Decl)
 unDForAll = \case{ t :==> b -> pure (t, b) ; _ -> empty }
 
 unDArrow :: Has Empty sig m => Decl -> m (UName ::: Spanned Type, Spanned Decl)
