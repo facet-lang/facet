@@ -140,7 +140,7 @@ data MName
   deriving (Eq, Ord, Show)
 
 instance P.Pretty MName where
-  pretty (n :. s)  = pretty n <> pretty '.' <> pretty s
+  pretty (n :. s)  = pretty n <> dot <> pretty s
   pretty (MName s) = pretty s
 
 
