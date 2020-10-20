@@ -1,4 +1,5 @@
-Base.Option : Module
+Base.Option
+: Module
 {
 
 Option : (A : Type) -> Type
