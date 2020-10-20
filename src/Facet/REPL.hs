@@ -103,7 +103,7 @@ loop = do
     Nothing  -> pure ()
   loop
   where
-  commandParser = runFacet [] (whole (parseCommands commands))
+  commandParser = runFacet [] (whole (parseCommands commands <|> Eval <$> expr))
 
   runAction src = \case
     Help -> print helpDoc
