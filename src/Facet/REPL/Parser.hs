@@ -31,7 +31,7 @@ data Arg a
 
 
 parseCommands :: (PositionParsing p, Monad p) => [Command a] -> p a
-parseCommands = choice . map go
+parseCommands cs = choice (map go cs) <?> "command"
   where
   go c = parseSymbols (symbols c) *> parseValue (value c)
   parseSymbols = \case
