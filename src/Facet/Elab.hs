@@ -199,6 +199,7 @@ resolveQ q@(m :.: n) = Synth $ Env.lookupQ q <$> ask >>= \case
     | E (EName n) <- n  -> synth (resolveQ (m :.: C (CName n)))
     | otherwise         -> freeVariable (Just m) n
 
+-- FIXME: we’re instantiating when inspecting types in the REPL.
 global
   :: Synth QName
   -> Synth Value
