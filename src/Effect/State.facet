@@ -18,10 +18,8 @@ evalState : { S, A : Type } -> (s : S) -> [State S]A -> A
 , [ put s ; k ] -> evalState s (k unit)
 , a             -> a }
 
-state : { S, A : Type } -> (s : S) -> [State S]A -> Pair S A
-{ [ get   ; k ] -> state s (k s)
-, [ put s ; k ] -> state s (k unit)
-, a             -> pair s a }
+state : { S, A : Type } -> S -> [State S]A -> Pair S A
+{ church pair }
 
 church : { S, A, R : Type } -> (k : S -> A -> R) -> (s : S) -> [State S]A -> R
 { [ get   ; k ] -> church k s (k s)
