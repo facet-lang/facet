@@ -68,6 +68,23 @@ function flags {
   echo "-Wno-unsafe"
   [[ "$ghc_version" = 8.8.* ]] || [[ "$ghc_version" = 8.10.* ]] && echo "-Wno-missing-deriving-strategies" || true
   [[ "$ghc_version" = 8.10.* ]] && echo "-Wno-missing-safe-haskell-mode" && echo "-Wno-prepositive-qualified-module" && echo "-Wno-unused-packages"
+
+  echo "-XDeriveTraversable"
+  echo "-XDerivingStrategies"
+  echo "-XDerivingVia"
+  echo "-XDisambiguateRecordFields"
+  echo "-XDuplicateRecordFields"
+  echo "-XFlexibleContexts"
+  echo "-XFlexibleInstances"
+  echo "-XGeneralizedNewtypeDeriving"
+  echo "-XLambdaCase"
+  echo "-XMultiParamTypeClasses"
+  echo "-XMultiWayIf"
+  echo "-XNamedFieldPuns"
+  echo "-XRankNTypes"
+  echo "-XTupleSections"
+  echo "-XTypeApplications"
+  echo "-XTypeOperators"
 }
 
 flags > "$output_file"
