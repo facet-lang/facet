@@ -345,12 +345,12 @@ elabClauses [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
   pure $ VLam (P pl n ::: _A) b'
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
 elabClauses cs = Check $ \ _T -> do
-  (_ ::: _A, _B) <- expectQuantifier "when checking clauses" _T
   rest <- case foldMap partitionClause cs of
     XB    -> pure $ Nothing
     XL _  -> pure $ Nothing
     XR cs -> pure $ Just cs
     XT    -> error "mixed" -- FIXME: throw a proper error
+  (_ ::: _A, _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> do
     let _B' = _B v
     cs' <- for cs $ \ (p:|_, b) -> do
