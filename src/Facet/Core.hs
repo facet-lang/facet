@@ -21,6 +21,7 @@ module Facet.Core
 , bind
   -- * Patterns
 , Pattern(..)
+, fill
   -- * Modules
 , Module(..)
 , Import(..)
@@ -35,6 +36,7 @@ import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Semialign
+import           Data.Traversable (mapAccumL)
 import           Facet.Name (CName, Level(..), MName, Meta(..), QName, UName)
 import           Facet.Stack
 import           Facet.Syntax
@@ -260,6 +262,9 @@ instance Bitraversable Pattern where
     go = \case
       PVar a -> PVar <$> g a
       PCon c -> PCon <$> bitraverse f go c
+
+fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
+fill f z = mapAccumL (\ z _ -> f z) z
 
 
 -- Modules
