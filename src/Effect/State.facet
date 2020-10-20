@@ -13,10 +13,8 @@ State : (S : Type) -> Interface
 modify : { S : Type } -> (f : S -> S) -> [State S]{Unit}
 { put (f get!) }
 
-evalState : { S, A : Type } -> (s : S) -> [State S]A -> A
-{ [ get   ; k ] -> evalState s (k s)
-, [ put s ; k ] -> evalState s (k unit)
-, a             -> a }
+evalState : { S, A : Type } -> S -> [State S]A -> A
+{ church { _ a -> a } }
 
 state : { S, A : Type } -> S -> [State S]A -> Pair S A
 { church pair }
