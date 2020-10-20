@@ -139,9 +139,8 @@ infixl 9 $$
 
 case' :: HasCallStack => Value -> [(Pattern Value (UName ::: Value), Pattern Value Value -> Value)] -> Value
 case' s            cs
-  | Just f <- var cs  = f (PVar s)
-  where
-  var = getFirst . foldMap (\ (p, f) -> First $ case p of { PVar _ -> Just f ; _ -> Nothing })
+  | (p, f):_ <- cs
+  , PVar _ <- p       = f (PVar s)
 case' (VNeut h es) cs = VNeut h (es :> ECase cs)
 case' s            cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) cs) of
   Just v -> v
