@@ -1,10 +1,17 @@
 module Facet.Lexer
-( TokenKind(..)
+( Token(..)
+, TokenKind(..)
 ) where
 
 import Facet.Name
+import Facet.Span
 
 -- Lexer
+
+data Token = Token
+  { kind :: TokenKind
+  , span :: Span
+  }
 
 data TokenKind
   = Comment String
