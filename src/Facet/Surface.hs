@@ -15,6 +15,7 @@ module Facet.Surface
 , aeq
   -- * Declarations
 , Decl(..)
+, (~~>)
 , unDForAll
 , unDArrow
 , DeclBody(..)
@@ -114,6 +115,12 @@ data Decl
 infix 1 :=
 infixr 1 :==>
 infixr 1 :-->
+
+
+(~~>) :: (UName ::: Spanned Type) -> Spanned Decl -> Decl
+n ::: t ~~> b = im n ::: t :==> b
+
+infixr 1 ~~>
 
 
 unDForAll :: Has Empty sig m => Decl -> m (Pl_ UName ::: Spanned Type, Spanned Decl)
