@@ -1,4 +1,9 @@
 Base.Option : Module
 {
 
+Option : (A : Type) -> Type
+{ none : Option A
+, some : A -> Option A
+}
+
 }

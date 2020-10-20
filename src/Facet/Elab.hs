@@ -46,7 +46,6 @@ import           Control.Applicative (liftA2)
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Parser.Span (Span(..))
 import           Control.Effect.Sum
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
@@ -59,6 +58,7 @@ import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
 import qualified Facet.Env as Env
 import           Facet.Name hiding (L, R)
+import           Facet.Span (Span(..))
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -393,38 +393,51 @@ elabDecl
   :: HasCallStack
   => Spanned S.Decl
   -> Check (Either [CName ::: Type] Value) ::: Check Type
-elabDecl d = go d id id
+elabDecl d = withSpans d $ \case
+  S.DDecl d -> first (fmap Left)  (elabDDecl d)
+  S.TDecl t -> first (fmap Right) (elabTDecl t)
+
+elabDDecl
+  :: HasCallStack
+  => Spanned S.DDecl
+  -> Check [CName ::: Type] ::: Check Type
+elabDDecl d = go d id
   where
   go
-    :: Spanned S.Decl
+    :: Spanned S.DDecl
     -> (Check Value -> Check Value)
-    -> (Check Value -> Check Value)
-    -> Check (Either [CName ::: Type] Value) ::: Check Type
-  go d km kt = withSpans d $ \case
-    (n ::: t) S.:==> b ->
-      go b
-        (km . (\ b  -> lam (im n) (|- b)))
-        (kt . (\ _B -> checkElab (switch (im n ::: checkElab (elabType t) >~> (|- _B)))))
+    -> Check [CName ::: Type] ::: Check Type
+  go d km = withSpans d $ \case
+    S.DDForAll (n ::: t) b ->
+      let b' ::: _B = go b
+            (km . (\ b  -> Check $ \ _T -> do
+              (_ ::: _T, _B) <- expectQuantifier "in type quantifier" _T
+              b' <- elabBinder $ \ _ -> check ((out n ::: _T |- b) ::: VType)
+              pure $ VForAll (im (out n) ::: _T) b'))
+      in b' ::: checkElab (switch (n ::: checkElab (elabType t) >~> (|- _B)))
 
-    (n ::: t) S.:--> b ->
-      go b
-        (km . (\ b  -> lam (ex n) (|- b)))
-        (kt . (\ _B -> checkElab (switch (ex __ ::: checkElab (elabType t) >~> (|- _B)))))
+    S.DDBody t b -> elabData km b ::: checkElab (elabType t)
 
-    t S.:= b -> elabDeclBody km b ::: kt (checkElab (elabType t))
-
-  withSpans (s, d) f = let t ::: _T = f d in setSpan s t ::: setSpan s _T
-
-elabDeclBody :: HasCallStack => (Check Value -> Check Value) -> S.DeclBody -> Check (Either [CName ::: Type] Value)
-elabDeclBody k = \case
-  S.DExpr b -> Right <$> k (checkElab (elabExpr b))
-  S.DType b -> Right <$> k (checkElab (elabType b))
-  S.DData c -> Left <$> elabData k c
+  -- FIXME: check that all constructors return the datatype.
+  elabData k cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab (elabType t))
 
 
-elabData :: (Check Value -> Check Value) -> [Spanned (CName ::: Spanned S.Type)] -> Check [CName ::: Type]
--- FIXME: check that all constructors return the datatype.
-elabData k cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab (elabType t))
+elabTDecl
+  :: HasCallStack
+  => Spanned S.TDecl
+  -> Check Value ::: Check Type
+elabTDecl d = go d
+  where
+  go
+    :: Spanned S.TDecl
+    -> Check Value ::: Check Type
+  go d = withSpans d $ \case
+    S.TDForAll (n ::: t) b ->
+      let b' ::: _B = go b
+      in lam n (|- b') :::
+          checkElab (switch (__ <$ n ::: checkElab (elabType t) >~> (|- _B)))
+
+    S.TDBody t b -> checkElab (elabExpr b) ::: checkElab (elabType t)
 
 
 -- Modules
@@ -496,6 +509,9 @@ withSpan k (s, a) = setSpan s (k a)
 
 withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (Span, a) -> b -> m c
 withSpan' k (s, a) b = setSpan s (k a b)
+
+withSpans :: Has (Reader Span) sig m => (Span, a) -> (a -> m b ::: m c) -> m b ::: m c
+withSpans (s, d) f = let t ::: _T = f d in setSpan s t ::: setSpan s _T
 
 
 data Err = Err

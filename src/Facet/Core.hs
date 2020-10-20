@@ -246,7 +246,6 @@ newtype Import = Import { name :: MName }
 
 data Def
   = DTerm Value
-  | DType Value
   | DData [CName ::: Value]
 
 

@@ -12,12 +12,10 @@ import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Fresh.Church
-import           Control.Carrier.Parser.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=), (<~))
-import           Control.Effect.Parser.Source (Source(..), readSourceFromFile, sourceFromString)
 import           Control.Lens (Getting, Lens', itraverse, lens)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -27,15 +25,19 @@ import qualified Data.Map as Map
 import           Data.Semigroup
 import           Data.Text.Lazy (unpack)
 import           Facet.Algebra hiding (Algebra)
+import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.State.Lens as L
 import qualified Facet.Carrier.Throw.Inject as I
 import qualified Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Notice
+import           Facet.Notice.Elab
+import           Facet.Notice.Parser
 import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Print
 import           Facet.REPL.Parser
+import           Facet.Source (Source(..), readSourceFromFile, sourceFromString)
 import           Facet.Stack
 import           Facet.Surface (Expr, Type)
 import           Facet.Syntax
@@ -90,9 +92,6 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
 data File = File
   { loaded :: Bool
   }
-
-loaded_ :: Lens' File Bool
-loaded_ = lens loaded (\ f loaded -> f{ loaded })
 
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
@@ -171,7 +170,7 @@ reload src = do
     print $ annotate info (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
     (do
-      src <- rethrowIOErrors src $ liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left)) >>= either throwError pure
+      src <- liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
       m <- rethrowParseErrors (runParserWithSource src (runFacet [] (whole module')))
       m' <- elab src $ Elab.elabModule m
       file{ loaded = True } <$ print (getPrint (foldCModule surface m')))
@@ -224,3 +223,7 @@ infixr 2 ~>
 lens <~> act = lens <~ lens ~> act
 
 infixr 2 <~>
+
+
+ioErrorToNotice :: Source -> IOError -> Notice [SGR]
+ioErrorToNotice src err = Notice (Just Error) src (group (reflow (show err))) []

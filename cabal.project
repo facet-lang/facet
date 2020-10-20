@@ -3,10 +3,5 @@ tests: True
 
 source-repository-package
   type: git
-  location: https://github.com/fused-effects/fused-effects-parser.git
-  tag: ed15caac09b3e3cde33e5884cfe4c3879f33a19d
-
-source-repository-package
-  type: git
   location: https://github.com/fused-effects/fused-effects-readline.git
   tag: d8a35005ae28e827c92b4fe122f62d015a9a8e24

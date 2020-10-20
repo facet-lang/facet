@@ -21,7 +21,6 @@ module Facet.Pretty
 , renderIO
 , renderLazy
   -- * ANSI codes
-, sgrStyle
 , setRGB
 , setBold
   -- * Re-exports
@@ -32,7 +31,6 @@ module Facet.Pretty
 
 import           Control.Carrier.Lift
 import           Control.Carrier.State.Church
-import           Control.Effect.Parser.Notice (Level(..), Style(..))
 import           Control.Monad.IO.Class
 import           Data.Bifunctor (first)
 import           Data.Colour.RGBSpace
@@ -178,18 +176,6 @@ renderLazy =
 
 
 -- ANSI codes
-
-sgrStyle :: Style [SGR]
-sgrStyle = Style
-  { pathStyle   = annotate [SetConsoleIntensity BoldIntensity]
-  , levelStyle  = \case
-    Warn  -> annotate [SetColor Foreground Vivid Magenta]
-    Error -> annotate [SetColor Foreground Vivid Red]
-  , posStyle    = annotate [SetConsoleIntensity BoldIntensity]
-  , gutterStyle = annotate [SetColor Foreground Vivid Blue]
-  , eofStyle    = annotate [SetColor Foreground Vivid Blue]
-  , caretStyle  = annotate [SetColor Foreground Vivid Green]
-  }
 
 setRGB :: RGB Float -> SGR
 setRGB = SetRGBColor Foreground . uncurryRGB sRGB

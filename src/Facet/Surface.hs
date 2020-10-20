@@ -15,9 +15,10 @@ module Facet.Surface
 , aeq
   -- * Declarations
 , Decl(..)
-, unDForAll
-, unDArrow
-, DeclBody(..)
+, DDecl(..)
+, unDDForAll
+, TDecl(..)
+, unTDForAll
   -- * Modules
 , Module(..)
 , Import(..)
@@ -106,28 +107,26 @@ aeq t1 t2 = case (t1, t2) of
 -- Declarations
 
 data Decl
-  = (UName ::: Spanned Type) :==> Spanned Decl
-  | (UName ::: Spanned Type) :--> Spanned Decl
-  | Spanned Type := DeclBody
+  = DDecl (Spanned DDecl)
+  | TDecl (Spanned TDecl)
+  deriving Show
+
+data DDecl
+  = DDForAll (Pl_ UName ::: Spanned Type) (Spanned DDecl)
+  | DDBody (Spanned Type) [Spanned (CName ::: Spanned Type)]
   deriving (Show)
 
-infix 1 :=
-infixr 1 :==>
-infixr 1 :-->
+unDDForAll :: Has Empty sig m => DDecl -> m (Pl_ UName ::: Spanned Type, Spanned DDecl)
+unDDForAll = \case{ DDForAll t b -> pure (t, b) ; _ -> empty }
 
 
-unDForAll :: Has Empty sig m => Decl -> m (UName ::: Spanned Type, Spanned Decl)
-unDForAll = \case{ t :==> b -> pure (t, b) ; _ -> empty }
-
-unDArrow :: Has Empty sig m => Decl -> m (UName ::: Spanned Type, Spanned Decl)
-unDArrow = \case{ t :--> b -> pure (t, b) ; _ -> empty }
-
-
-data DeclBody
-  = DExpr (Spanned Expr)
-  | DType (Spanned Type)
-  | DData [Spanned (CName ::: Spanned Type)]
+data TDecl
+  = TDForAll (Pl_ UName ::: Spanned Type) (Spanned TDecl)
+  | TDBody (Spanned Type) (Spanned Expr)
   deriving (Show)
+
+unTDForAll :: Has Empty sig m => TDecl -> m (Pl_ UName ::: Spanned Type, Spanned TDecl)
+unTDForAll = \case{ TDForAll t b -> pure (t, b) ; _ -> empty }
 
 
 -- Modules

@@ -2,84 +2,120 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Facet.Notice
 ( -- * Notices
-  Notice(..)
+  Level(..)
+, Notice(..)
+, level_
+, source_
+, reason_
+, context_
+, reAnnotateNotice
+, Style(..)
+, identityStyle
+, prettyNoticeWith
 , prettyNotice
-  -- * Parse errors
-, rethrowParseErrors
-  -- * Elaboration
-, rethrowElabErrors
-  -- * IO
-, rethrowIOErrors
 ) where
 
-import qualified Control.Carrier.Parser.Church as Parse
-import           Control.Effect.Parser.Notice hiding (prettyNotice)
-import           Control.Effect.Parser.Source (Source, slice)
-import           Data.Foldable (toList)
-import           Data.Semigroup (stimes)
-import           Facet.Algebra
-import qualified Facet.Carrier.Throw.Inject as L
-import           Facet.Context (Context(..))
-import qualified Facet.Elab as Elab
-import qualified Facet.Name as N
-import           Facet.Pretty
-import           Facet.Print
-import           Facet.Stack
-import           Facet.Syntax
+import           Control.Lens (Lens', lens)
+import           Data.List.NonEmpty (NonEmpty(..))
+import           Data.Maybe (fromMaybe)
+import           Facet.Source (Line(..), Source(..))
+import qualified Facet.Span as Span
+import qualified Prettyprinter as P
 import           Silkscreen
+import           System.Console.ANSI
 
 -- Notices
 
-prettyNotice :: Notice [SGR] -> Doc [SGR]
+data Level
+  = Warn
+  | Error
+  deriving (Eq, Ord, Show)
+
+instance Pretty Level where
+  pretty = \case
+    Warn  -> pretty "warning"
+    Error -> pretty "error"
+
+
+data Notice a = Notice
+  { level   :: !(Maybe Level)
+  , source  :: {-# UNPACK #-} !Source
+  , reason  :: !(P.Doc a)
+  , context :: ![P.Doc a]
+  }
+  deriving (Show)
+
+level_ :: Lens' (Notice a) (Maybe Level)
+level_ = lens level $ \ n level -> n{ level }
+
+source_ :: Lens' (Notice a) Source
+source_ = lens source $ \ n source -> n{ source }
+
+reason_ :: Lens' (Notice a) (P.Doc a)
+reason_ = lens reason $ \ n reason -> n{ reason }
+
+context_ :: Lens' (Notice a) [P.Doc a]
+context_ = lens context $ \ n context -> n{ context }
+
+reAnnotateNotice :: (a -> b) -> (Notice a -> Notice b)
+reAnnotateNotice f Notice{ level, source, reason, context} = Notice{ level, source, reason = P.reAnnotate f reason, context = map (P.reAnnotate f) context }
+
+
+data Style a = Style
+  { pathStyle   :: P.Doc a -> P.Doc a
+  , levelStyle  :: Level -> P.Doc a -> P.Doc a
+  , posStyle    :: P.Doc a -> P.Doc a
+  , gutterStyle :: P.Doc a -> P.Doc a
+  , eofStyle    :: P.Doc a -> P.Doc a
+  , caretStyle  :: P.Doc a -> P.Doc a
+  }
+
+identityStyle :: Style a
+identityStyle = Style
+  { pathStyle   = id
+  , levelStyle  = const id
+  , posStyle    = id
+  , gutterStyle = id
+  , eofStyle    = id
+  , caretStyle  = id
+  }
+
+prettyNoticeWith :: Style a -> Notice a -> P.Doc a
+prettyNoticeWith Style{ pathStyle, levelStyle, posStyle, gutterStyle, eofStyle, caretStyle } (Notice level (Source path span _ (line:|_)) reason context) = concatWith (surround hardline)
+  ( nest 2 (group (fillSep
+    [ pathStyle (pretty (fromMaybe "(interactive)" path)) <> colon <> pos (Span.start span) <> colon <> foldMap ((space <>) . (<> colon) . (levelStyle <*> pretty)) level
+    , reason
+    ]))
+  : gutterStyle (pretty (succ (Span.line (Span.start span)))) <+> align (vcat
+    [ gutterStyle (pretty '|') <+> prettyLine line
+    , gutterStyle (pretty '|') <+> padding span <> caret span
+    ])
+  : context)
+  where
+  pos (Span.Pos l c) = posStyle (pretty (succ l)) <> colon <> posStyle (pretty (succ c))
+
+  padding (Span.Span (Span.Pos _ c) _) = pretty (replicate c ' ')
+
+  caret (Span.Span start@(Span.Pos sl sc) end@(Span.Pos el ec))
+    | start == end = caretStyle (pretty '^')
+    | sl    == el  = caretStyle (pretty (replicate (ec - sc) '~'))
+    | otherwise    = caretStyle (pretty "^…")
+
+  prettyLine (Line _ line end) = pretty line <> eofStyle (pretty end)
+
+
+prettyNotice :: Notice [SGR] -> P.Doc [SGR]
 prettyNotice = prettyNoticeWith sgrStyle
 
 
--- Parsing
-
-rethrowParseErrors :: L.ThrowC (Notice [SGR]) (Source, Parse.Err) m a -> m a
-rethrowParseErrors = L.runThrow (uncurry Parse.errToNotice)
-
-
--- Elaboration
-
-rethrowElabErrors :: Source -> L.ThrowC (Notice [SGR]) Elab.Err m a -> m a
-rethrowElabErrors src = L.runThrow $ \ Elab.Err{ Elab.span, Elab.reason, Elab.context } ->
-  let reason' = printReason context reason
-  in Notice (Just Error) (slice src span) reason'
-    [ getPrint $ printContextEntry l (n ::: foldCValue explicit Nil _T)
-    | (l, n ::: _T) <- zip [N.Level 0..] (toList (elems context))
-    ]
-    -- FIXME: foldl over the context printing each element in the smaller context before it.
-
-
-printReason :: Context Elab.Type -> Elab.Reason -> Doc [SGR]
-printReason ctx = group . \case
-  Elab.FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
-  Elab.CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
-  Elab.Mismatch msg exp act   ->
-    let exp' = either reflow (printType Nil) exp
-        act' = printType Nil act
-    in reflow msg
-      </> pretty "expected:" <> print exp'
-      </> pretty "  actual:" <> print act'
-    where
-    -- line things up nicely for e.g. wrapped function types
-    print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
-  Elab.Hole n _T              ->
-    let _T' = printType Nil _T
-    in fillSep [reflow "found hole", pretty n, colon, _T' ]
-  Elab.BadContext n           -> fillSep [ reflow "no variable bound for index", pretty (N.getIndex n), reflow "in context of length", pretty (length ctx) ]
-  where
-  -- FIXME: foldl over the context printing each element in the smaller context before it.
-  env = elems ctx
-
-
-printType :: Stack Print -> Elab.Type -> Doc [SGR]
-printType env = getPrint . foldCValue explicit env
-
-
--- IO
-
-rethrowIOErrors :: Source -> L.ThrowC (Notice [SGR]) IOError m a -> m a
-rethrowIOErrors src = L.runThrow $ \ err ->
-  Notice (Just Error) src (group (reflow (show err))) []
+sgrStyle :: Style [SGR]
+sgrStyle = Style
+  { pathStyle   = annotate [SetConsoleIntensity BoldIntensity]
+  , levelStyle  = \case
+    Warn  -> annotate [SetColor Foreground Vivid Magenta]
+    Error -> annotate [SetColor Foreground Vivid Red]
+  , posStyle    = annotate [SetConsoleIntensity BoldIntensity]
+  , gutterStyle = annotate [SetColor Foreground Vivid Blue]
+  , eofStyle    = annotate [SetColor Foreground Vivid Blue]
+  , caretStyle  = annotate [SetColor Foreground Vivid Green]
+  }

@@ -108,24 +108,31 @@ module' = spanned (S.Module <$> mname <* colon <* symbol "Module" <*> pure [] <*
 
 decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned S.Decl))
 decl = spanned
-  $   (,) <$> dename <* colon <*> sig (S.DExpr <$> comp)
-  <|> (,) <$> dtname <* colon <*> sig (S.DData <$> braces (commaSep con))
+  $   (,) <$> dename <* colon <*> spanned (S.TDecl <$> sig S.TDForAll (N.getEName <$> ename) (S.TDBody <$> monotype <*> comp))
+  <|> (,) <$> dtname <* colon <*> spanned (S.DDecl <$> sig S.DDForAll (N.getTName <$> tname) (S.DDBody <$> monotype <*> braces (commaSep con)))
 
-sigTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned S.Decl)
-sigTable =
-  [ [ Op.Operator (forAll (S.:==>)) ]
-  , [ Op.Operator binder ]
-  ]
 
-sig :: (Monad p, PositionParsing p) => Facet p S.DeclBody -> Facet p (Spanned S.Decl)
-sig body = build sigTable (const (spanned ((S.:=) <$> monotype <*> body)))
-
-binder :: (Monad p, PositionParsing p) => OperatorParser (Facet p) (Spanned S.Decl)
-binder self _ = do
-  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> varPattern ename) <* colon <*> type' <* rparen
-  bindVarPattern i $ \ v -> mk start (v S.::: t) <$ arrow <*> self <*> position
+sig
+  :: (Monad p, PositionParsing p)
+  => ((S.Pl_ N.UName S.::: Spanned S.Type) -> Spanned res -> res)
+  -> Facet p N.UName
+  -> Facet p res
+  -> Facet p (Spanned res)
+sig (-->) name body = go
   where
-  mk start t b end = (Span start end, t S.:--> b)
+  go = forAll (-->) go <|> binder (-->) name go <|> spanned body
+
+binder
+  :: (Monad p, PositionParsing p)
+  => ((S.Pl_ N.UName S.::: Spanned S.Type) -> Spanned res -> res)
+  -> Facet p N.UName
+  -> Facet p (Spanned res)
+  -> Facet p (Spanned res)
+binder (-->) name k = do
+  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (coerce <$> name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
+  bind i $ \ v -> mk start (S.ex v S.::: t) <$ arrow <*> k <*> position
+  where
+  mk start t b end = (Span start end, t --> b)
 
 con :: (Monad p, PositionParsing p) => Facet p (Spanned (N.CName S.::: Spanned S.Type))
 con = spanned ((S.:::) <$> cname <* colon <*> type')
@@ -133,33 +140,30 @@ con = spanned ((S.:::) <$> cname <* colon <*> type')
 
 -- Types
 
-typeTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned S.Type)
-typeTable = [ Op.Operator (forAll (S.:=>)) ] : monotypeTable
-
 monotypeTable :: (Monad p, PositionParsing p) => Table (Facet p) (Spanned S.Type)
 monotypeTable =
   [ [ Infix R (pack "->") (\ s -> fmap ((,) s) . (S.:->)) ]
   , [ Infix L mempty (\ s -> fmap ((,) s) . (S.:$$)) ]
-  , [ -- FIXME: we should treat these as globals.
-      Atom (spanned (S.Type  <$ token (string "Type")))
+  , [ -- FIXME: we should treat this as a global.
+      Atom (spanned (S.Type <$ token (string "Type")))
     , Atom tvar
     ]
   ]
 
 forAll
   :: (Monad p, PositionParsing p)
-  => ((N.UName S.::: Spanned S.Type) -> Spanned res -> res)
-  -> OperatorParser (Facet p) (Spanned res)
-forAll mk self _ = do
+  => ((S.Pl_ N.UName S.::: Spanned S.Type) -> Spanned res -> res)
+  -> Facet p (Spanned res) -> Facet p (Spanned res)
+forAll mk k = do
   start <- position
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
-  arrow *> foldr (loop start ty) self names
+  arrow *> foldr (loop start ty) k names
   where
-  loop start ty i rest = bind i $ \ v -> mk' start (v S.::: ty) <$> rest <*> position
+  loop start ty i rest = bind i $ \ v -> mk' start (S.im v S.::: ty) <$> rest <*> position
   mk' start t b end = (Span start end, mk t b)
 
 type' :: (Monad p, PositionParsing p) => Facet p (Spanned S.Type)
-type' = build typeTable parens
+type' = forAll (\ (n S.::: _T) b -> S.out n S.::: _T S.:=> b) type' <|> monotype
 
 monotype :: (Monad p, PositionParsing p) => Facet p (Spanned S.Type)
 monotype = build monotypeTable parens
@@ -204,14 +208,6 @@ bindPattern :: PositionParsing p => S.Pattern -> Facet p a -> Facet p a
 bindPattern p m = case p of
   S.PVar n    -> bind n (const m)
   S.PCon _ ps -> foldr (bindPattern . snd) m ps
-
-bindVarPattern :: Maybe N.EName -> (N.UName -> Facet p res) -> Facet p res
-bindVarPattern Nothing  = bind (N.EName N.__)
-bindVarPattern (Just n) = bind n
-
-
-varPattern :: (Monad p, TokenParsing p) => p name -> p (Maybe name)
-varPattern n = Just <$> n <|> Nothing <$ wildcard
 
 
 wildcard :: (Monad p, TokenParsing p) => p ()
