@@ -5,7 +5,6 @@ module Facet.Lexer
 , token
 ) where
 
-import Control.Applicative ((<|>))
 import Data.Char (isSpace)
 import Facet.Name
 import Facet.Span
@@ -47,7 +46,19 @@ skipSpace :: CharParsing p => p ()
 skipSpace = skipMany (satisfy isSpace)
 
 kind_ :: CharParsing p => p TokenKind
-kind_ = comment <|> underscore <|> colon <|> lparen <|> rparen <|> lbrace <|> rbrace <|> lbracket <|> rbracket <|> langle <|> rangle
+kind_ = choice
+  [ comment
+  , underscore
+  , colon
+  , lparen
+  , rparen
+  , lbrace
+  , rbrace
+  , lbracket
+  , rbracket
+  , langle
+  , rangle
+  ]
   where
   comment = Comment <$ char '#' <*> many (satisfy (/= '\n'))
   underscore = Underscore <$ char '_'
