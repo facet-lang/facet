@@ -30,6 +30,7 @@ import qualified Facet.Carrier.State.Lens as L
 import qualified Facet.Carrier.Throw.Inject as I
 import qualified Facet.Elab as Elab
 import qualified Facet.Env as Env
+import           Facet.Eval
 import           Facet.Notice
 import           Facet.Notice.Elab
 import           Facet.Notice.Parser
@@ -117,8 +118,9 @@ loop = do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (t ::: _T) -> (:::) <$> Elab.apply s t <*> Elab.apply s _T) (Elab.elabType t Nothing)
       print (getPrint (ann (foldSType surface Nil t ::: foldCValue surface Nil _T)))
     Eval e -> do -- FIXME: actually evaluate
-      _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-      print (getPrint (ann (foldSExpr surface Nil e ::: foldCValue surface Nil _T)))
+      e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
+      e'' <- L.runState env_ $ Env.runEnv @Elab.Type $ eval e'
+      print (getPrint (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil _T)))
 
 
 -- TODO:
