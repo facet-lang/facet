@@ -176,7 +176,8 @@ reload src = do
     (do
       src <- liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
       m <- rethrowParseErrors (runParserWithSource src (runFacet [] (whole module')))
-      m' <- elab src $ Elab.elabModule m
+      (env, m') <- elab src $ Elab.elabModule m
+      env_ %= (<> env)
       file{ loaded = True } <$ print (getPrint (foldCModule surface m')))
       `catchError` \ n ->
         file <$ print (indent 2 (prettyNotice n))

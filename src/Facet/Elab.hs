@@ -456,8 +456,8 @@ elabModule
   :: forall m sig
   .  (HasCallStack, Has (Throw Err) sig m)
   => Spanned S.Module
-  -> m C.Module
-elabModule (s, S.Module mname _is ds) = runReader s . evalState (mempty @(Env.Env Type)) $ do
+  -> m (Env.Env Type, C.Module)
+elabModule (s, S.Module mname _is ds) = runReader s . runState (fmap pure . (,)) (mempty @(Env.Env Type)) $ do
   -- FIXME: trace the defs as we elaborate them
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
