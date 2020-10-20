@@ -19,6 +19,7 @@ module Facet.Core
 , elimN
 , subst
 , bind
+, mvs
   -- * Patterns
 , Pattern(..)
 , fill
@@ -34,6 +35,7 @@ import           Data.Bifunctor
 import           Data.Bitraversable
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
+import qualified Data.IntSet as IntSet
 import           Data.Monoid (First(..))
 import           Data.Semialign
 import           Data.Traversable (mapAccumL)
@@ -240,6 +242,20 @@ bind target with = go
   elim = \case
     EApp a   -> EApp (fmap go a)
     ECase cs -> ECase (map (bimap (bimap go (fmap go)) (go .)) cs)
+
+
+mvs :: Level -> Value -> IntSet.IntSet
+mvs d = \case
+  VType                   -> mempty
+  VForAll (_ ::: t) b     -> mvs d t <> mvs (succ d) (b (free d))
+  VLam (_ ::: t) b        -> mvs d t <> mvs (succ d) (b (free d))
+  VNeut h sp              -> unHead (mvs d . ty) mempty (IntSet.insert . getMeta . tm <*> mvs d . ty) h <> foldMap goE sp
+    where
+    goE = \case
+      EApp a   -> foldMap (mvs d) a
+      ECase cs -> foldMap goClause cs
+    goClause (p, b) = bifoldMap (mvs d) (mvs d . ty) p <> let (d', p') = fill ((,) . succ <*> free) d p in  mvs d' (b p')
+  VCon (Con (_ ::: t) fs) -> mvs d t <> foldMap (mvs d) fs
 
 
 -- Patterns
