@@ -1,5 +1,6 @@
 Effect.State
-: Module
+: [Base.Unit]
+  Module
 {
 
 State : (S : Type) -> Interface
