@@ -28,6 +28,10 @@ data TokenKind
   | RParen
   | LBrace
   | RBrace
+  | LBracket
+  | RBracket
+  | LAngle
+  | RAngle
   | OpIdent String
   | MIdent MName
   | EIdent EName
@@ -43,7 +47,7 @@ skipSpace :: CharParsing p => p ()
 skipSpace = skipMany (satisfy isSpace)
 
 kind_ :: CharParsing p => p TokenKind
-kind_ = comment <|> underscore <|> colon <|> lparen <|> rparen <|> lbrace <|> rbrace
+kind_ = comment <|> underscore <|> colon <|> lparen <|> rparen <|> lbrace <|> rbrace <|> lbracket <|> rbracket <|> langle <|> rangle
   where
   comment = Comment <$ char '#' <*> many (satisfy (/= '\n'))
   underscore = Underscore <$ char '_'
@@ -52,3 +56,7 @@ kind_ = comment <|> underscore <|> colon <|> lparen <|> rparen <|> lbrace <|> rb
   rparen = RParen <$ char ')'
   lbrace = LBrace <$ char '{'
   rbrace = RBrace <$ char '}'
+  lbracket = LBracket <$ char '['
+  rbracket = RBracket <$ char ']'
+  langle = LAngle <$ char '<'
+  rangle = RAngle <$ char '>'
