@@ -1,6 +1,3 @@
-{-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab
 ( Type
 , Expr
