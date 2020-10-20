@@ -188,7 +188,7 @@ resolve n = Synth $ Env.lookup n <$> ask >>= \case
   Just (m :=: _ ::: _T) -> pure $ m :.: n ::: _T
   Nothing
     | E (EName n) <- n  -> synth (resolve (C (CName n)))
-    | otherwise         -> freeVariable n
+    | otherwise         -> freeVariable Nothing n
 
 global
   :: DName
@@ -520,7 +520,7 @@ data Err = Err
   }
 
 data Reason
-  = FreeVariable DName
+  = FreeVariable (Maybe MName) DName
   | CouldNotSynthesize String
   | Mismatch String (Either String Type) Type
   | Hole UName Type
@@ -542,8 +542,8 @@ couldNotUnify t1 t2 = mismatch "mismatch" (Right t2) t1
 couldNotSynthesize :: String -> Elab a
 couldNotSynthesize = err . CouldNotSynthesize
 
-freeVariable :: DName -> Elab a
-freeVariable = err . FreeVariable
+freeVariable :: Maybe MName -> DName -> Elab a
+freeVariable m n = err $ FreeVariable m n
 
 expectChecked :: Maybe Type -> String -> Elab Type
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
