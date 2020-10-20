@@ -63,11 +63,12 @@ kind_ = choice
   , RBracket   <$  char ']' <?> "]"
   , LAngle     <$  char '<' <?> "<"
   , RAngle     <$  char '>' <?> ">"
-  , MIdent     <$> (foldl' (:.) . MName <$> tcomp <* dot <*> sepBy tcomp dot) <?> "module name"
+  , MIdent     <$> mname
   , EIdent     <$> ecomp <?> "term name"
   , TIdent     <$> tcomp <?> "type name"
   ]
   where
+  mname = foldl' (:.) . MName <$> tcomp <* dot <*> sepBy tcomp dot <?> "module name"
   dot = char '.' <?> "."
   ecomp = ident (choice [ lower, char '_' ]) nameChar
   tcomp :: (Coercible t Text, CharParsing p) => p t
