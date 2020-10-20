@@ -9,6 +9,7 @@ import Facet.Core hiding (eval)
 import Facet.Env as E
 import Facet.Syntax
 
+-- FIXME: erase terms before evaluating.
 eval :: Has (Reader (Env Value)) sig m => Value -> m Value
 eval = \case
   VNeut h sp -> do
