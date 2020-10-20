@@ -434,7 +434,7 @@ elabTDecl d = go d
     S.TDForAll (n ::: t) b ->
       let b' ::: _B = go b
       in lam n (|- b') :::
-          checkElab (switch (__ <$ n ::: checkElab (elabType t) >~> (|- _B)))
+          checkElab (switch (unPl_ im (const (ex __)) n ::: checkElab (elabType t) >~> (|- _B)))
 
     S.TDBody t b -> checkElab (elabExpr b) ::: checkElab (elabType t)
 
