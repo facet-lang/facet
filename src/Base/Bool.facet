@@ -16,4 +16,9 @@ and : Bool -> Bool -> Bool
 , _      _      -> false
 }
 
+or : Bool -> Bool -> Bool
+{ (false) (false) -> false
+, _       _       -> true
+}
+
 }
