@@ -47,15 +47,15 @@ skipSpace = skipMany (satisfy isSpace)
 
 kind_ :: CharParsing p => p TokenKind
 kind_ = choice
-  [ Comment <$ char '#' <*> many (satisfy (/= '\n'))
+  [ Comment    <$ char '#' <*> many (satisfy (/= '\n'))
   , Underscore <$ char '_'
-  , Colon <$ char ':'
-  , LParen <$ char '('
-  , RParen <$ char ')'
-  , LBrace <$ char '{'
-  , RBrace <$ char '}'
-  , LBracket <$ char '['
-  , RBracket <$ char ']'
-  , LAngle <$ char '<'
-  , RAngle <$ char '>'
+  , Colon      <$ char ':'
+  , LParen     <$ char '('
+  , RParen     <$ char ')'
+  , LBrace     <$ char '{'
+  , RBrace     <$ char '}'
+  , LBracket   <$ char '['
+  , RBracket   <$ char ']'
+  , LAngle     <$ char '<'
+  , RAngle     <$ char '>'
   ]
