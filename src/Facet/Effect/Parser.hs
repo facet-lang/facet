@@ -4,7 +4,6 @@ module Facet.Effect.Parser
   Parser(..)
 , accept
 , position
-, spanned
   -- * Re-exports
 , Algebra
 , Has
@@ -27,11 +26,3 @@ accept p = send (Accept p)
 position :: Has Parser sig m => m Span.Pos
 position = send Position
 {-# INLINE position #-}
-
-spanned :: Has Parser sig m => m a -> m (Span.Span, a)
-spanned m = do
-  start <- position
-  a <- m
-  end <- position
-  pure (Span.Span start end, a)
-{-# INLINE spanned #-}
