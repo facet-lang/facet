@@ -12,9 +12,9 @@ State : (S : Type) -> Interface
 modify : { S : Type } -> (f : S -> S) -> [State S]{Unit}
 { put (f get!) }
 
-state : { S, A : Type } -> (s : S) -> [State S]A -> A
-{ [ get   ; k ] -> state s (k s)
-, [ put s ; k ] -> state s (k unit)
+evalState : { S, A : Type } -> (s : S) -> [State S]A -> A
+{ [ get   ; k ] -> evalState s (k s)
+, [ put s ; k ] -> evalState s (k unit)
 , a             -> a }
 
 }
