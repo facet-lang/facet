@@ -35,7 +35,6 @@ import           Data.Bifunctor
 import           Data.Bitraversable
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
-import qualified Data.IntSet as IntSet
 import           Data.Monoid (First(..))
 import           Data.Semialign
 import           Data.Traversable (mapAccumL)
@@ -244,12 +243,12 @@ bind target with = go
     ECase cs -> ECase (map (bimap (bimap go (fmap go)) (go .)) cs)
 
 
-mvs :: Level -> Value -> IntSet.IntSet
+mvs :: Level -> Value -> IntMap.IntMap Value
 mvs d = \case
   VType                   -> mempty
   VForAll (_ ::: t) b     -> mvs d t <> mvs (succ d) (b (free d))
   VLam (_ ::: t) b        -> mvs d t <> mvs (succ d) (b (free d))
-  VNeut h sp              -> unHead (mvs d . ty) mempty (IntSet.insert . getMeta . tm <*> mvs d . ty) h <> foldMap goE sp
+  VNeut h sp              -> unHead (mvs d . ty) mempty (\ (m ::: _T) -> IntMap.insert (getMeta m) _T (mvs d _T)) h <> foldMap goE sp
     where
     goE = \case
       EApp a   -> foldMap (mvs d) a
