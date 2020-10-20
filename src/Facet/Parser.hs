@@ -108,14 +108,14 @@ module' = spanned (S.Module <$> mname <* colon <* symbol "Module" <*> pure [] <*
 
 decl :: (Monad p, PositionParsing p) => Facet p (Spanned (N.DName, Spanned S.Decl))
 decl = spanned
-  $   (,) <$> dename <* colon <*> sig (N.getEName <$> ename) (S.DExpr <$> comp)
-  <|> (,) <$> dtname <* colon <*> sig (N.getTName <$> tname) (S.DData <$> braces (commaSep con))
+  $   (,) <$> dename <* colon <*> sig (S.:-->) (N.getEName <$> ename) (S.DExpr <$> comp)
+  <|> (,) <$> dtname <* colon <*> sig (S.:-->) (N.getTName <$> tname) (S.DData <$> braces (commaSep con))
 
 
-sig :: (Monad p, PositionParsing p) => Facet p N.UName -> Facet p S.DeclBody -> Facet p (Spanned S.Decl)
-sig name body = go
+sig :: (Monad p, PositionParsing p) => ((N.UName S.::: Spanned S.Type) -> Spanned S.Decl -> S.Decl) -> Facet p N.UName -> Facet p S.DeclBody -> Facet p (Spanned S.Decl)
+sig (-->) name body = go
   where
-  go = forAll (S.:==>) go <|> binder (S.:-->) name go <|> spanned ((S.:=) <$> monotype <*> body)
+  go = forAll (S.:==>) go <|> binder (-->) name go <|> spanned ((S.:=) <$> monotype <*> body)
 
 binder
   :: (Monad p, PositionParsing p)
