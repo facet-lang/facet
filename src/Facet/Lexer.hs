@@ -62,9 +62,12 @@ kind_ = choice
   , RBracket   <$  char ']' <?> "close bracket"
   , LAngle     <$  char '<' <?> "open angle bracket"
   , RAngle     <$  char '>' <?> "close angle bracket"
-  , EIdent     <$> ident (choice [ lower, char '_' ]) nameChar <?> "term name"
-  , TIdent     <$> ident (choice [ upper, char '_' ]) nameChar <?> "type name"
+  , EIdent     <$> ecomp <?> "term name"
+  , TIdent     <$> tcomp <?> "type name"
   ]
+  where
+  ecomp = ident (choice [ lower, char '_' ]) nameChar
+  tcomp = ident (choice [ upper, char '_' ]) nameChar
 
 ident :: (Coercible t Text, CharParsing p) => p Char -> p Char -> p t
 ident i r = fmap (coerce . pack) . (:) <$> i <*> many r
