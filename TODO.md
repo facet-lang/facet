@@ -59,6 +59,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - Write signatures in positive and negative positions with the same syntax?
   - Frank uses <…> for handled effects, and […] for required ones; I’m not sure the distinction is necessary.
 
+- Write signature patterns with square brackets.
+
 
 ### Modules
 
