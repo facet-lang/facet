@@ -403,7 +403,13 @@ elabDecl d = go d id id
   go d km kt = withSpans d $ \case
     (n ::: t) S.:==> b ->
       go b
-        (km . (\ b  -> lam n (|- b)))
+        -- implicit quantifiers generate lambdas, explicit quantifiers (e.g. on datatypes) generate implicit quantifiers
+        (km . (\ b  -> case pl n of
+          Im -> lam n (|- b)
+          Ex -> Check $ \ _T -> do
+            (_ ::: _T, _B) <- expectQuantifier "in type quantifier" _T
+            b' <- elabBinder $ \ _ -> check ((out n ::: _T |- b) ::: VType)
+            pure $ VForAll (im (out n) ::: _T) b'))
         (kt . (\ _B -> checkElab (switch (n ::: checkElab (elabType t) >~> (|- _B)))))
 
     (n ::: t) S.:--> b ->
