@@ -8,4 +8,7 @@ State : (S : Type) -> Interface
 , put : S -> Unit # S -> [State S]{Unit}
 }
 
+modify : { S : Type } -> (f : S -> S) -> [State S]{Unit}
+{ put (f get!) }
+
 }
