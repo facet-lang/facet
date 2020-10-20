@@ -180,6 +180,7 @@ exprTable =
   , [ Atom comp
     , Atom (spanned (S.Hole <$> hname))
     , Atom evar
+    , Atom (spanned (S.Qual <$> qname))
     ]
   ]
 
