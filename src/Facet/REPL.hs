@@ -99,11 +99,11 @@ loop = do
   resp <- prompt
   runError (print . prettyNotice) pure $ case resp of
     -- FIXME: evaluate expressions
-    Just src -> rethrowParseErrors (runParserWithSource src (runFacet [] (whole commandParser))) >>= runAction src
+    Just src -> rethrowParseErrors (runParserWithSource src commandParser) >>= runAction src
     Nothing  -> pure ()
   loop
   where
-  commandParser = parseCommands commands
+  commandParser = runFacet [] (whole (parseCommands commands))
 
   runAction src = \case
     Help -> print helpDoc
