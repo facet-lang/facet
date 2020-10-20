@@ -2,4 +2,9 @@ Effect.State
 : Module
 {
 
+State : (S : Type) -> Interface
+{ get : S
+, put : S -> Unit
+}
+
 }
