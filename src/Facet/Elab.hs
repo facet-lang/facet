@@ -94,7 +94,7 @@ elab :: Has (Reader Span :+: State (Env.Env Type) :+: Throw Err) sig m => Elab V
 elab = elabWith apply
 
 elabWith :: Has (Reader Span :+: State (Env.Env Type) :+: Throw Err) sig m => (Subst -> a -> m b) -> Elab a -> m b
-elabWith f = runSubstWith f . runContext . runEnv . runElab
+elabWith f = runSubstWith f . runContext . Env.runEnv @Type . runElab
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
@@ -502,12 +502,6 @@ runSubstWith with = runState with emptySubst
 
 runContext :: ReaderC (Context Type) m a -> m a
 runContext = runReader empty
-
-runEnv :: Has (State (Env.Env Type)) sig m => ReaderC (Env.Env Type) m a -> m a
-runEnv m = do
-  env <- get @(Env.Env Type)
-  runReader env m
-
 
 
 -- Errors

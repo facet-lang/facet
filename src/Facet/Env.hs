@@ -6,8 +6,11 @@ module Facet.Env
 , lookup
 , lookupQ
 , insert
+, runEnv
 ) where
 
+import           Control.Carrier.Reader
+import           Control.Effect.State
 import           Control.Monad (guard, (<=<))
 import           Data.List (uncons)
 import qualified Data.Map as Map
@@ -32,3 +35,9 @@ lookupQ (m :.: d) = Map.lookup m <=< Map.lookup d . getEnv
 
 insert :: QName :=: Maybe a ::: a -> Env a -> Env a
 insert (m :.: d :=: v) = Env . Map.insertWith (<>) d (Map.singleton m v) . getEnv
+
+
+runEnv :: Has (State (Env a)) sig m => ReaderC (Env a) m b -> m b
+runEnv m = do
+  env <- get
+  runReader env m
