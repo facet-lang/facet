@@ -65,8 +65,8 @@ kind_ = choice
   , RAngle     <$  char '>' <?> ">"
   , QIdent     <$> ((:.:) <$> mname <* dot <*> choice [ E <$> ename, T <$> tname ])
   , MIdent     <$> mname
-  , EIdent     <$> ename
-  , TIdent     <$> tname
+  , EIdent     <$> EName <$> ename
+  , TIdent     <$> TName <$> tname
   , HIdent     <$> ident (char '?') nameChar <?> "hole name"
   ]
   where

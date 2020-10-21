@@ -164,7 +164,7 @@ monotype :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned S.T
 monotype = build monotypeTable parens
 
 tvar :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned S.Type)
-tvar = token (spanned (runUnspaced (fmap (either (S.TFree . N.T) (S.TBound)) . resolve <$> tname <*> Unspaced env <?> "variable")))
+tvar = token (spanned (runUnspaced (fmap (either (S.TFree . N.T . N.getTName) (S.TBound)) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
 -- Expressions
@@ -194,7 +194,7 @@ clause = (do
 
 evar :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned S.Expr)
 evar
-  =   token (spanned (runUnspaced (fmap (either (S.Free . N.E) S.Bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
+  =   token (spanned (runUnspaced (fmap (either (S.Free . N.E . N.getEName) S.Bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
   <|> try (token (spanned (runUnspaced (S.Free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
 
 
@@ -254,10 +254,10 @@ tname :: (Monad p, TokenParsing p) => p N.TName
 tname = ident tnameStyle
 
 dename :: (Monad p, TokenParsing p) => p N.DName
-dename  = N.E <$> ename <|> N.O <$> oname
+dename  = N.E . N.getEName <$> ename <|> N.O <$> oname
 
 dtname :: (Monad p, TokenParsing p) => p N.DName
-dtname  = N.T <$> tname
+dtname  = N.T . N.getTName<$> tname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
 mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy comp dot))

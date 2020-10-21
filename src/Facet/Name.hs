@@ -164,9 +164,9 @@ newtype TName = TName { getTName :: UName }
 
 -- | Declaration names; a choice of expression, term, or operator names.
 data DName
-  = E EName
-  | C CName
-  | T TName
+  = E UName
+  | C UName
+  | T UName
   | O Op
   deriving (Eq, Ord, Show)
 

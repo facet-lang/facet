@@ -124,7 +124,7 @@ foldCValue alg = go
 foldCModule :: Algebra p -> C.Module -> p
 foldCModule alg (C.Module n is ds) = module_ alg
   $   n
-  ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (TName (UName (T.pack "Module"))))))
+  ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module")))))
   :=: (map (\ (C.Import n) -> import' alg n) is, map def ds)
   where
   def (m :.: n, d ::: t) = decl alg
@@ -215,4 +215,4 @@ foldSTDecl alg = go Nil
     level = Level (length env)
 
 foldSModule :: Algebra p -> Spanned S.Module -> p
-foldSModule alg (_, S.Module m is ds) = module_ alg $ m ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (TName (UName (T.pack "Module")))))) :=: (map (\ (_, S.Import n) -> import' alg n) is, map (\ (_, (n, d)) -> decl alg (var alg (Global (Just m) n) ::: foldSDecl alg d)) ds)
+foldSModule alg (_, S.Module m is ds) = module_ alg $ m ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module"))))) :=: (map (\ (_, S.Import n) -> import' alg n) is, map (\ (_, (n, d)) -> decl alg (var alg (Global (Just m) n) ::: foldSDecl alg d)) ds)

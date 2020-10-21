@@ -174,8 +174,8 @@ resolve
 resolve n = Synth $ Env.lookup n <$> ask >>= \case
   Just (m :=: _ ::: _T) -> pure $ m :.: n ::: _T
   Nothing
-    | E (EName n) <- n  -> synth (resolve (C (CName n)))
-    | otherwise         -> freeVariable Nothing n
+    | E n <- n  -> synth (resolve (C n))
+    | otherwise -> freeVariable Nothing n
 
 resolveQ
   :: QName
@@ -183,8 +183,8 @@ resolveQ
 resolveQ q@(m :.: n) = Synth $ Env.lookupQ q <$> ask >>= \case
   Just (_ ::: _T) -> pure $ q ::: _T
   Nothing
-    | E (EName n) <- n  -> synth (resolveQ (m :.: C (CName n)))
-    | otherwise         -> freeVariable (Just m) n
+    | E n <- n  -> synth (resolveQ (m :.: C n))
+    | otherwise -> freeVariable (Just m) n
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global
@@ -372,7 +372,7 @@ elabPattern = withSpan $ \case
   S.PVar n    -> Check $ \ _T -> pure (C.PVar (n ::: _T))
   S.PCon n ps -> Check $ \ _T -> do
     -- FIXME: we probably need to instantiate implicits here
-    q ::: _T' <- synth (resolve (C n))
+    q ::: _T' <- synth (resolve (C (getCName n)))
     let go _T' = \case
           Nil   -> Nil <$ unify (_T' :===: _T)
           ps:>p -> do
@@ -465,9 +465,9 @@ elabModule (s, S.Module mname _is ds) = runReader s . runState (fmap pure . (,))
           _T' <- apply s _T
           let go fs = \case
                 VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
-                _T            -> VCon (Con (mname :.: C n ::: _T) fs)
+                _T            -> VCon (Con (mname :.: C (getCName n) ::: _T) fs)
           c <- apply s (go Nil _T')
-          modify $ Env.insert (mname :.: C n :=: Just c ::: _T')
+          modify $ Env.insert (mname :.: C (getCName n) :=: Just c ::: _T')
           pure $ n ::: _T'
         pure (qname, C.DData cs' ::: _T)
       Right e' -> do
