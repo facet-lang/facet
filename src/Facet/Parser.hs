@@ -103,7 +103,7 @@ module' = spanned (S.Module <$> mname <* colon <* symbol "Module" <*> pure [] <*
 decl :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned (N.DName, Spanned S.Decl))
 decl = spanned
   $   (,) <$> dename <* colon <*> spanned (S.TDecl <$> sig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
-  <|> (,) <$> dtname <* colon <*> spanned (S.DDecl <$> sig S.DDForAll (N.getTName <$> tname) (S.DDBody <$> monotype <*> braces (commaSep con)))
+  <|> (,) <$> dtname <* colon <*> spanned (S.DDecl <$> sig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
 
 
 sig
@@ -164,7 +164,7 @@ monotype :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned S.T
 monotype = build monotypeTable parens
 
 tvar :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned S.Type)
-tvar = token (spanned (runUnspaced (fmap (either (S.TFree . N.T . N.getTName) (S.TBound)) . resolve <$> tname <*> Unspaced env <?> "variable")))
+tvar = token (spanned (runUnspaced (fmap (either (S.TFree . N.T) (S.TBound)) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
 -- Expressions
@@ -250,14 +250,14 @@ hname = ident hnameStyle
 cname :: (Monad p, TokenParsing p) => p N.CName
 cname = ident cnameStyle
 
-tname :: (Monad p, TokenParsing p) => p N.TName
+tname :: (Monad p, TokenParsing p) => p N.UName
 tname = ident tnameStyle
 
 dename :: (Monad p, TokenParsing p) => p N.DName
 dename  = N.E <$> ename <|> N.O <$> oname
 
 dtname :: (Monad p, TokenParsing p) => p N.DName
-dtname  = N.T . N.getTName<$> tname
+dtname  = N.T <$> tname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
 mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy comp dot))
