@@ -15,7 +15,6 @@ module Facet.Name
 , moduleName
 , EName(..)
 , CName(..)
-, TName(..)
 , DName(..)
 , Assoc(..)
 , Op(..)
@@ -156,10 +155,6 @@ newtype EName = EName { getEName :: UName }
 
 -- | Constructor names, as provided by the user.
 newtype CName = CName { getCName :: UName }
-  deriving newtype (Eq, IsString, Ord, P.Pretty, Show)
-
--- | Type names, as provided by the user.
-newtype TName = TName { getTName :: UName }
   deriving newtype (Eq, IsString, Ord, P.Pretty, Show)
 
 -- | Declaration names; a choice of expression, term, or operator names.
