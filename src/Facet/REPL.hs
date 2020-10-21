@@ -146,6 +146,7 @@ commands :: [Command Action]
 commands =
   [ Command ["help", "h", "?"]  "display this list of commands" $ Pure Help
   , Command ["quit", "q"]       "exit the repl"                 $ Pure Quit
+  , Command ["show"]            "show compiler state"           $ Meta "target" $ Show Paths <$ whole (token (string "paths"))
   , Command ["load", "l"]       "add a module to the repl"      $ Meta "path" load_
   , Command ["reload", "r", ""] "reload the loaded modules"     $ Pure Reload
   , Command ["type", "t"]       "show the type of <expr>"       $ Meta "expr" type_
@@ -174,6 +175,7 @@ data Action
 
 data Target
   = Paths
+  | Modules
 
 load :: (Has (Error (Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
 load src path = do
