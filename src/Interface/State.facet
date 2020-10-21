@@ -1,8 +1,9 @@
 Interface.State
-: [ Data.Function
-  , Data.Pair
-  , Data.Unit ]
-  Module
+: Module
+
+[ Data.Function
+, Data.Pair
+, Data.Unit ]
 
 # FIXME: should we require the return types to be written more explicitly?
 State : (S : Type) -> Interface
