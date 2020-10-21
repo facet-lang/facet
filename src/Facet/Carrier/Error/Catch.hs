@@ -1,11 +1,11 @@
 module Facet.Carrier.Error.Catch
-( -- * Catch Carrier
+( -- * Error Carrier
   ErrorC(..)
-  -- * Catch effect
-, module Control.Effect.Catch
+  -- * Error effect
+, module Control.Effect.Error
 ) where
 
-import Control.Effect.Catch
+import Control.Effect.Error
 import Control.Monad.IO.Class
 
 newtype ErrorC e m a = ErrorC { runError :: m a }
