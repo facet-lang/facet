@@ -43,6 +43,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Effects.
 
+- Group quantifiers of different kinds in a single set of braces.
+
 - Allow binding operator names as local variables.
 
 - Warn if binding a variable with the same name as an in-scope constructor in a pattern match? We can still write `true` when we mean to write `(true)` and be surprised at the results, it just can’t break out from under us.
