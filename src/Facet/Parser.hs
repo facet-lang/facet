@@ -25,7 +25,7 @@ import qualified Facet.Name as N
 import           Facet.Parser.Table as Op
 import           Facet.Stack
 import qualified Facet.Surface as S
-import qualified Facet.Syntax as S
+import           Facet.Syntax
 import           Prelude hiding (lines, null, product, span)
 import           Text.Parser.Char
 import           Text.Parser.Combinators
@@ -108,7 +108,7 @@ decl = spanned
 
 sig
   :: (Monad p, PositionParsing p, TokenParsing p)
-  => ((S.Pl_ N.UName S.::: Spanned S.Type) -> Spanned res -> res)
+  => (Pl_ N.UName ::: Spanned S.Type -> Spanned res -> res)
   -> Facet p N.UName
   -> Facet p res
   -> Facet p (Spanned res)
@@ -118,18 +118,18 @@ sig (-->) name body = go
 
 binder
   :: (Monad p, PositionParsing p, TokenParsing p)
-  => ((S.Pl_ N.UName S.::: Spanned S.Type) -> Spanned res -> res)
+  => (Pl_ N.UName ::: Spanned S.Type -> Spanned res -> res)
   -> Facet p N.UName
   -> Facet p (Spanned res)
   -> Facet p (Spanned res)
 binder (-->) name k = do
   ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (coerce <$> name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
-  bind i $ \ v -> mk start (S.ex v S.::: t) <$ arrow <*> k <*> position
+  bind i $ \ v -> mk start (ex v ::: t) <$ arrow <*> k <*> position
   where
   mk start t b end = (Span start end, t --> b)
 
-con :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned (N.UName S.::: Spanned S.Type))
-con = spanned ((S.:::) <$> cname <* colon <*> type')
+con :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned (N.UName ::: Spanned S.Type))
+con = spanned ((:::) <$> cname <* colon <*> type')
 
 
 -- Types
@@ -147,18 +147,18 @@ monotypeTable =
 
 forAll
   :: (Monad p, PositionParsing p, TokenParsing p)
-  => ((S.Pl_ N.UName S.::: Spanned S.Type) -> Spanned res -> res)
+  => (Pl_ N.UName ::: Spanned S.Type -> Spanned res -> res)
   -> Facet p (Spanned res) -> Facet p (Spanned res)
 forAll mk k = do
   start <- position
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
   arrow *> foldr (loop start ty) k names
   where
-  loop start ty i rest = bind i $ \ v -> mk' start (S.im v S.::: ty) <$> rest <*> position
+  loop start ty i rest = bind i $ \ v -> mk' start (im v ::: ty) <$> rest <*> position
   mk' start t b end = (Span start end, mk t b)
 
 type' :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned S.Type)
-type' = forAll (\ (n S.::: _T) b -> S.out n S.::: _T S.:=> b) type' <|> monotype
+type' = forAll (\ (n ::: _T) b -> out n ::: _T S.:=> b) type' <|> monotype
 
 monotype :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned S.Type)
 monotype = build monotypeTable parens
