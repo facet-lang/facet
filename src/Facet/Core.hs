@@ -20,6 +20,7 @@ module Facet.Core
 , subst
 , bind
 , mvs
+, generalize
   -- * Patterns
 , Pattern(..)
 , fill
@@ -38,7 +39,7 @@ import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Semialign
 import           Data.Traversable (mapAccumL)
-import           Facet.Name (CName, Level(..), MName, Meta(..), QName, UName)
+import           Facet.Name (CName, Level(..), MName, Meta(..), QName, UName, __)
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
@@ -255,6 +256,13 @@ mvs d = \case
       ECase cs -> foldMap goClause cs
     goClause (p, b) = bifoldMap (mvs d) (mvs d . ty) p <> let (d', p') = fill ((,) . succ <*> free) d p in  mvs d' (b p')
   VCon (Con (_ ::: t) fs) -> mvs d t <> foldMap (mvs d) fs
+
+
+generalize :: Value -> Value
+generalize v = build s v
+  where
+  metas = mvs (Level 0) v
+  (_, build, s) = IntMap.foldrWithKey (\ m _T (d, f, s) -> (succ d, \ s b -> VForAll (im __ ::: _T) (\ v -> bind d v (f s b)), IntMap.insert m (free d) s)) (Level 0, subst, IntMap.empty) metas
 
 
 -- Patterns
