@@ -1,6 +1,7 @@
 module Facet.Surface
 ( -- * Expressions
   Expr(..)
+, ($$)
 , unApp
 , Comp(..)
 , Pattern(..)
@@ -42,6 +43,12 @@ data Expr
   deriving (Show)
 
 infixl 9 :$
+
+
+($$) :: Ann Expr -> Ann Expr -> Ann Expr
+f $$ a = Ann (ann f <> ann a) (f :$ a)
+
+infixl 9 $$
 
 
 unApp :: Has Empty sig m => Expr -> m (Ann Expr, Ann Expr)
