@@ -13,7 +13,6 @@ module Facet.Name
 , MName(..)
 , QName(..)
 , moduleName
-, EName(..)
 , CName(..)
 , DName(..)
 , Assoc(..)
@@ -148,10 +147,6 @@ instance P.Pretty QName where
 moduleName :: QName -> MName
 moduleName (mname :.: _) = mname
 
-
--- | Expression names, as provided by the user.
-newtype EName = EName { getEName :: UName }
-  deriving newtype (Eq, IsString, Ord, P.Pretty, Show)
 
 -- | Constructor names, as provided by the user.
 newtype CName = CName { getCName :: UName }
