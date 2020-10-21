@@ -131,3 +131,6 @@ data Ann a = Ann
 
 instance Eq a => Eq (Ann a) where
   (==) = (==) `on` out
+
+instance Ord a => Ord (Ann a) where
+  compare = compare `on` out
