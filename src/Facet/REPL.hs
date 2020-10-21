@@ -181,8 +181,8 @@ reload src = do
   files <- use files_
   let lnAll = length files
       lnLoaded = length (filter loaded (toList files))
-      style = if lnLoaded == lnAll then success else failure
-  print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
+      style = if lnLoaded == lnAll then Success else Failure
+  print $ reAnnotate terminalStyle $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
   where
   -- FIXME: check whether files need reloading
   reloadFile ln path file = if loaded file then pure file else do
@@ -198,12 +198,6 @@ reload src = do
       file{ loaded = True } <$ print (prettyCode (foldCModule surface m')))
       `catchError` \ n ->
         file <$ print (indent 2 (prettyNotice' n))
-
-failure :: [SGR]
-failure = [setRGB (hsl 0 1 0.5), setBold]
-
-success :: [SGR]
-success = [setRGB (hsl 120 1 0.5), setBold]
 
 info :: [SGR]
 info = [setRGB (hsl 0 0 0.5), setBold]
