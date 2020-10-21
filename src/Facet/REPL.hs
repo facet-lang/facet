@@ -38,11 +38,11 @@ import           Facet.REPL.Parser
 import           Facet.Source (Source(..), readSourceFromFile, sourceFromString)
 import           Facet.Span (Span)
 import           Facet.Stack
-import           Facet.Style
+import           Facet.Style as Style
 import           Facet.Surface (Ann, Expr, Type)
 import           Facet.Syntax
 import           Prelude hiding (print, span)
-import           Prettyprinter (reAnnotate)
+import           Prettyprinter (reAnnotate, reAnnotateS)
 import           Silkscreen hiding (Ann, line)
 import           System.Console.ANSI
 import           System.IO.Error
@@ -182,13 +182,13 @@ reload src = do
   let lnAll = length files
       lnLoaded = length (filter loaded (toList files))
       style = if lnLoaded == lnAll then Success else Failure
-  print $ reAnnotate terminalStyle $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
+  print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
   where
   -- FIXME: check whether files need reloading
   reloadFile ln path file = if loaded file then pure file else do
     i <- fresh
     -- FIXME: print the module name
-    print $ reAnnotate terminalStyle $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
+    print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
     (do
       src <- liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
@@ -199,7 +199,7 @@ reload src = do
       `catchError` \ n ->
         file <$ print (indent 2 (prettyNotice' n))
 
-helpDoc :: Doc [SGR]
+helpDoc :: Doc Style
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
   where
   entry c =
@@ -216,16 +216,16 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-print :: (Has Readline sig m, MonadIO m) => Doc [SGR] -> m ()
+print :: (Has Readline sig m, MonadIO m) => Doc Style -> m ()
 print d = do
   opts <- liftIO layoutOptionsForTerminal
-  outputStrLn (unpack (renderLazy (layoutSmart opts d)))
+  outputStrLn (unpack (renderLazy (reAnnotateS terminalStyle (layoutSmart opts d))))
 
-prettyNotice' :: Notice Style -> Doc [SGR]
-prettyNotice' = reAnnotate (terminalNoticeStyle . fmap terminalStyle) . prettyNotice
+prettyNotice' :: Notice Style -> Doc Style
+prettyNotice' = reAnnotate Style.Notice . prettyNotice
 
-prettyCode :: Print -> Doc [SGR]
-prettyCode = reAnnotate terminalCodeStyle . getPrint
+prettyCode :: Print -> Doc Style
+prettyCode = reAnnotate Code . getPrint
 
 elab :: Source -> I.ThrowC (Notice Style) Elab.Err (L.StateC REPL Env.Env (ReaderC Span m)) a -> m a
 elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src Code
