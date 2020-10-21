@@ -306,4 +306,4 @@ newtype Import = Import { name :: MName }
 
 data Def
   = DTerm Value
-  | DData [UName ::: Value]
+  | DData [UName :=: Value ::: Value]

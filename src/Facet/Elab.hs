@@ -468,7 +468,7 @@ elabModule (s, S.Module mname _is ds) = runReader s . runState (fmap pure . (,))
                 _T            -> VCon (Con (mname :.: C n ::: _T) fs)
           c <- apply s (go Nil _T')
           modify $ Env.insert (mname :.: C n :=: Just c ::: _T')
-          pure $ n ::: _T'
+          pure $ n :=: c ::: _T'
         pure (qname, C.DData cs' ::: _T)
       Right e' -> do
         e'' <- apply s e'

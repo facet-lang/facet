@@ -133,7 +133,7 @@ foldCModule alg (C.Module n is ds) = module_ alg
     :=: case d of
       C.DTerm b  -> foldCValue alg Nil b
       C.DData cs -> data' alg
-        $ map (decl alg . bimap (var alg . Cons) (foldCValue alg Nil)) cs)
+        $ map (\ (n :=: _ ::: _T) -> decl alg (var alg (Cons n) ::: foldCValue alg Nil _T)) cs)
 
 
 -- ** Surface
