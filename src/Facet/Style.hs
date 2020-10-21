@@ -1,12 +1,13 @@
 module Facet.Style
 ( Style(..)
+, terminalStyle
 , terminalNoticeStyle
 , terminalCodeStyle
 ) where
 
 import Data.Colour.RGBSpace.HSL
 import Facet.Name (Level(getLevel), Meta(..))
-import Facet.Notice as Notice
+import Facet.Notice as Notice hiding (Notice)
 import Facet.Pretty
 import Facet.Print as Print
 
@@ -14,6 +15,11 @@ data Style
   = Notice (Notice.Highlight Style)
   | Code Print.Highlight
 
+
+terminalStyle :: Style -> [SGR]
+terminalStyle = \case
+  Notice n -> terminalNoticeStyle (fmap terminalStyle n)
+  Code s   -> terminalCodeStyle s
 
 terminalNoticeStyle :: Notice.Highlight [SGR] -> [SGR]
 terminalNoticeStyle = \case
