@@ -33,7 +33,7 @@ modify f = put (f get!)
 
 # Facet
 
-By contrast, I want to think of computations as a unary type former.
+By contrast, I want to think of computations as a unary type former. _Edit: this is no longer true, following a bunch of reading up on CBPV and focusing._
 
 ```
  Γ ⊢ A : Type
