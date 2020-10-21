@@ -1,4 +1,4 @@
-module Facet.Carrier.Catch
+module Facet.Carrier.Error.Catch
 ( -- * Catch effect
   module Control.Effect.Catch
 ) where
