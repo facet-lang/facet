@@ -115,7 +115,6 @@ loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m)
 loop = do
   resp <- prompt
   runError (print . prettyNotice') pure $ case resp of
-    -- FIXME: evaluate expressions
     Just src -> rethrowParseErrors @Style (runParserWithSource src commandParser) >>= runAction src
     Nothing  -> pure ()
   loop
