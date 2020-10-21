@@ -8,6 +8,7 @@ module Facet.Surface
   -- * Types
 , Type(..)
 , (-->)
+, ($$$)
 , unForAll
 , unTApp
   -- * Declarations
@@ -93,6 +94,10 @@ a --> b = Ann (ann a <> ann b) (a :-> b)
 
 infixr 2 -->
 
+($$$) :: Ann Type -> Ann Type -> Ann Type
+f $$$ a = Ann (ann f <> ann a) (f :$$ a)
+
+infixl 9 $$$
 
 unForAll :: Has Empty sig m => Type -> m (UName ::: Ann Type, Ann Type)
 unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
