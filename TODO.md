@@ -23,36 +23,27 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 ## Language
 
+### General
+
+- Records.
+
+
 ### Core
-
-- Substitution & renaming are specified manually over `Expr` & `Type`. This is brittle.
-
-  It would be nice to abstract those operations one and for all; it would also be nice to test the hell out of them. Can we take advantage of the `Binding` traversal? It knows about binders after all…
 
 - `let` bindings.
 
-- Datatypes.
+- Computations.
 
 - Effects.
-
-- Case expressions.
-
-- Eliminate patterns in lambda domains.
-
-- Type application expressions.
 
 
 ### Surface
 
 - `let` bindings.
 
-- Datatypes.
-
 - Effects.
 
 - Allow binding operator names as local variables.
-
-- Don’t require parens around qualified constructor patterns?
 
 - Warn if binding a variable with the same name as an in-scope constructor in a pattern match? We can still write `true` when we mean to write `(true)` and be surprised at the results, it just can’t break out from under us.
 
@@ -64,8 +55,6 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - First-class documentation.
 
 - First-class literate programming?
-
-- Simplify/abbreviate module syntax.
 
 
 ### Modules
@@ -102,10 +91,6 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Continue after errors on a declaration-by-declaration basis.
 
-- Insert type application expressions for quantifiers.
-
-  These will presumably have to be metavariables, so we’ll further need to solve for them. Substitution presents its bill at last.
-
 
 ### Pretty-printer
 
@@ -124,12 +109,6 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - Rainbow highlighting of local variables introductions & references. Including in error contexts!
 
 - Increase the size of source excerpts so binding sites are visible; alternatively, have multiple excerpts when binding sites are far away.
-
-
-### Evaluator
-
-- Should exist 😅
-
 
 
 ### Driver
