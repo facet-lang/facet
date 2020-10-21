@@ -1,6 +1,7 @@
 module Facet.Core
 ( -- * Values
   Value(..)
+, eq
 , Sig(..)
 , Head(..)
 , Elim(..)
