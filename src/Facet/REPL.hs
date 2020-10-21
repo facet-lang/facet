@@ -36,6 +36,7 @@ import           Facet.Pretty
 import           Facet.Print as Print hiding (Type)
 import           Facet.REPL.Parser
 import           Facet.Source (Source(..), readSourceFromFile, sourceFromString)
+import           Facet.Span (Span)
 import           Facet.Stack
 import           Facet.Style
 import           Facet.Surface (Ann, Expr, Type)
@@ -47,7 +48,6 @@ import           System.Console.ANSI
 import           System.IO.Error
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
-import           Text.Parser.Position
 import           Text.Parser.Token hiding (brackets, comma)
 
 repl :: IO ()
