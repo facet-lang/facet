@@ -189,6 +189,7 @@ sig = brackets (commaSep type') <?> "signature"
 exprTable :: (Monad p, PositionParsing p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
 exprTable =
   [ [ Infix L mempty (S.$$) ]
+  , [ Postfix (pack "!") id ]
   , [ Atom comp
     , Atom (anned (S.Hole <$> hname))
     , Atom evar
