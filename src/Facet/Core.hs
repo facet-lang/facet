@@ -1,6 +1,7 @@
 module Facet.Core
 ( -- * Values
   Value(..)
+, Sig(..)
 , Head(..)
 , Elim(..)
 , Con(..)
@@ -92,6 +93,9 @@ instance Eq Value where
       (PCon _, _)                        -> False
     eqCon :: (Level -> a -> b -> Bool) -> Level -> Con Value a -> Con Value b -> Bool
     eqCon eq d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = n1 == n2 && go d t1 t2 && length fs1 == length fs2 && and (zipWith (eq d) fs1 fs2)
+
+
+data Sig = Sig
 
 
 data Head t a
