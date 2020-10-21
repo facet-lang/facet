@@ -1,2 +1,6 @@
 module Facet.Carrier.Catch
-() where
+( -- * Catch effect
+  module Control.Effect.Catch
+) where
+
+import Control.Effect.Catch
