@@ -124,6 +124,8 @@ loop = do
   runAction src = \case
     Help -> print helpDoc
     Quit -> empty
+    Show t -> case t of
+      Paths   -> gets ((pretty "search paths:" <\>) . nest 2 . unlines . map pretty . searchPaths) >>= print
     Load path -> load src path
     Reload -> reload src
     Type e -> do
@@ -163,11 +165,15 @@ kind_ = Kind <$> runFacet [] (whole type')
 data Action
   = Help
   | Quit
+  | Show Target
   | Load FilePath
   | Reload
   | Type (Ann Expr)
   | Kind (Ann Type)
   | Eval (Ann Expr)
+
+data Target
+  = Paths
 
 load :: (Has (Error (Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
 load src path = do
