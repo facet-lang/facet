@@ -117,6 +117,7 @@ data Highlight a
   | Gutter
   | End
   | Caret
+  | Context a
 
 
 -- FIXME: figure out some sort of more semantic styling annotations, annotate into that, and then map it onto a configurable stylesheet describing RGB &c.
