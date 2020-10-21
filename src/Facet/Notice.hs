@@ -11,6 +11,7 @@ module Facet.Notice
 , identityStyle
 , prettyNoticeWith
 , prettyNotice
+, Highlight(..)
 ) where
 
 import           Control.Lens (Lens', lens)
@@ -106,6 +107,16 @@ prettyNoticeWith Style{ pathStyle, levelStyle, posStyle, gutterStyle, eofStyle, 
 
 prettyNotice :: Notice [SGR] -> P.Doc [SGR]
 prettyNotice = prettyNoticeWith sgrStyle
+
+
+data Highlight a
+  = Path
+  | Level Level
+  | Span
+  | Reason a
+  | Gutter
+  | Ending
+  | Caret
 
 
 -- FIXME: figure out some sort of more semantic styling annotations, annotate into that, and then map it onto a configurable stylesheet describing RGB &c.

@@ -9,7 +9,7 @@ import           Data.Maybe (fromMaybe)
 import           Data.Set (toList)
 import qualified Facet.Carrier.Parser.Church as Parse
 import qualified Facet.Carrier.Throw.Inject as L
-import           Facet.Notice
+import           Facet.Notice hiding (Highlight(..))
 import           Facet.Source
 import           Facet.Span
 import           Silkscreen
