@@ -49,7 +49,6 @@ import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
-import           Text.Parser.Position (Spanned)
 
 type Type = Value
 type Expr = Value
@@ -255,7 +254,7 @@ infix 1 |-*
 
 elabType
   :: HasCallStack
-  => Spanned S.Type
+  => S.Ann S.Type
   -> Maybe Type
   -> Elab (Type ::: Type)
 elabType = withSpan' $ \case
@@ -290,7 +289,7 @@ infixr 1 >~>
 
 elabExpr
   :: HasCallStack
-  => Spanned S.Expr
+  => S.Ann S.Expr
   -> Maybe Type
   -> Elab (Expr ::: Type)
 elabExpr = withSpan' $ \case
@@ -316,7 +315,7 @@ lam n b = Check $ \ _T -> do
 
 elabComp
   :: HasCallStack
-  => Spanned S.Comp
+  => S.Ann S.Comp
   -> Check Expr
 elabComp = withSpan $ \case
   S.Expr    b  -> checkElab (elabExpr b)
@@ -338,8 +337,8 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
-elabClauses :: [(NonEmpty (Spanned S.Pattern), Spanned S.Expr)] -> Check Expr
-elabClauses [((_, S.PVar n):|ps, b)] = Check $ \ _T -> do
+elabClauses :: [(NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)] -> Check Expr
+elabClauses [((S.Ann _ (S.PVar n)):|ps, b)] = Check $ \ _T -> do
   (P pl _ ::: _A, _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> n ::: _A |- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
   pure $ VLam (P pl n ::: _A) b'
@@ -366,7 +365,7 @@ elabClauses cs = Check $ \ _T -> do
 
 
 elabPattern
-  :: Spanned S.Pattern
+  :: S.Ann S.Pattern
   -> Check (C.Pattern Type (UName ::: Type))
 elabPattern = withSpan $ \case
   S.PVar n    -> Check $ \ _T -> pure (C.PVar (n ::: _T))
@@ -390,7 +389,7 @@ elabPattern = withSpan $ \case
 
 elabDecl
   :: HasCallStack
-  => Spanned S.Decl
+  => S.Ann S.Decl
   -> Check (Either [UName ::: Type] Value) ::: Check Type
 elabDecl d = withSpans d $ \case
   S.DDecl d -> first (fmap Left)  (elabDDecl d)
@@ -398,11 +397,11 @@ elabDecl d = withSpans d $ \case
 
 elabDDecl
   :: HasCallStack
-  => Spanned S.DDecl
+  => S.Ann S.DDecl
   -> Check [UName ::: Type] ::: Check Type
 elabDDecl d = go d id
   where
-  go (s, d) km = case d of
+  go (S.Ann s d) km = case d of
     S.DDForAll (n ::: t) b ->
       let b' ::: _B = go b
             (km . (\ b  -> Check $ \ _T -> setSpan s $ do
@@ -419,7 +418,7 @@ elabDDecl d = go d id
 
 elabTDecl
   :: HasCallStack
-  => Spanned S.TDecl
+  => S.Ann S.TDecl
   -> Check Value ::: Check Type
 elabTDecl d = go d
   where
@@ -437,13 +436,13 @@ elabTDecl d = go d
 elabModule
   :: forall m sig
   .  (HasCallStack, Has (Throw Err) sig m)
-  => Spanned S.Module
+  => S.Ann S.Module
   -> m (Env.Env, C.Module)
-elabModule (s, S.Module mname _is ds) = runReader s . runState (fmap pure . (,)) (mempty @Env.Env) $ do
+elabModule (S.Ann s (S.Module mname _is ds)) = runReader s . runState (fmap pure . (,)) (mempty @Env.Env) $ do
   -- FIXME: trace the defs as we elaborate them
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
-  defs <- for ds $ \ (s, (n, d)) -> setSpan s $ do
+  defs <- for ds $ \ (S.Ann s (n, d)) -> setSpan s $ do
     let qname = mname :.: n
         e ::: t = elabDecl d
 
@@ -490,14 +489,14 @@ runContext = runReader empty
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
-withSpan :: Has (Reader Span) sig m => (a -> m b) -> (Span, a) -> m b
-withSpan k (s, a) = setSpan s (k a)
+withSpan :: Has (Reader Span) sig m => (a -> m b) -> (S.Ann a) -> m b
+withSpan k (S.Ann s a) = setSpan s (k a)
 
-withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (Span, a) -> b -> m c
-withSpan' k (s, a) b = setSpan s (k a b)
+withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (S.Ann a) -> b -> m c
+withSpan' k (S.Ann s a) b = setSpan s (k a b)
 
-withSpans :: Has (Reader Span) sig m => (Span, a) -> (a -> m b ::: m c) -> m b ::: m c
-withSpans (s, d) f = let t ::: _T = f d in setSpan s t ::: setSpan s _T
+withSpans :: Has (Reader Span) sig m => (S.Ann a) -> (a -> m b ::: m c) -> m b ::: m c
+withSpans (S.Ann s d) f = let t ::: _T = f d in setSpan s t ::: setSpan s _T
 
 
 data Err = Err

@@ -25,7 +25,6 @@ import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Style
 import qualified Facet.Surface as S
 import           Prettyprinter (reAnnotate)
-import           Text.Parser.Position (Spanned)
 
 -- Parsing
 
@@ -37,19 +36,19 @@ printFile path = runM (runThrow (rethrowParseErrors @Style (runParserWithFile pa
   Left err -> printNotice err
   Right m  -> printCode (foldSModule P.surface m)
 
-parseFile :: MonadIO m => FilePath -> m (Either (Notice Style) (Spanned S.Module))
+parseFile :: MonadIO m => FilePath -> m (Either (Notice Style) (S.Ann S.Module))
 parseFile path = runM (runThrow (rethrowParseErrors @Style (runParserWithFile path (runFacet [] (whole module')))))
 
 
 -- Elaborating
 
-elabString :: MonadIO m => Facet (ParserC (L.ThrowC (Notice Style) (Source, Parse.Err) (Either (Notice Style)))) (Spanned S.Module) -> String -> m ()
+elabString :: MonadIO m => Facet (ParserC (L.ThrowC (Notice Style) (Source, Parse.Err) (Either (Notice Style)))) (S.Ann S.Module) -> String -> m ()
 elabString = elabPathString Nothing
 
 elabFile :: MonadIO m => FilePath -> m ()
 elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 
-elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (L.ThrowC (Notice Style) (Source, Parse.Err) (Either (Notice Style)))) (Spanned S.Module) -> String -> m ()
+elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (L.ThrowC (Notice Style) (Source, Parse.Err) (Either (Notice Style)))) (S.Ann S.Module) -> String -> m ()
 elabPathString path p s = either printNotice printCode $ do
   parsed <- rethrowParseErrors $ runParserWithSource src (runFacet [] (whole p))
   rethrowElabErrors src Code $ foldCModule P.explicit . snd <$> elabModule parsed

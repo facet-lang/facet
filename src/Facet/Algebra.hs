@@ -24,7 +24,6 @@ import           Facet.Name
 import           Facet.Stack
 import qualified Facet.Surface as S
 import           Facet.Syntax
-import           Text.Parser.Position
 
 -- Algebras
 
@@ -138,81 +137,81 @@ foldCModule alg (C.Module n is ds) = module_ alg
 
 -- ** Surface
 
-foldSType :: Algebra p -> Stack p -> Spanned S.Type -> p
+foldSType :: Algebra p -> Stack p -> S.Ann S.Type -> p
 foldSType alg = go
   where
-  go env (s, t) = case t of
+  go env (S.Ann s t) = case t of
     S.TQual q  -> var alg (qvar q)
     S.TFree n  -> var alg (Global Nothing n)
     S.TBound n -> env ! getIndex n
     S.THole n  -> hole alg n
     S.Type     -> _Type alg
     t S.:=> b ->
-      let (ts, b') = splitr (S.unForAll . snd) (s, t S.:=> b)
+      let (ts, b') = splitr (S.unForAll . S.out) (S.Ann s (t S.:=> b))
           ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = tintro alg n d in ((succ d, env :> v), im (Just v ::: go env t))) (level, env) ts
       in fn alg ts' (go env' b')
     f S.:$$ a ->
-      let (f', a') = splitl (S.unTApp . snd) (s, f S.:$$ a)
+      let (f', a') = splitl (S.unTApp . S.out) (S.Ann s (f S.:$$ a))
       in app alg (go env f') (fmap (ex . go env) a')
     a S.:-> b -> fn alg [ex (Nothing ::: go env a)] (go env b)
     where
     level = Level (length env)
 
-foldSExpr :: Algebra p -> Stack p -> Spanned S.Expr -> p
+foldSExpr :: Algebra p -> Stack p -> S.Ann S.Expr -> p
 foldSExpr alg = go
   where
-  go env (s, e) = case e of
+  go env (S.Ann s e) = case e of
     S.Qual  q -> var alg (qvar q)
     S.Free  n -> var alg (Global Nothing n)
     S.Bound n -> env ! getIndex n
     S.Hole  n -> hole alg n
     f S.:$  a ->
-      let (f', a') = splitl (S.unApp . snd) (s, f S.:$ a)
+      let (f', a') = splitl (S.unApp . S.out) (S.Ann s (f S.:$ a))
       in app alg (go env f') (fmap (ex . go env) a')
-    S.Comp c  -> case snd c of
+    S.Comp (S.Ann _ c)  -> case c of
       S.Expr e     -> lam alg [ go env e ]
       S.Clauses cs -> lam alg (map (uncurry (cls env)) cs)
 
   cls env ps b = let ((_, env'), ps') = mapAccumL (\ (d, env) -> fmap (ex . (::: Nothing)) . pat d env) (Level (length env), env) ps in clause alg (toList ps') (go env' b)
 
-  pat d env (_, p) = case p of
+  pat d env (S.Ann _ p) = case p of
     S.PVar n    -> let v = intro alg n d in ((succ d, env:>v), v)
     S.PCon n ps ->
       let ((d', env'), ps') = subpatterns d env ps
       in ((d', env'), pcon alg (var alg (Cons n)) ps')
   subpatterns d env ps = mapAccumL (\ (d', env') p -> pat d' env' p) (d, env) ps
 
-foldSCons :: Algebra p -> Stack p -> Spanned (UName ::: Spanned S.Type) -> p
-foldSCons alg env = decl alg . bimap (var alg . Cons) (foldSType alg env) . snd
+foldSCons :: Algebra p -> Stack p -> S.Ann (UName ::: S.Ann S.Type) -> p
+foldSCons alg env = decl alg . bimap (var alg . Cons) (foldSType alg env) . S.out
 
-foldSDecl :: Algebra p -> Spanned S.Decl -> p
-foldSDecl alg (_, d) = case d of
+foldSDecl :: Algebra p -> S.Ann S.Decl -> p
+foldSDecl alg (S.Ann _ d) = case d of
   S.DDecl d -> foldSDDecl alg d
   S.TDecl t -> foldSTDecl alg t
 
-foldSDDecl :: Algebra p -> Spanned S.DDecl -> p
+foldSDDecl :: Algebra p -> S.Ann S.DDecl -> p
 foldSDDecl alg = go Nil
   where
-  go env (s, d) = case d of
+  go env (S.Ann s d) = case d of
     S.DDBody t b -> defn alg $ foldSType alg env t :=: data' alg (map (foldSCons alg env) b)
     S.DDForAll t b ->
-      let (ts, b') = splitr (S.unDDForAll . snd) (s, S.DDForAll t b)
+      let (ts, b') = splitr (S.unDDForAll . S.out) (S.Ann s (S.DDForAll t b))
           ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local (out n) d) in ((succ d, env :> v), (Just v ::: foldSType alg env t) <$ n)) (level, env) ts
       in fn alg ts' (go env' b')
     where
     level = Level (length env)
 
-foldSTDecl :: Algebra p -> Spanned S.TDecl -> p
+foldSTDecl :: Algebra p -> S.Ann S.TDecl -> p
 foldSTDecl alg = go Nil
   where
-  go env (s, d) = case d of
+  go env (S.Ann s d) = case d of
     S.TDBody t b -> defn alg $ foldSType alg env t :=: foldSExpr alg env b
     S.TDForAll t b ->
-      let (ts, b') = splitr (S.unTDForAll . snd) (s, S.TDForAll t b)
+      let (ts, b') = splitr (S.unTDForAll . S.out) (S.Ann s (S.TDForAll t b))
           ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local (out n) d) in ((succ d, env :> v), (Just v ::: foldSType alg env t) <$ n)) (level, env) ts
       in fn alg ts' (go env' b')
     where
     level = Level (length env)
 
-foldSModule :: Algebra p -> Spanned S.Module -> p
-foldSModule alg (_, S.Module m is ds) = module_ alg $ m ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module"))))) :=: (map (\ (_, S.Import n) -> import' alg n) is, map (\ (_, (n, d)) -> decl alg (var alg (Global (Just m) n) ::: foldSDecl alg d)) ds)
+foldSModule :: Algebra p -> S.Ann S.Module -> p
+foldSModule alg (S.Ann _ (S.Module m is ds)) = module_ alg $ m ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module"))))) :=: (map (\ (S.Ann _ (S.Import n)) -> import' alg n) is, map (\ (S.Ann _ (n, d)) -> decl alg (var alg (Global (Just m) n) ::: foldSDecl alg d)) ds)

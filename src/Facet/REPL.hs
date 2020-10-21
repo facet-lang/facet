@@ -38,11 +38,11 @@ import           Facet.REPL.Parser
 import           Facet.Source (Source(..), readSourceFromFile, sourceFromString)
 import           Facet.Stack
 import           Facet.Style
-import           Facet.Surface (Expr, Type)
+import           Facet.Surface (Ann, Expr, Type)
 import           Facet.Syntax
 import           Prelude hiding (print, span)
 import           Prettyprinter (reAnnotate)
-import           Silkscreen hiding (line)
+import           Silkscreen hiding (Ann, line)
 import           System.Console.ANSI
 import           System.IO.Error
 import           Text.Parser.Char hiding (space)
@@ -164,9 +164,9 @@ data Action
   | Quit
   | Load FilePath
   | Reload
-  | Type (Spanned Expr)
-  | Kind (Spanned Type)
-  | Eval (Spanned Expr)
+  | Type (Ann Expr)
+  | Kind (Ann Type)
+  | Eval (Ann Expr)
 
 load :: (Has (Error (Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
 load src path = do
