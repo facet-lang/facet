@@ -27,7 +27,7 @@ import           Facet.Core
 import qualified Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Eval
-import           Facet.Name (MName(..))
+import           Facet.Name hiding (Meta, ann, use)
 import           Facet.Notice
 import           Facet.Notice.Elab
 import           Facet.Notice.Parser
