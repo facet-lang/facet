@@ -122,5 +122,8 @@ newtype Import = Import { name :: MName }
 
 -- Annotations
 
-data Ann a = Ann Span a
+data Ann a = Ann
+  { ann :: Span
+  , out :: a
+  }
   deriving (Foldable, Functor, Traversable)
