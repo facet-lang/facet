@@ -46,8 +46,8 @@ printReason ctx = group . \case
   FreeVariable m n       -> fillSep [reflow "variable not in scope:", maybe (pretty n) (pretty . (N.:.: n)) m]
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
   Mismatch msg exp act   -> reflow msg
-      </> pretty "expected:" <> print exp'
-      </> pretty "  actual:" <> print act'
+      <> hardline <> pretty "expected:" <> print exp'
+      <> hardline <> pretty "  actual:" <> print act'
     where
     exp' = either reflow (printType ctx) exp
     act' = printType ctx act
