@@ -82,9 +82,10 @@ foldCValue alg = go
     C.VType -> _Type alg
     C.VForAll t b ->
       let (vs, (_, b')) = splitr C.unForAll' (d, C.VForAll t b)
-          binding env (n ::: _T) = (env :> tvar env (n ::: _T), P (pl n) (name (out n) (Level (length env)) ::: go env _T))
-          name n d
-            | T.null (getUName n) = Nothing
+          binding env (n ::: _T) = (env :> tvar env (n ::: _T), P (pl n) (name (pl n) (out n) (Level (length env)) ::: go env _T))
+          name p n d
+            | T.null (getUName n)
+            , Ex <- p             = Nothing
             | otherwise           = Just (tintro alg n d)
           (env', vs') = mapAccumL binding env vs
       in fn alg vs' (go env' b')
