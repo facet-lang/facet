@@ -106,6 +106,7 @@ prettyNotice :: Notice [SGR] -> P.Doc [SGR]
 prettyNotice = prettyNoticeWith sgrStyle
 
 
+-- FIXME: figure out some sort of more semantic styling annotations, annotate into that, and then map it onto a configurable stylesheet describing RGB &c.
 sgrStyle :: Style [SGR]
 sgrStyle = Style
   { pathStyle   = annotate [SetConsoleIntensity BoldIntensity]
