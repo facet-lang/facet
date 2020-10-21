@@ -1,5 +1,6 @@
 Interface.State
-: [ Data.Pair
+: [ Data.Function
+  , Data.Pair
   , Data.Unit ]
   Module
 
@@ -10,6 +11,9 @@ State : (S : Type) -> Interface
 
 modify : { S : Type } -> (f : S -> S) -> [State S]{Unit}
 { put (f get!) }
+
+execState : { S, A : Type } -> S -> [State S]A -> S
+{ state const }
 
 evalState : { S, A : Type } -> S -> [State S]A -> A
 { state { _ a -> a } }
