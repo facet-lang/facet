@@ -43,9 +43,9 @@ data TokenKind
 
 
 token :: (CharParsing p, PositionParsing p) => p Token
-token = mk <$> spanned kind_ <* skipSpace
+token = mk <$> position <*> kind_ <*> position <* skipSpace
   where
-  mk (s, k) = Token k s
+  mk s k e = Token k (Span s e)
 
 skipSpace :: CharParsing p => p ()
 skipSpace = skipMany (satisfy isSpace)
