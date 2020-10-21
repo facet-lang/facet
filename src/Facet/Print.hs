@@ -1,18 +1,15 @@
 {-# LANGUAGE TypeFamilies #-}
 module Facet.Print
-( prettyPrint
-, getPrint
-, terminalStyle
+( getPrint
 , Print(..)
 , Precedence(..)
+, Highlight(..)
 , ann
   -- * Algebras
 , surface
 , explicit
 ) where
 
-import           Control.Monad.IO.Class
-import           Data.Colour.RGBSpace.HSL
 import           Data.Foldable (foldl', toList)
 import           Data.Function (on)
 import           Data.Maybe (fromMaybe)
@@ -20,7 +17,7 @@ import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Facet.Algebra
 import           Facet.Name hiding (ann)
-import           Facet.Pretty
+import           Facet.Pretty (lower, upper)
 import           Facet.Syntax
 import qualified Prettyprinter as PP
 import           Silkscreen as P
@@ -28,27 +25,8 @@ import           Silkscreen.Printer.Prec hiding (Level)
 import qualified Silkscreen.Printer.Prec as P
 import           Silkscreen.Printer.Rainbow as P
 
-prettyPrint :: MonadIO m => Print -> m ()
-prettyPrint = putDoc . getPrint
-
-getPrint :: Print -> PP.Doc [SGR]
-getPrint = PP.reAnnotate terminalStyle . getPrint'
-
-getPrint' :: Print -> PP.Doc Highlight
-getPrint' = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
-
-terminalStyle :: Highlight -> [SGR]
-terminalStyle = \case
-  Nest i -> [setRGB (pick i 0.4 0.8)]
-  Name i -> [setRGB (pick (-getLevel i) 0.8 0.6)]
-  Op     -> [setRGB (hsl 180 0.7 0.4)]
-  Type   -> [setRGB (hsl 60 0.5 0.5)]
-  Con    -> [setRGB (hsl 15 0.8 0.5)]
-  Lit    -> [setBold]
-  Hole m -> [setBold, setRGB (pick (-getMeta m) 0.5 0.45)]
-  where
-  pick i s l = hsl (fromIntegral i * phi * 30) s l
-  phi = 1.618033988749895
+getPrint :: Print -> PP.Doc Highlight
+getPrint = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
 
 
 data Print = Print { fvs :: FVs, doc :: Prec Precedence (Rainbow (PP.Doc Highlight)) }

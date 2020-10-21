@@ -15,7 +15,7 @@ import           Facet.Elab as Elab
 import qualified Facet.Name as N
 import           Facet.Notice
 import           Facet.Pretty
-import           Facet.Print
+import           Facet.Print as Print hiding (Hole)
 import           Facet.Source
 import           Facet.Stack
 import           Facet.Syntax
@@ -23,7 +23,7 @@ import           Silkscreen
 
 -- Elaboration
 
-rethrowElabErrors :: Source -> L.ThrowC (Notice [SGR]) Err m a -> m a
+rethrowElabErrors :: Source -> L.ThrowC (Notice Print.Highlight) Err m a -> m a
 rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context } ->
   let (_, _, printCtx, ctx) = foldl combine (N.Level 0, Nil, Nil, Nil) (elems context)
   in Notice (Just Error) (slice src span) (printReason printCtx reason) (toList ctx)
@@ -39,7 +39,7 @@ rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context } ->
     _     -> tintro
 
 
-printReason :: Stack Print -> Reason -> Doc [SGR]
+printReason :: Stack Print -> Reason -> Doc Print.Highlight
 printReason ctx = group . \case
   FreeVariable m n       -> fillSep [reflow "variable not in scope:", maybe (pretty n) (pretty . (N.:.: n)) m]
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
@@ -58,5 +58,5 @@ printReason ctx = group . \case
   BadContext n           -> fillSep [ reflow "no variable bound for index", pretty (N.getIndex n), reflow "in context of length", pretty (length ctx) ]
 
 
-printType :: Stack Print -> Type -> Doc [SGR]
+printType :: Stack Print -> Type -> Doc Print.Highlight
 printType env = getPrint . foldCValue explicit env

@@ -28,12 +28,12 @@ import qualified Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Eval
 import           Facet.Name hiding (Meta, ann, use)
-import           Facet.Notice
+import           Facet.Notice as Notice
 import           Facet.Notice.Elab
 import           Facet.Notice.Parser
 import           Facet.Parser
 import           Facet.Pretty
-import           Facet.Print
+import           Facet.Print as Print hiding (Type)
 import           Facet.REPL.Parser
 import           Facet.Source (Source(..), readSourceFromFile, sourceFromString)
 import           Facet.Stack
@@ -112,9 +112,9 @@ data File = File
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
   resp <- prompt
-  runError (print . reAnnotate terminalNoticeStyle . prettyNotice) pure $ case resp of
+  runError (print . prettyNotice') pure $ case resp of
     -- FIXME: evaluate expressions
-    Just src -> rethrowParseErrors @[SGR] (runParserWithSource src commandParser) >>= runAction src
+    Just src -> rethrowParseErrors @Print.Highlight (runParserWithSource src commandParser) >>= runAction src
     Nothing  -> pure ()
   loop
   where
@@ -127,14 +127,14 @@ loop = do
     Reload -> reload src
     Type e -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-      print (getPrint (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
+      print (prettyCode (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
     Kind t -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (t ::: _T) -> (:::) <$> Elab.apply s t <*> Elab.apply s _T) (Elab.elabType t Nothing)
-      print (getPrint (ann (foldSType surface Nil t ::: foldCValue surface Nil (generalize _T))))
+      print (prettyCode (ann (foldSType surface Nil t ::: foldCValue surface Nil (generalize _T))))
     Eval e -> do -- FIXME: actually evaluate
       e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
       e'' <- L.runState env_ $ Env.runEnv $ eval e'
-      print (getPrint (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil _T)))
+      print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil _T)))
 
 
 -- TODO:
@@ -168,12 +168,12 @@ data Action
   | Kind (Spanned Type)
   | Eval (Spanned Expr)
 
-load :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
+load :: (Has (Error (Notice Print.Highlight)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
 load src path = do
   files_ %= Map.insert path File{ loaded = False }
   reload src
 
-reload :: (Has (Error (Notice [SGR])) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
+reload :: (Has (Error (Notice Print.Highlight)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
 reload src = do
   -- FIXME: order with a topological sort on imports, once those exist
   evalFresh 1 $ files_ <~> \ files -> itraverse (reloadFile (length files)) files
@@ -191,12 +191,12 @@ reload src = do
 
     (do
       src <- liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
-      m <- rethrowParseErrors @[SGR] (runParserWithSource src (runFacet [] (whole module')))
+      m <- rethrowParseErrors @Print.Highlight (runParserWithSource src (runFacet [] (whole module')))
       (env, m') <- elab src $ Elab.elabModule m
       env_ %= (<> env)
-      file{ loaded = True } <$ print (getPrint (foldCModule surface m')))
+      file{ loaded = True } <$ print (prettyCode (foldCModule surface m')))
       `catchError` \ n ->
-        file <$ print (indent 2 (reAnnotate terminalNoticeStyle (prettyNotice n)))
+        file <$ print (indent 2 (prettyNotice' n))
 
 failure :: [SGR]
 failure = [setRGB (hsl 0 1 0.5), setBold]
@@ -229,7 +229,13 @@ print d = do
   opts <- liftIO layoutOptionsForTerminal
   outputStrLn (unpack (renderLazy (layoutSmart opts d)))
 
-elab :: Source -> I.ThrowC (Notice [SGR]) Elab.Err (L.StateC REPL Env.Env (ReaderC Span m)) a -> m a
+prettyNotice' :: Notice Print.Highlight -> Doc [SGR]
+prettyNotice' = reAnnotate (terminalNoticeStyle . fmap terminalCodeStyle) . prettyNotice
+
+prettyCode :: Print -> Doc [SGR]
+prettyCode = reAnnotate terminalCodeStyle . getPrint
+
+elab :: Source -> I.ThrowC (Notice Print.Highlight) Elab.Err (L.StateC REPL Env.Env (ReaderC Span m)) a -> m a
 elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src
 
 
@@ -246,5 +252,5 @@ lens <~> act = lens <~ lens ~> act
 infixr 2 <~>
 
 
-ioErrorToNotice :: Source -> IOError -> Notice [SGR]
+ioErrorToNotice :: Source -> IOError -> Notice Print.Highlight
 ioErrorToNotice src err = Notice (Just Error) src (group (reflow (show err))) []
