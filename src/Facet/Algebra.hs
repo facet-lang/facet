@@ -48,8 +48,8 @@ data Algebra p = Algebra
     -> p                     -- the body.
     -> p
   , fn
-    :: [Pl_ (Maybe p ::: p)] -- the argument types/bindings
-    -> p                     -- the return type
+    :: [Pl_ ([p] ::: p)] -- the argument types/bindings
+    -> p                 -- the return type
     -> p
   , app :: p -> Stack (Pl_ p) -> p
   , hole :: UName -> p
@@ -81,8 +81,8 @@ foldCValue alg = go
           binding env (n ::: _T) = (env :> tvar env (n ::: _T), P (pl n) (name (pl n) (out n) (Level (length env)) ::: go env _T))
           name p n d
             | T.null (getUName n)
-            , Ex <- p             = Nothing
-            | otherwise           = Just (tintro alg n d)
+            , Ex <- p             = []
+            | otherwise           = [tintro alg n d]
           (env', vs') = mapAccumL binding env vs
       in fn alg vs' (go env' b')
     C.VLam n b ->
@@ -145,12 +145,12 @@ foldSType alg = go
     S.Type     -> _Type alg
     t S.:=> b ->
       let (ts, b') = splitr (S.unForAll . S.out) (S.Ann s (t S.:=> b))
-          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = tintro alg n d in ((succ d, env :> v), im (Just v ::: go env t))) (level, env) ts
+          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = tintro alg n d in ((succ d, env :> v), im ([v] ::: go env t))) (level, env) ts
       in fn alg ts' (go env' b')
     f S.:$$ a ->
       let (f', a') = splitl (S.unTApp . S.out) (S.Ann s (f S.:$$ a))
       in app alg (go env f') (fmap (ex . go env) a')
-    a S.:-> b -> fn alg [ex (Nothing ::: go env a)] (go env b)
+    a S.:-> b -> fn alg [ex ([] ::: go env a)] (go env b)
     where
     level = Level (length env)
 
@@ -193,7 +193,7 @@ foldSDDecl alg = go Nil
     S.DDBody t b -> defn alg $ foldSType alg env t :=: data' alg (map (foldSCons alg env) b)
     S.DDForAll t b ->
       let (ts, b') = splitr (S.unDDForAll . S.out) (S.Ann s (S.DDForAll t b))
-          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local (out n) d) in ((succ d, env :> v), (Just v ::: foldSType alg env t) <$ n)) (level, env) ts
+          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local (out n) d) in ((succ d, env :> v), ([v] ::: foldSType alg env t) <$ n)) (level, env) ts
       in fn alg ts' (go env' b')
     where
     level = Level (length env)
@@ -205,7 +205,7 @@ foldSTDecl alg = go Nil
     S.TDBody t b -> defn alg $ foldSType alg env t :=: foldSExpr alg env b
     S.TDForAll t b ->
       let (ts, b') = splitr (S.unTDForAll . S.out) (S.Ann s (S.TDForAll t b))
-          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local (out n) d) in ((succ d, env :> v), (Just v ::: foldSType alg env t) <$ n)) (level, env) ts
+          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local (out n) d) in ((succ d, env :> v), ([v] ::: foldSType alg env t) <$ n)) (level, env) ts
       in fn alg ts' (go env' b')
     where
     level = Level (length env)
