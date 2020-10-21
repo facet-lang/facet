@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 module Facet.Algebra
 ( -- * Algebras
   Var(..)
@@ -72,10 +71,9 @@ data Algebra p = Algebra
 
 -- ** Core
 
-foldCValue :: forall p . Algebra p -> Stack p -> C.Value -> p
+foldCValue :: Algebra p -> Stack p -> C.Value -> p
 foldCValue alg = go
   where
-  go :: Stack p -> C.Value -> p
   go env = \case
     C.VType -> _Type alg
     C.VForAll t b ->
