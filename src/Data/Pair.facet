@@ -6,7 +6,7 @@ Pair : (A : Type) -> (B : Type) -> Type
 fst : { A : Type } -> { B : Type } -> Pair A B -> A
 { (pair a _) -> a }
 
-snd : { A : Type } -> { B : Type } -> Pair A B -> A
+snd : { A : Type } -> { B : Type } -> Pair A B -> B
 { (pair _ b) -> b }
 
 
