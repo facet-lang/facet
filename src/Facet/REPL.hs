@@ -58,12 +58,12 @@ repl
   $ loop
 
 
--- FIXME: search paths
 data REPL = REPL
   { line           :: Int
   , files          :: Map.Map FilePath File
   , promptFunction :: Int -> IO String
   , env            :: Env.Env
+  , searchPaths    :: [FilePath]
   }
 
 line_ :: Lens' REPL Int
@@ -81,6 +81,7 @@ defaultREPLState = REPL
   , files          = mempty
   , promptFunction = defaultPromptFunction
   , env            = toEnv kernel
+  , searchPaths    = []
   }
 
 defaultPromptFunction :: Int -> IO String
