@@ -126,6 +126,7 @@ loop = do
     Quit -> empty
     Show t -> case t of
       Paths   -> gets ((pretty "search paths:" <\>) . nest 2 . unlines . map pretty . searchPaths) >>= print
+      Modules -> gets (unlines . map pretty . Map.keys . files) >>= print
     Load path -> load src path
     Reload -> reload src
     Type e -> do
@@ -148,6 +149,7 @@ commands =
   , Command ["quit", "q"]       "exit the repl"                 $ Pure Quit
   , Command ["show"]            "show compiler state"           $ Meta "target" $ Show <$> choice
     [ Paths <$ whole (token (string "paths"))
+    , Modules <$ whole (token (string "modules"))
     ]
   , Command ["load", "l"]       "add a module to the repl"      $ Meta "path" load_
   , Command ["reload", "r", ""] "reload the loaded modules"     $ Pure Reload
