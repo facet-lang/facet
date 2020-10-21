@@ -29,6 +29,7 @@ rethrowElabErrors src mapAnn = L.runThrow $ \ Err{ span, reason, context } ->
   let (_, _, printCtx, ctx) = foldl combine (N.Level 0, Nil, Nil, Nil) (elems context)
   in Notice (Just Error) (slice src span) (reAnnotate mapAnn (printReason printCtx reason)) (toList ctx)
   where
+  -- FIXME: we’re printing each entry with /types/ from the context before it, when we should be printing /names/
   combine (d, sort, print, ctx) (n ::: _T) =
     let entry = foldCValue explicit print _T
         s = sortOf sort _T
