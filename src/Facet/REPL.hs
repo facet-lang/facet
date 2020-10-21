@@ -77,7 +77,7 @@ defaultREPLState = REPL
   { line           = 0
   , files          = mempty
   , promptFunction = defaultPromptFunction
-  , env            = mempty
+  , env            = toEnv kernel
   }
 
 defaultPromptFunction :: Int -> IO String
