@@ -21,7 +21,6 @@ import Text.Parser.Token
 data Assoc = N | L | R
 
 data Operator p a
-  -- TODO: prefix, postfix, mixfix
   = Prefix  Text (a -> a)
   | Postfix Text (a -> a)
   | Infix Assoc Text (Span -> a -> a -> a)
