@@ -105,17 +105,17 @@ import' = spanned $ S.Import <$> mname
 
 decl :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
 decl = spanned
-  $   (,) <$> dename <* colon <*> spanned (S.TDecl <$> sig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
-  <|> (,) <$> dtname <* colon <*> spanned (S.DDecl <$> sig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
+  $   (,) <$> dename <* colon <*> spanned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
+  <|> (,) <$> dtname <* colon <*> spanned (S.DDecl <$> typeSig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
 
 
-sig
+typeSig
   :: (Monad p, PositionParsing p, TokenParsing p)
   => (Pl_ N.UName ::: S.Ann S.Type -> S.Ann res -> res)
   -> Facet p N.UName
   -> Facet p res
   -> Facet p (S.Ann res)
-sig (-->) name body = go
+typeSig (-->) name body = go
   where
   go = forAll (-->) go <|> binder (-->) name go <|> spanned body
 
