@@ -4,7 +4,6 @@ Data.Option
 
 Option : (A : Type) -> Type
 { none : Option A
-, some : A -> Option A
-}
+, some : A -> Option A }
 
 }
