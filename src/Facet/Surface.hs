@@ -7,6 +7,7 @@ module Facet.Surface
 , Pattern(..)
   -- * Types
 , Type(..)
+, (-->)
 , unForAll
 , unTApp
   -- * Declarations
@@ -85,6 +86,12 @@ data Type
 infixr 1 :=>
 infixl 9 :$$
 infixr 2 :->
+
+
+(-->) :: Ann Type -> Ann Type -> Ann Type
+a --> b = Ann (ann a <> ann b) (a :-> b)
+
+infixr 2 -->
 
 
 unForAll :: Has Empty sig m => Type -> m (UName ::: Ann Type, Ann Type)
