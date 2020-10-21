@@ -3,15 +3,16 @@ module Facet.Style
 ) where
 
 import Facet.Notice
+import Facet.Pretty
 import System.Console.ANSI
 
 terminalNoticeStyle :: Highlight [SGR] -> [SGR]
 terminalNoticeStyle = \case
-  Path      -> [SetConsoleIntensity BoldIntensity]
+  Path      -> [setBold]
   Level l -> case l of
     Warn  -> [SetColor Foreground Vivid Magenta]
     Error -> [SetColor Foreground Vivid Red]
-  Span      -> [SetConsoleIntensity BoldIntensity]
+  Span      -> [setBold]
   Reason s  -> s
   Gutter    -> [SetColor Foreground Vivid Blue]
   End       -> [SetColor Foreground Vivid Blue]
