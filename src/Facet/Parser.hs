@@ -167,7 +167,7 @@ monotype :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Typ
 monotype = build monotypeTable parens
 
 tvar :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Type)
-tvar = token (anned (runUnspaced (fmap (either (S.TFree . N.T) (S.TBound)) . resolve <$> tname <*> Unspaced env <?> "variable")))
+tvar = token (anned (runUnspaced (fmap (either (S.TFree . N.T) S.TBound) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
 -- Signatures
