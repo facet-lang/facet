@@ -357,6 +357,8 @@ elabClauses cs = Check $ \ _T -> do
       b' <- p' |-* check (maybe (checkElab (elabExpr b)) elabClauses rest ::: _B')
       pure (p', b')
     pure $ case' v cs'
+  -- FIXME: something isn’t correctly accounting for the insertion of the lambda.
+  -- e.g. the elaboration of fst & snd contain case c { (pair d e) -> c } and case c { (pair d e) -> d } respectively. is the context being extended incorrectly, or not being extended when it should be?
   pure $ VLam (ex __ ::: _A) b'
   where
   partitionClause (_:|ps, b) = case ps of
