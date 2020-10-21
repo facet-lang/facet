@@ -102,7 +102,7 @@ module' = spanned (S.Module <$> mname <* colon <* symbol "Module" <*> pure [] <*
 
 decl :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned (N.DName, Spanned S.Decl))
 decl = spanned
-  $   (,) <$> dename <* colon <*> spanned (S.TDecl <$> sig S.TDForAll (N.getEName <$> ename) (S.TDBody <$> monotype <*> comp))
+  $   (,) <$> dename <* colon <*> spanned (S.TDecl <$> sig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
   <|> (,) <$> dtname <* colon <*> spanned (S.DDecl <$> sig S.DDForAll (N.getTName <$> tname) (S.DDBody <$> monotype <*> braces (commaSep con)))
 
 
@@ -194,7 +194,7 @@ clause = (do
 
 evar :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned S.Expr)
 evar
-  =   token (spanned (runUnspaced (fmap (either (S.Free . N.E . N.getEName) S.Bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
+  =   token (spanned (runUnspaced (fmap (either (S.Free . N.E) S.Bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
   <|> try (token (spanned (runUnspaced (S.Free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
 
 
@@ -211,15 +211,15 @@ wildcard = reserve enameStyle "_"
 
 pattern :: (Monad p, PositionParsing p, TokenParsing p) => p (Spanned S.Pattern)
 pattern
-  =   spanned (S.PVar . N.getEName <$> ename)
-  <|> spanned (S.PVar N.__         <$  wildcard)
+  =   spanned (S.PVar      <$> ename)
+  <|> spanned (S.PVar N.__ <$  wildcard)
   <|> try (parens (spanned (S.PCon <$> cname <*> (fromList <$> many pattern))))
   <?> "pattern"
 
 
 -- Names
 
-ename :: (Monad p, TokenParsing p) => p N.EName
+ename :: (Monad p, TokenParsing p) => p N.UName
 ename  = ident enameStyle
 
 oname :: (Monad p, TokenParsing p) => p N.Op
@@ -254,7 +254,7 @@ tname :: (Monad p, TokenParsing p) => p N.TName
 tname = ident tnameStyle
 
 dename :: (Monad p, TokenParsing p) => p N.DName
-dename  = N.E . N.getEName <$> ename <|> N.O <$> oname
+dename  = N.E <$> ename <|> N.O <$> oname
 
 dtname :: (Monad p, TokenParsing p) => p N.DName
 dtname  = N.T . N.getTName<$> tname
