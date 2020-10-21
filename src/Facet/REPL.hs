@@ -126,6 +126,7 @@ loop = do
     Quit -> empty
     Show t -> case t of
       Paths   -> gets ((pretty "search paths:" <\>) . nest 2 . unlines . map pretty . searchPaths) >>= print
+      -- FIXME: show module names
       Modules -> gets (unlines . map pretty . Map.keys . files) >>= print
     Load path -> load src path
     Reload -> reload src
