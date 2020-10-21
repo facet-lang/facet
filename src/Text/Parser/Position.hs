@@ -20,7 +20,7 @@ class Parsing p => PositionParsing p where
 instance P.Algebra sig m => PositionParsing (P.ParserC m) where
   position = P.position
 
-spanning :: PositionParsing p => p a -> p (Span)
+spanning :: PositionParsing p => p a -> p Span
 spanning p = Span <$> position <* p <*> position
 
 spanned :: PositionParsing p => p a -> p (Spanned a)
