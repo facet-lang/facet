@@ -9,11 +9,11 @@ import Data.Char (isSpace)
 import Data.Coerce
 import Data.Foldable (foldl')
 import Data.Text (Text, pack)
+import Facet.Effect.Parser
 import Facet.Name
 import Facet.Span
 import Text.Parser.Char
 import Text.Parser.Combinators
-import Text.Parser.Position
 
 -- Lexer
 
@@ -42,7 +42,7 @@ data TokenKind
   | HIdent UName
 
 
-token :: (CharParsing p, PositionParsing p) => p Token
+token :: (CharParsing p, Has Parser sig p) => p Token
 token = mk <$> position <*> kind_ <*> position <* skipSpace
   where
   mk s k e = Token k (Span s e)
