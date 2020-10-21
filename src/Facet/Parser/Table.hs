@@ -24,7 +24,6 @@ data Operator p a
   | Postfix Text (a -> a)
   | Infix Assoc Text (a -> a -> a)
   | Outfix Text Text (a -> a)
-  | Operator (OperatorParser p a)
   | Atom (p a)
 
 parseOperator :: TokenParsing p => Operator p a -> OperatorParser p a
@@ -35,7 +34,6 @@ parseOperator = \case
   Infix L  s op -> \ _    next -> chainl1 next (op <$ textSymbol s)
   Infix R  s op -> \ self next -> try (op <$> next <* textSymbol s) <*> self
   Outfix s e op -> \ self _    -> op <$ textSymbol s <*> nesting self <* textSymbol e
-  Operator p    -> p
   Atom p        -> const (const p)
 
 type OperatorParser p a = p a -> p a -> p a
