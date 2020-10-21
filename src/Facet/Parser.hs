@@ -166,6 +166,7 @@ type' = forAll (\ (n ::: _T) b -> out n ::: _T S.:=> b) type' <|> monotype
 monotype :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Type)
 monotype = fn mono
   where
+  -- FIXME: model signatures in the surface syntax
   fn loop = chainr1 (optional sig *> loop) ((S.-->) <$ arrow)
   mono = build monotypeTable (parens . fn)
 
@@ -179,7 +180,6 @@ tvar = token (anned (runUnspaced (fmap (either (S.TFree . N.T) S.TBound) . resol
 -- - before an argument type
 -- - before a return type
 
--- FIXME: model signatures in the surface syntax
 sig :: (Monad p, PositionParsing p, TokenParsing p) => Facet p [S.Ann S.Type]
 sig = brackets (commaSep type') <?> "signature"
 
