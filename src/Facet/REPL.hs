@@ -17,6 +17,7 @@ import           Data.Colour.RGBSpace.HSL (hsl)
 import           Data.Foldable (toList)
 import qualified Data.Map as Map
 import           Data.Semigroup
+import           Data.Text (pack)
 import           Data.Text.Lazy (unpack)
 import           Facet.Algebra hiding (Algebra)
 import           Facet.Carrier.Parser.Church
@@ -26,6 +27,7 @@ import           Facet.Core
 import qualified Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Eval
+import           Facet.Name (MName(..))
 import           Facet.Notice
 import           Facet.Notice.Elab
 import           Facet.Notice.Parser
@@ -83,6 +85,11 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
   where
   cyan = setSGRCode [setRGB (hsl 180 1 0.5)]
   plain = setSGRCode []
+
+
+kernel :: Module
+kernel = Module (MName (pack "Kernel")) []
+  []
 
 
 data File = File
