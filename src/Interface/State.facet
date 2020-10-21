@@ -20,4 +20,4 @@ state : { S, A : Type } -> S -> [State S]A -> Pair S A
 church : { S, A, R : Type } -> (k : S -> A -> R) -> (s : S) -> [State S]A -> R
 { [ get   ; k ] -> church k s (k s)
 , [ put s ; k ] -> church k s (k unit)
-, a             -> k s a }
+, a             ->        k s a }
