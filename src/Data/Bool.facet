@@ -1,5 +1,4 @@
 Data.Bool : Module
-{
 
 Bool : Type
 { false : Bool
@@ -19,6 +18,4 @@ and : Bool -> Bool -> Bool
 or : Bool -> Bool -> Bool
 { (false) (false) -> false
 , _       _       -> true
-}
-
 }

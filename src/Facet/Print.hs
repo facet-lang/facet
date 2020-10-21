@@ -176,7 +176,7 @@ surface = Algebra
   , decl = ann
   , defn = \ (a :=: b) -> a </> b
   , data' = block . group . concatWith (surround (hardline <> comma <> space)) . map group
-  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> block (embed (concatWith (surround hardline) (is ++ map (hardline <>) ds)))
+  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
   , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
   }
   where
@@ -215,7 +215,7 @@ explicit = Algebra
   , decl = ann
   , defn = \ (a :=: b) -> group a <> hardline <> group b
   , data' = block . group . concatWith (surround (hardline <> comma <> space)) . map group
-  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> block (embed (concatWith (surround hardline) (is ++ map (hardline <>) ds)))
+  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
   , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
   }
   where

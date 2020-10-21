@@ -2,7 +2,6 @@ Interface.State
 : [ Data.Pair
   , Data.Unit ]
   Module
-{
 
 # FIXME: should we require the return types to be written more explicitly?
 State : (S : Type) -> Interface
@@ -23,5 +22,3 @@ church : { S, A, R : Type } -> (k : S -> A -> R) -> (s : S) -> [State S]A -> R
 { [ get   ; k ] -> church k s (k s)
 , [ put s ; k ] -> church k s (k unit)
 , a             -> k s a }
-
-}

@@ -1,7 +1,6 @@
 # NB: this file and its syntax is entirely aspirational.
 
 Data.Function : Module
-{
 
 id
 : { A : Type } -> (x : A) -> A
@@ -67,5 +66,3 @@ case
 # case
 # : { A : Base.Type.Type } -> { B : Base.Type.Type } -> A -> (A -> B) -> B
 # { (_ Base.Function.|> _) }
-
-}

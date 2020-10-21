@@ -1,6 +1,5 @@
 Data.Option
 : Module
-{
 
 Option : (A : Type) -> Type
 { none : Option A
@@ -10,5 +9,3 @@ Option : (A : Type) -> Type
 option : { A, B : Type } -> (outnone : B) -> (outsome : A -> B) -> Option A -> B
 { (none)   -> outnone
 , (some a) -> outsome a }
-
-}

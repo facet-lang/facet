@@ -1,8 +1,5 @@
 Data.Unit : Module
-{
 
 Unit : Type
 { unit : Unit
-}
-
 }

@@ -1,5 +1,4 @@
 Data.Pair : Module
-{
 
 Pair : (A : Type) -> (B : Type) -> Type
 { pair : A -> B -> Pair A B }
@@ -9,5 +8,3 @@ fst : { A : Type } -> { B : Type } -> Pair A B -> A
 
 snd : { A : Type } -> { B : Type } -> Pair A B -> A
 { (pair _ b) -> b }
-
-}

@@ -1,7 +1,6 @@
 # NB: this file and its syntax is entirely aspirational.
 
 Data.Bool : Module
-{ # fixme: it’d be nice to drop the curly braces in module syntax; maybe dropping the curly braces means it just extends to the rest of the current branch?
 
 # fixme: how do we control the implicit scope? should there even be any? where do e.g. Type & Module come from?
 # fixme: how do we make explicit imports convenient?
@@ -62,7 +61,5 @@ Base.Bool.Tests : Module # maybe parameterize this module by a signature for tes
 
 not_antiidempotence : (x : Bool) -> Test
 { not x =/= not (not x) }
-
-}
 
 }

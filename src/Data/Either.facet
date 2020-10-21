@@ -1,5 +1,4 @@
 Data.Either : Module
-{
 
 Either : (A : Type) -> (B : Type) -> Type
 { inl : A -> Either A B
@@ -12,5 +11,3 @@ either
 -> (Either A B -> C)
 { (inl a) -> outl a
 , (inr b) -> otur b }
-
-}

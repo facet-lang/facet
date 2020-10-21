@@ -1,7 +1,6 @@
 # NB: this file and its syntax is entirely aspirational.
 
 Interface.Reader : Module
-{
 
 Reader : (R : Type) -> Interface
 { ask : R
@@ -12,5 +11,3 @@ reader : { R, A : Type } -> (r : R) -> [Reader R]A -> A
 { a               -> a
 , [ask       ; k] -> reader r (k r)
 , [local f m ; k] -> reader r (reader (f r) m) }
-
-}
