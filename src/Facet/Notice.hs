@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 module Facet.Notice
 ( -- * Notices
   Level(..)
@@ -7,9 +8,6 @@ module Facet.Notice
 , reason_
 , context_
 , reAnnotateNotice
-, Style(..)
-, identityStyle
-, prettyNoticeWith
 , prettyNotice
 , Highlight(..)
 ) where
@@ -21,7 +19,6 @@ import           Facet.Source (Line(..), LineEnding(..), Source(..))
 import qualified Facet.Span as Span
 import qualified Prettyprinter as P
 import           Silkscreen
-import           System.Console.ANSI
 
 -- Notices
 
@@ -60,38 +57,19 @@ reAnnotateNotice :: (a -> b) -> (Notice a -> Notice b)
 reAnnotateNotice f Notice{ level, source, reason, context} = Notice{ level, source, reason = P.reAnnotate f reason, context = map (P.reAnnotate f) context }
 
 
-data Style a = Style
-  { pathStyle   :: P.Doc a -> P.Doc a
-  , levelStyle  :: Level -> P.Doc a -> P.Doc a
-  , posStyle    :: P.Doc a -> P.Doc a
-  , gutterStyle :: P.Doc a -> P.Doc a
-  , eofStyle    :: P.Doc a -> P.Doc a
-  , caretStyle  :: P.Doc a -> P.Doc a
-  }
-
-identityStyle :: Style a
-identityStyle = Style
-  { pathStyle   = id
-  , levelStyle  = const id
-  , posStyle    = id
-  , gutterStyle = id
-  , eofStyle    = id
-  , caretStyle  = id
-  }
-
-prettyNoticeWith :: Style a -> Notice a -> P.Doc a
-prettyNoticeWith Style{ pathStyle, levelStyle, posStyle, gutterStyle, eofStyle, caretStyle } (Notice level (Source path span _ (line:|_)) reason context) = concatWith (surround hardline)
+prettyNotice :: Notice a -> P.Doc (Highlight a)
+prettyNotice (Notice level (Source path span _ (line:|_)) reason context) = concatWith (surround hardline)
   ( nest 2 (group (fillSep
-    [ pathStyle (pretty (fromMaybe "(interactive)" path)) <> colon <> pos (Span.start span) <> colon <> foldMap ((space <>) . (<> colon) . (levelStyle <*> pretty)) level
-    , reason
+    [ annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> pos (Span.start span) <> colon <> foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level
+    , P.reAnnotate Reason reason
     ]))
-  : gutterStyle (pretty (succ (Span.line (Span.start span)))) <+> align (vcat
-    [ gutterStyle (pretty '|') <+> prettyLine line
-    , gutterStyle (pretty '|') <+> padding span <> caretStyle (caret (lineLength line) span)
+  : annotate Gutter (pretty (succ (Span.line (Span.start span)))) <+> align (vcat
+    [ annotate Gutter (pretty '|') <+> prettyLine line
+    , annotate Gutter (pretty '|') <+> padding span <> annotate Caret (caret (lineLength line) span)
     ])
-  : context)
+  : map (P.reAnnotate Context) context)
   where
-  pos (Span.Pos l c) = posStyle (pretty (succ l)) <> colon <> posStyle (pretty (succ c))
+  pos (Span.Pos l c) = annotate Span (pretty (succ l)) <> colon <> annotate Span (pretty (succ c))
 
   padding (Span.Span (Span.Pos _ c) _) = pretty (replicate c ' ')
 
@@ -102,11 +80,7 @@ prettyNoticeWith Style{ pathStyle, levelStyle, posStyle, gutterStyle, eofStyle, 
 
   lineLength (Line _ line ending) = length line - case ending of{ CRLF -> 2 ; EOF -> 0 ; _ -> 1 }
 
-  prettyLine (Line _ line end) = pretty line <> eofStyle (pretty end)
-
-
-prettyNotice :: Notice [SGR] -> P.Doc [SGR]
-prettyNotice = prettyNoticeWith sgrStyle
+  prettyLine (Line _ line end) = pretty line <> annotate End (pretty end)
 
 
 data Highlight a
@@ -118,17 +92,3 @@ data Highlight a
   | End
   | Caret
   | Context a
-
-
--- FIXME: figure out some sort of more semantic styling annotations, annotate into that, and then map it onto a configurable stylesheet describing RGB &c.
-sgrStyle :: Style [SGR]
-sgrStyle = Style
-  { pathStyle   = annotate [SetConsoleIntensity BoldIntensity]
-  , levelStyle  = \case
-    Warn  -> annotate [SetColor Foreground Vivid Magenta]
-    Error -> annotate [SetColor Foreground Vivid Red]
-  , posStyle    = annotate [SetConsoleIntensity BoldIntensity]
-  , gutterStyle = annotate [SetColor Foreground Vivid Blue]
-  , eofStyle    = annotate [SetColor Foreground Vivid Blue]
-  , caretStyle  = annotate [SetColor Foreground Vivid Green]
-  }

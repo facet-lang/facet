@@ -37,9 +37,11 @@ import           Facet.Print
 import           Facet.REPL.Parser
 import           Facet.Source (Source(..), readSourceFromFile, sourceFromString)
 import           Facet.Stack
+import           Facet.Style
 import           Facet.Surface (Expr, Type)
 import           Facet.Syntax
 import           Prelude hiding (print, span)
+import           Prettyprinter (reAnnotate)
 import           Silkscreen hiding (line)
 import           System.Console.ANSI
 import           System.IO.Error
@@ -110,7 +112,7 @@ data File = File
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
   resp <- prompt
-  runError (print . prettyNotice) pure $ case resp of
+  runError (print . reAnnotate terminalNoticeStyle . prettyNotice) pure $ case resp of
     -- FIXME: evaluate expressions
     Just src -> rethrowParseErrors (runParserWithSource src commandParser) >>= runAction src
     Nothing  -> pure ()
@@ -194,7 +196,7 @@ reload src = do
       env_ %= (<> env)
       file{ loaded = True } <$ print (getPrint (foldCModule surface m')))
       `catchError` \ n ->
-        file <$ print (indent 2 (prettyNotice n))
+        file <$ print (indent 2 (reAnnotate terminalNoticeStyle (prettyNotice n)))
 
 failure :: [SGR]
 failure = [setRGB (hsl 0 1 0.5), setBold]
