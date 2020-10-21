@@ -63,6 +63,7 @@ data REPL = REPL
   , files          :: Map.Map FilePath File
   , promptFunction :: Int -> IO String
   , env            :: Env.Env
+  -- FIXME: break this down by file/module/whatever so we can load multiple packages
   , searchPaths    :: [FilePath]
   }
 
