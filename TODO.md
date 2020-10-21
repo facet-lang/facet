@@ -94,19 +94,11 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 ### Pretty-printer
 
-- Decompose into DSLs for printing parts of syntax, interpreters written against said DSLs, and composable implementations of the DSLs providing different behaviours for e.g. bound variable display.
-
-- Disincline the printer to format declarations on a single line.
-
-- Space out declarations in module bodies better.
-
 - Preserve comments in surface syntax 😱
 
 - Parenthesize operators occurring free in expressions.
 
 - Can we deal with precedence in a more modular way, à la the approach the parser takes (cf https://ptival.github.io/2017/02/25/modular-parser-combinators/)?
-
-- Rainbow highlighting of local variables introductions & references. Including in error contexts!
 
 - Increase the size of source excerpts so binding sites are visible; alternatively, have multiple excerpts when binding sites are far away.
 
