@@ -12,12 +12,12 @@ modify : { S : Type } -> (f : S -> S) -> [State S]{Unit}
 { put (f get!) }
 
 evalState : { S, A : Type } -> S -> [State S]A -> A
-{ church { _ a -> a } }
+{ state { _ a -> a } }
 
 runState : { S, A : Type } -> S -> [State S]A -> Pair S A
-{ church pair }
+{ state pair }
 
-church : { S, A, R : Type } -> (k : S -> A -> R) -> (s : S) -> [State S]A -> R
-{ [ get   ; k ] -> church k s (k s)
-, [ put s ; k ] -> church k s (k unit)
-, a             ->        k s a }
+state : { S, A, R : Type } -> (k : S -> A -> R) -> (s : S) -> [State S]A -> R
+{ [ get   ; k ] -> state k s (k s)
+, [ put s ; k ] -> state k s (k unit)
+, a             ->       k s a }
