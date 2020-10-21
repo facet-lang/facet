@@ -82,6 +82,7 @@ library
     Facet.Source
     Facet.Span
     Facet.Stack
+    Facet.Style
     Facet.Surface
     Facet.Syntax
   other-modules:
