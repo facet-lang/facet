@@ -19,21 +19,22 @@ import           Facet.Print as Print hiding (Hole)
 import           Facet.Source
 import           Facet.Stack
 import           Facet.Syntax
+import           Prettyprinter (reAnnotate)
 import           Silkscreen
 
 -- Elaboration
 
-rethrowElabErrors :: Source -> L.ThrowC (Notice Print.Highlight) Err m a -> m a
-rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context } ->
+rethrowElabErrors :: Source -> (Print.Highlight -> other) -> L.ThrowC (Notice other) Err m a -> m a
+rethrowElabErrors src mapAnn = L.runThrow $ \ Err{ span, reason, context } ->
   let (_, _, printCtx, ctx) = foldl combine (N.Level 0, Nil, Nil, Nil) (elems context)
-  in Notice (Just Error) (slice src span) (printReason printCtx reason) (toList ctx)
+  in Notice (Just Error) (slice src span) (reAnnotate mapAnn (printReason printCtx reason)) (toList ctx)
   where
   combine (d, sort, print, ctx) (n ::: _T) =
     let entry = foldCValue explicit print _T
         s = sortOf sort _T
     in  ( succ d
         , sort :> s
-        , print :> entry, ctx :> getPrint (ann (name s explicit n d ::: entry)) )
+        , print :> entry, ctx :> reAnnotate mapAnn (getPrint (ann (name s explicit n d ::: entry))) )
   name = \case
     STerm -> intro
     _     -> tintro

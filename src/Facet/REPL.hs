@@ -114,7 +114,7 @@ loop = do
   resp <- prompt
   runError (print . prettyNotice') pure $ case resp of
     -- FIXME: evaluate expressions
-    Just src -> rethrowParseErrors @Print.Highlight (runParserWithSource src commandParser) >>= runAction src
+    Just src -> rethrowParseErrors @Style (runParserWithSource src commandParser) >>= runAction src
     Nothing  -> pure ()
   loop
   where
@@ -168,12 +168,12 @@ data Action
   | Kind (Spanned Type)
   | Eval (Spanned Expr)
 
-load :: (Has (Error (Notice Print.Highlight)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
+load :: (Has (Error (Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
 load src path = do
   files_ %= Map.insert path File{ loaded = False }
   reload src
 
-reload :: (Has (Error (Notice Print.Highlight)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
+reload :: (Has (Error (Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
 reload src = do
   -- FIXME: order with a topological sort on imports, once those exist
   evalFresh 1 $ files_ <~> \ files -> itraverse (reloadFile (length files)) files
@@ -191,7 +191,7 @@ reload src = do
 
     (do
       src <- liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
-      m <- rethrowParseErrors @Print.Highlight (runParserWithSource src (runFacet [] (whole module')))
+      m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
       (env, m') <- elab src $ Elab.elabModule m
       env_ %= (<> env)
       file{ loaded = True } <$ print (prettyCode (foldCModule surface m')))
@@ -229,14 +229,14 @@ print d = do
   opts <- liftIO layoutOptionsForTerminal
   outputStrLn (unpack (renderLazy (layoutSmart opts d)))
 
-prettyNotice' :: Notice Print.Highlight -> Doc [SGR]
-prettyNotice' = reAnnotate (terminalNoticeStyle . fmap terminalCodeStyle) . prettyNotice
+prettyNotice' :: Notice Style -> Doc [SGR]
+prettyNotice' = reAnnotate (terminalNoticeStyle . fmap terminalStyle) . prettyNotice
 
 prettyCode :: Print -> Doc [SGR]
 prettyCode = reAnnotate terminalCodeStyle . getPrint
 
-elab :: Source -> I.ThrowC (Notice Print.Highlight) Elab.Err (L.StateC REPL Env.Env (ReaderC Span m)) a -> m a
-elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src
+elab :: Source -> I.ThrowC (Notice Style) Elab.Err (L.StateC REPL Env.Env (ReaderC Span m)) a -> m a
+elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src Code
 
 
 -- | Compose a getter onto the input of a Kleisli arrow and run it on the 'State'.
@@ -252,5 +252,5 @@ lens <~> act = lens <~ lens ~> act
 infixr 2 <~>
 
 
-ioErrorToNotice :: Source -> IOError -> Notice Print.Highlight
+ioErrorToNotice :: Source -> IOError -> Notice Style
 ioErrorToNotice src err = Notice.Notice (Just Error) src (group (reflow (show err))) []
