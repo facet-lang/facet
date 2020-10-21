@@ -10,7 +10,7 @@ import           Control.Applicative ((<**>), (<|>))
 import qualified Facet.Carrier.Parser.Church as P
 import           Facet.Span (Pos, Span(..))
 import           Text.Parser.Combinators (Parsing)
-import           Text.Parser.Token (Unhighlighted(..), Unlined(..))
+import           Text.Parser.Token (Unhighlighted(..), Unlined(..), Unspaced(..))
 
 class Parsing p => PositionParsing p where
   position :: p Pos
@@ -23,6 +23,9 @@ instance PositionParsing p => PositionParsing (Unhighlighted p) where
 
 instance PositionParsing p => PositionParsing (Unlined p) where
   position = Unlined position
+
+instance PositionParsing p => PositionParsing (Unspaced p) where
+  position = Unspaced position
 
 
 chainl1Loc :: PositionParsing p => p a -> p (Span -> a -> a -> a) -> p a
