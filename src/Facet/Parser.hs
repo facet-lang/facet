@@ -139,8 +139,7 @@ con = anned ((:::) <$> cname <* colon <*> type')
 
 monotypeTable :: (Monad p, PositionParsing p, TokenParsing p) => Table (Facet p) (S.Ann S.Type)
 monotypeTable =
-  [ [ Infix R (pack "->") (S.-->) ]
-  , [ Infix L mempty (S.$$$) ]
+  [ [ Infix L mempty (S.$$$) ]
   , [ -- FIXME: we should treat this as a global.
       Atom (anned (S.Type <$ token (string "Type")))
     , Atom tvar
@@ -165,7 +164,10 @@ type' :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Type)
 type' = forAll (\ (n ::: _T) b -> out n ::: _T S.:=> b) type' <|> monotype
 
 monotype :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Type)
-monotype = build monotypeTable parens
+monotype = fn mono
+  where
+  fn loop = chainr1 (optional sig *> loop) ((S.-->) <$ arrow)
+  mono = build monotypeTable (parens . fn)
 
 tvar :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Type)
 tvar = token (anned (runUnspaced (fmap (either (S.TFree . N.T) S.TBound) . resolve <$> tname <*> Unspaced env <?> "variable")))
