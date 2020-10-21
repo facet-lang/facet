@@ -147,7 +147,6 @@ f $$ a = askingPrec $ \case
 ((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (setPrec Var n ::: t) <> line))) </> arrow <+> b)
 
 
--- FIXME: these are poorly factored. Most of the structure can be shared, we just want to override a few in each.
 printVar :: ((Int -> Print) -> UName -> Level -> Print) -> Var -> Print
 printVar name = \case
   Global _ n -> setPrec Var (pretty n)
@@ -163,39 +162,6 @@ surface = Algebra
   , intro = name lower
   , lam = comp . embed . commaSep
   , clause = \ ns b -> embed (setPrec Pattern (vsep (map (unPl_ (braces . tm) tm) ns)) </> arrow) </> b
-  -- FIXME: group quantifiers by kind again.
-  , fn = \ as b -> foldr (\ (P pl (n ::: _T)) b -> case n of
-    Just n -> ((pl, n) ::: _T) >~> b
-    _      -> _T --> b) b as
-  , app = \ f as -> f $$* fmap (unPl_ braces id) as
-  , hole = \ n -> annotate (Hole (Meta 0)) $ pretty '?' <> pretty n
-  , _Type = annotate Type $ pretty "Type"
-  , _Void = annotate Type $ pretty "Void"
-  , ann' = tm
-  , case' = \ s ps -> align . group $ pretty "case" <+> setPrec Expr s </> block (concatWith (surround (hardline <> comma <> space)) (map (group . (\ (p, b) -> align (embed (prec Pattern p </> arrow) </> b))) ps))
-  , pcon = \ n ps -> parens (hsep (annotate Con n:toList ps))
-  , tuple = tupled
-  , decl = ann
-  , defn = \ (a :=: b) -> a </> b
-  , data' = block . group . concatWith (surround (hardline <> comma <> space)) . map group
-  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
-  , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
-  }
-  where
-  embed = nest 2 . group
-  name f n d = setPrec Var . annotate (Name d) $ if T.null (getUName n) then
-    pretty '_' <> f (getLevel d)
-  else
-    pretty n
-
--- FIXME: elide unused vars
-explicit :: Algebra Print
-explicit = Algebra
-  { var = printVar name
-  , tintro = name upper
-  , intro = name lower
-  , lam = comp . embed . commaSep
-  , clause = \ ns b -> group (align (setPrec Pattern (vsep (map (\ (P pl (n ::: _T)) -> group $ unPl braces id pl (maybe n (ann . (n :::)) _T)) ns)) </> arrow)) </> b
   -- FIXME: group quantifiers by kind again.
   , fn = \ as b -> foldr (\ (P pl (n ::: _T)) b -> case n of
     Just n -> ((pl, n) ::: _T) >~> b
@@ -216,4 +182,18 @@ explicit = Algebra
   }
   where
   embed = nest 2 . group
+  name f n d = setPrec Var . annotate (Name d) $ if T.null (getUName n) then
+    pretty '_' <> f (getLevel d)
+  else
+    pretty n
+
+-- FIXME: elide unused vars
+explicit :: Algebra Print
+explicit = surface
+  { var = printVar name
+  , tintro = name upper
+  , intro = name lower
+  , clause = \ ns b -> group (align (setPrec Pattern (vsep (map (\ (P pl (n ::: _T)) -> group $ unPl braces id pl (maybe n (ann . (n :::)) _T)) ns)) </> arrow)) </> b
+  }
+  where
   name f _ d = setPrec Var (annotate (Name d) (cons d (f (getLevel d))))
