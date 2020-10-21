@@ -234,6 +234,8 @@ pattern
   =   anned (S.PVar      <$> ename)
   <|> anned (S.PVar N.__ <$  wildcard)
   <|> try (parens (anned (S.PCon <$> cname <*> (fromList <$> many pattern))))
+  -- FIXME: model handler patterns in the surface syntax
+  <|> brackets (anned (S.PVar N.__ <$ ((,,) <$> ename <*> (fromList <$> many pattern) <* symbolic ';' <*> ename)))
   <?> "pattern"
 
 
