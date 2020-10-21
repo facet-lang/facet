@@ -406,16 +406,16 @@ elabDDecl d = go d id
     :: Spanned S.DDecl
     -> (Check Value -> Check Value)
     -> Check [UName ::: Type] ::: Check Type
-  go d km = withSpans d $ \case
+  go (s, d) km = case d of
     S.DDForAll (n ::: t) b ->
       let b' ::: _B = go b
-            (km . (\ b  -> Check $ \ _T -> do
+            (km . (\ b  -> Check $ \ _T -> setSpan s $ do
               (_ ::: _T, _B) <- expectQuantifier "in type quantifier" _T
               b' <- elabBinder $ \ _ -> check ((out n ::: _T |- b) ::: VType)
               pure $ VForAll (im (out n) ::: _T) b'))
-      in b' ::: checkElab (switch (n ::: checkElab (elabType t) >~> (|- _B)))
+      in b' ::: setSpan s (checkElab (switch (n ::: checkElab (elabType t) >~> (|- _B))))
 
-    S.DDBody t b -> elabData km b ::: checkElab (elabType t)
+    S.DDBody t b -> setSpan s (elabData km b) ::: setSpan s (checkElab (elabType t))
 
   -- FIXME: check that all constructors return the datatype.
   elabData k cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab (elabType t))
