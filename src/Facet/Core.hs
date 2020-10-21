@@ -40,7 +40,7 @@ import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Semialign
 import           Data.Traversable (mapAccumL)
-import           Facet.Name (Level(..), MName, Meta(..), QName, UName, __)
+import           Facet.Name hiding (bind)
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
