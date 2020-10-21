@@ -41,7 +41,7 @@ import           Facet.Stack
 import           Facet.Style as Style
 import           Facet.Surface (Ann, Expr, Type)
 import           Facet.Syntax
-import           Prelude hiding (print, span)
+import           Prelude hiding (print, span, unlines)
 import           Prettyprinter (reAnnotate, reAnnotateS)
 import           Silkscreen hiding (Ann, line)
 import           System.Console.ANSI
@@ -246,3 +246,9 @@ infixr 2 <~>
 
 ioErrorToNotice :: Source -> IOError -> Notice Style
 ioErrorToNotice src err = Notice.Notice (Just Error) src (group (reflow (show err))) []
+
+unlines :: Printer p => [p] -> p
+unlines = concatWith (<\>)
+
+(<\>) :: Printer p => p -> p -> p
+(<\>) = surround hardline
