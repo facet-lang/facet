@@ -370,7 +370,12 @@ elabPattern
 elabPattern = withSpan $ \case
   S.PVar n    -> Check $ \ _T -> pure (C.PVar (n ::: _T))
   S.PCon n ps -> Check $ \ _T -> do
-    let go _T' = \case
+    let inst _T = case unForAll _T of
+          Just (P Im _ ::: _T, _B) -> do
+            m <- metavar <$> meta _T
+            inst (_B m)
+          _                        -> pure _T
+        go _T' = \case
           Nil   -> Nil <$ unify (_T' :===: _T)
           ps:>p -> do
             (_A, _B) <- expectQuantifier "when checking constructor pattern" _T'
@@ -382,7 +387,8 @@ elabPattern = withSpan $ \case
             pure $ ps' :> p'
     -- FIXME: we probably need to instantiate implicits here
     q ::: _T' <- synth (resolve (C n))
-    C.PCon . Con (q ::: _T') <$> go _T' ps
+    _T'' <- inst _T'
+    C.PCon . Con (q ::: _T'') <$> go _T'' ps
 
 
 -- Declarations
