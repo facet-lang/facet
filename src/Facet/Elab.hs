@@ -402,10 +402,6 @@ elabDDecl
   -> Check [UName ::: Type] ::: Check Type
 elabDDecl d = go d id
   where
-  go
-    :: Spanned S.DDecl
-    -> (Check Value -> Check Value)
-    -> Check [UName ::: Type] ::: Check Type
   go (s, d) km = case d of
     S.DDForAll (n ::: t) b ->
       let b' ::: _B = go b
@@ -427,9 +423,6 @@ elabTDecl
   -> Check Value ::: Check Type
 elabTDecl d = go d
   where
-  go
-    :: Spanned S.TDecl
-    -> Check Value ::: Check Type
   go d = withSpans d $ \case
     S.TDForAll (n ::: t) b ->
       let b' ::: _B = go b
