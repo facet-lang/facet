@@ -22,10 +22,11 @@ module Facet.Surface
 ) where
 
 import Control.Effect.Empty
+import Data.Function (on)
 import Data.List.NonEmpty (NonEmpty)
 import Facet.Name
 import Facet.Stack
-import Facet.Syntax
+import Facet.Syntax hiding (out)
 import Text.Parser.Position
 
 -- Expressions
@@ -127,3 +128,6 @@ data Ann a = Ann
   , out :: a
   }
   deriving (Foldable, Functor, Traversable)
+
+instance Eq a => Eq (Ann a) where
+  (==) = (==) `on` out
