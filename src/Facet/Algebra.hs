@@ -31,7 +31,6 @@ data Var
   = Global (Maybe MName) DName
   | TLocal UName Level
   | Local UName Level
-  | Quote UName Level
   | Metavar Meta
   | Cons UName
 

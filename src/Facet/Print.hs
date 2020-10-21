@@ -154,7 +154,6 @@ surface = Algebra
     Global _ n -> setPrec Var (pretty n)
     TLocal n d -> name upper n d
     Local  n d -> name lower n d
-    Quote  n d -> stimes (3 :: Int) $ name lower n d
     Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
     Cons     n -> setPrec Var (annotate Con (pretty n))
   , tintro = name upper
@@ -193,7 +192,6 @@ explicit = Algebra
     Global _ n -> setPrec Var (pretty n)
     TLocal n d -> name upper n d
     Local  n d -> name lower n d
-    Quote  n d -> stimes (3 :: Int) $ name lower n d
     Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
     Cons     n -> setPrec Var (annotate Con (pretty n))
   , tintro = name upper
