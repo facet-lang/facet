@@ -17,6 +17,8 @@ module Facet.Surface
   -- * Modules
 , Module(..)
 , Import(..)
+  -- * Annotations
+, Ann(..)
 ) where
 
 import Control.Effect.Empty
@@ -116,3 +118,9 @@ data Module = Module { name :: MName, imports :: [Spanned Import], defs :: [Span
 
 newtype Import = Import { name :: MName }
   deriving (Show)
+
+
+-- Annotations
+
+data Ann a = Ann Span a
+  deriving (Foldable, Functor, Traversable)
