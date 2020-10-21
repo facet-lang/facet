@@ -247,19 +247,13 @@ _onameN
   -- FIXME: how should we specify associativity?
   postOrIn cs = bool (N.PostfixN (NE.init cs) (NE.last cs)) (N.InfixN N.N cs)
 
-hname :: (Monad p, TokenParsing p) => p N.UName
+hname, cname, tname :: (Monad p, TokenParsing p) => p N.UName
 hname = ident hnameStyle
-
-cname :: (Monad p, TokenParsing p) => p N.UName
 cname = ident cnameStyle
-
-tname :: (Monad p, TokenParsing p) => p N.UName
 tname = ident tnameStyle
 
-dename :: (Monad p, TokenParsing p) => p N.DName
+dename, dtname :: (Monad p, TokenParsing p) => p N.DName
 dename  = N.E <$> ename <|> N.O <$> oname
-
-dtname :: (Monad p, TokenParsing p) => p N.DName
 dtname  = N.T <$> tname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
