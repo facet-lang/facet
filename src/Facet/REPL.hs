@@ -150,11 +150,11 @@ commands =
   , Command ["kind", "k"]       "show the kind of <type>"       $ Meta "type" kind_
   ]
 
-load_ :: (PositionParsing p, TokenParsing p) => p Action
+load_ :: (Has Parser sig p, TokenParsing p) => p Action
 
 load_ = Load <$> (stringLiteral <|> some (satisfy (not . isSpace)))
 
-type_, kind_ :: (Monad p, PositionParsing p, TokenParsing p) => p Action
+type_, kind_ :: (Has Parser sig p, TokenParsing p) => p Action
 
 type_ = Type <$> runFacet [] (whole expr)
 kind_ = Kind <$> runFacet [] (whole type')

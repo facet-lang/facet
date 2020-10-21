@@ -8,6 +8,7 @@ module Facet.Parser
 , whole
 ) where
 
+import           Control.Algebra ((:+:))
 import           Control.Applicative (Alternative(..))
 import           Control.Carrier.Reader
 import           Control.Selective
@@ -21,15 +22,16 @@ import qualified Data.HashSet as HashSet
 import           Data.List (elemIndex)
 import qualified Data.List.NonEmpty as NE
 import           Data.Text (pack)
+import           Facet.Effect.Parser
 import qualified Facet.Name as N
 import           Facet.Parser.Table as Op
+import           Facet.Span
 import           Facet.Stack
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Prelude hiding (lines, null, product, span)
 import           Text.Parser.Char
 import           Text.Parser.Combinators
-import           Text.Parser.Position
 import           Text.Parser.Token
 import           Text.Parser.Token.Highlight as Highlight
 import           Text.Parser.Token.Style
@@ -56,7 +58,7 @@ env :: Applicative m => Facet m [N.UName]
 env = Facet pure
 
 newtype Facet m a = Facet ([N.UName] -> m a)
-  deriving (Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC [N.UName] m
+  deriving (Algebra (Reader [N.UName] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC [N.UName] m
 
 instance Selective m => Selective (Facet m) where
   select f a = Facet $ \ env -> select (runFacet env f) (runFacet env a)
@@ -80,9 +82,6 @@ instance CharParsing p => CharParsing (Facet p) where
 instance TokenParsing m => TokenParsing (Facet m) where
   someSpace = buildSomeSpaceParser (skipSome (satisfy isSpace)) emptyCommentStyle{ _commentLine = "#" }
 
-instance PositionParsing p => PositionParsing (Facet p) where
-  position = lift position
-
 lift :: p a -> Facet p a
 lift = Facet . const
 
@@ -94,23 +93,23 @@ whole p = whiteSpace *> p <* eof
 -- Modules
 
 -- FIXME: preserve comments, presumably in 'S.Ann'
-module' :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Module)
+module' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Module)
 module' = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import')) <*> many decl)
 
 
 -- Declarations
 
-import' :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Import)
+import' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Import)
 import' = anned $ S.Import <$> mname
 
-decl :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
+decl :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
 decl = anned
   $   (,) <$> dename <* colon <*> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
   <|> (,) <$> dtname <* colon <*> anned (S.DDecl <$> typeSig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
 
 
 typeSig
-  :: (Monad p, PositionParsing p, TokenParsing p)
+  :: (Has Parser sig p, TokenParsing p)
   => (Pl_ N.UName ::: S.Ann S.Type -> S.Ann res -> res)
   -> Facet p N.UName
   -> Facet p res
@@ -120,7 +119,7 @@ typeSig (-->) name body = go
   go = forAll (-->) go <|> binder (-->) name go <|> anned body
 
 binder
-  :: (Monad p, PositionParsing p, TokenParsing p)
+  :: (Has Parser sig p, TokenParsing p)
   => (Pl_ N.UName ::: S.Ann S.Type -> S.Ann res -> res)
   -> Facet p N.UName
   -> Facet p (S.Ann res)
@@ -131,13 +130,13 @@ binder (-->) name k = do
   where
   mk start t b end = S.Ann (Span start end) (t --> b)
 
-con :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann (N.UName ::: S.Ann S.Type))
+con :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.UName ::: S.Ann S.Type))
 con = anned ((:::) <$> cname <* colon <*> type')
 
 
 -- Types
 
-monotypeTable :: (Monad p, PositionParsing p, TokenParsing p) => Table (Facet p) (S.Ann S.Type)
+monotypeTable :: (Has Parser sig p, TokenParsing p) => Table (Facet p) (S.Ann S.Type)
 monotypeTable =
   [ [ Infix L mempty (S.$$$) ]
   , [ -- FIXME: we should treat this as a global.
@@ -148,7 +147,7 @@ monotypeTable =
   ]
 
 forAll
-  :: (Monad p, PositionParsing p, TokenParsing p)
+  :: (Has Parser sig p, TokenParsing p)
   => (Pl_ N.UName ::: S.Ann S.Type -> S.Ann res -> res)
   -> Facet p (S.Ann res) -> Facet p (S.Ann res)
 forAll mk k = do
@@ -160,17 +159,17 @@ forAll mk k = do
   loop start ty i rest = bind i $ \ v -> mk' start (im v ::: ty) <$> rest <*> position
   mk' start t b end = S.Ann (Span start end) (mk t b)
 
-type' :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Type)
+type' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Type)
 type' = forAll (\ (n ::: _T) b -> out n ::: _T S.:=> b) type' <|> monotype
 
-monotype :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Type)
+monotype :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Type)
 monotype = fn mono
   where
   -- FIXME: model signatures in the surface syntax
   fn loop = chainr1 (optional sig *> loop) ((S.-->) <$ arrow)
   mono = build monotypeTable (parens . fn)
 
-tvar :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Type)
+tvar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Type)
 tvar = token (anned (runUnspaced (fmap (either (S.TFree . N.T) S.TBound) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
@@ -180,13 +179,13 @@ tvar = token (anned (runUnspaced (fmap (either (S.TFree . N.T) S.TBound) . resol
 -- - before an argument type
 -- - before a return type
 
-sig :: (Monad p, PositionParsing p, TokenParsing p) => Facet p [S.Ann S.Type]
+sig :: (Has Parser sig p, TokenParsing p) => Facet p [S.Ann S.Type]
 sig = brackets (commaSep type') <?> "signature"
 
 
 -- Expressions
 
-exprTable :: (Monad p, PositionParsing p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
+exprTable :: (Has Parser sig p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
 exprTable =
   [ [ Infix L mempty (S.$$) ]
   -- FIXME: model this as application to unit instead
@@ -199,20 +198,20 @@ exprTable =
     ]
   ]
 
-expr :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Expr)
+expr :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 expr = build exprTable parens
 
-comp :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Expr)
+comp :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
 comp = anned (S.Comp <$> anned (braces (S.Clauses <$> sepBy1 clause comma <|> S.Expr <$> expr <|> pure (S.Clauses []))))
 
-clause :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (NE.NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)
+clause :: (Has Parser sig p, TokenParsing p) => Facet p (NE.NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)
 clause = (do
   ps <- try (NE.some1 pattern <* arrow)
   b' <- foldr (bindPattern . S.out) expr ps
   pure (ps, b')) <?> "clause"
 
-evar :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Expr)
+evar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 evar
   =   token (anned (runUnspaced (fmap (either (S.Free . N.E) S.Bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
   <|> try (token (anned (runUnspaced (S.Free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
@@ -220,7 +219,7 @@ evar
 
 -- Patterns
 
-bindPattern :: PositionParsing p => S.Pattern -> Facet p a -> Facet p a
+bindPattern :: Has Parser sig p => S.Pattern -> Facet p a -> Facet p a
 bindPattern p m = case p of
   S.PVar n    -> bind n (const m)
   S.PCon _ ps -> foldr (bindPattern . S.out) m ps
@@ -229,7 +228,7 @@ bindPattern p m = case p of
 wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
 
-pattern :: (Monad p, PositionParsing p, TokenParsing p) => p (S.Ann S.Pattern)
+pattern :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Pattern)
 pattern = choice
   [ anned (S.PVar      <$> ename)
   , anned (S.PVar N.__ <$  wildcard)
@@ -350,7 +349,7 @@ rparen :: TokenParsing p => p Char
 rparen = symbolic ')'
 
 
-anned :: PositionParsing p => p a -> p (S.Ann a)
+anned :: Has Parser sig p => p a -> p (S.Ann a)
 anned p = mk <$> position <*> p <*> position
   where
   mk s a e = (S.Ann (Span s e) a)
