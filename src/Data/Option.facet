@@ -6,4 +6,9 @@ Option : (A : Type) -> Type
 { none : Option A
 , some : A -> Option A }
 
+
+option : { A, B : Type } -> (outnone : B) -> (outsome : A -> B) -> Option A -> B
+{ (none)   -> outnone
+, (some a) -> outsome a }
+
 }
