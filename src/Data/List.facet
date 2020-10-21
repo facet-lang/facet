@@ -3,8 +3,7 @@ Data.List
 
 List : (A : Type) -> Type
 { nil : List A
-, cons : A -> List A -> List A
-}
+, cons : A -> List A -> List A }
 
 map : { A, B : Type } -> (f : A -> B) -> (List A -> List B)
 { (nil)       -> nil

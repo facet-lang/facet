@@ -2,20 +2,16 @@ Data.Bool : Module
 
 Bool : Type
 { false : Bool
-, true : Bool
-}
+, true : Bool }
 
 not : Bool -> Bool
 { (true)  -> false
-, (false) -> true
-}
+, (false) -> true }
 
 and : Bool -> Bool -> Bool
 { (true) (true) -> true
-, _      _      -> false
-}
+, _      _      -> false }
 
 or : Bool -> Bool -> Bool
 { (false) (false) -> false
-, _       _       -> true
-}
+, _       _       -> true }
