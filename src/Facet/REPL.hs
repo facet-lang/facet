@@ -58,6 +58,7 @@ repl
   $ loop
 
 
+-- FIXME: search paths
 data REPL = REPL
   { line           :: Int
   , files          :: Map.Map FilePath File
