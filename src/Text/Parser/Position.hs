@@ -3,10 +3,8 @@ module Text.Parser.Position
 ( PositionParsing(..)
 , Pos
 , Span(..)
-, chainl1Loc
 ) where
 
-import           Control.Applicative ((<**>), (<|>))
 import qualified Facet.Carrier.Parser.Church as P
 import           Facet.Span (Pos, Span(..))
 import           Text.Parser.Combinators (Parsing)
@@ -26,9 +24,3 @@ instance PositionParsing p => PositionParsing (Unlined p) where
 
 instance PositionParsing p => PositionParsing (Unspaced p) where
   position = Unspaced position
-
-
-chainl1Loc :: PositionParsing p => p a -> p (Span -> a -> a -> a) -> p a
-chainl1Loc p op = scan where
-  scan = (,) <$> position <*> p <**> rst
-  rst = (\ f y end g (start, x) -> g (start, f (Span start end) x y)) <$> op <*> p <*> position <*> rst <|> pure snd
