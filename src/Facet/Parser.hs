@@ -178,8 +178,8 @@ tvar = token (anned (runUnspaced (fmap (either (S.TFree . N.T) S.TBound) . resol
 -- - before a return type
 
 -- FIXME: model signatures in the surface syntax
-sig :: (Monad p, PositionParsing p, TokenParsing p) => Facet p [()]
-sig = brackets (commaSep (() <$ type')) <?> "signature"
+sig :: (Monad p, PositionParsing p, TokenParsing p) => Facet p [S.Ann S.Type]
+sig = brackets (commaSep type') <?> "signature"
 
 
 -- Expressions
