@@ -115,7 +115,7 @@ data Highlight a
   | Span
   | Reason a
   | Gutter
-  | Ending
+  | End
   | Caret
 
 
