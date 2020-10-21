@@ -22,6 +22,8 @@ module Facet.Core
 , bind
 , mvs
 , generalize
+  -- ** Classification
+, Sort(..)
   -- * Patterns
 , Pattern(..)
 , fill
@@ -267,6 +269,15 @@ generalize v = build s v
   where
   metas = mvs (Level 0) v
   (_, build, s) = IntMap.foldrWithKey (\ m _T (d, f, s) -> (succ d, \ s b -> VForAll (im __ ::: _T) (\ v -> bind d v (f s b)), IntMap.insert m (free d) s)) (Level 0, subst, IntMap.empty) metas
+
+
+-- Classification
+
+data Sort
+  = STerm
+  | SType
+  | SKind
+  deriving (Bounded, Enum, Eq, Ord, Show)
 
 
 -- Patterns
