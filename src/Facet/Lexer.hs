@@ -37,8 +37,8 @@ data TokenKind
   | OpIdent String
   | QIdent QName
   | MIdent MName
-  | EIdent EName
-  | TIdent TName
+  | EIdent UName
+  | TIdent UName
   | HIdent UName
 
 
@@ -65,8 +65,8 @@ kind_ = choice
   , RAngle     <$  char '>' <?> ">"
   , QIdent     <$> ((:.:) <$> mname <* dot <*> choice [ E <$> ename, T <$> tname ])
   , MIdent     <$> mname
-  , EIdent     <$> EName <$> ename
-  , TIdent     <$> TName <$> tname
+  , EIdent     <$> ename
+  , TIdent     <$> tname
   , HIdent     <$> ident (char '?') nameChar <?> "hole name"
   ]
   where
