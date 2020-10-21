@@ -35,7 +35,8 @@ rethrowElabErrors src mapAnn = L.runThrow $ \ Err{ span, reason, context } ->
         s = sortOf sort _T
     in  ( succ d
         , sort :> s
-        , print :> entry, ctx :> reAnnotate mapAnn (getPrint (ann (name s explicit n d ::: entry))) )
+        , print :> entry
+        , ctx :> reAnnotate mapAnn (getPrint (ann (name s explicit n d ::: entry))) )
   name = \case
     STerm -> intro
     _     -> tintro
