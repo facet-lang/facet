@@ -55,7 +55,7 @@ data Comp
 
 data Pattern
   = PVar UName
-  | PCon CName (Stack (Spanned Pattern))
+  | PCon UName (Stack (Spanned Pattern))
   deriving (Show)
 
 
@@ -93,7 +93,7 @@ data Decl
 
 data DDecl
   = DDForAll (Pl_ UName ::: Spanned Type) (Spanned DDecl)
-  | DDBody (Spanned Type) [Spanned (CName ::: Spanned Type)]
+  | DDBody (Spanned Type) [Spanned (UName ::: Spanned Type)]
   deriving (Show)
 
 unDDForAll :: Has Empty sig m => DDecl -> m (Pl_ UName ::: Spanned Type, Spanned DDecl)

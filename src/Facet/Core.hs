@@ -40,7 +40,7 @@ import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Semialign
 import           Data.Traversable (mapAccumL)
-import           Facet.Name (CName, Level(..), MName, Meta(..), QName, UName, __)
+import           Facet.Name (Level(..), MName, Meta(..), QName, UName, __)
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
@@ -306,4 +306,4 @@ newtype Import = Import { name :: MName }
 
 data Def
   = DTerm Value
-  | DData [CName ::: Value]
+  | DData [UName ::: Value]

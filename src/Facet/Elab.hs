@@ -372,7 +372,7 @@ elabPattern = withSpan $ \case
   S.PVar n    -> Check $ \ _T -> pure (C.PVar (n ::: _T))
   S.PCon n ps -> Check $ \ _T -> do
     -- FIXME: we probably need to instantiate implicits here
-    q ::: _T' <- synth (resolve (C (getCName n)))
+    q ::: _T' <- synth (resolve (C n))
     let go _T' = \case
           Nil   -> Nil <$ unify (_T' :===: _T)
           ps:>p -> do
@@ -391,7 +391,7 @@ elabPattern = withSpan $ \case
 elabDecl
   :: HasCallStack
   => Spanned S.Decl
-  -> Check (Either [CName ::: Type] Value) ::: Check Type
+  -> Check (Either [UName ::: Type] Value) ::: Check Type
 elabDecl d = withSpans d $ \case
   S.DDecl d -> first (fmap Left)  (elabDDecl d)
   S.TDecl t -> first (fmap Right) (elabTDecl t)
@@ -399,13 +399,13 @@ elabDecl d = withSpans d $ \case
 elabDDecl
   :: HasCallStack
   => Spanned S.DDecl
-  -> Check [CName ::: Type] ::: Check Type
+  -> Check [UName ::: Type] ::: Check Type
 elabDDecl d = go d id
   where
   go
     :: Spanned S.DDecl
     -> (Check Value -> Check Value)
-    -> Check [CName ::: Type] ::: Check Type
+    -> Check [UName ::: Type] ::: Check Type
   go d km = withSpans d $ \case
     S.DDForAll (n ::: t) b ->
       let b' ::: _B = go b
@@ -465,9 +465,9 @@ elabModule (s, S.Module mname _is ds) = runReader s . runState (fmap pure . (,))
           _T' <- apply s _T
           let go fs = \case
                 VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
-                _T            -> VCon (Con (mname :.: C (getCName n) ::: _T) fs)
+                _T            -> VCon (Con (mname :.: C n ::: _T) fs)
           c <- apply s (go Nil _T')
-          modify $ Env.insert (mname :.: C (getCName n) :=: Just c ::: _T')
+          modify $ Env.insert (mname :.: C n :=: Just c ::: _T')
           pure $ n ::: _T'
         pure (qname, C.DData cs' ::: _T)
       Right e' -> do

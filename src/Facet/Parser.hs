@@ -128,7 +128,7 @@ binder (-->) name k = do
   where
   mk start t b end = (Span start end, t --> b)
 
-con :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned (N.CName S.::: Spanned S.Type))
+con :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (Spanned (N.UName S.::: Spanned S.Type))
 con = spanned ((S.:::) <$> cname <* colon <*> type')
 
 
@@ -247,7 +247,7 @@ _onameN
 hname :: (Monad p, TokenParsing p) => p N.UName
 hname = ident hnameStyle
 
-cname :: (Monad p, TokenParsing p) => p N.CName
+cname :: (Monad p, TokenParsing p) => p N.UName
 cname = ident cnameStyle
 
 tname :: (Monad p, TokenParsing p) => p N.UName

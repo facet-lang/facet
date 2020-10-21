@@ -34,7 +34,7 @@ data Var
   | Local UName Level
   | Quote UName Level
   | Metavar Meta
-  | Cons CName
+  | Cons UName
 
 qvar :: QName -> Var
 qvar (m :.: n) = Global (Just m) n
@@ -182,7 +182,7 @@ foldSExpr alg = go
       in ((d', env'), pcon alg (var alg (Cons n)) ps')
   subpatterns d env ps = mapAccumL (\ (d', env') p -> pat d' env' p) (d, env) ps
 
-foldSCons :: Algebra p -> Stack p -> Spanned (CName ::: Spanned S.Type) -> p
+foldSCons :: Algebra p -> Stack p -> Spanned (UName ::: Spanned S.Type) -> p
 foldSCons alg env = decl alg . bimap (var alg . Cons) (foldSType alg env) . snd
 
 foldSDecl :: Algebra p -> Spanned S.Decl -> p
