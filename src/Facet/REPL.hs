@@ -16,7 +16,7 @@ import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
 import           Data.Foldable (toList)
 import qualified Data.Map as Map
-import           Data.Semigroup
+import           Data.Semigroup (stimes)
 import           Data.Text (pack)
 import           Data.Text.Lazy (unpack)
 import           Facet.Algebra hiding (Algebra)
