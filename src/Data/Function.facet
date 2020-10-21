@@ -18,21 +18,6 @@ flip
 { b a -> f a b } # note that we didn’t bind the latter operands in the type so we’re binding (pattern matching on) them both here instead
 
 
-# commented out because products aren’t in the kernel theory any more
-# curry
-# : { A, B, C : Type } -> (f : (A, B) -> C) -> (x : A) -> (y : B) -> C
-# { f (x, y) }
-
-# uncurry
-# : { A, B, C : Type } -> (f : A -> B -> C) -> (A, B) -> C
-# { (x, y) -> f x y } # NB: you can’t bind individual fields of a type in the signature, so we have to pattern match here
-# NB: equivalently: uncurry : { A, B, C : Type } -> (f : A -> B -> C) -> (x : (A, B)) -> C { f (fst x) (snd x) } # assuming standard definitions of these projections
-
-# would be nice to support pattern matching for a single case in the sig, tho…
-# uncurry
-# : { A, B, C : Type } -> (f : A -> B -> C) -> (x : A, y : B) -> C
-# { f x y }
-
 # fixme: do we want to support mixfix syntax?
 # fixme: how do we want to specify fixity?
 _ << _
