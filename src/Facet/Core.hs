@@ -24,6 +24,7 @@ module Facet.Core
 , generalize
   -- ** Classification
 , Sort(..)
+, sortOf
   -- * Patterns
 , Pattern(..)
 , fill
@@ -37,7 +38,7 @@ import           Control.Effect.Empty
 import           Data.Bifoldable
 import           Data.Bifunctor
 import           Data.Bitraversable
-import           Data.Foldable (foldl')
+import           Data.Foldable (foldl', toList)
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Semialign
@@ -278,6 +279,15 @@ data Sort
   | SType
   | SKind
   deriving (Bounded, Enum, Eq, Ord, Show)
+
+-- | Classifies values according to whether or not they describe types.
+sortOf :: Stack Sort -> Value -> Sort
+sortOf ctx = \case
+  VType                 -> SKind
+  VForAll (_ ::: _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
+  VLam{}                -> STerm
+  VNeut h sp            -> minimum (unHead (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (\case{ EApp a -> sortOf ctx (out a) ; ECase _ -> STerm } <$> sp))
+  VCon _                -> STerm
 
 
 -- Patterns
