@@ -5,4 +5,12 @@ Either : (A : Type) -> (B : Type) -> Type
 { inl : A -> Either A B
 , inr : B -> Either A B }
 
+either
+:  { A, B, C : Type }
+-> (outl : A -> C)
+-> (outr : B -> C)
+-> (Either A B -> C)
+{ (inl a) -> outl a
+, (inr b) -> otur b }
+
 }
