@@ -154,6 +154,7 @@ forAll
   -> Facet p (S.Ann res) -> Facet p (S.Ann res)
 forAll mk k = do
   start <- position
+  -- FIXME: parse multiple sets of bindings within a single set of braces.
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
   arrow *> foldr (loop start ty) k names
   where
