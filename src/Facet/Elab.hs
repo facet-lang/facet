@@ -57,7 +57,7 @@ type Prob = Value
 
 type Subst = IntMap.IntMap (Maybe Prob ::: Type)
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Env.Env :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -69,7 +69,7 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Reader (Context Type) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err) Elab where
+instance Algebra (Reader (Context Type) :+: Reader Env.Env :+: Reader Span :+: State Subst :+: Throw Err) Elab where
   alg hdl sig ctx = case sig of
     L rctx              -> Elab $ alg (runElab . hdl) (inj rctx) ctx
     R (L renv)          -> Elab $ alg (runElab . hdl) (inj renv) ctx
@@ -77,15 +77,15 @@ instance Algebra (Reader (Context Type) :+: Reader (Env.Env Type) :+: Reader Spa
     R (R (R (L subst))) -> Elab $ alg (runElab . hdl) (inj subst) ctx
     R (R (R (R throw))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
 
-elab :: Has (Reader Span :+: State (Env.Env Type) :+: Throw Err) sig m => Elab Value -> m Value
+elab :: Has (Reader Span :+: State Env.Env :+: Throw Err) sig m => Elab Value -> m Value
 elab = elabWith apply
 
-elabWith :: Has (Reader Span :+: State (Env.Env Type) :+: Throw Err) sig m => (Subst -> a -> m b) -> Elab a -> m b
-elabWith f = runSubstWith f . runContext . Env.runEnv @Type . runElab
+elabWith :: Has (Reader Span :+: State Env.Env :+: Throw Err) sig m => (Subst -> a -> m b) -> Elab a -> m b
+elabWith f = runSubstWith f . runContext . Env.runEnv . runElab
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
-  deriving (Algebra (Reader Type :+: Reader (Context Type) :+: Reader (Env.Env Type) :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
+  deriving (Algebra (Reader Type :+: Reader (Context Type) :+: Reader Env.Env :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
@@ -445,8 +445,8 @@ elabModule
   :: forall m sig
   .  (HasCallStack, Has (Throw Err) sig m)
   => Spanned S.Module
-  -> m (Env.Env Type, C.Module)
-elabModule (s, S.Module mname _is ds) = runReader s . runState (fmap pure . (,)) (mempty @(Env.Env Type)) $ do
+  -> m (Env.Env, C.Module)
+elabModule (s, S.Module mname _is ds) = runReader s . runState (fmap pure . (,)) (mempty @Env.Env) $ do
   -- FIXME: trace the defs as we elaborate them
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?

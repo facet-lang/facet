@@ -60,7 +60,7 @@ data REPL = REPL
   { line           :: Int
   , files          :: Map.Map FilePath File
   , promptFunction :: Int -> IO String
-  , env            :: Env.Env Elab.Type
+  , env            :: Env.Env
   }
 
 line_ :: Lens' REPL Int
@@ -69,7 +69,7 @@ line_ = lens line (\ r line -> r{ line })
 files_ :: Lens' REPL (Map.Map FilePath File)
 files_ = lens files (\ r files -> r{ files })
 
-env_ :: Lens' REPL (Env.Env Elab.Type)
+env_ :: Lens' REPL Env.Env
 env_ = lens env (\ r env -> r{ env })
 
 defaultREPLState :: REPL
@@ -124,7 +124,7 @@ loop = do
       print (getPrint (ann (foldSType surface Nil t ::: foldCValue surface Nil (generalize _T))))
     Eval e -> do -- FIXME: actually evaluate
       e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-      e'' <- L.runState env_ $ Env.runEnv @Elab.Type $ eval e'
+      e'' <- L.runState env_ $ Env.runEnv $ eval e'
       print (getPrint (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil _T)))
 
 
@@ -220,7 +220,7 @@ print d = do
   opts <- liftIO layoutOptionsForTerminal
   outputStrLn (unpack (renderLazy (layoutSmart opts d)))
 
-elab :: Source -> I.ThrowC (Notice [SGR]) Elab.Err (L.StateC REPL (Env.Env Elab.Type) (ReaderC Span m)) a -> m a
+elab :: Source -> I.ThrowC (Notice [SGR]) Elab.Err (L.StateC REPL Env.Env (ReaderC Span m)) a -> m a
 elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src
 
 

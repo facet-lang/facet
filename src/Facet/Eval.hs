@@ -8,14 +8,14 @@ import Facet.Env as E
 import Facet.Syntax
 
 -- FIXME: erase terms before evaluating.
-eval :: Has (Reader (Env Value)) sig m => Value -> m Value
+eval :: Has (Reader Env) sig m => Value -> m Value
 eval = \case
   VNeut h sp -> do
     sp' <- traverse evalSp sp
     env <- ask
     case h of
       Global (q ::: _)
-        | Just (Just v ::: _) <- E.lookupQ @Value q env
+        | Just (Just v ::: _) <- E.lookupQ q env
         -> pure $ elimN v sp'
       _ -> pure $ VNeut h sp'
 
