@@ -92,3 +92,4 @@ data Highlight a
   | End
   | Caret
   | Context a
+  deriving (Functor)
