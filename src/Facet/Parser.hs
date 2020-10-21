@@ -170,6 +170,16 @@ tvar :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Type)
 tvar = token (anned (runUnspaced (fmap (either (S.TFree . N.T) (S.TBound)) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
+-- Signatures
+
+-- - can appear before an argument type
+-- - can appear before a return type
+
+-- FIXME: model signatures in the surface syntax
+sig :: TokenParsing p => Facet p [()]
+sig = option [] (brackets (pure []))
+
+
 -- Expressions
 
 exprTable :: (Monad p, PositionParsing p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
