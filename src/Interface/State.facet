@@ -14,7 +14,7 @@ modify : { S : Type } -> (f : S -> S) -> [State S]{Unit}
 evalState : { S, A : Type } -> S -> [State S]A -> A
 { church { _ a -> a } }
 
-state : { S, A : Type } -> S -> [State S]A -> Pair S A
+runState : { S, A : Type } -> S -> [State S]A -> Pair S A
 { church pair }
 
 church : { S, A, R : Type } -> (k : S -> A -> R) -> (s : S) -> [State S]A -> R
