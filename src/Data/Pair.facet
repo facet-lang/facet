@@ -11,14 +11,14 @@ snd : { A : Type } -> { B : Type } -> Pair A B -> A
 
 
 # commented out because products aren’t in the kernel theory any more
-# curry
-# : { A, B, C : Type } -> (f : (A, B) -> C) -> (x : A) -> (y : B) -> C
-# { f (x, y) }
+curry
+: { A, B, C : Type } -> (f : Pair A B -> C) -> (x : A) -> (y : B) -> C
+{ f (pair x y) }
 
-# uncurry
-# : { A, B, C : Type } -> (f : A -> B -> C) -> (A, B) -> C
-# { (x, y) -> f x y } # NB: you can’t bind individual fields of a type in the signature, so we have to pattern match here
-# NB: equivalently: uncurry : { A, B, C : Type } -> (f : A -> B -> C) -> (x : (A, B)) -> C { f (fst x) (snd x) } # assuming standard definitions of these projections
+uncurry
+: { A, B, C : Type } -> (f : A -> B -> C) -> Pair A B -> C
+{ (pair x y) -> f x y } # NB: you can’t bind individual fields of a type in the signature, so we have to pattern match here
+# NB: equivalently: uncurry : { A, B, C : Type } -> (f : A -> B -> C) -> (x : Pair A B) -> C { f (fst x) (snd x) }
 
 # would be nice to support pattern matching for a single case in the sig, tho…
 # uncurry
