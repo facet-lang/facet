@@ -26,15 +26,14 @@ import           Silkscreen
 rethrowElabErrors :: Source -> L.ThrowC (Notice [SGR]) Err m a -> m a
 rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context } ->
   let (_, _, printCtx, ctx) = foldl combine (N.Level 0, Nil, Nil, Nil) (elems context)
-  in Notice (Just Error) (slice src span) (printReason printCtx reason)
-    (map (\ (l, s, e) -> getPrint (printContextEntry l (s == STerm) e)) (toList ctx))
+  in Notice (Just Error) (slice src span) (printReason printCtx reason) (toList ctx)
   where
   combine (d, sort, print, ctx) (n ::: _T) =
     let entry = foldCValue explicit print _T
         s = sortOf sort _T
     in  ( succ d
         , sort :> s
-        , print :> entry, ctx :> (d, s, n ::: entry) )
+        , print :> entry, ctx :> (getPrint (printContextEntry d (s == STerm) (n ::: entry))) )
 
 
 printReason :: Stack Print -> Reason -> Doc [SGR]
