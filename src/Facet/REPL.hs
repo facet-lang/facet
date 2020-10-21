@@ -88,8 +88,11 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
 
 
 kernel :: Module
-kernel = Module (MName (pack "Kernel")) []
-  []
+kernel = Module kernelName []
+  [ (kernelName :.: T (UName (pack "Type")), DTerm VType ::: VType)
+  ]
+  where
+  kernelName = MName (pack "Kernel")
 
 
 data File = File
