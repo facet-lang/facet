@@ -88,7 +88,6 @@ library
   other-modules:
     Facet.GHCI
     Paths_facet
-    Text.Parser.Position
   build-depends:
     , ansi-terminal
     , base ^>= 4.14
