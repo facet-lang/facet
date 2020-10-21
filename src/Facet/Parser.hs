@@ -49,7 +49,7 @@ runFacet env (Facet m) = m env
 bind :: Coercible t N.UName => t -> (N.UName -> Facet m a) -> Facet m a
 bind n b = Facet $ \ env -> let n' = coerce n in runFacet (n':env) (b n')
 
-resolve :: Coercible t N.UName => t -> [N.UName] -> (Either t N.Index)
+resolve :: Coercible t N.UName => t -> [N.UName] -> Either t N.Index
 resolve n = maybe (Left n) (Right . N.Index) . elemIndex @N.UName (coerce n)
 
 env :: Applicative m => Facet m [N.UName]
