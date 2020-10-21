@@ -10,4 +10,4 @@ either
 -> (outr : B -> C)
 -> (Either A B -> C)
 { (inl a) -> outl a
-, (inr b) -> otur b }
+, (inr b) -> outr b }
