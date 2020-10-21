@@ -152,6 +152,7 @@ ann :: (PrecedencePrinter p, P.Level p ~ Precedence) => (p ::: p) -> p
 ann (n ::: t) = align . prec Ann $ n </> group (align (colon <+> flatAlt space mempty <> t))
 
 
+-- FIXME: indicate whether this is a type or term-level entry.
 printContextEntry :: Level -> UName ::: Print -> Print
 printContextEntry l (n ::: _T) = ann (intro explicit n l ::: _T)
 
