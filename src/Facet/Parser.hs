@@ -189,6 +189,8 @@ sig = brackets (commaSep type') <?> "signature"
 exprTable :: (Monad p, PositionParsing p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
 exprTable =
   [ [ Infix L mempty (S.$$) ]
+  -- FIXME: model this as application to unit instead
+  -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
   , [ Postfix (pack "!") id ]
   , [ Atom comp
     , Atom (anned (S.Hole <$> hname))
