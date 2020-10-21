@@ -6,7 +6,6 @@ module Facet.Print
 , Print(..)
 , Precedence(..)
 , ann
-, printContextEntry
   -- * Algebras
 , surface
 , explicit
@@ -150,10 +149,6 @@ commaSep = encloseSep mempty mempty (comma <> space)
 
 ann :: (PrecedencePrinter p, P.Level p ~ Precedence) => (p ::: p) -> p
 ann (n ::: t) = align . prec Ann $ n </> group (align (colon <+> flatAlt space mempty <> t))
-
-
-printContextEntry :: Level -> Bool -> UName ::: Print -> Print
-printContextEntry l isTerm (n ::: _T) = ann ((if isTerm then intro else tintro) explicit n l ::: _T)
 
 
 ($$), (-->) :: Print -> Print -> Print
