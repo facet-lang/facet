@@ -16,7 +16,7 @@ import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Facet.Algebra
-import           Facet.Name hiding (ann)
+import           Facet.Name
 import           Facet.Pretty (lower, upper)
 import           Facet.Syntax
 import qualified Prettyprinter as PP

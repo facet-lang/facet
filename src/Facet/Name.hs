@@ -8,7 +8,6 @@ module Facet.Name
 , FVs(..)
 , getFVs
 , Vars(..)
-, Silent(..)
 , __
 , MName(..)
 , QName(..)
@@ -19,7 +18,6 @@ module Facet.Name
 , OpN(..)
 ) where
 
-import           Data.Function (on)
 import           Data.Functor.Classes (showsUnaryWith)
 import qualified Data.IntSet as IntSet
 import           Data.List.NonEmpty hiding (cons)
@@ -103,22 +101,6 @@ instance (Vars a, Vars b) => Vars (a, b) where
   use l = (use l, use l)
   cons l (a, b) = (cons l a, cons l b)
   bind l (a, b) = (bind l a, bind l b)
-
-
-data Silent a b = Silent
-  { ann :: a
-  , val :: b
-  }
-  deriving (Foldable, Functor, Traversable)
-
-instance Eq b => Eq (Silent a b) where
-  (==) = (==) `on` val
-
-instance Ord b => Ord (Silent a b) where
-  compare = compare `on` val
-
-instance Show b => Show (Silent a b) where
-  showsPrec p = showsPrec p . val
 
 
 __ :: UName
