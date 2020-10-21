@@ -134,3 +134,6 @@ instance Eq a => Eq (Ann a) where
 
 instance Ord a => Ord (Ann a) where
   compare = compare `on` out
+
+instance Show a => Show (Ann a) where
+  showsPrec p = showsPrec p . out
