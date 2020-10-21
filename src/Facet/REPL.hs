@@ -114,7 +114,7 @@ loop = do
   resp <- prompt
   runError (print . reAnnotate terminalNoticeStyle . prettyNotice) pure $ case resp of
     -- FIXME: evaluate expressions
-    Just src -> rethrowParseErrors (runParserWithSource src commandParser) >>= runAction src
+    Just src -> rethrowParseErrors @[SGR] (runParserWithSource src commandParser) >>= runAction src
     Nothing  -> pure ()
   loop
   where
@@ -191,7 +191,7 @@ reload src = do
 
     (do
       src <- liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
-      m <- rethrowParseErrors (runParserWithSource src (runFacet [] (whole module')))
+      m <- rethrowParseErrors @[SGR] (runParserWithSource src (runFacet [] (whole module')))
       (env, m') <- elab src $ Elab.elabModule m
       env_ %= (<> env)
       file{ loaded = True } <$ print (getPrint (foldCModule surface m')))

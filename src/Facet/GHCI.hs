@@ -34,12 +34,12 @@ parseString :: MonadIO m => Facet (ParserC (L.ThrowC (Notice [ANSI.SGR]) (Source
 parseString p s = either printNotice P.prettyPrint (rethrowParseErrors (runParserWithString 0 s (runFacet [] p)))
 
 printFile :: MonadIO m => FilePath -> m ()
-printFile path = runM (runThrow (rethrowParseErrors (runParserWithFile path (runFacet [] (whole module'))))) >>= \case
+printFile path = runM (runThrow (rethrowParseErrors @[ANSI.SGR] (runParserWithFile path (runFacet [] (whole module'))))) >>= \case
   Left err -> printNotice err
   Right m  -> P.prettyPrint (foldSModule P.surface m)
 
 parseFile :: MonadIO m => FilePath -> m (Either (Notice [ANSI.SGR]) (Spanned S.Module))
-parseFile path = runM (runThrow (rethrowParseErrors (runParserWithFile path (runFacet [] (whole module')))))
+parseFile path = runM (runThrow (rethrowParseErrors @[ANSI.SGR] (runParserWithFile path (runFacet [] (whole module')))))
 
 
 -- Elaborating

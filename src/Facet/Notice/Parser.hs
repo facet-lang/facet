@@ -13,11 +13,10 @@ import           Facet.Notice hiding (Highlight(..))
 import           Facet.Source
 import           Facet.Span
 import           Silkscreen
-import           System.Console.ANSI (SGR)
 
 -- Parsing
 
-rethrowParseErrors :: L.ThrowC (Notice [SGR]) (Source, Parse.Err) m a -> m a
+rethrowParseErrors :: L.ThrowC (Notice e) (Source, Parse.Err) m a -> m a
 rethrowParseErrors = L.runThrow (uncurry errToNotice)
 
 
