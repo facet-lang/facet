@@ -22,7 +22,7 @@ import           Facet.Algebra hiding (Algebra)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.State.Lens as L
 import qualified Facet.Carrier.Throw.Inject as I
-import           Facet.Core (generalize)
+import           Facet.Core
 import qualified Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Eval
