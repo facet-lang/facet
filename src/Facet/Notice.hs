@@ -23,12 +23,14 @@ import           Silkscreen
 -- Notices
 
 data Level
-  = Warn
+  = Info
+  | Warn
   | Error
   deriving (Eq, Ord, Show)
 
 instance Pretty Level where
   pretty = \case
+    Info  -> pretty "info"
     Warn  -> pretty "warning"
     Error -> pretty "error"
 

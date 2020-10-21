@@ -10,6 +10,7 @@ terminalNoticeStyle :: Highlight [SGR] -> [SGR]
 terminalNoticeStyle = \case
   Path      -> [setBold]
   Level l -> case l of
+    Info  -> [setRGB (hsl 0 0 0.5)]
     Warn  -> [setRGB (hsl 300 1 0.5)]
     Error -> [setRGB (hsl 0 1 0.5)]
   Span      -> [setBold]
