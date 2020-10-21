@@ -98,8 +98,8 @@ toEnv :: Module -> Env.Env
 toEnv (Module _ _ defs) = Env.fromList $ do
   (mname:.:dname, def ::: _T) <- defs
   case def of
-    DTerm v  -> [(dname, mname :=: Just v ::: _T)]
-    DData cs -> [(C n,   mname :=: Just v ::: _T) | n :=: v ::: _T <- cs ]
+    DTerm v  -> [ (dname, mname :=: Just v ::: _T) ]
+    DData cs -> [ (C n,   mname :=: Just v ::: _T) | n :=: v ::: _T <- cs ]
 
 
 data File = File
