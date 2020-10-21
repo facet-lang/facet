@@ -4,7 +4,6 @@ module Text.Parser.Position
 , Pos
 , Span(..)
 , spanning
-, spanned
 , Spanned
 , chainl1Loc
 ) where
@@ -22,11 +21,6 @@ instance P.Algebra sig m => PositionParsing (P.ParserC m) where
 
 spanning :: PositionParsing p => p a -> p Span
 spanning p = Span <$> position <* p <*> position
-
-spanned :: PositionParsing p => p a -> p (Spanned a)
-spanned p = mk <$> position <*> p <*> position
-  where
-  mk s a e = (Span s e, a)
 
 
 type Spanned = (,) Span

@@ -29,7 +29,7 @@ import           Facet.Syntax
 import           Prelude hiding (lines, null, product, span)
 import           Text.Parser.Char
 import           Text.Parser.Combinators
-import           Text.Parser.Position hiding (spanned)
+import           Text.Parser.Position
 import           Text.Parser.Token
 import           Text.Parser.Token.Highlight as Highlight
 import           Text.Parser.Token.Style
