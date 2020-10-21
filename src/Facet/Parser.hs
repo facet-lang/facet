@@ -95,10 +95,13 @@ whole p = whiteSpace *> p <* eof
 
 -- FIXME: preserve comments, presumably in 'S.Ann'
 module' :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Module)
-module' = spanned (S.Module <$> mname <* colon <* symbol "Module" <*> pure [] <*> many decl)
+module' = spanned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import')) <*> many decl)
 
 
 -- Declarations
+
+import' :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann S.Import)
+import' = spanned $ S.Import <$> mname
 
 decl :: (Monad p, PositionParsing p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
 decl = spanned
