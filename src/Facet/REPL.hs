@@ -188,7 +188,7 @@ reload src = do
   reloadFile ln path file = if loaded file then pure file else do
     i <- fresh
     -- FIXME: print the module name
-    print $ annotate info (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
+    print $ reAnnotate terminalStyle $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
     (do
       src <- liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
@@ -198,9 +198,6 @@ reload src = do
       file{ loaded = True } <$ print (prettyCode (foldCModule surface m')))
       `catchError` \ n ->
         file <$ print (indent 2 (prettyNotice' n))
-
-info :: [SGR]
-info = [setRGB (hsl 0 0 0.5), setBold]
 
 helpDoc :: Doc [SGR]
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
