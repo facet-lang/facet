@@ -253,4 +253,4 @@ infixr 2 <~>
 
 
 ioErrorToNotice :: Source -> IOError -> Notice Print.Highlight
-ioErrorToNotice src err = Notice (Just Error) src (group (reflow (show err))) []
+ioErrorToNotice src err = Notice.Notice (Just Error) src (group (reflow (show err))) []

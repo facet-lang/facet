@@ -1,5 +1,6 @@
 module Facet.Style
-( terminalNoticeStyle
+( Style(..)
+, terminalNoticeStyle
 , terminalCodeStyle
 ) where
 
@@ -8,6 +9,11 @@ import Facet.Name (Level(getLevel), Meta(..))
 import Facet.Notice as Notice
 import Facet.Pretty
 import Facet.Print as Print
+
+data Style
+  = Notice (Notice.Highlight Style)
+  | Code Print.Highlight
+
 
 terminalNoticeStyle :: Notice.Highlight [SGR] -> [SGR]
 terminalNoticeStyle = \case
