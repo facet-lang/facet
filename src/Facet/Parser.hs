@@ -139,8 +139,8 @@ con = anned ((:::) <$> cname <* colon <*> type')
 
 monotypeTable :: (Monad p, PositionParsing p, TokenParsing p) => Table (Facet p) (S.Ann S.Type)
 monotypeTable =
-  [ [ Infix R (pack "->") (\ s -> fmap (S.Ann s) . (S.:->)) ]
-  , [ Infix L mempty (\ s -> fmap (S.Ann s) . (S.:$$)) ]
+  [ [ Infix R (pack "->") (S.-->) ]
+  , [ Infix L mempty (S.$$$) ]
   , [ -- FIXME: we should treat this as a global.
       Atom (anned (S.Type <$ token (string "Type")))
     , Atom tvar
@@ -186,7 +186,7 @@ sig = brackets (commaSep (() <$ type')) <?> "signature"
 
 exprTable :: (Monad p, PositionParsing p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
 exprTable =
-  [ [ Infix L mempty (\ s -> fmap (S.Ann s) . (S.:$)) ]
+  [ [ Infix L mempty (S.$$) ]
   , [ Atom comp
     , Atom (anned (S.Hole <$> hname))
     , Atom evar
