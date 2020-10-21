@@ -10,5 +10,4 @@ fst : { A : Type } -> { B : Type } -> Pair A B -> A
 snd : { A : Type } -> { B : Type } -> Pair A B -> A
 { (pair _ b) -> b }
 
-
 }
