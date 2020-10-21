@@ -51,7 +51,6 @@ import           Prelude hiding (zip, zipWith)
 data Value
   = VType
   | VForAll (Pl_ UName ::: Value) (Value -> Value)
-  -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
   | VLam (Pl_ UName ::: Value) (Value -> Value)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNeut (Head Value Level) (Stack Elim)
@@ -110,6 +109,7 @@ unHead f g h = \case
 
 data Elim
   = EApp (Pl_ Value) -- FIXME: this is our one codata case; should we generalize this to copattern matching?
+  -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
   | ECase [(Pattern Value (UName ::: Value), Pattern Value Value -> Value)] -- FIXME: we can (and should) eliminate var patterns eagerly.
 
 
