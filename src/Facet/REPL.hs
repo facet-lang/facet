@@ -22,6 +22,7 @@ import           Facet.Algebra hiding (Algebra)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.State.Lens as L
 import qualified Facet.Carrier.Throw.Inject as I
+import           Facet.Core (generalize)
 import qualified Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Eval
@@ -107,10 +108,10 @@ loop = do
     Reload -> reload src
     Type e -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-      print (getPrint (ann (foldSExpr surface Nil e ::: foldCValue surface Nil _T)))
+      print (getPrint (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
     Kind t -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (t ::: _T) -> (:::) <$> Elab.apply s t <*> Elab.apply s _T) (Elab.elabType t Nothing)
-      print (getPrint (ann (foldSType surface Nil t ::: foldCValue surface Nil _T)))
+      print (getPrint (ann (foldSType surface Nil t ::: foldCValue surface Nil (generalize _T))))
     Eval e -> do -- FIXME: actually evaluate
       e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
       e'' <- L.runState env_ $ Env.runEnv @Elab.Type $ eval e'
