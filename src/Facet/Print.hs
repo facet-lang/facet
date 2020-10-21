@@ -148,14 +148,16 @@ f $$ a = askingPrec $ \case
 
 
 -- FIXME: these are poorly factored. Most of the structure can be shared, we just want to override a few in each.
+printVar name = \case
+  Global _ n -> setPrec Var (pretty n)
+  TLocal n d -> name upper n d
+  Local  n d -> name lower n d
+  Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
+  Cons     n -> setPrec Var (annotate Con (pretty n))
+
 surface :: Algebra Print
 surface = Algebra
-  { var = \case
-    Global _ n -> setPrec Var (pretty n)
-    TLocal n d -> name upper n d
-    Local  n d -> name lower n d
-    Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
-    Cons     n -> setPrec Var (annotate Con (pretty n))
+  { var = printVar name
   , tintro = name upper
   , intro = name lower
   , lam = comp . embed . commaSep
@@ -188,12 +190,7 @@ surface = Algebra
 -- FIXME: elide unused vars
 explicit :: Algebra Print
 explicit = Algebra
-  { var = \case
-    Global _ n -> setPrec Var (pretty n)
-    TLocal n d -> name upper n d
-    Local  n d -> name lower n d
-    Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
-    Cons     n -> setPrec Var (annotate Con (pretty n))
+  { var = printVar name
   , tintro = name upper
   , intro = name lower
   , lam = comp . embed . commaSep
