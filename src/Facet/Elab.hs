@@ -407,7 +407,7 @@ elabDDecl d = go d id
       let b' ::: _B = go b
             (km . (\ b  -> Check $ \ _T -> setSpan s $ do
               (_ ::: _T, _B) <- expectQuantifier "in type quantifier" _T
-              b' <- elabBinder $ \ _ -> check ((out n ::: _T |- b) ::: VType)
+              b' <- elabBinder $ \ v -> check ((out n ::: _T |- b) ::: _B v)
               pure $ VForAll (im (out n) ::: _T) b'))
       in b' ::: setSpan s (checkElab (switch (n ::: checkElab (elabType t) >~> (|- _B))))
 
