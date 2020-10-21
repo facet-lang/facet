@@ -10,6 +10,7 @@ import           Data.Semigroup (stimes)
 import           Facet.Algebra
 import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
+import           Facet.Core (sortOf)
 import           Facet.Elab as Elab
 import qualified Facet.Name as N
 import           Facet.Notice
@@ -24,7 +25,7 @@ import           Silkscreen
 
 rethrowElabErrors :: Source -> L.ThrowC (Notice [SGR]) Err m a -> m a
 rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context } ->
-  let (_, printCtx, ctx) = foldl (\ (d, print, ctx) (n ::: _T) -> let entry = foldCValue explicit print _T in (succ d, print :> entry, ctx :> (d, n ::: entry))) (N.Level 0, Nil, Nil) (elems context)
+  let (_, _, printCtx, ctx) = foldl (\ (d, sort, print, ctx) (n ::: _T) -> let entry = foldCValue explicit print _T in (succ d, sort :> sortOf sort _T, print :> entry, ctx :> (d, n ::: entry))) (N.Level 0, Nil, Nil, Nil) (elems context)
   in Notice (Just Error) (slice src span) (printReason printCtx reason)
     (map (getPrint . uncurry printContextEntry) (toList ctx))
 
