@@ -1,6 +1,7 @@
 Data.Pair : Module
 {
 
-
+Pair : (A : Type) -> (B : Type) -> Type
+{ pair : A -> B -> Pair A B }
 
 }
