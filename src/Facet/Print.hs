@@ -148,6 +148,7 @@ f $$ a = askingPrec $ \case
 
 
 -- FIXME: these are poorly factored. Most of the structure can be shared, we just want to override a few in each.
+printVar :: ((Int -> Print) -> UName -> Level -> Print) -> Var -> Print
 printVar name = \case
   Global _ n -> setPrec Var (pretty n)
   TLocal n d -> name upper n d
