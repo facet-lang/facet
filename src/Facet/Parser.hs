@@ -230,13 +230,13 @@ wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
 
 pattern :: (Monad p, PositionParsing p, TokenParsing p) => p (S.Ann S.Pattern)
-pattern
-  =   anned (S.PVar      <$> ename)
-  <|> anned (S.PVar N.__ <$  wildcard)
-  <|> try (parens (anned (S.PCon <$> cname <*> (fromList <$> many pattern))))
+pattern = choice
+  [ anned (S.PVar      <$> ename)
+  , anned (S.PVar N.__ <$  wildcard)
+  , try (parens (anned (S.PCon <$> cname <*> (fromList <$> many pattern))))
   -- FIXME: model handler patterns in the surface syntax
-  <|> brackets (anned (S.PVar N.__ <$ ((,,) <$> ename <*> (fromList <$> many pattern) <* symbolic ';' <*> ename)))
-  <?> "pattern"
+  , brackets (anned (S.PVar N.__ <$ ((,,) <$> ename <*> (fromList <$> many pattern) <* symbolic ';' <*> ename)))
+  ] <?> "pattern"
 
 
 -- Names
