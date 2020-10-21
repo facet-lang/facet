@@ -14,6 +14,7 @@ import Facet.Print as Print
 data Style
   = Failure
   | Success
+  | Progress
   | Notice (Notice.Highlight Style)
   | Code Print.Highlight
 
@@ -22,6 +23,7 @@ terminalStyle :: Style -> [SGR]
 terminalStyle = \case
   Failure  -> [setRGB (hsl 0 1 0.5)]
   Success  -> [setRGB (hsl 120 1 0.5)]
+  Progress -> [setRGB (hsl 0 0 0.5), setBold]
   Notice n -> terminalNoticeStyle (fmap terminalStyle n)
   Code s   -> terminalCodeStyle s
 
