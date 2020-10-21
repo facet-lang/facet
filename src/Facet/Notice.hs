@@ -86,7 +86,7 @@ prettyNoticeWith Style{ pathStyle, levelStyle, posStyle, gutterStyle, eofStyle, 
     ]))
   : gutterStyle (pretty (succ (Span.line (Span.start span)))) <+> align (vcat
     [ gutterStyle (pretty '|') <+> prettyLine line
-    , gutterStyle (pretty '|') <+> padding span <> caret (lineLength line) span
+    , gutterStyle (pretty '|') <+> padding span <> caretStyle (caret (lineLength line) span)
     ])
   : context)
   where
@@ -95,9 +95,9 @@ prettyNoticeWith Style{ pathStyle, levelStyle, posStyle, gutterStyle, eofStyle, 
   padding (Span.Span (Span.Pos _ c) _) = pretty (replicate c ' ')
 
   caret lineLength (Span.Span start@(Span.Pos sl sc) end@(Span.Pos el ec))
-    | start == end = caretStyle (pretty '^')
-    | sl    == el  = caretStyle (pretty (replicate (ec - sc) '~'))
-    | otherwise    = caretStyle (pretty ('^' : replicate (lineLength - sc) '~' ++ "…"))
+    | start == end = pretty '^'
+    | sl    == el  = pretty (replicate (ec - sc) '~')
+    | otherwise    = pretty ('^' : replicate (lineLength - sc) '~' ++ "…")
 
   lineLength (Line _ line ending) = length line - case ending of{ CRLF -> 2 ; EOF -> 0 ; _ -> 1 }
 
