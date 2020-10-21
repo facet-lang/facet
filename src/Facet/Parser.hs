@@ -172,8 +172,9 @@ tvar = token (anned (runUnspaced (fmap (either (S.TFree . N.T) (S.TBound)) . res
 
 -- Signatures
 
--- - can appear before an argument type
--- - can appear before a return type
+-- can appear:
+-- - before an argument type
+-- - before a return type
 
 -- FIXME: model signatures in the surface syntax
 sig :: TokenParsing p => Facet p [()]
