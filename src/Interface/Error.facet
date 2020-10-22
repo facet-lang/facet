@@ -27,5 +27,5 @@ error
 -> R
 { [ throw e   ; _ ] -> failure e
 # fixme: we can’t use << here because the parser doesn’t support parsing mixfix operators yet
-, [ catch a h ; k ] -> error { e -> error failure success (k (h e)) } k a
+, [ catch a h ; k ] -> error { e -> error failure success (k (h e)) } { a -> error failure success (k a) } a
 , a                 -> success a }
