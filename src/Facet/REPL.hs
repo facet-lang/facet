@@ -88,7 +88,7 @@ defaultREPLState = REPL
   , files          = mempty
   , promptFunction = defaultPromptFunction
   , env            = toEnv kernel
-  , searchPaths    = mempty
+  , searchPaths    = Set.singleton "src"
   }
 
 defaultPromptFunction :: Int -> IO String
