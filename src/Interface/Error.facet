@@ -1,8 +1,7 @@
 Interface.Error
 : Module
 
-[ Data.Either
-, Data.Function ]
+[ Data.Either ]
 
 Error : (E : Type) -> Interface
 { throw : E -> [Error E]A
@@ -27,5 +26,6 @@ error
 -> [Error E]A
 -> R
 { [ throw e   ; _ ] -> failure e
-, [ catch a h ; k ] -> error (error failure success << k << h) k a
+# fixme: we can’t use << here because the parser doesn’t support parsing mixfix operators yet
+, [ catch a h ; k ] -> error { e -> error failure success (k (h e)) } k a
 , a                 -> success a }
