@@ -11,7 +11,7 @@ import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=), (.=), (?=))
 import           Control.Lens (Getting, Lens', at, itraverse_, ix, lens)
-import           Control.Monad (MonadPlus, unless)
+import           Control.Monad (unless)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
@@ -203,7 +203,7 @@ commands =
 path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
-type_, kind_ :: (Has Parser sig p, MonadPlus p, TokenParsing p) => p Action
+type_, kind_ :: (Has Parser sig p, TokenParsing p) => p Action
 
 type_ = Type <$> runFacet [] [] (whole expr)
 kind_ = Kind <$> runFacet [] [] (whole type')

@@ -11,10 +11,8 @@ module Facet.Parser
 import           Control.Algebra ((:+:))
 import           Control.Applicative (Alternative(..))
 import           Control.Carrier.Reader
-import           Control.Effect.State
-import           Control.Monad (MonadPlus)
+import           Control.Carrier.State.Strict
 import           Control.Monad.Trans.Class
-import           Control.Monad.Trans.State.Strict (StateT(..), evalStateT)
 import           Data.Bool (bool)
 import           Data.Char (isSpace)
 import qualified Data.CharSet as CharSet
@@ -48,11 +46,11 @@ import           Text.Parser.Token.Style
 -- numeric literals
 -- forcing nullary computations
 
-runFacet :: Monad m => [N.UName] -> [AnyOperator] -> Facet m a -> m a
-runFacet env ops (Facet m) = evalStateT (m env) ops
+runFacet :: Functor m => [N.UName] -> [AnyOperator] -> Facet m a -> m a
+runFacet env ops (Facet m) = evalState ops (m env)
 
 bind :: Coercible t N.UName => t -> (N.UName -> Facet m a) -> Facet m a
-bind n b = Facet $ \ env -> StateT $ \ ops -> let { n' = coerce n ; Facet run = b n' } in runStateT (run (n':env)) ops
+bind n b = Facet $ \ env -> StateC $ \ ops -> let { n' = coerce n ; Facet run = b n' } in runState ops (run (n':env))
 
 resolve :: Coercible t N.UName => t -> [N.UName] -> Either t N.Index
 resolve n = maybe (Left n) (Right . N.Index) . elemIndex @N.UName (coerce n)
@@ -60,20 +58,19 @@ resolve n = maybe (Left n) (Right . N.Index) . elemIndex @N.UName (coerce n)
 env :: Monad m => Facet m [N.UName]
 env = Facet pure
 
-newtype AnyOperator = AnyOperator (forall sig p . (Has Parser sig p, MonadPlus p, TokenParsing p) => Operator p S.Expr)
+newtype AnyOperator = AnyOperator (forall sig p . (Has Parser sig p, TokenParsing p) => Operator p S.Expr)
 
-newtype Facet m a = Facet ([N.UName] -> StateT [AnyOperator] m a)
-  deriving (Algebra (Reader [N.UName] :+: State [AnyOperator] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadPlus) via ReaderC [N.UName] (StateT [AnyOperator] m)
+newtype Facet m a = Facet ([N.UName] -> StateC [AnyOperator] m a)
+  deriving (Algebra (Reader [N.UName] :+: State [AnyOperator] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC [N.UName] (StateC [AnyOperator] m)
 
-instance (MonadPlus p, Parsing p) => Parsing (Facet p) where
-  try (Facet m) = Facet $ \ env -> try (m env)
-  Facet m <?> l = Facet $ \ env -> m env <?> l
-  skipMany (Facet m) = Facet $ \ env -> skipMany (m env)
+instance (Monad p, Parsing p) => Parsing (Facet p) where
+  try (Facet m) = Facet $ \ env -> StateC $ \ s -> try (runState s (m env))
+  Facet m <?> l = Facet $ \ env -> StateC $ \ s -> runState s (m env) <?> l
   unexpected = lift . unexpected
   eof = lift eof
-  notFollowedBy (Facet m) = Facet $ \ env -> notFollowedBy (m env)
+  notFollowedBy (Facet m) = Facet $ \ env -> StateC $ \ s -> (s,) <$> notFollowedBy (evalState s (m env))
 
-instance (MonadPlus p, CharParsing p) => CharParsing (Facet p) where
+instance (Monad p, CharParsing p) => CharParsing (Facet p) where
   satisfy = lift . satisfy
   char    = lift . char
   notChar = lift . notChar
@@ -81,7 +78,7 @@ instance (MonadPlus p, CharParsing p) => CharParsing (Facet p) where
   string  = lift . string
   text    = lift . text
 
-instance (MonadPlus m, TokenParsing m) => TokenParsing (Facet m) where
+instance (Monad m, TokenParsing m) => TokenParsing (Facet m) where
   someSpace = buildSomeSpaceParser (skipSome (satisfy isSpace)) emptyCommentStyle{ _commentLine = "#" }
 
 instance MonadTrans Facet where
@@ -95,23 +92,23 @@ whole p = whiteSpace *> p <* eof
 -- Modules
 
 -- FIXME: preserve comments, presumably in 'S.Ann'
-module' :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p (S.Ann S.Module)
+module' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Module)
 module' = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import')) <*> many decl)
 
 
 -- Declarations
 
-import' :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p (S.Ann S.Import)
+import' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Import)
 import' = anned $ S.Import <$> mname
 
-decl :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
+decl :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
 decl = anned
   $   (,) <$> dename <* colon <*> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
   <|> (,) <$> dtname <* colon <*> anned (S.DDecl <$> typeSig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
 
 
 typeSig
-  :: (Has Parser sig p, MonadPlus p, TokenParsing p)
+  :: (Has Parser sig p, TokenParsing p)
   => (Pl_ N.UName ::: S.Ann S.Expr -> S.Ann res -> res)
   -> Facet p N.UName
   -> Facet p res
@@ -121,7 +118,7 @@ typeSig (-->) name body = go
   go = forAll (-->) go <|> binder (-->) name go <|> anned body
 
 binder
-  :: (Has Parser sig p, MonadPlus p, TokenParsing p)
+  :: (Has Parser sig p, TokenParsing p)
   => (Pl_ N.UName ::: S.Ann S.Expr -> S.Ann res -> res)
   -> Facet p N.UName
   -> Facet p (S.Ann res)
@@ -132,13 +129,13 @@ binder (-->) name k = do
   where
   mk start t b end = S.Ann (Span start end) (t --> b)
 
-con :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p (S.Ann (N.UName ::: S.Ann S.Expr))
+con :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.UName ::: S.Ann S.Expr))
 con = anned ((:::) <$> cname <* colon <*> type')
 
 
 -- Types
 
-monotypeTable :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
+monotypeTable :: (Has Parser sig p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
 monotypeTable =
   [ [ Infix L mempty (S.$$) ]
   , [ -- FIXME: we should treat this as a global.
@@ -149,7 +146,7 @@ monotypeTable =
   ]
 
 forAll
-  :: (Has Parser sig p, MonadPlus p, TokenParsing p)
+  :: (Has Parser sig p, TokenParsing p)
   => (Pl_ N.UName ::: S.Ann S.Expr -> S.Ann res -> res)
   -> Facet p (S.Ann res) -> Facet p (S.Ann res)
 forAll mk k = do
@@ -161,17 +158,17 @@ forAll mk k = do
   loop start ty i rest = bind i $ \ v -> mk' start (im v ::: ty) <$> rest <*> position
   mk' start t b end = S.Ann (Span start end) (mk t b)
 
-type' :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p (S.Ann S.Expr)
+type' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 type' = forAll (\ (n ::: _T) b -> out n ::: _T S.:=> b) type' <|> monotype
 
-monotype :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p (S.Ann S.Expr)
+monotype :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 monotype = fn mono
   where
   -- FIXME: model signatures in the surface syntax
   fn loop = chainr1 (optional sig *> loop) ((S.-->) <$ arrow)
   mono = build monotypeTable (parens . fn)
 
-tvar :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p (S.Ann S.Expr)
+tvar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 tvar = token (anned (runUnspaced (fmap (either (S.Free . N.T) S.Bound) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
@@ -181,13 +178,13 @@ tvar = token (anned (runUnspaced (fmap (either (S.Free . N.T) S.Bound) . resolve
 -- - before an argument type
 -- - before a return type
 
-sig :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p [S.Ann S.Expr]
+sig :: (Has Parser sig p, TokenParsing p) => Facet p [S.Ann S.Expr]
 sig = brackets (commaSep type') <?> "signature"
 
 
 -- Expressions
 
-exprTable :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
+exprTable :: (Has Parser sig p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
 exprTable =
   [ [ Infix L mempty (S.$$) ]
   -- FIXME: model this as application to unit instead
@@ -200,20 +197,20 @@ exprTable =
     ]
   ]
 
-expr :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p (S.Ann S.Expr)
+expr :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 expr = build exprTable parens
 
-comp :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p (S.Ann S.Expr)
+comp :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
 comp = anned (S.Comp <$> anned (braces (S.Clauses <$> sepBy1 clause comma <|> S.Expr <$> expr <|> pure (S.Clauses []))))
 
-clause :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p (NE.NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)
+clause :: (Has Parser sig p, TokenParsing p) => Facet p (NE.NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)
 clause = (do
   ps <- try (NE.some1 pattern <* arrow)
   b' <- foldr (bindPattern . S.out) expr ps
   pure (ps, b')) <?> "clause"
 
-evar :: (Has Parser sig p, MonadPlus p, TokenParsing p) => Facet p (S.Ann S.Expr)
+evar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 evar
   =   token (anned (runUnspaced (fmap (either (S.Free . N.E) S.Bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
   <|> try (token (anned (runUnspaced (S.Free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
@@ -231,7 +228,7 @@ bindPattern p m = case p of
 wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
 
-pattern :: (Has Parser sig p, MonadPlus p, TokenParsing p) => p (S.Ann S.Pattern)
+pattern :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Pattern)
 pattern = choice
   [ anned (S.PVar      <$> ename)
   , anned (S.PVar N.__ <$  wildcard)
