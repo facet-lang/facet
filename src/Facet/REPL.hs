@@ -257,6 +257,12 @@ reload src = do
     files_.ix path.elabed_ ?= m'
     env_ %= (<> env)
 
+loadPath :: (Has (Throw (Notice.Notice Style)) sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m (Env.Env, Module)
+loadPath src path = do
+  src <- rethrowIOErrors src $ readSourceFromFile path
+  m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
+  elab src $ Elab.elabModule m
+
 
 helpDoc :: Doc Style
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
