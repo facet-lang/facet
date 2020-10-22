@@ -5,8 +5,8 @@ Interface.Error
 , Data.Function ]
 
 Error : (E : Type) -> Interface
-{ throw : E -> [Error E]A
-, catch : [Error E]A -> (E -> [Error E]A) -> [Error E]A }
+{ throw : { A : Type } -> E -> [Error E]A
+, catch : { A : Type } -> [Error E]A -> (E -> [Error E]A) -> [Error E]A }
 
 handle : { E, A : Type } -> (h : E -> [Error E]A) -> (a : [Error E]A) -> [Error E]A
 { catch a h }
