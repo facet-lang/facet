@@ -10,16 +10,16 @@ import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=), (?=))
-import           Control.Lens (Getting, Lens', itraverse_, ix, lens)
+import           Control.Lens (Getting, Lens', ix, lens)
 import           Control.Monad (unless)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
-import           Data.Foldable (toList)
+import           Data.Foldable (toList, traverse_)
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
-import           Data.Text (pack)
+import qualified Data.Text as TS
 import           Data.Text.Lazy (unpack)
 import           Facet.Algebra hiding (Algebra)
 import           Facet.Carrier.Parser.Church
@@ -48,6 +48,7 @@ import qualified Prettyprinter as P
 import           Silkscreen hiding (Ann, line)
 import           System.Console.ANSI
 import           System.Directory
+import qualified System.FilePath as FP
 import           System.IO.Error
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
@@ -105,10 +106,10 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
 
 kernel :: Module
 kernel = Module kernelName []
-  [ (kernelName :.: T (UName (pack "Type")), DTerm VType ::: VType)
+  [ (kernelName :.: T (UName (TS.pack "Type")), DTerm VType ::: VType)
   ]
   where
-  kernelName = MName (pack "Kernel")
+  kernelName = MName (TS.pack "Kernel")
 
 toEnv :: Module -> Env.Env
 toEnv (Module _ _ defs) = Env.fromList $ do
@@ -244,27 +245,43 @@ instance P.Pretty Target where
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
 reload src = do
   -- FIXME: order with a topological sort on imports, once those exist
-  evalFresh 1 $ files_ ~> \ files -> itraverse_ (reloadFile (length files)) files
+  evalFresh 1 $ targets_ ~> \ targets -> traverse_ (reloadTarget (length targets)) targets
   files <- use files_
   let lnAll = length files
       lnLoaded = length (filter loaded (toList files))
       style = if lnLoaded == lnAll then Success else Failure
   print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
   where
-  reloadFile ln path _ = handleError (\ n -> print (indent 2 (prettyNotice' n))) $ do
+  reloadTarget ln target = handleError (\ n -> print (indent 2 (prettyNotice' n))) $ do
     i <- fresh
     -- FIXME: print the module name
-    print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
+    print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty target ]))
 
-    (env, m') <- loadPath src path
+    (path, env, m') <- loadTarget src target
     files_.ix path.elabed_ ?= m'
     env_ %= (<> env)
 
-loadPath :: (Has (Throw (Notice.Notice Style)) sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m (Env.Env, Module)
-loadPath src path = do
+loadTarget :: (Has (Throw (Notice.Notice Style)) sig m, Has (State REPL) sig m, MonadIO m) => Source -> Target -> m (FilePath, Env.Env, Module)
+loadTarget src target = do
+  path <- case target of
+    TPath path -> pure path
+    TName name -> resolveName name
   src <- rethrowIOErrors src $ readSourceFromFile path
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
-  elab src $ Elab.elabModule m
+  (env, m) <- elab src $ Elab.elabModule m
+  pure (path, env, m)
+
+resolveName :: (Has (State REPL) sig m, MonadIO m) => MName -> m FilePath
+resolveName name = do
+  searchPaths <- use searchPaths_
+  let namePath = toPath name
+  path <- liftIO $ findFile (toList searchPaths) namePath
+  case path of
+    Just path -> pure path
+    Nothing   -> liftIO $ ioError $ mkIOError doesNotExistErrorType "loadTarget" Nothing (Just namePath)
+  where
+  toPath (name :. component) = toPath name FP.</> TS.unpack component
+  toPath (MName component)   = TS.unpack component
 
 
 helpDoc :: Doc Style

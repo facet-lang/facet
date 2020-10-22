@@ -95,6 +95,7 @@ library
     , colour
     , containers
     , directory
+    , filepath
     , fused-effects
     , fused-effects-lens
     , fused-effects-readline
