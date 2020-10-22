@@ -9,8 +9,9 @@ import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, (%=), (<~), (?=))
-import           Control.Lens (Getting, Lens', itraverse, ix, lens)
+import           Control.Effect.Lens (use, (%=), (?=))
+import           Control.Lens (Getting, Lens', itraverse_, ix, lens)
+import           Control.Monad (unless)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
@@ -116,6 +117,9 @@ data File = File
 source_ :: Lens' File (Maybe Source)
 source_ = lens source (\ f source -> f{ source })
 
+parsed_ :: Lens' File (Maybe (Ann Surface.Module))
+parsed_ = lens parsed (\ f parsed -> f{ parsed })
+
 loaded :: File -> Bool
 loaded = \case
  File{ parsed = Just _ } -> True
@@ -201,7 +205,7 @@ load src path = do
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
 reload src = do
   -- FIXME: order with a topological sort on imports, once those exist
-  evalFresh 1 $ files_ <~> \ files -> itraverse (reloadFile (length files)) files
+  evalFresh 1 $ files_ ~> \ files -> itraverse_ (reloadFile (length files)) files
   files <- use files_
   let lnAll = length files
       lnLoaded = length (filter loaded (toList files))
@@ -209,7 +213,7 @@ reload src = do
   print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
   where
   -- FIXME: check whether files need reloading
-  reloadFile ln path file = if loaded file then pure file else do
+  reloadFile ln path file = unless (loaded file) $ do
     i <- fresh
     -- FIXME: print the module name
     print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
@@ -218,11 +222,12 @@ reload src = do
       src <- liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
       files_.ix path.source_ ?= src
       m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
+      files_.ix path.parsed_ ?= m
       (env, m') <- elab src $ Elab.elabModule m
       env_ %= (<> env)
-      file{ parsed = Just m } <$ print (prettyCode (foldCModule surface m')))
+      print (prettyCode (foldCModule surface m')))
       `catchError` \ n ->
-        file <$ print (indent 2 (prettyNotice' n))
+        print (indent 2 (prettyNotice' n))
 
 
 helpDoc :: Doc Style
@@ -262,12 +267,6 @@ elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src Code
 lens ~> act = use lens >>= act
 
 infixr 2 ~>
-
--- | Compose a lens onto either side of a Kleisli arrow and run it on the 'State'.
-(<~>) :: Has (State s) sig m => Lens' s a -> (a -> m a) -> m ()
-lens <~> act = lens <~ lens ~> act
-
-infixr 2 <~>
 
 
 ioErrorToNotice :: Source -> IOError -> Notice.Notice Style
