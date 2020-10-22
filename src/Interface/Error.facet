@@ -1,2 +1,6 @@
 Interface.Error
 : Module
+
+Error : (E : Type) -> Interface
+{ throw : E -> [Error E]A
+, catch : [Error E]A -> (E -> [Error E]A) -> [Error E]A }
