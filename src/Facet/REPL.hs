@@ -128,8 +128,8 @@ elabed_ = lens elabed (\ f elabed -> f{ elabed })
 
 loaded :: File -> Bool
 loaded = \case
- File{ parsed = Just _ } -> True
- _                       -> False
+  File{ parsed = Just _ } -> True
+  _                       -> False
 
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
