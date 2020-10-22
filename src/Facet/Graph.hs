@@ -10,7 +10,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Carrier.Writer.Church
 import           Control.Effect.Throw
-import           Control.Monad (unless, when)
+import           Control.Monad (unless, when, (<=<))
 import           Control.Monad.Trans.Class
 import           Data.Foldable (for_)
 import qualified Data.Map as Map
@@ -44,8 +44,7 @@ loadOrder lookup modules = do
     when (name `elem` path) $ throwError $ CyclicImport (path :> name)
     seen <- gets (Set.member name)
     unless seen . local (:> name) $ do
-      for_ imports $ \ Import{ name } -> do
-        mod' <- lift . lift . lift $ lookup name
-        visit mod'
+      for_ imports $ \ Import{ name } -> edge name
       modify (Set.insert name)
       tell (Endo (mod :))
+  edge = visit <=< lift . lift . lift . lookup
