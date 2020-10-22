@@ -225,7 +225,7 @@ reload src = do
     print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
     (do
-      (time, src) <- liftIO ((Right <$> ((,) <$> getModificationTime path <*> readSourceFromFile path)) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
+      (time, src) <- rethrowIOErrors src ((,) <$> getModificationTime path <*> readSourceFromFile path)
       files_.ix path.source_ ?= (time, src)
       m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
       files_.ix path.parsed_ ?= m
@@ -275,6 +275,9 @@ lens ~> act = use lens >>= act
 
 infixr 2 ~>
 
+
+rethrowIOErrors :: (Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> IO a -> m a
+rethrowIOErrors src m = liftIO (tryIOError m) >>= either (throwError . ioErrorToNotice src) pure
 
 ioErrorToNotice :: Source -> IOError -> Notice.Notice Style
 ioErrorToNotice src err = Notice.Notice (Just Notice.Error) src (group (reflow (show err))) []
