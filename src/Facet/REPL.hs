@@ -224,6 +224,7 @@ reload src = do
       `catchError` \ n ->
         file <$ print (indent 2 (prettyNotice' n))
 
+
 helpDoc :: Doc Style
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
   where
