@@ -218,7 +218,9 @@ reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (Sta
 reload src = evalFresh 1 $ targets_ ~> \ targets -> do
   -- FIXME: remove stale modules
   targetModules <- traverse (loadModule src) (toList targets)
-  rethrowGraphErrors src $ loadOrder (loadModule src) targetModules
+  rethrowGraphErrors src $ loadOrder (fmap toNode . loadModule src) (map toNode targetModules)
+  where
+  toNode m = Node ((name :: Module -> MName) m) (map (name :: Import -> MName) (imports m)) m
 
 loadModule :: (Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> MName -> m Module
 loadModule src name = do
