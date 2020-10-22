@@ -165,8 +165,8 @@ loop = do
 
 -- TODO:
 -- - multiline
-commands :: [Command Action]
-commands =
+commands :: Commands Action
+commands = choice
   [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure Help
   , command ["quit", "q"]       "exit the repl"                      Nothing        $ pure Quit
   , command ["show"]            "show compiler state"                (Just "field") $ Show <$> choice
@@ -247,7 +247,7 @@ resolveName name = do
 
 
 helpDoc :: Doc Style
-helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
+helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry (getCommands commands))
   where
   entry c =
     ( concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)) <> maybe mempty ((space <>) . enclose (pretty '<') (pretty '>') . pretty) (meta c)

@@ -2,34 +2,29 @@ module Facet.REPL.Parser
 ( Command(..)
 , command
 , parseCommands
-, parseCommand
+, Commands(..)
 , CommandParser(..)
 ) where
 
 import Control.Algebra
 import Control.Applicative (Alternative(..))
 import Control.Effect.Sum
-import Control.Monad (ap, liftM, void)
+import Control.Monad (void)
 import Facet.Effect.Parser
 import Text.Parser.Char
 import Text.Parser.Combinators
 import Text.Parser.Token hiding (brackets, comma)
 
-data Command a = Command
+data Command = Command
   { symbols :: [String]
   , usage   :: String
   , meta    :: Maybe String
-  , parse   :: CommandParser a
   }
 
-command :: [String] -> String -> Maybe String -> CommandParser a -> Command a
-command = Command
-
-parseCommands :: (Has Parser sig p, TokenParsing p) => [Command a] -> p a
-parseCommands cs = choice (map parseCommand cs) <?> "command"
-
-parseCommand :: (Has Parser sig p, TokenParsing p) => Command a -> p a
-parseCommand c = parseSymbols (symbols c) *> runCommandParser (parse c)
+command :: [String] -> String -> Maybe String -> (forall sig p . (Has Parser sig p, TokenParsing p) => p a) -> Commands a
+command symbols usage meta parse = Commands
+  [Command symbols usage meta]
+  (parseSymbols symbols *> runCommandParser parse)
   where
   parseSymbols = \case
     [] -> pure ()
@@ -37,14 +32,32 @@ parseCommand c = parseSymbols (symbols c) *> runCommandParser (parse c)
   parseSymbol s = void $ token (try (string (':':s) <* (eof <|> someSpace))) <?> (':':s)
 
 
+parseCommands :: (Has Parser sig p, TokenParsing p) => Commands a -> p a
+parseCommands = runCommandParser . _parseCommands
+
+data Commands a = Commands
+  { getCommands    :: [Command]
+  , _parseCommands :: CommandParser a
+  }
+  deriving (Functor)
+
+instance Applicative Commands where
+  pure a = Commands [] (pure a)
+  Commands c1 p1 <*> Commands c2 p2 = Commands (c1 <> c2) (p1 <*> p2)
+
+instance Alternative Commands where
+  empty = Commands [] empty
+  Commands c1 p1 <|> Commands c2 p2 = Commands (c1 <> c2) (p1 <|> p2)
+
+
 newtype CommandParser a = CommandParser { runCommandParser :: (forall sig p . (Has Parser sig p, TokenParsing p) => p a) }
 
 instance Functor CommandParser where
-  fmap = liftM
+  fmap f (CommandParser m) = CommandParser (fmap f m)
 
 instance Applicative CommandParser where
   pure a = CommandParser $ pure a
-  (<*>) = ap
+  CommandParser f <*> CommandParser a = CommandParser (f <*> a)
 
 instance Alternative CommandParser where
   empty = CommandParser empty
