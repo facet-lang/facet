@@ -43,7 +43,7 @@ import           Facet.Source (Source(..), readSourceFromFile, sourceFromString)
 import           Facet.Span (Span)
 import           Facet.Stack
 import           Facet.Style as Style
-import           Facet.Surface (Ann, Expr)
+import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Prelude hiding (print, span, unlines)
 import qualified Prettyprinter as P
@@ -200,9 +200,9 @@ data Action
   | Add ModField
   | Remove ModField
   | Reload
-  | Type (Ann Expr)
-  | Kind (Ann Expr)
-  | Eval (Ann Expr)
+  | Type (S.Ann S.Expr)
+  | Kind (S.Ann S.Expr)
+  | Eval (S.Ann S.Expr)
 
 data ShowField
   = ShowPaths
