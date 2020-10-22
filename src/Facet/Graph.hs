@@ -1,5 +1,6 @@
 module Facet.Graph
 ( Graph(..)
+, Node(..)
 , loadOrder
 ) where
 
@@ -18,6 +19,8 @@ import           Facet.Name
 import           Facet.Stack
 
 newtype Graph = Graph { getGraph :: Map.Map MName Module }
+
+data Node = Node MName [MName]
 
 loadOrder :: Has (Throw (Stack MName)) sig m => (MName -> m Module) -> [Module] -> m [Module]
 loadOrder lookup modules = do
