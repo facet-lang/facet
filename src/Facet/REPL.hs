@@ -198,16 +198,16 @@ commands =
   [ Command ["help", "h", "?"]  "display this list of commands"      $ Pure Help
   , Command ["quit", "q"]       "exit the repl"                      $ Pure Quit
   , Command ["show"]            "show compiler state"                $ Meta "field" $ Show <$> choice
-    [ ShowPaths <$ token (string "paths")
+    [ ShowPaths   <$ token (string "paths")
     , ShowModules <$ token (string "modules")
     , ShowTargets <$ token (string "targets")
     ]
   , Command ["add"]             "add a module/path to the repl"      $ Meta "path" $ choice
-    [ Add . ModPath <$ token (string "path") <*> path'
+    [ Add . ModPath   <$ token (string "path")   <*> path'
     , Add . ModTarget <$ token (string "target") <*> some target
     ]
   , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "path" $ choice
-    [ Remove . ModPath <$ token (string "path") <*> path'
+    [ Remove . ModPath   <$ token (string "path")   <*> path'
     , Remove . ModTarget <$ token (string "target") <*> some target
     ]
   , Command ["reload", "r", ""] "reload the loaded modules"          $ Pure Reload
