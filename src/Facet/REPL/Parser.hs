@@ -4,10 +4,13 @@ module Facet.REPL.Parser
 , Arg(..)
 , parseCommands
 , parseCommand
+, CommandParser(..)
 ) where
 
+import Control.Algebra
 import Control.Applicative (Alternative(..))
-import Data.Functor (void)
+import Control.Effect.Sum
+import Control.Monad (ap, liftM, void)
 import Facet.Effect.Parser
 import Text.Parser.Char
 import Text.Parser.Combinators
@@ -26,7 +29,7 @@ meta c = case value c of
 
 data Arg a
   = Pure a
-  | Meta String (forall sig p . (Has Parser sig p, TokenParsing p) => p a)
+  | Meta String (CommandParser a)
 
 
 parseCommands :: (Has Parser sig p, TokenParsing p) => [Command a] -> p a
@@ -41,4 +44,50 @@ parseCommand c = parseSymbols (symbols c) *> parseValue (value c)
   parseSymbol s = void $ token (try (string (':':s) <* (eof <|> someSpace))) <?> (':':s)
   parseValue = \case
     Pure a   -> pure a
-    Meta _ p -> p
+    Meta _ p -> runCommandParser p
+
+
+newtype CommandParser a = CommandParser { runCommandParser :: (forall sig p . (Has Parser sig p, TokenParsing p) => p a) }
+
+instance Functor CommandParser where
+  fmap = liftM
+
+instance Applicative CommandParser where
+  pure a = CommandParser $ pure a
+  (<*>) = ap
+
+instance Alternative CommandParser where
+  empty = CommandParser empty
+  CommandParser a <|> CommandParser b = CommandParser (a <|> b)
+  many (CommandParser m) = CommandParser (many m)
+  some (CommandParser m) = CommandParser (some m)
+
+instance Monad CommandParser where
+  m >>= f = CommandParser (runCommandParser m >>= runCommandParser . f)
+
+instance Algebra Parser CommandParser where
+  alg hdl sig ctx = CommandParser $ alg (runCommandParser . hdl) (inj sig) ctx
+
+instance Parsing CommandParser where
+  try (CommandParser m) = CommandParser (try m)
+  CommandParser m <?> s = CommandParser (m <?> s)
+  skipMany (CommandParser m) = CommandParser (skipMany m)
+  skipSome (CommandParser m) = CommandParser (skipSome m)
+  unexpected s = CommandParser (unexpected s)
+  eof = CommandParser eof
+  notFollowedBy (CommandParser m) = CommandParser (notFollowedBy m)
+
+instance CharParsing CommandParser where
+  satisfy p = CommandParser (satisfy p)
+  char c = CommandParser (char c)
+  notChar c = CommandParser (notChar c)
+  anyChar = CommandParser anyChar
+  string s = CommandParser (string s)
+  text s = CommandParser (text s)
+
+instance TokenParsing CommandParser where
+  someSpace = CommandParser someSpace
+  nesting (CommandParser m) = CommandParser (nesting m)
+  semi = CommandParser semi
+  highlight h (CommandParser m) = CommandParser (highlight h m)
+  token (CommandParser m) = CommandParser (token m)
