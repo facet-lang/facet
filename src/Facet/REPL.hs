@@ -159,7 +159,7 @@ loop = do
       Paths   -> do
         searchPaths <- gets (toList . searchPaths)
         unless (null searchPaths)
-          $ print $ pretty "search paths:" <\> (nest 2 (unlines (map pretty searchPaths)))
+          $ print $ pretty "search paths:" <\> nest 2 (unlines (map pretty searchPaths))
       -- FIXME: show module names
       Modules -> gets (unlines . map pretty . Map.keys . files) >>= print
     Add Paths path -> searchPaths_ %= Set.insert path
