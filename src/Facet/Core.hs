@@ -320,6 +320,7 @@ fill f z = mapAccumL (\ z _ -> f z) z
 
 -- Modules
 
+-- FIXME: model operators and their associativities for parsing.
 data Module = Module
   { name    :: MName
   , imports :: [Import]

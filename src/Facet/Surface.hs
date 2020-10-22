@@ -107,6 +107,7 @@ unTDForAll = \case{ TDForAll t b -> pure (t, b) ; _ -> empty }
 
 -- Modules
 
+-- FIXME: model operators and their associativities for parsing.
 data Module = Module { name :: MName, imports :: [Ann Import], defs :: [Ann (DName, Ann Decl)] }
   deriving (Eq, Show)
 
