@@ -159,19 +159,19 @@ loop = do
     Help -> print helpDoc
     Quit -> empty
     Show t -> case t of
-      Paths   -> do
+      ShowPaths   -> do
         dir <- liftIO getCurrentDirectory
         print $ nest 2 $ reflow "current working directory:" </> pretty dir
         searchPaths <- gets (toList . searchPaths)
         unless (null searchPaths)
           $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
       -- FIXME: show module names
-      Modules -> gets (unlines . map pretty . Map.keys . files) >>= print
-    Add Paths path -> searchPaths_ %= Set.insert path
-    Add Modules path -> load src path
-    Remove Paths path -> searchPaths_ %= Set.delete path
+      ShowModules -> gets (unlines . map pretty . Map.keys . files) >>= print
+    Add ModPath path -> searchPaths_ %= Set.insert path
+    Add ModModule path -> load src path
+    Remove ModPath path -> searchPaths_ %= Set.delete path
     -- FIXME: remove things depending on it
-    Remove Modules path -> files_.at path .= Nothing
+    Remove ModModule path -> files_.at path .= Nothing
     Reload -> reload src
     Type e -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
@@ -192,16 +192,16 @@ commands =
   [ Command ["help", "h", "?"]  "display this list of commands"      $ Pure Help
   , Command ["quit", "q"]       "exit the repl"                      $ Pure Quit
   , Command ["show"]            "show compiler state"                $ Meta "target" $ Show <$> choice
-    [ Paths <$ token (string "paths")
-    , Modules <$ token (string "modules")
+    [ ShowPaths <$ token (string "paths")
+    , ShowModules <$ token (string "modules")
     ]
   , Command ["add"]             "add a module/path to the repl"      $ Meta "path" $ choice
-    [ Add Paths <$ token (string "path") <*> path'
-    , Add Modules <$ token (string "module") <*> path'
+    [ Add ModPath <$ token (string "path") <*> path'
+    , Add ModModule <$ token (string "module") <*> path'
     ]
   , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "path" $ choice
-    [ Remove Paths <$ token (string "path") <*> path'
-    , Remove Modules <$ token (string "module") <*> path'
+    [ Remove ModPath <$ token (string "path") <*> path'
+    , Remove ModModule <$ token (string "module") <*> path'
     ]
   , Command ["reload", "r", ""] "reload the loaded modules"          $ Pure Reload
   , Command ["type", "t"]       "show the type of <expr>"            $ Meta "expr" type_
@@ -220,17 +220,21 @@ kind_ = Kind <$> runFacet [] [] (whole type')
 data Action
   = Help
   | Quit
-  | Show Field
-  | Add Field FilePath
-  | Remove Field FilePath
+  | Show ShowField
+  | Add ModField FilePath
+  | Remove ModField FilePath
   | Reload
   | Type (Ann Expr)
   | Kind (Ann Expr)
   | Eval (Ann Expr)
 
-data Field
-  = Paths
-  | Modules
+data ShowField
+  = ShowPaths
+  | ShowModules
+
+data ModField
+  = ModPath
+  | ModModule
 
 load :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
 load src path = do
