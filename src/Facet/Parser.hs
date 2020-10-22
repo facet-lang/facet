@@ -3,6 +3,7 @@ module Facet.Parser
 , Facet(..)
 , module'
 , module''
+, moduleHeader
 , decl
 , type'
 , expr
@@ -95,7 +96,9 @@ whole p = whiteSpace *> p <* eof
 
 -- FIXME: preserve comments, presumably in 'S.Ann'
 module' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Module)
-module' = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import')) <*> many decl)
+module' = anned $ do
+  (name, imports) <- moduleHeader
+  S.Module name imports <$> many decl
 
 -- | Parse a module, using the provided callback to give the parser feedback on imports.
 module'' :: (Has Parser sig p, TokenParsing p) => (S.Ann S.Import -> Facet p ()) -> Facet p (S.Ann S.Module)
@@ -105,6 +108,9 @@ module'' onImport = anned (S.Module <$> mname <* colon <* symbol "Module" <*> op
     i <- import'
     onImport i
     pure i
+
+moduleHeader :: (Has Parser sig p, TokenParsing p) => Facet p (N.MName, [S.Ann S.Import])
+moduleHeader = (,) <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import'))
 
 
 -- Declarations
