@@ -11,7 +11,6 @@ module Facet.Parser
 import           Control.Algebra ((:+:))
 import           Control.Applicative (Alternative(..))
 import           Control.Carrier.Reader
-import           Control.Selective
 import           Data.Bool (bool)
 import           Data.Char (isSpace)
 import qualified Data.CharSet as CharSet
@@ -59,9 +58,6 @@ env = Facet pure
 
 newtype Facet m a = Facet ([N.UName] -> m a)
   deriving (Algebra (Reader [N.UName] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC [N.UName] m
-
-instance Selective m => Selective (Facet m) where
-  select f a = Facet $ \ env -> select (runFacet env f) (runFacet env a)
 
 instance Parsing p => Parsing (Facet p) where
   try (Facet m) = Facet $ \ env -> try (m env)
