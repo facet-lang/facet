@@ -103,8 +103,22 @@ import' = anned $ S.Import <$> mname
 
 decl :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
 decl = anned
-  $   (,) <$> dename <* colon <*> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
+  $   tdecl
   <|> (,) <$> dtname <* colon <*> anned (S.DDecl <$> typeSig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
+  where
+  tdecl = do
+    name <- dename <* colon
+    case name of
+      N.O op -> modify (AnyOperator (case op of
+         N.Prefix  l  -> Prefix l (unary name)
+         N.Postfix r  -> Postfix r (unary name)
+         N.Infix a m  -> Infix a m (binary name)
+         N.Outfix l r -> Outfix l r (unary name)) :)
+      _      -> pure ()
+    decl <- anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
+    pure (name, decl)
+  binary name e1@(S.Ann s _) e2 = S.Ann s (S.Free name) S.$$ e1 S.$$ e2
+  unary name e@(S.Ann s _) = S.Ann s (S.Free name) S.$$ e
 
 
 typeSig
