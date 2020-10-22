@@ -1,4 +1,3 @@
-{-# LANGUAGE GADTs #-}
 module Facet.REPL
 ( repl
 ) where
@@ -202,16 +201,16 @@ type_ = Type <$> runFacet [] [] (whole expr)
 kind_ = Kind <$> runFacet [] [] (whole type')
 
 
-data Action where
-  Help :: Action
-  Quit :: Action
-  Show :: ShowField -> Action
-  Add :: ModField -> Action
-  Remove :: ModField -> Action
-  Reload :: Action
-  Type :: (Ann Expr) -> Action
-  Kind :: (Ann Expr) -> Action
-  Eval :: (Ann Expr) -> Action
+data Action
+  = Help
+  | Quit
+  | Show ShowField
+  | Add ModField
+  | Remove ModField
+  | Reload
+  | Type (Ann Expr)
+  | Kind (Ann Expr)
+  | Eval (Ann Expr)
 
 data ShowField
   = ShowPaths
