@@ -183,15 +183,15 @@ commands :: [Command Action]
 commands =
   [ Command ["help", "h", "?"]  "display this list of commands"      $ Pure Help
   , Command ["quit", "q"]       "exit the repl"                      $ Pure Quit
-  , Command ["show"]            "show compiler state"                $ Meta "target" $ whole $ Show <$> choice
+  , Command ["show"]            "show compiler state"                $ Meta "target" $ Show <$> choice
     [ Paths <$ token (string "paths")
     , Modules <$ token (string "modules")
     ]
-  , Command ["add"]             "add a module/path to the repl"      $ Meta "path" $ whole $ choice
+  , Command ["add"]             "add a module/path to the repl"      $ Meta "path" $ choice
     [ Add Paths <$ token (string "path") <*> path'
     , Add Modules <$ token (string "module") <*> path'
     ]
-  , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "path" $ whole $ choice
+  , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "path" $ choice
     [ Remove Paths <$ token (string "path") <*> path'
     , Remove Modules <$ token (string "module") <*> path'
     ]
