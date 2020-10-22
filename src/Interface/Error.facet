@@ -1,7 +1,8 @@
 Interface.Error
 : Module
 
-[ Data.Either ]
+[ Data.Either
+, Data.Function ]
 
 Error : (E : Type) -> Interface
 { throw : E -> [Error E]A
