@@ -67,6 +67,7 @@ data REPL = REPL
   , files          :: Map.Map FilePath File
   , promptFunction :: Int -> IO String
   , env            :: Env.Env
+  , targets        :: [Either FilePath MName]
   -- FIXME: break this down by file/module/whatever so we can load multiple packages
   , searchPaths    :: Set.Set FilePath
   }
@@ -89,6 +90,7 @@ defaultREPLState = REPL
   , files          = mempty
   , promptFunction = defaultPromptFunction
   , env            = toEnv kernel
+  , targets        = []
   , searchPaths    = Set.singleton "src"
   }
 
