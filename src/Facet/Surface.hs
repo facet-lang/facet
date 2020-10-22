@@ -87,13 +87,13 @@ data Type
 
 infixr 1 :=>
 infixl 9 :$$
-infixr 2 :->
+infixr 1 :->
 
 
 (-->) :: Ann Type -> Ann Type -> Ann Type
 a --> b = Ann (ann a <> ann b) (a :-> b)
 
-infixr 2 -->
+infixr 1 -->
 
 ($$$) :: Ann Type -> Ann Type -> Ann Type
 f $$$ a = Ann (ann f <> ann a) (f :$$ a)
