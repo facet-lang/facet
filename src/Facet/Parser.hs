@@ -96,8 +96,14 @@ whole p = whiteSpace *> p <* eof
 module' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Module)
 module' = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import')) <*> many decl)
 
-module'' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Module)
-module'' = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import')) <*> many decl)
+-- | Parse a module, using the provided callback to give the parser feedback on imports.
+module'' :: (Has Parser sig p, TokenParsing p) => (S.Ann S.Import -> Facet p ()) -> Facet p (S.Ann S.Module)
+module'' onImport = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import'')) <*> many decl)
+  where
+  import'' = do
+    i <- import'
+    onImport i
+    pure i
 
 
 -- Declarations
