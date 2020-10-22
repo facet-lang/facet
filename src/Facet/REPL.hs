@@ -44,7 +44,7 @@ import           Facet.Style as Style
 import           Facet.Surface (Ann, Expr)
 import           Facet.Syntax
 import           Prelude hiding (print, span, unlines)
-import           Prettyprinter (reAnnotate, reAnnotateS)
+import qualified Prettyprinter as P
 import           Silkscreen hiding (Ann, line)
 import           System.Console.ANSI
 import           System.Directory
@@ -153,7 +153,7 @@ loop = do
           $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
       -- FIXME: show module names
       ShowModules -> gets (unlines . map pretty . Map.keys . files) >>= print
-      ShowTargets -> gets (unlines . map (\case { TName name -> pretty name ; TPath path -> pretty path }) . toList . targets) >>= print
+      ShowTargets -> gets (unlines . map pretty . toList . targets) >>= print
     Add (ModPath path) -> searchPaths_ %= Set.insert path
     Add (ModTarget targets) -> do
       targets_ %= Set.union (Set.fromList targets)
@@ -235,6 +235,11 @@ data Target
   | TPath FilePath
   deriving (Eq, Ord, Show)
 
+instance P.Pretty Target where
+  pretty = \case
+    TName n -> pretty n
+    TPath p -> pretty p
+
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
 reload src = do
@@ -282,13 +287,13 @@ prompt = do
 print :: (Has Readline sig m, MonadIO m) => Doc Style -> m ()
 print d = do
   opts <- liftIO layoutOptionsForTerminal
-  outputStrLn (unpack (renderLazy (reAnnotateS terminalStyle (layoutSmart opts d))))
+  outputStrLn (unpack (renderLazy (P.reAnnotateS terminalStyle (layoutSmart opts d))))
 
 prettyNotice' :: Notice.Notice Style -> Doc Style
-prettyNotice' = reAnnotate Style.Notice . Notice.prettyNotice
+prettyNotice' = P.reAnnotate Style.Notice . Notice.prettyNotice
 
 prettyCode :: Print -> Doc Style
-prettyCode = reAnnotate Code . getPrint
+prettyCode = P.reAnnotate Code . getPrint
 
 elab :: Source -> I.ThrowC (Notice.Notice Style) Elab.Err (L.StateC REPL Env.Env (ReaderC Span m)) a -> m a
 elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src Code
