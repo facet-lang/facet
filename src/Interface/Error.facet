@@ -12,3 +12,13 @@ handle : { E, A : Type } -> (h : E -> [Error E]A) -> (a : [Error E]A) -> [Error 
 
 try : { E, A : Type } -> (a : [Error E]A) -> [Error E]Either E A
 { handle inl (inr a) }
+
+error
+:  { E, A, R : Type }
+-> (failure : E -> R)
+-> (success : A -> R)
+-> [Error E]A
+-> R
+{ [ throw e   ; _ ] -> failure e
+, [ catch a h ; k ] -> error (error failure success << k << h) k a
+, a                 -> success a }
