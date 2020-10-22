@@ -1,5 +1,6 @@
 module Facet.Graph
 ( Graph(..)
+, insert
 , GraphErr(..)
 , loadOrder
 ) where
@@ -19,6 +20,9 @@ import           Facet.Name
 import           Facet.Stack
 
 newtype Graph = Graph { getGraph :: Map.Map MName Module }
+
+insert :: Module -> Graph -> Graph
+insert m@Module{ name } = Graph . Map.insert name m . getGraph
 
 
 data GraphErr
