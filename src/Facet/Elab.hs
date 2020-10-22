@@ -429,8 +429,8 @@ elabModule
   :: forall m sig
   .  (HasCallStack, Has (Throw Err) sig m)
   => S.Ann S.Module
-  -> m (Env.Env, C.Module)
-elabModule (S.Ann s (S.Module mname _is ds)) = runReader s . runState (fmap pure . (,)) (mempty @Env.Env) $ do
+  -> m C.Module
+elabModule (S.Ann s (S.Module mname _is ds)) = runReader s . evalState (mempty @Env.Env) $ do
   -- FIXME: trace the defs as we elaborate them
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?

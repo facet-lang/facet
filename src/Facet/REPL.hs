@@ -227,7 +227,7 @@ loadModule src name = do
   path <- resolveName name
   src <- rethrowIOErrors src $ readSourceFromFile path
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
-  (_, m) <- elab src $ Elab.elabModule m
+  m <- elab src $ Elab.elabModule m
   modules_.at path .= Just m
   pure m
 
