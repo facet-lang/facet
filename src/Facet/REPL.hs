@@ -9,13 +9,13 @@ import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, (%=), (?=))
-import           Control.Lens (Getting, Lens', ix, lens)
-import           Control.Monad (unless)
+import           Control.Effect.Lens (use, (%=), (.=))
+import           Control.Lens (Getting, Lens', at, lens)
+import           Control.Monad (unless, void)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
-import           Data.Foldable (toList, traverse_)
+import           Data.Foldable (toList)
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
@@ -29,6 +29,7 @@ import           Facet.Core
 import qualified Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Eval
+import           Facet.Graph
 import           Facet.Name hiding (Meta, use)
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab
@@ -64,10 +65,10 @@ repl
 
 data REPL = REPL
   { line           :: Int
-  , files          :: Map.Map FilePath File
+  , modules        :: Map.Map FilePath Module
   , promptFunction :: Int -> IO String
   , env            :: Env.Env
-  , targets        :: Set.Set Target
+  , targets        :: Set.Set MName
   -- FIXME: break this down by file/module/whatever so we can load multiple packages
   , searchPaths    :: Set.Set FilePath
   }
@@ -75,13 +76,13 @@ data REPL = REPL
 line_ :: Lens' REPL Int
 line_ = lens line (\ r line -> r{ line })
 
-files_ :: Lens' REPL (Map.Map FilePath File)
-files_ = lens files (\ r files -> r{ files })
+modules_ :: Lens' REPL (Map.Map FilePath Module)
+modules_ = lens modules (\ r modules -> r{ modules })
 
 env_ :: Lens' REPL Env.Env
 env_ = lens env (\ r env -> r{ env })
 
-targets_ :: Lens' REPL (Set.Set Target)
+targets_ :: Lens' REPL (Set.Set MName)
 targets_ = lens targets (\ r targets -> r{ targets })
 
 searchPaths_ :: Lens' REPL (Set.Set FilePath)
@@ -90,7 +91,7 @@ searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 defaultREPLState :: REPL
 defaultREPLState = REPL
   { line           = 0
-  , files          = mempty
+  , modules        = mempty
   , promptFunction = defaultPromptFunction
   , env            = toEnv kernel
   , targets        = mempty
@@ -119,19 +120,6 @@ toEnv (Module _ _ defs) = Env.fromList $ do
     DData cs -> [ (C n,   mname :=: Just v ::: _T) | n :=: v ::: _T <- cs ]
 
 
-data File = File
-  { elabed :: Maybe Module
-  }
-
-elabed_ :: Lens' File (Maybe Module)
-elabed_ = lens elabed (\ f elabed -> f{ elabed })
-
-loaded :: File -> Bool
-loaded = \case
-  File{ elabed = Just _ } -> True
-  _                       -> False
-
-
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
   resp <- prompt
@@ -153,16 +141,16 @@ loop = do
         unless (null searchPaths)
           $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
       -- FIXME: show module names
-      ShowModules -> gets (unlines . map pretty . Map.keys . files) >>= print
+      ShowModules -> gets (unlines . map pretty . Map.keys . modules) >>= print
       ShowTargets -> gets (unlines . map pretty . toList . targets) >>= print
     Add (ModPath path) -> searchPaths_ %= Set.insert path
     Add (ModTarget targets) -> do
       targets_ %= Set.union (Set.fromList targets)
-      reload src
+      void $ reload src
     Remove (ModPath path) -> searchPaths_ %= Set.delete path
     -- FIXME: remove things depending on it
     Remove (ModTarget targets) -> targets_ %= (Set.\\ Set.fromList targets)
-    Reload -> reload src
+    Reload -> void $ reload src
     Type e -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
       print (prettyCode (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
@@ -188,11 +176,11 @@ commands =
     ]
   , Command ["add"]             "add a module/path to the repl"      $ Meta "item" $ choice
     [ Add . ModPath   <$ token (string "path")   <*> path'
-    , Add . ModTarget <$ token (string "target") <*> some target
+    , Add . ModTarget <$ token (string "target") <*> some mname
     ]
   , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "item" $ choice
     [ Remove . ModPath   <$ token (string "path")   <*> path'
-    , Remove . ModTarget <$ token (string "target") <*> some target
+    , Remove . ModTarget <$ token (string "target") <*> some mname
     ]
   , Command ["reload", "r", ""] "reload the loaded modules"          $ Pure Reload
   , Command ["type", "t"]       "show the type of <expr>"            $ Meta "expr" type_
@@ -201,9 +189,6 @@ commands =
 
 path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
-
-target :: (Monad p, TokenParsing p) => p Target
-target = TName <$> mname <|> TPath <$> path'
 
 type_, kind_ :: (Has Parser sig p, TokenParsing p) => p Action
 
@@ -229,47 +214,24 @@ data ShowField
 
 data ModField
   = ModPath FilePath
-  | ModTarget [Target]
-
-data Target
-  = TName MName
-  | TPath FilePath
-  deriving (Eq, Ord, Show)
-
-instance P.Pretty Target where
-  pretty = \case
-    TName n -> pretty n
-    TPath p -> pretty p
+  | ModTarget [MName]
 
 
-reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
-reload src = do
-  -- FIXME: order with a topological sort on imports, once those exist
-  evalFresh 1 $ targets_ ~> \ targets -> traverse_ (reloadTarget (length targets)) targets
-  files <- use files_
-  let lnAll = length files
-      lnLoaded = length (filter loaded (toList files))
-      style = if lnLoaded == lnAll then Success else Failure
-  print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
-  where
-  reloadTarget ln target = handleError (\ n -> print (indent 2 (prettyNotice' n))) $ do
-    i <- fresh
-    -- FIXME: print the module name
-    print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty target ]))
+reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m [Module]
+reload src = evalFresh 1 $ targets_ ~> \ targets -> do
+  targetModules <- traverse (loadModule src) (toList targets)
+  rethrowGraphErrors src $ loadOrder (loadModule src) targetModules
 
-    (path, env, m') <- loadTarget src target
-    files_.ix path.elabed_ ?= m'
-    env_ %= (<> env)
-
-loadTarget :: (Has (Throw (Notice.Notice Style)) sig m, Has (State REPL) sig m, MonadIO m) => Source -> Target -> m (FilePath, Env.Env, Module)
-loadTarget src target = do
-  path <- case target of
-    TPath path -> pure path
-    TName name -> resolveName name
+loadModule :: (Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> MName -> m Module
+loadModule src name = do
+  i <- fresh
+  print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty 'n')) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
+  path <- resolveName name
   src <- rethrowIOErrors src $ readSourceFromFile path
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
-  (env, m) <- elab src $ Elab.elabModule m
-  pure (path, env, m)
+  (_, m) <- elab src $ Elab.elabModule m
+  modules_.at path .= Just m
+  pure m
 
 resolveName :: (Has (State REPL) sig m, MonadIO m) => MName -> m FilePath
 resolveName name = do
@@ -278,7 +240,7 @@ resolveName name = do
   path <- liftIO $ findFile (toList searchPaths) namePath
   case path of
     Just path -> pure path
-    Nothing   -> liftIO $ ioError $ mkIOError doesNotExistErrorType "loadTarget" Nothing (Just namePath)
+    Nothing   -> liftIO $ ioError $ mkIOError doesNotExistErrorType "loadModule" Nothing (Just namePath)
   where
   toPath (name :. component) = toPath name FP.</> TS.unpack component
   toPath (MName component)   = TS.unpack component
@@ -326,6 +288,11 @@ infixr 2 ~>
 rethrowIOErrors :: (Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> IO a -> m a
 rethrowIOErrors src m = liftIO (tryIOError m) >>= either (throwError . ioErrorToNotice src) pure
 
+rethrowGraphErrors :: Source -> I.ThrowC (Notice.Notice Style) GraphErr m a -> m a
+rethrowGraphErrors src = I.runThrow formatGraphErr
+  where
+  formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) src (reflow "cyclic import") (map pretty (toList path))
+
 ioErrorToNotice :: Source -> IOError -> Notice.Notice Style
 ioErrorToNotice src err = Notice.Notice (Just Notice.Error) src (group (reflow (show err))) []
 
@@ -334,6 +301,3 @@ unlines = concatWith (<\>)
 
 (<\>) :: Printer p => p -> p -> p
 (<\>) = surround hardline
-
-handleError :: Has (Catch e) sig m => (e -> m a) -> m a -> m a
-handleError h m = catchError m h
