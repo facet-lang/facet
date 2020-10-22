@@ -224,7 +224,7 @@ reload src = do
       style = if lnLoaded == lnAll then Success else Failure
   print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
   where
-  reloadFile ln path file = do
+  reloadFile ln path file = handleError (\ n -> print (indent 2 (prettyNotice' n))) $ do
     src <- rethrowIOErrors src $ readSourceFromFile path
     unless (upToDate src file) $ do
       files_.ix path.source_ ?= src
@@ -233,15 +233,12 @@ reload src = do
       -- FIXME: print the module name
       print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
-      (do
-        m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
-        files_.ix path.parsed_ ?= m
-        (env, m') <- elab src $ Elab.elabModule m
-        files_.ix path.elabed_ ?= m'
-        env_ %= (<> env)
-        print (prettyCode (foldCModule surface m')))
-        `catchError` \ n ->
-          print (indent 2 (prettyNotice' n))
+      m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
+      files_.ix path.parsed_ ?= m
+      (env, m') <- elab src $ Elab.elabModule m
+      files_.ix path.elabed_ ?= m'
+      env_ %= (<> env)
+      print (prettyCode (foldCModule surface m'))
 
 
 helpDoc :: Doc Style
@@ -294,3 +291,6 @@ unlines = concatWith (<\>)
 
 (<\>) :: Printer p => p -> p -> p
 (<\>) = surround hardline
+
+handleError :: Has (Catch e) sig m => (e -> m a) -> m a -> m a
+handleError h m = catchError m h
