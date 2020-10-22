@@ -274,7 +274,7 @@ loadTarget src target = do
 resolveName :: (Has (State REPL) sig m, MonadIO m) => MName -> m FilePath
 resolveName name = do
   searchPaths <- use searchPaths_
-  let namePath = toPath name
+  let namePath = toPath name FP.<.> ".facet"
   path <- liftIO $ findFile (toList searchPaths) namePath
   case path of
     Just path -> pure path
