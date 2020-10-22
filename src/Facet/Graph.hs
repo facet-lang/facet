@@ -1,6 +1,7 @@
 module Facet.Graph
 ( Graph(..)
 , insert
+, lookup
 , GraphErr(..)
 , loadOrder
 ) where
@@ -18,11 +19,15 @@ import qualified Data.Set as Set
 import           Facet.Core
 import           Facet.Name
 import           Facet.Stack
+import           Prelude hiding (lookup)
 
 newtype Graph = Graph { getGraph :: Map.Map MName Module }
 
 insert :: Module -> Graph -> Graph
 insert m@Module{ name } = Graph . Map.insert name m . getGraph
+
+lookup :: MName -> Graph -> Maybe Module
+lookup n = Map.lookup n . getGraph
 
 
 data GraphErr
