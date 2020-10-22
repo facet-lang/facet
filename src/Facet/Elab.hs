@@ -199,7 +199,7 @@ bound
 bound n = Synth $ ask >>= \ ctx -> case ctx !? n of
   -- FIXME: do we need to instantiate here to deal with rank-n applications?
   Just (_ ::: _T) -> pure (free (indexToLevel (level ctx) n) ::: _T)
-  Nothing         -> err $ BadContext n
+  Nothing         -> error $ "no variable for index " <> show (getIndex n)
 
 hole
   :: UName
@@ -518,7 +518,6 @@ data Reason
   | CouldNotSynthesize String
   | Mismatch String (Either String Type) Type
   | Hole UName Type
-  | BadContext Index
 
 
 err :: Reason -> Elab a

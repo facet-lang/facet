@@ -54,7 +54,6 @@ printReason ctx = group . \case
   Hole n _T              ->
     let _T' = printType ctx _T
     in fillSep [reflow "found hole", pretty n, colon, _T' ]
-  BadContext n           -> fillSep [ reflow "no variable bound for index", pretty (N.getIndex n), reflow "in context of length", pretty (length ctx) ]
 
 
 printType :: Stack Print -> Type -> Doc Print.Highlight
