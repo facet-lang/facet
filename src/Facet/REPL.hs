@@ -247,13 +247,11 @@ reload src = do
   print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
   where
   reloadFile ln path _ = handleError (\ n -> print (indent 2 (prettyNotice' n))) $ do
-    src <- rethrowIOErrors src $ readSourceFromFile path
     i <- fresh
     -- FIXME: print the module name
     print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
-    m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
-    (env, m') <- elab src $ Elab.elabModule m
+    (env, m') <- loadPath src path
     files_.ix path.elabed_ ?= m'
     env_ %= (<> env)
 
