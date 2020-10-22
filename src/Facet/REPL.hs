@@ -9,8 +9,8 @@ import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, (%=), (<~))
-import           Control.Lens (Getting, Lens', itraverse, lens)
+import           Control.Effect.Lens (use, (%=), (<~), (?=))
+import           Control.Lens (Getting, Lens', itraverse, ix, lens)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
@@ -28,7 +28,7 @@ import qualified Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Eval
 import           Facet.Name hiding (Meta, use)
-import           Facet.Notice as Notice
+import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab
 import           Facet.Notice.Parser
 import           Facet.Parser
@@ -109,13 +109,17 @@ toEnv (Module _ _ defs) = Env.fromList $ do
 
 
 data File = File
-  { parsed :: Maybe (Ann Surface.Module)
+  { source :: Maybe Source
+  , parsed :: Maybe (Ann Surface.Module)
   }
+
+source_ :: Lens' File (Maybe Source)
+source_ = lens source (\ f source -> f{ source })
 
 loaded :: File -> Bool
 loaded = \case
- File (Just _) -> True
- _             -> False
+ File{ parsed = Just _ } -> True
+ _                       -> False
 
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
@@ -189,12 +193,12 @@ data Target
   = Paths
   | Modules
 
-load :: (Has (Error (Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
+load :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
 load src path = do
-  files_ %= Map.insert path File{ parsed = Nothing }
+  files_ %= Map.insert path File{ source = Nothing, parsed = Nothing }
   reload src
 
-reload :: (Has (Error (Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
+reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
 reload src = do
   -- FIXME: order with a topological sort on imports, once those exist
   evalFresh 1 $ files_ <~> \ files -> itraverse (reloadFile (length files)) files
@@ -212,6 +216,7 @@ reload src = do
 
     (do
       src <- liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
+      files_.ix path.source_ ?= src
       m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
       (env, m') <- elab src $ Elab.elabModule m
       env_ %= (<> env)
@@ -241,13 +246,13 @@ print d = do
   opts <- liftIO layoutOptionsForTerminal
   outputStrLn (unpack (renderLazy (reAnnotateS terminalStyle (layoutSmart opts d))))
 
-prettyNotice' :: Notice Style -> Doc Style
-prettyNotice' = reAnnotate Style.Notice . prettyNotice
+prettyNotice' :: Notice.Notice Style -> Doc Style
+prettyNotice' = reAnnotate Style.Notice . Notice.prettyNotice
 
 prettyCode :: Print -> Doc Style
 prettyCode = reAnnotate Code . getPrint
 
-elab :: Source -> I.ThrowC (Notice Style) Elab.Err (L.StateC REPL Env.Env (ReaderC Span m)) a -> m a
+elab :: Source -> I.ThrowC (Notice.Notice Style) Elab.Err (L.StateC REPL Env.Env (ReaderC Span m)) a -> m a
 elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src Code
 
 
@@ -264,8 +269,8 @@ lens <~> act = lens <~ lens ~> act
 infixr 2 <~>
 
 
-ioErrorToNotice :: Source -> IOError -> Notice Style
-ioErrorToNotice src err = Notice.Notice (Just Error) src (group (reflow (show err))) []
+ioErrorToNotice :: Source -> IOError -> Notice.Notice Style
+ioErrorToNotice src err = Notice.Notice (Just Notice.Error) src (group (reflow (show err))) []
 
 unlines :: Printer p => [p] -> p
 unlines = concatWith (<\>)
