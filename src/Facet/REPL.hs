@@ -128,7 +128,7 @@ loop = do
     Nothing  -> pure ()
   loop
   where
-  commandParser = runFacet [] [] (whole (parseCommands commands <|> Eval <$> expr))
+  commandParser = runFacet [] [] (whole (getCommandParser (snd commands) <|> Eval <$> expr))
 
   runAction src = \case
     Help -> print helpDoc
@@ -163,29 +163,34 @@ loop = do
       print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil _T)))
 
 
+newtype CommandParser a = CommandParser { getCommandParser :: forall sig p . (Has Parser sig p, TokenParsing p) => p a }
+
 -- TODO:
 -- - multiline
-commands :: [Command Action]
-commands =
-  [ Command ["help", "h", "?"]  "display this list of commands"      $ Pure Help
-  , Command ["quit", "q"]       "exit the repl"                      $ Pure Quit
-  , Command ["show"]            "show compiler state"                $ Meta "field" $ Show <$> choice
-    [ ShowPaths   <$ token (string "paths")
-    , ShowModules <$ token (string "modules")
-    , ShowTargets <$ token (string "targets")
+commands :: ([Command Action], CommandParser Action)
+commands = (cs, CommandParser (choice (map getCommandParser ps)))
+  where
+  (cs, ps) = unzip
+    [ mkCommand ["help", "h", "?"]  "display this list of commands"      $ Pure Help
+    , mkCommand ["quit", "q"]       "exit the repl"                      $ Pure Quit
+    , mkCommand ["show"]            "show compiler state"                $ Meta "field" $ Show <$> choice
+      [ ShowPaths   <$ token (string "paths")
+      , ShowModules <$ token (string "modules")
+      , ShowTargets <$ token (string "targets")
+      ]
+    , mkCommand ["add"]             "add a module/path to the repl"      $ Meta "item" $ choice
+      [ Add . ModPath   <$ token (string "path")   <*> path'
+      , Add . ModTarget <$ token (string "target") <*> some mname
+      ]
+    , mkCommand ["remove", "rm"]    "remove a module/path from the repl" $ Meta "item" $ choice
+      [ Remove . ModPath   <$ token (string "path")   <*> path'
+      , Remove . ModTarget <$ token (string "target") <*> some mname
+      ]
+    , mkCommand ["reload", "r", ""] "reload the loaded modules"          $ Pure Reload
+    , mkCommand ["type", "t"]       "show the type of <expr>"            $ Meta "expr" type_
+    , mkCommand ["kind", "k"]       "show the kind of <type>"            $ Meta "type" kind_
     ]
-  , Command ["add"]             "add a module/path to the repl"      $ Meta "item" $ choice
-    [ Add . ModPath   <$ token (string "path")   <*> path'
-    , Add . ModTarget <$ token (string "target") <*> some mname
-    ]
-  , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "item" $ choice
-    [ Remove . ModPath   <$ token (string "path")   <*> path'
-    , Remove . ModTarget <$ token (string "target") <*> some mname
-    ]
-  , Command ["reload", "r", ""] "reload the loaded modules"          $ Pure Reload
-  , Command ["type", "t"]       "show the type of <expr>"            $ Meta "expr" type_
-  , Command ["kind", "k"]       "show the kind of <type>"            $ Meta "type" kind_
-  ]
+  mkCommand symbols usage meta = let c = Command symbols usage meta in (c, CommandParser (parseCommand c))
 
 path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
@@ -247,7 +252,7 @@ resolveName name = do
 
 
 helpDoc :: Doc Style
-helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry commands)
+helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry (fst commands))
   where
   entry c =
     ( concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)) <> maybe mempty ((space <>) . enclose (pretty '<') (pretty '>') . pretty) (meta c)
