@@ -253,7 +253,6 @@ reload src = do
       (env, m') <- elab src $ Elab.elabModule m
       files_.ix path.elabed_ ?= m'
       env_ %= (<> env)
-      print (prettyCode (foldCModule surface m'))
 
 
 helpDoc :: Doc Style
