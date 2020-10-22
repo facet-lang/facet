@@ -122,6 +122,7 @@ decl = anned
               ]
             pure $ AnyOperator $ Infix assoc m (binary name)
           N.Outfix l r -> pure $ AnyOperator $ Outfix l r (unary name)
+        -- FIXME: record the operator name and associativity in the module.
         modify (op' :)
       _      -> pure ()
     decl <- colon *> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
