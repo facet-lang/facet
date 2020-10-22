@@ -1,5 +1,5 @@
 module Facet.Graph
-( Node(..)
+( GraphErr(..)
 , loadOrder
 ) where
 
@@ -12,24 +12,26 @@ import           Control.Monad.Trans.Class
 import           Data.Foldable (for_)
 import           Data.Monoid (Endo(..))
 import qualified Data.Set as Set
+import           Facet.Core
+import           Facet.Name
 import           Facet.Stack
 
-data Node k v = Node k [k] v
+data GraphErr
+  = CyclicImport (Stack MName)
 
-loadOrder :: (Has (Throw (Stack k)) sig m, Ord k) => (k -> m (Node k v)) -> [Node k v] -> m [Node k v]
+loadOrder :: Has (Throw GraphErr) sig m => (MName -> m Module) -> [Module] -> m [Module]
 loadOrder lookup modules = do
-  modules <- runTraversal $ for_ modules visit
+  modules <- execWriter . evalState (Set.empty @MName) . runReader (Nil @MName)
+    $ for_ modules visit
   pure $ appEndo modules []
   where
-  runTraversal :: Applicative m => ReaderC (Stack k) (StateC (Set.Set k) (WriterC (Endo [Node k v]) m)) a -> m (Endo [Node k v])
-  runTraversal = execWriter . evalState Set.empty . runReader Nil
-  visit mod@(Node name edges _) = do
+  visit mod@Module{ name, imports } = do
     path <- ask
-    when (name `elem` path) $ throwError (path :> name)
+    when (name `elem` path) $ throwError $ CyclicImport (path :> name)
     seen <- gets (Set.member name)
     unless seen . local (:> name) $ do
-      for_ edges $ \ name' -> do
-        mod' <- lift . lift . lift $ lookup name'
+      for_ imports $ \ Import{ name } -> do
+        mod' <- lift . lift . lift $ lookup name
         visit mod'
       modify (Set.insert name)
       tell (Endo (mod :))
