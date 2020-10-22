@@ -13,10 +13,9 @@ import Control.Applicative (Alternative(..))
 import Data.Foldable (foldl')
 import Data.Function ((&))
 import Data.Text (Text)
+import Facet.Name (Assoc(..))
 import Text.Parser.Combinators
 import Text.Parser.Token
-
-data Assoc = N | L | R
 
 data Operator p a
   = Prefix      Text (a -> a)
