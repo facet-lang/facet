@@ -7,6 +7,7 @@ module Facet.Parser
 , type'
 , expr
 , whole
+, mname
 ) where
 
 import           Control.Algebra ((:+:))
