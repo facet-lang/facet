@@ -146,7 +146,7 @@ instance P.Pretty DName where
 
 
 -- | Associativity of an infix operator.
-data Assoc = N | L | R
+data Assoc = N | L | R | A
   deriving (Eq, Ord, Show)
 
 -- | Mixfix operators, restricted to unary (prefix, postfix, outfix) & binary (infix).
