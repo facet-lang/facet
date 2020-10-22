@@ -9,8 +9,8 @@ import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, (%=), (.=), (?=))
-import           Control.Lens (Getting, Lens', at, itraverse_, ix, lens)
+import           Control.Effect.Lens (use, (%=), (?=))
+import           Control.Lens (Getting, Lens', itraverse_, ix, lens)
 import           Control.Monad (unless)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -172,10 +172,12 @@ loop = do
       ShowModules -> gets (unlines . map pretty . Map.keys . files) >>= print
       ShowTargets -> gets (unlines . map (either pretty pretty) . toList . targets) >>= print
     Add (ModPath path) -> searchPaths_ %= Set.insert path
-    Add (ModTarget path) -> load src path
+    Add (ModTarget target) -> do
+      targets_ %= Set.insert target
+      reload src
     Remove (ModPath path) -> searchPaths_ %= Set.delete path
     -- FIXME: remove things depending on it
-    Remove (ModTarget path) -> files_.at path .= Nothing
+    Remove (ModTarget target) -> targets_ %= Set.delete target
     Reload -> reload src
     Type e -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
@@ -202,11 +204,11 @@ commands =
     ]
   , Command ["add"]             "add a module/path to the repl"      $ Meta "path" $ choice
     [ Add . ModPath <$ token (string "path") <*> path'
-    , Add . ModTarget <$ token (string "target") <*> path'
+    , Add . ModTarget <$ token (string "target") <*> (Left <$> path')
     ]
   , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "path" $ choice
     [ Remove . ModPath <$ token (string "path") <*> path'
-    , Remove . ModTarget <$ token (string "target") <*> path'
+    , Remove . ModTarget <$ token (string "target") <*> (Left <$> path')
     ]
   , Command ["reload", "r", ""] "reload the loaded modules"          $ Pure Reload
   , Command ["type", "t"]       "show the type of <expr>"            $ Meta "expr" type_
@@ -240,12 +242,8 @@ data ShowField
 
 data ModField
   = ModPath FilePath
-  | ModTarget FilePath
+  | ModTarget (Either FilePath MName)
 
-load :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
-load src path = do
-  files_ %= Map.insert path File{ source = Nothing, parsed = Nothing, elabed = Nothing }
-  reload src
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
 reload src = do
