@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Facet.Graph
 ( Graph(..)
 , Node(..)
@@ -22,18 +23,18 @@ newtype Graph = Graph { getGraph :: Map.Map MName Module }
 
 data Node k v = Node k [k] v
 
-loadOrder :: Has (Throw (Stack MName)) sig m => (MName -> m Module) -> [Module] -> m [Module]
-loadOrder lookup modules = do
-  modules <- execWriter . evalState (Set.empty @MName) . runReader (Nil @MName)
+loadOrder :: (Has (Throw (Stack k)) sig m, Ord k) => (k -> m (Node k v)) -> [Node k v] -> m [Node k v]
+loadOrder (lookup :: k -> m (Node k v)) modules = do
+  modules <- execWriter . evalState (Set.empty @k) . runReader (Nil @k)
     $ for_ modules visit
   pure $ appEndo modules []
   where
-  visit mod@Module{ name } = do
+  visit mod@(Node name edges _) = do
     path <- ask
     when (name `elem` path) $ throwError (path :> name)
     seen <- gets (Set.member name)
     unless seen . local (:> name) $ do
-      for_ (imports mod) $ \ (Import name') -> do
+      for_ edges $ \ name' -> do
         mod' <- lift . lift . lift $ lookup name'
         visit mod'
       modify (Set.insert name)
