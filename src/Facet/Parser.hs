@@ -58,7 +58,7 @@ resolve n = maybe (Left n) (Right . N.Index) . elemIndex @N.UName (coerce n)
 env :: Monad m => Facet m [N.UName]
 env = Facet pure
 
-newtype AnyOperator = AnyOperator (forall sig p . (Has Parser sig p, TokenParsing p) => Operator p (S.Ann S.Expr))
+newtype AnyOperator = AnyOperator { runAnyOperator :: forall sig p . (Has Parser sig p, TokenParsing p) => Operator p (S.Ann S.Expr) }
 
 newtype Facet m a = Facet ([N.UName] -> StateC [AnyOperator] m a)
   deriving (Algebra (Reader [N.UName] :+: State [AnyOperator] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC [N.UName] (StateC [AnyOperator] m)
