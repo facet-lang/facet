@@ -9,8 +9,8 @@ import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, (%=), (?=))
-import           Control.Lens (Getting, Lens', itraverse_, ix, lens)
+import           Control.Effect.Lens (use, (%=), (.=), (?=))
+import           Control.Lens (Getting, Lens', at, itraverse_, ix, lens)
 import           Control.Monad (unless)
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -161,6 +161,9 @@ loop = do
       Modules -> gets (unlines . map pretty . Map.keys . files) >>= print
     Add Paths path -> searchPaths_ %= Set.insert path
     Add Modules path -> load src path
+    Remove Paths path -> searchPaths_ %= Set.delete path
+    -- FIXME: remove things depending on it
+    Remove Modules path -> files_.at path .= Nothing
     Reload -> reload src
     Type e -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
@@ -178,19 +181,23 @@ loop = do
 -- - multiline
 commands :: [Command Action]
 commands =
-  [ Command ["help", "h", "?"]  "display this list of commands" $ Pure Help
-  , Command ["quit", "q"]       "exit the repl"                 $ Pure Quit
-  , Command ["show"]            "show compiler state"           $ Meta "target" $ Show <$> choice
+  [ Command ["help", "h", "?"]  "display this list of commands"      $ Pure Help
+  , Command ["quit", "q"]       "exit the repl"                      $ Pure Quit
+  , Command ["show"]            "show compiler state"                $ Meta "target" $ Show <$> choice
     [ Paths <$ whole (token (string "paths"))
     , Modules <$ whole (token (string "modules"))
     ]
-  , Command ["add"]             "add a module/path to the repl" $ Meta "path" $ choice
+  , Command ["add"]             "add a module/path to the repl"      $ Meta "path" $ choice
     [ Add Paths <$ token (string "path") <*> path'
     , Add Modules <$ token (string "module") <*> path'
     ]
-  , Command ["reload", "r", ""] "reload the loaded modules"     $ Pure Reload
-  , Command ["type", "t"]       "show the type of <expr>"       $ Meta "expr" type_
-  , Command ["kind", "k"]       "show the kind of <type>"       $ Meta "type" kind_
+  , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "path" $ choice
+    [ Remove Paths <$ token (string "path") <*> path'
+    , Remove Modules <$ token (string "module") <*> path'
+    ]
+  , Command ["reload", "r", ""] "reload the loaded modules"          $ Pure Reload
+  , Command ["type", "t"]       "show the type of <expr>"            $ Meta "expr" type_
+  , Command ["kind", "k"]       "show the kind of <type>"            $ Meta "type" kind_
   ]
 
 path' :: TokenParsing p => p FilePath
@@ -207,6 +214,7 @@ data Action
   | Quit
   | Show Target
   | Add Target FilePath
+  | Remove Target FilePath
   | Reload
   | Type (Ann Expr)
   | Kind (Ann Type)
