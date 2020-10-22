@@ -131,6 +131,14 @@ loaded = \case
   File{ parsed = Just _ } -> True
   _                       -> False
 
+upToDate :: UTCTime -> File -> Bool
+upToDate t = \case
+  File{ source = Just (t', _)
+      , parsed = Just _
+      , elabed = Just _
+      }                       -> t == t'
+  _                           -> False
+
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
@@ -219,22 +227,24 @@ reload src = do
   print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
   where
   -- FIXME: check whether files need reloading
-  reloadFile ln path file = unless (loaded file) $ do
-    i <- fresh
-    -- FIXME: print the module name
-    print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
+  reloadFile ln path file = do
+    time <- rethrowIOErrors src $ getModificationTime path
+    unless (upToDate time file) $ do
+      i <- fresh
+      -- FIXME: print the module name
+      print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
-    (do
-      (time, src) <- rethrowIOErrors src ((,) <$> getModificationTime path <*> readSourceFromFile path)
-      files_.ix path.source_ ?= (time, src)
-      m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
-      files_.ix path.parsed_ ?= m
-      (env, m') <- elab src $ Elab.elabModule m
-      files_.ix path.elabed_ ?= m'
-      env_ %= (<> env)
-      print (prettyCode (foldCModule surface m')))
-      `catchError` \ n ->
-        print (indent 2 (prettyNotice' n))
+      (do
+        (time, src) <- rethrowIOErrors src ((,) <$> getModificationTime path <*> readSourceFromFile path)
+        files_.ix path.source_ ?= (time, src)
+        m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
+        files_.ix path.parsed_ ?= m
+        (env, m') <- elab src $ Elab.elabModule m
+        files_.ix path.elabed_ ?= m'
+        env_ %= (<> env)
+        print (prettyCode (foldCModule surface m')))
+        `catchError` \ n ->
+          print (indent 2 (prettyNotice' n))
 
 
 helpDoc :: Doc Style
