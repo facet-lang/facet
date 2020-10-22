@@ -167,6 +167,7 @@ loop = do
           $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
       -- FIXME: show module names
       ShowModules -> gets (unlines . map pretty . Map.keys . files) >>= print
+      ShowTargets -> gets (unlines . map (either pretty pretty) . targets) >>= print
     Add ModPath path -> searchPaths_ %= Set.insert path
     Add ModTarget path -> load src path
     Remove ModPath path -> searchPaths_ %= Set.delete path
@@ -194,6 +195,7 @@ commands =
   , Command ["show"]            "show compiler state"                $ Meta "field" $ Show <$> choice
     [ ShowPaths <$ token (string "paths")
     , ShowModules <$ token (string "modules")
+    , ShowTargets <$ token (string "targets")
     ]
   , Command ["add"]             "add a module/path to the repl"      $ Meta "path" $ choice
     [ Add ModPath <$ token (string "path") <*> path'
@@ -231,6 +233,7 @@ data Action
 data ShowField
   = ShowPaths
   | ShowModules
+  | ShowTargets
 
 data ModField
   = ModPath
