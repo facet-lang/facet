@@ -7,22 +7,22 @@ Interface.Error
 Interface : Type {} # fixme: this is, obviously, broken.
 
 Error : (E : Type) -> Interface
-{ throw : { A : Type } -> E -> [Error E]A
-, catch : { A : Type } -> [Error E]A -> (E -> [Error E]A) -> [Error E]A }
+{ throw : { A : Type } -> E -> [Error E] A
+, catch : { A : Type } -> [Error E] A -> (E -> [Error E] A) -> [Error E] A }
 
-handle : { E, A : Type } -> (h : E -> [Error E]A) -> (a : [Error E]A) -> [Error E]A
+handle : { E, A : Type } -> (h : E -> [Error E] A) -> (a : [Error E] A) -> [Error E] A
 { catch a h }
 
-try : { E, A : Type } -> (a : [Error E]A) -> [Error E]Either E A
+try : { E, A : Type } -> (a : [Error E] A) -> [Error E]Either E A
 { handle inl (inr a) }
 
-except : { E, A : Type } -> Either E A -> [Error E]A
+except : { E, A : Type } -> Either E A -> [Error E] A
 { either throw id }
 
 
 # Handlers
 
-runError : { E, A : Type } -> [Error E]A -> Either E A
+runError : { E, A : Type } -> [Error E] A -> Either E A
 { error inl inr }
 
 # fixme: this shouldn’t be here
@@ -34,7 +34,7 @@ error
 :  { E, A, R : Type }
 -> (failure : E -> R)
 -> (success : A -> R)
--> [Error E]A
+-> [Error E] A
 -> R
 { [ throw e   ; _ ] -> failure e
 # fixme: we have to use parens around one of the <<s here because the parser doesn’t support setting fixity yet.
