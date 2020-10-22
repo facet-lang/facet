@@ -20,7 +20,6 @@ import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import           Data.Text (pack)
 import           Data.Text.Lazy (unpack)
-import           Data.Time.Clock (UTCTime)
 import           Facet.Algebra hiding (Algebra)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.State.Lens as L
@@ -48,7 +47,6 @@ import           Prelude hiding (print, span, unlines)
 import           Prettyprinter (reAnnotate, reAnnotateS)
 import           Silkscreen hiding (Ann, line)
 import           System.Console.ANSI
-import           System.Directory
 import           System.IO.Error
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
@@ -112,12 +110,12 @@ toEnv (Module _ _ defs) = Env.fromList $ do
 
 
 data File = File
-  { source :: Maybe (UTCTime, Source)
+  { source :: Maybe Source
   , parsed :: Maybe (Ann Surface.Module)
   , elabed :: Maybe Module
   }
 
-source_ :: Lens' File (Maybe (UTCTime, Source))
+source_ :: Lens' File (Maybe Source)
 source_ = lens source (\ f source -> f{ source })
 
 parsed_ :: Lens' File (Maybe (Ann Surface.Module))
@@ -131,13 +129,13 @@ loaded = \case
   File{ parsed = Just _ } -> True
   _                       -> False
 
-upToDate :: UTCTime -> File -> Bool
-upToDate t = \case
-  File{ source = Just (t', _)
+upToDate :: Source -> File -> Bool
+upToDate s = \case
+  File{ source = Just s'
       , parsed = Just _
       , elabed = Just _
-      }                       -> t == t'
-  _                           -> False
+      }                  -> s == s'
+  _                      -> False
 
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
@@ -227,15 +225,15 @@ reload src = do
   print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
   where
   reloadFile ln path file = do
-    time <- rethrowIOErrors src $ getModificationTime path
-    unless (upToDate time file) $ do
+    src <- rethrowIOErrors src $ readSourceFromFile path
+    unless (upToDate src file) $ do
+      files_.ix path.source_ ?= src
+
       i <- fresh
       -- FIXME: print the module name
       print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
       (do
-        src <- rethrowIOErrors src (readSourceFromFile path)
-        files_.ix path.source_ ?= (time, src)
         m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
         files_.ix path.parsed_ ?= m
         (env, m') <- elab src $ Elab.elabModule m
