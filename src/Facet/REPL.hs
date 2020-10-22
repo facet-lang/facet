@@ -235,7 +235,7 @@ reload src = do
       print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
       (do
-        (time, src) <- rethrowIOErrors src ((,) <$> getModificationTime path <*> readSourceFromFile path)
+        src <- rethrowIOErrors src (readSourceFromFile path)
         files_.ix path.source_ ?= (time, src)
         m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
         files_.ix path.parsed_ ?= m
