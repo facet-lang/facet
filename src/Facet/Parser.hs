@@ -107,7 +107,7 @@ decl = anned
   <|> (,) <$> dtname <* colon <*> anned (S.DDecl <$> typeSig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
   where
   tdecl = do
-    name <- dename <* colon
+    name <- dename
     case name of
       N.O op -> modify (AnyOperator (case op of
          N.Prefix  l  -> Prefix l (unary name)
@@ -115,7 +115,7 @@ decl = anned
          N.Infix a m  -> Infix a m (binary name)
          N.Outfix l r -> Outfix l r (unary name)) :)
       _      -> pure ()
-    decl <- anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
+    decl <- colon *> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
     pure (name, decl)
   binary name e1@(S.Ann s _) e2 = S.Ann s (S.Free name) S.$$ e1 S.$$ e2
   unary name e@(S.Ann s _) = S.Ann s (S.Free name) S.$$ e
