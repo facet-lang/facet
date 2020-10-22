@@ -221,8 +221,9 @@ evar
 
 bindPattern :: Has Parser sig p => S.Pattern -> Facet p a -> Facet p a
 bindPattern p m = case p of
-  S.PVar n    -> bind n (const m)
-  S.PCon _ ps -> foldr (bindPattern . S.out) m ps
+  S.PVar n      -> bind n (const m)
+  S.PCon _ ps   -> foldr (bindPattern . S.out) m ps
+  S.PEff _ ps k -> foldr (bindPattern . S.out) (bind k (const m)) ps
 
 
 wildcard :: (Monad p, TokenParsing p) => p ()

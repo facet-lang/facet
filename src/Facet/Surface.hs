@@ -68,6 +68,7 @@ data Comp
 data Pattern
   = PVar UName
   | PCon UName (Stack (Ann Pattern))
+  | PEff UName (Stack (Ann Pattern)) UName
   deriving (Show)
 
 

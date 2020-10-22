@@ -177,6 +177,10 @@ foldSExpr alg = go
     S.PCon n ps ->
       let ((d', env'), ps') = subpatterns d env ps
       in ((d', env'), pcon alg (var alg (Cons n)) ps')
+    S.PEff n ps k ->
+      let ((d', env'), ps') = subpatterns d env ps
+          k' = intro alg k d
+      in ((succ d', env' :> k'), peff alg (var alg (Cons n)) ps' k')
   subpatterns d env ps = mapAccumL (\ (d', env') p -> pat d' env' p) (d, env) ps
 
 foldSCons :: Algebra p -> Stack p -> S.Ann (UName ::: S.Ann S.Type) -> p
