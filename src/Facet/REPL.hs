@@ -40,6 +40,7 @@ import           Facet.Span (Span)
 import           Facet.Stack
 import           Facet.Style as Style
 import           Facet.Surface (Ann, Expr, Type)
+import qualified Facet.Surface as Surface
 import           Facet.Syntax
 import           Prelude hiding (print, span, unlines)
 import           Prettyprinter (reAnnotate, reAnnotateS)
@@ -108,8 +109,13 @@ toEnv (Module _ _ defs) = Env.fromList $ do
 
 
 data File = File
-  { loaded :: Bool
+  { parsed :: Maybe (Ann Surface.Module)
   }
+
+loaded :: File -> Bool
+loaded = \case
+ File (Just _) -> True
+ _             -> False
 
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
@@ -185,7 +191,7 @@ data Target
 
 load :: (Has (Error (Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
 load src path = do
-  files_ %= Map.insert path File{ loaded = False }
+  files_ %= Map.insert path File{ parsed = Nothing }
   reload src
 
 reload :: (Has (Error (Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
@@ -209,7 +215,7 @@ reload src = do
       m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
       (env, m') <- elab src $ Elab.elabModule m
       env_ %= (<> env)
-      file{ loaded = True } <$ print (prettyCode (foldCModule surface m')))
+      file{ parsed = Just m } <$ print (prettyCode (foldCModule surface m')))
       `catchError` \ n ->
         file <$ print (indent 2 (prettyNotice' n))
 
