@@ -218,8 +218,8 @@ commands =
 path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
-target :: TokenParsing p => p (Either FilePath MName)
-target = Left <$> path'
+target :: (Monad p, TokenParsing p) => p (Either FilePath MName)
+target = Right <$> mname <|> Left <$> path'
 
 type_, kind_ :: (Has Parser sig p, TokenParsing p) => p Action
 
