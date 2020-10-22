@@ -20,7 +20,7 @@ import           Facet.Stack
 
 newtype Graph = Graph { getGraph :: Map.Map MName Module }
 
-data Node a = Node MName [MName] a
+data Node k v = Node k [k] v
 
 loadOrder :: Has (Throw (Stack MName)) sig m => (MName -> m Module) -> [Module] -> m [Module]
 loadOrder lookup modules = do
