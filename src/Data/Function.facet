@@ -18,7 +18,6 @@ flip
 { b a -> f a b } # note that we didn’t bind the latter operands in the type so we’re binding (pattern matching on) them both here instead
 
 
-# fixme: do we want to support mixfix syntax?
 # fixme: how do we want to specify fixity?
 _ << _
 : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
