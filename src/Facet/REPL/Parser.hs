@@ -1,5 +1,6 @@
 module Facet.REPL.Parser
 ( Command(..)
+, command
 , parseCommands
 , parseCommand
 , CommandParser(..)
@@ -21,6 +22,8 @@ data Command a = Command
   , parse   :: CommandParser a
   }
 
+command :: [String] -> String -> Maybe String -> CommandParser a -> Command a
+command = Command
 
 parseCommands :: (Has Parser sig p, TokenParsing p) => [Command a] -> p a
 parseCommands cs = choice (map parseCommand cs) <?> "command"

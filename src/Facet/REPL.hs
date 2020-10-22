@@ -167,24 +167,24 @@ loop = do
 -- - multiline
 commands :: [Command Action]
 commands =
-  [ Command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure Help
-  , Command ["quit", "q"]       "exit the repl"                      Nothing        $ pure Quit
-  , Command ["show"]            "show compiler state"                (Just "field") $ Show <$> choice
+  [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure Help
+  , command ["quit", "q"]       "exit the repl"                      Nothing        $ pure Quit
+  , command ["show"]            "show compiler state"                (Just "field") $ Show <$> choice
     [ ShowPaths   <$ token (string "paths")
     , ShowModules <$ token (string "modules")
     , ShowTargets <$ token (string "targets")
     ]
-  , Command ["add"]             "add a module/path to the repl"      (Just "item")  $ choice
+  , command ["add"]             "add a module/path to the repl"      (Just "item")  $ choice
     [ Add . ModPath   <$ token (string "path")   <*> path'
     , Add . ModTarget <$ token (string "target") <*> some mname
     ]
-  , Command ["remove", "rm"]    "remove a module/path from the repl" (Just "item")  $ choice
+  , command ["remove", "rm"]    "remove a module/path from the repl" (Just "item")  $ choice
     [ Remove . ModPath   <$ token (string "path")   <*> path'
     , Remove . ModTarget <$ token (string "target") <*> some mname
     ]
-  , Command ["reload", "r", ""] "reload the loaded modules"          Nothing        $ pure Reload
-  , Command ["type", "t"]       "show the type of <expr>"            (Just "expr")  type_
-  , Command ["kind", "k"]       "show the kind of <type>"            (Just "type")  kind_
+  , command ["reload", "r", ""] "reload the loaded modules"          Nothing        $ pure Reload
+  , command ["type", "t"]       "show the type of <expr>"            (Just "expr")  type_
+  , command ["kind", "k"]       "show the kind of <type>"            (Just "type")  kind_
   ]
 
 path' :: TokenParsing p => p FilePath
