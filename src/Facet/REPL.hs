@@ -226,7 +226,6 @@ reload src = do
       style = if lnLoaded == lnAll then Success else Failure
   print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
   where
-  -- FIXME: check whether files need reloading
   reloadFile ln path file = do
     time <- rethrowIOErrors src $ getModificationTime path
     unless (upToDate time file) $ do
