@@ -78,6 +78,9 @@ files_ = lens files (\ r files -> r{ files })
 env_ :: Lens' REPL Env.Env
 env_ = lens env (\ r env -> r{ env })
 
+searchPaths_ :: Lens' REPL [FilePath]
+searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
+
 defaultREPLState :: REPL
 defaultREPLState = REPL
   { line           = 0
@@ -155,7 +158,8 @@ loop = do
       Paths   -> gets ((pretty "search paths:" <\>) . nest 2 . unlines . map pretty . searchPaths) >>= print
       -- FIXME: show module names
       Modules -> gets (unlines . map pretty . Map.keys . files) >>= print
-    Load path -> load src path
+    Add Paths path -> searchPaths_ %= (path:)
+    Add Modules path -> load src path
     Reload -> reload src
     Type e -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
@@ -179,15 +183,17 @@ commands =
     [ Paths <$ whole (token (string "paths"))
     , Modules <$ whole (token (string "modules"))
     ]
-  , Command ["load", "l"]       "add a module to the repl"      $ Meta "path" load_
+  , Command ["add"]             "add a module/path to the repl" $ Meta "path" $ choice
+    [ Add Paths <$ token (string "path") <*> path'
+    , Add Modules <$ token (string "module") <*> path'
+    ]
   , Command ["reload", "r", ""] "reload the loaded modules"     $ Pure Reload
   , Command ["type", "t"]       "show the type of <expr>"       $ Meta "expr" type_
   , Command ["kind", "k"]       "show the kind of <type>"       $ Meta "type" kind_
   ]
 
-load_ :: (Has Parser sig p, TokenParsing p) => p Action
-
-load_ = Load <$> (stringLiteral <|> some (satisfy (not . isSpace)))
+path' :: TokenParsing p => p FilePath
+path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 type_, kind_ :: (Has Parser sig p, TokenParsing p) => p Action
 
@@ -199,7 +205,7 @@ data Action
   = Help
   | Quit
   | Show Target
-  | Load FilePath
+  | Add Target FilePath
   | Reload
   | Type (Ann Expr)
   | Kind (Ann Type)
