@@ -102,7 +102,6 @@ library
     , optparse-applicative
     , parsers
     , prettyprinter
-    , selective
     , semialign
     , silkscreen
     , text
