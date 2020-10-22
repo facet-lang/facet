@@ -112,7 +112,7 @@ decl = anned
       N.O op -> modify (AnyOperator (case op of
          N.Prefix  l  -> Prefix l (unary name)
          N.Postfix r  -> Postfix r (unary name)
-         N.Infix a m  -> Infix a m (binary name)
+         N.Infix   m  -> Infix N.N m (binary name)
          N.Outfix l r -> Outfix l r (unary name)) :)
       _      -> pure ()
     decl <- colon *> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
@@ -268,7 +268,7 @@ oname
   comp = ident onameStyle
   outOrPre s e = maybe (N.Prefix s) (N.Outfix s) e
   -- FIXME: how should we specify associativity?
-  postOrIn c = bool (N.Postfix c) (N.Infix N.N c)
+  postOrIn c = bool (N.Postfix c) (N.Infix c)
 
 _onameN :: (Monad p, TokenParsing p) => p N.OpN
 _onameN
