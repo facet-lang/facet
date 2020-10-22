@@ -109,11 +109,20 @@ decl = anned
   tdecl = do
     name <- dename
     case name of
-      N.O op -> modify (AnyOperator (case op of
-         N.Prefix  l  -> Prefix l (unary name)
-         N.Postfix r  -> Postfix r (unary name)
-         N.Infix   m  -> Infix N.N m (binary name)
-         N.Outfix l r -> Outfix l r (unary name)) :)
+      N.O op -> do
+        op' <- case op of
+          N.Prefix  l  -> pure $ AnyOperator $ Prefix l (unary name)
+          N.Postfix r  -> pure $ AnyOperator $ Postfix r (unary name)
+          N.Infix   m  -> do
+            assoc <- brackets $ choice
+              [ N.N <$ symbol "non-assoc"
+              , N.L <$ symbol "left-assoc"
+              , N.R <$ symbol "right-assoc"
+              , N.A <$ symbol "assoc"
+              ]
+            pure $ AnyOperator $ Infix assoc m (binary name)
+          N.Outfix l r -> pure $ AnyOperator $ Outfix l r (unary name)
+        modify (op' :)
       _      -> pure ()
     decl <- colon *> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
     pure (name, decl)
