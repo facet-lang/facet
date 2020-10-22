@@ -191,7 +191,7 @@ commands :: [Command Action]
 commands =
   [ Command ["help", "h", "?"]  "display this list of commands"      $ Pure Help
   , Command ["quit", "q"]       "exit the repl"                      $ Pure Quit
-  , Command ["show"]            "show compiler state"                $ Meta "target" $ Show <$> choice
+  , Command ["show"]            "show compiler state"                $ Meta "field" $ Show <$> choice
     [ ShowPaths <$ token (string "paths")
     , ShowModules <$ token (string "modules")
     ]
