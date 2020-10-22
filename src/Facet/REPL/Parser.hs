@@ -3,6 +3,7 @@ module Facet.REPL.Parser
 , meta
 , Arg(..)
 , parseCommands
+, parseCommand
 ) where
 
 import Control.Applicative (Alternative(..))
@@ -29,9 +30,11 @@ data Arg a
 
 
 parseCommands :: (Has Parser sig p, TokenParsing p) => [Command a] -> p a
-parseCommands cs = choice (map go cs) <?> "command"
+parseCommands cs = choice (map parseCommand cs) <?> "command"
+
+parseCommand :: (Has Parser sig p, TokenParsing p) => Command a -> p a
+parseCommand c = parseSymbols (symbols c) *> parseValue (value c)
   where
-  go c = parseSymbols (symbols c) *> parseValue (value c)
   parseSymbols = \case
     [] -> pure ()
     ss -> choice (map parseSymbol ss)
