@@ -387,7 +387,6 @@ elabPattern = withSpan $ \case
             ps' <- go (_B v) ps
             p' <- check (elabPattern p ::: ty _A)
             pure $ ps' :> p'
-    -- FIXME: we probably need to instantiate implicits here
     q ::: _T' <- synth (resolve (C n))
     _T'' <- inst _T'
     C.PCon . Con (q ::: _T'') <$> go _T'' ps
