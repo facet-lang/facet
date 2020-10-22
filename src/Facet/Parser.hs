@@ -2,6 +2,7 @@ module Facet.Parser
 ( runFacet
 , Facet(..)
 , module'
+, module''
 , decl
 , type'
 , expr
@@ -94,6 +95,9 @@ whole p = whiteSpace *> p <* eof
 -- FIXME: preserve comments, presumably in 'S.Ann'
 module' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Module)
 module' = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import')) <*> many decl)
+
+module'' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Module)
+module'' = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import')) <*> many decl)
 
 
 -- Declarations
