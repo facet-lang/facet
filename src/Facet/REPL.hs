@@ -202,11 +202,11 @@ commands =
     , ShowModules <$ token (string "modules")
     , ShowTargets <$ token (string "targets")
     ]
-  , Command ["add"]             "add a module/path to the repl"      $ Meta "path" $ choice
+  , Command ["add"]             "add a module/path to the repl"      $ Meta "item" $ choice
     [ Add . ModPath   <$ token (string "path")   <*> path'
     , Add . ModTarget <$ token (string "target") <*> some target
     ]
-  , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "path" $ choice
+  , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "item" $ choice
     [ Remove . ModPath   <$ token (string "path")   <*> path'
     , Remove . ModTarget <$ token (string "target") <*> some target
     ]
