@@ -380,12 +380,12 @@ elabPattern = withSpan $ \case
         go _T' = \case
           Nil   -> Nil <$ unify (_T' :===: _T)
           ps:>p -> do
-            (_A, _B) <- expectQuantifier "when checking constructor pattern" _T'
+            (_ ::: _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
             -- FIXME: there’s no way this is going to work, let alone a good idea
             -- FIXME: elaborate patterns in CPS, binding locally with elabBinder, & obviating the need for |-*.
-            v <- metavar <$> meta (ty _A)
+            v <- metavar <$> meta _A
             ps' <- go (_B v) ps
-            p' <- check (elabPattern p ::: ty _A)
+            p' <- check (elabPattern p ::: _A)
             pure $ ps' :> p'
     q ::: _T' <- synth (resolve (C n))
     _T'' <- inst _T'
