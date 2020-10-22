@@ -267,7 +267,6 @@ oname
   place = wildcard
   comp = ident onameStyle
   outOrPre s e = maybe (N.Prefix s) (N.Outfix s) e
-  -- FIXME: how should we specify associativity?
   postOrIn c = bool (N.Postfix c) (N.Infix c)
 
 _onameN :: (Monad p, TokenParsing p) => p N.OpN
