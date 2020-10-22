@@ -18,6 +18,7 @@ import           Data.Colour.RGBSpace.HSL (hsl)
 import           Data.Foldable (toList)
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
+import qualified Data.Set as Set
 import           Data.Text (pack)
 import           Data.Text.Lazy (unpack)
 import           Facet.Algebra hiding (Algebra)
@@ -66,7 +67,7 @@ data REPL = REPL
   , promptFunction :: Int -> IO String
   , env            :: Env.Env
   -- FIXME: break this down by file/module/whatever so we can load multiple packages
-  , searchPaths    :: [FilePath]
+  , searchPaths    :: Set.Set FilePath
   }
 
 line_ :: Lens' REPL Int
@@ -78,7 +79,7 @@ files_ = lens files (\ r files -> r{ files })
 env_ :: Lens' REPL Env.Env
 env_ = lens env (\ r env -> r{ env })
 
-searchPaths_ :: Lens' REPL [FilePath]
+searchPaths_ :: Lens' REPL (Set.Set FilePath)
 searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 
 defaultREPLState :: REPL
@@ -87,7 +88,7 @@ defaultREPLState = REPL
   , files          = mempty
   , promptFunction = defaultPromptFunction
   , env            = toEnv kernel
-  , searchPaths    = []
+  , searchPaths    = mempty
   }
 
 defaultPromptFunction :: Int -> IO String
@@ -155,10 +156,10 @@ loop = do
     Help -> print helpDoc
     Quit -> empty
     Show t -> case t of
-      Paths   -> gets ((pretty "search paths:" <\>) . nest 2 . unlines . map pretty . searchPaths) >>= print
+      Paths   -> gets ((pretty "search paths:" <\>) . nest 2 . unlines . map pretty . toList . searchPaths) >>= print
       -- FIXME: show module names
       Modules -> gets (unlines . map pretty . Map.keys . files) >>= print
-    Add Paths path -> searchPaths_ %= (path:)
+    Add Paths path -> searchPaths_ %= Set.insert path
     Add Modules path -> load src path
     Reload -> reload src
     Type e -> do
