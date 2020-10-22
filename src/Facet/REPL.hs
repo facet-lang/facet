@@ -48,6 +48,7 @@ import           Prelude hiding (print, span, unlines)
 import           Prettyprinter (reAnnotate, reAnnotateS)
 import           Silkscreen hiding (Ann, line)
 import           System.Console.ANSI
+import           System.Directory
 import           System.IO.Error
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
@@ -157,6 +158,8 @@ loop = do
     Quit -> empty
     Show t -> case t of
       Paths   -> do
+        dir <- liftIO getCurrentDirectory
+        print $ reflow "current working directory:" </> pretty dir
         searchPaths <- gets (toList . searchPaths)
         unless (null searchPaths)
           $ print $ pretty "search paths:" <\> nest 2 (unlines (map pretty searchPaths))
