@@ -1,8 +1,6 @@
 module Facet.Notice.Parser
-( -- * Notices
-  Notice(..)
-  -- * Parsing
-, rethrowParseErrors
+( -- * Parsing
+  rethrowParseErrors
 ) where
 
 import           Data.Maybe (fromMaybe)

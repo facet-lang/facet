@@ -1,8 +1,6 @@
 module Facet.Notice.Elab
-( -- * Notices
-  Notice(..)
-  -- * Elaboration
-, rethrowElabErrors
+( -- * Elaboration
+  rethrowElabErrors
 ) where
 
 import           Data.Foldable (toList)
