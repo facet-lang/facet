@@ -16,6 +16,8 @@ modify : { S : Type } -> (f : S -> S) -> [State S]Unit
 { put (f get!) }
 
 
+# Handlers
+
 execState : { S, A : Type } -> S -> [State S]A -> S
 { state const }
 
