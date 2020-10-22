@@ -1,7 +1,8 @@
 Interface.Error
 : Module
 
-[ Data.Either ]
+[ Data.Either
+, Data.Function ]
 
 Error : (E : Type) -> Interface
 { throw : E -> [Error E]A
@@ -12,6 +13,9 @@ handle : { E, A : Type } -> (h : E -> [Error E]A) -> (a : [Error E]A) -> [Error 
 
 try : { E, A : Type } -> (a : [Error E]A) -> [Error E]Either E A
 { handle inl (inr a) }
+
+except : { E, A : Type } -> Either E A -> [Error E]A
+{ either throw id }
 
 
 # Handlers
