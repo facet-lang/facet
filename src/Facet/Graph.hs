@@ -19,19 +19,19 @@ import           Facet.Stack
 
 newtype Graph = Graph { getGraph :: Map.Map MName Module }
 
-loadOrder :: Has (Throw (Stack MName)) sig m => (MName -> Graph -> m Module) -> Graph -> m [Module]
-loadOrder lookup graph = do
+loadOrder :: Has (Throw (Stack MName)) sig m => (MName -> m Module) -> [Module] -> m [Module]
+loadOrder lookup modules = do
   modules <- execWriter . evalState (Set.empty @MName) . runReader (Nil @MName)
-    $ for_ (Map.toList (getGraph graph)) (uncurry visit)
+    $ for_ modules visit
   pure $ appEndo modules []
   where
-  visit mname mod = do
+  visit mod@Module{ name } = do
     path <- ask
-    when (mname `elem` path) $ throwError (path :> mname)
-    seen <- gets (Set.member mname)
-    unless seen . local (:> mname) $ do
-      for_ (imports mod) $ \ (Import mname') -> do
-        mod' <- lift . lift . lift $ lookup mname' graph
-        visit mname' mod'
-      modify (Set.insert mname)
+    when (name `elem` path) $ throwError (path :> name)
+    seen <- gets (Set.member name)
+    unless seen . local (:> name) $ do
+      for_ (imports mod) $ \ (Import name') -> do
+        mod' <- lift . lift . lift $ lookup name'
+        visit mod'
+      modify (Set.insert name)
       tell (Endo (mod :))
