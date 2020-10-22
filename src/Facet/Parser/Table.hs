@@ -3,6 +3,7 @@ module Facet.Parser.Table
 , Operator(..)
 , parseOperator
 , OperatorParser
+, Row
 , Table
 , build
 , terminate
@@ -35,7 +36,8 @@ parseOperator = \case
   Atom p        -> const (const p)
 
 type OperatorParser p a = p a -> p a -> p a
-type Table p a = [[Operator p a]]
+type Row p a = [Operator p a]
+type Table p a = [Row p a]
 
 -- | Build a parser for a Table.
 build :: TokenParsing p => Table p a -> (p a -> p a) -> p a
