@@ -1,5 +1,6 @@
 module Facet.Graph
-( GraphErr(..)
+( Graph(..)
+, GraphErr(..)
 , loadOrder
 ) where
 
@@ -10,11 +11,15 @@ import           Control.Effect.Throw
 import           Control.Monad (unless, when)
 import           Control.Monad.Trans.Class
 import           Data.Foldable (for_)
+import qualified Data.Map as Map
 import           Data.Monoid (Endo(..))
 import qualified Data.Set as Set
 import           Facet.Core
 import           Facet.Name
 import           Facet.Stack
+
+newtype Graph = Graph { getGraph :: Map.Map MName Module }
+
 
 data GraphErr
   = CyclicImport (Stack MName)
