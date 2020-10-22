@@ -172,12 +172,12 @@ loop = do
       ShowModules -> gets (unlines . map pretty . Map.keys . files) >>= print
       ShowTargets -> gets (unlines . map (either pretty pretty) . toList . targets) >>= print
     Add (ModPath path) -> searchPaths_ %= Set.insert path
-    Add (ModTarget target) -> do
-      targets_ %= Set.insert target
+    Add (ModTarget targets) -> do
+      targets_ %= Set.union (Set.fromList targets)
       reload src
     Remove (ModPath path) -> searchPaths_ %= Set.delete path
     -- FIXME: remove things depending on it
-    Remove (ModTarget target) -> targets_ %= Set.delete target
+    Remove (ModTarget targets) -> targets_ %= (Set.\\ Set.fromList targets)
     Reload -> reload src
     Type e -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
@@ -204,11 +204,11 @@ commands =
     ]
   , Command ["add"]             "add a module/path to the repl"      $ Meta "path" $ choice
     [ Add . ModPath <$ token (string "path") <*> path'
-    , Add . ModTarget <$ token (string "target") <*> (Left <$> path')
+    , Add . ModTarget <$ token (string "target") <*> some (Left <$> path')
     ]
   , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "path" $ choice
     [ Remove . ModPath <$ token (string "path") <*> path'
-    , Remove . ModTarget <$ token (string "target") <*> (Left <$> path')
+    , Remove . ModTarget <$ token (string "target") <*> some (Left <$> path')
     ]
   , Command ["reload", "r", ""] "reload the loaded modules"          $ Pure Reload
   , Command ["type", "t"]       "show the type of <expr>"            $ Meta "expr" type_
@@ -242,7 +242,7 @@ data ShowField
 
 data ModField
   = ModPath FilePath
-  | ModTarget (Either FilePath MName)
+  | ModTarget [Either FilePath MName]
 
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
