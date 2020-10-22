@@ -94,6 +94,7 @@ library
     , charset
     , colour
     , containers
+    , directory
     , fused-effects
     , fused-effects-lens
     , fused-effects-readline
@@ -106,6 +107,7 @@ library
     , silkscreen
     , text
     , these
+    , time
     , transformers
     , unordered-containers
   hs-source-dirs: src

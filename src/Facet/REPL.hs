@@ -20,6 +20,7 @@ import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import           Data.Text (pack)
 import           Data.Text.Lazy (unpack)
+import           Data.Time.Clock (UTCTime)
 import           Facet.Algebra hiding (Algebra)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.State.Lens as L
@@ -47,6 +48,7 @@ import           Prelude hiding (print, span, unlines)
 import           Prettyprinter (reAnnotate, reAnnotateS)
 import           Silkscreen hiding (Ann, line)
 import           System.Console.ANSI
+import           System.Directory
 import           System.IO.Error
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
@@ -110,12 +112,12 @@ toEnv (Module _ _ defs) = Env.fromList $ do
 
 
 data File = File
-  { source :: Maybe Source
+  { source :: Maybe (UTCTime, Source)
   , parsed :: Maybe (Ann Surface.Module)
   , elabed :: Maybe Module
   }
 
-source_ :: Lens' File (Maybe Source)
+source_ :: Lens' File (Maybe (UTCTime, Source))
 source_ = lens source (\ f source -> f{ source })
 
 parsed_ :: Lens' File (Maybe (Ann Surface.Module))
@@ -223,8 +225,8 @@ reload src = do
     print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
     (do
-      src <- liftIO ((Right <$> readSourceFromFile path) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
-      files_.ix path.source_ ?= src
+      (time, src) <- liftIO ((Right <$> ((,) <$> getModificationTime path <*> readSourceFromFile path)) `catchIOError` (pure . Left . ioErrorToNotice src)) >>= either throwError pure
+      files_.ix path.source_ ?= (time, src)
       m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
       files_.ix path.parsed_ ?= m
       (env, m') <- elab src $ Elab.elabModule m
