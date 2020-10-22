@@ -168,10 +168,10 @@ loop = do
       -- FIXME: show module names
       ShowModules -> gets (unlines . map pretty . Map.keys . files) >>= print
     Add ModPath path -> searchPaths_ %= Set.insert path
-    Add ModModule path -> load src path
+    Add ModTarget path -> load src path
     Remove ModPath path -> searchPaths_ %= Set.delete path
     -- FIXME: remove things depending on it
-    Remove ModModule path -> files_.at path .= Nothing
+    Remove ModTarget path -> files_.at path .= Nothing
     Reload -> reload src
     Type e -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
@@ -197,11 +197,11 @@ commands =
     ]
   , Command ["add"]             "add a module/path to the repl"      $ Meta "path" $ choice
     [ Add ModPath <$ token (string "path") <*> path'
-    , Add ModModule <$ token (string "module") <*> path'
+    , Add ModTarget <$ token (string "target") <*> path'
     ]
   , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "path" $ choice
     [ Remove ModPath <$ token (string "path") <*> path'
-    , Remove ModModule <$ token (string "module") <*> path'
+    , Remove ModTarget <$ token (string "target") <*> path'
     ]
   , Command ["reload", "r", ""] "reload the loaded modules"          $ Pure Reload
   , Command ["type", "t"]       "show the type of <expr>"            $ Meta "expr" type_
@@ -234,7 +234,7 @@ data ShowField
 
 data ModField
   = ModPath
-  | ModModule
+  | ModTarget
 
 load :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
 load src path = do
