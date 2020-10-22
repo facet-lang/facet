@@ -216,6 +216,7 @@ data ModField
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m [Module]
 reload src = evalFresh 1 $ targets_ ~> \ targets -> do
+  -- FIXME: remove stale modules
   targetModules <- traverse (loadModule src) (toList targets)
   rethrowGraphErrors src $ loadOrder (loadModule src) targetModules
 
