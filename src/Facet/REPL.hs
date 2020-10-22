@@ -112,6 +112,7 @@ toEnv (Module _ _ defs) = Env.fromList $ do
 data File = File
   { source :: Maybe Source
   , parsed :: Maybe (Ann Surface.Module)
+  , elabed :: Maybe Module
   }
 
 source_ :: Lens' File (Maybe Source)
@@ -119,6 +120,9 @@ source_ = lens source (\ f source -> f{ source })
 
 parsed_ :: Lens' File (Maybe (Ann Surface.Module))
 parsed_ = lens parsed (\ f parsed -> f{ parsed })
+
+elabed_ :: Lens' File (Maybe Module)
+elabed_ = lens elabed (\ f elabed -> f{ elabed })
 
 loaded :: File -> Bool
 loaded = \case
@@ -199,7 +203,7 @@ data Target
 
 load :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> FilePath -> m ()
 load src path = do
-  files_ %= Map.insert path File{ source = Nothing, parsed = Nothing }
+  files_ %= Map.insert path File{ source = Nothing, parsed = Nothing, elabed = Nothing }
   reload src
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
@@ -224,6 +228,7 @@ reload src = do
       m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
       files_.ix path.parsed_ ?= m
       (env, m') <- elab src $ Elab.elabModule m
+      files_.ix path.elabed_ ?= m'
       env_ %= (<> env)
       print (prettyCode (foldCModule surface m')))
       `catchError` \ n ->
