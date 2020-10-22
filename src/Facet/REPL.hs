@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 module Facet.REPL
 ( repl
 ) where
@@ -250,7 +251,7 @@ helpDoc :: Doc Style
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry (getCommands commands))
   where
   entry c =
-    ( concatWith (surround (comma <> space)) (map (pretty . (':':)) (symbols c)) <> maybe mempty ((space <>) . enclose (pretty '<') (pretty '>') . pretty) (meta c)
+    ( concatWith (surround (comma <> space)) (map (annotate Style.Command . pretty . (':':)) (symbols c)) <> maybe mempty ((space <>) . enclose (pretty '<') (pretty '>') . pretty) (meta c)
     , w (usage c))
   w = align . fillSep . map pretty . words
 
