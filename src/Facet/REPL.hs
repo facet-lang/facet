@@ -81,6 +81,9 @@ files_ = lens files (\ r files -> r{ files })
 env_ :: Lens' REPL Env.Env
 env_ = lens env (\ r env -> r{ env })
 
+targets_ :: Lens' REPL (Set.Set (Either FilePath MName))
+targets_ = lens targets (\ r targets -> r{ targets })
+
 searchPaths_ :: Lens' REPL (Set.Set FilePath)
 searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 
