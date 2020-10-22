@@ -173,9 +173,9 @@ instance P.Pretty Op where
 --
 -- Not currently used because parsing will require type indices to ensure that the constructors line up with the number of places, i.e. vectors and such.
 data OpN
-  = PrefixN      Text   [Text]
-  | PostfixN     [Text] Text
-  | InfixN Assoc (NonEmpty Text)
+  = PrefixN  Text   [Text]
+  | PostfixN [Text] Text
+  | InfixN   (NonEmpty Text)
   | OutfixN Text [Text] Text
   deriving (Eq, Ord, Show)
 
