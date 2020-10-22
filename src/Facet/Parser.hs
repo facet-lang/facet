@@ -212,7 +212,9 @@ exprTable =
   ]
 
 expr :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
-expr = build exprTable parens
+expr = do
+  ops <- get
+  build (map runAnyOperator ops:exprTable) parens
 
 comp :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
