@@ -47,7 +47,7 @@ import           Facet.Surface (Ann, Expr)
 import           Facet.Syntax
 import           Prelude hiding (print, span, unlines)
 import qualified Prettyprinter as P
-import           Silkscreen hiding (Ann, line)
+import           Silkscreen as S hiding (Ann, line)
 import           System.Console.ANSI
 import           System.Directory
 import qualified System.FilePath as FP
@@ -141,8 +141,7 @@ loop = do
         searchPaths <- gets (toList . searchPaths)
         unless (null searchPaths)
           $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
-      -- FIXME: show module names
-      ShowModules -> gets (unlines . map pretty . Map.keys . modules) >>= print
+      ShowModules -> gets (unlines . map (\ (p, Module{ name }) -> pretty name <+> S.parens (pretty p)) . Map.toList . modules) >>= print
       ShowTargets -> gets (unlines . map pretty . toList . targets) >>= print
     Add (ModPath path) -> searchPaths_ %= Set.insert path
     Add (ModTarget targets) -> do
