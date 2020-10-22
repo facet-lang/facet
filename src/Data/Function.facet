@@ -30,7 +30,6 @@ _ >> _
 # NB: equivalently: (>>) : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (a : A) -> C { f (g a) }
 
 
-# fixme: I honestly can’t tell if these are backwards relative to composition or not
 _ <| _
 : { A, B : Type } -> (f : A -> B) -> (a : A) -> B
 { f a }
