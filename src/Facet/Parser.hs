@@ -110,7 +110,7 @@ decl = anned
 
 typeSig
   :: (Has Parser sig p, TokenParsing p)
-  => (Pl_ N.UName ::: S.Ann S.Type -> S.Ann res -> res)
+  => (Pl_ N.UName ::: S.Ann S.Expr -> S.Ann res -> res)
   -> Facet p N.UName
   -> Facet p res
   -> Facet p (S.Ann res)
@@ -120,7 +120,7 @@ typeSig (-->) name body = go
 
 binder
   :: (Has Parser sig p, TokenParsing p)
-  => (Pl_ N.UName ::: S.Ann S.Type -> S.Ann res -> res)
+  => (Pl_ N.UName ::: S.Ann S.Expr -> S.Ann res -> res)
   -> Facet p N.UName
   -> Facet p (S.Ann res)
   -> Facet p (S.Ann res)
@@ -130,25 +130,25 @@ binder (-->) name k = do
   where
   mk start t b end = S.Ann (Span start end) (t --> b)
 
-con :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.UName ::: S.Ann S.Type))
+con :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.UName ::: S.Ann S.Expr))
 con = anned ((:::) <$> cname <* colon <*> type')
 
 
 -- Types
 
-monotypeTable :: (Has Parser sig p, TokenParsing p) => Table (Facet p) (S.Ann S.Type)
+monotypeTable :: (Has Parser sig p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
 monotypeTable =
-  [ [ Infix L mempty (S.$$$) ]
+  [ [ Infix L mempty (S.$$) ]
   , [ -- FIXME: we should treat this as a global.
       Atom (anned (S.Type <$ token (string "Type")))
     , Atom tvar
-    , Atom (anned (S.TQual <$> qname))
+    , Atom (anned (S.Qual <$> qname))
     ]
   ]
 
 forAll
   :: (Has Parser sig p, TokenParsing p)
-  => (Pl_ N.UName ::: S.Ann S.Type -> S.Ann res -> res)
+  => (Pl_ N.UName ::: S.Ann S.Expr -> S.Ann res -> res)
   -> Facet p (S.Ann res) -> Facet p (S.Ann res)
 forAll mk k = do
   start <- position
@@ -159,18 +159,18 @@ forAll mk k = do
   loop start ty i rest = bind i $ \ v -> mk' start (im v ::: ty) <$> rest <*> position
   mk' start t b end = S.Ann (Span start end) (mk t b)
 
-type' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Type)
+type' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 type' = forAll (\ (n ::: _T) b -> out n ::: _T S.:=> b) type' <|> monotype
 
-monotype :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Type)
+monotype :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 monotype = fn mono
   where
   -- FIXME: model signatures in the surface syntax
   fn loop = chainr1 (optional sig *> loop) ((S.-->) <$ arrow)
   mono = build monotypeTable (parens . fn)
 
-tvar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Type)
-tvar = token (anned (runUnspaced (fmap (either (S.TFree . N.T) S.TBound) . resolve <$> tname <*> Unspaced env <?> "variable")))
+tvar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
+tvar = token (anned (runUnspaced (fmap (either (S.Free . N.T) S.Bound) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
 -- Signatures
@@ -179,7 +179,7 @@ tvar = token (anned (runUnspaced (fmap (either (S.TFree . N.T) S.TBound) . resol
 -- - before an argument type
 -- - before a return type
 
-sig :: (Has Parser sig p, TokenParsing p) => Facet p [S.Ann S.Type]
+sig :: (Has Parser sig p, TokenParsing p) => Facet p [S.Ann S.Expr]
 sig = brackets (commaSep type') <?> "signature"
 
 

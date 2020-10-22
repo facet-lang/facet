@@ -41,7 +41,7 @@ import           Facet.Source (Source(..), readSourceFromFile, sourceFromString)
 import           Facet.Span (Span)
 import           Facet.Stack
 import           Facet.Style as Style
-import           Facet.Surface (Ann, Expr, Type)
+import           Facet.Surface (Ann, Expr)
 import qualified Facet.Surface as Surface
 import           Facet.Syntax
 import           Prelude hiding (print, span, unlines)
@@ -169,8 +169,8 @@ loop = do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
       print (prettyCode (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
     Kind t -> do
-      _ ::: _T <- elab src $ Elab.elabWith (\ s (t ::: _T) -> (:::) <$> Elab.apply s t <*> Elab.apply s _T) (Elab.elabType t Nothing)
-      print (prettyCode (ann (foldSType surface Nil t ::: foldCValue surface Nil (generalize _T))))
+      _ ::: _T <- elab src $ Elab.elabWith (\ s (t ::: _T) -> (:::) <$> Elab.apply s t <*> Elab.apply s _T) (Elab.elabExpr t Nothing)
+      print (prettyCode (ann (foldSExpr surface Nil t ::: foldCValue surface Nil (generalize _T))))
     Eval e -> do -- FIXME: actually evaluate
       e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
       e'' <- L.runState env_ $ Env.runEnv $ eval e'
@@ -217,7 +217,7 @@ data Action
   | Remove Target FilePath
   | Reload
   | Type (Ann Expr)
-  | Kind (Ann Type)
+  | Kind (Ann Expr)
   | Eval (Ann Expr)
 
 data Target

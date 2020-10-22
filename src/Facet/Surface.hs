@@ -1,16 +1,12 @@
 module Facet.Surface
 ( -- * Expressions
   Expr(..)
+, (-->)
+, unForAll
 , ($$)
 , unApp
 , Comp(..)
 , Pattern(..)
-  -- * Types
-, Type(..)
-, (-->)
-, ($$$)
-, unForAll
-, unTApp
   -- * Declarations
 , Decl(..)
 , DDecl(..)
@@ -39,19 +35,31 @@ data Expr
   | Free DName
   | Bound Index
   | Hole UName
+  | Type
+  | (UName ::: Ann Expr) :=> Ann Expr
+  | Ann Expr :-> Ann Expr
   | Comp (Ann Comp)
   | Ann Expr :$ Ann Expr
   -- FIXME: tupling/unit should take a list of expressions
   deriving (Show)
 
+infixr 1 :=>
+infixr 1 :->
 infixl 9 :$
+
+(-->) :: Ann Expr -> Ann Expr -> Ann Expr
+a --> b = Ann (ann a <> ann b) (a :-> b)
+
+infixr 1 -->
+
+unForAll :: Has Empty sig m => Expr -> m (UName ::: Ann Expr, Ann Expr)
+unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
 
 
 ($$) :: Ann Expr -> Ann Expr -> Ann Expr
 f $$ a = Ann (ann f <> ann a) (f :$ a)
 
 infixl 9 $$
-
 
 unApp :: Has Empty sig m => Expr -> m (Ann Expr, Ann Expr)
 unApp = \case
@@ -72,41 +80,6 @@ data Pattern
   deriving (Show)
 
 
--- Types
-
-data Type
-  = TQual QName
-  | TFree DName
-  | TBound Index
-  | THole UName
-  | Type
-  | (UName ::: Ann Type) :=> Ann Type
-  | Ann Type :$$ Ann Type
-  | Ann Type :-> Ann Type
-  deriving (Show)
-
-infixr 1 :=>
-infixl 9 :$$
-infixr 1 :->
-
-
-(-->) :: Ann Type -> Ann Type -> Ann Type
-a --> b = Ann (ann a <> ann b) (a :-> b)
-
-infixr 1 -->
-
-($$$) :: Ann Type -> Ann Type -> Ann Type
-f $$$ a = Ann (ann f <> ann a) (f :$$ a)
-
-infixl 9 $$$
-
-unForAll :: Has Empty sig m => Type -> m (UName ::: Ann Type, Ann Type)
-unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
-
-unTApp :: Has Empty sig m => Type -> m (Ann Type, Ann Type)
-unTApp = \case{ f :$$ a -> pure (f, a) ; _ -> empty }
-
-
 -- Declarations
 
 data Decl
@@ -115,20 +88,20 @@ data Decl
   deriving Show
 
 data DDecl
-  = DDForAll (Pl_ UName ::: Ann Type) (Ann DDecl)
-  | DDBody (Ann Type) [Ann (UName ::: Ann Type)]
+  = DDForAll (Pl_ UName ::: Ann Expr) (Ann DDecl)
+  | DDBody (Ann Expr) [Ann (UName ::: Ann Expr)]
   deriving (Show)
 
-unDDForAll :: Has Empty sig m => DDecl -> m (Pl_ UName ::: Ann Type, Ann DDecl)
+unDDForAll :: Has Empty sig m => DDecl -> m (Pl_ UName ::: Ann Expr, Ann DDecl)
 unDDForAll = \case{ DDForAll t b -> pure (t, b) ; _ -> empty }
 
 
 data TDecl
-  = TDForAll (Pl_ UName ::: Ann Type) (Ann TDecl)
-  | TDBody (Ann Type) (Ann Expr)
+  = TDForAll (Pl_ UName ::: Ann Expr) (Ann TDecl)
+  | TDBody (Ann Expr) (Ann Expr)
   deriving (Show)
 
-unTDForAll :: Has Empty sig m => TDecl -> m (Pl_ UName ::: Ann Type, Ann TDecl)
+unTDForAll :: Has Empty sig m => TDecl -> m (Pl_ UName ::: Ann Expr, Ann TDecl)
 unTDForAll = \case{ TDForAll t b -> pure (t, b) ; _ -> empty }
 
 

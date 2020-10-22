@@ -10,12 +10,10 @@ module Facet.Elab
 , unify
   -- * General
 , global
-  -- * Types
-, elabType
-, _Type
-, (>~>)
   -- * Expressions
 , elabExpr
+, _Type
+, (>~>)
 , ($$)
 , lam
   -- * Declarations
@@ -250,22 +248,23 @@ p |-* b = do
 infix 1 |-*
 
 
--- Types
+-- Expressions
 
-elabType
+elabExpr
   :: HasCallStack
-  => S.Ann S.Type
+  => S.Ann S.Expr
   -> Maybe Type
-  -> Elab (Type ::: Type)
-elabType = withSpan' $ \case
-  S.TQual  q -> switch $ global (resolveQ q)
-  S.TFree  n -> switch $ global (resolve n)
-  S.TBound n -> switch $ bound n
-  S.THole  n -> check (hole n) "hole"
-  S.Type     -> switch $ _Type
-  t S.:=> b  -> switch $ bimap im (checkElab . elabType) t >~> \ v -> v |- checkElab (elabType b)
-  f S.:$$ a  -> switch $ synthElab (elabType f) $$  checkElab (elabType a)
-  a S.:-> b  -> switch $ ex __ ::: checkElab (elabType a) >~> \ _ -> checkElab (elabType b)
+  -> Elab (Expr ::: Type)
+elabExpr = withSpan' $ \case
+  S.Qual  q -> switch $ global (resolveQ q)
+  S.Free  n -> switch $ global (resolve n)
+  S.Bound n -> switch $ bound n
+  S.Hole  n -> check (hole n) "hole"
+  S.Type    -> switch $ _Type
+  t S.:=> b -> switch $ bimap im (checkElab . elabExpr) t >~> \ v -> v |- checkElab (elabExpr b)
+  a S.:-> b -> switch $ ex __ ::: checkElab (elabExpr a) >~> \ _ -> checkElab (elabExpr b)
+  f S.:$  a -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
+  S.Comp cs -> check (elabComp cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -283,24 +282,6 @@ _Type = Synth $ pure $ VType ::: VType
   pure $ VForAll (n ::: _T) b' ::: VType
 
 infixr 1 >~>
-
-
--- Expressions
-
-elabExpr
-  :: HasCallStack
-  => S.Ann S.Expr
-  -> Maybe Type
-  -> Elab (Expr ::: Type)
-elabExpr = withSpan' $ \case
-  S.Qual  q -> switch $ global (resolveQ q)
-  S.Free  n -> switch $ global (resolve n)
-  S.Bound n -> switch $ bound n
-  S.Hole  n -> check (hole n) "hole"
-  f S.:$  a -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
-  S.Comp cs -> check (elabComp cs) "computation"
-  where
-  check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
 
 lam
@@ -416,12 +397,12 @@ elabDDecl d = go d id
               (_ ::: _T, _B) <- expectQuantifier "in type quantifier" _T
               b' <- elabBinder $ \ v -> check ((out n ::: _T |- b) ::: _B v)
               pure $ VForAll (im (out n) ::: _T) b'))
-      in b' ::: setSpan s (checkElab (switch (n ::: checkElab (elabType t) >~> (|- _B))))
+      in b' ::: setSpan s (checkElab (switch (n ::: checkElab (elabExpr t) >~> (|- _B))))
 
-    S.DDBody t b -> setSpan s (elabData km b) ::: setSpan s (checkElab (elabType t))
+    S.DDBody t b -> setSpan s (elabData km b) ::: setSpan s (checkElab (elabExpr t))
 
   -- FIXME: check that all constructors return the datatype.
-  elabData k cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab (elabType t))
+  elabData k cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab (elabExpr t))
 
 
 elabTDecl
@@ -434,9 +415,9 @@ elabTDecl d = go d
     S.TDForAll (n ::: t) b ->
       let b' ::: _B = go b
       in lam n (|- b') :::
-          checkElab (switch (unPl_ im (const (ex __)) n ::: checkElab (elabType t) >~> (|- _B)))
+          checkElab (switch (unPl_ im (const (ex __)) n ::: checkElab (elabExpr t) >~> (|- _B)))
 
-    S.TDBody t b -> checkElab (elabExpr b) ::: checkElab (elabType t)
+    S.TDBody t b -> checkElab (elabExpr b) ::: checkElab (elabExpr t)
 
 
 -- Modules
