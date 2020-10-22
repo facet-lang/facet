@@ -18,8 +18,8 @@ import Text.Parser.Token
 data Assoc = N | L | R
 
 data Operator p a
-  = Prefix  Text (a -> a)
-  | Postfix Text (a -> a)
+  = Prefix      Text (a -> a)
+  | Postfix     Text (a -> a)
   | Infix Assoc Text (a -> a -> a)
   | Outfix Text Text (a -> a)
   | Atom (p a)
