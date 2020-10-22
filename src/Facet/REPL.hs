@@ -209,9 +209,9 @@ data Action where
   Add :: ModField -> Action
   Remove :: ModField -> Action
   Reload :: Action
-  Type :: Ann Expr -> Action
-  Kind :: Ann Expr -> Action
-  Eval :: Ann Expr -> Action
+  Type :: (Ann Expr) -> Action
+  Kind :: (Ann Expr) -> Action
+  Eval :: (Ann Expr) -> Action
 
 data ShowField
   = ShowPaths
