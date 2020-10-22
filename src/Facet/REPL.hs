@@ -66,7 +66,7 @@ data REPL = REPL
   , files          :: Map.Map FilePath File
   , promptFunction :: Int -> IO String
   , env            :: Env.Env
-  , targets        :: Set.Set (Either FilePath MName)
+  , targets        :: Set.Set Target
   -- FIXME: break this down by file/module/whatever so we can load multiple packages
   , searchPaths    :: Set.Set FilePath
   }
@@ -80,7 +80,7 @@ files_ = lens files (\ r files -> r{ files })
 env_ :: Lens' REPL Env.Env
 env_ = lens env (\ r env -> r{ env })
 
-targets_ :: Lens' REPL (Set.Set (Either FilePath MName))
+targets_ :: Lens' REPL (Set.Set Target)
 targets_ = lens targets (\ r targets -> r{ targets })
 
 searchPaths_ :: Lens' REPL (Set.Set FilePath)
@@ -153,7 +153,7 @@ loop = do
           $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
       -- FIXME: show module names
       ShowModules -> gets (unlines . map pretty . Map.keys . files) >>= print
-      ShowTargets -> gets (unlines . map (either pretty pretty) . toList . targets) >>= print
+      ShowTargets -> gets (unlines . map (\case { TName name -> pretty name ; TPath path -> pretty path }) . toList . targets) >>= print
     Add (ModPath path) -> searchPaths_ %= Set.insert path
     Add (ModTarget targets) -> do
       targets_ %= Set.union (Set.fromList targets)
@@ -201,8 +201,8 @@ commands =
 path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
-target :: (Monad p, TokenParsing p) => p (Either FilePath MName)
-target = Right <$> mname <|> Left <$> path'
+target :: (Monad p, TokenParsing p) => p Target
+target = TName <$> mname <|> TPath <$> path'
 
 type_, kind_ :: (Has Parser sig p, TokenParsing p) => p Action
 
@@ -228,7 +228,12 @@ data ShowField
 
 data ModField
   = ModPath FilePath
-  | ModTarget [Either FilePath MName]
+  | ModTarget [Target]
+
+data Target
+  = TName MName
+  | TPath FilePath
+  deriving (Eq, Ord, Show)
 
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ()
