@@ -167,24 +167,24 @@ loop = do
 -- - multiline
 commands :: [Command Action]
 commands =
-  [ Command ["help", "h", "?"]  "display this list of commands"      $ Pure Help
-  , Command ["quit", "q"]       "exit the repl"                      $ Pure Quit
-  , Command ["show"]            "show compiler state"                $ Meta "field" $ Show <$> choice
+  [ Command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure Help
+  , Command ["quit", "q"]       "exit the repl"                      Nothing        $ pure Quit
+  , Command ["show"]            "show compiler state"                (Just "field") $ Show <$> choice
     [ ShowPaths   <$ token (string "paths")
     , ShowModules <$ token (string "modules")
     , ShowTargets <$ token (string "targets")
     ]
-  , Command ["add"]             "add a module/path to the repl"      $ Meta "item" $ choice
+  , Command ["add"]             "add a module/path to the repl"      (Just "item")  $ choice
     [ Add . ModPath   <$ token (string "path")   <*> path'
     , Add . ModTarget <$ token (string "target") <*> some mname
     ]
-  , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "item" $ choice
+  , Command ["remove", "rm"]    "remove a module/path from the repl" (Just "item")  $ choice
     [ Remove . ModPath   <$ token (string "path")   <*> path'
     , Remove . ModTarget <$ token (string "target") <*> some mname
     ]
-  , Command ["reload", "r", ""] "reload the loaded modules"          $ Pure Reload
-  , Command ["type", "t"]       "show the type of <expr>"            $ Meta "expr" type_
-  , Command ["kind", "k"]       "show the kind of <type>"            $ Meta "type" kind_
+  , Command ["reload", "r", ""] "reload the loaded modules"          Nothing        $ pure Reload
+  , Command ["type", "t"]       "show the type of <expr>"            (Just "expr")  type_
+  , Command ["kind", "k"]       "show the kind of <type>"            (Just "type")  kind_
   ]
 
 path' :: TokenParsing p => p FilePath

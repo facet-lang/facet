@@ -1,7 +1,5 @@
 module Facet.REPL.Parser
 ( Command(..)
-, meta
-, Arg(..)
 , parseCommands
 , parseCommand
 , CommandParser(..)
@@ -19,32 +17,21 @@ import Text.Parser.Token hiding (brackets, comma)
 data Command a = Command
   { symbols :: [String]
   , usage   :: String
-  , value   :: Arg a
+  , meta    :: Maybe String
+  , parse   :: CommandParser a
   }
-
-meta :: Command a -> Maybe String
-meta c = case value c of
-  Meta s _ -> Just s
-  _        -> Nothing
-
-data Arg a
-  = Pure a
-  | Meta String (CommandParser a)
 
 
 parseCommands :: (Has Parser sig p, TokenParsing p) => [Command a] -> p a
 parseCommands cs = choice (map parseCommand cs) <?> "command"
 
 parseCommand :: (Has Parser sig p, TokenParsing p) => Command a -> p a
-parseCommand c = parseSymbols (symbols c) *> parseValue (value c)
+parseCommand c = parseSymbols (symbols c) *> runCommandParser (parse c)
   where
   parseSymbols = \case
     [] -> pure ()
     ss -> choice (map parseSymbol ss)
   parseSymbol s = void $ token (try (string (':':s) <* (eof <|> someSpace))) <?> (':':s)
-  parseValue = \case
-    Pure a   -> pure a
-    Meta _ p -> runCommandParser p
 
 
 newtype CommandParser a = CommandParser { runCommandParser :: (forall sig p . (Has Parser sig p, TokenParsing p) => p a) }
