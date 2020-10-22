@@ -149,7 +149,7 @@ instance P.Pretty DName where
 data Assoc = N | L | R | A
   deriving (Eq, Ord, Show)
 
--- | Mixfix operators, restricted to unary (prefix, postfix, outfix) & binary (infix).
+-- | Mixfix operator names, restricted to unary (prefix, postfix, outfix) & binary (infix).
 data Op
   = Prefix  Text
   | Postfix Text
@@ -169,7 +169,7 @@ instance P.Pretty Op where
     place = P.pretty '_'
 
 
--- | Mixfix operators, supporting a broader set of names.
+-- | Mixfix operator names, supporting a broader set of names.
 --
 -- Not currently used because parsing will require type indices to ensure that the constructors line up with the number of places, i.e. vectors and such.
 data OpN
