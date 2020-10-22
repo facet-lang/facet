@@ -184,17 +184,14 @@ commands = choice
     , Remove . ModTarget <$ token (string "target") <*> some mname
     ]
   , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure Reload
-  , command ["type", "t"]       "show the type of <expr>"            (Just "expr")  type_
-  , command ["kind", "k"]       "show the kind of <type>"            (Just "type")  kind_
+  , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
+    $ Type <$> runFacet [] [] expr
+  , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
+    $ Kind <$> runFacet [] [] type'
   ]
 
 path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
-
-type_, kind_ :: (Has Parser sig p, TokenParsing p) => p Action
-
-type_ = Type <$> runFacet [] [] (whole expr)
-kind_ = Kind <$> runFacet [] [] (whole type')
 
 
 data Action
