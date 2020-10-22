@@ -204,11 +204,11 @@ commands =
     ]
   , Command ["add"]             "add a module/path to the repl"      $ Meta "path" $ choice
     [ Add . ModPath <$ token (string "path") <*> path'
-    , Add . ModTarget <$ token (string "target") <*> some (Left <$> path')
+    , Add . ModTarget <$ token (string "target") <*> some target
     ]
   , Command ["remove", "rm"]    "remove a module/path from the repl" $ Meta "path" $ choice
     [ Remove . ModPath <$ token (string "path") <*> path'
-    , Remove . ModTarget <$ token (string "target") <*> some (Left <$> path')
+    , Remove . ModTarget <$ token (string "target") <*> some target
     ]
   , Command ["reload", "r", ""] "reload the loaded modules"          $ Pure Reload
   , Command ["type", "t"]       "show the type of <expr>"            $ Meta "expr" type_
@@ -217,6 +217,9 @@ commands =
 
 path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
+
+target :: TokenParsing p => p (Either FilePath MName)
+target = Left <$> path'
 
 type_, kind_ :: (Has Parser sig p, TokenParsing p) => p Action
 
