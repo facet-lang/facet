@@ -17,7 +17,7 @@ try : { E, A : Type } -> (a : [Error E]A) -> [Error E]Either E A
 # Handlers
 
 runError : { E, A : Type } -> [Error E]A -> Either E A
-{ error Left Right }
+{ error inl inr }
 
 error
 :  { E, A, R : Type }
