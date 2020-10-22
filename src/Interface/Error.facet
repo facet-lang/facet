@@ -4,6 +4,8 @@ Interface.Error
 [ Data.Either
 , Data.Function ]
 
+Interface : Type {} # fixme: this is, obviously, broken.
+
 Error : (E : Type) -> Interface
 { throw : { A : Type } -> E -> [Error E]A
 , catch : { A : Type } -> [Error E]A -> (E -> [Error E]A) -> [Error E]A }
@@ -23,6 +25,11 @@ except : { E, A : Type } -> Either E A -> [Error E]A
 runError : { E, A : Type } -> [Error E]A -> Either E A
 { error inl inr }
 
+# fixme: this shouldn’t be here
+_ << _ [assoc]
+: { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
+{ a -> f (g a) }
+
 error
 :  { E, A, R : Type }
 -> (failure : E -> R)
@@ -32,5 +39,5 @@ error
 { [ throw e   ; _ ] -> failure e
 # fixme: we have to use parens around one of the <<s here because the parser doesn’t support setting fixity yet.
 # fixme: this is going to be a parse error until we can parse operators through module imports.
-, [ catch a h ; k ] -> error (error failure success << (k << h)) (error failure success << k) a
+, [ catch a h ; k ] -> error (error failure success << k << h) (error failure success << k) a
 , a                 -> success a }
