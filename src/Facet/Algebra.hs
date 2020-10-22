@@ -58,6 +58,7 @@ data Algebra p = Algebra
   , ann' :: (p ::: p) -> p
   , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
   , pcon     :: p -> Stack p -> p
+  , peff     :: p -> Stack p -> p -> p
   , tuple    :: [p] -> p
   , decl :: p ::: p -> p
   , defn :: p :=: p -> p

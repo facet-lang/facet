@@ -173,6 +173,7 @@ surface = Algebra
   , ann' = group . tm
   , case' = \ s ps -> align . group $ pretty "case" <+> setPrec Expr s </> block (concatWith (surround (hardline <> comma <> space)) (map (group . (\ (p, b) -> align (embed (prec Pattern p </> arrow) </> b))) ps))
   , pcon = \ n ps -> parens (hsep (annotate Con n:toList ps))
+  , peff = \ n ps k -> brackets (hsep (annotate Con n:toList ps) <+> semi <+> k)
   , tuple = tupled
   , decl = ann
   , defn = \ (a :=: b) -> group a <> hardline <> group b
