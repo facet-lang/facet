@@ -67,7 +67,7 @@ data REPL = REPL
   , files          :: Map.Map FilePath File
   , promptFunction :: Int -> IO String
   , env            :: Env.Env
-  , targets        :: [Either FilePath MName]
+  , targets        :: Set.Set (Either FilePath MName)
   -- FIXME: break this down by file/module/whatever so we can load multiple packages
   , searchPaths    :: Set.Set FilePath
   }
@@ -90,7 +90,7 @@ defaultREPLState = REPL
   , files          = mempty
   , promptFunction = defaultPromptFunction
   , env            = toEnv kernel
-  , targets        = []
+  , targets        = mempty
   , searchPaths    = Set.singleton "src"
   }
 
@@ -167,7 +167,7 @@ loop = do
           $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
       -- FIXME: show module names
       ShowModules -> gets (unlines . map pretty . Map.keys . files) >>= print
-      ShowTargets -> gets (unlines . map (either pretty pretty) . targets) >>= print
+      ShowTargets -> gets (unlines . map (either pretty pretty) . toList . targets) >>= print
     Add (ModPath path) -> searchPaths_ %= Set.insert path
     Add (ModTarget path) -> load src path
     Remove (ModPath path) -> searchPaths_ %= Set.delete path
