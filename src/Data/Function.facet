@@ -18,25 +18,24 @@ flip
 { b a -> f a b } # note that we didn’t bind the latter operands in the type so we’re binding (pattern matching on) them both here instead
 
 
-# fixme: how do we want to specify fixity?
-_ << _
+_ << _ [assoc]
 : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
 { a -> f (g a) }
 # NB: equivalently: (<<) : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (a : A) -> C { f (g a) }
 
-_ >> _
+_ >> _ [assoc]
 : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (A -> C)
 { a -> f (g a) }
 # NB: equivalently: (>>) : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (a : A) -> C { f (g a) }
 
 
-_ <| _
+_ <| _ [right-assoc]
 : { A, B : Type } -> (f : A -> B) -> (a : A) -> B
 { f a }
 # NB: equivalently: { A, B : Type } -> (f : A -> B) -> A -> B { f }
 # NB: equivalently: { A, B : Type } -> (A -> B) -> A -> B { id }
 
-_ |> _
+_ |> _ [left-assoc]
 : { A, B : Type } -> (a : A) -> (f : A -> B) -> B
 { f a }
 
