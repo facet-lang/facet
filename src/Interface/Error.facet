@@ -15,6 +15,8 @@ try : { E, A : Type } -> (a : [Error E]A) -> [Error E]Either E A
 { handle inl (inr a) }
 
 
+# Handlers
+
 error
 :  { E, A, R : Type }
 -> (failure : E -> R)
