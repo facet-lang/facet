@@ -47,5 +47,5 @@ case
 
 # desugars to:
 # case
-# : { A : Base.Type.Type } -> { B : Base.Type.Type } -> A -> (A -> B) -> B
+# : { A : Kernel.Type } -> { B : Kernel.Type } -> A -> (A -> B) -> B
 # { (_ Base.Function.|> _) }
