@@ -42,7 +42,6 @@ import           Facet.Span (Span)
 import           Facet.Stack
 import           Facet.Style as Style
 import           Facet.Surface (Ann, Expr)
-import qualified Facet.Surface as Surface
 import           Facet.Syntax
 import           Prelude hiding (print, span, unlines)
 import           Prettyprinter (reAnnotate, reAnnotateS)
@@ -120,32 +119,16 @@ toEnv (Module _ _ defs) = Env.fromList $ do
 
 
 data File = File
-  { source :: Maybe Source
-  , parsed :: Maybe (Ann Surface.Module)
-  , elabed :: Maybe Module
+  { elabed :: Maybe Module
   }
-
-source_ :: Lens' File (Maybe Source)
-source_ = lens source (\ f source -> f{ source })
-
-parsed_ :: Lens' File (Maybe (Ann Surface.Module))
-parsed_ = lens parsed (\ f parsed -> f{ parsed })
 
 elabed_ :: Lens' File (Maybe Module)
 elabed_ = lens elabed (\ f elabed -> f{ elabed })
 
 loaded :: File -> Bool
 loaded = \case
-  File{ parsed = Just _ } -> True
+  File{ elabed = Just _ } -> True
   _                       -> False
-
-upToDate :: Source -> File -> Bool
-upToDate s = \case
-  File{ source = Just s'
-      , parsed = Just _
-      , elabed = Just _
-      }                  -> s == s'
-  _                      -> False
 
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
@@ -258,20 +241,16 @@ reload src = do
       style = if lnLoaded == lnAll then Success else Failure
   print $ fillSep [annotate style (fillSep [pretty lnLoaded, pretty "of", pretty lnAll]), plural (pretty "file") (pretty "files") lnLoaded, pretty "loaded."]
   where
-  reloadFile ln path file = handleError (\ n -> print (indent 2 (prettyNotice' n))) $ do
+  reloadFile ln path _ = handleError (\ n -> print (indent 2 (prettyNotice' n))) $ do
     src <- rethrowIOErrors src $ readSourceFromFile path
-    unless (upToDate src file) $ do
-      files_.ix path.source_ ?= src
+    i <- fresh
+    -- FIXME: print the module name
+    print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
 
-      i <- fresh
-      -- FIXME: print the module name
-      print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty ln)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty path ]))
-
-      m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
-      files_.ix path.parsed_ ?= m
-      (env, m') <- elab src $ Elab.elabModule m
-      files_.ix path.elabed_ ?= m'
-      env_ %= (<> env)
+    m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
+    (env, m') <- elab src $ Elab.elabModule m
+    files_.ix path.elabed_ ?= m'
+    env_ %= (<> env)
 
 
 helpDoc :: Doc Style
