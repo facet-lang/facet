@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 module Facet.Parser.Table
 ( Assoc(..)
 , Operator(..)
