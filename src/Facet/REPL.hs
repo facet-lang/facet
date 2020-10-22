@@ -212,15 +212,15 @@ kind_ = Kind <$> runFacet [] [] (whole type')
 data Action
   = Help
   | Quit
-  | Show Target
-  | Add Target FilePath
-  | Remove Target FilePath
+  | Show Field
+  | Add Field FilePath
+  | Remove Field FilePath
   | Reload
   | Type (Ann Expr)
   | Kind (Ann Expr)
   | Eval (Ann Expr)
 
-data Target
+data Field
   = Paths
   | Modules
 
