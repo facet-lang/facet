@@ -15,6 +15,7 @@ data Style
   = Failure
   | Success
   | Progress
+  | Command
   | Notice (Notice.Highlight Style)
   | Code Print.Highlight
 
@@ -24,6 +25,7 @@ terminalStyle = \case
   Failure  -> [setRGB (hsl 0 1 0.5)]
   Success  -> [setRGB (hsl 120 1 0.5)]
   Progress -> [setRGB (hsl 0 0 0.5), setBold]
+  Command  -> [setRGB (hsl 180 1 0.5)]
   Notice n -> terminalNoticeStyle (fmap terminalStyle n)
   Code s   -> terminalCodeStyle s
 
