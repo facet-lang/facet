@@ -41,7 +41,7 @@ data Expr
   | Comp (Ann Comp)
   | Ann Expr :$ Ann Expr
   -- FIXME: tupling/unit should take a list of expressions
-  deriving (Show)
+  deriving (Eq, Show)
 
 infixr 1 :=>
 infixr 1 :->
@@ -70,14 +70,14 @@ unApp = \case
 data Comp
   = Expr (Ann Expr)
   | Clauses [(NonEmpty (Ann Pattern), Ann Expr)]
-  deriving (Show)
+  deriving (Eq, Show)
 
 
 data Pattern
   = PVar UName
   | PCon UName (Stack (Ann Pattern))
   | PEff UName (Stack (Ann Pattern)) UName
-  deriving (Show)
+  deriving (Eq, Show)
 
 
 -- Declarations
@@ -85,12 +85,12 @@ data Pattern
 data Decl
   = DDecl (Ann DDecl)
   | TDecl (Ann TDecl)
-  deriving Show
+  deriving (Eq, Show)
 
 data DDecl
   = DDForAll (Pl_ UName ::: Ann Expr) (Ann DDecl)
   | DDBody (Ann Expr) [Ann (UName ::: Ann Expr)]
-  deriving (Show)
+  deriving (Eq, Show)
 
 unDDForAll :: Has Empty sig m => DDecl -> m (Pl_ UName ::: Ann Expr, Ann DDecl)
 unDDForAll = \case{ DDForAll t b -> pure (t, b) ; _ -> empty }
@@ -99,7 +99,7 @@ unDDForAll = \case{ DDForAll t b -> pure (t, b) ; _ -> empty }
 data TDecl
   = TDForAll (Pl_ UName ::: Ann Expr) (Ann TDecl)
   | TDBody (Ann Expr) (Ann Expr)
-  deriving (Show)
+  deriving (Eq, Show)
 
 unTDForAll :: Has Empty sig m => TDecl -> m (Pl_ UName ::: Ann Expr, Ann TDecl)
 unTDForAll = \case{ TDForAll t b -> pure (t, b) ; _ -> empty }
@@ -108,10 +108,10 @@ unTDForAll = \case{ TDForAll t b -> pure (t, b) ; _ -> empty }
 -- Modules
 
 data Module = Module { name :: MName, imports :: [Ann Import], defs :: [Ann (DName, Ann Decl)] }
-  deriving (Show)
+  deriving (Eq, Show)
 
 newtype Import = Import { name :: MName }
-  deriving (Show)
+  deriving (Eq, Show)
 
 
 -- Annotations
