@@ -17,6 +17,7 @@ import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
 import           Data.Foldable (toList)
 import qualified Data.Map as Map
+import           Data.Maybe (catMaybes)
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
 import qualified Data.Text as TS
@@ -215,12 +216,18 @@ reload src = do
     targetHeads <- traverse (loadModuleHeader src) (toList targets)
     rethrowGraphErrors src $ loadOrder (fmap toNode . loadModuleHeader src) (map toNode targetHeads)
   let nModules = length modules
-  evalFresh 1 $ for modules $ \ (name, path, src) -> do
+  results <- evalFresh 1 $ for modules $ \ (name, path, src) -> do
     i <- fresh
     print $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
 
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     (Just <$> loadModule name path src) `catchError` \ err -> Nothing <$ print (prettyNotice' err)
+  let nSuccess = length (catMaybes results)
+  print . fillSep $ if nModules == nSuccess then
+      [ annotate Success (pretty Notice.Info)  <> S.colon, annotate Success (pretty nModules),         reflow "modules loaded." ]
+    else
+      [ annotate Failure (pretty Notice.Error) <> S.colon, annotate Failure (ratio nSuccess nModules), reflow "modules loaded." ]
+  pure results
   where
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = Node n (map ((S.name :: S.Import -> MName) . S.out) imports) (n, path, source)
