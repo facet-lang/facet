@@ -219,6 +219,7 @@ reload src = do
     i <- fresh
     print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
 
+    -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     (Just <$> loadModule name path src) `catchError` \ err -> Nothing <$ print (prettyNotice' err)
   where
   toNode (n, path, source, imports) = Node n (map ((S.name :: S.Import -> MName) . S.out) imports) (n, path, source)
