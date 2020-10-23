@@ -21,6 +21,7 @@ import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
 import qualified Data.Text as TS
 import           Data.Text.Lazy (unpack)
+import           Data.Traversable (for)
 import           Facet.Algebra hiding (Algebra)
 import           Facet.Carrier.Parser.Church
 import           Facet.Carrier.Readline.Haskeline
@@ -213,7 +214,12 @@ reload src = do
     -- FIXME: remove stale modules
     targetHeads <- traverse (loadModuleHeader src) (toList targets)
     rethrowGraphErrors src $ loadOrder (fmap toNode . loadModuleHeader src) (map toNode targetHeads)
-  evalFresh 1 $ traverse (\ (name, path, src) -> loadModule name path src) modules
+  evalFresh 1 $ for modules $ \ (name, path, src) -> do
+    i <- fresh
+    -- FIXME: we can probably know the actual value for n, now.
+    print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty 'n')) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
+
+    loadModule name path src
   where
   toNode (n, path, source, imports) = Node n (map ((S.name :: S.Import -> MName) . S.out) imports) (n, path, source)
 
@@ -225,11 +231,8 @@ loadModuleHeader src name = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] moduleHeader))
   pure (name', path, src, is)
 
-loadModule :: (Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => MName -> FilePath -> Source -> m Module
+loadModule :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m) => MName -> FilePath -> Source -> m Module
 loadModule name path src = do
-  i <- fresh
-  -- FIXME: we can probably know the actual value for n, now.
-  print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty 'n')) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
   graph <- use modules_
   m <- rethrowElabErrors src Code . runReader graph $ Elab.elabModule m
