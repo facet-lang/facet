@@ -131,37 +131,37 @@ loop = do
   where
   commandParser = runFacet [] [] (whole (parseCommands commands <|> Eval <$> expr))
 
-  runAction :: (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> Action -> m ()
-  runAction src = \case
-    Help -> print helpDoc
-    Quit -> empty
-    Show t -> case t of
-      ShowPaths   -> do
-        dir <- liftIO getCurrentDirectory
-        print $ nest 2 $ reflow "current working directory:" </> pretty dir
-        searchPaths <- gets (toList . searchPaths)
-        unless (null searchPaths)
-          $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
-      ShowModules -> gets (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph . modules) >>= print
-      ShowTargets -> gets (unlines . map pretty . toList . targets) >>= print
-    Add (ModPath path) -> searchPaths_ %= Set.insert path
-    Add (ModTarget targets) -> do
-      targets_ %= Set.union (Set.fromList targets)
-      void $ reload src
-    Remove (ModPath path) -> searchPaths_ %= Set.delete path
-    -- FIXME: remove things depending on it
-    Remove (ModTarget targets) -> targets_ %= (Set.\\ Set.fromList targets)
-    Reload -> void $ reload src
-    Type e -> do
-      _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-      print (prettyCode (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
-    Kind t -> do
-      _ ::: _T <- elab src $ Elab.elabWith (\ s (t ::: _T) -> (:::) <$> Elab.apply s t <*> Elab.apply s _T) (Elab.elabExpr t Nothing)
-      print (prettyCode (ann (foldSExpr surface Nil t ::: foldCValue surface Nil (generalize _T))))
-    Eval e -> do
-      e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-      e'' <- L.runState env_ $ Env.runEnv $ eval e'
-      print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil _T)))
+runAction :: (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> Action -> m ()
+runAction src = \case
+  Help -> print helpDoc
+  Quit -> empty
+  Show t -> case t of
+    ShowPaths   -> do
+      dir <- liftIO getCurrentDirectory
+      print $ nest 2 $ reflow "current working directory:" </> pretty dir
+      searchPaths <- gets (toList . searchPaths)
+      unless (null searchPaths)
+        $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
+    ShowModules -> gets (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph . modules) >>= print
+    ShowTargets -> gets (unlines . map pretty . toList . targets) >>= print
+  Add (ModPath path) -> searchPaths_ %= Set.insert path
+  Add (ModTarget targets) -> do
+    targets_ %= Set.union (Set.fromList targets)
+    void $ reload src
+  Remove (ModPath path) -> searchPaths_ %= Set.delete path
+  -- FIXME: remove things depending on it
+  Remove (ModTarget targets) -> targets_ %= (Set.\\ Set.fromList targets)
+  Reload -> void $ reload src
+  Type e -> do
+    _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
+    print (prettyCode (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
+  Kind t -> do
+    _ ::: _T <- elab src $ Elab.elabWith (\ s (t ::: _T) -> (:::) <$> Elab.apply s t <*> Elab.apply s _T) (Elab.elabExpr t Nothing)
+    print (prettyCode (ann (foldSExpr surface Nil t ::: foldCValue surface Nil (generalize _T))))
+  Eval e -> do
+    e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
+    e'' <- L.runState env_ $ Env.runEnv $ eval e'
+    print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil _T)))
 
 
 -- TODO:
