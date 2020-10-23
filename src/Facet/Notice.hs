@@ -76,7 +76,8 @@ prettyNotice (Notice level (Source path span _ (line:|_)) reason context) = conc
     | start == end = pos start
     | otherwise    = pos start <> pretty '-' <> pos end
 
-  pos (Span.Pos l c) = annotate Span (pretty (succ l)) <> colon <> annotate Span (pretty (succ c))
+  pos (Span.Pos l c) = coord l <> colon <> coord c
+  coord = annotate Span . pretty . succ
 
   padding (Span.Span (Span.Pos _ c) _) = pretty (replicate c ' ')
 
