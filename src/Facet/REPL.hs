@@ -213,6 +213,7 @@ reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (Sta
 reload src = do
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
+    -- FIXME: failed module header parses shouldn’t invalidate everything.
     targetHeads <- traverse (loadModuleHeader src) (toList targets)
     rethrowGraphErrors src $ loadOrder (fmap toNode . loadModuleHeader src) (map toNode targetHeads)
   let nModules = length modules
