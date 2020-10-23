@@ -37,25 +37,24 @@ data Expr
   | Hole UName
   | Type
   | Interface
-  | (Maybe UName ::: Ann Expr) :=> Ann Expr
+  | ForAll (Maybe UName ::: Ann Expr) (Ann Expr)
   | Comp (Ann Comp)
   | Ann Expr :$ Ann Expr
   -- FIXME: tupling/unit should take a list of expressions
   deriving (Eq, Show)
 
-infixr 1 :=>
 infixl 9 :$
 
 qual :: QName -> Expr
 qual (m :.: n) = Free (Just m) n
 
 (-->) :: Ann Expr -> Ann Expr -> Ann Expr
-a --> b = Ann (ann a <> ann b) (Nothing ::: a :=> b)
+a --> b = Ann (ann a <> ann b) (ForAll (Nothing ::: a) b)
 
 infixr 1 -->
 
 unForAll :: Has Empty sig m => Expr -> m (Maybe UName ::: Ann Expr, Ann Expr)
-unForAll = \case{ t :=> b -> pure (t, b) ; _ -> empty }
+unForAll = \case{ ForAll t b -> pure (t, b) ; _ -> empty }
 
 
 ($$) :: Ann Expr -> Ann Expr -> Ann Expr
