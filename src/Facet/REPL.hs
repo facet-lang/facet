@@ -214,10 +214,10 @@ reload src = do
     -- FIXME: remove stale modules
     targetHeads <- traverse (loadModuleHeader src) (toList targets)
     rethrowGraphErrors src $ loadOrder (fmap toNode . loadModuleHeader src) (map toNode targetHeads)
+  let nModules = length modules
   evalFresh 1 $ for modules $ \ (name, path, src) -> do
     i <- fresh
-    -- FIXME: we can probably know the actual value for n, now.
-    print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty 'n')) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
+    print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
 
     loadModule name path src
   where
