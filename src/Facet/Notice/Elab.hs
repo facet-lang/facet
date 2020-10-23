@@ -41,7 +41,7 @@ rethrowElabErrors src mapAnn = L.runThrow $ \ Err{ span, reason, context } ->
 
 printReason :: Stack Print -> Reason -> Doc Print.Highlight
 printReason ctx = group . \case
-  FreeVariable m n       -> fillSep [reflow "variable not in scope:", maybe (pretty n) (pretty . (N.:.: n)) m]
+  FreeVariable m n       -> fillSep [reflow "variable not in scope:", prettyMaybeQual m n]
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
   Mismatch msg exp act   -> reflow msg
       <> hardline <> pretty "expected:" <> print exp'
@@ -54,6 +54,8 @@ printReason ctx = group . \case
   Hole n _T              ->
     let _T' = printType ctx _T
     in fillSep [reflow "found hole", pretty n, colon, _T' ]
+  where
+  prettyMaybeQual m n = maybe (pretty n) (pretty . (N.:.: n)) m
 
 
 printType :: Stack Print -> Type -> Doc Print.Highlight
