@@ -109,27 +109,25 @@ synthElab f = Synth (f Nothing)
 
 
 unify :: Type :===: Type -> Elab Type
-unify = unify
+unify = \case
+  -- FIXME: this is missing a lot of cases
+  VType                 :===: VType                 -> pure VType
+  -- FIXME: resolve globals to try to progress past certain inequalities
+  VNeut h1 e1           :===: VNeut h2 e2
+    | h1 == h2
+    , Just e' <- unifyS (e1 :===: e2)               -> VNeut h1 <$> e'
+  VNeut (Metavar v) Nil :===: x                     -> solve (tm v :=: x)
+  x                     :===: VNeut (Metavar v) Nil -> solve (tm v :=: x)
+  VForAll t1 b1         :===: VForAll t2 b2
+    | pl (tm t1) == pl (tm t2) -> do
+      t <- unify (ty t1 :===: ty t2)
+      d <- asks @(Context Type) level
+      let v = free d
+      b <- unify (b1 v :===: b2 v)
+      pure $ VForAll (tm t1 ::: t) (\ v -> C.bind d v b)
+  -- FIXME: build and display a diff of the root types
+  t1                    :===: t2                    -> couldNotUnify t1 t2
   where
-  unify = \case
-    -- FIXME: this is missing a lot of cases
-    VType                 :===: VType                 -> pure VType
-    -- FIXME: resolve globals to try to progress past certain inequalities
-    VNeut h1 e1           :===: VNeut h2 e2
-      | h1 == h2
-      , Just e' <- unifyS (e1 :===: e2)               -> VNeut h1 <$> e'
-    VNeut (Metavar v) Nil :===: x                     -> solve (tm v :=: x)
-    x                     :===: VNeut (Metavar v) Nil -> solve (tm v :=: x)
-    VForAll t1 b1         :===: VForAll t2 b2
-      | pl (tm t1) == pl (tm t2) -> do
-        t <- unify (ty t1 :===: ty t2)
-        d <- asks @(Context Type) level
-        let v = free d
-        b <- unify (b1 v :===: b2 v)
-        pure $ VForAll (tm t1 ::: t) (\ v -> C.bind d v b)
-    -- FIXME: build and display a diff of the root types
-    t1                    :===: t2                    -> couldNotUnify t1 t2
-
   unifyS (Nil           :===: Nil)           = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
   unifyS (i1 :> EApp l1 :===: i2 :> EApp l2)
