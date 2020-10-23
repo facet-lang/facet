@@ -189,7 +189,7 @@ case' s            cs
   | (p, f):_ <- cs
   , PVar _ <- p       = f (PVar s)
 case' (VNeut h es) cs = VNeut h (es :> ECase cs)
-case' s            cs = case getFirst (foldMap (\ (p, f) -> First $ f <$> match s p) cs) of
+case' s            cs = case matchWith (\ (p, f) -> f <$> match s p) cs of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
@@ -353,3 +353,7 @@ newtype Import = Import { name :: MName }
 data Def
   = DTerm Value
   | DData [UName :=: Value ::: Value]
+
+
+matchWith :: Foldable t => (a -> Maybe b) -> t a -> Maybe b
+matchWith rel = getFirst . foldMap (First . rel)
