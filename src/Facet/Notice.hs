@@ -37,6 +37,7 @@ instance Pretty Level where
 
 data Notice a = Notice
   { level   :: !(Maybe Level)
+  -- FIXME: support multiple source references for e.g. cyclic import errors
   , source  :: {-# UNPACK #-} !Source
   , reason  :: !(P.Doc a)
   , context :: ![P.Doc a]
