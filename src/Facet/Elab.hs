@@ -197,10 +197,7 @@ resolve n = resolveWith (lookupD n) Nothing n
 resolveC
   :: UName
   -> Synth QName
-resolveC n = Synth $ asks (lookupC n) >>= \case
-  Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
-  -- FIXME: look up in the imports
-  Nothing                -> freeVariable Nothing (E n) -- FIXME: this is technically a lie, but we don’t /have/ the full constructor name to give it.
+resolveC n = resolveWith (lookupC n) Nothing (E n) -- FIXME: this is technically a lie, but we don’t /have/ the full constructor name to give it.
 
 resolveQ
   :: QName
