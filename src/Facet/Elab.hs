@@ -430,7 +430,8 @@ elabModule
   .  (HasCallStack, Has (Throw Err) sig m)
   => S.Ann S.Module
   -> m C.Module
-elabModule (S.Ann s (S.Module mname _is ds)) = runReader s . evalState (mempty @Env.Env) $ do
+elabModule (S.Ann s (S.Module mname is ds)) = runReader s . evalState (mempty @Env.Env) $ do
+  let is' = map (Import . (S.name :: S.Import -> MName) . S.out) is
   -- FIXME: trace the defs as we elaborate them
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
@@ -459,7 +460,7 @@ elabModule (S.Ann s (S.Module mname _is ds)) = runReader s . evalState (mempty @
         modify $ Env.insert (qname :=: Just e'' ::: _T)
         pure (dname, C.DTerm e'' ::: _T)
 
-  pure $ C.Module mname [] defs
+  pure $ C.Module mname is' defs
 
 
 -- | Apply the substitution to the value.
