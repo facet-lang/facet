@@ -12,6 +12,7 @@ module Facet.Graph
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Carrier.Writer.Church
+import           Control.Effect.Empty
 import           Control.Effect.Throw
 import           Control.Lens as Lens (At(..), Index, IxValue, Ixed(..), iso)
 import           Control.Monad (unless, when, (<=<))
@@ -41,8 +42,8 @@ singleton p m@Module{ name } = Graph (Map.singleton name (p, m))
 insert :: Maybe FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
 
-lookup :: MName -> Graph -> Maybe (Maybe FilePath, Module)
-lookup n = Map.lookup n . getGraph
+lookup :: Has Empty sig m => MName -> Graph -> m (Maybe FilePath, Module)
+lookup n = maybe empty pure . Map.lookup n . getGraph
 
 
 -- FIXME: enrich this with source references for each
