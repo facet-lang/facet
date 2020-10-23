@@ -132,6 +132,7 @@ moduleName (mname :.: _) = mname
 -- | Declaration names; a choice of expression, constructor, term, or operator names.
 data DName
   = E UName
+  -- FIXME: this is a little too close to a QName for comfort and is going to be difficult to parse accurately. We should probably consider datatypes as introducing a sub-module.
   | C DName UName
   | T UName
   | O Op
