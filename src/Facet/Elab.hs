@@ -180,6 +180,15 @@ resolve n = Synth $ do
     Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
     Nothing                -> freeVariable Nothing n
 
+resolveC
+  :: UName
+  -> Synth QName
+resolveC n = Synth $ do
+  mod <- ask
+  case lookupC n mod of
+    Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
+    Nothing                -> freeVariable Nothing (E n) -- FIXME: this is technically a lie, but we don’t /have/ the full constructor name to give it.
+
 resolveQ
   :: QName
   -> Synth QName
@@ -372,7 +381,7 @@ elabPattern = withSpan $ \case
             ps' <- go (_B v) ps
             p' <- check (elabPattern p ::: _A)
             pure $ ps' :> p'
-    q ::: _T' <- synth (resolve (E n))
+    q ::: _T' <- synth (resolveC n)
     _T'' <- inst _T'
     C.PCon . Con (q ::: _T'') <$> go _T'' ps
   S.PEff _ _  _ -> error "TBD"
