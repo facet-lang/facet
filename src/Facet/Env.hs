@@ -22,10 +22,9 @@ fromModule m@(Module mname is _) g = Env mname (Map.fromList (local m)) (G.restr
   where
   local (Module _ _ defs) = do
     (dname, def ::: _T) <- defs
-    case def of
-      DTerm _  -> [ (dname, _T) ]
-      DData cs ->   (dname, _T)
-                : [ (C n,   _T) | n :=: _ ::: _T <- cs ]
+    (dname, _T) : case def of
+      Just (DData cs) -> [ (C n,   _T) | n :=: _ ::: _T <- cs ]
+      _               -> []
 
 
 lookupD :: DName -> Env -> Maybe (MName ::: Value)

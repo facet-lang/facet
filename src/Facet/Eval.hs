@@ -17,7 +17,7 @@ eval = \case
     case h of
       Global (q ::: _)
         | Just (d ::: _) <- lookupQ q mod graph
-        , DTerm v <- d
+        , Just (DTerm v) <- d
         -> pure $ elimN v sp'
       _ -> pure $ VNeut h sp'
 

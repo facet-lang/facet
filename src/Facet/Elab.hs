@@ -452,10 +452,10 @@ elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . r
                 _T            -> VCon (Con (mname :.: C n ::: _T) fs)
           c <- apply s (go Nil _T')
           pure $ n :=: c ::: _T'
-        pure (dname, C.DData cs' ::: _T)
+        pure (dname, Just (C.DData cs') ::: _T)
       Right e' -> do
         e'' <- apply s e'
-        pure (dname, C.DTerm e'' ::: _T)
+        pure (dname, Just (C.DTerm e'') ::: _T)
     defs_ %= (<> [def])
 
 

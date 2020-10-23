@@ -50,7 +50,7 @@ insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
 lookupM :: Has Empty sig m => MName -> Graph -> m (Maybe FilePath, Module)
 lookupM n = maybe empty pure . Map.lookup n . getGraph
 
-lookupQ :: Has Empty sig m => QName -> Module -> Graph -> m (Def ::: Value)
+lookupQ :: Has Empty sig m => QName -> Module -> Graph -> m (Maybe Def ::: Value)
 lookupQ (m:.:n) mod@Module{ name } g
   | m == name = lookupD n mod
   | otherwise = lookupM m g >>= lookupD n . snd

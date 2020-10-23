@@ -116,7 +116,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
 
 kernel :: Module
 kernel = Module kernelName []
-  [ (T (UName (TS.pack "Type")), DTerm VType ::: VType)
+  [ (T (UName (TS.pack "Type")), Just (DTerm VType) ::: VType)
   ]
   where
   kernelName = MName (TS.pack "Kernel")

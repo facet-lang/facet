@@ -329,7 +329,7 @@ fill f z = mapAccumL (\ z _ -> f z) z
 data Module = Module
   { name    :: MName
   , imports :: [Import]
-  , defs    :: [(DName, Def ::: Value)]
+  , defs    :: [(DName, Maybe Def ::: Value)]
   }
 
 name_ :: Lens' Module MName
@@ -338,11 +338,11 @@ name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
 imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })
 
-defs_ :: Lens' Module [(DName, Def ::: Value)]
+defs_ :: Lens' Module [(DName, Maybe Def ::: Value)]
 defs_ = lens defs (\ m defs -> m{ defs })
 
 
-lookupD :: Has Empty sig m => DName -> Module -> m (Def ::: Value)
+lookupD :: Has Empty sig m => DName -> Module -> m (Maybe Def ::: Value)
 lookupD n Module{ defs } = maybe empty pure (lookup n defs)
 
 
