@@ -4,18 +4,20 @@ module Facet.Eval
 
 import Control.Effect.Reader
 import Facet.Core
-import Facet.Env as E
+import Facet.Graph
 import Facet.Syntax
 
 -- FIXME: erase terms before evaluating.
-eval :: Has (Reader Env) sig m => Value -> m Value
+eval :: (Has (Reader Graph) sig m, Has (Reader Module) sig m) => Value -> m Value
 eval = \case
   VNeut h sp -> do
     sp' <- traverse evalSp sp
-    env <- ask
+    mod <- ask
+    graph <- ask
     case h of
       Global (q ::: _)
-        | Just (Just v ::: _) <- E.lookupQ q env
+        | Just (d ::: _) <- lookupQ q mod graph
+        , DTerm v <- d
         -> pure $ elimN v sp'
       _ -> pure $ VNeut h sp'
 
