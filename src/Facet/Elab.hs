@@ -192,16 +192,7 @@ resolveWith lookup m n = Synth $ asks lookup >>= \case
 resolve
   :: DName
   -> Synth QName
-resolve n = Synth $ asks (lookupD n) >>= \case
-  Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
-  Nothing                -> do
-    g <- ask @Graph
-    let defs = foldMap (lookupD n . snd) (getGraph g)
-    case defs of
-      []                -> freeVariable Nothing n
-      [n' :=: _ ::: _T] -> pure $ n' ::: _T
-      -- FIXME: resolve ambiguities by type.
-      _                 -> ambiguousName Nothing n (map (\ (q :=: _ ::: _) -> q) defs)
+resolve n = resolveWith (lookupD n) Nothing n
 
 resolveC
   :: UName
