@@ -237,7 +237,7 @@ loadModuleHeader src name = do
   path <- resolveName name
   src <- rethrowIOErrors src $ readSourceFromFile path
   -- FIXME: validate that the name matches
-  (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] moduleHeader))
+  (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
 
 loadModule :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m) => MName -> FilePath -> Source -> m Module
