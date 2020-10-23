@@ -141,12 +141,12 @@ commands = choice
     , ShowTargets <$ token (string "targets")
     ]
   , command ["add"]             "add a module/path to the repl"      (Just "item")  $ choice
-    [ add . ModPath   <$ token (string "path")   <*> path'
-    , add . ModTarget <$ token (string "target") <*> some mname
+    [ addPath   <$ token (string "path")   <*> path'
+    , addTarget <$ token (string "target") <*> some mname
     ]
   , command ["remove", "rm"]    "remove a module/path from the repl" (Just "item")  $ choice
-    [ remove . ModPath   <$ token (string "path")   <*> path'
-    , remove . ModTarget <$ token (string "target") <*> some mname
+    [ removePath   <$ token (string "path")   <*> path'
+    , removeTarget <$ token (string "target") <*> some mname
     ]
   , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (void . reload))
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
@@ -169,10 +169,6 @@ data ShowField
   | ShowModules
   | ShowTargets
 
-data ModField
-  = ModPath FilePath
-  | ModTarget [MName]
-
 
 showREPLState :: ShowField -> Action
 showREPLState t = Action $ \ _ -> case t of
@@ -185,16 +181,20 @@ showREPLState t = Action $ \ _ -> case t of
   ShowModules -> uses modules_ (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= print
   ShowTargets -> uses targets_ (unlines . map pretty . toList) >>= print
 
-add :: ModField -> Action
-add (ModPath path) = Action $ \ _ -> searchPaths_ %= Set.insert path
-add (ModTarget targets) = Action $ \ src -> do
+addPath :: FilePath -> Action
+addPath path = Action $ \ _ -> searchPaths_ %= Set.insert path
+
+addTarget :: [MName] -> Action
+addTarget targets = Action $ \ src -> do
   targets_ %= Set.union (Set.fromList targets)
   void $ reload src
 
-remove :: ModField -> Action
-remove (ModPath path)      = Action $ \ _ -> searchPaths_ %= Set.delete path
+removePath :: FilePath -> Action
+removePath path = Action $ \ _ -> searchPaths_ %= Set.delete path
+
 -- FIXME: remove things depending on it
-remove (ModTarget targets) = Action $ \ _ -> targets_ %= (Set.\\ Set.fromList targets)
+removeTarget :: [MName] -> Action
+removeTarget targets = Action $ \ _ -> targets_ %= (Set.\\ Set.fromList targets)
 
 showType :: S.Ann S.Expr -> Action
 showType e = Action $ \ src -> do
