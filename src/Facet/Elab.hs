@@ -178,18 +178,14 @@ resolve n = Synth $ do
   mod <- ask
   case lookupD n mod of
     Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
-    Nothing
-      | E n <- n  -> synth (resolve (C n))
-      | otherwise -> freeVariable Nothing n
+    Nothing                -> freeVariable Nothing n
 
 resolveQ
   :: QName
   -> Synth QName
 resolveQ q@(m :.: n) = Synth $ Graph.lookupQ q <$> ask <*> ask >>= \case
   Just (q' :=: _ ::: _T) -> pure $ q' ::: _T
-  Nothing
-    | E n <- n  -> synth (resolveQ (m :.: C n))
-    | otherwise -> freeVariable (Just m) n
+  Nothing                -> freeVariable (Just m) n
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global
