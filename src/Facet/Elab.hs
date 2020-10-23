@@ -476,6 +476,11 @@ runSubstWith with = runState with emptySubst
 runContext :: ReaderC (Context Type) m a -> m a
 runContext = runReader empty
 
+runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
+runModule m = do
+  mod <- get
+  runReader mod m
+
 
 -- Errors
 
