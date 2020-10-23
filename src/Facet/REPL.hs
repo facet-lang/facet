@@ -222,6 +222,14 @@ reload src = evalFresh 1 $ targets_ ~> \ targets -> do
   where
   toNode m = Node ((name :: Module -> MName) m) (map (name :: Import -> MName) (imports m)) m
 
+loadModuleHeader :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> MName -> m (MName, FilePath, Source, [S.Ann S.Import])
+loadModuleHeader src name = do
+  path <- resolveName name
+  src <- rethrowIOErrors src $ readSourceFromFile path
+  -- FIXME: validate that the name matches
+  (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] moduleHeader))
+  pure (name', path, src, is)
+
 loadModule :: (Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> MName -> m Module
 loadModule src name = do
   i <- fresh
