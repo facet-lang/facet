@@ -4,6 +4,7 @@ module Facet.Graph
 , singleton
 , insert
 , lookup
+, lookupQ
 , GraphErr(..)
 , Node(..)
 , loadOrder
@@ -24,6 +25,7 @@ import qualified Data.Set as Set
 import           Facet.Core
 import           Facet.Name
 import           Facet.Stack
+import           Facet.Syntax
 import           Prelude hiding (lookup)
 
 newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Module) }
@@ -44,6 +46,11 @@ insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
 
 lookup :: Has Empty sig m => MName -> Graph -> m (Maybe FilePath, Module)
 lookup n = maybe empty pure . Map.lookup n . getGraph
+
+lookupQ :: Has Empty sig m => QName -> Module -> Graph -> m (Def ::: Value)
+lookupQ (m:.:n) mod@Module{ name } g
+  | m == name = lookupD n mod
+  | otherwise = lookup m g >>= lookupD n . snd
 
 
 -- FIXME: enrich this with source references for each
