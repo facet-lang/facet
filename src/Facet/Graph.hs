@@ -22,7 +22,7 @@ import           Data.Monoid (Endo(..))
 import qualified Data.Set as Set
 import           Facet.Core
 import           Facet.Name
-import           Facet.Stack hiding (singleton)
+import           Facet.Stack
 import           Prelude hiding (lookup)
 
 newtype Graph = Graph { getGraph :: Map.Map MName (FilePath, Module) }

@@ -1,7 +1,6 @@
 -- | Really just a snoc list, but the shoe fits if you squish things up just right.
 module Facet.Stack
 ( Stack(..)
-, singleton
 , fromList
 , (!)
 , (!?)
@@ -43,7 +42,7 @@ instance Zip Stack where
       _              -> Nil
 
 instance Applicative Stack where
-  pure = singleton
+  pure = (Nil :>)
   fs <*> as = go id fs as
     where
     go accum Nil     _  = accum Nil
@@ -55,9 +54,6 @@ instance Monad Stack where
     go accum Nil     = accum Nil
     go accum (as:>a) = go (accum . (<> f a)) as
 
-
-singleton :: a -> Stack a
-singleton = (Nil :>)
 
 fromList :: [a] -> Stack a
 fromList = foldl' (:>) Nil
