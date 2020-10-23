@@ -178,7 +178,13 @@ resolve
 resolve n = Synth $ asks (lookupD n) >>= \case
   Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
   -- FIXME: look up in the imports
-  Nothing                -> freeVariable Nothing n
+  Nothing                -> do
+    g <- ask @Graph
+    let defs = foldMap (lookupD n . snd) (getGraph g)
+    case defs of
+      []                -> freeVariable Nothing n
+      [n' :=: _ ::: _T] -> pure $ n' ::: _T
+      _                 -> ambiguousName Nothing n (map (\ (q :=: _ ::: _) -> q) defs)
 
 resolveC
   :: UName
