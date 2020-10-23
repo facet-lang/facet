@@ -22,12 +22,12 @@ import           Facet.Name
 import           Facet.Stack
 import           Prelude hiding (lookup)
 
-newtype Graph = Graph { getGraph :: Map.Map MName Module }
+newtype Graph = Graph { getGraph :: Map.Map MName (FilePath, Module) }
 
-insert :: Module -> Graph -> Graph
-insert m@Module{ name } = Graph . Map.insert name m . getGraph
+insert :: FilePath -> Module -> Graph -> Graph
+insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
 
-lookup :: MName -> Graph -> Maybe Module
+lookup :: MName -> Graph -> Maybe (FilePath, Module)
 lookup n = Map.lookup n . getGraph
 
 
