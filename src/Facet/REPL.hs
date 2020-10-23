@@ -157,7 +157,7 @@ loop = do
     Kind t -> do
       _ ::: _T <- elab src $ Elab.elabWith (\ s (t ::: _T) -> (:::) <$> Elab.apply s t <*> Elab.apply s _T) (Elab.elabExpr t Nothing)
       print (prettyCode (ann (foldSExpr surface Nil t ::: foldCValue surface Nil (generalize _T))))
-    Eval e -> do -- FIXME: actually evaluate
+    Eval e -> do
       e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
       e'' <- L.runState env_ $ Env.runEnv $ eval e'
       print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil _T)))
