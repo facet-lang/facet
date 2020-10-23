@@ -149,9 +149,6 @@ runAction src = \case
   Type e -> do
     _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
     print (prettyCode (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
-  Kind t -> do
-    _ ::: _T <- elab src $ Elab.elabWith (\ s (t ::: _T) -> (:::) <$> Elab.apply s t <*> Elab.apply s _T) (Elab.elabExpr t Nothing)
-    print (prettyCode (ann (foldSExpr surface Nil t ::: foldCValue surface Nil (generalize _T))))
   Eval e -> do
     e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
     graph <- use modules_
@@ -183,7 +180,7 @@ commands = choice
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ Type <$> runFacet [] [] expr
   , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
-    $ Kind <$> runFacet [] [] type'
+    $ Type <$> runFacet [] [] type'
   ]
 
 path' :: TokenParsing p => p FilePath
@@ -199,7 +196,6 @@ data Action
   | Remove ModField
   | Reload
   | Type (S.Ann S.Expr)
-  | Kind (S.Ann S.Expr)
   | Eval (S.Ann S.Expr)
 
 data ShowField
