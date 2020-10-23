@@ -43,7 +43,7 @@ import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import qualified Data.Set as Set
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context
+import           Facet.Context as Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
 import           Facet.Graph as Graph
@@ -492,7 +492,7 @@ runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
 runSubstWith with = runState with emptySubst
 
 runContext :: ReaderC (Context Type) m a -> m a
-runContext = runReader empty
+runContext = runReader Context.empty
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
