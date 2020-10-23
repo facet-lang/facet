@@ -31,6 +31,7 @@ lookup :: MName -> Graph -> Maybe Module
 lookup n = Map.lookup n . getGraph
 
 
+-- FIXME: enrich this with source references for each
 data GraphErr
   = CyclicImport (Stack MName)
 
