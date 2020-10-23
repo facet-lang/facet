@@ -46,7 +46,7 @@ import           Facet.Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
 import qualified Facet.Env as Env
-import           Facet.Graph
+import           Facet.Graph as Graph
 import           Facet.Name hiding (L, R)
 import           Facet.Span (Span(..))
 import           Facet.Stack hiding ((!?))
@@ -176,17 +176,19 @@ switch (Synth m) = \case
 resolve
   :: DName
   -> Synth QName
-resolve n = Synth $ Env.lookupD n <$> ask >>= \case
-  Just (m ::: _T) -> pure $ m :.: n ::: _T
-  Nothing
-    | E n <- n  -> synth (resolve (C n))
-    | otherwise -> freeVariable Nothing n
+resolve n = Synth $ do
+  mod@(Module name _ _) <- ask
+  case lookupD n mod of
+    Just (_ ::: _T) -> pure $ name :.: n ::: _T
+    Nothing
+      | E n <- n  -> synth (resolve (C n))
+      | otherwise -> freeVariable Nothing n
 
 resolveQ
   :: QName
   -> Synth QName
-resolveQ q@(m :.: n) = Synth $ Env.lookupQ q <$> ask >>= \case
-  Just _T -> pure $ q ::: _T
+resolveQ q@(m :.: n) = Synth $ Graph.lookupQ q <$> ask <*> ask >>= \case
+  Just (_ ::: _T) -> pure $ q ::: _T
   Nothing
     | E n <- n  -> synth (resolveQ (m :.: C n))
     | otherwise -> freeVariable (Just m) n
