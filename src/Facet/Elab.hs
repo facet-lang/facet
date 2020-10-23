@@ -34,6 +34,7 @@ import           Control.Applicative (liftA2)
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
+import           Control.Effect.Lens ((.=), (<~))
 import           Control.Effect.Sum
 import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
@@ -430,12 +431,12 @@ elabModule
   .  (HasCallStack, Has (Throw Err) sig m)
   => S.Ann S.Module
   -> m C.Module
-elabModule (S.Ann s (S.Module mname is ds)) = runReader s . evalState (mempty @Env.Env) $ do
-  let is' = map (Import . (S.name :: S.Import -> MName) . S.out) is
+elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . runReader s . evalState (mempty @Env.Env) $ do
+  imports_ .= map (Import . (S.name :: S.Import -> MName) . S.out) is
   -- FIXME: trace the defs as we elaborate them
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
-  defs <- for ds $ \ (S.Ann s (dname, d)) -> setSpan s $ do
+  defs_ <~ for ds (\ (S.Ann s (dname, d)) -> setSpan s $ do
     let qname = mname :.: dname
         e ::: t = elabDecl d
 
@@ -458,9 +459,7 @@ elabModule (S.Ann s (S.Module mname is ds)) = runReader s . evalState (mempty @E
       Right e' -> do
         e'' <- apply s e'
         modify $ Env.insert (qname :=: Just e'' ::: _T)
-        pure (dname, C.DTerm e'' ::: _T)
-
-  pure $ C.Module mname is' defs
+        pure (dname, C.DTerm e'' ::: _T))
 
 
 -- | Apply the substitution to the value.
