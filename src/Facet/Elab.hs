@@ -183,6 +183,7 @@ resolve n = Synth $ asks (lookupD n) >>= \case
     case defs of
       []                -> freeVariable Nothing n
       [n' :=: _ ::: _T] -> pure $ n' ::: _T
+      -- FIXME: resolve ambiguities by type.
       _                 -> ambiguousName Nothing n (map (\ (q :=: _ ::: _) -> q) defs)
 
 resolveC
