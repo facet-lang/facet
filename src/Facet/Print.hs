@@ -11,7 +11,6 @@ module Facet.Print
 ) where
 
 import           Data.Foldable (foldl', toList)
-import           Data.Function (on)
 import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
@@ -73,10 +72,6 @@ instance PrecedencePrinter Print where
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
-
--- FIXME: NO. BAD.
-instance Eq Print where
-  (==) = (==) `on` show
 
 
 data Precedence
