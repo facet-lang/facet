@@ -64,9 +64,9 @@ repl
 
 data REPL = REPL
   { line           :: Int
+  , promptFunction :: Int -> IO String
   , modules        :: Graph
   , localDefs      :: Module -- ^ The module where definitions made in the REPL live. Not a part of modules.
-  , promptFunction :: Int -> IO String
   , targets        :: Set.Set MName
   -- FIXME: break this down by file/module/whatever so we can load multiple packages
   , searchPaths    :: Set.Set FilePath
@@ -90,9 +90,9 @@ searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 defaultREPLState :: REPL
 defaultREPLState = REPL
   { line           = 0
+  , promptFunction = defaultPromptFunction
   , modules
   , localDefs
-  , promptFunction = defaultPromptFunction
   , targets        = mempty
   , searchPaths    = Set.singleton "src"
   }
