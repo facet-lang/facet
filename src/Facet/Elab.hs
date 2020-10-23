@@ -542,6 +542,9 @@ couldNotSynthesize = err . CouldNotSynthesize
 freeVariable :: Maybe MName -> DName -> Elab a
 freeVariable m n = err $ FreeVariable m n
 
+ambiguousName :: Maybe MName -> DName -> [QName] -> Elab a
+ambiguousName n d qs = err $ AmbiguousName n d qs
+
 expectChecked :: Maybe Type -> String -> Elab Type
 expectChecked t msg = maybe (couldNotSynthesize msg) pure t
 
