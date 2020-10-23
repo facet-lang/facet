@@ -36,6 +36,7 @@ data Expr
   | Bound Index
   | Hole UName
   | Type
+  | Interface
   | (UName ::: Ann Expr) :=> Ann Expr
   | Ann Expr :-> Ann Expr
   | Comp (Ann Comp)
