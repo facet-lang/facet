@@ -1,6 +1,7 @@
 module Facet.Surface
 ( -- * Expressions
   Expr(..)
+, qual
 , (-->)
 , unForAll
 , ($$)
@@ -31,8 +32,7 @@ import Facet.Syntax hiding (out)
 -- Expressions
 
 data Expr
-  = Qual QName
-  | Free DName
+  = Free (Maybe MName) DName
   | Bound Index
   | Hole UName
   | Type
@@ -46,6 +46,9 @@ data Expr
 infixr 1 :=>
 infixr 1 :->
 infixl 9 :$
+
+qual :: QName -> Expr
+qual (m :.: n) = Free (Just m) n
 
 (-->) :: Ann Expr -> Ann Expr -> Ann Expr
 a --> b = Ann (ann a <> ann b) (a :-> b)

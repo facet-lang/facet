@@ -146,8 +146,8 @@ decl = anned
       _      -> pure ()
     decl <- colon *> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
     pure (name, decl)
-  binary name e1@(S.Ann s _) e2 = S.Ann s (S.Free name) S.$$ e1 S.$$ e2
-  unary name e@(S.Ann s _) = S.Ann s (S.Free name) S.$$ e
+  binary name e1@(S.Ann s _) e2 = S.Ann s (S.Free Nothing name) S.$$ e1 S.$$ e2
+  unary name e@(S.Ann s _) = S.Ann s (S.Free Nothing name) S.$$ e
 
 
 typeSig
@@ -185,7 +185,7 @@ monotypeTable =
       Atom (anned (S.Type <$ token (string "Type")))
       -- FIXME: holes in types
     , Atom tvar
-    , Atom (anned (S.Qual <$> qname))
+    , Atom (anned (S.qual <$> qname))
     ]
   ]
 
@@ -214,7 +214,7 @@ monotype = fn mono
   mono = build monotypeTable (parens . fn)
 
 tvar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
-tvar = token (anned (runUnspaced (fmap (either (S.Free . N.T) S.Bound) . resolve <$> tname <*> Unspaced env <?> "variable")))
+tvar = token (anned (runUnspaced (fmap (either (S.Free Nothing . N.T) S.Bound) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
 -- Signatures
@@ -238,7 +238,7 @@ exprTable =
   , [ Atom comp
     , Atom (anned (S.Hole <$> hname))
     , Atom evar
-    , Atom (anned (S.Qual <$> qname))
+    , Atom (anned (S.qual <$> qname))
     ]
   ]
 
@@ -259,8 +259,8 @@ clause = (do
 
 evar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 evar
-  =   token (anned (runUnspaced (fmap (either (S.Free . N.E) S.Bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
-  <|> try (token (anned (runUnspaced (S.Free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
+  =   token (anned (runUnspaced (fmap (either (S.Free Nothing . N.E) S.Bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
+  <|> try (token (anned (runUnspaced (S.Free Nothing . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
 
 
 -- Patterns
