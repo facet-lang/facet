@@ -34,10 +34,10 @@ import           Control.Applicative (liftA2)
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens ((.=), (<~))
+import           Control.Effect.Lens ((%=), (.=))
 import           Control.Effect.Sum
 import           Data.Bifunctor (bimap, first)
-import           Data.Foldable (foldl')
+import           Data.Foldable (foldl', for_)
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import           Data.Traversable (for)
@@ -437,13 +437,13 @@ elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . r
   -- FIXME: trace the defs as we elaborate them
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
-  defs_ <~ for ds (\ (S.Ann s (dname, d)) -> setSpan s $ do
+  for_ ds $ \ (S.Ann s (dname, d)) -> setSpan s $ do
     let e ::: t = elabDecl d
 
     _T <- runModule . elab $ check (t ::: VType)
 
     (s, e') <- runModule . elabWith (fmap pure . (,)) $ check (e ::: _T)
-    case e' of
+    def <- case e' of
       Left cs  -> do
         cs' <- for cs $ \ (n ::: _T) -> do
           _T' <- apply s _T
@@ -455,7 +455,8 @@ elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . r
         pure (dname, C.DData cs' ::: _T)
       Right e' -> do
         e'' <- apply s e'
-        pure (dname, C.DTerm e'' ::: _T))
+        pure (dname, C.DTerm e'' ::: _T)
+    defs_ %= (<> [def])
 
 
 -- | Apply the substitution to the value.
