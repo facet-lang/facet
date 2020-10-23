@@ -29,6 +29,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Some means to distinguish synonyms from definitions (structural vs. nominal typing).
 
+  - Possibly `=`.
+
 
 ### Core
 
