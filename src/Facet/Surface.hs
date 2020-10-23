@@ -50,12 +50,13 @@ qual :: QName -> Expr
 qual (m :.: n) = Free (Just m) n
 
 (-->) :: Ann Expr -> Ann Expr -> Ann Expr
-a --> b = Ann (ann a <> ann b) (ForAll (Binding Nothing a) b)
+a --> b = Ann (ann a <> ann b) (ForAll (Binding Nothing [] a) b)
 
 infixr 1 -->
 
 data Binding = Binding
   { name  :: Maybe UName
+  , delta :: [Ann Expr]
   , type' :: Ann Expr
   }
   deriving (Eq, Show)
