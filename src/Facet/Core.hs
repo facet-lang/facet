@@ -31,11 +31,13 @@ module Facet.Core
 , fill
   -- * Modules
 , Module(..)
+, name_
 , Import(..)
 , Def(..)
 ) where
 
 import           Control.Effect.Empty
+import           Control.Lens (Lens', lens)
 import           Data.Bifoldable
 import           Data.Bifunctor
 import           Data.Bitraversable
@@ -326,6 +328,10 @@ data Module = Module
   , imports :: [Import]
   , defs    :: [(QName, Def ::: Value)]
   }
+
+name_ :: Lens' Module MName
+name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
+
 
 newtype Import = Import { name :: MName }
 
