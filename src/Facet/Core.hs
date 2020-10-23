@@ -350,7 +350,7 @@ defs_ = lens defs (\ m defs -> m{ defs })
 lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Value)
 lookupC n Module{ name, defs } = maybe empty pure $ matchWith matchDef defs
   where
-  matchDef (_    , d ::: _)  = d >>= unDData >>= matchWith matchCon
+  matchDef (_,     d ::: _)  = d >>= unDData >>= matchWith matchCon
   matchCon (n' :=: v ::: _T) = (name :.: C n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
