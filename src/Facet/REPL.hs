@@ -67,6 +67,7 @@ repl
 data REPL = REPL
   { line           :: Int
   , modules        :: Graph
+  , localDefs      :: Module -- ^ The module where definitions made in the REPL live. Not a part of modules.
   , promptFunction :: Int -> IO String
   , env            :: Env.Env
   , targets        :: Set.Set MName
@@ -93,6 +94,7 @@ defaultREPLState :: REPL
 defaultREPLState = REPL
   { line           = 0
   , modules        = singleton Nothing kernel
+  , localDefs      = Module (MName mempty) [] []
   , promptFunction = defaultPromptFunction
   , env            = toEnv kernel
   , targets        = mempty
