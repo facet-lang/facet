@@ -81,6 +81,9 @@ line_ = lens line (\ r line -> r{ line })
 modules_ :: Lens' REPL Graph
 modules_ = lens modules (\ r modules -> r{ modules })
 
+localDefs_ :: Lens' REPL Module
+localDefs_ = lens localDefs (\ r localDefs -> r{ localDefs })
+
 env_ :: Lens' REPL Env.Env
 env_ = lens env (\ r env -> r{ env })
 
