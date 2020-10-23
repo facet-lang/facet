@@ -109,9 +109,9 @@ synthElab f = Synth (f Nothing)
 
 
 unify :: Type :===: Type -> Elab Type
-unify = go
+unify = unify
   where
-  go = \case
+  unify = \case
     -- FIXME: this is missing a lot of cases
     VType                 :===: VType                 -> pure VType
     -- FIXME: resolve globals to try to progress past certain inequalities
@@ -122,10 +122,10 @@ unify = go
     x                     :===: VNeut (Metavar v) Nil -> solve (tm v :=: x)
     VForAll t1 b1         :===: VForAll t2 b2
       | pl (tm t1) == pl (tm t2) -> do
-        t <- go (ty t1 :===: ty t2)
+        t <- unify (ty t1 :===: ty t2)
         d <- asks @(Context Type) level
         let v = free d
-        b <- go (b1 v :===: b2 v)
+        b <- unify (b1 v :===: b2 v)
         pure $ VForAll (tm t1 ::: t) (\ v -> C.bind d v b)
     -- FIXME: build and display a diff of the root types
     t1                    :===: t2                    -> couldNotUnify t1 t2
@@ -133,14 +133,14 @@ unify = go
   unifyS (Nil           :===: Nil)           = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
   unifyS (i1 :> EApp l1 :===: i2 :> EApp l2)
-    | pl l1 == pl l2                         = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (EApp . P (pl l1) <$> go (out l1 :===: out l2))
+    | pl l1 == pl l2                         = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (EApp . P (pl l1) <$> unify (out l1 :===: out l2))
   unifyS _                                   = Nothing
 
   solve (n :=: val') = do
     subst <- get
     -- FIXME: occurs check
     case subst IntMap.! getMeta n of
-      Just val ::: _T -> go (val' :===: val)
+      Just val ::: _T -> unify (val' :===: val)
       Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
 
 
