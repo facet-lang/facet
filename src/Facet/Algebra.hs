@@ -53,6 +53,7 @@ data Algebra p = Algebra
   , app :: p -> Stack (Pl_ p) -> p
   , hole :: UName -> p
   , _Type :: p
+  , _Interface :: p
   , ann' :: (p ::: p) -> p
   , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
   , pcon     :: p -> Stack p -> p
