@@ -45,6 +45,7 @@ import           Facet.Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
 import qualified Facet.Env as Env
+import           Facet.Graph
 import           Facet.Name hiding (L, R)
 import           Facet.Span (Span(..))
 import           Facet.Stack hiding ((!?))
@@ -428,7 +429,7 @@ elabTDecl d = go d
 
 elabModule
   :: forall m sig
-  .  (HasCallStack, Has (Throw Err) sig m)
+  .  (HasCallStack, Has (Reader Graph) sig m, Has (Throw Err) sig m)
   => S.Ann S.Module
   -> m C.Module
 elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . runReader s . evalState (mempty @Env.Env) $ do

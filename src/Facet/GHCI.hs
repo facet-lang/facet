@@ -9,12 +9,14 @@ module Facet.GHCI
 ) where
 
 import           Control.Carrier.Lift (runM)
+import           Control.Carrier.Reader (runReader)
 import           Control.Carrier.Throw.Either
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Facet.Algebra (foldCModule, foldSModule)
 import           Facet.Carrier.Parser.Church as Parse (Err, ParserC, runParserWithFile, runParserWithSource, runParserWithString)
 import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Elab as Elab (elabModule)
+import           Facet.Graph (Graph)
 import           Facet.Notice
 import           Facet.Notice.Elab
 import           Facet.Notice.Parser
@@ -51,7 +53,7 @@ elabFile path = liftIO (readFile path) >>= elabPathString (Just path) module'
 elabPathString :: MonadIO m => Maybe FilePath -> Facet (ParserC (L.ThrowC (Notice Style) (Source, Parse.Err) (Either (Notice Style)))) (S.Ann S.Module) -> String -> m ()
 elabPathString path p s = either printNotice printCode $ do
   parsed <- rethrowParseErrors $ runParserWithSource src (runFacet [] [] (whole p))
-  rethrowElabErrors src Code $ foldCModule P.explicit <$> elabModule parsed
+  rethrowElabErrors src Code . runReader @Graph mempty $ foldCModule P.explicit <$> elabModule parsed
   where
   src = sourceFromString path 0 s
 

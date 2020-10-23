@@ -246,7 +246,8 @@ loadModule name path src = do
   i <- fresh
   print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty 'n')) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
-  m <- rethrowElabErrors src Code $ Elab.elabModule m
+  graph <- use modules_
+  m <- rethrowElabErrors src Code . runReader graph $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)
   pure m
 
