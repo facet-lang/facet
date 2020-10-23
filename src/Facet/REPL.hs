@@ -157,6 +157,7 @@ runAction src = \case
 
 -- TODO:
 -- - multiline
+-- - breakpoints
 commands :: Commands Action
 commands = choice
   [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure Help
