@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 module Facet.Graph
 ( Graph(..)
 , insert
@@ -11,6 +12,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Carrier.Writer.Church
 import           Control.Effect.Throw
+import           Control.Lens as Lens (At(..), Index, IxValue, Ixed(..), iso)
 import           Control.Monad (unless, when, (<=<))
 import           Control.Monad.Trans.Class
 import           Data.Foldable (for_)
@@ -24,6 +26,13 @@ import           Prelude hiding (lookup)
 
 newtype Graph = Graph { getGraph :: Map.Map MName (FilePath, Module) }
   deriving (Semigroup, Monoid)
+
+type instance Lens.Index Graph = MName
+type instance IxValue Graph = (FilePath, Module)
+
+instance Ixed Graph
+instance At   Graph where
+  at i = iso getGraph Graph .at i
 
 insert :: FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
