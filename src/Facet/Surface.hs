@@ -3,6 +3,7 @@ module Facet.Surface
   Expr(..)
 , qual
 , (-->)
+, Binding(..)
 , unForAll
 , ($$)
 , unApp
@@ -52,6 +53,12 @@ qual (m :.: n) = Free (Just m) n
 a --> b = Ann (ann a <> ann b) (ForAll Nothing a b)
 
 infixr 1 -->
+
+data Binding = Binding
+  { name  :: Maybe UName
+  , type' :: Ann Expr
+  }
+  deriving (Eq, Show)
 
 unForAll :: Has Empty sig m => Expr -> m (Maybe UName ::: Ann Expr, Ann Expr)
 unForAll = \case{ ForAll n t b -> pure (n ::: t, b) ; _ -> empty }
