@@ -342,8 +342,8 @@ defs_ :: Lens' Module [(DName, Def ::: Value)]
 defs_ = lens defs (\ m defs -> m{ defs })
 
 
-lookupQ :: QName -> Module -> Maybe (Def ::: Value)
-lookupQ (m:.:n) Module{ name, defs } = guard (m == name) *> lookup n defs
+lookupQ :: Has Empty sig m => QName -> Module -> m (Def ::: Value)
+lookupQ (m:.:n) Module{ name, defs } = guard (m == name) *> maybe empty pure (lookup n defs)
 
 
 newtype Import = Import { name :: MName }
