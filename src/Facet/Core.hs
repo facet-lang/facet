@@ -34,7 +34,7 @@ module Facet.Core
 , name_
 , imports_
 , defs_
-, lookupQ
+, lookupD
 , Import(..)
 , Def(..)
 ) where
@@ -342,8 +342,8 @@ defs_ :: Lens' Module [(DName, Def ::: Value)]
 defs_ = lens defs (\ m defs -> m{ defs })
 
 
-lookupQ :: Has Empty sig m => QName -> Module -> m (Def ::: Value)
-lookupQ (m:.:n) Module{ name, defs } = guard (m == name) *> maybe empty pure (lookup n defs)
+lookupD :: Has Empty sig m => DName -> Module -> m (Def ::: Value)
+lookupD n Module{ defs } = maybe empty pure (lookup n defs)
 
 
 newtype Import = Import { name :: MName }
