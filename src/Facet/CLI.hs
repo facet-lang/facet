@@ -22,6 +22,7 @@ argumentsParser = info
 -- - format
 -- - run
 -- - build
+-- - diff
 commands :: Mod CommandFields (IO ())
 commands
   =  command "repl" (info (pure REPL.repl) (progDesc "run the repl"))
