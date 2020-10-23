@@ -440,11 +440,11 @@ elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . r
     let qname = mname :.: dname
         e ::: t = elabDecl d
 
-    _T <- elab $ check (t ::: VType)
+    _T <- runModule . elab $ check (t ::: VType)
 
     modify $ Env.insert (qname :=: Nothing ::: _T)
 
-    (s, e') <- elabWith (fmap pure . (,)) $ check (e ::: _T)
+    (s, e') <- runModule . elabWith (fmap pure . (,)) $ check (e ::: _T)
     case e' of
       Left cs  -> do
         cs' <- for cs $ \ (n ::: _T) -> do
