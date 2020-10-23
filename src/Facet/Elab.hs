@@ -45,7 +45,6 @@ import           Data.Traversable (for)
 import           Facet.Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
-import qualified Facet.Env as Env
 import           Facet.Graph as Graph
 import           Facet.Name hiding (L, R)
 import           Facet.Span (Span(..))
@@ -85,7 +84,7 @@ elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err) sig m
 elab = elabWith apply
 
 elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err) sig m => (Subst -> a -> m b) -> Elab a -> m b
-elabWith f = runSubstWith f . runContext . Env.runEnv . runElab
+elabWith f = runSubstWith f . runContext . runElab
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
