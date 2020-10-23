@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module Facet.Graph
 ( Graph(..)
+, singleton
 , insert
 , lookup
 , GraphErr(..)
@@ -21,7 +22,7 @@ import           Data.Monoid (Endo(..))
 import qualified Data.Set as Set
 import           Facet.Core
 import           Facet.Name
-import           Facet.Stack
+import           Facet.Stack hiding (singleton)
 import           Prelude hiding (lookup)
 
 newtype Graph = Graph { getGraph :: Map.Map MName (FilePath, Module) }
@@ -33,6 +34,9 @@ type instance IxValue Graph = (FilePath, Module)
 instance Ixed Graph
 instance At   Graph where
   at i = iso getGraph Graph .at i
+
+singleton :: FilePath -> Module -> Graph
+singleton p m@Module{ name } = Graph (Map.singleton name (p, m))
 
 insert :: FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
