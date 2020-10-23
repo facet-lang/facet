@@ -355,6 +355,7 @@ lookupC n Module{ name, defs } = maybe empty pure $ matchWith matchDef defs
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Value)
+lookupD (C n) m = lookupC n m
 lookupD n m@Module{ name, defs } = maybe ((`lookupC` m) =<< unEName n) pure $ do
   d ::: _T <- lookup n defs
   pure $ name :.: n :=: d ::: _T
