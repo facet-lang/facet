@@ -81,26 +81,20 @@ instance Monoid FVs where
 
 
 class Monoid v => Vars v where
-  use :: Level -> v
-  use l = cons l mempty
   cons :: Level -> v -> v
-  cons l v = use l <> v
   bind :: Level -> v -> v
 
-  {-# MINIMAL (use|cons), bind #-}
+  {-# MINIMAL cons, bind #-}
 
 instance Vars FVs where
-  use (Level l) = FVs $ \ b -> if l `IntSet.member` b then id else IntSet.insert l
   cons (Level l) (FVs v) = FVs $ \ b -> v b . if l `IntSet.member` b then id else IntSet.insert l
   bind (Level l) (FVs r) = FVs $ \ b -> r (IntSet.insert l b)
 
 instance Vars b => Vars (a -> b) where
-  use l = pure (use l)
   cons l = fmap (cons l)
   bind l = fmap (cons l)
 
 instance (Vars a, Vars b) => Vars (a, b) where
-  use l = (use l, use l)
   cons l (a, b) = (cons l a, cons l b)
   bind l (a, b) = (bind l a, bind l b)
 

@@ -31,7 +31,7 @@ import           Facet.Core
 import qualified Facet.Elab as Elab
 import           Facet.Eval
 import           Facet.Graph
-import           Facet.Name hiding (Meta, use)
+import           Facet.Name hiding (Meta)
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab
 import           Facet.Notice.Parser

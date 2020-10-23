@@ -39,7 +39,6 @@ instance Monoid Print where
   mempty = Print mempty mempty
 
 instance Vars Print where
-  use l = Print (use l) mempty
   cons l d = Print (cons l (fvs d)) (doc d)
   bind l d = Print (bind l (fvs d)) (doc d)
 
