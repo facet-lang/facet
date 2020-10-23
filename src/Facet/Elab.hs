@@ -177,7 +177,6 @@ resolve
   -> Synth QName
 resolve n = Synth $ asks (lookupD n) >>= \case
   Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
-  -- FIXME: look up in the imports
   Nothing                -> do
     g <- ask @Graph
     let defs = foldMap (lookupD n . snd) (getGraph g)
