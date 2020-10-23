@@ -181,8 +181,9 @@ con = anned ((:::) <$> cname <* colon <*> type')
 monotypeTable :: (Has Parser sig p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
 monotypeTable =
   [ [ Infix L mempty (S.$$) ]
-  , [ -- FIXME: we should treat this as a global.
+  , [ -- FIXME: we should treat these as globals.
       Atom (anned (S.Type <$ token (string "Type")))
+    , Atom (anned (S.Interface <$ token (string "Interface")))
       -- FIXME: holes in types
     , Atom tvar
     , Atom (anned (S.qual <$> qname))
