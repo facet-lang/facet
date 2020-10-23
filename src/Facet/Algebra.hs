@@ -147,8 +147,8 @@ foldSExpr alg = go
     S.Hole  n -> hole alg n
     S.Type     -> _Type alg
     S.Interface -> _Interface alg
-    S.ForAll t b ->
-      let (ts, b') = splitr (S.unForAll . S.out) (S.Ann s (S.ForAll t b))
+    S.ForAll n t b ->
+      let (ts, b') = splitr (S.unForAll . S.out) (S.Ann s (S.ForAll n t b))
           binding (d, env) (Nothing ::: t) = ((d, env), im ([] ::: go env t))
           binding (d, env) (Just n  ::: t) = let v = tintro alg n d in ((succ d, env :> v), im ([v] ::: go env t))
           ((_, env'), ts') = mapAccumL binding (Level (length env), env) ts
