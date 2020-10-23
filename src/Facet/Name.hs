@@ -129,7 +129,7 @@ moduleName :: QName -> MName
 moduleName (mname :.: _) = mname
 
 
--- | Declaration names; a choice of expression, term, or operator names.
+-- | Declaration names; a choice of expression, constructor, term, or operator names.
 data DName
   = E UName
   | C UName
