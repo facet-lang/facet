@@ -132,17 +132,17 @@ moduleName (mname :.: _) = mname
 -- | Declaration names; a choice of expression, constructor, term, or operator names.
 data DName
   = E UName
-  | C UName
+  | C DName UName
   | T UName
   | O Op
   deriving (Eq, Ord, Show)
 
 instance P.Pretty DName where
   pretty = \case
-    E n -> P.pretty n
-    C n -> P.pretty n
-    T n -> P.pretty n
-    O o -> P.pretty o
+    E   n -> P.pretty n
+    C t n -> P.pretty t <> dot <> P.pretty n
+    T   n -> P.pretty n
+    O   o -> P.pretty o
 
 
 -- | Associativity of an infix operator.
