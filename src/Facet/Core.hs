@@ -34,6 +34,7 @@ module Facet.Core
 , name_
 , imports_
 , defs_
+, lookupC
 , lookupD
 , Import(..)
 , Def(..)
@@ -342,6 +343,12 @@ imports_ = lens imports (\ m imports -> m{ imports })
 defs_ :: Lens' Module [(DName, Maybe Def ::: Value)]
 defs_ = lens defs (\ m defs -> m{ defs })
 
+
+lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Value)
+lookupC n Module{ name, defs } = maybe empty pure $ matchWith matchDef defs
+  where
+  matchDef       (dname, d ::: _)  = d >>= unDData >>= matchWith (matchCon dname)
+  matchCon dname (n' :=: v ::: _T) = (name :.: C dname n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Value)
 lookupD n Module{ name, defs } = maybe empty pure $ do
