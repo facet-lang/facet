@@ -23,6 +23,7 @@ import           Facet.Stack
 import           Prelude hiding (lookup)
 
 newtype Graph = Graph { getGraph :: Map.Map MName (FilePath, Module) }
+  deriving (Semigroup, Monoid)
 
 insert :: FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
