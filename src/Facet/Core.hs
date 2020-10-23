@@ -330,7 +330,9 @@ fill f z = mapAccumL (\ z _ -> f z) z
 -- FIXME: model operators and their associativities for parsing.
 data Module = Module
   { name    :: MName
+  -- FIXME: record source references to imports to contextualize ambiguous name errors.
   , imports :: [Import]
+  -- FIXME: record source references to definitions to contextualize ambiguous name errors.
   , defs    :: [(DName, Maybe Def ::: Value)]
   }
 
