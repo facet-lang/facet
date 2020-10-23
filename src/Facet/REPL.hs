@@ -166,6 +166,7 @@ newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Not
 
 
 showPaths, showModules, showTargets :: Action
+
 showPaths   = Action $ \ _ -> do
   dir <- liftIO getCurrentDirectory
   print $ nest 2 $ reflow "current working directory:" </> pretty dir
