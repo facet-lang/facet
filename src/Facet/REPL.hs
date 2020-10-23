@@ -131,6 +131,7 @@ loop = do
   where
   commandParser = runFacet [] [] (whole (parseCommands commands <|> Eval <$> expr))
 
+  runAction :: (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> Action -> m ()
   runAction src = \case
     Help -> print helpDoc
     Quit -> empty
