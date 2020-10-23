@@ -29,7 +29,8 @@ fromModule (Module mname _ defs) = fromList $ do
   (dname, def ::: _T) <- defs
   case def of
     DTerm v  -> [ (dname, mname :=: Just v ::: _T) ]
-    DData cs -> [ (C n,   mname :=: Just v ::: _T) | n :=: v ::: _T <- cs ]
+    DData cs ->   (dname, mname :=: Nothing ::: _T)
+              : [ (C n,   mname :=: Just v ::: _T) | n :=: v ::: _T <- cs ]
 
 lookup :: DName -> Env -> Maybe (MName :=: Maybe Value ::: Value)
 lookup k (Env env) = do
