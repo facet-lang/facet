@@ -237,7 +237,7 @@ loadModule name path src = do
   i <- fresh
   print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty 'n')) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
-  m <- elab src $ Elab.elabModule m
+  m <- rethrowElabErrors src Code $ Elab.elabModule m
   modules_.at path .= Just m
   pure m
 
