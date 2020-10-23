@@ -63,7 +63,7 @@ reAnnotateNotice f Notice{ level, source, reason, context} = Notice{ level, sour
 prettyNotice :: Notice a -> P.Doc (Highlight a)
 prettyNotice (Notice level (Source path span _ (line:|_)) reason context) = concatWith (surround hardline)
   ( nest 2 (group (fillSep
-    [ annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> pos (Span.start span) <> colon <> foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level
+    [ annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> prettySpan span <> colon <> foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level
     , P.reAnnotate Reason reason
     ]))
   : annotate Gutter (pretty (succ (Span.line (Span.start span)))) <+> align (vcat
@@ -72,6 +72,10 @@ prettyNotice (Notice level (Source path span _ (line:|_)) reason context) = conc
     ])
   : map (P.reAnnotate Context) context)
   where
+  prettySpan (Span.Span start end)
+    | start == end = pos start
+    | otherwise    = pos start <> pretty '-' <> pos end
+
   pos (Span.Pos l c) = annotate Span (pretty (succ l)) <> colon <> annotate Span (pretty (succ c))
 
   padding (Span.Span (Span.Pos _ c) _) = pretty (replicate c ' ')
