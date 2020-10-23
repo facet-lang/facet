@@ -48,6 +48,7 @@ import           Text.Parser.Token.Style
 -- list literals
 -- numeric literals
 -- forcing nullary computations
+-- resolve symbols in the parser
 
 runFacet :: Functor m => [N.UName] -> [AnyOperator] -> Facet m a -> m a
 runFacet env ops (Facet m) = evalState ops (m env)
