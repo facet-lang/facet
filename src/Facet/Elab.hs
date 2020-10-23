@@ -60,7 +60,7 @@ type Prob = Value
 
 type Subst = IntMap.IntMap (Maybe Prob ::: Type)
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Env.Env :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -72,15 +72,14 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Reader (Context Type) :+: Reader Env.Env :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err) Elab where
+instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err) Elab where
   alg hdl sig ctx = case sig of
-    L rctx                      -> Elab $ alg (runElab . hdl) (inj rctx) ctx
-    R (L renv)                  -> Elab $ alg (runElab . hdl) (inj renv) ctx
-    R (R (L rspan))             -> Elab $ alg (runElab . hdl) (inj rspan) ctx
-    R (R (R (L graph)))         -> Elab $ alg (runElab . hdl) (inj graph) ctx
-    R (R (R (R (L mod))))       -> Elab $ alg (runElab . hdl) (inj mod) ctx
-    R (R (R (R (R (L subst))))) -> Elab $ alg (runElab . hdl) (inj subst) ctx
-    R (R (R (R (R (R throw))))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
+    L rctx                  -> Elab $ alg (runElab . hdl) (inj rctx) ctx
+    R (L rspan)             -> Elab $ alg (runElab . hdl) (inj rspan) ctx
+    R (R (L graph))         -> Elab $ alg (runElab . hdl) (inj graph) ctx
+    R (R (R (L mod)))       -> Elab $ alg (runElab . hdl) (inj mod) ctx
+    R (R (R (R (L subst)))) -> Elab $ alg (runElab . hdl) (inj subst) ctx
+    R (R (R (R (R throw)))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
 
 elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err) sig m => Elab Value -> m Value
 elab = elabWith apply
@@ -90,7 +89,7 @@ elabWith f = runSubstWith f . runContext . Env.runEnv . runElab
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
-  deriving (Algebra (Reader Type :+: Reader (Context Type) :+: Reader Env.Env :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
+  deriving (Algebra (Reader Type :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
