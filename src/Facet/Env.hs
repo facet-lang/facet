@@ -13,6 +13,7 @@ import           Control.Monad (guard, (<=<))
 import           Data.List (uncons)
 import qualified Data.Map as Map
 import           Facet.Core
+import qualified Facet.Graph as G
 import           Facet.Name
 import           Facet.Syntax
 import           Prelude hiding (lookup)
@@ -23,13 +24,22 @@ newtype Env = Env { getEnv :: Map.Map DName (Map.Map MName Value) }
 fromList :: [(DName, MName ::: Value)] -> Env
 fromList = Env . Map.fromListWith (<>) . map (fmap (\ (mn ::: t) -> Map.singleton mn t))
 
-fromModule :: Module -> Env
-fromModule (Module mname _ defs) = fromList $ do
-  (dname, def ::: _T) <- defs
-  case def of
-    DTerm _  -> [ (dname, mname ::: _T) ]
-    DData cs ->   (dname, mname ::: _T)
-              : [ (C n,   mname ::: _T) | n :=: _ ::: _T <- cs ]
+fromModule :: Module -> G.Graph -> Env
+fromModule m@(Module _ is _) g = fromList $ local m ++ imported
+  where
+  local (Module mname _ defs) = do
+    (dname, def ::: _T) <- defs
+    case def of
+      DTerm _  -> [ (dname, mname ::: _T) ]
+      DData cs ->   (dname, mname ::: _T)
+                : [ (C n,   mname ::: _T) | n :=: _ ::: _T <- cs ]
+  imported = do
+    Import{ name } <- is
+    (_, m) <- G.lookupM name g
+    exported m
+  -- FIXME: there needs to be some mechanism for exporting (or not exporting) local definitions from a module
+  exported = local
+
 
 lookup :: DName -> Env -> Maybe (MName ::: Value)
 lookup k (Env env) = do
@@ -44,7 +54,7 @@ insert :: QName ::: Value -> Env -> Env
 insert (m :.: d ::: v) = Env . Map.insertWith (<>) d (Map.singleton m v) . getEnv
 
 
-runEnv :: Has (Reader Module) sig m => ReaderC Env m b -> m b
+runEnv :: (Has (Reader G.Graph) sig m, Has (Reader Module) sig m) => ReaderC Env m b -> m b
 runEnv m = do
-  env <- asks fromModule
+  env <- fromModule <$> ask <*> ask
   runReader env m
