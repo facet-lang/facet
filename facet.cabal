@@ -63,6 +63,7 @@ library
     Facet.CLI
     Facet.Context
     Facet.Core
+    Facet.Diff
     Facet.Effect.Parser
     Facet.Effect.Readline
     Facet.Elab
