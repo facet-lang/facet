@@ -24,7 +24,6 @@ import           Data.Text.Lazy (unpack)
 import           Facet.Algebra hiding (Algebra)
 import           Facet.Carrier.Parser.Church
 import           Facet.Carrier.Readline.Haskeline
-import qualified Facet.Carrier.State.Lens as L
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Core
 import qualified Facet.Elab as Elab
@@ -288,11 +287,11 @@ prettyNotice' = P.reAnnotate Style.Notice . Notice.prettyNotice
 prettyCode :: Print -> Doc Style
 prettyCode = P.reAnnotate Code . getPrint
 
-elab :: Has (State REPL) sig m => Source -> I.ThrowC (Notice.Notice Style) Elab.Err (L.StateC REPL Env.Env (ReaderC Module (ReaderC Graph (ReaderC Span m)))) a -> m a
+elab :: Has (State REPL) sig m => Source -> I.ThrowC (Notice.Notice Style) Elab.Err (ReaderC Module (ReaderC Graph (ReaderC Span m))) a -> m a
 elab src m = do
   graph <- use modules_
   localDefs <- use localDefs_
-  runReader (span src) . runReader graph . runReader localDefs . L.runState env_ . rethrowElabErrors src Code $ m
+  runReader (span src) . runReader graph . runReader localDefs . rethrowElabErrors src Code $ m
 
 
 -- | Compose a getter onto the input of a Kleisli arrow and run it on the 'State'.
