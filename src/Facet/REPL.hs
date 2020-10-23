@@ -66,7 +66,7 @@ repl
 
 data REPL = REPL
   { line           :: Int
-  , modules        :: Map.Map FilePath Module
+  , modules        :: Graph
   , promptFunction :: Int -> IO String
   , env            :: Env.Env
   , targets        :: Set.Set MName
@@ -77,7 +77,7 @@ data REPL = REPL
 line_ :: Lens' REPL Int
 line_ = lens line (\ r line -> r{ line })
 
-modules_ :: Lens' REPL (Map.Map FilePath Module)
+modules_ :: Lens' REPL Graph
 modules_ = lens modules (\ r modules -> r{ modules })
 
 env_ :: Lens' REPL Env.Env
@@ -141,7 +141,7 @@ loop = do
         searchPaths <- gets (toList . searchPaths)
         unless (null searchPaths)
           $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
-      ShowModules -> gets (unlines . map (\ (p, Module{ name }) -> pretty name <+> S.parens (pretty p)) . Map.toList . modules) >>= print
+      ShowModules -> gets (unlines . map (\ (name, (path, _)) -> pretty name <+> S.parens (pretty path)) . Map.toList . getGraph . modules) >>= print
       ShowTargets -> gets (unlines . map pretty . toList . targets) >>= print
     Add (ModPath path) -> searchPaths_ %= Set.insert path
     Add (ModTarget targets) -> do
@@ -238,7 +238,7 @@ loadModule name path src = do
   print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty 'n')) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
   m <- rethrowElabErrors src Code $ Elab.elabModule m
-  modules_.at path .= Just m
+  modules_.at name .= Just (path, m)
   pure m
 
 resolveName :: (Has (State REPL) sig m, MonadIO m) => MName -> m FilePath
