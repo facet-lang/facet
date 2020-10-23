@@ -27,7 +27,6 @@ import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Core
 import qualified Facet.Elab as Elab
-import qualified Facet.Env as Env
 import           Facet.Eval
 import           Facet.Graph
 import           Facet.Name hiding (Meta, use)
@@ -68,7 +67,6 @@ data REPL = REPL
   , modules        :: Graph
   , localDefs      :: Module -- ^ The module where definitions made in the REPL live. Not a part of modules.
   , promptFunction :: Int -> IO String
-  , env            :: Env.Env
   , targets        :: Set.Set MName
   -- FIXME: break this down by file/module/whatever so we can load multiple packages
   , searchPaths    :: Set.Set FilePath
@@ -95,7 +93,6 @@ defaultREPLState = REPL
   , modules
   , localDefs
   , promptFunction = defaultPromptFunction
-  , env            = Env.fromModule localDefs modules
   , targets        = mempty
   , searchPaths    = Set.singleton "src"
   }
