@@ -33,6 +33,7 @@ module Facet.Core
 , Module(..)
 , name_
 , imports_
+, defs_
 , Import(..)
 , Def(..)
 ) where
@@ -335,6 +336,9 @@ name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
 
 imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })
+
+defs_ :: Lens' Module [(DName, Def ::: Value)]
+defs_ = lens defs (\ m defs -> m{ defs })
 
 
 newtype Import = Import { name :: MName }
