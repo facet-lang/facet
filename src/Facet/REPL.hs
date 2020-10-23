@@ -194,6 +194,7 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
+-- FIXME: either remove this in favour of shoving the interpretations into the Commands directly, or else figure out a pleasant way to derive the Commands from it.
 data Action
   = Help
   | Quit
