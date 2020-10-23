@@ -29,11 +29,11 @@ rethrowElabErrors src mapAnn = L.runThrow $ \ Err{ span, reason, context } ->
   where
   combine (d, sort, print, ctx) (n ::: _T) =
     let s = sortOf sort _T
-        n' = name s explicit n d
+        n' = name s surface n d
     in  ( succ d
         , sort  :> s
         , print :> n'
-        , ctx   :> reAnnotate mapAnn (getPrint (ann (n' ::: foldCValue explicit print _T))) )
+        , ctx   :> reAnnotate mapAnn (getPrint (ann (n' ::: foldCValue surface print _T))) )
   name = \case
     STerm -> intro
     _     -> tintro
@@ -57,4 +57,4 @@ printReason ctx = group . \case
 
 
 printType :: Stack Print -> Type -> Doc Print.Highlight
-printType env = getPrint . foldCValue explicit env
+printType env = getPrint . foldCValue surface env
