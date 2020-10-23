@@ -167,7 +167,7 @@ runAction src = \case
     e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
     graph <- use modules_
     localDefs <- use localDefs_
-    e'' <- L.runState env_ . runReader graph . runReader localDefs $ Env.runEnv $ eval e'
+    e'' <- runReader graph . runReader localDefs $ eval e'
     print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil _T)))
 
 
