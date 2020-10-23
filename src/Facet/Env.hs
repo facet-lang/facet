@@ -45,7 +45,7 @@ insert :: QName ::: Value -> Env -> Env
 insert (m :.: d ::: v) = Env . Map.insertWith (<>) d (Map.singleton m v) . getEnv
 
 
-runEnv :: Has (State (Env)) sig m => ReaderC (Env) m b -> m b
+runEnv :: Has (State Env) sig m => ReaderC Env m b -> m b
 runEnv m = do
   env <- get
   runReader env m
