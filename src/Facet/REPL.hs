@@ -65,8 +65,8 @@ repl
 data REPL = REPL
   { line           :: Int
   , promptFunction :: Int -> IO String
-  , modules        :: Graph
   , localDefs      :: Module -- ^ The module where definitions made in the REPL live. Not a part of modules.
+  , modules        :: Graph
   , targets        :: Set.Set MName
   -- FIXME: break this down by file/module/whatever so we can load multiple packages
   , searchPaths    :: Set.Set FilePath
@@ -75,11 +75,11 @@ data REPL = REPL
 line_ :: Lens' REPL Int
 line_ = lens line (\ r line -> r{ line })
 
-modules_ :: Lens' REPL Graph
-modules_ = lens modules (\ r modules -> r{ modules })
-
 localDefs_ :: Lens' REPL Module
 localDefs_ = lens localDefs (\ r localDefs -> r{ localDefs })
+
+modules_ :: Lens' REPL Graph
+modules_ = lens modules (\ r modules -> r{ modules })
 
 targets_ :: Lens' REPL (Set.Set MName)
 targets_ = lens targets (\ r targets -> r{ targets })
@@ -91,14 +91,14 @@ defaultREPLState :: REPL
 defaultREPLState = REPL
   { line           = 0
   , promptFunction = defaultPromptFunction
-  , modules
   , localDefs
+  , modules
   , targets        = mempty
   , searchPaths    = Set.singleton "src"
   }
   where
-  modules = singleton Nothing kernel
   localDefs = Module (MName mempty) [] []
+  modules = singleton Nothing kernel
 
 defaultPromptFunction :: Int -> IO String
 defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
