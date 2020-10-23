@@ -42,6 +42,7 @@ rethrowElabErrors src mapAnn = L.runThrow $ \ Err{ span, reason, context } ->
 printReason :: Stack Print -> Reason -> Doc Print.Highlight
 printReason ctx = group . \case
   FreeVariable m n       -> fillSep [reflow "variable not in scope:", prettyMaybeQual m n]
+  AmbiguousName m n      -> fillSep [reflow "ambiguous name", prettyMaybeQual m n]
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
   Mismatch msg exp act   -> reflow msg
       <> hardline <> pretty "expected:" <> print exp'
