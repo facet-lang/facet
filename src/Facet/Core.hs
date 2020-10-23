@@ -37,6 +37,7 @@ module Facet.Core
 , lookupD
 , Import(..)
 , Def(..)
+, unDData
 ) where
 
 import           Control.Effect.Empty
@@ -353,6 +354,11 @@ newtype Import = Import { name :: MName }
 data Def
   = DTerm Value
   | DData [UName :=: Value ::: Value]
+
+unDData :: Has Empty sig m => Def -> m [UName :=: Value ::: Value]
+unDData = \case
+  DData cs -> pure cs
+  _        -> empty
 
 
 matchWith :: Foldable t => (a -> Maybe b) -> t a -> Maybe b
