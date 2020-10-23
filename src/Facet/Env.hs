@@ -9,7 +9,6 @@ module Facet.Env
 ) where
 
 import           Control.Carrier.Reader
-import           Control.Effect.State
 import           Control.Monad (guard, (<=<))
 import           Data.List (uncons)
 import qualified Data.Map as Map
@@ -45,7 +44,7 @@ insert :: QName ::: Value -> Env -> Env
 insert (m :.: d ::: v) = Env . Map.insertWith (<>) d (Map.singleton m v) . getEnv
 
 
-runEnv :: Has (State Env) sig m => ReaderC Env m b -> m b
+runEnv :: Has (Reader Module) sig m => ReaderC Env m b -> m b
 runEnv m = do
-  env <- get
+  env <- asks fromModule
   runReader env m

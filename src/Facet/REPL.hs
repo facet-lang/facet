@@ -292,8 +292,11 @@ prettyNotice' = P.reAnnotate Style.Notice . Notice.prettyNotice
 prettyCode :: Print -> Doc Style
 prettyCode = P.reAnnotate Code . getPrint
 
-elab :: Source -> I.ThrowC (Notice.Notice Style) Elab.Err (L.StateC REPL Env.Env (ReaderC Span m)) a -> m a
-elab src = runReader (span src) . L.runState env_ . rethrowElabErrors src Code
+elab :: Has (State REPL) sig m => Source -> I.ThrowC (Notice.Notice Style) Elab.Err (L.StateC REPL Env.Env (ReaderC Module (ReaderC Graph (ReaderC Span m)))) a -> m a
+elab src m = do
+  graph <- use modules_
+  localDefs <- use localDefs_
+  runReader (span src) . runReader graph . runReader localDefs . L.runState env_ . rethrowElabErrors src Code $ m
 
 
 -- | Compose a getter onto the input of a Kleisli arrow and run it on the 'State'.
