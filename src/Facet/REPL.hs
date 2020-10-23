@@ -217,11 +217,12 @@ reload src = do
   let nModules = length modules
   evalFresh 1 $ for modules $ \ (name, path, src) -> do
     i <- fresh
-    print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
+    print $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
 
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     (Just <$> loadModule name path src) `catchError` \ err -> Nothing <$ print (prettyNotice' err)
   where
+  ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = Node n (map ((S.name :: S.Import -> MName) . S.out) imports) (n, path, source)
 
 loadModuleHeader :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> MName -> m (MName, FilePath, Source, [S.Ann S.Import])
