@@ -2,6 +2,7 @@
 module Facet.Graph
 ( Graph(..)
 , singleton
+, restrict
 , insert
 , lookupM
 , lookupQ
@@ -39,6 +40,9 @@ instance At   Graph where
 
 singleton :: Maybe FilePath -> Module -> Graph
 singleton p m@Module{ name } = Graph (Map.singleton name (p, m))
+
+restrict :: Graph -> Set.Set MName -> Graph
+restrict (Graph g) s = Graph $ Map.restrictKeys g s
 
 insert :: Maybe FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
