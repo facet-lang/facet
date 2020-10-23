@@ -173,7 +173,7 @@ switch (Synth m) = \case
 resolve
   :: DName
   -> Synth QName
-resolve n = Synth $ Env.lookup n <$> ask >>= \case
+resolve n = Synth $ Env.lookupD n <$> ask >>= \case
   Just (m ::: _T) -> pure $ m :.: n ::: _T
   Nothing
     | E n <- n  -> synth (resolve (C n))

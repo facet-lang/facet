@@ -2,7 +2,7 @@ module Facet.Env
 ( Env(..)
 , fromList
 , fromModule
-, lookup
+, lookupD
 , lookupQ
 , insert
 , runEnv
@@ -12,11 +12,10 @@ import           Control.Carrier.Reader
 import           Control.Monad (guard, (<=<))
 import           Data.List (uncons)
 import qualified Data.Map as Map
-import           Facet.Core
+import           Facet.Core hiding (lookupD)
 import qualified Facet.Graph as G
 import           Facet.Name
 import           Facet.Syntax
-import           Prelude hiding (lookup)
 
 newtype Env = Env { getEnv :: Map.Map DName (Map.Map MName Value) }
   deriving (Monoid, Semigroup)
@@ -41,8 +40,8 @@ fromModule m@(Module _ is _) g = fromList $ local m ++ imported
   exported = local
 
 
-lookup :: DName -> Env -> Maybe (MName ::: Value)
-lookup k (Env env) = do
+lookupD :: DName -> Env -> Maybe (MName ::: Value)
+lookupD k (Env env) = do
   mod <- Map.lookup k env
   ((mn, v), t) <- uncons (Map.toList mod)
   (mn ::: v) <$ guard (null t)
