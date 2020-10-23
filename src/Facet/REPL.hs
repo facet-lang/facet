@@ -215,12 +215,14 @@ data ModField
 
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m [Module]
-reload src = evalFresh 1 $ targets_ ~> \ targets -> do
-  -- FIXME: remove stale modules
-  targetModules <- traverse (loadModule src) (toList targets)
-  rethrowGraphErrors src $ loadOrder (fmap toNode . loadModule src) (map toNode targetModules)
+reload src = do
+  modules <- targets_ ~> \ targets -> do
+    -- FIXME: remove stale modules
+    targetHeads <- traverse (loadModuleHeader src) (toList targets)
+    rethrowGraphErrors src $ loadOrder (fmap toNode . loadModuleHeader src) (map toNode targetHeads)
+  evalFresh 1 $ traverse (\ (name, path, src) -> loadModule name path src) modules
   where
-  toNode m = Node ((name :: Module -> MName) m) (map (name :: Import -> MName) (imports m)) m
+  toNode (n, path, source, imports) = Node n (map ((S.name :: S.Import -> MName) . S.out) imports) (n, path, source)
 
 loadModuleHeader :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> MName -> m (MName, FilePath, Source, [S.Ann S.Import])
 loadModuleHeader src name = do
@@ -230,12 +232,10 @@ loadModuleHeader src name = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] moduleHeader))
   pure (name', path, src, is)
 
-loadModule :: (Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> MName -> m Module
-loadModule src name = do
+loadModule :: (Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => MName -> FilePath -> Source -> m Module
+loadModule name path src = do
   i <- fresh
   print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty 'n')) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
-  path <- resolveName name
-  src <- rethrowIOErrors src $ readSourceFromFile path
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
   m <- elab src $ Elab.elabModule m
   modules_.at path .= Just m
