@@ -34,6 +34,7 @@ module Facet.Core
 , name_
 , imports_
 , defs_
+, lookupQ
 , Import(..)
 , Def(..)
 ) where
@@ -339,6 +340,10 @@ imports_ = lens imports (\ m imports -> m{ imports })
 
 defs_ :: Lens' Module [(DName, Def ::: Value)]
 defs_ = lens defs (\ m defs -> m{ defs })
+
+
+lookupQ :: QName -> Module -> Maybe (Def ::: Value)
+lookupQ (m:.:n) Module{ name, defs } = guard (m == name) *> lookup n defs
 
 
 newtype Import = Import { name :: MName }

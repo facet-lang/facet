@@ -12,7 +12,7 @@ import           Control.Effect.State
 import           Control.Monad (guard, (<=<))
 import           Data.List (uncons)
 import qualified Data.Map as Map
-import           Facet.Core
+import           Facet.Core hiding (lookupQ)
 import           Facet.Name
 import           Facet.Syntax
 import           Prelude hiding (lookup)
