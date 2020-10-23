@@ -127,32 +127,6 @@ loop = do
   where
   commandParser = runFacet [] [] (whole (parseCommands commands <|> showEval <$> expr))
 
-showREPLState t = Action $ \ _ -> case t of
-  ShowPaths   -> do
-    dir <- liftIO getCurrentDirectory
-    print $ nest 2 $ reflow "current working directory:" </> pretty dir
-    searchPaths <- gets (toList . searchPaths)
-    unless (null searchPaths)
-      $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
-  ShowModules -> uses modules_ (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= print
-  ShowTargets -> uses targets_ (unlines . map pretty . toList) >>= print
-add (ModPath path) = Action $ \ _ -> searchPaths_ %= Set.insert path
-add (ModTarget targets) = Action $ \ src -> do
-  targets_ %= Set.union (Set.fromList targets)
-  void $ reload src
-remove (ModPath path)      = Action $ \ _ -> searchPaths_ %= Set.delete path
--- FIXME: remove things depending on it
-remove (ModTarget targets) = Action $ \ _ -> targets_ %= (Set.\\ Set.fromList targets)
-
-showType e = Action $ \ src -> do
-  _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-  print (prettyCode (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
-
-showEval e = Action $ \ src -> do
-  e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-  e'' <- elab src $ eval (generalize e')
-  print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil (generalize _T))))
-
 
 -- TODO:
 -- - multiline
@@ -198,6 +172,40 @@ data ShowField
 data ModField
   = ModPath FilePath
   | ModTarget [MName]
+
+
+showREPLState :: ShowField -> Action
+showREPLState t = Action $ \ _ -> case t of
+  ShowPaths   -> do
+    dir <- liftIO getCurrentDirectory
+    print $ nest 2 $ reflow "current working directory:" </> pretty dir
+    searchPaths <- gets (toList . searchPaths)
+    unless (null searchPaths)
+      $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
+  ShowModules -> uses modules_ (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= print
+  ShowTargets -> uses targets_ (unlines . map pretty . toList) >>= print
+
+add :: ModField -> Action
+add (ModPath path) = Action $ \ _ -> searchPaths_ %= Set.insert path
+add (ModTarget targets) = Action $ \ src -> do
+  targets_ %= Set.union (Set.fromList targets)
+  void $ reload src
+
+remove :: ModField -> Action
+remove (ModPath path)      = Action $ \ _ -> searchPaths_ %= Set.delete path
+-- FIXME: remove things depending on it
+remove (ModTarget targets) = Action $ \ _ -> targets_ %= (Set.\\ Set.fromList targets)
+
+showType :: S.Ann S.Expr -> Action
+showType e = Action $ \ src -> do
+  _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
+  print (prettyCode (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
+
+showEval :: S.Ann S.Expr -> Action
+showEval e = Action $ \ src -> do
+  e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
+  e'' <- elab src $ eval (generalize e')
+  print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil (generalize _T))))
 
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m [Maybe Module]
