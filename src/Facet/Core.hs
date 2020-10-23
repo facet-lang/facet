@@ -62,6 +62,7 @@ import           Prelude hiding (zip, zipWith)
 -- FIXME: represent closed portions of the tree explicitly?
 data Value
   = VType
+  | VInterface
   | VForAll (Pl_ UName ::: Value) (Value -> Value)
   | VLam (Pl_ UName ::: Value) (Value -> Value)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
@@ -76,6 +77,8 @@ eq d = curry $ \case
   -- defined thus instead of w/ fallback case to have exhaustiveness checks kick in when adding constructors.
   (VType, VType)                                           -> True
   (VType, _)                                               -> False
+  (VInterface, VInterface)                                 -> True
+  (VInterface, _)                                          -> False
   (VForAll (P p1 _ ::: t1) b1, VForAll (P p2 _ ::: t2) b2) -> p1 == p2 && eq d t1 t2 && eq (succ d) (b1 (free d)) (b2 (free d))
   (VForAll{}, _)                                           -> False
   (VLam (P p1 _ ::: t1) b1, VLam (P p2 _ ::: t2) b2)       -> p1 == p2 && eq d t1 t2 && eq (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
@@ -222,6 +225,7 @@ subst s
   where
   go = \case
     VType       -> VType
+    VInterface  -> VInterface
     VForAll t b -> VForAll (fmap go t) (go . b)
     VLam    n b -> VLam (fmap go n) (go . b)
     VNeut f a   -> unHead global free (s !) f' `elimN` fmap substElim a
@@ -246,6 +250,7 @@ bind target with = go
   where
   go = \case
     VType       -> VType
+    VInterface  -> VInterface
     VForAll t b -> VForAll (fmap go t) (go . b)
     VLam    n b -> VLam (fmap go n) (go . b)
     VNeut f a   -> unHead global (\ v -> if v == target then with else free v) metavar f' `elimN` fmap elim a
@@ -264,6 +269,7 @@ bind target with = go
 mvs :: Level -> Value -> IntMap.IntMap Value
 mvs d = \case
   VType                   -> mempty
+  VInterface              -> mempty
   VForAll (_ ::: t) b     -> mvs d t <> mvs (succ d) (b (free d))
   VLam (_ ::: t) b        -> mvs d t <> mvs (succ d) (b (free d))
   VNeut h sp              -> unHead (mvs d . ty) mempty (\ (m ::: _T) -> IntMap.insert (getMeta m) _T (mvs d _T)) h <> foldMap goE sp
@@ -294,6 +300,7 @@ data Sort
 sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
   VType                 -> SKind
+  VInterface            -> SKind
   VForAll (_ ::: _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
   VLam{}                -> STerm
   VNeut h sp            -> minimum (unHead (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (\case{ EApp a -> sortOf ctx (out a) ; ECase _ -> STerm } <$> sp))

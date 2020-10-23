@@ -76,6 +76,7 @@ foldCValue alg = go
   where
   go env = \case
     C.VType -> _Type alg
+    C.VInterface -> _Interface alg
     C.VForAll t b ->
       let (vs, (_, b')) = splitr C.unForAll' (d, C.VForAll t b)
           binding env (n ::: _T) = (env :> tvar env (n ::: _T), P (pl n) (name (pl n) (out n) (Level (length env)) ::: go env _T))
