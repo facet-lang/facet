@@ -108,14 +108,14 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
 
 kernel :: Module
 kernel = Module kernelName []
-  [ (kernelName :.: T (UName (TS.pack "Type")), DTerm VType ::: VType)
+  [ (T (UName (TS.pack "Type")), DTerm VType ::: VType)
   ]
   where
   kernelName = MName (TS.pack "Kernel")
 
 toEnv :: Module -> Env.Env
-toEnv (Module _ _ defs) = Env.fromList $ do
-  (mname:.:dname, def ::: _T) <- defs
+toEnv (Module mname _ defs) = Env.fromList $ do
+  (dname, def ::: _T) <- defs
   case def of
     DTerm v  -> [ (dname, mname :=: Just v ::: _T) ]
     DData cs -> [ (C n,   mname :=: Just v ::: _T) | n :=: v ::: _T <- cs ]

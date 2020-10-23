@@ -453,11 +453,11 @@ elabModule (S.Ann s (S.Module mname _is ds)) = runReader s . evalState (mempty @
           c <- apply s (go Nil _T')
           modify $ Env.insert (mname :.: C n :=: Just c ::: _T')
           pure $ n :=: c ::: _T'
-        pure (qname, C.DData cs' ::: _T)
+        pure (dname, C.DData cs' ::: _T)
       Right e' -> do
         e'' <- apply s e'
         modify $ Env.insert (qname :=: Just e'' ::: _T)
-        pure (qname, C.DTerm e'' ::: _T)
+        pure (dname, C.DTerm e'' ::: _T)
 
   pure $ C.Module mname [] defs
 

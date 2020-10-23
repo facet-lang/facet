@@ -118,13 +118,13 @@ foldCValue alg = go
   subpatterns env ps = mapAccumL (\ (env', ps) p -> let ((env'', v), p') = pat env' p in ((env'', ps:>v), p')) (env, Nil) ps
 
 foldCModule :: Algebra p -> C.Module -> p
-foldCModule alg (C.Module n is ds) = module_ alg
-  $   n
+foldCModule alg (C.Module mname is ds) = module_ alg
+  $   mname
   ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module")))))
   :=: (map (\ (C.Import n) -> import' alg n) is, map def ds)
   where
-  def (m :.: n, d ::: t) = decl alg
-    $   var alg (Global (Just m) n)
+  def (n, d ::: t) = decl alg
+    $   var alg (Global (Just mname) n)
     ::: defn alg (foldCValue alg Nil t
     :=: case d of
       C.DTerm b  -> foldCValue alg Nil b

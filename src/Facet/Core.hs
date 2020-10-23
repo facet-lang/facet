@@ -327,7 +327,7 @@ fill f z = mapAccumL (\ z _ -> f z) z
 data Module = Module
   { name    :: MName
   , imports :: [Import]
-  , defs    :: [(QName, Def ::: Value)]
+  , defs    :: [(DName, Def ::: Value)]
   }
 
 name_ :: Lens' Module MName
