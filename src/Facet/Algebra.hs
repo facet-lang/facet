@@ -149,9 +149,10 @@ foldSExpr alg = go
     S.Interface -> _Interface alg
     t S.:=> b ->
       let (ts, b') = splitr (S.unForAll . S.out) (S.Ann s (t S.:=> b))
-          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = tintro alg n d in ((succ d, env :> v), im ([v] ::: go env t))) (Level (length env), env) ts
+          binding (d, env) (Nothing ::: t) = ((d, env), im ([] ::: go env t))
+          binding (d, env) (Just n  ::: t) = let v = tintro alg n d in ((succ d, env :> v), im ([v] ::: go env t))
+          ((_, env'), ts') = mapAccumL binding (Level (length env), env) ts
       in fn alg ts' (go env' b')
-    a S.:-> b -> fn alg [ex ([] ::: go env a)] (go env b)
     f S.:$  a ->
       let (f', a') = splitl (S.unApp . S.out) (S.Ann s (f S.:$ a))
       in app alg (go env f') (fmap (ex . go env) a')

@@ -38,7 +38,7 @@ import           Control.Effect.Empty
 import           Control.Effect.Lens ((%=), (.=))
 import           Control.Effect.Sum
 import           Control.Lens (ifor_, ix)
-import           Data.Bifunctor (bimap, first)
+import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
@@ -278,15 +278,15 @@ elabExpr
   -> Maybe Type
   -> Elab (Expr ::: Type)
 elabExpr = withSpan' $ \case
-  S.Free m n  -> switch $ global (maybe (resolve n) (resolveQ . (:.: n)) m)
-  S.Bound n   -> switch $ bound n
-  S.Hole  n   -> check (hole n) "hole"
-  S.Type      -> switch $ _Type
-  S.Interface -> switch $ _Interface
-  t S.:=> b   -> switch $ bimap im (checkElab . elabExpr) t >~> \ v -> v |- checkElab (elabExpr b)
-  a S.:-> b   -> switch $ ex __ ::: checkElab (elabExpr a) >~> \ _ -> checkElab (elabExpr b)
-  f S.:$  a   -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
-  S.Comp cs   -> check (elabComp cs) "computation"
+  S.Free m n            -> switch $ global (maybe (resolve n) (resolveQ . (:.: n)) m)
+  S.Bound n             -> switch $ bound n
+  S.Hole  n             -> check (hole n) "hole"
+  S.Type                -> switch $ _Type
+  S.Interface           -> switch $ _Interface
+  Nothing ::: t S.:=> b -> switch $ ex __ ::: checkElab (elabExpr t) >~> \ _ ->      checkElab (elabExpr b)
+  Just n  ::: t S.:=> b -> switch $ im n  ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab (elabExpr b)
+  f S.:$  a             -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
+  S.Comp cs             -> check (elabComp cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
