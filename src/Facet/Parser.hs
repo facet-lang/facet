@@ -204,7 +204,7 @@ forAll mk k = do
   mk' start t b end = S.Ann (Span start end) (mk t b)
 
 type' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
-type' = forAll (\ (n ::: _T) b -> S.ForAll (Just (out n)) _T b) type' <|> monotype
+type' = forAll (\ (n ::: _T) b -> S.ForAll (S.Binding (Just (out n)) _T) b) type' <|> monotype
 
 monotype :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 monotype = fn mono
