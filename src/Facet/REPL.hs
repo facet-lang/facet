@@ -125,36 +125,33 @@ loop = do
     Nothing  -> pure ()
   loop
   where
-  commandParser = runFacet [] [] (whole (parseCommands commands <|> Eval <$> expr))
+  commandParser = runFacet [] [] (whole (parseCommands commands <|> showEval <$> expr))
 
-runAction :: (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> Action -> m ()
-runAction src = \case
-  Help -> print helpDoc
-  Quit -> empty
-  Show t -> case t of
-    ShowPaths   -> do
-      dir <- liftIO getCurrentDirectory
-      print $ nest 2 $ reflow "current working directory:" </> pretty dir
-      searchPaths <- gets (toList . searchPaths)
-      unless (null searchPaths)
-        $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
-    ShowModules -> uses modules_ (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= print
-    ShowTargets -> uses targets_ (unlines . map pretty . toList) >>= print
-  Add (ModPath path) -> searchPaths_ %= Set.insert path
-  Add (ModTarget targets) -> do
-    targets_ %= Set.union (Set.fromList targets)
-    void $ reload src
-  Remove (ModPath path) -> searchPaths_ %= Set.delete path
-  -- FIXME: remove things depending on it
-  Remove (ModTarget targets) -> targets_ %= (Set.\\ Set.fromList targets)
-  Reload -> void $ reload src
-  Type e -> do
-    _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-    print (prettyCode (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
-  Eval e -> do
-    e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-    e'' <- elab src $ eval (generalize e')
-    print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil (generalize _T))))
+showREPLState t = Action $ \ _ -> case t of
+  ShowPaths   -> do
+    dir <- liftIO getCurrentDirectory
+    print $ nest 2 $ reflow "current working directory:" </> pretty dir
+    searchPaths <- gets (toList . searchPaths)
+    unless (null searchPaths)
+      $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
+  ShowModules -> uses modules_ (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= print
+  ShowTargets -> uses targets_ (unlines . map pretty . toList) >>= print
+add (ModPath path) = Action $ \ _ -> searchPaths_ %= Set.insert path
+add (ModTarget targets) = Action $ \ src -> do
+  targets_ %= Set.union (Set.fromList targets)
+  void $ reload src
+remove (ModPath path)      = Action $ \ _ -> searchPaths_ %= Set.delete path
+-- FIXME: remove things depending on it
+remove (ModTarget targets) = Action $ \ _ -> targets_ %= (Set.\\ Set.fromList targets)
+
+showType e = Action $ \ src -> do
+  _ ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
+  print (prettyCode (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
+
+showEval e = Action $ \ src -> do
+  e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
+  e'' <- elab src $ eval (generalize e')
+  print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil (generalize _T))))
 
 
 -- TODO:
@@ -162,42 +159,36 @@ runAction src = \case
 -- - breakpoints
 commands :: Commands Action
 commands = choice
-  [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure Help
-  , command ["quit", "q"]       "exit the repl"                      Nothing        $ pure Quit
-  , command ["show"]            "show compiler state"                (Just "field") $ Show <$> choice
+  [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure (Action (\ _ -> print helpDoc))
+  , command ["quit", "q"]       "exit the repl"                      Nothing        $ pure (Action (\ _ -> empty))
+  , command ["show"]            "show compiler state"                (Just "field") $ showREPLState <$> choice
     [ ShowPaths   <$ token (string "paths")
     , ShowModules <$ token (string "modules")
     , ShowTargets <$ token (string "targets")
     ]
   , command ["add"]             "add a module/path to the repl"      (Just "item")  $ choice
-    [ Add . ModPath   <$ token (string "path")   <*> path'
-    , Add . ModTarget <$ token (string "target") <*> some mname
+    [ add . ModPath   <$ token (string "path")   <*> path'
+    , add . ModTarget <$ token (string "target") <*> some mname
     ]
   , command ["remove", "rm"]    "remove a module/path from the repl" (Just "item")  $ choice
-    [ Remove . ModPath   <$ token (string "path")   <*> path'
-    , Remove . ModTarget <$ token (string "target") <*> some mname
+    [ remove . ModPath   <$ token (string "path")   <*> path'
+    , remove . ModTarget <$ token (string "target") <*> some mname
     ]
-  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure Reload
+  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (void . reload))
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
-    $ Type <$> runFacet [] [] expr
+    $ showType <$> runFacet [] [] expr
   , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
-    $ Type <$> runFacet [] [] type'
+    $ showType <$> runFacet [] [] type'
   ]
 
 path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
--- FIXME: either remove this in favour of shoving the interpretations into the Commands directly, or else figure out a pleasant way to derive the Commands from it.
-data Action
-  = Help
-  | Quit
-  | Show ShowField
-  | Add ModField
-  | Remove ModField
-  | Reload
-  | Type (S.Ann S.Expr)
-  | Eval (S.Ann S.Expr)
+runAction :: (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> Action -> m ()
+runAction src (Action f) = f src
+
+newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ())
 
 data ShowField
   = ShowPaths
