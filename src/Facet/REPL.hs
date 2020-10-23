@@ -224,9 +224,9 @@ reload src = do
     (Just <$> loadModule name path src) `catchError` \ err -> Nothing <$ print (prettyNotice' err)
   let nSuccess = length (catMaybes results)
   print . fillSep $ if nModules == nSuccess then
-      [ annotate Success (pretty Notice.Info)  <> S.colon, annotate Success (pretty nModules),         reflow "modules loaded." ]
+      [ annotate Success (pretty nModules),         reflow "modules loaded." ]
     else
-      [ annotate Failure (pretty Notice.Error) <> S.colon, annotate Failure (ratio nSuccess nModules), reflow "modules loaded." ]
+      [ annotate Failure (ratio nSuccess nModules), reflow "modules loaded." ]
   pure results
   where
   ratio n d = pretty n <+> pretty "of" <+> pretty d
