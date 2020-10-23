@@ -1,6 +1,5 @@
 module Facet.Env
 ( Env(..)
-, fromList
 , fromModule
 , lookupD
 , lookupQ
@@ -20,11 +19,8 @@ import           Facet.Syntax
 newtype Env = Env { getEnv :: Map.Map DName (Map.Map MName Value) }
   deriving (Monoid, Semigroup)
 
-fromList :: [(DName, MName ::: Value)] -> Env
-fromList = Env . Map.fromListWith (<>) . map (fmap (\ (mn ::: t) -> Map.singleton mn t))
-
 fromModule :: Module -> G.Graph -> Env
-fromModule m@(Module _ is _) g = fromList $ local m ++ imported
+fromModule m@(Module _ is _) g = Env . Map.fromListWith (<>) . map (fmap (\ (mn ::: t) -> Map.singleton mn t)) $ local m ++ imported
   where
   local (Module mname _ defs) = do
     (dname, def ::: _T) <- defs
