@@ -154,16 +154,14 @@ Data types are defined using a similar syntax to other declarations, but with in
 ```facet
 Bool : Type
 { false : Bool
-, true  : Bool
-}
+, true  : Bool }
 ```
 
 Constructors with fields include them in their types:
 
 ```facet
 BoolPair : Type
-{ boolPair : Bool -> Bool -> BoolPair
-}
+{ boolPair : Bool -> Bool -> BoolPair }
 ```
 
 
@@ -188,8 +186,7 @@ Data constructors, introduced by datatypes, can be matched by mentioning their n
 ```facet
 not : Bool -> Bool
 { (false) -> true
-, (true)  -> false
-}
+, (true)  -> false }
 ```
 
 (Requiring parentheses around constructor patterns allows us to distinguish them from variable patterns, and thus to avoid accidentally introducing bugs when a constructor is renamed or typo’d.)
