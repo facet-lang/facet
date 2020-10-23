@@ -183,6 +183,7 @@ monotypeTable =
   [ [ Infix L mempty (S.$$) ]
   , [ -- FIXME: we should treat this as a global.
       Atom (anned (S.Type <$ token (string "Type")))
+      -- FIXME: holes in types
     , Atom tvar
     , Atom (anned (S.Qual <$> qname))
     ]
