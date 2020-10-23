@@ -73,8 +73,9 @@ prettyNotice (Notice level (Source path span _ (line:|_)) reason context) = conc
   : map (P.reAnnotate Context) context)
   where
   prettySpan (Span.Span start end)
-    | start == end = pos start
-    | otherwise    = pos start <> pretty '-' <> pos end
+    | start == end                     = pos start
+    | Span.line start == Span.line end = pos start <> pretty '-' <> coord (Span.column end)
+    | otherwise                        = pos start <> pretty '-' <> pos end
 
   pos (Span.Pos l c) = coord l <> colon <> coord c
   coord = annotate Span . pretty . succ
