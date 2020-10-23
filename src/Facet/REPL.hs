@@ -224,11 +224,11 @@ reload src = do
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     (Just <$> loadModule name path src) `catchError` \ err -> Nothing <$ print (prettyNotice' err)
   let nSuccess = length (catMaybes results)
-  print . fillSep $ if nModules == nSuccess then
-      [ annotate Success (pretty nModules),         reflow "modules loaded." ]
-    else
-      [ annotate Failure (ratio nSuccess nModules), reflow "modules loaded." ]
-  pure results
+      status = if nModules == nSuccess then
+        annotate Success (pretty nModules)
+      else
+        annotate Failure (ratio nSuccess nModules)
+  results <$ print (fillSep [status, reflow "modules loaded."])
   where
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = Node n (map ((S.name :: S.Import -> MName) . S.out) imports) (n, path, source)
