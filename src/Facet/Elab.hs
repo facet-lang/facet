@@ -112,6 +112,7 @@ unify :: Type :===: Type -> Elab Type
 unify = \case
   -- FIXME: this is missing a lot of cases
   VType                 :===: VType                 -> pure VType
+  VInterface            :===: VInterface            -> pure VInterface
   -- FIXME: resolve globals to try to progress past certain inequalities
   VNeut h1 e1           :===: VNeut h2 e2
     | h1 == h2
