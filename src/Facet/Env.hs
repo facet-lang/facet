@@ -7,46 +7,37 @@ module Facet.Env
 , runEnv
 ) where
 
-import           Control.Carrier.Reader
-import           Control.Monad (guard, (<=<))
-import           Data.List (uncons)
+import           Control.Carrier.Reader hiding (local)
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import           Facet.Core hiding (lookupD)
 import qualified Facet.Graph as G
 import           Facet.Name
 import           Facet.Syntax
 
-newtype Env = Env { getEnv :: Map.Map DName (Map.Map MName Value) }
-  deriving (Monoid, Semigroup)
+data Env = Env { mname :: MName, local :: Map.Map DName Value, imports :: G.Graph }
 
 fromModule :: Module -> G.Graph -> Env
-fromModule m@(Module _ is _) g = Env . Map.fromListWith (<>) . map (fmap (\ (mn ::: t) -> Map.singleton mn t)) $ local m ++ imported
+fromModule m@(Module mname is _) g = Env mname (Map.fromList (local m)) (G.restrict g (Set.fromList (map (\ Import{ name } -> name) is)))
   where
-  local (Module mname _ defs) = do
+  local (Module _ _ defs) = do
     (dname, def ::: _T) <- defs
     case def of
-      DTerm _  -> [ (dname, mname ::: _T) ]
-      DData cs ->   (dname, mname ::: _T)
-                : [ (C n,   mname ::: _T) | n :=: _ ::: _T <- cs ]
-  imported = do
-    Import{ name } <- is
-    (_, m) <- G.lookupM name g
-    exported m
-  -- FIXME: there needs to be some mechanism for exporting (or not exporting) local definitions from a module
-  exported = local
+      DTerm _  -> [ (dname, _T) ]
+      DData cs ->   (dname, _T)
+                : [ (C n,   _T) | n :=: _ ::: _T <- cs ]
 
 
 lookupD :: DName -> Env -> Maybe (MName ::: Value)
-lookupD k (Env env) = do
-  mod <- Map.lookup k env
-  ((mn, v), t) <- uncons (Map.toList mod)
-  (mn ::: v) <$ guard (null t)
+lookupD k (Env mn local _) = (mn :::) <$> Map.lookup k local
 
 lookupQ :: QName -> Env -> Maybe Value
-lookupQ (m :.: d) = Map.lookup m <=< Map.lookup d . getEnv
+lookupQ q@(m :.: d) e@(Env m' _ g)
+  | m == m'   = ty <$> lookupD d e
+  | otherwise = ty <$> G.lookupQ q (Module (MName mempty) [] []) g
 
-insert :: QName ::: Value -> Env -> Env
-insert (m :.: d ::: v) = Env . Map.insertWith (<>) d (Map.singleton m v) . getEnv
+insert :: DName ::: Value -> Env -> Env
+insert (d ::: v) e = e{ local = Map.insert d v (local e) }
 
 
 runEnv :: (Has (Reader G.Graph) sig m, Has (Reader Module) sig m) => ReaderC Env m b -> m b
