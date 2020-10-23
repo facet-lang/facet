@@ -351,7 +351,7 @@ lookupC n Module{ name, defs } = maybe empty pure $ matchWith matchDef defs
   matchCon dname (n' :=: v ::: _T) = (name :.: C dname n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Value)
-lookupD n Module{ name, defs } = maybe empty pure $ do
+lookupD n m@Module{ name, defs } = maybe ((`lookupC` m) =<< unEName n) pure $ do
   d ::: _T <- lookup n defs
   pure $ name :.: n :=: d ::: _T
 
