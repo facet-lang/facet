@@ -1,6 +1,7 @@
 module Facet.Env
 ( Env(..)
 , fromList
+, fromModule
 , lookup
 , lookupQ
 , insert
@@ -22,6 +23,13 @@ newtype Env = Env { getEnv :: Map.Map DName (Map.Map MName (Maybe Value ::: Valu
 
 fromList :: [(DName, MName :=: Maybe Value ::: Value)] -> Env
 fromList = Env . Map.fromListWith (<>) . map (fmap (\ (mn :=: t) -> Map.singleton mn t))
+
+fromModule :: Module -> Env
+fromModule (Module mname _ defs) = fromList $ do
+  (dname, def ::: _T) <- defs
+  case def of
+    DTerm v  -> [ (dname, mname :=: Just v ::: _T) ]
+    DData cs -> [ (C n,   mname :=: Just v ::: _T) | n :=: v ::: _T <- cs ]
 
 lookup :: DName -> Env -> Maybe (MName :=: Maybe Value ::: Value)
 lookup k (Env env) = do
