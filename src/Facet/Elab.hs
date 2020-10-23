@@ -194,7 +194,7 @@ resolveC n = Synth $ do
 resolveQ
   :: QName
   -> Synth QName
-resolveQ q@(m :.: n) = Synth $ Graph.lookupQ q <$> ask <*> ask >>= \case
+resolveQ q@(m :.: n) = Synth $ lookupQ q <$> ask <*> ask >>= \case
   Just (q' :=: _ ::: _T) -> pure $ q' ::: _T
   Nothing                -> freeVariable (Just m) n
 
