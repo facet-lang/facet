@@ -517,6 +517,7 @@ data Err = Err
 
 data Reason
   = FreeVariable (Maybe MName) DName
+  -- FIXME: add source references for the imports, definition sites, and any re-exports.
   | AmbiguousName (Maybe MName) DName [QName]
   | CouldNotSynthesize String
   | Mismatch String (Either String Type) Type
