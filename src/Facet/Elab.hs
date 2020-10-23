@@ -434,8 +434,8 @@ elabModule (S.Ann s (S.Module mname _is ds)) = runReader s . evalState (mempty @
   -- FIXME: trace the defs as we elaborate them
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
-  defs <- for ds $ \ (S.Ann s (n, d)) -> setSpan s $ do
-    let qname = mname :.: n
+  defs <- for ds $ \ (S.Ann s (dname, d)) -> setSpan s $ do
+    let qname = mname :.: dname
         e ::: t = elabDecl d
 
     _T <- elab $ check (t ::: VType)
