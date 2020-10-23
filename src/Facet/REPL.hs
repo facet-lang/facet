@@ -83,9 +83,6 @@ modules_ = lens modules (\ r modules -> r{ modules })
 localDefs_ :: Lens' REPL Module
 localDefs_ = lens localDefs (\ r localDefs -> r{ localDefs })
 
-env_ :: Lens' REPL Env.Env
-env_ = lens env (\ r env -> r{ env })
-
 targets_ :: Lens' REPL (Set.Set MName)
 targets_ = lens targets (\ r targets -> r{ targets })
 
