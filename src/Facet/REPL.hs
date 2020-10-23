@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module Facet.REPL
 ( repl
+, kernel
 ) where
 
 import           Control.Applicative ((<|>))
