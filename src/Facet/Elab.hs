@@ -517,7 +517,7 @@ data Err = Err
 
 data Reason
   = FreeVariable (Maybe MName) DName
-  | AmbiguousName (Maybe MName) DName
+  | AmbiguousName (Maybe MName) DName [QName]
   | CouldNotSynthesize String
   | Mismatch String (Either String Type) Type
   | Hole UName Type

@@ -17,6 +17,7 @@ import           Facet.Print as Print hiding (Hole)
 import           Facet.Source
 import           Facet.Stack
 import           Facet.Syntax
+import           Prelude hiding (unlines)
 import           Prettyprinter (reAnnotate)
 import           Silkscreen
 
@@ -42,7 +43,7 @@ rethrowElabErrors src mapAnn = L.runThrow $ \ Err{ span, reason, context } ->
 printReason :: Stack Print -> Reason -> Doc Print.Highlight
 printReason ctx = group . \case
   FreeVariable m n       -> fillSep [reflow "variable not in scope:", prettyMaybeQual m n]
-  AmbiguousName m n      -> fillSep [reflow "ambiguous name", prettyMaybeQual m n]
+  AmbiguousName m n qs   -> fillSep [reflow "ambiguous name", prettyMaybeQual m n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
   Mismatch msg exp act   -> reflow msg
       <> hardline <> pretty "expected:" <> print exp'
