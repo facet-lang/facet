@@ -300,9 +300,3 @@ rethrowGraphErrors src = I.runThrow formatGraphErr
 
 ioErrorToNotice :: Source -> IOError -> Notice.Notice Style
 ioErrorToNotice src err = Notice.Notice (Just Notice.Error) src (group (reflow (show err))) []
-
-unlines :: Printer p => [p] -> p
-unlines = concatWith (<\>)
-
-(<\>) :: Printer p => p -> p -> p
-(<\>) = surround hardline

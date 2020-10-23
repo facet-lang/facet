@@ -7,6 +7,8 @@ module Facet.Pretty
 , putDocWith
   -- * Helpers
 , reflow
+, unlines
+, (<\>)
   -- * Variable formatting
 , toAlpha
 , lower
@@ -37,6 +39,7 @@ import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import           Facet.Stack
+import           Prelude hiding (unlines)
 import qualified Prettyprinter as PP
 import           Silkscreen hiding (column, width)
 import           System.Console.ANSI
@@ -68,6 +71,12 @@ putDocWith = hPutDocWith stdout
 
 reflow :: Printer p => String -> p
 reflow = fillSep . map pretty . words
+
+unlines :: Printer p => [p] -> p
+unlines = concatWith (<\>)
+
+(<\>) :: Printer p => p -> p -> p
+(<\>) = surround hardline
 
 
 -- Variable formatting
