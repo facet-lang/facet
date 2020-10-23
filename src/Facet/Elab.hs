@@ -452,11 +452,11 @@ elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . r
                 _T            -> VCon (Con (mname :.: C n ::: _T) fs)
           c <- apply s (go Nil _T')
           pure $ n :=: c ::: _T'
-        pure (dname, Just (C.DData cs') ::: _T)
+        pure $ C.DData cs'
       Right e' -> do
         e'' <- apply s e'
-        pure (dname, Just (C.DTerm e'') ::: _T)
-    defs_ %= (<> [def])
+        pure $ C.DTerm e''
+    defs_ %= (<> [(dname, Just def ::: _T)])
 
 
 -- | Apply the substitution to the value.
