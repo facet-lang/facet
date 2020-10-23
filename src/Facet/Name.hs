@@ -134,18 +134,17 @@ moduleName (mname :.: _) = mname
 -- | Declaration names; a choice of expression, constructor, term, or operator names.
 data DName
   = E UName
-  -- FIXME: this is a little too close to a QName for comfort and is going to be difficult to parse accurately. We should probably consider datatypes as introducing a sub-module.
-  | C DName UName
+  | C UName
   | T UName
   | O Op
   deriving (Eq, Ord, Show)
 
 instance P.Pretty DName where
   pretty = \case
-    E   n -> P.pretty n
-    C t n -> P.pretty t <> dot <> P.pretty n
-    T   n -> P.pretty n
-    O   o -> P.pretty o
+    E n -> P.pretty n
+    C n -> P.pretty n
+    T n -> P.pretty n
+    O o -> P.pretty o
 
 unEName :: Has Empty sig m => DName -> m UName
 unEName = \case
