@@ -92,7 +92,7 @@ searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 defaultREPLState :: REPL
 defaultREPLState = REPL
   { line           = 0
-  , modules        = mempty
+  , modules        = singleton Nothing kernel
   , promptFunction = defaultPromptFunction
   , env            = toEnv kernel
   , targets        = mempty
