@@ -109,7 +109,7 @@ synthElab f = Synth (f Nothing)
 
 
 unify :: Type :===: Type -> Elab Type
-unify (t1 :===: t2) = go (t1 :===: t2)
+unify = go
   where
   go = \case
     -- FIXME: this is missing a lot of cases
