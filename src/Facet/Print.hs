@@ -137,7 +137,6 @@ f $$ a = askingPrec $ \case
   -- FIXME: lambdas get parenthesized on the left
   op = leftAssoc AppL AppR (\ f a -> f <> nest 2 (line <> a)) f a
 
--- FIXME: I think the precedence is being reset by the parens or something and thus we aren’t parenthesizing the body?
 (-->) = rightAssoc FnR FnL (\ a b -> group (align a) </> arrow <+> b)
 
 ($$*) :: Foldable t => Print -> t Print -> Print
