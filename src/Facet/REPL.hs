@@ -238,7 +238,7 @@ loadModule name path src = do
   print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty 'n')) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
   m <- rethrowElabErrors src Code $ Elab.elabModule m
-  modules_.at name .= Just (path, m)
+  modules_.at name .= Just (Just path, m)
   pure m
 
 resolveName :: (Has (State REPL) sig m, MonadIO m) => MName -> m FilePath

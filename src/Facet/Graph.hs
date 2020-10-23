@@ -25,23 +25,23 @@ import           Facet.Name
 import           Facet.Stack
 import           Prelude hiding (lookup)
 
-newtype Graph = Graph { getGraph :: Map.Map MName (FilePath, Module) }
+newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Module) }
   deriving (Semigroup, Monoid)
 
 type instance Lens.Index Graph = MName
-type instance IxValue Graph = (FilePath, Module)
+type instance IxValue Graph = (Maybe FilePath, Module)
 
 instance Ixed Graph
 instance At   Graph where
   at i = iso getGraph Graph .at i
 
-singleton :: FilePath -> Module -> Graph
+singleton :: Maybe FilePath -> Module -> Graph
 singleton p m@Module{ name } = Graph (Map.singleton name (p, m))
 
-insert :: FilePath -> Module -> Graph -> Graph
+insert :: Maybe FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
 
-lookup :: MName -> Graph -> Maybe (FilePath, Module)
+lookup :: MName -> Graph -> Maybe (Maybe FilePath, Module)
 lookup n = Map.lookup n . getGraph
 
 
