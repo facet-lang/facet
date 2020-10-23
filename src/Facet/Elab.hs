@@ -34,6 +34,7 @@ import           Control.Applicative (liftA2)
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
+import           Control.Effect.Empty
 import           Control.Effect.Lens ((%=), (.=))
 import           Control.Effect.Sum
 import           Control.Lens (ifor_, ix)
@@ -171,6 +172,22 @@ switch
 switch (Synth m) = \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify (_K' :===: _K)
   _       -> m
+
+resolveWith
+  :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Value))
+  -> Maybe MName
+  -> DName
+  -> Synth QName
+resolveWith lookup m n = Synth $ asks lookup >>= \case
+  Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
+  Nothing                -> do
+    g <- ask @Graph
+    let defs = foldMap (lookup . snd) (getGraph g)
+    case defs of
+      []                -> freeVariable m n
+      [n' :=: _ ::: _T] -> pure $ n' ::: _T
+      -- FIXME: resolve ambiguities by type.
+      _                 -> ambiguousName m n (map (\ (q :=: _ ::: _) -> q) defs)
 
 resolve
   :: DName
