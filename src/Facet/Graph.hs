@@ -3,7 +3,7 @@ module Facet.Graph
 ( Graph(..)
 , singleton
 , insert
-, lookup
+, lookupM
 , lookupQ
 , GraphErr(..)
 , Node(..)
@@ -26,7 +26,6 @@ import           Facet.Core
 import           Facet.Name
 import           Facet.Stack
 import           Facet.Syntax
-import           Prelude hiding (lookup)
 
 newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Module) }
   deriving (Semigroup, Monoid)
@@ -44,13 +43,13 @@ singleton p m@Module{ name } = Graph (Map.singleton name (p, m))
 insert :: Maybe FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
 
-lookup :: Has Empty sig m => MName -> Graph -> m (Maybe FilePath, Module)
-lookup n = maybe empty pure . Map.lookup n . getGraph
+lookupM :: Has Empty sig m => MName -> Graph -> m (Maybe FilePath, Module)
+lookupM n = maybe empty pure . Map.lookup n . getGraph
 
 lookupQ :: Has Empty sig m => QName -> Module -> Graph -> m (Def ::: Value)
 lookupQ (m:.:n) mod@Module{ name } g
   | m == name = lookupD n mod
-  | otherwise = lookup m g >>= lookupD n . snd
+  | otherwise = lookupM m g >>= lookupD n . snd
 
 
 -- FIXME: enrich this with source references for each
