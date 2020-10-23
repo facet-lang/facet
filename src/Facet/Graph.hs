@@ -53,6 +53,7 @@ lookupM n = maybe empty pure . Map.lookup n . getGraph
 lookupQ :: Has Empty sig m => QName -> Module -> Graph -> m (QName :=: Maybe Def ::: Value)
 lookupQ (m:.:n) mod@Module{ name } g
   | m == name = lookupD n mod
+  -- FIXME: produce multiple results for a module, if they exist.
   | otherwise = lookupM m g >>= lookupD n . snd
 
 
