@@ -432,18 +432,15 @@ elabModule
   .  (HasCallStack, Has (Reader Graph) sig m, Has (Throw Err) sig m)
   => S.Ann S.Module
   -> m C.Module
-elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . runReader s . evalState (mempty @Env.Env) $ do
+elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . runReader s $ do
   imports_ .= map (Import . (S.name :: S.Import -> MName) . S.out) is
   -- FIXME: trace the defs as we elaborate them
   -- FIXME: elaborate all the types first, and only then the terms
   -- FIXME: maybe figure out the graph for mutual recursion?
   defs_ <~ for ds (\ (S.Ann s (dname, d)) -> setSpan s $ do
-    let qname = mname :.: dname
-        e ::: t = elabDecl d
+    let e ::: t = elabDecl d
 
     _T <- runModule . elab $ check (t ::: VType)
-
-    modify $ Env.insert (qname ::: _T)
 
     (s, e') <- runModule . elabWith (fmap pure . (,)) $ check (e ::: _T)
     case e' of
@@ -454,12 +451,10 @@ elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . r
                 VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
                 _T            -> VCon (Con (mname :.: C n ::: _T) fs)
           c <- apply s (go Nil _T')
-          modify $ Env.insert (mname :.: C n ::: _T')
           pure $ n :=: c ::: _T'
         pure (dname, C.DData cs' ::: _T)
       Right e' -> do
         e'' <- apply s e'
-        modify $ Env.insert (qname ::: _T)
         pure (dname, C.DTerm e'' ::: _T))
 
 
