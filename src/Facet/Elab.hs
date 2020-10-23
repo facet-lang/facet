@@ -175,9 +175,9 @@ resolve
   :: DName
   -> Synth QName
 resolve n = Synth $ do
-  mod@(Module name _ _) <- ask
+  mod <- ask
   case lookupD n mod of
-    Just (_ ::: _T) -> pure $ name :.: n ::: _T
+    Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
     Nothing
       | E n <- n  -> synth (resolve (C n))
       | otherwise -> freeVariable Nothing n
@@ -186,7 +186,7 @@ resolveQ
   :: QName
   -> Synth QName
 resolveQ q@(m :.: n) = Synth $ Graph.lookupQ q <$> ask <*> ask >>= \case
-  Just (_ ::: _T) -> pure $ q ::: _T
+  Just (q' :=: _ ::: _T) -> pure $ q' ::: _T
   Nothing
     | E n <- n  -> synth (resolveQ (m :.: C n))
     | otherwise -> freeVariable (Just m) n
