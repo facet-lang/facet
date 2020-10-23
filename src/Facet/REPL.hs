@@ -96,13 +96,16 @@ searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 defaultREPLState :: REPL
 defaultREPLState = REPL
   { line           = 0
-  , modules        = singleton Nothing kernel
-  , localDefs      = Module (MName mempty) [] []
+  , modules
+  , localDefs
   , promptFunction = defaultPromptFunction
-  , env            = toEnv kernel
+  , env            = Env.fromModule localDefs modules
   , targets        = mempty
   , searchPaths    = Set.singleton "src"
   }
+  where
+  modules = singleton Nothing kernel
+  localDefs = Module (MName mempty) [] []
 
 defaultPromptFunction :: Int -> IO String
 defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
@@ -117,13 +120,6 @@ kernel = Module kernelName []
   ]
   where
   kernelName = MName (TS.pack "Kernel")
-
-toEnv :: Module -> Env.Env
-toEnv (Module mname _ defs) = Env.fromList $ do
-  (dname, def ::: _T) <- defs
-  case def of
-    DTerm _  -> [ (dname, mname ::: _T) ]
-    DData cs -> [ (C n,   mname ::: _T) | n :=: _ ::: _T <- cs ]
 
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
