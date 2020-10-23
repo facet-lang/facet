@@ -178,6 +178,7 @@ resolve n = Synth $ do
   mod <- ask
   case lookupD n mod of
     Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
+    -- FIXME: look up in the imports
     Nothing                -> freeVariable Nothing n
 
 resolveC
@@ -187,6 +188,7 @@ resolveC n = Synth $ do
   mod <- ask
   case lookupC n mod of
     Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
+    -- FIXME: look up in the imports
     Nothing                -> freeVariable Nothing (E n) -- FIXME: this is technically a lie, but we don’t /have/ the full constructor name to give it.
 
 resolveQ
