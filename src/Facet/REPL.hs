@@ -208,7 +208,7 @@ data ModField
   | ModTarget [MName]
 
 
-reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m [Module]
+reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m [Maybe Module]
 reload src = do
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
@@ -219,7 +219,7 @@ reload src = do
     i <- fresh
     print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
 
-    loadModule name path src
+    (Just <$> loadModule name path src) `catchError` \ err -> Nothing <$ print (prettyNotice' err)
   where
   toNode (n, path, source, imports) = Node n (map ((S.name :: S.Import -> MName) . S.out) imports) (n, path, source)
 
