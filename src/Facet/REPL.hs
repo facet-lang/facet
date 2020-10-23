@@ -8,7 +8,6 @@ import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
-import           Control.Carrier.Readline.Haskeline
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, (%=), (.=))
 import           Control.Lens (Getting, Lens', at, lens)
@@ -24,6 +23,7 @@ import qualified Data.Text as TS
 import           Data.Text.Lazy (unpack)
 import           Facet.Algebra hiding (Algebra)
 import           Facet.Carrier.Parser.Church
+import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.State.Lens as L
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Core

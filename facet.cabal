@@ -57,12 +57,14 @@ library
     Facet.Algebra
     Facet.Carrier.Error.Lens
     Facet.Carrier.Parser.Church
+    Facet.Carrier.Readline.Haskeline
     Facet.Carrier.State.Lens
     Facet.Carrier.Throw.Inject
     Facet.CLI
     Facet.Context
     Facet.Core
     Facet.Effect.Parser
+    Facet.Effect.Readline
     Facet.Elab
     Facet.Env
     Facet.Eval
@@ -95,10 +97,11 @@ library
     , colour
     , containers
     , directory
+    , exceptions ^>= 0.10
     , filepath
     , fused-effects
     , fused-effects-lens
-    , fused-effects-readline
+    , haskeline ^>= 0.8.1
     , lens
     , optparse-applicative
     , parsers
