@@ -153,8 +153,8 @@ runAction src = \case
     print (prettyCode (ann (foldSExpr surface Nil e ::: foldCValue surface Nil (generalize _T))))
   Eval e -> do
     e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-    e'' <- elab src $ eval e'
-    print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil _T)))
+    e'' <- elab src $ eval (generalize e')
+    print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil (generalize _T))))
 
 
 -- TODO:
