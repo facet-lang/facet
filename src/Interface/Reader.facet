@@ -4,9 +4,9 @@ Interface.Reader : Module
 
 Reader : (R : Type) -> Interface
 { ask : R
-, local : {A : Type} -> (R -> R) -> A -> A }
+, local : { A : Type } -> (R -> R) -> A -> A }
 
-reader : { R, A : Type } -> (r : R) -> [Reader R]A -> A
+reader : { R, A : Type } -> (r : R) -> [Reader R] A -> A
 { a               -> a
 , [ask       ; k] -> reader r (k r)
 , [local f m ; k] -> reader r (reader (f r) m) }
