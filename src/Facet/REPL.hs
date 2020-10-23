@@ -135,10 +135,10 @@ commands :: Commands Action
 commands = choice
   [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure (Action (\ _ -> print helpDoc))
   , command ["quit", "q"]       "exit the repl"                      Nothing        $ pure (Action (\ _ -> empty))
-  , command ["show"]            "show compiler state"                (Just "field") $ showREPLState <$> choice
-    [ ShowPaths   <$ token (string "paths")
-    , ShowModules <$ token (string "modules")
-    , ShowTargets <$ token (string "targets")
+  , command ["show"]            "show compiler state"                (Just "field") $ choice
+    [ showPaths   <$ token (string "paths")
+    , showModules <$ token (string "modules")
+    , showTargets <$ token (string "targets")
     ]
   , command ["add"]             "add a module/path to the repl"      (Just "item")  $ choice
     [ addPath   <$ token (string "path")   <*> path'
@@ -164,22 +164,18 @@ runAction src (Action f) = f src
 
 newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ())
 
-data ShowField
-  = ShowPaths
-  | ShowModules
-  | ShowTargets
 
+showPaths, showModules, showTargets :: Action
+showPaths   = Action $ \ _ -> do
+  dir <- liftIO getCurrentDirectory
+  print $ nest 2 $ reflow "current working directory:" </> pretty dir
+  searchPaths <- gets (toList . searchPaths)
+  unless (null searchPaths)
+    $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
 
-showREPLState :: ShowField -> Action
-showREPLState t = Action $ \ _ -> case t of
-  ShowPaths   -> do
-    dir <- liftIO getCurrentDirectory
-    print $ nest 2 $ reflow "current working directory:" </> pretty dir
-    searchPaths <- gets (toList . searchPaths)
-    unless (null searchPaths)
-      $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
-  ShowModules -> uses modules_ (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= print
-  ShowTargets -> uses targets_ (unlines . map pretty . toList) >>= print
+showModules = Action $ \ _ -> uses modules_ (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= print
+
+showTargets = Action $ \ _ -> uses targets_ (unlines . map pretty . toList) >>= print
 
 addPath :: FilePath -> Action
 addPath path = Action $ \ _ -> searchPaths_ %= Set.insert path
