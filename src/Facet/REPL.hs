@@ -141,7 +141,7 @@ loop = do
         searchPaths <- gets (toList . searchPaths)
         unless (null searchPaths)
           $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
-      ShowModules -> gets (unlines . map (\ (name, (path, _)) -> pretty name <+> S.parens (pretty path)) . Map.toList . getGraph . modules) >>= print
+      ShowModules -> gets (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph . modules) >>= print
       ShowTargets -> gets (unlines . map pretty . toList . targets) >>= print
     Add (ModPath path) -> searchPaths_ %= Set.insert path
     Add (ModTarget targets) -> do
