@@ -197,7 +197,7 @@ resolve n = resolveWith (lookupD n) Nothing n
 resolveC
   :: UName
   -> Synth QName
-resolveC n = resolveWith (lookupC n) Nothing (E n) -- FIXME: this is technically a lie, but we don’t /have/ the full constructor name to give it.
+resolveC n = resolveWith (lookupC n) Nothing (C n)
 
 resolveQ
   :: QName
