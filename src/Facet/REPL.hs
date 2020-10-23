@@ -228,6 +228,7 @@ loadModuleHeader src name = do
 loadModule :: (Has Fresh sig m, Has Readline sig m, Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => MName -> FilePath -> Source -> m Module
 loadModule name path src = do
   i <- fresh
+  -- FIXME: we can probably know the actual value for n, now.
   print $ annotate Progress (brackets (pretty i <+> pretty "of" <+> pretty 'n')) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
   graph <- use modules_
