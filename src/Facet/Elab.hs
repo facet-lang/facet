@@ -175,22 +175,18 @@ switch (Synth m) = \case
 resolve
   :: DName
   -> Synth QName
-resolve n = Synth $ do
-  mod <- ask
-  case lookupD n mod of
-    Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
-    -- FIXME: look up in the imports
-    Nothing                -> freeVariable Nothing n
+resolve n = Synth $ asks (lookupD n) >>= \case
+  Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
+  -- FIXME: look up in the imports
+  Nothing                -> freeVariable Nothing n
 
 resolveC
   :: UName
   -> Synth QName
-resolveC n = Synth $ do
-  mod <- ask
-  case lookupC n mod of
-    Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
-    -- FIXME: look up in the imports
-    Nothing                -> freeVariable Nothing (E n) -- FIXME: this is technically a lie, but we don’t /have/ the full constructor name to give it.
+resolveC n = Synth $ asks (lookupC n) >>= \case
+  Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
+  -- FIXME: look up in the imports
+  Nothing                -> freeVariable Nothing (E n) -- FIXME: this is technically a lie, but we don’t /have/ the full constructor name to give it.
 
 resolveQ
   :: QName
