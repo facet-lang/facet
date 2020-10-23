@@ -41,7 +41,8 @@ import           Data.Bifunctor (bimap, first)
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
-import           Data.Traversable (for)
+import qualified Data.Set as Set
+import           Data.Traversable (for, mapAccumL)
 import           Facet.Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
@@ -443,36 +444,39 @@ elabModule
   => S.Ann S.Module
   -> m C.Module
 elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . runReader s $ do
-  imports_ .= map (Import . (S.name :: S.Import -> MName) . S.out) is
-  -- FIXME: trace the defs as we elaborate them
-  -- FIXME: maybe figure out the graph for mutual recursion?
+  let (importedNames, imports) = mapAccumL (\ names (S.Ann _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
+  imports_ .= imports
 
-  -- elaborate all the types first
-  es <- for ds $ \ (S.Ann s (dname, d)) -> setSpan s $ do
-    let e ::: t = elabDecl d
+  local (`restrict` importedNames) $ do
+    -- FIXME: trace the defs as we elaborate them
+    -- FIXME: maybe figure out the graph for mutual recursion?
 
-    _T <- runModule . elab $ check (t ::: VType)
+    -- elaborate all the types first
+    es <- for ds $ \ (S.Ann s (dname, d)) -> setSpan s $ do
+      let e ::: t = elabDecl d
 
-    defs_ %= (<> [(dname, Nothing ::: _T)])
-    pure (s, dname, e ::: _T)
+      _T <- runModule . elab $ check (t ::: VType)
 
-  -- then elaborate the terms
-  ifor_ es $ \ index (s, dname, e ::: _T) -> setSpan s $ do
-    (s, e') <- runModule . elabWith (fmap pure . (,)) $ check (e ::: _T)
-    def <- case e' of
-      Left cs  -> do
-        cs' <- for cs $ \ (n ::: _T) -> do
-          _T' <- apply s _T
-          let go fs = \case
-                VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
-                _T            -> VCon (Con (mname :.: C dname n ::: _T) fs)
-          c <- apply s (go Nil _T')
-          pure $ n :=: c ::: _T'
-        pure $ C.DData cs'
-      Right e' -> do
-        e'' <- apply s e'
-        pure $ C.DTerm e''
-    defs_.ix index .= (dname, Just def ::: _T)
+      defs_ %= (<> [(dname, Nothing ::: _T)])
+      pure (s, dname, e ::: _T)
+
+    -- then elaborate the terms
+    ifor_ es $ \ index (s, dname, e ::: _T) -> setSpan s $ do
+      (s, e') <- runModule . elabWith (fmap pure . (,)) $ check (e ::: _T)
+      def <- case e' of
+        Left cs  -> do
+          cs' <- for cs $ \ (n ::: _T) -> do
+            _T' <- apply s _T
+            let go fs = \case
+                  VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
+                  _T            -> VCon (Con (mname :.: C dname n ::: _T) fs)
+            c <- apply s (go Nil _T')
+            pure $ n :=: c ::: _T'
+          pure $ C.DData cs'
+        Right e' -> do
+          e'' <- apply s e'
+          pure $ C.DTerm e''
+      defs_.ix index .= (dname, Just def ::: _T)
 
 
 -- | Apply the substitution to the value.
