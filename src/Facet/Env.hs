@@ -18,31 +18,31 @@ import           Facet.Name
 import           Facet.Syntax
 import           Prelude hiding (lookup)
 
-newtype Env = Env { getEnv :: Map.Map DName (Map.Map MName (Maybe Value ::: Value)) }
+newtype Env = Env { getEnv :: Map.Map DName (Map.Map MName Value) }
   deriving (Monoid, Semigroup)
 
-fromList :: [(DName, MName :=: Maybe Value ::: Value)] -> Env
-fromList = Env . Map.fromListWith (<>) . map (fmap (\ (mn :=: t) -> Map.singleton mn t))
+fromList :: [(DName, MName ::: Value)] -> Env
+fromList = Env . Map.fromListWith (<>) . map (fmap (\ (mn ::: t) -> Map.singleton mn t))
 
 fromModule :: Module -> Env
 fromModule (Module mname _ defs) = fromList $ do
   (dname, def ::: _T) <- defs
   case def of
-    DTerm v  -> [ (dname, mname :=: Just v  ::: _T) ]
-    DData cs ->   (dname, mname :=: Nothing ::: _T)
-              : [ (C n,   mname :=: Just v  ::: _T) | n :=: v ::: _T <- cs ]
+    DTerm _  -> [ (dname, mname ::: _T) ]
+    DData cs ->   (dname, mname ::: _T)
+              : [ (C n,   mname ::: _T) | n :=: _ ::: _T <- cs ]
 
-lookup :: DName -> Env -> Maybe (MName :=: Maybe Value ::: Value)
+lookup :: DName -> Env -> Maybe (MName ::: Value)
 lookup k (Env env) = do
   mod <- Map.lookup k env
   ((mn, v), t) <- uncons (Map.toList mod)
-  (mn :=: v) <$ guard (null t)
+  (mn ::: v) <$ guard (null t)
 
-lookupQ :: QName -> Env -> Maybe (Maybe Value ::: Value)
+lookupQ :: QName -> Env -> Maybe Value
 lookupQ (m :.: d) = Map.lookup m <=< Map.lookup d . getEnv
 
-insert :: QName :=: Maybe Value ::: Value -> Env -> Env
-insert (m :.: d :=: v) = Env . Map.insertWith (<>) d (Map.singleton m v) . getEnv
+insert :: QName ::: Value -> Env -> Env
+insert (m :.: d ::: v) = Env . Map.insertWith (<>) d (Map.singleton m v) . getEnv
 
 
 runEnv :: Has (State (Env)) sig m => ReaderC (Env) m b -> m b

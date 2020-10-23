@@ -174,7 +174,7 @@ resolve
   :: DName
   -> Synth QName
 resolve n = Synth $ Env.lookup n <$> ask >>= \case
-  Just (m :=: _ ::: _T) -> pure $ m :.: n ::: _T
+  Just (m ::: _T) -> pure $ m :.: n ::: _T
   Nothing
     | E n <- n  -> synth (resolve (C n))
     | otherwise -> freeVariable Nothing n
@@ -183,7 +183,7 @@ resolveQ
   :: QName
   -> Synth QName
 resolveQ q@(m :.: n) = Synth $ Env.lookupQ q <$> ask >>= \case
-  Just (_ ::: _T) -> pure $ q ::: _T
+  Just _T -> pure $ q ::: _T
   Nothing
     | E n <- n  -> synth (resolveQ (m :.: C n))
     | otherwise -> freeVariable (Just m) n
@@ -443,7 +443,7 @@ elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . r
 
     _T <- runModule . elab $ check (t ::: VType)
 
-    modify $ Env.insert (qname :=: Nothing ::: _T)
+    modify $ Env.insert (qname ::: _T)
 
     (s, e') <- runModule . elabWith (fmap pure . (,)) $ check (e ::: _T)
     case e' of
@@ -454,12 +454,12 @@ elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . r
                 VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
                 _T            -> VCon (Con (mname :.: C n ::: _T) fs)
           c <- apply s (go Nil _T')
-          modify $ Env.insert (mname :.: C n :=: Just c ::: _T')
+          modify $ Env.insert (mname :.: C n ::: _T')
           pure $ n :=: c ::: _T'
         pure (dname, C.DData cs' ::: _T)
       Right e' -> do
         e'' <- apply s e'
-        modify $ Env.insert (qname :=: Just e'' ::: _T)
+        modify $ Env.insert (qname ::: _T)
         pure (dname, C.DTerm e'' ::: _T))
 
 

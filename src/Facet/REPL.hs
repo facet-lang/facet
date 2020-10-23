@@ -122,8 +122,8 @@ toEnv :: Module -> Env.Env
 toEnv (Module mname _ defs) = Env.fromList $ do
   (dname, def ::: _T) <- defs
   case def of
-    DTerm v  -> [ (dname, mname :=: Just v ::: _T) ]
-    DData cs -> [ (C n,   mname :=: Just v ::: _T) | n :=: v ::: _T <- cs ]
+    DTerm _  -> [ (dname, mname ::: _T) ]
+    DData cs -> [ (C n,   mname ::: _T) | n :=: _ ::: _T <- cs ]
 
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
