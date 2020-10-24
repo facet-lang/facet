@@ -1,13 +1,13 @@
 module Facet.Parser
 ( runFacet
 , Facet(..)
+, whole
 , module'
 , module''
 , moduleHeader
 , decl
 , type'
 , expr
-, whole
 , mname
 ) where
 
