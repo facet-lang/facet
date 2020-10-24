@@ -7,6 +7,7 @@ module Facet.Syntax
 , (:===:)(..)
 , (:=:)(..)
 , (:|-:)(..)
+, Neutral(..)
 , splitl
 , splitr
 , Pl(..)
@@ -17,7 +18,9 @@ module Facet.Syntax
 , ex
 ) where
 
+import Data.Bifoldable
 import Data.Bifunctor
+import Data.Bitraversable
 import Facet.Semiring
 import Facet.Stack
 
@@ -68,6 +71,24 @@ infix 0 :|-:
 
 instance Bifunctor (:|-:) where
   bimap f g (a :|-: b) = f a :|-: g b
+
+
+data Neutral a b = (:$)
+  { head  :: a
+  , spine :: Stack b
+  }
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+infixl 9 :$
+
+instance Bifoldable Neutral where
+  bifoldMap = bifoldMapDefault
+
+instance Bifunctor Neutral where
+  bimap = bimapDefault
+
+instance Bitraversable Neutral where
+  bitraverse f g (h :$ sp) = (:$) <$> f h <*> traverse g sp
 
 
 splitl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)
