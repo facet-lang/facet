@@ -2,7 +2,6 @@ module Facet.Surface
 ( -- * Expressions
   Expr(..)
 , Type
-, Var(..)
 , free
 , qual
 , Binding(..)
@@ -42,12 +41,6 @@ data Expr
 
 type Type = Expr
 
-
-data Var
-  = Free (Maybe MName) DName
-  -- FIXME: indices are prone to getting out of sync with the elaboration context. As we only use these for that precise purpose, maybe we should resolve scope in the elaborator instead of in the parser.
-  | Bound Index
-  deriving (Eq, Show)
 
 free :: DName -> Expr
 free n = Var Nothing n
