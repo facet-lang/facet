@@ -290,7 +290,7 @@ evar
   <|> try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
 
 hole :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Expr)
-hole = anned (S.Hole <$> ident hnameStyle)
+hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
   where
   hnameStyle = IdentifierStyle "hole name" (char '?') nameChar reserved Identifier ReservedIdentifier
 
