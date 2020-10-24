@@ -65,3 +65,20 @@ In other words, given `Type -> [Err]{Type}` (placing the signature outside the c
 (Aside: what do Twelf & friends do? I’m given to understand that they are quite different, but I don’t know how to characterize those differences beyond “the function arrow is different.”)
 
 _TBD: scoped effects._
+
+
+----
+
+
+## Oct 23rd, 2020
+
+CBPV separates value and computation types, with the slogan:
+
+> A value _is_, a computation _does_.
+
+Value types are ordinary data. Computations, curiously, include functions. It’s certainly reasonable that _calling_ a function yields a computation type, but that’s distinct—lambdas, the inhabitants of function types, are _themselves_ computations. Levy explained this in at least one of the presentations whose slides I read but I don’t remember the reasoning.
+
+Regardless, values and computations are related via an adjunction between functors U and F. (F returns, U thunks—I think.) There are judgements for moving terms and types between the two spaces:
+
+- return/eval to
+- thunk/force
