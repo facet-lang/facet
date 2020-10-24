@@ -1,1 +1,6 @@
 Interface.Writer : Module
+
+[ Data.Unit ]
+
+Writer : (W : Type) -> Interface
+{ tell : W -> [Writer W] Unit }
