@@ -124,7 +124,7 @@ termDecl = anned $ do
         N.Prefix  l  -> pure $ AnyOperator $ Prefix l (unary name)
         N.Postfix r  -> pure $ AnyOperator $ Postfix r (unary name)
         N.Infix   m  -> do
-          assoc <- brackets $ choice
+          assoc <- option N.N $ brackets $ choice
             [ N.N <$ symbol "non-assoc"
             , N.L <$ symbol "left-assoc"
             , N.R <$ symbol "right-assoc"
