@@ -6,7 +6,7 @@ module Facet.Core
 , Var(..)
 , Elim(..)
 , Con(..)
-, unHead
+, unVar
 , global
 , free
 , metavar
@@ -120,8 +120,8 @@ data Var t
   | Metavar (Meta ::: t) -- ^ Metavariables, considered equal by 'Level'.
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-unHead :: (QName ::: a -> b) -> (Level -> b) -> (Meta ::: a -> b) -> Var a -> b
-unHead f g h = \case
+unVar :: (QName ::: a -> b) -> (Level -> b) -> (Meta ::: a -> b) -> Var a -> b
+unVar f g h = \case
   Global  n -> f n
   Free    n -> g n
   Metavar n -> h n
@@ -228,7 +228,7 @@ subst s
     VInterface  -> VInterface
     VForAll t b -> VForAll (fmap go t) (go . b)
     VLam    n b -> VLam (fmap go n) (go . b)
-    VNeut f a   -> unHead global free (s !) f' `elimN` fmap substElim a
+    VNeut f a   -> unVar global free (s !) f' `elimN` fmap substElim a
       where
       f' = case f of
         Global  (n ::: _T) -> Global  (n ::: go _T)
@@ -253,7 +253,7 @@ bind target with = go
     VInterface  -> VInterface
     VForAll t b -> VForAll (fmap go t) (go . b)
     VLam    n b -> VLam (fmap go n) (go . b)
-    VNeut f a   -> unHead global (\ v -> if v == target then with else free v) metavar f' `elimN` fmap elim a
+    VNeut f a   -> unVar global (\ v -> if v == target then with else free v) metavar f' `elimN` fmap elim a
       where
       f' = case f of
         Global  (n ::: _T) -> Global  (n ::: go _T)
@@ -272,7 +272,7 @@ mvs d = \case
   VInterface              -> mempty
   VForAll (_ ::: t) b     -> mvs d t <> mvs (succ d) (b (free d))
   VLam (_ ::: t) b        -> mvs d t <> mvs (succ d) (b (free d))
-  VNeut h sp              -> unHead (mvs d . ty) mempty (\ (m ::: _T) -> IntMap.insert (getMeta m) _T (mvs d _T)) h <> foldMap goE sp
+  VNeut h sp              -> unVar (mvs d . ty) mempty (\ (m ::: _T) -> IntMap.insert (getMeta m) _T (mvs d _T)) h <> foldMap goE sp
     where
     goE = \case
       EApp a   -> foldMap (mvs d) a
@@ -303,7 +303,7 @@ sortOf ctx = \case
   VInterface            -> SKind
   VForAll (_ ::: _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
   VLam{}                -> STerm
-  VNeut h sp            -> minimum (unHead (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (\case{ EApp a -> sortOf ctx (out a) ; ECase _ -> STerm } <$> sp))
+  VNeut h sp            -> minimum (unVar (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (\case{ EApp a -> sortOf ctx (out a) ; ECase _ -> STerm } <$> sp))
   VCon _                -> STerm
 
 
