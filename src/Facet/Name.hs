@@ -43,7 +43,7 @@ instance P.Pretty UName where
 
 -- | De Bruijn indices, counting up from the binding site to the reference site (“inside out”).
 newtype Index = Index { getIndex :: Int }
-  deriving (Eq, Ord)
+  deriving (Enum, Eq, Num, Ord)
 
 instance Show Index where
   showsPrec p = showsUnaryWith showsPrec "Index" p . getIndex
