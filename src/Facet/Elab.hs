@@ -128,7 +128,7 @@ unify = \case
       b <- unify (b1 v :===: b2 v)
       pure $ VForAll (Binding (_pl t1) ((name :: Binding -> UName) t1) (delta t1) t) (\ v -> C.bind d v b)
   -- FIXME: build and display a diff of the root types
-  t1                    :===: t2                    -> couldNotUnify t1 t2
+  t1                    :===: t2                    -> couldNotUnify "mismatch" t1 t2
   where
   unifyS (Nil           :===: Nil)           = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
@@ -557,8 +557,8 @@ err reason = do
 mismatch :: String -> Either String Type -> Type -> Elab a
 mismatch msg exp act = err $ Mismatch msg exp act
 
-couldNotUnify :: Type -> Type -> Elab a
-couldNotUnify t1 t2 = mismatch "mismatch" (Right t2) t1
+couldNotUnify :: String -> Type -> Type -> Elab a
+couldNotUnify msg t1 t2 = mismatch msg (Right t2) t1
 
 couldNotSynthesize :: String -> Elab a
 couldNotSynthesize = err . CouldNotSynthesize
