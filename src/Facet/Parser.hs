@@ -53,9 +53,8 @@ runFacet env ops (Facet m) = evalState ops (m env)
 bind :: N.UName -> Facet m a -> Facet m a
 bind n b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b } in runState ops (run (n:env))
 
--- FIXME: carry a stack instead of a list and foldl to extend it
-bindN :: [N.UName] -> Facet m a -> Facet m a
-bindN ns b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b } in runState ops (run (foldr (:) env (reverse ns)))
+bindN :: Foldable t => t N.UName -> Facet m a -> Facet m a
+bindN ns b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b } in runState ops (run (foldl' (flip (:)) env ns))
 
 resolve :: N.UName -> [N.UName] -> Either N.UName N.Index
 resolve n = maybe (Left n) (Right . N.Index) . elemIndex n
