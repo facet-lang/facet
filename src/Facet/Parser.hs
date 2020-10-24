@@ -286,11 +286,12 @@ clause = (do
   pure (ps, b')) <?> "clause"
 
 evar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
-evar
-  =   token (anned (runUnspaced (fmap (either (S.free . N.E) S.bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
-      -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
-  <|> try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname)))))
-  <|> fmap S.qual <$> qname
+evar = choice
+  [ token (anned (runUnspaced (fmap (either (S.free . N.E) S.bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
+    -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
+  , try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname)))))
+  , fmap S.qual <$> qname
+  ]
 
 hole :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Expr)
 hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
