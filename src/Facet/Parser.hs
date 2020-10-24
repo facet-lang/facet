@@ -153,6 +153,7 @@ termDecl = anned $ do
   binary name e1@(S.Ann s _) e2 = S.Ann s (S.free name) S.$$ e1 S.$$ e2
   unary name e@(S.Ann s _) = S.Ann s (S.free name) S.$$ e
 
+-- FIXME: how do we distinguish between data and interface declarations?
 dataDecl :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
 dataDecl = anned $ (,) <$> dtname <* colon <*> anned (S.DDecl <$> typeSig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
 
