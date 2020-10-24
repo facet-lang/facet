@@ -488,17 +488,14 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
       def <- case def of
         S.DataDef cs -> do
           (s, cs) <- runModule . elabWith (fmap pure . (,)) $ check (elabDataDef bs cs ::: _T)
-          cs' <- for cs $ \ (n ::: _T) -> do
+          C.DData <$> for cs (\ (n ::: _T) -> do
             _T' <- apply s _T
             let go fs = \case
                   VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
                   _T            -> VCon (Con (mname :.: C n ::: _T) fs)
             c <- apply s (go Nil _T')
-            pure $ n :=: c ::: _T'
-          pure $ C.DData cs'
-        S.TermDef t -> do
-          t' <- runModule . elab $ check (elabTermDef bs t ::: _T)
-          pure $ C.DTerm t'
+            pure $ n :=: c ::: _T')
+        S.TermDef t -> C.DTerm <$> runModule (elab (check (elabTermDef bs t ::: _T)))
       defs_.ix index .= (dname, Just def ::: _T)
 
 
