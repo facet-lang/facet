@@ -80,5 +80,33 @@ Value types are ordinary data. Computations, curiously, include functions. It’
 
 Regardless, values and computations are related via an adjunction between functors U and F. (F returns, U thunks—I think.) There are judgements for moving terms and types between the two spaces:
 
-- `return`/`eval to` — `return` lifts a value to a computation; `eval to` evaluates a computation to a variable (and variables have value type)
-- `thunk`/`force` — `thunk` wraps a computation into a value; `force` runs a thunk in a computation
+- `return`/`eval to` — `return` lifts a value to a computation; `eval to` evaluates a computation to a variable (and variables have value type). (`eval to` looks a little bit like a `let` binding. Levy writes it as `M to x.N`, which took me some time to figure out how to pronounce; “eval to” should be taken as pronunciation primarily and not an attempt to recast the actual connective.)
+- `thunk`/`force` — `thunk` wraps a computation into a value; `force` runs a thunk in a computation.
+
+`eval to` & `thunk` both take a computation to a value; dually, `return` & `force` both take a value to a computation. However, as these happen on opposite sides of the adjunction, they have quite different meanings.
+
+```
+    Γ ⊢v V : A
+-------------------
+Γ ⊢c return V : F A
+```
+
+```
+Γ ⊢c M : F A     Γ, x : A ⊢c N : _B_
+------------------------------------
+     Γ ⊢c M eval to x . N : _B_
+```
+
+```
+  Γ ⊢c M : _B_
+----------------
+Γ ⊢v thunk M : U _B_
+```
+
+```
+  Γ ⊢v V : U _B_
+------------------
+Γ ⊢c force V : _B_
+```
+
+Importantly, these are all term-level judgements; none of these describe the type formers. There is no thunk type per se; rather, types are grouped into the computation types and the value types, rather like polarization does.
