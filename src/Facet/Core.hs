@@ -136,6 +136,15 @@ data Neutral a b = Neut
   }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+instance Bifoldable Neutral where
+  bifoldMap = bifoldMapDefault
+
+instance Bifunctor Neutral where
+  bimap = bimapDefault
+
+instance Bitraversable Neutral where
+  bitraverse f g (Neut h sp) = Neut <$> traverse f h <*> traverse g sp
+
 
 data Var t
   = Global (QName ::: t) -- ^ Global variables, considered equal by 'QName'.
