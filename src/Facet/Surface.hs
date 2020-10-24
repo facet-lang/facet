@@ -1,6 +1,7 @@
 module Facet.Surface
 ( -- * Expressions
   Expr(..)
+, Type
 , Var(..)
 , free
 , qual
@@ -45,6 +46,8 @@ data Expr
   | App (Ann Expr) (Ann Expr)
   -- FIXME: tupling/unit should take a list of expressions
   deriving (Eq, Show)
+
+type Type = Expr
 
 
 data Var
