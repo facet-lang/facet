@@ -163,6 +163,9 @@ surface = Algebra
   , hole = \ n -> annotate (Hole (Meta 0)) $ pretty '?' <> pretty n
   , _Type = annotate Type $ pretty "Type"
   , _Interface = annotate Type $ pretty "Interface"
+  , tcomp = \ s t -> case s of
+    [] -> t
+    _  -> brackets (commaSep s) <+> t
   , ann' = group . tm
   , case' = \ s ps -> align . group $ pretty "case" <+> setPrec Expr s </> block (concatWith (surround (hardline <> comma <> space)) (map (group . (\ (p, b) -> align (embed (prec Pattern p </> arrow) </> b))) ps))
   , pcon = \ n ps -> parens (hsep (annotate Con n:toList ps))

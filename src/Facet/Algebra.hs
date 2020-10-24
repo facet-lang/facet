@@ -54,6 +54,7 @@ data Algebra p = Algebra
   , hole :: UName -> p
   , _Type :: p
   , _Interface :: p
+  , tcomp :: [p] -> p -> p
   , ann' :: (p ::: p) -> p
   , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
   , pcon     :: p -> Stack p -> p
