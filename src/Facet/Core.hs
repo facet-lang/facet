@@ -4,6 +4,7 @@ module Facet.Core
 , eq
 , Binding(..)
 , Delta(..)
+, Neutral(..)
 , Var(..)
 , Elim(..)
 , Con(..)
@@ -127,6 +128,13 @@ instance Eq Delta where
 
 instance Ord Delta where
   Delta (q1 ::: _) as1 `compare` Delta (q2 ::: _) as2 = q1 `compare` q2 <> as1 `compare` as2
+
+
+data Neutral a b = Neut
+  { head  :: Var a
+  , spine :: Stack b
+  }
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
 data Var t
