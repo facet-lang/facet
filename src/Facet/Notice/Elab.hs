@@ -25,7 +25,7 @@ import           Silkscreen
 
 rethrowElabErrors :: Source -> (Print.Highlight -> other) -> L.ThrowC (Notice other) Err m a -> m a
 rethrowElabErrors src mapAnn = L.runThrow $ \ Err{ span, reason, context } ->
-  let (_, _, printCtx, ctx) = foldl combine (N.Level 0, Nil, Nil, Nil) (elems context)
+  let (_, _, printCtx, ctx) = foldl combine (0, Nil, Nil, Nil) (elems context)
   in Notice (Just Error) (slice src span) (reAnnotate mapAnn (printReason printCtx reason)) (toList ctx)
   where
   combine (d, sort, print, ctx) (n ::: _T) =

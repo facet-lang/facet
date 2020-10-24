@@ -70,7 +70,7 @@ data Value
   | VCon (Con Value Value)
 
 instance Eq Value where
-  (==) = eq (Level 0)
+  (==) = eq 0
 
 eq :: Level -> Value -> Value -> Bool
 eq d = curry $ \case
@@ -301,8 +301,8 @@ mvs d = \case
 generalize :: Value -> Value
 generalize v = build s v
   where
-  metas = mvs (Level 0) v
-  (_, build, s) = IntMap.foldrWithKey (\ m _T (d, f, s) -> (succ d, \ s b -> VForAll (im __ ::: _T) (\ v -> bind d v (f s b)), IntMap.insert m (free d) s)) (Level 0, subst, IntMap.empty) metas
+  metas = mvs 0 v
+  (_, build, s) = IntMap.foldrWithKey (\ m _T (d, f, s) -> (succ d, \ s b -> VForAll (im __ ::: _T) (\ v -> bind d v (f s b)), IntMap.insert m (free d) s)) (0, subst, IntMap.empty) metas
 
 
 -- Classification
