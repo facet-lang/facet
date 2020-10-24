@@ -120,9 +120,9 @@ termDecl = anned $ do
   name <- dename
   case name of
     N.O op -> do
-      op' <- case op of
-        N.Prefix  l  -> pure $ AnyOperator $ Prefix l (unary name)
-        N.Postfix r  -> pure $ AnyOperator $ Postfix r (unary name)
+      (_, op') <- case op of
+        N.Prefix  l  -> pure (N.R, AnyOperator (Prefix l (unary name)))
+        N.Postfix r  -> pure (N.L, AnyOperator (Postfix r (unary name)))
         N.Infix   m  -> do
           assoc <- option N.N $ brackets $ choice
             [ N.N <$ symbol "non-assoc"
@@ -130,8 +130,8 @@ termDecl = anned $ do
             , N.R <$ symbol "right-assoc"
             , N.A <$ symbol "assoc"
             ]
-          pure $ AnyOperator $ Infix assoc m (binary name)
-        N.Outfix l r -> pure $ AnyOperator $ Outfix l r (unary name)
+          pure (assoc, AnyOperator (Infix assoc m (binary name)))
+        N.Outfix l r -> pure (N.N, AnyOperator (Outfix l r (unary name)))
       -- FIXME: record the operator name and associativity in the module.
       modify (op' :)
     _      -> pure ()
