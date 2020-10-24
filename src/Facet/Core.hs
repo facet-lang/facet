@@ -130,11 +130,13 @@ instance Ord Delta where
   Delta (q1 ::: _) as1 `compare` Delta (q2 ::: _) as2 = q1 `compare` q2 <> as1 `compare` as2
 
 
-data Neutral a b = Neut
+data Neutral a b = (:$)
   { head  :: a
   , spine :: Stack b
   }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+infixl 9 :$
 
 instance Bifoldable Neutral where
   bifoldMap = bifoldMapDefault
@@ -143,7 +145,7 @@ instance Bifunctor Neutral where
   bimap = bimapDefault
 
 instance Bitraversable Neutral where
-  bitraverse f g (Neut h sp) = Neut <$> f h <*> traverse g sp
+  bitraverse f g (h :$ sp) = (:$) <$> f h <*> traverse g sp
 
 
 data Var t
