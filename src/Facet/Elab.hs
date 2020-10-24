@@ -306,9 +306,7 @@ elabTelescope bindings _ body = go bindings
   -- FIXME: elaborate the signature
   go (S.Ann _ (S.Binding p ns _ t):bindings) = goN ns (go bindings)
     where
-    -- NB: [] is used for e.g. non-binding function types. We (currently) have to handle that case separately from the base case for non-empty signatures so as to keep the typing context in sync with indices in the elaborated term/type. This shouldn’t be an issue for declarations, since they only have binding signatures.
-    goN []     k = switch $ P p __ ::: checkElab (elabExpr t) >~> \ _ ->      checkElab k
-    goN [n]    k = switch $ P p n  ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab k
+    goN []     k = k
     goN (n:ns) k = switch $ P p n  ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab (goN ns k)
 
 

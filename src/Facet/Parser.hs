@@ -155,7 +155,7 @@ imBinding :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Binding)
 imBinding = anned $ braces $ S.Binding Im <$> commaSep1 tname <* colon <*> option [] sig <*> type'
 
 nonBinding :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Binding)
-nonBinding = anned $ S.Binding Ex [] <$> option [] sig <*> tatom
+nonBinding = anned $ S.Binding Ex [N.__] <$> option [] sig <*> tatom
 
 
 -- Types
