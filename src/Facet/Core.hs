@@ -118,7 +118,15 @@ data Var t
   = Global (QName ::: t) -- ^ Global variables, considered equal by 'QName'.
   | Free Level
   | Metavar (Meta ::: t) -- ^ Metavariables, considered equal by 'Level'.
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+  deriving (Foldable, Functor, Show, Traversable)
+
+instance Eq (Var t) where
+  Global  (q1 ::: _) == Global  (q2 ::: _) = q1 == q2
+  Global  _          == _                  = False
+  Free    l1         == Free    l2         = l1 == l2
+  Free    _          == _                  = False
+  Metavar (m1 ::: _) == Metavar (m2 ::: _) = m1 == m2
+  Metavar _          == _                  = False
 
 unVar :: (QName ::: a -> b) -> (Level -> b) -> (Meta ::: a -> b) -> Var a -> b
 unVar f g h = \case
