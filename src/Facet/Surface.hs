@@ -3,6 +3,7 @@ module Facet.Surface
   Expr(..)
 , free
 , qual
+, bound
 , (-->)
 , Binding(..)
 , unForAll
@@ -52,6 +53,9 @@ free m n = Free m n
 
 qual :: QName -> Expr
 qual (m :.: n) = Free (Just m) n
+
+bound :: Index -> Expr
+bound = Bound
 
 (-->) :: Ann Expr -> Ann Expr -> Ann Expr
 a --> b = Ann (ann a <> ann b) (ForAll (Binding Nothing [] a) b)
