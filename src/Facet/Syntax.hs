@@ -51,8 +51,14 @@ data a :===: b = a :===: b
 
 infix 0 :===:
 
+instance Bifoldable (:===:) where
+  bifoldMap = bifoldMapDefault
+
 instance Bifunctor (:===:) where
-  bimap f g (a :===: b) = f a :===: g b
+  bimap = bimapDefault
+
+instance Bitraversable (:===:) where
+  bitraverse f g (a :===: b) = (:===:) <$> f a <*> g b
 
 
 data a :=: b = a :=: b
