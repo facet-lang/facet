@@ -195,7 +195,6 @@ monotypeTable =
     , Atom (anned (S.Interface <$ token (string "Interface")))
       -- FIXME: holes in types
     , Atom tvar
-    , Atom (anned (S.qual <$> qname))
     ]
   ]
 
@@ -232,7 +231,10 @@ monotype = fn mono
   mono = build monotypeTable (parens . fn)
 
 tvar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
-tvar = token (anned (runUnspaced (fmap (either (S.free . N.T) S.bound) . resolve <$> tname <*> Unspaced env <?> "variable")))
+tvar = choice
+  [ token (anned (runUnspaced (fmap (either (S.free . N.T) S.bound) . resolve <$> tname <*> Unspaced env <?> "variable")))
+  , fmap S.qual <$> qname
+  ]
 
 
 -- Signatures
@@ -246,7 +248,7 @@ sig = brackets (commaSep delta) <?> "signature"
   where
   var
     =   token (anned (runUnspaced (fmap (either (S.Free Nothing . N.T) S.Bound) . resolve <$> tname <*> Unspaced env)))
-    <|> token (anned (runUnspaced ((\ (m N.:.: n) -> S.Free (Just m) n) <$> qname)))
+    <|> fmap (\ (m N.:.: n) -> S.Free (Just m) n) <$> qname
     <?> "variable"
   delta = anned $ S.Delta <$> head <*> (fromList <$> many var)
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
@@ -288,7 +290,7 @@ evar
   =   token (anned (runUnspaced (fmap (either (S.free . N.E) S.bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
       -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
   <|> try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname)))))
-  <|> anned (S.qual <$> qname)
+  <|> fmap S.qual <$> qname
 
 hole :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Expr)
 hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
@@ -355,8 +357,8 @@ mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy co
   where
   comp = ident tnameStyle
 
-qname :: (Monad p, TokenParsing p) => p N.QName
-qname = token (runUnspaced (fmap (N.:.:) . foldl' (N.:.) . N.MName <$> comp <* dot <*> many (comp <* dot) <*> (dename <|> dtname)))
+qname :: (Has Parser sig p, TokenParsing p) => p (S.Ann N.QName)
+qname = token (anned (runUnspaced (fmap (N.:.:) . foldl' (N.:.) . N.MName <$> comp <* dot <*> many (comp <* dot) <*> (dename <|> dtname))))
   where
   comp = ident tnameStyle
 
