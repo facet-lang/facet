@@ -24,7 +24,7 @@ evalState : { S, A : Type } -> S -> [State S] A -> A
 runState : { S, A : Type } -> S -> [State S] A -> Pair S A
 { state pair }
 
-state : { S, A, R : Type } -> (k : S -> A -> R) -> (s : S) -> [State S] A -> R
-{ [ get   ; k ] -> state k s (k s)
-, [ put s ; k ] -> state k s (k unit)
-, a             ->       k s a }
+state : { S, A, R : Type } -> (z : S -> A -> R) -> (s : S) -> [State S] A -> R
+{ [ get   ; k ] -> state z s (k s)
+, [ put s ; k ] -> state z s (k unit)
+, a             ->       z s a }
