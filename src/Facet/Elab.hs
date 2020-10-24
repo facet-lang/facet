@@ -286,7 +286,7 @@ elabExpr = withSpan' $ \case
   S.ForAll (S.Binding n _ t) b -> case n of
     Nothing -> switch $ ex __ ::: checkElab (elabExpr t) >~> \ _ ->      checkElab (elabExpr b)
     Just n  -> switch $ im n  ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab (elabExpr b)
-  f S.:$  a                    -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
+  S.App f a                    -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
   S.Comp cs                    -> check (elabComp cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T

@@ -43,11 +43,10 @@ data Expr
   | Interface
   | ForAll Binding (Ann Expr)
   | Comp (Ann Comp)
-  | Ann Expr :$ Ann Expr
+  | App (Ann Expr) (Ann Expr)
   -- FIXME: tupling/unit should take a list of expressions
   deriving (Eq, Show)
 
-infixl 9 :$
 
 data Var
   = Free (Maybe MName) DName
@@ -83,14 +82,14 @@ unForAll = \case{ ForAll t b -> pure (t, b) ; _ -> empty }
 
 
 ($$) :: Ann Expr -> Ann Expr -> Ann Expr
-f $$ a = Ann (ann f <> ann a) (f :$ a)
+f $$ a = Ann (ann f <> ann a) (App f a)
 
 infixl 9 $$
 
 unApp :: Has Empty sig m => Expr -> m (Ann Expr, Ann Expr)
 unApp = \case
-  f :$ a -> pure (f, a)
-  _      -> empty
+  App f a -> pure (f, a)
+  _       -> empty
 
 
 data Comp

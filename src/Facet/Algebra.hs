@@ -154,8 +154,8 @@ foldSExpr alg = go
           binding (d, env) (S.Binding (Just n) _ t) = let v = tintro alg n d in ((succ d, env :> v), im ([v] ::: go env t))
           ((_, env'), ts') = mapAccumL binding (Level (length env), env) ts
       in fn alg ts' (go env' b')
-    f S.:$  a ->
-      let (f', a') = splitl (S.unApp . S.out) (S.Ann s (f S.:$ a))
+    S.App f a ->
+      let (f', a') = splitl (S.unApp . S.out) (S.Ann s (S.App f a))
       in app alg (go env f') (fmap (ex . go env) a')
     S.Comp (S.Ann _ c)  -> case c of
       S.Expr e     -> lam alg [ go env e ]
