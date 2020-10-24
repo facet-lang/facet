@@ -212,7 +212,7 @@ forAll mk k = do
   mk' start t b end = S.Ann (Span start end) (mk t b)
 
 type' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
-type' = forAll (\ (n ::: _T) b -> S.ForAll (S.Binding (Just (out n)) [] _T) b) type' <|> monotype
+type' = forAll (\ (n ::: _T) b -> S.ForAll (S.Binding Im (Just (out n)) [] _T) b) type' <|> monotype
 
 monotype :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 monotype = fn mono
@@ -224,7 +224,7 @@ monotype = fn mono
     b <- optional (arrow *> fn loop)
     end <- position
     pure $ case b of
-      Just b  -> S.Ann (Span start end) $ S.ForAll (S.Binding Nothing delta a) b
+      Just b  -> S.Ann (Span start end) $ S.ForAll (S.Binding Ex Nothing delta a) b
       -- FIXME: preserve the signature on the return type.
       Nothing -> a
   -- FIXME: support type operators

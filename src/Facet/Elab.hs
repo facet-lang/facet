@@ -285,9 +285,9 @@ elabExpr = withSpan' $ \case
   S.Hole  n                    -> check (hole n) "hole"
   S.Type                       -> switch $ _Type
   S.Interface                  -> switch $ _Interface
-  S.ForAll (S.Binding n _ t) b -> case n of
-    Nothing -> switch $ ex __ ::: checkElab (elabExpr t) >~> \ _ ->      checkElab (elabExpr b)
-    Just n  -> switch $ im n  ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab (elabExpr b)
+  S.ForAll (S.Binding p n _ t) b -> case n of
+    Nothing -> switch $ P p __ ::: checkElab (elabExpr t) >~> \ _ ->      checkElab (elabExpr b)
+    Just n  -> switch $ P p n  ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab (elabExpr b)
   S.App f a                    -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
   S.Comp cs                    -> check (elabComp cs) "computation"
   where

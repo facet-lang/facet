@@ -63,12 +63,13 @@ bound :: Index -> Expr
 bound = Var . Bound
 
 (-->) :: Ann Expr -> Ann Expr -> Ann Expr
-a --> b = Ann (ann a <> ann b) (ForAll (Binding Nothing [] a) b)
+a --> b = Ann (ann a <> ann b) (ForAll (Binding Ex Nothing [] a) b)
 
 infixr 1 -->
 
 data Binding = Binding
-  { name  :: Maybe UName
+  { _pl   :: Pl
+  , name  :: Maybe UName
   , delta :: [Ann Delta]
   , type' :: Ann Expr
   }
