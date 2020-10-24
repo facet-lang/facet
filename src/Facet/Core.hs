@@ -116,6 +116,9 @@ data Delta = Delta (QName ::: Value) (Stack (Var Value))
 instance Eq Delta where
   Delta (q1 ::: _) as1 == Delta (q2 ::: _) as2 = q1 == q2 && as1 == as2
 
+instance Ord Delta where
+  Delta (q1 ::: _) as1 `compare` Delta (q2 ::: _) as2 = q1 `compare` q2 <> as1 `compare` as2
+
 
 data Var t
   = Global (QName ::: t) -- ^ Global variables, considered equal by 'QName'.
