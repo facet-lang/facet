@@ -227,7 +227,10 @@ tvar = token (anned (runUnspaced (fmap (either (S.free . N.T) S.bound) . resolve
 sig :: (Has Parser sig p, TokenParsing p) => Facet p [S.Ann S.Delta]
 sig = brackets (commaSep delta) <?> "signature"
   where
-  var = token (anned (runUnspaced (fmap (either (S.Free Nothing . N.T) S.Bound) . resolve <$> tname <*> Unspaced env <?> "variable")))
+  var
+    =   token (anned (runUnspaced (fmap (either (S.Free Nothing . N.T) S.Bound) . resolve <$> tname <*> Unspaced env)))
+    <|> token (anned (runUnspaced ((\ (m N.:.: n) -> S.Free (Just m) n) <$> qname)))
+    <?> "variable"
   delta = anned $ S.Delta <$> head <*> (fromList <$> many var)
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
   mkHead cs = (uncurry (foldl' (N.:.) . N.MName) <$> uncons (NE.init cs), N.T (N.UName (NE.last cs)))
