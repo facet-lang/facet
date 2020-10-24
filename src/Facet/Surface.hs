@@ -69,14 +69,14 @@ data Binding = Binding
   { _pl   :: Pl
   , name  :: UName
   , delta :: [Ann Delta]
-  , type' :: Ann Expr
+  , type' :: Ann Type
   }
   deriving (Eq, Show)
 
-data Delta = Delta (Ann (Maybe MName, DName)) (Stack (Ann Expr))
+data Delta = Delta (Ann (Maybe MName, DName)) (Stack (Ann Type))
   deriving (Eq, Show)
 
-unForAll :: Has Empty sig m => Expr -> m (Binding, Ann Expr)
+unForAll :: Has Empty sig m => Expr -> m (Binding, Ann Type)
 unForAll = \case{ ForAll t b -> pure (t, b) ; _ -> empty }
 
 
@@ -113,7 +113,7 @@ data Decl
 
 data DDecl
   = DDForAll Binding (Ann DDecl)
-  | DDBody (Ann Expr) [Ann (UName ::: Ann Expr)]
+  | DDBody (Ann Type) [Ann (UName ::: Ann Type)]
   deriving (Eq, Show)
 
 unDDForAll :: Has Empty sig m => DDecl -> m (Binding, Ann DDecl)
@@ -122,7 +122,7 @@ unDDForAll = \case{ DDForAll t b -> pure (t, b) ; _ -> empty }
 
 data TDecl
   = TDForAll Binding (Ann TDecl)
-  | TDBody (Ann Expr) (Ann Expr)
+  | TDBody (Ann Type) (Ann Expr)
   deriving (Eq, Show)
 
 unTDForAll :: Has Empty sig m => TDecl -> m (Binding, Ann TDecl)
