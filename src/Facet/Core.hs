@@ -66,7 +66,7 @@ data Value
   | VForAll (Pl_ UName ::: Value) (Value -> Value)
   | VLam (Pl_ UName ::: Value) (Value -> Value)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | VNeut (Head Value Level) (Stack Elim)
+  | VNeut (Head Value) (Stack Elim)
   | VCon (Con Value Value)
 
 instance Eq Value where
@@ -111,16 +111,16 @@ eq d = curry $ \case
   eqCon eq' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = n1 == n2 && eq d t1 t2 && length fs1 == length fs2 && and (zipWith (eq' d) fs1 fs2)
 
 
-data Delta = Delta (QName ::: Value) (Stack (Head Value Level))
+data Delta = Delta (QName ::: Value) (Stack (Head Value))
 
 
-data Head t a
+data Head t
   = Global (QName ::: t) -- ^ Global variables, considered equal by 'QName'.
-  | Free a
+  | Free Level
   | Metavar (Meta ::: t) -- ^ Metavariables, considered equal by 'Level'.
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-unHead :: (QName ::: t -> b) -> (a -> b) -> (Meta ::: t -> b) -> Head t a -> b
+unHead :: (QName ::: a -> b) -> (Level -> b) -> (Meta ::: a -> b) -> Head a -> b
 unHead f g h = \case
   Global  n -> f n
   Free    n -> g n
@@ -156,7 +156,7 @@ metavar :: Meta ::: Value -> Value
 metavar = var . Metavar
 
 
-var :: Head Value Level -> Value
+var :: Head Value -> Value
 var = (`VNeut` Nil)
 
 
