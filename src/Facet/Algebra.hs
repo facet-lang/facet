@@ -1,2 +1,0 @@
-module Facet.Algebra
-() where

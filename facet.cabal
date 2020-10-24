@@ -54,7 +54,6 @@ common common
 library
   import: common
   exposed-modules:
-    Facet.Algebra
     Facet.Carrier.Error.Lens
     Facet.Carrier.Parser.Church
     Facet.Carrier.Readline.Haskeline
