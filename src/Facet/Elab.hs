@@ -278,8 +278,8 @@ elabExpr
   -> Maybe Type
   -> Elab (Expr ::: Type)
 elabExpr = withSpan' $ \case
-  S.Free m n                   -> switch $ global (maybe (resolve n) (resolveQ . (:.: n)) m)
-  S.Bound n                    -> switch $ bound n
+  S.Var (S.Free m n)           -> switch $ global (maybe (resolve n) (resolveQ . (:.: n)) m)
+  S.Var (S.Bound n)            -> switch $ bound n
   S.Hole  n                    -> check (hole n) "hole"
   S.Type                       -> switch $ _Type
   S.Interface                  -> switch $ _Interface

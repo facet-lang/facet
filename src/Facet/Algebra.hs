@@ -143,8 +143,8 @@ foldSExpr :: Algebra p -> Stack p -> S.Ann S.Expr -> p
 foldSExpr alg = go
   where
   go env (S.Ann s e) = case e of
-    S.Free m n -> var alg (Global m n)
-    S.Bound n -> env ! getIndex n
+    S.Var (S.Free m n) -> var alg (Global m n)
+    S.Var (S.Bound n) -> env ! getIndex n
     S.Hole  n -> hole alg n
     S.Type     -> _Type alg
     S.Interface -> _Interface alg

@@ -1,6 +1,7 @@
 module Facet.Surface
 ( -- * Expressions
   Expr(..)
+, Var(..)
 , free
 , qual
 , bound
@@ -35,8 +36,7 @@ import Facet.Syntax hiding (out)
 -- Expressions
 
 data Expr
-  = Free (Maybe MName) DName
-  | Bound Index
+  = Var Var
   | Hole UName
   | Type
   | Interface
@@ -48,14 +48,19 @@ data Expr
 
 infixl 9 :$
 
+data Var
+  = Free (Maybe MName) DName
+  | Bound Index
+  deriving (Eq, Show)
+
 free :: DName -> Expr
-free n = Free Nothing n
+free n = Var $ Free Nothing n
 
 qual :: QName -> Expr
-qual (m :.: n) = Free (Just m) n
+qual (m :.: n) = Var $ Free (Just m) n
 
 bound :: Index -> Expr
-bound = Bound
+bound = Var . Bound
 
 (-->) :: Ann Expr -> Ann Expr -> Ann Expr
 a --> b = Ann (ann a <> ann b) (ForAll (Binding Nothing [] a) b)
