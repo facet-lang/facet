@@ -166,7 +166,7 @@ typeSig
   -> Facet p (S.Ann res)
 typeSig (-->) name body = go
   where
-  go = forAll (-->) go <|> binder (-->) name go <|> anned body
+  go = choice [ forAll (-->) go, binder (-->) name go, anned body ]
 
 binder
   :: (Has Parser sig p, TokenParsing p)
