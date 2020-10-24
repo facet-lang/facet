@@ -6,7 +6,7 @@ module Facet.Syntax
 , curryAnn
 , (:===:)(..)
 , (:=:)(..)
-, Neutral(..)
+, (:$)(..)
 , splitl
 , splitr
 , Pl(..)
@@ -81,18 +81,18 @@ instance Bitraversable (:=:) where
   bitraverse f g (a :=: b) = (:=:) <$> f a <*> g b
 
 
-data Neutral a b = a :$ Stack b
+data a :$ b = a :$ Stack b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infixl 9 :$
 
-instance Bifoldable Neutral where
+instance Bifoldable (:$) where
   bifoldMap = bifoldMapDefault
 
-instance Bifunctor Neutral where
+instance Bifunctor (:$) where
   bimap = bimapDefault
 
-instance Bitraversable Neutral where
+instance Bitraversable (:$) where
   bitraverse f g (h :$ sp) = (:$) <$> f h <*> traverse g sp
 
 
