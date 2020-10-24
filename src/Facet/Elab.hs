@@ -287,18 +287,19 @@ elabExpr
   -> Maybe Type
   -> Elab (Expr ::: Type)
 elabExpr = withSpan' $ \case
-  S.Var m n     -> switch $ var m n
-  S.Hole  n     -> check (hole n) "hole"
-  S.Type        -> switch $ _Type
-  S.Interface   -> switch $ _Interface
-  S.ForAll bs b -> elabTelescope bs b
-  S.App f a     -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
-  S.Comp cs     -> check (elabComp cs) "computation"
+  S.Var m n       -> switch $ var m n
+  S.Hole  n       -> check (hole n) "hole"
+  S.Type          -> switch $ _Type
+  S.Interface     -> switch $ _Interface
+  S.ForAll bs s b -> elabTelescope bs s b
+  S.App f a       -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
+  S.Comp cs       -> check (elabComp cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
-elabTelescope :: [S.Ann S.Binding] -> S.Ann S.Type -> Maybe Type -> Elab (Type ::: Type)
-elabTelescope bindings body = go bindings
+-- FIXME: elaborate the signature.
+elabTelescope :: [S.Ann S.Binding] -> [S.Ann S.Delta] -> S.Ann S.Type -> Maybe Type -> Elab (Type ::: Type)
+elabTelescope bindings _ body = go bindings
   where
   -- FIXME: these have got to be foldrs of some kind
   go []                                      = elabExpr body
@@ -476,8 +477,9 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
     -- FIXME: maybe figure out the graph for mutual recursion?
 
     -- elaborate all the types first
-    es <- for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs (ty :=: def)))) -> setSpan s $ do
-      _T <- runModule . elab $ check (checkElab (elabTelescope bs ty) ::: VType)
+    -- FIXME: do we need to pass the delta to elabTermDef and elabDataDef?
+    es <- for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs delta (ty :=: def)))) -> setSpan s $ do
+      _T <- runModule . elab $ check (checkElab (elabTelescope bs delta ty) ::: VType)
 
       defs_ %= (<> [(dname, Nothing ::: _T)])
 

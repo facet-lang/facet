@@ -157,16 +157,15 @@ con = anned ((:::) <$> cname <* colon <*> type')
 
 typeSig
   :: (Has Parser sig p, TokenParsing p)
-  => ([S.Ann S.Binding] -> arg -> res)
+  => ([S.Ann S.Binding] -> [S.Ann S.Delta] -> arg -> res)
   -> p (S.Ann S.Binding)
   -> p arg
   -> p (S.Ann res)
-typeSig (-->) binding body = anned $ do
+typeSig forAll binding body = anned $ do
   bindings <- many (try (binding <* arrow))
-  -- FIXME: use the signature parsed here
-  _ <- option [] sig
+  sig <- option [] sig
   b <- body
-  pure $ bindings --> b
+  pure $ forAll bindings sig b
 
 exBinding :: (Has Parser sig p, TokenParsing p) => p N.UName -> p (S.Ann S.Binding)
 exBinding name = anned $ nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
