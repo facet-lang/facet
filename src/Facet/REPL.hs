@@ -12,7 +12,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, uses, (%=), (.=))
 import           Control.Lens (Getting, Lens', at, lens)
-import           Control.Monad (unless, void)
+import           Control.Monad (unless, void, (<=<))
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
@@ -215,12 +215,12 @@ reload src = do
     targetHeads <- traverse (loadModuleHeader src) (toList targets)
     rethrowGraphErrors src $ loadOrder (fmap toNode . loadModuleHeader src) (map toNode targetHeads)
   let nModules = length modules
-  results <- evalFresh 1 $ for modules $ \ (name, path, src) -> do
+  results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
     i <- fresh
     print $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
 
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
-    (Just <$> loadModule name path src) `catchError` \ err -> Nothing <$ print (prettyNotice' err)
+    (Just <$> loadModule name path src imports) `catchError` \ err -> Nothing <$ print (prettyNotice' err)
   let nSuccess = length (catMaybes results)
       status
         | nModules == nSuccess = annotate Success (pretty nModules)
@@ -228,7 +228,7 @@ reload src = do
   results <$ print (fillSep [status, reflow "modules loaded."])
   where
   ratio n d = pretty n <+> pretty "of" <+> pretty d
-  toNode (n, path, source, imports) = Node n (map ((S.name :: S.Import -> MName) . S.out) imports) (n, path, source)
+  toNode (n, path, source, imports) = let imports' = map ((S.name :: S.Import -> MName) . S.out) imports in Node n imports' (n, path, source, imports')
 
 loadModuleHeader :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> MName -> m (MName, FilePath, Source, [S.Ann S.Import])
 loadModuleHeader src name = do
@@ -238,10 +238,11 @@ loadModuleHeader src name = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
 
-loadModule :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m) => MName -> FilePath -> Source -> m Module
-loadModule name path src = do
-  m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
+loadModule :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m) => MName -> FilePath -> Source -> [MName] -> m Module
+loadModule name path src imports = do
   graph <- use modules_
+  let ops = foldMap (operators . snd <=< (`lookupM` graph)) imports
+  m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   m <- rethrowElabErrors src Code . runReader graph $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)
   pure m
