@@ -1,6 +1,7 @@
 module Facet.Surface
 ( -- * Expressions
   Expr(..)
+, free
 , qual
 , (-->)
 , Binding(..)
@@ -45,6 +46,9 @@ data Expr
   deriving (Eq, Show)
 
 infixl 9 :$
+
+free :: Maybe MName -> DName -> Expr
+free m n = Free m n
 
 qual :: QName -> Expr
 qual (m :.: n) = Free (Just m) n
