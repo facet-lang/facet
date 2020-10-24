@@ -299,8 +299,8 @@ elabExpr = withSpan' $ \case
 
 -- FIXME: elaborate the signature.
 elabTelescope :: [S.Ann S.Binding] -> [S.Ann S.Delta] -> S.Ann S.Type -> Maybe Type -> Elab (Type ::: Type)
-elabTelescope bindings _ body = foldr (\ (S.Ann _ (S.Binding p ns _ t)) b ->
-  foldr (\ n k ->
+elabTelescope bindings _ body = foldr (\ (S.Ann s (S.Binding p ns _ t)) b ->
+  setSpan (Span (start s) (end (S.ann body))) . foldr (\ n k ->
     switch $ P p n ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab k) b ns) (elabExpr body) bindings
 
 
