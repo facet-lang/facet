@@ -36,7 +36,7 @@ import           Facet.Name hiding (Meta)
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab
 import           Facet.Notice.Parser
-import           Facet.Parser
+import           Facet.Parser as Parser
 import           Facet.Pretty
 import           Facet.Print as Print hiding (Type)
 import           Facet.REPL.Parser
@@ -153,7 +153,7 @@ commands = choice
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ showType <$> runFacet [] [] expr
   , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
-    $ showType <$> runFacet [] [] type'
+    $ showType <$> runFacet [] [] Parser.type'
   ]
 
 path' :: TokenParsing p => p FilePath
