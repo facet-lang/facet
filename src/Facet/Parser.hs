@@ -98,6 +98,7 @@ module'' onImport = anned (S.Module <$> mname <* colon <* symbol "Module" <*> op
     onImport i
     pure i
 
+-- FIXME: pick a better syntax for imports, something we can use in the REPL.
 moduleHeader :: (Has Parser sig p, TokenParsing p) => Facet p (N.MName, [S.Ann S.Import])
 moduleHeader = (,) <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import'))
 
