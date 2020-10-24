@@ -20,7 +20,6 @@ import           Data.Bool (bool)
 import           Data.Char (isSpace)
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as Unicode
-import           Data.Coerce (Coercible, coerce)
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
 import           Data.List (elemIndex, uncons)
@@ -54,11 +53,11 @@ import           Text.Parser.Token.Style
 runFacet :: Functor m => [N.UName] -> [AnyOperator] -> Facet m a -> m a
 runFacet env ops (Facet m) = evalState ops (m env)
 
-bind :: Coercible t N.UName => t -> (N.UName -> Facet m a) -> Facet m a
-bind n b = Facet $ \ env -> StateC $ \ ops -> let { n' = coerce n ; Facet run = b n' } in runState ops (run (n':env))
+bind :: N.UName -> (N.UName -> Facet m a) -> Facet m a
+bind n b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b n } in runState ops (run (n:env))
 
-resolve :: Coercible t N.UName => t -> [N.UName] -> Either t N.Index
-resolve n = maybe (Left n) (Right . N.Index) . elemIndex @N.UName (coerce n)
+resolve :: N.UName -> [N.UName] -> Either N.UName N.Index
+resolve n = maybe (Left n) (Right . N.Index) . elemIndex n
 
 env :: Monad m => Facet m [N.UName]
 env = Facet pure
@@ -176,7 +175,7 @@ binder
   -> Facet p (S.Ann res)
 binder (-->) name k = do
   -- FIXME: signatures
-  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (coerce <$> name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
+  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
   bind i $ \ v -> mk start (S.Binding Ex v [] t) <$ arrow <*> k <*> position
   where
   mk start t b end = S.Ann (Span start end) (t --> b)
