@@ -529,10 +529,10 @@ runModule m = do
 setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
-withSpan :: Has (Reader Span) sig m => (a -> m b) -> (S.Ann a) -> m b
+withSpan :: Has (Reader Span) sig m => (a -> m b) -> S.Ann a -> m b
 withSpan k (S.Ann s a) = setSpan s (k a)
 
-withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (S.Ann a) -> b -> m c
+withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> S.Ann a -> b -> m c
 withSpan' k (S.Ann s a) b = setSpan s (k a b)
 
 
