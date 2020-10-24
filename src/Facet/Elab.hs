@@ -426,16 +426,12 @@ elabDataDef
   -> Check [UName ::: Type]
 elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> wrap (checkElab (elabExpr t))
   where
-  wrap = go bindings
   -- FIXME: check that all constructors return the datatype.
-  go []                                     k = k
-  go (S.Ann s (S.Binding _ n _ _):bindings) k = setSpan s $ goN n (go bindings k)
-    where
-    goN []     k = k
-    goN (n:ns) k = Check $ \ _T -> do
+  wrap = flip (foldr (\ (S.Ann s (S.Binding _ ns _ _)) k ->
+    setSpan s $ foldr (\ n k -> Check $ \ _T -> do
       (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
-      b' <- elabBinder $ \ v -> check ((n ::: _T |- goN ns k) ::: _B v)
-      pure $ VForAll (Binding Im n s _T) b'
+      b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: _B v)
+      pure $ VForAll (Binding Im n s _T) b') k ns)) bindings
 
 
 elabTermDef
