@@ -131,7 +131,7 @@ instance Ord Delta where
 
 
 data Neutral a b = Neut
-  { head  :: Var a
+  { head  :: a
   , spine :: Stack b
   }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -143,7 +143,7 @@ instance Bifunctor Neutral where
   bimap = bimapDefault
 
 instance Bitraversable Neutral where
-  bitraverse f g (Neut h sp) = Neut <$> traverse f h <*> traverse g sp
+  bitraverse f g (Neut h sp) = Neut <$> f h <*> traverse g sp
 
 
 data Var t
