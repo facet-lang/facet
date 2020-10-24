@@ -69,10 +69,7 @@ instance Bifunctor (:=:) where
   bimap f g (a :=: b) = f a :=: g b
 
 
-data Neutral a b = (:$)
-  { head  :: a
-  , spine :: Stack b
-  }
+data Neutral a b = a :$ Stack b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infixl 9 :$
