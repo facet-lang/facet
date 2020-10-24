@@ -1,1 +1,6 @@
 Interface.Monoid : Module
+
+[ Interface.Semigroup ]
+
+Monoid : (A : Type) -> [Semigroup A] Interface
+{ zero : [Monoid A] A }
