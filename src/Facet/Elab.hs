@@ -435,7 +435,7 @@ elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) ->
   where
   wrap = go bindings
   -- FIXME: check that all constructors return the datatype.
-  go []                           k = k
+  go []                                     k = k
   go (S.Ann s (S.Binding _ n _ _):bindings) k = setSpan s $ goN n (go bindings k)
     where
     goN []     k = k
