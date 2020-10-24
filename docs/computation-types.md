@@ -80,5 +80,5 @@ Value types are ordinary data. Computations, curiously, include functions. It’
 
 Regardless, values and computations are related via an adjunction between functors U and F. (F returns, U thunks—I think.) There are judgements for moving terms and types between the two spaces:
 
-- return/eval to
-- thunk/force
+- `return`/`eval to` — `return` lifts a value to a computation; `eval to` evaluates a computation to a variable (and variables have value type)
+- `thunk`/`force` — `thunk` wraps a computation into a value; `force` runs a thunk in a computation
