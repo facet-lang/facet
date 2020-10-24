@@ -121,9 +121,10 @@ import' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Import)
 import' = anned $ S.Import <$> mname
 
 decl :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
-decl = anned
-  $   tdecl
-  <|> (,) <$> dtname <* colon <*> anned (S.DDecl <$> typeSig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
+decl = anned $ choice
+  [ tdecl
+  , (,) <$> dtname <* colon <*> anned (S.DDecl <$> typeSig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
+  ]
   where
   tdecl = do
     name <- dename
