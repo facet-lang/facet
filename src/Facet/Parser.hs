@@ -87,11 +87,11 @@ whole p = whiteSpace *> p <* eof
 module' :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => p (S.Ann S.Module)
 module' = anned $ do
   (name, imports) <- moduleHeader
-  S.Module name imports <$> many decl
+  S.Module name imports [] <$> many decl
 
 -- | Parse a module, using the provided callback to give the parser feedback on imports.
 module'' :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => (S.Ann S.Import -> p ()) -> p (S.Ann S.Module)
-module'' onImport = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import'')) <*> many decl)
+module'' onImport = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import'')) <*> pure [] <*> many decl)
   where
   import'' = do
     i <- import'
