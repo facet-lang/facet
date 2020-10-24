@@ -303,7 +303,7 @@ printValue alg = go
   subpatterns env ps = mapAccumL (\ (env', ps) p -> let ((env'', v), p') = pat env' p in ((env'', ps:>v), p')) (env, Nil) ps
 
 printModule :: Algebra p -> C.Module -> p
-printModule alg (C.Module mname is ds) = module_ alg
+printModule alg (C.Module mname is _ ds) = module_ alg
   $   mname
   ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module")))))
   :=: (map (\ (C.Import n) -> import' alg n) is, map def ds)

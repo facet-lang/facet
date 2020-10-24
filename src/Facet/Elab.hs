@@ -467,7 +467,7 @@ elabModule
   .  (HasCallStack, Has (Reader Graph) sig m, Has (Throw Err) sig m)
   => S.Ann S.Module
   -> m C.Module
-elabModule (S.Ann s (S.Module mname is _ ds)) = execState (Module mname [] []) . runReader s $ do
+elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os []) . runReader s $ do
   let (importedNames, imports) = mapAccumL (\ names (S.Ann _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
   imports_ .= imports
 

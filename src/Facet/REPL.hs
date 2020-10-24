@@ -99,7 +99,7 @@ defaultREPLState = REPL
   , searchPaths    = Set.singleton "src"
   }
   where
-  localDefs = Module (MName mempty) [] []
+  localDefs = Module (MName mempty) [] [] []
   modules = singleton Nothing kernel
 
 defaultPromptFunction :: Int -> IO String
@@ -110,7 +110,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
 
 
 kernel :: Module
-kernel = Module kernelName []
+kernel = Module kernelName [] []
   [ (T (UName (TS.pack "Type")), Just (DTerm VType) ::: VType)
   ]
   where
