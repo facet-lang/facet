@@ -2,8 +2,6 @@ module Facet.Syntax
 ( (:::)(..)
 , tm
 , ty
-, uncurryAnn
-, curryAnn
 , (:===:)(..)
 , (:=:)(..)
 , (:$)(..)
@@ -42,13 +40,6 @@ tm (a ::: _) = a
 
 ty :: a ::: b -> b
 ty (_ ::: b) = b
-
-
-uncurryAnn :: (a -> b -> c) -> ((a ::: b) -> c)
-uncurryAnn f ~(a ::: b) = f a b
-
-curryAnn :: ((a ::: b) -> c) -> (a -> b -> c)
-curryAnn f a b = f (a ::: b)
 
 
 data a :===: b = a :===: b

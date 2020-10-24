@@ -98,7 +98,7 @@ instance Functor Synth where
   fmap f (Synth m) = Synth (first f <$> m)
 
 check :: (Check a ::: Type) -> Elab a
-check = uncurryAnn runCheck
+check (m ::: _T) = runCheck m _T
 
 
 checkElab :: (Maybe Type -> Elab (a ::: Type)) -> Check a
