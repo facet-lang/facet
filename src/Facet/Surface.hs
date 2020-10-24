@@ -56,6 +56,7 @@ infixr 1 -->
 
 data Binding = Binding
   { name  :: Maybe UName
+  -- FIXME: this is far too general. The specific structure of deltas is much more restricted.
   , delta :: [Ann Expr]
   , type' :: Ann Expr
   }
