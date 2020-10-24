@@ -120,12 +120,13 @@ unify = \case
   VNeut (Metavar v) Nil :===: x                     -> solve (tm v :=: x)
   x                     :===: VNeut (Metavar v) Nil -> solve (tm v :=: x)
   VForAll t1 b1         :===: VForAll t2 b2
-    | _pl t1 == _pl t2 -> do
+    | _pl t1 == _pl t2, delta t1 == delta t2 -> do
+      -- FIXME: unify the signatures
       t <- unify (type' t1 :===: type' t2)
       d <- asks @(Context Type) level
       let v = free d
       b <- unify (b1 v :===: b2 v)
-      pure $ VForAll (Binding (_pl t1) ((name :: Binding -> UName) t1) t) (\ v -> C.bind d v b)
+      pure $ VForAll (Binding (_pl t1) ((name :: Binding -> UName) t1) (delta t1) t) (\ v -> C.bind d v b)
   -- FIXME: build and display a diff of the root types
   t1                    :===: t2                    -> couldNotUnify t1 t2
   where
@@ -154,9 +155,10 @@ insertSubst :: Meta -> Maybe Prob ::: Type -> Subst -> Subst
 insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
 
 -- FIXME: does instantiation need to be guided by the expected type?
+-- FIXME: can implicits have effects? what do we do about the signature?
 instantiate :: Expr ::: Type -> Elab (Expr ::: Type)
 instantiate (e ::: _T) = case unForAll _T of
-  Just (Binding Im _ _T, _B) -> do
+  Just (Binding Im _ _ _T, _B) -> do
     m <- metavar <$> meta _T
     instantiate (e C.$$ im m ::: _B m)
   _                        -> pure $ e ::: _T
@@ -298,6 +300,7 @@ _Type = Synth $ pure $ VType ::: VType
 _Interface :: Synth Type
 _Interface = Synth $ pure $ VInterface ::: VType
 
+-- FIXME: effects!
 (>~>)
   :: (Pl_ UName ::: Check Type)
   -> (UName ::: Type -> Check Type)
@@ -305,7 +308,7 @@ _Interface = Synth $ pure $ VInterface ::: VType
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: VType)
   b' <- elabBinder $ \ _ -> check (b (out n ::: _T) ::: VType)
-  pure $ VForAll (Binding (pl n) (out n) _T) b' ::: VType
+  pure $ VForAll (Binding (pl n) (out n) mempty _T) b' ::: VType
 
 infixr 1 >~>
 
@@ -315,9 +318,10 @@ lam
   -> (UName ::: Type -> Check Expr)
   -> Check Expr
 lam n b = Check $ \ _T -> do
-  (Binding _ _ _T, _B) <- expectQuantifier "when checking lambda" _T
+  -- FIXME: how does the effect adjustment change this?
+  (Binding _ _ _ _T, _B) <- expectQuantifier "when checking lambda" _T
   b' <- elabBinder $ \ v -> check (b (out n ::: _T) ::: _B v)
-  pure $ VLam (Binding (pl n) (out n) _T) b'
+  pure $ VLam (Binding (pl n) (out n) mempty _T) b'
 
 
 elabComp
@@ -346,9 +350,10 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 
 elabClauses :: [(NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)] -> Check Expr
 elabClauses [((S.Ann _ (S.PVar n)):|ps, b)] = Check $ \ _T -> do
-  (Binding pl _ _A, _B) <- expectQuantifier "when checking clauses" _T
+  -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
+  (Binding pl _ s _A, _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> n ::: _A |- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
-  pure $ VLam (Binding pl n _A) b'
+  pure $ VLam (Binding pl n s _A) b'
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
 elabClauses cs = Check $ \ _T -> do
   rest <- case foldMap partitionClause cs of
@@ -356,7 +361,8 @@ elabClauses cs = Check $ \ _T -> do
     XL _  -> pure $ Nothing
     XR cs -> pure $ Just cs
     XT    -> error "mixed" -- FIXME: throw a proper error
-  (Binding _ _ _A, _B) <- expectQuantifier "when checking clauses" _T
+  -- FIXME: use the signature to elaborate the pattern
+  (Binding _ _ s _A, _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> do
     let _B' = _B v
     cs' <- for cs $ \ (p:|_, b) -> do
@@ -366,7 +372,7 @@ elabClauses cs = Check $ \ _T -> do
     pure $ case' v cs'
   -- FIXME: something isn’t correctly accounting for the insertion of the lambda.
   -- e.g. the elaboration of fst & snd contain case c { (pair d e) -> c } and case c { (pair d e) -> d } respectively. is the context being extended incorrectly, or not being extended when it should be?
-  pure $ VLam (Binding Ex __ _A) b'
+  pure $ VLam (Binding Ex __ s _A) b'
   where
   partitionClause (_:|ps, b) = case ps of
     []   -> XL ()
@@ -380,14 +386,15 @@ elabPattern = withSpan $ \case
   S.PVar n      -> Check $ \ _T -> pure (C.PVar (n ::: _T))
   S.PCon n ps   -> Check $ \ _T -> do
     let inst _T = case unForAll _T of
-          Just (Binding Im _ _T, _B) -> do
+          Just (Binding Im _ _ _T, _B) -> do
             m <- metavar <$> meta _T
             inst (_B m)
           _                        -> pure _T
         go _T' = \case
           Nil   -> Nil <$ unify (_T' :===: _T)
           ps:>p -> do
-            (Binding _ _ _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
+            -- FIXME: check the signature? somehow?
+            (Binding _ _ _ _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
             -- FIXME: there’s no way this is going to work, let alone a good idea
             -- FIXME: elaborate patterns in CPS, binding locally with elabBinder, & obviating the need for |-*.
             v <- metavar <$> meta _A
@@ -420,9 +427,10 @@ elabDDecl d = go d id
     S.DDForAll (n ::: t) b ->
       let b' ::: _B = go b
             (km . (\ b  -> Check $ \ _T -> setSpan s $ do
-              (Binding _ _ _T, _B) <- expectQuantifier "in type quantifier" _T
+              -- FIXME: can datatype parameters have effects?
+              (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
               b' <- elabBinder $ \ v -> check ((out n ::: _T |- b) ::: _B v)
-              pure $ VForAll (Binding Im (out n) _T) b'))
+              pure $ VForAll (Binding Im (out n) s _T) b'))
       in b' ::: setSpan s (checkElab (switch (n ::: checkElab (elabExpr t) >~> (|- _B))))
 
     S.DDBody t b -> setSpan s (elabData km b) ::: setSpan s (checkElab (elabExpr t))

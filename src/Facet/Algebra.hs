@@ -80,7 +80,9 @@ foldCValue alg = go
     C.VInterface -> _Interface alg
     C.VForAll t b ->
       let (vs, (_, b')) = splitr C.unForAll' (d, C.VForAll t b)
-          binding env (C.Binding p n _T) = (env :> tvar env (P p n ::: _T), P p (name p n (Level (length env)) ::: go env _T))
+          binding env (C.Binding p n s _T) =
+            let _T' = (if null s then id else tcomp alg (map (delta env) (toList s))) (go env _T)
+            in  (env :> tvar env (P p n ::: _T'), P p (name p n (Level (length env)) ::: _T'))
           name p n d
             | T.null (getUName n)
             , Ex <- p             = []
@@ -89,7 +91,9 @@ foldCValue alg = go
       in fn alg vs' (go env' b')
     C.VLam n b ->
       let (vs, (_, b')) = splitr C.unLam' (d, C.VLam n b)
-          binding env (C.Binding p n _T) = (env :> lvar env (P p n ::: _T), P p (unPl (tintro alg) (intro alg) p n (Level (length env)) ::: Just (go env _T)))
+          binding env (C.Binding p n s _T) =
+            let _T' = (if null s then id else tcomp alg (map (delta env) (toList s))) (go env _T)
+            in  (env :> lvar env (P p n ::: _T'), P p (unPl (tintro alg) (intro alg) p n (Level (length env)) ::: Just _T'))
           (env', vs') = mapAccumL binding env vs
       in lam alg [clause alg vs' (go env' b')]
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
@@ -109,8 +113,9 @@ foldCValue alg = go
     C.VCon (C.Con n p) -> app alg (ann' alg (bimap (var alg . qvar) (go env) n)) (fmap (ex . go env) p)
     where
     d = Level (length env)
-  tvar env n = ann' alg (var alg (TLocal (out (tm n)) (Level (length env))) ::: go env (ty n))
-  lvar env n = ann' alg (var alg (unPl_ TLocal Local (tm n) (Level (length env))) ::: go env (ty n))
+  tvar env n = ann' alg (var alg (TLocal (out (tm n)) (Level (length env))) ::: ty n)
+  lvar env n = ann' alg (var alg (unPl_ TLocal Local (tm n) (Level (length env))) ::: ty n)
+  delta env (C.Delta (q ::: _T) sp) = app alg (ann' alg (var alg (qvar q) ::: go env _T)) (ex . go env <$> sp)
 
   pat env = \case
     C.PVar n    -> let { d = Level (length env) ; v = ann' alg (var alg (Local (tm n) d) ::: go env (ty n)) } in ((env :> v, v), C.PVar (C.free d))
