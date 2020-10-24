@@ -125,9 +125,7 @@ termDecl = anned $ do
   name <- dename
   case name of
     N.O op -> do
-      op' <- case op of
-        N.Prefix  _  -> pure (op, N.R, unary name)
-        N.Postfix _  -> pure (op, N.L, unary name)
+      assoc<- case op of
         N.Infix   _  -> do
           assoc <- option N.N $ brackets $ choice
             [ N.N <$ symbol "non-assoc"
@@ -135,15 +133,14 @@ termDecl = anned $ do
             , N.R <$ symbol "right-assoc"
             , N.A <$ symbol "assoc"
             ]
-          pure (op, assoc, binary name)
-        N.Outfix _ _ -> pure (op, N.N, unary name)
-      modify (op' :)
+          pure assoc
+        _ -> pure N.N
+      modify ((op, assoc, nary name) :)
     _      -> pure ()
   decl <- colon *> typeSig S.Decl (choice [ imBinding, exBinding ename ]) ((:=:) <$> type' <*> (S.TermDef <$> comp))
   pure (name, decl)
   where
-  binary name es = foldl' (S.$$) (S.Ann (S.ann (head es)) (S.free name)) es
-  unary name es = let e@(S.Ann s _) = head es in S.Ann s (S.free name) S.$$ e
+  nary name es = foldl' (S.$$) (S.Ann (S.ann (head es)) (S.free name)) es
 
 -- FIXME: how do we distinguish between data and interface declarations?
 dataDecl :: (Has Parser sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
