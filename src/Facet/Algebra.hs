@@ -155,8 +155,10 @@ foldSExpr alg = go
     S.Interface -> _Interface alg
     S.ForAll t b ->
       let (ts, b') = splitr (S.unForAll . S.out) (S.Ann s (S.ForAll t b))
-          binding (d, env) (S.Binding p Nothing  _ t) = ((d, env), P p ([] ::: go env t))
-          binding (d, env) (S.Binding p (Just n) _ t) = let v = tintro alg n d in ((succ d, env :> v), P p ([v] ::: go env t))
+          -- FIXME: fold the signature
+          binding (d, env) (S.Binding p n _ t)
+            | T.null (getUName n) = ((d, env), P p ([] ::: go env t))
+            | otherwise           = let v = tintro alg n d in ((succ d, env :> v), P p ([v] ::: go env t))
           ((_, env'), ts') = mapAccumL binding (Level (length env), env) ts
       in fn alg ts' (go env' b')
     S.App f a ->

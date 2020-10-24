@@ -64,7 +64,7 @@ bound = Var . Bound
 
 data Binding = Binding
   { _pl   :: Pl
-  , name  :: Maybe UName
+  , name  :: UName
   , delta :: [Ann Delta]
   , type' :: Ann Expr
   }
