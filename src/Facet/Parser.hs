@@ -167,6 +167,7 @@ binder
   -> Facet p (S.Ann res)
   -> Facet p (S.Ann res)
 binder (-->) name k = do
+  -- FIXME: signatures
   ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (coerce <$> name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
   bind i $ \ v -> mk start (ex v ::: t) <$ arrow <*> k <*> position
   where
