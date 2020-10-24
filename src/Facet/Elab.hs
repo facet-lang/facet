@@ -299,15 +299,9 @@ elabExpr = withSpan' $ \case
 
 -- FIXME: elaborate the signature.
 elabTelescope :: [S.Ann S.Binding] -> [S.Ann S.Delta] -> S.Ann S.Type -> Maybe Type -> Elab (Type ::: Type)
-elabTelescope bindings _ body = go bindings
-  where
-  -- FIXME: these have got to be foldrs of some kind
-  go []                                      = elabExpr body
-  -- FIXME: elaborate the signature
-  go (S.Ann _ (S.Binding p ns _ t):bindings) = goN ns (go bindings)
-    where
-    goN []     k = k
-    goN (n:ns) k = switch $ P p n  ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab (goN ns k)
+elabTelescope bindings _ body = foldr (\ (S.Ann _ (S.Binding p ns _ t)) b ->
+  foldr (\ n k ->
+    switch $ P p n ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab k) b ns) (elabExpr body) bindings
 
 
 _Type :: Synth Type
