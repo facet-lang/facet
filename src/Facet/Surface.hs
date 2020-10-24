@@ -52,7 +52,7 @@ free :: Maybe MName -> DName -> Expr
 free m n = Free m n
 
 qual :: QName -> Expr
-qual (m :.: n) = Free (Just m) n
+qual (m :.: n) = free (Just m) n
 
 bound :: Index -> Expr
 bound = Bound
