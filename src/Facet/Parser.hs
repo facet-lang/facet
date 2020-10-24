@@ -152,10 +152,10 @@ exBinding :: (Has Parser sig p, TokenParsing p) => p N.UName -> p (S.Ann S.Bindi
 exBinding name = anned $ nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
 
 imBinding :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Binding)
-imBinding = anned $ braces $ S.Binding Im <$> commaSep1 tname <* colon <*> option [] sig <*> type'
+imBinding = anned $ braces $ S.Binding Im . NE.fromList <$> commaSep1 tname <* colon <*> option [] sig <*> type'
 
 nonBinding :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Binding)
-nonBinding = anned $ S.Binding Ex [N.__] <$> option [] sig <*> tatom
+nonBinding = anned $ S.Binding Ex (pure N.__) <$> option [] sig <*> tatom
 
 
 -- Types

@@ -51,7 +51,7 @@ qual (m :.: n) = Var (Just m) n
 
 data Binding = Binding
   { _pl   :: Pl
-  , names :: [UName]
+  , names :: NonEmpty UName
   , delta :: [Ann Delta]
   , type' :: Ann Type
   }
