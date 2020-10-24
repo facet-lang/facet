@@ -1,6 +1,8 @@
 Interface.Writer : Module
 
-[ Data.Unit ]
+[ Data.Pair
+, Data.Unit ]
 
 Writer : (W : Type) -> Interface
-{ tell : W -> [Writer W] Unit }
+{ tell : W -> [Writer W] Unit
+, listen : [Writer W] A -> [Writer W] Pair W A }
