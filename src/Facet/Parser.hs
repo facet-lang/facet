@@ -85,11 +85,18 @@ whole p = whiteSpace *> p <* eof
 module' :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => p (S.Ann S.Module)
 module' = anned $ do
   (name, imports) <- moduleHeader
-  S.Module name imports [] <$> many decl
+  decls <- many decl
+  ops <- get @[Operator (S.Ann S.Expr)]
+  pure $ S.Module name imports (map (\ (op, assoc, _) -> (op, assoc)) ops) decls
 
 -- | Parse a module, using the provided callback to give the parser feedback on imports.
 module'' :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => (S.Ann S.Import -> p ()) -> p (S.Ann S.Module)
-module'' onImport = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import'')) <*> pure [] <*> many decl)
+module'' onImport = anned $ do
+  name <- mname <* colon <* symbol "Module"
+  imports <- option [] (brackets (commaSep import''))
+  decls <- many decl
+  ops <- get @[Operator (S.Ann S.Expr)]
+  pure $ S.Module name imports (map (\ (op, assoc, _) -> (op, assoc)) ops) decls
   where
   import'' = do
     i <- import'
@@ -130,7 +137,6 @@ termDecl = anned $ do
             ]
           pure (op, assoc, binary name)
         N.Outfix _ _ -> pure (op, N.N, unary name)
-      -- FIXME: record the operator name and associativity in the module.
       modify (op' :)
     _      -> pure ()
   decl <- colon *> typeSig S.Decl (choice [ imBinding, exBinding ename ]) ((:=:) <$> type' <*> (S.TermDef <$> comp))
