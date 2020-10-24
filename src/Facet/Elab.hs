@@ -424,14 +424,15 @@ elabDDecl
 elabDDecl d = go d id
   where
   go (S.Ann s d) km = case d of
-    S.DDForAll (n ::: t) b ->
+    -- FIXME: elaborate the sig.
+    S.DDForAll (S.Binding p n _ t) b ->
       let b' ::: _B = go b
             (km . (\ b  -> Check $ \ _T -> setSpan s $ do
               -- FIXME: can datatype parameters have effects?
               (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
-              b' <- elabBinder $ \ v -> check ((out n ::: _T |- b) ::: _B v)
-              pure $ VForAll (Binding Im (out n) s _T) b'))
-      in b' ::: setSpan s (checkElab (switch (n ::: checkElab (elabExpr t) >~> (|- _B))))
+              b' <- elabBinder $ \ v -> check ((n ::: _T |- b) ::: _B v)
+              pure $ VForAll (Binding Im n s _T) b'))
+      in b' ::: setSpan s (checkElab (switch (P p n ::: checkElab (elabExpr t) >~> (|- _B))))
 
     S.DDBody t b -> setSpan s (elabData km b) ::: setSpan s (checkElab (elabExpr t))
 
@@ -446,10 +447,11 @@ elabTDecl
 elabTDecl d = go d
   where
   go d = withSpans d $ \case
-    S.TDForAll (n ::: t) b ->
+    -- FIXME: elaborate the sig
+    S.TDForAll (S.Binding p n _ t) b ->
       let b' ::: _B = go b
-      in lam n (|- b') :::
-          checkElab (switch (unPl_ im (const (ex __)) n ::: checkElab (elabExpr t) >~> (|- _B)))
+      in lam (P p n) (|- b') :::
+          checkElab (switch (unPl im (const (ex __)) p n ::: checkElab (elabExpr t) >~> (|- _B)))
 
     S.TDBody t b -> checkElab (elabExpr b) ::: checkElab (elabExpr t)
 

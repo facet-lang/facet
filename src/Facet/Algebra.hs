@@ -196,7 +196,8 @@ foldSDDecl alg = go Nil
     S.DDBody t b -> defn alg $ foldSExpr alg env t :=: data' alg (map (foldSCons alg env) b)
     S.DDForAll t b ->
       let (ts, b') = splitr (S.unDDForAll . S.out) (S.Ann s (S.DDForAll t b))
-          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local (out n) d) in ((succ d, env :> v), ([v] ::: foldSExpr alg env t) <$ n)) (level, env) ts
+          -- FIXME: fold the signature
+          ((_, env'), ts') = mapAccumL (\ (d, env) (S.Binding p n _ t) -> let v = var alg (Local n d) in ((succ d, env :> v), P p ([v] ::: foldSExpr alg env t))) (level, env) ts
       in fn alg ts' (go env' b')
     where
     level = Level (length env)
@@ -208,7 +209,8 @@ foldSTDecl alg = go Nil
     S.TDBody t b -> defn alg $ foldSExpr alg env t :=: foldSExpr alg env b
     S.TDForAll t b ->
       let (ts, b') = splitr (S.unTDForAll . S.out) (S.Ann s (S.TDForAll t b))
-          ((_, env'), ts') = mapAccumL (\ (d, env) (n ::: t) -> let v = var alg (Local (out n) d) in ((succ d, env :> v), ([v] ::: foldSExpr alg env t) <$ n)) (level, env) ts
+          -- FIXME: fold the signature
+          ((_, env'), ts') = mapAccumL (\ (d, env) (S.Binding p n _ t) -> let v = var alg (Local n d) in ((succ d, env :> v), P p ([v] ::: foldSExpr alg env t))) (level, env) ts
       in fn alg ts' (go env' b')
     where
     level = Level (length env)

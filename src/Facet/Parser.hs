@@ -160,7 +160,7 @@ dataDecl = anned $ (,) <$> dtname <* colon <*> anned (S.DDecl <$> typeSig S.DDFo
 
 typeSig
   :: (Has Parser sig p, TokenParsing p)
-  => (Pl_ N.UName ::: S.Ann S.Expr -> S.Ann res -> res)
+  => (S.Binding -> S.Ann res -> res)
   -> Facet p N.UName
   -> Facet p res
   -> Facet p (S.Ann res)
@@ -170,14 +170,14 @@ typeSig (-->) name body = go
 
 binder
   :: (Has Parser sig p, TokenParsing p)
-  => (Pl_ N.UName ::: S.Ann S.Expr -> S.Ann res -> res)
+  => (S.Binding -> S.Ann res -> res)
   -> Facet p N.UName
   -> Facet p (S.Ann res)
   -> Facet p (S.Ann res)
 binder (-->) name k = do
   -- FIXME: signatures
   ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (coerce <$> name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
-  bind i $ \ v -> mk start (ex v ::: t) <$ arrow <*> k <*> position
+  bind i $ \ v -> mk start (S.Binding Ex v [] t) <$ arrow <*> k <*> position
   where
   mk start t b end = S.Ann (Span start end) (t --> b)
 
@@ -198,21 +198,22 @@ monotypeTable =
     ]
   ]
 
+-- FIXME: implicits… with effects?
 forAll
   :: (Has Parser sig p, TokenParsing p)
-  => (Pl_ N.UName ::: S.Ann S.Expr -> S.Ann res -> res)
+  => (S.Binding -> S.Ann res -> res)
   -> Facet p (S.Ann res) -> Facet p (S.Ann res)
-forAll mk k = do
+forAll mk body = do
   start <- position
   -- FIXME: parse multiple sets of bindings within a single set of braces.
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
-  arrow *> foldr (loop start ty) k names
+  arrow *> foldr (loop start ty) body names
   where
-  loop start ty i rest = bind i $ \ v -> mk' start (im v ::: ty) <$> rest <*> position
+  loop start ty i rest = bind i $ \ v -> mk' start (S.Binding Im v [] ty) <$> rest <*> position
   mk' start t b end = S.Ann (Span start end) (mk t b)
 
 type' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
-type' = forAll (\ (n ::: _T) b -> S.ForAll (S.Binding Im (out n) [] _T) b) type' <|> monotype
+type' = forAll S.ForAll type' <|> monotype
 
 monotype :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 monotype = fn mono

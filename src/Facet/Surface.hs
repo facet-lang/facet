@@ -109,20 +109,20 @@ data Decl
   deriving (Eq, Show)
 
 data DDecl
-  = DDForAll (Pl_ UName ::: Ann Expr) (Ann DDecl)
+  = DDForAll Binding (Ann DDecl)
   | DDBody (Ann Expr) [Ann (UName ::: Ann Expr)]
   deriving (Eq, Show)
 
-unDDForAll :: Has Empty sig m => DDecl -> m (Pl_ UName ::: Ann Expr, Ann DDecl)
+unDDForAll :: Has Empty sig m => DDecl -> m (Binding, Ann DDecl)
 unDDForAll = \case{ DDForAll t b -> pure (t, b) ; _ -> empty }
 
 
 data TDecl
-  = TDForAll (Pl_ UName ::: Ann Expr) (Ann TDecl)
+  = TDForAll Binding (Ann TDecl)
   | TDBody (Ann Expr) (Ann Expr)
   deriving (Eq, Show)
 
-unTDForAll :: Has Empty sig m => TDecl -> m (Pl_ UName ::: Ann Expr, Ann TDecl)
+unTDForAll :: Has Empty sig m => TDecl -> m (Binding, Ann TDecl)
 unTDForAll = \case{ TDForAll t b -> pure (t, b) ; _ -> empty }
 
 
