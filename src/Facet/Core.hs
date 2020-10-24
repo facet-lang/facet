@@ -128,6 +128,14 @@ instance Eq (Var t) where
   Metavar (m1 ::: _) == Metavar (m2 ::: _) = m1 == m2
   Metavar _          == _                  = False
 
+instance Ord (Var t) where
+  Global  (q1 ::: _) `compare` Global  (q2 ::: _) = q1 `compare` q2
+  Global  _          `compare` _                  = LT
+  Free    l1         `compare` Free    l2         = l1 `compare` l2
+  Free    _          `compare` _                  = LT
+  Metavar (m1 ::: _) `compare` Metavar (m2 ::: _) = m1 `compare` m2
+  Metavar _          `compare` _                  = LT
+
 unVar :: (QName ::: a -> b) -> (Level -> b) -> (Meta ::: a -> b) -> Var a -> b
 unVar f g h = \case
   Global  n -> f n
