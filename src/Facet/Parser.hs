@@ -121,32 +121,35 @@ import' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Import)
 import' = anned $ S.Import <$> mname
 
 decl :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
-decl = anned $ choice
-  [ tdecl
-  , (,) <$> dtname <* colon <*> anned (S.DDecl <$> typeSig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
+decl = choice
+  [ termDecl
+  , anned $ (,) <$> dtname <* colon <*> anned (S.DDecl <$> typeSig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
   ]
   where
-  tdecl = do
-    name <- dename
-    case name of
-      N.O op -> do
-        op' <- case op of
-          N.Prefix  l  -> pure $ AnyOperator $ Prefix l (unary name)
-          N.Postfix r  -> pure $ AnyOperator $ Postfix r (unary name)
-          N.Infix   m  -> do
-            assoc <- brackets $ choice
-              [ N.N <$ symbol "non-assoc"
-              , N.L <$ symbol "left-assoc"
-              , N.R <$ symbol "right-assoc"
-              , N.A <$ symbol "assoc"
-              ]
-            pure $ AnyOperator $ Infix assoc m (binary name)
-          N.Outfix l r -> pure $ AnyOperator $ Outfix l r (unary name)
-        -- FIXME: record the operator name and associativity in the module.
-        modify (op' :)
-      _      -> pure ()
-    decl <- colon *> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
-    pure (name, decl)
+
+termDecl :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
+termDecl = anned $ do
+  name <- dename
+  case name of
+    N.O op -> do
+      op' <- case op of
+        N.Prefix  l  -> pure $ AnyOperator $ Prefix l (unary name)
+        N.Postfix r  -> pure $ AnyOperator $ Postfix r (unary name)
+        N.Infix   m  -> do
+          assoc <- brackets $ choice
+            [ N.N <$ symbol "non-assoc"
+            , N.L <$ symbol "left-assoc"
+            , N.R <$ symbol "right-assoc"
+            , N.A <$ symbol "assoc"
+            ]
+          pure $ AnyOperator $ Infix assoc m (binary name)
+        N.Outfix l r -> pure $ AnyOperator $ Outfix l r (unary name)
+      -- FIXME: record the operator name and associativity in the module.
+      modify (op' :)
+    _      -> pure ()
+  decl <- colon *> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
+  pure (name, decl)
+  where
   binary name e1@(S.Ann s _) e2 = S.Ann s (S.free name) S.$$ e1 S.$$ e2
   unary name e@(S.Ann s _) = S.Ann s (S.free name) S.$$ e
 
