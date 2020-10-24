@@ -5,12 +5,9 @@ Interface.State
 , Data.Pair
 , Data.Unit ]
 
-# FIXME: should we require the return types to be written more explicitly?
-# [State S]{S}
-# S -> [State S]{Unit}
 State : (S : Type) -> Interface
-{ get : S
-, put : S -> Unit }
+{ get : [State S] S
+, put : S -> [State S] Unit }
 
 modify : { S : Type } -> (f : S -> S) -> [State S]Unit
 { put (f get!) }
