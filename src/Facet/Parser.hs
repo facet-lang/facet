@@ -118,26 +118,26 @@ termDecl = anned $ do
   name <- dename
   case name of
     N.O op -> do
-      (_, op') <- case op of
-        N.Prefix  l  -> pure (N.R, Prefix l (unary name))
-        N.Postfix r  -> pure (N.L, Postfix r (unary name))
-        N.Infix   m  -> do
+      op' <- case op of
+        N.Prefix  _  -> pure (op, N.R, unary name)
+        N.Postfix _  -> pure (op, N.L, unary name)
+        N.Infix   _  -> do
           assoc <- option N.N $ brackets $ choice
             [ N.N <$ symbol "non-assoc"
             , N.L <$ symbol "left-assoc"
             , N.R <$ symbol "right-assoc"
             , N.A <$ symbol "assoc"
             ]
-          pure (assoc, Infix assoc m (binary name))
-        N.Outfix l r -> pure (N.N, Outfix l r (unary name))
+          pure (op, assoc, binary name)
+        N.Outfix _ _ -> pure (op, N.N, unary name)
       -- FIXME: record the operator name and associativity in the module.
       modify (op' :)
     _      -> pure ()
   decl <- colon *> typeSig S.Decl (choice [ imBinding, exBinding ename ]) ((:=:) <$> type' <*> (S.TermDef <$> comp))
   pure (name, decl)
   where
-  binary name e1@(S.Ann s _) e2 = S.Ann s (S.free name) S.$$ e1 S.$$ e2
-  unary name e@(S.Ann s _) = S.Ann s (S.free name) S.$$ e
+  binary name es = foldl' (S.$$) (S.Ann (S.ann (head es)) (S.free name)) es
+  unary name es = let e@(S.Ann s _) = head es in S.Ann s (S.free name) S.$$ e
 
 -- FIXME: how do we distinguish between data and interface declarations?
 dataDecl :: (Has Parser sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
@@ -174,7 +174,7 @@ nonBinding = anned $ S.Binding Ex [] <$> option [] sig <*> tatom
 
 monotypeTable :: Table (S.Ann S.Type)
 monotypeTable =
-  [ [ Infix L mempty (S.$$) ]
+  [ [ (N.Infix mempty, N.L, foldl1 (S.$$)) ]
   ]
 
 
@@ -218,10 +218,10 @@ sig = brackets (commaSep delta) <?> "signature"
 
 exprTable :: Table (S.Ann S.Expr)
 exprTable =
-  [ [ Infix L mempty (S.$$) ]
+  [ [ (N.Infix mempty, N.L, foldl1 (S.$$)) ]
   -- FIXME: model this as application to unit instead
   -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
-  , [ Postfix (pack "!") id ]
+  , [ (N.Postfix (pack "!"), N.L, head) ]
   ]
 
 expr :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => p (S.Ann S.Expr)

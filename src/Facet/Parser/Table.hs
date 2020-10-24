@@ -1,6 +1,6 @@
 module Facet.Parser.Table
 ( Assoc(..)
-, Operator(..)
+, Operator
 , parseOperator
 , OperatorParser
 , Row
@@ -12,26 +12,24 @@ module Facet.Parser.Table
 import Control.Applicative (Alternative(..))
 import Data.Foldable (foldl')
 import Data.Function ((&))
-import Data.Text (Text)
-import Facet.Name (Assoc(..))
+import Facet.Name
 import Text.Parser.Combinators
 import Text.Parser.Token
 
-data Operator a
-  = Prefix      Text (a -> a)
-  | Postfix     Text (a -> a)
-  | Infix Assoc Text (a -> a -> a)
-  | Outfix Text Text (a -> a)
+type Operator a = (Op, Assoc, [a] -> a)
 
 parseOperator :: TokenParsing p => Operator a -> OperatorParser p a
 parseOperator = \case
-  Prefix   s op -> \ self _    -> op <$ textSymbol s <*> self
-  Postfix  s op -> \ _    next -> foldl' (&) <$> next <*> many (op <$ textSymbol s)
-  Infix N  s op -> \ _    next -> try (op <$> next <* textSymbol s) <*> next
-  Infix L  s op -> \ _    next -> chainl1 next (op <$ textSymbol s)
-  Infix R  s op -> \ self next -> try (op <$> next <* textSymbol s) <*> self
-  Infix A  s op -> \ _    next -> chainr1 next (op <$ textSymbol s)
-  Outfix s e op -> \ self _    -> op <$ textSymbol s <*> nesting self <* textSymbol e
+  (Prefix   s, _, op) -> \ self _    -> unary op <$ textSymbol s <*> self
+  (Postfix  s, _, op) -> \ _    next -> foldl' (&) <$> next <*> many (unary op <$ textSymbol s)
+  (Infix    s, N, op) -> \ _    next -> try (binary op <$> next <* textSymbol s) <*> next
+  (Infix    s, L, op) -> \ _    next -> chainl1 next (binary op <$ textSymbol s)
+  (Infix    s, R, op) -> \ self next -> try (binary op <$> next <* textSymbol s) <*> self
+  (Infix    s, A, op) -> \ _    next -> chainr1 next (binary op <$ textSymbol s)
+  (Outfix s e, _, op) -> \ self _    -> unary op <$ textSymbol s <*> nesting self <* textSymbol e
+  where
+  unary f a = f [a]
+  binary f a b = f [a, b]
 
 type OperatorParser p a = p a -> p a -> p a
 type Row a = [Operator a]
