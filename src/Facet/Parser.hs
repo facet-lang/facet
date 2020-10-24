@@ -210,8 +210,16 @@ type' = forAll (\ (n ::: _T) b -> S.ForAll (S.Binding (Just (out n)) [] _T) b) t
 monotype :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 monotype = fn mono
   where
-  -- FIXME: model signatures in the surface syntax
-  fn loop = chainr1 (option [] sig *> loop) ((S.-->) <$ arrow)
+  fn loop = do
+    start <- position
+    delta <- option [] sig
+    a <- loop
+    b <- optional (arrow *> fn loop)
+    end <- position
+    pure $ case b of
+      Just b  -> S.Ann (Span start end) $ S.ForAll (S.Binding Nothing delta a) b
+      -- FIXME: preserve the signature on the return type.
+      Nothing -> a
   -- FIXME: support type operators
   mono = build monotypeTable (parens . fn)
 
