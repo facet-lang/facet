@@ -70,7 +70,7 @@ instance (Monad p, CharParsing p) => CharParsing (Facet p) where
   string  = lift . string
   text    = lift . text
 
-instance (Monad m, TokenParsing m) => TokenParsing (Facet m) where
+instance (Monad p, TokenParsing p) => TokenParsing (Facet p) where
   someSpace = buildSomeSpaceParser (skipSome (satisfy isSpace)) emptyCommentStyle{ _commentLine = "#" }
 
 instance MonadTrans Facet where
