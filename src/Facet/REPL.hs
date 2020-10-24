@@ -132,6 +132,7 @@ loop = do
 -- TODO:
 -- - multiline
 -- - breakpoints
+-- - shell commands
 commands :: Commands Action
 commands = choice
   [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure (Action (\ _ -> print helpDoc))
