@@ -24,7 +24,6 @@ import qualified Data.Set as Set
 import qualified Data.Text as TS
 import           Data.Text.Lazy (unpack)
 import           Data.Traversable (for)
-import           Facet.Algebra hiding (Algebra)
 import           Facet.Carrier.Parser.Church
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
@@ -198,13 +197,13 @@ removeTarget targets = Action $ \ _ -> targets_ %= (Set.\\ Set.fromList targets)
 showType :: S.Ann S.Expr -> Action
 showType e = Action $ \ src -> do
   e ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-  print (prettyCode (ann (foldCValue surface Nil e ::: foldCValue surface Nil (generalize _T))))
+  print (prettyCode (ann (printValue surface Nil e ::: printValue surface Nil (generalize _T))))
 
 showEval :: S.Ann S.Expr -> Action
 showEval e = Action $ \ src -> do
   e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
   e'' <- elab src $ eval (generalize e')
-  print (prettyCode (ann (foldCValue surface Nil e'' ::: foldCValue surface Nil (generalize _T))))
+  print (prettyCode (ann (printValue surface Nil e'' ::: printValue surface Nil (generalize _T))))
 
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m [Maybe Module]

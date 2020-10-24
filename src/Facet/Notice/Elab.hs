@@ -5,7 +5,6 @@ module Facet.Notice.Elab
 
 import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
-import           Facet.Algebra
 import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
 import           Facet.Core (Sort(..), sortOf)
@@ -34,7 +33,7 @@ rethrowElabErrors src mapAnn = L.runThrow $ \ Err{ span, reason, context } ->
     in  ( succ d
         , sort  :> s
         , print :> n'
-        , ctx   :> reAnnotate mapAnn (getPrint (ann (n' ::: foldCValue surface print _T))) )
+        , ctx   :> reAnnotate mapAnn (getPrint (ann (n' ::: printValue surface print _T))) )
   name = \case
     STerm -> intro
     _     -> tintro
@@ -61,4 +60,4 @@ printReason ctx = group . \case
 
 
 printType :: Stack Print -> Type -> Doc Print.Highlight
-printType env = getPrint . foldCValue surface env
+printType env = getPrint . printValue surface env
