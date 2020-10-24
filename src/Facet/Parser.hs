@@ -210,7 +210,7 @@ monotype :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 monotype = fn mono
   where
   -- FIXME: model signatures in the surface syntax
-  fn loop = chainr1 (optional sig *> loop) ((S.-->) <$ arrow)
+  fn loop = chainr1 (option [] sig *> loop) ((S.-->) <$ arrow)
   -- FIXME: support type operators
   mono = build monotypeTable (parens . fn)
 
