@@ -443,14 +443,11 @@ elabTermDef
   => [S.Ann S.Binding]
   -> S.Ann S.Expr
   -> Check Expr
-elabTermDef bindings expr = go bindings
-  where
-  go []                            = checkElab (elabExpr expr)
-  -- FIXME: should this use the argument type and signature? I guess not because we’re going to check against the elaborated type & sig?
-  go (S.Ann s (S.Binding p ns _ _):bindings) = setSpan s $ goN ns (go bindings)
-    where
-    goN []     k = k
-    goN (n:ns) k = lam (P p n) (|- goN ns k)
+elabTermDef bindings expr = foldr (\ (S.Ann s (S.Binding p ns _ _)) b ->
+  setSpan s $ foldr (\ n k ->
+    lam (P p n) (|- k)) b ns)
+    (checkElab (elabExpr expr))
+    bindings
 
 
 -- Modules
