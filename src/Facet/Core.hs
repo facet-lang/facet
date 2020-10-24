@@ -136,6 +136,7 @@ instance Ord (Var t) where
   Metavar (m1 ::: _) `compare` Metavar (m2 ::: _) = m1 `compare` m2
   Metavar _          `compare` _                  = LT
 
+
 unVar :: (QName ::: a -> b) -> (Level -> b) -> (Meta ::: a -> b) -> Var a -> b
 unVar f g h = \case
   Global  n -> f n
