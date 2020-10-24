@@ -8,17 +8,13 @@ module Facet.Surface
 , bound
 , Binding(..)
 , Delta(..)
-, unForAll
 , ($$)
-, unApp
 , Comp(..)
 , Pattern(..)
   -- * Declarations
 , Decl(..)
 , DDecl(..)
-, unDDForAll
 , TDecl(..)
-, unTDForAll
   -- * Modules
 , Module(..)
 , Import(..)
@@ -26,7 +22,6 @@ module Facet.Surface
 , Ann(..)
 ) where
 
-import Control.Effect.Empty
 import Data.Function (on)
 import Data.List.NonEmpty (NonEmpty)
 import Facet.Name
@@ -76,19 +71,10 @@ data Binding = Binding
 data Delta = Delta (Ann (Maybe MName, DName)) (Stack (Ann Type))
   deriving (Eq, Show)
 
-unForAll :: Has Empty sig m => Expr -> m (Binding, Ann Type)
-unForAll = \case{ ForAll t b -> pure (t, b) ; _ -> empty }
-
-
 ($$) :: Ann Expr -> Ann Expr -> Ann Expr
 f $$ a = Ann (ann f <> ann a) (App f a)
 
 infixl 9 $$
-
-unApp :: Has Empty sig m => Expr -> m (Ann Expr, Ann Expr)
-unApp = \case
-  App f a -> pure (f, a)
-  _       -> empty
 
 
 data Comp
@@ -116,17 +102,10 @@ data DDecl
   | DDBody (Ann Type) [Ann (UName ::: Ann Type)]
   deriving (Eq, Show)
 
-unDDForAll :: Has Empty sig m => DDecl -> m (Binding, Ann DDecl)
-unDDForAll = \case{ DDForAll t b -> pure (t, b) ; _ -> empty }
-
-
 data TDecl
   = TDForAll Binding (Ann TDecl)
   | TDBody (Ann Type) (Ann Expr)
   deriving (Eq, Show)
-
-unTDForAll :: Has Empty sig m => TDecl -> m (Binding, Ann TDecl)
-unTDForAll = \case{ TDForAll t b -> pure (t, b) ; _ -> empty }
 
 
 -- Modules
