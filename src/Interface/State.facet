@@ -9,22 +9,22 @@ State : (S : Type) -> Interface
 { get : [State S] S
 , put : S -> [State S] Unit }
 
-modify : { S : Type } -> (f : S -> S) -> [State S]Unit
+modify : { S : Type } -> (f : S -> S) -> [State S] Unit
 { put (f get!) }
 
 
 # Handlers
 
-execState : { S, A : Type } -> S -> [State S]A -> S
+execState : { S, A : Type } -> S -> [State S] A -> S
 { state const }
 
-evalState : { S, A : Type } -> S -> [State S]A -> A
+evalState : { S, A : Type } -> S -> [State S] A -> A
 { state { _ a -> a } }
 
-runState : { S, A : Type } -> S -> [State S]A -> Pair S A
+runState : { S, A : Type } -> S -> [State S] A -> Pair S A
 { state pair }
 
-state : { S, A, R : Type } -> (k : S -> A -> R) -> (s : S) -> [State S]A -> R
+state : { S, A, R : Type } -> (k : S -> A -> R) -> (s : S) -> [State S] A -> R
 { [ get   ; k ] -> state k s (k s)
 , [ put s ; k ] -> state k s (k unit)
 , a             ->       k s a }
