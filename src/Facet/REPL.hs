@@ -135,8 +135,8 @@ loop = do
 -- - shell commands
 commands :: Commands Action
 commands = choice
-  [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure (Action (\ _ -> print helpDoc))
-  , command ["quit", "q"]       "exit the repl"                      Nothing        $ pure (Action (\ _ -> empty))
+  [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure (Action (const (print helpDoc)))
+  , command ["quit", "q"]       "exit the repl"                      Nothing        $ pure (Action (const empty))
   , command ["show"]            "show compiler state"                (Just "field") $ choice
     [ showPaths   <$ token (string "paths")
     , showModules <$ token (string "modules")

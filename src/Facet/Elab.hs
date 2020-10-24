@@ -289,8 +289,8 @@ elabExpr
 elabExpr = withSpan' $ \case
   S.Var m n       -> switch $ var m n
   S.Hole  n       -> check (hole n) "hole"
-  S.Type          -> switch $ _Type
-  S.Interface     -> switch $ _Interface
+  S.Type          -> switch _Type
+  S.Interface     -> switch _Interface
   S.ForAll bs s b -> elabTelescope bs s b
   S.App f a       -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
   S.Comp cs       -> check (elabComp cs) "computation"
@@ -375,8 +375,8 @@ elabClauses [((S.Ann _ (S.PVar n)):|ps, b)] = Check $ \ _T -> do
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
 elabClauses cs = Check $ \ _T -> do
   rest <- case foldMap partitionClause cs of
-    XB    -> pure $ Nothing
-    XL _  -> pure $ Nothing
+    XB    -> pure Nothing
+    XL _  -> pure Nothing
     XR cs -> pure $ Just cs
     XT    -> error "mixed" -- FIXME: throw a proper error
   -- FIXME: use the signature to elaborate the pattern
@@ -422,7 +422,7 @@ elabPattern = withSpan $ \case
     q ::: _T' <- synth (resolveC n)
     _T'' <- inst _T'
     C.PCon . Con (q ::: _T'') . fromList <$> go _T'' (toList ps)
-  S.PEff _ _  _ -> error "TBD"
+  S.PEff{}      -> error "TBD"
 
 
 -- Declarations

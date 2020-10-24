@@ -50,7 +50,7 @@ instance Alternative Commands where
   Commands c1 p1 <|> Commands c2 p2 = Commands (c1 <> c2) (p1 <|> p2)
 
 
-newtype CommandParser a = CommandParser { runCommandParser :: (forall sig p . (Has Parser sig p, TokenParsing p) => p a) }
+newtype CommandParser a = CommandParser { runCommandParser :: forall sig p . (Has Parser sig p, TokenParsing p) => p a }
 
 instance Functor CommandParser where
   fmap f (CommandParser m) = CommandParser (fmap f m)

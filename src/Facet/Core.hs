@@ -254,7 +254,7 @@ elim v = \case
   ECase cs -> case' v cs
 
 elimN :: (HasCallStack, Foldable t) => Value -> t Elim -> Value
-elimN f as = foldl' elim f as
+elimN = foldl' elim
 
 
 -- | Substitute metavars.
@@ -380,7 +380,7 @@ instance Bitraversable Pattern where
       PCon c -> PCon <$> bitraverse f go c
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
-fill f z = mapAccumL (\ z _ -> f z) z
+fill f = mapAccumL (const . f)
 
 
 -- Modules

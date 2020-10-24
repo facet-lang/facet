@@ -4,7 +4,6 @@ module Facet.Parser
 , whole
 , makeOperator
 , module'
-, module''
 , moduleHeader
 , decl
 , type'
@@ -96,20 +95,6 @@ module' = anned $ do
   ops <- get @[Operator (S.Ann S.Expr)]
   pure $ S.Module name imports (map (\ (op, assoc, _) -> (op, assoc)) ops) decls
 
--- | Parse a module, using the provided callback to give the parser feedback on imports.
-module'' :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => (S.Ann S.Import -> p ()) -> p (S.Ann S.Module)
-module'' onImport = anned $ do
-  name <- mname <* colon <* symbol "Module"
-  imports <- option [] (brackets (commaSep import''))
-  decls <- many decl
-  ops <- get @[Operator (S.Ann S.Expr)]
-  pure $ S.Module name imports (map (\ (op, assoc, _) -> (op, assoc)) ops) decls
-  where
-  import'' = do
-    i <- import'
-    onImport i
-    pure i
-
 -- FIXME: pick a better syntax for imports, something we can use in the REPL.
 moduleHeader :: (Has Parser sig p, TokenParsing p) => p (N.MName, [S.Ann S.Import])
 moduleHeader = (,) <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import'))
@@ -125,7 +110,6 @@ decl = choice
   [ termDecl
   , dataDecl
   ]
-  where
 
 termDecl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
 termDecl = anned $ do
@@ -133,14 +117,12 @@ termDecl = anned $ do
   case name of
     N.O op -> do
       assoc<- case op of
-        N.Infix   _  -> do
-          assoc <- option N.N $ brackets $ choice
-            [ N.N <$ symbol "non-assoc"
-            , N.L <$ symbol "left-assoc"
-            , N.R <$ symbol "right-assoc"
-            , N.A <$ symbol "assoc"
-            ]
-          pure assoc
+        N.Infix   _  -> option N.N $ brackets $ choice
+          [ N.N <$ symbol "non-assoc"
+          , N.L <$ symbol "left-assoc"
+          , N.R <$ symbol "right-assoc"
+          , N.A <$ symbol "assoc"
+          ]
         _ -> pure N.N
       modify (makeOperator (op, assoc) :)
     _      -> pure ()
@@ -164,8 +146,7 @@ typeSig
 typeSig forAll binding body = anned $ do
   bindings <- many (try (binding <* arrow))
   sig <- option [] sig
-  b <- body
-  pure $ forAll bindings sig b
+  forAll bindings sig <$> body
 
 exBinding :: (Has Parser sig p, TokenParsing p) => p N.UName -> p (S.Ann S.Binding)
 exBinding name = anned $ nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
@@ -247,7 +228,7 @@ comp :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenPar
 comp = anned (S.Comp <$> anned (braces (S.Clauses <$> sepBy1 clause comma <|> S.Expr <$> expr <|> pure (S.Clauses []))))
 
 clause :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => p (NE.NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)
-clause = (,) <$> try (NE.some1 pattern <* arrow) <*> expr <?> "clause"
+clause = (,) <$> try (NE.some1 patternP <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Expr)
 evar = choice
@@ -268,12 +249,12 @@ hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
 wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
 
-pattern :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Pattern)
-pattern = choice
+patternP :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Pattern)
+patternP = choice
   [ anned (S.PVar      <$> ename)
   , anned (S.PVar N.__ <$  wildcard)
-  , try (parens (anned (S.PCon <$> cname <*> (fromList <$> many pattern))))
-  , brackets (anned (S.PEff <$> ename <*> (fromList <$> many pattern) <* symbolic ';' <*> (ename <|> N.__ <$ wildcard)))
+  , try (parens (anned (S.PCon <$> cname <*> (fromList <$> many patternP))))
+  , brackets (anned (S.PEff <$> ename <*> (fromList <$> many patternP) <* symbolic ';' <*> (ename <|> N.__ <$ wildcard)))
   ] <?> "pattern"
 
 
@@ -382,4 +363,4 @@ rparen = symbolic ')'
 anned :: Has Parser sig p => p a -> p (S.Ann a)
 anned p = mk <$> position <*> p <*> position
   where
-  mk s a e = (S.Ann (Span s e) a)
+  mk s a e = S.Ann (Span s e) a

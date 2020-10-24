@@ -58,8 +58,7 @@ lookupQ (m:.:n) mod@Module{ name } g
 
 
 -- FIXME: enrich this with source references for each
-data GraphErr
-  = CyclicImport (Stack MName)
+newtype GraphErr = CyclicImport (Stack MName)
 
 data Node a = Node MName [MName] a
 

@@ -208,9 +208,9 @@ surface = Algebra
   , lam = comp . embed . commaSep
   , clause = \ ns b -> embed (setPrec Pattern (vsep (map (unPl_ (braces . tm) tm) ns)) </> arrow) </> b
   -- FIXME: group quantifiers by kind again.
-  , fn = \ as b -> foldr (\ (P pl (n ::: _T)) b -> case n of
+  , fn = flip (foldr (\ (P pl (n ::: _T)) b -> case n of
     [] -> _T --> b
-    _  -> ((pl, group (commaSep n)) ::: _T) >~> b) b as
+    _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
   , app = \ f as -> group f $$* fmap (group . unPl_ braces id) as
   , hole = \ n -> annotate (Hole (Meta 0)) $ pretty '?' <> pretty n
   , _Type = annotate Type $ pretty "Type"

@@ -43,7 +43,7 @@ type Type = Expr
 
 
 free :: DName -> Expr
-free n = Var Nothing n
+free = Var Nothing
 
 qual :: QName -> Expr
 qual (m :.: n) = Var (Just m) n
