@@ -7,12 +7,14 @@ module Facet.Context
 , names
 , (!?)
 , (!)
+, lookup
 ) where
 
 import           Facet.Name
 import qualified Facet.Stack as S
 import           Facet.Syntax
 import           GHC.Stack
+import           Prelude hiding (lookup)
 
 newtype Context a = Context { elems :: S.Stack (UName ::: a) }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -36,3 +38,11 @@ c !? i = elems c S.!? getIndex i
 
 (!) :: HasCallStack => Context a -> Index -> UName ::: a
 c ! i = elems c S.! getIndex i
+
+lookup :: UName -> Context a -> Maybe a
+lookup n = go . elems
+  where
+  go S.Nil                = Nothing
+  go (cs S.:> (n' ::: a))
+    | n == n'             = Just a
+    | otherwise           = go cs
