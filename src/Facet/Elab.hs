@@ -220,9 +220,9 @@ var
   -> Synth Value
 var m n = case m of
   Nothing
-    | Just u <- eOrT n -> Synth $ ask >>= \ ctx -> case lookupIndex u ctx of
+    | Just u <- eOrT n -> Synth $ ask >>= \ ctx -> case lookupLevel u ctx of
       Nothing      -> synth $ global (resolve n)
-      Just (i, _T) -> pure (free (indexToLevel (level ctx) i) ::: _T)
+      Just (i, _T) -> pure (free i ::: _T)
     | otherwise        -> global (resolve n)
   Just m -> global (resolveQ (m :.: n))
   where
