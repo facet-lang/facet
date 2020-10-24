@@ -146,8 +146,8 @@ decl = anned
       _      -> pure ()
     decl <- colon *> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
     pure (name, decl)
-  binary name e1@(S.Ann s _) e2 = S.Ann s (S.free Nothing name) S.$$ e1 S.$$ e2
-  unary name e@(S.Ann s _) = S.Ann s (S.free Nothing name) S.$$ e
+  binary name e1@(S.Ann s _) e2 = S.Ann s (S.free name) S.$$ e1 S.$$ e2
+  unary name e@(S.Ann s _) = S.Ann s (S.free name) S.$$ e
 
 
 typeSig
@@ -215,7 +215,7 @@ monotype = fn mono
   mono = build monotypeTable (parens . fn)
 
 tvar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
-tvar = token (anned (runUnspaced (fmap (either (S.free Nothing . N.T) S.bound) . resolve <$> tname <*> Unspaced env <?> "variable")))
+tvar = token (anned (runUnspaced (fmap (either (S.free . N.T) S.bound) . resolve <$> tname <*> Unspaced env <?> "variable")))
 
 
 -- Signatures
@@ -260,8 +260,8 @@ clause = (do
 
 evar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 evar
-  =   token (anned (runUnspaced (fmap (either (S.free Nothing . N.E) S.bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
-  <|> try (token (anned (runUnspaced (S.free Nothing . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
+  =   token (anned (runUnspaced (fmap (either (S.free . N.E) S.bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
+  <|> try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
 
 
 -- Patterns

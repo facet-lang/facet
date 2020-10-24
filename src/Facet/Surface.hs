@@ -48,11 +48,11 @@ data Expr
 
 infixl 9 :$
 
-free :: Maybe MName -> DName -> Expr
-free m n = Free m n
+free :: DName -> Expr
+free n = Free Nothing n
 
 qual :: QName -> Expr
-qual (m :.: n) = free (Just m) n
+qual (m :.: n) = Free (Just m) n
 
 bound :: Index -> Expr
 bound = Bound
