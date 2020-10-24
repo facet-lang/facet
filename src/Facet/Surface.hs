@@ -7,6 +7,7 @@ module Facet.Surface
 , bound
 , (-->)
 , Binding(..)
+, Delta(..)
 , unForAll
 , ($$)
 , unApp
@@ -73,6 +74,9 @@ data Binding = Binding
   , delta :: [Ann Expr]
   , type' :: Ann Expr
   }
+  deriving (Eq, Show)
+
+data Delta = Delta (Maybe MName) DName (Stack Var)
   deriving (Eq, Show)
 
 unForAll :: Has Empty sig m => Expr -> m (Binding, Ann Expr)
