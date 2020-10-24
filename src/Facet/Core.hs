@@ -125,7 +125,7 @@ data Binding = Binding
   }
 
 
-data Delta = Delta (QName ::: Value) (Stack (Var Value))
+data Delta = Delta (QName ::: Value) (Stack Value)
 
 instance Eq Delta where
   Delta (q1 ::: _) as1 == Delta (q2 ::: _) as2 = q1 == q2 && as1 == as2
