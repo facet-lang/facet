@@ -1,1 +1,4 @@
 Interface.Semigroup : Module
+
+Semigroup : (A : Type) -> Interface
+{ _ <> _ : A -> A -> [Semigroup A] A }
