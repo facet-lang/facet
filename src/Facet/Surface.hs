@@ -61,6 +61,7 @@ qual (m :.: n) = Var $ Free (Just m) n
 bound :: Index -> Expr
 bound = Var . Bound
 
+
 data Binding = Binding
   { _pl   :: Pl
   , name  :: Maybe UName
