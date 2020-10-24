@@ -19,8 +19,6 @@ module Facet.Elab
 , (>~>)
 , ($$)
 , lam
-  -- * Declarations
-, elabDecl
   -- * Modules
 , elabModule
 , apply
@@ -280,18 +278,29 @@ elabExpr
   -> Maybe Type
   -> Elab (Expr ::: Type)
 elabExpr = withSpan' $ \case
-  S.Var (S.Free m n)           -> switch $ global (maybe (resolve n) (resolveQ . (:.: n)) m)
-  S.Var (S.Bound n)            -> switch $ bound n
-  S.Hole  n                    -> check (hole n) "hole"
-  S.Type                       -> switch $ _Type
-  S.Interface                  -> switch $ _Interface
-  S.ForAll (S.Binding p n _ t) b
-    | n == __   -> switch $ P p __ ::: checkElab (elabExpr t) >~> \ _ ->      checkElab (elabExpr b)
-    | otherwise -> switch $ P p n  ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab (elabExpr b)
-  S.App f a                    -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
-  S.Comp cs                    -> check (elabComp cs) "computation"
+  S.Var (S.Free m n) -> switch $ global (maybe (resolve n) (resolveQ . (:.: n)) m)
+  S.Var (S.Bound n)  -> switch $ bound n
+  S.Hole  n          -> check (hole n) "hole"
+  S.Type             -> switch $ _Type
+  S.Interface        -> switch $ _Interface
+  S.ForAll bs b      -> elabTelescope bs b
+  S.App f a          -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
+  S.Comp cs          -> check (elabComp cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
+
+elabTelescope :: [S.Binding] -> S.Ann S.Type -> Maybe Type -> Elab (Type ::: Type)
+elabTelescope bindings body = go bindings
+  where
+  -- FIXME: these have got to be foldrs of some kind
+  go []                            = elabExpr body
+  -- FIXME: elaborate the signature
+  go (S.Binding p ns _ t:bindings) = goN ns (go bindings)
+    where
+    -- NB: [] is used for e.g. non-binding function types. We (currently) have to handle that case separately from the base case for non-empty signatures so as to keep the typing context in sync with indices in the elaborated term/type. This shouldn’t be an issue for declarations, since they only have binding signatures.
+    goN []     k = switch $ P p __ ::: checkElab (elabExpr t) >~> \ _ ->      checkElab k
+    goN [n]    k = switch $ P p n  ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab k
+    goN (n:ns) k = switch $ P p n  ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab (goN ns k)
 
 
 _Type :: Synth Type
@@ -409,51 +418,38 @@ elabPattern = withSpan $ \case
 
 -- Declarations
 
-elabDecl
+elabDataDef
   :: HasCallStack
-  => S.Ann S.Decl
-  -> Check (Either [UName ::: Type] Value) ::: Check Type
-elabDecl d = withSpans d $ \case
-  S.DDecl d -> first (fmap Left)  (elabDDecl d)
-  S.TDecl t -> first (fmap Right) (elabTDecl t)
-
-elabDDecl
-  :: HasCallStack
-  => S.Ann S.DDecl
-  -> Check [UName ::: Type] ::: Check Type
-elabDDecl d = go d id
+  => [S.Binding]
+  -> [S.Ann (UName ::: S.Ann S.Type)]
+  -> Check [UName ::: Type]
+elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> wrap (checkElab (elabExpr t))
   where
-  go (S.Ann s d) km = case d of
-    -- FIXME: elaborate the sig.
-    S.DDForAll (S.Binding p n _ t) b ->
-      let b' ::: _B = go b
-            (km . (\ b  -> Check $ \ _T -> setSpan s $ do
-              -- FIXME: can datatype parameters have effects?
-              (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
-              b' <- elabBinder $ \ v -> check ((n ::: _T |- b) ::: _B v)
-              pure $ VForAll (Binding Im n s _T) b'))
-      in b' ::: setSpan s (checkElab (switch (P p n ::: checkElab (elabExpr t) >~> (|- _B))))
-
-    S.DDBody t b -> setSpan s (elabData km b) ::: setSpan s (checkElab (elabExpr t))
-
+  wrap = go bindings
   -- FIXME: check that all constructors return the datatype.
-  elabData k cs = for cs $ withSpan $ \ (n ::: t) -> (n :::) <$> k (checkElab (elabExpr t))
+  go []                           k = k
+  go (S.Binding _ n _ _:bindings) k = goN n (go bindings k)
+    where
+    goN []     k = k
+    goN (n:ns) k = Check $ \ _T -> do
+      (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
+      b' <- elabBinder $ \ v -> check ((n ::: _T |- goN ns k) ::: _B v)
+      pure $ VForAll (Binding Im n s _T) b'
 
 
-elabTDecl
+elabTermDef
   :: HasCallStack
-  => S.Ann S.TDecl
-  -> Check Value ::: Check Type
-elabTDecl d = go d
+  => [S.Binding]
+  -> S.Ann S.Expr
+  -> Check Expr
+elabTermDef bindings expr = go bindings
   where
-  go d = withSpans d $ \case
-    -- FIXME: elaborate the sig
-    S.TDForAll (S.Binding p n _ t) b ->
-      let b' ::: _B = go b
-      in lam (P p n) (|- b') :::
-          checkElab (switch (unPl im (const (ex __)) p n ::: checkElab (elabExpr t) >~> (|- _B)))
-
-    S.TDBody t b -> checkElab (elabExpr b) ::: checkElab (elabExpr t)
+  go []                            = checkElab (elabExpr expr)
+  -- FIXME: should this use the argument type and signature? I guess not because we’re going to check against the elaborated type & sig?
+  go (S.Binding p ns _ _:bindings) = goN ns (go bindings)
+    where
+    goN []     k = k
+    goN (n:ns) k = lam (P p n) (|- goN ns k)
 
 
 -- Modules
@@ -472,12 +468,14 @@ elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . r
     -- FIXME: maybe figure out the graph for mutual recursion?
 
     -- elaborate all the types first
-    es <- for ds $ \ (S.Ann s (dname, d)) -> setSpan s $ do
-      let e ::: t = elabDecl d
-
-      _T <- runModule . elab $ check (t ::: VType)
+    es <- for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs (ty :=: def)))) -> setSpan s $ do
+      _T <- runModule . elab $ check (checkElab (elabTelescope bs ty) ::: VType)
 
       defs_ %= (<> [(dname, Nothing ::: _T)])
+
+      let e = case def of
+            S.DataDef cs -> Left  <$> elabDataDef bs cs
+            S.TermDef t  -> Right <$> elabTermDef bs t
       pure (s, dname, e ::: _T)
 
     -- then elaborate the terms
@@ -500,7 +498,7 @@ elabModule (S.Ann s (S.Module mname is ds)) = execState (Module mname [] []) . r
 
 
 -- | Apply the substitution to the value.
-apply :: Applicative m => Subst -> Value -> m Value
+apply :: Applicative m => Subst -> Expr -> m Value
 apply s v = pure $ subst (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
 
 emptySubst :: Subst
@@ -528,9 +526,6 @@ withSpan k (S.Ann s a) = setSpan s (k a)
 
 withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> (S.Ann a) -> b -> m c
 withSpan' k (S.Ann s a) b = setSpan s (k a b)
-
-withSpans :: Has (Reader Span) sig m => (S.Ann a) -> (a -> m b ::: m c) -> m b ::: m c
-withSpans (S.Ann s d) f = let t ::: _T = f d in setSpan s t ::: setSpan s _T
 
 
 data Err = Err

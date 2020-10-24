@@ -40,10 +40,10 @@ type Row p a = [Operator p a]
 type Table p a = [Row p a]
 
 -- | Build a parser for a Table.
-build :: TokenParsing p => Table p a -> (p a -> p a) -> p a
+build :: TokenParsing p => Table p a -> p a -> p a
 build ts end = root
   where
-  root = foldr chain (end root) ts
+  root = foldr chain end ts
   chain ps next = self
     where
     self = foldr (\ p rest -> parseOperator p self next <|> rest) next ps

@@ -13,8 +13,7 @@ module Facet.Surface
 , Pattern(..)
   -- * Declarations
 , Decl(..)
-, DDecl(..)
-, TDecl(..)
+, Def(..)
   -- * Modules
 , Module(..)
 , Import(..)
@@ -36,7 +35,7 @@ data Expr
   | Hole UName
   | Type
   | Interface
-  | ForAll Binding (Ann Expr)
+  | ForAll [Binding] (Ann Expr)
   | Comp (Ann Comp)
   | App (Ann Expr) (Ann Expr)
   -- FIXME: tupling/unit should take a list of expressions
@@ -62,7 +61,7 @@ bound = Var . Bound
 
 data Binding = Binding
   { _pl   :: Pl
-  , name  :: UName
+  , names :: [UName]
   , delta :: [Ann Delta]
   , type' :: Ann Type
   }
@@ -93,19 +92,12 @@ data Pattern
 
 -- Declarations
 
-data Decl
-  = DDecl (Ann DDecl)
-  | TDecl (Ann TDecl)
+data Decl = Decl [Binding] (Ann Type :=: Def)
   deriving (Eq, Show)
 
-data DDecl
-  = DDForAll Binding (Ann DDecl)
-  | DDBody (Ann Type) [Ann (UName ::: Ann Type)]
-  deriving (Eq, Show)
-
-data TDecl
-  = TDForAll Binding (Ann TDecl)
-  | TDBody (Ann Type) (Ann Expr)
+data Def
+  = DataDef [Ann (UName ::: Ann Type)]
+  | TermDef (Ann Expr)
   deriving (Eq, Show)
 
 

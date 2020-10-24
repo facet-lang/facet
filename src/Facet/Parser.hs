@@ -56,6 +56,10 @@ runFacet env ops (Facet m) = evalState ops (m env)
 bind :: N.UName -> Facet m a -> Facet m a
 bind n b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b } in runState ops (run (n:env))
 
+-- FIXME: carry a stack instead of a list and foldl to extend it
+bindN :: [N.UName] -> Facet m a -> Facet m a
+bindN ns b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b } in runState ops (run (foldr (:) env (reverse ns)))
+
 resolve :: N.UName -> [N.UName] -> Either N.UName N.Index
 resolve n = maybe (Left n) (Right . N.Index) . elemIndex n
 
@@ -146,7 +150,7 @@ termDecl = anned $ do
       -- FIXME: record the operator name and associativity in the module.
       modify (op' :)
     _      -> pure ()
-  decl <- colon *> anned (S.TDecl <$> typeSig S.TDForAll ename (S.TDBody <$> monotype <*> comp))
+  decl <- colon *> typeSig S.Decl (choice [ imBinding, exBinding ename ]) ((:=:) <$> type' <*> (S.TermDef <$> comp))
   pure (name, decl)
   where
   binary name e1@(S.Ann s _) e2 = S.Ann s (S.free name) S.$$ e1 S.$$ e2
@@ -154,39 +158,46 @@ termDecl = anned $ do
 
 -- FIXME: how do we distinguish between data and interface declarations?
 dataDecl :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.DName, S.Ann S.Decl))
-dataDecl = anned $ (,) <$> dtname <* colon <*> anned (S.DDecl <$> typeSig S.DDForAll tname (S.DDBody <$> monotype <*> braces (commaSep con)))
+dataDecl = anned $ (,) <$> dtname <* colon <*> typeSig S.Decl (choice [ imBinding, exBinding tname ]) ((:=:) <$> type' <*> (S.DataDef <$> braces (commaSep con)))
+
+con :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.UName ::: S.Ann S.Type))
+con = anned ((:::) <$> cname <* colon <*> type')
 
 
 typeSig
   :: (Has Parser sig p, TokenParsing p)
-  => (S.Binding -> S.Ann res -> res)
-  -> Facet p N.UName
-  -> Facet p res
+  => ([S.Binding] -> arg -> res)
+  -> Facet p S.Binding
+  -> Facet p arg
   -> Facet p (S.Ann res)
-typeSig (-->) name body = go
-  where
-  go = choice [ forAll (-->) go, binder (-->) name go, anned body ]
+typeSig (-->) binding body = anned $ bindings (binding <* arrow) (\ bindings -> do
+  -- FIXME: use the signature parsed here
+  _ <- option [] sig
+  b <- body
+  pure $ bindings --> b)
 
-binder
-  :: (Has Parser sig p, TokenParsing p)
-  => (S.Binding -> S.Ann res -> res)
-  -> Facet p N.UName
-  -> Facet p (S.Ann res)
-  -> Facet p (S.Ann res)
-binder (-->) name k = do
-  -- FIXME: signatures
-  ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
-  bind i $ mk start (S.Binding Ex i [] t) <$ arrow <*> k <*> position
+bindings :: (Has Parser sig p, TokenParsing p) => Facet p S.Binding -> ([S.Binding] -> Facet p a) -> Facet p a
+bindings binding k = go id k
   where
-  mk start t b end = S.Ann (Span start end) (t --> b)
+  go bs k = do
+    b <- optional (try binding)
+    case b of
+      Just b  -> bindN (S.names b) $ go (bs . (b:)) k
+      Nothing -> k (bs [])
 
-con :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann (N.UName ::: S.Ann S.Expr))
-con = anned ((:::) <$> cname <* colon <*> type')
+exBinding :: (Has Parser sig p, TokenParsing p) => Facet p N.UName -> Facet p S.Binding
+exBinding name = nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
+
+imBinding :: (Has Parser sig p, TokenParsing p) => Facet p S.Binding
+imBinding = braces $ S.Binding Im <$> commaSep1 tname <* colon <*> option [] sig <*> type'
+
+nonBinding :: (Has Parser sig p, TokenParsing p) => Facet p S.Binding
+nonBinding = S.Binding Ex [] <$> option [] sig <*> tatom
 
 
 -- Types
 
-monotypeTable :: (Has Parser sig p, TokenParsing p) => Table (Facet p) (S.Ann S.Expr)
+monotypeTable :: (Has Parser sig p, TokenParsing p) => Table (Facet p) (S.Ann S.Type)
 monotypeTable =
   [ [ Infix L mempty (S.$$) ]
   , [ -- FIXME: we should treat these as globals.
@@ -197,38 +208,13 @@ monotypeTable =
     ]
   ]
 
--- FIXME: implicits… with effects?
-forAll
-  :: (Has Parser sig p, TokenParsing p)
-  => (S.Binding -> S.Ann res -> res)
-  -> Facet p (S.Ann res) -> Facet p (S.Ann res)
-forAll mk body = do
-  start <- position
-  -- FIXME: parse multiple sets of bindings within a single set of braces.
-  (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
-  arrow *> foldr (loop start ty) body names
-  where
-  loop start ty i rest = bind i $ mk' start (S.Binding Im i [] ty) <$> rest <*> position
-  mk' start t b end = S.Ann (Span start end) (mk t b)
 
-type' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
-type' = forAll S.ForAll type' <|> monotype
+type' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Type)
+type' = typeSig S.ForAll (choice [ imBinding, nonBinding ]) tatom
 
-monotype :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
-monotype = fn mono
-  where
-  fn loop = do
-    start <- position
-    delta <- option [] sig
-    a <- loop
-    b <- optional (arrow *> fn loop)
-    end <- position
-    pure $ case b of
-      Just b  -> S.Ann (Span start end) $ S.ForAll (S.Binding Ex N.__ delta a) b
-      -- FIXME: preserve the signature on the return type.
-      Nothing -> a
-  -- FIXME: support type operators
-  mono = build monotypeTable (parens . fn)
+-- FIXME: support type operators
+tatom :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Type)
+tatom = build monotypeTable (parens type')
 
 tvar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 tvar = choice
@@ -269,7 +255,8 @@ exprTable =
 expr :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 expr = do
   ops <- get
-  build (map runAnyOperator ops:exprTable) parens
+  let rec = build (map runAnyOperator ops:exprTable) (parens rec)
+  rec
 
 comp :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
