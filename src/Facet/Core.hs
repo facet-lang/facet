@@ -74,6 +74,9 @@ data Value
 instance Eq Value where
   a == b = compareValue 0 a b == EQ
 
+instance Ord Value where
+  compare = compareValue 0
+
 compareValue :: Level -> Value -> Value -> Ordering
 compareValue d = curry $ \case
   -- defined thus instead of w/ fallback case to have exhaustiveness checks kick in when adding constructors.
