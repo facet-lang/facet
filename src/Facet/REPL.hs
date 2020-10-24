@@ -126,7 +126,7 @@ loop = do
     Nothing  -> pure ()
   loop
   where
-  commandParser = runFacet [] [] (whole (parseCommands commands <|> showEval <$> expr))
+  commandParser = runFacet [] (whole (parseCommands commands <|> showEval <$> expr))
 
 
 -- TODO:
@@ -152,9 +152,9 @@ commands = choice
     ]
   , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (void . reload))
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
-    $ showType <$> runFacet [] [] expr
+    $ showType <$> runFacet [] expr
   , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
-    $ showType <$> runFacet [] [] Parser.type'
+    $ showType <$> runFacet [] Parser.type'
   ]
 
 path' :: TokenParsing p => p FilePath
@@ -235,12 +235,12 @@ loadModuleHeader src name = do
   path <- resolveName name
   src <- rethrowIOErrors src $ readSourceFromFile path
   -- FIXME: validate that the name matches
-  (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whiteSpace *> moduleHeader)))
+  (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
 
 loadModule :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m) => MName -> FilePath -> Source -> m Module
 loadModule name path src = do
-  m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] [] (whole module')))
+  m <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whole module')))
   graph <- use modules_
   m <- rethrowElabErrors src Code . runReader graph $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)

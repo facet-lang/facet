@@ -47,26 +47,20 @@ import           Text.Parser.Token.Style
 -- resolve module-local definitions in the parser
 -- resolve imported definitions in the parser
 
-runFacet :: Functor m => [N.UName] -> [AnyOperator] -> Facet m a -> m a
-runFacet env ops (Facet m) = evalState ops (m env)
-
-bind :: N.UName -> Facet m a -> Facet m a
-bind n b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b } in runState ops (run (n:env))
-
-bindN :: Foldable t => t N.UName -> Facet m a -> Facet m a
-bindN ns b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b } in runState ops (run (foldl' (flip (:)) env ns))
+runFacet :: Functor m => [AnyOperator] -> Facet m a -> m a
+runFacet ops (Facet m) = evalState ops m
 
 newtype AnyOperator = AnyOperator { runAnyOperator :: forall sig p . (Has Parser sig p, TokenParsing p) => Operator p (S.Ann S.Expr) }
 
-newtype Facet m a = Facet ([N.UName] -> StateC [AnyOperator] m a)
-  deriving (Algebra (Reader [N.UName] :+: State [AnyOperator] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail) via ReaderC [N.UName] (StateC [AnyOperator] m)
+newtype Facet m a = Facet (StateC [AnyOperator] m a)
+  deriving (Algebra (State [AnyOperator] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail) via StateC [AnyOperator] m
 
 instance (Monad p, Parsing p) => Parsing (Facet p) where
-  try (Facet m) = Facet $ \ env -> StateC $ \ s -> try (runState s (m env))
-  Facet m <?> l = Facet $ \ env -> StateC $ \ s -> runState s (m env) <?> l
+  try (Facet m) = Facet $ StateC $ \ s -> try (runState s m)
+  Facet m <?> l = Facet $ StateC $ \ s -> runState s m <?> l
   unexpected = lift . unexpected
   eof = lift eof
-  notFollowedBy (Facet m) = Facet $ \ env -> StateC $ \ s -> (s,) <$> notFollowedBy (evalState s (m env))
+  notFollowedBy (Facet m) = Facet $ StateC $ \ s -> (s,) <$> notFollowedBy (evalState s m)
 
 instance (Monad p, CharParsing p) => CharParsing (Facet p) where
   satisfy = lift . satisfy
@@ -80,7 +74,7 @@ instance (Monad m, TokenParsing m) => TokenParsing (Facet m) where
   someSpace = buildSomeSpaceParser (skipSome (satisfy isSpace)) emptyCommentStyle{ _commentLine = "#" }
 
 instance MonadTrans Facet where
-  lift = Facet . const . lift
+  lift = Facet . lift
 
 
 whole :: TokenParsing p => p a -> p a
@@ -160,20 +154,12 @@ typeSig
   -> Facet p S.Binding
   -> Facet p arg
   -> Facet p (S.Ann res)
-typeSig (-->) binding body = anned $ bindings (binding <* arrow) (\ bindings -> do
+typeSig (-->) binding body = anned $ do
+  bindings <- many (try (binding <* arrow))
   -- FIXME: use the signature parsed here
   _ <- option [] sig
   b <- body
-  pure $ bindings --> b)
-
-bindings :: (Has Parser sig p, TokenParsing p) => Facet p S.Binding -> ([S.Binding] -> Facet p a) -> Facet p a
-bindings binding k = go id k
-  where
-  go bs k = do
-    b <- optional (try binding)
-    case b of
-      Just b  -> bindN (S.names b) $ go (bs . (b:)) k
-      Nothing -> k (bs [])
+  pure $ bindings --> b
 
 exBinding :: (Has Parser sig p, TokenParsing p) => Facet p N.UName -> Facet p S.Binding
 exBinding name = nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
@@ -253,10 +239,7 @@ comp :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 comp = anned (S.Comp <$> anned (braces (S.Clauses <$> sepBy1 clause comma <|> S.Expr <$> expr <|> pure (S.Clauses []))))
 
 clause :: (Has Parser sig p, TokenParsing p) => Facet p (NE.NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)
-clause = (do
-  ps <- try (NE.some1 pattern <* arrow)
-  b' <- foldr (bindPattern . S.out) expr ps
-  pure (ps, b')) <?> "clause"
+clause = (,) <$> try (NE.some1 pattern <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 evar = choice
@@ -273,13 +256,6 @@ hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
 
 
 -- Patterns
-
-bindPattern :: Has Parser sig p => S.Pattern -> Facet p a -> Facet p a
-bindPattern p m = case p of
-  S.PVar n      -> bind n m
-  S.PCon _ ps   -> foldr (bindPattern . S.out) m ps
-  S.PEff _ ps k -> foldr (bindPattern . S.out) (bind k m) ps
-
 
 wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
