@@ -61,6 +61,13 @@ instance Eq1 Stack where
           go (s1:>a1) (s2:>a2) = eq a1 a2 && go s1 s2
           go _        _        = False
 
+instance Ord1 Stack where
+  liftCompare compare = go
+    where go Nil      Nil      = EQ
+          go (s1:>a1) (s2:>a2) = compare a1 a2 <> go s1 s2
+          go Nil      _        = LT
+          go _        _        = GT
+
 
 fromList :: [a] -> Stack a
 fromList = foldl' (:>) Nil
