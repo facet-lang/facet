@@ -50,7 +50,7 @@ instance Show Index where
 
 -- | De Bruijn indices, counting up from the root to the binding site (“outside in”).
 newtype Level = Level { getLevel :: Int }
-  deriving (Enum, Eq, Ord)
+  deriving (Enum, Eq, Num, Ord)
 
 instance Show Level where
   showsPrec p = showsUnaryWith showsPrec "Level" p . getLevel
