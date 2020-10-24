@@ -71,6 +71,7 @@ data Binding = Binding
 data Delta = Delta (Ann (Maybe MName, DName)) (Stack (Ann Type))
   deriving (Eq, Show)
 
+
 ($$) :: Ann Expr -> Ann Expr -> Ann Expr
 f $$ a = Ann (ann f <> ann a) (App f a)
 
