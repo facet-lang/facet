@@ -53,8 +53,8 @@ import           Text.Parser.Token.Style
 runFacet :: Functor m => [N.UName] -> [AnyOperator] -> Facet m a -> m a
 runFacet env ops (Facet m) = evalState ops (m env)
 
-bind :: N.UName -> (N.UName -> Facet m a) -> Facet m a
-bind n b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b n } in runState ops (run (n:env))
+bind :: N.UName -> Facet m a -> Facet m a
+bind n b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b } in runState ops (run (n:env))
 
 resolve :: N.UName -> [N.UName] -> Either N.UName N.Index
 resolve n = maybe (Left n) (Right . N.Index) . elemIndex n
@@ -176,7 +176,7 @@ binder
 binder (-->) name k = do
   -- FIXME: signatures
   ((start, i), t) <- nesting $ (,) <$> try ((,) <$> position <* lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen
-  bind i $ \ v -> mk start (S.Binding Ex v [] t) <$ arrow <*> k <*> position
+  bind i $ mk start (S.Binding Ex i [] t) <$ arrow <*> k <*> position
   where
   mk start t b end = S.Ann (Span start end) (t --> b)
 
@@ -208,7 +208,7 @@ forAll mk body = do
   (names, ty) <- braces ((,) <$> commaSep1 tname <* colon <*> type')
   arrow *> foldr (loop start ty) body names
   where
-  loop start ty i rest = bind i $ \ v -> mk' start (S.Binding Im v [] ty) <$> rest <*> position
+  loop start ty i rest = bind i $ mk' start (S.Binding Im i [] ty) <$> rest <*> position
   mk' start t b end = S.Ann (Span start end) (mk t b)
 
 type' :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
@@ -299,9 +299,9 @@ hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
 
 bindPattern :: Has Parser sig p => S.Pattern -> Facet p a -> Facet p a
 bindPattern p m = case p of
-  S.PVar n      -> bind n (const m)
+  S.PVar n      -> bind n m
   S.PCon _ ps   -> foldr (bindPattern . S.out) m ps
-  S.PEff _ ps k -> foldr (bindPattern . S.out) (bind k (const m)) ps
+  S.PEff _ ps k -> foldr (bindPattern . S.out) (bind k m) ps
 
 
 wildcard :: (Monad p, TokenParsing p) => p ()
