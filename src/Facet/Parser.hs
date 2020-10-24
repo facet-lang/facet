@@ -116,7 +116,7 @@ termDecl = anned $ do
   name <- dename
   case name of
     N.O op -> do
-      assoc<- case op of
+      assoc <- case op of
         N.Infix   _  -> option N.N $ brackets $ choice
           [ N.N <$ symbol "non-assoc"
           , N.L <$ symbol "left-assoc"
