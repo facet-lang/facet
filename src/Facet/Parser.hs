@@ -142,12 +142,10 @@ termDecl = anned $ do
             ]
           pure assoc
         _ -> pure N.N
-      modify ((op, assoc, nary name) :)
+      modify (makeOperator (op, assoc) :)
     _      -> pure ()
   decl <- colon *> typeSig S.Decl (choice [ imBinding, exBinding ename ]) ((:=:) <$> type' <*> (S.TermDef <$> comp))
   pure (name, decl)
-  where
-  nary name es = foldl' (S.$$) (S.Ann (S.ann (head es)) (S.free name)) es
 
 -- FIXME: how do we distinguish between data and interface declarations?
 dataDecl :: (Has Parser sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
