@@ -23,7 +23,7 @@ import qualified Data.CharSet.Unicode as Unicode
 import           Data.Coerce (Coercible, coerce)
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
-import           Data.List (elemIndex)
+import           Data.List (elemIndex, uncons)
 import qualified Data.List.NonEmpty as NE
 import           Data.Text (pack)
 import           Facet.Effect.Parser
@@ -224,8 +224,14 @@ tvar = token (anned (runUnspaced (fmap (either (S.free . N.T) S.bound) . resolve
 -- - before an argument type
 -- - before a return type
 
-sig :: (Has Parser sig p, TokenParsing p) => Facet p [S.Ann S.Expr]
-sig = brackets (commaSep type') <?> "signature"
+sig :: (Has Parser sig p, TokenParsing p) => Facet p [S.Ann S.Delta]
+sig = brackets (commaSep delta) <?> "signature"
+  where
+  var = token (anned (runUnspaced (fmap (either (S.Free Nothing . N.T) S.Bound) . resolve <$> tname <*> Unspaced env <?> "variable")))
+  delta = anned $ S.Delta <$> head <*> (fromList <$> many var)
+  head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
+  mkHead cs = (uncurry (foldl' (N.:.) . N.MName) <$> uncons (NE.init cs), N.T (N.UName (NE.last cs)))
+  comp = ident tnameStyle
 
 
 -- Expressions
