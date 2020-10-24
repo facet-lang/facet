@@ -7,7 +7,7 @@ module Facet.Context
 , names
 , (!?)
 , (!)
-, lookup
+, lookupIndex
 ) where
 
 import           Facet.Name
@@ -39,10 +39,10 @@ c !? i = elems c S.!? getIndex i
 (!) :: HasCallStack => Context a -> Index -> UName ::: a
 c ! i = elems c S.! getIndex i
 
-lookup :: UName -> Context a -> Maybe a
-lookup n = go . elems
+lookupIndex :: UName -> Context a -> Maybe (Index, a)
+lookupIndex n = go (Index 0) . elems
   where
-  go S.Nil                = Nothing
-  go (cs S.:> (n' ::: a))
-    | n == n'             = Just a
-    | otherwise           = go cs
+  go _ S.Nil                = Nothing
+  go i (cs S.:> (n' ::: a))
+    | n == n'               = Just (i, a)
+    | otherwise             = go (succ i) cs
