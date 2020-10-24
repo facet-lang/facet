@@ -7,6 +7,7 @@ module Facet.Stack
 ) where
 
 import Data.Foldable (foldl', toList)
+import Data.Functor.Classes
 import Data.Semialign
 import Data.These
 import GHC.Stack
@@ -53,6 +54,12 @@ instance Monad Stack where
     where
     go accum Nil     = accum Nil
     go accum (as:>a) = go (accum . (<> f a)) as
+
+instance Eq1 Stack where
+  liftEq eq = go
+    where go Nil      Nil      = True
+          go (s1:>a1) (s2:>a2) = eq a1 a2 && go s1 s2
+          go _        _        = False
 
 
 fromList :: [a] -> Stack a
