@@ -481,16 +481,13 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
 
       defs_ %= (<> [(dname, Nothing ::: _T)])
 
-      let e = case def of
-            S.DataDef cs -> Left  <$> elabDataDef bs cs
-            S.TermDef t  -> Right <$> elabTermDef bs t
-      pure (s, dname, e ::: _T)
+      pure (s, dname, (bs, def) ::: _T)
 
     -- then elaborate the terms
-    ifor_ es $ \ index (s, dname, e ::: _T) -> setSpan s $ do
-      (s, e') <- runModule . elabWith (fmap pure . (,)) $ check (e ::: _T)
-      def <- case e' of
-        Left cs  -> do
+    ifor_ es $ \ index (s, dname, (bs, def) ::: _T) -> setSpan s $ do
+      def <- case def of
+        S.DataDef cs -> do
+          (s, cs) <- runModule . elabWith (fmap pure . (,)) $ check (elabDataDef bs cs ::: _T)
           cs' <- for cs $ \ (n ::: _T) -> do
             _T' <- apply s _T
             let go fs = \case
@@ -499,9 +496,9 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
             c <- apply s (go Nil _T')
             pure $ n :=: c ::: _T'
           pure $ C.DData cs'
-        Right e' -> do
-          e'' <- apply s e'
-          pure $ C.DTerm e''
+        S.TermDef t -> do
+          t' <- runModule . elab $ check (elabTermDef bs t ::: _T)
+          pure $ C.DTerm t'
       defs_.ix index .= (dname, Just def ::: _T)
 
 
