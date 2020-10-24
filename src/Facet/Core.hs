@@ -113,6 +113,9 @@ eq d = curry $ \case
 
 data Delta = Delta (QName ::: Value) (Stack (Var Value))
 
+instance Eq Delta where
+  Delta (q1 ::: _) as1 == Delta (q2 ::: _) as2 = q1 == q2 && as1 == as2
+
 
 data Var t
   = Global (QName ::: t) -- ^ Global variables, considered equal by 'QName'.
