@@ -47,13 +47,11 @@ import           Text.Parser.Token.Style
 -- resolve module-local definitions in the parser
 -- resolve imported definitions in the parser
 
-runFacet :: Functor m => [AnyOperator] -> Facet m a -> m a
+runFacet :: Functor m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
 runFacet ops (Facet m) = evalState ops m
 
-type AnyOperator = Operator (S.Ann S.Expr)
-
-newtype Facet m a = Facet (StateC [AnyOperator] m a)
-  deriving (Algebra (State [AnyOperator] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail) via StateC [AnyOperator] m
+newtype Facet m a = Facet (StateC [Operator (S.Ann S.Expr)] m a)
+  deriving (Algebra (State [Operator (S.Ann S.Expr)] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail) via StateC [Operator (S.Ann S.Expr)] m
 
 instance (Monad p, Parsing p) => Parsing (Facet p) where
   try (Facet m) = Facet $ StateC $ \ s -> try (runState s m)
@@ -84,13 +82,13 @@ whole p = whiteSpace *> p <* eof
 -- Modules
 
 -- FIXME: preserve comments, presumably in 'S.Ann'
-module' :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => p (S.Ann S.Module)
+module' :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => p (S.Ann S.Module)
 module' = anned $ do
   (name, imports) <- moduleHeader
   S.Module name imports [] <$> many decl
 
 -- | Parse a module, using the provided callback to give the parser feedback on imports.
-module'' :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => (S.Ann S.Import -> p ()) -> p (S.Ann S.Module)
+module'' :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => (S.Ann S.Import -> p ()) -> p (S.Ann S.Module)
 module'' onImport = anned (S.Module <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import'')) <*> pure [] <*> many decl)
   where
   import'' = do
@@ -108,14 +106,14 @@ moduleHeader = (,) <$> mname <* colon <* symbol "Module" <*> option [] (brackets
 import' :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Import)
 import' = anned $ S.Import <$> mname
 
-decl :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
+decl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
 decl = choice
   [ termDecl
   , dataDecl
   ]
   where
 
-termDecl :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
+termDecl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
 termDecl = anned $ do
   name <- dename
   case name of
@@ -226,7 +224,7 @@ exprTable =
   , [ Postfix (pack "!") id ]
   ]
 
-expr :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => p (S.Ann S.Expr)
+expr :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => p (S.Ann S.Expr)
 expr = do
   ops <- get
   let rec = build (ops:exprTable) $ choice
@@ -237,11 +235,11 @@ expr = do
         ]
   rec
 
-comp :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => p (S.Ann S.Expr)
+comp :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => p (S.Ann S.Expr)
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
 comp = anned (S.Comp <$> anned (braces (S.Clauses <$> sepBy1 clause comma <|> S.Expr <$> expr <|> pure (S.Clauses []))))
 
-clause :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => p (NE.NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)
+clause :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => p (NE.NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)
 clause = (,) <$> try (NE.some1 pattern <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Expr)
