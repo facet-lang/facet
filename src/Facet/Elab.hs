@@ -37,7 +37,7 @@ import           Control.Effect.Lens ((%=), (.=))
 import           Control.Effect.Sum
 import           Control.Lens (ifor_, ix)
 import           Data.Bifunctor (first)
-import           Data.Foldable (foldl')
+import           Data.Foldable (foldl', toList)
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import qualified Data.Set as Set
@@ -213,13 +213,22 @@ global n = Synth $ do
   q <- synth n
   instantiate (C.global q ::: ty q)
 
-bound
-  :: Index
+-- FIXME: do we need to instantiate here to deal with rank-n applications?
+var
+  :: Maybe MName
+  -> DName
   -> Synth Value
-bound n = Synth $ ask >>= \ ctx -> case ctx !? n of
-  -- FIXME: do we need to instantiate here to deal with rank-n applications?
-  Just (_ ::: _T) -> pure (free (indexToLevel (level ctx) n) ::: _T)
-  Nothing         -> error $ "no variable for index " <> show (getIndex n)
+var m n = case m of
+  Nothing
+    | Just u <- eOrT n -> Synth $ ask >>= \ ctx -> case lookupIndex u ctx of
+      Nothing      -> synth $ global (resolve n)
+      Just (i, _T) -> pure (free (indexToLevel (level ctx) i) ::: _T)
+    | otherwise    -> global (resolve n)
+  Just m -> global (resolveQ (m :.: n))
+  where
+  eOrT (E n) = Just n
+  eOrT (T n) = Just n
+  eOrT _     = Nothing
 
 hole
   :: UName
@@ -278,14 +287,13 @@ elabExpr
   -> Maybe Type
   -> Elab (Expr ::: Type)
 elabExpr = withSpan' $ \case
-  S.Var (S.Free m n) -> switch $ global (maybe (resolve n) (resolveQ . (:.: n)) m)
-  S.Var (S.Bound n)  -> switch $ bound n
-  S.Hole  n          -> check (hole n) "hole"
-  S.Type             -> switch $ _Type
-  S.Interface        -> switch $ _Interface
-  S.ForAll bs b      -> elabTelescope bs b
-  S.App f a          -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
-  S.Comp cs          -> check (elabComp cs) "computation"
+  S.Var m n     -> switch $ var m n
+  S.Hole  n     -> check (hole n) "hole"
+  S.Type        -> switch $ _Type
+  S.Interface   -> switch $ _Interface
+  S.ForAll bs b -> elabTelescope bs b
+  S.App f a     -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
+  S.Comp cs     -> check (elabComp cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -400,19 +408,19 @@ elabPattern = withSpan $ \case
             inst (_B m)
           _                        -> pure _T
         go _T' = \case
-          Nil   -> Nil <$ unify (_T' :===: _T)
-          ps:>p -> do
+          []   -> [] <$ unify (_T' :===: _T)
+          p:ps -> do
             -- FIXME: check the signature? somehow?
             (Binding _ _ _ _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
             -- FIXME: there’s no way this is going to work, let alone a good idea
             -- FIXME: elaborate patterns in CPS, binding locally with elabBinder, & obviating the need for |-*.
             v <- metavar <$> meta _A
-            ps' <- go (_B v) ps
             p' <- check (elabPattern p ::: _A)
-            pure $ ps' :> p'
+            ps' <- go (_B v) ps
+            pure $ p' : ps'
     q ::: _T' <- synth (resolveC n)
     _T'' <- inst _T'
-    C.PCon . Con (q ::: _T'') <$> go _T'' ps
+    C.PCon . Con (q ::: _T'') . fromList <$> go _T'' (toList ps)
   S.PEff _ _  _ -> error "TBD"
 
 

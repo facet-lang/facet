@@ -22,7 +22,7 @@ import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as Unicode
 import           Data.Foldable (foldl')
 import qualified Data.HashSet as HashSet
-import           Data.List (elemIndex, uncons)
+import           Data.List (uncons)
 import qualified Data.List.NonEmpty as NE
 import           Data.Text (pack)
 import           Facet.Effect.Parser
@@ -55,12 +55,6 @@ bind n b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b } in runState 
 
 bindN :: Foldable t => t N.UName -> Facet m a -> Facet m a
 bindN ns b = Facet $ \ env -> StateC $ \ ops -> let { Facet run = b } in runState ops (run (foldl' (flip (:)) env ns))
-
-resolve :: N.UName -> [N.UName] -> Either N.UName N.Index
-resolve n = maybe (Left n) (Right . N.Index) . elemIndex n
-
-env :: Monad m => Facet m [N.UName]
-env = Facet pure
 
 newtype AnyOperator = AnyOperator { runAnyOperator :: forall sig p . (Has Parser sig p, TokenParsing p) => Operator p (S.Ann S.Expr) }
 
@@ -214,7 +208,7 @@ tatom = build monotypeTable (parens type')
 
 tvar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 tvar = choice
-  [ token (anned (runUnspaced (fmap (either (S.free . N.T) S.bound) . resolve <$> tname <*> Unspaced env <?> "variable")))
+  [ token (anned (runUnspaced (S.free . N.T <$> tname  <?> "variable")))
   , fmap S.qual <$> qname
   ]
 
@@ -266,7 +260,7 @@ clause = (do
 
 evar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 evar = choice
-  [ token (anned (runUnspaced (fmap (either (S.free . N.E) S.bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
+  [ token (anned (runUnspaced (S.free . N.E <$> ename <?> "variable")))
     -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
   , try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname)))))
   , fmap S.qual <$> qname
