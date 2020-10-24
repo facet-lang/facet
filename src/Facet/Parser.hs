@@ -263,7 +263,7 @@ exprTable =
   -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
   , [ Postfix (pack "!") id ]
   , [ Atom comp
-    , Atom (anned (S.Hole <$> hname))
+    , Atom hole
     , Atom evar
     , Atom (anned (S.qual <$> qname))
     ]
@@ -288,6 +288,11 @@ evar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 evar
   =   token (anned (runUnspaced (fmap (either (S.free . N.E) S.bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
   <|> try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
+
+hole :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Expr)
+hole = anned (S.Hole <$> ident hnameStyle)
+  where
+  hnameStyle = IdentifierStyle "hole name" (char '?') nameChar reserved Identifier ReservedIdentifier
 
 
 -- Patterns
@@ -336,8 +341,7 @@ _onameN
   outOrPre c cs = bool (N.OutfixN c (init cs) (last cs)) (N.PrefixN c cs)
   postOrIn cs = bool (N.PostfixN (NE.init cs) (NE.last cs)) (N.InfixN cs)
 
-hname, cname, tname :: (Monad p, TokenParsing p) => p N.UName
-hname = ident hnameStyle
+cname, tname :: (Monad p, TokenParsing p) => p N.UName
 cname = ident cnameStyle
 tname = ident tnameStyle
 
@@ -401,14 +405,6 @@ tnameStyle = IdentifierStyle
   Identifier
   ReservedIdentifier
 
-hnameStyle :: CharParsing p => IdentifierStyle p
-hnameStyle = IdentifierStyle
-  "hole name"
-  (char '?')
-  nameChar
-  reserved
-  Identifier
-  ReservedIdentifier
 
 arrow :: TokenParsing p => p String
 arrow = symbol "->"
