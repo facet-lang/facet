@@ -31,7 +31,7 @@ modify f = put (f get!)
 (I’m not sure that the effect name would go there in this case.) It’s not clear to me why the arrow forms a computation. I suppose it allows you to avoid writing a bunch of postfix bangs in places that might otherwise be required, e.g. following the arguments to put, and which would be of ambiguous precedence if one weren’t careful. Likewise, they’re careful to avoid allowing the implicit coercion of {A} to A; the postfix ! is necessary to force evaluation. On the other hand, it does appear that they allow implicit coercion of A to {A} without any additional plumbing (`return` in Haskell comes to mind, and is specifically mentioned in the paper).
 
 
-# Facet
+## Facet
 
 By contrast, I want to think of computations as a unary type former. _Edit: this is no longer true, following a bunch of reading up on CBPV and focusing._
 
