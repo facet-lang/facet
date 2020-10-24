@@ -74,7 +74,7 @@ data Binding = Binding
   }
   deriving (Eq, Show)
 
-data Delta = Delta (Ann (Maybe MName, DName)) (Stack (Ann Var))
+data Delta = Delta (Ann (Maybe MName, DName)) (Stack (Ann Expr))
   deriving (Eq, Show)
 
 unForAll :: Has Empty sig m => Expr -> m (Binding, Ann Expr)

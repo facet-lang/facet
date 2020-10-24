@@ -246,11 +246,7 @@ tvar = choice
 sig :: (Has Parser sig p, TokenParsing p) => Facet p [S.Ann S.Delta]
 sig = brackets (commaSep delta) <?> "signature"
   where
-  var
-    =   token (anned (runUnspaced (fmap (either (S.Free Nothing . N.T) S.Bound) . resolve <$> tname <*> Unspaced env)))
-    <|> fmap (\ (m N.:.: n) -> S.Free (Just m) n) <$> qname
-    <?> "variable"
-  delta = anned $ S.Delta <$> head <*> (fromList <$> many var)
+  delta = anned $ S.Delta <$> head <*> (fromList <$> many type')
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
   mkHead cs = (uncurry (foldl' (N.:.) . N.MName) <$> uncons (NE.init cs), N.T (N.UName (NE.last cs)))
   comp = ident tnameStyle
