@@ -45,6 +45,7 @@ import           Text.Parser.Token.Style
 
 -- TODO:
 -- list literals
+-- string literals
 -- numeric literals
 -- forcing nullary computations
 -- resolve module-local definitions in the parser
