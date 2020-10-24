@@ -50,7 +50,7 @@ import           Text.Parser.Token.Style
 runFacet :: Functor m => [AnyOperator] -> Facet m a -> m a
 runFacet ops (Facet m) = evalState ops m
 
-newtype AnyOperator = AnyOperator { runAnyOperator :: forall sig p . (Has Parser sig p, TokenParsing p) => Operator p (S.Ann S.Expr) }
+type AnyOperator = Operator (S.Ann S.Expr)
 
 newtype Facet m a = Facet (StateC [AnyOperator] m a)
   deriving (Algebra (State [AnyOperator] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail) via StateC [AnyOperator] m
@@ -121,8 +121,8 @@ termDecl = anned $ do
   case name of
     N.O op -> do
       (_, op') <- case op of
-        N.Prefix  l  -> pure (N.R, AnyOperator (Prefix l (unary name)))
-        N.Postfix r  -> pure (N.L, AnyOperator (Postfix r (unary name)))
+        N.Prefix  l  -> pure (N.R, Prefix l (unary name))
+        N.Postfix r  -> pure (N.L, Postfix r (unary name))
         N.Infix   m  -> do
           assoc <- option N.N $ brackets $ choice
             [ N.N <$ symbol "non-assoc"
@@ -130,8 +130,8 @@ termDecl = anned $ do
             , N.R <$ symbol "right-assoc"
             , N.A <$ symbol "assoc"
             ]
-          pure (assoc, AnyOperator (Infix assoc m (binary name)))
-        N.Outfix l r -> pure (N.N, AnyOperator (Outfix l r (unary name)))
+          pure (assoc, Infix assoc m (binary name))
+        N.Outfix l r -> pure (N.N, Outfix l r (unary name))
       -- FIXME: record the operator name and associativity in the module.
       modify (op' :)
     _      -> pure ()
@@ -174,15 +174,9 @@ nonBinding = anned $ S.Binding Ex [] <$> option [] sig <*> tatom
 
 -- Types
 
-monotypeTable :: (Has Parser sig p, TokenParsing p) => Table p (S.Ann S.Type)
+monotypeTable :: Table (S.Ann S.Type)
 monotypeTable =
   [ [ Infix L mempty (S.$$) ]
-  , [ -- FIXME: we should treat these as globals.
-      Atom (anned (S.Type <$ token (string "Type")))
-    , Atom (anned (S.Interface <$ token (string "Interface")))
-      -- FIXME: holes in types
-    , Atom tvar
-    ]
   ]
 
 
@@ -191,7 +185,14 @@ type' = typeSig S.ForAll (choice [ imBinding, nonBinding ]) tatom
 
 -- FIXME: support type operators
 tatom :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Type)
-tatom = build monotypeTable (parens type')
+tatom = build monotypeTable $ choice
+  [ -- FIXME: we should treat these as globals.
+    anned (S.Type <$ token (string "Type"))
+  , anned (S.Interface <$ token (string "Interface"))
+    -- FIXME: holes in types
+  , tvar
+  , parens type'
+  ]
 
 tvar :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Expr)
 tvar = choice
@@ -217,22 +218,23 @@ sig = brackets (commaSep delta) <?> "signature"
 
 -- Expressions
 
-exprTable :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => Table p (S.Ann S.Expr)
+exprTable :: Table (S.Ann S.Expr)
 exprTable =
   [ [ Infix L mempty (S.$$) ]
   -- FIXME: model this as application to unit instead
   -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
   , [ Postfix (pack "!") id ]
-  , [ Atom comp
-    , Atom hole
-    , Atom evar
-    ]
   ]
 
 expr :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => p (S.Ann S.Expr)
 expr = do
   ops <- get
-  let rec = build (map runAnyOperator ops:exprTable) (parens rec)
+  let rec = build (ops:exprTable) $ choice
+        [ comp
+        , hole
+        , evar
+        , parens rec
+        ]
   rec
 
 comp :: (Has Parser sig p, Has (State [AnyOperator]) sig p, TokenParsing p) => p (S.Ann S.Expr)
