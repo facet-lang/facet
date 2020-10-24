@@ -39,10 +39,6 @@ import           Text.Parser.Token
 import           Text.Parser.Token.Highlight as Highlight
 import           Text.Parser.Token.Style
 
--- case
--- : (x : a) -> (f : a -> b) -> b
--- { f x }
-
 -- TODO:
 -- list literals
 -- string literals
