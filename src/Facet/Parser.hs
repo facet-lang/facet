@@ -2,6 +2,7 @@ module Facet.Parser
 ( runFacet
 , Facet(..)
 , whole
+, makeOperator
 , module'
 , module''
 , moduleHeader
@@ -77,6 +78,12 @@ instance MonadTrans Facet where
 
 whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
+
+
+makeOperator :: (N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
+makeOperator (op, assoc) = (op, assoc, nary (N.O op))
+  where
+  nary name es = foldl' (S.$$) (S.Ann (S.ann (head es)) (S.free name)) es
 
 
 -- Modules
