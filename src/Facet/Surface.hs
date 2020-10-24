@@ -5,7 +5,6 @@ module Facet.Surface
 , free
 , qual
 , bound
-, (-->)
 , Binding(..)
 , Delta(..)
 , unForAll
@@ -61,11 +60,6 @@ qual (m :.: n) = Var $ Free (Just m) n
 
 bound :: Index -> Expr
 bound = Var . Bound
-
-(-->) :: Ann Expr -> Ann Expr -> Ann Expr
-a --> b = Ann (ann a <> ann b) (ForAll (Binding Ex Nothing [] a) b)
-
-infixr 1 -->
 
 data Binding = Binding
   { _pl   :: Pl
