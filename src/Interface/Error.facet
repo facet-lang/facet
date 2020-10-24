@@ -25,11 +25,6 @@ except : { E, A : Type } -> Either E A -> [Error E] A
 runError : { E, A : Type } -> [Error E] A -> Either E A
 { error inl inr }
 
-# fixme: this shouldn’t be here
-_ << _ [assoc]
-: { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
-{ a -> f (g a) }
-
 error
 :  { E, A, R : Type }
 -> (failure : E -> R)
