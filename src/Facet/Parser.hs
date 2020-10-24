@@ -326,9 +326,10 @@ ename :: (Monad p, TokenParsing p) => p N.UName
 ename  = ident enameStyle
 
 oname :: (Monad p, TokenParsing p) => p N.Op
-oname
-  =   postOrIn <$ place <*> comp <*> option False (True <$ place)
-  <|> try (outOrPre <$> comp <* place) <*> optional comp
+oname = choice
+  [ postOrIn <$ place <*> comp <*> option False (True <$ place)
+  , try (outOrPre <$> comp <* place) <*> optional comp
+  ]
   where
   place = wildcard
   comp = ident onameStyle
@@ -336,9 +337,10 @@ oname
   postOrIn c = bool (N.Postfix c) (N.Infix c)
 
 _onameN :: (Monad p, TokenParsing p) => p N.OpN
-_onameN
-  =   postOrIn <$ place <*> sepByNonEmpty comp place <*> option False (True <$ place)
-  <|> try (uncurry . outOrPre <$> comp <* place) <*> ((,) <$> sepBy1 comp place <*> option False (True <$ place) <|> pure ([], True))
+_onameN = choice
+  [ postOrIn <$ place <*> sepByNonEmpty comp place <*> option False (True <$ place)
+  , try (uncurry . outOrPre <$> comp <* place) <*> ((,) <$> sepBy1 comp place <*> option False (True <$ place) <|> pure ([], True))
+  ]
   where
   place = wildcard
   comp = ident onameStyle
