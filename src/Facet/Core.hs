@@ -1,7 +1,7 @@
 module Facet.Core
 ( -- * Values
   Value(..)
-, eq
+, unifyValue
 , Binding(..)
 , Delta(..)
 , Var(..)
@@ -71,46 +71,46 @@ data Value
   | VCon (Con Value Value)
 
 instance Eq Value where
-  (==) = eq 0
+  (==) = unifyValue 0
 
-eq :: Level -> Value -> Value -> Bool
-eq d = curry $ \case
+unifyValue :: Level -> Value -> Value -> Bool
+unifyValue d = curry $ \case
   -- defined thus instead of w/ fallback case to have exhaustiveness checks kick in when adding constructors.
   (VType, VType)                 -> True
   (VType, _)                     -> False
   (VInterface, VInterface)       -> True
   (VInterface, _)                -> False
-  (VForAll t1 b1, VForAll t2 b2) -> eqB d t1 t2 && eq (succ d) (b1 (free d)) (b2 (free d))
+  (VForAll t1 b1, VForAll t2 b2) -> unifyB d t1 t2 && unifyValue (succ d) (b1 (free d)) (b2 (free d))
   (VForAll{}, _)                 -> False
-  (VLam t1 b1, VLam t2 b2)       -> eqB d t1 t2 && eq (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
+  (VLam t1 b1, VLam t2 b2)       -> unifyB d t1 t2 && unifyValue (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
   (VLam{}, _)                    -> False
-  (VNeut h1 sp1, VNeut h2 sp2)   -> eqH d h1 h2 && eqSp d sp1 sp2
+  (VNeut h1 sp1, VNeut h2 sp2)   -> unifyH d h1 h2 && unifySp d sp1 sp2
   (VNeut{}, _)                   -> False
-  (VCon c1, VCon c2)             -> eqCon eq d c1 c2
+  (VCon c1, VCon c2)             -> unifyCon unifyValue d c1 c2
   (VCon _, _)                    -> False
   where
-  eqB d (Binding p1 _ t1) (Binding p2 _ t2) = p1 == p2 && eq d t1 t2
-  eqH d = curry $ \case
-    (Global (q1 ::: t1), Global (q2 ::: t2))   -> q1 == q2 && eq d t1 t2
+  unifyB d (Binding p1 _ t1) (Binding p2 _ t2) = p1 == p2 && unifyValue d t1 t2
+  unifyH d = curry $ \case
+    (Global (q1 ::: t1), Global (q2 ::: t2))   -> q1 == q2 && unifyValue d t1 t2
     (Global _, _)                              -> False
     (Free d1, Free d2)                         -> d1 == d2
     (Free _, _)                                -> False
-    (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> m1 == m2 && eq d t1 t2
+    (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> m1 == m2 && unifyValue d t1 t2
     (Metavar _, _)                             -> False
-  eqSp d sp1 sp2 = length sp1 == length sp2 && and (zipWith (eqElim d) sp1 sp2)
-  eqElim d = curry $ \case
-    (EApp (P p1 a1), EApp (P p2 a2)) -> p1 == p2 && eq d a1 a2
+  unifySp d sp1 sp2 = length sp1 == length sp2 && and (zipWith (unifyElim d) sp1 sp2)
+  unifyElim d = curry $ \case
+    (EApp (P p1 a1), EApp (P p2 a2)) -> p1 == p2 && unifyValue d a1 a2
     (EApp _, _)                      -> False
-    (ECase cs1, ECase cs2)           -> length cs1 == length cs2 && and (zipWith (eqClause d) cs1 cs2)
+    (ECase cs1, ECase cs2)           -> length cs1 == length cs2 && and (zipWith (unifyClause d) cs1 cs2)
     (ECase _, _)                     -> False
-  eqClause d (p1, b1) (p2, b2) = eqPat d p1 p2 && eq (succ d) (b1 (PVar (free d))) (b2 (PVar (free d)))
-  eqPat d = curry $ \case
-    (PVar (_ ::: t1), PVar (_ ::: t2)) -> eq d t1 t2
+  unifyClause d (p1, b1) (p2, b2) = unifyPat d p1 p2 && unifyValue (succ d) (b1 (PVar (free d))) (b2 (PVar (free d)))
+  unifyPat d = curry $ \case
+    (PVar (_ ::: t1), PVar (_ ::: t2)) -> unifyValue d t1 t2
     (PVar _, _)                        -> False
-    (PCon c1, PCon c2)                 -> eqCon eqPat d c1 c2
+    (PCon c1, PCon c2)                 -> unifyCon unifyPat d c1 c2
     (PCon _, _)                        -> False
-  eqCon :: (Level -> a -> b -> Bool) -> Level -> Con Value a -> Con Value b -> Bool
-  eqCon eq' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = n1 == n2 && eq d t1 t2 && length fs1 == length fs2 && and (zipWith (eq' d) fs1 fs2)
+  unifyCon :: (Level -> a -> b -> Bool) -> Level -> Con Value a -> Con Value b -> Bool
+  unifyCon unifyValue' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = n1 == n2 && unifyValue d t1 t2 && length fs1 == length fs2 && and (zipWith (unifyValue' d) fs1 fs2)
 
 
 data Binding = Binding
