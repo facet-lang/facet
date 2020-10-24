@@ -6,11 +6,6 @@ module Facet.Algebra
   -- ** Core
 , foldCValue
 , foldCModule
-  -- ** Surface
-, foldSExpr
-, foldSCons
-, foldSDecl
-, foldSModule
 ) where
 
 import           Data.Bifunctor (bimap)
@@ -20,7 +15,6 @@ import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
 import           Facet.Name
 import           Facet.Stack
-import qualified Facet.Surface as S
 import           Facet.Syntax
 
 -- Algebras
@@ -140,80 +134,3 @@ foldCModule alg (C.Module mname is ds) = module_ alg
       C.DTerm b  -> foldCValue alg Nil b
       C.DData cs -> data' alg
         $ map (\ (n :=: _ ::: _T) -> decl alg (var alg (Cons n) ::: foldCValue alg Nil _T)) cs)
-
-
--- ** Surface
-
-foldSExpr :: Algebra p -> Stack p -> S.Ann S.Expr -> p
-foldSExpr alg = go
-  where
-  go env (S.Ann s e) = case e of
-    S.Var (S.Free m n) -> var alg (Global m n)
-    S.Var (S.Bound n) -> env ! getIndex n
-    S.Hole  n -> hole alg n
-    S.Type     -> _Type alg
-    S.Interface -> _Interface alg
-    S.ForAll t b ->
-      let (ts, b') = splitr (S.unForAll . S.out) (S.Ann s (S.ForAll t b))
-          -- FIXME: fold the signature
-          binding (d, env) (S.Binding p n _ t)
-            | T.null (getUName n) = ((d, env), P p ([] ::: go env t))
-            | otherwise           = let v = tintro alg n d in ((succ d, env :> v), P p ([v] ::: go env t))
-          ((_, env'), ts') = mapAccumL binding (Level (length env), env) ts
-      in fn alg ts' (go env' b')
-    S.App f a ->
-      let (f', a') = splitl (S.unApp . S.out) (S.Ann s (S.App f a))
-      in app alg (go env f') (fmap (ex . go env) a')
-    S.Comp (S.Ann _ c)  -> case c of
-      S.Expr e     -> lam alg [ go env e ]
-      S.Clauses cs -> lam alg (map (uncurry (cls env)) cs)
-
-  cls env ps b = let ((_, env'), ps') = mapAccumL (\ (d, env) -> fmap (ex . (::: Nothing)) . pat d env) (Level (length env), env) ps in clause alg (toList ps') (go env' b)
-
-  pat d env (S.Ann _ p) = case p of
-    S.PVar n    -> let v = intro alg n d in ((succ d, env:>v), v)
-    S.PCon n ps ->
-      let ((d', env'), ps') = subpatterns d env ps
-      in ((d', env'), pcon alg (var alg (Cons n)) ps')
-    S.PEff n ps k ->
-      let ((d', env'), ps') = subpatterns d env ps
-          k' = intro alg k d
-      in ((succ d', env' :> k'), peff alg (var alg (Cons n)) ps' k')
-  subpatterns d env ps = mapAccumL (\ (d', env') p -> pat d' env' p) (d, env) ps
-
-foldSCons :: Algebra p -> Stack p -> S.Ann (UName ::: S.Ann S.Expr) -> p
-foldSCons alg env = decl alg . bimap (var alg . Cons) (foldSExpr alg env) . S.out
-
-foldSDecl :: Algebra p -> S.Ann S.Decl -> p
-foldSDecl alg (S.Ann _ d) = case d of
-  S.DDecl d -> foldSDDecl alg d
-  S.TDecl t -> foldSTDecl alg t
-
-foldSDDecl :: Algebra p -> S.Ann S.DDecl -> p
-foldSDDecl alg = go Nil
-  where
-  go env (S.Ann s d) = case d of
-    S.DDBody t b -> defn alg $ foldSExpr alg env t :=: data' alg (map (foldSCons alg env) b)
-    S.DDForAll t b ->
-      let (ts, b') = splitr (S.unDDForAll . S.out) (S.Ann s (S.DDForAll t b))
-          -- FIXME: fold the signature
-          ((_, env'), ts') = mapAccumL (\ (d, env) (S.Binding p n _ t) -> let v = var alg (Local n d) in ((succ d, env :> v), P p ([v] ::: foldSExpr alg env t))) (level, env) ts
-      in fn alg ts' (go env' b')
-    where
-    level = Level (length env)
-
-foldSTDecl :: Algebra p -> S.Ann S.TDecl -> p
-foldSTDecl alg = go Nil
-  where
-  go env (S.Ann s d) = case d of
-    S.TDBody t b -> defn alg $ foldSExpr alg env t :=: foldSExpr alg env b
-    S.TDForAll t b ->
-      let (ts, b') = splitr (S.unTDForAll . S.out) (S.Ann s (S.TDForAll t b))
-          -- FIXME: fold the signature
-          ((_, env'), ts') = mapAccumL (\ (d, env) (S.Binding p n _ t) -> let v = var alg (Local n d) in ((succ d, env :> v), P p ([v] ::: foldSExpr alg env t))) (level, env) ts
-      in fn alg ts' (go env' b')
-    where
-    level = Level (length env)
-
-foldSModule :: Algebra p -> S.Ann S.Module -> p
-foldSModule alg (S.Ann _ (S.Module m is ds)) = module_ alg $ m ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module"))))) :=: (map (\ (S.Ann _ (S.Import n)) -> import' alg n) is, map (\ (S.Ann _ (n, d)) -> decl alg (var alg (Global (Just m) n) ::: foldSDecl alg d)) ds)
