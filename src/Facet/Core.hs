@@ -111,7 +111,7 @@ eq d = curry $ \case
   eqCon eq' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = n1 == n2 && eq d t1 t2 && length fs1 == length fs2 && and (zipWith (eq' d) fs1 fs2)
 
 
-data Delta = Delta
+data Delta = Delta (QName ::: Value) (Stack (Head Value Level))
 
 
 data Head t a
