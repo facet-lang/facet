@@ -117,7 +117,7 @@ termDecl = anned $ do
   case name of
     N.O op -> do
       assoc <- case op of
-        N.Infix   _  -> option N.N $ brackets $ choice
+        N.Infix _ -> option N.N $ brackets $ choice
           [ N.N <$ symbol "non-assoc"
           , N.L <$ symbol "left-assoc"
           , N.R <$ symbol "right-assoc"
