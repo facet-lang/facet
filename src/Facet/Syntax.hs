@@ -6,7 +6,6 @@ module Facet.Syntax
 , curryAnn
 , (:===:)(..)
 , (:=:)(..)
-, (:|-:)(..)
 , Neutral(..)
 , splitl
 , splitr
@@ -68,15 +67,6 @@ infixr 2 :=:
 
 instance Bifunctor (:=:) where
   bimap f g (a :=: b) = f a :=: g b
-
-
-data a :|-: b = a :|-: b
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-infix 0 :|-:
-
-instance Bifunctor (:|-:) where
-  bimap f g (a :|-: b) = f a :|-: g b
 
 
 data Neutral a b = (:$)
