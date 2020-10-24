@@ -80,7 +80,7 @@ foldCValue alg = go
     C.VInterface -> _Interface alg
     C.VForAll t b ->
       let (vs, (_, b')) = splitr C.unForAll' (d, C.VForAll t b)
-          binding env (n ::: _T) = (env :> tvar env (n ::: _T), P (pl n) (name (pl n) (out n) (Level (length env)) ::: go env _T))
+          binding env (C.Binding p n _T) = (env :> tvar env (P p n ::: _T), P p (name p n (Level (length env)) ::: go env _T))
           name p n d
             | T.null (getUName n)
             , Ex <- p             = []
@@ -89,7 +89,7 @@ foldCValue alg = go
       in fn alg vs' (go env' b')
     C.VLam n b ->
       let (vs, (_, b')) = splitr C.unLam' (d, C.VLam n b)
-          binding env (n ::: _T) = (env :> lvar env (n ::: _T), P (pl n) (unPl_ (tintro alg) (intro alg) n (Level (length env)) ::: Just (go env _T)))
+          binding env (C.Binding p n _T) = (env :> lvar env (P p n ::: _T), P p (unPl (tintro alg) (intro alg) p n (Level (length env)) ::: Just (go env _T)))
           (env', vs') = mapAccumL binding env vs
       in lam alg [clause alg vs' (go env' b')]
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable

@@ -64,8 +64,8 @@ import           Prelude hiding (zip, zipWith)
 data Value
   = VType
   | VInterface
-  | VForAll (Pl_ UName ::: Value) (Value -> Value)
-  | VLam (Pl_ UName ::: Value) (Value -> Value)
+  | VForAll Binding (Value -> Value)
+  | VLam Binding (Value -> Value)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNeut (Var Value) (Stack Elim)
   | VCon (Con Value Value)
@@ -76,19 +76,20 @@ instance Eq Value where
 eq :: Level -> Value -> Value -> Bool
 eq d = curry $ \case
   -- defined thus instead of w/ fallback case to have exhaustiveness checks kick in when adding constructors.
-  (VType, VType)                                           -> True
-  (VType, _)                                               -> False
-  (VInterface, VInterface)                                 -> True
-  (VInterface, _)                                          -> False
-  (VForAll (P p1 _ ::: t1) b1, VForAll (P p2 _ ::: t2) b2) -> p1 == p2 && eq d t1 t2 && eq (succ d) (b1 (free d)) (b2 (free d))
-  (VForAll{}, _)                                           -> False
-  (VLam (P p1 _ ::: t1) b1, VLam (P p2 _ ::: t2) b2)       -> p1 == p2 && eq d t1 t2 && eq (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
-  (VLam{}, _)                                              -> False
-  (VNeut h1 sp1, VNeut h2 sp2)                             -> eqH d h1 h2 && eqSp d sp1 sp2
-  (VNeut{}, _)                                             -> False
-  (VCon c1, VCon c2)                                       -> eqCon eq d c1 c2
-  (VCon _, _)                                              -> False
+  (VType, VType)                 -> True
+  (VType, _)                     -> False
+  (VInterface, VInterface)       -> True
+  (VInterface, _)                -> False
+  (VForAll t1 b1, VForAll t2 b2) -> eqB d t1 t2 && eq (succ d) (b1 (free d)) (b2 (free d))
+  (VForAll{}, _)                 -> False
+  (VLam t1 b1, VLam t2 b2)       -> eqB d t1 t2 && eq (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
+  (VLam{}, _)                    -> False
+  (VNeut h1 sp1, VNeut h2 sp2)   -> eqH d h1 h2 && eqSp d sp1 sp2
+  (VNeut{}, _)                   -> False
+  (VCon c1, VCon c2)             -> eqCon eq d c1 c2
+  (VCon _, _)                    -> False
   where
+  eqB d (Binding p1 _ t1) (Binding p2 _ t2) = p1 == p2 && eq d t1 t2
   eqH d = curry $ \case
     (Global (q1 ::: t1), Global (q2 ::: t2))   -> q1 == q2 && eq d t1 t2
     (Global _, _)                              -> False
@@ -191,20 +192,20 @@ var :: Var Value -> Value
 var = (`VNeut` Nil)
 
 
-unForAll :: Has Empty sig m => Value -> m (Pl_ UName ::: Value, Value -> Value)
+unForAll :: Has Empty sig m => Value -> m (Binding, Value -> Value)
 unForAll = \case{ VForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unForAll' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unForAll' :: Has Empty sig m => (Level, Value) -> m (Pl_ UName ::: Value, (Level, Value))
+unForAll' :: Has Empty sig m => (Level, Value) -> m (Binding, (Level, Value))
 unForAll' (d, v) = do
   (_T, _B) <- unForAll v
   pure (_T, (succ d, _B (free d)))
 
-unLam :: Has Empty sig m => Value -> m (Pl_ UName ::: Value, Value -> Value)
+unLam :: Has Empty sig m => Value -> m (Binding, Value -> Value)
 unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 
 -- | A variation on 'unLam' which can be conveniently chained with 'splitr' to strip a prefix of lambdas off their eventual body.
-unLam' :: Has Empty sig m => (Level, Value) -> m (Pl_ UName ::: Value, (Level, Value))
+unLam' :: Has Empty sig m => (Level, Value) -> m (Binding, (Level, Value))
 unLam' (d, v) = do
   (n, t) <- unLam v
   pure (n, (succ d, t (free d)))
@@ -257,8 +258,8 @@ subst s
   go = \case
     VType       -> VType
     VInterface  -> VInterface
-    VForAll t b -> VForAll (fmap go t) (go . b)
-    VLam    n b -> VLam (fmap go n) (go . b)
+    VForAll t b -> VForAll (substBinding t) (go . b)
+    VLam    n b -> VLam (substBinding n) (go . b)
     VNeut f a   -> unVar global free (s !) f' `elimN` fmap substElim a
       where
       f' = case f of
@@ -266,6 +267,8 @@ subst s
         Free    v          -> Free    v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
     VCon c      -> VCon (bimap go go c)
+
+  substBinding (Binding p n t) = Binding p n (go t)
 
   substElim = \case
     EApp a   -> EApp (fmap go a)
@@ -282,8 +285,8 @@ bind target with = go
   go = \case
     VType       -> VType
     VInterface  -> VInterface
-    VForAll t b -> VForAll (fmap go t) (go . b)
-    VLam    n b -> VLam (fmap go n) (go . b)
+    VForAll t b -> VForAll (binding t) (go . b)
+    VLam    n b -> VLam (binding n) (go . b)
     VNeut f a   -> unVar global (\ v -> if v == target then with else free v) metavar f' `elimN` fmap elim a
       where
       f' = case f of
@@ -291,6 +294,8 @@ bind target with = go
         Free    v          -> Free    v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
     VCon c      -> VCon (bimap go go c)
+
+  binding (Binding p n t) = Binding p n (go t)
 
   elim = \case
     EApp a   -> EApp (fmap go a)
@@ -301,8 +306,8 @@ mvs :: Level -> Value -> IntMap.IntMap Value
 mvs d = \case
   VType                   -> mempty
   VInterface              -> mempty
-  VForAll (_ ::: t) b     -> mvs d t <> mvs (succ d) (b (free d))
-  VLam (_ ::: t) b        -> mvs d t <> mvs (succ d) (b (free d))
+  VForAll t b             -> binding d t <> mvs (succ d) (b (free d))
+  VLam t b                -> binding d t <> mvs (succ d) (b (free d))
   VNeut h sp              -> unVar (mvs d . ty) mempty (\ (m ::: _T) -> IntMap.insert (getMeta m) _T (mvs d _T)) h <> foldMap goE sp
     where
     goE = \case
@@ -310,13 +315,15 @@ mvs d = \case
       ECase cs -> foldMap goClause cs
     goClause (p, b) = bifoldMap (mvs d) (mvs d . ty) p <> let (d', p') = fill ((,) . succ <*> free) d p in  mvs d' (b p')
   VCon (Con (_ ::: t) fs) -> mvs d t <> foldMap (mvs d) fs
+  where
+  binding d (Binding _ _ t) = mvs d t
 
 
 generalize :: Value -> Value
 generalize v = build s v
   where
   metas = mvs 0 v
-  (_, build, s) = IntMap.foldrWithKey (\ m _T (d, f, s) -> (succ d, \ s b -> VForAll (im __ ::: _T) (\ v -> bind d v (f s b)), IntMap.insert m (free d) s)) (0, subst, IntMap.empty) metas
+  (_, build, s) = IntMap.foldrWithKey (\ m _T (d, f, s) -> (succ d, \ s b -> VForAll (Binding Im __ _T) (\ v -> bind d v (f s b)), IntMap.insert m (free d) s)) (0, subst, IntMap.empty) metas
 
 
 -- Classification
@@ -330,12 +337,12 @@ data Sort
 -- | Classifies values according to whether or not they describe types.
 sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
-  VType                 -> SKind
-  VInterface            -> SKind
-  VForAll (_ ::: _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
-  VLam{}                -> STerm
-  VNeut h sp            -> minimum (unVar (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (\case{ EApp a -> sortOf ctx (out a) ; ECase _ -> STerm } <$> sp))
-  VCon _                -> STerm
+  VType                       -> SKind
+  VInterface                  -> SKind
+  VForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
+  VLam{}                      -> STerm
+  VNeut h sp                  -> minimum (unVar (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (\case{ EApp a -> sortOf ctx (out a) ; ECase _ -> STerm } <$> sp))
+  VCon _                      -> STerm
 
 
 -- Patterns
