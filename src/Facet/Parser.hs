@@ -325,7 +325,7 @@ mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy co
   comp = ident tnameStyle
 
 qname :: (Monad p, TokenParsing p) => p N.QName
-qname = runUnspaced (fmap (N.:.:) . foldl' (N.:.) . N.MName <$> comp <* dot <*> many (comp <* dot) <*> (dename <|> dtname))
+qname = token (runUnspaced (fmap (N.:.:) . foldl' (N.:.) . N.MName <$> comp <* dot <*> many (comp <* dot) <*> (dename <|> dtname)))
   where
   comp = ident tnameStyle
 
