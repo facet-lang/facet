@@ -297,13 +297,13 @@ elabExpr = withSpan' $ \case
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
-elabTelescope :: [S.Binding] -> S.Ann S.Type -> Maybe Type -> Elab (Type ::: Type)
+elabTelescope :: [S.Ann S.Binding] -> S.Ann S.Type -> Maybe Type -> Elab (Type ::: Type)
 elabTelescope bindings body = go bindings
   where
   -- FIXME: these have got to be foldrs of some kind
-  go []                            = elabExpr body
+  go []                                      = elabExpr body
   -- FIXME: elaborate the signature
-  go (S.Binding p ns _ t:bindings) = goN ns (go bindings)
+  go (S.Ann s (S.Binding p ns _ t):bindings) = setSpan s . goN ns (go bindings)
     where
     -- NB: [] is used for e.g. non-binding function types. We (currently) have to handle that case separately from the base case for non-empty signatures so as to keep the typing context in sync with indices in the elaborated term/type. This shouldn’t be an issue for declarations, since they only have binding signatures.
     goN []     k = switch $ P p __ ::: checkElab (elabExpr t) >~> \ _ ->      checkElab k
@@ -428,7 +428,7 @@ elabPattern = withSpan $ \case
 
 elabDataDef
   :: HasCallStack
-  => [S.Binding]
+  => [S.Ann S.Binding]
   -> [S.Ann (UName ::: S.Ann S.Type)]
   -> Check [UName ::: Type]
 elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> wrap (checkElab (elabExpr t))
@@ -436,7 +436,7 @@ elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) ->
   wrap = go bindings
   -- FIXME: check that all constructors return the datatype.
   go []                           k = k
-  go (S.Binding _ n _ _:bindings) k = goN n (go bindings k)
+  go (S.Ann s (S.Binding _ n _ _):bindings) k = setSpan s $ goN n (go bindings k)
     where
     goN []     k = k
     goN (n:ns) k = Check $ \ _T -> do
@@ -447,14 +447,14 @@ elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) ->
 
 elabTermDef
   :: HasCallStack
-  => [S.Binding]
+  => [S.Ann S.Binding]
   -> S.Ann S.Expr
   -> Check Expr
 elabTermDef bindings expr = go bindings
   where
   go []                            = checkElab (elabExpr expr)
   -- FIXME: should this use the argument type and signature? I guess not because we’re going to check against the elaborated type & sig?
-  go (S.Binding p ns _ _:bindings) = goN ns (go bindings)
+  go (S.Ann s (S.Binding p ns _ _):bindings) = setSpan s $ goN ns (go bindings)
     where
     goN []     k = k
     goN (n:ns) k = lam (P p n) (|- goN ns k)

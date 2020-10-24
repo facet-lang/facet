@@ -151,8 +151,8 @@ con = anned ((:::) <$> cname <* colon <*> type')
 
 typeSig
   :: (Has Parser sig p, TokenParsing p)
-  => ([S.Binding] -> arg -> res)
-  -> p S.Binding
+  => ([S.Ann S.Binding] -> arg -> res)
+  -> p (S.Ann S.Binding)
   -> p arg
   -> p (S.Ann res)
 typeSig (-->) binding body = anned $ do
@@ -162,14 +162,14 @@ typeSig (-->) binding body = anned $ do
   b <- body
   pure $ bindings --> b
 
-exBinding :: (Has Parser sig p, TokenParsing p) => p N.UName -> p S.Binding
-exBinding name = nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
+exBinding :: (Has Parser sig p, TokenParsing p) => p N.UName -> p (S.Ann S.Binding)
+exBinding name = anned $ nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
 
-imBinding :: (Has Parser sig p, TokenParsing p) => p S.Binding
-imBinding = braces $ S.Binding Im <$> commaSep1 tname <* colon <*> option [] sig <*> type'
+imBinding :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Binding)
+imBinding = anned $ braces $ S.Binding Im <$> commaSep1 tname <* colon <*> option [] sig <*> type'
 
-nonBinding :: (Has Parser sig p, TokenParsing p) => p S.Binding
-nonBinding = S.Binding Ex [] <$> option [] sig <*> tatom
+nonBinding :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Binding)
+nonBinding = anned $ S.Binding Ex [] <$> option [] sig <*> tatom
 
 
 -- Types
