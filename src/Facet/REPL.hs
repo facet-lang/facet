@@ -119,6 +119,7 @@ kernel = Module kernelName []
 
 loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
 loop = do
+  -- FIXME: handle interrupts
   resp <- prompt
   runError (print . prettyNotice') pure $ case resp of
     Just src -> rethrowParseErrors @Style (runParserWithSource src commandParser) >>= runAction src
