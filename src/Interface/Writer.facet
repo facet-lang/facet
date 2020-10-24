@@ -5,5 +5,5 @@ Interface.Writer : Module
 
 Writer : (W : Type) -> Interface
 { tell : W -> [Writer W] Unit
-, listen : [Writer W] A -> [Writer W] Pair W A
-, censor : (W -> W) -> [Writer W] A -> [Writer W] A }
+, listen : { A : Type } -> [Writer W] A -> [Writer W] Pair W A
+, censor : { A : Type } -> (W -> W) -> [Writer W] A -> [Writer W] A }
