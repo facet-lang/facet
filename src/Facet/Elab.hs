@@ -543,6 +543,7 @@ data Reason
   | Hole UName Type
 
 
+-- FIXME: apply the substitution before showing this to the user
 err :: Reason -> Elab a
 err reason = do
   span <- ask
