@@ -287,7 +287,8 @@ clause = (do
 evar :: (Has Parser sig p, TokenParsing p) => Facet p (S.Ann S.Expr)
 evar
   =   token (anned (runUnspaced (fmap (either (S.free . N.E) S.bound) . resolve <$> ename <*> Unspaced env <?> "variable")))
-  <|> try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname))))) -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
+      -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
+  <|> try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname)))))
 
 hole :: (Has Parser sig p, TokenParsing p) => p (S.Ann S.Expr)
 hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
