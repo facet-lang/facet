@@ -48,6 +48,7 @@ import           Data.Bifoldable
 import           Data.Bifunctor
 import           Data.Bitraversable
 import           Data.Foldable (foldl', toList)
+import           Data.Functor.Classes
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Semialign
@@ -71,46 +72,47 @@ data Value
   | VCon (Con Value Value)
 
 instance Eq Value where
-  (==) = compareValue 0
+  a == b = compareValue 0 a b == EQ
 
-compareValue :: Level -> Value -> Value -> Bool
+compareValue :: Level -> Value -> Value -> Ordering
 compareValue d = curry $ \case
   -- defined thus instead of w/ fallback case to have exhaustiveness checks kick in when adding constructors.
-  (VType, VType)                 -> True
-  (VType, _)                     -> False
-  (VInterface, VInterface)       -> True
-  (VInterface, _)                -> False
-  (VForAll t1 b1, VForAll t2 b2) -> compareB d t1 t2 && compareValue (succ d) (b1 (free d)) (b2 (free d))
-  (VForAll{}, _)                 -> False
-  (VLam t1 b1, VLam t2 b2)       -> compareB d t1 t2 && compareValue (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
-  (VLam{}, _)                    -> False
-  (VNeut h1 sp1, VNeut h2 sp2)   -> compareH d h1 h2 && compareSp d sp1 sp2
-  (VNeut{}, _)                   -> False
+  (VType, VType)                 -> EQ
+  (VType, _)                     -> LT
+  (VInterface, VInterface)       -> EQ
+  (VInterface, _)                -> LT
+  (VForAll t1 b1, VForAll t2 b2) -> compareB d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d))
+  (VForAll{}, _)                 -> LT
+  (VLam t1 b1, VLam t2 b2)       -> compareB d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
+  (VLam{}, _)                    -> LT
+  (VNeut h1 sp1, VNeut h2 sp2)   -> compareH d h1 h2 <> compareSp (compareElim d) sp1 sp2
+  (VNeut{}, _)                   -> LT
   (VCon c1, VCon c2)             -> compareCon compareValue d c1 c2
-  (VCon _, _)                    -> False
+  (VCon _, _)                    -> LT
   where
-  compareB d (Binding p1 _ t1) (Binding p2 _ t2) = p1 == p2 && compareValue d t1 t2
+  compareB d (Binding p1 _ t1) (Binding p2 _ t2) = compare p1 p2 <> compareValue d t1 t2
   compareH d = curry $ \case
-    (Global (q1 ::: t1), Global (q2 ::: t2))   -> q1 == q2 && compareValue d t1 t2
-    (Global _, _)                              -> False
-    (Free d1, Free d2)                         -> d1 == d2
-    (Free _, _)                                -> False
-    (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> m1 == m2 && compareValue d t1 t2
-    (Metavar _, _)                             -> False
-  compareSp d sp1 sp2 = length sp1 == length sp2 && and (zipWith (compareElim d) sp1 sp2)
+    (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareValue d t1 t2
+    (Global _, _)                              -> LT
+    (Free d1, Free d2)                         -> compare d1 d2
+    (Free _, _)                                -> LT
+    (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> compare m1 m2 <> compareValue d t1 t2
+    (Metavar _, _)                             -> LT
+  compareSp :: (a -> b -> Ordering) -> Stack a -> Stack b -> Ordering
+  compareSp cmp sp1 sp2 = liftCompare cmp sp1 sp2
   compareElim d = curry $ \case
-    (EApp (P p1 a1), EApp (P p2 a2)) -> p1 == p2 && compareValue d a1 a2
-    (EApp _, _)                      -> False
-    (ECase cs1, ECase cs2)           -> length cs1 == length cs2 && and (zipWith (compareClause d) cs1 cs2)
-    (ECase _, _)                     -> False
-  compareClause d (p1, b1) (p2, b2) = comparePat d p1 p2 && compareValue (succ d) (b1 (PVar (free d))) (b2 (PVar (free d)))
+    (EApp (P p1 a1), EApp (P p2 a2)) -> compare p1 p2 <> compareValue d a1 a2
+    (EApp _, _)                      -> LT
+    (ECase cs1, ECase cs2)           -> liftCompare (compareClause d) cs1 cs2
+    (ECase _, _)                     -> LT
+  compareClause d (p1, b1) (p2, b2) = comparePat d p1 p2 <> compareValue (succ d) (b1 (PVar (free d))) (b2 (PVar (free d)))
   comparePat d = curry $ \case
     (PVar (_ ::: t1), PVar (_ ::: t2)) -> compareValue d t1 t2
-    (PVar _, _)                        -> False
+    (PVar _, _)                        -> LT
     (PCon c1, PCon c2)                 -> compareCon comparePat d c1 c2
-    (PCon _, _)                        -> False
-  compareCon :: (Level -> a -> b -> Bool) -> Level -> Con Value a -> Con Value b -> Bool
-  compareCon compareValue' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = n1 == n2 && compareValue d t1 t2 && length fs1 == length fs2 && and (zipWith (compareValue' d) fs1 fs2)
+    (PCon _, _)                        -> LT
+  compareCon :: (Level -> a -> b -> Ordering) -> Level -> Con Value a -> Con Value b -> Ordering
+  compareCon compareValue' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = compare n1 n2 <> compareValue d t1 t2 <> compareSp (compareValue' d) fs1 fs2
 
 
 data Binding = Binding
