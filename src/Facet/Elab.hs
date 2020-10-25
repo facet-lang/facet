@@ -300,7 +300,7 @@ elabExpr = withSpan $ \case
 
 -- FIXME: elaborate the signature.
 elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check (Type ::: Type)
-elabSig = withSpan $ \ (S.Sig _ t) -> trace "elabSig" $ elabExpr t
+elabSig = withSpan $ \ (S.Sig _ t) -> trace "sig" $ elabExpr t
 
 elabTelescope :: [S.Ann S.Binding] -> Check (Type ::: Type) -> Check (Type ::: Type)
 elabTelescope bindings body = trace "telescope" $ foldr (\ (S.Ann s (S.Binding p ns t)) b ->
