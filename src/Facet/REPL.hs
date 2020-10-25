@@ -119,7 +119,7 @@ kernel = Module kernelName [] []
   kernelName = MName (TS.pack "Kernel")
 
 
-loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m ()
+loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => m ()
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
@@ -163,10 +163,10 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-runAction :: (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> Action -> m ()
+runAction :: (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> Action -> m ()
 runAction src (Action f) = f src
 
-newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m ())
+newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m ())
 
 
 showPaths, showModules, showTargets :: Action
