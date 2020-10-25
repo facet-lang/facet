@@ -30,6 +30,7 @@ import           Facet.Carrier.Trace.REPL
 import           Facet.Core
 import qualified Facet.Elab as Elab
 import           Facet.Eval
+import           Facet.Flag
 import           Facet.Graph
 import           Facet.Name hiding (Meta)
 import qualified Facet.Notice as Notice
@@ -61,6 +62,7 @@ repl
   = runReadlineWithHistory
   . evalState defaultREPLState
   . evalEmpty
+  . evalState (toFlag LogTraces True)
   . runTrace Nil
   $ loop
 
