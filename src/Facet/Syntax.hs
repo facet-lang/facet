@@ -19,6 +19,7 @@ module Facet.Syntax
 import Data.Bifoldable
 import Data.Bifunctor
 import Data.Bitraversable
+import Data.Functor.Classes
 import Facet.Semiring
 import Facet.Stack
 
@@ -147,6 +148,9 @@ data Pl_ a = P
   , out :: a
   }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+instance Eq1 Pl_ where
+  liftEq eq (P p1 a1) (P p2 a2) = p1 == p2 && eq a1 a2
 
 unPl_ :: (a -> b) -> (a -> b) -> Pl_ a -> b
 unPl_ im ex = unPl im ex . pl <*> out
