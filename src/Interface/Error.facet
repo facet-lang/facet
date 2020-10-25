@@ -11,7 +11,7 @@ interface Error : (E : Type) -> Interface
 handle : { E, A : Type } -> (h : E -> [Error E] A) -> (a : [Error E] A) -> [Error E] A
 { catch a h }
 
-try : { E, A : Type } -> (a : [Error E] A) -> [Error E]Either E A
+try : { E, A : Type } -> (a : [Error E] A) -> [Error E] Either E A
 { handle inl (inr a) }
 
 except : { E, A : Type } -> Either E A -> [Error E] A
