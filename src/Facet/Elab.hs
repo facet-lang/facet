@@ -440,7 +440,6 @@ elabInterfaceDef
   -> Check [UName ::: Type]
 elabInterfaceDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> wrap (checkElab (elabExpr t))
   where
-  -- FIXME: check that all constructors return the datatype.
   wrap = flip (foldr (\ (S.Ann s (S.Binding _ ns _ _)) k ->
     setSpan s $ foldr (\ n k -> Check $ \ _T -> do
       (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
