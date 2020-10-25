@@ -2,6 +2,7 @@ module Facet.Core
 ( -- * Values
   Value(..)
 , compareValue
+, compareBinding
 , compareSig
 , compareDelta
 , Binding(..)
@@ -89,16 +90,15 @@ compareValue d = curry $ \case
   (VType, _)                     -> LT
   (VInterface, VInterface)       -> EQ
   (VInterface, _)                -> LT
-  (VForAll t1 b1, VForAll t2 b2) -> compareB d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d))
+  (VForAll t1 b1, VForAll t2 b2) -> compareBinding d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d))
   (VForAll{}, _)                 -> LT
-  (VLam t1 b1, VLam t2 b2)       -> compareB d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
+  (VLam t1 b1, VLam t2 b2)       -> compareBinding d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
   (VLam{}, _)                    -> LT
   (VNeut h1 sp1, VNeut h2 sp2)   -> compareH d h1 h2 <> liftCompare (compareElim d) sp1 sp2
   (VNeut{}, _)                   -> LT
   (VCon c1, VCon c2)             -> compareCon compareValue d c1 c2
   (VCon _, _)                    -> LT
   where
-  compareB d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> compareSig d s1 s2
   compareH d = curry $ \case
     (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareValue d t1 t2
     (Global _, _)                              -> LT
@@ -119,6 +119,9 @@ compareValue d = curry $ \case
     (PCon _, _)                        -> LT
   compareCon :: (Level -> a -> b -> Ordering) -> Level -> Con Value a -> Con Value b -> Ordering
   compareCon compareValue' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = compare n1 n2 <> compareValue d t1 t2 <> liftCompare (compareValue' d) fs1 fs2
+
+compareBinding :: Level -> Binding -> Binding -> Ordering
+compareBinding d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> compareSig d s1 s2
 
 compareSig :: Level -> Sig -> Sig -> Ordering
 compareSig d (Sig s1 t1) (Sig s2 t2) = liftCompare (compareDelta d) s1 s2 <> compareValue d t1 t2
