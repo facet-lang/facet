@@ -40,6 +40,7 @@ withInterrupt m = send (WithInterrupt m)
 handleInterrupt :: Has Readline sig m => m a -> m a -> m a
 handleInterrupt h m = send (HandleInterrupt h m)
 
+-- FIXME: split into separate input and output effects
 data Readline m k where
   GetInputLine :: String -> Readline m (Maybe String)
   OutputDoc :: Doc Style -> Readline m ()
