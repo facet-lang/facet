@@ -473,7 +473,6 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
   imports_ .= imports
 
   local (`restrict` importedNames) $ do
-    -- FIXME: trace the defs as we elaborate them
     -- FIXME: maybe figure out the graph for mutual recursion?
 
     -- elaborate all the types first
