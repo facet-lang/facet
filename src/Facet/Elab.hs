@@ -466,7 +466,7 @@ elabModule
   .  (HasCallStack, Has (Reader Graph) sig m, Has (Throw Err) sig m, Has Trace sig m)
   => S.Ann S.Module
   -> m C.Module
-elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os []) . runReader s $ trace ("elabModule: " <> show mname) $ do
+elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os []) . runReader s $ tracePretty mname $ do
   let (importedNames, imports) = mapAccumL (\ names (S.Ann _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
   imports_ .= imports
 
@@ -476,7 +476,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
 
     -- elaborate all the types first
     -- FIXME: do we need to pass the delta to elabTermDef and elabDataDef?
-    es <- for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs delta (ty :=: def)))) -> traceShow dname $ setSpan s $ do
+    es <- for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs delta (ty :=: def)))) -> tracePretty dname $ setSpan s $ do
       _T <- runModule . elab $ check (checkElab (elabTelescope bs delta ty) ::: VType)
 
       defs_ %= (<> [(dname, Nothing ::: _T)])

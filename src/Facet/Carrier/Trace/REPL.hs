@@ -11,18 +11,22 @@ module Facet.Carrier.Trace.REPL
 import Control.Algebra
 import Control.Carrier.Reader
 import Control.Monad.IO.Class
+import Data.Semigroup (stimes)
 import Facet.Effect.Readline
 import Facet.Effect.Trace
+import Facet.Pretty
 import Facet.Stack
+import Facet.Style
+import Silkscreen
 
 runTrace :: TraceC m a -> m a
 runTrace = runReader Nil . runTraceC
 
-newtype TraceC m a = TraceC { runTraceC :: ReaderC (Stack String) m a }
+newtype TraceC m a = TraceC { runTraceC :: ReaderC (Stack (Doc Style)) m a }
   deriving (Applicative, Functor, Monad, MonadFail, MonadIO)
 
 instance Has Readline sig m => Algebra (Trace :+: sig) (TraceC m) where
   alg hdl sig ctx = TraceC $ ReaderC $ \ stack -> case sig of
-    L (Trace msg m) -> outputStrLn (replicate (length stack * 2) ' ' <> msg) *> runReader (stack:>msg) (runTraceC (hdl (m <$ ctx)))
+    L (Trace msg m) -> outputDocLn (stimes (length stack * 2) space <> msg) *> runReader (stack:>msg) (runTraceC (hdl (m <$ ctx)))
     L CallStack     -> pure (stack <$ ctx)
     R other         -> alg (runReader stack . runTraceC . hdl) other ctx

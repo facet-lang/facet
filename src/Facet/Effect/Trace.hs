@@ -2,7 +2,7 @@
 module Facet.Effect.Trace
 ( -- * Trace effect
   trace
-, traceShow
+, tracePretty
 , callStack
 , Trace(..)
   -- * Re-exports
@@ -12,18 +12,20 @@ module Facet.Effect.Trace
 ) where
 
 import Control.Algebra
+import Facet.Pretty
 import Facet.Stack
+import Facet.Style
 
-trace :: Has Trace sig m => String -> m a -> m a
+trace :: Has Trace sig m => Doc Style -> m a -> m a
 trace s m = send (Trace s m)
 
-traceShow :: (Has Trace sig m, Show b) => b -> m a -> m a
-traceShow = trace . show
+tracePretty :: (Has Trace sig m, Pretty b) => b -> m a -> m a
+tracePretty = trace . pretty
 
 -- FIXME: Text, probably
-callStack :: Has Trace sig m => m (Stack String)
+callStack :: Has Trace sig m => m (Stack (Doc Style))
 callStack = send CallStack
 
 data Trace m k where
-  Trace :: String -> m a -> Trace m a
-  CallStack :: Trace m (Stack String)
+  Trace :: Doc Style -> m a -> Trace m a
+  CallStack :: Trace m (Stack (Doc Style))
