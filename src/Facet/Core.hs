@@ -144,6 +144,7 @@ instance Eq Delta where
 instance Ord Delta where
   Delta (q1 ::: _) as1 `compare` Delta (q2 ::: _) as2 = q1 `compare` q2 <> as1 `compare` as2
 
+
 data Sig = Sig
   { delta :: Set.Set Delta
   , type' :: Value
