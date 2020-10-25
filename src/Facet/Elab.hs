@@ -45,7 +45,7 @@ import           Data.Traversable (for, mapAccumL)
 import           Facet.Context as Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
-import           Facet.Effect.Trace
+import           Facet.Effect.Trace as Trace
 import           Facet.Graph as Graph
 import           Facet.Name hiding (L, R)
 import           Facet.Span (Span(..))
@@ -60,7 +60,7 @@ type Prob = Value
 
 type Subst = IntMap.IntMap (Maybe Prob ::: Type)
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -72,24 +72,25 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err) Elab where
+instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) Elab where
   alg hdl sig ctx = case sig of
-    L rctx                  -> Elab $ alg (runElab . hdl) (inj rctx) ctx
-    R (L rspan)             -> Elab $ alg (runElab . hdl) (inj rspan) ctx
-    R (R (L graph))         -> Elab $ alg (runElab . hdl) (inj graph) ctx
-    R (R (R (L mod)))       -> Elab $ alg (runElab . hdl) (inj mod) ctx
-    R (R (R (R (L subst)))) -> Elab $ alg (runElab . hdl) (inj subst) ctx
-    R (R (R (R (R throw)))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
+    L rctx                      -> Elab $ alg (runElab . hdl) (inj rctx) ctx
+    R (L rspan)                 -> Elab $ alg (runElab . hdl) (inj rspan) ctx
+    R (R (L graph))             -> Elab $ alg (runElab . hdl) (inj graph) ctx
+    R (R (R (L mod)))           -> Elab $ alg (runElab . hdl) (inj mod) ctx
+    R (R (R (R (L subst))))     -> Elab $ alg (runElab . hdl) (inj subst) ctx
+    R (R (R (R (R (L throw))))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
+    R (R (R (R (R (R trace))))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
-elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err) sig m => Elab Value -> m Value
+elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Value -> m Value
 elab = elabWith apply
 
-elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err) sig m => (Subst -> a -> m b) -> Elab a -> m b
+elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
 elabWith f = runSubstWith f . runContext . runElab
 
 
 newtype Check a = Check { runCheck :: Type -> Elab a }
-  deriving (Algebra (Reader Type :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err), Applicative, Functor, Monad) via ReaderC Type Elab
+  deriving (Algebra (Reader Type :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC Type Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
