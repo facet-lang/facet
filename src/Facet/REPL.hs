@@ -22,7 +22,6 @@ import           Data.Maybe (catMaybes)
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
 import qualified Data.Text as TS
-import           Data.Text.Lazy (unpack)
 import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church
 import           Facet.Carrier.Readline.Haskeline
@@ -46,7 +45,7 @@ import           Facet.Stack
 import           Facet.Style as Style
 import qualified Facet.Surface as S
 import           Facet.Syntax
-import           Prelude hiding (print, span, unlines)
+import           Prelude hiding (span, unlines)
 import qualified Prettyprinter as P
 import           Silkscreen as S hiding (Ann, line)
 import           System.Console.ANSI
@@ -123,7 +122,7 @@ loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace 
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
-  runError (print . prettyNotice') pure $ case resp of
+  runError (outputDocLn . prettyNotice') pure $ case resp of
     Just src -> rethrowParseErrors @Style (runParserWithSource src commandParser) >>= runAction src
     Nothing  -> pure ()
   loop
@@ -137,7 +136,7 @@ loop = do
 -- - shell commands
 commands :: Commands Action
 commands = choice
-  [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure (Action (const (print helpDoc)))
+  [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure (Action (const (outputDocLn helpDoc)))
   , command ["quit", "q"]       "exit the repl"                      Nothing        $ pure (Action (const empty))
   , command ["show"]            "show compiler state"                (Just "field") $ choice
     [ showPaths   <$ token (string "paths")
@@ -173,14 +172,14 @@ showPaths, showModules, showTargets :: Action
 
 showPaths   = Action $ \ _ -> do
   dir <- liftIO getCurrentDirectory
-  print $ nest 2 $ reflow "current working directory:" </> pretty dir
+  outputDocLn $ nest 2 $ reflow "current working directory:" </> pretty dir
   searchPaths <- gets (toList . searchPaths)
   unless (null searchPaths)
-    $ print $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
+    $ outputDocLn $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
 
-showModules = Action $ \ _ -> uses modules_ (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= print
+showModules = Action $ \ _ -> uses modules_ (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
 
-showTargets = Action $ \ _ -> uses targets_ (unlines . map pretty . toList) >>= print
+showTargets = Action $ \ _ -> uses targets_ (unlines . map pretty . toList) >>= outputDocLn
 
 addPath :: FilePath -> Action
 addPath path = Action $ \ _ -> searchPaths_ %= Set.insert path
@@ -200,13 +199,13 @@ removeTarget targets = Action $ \ _ -> targets_ %= (Set.\\ Set.fromList targets)
 showType :: S.Ann S.Expr -> Action
 showType e = Action $ \ src -> do
   e ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
-  print (prettyCode (ann (printValue surface Nil e ::: printValue surface Nil (generalize _T))))
+  outputDocLn (prettyCode (ann (printValue surface Nil e ::: printValue surface Nil (generalize _T))))
 
 showEval :: S.Ann S.Expr -> Action
 showEval e = Action $ \ src -> do
   e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
   e'' <- elab src $ eval (generalize e')
-  print (prettyCode (ann (printValue surface Nil e'' ::: printValue surface Nil (generalize _T))))
+  outputDocLn (prettyCode (ann (printValue surface Nil e'' ::: printValue surface Nil (generalize _T))))
 
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m [Maybe Module]
@@ -219,15 +218,15 @@ reload src = do
   let nModules = length modules
   results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
     i <- fresh
-    print $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
+    outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
 
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
-    (Just <$> loadModule name path src imports) `catchError` \ err -> Nothing <$ print (prettyNotice' err)
+    (Just <$> loadModule name path src imports) `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice' err)
   let nSuccess = length (catMaybes results)
       status
         | nModules == nSuccess = annotate Success (pretty nModules)
         | otherwise            = annotate Failure (ratio nSuccess nModules)
-  results <$ print (fillSep [status, reflow "modules loaded."])
+  results <$ outputDocLn (fillSep [status, reflow "modules loaded."])
   where
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = let imports' = map ((S.name :: S.Import -> MName) . S.out) imports in Node n imports' (n, path, source, imports')
@@ -278,11 +277,6 @@ prompt = do
   fn <- gets promptFunction
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
-
-print :: (Has Readline sig m, MonadIO m) => Doc Style -> m ()
-print d = do
-  opts <- liftIO layoutOptionsForTerminal
-  outputStrLn (unpack (renderLazy (P.reAnnotateS terminalStyle (layoutSmart opts d))))
 
 prettyNotice' :: Notice.Notice Style -> Doc Style
 prettyNotice' = P.reAnnotate Style.Notice . Notice.prettyNotice
