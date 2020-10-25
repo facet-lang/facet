@@ -290,13 +290,13 @@ elabExpr
   -> Maybe Type
   -> Elab (Expr ::: Type)
 elabExpr = withSpan' $ \case
-  S.Var m n       -> switch $ var m n
-  S.Hole  n       -> check (hole n) "hole"
-  S.Type          -> switch _Type
-  S.Interface     -> switch _Interface
-  S.ForAll bs s b -> elabTelescope bs s b
-  S.App f a       -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
-  S.Comp cs       -> check (elabComp cs) "computation"
+  S.Var m n     -> switch $ var m n
+  S.Hole  n     -> check (hole n) "hole"
+  S.Type        -> switch _Type
+  S.Interface   -> switch _Interface
+  S.ForAll bs s -> elabTelescope bs (elabSig s)
+  S.App f a     -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
+  S.Comp cs     -> check (elabComp cs) "computation"
   where
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
@@ -304,10 +304,10 @@ elabExpr = withSpan' $ \case
 elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Maybe Type -> Elab (Type ::: Type)
 elabSig = withSpan' $ \ (S.Sig _ t) -> elabExpr t
 
-elabTelescope :: [S.Ann S.Binding] -> [S.Ann S.Delta] -> S.Ann S.Type -> Maybe Type -> Elab (Type ::: Type)
-elabTelescope bindings _ body = foldr (\ (S.Ann s (S.Binding p ns t)) b ->
-  setSpan (Span (start s) (end (S.ann body))) . foldr (\ n k ->
-    switch $ P p n ::: checkElab (elabSig t) >~> \ v -> v |- checkElab k) b ns) (elabExpr body) bindings
+elabTelescope :: [S.Ann S.Binding] -> (Maybe Type -> Elab (Type ::: Type)) -> Maybe Type -> Elab (Type ::: Type)
+elabTelescope bindings body = foldr (\ (S.Ann s (S.Binding p ns t)) b ->
+  local (\ s' -> s'{ start = start s }) . foldr (\ n k ->
+    switch $ P p n ::: checkElab (elabSig t) >~> \ v -> v |- checkElab k) b ns) body bindings
 
 
 _Type :: Synth Type
@@ -481,15 +481,15 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
 
     -- elaborate all the types first
     -- FIXME: do we need to pass the delta to elabTermDef and elabDataDef?
-    es <- trace "types" $ for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs delta (ty :=: def)))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elab $ check (checkElab (elabTelescope bs delta ty) ::: VType)
+    es <- trace "types" $ for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs (S.Ann s' sig@(S.Sig delta (ty :=: def)))))) -> tracePretty dname $ setSpan s $ do
+      _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig (S.Ann s' sig{ S.type' = ty }))) ::: VType)
 
       decls_ %= (<> [Decl dname Nothing _T])
 
-      pure (s, dname, (bs, def) ::: _T)
+      pure (s', dname, (bs, delta, def) ::: _T)
 
     -- then elaborate the terms
-    trace "definitions" $ ifor_ es $ \ index (s, dname, (bs, def) ::: _T) -> setSpan s $ tracePretty dname $ do
+    trace "definitions" $ ifor_ es $ \ index (s, dname, (bs, _, def) ::: _T) -> setSpan s $ tracePretty dname $ do
       def <- case def of
         S.DataDef cs -> do
           (s, cs) <- runModule . elabWith (fmap pure . (,)) $ check (elabDataDef bs cs ::: _T)

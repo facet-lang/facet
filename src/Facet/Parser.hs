@@ -143,14 +143,14 @@ con = anned ((:::) <$> cname <* colon <*> type')
 
 typeSig
   :: (Has Parser sig p, TokenParsing p)
-  => ([S.Ann S.Binding] -> [S.Ann S.Delta] -> arg -> res)
+  => ([S.Ann S.Binding] -> S.Ann (S.Sig arg) -> res)
   -> p (S.Ann S.Binding)
   -> p arg
   -> p (S.Ann res)
 typeSig forAll binding body = anned $ do
   bindings <- many (try (binding <* arrow))
   sig <- option [] sig
-  forAll bindings sig <$> body
+  forAll bindings <$> anned (S.Sig sig <$> body)
 
 exBinding :: (Has Parser sig p, TokenParsing p) => p N.UName -> p (S.Ann S.Binding)
 exBinding name = anned $ nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> anned (S.Sig <$> option [] sig <*> type') <* rparen
