@@ -12,6 +12,7 @@ module Facet.Carrier.Trace.REPL
 import Control.Algebra
 import Control.Carrier.Reader
 import Control.Carrier.State.Church
+import Control.Monad (when)
 import Control.Monad.IO.Class
 import Data.Semigroup (stimes)
 import Facet.Effect.Readline
@@ -33,6 +34,9 @@ newtype TraceC m a = TraceC (Stack (Doc Style) -> StateC (Flag LogTraces) m a)
 
 instance Has Readline sig m => Algebra (Trace :+: State (Flag LogTraces) :+: sig) (TraceC m) where
   alg hdl sig ctx = TraceC $ \ stack -> case sig of
-    L (Trace msg m) -> outputDocLn (stimes (length stack * 2) space <> msg) *> runTrace (stack:>msg) (hdl (m <$ ctx))
+    L (Trace msg m) -> do
+      logTraces <- gets (fromFlag LogTraces)
+      when logTraces $ outputDocLn (stimes (length stack * 2) space <> msg)
+      runTrace (stack:>msg) (hdl (m <$ ctx))
     L CallStack     -> pure (stack <$ ctx)
     R other         -> alg (runTrace stack . hdl) other ctx
