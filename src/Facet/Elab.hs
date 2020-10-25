@@ -117,7 +117,7 @@ unify = \case
   -- FIXME: resolve globals to try to progress past certain inequalities
   VNeut h1 e1           :===: VNeut h2 e2
     | h1 == h2
-    , Just e' <- unifyS (e1 :===: e2)               -> VNeut h1 <$> e'
+    , Just e' <- unifySpine (e1 :===: e2)               -> VNeut h1 <$> e'
   VNeut (Metavar v) Nil :===: x                     -> solve (tm v :=: x)
   x                     :===: VNeut (Metavar v) Nil -> solve (tm v :=: x)
   VForAll t1 b1         :===: VForAll t2 b2
@@ -133,11 +133,11 @@ unify = \case
   -- FIXME: unify the signatures
   unifySig (Sig d1 t1 :===: Sig _ t2) = Sig d1 <$> unify (t1 :===: t2)
 
-  unifyS (Nil           :===: Nil)           = Just (pure Nil)
+  unifySpine (Nil           :===: Nil)           = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
-  unifyS (i1 :> EApp l1 :===: i2 :> EApp l2)
-    | pl l1 == pl l2                         = liftA2 (:>) <$> unifyS (i1 :===: i2) <*> Just (EApp . P (pl l1) <$> unify (out l1 :===: out l2))
-  unifyS _                                   = Nothing
+  unifySpine (i1 :> EApp l1 :===: i2 :> EApp l2)
+    | pl l1 == pl l2                             = liftA2 (:>) <$> unifySpine (i1 :===: i2) <*> Just (EApp . P (pl l1) <$> unify (out l1 :===: out l2))
+  unifySpine _                                   = Nothing
 
   solve (n :=: val') = do
     subst <- get
