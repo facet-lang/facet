@@ -209,7 +209,7 @@ showEval e = Action $ \ src -> do
   print (prettyCode (ann (printValue surface Nil e'' ::: printValue surface Nil (generalize _T))))
 
 
-reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, MonadIO m) => Source -> m [Maybe Module]
+reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m [Maybe Module]
 reload src = do
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
@@ -240,7 +240,7 @@ loadModuleHeader src name = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
 
-loadModule :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m) => MName -> FilePath -> Source -> [MName] -> m Module
+loadModule :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, Has Trace sig m) => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
   graph <- use modules_
   let ops = foldMap (operators . snd <=< (`lookupM` graph)) imports

@@ -45,6 +45,7 @@ import           Data.Traversable (for, mapAccumL)
 import           Facet.Context as Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
+import           Facet.Effect.Trace
 import           Facet.Graph as Graph
 import           Facet.Name hiding (L, R)
 import           Facet.Span (Span(..))
@@ -462,10 +463,10 @@ elabTermDef bindings expr = foldr (\ (S.Ann s (S.Binding p ns _ _)) b ->
 
 elabModule
   :: forall m sig
-  .  (HasCallStack, Has (Reader Graph) sig m, Has (Throw Err) sig m)
+  .  (HasCallStack, Has (Reader Graph) sig m, Has (Throw Err) sig m, Has Trace sig m)
   => S.Ann S.Module
   -> m C.Module
-elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os []) . runReader s $ do
+elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os []) . runReader s $ trace ("elabModule: " <> show mname) $ do
   let (importedNames, imports) = mapAccumL (\ names (S.Ann _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
   imports_ .= imports
 
