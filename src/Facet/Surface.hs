@@ -94,7 +94,6 @@ data Def
 
 -- Modules
 
--- FIXME: model operators and their associativities for parsing.
 data Module = Module
   { name      :: MName
   , imports   :: [Ann Import]
