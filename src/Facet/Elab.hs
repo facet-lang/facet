@@ -439,10 +439,10 @@ elabInterfaceDef
   => [S.Ann S.Binding]
   -> [S.Ann (UName ::: S.Ann S.Type)]
   -> Check [UName ::: Type]
-elabInterfaceDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> wrap (checkElab (elabExpr t))
+elabInterfaceDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> setSpan (S.ann t) (wrap (end (S.ann t)) (checkElab (elabExpr t)))
   where
-  wrap = flip (foldr (\ (S.Ann s (S.Binding _ ns _ _)) k ->
-    setSpan s $ foldr (\ n k -> Check $ \ _T -> do
+  wrap end = flip (foldr (\ (S.Ann s (S.Binding _ ns _ _)) k ->
+    setSpan (Span (start s) end) $ foldr (\ n k -> Check $ \ _T -> do
       (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
       b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: _B v)
       pure $ VForAll (Binding Im n s _T) b') k ns)) bindings
