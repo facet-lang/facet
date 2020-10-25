@@ -301,10 +301,10 @@ printModule alg (C.Module mname is _ ds) = module_ alg
   ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module")))))
   :=: (map (\ (C.Import n) -> import' alg n) is, map def ds)
   where
-  def (n, Nothing ::: t) = decl alg
+  def (C.Decl n Nothing  t) = decl alg
     $   var alg (Global (Just mname) n)
     ::: printValue alg Nil t
-  def (n, Just d  ::: t) = decl alg
+  def (C.Decl n (Just d) t) = decl alg
     $   var alg (Global (Just mname) n)
     ::: defn alg (printValue alg Nil t
     :=: case d of

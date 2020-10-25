@@ -121,7 +121,7 @@ unify = \case
   VForAll t1 b1         :===: VForAll t2 b2
     | _pl t1 == _pl t2, delta t1 == delta t2 -> do
       -- FIXME: unify the signatures
-      t <- unify (type' t1 :===: type' t2)
+      t <- unify ((type' :: Binding -> Type) t1 :===: (type' :: Binding -> Type) t2)
       d <- asks @(Context Type) level
       let v = free d
       b <- unify (b1 v :===: b2 v)
@@ -243,7 +243,7 @@ hole n = Check $ \ _T -> err $ Hole n _T
 f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectQuantifier "in application" _F
-  a' <- check (a ::: type' _A)
+  a' <- check (a ::: (type' :: Binding -> Type) _A)
   pure $ (f' C.$$ ex a') ::: _B a'
 
 
@@ -479,7 +479,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
     es <- for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs delta (ty :=: def)))) -> tracePretty dname $ setSpan s $ do
       _T <- runModule . elab $ check (checkElab (elabTelescope bs delta ty) ::: VType)
 
-      defs_ %= (<> [(dname, Nothing ::: _T)])
+      defs_ %= (<> [Decl dname Nothing _T])
 
       pure (s, dname, (bs, def) ::: _T)
 
@@ -507,7 +507,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
             pure $ n :=: c ::: _T')
 
         S.TermDef t -> C.DTerm <$> runModule (elab (check (elabTermDef bs t ::: _T)))
-      defs_.ix index .= (dname, Just def ::: _T)
+      defs_.ix index .= Decl dname (Just def) _T
 
 
 -- | Apply the substitution to the value.

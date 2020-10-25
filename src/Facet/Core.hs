@@ -38,6 +38,7 @@ module Facet.Core
 , lookupC
 , lookupD
 , Import(..)
+, Decl(..)
 , Def(..)
 , unDData
 ) where
@@ -47,7 +48,7 @@ import           Control.Lens (Lens', lens)
 import           Data.Bifoldable
 import           Data.Bifunctor
 import           Data.Bitraversable
-import           Data.Foldable (foldl', toList)
+import           Data.Foldable (find, foldl', toList)
 import           Data.Functor.Classes
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
@@ -393,7 +394,7 @@ data Module = Module
   -- FIXME: record source references to operators to contextualize parse errors.
   , operators :: [(Op, Assoc)]
   -- FIXME: record source references to definitions to contextualize ambiguous name errors.
-  , defs      :: [(DName, Maybe Def ::: Value)]
+  , defs      :: [Decl]
   }
 
 name_ :: Lens' Module MName
@@ -402,7 +403,7 @@ name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
 imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })
 
-defs_ :: Lens' Module [(DName, Maybe Def ::: Value)]
+defs_ :: Lens' Module [Decl]
 defs_ = lens defs (\ m defs -> m{ defs })
 
 
@@ -410,18 +411,24 @@ defs_ = lens defs (\ m defs -> m{ defs })
 lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Value)
 lookupC n Module{ name, defs } = maybe empty pure $ matchWith matchDef defs
   where
-  matchDef (_,     d ::: _)  = d >>= unDData >>= matchWith matchCon
+  matchDef (Decl _ d     _)  = d >>= unDData >>= matchWith matchCon
   matchCon (n' :=: v ::: _T) = (name :.: C n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Value)
 lookupD (C n) m = lookupC n m
-lookupD n m@Module{ name, defs } = maybe ((`lookupC` m) =<< unEName n) pure $ do
-  d ::: _T <- lookup n defs
-  pure $ name :.: n :=: d ::: _T
+lookupD n m@Module{ name = mname, defs } = maybe ((`lookupC` m) =<< unEName n) pure $ do
+  Decl _ d _T <- find ((n ==) . (name :: Decl -> DName)) defs
+  pure $ mname :.: n :=: d ::: _T
 
 
 newtype Import = Import { name :: MName }
+
+data Decl = Decl
+  { name  :: DName
+  , def   :: Maybe Def
+  , type' :: Value
+  }
 
 data Def
   = DTerm Value
