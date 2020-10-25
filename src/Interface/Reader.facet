@@ -2,7 +2,7 @@
 
 Interface.Reader : Module
 
-Reader : (R : Type) -> Interface
+interface Reader : (R : Type) -> Interface
 { ask : [Reader R] R
 , local : { A : Type } -> (R -> R) -> [Reader R] A -> [Reader R] A }
 

@@ -109,6 +109,7 @@ decl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenPar
 decl = choice
   [ termDecl
   , dataDecl
+  , interfaceDecl
   ]
 
 termDecl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
@@ -129,9 +130,11 @@ termDecl = anned $ do
   decl <- colon *> typeSig S.Decl (choice [ imBinding, exBinding ename ]) ((:=:) <$> type' <*> (S.TermDef <$> comp))
   pure (name, decl)
 
--- FIXME: how do we distinguish between data and interface declarations?
 dataDecl :: (Has Parser sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
 dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> typeSig S.Decl (choice [ imBinding, exBinding tname ]) ((:=:) <$> type' <*> (S.DataDef <$> braces (commaSep con)))
+
+interfaceDecl :: (Has Parser sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
+interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> typeSig S.Decl (choice [ imBinding, exBinding tname ]) ((:=:) <$> type' <*> (S.DataDef <$> braces (commaSep con)))
 
 con :: (Has Parser sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann S.Type))
 con = anned ((:::) <$> cname <* colon <*> type')
@@ -308,7 +311,7 @@ reserved :: HashSet.HashSet String
 reserved = HashSet.singleton "_"
 
 declarationReserved :: HashSet.HashSet String
-declarationReserved = HashSet.fromList ["_", "data"]
+declarationReserved = HashSet.fromList ["_", "data", "interface"]
 
 nameChar :: CharParsing p => p Char
 nameChar = alphaNum <|> char '_'

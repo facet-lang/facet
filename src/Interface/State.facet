@@ -5,7 +5,7 @@ Interface.State
 , Data.Pair
 , Data.Unit ]
 
-State : (S : Type) -> Interface
+interface State : (S : Type) -> Interface
 { get : [State S] S
 , put : S -> [State S] Unit }
 

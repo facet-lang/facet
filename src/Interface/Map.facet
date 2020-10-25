@@ -1,4 +1,4 @@
 Interface.Map : Module
 
-Map : (F : Type -> Type) -> Type # FIXME: this should be Interface or something
+interface Map : (F : Type -> Type) -> Interface
 { map : { A, B : Type } -> (A -> B) -> F A -> F B }

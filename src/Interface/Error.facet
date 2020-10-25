@@ -4,9 +4,7 @@ Interface.Error
 [ Data.Either
 , Data.Function ]
 
-Interface : Type {} # fixme: this is, obviously, broken.
-
-Error : (E : Type) -> Interface
+interface Error : (E : Type) -> Interface
 { throw : { A : Type } -> E -> [Error E] A
 , catch : { A : Type } -> [Error E] A -> (E -> [Error E] A) -> [Error E] A }
 
