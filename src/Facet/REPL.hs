@@ -68,6 +68,7 @@ repl
   $ loop
 
 
+-- FIXME: move this into a separate driver module?
 runFile :: FilePath -> IO ()
 runFile _ = do
   pure ()
