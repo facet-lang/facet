@@ -433,6 +433,19 @@ elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) ->
       b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: _B v)
       pure $ VForAll (Binding Im n s _T) b') k ns)) bindings
 
+elabInterfaceDef
+  :: HasCallStack
+  => [S.Ann S.Binding]
+  -> [S.Ann (UName ::: S.Ann S.Type)]
+  -> Check [UName ::: Type]
+elabInterfaceDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> wrap (checkElab (elabExpr t))
+  where
+  -- FIXME: check that all constructors return the datatype.
+  wrap = flip (foldr (\ (S.Ann s (S.Binding _ ns _ _)) k ->
+    setSpan s $ foldr (\ n k -> Check $ \ _T -> do
+      (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
+      b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: _B v)
+      pure $ VForAll (Binding Im n s _T) b') k ns)) bindings
 
 elabTermDef
   :: HasCallStack
@@ -484,7 +497,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
             pure $ n :=: c ::: _T')
 
         S.InterfaceDef os -> do
-          (s, os) <- runModule . elabWith (fmap pure . (,)) $ check (elabDataDef bs os ::: _T)
+          (s, os) <- runModule . elabWith (fmap pure . (,)) $ check (elabInterfaceDef bs os ::: _T)
           C.DInterface <$> for os (\ (n ::: _T) -> do
             _T' <- apply s _T
             let go fs = \case
