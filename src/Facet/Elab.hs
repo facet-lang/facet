@@ -543,9 +543,10 @@ withSpan' k (S.Ann s a) b = setSpan s (k a b)
 
 
 data Err = Err
-  { span    :: Span
-  , reason  :: Reason
-  , context :: Context Type
+  { span      :: Span
+  , reason    :: Reason
+  , context   :: Context Type
+  , callStack :: Stack Message
   }
 
 data Reason
@@ -562,7 +563,8 @@ err :: Reason -> Elab a
 err reason = do
   span <- ask
   ctx <- ask
-  throwError $ Err span reason ctx
+  callStack <- Trace.callStack
+  throwError $ Err span reason ctx callStack
 
 mismatch :: String -> Either String Type -> Type -> Elab a
 mismatch msg exp act = err $ Mismatch msg exp act
