@@ -34,7 +34,7 @@ module Facet.Core
 , Module(..)
 , name_
 , imports_
-, defs_
+, decls_
 , lookupC
 , lookupD
 , Import(..)
@@ -394,7 +394,7 @@ data Module = Module
   -- FIXME: record source references to operators to contextualize parse errors.
   , operators :: [(Op, Assoc)]
   -- FIXME: record source references to definitions to contextualize ambiguous name errors.
-  , defs      :: [Decl]
+  , decls     :: [Decl]
   }
 
 name_ :: Lens' Module MName
@@ -403,13 +403,13 @@ name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
 imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })
 
-defs_ :: Lens' Module [Decl]
-defs_ = lens defs (\ m defs -> m{ defs })
+decls_ :: Lens' Module [Decl]
+decls_ = lens decls (\ m decls -> m{ decls })
 
 
 -- FIXME: produce multiple results, if they exist.
 lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Value)
-lookupC n Module{ name, defs } = maybe empty pure $ matchWith matchDef defs
+lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef decls
   where
   matchDef (Decl _ d     _)  = d >>= unDData >>= matchWith matchCon
   matchCon (n' :=: v ::: _T) = (name :.: C n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
@@ -417,8 +417,8 @@ lookupC n Module{ name, defs } = maybe empty pure $ matchWith matchDef defs
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Value)
 lookupD (C n) m = lookupC n m
-lookupD n m@Module{ name = mname, defs } = maybe ((`lookupC` m) =<< unEName n) pure $ do
-  Decl _ d _T <- find ((n ==) . (name :: Decl -> DName)) defs
+lookupD n m@Module{ name = mname, decls } = maybe ((`lookupC` m) =<< unEName n) pure $ do
+  Decl _ d _T <- find ((n ==) . (name :: Decl -> DName)) decls
   pure $ mname :.: n :=: d ::: _T
 
 

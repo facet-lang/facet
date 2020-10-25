@@ -479,7 +479,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
     es <- for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs delta (ty :=: def)))) -> tracePretty dname $ setSpan s $ do
       _T <- runModule . elab $ check (checkElab (elabTelescope bs delta ty) ::: VType)
 
-      defs_ %= (<> [Decl dname Nothing _T])
+      decls_ %= (<> [Decl dname Nothing _T])
 
       pure (s, dname, (bs, def) ::: _T)
 
@@ -507,7 +507,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
             pure $ n :=: c ::: _T')
 
         S.TermDef t -> C.DTerm <$> runModule (elab (check (elabTermDef bs t ::: _T)))
-      defs_.ix index .= Decl dname (Just def) _T
+      decls_.ix index .= Decl dname (Just def) _T
 
 
 -- | Apply the substitution to the value.
