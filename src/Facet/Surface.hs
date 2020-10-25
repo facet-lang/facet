@@ -53,7 +53,7 @@ qual (m :.: n) = Var (Just m) n
 data Binding = Binding
   { _pl   :: Pl
   , names :: NonEmpty UName
-  , sig   :: Ann Sig
+  , sig   :: Ann (Sig Expr)
   }
   deriving (Eq, Show)
 
@@ -61,9 +61,9 @@ data Delta = Delta (Ann (Maybe MName, DName)) (Stack (Ann Type))
   deriving (Eq, Show)
 
 -- | Really this is a signature /adjustment/ consisting of the sum of the individual deltas, but “signature” shortens shorter.
-data Sig = Sig
+data Sig a = Sig
   { delta :: [Ann Delta]
-  , type' :: Ann Type
+  , type' :: Ann a
   }
   deriving (Eq, Show)
 
