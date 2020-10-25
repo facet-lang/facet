@@ -185,7 +185,7 @@ unVar f g h = \case
 data Elim
   = EApp (Pl_ Value) -- FIXME: this is our one codata case; should we generalize this to copattern matching?
   -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
-  | ECase [(Pattern Value (UName ::: Value), Pattern Value Value -> Value)] -- FIXME: we can (and should) eliminate var patterns eagerly.
+  | ECase [(Pattern (UName ::: Value), Pattern Value -> Value)] -- FIXME: we can (and should) eliminate var patterns eagerly.
 
 
 data Con t a = Con (QName ::: t) (Stack a)
@@ -244,7 +244,7 @@ _           $$ _ = error "can’t apply non-neutral/forall type"
 infixl 9 $$
 
 
-case' :: HasCallStack => Value -> [(Pattern Value (UName ::: Value), Pattern Value Value -> Value)] -> Value
+case' :: HasCallStack => Value -> [(Pattern (UName ::: Value), Pattern Value -> Value)] -> Value
 case' s            cs
   | (p, f):_ <- cs
   , PVar _ <- p       = f (PVar s)
@@ -253,7 +253,7 @@ case' s            cs = case matchWith (\ (p, f) -> f <$> match s p) cs of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
-match :: Value -> Pattern Value b -> Maybe (Pattern Value Value)
+match :: Value -> Pattern b -> Maybe (Pattern Value)
 match = curry $ \case
   (s,          PVar _)                -> Just (PVar s)
   (VCon (Con n' fs), PCon (Con n ps)) -> do
@@ -299,7 +299,7 @@ subst s
 
   substElim = \case
     EApp a   -> EApp (fmap go a)
-    ECase cs -> ECase (map (bimap (bimap go (fmap go)) (go .)) cs)
+    ECase cs -> ECase (map (bimap (fmap (fmap go)) (go .)) cs)
 
   s ! l = case IntMap.lookup (getMeta (tm l)) s of
     Just a  -> a
@@ -330,7 +330,7 @@ bind target with = go
 
   elim = \case
     EApp a   -> EApp (fmap go a)
-    ECase cs -> ECase (map (bimap (bimap go (fmap go)) (go .)) cs)
+    ECase cs -> ECase (map (bimap (fmap (fmap go)) (go .)) cs)
 
 
 mvs :: Level -> Value -> IntMap.IntMap Value
@@ -344,7 +344,7 @@ mvs d = \case
     goE = \case
       EApp a   -> foldMap (mvs d) a
       ECase cs -> foldMap goClause cs
-    goClause (p, b) = bifoldMap (mvs d) (mvs d . ty) p <> let (d', p') = fill ((,) . succ <*> free) d p in  mvs d' (b p')
+    goClause (p, b) = foldMap (mvs d . ty) p <> let (d', p') = fill ((,) . succ <*> free) d p in  mvs d' (b p')
   VCon (Con (_ ::: t) fs) -> mvs d t <> foldMap (mvs d) fs
   where
   binding d (Binding _ _ s) = sig d s
@@ -385,23 +385,10 @@ sortOf ctx = \case
 -- Patterns
 
 -- FIXME: eliminate this by unrolling cases into shallow, constructor-headed matches
-data Pattern t a
+data Pattern a
   = PVar a
-  | PCon (Con t (Pattern t a))
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-instance Bifoldable Pattern where
-  bifoldMap = bifoldMapDefault
-
-instance Bifunctor Pattern where
-  bimap = bimapDefault
-
-instance Bitraversable Pattern where
-  bitraverse f g = go
-    where
-    go = \case
-      PVar a -> PVar <$> g a
-      PCon c -> PCon <$> bitraverse f go c
+  | PCon (Con Value (Pattern a))
+  deriving (Eq, Foldable, Functor, Ord, Traversable)
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)
