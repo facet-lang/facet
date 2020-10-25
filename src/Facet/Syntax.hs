@@ -5,6 +5,7 @@ module Facet.Syntax
 , (:===:)(..)
 , (:=:)(..)
 , (:$)(..)
+, Telescope(..)
 , splitl
 , splitr
 , Pl(..)
@@ -85,6 +86,10 @@ instance Bifunctor (:$) where
 
 instance Bitraversable (:$) where
   bitraverse f g (h :$ sp) = (:$) <$> f h <*> traverse g sp
+
+
+data Telescope a b = Telescope [a] b
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
 splitl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)
