@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- | This module defines the /elaboration/ of terms in 'S.Expr' into values in 'Value'.
 --
 -- Elaboration is the only way 'Value's are constructed from untrusted terms, and so typechecking is performed at this point. If elaboration succeeds and a 'Value' is returned, that 'Value' does not require further verification; hence, 'Value's elide source span information.
@@ -477,7 +478,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
 
     -- elaborate all the types first
     -- FIXME: do we need to pass the delta to elabTermDef and elabDataDef?
-    es <- for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs delta (ty :=: def)))) -> tracePretty dname $ setSpan s $ do
+    es <- trace "types" $ for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs delta (ty :=: def)))) -> tracePretty dname $ setSpan s $ do
       _T <- runModule . elab $ check (checkElab (elabTelescope bs delta ty) ::: VType)
 
       decls_ %= (<> [Decl dname Nothing _T])
@@ -485,7 +486,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
       pure (s, dname, (bs, def) ::: _T)
 
     -- then elaborate the terms
-    ifor_ es $ \ index (s, dname, (bs, def) ::: _T) -> setSpan s $ do
+    trace "definitions" $ ifor_ es $ \ index (s, dname, (bs, def) ::: _T) -> setSpan s $ tracePretty dname $ do
       def <- case def of
         S.DataDef cs -> do
           (s, cs) <- runModule . elabWith (fmap pure . (,)) $ check (elabDataDef bs cs ::: _T)
