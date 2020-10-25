@@ -337,8 +337,8 @@ cnameStyle = IdentifierStyle
   lower
   nameChar
   reserved
-  Identifier
-  ReservedIdentifier
+  Constructor
+  ReservedConstructor
 
 tnameStyle :: CharParsing p => IdentifierStyle p
 tnameStyle = IdentifierStyle
