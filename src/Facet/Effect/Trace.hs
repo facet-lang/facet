@@ -4,6 +4,10 @@ module Facet.Effect.Trace
   trace
 , traceShow
 , Trace(..)
+  -- * Re-exports
+, Algebra
+, Has
+, run
 ) where
 
 import Control.Algebra
