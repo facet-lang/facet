@@ -98,7 +98,6 @@ compareValue d = curry $ \case
   (VCon c1, VCon c2)             -> compareCon compareValue d c1 c2
   (VCon _, _)                    -> LT
   where
-  compareLBinding :: Level -> (Pl, UName ::: Sig) -> (Pl, UName ::: Sig) -> Ordering
   compareLBinding d (p1, _ ::: s1) (p2, _ ::: s2) = compare p1 p2 <> compareSig d s1 s2
   compareH d = curry $ \case
     (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareValue d t1 t2
