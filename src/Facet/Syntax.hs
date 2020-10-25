@@ -91,6 +91,15 @@ instance Bitraversable (:$) where
 data Telescope a b = Telescope [a] b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+instance Bifoldable Telescope where
+  bifoldMap = bifoldMapDefault
+
+instance Bifunctor Telescope where
+  bimap = bimapDefault
+
+instance Bitraversable Telescope where
+  bitraverse f g (Telescope ctx r) = Telescope <$> traverse f ctx <*> g r
+
 
 splitl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)
 splitl un = go id
