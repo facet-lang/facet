@@ -251,8 +251,8 @@ printValue alg = go
     C.VInterface -> annotate Type $ pretty "Interface"
     C.VForAll t b ->
       let (vs, (_, b')) = splitr C.unForAll' (d, C.VForAll t b)
-          binding env (C.Binding p n s _T) =
-            let _T' = (if null s then id else tcomp alg (map (delta env) (toList s))) (go env _T)
+          binding env (C.Binding p n _T) =
+            let _T' = sig env _T
             in  (env :> tvar env (P p n ::: _T'), P p (name p n (Level (length env)) ::: _T'))
           name p n d
             | T.null (getUName n)
@@ -262,8 +262,8 @@ printValue alg = go
       in fn alg vs' (go env' b')
     C.VLam n b ->
       let (vs, (_, b')) = splitr C.unLam' (d, C.VLam n b)
-          binding env (C.Binding p n s _T) =
-            let _T' = (if null s then id else tcomp alg (map (delta env) (toList s))) (go env _T)
+          binding env (C.Binding p n _T) =
+            let _T' = sig env _T
             in  (env :> lvar env (P p n ::: _T'), P p (unPl (tintro alg) (intro alg) p n (Level (length env)) ::: Just _T'))
           (env', vs') = mapAccumL binding env vs
       in lam alg [clause alg vs' (go env' b')]
@@ -286,6 +286,7 @@ printValue alg = go
     d = Level (length env)
   tvar env n = ann' alg (var alg (TLocal (out (tm n)) (Level (length env))) ::: ty n)
   lvar env n = ann' alg (var alg (unPl_ TLocal Local (tm n) (Level (length env))) ::: ty n)
+  sig env (C.Sig s _T) = (if null s then id else tcomp alg (map (delta env) (toList s))) (go env _T)
   delta env (C.Delta (q ::: _T) sp) = app alg (ann' alg (var alg (qvar q) ::: go env _T)) (ex . go env <$> sp)
 
   pat env = \case

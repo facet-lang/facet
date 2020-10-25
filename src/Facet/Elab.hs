@@ -121,16 +121,18 @@ unify = \case
   VNeut (Metavar v) Nil :===: x                     -> solve (tm v :=: x)
   x                     :===: VNeut (Metavar v) Nil -> solve (tm v :=: x)
   VForAll t1 b1         :===: VForAll t2 b2
-    | _pl t1 == _pl t2, (delta :: Binding -> Set.Set Delta) t1 == (delta :: Binding -> Set.Set Delta) t2 -> do
-      -- FIXME: unify the signatures
-      t <- unify ((type' :: Binding -> Type) t1 :===: (type' :: Binding -> Type) t2)
+    | _pl t1 == _pl t2 -> do
+      sig <- unifySig (sig t1 :===: sig t2)
       d <- asks @(Context Type) level
       let v = free d
       b <- unify (b1 v :===: b2 v)
-      pure $ VForAll (Binding (_pl t1) ((name :: Binding -> UName) t1) ((delta :: Binding -> Set.Set Delta) t1) t) (\ v -> C.bind d v b)
+      pure $ VForAll (Binding (_pl t1) ((name :: Binding -> UName) t1) sig) (\ v -> C.bind d v b)
   -- FIXME: build and display a diff of the root types
   t1                    :===: t2                    -> couldNotUnify "mismatch" t1 t2
   where
+  -- FIXME: unify the signatures
+  unifySig (Sig d1 t1 :===: Sig _ t2) = Sig d1 <$> unify (t1 :===: t2)
+
   unifyS (Nil           :===: Nil)           = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
   unifyS (i1 :> EApp l1 :===: i2 :> EApp l2)
@@ -159,10 +161,10 @@ insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
 -- FIXME: can implicits have effects? what do we do about the signature?
 instantiate :: Expr ::: Type -> Elab (Expr ::: Type)
 instantiate (e ::: _T) = case unForAll _T of
-  Just (Binding Im _ _ _T, _B) -> do
+  Just (Binding Im _ (Sig _ _T), _B) -> do
     m <- metavar <$> meta _T
     instantiate (e C.$$ im m ::: _B m)
-  _                        -> pure $ e ::: _T
+  _                                  -> pure $ e ::: _T
 
 
 -- General
@@ -245,7 +247,7 @@ hole n = Check $ \ _T -> err $ Hole n _T
 f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectQuantifier "in application" _F
-  a' <- check (a ::: (type' :: Binding -> Type) _A)
+  a' <- check (a ::: (type' :: Sig -> Type) (sig _A))
   pure $ (f' C.$$ ex a') ::: _B a'
 
 
@@ -324,7 +326,7 @@ _Interface = Synth $ pure $ VInterface ::: VType
 (n ::: t) >~> b = Synth $ do
   _T <- check (t ::: VType)
   b' <- elabBinder $ \ _ -> check (b (out n ::: _T) ::: VType)
-  pure $ VForAll (Binding (pl n) (out n) mempty _T) b' ::: VType
+  pure $ VForAll (Binding (pl n) (out n) (Sig mempty _T)) b' ::: VType
 
 infixr 1 >~>
 
@@ -335,9 +337,9 @@ lam
   -> Check Expr
 lam n b = Check $ \ _T -> do
   -- FIXME: how does the effect adjustment change this?
-  (Binding _ _ _ _T, _B) <- expectQuantifier "when checking lambda" _T
+  (Binding _ _ (Sig _ _T), _B) <- expectQuantifier "when checking lambda" _T
   b' <- elabBinder $ \ v -> check (b (out n ::: _T) ::: _B v)
-  pure $ VLam (Binding (pl n) (out n) mempty _T) b'
+  pure $ VLam (Binding (pl n) (out n) (Sig mempty _T)) b'
 
 
 elabComp
@@ -367,9 +369,9 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 elabClauses :: [(NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)] -> Check Expr
 elabClauses [((S.Ann _ (S.PVar n)):|ps, b)] = Check $ \ _T -> do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
-  (Binding pl _ s _A, _B) <- expectQuantifier "when checking clauses" _T
+  (Binding pl _ (Sig s _A), _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> n ::: _A |- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
-  pure $ VLam (Binding pl n s _A) b'
+  pure $ VLam (Binding pl n (Sig s _A)) b'
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
 elabClauses cs = Check $ \ _T -> do
   rest <- case foldMap partitionClause cs of
@@ -378,7 +380,7 @@ elabClauses cs = Check $ \ _T -> do
     XR cs -> pure $ Just cs
     XT    -> error "mixed" -- FIXME: throw a proper error
   -- FIXME: use the signature to elaborate the pattern
-  (Binding _ _ s _A, _B) <- expectQuantifier "when checking clauses" _T
+  (Binding _ _ (Sig s _A), _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> do
     let _B' = _B v
     cs' <- for cs $ \ (p:|_, b) -> do
@@ -388,7 +390,7 @@ elabClauses cs = Check $ \ _T -> do
     pure $ case' v cs'
   -- FIXME: something isn’t correctly accounting for the insertion of the lambda.
   -- e.g. the elaboration of fst & snd contain case c { (pair d e) -> c } and case c { (pair d e) -> d } respectively. is the context being extended incorrectly, or not being extended when it should be?
-  pure $ VLam (Binding Ex __ s _A) b'
+  pure $ VLam (Binding Ex __ (Sig s _A)) b'
   where
   partitionClause (_:|ps, b) = case ps of
     []   -> XL ()
@@ -402,7 +404,7 @@ elabPattern = withSpan $ \case
   S.PVar n    -> Check $ \ _T -> pure (C.PVar (n ::: _T))
   S.PCon n ps -> Check $ \ _T -> do
     let inst _T = case unForAll _T of
-          Just (Binding Im _ _ _T, _B) -> do
+          Just (Binding Im _ (Sig _ _T), _B) -> do
             m <- metavar <$> meta _T
             inst (_B m)
           _                        -> pure _T
@@ -410,7 +412,7 @@ elabPattern = withSpan $ \case
           []   -> [] <$ unify (_T' :===: _T)
           p:ps -> do
             -- FIXME: check the signature? somehow?
-            (Binding _ _ _ _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
+            (Binding _ _ (Sig _ _A), _B) <- expectQuantifier "when checking constructor pattern" _T'
             -- FIXME: there’s no way this is going to work, let alone a good idea
             -- FIXME: elaborate patterns in CPS, binding locally with elabBinder, & obviating the need for |-*.
             v <- metavar <$> meta _A
@@ -435,9 +437,9 @@ elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) ->
   -- FIXME: check that all constructors return the datatype.
   wrap = flip (foldr (\ (S.Ann s (S.Binding _ ns _)) k ->
     setSpan s $ foldr (\ n k -> Check $ \ _T -> do
-      (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
+      (Binding _ _ (Sig s _T), _B) <- expectQuantifier "in type quantifier" _T
       b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: _B v)
-      pure $ VForAll (Binding Im n s _T) b') k ns)) bindings
+      pure $ VForAll (Binding Im n (Sig s _T)) b') k ns)) bindings
 
 elabInterfaceDef
   :: HasCallStack
@@ -449,9 +451,9 @@ elabInterfaceDef _ bindings constructors = for constructors $ withSpan $ \ (n ::
   where
   wrap end = flip (foldr (\ (S.Ann s (S.Binding _ ns _)) k ->
     setSpan (Span (start s) end) $ foldr (\ n k -> Check $ \ _T -> do
-      (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
+      (Binding _ _ (Sig s _T), _B) <- expectQuantifier "in type quantifier" _T
       b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: _B v)
-      pure $ VForAll (Binding Im n s _T) b') k ns)) bindings
+      pure $ VForAll (Binding Im n (Sig s _T)) b') k ns)) bindings
 
 elabTermDef
   :: HasCallStack

@@ -96,7 +96,8 @@ compareValue d = curry $ \case
   (VCon c1, VCon c2)             -> compareCon compareValue d c1 c2
   (VCon _, _)                    -> LT
   where
-  compareB d (Binding p1 _ s1 t1) (Binding p2 _ s2 t2) = compare p1 p2 <> liftCompare (compareD d) s1 s2 <> compareValue d t1 t2
+  compareB d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> sig d s1 s2
+  sig d (Sig s1 t1) (Sig s2 t2) = liftCompare (compareD d) s1 s2 <> compareValue d t1 t2
   compareD d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> compareSp (compareValue d) sp1 sp2
   compareH d = curry $ \case
     (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareValue d t1 t2
@@ -123,10 +124,9 @@ compareValue d = curry $ \case
 
 
 data Binding = Binding
-  { _pl   :: Pl
-  , name  :: UName
-  , delta :: Set.Set Delta
-  , type' :: Value
+  { _pl  :: Pl
+  , name :: UName
+  , sig  :: Sig
   }
 
 
@@ -283,7 +283,9 @@ subst s
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
     VCon c      -> VCon (bimap go go c)
 
-  substBinding (Binding p n s t) = Binding p n (Set.map delta s) (go t)
+  substBinding (Binding p n s) = Binding p n (sig s)
+
+  sig (Sig d t) = Sig (Set.map delta d) (go t)
 
   delta (Delta (q ::: t) sp) = Delta (q ::: go t) (fmap go sp)
 
@@ -312,7 +314,9 @@ bind target with = go
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
     VCon c      -> VCon (bimap go go c)
 
-  binding (Binding p n s t) = Binding p n (Set.map delta s) (go t)
+  binding (Binding p n s) = Binding p n (sig s)
+
+  sig (Sig d t) = Sig (Set.map delta d) (go t)
 
   delta (Delta (q ::: t) sp) = Delta (q ::: go t) (fmap go sp)
 
@@ -335,7 +339,8 @@ mvs d = \case
     goClause (p, b) = bifoldMap (mvs d) (mvs d . ty) p <> let (d', p') = fill ((,) . succ <*> free) d p in  mvs d' (b p')
   VCon (Con (_ ::: t) fs) -> mvs d t <> foldMap (mvs d) fs
   where
-  binding d (Binding _ _ s t) = foldMap (delta d) s <> mvs d t
+  binding d (Binding _ _ s) = sig d s
+  sig d (Sig s t) = foldMap (delta d) s <> mvs d t
   delta d (Delta (_ ::: t) sp) = mvs d t <> foldMap (mvs d) sp
 
 
@@ -347,7 +352,7 @@ generalize :: Value -> Value
 generalize v = build s v
   where
   metas = mvs 0 v
-  (_, build, s) = IntMap.foldrWithKey (\ m _T (d, f, s) -> (succ d, \ s b -> VForAll (Binding Im __ mempty _T) (\ v -> bind d v (f s b)), IntMap.insert m (free d) s)) (0, subst, IntMap.empty) metas
+  (_, build, s) = IntMap.foldrWithKey (\ m _T (d, f, s) -> (succ d, \ s b -> VForAll (Binding Im __ (Sig mempty _T)) (\ v -> bind d v (f s b)), IntMap.insert m (free d) s)) (0, subst, IntMap.empty) metas
 
 
 -- Classification
@@ -361,12 +366,12 @@ data Sort
 -- | Classifies values according to whether or not they describe types.
 sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
-  VType                         -> SKind
-  VInterface                    -> SKind
-  VForAll (Binding _ _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
-  VLam{}                        -> STerm
-  VNeut h sp                    -> minimum (unVar (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (\case{ EApp a -> sortOf ctx (out a) ; ECase _ -> STerm } <$> sp))
-  VCon _                        -> STerm
+  VType                       -> SKind
+  VInterface                  -> SKind
+  VForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx ((type' :: Sig -> Value) _T) in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
+  VLam{}                      -> STerm
+  VNeut h sp                  -> minimum (unVar (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (\case{ EApp a -> sortOf ctx (out a) ; ECase _ -> STerm } <$> sp))
+  VCon _                      -> STerm
 
 
 -- Patterns
