@@ -61,7 +61,7 @@ repl
   = runReadlineWithHistory
   . evalState defaultREPLState
   . evalEmpty
-  . runTrace
+  . runTrace Nil
   $ loop
 
 
