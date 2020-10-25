@@ -478,7 +478,6 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
     -- FIXME: maybe figure out the graph for mutual recursion?
 
     -- elaborate all the types first
-    -- FIXME: do we need to pass the delta to elabTermDef and elabDataDef?
     es <- trace "types" $ for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs (S.Ann s' sig@(S.Sig delta (ty :=: def)))))) -> tracePretty dname $ setSpan s $ do
       _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig (S.Ann s' sig{ S.type' = ty }))) ::: Just VType)
 
