@@ -51,9 +51,7 @@ module Facet.Core
 import           Control.Applicative ((<|>))
 import           Control.Effect.Empty
 import           Control.Lens (Lens', lens)
-import           Data.Bifoldable
 import           Data.Bifunctor
-import           Data.Bitraversable
 import           Data.Foldable (find, foldl', toList)
 import           Data.Functor.Classes
 import qualified Data.IntMap as IntMap
@@ -76,7 +74,7 @@ data Value
   | VLam Binding (Value -> Value)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNeut (Var Value) (Stack Elim)
-  | VCon (Con Value Value)
+  | VCon (Con Value)
 
 instance Eq Value where
   a == b = compareValue 0 a b == EQ
@@ -118,7 +116,7 @@ compareValue d = curry $ \case
     (PVar _, _)                        -> LT
     (PCon c1, PCon c2)                 -> compareCon comparePat d c1 c2
     (PCon _, _)                        -> LT
-  compareCon :: (Level -> a -> b -> Ordering) -> Level -> Con Value a -> Con Value b -> Ordering
+  compareCon :: (Level -> a -> b -> Ordering) -> Level -> Con a -> Con b -> Ordering
   compareCon compareValue' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = compare n1 n2 <> compareValue d t1 t2 <> liftCompare (compareValue' d) fs1 fs2
 
 compareBinding :: Level -> Binding -> Binding -> Ordering
@@ -188,17 +186,8 @@ data Elim
   | ECase [(Pattern (UName ::: Value), Pattern Value -> Value)] -- FIXME: we can (and should) eliminate var patterns eagerly.
 
 
-data Con t a = Con (QName ::: t) (Stack a)
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-instance Bifoldable Con where
-  bifoldMap = bifoldMapDefault
-
-instance Bifunctor Con where
-  bimap = bimapDefault
-
-instance Bitraversable Con where
-  bitraverse f g (Con t b) = Con <$> traverse f t <*> traverse g b
+data Con a = Con (QName ::: Value) (Stack a)
+  deriving (Eq, Foldable, Functor, Ord, Traversable)
 
 
 global :: QName ::: Value -> Value
@@ -289,7 +278,7 @@ subst s
         Global  (n ::: _T) -> Global  (n ::: go _T)
         Free    v          -> Free    v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
-    VCon c      -> VCon (bimap go go c)
+    VCon c      -> VCon (fmap go c)
 
   substBinding (Binding p n s) = Binding p n (sig s)
 
@@ -320,7 +309,7 @@ bind target with = go
         Global  (n ::: _T) -> Global  (n ::: go _T)
         Free    v          -> Free    v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
-    VCon c      -> VCon (bimap go go c)
+    VCon c      -> VCon (fmap go c)
 
   binding (Binding p n s) = Binding p n (sig s)
 
@@ -387,7 +376,7 @@ sortOf ctx = \case
 -- FIXME: eliminate this by unrolling cases into shallow, constructor-headed matches
 data Pattern a
   = PVar a
-  | PCon (Con Value (Pattern a))
+  | PCon (Con (Pattern a))
   deriving (Eq, Foldable, Functor, Ord, Traversable)
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
