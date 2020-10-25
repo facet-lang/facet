@@ -390,6 +390,12 @@ data Pattern a
   | PCon (Con (Pattern a))
   deriving (Eq, Foldable, Functor, Ord, Traversable)
 
+instance Eq1 Pattern where
+  liftEq eq (PVar v1) (PVar v2) = eq v1 v2
+  liftEq _  PVar{}    _         = False
+  liftEq eq (PCon c1) (PCon c2) = liftEq (liftEq eq) c1 c2
+  liftEq _  PCon{}    _         = False
+
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)
 
