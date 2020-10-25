@@ -53,8 +53,7 @@ qual (m :.: n) = Var (Just m) n
 data Binding = Binding
   { _pl   :: Pl
   , names :: NonEmpty UName
-  , delta :: [Ann Delta]
-  , type' :: Ann Type
+  , sig   :: Ann Sig
   }
   deriving (Eq, Show)
 

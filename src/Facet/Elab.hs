@@ -301,10 +301,13 @@ elabExpr = withSpan' $ \case
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
 -- FIXME: elaborate the signature.
+elabSig :: S.Ann S.Sig -> Maybe Type -> Elab (Type ::: Type)
+elabSig = withSpan' $ \ (S.Sig _ t) -> elabExpr t
+
 elabTelescope :: [S.Ann S.Binding] -> [S.Ann S.Delta] -> S.Ann S.Type -> Maybe Type -> Elab (Type ::: Type)
-elabTelescope bindings _ body = foldr (\ (S.Ann s (S.Binding p ns _ t)) b ->
+elabTelescope bindings _ body = foldr (\ (S.Ann s (S.Binding p ns t)) b ->
   setSpan (Span (start s) (end (S.ann body))) . foldr (\ n k ->
-    switch $ P p n ::: checkElab (elabExpr t) >~> \ v -> v |- checkElab k) b ns) (elabExpr body) bindings
+    switch $ P p n ::: checkElab (elabSig t) >~> \ v -> v |- checkElab k) b ns) (elabExpr body) bindings
 
 
 _Type :: Synth Type
@@ -430,7 +433,7 @@ elabDataDef
 elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> wrap (checkElab (elabExpr t))
   where
   -- FIXME: check that all constructors return the datatype.
-  wrap = flip (foldr (\ (S.Ann s (S.Binding _ ns _ _)) k ->
+  wrap = flip (foldr (\ (S.Ann s (S.Binding _ ns _)) k ->
     setSpan s $ foldr (\ n k -> Check $ \ _T -> do
       (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
       b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: _B v)
@@ -444,7 +447,7 @@ elabInterfaceDef
   -> Check [UName ::: Type]
 elabInterfaceDef _ bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> setSpan (S.ann t) (wrap (end (S.ann t)) (checkElab (elabExpr t)))
   where
-  wrap end = flip (foldr (\ (S.Ann s (S.Binding _ ns _ _)) k ->
+  wrap end = flip (foldr (\ (S.Ann s (S.Binding _ ns _)) k ->
     setSpan (Span (start s) end) $ foldr (\ n k -> Check $ \ _T -> do
       (Binding _ _ s _T, _B) <- expectQuantifier "in type quantifier" _T
       b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: _B v)
@@ -455,7 +458,7 @@ elabTermDef
   => [S.Ann S.Binding]
   -> S.Ann S.Expr
   -> Check Expr
-elabTermDef bindings expr = foldr (\ (S.Ann s (S.Binding p ns _ _)) b ->
+elabTermDef bindings expr = foldr (\ (S.Ann s (S.Binding p ns _)) b ->
   setSpan s $ foldr (\ n k ->
     lam (P p n) (|- k)) b ns)
     (checkElab (elabExpr expr))
