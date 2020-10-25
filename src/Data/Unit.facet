@@ -1,4 +1,4 @@
 Data.Unit : Module
 
-Unit : Type
+data Unit : Type
 { unit : Unit }

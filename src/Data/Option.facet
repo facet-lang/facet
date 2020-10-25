@@ -1,7 +1,7 @@
 Data.Option
 : Module
 
-Option : (A : Type) -> Type
+data Option : (A : Type) -> Type
 { none : Option A
 , some : A -> Option A }
 

@@ -1,6 +1,6 @@
 Data.Bool : Module
 
-Bool : Type
+data Bool : Type
 { false : Bool
 , true : Bool }
 

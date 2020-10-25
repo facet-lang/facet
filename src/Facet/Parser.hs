@@ -131,7 +131,7 @@ termDecl = anned $ do
 
 -- FIXME: how do we distinguish between data and interface declarations?
 dataDecl :: (Has Parser sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
-dataDecl = anned $ (,) <$> dtname <* colon <*> typeSig S.Decl (choice [ imBinding, exBinding tname ]) ((:=:) <$> type' <*> (S.DataDef <$> braces (commaSep con)))
+dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> typeSig S.Decl (choice [ imBinding, exBinding tname ]) ((:=:) <$> type' <*> (S.DataDef <$> braces (commaSep con)))
 
 con :: (Has Parser sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann S.Type))
 con = anned ((:::) <$> cname <* colon <*> type')
@@ -290,7 +290,7 @@ cname = ident cnameStyle
 tname = ident tnameStyle
 
 dename, dtname :: (Monad p, TokenParsing p) => p N.DName
-dename  = N.E <$> ename <|> N.O <$> oname
+dename  = N.E <$> ident dnameStyle <|> N.O <$> oname
 dtname  = N.T <$> tname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
@@ -307,11 +307,23 @@ qname = token (anned (runUnspaced (fmap (N.:.:) . foldl' (N.:.) . N.MName <$> co
 reserved :: HashSet.HashSet String
 reserved = HashSet.singleton "_"
 
+declarationReserved :: HashSet.HashSet String
+declarationReserved = HashSet.fromList ["_", "data"]
+
 nameChar :: CharParsing p => p Char
 nameChar = alphaNum <|> char '_'
 
 opChar :: CharParsing p => p Char
 opChar = oneOfSet (CharSet.difference (Unicode.punctuation <> Unicode.symbol) (CharSet.fromList "(){}"))
+
+dnameStyle :: CharParsing p => IdentifierStyle p
+dnameStyle = IdentifierStyle
+  "declaration name"
+  (lower <|> char '_')
+  nameChar
+  declarationReserved
+  Identifier
+  ReservedIdentifier
 
 enameStyle :: CharParsing p => IdentifierStyle p
 enameStyle = IdentifierStyle
