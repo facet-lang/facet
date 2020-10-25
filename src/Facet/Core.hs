@@ -91,14 +91,14 @@ compareValue d = curry $ \case
   (VForAll{}, _)                 -> LT
   (VLam t1 b1, VLam t2 b2)       -> compareB d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
   (VLam{}, _)                    -> LT
-  (VNeut h1 sp1, VNeut h2 sp2)   -> compareH d h1 h2 <> compareSp (compareElim d) sp1 sp2
+  (VNeut h1 sp1, VNeut h2 sp2)   -> compareH d h1 h2 <> liftCompare (compareElim d) sp1 sp2
   (VNeut{}, _)                   -> LT
   (VCon c1, VCon c2)             -> compareCon compareValue d c1 c2
   (VCon _, _)                    -> LT
   where
   compareB d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> sig d s1 s2
   sig d (Sig s1 t1) (Sig s2 t2) = liftCompare (compareD d) s1 s2 <> compareValue d t1 t2
-  compareD d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> compareSp (compareValue d) sp1 sp2
+  compareD d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> liftCompare (compareValue d) sp1 sp2
   compareH d = curry $ \case
     (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareValue d t1 t2
     (Global _, _)                              -> LT
@@ -106,8 +106,6 @@ compareValue d = curry $ \case
     (Free _, _)                                -> LT
     (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> compare m1 m2 <> compareValue d t1 t2
     (Metavar _, _)                             -> LT
-  compareSp :: (a -> b -> Ordering) -> Stack a -> Stack b -> Ordering
-  compareSp cmp sp1 sp2 = liftCompare cmp sp1 sp2
   compareElim d = curry $ \case
     (EApp (P p1 a1), EApp (P p2 a2)) -> compare p1 p2 <> compareValue d a1 a2
     (EApp _, _)                      -> LT
@@ -120,7 +118,7 @@ compareValue d = curry $ \case
     (PCon c1, PCon c2)                 -> compareCon comparePat d c1 c2
     (PCon _, _)                        -> LT
   compareCon :: (Level -> a -> b -> Ordering) -> Level -> Con Value a -> Con Value b -> Ordering
-  compareCon compareValue' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = compare n1 n2 <> compareValue d t1 t2 <> compareSp (compareValue' d) fs1 fs2
+  compareCon compareValue' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = compare n1 n2 <> compareValue d t1 t2 <> liftCompare (compareValue' d) fs1 fs2
 
 
 data Binding = Binding
