@@ -121,13 +121,13 @@ unify = \case
   VNeut (Metavar v) Nil :===: x                     -> solve (tm v :=: x)
   x                     :===: VNeut (Metavar v) Nil -> solve (tm v :=: x)
   VForAll t1 b1         :===: VForAll t2 b2
-    | _pl t1 == _pl t2, delta t1 == delta t2 -> do
+    | _pl t1 == _pl t2, (delta :: Binding -> Set.Set Delta) t1 == (delta :: Binding -> Set.Set Delta) t2 -> do
       -- FIXME: unify the signatures
       t <- unify ((type' :: Binding -> Type) t1 :===: (type' :: Binding -> Type) t2)
       d <- asks @(Context Type) level
       let v = free d
       b <- unify (b1 v :===: b2 v)
-      pure $ VForAll (Binding (_pl t1) ((name :: Binding -> UName) t1) (delta t1) t) (\ v -> C.bind d v b)
+      pure $ VForAll (Binding (_pl t1) ((name :: Binding -> UName) t1) ((delta :: Binding -> Set.Set Delta) t1) t) (\ v -> C.bind d v b)
   -- FIXME: build and display a diff of the root types
   t1                    :===: t2                    -> couldNotUnify "mismatch" t1 t2
   where
