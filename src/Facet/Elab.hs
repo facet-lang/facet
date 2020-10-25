@@ -90,6 +90,7 @@ elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+
 elabWith f = runSubstWith f . runContext . runElab
 
 
+-- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
 newtype Check a = Check { runCheck :: Maybe Type -> Elab a }
   deriving (Algebra (Reader (Maybe Type) :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC (Maybe Type) Elab
 
