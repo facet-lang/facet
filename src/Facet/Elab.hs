@@ -441,17 +441,18 @@ elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) ->
 elabInterfaceDef
   :: HasCallStack
   => (DName ::: Type)
-  -> [S.Ann S.Binding]
   -> [S.Ann (UName ::: S.Ann S.Type)]
-  -> Check [UName ::: Type]
-elabInterfaceDef _ bindings constructors = for constructors $ withSpan $ \ (n ::: t) ->
-  (n :::) <$> setSpan (S.ann t) (wrap (end (S.ann t)) (checkElab (elabExpr t)))
+  -> Elab [UName ::: Type]
+elabInterfaceDef (_ ::: _T) constructors = for constructors $ withSpan $ \ (n ::: t) -> fmap (n :::) . setSpan (S.ann t)
+  $ go (checkElab (elabExpr t)) _T
   where
-  wrap end = flip (foldr (\ (S.Ann s (S.Binding _ ns _)) k ->
-    setSpan (Span (start s) end) $ foldr (\ n k -> Check $ expectChecked "interface" $ \ _T -> do
-      (Binding _ _ (Sig s _T), _B) <- expectQuantifier "in type quantifier" _T
-      b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: Just (_B v))
-      pure $ VForAll (Binding Im n (Sig s _T)) b') k ns)) bindings
+  go k = \case
+    -- FIXME: represent return sigs in Value so we can check for its inclusion.
+    VInterface                          -> check (k ::: Just VType)
+    VForAll (Binding _ n (Sig s _T)) _B -> do
+      _B' <- elabBinder (\ v -> n ::: _T |- go k (_B v))
+      pure $ VForAll (Binding Im n (Sig s _T)) _B'
+    _                                   -> error "ill-formed type for interface"
 
 elabTermDef
   :: HasCallStack
@@ -501,7 +502,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
             pure $ n :=: c ::: _T')
 
         S.InterfaceDef os -> do
-          (s, os) <- runModule . elabWith (fmap pure . (,)) $ check (elabInterfaceDef (dname ::: _T) bs os ::: Just _T)
+          (s, os) <- runModule . elabWith (fmap pure . (,)) $ elabInterfaceDef (dname ::: _T) os
           C.DInterface <$> for os (\ (n ::: _T) -> do
             _T' <- apply s _T
             let go fs = \case
