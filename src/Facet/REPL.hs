@@ -27,6 +27,7 @@ import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
+import           Facet.Carrier.Trace.REPL
 import           Facet.Core
 import qualified Facet.Elab as Elab
 import           Facet.Eval
@@ -61,6 +62,7 @@ repl
   = runReadlineWithHistory
   . evalState defaultREPLState
   . evalEmpty
+  . runTrace
   $ loop
 
 
