@@ -67,7 +67,6 @@ import           Prelude hiding (zip, zipWith)
 
 -- Values
 
--- FIXME: represent closed portions of the tree explicitly?
 data Value
   = VType
   | VInterface
