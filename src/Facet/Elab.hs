@@ -397,7 +397,7 @@ elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
 elabPattern
   :: S.Ann S.Pattern
   -> Check (C.Pattern (UName ::: Type))
-elabPattern = withSpan $ \ p -> Check $ expectChecked "pattern" $ \ _T ->case p of
+elabPattern = withSpan $ \ p -> Check $ expectChecked "pattern" $ \ _T -> case p of
   S.PVar n    -> pure (C.PVar (n ::: _T))
   S.PCon n ps -> do
     let inst _T = case unForAll _T of
