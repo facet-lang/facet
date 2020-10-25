@@ -117,7 +117,7 @@ unify = \case
   -- FIXME: resolve globals to try to progress past certain inequalities
   VNeut h1 e1           :===: VNeut h2 e2
     | h1 == h2
-    , Just e' <- unifySpine (e1 :===: e2)               -> VNeut h1 <$> e'
+    , Just e' <- unifySpine (e1 :===: e2)           -> VNeut h1 <$> e'
   VNeut (Metavar v) Nil :===: x                     -> solve (tm v :=: x)
   x                     :===: VNeut (Metavar v) Nil -> solve (tm v :=: x)
   VForAll t1 b1         :===: VForAll t2 b2
