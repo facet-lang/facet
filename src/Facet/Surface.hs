@@ -6,6 +6,7 @@ module Facet.Surface
 , qual
 , Binding(..)
 , Delta(..)
+, Sig(..)
 , ($$)
 , Comp(..)
 , Pattern(..)
@@ -58,6 +59,13 @@ data Binding = Binding
   deriving (Eq, Show)
 
 data Delta = Delta (Ann (Maybe MName, DName)) (Stack (Ann Type))
+  deriving (Eq, Show)
+
+-- | Really this is a signature /adjustment/ consisting of the sum of the individual deltas, but “signature” shortens shorter.
+data Sig = Sig
+  { delta :: [Ann Delta]
+  , type' :: Ann Type
+  }
   deriving (Eq, Show)
 
 
