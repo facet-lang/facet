@@ -426,6 +426,7 @@ newtype Import = Import { name :: MName }
 data Def
   = DTerm Value
   | DData [UName :=: Value ::: Value]
+  | DInterface [UName :=: Value ::: Value]
 
 unDData :: Has Empty sig m => Def -> m [UName :=: Value ::: Value]
 unDData = \case

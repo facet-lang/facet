@@ -45,13 +45,14 @@ terminalNoticeStyle = \case
 
 terminalCodeStyle :: Print.Highlight -> [SGR]
 terminalCodeStyle = \case
-  Nest i -> [setRGB (pick i 0.4 0.8)]
-  Name i -> [setRGB (pick (-getLevel i) 0.8 0.6)]
-  Op     -> [setRGB (hsl 180 0.7 0.4)]
-  Type   -> [setRGB (hsl 60 0.5 0.5)]
-  Con    -> [setRGB (hsl 15 0.8 0.5)]
-  Lit    -> [setBold]
-  Hole m -> [setBold, setRGB (pick (-getMeta m) 0.5 0.45)]
+  Nest i  -> [setRGB (pick i 0.4 0.8)]
+  Name i  -> [setRGB (pick (-getLevel i) 0.8 0.6)]
+  Keyword -> [setRGB (hsl 300 0.7 0.4)]
+  Op      -> [setRGB (hsl 180 0.7 0.4)]
+  Type    -> [setRGB (hsl 60 0.5 0.5)]
+  Con     -> [setRGB (hsl 15 0.8 0.5)]
+  Lit     -> [setBold]
+  Hole m  -> [setBold, setRGB (pick (-getMeta m) 0.5 0.45)]
   where
   pick i s l = hsl (fromIntegral i * phi * 30) s l
   phi = 1.618033988749895

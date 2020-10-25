@@ -87,6 +87,7 @@ data Decl = Decl [Ann Binding] [Ann Delta] (Ann Type :=: Def)
 
 data Def
   = DataDef [Ann (UName ::: Ann Type)]
+  | InterfaceDef [Ann (UName ::: Ann Type)]
   | TermDef (Ann Expr)
   deriving (Eq, Show)
 

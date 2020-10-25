@@ -482,6 +482,15 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
                   _T            -> VCon (Con (mname :.: C n ::: _T) fs)
             c <- apply s (go Nil _T')
             pure $ n :=: c ::: _T')
+        S.InterfaceDef os -> do
+          (s, os) <- runModule . elabWith (fmap pure . (,)) $ check (elabDataDef bs os ::: _T)
+          C.DInterface <$> for os (\ (n ::: _T) -> do
+            _T' <- apply s _T
+            let go fs = \case
+                  VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
+                  _T            -> VCon (Con (mname :.: C n ::: _T) fs)
+            c <- apply s (go Nil _T')
+            pure $ n :=: c ::: _T')
         S.TermDef t -> C.DTerm <$> runModule (elab (check (elabTermDef bs t ::: _T)))
       defs_.ix index .= (dname, Just def ::: _T)
 
