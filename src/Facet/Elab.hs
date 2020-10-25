@@ -8,7 +8,6 @@ module Facet.Elab
 , Elab(..)
 , elab
 , elabWith
-, Check'(..)
 , Check(..)
 , Synth(..)
 , check
@@ -91,26 +90,23 @@ elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+
 elabWith f = runSubstWith f . runContext . runElab
 
 
-newtype Check' a = Check' { runCheck' :: Maybe Type -> Elab a }
+newtype Check a = Check { runCheck :: Maybe Type -> Elab a }
   deriving (Algebra (Reader (Maybe Type) :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC (Maybe Type) Elab
-
-newtype Check a = Check { runCheck :: Type -> Elab a }
-  deriving (Algebra (Reader Type :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC Type Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
 instance Functor Synth where
   fmap f (Synth m) = Synth (first f <$> m)
 
-check :: (Check a ::: Type) -> Elab a
+check :: (Check a ::: Maybe Type) -> Elab a
 check (m ::: _T) = runCheck m _T
 
 
-checkElab :: Check' (a ::: Type) -> Check a
-checkElab m = tm <$> Check (runCheck' m . Just)
+checkElab :: Check (a ::: Type) -> Check a
+checkElab m = tm <$> m
 
-synthElab :: Check' (a ::: Type) -> Synth a
-synthElab m = Synth (runCheck' m Nothing)
+synthElab :: Check (a ::: Type) -> Synth a
+synthElab m = Synth (runCheck m Nothing)
 
 
 unify :: Type :===: Type -> Elab Type
@@ -175,8 +171,8 @@ instantiate (e ::: _T) = case unForAll _T of
 
 switch
   :: Synth Value
-  -> Check' (Value ::: Type)
-switch (Synth m) = Check' $ \case
+  -> Check (Value ::: Type)
+switch (Synth m) = Check $ \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify (_K' :===: _K)
   _       -> m
 
@@ -241,7 +237,7 @@ var m n = case m of
 hole
   :: UName
   -> Check a
-hole n = Check $ \ _T -> err $ Hole n _T
+hole n = Check $ expectChecked "hole" $ \ _T -> err $ Hole n _T
 
 ($$)
   :: Synth Value
@@ -250,7 +246,7 @@ hole n = Check $ \ _T -> err $ Hole n _T
 f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectQuantifier "in application" _F
-  a' <- check (a ::: (type' :: Sig -> Type) (sig _A))
+  a' <- check (a ::: Just ((type' :: Sig -> Type) (sig _A)))
   pure $ (f' C.$$ ex a') ::: _B a'
 
 
@@ -292,23 +288,21 @@ infix 1 |-*
 elabExpr
   :: HasCallStack
   => S.Ann S.Expr
-  -> Check' (Expr ::: Type)
+  -> Check (Expr ::: Type)
 elabExpr = withSpan $ \case
   S.Var m n     -> switch $ var m n
-  S.Hole  n     -> check (hole n) "hole"
+  S.Hole  n     -> hole n
   S.Type        -> switch _Type
   S.Interface   -> switch _Interface
   S.ForAll bs s -> elabTelescope bs (elabSig s)
   S.App f a     -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
-  S.Comp cs     -> check (elabComp cs) "computation"
-  where
-  check m msg = Check' $ \ _T -> expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
+  S.Comp cs     -> elabComp cs
 
 -- FIXME: elaborate the signature.
-elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check' (Type ::: Type)
+elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check (Type ::: Type)
 elabSig = withSpan $ \ (S.Sig _ t) -> elabExpr t
 
-elabTelescope :: [S.Ann S.Binding] -> Check' (Type ::: Type) -> Check' (Type ::: Type)
+elabTelescope :: [S.Ann S.Binding] -> Check (Type ::: Type) -> Check (Type ::: Type)
 elabTelescope bindings body = foldr (\ (S.Ann s (S.Binding p ns t)) b ->
   local (\ s' -> s'{ start = start s }) $ foldr (\ n k ->
     switch $ P p n ::: checkElab (elabSig t) >~> \ v -> v |- checkElab k) b ns) body bindings
@@ -326,8 +320,8 @@ _Interface = Synth $ pure $ VInterface ::: VType
   -> (UName ::: Type -> Check Type)
   -> Synth Type
 (n ::: t) >~> b = Synth $ do
-  _T <- check (t ::: VType)
-  b' <- elabBinder $ \ _ -> check (b (out n ::: _T) ::: VType)
+  _T <- check (t ::: Just VType)
+  b' <- elabBinder $ \ _ -> check (b (out n ::: _T) ::: Just VType)
   pure $ VForAll (Binding (pl n) (out n) (Sig mempty _T)) b' ::: VType
 
 infixr 1 >~>
@@ -337,19 +331,19 @@ lam
   :: Pl_ UName
   -> (UName ::: Type -> Check Expr)
   -> Check Expr
-lam n b = Check $ \ _T -> do
+lam n b = Check $ expectChecked "lambda" $ \ _T -> do
   -- FIXME: how does the effect adjustment change this?
   (Binding _ _ (Sig _ _T), _B) <- expectQuantifier "when checking lambda" _T
-  b' <- elabBinder $ \ v -> check (b (out n ::: _T) ::: _B v)
+  b' <- elabBinder $ \ v -> check (b (out n ::: _T) ::: Just (_B v))
   pure $ VLam (Binding (pl n) (out n) (Sig mempty _T)) b'
 
 
 elabComp
   :: HasCallStack
   => S.Ann S.Comp
-  -> Check Expr
+  -> Check (Expr ::: Type)
 elabComp = withSpan $ \case
-  S.Expr    b  -> checkElab (elabExpr b)
+  S.Expr    b  -> elabExpr b
   S.Clauses cs -> elabClauses cs
 
 data XOr a b
@@ -368,14 +362,14 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
-elabClauses :: [(NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)] -> Check Expr
-elabClauses [((S.Ann _ (S.PVar n)):|ps, b)] = Check $ \ _T -> do
+elabClauses :: [(NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)] -> Check (Expr ::: Type)
+elabClauses [((S.Ann _ (S.PVar n)):|ps, b)] = Check $ expectChecked "variable pattern" $ \ _T -> do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (Binding pl _ (Sig s _A), _B) <- expectQuantifier "when checking clauses" _T
-  b' <- elabBinder $ \ v -> n ::: _A |- check (maybe (checkElab (elabExpr b)) (elabClauses . pure . (,b)) (nonEmpty ps) ::: _B v)
-  pure $ VLam (Binding pl n (Sig s _A)) b'
+  b' <- elabBinder $ \ v -> n ::: _A |- check (checkElab (maybe (elabExpr b) (elabClauses . pure . (,b)) (nonEmpty ps)) ::: Just (_B v))
+  pure $ VLam (Binding pl n (Sig s _A)) b' ::: _T
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
-elabClauses cs = Check $ \ _T -> do
+elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
   rest <- case foldMap partitionClause cs of
     XB    -> pure Nothing
     XL _  -> pure Nothing
@@ -386,13 +380,13 @@ elabClauses cs = Check $ \ _T -> do
   b' <- elabBinder $ \ v -> do
     let _B' = _B v
     cs' <- for cs $ \ (p:|_, b) -> do
-      p' <- check (elabPattern p ::: _A)
-      b' <- p' |-* check (maybe (checkElab (elabExpr b)) elabClauses rest ::: _B')
+      p' <- check (elabPattern p ::: Just _A)
+      b' <- p' |-* check (checkElab (maybe (elabExpr b) elabClauses rest) ::: Just _B')
       pure (p', b')
     pure $ case' v cs'
   -- FIXME: something isn’t correctly accounting for the insertion of the lambda.
   -- e.g. the elaboration of fst & snd contain case c { (pair d e) -> c } and case c { (pair d e) -> d } respectively. is the context being extended incorrectly, or not being extended when it should be?
-  pure $ VLam (Binding Ex __ (Sig s _A)) b'
+  pure $ VLam (Binding Ex __ (Sig s _A)) b' ::: _T
   where
   partitionClause (_:|ps, b) = case ps of
     []   -> XL ()
@@ -402,9 +396,9 @@ elabClauses cs = Check $ \ _T -> do
 elabPattern
   :: S.Ann S.Pattern
   -> Check (C.Pattern Type (UName ::: Type))
-elabPattern = withSpan $ \case
-  S.PVar n    -> Check $ \ _T -> pure (C.PVar (n ::: _T))
-  S.PCon n ps -> Check $ \ _T -> do
+elabPattern = withSpan $ \ p -> Check $ expectChecked "pattern" $ \ _T ->case p of
+  S.PVar n    -> pure (C.PVar (n ::: _T))
+  S.PCon n ps -> do
     let inst _T = case unForAll _T of
           Just (Binding Im _ (Sig _ _T), _B) -> do
             m <- metavar <$> meta _T
@@ -418,7 +412,7 @@ elabPattern = withSpan $ \case
             -- FIXME: there’s no way this is going to work, let alone a good idea
             -- FIXME: elaborate patterns in CPS, binding locally with elabBinder, & obviating the need for |-*.
             v <- metavar <$> meta _A
-            p' <- check (elabPattern p ::: _A)
+            p' <- check (elabPattern p ::: Just _A)
             ps' <- go (_B v) ps
             pure $ p' : ps'
     q ::: _T' <- synth (resolveC n)
@@ -438,9 +432,9 @@ elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) ->
   where
   -- FIXME: check that all constructors return the datatype.
   wrap = flip (foldr (\ (S.Ann s (S.Binding _ ns _)) k ->
-    setSpan s $ foldr (\ n k -> Check $ \ _T -> do
+    setSpan s $ foldr (\ n k -> Check $ expectChecked "data" $ \ _T -> do
       (Binding _ _ (Sig s _T), _B) <- expectQuantifier "in type quantifier" _T
-      b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: _B v)
+      b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: Just (_B v))
       pure $ VForAll (Binding Im n (Sig s _T)) b') k ns)) bindings
 
 elabInterfaceDef
@@ -452,9 +446,9 @@ elabInterfaceDef
 elabInterfaceDef _ bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> setSpan (S.ann t) (wrap (end (S.ann t)) (checkElab (elabExpr t)))
   where
   wrap end = flip (foldr (\ (S.Ann s (S.Binding _ ns _)) k ->
-    setSpan (Span (start s) end) $ foldr (\ n k -> Check $ \ _T -> do
+    setSpan (Span (start s) end) $ foldr (\ n k -> Check $ expectChecked "interface" $ \ _T -> do
       (Binding _ _ (Sig s _T), _B) <- expectQuantifier "in type quantifier" _T
-      b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: _B v)
+      b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: Just (_B v))
       pure $ VForAll (Binding Im n (Sig s _T)) b') k ns)) bindings
 
 elabTermDef
@@ -486,7 +480,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
     -- elaborate all the types first
     -- FIXME: do we need to pass the delta to elabTermDef and elabDataDef?
     es <- trace "types" $ for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs (S.Ann s' sig@(S.Sig delta (ty :=: def)))))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig (S.Ann s' sig{ S.type' = ty }))) ::: VType)
+      _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig (S.Ann s' sig{ S.type' = ty }))) ::: Just VType)
 
       decls_ %= (<> [Decl dname Nothing _T])
 
@@ -496,7 +490,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
     trace "definitions" $ ifor_ es $ \ index (s, dname, (bs, _, def) ::: _T) -> setSpan s $ tracePretty dname $ do
       def <- case def of
         S.DataDef cs -> do
-          (s, cs) <- runModule . elabWith (fmap pure . (,)) $ check (elabDataDef bs cs ::: _T)
+          (s, cs) <- runModule . elabWith (fmap pure . (,)) $ check (elabDataDef bs cs ::: Just _T)
           C.DData <$> for cs (\ (n ::: _T) -> do
             _T' <- apply s _T
             let go fs = \case
@@ -506,7 +500,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
             pure $ n :=: c ::: _T')
 
         S.InterfaceDef os -> do
-          (s, os) <- runModule . elabWith (fmap pure . (,)) $ check (elabInterfaceDef dname bs os ::: _T)
+          (s, os) <- runModule . elabWith (fmap pure . (,)) $ check (elabInterfaceDef dname bs os ::: Just _T)
           C.DInterface <$> for os (\ (n ::: _T) -> do
             _T' <- apply s _T
             let go fs = \case
@@ -515,7 +509,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
             c <- apply s (go Nil _T')
             pure $ n :=: c ::: _T')
 
-        S.TermDef t -> C.DTerm <$> runModule (elab (check (elabTermDef bs t ::: _T)))
+        S.TermDef t -> C.DTerm <$> runModule (elab (check (elabTermDef bs t ::: Just _T)))
       decls_.ix index .= Decl dname (Just def) _T
 
 
@@ -586,8 +580,8 @@ freeVariable m n = err $ FreeVariable m n
 ambiguousName :: Maybe MName -> DName -> [QName] -> Elab a
 ambiguousName n d qs = err $ AmbiguousName n d qs
 
-expectChecked :: Maybe Type -> String -> Elab Type
-expectChecked t msg = maybe (couldNotSynthesize msg) pure t
+expectChecked :: String -> (Type -> Elab a) -> Maybe Type -> Elab a
+expectChecked msg f = maybe (couldNotSynthesize msg) f
 
 
 -- Patterns
