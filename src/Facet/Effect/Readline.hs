@@ -14,6 +14,8 @@ module Facet.Effect.Readline
 ) where
 
 import Control.Algebra
+import Facet.Pretty
+import Facet.Style
 
 getInputLine :: Has Readline sig m => String -> m (Maybe String)
 getInputLine p = send (GetInputLine p)
@@ -33,5 +35,6 @@ handleInterrupt h m = send (HandleInterrupt h m)
 data Readline m k where
   GetInputLine :: String -> Readline m (Maybe String)
   OutputStr :: String -> Readline m ()
+  OutputDoc :: Doc Style -> Readline m ()
   WithInterrupt :: m a -> Readline m a
   HandleInterrupt :: m a -> m a -> Readline m a
