@@ -428,6 +428,7 @@ lookupD n m@Module{ name = mname, decls } = maybe ((`lookupC` m) =<< unEName n) 
 
 newtype Import = Import { name :: MName }
 
+-- FIXME: keep track of free variables in declarations so we can work incrementally
 data Decl = Decl
   { name  :: DName
   , def   :: Maybe Def
