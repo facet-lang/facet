@@ -191,6 +191,9 @@ data Elim
 data Con a = Con (QName ::: Value) (Stack a)
   deriving (Eq, Foldable, Functor, Ord, Traversable)
 
+instance Eq1 Con where
+  liftEq eq (Con (q1 ::: _) sp1) (Con (q2 ::: _) sp2) = q1 == q2 && liftEq eq sp1 sp2
+
 
 global :: QName ::: Value -> Value
 global = var . Global
