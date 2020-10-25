@@ -24,6 +24,8 @@ module Facet.Pretty
 , setBold
   -- * Re-exports
 , PP.Doc
+, PP.Pretty
+, pretty
 , PP.layoutSmart
 , SGR
 ) where
