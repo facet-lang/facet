@@ -2,6 +2,7 @@ module Facet.Core
 ( -- * Values
   Value(..)
 , compareValue
+, compareDelta
 , Binding(..)
 , Delta(..)
 , Sig(..)
@@ -97,8 +98,7 @@ compareValue d = curry $ \case
   (VCon _, _)                    -> LT
   where
   compareB d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> sig d s1 s2
-  sig d (Sig s1 t1) (Sig s2 t2) = liftCompare (compareD d) s1 s2 <> compareValue d t1 t2
-  compareD d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> liftCompare (compareValue d) sp1 sp2
+  sig d (Sig s1 t1) (Sig s2 t2) = liftCompare (compareDelta d) s1 s2 <> compareValue d t1 t2
   compareH d = curry $ \case
     (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareValue d t1 t2
     (Global _, _)                              -> LT
@@ -119,6 +119,9 @@ compareValue d = curry $ \case
     (PCon _, _)                        -> LT
   compareCon :: (Level -> a -> b -> Ordering) -> Level -> Con Value a -> Con Value b -> Ordering
   compareCon compareValue' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = compare n1 n2 <> compareValue d t1 t2 <> liftCompare (compareValue' d) fs1 fs2
+
+compareDelta :: Level -> Delta -> Delta -> Ordering
+compareDelta d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> liftCompare (compareValue d) sp1 sp2
 
 
 data Binding = Binding
