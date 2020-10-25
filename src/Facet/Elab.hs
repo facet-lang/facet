@@ -547,7 +547,7 @@ data Err = Err
   { span      :: Span
   , reason    :: Reason
   , context   :: Context Type
-  , callStack :: Stack Message
+  , callStack :: Stack Message -- FIXME: keep source references for each message.
   }
 
 data Reason
