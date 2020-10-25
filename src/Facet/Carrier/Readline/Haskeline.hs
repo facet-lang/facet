@@ -51,7 +51,6 @@ instance (Algebra sig m, MonadIO m, MonadMask m) => Algebra (Readline :+: sig) (
   alg hdl sig ctx = case sig of
     L readline -> case readline of
       GetInputLine prompt -> (<$ ctx) <$> ReadlineC (H.getInputLine prompt)
-      OutputStr s         -> (<$ ctx) <$> ReadlineC (H.outputStr s)
       OutputDoc d         -> do
         opts <- liftIO layoutOptionsForTerminal
         (<$ ctx) <$> ReadlineC (H.outputStr (unpack (renderLazy (reAnnotateS terminalStyle (layoutSmart opts d)))))

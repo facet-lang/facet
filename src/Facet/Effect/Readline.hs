@@ -23,7 +23,7 @@ getInputLine :: Has Readline sig m => String -> m (Maybe String)
 getInputLine p = send (GetInputLine p)
 
 outputStr :: Has Readline sig m => String -> m ()
-outputStr s = send (OutputStr s)
+outputStr s = outputDoc (pretty s)
 
 outputStrLn :: Has Readline sig m => String -> m ()
 outputStrLn s = outputStr (s <> "\n")
@@ -42,7 +42,6 @@ handleInterrupt h m = send (HandleInterrupt h m)
 
 data Readline m k where
   GetInputLine :: String -> Readline m (Maybe String)
-  OutputStr :: String -> Readline m ()
   OutputDoc :: Doc Style -> Readline m ()
   WithInterrupt :: m a -> Readline m a
   HandleInterrupt :: m a -> m a -> Readline m a
