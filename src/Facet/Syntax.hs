@@ -40,6 +40,9 @@ instance Bitraversable (:::) where
 instance Eq a => Eq1 ((:::) a) where
   liftEq = liftEq2 (==)
 
+instance Ord a => Ord1 ((:::) a) where
+  liftCompare = liftCompare2 compare
+
 instance Eq2 (:::) where
   liftEq2 eqA eqB (a1 ::: b1) (a2 ::: b2) = eqA a1 a2 && eqB b1 b2
 
