@@ -476,7 +476,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
 
     -- elaborate all the types first
     -- FIXME: do we need to pass the delta to elabTermDef and elabDataDef?
-    es <- for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs delta (ty :=: def)))) -> setSpan s $ do
+    es <- for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs delta (ty :=: def)))) -> traceShow dname $ setSpan s $ do
       _T <- runModule . elab $ check (checkElab (elabTelescope bs delta ty) ::: VType)
 
       defs_ %= (<> [(dname, Nothing ::: _T)])
