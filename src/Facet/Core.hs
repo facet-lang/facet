@@ -71,7 +71,7 @@ data Value
   = VType
   | VInterface
   | VForAll Binding (Value -> Value)
-  | VLam Binding (Value -> Value)
+  | VLam (Pl, UName ::: Sig) (Value -> Value)
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNeut (Var Value) (Stack Elim)
   | VCon (Con Value)
@@ -91,13 +91,15 @@ compareValue d = curry $ \case
   (VInterface, _)                -> LT
   (VForAll t1 b1, VForAll t2 b2) -> compareBinding d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d))
   (VForAll{}, _)                 -> LT
-  (VLam t1 b1, VLam t2 b2)       -> compareBinding d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
+  (VLam t1 b1, VLam t2 b2)       -> compareLBinding d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
   (VLam{}, _)                    -> LT
   (VNeut h1 sp1, VNeut h2 sp2)   -> compareH d h1 h2 <> liftCompare (compareElim d) sp1 sp2
   (VNeut{}, _)                   -> LT
   (VCon c1, VCon c2)             -> compareCon compareValue d c1 c2
   (VCon _, _)                    -> LT
   where
+  compareLBinding :: Level -> (Pl, UName ::: Sig) -> (Pl, UName ::: Sig) -> Ordering
+  compareLBinding d (p1, _ ::: s1) (p2, _ ::: s2) = compare p1 p2 <> compareSig d s1 s2
   compareH d = curry $ \case
     (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareValue d t1 t2
     (Global _, _)                              -> LT
@@ -214,11 +216,11 @@ unForAll' (d, v) = do
   (_T, _B) <- unForAll v
   pure (_T, (succ d, _B (free d)))
 
-unLam :: Has Empty sig m => Value -> m (Binding, Value -> Value)
+unLam :: Has Empty sig m => Value -> m ((Pl, UName ::: Sig), Value -> Value)
 unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 
 -- | A variation on 'unLam' which can be conveniently chained with 'splitr' to strip a prefix of lambdas off their eventual body.
-unLam' :: Has Empty sig m => (Level, Value) -> m (Binding, (Level, Value))
+unLam' :: Has Empty sig m => (Level, Value) -> m ((Pl, UName ::: Sig), (Level, Value))
 unLam' (d, v) = do
   (n, t) <- unLam v
   pure (n, (succ d, t (free d)))
@@ -271,8 +273,8 @@ subst s
   go = \case
     VType       -> VType
     VInterface  -> VInterface
-    VForAll t b -> VForAll (substBinding t) (go . b)
-    VLam    n b -> VLam (substBinding n) (go . b)
+    VForAll t b -> VForAll (binding t) (go . b)
+    VLam    n b -> VLam (lbinding n) (go . b)
     VNeut f a   -> unVar global free (s !) f' `elimN` fmap substElim a
       where
       f' = case f of
@@ -281,7 +283,8 @@ subst s
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
     VCon c      -> VCon (fmap go c)
 
-  substBinding (Binding p n s) = Binding p n (sig s)
+  binding (Binding p n s) = Binding p n (sig s)
+  lbinding (p, n ::: s) = (p, n ::: sig s)
 
   sig (Sig d t) = Sig (Set.map delta d) (go t)
 
@@ -303,7 +306,7 @@ bind target with = go
     VType       -> VType
     VInterface  -> VInterface
     VForAll t b -> VForAll (binding t) (go . b)
-    VLam    n b -> VLam (binding n) (go . b)
+    VLam    n b -> VLam (lbinding n) (go . b)
     VNeut f a   -> unVar global (\ v -> if v == target then with else free v) metavar f' `elimN` fmap elim a
       where
       f' = case f of
@@ -313,6 +316,7 @@ bind target with = go
     VCon c      -> VCon (fmap go c)
 
   binding (Binding p n s) = Binding p n (sig s)
+  lbinding (p, n ::: s) = (p, n ::: sig s)
 
   sig (Sig d t) = Sig (Set.map delta d) (go t)
 
@@ -328,7 +332,7 @@ mvs d = \case
   VType                   -> mempty
   VInterface              -> mempty
   VForAll t b             -> binding d t <> mvs (succ d) (b (free d))
-  VLam t b                -> binding d t <> mvs (succ d) (b (free d))
+  VLam t b                -> lbinding d t <> mvs (succ d) (b (free d))
   VNeut h sp              -> unVar (mvs d . ty) mempty (\ (m ::: _T) -> IntMap.insert (getMeta m) _T (mvs d _T)) h <> foldMap goE sp
     where
     goE = \case
@@ -338,6 +342,7 @@ mvs d = \case
   VCon (Con (_ ::: t) fs) -> mvs d t <> foldMap (mvs d) fs
   where
   binding d (Binding _ _ s) = sig d s
+  lbinding d (_, _ ::: s) = sig d s
   sig d (Sig s t) = foldMap (delta d) s <> mvs d t
   delta d (Delta (_ ::: t) sp) = mvs d t <> foldMap (mvs d) sp
 

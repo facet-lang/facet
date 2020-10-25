@@ -336,7 +336,7 @@ lam n b = Check $ expectChecked "lambda" $ \ _T -> do
   -- FIXME: how does the effect adjustment change this?
   (Binding _ _ (Sig _ _T), _B) <- expectQuantifier "when checking lambda" _T
   b' <- elabBinder $ \ v -> check (b (out n ::: _T) ::: Just (_B v))
-  pure $ VLam (Binding (pl n) (out n) (Sig mempty _T)) b'
+  pure $ VLam (pl n, out n ::: Sig mempty _T) b'
 
 
 elabComp
@@ -368,7 +368,7 @@ elabClauses [((S.Ann _ (S.PVar n)):|ps, b)] = Check $ expectChecked "variable pa
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (Binding pl _ (Sig s _A), _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> n ::: _A |- check (checkElab (maybe (elabExpr b) (elabClauses . pure . (,b)) (nonEmpty ps)) ::: Just (_B v))
-  pure $ VLam (Binding pl n (Sig s _A)) b' ::: _T
+  pure $ VLam (pl, n ::: Sig s _A) b' ::: _T
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
 elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
   rest <- case foldMap partitionClause cs of
@@ -387,7 +387,7 @@ elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
     pure $ case' v cs'
   -- FIXME: something isn’t correctly accounting for the insertion of the lambda.
   -- e.g. the elaboration of fst & snd contain case c { (pair d e) -> c } and case c { (pair d e) -> d } respectively. is the context being extended incorrectly, or not being extended when it should be?
-  pure $ VLam (Binding Ex __ (Sig s _A)) b' ::: _T
+  pure $ VLam (Ex, __ ::: Sig s _A) b' ::: _T
   where
   partitionClause (_:|ps, b) = case ps of
     []   -> XL ()
@@ -496,8 +496,8 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
           C.DData <$> for cs (\ (n ::: _T) -> do
             _T' <- apply s _T
             let go fs = \case
-                  VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
-                  _T            -> VCon (Con (mname :.: C n ::: _T) fs)
+                  VForAll (Binding p n _T) _B -> VLam (p, n ::: _T) (\ v -> go (fs :> v) (_B v))
+                  _T                          -> VCon (Con (mname :.: C n ::: _T) fs)
             c <- apply s (go Nil _T')
             pure $ n :=: c ::: _T')
 
@@ -507,8 +507,8 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
             _T' <- apply s _T
             -- FIXME: this is wrong; we need to represent commands in Value.
             let go fs = \case
-                  VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
-                  _T            -> VCon (Con (mname :.: C n ::: _T) fs)
+                  VForAll (Binding p n _T) _B -> VLam (p, n ::: _T) (\ v -> go (fs :> v) (_B v))
+                  _T                          -> VCon (Con (mname :.: C n ::: _T) fs)
             c <- apply s (go Nil _T')
             pure $ n :=: c ::: _T')
 

@@ -262,7 +262,7 @@ printValue alg = go
       in fn alg vs' (go env' b')
     C.VLam n b ->
       let (vs, (_, b')) = splitr C.unLam' (d, C.VLam n b)
-          binding env (C.Binding p n _T) =
+          binding env (p, n ::: _T) =
             let _T' = sig env _T
             in  (env :> lvar env (P p n ::: _T'), P p (unPl (tintro alg) (intro alg) p n (Level (length env)) ::: Just _T'))
           (env', vs') = mapAccumL binding env vs
