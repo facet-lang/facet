@@ -67,6 +67,7 @@ repl
   $ loop
 
 
+-- FIXME: split general compilation target state out of REPL state.
 data REPL = REPL
   { line           :: Int
   , promptFunction :: Int -> IO String
