@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module Facet.REPL
 ( repl
+, runFile
 , kernel
 ) where
 
@@ -65,6 +66,11 @@ repl
   . evalState (toFlag LogTraces False)
   . runTrace Nil
   $ loop
+
+
+runFile :: FilePath -> IO ()
+runFile _ = do
+  pure ()
 
 
 -- FIXME: split general compilation target state out of REPL state.
