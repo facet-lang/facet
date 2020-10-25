@@ -69,6 +69,7 @@ library
     Facet.Effect.Trace
     Facet.Elab
     Facet.Eval
+    Facet.Flag
     Facet.Graph
     Facet.Name
     Facet.Notice
