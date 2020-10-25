@@ -10,11 +10,12 @@ import           Facet.Context
 import           Facet.Core (Sort(..), sortOf)
 import           Facet.Elab as Elab
 import qualified Facet.Name as N
-import           Facet.Notice
+import           Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print hiding (Hole)
 import           Facet.Source
 import           Facet.Stack
+import           Facet.Style
 import           Facet.Syntax
 import           Prelude hiding (unlines)
 import           Prettyprinter (reAnnotate)
@@ -22,10 +23,10 @@ import           Silkscreen
 
 -- Elaboration
 
-rethrowElabErrors :: Source -> (Print.Highlight -> other) -> L.ThrowC (Notice other) Err m a -> m a
-rethrowElabErrors src mapAnn = L.runThrow $ \ Err{ span, reason, context } ->
+rethrowElabErrors :: Source -> L.ThrowC (Notice Style) Err m a -> m a
+rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context } ->
   let (_, _, printCtx, ctx) = foldl combine (0, Nil, Nil, Nil) (elems context)
-  in Notice (Just Error) (slice src span) (reAnnotate mapAnn (printReason printCtx reason)) (toList ctx)
+  in Notice.Notice (Just Error) (slice src span) (reAnnotate Code (printReason printCtx reason)) (toList ctx)
   where
   combine (d, sort, print, ctx) (n ::: _T) =
     let s = sortOf sort _T
@@ -33,7 +34,7 @@ rethrowElabErrors src mapAnn = L.runThrow $ \ Err{ span, reason, context } ->
     in  ( succ d
         , sort  :> s
         , print :> n'
-        , ctx   :> reAnnotate mapAnn (getPrint (ann (n' ::: printValue surface print _T))) )
+        , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printValue surface print _T))) )
   name = \case
     STerm -> intro
     _     -> tintro

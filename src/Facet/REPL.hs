@@ -246,7 +246,7 @@ loadModule name path src imports = do
   graph <- use modules_
   let ops = foldMap (operators . snd <=< (`lookupM` graph)) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
-  m <- rethrowElabErrors src Code . runReader graph $ Elab.elabModule m
+  m <- rethrowElabErrors src . runReader graph $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)
   pure m
 
@@ -290,7 +290,7 @@ elab :: Has (State REPL) sig m => Source -> I.ThrowC (Notice.Notice Style) Elab.
 elab src m = do
   graph <- use modules_
   localDefs <- use localDefs_
-  runReader (span src) . runReader graph . runReader localDefs . rethrowElabErrors src Code $ m
+  runReader (span src) . runReader graph . runReader localDefs . rethrowElabErrors src $ m
 
 
 -- | Compose a getter onto the input of a Kleisli arrow and run it on the 'State'.
