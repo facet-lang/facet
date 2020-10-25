@@ -37,6 +37,9 @@ instance Bifunctor (:::) where
 instance Bitraversable (:::) where
   bitraverse f g (a ::: b) = (:::) <$> f a <*> g b
 
+instance Eq2 (:::) where
+  liftEq2 eqA eqB (a1 ::: b1) (a2 ::: b2) = eqA a1 a2 && eqB b1 b2
+
 tm :: a ::: b -> a
 tm (a ::: _) = a
 
