@@ -250,7 +250,7 @@ explicit = surface
 
 -- Core printers
 
-printValue :: Algebra p -> Stack p -> C.Value -> p
+printValue :: Algebra Print -> Stack Print -> C.Value -> Print
 printValue alg = go
   where
   go env = \case
@@ -302,7 +302,7 @@ printValue alg = go
       in ((env', pcon alg (ann' alg (bimap (var alg . qvar) (go env) n)) p'), C.PCon (C.Con n ps'))
   subpatterns env ps = mapAccumL (\ (env', ps) p -> let ((env'', v), p') = pat env' p in ((env'', ps:>v), p')) (env, Nil) ps
 
-printModule :: Algebra p -> C.Module -> p
+printModule :: Algebra Print -> C.Module -> Print
 printModule alg (C.Module mname is _ ds) = module_ alg
   $   mname
   ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module")))))
