@@ -70,7 +70,7 @@ prettyNotice (Notice level (Source path span _ (line:|_)) reason context) = conc
     [ annotate Gutter (pretty '|') <+> prettyLine line
     , annotate Gutter (pretty '|') <+> padding span <> annotate Caret (caret (lineLength line) span)
     ])
-  : map (P.reAnnotate Context) context)
+  : (context >>= \ ctx -> [ mempty, P.reAnnotate Context ctx ]))
   where
   prettySpan (Span.Span start end)
     | start == end                     = pos start
