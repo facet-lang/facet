@@ -65,6 +65,7 @@ library
     Facet.Diff
     Facet.Effect.Parser
     Facet.Effect.Readline
+    Facet.Effect.Trace
     Facet.Elab
     Facet.Eval
     Facet.Graph
