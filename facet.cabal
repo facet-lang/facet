@@ -59,6 +59,7 @@ library
     Facet.Carrier.Readline.Haskeline
     Facet.Carrier.State.Lens
     Facet.Carrier.Throw.Inject
+    Facet.Carrier.Trace.REPL
     Facet.CLI
     Facet.Context
     Facet.Core
