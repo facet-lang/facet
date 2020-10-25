@@ -104,10 +104,10 @@ defaultREPLState = REPL
   modules = singleton Nothing kernel
 
 defaultPromptFunction :: Int -> IO String
-defaultPromptFunction _ = pure $ setTitleCode "facet" <> cyan <> "λ " <> plain
+defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ " <> plain
   where
-  cyan = setSGRCode [setRGB (hsl 180 1 0.5)]
-  plain = setSGRCode []
+  cyan = setSGRCode [setRGB (hsl 180 1 0.5)] <> "\STX"
+  plain = setSGRCode [] <> "\STX"
 
 
 kernel :: Module
