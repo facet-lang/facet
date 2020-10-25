@@ -97,6 +97,7 @@ data Def
 data Module = Module
   { name      :: MName
   , imports   :: [Ann Import]
+  -- FIXME: store source references for operators’ definitions, for error reporting
   , operators :: [(Op, Assoc)]
   , defs      :: [Ann (DName, Ann Decl)]
   }
