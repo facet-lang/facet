@@ -444,7 +444,8 @@ elabInterfaceDef
   -> [S.Ann S.Binding]
   -> [S.Ann (UName ::: S.Ann S.Type)]
   -> Check [UName ::: Type]
-elabInterfaceDef _ bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> setSpan (S.ann t) (wrap (end (S.ann t)) (checkElab (elabExpr t)))
+elabInterfaceDef _ bindings constructors = for constructors $ withSpan $ \ (n ::: t) ->
+  (n :::) <$> setSpan (S.ann t) (wrap (end (S.ann t)) (checkElab (elabExpr t)))
   where
   wrap end = flip (foldr (\ (S.Ann s (S.Binding _ ns _)) k ->
     setSpan (Span (start s) end) $ foldr (\ n k -> Check $ expectChecked "interface" $ \ _T -> do
