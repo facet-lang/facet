@@ -152,6 +152,9 @@ data Pl_ a = P
 instance Eq1 Pl_ where
   liftEq eq (P p1 a1) (P p2 a2) = p1 == p2 && eq a1 a2
 
+instance Ord1 Pl_ where
+  liftCompare compare' (P p1 a1) (P p2 a2) = compare p1 p2 <> compare' a1 a2
+
 unPl_ :: (a -> b) -> (a -> b) -> Pl_ a -> b
 unPl_ im ex = unPl im ex . pl <*> out
 
