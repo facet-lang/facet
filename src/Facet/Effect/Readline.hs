@@ -5,6 +5,8 @@ module Facet.Effect.Readline
 , getInputLine
 , outputStr
 , outputStrLn
+, outputDoc
+, outputDocLn
 , withInterrupt
 , handleInterrupt
   -- * Re-exports
@@ -25,6 +27,12 @@ outputStr s = send (OutputStr s)
 
 outputStrLn :: Has Readline sig m => String -> m ()
 outputStrLn s = outputStr (s <> "\n")
+
+outputDoc :: Has Readline sig m => Doc Style -> m ()
+outputDoc s = send (OutputDoc s)
+
+outputDocLn :: Has Readline sig m => Doc Style -> m ()
+outputDocLn s = outputDoc (s <> pretty "\n")
 
 withInterrupt :: Has Readline sig m => m a -> m a
 withInterrupt m = send (WithInterrupt m)
