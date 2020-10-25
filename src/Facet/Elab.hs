@@ -438,10 +438,11 @@ elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) ->
 
 elabInterfaceDef
   :: HasCallStack
-  => [S.Ann S.Binding]
+  => DName
+  -> [S.Ann S.Binding]
   -> [S.Ann (UName ::: S.Ann S.Type)]
   -> Check [UName ::: Type]
-elabInterfaceDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> setSpan (S.ann t) (wrap (end (S.ann t)) (checkElab (elabExpr t)))
+elabInterfaceDef _ bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> setSpan (S.ann t) (wrap (end (S.ann t)) (checkElab (elabExpr t)))
   where
   wrap end = flip (foldr (\ (S.Ann s (S.Binding _ ns _ _)) k ->
     setSpan (Span (start s) end) $ foldr (\ n k -> Check $ \ _T -> do
@@ -498,7 +499,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
             pure $ n :=: c ::: _T')
 
         S.InterfaceDef os -> do
-          (s, os) <- runModule . elabWith (fmap pure . (,)) $ check (elabInterfaceDef bs os ::: _T)
+          (s, os) <- runModule . elabWith (fmap pure . (,)) $ check (elabInterfaceDef dname bs os ::: _T)
           C.DInterface <$> for os (\ (n ::: _T) -> do
             _T' <- apply s _T
             let go fs = \case
