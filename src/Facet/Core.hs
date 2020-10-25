@@ -432,6 +432,7 @@ decls_ = lens decls (\ m decls -> m{ decls })
 lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Value)
 lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef decls
   where
+  -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
   matchDef (Decl _ d     _)  = d >>= unDData >>= matchWith matchCon
   matchCon (n' :=: v ::: _T) = (name :.: C n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
