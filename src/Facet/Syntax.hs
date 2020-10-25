@@ -40,6 +40,9 @@ instance Bitraversable (:::) where
 instance Eq2 (:::) where
   liftEq2 eqA eqB (a1 ::: b1) (a2 ::: b2) = eqA a1 a2 && eqB b1 b2
 
+instance Ord2 (:::) where
+  liftCompare2 compareA compareB (a1 ::: b1) (a2 ::: b2) = compareA a1 a2 <> compareB b1 b2
+
 tm :: a ::: b -> a
 tm (a ::: _) = a
 
