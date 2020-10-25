@@ -45,6 +45,7 @@ module Facet.Core
 , Decl(..)
 , Def(..)
 , unDData
+, unDInterface
 ) where
 
 import           Control.Effect.Empty
@@ -462,6 +463,11 @@ unDData :: Has Empty sig m => Def -> m [UName :=: Value ::: Value]
 unDData = \case
   DData cs -> pure cs
   _        -> empty
+
+unDInterface :: Has Empty sig m => Def -> m [UName :=: Value ::: Value]
+unDInterface = \case
+  DInterface cs -> pure cs
+  _             -> empty
 
 
 matchWith :: Foldable t => (a -> Maybe b) -> t a -> Maybe b
