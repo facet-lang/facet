@@ -47,6 +47,7 @@ import           Text.Parser.Token.Style
 -- resolve module-local definitions in the parser
 -- resolve imported definitions in the parser
 
+-- FIXME: allow operators to be introduced and scoped locally
 runFacet :: Functor m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
 runFacet ops (Facet m) = evalState ops m
 
