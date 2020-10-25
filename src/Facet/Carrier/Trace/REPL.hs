@@ -23,6 +23,6 @@ newtype TraceC m a = TraceC { runTraceC :: ReaderC (Stack String) m a }
 
 instance Has Readline sig m => Algebra (Trace :+: sig) (TraceC m) where
   alg hdl sig ctx = TraceC $ ReaderC $ \ stack -> case sig of
-    L (Trace msg m) -> outputStrLn msg *> runReader (stack:>msg) (runTraceC (hdl (m <$ ctx)))
+    L (Trace msg m) -> outputStrLn (replicate (length stack * 2) ' ' <> msg) *> runReader (stack:>msg) (runTraceC (hdl (m <$ ctx)))
     L CallStack     -> pure (stack <$ ctx)
     R other         -> alg (runReader stack . runTraceC . hdl) other ctx
