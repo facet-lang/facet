@@ -301,7 +301,7 @@ elabExpr = withSpan' $ \case
   check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
 -- FIXME: elaborate the signature.
-elabSig :: S.Ann (S.Sig S.Expr) -> Maybe Type -> Elab (Type ::: Type)
+elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Maybe Type -> Elab (Type ::: Type)
 elabSig = withSpan' $ \ (S.Sig _ t) -> elabExpr t
 
 elabTelescope :: [S.Ann S.Binding] -> [S.Ann S.Delta] -> S.Ann S.Type -> Maybe Type -> Elab (Type ::: Type)
