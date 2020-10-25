@@ -20,7 +20,6 @@ argumentsParser = info
 
 -- TODO:
 -- - format
--- - run
 -- - build
 -- - diff
 commands :: Mod CommandFields (IO ())
