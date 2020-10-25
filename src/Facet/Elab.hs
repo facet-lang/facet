@@ -110,7 +110,7 @@ synthElab m = Synth (runCheck m Nothing)
 
 
 unify :: Type :===: Type -> Elab Type
-unify = \case
+unify = trace "unify" . \case
   -- FIXME: this is missing a lot of cases
   VType                 :===: VType                 -> pure VType
   VInterface            :===: VInterface            -> pure VInterface
@@ -172,7 +172,7 @@ instantiate (e ::: _T) = case unForAll _T of
 switch
   :: Synth Value
   -> Check (Value ::: Type)
-switch (Synth m) = Check $ \case
+switch (Synth m) = Check $ trace "switch" . \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify (_K' :===: _K)
   _       -> m
 
@@ -292,19 +292,19 @@ elabExpr
 elabExpr = withSpan $ \case
   S.Var m n     -> switch $ var m n
   S.Hole  n     -> hole n
-  S.Type        -> switch _Type
-  S.Interface   -> switch _Interface
-  S.ForAll bs s -> elabTelescope bs (elabSig s)
+  S.Type        -> trace "Type" $ switch _Type
+  S.Interface   -> trace "Interface" $ switch _Interface
+  S.ForAll bs s -> trace "forall" $ elabTelescope bs (elabSig s)
   S.App f a     -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
   S.Comp cs     -> elabComp cs
 
 -- FIXME: elaborate the signature.
 elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check (Type ::: Type)
-elabSig = withSpan $ \ (S.Sig _ t) -> elabExpr t
+elabSig = withSpan $ \ (S.Sig _ t) -> trace "elabSig" $ elabExpr t
 
 elabTelescope :: [S.Ann S.Binding] -> Check (Type ::: Type) -> Check (Type ::: Type)
-elabTelescope bindings body = foldr (\ (S.Ann s (S.Binding p ns t)) b ->
-  local (\ s' -> s'{ start = start s }) $ foldr (\ n k ->
+elabTelescope bindings body = trace "telescope" $ foldr (\ (S.Ann s (S.Binding p ns t)) b ->
+  local (\ s' -> s'{ start = start s }) $ foldr (\ n k -> tracePretty n $
     switch $ P p n ::: checkElab (elabSig t) >~> \ v -> v |- checkElab k) b ns) body bindings
 
 
@@ -319,7 +319,7 @@ _Interface = Synth $ pure $ VInterface ::: VType
   :: (Pl_ UName ::: Check Type)
   -> (UName ::: Type -> Check Type)
   -> Synth Type
-(n ::: t) >~> b = Synth $ do
+(n ::: t) >~> b = Synth $ trace ">~>" $ do
   _T <- check (t ::: Just VType)
   b' <- elabBinder $ \ _ -> check (b (out n ::: _T) ::: Just VType)
   pure $ VForAll (Binding (pl n) (out n) (Sig mempty _T)) b' ::: VType
