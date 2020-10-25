@@ -1,2 +1,6 @@
 module Facet.Carrier.Trace.REPL
-() where
+( -- * Trace effect
+  module Facet.Effect.Trace
+) where
+
+import Facet.Effect.Trace
