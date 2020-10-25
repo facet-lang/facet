@@ -8,6 +8,7 @@ module Facet.Elab
 , Elab(..)
 , elab
 , elabWith
+, Check'(..)
 , Check(..)
 , Synth(..)
 , check
@@ -90,6 +91,9 @@ elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+
 elabWith f = runSubstWith f . runContext . runElab
 
 
+newtype Check' a = Check' { runCheck' :: Maybe Type -> Elab a }
+  deriving (Algebra (Reader (Maybe Type) :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC (Maybe Type) Elab
+
 newtype Check a = Check { runCheck :: Type -> Elab a }
   deriving (Algebra (Reader Type :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC Type Elab
 
@@ -102,11 +106,11 @@ check :: (Check a ::: Type) -> Elab a
 check (m ::: _T) = runCheck m _T
 
 
-checkElab :: (Maybe Type -> Elab (a ::: Type)) -> Check a
-checkElab f = tm <$> Check (f . Just)
+checkElab :: Check' (a ::: Type) -> Check a
+checkElab m = tm <$> Check (runCheck' m . Just)
 
-synthElab :: (Maybe Type -> Elab (a ::: Type)) -> Synth a
-synthElab f = Synth (f Nothing)
+synthElab :: Check' (a ::: Type) -> Synth a
+synthElab m = Synth (runCheck' m Nothing)
 
 
 unify :: Type :===: Type -> Elab Type
@@ -171,9 +175,8 @@ instantiate (e ::: _T) = case unForAll _T of
 
 switch
   :: Synth Value
-  -> Maybe Type
-  -> Elab (Value ::: Type)
-switch (Synth m) = \case
+  -> Check' (Value ::: Type)
+switch (Synth m) = Check' $ \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify (_K' :===: _K)
   _       -> m
 
@@ -289,9 +292,8 @@ infix 1 |-*
 elabExpr
   :: HasCallStack
   => S.Ann S.Expr
-  -> Maybe Type
-  -> Elab (Expr ::: Type)
-elabExpr = withSpan' $ \case
+  -> Check' (Expr ::: Type)
+elabExpr = withSpan $ \case
   S.Var m n     -> switch $ var m n
   S.Hole  n     -> check (hole n) "hole"
   S.Type        -> switch _Type
@@ -300,15 +302,15 @@ elabExpr = withSpan' $ \case
   S.App f a     -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
   S.Comp cs     -> check (elabComp cs) "computation"
   where
-  check m msg _T = expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
+  check m msg = Check' $ \ _T -> expectChecked _T msg >>= \ _T -> (::: _T) <$> runCheck m _T
 
 -- FIXME: elaborate the signature.
-elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Maybe Type -> Elab (Type ::: Type)
-elabSig = withSpan' $ \ (S.Sig _ t) -> elabExpr t
+elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check' (Type ::: Type)
+elabSig = withSpan $ \ (S.Sig _ t) -> elabExpr t
 
-elabTelescope :: [S.Ann S.Binding] -> (Maybe Type -> Elab (Type ::: Type)) -> Maybe Type -> Elab (Type ::: Type)
+elabTelescope :: [S.Ann S.Binding] -> Check' (Type ::: Type) -> Check' (Type ::: Type)
 elabTelescope bindings body = foldr (\ (S.Ann s (S.Binding p ns t)) b ->
-  local (\ s' -> s'{ start = start s }) . foldr (\ n k ->
+  local (\ s' -> s'{ start = start s }) $ foldr (\ n k ->
     switch $ P p n ::: checkElab (elabSig t) >~> \ v -> v |- checkElab k) b ns) body bindings
 
 
@@ -543,9 +545,6 @@ setSpan = local . const
 
 withSpan :: Has (Reader Span) sig m => (a -> m b) -> S.Ann a -> m b
 withSpan k (S.Ann s a) = setSpan s (k a)
-
-withSpan' :: Has (Reader Span) sig m => (a -> b -> m c) -> S.Ann a -> b -> m c
-withSpan' k (S.Ann s a) b = setSpan s (k a b)
 
 
 data Err = Err

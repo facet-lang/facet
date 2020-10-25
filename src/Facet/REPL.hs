@@ -208,12 +208,12 @@ removeTarget targets = Action $ \ _ -> targets_ %= (Set.\\ Set.fromList targets)
 
 showType :: S.Ann S.Expr -> Action
 showType e = Action $ \ src -> do
-  e ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
+  e ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.runCheck' (Elab.elabExpr e) Nothing)
   outputDocLn (prettyCode (ann (printValue surface Nil e ::: printValue surface Nil (generalize _T))))
 
 showEval :: S.Ann S.Expr -> Action
 showEval e = Action $ \ src -> do
-  e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.elabExpr e Nothing)
+  e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> (:::) <$> Elab.apply s e <*> Elab.apply s _T) (Elab.runCheck' (Elab.elabExpr e) Nothing)
   e'' <- elab src $ eval (generalize e')
   outputDocLn (prettyCode (ann (printValue surface Nil e'' ::: printValue surface Nil (generalize _T))))
 
