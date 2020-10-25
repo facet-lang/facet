@@ -4,6 +4,7 @@ module Facet.Effect.Trace
   trace
 , tracePretty
 , callStack
+, Message
 , Trace(..)
   -- * Re-exports
 , Algebra
@@ -26,6 +27,8 @@ tracePretty = trace . pretty
 callStack :: Has Trace sig m => m (Stack (Doc Style))
 callStack = send CallStack
 
+type Message = Doc Style
+
 data Trace m k where
-  Trace :: Doc Style -> m a -> Trace m a
-  CallStack :: Trace m (Stack (Doc Style))
+  Trace :: Message -> m a -> Trace m a
+  CallStack :: Trace m (Stack Message)
