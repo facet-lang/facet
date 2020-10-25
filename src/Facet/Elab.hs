@@ -396,8 +396,8 @@ elabPattern
   :: S.Ann S.Pattern
   -> Check (C.Pattern Type (UName ::: Type))
 elabPattern = withSpan $ \case
-  S.PVar n      -> Check $ \ _T -> pure (C.PVar (n ::: _T))
-  S.PCon n ps   -> Check $ \ _T -> do
+  S.PVar n    -> Check $ \ _T -> pure (C.PVar (n ::: _T))
+  S.PCon n ps -> Check $ \ _T -> do
     let inst _T = case unForAll _T of
           Just (Binding Im _ _ _T, _B) -> do
             m <- metavar <$> meta _T
@@ -417,7 +417,7 @@ elabPattern = withSpan $ \case
     q ::: _T' <- synth (resolveC n)
     _T'' <- inst _T'
     C.PCon . Con (q ::: _T'') . fromList <$> go _T'' (toList ps)
-  S.PEff{}      -> error "TBD"
+  S.PEff{}    -> error "TBD"
 
 
 -- Declarations
