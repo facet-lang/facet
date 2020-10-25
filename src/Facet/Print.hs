@@ -176,14 +176,11 @@ data Algebra p = Algebra
     -> p
   , app :: p -> Stack (Pl_ p) -> p
   , hole :: UName -> p
-  , _Type :: p
-  , _Interface :: p
   , tcomp :: [p] -> p -> p
   , ann' :: (p ::: p) -> p
   , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
   , pcon     :: p -> Stack p -> p
   , peff     :: p -> Stack p -> p -> p
-  , tuple    :: [p] -> p
   , decl :: p ::: p -> p
   , defn :: p :=: p -> p
   , data' :: [p] -> p
@@ -213,8 +210,6 @@ surface = Algebra
     _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
   , app = \ f as -> group f $$* fmap (group . unPl_ braces id) as
   , hole = \ n -> annotate (Hole (Meta 0)) $ pretty '?' <> pretty n
-  , _Type = annotate Type $ pretty "Type"
-  , _Interface = annotate Type $ pretty "Interface"
   , tcomp = \ s t -> case s of
     [] -> t
     _  -> brackets (commaSep s) <+> t
@@ -222,7 +217,6 @@ surface = Algebra
   , case' = \ s ps -> align . group $ pretty "case" <+> setPrec Expr s </> block (concatWith (surround (hardline <> comma <> space)) (map (group . (\ (p, b) -> align (embed (prec Pattern p </> arrow) </> b))) ps))
   , pcon = \ n ps -> parens (hsep (annotate Con n:toList ps))
   , peff = \ n ps k -> brackets (hsep (annotate Con n:toList ps) <+> semi <+> k)
-  , tuple = tupled
   , decl = ann
   , defn = \ (a :=: b) -> group a <> hardline <> group b
   , data' = block . group . concatWith (surround (hardline <> comma <> space)) . map group
@@ -254,8 +248,8 @@ printValue :: Algebra Print -> Stack Print -> C.Value -> Print
 printValue alg = go
   where
   go env = \case
-    C.VType -> _Type alg
-    C.VInterface -> _Interface alg
+    C.VType -> annotate Type $ pretty "Type"
+    C.VInterface -> annotate Type $ pretty "Interface"
     C.VForAll t b ->
       let (vs, (_, b')) = splitr C.unForAll' (d, C.VForAll t b)
           binding env (C.Binding p n s _T) =
