@@ -396,6 +396,12 @@ instance Eq1 Pattern where
   liftEq eq (PCon c1) (PCon c2) = liftEq (liftEq eq) c1 c2
   liftEq _  PCon{}    _         = False
 
+instance Ord1 Pattern where
+  liftCompare compare' (PVar v1) (PVar v2) = compare' v1 v2
+  liftCompare _        PVar{}    _         = LT
+  liftCompare compare' (PCon c1) (PCon c2) = liftCompare (liftCompare compare') c1 c2
+  liftCompare _        PCon{}    _         = LT
+
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)
 
