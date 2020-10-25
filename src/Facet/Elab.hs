@@ -505,6 +505,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
           (s, os) <- runModule . elabWith (fmap pure . (,)) $ elabInterfaceDef (dname ::: _T) os
           C.DInterface <$> for os (\ (n ::: _T) -> do
             _T' <- apply s _T
+            -- FIXME: this is wrong; we need to represent commands in Value.
             let go fs = \case
                   VForAll _T _B -> VLam _T (\ v -> go (fs :> v) (_B v))
                   _T            -> VCon (Con (mname :.: C n ::: _T) fs)
