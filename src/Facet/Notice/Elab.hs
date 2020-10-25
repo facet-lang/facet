@@ -26,7 +26,10 @@ import           Silkscreen
 rethrowElabErrors :: Source -> L.ThrowC (Notice Style) Err m a -> m a
 rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context, callStack } ->
   let (_, _, printCtx, ctx) = foldl combine (0, Nil, Nil, Nil) (elems context)
-  in Notice.Notice (Just Error) (slice src span) (reAnnotate Code (printReason printCtx reason)) (toList ctx <> toList callStack)
+  in Notice.Notice (Just Error) (slice src span) (reAnnotate Code (printReason printCtx reason))
+    [ nest 2 (pretty "Bindings" <\> concatWith (surround hardline) (toList ctx))
+    , nest 2 (pretty "Trace" <\> concatWith (surround hardline) (toList callStack))
+    ]
   where
   combine (d, sort, print, ctx) (n ::: _T) =
     let s = sortOf sort _T
