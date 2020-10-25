@@ -333,6 +333,9 @@ mvs d = \case
   delta d (Delta (_ ::: t) sp) = mvs d t <> foldMap (mvs d) sp
 
 
+-- FIXME: this seems to break multiple binders, e.g. pair:
+-- pair {?A} {?B} : { _A : Type } -> { _B : Type } -> _A -> _A -> Pair _A _A
+-- (vs. non-generalized: pair {?A} {?B} : ?A -> ?B -> Pair ?A ?B)
 generalize :: Value -> Value
 generalize v = build s v
   where
