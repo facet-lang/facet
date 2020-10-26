@@ -34,11 +34,11 @@ import           Control.Carrier.Error.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Empty
-import           Control.Effect.Lens ((%=), (.=))
+import           Control.Effect.Lens ((.=))
 import           Control.Effect.Sum
-import           Control.Lens (ifor_, ix)
+import           Control.Lens (at, ix)
 import           Data.Bifunctor (first)
-import           Data.Foldable (foldl')
+import           Data.Foldable (foldl', for_)
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import qualified Data.Set as Set
@@ -469,7 +469,7 @@ elabModule
   .  (HasCallStack, Has (Reader Graph) sig m, Has (Throw Err) sig m, Has Trace sig m)
   => S.Ann S.Module
   -> m C.Module
-elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os []) . runReader s $ tracePretty mname $ do
+elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader s $ tracePretty mname $ do
   let (importedNames, imports) = mapAccumL (\ names (S.Ann _ _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
   imports_ .= imports
 
@@ -481,12 +481,12 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl bs sig def))) -> tracePretty dname $ setSpan s $ do
       _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig sig)) ::: Just VType)
 
-      decls_ %= (<> [Decl dname Nothing _T])
+      decls_.at dname .= Just (Decl dname Nothing _T)
 
       pure (S.ann sig, dname, (bs, def) ::: _T)
 
     -- then elaborate the terms
-    trace "definitions" $ ifor_ es $ \ index (s, dname, (bs, def) ::: _T) -> setSpan s $ tracePretty dname $ do
+    trace "definitions" $ for_ es $ \ (s, dname, (bs, def) ::: _T) -> setSpan s $ tracePretty dname $ do
       def <- case def of
         S.DataDef cs -> do
           (s, cs) <- runModule . elabWith (fmap pure . (,)) $ elabDataDef (dname ::: _T) cs
@@ -510,7 +510,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
             pure $ n :=: c ::: _T')
 
         S.TermDef t -> C.DTerm <$> runModule (elab (check (elabTermDef bs t ::: Just _T)))
-      decls_.ix index .= Decl dname (Just def) _T
+      decls_.ix dname .= Decl dname (Just def) _T
 
 
 -- | Apply the substitution to the value.

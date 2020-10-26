@@ -274,7 +274,7 @@ printModule :: Algebra Print -> C.Module -> Print
 printModule alg (C.Module mname is _ ds) = module_ alg
   $   mname
   ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module")))))
-  :=: (map (\ (C.Import n) -> import' alg n) is, map def ds)
+  :=: (map (\ (C.Import n) -> import' alg n) is, map def (toList ds))
   where
   def (C.Decl n Nothing  t) = decl alg
     $   var alg (Global (Just mname) n)

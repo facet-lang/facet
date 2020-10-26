@@ -52,9 +52,10 @@ module Facet.Core
 
 import           Control.Effect.Empty
 import           Control.Lens (Lens', lens)
-import           Data.Foldable (find, foldl', toList)
+import           Data.Foldable (foldl', toList)
 import           Data.Functor.Classes
 import qualified Data.IntMap as IntMap
+import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Data.Monoid (First(..))
 import           Data.Semialign
@@ -215,9 +216,7 @@ unForAll = \case{ VForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unForAll' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
 unForAll' :: Has Empty sig m => (Level, Value) -> m (Binding, (Level, Value))
-unForAll' (d, v) = do
-  (_T, _B) <- unForAll v
-  pure (_T, (succ d, _B (free d)))
+unForAll' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unForAll v
 
 unLam :: Has Empty sig m => Value -> m (Pl, [Clause])
 unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
@@ -393,7 +392,7 @@ data Module = Module
   -- FIXME: record source references to operators to contextualize parse errors.
   , operators :: [(Op, Assoc)]
   -- FIXME: record source references to definitions to contextualize ambiguous name errors.
-  , decls     :: [Decl]
+  , decls     :: Map.Map DName Decl
   }
 
 name_ :: Lens' Module MName
@@ -402,23 +401,23 @@ name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
 imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })
 
-decls_ :: Lens' Module [Decl]
+decls_ :: Lens' Module (Map.Map DName Decl)
 decls_ = lens decls (\ m decls -> m{ decls })
 
 
 -- FIXME: produce multiple results, if they exist.
 lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Value)
-lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef decls
+lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
-  matchDef (Decl _ d     _)  = d >>= unDData >>= matchWith matchCon
+  matchDef (Decl _ d     _)  = maybe empty pure d >>= unDData >>= matchWith matchCon
   matchCon (n' :=: v ::: _T) = (name :.: C n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Value)
 lookupD (C n) m = lookupC n m
 lookupD n m@Module{ name = mname, decls } = maybe ((`lookupC` m) =<< unEName n) pure $ do
-  Decl _ d _T <- find ((n ==) . (name :: Decl -> DName)) decls
+  Decl _ d _T <- Map.lookup n decls
   pure $ mname :.: n :=: d ::: _T
 
 
