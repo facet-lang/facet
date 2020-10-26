@@ -8,7 +8,6 @@ module Facet.Print
   -- * Algebras
 , Algebra(..)
 , surface
-, explicit
   -- * Core printers
 , printValue
 , printModule
@@ -215,16 +214,6 @@ surface = Algebra
     pretty '_' <> f (getLevel d)
   else
     pretty n
-
--- FIXME: elide unused vars
-explicit :: Algebra Print
-explicit = surface
-  { var = printVar name
-  , tintro = name upper
-  , intro = name lower
-  }
-  where
-  name f _ d = setPrec Var (annotate (Name d) (cons d (f (getLevel d))))
 
 
 -- Core printers
