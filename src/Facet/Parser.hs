@@ -297,49 +297,19 @@ opChar :: CharParsing p => p Char
 opChar = oneOfSet (CharSet.difference (Unicode.punctuation <> Unicode.symbol) (CharSet.fromList "(){}"))
 
 dnameStyle :: CharParsing p => IdentifierStyle p
-dnameStyle = IdentifierStyle
-  "declaration name"
-  (lower <|> char '_')
-  nameChar
-  declarationReserved
-  Identifier
-  ReservedIdentifier
+dnameStyle = IdentifierStyle "declaration name" (lower <|> char '_') nameChar declarationReserved Identifier ReservedIdentifier
 
 enameStyle :: CharParsing p => IdentifierStyle p
-enameStyle = IdentifierStyle
-  "name"
-  (lower <|> char '_')
-  nameChar
-  reserved
-  Identifier
-  ReservedIdentifier
+enameStyle = IdentifierStyle "name" (lower <|> char '_') nameChar reserved Identifier ReservedIdentifier
 
 onameStyle :: CharParsing p => IdentifierStyle p
-onameStyle = IdentifierStyle
-  "operator"
-  opChar
-  opChar
-  mempty
-  Highlight.Operator
-  ReservedOperator
+onameStyle = IdentifierStyle "operator" opChar opChar mempty Highlight.Operator ReservedOperator
 
 cnameStyle :: CharParsing p => IdentifierStyle p
-cnameStyle = IdentifierStyle
-  "constructor name"
-  lower
-  nameChar
-  reserved
-  Constructor
-  ReservedConstructor
+cnameStyle = IdentifierStyle "constructor name" lower nameChar reserved Constructor ReservedConstructor
 
 tnameStyle :: CharParsing p => IdentifierStyle p
-tnameStyle = IdentifierStyle
-  "type name"
-  upper
-  nameChar
-  reserved
-  Identifier
-  ReservedIdentifier
+tnameStyle = IdentifierStyle "type name" upper nameChar reserved Identifier ReservedIdentifier
 
 
 arrow :: TokenParsing p => p String
