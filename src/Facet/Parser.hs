@@ -52,7 +52,7 @@ runFacet :: Applicative m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
 runFacet ops (Facet m) = evalState ops m
 
 newtype Facet m a = Facet (StateC [Operator (S.Ann S.Expr)] m a)
-  deriving (Algebra (State [Operator (S.Ann S.Expr)] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail) via StateC [Operator (S.Ann S.Expr)] m
+  deriving (Algebra (State [Operator (S.Ann S.Expr)] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail)
 
 instance (Monad p, Parsing p) => Parsing (Facet p) where
   try (Facet m) = Facet $ StateC $ \ k s -> try (runState k s m)
