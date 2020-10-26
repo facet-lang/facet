@@ -92,6 +92,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - How do we specify exports?
 
+  - Export nothing by default.
+
 - Are modules “just” records?
 
 - Datatypes and interfaces should introduce local modules, preserved on export.
