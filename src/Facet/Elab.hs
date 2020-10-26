@@ -435,7 +435,7 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
 
 elabDataDef
   :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
-  => (QName ::: Type)
+  => QName ::: Type
   -> [S.Ann (UName ::: S.Ann S.Type)]
   -> m [(DName, Decl)]
 -- FIXME: check that all constructors return the datatype.
