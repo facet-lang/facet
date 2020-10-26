@@ -475,16 +475,15 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl bs (S.Ann s' _ sig@(S.Sig delta (ty :=: def)))))) -> tracePretty dname $ setSpan s $ do
-      -- FIXME: rebuilding the surface signature seems weird.
-      _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig (S.Ann s' Nil sig{ S.type' = ty }))) ::: Just VType)
+    es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl bs (S.Ann s' _ (sig :=: def))))) -> tracePretty dname $ setSpan s $ do
+      _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig (S.Ann s' Nil sig))) ::: Just VType)
 
       decls_ %= (<> [Decl dname Nothing _T])
 
-      pure (s', dname, (bs, delta, def) ::: _T)
+      pure (s', dname, (bs, def) ::: _T)
 
     -- then elaborate the terms
-    trace "definitions" $ ifor_ es $ \ index (s, dname, (bs, _, def) ::: _T) -> setSpan s $ tracePretty dname $ do
+    trace "definitions" $ ifor_ es $ \ index (s, dname, (bs, def) ::: _T) -> setSpan s $ tracePretty dname $ do
       def <- case def of
         S.DataDef cs -> do
           (s, cs) <- runModule . elabWith (fmap pure . (,)) $ check (elabDataDef bs cs ::: Just _T)
