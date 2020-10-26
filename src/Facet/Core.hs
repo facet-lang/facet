@@ -49,7 +49,6 @@ module Facet.Core
 , unDInterface
 ) where
 
-import           Control.Applicative ((<|>))
 import           Control.Effect.Empty
 import           Control.Lens (Lens', lens)
 import           Data.Foldable (find, foldl', toList)
@@ -407,7 +406,7 @@ lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Valu
 lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef decls
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
-  matchDef (Decl _ d     _)  = (d >>= unDData >>= matchWith matchCon) <|> (d >>= unDInterface >>= matchWith matchCon)
+  matchDef (Decl _ d     _)  = d >>= unDData >>= matchWith matchCon
   matchCon (n' :=: v ::: _T) = (name :.: C n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
