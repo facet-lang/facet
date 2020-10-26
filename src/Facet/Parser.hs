@@ -14,7 +14,7 @@ module Facet.Parser
 import           Control.Algebra ((:+:))
 import           Control.Applicative (Alternative(..))
 import           Control.Carrier.Reader
-import           Control.Carrier.State.Strict
+import           Control.Carrier.State.Church
 import           Control.Monad.Trans.Class
 import           Data.Bool (bool)
 import           Data.Char (isSpace)
@@ -48,18 +48,20 @@ import           Text.Parser.Token.Style
 -- resolve imported definitions in the parser
 
 -- FIXME: allow operators to be introduced and scoped locally
-runFacet :: Functor m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
+runFacet :: Applicative m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
 runFacet ops (Facet m) = evalState ops m
 
 newtype Facet m a = Facet (StateC [Operator (S.Ann S.Expr)] m a)
   deriving (Algebra (State [Operator (S.Ann S.Expr)] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail) via StateC [Operator (S.Ann S.Expr)] m
 
 instance (Monad p, Parsing p) => Parsing (Facet p) where
-  try (Facet m) = Facet $ StateC $ \ s -> try (runState s m)
-  Facet m <?> l = Facet $ StateC $ \ s -> runState s m <?> l
+  try (Facet m) = Facet $ StateC $ \ k s -> try (runState k s m)
+  Facet m <?> l = Facet $ StateC $ \ k s -> runState k s m <?> l
   unexpected = lift . unexpected
   eof = lift eof
-  notFollowedBy (Facet m) = Facet $ StateC $ \ s -> (s,) <$> notFollowedBy (evalState s m)
+  notFollowedBy (Facet m) = Facet $ StateC $ \ k s -> do
+    (s, a) <- runState (fmap pure . (,)) s m
+    notFollowedBy (pure a) >>= k s
 
 instance (Monad p, CharParsing p) => CharParsing (Facet p) where
   satisfy = lift . satisfy
