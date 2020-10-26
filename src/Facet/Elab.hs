@@ -41,6 +41,7 @@ import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', for_)
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
+import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Context as Context
@@ -482,25 +483,22 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
       _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig sig)) ::: Just VType)
 
       decls_.at dname .= Just (Decl Nothing _T)
-
-      pure (S.ann sig, dname, (bs, def) ::: _T)
-
-    -- then elaborate the terms
-    trace "definitions" $ for_ es $ \ (s, dname, (bs, def) ::: _T) -> setSpan s $ tracePretty dname $ do
-      def <- case def of
+      case def of
         S.DataDef cs -> do
           (s, cs) <- runModule . elabWith (fmap pure . (,)) $ elabDataDef (dname ::: _T) cs
-          C.DData <$> for cs (\ (n ::: _T) -> do
+          def <- C.DData <$> for cs (\ (n ::: _T) -> do
             _T' <- apply s _T
             let go fs = \case
                   VForAll (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> go (fs :> v) (_B v))]
                   _T                                  -> VCon (Con (mname :.: C n ::: _T) fs)
             c <- apply s (go Nil _T')
             pure $ n :=: c ::: _T')
+          decls_.ix dname .= Decl (Just def) _T
+          pure Nothing
 
         S.InterfaceDef os -> do
           (s, os) <- runModule . elabWith (fmap pure . (,)) $ elabInterfaceDef (dname ::: _T) os
-          C.DInterface <$> for os (\ (n ::: _T) -> do
+          def <- C.DInterface <$> for os (\ (n ::: _T) -> do
             _T' <- apply s _T
             -- FIXME: this is wrong; we need to represent commands in Value.
             let go fs = \case
@@ -508,9 +506,15 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
                   _T                                  -> VCon (Con (mname :.: C n ::: _T) fs)
             c <- apply s (go Nil _T')
             pure $ n :=: c ::: _T')
+          decls_.ix dname .= Decl (Just def) _T
+          pure Nothing
 
-        S.TermDef t -> C.DTerm <$> runModule (elab (check (elabTermDef bs t ::: Just _T)))
-      decls_.ix dname .= Decl (Just def) _T
+        S.TermDef t -> pure (Just (S.ann sig, dname, (bs, t) ::: _T))
+
+    -- then elaborate the terms
+    trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, (bs, t) ::: _T) -> setSpan s $ tracePretty dname $ do
+      t' <- runModule (elab (check (elabTermDef bs t ::: Just _T)))
+      decls_.ix dname .= Decl (Just (C.DTerm t')) _T
 
 
 -- | Apply the substitution to the value.
