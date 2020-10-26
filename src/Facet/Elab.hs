@@ -134,11 +134,11 @@ unify = trace "unify" . \case
   -- FIXME: unify the signatures
   unifySig (Sig d1 t1 :===: Sig _ t2) = Sig d1 <$> unify (t1 :===: t2)
 
-  unifySpine (Nil           :===: Nil)           = Just (pure Nil)
+  unifySpine (Nil      :===: Nil)      = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
-  unifySpine (i1 :> EApp l1 :===: i2 :> EApp l2)
-    | pl l1 == pl l2                             = liftA2 (:>) <$> unifySpine (i1 :===: i2) <*> Just (EApp . P (pl l1) <$> unify (out l1 :===: out l2))
-  unifySpine _                                   = Nothing
+  unifySpine (i1 :> l1 :===: i2 :> l2)
+    | pl l1 == pl l2                   = liftA2 (:>) <$> unifySpine (i1 :===: i2) <*> Just (P (pl l1) <$> unify (out l1 :===: out l2))
+  unifySpine _                         = Nothing
 
   solve (n :=: val') = do
     subst <- get
@@ -260,6 +260,17 @@ elabBinder b = do
   b' <- b (free d)
   pure $ \ v -> C.bind d v b'
 
+elabBinders
+  :: (Traversable t, Has (Reader (Context Type)) sig m)
+  => t (UName ::: Type)
+  -> (t (UName ::: Type) -> m Value)
+  -> m (t Type -> Value)
+elabBinders p b = do
+  d <- asks @(Context Type) level
+  -- let (_, p') = mapAccumL (\ d n -> (succ d, n ::: free d)) d p
+  b' <- b p
+  pure $ \ v -> snd (foldl' (\ (d, b') v -> (succ d, C.bind d v b')) (d, b') v)
+
 (|-)
   :: Has (Reader (Context Type)) sig m
   => UName ::: Type
@@ -268,20 +279,6 @@ elabBinder b = do
 t |- b = local @(Context Type) (|> t) b
 
 infix 1 |-
-
-(|-*)
-  :: (Has (Reader (Context Type)) sig m, Traversable t)
-  => t (UName ::: Type)
-  -> m Value
-  -> m (t Value -> Value)
-p |-* b = do
-  ctx <- ask @(Context Type)
-  let d = level ctx
-      (_, ext) = foldl' (\ (d, ctx) t -> (succ d, ctx . (|> t))) (d, id) p
-  b' <- local ext b
-  pure $ \ p -> snd (foldl' (\ (d, b') v -> (succ d, C.bind d v b')) (succ d, b') p)
-
-infix 1 |-*
 
 
 -- Expressions
@@ -336,7 +333,7 @@ lam n b = Check $ expectChecked "lambda" $ \ _T -> do
   -- FIXME: how does the effect adjustment change this?
   (Binding _ _ (Sig _ _T), _B) <- expectQuantifier "when checking lambda" _T
   b' <- elabBinder $ \ v -> check (b (out n ::: _T) ::: Just (_B v))
-  pure $ VLam (pl n, out n ::: Sig mempty _T) b'
+  pure $ VLam (pl n) [Clause (PVar (out n ::: _T)) (\ (PVar a) -> b' a)]
 
 
 elabComp
@@ -366,9 +363,9 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 elabClauses :: [(NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)] -> Check (Expr ::: Type)
 elabClauses [((S.Ann _ (S.PVar n)):|ps, b)] = Check $ expectChecked "variable pattern" $ \ _T -> do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
-  (Binding pl _ (Sig s _A), _B) <- expectQuantifier "when checking clauses" _T
+  (Binding pl _ (Sig _ _A), _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> n ::: _A |- check (checkElab (maybe (elabExpr b) (elabClauses . pure . (,b)) (nonEmpty ps)) ::: Just (_B v))
-  pure $ VLam (pl, n ::: Sig s _A) b' ::: _T
+  pure $ VLam pl [Clause (PVar (n ::: _A)) (\ (PVar a) -> b' a)] ::: _T
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
 elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
   rest <- case foldMap partitionClause cs of
@@ -377,17 +374,16 @@ elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
     XR cs -> pure $ Just cs
     XT    -> error "mixed" -- FIXME: throw a proper error
   -- FIXME: use the signature to elaborate the pattern
-  (Binding _ _ (Sig s _A), _B) <- expectQuantifier "when checking clauses" _T
-  b' <- elabBinder $ \ v -> do
-    let _B' = _B v
-    cs' <- for cs $ \ (p:|_, b) -> do
-      p' <- check (elabPattern p ::: Just _A)
-      b' <- p' |-* check (checkElab (maybe (elabExpr b) elabClauses rest) ::: Just _B')
-      pure (p', b')
-    pure $ case' v cs'
+  (Binding _ _ (Sig _ _A), _B) <- expectQuantifier "when checking clauses" _T
+  d <- asks (level @Type)
+  let _B' = _B (free d)
+  cs' <- for cs $ \ (p:|_, b) -> do
+    p' <- check (elabPattern p ::: Just _A)
+    b' <- elabBinders p' $ foldr (|-) (check (checkElab (maybe (elabExpr b) elabClauses rest) ::: Just _B'))
+    pure (Clause p' b')
   -- FIXME: something isn’t correctly accounting for the insertion of the lambda.
   -- e.g. the elaboration of fst & snd contain case c { (pair d e) -> c } and case c { (pair d e) -> d } respectively. is the context being extended incorrectly, or not being extended when it should be?
-  pure $ VLam (Ex, __ ::: Sig s _A) b' ::: _T
+  pure $ VLam Ex cs' ::: _T
   where
   partitionClause (_:|ps, b) = case ps of
     []   -> XL ()
@@ -496,8 +492,8 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
           C.DData <$> for cs (\ (n ::: _T) -> do
             _T' <- apply s _T
             let go fs = \case
-                  VForAll (Binding p n _T) _B -> VLam (p, n ::: _T) (\ v -> go (fs :> v) (_B v))
-                  _T                          -> VCon (Con (mname :.: C n ::: _T) fs)
+                  VForAll (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> go (fs :> v) (_B v))]
+                  _T                                  -> VCon (Con (mname :.: C n ::: _T) fs)
             c <- apply s (go Nil _T')
             pure $ n :=: c ::: _T')
 
@@ -507,8 +503,8 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
             _T' <- apply s _T
             -- FIXME: this is wrong; we need to represent commands in Value.
             let go fs = \case
-                  VForAll (Binding p n _T) _B -> VLam (p, n ::: _T) (\ v -> go (fs :> v) (_B v))
-                  _T                          -> VCon (Con (mname :.: C n ::: _T) fs)
+                  VForAll (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> go (fs :> v) (_B v))]
+                  _T                                  -> VCon (Con (mname :.: C n ::: _T) fs)
             c <- apply s (go Nil _T')
             pure $ n :=: c ::: _T')
 

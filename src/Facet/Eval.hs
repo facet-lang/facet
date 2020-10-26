@@ -11,17 +11,13 @@ import Facet.Syntax
 eval :: (Has (Reader Graph) sig m, Has (Reader Module) sig m) => Value -> m Value
 eval = \case
   VNeut h sp -> do
-    sp' <- traverse evalSp sp
+    sp' <- traverse (traverse eval) sp
     mod <- ask
     graph <- ask
     case h of
       Global (q ::: _)
         | Just (_ :=: (Just (DTerm v)) ::: _) <- lookupQ q mod graph
-        -> pure $ elimN v sp'
+        -> pure $ v $$* sp'
       _ -> pure $ VNeut h sp'
 
   v          -> pure v
-  where
-  evalSp = \case
-    EApp a -> EApp <$> traverse eval a
-    e      -> pure e

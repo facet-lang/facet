@@ -164,13 +164,6 @@ data Algebra p = Algebra
   { var :: Var -> p
   , tintro :: UName -> Level -> p
   , intro :: UName -> Level -> p
-  , lam
-    :: [p] -- the clauses.
-    -> p
-  , clause
-    :: [Pl_ (p ::: Maybe p)] -- the patterns.
-    -> p                     -- the body.
-    -> p
   , fn
     :: [Pl_ ([p] ::: p)] -- the argument types/bindings
     -> p                 -- the return type
@@ -179,8 +172,6 @@ data Algebra p = Algebra
   , hole :: UName -> p
   , tcomp :: [p] -> p -> p
   , ann' :: (p ::: p) -> p
-  , case' :: p -> [(p, p)] -> p -- ^ will only arise in core
-  , pcon     :: p -> Stack p -> p
   , peff     :: p -> Stack p -> p -> p
   , decl :: p ::: p -> p
   , defn :: p :=: p -> p
@@ -202,8 +193,6 @@ surface = Algebra
   { var = printVar name
   , tintro = name upper
   , intro = name lower
-  , lam = comp . embed . commaSep
-  , clause = \ ns b -> embed (setPrec Pattern (vsep (map (unPl_ (braces . tm) tm) ns)) </> arrow) </> b
   -- FIXME: group quantifiers by kind again.
   , fn = flip (foldr (\ (P pl (n ::: _T)) b -> case n of
     [] -> _T --> b
@@ -214,8 +203,6 @@ surface = Algebra
     [] -> t
     _  -> brackets (commaSep s) <+> t
   , ann' = group . tm
-  , case' = \ s ps -> align . group $ pretty "case" <+> setPrec Expr s </> block (concatWith (surround (hardline <> comma <> space)) (map (group . (\ (p, b) -> align (embed (prec Pattern p </> arrow) </> b))) ps))
-  , pcon = \ n ps -> parens (hsep (annotate Con n:toList ps))
   , peff = \ n ps k -> brackets (hsep (annotate Con n:toList ps) <+> semi <+> k)
   , decl = ann
   , defn = \ (a :=: b) -> group a <> hardline <> group b
@@ -223,7 +210,6 @@ surface = Algebra
   , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
   }
   where
-  embed = nest 2 . group
   name f n d = setPrec Var . annotate (Name d) $ if T.null (getUName n) then
     pretty '_' <> f (getLevel d)
   else
@@ -235,7 +221,6 @@ explicit = surface
   { var = printVar name
   , tintro = name upper
   , intro = name lower
-  , clause = \ ns b -> group (align (setPrec Pattern (vsep (map (\ (P pl (n ::: _T)) -> group $ unPl braces id pl (maybe n (ann . (n :::)) _T)) ns)) </> arrow)) </> b
   }
   where
   name f _ d = setPrec Var (annotate (Name d) (cons d (f (getLevel d))))
@@ -260,41 +245,37 @@ printValue alg = go
             | otherwise           = [tintro alg n d]
           (env', vs') = mapAccumL binding env vs
       in fn alg vs' (go env' b')
-    C.VLam n b ->
-      let (vs, (_, b')) = splitr C.unLam' (d, C.VLam n b)
-          binding env (p, n ::: _T) =
-            let _T' = sig env _T
-            in  (env :> lvar env (P p n ::: _T'), P p (unPl (tintro alg) (intro alg) p n (Level (length env)) ::: Just _T'))
-          (env', vs') = mapAccumL binding env vs
-      in lam alg [clause alg vs' (go env' b')]
+    C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
+      -- \ s ps -> align . group $ pretty "case" <+> setPrec Expr s </> block (concatWith (surround (hardline <> comma <> space)) (map (group . (\ (p, b) -> align (embed (prec Pattern p </> arrow) </> b))) ps))
+      -- let (vs, (_, b')) = splitr C.unLam' (d, C.VLam n b)
+      --     binding env (p, n ::: _T) =
+      --       let _T' = sig env _T
+      --       in  (env :> lvar env (P p n ::: _T'), P p (unPl (tintro alg) (intro alg) p n (Level (length env)) ::: Just _T'))
+      --     (env', vs') = mapAccumL binding env vs
+      -- in lam alg [clause alg vs' (go env' b')]
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     C.VNeut h e ->
       let elim h sp  Nil     = case sp Nil of
             Nil -> h
             sp  -> app alg h sp
-          elim h sp  (es:>e) = case e of
-            C.EApp a   -> elim h (sp . (:> fmap (go env) a)) es
-            C.ECase ps -> case' alg (elim h id es) (map clause ps)
+          elim h sp  (es:>a) = elim h (sp . (:> fmap (go env) a)) es
           h' = C.unVar (ann' alg . bimap (var alg . qvar) (go env)) ((env !) . getIndex . levelToIndex d) (ann' alg . bimap (var alg . Metavar) (go env)) h
-          clause (p, b) =
-            let ((env', p'), v) = pat env p
-            in (p', go env' (b v))
       in elim h' id e
     C.VCon (C.Con n p) -> app alg (ann' alg (bimap (var alg . qvar) (go env) n)) (fmap (ex . go env) p)
     where
     d = Level (length env)
   tvar env n = ann' alg (var alg (TLocal (out (tm n)) (Level (length env))) ::: ty n)
-  lvar env n = ann' alg (var alg (unPl_ TLocal Local (tm n) (Level (length env))) ::: ty n)
+  lvar env (p, n) = var alg (unPl TLocal Local p n (Level (length env)))
   sig env (C.Sig s _T) = (if null s then id else tcomp alg (map (delta env) (toList s))) (go env _T)
   delta env (C.Delta (q ::: _T) sp) = app alg (ann' alg (var alg (qvar q) ::: go env _T)) (ex . go env <$> sp)
 
-  pat env = \case
-    C.PVar n    -> let { d = Level (length env) ; v = ann' alg (var alg (Local (tm n) d) ::: go env (ty n)) } in ((env :> v, v), C.PVar (C.free d))
-    C.PCon (C.Con n ps) ->
-      let ((env', p'), ps') = subpatterns env ps
-      in ((env', pcon alg (ann' alg (bimap (var alg . qvar) (go env) n)) p'), C.PCon (C.Con n ps'))
-  subpatterns env ps = mapAccumL (\ (env', ps) p -> let ((env'', v), p') = pat env' p in ((env'', ps:>v), p')) (env, Nil) ps
+  clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow <+> go env' (b (snd <$> p'))
+    where
+    ((_, env'), p') = mapAccumL (\ (d, env) (n ::: _) -> let v = lvar env (pl, n) in ((succ d, env :> v), (v, C.free d))) (Level (length env), env) p
+  pat = \case
+    C.PVar n            -> n
+    C.PCon (C.Con n ps) -> parens (hsep (annotate Con (pretty (tm n)):map pat (toList ps)))
 
 printModule :: Algebra Print -> C.Module -> Print
 printModule alg (C.Module mname is _ ds) = module_ alg

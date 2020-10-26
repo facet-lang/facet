@@ -3,13 +3,15 @@ module Facet.Core
   Value(..)
 , compareValue
 , compareBinding
+, compareClause
 , compareSig
 , compareDelta
+, Clause(..)
+, instantiateClause
 , Binding(..)
 , Delta(..)
 , Sig(..)
 , Var(..)
-, Elim(..)
 , Con(..)
 , unVar
 , global
@@ -18,12 +20,10 @@ module Facet.Core
 , unForAll
 , unForAll'
 , unLam
-, unLam'
 , ($$)
+, ($$*)
 , case'
 , match
-, elim
-, elimN
 , subst
 , bind
 , mvs
@@ -34,6 +34,7 @@ module Facet.Core
   -- * Patterns
 , Pattern(..)
 , fill
+, bindPattern
   -- * Modules
 , Module(..)
 , name_
@@ -51,7 +52,6 @@ module Facet.Core
 import           Control.Applicative ((<|>))
 import           Control.Effect.Empty
 import           Control.Lens (Lens', lens)
-import           Data.Bifunctor
 import           Data.Foldable (find, foldl', toList)
 import           Data.Functor.Classes
 import qualified Data.IntMap as IntMap
@@ -71,9 +71,9 @@ data Value
   = VType
   | VInterface
   | VForAll Binding (Value -> Value)
-  | VLam (Pl, UName ::: Sig) (Value -> Value)
+  | VLam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | VNeut (Var Value) (Stack Elim)
+  | VNeut (Var Value) (Stack (Pl_ Value))
   | VCon (Con Value)
 
 instance Eq Value where
@@ -91,14 +91,14 @@ compareValue d = curry $ \case
   (VInterface, _)                -> LT
   (VForAll t1 b1, VForAll t2 b2) -> compareBinding d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d))
   (VForAll{}, _)                 -> LT
-  (VLam t1 b1, VLam t2 b2)       -> compareLBinding d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d)) -- FIXME: do we need to test the types here?
+   -- FIXME: do we need to test the types here?
+  (VLam p1 cs1, VLam p2 cs2)     -> compare p1 p2 <> liftCompare (compareClause d) cs1 cs2
   (VLam{}, _)                    -> LT
-  (VNeut h1 sp1, VNeut h2 sp2)   -> compareH d h1 h2 <> liftCompare (compareElim d) sp1 sp2
+  (VNeut h1 sp1, VNeut h2 sp2)   -> compareH d h1 h2 <> liftCompare (liftCompare (compareValue d)) sp1 sp2
   (VNeut{}, _)                   -> LT
   (VCon c1, VCon c2)             -> compareCon compareValue d c1 c2
   (VCon _, _)                    -> LT
   where
-  compareLBinding d (p1, _ ::: s1) (p2, _ ::: s2) = compare p1 p2 <> compareSig d s1 s2
   compareH d = curry $ \case
     (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareValue d t1 t2
     (Global _, _)                              -> LT
@@ -106,28 +106,31 @@ compareValue d = curry $ \case
     (Free _, _)                                -> LT
     (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> compare m1 m2 <> compareValue d t1 t2
     (Metavar _, _)                             -> LT
-  compareElim d = curry $ \case
-    (EApp (P p1 a1), EApp (P p2 a2)) -> compare p1 p2 <> compareValue d a1 a2
-    (EApp _, _)                      -> LT
-    (ECase cs1, ECase cs2)           -> liftCompare (compareClause d) cs1 cs2
-    (ECase _, _)                     -> LT
-  compareClause d (p1, b1) (p2, b2) = comparePat d p1 p2 <> compareValue (succ d) (b1 (PVar (free d))) (b2 (PVar (free d)))
-  comparePat d = curry $ \case
-    (PVar (_ ::: t1), PVar (_ ::: t2)) -> compareValue d t1 t2
-    (PVar _, _)                        -> LT
-    (PCon c1, PCon c2)                 -> compareCon comparePat d c1 c2
-    (PCon _, _)                        -> LT
   compareCon :: (Level -> a -> b -> Ordering) -> Level -> Con a -> Con b -> Ordering
   compareCon compareValue' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = compare n1 n2 <> compareValue d t1 t2 <> liftCompare (compareValue' d) fs1 fs2
 
 compareBinding :: Level -> Binding -> Binding -> Ordering
 compareBinding d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> compareSig d s1 s2
 
+compareClause :: Level -> Clause -> Clause -> Ordering
+compareClause d (Clause p1 b1) (Clause p2 b2) = liftCompare (\ _ _ -> EQ) p1 p2 <> compareValue d' (b1 p') (b2 p')
+  where
+  (d', p') = bindPattern d p1
+
 compareSig :: Level -> Sig -> Sig -> Ordering
 compareSig d (Sig s1 t1) (Sig s2 t2) = liftCompare (compareDelta d) s1 s2 <> compareValue d t1 t2
 
 compareDelta :: Level -> Delta -> Delta -> Ordering
 compareDelta d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> liftCompare (compareValue d) sp1 sp2
+
+
+data Clause = Clause
+  { pattern :: Pattern (UName ::: Value)
+  , branch  :: Pattern Value -> Value
+  }
+
+instantiateClause :: Level -> Clause -> (Level, Value)
+instantiateClause d (Clause p b) = b <$> bindPattern d p
 
 
 data Binding = Binding
@@ -182,12 +185,6 @@ unVar f g h = \case
   Metavar n -> h n
 
 
-data Elim
-  = EApp (Pl_ Value) -- FIXME: this is our one codata case; should we generalize this to copattern matching?
-  -- FIXME: consider type-indexed patterns & an existential clause wrapper to ensure name & variable patterns have the same static shape
-  | ECase [(Pattern (UName ::: Value), Pattern Value -> Value)] -- FIXME: we can (and should) eliminate var patterns eagerly.
-
-
 data Con a = Con (QName ::: Value) (Stack a)
   deriving (Eq, Foldable, Functor, Ord, Traversable)
 
@@ -221,32 +218,28 @@ unForAll' (d, v) = do
   (_T, _B) <- unForAll v
   pure (_T, (succ d, _B (free d)))
 
-unLam :: Has Empty sig m => Value -> m ((Pl, UName ::: Sig), Value -> Value)
+unLam :: Has Empty sig m => Value -> m (Pl, [Clause])
 unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
-
--- | A variation on 'unLam' which can be conveniently chained with 'splitr' to strip a prefix of lambdas off their eventual body.
-unLam' :: Has Empty sig m => (Level, Value) -> m ((Pl, UName ::: Sig), (Level, Value))
-unLam' (d, v) = do
-  (n, t) <- unLam v
-  pure (n, (succ d, t (free d)))
 
 
 -- FIXME: how should this work in weak/parametric HOAS?
-($$) :: HasCallStack => Value -> Pl_ Value -> Value
-VNeut h es  $$ a = VNeut h (es :> EApp a)
+($$) :: HasCallStack => Value -> (Pl_ Value) -> Value
+VNeut h es  $$ a = VNeut h (es :> a)
 VForAll _ b $$ a = b (out a)
-VLam _    b $$ a = b (out a)
+VLam _    b $$ a = case' (out a) b
 _           $$ _ = error "can’t apply non-neutral/forall type"
 
-infixl 9 $$
+($$*) :: (HasCallStack, Foldable t) => Value -> t (Pl_ Value) -> Value
+($$*) = foldl' ($$)
+
+infixl 9 $$, $$*
 
 
-case' :: HasCallStack => Value -> [(Pattern (UName ::: Value), Pattern Value -> Value)] -> Value
+case' :: HasCallStack => Value -> [Clause] -> Value
 case' s            cs
-  | (p, f):_ <- cs
+  | Clause p f:_ <- cs
   , PVar _ <- p       = f (PVar s)
-case' (VNeut h es) cs = VNeut h (es :> ECase cs)
-case' s            cs = case matchWith (\ (p, f) -> f <$> match s p) cs of
+case' s            cs = case matchWith (\ (Clause p f) -> f <$> match s p) cs of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
@@ -260,15 +253,6 @@ match = curry $ \case
   (_,          PCon _)                -> Nothing
 
 
-elim :: HasCallStack => Value -> Elim -> Value
-elim v = \case
-  EApp a   -> v $$ a
-  ECase cs -> case' v cs
-
-elimN :: (HasCallStack, Foldable t) => Value -> t Elim -> Value
-elimN = foldl' elim
-
-
 -- | Substitute metavars.
 subst :: HasCallStack => IntMap.IntMap Value -> Value -> Value
 subst s
@@ -279,8 +263,8 @@ subst s
     VType       -> VType
     VInterface  -> VInterface
     VForAll t b -> VForAll (binding t) (go . b)
-    VLam    n b -> VLam (lbinding n) (go . b)
-    VNeut f a   -> unVar global free (s !) f' `elimN` fmap substElim a
+    VLam    p b -> VLam p (map clause b)
+    VNeut f a   -> unVar global free (s !) f' $$* fmap (fmap go) a
       where
       f' = case f of
         Global  (n ::: _T) -> Global  (n ::: go _T)
@@ -289,15 +273,11 @@ subst s
     VCon c      -> VCon (fmap go c)
 
   binding (Binding p n s) = Binding p n (sig s)
-  lbinding (p, n ::: s) = (p, n ::: sig s)
+  clause (Clause p b) = Clause p (go . b)
 
   sig (Sig d t) = Sig (Set.map delta d) (go t)
 
   delta (Delta (q ::: t) sp) = Delta (q ::: go t) (fmap go sp)
-
-  substElim = \case
-    EApp a   -> EApp (fmap go a)
-    ECase cs -> ECase (map (bimap (fmap (fmap go)) (go .)) cs)
 
   s ! l = case IntMap.lookup (getMeta (tm l)) s of
     Just a  -> a
@@ -311,8 +291,8 @@ bind target with = go
     VType       -> VType
     VInterface  -> VInterface
     VForAll t b -> VForAll (binding t) (go . b)
-    VLam    n b -> VLam (lbinding n) (go . b)
-    VNeut f a   -> unVar global (\ v -> if v == target then with else free v) metavar f' `elimN` fmap elim a
+    VLam    p b -> VLam p (map clause b)
+    VNeut f a   -> unVar global (\ v -> if v == target then with else free v) metavar f' $$* fmap (fmap go) a
       where
       f' = case f of
         Global  (n ::: _T) -> Global  (n ::: go _T)
@@ -321,15 +301,11 @@ bind target with = go
     VCon c      -> VCon (fmap go c)
 
   binding (Binding p n s) = Binding p n (sig s)
-  lbinding (p, n ::: s) = (p, n ::: sig s)
+  clause (Clause p b) = Clause p (go . b)
 
   sig (Sig d t) = Sig (Set.map delta d) (go t)
 
   delta (Delta (q ::: t) sp) = Delta (q ::: go t) (fmap go sp)
-
-  elim = \case
-    EApp a   -> EApp (fmap go a)
-    ECase cs -> ECase (map (bimap (fmap (fmap go)) (go .)) cs)
 
 
 mvs :: Level -> Value -> IntMap.IntMap Value
@@ -337,17 +313,12 @@ mvs d = \case
   VType                   -> mempty
   VInterface              -> mempty
   VForAll t b             -> binding d t <> mvs (succ d) (b (free d))
-  VLam t b                -> lbinding d t <> mvs (succ d) (b (free d))
-  VNeut h sp              -> unVar (mvs d . ty) mempty (\ (m ::: _T) -> IntMap.insert (getMeta m) _T (mvs d _T)) h <> foldMap goE sp
-    where
-    goE = \case
-      EApp a   -> foldMap (mvs d) a
-      ECase cs -> foldMap goClause cs
-    goClause (p, b) = foldMap (mvs d . ty) p <> let (d', p') = fill ((,) . succ <*> free) d p in  mvs d' (b p')
+  VLam _ cs               -> foldMap clause cs
+  VNeut h sp              -> unVar (mvs d . ty) mempty (\ (m ::: _T) -> IntMap.insert (getMeta m) _T (mvs d _T)) h <> foldMap (foldMap (mvs d)) sp
   VCon (Con (_ ::: t) fs) -> mvs d t <> foldMap (mvs d) fs
   where
   binding d (Binding _ _ s) = sig d s
-  lbinding d (_, _ ::: s) = sig d s
+  clause (Clause p b) = let (d', p') = bindPattern d p in mvs d' (b p')
   sig d (Sig s t) = foldMap (delta d) s <> mvs d t
   delta d (Delta (_ ::: t) sp) = mvs d t <> foldMap (mvs d) sp
 
@@ -378,13 +349,12 @@ sortOf ctx = \case
   VInterface                  -> SKind
   VForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx ((type' :: Sig -> Value) _T) in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
   VLam{}                      -> STerm
-  VNeut h sp                  -> minimum (unVar (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (\case{ EApp a -> sortOf ctx (out a) ; ECase _ -> STerm } <$> sp))
+  VNeut h sp                  -> minimum (unVar (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (sortOf ctx . out <$> sp))
   VCon _                      -> STerm
 
 
 -- Patterns
 
--- FIXME: eliminate this by unrolling cases into shallow, constructor-headed matches
 data Pattern a
   = PVar a
   | PCon (Con (Pattern a))
@@ -404,6 +374,9 @@ instance Ord1 Pattern where
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)
+
+bindPattern :: Traversable t => Level -> t a -> (Level, t Value)
+bindPattern = fill (\ d -> (succ d, free d))
 
 
 -- Modules
