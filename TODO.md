@@ -94,6 +94,10 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Are modules “just” records?
 
+- Datatypes and interfaces should introduce local modules, preserved on export.
+
+  cf https://github.com/goldfirere/ghc-proposals/blob/local-modules/proposals/0000-local-modules.rst
+
 
 ## Components
 
