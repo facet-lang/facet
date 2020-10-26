@@ -581,7 +581,7 @@ ambiguousName :: Maybe MName -> DName -> [QName] -> Elab a
 ambiguousName n d qs = err $ AmbiguousName n d qs
 
 expectChecked :: String -> (Type -> Elab a) -> Maybe Type -> Elab a
-expectChecked msg f = maybe (couldNotSynthesize msg) f
+expectChecked msg = maybe (couldNotSynthesize msg)
 
 
 -- Patterns
