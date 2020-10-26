@@ -7,6 +7,7 @@ module Facet.Core
 , compareSig
 , compareDelta
 , Telescope(..)
+, compareTelescope
 , Clause(..)
 , instantiateClause
 , Binding(..)
@@ -130,6 +131,13 @@ compareDelta d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> 
 data Telescope
   = Bind Binding (Value -> Telescope)
   | End Sig
+
+compareTelescope :: Level -> Telescope -> Telescope -> Ordering
+compareTelescope d = curry $ \case
+  (Bind t1 b1, Bind t2 b2) -> compareBinding d t1 t2 <> compareTelescope (succ d) (b1 (free d)) (b2 (free d))
+  (Bind{}, _)              -> LT
+  (End s1, End s2)         -> compareSig d s1 s2
+  (End{}, _)               -> LT
 
 
 data Clause = Clause
