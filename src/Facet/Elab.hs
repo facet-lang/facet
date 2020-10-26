@@ -492,6 +492,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
                   VForAll (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> go (fs :> v) (_B v))]
                   _T                                  -> VCon (Con (mname :.: C n ::: _T) fs)
             c <- apply s (go Nil _T')
+            decls_.at (E n) .= Just (Decl (Just (C.DTerm c)) _T')
             pure $ n :=: c ::: _T')
           decls_.ix dname .= Decl (Just def) _T
           pure Nothing
