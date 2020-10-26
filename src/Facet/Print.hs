@@ -210,10 +210,9 @@ surface = Algebra
   , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
   }
   where
-  name f n d = setPrec Var . annotate (Name d) $ if T.null (getUName n) then
-    pretty '_' <> f (getLevel d)
-  else
-    pretty n
+  name f n d = setPrec Var . annotate (Name d) $ if
+    | T.null (getUName n) -> pretty '_' <> f (getLevel d)
+    | otherwise           -> pretty n
 
 
 -- Core printers
