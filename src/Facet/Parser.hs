@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Parser
 ( whole
 , makeOperator
@@ -24,6 +25,7 @@ import           Data.Char (isSpace)
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as Unicode
 import           Data.Foldable (foldl')
+import           Data.Functor (void)
 import qualified Data.HashSet as HashSet
 import           Data.List (uncons)
 import qualified Data.List.NonEmpty as NE
@@ -40,7 +42,6 @@ import           Text.Parser.Char
 import           Text.Parser.Combinators
 import           Text.Parser.Token
 import           Text.Parser.Token.Highlight as Highlight
-import           Text.Parser.Token.Style
 
 -- TODO:
 -- list literals
@@ -351,8 +352,15 @@ instance (Monad p, CharParsing p) => CharParsing (Facet p) where
   string  = lift . string
   text    = lift . text
 
-instance (Monad p, TokenParsing p) => TokenParsing (Facet p) where
-  someSpace = buildSomeSpaceParser (skipSome (satisfy isSpace)) emptyCommentStyle{ _commentLine = "#" }
+instance (Has Parser sig p, TokenParsing p) => TokenParsing (Facet p) where
+  someSpace = skipSome (void (satisfy isSpace) <|> lineComment)
+    where
+    lineComment = (do
+      start <- position
+      void $ char '#'
+      comment <- many (satisfy (/= '\n'))
+      end <- position
+      tell (Nil :> (Span start end, S.Comment (pack comment)))) <?> "line comment"
 
 instance MonadTrans Facet where
   lift = Facet . lift . lift
