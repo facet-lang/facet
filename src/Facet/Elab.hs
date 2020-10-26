@@ -38,7 +38,7 @@ import           Control.Effect.Lens ((%=), (.=))
 import           Control.Effect.Sum
 import           Control.Lens (ifor_, ix)
 import           Data.Bifunctor (first)
-import           Data.Foldable (foldl', toList)
+import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import qualified Data.Set as Set
@@ -412,7 +412,7 @@ elabPattern = withSpan $ \ p -> Check $ expectChecked "pattern" $ \ _T -> case p
             pure $ p' : ps'
     q ::: _T' <- synth (resolveC n)
     _T'' <- inst _T'
-    C.PCon . Con (q ::: _T'') . fromList <$> go _T'' (toList ps)
+    C.PCon . Con (q ::: _T'') . fromList <$> go _T'' ps
   S.PEff{}    -> error "TBD"
 
 

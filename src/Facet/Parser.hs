@@ -234,8 +234,8 @@ patternP :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, Tok
 patternP = choice
   [ anned (S.PVar      <$> ename)
   , anned (S.PVar N.__ <$  wildcard)
-  , try (parens (anned (S.PCon <$> cname <*> (fromList <$> many patternP))))
-  , brackets (anned (S.PEff <$> ename <*> (fromList <$> many patternP) <* symbolic ';' <*> (ename <|> N.__ <$ wildcard)))
+  , try (parens (anned (S.PCon <$> cname <*> many patternP)))
+  , brackets (anned (S.PEff <$> ename <*> many patternP <* symbolic ';' <*> (ename <|> N.__ <$ wildcard)))
   ] <?> "pattern"
 
 

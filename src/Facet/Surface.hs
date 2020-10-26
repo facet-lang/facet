@@ -84,8 +84,8 @@ data Comp
 
 data Pattern
   = PVar UName
-  | PCon UName (Stack (Ann Pattern))
-  | PEff UName (Stack (Ann Pattern)) UName
+  | PCon UName [Ann Pattern]
+  | PEff UName [Ann Pattern] UName
   -- FIXME: catch-all effect patterns
   deriving (Eq, Show)
 
