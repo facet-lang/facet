@@ -224,7 +224,7 @@ unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 
 
 -- FIXME: how should this work in weak/parametric HOAS?
-($$) :: HasCallStack => Value -> (Pl_ Value) -> Value
+($$) :: HasCallStack => Value -> Pl_ Value -> Value
 VNeut h es  $$ a = VNeut h (es :> a)
 VForAll _ b $$ a = b (out a)
 VLam _    b $$ a = case' (out a) b
