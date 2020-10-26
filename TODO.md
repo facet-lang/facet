@@ -134,6 +134,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - LSP.
 
+- Linting.
+
 
 ### Tests
 
