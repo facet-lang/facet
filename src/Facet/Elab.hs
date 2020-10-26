@@ -268,7 +268,7 @@ elabBinders
 elabBinders p b = do
   d <- asks @(Context Type) level
   b' <- b p
-  pure $ \ v -> snd (foldl' (\ (d, b') v -> (succ d, C.bind d v b')) (d, b') v)
+  pure $ \ v -> C.binds (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
 (|-)
   :: Has (Reader (Context Type)) sig m
