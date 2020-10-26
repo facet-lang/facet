@@ -245,7 +245,8 @@ printValue alg = go
             | otherwise           = [tintro alg n d]
           (env', vs') = mapAccumL binding env vs
       in fn alg vs' (go env' b')
-    C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b    -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
+    C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
+    -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     C.VNeut h e ->
       let elim h sp  Nil     = case sp Nil of
