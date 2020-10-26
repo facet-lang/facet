@@ -455,8 +455,8 @@ elabTermDef
 elabTermDef bindings expr = foldr (\ (S.Ann s (S.Binding p ns _)) b ->
   setSpan s $ foldr (\ n k ->
     lam (P p n) (|- k)) b ns)
-    (checkElab (elabExpr expr))
-    bindings
+  (checkElab (elabExpr expr))
+  bindings
 
 
 -- Modules
