@@ -419,17 +419,15 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
 -- Declarations
 
 elabDataDef
-  :: HasCallStack
+  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
   => (QName ::: Type)
   -> [S.Ann (UName ::: S.Ann S.Type)]
-  -> Elab [(DName, Decl)]
+  -> m [(DName, Decl)]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = do
-  cs <- for constructors $ withSpan $ \ (n ::: t) -> setSpan (S.ann t) $ do
-    s <- get @Subst
-    c_T <- go (checkElab (elabExpr t)) _T
-    c <- apply s (con (mname :.: C n) Nil c_T)
-    pure $ n :=: c ::: c_T
+  cs <- for constructors $ runWithSpan $ \ (n ::: t) -> setSpan (S.ann t) $ do
+    c_T <- elab $ go (checkElab (elabExpr t)) _T
+    pure $ n :=: con (mname :.: C n) Nil c_T ::: c_T
   pure
     $ (dname, Decl (Just (C.DData cs)) _T)
     : map (\ (n :=: c ::: c_T) -> (E n, Decl (Just (C.DTerm c)) c_T)) cs
@@ -497,7 +495,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
       decls_.at dname .= Just (Decl Nothing _T)
       case def of
         S.DataDef cs -> do
-          decls <- runModule . elabWith (const pure) $ elabDataDef (mname :.: dname ::: _T) cs
+          decls <- runModule $ elabDataDef (mname :.: dname ::: _T) cs
           Nothing <$ for_ decls (\ (dname, decl) -> decls_.at dname .= Just decl)
 
         S.InterfaceDef os -> do
