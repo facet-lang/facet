@@ -431,14 +431,14 @@ data Decl = Decl
 data Def
   = DTerm Value
   | DData [UName :=: Value ::: Value]
-  | DInterface [UName :=: Value ::: Value]
+  | DInterface [UName ::: Value]
 
 unDData :: Has Empty sig m => Def -> m [UName :=: Value ::: Value]
 unDData = \case
   DData cs -> pure cs
   _        -> empty
 
-unDInterface :: Has Empty sig m => Def -> m [UName :=: Value ::: Value]
+unDInterface :: Has Empty sig m => Def -> m [UName ::: Value]
 unDInterface = \case
   DInterface cs -> pure cs
   _             -> empty

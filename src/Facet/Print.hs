@@ -288,5 +288,5 @@ printModule alg (C.Module mname is _ ds) = module_ alg
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
         (map (\ (n :=: _ ::: _T) -> decl alg (var alg (Cons n) ::: printValue alg Nil _T)) cs)
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
-        (map (\ (n :=: _ ::: _T) -> decl alg (var alg (Cons n) ::: printValue alg Nil _T)) os))
+        (map (\ (n ::: _T) -> decl alg (var alg (Cons n) ::: printValue alg Nil _T)) os))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group

@@ -446,12 +446,14 @@ elabDataDef (mname :.: dname ::: _T) constructors = do
     _T                                  -> VCon (Con (q ::: _T) fs)
 
 elabInterfaceDef
-  :: HasCallStack
-  => (DName ::: Type)
+  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
+  => Type
   -> [S.Ann (UName ::: S.Ann S.Type)]
-  -> Elab [UName ::: Type]
-elabInterfaceDef (_ ::: _T) constructors = for constructors $ withSpan $ \ (n ::: t) -> fmap (n :::) . setSpan (S.ann t)
-  $ go (checkElab (elabExpr t)) _T
+  -> m Decl
+elabInterfaceDef _T constructors = do
+  cs <- for constructors $ runWithSpan $ \ (n ::: t) -> setSpan (S.ann t)
+    $ (n :::) <$> elab (go (checkElab (elabExpr t)) _T)
+  pure $ Decl (Just (DInterface cs)) _T
   where
   go k = \case
     -- FIXME: represent return sigs in Value so we can check for its inclusion.
@@ -499,17 +501,8 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
           Nothing <$ for_ decls (\ (dname, decl) -> decls_.at dname .= Just decl)
 
         S.InterfaceDef os -> do
-          (s, os) <- runModule . elabWith (fmap pure . (,)) $ elabInterfaceDef (dname ::: _T) os
-          def <- C.DInterface <$> for os (\ (n ::: _T) -> do
-            _T' <- apply s _T
-            -- FIXME: this is wrong; we need to represent commands in Value.
-            let go fs = \case
-                  VForAll (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> go (fs :> v) (_B v))]
-                  _T                                  -> VCon (Con (mname :.: C n ::: _T) fs)
-            c <- apply s (go Nil _T')
-            pure $ n :=: c ::: _T')
-          decls_.ix dname .= Decl (Just def) _T
-          pure Nothing
+          decl <- runModule $ elabInterfaceDef _T os
+          Nothing <$ (decls_.at dname .= Just decl)
 
         S.TermDef t -> pure (Just (S.ann sig, dname, (bs, t) ::: _T))
 
@@ -548,6 +541,9 @@ setSpan = local . const
 
 withSpan :: Has (Reader Span) sig m => (a -> m b) -> S.Ann a -> m b
 withSpan k (S.Ann s _ a) = setSpan s (k a)
+
+runWithSpan :: (a -> ReaderC Span m b) -> S.Ann a -> m b
+runWithSpan k (S.Ann s _ a) = runReader s (k a)
 
 
 data Err = Err
