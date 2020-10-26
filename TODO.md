@@ -117,7 +117,7 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 ### Pretty-printer
 
-- Preserve comments in surface syntax 😱
+- ✅ Preserve comments in surface syntax 😱
 
 - Parenthesize operators occurring free in expressions.
 
