@@ -235,10 +235,10 @@ infixl 9 $$, $$*
 
 
 case' :: HasCallStack => Value -> [Clause] -> Value
-case' s            cs
+case' s cs
   | Clause p f:_ <- cs
   , PVar _ <- p       = f (PVar s)
-case' s            cs = case matchWith (\ (Clause p f) -> f <$> match s p) cs of
+case' s cs = case matchWith (\ (Clause p f) -> f <$> match s p) cs of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
