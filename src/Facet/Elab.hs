@@ -18,6 +18,7 @@ module Facet.Elab
 , elabExpr
 , _Type
 , (>~>)
+, tbind
 , ($$)
 , lam
   -- * Modules
@@ -324,6 +325,14 @@ _Interface = Synth $ pure $ VInterface ::: VType
   pure $ VForAll (Binding (fst n) (snd n) (Sig mempty _T)) b' ::: VType
 
 infixr 1 >~>
+
+
+tbind :: Check Binding -> (UName ::: Sig -> Check Telescope) -> Synth Telescope
+tbind t b = Synth $ trace "telescope" $ do
+  _T@Binding{ name, sig } <- check (t ::: Just VType)
+  d <- asks @(Context Type) level
+  _B <- check (b (name ::: sig) ::: Just VType)
+  pure $ Bind _T (\ v -> C.bindTelescope d v _B) ::: VType
 
 
 lam
