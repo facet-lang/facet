@@ -246,13 +246,6 @@ printValue alg = go
           (env', vs') = mapAccumL binding env vs
       in fn alg vs' (go env' b')
     C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
-      -- \ s ps -> align . group $ pretty "case" <+> setPrec Expr s </> block (concatWith (surround (hardline <> comma <> space)) (map (group . (\ (p, b) -> align (embed (prec Pattern p </> arrow) </> b))) ps))
-      -- let (vs, (_, b')) = splitr C.unLam' (d, C.VLam n b)
-      --     binding env (p, n ::: _T) =
-      --       let _T' = sig env _T
-      --       in  (env :> lvar env (P p n ::: _T'), P p (unPl (tintro alg) (intro alg) p n (Level (length env)) ::: Just _T'))
-      --     (env', vs') = mapAccumL binding env vs
-      -- in lam alg [clause alg vs' (go env' b')]
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     C.VNeut h e ->
