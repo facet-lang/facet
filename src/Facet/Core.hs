@@ -74,7 +74,7 @@ data Value
   | VForAll Binding (Value -> Value)
   | VLam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | VNeut (Var Value) (Stack (Pl_ Value))
+  | VNeut (Var Value) (Stack (Pl, Value))
   | VCon (Con Value)
 
 instance Eq Value where
@@ -224,13 +224,13 @@ unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 
 
 -- FIXME: how should this work in weak/parametric HOAS?
-($$) :: HasCallStack => Value -> Pl_ Value -> Value
+($$) :: HasCallStack => Value -> (Pl, Value) -> Value
 VNeut h es  $$ a = VNeut h (es :> a)
-VForAll _ b $$ a = b (out a)
-VLam _    b $$ a = case' (out a) b
+VForAll _ b $$ a = b (snd a)
+VLam _    b $$ a = case' (snd a) b
 _           $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (HasCallStack, Foldable t) => Value -> t (Pl_ Value) -> Value
+($$*) :: (HasCallStack, Foldable t) => Value -> t (Pl, Value) -> Value
 ($$*) = foldl' ($$)
 
 infixl 9 $$, $$*
@@ -353,7 +353,7 @@ sortOf ctx = \case
   VInterface                  -> SKind
   VForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx ((type' :: Sig -> Value) _T) in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
   VLam{}                      -> STerm
-  VNeut h sp                  -> minimum (unVar (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (sortOf ctx . out <$> sp))
+  VNeut h sp                  -> minimum (unVar (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (sortOf ctx . snd <$> sp))
   VCon _                      -> STerm
 
 

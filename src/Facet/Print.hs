@@ -165,10 +165,10 @@ data Algebra p = Algebra
   , tintro :: UName -> Level -> p
   , intro :: UName -> Level -> p
   , fn
-    :: [Pl_ ([p] ::: p)] -- the argument types/bindings
+    :: [(Pl, [p] ::: p)] -- the argument types/bindings
     -> p                 -- the return type
     -> p
-  , app :: p -> Stack (Pl_ p) -> p
+  , app :: p -> Stack (Pl, p) -> p
   , hole :: UName -> p
   , tcomp :: [p] -> p -> p
   , ann' :: (p ::: p) -> p
@@ -194,10 +194,10 @@ surface = Algebra
   , tintro = name upper
   , intro = name lower
   -- FIXME: group quantifiers by kind again.
-  , fn = flip (foldr (\ (P pl (n ::: _T)) b -> case n of
+  , fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
     [] -> _T --> b
     _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
-  , app = \ f as -> group f $$* fmap (group . unPl_ braces id) as
+  , app = \ f as -> group f $$* fmap (group . uncurry (unPl braces id)) as
   , hole = \ n -> annotate (Hole (Meta 0)) $ pretty '?' <> pretty n
   , tcomp = \ s t -> case s of
     [] -> t
@@ -238,15 +238,14 @@ printValue alg = go
       let (vs, (_, b')) = splitr C.unForAll' (d, C.VForAll t b)
           binding env (C.Binding p n _T) =
             let _T' = sig env _T
-            in  (env :> tvar env (P p n ::: _T'), P p (name p n (Level (length env)) ::: _T'))
+            in  (env :> tvar env ((p, n) ::: _T'), (p, name p n (Level (length env)) ::: _T'))
           name p n d
             | T.null (getUName n)
             , Ex <- p             = []
             | otherwise           = [tintro alg n d]
           (env', vs') = mapAccumL binding env vs
       in fn alg vs' (go env' b')
-    C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
-    -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
+    C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b    -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     C.VNeut h e ->
       let elim h sp  Nil     = case sp Nil of
@@ -255,13 +254,13 @@ printValue alg = go
           elim h sp  (es:>a) = elim h (sp . (:> fmap (go env) a)) es
           h' = C.unVar (ann' alg . bimap (var alg . qvar) (go env)) ((env !) . getIndex . levelToIndex d) (ann' alg . bimap (var alg . Metavar) (go env)) h
       in elim h' id e
-    C.VCon (C.Con n p) -> app alg (ann' alg (bimap (var alg . qvar) (go env) n)) (fmap (ex . go env) p)
+    C.VCon (C.Con n p) -> app alg (ann' alg (bimap (var alg . qvar) (go env) n)) (fmap ((Ex,) . go env) p)
     where
     d = Level (length env)
-  tvar env n = ann' alg (var alg (TLocal (out (tm n)) (Level (length env))) ::: ty n)
+  tvar env n = ann' alg (var alg (TLocal (snd (tm n)) (Level (length env))) ::: ty n)
   lvar env (p, n) = var alg (unPl TLocal Local p n (Level (length env)))
   sig env (C.Sig s _T) = (if null s then id else tcomp alg (map (delta env) (toList s))) (go env _T)
-  delta env (C.Delta (q ::: _T) sp) = app alg (ann' alg (var alg (qvar q) ::: go env _T)) (ex . go env <$> sp)
+  delta env (C.Delta (q ::: _T) sp) = app alg (ann' alg (var alg (qvar q) ::: go env _T)) ((Ex,) . go env <$> sp)
 
   clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow <+> go env' (b (snd <$> p'))
     where

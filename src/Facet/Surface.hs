@@ -27,7 +27,7 @@ import Data.Text (Text)
 import Facet.Name
 import Facet.Span
 import Facet.Stack
-import Facet.Syntax hiding (out)
+import Facet.Syntax
 
 -- Expressions
 

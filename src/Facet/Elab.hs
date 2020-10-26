@@ -138,8 +138,8 @@ unify = trace "unify" . \case
   unifySpine (Nil      :===: Nil)      = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
   unifySpine (i1 :> l1 :===: i2 :> l2)
-    | pl l1 == pl l2                   = liftA2 (:>) <$> unifySpine (i1 :===: i2) <*> Just (P (pl l1) <$> unify (out l1 :===: out l2))
-  unifySpine _                         = Nothing
+    | fst l1 == fst l2                   = liftA2 (:>) <$> unifySpine (i1 :===: i2) <*> Just ((fst l1,) <$> unify (snd l1 :===: snd l2))
+  unifySpine _                           = Nothing
 
   solve (n :=: val') = do
     subst <- get
@@ -165,7 +165,7 @@ instantiate :: Expr ::: Type -> Elab (Expr ::: Type)
 instantiate (e ::: _T) = case unForAll _T of
   Just (Binding Im _ (Sig _ _T), _B) -> do
     m <- metavar <$> meta _T
-    instantiate (e C.$$ im m ::: _B m)
+    instantiate (e C.$$ (Im, m) ::: _B m)
   _                                  -> pure $ e ::: _T
 
 
@@ -249,7 +249,7 @@ f $$ a = Synth $ do
   f' ::: _F <- synth f
   (_A, _B) <- expectQuantifier "in application" _F
   a' <- check (a ::: Just ((type' :: Sig -> Type) (sig _A)))
-  pure $ (f' C.$$ ex a') ::: _B a'
+  pure $ (f' C.$$ (Ex, a')) ::: _B a'
 
 
 elabBinder
@@ -303,7 +303,7 @@ elabSig = withSpan $ \ (S.Sig _ t) -> trace "sig" $ elabExpr t
 elabTelescope :: [S.Ann S.Binding] -> Check (Type ::: Type) -> Check (Type ::: Type)
 elabTelescope bindings body = trace "telescope" $ foldr (\ (S.Ann s _ (S.Binding p ns t)) b ->
   local (\ s' -> s'{ start = start s }) $ foldr (\ n k -> tracePretty n $
-    switch $ P p n ::: checkElab (elabSig t) >~> \ v -> v |- checkElab k) b ns) body bindings
+    switch $ (p, n) ::: checkElab (elabSig t) >~> \ v -> v |- checkElab k) b ns) body bindings
 
 
 _Type :: Synth Type
@@ -314,26 +314,26 @@ _Interface = Synth $ pure $ VInterface ::: VType
 
 -- FIXME: effects!
 (>~>)
-  :: (Pl_ UName ::: Check Type)
+  :: ((Pl, UName) ::: Check Type)
   -> (UName ::: Type -> Check Type)
   -> Synth Type
 (n ::: t) >~> b = Synth $ trace ">~>" $ do
   _T <- check (t ::: Just VType)
-  b' <- elabBinder $ \ _ -> check (b (out n ::: _T) ::: Just VType)
-  pure $ VForAll (Binding (pl n) (out n) (Sig mempty _T)) b' ::: VType
+  b' <- elabBinder $ \ _ -> check (b (snd n ::: _T) ::: Just VType)
+  pure $ VForAll (Binding (fst n) (snd n) (Sig mempty _T)) b' ::: VType
 
 infixr 1 >~>
 
 
 lam
-  :: Pl_ UName
+  :: (Pl, UName)
   -> (UName ::: Type -> Check Expr)
   -> Check Expr
 lam n b = Check $ expectChecked "lambda" $ \ _T -> do
   -- FIXME: how does the effect adjustment change this?
   (Binding _ _ (Sig _ _T), _B) <- expectQuantifier "when checking lambda" _T
-  b' <- elabBinder $ \ v -> check (b (out n ::: _T) ::: Just (_B v))
-  pure $ VLam (pl n) [Clause (PVar (out n ::: _T)) (\ (PVar a) -> b' a)]
+  b' <- elabBinder $ \ v -> check (b (snd n ::: _T) ::: Just (_B v))
+  pure $ VLam (fst n) [Clause (PVar (snd n ::: _T)) (\ (PVar a) -> b' a)]
 
 
 elabComp
@@ -454,7 +454,7 @@ elabTermDef
   -> Check Expr
 elabTermDef bindings expr = foldr (\ (S.Ann s _ (S.Binding p ns _)) b ->
   setSpan s $ foldr (\ n k ->
-    lam (P p n) (|- k)) b ns)
+    lam (p, n) (|- k)) b ns)
   (checkElab (elabExpr expr))
   bindings
 
