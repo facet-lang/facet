@@ -5,15 +5,14 @@ module Facet.Print
 , Precedence(..)
 , Highlight(..)
 , ann
-  -- * Algebras
-, Algebra(..)
-, surface
   -- * Core printers
 , printValue
 , printModule
+  -- * Misc
+, intro
+, tintro
 ) where
 
-import           Data.Bifunctor
 import           Data.Foldable (foldl', toList)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
@@ -160,25 +159,6 @@ data Var
 qvar :: QName -> Var
 qvar (m :.: n) = Global (Just m) n
 
-data Algebra p = Algebra
-  { var :: Var -> p
-  , tintro :: UName -> Level -> p
-  , intro :: UName -> Level -> p
-  , fn
-    :: [(Pl, [p] ::: p)] -- the argument types/bindings
-    -> p                 -- the return type
-    -> p
-  , app :: p -> Stack (Pl, p) -> p
-  , hole :: UName -> p
-  , tcomp :: [p] -> p -> p
-  , ann' :: (p ::: p) -> p
-  , peff     :: p -> Stack p -> p -> p
-  , decl :: p ::: p -> p
-  , defn :: p :=: p -> p
-  , module_ :: MName ::: Maybe p :=: ([p], [p]) -> p
-  , import' :: MName -> p
-  }
-
 
 printVar :: ((Int -> Print) -> UName -> Level -> Print) -> Var -> Print
 printVar name = \case
@@ -188,37 +168,11 @@ printVar name = \case
   Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
   Cons     n -> setPrec Var (annotate Con (pretty n))
 
-surface :: Algebra Print
-surface = Algebra
-  { var = printVar name
-  , tintro = name upper
-  , intro = name lower
-  -- FIXME: group quantifiers by kind again.
-  , fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
-    [] -> _T --> b
-    _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
-  , app = \ f as -> group f $$* fmap (group . uncurry (unPl braces id)) as
-  , hole = \ n -> annotate (Hole (Meta 0)) $ pretty '?' <> pretty n
-  , tcomp = \ s t -> case s of
-    [] -> t
-    _  -> brackets (commaSep s) <+> t
-  , ann' = group . tm
-  , peff = \ n ps k -> brackets (hsep (annotate Con n:toList ps) <+> semi <+> k)
-  , decl = ann
-  , defn = \ (a :=: b) -> group a <> hardline <> group b
-  , module_ = \ (n ::: t :=: (is, ds)) -> ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
-  , import' = \ n -> pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
-  }
-  where
-  name f n d = setPrec Var . annotate (Name d) $ if
-    | T.null (getUName n) -> pretty '_' <> f (getLevel d)
-    | otherwise           -> pretty n
-
 
 -- Core printers
 
-printValue :: Algebra Print -> Stack Print -> C.Value -> Print
-printValue alg = go
+printValue :: Stack Print -> C.Value -> Print
+printValue = go
   where
   go env = \case
     C.VType -> annotate Type $ pretty "Type"
@@ -231,26 +185,26 @@ printValue alg = go
           name p n d
             | T.null (getUName n)
             , Ex <- p             = []
-            | otherwise           = [tintro alg n d]
+            | otherwise           = [tintro n d]
           (env', vs') = mapAccumL binding env vs
-      in fn alg vs' (go env' b')
+      in fn vs' (go env' b')
     C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
     -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
     -- FIXME: should maybe print the quoted variable differently so it stands out.
     C.VNeut h e ->
       let elim h sp  Nil     = case sp Nil of
             Nil -> h
-            sp  -> app alg h sp
+            sp  -> app h sp
           elim h sp  (es:>a) = elim h (sp . (:> fmap (go env) a)) es
-          h' = C.unVar (ann' alg . bimap (var alg . qvar) (go env)) ((env !) . getIndex . levelToIndex d) (ann' alg . bimap (var alg . Metavar) (go env)) h
+          h' = C.unVar (group . var . qvar . tm) ((env !) . getIndex . levelToIndex d) (group . var . Metavar . tm) h
       in elim h' id e
-    C.VCon (C.Con n p) -> app alg (ann' alg (bimap (var alg . qvar) (go env) n)) (fmap ((Ex,) . go env) p)
+    C.VCon (C.Con n p) -> app (group (var (qvar (tm n)))) (fmap ((Ex,) . go env) p)
     where
     d = Level (length env)
-  tvar env n = ann' alg (var alg (TLocal (snd (tm n)) (Level (length env))) ::: ty n)
-  lvar env (p, n) = var alg (unPl TLocal Local p n (Level (length env)))
-  sig env (C.Sig s _T) = (if null s then id else tcomp alg (map (delta env) (toList s))) (go env _T)
-  delta env (C.Delta (q ::: _T) sp) = app alg (ann' alg (var alg (qvar q) ::: go env _T)) ((Ex,) . go env <$> sp)
+  tvar env n = group (var (TLocal (snd (tm n)) (Level (length env))))
+  lvar env (p, n) = var (unPl TLocal Local p n (Level (length env)))
+  sig env (C.Sig s _T) = (if null s then id else tcomp (map (delta env) (toList s))) (go env _T)
+  delta env (C.Delta (q ::: _T) sp) = app (group (var (qvar q))) ((Ex,) . go env <$> sp)
 
   clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow <+> go env' (b (snd <$> p'))
     where
@@ -259,22 +213,44 @@ printValue alg = go
     C.PVar n            -> n
     C.PCon (C.Con n ps) -> parens (hsep (annotate Con (pretty (tm n)):map pat (toList ps)))
 
-printModule :: Algebra Print -> C.Module -> Print
-printModule alg (C.Module mname is _ ds) = module_ alg
+  -- FIXME: group quantifiers by kind again.
+  fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
+    [] -> _T --> b
+    _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
+
+  app f as = group f $$* fmap (group . uncurry (unPl braces id)) as
+  tcomp s t = case s of
+    [] -> t
+    _  -> brackets (commaSep s) <+> t
+
+
+printModule :: C.Module -> Print
+printModule (C.Module mname is _ ds) = module_
   $   mname
-  ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module")))))
-  :=: (map (\ (C.Import n) -> import' alg n) is, map def (Map.toList ds))
+  ::: Just (var (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module")))))
+  :=: (map (\ (C.Import n) -> import' n) is, map def (Map.toList ds))
   where
-  def (n, C.Decl Nothing  t) = decl alg
-    $   var alg (Global (Just mname) n)
-    ::: printValue alg Nil t
-  def (n, C.Decl (Just d) t) = decl alg
-    $   var alg (Global (Just mname) n)
-    ::: defn alg (printValue alg Nil t
+  def (n, C.Decl Nothing  t) = ann
+    $   var (Global (Just mname) n)
+    ::: printValue Nil t
+  def (n, C.Decl (Just d) t) = ann
+    $   var (Global (Just mname) n)
+    ::: defn (printValue Nil t
     :=: case d of
-      C.DTerm b  -> printValue alg Nil b
+      C.DTerm b  -> printValue Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
-        (map (\ (n :=: _ ::: _T) -> decl alg (var alg (Cons n) ::: printValue alg Nil _T)) cs)
+        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printValue Nil _T)) cs)
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
-        (map (\ (n ::: _T) -> decl alg (var alg (Cons n) ::: printValue alg Nil _T)) os))
+        (map (\ (n ::: _T) -> ann (var (Cons n) ::: printValue Nil _T)) os))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
+  import' n = pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
+  module_ (n ::: t :=: (is, ds)) = ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
+  defn (a :=: b) = group a <> hardline <> group b
+
+intro, tintro :: UName -> Level -> Print
+intro = name lower
+tintro = name upper
+var = printVar name
+name f n d = setPrec Var . annotate (Name d) $ if
+  | T.null (getUName n) -> pretty '_' <> f (getLevel d)
+  | otherwise           -> pretty n

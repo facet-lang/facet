@@ -33,11 +33,11 @@ rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context, callStack } -
   where
   combine (d, sort, print, ctx) (n ::: _T) =
     let s = sortOf sort _T
-        n' = name s surface n d
+        n' = name s n d
     in  ( succ d
         , sort  :> s
         , print :> n'
-        , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printValue surface print _T))) )
+        , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printValue print _T))) )
   name = \case
     STerm -> intro
     _     -> tintro
@@ -64,4 +64,4 @@ printReason ctx = group . \case
 
 
 printType :: Stack Print -> Type -> Doc Print.Highlight
-printType env = getPrint . printValue surface env
+printType env = getPrint . printValue env
