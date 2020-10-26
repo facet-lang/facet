@@ -244,12 +244,12 @@ case' s cs = case matchWith (\ (Clause p f) -> f <$> match s p) cs of
 
 match :: Value -> Pattern b -> Maybe (Pattern Value)
 match = curry $ \case
-  (s,          PVar _)                -> Just (PVar s)
+  (s,                PVar _)          -> Just (PVar s)
   (VCon (Con n' fs), PCon (Con n ps)) -> do
     guard (tm n == tm n')
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
     PCon . Con n' <$> sequenceA (zipWith match fs ps)
-  (_,          PCon _)                -> Nothing
+  (_,                PCon _)          -> Nothing
 
 
 -- | Substitute metavars.
