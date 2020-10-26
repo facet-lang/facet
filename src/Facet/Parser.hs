@@ -328,7 +328,7 @@ rparen = symbolic ')'
 anned :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p) => p a -> p (S.Ann a)
 anned p = mk <$> censor @(Stack (Span, S.Comment)) (const Nil) (listen @(Stack (Span, S.Comment)) ((,,) <$> position <*> p <*> position))
   where
-  mk (_cs, (s, a, e)) = S.Ann (Span s e) Nil a
+  mk (cs, (s, a, e)) = S.Ann (Span s e) cs a
 
 
 -- Parsing carriers
