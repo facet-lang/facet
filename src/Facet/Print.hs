@@ -172,41 +172,39 @@ printVar name = \case
 -- Core printers
 
 printValue :: Stack Print -> C.Value -> Print
-printValue = go
+printValue env = \case
+  C.VType -> annotate Type $ pretty "Type"
+  C.VInterface -> annotate Type $ pretty "Interface"
+  C.VForAll t b ->
+    let (vs, (_, b')) = splitr C.unForAll' (d, C.VForAll t b)
+        binding env (C.Binding p n _T) =
+          let _T' = sig env _T
+          in  (env :> tvar env ((p, n) ::: _T'), (p, name p n (Level (length env)) ::: _T'))
+        name p n d
+          | T.null (getUName n)
+          , Ex <- p             = []
+          | otherwise           = [tintro n d]
+        (env', vs') = mapAccumL binding env vs
+    in fn vs' (printValue env' b')
+  C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
+  -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
+  -- FIXME: should maybe print the quoted variable differently so it stands out.
+  C.VNeut h e ->
+    let elim h sp  Nil     = case sp Nil of
+          Nil -> h
+          sp  -> app h sp
+        elim h sp  (es:>a) = elim h (sp . (:> fmap (printValue env) a)) es
+        h' = C.unVar (group . var . qvar . tm) ((env !) . getIndex . levelToIndex d) (group . var . Metavar . tm) h
+    in elim h' id e
+  C.VCon (C.Con n p) -> app (group (var (qvar (tm n)))) (fmap ((Ex,) . printValue env) p)
   where
-  go env = \case
-    C.VType -> annotate Type $ pretty "Type"
-    C.VInterface -> annotate Type $ pretty "Interface"
-    C.VForAll t b ->
-      let (vs, (_, b')) = splitr C.unForAll' (d, C.VForAll t b)
-          binding env (C.Binding p n _T) =
-            let _T' = sig env _T
-            in  (env :> tvar env ((p, n) ::: _T'), (p, name p n (Level (length env)) ::: _T'))
-          name p n d
-            | T.null (getUName n)
-            , Ex <- p             = []
-            | otherwise           = [tintro n d]
-          (env', vs') = mapAccumL binding env vs
-      in fn vs' (go env' b')
-    C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
-    -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
-    -- FIXME: should maybe print the quoted variable differently so it stands out.
-    C.VNeut h e ->
-      let elim h sp  Nil     = case sp Nil of
-            Nil -> h
-            sp  -> app h sp
-          elim h sp  (es:>a) = elim h (sp . (:> fmap (go env) a)) es
-          h' = C.unVar (group . var . qvar . tm) ((env !) . getIndex . levelToIndex d) (group . var . Metavar . tm) h
-      in elim h' id e
-    C.VCon (C.Con n p) -> app (group (var (qvar (tm n)))) (fmap ((Ex,) . go env) p)
-    where
-    d = Level (length env)
+  d = Level (length env)
   tvar env n = group (var (TLocal (snd (tm n)) (Level (length env))))
   lvar env (p, n) = var (unPl TLocal Local p n (Level (length env)))
-  sig env (C.Sig s _T) = (if null s then id else tcomp (map (delta env) (toList s))) (go env _T)
-  delta env (C.Delta (q ::: _T) sp) = app (group (var (qvar q))) ((Ex,) . go env <$> sp)
+  sig env (C.Sig s _T) = (if null s then id else tcomp (map (delta env) (toList s))) (printValue env _T)
+  delta env (C.Delta (q ::: _T) sp) = app (group (var (qvar q))) ((Ex,) . printValue env <$> sp)
 
-  clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow <+> go env' (b (snd <$> p'))
+  clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow <+> printValue env' (b (snd <$> p'))
     where
     ((_, env'), p') = mapAccumL (\ (d, env) (n ::: _) -> let v = lvar env (pl, n) in ((succ d, env :> v), (v, C.free d))) (Level (length env), env) p
   pat = \case
