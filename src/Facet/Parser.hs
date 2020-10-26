@@ -14,7 +14,8 @@ module Facet.Parser
 import           Control.Algebra ((:+:))
 import           Control.Applicative (Alternative(..))
 import           Control.Carrier.Reader
-import           Control.Carrier.State.Church
+import qualified Control.Carrier.State.Church as C
+import           Control.Effect.State
 import           Control.Monad.Trans.Class
 import           Data.Bool (bool)
 import           Data.Char (isSpace)
@@ -49,19 +50,17 @@ import           Text.Parser.Token.Style
 
 -- FIXME: allow operators to be introduced and scoped locally
 runFacet :: Applicative m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
-runFacet ops (Facet m) = evalState ops m
+runFacet ops (Facet m) = C.evalState ops (runStateC m)
 
 newtype Facet m a = Facet (StateC [Operator (S.Ann S.Expr)] m a)
   deriving (Algebra (State [Operator (S.Ann S.Expr)] :+: sig), Alternative, Applicative, Functor, Monad, MonadFail)
 
 instance (Monad p, Parsing p) => Parsing (Facet p) where
-  try (Facet m) = Facet $ StateC $ \ k s -> try (runState k s m)
-  Facet m <?> l = Facet $ StateC $ \ k s -> runState k s m <?> l
+  try (Facet m) = Facet $ try m
+  Facet m <?> l = Facet $ m <?> l
   unexpected = lift . unexpected
   eof = lift eof
-  notFollowedBy (Facet m) = Facet $ StateC $ \ k s -> do
-    (s, a) <- runState (fmap pure . (,)) s m
-    notFollowedBy (pure a) >>= k s
+  notFollowedBy (Facet m) = Facet $ notFollowedBy m
 
 instance (Monad p, CharParsing p) => CharParsing (Facet p) where
   satisfy = lift . satisfy
@@ -76,6 +75,19 @@ instance (Monad p, TokenParsing p) => TokenParsing (Facet p) where
 
 instance MonadTrans Facet where
   lift = Facet . lift
+
+
+newtype StateC s m a = StateC { runStateC :: C.StateC s m a }
+  deriving (Algebra (State s :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadTrans)
+
+instance (Monad p, Parsing p) => Parsing (StateC s p) where
+  try (StateC m) = StateC $ C.StateC $ \ k s -> try (C.runState k s m)
+  StateC m <?> l = StateC $ C.StateC $ \ k s -> C.runState k s m <?> l
+  unexpected = lift . unexpected
+  eof = lift eof
+  notFollowedBy (StateC m) = StateC $ C.StateC $ \ k s -> do
+    (s, a) <- C.runState (fmap pure . (,)) s m
+    notFollowedBy (pure a) >>= k s
 
 
 whole :: TokenParsing p => p a -> p a
