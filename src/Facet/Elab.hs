@@ -420,12 +420,19 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
 
 elabDataDef
   :: HasCallStack
-  => (DName ::: Type)
+  => (QName ::: Type)
   -> [S.Ann (UName ::: S.Ann S.Type)]
-  -> Elab [UName ::: Type]
+  -> Elab [(DName, Decl)]
 -- FIXME: check that all constructors return the datatype.
-elabDataDef (_ ::: _T) constructors = for constructors $ withSpan $ \ (n ::: t) -> fmap (n :::) . setSpan (S.ann t)
-  $ go (checkElab (elabExpr t)) _T
+elabDataDef (mname :.: dname ::: _T) constructors = do
+  cs <- for constructors $ withSpan $ \ (n ::: t) -> setSpan (S.ann t) $ do
+    s <- get @Subst
+    c_T <- go (checkElab (elabExpr t)) _T
+    c <- apply s (con (mname :.: C n) Nil c_T)
+    pure $ n :=: c ::: c_T
+  pure
+    $ (dname, Decl (Just (C.DData cs)) _T)
+    : map (\ (n :=: c ::: c_T) -> (E n, Decl (Just (C.DTerm c)) c_T)) cs
   where
   go k = \case
     VType                               -> check (k ::: Just VType)
@@ -433,7 +440,10 @@ elabDataDef (_ ::: _T) constructors = for constructors $ withSpan $ \ (n ::: t) 
     VForAll (Binding _ n (Sig s _T)) _B -> do
       _B' <- elabBinder (\ v -> n ::: _T |- go k (_B v))
       pure $ VForAll (Binding Im n (Sig s _T)) _B'
-    _                                   -> error "ill-formed type for interface"
+    _                                   -> error "ill-formed type for datatype"
+  con q fs = \case
+    VForAll (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> con q (fs :> v) (_B v))]
+    _T                                  -> VCon (Con (q ::: _T) fs)
 
 elabInterfaceDef
   :: HasCallStack
@@ -485,17 +495,8 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
       decls_.at dname .= Just (Decl Nothing _T)
       case def of
         S.DataDef cs -> do
-          (s, cs) <- runModule . elabWith (fmap pure . (,)) $ elabDataDef (dname ::: _T) cs
-          def <- C.DData <$> for cs (\ (n ::: _T) -> do
-            _T' <- apply s _T
-            let go fs = \case
-                  VForAll (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> go (fs :> v) (_B v))]
-                  _T                                  -> VCon (Con (mname :.: C n ::: _T) fs)
-            c <- apply s (go Nil _T')
-            decls_.at (E n) .= Just (Decl (Just (C.DTerm c)) _T')
-            pure $ n :=: c ::: _T')
-          decls_.ix dname .= Decl (Just def) _T
-          pure Nothing
+          decls <- runModule . elabWith (const pure) $ elabDataDef (mname :.: dname ::: _T) cs
+          Nothing <$ for_ decls (\ (dname, decl) -> decls_.at dname .= Just decl)
 
         S.InterfaceDef os -> do
           (s, os) <- runModule . elabWith (fmap pure . (,)) $ elabInterfaceDef (dname ::: _T) os
