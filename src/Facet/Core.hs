@@ -26,6 +26,7 @@ module Facet.Core
 , match
 , subst
 , bind
+, binds
 , mvs
 , generalize
   -- ** Classification
@@ -54,6 +55,7 @@ import           Control.Lens (Lens', lens)
 import           Data.Foldable (find, foldl', toList)
 import           Data.Functor.Classes
 import qualified Data.IntMap as IntMap
+import           Data.Maybe (fromMaybe)
 import           Data.Monoid (First(..))
 import           Data.Semialign
 import qualified Data.Set as Set
@@ -284,14 +286,17 @@ subst s
 
 -- | Bind a free variable.
 bind :: HasCallStack => Level -> Value -> Value -> Value
-bind target with = go
+bind k v = binds (IntMap.singleton (getLevel k) v)
+
+binds :: HasCallStack => IntMap.IntMap Value -> Value -> Value
+binds subst = go
   where
   go = \case
     VType       -> VType
     VInterface  -> VInterface
     VForAll t b -> VForAll (binding t) (go . b)
     VLam    p b -> VLam p (map clause b)
-    VNeut f a   -> unVar global (\ v -> if v == target then with else free v) metavar f' $$* fmap (fmap go) a
+    VNeut f a   -> unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) subst)) metavar f' $$* fmap (fmap go) a
       where
       f' = case f of
         Global  (n ::: _T) -> Global  (n ::: go _T)
