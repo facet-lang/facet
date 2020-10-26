@@ -57,6 +57,10 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - First-class literate programming?
 
+- Operator sections using underscores as placeholders: `(_ >> f)`.
+
+- Function sections using underscores as placeholders: `f _ a b`.
+
 
 ### Modules
 
