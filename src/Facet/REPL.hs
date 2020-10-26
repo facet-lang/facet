@@ -122,7 +122,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ "
 
 kernel :: Module
 kernel = Module kernelName [] [] $ Map.fromList
-  [ (typeName, Decl typeName (Just (DTerm VType)) VType)
+  [ (typeName, Decl (Just (DTerm VType)) VType)
   ]
   where
   typeName = T (UName (TS.pack "Type"))

@@ -410,14 +410,14 @@ lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Valu
 lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
-  matchDef (Decl _ d     _)  = maybe empty pure d >>= unDData >>= matchWith matchCon
+  matchDef (Decl   d     _)  = maybe empty pure d >>= unDData >>= matchWith matchCon
   matchCon (n' :=: v ::: _T) = (name :.: C n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Value)
 lookupD (C n) m = lookupC n m
 lookupD n m@Module{ name = mname, decls } = maybe ((`lookupC` m) =<< unEName n) pure $ do
-  Decl _ d _T <- Map.lookup n decls
+  Decl d _T <- Map.lookup n decls
   pure $ mname :.: n :=: d ::: _T
 
 
@@ -425,8 +425,7 @@ newtype Import = Import { name :: MName }
 
 -- FIXME: keep track of free variables in declarations so we can work incrementally
 data Decl = Decl
-  { name  :: DName
-  , def   :: Maybe Def
+  { def   :: Maybe Def
   , type' :: Value
   }
 

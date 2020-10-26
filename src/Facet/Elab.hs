@@ -481,7 +481,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl bs sig def))) -> tracePretty dname $ setSpan s $ do
       _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig sig)) ::: Just VType)
 
-      decls_.at dname .= Just (Decl dname Nothing _T)
+      decls_.at dname .= Just (Decl Nothing _T)
 
       pure (S.ann sig, dname, (bs, def) ::: _T)
 
@@ -510,7 +510,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
             pure $ n :=: c ::: _T')
 
         S.TermDef t -> C.DTerm <$> runModule (elab (check (elabTermDef bs t ::: Just _T)))
-      decls_.ix dname .= Decl dname (Just def) _T
+      decls_.ix dname .= Decl (Just def) _T
 
 
 -- | Apply the substitution to the value.

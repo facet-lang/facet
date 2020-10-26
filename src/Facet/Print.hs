@@ -16,6 +16,7 @@ module Facet.Print
 
 import           Data.Bifunctor
 import           Data.Foldable (foldl', toList)
+import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (stimes)
 import qualified Data.Text as T
@@ -274,12 +275,12 @@ printModule :: Algebra Print -> C.Module -> Print
 printModule alg (C.Module mname is _ ds) = module_ alg
   $   mname
   ::: Just (var alg (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module")))))
-  :=: (map (\ (C.Import n) -> import' alg n) is, map def (toList ds))
+  :=: (map (\ (C.Import n) -> import' alg n) is, map def (Map.toList ds))
   where
-  def (C.Decl n Nothing  t) = decl alg
+  def (n, C.Decl Nothing  t) = decl alg
     $   var alg (Global (Just mname) n)
     ::: printValue alg Nil t
-  def (C.Decl n (Just d) t) = decl alg
+  def (n, C.Decl (Just d) t) = decl alg
     $   var alg (Global (Just mname) n)
     ::: defn alg (printValue alg Nil t
     :=: case d of
