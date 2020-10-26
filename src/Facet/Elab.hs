@@ -471,6 +471,7 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
 
   local (`restrict` importedNames) $ do
     -- FIXME: maybe figure out the graph for mutual recursion?
+    -- FIXME: check for redundant naming
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs (S.Ann s' sig@(S.Sig delta (ty :=: def)))))) -> tracePretty dname $ setSpan s $ do
