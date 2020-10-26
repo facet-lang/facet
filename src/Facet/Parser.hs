@@ -15,8 +15,8 @@ module Facet.Parser
 import           Control.Algebra ((:+:))
 import           Control.Applicative (Alternative(..))
 import           Control.Carrier.Reader
-import qualified Control.Carrier.State.Church as C
-import qualified Control.Carrier.Writer.Church as C
+import qualified Control.Carrier.State.Strict as C
+import qualified Control.Carrier.Writer.Strict as C
 import           Control.Effect.State
 import           Control.Effect.Writer
 import           Control.Monad.Trans.Class
@@ -331,8 +331,8 @@ anned p = mk <$> censor @(Stack (Span, S.Comment)) (const Nil) (listen @(Stack (
 
 -- Parsing carriers
 
-runFacet :: Applicative m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
-runFacet ops (Facet m) = C.runWriter (const pure) (runWriterC (C.evalState ops (runStateC m)))
+runFacet :: Functor m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
+runFacet ops (Facet m) = snd <$> C.runWriter (runWriterC (C.evalState ops (runStateC m)))
 
 newtype Facet m a = Facet (StateC [Operator (S.Ann S.Expr)] (WriterC (Stack (Span, S.Comment)) m) a)
   deriving (Algebra (State [Operator (S.Ann S.Expr)] :+: Writer (Stack (Span, S.Comment)) :+: sig), Alternative, Applicative, Functor, Monad, MonadFail)
@@ -370,23 +370,19 @@ newtype StateC s m a = StateC { runStateC :: C.StateC s m a }
   deriving (Algebra (State s :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadTrans)
 
 instance (Monad p, Parsing p) => Parsing (StateC s p) where
-  try (StateC m) = StateC $ C.StateC $ \ k s -> try (C.runState k s m)
-  StateC m <?> l = StateC $ C.StateC $ \ k s -> C.runState k s m <?> l
+  try (StateC m) = StateC $ C.StateC $ \ s -> try (C.runState s m)
+  StateC m <?> l = StateC $ C.StateC $ \ s -> C.runState s m <?> l
   unexpected = lift . unexpected
   eof = lift eof
-  notFollowedBy (StateC m) = StateC $ C.StateC $ \ k s -> do
-    (s, a) <- C.runState (fmap pure . (,)) s m
-    notFollowedBy (pure a) >>= k s
+  notFollowedBy (StateC m) = StateC $ C.StateC $ \ s -> (s,) <$> notFollowedBy (C.evalState s m)
 
 
 newtype WriterC w m a = WriterC { runWriterC :: C.WriterC w m a }
   deriving (Algebra (Writer w :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadTrans)
 
 instance (Monad p, Parsing p) => Parsing (WriterC s p) where
-  try (WriterC (C.WriterC m)) = WriterC $ C.WriterC $ C.StateC $ \ k s -> try (C.runState k s m)
-  WriterC (C.WriterC m) <?> l = WriterC $ C.WriterC $ C.StateC $ \ k s -> C.runState k s m <?> l
+  try (WriterC (C.WriterC m)) = WriterC $ C.WriterC $ C.StateC $ \ s -> try (C.runState s m)
+  WriterC (C.WriterC m) <?> l = WriterC $ C.WriterC $ C.StateC $ \ s -> C.runState s m <?> l
   unexpected = lift . unexpected
   eof = lift eof
-  notFollowedBy (WriterC (C.WriterC m)) = WriterC $ C.WriterC $ C.StateC $ \ k s -> do
-    (s, a) <- C.runState (fmap pure . (,)) s m
-    notFollowedBy (pure a) >>= k s
+  notFollowedBy (WriterC (C.WriterC m)) = WriterC $ C.WriterC $ C.StateC $ \ s -> (s,) <$> notFollowedBy (C.evalState s m)
