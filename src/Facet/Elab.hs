@@ -19,6 +19,7 @@ module Facet.Elab
 , _Type
 , (>~>)
 , tbind
+, tend
 , ($$)
 , lam
   -- * Modules
@@ -333,6 +334,11 @@ tbind t b = Synth $ trace "telescope" $ do
   d <- asks @(Context Type) level
   _B <- check (b (name ::: sig) ::: Just VType)
   pure $ Bind _T (\ v -> C.bindTelescope d v _B) ::: VType
+
+tend :: Check Sig -> Synth Telescope
+tend s = Synth $ do
+  s' <- check (s ::: Just VType)
+  pure $ End s' ::: VType
 
 
 lam
