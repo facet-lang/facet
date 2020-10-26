@@ -70,8 +70,6 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 ### Modules
 
-- Imports.
-
 - Submodules.
 
 - Design the relationship between files and modules. Currently thinking of a file as a metalanguage “script” which _constructs_ a module.
