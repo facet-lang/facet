@@ -376,10 +376,10 @@ elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
   (Binding _ _ (Sig _ _A), _B) <- expectQuantifier "when checking clauses" _T
   d <- asks (level @Type)
   let _B' = _B (free d)
-  cs' <- for cs $ \ (p:|_, b) -> do
-    p' <- check (elabPattern p ::: Just _A)
-    b' <- elabBinders p' $ foldr (|-) (check (checkElab (maybe (elabExpr b) elabClauses rest) ::: Just _B'))
-    pure (Clause p' b')
+  cs' <- for cs $ \ (p:|_, b) -> check
+    (   elabPattern p (\ p' -> do
+      Clause p' <$> elabBinders p' (foldr (|-) (check (checkElab (maybe (elabExpr b) elabClauses rest) ::: Just _B'))))
+    ::: Just _A)
   pure $ VLam Ex cs' ::: _T
   where
   partitionClause (_:|ps, b) = case ps of
@@ -387,32 +387,31 @@ elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
     p:ps -> XR [(p:|ps, b)]
 
 
-elabPattern
-  :: S.Ann S.Pattern
-  -> Check (C.Pattern (UName ::: Type))
-elabPattern = withSpan $ \ p -> Check $ expectChecked "pattern" $ \ _T -> case p of
-  S.PVar n    -> pure (C.PVar (n ::: _T))
+elabPattern :: S.Ann S.Pattern -> (C.Pattern (UName ::: Type) -> Elab a) -> Check a
+elabPattern (S.Ann s p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan s $ case p of
+  S.PVar n    -> k (C.PVar (n ::: _A))
   S.PCon n ps -> do
-    let inst _T = case unForAll _T of
-          Just (Binding Im _ (Sig _ _T), _B) -> do
-            m <- metavar <$> meta _T
-            inst (_B m)
-          _                        -> pure _T
-        go _T' = \case
-          []   -> [] <$ unify (_T' :===: _T)
-          p:ps -> do
-            -- FIXME: check the signature? somehow?
-            (Binding _ _ (Sig _ _A), _B) <- expectQuantifier "when checking constructor pattern" _T'
-            -- FIXME: there’s no way this is going to work, let alone a good idea
-            -- FIXME: elaborate patterns in CPS, binding locally with elabBinder, & obviating the need for |-*.
-            v <- metavar <$> meta _A
-            p' <- check (elabPattern p ::: Just _A)
-            ps' <- go (_B v) ps
-            pure $ p' : ps'
     q ::: _T' <- synth (resolveC n)
     _T'' <- inst _T'
-    C.PCon . Con (q ::: _T'') . fromList <$> go _T'' ps
+    subpatterns _A _T'' ps $ \ ps' -> k (C.PCon (Con (q ::: _T'') (fromList ps')))
   S.PEff{}    -> error "TBD"
+  where
+  inst _T = case unForAll _T of
+  -- FIXME: assert that the signature is empty
+    Just (Binding Im _ (Sig _ _T), _B) -> meta _T >>= inst . _B . metavar
+    _                                  -> pure _T
+  subpatterns _A = go
+    where
+    go _T' = \case
+      []   -> \ k -> unify (_T' :===: _A) *> k []
+      p:ps -> \ k -> do
+        -- FIXME: assert that the signature is empty
+        (Binding _ _ (Sig _ _A), _B) <- expectQuantifier "when checking constructor pattern" _T'
+        -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
+        v <- metavar <$> meta _A
+        check
+          (   elabPattern p (\ p' -> go (_B v) ps (\ ps' -> k (p' : ps')))
+          ::: Just _A)
 
 
 -- Declarations
