@@ -95,7 +95,7 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 ### Parser
 
-- Extend the precedence table for mixfix operators.
+- ✅ Extend the precedence table for mixfix operators.
 
 
 ### Elaborator
