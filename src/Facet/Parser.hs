@@ -60,7 +60,7 @@ whole p = whiteSpace *> p <* eof
 makeOperator :: (N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
 makeOperator (op, assoc) = (op, assoc, nary (N.O op))
   where
-  nary name es = foldl' (S.$$) (S.Ann (S.ann (head es)) (S.free name)) es
+  nary name es = foldl' (S.$$) (S.Ann (S.ann (head es)) Nil (S.free name)) es
 
 
 -- Modules
@@ -326,7 +326,7 @@ rparen = symbolic ')'
 anned :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p) => p a -> p (S.Ann a)
 anned p = mk <$> censor @(Stack (Span, S.Comment)) (const Nil) (listen @(Stack (Span, S.Comment)) ((,,) <$> position <*> p <*> position))
   where
-  mk (_cs, (s, a, e)) = S.Ann (Span s e) a
+  mk (_cs, (s, a, e)) = S.Ann (Span s e) Nil a
 
 
 -- Parsing carriers

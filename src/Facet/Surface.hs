@@ -71,7 +71,7 @@ data Sig a = Sig
 
 
 ($$) :: Ann Expr -> Ann Expr -> Ann Expr
-f $$ a = Ann (ann f <> ann a) (App f a)
+f $$ a = Ann (ann f <> ann a) Nil (App f a)
 
 infixl 9 $$
 
@@ -120,8 +120,9 @@ newtype Import = Import { name :: MName }
 -- Annotations
 
 data Ann a = Ann
-  { ann :: Span
-  , out :: a
+  { ann      :: Span
+  , comments :: Stack (Span, Comment)
+  , out      :: a
   }
   deriving (Foldable, Functor, Traversable)
 

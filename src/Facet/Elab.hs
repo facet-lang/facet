@@ -301,7 +301,7 @@ elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check (Type ::: Type)
 elabSig = withSpan $ \ (S.Sig _ t) -> trace "sig" $ elabExpr t
 
 elabTelescope :: [S.Ann S.Binding] -> Check (Type ::: Type) -> Check (Type ::: Type)
-elabTelescope bindings body = trace "telescope" $ foldr (\ (S.Ann s (S.Binding p ns t)) b ->
+elabTelescope bindings body = trace "telescope" $ foldr (\ (S.Ann s _ (S.Binding p ns t)) b ->
   local (\ s' -> s'{ start = start s }) $ foldr (\ n k -> tracePretty n $
     switch $ P p n ::: checkElab (elabSig t) >~> \ v -> v |- checkElab k) b ns) body bindings
 
@@ -361,7 +361,7 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
 elabClauses :: [(NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)] -> Check (Expr ::: Type)
-elabClauses [((S.Ann _ (S.PVar n)):|ps, b)] = Check $ expectChecked "variable pattern" $ \ _T -> do
+elabClauses [((S.Ann _ _ (S.PVar n)):|ps, b)] = Check $ expectChecked "variable pattern" $ \ _T -> do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (Binding pl _ (Sig _ _A), _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> n ::: _A |- check (checkElab (maybe (elabExpr b) (elabClauses . pure . (,b)) (nonEmpty ps)) ::: Just (_B v))
@@ -389,7 +389,7 @@ elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
 
 
 elabPattern :: S.Ann S.Pattern -> (C.Pattern (UName ::: Type) -> Elab a) -> Check a
-elabPattern (S.Ann s p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan s $ case p of
+elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan s $ case p of
   S.PVar n    -> k (C.PVar (n ::: _A))
   S.PCon n ps -> do
     q ::: _T' <- synth (resolveC n)
@@ -425,7 +425,7 @@ elabDataDef
 elabDataDef bindings constructors = for constructors $ withSpan $ \ (n ::: t) -> (n :::) <$> wrap (checkElab (elabExpr t))
   where
   -- FIXME: check that all constructors return the datatype.
-  wrap = flip (foldr (\ (S.Ann s (S.Binding _ ns _)) k ->
+  wrap = flip (foldr (\ (S.Ann s _ (S.Binding _ ns _)) k ->
     setSpan s $ foldr (\ n k -> Check $ expectChecked "data" $ \ _T -> do
       (Binding _ _ (Sig s _T), _B) <- expectQuantifier "in type quantifier" _T
       b' <- elabBinder $ \ v -> check ((n ::: _T |- k) ::: Just (_B v))
@@ -452,7 +452,7 @@ elabTermDef
   => [S.Ann S.Binding]
   -> S.Ann S.Expr
   -> Check Expr
-elabTermDef bindings expr = foldr (\ (S.Ann s (S.Binding p ns _)) b ->
+elabTermDef bindings expr = foldr (\ (S.Ann s _ (S.Binding p ns _)) b ->
   setSpan s $ foldr (\ n k ->
     lam (P p n) (|- k)) b ns)
   (checkElab (elabExpr expr))
@@ -466,8 +466,8 @@ elabModule
   .  (HasCallStack, Has (Reader Graph) sig m, Has (Throw Err) sig m, Has Trace sig m)
   => S.Ann S.Module
   -> m C.Module
-elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os []) . runReader s $ tracePretty mname $ do
-  let (importedNames, imports) = mapAccumL (\ names (S.Ann _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
+elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os []) . runReader s $ tracePretty mname $ do
+  let (importedNames, imports) = mapAccumL (\ names (S.Ann _ _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
   imports_ .= imports
 
   local (`restrict` importedNames) $ do
@@ -475,8 +475,8 @@ elabModule (S.Ann s (S.Module mname is os ds)) = execState (Module mname [] os [
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- trace "types" $ for ds $ \ (S.Ann _ (dname, S.Ann s (S.Decl bs (S.Ann s' sig@(S.Sig delta (ty :=: def)))))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig (S.Ann s' sig{ S.type' = ty }))) ::: Just VType)
+    es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl bs (S.Ann s' _ sig@(S.Sig delta (ty :=: def)))))) -> tracePretty dname $ setSpan s $ do
+      _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig (S.Ann s' Nil sig{ S.type' = ty }))) ::: Just VType)
 
       decls_ %= (<> [Decl dname Nothing _T])
 
@@ -538,7 +538,7 @@ setSpan :: Has (Reader Span) sig m => Span -> m a -> m a
 setSpan = local . const
 
 withSpan :: Has (Reader Span) sig m => (a -> m b) -> S.Ann a -> m b
-withSpan k (S.Ann s a) = setSpan s (k a)
+withSpan k (S.Ann s _ a) = setSpan s (k a)
 
 
 data Err = Err
