@@ -415,8 +415,7 @@ lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList 
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Value)
-lookupD (C n) m = lookupC n m
-lookupD n m@Module{ name = mname, decls } = maybe ((`lookupC` m) =<< unEName n) pure $ do
+lookupD n Module{ name = mname, decls } = maybe empty pure $ do
   Decl d _T <- Map.lookup n decls
   pure $ mname :.: n :=: d ::: _T
 
