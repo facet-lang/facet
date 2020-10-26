@@ -1,7 +1,5 @@
 module Facet.Parser
-( runFacet
-, Facet(..)
-, whole
+( whole
 , makeOperator
 , module'
 , moduleHeader
@@ -9,6 +7,8 @@ module Facet.Parser
 , type'
 , expr
 , mname
+, runFacet
+, Facet(..)
 ) where
 
 import           Control.Algebra ((:+:))
@@ -51,59 +51,6 @@ import           Text.Parser.Token.Style
 -- resolve imported definitions in the parser
 
 -- FIXME: allow operators to be introduced and scoped locally
-runFacet :: Applicative m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
-runFacet ops (Facet m) = C.runWriter (const pure) (runWriterC (C.evalState ops (runStateC m)))
-
-newtype Facet m a = Facet (StateC [Operator (S.Ann S.Expr)] (WriterC (Stack (S.Ann S.Comment)) m) a)
-  deriving (Algebra (State [Operator (S.Ann S.Expr)] :+: Writer (Stack (S.Ann S.Comment)) :+: sig), Alternative, Applicative, Functor, Monad, MonadFail)
-
-instance (Monad p, Parsing p) => Parsing (Facet p) where
-  try (Facet m) = Facet $ try m
-  Facet m <?> l = Facet $ m <?> l
-  unexpected = lift . unexpected
-  eof = lift eof
-  notFollowedBy (Facet m) = Facet $ notFollowedBy m
-
-instance (Monad p, CharParsing p) => CharParsing (Facet p) where
-  satisfy = lift . satisfy
-  char    = lift . char
-  notChar = lift . notChar
-  anyChar = lift anyChar
-  string  = lift . string
-  text    = lift . text
-
-instance (Monad p, TokenParsing p) => TokenParsing (Facet p) where
-  someSpace = buildSomeSpaceParser (skipSome (satisfy isSpace)) emptyCommentStyle{ _commentLine = "#" }
-
-instance MonadTrans Facet where
-  lift = Facet . lift . lift
-
-
-newtype StateC s m a = StateC { runStateC :: C.StateC s m a }
-  deriving (Algebra (State s :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadTrans)
-
-instance (Monad p, Parsing p) => Parsing (StateC s p) where
-  try (StateC m) = StateC $ C.StateC $ \ k s -> try (C.runState k s m)
-  StateC m <?> l = StateC $ C.StateC $ \ k s -> C.runState k s m <?> l
-  unexpected = lift . unexpected
-  eof = lift eof
-  notFollowedBy (StateC m) = StateC $ C.StateC $ \ k s -> do
-    (s, a) <- C.runState (fmap pure . (,)) s m
-    notFollowedBy (pure a) >>= k s
-
-
-newtype WriterC w m a = WriterC { runWriterC :: C.WriterC w m a }
-  deriving (Algebra (Writer w :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadTrans)
-
-instance (Monad p, Parsing p) => Parsing (WriterC s p) where
-  try (WriterC (C.WriterC m)) = WriterC $ C.WriterC $ C.StateC $ \ k s -> try (C.runState k s m)
-  WriterC (C.WriterC m) <?> l = WriterC $ C.WriterC $ C.StateC $ \ k s -> C.runState k s m <?> l
-  unexpected = lift . unexpected
-  eof = lift eof
-  notFollowedBy (WriterC (C.WriterC m)) = WriterC $ C.WriterC $ C.StateC $ \ k s -> do
-    (s, a) <- C.runState (fmap pure . (,)) s m
-    notFollowedBy (pure a) >>= k s
-
 
 whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
@@ -409,3 +356,59 @@ anned :: Has Parser sig p => p a -> p (S.Ann a)
 anned p = mk <$> position <*> p <*> position
   where
   mk s a e = S.Ann (Span s e) a
+
+
+-- Parsing carriers
+
+runFacet :: Applicative m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
+runFacet ops (Facet m) = C.runWriter (const pure) (runWriterC (C.evalState ops (runStateC m)))
+
+newtype Facet m a = Facet (StateC [Operator (S.Ann S.Expr)] (WriterC (Stack (S.Ann S.Comment)) m) a)
+  deriving (Algebra (State [Operator (S.Ann S.Expr)] :+: Writer (Stack (S.Ann S.Comment)) :+: sig), Alternative, Applicative, Functor, Monad, MonadFail)
+
+instance (Monad p, Parsing p) => Parsing (Facet p) where
+  try (Facet m) = Facet $ try m
+  Facet m <?> l = Facet $ m <?> l
+  unexpected = lift . unexpected
+  eof = lift eof
+  notFollowedBy (Facet m) = Facet $ notFollowedBy m
+
+instance (Monad p, CharParsing p) => CharParsing (Facet p) where
+  satisfy = lift . satisfy
+  char    = lift . char
+  notChar = lift . notChar
+  anyChar = lift anyChar
+  string  = lift . string
+  text    = lift . text
+
+instance (Monad p, TokenParsing p) => TokenParsing (Facet p) where
+  someSpace = buildSomeSpaceParser (skipSome (satisfy isSpace)) emptyCommentStyle{ _commentLine = "#" }
+
+instance MonadTrans Facet where
+  lift = Facet . lift . lift
+
+
+newtype StateC s m a = StateC { runStateC :: C.StateC s m a }
+  deriving (Algebra (State s :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadTrans)
+
+instance (Monad p, Parsing p) => Parsing (StateC s p) where
+  try (StateC m) = StateC $ C.StateC $ \ k s -> try (C.runState k s m)
+  StateC m <?> l = StateC $ C.StateC $ \ k s -> C.runState k s m <?> l
+  unexpected = lift . unexpected
+  eof = lift eof
+  notFollowedBy (StateC m) = StateC $ C.StateC $ \ k s -> do
+    (s, a) <- C.runState (fmap pure . (,)) s m
+    notFollowedBy (pure a) >>= k s
+
+
+newtype WriterC w m a = WriterC { runWriterC :: C.WriterC w m a }
+  deriving (Algebra (Writer w :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadTrans)
+
+instance (Monad p, Parsing p) => Parsing (WriterC s p) where
+  try (WriterC (C.WriterC m)) = WriterC $ C.WriterC $ C.StateC $ \ k s -> try (C.runState k s m)
+  WriterC (C.WriterC m) <?> l = WriterC $ C.WriterC $ C.StateC $ \ k s -> C.runState k s m <?> l
+  unexpected = lift . unexpected
+  eof = lift eof
+  notFollowedBy (WriterC (C.WriterC m)) = WriterC $ C.WriterC $ C.StateC $ \ k s -> do
+    (s, a) <- C.runState (fmap pure . (,)) s m
+    notFollowedBy (pure a) >>= k s
