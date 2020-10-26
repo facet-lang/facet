@@ -61,7 +61,7 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Function sections using underscores as placeholders: `f _ a b`.
 
-- Explicit type applications. Ideally using syntax like `{A}`, but we might need to be careful about this being mistaken for a computation.
+- Explicit type applications. Ideally using syntax like `{A}`, but we might need to be careful about this being mistaken for a computation. (E.g. both lambdas and function types use `->`.)
 
 - Explicit type abstractions?
 
