@@ -8,6 +8,8 @@ module Facet.Core
 , compareDelta
 , Telescope(..)
 , compareTelescope
+, unBind
+, unBind'
 , Clause(..)
 , instantiateClause
 , Binding(..)
@@ -138,6 +140,14 @@ compareTelescope d = curry $ \case
   (Bind{}, _)              -> LT
   (End s1, End s2)         -> compareSig d s1 s2
   (End{}, _)               -> LT
+
+
+unBind :: Has Empty sig m => Telescope -> m (Binding, Value -> Telescope)
+unBind = \case{ Bind t b -> pure (t, b) ; _ -> empty }
+
+-- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
+unBind' :: Has Empty sig m => (Level, Telescope) -> m (Binding, (Level, Telescope))
+unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
 data Clause = Clause
