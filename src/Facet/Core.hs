@@ -6,6 +6,7 @@ module Facet.Core
 , compareClause
 , compareSig
 , compareDelta
+, Telescope(..)
 , Clause(..)
 , instantiateClause
 , Binding(..)
@@ -124,6 +125,11 @@ compareSig d (Sig s1 t1) (Sig s2 t2) = liftCompare (compareDelta d) s1 s2 <> com
 
 compareDelta :: Level -> Delta -> Delta -> Ordering
 compareDelta d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> liftCompare (compareValue d) sp1 sp2
+
+
+data Telescope
+  = Bind Binding (Value -> Telescope)
+  | End Sig
 
 
 data Clause = Clause
