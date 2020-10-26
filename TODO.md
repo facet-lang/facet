@@ -70,7 +70,7 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 ### Modules
 
-- Imports.
+- ✅ Imports.
 
 - Submodules.
 
@@ -80,7 +80,9 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
   - For that matter, how does the programmer know?
 
-- Do we need to declare a module header with every file? Do we need to wrap the whole file in braces?
+- ✅ Do we need to wrap the whole file in braces?
+
+- Do we need to declare a module header with every file?
 
   - A header could be useful for stuff like language levels, versions, etc.
 
