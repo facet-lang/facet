@@ -92,7 +92,7 @@ data Pattern
 
 -- Declarations
 
-data Decl = Decl [Ann Binding] (Ann (Sig (Ann Type) :=: Def))
+data Decl = Decl [Ann Binding] (Ann (Sig (Ann Type))) Def
   deriving (Eq, Show)
 
 data Def

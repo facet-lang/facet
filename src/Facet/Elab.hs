@@ -475,12 +475,12 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl bs (S.Ann s' _ (sig :=: def))))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig (S.Ann s' Nil sig))) ::: Just VType)
+    es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl bs sig def))) -> tracePretty dname $ setSpan s $ do
+      _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig sig)) ::: Just VType)
 
       decls_ %= (<> [Decl dname Nothing _T])
 
-      pure (s', dname, (bs, def) ::: _T)
+      pure (S.ann sig, dname, (bs, def) ::: _T)
 
     -- then elaborate the terms
     trace "definitions" $ ifor_ es $ \ index (s, dname, (bs, def) ::: _T) -> setSpan s $ tracePretty dname $ do

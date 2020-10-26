@@ -105,16 +105,16 @@ termDecl = anned $ do
         _ -> pure N.N
       modify (makeOperator (op, assoc) :)
     _      -> pure ()
-  decl <- colon *> typeSig makeDecl (choice [ imBinding, exBinding ename ]) ((:=:) <$> type' <*> (S.TermDef <$> comp))
+  decl <- colon *> typeSig makeDecl (choice [ imBinding, exBinding ename ]) ((,) <$> type' <*> (S.TermDef <$> comp))
   pure (name, decl)
 
 dataDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
-dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> typeSig makeDecl (choice [ imBinding, exBinding tname ]) ((:=:) <$> type' <*> (S.DataDef <$> braces (commaSep con)))
+dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> typeSig makeDecl (choice [ imBinding, exBinding tname ]) ((,) <$> type' <*> (S.DataDef <$> braces (commaSep con)))
 
 interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
-interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> typeSig makeDecl (choice [ imBinding, exBinding tname ]) ((:=:) <$> type' <*> (S.InterfaceDef <$> braces (commaSep con)))
+interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> typeSig makeDecl (choice [ imBinding, exBinding tname ]) ((,) <$> type' <*> (S.InterfaceDef <$> braces (commaSep con)))
 
-makeDecl bs (S.Ann s cs (S.Sig delta (t :=: d))) = S.Decl bs (S.Ann s cs (S.Sig delta t :=: d))
+makeDecl bs (S.Ann s cs (S.Sig delta (t, d))) = S.Decl bs (S.Ann s cs (S.Sig delta t)) d
 
 con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann S.Type))
 con = anned ((:::) <$> cname <* colon <*> type')
