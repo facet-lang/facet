@@ -18,10 +18,12 @@ module Facet.Surface
 , Import(..)
   -- * Annotations
 , Ann(..)
+, Comment(..)
 ) where
 
 import Data.Function (on)
 import Data.List.NonEmpty (NonEmpty)
+import Data.Text (Text)
 import Facet.Name
 import Facet.Span
 import Facet.Stack
@@ -131,3 +133,7 @@ instance Ord a => Ord (Ann a) where
 
 instance Show a => Show (Ann a) where
   showsPrec p = showsPrec p . out
+
+
+newtype Comment = Comment { getComment :: Text }
+  deriving (Eq, Show)
