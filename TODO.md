@@ -61,6 +61,12 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Function sections using underscores as placeholders: `f _ a b`.
 
+- Explicit type applications. Ideally using syntax like `{A}`, but we might need to be careful about this being mistaken for a computation.
+
+- Explicit type abstractions?
+
+  These aren’t usually necessary due to type variables bound in the signature necessarily being in scope in the body, but there might be cases where you’d want them.
+
 
 ### Modules
 
