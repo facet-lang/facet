@@ -87,7 +87,7 @@ elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Tr
 elab = elabWith apply
 
 elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
-elabWith f = runSubstWith f . runContext . runElab
+elabWith f = runSubstWith f . runContext . runSig . runElab
 
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
@@ -521,6 +521,9 @@ runSubstWith with = runState with emptySubst
 
 runContext :: ReaderC (Context Type) m a -> m a
 runContext = runReader Context.empty
+
+runSig :: ReaderC (Set.Set Delta) m a -> m a
+runSig = runReader mempty
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
