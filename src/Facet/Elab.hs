@@ -267,7 +267,6 @@ elabBinders
   -> m (t Type -> Value)
 elabBinders p b = do
   d <- asks @(Context Type) level
-  -- let (_, p') = mapAccumL (\ d n -> (succ d, n ::: free d)) d p
   b' <- b p
   pure $ \ v -> snd (foldl' (\ (d, b') v -> (succ d, C.bind d v b')) (d, b') v)
 
