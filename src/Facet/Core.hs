@@ -311,7 +311,7 @@ match = curry $ \case
   (_,                PCon _)          -> Nothing
 
 
-substWith :: HasCallStack => (Var -> Value) -> Value -> Value
+substWith :: (Var -> Value) -> Value -> Value
 substWith f = go
   where
   go = \case
@@ -325,16 +325,16 @@ substWith f = go
   clause (Clause p b) = Clause p (go . b)
 
 -- | Substitute metavars.
-subst :: HasCallStack => IntMap.IntMap Value -> Value -> Value
+subst :: IntMap.IntMap Value -> Value -> Value
 subst s
   | IntMap.null s = id
   | otherwise     = substWith (substMeta s)
 
 -- | Bind a free variable.
-bind :: HasCallStack => Level -> Value -> Value -> Value
+bind :: Level -> Value -> Value -> Value
 bind k v = binds (IntMap.singleton (getLevel k) v)
 
-binds :: HasCallStack => IntMap.IntMap Value -> Value -> Value
+binds :: IntMap.IntMap Value -> Value -> Value
 binds s
   | IntMap.null s = id
   | otherwise     = substWith (substFree s)
