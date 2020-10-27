@@ -221,12 +221,16 @@ data Var t
   deriving (Foldable, Functor, Show, Traversable)
 
 instance Eq (Var t) where
-  Global  (q1 ::: _) == Global  (q2 ::: _) = q1 == q2
-  Global  _          == _                  = False
-  Free    l1         == Free    l2         = l1 == l2
-  Free    _          == _                  = False
-  Metavar (m1 ::: _) == Metavar (m2 ::: _) = m1 == m2
-  Metavar _          == _                  = False
+  (==) = liftEq (\ _ _ -> True)
+
+instance Eq1 Var where
+  liftEq _ = curry $ \case
+    (Global  (q1 ::: _), Global  (q2 ::: _)) -> q1 == q2
+    (Global  _,          _)                  -> False
+    (Free    l1,         Free    l2)         -> l1 == l2
+    (Free    _,          _)                  -> False
+    (Metavar (m1 ::: _), Metavar (m2 ::: _)) -> m1 == m2
+    (Metavar _,          _)                  -> False
 
 instance Ord (Var t) where
   Global  (q1 ::: _) `compare` Global  (q2 ::: _) = q1 `compare` q2
