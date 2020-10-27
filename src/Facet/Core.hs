@@ -37,6 +37,7 @@ module Facet.Core
 , binds
 , mvs
 , Subst
+, insertSubst
 , generalize
   -- ** Classification
 , Sort(..)
@@ -388,6 +389,10 @@ mvs d = \case
 
 
 type Subst = IntMap.IntMap (Maybe Value ::: Type)
+
+insertSubst :: Meta -> Maybe Value ::: Type -> Subst -> Subst
+insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
+
 
 -- FIXME: this seems to break multiple binders, e.g. pair:
 -- pair {?A} {?B} : { _A : Type } -> { _B : Type } -> _A -> _A -> Pair _A _A

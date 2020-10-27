@@ -169,9 +169,6 @@ meta _T = do
   let m = Meta (length subst)
   (m ::: _T) <$ put (insertSubst m (Nothing ::: _T) subst)
 
-insertSubst :: Meta -> Maybe Value ::: Type -> Subst -> Subst
-insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
-
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
 instantiate :: Expr ::: Telescope -> Elab (Expr ::: Telescope)
