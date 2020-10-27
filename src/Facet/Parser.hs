@@ -156,7 +156,7 @@ tatom :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenP
 tatom = build monotypeTable $ choice
   [ -- FIXME: we should treat these as globals.
     anned (S.Type <$ token (string "Type"))
-  , anned (S.Interface <$ token (string "Interface"))
+  , anned (S.TInterface <$ token (string "Interface"))
     -- FIXME: holes in types
   , tvar
   , parens type'
@@ -175,10 +175,10 @@ tvar = choice
 -- - before an argument type
 -- - before a return type
 
-sig :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Delta]
+sig :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Interface]
 sig = brackets (commaSep delta) <?> "signature"
   where
-  delta = anned $ S.Delta <$> head <*> (fromList <$> many type')
+  delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
   mkHead cs = (uncurry (foldl' (N.:.) . N.MName) <$> uncons (NE.init cs), N.T (N.UName (NE.last cs)))
   comp = ident tnameStyle

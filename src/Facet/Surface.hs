@@ -6,7 +6,7 @@ module Facet.Surface
 , qual
 , Telescope(..)
 , Binding(..)
-, Delta(..)
+, Interface(..)
 , ($$)
 , Comp(..)
 , Pattern(..)
@@ -35,7 +35,7 @@ data Expr
   = Var (Maybe MName) DName
   | Hole UName
   | Type
-  | Interface
+  | TInterface
   | TComp (Ann Telescope)
   | Comp (Ann Comp)
   | App (Ann Expr) (Ann Expr)
@@ -54,7 +54,7 @@ qual (m :.: n) = Var (Just m) n
 
 data Telescope = Telescope
   { bindings :: [Ann Binding]
-  , delta    :: [Ann Delta]
+  , delta    :: [Ann Interface]
   , type'    :: Ann Type
   }
   deriving (Eq, Show)
@@ -62,12 +62,12 @@ data Telescope = Telescope
 data Binding = Binding
   { pl    :: Pl
   , names :: NonEmpty UName
-  , delta :: [Ann Delta]
+  , delta :: [Ann Interface]
   , type' :: Ann Type
   }
   deriving (Eq, Show)
 
-data Delta = Delta (Ann (Maybe MName, DName)) (Stack (Ann Type))
+data Interface = Interface (Ann (Maybe MName, DName)) (Stack (Ann Type))
   deriving (Eq, Show)
 
 
