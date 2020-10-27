@@ -8,10 +8,12 @@ not : Bool -> Bool
 { (true)  -> false
 , (false) -> true }
 
+# NB: I am removing nested, chained pattern matches until I get around to correcting their elaboration
 and : Bool -> Bool -> Bool
-{ (true) (true) -> true
-, _      _      -> false }
+{ (true) -> { x -> x }
+, _      -> { _ -> false } }
 
+# NB: I am removing nested, chained pattern matches until I get around to correcting their elaboration
 or : Bool -> Bool -> Bool
-{ (false) (false) -> false
-, _       _       -> true }
+{ (false) -> { x -> x }
+, _       -> { _ -> true } }
