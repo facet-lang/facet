@@ -191,7 +191,7 @@ printValue env = \case
   where
   d = Level (length env)
 
-printTelescope :: Stack Print -> C.Telescope -> Print
+printTelescope :: Stack Print -> C.Comp -> Print
 printTelescope env = \case
   C.Bind t b ->
     let (vs, (_, b')) = splitr C.unBind' (d, C.Bind t b)

@@ -25,7 +25,7 @@ module Facet.Elab
   -- * Modules
 , elabModule
 , apply
-, applyTelescope
+, applyComp
   -- * Errors
 , Err(..)
 , Reason(..)
@@ -87,8 +87,8 @@ instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: R
 elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Value -> m Value
 elab = elabWith (fmap pure . apply)
 
-elabTele :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Telescope -> m Telescope
-elabTele = elabWith (fmap pure . applyTelescope)
+elabTele :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Comp -> m Comp
+elabTele = elabWith (fmap pure . applyComp)
 
 elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
 elabWith f = runSubstWith f . runContext . runSig . runElab
@@ -125,7 +125,7 @@ unify = trace "unify" . \case
     , Just e' <- unifySpine (e1 :===: e2)               -> VNeut h1 <$> e'
   VNeut (Metavar v) Nil   :===: x                       -> solve (v :=: x)
   x                       :===: VNeut (Metavar v) Nil   -> solve (v :=: x)
-  VComp t1                :===: VComp t2                -> VComp <$> unifyTelescope (t1 :===: t2)
+  VComp t1                :===: VComp t2                -> VComp <$> unifyComp (t1 :===: t2)
   VComp (End (Sig [] t1)) :===: t2                      -> unify (t1 :===: t2)
   t1                      :===: VComp (End (Sig [] t2)) -> unify (t1 :===: t2)
   -- FIXME: build and display a diff of the root types
@@ -144,15 +144,15 @@ unify = trace "unify" . \case
       Just val ::: _T -> unify (val' :===: val)
       Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
 
-unifyTelescope :: Telescope :===: Telescope -> Elab Telescope
-unifyTelescope = \case
+unifyComp :: Comp :===: Comp -> Elab Comp
+unifyComp = \case
   Bind t1 b1      :===: Bind t2 b2
     | _pl t1 == _pl t2 -> do
       sig <- unifySig (sig t1 :===: sig t2)
       d <- asks @(Context Type) level
       let v = free d
-      b <- unifyTelescope (b1 v :===: b2 v)
-      pure $ Bind (Binding (_pl t1) ((name :: Binding -> UName) t1) sig) (\ v -> C.bindTelescope d v b)
+      b <- unifyComp (b1 v :===: b2 v)
+      pure $ Bind (Binding (_pl t1) ((name :: Binding -> UName) t1) sig) (\ v -> C.bindComp d v b)
   End s1          :===: End s2          -> End <$> unifySig (s1 :===: s2)
   End (Sig [] t1) :===: t2              -> fromValue <$> unify (t1 :===: VComp t2)
   t1              :===: End (Sig [] t2) -> fromValue <$> unify (VComp t1 :===: t2)
@@ -171,7 +171,7 @@ meta _T = do
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
-instantiate :: Expr ::: Telescope -> Elab (Expr ::: Telescope)
+instantiate :: Expr ::: Comp -> Elab (Expr ::: Comp)
 instantiate (e ::: _T) = case _T of
   Bind (Binding Im _ (Sig _ _T)) _B -> do
     m <- metavar <$> meta _T
@@ -192,10 +192,10 @@ as :: (Check a ::: Type) -> Synth a
 as (m ::: _T) = Synth ((::: _T) <$> check (m ::: Just _T))
 
 resolveWith
-  :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Telescope))
+  :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Comp))
   -> Maybe MName
   -> DName
-  -> Elab (QName ::: Telescope)
+  -> Elab (QName ::: Comp)
 resolveWith lookup m n = asks lookup >>= \case
   Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
   Nothing                -> do
@@ -208,24 +208,24 @@ resolveWith lookup m n = asks lookup >>= \case
 
 resolve
   :: DName
-  -> Elab (QName ::: Telescope)
+  -> Elab (QName ::: Comp)
 resolve n = resolveWith (lookupD n) Nothing n
 
 resolveC
   :: UName
-  -> Elab (QName ::: Telescope)
+  -> Elab (QName ::: Comp)
 resolveC n = resolveWith (lookupC n) Nothing (C n)
 
 resolveQ
   :: QName
-  -> Elab (QName ::: Telescope)
+  -> Elab (QName ::: Comp)
 resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
   Just (q' :=: _ ::: _T) -> pure $ q' ::: _T
   Nothing                -> freeVariable (Just m) n
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global
-  :: QName ::: Telescope
+  :: QName ::: Comp
   -> Synth Value
 global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 
@@ -314,7 +314,7 @@ elabBinding (S.Ann s _ (S.Binding p n t)) = [ Binding p n <$> setSpan s (elabSig
 elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check Sig
 elabSig = withSpan $ \ (S.Sig _ t) -> Sig mempty <$> checkElab (elabExpr t)
 
-elabSTelescope :: S.Ann S.Telescope -> Synth Telescope
+elabSTelescope :: S.Ann S.Telescope -> Synth Comp
 elabSTelescope (S.Ann s _ (S.Telescope bs t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (End <$> elabSig t ::: VType)) (elabBinding =<< bs)
 
 
@@ -325,15 +325,15 @@ _Interface :: Synth Type
 _Interface = Synth $ pure $ VInterface ::: VType
 
 
-tbind :: Check Binding -> (UName ::: Type -> Check Telescope) -> Synth Telescope
+tbind :: Check Binding -> (UName ::: Type -> Check Comp) -> Synth Comp
 tbind t b = Synth $ trace "telescope" $ do
   -- FIXME: should we check that the signature is empty?
   _T@Binding{ name, sig = Sig _ _A } <- check (t ::: Just VType)
   d <- asks @(Context Type) level
   _B <- check (b (name ::: _A) ::: Just VType)
-  pure $ Bind _T (\ v -> C.bindTelescope d v _B) ::: VType
+  pure $ Bind _T (\ v -> C.bindComp d v _B) ::: VType
 
-tend :: Check Sig -> Synth Telescope
+tend :: Check Sig -> Synth Comp
 tend s = Synth $ do
   s' <- check (s ::: Just VType)
   pure $ End s' ::: VType
@@ -433,7 +433,7 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
 
 elabDataDef
   :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
-  => QName ::: Telescope
+  => QName ::: Comp
   -> [S.Ann (UName ::: S.Ann S.Telescope)]
   -> m [(DName, Decl)]
 -- FIXME: check that all constructors return the datatype.
@@ -451,14 +451,14 @@ elabDataDef (mname :.: dname ::: _T) constructors = do
     Bind (Binding _ n (Sig s _T)) _B -> do
       d <- asks @(Context Type) level
       _B' <- n ::: _T |- go k (_B (free d))
-      pure $ Bind (Binding Im n (Sig s _T)) (\ v -> C.bindTelescope d v _B')
+      pure $ Bind (Binding Im n (Sig s _T)) (\ v -> C.bindComp d v _B')
   con q fs = \case
     Bind (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> con q (fs :> v) (_B v))]
     _T                               -> VCon (Con q fs)
 
 elabInterfaceDef
   :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
-  => Telescope
+  => Comp
   -> [S.Ann (UName ::: S.Ann S.Telescope)]
   -> m Decl
 elabInterfaceDef _T constructors = do
@@ -472,7 +472,7 @@ elabInterfaceDef _T constructors = do
     Bind (Binding _ n (Sig s _T)) _B -> do
       d <- asks @(Context Type) level
       _B' <- n ::: _T |- go k (_B (free d))
-      pure $ Bind (Binding Im n (Sig s _T)) (\ v -> C.bindTelescope d v _B')
+      pure $ Bind (Binding Im n (Sig s _T)) (\ v -> C.bindComp d v _B')
 
 elabTermDef
   :: HasCallStack
@@ -599,10 +599,10 @@ expectChecked msg = maybe (couldNotSynthesize msg)
 expectMatch :: (Type -> Maybe out) -> String -> String -> Type -> Elab out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifier :: String -> Type -> Elab (Binding, Type -> Telescope)
+expectQuantifier :: String -> Type -> Elab (Binding, Type -> Comp)
 expectQuantifier = expectMatch (\case{ Bind t b -> pure (t, b) ; _ -> Nothing } <=< stripEmpty) "{_} -> _"
 
-stripEmpty :: Type -> Maybe Telescope
+stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case
   VComp (End (Sig [] t)) -> stripEmpty t
   VComp t                -> Just t

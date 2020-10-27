@@ -3,10 +3,10 @@ module Facet.Core
   Value(..)
 , Type
 , Expr
-, Telescope(..)
-, substTelescope
-, bindTelescope
-, bindsTelescope
+, Comp(..)
+, substComp
+, bindComp
+, bindsComp
 , fromValue
 , unBind
 , unBind'
@@ -33,7 +33,7 @@ module Facet.Core
 , emptySubst
 , insertSubst
 , apply
-, applyTelescope
+, applyComp
 , generalize
   -- ** Classification
 , Sort(..)
@@ -77,7 +77,7 @@ import           Prelude hiding (zip, zipWith)
 data Value
   = VType
   | VInterface
-  | VComp Telescope
+  | VComp Comp
   | VLam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNeut Var (Stack (Pl, Value))
@@ -87,13 +87,13 @@ type Type = Value
 type Expr = Value
 
 
--- | A telescope represents a (possibly polymorphic) computation type.
-data Telescope
-  = Bind Binding (Value -> Telescope)
+-- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
+data Comp
+  = Bind Binding (Value -> Comp)
   | End Sig
 
-substTelescopeWith :: (Var -> Value) -> Telescope -> Telescope
-substTelescopeWith f = go
+substCompWith :: (Var -> Value) -> Comp -> Comp
+substCompWith f = go
   where
   go = \case
     Bind t b -> Bind (binding t) (go . b)
@@ -104,31 +104,31 @@ substTelescopeWith f = go
   sig (Sig d t) = Sig (map delta d) (substWith f t)
   delta (Delta (q ::: t) sp) = Delta (q ::: substWith f t) (fmap (substWith f) sp)
 
-substTelescope :: IntMap.IntMap Value -> Telescope -> Telescope
-substTelescope s
+substComp :: IntMap.IntMap Value -> Comp -> Comp
+substComp s
   | IntMap.null s = id
-  | otherwise     = substTelescopeWith (substMeta s)
+  | otherwise     = substCompWith (substMeta s)
 
-bindTelescope :: Level -> Value -> Telescope -> Telescope
-bindTelescope k v = bindsTelescope (IntMap.singleton (getLevel k) v)
+bindComp :: Level -> Value -> Comp -> Comp
+bindComp k v = bindsComp (IntMap.singleton (getLevel k) v)
 
-bindsTelescope :: IntMap.IntMap Value -> Telescope -> Telescope
-bindsTelescope s
+bindsComp :: IntMap.IntMap Value -> Comp -> Comp
+bindsComp s
   | IntMap.null s = id
-  | otherwise     = substTelescopeWith (substFree s)
+  | otherwise     = substCompWith (substFree s)
 
 
-fromValue :: Value -> Telescope
+fromValue :: Value -> Comp
 fromValue = \case
   VComp t -> t
   t       -> End (Sig mempty t)
 
 
-unBind :: Has Empty sig m => Telescope -> m (Binding, Value -> Telescope)
+unBind :: Has Empty sig m => Comp -> m (Binding, Value -> Comp)
 unBind = \case{ Bind t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unBind' :: Has Empty sig m => (Level, Telescope) -> m (Binding, (Level, Telescope))
+unBind' :: Has Empty sig m => (Level, Comp) -> m (Binding, (Level, Comp))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
@@ -261,7 +261,7 @@ substWith f = go
   go = \case
     VType       -> VType
     VInterface  -> VInterface
-    VComp t     -> VComp (substTelescopeWith f t)
+    VComp t     -> VComp (substCompWith f t)
     VLam    p b -> VLam p (map clause b)
     VNeut v a   -> f v $$* fmap (fmap go) a
     VCon c      -> VCon (fmap go c)
@@ -302,12 +302,12 @@ insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
 apply :: Subst -> Expr -> Value
 apply s v = subst (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
 
-applyTelescope :: Subst -> Telescope -> Telescope
-applyTelescope s v = substTelescope (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
+applyComp :: Subst -> Comp -> Comp
+applyComp s v = substComp (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
 
 
 generalize :: Subst -> Value -> Value
-generalize s v = VComp (foldr (\ (d, _T) b -> Bind (Binding Im __ (Sig mempty _T)) (\ v -> bindTelescope d v b)) (End (Sig mempty (subst (IntMap.mapMaybe tm s <> s') v))) b)
+generalize s v = VComp (foldr (\ (d, _T) b -> Bind (Binding Im __ (Sig mempty _T)) (\ v -> bindComp d v b)) (End (Sig mempty (subst (IntMap.mapMaybe tm s <> s') v))) b)
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -388,7 +388,7 @@ decls_ = lens decls (\ m decls -> m{ decls })
 
 
 -- FIXME: produce multiple results, if they exist.
-lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Telescope)
+lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Comp)
 lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
@@ -396,7 +396,7 @@ lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList 
   matchCon (n' :=: v ::: _T) = (name :.: C n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
-lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Telescope)
+lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Comp)
 lookupD n Module{ name = mname, decls } = maybe empty pure $ do
   Decl d _T <- Map.lookup n decls
   pure $ mname :.: n :=: d ::: _T
@@ -407,20 +407,20 @@ newtype Import = Import { name :: MName }
 -- FIXME: keep track of free variables in declarations so we can work incrementally
 data Decl = Decl
   { def   :: Maybe Def
-  , type' :: Telescope
+  , type' :: Comp
   }
 
 data Def
   = DTerm Value
-  | DData [UName :=: Value ::: Telescope]
-  | DInterface [UName ::: Telescope]
+  | DData [UName :=: Value ::: Comp]
+  | DInterface [UName ::: Comp]
 
-unDData :: Has Empty sig m => Def -> m [UName :=: Value ::: Telescope]
+unDData :: Has Empty sig m => Def -> m [UName :=: Value ::: Comp]
 unDData = \case
   DData cs -> pure cs
   _        -> empty
 
-unDInterface :: Has Empty sig m => Def -> m [UName ::: Telescope]
+unDInterface :: Has Empty sig m => Def -> m [UName ::: Comp]
 unDInterface = \case
   DInterface cs -> pure cs
   _             -> empty
