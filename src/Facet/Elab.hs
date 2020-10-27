@@ -44,7 +44,6 @@ import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', for_, toList)
 import qualified Data.IntMap as IntMap
-import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import           Data.Traversable (for, mapAccumL)
@@ -360,49 +359,24 @@ lam n b = Check $ expectChecked "lambda" $ \ _T -> do
   pure $ VLam (fst n) [Clause (PVar (snd n ::: _T)) (b' . unsafeUnPVar)]
 
 
-data XOr a b
-  = XB
-  | XL a
-  | XR b
-  | XT
-
-instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
-  XB   <> b    = b
-  a    <> XB   = a
-  XL a <> XL b = XL (a <> b)
-  XR a <> XR b = XR (a <> b)
-  _    <> _    = XT
-
-instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
-  mempty = XB
-
 -- FIXME: go find the pattern matching matrix algorithm
 elabClauses :: [S.Clause] -> Check (Expr ::: Type)
-elabClauses [S.Clause ((S.Ann _ _ (S.PVar n)):|ps) b] = Check $ expectChecked "variable pattern" $ \ _T -> do
+elabClauses [S.Clause (S.Ann _ _ (S.PVar n)) b] = Check $ expectChecked "variable pattern" $ \ _T -> do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (Binding pl _ _ _A, _B) <- expectQuantifier "when checking clauses" _T
-  b' <- elabBinder $ \ v -> n ::: _A |- check (checkElab (maybe (elabExpr b) (elabClauses . pure . (`S.Clause` b)) (nonEmpty ps)) ::: Just (VComp (_B v)))
+  b' <- elabBinder $ \ v -> n ::: _A |- check (checkElab (elabExpr b) ::: Just (VComp (_B v)))
   pure $ VLam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)] ::: _T
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
 elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
-  rest <- case foldMap partitionClause cs of
-    XB    -> pure Nothing
-    XL _  -> pure Nothing
-    XR cs -> pure $ Just cs
-    XT    -> error "mixed" -- FIXME: throw a proper error
   -- FIXME: use the signature to elaborate the pattern
   (Binding _ _ _ _A, _B) <- expectQuantifier "when checking clauses" _T
   d <- asks (level @Type)
   let _B' = _B (free d)
-  cs' <- for cs $ \ (S.Clause (p:|_) b) -> check
+  cs' <- for cs $ \ (S.Clause p b) -> check
     (   elabPattern p (\ p' -> do
-      Clause p' <$> elabBinders p' (foldr (|-) (check (checkElab (maybe (elabExpr b) elabClauses rest) ::: Just (VComp _B')))))
+      Clause p' <$> elabBinders p' (foldr (|-) (check (checkElab (elabExpr b) ::: Just (VComp _B')))))
     ::: Just _A)
   pure $ VLam Ex cs' ::: _T
-  where
-  partitionClause (S.Clause (_:|ps) b) = case ps of
-    []   -> XL ()
-    p:ps -> XR [S.Clause (p:|ps) b]
 
 
 elabPattern :: S.Ann S.Pattern -> (C.Pattern (UName ::: Type) -> Elab a) -> Check a

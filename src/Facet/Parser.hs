@@ -210,7 +210,7 @@ comp :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Wri
 comp = anned (braces (S.Lam <$> sepBy1 clause comma <|> S.Thunk <$> expr <|> pure (S.Lam [])))
 
 clause :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p S.Clause
-clause = S.Clause <$> try (NE.some1 patternP <* arrow) <*> expr <?> "clause"
+clause = S.Clause <$> try (patternP <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
 evar = choice

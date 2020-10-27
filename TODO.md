@@ -77,6 +77,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Ascription.
 
+- Restore nested, chained pattern matching.
+
 
 ### Modules
 

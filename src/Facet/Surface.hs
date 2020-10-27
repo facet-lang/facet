@@ -72,7 +72,7 @@ data Binding = Binding
 data Interface = Interface (Ann (Maybe MName, DName)) (Stack (Ann Type))
   deriving (Eq, Show)
 
-data Clause = Clause (NonEmpty (Ann Pattern)) (Ann Expr)
+data Clause = Clause (Ann Pattern) (Ann Expr)
   deriving (Eq, Show)
 
 
