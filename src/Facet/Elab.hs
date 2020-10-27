@@ -61,11 +61,6 @@ import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 
-type Type = Value
-type Expr = Value
-
-type Subst = IntMap.IntMap (Maybe Value ::: Type)
-
 newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader (Set.Set Delta) :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where

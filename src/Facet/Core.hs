@@ -1,6 +1,8 @@
 module Facet.Core
 ( -- * Values
   Value(..)
+, Type
+, Expr
 , compareValue
 , compareBinding
 , compareClause
@@ -34,6 +36,7 @@ module Facet.Core
 , bind
 , binds
 , mvs
+, Subst
 , generalize
   -- ** Classification
 , Sort(..)
@@ -105,6 +108,9 @@ compareValue d = curry $ \case
   (VNeut{}, _)                 -> LT
   (VCon c1, VCon c2)           -> liftCompare (compareValue d) c1 c2
   (VCon _, _)                  -> LT
+
+type Type = Value
+type Expr = Value
 
 
 -- | A telescope represents a (possibly polymorphic) computation type.
@@ -380,6 +386,8 @@ mvs d = \case
   sig d (Sig s t) = foldMap (delta d) s <> mvs d t
   delta d (Delta (_ ::: t) sp) = mvs d t <> foldMap (mvs d) sp
 
+
+type Subst = IntMap.IntMap (Maybe Value ::: Type)
 
 -- FIXME: this seems to break multiple binders, e.g. pair:
 -- pair {?A} {?B} : { _A : Type } -> { _B : Type } -> _A -> _A -> Pair _A _A
