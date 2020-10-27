@@ -37,6 +37,7 @@ module Facet.Core
 , binds
 , mvs
 , Subst
+, emptySubst
 , insertSubst
 , generalize
   -- ** Classification
@@ -389,6 +390,9 @@ mvs d = \case
 
 
 type Subst = IntMap.IntMap (Maybe Value ::: Type)
+
+emptySubst :: Subst
+emptySubst = IntMap.empty
 
 insertSubst :: Meta -> Maybe Value ::: Type -> Subst -> Subst
 insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)

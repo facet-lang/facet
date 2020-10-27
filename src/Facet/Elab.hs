@@ -531,9 +531,6 @@ apply s v = pure $ subst (IntMap.mapMaybe tm s) v -- FIXME: error if the substit
 applyTelescope :: Applicative m => Subst -> Telescope -> m Telescope
 applyTelescope s v = pure $ substTelescope (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
 
-emptySubst :: Subst
-emptySubst = IntMap.empty
-
 runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
 runSubstWith with = runState with emptySubst
 
