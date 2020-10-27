@@ -260,3 +260,4 @@ clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow 
 pat = \case
   C.PVar n            -> n
   C.PCon (C.Con n ps) -> parens (hsep (annotate Con (pretty n):map pat (toList ps)))
+  C.PEff n ps k       -> brackets (n <+> hsep (map pat (toList ps)) <+> semi <+> k)

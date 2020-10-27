@@ -235,6 +235,8 @@ match = curry $ \case
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
     PCon . Con n' <$> sequenceA (zipWith match fs ps)
   (_,                PCon _)          -> Nothing
+  -- FIXME: match effect patterns against computations
+  (_,                PEff{})          -> Nothing
 
 
 substWith :: (Var -> Value) -> Value -> Value
@@ -324,6 +326,7 @@ sortOf ctx = \case
 data Pattern a
   = PVar a
   | PCon (Con (Pattern a))
+  | PEff a (Stack (Pattern a)) a
   deriving (Foldable, Functor, Traversable)
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
