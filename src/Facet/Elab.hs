@@ -146,7 +146,7 @@ unify = trace "unify" . \case
 
 unifyComp :: Comp :===: Comp -> Elab Comp
 unifyComp = \case
-  Bind (Binding p1 n1 s1 t1) b1 :===: Bind (Binding p2 _  s2 t2) b2
+  ForAll (Binding p1 n1 s1 t1) b1 :===: ForAll (Binding p2 _  s2 t2) b2
     | p1 == p2 -> do
       -- FIXME: unify the signatures
       s <- unifySig (s1 :===: s2)
@@ -154,11 +154,11 @@ unifyComp = \case
       d <- asks @(Context Type) level
       let v = free d
       b <- unifyComp (b1 v :===: b2 v)
-      pure $ Bind (Binding p1 n1 s t) (\ v -> C.bindComp d v b)
-  Comp s1 t1       :===: Comp s2 t2       -> Comp <$> unifySig (s1 :===: s2) <*> unify (t1 :===: t2)
-  Comp [] t1 :===: t2               -> fromValue <$> unify (t1 :===: VComp t2)
-  t1               :===: Comp [] t2 -> fromValue <$> unify (VComp t1 :===: t2)
-  t1               :===: t2               -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
+      pure $ ForAll (Binding p1 n1 s t) (\ v -> C.bindComp d v b)
+  Comp s1 t1 :===: Comp s2 t2 -> Comp <$> unifySig (s1 :===: s2) <*> unify (t1 :===: t2)
+  Comp [] t1 :===: t2         -> fromValue <$> unify (t1 :===: VComp t2)
+  t1         :===: Comp [] t2 -> fromValue <$> unify (VComp t1 :===: t2)
+  t1         :===: t2         -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
   where
   -- FIXME: unify the signatures
   unifySig (s1 :===: _) = pure s1
@@ -175,7 +175,7 @@ meta _T = do
 -- FIXME: can implicits have effects? what do we do about the signature?
 instantiate :: Expr ::: Comp -> Elab (Expr ::: Comp)
 instantiate (e ::: _T) = case _T of
-  Bind (Binding Im _ _ _T) _B -> do
+  ForAll (Binding Im _ _ _T) _B -> do
     m <- metavar <$> meta _T
     instantiate (e C.$$ (Im, m) ::: _B m)
   _                           -> pure $ e ::: _T
@@ -337,7 +337,7 @@ tbind t b = Synth $ trace "telescope" $ do
   _T@Binding{ name, type' = _A } <- check (t ::: Just VType)
   d <- asks @(Context Type) level
   _B <- check (b (name ::: _A) ::: Just VType)
-  pure $ Bind _T (\ v -> C.bindComp d v _B) ::: VType
+  pure $ ForAll _T (\ v -> C.bindComp d v _B) ::: VType
 
 tcomp :: Elab [Interface] -> Check Type -> Synth Comp
 tcomp s t = Synth $ do
@@ -426,8 +426,8 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
   where
   inst = \case
   -- FIXME: assert that the signature is empty
-    Bind (Binding Im _ _ _T) _B -> meta _T >>= inst . _B . metavar
-    _T                          -> pure _T
+    ForAll (Binding Im _ _ _T) _B -> meta _T >>= inst . _B . metavar
+    _T                            -> pure _T
   subpatterns _A = go
     where
     go _T' = \case
@@ -459,15 +459,15 @@ elabDataDef (mname :.: dname ::: _T) constructors = do
     : map (\ (n :=: c ::: c_T) -> (E n, Decl (Just (C.DTerm c)) c_T)) cs
   where
   go k = \case
-    Comp _ _                   -> check (k ::: Just VType)
+    Comp _ _                     -> check (k ::: Just VType)
     -- FIXME: can sigs appear here?
-    Bind (Binding _ n s _T) _B -> do
+    ForAll (Binding _ n s _T) _B -> do
       d <- asks @(Context Type) level
       _B' <- n ::: _T |- go k (_B (free d))
-      pure $ Bind (Binding Im n s _T) (\ v -> C.bindComp d v _B')
+      pure $ ForAll (Binding Im n s _T) (\ v -> C.bindComp d v _B')
   con q fs = \case
-    Bind (Binding p n _ _T) _B -> VLam p [Clause (PVar (n ::: _T)) ((\ v -> con q (fs :> v) (_B v)) . unsafeUnPVar)]
-    _T                         -> VCon (Con q fs)
+    ForAll (Binding p n _ _T) _B -> VLam p [Clause (PVar (n ::: _T)) ((\ v -> con q (fs :> v) (_B v)) . unsafeUnPVar)]
+    _T                           -> VCon (Con q fs)
 
 elabInterfaceDef
   :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
@@ -481,11 +481,11 @@ elabInterfaceDef _T constructors = do
   where
   go k = \case
     -- FIXME: check that the interface is a member of the sig.
-    Comp _ _                   -> check (k ::: Just VType)
-    Bind (Binding _ n s _T) _B -> do
+    Comp _ _                     -> check (k ::: Just VType)
+    ForAll (Binding _ n s _T) _B -> do
       d <- asks @(Context Type) level
       _B' <- n ::: _T |- go k (_B (free d))
-      pure $ Bind (Binding Im n s _T) (\ v -> C.bindComp d v _B')
+      pure $ ForAll (Binding Im n s _T) (\ v -> C.bindComp d v _B')
 
 elabTermDef
   :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
@@ -495,8 +495,8 @@ elabTermDef
 elabTermDef _T expr = runReader (S.ann expr) $ elab $ go (checkElab (elabExpr expr)) _T
   where
   go k t = case t of
-    Comp s _T                  -> local (s ++) $ check (k ::: Just _T)
-    Bind (Binding p n _ _T) _B -> do
+    Comp s _T                    -> local (s ++) $ check (k ::: Just _T)
+    ForAll (Binding p n _ _T) _B -> do
       b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
       pure $ VLam p [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
 
@@ -614,7 +614,7 @@ expectMatch :: (Type -> Maybe out) -> String -> String -> Type -> Elab out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectQuantifier :: String -> Type -> Elab (Binding, Type -> Comp)
-expectQuantifier = expectMatch (\case{ Bind t b -> pure (t, b) ; _ -> Nothing } <=< stripEmpty) "{_} -> _"
+expectQuantifier = expectMatch (\case{ ForAll t b -> pure (t, b) ; _ -> Nothing } <=< stripEmpty) "{_} -> _"
 
 stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case

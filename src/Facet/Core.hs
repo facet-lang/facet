@@ -88,15 +88,15 @@ type Expr = Value
 
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
-  = Bind Binding (Type -> Comp)
+  = ForAll Binding (Type -> Comp)
   | Comp [Interface] Type
 
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
   where
   go = \case
-    Bind t b -> Bind (binding t) (go . b)
-    Comp s t -> Comp s (substWith f t)
+    ForAll t b -> ForAll (binding t) (go . b)
+    Comp s t   -> Comp s (substWith f t)
 
   binding (Binding p n d t) = Binding p n (map interface d) (substWith f t)
 
@@ -123,7 +123,7 @@ fromValue = \case
 
 
 unBind :: Has Empty sig m => Comp -> m (Binding, Value -> Comp)
-unBind = \case{ Bind t b -> pure (t, b) ; _ -> empty }
+unBind = \case{ ForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
 unBind' :: Has Empty sig m => (Level, Comp) -> m (Binding, (Level, Comp))
@@ -206,9 +206,9 @@ unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 ($$) :: HasCallStack => Value -> (Pl, Value) -> Value
 VNeut h es $$ a = VNeut h (es :> a)
 VComp  t $$ a
-  | Bind _ b <- t = case b (snd a) of
-    t@Bind{} -> VComp t
-    Comp _ t -> t
+  | ForAll _ b <- t = case b (snd a) of
+    t@ForAll{} -> VComp t
+    Comp _ t   -> t
 VLam _   b $$ a = case' (snd a) b
 _          $$ _ = error "can’t apply non-neutral/forall type"
 
@@ -258,7 +258,7 @@ subst s
   | IntMap.null s = id
   | otherwise     = substWith (substMeta s)
 
--- | Bind a free variable.
+-- | ForAll a free variable.
 bind :: Level -> Value -> Value -> Value
 bind k v = binds (IntMap.singleton (getLevel k) v)
 
@@ -291,7 +291,7 @@ applyComp s v = substComp (IntMap.mapMaybe tm s) v -- FIXME: error if the substi
 
 
 generalize :: Subst -> Value -> Value
-generalize s v = VComp (foldr (\ (d, _T) b -> Bind (Binding Im __ mempty _T) (\ v -> bindComp d v b)) (Comp mempty (subst (IntMap.mapMaybe tm s <> s') v)) b)
+generalize s v = VComp (foldr (\ (d, _T) b -> ForAll (Binding Im __ mempty _T) (\ v -> bindComp d v b)) (Comp mempty (subst (IntMap.mapMaybe tm s <> s') v)) b)
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -317,8 +317,8 @@ sortOf ctx = \case
   VCon _     -> STerm
   where
   telescope ctx = \case
-    Bind (Binding _ _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (telescope (ctx :> _T') (_B (free (Level (length ctx)))))
-    Comp _ _T                  -> sortOf ctx _T
+    ForAll (Binding _ _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (telescope (ctx :> _T') (_B (free (Level (length ctx)))))
+    Comp _ _T                    -> sortOf ctx _T
 
 
 -- Patterns
