@@ -13,7 +13,7 @@ module Facet.Core
 , Clause(..)
 , instantiateClause
 , Binding(..)
-, Delta(..)
+, Interface(..)
 , Sig(..)
 , Var(..)
 , Con(..)
@@ -101,8 +101,8 @@ substCompWith f = go
 
   binding (Binding p n s) = Binding p n (sig s)
 
-  sig (Sig d t) = Sig (map delta d) (substWith f t)
-  delta (Delta q sp) = Delta q (fmap (substWith f) sp)
+  sig (Sig d t) = Sig (map interface d) (substWith f t)
+  interface (Interface q sp) = Interface q (fmap (substWith f) sp)
 
 substComp :: IntMap.IntMap Value -> Comp -> Comp
 substComp s
@@ -148,11 +148,11 @@ data Binding = Binding
   }
 
 
-data Delta = Delta QName (Stack Value)
+data Interface = Interface QName (Stack Value)
 
 
 data Sig = Sig
-  { delta :: [Delta]
+  { delta :: [Interface]
   , type' :: Value
   }
 

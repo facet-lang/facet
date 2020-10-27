@@ -245,8 +245,8 @@ fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
   [] -> _T --> b
   _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
 tvar env n = group (var (TLocal (snd (tm n)) (Level (length env))))
-sig env (C.Sig s _T) = tcomp (map (delta env) (toList s)) (printValue env _T)
-delta env (C.Delta q sp) = app (group (var (qvar q))) ((Ex,) . printValue env <$> sp)
+sig env (C.Sig s _T) = tcomp (map (interface env) (toList s)) (printValue env _T)
+interface env (C.Interface q sp) = app (group (var (qvar q))) ((Ex,) . printValue env <$> sp)
 app f as = group f $$* fmap (group . uncurry (unPl braces id)) as
 tcomp s t = case s of
   [] -> t
