@@ -60,7 +60,7 @@ data Telescope = Telescope
   deriving (Eq, Show)
 
 data Binding = Binding
-  { _pl   :: Pl
+  { pl    :: Pl
   , names :: NonEmpty UName
   , sig   :: Ann (Sig (Ann Expr))
   }
