@@ -326,12 +326,7 @@ subst s
     VInterface  -> VInterface
     VComp t     -> VComp (substTelescope s t)
     VLam    p b -> VLam p (map clause b)
-    VNeut f a   -> unVar global free (s !) f' $$* fmap (fmap go) a
-      where
-      f' = case f of
-        Global  q -> Global  q
-        Free    v -> Free    v
-        Metavar m -> Metavar m
+    VNeut f a   -> unVar global free (s !) f $$* fmap (fmap go) a
     VCon c      -> VCon (fmap go c)
 
   clause (Clause p b) = Clause p (go . b)
@@ -352,12 +347,7 @@ binds subst = go
     VInterface -> VInterface
     VComp t    -> VComp (bindsTelescope subst t)
     VLam  p b  -> VLam p (map clause b)
-    VNeut f a  -> unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) subst)) metavar f' $$* fmap (fmap go) a
-      where
-      f' = case f of
-        Global  q -> Global  q
-        Free    v -> Free    v
-        Metavar m -> Metavar m
+    VNeut f a  -> unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) subst)) metavar f $$* fmap (fmap go) a
     VCon c     -> VCon (fmap go c)
 
   clause (Clause p b) = Clause p (go . b)
