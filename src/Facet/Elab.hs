@@ -327,11 +327,8 @@ elabBinding (S.Ann s _ (S.Binding p n t)) = [ Binding p n <$> setSpan s (elabSig
 elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check Sig
 elabSig = withSpan $ \ (S.Sig _ t) -> Sig mempty <$> checkElab (elabExpr t)
 
-elabTelescope :: [Check Binding] -> Check Telescope -> Synth Telescope
-elabTelescope bindings body = foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (body ::: VType)) bindings
-
 elabSTelescope :: S.Ann S.Telescope -> Synth Telescope
-elabSTelescope (S.Ann s _ (S.Telescope bs t)) = Synth $ setSpan s $ synth $ elabTelescope (elabBinding =<< bs) (End <$> elabSig t)
+elabSTelescope (S.Ann s _ (S.Telescope bs t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (End <$> elabSig t ::: VType)) (elabBinding =<< bs)
 
 
 _Type :: Synth Type
