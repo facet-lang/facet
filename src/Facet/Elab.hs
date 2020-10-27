@@ -347,7 +347,7 @@ lam n b = Check $ expectChecked "lambda" $ \ _T -> do
   -- FIXME: how does the effect adjustment change this?
   (Binding _ _ (Sig _ _T), _B) <- expectQuantifier "when checking lambda" _T
   b' <- elabBinder $ \ v -> check (b (snd n ::: _T) ::: Just (VComp (_B v)))
-  pure $ VLam (fst n) [Clause (PVar (snd n ::: _T)) (\ (PVar a) -> b' a)]
+  pure $ VLam (fst n) [Clause (PVar (snd n ::: _T)) (b' . unsafeUnPVar)]
 
 
 elabComp
@@ -379,7 +379,7 @@ elabClauses [((S.Ann _ _ (S.PVar n)):|ps, b)] = Check $ expectChecked "variable 
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (Binding pl _ (Sig _ _A), _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> n ::: _A |- check (checkElab (maybe (elabExpr b) (elabClauses . pure . (,b)) (nonEmpty ps)) ::: Just (VComp (_B v)))
-  pure $ VLam pl [Clause (PVar (n ::: _A)) (\ (PVar a) -> b' a)] ::: _T
+  pure $ VLam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)] ::: _T
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
 elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
   rest <- case foldMap partitionClause cs of
@@ -453,7 +453,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = do
       _B' <- n ::: _T |- go k (_B (free d))
       pure $ Bind (Binding Im n (Sig s _T)) (\ v -> C.bindComp d v _B')
   con q fs = \case
-    Bind (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> con q (fs :> v) (_B v))]
+    Bind (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) ((\ v -> con q (fs :> v) (_B v)) . unsafeUnPVar)]
     _T                               -> VCon (Con q fs)
 
 elabInterfaceDef
