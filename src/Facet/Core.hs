@@ -39,6 +39,8 @@ module Facet.Core
 , Subst
 , emptySubst
 , insertSubst
+, apply
+, applyTelescope
 , generalize
   -- ** Classification
 , Sort(..)
@@ -396,6 +398,13 @@ emptySubst = IntMap.empty
 
 insertSubst :: Meta -> Maybe Value ::: Type -> Subst -> Subst
 insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
+
+-- | Apply the substitution to the value.
+apply :: Applicative m => Subst -> Expr -> m Value
+apply s v = pure $ subst (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
+
+applyTelescope :: Applicative m => Subst -> Telescope -> m Telescope
+applyTelescope s v = pure $ substTelescope (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
 
 
 -- FIXME: this seems to break multiple binders, e.g. pair:

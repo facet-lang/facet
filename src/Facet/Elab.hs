@@ -524,13 +524,6 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
       decls_.ix dname .= Decl (Just (C.DTerm t')) _T
 
 
--- | Apply the substitution to the value.
-apply :: Applicative m => Subst -> Expr -> m Value
-apply s v = pure $ subst (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
-
-applyTelescope :: Applicative m => Subst -> Telescope -> m Telescope
-applyTelescope s v = pure $ substTelescope (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
-
 runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
 runSubstWith with = runState with emptySubst
 
