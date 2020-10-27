@@ -8,6 +8,7 @@ module Facet.Core
 , compareDelta
 , Telescope(..)
 , compareTelescope
+, substTelescope
 , bindTelescope
 , bindsTelescope
 , unBind
@@ -143,6 +144,21 @@ compareTelescope d = curry $ \case
   (Bind{}, _)              -> LT
   (End s1, End s2)         -> compareSig d s1 s2
   (End{}, _)               -> LT
+
+substTelescope :: IntMap.IntMap Value -> Telescope -> Telescope
+substTelescope s
+  | IntMap.null s = id
+  | otherwise     = go
+  where
+  go = \case
+    Bind t b -> Bind (binding t) (go . b)
+    End s    -> End (sig s)
+
+  binding (Binding p n s) = Binding p n (sig s)
+
+  sig (Sig d t) = Sig (Set.map delta d) (subst s t)
+  delta (Delta (q ::: t) sp) = Delta (q ::: subst s t) (fmap (subst s) sp)
+
 
 bindTelescope :: HasCallStack => Level -> Value -> Telescope -> Telescope
 bindTelescope k v = bindsTelescope (IntMap.singleton (getLevel k) v)
