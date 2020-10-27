@@ -191,10 +191,10 @@ compareBinding d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> compareS
 data Delta = Delta (QName ::: Value) (Stack Value)
 
 instance Eq Delta where
-  Delta (q1 ::: _) as1 == Delta (q2 ::: _) as2 = q1 == q2 && as1 == as2
+  d1 == d2 = compare d1 d2 == EQ
 
 instance Ord Delta where
-  Delta (q1 ::: _) as1 `compare` Delta (q2 ::: _) as2 = q1 `compare` q2 <> as1 `compare` as2
+  compare = compareDelta 0
 
 compareDelta :: Level -> Delta -> Delta -> Ordering
 compareDelta d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> liftCompare (compareValue d) sp1 sp2
