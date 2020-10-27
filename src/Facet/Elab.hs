@@ -495,6 +495,7 @@ elabTermDef
   => [S.Ann S.Binding]
   -> S.Ann S.Expr
   -> Check Expr
+-- FIXME: elaborate the implicit bindings from the type
 elabTermDef bindings expr = foldr (\ (S.Ann s _ (S.Binding p ns _)) b ->
   setSpan s $ foldr (\ n k ->
     lam (p, n) (|- k)) b ns)
