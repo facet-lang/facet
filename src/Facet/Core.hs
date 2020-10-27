@@ -107,29 +107,6 @@ compareValue d = curry $ \case
   (VCon c1, VCon c2)           -> liftCompare (compareValue d) c1 c2
   (VCon _, _)                  -> LT
 
-compareVar :: Level -> Var -> Var -> Ordering
-compareVar d = curry $ \case
-  (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareTelescope d t1 t2
-  (Global _, _)                              -> LT
-  (Free d1, Free d2)                         -> compare d1 d2
-  (Free _, _)                                -> LT
-  (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> compare m1 m2 <> compareValue d t1 t2
-  (Metavar _, _)                             -> LT
-
-compareBinding :: Level -> Binding -> Binding -> Ordering
-compareBinding d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> compareSig d s1 s2
-
-compareClause :: Level -> Clause -> Clause -> Ordering
-compareClause d (Clause p1 b1) (Clause p2 b2) = liftCompare (\ _ _ -> EQ) p1 p2 <> compareValue d' (b1 p') (b2 p')
-  where
-  (d', p') = bindPattern d p1
-
-compareSig :: Level -> Sig -> Sig -> Ordering
-compareSig d (Sig s1 t1) (Sig s2 t2) = liftCompare (compareDelta d) s1 s2 <> compareValue d t1 t2
-
-compareDelta :: Level -> Delta -> Delta -> Ordering
-compareDelta d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> liftCompare (compareValue d) sp1 sp2
-
 
 -- | A telescope represents a (possibly polymorphic) computation type.
 data Telescope
@@ -192,6 +169,11 @@ data Clause = Clause
   , branch  :: Pattern Value -> Value
   }
 
+compareClause :: Level -> Clause -> Clause -> Ordering
+compareClause d (Clause p1 b1) (Clause p2 b2) = liftCompare (\ _ _ -> EQ) p1 p2 <> compareValue d' (b1 p') (b2 p')
+  where
+  (d', p') = bindPattern d p1
+
 instantiateClause :: Level -> Clause -> (Level, Value)
 instantiateClause d (Clause p b) = b <$> bindPattern d p
 
@@ -202,6 +184,9 @@ data Binding = Binding
   , sig  :: Sig
   }
 
+compareBinding :: Level -> Binding -> Binding -> Ordering
+compareBinding d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> compareSig d s1 s2
+
 
 data Delta = Delta (QName ::: Value) (Stack Value)
 
@@ -211,11 +196,17 @@ instance Eq Delta where
 instance Ord Delta where
   Delta (q1 ::: _) as1 `compare` Delta (q2 ::: _) as2 = q1 `compare` q2 <> as1 `compare` as2
 
+compareDelta :: Level -> Delta -> Delta -> Ordering
+compareDelta d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> liftCompare (compareValue d) sp1 sp2
+
 
 data Sig = Sig
   { delta :: Set.Set Delta
   , type' :: Value
   }
+
+compareSig :: Level -> Sig -> Sig -> Ordering
+compareSig d (Sig s1 t1) (Sig s2 t2) = liftCompare (compareDelta d) s1 s2 <> compareValue d t1 t2
 
 
 data Var
@@ -241,6 +232,14 @@ instance Ord Var where
     (Metavar (m1 ::: _), Metavar (m2 ::: _)) -> m1 `compare` m2
     (Metavar _,          _)                  -> LT
 
+compareVar :: Level -> Var -> Var -> Ordering
+compareVar d = curry $ \case
+  (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareTelescope d t1 t2
+  (Global _, _)                              -> LT
+  (Free d1, Free d2)                         -> compare d1 d2
+  (Free _, _)                                -> LT
+  (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> compare m1 m2 <> compareValue d t1 t2
+  (Metavar _, _)                             -> LT
 
 unVar :: (QName ::: Telescope -> a) -> (Level -> a) -> (Meta ::: Value -> a) -> Var -> a
 unVar f g h = \case
