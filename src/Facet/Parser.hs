@@ -147,7 +147,7 @@ monotypeTable =
 
 
 type' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-type' = anned $ S.ForAll <$> typeSig (choice [ imBinding, nonBinding ]) tatom
+type' = anned $ S.ForAll <$> telescope
 
 telescope :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Telescope)
 telescope = typeSig (choice [ imBinding, nonBinding ]) tatom
