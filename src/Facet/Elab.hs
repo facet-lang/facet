@@ -241,6 +241,9 @@ lookupInContext n ctx = maybe Nothing (`lookupLevel` ctx) (eOrT n)
   eOrT (T n) = Just n
   eOrT _     = Nothing
 
+lookupInSig :: UName -> [Interface] -> Maybe (UName ::: Comp)
+lookupInSig n = matchWith $ matchWith (\ t -> t <$ guard (tm t == n)) . ops
+
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 var
   :: Maybe MName
