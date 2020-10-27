@@ -344,7 +344,7 @@ substWith f = go
 subst :: HasCallStack => IntMap.IntMap Value -> Value -> Value
 subst s
   | IntMap.null s = id
-  | otherwise     = substWith (unVar global free (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) s)))
+  | otherwise     = substWith (substMeta s)
 
 -- | Bind a free variable.
 bind :: HasCallStack => Level -> Value -> Value -> Value
@@ -353,7 +353,13 @@ bind k v = binds (IntMap.singleton (getLevel k) v)
 binds :: HasCallStack => IntMap.IntMap Value -> Value -> Value
 binds s
   | IntMap.null s = id
-  | otherwise     = substWith (unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) s)) metavar)
+  | otherwise     = substWith (substFree s)
+
+substFree :: IntMap.IntMap Value -> Var -> Value
+substFree s = unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) s)) metavar
+
+substMeta :: IntMap.IntMap Value -> Var -> Value
+substMeta s = unVar global free (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) s))
 
 
 type Subst = IntMap.IntMap (Maybe Value ::: Type)
