@@ -475,16 +475,17 @@ elabInterfaceDef _T constructors = do
       pure $ Bind (Binding Im n (Sig s _T)) (\ v -> C.bindComp d v _B')
 
 elabTermDef
-  :: HasCallStack
-  => [S.Ann S.Binding]
+  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
+  => Comp
   -> S.Ann S.Expr
-  -> Check Expr
--- FIXME: elaborate the implicit bindings from the type
-elabTermDef bindings expr = foldr (\ (S.Ann s _ (S.Binding p ns _)) b ->
-  setSpan s $ foldr (\ n k ->
-    lam (p, n) (|- k)) b ns)
-  (checkElab (elabExpr expr))
-  bindings
+  -> m Expr
+elabTermDef _T expr = runReader (S.ann expr) $ elab $ go (checkElab (elabExpr expr)) _T
+  where
+  go k t = case t of
+    Comp (Sig _ _T)                  -> check (k ::: Just _T)
+    Bind (Binding p n (Sig _ _T)) _B -> do
+      b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
+      pure $ VLam p [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
 
 
 -- Modules
@@ -515,11 +516,11 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
           decl <- runModule $ elabInterfaceDef _T os
           Nothing <$ (decls_.at dname .= Just decl)
 
-        S.TermDef t -> pure (Just (S.ann tele, dname, (S.bindings (S.out tele), t) ::: _T))
+        S.TermDef t -> pure (Just (S.ann tele, dname, t ::: _T))
 
     -- then elaborate the terms
-    trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, (bs, t) ::: _T) -> setSpan s $ tracePretty dname $ do
-      t' <- runModule (elab (check (elabTermDef bs t ::: Just (VComp _T))))
+    trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> setSpan s $ tracePretty dname $ do
+      t' <- runModule $ elabTermDef _T t
       decls_.ix dname .= Decl (Just (C.DTerm t')) _T
 
 
