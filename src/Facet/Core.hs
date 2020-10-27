@@ -35,7 +35,6 @@ module Facet.Core
 , subst
 , bind
 , binds
-, mvs
 , Subst
 , emptySubst
 , insertSubst
@@ -371,24 +370,6 @@ binds subst = go
     VCon c     -> VCon (fmap go c)
 
   clause (Clause p b) = Clause p (go . b)
-
-
-mvs :: Level -> Value -> IntMap.IntMap Value
-mvs d = \case
-  VType                   -> mempty
-  VInterface              -> mempty
-  VComp t                 -> telescope d t
-  VLam _ cs               -> foldMap clause cs
-  VNeut h sp              -> unVar (telescope d . ty) mempty (\ (m ::: _T) -> IntMap.insert (getMeta m) _T (mvs d _T)) h <> foldMap (foldMap (mvs d)) sp
-  VCon (Con (_ ::: t) fs) -> telescope d t <> foldMap (mvs d) fs
-  where
-  telescope d = \case
-    Bind t b -> binding d t <> telescope (succ d) (b (free d))
-    End s    -> sig d s
-  binding d (Binding _ _ s) = sig d s
-  clause (Clause p b) = let (d', p') = bindPattern d p in mvs d' (b p')
-  sig d (Sig s t) = foldMap (delta d) s <> mvs d t
-  delta d (Delta (_ ::: t) sp) = mvs d t <> foldMap (mvs d) sp
 
 
 type Subst = IntMap.IntMap (Maybe Value ::: Type)
