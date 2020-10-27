@@ -100,7 +100,7 @@ substCompWith f = go
 
   binding (Binding p n d t) = Binding p n (map interface d) (substWith f t)
 
-  interface (Interface q sp) = Interface q (fmap (substWith f) sp)
+  interface (Interface q sp ops) = Interface q (fmap (substWith f) sp) (map (fmap go) ops)
 
 substComp :: IntMap.IntMap Value -> Comp -> Comp
 substComp s
@@ -147,7 +147,11 @@ data Binding = Binding
   }
 
 
-data Interface = Interface QName (Stack Value)
+data Interface = Interface
+  { name :: QName
+  , args :: Stack Value
+  , ops  :: [UName ::: Comp]
+  }
 
 
 data Var

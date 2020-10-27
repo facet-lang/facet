@@ -197,35 +197,35 @@ resolveWith
   :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Comp))
   -> Maybe MName
   -> DName
-  -> Elab (QName ::: Comp)
+  -> Elab (QName :=: Maybe Def ::: Comp)
 resolveWith lookup m n = asks lookup >>= \case
-  Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
+  Just (n' :=: d ::: _T) -> pure $ n' :=: d ::: _T
   Nothing                -> do
     defs <- asks (foldMap (lookup . snd) . getGraph)
     case defs of
       []                -> freeVariable m n
-      [n' :=: _ ::: _T] -> pure $ n' ::: _T
+      [n' :=: d ::: _T] -> pure $ n' :=: d ::: _T
       -- FIXME: resolve ambiguities by type.
       _                 -> ambiguousName m n (map (\ (q :=: _ ::: _) -> q) defs)
 
 resolve
   :: DName
-  -> Elab (QName ::: Comp)
+  -> Elab (QName :=: Maybe Def ::: Comp)
 resolve n = resolveWith (lookupD n) Nothing n
 
 resolveC
   :: UName
-  -> Elab (QName ::: Comp)
+  -> Elab (QName :=: Maybe Def ::: Comp)
 resolveC n = resolveWith (lookupC n) Nothing (C n)
 
 resolveQ
   :: QName
-  -> Elab (QName ::: Comp)
+  -> Elab (QName :=: Maybe Def ::: Comp)
 resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
-  Just (q' :=: _ ::: _T) -> pure $ q' ::: _T
+  Just (q' :=: d ::: _T) -> pure $ q' :=: d ::: _T
   Nothing                -> freeVariable (Just m) n
 
-resolveMD :: Maybe MName -> DName -> Elab (QName ::: Comp)
+resolveMD :: Maybe MName -> DName -> Elab (QName :=: Maybe Def ::: Comp)
 resolveMD m n = maybe (resolve n) (resolveQ . (:.: n)) m
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
@@ -250,7 +250,9 @@ var m n = Synth $ ask >>= \ ctx -> case m of
   Nothing
     | Just (i, _T) <- lookupInContext n ctx
     -> pure (free i ::: _T)
-  _ -> resolveMD m n >>= synth . global
+  _ -> do
+    n :=: _ ::: _T <- resolveMD m n
+    synth $ global (n ::: _T)
 
 hole
   :: UName
@@ -320,7 +322,13 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) = [ Binding p n <$> setSpan s (trave
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
 elabSig :: S.Ann S.Interface -> Check Interface
-elabSig = withSpan $ \ (S.Interface q t) -> Interface <$> withSpan (checkElab . Check . const . uncurry resolveMD) q <*> traverse (checkElab . elabExpr) t
+elabSig = withSpan $ \ (S.Interface q t) -> do
+  q :=: d ::: _T <- withSpan (Check . const . uncurry resolveMD) q
+  sp <- traverse (checkElab . elabExpr) t
+  let ops = case d of
+        Just (DInterface ops) -> ops
+        _                     -> []
+  pure $ Interface q sp ops
 
 elabSTelescope :: S.Ann S.Comp -> Synth Comp
 elabSTelescope (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (Comp <$> traverse elabSig d <*> checkElab (elabExpr t) ::: VType)) (elabBinding =<< bs)
@@ -383,12 +391,12 @@ elabPattern :: S.Ann S.Pattern -> (C.Pattern (UName ::: Type) -> Elab a) -> Chec
 elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan s $ case p of
   S.PVar n    -> k (C.PVar (n ::: _A))
   S.PCon n ps -> do
-    q ::: _T' <- resolveC n
+    q :=: _ ::: _T' <- resolveC n
     _T'' <- inst _T'
     subpatterns _A _T'' ps $ \ ps' -> k (C.PCon (Con q (fromList ps')))
   -- FIXME: look up the effect in the signature
   S.PEff n ps v -> do
-    q ::: _T' <- resolveC n
+    q :=: _ ::: _T' <- resolveC n
     _T'' <- inst _T'
     -- FIXME: what should the type of the continuation be? [effect result type] -> [remainder of body type after this pattern]?
     subpatterns _A _T'' ps $ \ ps' -> k (C.PEff q (fromList ps') (v ::: VType)) -- FIXME: lies
