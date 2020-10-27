@@ -128,6 +128,18 @@ compareTelescope d = curry $ \case
   (End s1, End s2)         -> compareSig d s1 s2
   (End{}, _)               -> LT
 
+substTelescopeWith :: (Var -> Value) -> Telescope -> Telescope
+substTelescopeWith f = go
+  where
+  go = \case
+    Bind t b -> Bind (binding t) (go . b)
+    End s    -> End (sig s)
+
+  binding (Binding p n s) = Binding p n (sig s)
+
+  sig (Sig d t) = Sig (map delta d) (substWith f t)
+  delta (Delta (q ::: t) sp) = Delta (q ::: substWith f t) (fmap (substWith f) sp)
+
 substTelescope :: IntMap.IntMap Value -> Telescope -> Telescope
 substTelescope s
   | IntMap.null s = id
@@ -315,22 +327,25 @@ match = curry $ \case
   (_,                PCon _)          -> Nothing
 
 
--- | Substitute metavars.
-subst :: HasCallStack => IntMap.IntMap Value -> Value -> Value
-subst s
-  | IntMap.null s = id
-  | otherwise     = go
+substWith :: HasCallStack => (Var -> Value) -> Value -> Value
+substWith f = go
   where
   go = \case
     VType       -> VType
     VInterface  -> VInterface
-    VComp t     -> VComp (substTelescope s t)
+    VComp t     -> VComp (substTelescopeWith f t)
     VLam    p b -> VLam p (map clause b)
-    VNeut f a   -> unVar global free (s !) f $$* fmap (fmap go) a
+    VNeut v a   -> f v $$* fmap (fmap go) a
     VCon c      -> VCon (fmap go c)
 
   clause (Clause p b) = Clause p (go . b)
 
+-- | Substitute metavars.
+subst :: HasCallStack => IntMap.IntMap Value -> Value -> Value
+subst s
+  | IntMap.null s = id
+  | otherwise     = substWith (unVar global free (s !))
+  where
   s ! l = case IntMap.lookup (getMeta l) s of
     Just a  -> a
     Nothing -> metavar l
@@ -340,17 +355,9 @@ bind :: HasCallStack => Level -> Value -> Value -> Value
 bind k v = binds (IntMap.singleton (getLevel k) v)
 
 binds :: HasCallStack => IntMap.IntMap Value -> Value -> Value
-binds subst = go
-  where
-  go = \case
-    VType      -> VType
-    VInterface -> VInterface
-    VComp t    -> VComp (bindsTelescope subst t)
-    VLam  p b  -> VLam p (map clause b)
-    VNeut f a  -> unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) subst)) metavar f $$* fmap (fmap go) a
-    VCon c     -> VCon (fmap go c)
-
-  clause (Clause p b) = Clause p (go . b)
+binds s
+  | IntMap.null s = id
+  | otherwise     = substWith (unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) s)) metavar)
 
 
 type Subst = IntMap.IntMap (Maybe Value ::: Type)
