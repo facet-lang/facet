@@ -5,13 +5,10 @@ Data.Function : Module
 id
 : { A : Type } -> (x : A) -> A
 { x }
-# NB: equivalently: id : {A : Type} -> A -> A {x -> x}
 
 const
 : { A, B : Type } -> (x : A) -> (_ : B) -> A
 { x }
-# NB: equivalently: const : { A, B : Type } -> (x : A) -> B -> A { _ -> x }
-# NB: equivalently: const : { A, B : Type } -> A -> B -> A { x _ -> x }
 
 flip
 : { A, B, C : Type } -> (f : A -> B -> C) -> (B -> A -> C)
@@ -22,19 +19,15 @@ flip
 _ << _ [assoc]
 : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
 { a -> f (g a) }
-# NB: equivalently: (<<) : { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (a : A) -> C { f (g a) }
 
 _ >> _ [assoc]
 : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (A -> C)
 { a -> f (g a) }
-# NB: equivalently: (>>) : { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (a : A) -> C { f (g a) }
 
 
 _ <| _ [right-assoc]
 : { A, B : Type } -> (f : A -> B) -> (a : A) -> B
 { f a }
-# NB: equivalently: { A, B : Type } -> (f : A -> B) -> A -> B { f }
-# NB: equivalently: { A, B : Type } -> (A -> B) -> A -> B { id }
 
 _ |> _ [left-assoc]
 : { A, B : Type } -> (a : A) -> (f : A -> B) -> B
@@ -44,11 +37,6 @@ _ |> _ [left-assoc]
 case
 : { A, B : Type } -> A -> (A -> B) -> B
 { (_ |> _) }
-
-# desugars to:
-# case
-# : { A : Kernel.Type } -> { B : Kernel.Type } -> A -> (A -> B) -> B
-# { (_ Base.Function.|> _) }
 
 
 fix
