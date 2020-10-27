@@ -132,6 +132,7 @@ compareDelta :: Level -> Delta -> Delta -> Ordering
 compareDelta d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> liftCompare (compareValue d) sp1 sp2
 
 
+-- | A telescope represents a (possibly polymorphic) computation type.
 data Telescope
   = Bind Binding (Value -> Telescope)
   | End Sig
