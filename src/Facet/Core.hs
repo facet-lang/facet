@@ -107,7 +107,7 @@ compareValue d = curry $ \case
    -- FIXME: do we need to test the types here?
   (VLam p1 cs1, VLam p2 cs2)   -> compare p1 p2 <> liftCompare (compareClause d) cs1 cs2
   (VLam{}, _)                  -> LT
-  (VNeut h1 sp1, VNeut h2 sp2) -> compareVar d h1 h2 <> liftCompare (liftCompare (compareValue d)) sp1 sp2
+  (VNeut h1 sp1, VNeut h2 sp2) -> compare h1 h2 <> liftCompare (liftCompare (compareValue d)) sp1 sp2
   (VNeut{}, _)                 -> LT
   (VCon c1, VCon c2)           -> liftCompare (compareValue d) c1 c2
   (VCon _, _)                  -> LT
@@ -218,45 +218,36 @@ compareSig d (Sig s1 t1) (Sig s2 t2) = liftCompare (compareDelta d) s1 s2 <> com
 
 
 data Var
-  = Global (QName ::: Telescope) -- ^ Global variables, considered equal by 'QName'.
+  = Global QName -- ^ Global variables, considered equal by 'QName'.
   | Free Level
-  | Metavar (Meta ::: Value) -- ^ Metavariables, considered equal by 'Level'.
+  | Metavar Meta -- ^ Metavariables, considered equal by 'Level'.
 
 instance Eq Var where
   (==) = curry $ \case
-    (Global  (q1 ::: _), Global  (q2 ::: _)) -> q1 == q2
-    (Global  _,          _)                  -> False
-    (Free    l1,         Free    l2)         -> l1 == l2
-    (Free    _,          _)                  -> False
-    (Metavar (m1 ::: _), Metavar (m2 ::: _)) -> m1 == m2
-    (Metavar _,          _)                  -> False
+    (Global  q1, Global  q2) -> q1 == q2
+    (Global  _,  _)          -> False
+    (Free    l1, Free    l2) -> l1 == l2
+    (Free    _,  _)          -> False
+    (Metavar m1, Metavar m2) -> m1 == m2
+    (Metavar _,  _)          -> False
 
 instance Ord Var where
   compare = curry $ \case
-    (Global  (q1 ::: _), Global  (q2 ::: _)) -> q1 `compare` q2
-    (Global  _,          _)                  -> LT
-    (Free    l1,         Free    l2)         -> l1 `compare` l2
-    (Free    _,          _)                  -> LT
-    (Metavar (m1 ::: _), Metavar (m2 ::: _)) -> m1 `compare` m2
-    (Metavar _,          _)                  -> LT
+    (Global  q1, Global  q2) -> q1 `compare` q2
+    (Global  _,  _)          -> LT
+    (Free    l1, Free    l2) -> l1 `compare` l2
+    (Free    _,  _)          -> LT
+    (Metavar m1, Metavar m2) -> m1 `compare` m2
+    (Metavar _,  _)          -> LT
 
-compareVar :: Level -> Var -> Var -> Ordering
-compareVar d = curry $ \case
-  (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareTelescope d t1 t2
-  (Global _, _)                              -> LT
-  (Free d1, Free d2)                         -> compare d1 d2
-  (Free _, _)                                -> LT
-  (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> compare m1 m2 <> compareValue d t1 t2
-  (Metavar _, _)                             -> LT
-
-unVar :: (QName ::: Telescope -> a) -> (Level -> a) -> (Meta ::: Value -> a) -> Var -> a
+unVar :: (QName -> a) -> (Level -> a) -> (Meta -> a) -> Var -> a
 unVar f g h = \case
   Global  n -> f n
   Free    n -> g n
   Metavar n -> h n
 
 
-data Con a = Con (QName ::: Telescope) (Stack a)
+data Con a = Con QName (Stack a)
   deriving (Foldable, Functor, Traversable)
 
 instance Eq a => Eq (Con a) where
@@ -266,19 +257,19 @@ instance Ord a => Ord (Con a) where
   compare = compare1
 
 instance Eq1 Con where
-  liftEq eq (Con (q1 ::: _) sp1) (Con (q2 ::: _) sp2) = q1 == q2 && liftEq eq sp1 sp2
+  liftEq eq (Con q1 sp1) (Con q2 sp2) = q1 == q2 && liftEq eq sp1 sp2
 
 instance Ord1 Con where
-  liftCompare compare' (Con (q1 ::: _) sp1) (Con (q2 ::: _) sp2) = compare q1 q2 <> liftCompare compare' sp1 sp2
+  liftCompare compare' (Con q1 sp1) (Con q2 sp2) = compare q1 q2 <> liftCompare compare' sp1 sp2
 
 
-global :: QName ::: Telescope -> Value
+global :: QName -> Value
 global = var . Global
 
 free :: Level -> Value
 free = var . Free
 
-metavar :: Meta ::: Value -> Value
+metavar :: Meta -> Value
 metavar = var . Metavar
 
 
@@ -318,7 +309,7 @@ match :: Value -> Pattern b -> Maybe (Pattern Value)
 match = curry $ \case
   (s,                PVar _)          -> Just (PVar s)
   (VCon (Con n' fs), PCon (Con n ps)) -> do
-    guard (tm n == tm n')
+    guard (n == n')
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
     PCon . Con n' <$> sequenceA (zipWith match fs ps)
   (_,                PCon _)          -> Nothing
@@ -338,14 +329,14 @@ subst s
     VNeut f a   -> unVar global free (s !) f' $$* fmap (fmap go) a
       where
       f' = case f of
-        Global  (n ::: _T) -> Global  (n ::: substTelescope s _T)
-        Free    v          -> Free    v
-        Metavar (d ::: _T) -> Metavar (d ::: go _T)
+        Global  q -> Global  q
+        Free    v -> Free    v
+        Metavar m -> Metavar m
     VCon c      -> VCon (fmap go c)
 
   clause (Clause p b) = Clause p (go . b)
 
-  s ! l = case IntMap.lookup (getMeta (tm l)) s of
+  s ! l = case IntMap.lookup (getMeta l) s of
     Just a  -> a
     Nothing -> metavar l
 
@@ -364,9 +355,9 @@ binds subst = go
     VNeut f a  -> unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) subst)) metavar f' $$* fmap (fmap go) a
       where
       f' = case f of
-        Global  (n ::: _T) -> Global  (n ::: bindsTelescope subst _T)
-        Free    v          -> Free    v
-        Metavar (d ::: _T) -> Metavar (d ::: go _T)
+        Global  q -> Global  q
+        Free    v -> Free    v
+        Metavar m -> Metavar m
     VCon c     -> VCon (fmap go c)
 
   clause (Clause p b) = Clause p (go . b)
@@ -411,7 +402,7 @@ sortOf ctx = \case
   VInterface -> SKind
   VComp t    -> telescope ctx t
   VLam{}     -> STerm
-  VNeut h sp -> minimum (unVar (pred . telescope ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (sortOf ctx . snd <$> sp))
+  VNeut h sp -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
   VCon _     -> STerm
   where
   telescope ctx = \case

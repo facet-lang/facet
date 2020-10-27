@@ -123,8 +123,8 @@ unify = trace "unify" . \case
   VNeut h1 e1             :===: VNeut h2 e2
     | h1 == h2
     , Just e' <- unifySpine (e1 :===: e2)               -> VNeut h1 <$> e'
-  VNeut (Metavar v) Nil   :===: x                       -> solve (tm v :=: x)
-  x                       :===: VNeut (Metavar v) Nil   -> solve (tm v :=: x)
+  VNeut (Metavar v) Nil   :===: x                       -> solve (v :=: x)
+  x                       :===: VNeut (Metavar v) Nil   -> solve (v :=: x)
   VComp t1                :===: VComp t2                -> VComp <$> unifyTelescope (t1 :===: t2)
   VComp (End (Sig [] t1)) :===: t2                      -> unify (t1 :===: t2)
   t1                      :===: VComp (End (Sig [] t2)) -> unify (t1 :===: t2)
@@ -163,11 +163,11 @@ unifyTelescope = \case
 
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Type -> Elab (Meta ::: Type)
+meta :: Type -> Elab Meta
 meta _T = do
   subst <- get
   let m = Meta (length subst)
-  (m ::: _T) <$ put (insertSubst m (Nothing ::: _T) subst)
+  m <$ put (insertSubst m (Nothing ::: _T) subst)
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
@@ -227,7 +227,7 @@ resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
 global
   :: QName ::: Telescope
   -> Synth Value
-global q = Synth $ fmap VComp <$> instantiate (C.global q ::: ty q)
+global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 var
@@ -408,7 +408,7 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
   S.PCon n ps -> do
     q ::: _T' <- resolveC n
     _T'' <- inst _T'
-    subpatterns _A _T'' ps $ \ ps' -> k (C.PCon (Con (q ::: _T'') (fromList ps')))
+    subpatterns _A _T'' ps $ \ ps' -> k (C.PCon (Con q (fromList ps')))
   S.PEff{}    -> error "TBD"
   where
   inst = \case
@@ -454,7 +454,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = do
       pure $ Bind (Binding Im n (Sig s _T)) (\ v -> C.bindTelescope d v _B')
   con q fs = \case
     Bind (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> con q (fs :> v) (_B v))]
-    _T                               -> VCon (Con (q ::: _T) fs)
+    _T                               -> VCon (Con q fs)
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)

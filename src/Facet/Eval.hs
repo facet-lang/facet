@@ -15,7 +15,7 @@ eval = \case
     mod <- ask
     graph <- ask
     case h of
-      Global (q ::: _)
+      Global q
         | Just (_ :=: (Just (DTerm v)) ::: _) <- lookupQ q mod graph
         -> pure $ v $$* sp'
       _ -> pure $ VNeut h sp'
