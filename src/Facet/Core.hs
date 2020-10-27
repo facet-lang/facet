@@ -106,14 +106,15 @@ compareValue d = curry $ \case
   (VNeut{}, _)                 -> LT
   (VCon c1, VCon c2)           -> liftCompare (compareValue d) c1 c2
   (VCon _, _)                  -> LT
-  where
-  compareVar d = curry $ \case
-    (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareTelescope d t1 t2
-    (Global _, _)                              -> LT
-    (Free d1, Free d2)                         -> compare d1 d2
-    (Free _, _)                                -> LT
-    (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> compare m1 m2 <> compareValue d t1 t2
-    (Metavar _, _)                             -> LT
+
+compareVar :: Level -> Var -> Var -> Ordering
+compareVar d = curry $ \case
+  (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareTelescope d t1 t2
+  (Global _, _)                              -> LT
+  (Free d1, Free d2)                         -> compare d1 d2
+  (Free _, _)                                -> LT
+  (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> compare m1 m2 <> compareValue d t1 t2
+  (Metavar _, _)                             -> LT
 
 compareBinding :: Level -> Binding -> Binding -> Ordering
 compareBinding d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> compareSig d s1 s2
