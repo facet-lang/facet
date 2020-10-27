@@ -37,7 +37,7 @@ data Expr
   | Hole UName
   | Type
   | Interface
-  | ForAll [Ann Binding] (Ann (Sig (Ann Type)))
+  | ForAll (Ann Telescope)
   | Comp (Ann Comp)
   | App (Ann Expr) (Ann Expr)
   -- FIXME: tupling/unit should take a list of expressions
@@ -99,7 +99,7 @@ data Pattern
 
 -- Declarations
 
-data Decl = Decl [Ann Binding] (Ann (Sig (Ann Type))) Def
+data Decl = Decl (Ann Telescope) Def
   deriving (Eq, Show)
 
 data Def

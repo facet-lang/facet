@@ -312,13 +312,13 @@ elabExpr
   => S.Ann S.Expr
   -> Check (Expr ::: Type)
 elabExpr = withSpan $ \case
-  S.Var m n     -> switch $ var m n
-  S.Hole  n     -> hole n
-  S.Type        -> trace "Type" $ switch _Type
-  S.Interface   -> trace "Interface" $ switch _Interface
-  S.ForAll bs s -> trace "forall" $ switch $ VComp <$> elabSTelescope bs s
-  S.App f a     -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
-  S.Comp cs     -> elabComp cs
+  S.Var m n   -> switch $ var m n
+  S.Hole  n   -> hole n
+  S.Type      -> trace "Type" $ switch _Type
+  S.Interface -> trace "Interface" $ switch _Interface
+  S.ForAll t  -> trace "forall" $ switch $ VComp <$> elabSTelescope t
+  S.App f a   -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
+  S.Comp cs   -> elabComp cs
 
 elabBinding :: S.Ann S.Binding -> [Check Binding]
 elabBinding (S.Ann s _ (S.Binding p n t)) = [ Binding p n <$> setSpan s (elabSig t) | n <- toList n ]
@@ -330,8 +330,8 @@ elabSig = withSpan $ \ (S.Sig _ t) -> Sig mempty <$> checkElab (elabExpr t)
 elabTelescope :: [Check Binding] -> Check Telescope -> Synth Telescope
 elabTelescope bindings body = foldr (\ t b -> tbind t (\ v -> v |- fmap tm (switch b))) (as (body ::: VType)) bindings
 
-elabSTelescope :: [S.Ann S.Binding] -> S.Ann (S.Sig (S.Ann S.Expr)) -> Synth Telescope
-elabSTelescope bs s = elabTelescope (elabBinding =<< bs) (End <$> elabSig s)
+elabSTelescope :: S.Ann S.Telescope -> Synth Telescope
+elabSTelescope (S.Ann s _ (S.Telescope bs t)) = Synth $ setSpan s $ synth $ elabTelescope (elabBinding =<< bs) (End <$> elabSig t)
 
 
 _Type :: Synth Type
@@ -454,8 +454,8 @@ elabDataDef
   -> m [(DName, Decl)]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = do
-  cs <- for constructors $ runWithSpan $ \ (n ::: S.Ann s _ (S.Telescope bs t)) -> setSpan s $ do
-    c_T <- elabTele $ go (checkElab (switch (elabSTelescope bs t))) _T
+  cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
+    c_T <- elabTele $ go (checkElab (switch (elabSTelescope t))) _T
     pure $ n :=: con (mname :.: C n) Nil c_T ::: c_T
   pure
     $ (dname, Decl (Just (C.DData cs)) _T)
@@ -478,8 +478,8 @@ elabInterfaceDef
   -> [S.Ann (UName ::: S.Ann S.Telescope)]
   -> m Decl
 elabInterfaceDef _T constructors = do
-  cs <- for constructors $ runWithSpan $ \ (n ::: S.Ann s _ (S.Telescope bs t)) -> setSpan s
-    $ (n :::) <$> elabTele (go (checkElab (switch (elabSTelescope bs t))) _T)
+  cs <- for constructors $ runWithSpan $ \ (n ::: t) ->
+    (n :::) <$> elabTele (go (checkElab (switch (elabSTelescope t))) _T)
   pure $ Decl (Just (DInterface cs)) _T
   where
   go k = \case
@@ -519,8 +519,8 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl bs sig def))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elabTele $ check (checkElab (switch (elabSTelescope bs sig)) ::: Just VType)
+    es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ setSpan s $ do
+      _T <- runModule . elabTele $ check (checkElab (switch (elabSTelescope tele)) ::: Just VType)
 
       decls_.at dname .= Just (Decl Nothing _T)
       case def of
@@ -532,7 +532,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
           decl <- runModule $ elabInterfaceDef _T os
           Nothing <$ (decls_.at dname .= Just decl)
 
-        S.TermDef t -> pure (Just (S.ann sig, dname, (bs, t) ::: _T))
+        S.TermDef t -> pure (Just (S.ann tele, dname, (S.bindings (S.out tele), t) ::: _T))
 
     -- then elaborate the terms
     trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, (bs, t) ::: _T) -> setSpan s $ tracePretty dname $ do

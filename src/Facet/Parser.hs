@@ -105,16 +105,14 @@ termDecl = anned $ do
         _ -> pure N.N
       modify (makeOperator (op, assoc) :)
     _      -> pure ()
-  decl <- colon *> typeSig makeDecl (choice [ imBinding, exBinding ename ]) ((,) <$> type' <*> (S.TermDef <$> comp))
+  decl <- anned $ S.Decl <$ colon <*> typeSig (choice [ imBinding, exBinding ename ]) type' <*> (S.TermDef <$> comp)
   pure (name, decl)
 
 dataDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
-dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> typeSig makeDecl (choice [ imBinding, exBinding tname ]) ((,) <$> type' <*> (S.DataDef <$> braces (commaSep con)))
+dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> anned (S.Decl <$> typeSig (choice [ imBinding, exBinding tname ]) type' <*> (S.DataDef <$> braces (commaSep con)))
 
 interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
-interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> typeSig makeDecl (choice [ imBinding, exBinding tname ]) ((,) <$> type' <*> (S.InterfaceDef <$> braces (commaSep con)))
-
-makeDecl bs (S.Ann s cs (S.Sig delta (t, d))) = S.Decl bs (S.Ann s cs (S.Sig delta t)) d
+interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> anned (S.Decl <$> typeSig (choice [ imBinding, exBinding tname ]) type' <*> (S.InterfaceDef <$> braces (commaSep con)))
 
 con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann S.Telescope))
 con = anned ((:::) <$> cname <* colon <*> telescope)
@@ -122,14 +120,13 @@ con = anned ((:::) <$> cname <* colon <*> telescope)
 
 typeSig
   :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p)
-  => ([S.Ann S.Binding] -> S.Ann (S.Sig arg) -> res)
-  -> p (S.Ann S.Binding)
-  -> p arg
-  -> p (S.Ann res)
-typeSig forAll binding body = anned $ do
+  => p (S.Ann S.Binding)
+  -> p (S.Ann S.Expr)
+  -> p (S.Ann S.Telescope)
+typeSig binding body = anned $ do
   bindings <- many (try (binding <* arrow))
   sig <- option [] sig
-  forAll bindings <$> anned (S.Sig sig <$> body)
+  S.Telescope bindings <$> anned (S.Sig sig <$> body)
 
 exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.UName -> p (S.Ann S.Binding)
 exBinding name = anned $ nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> anned (S.Sig <$> option [] sig <*> type') <* rparen
@@ -150,10 +147,10 @@ monotypeTable =
 
 
 type' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-type' = typeSig S.ForAll (choice [ imBinding, nonBinding ]) tatom
+type' = anned $ S.ForAll <$> typeSig (choice [ imBinding, nonBinding ]) tatom
 
 telescope :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Telescope)
-telescope = typeSig S.Telescope (choice [ imBinding, nonBinding ]) tatom
+telescope = typeSig (choice [ imBinding, nonBinding ]) tatom
 
 -- FIXME: support type operators
 tatom :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
