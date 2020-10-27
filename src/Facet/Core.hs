@@ -54,6 +54,7 @@ module Facet.Core
 , Def(..)
 , unDData
 , unDInterface
+, matchWith
 ) where
 
 import           Control.Effect.Empty
