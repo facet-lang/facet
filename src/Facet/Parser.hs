@@ -114,18 +114,18 @@ dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> anne
 interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
 interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> anned (S.Decl <$> typeSig (choice [ imBinding, exBinding tname ]) type' <*> (S.InterfaceDef <$> braces (commaSep con)))
 
-con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann S.Telescope))
-con = anned ((:::) <$> cname <* colon <*> telescope)
+con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann S.Comp))
+con = anned ((:::) <$> cname <* colon <*> tcomp)
 
 
 typeSig
   :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p)
   => p (S.Ann S.Binding)
   -> p (S.Ann S.Expr)
-  -> p (S.Ann S.Telescope)
+  -> p (S.Ann S.Comp)
 typeSig binding body = anned $ do
   bindings <- many (try (binding <* arrow))
-  S.Telescope bindings <$> option [] sig <*> body
+  S.Comp bindings <$> option [] sig <*> body
 
 exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.UName -> p (S.Ann S.Binding)
 exBinding name = anned $ nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
@@ -146,10 +146,10 @@ monotypeTable =
 
 
 type' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-type' = anned $ S.TComp <$> telescope
+type' = anned $ S.TComp <$> tcomp
 
-telescope :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Telescope)
-telescope = typeSig (choice [ imBinding, nonBinding ]) tatom
+tcomp :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Comp)
+tcomp = typeSig (choice [ imBinding, nonBinding ]) tatom
 
 -- FIXME: support type operators
 tatom :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)

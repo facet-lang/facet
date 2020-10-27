@@ -323,8 +323,8 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) = [ Binding p n <$> setSpan s (trave
 elabSig :: S.Ann S.Interface -> Check Interface
 elabSig = withSpan $ \ (S.Interface q t) -> Interface <$> withSpan (checkElab . Check . const . uncurry resolveMD) q <*> traverse (checkElab . elabExpr) t
 
-elabSTelescope :: S.Ann S.Telescope -> Synth Comp
-elabSTelescope (S.Ann s _ (S.Telescope bs d t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (Comp <$> traverse elabSig d <*> checkElab (elabExpr t) ::: VType)) (elabBinding =<< bs)
+elabSTelescope :: S.Ann S.Comp -> Synth Comp
+elabSTelescope (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (Comp <$> traverse elabSig d <*> checkElab (elabExpr t) ::: VType)) (elabBinding =<< bs)
 
 
 _Type :: Synth Type
@@ -442,7 +442,7 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
 elabDataDef
   :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
   => QName ::: Comp
-  -> [S.Ann (UName ::: S.Ann S.Telescope)]
+  -> [S.Ann (UName ::: S.Ann S.Comp)]
   -> m [(DName, Decl)]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = do
@@ -467,7 +467,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = do
 elabInterfaceDef
   :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
   => Comp
-  -> [S.Ann (UName ::: S.Ann S.Telescope)]
+  -> [S.Ann (UName ::: S.Ann S.Comp)]
   -> m Decl
 elabInterfaceDef _T constructors = do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) ->

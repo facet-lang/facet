@@ -4,7 +4,7 @@ module Facet.Surface
 , Type
 , free
 , qual
-, Telescope(..)
+, Comp(..)
 , Binding(..)
 , Interface(..)
 , Clause(..)
@@ -36,7 +36,7 @@ data Expr
   | Hole UName
   | Type
   | TInterface
-  | TComp (Ann Telescope)
+  | TComp (Ann Comp)
   | Lam [Clause]
   | Thunk (Ann Expr)
   | Force (Ann Expr)
@@ -54,7 +54,7 @@ qual :: QName -> Expr
 qual (m :.: n) = Var (Just m) n
 
 
-data Telescope = Telescope
+data Comp = Comp
   { bindings :: [Ann Binding]
   , delta    :: [Ann Interface]
   , type'    :: Ann Type
@@ -92,12 +92,12 @@ data Pattern
 
 -- Declarations
 
-data Decl = Decl (Ann Telescope) Def
+data Decl = Decl (Ann Comp) Def
   deriving (Eq, Show)
 
 data Def
-  = DataDef [Ann (UName ::: Ann Telescope)]
-  | InterfaceDef [Ann (UName ::: Ann Telescope)]
+  = DataDef [Ann (UName ::: Ann Comp)]
+  | InterfaceDef [Ann (UName ::: Ann Comp)]
   | TermDef (Ann Expr)
   deriving (Eq, Show)
 
