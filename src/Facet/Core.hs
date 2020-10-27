@@ -3,13 +3,7 @@ module Facet.Core
   Value(..)
 , Type
 , Expr
-, compareValue
-, compareBinding
-, compareClause
-, compareSig
-, compareDelta
 , Telescope(..)
-, compareTelescope
 , substTelescope
 , bindTelescope
 , bindsTelescope
@@ -89,29 +83,6 @@ data Value
   | VNeut Var (Stack (Pl, Value))
   | VCon (Con Value)
 
-instance Eq Value where
-  a == b = compareValue 0 a b == EQ
-
-instance Ord Value where
-  compare = compareValue 0
-
-compareValue :: Level -> Value -> Value -> Ordering
-compareValue d = curry $ \case
-  -- defined thus instead of w/ fallback case to have exhaustiveness checks kick in when adding constructors.
-  (VType, VType)               -> EQ
-  (VType, _)                   -> LT
-  (VInterface, VInterface)     -> EQ
-  (VInterface, _)              -> LT
-  (VComp t1, VComp t2)         -> compareTelescope d t1 t2
-  (VComp{}, _)                 -> LT
-   -- FIXME: do we need to test the types here?
-  (VLam p1 cs1, VLam p2 cs2)   -> compare p1 p2 <> liftCompare (compareClause d) cs1 cs2
-  (VLam{}, _)                  -> LT
-  (VNeut h1 sp1, VNeut h2 sp2) -> compare h1 h2 <> liftCompare (liftCompare (compareValue d)) sp1 sp2
-  (VNeut{}, _)                 -> LT
-  (VCon c1, VCon c2)           -> liftCompare (compareValue d) c1 c2
-  (VCon _, _)                  -> LT
-
 type Type = Value
 type Expr = Value
 
@@ -120,13 +91,6 @@ type Expr = Value
 data Telescope
   = Bind Binding (Value -> Telescope)
   | End Sig
-
-compareTelescope :: Level -> Telescope -> Telescope -> Ordering
-compareTelescope d = curry $ \case
-  (Bind t1 b1, Bind t2 b2) -> compareBinding d t1 t2 <> compareTelescope (succ d) (b1 (free d)) (b2 (free d))
-  (Bind{}, _)              -> LT
-  (End s1, End s2)         -> compareSig d s1 s2
-  (End{}, _)               -> LT
 
 substTelescopeWith :: (Var -> Value) -> Telescope -> Telescope
 substTelescopeWith f = go
@@ -173,11 +137,6 @@ data Clause = Clause
   , branch  :: Pattern Value -> Value
   }
 
-compareClause :: Level -> Clause -> Clause -> Ordering
-compareClause d (Clause p1 b1) (Clause p2 b2) = liftCompare (\ _ _ -> EQ) p1 p2 <> compareValue d' (b1 p') (b2 p')
-  where
-  (d', p') = bindPattern d p1
-
 instantiateClause :: Level -> Clause -> (Level, Value)
 instantiateClause d (Clause p b) = b <$> bindPattern d p
 
@@ -188,29 +147,14 @@ data Binding = Binding
   , sig  :: Sig
   }
 
-compareBinding :: Level -> Binding -> Binding -> Ordering
-compareBinding d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> compareSig d s1 s2
-
 
 data Delta = Delta (QName ::: Value) (Stack Value)
-
-instance Eq Delta where
-  d1 == d2 = compare d1 d2 == EQ
-
-instance Ord Delta where
-  compare = compareDelta 0
-
-compareDelta :: Level -> Delta -> Delta -> Ordering
-compareDelta d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> liftCompare (compareValue d) sp1 sp2
 
 
 data Sig = Sig
   { delta :: [Delta]
   , type' :: Value
   }
-
-compareSig :: Level -> Sig -> Sig -> Ordering
-compareSig d (Sig s1 t1) (Sig s2 t2) = liftCompare (compareDelta d) s1 s2 <> compareValue d t1 t2
 
 
 data Var
