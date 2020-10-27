@@ -14,8 +14,9 @@ const
 # NB: equivalently: const : { A, B : Type } -> A -> B -> A { x _ -> x }
 
 flip
-: { A, B, C : Type } -> (f : A -> B -> C) -> (B -> A -> C) # NB: this rightmost set of parens is technically redundant, but useful to understand what the function does
-{ b a -> f a b } # note that we didn’t bind the latter operands in the type so we’re binding (pattern matching on) them both here instead
+: { A, B, C : Type } -> (f : A -> B -> C) -> (B -> A -> C)
+# NB: I’ve removed nested, chained pattern matching for the time being.
+{ b -> { a -> f a b } }
 
 
 _ << _ [assoc]
