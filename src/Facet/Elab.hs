@@ -495,7 +495,7 @@ elabTermDef
 elabTermDef _T expr = runReader (S.ann expr) $ elab $ go (checkElab (elabExpr expr)) _T
   where
   go k t = case t of
-    Comp _ _T                  -> check (k ::: Just _T)
+    Comp s _T                  -> local (s ++) $ check (k ::: Just _T)
     Bind (Binding p n _ _T) _B -> do
       b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
       pure $ VLam p [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
