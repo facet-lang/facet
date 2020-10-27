@@ -4,6 +4,7 @@ module Facet.Surface
 , Type
 , free
 , qual
+, Telescope(..)
 , Binding(..)
 , Delta(..)
 , Sig(..)
@@ -51,6 +52,12 @@ free = Var Nothing
 qual :: QName -> Expr
 qual (m :.: n) = Var (Just m) n
 
+
+data Telescope = Telescope
+  { bindings :: [Ann Binding]
+  , sig      :: Ann (Sig (Ann Type))
+  }
+  deriving (Eq, Show)
 
 data Binding = Binding
   { _pl   :: Pl
