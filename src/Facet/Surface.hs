@@ -7,8 +7,8 @@ module Facet.Surface
 , Telescope(..)
 , Binding(..)
 , Interface(..)
+, Clause(..)
 , ($$)
-, Comp(..)
 , Pattern(..)
   -- * Declarations
 , Decl(..)
@@ -37,7 +37,9 @@ data Expr
   | Type
   | TInterface
   | TComp (Ann Telescope)
-  | Comp (Ann Comp)
+  | Lam [Clause]
+  | Thunk (Ann Expr)
+  | Force (Ann Expr)
   | App (Ann Expr) (Ann Expr)
   -- FIXME: tupling/unit should take a list of expressions
   deriving (Eq, Show)
@@ -70,17 +72,14 @@ data Binding = Binding
 data Interface = Interface (Ann (Maybe MName, DName)) (Stack (Ann Type))
   deriving (Eq, Show)
 
+data Clause = Clause (NonEmpty (Ann Pattern)) (Ann Expr)
+  deriving (Eq, Show)
+
 
 ($$) :: Ann Expr -> Ann Expr -> Ann Expr
 f $$ a = Ann (ann f <> ann a) Nil (App f a)
 
 infixl 9 $$
-
-
-data Comp
-  = Expr (Ann Expr)
-  | Clauses [(NonEmpty (Ann Pattern), Ann Expr)]
-  deriving (Eq, Show)
 
 
 data Pattern
