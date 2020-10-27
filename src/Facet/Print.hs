@@ -195,8 +195,8 @@ printTelescope :: Stack Print -> C.Comp -> Print
 printTelescope env = \case
   C.Bind t b ->
     let (vs, (_, b')) = splitr C.unBind' (d, C.Bind t b)
-        binding env (C.Binding p n _T) =
-          let _T' = sig env _T
+        binding env (C.Binding p n s _T) =
+          let _T' = sig env s _T
           in  (env :> tvar env ((p, n) ::: _T'), (p, name p n (Level (length env)) ::: _T'))
         name p n d
           | T.null (getUName n)
@@ -204,7 +204,7 @@ printTelescope env = \case
           | otherwise           = [tintro n d]
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printTelescope env' b')
-  C.Comp s -> sig env s
+  C.Comp s _T -> sig env s _T
   where
   d = Level (length env)
 
@@ -245,7 +245,7 @@ fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
   [] -> _T --> b
   _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
 tvar env n = group (var (TLocal (snd (tm n)) (Level (length env))))
-sig env (C.Sig s _T) = tcomp (map (interface env) (toList s)) (printValue env _T)
+sig env s _T = tcomp (map (interface env) (toList s)) (printValue env _T)
 interface env (C.Interface q sp) = app (group (var (qvar q))) ((Ex,) . printValue env <$> sp)
 app f as = group f $$* fmap (group . uncurry (unPl braces id)) as
 tcomp s t = case s of

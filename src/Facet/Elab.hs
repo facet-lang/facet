@@ -19,7 +19,7 @@ module Facet.Elab
 , elabExpr
 , _Type
 , tbind
-, tend
+, tcomp
 , ($$)
 , lam
   -- * Modules
@@ -50,8 +50,8 @@ import qualified Data.Set as Set
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Context as Context
 import           Facet.Core hiding (global, ($$))
+import qualified Facet.Core as Binding (Binding(..))
 import qualified Facet.Core as C
-import qualified Facet.Core as Sig (Sig(..))
 import           Facet.Effect.Trace as Trace
 import           Facet.Graph as Graph
 import           Facet.Name hiding (L, R)
@@ -126,8 +126,8 @@ unify = trace "unify" . \case
   VNeut (Metavar v) Nil    :===: x                        -> solve (v :=: x)
   x                        :===: VNeut (Metavar v) Nil    -> solve (v :=: x)
   VComp t1                 :===: VComp t2                 -> VComp <$> unifyComp (t1 :===: t2)
-  VComp (Comp (Sig [] t1)) :===: t2                       -> unify (t1 :===: t2)
-  t1                       :===: VComp (Comp (Sig [] t2)) -> unify (t1 :===: t2)
+  VComp (Comp [] t1) :===: t2                       -> unify (t1 :===: t2)
+  t1                       :===: VComp (Comp [] t2) -> unify (t1 :===: t2)
   -- FIXME: build and display a diff of the root types
   t1                       :===: t2                       -> couldNotUnify "mismatch" t1 t2
   where
@@ -146,20 +146,22 @@ unify = trace "unify" . \case
 
 unifyComp :: Comp :===: Comp -> Elab Comp
 unifyComp = \case
-  Bind t1 b1       :===: Bind t2 b2
-    | _pl t1 == _pl t2 -> do
-      sig <- unifySig (sig t1 :===: sig t2)
+  Bind (Binding p1 n1 s1 t1) b1 :===: Bind (Binding p2 _  s2 t2) b2
+    | p1 == p2 -> do
+      -- FIXME: unify the signatures
+      s <- unifySig (s1 :===: s2)
+      t <- unify (t1 :===: t2)
       d <- asks @(Context Type) level
       let v = free d
       b <- unifyComp (b1 v :===: b2 v)
-      pure $ Bind (Binding (_pl t1) ((name :: Binding -> UName) t1) sig) (\ v -> C.bindComp d v b)
-  Comp s1          :===: Comp s2          -> Comp <$> unifySig (s1 :===: s2)
-  Comp (Sig [] t1) :===: t2               -> fromValue <$> unify (t1 :===: VComp t2)
-  t1               :===: Comp (Sig [] t2) -> fromValue <$> unify (VComp t1 :===: t2)
+      pure $ Bind (Binding p1 n1 s t) (\ v -> C.bindComp d v b)
+  Comp s1 t1       :===: Comp s2 t2       -> Comp <$> unifySig (s1 :===: s2) <*> unify (t1 :===: t2)
+  Comp [] t1 :===: t2               -> fromValue <$> unify (t1 :===: VComp t2)
+  t1               :===: Comp [] t2 -> fromValue <$> unify (VComp t1 :===: t2)
   t1               :===: t2               -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
   where
   -- FIXME: unify the signatures
-  unifySig (Sig d1 t1 :===: Sig _ t2) = Sig d1 <$> unify (t1 :===: t2)
+  unifySig (s1 :===: _) = pure s1
 
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
@@ -173,10 +175,10 @@ meta _T = do
 -- FIXME: can implicits have effects? what do we do about the signature?
 instantiate :: Expr ::: Comp -> Elab (Expr ::: Comp)
 instantiate (e ::: _T) = case _T of
-  Bind (Binding Im _ (Sig _ _T)) _B -> do
+  Bind (Binding Im _ _ _T) _B -> do
     m <- metavar <$> meta _T
     instantiate (e C.$$ (Im, m) ::: _B m)
-  _                                 -> pure $ e ::: _T
+  _                           -> pure $ e ::: _T
 
 
 -- General
@@ -259,7 +261,7 @@ f $$ a = Synth $ do
   f' ::: _F <- synth f
   -- FIXME: check that the signatures match
   (_A, _B) <- expectQuantifier "in application" _F
-  a' <- check (a ::: Just (Sig.type' (sig _A)))
+  a' <- check (a ::: Just (Binding.type' _A))
   pure $ f' C.$$ (Ex, a') ::: VComp (_B a')
 
 
@@ -308,14 +310,14 @@ elabExpr = withSpan $ \case
   S.Comp cs   -> elabComp cs
 
 elabBinding :: S.Ann S.Binding -> [Check Binding]
-elabBinding (S.Ann s _ (S.Binding p n t)) = [ Binding p n <$> setSpan s (elabSig t) | n <- toList n ]
+elabBinding (S.Ann s _ (S.Binding p n t)) = [ uncurry (Binding p n) <$> setSpan s (elabSig t) | n <- toList n ]
 
 -- FIXME: elaborate the signature.
-elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check Sig
-elabSig = withSpan $ \ (S.Sig _ t) -> Sig mempty <$> checkElab (elabExpr t)
+elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check ([Interface], Expr)
+elabSig = withSpan $ \ (S.Sig _ t) -> ([],) <$> checkElab (elabExpr t)
 
 elabSTelescope :: S.Ann S.Telescope -> Synth Comp
-elabSTelescope (S.Ann s _ (S.Telescope bs t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (Comp <$> elabSig t ::: VType)) (elabBinding =<< bs)
+elabSTelescope (S.Ann s _ (S.Telescope bs t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (uncurry Comp <$> elabSig t ::: VType)) (elabBinding =<< bs)
 
 
 _Type :: Synth Type
@@ -328,15 +330,16 @@ _Interface = Synth $ pure $ VInterface ::: VType
 tbind :: Check Binding -> (UName ::: Type -> Check Comp) -> Synth Comp
 tbind t b = Synth $ trace "telescope" $ do
   -- FIXME: should we check that the signature is empty?
-  _T@Binding{ name, sig = Sig _ _A } <- check (t ::: Just VType)
+  _T@Binding{ name, type' = _A } <- check (t ::: Just VType)
   d <- asks @(Context Type) level
   _B <- check (b (name ::: _A) ::: Just VType)
   pure $ Bind _T (\ v -> C.bindComp d v _B) ::: VType
 
-tend :: Check Sig -> Synth Comp
-tend s = Synth $ do
-  s' <- check (s ::: Just VType)
-  pure $ Comp s' ::: VType
+tcomp :: Elab [Interface] -> Check Type -> Synth Comp
+tcomp s t = Synth $ do
+  s' <- s
+  t' <- check (t ::: Just VType)
+  pure $ Comp s' t' ::: VType
 
 
 lam
@@ -345,7 +348,7 @@ lam
   -> Check Expr
 lam n b = Check $ expectChecked "lambda" $ \ _T -> do
   -- FIXME: how does the effect adjustment change this?
-  (Binding _ _ (Sig _ _T), _B) <- expectQuantifier "when checking lambda" _T
+  (Binding _ _ _ _T, _B) <- expectQuantifier "when checking lambda" _T
   b' <- elabBinder $ \ v -> check (b (snd n ::: _T) ::: Just (VComp (_B v)))
   pure $ VLam (fst n) [Clause (PVar (snd n ::: _T)) (b' . unsafeUnPVar)]
 
@@ -377,7 +380,7 @@ instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
 elabClauses :: [(NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)] -> Check (Expr ::: Type)
 elabClauses [((S.Ann _ _ (S.PVar n)):|ps, b)] = Check $ expectChecked "variable pattern" $ \ _T -> do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
-  (Binding pl _ (Sig _ _A), _B) <- expectQuantifier "when checking clauses" _T
+  (Binding pl _ _ _A, _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> n ::: _A |- check (checkElab (maybe (elabExpr b) (elabClauses . pure . (,b)) (nonEmpty ps)) ::: Just (VComp (_B v)))
   pure $ VLam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)] ::: _T
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
@@ -388,7 +391,7 @@ elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
     XR cs -> pure $ Just cs
     XT    -> error "mixed" -- FIXME: throw a proper error
   -- FIXME: use the signature to elaborate the pattern
-  (Binding _ _ (Sig _ _A), _B) <- expectQuantifier "when checking clauses" _T
+  (Binding _ _ _ _A, _B) <- expectQuantifier "when checking clauses" _T
   d <- asks (level @Type)
   let _B' = _B (free d)
   cs' <- for cs $ \ (p:|_, b) -> check
@@ -413,15 +416,15 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
   where
   inst = \case
   -- FIXME: assert that the signature is empty
-    Bind (Binding Im _ (Sig _ _T)) _B -> meta _T >>= inst . _B . metavar
-    _T                                -> pure _T
+    Bind (Binding Im _ _ _T) _B -> meta _T >>= inst . _B . metavar
+    _T                          -> pure _T
   subpatterns _A = go
     where
     go _T' = \case
       []   -> \ k -> unify (VComp _T' :===: _A) *> k []
       p:ps -> \ k -> do
         -- FIXME: assert that the signature is empty
-        (Binding _ _ (Sig _ _A), _B) <- expectQuantifier "when checking constructor pattern" (VComp _T')
+        (Binding _ _ _ _A, _B) <- expectQuantifier "when checking constructor pattern" (VComp _T')
         -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
         v <- metavar <$> meta _A
         check
@@ -446,15 +449,15 @@ elabDataDef (mname :.: dname ::: _T) constructors = do
     : map (\ (n :=: c ::: c_T) -> (E n, Decl (Just (C.DTerm c)) c_T)) cs
   where
   go k = \case
-    Comp (Sig _ _)                   -> check (k ::: Just VType)
+    Comp _ _                   -> check (k ::: Just VType)
     -- FIXME: can sigs appear here?
-    Bind (Binding _ n (Sig s _T)) _B -> do
+    Bind (Binding _ n s _T) _B -> do
       d <- asks @(Context Type) level
       _B' <- n ::: _T |- go k (_B (free d))
-      pure $ Bind (Binding Im n (Sig s _T)) (\ v -> C.bindComp d v _B')
+      pure $ Bind (Binding Im n s _T) (\ v -> C.bindComp d v _B')
   con q fs = \case
-    Bind (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) ((\ v -> con q (fs :> v) (_B v)) . unsafeUnPVar)]
-    _T                               -> VCon (Con q fs)
+    Bind (Binding p n _ _T) _B -> VLam p [Clause (PVar (n ::: _T)) ((\ v -> con q (fs :> v) (_B v)) . unsafeUnPVar)]
+    _T                         -> VCon (Con q fs)
 
 elabInterfaceDef
   :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
@@ -468,11 +471,11 @@ elabInterfaceDef _T constructors = do
   where
   go k = \case
     -- FIXME: check that the interface is a member of the sig.
-    Comp (Sig _ _)                   -> check (k ::: Just VType)
-    Bind (Binding _ n (Sig s _T)) _B -> do
+    Comp _ _                   -> check (k ::: Just VType)
+    Bind (Binding _ n s _T) _B -> do
       d <- asks @(Context Type) level
       _B' <- n ::: _T |- go k (_B (free d))
-      pure $ Bind (Binding Im n (Sig s _T)) (\ v -> C.bindComp d v _B')
+      pure $ Bind (Binding Im n s _T) (\ v -> C.bindComp d v _B')
 
 elabTermDef
   :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
@@ -482,8 +485,8 @@ elabTermDef
 elabTermDef _T expr = runReader (S.ann expr) $ elab $ go (checkElab (elabExpr expr)) _T
   where
   go k t = case t of
-    Comp (Sig _ _T)                  -> check (k ::: Just _T)
-    Bind (Binding p n (Sig _ _T)) _B -> do
+    Comp _ _T                  -> check (k ::: Just _T)
+    Bind (Binding p n _ _T) _B -> do
       b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
       pure $ VLam p [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
 
@@ -604,6 +607,6 @@ expectQuantifier = expectMatch (\case{ Bind t b -> pure (t, b) ; _ -> Nothing } 
 
 stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case
-  VComp (Comp (Sig [] t)) -> stripEmpty t
-  VComp t                 -> Just t
-  _                       -> Nothing
+  VComp (Comp [] t) -> stripEmpty t
+  VComp t           -> Just t
+  _                 -> Nothing

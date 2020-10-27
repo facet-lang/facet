@@ -14,7 +14,6 @@ module Facet.Core
 , instantiateClause
 , Binding(..)
 , Interface(..)
-, Sig(..)
 , Var(..)
 , Con(..)
 , unVar
@@ -90,19 +89,18 @@ type Expr = Value
 
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
-  = Bind Binding (Value -> Comp)
-  | Comp Sig
+  = Bind Binding (Type -> Comp)
+  | Comp [Interface] Type
 
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
   where
   go = \case
     Bind t b -> Bind (binding t) (go . b)
-    Comp s   -> Comp (sig s)
+    Comp s t -> Comp s (substWith f t)
 
-  binding (Binding p n s) = Binding p n (sig s)
+  binding (Binding p n d t) = Binding p n (map interface d) (substWith f t)
 
-  sig (Sig d t) = Sig (map interface d) (substWith f t)
   interface (Interface q sp) = Interface q (fmap (substWith f) sp)
 
 substComp :: IntMap.IntMap Value -> Comp -> Comp
@@ -122,7 +120,7 @@ bindsComp s
 fromValue :: Value -> Comp
 fromValue = \case
   VComp t -> t
-  t       -> Comp (Sig mempty t)
+  t       -> Comp mempty t
 
 
 unBind :: Has Empty sig m => Comp -> m (Binding, Value -> Comp)
@@ -143,19 +141,14 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 
 
 data Binding = Binding
-  { _pl  :: Pl
-  , name :: UName
-  , sig  :: Sig
+  { _pl   :: Pl
+  , name  :: UName
+  , delta :: [Interface]
+  , type' :: Value
   }
 
 
 data Interface = Interface QName (Stack Value)
-
-
-data Sig = Sig
-  { delta :: [Interface]
-  , type' :: Value
-  }
 
 
 data Var
@@ -227,8 +220,8 @@ unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 VNeut h es $$ a = VNeut h (es :> a)
 VComp  t $$ a
   | Bind _ b <- t = case b (snd a) of
-    t@Bind{}       -> VComp t
-    Comp (Sig _ t) -> t
+    t@Bind{} -> VComp t
+    Comp _ t -> t
 VLam _   b $$ a = case' (snd a) b
 _          $$ _ = error "can’t apply non-neutral/forall type"
 
@@ -308,7 +301,7 @@ applyComp s v = substComp (IntMap.mapMaybe tm s) v -- FIXME: error if the substi
 
 
 generalize :: Subst -> Value -> Value
-generalize s v = VComp (foldr (\ (d, _T) b -> Bind (Binding Im __ (Sig mempty _T)) (\ v -> bindComp d v b)) (Comp (Sig mempty (subst (IntMap.mapMaybe tm s <> s') v))) b)
+generalize s v = VComp (foldr (\ (d, _T) b -> Bind (Binding Im __ mempty _T) (\ v -> bindComp d v b)) (Comp mempty (subst (IntMap.mapMaybe tm s <> s') v)) b)
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -334,9 +327,8 @@ sortOf ctx = \case
   VCon _     -> STerm
   where
   telescope ctx = \case
-    Bind (Binding _ _ _T) _B -> let _T' = sig ctx _T in min _T' (telescope (ctx :> _T') (_B (free (Level (length ctx)))))
-    Comp s                   -> sig ctx s
-  sig ctx (Sig _ _T) = sortOf ctx _T
+    Bind (Binding _ _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (telescope (ctx :> _T') (_B (free (Level (length ctx)))))
+    Comp _ _T                  -> sortOf ctx _T
 
 
 -- Patterns
