@@ -59,7 +59,6 @@ module Facet.Core
 import           Control.Effect.Empty
 import           Control.Lens (Lens', lens)
 import           Data.Foldable (foldl', toList)
-import           Data.Functor.Classes
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
@@ -183,18 +182,6 @@ unVar f g h = \case
 
 data Con a = Con QName (Stack a)
   deriving (Foldable, Functor, Traversable)
-
-instance Eq a => Eq (Con a) where
-  (==) = eq1
-
-instance Ord a => Ord (Con a) where
-  compare = compare1
-
-instance Eq1 Con where
-  liftEq eq (Con q1 sp1) (Con q2 sp2) = q1 == q2 && liftEq eq sp1 sp2
-
-instance Ord1 Con where
-  liftCompare compare' (Con q1 sp1) (Con q2 sp2) = compare q1 q2 <> liftCompare compare' sp1 sp2
 
 
 global :: QName -> Value
@@ -336,19 +323,7 @@ sortOf ctx = \case
 data Pattern a
   = PVar a
   | PCon (Con (Pattern a))
-  deriving (Eq, Foldable, Functor, Ord, Traversable)
-
-instance Eq1 Pattern where
-  liftEq eq (PVar v1) (PVar v2) = eq v1 v2
-  liftEq _  PVar{}    _         = False
-  liftEq eq (PCon c1) (PCon c2) = liftEq (liftEq eq) c1 c2
-  liftEq _  PCon{}    _         = False
-
-instance Ord1 Pattern where
-  liftCompare compare' (PVar v1) (PVar v2) = compare' v1 v2
-  liftCompare _        PVar{}    _         = LT
-  liftCompare compare' (PCon c1) (PCon c2) = liftCompare (liftCompare compare') c1 c2
-  liftCompare _        PCon{}    _         = LT
+  deriving (Foldable, Functor, Traversable)
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)
