@@ -231,22 +231,23 @@ global
   -> Synth Value
 global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 
+lookupContext :: DName -> Elab (Maybe (Level, Type))
+lookupContext n = maybe (pure Nothing) (asks . lookupLevel) (eOrT n)
+  where
+  eOrT (E n) = Just n
+  eOrT (T n) = Just n
+  eOrT _     = Nothing
+
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 var
   :: Maybe MName
   -> DName
   -> Synth Value
 var m n = Synth $ case m of
-  Nothing
-    | Just u <- eOrT n -> ask >>= \ ctx -> case lookupLevel u ctx of
-      Nothing      -> resolve n >>= synth . global
-      Just (i, _T) -> pure (free i ::: _T)
-    | otherwise        -> resolve n >>= synth . global
+  Nothing -> lookupContext n >>= \case
+    Just (i, _T) -> pure (free i ::: _T)
+    Nothing      -> resolve n >>= synth . global
   Just m -> resolveQ (m :.: n) >>= synth . global
-  where
-  eOrT (E n) = Just n
-  eOrT (T n) = Just n
-  eOrT _     = Nothing
 
 hole
   :: UName
