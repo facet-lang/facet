@@ -103,8 +103,8 @@ data Decl = Decl [Ann Binding] (Ann (Sig (Ann Type))) Def
   deriving (Eq, Show)
 
 data Def
-  = DataDef [Ann (UName ::: Ann Type)]
-  | InterfaceDef [Ann (UName ::: Ann Type)]
+  = DataDef [Ann (UName ::: Ann Telescope)]
+  | InterfaceDef [Ann (UName ::: Ann Telescope)]
   | TermDef (Ann Expr)
   deriving (Eq, Show)
 

@@ -7,6 +7,7 @@ module Facet.Elab
 , Expr
 , Elab(..)
 , elab
+, elabTele
 , elabWith
 , Check(..)
 , Synth(..)
@@ -17,7 +18,6 @@ module Facet.Elab
   -- * Expressions
 , elabExpr
 , _Type
-, (>~>)
 , tbind
 , tend
 , ($$)
@@ -25,6 +25,7 @@ module Facet.Elab
   -- * Modules
 , elabModule
 , apply
+, applyTelescope
   -- * Errors
 , Err(..)
 , Reason(..)
@@ -39,8 +40,9 @@ import           Control.Effect.Empty
 import           Control.Effect.Lens ((.=))
 import           Control.Effect.Sum
 import           Control.Lens (at, ix)
+import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
-import           Data.Foldable (foldl', for_)
+import           Data.Foldable (foldl', for_, toList)
 import qualified Data.IntMap as IntMap
 import           Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import           Data.Maybe (catMaybes)
@@ -49,6 +51,7 @@ import           Data.Traversable (for, mapAccumL)
 import           Facet.Context as Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
+import qualified Facet.Core as Sig (Sig(..))
 import           Facet.Effect.Trace as Trace
 import           Facet.Graph as Graph
 import           Facet.Name hiding (L, R)
@@ -90,6 +93,9 @@ instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: R
 elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Value -> m Value
 elab = elabWith apply
 
+elabTele :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Telescope -> m Telescope
+elabTele = elabWith applyTelescope
+
 elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
 elabWith f = runSubstWith f . runContext . runSig . runElab
 
@@ -125,24 +131,19 @@ unify = trace "unify" . \case
     , Just e' <- unifySpine (e1 :===: e2)           -> VNeut h1 <$> e'
   VNeut (Metavar v) Nil :===: x                     -> solve (tm v :=: x)
   x                     :===: VNeut (Metavar v) Nil -> solve (tm v :=: x)
-  VForAll t1 b1         :===: VForAll t2 b2
-    | _pl t1 == _pl t2 -> do
-      sig <- unifySig (sig t1 :===: sig t2)
-      d <- asks @(Context Type) level
-      let v = free d
-      b <- unify (b1 v :===: b2 v)
-      pure $ VForAll (Binding (_pl t1) ((name :: Binding -> UName) t1) sig) (\ v -> C.bind d v b)
+  VComp t1              :===: VComp t2              -> VComp <$> unifyTelescope (t1 :===: t2)
+  VComp (End (Sig d t)) :===: t2
+    | Set.null d -> unify (t :===: t2)
+  t1                    :===: VComp (End (Sig d t))
+    | Set.null d -> unify (t1 :===: t)
   -- FIXME: build and display a diff of the root types
   t1                    :===: t2                    -> couldNotUnify "mismatch" t1 t2
   where
-  -- FIXME: unify the signatures
-  unifySig (Sig d1 t1 :===: Sig _ t2) = Sig d1 <$> unify (t1 :===: t2)
-
   unifySpine (Nil      :===: Nil)      = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
   unifySpine (i1 :> l1 :===: i2 :> l2)
-    | fst l1 == fst l2                   = liftA2 (:>) <$> unifySpine (i1 :===: i2) <*> Just ((fst l1,) <$> unify (snd l1 :===: snd l2))
-  unifySpine _                           = Nothing
+    | fst l1 == fst l2                 = liftA2 (:>) <$> unifySpine (i1 :===: i2) <*> Just ((fst l1,) <$> unify (snd l1 :===: snd l2))
+  unifySpine _                         = Nothing
 
   solve (n :=: val') = do
     subst <- get
@@ -150,6 +151,25 @@ unify = trace "unify" . \case
     case subst IntMap.! getMeta n of
       Just val ::: _T -> unify (val' :===: val)
       Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
+
+unifyTelescope :: Telescope :===: Telescope -> Elab Telescope
+unifyTelescope = \case
+  Bind t1 b1 :===: Bind t2 b2
+    | _pl t1 == _pl t2 -> do
+      sig <- unifySig (sig t1 :===: sig t2)
+      d <- asks @(Context Type) level
+      let v = free d
+      b <- unifyTelescope (b1 v :===: b2 v)
+      pure $ Bind (Binding (_pl t1) ((name :: Binding -> UName) t1) sig) (\ v -> C.bindTelescope d v b)
+  End s1     :===: End s2     -> End <$> unifySig (s1 :===: s2)
+  End (Sig d t) :===: t2
+    | Set.null d -> fromValue <$> unify (t :===: VComp t2)
+  t1 :===: End (Sig d t)
+    | Set.null d -> fromValue <$> unify (VComp t1 :===: t)
+  t1         :===: t2         -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
+  where
+  -- FIXME: unify the signatures
+  unifySig (Sig d1 t1 :===: Sig _ t2) = Sig d1 <$> unify (t1 :===: t2)
 
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
@@ -164,33 +184,35 @@ insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
-instantiate :: Expr ::: Type -> Elab (Expr ::: Type)
-instantiate (e ::: _T) = case unForAll _T of
-  Just (Binding Im _ (Sig _ _T), _B) -> do
+instantiate :: Expr ::: Telescope -> Elab (Expr ::: Telescope)
+instantiate (e ::: _T) = case _T of
+  Bind (Binding Im _ (Sig _ _T)) _B -> do
     m <- metavar <$> meta _T
     instantiate (e C.$$ (Im, m) ::: _B m)
-  _                                  -> pure $ e ::: _T
+  _                                 -> pure $ e ::: _T
 
 
 -- General
 
 switch
-  :: Synth Value
-  -> Check (Value ::: Type)
+  :: Synth a
+  -> Check (a ::: Type)
 switch (Synth m) = Check $ trace "switch" . \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify (_K' :===: _K)
   _       -> m
 
+as :: (Check a ::: Type) -> Synth a
+as (m ::: _T) = Synth ((::: _T) <$> check (m ::: Just _T))
+
 resolveWith
-  :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Value))
+  :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Telescope))
   -> Maybe MName
   -> DName
-  -> Synth QName
-resolveWith lookup m n = Synth $ asks lookup >>= \case
+  -> Elab (QName ::: Telescope)
+resolveWith lookup m n = asks lookup >>= \case
   Just (n' :=: _ ::: _T) -> pure $ n' ::: _T
   Nothing                -> do
-    g <- ask @Graph
-    let defs = foldMap (lookup . snd) (getGraph g)
+    defs <- asks (foldMap (lookup . snd) . getGraph)
     case defs of
       []                -> freeVariable m n
       [n' :=: _ ::: _T] -> pure $ n' ::: _T
@@ -199,28 +221,26 @@ resolveWith lookup m n = Synth $ asks lookup >>= \case
 
 resolve
   :: DName
-  -> Synth QName
+  -> Elab (QName ::: Telescope)
 resolve n = resolveWith (lookupD n) Nothing n
 
 resolveC
   :: UName
-  -> Synth QName
+  -> Elab (QName ::: Telescope)
 resolveC n = resolveWith (lookupC n) Nothing (C n)
 
 resolveQ
   :: QName
-  -> Synth QName
-resolveQ q@(m :.: n) = Synth $ lookupQ q <$> ask <*> ask >>= \case
+  -> Elab (QName ::: Telescope)
+resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
   Just (q' :=: _ ::: _T) -> pure $ q' ::: _T
   Nothing                -> freeVariable (Just m) n
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global
-  :: Synth QName
+  :: QName ::: Telescope
   -> Synth Value
-global n = Synth $ do
-  q <- synth n
-  instantiate (C.global q ::: ty q)
+global q = Synth $ fmap VComp <$> instantiate (C.global q ::: ty q)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 var
@@ -230,10 +250,10 @@ var
 var m n = case m of
   Nothing
     | Just u <- eOrT n -> Synth $ ask >>= \ ctx -> case lookupLevel u ctx of
-      Nothing      -> synth $ global (resolve n)
+      Nothing      -> resolve n >>= synth . global
       Just (i, _T) -> pure (free i ::: _T)
-    | otherwise        -> global (resolve n)
-  Just m -> global (resolveQ (m :.: n))
+    | otherwise        -> Synth $ resolve n >>= synth . global
+  Just m -> Synth $ resolveQ (m :.: n) >>= synth . global
   where
   eOrT (E n) = Just n
   eOrT (T n) = Just n
@@ -250,9 +270,10 @@ hole n = Check $ expectChecked "hole" $ \ _T -> err $ Hole n _T
   -> Synth Value
 f $$ a = Synth $ do
   f' ::: _F <- synth f
+  -- FIXME: check that the signatures match
   (_A, _B) <- expectQuantifier "in application" _F
-  a' <- check (a ::: Just ((type' :: Sig -> Type) (sig _A)))
-  pure $ (f' C.$$ (Ex, a')) ::: _B a'
+  a' <- check (a ::: Just (Sig.type' (sig _A)))
+  pure $ f' C.$$ (Ex, a') ::: VComp (_B a')
 
 
 elabBinder
@@ -295,18 +316,22 @@ elabExpr = withSpan $ \case
   S.Hole  n     -> hole n
   S.Type        -> trace "Type" $ switch _Type
   S.Interface   -> trace "Interface" $ switch _Interface
-  S.ForAll bs s -> trace "forall" $ elabTelescope bs (elabSig s)
+  S.ForAll bs s -> trace "forall" $ switch $ VComp <$> elabSTelescope bs s
   S.App f a     -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
   S.Comp cs     -> elabComp cs
 
--- FIXME: elaborate the signature.
-elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check (Type ::: Type)
-elabSig = withSpan $ \ (S.Sig _ t) -> trace "sig" $ elabExpr t
+elabBinding :: S.Ann S.Binding -> [Check Binding]
+elabBinding (S.Ann s _ (S.Binding p n t)) = [ Binding p n <$> setSpan s (elabSig t) | n <- toList n ]
 
-elabTelescope :: [S.Ann S.Binding] -> Check (Type ::: Type) -> Check (Type ::: Type)
-elabTelescope bindings body = trace "telescope" $ foldr (\ (S.Ann s _ (S.Binding p ns t)) b ->
-  local (\ s' -> s'{ start = start s }) $ foldr (\ n k -> tracePretty n $
-    switch $ (p, n) ::: checkElab (elabSig t) >~> \ v -> v |- checkElab k) b ns) body bindings
+-- FIXME: elaborate the signature.
+elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check Sig
+elabSig = withSpan $ \ (S.Sig _ t) -> Sig mempty <$> checkElab (elabExpr t)
+
+elabTelescope :: [Check Binding] -> Check Telescope -> Synth Telescope
+elabTelescope bindings body = foldr (\ t b -> tbind t (\ v -> v |- fmap tm (switch b))) (as (body ::: VType)) bindings
+
+elabSTelescope :: [S.Ann S.Binding] -> S.Ann (S.Sig (S.Ann S.Expr)) -> Synth Telescope
+elabSTelescope bs s = elabTelescope (elabBinding =<< bs) (End <$> elabSig s)
 
 
 _Type :: Synth Type
@@ -315,24 +340,13 @@ _Type = Synth $ pure $ VType ::: VType
 _Interface :: Synth Type
 _Interface = Synth $ pure $ VInterface ::: VType
 
--- FIXME: effects!
-(>~>)
-  :: ((Pl, UName) ::: Check Type)
-  -> (UName ::: Type -> Check Type)
-  -> Synth Type
-(n ::: t) >~> b = Synth $ trace ">~>" $ do
-  _T <- check (t ::: Just VType)
-  b' <- elabBinder $ \ _ -> check (b (snd n ::: _T) ::: Just VType)
-  pure $ VForAll (Binding (fst n) (snd n) (Sig mempty _T)) b' ::: VType
 
-infixr 1 >~>
-
-
-tbind :: Check Binding -> (UName ::: Sig -> Check Telescope) -> Synth Telescope
+tbind :: Check Binding -> (UName ::: Type -> Check Telescope) -> Synth Telescope
 tbind t b = Synth $ trace "telescope" $ do
-  _T@Binding{ name, sig } <- check (t ::: Just VType)
+  -- FIXME: should we check that the signature is empty?
+  _T@Binding{ name, sig = Sig _ _A } <- check (t ::: Just VType)
   d <- asks @(Context Type) level
-  _B <- check (b (name ::: sig) ::: Just VType)
+  _B <- check (b (name ::: _A) ::: Just VType)
   pure $ Bind _T (\ v -> C.bindTelescope d v _B) ::: VType
 
 tend :: Check Sig -> Synth Telescope
@@ -348,7 +362,7 @@ lam
 lam n b = Check $ expectChecked "lambda" $ \ _T -> do
   -- FIXME: how does the effect adjustment change this?
   (Binding _ _ (Sig _ _T), _B) <- expectQuantifier "when checking lambda" _T
-  b' <- elabBinder $ \ v -> check (b (snd n ::: _T) ::: Just (_B v))
+  b' <- elabBinder $ \ v -> check (b (snd n ::: _T) ::: Just (VComp (_B v)))
   pure $ VLam (fst n) [Clause (PVar (snd n ::: _T)) (\ (PVar a) -> b' a)]
 
 
@@ -380,7 +394,7 @@ elabClauses :: [(NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)] -> Check (Expr ::: T
 elabClauses [((S.Ann _ _ (S.PVar n)):|ps, b)] = Check $ expectChecked "variable pattern" $ \ _T -> do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (Binding pl _ (Sig _ _A), _B) <- expectQuantifier "when checking clauses" _T
-  b' <- elabBinder $ \ v -> n ::: _A |- check (checkElab (maybe (elabExpr b) (elabClauses . pure . (,b)) (nonEmpty ps)) ::: Just (_B v))
+  b' <- elabBinder $ \ v -> n ::: _A |- check (checkElab (maybe (elabExpr b) (elabClauses . pure . (,b)) (nonEmpty ps)) ::: Just (VComp (_B v)))
   pure $ VLam pl [Clause (PVar (n ::: _A)) (\ (PVar a) -> b' a)] ::: _T
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
 elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
@@ -395,7 +409,7 @@ elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
   let _B' = _B (free d)
   cs' <- for cs $ \ (p:|_, b) -> check
     (   elabPattern p (\ p' -> do
-      Clause p' <$> elabBinders p' (foldr (|-) (check (checkElab (maybe (elabExpr b) elabClauses rest) ::: Just _B'))))
+      Clause p' <$> elabBinders p' (foldr (|-) (check (checkElab (maybe (elabExpr b) elabClauses rest) ::: Just (VComp _B')))))
     ::: Just _A)
   pure $ VLam Ex cs' ::: _T
   where
@@ -408,22 +422,22 @@ elabPattern :: S.Ann S.Pattern -> (C.Pattern (UName ::: Type) -> Elab a) -> Chec
 elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan s $ case p of
   S.PVar n    -> k (C.PVar (n ::: _A))
   S.PCon n ps -> do
-    q ::: _T' <- synth (resolveC n)
+    q ::: _T' <- resolveC n
     _T'' <- inst _T'
     subpatterns _A _T'' ps $ \ ps' -> k (C.PCon (Con (q ::: _T'') (fromList ps')))
   S.PEff{}    -> error "TBD"
   where
-  inst _T = case unForAll _T of
+  inst = \case
   -- FIXME: assert that the signature is empty
-    Just (Binding Im _ (Sig _ _T), _B) -> meta _T >>= inst . _B . metavar
-    _                                  -> pure _T
+    Bind (Binding Im _ (Sig _ _T)) _B -> meta _T >>= inst . _B . metavar
+    _T                                -> pure _T
   subpatterns _A = go
     where
     go _T' = \case
-      []   -> \ k -> unify (_T' :===: _A) *> k []
+      []   -> \ k -> unify (VComp _T' :===: _A) *> k []
       p:ps -> \ k -> do
         -- FIXME: assert that the signature is empty
-        (Binding _ _ (Sig _ _A), _B) <- expectQuantifier "when checking constructor pattern" _T'
+        (Binding _ _ (Sig _ _A), _B) <- expectQuantifier "when checking constructor pattern" (VComp _T')
         -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
         v <- metavar <$> meta _A
         check
@@ -435,46 +449,46 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
 
 elabDataDef
   :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
-  => QName ::: Type
-  -> [S.Ann (UName ::: S.Ann S.Type)]
+  => QName ::: Telescope
+  -> [S.Ann (UName ::: S.Ann S.Telescope)]
   -> m [(DName, Decl)]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = do
-  cs <- for constructors $ runWithSpan $ \ (n ::: t) -> setSpan (S.ann t) $ do
-    c_T <- elab $ go (checkElab (elabExpr t)) _T
+  cs <- for constructors $ runWithSpan $ \ (n ::: S.Ann s _ (S.Telescope bs t)) -> setSpan s $ do
+    c_T <- elabTele $ go (checkElab (switch (elabSTelescope bs t))) _T
     pure $ n :=: con (mname :.: C n) Nil c_T ::: c_T
   pure
     $ (dname, Decl (Just (C.DData cs)) _T)
     : map (\ (n :=: c ::: c_T) -> (E n, Decl (Just (C.DTerm c)) c_T)) cs
   where
   go k = \case
-    VType                               -> check (k ::: Just VType)
+    End (Sig _ _)                    -> check (k ::: Just VType)
     -- FIXME: can sigs appear here?
-    VForAll (Binding _ n (Sig s _T)) _B -> do
-      _B' <- elabBinder (\ v -> n ::: _T |- go k (_B v))
-      pure $ VForAll (Binding Im n (Sig s _T)) _B'
-    _                                   -> error "ill-formed type for datatype"
+    Bind (Binding _ n (Sig s _T)) _B -> do
+      d <- asks @(Context Type) level
+      _B' <- n ::: _T |- go k (_B (free d))
+      pure $ Bind (Binding Im n (Sig s _T)) (\ v -> C.bindTelescope d v _B')
   con q fs = \case
-    VForAll (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> con q (fs :> v) (_B v))]
-    _T                                  -> VCon (Con (q ::: _T) fs)
+    Bind (Binding p n (Sig _ _T)) _B -> VLam p [Clause (PVar (n ::: _T)) (\ (PVar v) -> con q (fs :> v) (_B v))]
+    _T                               -> VCon (Con (q ::: _T) fs)
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
-  => Type
-  -> [S.Ann (UName ::: S.Ann S.Type)]
+  => Telescope
+  -> [S.Ann (UName ::: S.Ann S.Telescope)]
   -> m Decl
 elabInterfaceDef _T constructors = do
-  cs <- for constructors $ runWithSpan $ \ (n ::: t) -> setSpan (S.ann t)
-    $ (n :::) <$> elab (go (checkElab (elabExpr t)) _T)
+  cs <- for constructors $ runWithSpan $ \ (n ::: S.Ann s _ (S.Telescope bs t)) -> setSpan s
+    $ (n :::) <$> elabTele (go (checkElab (switch (elabSTelescope bs t))) _T)
   pure $ Decl (Just (DInterface cs)) _T
   where
   go k = \case
-    -- FIXME: represent return sigs in Value so we can check for its inclusion.
-    VInterface                          -> check (k ::: Just VType)
-    VForAll (Binding _ n (Sig s _T)) _B -> do
-      _B' <- elabBinder (\ v -> n ::: _T |- go k (_B v))
-      pure $ VForAll (Binding Im n (Sig s _T)) _B'
-    _                                   -> error "ill-formed type for interface"
+    -- FIXME: check that the interface is a member of the sig.
+    End (Sig _ _         )           -> check (k ::: Just VType)
+    Bind (Binding _ n (Sig s _T)) _B -> do
+      d <- asks @(Context Type) level
+      _B' <- n ::: _T |- go k (_B (free d))
+      pure $ Bind (Binding Im n (Sig s _T)) (\ v -> C.bindTelescope d v _B')
 
 elabTermDef
   :: HasCallStack
@@ -505,7 +519,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl bs sig def))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elab $ check (checkElab (elabTelescope bs (elabSig sig)) ::: Just VType)
+      _T <- runModule . elabTele $ check (checkElab (switch (elabSTelescope bs sig)) ::: Just VType)
 
       decls_.at dname .= Just (Decl Nothing _T)
       case def of
@@ -521,13 +535,16 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- then elaborate the terms
     trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, (bs, t) ::: _T) -> setSpan s $ tracePretty dname $ do
-      t' <- runModule (elab (check (elabTermDef bs t ::: Just _T)))
+      t' <- runModule (elab (check (elabTermDef bs t ::: Just (VComp _T))))
       decls_.ix dname .= Decl (Just (C.DTerm t')) _T
 
 
 -- | Apply the substitution to the value.
 apply :: Applicative m => Subst -> Expr -> m Value
 apply s v = pure $ subst (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
+
+applyTelescope :: Applicative m => Subst -> Telescope -> m Telescope
+applyTelescope s v = pure $ substTelescope (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
 
 emptySubst :: Subst
 emptySubst = IntMap.empty
@@ -607,5 +624,12 @@ expectChecked msg = maybe (couldNotSynthesize msg)
 expectMatch :: (Type -> Maybe out) -> String -> String -> Type -> Elab out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifier :: String -> Type -> Elab (Binding, Type -> Type)
-expectQuantifier = expectMatch unForAll "{_} -> _"
+expectQuantifier :: String -> Type -> Elab (Binding, Type -> Telescope)
+expectQuantifier = expectMatch (\case{ Bind t b -> pure (t, b) ; _ -> Nothing } <=< stripEmpty) "{_} -> _"
+
+stripEmpty :: Type -> Maybe Telescope
+stripEmpty = \case
+  VComp (End (Sig d t))
+    | Set.null d -> stripEmpty t
+  VComp t -> Just t
+  _ -> Nothing

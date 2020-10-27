@@ -11,6 +11,7 @@ module Facet.Core
 , substTelescope
 , bindTelescope
 , bindsTelescope
+, fromValue
 , unBind
 , unBind'
 , Clause(..)
@@ -24,8 +25,6 @@ module Facet.Core
 , global
 , free
 , metavar
-, unForAll
-, unForAll'
 , unLam
 , ($$)
 , ($$*)
@@ -79,10 +78,10 @@ import           Prelude hiding (zip, zipWith)
 data Value
   = VType
   | VInterface
-  | VForAll Binding (Value -> Value)
+  | VComp Telescope
   | VLam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | VNeut (Var Value) (Stack (Pl, Value))
+  | VNeut Var (Stack (Pl, Value))
   | VCon (Con Value)
 
 instance Eq Value where
@@ -94,29 +93,27 @@ instance Ord Value where
 compareValue :: Level -> Value -> Value -> Ordering
 compareValue d = curry $ \case
   -- defined thus instead of w/ fallback case to have exhaustiveness checks kick in when adding constructors.
-  (VType, VType)                 -> EQ
-  (VType, _)                     -> LT
-  (VInterface, VInterface)       -> EQ
-  (VInterface, _)                -> LT
-  (VForAll t1 b1, VForAll t2 b2) -> compareBinding d t1 t2 <> compareValue (succ d) (b1 (free d)) (b2 (free d))
-  (VForAll{}, _)                 -> LT
+  (VType, VType)               -> EQ
+  (VType, _)                   -> LT
+  (VInterface, VInterface)     -> EQ
+  (VInterface, _)              -> LT
+  (VComp t1, VComp t2)         -> compareTelescope d t1 t2
+  (VComp{}, _)                 -> LT
    -- FIXME: do we need to test the types here?
-  (VLam p1 cs1, VLam p2 cs2)     -> compare p1 p2 <> liftCompare (compareClause d) cs1 cs2
-  (VLam{}, _)                    -> LT
-  (VNeut h1 sp1, VNeut h2 sp2)   -> compareH d h1 h2 <> liftCompare (liftCompare (compareValue d)) sp1 sp2
-  (VNeut{}, _)                   -> LT
-  (VCon c1, VCon c2)             -> compareCon compareValue d c1 c2
-  (VCon _, _)                    -> LT
+  (VLam p1 cs1, VLam p2 cs2)   -> compare p1 p2 <> liftCompare (compareClause d) cs1 cs2
+  (VLam{}, _)                  -> LT
+  (VNeut h1 sp1, VNeut h2 sp2) -> compareH d h1 h2 <> liftCompare (liftCompare (compareValue d)) sp1 sp2
+  (VNeut{}, _)                 -> LT
+  (VCon c1, VCon c2)           -> liftCompare (compareValue d) c1 c2
+  (VCon _, _)                  -> LT
   where
   compareH d = curry $ \case
-    (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareValue d t1 t2
+    (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareTelescope d t1 t2
     (Global _, _)                              -> LT
     (Free d1, Free d2)                         -> compare d1 d2
     (Free _, _)                                -> LT
     (Metavar (m1 ::: t1), Metavar (m2 ::: t2)) -> compare m1 m2 <> compareValue d t1 t2
     (Metavar _, _)                             -> LT
-  compareCon :: (Level -> a -> b -> Ordering) -> Level -> Con a -> Con b -> Ordering
-  compareCon compareValue' d (Con (n1 ::: t1) fs1) (Con (n2 ::: t2) fs2) = compare n1 n2 <> compareValue d t1 t2 <> liftCompare (compareValue' d) fs1 fs2
 
 compareBinding :: Level -> Binding -> Binding -> Ordering
 compareBinding d (Binding p1 _ s1) (Binding p2 _ s2) = compare p1 p2 <> compareSig d s1 s2
@@ -175,6 +172,12 @@ bindsTelescope subst = go
   delta (Delta (q ::: t) sp) = Delta (q ::: binds subst t) (fmap (binds subst) sp)
 
 
+fromValue :: Value -> Telescope
+fromValue = \case
+  VComp t -> t
+  t       -> End (Sig mempty t)
+
+
 unBind :: Has Empty sig m => Telescope -> m (Binding, Value -> Telescope)
 unBind = \case{ Bind t b -> pure (t, b) ; _ -> empty }
 
@@ -214,17 +217,13 @@ data Sig = Sig
   }
 
 
-data Var t
-  = Global (QName ::: t) -- ^ Global variables, considered equal by 'QName'.
+data Var
+  = Global (QName ::: Telescope) -- ^ Global variables, considered equal by 'QName'.
   | Free Level
-  | Metavar (Meta ::: t) -- ^ Metavariables, considered equal by 'Level'.
-  deriving (Foldable, Functor, Show, Traversable)
+  | Metavar (Meta ::: Value) -- ^ Metavariables, considered equal by 'Level'.
 
-instance Eq (Var t) where
-  (==) = liftEq (\ _ _ -> True)
-
-instance Eq1 Var where
-  liftEq _ = curry $ \case
+instance Eq Var where
+  (==) = curry $ \case
     (Global  (q1 ::: _), Global  (q2 ::: _)) -> q1 == q2
     (Global  _,          _)                  -> False
     (Free    l1,         Free    l2)         -> l1 == l2
@@ -232,11 +231,8 @@ instance Eq1 Var where
     (Metavar (m1 ::: _), Metavar (m2 ::: _)) -> m1 == m2
     (Metavar _,          _)                  -> False
 
-instance Ord (Var t) where
-  compare = liftCompare (\ _ _ -> EQ)
-
-instance Ord1 Var where
-  liftCompare _ = curry $ \case
+instance Ord Var where
+  compare = curry $ \case
     (Global  (q1 ::: _), Global  (q2 ::: _)) -> q1 `compare` q2
     (Global  _,          _)                  -> LT
     (Free    l1,         Free    l2)         -> l1 `compare` l2
@@ -245,15 +241,21 @@ instance Ord1 Var where
     (Metavar _,          _)                  -> LT
 
 
-unVar :: (QName ::: a -> b) -> (Level -> b) -> (Meta ::: a -> b) -> Var a -> b
+unVar :: (QName ::: Telescope -> a) -> (Level -> a) -> (Meta ::: Value -> a) -> Var -> a
 unVar f g h = \case
   Global  n -> f n
   Free    n -> g n
   Metavar n -> h n
 
 
-data Con a = Con (QName ::: Value) (Stack a)
-  deriving (Eq, Foldable, Functor, Ord, Traversable)
+data Con a = Con (QName ::: Telescope) (Stack a)
+  deriving (Foldable, Functor, Traversable)
+
+instance Eq a => Eq (Con a) where
+  (==) = eq1
+
+instance Ord a => Ord (Con a) where
+  compare = compare1
 
 instance Eq1 Con where
   liftEq eq (Con (q1 ::: _) sp1) (Con (q2 ::: _) sp2) = q1 == q2 && liftEq eq sp1 sp2
@@ -262,7 +264,7 @@ instance Ord1 Con where
   liftCompare compare' (Con (q1 ::: _) sp1) (Con (q2 ::: _) sp2) = compare q1 q2 <> liftCompare compare' sp1 sp2
 
 
-global :: QName ::: Value -> Value
+global :: QName ::: Telescope -> Value
 global = var . Global
 
 free :: Level -> Value
@@ -272,16 +274,9 @@ metavar :: Meta ::: Value -> Value
 metavar = var . Metavar
 
 
-var :: Var Value -> Value
+var :: Var -> Value
 var = (`VNeut` Nil)
 
-
-unForAll :: Has Empty sig m => Value -> m (Binding, Value -> Value)
-unForAll = \case{ VForAll t b -> pure (t, b) ; _ -> empty }
-
--- | A variation on 'unForAll' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unForAll' :: Has Empty sig m => (Level, Value) -> m (Binding, (Level, Value))
-unForAll' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unForAll v
 
 unLam :: Has Empty sig m => Value -> m (Pl, [Clause])
 unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
@@ -289,10 +284,13 @@ unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 
 -- FIXME: how should this work in weak/parametric HOAS?
 ($$) :: HasCallStack => Value -> (Pl, Value) -> Value
-VNeut h es  $$ a = VNeut h (es :> a)
-VForAll _ b $$ a = b (snd a)
-VLam _    b $$ a = case' (snd a) b
-_           $$ _ = error "can’t apply non-neutral/forall type"
+VNeut h es $$ a = VNeut h (es :> a)
+VComp  t $$ a
+  | Bind _ b <- t = case b (snd a) of
+    t@Bind{}      -> VComp t
+    End (Sig _ t) -> t
+VLam _   b $$ a = case' (snd a) b
+_          $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (HasCallStack, Foldable t) => Value -> t (Pl, Value) -> Value
 ($$*) = foldl' ($$)
@@ -327,22 +325,17 @@ subst s
   go = \case
     VType       -> VType
     VInterface  -> VInterface
-    VForAll t b -> VForAll (binding t) (go . b)
+    VComp t   -> VComp (substTelescope s t)
     VLam    p b -> VLam p (map clause b)
     VNeut f a   -> unVar global free (s !) f' $$* fmap (fmap go) a
       where
       f' = case f of
-        Global  (n ::: _T) -> Global  (n ::: go _T)
+        Global  (n ::: _T) -> Global  (n ::: substTelescope s _T)
         Free    v          -> Free    v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
     VCon c      -> VCon (fmap go c)
 
-  binding (Binding p n s) = Binding p n (sig s)
   clause (Clause p b) = Clause p (go . b)
-
-  sig (Sig d t) = Sig (Set.map delta d) (go t)
-
-  delta (Delta (q ::: t) sp) = Delta (q ::: go t) (fmap go sp)
 
   s ! l = case IntMap.lookup (getMeta (tm l)) s of
     Just a  -> a
@@ -356,35 +349,33 @@ binds :: HasCallStack => IntMap.IntMap Value -> Value -> Value
 binds subst = go
   where
   go = \case
-    VType       -> VType
-    VInterface  -> VInterface
-    VForAll t b -> VForAll (binding t) (go . b)
-    VLam    p b -> VLam p (map clause b)
-    VNeut f a   -> unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) subst)) metavar f' $$* fmap (fmap go) a
+    VType      -> VType
+    VInterface -> VInterface
+    VComp t    -> VComp (bindsTelescope subst t)
+    VLam  p b  -> VLam p (map clause b)
+    VNeut f a  -> unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) subst)) metavar f' $$* fmap (fmap go) a
       where
       f' = case f of
-        Global  (n ::: _T) -> Global  (n ::: go _T)
+        Global  (n ::: _T) -> Global  (n ::: bindsTelescope subst _T)
         Free    v          -> Free    v
         Metavar (d ::: _T) -> Metavar (d ::: go _T)
-    VCon c      -> VCon (fmap go c)
+    VCon c     -> VCon (fmap go c)
 
-  binding (Binding p n s) = Binding p n (sig s)
   clause (Clause p b) = Clause p (go . b)
-
-  sig (Sig d t) = Sig (Set.map delta d) (go t)
-
-  delta (Delta (q ::: t) sp) = Delta (q ::: go t) (fmap go sp)
 
 
 mvs :: Level -> Value -> IntMap.IntMap Value
 mvs d = \case
   VType                   -> mempty
   VInterface              -> mempty
-  VForAll t b             -> binding d t <> mvs (succ d) (b (free d))
+  VComp t                 -> telescope d t
   VLam _ cs               -> foldMap clause cs
-  VNeut h sp              -> unVar (mvs d . ty) mempty (\ (m ::: _T) -> IntMap.insert (getMeta m) _T (mvs d _T)) h <> foldMap (foldMap (mvs d)) sp
-  VCon (Con (_ ::: t) fs) -> mvs d t <> foldMap (mvs d) fs
+  VNeut h sp              -> unVar (telescope d . ty) mempty (\ (m ::: _T) -> IntMap.insert (getMeta m) _T (mvs d _T)) h <> foldMap (foldMap (mvs d)) sp
+  VCon (Con (_ ::: t) fs) -> telescope d t <> foldMap (mvs d) fs
   where
+  telescope d = \case
+    Bind t b -> binding d t <> telescope (succ d) (b (free d))
+    End s    -> sig d s
   binding d (Binding _ _ s) = sig d s
   clause (Clause p b) = let (d', p') = bindPattern d p in mvs d' (b p')
   sig d (Sig s t) = foldMap (delta d) s <> mvs d t
@@ -396,10 +387,10 @@ mvs d = \case
 -- (vs. non-generalized: pair {?A} {?B} : ?A -> ?B -> Pair ?A ?B)
 -- FIXME: this doesn’t generalize type applications apparently
 generalize :: Value -> Value
-generalize v = build s v
+generalize v = VComp (build (End (Sig mempty (subst s v))))
   where
   metas = mvs 0 v
-  (_, build, s) = IntMap.foldrWithKey (\ m _T (d, f, s) -> (succ d, \ s b -> VForAll (Binding Im __ (Sig mempty _T)) (\ v -> bind d v (f s b)), IntMap.insert m (free d) s)) (0, subst, IntMap.empty) metas
+  (_, build, s) = IntMap.foldrWithKey (\ m _T (d, f, s) -> (succ d, \ b -> Bind (Binding Im __ (Sig mempty _T)) (\ v -> bindTelescope d v (f b)), IntMap.insert m (free d) s)) (0, id, IntMap.empty) metas
 
 
 -- Classification
@@ -413,12 +404,17 @@ data Sort
 -- | Classifies values according to whether or not they describe types.
 sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
-  VType                       -> SKind
-  VInterface                  -> SKind
-  VForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx ((type' :: Sig -> Value) _T) in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
-  VLam{}                      -> STerm
-  VNeut h sp                  -> minimum (unVar (pred . sortOf ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (sortOf ctx . snd <$> sp))
-  VCon _                      -> STerm
+  VType      -> SKind
+  VInterface -> SKind
+  VComp t    -> telescope ctx t
+  VLam{}     -> STerm
+  VNeut h sp -> minimum (unVar (pred . telescope ctx . ty) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (pred . sortOf ctx . ty) h : toList (sortOf ctx . snd <$> sp))
+  VCon _     -> STerm
+  where
+  telescope ctx = \case
+    Bind (Binding _ _ _T) _B -> let _T' = sig ctx _T in min _T' (telescope (ctx :> _T') (_B (free (Level (length ctx)))))
+    End s                    -> sig ctx s
+  sig ctx (Sig _ _T) = sortOf ctx _T
 
 
 -- Patterns
@@ -471,7 +467,7 @@ decls_ = lens decls (\ m decls -> m{ decls })
 
 
 -- FIXME: produce multiple results, if they exist.
-lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Value)
+lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Telescope)
 lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
@@ -479,7 +475,7 @@ lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList 
   matchCon (n' :=: v ::: _T) = (name :.: C n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
-lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Value)
+lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Telescope)
 lookupD n Module{ name = mname, decls } = maybe empty pure $ do
   Decl d _T <- Map.lookup n decls
   pure $ mname :.: n :=: d ::: _T
@@ -490,20 +486,20 @@ newtype Import = Import { name :: MName }
 -- FIXME: keep track of free variables in declarations so we can work incrementally
 data Decl = Decl
   { def   :: Maybe Def
-  , type' :: Value
+  , type' :: Telescope
   }
 
 data Def
   = DTerm Value
-  | DData [UName :=: Value ::: Value]
-  | DInterface [UName ::: Value]
+  | DData [UName :=: Value ::: Telescope]
+  | DInterface [UName ::: Telescope]
 
-unDData :: Has Empty sig m => Def -> m [UName :=: Value ::: Value]
+unDData :: Has Empty sig m => Def -> m [UName :=: Value ::: Telescope]
 unDData = \case
   DData cs -> pure cs
   _        -> empty
 
-unDInterface :: Has Empty sig m => Def -> m [UName ::: Value]
+unDInterface :: Has Empty sig m => Def -> m [UName ::: Telescope]
 unDInterface = \case
   DInterface cs -> pure cs
   _             -> empty

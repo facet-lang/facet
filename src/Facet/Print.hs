@@ -176,17 +176,7 @@ printValue :: Stack Print -> C.Value -> Print
 printValue env = \case
   C.VType -> annotate Type $ pretty "Type"
   C.VInterface -> annotate Type $ pretty "Interface"
-  C.VForAll t b ->
-    let (vs, (_, b')) = splitr C.unForAll' (d, C.VForAll t b)
-        binding env (C.Binding p n _T) =
-          let _T' = sig env _T
-          in  (env :> tvar env ((p, n) ::: _T'), (p, name p n (Level (length env)) ::: _T'))
-        name p n d
-          | T.null (getUName n)
-          , Ex <- p             = []
-          | otherwise           = [tintro n d]
-        (env', vs') = mapAccumL binding env vs
-    in fn vs' (printValue env' b')
+  C.VComp t -> printTelescope env t
   C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
   -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
   -- FIXME: should maybe print the quoted variable differently so it stands out.
@@ -227,16 +217,16 @@ printModule (C.Module mname is _ ds) = module_
   where
   def (n, C.Decl Nothing  t) = ann
     $   var (Global (Just mname) n)
-    ::: printValue Nil t
+    ::: printTelescope Nil t
   def (n, C.Decl (Just d) t) = ann
     $   var (Global (Just mname) n)
-    ::: defn (printValue Nil t
+    ::: defn (printTelescope Nil t
     :=: case d of
       C.DTerm b  -> printValue Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printValue Nil _T)) cs)
+        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printTelescope Nil _T)) cs)
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
-        (map (\ (n ::: _T) -> ann (var (Cons n) ::: printValue Nil _T)) os))
+        (map (\ (n ::: _T) -> ann (var (Cons n) ::: printTelescope Nil _T)) os))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
   import' n = pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
   module_ (n ::: t :=: (is, ds)) = ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)

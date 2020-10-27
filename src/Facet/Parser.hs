@@ -116,8 +116,8 @@ interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colo
 
 makeDecl bs (S.Ann s cs (S.Sig delta (t, d))) = S.Decl bs (S.Ann s cs (S.Sig delta t)) d
 
-con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann S.Type))
-con = anned ((:::) <$> cname <* colon <*> type')
+con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann S.Telescope))
+con = anned ((:::) <$> cname <* colon <*> telescope)
 
 
 typeSig
