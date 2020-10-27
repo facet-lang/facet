@@ -102,7 +102,7 @@ substCompWith f = go
   binding (Binding p n s) = Binding p n (sig s)
 
   sig (Sig d t) = Sig (map delta d) (substWith f t)
-  delta (Delta (q ::: t) sp) = Delta (q ::: substWith f t) (fmap (substWith f) sp)
+  delta (Delta q sp) = Delta q (fmap (substWith f) sp)
 
 substComp :: IntMap.IntMap Value -> Comp -> Comp
 substComp s
@@ -148,7 +148,7 @@ data Binding = Binding
   }
 
 
-data Delta = Delta (QName ::: Value) (Stack Value)
+data Delta = Delta QName (Stack Value)
 
 
 data Sig = Sig
