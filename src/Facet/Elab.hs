@@ -107,7 +107,7 @@ check :: (Check a ::: Maybe Type) -> Elab a
 check (m ::: _T) = runCheck m _T
 
 
-checkElab :: Check (a ::: Type) -> Check a
+checkElab :: Check (a ::: b) -> Check a
 checkElab m = tm <$> m
 
 synthElab :: Check (a ::: Type) -> Synth a
