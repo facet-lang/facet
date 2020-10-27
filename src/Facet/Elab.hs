@@ -234,8 +234,8 @@ global
   -> Synth Value
 global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 
-lookupContext :: DName -> Context Type -> Maybe (Level, Type)
-lookupContext n ctx = maybe Nothing (`lookupLevel` ctx) (eOrT n)
+lookupInContext :: DName -> Context Type -> Maybe (Level, Type)
+lookupInContext n ctx = maybe Nothing (`lookupLevel` ctx) (eOrT n)
   where
   eOrT (E n) = Just n
   eOrT (T n) = Just n
@@ -248,7 +248,7 @@ var
   -> Synth Value
 var m n = Synth $ ask >>= \ ctx -> case m of
   Nothing
-    | Just (i, _T) <- lookupContext n ctx
+    | Just (i, _T) <- lookupInContext n ctx
     -> pure (free i ::: _T)
   _ -> resolveMD m n >>= synth . global
 
