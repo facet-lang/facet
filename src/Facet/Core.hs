@@ -324,7 +324,7 @@ subst s
   go = \case
     VType       -> VType
     VInterface  -> VInterface
-    VComp t   -> VComp (substTelescope s t)
+    VComp t     -> VComp (substTelescope s t)
     VLam    p b -> VLam p (map clause b)
     VNeut f a   -> unVar global free (s !) f' $$* fmap (fmap go) a
       where
