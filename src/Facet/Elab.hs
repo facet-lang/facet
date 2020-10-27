@@ -490,8 +490,7 @@ elabTermDef bindings expr = foldr (\ (S.Ann s _ (S.Binding p ns _)) b ->
 -- Modules
 
 elabModule
-  :: forall m sig
-  .  (HasCallStack, Has (Reader Graph) sig m, Has (Throw Err) sig m, Has Trace sig m)
+  :: (HasCallStack, Has (Reader Graph) sig m, Has (Throw Err) sig m, Has Trace sig m)
   => S.Ann S.Module
   -> m C.Module
 elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader s $ tracePretty mname $ do
