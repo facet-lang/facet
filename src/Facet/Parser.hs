@@ -191,7 +191,7 @@ exprTable =
   [ [ (N.Infix mempty, N.L, foldl1 (S.$$)) ]
   -- FIXME: model this as application to unit instead
   -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
-  , [ (N.Postfix (pack "!"), N.L, head) ]
+  , [ (N.Postfix (pack "!"), N.L, ((\ e@(S.Ann s c _) -> S.Ann s c (S.Force e)) . head)) ]
   ]
 
 expr :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
