@@ -326,7 +326,7 @@ sortOf ctx = \case
 data Pattern a
   = PVar a
   | PCon (Con (Pattern a))
-  | PEff a (Stack (Pattern a)) a
+  | PEff QName (Stack (Pattern a)) a
   deriving (Foldable, Functor, Traversable)
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
