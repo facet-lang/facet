@@ -381,6 +381,7 @@ instance (Semigroup a, Semigroup b) => Semigroup (XOr a b) where
 instance (Semigroup a, Semigroup b) => Monoid (XOr a b) where
   mempty = XB
 
+-- FIXME: go find the pattern matching matrix algorithm
 elabClauses :: [(NonEmpty (S.Ann S.Pattern), S.Ann S.Expr)] -> Check (Expr ::: Type)
 elabClauses [((S.Ann _ _ (S.PVar n)):|ps, b)] = Check $ expectChecked "variable pattern" $ \ _T -> do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
@@ -416,7 +417,12 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
     q ::: _T' <- resolveC n
     _T'' <- inst _T'
     subpatterns _A _T'' ps $ \ ps' -> k (C.PCon (Con q (fromList ps')))
-  S.PEff{}    -> error "TBD"
+  -- FIXME: look up the effect in the signature
+  S.PEff n ps v -> do
+    q ::: _T' <- resolveC n
+    _T'' <- inst _T'
+    -- FIXME: what should the type of the continuation be? [effect result type] -> [remainder of body type after this pattern]?
+    subpatterns _A _T'' ps $ \ ps' -> k (C.PEff q (fromList ps') (v ::: VType)) -- FIXME: lies
   where
   inst = \case
   -- FIXME: assert that the signature is empty
