@@ -123,21 +123,19 @@ synthElab m = Synth (runCheck m Nothing)
 unify :: Type :===: Type -> Elab Type
 unify = trace "unify" . \case
   -- FIXME: this is missing a lot of cases
-  VType                 :===: VType                 -> pure VType
-  VInterface            :===: VInterface            -> pure VInterface
+  VType                   :===: VType                   -> pure VType
+  VInterface              :===: VInterface              -> pure VInterface
   -- FIXME: resolve globals to try to progress past certain inequalities
-  VNeut h1 e1           :===: VNeut h2 e2
+  VNeut h1 e1             :===: VNeut h2 e2
     | h1 == h2
-    , Just e' <- unifySpine (e1 :===: e2)           -> VNeut h1 <$> e'
-  VNeut (Metavar v) Nil :===: x                     -> solve (tm v :=: x)
-  x                     :===: VNeut (Metavar v) Nil -> solve (tm v :=: x)
-  VComp t1              :===: VComp t2              -> VComp <$> unifyTelescope (t1 :===: t2)
-  VComp (End (Sig d t)) :===: t2
-    | Set.null d -> unify (t :===: t2)
-  t1                    :===: VComp (End (Sig d t))
-    | Set.null d -> unify (t1 :===: t)
+    , Just e' <- unifySpine (e1 :===: e2)               -> VNeut h1 <$> e'
+  VNeut (Metavar v) Nil   :===: x                       -> solve (tm v :=: x)
+  x                       :===: VNeut (Metavar v) Nil   -> solve (tm v :=: x)
+  VComp t1                :===: VComp t2                -> VComp <$> unifyTelescope (t1 :===: t2)
+  VComp (End (Sig [] t1)) :===: t2                      -> unify (t1 :===: t2)
+  t1                      :===: VComp (End (Sig [] t2)) -> unify (t1 :===: t2)
   -- FIXME: build and display a diff of the root types
-  t1                    :===: t2                    -> couldNotUnify "mismatch" t1 t2
+  t1                      :===: t2                      -> couldNotUnify "mismatch" t1 t2
   where
   unifySpine (Nil      :===: Nil)      = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
@@ -154,19 +152,17 @@ unify = trace "unify" . \case
 
 unifyTelescope :: Telescope :===: Telescope -> Elab Telescope
 unifyTelescope = \case
-  Bind t1 b1 :===: Bind t2 b2
+  Bind t1 b1      :===: Bind t2 b2
     | _pl t1 == _pl t2 -> do
       sig <- unifySig (sig t1 :===: sig t2)
       d <- asks @(Context Type) level
       let v = free d
       b <- unifyTelescope (b1 v :===: b2 v)
       pure $ Bind (Binding (_pl t1) ((name :: Binding -> UName) t1) sig) (\ v -> C.bindTelescope d v b)
-  End s1     :===: End s2     -> End <$> unifySig (s1 :===: s2)
-  End (Sig d t) :===: t2
-    | Set.null d -> fromValue <$> unify (t :===: VComp t2)
-  t1 :===: End (Sig d t)
-    | Set.null d -> fromValue <$> unify (VComp t1 :===: t)
-  t1         :===: t2         -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
+  End s1          :===: End s2          -> End <$> unifySig (s1 :===: s2)
+  End (Sig [] t1) :===: t2              -> fromValue <$> unify (t1 :===: VComp t2)
+  t1              :===: End (Sig [] t2) -> fromValue <$> unify (VComp t1 :===: t2)
+  t1              :===: t2              -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
   where
   -- FIXME: unify the signatures
   unifySig (Sig d1 t1 :===: Sig _ t2) = Sig d1 <$> unify (t1 :===: t2)
@@ -627,7 +623,6 @@ expectQuantifier = expectMatch (\case{ Bind t b -> pure (t, b) ; _ -> Nothing } 
 
 stripEmpty :: Type -> Maybe Telescope
 stripEmpty = \case
-  VComp (End (Sig d t))
-    | Set.null d -> stripEmpty t
-  VComp t -> Just t
-  _ -> Nothing
+  VComp (End (Sig [] t)) -> stripEmpty t
+  VComp t                -> Just t
+  _                      -> Nothing

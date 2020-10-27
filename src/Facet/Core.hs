@@ -65,7 +65,6 @@ import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Data.Monoid (First(..))
 import           Data.Semialign
-import qualified Data.Set as Set
 import           Data.Traversable (mapAccumL)
 import           Facet.Name hiding (bind)
 import           Facet.Stack
@@ -131,7 +130,7 @@ substTelescope s
 
   binding (Binding p n s) = Binding p n (sig s)
 
-  sig (Sig d t) = Sig (Set.map delta d) (subst s t)
+  sig (Sig d t) = Sig (map delta d) (subst s t)
   delta (Delta (q ::: t) sp) = Delta (q ::: subst s t) (fmap (subst s) sp)
 
 
@@ -146,7 +145,7 @@ bindsTelescope subst = go
     End s    -> End (sig s)
 
   binding (Binding p n s) = Binding p n (sig s)
-  sig (Sig d t) = Sig (Set.map delta d) (binds subst t)
+  sig (Sig d t) = Sig (map delta d) (binds subst t)
   delta (Delta (q ::: t) sp) = Delta (q ::: binds subst t) (fmap (binds subst) sp)
 
 
@@ -201,7 +200,7 @@ compareDelta d (Delta (q1 ::: _) sp1) (Delta (q2 ::: _) sp2) = compare q1 q2 <> 
 
 
 data Sig = Sig
-  { delta :: Set.Set Delta
+  { delta :: [Delta]
   , type' :: Value
   }
 
