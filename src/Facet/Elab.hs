@@ -85,10 +85,10 @@ instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: R
     R (R (R (R (R (R (R trace)))))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
 elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Value -> m Value
-elab = elabWith apply
+elab = elabWith (fmap pure . apply)
 
 elabTele :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Telescope -> m Telescope
-elabTele = elabWith applyTelescope
+elabTele = elabWith (fmap pure . applyTelescope)
 
 elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
 elabWith f = runSubstWith f . runContext . runSig . runElab
