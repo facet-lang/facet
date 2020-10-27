@@ -40,6 +40,10 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - `let` bindings.
 
+- `letrec` bindings.
+
+- Represent the elaboration of modules with a `letrec` binding a record of definitions.
+
 - Computations.
 
 - Effects.
