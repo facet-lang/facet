@@ -63,9 +63,8 @@ import           GHC.Stack
 
 type Type = Value
 type Expr = Value
-type Prob = Value
 
-type Subst = IntMap.IntMap (Maybe Prob ::: Type)
+type Subst = IntMap.IntMap (Maybe Value ::: Type)
 
 newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader (Set.Set Delta) :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
 
@@ -175,7 +174,7 @@ meta _T = do
   let m = Meta (length subst)
   (m ::: _T) <$ put (insertSubst m (Nothing ::: _T) subst)
 
-insertSubst :: Meta -> Maybe Prob ::: Type -> Subst -> Subst
+insertSubst :: Meta -> Maybe Value ::: Type -> Subst -> Subst
 insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
 
 -- FIXME: does instantiation need to be guided by the expected type?
