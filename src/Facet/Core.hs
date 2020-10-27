@@ -407,15 +407,12 @@ applyTelescope :: Subst -> Telescope -> Telescope
 applyTelescope s v = substTelescope (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
 
 
--- FIXME: this seems to break multiple binders, e.g. pair:
--- pair {?A} {?B} : { _A : Type } -> { _B : Type } -> _A -> _A -> Pair _A _A
--- (vs. non-generalized: pair {?A} {?B} : ?A -> ?B -> Pair ?A ?B)
--- FIXME: this doesn’t generalize type applications apparently
-generalize :: Value -> Value
-generalize v = VComp (build (End (Sig mempty (subst s v))))
+generalize :: Subst -> Value -> Value
+generalize s v = VComp (foldr (\ (d, _T) b -> Bind (Binding Im __ (Sig mempty _T)) (\ v -> bindTelescope d v b)) (End (Sig mempty (subst (IntMap.mapMaybe tm s <> s') v))) b)
   where
-  metas = mvs 0 v
-  (_, build, s) = IntMap.foldrWithKey (\ m _T (d, f, s) -> (succ d, \ b -> Bind (Binding Im __ (Sig mempty _T)) (\ v -> bindTelescope d v (f b)), IntMap.insert m (free d) s)) (0, id, IntMap.empty) metas
+  (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
+    Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
+    Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
 
 
 -- Classification

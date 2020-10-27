@@ -209,14 +209,14 @@ removeTarget targets = Action $ \ _ -> targets_ %= (Set.\\ Set.fromList targets)
 
 showType :: S.Ann S.Expr -> Action
 showType e = Action $ \ src -> do
-  e ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ apply s e ::: apply s _T) (Elab.check (Elab.elabExpr e ::: Nothing))
-  outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil (generalize _T))))
+  e ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.check (Elab.elabExpr e ::: Nothing))
+  outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
 
 showEval :: S.Ann S.Expr -> Action
 showEval e = Action $ \ src -> do
-  e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ apply s e ::: apply s _T) (Elab.check (Elab.elabExpr e ::: Nothing))
-  e'' <- elab src $ eval (generalize e')
-  outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil (generalize _T))))
+  e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.check (Elab.elabExpr e ::: Nothing))
+  e'' <- elab src $ eval e'
+  outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil _T)))
 
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m [Maybe Module]
