@@ -225,14 +225,17 @@ resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
   Just (q' :=: _ ::: _T) -> pure $ q' ::: _T
   Nothing                -> freeVariable (Just m) n
 
+resolveMD :: Maybe MName -> DName -> Elab (QName ::: Comp)
+resolveMD m n = maybe (resolve n) (resolveQ . (:.: n)) m
+
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global
   :: QName ::: Comp
   -> Synth Value
 global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 
-lookupContext :: DName -> Elab (Maybe (Level, Type))
-lookupContext n = maybe (pure Nothing) (asks . lookupLevel) (eOrT n)
+lookupContext :: DName -> Context Type -> Maybe (Level, Type)
+lookupContext n ctx = maybe Nothing (`lookupLevel` ctx) (eOrT n)
   where
   eOrT (E n) = Just n
   eOrT (T n) = Just n
@@ -243,11 +246,11 @@ var
   :: Maybe MName
   -> DName
   -> Synth Value
-var m n = Synth $ case m of
-  Nothing -> lookupContext n >>= \case
-    Just (i, _T) -> pure (free i ::: _T)
-    Nothing      -> resolve n >>= synth . global
-  Just m -> resolveQ (m :.: n) >>= synth . global
+var m n = Synth $ ask >>= \ ctx -> case m of
+  Nothing
+    | Just (i, _T) <- lookupContext n ctx
+    -> pure (free i ::: _T)
+  _ -> resolveMD m n >>= synth . global
 
 hole
   :: UName
