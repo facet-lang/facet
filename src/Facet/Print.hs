@@ -204,7 +204,7 @@ printTelescope env = \case
           | otherwise           = [tintro n d]
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printTelescope env' b')
-  C.End s -> sig env s
+  C.Comp s -> sig env s
   where
   d = Level (length env)
 

@@ -39,7 +39,7 @@ import           Facet.Notice.Elab
 import           Facet.Notice.Parser
 import           Facet.Parser as Parser
 import           Facet.Pretty
-import           Facet.Print as Print hiding (Type)
+import           Facet.Print as Print hiding (Comp, Type)
 import           Facet.REPL.Parser
 import           Facet.Source (Source(..), readSourceFromFile, sourceFromString)
 import           Facet.Span (Span)
@@ -122,7 +122,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ "
 
 kernel :: Module
 kernel = Module kernelName [] [] $ Map.fromList
-  [ (typeName, Decl (Just (DTerm VType)) (End (Sig mempty VType)))
+  [ (typeName, Decl (Just (DTerm VType)) (Comp (Sig mempty VType)))
   ]
   where
   typeName = T (UName (TS.pack "Type"))

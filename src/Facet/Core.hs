@@ -90,14 +90,14 @@ type Expr = Value
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
   = Bind Binding (Value -> Comp)
-  | End Sig
+  | Comp Sig
 
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
   where
   go = \case
     Bind t b -> Bind (binding t) (go . b)
-    End s    -> End (sig s)
+    Comp s   -> Comp (sig s)
 
   binding (Binding p n s) = Binding p n (sig s)
 
@@ -121,7 +121,7 @@ bindsComp s
 fromValue :: Value -> Comp
 fromValue = \case
   VComp t -> t
-  t       -> End (Sig mempty t)
+  t       -> Comp (Sig mempty t)
 
 
 unBind :: Has Empty sig m => Comp -> m (Binding, Value -> Comp)
@@ -226,8 +226,8 @@ unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 VNeut h es $$ a = VNeut h (es :> a)
 VComp  t $$ a
   | Bind _ b <- t = case b (snd a) of
-    t@Bind{}      -> VComp t
-    End (Sig _ t) -> t
+    t@Bind{}       -> VComp t
+    Comp (Sig _ t) -> t
 VLam _   b $$ a = case' (snd a) b
 _          $$ _ = error "can’t apply non-neutral/forall type"
 
@@ -307,7 +307,7 @@ applyComp s v = substComp (IntMap.mapMaybe tm s) v -- FIXME: error if the substi
 
 
 generalize :: Subst -> Value -> Value
-generalize s v = VComp (foldr (\ (d, _T) b -> Bind (Binding Im __ (Sig mempty _T)) (\ v -> bindComp d v b)) (End (Sig mempty (subst (IntMap.mapMaybe tm s <> s') v))) b)
+generalize s v = VComp (foldr (\ (d, _T) b -> Bind (Binding Im __ (Sig mempty _T)) (\ v -> bindComp d v b)) (Comp (Sig mempty (subst (IntMap.mapMaybe tm s <> s') v))) b)
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -334,7 +334,7 @@ sortOf ctx = \case
   where
   telescope ctx = \case
     Bind (Binding _ _ _T) _B -> let _T' = sig ctx _T in min _T' (telescope (ctx :> _T') (_B (free (Level (length ctx)))))
-    End s                    -> sig ctx s
+    Comp s                   -> sig ctx s
   sig ctx (Sig _ _T) = sortOf ctx _T
 
 

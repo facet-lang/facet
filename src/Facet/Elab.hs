@@ -117,19 +117,19 @@ synthElab m = Synth (runCheck m Nothing)
 unify :: Type :===: Type -> Elab Type
 unify = trace "unify" . \case
   -- FIXME: this is missing a lot of cases
-  VType                   :===: VType                   -> pure VType
-  VInterface              :===: VInterface              -> pure VInterface
+  VType                    :===: VType                    -> pure VType
+  VInterface               :===: VInterface               -> pure VInterface
   -- FIXME: resolve globals to try to progress past certain inequalities
-  VNeut h1 e1             :===: VNeut h2 e2
+  VNeut h1 e1              :===: VNeut h2 e2
     | h1 == h2
-    , Just e' <- unifySpine (e1 :===: e2)               -> VNeut h1 <$> e'
-  VNeut (Metavar v) Nil   :===: x                       -> solve (v :=: x)
-  x                       :===: VNeut (Metavar v) Nil   -> solve (v :=: x)
-  VComp t1                :===: VComp t2                -> VComp <$> unifyComp (t1 :===: t2)
-  VComp (End (Sig [] t1)) :===: t2                      -> unify (t1 :===: t2)
-  t1                      :===: VComp (End (Sig [] t2)) -> unify (t1 :===: t2)
+    , Just e' <- unifySpine (e1 :===: e2)                 -> VNeut h1 <$> e'
+  VNeut (Metavar v) Nil    :===: x                        -> solve (v :=: x)
+  x                        :===: VNeut (Metavar v) Nil    -> solve (v :=: x)
+  VComp t1                 :===: VComp t2                 -> VComp <$> unifyComp (t1 :===: t2)
+  VComp (Comp (Sig [] t1)) :===: t2                       -> unify (t1 :===: t2)
+  t1                       :===: VComp (Comp (Sig [] t2)) -> unify (t1 :===: t2)
   -- FIXME: build and display a diff of the root types
-  t1                      :===: t2                      -> couldNotUnify "mismatch" t1 t2
+  t1                       :===: t2                       -> couldNotUnify "mismatch" t1 t2
   where
   unifySpine (Nil      :===: Nil)      = Just (pure Nil)
   -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
@@ -146,17 +146,17 @@ unify = trace "unify" . \case
 
 unifyComp :: Comp :===: Comp -> Elab Comp
 unifyComp = \case
-  Bind t1 b1      :===: Bind t2 b2
+  Bind t1 b1       :===: Bind t2 b2
     | _pl t1 == _pl t2 -> do
       sig <- unifySig (sig t1 :===: sig t2)
       d <- asks @(Context Type) level
       let v = free d
       b <- unifyComp (b1 v :===: b2 v)
       pure $ Bind (Binding (_pl t1) ((name :: Binding -> UName) t1) sig) (\ v -> C.bindComp d v b)
-  End s1          :===: End s2          -> End <$> unifySig (s1 :===: s2)
-  End (Sig [] t1) :===: t2              -> fromValue <$> unify (t1 :===: VComp t2)
-  t1              :===: End (Sig [] t2) -> fromValue <$> unify (VComp t1 :===: t2)
-  t1              :===: t2              -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
+  Comp s1          :===: Comp s2          -> Comp <$> unifySig (s1 :===: s2)
+  Comp (Sig [] t1) :===: t2               -> fromValue <$> unify (t1 :===: VComp t2)
+  t1               :===: Comp (Sig [] t2) -> fromValue <$> unify (VComp t1 :===: t2)
+  t1               :===: t2               -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
   where
   -- FIXME: unify the signatures
   unifySig (Sig d1 t1 :===: Sig _ t2) = Sig d1 <$> unify (t1 :===: t2)
@@ -315,7 +315,7 @@ elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check Sig
 elabSig = withSpan $ \ (S.Sig _ t) -> Sig mempty <$> checkElab (elabExpr t)
 
 elabSTelescope :: S.Ann S.Telescope -> Synth Comp
-elabSTelescope (S.Ann s _ (S.Telescope bs t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (End <$> elabSig t ::: VType)) (elabBinding =<< bs)
+elabSTelescope (S.Ann s _ (S.Telescope bs t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (Comp <$> elabSig t ::: VType)) (elabBinding =<< bs)
 
 
 _Type :: Synth Type
@@ -336,7 +336,7 @@ tbind t b = Synth $ trace "telescope" $ do
 tend :: Check Sig -> Synth Comp
 tend s = Synth $ do
   s' <- check (s ::: Just VType)
-  pure $ End s' ::: VType
+  pure $ Comp s' ::: VType
 
 
 lam
@@ -446,7 +446,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = do
     : map (\ (n :=: c ::: c_T) -> (E n, Decl (Just (C.DTerm c)) c_T)) cs
   where
   go k = \case
-    End (Sig _ _)                    -> check (k ::: Just VType)
+    Comp (Sig _ _)                   -> check (k ::: Just VType)
     -- FIXME: can sigs appear here?
     Bind (Binding _ n (Sig s _T)) _B -> do
       d <- asks @(Context Type) level
@@ -468,7 +468,7 @@ elabInterfaceDef _T constructors = do
   where
   go k = \case
     -- FIXME: check that the interface is a member of the sig.
-    End (Sig _ _         )           -> check (k ::: Just VType)
+    Comp (Sig _ _)                   -> check (k ::: Just VType)
     Bind (Binding _ n (Sig s _T)) _B -> do
       d <- asks @(Context Type) level
       _B' <- n ::: _T |- go k (_B (free d))
@@ -604,6 +604,6 @@ expectQuantifier = expectMatch (\case{ Bind t b -> pure (t, b) ; _ -> Nothing } 
 
 stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case
-  VComp (End (Sig [] t)) -> stripEmpty t
-  VComp t                -> Just t
-  _                      -> Nothing
+  VComp (Comp (Sig [] t)) -> stripEmpty t
+  VComp t                 -> Just t
+  _                       -> Nothing
