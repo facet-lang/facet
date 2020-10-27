@@ -141,7 +141,7 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 
 
 data Binding = Binding
-  { _pl   :: Pl
+  { pl    :: Pl
   , name  :: UName
   , delta :: [Interface]
   , type' :: Value
