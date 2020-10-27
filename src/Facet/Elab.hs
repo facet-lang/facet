@@ -432,7 +432,7 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
 -- Declarations
 
 elabDataDef
-  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
+  :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
   => QName ::: Telescope
   -> [S.Ann (UName ::: S.Ann S.Telescope)]
   -> m [(DName, Decl)]
@@ -457,7 +457,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = do
     _T                               -> VCon (Con q fs)
 
 elabInterfaceDef
-  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
+  :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
   => Telescope
   -> [S.Ann (UName ::: S.Ann S.Telescope)]
   -> m Decl

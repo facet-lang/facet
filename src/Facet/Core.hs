@@ -143,31 +143,15 @@ substTelescopeWith f = go
 substTelescope :: IntMap.IntMap Value -> Telescope -> Telescope
 substTelescope s
   | IntMap.null s = id
-  | otherwise     = go
-  where
-  go = \case
-    Bind t b -> Bind (binding t) (go . b)
-    End s    -> End (sig s)
+  | otherwise     = substTelescopeWith (substMeta s)
 
-  binding (Binding p n s) = Binding p n (sig s)
-
-  sig (Sig d t) = Sig (map delta d) (subst s t)
-  delta (Delta (q ::: t) sp) = Delta (q ::: subst s t) (fmap (subst s) sp)
-
-
-bindTelescope :: HasCallStack => Level -> Value -> Telescope -> Telescope
+bindTelescope :: Level -> Value -> Telescope -> Telescope
 bindTelescope k v = bindsTelescope (IntMap.singleton (getLevel k) v)
 
-bindsTelescope :: HasCallStack => IntMap.IntMap Value -> Telescope -> Telescope
-bindsTelescope subst = go
-  where
-  go = \case
-    Bind t b -> Bind (binding t) (go . b)
-    End s    -> End (sig s)
-
-  binding (Binding p n s) = Binding p n (sig s)
-  sig (Sig d t) = Sig (map delta d) (binds subst t)
-  delta (Delta (q ::: t) sp) = Delta (q ::: binds subst t) (fmap (binds subst) sp)
+bindsTelescope :: IntMap.IntMap Value -> Telescope -> Telescope
+bindsTelescope s
+  | IntMap.null s = id
+  | otherwise     = substTelescopeWith (substFree s)
 
 
 fromValue :: Value -> Telescope
