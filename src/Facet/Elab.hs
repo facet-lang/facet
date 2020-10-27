@@ -61,7 +61,7 @@ import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader (Set.Set Delta) :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Delta] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -73,7 +73,7 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader (Set.Set Delta) :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) Elab where
+instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Delta] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) Elab where
   alg hdl sig ctx = case sig of
     L rctx                          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
     R (L graph)                     -> Elab $ alg (runElab . hdl) (inj graph) ctx
@@ -96,7 +96,7 @@ elabWith f = runSubstWith f . runContext . runSig . runElab
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
 newtype Check a = Check { runCheck :: Maybe Type -> Elab a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader (Set.Set Delta) :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC (Maybe Type) Elab
+  deriving (Algebra (Reader (Maybe Type) :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Delta] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC (Maybe Type) Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
@@ -530,8 +530,8 @@ runSubstWith with = runState with emptySubst
 runContext :: ReaderC (Context Type) m a -> m a
 runContext = runReader Context.empty
 
-runSig :: ReaderC (Set.Set Delta) m a -> m a
-runSig = runReader mempty
+runSig :: ReaderC [Delta] m a -> m a
+runSig = runReader []
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
