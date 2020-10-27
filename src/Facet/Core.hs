@@ -228,6 +228,7 @@ case' s cs = case matchWith (\ (Clause p f) -> f <$> match s p) cs of
 
 match :: Value -> Pattern b -> Maybe (Pattern Value)
 match = curry $ \case
+  -- FIXME: this shouldn’t match computations
   (s,                PVar _)          -> Just (PVar s)
   (VCon (Con n' fs), PCon (Con n ps)) -> do
     guard (n == n')
