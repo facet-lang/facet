@@ -314,14 +314,14 @@ elabExpr = withSpan $ \case
   S.Comp cs   -> elabComp cs
 
 elabBinding :: S.Ann S.Binding -> [Check Binding]
-elabBinding (S.Ann s _ (S.Binding p n t)) = [ uncurry (Binding p n) <$> setSpan s (elabSig t) | n <- toList n ]
+elabBinding (S.Ann s _ (S.Binding p n d t)) = [ Binding p n <$> setSpan s (traverse elabSig d) <*> checkElab (elabExpr t) | n <- toList n ]
 
--- FIXME: elaborate the signature.
-elabSig :: S.Ann (S.Sig (S.Ann S.Expr)) -> Check ([Interface], Expr)
-elabSig = withSpan $ \ (S.Sig _ t) -> ([],) <$> checkElab (elabExpr t)
+-- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
+elabSig :: S.Ann S.Delta -> Check Interface
+elabSig = withSpan $ \ (S.Delta q t) -> Interface <$> withSpan (checkElab . Check . const . uncurry resolveMD) q <*> traverse (checkElab . elabExpr) t
 
 elabSTelescope :: S.Ann S.Telescope -> Synth Comp
-elabSTelescope (S.Ann s _ (S.Telescope bs t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (uncurry Comp <$> elabSig t ::: VType)) (elabBinding =<< bs)
+elabSTelescope (S.Ann s _ (S.Telescope bs d t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (Comp <$> traverse elabSig d <*> checkElab (elabExpr t) ::: VType)) (elabBinding =<< bs)
 
 
 _Type :: Synth Type

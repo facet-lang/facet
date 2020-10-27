@@ -7,7 +7,6 @@ module Facet.Surface
 , Telescope(..)
 , Binding(..)
 , Delta(..)
-, Sig(..)
 , ($$)
 , Comp(..)
 , Pattern(..)
@@ -55,25 +54,20 @@ qual (m :.: n) = Var (Just m) n
 
 data Telescope = Telescope
   { bindings :: [Ann Binding]
-  , sig      :: Ann (Sig (Ann Type))
+  , delta    :: [Ann Delta]
+  , type'    :: Ann Type
   }
   deriving (Eq, Show)
 
 data Binding = Binding
   { pl    :: Pl
   , names :: NonEmpty UName
-  , sig   :: Ann (Sig (Ann Expr))
+  , delta :: [Ann Delta]
+  , type' :: Ann Type
   }
   deriving (Eq, Show)
 
 data Delta = Delta (Ann (Maybe MName, DName)) (Stack (Ann Type))
-  deriving (Eq, Show)
-
--- | Really this is a signature /adjustment/ consisting of the sum of the individual deltas, but “signature” shortens shorter.
-data Sig a = Sig
-  { delta :: [Ann Delta]
-  , type' :: a
-  }
   deriving (Eq, Show)
 
 

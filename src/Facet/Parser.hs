@@ -125,17 +125,16 @@ typeSig
   -> p (S.Ann S.Telescope)
 typeSig binding body = anned $ do
   bindings <- many (try (binding <* arrow))
-  sig <- option [] sig
-  S.Telescope bindings <$> anned (S.Sig sig <$> body)
+  S.Telescope bindings <$> option [] sig <*> body
 
 exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.UName -> p (S.Ann S.Binding)
-exBinding name = anned $ nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> anned (S.Sig <$> option [] sig <*> type') <* rparen
+exBinding name = anned $ nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
 
 imBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Binding)
-imBinding = anned $ braces $ S.Binding Im . NE.fromList <$> commaSep1 tname <* colon <*> anned (S.Sig <$> option [] sig <*> type')
+imBinding = anned $ braces $ S.Binding Im . NE.fromList <$> commaSep1 tname <* colon <*> option [] sig <*> type'
 
 nonBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Binding)
-nonBinding = anned $ S.Binding Ex (pure N.__) <$> anned (S.Sig <$> option [] sig <*> tatom)
+nonBinding = anned $ S.Binding Ex (pure N.__) <$> option [] sig <*> tatom
 
 
 -- Types
