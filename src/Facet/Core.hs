@@ -344,11 +344,7 @@ substWith f = go
 subst :: HasCallStack => IntMap.IntMap Value -> Value -> Value
 subst s
   | IntMap.null s = id
-  | otherwise     = substWith (unVar global free (s !))
-  where
-  s ! l = case IntMap.lookup (getMeta l) s of
-    Just a  -> a
-    Nothing -> metavar l
+  | otherwise     = substWith (unVar global free (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) s)))
 
 -- | Bind a free variable.
 bind :: HasCallStack => Level -> Value -> Value -> Value
