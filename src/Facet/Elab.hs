@@ -316,7 +316,7 @@ elabExpr = withSpan $ \case
   S.Hole  n   -> hole n
   S.Type      -> trace "Type" $ switch _Type
   S.Interface -> trace "Interface" $ switch _Interface
-  S.ForAll t  -> trace "forall" $ switch $ VComp <$> elabSTelescope t
+  S.TComp t   -> trace "forall" $ switch $ VComp <$> elabSTelescope t
   S.App f a   -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
   S.Comp cs   -> elabComp cs
 

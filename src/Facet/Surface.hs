@@ -37,7 +37,7 @@ data Expr
   | Hole UName
   | Type
   | Interface
-  | ForAll (Ann Telescope)
+  | TComp (Ann Telescope)
   | Comp (Ann Comp)
   | App (Ann Expr) (Ann Expr)
   -- FIXME: tupling/unit should take a list of expressions
