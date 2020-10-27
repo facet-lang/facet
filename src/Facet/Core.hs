@@ -102,12 +102,12 @@ compareValue d = curry $ \case
    -- FIXME: do we need to test the types here?
   (VLam p1 cs1, VLam p2 cs2)   -> compare p1 p2 <> liftCompare (compareClause d) cs1 cs2
   (VLam{}, _)                  -> LT
-  (VNeut h1 sp1, VNeut h2 sp2) -> compareH d h1 h2 <> liftCompare (liftCompare (compareValue d)) sp1 sp2
+  (VNeut h1 sp1, VNeut h2 sp2) -> compareVar d h1 h2 <> liftCompare (liftCompare (compareValue d)) sp1 sp2
   (VNeut{}, _)                 -> LT
   (VCon c1, VCon c2)           -> liftCompare (compareValue d) c1 c2
   (VCon _, _)                  -> LT
   where
-  compareH d = curry $ \case
+  compareVar d = curry $ \case
     (Global (q1 ::: t1), Global (q2 ::: t2))   -> compare q1 q2 <> compareTelescope d t1 t2
     (Global _, _)                              -> LT
     (Free d1, Free d2)                         -> compare d1 d2
