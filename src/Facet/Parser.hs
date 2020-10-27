@@ -152,6 +152,9 @@ monotypeTable =
 type' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
 type' = typeSig S.ForAll (choice [ imBinding, nonBinding ]) tatom
 
+telescope :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Telescope)
+telescope = typeSig S.Telescope (choice [ imBinding, nonBinding ]) tatom
+
 -- FIXME: support type operators
 tatom :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
 tatom = build monotypeTable $ choice
