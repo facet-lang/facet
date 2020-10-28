@@ -5,13 +5,6 @@
 module Facet.Elab
 ( Type
 , Expr
-, Elab(..)
-, elab
-, elabTele
-, elabWith
-, Check(..)
-, Synth(..)
-, check
 , unify
   -- * General
 , global
@@ -29,6 +22,14 @@ module Facet.Elab
   -- * Errors
 , Err(..)
 , Reason(..)
+  -- * Machinery
+, Elab(..)
+, elab
+, elabTele
+, elabWith
+, Check(..)
+, Synth(..)
+, check
 ) where
 
 import           Control.Algebra
@@ -59,59 +60,6 @@ import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
-
-newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Interface] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
-
-instance Functor Elab where
-  fmap f (Elab m) = Elab (fmap f m)
-
-instance Applicative Elab where
-  pure a = Elab $ pure a
-  Elab f <*> Elab a = Elab (f <*> a)
-
-instance Monad Elab where
-  Elab m >>= f = Elab $ m >>= runElab . f
-
-instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Interface] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) Elab where
-  alg hdl sig ctx = case sig of
-    L rctx                          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
-    R (L graph)                     -> Elab $ alg (runElab . hdl) (inj graph) ctx
-    R (R (L mod))                   -> Elab $ alg (runElab . hdl) (inj mod)   ctx
-    R (R (R (L sig)))               -> Elab $ alg (runElab . hdl) (inj sig)   ctx
-    R (R (R (R (L span))))          -> Elab $ alg (runElab . hdl) (inj span)  ctx
-    R (R (R (R (R (L subst)))))     -> Elab $ alg (runElab . hdl) (inj subst) ctx
-    R (R (R (R (R (R (L throw)))))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
-    R (R (R (R (R (R (R trace)))))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
-
-elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Value -> m Value
-elab = elabWith (fmap pure . apply)
-
-elabTele :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Comp -> m Comp
-elabTele = elabWith (fmap pure . applyComp)
-
-elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
-elabWith f = runSubstWith f . runContext . runSig . runElab
-
-
--- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
-newtype Check a = Check { runCheck :: Maybe Type -> Elab a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Interface] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC (Maybe Type) Elab
-
-newtype Synth a = Synth { synth :: Elab (a ::: Type) }
-
-instance Functor Synth where
-  fmap f (Synth m) = Synth (first f <$> m)
-
-check :: (Check a ::: Maybe Type) -> Elab a
-check (m ::: _T) = runCheck m _T
-
-
-checkElab :: Check (a ::: b) -> Check a
-checkElab m = tm <$> m
-
-synthElab :: Check (a ::: Type) -> Synth a
-synthElab m = Synth (runCheck m Nothing)
-
 
 unify :: Type :===: Type -> Elab Type
 unify = trace "unify" . \case
@@ -600,3 +548,58 @@ stripEmpty = \case
   VComp (Comp [] t) -> stripEmpty t
   VComp t           -> Just t
   _                 -> Nothing
+
+
+-- Machinery
+
+newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Interface] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
+
+instance Functor Elab where
+  fmap f (Elab m) = Elab (fmap f m)
+
+instance Applicative Elab where
+  pure a = Elab $ pure a
+  Elab f <*> Elab a = Elab (f <*> a)
+
+instance Monad Elab where
+  Elab m >>= f = Elab $ m >>= runElab . f
+
+instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Interface] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) Elab where
+  alg hdl sig ctx = case sig of
+    L rctx                          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
+    R (L graph)                     -> Elab $ alg (runElab . hdl) (inj graph) ctx
+    R (R (L mod))                   -> Elab $ alg (runElab . hdl) (inj mod)   ctx
+    R (R (R (L sig)))               -> Elab $ alg (runElab . hdl) (inj sig)   ctx
+    R (R (R (R (L span))))          -> Elab $ alg (runElab . hdl) (inj span)  ctx
+    R (R (R (R (R (L subst)))))     -> Elab $ alg (runElab . hdl) (inj subst) ctx
+    R (R (R (R (R (R (L throw)))))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
+    R (R (R (R (R (R (R trace)))))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
+
+elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Value -> m Value
+elab = elabWith (fmap pure . apply)
+
+elabTele :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Comp -> m Comp
+elabTele = elabWith (fmap pure . applyComp)
+
+elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
+elabWith f = runSubstWith f . runContext . runSig . runElab
+
+
+-- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
+newtype Check a = Check { runCheck :: Maybe Type -> Elab a }
+  deriving (Algebra (Reader (Maybe Type) :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Interface] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC (Maybe Type) Elab
+
+newtype Synth a = Synth { synth :: Elab (a ::: Type) }
+
+instance Functor Synth where
+  fmap f (Synth m) = Synth (first f <$> m)
+
+check :: (Check a ::: Maybe Type) -> Elab a
+check (m ::: _T) = runCheck m _T
+
+
+checkElab :: Check (a ::: b) -> Check a
+checkElab m = tm <$> m
+
+synthElab :: Check (a ::: Type) -> Synth a
+synthElab m = Synth (runCheck m Nothing)
