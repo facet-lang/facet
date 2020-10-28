@@ -148,11 +148,7 @@ data Binding = Binding
   }
 
 
-data Interface = Interface
-  { name :: QName
-  , args :: Stack Value
-  , ops  :: [UName ::: Comp]
-  }
+data Interface = Interface QName (Stack Value) [UName ::: Comp]
 
 
 data Var
