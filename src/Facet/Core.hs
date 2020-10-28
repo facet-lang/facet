@@ -13,7 +13,6 @@ module Facet.Core
 , Clause(..)
 , instantiateClause
 , Binding(..)
-, Interface(..)
 , Var(..)
 , Con(..)
 , unVar
@@ -90,18 +89,16 @@ type Expr = Value
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
   = ForAll Binding (Type -> Comp)
-  | Comp [Interface] Type
+  | Comp [Value] Type
 
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
   where
   go = \case
     ForAll t b -> ForAll (binding t) (go . b)
-    Comp s t   -> Comp (map interface s) (substWith f t)
+    Comp s t   -> Comp (map (substWith f) s) (substWith f t)
 
-  binding (Binding p n d t) = Binding p n (map interface d) (substWith f t)
-
-  interface (Interface q sp) = Interface q (fmap (substWith f) sp)
+  binding (Binding p n d t) = Binding p n (map (substWith f) d) (substWith f t)
 
 substComp :: IntMap.IntMap Value -> Comp -> Comp
 substComp s
@@ -143,12 +140,9 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 data Binding = Binding
   { pl    :: Pl
   , name  :: UName
-  , delta :: [Interface]
+  , delta :: [Value]
   , type' :: Value
   }
-
-
-data Interface = Interface QName (Stack Value)
 
 
 data Var

@@ -264,17 +264,15 @@ elabExpr = withSpan $ \case
   S.Force e    -> elabExpr e -- FIXME: this should convert between computation and value type
 
 elabBinding :: S.Ann S.Binding -> [Check Binding]
-elabBinding (S.Ann s _ (S.Binding p n d t)) = [ Binding p n <$> setSpan s (traverse elabSig d) <*> checkElab (elabExpr t) | n <- toList n ]
+elabBinding (S.Ann s _ (S.Binding p n d t)) = [ trace "elabBinding" $ Binding p n <$> setSpan s (traverse (checkElab . switch . elabSig) d) <*> checkElab (elabExpr t) | n <- toList n ]
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
-elabSig :: S.Ann S.Interface -> Check Interface
-elabSig = withSpan $ \ (S.Interface q t) -> do
-  q :=: _ ::: _T <- withSpan (Check . const . uncurry resolveMD) q
-  sp <- traverse (checkElab . elabExpr) t
-  pure $ Interface q sp
+elabSig :: S.Ann S.Interface -> Synth Value
+elabSig (S.Ann s _ (S.Interface (S.Ann s' _ (m, n)) sp)) = Synth $ setSpan s $ trace "elabSig" $
+  check (switch (foldl' ($$) (Synth $ setSpan s' $ synth $ var m n) (checkElab . elabExpr <$> sp)) ::: Just VInterface)
 
 elabSTelescope :: S.Ann S.Comp -> Synth Comp
-elabSTelescope (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> forAll t (\ v -> v |- checkElab (switch b))) (as (Comp <$> traverse elabSig d <*> checkElab (elabExpr t) ::: VType)) (elabBinding =<< bs)
+elabSTelescope (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s $ trace "elabSTelescope" $ synth $ foldr (\ t b -> forAll t (\ v -> v |- checkElab (switch b))) (as (Comp <$> traverse (checkElab . switch . elabSig) d <*> checkElab (elabExpr t) ::: VType)) (elabBinding =<< bs)
 
 
 _Type :: Synth Type
@@ -285,14 +283,14 @@ _Interface = Synth $ pure $ VInterface ::: VType
 
 
 forAll :: Check Binding -> (UName ::: Type -> Check Comp) -> Synth Comp
-forAll t b = Synth $ trace "telescope" $ do
+forAll t b = Synth $ trace "forAll" $ do
   -- FIXME: should we check that the signature is empty?
   _T@Binding{ name, type' = _A } <- check (t ::: Just VType)
   d <- asks @(Context Type) level
   _B <- check (b (name ::: _A) ::: Just VType)
   pure $ ForAll _T (\ v -> C.bindComp d v _B) ::: VType
 
-comp :: Elab [Interface] -> Check Type -> Synth Comp
+comp :: Elab [Value] -> Check Type -> Synth Comp
 comp s t = Synth $ do
   s' <- s
   t' <- check (t ::: Just VType)
@@ -396,13 +394,13 @@ elabInterfaceDef
   -> [S.Ann (UName ::: S.Ann S.Comp)]
   -> m Decl
 elabInterfaceDef _T constructors = do
-  cs <- for constructors $ runWithSpan $ \ (n ::: t) ->
-    (n :::) <$> elabTele (go (checkElab (switch (elabSTelescope t))) _T)
+  cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
+    (n :::) <$> elabTele (go (check (checkElab (switch (elabSTelescope t)) ::: Just VType)) _T)
   pure $ Decl (Just (DInterface cs)) _T
   where
   go k = \case
     -- FIXME: check that the interface is a member of the sig.
-    Comp _ _                     -> check (k ::: Just VType)
+    Comp _ _                     -> k
     ForAll (Binding _ n s _T) _B -> do
       d <- asks @(Context Type) level
       _B' <- n ::: _T |- go k (_B (free d))
@@ -466,7 +464,7 @@ runContext :: ReaderC (Context Type) m a -> m a
 runContext = runReader Context.empty
 
 -- FIXME: this should carry the operations and their types.
-runSig :: ReaderC [Interface] m a -> m a
+runSig :: ReaderC [Value] m a -> m a
 runSig = runReader []
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
@@ -547,7 +545,7 @@ stripEmpty = \case
 
 -- Machinery
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Interface] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Value] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -559,7 +557,7 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Interface] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) Elab where
+instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Value] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) Elab where
   alg hdl sig ctx = case sig of
     L rctx                          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
     R (L graph)                     -> Elab $ alg (runElab . hdl) (inj graph) ctx
@@ -582,7 +580,7 @@ elabWith f = runSubstWith f . runContext . runSig . runElab
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
 newtype Check a = Check { runCheck :: Maybe Type -> Elab a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Interface] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC (Maybe Type) Elab
+  deriving (Algebra (Reader (Maybe Type) :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Value] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC (Maybe Type) Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
