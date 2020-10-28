@@ -269,10 +269,10 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) = [ trace "elabBinding" $ Binding p 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
 elabSig :: S.Ann S.Interface -> Synth Value
 elabSig (S.Ann s _ (S.Interface (S.Ann s' _ (m, n)) sp)) = Synth $ setSpan s $ trace "elabSig" $
-  check (switch (foldl' ($$) (Synth $ setSpan s' $ synth $ var m n) (checkElab . elabExpr <$> sp)) ::: Just VInterface)
+  check (switch (foldl' ($$) (mapSynth (setSpan s') (var m n)) (checkElab . elabExpr <$> sp)) ::: Just VInterface)
 
 elabSTelescope :: S.Ann S.Comp -> Synth Comp
-elabSTelescope (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s $ trace "elabSTelescope" $ synth $ foldr (\ t b -> forAll t (\ v -> v |- checkElab (switch b))) (as (Comp <$> traverse (checkElab . switch . elabSig) d <*> checkElab (elabExpr t) ::: VType)) (elabBinding =<< bs)
+elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabSTelescope") $ foldr (\ t b -> forAll t (\ v -> v |- checkElab (switch b))) (as (Comp <$> traverse (checkElab . switch . elabSig) d <*> checkElab (elabExpr t) ::: VType)) (elabBinding =<< bs)
 
 
 _Type :: Synth Type
@@ -586,6 +586,10 @@ newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
 instance Functor Synth where
   fmap f (Synth m) = Synth (first f <$> m)
+
+mapSynth :: (Elab (a ::: Type) -> Elab (b ::: Type)) -> Synth a -> Synth b
+mapSynth f = Synth . f . synth
+
 
 check :: (Check a ::: Maybe Type) -> Elab a
 check (m ::: _T) = runCheck m _T
