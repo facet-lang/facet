@@ -53,6 +53,7 @@ import           Text.Parser.Token.Highlight as Highlight
 
 -- FIXME: allow operators to be introduced and scoped locally
 -- FIXME: hanging on mismatched parens
+-- FIXME: slowdown with e.g. 10 nested parens
 
 whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
