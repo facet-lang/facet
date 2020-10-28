@@ -467,6 +467,7 @@ elabInterfaceDef _T constructors = do
       _B' <- n ::: _T |- go k (_B (free d))
       pure $ ForAll (Binding Im n s _T) (\ v -> C.bindComp d v _B')
 
+-- FIXME: add a parameter for the effect signature.
 elabTermDef
   :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
   => Comp
