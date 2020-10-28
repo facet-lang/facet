@@ -1,9 +1,8 @@
 module Interface.State
 : Module
-
-[ Data.Function
-, Data.Pair
-, Data.Unit ]
+{ import Data.Function
+, import Data.Pair
+, import Data.Unit }
 
 interface State : (S : Type) -> Interface
 { get : [State S] S

@@ -1,6 +1,5 @@
 module Facet.Main : Module
-
-[ Data.Unit ]
+{ import Data.Unit }
 
 main : Unit
 { unit }

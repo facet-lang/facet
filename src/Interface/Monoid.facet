@@ -1,6 +1,5 @@
 module Interface.Monoid : Module
-
-[ Interface.Semigroup ]
+{ import Interface.Semigroup }
 
 interface Monoid : (A : Type) -> [Semigroup A] Interface
 { zero : [Monoid A] A }
