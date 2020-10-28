@@ -5,8 +5,8 @@
 module Facet.Elab
 ( Type
 , Expr
-, unify
   -- * General
+, unify
 , global
   -- * Expressions
 , elabExpr
@@ -60,6 +60,8 @@ import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
+
+-- General
 
 unify :: Type :===: Type -> Elab Type
 unify = trace "unify" . \case
@@ -128,8 +130,6 @@ instantiate (e ::: _T) = case _T of
     instantiate (e C.$$ (Im, m) ::: _B m)
   _                           -> pure $ e ::: _T
 
-
--- General
 
 switch
   :: Synth a
