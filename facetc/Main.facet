@@ -1,0 +1,6 @@
+Facet.Main : Module
+
+[ Data.Unit ]
+
+main : Unit
+{ unit }
