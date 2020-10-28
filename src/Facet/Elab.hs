@@ -136,7 +136,7 @@ switch (Synth m) = Check $ trace "switch" . \case
   _       -> m
 
 as :: (Check a ::: Type) -> Synth a
-as (m ::: _T) = Synth ((::: _T) <$> check (m ::: Just _T))
+as (m ::: _T) = Synth $ trace "as" $ (::: _T) <$> check (m ::: Just _T)
 
 resolveWith
   :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Comp))
