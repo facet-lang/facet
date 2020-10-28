@@ -248,28 +248,32 @@ elabExpr
   :: HasCallStack
   => S.Ann S.Expr
   -> Check (Expr ::: Type)
-elabExpr = withSpan $ \case
+elabExpr (S.Ann s _ e) = Check $ \ _T -> setSpan s . check . (::: _T) $ case e of
   S.Var m n    -> switch $ var m n
   S.Hole  n    -> hole n
-  S.Type       -> trace "Type" $ switch _Type
-  S.TInterface -> trace "Interface" $ switch _Interface
-  S.TComp t    -> trace "forall" $ switch $ VComp <$> elabSTelescope t
+  S.Type       -> switch _Type
+  S.TInterface -> switch _Interface
+  S.TComp t    -> switch $ VComp <$> elabSTelescope t
   S.App f a    -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
   S.Lam cs     -> elabClauses cs
   S.Thunk e    -> elabExpr e -- FIXME: this should convert between value and computation type
   S.Force e    -> elabExpr e -- FIXME: this should convert between computation and value type
 
 elabBinding :: S.Ann S.Binding -> [(Pos, Check Binding)]
-elabBinding (S.Ann s _ (S.Binding p n d t)) = [ (start s, trace "elabBinding" $ Binding p n <$> setSpan s (traverse elabSig d) <*> checkElab (elabExpr t)) | n <- toList n ]
+elabBinding (S.Ann s _ (S.Binding p n d t)) = [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
+  d' <- traverse (check . (::: Just VInterface) . elabSig) d
+  t' <- check (checkElab (elabExpr t) ::: _T)
+  pure $ Binding p n d' t')
+  | n <- toList n ]
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
 elabSig :: S.Ann S.Interface -> Check Value
-elabSig (S.Ann s _ (S.Interface (S.Ann s' _ (m, n)) sp)) = setSpan s . trace "elabSig" $
-  checkElab (switch (foldl' ($$) (mapSynth (setSpan s') (var m n)) (checkElab . elabExpr <$> sp)))
+elabSig (S.Ann s _ (S.Interface (S.Ann s' _ (m, n)) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
+  check (checkElab (switch (foldl' ($$) (mapSynth (setSpan s') (var m n)) (checkElab . elabExpr <$> sp))) ::: _T)
 
 elabSTelescope :: S.Ann S.Comp -> Synth Comp
 elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabSTelescope") $ foldr
-  (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> v |- checkElab (switch b)))
+  (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> Check $ \ _T -> v |- check (checkElab (switch b) ::: _T)))
   (mapSynth (setSpan (foldr ((<>) . S.ann) (S.ann t) d)) (comp (map elabSig d) (checkElab (elabExpr t))))
   (elabBinding =<< bs)
 
@@ -579,7 +583,7 @@ elabWith f = runSubstWith f . runContext . runSig . runElab
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
 newtype Check a = Check { runCheck :: Maybe Type -> Elab a }
-  deriving (Algebra (Reader (Maybe Type) :+: Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Value] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace), Applicative, Functor, Monad) via ReaderC (Maybe Type) Elab
+  deriving (Functor) via ReaderC (Maybe Type) Elab
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
