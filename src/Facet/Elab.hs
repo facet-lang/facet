@@ -61,6 +61,7 @@ import           GHC.Stack
 
 -- General
 
+-- FIXME: we don’t get good source references during unification
 unify :: Type :===: Type -> Elab Type
 unify = trace "unify" . \case
   -- FIXME: this is missing a lot of cases
