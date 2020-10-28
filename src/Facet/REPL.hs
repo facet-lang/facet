@@ -134,11 +134,16 @@ loop = do
   -- FIXME: handle interrupts
   resp <- prompt
   runError (outputDocLn . prettyNotice') pure $ case resp of
-    Just src -> rethrowParseErrors @Style (runParserWithSource src commandParser) >>= runAction src
+    Just src -> do
+      graph <- use modules_
+      targets <- use targets_
+      let ops = foldMap (operators . snd <=< (`lookupM` graph)) (toList targets)
+      action <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
+      runAction src action
     Nothing  -> pure ()
   loop
   where
-  commandParser = runFacet [] (whole (parseCommands commands <|> showEval <$> expr))
+  commandParser = whole (parseCommands commands <|> showEval <$> expr)
 
 
 -- TODO:
