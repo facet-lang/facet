@@ -10,7 +10,7 @@ module Facet.Elab
 , elabExpr
 , _Type
 , forAll
-, tcomp
+, comp
 , ($$)
 , lam
   -- * Modules
@@ -295,8 +295,8 @@ forAll t b = Synth $ trace "telescope" $ do
   _B <- check (b (name ::: _A) ::: Just VType)
   pure $ ForAll _T (\ v -> C.bindComp d v _B) ::: VType
 
-tcomp :: Elab [Interface] -> Check Type -> Synth Comp
-tcomp s t = Synth $ do
+comp :: Elab [Interface] -> Check Type -> Synth Comp
+comp s t = Synth $ do
   s' <- s
   t' <- check (t ::: Just VType)
   pure $ Comp s' t' ::: VType
