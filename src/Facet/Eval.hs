@@ -20,4 +20,6 @@ eval = \case
         -> pure $ v $$* sp'
       _ -> pure $ VNeut h sp'
 
+  VComp (Comp [] v) -> eval v
+
   v          -> pure v
