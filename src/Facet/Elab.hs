@@ -263,17 +263,17 @@ elabExpr = withSpan $ \case
   S.Force e    -> elabExpr e -- FIXME: this should convert between computation and value type
 
 elabBinding :: S.Ann S.Binding -> [(Pos, Check Binding)]
-elabBinding (S.Ann s _ (S.Binding p n d t)) = [ (start s, trace "elabBinding" $ Binding p n <$> setSpan s (traverse (checkElab . switch . elabSig) d) <*> checkElab (elabExpr t)) | n <- toList n ]
+elabBinding (S.Ann s _ (S.Binding p n d t)) = [ (start s, trace "elabBinding" $ Binding p n <$> setSpan s (traverse elabSig d) <*> checkElab (elabExpr t)) | n <- toList n ]
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
-elabSig :: S.Ann S.Interface -> Synth Value
-elabSig (S.Ann s _ (S.Interface (S.Ann s' _ (m, n)) sp)) = Synth $ setSpan s $ trace "elabSig" $
-  check (switch (foldl' ($$) (mapSynth (setSpan s') (var m n)) (checkElab . elabExpr <$> sp)) ::: Just VInterface)
+elabSig :: S.Ann S.Interface -> Check Value
+elabSig (S.Ann s _ (S.Interface (S.Ann s' _ (m, n)) sp)) = setSpan s . trace "elabSig" $
+  checkElab (switch (foldl' ($$) (mapSynth (setSpan s') (var m n)) (checkElab . elabExpr <$> sp)))
 
 elabSTelescope :: S.Ann S.Comp -> Synth Comp
 elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabSTelescope") $ foldr
   (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> v |- checkElab (switch b)))
-  (mapSynth (setSpan (foldr ((<>) . S.ann) (S.ann t) d)) (as (Comp <$> traverse (checkElab . switch . elabSig) d <*> checkElab (elabExpr t) ::: VType)))
+  (mapSynth (setSpan (foldr ((<>) . S.ann) (S.ann t) d)) (as (Comp <$> traverse elabSig d <*> checkElab (elabExpr t) ::: VType)))
   (elabBinding =<< bs)
 
 
