@@ -273,7 +273,7 @@ elabSig (S.Ann s _ (S.Interface (S.Ann s' _ (m, n)) sp)) = Synth $ setSpan s $ t
 elabSTelescope :: S.Ann S.Comp -> Synth Comp
 elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabSTelescope") $ foldr
   (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> v |- checkElab (switch b)))
-  (as (Comp <$> traverse (checkElab . switch . elabSig) d <*> checkElab (elabExpr t) ::: VType))
+  (mapSynth (setSpan (foldr ((<>) . S.ann) (S.ann t) d)) (as (Comp <$> traverse (checkElab . switch . elabSig) d <*> checkElab (elabExpr t) ::: VType)))
   (elabBinding =<< bs)
 
 
