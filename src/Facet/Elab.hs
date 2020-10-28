@@ -53,7 +53,7 @@ import qualified Facet.Core as C
 import           Facet.Effect.Trace as Trace
 import           Facet.Graph as Graph
 import           Facet.Name hiding (L, R)
-import           Facet.Span (Span(..))
+import           Facet.Span (Pos, Span(..))
 import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -262,8 +262,8 @@ elabExpr = withSpan $ \case
   S.Thunk e    -> elabExpr e -- FIXME: this should convert between value and computation type
   S.Force e    -> elabExpr e -- FIXME: this should convert between computation and value type
 
-elabBinding :: S.Ann S.Binding -> [Check Binding]
-elabBinding (S.Ann s _ (S.Binding p n d t)) = [ trace "elabBinding" $ Binding p n <$> setSpan s (traverse (checkElab . switch . elabSig) d) <*> checkElab (elabExpr t) | n <- toList n ]
+elabBinding :: S.Ann S.Binding -> [(Pos, Check Binding)]
+elabBinding (S.Ann s _ (S.Binding p n d t)) = [ (start s, trace "elabBinding" $ Binding p n <$> setSpan s (traverse (checkElab . switch . elabSig) d) <*> checkElab (elabExpr t)) | n <- toList n ]
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
 elabSig :: S.Ann S.Interface -> Synth Value
@@ -272,7 +272,7 @@ elabSig (S.Ann s _ (S.Interface (S.Ann s' _ (m, n)) sp)) = Synth $ setSpan s $ t
 
 elabSTelescope :: S.Ann S.Comp -> Synth Comp
 elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabSTelescope") $ foldr
-  (\ t b -> forAll t (\ v -> v |- checkElab (switch b)))
+  (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> v |- checkElab (switch b)))
   (as (Comp <$> traverse (checkElab . switch . elabSig) d <*> checkElab (elabExpr t) ::: VType))
   (elabBinding =<< bs)
 
