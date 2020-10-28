@@ -269,12 +269,9 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) = [ Binding p n <$> setSpan s (trave
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
 elabSig :: S.Ann S.Interface -> Check Interface
 elabSig = withSpan $ \ (S.Interface q t) -> do
-  q :=: d ::: _T <- withSpan (Check . const . uncurry resolveMD) q
+  q :=: _ ::: _T <- withSpan (Check . const . uncurry resolveMD) q
   sp <- traverse (checkElab . elabExpr) t
-  let ops = case d of
-        Just (DInterface ops) -> ops
-        _                     -> []
-  pure $ Interface q sp ops
+  pure $ Interface q sp
 
 elabSTelescope :: S.Ann S.Comp -> Synth Comp
 elabSTelescope (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> forAll t (\ v -> v |- checkElab (switch b))) (as (Comp <$> traverse elabSig d <*> checkElab (elabExpr t) ::: VType)) (elabBinding =<< bs)
