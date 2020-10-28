@@ -80,7 +80,6 @@ unify = trace "unify" . \case
   t1                       :===: t2                       -> couldNotUnify "mismatch" t1 t2
   where
   unifySpine (Nil      :===: Nil)      = Just (pure Nil)
-  -- NB: we make no attempt to unify case eliminations because they shouldn’t appear in types anyway.
   unifySpine (i1 :> l1 :===: i2 :> l2)
     | fst l1 == fst l2                 = liftA2 (:>) <$> unifySpine (i1 :===: i2) <*> Just ((fst l1,) <$> unify (snd l1 :===: snd l2))
   unifySpine _                         = Nothing
