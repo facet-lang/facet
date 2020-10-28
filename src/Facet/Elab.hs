@@ -390,6 +390,7 @@ elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
   pure $ VLam Ex cs' ::: _T
 
 
+-- FIXME: check for unique variable names
 elabPattern :: S.Ann S.Pattern -> (C.Pattern (UName ::: Type) -> Elab a) -> Check a
 elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan s $ case p of
   S.PVar n    -> k (C.PVar (n ::: _A))
