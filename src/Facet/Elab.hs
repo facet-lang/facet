@@ -260,10 +260,11 @@ elabExpr (S.Ann s _ e) = Check $ \ _T -> setSpan s . check . (::: _T) $ case e o
   S.Force e    -> elabExpr e -- FIXME: this should convert between computation and value type
 
 elabBinding :: S.Ann S.Binding -> [(Pos, Check Binding)]
-elabBinding (S.Ann s _ (S.Binding p n d t)) = [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
-  d' <- traverse (check . (::: Just VInterface) . elabSig) d
-  t' <- check (checkElab (elabExpr t) ::: _T)
-  pure $ Binding p n d' t')
+elabBinding (S.Ann s _ (S.Binding p n d t)) =
+  [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
+    d' <- traverse (check . (::: Just VInterface) . elabSig) d
+    t' <- check (checkElab (elabExpr t) ::: _T)
+    pure $ Binding p n d' t')
   | n <- toList n ]
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
