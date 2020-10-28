@@ -4,3 +4,7 @@ Data.Nat
 data Nat : Type
 { z : Nat
 , s : Nat -> Nat }
+
+_ + _ : Nat -> Nat -> Nat
+{ (z)   -> { x -> x }
+, (s n) -> { x -> s (n + x)} }
