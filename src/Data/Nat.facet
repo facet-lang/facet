@@ -8,3 +8,7 @@ data Nat : Type
 _ + _ : Nat -> Nat -> Nat
 { (z)   -> { x -> x }
 , (s n) -> { x -> s (n + x)} }
+
+_ * _ : (a : Nat) -> Nat -> Nat
+{ (z)   -> z
+, (s n) -> a + (a * n) }
