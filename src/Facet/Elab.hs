@@ -3,10 +3,8 @@
 --
 -- Elaboration is the only way 'Value's are constructed from untrusted terms, and so typechecking is performed at this point. If elaboration succeeds and a 'Value' is returned, that 'Value' does not require further verification; hence, 'Value's elide source span information.
 module Facet.Elab
-( Type
-, Expr
-  -- * General
-, unify
+( -- * General
+  unify
 , global
   -- * Expressions
 , elabExpr

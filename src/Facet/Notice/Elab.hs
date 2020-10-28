@@ -7,7 +7,7 @@ import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
-import           Facet.Core (Sort(..), sortOf)
+import           Facet.Core (Sort(..), Type, sortOf)
 import           Facet.Elab as Elab
 import qualified Facet.Name as N
 import           Facet.Notice as Notice
