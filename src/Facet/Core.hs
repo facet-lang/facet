@@ -97,7 +97,7 @@ substCompWith f = go
   where
   go = \case
     ForAll t b -> ForAll (binding t) (go . b)
-    Comp s t   -> Comp s (substWith f t)
+    Comp s t   -> Comp (map interface s) (substWith f t)
 
   binding (Binding p n d t) = Binding p n (map interface d) (substWith f t)
 
