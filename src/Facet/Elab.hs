@@ -292,9 +292,9 @@ forAll t b = Synth $ trace "forAll" $ do
   _B <- check (b (name ::: _A) ::: Just VType)
   pure $ ForAll _T (\ v -> C.bindComp d v _B) ::: VType
 
-comp :: Elab [Value] -> Check Type -> Synth Comp
+comp :: [Check Value] -> Check Type -> Synth Comp
 comp s t = Synth $ do
-  s' <- s
+  s' <- traverse (check . (::: Just VInterface)) s
   t' <- check (t ::: Just VType)
   pure $ Comp s' t' ::: VType
 
