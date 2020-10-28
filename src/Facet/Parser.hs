@@ -93,6 +93,7 @@ decl = choice
   , interfaceDecl
   ]
 
+-- FIXME: operators aren’t available until after their declarations have been parsed.
 termDecl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
 termDecl = anned $ do
   name <- dename
