@@ -19,6 +19,7 @@ import qualified Control.Carrier.State.Strict as C
 import qualified Control.Carrier.Writer.Strict as C
 import           Control.Effect.State
 import           Control.Effect.Writer
+import           Control.Monad.Fix
 import           Control.Monad.Trans.Class
 import           Data.Bool (bool)
 import           Data.Char (isSpace)
@@ -339,7 +340,7 @@ runFacet :: Functor m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
 runFacet ops (Facet m) = snd <$> C.runWriter (runWriterC (C.evalState ops (runStateC m)))
 
 newtype Facet m a = Facet (StateC [Operator (S.Ann S.Expr)] (WriterC (Stack (Span, S.Comment)) m) a)
-  deriving (Algebra (State [Operator (S.Ann S.Expr)] :+: Writer (Stack (Span, S.Comment)) :+: sig), Alternative, Applicative, Functor, Monad, MonadFail)
+  deriving (Algebra (State [Operator (S.Ann S.Expr)] :+: Writer (Stack (Span, S.Comment)) :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadFix)
 
 instance (Monad p, Parsing p) => Parsing (Facet p) where
   try (Facet m) = Facet $ try m
@@ -371,7 +372,7 @@ instance MonadTrans Facet where
 
 
 newtype StateC s m a = StateC { runStateC :: C.StateC s m a }
-  deriving (Algebra (State s :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadTrans)
+  deriving (Algebra (State s :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadFix, MonadTrans)
 
 instance (Monad p, Parsing p) => Parsing (StateC s p) where
   try (StateC m) = StateC $ C.StateC $ \ s -> try (C.runState s m)
@@ -382,7 +383,7 @@ instance (Monad p, Parsing p) => Parsing (StateC s p) where
 
 
 newtype WriterC w m a = WriterC { runWriterC :: C.WriterC w m a }
-  deriving (Algebra (Writer w :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadTrans)
+  deriving (Algebra (Writer w :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadFix, MonadTrans)
 
 instance (Monad p, Parsing p) => Parsing (WriterC s p) where
   try (WriterC (C.WriterC m)) = WriterC $ C.WriterC $ C.StateC $ \ s -> try (C.runState s m)
