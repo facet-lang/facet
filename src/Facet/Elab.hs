@@ -594,7 +594,7 @@ mapSynth f = Synth . f . synth
 
 
 check :: (Check a ::: Maybe Type) -> Elab a
-check (m ::: _T) = runCheck m _T
+check (m ::: _T) = trace "check" $ runCheck m _T
 
 
 checkElab :: Check (a ::: b) -> Check a
