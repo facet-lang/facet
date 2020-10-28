@@ -17,7 +17,7 @@ eval = \case
     case h of
       Global q
         | Just (_ :=: Just (DTerm v) ::: _) <- lookupQ q mod graph
-        -> pure $ v $$* sp'
+        -> eval $ v $$* sp'
       _ -> pure $ VNeut h sp'
 
   VComp (Comp [] v) -> eval v
