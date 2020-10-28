@@ -9,7 +9,7 @@ module Facet.Elab
   -- * Expressions
 , elabExpr
 , _Type
-, tbind
+, forAll
 , tcomp
 , ($$)
 , lam
@@ -277,7 +277,7 @@ elabSig = withSpan $ \ (S.Interface q t) -> do
   pure $ Interface q sp ops
 
 elabSTelescope :: S.Ann S.Comp -> Synth Comp
-elabSTelescope (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> tbind t (\ v -> v |- checkElab (switch b))) (as (Comp <$> traverse elabSig d <*> checkElab (elabExpr t) ::: VType)) (elabBinding =<< bs)
+elabSTelescope (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s $ synth $ foldr (\ t b -> forAll t (\ v -> v |- checkElab (switch b))) (as (Comp <$> traverse elabSig d <*> checkElab (elabExpr t) ::: VType)) (elabBinding =<< bs)
 
 
 _Type :: Synth Type
@@ -287,8 +287,8 @@ _Interface :: Synth Type
 _Interface = Synth $ pure $ VInterface ::: VType
 
 
-tbind :: Check Binding -> (UName ::: Type -> Check Comp) -> Synth Comp
-tbind t b = Synth $ trace "telescope" $ do
+forAll :: Check Binding -> (UName ::: Type -> Check Comp) -> Synth Comp
+forAll t b = Synth $ trace "telescope" $ do
   -- FIXME: should we check that the signature is empty?
   _T@Binding{ name, type' = _A } <- check (t ::: Just VType)
   d <- asks @(Context Type) level
