@@ -79,6 +79,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Restore nested, chained pattern matching.
 
+- Support quantifying over effect variables.
+
 
 ### Modules
 
