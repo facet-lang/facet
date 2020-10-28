@@ -196,6 +196,7 @@ exprTable =
   , [ (N.Postfix (pack "!"), N.L, ((\ e@(S.Ann s c _) -> S.Ann s c (S.Force e)) . head)) ]
   ]
 
+-- FIXME: this is responsible for a massive slowdown on nested parens.
 expr :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
 expr = do
   ops <- get
