@@ -1,4 +1,4 @@
-Data.Nat
+module Data.Nat
 : Module
 
 data Nat : Type

@@ -1,4 +1,4 @@
-Interface.State
+module Interface.State
 : Module
 
 [ Data.Function

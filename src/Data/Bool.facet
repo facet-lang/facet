@@ -1,4 +1,4 @@
-Data.Bool : Module
+module Data.Bool : Module
 
 data Bool : Type
 { false : Bool

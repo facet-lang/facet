@@ -1,4 +1,4 @@
-Data.Either : Module
+module Data.Either : Module
 
 data Either : (A : Type) -> (B : Type) -> Type
 { inl : A -> Either A B

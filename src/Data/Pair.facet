@@ -1,4 +1,4 @@
-Data.Pair : Module
+module Data.Pair : Module
 
 data Pair : (A : Type) -> (B : Type) -> Type
 { pair : A -> B -> Pair A B }

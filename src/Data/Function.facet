@@ -1,6 +1,6 @@
 # NB: this file and its syntax is entirely aspirational.
 
-Data.Function : Module
+module Data.Function : Module
 
 id
 : { A : Type } -> (x : A) -> A

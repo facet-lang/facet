@@ -1,4 +1,4 @@
-Facet.Main : Module
+module Facet.Main : Module
 
 [ Data.Unit ]
 

@@ -1,4 +1,4 @@
-Interface.Writer : Module
+module Interface.Writer : Module
 
 [ Data.Pair
 , Data.Unit ]

@@ -1,4 +1,4 @@
-Interface.Error
+module Interface.Error
 : Module
 
 [ Data.Either

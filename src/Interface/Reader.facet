@@ -1,6 +1,6 @@
 # NB: this file and its syntax is entirely aspirational.
 
-Interface.Reader : Module
+module Interface.Reader : Module
 
 interface Reader : (R : Type) -> Interface
 { ask : [Reader R] R

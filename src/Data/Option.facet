@@ -1,4 +1,4 @@
-Data.Option
+module Data.Option
 : Module
 
 data Option : (A : Type) -> Type

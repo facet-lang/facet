@@ -1,4 +1,4 @@
-Interface.Map : Module
+module Interface.Map : Module
 
 interface Map : (F : Type -> Type) -> Interface
 { map : { A, B : Type } -> (A -> B) -> F A -> F B }

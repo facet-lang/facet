@@ -1,4 +1,4 @@
-Interface.Monoid : Module
+module Interface.Monoid : Module
 
 [ Interface.Semigroup ]
 

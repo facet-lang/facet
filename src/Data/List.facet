@@ -1,4 +1,4 @@
-Data.List
+module Data.List
 : Module
 
 data List : (A : Type) -> Type

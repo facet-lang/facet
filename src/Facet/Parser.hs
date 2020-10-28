@@ -75,7 +75,7 @@ module' = anned $ do
 
 -- FIXME: pick a better syntax for imports, something we can use in the REPL.
 moduleHeader :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (N.MName, [S.Ann S.Import])
-moduleHeader = (,) <$> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import'))
+moduleHeader = (,) <$ reserve dnameStyle "module" <*> mname <* colon <* symbol "Module" <*> option [] (brackets (commaSep import'))
 
 
 -- Declarations
@@ -290,7 +290,7 @@ reserved :: HashSet.HashSet String
 reserved = HashSet.singleton "_"
 
 declarationReserved :: HashSet.HashSet String
-declarationReserved = HashSet.fromList ["_", "data", "interface"]
+declarationReserved = HashSet.fromList ["_", "data", "interface", "module"]
 
 nameChar :: CharParsing p => p Char
 nameChar = alphaNum <|> char '_'
