@@ -1,2 +1,6 @@
 Data.Nat
 : Module
+
+data Nat : Type
+{ z : Nat
+, s : Nat -> Nat }
