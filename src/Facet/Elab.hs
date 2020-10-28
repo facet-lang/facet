@@ -74,8 +74,8 @@ unify = trace "unify" . \case
   VNeut (Metavar v) Nil    :===: x                        -> solve (v :=: x)
   x                        :===: VNeut (Metavar v) Nil    -> solve (v :=: x)
   VComp t1                 :===: VComp t2                 -> VComp <$> unifyComp (t1 :===: t2)
-  VComp (Comp [] t1) :===: t2                       -> unify (t1 :===: t2)
-  t1                       :===: VComp (Comp [] t2) -> unify (t1 :===: t2)
+  VComp (Comp [] t1)       :===: t2                       -> unify (t1 :===: t2)
+  t1                       :===: VComp (Comp [] t2)       -> unify (t1 :===: t2)
   -- FIXME: build and display a diff of the root types
   t1                       :===: t2                       -> couldNotUnify "mismatch" t1 t2
   where
