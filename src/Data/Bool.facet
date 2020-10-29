@@ -1,5 +1,4 @@
 module Data.Bool : Module
-{ import Data.Function }
 
 data Bool : Type
 { false : Bool
@@ -20,9 +19,7 @@ _ || _ : Bool -> Bool -> Bool
 , _       -> { _ -> true } }
 
 if : { A : Type } -> (c : Bool) -> (t : [] A) -> (e : [] A) -> [] A
-{ case c
-  { (true)  -> t!
-  , (false) -> e! } }
+{ bool e t c }
 
 bool : (e : [] A) -> (t : [] A) -> Bool -> [] A
 { (true)  -> t!
