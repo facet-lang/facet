@@ -337,7 +337,6 @@ elabClauses [S.Clause (S.Ann _ _ (S.PVar n)) b] = Check $ \ _T -> do
   (Binding pl _ _ _A, _B) <- expectQuantifier "when checking clauses" _T
   b' <- elabBinder $ \ v -> n ::: _A |- check (checkExpr b ::: VComp (_B v))
   pure $ VLam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)]
--- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
 elabClauses cs = Check $ \ _T -> do
   -- FIXME: use the signature to elaborate the pattern
   (Binding _ _ _ _A, _B) <- expectQuantifier "when checking clauses" _T
