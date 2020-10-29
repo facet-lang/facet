@@ -1,1 +1,5 @@
 module Interface.Choose : Module
+{ import Data.Bool }
+
+interface Choose : Interface
+{ choose : [Choose] Bool }
