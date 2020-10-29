@@ -5,6 +5,7 @@
 module Facet.Elab
 ( -- * General
   unify
+, switch
 , global
   -- * Expressions
 , elabExpr
