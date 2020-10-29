@@ -41,7 +41,6 @@ data Expr
   | Thunk (Ann Expr)
   | Force (Ann Expr)
   | App (Ann Expr) (Ann Expr)
-  -- FIXME: tupling/unit should take a list of expressions
   deriving (Eq, Show)
 
 type Type = Expr
