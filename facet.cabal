@@ -83,6 +83,7 @@ library
     Facet.Print
     Facet.REPL
     Facet.REPL.Parser
+    Facet.Run
     Facet.Semiring
     Facet.Source
     Facet.Span
