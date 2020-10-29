@@ -21,6 +21,6 @@ _ || _ : Bool -> Bool -> Bool
 if : { A : Type } -> (c : Bool) -> (t : [] A) -> (e : [] A) -> [] A
 { bool e t c }
 
-bool : (e : [] A) -> (t : [] A) -> Bool -> [] A
+bool : { A : Type } -> (e : [] A) -> (t : [] A) -> Bool -> [] A
 { (true)  -> t!
 , (false) -> e! }
