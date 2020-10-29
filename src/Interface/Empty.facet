@@ -1,4 +1,9 @@
 module Interface.Empty
+{ import Data.Bool
+, import Data.Unit }
 
 interface Empty : Interface
 { empty : { A : Type } -> [Empty] A }
+
+guard : (c : Bool) -> [Empty] Unit
+{ if c { unit } { empty! } }
