@@ -9,6 +9,7 @@ map : { A, B : Type } -> (f : A -> B) -> (List A -> List B)
 { (nil)       -> nil
 , (cons a as) -> cons (f a) (map f as) }
 
-_ <> _ : { A : Type } -> List A -> List A -> List A
+_ <> _ [right-assoc]
+: { A : Type } -> List A -> List A -> List A
 { (nil)       -> { x -> x }
 , (cons a as) -> { bs -> cons a (as <> bs) } }
