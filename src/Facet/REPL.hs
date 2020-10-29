@@ -2,7 +2,6 @@
 module Facet.REPL
 ( repl
 , runFile
-, lsp
 , kernel
 ) where
 
@@ -73,10 +72,6 @@ repl
 runFile :: FilePath -> IO ()
 runFile _ = do
   pure ()
-
--- FIXME: move this into a separate driver module
-lsp :: IO ()
-lsp = pure ()
 
 
 -- FIXME: split general compilation target state out of REPL state.

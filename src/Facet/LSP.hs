@@ -1,2 +1,6 @@
 module Facet.LSP
-() where
+( lsp
+) where
+
+lsp :: IO ()
+lsp = pure ()
