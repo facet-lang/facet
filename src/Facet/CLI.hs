@@ -2,12 +2,13 @@ module Facet.CLI
 ( main
 ) where
 
-import           Control.Monad (join)
+import           Control.Monad (join, (<=<))
 import           Data.Version (showVersion)
 import qualified Facet.LSP as LSP
 import qualified Facet.REPL as REPL
 import           Options.Applicative as Options
 import qualified Paths_facet as Library (version)
+import           System.Exit
 
 main :: IO ()
 main = join (execParser argumentsParser)
@@ -34,7 +35,10 @@ runFileParser :: Parser (IO ())
 runFileParser = REPL.runFile <$> strArgument (metavar "PATH")
 
 lspParser :: Parser (IO ())
-lspParser = pure LSP.lsp
+lspParser = (exitWith' <=< LSP.lsp) <$> (Just <$> strOption (metavar "PATH"))
+  where
+  exitWith' 0 = exitWith $ ExitSuccess
+  exitWith' i = exitWith $ ExitFailure i
 
 versionString :: String
 versionString = "facetc version " <> showVersion Library.version
