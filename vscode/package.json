@@ -1,1 +1,36 @@
-{}
+{
+  "name": "facet",
+  "description": "Facet language server integration",
+  "author": "Rob Rix",
+  "license": "BSD-3-Clause",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/robrix/facet"
+  },
+  "publisher": "Rob Rix",
+  "categories": [],
+  "engines": {
+    "vscode": "^1.43.0"
+  },
+  "activationEvents": [
+    "onLanguage:facet"
+  ],
+  "main": "./client/out/extension",
+  "contributes": {},
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+    "test": "sh ./scripts/e2e.sh"
+  },
+  "devDependencies": {
+    "@types/mocha": "^8.0.3",
+    "mocha": "^8.1.1",
+    "@types/node": "^12.12.0",
+    "eslint": "^6.4.0",
+    "@typescript-eslint/parser": "^2.3.0",
+    "typescript": "^4.0.2"
+  }
+}
