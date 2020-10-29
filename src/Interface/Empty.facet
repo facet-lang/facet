@@ -1,4 +1,4 @@
-module Interface.Empty
+module Interface.Empty : Module
 { import Data.Bool
 , import Data.Unit }
 
