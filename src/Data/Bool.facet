@@ -23,3 +23,7 @@ if : { A : Type } -> (c : Bool) -> (t : [] A) -> (e : [] A) -> [] A
 { case c
   { (true)  -> t!
   , (false) -> e! } }
+
+bool : (e : [] A) -> (t : [] A) -> Bool -> [] A
+{ (true)  -> t!
+, (false) -> e! }
