@@ -19,7 +19,7 @@ or : Bool -> Bool -> Bool
 { (false) -> { x -> x }
 , _       -> { _ -> true } }
 
-if : { E : Interface } -> { A : Type } -> (c : Bool) -> (t : [E] A) -> (e : [E] A) -> [E] A
+if : { A : Type } -> (c : Bool) -> (t : [] A) -> (e : [] A) -> [] A
 { case c
   { (true)  -> t!
   , (false) -> e! } }
