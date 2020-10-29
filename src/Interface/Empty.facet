@@ -1,0 +1,4 @@
+module Interface.Empty
+
+interface Empty : Interface
+{ empty : { A : Type } -> [Empty] A }
