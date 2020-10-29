@@ -33,7 +33,7 @@ commands
   <> command "lsp"  (info lspParser        (progDesc "run an LSP server"))
 
 runFileParser :: Parser (IO ())
-runFileParser = Run.runFile <$> strArgument (metavar "PATH")
+runFileParser = (exitWith <=< Run.runFile) <$> strArgument (metavar "PATH")
 
 lspParser :: Parser (IO ())
 lspParser = (exitWith <=< LSP.lsp) <$> (Just <$> strOption (long "path" <> metavar "PATH") <|> pure Nothing)

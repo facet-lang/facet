@@ -2,6 +2,8 @@ module Facet.Run
 ( runFile
 ) where
 
-runFile :: FilePath -> IO ()
+import System.Exit
+
+runFile :: FilePath -> IO ExitCode
 runFile _ = do
-  pure ()
+  pure ExitSuccess
