@@ -195,7 +195,7 @@ exprTable =
   [ [ (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   -- FIXME: model this as application to unit instead
   -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
-  , [ (N.Postfix (pack "!"), N.L, ((\ e@(S.Ann s c _) -> S.Ann s c (S.Force e)) . head)) ]
+  , [ (N.Postfix (pack "!"), N.L, (S.annUnary S.Force . head)) ]
   ]
 
 -- FIXME: this is responsible for a massive slowdown on nested parens.
