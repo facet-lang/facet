@@ -35,10 +35,7 @@ runFileParser :: Parser (IO ())
 runFileParser = REPL.runFile <$> strArgument (metavar "PATH")
 
 lspParser :: Parser (IO ())
-lspParser = (exitWith' <=< LSP.lsp) <$> (Just <$> strOption (long "path" <> metavar "PATH") <|> pure Nothing)
-  where
-  exitWith' 0 = exitWith $ ExitSuccess
-  exitWith' i = exitWith $ ExitFailure i
+lspParser = (exitWith <=< LSP.lsp) <$> (Just <$> strOption (long "path" <> metavar "PATH") <|> pure Nothing)
 
 versionString :: String
 versionString = "facetc version " <> showVersion Library.version
