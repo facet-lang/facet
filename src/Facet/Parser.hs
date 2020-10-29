@@ -143,6 +143,7 @@ nonBinding = anned $ S.Binding Ex (pure N.__) <$> option [] sig <*> tatom
 
 -- Types
 
+-- FIXME: kind ascriptions
 monotypeTable :: Table (S.Ann S.Type)
 monotypeTable =
   [ [ (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
