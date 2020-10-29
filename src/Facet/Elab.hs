@@ -185,7 +185,7 @@ global
 global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 
 lookupInContext :: DName -> Context Type -> Maybe (Level, Type)
-lookupInContext n ctx = maybe Nothing (`lookupLevel` ctx) (eOrT n)
+lookupInContext n ctx = (`lookupLevel` ctx) =<< eOrT n
   where
   eOrT (E n) = Just n
   eOrT (T n) = Just n

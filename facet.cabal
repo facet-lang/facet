@@ -71,6 +71,7 @@ library
     Facet.Eval
     Facet.Flag
     Facet.Graph
+    Facet.LSP
     Facet.Name
     Facet.Notice
     Facet.Notice.Elab
@@ -82,6 +83,7 @@ library
     Facet.Print
     Facet.REPL
     Facet.REPL.Parser
+    Facet.Run
     Facet.Semiring
     Facet.Source
     Facet.Span
@@ -97,12 +99,15 @@ library
     , charset
     , colour
     , containers
+    , data-default
     , directory
     , exceptions ^>= 0.10
     , filepath
     , fused-effects
     , fused-effects-lens
     , haskeline ^>= 0.8.1
+    , haskell-lsp
+    , haskell-lsp-types
     , lens
     , optparse-applicative
     , parsers

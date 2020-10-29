@@ -1,7 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
 module Facet.REPL
 ( repl
-, runFile
 , kernel
 ) where
 
@@ -12,6 +11,7 @@ import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, uses, (%=), (.=))
+import           Control.Exception (handle)
 import           Control.Lens (Getting, Lens', at, lens)
 import           Control.Monad (unless, void, (<=<))
 import           Control.Monad.IO.Class
@@ -52,26 +52,23 @@ import qualified Prettyprinter as P
 import           Silkscreen as S hiding (Ann, line)
 import           System.Console.ANSI
 import           System.Directory
+import           System.Exit
 import qualified System.FilePath as FP
 import           System.IO.Error
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Token hiding (brackets, comma)
 
-repl :: IO ()
+repl :: IO ExitCode
 repl
-  = runReadlineWithHistory
+  = handle @IOError (\ e -> ExitFailure 1 <$ print e)
+  . fmap (const ExitSuccess)
+  . runReadlineWithHistory
   . evalState defaultREPLState
   . evalEmpty
   . evalState (toFlag LogTraces False)
   . runTrace Nil
   $ loop
-
-
--- FIXME: move this into a separate driver module?
-runFile :: FilePath -> IO ()
-runFile _ = do
-  pure ()
 
 
 -- FIXME: split general compilation target state out of REPL state.

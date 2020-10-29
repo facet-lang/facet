@@ -236,9 +236,11 @@ intro, tintro :: UName -> Level -> Print
 intro = name lower
 tintro = name upper
 var = printVar name
-name f n d = setPrec Var . annotate (Name d) $ if
-  | T.null (getUName n) -> pretty '_' <> f (getLevel d)
-  | otherwise           -> pretty n
+name f n d = setPrec Var . annotate (Name d) $
+  if T.null (getUName n) then
+    pretty '_' <> f (getLevel d)
+  else
+    pretty n
 
 -- FIXME: group quantifiers by kind again.
 fn = flip (foldr (\ (pl, n ::: _T) b -> case n of

@@ -4,14 +4,17 @@ module Facet.CLI
 
 import           Control.Monad (join)
 import           Data.Version (showVersion)
+import qualified Facet.LSP as LSP
 import qualified Facet.REPL as REPL
+import qualified Facet.Run as Run
 import           Options.Applicative as Options
 import qualified Paths_facet as Library (version)
+import           System.Exit
 
 main :: IO ()
-main = join (execParser argumentsParser)
+main = join (execParser argumentsParser) >>= exitWith
 
-argumentsParser :: ParserInfo (IO ())
+argumentsParser :: ParserInfo (IO ExitCode)
 argumentsParser = info
   (version <*> helper <*> hsubparser commands)
   (  fullDesc
@@ -23,13 +26,20 @@ argumentsParser = info
 -- - build
 -- - diff
 -- - lint
-commands :: Mod CommandFields (IO ())
+commands :: Mod CommandFields (IO ExitCode)
 commands
-  =  command "repl" (info (pure REPL.repl) (progDesc "run the repl"))
-  <> command "run"  (info runFileParser    (progDesc "run a program"))
+  =  command "repl" (info replParser    (progDesc "run the repl"))
+  <> command "run"  (info runFileParser (progDesc "run a program"))
+  <> command "lsp"  (info lspParser     (progDesc "run an LSP server"))
 
-runFileParser :: Parser (IO ())
-runFileParser = REPL.runFile <$> strArgument (metavar "PATH")
+replParser :: Parser (IO ExitCode)
+replParser = pure REPL.repl
+
+runFileParser :: Parser (IO ExitCode)
+runFileParser = Run.runFile <$> strArgument (metavar "PATH")
+
+lspParser :: Parser (IO ExitCode)
+lspParser = LSP.lsp <$> optional (strOption (long "path" <> metavar "PATH"))
 
 versionString :: String
 versionString = "facetc version " <> showVersion Library.version
