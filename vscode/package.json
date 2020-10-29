@@ -1,9 +1,9 @@
 {
   "name": "facet",
-  "description": "Facet language server integration",
+  "description": "Facet language extension",
   "author": "Rob Rix",
   "license": "BSD-3-Clause",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/robrix/facet"
