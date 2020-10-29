@@ -104,6 +104,7 @@ library
     , fused-effects-lens
     , haskeline ^>= 0.8.1
     , haskell-lsp
+    , haskell-lsp-types
     , lens
     , optparse-applicative
     , parsers
