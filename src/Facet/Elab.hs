@@ -6,6 +6,7 @@ module Facet.Elab
 ( -- * General
   unify
 , switch
+, as
 , global
   -- * Expressions
 , elabExpr
@@ -135,6 +136,12 @@ switch
 switch (Synth m) = Check $ trace "switch" . \case
   Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify (_K' :===: _K)
   _       -> m
+
+as :: Check a ::: Check Type -> Synth a
+as (m ::: _T) = Synth $ do
+  _T' <- check (_T ::: Just VType)
+  a <- check (m ::: Just _T')
+  pure $ a ::: _T'
 
 resolveWith
   :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Comp))
