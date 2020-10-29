@@ -35,7 +35,7 @@ runFileParser :: Parser (IO ())
 runFileParser = REPL.runFile <$> strArgument (metavar "PATH")
 
 lspParser :: Parser (IO ())
-lspParser = (exitWith' <=< LSP.lsp) <$> (Just <$> strOption (metavar "PATH"))
+lspParser = (exitWith' <=< LSP.lsp) <$> (Just <$> strOption (long "path" <> metavar "PATH"))
   where
   exitWith' 0 = exitWith $ ExitSuccess
   exitWith' i = exitWith $ ExitFailure i
