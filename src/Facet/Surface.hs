@@ -41,6 +41,7 @@ data Expr
   | Thunk (Ann Expr)
   | Force (Ann Expr)
   | App (Ann Expr) (Ann Expr)
+  | As (Ann Expr) (Ann Type)
   deriving (Eq, Show)
 
 type Type = Expr

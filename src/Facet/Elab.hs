@@ -267,6 +267,7 @@ elabExpr (S.Ann s _ e) = Check $ \ _T -> setSpan s . check . (::: _T) $ case e o
   S.Lam cs     -> elabClauses cs
   S.Thunk e    -> elabExpr e -- FIXME: this should convert between value and computation type
   S.Force e    -> elabExpr e -- FIXME: this should convert between computation and value type
+  S.As t _T    -> switch $ as (checkElab (elabExpr t) ::: checkElab (elabExpr _T))
 
 elabBinding :: S.Ann S.Binding -> [(Pos, Check Binding)]
 elabBinding (S.Ann s _ (S.Binding p n d t)) =
