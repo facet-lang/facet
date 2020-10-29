@@ -10,12 +10,12 @@ not : Bool -> Bool
 , (false) -> true }
 
 # NB: I am removing nested, chained pattern matches until I get around to correcting their elaboration
-and : Bool -> Bool -> Bool
+_ && _ : Bool -> Bool -> Bool
 { (true) -> { x -> x }
 , _      -> { _ -> false } }
 
 # NB: I am removing nested, chained pattern matches until I get around to correcting their elaboration
-or : Bool -> Bool -> Bool
+_ || _ : Bool -> Bool -> Bool
 { (false) -> { x -> x }
 , _       -> { _ -> true } }
 
