@@ -39,7 +39,7 @@ runFileParser :: Parser (IO ExitCode)
 runFileParser = Run.runFile <$> strArgument (metavar "PATH")
 
 lspParser :: Parser (IO ExitCode)
-lspParser = LSP.lsp <$> (Just <$> strOption (long "path" <> metavar "PATH") <|> pure Nothing)
+lspParser = LSP.lsp <$> optional (strOption (long "path" <> metavar "PATH"))
 
 versionString :: String
 versionString = "facetc version " <> showVersion Library.version
