@@ -18,6 +18,7 @@ module Facet.Surface
 , Import(..)
   -- * Annotations
 , Ann(..)
+, annBinary
 , Comment(..)
 ) where
 
@@ -134,6 +135,10 @@ instance Ord a => Ord (Ann a) where
 
 instance Show a => Show (Ann a) where
   showsPrec p = showsPrec p . out
+
+
+annBinary :: (Ann Expr -> Ann Expr -> Expr) -> Ann Expr -> Ann Expr -> Ann Expr
+annBinary f a b = Ann (ann a <> ann b) Nil (f a b)
 
 
 newtype Comment = Comment { getComment :: Text }
