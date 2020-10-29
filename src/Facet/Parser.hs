@@ -241,7 +241,7 @@ wildcard = reserve enameStyle "_"
 patternP :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Pattern)
 patternP = choice
   [ anned (S.PVar      <$> ename)
-  , anned (S.PVar N.__ <$  wildcard)
+  , anned (S.PWildcard <$  wildcard)
   , try (parens (anned (S.PCon <$> cname <*> many patternP)))
   , brackets (anned (S.PEff <$> ename <*> many patternP <* symbolic ';' <*> (ename <|> N.__ <$ wildcard)))
   ] <?> "pattern"

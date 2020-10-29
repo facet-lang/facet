@@ -352,7 +352,8 @@ elabClauses cs = Check $ \ _T -> do
 -- FIXME: check for unique variable names
 elabPattern :: S.Ann S.Pattern -> (C.Pattern (UName ::: Type) -> Elab a) -> Check a
 elabPattern (S.Ann s _ p) k = Check $ \ _A -> setSpan s $ case p of
-  S.PVar n    -> k (C.PVar (n ::: _A))
+  S.PWildcard -> k (C.PVar (__ ::: _A))
+  S.PVar n    -> k (C.PVar (n  ::: _A))
   S.PCon n ps -> do
     q :=: _ ::: _T' <- resolveC n
     _T'' <- inst _T'

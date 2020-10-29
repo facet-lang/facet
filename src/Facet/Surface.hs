@@ -78,7 +78,8 @@ data Clause = Clause (Ann Pattern) (Ann Expr)
 
 
 data Pattern
-  = PVar UName
+  = PWildcard
+  | PVar UName
   | PCon UName [Ann Pattern]
   | PEff UName [Ann Pattern] UName
   -- FIXME: catch-all effect patterns
