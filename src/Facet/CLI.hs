@@ -6,6 +6,7 @@ import           Control.Monad (join, (<=<))
 import           Data.Version (showVersion)
 import qualified Facet.LSP as LSP
 import qualified Facet.REPL as REPL
+import qualified Facet.Run as Run
 import           Options.Applicative as Options
 import qualified Paths_facet as Library (version)
 import           System.Exit
@@ -32,7 +33,7 @@ commands
   <> command "lsp"  (info lspParser        (progDesc "run an LSP server"))
 
 runFileParser :: Parser (IO ())
-runFileParser = REPL.runFile <$> strArgument (metavar "PATH")
+runFileParser = Run.runFile <$> strArgument (metavar "PATH")
 
 lspParser :: Parser (IO ())
 lspParser = (exitWith <=< LSP.lsp) <$> (Just <$> strOption (long "path" <> metavar "PATH") <|> pure Nothing)

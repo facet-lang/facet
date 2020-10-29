@@ -1,2 +1,7 @@
 module Facet.Run
-() where
+( runFile
+) where
+
+runFile :: FilePath -> IO ()
+runFile _ = do
+  pure ()
