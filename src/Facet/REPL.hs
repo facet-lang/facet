@@ -11,6 +11,7 @@ import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, uses, (%=), (.=))
+import           Control.Exception (handle)
 import           Control.Lens (Getting, Lens', at, lens)
 import           Control.Monad (unless, void, (<=<))
 import           Control.Monad.IO.Class
@@ -60,7 +61,8 @@ import           Text.Parser.Token hiding (brackets, comma)
 
 repl :: IO ExitCode
 repl
-  = fmap (const ExitSuccess)
+  = handle @IOError (\ e -> ExitFailure 1 <$ print e)
+  . fmap (const ExitSuccess)
   . runReadlineWithHistory
   . evalState defaultREPLState
   . evalEmpty
