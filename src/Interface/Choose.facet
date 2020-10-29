@@ -3,3 +3,7 @@ module Interface.Choose : Module
 
 interface Choose : Interface
 { choose : [Choose] Bool }
+
+_ | _ [left-assoc]
+: { A : Type } -> (l : [Choose] A) -> (r : [Choose] A) -> [Choose] A
+{ if choose! r l  }
