@@ -10,7 +10,8 @@ module Facet.Elab
 , as
 , global
   -- * Expressions
-, elabExpr
+, synthExpr
+, checkExpr
 , _Type
 , forAll
 , comp
@@ -28,9 +29,9 @@ module Facet.Elab
 , elab
 , elabTele
 , elabWith
+, check
 , Check(..)
 , Synth(..)
-, check
 ) where
 
 import           Control.Algebra
@@ -133,15 +134,13 @@ instantiate (e ::: _T) = case _T of
 
 switch
   :: Synth a
-  -> Check (a ::: Type)
-switch (Synth m) = Check $ trace "switch" . \case
-  Just _K -> m >>= \ (a ::: _K') -> (a :::) <$> unify (_K' :===: _K)
-  _       -> m
+  -> Check a
+switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ unify (_K' :===: _K)
 
 as :: Check a ::: Check Type -> Synth a
 as (m ::: _T) = Synth $ do
-  _T' <- check (_T ::: Just VType)
-  a <- check (m ::: Just _T')
+  _T' <- check (_T ::: VType)
+  a <- check (m ::: _T')
   pure $ a ::: _T'
 
 resolveWith
@@ -208,7 +207,7 @@ var m n = Synth $ ask >>= \ ctx -> case m of
 hole
   :: UName
   -> Check a
-hole n = Check $ expectChecked "hole" $ \ _T -> err $ Hole n _T
+hole n = Check $ \ _T -> err $ Hole n _T
 
 ($$)
   :: Synth Value
@@ -218,7 +217,7 @@ f $$ a = Synth $ do
   f' ::: _F <- synth f
   -- FIXME: check that the signatures match
   (_A, _B) <- expectQuantifier "in application" _F
-  a' <- check (a ::: Just (Binding.type' _A))
+  a' <- check (a ::: Binding.type' _A)
   pure $ f' C.$$ (Ex, a') ::: VComp (_B a')
 
 
@@ -253,39 +252,48 @@ infix 1 |-
 
 -- Expressions
 
-elabExpr
+synthExpr
   :: HasCallStack
   => S.Ann S.Expr
-  -> Check (Expr ::: Type)
-elabExpr (S.Ann s _ e) = Check $ \ _T -> setSpan s . check . (::: _T) $ case e of
-  S.Var m n    -> switch $ var m n
-  S.Hole  n    -> hole n
-  S.Type       -> switch _Type
-  S.TInterface -> switch _Interface
-  S.TComp t    -> switch $ VComp <$> elabSTelescope t
-  S.App f a    -> switch $ synthElab (elabExpr f) $$ checkElab (elabExpr a)
-  S.Lam cs     -> elabClauses cs
-  S.Thunk e    -> elabExpr e -- FIXME: this should convert between value and computation type
-  S.Force e    -> elabExpr e -- FIXME: this should convert between computation and value type
-  S.As t _T    -> switch $ as (checkElab (elabExpr t) ::: checkElab (elabExpr _T))
+  -> Synth Expr
+synthExpr (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
+  S.Var m n    -> var m n
+  S.Type       -> _Type
+  S.TInterface -> _Interface
+  S.TComp t    -> VComp <$> elabSTelescope t
+  S.App f a    -> synthExpr f $$ checkExpr a
+  S.As t _T    -> as (checkExpr t ::: checkExpr _T)
+  _            -> Synth $ couldNotSynthesize (show e)
+
+checkExpr
+  :: HasCallStack
+  => S.Ann S.Expr
+  -> Check Expr
+checkExpr expr@(S.Ann s _ e) = mapCheck (setSpan s) $ case e of
+  S.Hole  n -> hole n
+  S.Lam cs  -> elabClauses cs
+  S.Thunk e -> checkExpr e -- FIXME: this should convert between value and computation type
+  S.Force e -> checkExpr e -- FIXME: this should convert between computation and value type
+  _         -> switch (synthExpr expr)
+
 
 elabBinding :: S.Ann S.Binding -> [(Pos, Check Binding)]
 elabBinding (S.Ann s _ (S.Binding p n d t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
-    d' <- traverse (check . (::: Just VInterface) . elabSig) d
-    t' <- check (checkElab (elabExpr t) ::: _T)
+    d' <- traverse (check . (::: VInterface) . elabSig) d
+    t' <- check (checkExpr t ::: _T)
     pure $ Binding p n d' t')
   | n <- toList n ]
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
 elabSig :: S.Ann S.Interface -> Check Value
 elabSig (S.Ann s _ (S.Interface (S.Ann s' _ (m, n)) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
-  check (checkElab (switch (foldl' ($$) (mapSynth (setSpan s') (var m n)) (checkElab . elabExpr <$> sp))) ::: _T)
+  check (switch (foldl' ($$) (mapSynth (setSpan s') (var m n)) (checkExpr <$> sp)) ::: _T)
 
 elabSTelescope :: S.Ann S.Comp -> Synth Comp
 elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabSTelescope") $ foldr
-  (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> Check $ \ _T -> v |- check (checkElab (switch b) ::: _T)))
-  (mapSynth (setSpan (foldr ((<>) . S.ann) (S.ann t) d)) (comp (map elabSig d) (checkElab (elabExpr t))))
+  (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> Check $ \ _T -> v |- check (switch b ::: _T)))
+  (mapSynth (setSpan (foldr ((<>) . S.ann) (S.ann t) d)) (comp (map elabSig d) (checkExpr t)))
   (elabBinding =<< bs)
 
 
@@ -299,15 +307,15 @@ _Interface = Synth $ pure $ VInterface ::: VType
 forAll :: Check Binding -> (UName ::: Type -> Check Comp) -> Synth Comp
 forAll t b = Synth $ trace "forAll" $ do
   -- FIXME: should we check that the signature is empty?
-  _T@Binding{ name, type' = _A } <- check (t ::: Just VType)
+  _T@Binding{ name, type' = _A } <- check (t ::: VType)
   d <- asks @(Context Type) level
-  _B <- check (b (name ::: _A) ::: Just VType)
+  _B <- check (b (name ::: _A) ::: VType)
   pure $ ForAll _T (\ v -> C.bindComp d v _B) ::: VType
 
 comp :: [Check Value] -> Check Type -> Synth Comp
 comp s t = Synth $ do
-  s' <- traverse (check . (::: Just VInterface)) s
-  t' <- check (t ::: Just VType)
+  s' <- traverse (check . (::: VInterface)) s
+  t' <- check (t ::: VType)
   pure $ Comp s' t' ::: VType
 
 
@@ -315,36 +323,36 @@ lam
   :: (Pl, UName)
   -> (UName ::: Type -> Check Expr)
   -> Check Expr
-lam n b = Check $ expectChecked "lambda" $ \ _T -> do
+lam n b = Check $ \ _T -> do
   -- FIXME: how does the effect adjustment change this?
   (Binding _ _ _ _T, _B) <- expectQuantifier "when checking lambda" _T
-  b' <- elabBinder $ \ v -> check (b (snd n ::: _T) ::: Just (VComp (_B v)))
+  b' <- elabBinder $ \ v -> check (b (snd n ::: _T) ::: VComp (_B v))
   pure $ VLam (fst n) [Clause (PVar (snd n ::: _T)) (b' . unsafeUnPVar)]
 
 
 -- FIXME: go find the pattern matching matrix algorithm
-elabClauses :: [S.Clause] -> Check (Expr ::: Type)
-elabClauses [S.Clause (S.Ann _ _ (S.PVar n)) b] = Check $ expectChecked "variable pattern" $ \ _T -> do
+elabClauses :: [S.Clause] -> Check Expr
+elabClauses [S.Clause (S.Ann _ _ (S.PVar n)) b] = Check $ \ _T -> do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (Binding pl _ _ _A, _B) <- expectQuantifier "when checking clauses" _T
-  b' <- elabBinder $ \ v -> n ::: _A |- check (checkElab (elabExpr b) ::: Just (VComp (_B v)))
-  pure $ VLam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)] ::: _T
+  b' <- elabBinder $ \ v -> n ::: _A |- check (checkExpr b ::: VComp (_B v))
+  pure $ VLam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)]
 -- FIXME: this is incorrect in the presence of wildcards (or something). e.g. { (true) (true) -> true, _ _ -> false } gets the inner {(true) -> true} clause from the first case appended to the
-elabClauses cs = Check $ expectChecked "clauses" $ \ _T -> do
+elabClauses cs = Check $ \ _T -> do
   -- FIXME: use the signature to elaborate the pattern
   (Binding _ _ _ _A, _B) <- expectQuantifier "when checking clauses" _T
   d <- asks (level @Type)
   let _B' = _B (free d)
   cs' <- for cs $ \ (S.Clause p b) -> check
     (   elabPattern p (\ p' -> do
-      Clause p' <$> elabBinders p' (foldr (|-) (check (checkElab (elabExpr b) ::: Just (VComp _B')))))
-    ::: Just _A)
-  pure $ VLam Ex cs' ::: _T
+      Clause p' <$> elabBinders p' (foldr (|-) (check (checkExpr b ::: VComp _B'))))
+    ::: _A)
+  pure $ VLam Ex cs'
 
 
 -- FIXME: check for unique variable names
 elabPattern :: S.Ann S.Pattern -> (C.Pattern (UName ::: Type) -> Elab a) -> Check a
-elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan s $ case p of
+elabPattern (S.Ann s _ p) k = Check $ \ _A -> setSpan s $ case p of
   S.PVar n    -> k (C.PVar (n ::: _A))
   S.PCon n ps -> do
     q :=: _ ::: _T' <- resolveC n
@@ -372,7 +380,7 @@ elabPattern (S.Ann s _ p) k = Check $ expectChecked "pattern" $ \ _A -> setSpan 
         v <- metavar <$> meta _A
         check
           (   elabPattern p (\ p' -> go (_B v) ps (\ ps' -> k (p' : ps')))
-          ::: Just _A)
+          ::: _A)
 
 
 -- Declarations
@@ -385,14 +393,14 @@ elabDataDef
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
-    c_T <- elabTele $ go (checkElab (switch (elabSTelescope t))) _T
+    c_T <- elabTele $ go (switch (elabSTelescope t)) _T
     pure $ n :=: con (mname :.: C n) Nil c_T ::: c_T
   pure
     $ (dname, Decl (Just (C.DData cs)) _T)
     : map (\ (n :=: c ::: c_T) -> (E n, Decl (Just (C.DTerm c)) c_T)) cs
   where
   go k = \case
-    Comp _ _                     -> check (k ::: Just VType)
+    Comp _ _                     -> check (k ::: VType)
     -- FIXME: can sigs appear here?
     ForAll (Binding _ n s _T) _B -> do
       d <- asks @(Context Type) level
@@ -409,7 +417,7 @@ elabInterfaceDef
   -> m Decl
 elabInterfaceDef _T constructors = do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
-    (n :::) <$> elabTele (go (check (checkElab (switch (elabSTelescope t)) ::: Just VType)) _T)
+    (n :::) <$> elabTele (go (check (switch (elabSTelescope t) ::: VType)) _T)
   pure $ Decl (Just (DInterface cs)) _T
   where
   go k = \case
@@ -426,10 +434,10 @@ elabTermDef
   => Comp
   -> S.Ann S.Expr
   -> m Expr
-elabTermDef _T expr = runReader (S.ann expr) $ elab $ go (checkElab (elabExpr expr)) _T
+elabTermDef _T expr = runReader (S.ann expr) $ elab $ go (checkExpr expr) _T
   where
   go k t = case t of
-    Comp s _T                    -> local (s ++) $ check (k ::: Just _T)
+    Comp s _T                    -> local (s ++) $ check (k ::: _T)
     ForAll (Binding p n _ _T) _B -> do
       b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
       pure $ VLam p [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
@@ -451,7 +459,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elabTele $ check (checkElab (switch (elabSTelescope tele)) ::: Just VType)
+      _T <- runModule . elabTele $ check (switch (elabSTelescope tele) ::: VType)
 
       decls_.at dname .= Just (Decl Nothing _T)
       case def of
@@ -535,9 +543,6 @@ freeVariable m n = err $ FreeVariable m n
 ambiguousName :: Maybe MName -> DName -> [QName] -> Elab a
 ambiguousName n d qs = err $ AmbiguousName n d qs
 
-expectChecked :: String -> (Type -> Elab a) -> Maybe Type -> Elab a
-expectChecked msg = maybe (couldNotSynthesize msg)
-
 
 -- Patterns
 
@@ -589,9 +594,15 @@ elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+
 elabWith f = runSubstWith f . runContext . runSig . runElab
 
 
+check :: (Check a ::: Type) -> Elab a
+check (m ::: _T) = trace "check" $ runCheck m _T
+
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
-newtype Check a = Check { runCheck :: Maybe Type -> Elab a }
-  deriving (Functor) via ReaderC (Maybe Type) Elab
+newtype Check a = Check { runCheck :: Type -> Elab a }
+  deriving (Functor) via ReaderC Type Elab
+
+mapCheck :: (Elab a -> Elab b) -> Check a -> Check b
+mapCheck f m = Check $ \ _T -> f (runCheck m _T)
 
 newtype Synth a = Synth { synth :: Elab (a ::: Type) }
 
@@ -600,14 +611,3 @@ instance Functor Synth where
 
 mapSynth :: (Elab (a ::: Type) -> Elab (b ::: Type)) -> Synth a -> Synth b
 mapSynth f = Synth . f . synth
-
-
-check :: (Check a ::: Maybe Type) -> Elab a
-check (m ::: _T) = trace "check" $ runCheck m _T
-
-
-checkElab :: Check (a ::: b) -> Check a
-checkElab m = tm <$> m
-
-synthElab :: Check (a ::: Type) -> Synth a
-synthElab m = Synth (runCheck m Nothing)

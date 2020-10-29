@@ -214,12 +214,12 @@ removeTarget targets = Action $ \ _ -> targets_ %= (Set.\\ Set.fromList targets)
 
 showType :: S.Ann S.Expr -> Action
 showType e = Action $ \ src -> do
-  e ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.check (Elab.elabExpr e ::: Nothing))
+  e ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.synth (Elab.synthExpr e))
   outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
 
 showEval :: S.Ann S.Expr -> Action
 showEval e = Action $ \ src -> do
-  e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.check (Elab.elabExpr e ::: Nothing))
+  e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.synth (Elab.synthExpr e))
   e'' <- elab src $ eval e'
   outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil _T)))
 
