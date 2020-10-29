@@ -51,15 +51,17 @@ import qualified Prettyprinter as P
 import           Silkscreen as S hiding (Ann, line)
 import           System.Console.ANSI
 import           System.Directory
+import           System.Exit
 import qualified System.FilePath as FP
 import           System.IO.Error
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Token hiding (brackets, comma)
 
-repl :: IO ()
+repl :: IO ExitCode
 repl
-  = runReadlineWithHistory
+  = fmap (const ExitSuccess)
+  . runReadlineWithHistory
   . evalState defaultREPLState
   . evalEmpty
   . evalState (toFlag LogTraces False)

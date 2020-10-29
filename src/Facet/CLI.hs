@@ -28,7 +28,7 @@ argumentsParser = info
 -- - lint
 commands :: Mod CommandFields (IO ())
 commands
-  =  command "repl" (info (pure REPL.repl) (progDesc "run the repl"))
+  =  command "repl" (info (pure (exitWith =<< REPL.repl)) (progDesc "run the repl"))
   <> command "run"  (info runFileParser    (progDesc "run a program"))
   <> command "lsp"  (info lspParser        (progDesc "run an LSP server"))
 
