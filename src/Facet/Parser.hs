@@ -63,7 +63,7 @@ whole p = whiteSpace *> p <* eof
 makeOperator :: (N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
 makeOperator (op, assoc) = (op, assoc, nary (N.O op))
   where
-  nary name es = foldl' (S.$$) (S.Ann (S.ann (head es)) Nil (S.free name)) es
+  nary name es = foldl' (S.annBinary S.App) (S.Ann (S.ann (head es)) Nil (S.free name)) es
 
 
 -- Modules
@@ -145,7 +145,7 @@ nonBinding = anned $ S.Binding Ex (pure N.__) <$> option [] sig <*> tatom
 
 monotypeTable :: Table (S.Ann S.Type)
 monotypeTable =
-  [ [ (N.Infix mempty, N.L, foldl1 (S.$$)) ]
+  [ [ (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   ]
 
 
@@ -192,7 +192,7 @@ sig = brackets (commaSep delta) <?> "signature"
 
 exprTable :: Table (S.Ann S.Expr)
 exprTable =
-  [ [ (N.Infix mempty, N.L, foldl1 (S.$$)) ]
+  [ [ (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   -- FIXME: model this as application to unit instead
   -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
   , [ (N.Postfix (pack "!"), N.L, ((\ e@(S.Ann s c _) -> S.Ann s c (S.Force e)) . head)) ]

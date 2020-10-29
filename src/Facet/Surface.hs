@@ -8,7 +8,6 @@ module Facet.Surface
 , Binding(..)
 , Interface(..)
 , Clause(..)
-, ($$)
 , Pattern(..)
   -- * Declarations
 , Decl(..)
@@ -75,12 +74,6 @@ data Interface = Interface (Ann (Maybe MName, DName)) (Stack (Ann Type))
 
 data Clause = Clause (Ann Pattern) (Ann Expr)
   deriving (Eq, Show)
-
-
-($$) :: Ann Expr -> Ann Expr -> Ann Expr
-f $$ a = Ann (ann f <> ann a) Nil (App f a)
-
-infixl 9 $$
 
 
 data Pattern
