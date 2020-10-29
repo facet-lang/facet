@@ -276,10 +276,10 @@ insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
 
 -- | Apply the substitution to the value.
 apply :: Subst -> Expr -> Value
-apply s v = subst (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
+apply = subst . IntMap.mapMaybe tm -- FIXME: error if the substitution has holes.
 
 applyComp :: Subst -> Comp -> Comp
-applyComp s v = substComp (IntMap.mapMaybe tm s) v -- FIXME: error if the substitution has holes.
+applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution has holes.
 
 
 generalize :: Subst -> Value -> Value
