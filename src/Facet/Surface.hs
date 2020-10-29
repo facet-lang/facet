@@ -65,6 +65,7 @@ data Comp = Comp
 data Binding = Binding
   { pl    :: Pl
   , names :: NonEmpty UName
+  -- FIXME: wrap this in Maybe so we can distinguish values from parametric computations (as in the branches passed to if)
   , delta :: [Ann Interface]
   , type' :: Ann Type
   }
