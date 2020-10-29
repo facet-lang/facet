@@ -192,7 +192,8 @@ sig = brackets (commaSep delta) <?> "signature"
 
 exprTable :: Table (S.Ann S.Expr)
 exprTable =
-  [ [ (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
+  [ [ (N.Infix (pack ":"), N.R, foldr1 (S.annBinary S.As)) ]
+  , [ (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   -- FIXME: model this as application to unit instead
   -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
   , [ (N.Postfix (pack "!"), N.L, (S.annUnary S.Force . head)) ]
