@@ -1,5 +1,3 @@
-# NB: this file and its syntax is entirely aspirational.
-
 module Interface.Reader : Module
 
 interface Reader : (R : Type) -> Interface
