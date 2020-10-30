@@ -3,3 +3,8 @@ module Algebra.Monoid : Module
 
 interface Monoid : (A : Type) -> [Semigroup A] Interface
 { zero : [Monoid A] A }
+
+monoidOf : { A, B : Type } -> (plus : A -> A -> A) -> (zero : A) -> [Monoid A, Semigroup A] B -> B
+{ [l <> r ; k] -> k (plus l r)
+, [zero   ; k] -> k zero
+, x            -> x }
