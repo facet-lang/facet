@@ -2,7 +2,8 @@
 # NB: this won’t elaborate until we define Strings.
 
 module Effect.Console : Module
-{ import Data.Option
+{ import Data.Function
+, import Data.Option
 , import Data.Unit }
 
 
@@ -14,4 +15,4 @@ interface Output : Interface
 { write : String -> [Output] Unit }
 
 writeLine : (str : String) -> [Output] Unit
-{ write (str <> "\n") }
+{ write str ; write "\n" }
