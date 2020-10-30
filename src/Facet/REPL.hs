@@ -10,9 +10,9 @@ import           Control.Carrier.Error.Church
 import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, uses, (%=), (.=), (<~))
+import           Control.Effect.Lens (use, uses, (%=), (<~))
 import           Control.Exception (handle)
-import           Control.Lens (Getting, Lens', at, lens)
+import           Control.Lens (Getting, Lens', lens)
 import           Control.Monad (unless, (<=<))
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -42,7 +42,7 @@ import           Facet.Parser as Parser
 import           Facet.Pretty
 import           Facet.Print as Print hiding (Comp, Type)
 import           Facet.REPL.Parser
-import           Facet.Source (Source(..), readSourceFromFile, sourceFromString)
+import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Span (Span)
 import           Facet.Stack
 import           Facet.Style as Style
@@ -54,8 +54,6 @@ import           Silkscreen as S hiding (Ann, line)
 import           System.Console.ANSI
 import           System.Directory
 import           System.Exit
-import qualified System.FilePath as FP
-import           System.IO.Error
 import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Token hiding (brackets, comma)
@@ -242,37 +240,6 @@ reload src = target_ `zoom` do
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = let imports' = map ((S.name :: S.Import -> MName) . S.out) imports in Node n imports' (n, path, source, imports')
 
-loadModuleHeader :: (Has (State Target) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
-loadModuleHeader src target = do
-  path <- case target of
-    Left path  -> pure path
-    Right name -> resolveName name
-  src <- rethrowIOErrors src $ readSourceFromFile path
-  -- FIXME: validate that the name matches
-  (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
-  pure (name', path, src, is)
-
-loadModule :: (Has (State Target) sig m, Has (Throw (Notice.Notice Style)) sig m, Has Trace sig m) => MName -> FilePath -> Source -> [MName] -> m Module
-loadModule name path src imports = do
-  graph <- use modules_
-  let ops = foldMap (operators . snd <=< (`lookupM` graph)) imports
-  m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
-  m <- rethrowElabErrors src . runReader graph $ Elab.elabModule m
-  modules_.at name .= Just (Just path, m)
-  pure m
-
-resolveName :: (Has (State Target) sig m, MonadIO m) => MName -> m FilePath
-resolveName name = do
-  searchPaths <- use searchPaths_
-  let namePath = toPath name FP.<.> ".facet"
-  path <- liftIO $ findFile (toList searchPaths) namePath
-  case path of
-    Just path -> pure path
-    Nothing   -> liftIO $ ioError $ mkIOError doesNotExistErrorType "loadModule" Nothing (Just namePath)
-  where
-  toPath (name :. component) = toPath name FP.</> TS.unpack component
-  toPath (MName component)   = TS.unpack component
-
 
 helpDoc :: Doc Style
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry (getCommands commands))
@@ -322,13 +289,7 @@ lens <~> act = lens <~ lens ~> act
 infixr 2 <~>
 
 
-rethrowIOErrors :: (Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> IO a -> m a
-rethrowIOErrors src m = liftIO (tryIOError m) >>= either (throwError . ioErrorToNotice src) pure
-
 rethrowGraphErrors :: Source -> I.ThrowC (Notice.Notice Style) GraphErr m a -> m a
 rethrowGraphErrors src = I.runThrow formatGraphErr
   where
   formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) src (reflow "cyclic import") (map pretty (toList path))
-
-ioErrorToNotice :: Source -> IOError -> Notice.Notice Style
-ioErrorToNotice src err = Notice.Notice (Just Notice.Error) src (group (reflow (show err))) []
