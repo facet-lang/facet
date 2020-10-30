@@ -210,8 +210,14 @@ var m n = Synth $ ask >>= \ ctx -> case m of
     | Just (i, _T) <- lookupInContext n ctx
     -> pure (free i ::: _T)
   _ -> do
-    n :=: _ ::: _T <- resolveMD m n
-    synth $ global (n ::: _T)
+    (mod, graph, sig) <- (,,) <$> ask <*> ask <*> ask
+    case n of
+      E n
+        | Just (n ::: _T) <- lookupInSig m n mod graph sig
+        -> pure $ VOp (n :$ Nil) ::: VComp _T
+      _ -> do
+        n :=: _ ::: _T <- resolveMD m n
+        synth $ global (n ::: _T)
 
 hole
   :: UName
