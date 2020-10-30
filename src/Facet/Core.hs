@@ -86,6 +86,8 @@ data Value
   | VCon (QName :$ Value)
   -- | Effect operation and its parameters.
   | VOp (QName :$ (Pl, Value))
+  -- | Primitive types and values.
+  | VPrim Prim
 
 type Type = Value
 type Expr = Value
@@ -248,6 +250,7 @@ substWith f = go
     VNe (v :$ a)  -> f v $$* fmap (fmap go) a
     VCon c        -> VCon (fmap go c)
     VOp (q :$ sp) -> VOp (q :$ fmap (fmap go) sp)
+    VPrim p       -> VPrim p
 
   clause (Clause p b) = Clause p (go . b)
 
@@ -317,6 +320,9 @@ sortOf ctx = \case
   VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
   VCon _        -> STerm
   VOp _         -> STerm -- FIXME: will this always be true?
+  VPrim p       -> case p of
+    TString   -> SType
+    VString _ -> STerm
   where
   telescope ctx = \case
     ForAll (Binding _ _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (telescope (ctx :> _T') (_B (free (Level (length ctx)))))
