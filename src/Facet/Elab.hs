@@ -214,6 +214,7 @@ var m n = Synth $ ask >>= \ ctx -> case m of
     case n of
       E n
         | Just (n ::: _T) <- lookupInSig m n mod graph sig
+        -- FIXME: instantiate polymorphic operations
         -> pure $ VOp (n :$ Nil) ::: VComp _T
       _ -> do
         n :=: _ ::: _T <- resolveMD m n
