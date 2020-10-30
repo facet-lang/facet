@@ -211,6 +211,7 @@ expr = do
         [ comp
         , hole
         , evar
+        , token (anned (runUnspaced (S.String <$> stringLiteral)))
         , parens rec
         ]
   rec
