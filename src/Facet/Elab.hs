@@ -113,8 +113,9 @@ unify = go
     where
     nope = couldNotUnify "mismatch" (VComp c1) (VComp c2)
 
-  -- FIXME: unify the signatures
-  unifySig s1 _ = pure s1
+    -- FIXME: unify the signatures
+    unifySig s1 _ = pure s1
+    -- unifySig s1 s2 = unless (length s1 == length s2) nope *> sequenceA (zipWith go s1 s2)
 
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
