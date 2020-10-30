@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 module Facet.REPL
 ( repl
@@ -19,6 +20,7 @@ import           Data.Foldable (toList)
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
+import           Data.Text (Text)
 import           Facet.Carrier.Parser.Church hiding (Input)
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
@@ -161,7 +163,7 @@ showPaths   = Action $ \ _ -> do
   outputDocLn $ nest 2 $ reflow "current working directory:" </> pretty dir
   searchPaths <- uses (target_.searchPaths_) toList
   unless (null searchPaths)
-    $ outputDocLn $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
+    $ outputDocLn $ nest 2 $ pretty ("search paths:" :: Text) <\> unlines (map pretty searchPaths)
 
 showModules = Action $ \ _ -> uses (target_.modules_) (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
 
@@ -194,8 +196,13 @@ showEval e = Action $ \ src -> do
   outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil _T)))
 
 -- FIXME: should actually handle “syscall” effects here.
-runEvalMain :: Applicative m => Eval m a -> m a
-runEvalMain = runEval ((&) . VOp) pure
+runEvalMain :: Has Output sig m => Eval m a -> m a
+runEvalMain = runEval handle pure
+  where
+  handle (q :$ sp) k = case q of
+    MName "Effect" :. "Console" :.: E "write"
+      | Nil:>(Ex, VPrim (VString s)) <- sp -> outputText s *> k (VCon (MName "Data" :. "Unit" :.: C "unit" :$ Nil))
+    _                                      -> k (VOp (q :$ sp))
 
 
 helpDoc :: Doc Style
