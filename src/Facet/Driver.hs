@@ -1,3 +1,4 @@
+-- | Operations driving the loading and processing of modules.
 module Facet.Driver
 ( Target(..)
 , modules_
