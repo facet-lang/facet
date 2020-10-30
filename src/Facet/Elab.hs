@@ -81,9 +81,9 @@ unify (t1 :===: t2) = trace "unify" $ case (t1 :===: t2) of
   VComp t1                 :===: VComp t2                 -> VComp <$> unifyComp (t1 :===: t2)
   VComp (Comp [] t1)       :===: t2                       -> unify (t1 :===: t2)
   t1                       :===: VComp (Comp [] t2)       -> unify (t1 :===: t2)
-  -- FIXME: build and display a diff of the root types
   _                        :===: _                        -> nope
   where
+  -- FIXME: build and display a diff of the root types
   nope = couldNotUnify "mismatch" t1 t2
 
   unifySpine (Nil      :===: Nil)      = Just (pure Nil)
