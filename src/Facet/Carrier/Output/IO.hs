@@ -1,2 +1,6 @@
 module Facet.Carrier.Output.IO
-() where
+( -- * Output effect
+  module Facet.Effect.Readline
+) where
+
+import Facet.Effect.Readline
