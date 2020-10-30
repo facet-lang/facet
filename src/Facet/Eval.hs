@@ -44,6 +44,6 @@ eval = \case
 
   VComp (Comp [] v) -> eval v
 
-  VOp op -> Eval $ \ h k -> h (VOp op) k
+  VOp op -> Eval $ \ h -> h (VOp op)
 
   v          -> pure v
