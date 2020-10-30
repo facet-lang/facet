@@ -7,7 +7,7 @@ import           Data.Version (showVersion)
 import qualified Facet.LSP as LSP
 import qualified Facet.REPL as REPL
 import qualified Facet.Run as Run
-import           Options.Applicative as Options
+import           Options.Applicative
 import qualified Paths_facet as Library (version)
 import           System.Exit
 
@@ -46,7 +46,7 @@ lspParser = LSP.lsp <$> optional (strOption (long "path" <> metavar "PATH"))
 searchPath :: Parser FilePath
 searchPath = strOption (short 'i' <> long "include" <> metavar "PATH" <> help "specify a search path")
 
-version :: Options.Parser (a -> a)
+version :: Parser (a -> a)
 version = infoOption versionString (long "version" <> short 'V' <> help "Output version info.")
 
 versionString :: String
