@@ -180,7 +180,7 @@ printValue env = \case
   C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
   -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
   -- FIXME: should maybe print the quoted variable differently so it stands out.
-  C.VNeut h e ->
+  C.VNe (h :$ e) ->
     let elim h sp  Nil     = case sp Nil of
           Nil -> h
           sp  -> app h sp

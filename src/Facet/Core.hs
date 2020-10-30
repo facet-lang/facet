@@ -78,7 +78,7 @@ data Value
   | VComp Comp
   | VLam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | VNeut Var (Stack (Pl, Value))
+  | VNe (Var :$ (Pl, Value))
   | VCon (QName :$ Value)
   -- | Effect operation and its parameters.
   | VOp (QName :$ (Pl, Value))
@@ -187,7 +187,7 @@ metavar = var . Metavar
 
 
 var :: Var -> Value
-var = (`VNeut` Nil)
+var = VNe . (:$ Nil)
 
 
 unLam :: Has Empty sig m => Value -> m (Pl, [Clause])
@@ -196,13 +196,13 @@ unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 
 -- FIXME: how should this work in weak/parametric HOAS?
 ($$) :: HasCallStack => Value -> (Pl, Value) -> Value
-VNeut h es $$ a = VNeut h (es :> a)
-VComp  t $$ a
+VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
+VComp t       $$ a
   | ForAll _ b <- t = case b (snd a) of
     t@ForAll{} -> VComp t
     Comp _ t   -> t
-VLam _   b $$ a = case' (snd a) b
-_          $$ _ = error "can’t apply non-neutral/forall type"
+VLam _ b      $$ a = case' (snd a) b
+_             $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (HasCallStack, Foldable t) => Value -> t (Pl, Value) -> Value
 ($$*) = foldl' ($$)
@@ -235,8 +235,8 @@ substWith f = go
     VType         -> VType
     VInterface    -> VInterface
     VComp t       -> VComp (substCompWith f t)
-    VLam    p b   -> VLam p (map clause b)
-    VNeut v a     -> f v $$* fmap (fmap go) a
+    VLam p b      -> VLam p (map clause b)
+    VNe (v :$ a)  -> f v $$* fmap (fmap go) a
     VCon c        -> VCon (fmap go c)
     VOp (q :$ sp) -> VOp (q :$ fmap (fmap go) sp)
 
@@ -301,13 +301,13 @@ data Sort
 -- | Classifies values according to whether or not they describe types.
 sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
-  VType      -> SKind
-  VInterface -> SKind
-  VComp t    -> telescope ctx t
-  VLam{}     -> STerm
-  VNeut h sp -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
-  VCon _     -> STerm
-  VOp _      -> STerm -- FIXME: will this always be true?
+  VType         -> SKind
+  VInterface    -> SKind
+  VComp t       -> telescope ctx t
+  VLam{}        -> STerm
+  VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
+  VCon _        -> STerm
+  VOp _         -> STerm -- FIXME: will this always be true?
   where
   telescope ctx = \case
     ForAll (Binding _ _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (telescope (ctx :> _T') (_B (free (Level (length ctx)))))

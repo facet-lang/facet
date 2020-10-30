@@ -71,11 +71,11 @@ unify = trace "unify" . \case
   VType                    :===: VType                    -> pure VType
   VInterface               :===: VInterface               -> pure VInterface
   -- FIXME: resolve globals to try to progress past certain inequalities
-  VNeut h1 e1              :===: VNeut h2 e2
+  VNe (h1 :$ e1)           :===: VNe (h2 :$ e2)
     | h1 == h2
-    , Just e' <- unifySpine (e1 :===: e2)                 -> VNeut h1 <$> e'
-  VNeut (Metavar v) Nil    :===: x                        -> solve (v :=: x)
-  x                        :===: VNeut (Metavar v) Nil    -> solve (v :=: x)
+    , Just e' <- unifySpine (e1 :===: e2)                 -> VNe . (h1 :$) <$> e'
+  VNe (Metavar v :$ Nil)   :===: x                        -> solve (v :=: x)
+  x                        :===: VNe (Metavar v :$ Nil)   -> solve (v :=: x)
   VComp t1                 :===: VComp t2                 -> VComp <$> unifyComp (t1 :===: t2)
   VComp (Comp [] t1)       :===: t2                       -> unify (t1 :===: t2)
   t1                       :===: VComp (Comp [] t2)       -> unify (t1 :===: t2)

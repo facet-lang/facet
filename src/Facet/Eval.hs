@@ -32,7 +32,7 @@ instance MonadTrans Eval where
 -- FIXME: erase terms before evaluating.
 eval :: (Has (Reader Graph) sig m, Has (Reader Module) sig m) => Value -> Eval m Value
 eval = \case
-  VNeut h sp -> do
+  VNe (h :$ sp) -> do
     sp' <- traverse (traverse eval) sp
     mod <- lift ask
     graph <- lift ask
@@ -40,7 +40,7 @@ eval = \case
       Global q
         | Just (_ :=: Just (DTerm v) ::: _) <- lookupQ q mod graph
         -> eval $ v $$* sp'
-      _ -> pure $ VNeut h sp'
+      _ -> pure $ VNe (h :$ sp')
 
   VComp (Comp [] v) -> eval v
 
