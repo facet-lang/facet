@@ -114,7 +114,7 @@ resolveName name = do
   path <- liftIO $ findFile (toList searchPaths) namePath
   case path of
     Just path -> pure path
-    Nothing   -> liftIO $ ioError $ mkIOError doesNotExistErrorType "loadModule" Nothing (Just namePath)
+    Nothing   -> liftIO $ ioError $ mkIOError doesNotExistErrorType "resolveName" Nothing (Just namePath)
   where
   toPath (name :. component) = toPath name FP.</> TS.unpack component
   toPath (MName component)   = TS.unpack component
