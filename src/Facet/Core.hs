@@ -199,6 +199,7 @@ unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 -- FIXME: how should this work in weak/parametric HOAS?
 ($$) :: HasCallStack => Value -> (Pl, Value) -> Value
 VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
+VOp (q :$ es) $$ a = VOp (q :$ (es :> a))
 VComp t       $$ a
   | ForAll _ b <- t = case b (snd a) of
     t@ForAll{} -> VComp t
