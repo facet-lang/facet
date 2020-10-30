@@ -114,7 +114,9 @@ resolveName searchPaths name = do
   path <- liftIO $ findFile searchPaths namePath
   case path of
     Just path -> pure path
-    Nothing   -> throwError @(Notice.Notice (Doc Style)) $ Notice.Notice (Just Notice.Error) Nothing (fillSep [pretty "module", squotes (pretty name), reflow "could not be found."]) [ nest 2 (reflow "search paths:" <\> concatWith (<\>) (map pretty searchPaths)) ]
+    Nothing   -> throwError @(Notice.Notice (Doc Style)) $ Notice.Notice (Just Notice.Error) Nothing (fillSep [pretty "module", squotes (pretty name), reflow "could not be found."]) $ case searchPaths of
+      [] -> []
+      _  -> [ nest 2 (reflow "search paths:" <\> concatWith (<\>) (map pretty searchPaths)) ]
   where
   toPath (name :. component) = toPath name FP.</> TS.unpack component
   toPath (MName component)   = TS.unpack component
