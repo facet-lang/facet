@@ -1,7 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
 module Facet.REPL
 ( repl
-, kernel
 ) where
 
 import           Control.Applicative ((<|>))
@@ -20,7 +19,6 @@ import           Data.Foldable (toList)
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
-import qualified Data.Text as TS
 import           Facet.Carrier.Parser.Church hiding (Input)
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
@@ -99,15 +97,6 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ "
   where
   cyan = setSGRCode [setRGB (hsl 180 1 0.5)] <> "\STX"
   plain = setSGRCode [] <> "\STX"
-
-
-kernel :: Module
-kernel = Module kernelName [] [] $ Map.fromList
-  [ (typeName, Decl (Just (DTerm VType)) (Comp mempty VType))
-  ]
-  where
-  typeName = T (UName (TS.pack "Type"))
-  kernelName = MName (TS.pack "Kernel")
 
 
 loop :: (Has Empty sig m, Has Input sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => m ()

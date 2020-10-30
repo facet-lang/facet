@@ -5,6 +5,7 @@ module Facet.Driver
 , targets_
 , searchPaths_
 , defaultTarget
+, kernel
   -- * Module loading
 , reloadModules
 , loadModuleHeader
@@ -24,6 +25,7 @@ import           Control.Lens (Lens', at, lens)
 import           Control.Monad ((<=<))
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
+import qualified Data.Map as Map
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import qualified Data.Text as TS
@@ -72,6 +74,15 @@ defaultTarget = Target
   , targets = mempty
   , searchPaths = mempty
   }
+
+
+kernel :: Module
+kernel = Module kernelName [] [] $ Map.fromList
+  [ (typeName, Decl (Just (DTerm VType)) (Comp mempty VType))
+  ]
+  where
+  typeName = T (UName (TS.pack "Type"))
+  kernelName = MName (TS.pack "Kernel")
 
 
 -- Module loading
