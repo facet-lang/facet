@@ -81,7 +81,7 @@ unify t1 t2 = trace "unify" $ go t1 t2
     t1                     :===: VComp (Comp [] t2)     -> go t1 t2
     VType                  :===: VType                  -> pure VType
     VInterface             :===: VInterface             -> pure VInterface
-    VPrim p1               :===: VPrim p2               -> VPrim <$> unifyPrim p1 p2
+    VPrim p1               :===: VPrim p2               -> VPrim p1 <$ unless (p1 == p2) nope
     _                      :===: _                      -> nope
 
   -- FIXME: build and display a diff of the root types
@@ -89,10 +89,6 @@ unify t1 t2 = trace "unify" $ go t1 t2
 
   unifySpine sp1 sp2 = unless (length sp1 == length sp2) nope *> sequenceA (zipWith unifyArg sp1 sp2)
   unifyArg (p1, a1) (p2, a2) = (p1,) <$ unless (p1 == p2) nope <*> go a1 a2
-
-  unifyPrim p1 p2 = case (p1, p2) of
-    (TString, TString) -> pure TString
-    _                  -> nope
 
   solve (n :=: val') = do
     subst <- get
