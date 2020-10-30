@@ -95,6 +95,7 @@ type Expr = Value
 data Prim
   = TString
   | VString Text
+  deriving (Eq, Ord, Show)
 
 
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
