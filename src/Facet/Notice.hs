@@ -8,9 +8,8 @@ module Facet.Notice
 , context_
 ) where
 
-import           Control.Lens (Lens', lens)
-import           Facet.Source (Source(..))
-import qualified Prettyprinter as P
+import Control.Lens (Lens', lens)
+import Facet.Source (Source(..))
 
 -- Notices
 
@@ -19,13 +18,6 @@ data Level
   | Warn
   | Error
   deriving (Eq, Ord, Show)
-
-instance P.Pretty Level where
-  pretty = \case
-    Info  -> P.pretty "info"
-    Warn  -> P.pretty "warning"
-    Error -> P.pretty "error"
-
 
 data Notice a = Notice
   { level   :: !(Maybe Level)

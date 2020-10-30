@@ -83,12 +83,14 @@ prettyNotice (Notice.Notice level src reason context) = concatWith (surround har
   , (context >>= \ ctx -> [ mempty, annotate Context ctx ])])
   where
   header = nest 2 (group (fillSep
-    [ case src of
-      Just (Source path span _ _) ->
-        annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> prettySpan span <> colon <> foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level
-      Nothing -> foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level
+    [ foldMap (\ (Source path span _ _) -> annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> prettySpan span <> colon) src <> (foldMap ((space <>) . (<> colon) . prettyLevel) level)
     , annotate Reason reason
     ]))
+
+  prettyLevel level = annotate (Level level) $ case level of
+    Notice.Info  -> P.pretty "info"
+    Notice.Warn  -> P.pretty "warning"
+    Notice.Error -> P.pretty "error"
 
   ref (Source _ span _ (line:|_)) = annotate Gutter (pretty (succ (Span.line (Span.start span)))) <+> align (vcat
     [ annotate Gutter (pretty '|') <+> prettyLine line
