@@ -29,6 +29,7 @@ import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Trace.REPL
 import           Facet.Core
+import           Facet.Driver
 import qualified Facet.Elab as Elab
 import           Facet.Eval
 import           Facet.Flag
@@ -70,21 +71,6 @@ repl
   . runTrace Nil
   $ loop
 
-
-data Target = Target
-  { modules     :: Graph
-  , targets     :: Set.Set MName
-  , searchPaths :: Set.Set FilePath
-  }
-
-modules_ :: Lens' Target Graph
-modules_ = lens modules (\ r modules -> r{ modules })
-
-targets_ :: Lens' Target (Set.Set MName)
-targets_ = lens targets (\ r targets -> r{ targets })
-
-searchPaths_ :: Lens' Target (Set.Set FilePath)
-searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 
 data REPL = REPL
   { line           :: Int
