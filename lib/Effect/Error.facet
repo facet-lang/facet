@@ -1,4 +1,4 @@
-module Interface.Error
+module Effect.Error
 : Module
 { import Data.Either
 , import Data.Function }

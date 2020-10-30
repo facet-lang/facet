@@ -1,4 +1,4 @@
-module Interface.State
+module Effect.State
 : Module
 { import Data.Function
 , import Data.Pair

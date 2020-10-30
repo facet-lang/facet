@@ -1,4 +1,4 @@
-module Interface.Choose : Module
+module Effect.Choose : Module
 { import Data.Bool }
 
 interface Choose : Interface

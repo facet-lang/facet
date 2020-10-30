@@ -1,4 +1,4 @@
-module Interface.Writer : Module
+module Effect.Writer : Module
 { import Data.Pair
 , import Data.Unit }
 

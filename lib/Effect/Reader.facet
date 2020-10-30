@@ -1,4 +1,4 @@
-module Interface.Reader : Module
+module Effect.Reader : Module
 
 interface Reader : (R : Type) -> Interface
 { ask : [Reader R] R
