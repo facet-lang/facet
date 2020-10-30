@@ -69,7 +69,7 @@ import           GHC.Stack
 
 -- FIXME: we don’t get good source references during unification
 unify :: Type :===: Type -> Elab Type
-unify = trace "unify" . \case
+unify (t1 :===: t2) = trace "unify" $ case (t1 :===: t2) of
   VType                    :===: VType                    -> pure VType
   VInterface               :===: VInterface               -> pure VInterface
   -- FIXME: resolve globals to try to progress past certain inequalities
