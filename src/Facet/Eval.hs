@@ -1,11 +1,14 @@
 module Facet.Eval
-( eval
+( Eval(..)
+, eval
 ) where
 
 import Control.Effect.Reader
 import Facet.Core
 import Facet.Graph
 import Facet.Syntax
+
+newtype Eval m a = Eval { runEval :: forall r . (Value -> (Value -> Eval m a) -> m r) -> (a -> m r) -> m r }
 
 -- FIXME: erase terms before evaluating.
 eval :: (Has (Reader Graph) sig m, Has (Reader Module) sig m) => Value -> m Value
