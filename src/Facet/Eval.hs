@@ -31,12 +31,12 @@ instance MonadTrans Eval where
 
 
 -- FIXME: erase terms before evaluating.
-eval :: (Has (Reader Graph) sig m, Has (Reader Module) sig m) => Value -> m Value
+eval :: (Has (Reader Graph) sig m, Has (Reader Module) sig m) => Value -> Eval m Value
 eval = \case
   VNeut h sp -> do
     sp' <- traverse (traverse eval) sp
-    mod <- ask
-    graph <- ask
+    mod <- lift ask
+    graph <- lift ask
     case h of
       Global q
         | Just (_ :=: Just (DTerm v) ::: _) <- lookupQ q mod graph

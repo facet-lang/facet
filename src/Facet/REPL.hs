@@ -217,8 +217,12 @@ showType e = Action $ \ src -> do
 showEval :: S.Ann S.Expr -> Action
 showEval e = Action $ \ src -> do
   e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.synth (Elab.synthExpr e))
-  e'' <- elab src $ eval e'
+  e'' <- elab src $ runEvalMain (eval e')
   outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil _T)))
+
+-- FIXME: should actually handle “syscall” effects here.
+runEvalMain :: Applicative m => Eval m a -> m a
+runEvalMain = runEval (fmap runEvalMain . flip ($)) pure
 
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m [Maybe Module]
