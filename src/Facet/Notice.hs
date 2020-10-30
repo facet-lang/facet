@@ -6,7 +6,6 @@ module Facet.Notice
 , source_
 , reason_
 , context_
-, reAnnotateNotice
 ) where
 
 import           Control.Lens (Lens', lens)
@@ -48,6 +47,3 @@ reason_ = lens reason $ \ n reason -> n{ reason }
 
 context_ :: Lens' (Notice a) [P.Doc a]
 context_ = lens context $ \ n context -> n{ context }
-
-reAnnotateNotice :: (a -> b) -> (Notice a -> Notice b)
-reAnnotateNotice f Notice{ level, source, reason, context} = Notice{ level, source, reason = P.reAnnotate f reason, context = map (P.reAnnotate f) context }
