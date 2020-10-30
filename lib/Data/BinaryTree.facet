@@ -1,5 +1,6 @@
 module Data.BinaryTree
-# { import Algebra.Semigroup }
+# { import Algebra.Monoid
+# , import Algebra.Semigroup }
 
 data BinaryTree : (A : Type) -> Type
 { nil : BinaryTree A
@@ -14,3 +15,7 @@ map : { A, B : Type } -> (f : A -> B) -> (BinaryTree A -> BinaryTree B)
 # semigroup : { A, B : Type } -> [Semigroup (BinaryTree A)] B -> B
 # { [l <> r ; k] -> k (branch l r)
 # , x            -> x }
+
+# monoid : { A, B : Type } -> [Monoid (BinaryTree A)] B -> B
+# { [zero ; k] -> k nil
+# , x          -> x }
