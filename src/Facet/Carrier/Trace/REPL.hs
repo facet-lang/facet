@@ -32,7 +32,7 @@ data LogTraces = LogTraces
 newtype TraceC m a = TraceC (Stack (Doc Style) -> StateC (Flag LogTraces) m a)
   deriving (Applicative, Functor, Monad, MonadFail, MonadIO) via ReaderC (Stack (Doc Style)) (StateC (Flag LogTraces) m)
 
-instance Has Readline sig m => Algebra (Trace :+: State (Flag LogTraces) :+: sig) (TraceC m) where
+instance Has Output sig m => Algebra (Trace :+: State (Flag LogTraces) :+: sig) (TraceC m) where
   alg hdl sig ctx = TraceC $ \ stack -> case sig of
     L (Trace msg m) -> do
       logTraces <- gets (fromFlag LogTraces)

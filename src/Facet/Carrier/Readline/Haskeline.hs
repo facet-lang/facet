@@ -47,13 +47,15 @@ runReadlineWithHistory block = do
 newtype ReadlineC m a = ReadlineC { runReadlineC :: InputT m a }
   deriving (Applicative, Functor, Monad, MonadFix, MonadIO, MonadTrans)
 
-instance (Algebra sig m, MonadIO m, MonadMask m) => Algebra (Readline :+: sig) (ReadlineC m) where
+instance (Algebra sig m, MonadIO m, MonadMask m) => Algebra (Input :+: Output :+: sig) (ReadlineC m) where
   alg hdl sig ctx = case sig of
-    L readline -> case readline of
+    L readline          -> case readline of
       GetInputLine prompt -> (<$ ctx) <$> ReadlineC (H.getInputLine prompt)
-      OutputDoc d         -> do
-        opts <- liftIO layoutOptionsForTerminal
-        (<$ ctx) <$> ReadlineC (H.outputStr (unpack (renderLazy (reAnnotateS terminalStyle (layoutSmart opts d)))))
       WithInterrupt m     -> ReadlineC (H.withInterrupt (runReadlineC (hdl (m <$ ctx))))
       HandleInterrupt h m -> ReadlineC (H.handleInterrupt (runReadlineC (hdl (h <$ ctx))) (runReadlineC (hdl (m <$ ctx))))
-    R other -> ReadlineC $ H.withRunInBase $ \ run -> alg (run . runReadlineC . hdl) other ctx
+
+    R (L (OutputDoc d)) -> do
+        opts <- liftIO layoutOptionsForTerminal
+        (<$ ctx) <$> ReadlineC (H.outputStr (unpack (renderLazy (reAnnotateS terminalStyle (layoutSmart opts d)))))
+
+    R (R other)         -> ReadlineC $ H.withRunInBase $ \ run -> alg (run . runReadlineC . hdl) other ctx

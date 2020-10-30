@@ -24,7 +24,7 @@ import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
 import qualified Data.Text as TS
 import           Data.Traversable (for)
-import           Facet.Carrier.Parser.Church
+import           Facet.Carrier.Parser.Church hiding (Input)
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Trace.REPL
@@ -118,7 +118,7 @@ kernel = Module kernelName [] [] $ Map.fromList
   kernelName = MName (TS.pack "Kernel")
 
 
-loop :: (Has Empty sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => m ()
+loop :: (Has Empty sig m, Has Input sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => m ()
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
@@ -167,10 +167,10 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-runAction :: (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> Action -> m ()
+runAction :: (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> Action -> m ()
 runAction src (Action f) = f src
 
-newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m ())
+newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m ())
 
 
 showPaths, showModules, showTargets :: Action
@@ -217,7 +217,7 @@ runEvalMain :: Applicative m => Eval m a -> m a
 runEvalMain = runEval (fmap runEvalMain . flip ($)) pure
 
 
-reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m ()
+reload :: (Has (Error (Notice.Notice Style)) sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m ()
 reload src = target_ `zoom` do
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
@@ -250,7 +250,7 @@ helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry (getCommands commands))
   w = align . fillSep . map pretty . words
 
 
-prompt :: (Has Readline sig m, Has (State REPL) sig m, MonadIO m) => m (Maybe Source)
+prompt :: (Has Input sig m, Has (State REPL) sig m, MonadIO m) => m (Maybe Source)
 prompt = do
   line <- gets line
   line_ %= (+ 1)
