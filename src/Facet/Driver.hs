@@ -5,26 +5,33 @@ module Facet.Driver
 , targets_
 , searchPaths_
   -- * Module loading
+, reloadModules
 , loadModuleHeader
 , loadModule
 , resolveName
 ) where
 
+import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
+import           Control.Effect.Error
 import           Control.Effect.Lens (use, (.=))
 import           Control.Effect.State
-import           Control.Effect.Throw
 import           Control.Lens (Lens', at, lens)
 import           Control.Monad ((<=<))
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
+import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import qualified Data.Text as TS
+import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church
+import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Core
+import           Facet.Effect.Readline
 import           Facet.Effect.Trace
 import qualified Facet.Elab as Elab
 import           Facet.Graph
+import           Facet.Lens
 import           Facet.Name
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab (rethrowElabErrors)
@@ -57,6 +64,29 @@ searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 
 
 -- Module loading
+
+reloadModules :: (Has (Error (Notice.Notice Style)) sig m, Has Output sig m, Has (State Target) sig m, Has Trace sig m, MonadIO m) => Source -> m ()
+reloadModules src = do
+  modules <- targets_ ~> \ targets -> do
+    -- FIXME: remove stale modules
+    -- FIXME: failed module header parses shouldn’t invalidate everything.
+    targetHeads <- traverse (loadModuleHeader src . Right) (toList targets)
+    rethrowGraphErrors src $ loadOrder (fmap toNode . loadModuleHeader src . Right) (map toNode targetHeads)
+  let nModules = length modules
+  results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
+    i <- fresh
+    outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
+
+    -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
+    (Just <$> loadModule name path src imports) `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice' err)
+  let nSuccess = length (catMaybes results)
+      status
+        | nModules == nSuccess = annotate Success (pretty nModules)
+        | otherwise            = annotate Failure (ratio nSuccess nModules)
+  outputDocLn (fillSep [status, reflow "modules loaded."])
+  where
+  ratio n d = pretty n <+> pretty "of" <+> pretty d
+  toNode (n, path, source, imports) = let imports' = map ((S.name :: S.Import -> MName) . S.out) imports in Node n imports' (n, path, source, imports')
 
 loadModuleHeader :: (Has (State Target) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
 loadModuleHeader src target = do
@@ -97,3 +127,8 @@ rethrowIOErrors src m = liftIO (tryIOError m) >>= either (throwError . ioErrorTo
 
 ioErrorToNotice :: Source -> IOError -> Notice.Notice Style
 ioErrorToNotice src err = Notice.Notice (Just Notice.Error) src (group (reflow (show err))) []
+
+rethrowGraphErrors :: Source -> I.ThrowC (Notice.Notice Style) GraphErr m a -> m a
+rethrowGraphErrors src = I.runThrow formatGraphErr
+  where
+  formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) src (reflow "cyclic import") (map pretty (toList path))

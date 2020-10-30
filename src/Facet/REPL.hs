@@ -7,7 +7,6 @@ module Facet.REPL
 import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
-import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, uses, (%=))
@@ -19,11 +18,9 @@ import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
 import           Data.Foldable (toList)
 import qualified Data.Map as Map
-import           Data.Maybe (catMaybes)
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
 import qualified Data.Text as TS
-import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church hiding (Input)
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
@@ -156,7 +153,7 @@ commands = choice
     [ removePath   <$ token (string "path")   <*> path'
     , removeTarget <$ token (string "target") <*> some mname
     ]
-  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (zoom target_ . reload))
+  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (zoom target_ . reloadModules))
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ showType <$> runFacet [] expr
   , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
@@ -192,7 +189,7 @@ addPath path = Action $ \ _ -> target_.searchPaths_ %= Set.insert path
 addTarget :: [MName] -> Action
 addTarget targets = Action $ \ src -> do
   target_.targets_ %= Set.union (Set.fromList targets)
-  target_ `zoom` reload src
+  target_ `zoom` reloadModules src
 
 removePath :: FilePath -> Action
 removePath path = Action $ \ _ -> target_.searchPaths_ %= Set.delete path
@@ -217,30 +214,6 @@ runEvalMain :: Applicative m => Eval m a -> m a
 runEvalMain = runEval (fmap runEvalMain . flip ($)) pure
 
 
-reload :: (Has (Error (Notice.Notice Style)) sig m, Has Output sig m, Has (State Target) sig m, Has Trace sig m, MonadIO m) => Source -> m ()
-reload src = do
-  modules <- targets_ ~> \ targets -> do
-    -- FIXME: remove stale modules
-    -- FIXME: failed module header parses shouldn’t invalidate everything.
-    targetHeads <- traverse (loadModuleHeader src . Right) (toList targets)
-    rethrowGraphErrors src $ loadOrder (fmap toNode . loadModuleHeader src . Right) (map toNode targetHeads)
-  let nModules = length modules
-  results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
-    i <- fresh
-    outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
-
-    -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
-    (Just <$> loadModule name path src imports) `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice' err)
-  let nSuccess = length (catMaybes results)
-      status
-        | nModules == nSuccess = annotate Success (pretty nModules)
-        | otherwise            = annotate Failure (ratio nSuccess nModules)
-  outputDocLn (fillSep [status, reflow "modules loaded."])
-  where
-  ratio n d = pretty n <+> pretty "of" <+> pretty d
-  toNode (n, path, source, imports) = let imports' = map ((S.name :: S.Import -> MName) . S.out) imports in Node n imports' (n, path, source, imports')
-
-
 helpDoc :: Doc Style
 helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry (getCommands commands))
   where
@@ -263,9 +236,3 @@ elab src m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
   runReader (span src) . runReader graph . runReader localDefs . rethrowElabErrors src $ m
-
-
-rethrowGraphErrors :: Source -> I.ThrowC (Notice.Notice Style) GraphErr m a -> m a
-rethrowGraphErrors src = I.runThrow formatGraphErr
-  where
-  formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) src (reflow "cyclic import") (map pretty (toList path))
