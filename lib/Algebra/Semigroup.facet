@@ -1,4 +1,4 @@
 module Algebra.Semigroup : Module
 
 interface Semigroup : (A : Type) -> Interface
-{ _ <> _ : A -> A -> [Semigroup A] A }
+{ _ <> _ [right-assoc] : A -> A -> [Semigroup A] A }
