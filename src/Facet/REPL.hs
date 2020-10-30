@@ -86,7 +86,6 @@ targets_ = lens targets (\ r targets -> r{ targets })
 searchPaths_ :: Lens' Target (Set.Set FilePath)
 searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 
--- FIXME: split general compilation target state out of REPL state.
 data REPL = REPL
   { line           :: Int
   , promptFunction :: Int -> IO String
