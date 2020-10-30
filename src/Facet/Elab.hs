@@ -102,7 +102,6 @@ unify t1 t2 = trace "unify" $ case t1 :===: t2 of
   unifyComp c1 c2 = case c1 :===: c2 of
     ForAll (Binding p1 n1 s1 t1) b1 :===: ForAll (Binding p2 _  s2 t2) b2
       | p1 == p2 -> do
-        -- FIXME: unify the signatures
         s <- unifySig s1 s2
         t <- unify t1 t2
         d <- asks @(Context Type) level
