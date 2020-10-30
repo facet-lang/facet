@@ -36,7 +36,6 @@ module Facet.Elab
 ) where
 
 import           Control.Algebra
-import           Control.Applicative (liftA2)
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
@@ -44,11 +43,12 @@ import           Control.Effect.Empty
 import           Control.Effect.Lens ((.=))
 import           Control.Effect.Sum
 import           Control.Lens (at, ix)
-import           Control.Monad ((<=<))
+import           Control.Monad (unless, (<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', for_, toList)
 import qualified Data.IntMap as IntMap
 import           Data.Maybe (catMaybes)
+import           Data.Semialign
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
@@ -64,32 +64,29 @@ import           Facet.Stack hiding ((!?))
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
+import           Prelude hiding (zipWith)
 
 -- General
 
 -- FIXME: we don’t get good source references during unification
 unify :: Type :===: Type -> Elab Type
 unify (t1 :===: t2) = trace "unify" $ case (t1 :===: t2) of
-  VType                    :===: VType                    -> pure VType
-  VInterface               :===: VInterface               -> pure VInterface
+  VType                    :===: VType                  -> pure VType
+  VInterface               :===: VInterface             -> pure VInterface
   -- FIXME: resolve globals to try to progress past certain inequalities
-  VNe (h1 :$ e1)           :===: VNe (h2 :$ e2)
-    | h1 == h2
-    , Just e' <- unifySpine (e1 :===: e2)                 -> VNe . (h1 :$) <$> e'
-  VNe (Metavar v :$ Nil)   :===: x                        -> solve (v :=: x)
-  x                        :===: VNe (Metavar v :$ Nil)   -> solve (v :=: x)
-  VComp t1                 :===: VComp t2                 -> VComp <$> unifyComp (t1 :===: t2)
-  VComp (Comp [] t1)       :===: t2                       -> unify (t1 :===: t2)
-  t1                       :===: VComp (Comp [] t2)       -> unify (t1 :===: t2)
-  _                        :===: _                        -> nope
+  VNe (h1 :$ e1)           :===: VNe (h2 :$ e2)         -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine (e1 :===: e2)
+  VNe (Metavar v :$ Nil)   :===: x                      -> solve (v :=: x)
+  x                        :===: VNe (Metavar v :$ Nil) -> solve (v :=: x)
+  VComp t1                 :===: VComp t2               -> VComp <$> unifyComp (t1 :===: t2)
+  VComp (Comp [] t1)       :===: t2                     -> unify (t1 :===: t2)
+  t1                       :===: VComp (Comp [] t2)     -> unify (t1 :===: t2)
+  _                        :===: _                      -> nope
   where
   -- FIXME: build and display a diff of the root types
   nope = couldNotUnify "mismatch" t1 t2
 
-  unifySpine (Nil      :===: Nil)      = Just (pure Nil)
-  unifySpine (i1 :> l1 :===: i2 :> l2)
-    | fst l1 == fst l2                 = liftA2 (:>) <$> unifySpine (i1 :===: i2) <*> Just ((fst l1,) <$> unify (snd l1 :===: snd l2))
-  unifySpine _                         = Nothing
+  unifySpine (sp1 :===: sp2) = unless (length sp1 == length sp2) nope *> sequenceA (zipWith unifyArg sp1 sp2)
+  unifyArg (p1, a1) (p2, a2) = (p1,) <$ unless (p1 == p2) nope <*> unify (a1 :===: a2)
 
   solve (n :=: val') = do
     subst <- get
