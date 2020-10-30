@@ -74,6 +74,7 @@ library
     Facet.Flag
     Facet.Graph
     Facet.LSP
+    Facet.Lens
     Facet.Name
     Facet.Notice
     Facet.Notice.Elab
