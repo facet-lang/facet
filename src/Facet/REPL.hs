@@ -49,7 +49,6 @@ import           Facet.Style as Style
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Prelude hiding (span, unlines)
-import qualified Prettyprinter as P
 import           Silkscreen as S hiding (Ann, line)
 import           System.Console.ANSI
 import           System.Directory
@@ -257,12 +256,6 @@ prompt = do
   fn <- gets promptFunction
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
-
-prettyNotice' :: Notice.Notice Style -> Doc Style
-prettyNotice' = P.reAnnotate Style.Notice . Notice.prettyNotice
-
-prettyCode :: Print -> Doc Style
-prettyCode = P.reAnnotate Code . getPrint
 
 elab :: Has (State REPL) sig m => Source -> I.ThrowC (Notice.Notice Style) Elab.Err (ReaderC Module (ReaderC Graph (ReaderC Span m))) a -> m a
 elab src m = do

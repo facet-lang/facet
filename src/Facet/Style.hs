@@ -3,13 +3,18 @@ module Facet.Style
 , terminalStyle
 , terminalNoticeStyle
 , terminalCodeStyle
+  -- * Pretty-printing
+, prettyNotice'
+, prettyCode
 ) where
 
-import Data.Colour.RGBSpace.HSL
-import Facet.Name (Level(getLevel), Meta(..))
-import Facet.Notice as Notice hiding (Notice)
-import Facet.Pretty
-import Facet.Print as Print
+import           Data.Colour.RGBSpace.HSL
+import           Facet.Name (Level(getLevel), Meta(..))
+import           Facet.Notice as Notice (Notice)
+import           Facet.Notice as Notice hiding (Notice)
+import           Facet.Pretty
+import           Facet.Print as Print
+import qualified Prettyprinter as P
 
 data Style
   = Failure
@@ -56,3 +61,12 @@ terminalCodeStyle = \case
   where
   pick i s l = hsl (fromIntegral i * phi * 30) s l
   phi = 1.618033988749895
+
+
+-- Pretty-printing
+
+prettyNotice' :: Notice Style -> Doc Style
+prettyNotice' = P.reAnnotate Notice . Notice.prettyNotice
+
+prettyCode :: Print -> Doc Style
+prettyCode = P.reAnnotate Code . getPrint
