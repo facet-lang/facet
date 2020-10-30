@@ -5,7 +5,6 @@
 module Facet.Elab
 ( -- * General
   unify
-, unifyComp
 , switch
 , as
 , global
@@ -100,22 +99,21 @@ unify t1 t2 = trace "unify" $ case t1 :===: t2 of
       Just val ::: _T -> unify val' val
       Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
 
-unifyComp :: Comp -> Comp -> Elab Comp
-unifyComp c1 c2 = case c1 :===: c2 of
-  ForAll (Binding p1 n1 s1 t1) b1 :===: ForAll (Binding p2 _  s2 t2) b2
-    | p1 == p2 -> do
-      -- FIXME: unify the signatures
-      s <- unifySig s1 s2
-      t <- unify t1 t2
-      d <- asks @(Context Type) level
-      let v = free d
-      b <- unifyComp (b1 v) (b2 v)
-      pure $ ForAll (Binding p1 n1 s t) (\ v -> C.bindComp d v b)
-  Comp s1 t1 :===: Comp s2 t2 -> Comp <$> unifySig s1 s2 <*> unify t1 t2
-  Comp [] t1 :===: t2         -> fromValue <$> unify t1 (VComp t2)
-  t1         :===: Comp [] t2 -> fromValue <$> unify (VComp t1) t2
-  t1         :===: t2         -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
-  where
+  unifyComp c1 c2 = case c1 :===: c2 of
+    ForAll (Binding p1 n1 s1 t1) b1 :===: ForAll (Binding p2 _  s2 t2) b2
+      | p1 == p2 -> do
+        -- FIXME: unify the signatures
+        s <- unifySig s1 s2
+        t <- unify t1 t2
+        d <- asks @(Context Type) level
+        let v = free d
+        b <- unifyComp (b1 v) (b2 v)
+        pure $ ForAll (Binding p1 n1 s t) (\ v -> C.bindComp d v b)
+    Comp s1 t1 :===: Comp s2 t2 -> Comp <$> unifySig s1 s2 <*> unify t1 t2
+    Comp [] t1 :===: t2         -> fromValue <$> unify t1 (VComp t2)
+    t1         :===: Comp [] t2 -> fromValue <$> unify (VComp t1) t2
+    t1         :===: t2         -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
+
   -- FIXME: unify the signatures
   unifySig s1 _ = pure s1
 
