@@ -10,8 +10,7 @@ module Facet.Style
 
 import           Data.Colour.RGBSpace.HSL
 import           Facet.Name (Level(getLevel), Meta(..))
-import           Facet.Notice as Notice (Notice)
-import           Facet.Notice as Notice hiding (Notice)
+import qualified Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print
 import qualified Prettyprinter as P
@@ -36,17 +35,17 @@ terminalStyle = \case
 
 terminalNoticeStyle :: Notice.Highlight [SGR] -> [SGR]
 terminalNoticeStyle = \case
-  Path      -> [setBold]
-  Level l -> case l of
-    Info  -> [setRGB (hsl 0 0 0.5)]
-    Warn  -> [setRGB (hsl 300 1 0.5)]
-    Error -> [setRGB (hsl 0 1 0.5)]
-  Span      -> [setBold]
-  Reason s  -> s
-  Gutter    -> [setRGB (hsl 230 1 0.7)]
-  End       -> [setRGB (hsl 230 1 0.7)]
-  Caret     -> [setRGB (hsl 120 0.8 0.4)]
-  Context s -> s
+  Notice.Path      -> [setBold]
+  Notice.Level l -> case l of
+    Notice.Info  -> [setRGB (hsl 0 0 0.5)]
+    Notice.Warn  -> [setRGB (hsl 300 1 0.5)]
+    Notice.Error -> [setRGB (hsl 0 1 0.5)]
+  Notice.Span      -> [setBold]
+  Notice.Reason s  -> s
+  Notice.Gutter    -> [setRGB (hsl 230 1 0.7)]
+  Notice.End       -> [setRGB (hsl 230 1 0.7)]
+  Notice.Caret     -> [setRGB (hsl 120 0.8 0.4)]
+  Notice.Context s -> s
 
 terminalCodeStyle :: Print.Highlight -> [SGR]
 terminalCodeStyle = \case
@@ -65,7 +64,7 @@ terminalCodeStyle = \case
 
 -- Pretty-printing
 
-prettyNotice' :: Notice Style -> Doc Style
+prettyNotice' :: Notice.Notice Style -> Doc Style
 prettyNotice' = P.reAnnotate Notice . Notice.prettyNotice
 
 prettyCode :: Print -> Doc Style
