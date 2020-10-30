@@ -280,7 +280,12 @@ synthExpr (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
   S.TComp t    -> VComp <$> elabSTelescope t
   S.App f a    -> synthExpr f $$ checkExpr a
   S.As t _T    -> as (checkExpr t ::: checkExpr _T)
-  _            -> Synth $ couldNotSynthesize (show e)
+  S.Hole{}     -> nope
+  S.Lam{}      -> nope
+  S.Thunk{}    -> nope
+  S.Force{}    -> nope
+  where
+  nope = Synth $ couldNotSynthesize (show e)
 
 checkExpr
   :: HasCallStack
