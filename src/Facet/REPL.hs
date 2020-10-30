@@ -104,7 +104,7 @@ defaultREPLState = REPL
   , localDefs
   , modules
   , targets        = mempty
-  , searchPaths    = Set.singleton "src"
+  , searchPaths    = Set.singleton "lib"
   }
   where
   localDefs = Module (MName mempty) [] [] mempty
