@@ -2,3 +2,7 @@ module Algebra.Semigroup : Module
 
 interface Semigroup : (A : Type) -> Interface
 { _ <> _ [right-assoc] : A -> A -> [Semigroup A] A }
+
+semigroupOf : { A, B : Type } -> (plus : A -> A -> A) -> [Semigroup A] B -> B
+{ [l <> r ; k] -> k (plus l r)
+, x            -> x }
