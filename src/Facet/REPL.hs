@@ -10,10 +10,10 @@ import           Control.Carrier.Error.Church
 import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, uses, (%=), (.=))
+import           Control.Effect.Lens (use, uses, (%=), (.=), (<~))
 import           Control.Exception (handle)
 import           Control.Lens (Getting, Lens', at, lens)
-import           Control.Monad (unless, void, (<=<))
+import           Control.Monad (unless, (<=<))
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
@@ -173,7 +173,7 @@ commands = choice
     [ removePath   <$ token (string "path")   <*> path'
     , removeTarget <$ token (string "target") <*> some mname
     ]
-  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (void . reload))
+  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action reload)
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ showType <$> runFacet [] expr
   , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
@@ -209,7 +209,7 @@ addPath path = Action $ \ _ -> target_.searchPaths_ %= Set.insert path
 addTarget :: [MName] -> Action
 addTarget targets = Action $ \ src -> do
   target_.targets_ %= Set.union (Set.fromList targets)
-  void $ reload src
+  reload src
 
 removePath :: FilePath -> Action
 removePath path = Action $ \ _ -> target_.searchPaths_ %= Set.delete path
@@ -234,9 +234,9 @@ runEvalMain :: Applicative m => Eval m a -> m a
 runEvalMain = runEval (fmap runEvalMain . flip ($)) pure
 
 
-reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m [Maybe Module]
-reload src = do
-  modules <- target_.targets_ ~> \ targets -> do
+reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m ()
+reload src = target_ `zoom` do
+  modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
     targetHeads <- traverse (loadModuleHeader src . Right) (toList targets)
@@ -252,12 +252,12 @@ reload src = do
       status
         | nModules == nSuccess = annotate Success (pretty nModules)
         | otherwise            = annotate Failure (ratio nSuccess nModules)
-  results <$ outputDocLn (fillSep [status, reflow "modules loaded."])
+  outputDocLn (fillSep [status, reflow "modules loaded."])
   where
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = let imports' = map ((S.name :: S.Import -> MName) . S.out) imports in Node n imports' (n, path, source, imports')
 
-loadModuleHeader :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
+loadModuleHeader :: (Has (State Target) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
 loadModuleHeader src target = do
   path <- case target of
     Left path  -> pure path
@@ -267,18 +267,18 @@ loadModuleHeader src target = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
 
-loadModule :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, Has Trace sig m) => MName -> FilePath -> Source -> [MName] -> m Module
+loadModule :: (Has (State Target) sig m, Has (Throw (Notice.Notice Style)) sig m, Has Trace sig m) => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
-  graph <- use (target_.modules_)
+  graph <- use modules_
   let ops = foldMap (operators . snd <=< (`lookupM` graph)) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   m <- rethrowElabErrors src . runReader graph $ Elab.elabModule m
-  target_.modules_.at name .= Just (Just path, m)
+  modules_.at name .= Just (Just path, m)
   pure m
 
-resolveName :: (Has (State REPL) sig m, MonadIO m) => MName -> m FilePath
+resolveName :: (Has (State Target) sig m, MonadIO m) => MName -> m FilePath
 resolveName name = do
-  searchPaths <- use (target_.searchPaths_)
+  searchPaths <- use searchPaths_
   let namePath = toPath name FP.<.> ".facet"
   path <- liftIO $ findFile (toList searchPaths) namePath
   case path of
@@ -319,11 +319,22 @@ elab src m = do
   runReader (span src) . runReader graph . runReader localDefs . rethrowElabErrors src $ m
 
 
+zoom :: Has (State s) sig m => Lens' s a -> StateC a m () -> m ()
+zoom lens action = lens <~> (`execState` action)
+
+infixr 2 `zoom`
+
 -- | Compose a getter onto the input of a Kleisli arrow and run it on the 'State'.
 (~>) :: Has (State s) sig m => Getting a s a -> (a -> m b) -> m b
 lens ~> act = use lens >>= act
 
 infixr 2 ~>
+
+-- | Compose a lens onto either side of a Kleisli arrow and run it on the 'State'.
+(<~>) :: Has (State s) sig m => Lens' s a -> (a -> m a) -> m ()
+lens <~> act = lens <~ lens ~> act
+
+infixr 2 <~>
 
 
 rethrowIOErrors :: (Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> IO a -> m a
