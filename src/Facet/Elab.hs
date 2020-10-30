@@ -17,6 +17,7 @@ module Facet.Elab
 , comp
 , ($$)
 , lam
+, string
   -- * Modules
 , elabModule
 , apply
@@ -49,6 +50,7 @@ import           Data.Foldable (foldl', for_, toList)
 import qualified Data.IntMap as IntMap
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
+import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Context as Context
 import           Facet.Core hiding (global, ($$))
@@ -415,6 +417,10 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> setSpan s $ case p of
         check
           (   elabPattern p (\ p' -> go (_B v) ps (\ ps' -> k (p' : ps')))
           ::: _A)
+
+
+string :: Text -> Synth Expr
+string s = Synth $ pure $ VPrim (VString s) ::: VPrim TString
 
 
 -- Declarations
