@@ -14,7 +14,7 @@ module Facet.Driver
 import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Effect.Error
-import           Control.Effect.Lens (use, (.=))
+import           Control.Effect.Lens (use, uses, (.=))
 import           Control.Effect.State
 import           Control.Lens (Lens', at, lens)
 import           Control.Monad ((<=<))
@@ -92,7 +92,9 @@ loadModuleHeader :: (Has (State Target) sig m, Has (Throw (Notice.Notice (Doc St
 loadModuleHeader target = do
   path <- case target of
     Left path  -> pure path
-    Right name -> resolveName name
+    Right name -> do
+      searchPaths <- uses searchPaths_ toList
+      resolveName searchPaths name
   src <- rethrowIOErrors Nothing $ readSourceFromFile path
   -- FIXME: validate that the name matches
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
@@ -107,11 +109,10 @@ loadModule name path src imports = do
   modules_.at name .= Just (Just path, m)
   pure m
 
-resolveName :: (Has (State Target) sig m, MonadIO m) => MName -> m FilePath
-resolveName name = do
-  searchPaths <- use searchPaths_
+resolveName :: MonadIO m => [FilePath] -> MName -> m FilePath
+resolveName searchPaths name = do
   let namePath = toPath name FP.<.> ".facet"
-  path <- liftIO $ findFile (toList searchPaths) namePath
+  path <- liftIO $ findFile searchPaths namePath
   case path of
     Just path -> pure path
     Nothing   -> liftIO $ ioError $ mkIOError doesNotExistErrorType "resolveName" Nothing (Just namePath)
