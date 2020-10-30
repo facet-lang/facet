@@ -109,7 +109,9 @@ unify = go
     Comp s1 t1 :===: Comp s2 t2 -> Comp <$> unifySig s1 s2 <*> go t1 t2
     Comp [] t1 :===: t2         -> fromValue <$> go t1 (VComp t2)
     t1         :===: Comp [] t2 -> fromValue <$> go (VComp t1) t2
-    t1         :===: t2         -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
+    _          :===: _          -> nope
+    where
+    nope = couldNotUnify "mismatch" (VComp c1) (VComp c2)
 
   -- FIXME: unify the signatures
   unifySig s1 _ = pure s1
