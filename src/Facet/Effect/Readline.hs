@@ -10,6 +10,8 @@ module Facet.Effect.Readline
 , Output(..)
 , outputStr
 , outputStrLn
+, outputText
+, outputTextLn
 , outputDoc
 , outputDocLn
   -- * Re-exports
@@ -20,6 +22,7 @@ module Facet.Effect.Readline
 
 import Control.Algebra
 import Data.Kind (Type)
+import Data.Text
 import Facet.Pretty
 import Facet.Style
 
@@ -43,6 +46,12 @@ outputStr s = outputDoc (pretty s)
 
 outputStrLn :: Has Output sig m => String -> m ()
 outputStrLn s = outputStr (s <> "\n")
+
+outputText :: Has Output sig m => Text -> m ()
+outputText s = outputDoc (pretty s)
+
+outputTextLn :: Has Output sig m => Text -> m ()
+outputTextLn s = outputDoc (pretty s <> pretty "\n")
 
 outputDoc :: Has Output sig m => Doc Style -> m ()
 outputDoc s = send (OutputDoc s)
