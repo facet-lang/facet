@@ -164,6 +164,7 @@ tatom = build monotypeTable $ choice
   [ -- FIXME: we should treat these as globals.
     anned (S.Type <$ token (string "Type"))
   , anned (S.TInterface <$ token (string "Interface"))
+  , anned (S.TString    <$ token (string "String"))
     -- FIXME: holes in types
   , tvar
   , parens type'
