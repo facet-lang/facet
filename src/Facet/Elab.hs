@@ -69,9 +69,9 @@ import           Prelude hiding (zipWith)
 
 -- FIXME: we don’t get good source references during unification
 unify :: Type -> Type -> Elab Type
-unify t1 t2 = trace "unify" $ go t1 t2
+unify = go
   where
-  go t1 t2 = case t1 :===: t2 of
+  go t1 t2 = trace "unify" $ case t1 :===: t2 of
     VNe (Metavar v :$ Nil) :===: x                      -> solve (v :=: x)
     x                      :===: VNe (Metavar v :$ Nil) -> solve (v :=: x)
     -- FIXME: resolve globals to try to progress past certain inequalities
