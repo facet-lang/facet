@@ -3,6 +3,7 @@ module Facet.Core
   Value(..)
 , Type
 , Expr
+, Prim(..)
 , Comp(..)
 , substComp
 , bindComp
@@ -63,6 +64,7 @@ import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Data.Monoid (First(..))
 import           Data.Semialign
+import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import           Facet.Name hiding (bind)
 import           Facet.Stack
@@ -87,6 +89,10 @@ data Value
 
 type Type = Value
 type Expr = Value
+
+data Prim
+  = TString
+  | VString Text
 
 
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
