@@ -292,11 +292,18 @@ checkExpr
   => S.Ann S.Expr
   -> Check Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (setSpan s) $ case e of
-  S.Hole  n -> hole n
-  S.Lam cs  -> elabClauses cs
-  S.Thunk e -> checkExpr e -- FIXME: this should convert between value and computation type
-  S.Force e -> checkExpr e -- FIXME: this should convert between computation and value type
-  _         -> switch (synthExpr expr)
+  S.Hole  n    -> hole n
+  S.Lam cs     -> elabClauses cs
+  S.Thunk e    -> checkExpr e -- FIXME: this should convert between value and computation type
+  S.Force e    -> checkExpr e -- FIXME: this should convert between computation and value type
+  S.Var{}      -> synth
+  S.Type       -> synth
+  S.TInterface -> synth
+  S.TComp{}    -> synth
+  S.App{}      -> synth
+  S.As{}       -> synth
+  where
+  synth = switch (synthExpr expr)
 
 
 elabBinding :: S.Ann S.Binding -> [(Pos, Check Binding)]
