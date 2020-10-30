@@ -38,7 +38,7 @@ instance Pretty Level where
 data Notice a = Notice
   { level   :: !(Maybe Level)
   -- FIXME: support multiple source references for e.g. cyclic import errors
-  , source  :: {-# UNPACK #-} !Source
+  , source  :: !(Maybe Source)
   , reason  :: !(P.Doc a)
   , context :: ![P.Doc a]
   }
@@ -47,7 +47,7 @@ data Notice a = Notice
 level_ :: Lens' (Notice a) (Maybe Level)
 level_ = lens level $ \ n level -> n{ level }
 
-source_ :: Lens' (Notice a) Source
+source_ :: Lens' (Notice a) (Maybe Source)
 source_ = lens source $ \ n source -> n{ source }
 
 reason_ :: Lens' (Notice a) (P.Doc a)
@@ -61,7 +61,13 @@ reAnnotateNotice f Notice{ level, source, reason, context} = Notice{ level, sour
 
 
 prettyNotice :: Notice a -> P.Doc (Highlight a)
-prettyNotice (Notice level (Source path span _ (line:|_)) reason context) = concatWith (surround hardline)
+prettyNotice (Notice level Nothing reason context) = concatWith (surround hardline)
+  ( nest 2 (group (fillSep
+    [ foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level
+    , P.reAnnotate Reason reason
+    ]))
+  : (context >>= \ ctx -> [ mempty, P.reAnnotate Context ctx ]))
+prettyNotice (Notice level (Just (Source path span _ (line:|_))) reason context) = concatWith (surround hardline)
   ( nest 2 (group (fillSep
     [ annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> prettySpan span <> colon <> foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level
     , P.reAnnotate Reason reason

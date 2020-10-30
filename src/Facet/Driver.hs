@@ -71,7 +71,7 @@ reloadModules src = do
     -- FIXME: remove stale modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
     targetHeads <- traverse (loadModuleHeader src . Right) (toList targets)
-    rethrowGraphErrors src $ loadOrder (fmap toNode . loadModuleHeader src . Right) (map toNode targetHeads)
+    rethrowGraphErrors (Just src) $ loadOrder (fmap toNode . loadModuleHeader src . Right) (map toNode targetHeads)
   let nModules = length modules
   results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
     i <- fresh
@@ -93,7 +93,7 @@ loadModuleHeader src target = do
   path <- case target of
     Left path  -> pure path
     Right name -> resolveName name
-  src <- rethrowIOErrors src $ readSourceFromFile path
+  src <- rethrowIOErrors (Just src) $ readSourceFromFile path
   -- FIXME: validate that the name matches
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
@@ -122,13 +122,13 @@ resolveName name = do
 
 -- Errors
 
-rethrowIOErrors :: (Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> IO a -> m a
+rethrowIOErrors :: (Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Maybe Source -> IO a -> m a
 rethrowIOErrors src m = liftIO (tryIOError m) >>= either (throwError . ioErrorToNotice src) pure
 
-ioErrorToNotice :: Source -> IOError -> Notice.Notice Style
+ioErrorToNotice :: Maybe Source -> IOError -> Notice.Notice Style
 ioErrorToNotice src err = Notice.Notice (Just Notice.Error) src (group (reflow (show err))) []
 
-rethrowGraphErrors :: Source -> I.ThrowC (Notice.Notice Style) GraphErr m a -> m a
+rethrowGraphErrors :: Maybe Source -> I.ThrowC (Notice.Notice Style) GraphErr m a -> m a
 rethrowGraphErrors src = I.runThrow formatGraphErr
   where
   formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) src (reflow "cyclic import") (map pretty (toList path))
