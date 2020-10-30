@@ -4,6 +4,7 @@ module Facet.Driver
 , modules_
 , targets_
 , searchPaths_
+, defaultTarget
   -- * Module loading
 , reloadModules
 , loadModuleHeader
@@ -64,6 +65,13 @@ targets_ = lens targets (\ r targets -> r{ targets })
 
 searchPaths_ :: Lens' Target (Set.Set FilePath)
 searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
+
+defaultTarget :: Target
+defaultTarget = Target
+  { modules = mempty
+  , targets = mempty
+  , searchPaths = mempty
+  }
 
 
 -- Module loading
