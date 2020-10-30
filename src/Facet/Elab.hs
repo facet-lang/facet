@@ -277,6 +277,7 @@ synthExpr (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
   S.Var m n    -> var m n
   S.Type       -> _Type
   S.TInterface -> _Interface
+  S.TString    -> _String
   S.TComp t    -> VComp <$> elabSTelescope t
   S.App f a    -> synthExpr f $$ checkExpr a
   S.As t _T    -> as (checkExpr t ::: checkExpr _T)
@@ -299,6 +300,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (setSpan s) $ case e of
   S.Var{}      -> synth
   S.Type       -> synth
   S.TInterface -> synth
+  S.TString    -> synth
   S.TComp{}    -> synth
   S.App{}      -> synth
   S.As{}       -> synth
@@ -331,6 +333,9 @@ _Type = Synth $ pure $ VType ::: VType
 
 _Interface :: Synth Type
 _Interface = Synth $ pure $ VInterface ::: VType
+
+_String :: Synth Type
+_String = Synth $ pure $ VPrim TString ::: VType
 
 
 forAll :: Check Binding -> (UName ::: Type -> Check Comp) -> Synth Comp

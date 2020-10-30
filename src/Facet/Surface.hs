@@ -37,6 +37,7 @@ data Expr
   | Hole UName
   | Type
   | TInterface
+  | TString
   | TComp (Ann Comp)
   | Lam [Clause]
   | Thunk (Ann Expr)
