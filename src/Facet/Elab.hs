@@ -191,6 +191,15 @@ lookupInContext n ctx = (`lookupLevel` ctx) =<< eOrT n
   eOrT (T n) = Just n
   eOrT _     = Nothing
 
+lookupInSig :: Maybe MName -> UName -> Module -> Graph -> [Value] -> Maybe (QName ::: Comp)
+lookupInSig m n mod graph = matchWith $ \case
+  VNe (Global q@(m':.:_) :$ _) -> do
+    guard (maybe True (== m') m)
+    (_ :=: Just (DInterface defs) ::: _) <- lookupQ q mod graph
+    _T <- matchWith (\ (n' ::: _T) -> _T <$ guard (n' == n)) defs
+    pure $ m':.:E n ::: _T
+  _                            -> Nothing
+
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 var
   :: Maybe MName
