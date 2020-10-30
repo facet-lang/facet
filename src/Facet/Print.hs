@@ -188,6 +188,7 @@ printValue env = \case
         h' = C.unVar (group . var . qvar) ((env !) . getIndex . levelToIndex d) (group . var . Metavar) h
     in elim h' id e
   C.VCon (C.Con n p) -> app (group (var (qvar n))) (fmap ((Ex,) . printValue env) p)
+  C.VOp (q :$ sp) -> app (group (var (qvar q))) (fmap (fmap (printValue env)) sp)
   where
   d = Level (length env)
 

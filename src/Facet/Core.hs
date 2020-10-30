@@ -81,6 +81,8 @@ data Value
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNeut Var (Stack (Pl, Value))
   | VCon (Con Value)
+  -- | Effect operation and its parameters.
+  | VOp (QName :$ (Pl, Value))
 
 type Type = Value
 type Expr = Value
@@ -235,12 +237,13 @@ substWith :: (Var -> Value) -> Value -> Value
 substWith f = go
   where
   go = \case
-    VType       -> VType
-    VInterface  -> VInterface
-    VComp t     -> VComp (substCompWith f t)
-    VLam    p b -> VLam p (map clause b)
-    VNeut v a   -> f v $$* fmap (fmap go) a
-    VCon c      -> VCon (fmap go c)
+    VType         -> VType
+    VInterface    -> VInterface
+    VComp t       -> VComp (substCompWith f t)
+    VLam    p b   -> VLam p (map clause b)
+    VNeut v a     -> f v $$* fmap (fmap go) a
+    VCon c        -> VCon (fmap go c)
+    VOp (q :$ sp) -> VOp (q :$ fmap (fmap go) sp)
 
   clause (Clause p b) = Clause p (go . b)
 
@@ -309,6 +312,7 @@ sortOf ctx = \case
   VLam{}     -> STerm
   VNeut h sp -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
   VCon _     -> STerm
+  VOp _      -> STerm -- FIXME: will this always be true?
   where
   telescope ctx = \case
     ForAll (Binding _ _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (telescope (ctx :> _T') (_B (free (Level (length ctx)))))
