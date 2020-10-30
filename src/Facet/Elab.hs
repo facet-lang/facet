@@ -69,15 +69,15 @@ import           Prelude hiding (zipWith)
 -- General
 
 -- FIXME: we don’t get good source references during unification
-unify :: Type :===: Type -> Elab Type
-unify (t1 :===: t2) = trace "unify" $ case (t1 :===: t2) of
+unify :: Type -> Type -> Elab Type
+unify t1 t2 = trace "unify" $ case t1 :===: t2 of
   -- FIXME: resolve globals to try to progress past certain inequalities
-  VNe (h1 :$ e1)           :===: VNe (h2 :$ e2)         -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine (e1 :===: e2)
+  VNe (h1 :$ e1)           :===: VNe (h2 :$ e2)         -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
   VNe (Metavar v :$ Nil)   :===: x                      -> solve (v :=: x)
   x                        :===: VNe (Metavar v :$ Nil) -> solve (v :=: x)
-  VComp t1                 :===: VComp t2               -> VComp <$> unifyComp (t1 :===: t2)
-  VComp (Comp [] t1)       :===: t2                     -> unify (t1 :===: t2)
-  t1                       :===: VComp (Comp [] t2)     -> unify (t1 :===: t2)
+  VComp t1                 :===: VComp t2               -> VComp <$> unifyComp t1 t2
+  VComp (Comp [] t1)       :===: t2                     -> unify t1 t2
+  t1                       :===: VComp (Comp [] t2)     -> unify t1 t2
   VType                    :===: VType                  -> pure VType
   VInterface               :===: VInterface             -> pure VInterface
   VPrim p1                 :===: VPrim p2               -> VPrim <$> unifyPrim p1 p2
@@ -86,8 +86,8 @@ unify (t1 :===: t2) = trace "unify" $ case (t1 :===: t2) of
   -- FIXME: build and display a diff of the root types
   nope = couldNotUnify "mismatch" t1 t2
 
-  unifySpine (sp1 :===: sp2) = unless (length sp1 == length sp2) nope *> sequenceA (zipWith unifyArg sp1 sp2)
-  unifyArg (p1, a1) (p2, a2) = (p1,) <$ unless (p1 == p2) nope <*> unify (a1 :===: a2)
+  unifySpine sp1 sp2 = unless (length sp1 == length sp2) nope *> sequenceA (zipWith unifyArg sp1 sp2)
+  unifyArg (p1, a1) (p2, a2) = (p1,) <$ unless (p1 == p2) nope <*> unify a1 a2
 
   unifyPrim p1 p2 = case (p1, p2) of
     (TString, TString) -> pure TString
@@ -97,23 +97,23 @@ unify (t1 :===: t2) = trace "unify" $ case (t1 :===: t2) of
     subst <- get
     -- FIXME: occurs check
     case subst IntMap.! getMeta n of
-      Just val ::: _T -> unify (val' :===: val)
+      Just val ::: _T -> unify val' val
       Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
 
-unifyComp :: Comp :===: Comp -> Elab Comp
-unifyComp = \case
+unifyComp :: Comp -> Comp -> Elab Comp
+unifyComp c1 c2 = case c1 :===: c2 of
   ForAll (Binding p1 n1 s1 t1) b1 :===: ForAll (Binding p2 _  s2 t2) b2
     | p1 == p2 -> do
       -- FIXME: unify the signatures
       s <- unifySig (s1 :===: s2)
-      t <- unify (t1 :===: t2)
+      t <- unify t1 t2
       d <- asks @(Context Type) level
       let v = free d
-      b <- unifyComp (b1 v :===: b2 v)
+      b <- unifyComp (b1 v) (b2 v)
       pure $ ForAll (Binding p1 n1 s t) (\ v -> C.bindComp d v b)
-  Comp s1 t1 :===: Comp s2 t2 -> Comp <$> unifySig (s1 :===: s2) <*> unify (t1 :===: t2)
-  Comp [] t1 :===: t2         -> fromValue <$> unify (t1 :===: VComp t2)
-  t1         :===: Comp [] t2 -> fromValue <$> unify (VComp t1 :===: t2)
+  Comp s1 t1 :===: Comp s2 t2 -> Comp <$> unifySig (s1 :===: s2) <*> unify t1 t2
+  Comp [] t1 :===: t2         -> fromValue <$> unify t1 (VComp t2)
+  t1         :===: Comp [] t2 -> fromValue <$> unify (VComp t1) t2
   t1         :===: t2         -> couldNotUnify "mismatch" (VComp t1) (VComp t2)
   where
   -- FIXME: unify the signatures
@@ -141,7 +141,7 @@ instantiate (e ::: _T) = case _T of
 switch
   :: Synth a
   -> Check a
-switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ unify (_K' :===: _K)
+switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
 as :: Check a ::: Check Type -> Synth a
 as (m ::: _T) = Synth $ do
@@ -414,7 +414,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> setSpan s $ case p of
   subpatterns _A = go
     where
     go _T' = \case
-      []   -> \ k -> unify (VComp _T' :===: _A) *> k []
+      []   -> \ k -> unify (VComp _T') _A *> k []
       p:ps -> \ k -> do
         -- FIXME: assert that the signature is empty
         (Binding _ _ _ _A, _B) <- expectQuantifier "when checking constructor pattern" (VComp _T')
