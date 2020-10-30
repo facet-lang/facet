@@ -67,11 +67,12 @@ searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 
 reloadModules :: (Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State Target) sig m, Has Trace sig m, MonadIO m) => m ()
 reloadModules = do
+  searchPaths <- uses searchPaths_ toList
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
-    targetHeads <- traverse (loadModuleHeader . Right) (toList targets)
-    rethrowGraphErrors Nothing $ loadOrder (fmap toNode . loadModuleHeader . Right) (map toNode targetHeads)
+    targetHeads <- traverse (loadModuleHeader searchPaths . Right) (toList targets)
+    rethrowGraphErrors Nothing $ loadOrder (fmap toNode . loadModuleHeader searchPaths . Right) (map toNode targetHeads)
   let nModules = length modules
   results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
     i <- fresh
@@ -88,13 +89,11 @@ reloadModules = do
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = let imports' = map ((S.name :: S.Import -> MName) . S.out) imports in Node n imports' (n, path, source, imports')
 
-loadModuleHeader :: (Has (State Target) sig m, Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
-loadModuleHeader target = do
+loadModuleHeader :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
+loadModuleHeader searchPaths target = do
   path <- case target of
     Left path  -> pure path
-    Right name -> do
-      searchPaths <- uses searchPaths_ toList
-      rethrowIOErrors Nothing $ resolveName searchPaths name
+    Right name -> rethrowIOErrors Nothing $ resolveName searchPaths name
   src <- rethrowIOErrors Nothing $ readSourceFromFile path
   -- FIXME: validate that the name matches
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
