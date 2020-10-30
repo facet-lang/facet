@@ -77,6 +77,7 @@ function flags {
   echo "-XFlexibleContexts"
   echo "-XFlexibleInstances"
   echo "-XGeneralizedNewtypeDeriving"
+  echo "-XKindSignatures"
   echo "-XLambdaCase"
   echo "-XMultiParamTypeClasses"
   echo "-XMultiWayIf"
