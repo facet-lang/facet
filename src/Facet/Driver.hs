@@ -93,7 +93,7 @@ loadModuleHeader :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) =
 loadModuleHeader searchPaths target = do
   path <- case target of
     Left path  -> pure path
-    Right name -> rethrowIOErrors Nothing $ resolveName searchPaths name
+    Right name -> resolveName searchPaths name
   src <- rethrowIOErrors Nothing $ readSourceFromFile path
   -- FIXME: validate that the name matches
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
@@ -108,13 +108,13 @@ loadModule name path src imports = do
   modules_.at name .= Just (Just path, m)
   pure m
 
-resolveName :: [FilePath] -> MName -> IO FilePath
+resolveName :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> MName -> m FilePath
 resolveName searchPaths name = do
   let namePath = toPath name FP.<.> ".facet"
-  path <- findFile searchPaths namePath
+  path <- liftIO $ findFile searchPaths namePath
   case path of
     Just path -> pure path
-    Nothing   -> ioError $ mkIOError doesNotExistErrorType "resolveName" Nothing (Just namePath)
+    Nothing   -> liftIO $ ioError $ mkIOError doesNotExistErrorType "resolveName" Nothing (Just namePath)
   where
   toPath (name :. component) = toPath name FP.</> TS.unpack component
   toPath (MName component)   = TS.unpack component
