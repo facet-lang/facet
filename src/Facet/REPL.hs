@@ -211,7 +211,7 @@ showEval e = Action $ \ src -> do
 
 -- FIXME: should actually handle “syscall” effects here.
 runEvalMain :: Applicative m => Eval m a -> m a
-runEvalMain = runEval (fmap runEvalMain . flip ($)) pure
+runEvalMain = runEval (&) pure
 
 
 helpDoc :: Doc Style
