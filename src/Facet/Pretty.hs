@@ -55,12 +55,12 @@ layoutOptionsForTerminal = do
   pure PP.defaultLayoutOptions{ PP.layoutPageWidth = PP.AvailablePerLine s 1 }
 
 hPutDoc :: MonadIO m => Handle -> PP.Doc [SGR] -> m ()
-hPutDoc handle doc = liftIO $ do
-  opts <- layoutOptionsForTerminal
-  renderIO handle (PP.layoutSmart opts (doc <> PP.line))
+hPutDoc handle = hPutDocWith handle id
 
 hPutDocWith :: MonadIO m => Handle -> (a -> [SGR]) -> PP.Doc a -> m ()
-hPutDocWith handle style = hPutDoc handle . PP.reAnnotate style
+hPutDocWith handle style doc = liftIO $ do
+  opts <- layoutOptionsForTerminal
+  renderIO handle (PP.reAnnotateS style (PP.layoutSmart opts doc))
 
 putDoc :: MonadIO m => PP.Doc [SGR] -> m ()
 putDoc = hPutDoc stdout
