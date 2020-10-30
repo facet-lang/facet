@@ -77,23 +77,24 @@ prettyCode = P.reAnnotate Code . getPrint
 
 
 prettyNotice :: Notice.Notice (P.Doc Style) -> P.Doc Style
-prettyNotice (Notice.Notice level Nothing reason context) = concatWith (surround hardline)
-  ( nest 2 (group (fillSep
-    [ foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level
+prettyNotice (Notice.Notice level src reason context) = concatWith (surround hardline) (concat
+  [ pure header
+  , foldMap pure (ref <$> src)
+  , (context >>= \ ctx -> [ mempty, annotate Context ctx ])])
+  where
+  header = nest 2 (group (fillSep
+    [ case src of
+      Just (Source path span _ _) ->
+        annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> prettySpan span <> colon <> foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level
+      Nothing -> foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level
     , annotate Reason reason
     ]))
-  : (context >>= \ ctx -> [ mempty, annotate Context ctx ]))
-prettyNotice (Notice.Notice level (Just (Source path span _ (line:|_))) reason context) = concatWith (surround hardline)
-  ( nest 2 (group (fillSep
-    [ annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> prettySpan span <> colon <> foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level
-    , annotate Reason reason
-    ]))
-  : annotate Gutter (pretty (succ (Span.line (Span.start span)))) <+> align (vcat
+
+  ref (Source _ span _ (line:|_)) = annotate Gutter (pretty (succ (Span.line (Span.start span)))) <+> align (vcat
     [ annotate Gutter (pretty '|') <+> prettyLine line
     , annotate Gutter (pretty '|') <+> padding span <> annotate Caret (caret (lineLength line) span)
     ])
-  : (context >>= \ ctx -> [ mempty, annotate Context ctx ]))
-  where
+
   prettySpan (Span.Span start end)
     | start == end                     = pos start
     | Span.line start == Span.line end = pos start <> pretty '-' <> coord (Span.column end)
