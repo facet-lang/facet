@@ -11,7 +11,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, uses, (%=))
 import           Control.Exception (handle)
-import           Control.Lens (Lens', lens)
+import           Control.Lens (Lens', lens, (&), (.~))
 import           Control.Monad (unless, (<=<))
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -55,12 +55,12 @@ import           Text.Parser.Char hiding (space)
 import           Text.Parser.Combinators
 import           Text.Parser.Token hiding (brackets, comma)
 
-repl :: IO ExitCode
-repl
+repl :: [FilePath] -> IO ExitCode
+repl searchPaths
   = handle @IOError (\ e -> ExitFailure 1 <$ print e)
   . fmap (const ExitSuccess)
   . runReadlineWithHistory
-  . evalState defaultREPLState
+  . evalState (defaultREPLState & target_.searchPaths_ .~ Set.fromList searchPaths)
   . evalEmpty
   . evalState (toFlag LogTraces False)
   . runTrace Nil

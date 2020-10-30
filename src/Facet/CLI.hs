@@ -36,7 +36,7 @@ commands
 -- Command parsers
 
 replParser :: Parser (IO ExitCode)
-replParser = pure REPL.repl
+replParser = REPL.repl <$> many searchPath
 
 runFileParser :: Parser (IO ExitCode)
 runFileParser = Run.runFile
