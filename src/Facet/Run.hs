@@ -4,5 +4,5 @@ module Facet.Run
 
 import System.Exit
 
-runFile :: FilePath -> IO ExitCode
-runFile _ = pure ExitSuccess
+runFile :: [FilePath] -> FilePath -> IO ExitCode
+runFile _ _ = pure ExitSuccess

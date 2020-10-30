@@ -36,7 +36,9 @@ replParser :: Parser (IO ExitCode)
 replParser = pure REPL.repl
 
 runFileParser :: Parser (IO ExitCode)
-runFileParser = Run.runFile <$> strArgument (metavar "PATH")
+runFileParser = Run.runFile
+  <$> many (strOption (short 'i' <> long "include" <> metavar "PATH" <> help "specify a search path"))
+  <*> strArgument (metavar "PATH")
 
 lspParser :: Parser (IO ExitCode)
 lspParser = LSP.lsp <$> optional (strOption (long "path" <> metavar "PATH"))
