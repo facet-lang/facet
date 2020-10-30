@@ -357,7 +357,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> setSpan s $ case p of
   S.PCon n ps -> do
     q :=: _ ::: _T' <- resolveC n
     _T'' <- inst _T'
-    subpatterns _A _T'' ps $ \ ps' -> k (C.PCon (Con q (fromList ps')))
+    subpatterns _A _T'' ps $ \ ps' -> k (C.PCon (q :$ fromList ps'))
   -- FIXME: look up the effect in the signature
   S.PEff n ps v -> do
     q :=: _ ::: _T' <- resolveC n
@@ -408,7 +408,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = do
       pure $ ForAll (Binding Im n s _T) (\ v -> C.bindComp d v _B')
   con q fs = \case
     ForAll (Binding p n _ _T) _B -> VLam p [Clause (PVar (n ::: _T)) ((\ v -> con q (fs :> v) (_B v)) . unsafeUnPVar)]
-    _T                           -> VCon (Con q fs)
+    _T                           -> VCon (q :$ fs)
 
 elabInterfaceDef
   :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)

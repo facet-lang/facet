@@ -14,7 +14,6 @@ module Facet.Core
 , instantiateClause
 , Binding(..)
 , Var(..)
-, Con(..)
 , unVar
 , global
 , free
@@ -80,7 +79,7 @@ data Value
   | VLam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNeut Var (Stack (Pl, Value))
-  | VCon (Con Value)
+  | VCon (QName :$ Value)
   -- | Effect operation and its parameters.
   | VOp (QName :$ (Pl, Value))
 
@@ -177,10 +176,6 @@ unVar f g h = \case
   Metavar n -> h n
 
 
-data Con a = Con QName (Stack a)
-  deriving (Foldable, Functor, Traversable)
-
-
 global :: QName -> Value
 global = var . Global
 
@@ -223,14 +218,14 @@ case' s cs = case matchWith (\ (Clause p f) -> f <$> match s p) cs of
 match :: Value -> Pattern b -> Maybe (Pattern Value)
 match = curry $ \case
   -- FIXME: this shouldn’t match computations
-  (s,                PVar _)          -> Just (PVar s)
-  (VCon (Con n' fs), PCon (Con n ps)) -> do
+  (s,               PVar _)         -> Just (PVar s)
+  (VCon (n' :$ fs), PCon (n :$ ps)) -> do
     guard (n == n')
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
-    PCon . Con n' <$> sequenceA (zipWith match fs ps)
-  (_,                PCon _)          -> Nothing
+    PCon . (n' :$) <$> sequenceA (zipWith match fs ps)
+  (_,               PCon _)         -> Nothing
   -- FIXME: match effect patterns against computations
-  (_,                PEff{})          -> Nothing
+  (_,               PEff{})         -> Nothing
 
 
 substWith :: (Var -> Value) -> Value -> Value
@@ -323,7 +318,7 @@ sortOf ctx = \case
 
 data Pattern a
   = PVar a
-  | PCon (Con (Pattern a))
+  | PCon (QName :$ Pattern a)
   | PEff QName (Stack (Pattern a)) a
   deriving (Foldable, Functor, Traversable)
 

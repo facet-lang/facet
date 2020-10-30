@@ -187,7 +187,7 @@ printValue env = \case
         elim h sp  (es:>a) = elim h (sp . (:> fmap (printValue env) a)) es
         h' = C.unVar (group . var . qvar) ((env !) . getIndex . levelToIndex d) (group . var . Metavar) h
     in elim h' id e
-  C.VCon (C.Con n p) -> app (group (var (qvar n))) (fmap ((Ex,) . printValue env) p)
+  C.VCon (n :$ p) -> app (group (var (qvar n))) (fmap ((Ex,) . printValue env) p)
   C.VOp (q :$ sp) -> app (group (var (qvar q))) (fmap (fmap (printValue env)) sp)
   where
   d = Level (length env)
@@ -260,6 +260,6 @@ clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow 
   where
   ((_, env'), p') = mapAccumL (\ (d, env) (n ::: _) -> let v = lvar env (pl, n) in ((succ d, env :> v), (v, C.free d))) (Level (length env), env) p
 pat = \case
-  C.PVar n            -> n
-  C.PCon (C.Con n ps) -> parens (hsep (annotate Con (pretty n):map pat (toList ps)))
-  C.PEff q ps k       -> brackets (pretty q <+> hsep (map pat (toList ps)) <+> semi <+> k)
+  C.PVar n         -> n
+  C.PCon (n :$ ps) -> parens (hsep (annotate Con (pretty n):map pat (toList ps)))
+  C.PEff q ps k    -> brackets (pretty q <+> hsep (map pat (toList ps)) <+> semi <+> k)
