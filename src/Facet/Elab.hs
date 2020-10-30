@@ -537,7 +537,6 @@ runSubstWith with = runState with emptySubst
 runContext :: ReaderC (Context Type) m a -> m a
 runContext = runReader Context.empty
 
--- FIXME: this should carry the operations and their types.
 runSig :: ReaderC [Value] m a -> m a
 runSig = runReader []
 
