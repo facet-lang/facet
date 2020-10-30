@@ -71,15 +71,28 @@ repl
   $ loop
 
 
+data Target = Target
+  { modules     :: Graph
+  , targets     :: Set.Set MName
+  , searchPaths :: Set.Set FilePath
+  }
+
+modules_ :: Lens' Target Graph
+modules_ = lens modules (\ r modules -> r{ modules })
+
+targets_ :: Lens' Target (Set.Set MName)
+targets_ = lens targets (\ r targets -> r{ targets })
+
+searchPaths_ :: Lens' Target (Set.Set FilePath)
+searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
+
 -- FIXME: split general compilation target state out of REPL state.
 data REPL = REPL
   { line           :: Int
   , promptFunction :: Int -> IO String
   , localDefs      :: Module -- ^ The module where definitions made in the REPL live. Not a part of modules.
-  , modules        :: Graph
-  , targets        :: Set.Set MName
-  -- FIXME: break this down by file/module/whatever so we can load multiple packages
-  , searchPaths    :: Set.Set FilePath
+  -- FIXME: generalize this to support multiple targets.
+  , target         :: Target
   }
 
 line_ :: Lens' REPL Int
@@ -88,23 +101,19 @@ line_ = lens line (\ r line -> r{ line })
 localDefs_ :: Lens' REPL Module
 localDefs_ = lens localDefs (\ r localDefs -> r{ localDefs })
 
-modules_ :: Lens' REPL Graph
-modules_ = lens modules (\ r modules -> r{ modules })
-
-targets_ :: Lens' REPL (Set.Set MName)
-targets_ = lens targets (\ r targets -> r{ targets })
-
-searchPaths_ :: Lens' REPL (Set.Set FilePath)
-searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
+target_ :: Lens' REPL Target
+target_ = lens target (\ r target -> r{ target })
 
 defaultREPLState :: REPL
 defaultREPLState = REPL
   { line           = 0
   , promptFunction = defaultPromptFunction
   , localDefs
-  , modules
-  , targets        = mempty
-  , searchPaths    = Set.singleton "lib"
+  , target = Target
+    { modules
+    , targets        = mempty
+    , searchPaths    = Set.singleton "lib"
+    }
   }
   where
   localDefs = Module (MName mempty) [] [] mempty
@@ -132,8 +141,8 @@ loop = do
   resp <- prompt
   runError (outputDocLn . prettyNotice') pure $ case resp of
     Just src -> do
-      graph <- use modules_
-      targets <- use targets_
+      graph <- use (target_.modules_)
+      targets <- use (target_.targets_)
       let ops = foldMap (operators . snd <=< (`lookupM` graph)) (toList targets)
       action <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
       runAction src action
@@ -186,28 +195,28 @@ showPaths, showModules, showTargets :: Action
 showPaths   = Action $ \ _ -> do
   dir <- liftIO getCurrentDirectory
   outputDocLn $ nest 2 $ reflow "current working directory:" </> pretty dir
-  searchPaths <- gets (toList . searchPaths)
+  searchPaths <- uses (target_.searchPaths_) toList
   unless (null searchPaths)
     $ outputDocLn $ nest 2 $ pretty "search paths:" <\> unlines (map pretty searchPaths)
 
-showModules = Action $ \ _ -> uses modules_ (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
+showModules = Action $ \ _ -> uses (target_.modules_) (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
 
-showTargets = Action $ \ _ -> uses targets_ (unlines . map pretty . toList) >>= outputDocLn
+showTargets = Action $ \ _ -> uses (target_.targets_) (unlines . map pretty . toList) >>= outputDocLn
 
 addPath :: FilePath -> Action
-addPath path = Action $ \ _ -> searchPaths_ %= Set.insert path
+addPath path = Action $ \ _ -> target_.searchPaths_ %= Set.insert path
 
 addTarget :: [MName] -> Action
 addTarget targets = Action $ \ src -> do
-  targets_ %= Set.union (Set.fromList targets)
+  target_.targets_ %= Set.union (Set.fromList targets)
   void $ reload src
 
 removePath :: FilePath -> Action
-removePath path = Action $ \ _ -> searchPaths_ %= Set.delete path
+removePath path = Action $ \ _ -> target_.searchPaths_ %= Set.delete path
 
 -- FIXME: remove things depending on it
 removeTarget :: [MName] -> Action
-removeTarget targets = Action $ \ _ -> targets_ %= (Set.\\ Set.fromList targets)
+removeTarget targets = Action $ \ _ -> target_.targets_ %= (Set.\\ Set.fromList targets)
 
 showType :: S.Ann S.Expr -> Action
 showType e = Action $ \ src -> do
@@ -227,7 +236,7 @@ runEvalMain = runEval (fmap runEvalMain . flip ($)) pure
 
 reload :: (Has (Error (Notice.Notice Style)) sig m, Has Readline sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m [Maybe Module]
 reload src = do
-  modules <- targets_ ~> \ targets -> do
+  modules <- target_.targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
     targetHeads <- traverse (loadModuleHeader src . Right) (toList targets)
@@ -260,16 +269,16 @@ loadModuleHeader src target = do
 
 loadModule :: (Has (State REPL) sig m, Has (Throw (Notice.Notice Style)) sig m, Has Trace sig m) => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
-  graph <- use modules_
+  graph <- use (target_.modules_)
   let ops = foldMap (operators . snd <=< (`lookupM` graph)) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   m <- rethrowElabErrors src . runReader graph $ Elab.elabModule m
-  modules_.at name .= Just (Just path, m)
+  target_.modules_.at name .= Just (Just path, m)
   pure m
 
 resolveName :: (Has (State REPL) sig m, MonadIO m) => MName -> m FilePath
 resolveName name = do
-  searchPaths <- use searchPaths_
+  searchPaths <- use (target_.searchPaths_)
   let namePath = toPath name FP.<.> ".facet"
   path <- liftIO $ findFile (toList searchPaths) namePath
   case path of
@@ -305,7 +314,7 @@ prettyCode = P.reAnnotate Code . getPrint
 
 elab :: Has (State REPL) sig m => Source -> I.ThrowC (Notice.Notice Style) Elab.Err (ReaderC Module (ReaderC Graph (ReaderC Span m))) a -> m a
 elab src m = do
-  graph <- use modules_
+  graph <- use (target_.modules_)
   localDefs <- use localDefs_
   runReader (span src) . runReader graph . runReader localDefs . rethrowElabErrors src $ m
 
