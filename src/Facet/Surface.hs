@@ -44,6 +44,7 @@ data Expr
   | Force (Ann Expr)
   | App (Ann Expr) (Ann Expr)
   | As (Ann Expr) (Ann Type)
+  | String Text
   deriving (Eq, Show)
 
 type Type = Expr

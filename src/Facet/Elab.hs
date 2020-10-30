@@ -283,6 +283,7 @@ synthExpr (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
   S.TComp t    -> VComp <$> elabSTelescope t
   S.App f a    -> synthExpr f $$ checkExpr a
   S.As t _T    -> as (checkExpr t ::: checkExpr _T)
+  S.String s   -> string s
   S.Hole{}     -> nope
   S.Lam{}      -> nope
   S.Thunk{}    -> nope
@@ -306,6 +307,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (setSpan s) $ case e of
   S.TComp{}    -> synth
   S.App{}      -> synth
   S.As{}       -> synth
+  S.String{}   -> synth
   where
   synth = switch (synthExpr expr)
 
