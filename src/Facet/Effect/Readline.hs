@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+-- FIXME: split this into separate input and output effect modules.
 module Facet.Effect.Readline
 ( -- * Input effect
   Input(..)
