@@ -1,1 +1,14 @@
 module Effect.Console
+{ import Data.Option
+, import Data.Unit }
+
+
+interface Input : Interface
+{ readLine : String -> [Input] Option String }
+
+
+interface Output : Interface
+{ write : String -> [Output] Unit }
+
+writeLine : (str : String) -> [Output] Unit
+{ write (str <> "\n") }
