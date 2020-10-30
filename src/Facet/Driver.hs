@@ -70,7 +70,7 @@ searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 
 defaultTarget :: Target
 defaultTarget = Target
-  { modules = mempty
+  { modules = singleton Nothing kernel
   , targets = mempty
   , searchPaths = mempty
   }

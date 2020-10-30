@@ -10,7 +10,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, uses, (%=))
 import           Control.Exception (handle)
-import           Control.Lens (Lens', lens, (%~), (&), (.~))
+import           Control.Lens (Lens', lens, (&), (.~))
 import           Control.Monad (unless, (<=<))
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -87,7 +87,7 @@ defaultREPLState = REPL
   { line           = 0
   , promptFunction = defaultPromptFunction
   , localDefs
-  , target = defaultTarget & modules_ %~ insert Nothing kernel
+  , target = defaultTarget
   }
   where
   localDefs = Module (MName mempty) [] [] mempty
