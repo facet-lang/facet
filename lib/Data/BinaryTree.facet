@@ -1,1 +1,6 @@
 module Data.BinaryTree
+
+data BinaryTree : (A : Type) -> Type
+{ nil : BinaryTree A
+, leaf : A -> BinaryTree A
+, branch : BinaryTree A -> BinaryTree A -> BinaryTree A }
