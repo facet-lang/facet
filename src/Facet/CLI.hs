@@ -46,8 +46,8 @@ lspParser = LSP.lsp <$> optional (strOption (long "path" <> metavar "PATH"))
 searchPath :: Parser FilePath
 searchPath = strOption (short 'i' <> long "include" <> metavar "PATH" <> help "specify a search path")
 
-versionString :: String
-versionString = "facetc version " <> showVersion Library.version
-
 version :: Options.Parser (a -> a)
 version = infoOption versionString (long "version" <> short 'V' <> help "Output version info.")
+
+versionString :: String
+versionString = "facetc version " <> showVersion Library.version
