@@ -16,11 +16,13 @@ import           Control.Monad (unless, (<=<))
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
+import           Data.Fixed (Fixed(..), Nano)
 import           Data.Foldable (toList)
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
 import           Data.Text (Text)
+import           Data.Time.Clock.System
 import           Facet.Carrier.Parser.Church hiding (Input)
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
@@ -110,7 +112,8 @@ loop = do
       graph <- use (target_.modules_)
       targets <- use (target_.targets_)
       let ops = foldMap (operators . snd <=< (`lookupM` graph)) (toList targets)
-      action <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
+      (dParse, action) <- time $ rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
+      outputStrLn (show dParse)
       runAction src action
     Nothing  -> pure ()
   loop
@@ -191,8 +194,10 @@ showType e = Action $ \ src -> do
 
 showEval :: S.Ann S.Expr -> Action
 showEval e = Action $ \ src -> do
-  e' ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:T "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
-  e'' <- elab src $ runEvalMain (eval e')
+  (dElab, e' ::: _T) <- time $ elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:T "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
+  (dEval, e'') <- time $ elab src $ runEvalMain (eval e')
+  outputStrLn $ show dElab
+  outputStrLn $ show dEval
   outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil _T)))
 
 -- FIXME: should actually handle “syscall” effects here.
@@ -228,3 +233,25 @@ elab src m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
   runReader (span src) . runReader graph . runReader localDefs . rethrowElabErrors src $ m
+
+
+time :: MonadIO m => m a -> m (Duration, a)
+time m = do
+  start <- now
+  a <- m
+  end <- now
+  pure (since start end, a)
+
+now :: MonadIO m => m Instant
+now = Instant <$> liftIO getSystemTime
+
+newtype Instant = Instant { getInstant :: SystemTime }
+  deriving (Eq, Ord, Show)
+
+newtype Duration = Duration { getDuration :: Nano }
+  deriving (Eq, Fractional, Num, Ord, Real, Show)
+
+
+since :: Instant -> Instant -> Duration
+since (Instant (MkSystemTime bs bns)) (Instant (MkSystemTime as ans)) = Duration (realToFrac (as - bs) + MkFixed (fromIntegral ans - fromIntegral bns))
+{-# INLINABLE since #-}
