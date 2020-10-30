@@ -56,6 +56,7 @@ library
   import: common
   exposed-modules:
     Facet.Carrier.Error.Lens
+    Facet.Carrier.Output.IO
     Facet.Carrier.Parser.Church
     Facet.Carrier.Readline.Haskeline
     Facet.Carrier.State.Lens
