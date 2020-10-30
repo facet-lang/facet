@@ -9,6 +9,9 @@ module Facet.Driver
 , loadModuleHeader
 , loadModule
 , resolveName
+  -- * Errors
+, rethrowIOErrors
+, rethrowGraphErrors
 ) where
 
 import           Control.Carrier.Fresh.Church
