@@ -4,3 +4,8 @@ data BinaryTree : (A : Type) -> Type
 { nil : BinaryTree A
 , leaf : A -> BinaryTree A
 , branch : BinaryTree A -> BinaryTree A -> BinaryTree A }
+
+map : { A, B : Type } -> (f : A -> B) -> (BinaryTree A -> BinaryTree B)
+{ (nil)        -> nil
+, (leaf a)     -> leaf (f a)
+, (branch l r) -> branch (map f l) (map f r) }
