@@ -156,7 +156,7 @@ commands = choice
     [ removePath   <$ token (string "path")   <*> path'
     , removeTarget <$ token (string "target") <*> some mname
     ]
-  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action reload)
+  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (zoom target_ . reload))
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ showType <$> runFacet [] expr
   , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
@@ -192,7 +192,7 @@ addPath path = Action $ \ _ -> target_.searchPaths_ %= Set.insert path
 addTarget :: [MName] -> Action
 addTarget targets = Action $ \ src -> do
   target_.targets_ %= Set.union (Set.fromList targets)
-  reload src
+  target_ `zoom` reload src
 
 removePath :: FilePath -> Action
 removePath path = Action $ \ _ -> target_.searchPaths_ %= Set.delete path
@@ -217,8 +217,8 @@ runEvalMain :: Applicative m => Eval m a -> m a
 runEvalMain = runEval (fmap runEvalMain . flip ($)) pure
 
 
-reload :: (Has (Error (Notice.Notice Style)) sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m ()
-reload src = target_ `zoom` do
+reload :: (Has (Error (Notice.Notice Style)) sig m, Has Output sig m, Has (State Target) sig m, Has Trace sig m, MonadIO m) => Source -> m ()
+reload src = do
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
