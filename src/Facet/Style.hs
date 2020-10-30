@@ -76,7 +76,7 @@ prettyCode :: Print -> Doc Style
 prettyCode = P.reAnnotate Code . getPrint
 
 
-prettyNotice :: Notice.Notice Style -> P.Doc Style
+prettyNotice :: Notice.Notice (P.Doc Style) -> P.Doc Style
 prettyNotice (Notice.Notice level Nothing reason context) = concatWith (surround hardline)
   ( nest 2 (group (fillSep
     [ foldMap ((space <>) . (<> colon) . (annotate . Level <*> pretty)) level

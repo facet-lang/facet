@@ -65,7 +65,7 @@ searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 
 -- Module loading
 
-reloadModules :: (Has (Error (Notice.Notice Style)) sig m, Has Output sig m, Has (State Target) sig m, Has Trace sig m, MonadIO m) => Source -> m ()
+reloadModules :: (Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State Target) sig m, Has Trace sig m, MonadIO m) => Source -> m ()
 reloadModules src = do
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
@@ -88,7 +88,7 @@ reloadModules src = do
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = let imports' = map ((S.name :: S.Import -> MName) . S.out) imports in Node n imports' (n, path, source, imports')
 
-loadModuleHeader :: (Has (State Target) sig m, Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Source -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
+loadModuleHeader :: (Has (State Target) sig m, Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => Source -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
 loadModuleHeader src target = do
   path <- case target of
     Left path  -> pure path
@@ -98,7 +98,7 @@ loadModuleHeader src target = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
 
-loadModule :: (Has (State Target) sig m, Has (Throw (Notice.Notice Style)) sig m, Has Trace sig m) => MName -> FilePath -> Source -> [MName] -> m Module
+loadModule :: (Has (State Target) sig m, Has (Throw (Notice.Notice (Doc Style))) sig m, Has Trace sig m) => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
   graph <- use modules_
   let ops = foldMap (operators . snd <=< (`lookupM` graph)) imports
@@ -122,13 +122,13 @@ resolveName name = do
 
 -- Errors
 
-rethrowIOErrors :: (Has (Throw (Notice.Notice Style)) sig m, MonadIO m) => Maybe Source -> IO a -> m a
+rethrowIOErrors :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => Maybe Source -> IO a -> m a
 rethrowIOErrors src m = liftIO (tryIOError m) >>= either (throwError . ioErrorToNotice src) pure
 
-ioErrorToNotice :: Maybe Source -> IOError -> Notice.Notice Style
+ioErrorToNotice :: Maybe Source -> IOError -> Notice.Notice (Doc Style)
 ioErrorToNotice src err = Notice.Notice (Just Notice.Error) src (group (reflow (show err))) []
 
-rethrowGraphErrors :: Maybe Source -> I.ThrowC (Notice.Notice Style) GraphErr m a -> m a
+rethrowGraphErrors :: Maybe Source -> I.ThrowC (Notice.Notice (Doc Style)) GraphErr m a -> m a
 rethrowGraphErrors src = I.runThrow formatGraphErr
   where
   formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) src (reflow "cyclic import") (map pretty (toList path))

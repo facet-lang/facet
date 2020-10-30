@@ -164,10 +164,10 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-runAction :: (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> Action -> m ()
+runAction :: (Has Empty sig m, Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> Action -> m ()
 runAction src (Action f) = f src
 
-newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Notice Style)) sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m ())
+newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m ())
 
 
 showPaths, showModules, showTargets :: Action
@@ -231,7 +231,7 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-elab :: Has (State REPL) sig m => Source -> I.ThrowC (Notice.Notice Style) Elab.Err (ReaderC Module (ReaderC Graph (ReaderC Span m))) a -> m a
+elab :: Has (State REPL) sig m => Source -> I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC Module (ReaderC Graph (ReaderC Span m))) a -> m a
 elab src m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_

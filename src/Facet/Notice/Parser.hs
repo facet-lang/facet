@@ -8,17 +8,18 @@ import           Data.Set (toList)
 import qualified Facet.Carrier.Parser.Church as Parse
 import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Notice
+import           Facet.Pretty
 import           Facet.Source
 import           Facet.Span
 import           Silkscreen
 
 -- Parsing
 
-rethrowParseErrors :: L.ThrowC (Notice e) (Source, Parse.Err) m a -> m a
+rethrowParseErrors :: L.ThrowC (Notice (Doc e)) (Source, Parse.Err) m a -> m a
 rethrowParseErrors = L.runThrow (uncurry errToNotice)
 
 
-errToNotice :: Source -> Parse.Err -> Notice a
+errToNotice :: Source -> Parse.Err -> Notice (Doc a)
 errToNotice source Parse.Err{ Parse.input = Parse.Input pos _, Parse.reason, Parse.expected } = Notice
   { level   = Just Error
   , source  = Just (slice source (Span pos pos))
