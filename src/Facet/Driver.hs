@@ -78,7 +78,7 @@ reloadModules src = do
     outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
 
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
-    (Just <$> loadModule name path src imports) `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice' err)
+    (Just <$> loadModule name path src imports) `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
   let nSuccess = length (catMaybes results)
       status
         | nModules == nSuccess = annotate Success (pretty nModules)

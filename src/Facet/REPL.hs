@@ -119,7 +119,7 @@ loop :: (Has Empty sig m, Has Input sig m, Has Output sig m, Has (State REPL) si
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
-  runError (outputDocLn . prettyNotice') pure $ case resp of
+  runError (outputDocLn . prettyNotice) pure $ case resp of
     Just src -> do
       graph <- use (target_.modules_)
       targets <- use (target_.targets_)
