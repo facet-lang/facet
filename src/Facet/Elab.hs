@@ -72,11 +72,10 @@ unify :: Type -> Type -> Elab Type
 unify t1 t2 = trace "unify" $ go t1 t2
   where
   go t1 t2 = case t1 :===: t2 of
-    -- FIXME: resolve globals to try to progress past certain inequalities
-    VNe (h1 :$ e1)         :===: VNe (h2 :$ e2)
-      | h1 == h2 -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
     VNe (Metavar v :$ Nil) :===: x                      -> solve (v :=: x)
     x                      :===: VNe (Metavar v :$ Nil) -> solve (v :=: x)
+    -- FIXME: resolve globals to try to progress past certain inequalities
+    VNe (h1 :$ e1)         :===: VNe (h2 :$ e2)         -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
     VComp t1               :===: VComp t2               -> VComp <$> unifyComp t1 t2
     VComp (Comp [] t1)     :===: t2                     -> go t1 t2
     t1                     :===: VComp (Comp [] t2)     -> go t1 t2
