@@ -5,6 +5,7 @@ module Facet.Eval
 
 import Control.Effect.Reader
 import Control.Monad (ap, (<=<))
+import Control.Monad.Trans.Class
 import Facet.Core
 import Facet.Graph
 import Facet.Syntax
@@ -23,6 +24,9 @@ instance Applicative (Eval m) where
 
 instance Monad (Eval m) where
   m >>= f = Eval $ \ hdl k -> runEval (\ e k' -> hdl e (f <=< k')) (runEval hdl k . f) m
+
+instance MonadTrans Eval where
+  lift m = Eval $ \ _ k -> m >>= k
 
 
 -- FIXME: erase terms before evaluating.
