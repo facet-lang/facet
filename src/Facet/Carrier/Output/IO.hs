@@ -8,7 +8,11 @@ module Facet.Carrier.Output.IO
 
 import Control.Monad.Fix
 import Control.Monad.IO.Class
+import Control.Monad.Trans.Class
 import Facet.Effect.Readline
 
 newtype OutputC m a = OutputC { runOutput :: m a }
   deriving (Applicative, Functor, Monad, MonadFail, MonadFix, MonadIO)
+
+instance MonadTrans OutputC where
+  lift = OutputC
