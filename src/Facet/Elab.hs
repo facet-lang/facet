@@ -79,10 +79,17 @@ unify = go
     VComp t1               :===: VComp t2               -> VComp <$> unifyComp t1 t2
     VComp (Comp [] t1)     :===: t2                     -> go t1 t2
     t1                     :===: VComp (Comp [] t2)     -> go t1 t2
+    VNe{}                  :===: _                      -> nope
+    VComp{}                :===: _                      -> nope
     VType                  :===: VType                  -> pure VType
+    VType                  :===: _                      -> nope
     VInterface             :===: VInterface             -> pure VInterface
+    VInterface             :===: _                      -> nope
     VPrim p1               :===: VPrim p2               -> VPrim p1 <$ unless (p1 == p2) nope
-    _                      :===: _                      -> nope
+    VPrim{}                :===: _                      -> nope
+    VCon{}                 :===: _                      -> nope
+    VLam{}                 :===: _                      -> nope
+    VOp{}                  :===: _                      -> nope
     where
     -- FIXME: build and display a diff of the root types
     nope = couldNotUnify "mismatch" t1 t2
