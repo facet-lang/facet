@@ -12,7 +12,6 @@ module Facet.Notice
 import           Control.Lens (Lens', lens)
 import           Facet.Source (Source(..))
 import qualified Prettyprinter as P
-import           Silkscreen
 
 -- Notices
 
@@ -22,11 +21,11 @@ data Level
   | Error
   deriving (Eq, Ord, Show)
 
-instance Pretty Level where
+instance P.Pretty Level where
   pretty = \case
-    Info  -> pretty "info"
-    Warn  -> pretty "warning"
-    Error -> pretty "error"
+    Info  -> P.pretty "info"
+    Warn  -> P.pretty "warning"
+    Error -> P.pretty "error"
 
 
 data Notice a = Notice
