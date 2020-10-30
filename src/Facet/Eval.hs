@@ -10,6 +10,10 @@ import Facet.Syntax
 
 newtype Eval m a = Eval { runEval :: forall r . (Value -> (Value -> Eval m a) -> m r) -> (a -> m r) -> m r }
 
+instance Functor (Eval m) where
+  fmap f (Eval m) = Eval $ \ hdl k -> m (\ e k -> hdl e (fmap f . k)) (k . f)
+
+
 -- FIXME: erase terms before evaluating.
 eval :: (Has (Reader Graph) sig m, Has (Reader Module) sig m) => Value -> m Value
 eval = \case
