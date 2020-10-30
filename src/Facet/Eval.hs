@@ -1,5 +1,6 @@
 module Facet.Eval
-( Eval(..)
+( runEval
+, Eval(..)
 , eval
 ) where
 
