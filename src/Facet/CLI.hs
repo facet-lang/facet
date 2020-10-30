@@ -37,11 +37,14 @@ replParser = pure REPL.repl
 
 runFileParser :: Parser (IO ExitCode)
 runFileParser = Run.runFile
-  <$> many (strOption (short 'i' <> long "include" <> metavar "PATH" <> help "specify a search path"))
+  <$> many searchPath
   <*> strArgument (metavar "PATH")
 
 lspParser :: Parser (IO ExitCode)
 lspParser = LSP.lsp <$> optional (strOption (long "path" <> metavar "PATH"))
+
+searchPath :: Parser FilePath
+searchPath = strOption (short 'i' <> long "include" <> metavar "PATH" <> help "specify a search path")
 
 versionString :: String
 versionString = "facetc version " <> showVersion Library.version
