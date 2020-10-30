@@ -64,6 +64,7 @@ library
     Facet.Context
     Facet.Core
     Facet.Diff
+    Facet.Driver
     Facet.Effect.Parser
     Facet.Effect.Readline
     Facet.Effect.Trace
