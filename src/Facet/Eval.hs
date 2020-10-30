@@ -4,14 +4,25 @@ module Facet.Eval
 ) where
 
 import Control.Effect.Reader
+import Control.Monad (ap, (<=<))
 import Facet.Core
 import Facet.Graph
 import Facet.Syntax
 
-newtype Eval m a = Eval { runEval :: forall r . (Value -> (Value -> Eval m a) -> m r) -> (a -> m r) -> m r }
+runEval :: (Value -> (Value -> Eval m a) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval hdl k (Eval m) = m hdl k
+
+newtype Eval m a = Eval (forall r . (Value -> (Value -> Eval m a) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m (\ e k -> hdl e (fmap f . k)) (k . f)
+
+instance Applicative (Eval m) where
+  pure a = Eval $ \ _ k -> k a
+  (<*>) = ap
+
+instance Monad (Eval m) where
+  m >>= f = Eval $ \ hdl k -> runEval (\ e k' -> hdl e (f <=< k')) (runEval hdl k . f) m
 
 
 -- FIXME: erase terms before evaluating.
