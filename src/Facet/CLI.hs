@@ -32,6 +32,9 @@ commands
   <> command "run"  (info runFileParser (progDesc "run a program"))
   <> command "lsp"  (info lspParser     (progDesc "run an LSP server"))
 
+
+-- Command parsers
+
 replParser :: Parser (IO ExitCode)
 replParser = pure REPL.repl
 
@@ -42,6 +45,9 @@ runFileParser = Run.runFile
 
 lspParser :: Parser (IO ExitCode)
 lspParser = LSP.lsp <$> optional (strOption (long "path" <> metavar "PATH"))
+
+
+-- Option parsers
 
 searchPath :: Parser FilePath
 searchPath = strOption (short 'i' <> long "include" <> metavar "PATH" <> help "specify a search path")
