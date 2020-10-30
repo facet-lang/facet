@@ -71,8 +71,6 @@ import           Prelude hiding (zipWith)
 -- FIXME: we don’t get good source references during unification
 unify :: Type :===: Type -> Elab Type
 unify (t1 :===: t2) = trace "unify" $ case (t1 :===: t2) of
-  VType                    :===: VType                  -> pure VType
-  VInterface               :===: VInterface             -> pure VInterface
   -- FIXME: resolve globals to try to progress past certain inequalities
   VNe (h1 :$ e1)           :===: VNe (h2 :$ e2)         -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine (e1 :===: e2)
   VNe (Metavar v :$ Nil)   :===: x                      -> solve (v :=: x)
@@ -80,6 +78,8 @@ unify (t1 :===: t2) = trace "unify" $ case (t1 :===: t2) of
   VComp t1                 :===: VComp t2               -> VComp <$> unifyComp (t1 :===: t2)
   VComp (Comp [] t1)       :===: t2                     -> unify (t1 :===: t2)
   t1                       :===: VComp (Comp [] t2)     -> unify (t1 :===: t2)
+  VType                    :===: VType                  -> pure VType
+  VInterface               :===: VInterface             -> pure VInterface
   _                        :===: _                      -> nope
   where
   -- FIXME: build and display a diff of the root types
