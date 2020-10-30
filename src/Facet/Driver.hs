@@ -65,13 +65,13 @@ searchPaths_ = lens searchPaths (\ r searchPaths -> r{ searchPaths })
 
 -- Module loading
 
-reloadModules :: (Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State Target) sig m, Has Trace sig m, MonadIO m) => Source -> m ()
-reloadModules src = do
+reloadModules :: (Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State Target) sig m, Has Trace sig m, MonadIO m) => m ()
+reloadModules = do
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
     targetHeads <- traverse (loadModuleHeader . Right) (toList targets)
-    rethrowGraphErrors (Just src) $ loadOrder (fmap toNode . loadModuleHeader . Right) (map toNode targetHeads)
+    rethrowGraphErrors Nothing $ loadOrder (fmap toNode . loadModuleHeader . Right) (map toNode targetHeads)
   let nModules = length modules
   results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
     i <- fresh

@@ -153,7 +153,7 @@ commands = choice
     [ removePath   <$ token (string "path")   <*> path'
     , removeTarget <$ token (string "target") <*> some mname
     ]
-  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (zoom target_ . reloadModules))
+  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (const (target_ `zoom` reloadModules)))
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ showType <$> runFacet [] expr
   , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
@@ -187,9 +187,9 @@ addPath :: FilePath -> Action
 addPath path = Action $ \ _ -> target_.searchPaths_ %= Set.insert path
 
 addTarget :: [MName] -> Action
-addTarget targets = Action $ \ src -> do
+addTarget targets = Action $ \ _ -> do
   target_.targets_ %= Set.union (Set.fromList targets)
-  target_ `zoom` reloadModules src
+  target_ `zoom` reloadModules
 
 removePath :: FilePath -> Action
 removePath path = Action $ \ _ -> target_.searchPaths_ %= Set.delete path
