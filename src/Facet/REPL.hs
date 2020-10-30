@@ -10,9 +10,9 @@ import           Control.Carrier.Error.Church
 import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, uses, (%=), (<~))
+import           Control.Effect.Lens (use, uses, (%=))
 import           Control.Exception (handle)
-import           Control.Lens (Getting, Lens', lens)
+import           Control.Lens (Lens', lens)
 import           Control.Monad (unless, (<=<))
 import           Control.Monad.IO.Class
 import           Data.Char
@@ -34,6 +34,7 @@ import qualified Facet.Elab as Elab
 import           Facet.Eval
 import           Facet.Flag
 import           Facet.Graph
+import           Facet.Lens
 import           Facet.Name hiding (Meta)
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab
@@ -262,24 +263,6 @@ elab src m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
   runReader (span src) . runReader graph . runReader localDefs . rethrowElabErrors src $ m
-
-
-zoom :: Has (State s) sig m => Lens' s a -> StateC a m () -> m ()
-zoom lens action = lens <~> (`execState` action)
-
-infixr 2 `zoom`
-
--- | Compose a getter onto the input of a Kleisli arrow and run it on the 'State'.
-(~>) :: Has (State s) sig m => Getting a s a -> (a -> m b) -> m b
-lens ~> act = use lens >>= act
-
-infixr 2 ~>
-
--- | Compose a lens onto either side of a Kleisli arrow and run it on the 'State'.
-(<~>) :: Has (State s) sig m => Lens' s a -> (a -> m a) -> m ()
-lens <~> act = lens <~ lens ~> act
-
-infixr 2 <~>
 
 
 rethrowGraphErrors :: Source -> I.ThrowC (Notice.Notice Style) GraphErr m a -> m a
