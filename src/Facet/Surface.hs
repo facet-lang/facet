@@ -1,3 +1,5 @@
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Surface
 ( -- * Expressions
   Expr(..)
@@ -32,85 +34,108 @@ import Facet.Syntax
 
 -- Expressions
 
-data Expr
+data Expr f
   = Var (Maybe MName) DName
   | Hole UName
   | Type
   | TInterface
   | TString
-  | TComp (Ann Comp)
-  | Lam [Clause]
-  | Thunk (Ann Expr)
-  | Force (Ann Expr)
-  | App (Ann Expr) (Ann Expr)
-  | As (Ann Expr) (Ann Type)
+  | TComp (f (Comp f))
+  | Lam [Clause f]
+  | Thunk (f (Expr f))
+  | Force (f (Expr f))
+  | App (f (Expr f)) (f (Expr f))
+  | As (f (Expr f)) (f (Type f))
   | String Text
-  deriving (Eq, Show)
+
+deriving instance (forall x . Eq   x => Eq   (f x)) => Eq   (Expr f)
+deriving instance (forall x . Show x => Show (f x)) => Show (Expr f)
 
 type Type = Expr
 
 
-free :: DName -> Expr
+free :: DName -> Expr f
 free = Var Nothing
 
-qual :: QName -> Expr
+qual :: QName -> Expr f
 qual (m :.: n) = Var (Just m) n
 
 
-data Comp = Comp
-  { bindings :: [Ann Binding]
-  , delta    :: [Ann Interface]
-  , type'    :: Ann Type
+data Comp f = Comp
+  { bindings :: [f (Binding f)]
+  , delta    :: [f (Interface f)]
+  , type'    :: f (Type f)
   }
-  deriving (Eq, Show)
 
-data Binding = Binding
+deriving instance (forall x . Eq   x => Eq   (f x)) => Eq   (Comp f)
+deriving instance (forall x . Show x => Show (f x)) => Show (Comp f)
+
+data Binding f = Binding
   { pl    :: Pl
   , names :: NonEmpty UName
   -- FIXME: wrap this in Maybe so we can distinguish values from parametric computations (as in the branches passed to if)
-  , delta :: [Ann Interface]
-  , type' :: Ann Type
+  , delta :: [f (Interface f)]
+  , type' :: f (Type f)
   }
-  deriving (Eq, Show)
 
-data Interface = Interface (Ann (Maybe MName, DName)) (Stack (Ann Type))
-  deriving (Eq, Show)
-
-data Clause = Clause (Ann Pattern) (Ann Expr)
-  deriving (Eq, Show)
+deriving instance (forall x . Eq   x => Eq   (f x)) => Eq   (Binding f)
+deriving instance (forall x . Show x => Show (f x)) => Show (Binding f)
 
 
-data Pattern
+data Interface f = Interface (f (Maybe MName, DName)) (Stack (f (Type f)))
+
+deriving instance (forall x . Eq   x => Eq   (f x)) => Eq   (Interface f)
+deriving instance (forall x . Show x => Show (f x)) => Show (Interface f)
+
+
+data Clause f = Clause (f (Pattern f)) (f (Expr f))
+
+deriving instance (forall x . Eq   x => Eq   (f x)) => Eq   (Clause f)
+deriving instance (forall x . Show x => Show (f x)) => Show (Clause f)
+
+
+data Pattern f
   = PWildcard
   | PVar UName
-  | PCon UName [Ann Pattern]
-  | PEff UName [Ann Pattern] UName
+  | PCon UName [f (Pattern f)]
+  | PEff UName [f (Pattern f)] UName
   -- FIXME: catch-all effect patterns
-  deriving (Eq, Show)
+
+deriving instance (forall x . Eq   x => Eq   (f x)) => Eq   (Pattern f)
+deriving instance (forall x . Show x => Show (f x)) => Show (Pattern f)
 
 
 -- Declarations
 
-data Decl = Decl (Ann Comp) Def
-  deriving (Eq, Show)
+data Decl f = Decl (f (Comp f)) (Def f)
 
-data Def
-  = DataDef [Ann (UName ::: Ann Comp)]
-  | InterfaceDef [Ann (UName ::: Ann Comp)]
-  | TermDef (Ann Expr)
-  deriving (Eq, Show)
+deriving instance (forall x . Eq   x => Eq   (f x)) => Eq   (Decl f)
+deriving instance (forall x . Show x => Show (f x)) => Show (Decl f)
+
+
+data Def f
+  = DataDef [f (UName ::: f (Comp f))]
+  | InterfaceDef [f (UName ::: f (Comp f))]
+  | TermDef (f (Expr f))
+
+deriving instance (forall x . Eq   x => Eq   (f x)) => Eq   (Def f)
+deriving instance (forall x . Show x => Show (f x)) => Show (Def f)
+
 
 
 -- Modules
 
-data Module = Module
+data Module f = Module
   { name      :: MName
-  , imports   :: [Ann Import]
+  , imports   :: [f Import]
   -- FIXME: store source references for operators’ definitions, for error reporting
   , operators :: [(Op, Assoc)]
-  , defs      :: [Ann (DName, Ann Decl)]
+  , defs      :: [f (DName, f (Decl f))]
   }
-  deriving (Eq, Show)
+
+deriving instance (forall x . Eq   x => Eq   (f x)) => Eq   (Module f)
+deriving instance (forall x . Show x => Show (f x)) => Show (Module f)
+
 
 newtype Import = Import { name :: MName }
   deriving (Eq, Show)
@@ -135,10 +160,10 @@ instance Show a => Show (Ann a) where
   showsPrec p = showsPrec p . out
 
 
-annUnary :: (Ann Expr -> Expr) -> Ann Expr -> Ann Expr
+annUnary :: (Ann (Expr Ann) -> Expr Ann) -> Ann (Expr Ann) -> Ann (Expr Ann)
 annUnary f a = Ann (ann a) Nil (f a)
 
-annBinary :: (Ann Expr -> Ann Expr -> Expr) -> Ann Expr -> Ann Expr -> Ann Expr
+annBinary :: (Ann (Expr Ann) -> Ann (Expr Ann) -> Expr Ann) -> Ann (Expr Ann) -> Ann (Expr Ann) -> Ann (Expr Ann)
 annBinary f a b = Ann (ann a <> ann b) Nil (f a b)
 
 

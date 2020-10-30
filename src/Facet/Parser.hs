@@ -60,7 +60,7 @@ whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
 
 
-makeOperator :: (N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
+makeOperator :: (N.Op, N.Assoc) -> Operator (S.Ann (S.Expr S.Ann))
 makeOperator (op, assoc) = (op, assoc, nary (N.O op))
   where
   nary name es = foldl' (S.annBinary S.App) (S.Ann (S.ann (head es)) Nil (S.free name)) es
@@ -69,11 +69,11 @@ makeOperator (op, assoc) = (op, assoc, nary (N.O op))
 -- Modules
 
 -- FIXME: preserve comments, presumably in 'S.Ann'
-module' :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Module)
+module' :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr S.Ann))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Module S.Ann))
 module' = anned $ do
   (name, imports) <- moduleHeader
   decls <- many decl
-  ops <- get @[Operator (S.Ann S.Expr)]
+  ops <- get @[Operator (S.Ann (S.Expr S.Ann))]
   pure $ S.Module name imports (map (\ (op, assoc, _) -> (op, assoc)) ops) decls
 
 -- FIXME: pick a better syntax for imports, something we can use in the REPL.
@@ -86,7 +86,7 @@ moduleHeader = (,) <$ reserve dnameStyle "module" <*> mname <* colon <* symbol "
 import' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Import)
 import' = anned $ S.Import <$ reserve dnameStyle "import" <*> mname
 
-decl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
+decl :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr S.Ann))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann (S.Decl S.Ann)))
 decl = choice
   [ termDecl
   , dataDecl
@@ -96,7 +96,7 @@ decl = choice
 -- FIXME: operators aren’t available until after their declarations have been parsed.
 -- FIXME: parse operator declarations in datatypes.
 -- FIXME: parse operator declarations in interfaces.
-termDecl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
+termDecl :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr S.Ann))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann (S.Decl S.Ann)))
 termDecl = anned $ do
   name <- dename
   case name of
@@ -114,52 +114,52 @@ termDecl = anned $ do
   decl <- anned $ S.Decl <$ colon <*> typeSig (choice [ imBinding, exBinding ename ]) type' <*> (S.TermDef <$> comp)
   pure (name, decl)
 
-dataDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
+dataDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann (S.Decl S.Ann)))
 dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> anned (S.Decl <$> typeSig (choice [ imBinding, exBinding tname ]) type' <*> (S.DataDef <$> braces (commaSep con)))
 
-interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann S.Decl))
+interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann (S.Decl S.Ann)))
 interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> anned (S.Decl <$> typeSig (choice [ imBinding, exBinding tname ]) type' <*> (S.InterfaceDef <$> braces (commaSep con)))
 
-con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann S.Comp))
+con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann (S.Comp S.Ann)))
 con = anned ((:::) <$> cname <* colon <*> tcomp)
 
 
 typeSig
   :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p)
-  => p (S.Ann S.Binding)
-  -> p (S.Ann S.Expr)
-  -> p (S.Ann S.Comp)
+  => p (S.Ann (S.Binding S.Ann))
+  -> p (S.Ann (S.Expr S.Ann))
+  -> p (S.Ann (S.Comp S.Ann))
 typeSig binding body = anned $ do
   bindings <- many (try (binding <* arrow))
   S.Comp bindings <$> option [] sig <*> body
 
-exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.UName -> p (S.Ann S.Binding)
+exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.UName -> p (S.Ann (S.Binding S.Ann))
 exBinding name = anned $ nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
 
-imBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Binding)
+imBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Binding S.Ann))
 imBinding = anned $ braces $ S.Binding Im . NE.fromList <$> commaSep1 tname <* colon <*> option [] sig <*> type'
 
-nonBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Binding)
+nonBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Binding S.Ann))
 nonBinding = anned $ S.Binding Ex (pure N.__) <$> option [] sig <*> tatom
 
 
 -- Types
 
 -- FIXME: kind ascriptions
-monotypeTable :: Table (S.Ann S.Type)
+monotypeTable :: Table (S.Ann (S.Type S.Ann))
 monotypeTable =
   [ [ (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   ]
 
 
-type' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
+type' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Type S.Ann))
 type' = anned $ S.TComp <$> tcomp
 
-tcomp :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Comp)
+tcomp :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Comp S.Ann))
 tcomp = typeSig (choice [ imBinding, nonBinding ]) tatom
 
 -- FIXME: support type operators
-tatom :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
+tatom :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Type S.Ann))
 tatom = build monotypeTable $ choice
   [ -- FIXME: we should treat these as globals.
     anned (S.Type <$ token (string "Type"))
@@ -170,7 +170,7 @@ tatom = build monotypeTable $ choice
   , parens type'
   ]
 
-tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
+tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr S.Ann))
 tvar = choice
   [ token (anned (runUnspaced (S.free . N.T <$> tname  <?> "variable")))
   , fmap S.qual <$> qname
@@ -183,7 +183,7 @@ tvar = choice
 -- - before an argument type
 -- - before a return type
 
-sig :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Interface]
+sig :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann (S.Interface S.Ann)]
 sig = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
@@ -194,7 +194,7 @@ sig = brackets (commaSep delta) <?> "signature"
 
 -- Expressions
 
-exprTable :: Table (S.Ann S.Expr)
+exprTable :: Table (S.Ann (S.Expr S.Ann))
 exprTable =
   [ [ (N.Infix (pack ":"), N.R, foldr1 (S.annBinary S.As)) ]
   , [ (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
@@ -204,7 +204,7 @@ exprTable =
   ]
 
 -- FIXME: this is responsible for a massive slowdown on nested parens.
-expr :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
+expr :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr S.Ann))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr S.Ann))
 expr = do
   ops <- get
   let rec = build (ops:exprTable) $ choice
@@ -216,14 +216,14 @@ expr = do
         ]
   rec
 
-comp :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
+comp :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr S.Ann))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr S.Ann))
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
 comp = anned (braces (S.Lam <$> sepBy1 clause comma <|> S.Thunk <$> expr <|> pure (S.Lam [])))
 
-clause :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p S.Clause
+clause :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr S.Ann))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Clause S.Ann)
 clause = S.Clause <$> try (patternP <* arrow) <*> expr <?> "clause"
 
-evar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
+evar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr S.Ann))
 evar = choice
   [ token (anned (runUnspaced (S.free . N.E <$> ename <?> "variable")))
     -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
@@ -231,7 +231,7 @@ evar = choice
   , fmap S.qual <$> qname
   ]
 
-hole :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
+hole :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr S.Ann))
 hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
   where
   hnameStyle = IdentifierStyle "hole name" (char '?') nameChar reserved Identifier ReservedIdentifier
@@ -242,7 +242,7 @@ hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
 wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
 
-patternP :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Pattern)
+patternP :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Pattern S.Ann))
 patternP = choice
   [ anned (S.PVar      <$> ename)
   , anned (S.PWildcard <$  wildcard)
@@ -343,11 +343,11 @@ anned p = mk <$> censor @(Stack (Span, S.Comment)) (const Nil) (listen @(Stack (
 
 -- Parsing carriers
 
-runFacet :: Functor m => [Operator (S.Ann S.Expr)] -> Facet m a -> m a
+runFacet :: Functor m => [Operator (S.Ann (S.Expr S.Ann))] -> Facet m a -> m a
 runFacet ops (Facet m) = snd <$> C.runWriter (runWriterC (C.evalState ops (runStateC m)))
 
-newtype Facet m a = Facet (StateC [Operator (S.Ann S.Expr)] (WriterC (Stack (Span, S.Comment)) m) a)
-  deriving (Algebra (State [Operator (S.Ann S.Expr)] :+: Writer (Stack (Span, S.Comment)) :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadFix)
+newtype Facet m a = Facet (StateC [Operator (S.Ann (S.Expr S.Ann))] (WriterC (Stack (Span, S.Comment)) m) a)
+  deriving (Algebra (State [Operator (S.Ann (S.Expr S.Ann))] :+: Writer (Stack (Span, S.Comment)) :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadFix)
 
 instance (Monad p, Parsing p) => Parsing (Facet p) where
   try (Facet m) = Facet $ try m
