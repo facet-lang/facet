@@ -1,6 +1,6 @@
 # NB: this file and its syntax is entirely aspirational.
 
-Data.Bool : Module
+module Data.Bool : Module
 
 # fixme: how do we control the implicit scope? should there even be any? where do e.g. Type & Module come from?
 # fixme: how do we make explicit imports convenient?
@@ -54,7 +54,7 @@ if
 # fixme: can we just sort of assume that stuff has the same phase as its module? (or “no earlier than” perhaps?)
 
 
-Base.Bool.Tests : Module # maybe parameterize this module by a signature for tests or something
+module Base.Bool.Tests : Module # maybe parameterize this module by a signature for tests or something
 # annotate this module via a semiring describing that it only lives in the test phase
 # we can’t export this in other phases either which is an interesting thought
 {
