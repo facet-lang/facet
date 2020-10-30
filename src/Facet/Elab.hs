@@ -77,6 +77,7 @@ unify = go
     -- FIXME: resolve globals to try to progress past certain inequalities
     VNe (h1 :$ e1)         :===: VNe (h2 :$ e2)         -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
     VComp t1               :===: VComp t2               -> VComp <$> unifyComp t1 t2
+    -- FIXME: these make me feel icky
     VComp (Comp [] t1)     :===: t2                     -> go t1 t2
     t1                     :===: VComp (Comp [] t2)     -> go t1 t2
     VNe{}                  :===: _                      -> nope
