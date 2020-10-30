@@ -70,8 +70,8 @@ reloadModules src = do
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
-    targetHeads <- traverse (loadModuleHeader src . Right) (toList targets)
-    rethrowGraphErrors (Just src) $ loadOrder (fmap toNode . loadModuleHeader src . Right) (map toNode targetHeads)
+    targetHeads <- traverse (loadModuleHeader . Right) (toList targets)
+    rethrowGraphErrors (Just src) $ loadOrder (fmap toNode . loadModuleHeader . Right) (map toNode targetHeads)
   let nModules = length modules
   results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
     i <- fresh
@@ -88,12 +88,12 @@ reloadModules src = do
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = let imports' = map ((S.name :: S.Import -> MName) . S.out) imports in Node n imports' (n, path, source, imports')
 
-loadModuleHeader :: (Has (State Target) sig m, Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => Source -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
-loadModuleHeader src target = do
+loadModuleHeader :: (Has (State Target) sig m, Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
+loadModuleHeader target = do
   path <- case target of
     Left path  -> pure path
     Right name -> resolveName name
-  src <- rethrowIOErrors (Just src) $ readSourceFromFile path
+  src <- rethrowIOErrors Nothing $ readSourceFromFile path
   -- FIXME: validate that the name matches
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
