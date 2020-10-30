@@ -1,7 +1,7 @@
 # NB: this won’t parse until we can parse string literals.
 # NB: this won’t elaborate until we define Strings.
 
-module Effect.Console
+module Effect.Console : Module
 { import Data.Option
 , import Data.Unit }
 
