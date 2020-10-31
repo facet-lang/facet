@@ -70,7 +70,7 @@ qual (m :.: n) = Var (Just m) n
 
 data Comp a = Comp
   { bindings :: [Ann (Binding a)]
-  , delta    :: [Ann (Interface a)]
+  , delta    :: Maybe [Ann (Interface a)]
   , type'    :: Ann (Type a)
   }
   deriving (Foldable, Functor, Traversable)
@@ -84,8 +84,10 @@ data Binding a = Binding
   --
   -- This technically represents the same number of (total) cases as @[]@ would, but forces disjoint handling so we don’t accidentally e.g. bind or apply over a non-binding argument and truncate the list.
   , names :: Maybe (NonEmpty UName)
-  -- FIXME: wrap this in Maybe so we can distinguish values from parametric computations (as in the branches passed to if)
-  , delta :: [Ann (Interface a)]
+  -- | The signature, if any, provided at this position.
+  --
+  -- 'Nothing' indicates a value type; 'Just' with an empty list indicates a thunk with the ambient effects; 'Just' with one or more interfaces indicates that this position provides these effects. (Note that this can, in general, also hold signature variables.)
+  , delta :: Maybe [Ann (Interface a)]
   , type' :: Ann (Type a)
   }
   deriving (Foldable, Functor, Traversable)

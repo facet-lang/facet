@@ -104,16 +104,16 @@ data Prim
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
   = ForAll Binding (Type -> Comp)
-  | Comp [Value] Type
+  | Comp (Maybe [Value]) Type
 
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
   where
   go = \case
     ForAll t b -> ForAll (binding t) (go . b)
-    Comp s t   -> Comp (map (substWith f) s) (substWith f t)
+    Comp s t   -> Comp (map (substWith f) <$> s) (substWith f t)
 
-  binding (Binding p n d t) = Binding p n (map (substWith f) d) (substWith f t)
+  binding (Binding p n d t) = Binding p n (map (substWith f) <$> d) (substWith f t)
 
 substComp :: IntMap.IntMap Value -> Comp -> Comp
 substComp s
@@ -155,7 +155,7 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 data Binding = Binding
   { pl    :: Pl
   , name  :: UName
-  , delta :: [Value]
+  , delta :: Maybe [Value]
   , type' :: Value
   }
 

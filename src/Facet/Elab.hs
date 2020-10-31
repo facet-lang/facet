@@ -82,25 +82,25 @@ unify :: Type -> Type -> Elab Type
 unify = go
   where
   go t1 t2 = trace "unify" $ case t1 :===: t2 of
-    VNe (Metavar v :$ Nil) :===: x                      -> solve (v :=: x)
-    x                      :===: VNe (Metavar v :$ Nil) -> solve (v :=: x)
+    VNe (Metavar v :$ Nil)  :===: x                       -> solve (v :=: x)
+    x                       :===: VNe (Metavar v :$ Nil)  -> solve (v :=: x)
     -- FIXME: resolve globals to try to progress past certain inequalities
-    VNe (h1 :$ e1)         :===: VNe (h2 :$ e2)         -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
-    VComp t1               :===: VComp t2               -> VComp <$> unifyComp t1 t2
+    VNe (h1 :$ e1)          :===: VNe (h2 :$ e2)          -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
+    VComp t1                :===: VComp t2                -> VComp <$> unifyComp t1 t2
     -- FIXME: these make me feel icky
-    VComp (Comp [] t1)     :===: t2                     -> go t1 t2
-    t1                     :===: VComp (Comp [] t2)     -> go t1 t2
-    VNe{}                  :===: _                      -> nope
-    VComp{}                :===: _                      -> nope
-    VType                  :===: VType                  -> pure VType
-    VType                  :===: _                      -> nope
-    VInterface             :===: VInterface             -> pure VInterface
-    VInterface             :===: _                      -> nope
-    VPrim p1               :===: VPrim p2               -> VPrim p1 <$ unless (p1 == p2) nope
-    VPrim{}                :===: _                      -> nope
-    VCon{}                 :===: _                      -> nope
-    VLam{}                 :===: _                      -> nope
-    VOp{}                  :===: _                      -> nope
+    VComp (Comp Nothing t1) :===: t2                      -> go t1 t2
+    t1                      :===: VComp (Comp Nothing t2) -> go t1 t2
+    VNe{}                   :===: _                       -> nope
+    VComp{}                 :===: _                       -> nope
+    VType                   :===: VType                   -> pure VType
+    VType                   :===: _                       -> nope
+    VInterface              :===: VInterface              -> pure VInterface
+    VInterface              :===: _                       -> nope
+    VPrim p1                :===: VPrim p2                -> VPrim p1 <$ unless (p1 == p2) nope
+    VPrim{}                 :===: _                       -> nope
+    VCon{}                  :===: _                       -> nope
+    VLam{}                  :===: _                       -> nope
+    VOp{}                   :===: _                       -> nope
     where
     -- FIXME: build and display a diff of the root types
     nope = couldNotUnify "mismatch" t1 t2
@@ -124,10 +124,10 @@ unify = go
       let v = free d
       b <- unifyComp (b1 v) (b2 v)
       pure $ ForAll (Binding p1 n1 s t) (\ v -> bindComp d v b)
-    Comp s1 t1 :===: Comp s2 t2 -> Comp <$> unifySig s1 s2 <*> go t1 t2
-    Comp [] t1 :===: t2         -> fromValue <$> go t1 (VComp t2)
-    t1         :===: Comp [] t2 -> fromValue <$> go (VComp t1) t2
-    _          :===: _          -> nope
+    Comp s1 t1      :===: Comp s2 t2      -> Comp <$> unifySig s1 s2 <*> go t1 t2
+    Comp Nothing t1 :===: t2              -> fromValue <$> go t1 (VComp t2)
+    t1              :===: Comp Nothing t2 -> fromValue <$> go (VComp t1) t2
+    _               :===: _               -> nope
     where
     nope = couldNotUnify "mismatch" (VComp c1) (VComp c2)
 
@@ -240,7 +240,7 @@ f $$ a = Synth $ trace "$$" $ do
   f' ::: _F <- synth f
   -- FIXME: check that the signatures match
   (Binding _ _ delta _A, _B) <- expectQuantifier "in application" _F
-  a' <- local (delta++) $ check (a ::: _A)
+  a' <- maybe id (local . (++)) delta $ check (a ::: _A)
   pure $ f' C.$$ (Ex, a') ::: VComp (_B a')
 
 
@@ -304,7 +304,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
 elabBinding :: S.Ann (S.Binding Void) -> [(Pos, Check Binding)]
 elabBinding (S.Ann s _ (S.Binding p n d t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
-    d' <- traverse (check . (::: VInterface) . elabSig) d
+    d' <- traverse (traverse (check . (::: VInterface) . elabSig)) d
     t' <- check (checkExpr t ::: _T)
     pure $ Binding p n d' t')
   | n <- maybe [__] toList n ]
@@ -317,7 +317,7 @@ elabSig (S.Ann s _ (S.Interface (S.Ann s' _ (m, n)) sp)) = Check $ \ _T -> setSp
 elabSTelescope :: S.Ann (S.Comp Void) -> Synth Comp
 elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabSTelescope") $ foldr
   (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> Check $ \ _T -> v |- check (switch b ::: _T)))
-  (mapSynth (setSpan (foldr ((<>) . S.ann) (S.ann t) d)) (comp (map elabSig d) (checkExpr t)))
+  (mapSynth (setSpan (foldr (flip (foldr ((<>) . S.ann))) (S.ann t) d)) (comp (map elabSig <$> d) (checkExpr t)))
   (elabBinding =<< bs)
 
 
@@ -339,9 +339,9 @@ forAll t b = Synth $ trace "forAll" $ do
   _B <- check (b (name ::: _A) ::: VType)
   pure $ ForAll _T (\ v -> bindComp d v _B) ::: VType
 
-comp :: [Check Value] -> Check Type -> Synth Comp
+comp :: Maybe [Check Value] -> Check Type -> Synth Comp
 comp s t = Synth $ trace "comp" $ do
-  s' <- traverse (check . (::: VInterface)) s
+  s' <- traverse (traverse (check . (::: VInterface))) s
   t' <- check (t ::: VType)
   pure $ Comp s' t' ::: VType
 
@@ -356,7 +356,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
 
 thunk :: Check Expr -> Check Expr
 thunk e = Check $ \case
-  VComp (Comp s t)  -> local (s ++) $ check (e ::: VComp (Comp s t))
+  VComp (Comp s t)  -> maybe id (local . (++)) s $ check (e ::: VComp (Comp s t))
   VComp _T@ForAll{} -> check (e ::: VComp _T)
   t                 -> check (e ::: t)
 
@@ -474,7 +474,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (
   go k t = case t of
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
-    Comp s _T                    -> local (s ++) $ check (k ::: _T)
+    Comp s _T                    -> maybe id (local . (++)) s $ check (k ::: _T)
     -- FIXME: can this use lam?
     ForAll (Binding p n _ _T) _B -> do
       b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
@@ -591,9 +591,9 @@ expectQuantifier = expectMatch (\case{ ForAll t b -> pure (t, b) ; _ -> Nothing 
 
 stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case
-  VComp (Comp [] t) -> stripEmpty t
-  VComp t           -> Just t
-  _                 -> Nothing
+  VComp (Comp Nothing t) -> stripEmpty t
+  VComp t                -> Just t
+  _                      -> Nothing
 
 
 -- Machinery
@@ -637,7 +637,7 @@ check (m ::: _T) = trace "check" $ runCheck m _T
 checkComp :: (Check a ::: Comp) -> Elab a
 checkComp (m ::: _T) = trace "checkComp" $ case _T of
   -- FIXME: extract a helper to extend the sig
-  Comp sig _T -> local (sig ++) (runCheck m _T)
+  Comp sig _T -> maybe id (local . (++)) sig (runCheck m _T)
   _           -> runCheck m (VComp _T)
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
