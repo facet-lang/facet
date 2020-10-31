@@ -171,27 +171,30 @@ showModules = Action $ uses (target_.modules_) (unlines . map (\ (name, (path, _
 
 showTargets = Action $ uses (target_.targets_) (unlines . map pretty . toList) >>= outputDocLn
 
-addPath :: FilePath -> Action
+
+addPath, removePath :: FilePath -> Action
+
 addPath path = Action $ target_.searchPaths_ %= Set.insert path
 
-addTarget :: [MName] -> Action
+removePath path = Action $ target_.searchPaths_ %= Set.delete path
+
+
+addTarget, removeTarget :: [MName] -> Action
+
 addTarget targets = Action $ do
   target_.targets_ %= Set.union (Set.fromList targets)
   target_ `zoom` reloadModules
 
-removePath :: FilePath -> Action
-removePath path = Action $ target_.searchPaths_ %= Set.delete path
-
 -- FIXME: remove things depending on it
-removeTarget :: [MName] -> Action
 removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets)
 
-showType :: S.Ann (S.Expr Void) -> Action
+
+showType, showEval :: S.Ann (S.Expr Void) -> Action
+
 showType e = Action $ do
   e ::: _T <- elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.synth (Elab.synthExpr e))
   outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
 
-showEval :: S.Ann (S.Expr Void) -> Action
 showEval e = Action $ do
   (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:T "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
   (dEval, e'') <- time $ elab $ runEvalMain (eval e')
