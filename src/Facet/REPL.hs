@@ -16,17 +16,16 @@ import           Control.Monad (unless, (<=<))
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
-import           Data.Fixed (Fixed(..), Nano)
 import           Data.Foldable (toList)
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
 import           Data.Text (Text)
-import           Data.Time.Clock.System
 import           Data.Void
 import           Facet.Carrier.Parser.Church hiding (Input)
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
+import           Facet.Carrier.Time.System
 import           Facet.Carrier.Trace.REPL
 import           Facet.Core
 import           Facet.Driver
@@ -67,6 +66,7 @@ repl searchPaths
   . evalEmpty
   . evalState (toFlag LogTraces False)
   . runTrace Nil
+  . runTime
   $ loop
 
 
@@ -104,7 +104,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ "
   plain = setSGRCode [] <> "\STX"
 
 
-loop :: (Has Empty sig m, Has Input sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => m ()
+loop :: (Has Empty sig m, Has Input sig m, Has Output sig m, Has (State REPL) sig m, Has (Time Instant) sig m, Has Trace sig m, MonadIO m) => m ()
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
@@ -154,10 +154,10 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-runAction :: (Has Empty sig m, Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> Action -> m ()
+runAction :: (Has Empty sig m, Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State REPL) sig m, Has (Time Instant) sig m, Has Trace sig m, MonadIO m) => Source -> Action -> m ()
 runAction src (Action f) = f src
 
-newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State REPL) sig m, Has Trace sig m, MonadIO m) => Source -> m ())
+newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State REPL) sig m, Has (Time Instant) sig m, Has Trace sig m, MonadIO m) => Source -> m ())
 
 
 showPaths, showModules, showTargets :: Action
@@ -234,25 +234,3 @@ elab src m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
   runReader (span src) . runReader graph . runReader localDefs . rethrowElabErrors src $ m
-
-
-time :: MonadIO m => m a -> m (Duration, a)
-time m = do
-  start <- now
-  a <- m
-  end <- now
-  pure (since start end, a)
-
-now :: MonadIO m => m Instant
-now = Instant <$> liftIO getSystemTime
-
-newtype Instant = Instant { getInstant :: SystemTime }
-  deriving (Eq, Ord, Show)
-
-newtype Duration = Duration { getDuration :: Nano }
-  deriving (Eq, Fractional, Num, Ord, Real, Show)
-
-
-since :: Instant -> Instant -> Duration
-since (Instant (MkSystemTime bs bns)) (Instant (MkSystemTime as ans)) = Duration (realToFrac (as - bs) + MkFixed (fromIntegral ans - fromIntegral bns))
-{-# INLINABLE since #-}
