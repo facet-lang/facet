@@ -300,6 +300,7 @@ applyComp :: Subst -> Comp -> Comp
 applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution has holes.
 
 
+-- FIXME: generalize terms and types simultaneously
 generalize :: Subst -> Value -> Value
 generalize s v
   | null b    = apply s v
