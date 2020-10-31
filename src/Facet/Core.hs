@@ -312,6 +312,7 @@ generalize s v
     Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
 
 
+-- FIXME: should we define eta-expansion of types?
 etaExpand :: Value ::: Type -> Value
 etaExpand (v ::: _T) = case _T of
   VComp _T -> go v _T
