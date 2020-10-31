@@ -474,11 +474,15 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (
   go k t = case t of
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
-    Comp s _T                    -> extendSig s $ check (k ::: _T)
+    Comp s _T                           -> extendSig s $ check (k ::: _T)
+    -- we’ve exhausted the named parameters; the rest is up to the body.
+    ForAll (Binding _ Nothing _ _T) _B  -> check (k ::: _T)
     -- FIXME: can this use lam?
-    ForAll (Binding p n _ _T) _B -> do
-      b' <- elabBinder $ \ v -> fromMaybe __ n ::: _T |- go k (_B v)
-      pure $ VLam p [Clause (PVar (fromMaybe __ n ::: _T)) (b' . unsafeUnPVar)]
+    ForAll (Binding p (Just n) _ _T) _B -> do
+      -- FIXME: use the sig… somehow…
+      -- FIXME: should signatures end up in the context?
+      b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
+      pure $ VLam p [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
 
 
 -- Modules
