@@ -40,4 +40,7 @@ type Table p a = [Row p a]
 
 -- | Build a parser for a Table.
 build :: Alternative p => Table p a -> p a -> p a
-build = flip (foldr (\ ps next -> let self = foldr (\ p rest -> p self rest <|> rest) next ps in self))
+build = flip (foldr buildRow)
+
+buildRow :: Alternative p => Row p a -> p a -> p a
+buildRow ps next = let self = foldr (\ p rest -> p self rest <|> rest) next ps in self
