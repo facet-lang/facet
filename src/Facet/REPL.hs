@@ -4,6 +4,7 @@ module Facet.REPL
 ( repl
 ) where
 
+import           Control.Algebra
 import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
@@ -154,7 +155,7 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-newtype Action = Action { runAction :: forall sig m . (Has Empty sig m, Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (Reader Source) sig m, Has (State REPL) sig m, Has (Time Instant) sig m, Has Trace sig m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State REPL :+: Time Instant :+: Trace) sig m, Has Trace sig m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action
