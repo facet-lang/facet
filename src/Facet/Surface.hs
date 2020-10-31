@@ -180,6 +180,9 @@ instance Ord a => Ord (Ann a) where
 instance Show a => Show (Ann a) where
   showsPrec p = showsPrec p . out
 
+instance HasSpan (Ann a) where
+  span_ = ann_
+
 ann_ :: Lens' (Ann a) Span
 ann_ = lens ann (\ a ann -> a{ ann })
 
