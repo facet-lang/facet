@@ -6,7 +6,6 @@ module Facet.Parser.Table
 , Row
 , Table
 , build
-, terminate
 ) where
 
 import Control.Applicative (Alternative(..))
@@ -43,6 +42,3 @@ build ts end = root
   chain ps next = self
     where
     self = foldr (\ p rest -> parseOperator p self rest <|> rest) next ps
-
-terminate :: (p a -> p a) -> OperatorParser p a -> p a -> p a
-terminate wrap op next = self where self = wrap $ op self next
