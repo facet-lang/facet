@@ -114,7 +114,7 @@ unify = go
       d <- asks @(Context Type) level
       let v = free d
       b <- unifyComp (b1 v) (b2 v)
-      pure $ ForAll (Binding p1 n1 s t) (\ v -> C.bindComp d v b)
+      pure $ ForAll (Binding p1 n1 s t) (\ v -> bindComp d v b)
     Comp s1 t1 :===: Comp s2 t2 -> Comp <$> unifySig s1 s2 <*> go t1 t2
     Comp [] t1 :===: t2         -> fromValue <$> go t1 (VComp t2)
     t1         :===: Comp [] t2 -> fromValue <$> go (VComp t1) t2
@@ -245,7 +245,7 @@ elabBinders :: (Traversable t, Has (Reader (Context Type)) sig m) => t (UName ::
 elabBinders p b = do
   d <- asks @(Context Type) level
   b' <- b p
-  pure $ \ v -> C.binds (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
+  pure $ \ v -> binds (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
 (|-) :: Has (Reader (Context Type)) sig m => UName ::: Type -> m a -> m a
 t |- b = local @(Context Type) (|> t) b
@@ -328,7 +328,7 @@ forAll t b = Synth $ trace "forAll" $ do
   _T@Binding{ name, type' = _A } <- check (t ::: VType)
   d <- asks @(Context Type) level
   _B <- check (b (name ::: _A) ::: VType)
-  pure $ ForAll _T (\ v -> C.bindComp d v _B) ::: VType
+  pure $ ForAll _T (\ v -> bindComp d v _B) ::: VType
 
 comp :: [Check Value] -> Check Type -> Synth Comp
 comp s t = Synth $ trace "comp" $ do
@@ -361,20 +361,20 @@ elabClauses cs = Check $ \ _T -> do
 
 
 -- FIXME: check for unique variable names
-elabPattern :: S.Ann (S.Pattern Void) -> (C.Pattern (UName ::: Type) -> Elab a) -> Check a
+elabPattern :: S.Ann (S.Pattern Void) -> (Pattern (UName ::: Type) -> Elab a) -> Check a
 elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ case p of
-  S.PWildcard -> k (C.PVar (__ ::: _A))
-  S.PVar n    -> k (C.PVar (n  ::: _A))
+  S.PWildcard -> k (PVar (__ ::: _A))
+  S.PVar n    -> k (PVar (n  ::: _A))
   S.PCon n ps -> do
     q :=: _ ::: _T' <- resolveC n
     _T'' <- inst _T'
-    subpatterns _A _T'' ps $ \ ps' -> k (C.PCon (q :$ fromList ps'))
+    subpatterns _A _T'' ps $ \ ps' -> k (PCon (q :$ fromList ps'))
   -- FIXME: look up the effect in the signature
   S.PEff n ps v -> do
     q :=: _ ::: _T' <- resolveC n
     _T'' <- inst _T'
     -- FIXME: what should the type of the continuation be? [effect result type] -> [remainder of body type after this pattern]?
-    subpatterns _A _T'' ps $ \ ps' -> k (C.PEff q (fromList ps') (v ::: VType)) -- FIXME: lies
+    subpatterns _A _T'' ps $ \ ps' -> k (PEff q (fromList ps') (v ::: VType)) -- FIXME: lies
   where
   inst = \case
   -- FIXME: assert that the signature is empty
@@ -411,8 +411,8 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
     c_T <- elabTele $ go (switch (elabSTelescope t)) _T
     pure $ n :=: con (mname :.: C n) Nil c_T ::: c_T
   pure
-    $ (dname, Decl (Just (C.DData cs)) _T)
-    : map (\ (n :=: c ::: c_T) -> (E n, Decl (Just (C.DTerm c)) c_T)) cs
+    $ (dname, Decl (Just (DData cs)) _T)
+    : map (\ (n :=: c ::: c_T) -> (E n, Decl (Just (DTerm c)) c_T)) cs
   where
   go k = \case
     Comp _ _                     -> check (k ::: VType)
@@ -420,7 +420,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
     ForAll (Binding _ n s _T) _B -> do
       d <- asks @(Context Type) level
       _B' <- n ::: _T |- go k (_B (free d))
-      pure $ ForAll (Binding Im n s _T) (\ v -> C.bindComp d v _B')
+      pure $ ForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
   con q fs = \case
     ForAll (Binding p n _ _T) _B -> VLam p [Clause (PVar (n ::: _T)) ((\ v -> con q (fs :> v) (_B v)) . unsafeUnPVar)]
     _T                           -> VCon (q :$ fs)
@@ -441,7 +441,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
     ForAll (Binding _ n s _T) _B -> do
       d <- asks @(Context Type) level
       _B' <- n ::: _T |- go k (_B (free d))
-      pure $ ForAll (Binding Im n s _T) (\ v -> C.bindComp d v _B')
+      pure $ ForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
@@ -464,7 +464,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (
 elabModule
   :: (HasCallStack, Has (Reader Graph :+: Throw Err :+: Time Instant :+: Trace) sig m)
   => S.Ann (S.Module Void)
-  -> m C.Module
+  -> m Module
 elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader s $ tracePretty mname $ do
   let (importedNames, imports) = mapAccumL (\ names (S.Ann _ _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
   imports_ .= imports
@@ -492,7 +492,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- then elaborate the terms
     trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> setSpan s $ tracePretty dname $ do
       t' <- runModule $ elabTermDef _T t
-      decls_.ix dname .= Decl (Just (C.DTerm t')) _T
+      decls_.ix dname .= Decl (Just (DTerm t')) _T
 
 
 runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
