@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Facet.Carrier.Trace.REPL
+module Facet.Carrier.Trace.Output
 ( -- * Trace carrier
   runTrace
 , LogTraces(..)

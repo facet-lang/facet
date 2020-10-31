@@ -27,7 +27,7 @@ import           Facet.Carrier.Parser.Church hiding (Input)
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Time.System
-import           Facet.Carrier.Trace.REPL
+import           Facet.Carrier.Trace.Output
 import           Facet.Core
 import           Facet.Driver
 import qualified Facet.Elab as Elab

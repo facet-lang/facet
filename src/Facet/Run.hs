@@ -8,7 +8,7 @@ import           Data.Foldable (for_)
 import qualified Data.Set as Set
 import           Facet.Carrier.Output.IO
 import           Facet.Carrier.Time.System
-import           Facet.Carrier.Trace.REPL
+import           Facet.Carrier.Trace.Output
 import           Facet.Driver
 import           Facet.Flag
 import           Facet.Graph

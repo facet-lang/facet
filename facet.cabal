@@ -67,7 +67,7 @@ library
     Facet.Carrier.State.Lens
     Facet.Carrier.Throw.Inject
     Facet.Carrier.Time.System
-    Facet.Carrier.Trace.REPL
+    Facet.Carrier.Trace.Output
     Facet.CLI
     Facet.Context
     Facet.Core
