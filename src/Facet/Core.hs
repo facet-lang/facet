@@ -239,7 +239,7 @@ match = curry $ \case
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
     PCon . (n' :$) <$> sequenceA (zipWith match fs ps)
   (_,               PCon _)         -> Nothing
-  -- FIXME: match effect patterns against computations
+  -- FIXME: match effect patterns against computations (?)
   (_,               PEff{})         -> Nothing
 
 
