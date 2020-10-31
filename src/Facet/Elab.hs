@@ -456,6 +456,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (
   where
   go k t = case t of
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
+    -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     Comp s _T                    -> local (s ++) $ check (etaExpand . (::: _T) <$> k ::: _T)
     -- FIXME: can this use lam?
     ForAll (Binding p n _ _T) _B -> do
