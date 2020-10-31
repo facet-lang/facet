@@ -66,6 +66,14 @@ import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding (zipWith)
 
+-- TODO:
+-- - forcing
+-- - thunks
+-- - clause/pattern matrices
+-- - tacit (eta-reduced) definitions w/ effects
+-- - mutual recursion? does this work already? who knows
+-- - datatypes containing computations
+
 -- General
 
 -- FIXME: we don’t get good source references during unification
