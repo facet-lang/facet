@@ -74,6 +74,7 @@ function flags {
   echo "-XDerivingVia"
   echo "-XDisambiguateRecordFields"
   echo "-XDuplicateRecordFields"
+  echo "-XEmptyCase"
   echo "-XFlexibleContexts"
   echo "-XFlexibleInstances"
   echo "-XGeneralizedNewtypeDeriving"

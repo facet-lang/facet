@@ -39,6 +39,7 @@ common common
     DerivingVia
     DisambiguateRecordFields
     DuplicateRecordFields
+    EmptyCase
     FlexibleContexts
     FlexibleInstances
     GeneralizedNewtypeDeriving
