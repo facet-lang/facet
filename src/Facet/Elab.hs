@@ -422,7 +422,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
       _B' <- n ::: _T |- go k (_B (free d))
       pure $ ForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
   con q fs = \case
-    ForAll (Binding p n _ _T) _B -> VLam p [Clause (PVar (n ::: _T)) ((\ v -> con q (fs :> v) (_B v)) . unsafeUnPVar)]
+    ForAll (Binding p n _ _T) _B -> VLam p [Clause (PVar (n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
     _T                           -> VCon (q :$ fs)
 
 elabInterfaceDef
