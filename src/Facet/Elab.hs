@@ -286,7 +286,7 @@ checkExpr :: HasCallStack => S.Ann (S.Expr Void) -> Check Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e of
   S.Hole  n    -> hole n
   S.Lam cs     -> elabClauses cs
-  S.Thunk e    -> checkExpr e -- FIXME: this should convert between value and computation type
+  S.Thunk e    -> thunk (checkExpr e)
   S.Force e    -> checkExpr e -- FIXME: this should convert between computation and value type
   S.Var{}      -> synth
   S.Type       -> synth
