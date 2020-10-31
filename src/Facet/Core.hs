@@ -35,6 +35,7 @@ module Facet.Core
 , apply
 , applyComp
 , generalize
+, etaExpand
   -- ** Classification
 , Sort(..)
 , sortOf
@@ -309,6 +310,17 @@ generalize s v
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
     Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
+
+
+etaExpand :: Value ::: Type -> Value
+etaExpand (v ::: _T) = case _T of
+  VComp _T -> go v _T
+  _        -> v
+  where
+  go v = \case
+    ForAll Binding{ pl, type' } _B -> VLam pl [Clause (PVar (__ ::: type')) (\ var -> let var' = unsafeUnPVar var in go (v $$ (pl, var')) (_B var'))]
+    -- FIXME: should this recur on _T?
+    Comp _sig _T                   -> v
 
 
 -- Classification
