@@ -201,7 +201,7 @@ printTelescope env = \case
     let (vs, (_, b')) = splitr C.unBind' (d, C.ForAll t b)
         binding env (C.Binding p n s _T) =
           let _T' = sig env s _T
-          in  (env :> tvar env ((p, n) ::: _T'), (p, name p n (Level (length env)) ::: _T'))
+          in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Level (length env)) ::: _T'))
         name p n d
           | T.null (getUName n)
           , Ex <- p             = []

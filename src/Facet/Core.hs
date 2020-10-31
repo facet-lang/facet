@@ -154,7 +154,7 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 
 data Binding = Binding
   { pl    :: Pl
-  , name  :: UName
+  , name  :: Maybe UName
   , delta :: Maybe [Value]
   , type' :: Value
   }
@@ -305,7 +305,7 @@ applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution h
 generalize :: Subst -> Value -> Value
 generalize s v
   | null b    = apply s v
-  | otherwise = VComp (foldr (\ (d, _T) b -> ForAll (Binding Im __ mempty _T) (\ v -> bindComp d v b)) (Comp mempty (subst (IntMap.mapMaybe tm s <> s') v)) b)
+  | otherwise = VComp (foldr (\ (d, _T) b -> ForAll (Binding Im (Just __) mempty _T) (\ v -> bindComp d v b)) (Comp mempty (subst (IntMap.mapMaybe tm s <> s') v)) b)
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)

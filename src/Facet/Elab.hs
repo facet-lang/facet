@@ -47,7 +47,7 @@ import           Control.Monad (unless, (<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', for_, toList)
 import qualified Data.IntMap as IntMap
-import           Data.Maybe (catMaybes)
+import           Data.Maybe (catMaybes, fromMaybe)
 import           Data.Semialign
 import qualified Data.Set as Set
 import           Data.Text (Text)
@@ -307,7 +307,7 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
     d' <- traverse (traverse (check . (::: VInterface) . elabSig)) d
     t' <- check (checkExpr t ::: _T)
     pure $ Binding p n d' t')
-  | n <- maybe [__] toList n ]
+  | n <- maybe [Nothing] (map Just . toList) n ]
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
 elabSig :: S.Ann (S.Interface Void) -> Check Value
@@ -336,7 +336,7 @@ forAll t b = Synth $ trace "forAll" $ do
   -- FIXME: should we check that the signature is empty?
   _T@Binding{ name, type' = _A } <- check (t ::: VType)
   d <- asks @(Context Type) level
-  _B <- check (b (name ::: _A) ::: VType)
+  _B <- check (b (fromMaybe __ name ::: _A) ::: VType)
   pure $ ForAll _T (\ v -> bindComp d v _B) ::: VType
 
 comp :: Maybe [Check Value] -> Check Type -> Synth Comp
@@ -438,11 +438,11 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
     -- FIXME: can sigs appear here?
     ForAll (Binding _ n s _T) _B -> do
       d <- asks @(Context Type) level
-      _B' <- n ::: _T |- go k (_B (free d))
+      _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
       pure $ ForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
   con q fs = \case
     -- FIXME: can this use lam?
-    ForAll (Binding p n _ _T) _B -> VLam p [Clause (PVar (n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
+    ForAll (Binding p n _ _T) _B -> VLam p [Clause (PVar (fromMaybe __ n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
     _T                           -> VCon (q :$ fs)
 
 elabInterfaceDef
@@ -460,7 +460,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
     Comp _ _                     -> k
     ForAll (Binding _ n s _T) _B -> do
       d <- asks @(Context Type) level
-      _B' <- n ::: _T |- go k (_B (free d))
+      _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
       pure $ ForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
 
 -- FIXME: add a parameter for the effect signature.
@@ -477,8 +477,8 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (
     Comp s _T                    -> extendSig s $ check (k ::: _T)
     -- FIXME: can this use lam?
     ForAll (Binding p n _ _T) _B -> do
-      b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
-      pure $ VLam p [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
+      b' <- elabBinder $ \ v -> fromMaybe __ n ::: _T |- go k (_B v)
+      pure $ VLam p [Clause (PVar (fromMaybe __ n ::: _T)) (b' . unsafeUnPVar)]
 
 
 -- Modules
