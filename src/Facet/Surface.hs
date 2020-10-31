@@ -80,7 +80,10 @@ deriving instance Show a => Show (Comp a)
 
 data Binding a = Binding
   { pl    :: Pl
-  , names :: NonEmpty UName
+  -- | The names bound by this value. 'Nothing' indicates an unnamed binding (i.e. a regular old function type argument like @A -> B@), whereas 'Just' indicates one or more names are bound to a single type (e.g. a quantifier like @{ A, B : Type } -> C@).
+  --
+  -- This technically represents the same number of (total) cases as @[]@ would, but forces disjoint handling so we don’t accidentally e.g. bind or apply over a non-binding argument and truncate the list.
+  , names :: Maybe (NonEmpty UName)
   -- FIXME: wrap this in Maybe so we can distinguish values from parametric computations (as in the branches passed to if)
   , delta :: [Ann (Interface a)]
   , type' :: Ann (Type a)

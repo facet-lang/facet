@@ -134,13 +134,19 @@ typeSig binding body = anned $ do
   S.Comp bindings <$> option [] sig <*> body
 
 exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.UName -> p (S.Ann (S.Binding Void))
-exBinding name = anned $ nesting $ try (S.Binding Ex . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
+-- NB: We map wildcards to __ rather than Nothing so that we mark the argument as bound when elaborating the body. e.g.:
+--
+-- const : { A, B : Type } -> (a : A) -> (_ : B) -> A
+-- { a }
+--
+-- The wildcard must fulfill the obligation to consume a B for this to typecheck; Nothing instead indicates an obligation remaining to be fulfilled by the body.
+exBinding name = anned $ nesting $ try (S.Binding Ex . Just . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> option [] sig <*> type' <* rparen
 
 imBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Binding Void))
-imBinding = anned $ braces $ S.Binding Im . NE.fromList <$> commaSep1 tname <* colon <*> option [] sig <*> type'
+imBinding = anned $ braces $ S.Binding Im . Just . NE.fromList <$> commaSep1 tname <* colon <*> option [] sig <*> type'
 
 nonBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Binding Void))
-nonBinding = anned $ S.Binding Ex (pure N.__) <$> option [] sig <*> tatom
+nonBinding = anned $ S.Binding Ex Nothing <$> option [] sig <*> tatom
 
 
 -- Types

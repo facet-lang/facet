@@ -307,7 +307,7 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
     d' <- traverse (check . (::: VInterface) . elabSig) d
     t' <- check (checkExpr t ::: _T)
     pure $ Binding p n d' t')
-  | n <- toList n ]
+  | n <- maybe [__] toList n ]
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
 elabSig :: S.Ann (S.Interface Void) -> Check Value
