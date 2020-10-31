@@ -23,6 +23,7 @@ import System.Console.Haskeline as H
 import System.Directory
 import System.Environment
 import System.FilePath
+import System.IO (stdout)
 
 runReadline :: (MonadIO m, MonadMask m) => Prefs -> Settings m -> ReadlineC m a -> m a
 runReadline prefs settings (ReadlineC m) = runInputTWithPrefs prefs settings m
@@ -55,7 +56,7 @@ instance (Algebra sig m, MonadIO m, MonadMask m) => Algebra (Input :+: Output :+
       HandleInterrupt h m -> ReadlineC (H.handleInterrupt (runReadlineC (hdl (h <$ ctx))) (runReadlineC (hdl (m <$ ctx))))
 
     R (L (OutputDoc d)) -> do
-        opts <- liftIO layoutOptionsForTerminal
+        opts <- liftIO (layoutOptionsForHandle stdout)
         (<$ ctx) <$> ReadlineC (H.outputStr (unpack (renderLazy (reAnnotateS terminalStyle (layoutSmart opts d)))))
 
     R (R other)         -> ReadlineC $ H.withRunInBase $ \ run -> alg (run . runReadlineC . hdl) other ctx

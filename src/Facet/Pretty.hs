@@ -1,6 +1,6 @@
 module Facet.Pretty
 ( -- * Output
-  layoutOptionsForTerminal
+  layoutOptionsForHandle
 , hPutDoc
 , hPutDocWith
 , putDoc
@@ -49,9 +49,9 @@ import           System.IO (Handle, hPutChar, stdout)
 
 -- Output
 
-layoutOptionsForTerminal :: IO PP.LayoutOptions
-layoutOptionsForTerminal = do
-  s <- maybe 80 snd <$> getTerminalSize
+layoutOptionsForHandle :: Handle -> IO PP.LayoutOptions
+layoutOptionsForHandle hdl = do
+  s <- maybe 80 snd <$> hGetTerminalSize hdl
   pure PP.defaultLayoutOptions{ PP.layoutPageWidth = PP.AvailablePerLine s 1 }
 
 hPutDoc :: MonadIO m => Handle -> PP.Doc [SGR] -> m ()
@@ -59,7 +59,7 @@ hPutDoc handle = hPutDocWith handle id
 
 hPutDocWith :: MonadIO m => Handle -> (a -> [SGR]) -> PP.Doc a -> m ()
 hPutDocWith handle style doc = liftIO $ do
-  opts <- layoutOptionsForTerminal
+  opts <- layoutOptionsForHandle handle
   renderIO handle (PP.reAnnotateS style (PP.layoutSmart opts doc))
 
 putDoc :: MonadIO m => PP.Doc [SGR] -> m ()
