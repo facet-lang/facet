@@ -205,7 +205,7 @@ lookupInSig m n mod graph = matchWith $ \case
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 var :: Maybe MName -> DName -> Synth Value
-var m n = Synth $ ask >>= \ ctx -> case m of
+var m n = Synth $ trace "var" $ ask >>= \ ctx -> case m of
   Nothing
     | Just (i, _T) <- lookupInContext n ctx
     -> pure (free i ::: _T)
@@ -225,7 +225,7 @@ hole :: UName -> Check a
 hole n = Check $ \ _T -> err $ Hole n _T
 
 ($$) :: Synth Value -> Check Value -> Synth Value
-f $$ a = Synth $ do
+f $$ a = Synth $ trace "$$" $ do
   f' ::: _F <- synth f
   -- FIXME: check that the signatures match
   (Binding _ _ delta _A, _B) <- expectQuantifier "in application" _F
@@ -254,7 +254,7 @@ infix 1 |-
 -- Expressions
 
 synthExpr :: HasCallStack => S.Ann (S.Expr Void) -> Synth Expr
-synthExpr (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
+synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Var m n    -> var m n
   S.Type       -> _Type
   S.TInterface -> _Interface
@@ -272,7 +272,7 @@ synthExpr (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
   nope = Synth $ couldNotSynthesize (show e)
 
 checkExpr :: HasCallStack => S.Ann (S.Expr Void) -> Check Expr
-checkExpr expr@(S.Ann s _ e) = mapCheck (setSpan s) $ case e of
+checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e of
   S.Hole  n    -> hole n
   S.Lam cs     -> elabClauses cs
   S.Thunk e    -> checkExpr e -- FIXME: this should convert between value and computation type
@@ -329,14 +329,14 @@ forAll t b = Synth $ trace "forAll" $ do
   pure $ ForAll _T (\ v -> C.bindComp d v _B) ::: VType
 
 comp :: [Check Value] -> Check Type -> Synth Comp
-comp s t = Synth $ do
+comp s t = Synth $ trace "comp" $ do
   s' <- traverse (check . (::: VInterface)) s
   t' <- check (t ::: VType)
   pure $ Comp s' t' ::: VType
 
 
 lam :: (Pl, UName) -> (UName ::: Type -> Check Expr) -> Check Expr
-lam n b = Check $ \ _T -> do
+lam n b = Check $ \ _T -> trace "lam" $ do
   -- FIXME: how does the effect adjustment change this?
   (Binding _ _ _ _T, _B) <- expectQuantifier "when checking lambda" _T
   b' <- elabBinder $ \ v -> check (b (snd n ::: _T) ::: VComp (_B v))
@@ -364,7 +364,7 @@ elabClauses cs = Check $ \ _T -> do
 
 -- FIXME: check for unique variable names
 elabPattern :: S.Ann (S.Pattern Void) -> (C.Pattern (UName ::: Type) -> Elab a) -> Check a
-elabPattern (S.Ann s _ p) k = Check $ \ _A -> setSpan s $ case p of
+elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ case p of
   S.PWildcard -> k (C.PVar (__ ::: _A))
   S.PVar n    -> k (C.PVar (n  ::: _A))
   S.PCon n ps -> do
@@ -408,7 +408,7 @@ elabDataDef
   -> [S.Ann (UName ::: S.Ann (S.Comp Void))]
   -> m [(DName, Decl)]
 -- FIXME: check that all constructors return the datatype.
-elabDataDef (mname :.: dname ::: _T) constructors = do
+elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elabTele $ go (switch (elabSTelescope t)) _T
     pure $ n :=: con (mname :.: C n) Nil c_T ::: c_T
@@ -432,7 +432,7 @@ elabInterfaceDef
   => Comp
   -> [S.Ann (UName ::: S.Ann (S.Comp Void))]
   -> m Decl
-elabInterfaceDef _T constructors = do
+elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
     (n :::) <$> elabTele (go (check (switch (elabSTelescope t) ::: VType)) _T)
   pure $ Decl (Just (DInterface cs)) _T
@@ -451,7 +451,7 @@ elabTermDef
   => Comp
   -> S.Ann (S.Expr Void)
   -> m Expr
-elabTermDef _T expr = runReader (S.ann expr) $ elab $ go (checkExpr expr) _T
+elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (checkExpr expr) _T
   where
   go k t = case t of
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
