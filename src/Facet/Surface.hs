@@ -110,7 +110,8 @@ data Pattern a
   | PVar UName
   | PCon UName [Ann (Pattern a)]
   | PEff UName [Ann (Pattern a)] UName
-  -- FIXME: catch-all effect patterns
+  -- | Catch-all effect pattern. Matches values and effect operations.
+  | PAll UName
   deriving (Foldable, Functor, Traversable)
 
 deriving instance Eq   a => Eq   (Pattern a)

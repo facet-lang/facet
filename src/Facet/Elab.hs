@@ -392,6 +392,8 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
     _T'' <- inst _T'
     -- FIXME: what should the type of the continuation be? [effect result type] -> [remainder of body type after this pattern]?
     subpatterns _A _T'' ps $ \ ps' -> k (PEff q (fromList ps') (v ::: VType)) -- FIXME: lies
+  -- FIXME: warn if using PAll with an empty sig.
+  S.PAll n -> k (PVar (n  ::: _A))
   where
   inst = \case
   -- FIXME: assert that the signature is empty
