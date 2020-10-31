@@ -39,5 +39,5 @@ type Row p a = [OperatorParser p a]
 type Table p a = [Row p a]
 
 -- | Build a parser for a Table.
-build :: TokenParsing p => Table p a -> p a -> p a
+build :: Alternative p => Table p a -> p a -> p a
 build = flip (foldr (\ ps next -> let self = foldr (\ p rest -> p self rest <|> rest) next ps in self))
