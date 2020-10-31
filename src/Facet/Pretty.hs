@@ -45,13 +45,14 @@ import           Prelude hiding (unlines)
 import qualified Prettyprinter as PP
 import           Silkscreen hiding (column, width)
 import           System.Console.ANSI
+import qualified System.Console.Terminal.Size as Size
 import           System.IO (Handle, hPutChar, stdout)
 
 -- Output
 
 layoutOptionsForHandle :: Handle -> IO PP.LayoutOptions
 layoutOptionsForHandle hdl = do
-  s <- maybe 80 snd <$> hGetTerminalSize hdl
+  s <- maybe 80 Size.width <$> Size.hSize hdl
   pure PP.defaultLayoutOptions{ PP.layoutPageWidth = PP.AvailablePerLine s 1 }
 
 hPutDoc :: MonadIO m => Handle -> PP.Doc [SGR] -> m ()
