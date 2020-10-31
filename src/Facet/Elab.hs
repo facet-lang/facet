@@ -228,8 +228,8 @@ hole n = Check $ \ _T -> err $ Hole n _T
 f $$ a = Synth $ do
   f' ::: _F <- synth f
   -- FIXME: check that the signatures match
-  (Binding _ _ _ _A, _B) <- expectQuantifier "in application" _F
-  a' <- check (a ::: _A)
+  (Binding _ _ delta _A, _B) <- expectQuantifier "in application" _F
+  a' <- local (delta++) $ check (a ::: _A)
   pure $ f' C.$$ (Ex, a') ::: VComp (_B a')
 
 
