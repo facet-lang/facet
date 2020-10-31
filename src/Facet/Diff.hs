@@ -13,6 +13,7 @@ data Diff a b
 
 type Change f a b = (f b a, f b a)
 
+
 class Traverse1 t where
   traverse1 :: (Traversable f, Monad m) => (forall x . f x -> m (g x)) -> t f -> m (t g)
 
