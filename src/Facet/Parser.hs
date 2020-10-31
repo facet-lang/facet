@@ -147,9 +147,16 @@ nonBinding = anned $ S.Binding Ex (pure N.__) <$> option [] sig <*> tatom
 -- Types
 
 -- FIXME: kind ascriptions
-monotypeTable :: TokenParsing p => Table p (S.Ann (S.Type Void))
+monotypeTable :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => Table p (S.Ann (S.Type Void))
 monotypeTable =
   [ [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
+  , [ -- FIXME: we should treat these as globals.
+      atom (anned (S.Type <$ token (string "Type")))
+    , atom (anned (S.TInterface <$ token (string "Interface")))
+    , atom (anned (S.TString    <$ token (string "String")))
+      -- FIXME: holes in types
+    , atom tvar
+    ]
   ]
 
 
@@ -161,15 +168,7 @@ tcomp = typeSig (choice [ imBinding, nonBinding ]) tatom
 
 -- FIXME: support type operators
 tatom :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Type Void))
-tatom = build monotypeTable $ choice
-  [ -- FIXME: we should treat these as globals.
-    anned (S.Type <$ token (string "Type"))
-  , anned (S.TInterface <$ token (string "Interface"))
-  , anned (S.TString    <$ token (string "String"))
-    -- FIXME: holes in types
-  , tvar
-  , parens type'
-  ]
+tatom = build monotypeTable $ parens type'
 
 tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
 tvar = choice
@@ -195,26 +194,21 @@ sig = brackets (commaSep delta) <?> "signature"
 
 -- Expressions
 
-exprTable :: TokenParsing p => Table p (S.Ann (S.Expr Void))
+exprTable :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr Void))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => Table p (S.Ann (S.Expr Void))
 exprTable =
   [ [ parseOperator (N.Infix (pack ":"), N.R, foldr1 (S.annBinary S.As)) ]
   , [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   -- FIXME: model this as application to unit instead
   -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
   , [ parseOperator (N.Postfix (pack "!"), N.L, S.annUnary S.Force . head) ]
+  , [ atom comp, atom hole, atom evar, atom (token (anned (runUnspaced (S.String <$> stringLiteral)))) ]
   ]
 
 -- FIXME: this is responsible for a massive slowdown on nested parens.
 expr :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr Void))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
 expr = do
   ops <- get
-  let rec = build (map parseOperator ops:exprTable) $ choice
-        [ comp
-        , hole
-        , evar
-        , token (anned (runUnspaced (S.String <$> stringLiteral)))
-        , parens rec
-        ]
+  let rec = build (map parseOperator ops:exprTable) $ parens rec
   rec
 
 comp :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr Void))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
