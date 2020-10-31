@@ -25,6 +25,7 @@ import Data.Kind (Type)
 import Data.Text
 import Facet.Pretty
 import Facet.Style
+import Prettyprinter (hardline)
 
 getInputLine :: Has Input sig m => String -> m (Maybe String)
 getInputLine p = send (GetInputLine p)
@@ -45,19 +46,19 @@ outputStr :: Has Output sig m => String -> m ()
 outputStr s = outputDoc (pretty s)
 
 outputStrLn :: Has Output sig m => String -> m ()
-outputStrLn s = outputStr (s <> "\n")
+outputStrLn s = outputDocLn (pretty s)
 
 outputText :: Has Output sig m => Text -> m ()
 outputText s = outputDoc (pretty s)
 
 outputTextLn :: Has Output sig m => Text -> m ()
-outputTextLn s = outputDoc (pretty s <> pretty "\n")
+outputTextLn s = outputDocLn (pretty s)
 
 outputDoc :: Has Output sig m => Doc Style -> m ()
 outputDoc s = send (OutputDoc s)
 
 outputDocLn :: Has Output sig m => Doc Style -> m ()
-outputDocLn s = outputDoc (s <> pretty "\n")
+outputDocLn s = outputDoc s *> outputDoc hardline
 
 data Output (m :: Type -> Type) k where
   OutputDoc :: Doc Style -> Output m ()
