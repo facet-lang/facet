@@ -21,7 +21,7 @@ except : { E, A : Type } -> Either E A -> [Error E] A
 # Handlers
 
 runError : { E, A : Type } -> [Error E] A -> Either E A
-{ error inl inr }
+{ [e] -> error inl inr e }
 
 error
 :  { E, A, R : Type }
