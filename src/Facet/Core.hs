@@ -20,10 +20,12 @@ module Facet.Core
 , free
 , metavar
 , unLam
+  -- ** Elimination
 , ($$)
 , ($$*)
 , case'
 , match
+  -- ** Substitution
 , subst
 , bind
 , binds
@@ -205,6 +207,8 @@ unLam :: Has Empty sig m => Value -> m (Pl, [Clause])
 unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 
 
+-- Elimination
+
 -- FIXME: how should this work in weak/parametric HOAS?
 ($$) :: HasCallStack => Value -> (Pl, Value) -> Value
 VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
@@ -239,6 +243,8 @@ match = curry $ \case
   -- FIXME: match effect patterns against computations
   (_,               PEff{})         -> Nothing
 
+
+-- Substitution
 
 substWith :: (Var -> Value) -> Value -> Value
 substWith f = go
