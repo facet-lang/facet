@@ -60,9 +60,13 @@ library
     Facet.Carrier.Error.Lens
     Facet.Carrier.Output.IO
     Facet.Carrier.Parser.Church
+    Facet.Carrier.Profile.Flat
+    Facet.Carrier.Profile.Identity
+    Facet.Carrier.Profile.Tree
     Facet.Carrier.Readline.Haskeline
     Facet.Carrier.State.Lens
     Facet.Carrier.Throw.Inject
+    Facet.Carrier.Time.System
     Facet.Carrier.Trace.REPL
     Facet.CLI
     Facet.Context
@@ -70,7 +74,10 @@ library
     Facet.Diff
     Facet.Driver
     Facet.Effect.Parser
+    Facet.Effect.Profile
     Facet.Effect.Readline
+    Facet.Effect.Time
+    Facet.Effect.Time.System
     Facet.Effect.Trace
     Facet.Elab
     Facet.Eval
@@ -97,6 +104,7 @@ library
     Facet.Style
     Facet.Surface
     Facet.Syntax
+    Facet.Timing
   other-modules:
     Paths_facet
   build-depends:
