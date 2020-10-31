@@ -135,7 +135,7 @@ typeSig binding body = anned $ do
   S.Comp bindings <$> optional sig <*> body
 
 exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.UName -> p (S.Ann (S.Binding Void))
--- NB: We map wildcards to __ rather than Nothing so that we mark the argument as bound when elaborating the body. e.g.:
+-- NB: We map wildcards here (and only here) to __ rather than Nothing so that we mark the argument as bound when elaborating the body. e.g.:
 --
 -- const : { A, B : Type } -> (a : A) -> (_ : B) -> A
 -- { a }
