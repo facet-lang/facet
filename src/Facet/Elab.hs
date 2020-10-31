@@ -204,6 +204,8 @@ lookupInSig m n mod graph = matchWith $ \case
   _                            -> Nothing
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
+-- FIXME: effect ops not in the sig are reported as not in scope
+-- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: Maybe MName -> DName -> Synth Value
 var m n = Synth $ trace "var" $ ask >>= \ ctx -> case m of
   Nothing
