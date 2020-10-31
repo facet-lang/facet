@@ -342,7 +342,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (Binding pl _ _ _A, _B) <- expectQuantifier "when checking lambda" _T
   -- FIXME: extend the signature if _B v is a Comp.
-  b' <- elabBinder $ \ v -> check (b (n ::: _A) ::: VComp (_B v))
+  b' <- elabBinder $ \ v -> checkComp (b (n ::: _A) ::: _B v)
   pure $ VLam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)]
 
 
@@ -357,7 +357,7 @@ elabClauses cs = Check $ \ _T -> do
   let _B' = _B (free d)
   cs' <- for cs $ \ (S.Clause p b) -> check
     (   elabPattern p (\ p' -> do
-      Clause p' <$> elabBinders p' (foldr (|-) (check (checkExpr b ::: VComp _B'))))
+      Clause p' <$> elabBinders p' (foldr (|-) (checkComp (checkExpr b ::: _B'))))
     ::: _A)
   pure $ VLam Ex cs'
 
@@ -615,6 +615,12 @@ elabWith f = runSubstWith f . runContext . runSig . runElab
 
 check :: (Check a ::: Type) -> Elab a
 check (m ::: _T) = trace "check" $ runCheck m _T
+
+checkComp :: (Check a ::: Comp) -> Elab a
+checkComp (m ::: _T) = trace "checkComp" $ case _T of
+  -- FIXME: extract a helper to extend the sig
+  Comp sig _T -> local (sig ++) (runCheck m _T)
+  _           -> runCheck m (VComp _T)
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
 newtype Check a = Check { runCheck :: Type -> Elab a }
