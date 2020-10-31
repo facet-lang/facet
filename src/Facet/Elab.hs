@@ -337,12 +337,12 @@ comp s t = Synth $ trace "comp" $ do
   pure $ Comp s' t' ::: VType
 
 
-lam :: (Pl, UName) -> (UName ::: Type -> Check Expr) -> Check Expr
+lam :: UName -> (UName ::: Type -> Check Expr) -> Check Expr
 lam n b = Check $ \ _T -> trace "lam" $ do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
-  (Binding _ _ _ _T, _B) <- expectQuantifier "when checking lambda" _T
-  b' <- elabBinder $ \ v -> check (b (snd n ::: _T) ::: VComp (_B v))
-  pure $ VLam (fst n) [Clause (PVar (snd n ::: _T)) (b' . unsafeUnPVar)]
+  (Binding pl _ _ _T, _B) <- expectQuantifier "when checking lambda" _T
+  b' <- elabBinder $ \ v -> check (b (n ::: _T) ::: VComp (_B v))
+  pure $ VLam pl [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
 
 
 -- FIXME: go find the pattern matching matrix algorithm
