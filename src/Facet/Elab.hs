@@ -422,6 +422,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
       _B' <- n ::: _T |- go k (_B (free d))
       pure $ ForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
   con q fs = \case
+    -- FIXME: can this use lam?
     ForAll (Binding p n _ _T) _B -> VLam p [Clause (PVar (n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
     _T                           -> VCon (q :$ fs)
 
@@ -454,6 +455,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (
   go k t = case t of
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     Comp s _T                    -> local (s ++) $ check (etaExpand . (::: _T) <$> k ::: _T)
+    -- FIXME: can this use lam?
     ForAll (Binding p n _ _T) _B -> do
       b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
       pure $ VLam p [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
