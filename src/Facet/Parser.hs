@@ -77,7 +77,7 @@ module' = anned $ do
 
 -- FIXME: pick a better syntax for imports, something we can use in the REPL.
 moduleHeader :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (N.MName, [S.Ann S.Import])
-moduleHeader = (,) <$ reserve dnameStyle "module" <*> mname <* colon <* symbol "Module" <*> option [] (braces (commaSep import'))
+moduleHeader = (,) <$ reserve dnameStyle "module" <*> mname <* colon <* symbol "Module" <*> many import'
 
 
 -- Declarations

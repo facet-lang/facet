@@ -1,6 +1,7 @@
 module Effect.Writer : Module
-{ import Data.Pair
-, import Data.Unit }
+
+import Data.Pair
+import Data.Unit
 
 interface Writer : (W : Type) -> Interface
 { tell : W -> [Writer W] Unit

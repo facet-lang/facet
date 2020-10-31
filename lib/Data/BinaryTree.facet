@@ -1,6 +1,7 @@
 module Data.BinaryTree
-# { import Algebra.Monoid
-# , import Algebra.Semigroup }
+
+# import Algebra.Monoid
+# import Algebra.Semigroup
 
 data BinaryTree : (A : Type) -> Type
 { nil : BinaryTree A

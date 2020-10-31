@@ -1,6 +1,7 @@
 module Effect.Empty : Module
-{ import Data.Bool
-, import Data.Unit }
+
+import Data.Bool
+import Data.Unit
 
 interface Empty : Interface
 { empty : { A : Type } -> [Empty] A }

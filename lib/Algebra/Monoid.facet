@@ -1,5 +1,6 @@
 module Algebra.Monoid : Module
-{ import Algebra.Semigroup }
+
+import Algebra.Semigroup
 
 interface Monoid : (A : Type) -> [Semigroup A] Interface
 { zero : [Monoid A] A }

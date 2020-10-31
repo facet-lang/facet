@@ -1,7 +1,8 @@
 module Effect.Console : Module
-{ import Data.Function
-, import Data.Option
-, import Data.Unit }
+
+import Data.Function
+import Data.Option
+import Data.Unit
 
 
 interface Input : Interface

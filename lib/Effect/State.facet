@@ -1,8 +1,9 @@
 module Effect.State
 : Module
-{ import Data.Function
-, import Data.Pair
-, import Data.Unit }
+
+import Data.Function
+import Data.Pair
+import Data.Unit
 
 interface State : (S : Type) -> Interface
 { get : [State S] S

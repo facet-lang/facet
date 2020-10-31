@@ -1,5 +1,6 @@
 module Effect.Choose : Module
-{ import Data.Bool }
+
+import Data.Bool
 
 interface Choose : Interface
 { choose : [Choose] Bool }

@@ -1,6 +1,7 @@
 module Algebra.Semiring : Module
-{ import Algebra.Monoid
-, import Algebra.Semigroup }
+
+import Algebra.Monoid
+import Algebra.Semigroup
 
 interface Semiring : (A : Type) -> [Semigroup A] Interface
 { _ >< _ [right-assoc] : [Semiring A] A }
