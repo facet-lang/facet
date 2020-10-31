@@ -7,12 +7,11 @@ module Facet.Span
 , Span(..)
 , start_
 , end_
+, HasSpan(..)
 ) where
 
 import Control.Lens (Lens', lens)
 import Data.Functor.Classes (showsBinaryWith)
-
--- TODO: HasSpan class
 
 -- Positions
 
@@ -47,3 +46,7 @@ instance Show Span where
 start_, end_ :: Lens' Span Pos
 start_ = lens start (\p s -> p { start = s })
 end_   = lens end   (\p e -> p { end   = e })
+
+
+class HasSpan t where
+  span_ :: Lens' t Span
