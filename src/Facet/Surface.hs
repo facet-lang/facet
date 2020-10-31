@@ -48,6 +48,7 @@ data Expr f a
   | App (f (Expr f a)) (f (Expr f a))
   | As (f (Expr f a)) (f (Type f a))
   | String Text
+  | M a
   deriving (Foldable, Functor, Traversable)
 
 deriving instance (Eq   a, forall x . Eq   x => Eq   (f x)) => Eq   (Expr f a)

@@ -299,6 +299,7 @@ synthExpr (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
   S.Lam{}      -> nope
   S.Thunk{}    -> nope
   S.Force{}    -> nope
+  S.M v        -> case v of {}
   where
   nope = Synth $ couldNotSynthesize (show e)
 
@@ -319,6 +320,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (setSpan s) $ case e of
   S.App{}      -> synth
   S.As{}       -> synth
   S.String{}   -> synth
+  S.M v        -> case v of {}
   where
   synth = switch (synthExpr expr)
 
