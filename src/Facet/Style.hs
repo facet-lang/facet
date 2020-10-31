@@ -37,6 +37,9 @@ data Style
   | End
   | Caret
   | Context
+  -- Measurements
+  | Key
+  | Unit
 
 
 terminalStyle :: Style -> [SGR]
@@ -57,6 +60,8 @@ terminalStyle = \case
   End       -> [setRGB (hsl 230 1 0.7)]
   Caret     -> [setRGB (hsl 120 0.8 0.4)]
   Context   -> []
+  Key       -> [setRGB (hsl 120 0.8 0.4)]
+  Unit      -> [setRGB (hsl 0 0 0.5)]
 
 terminalCodeStyle :: Print.Highlight -> [SGR]
 terminalCodeStyle = \case
