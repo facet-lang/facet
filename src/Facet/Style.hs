@@ -21,11 +21,14 @@ import qualified Prettyprinter as P
 import           Silkscreen
 
 data Style
+  -- REPL interaction
   = Failure
   | Success
   | Progress
   | Command
+  -- Code
   | Code Print.Highlight
+  -- Notices
   | Path
   | Level Notice.Level
   | Span
