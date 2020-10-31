@@ -2,6 +2,7 @@ module Facet.Parser.Table
 ( Assoc(..)
 , Operator
 , parseOperator
+, atom
 , OperatorParser
 , Row
 , Table
@@ -29,6 +30,9 @@ parseOperator = \case
   where
   unary f a = f [a]
   binary f a b = f [a, b]
+
+atom :: p a -> OperatorParser p a
+atom p _ _ = p
 
 type OperatorParser p a = p a -> p a -> p a
 type Row a = [Operator a]
