@@ -39,117 +39,117 @@ import Facet.Syntax
 
 -- Expressions
 
-data Expr f a
+data Expr a
   = Var (Maybe MName) DName
   | Hole UName
   | Type
   | TInterface
   | TString
-  | TComp (f (Comp f a))
-  | Lam [Clause f a]
-  | Thunk (f (Expr f a))
-  | Force (f (Expr f a))
-  | App (f (Expr f a)) (f (Expr f a))
-  | As (f (Expr f a)) (f (Type f a))
+  | TComp (Ann (Comp a))
+  | Lam [Clause a]
+  | Thunk (Ann (Expr a))
+  | Force (Ann (Expr a))
+  | App (Ann (Expr a)) (Ann (Expr a))
+  | As (Ann (Expr a)) (Ann (Type a))
   | String Text
   | M a
   deriving (Foldable, Functor, Traversable)
 
-deriving instance (Eq   a, forall x . Eq   x => Eq   (f x)) => Eq   (Expr f a)
-deriving instance (Show a, forall x . Show x => Show (f x)) => Show (Expr f a)
+deriving instance Eq   a => Eq   (Expr a)
+deriving instance Show a => Show (Expr a)
 
 type Type = Expr
 
 
-free :: DName -> Expr f a
+free :: DName -> Expr a
 free = Var Nothing
 
-qual :: QName -> Expr f a
+qual :: QName -> Expr a
 qual (m :.: n) = Var (Just m) n
 
 
-data Comp f a = Comp
-  { bindings :: [f (Binding f a)]
-  , delta    :: [f (Interface f a)]
-  , type'    :: f (Type f a)
+data Comp a = Comp
+  { bindings :: [Ann (Binding a)]
+  , delta    :: [Ann (Interface a)]
+  , type'    :: Ann (Type a)
   }
   deriving (Foldable, Functor, Traversable)
 
-deriving instance (Eq   a, forall x . Eq   x => Eq   (f x)) => Eq   (Comp f a)
-deriving instance (Show a, forall x . Show x => Show (f x)) => Show (Comp f a)
+deriving instance Eq   a => Eq   (Comp a)
+deriving instance Show a => Show (Comp a)
 
-data Binding f a = Binding
+data Binding a = Binding
   { pl    :: Pl
   , names :: NonEmpty UName
   -- FIXME: wrap this in Maybe so we can distinguish values from parametric computations (as in the branches passed to if)
-  , delta :: [f (Interface f a)]
-  , type' :: f (Type f a)
+  , delta :: [Ann (Interface a)]
+  , type' :: Ann (Type a)
   }
   deriving (Foldable, Functor, Traversable)
 
-deriving instance (Eq   a, forall x . Eq   x => Eq   (f x)) => Eq   (Binding f a)
-deriving instance (Show a, forall x . Show x => Show (f x)) => Show (Binding f a)
+deriving instance Eq   a => Eq   (Binding a)
+deriving instance Show a => Show (Binding a)
 
 
-data Interface f a = Interface (f (Maybe MName, DName)) (Stack (f (Type f a)))
+data Interface a = Interface (Ann (Maybe MName, DName)) (Stack (Ann (Type a)))
   deriving (Foldable, Functor, Traversable)
 
-deriving instance (Eq   a, forall x . Eq   x => Eq   (f x)) => Eq   (Interface f a)
-deriving instance (Show a, forall x . Show x => Show (f x)) => Show (Interface f a)
+deriving instance Eq   a => Eq   (Interface a)
+deriving instance Show a => Show (Interface a)
 
 
-data Clause f a = Clause (f (Pattern f a)) (f (Expr f a))
+data Clause a = Clause (Ann (Pattern a)) (Ann (Expr a))
   deriving (Foldable, Functor, Traversable)
 
-deriving instance (Eq   a, forall x . Eq   x => Eq   (f x)) => Eq   (Clause f a)
-deriving instance (Show a, forall x . Show x => Show (f x)) => Show (Clause f a)
+deriving instance Eq   a => Eq   (Clause a)
+deriving instance Show a => Show (Clause a)
 
 
-data Pattern f a
+data Pattern a
   = PWildcard
   | PVar UName
-  | PCon UName [f (Pattern f a)]
-  | PEff UName [f (Pattern f a)] UName
+  | PCon UName [Ann (Pattern a)]
+  | PEff UName [Ann (Pattern a)] UName
   -- FIXME: catch-all effect patterns
   deriving (Foldable, Functor, Traversable)
 
-deriving instance (Eq   a, forall x . Eq   x => Eq   (f x)) => Eq   (Pattern f a)
-deriving instance (Show a, forall x . Show x => Show (f x)) => Show (Pattern f a)
+deriving instance Eq   a => Eq   (Pattern a)
+deriving instance Show a => Show (Pattern a)
 
 
 -- Declarations
 
-data Decl f a = Decl (f (Comp f a)) (Def f a)
+data Decl a = Decl (Ann (Comp a)) (Def a)
   deriving (Foldable, Functor, Traversable)
 
-deriving instance (Eq   a, forall x . Eq   x => Eq   (f x)) => Eq   (Decl f a)
-deriving instance (Show a, forall x . Show x => Show (f x)) => Show (Decl f a)
+deriving instance Eq   a => Eq   (Decl a)
+deriving instance Show a => Show (Decl a)
 
 
-data Def f a
-  = DataDef [f (UName ::: f (Comp f a))]
-  | InterfaceDef [f (UName ::: f (Comp f a))]
-  | TermDef (f (Expr f a))
+data Def a
+  = DataDef [Ann (UName ::: Ann (Comp a))]
+  | InterfaceDef [Ann (UName ::: Ann (Comp a))]
+  | TermDef (Ann (Expr a))
   deriving (Foldable, Functor, Traversable)
 
-deriving instance (Eq   a, forall x . Eq   x => Eq   (f x)) => Eq   (Def f a)
-deriving instance (Show a, forall x . Show x => Show (f x)) => Show (Def f a)
+deriving instance Eq   a => Eq   (Def a)
+deriving instance Show a => Show (Def a)
 
 
 
 -- Modules
 
-data Module f a = Module
+data Module a = Module
   { name      :: MName
-  , imports   :: [f Import]
+  , imports   :: [Ann Import]
   -- FIXME: store source references for operators’ definitions, for error reporting
   , operators :: [(Op, Assoc)]
-  , defs      :: [f (DName, f (Decl f a))]
+  , defs      :: [Ann (DName, Ann (Decl a))]
   }
   deriving (Foldable, Functor, Traversable)
 
-deriving instance (Eq   a, forall x . Eq   x => Eq   (f x)) => Eq   (Module f a)
-deriving instance (Show a, forall x . Show x => Show (f x)) => Show (Module f a)
+deriving instance Eq   a => Eq   (Module a)
+deriving instance Show a => Show (Module a)
 
 
 newtype Import = Import { name :: MName }
@@ -184,10 +184,10 @@ out_ :: Lens (Ann a) (Ann b) a b
 out_ = lens out (\ a out -> a{ out })
 
 
-annUnary :: (Ann (Expr Ann Void) -> Expr Ann Void) -> Ann (Expr Ann Void) -> Ann (Expr Ann Void)
+annUnary :: (Ann (Expr Void) -> Expr Void) -> Ann (Expr Void) -> Ann (Expr Void)
 annUnary f a = Ann (ann a) Nil (f a)
 
-annBinary :: (Ann (Expr Ann Void) -> Ann (Expr Ann Void) -> Expr Ann Void) -> Ann (Expr Ann Void) -> Ann (Expr Ann Void) -> Ann (Expr Ann Void)
+annBinary :: (Ann (Expr Void) -> Ann (Expr Void) -> Expr Void) -> Ann (Expr Void) -> Ann (Expr Void) -> Ann (Expr Void)
 annBinary f a b = Ann (ann a <> ann b) Nil (f a b)
 
 

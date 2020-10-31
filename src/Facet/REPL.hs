@@ -188,12 +188,12 @@ removePath path = Action $ \ _ -> target_.searchPaths_ %= Set.delete path
 removeTarget :: [MName] -> Action
 removeTarget targets = Action $ \ _ -> target_.targets_ %= (Set.\\ Set.fromList targets)
 
-showType :: S.Ann (S.Expr S.Ann Void) -> Action
+showType :: S.Ann (S.Expr Void) -> Action
 showType e = Action $ \ src -> do
   e ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.synth (Elab.synthExpr e))
   outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
 
-showEval :: S.Ann (S.Expr S.Ann Void) -> Action
+showEval :: S.Ann (S.Expr Void) -> Action
 showEval e = Action $ \ src -> do
   (dElab, e' ::: _T) <- time $ elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:T "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
   (dEval, e'') <- time $ elab src $ runEvalMain (eval e')
