@@ -170,7 +170,9 @@ type' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenP
 type' = anned $ S.TComp <$> tcomp
 
 tcomp :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Comp Void))
-tcomp = typeSig (choice [ imBinding, nonBinding ]) tatom
+tcomp = anned $ do
+  bindings <- many (try (choice [ imBinding, nonBinding ] <* arrow))
+  S.Comp bindings <$> optional sig <*> tatom
 
 -- FIXME: support type operators
 tatom :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Type Void))
