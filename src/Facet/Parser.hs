@@ -13,7 +13,7 @@ module Facet.Parser
 ) where
 
 import           Control.Algebra ((:+:))
-import           Control.Applicative (Alternative(..))
+import           Control.Applicative (Alternative(..), (<**>))
 import           Control.Carrier.Reader
 import qualified Control.Carrier.State.Strict as C
 import qualified Control.Carrier.Writer.Strict as C
@@ -239,8 +239,10 @@ patternP = choice
   [ token (anned (runUnspaced (S.PVar <$> ename <?> "variable")))
   , anned (S.PWildcard <$  wildcard)
   , try (parens (anned (S.PCon <$> cname <*> many patternP)))
-  , brackets (anned (S.PEff <$> ename <*> many patternP <* symbolic ';' <*> (ename <|> N.__ <$ wildcard)))
+  , brackets (anned (ename <**> (makeEffectPattern <$> many patternP <* symbolic ';' <*> (ename <|> N.__ <$ wildcard) <|> pure S.PAll)))
   ] <?> "pattern"
+  where
+  makeEffectPattern ps k op = S.PEff op ps k
 
 
 -- Names
