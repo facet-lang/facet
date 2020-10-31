@@ -19,7 +19,7 @@ execState : { S, A : Type } -> S -> [State S] A -> S
 { state const }
 
 evalState : { S, A : Type } -> S -> [State S] A -> A
-{ state { _ a -> a } }
+{ state { _ -> { a -> a } } }
 
 runState : { S, A : Type } -> S -> [State S] A -> Pair S A
 { state pair }
