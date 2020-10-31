@@ -105,7 +105,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ "
   plain = setSGRCode [] <> "\STX"
 
 
-loop :: (Has Empty sig m, Has Input sig m, Has Output sig m, Has (State REPL) sig m, Has (Time Instant) sig m, Has Trace sig m, MonadIO m) => m ()
+loop :: (Has (Empty :+: Input :+: Output :+: State REPL :+: Time Instant :+: Trace) sig m, MonadIO m) => m ()
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
@@ -219,7 +219,7 @@ helpDoc = tabulate2 (stimes (3 :: Int) space) (map entry (getCommands commands))
   w = align . fillSep . map pretty . words
 
 
-prompt :: (Has Input sig m, Has (State REPL) sig m, MonadIO m) => m (Maybe Source)
+prompt :: (Has (Input :+: State REPL) sig m, MonadIO m) => m (Maybe Source)
 prompt = do
   line <- gets line
   line_ %= (+ 1)
@@ -227,7 +227,7 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-elab :: (Has (Reader Source) sig m, Has (State REPL) sig m) => I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC Module (ReaderC Graph (ReaderC Span m))) a -> m a
+elab :: Has (Reader Source :+: State REPL) sig m => I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC Module (ReaderC Graph (ReaderC Span m))) a -> m a
 elab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
