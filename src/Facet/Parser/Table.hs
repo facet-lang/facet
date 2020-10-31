@@ -36,9 +36,8 @@ type Table a = [Row a]
 
 -- | Build a parser for a Table.
 build :: TokenParsing p => Table a -> p a -> p a
-build ts end = root
+build ts end = foldr chain end ts
   where
-  root = foldr chain end ts
   chain ps next = self
     where
     self = foldr (\ p rest -> parseOperator p self rest <|> rest) next ps
