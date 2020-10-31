@@ -7,6 +7,7 @@ import           Control.Carrier.State.Church
 import           Data.Foldable (for_)
 import qualified Data.Set as Set
 import           Facet.Carrier.Output.IO
+import           Facet.Carrier.Time.System
 import           Facet.Carrier.Trace.REPL
 import           Facet.Driver
 import           Facet.Flag
@@ -27,6 +28,7 @@ runFile searchPaths path = runStack $ do
   toNode (n, path, source, imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
   runStack
     = runOutput
+    . runTime
     . evalState (toFlag LogTraces False)
     . runTrace Nil
     . evalState (Target mempty mempty (Set.fromList searchPaths))

@@ -56,6 +56,7 @@ import           Facet.Context as Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as Binding (Binding(..))
 import qualified Facet.Core as C
+import           Facet.Effect.Time.System
 import           Facet.Effect.Trace as Trace
 import           Facet.Graph as Graph
 import           Facet.Name hiding (L, R)
@@ -403,7 +404,7 @@ string s = Synth $ pure $ VPrim (VString s) ::: VPrim TString
 -- Declarations
 
 elabDataDef
-  :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
+  :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => QName ::: Comp
   -> [S.Ann (UName ::: S.Ann (S.Comp Void))]
   -> m [(DName, Decl)]
@@ -428,7 +429,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = do
     _T                           -> VCon (q :$ fs)
 
 elabInterfaceDef
-  :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
+  :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => Comp
   -> [S.Ann (UName ::: S.Ann (S.Comp Void))]
   -> m Decl
@@ -447,7 +448,7 @@ elabInterfaceDef _T constructors = do
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
-  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw Err) sig m, Has Trace sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m)
   => Comp
   -> S.Ann (S.Expr Void)
   -> m Expr
@@ -463,7 +464,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ elab $ go (checkExpr expr) _T
 -- Modules
 
 elabModule
-  :: (HasCallStack, Has (Reader Graph) sig m, Has (Throw Err) sig m, Has Trace sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Throw Err :+: Time Instant :+: Trace) sig m)
   => S.Ann (S.Module Void)
   -> m C.Module
 elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader s $ tracePretty mname $ do
@@ -600,13 +601,13 @@ instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: R
     R (R (R (R (R (R (L throw)))))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
     R (R (R (R (R (R (R trace)))))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
-elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Value -> m Value
+elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab Value -> m Value
 elab = elabWith (fmap pure . apply)
 
-elabTele :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => Elab Comp -> m Comp
+elabTele :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab Comp -> m Comp
 elabTele = elabWith (fmap pure . applyComp)
 
-elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
+elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
 elabWith f = runSubstWith f . runContext . runSig . runElab
 
 

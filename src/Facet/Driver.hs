@@ -16,6 +16,7 @@ module Facet.Driver
 , rethrowGraphErrors
 ) where
 
+import           Control.Algebra
 import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Effect.Error
@@ -32,6 +33,7 @@ import qualified Data.Text as TS
 import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.Throw.Inject as I
+import           Facet.Carrier.Time.System
 import           Facet.Core
 import           Facet.Effect.Readline
 import           Facet.Effect.Trace
@@ -88,7 +90,7 @@ kernel = Module kernelName [] [] $ Map.fromList
 
 -- Module loading
 
-reloadModules :: (Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State Target) sig m, Has Trace sig m, MonadIO m) => m ()
+reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Target :+: Time Instant :+: Trace) sig m, MonadIO m) => m ()
 reloadModules = do
   searchPaths <- uses searchPaths_ toList
   modules <- targets_ ~> \ targets -> do
@@ -122,7 +124,7 @@ loadModuleHeader searchPaths target = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
 
-loadModule :: (Has (State Target) sig m, Has (Throw (Notice.Notice (Doc Style))) sig m, Has Trace sig m) => MName -> FilePath -> Source -> [MName] -> m Module
+loadModule :: Has (State Target :+: Throw (Notice.Notice (Doc Style)) :+: Time Instant :+: Trace) sig m => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
   graph <- use modules_
   let ops = foldMap (operators . snd <=< (`lookupM` graph)) imports
