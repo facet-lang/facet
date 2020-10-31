@@ -10,7 +10,7 @@ module Facet.Span
 , HasSpan(..)
 ) where
 
-import Control.Lens (Lens', lens)
+import Control.Lens (Lens', iso, lens)
 import Data.Functor.Classes (showsBinaryWith)
 
 -- Positions
@@ -50,3 +50,7 @@ end_   = lens end   (\p e -> p { end   = e })
 
 class HasSpan t where
   span_ :: Lens' t Span
+
+
+instance HasSpan Span where
+  span_ = iso id id
