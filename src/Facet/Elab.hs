@@ -355,11 +355,10 @@ lam n b = Check $ \ _T -> trace "lam" $ do
   pure $ VLam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)]
 
 thunk :: Check Expr -> Check Expr
-thunk e = Check $ \ _T -> do
-  _C <- expectComp "when checking thunk" _T
-  case _C of
-    Comp s t -> local (s ++) $ check (e ::: t)
-    ForAll{} -> check (e ::: _T)
+thunk e = Check $ \case
+  VComp (Comp s t)  -> local (s ++) $ check (e ::: VComp (Comp s t))
+  VComp _T@ForAll{} -> check (e ::: VComp _T)
+  t                 -> check (e ::: t)
 
 
 -- FIXME: go find the pattern matching matrix algorithm
@@ -587,9 +586,6 @@ expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectQuantifier :: String -> Type -> Elab (Binding, Type -> Comp)
 expectQuantifier = expectMatch (\case{ ForAll t b -> pure (t, b) ; _ -> Nothing } <=< stripEmpty) "{_} -> _"
-
-expectComp :: String -> Type -> Elab Comp
-expectComp = expectMatch stripEmpty "{_}"
 
 stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case
