@@ -1,4 +1,6 @@
 -- | A lexer designed to allow us to skip whitespace, preserve comments, and produce tight spans (i.e. omitting trailing whitespace) for parsed ASTs.
+--
+-- Note that this is currently /not/ used by the parser (or anything else).
 module Facet.Lexer
 ( Token(..)
 , TokenKind(..)
