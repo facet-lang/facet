@@ -4,7 +4,7 @@ module Facet.Carrier.Trace.REPL
 ( -- * Trace carrier
   runTrace
 , LogTraces(..)
-, TraceC(..)
+, TraceC(TraceC)
   -- * Trace effect
 , module Facet.Effect.Trace
 ) where
@@ -24,12 +24,12 @@ import Facet.Style
 import Silkscreen
 
 
-runTrace :: Stack (Doc Style) -> TraceC m a -> StateC (Flag LogTraces) m a
-runTrace stack (TraceC m) = m stack
+runTrace :: Applicative m => Stack (Doc Style) -> Flag LogTraces -> TraceC m a -> m a
+runTrace stack flag (TraceC m) = evalState flag (m stack)
 
 data LogTraces = LogTraces
 
-newtype TraceC m a = TraceC (Stack (Doc Style) -> StateC (Flag LogTraces) m a)
+newtype TraceC m a = TraceC { runTraceC :: Stack (Doc Style) -> StateC (Flag LogTraces) m a }
   deriving (Applicative, Functor, Monad, MonadFail, MonadIO) via ReaderC (Stack (Doc Style)) (StateC (Flag LogTraces) m)
 
 instance Has Output sig m => Algebra (Trace :+: State (Flag LogTraces) :+: sig) (TraceC m) where
@@ -37,6 +37,6 @@ instance Has Output sig m => Algebra (Trace :+: State (Flag LogTraces) :+: sig) 
     L (Trace msg m) -> do
       logTraces <- gets (fromFlag LogTraces)
       when logTraces $ outputDocLn (stimes (length stack * 2) space <> msg)
-      runTrace (stack:>msg) (hdl (m <$ ctx))
+      runTraceC (hdl (m <$ ctx)) (stack:>msg)
     L CallStack     -> pure (stack <$ ctx)
-    R other         -> alg (runTrace stack . hdl) other ctx
+    R other         -> alg ((`runTraceC` stack) . hdl) other ctx

@@ -29,7 +29,6 @@ runFile searchPaths path = runStack $ do
   runStack
     = runOutput
     . runTime
-    . evalState (toFlag LogTraces False)
-    . runTrace Nil
+    . runTrace Nil (toFlag LogTraces False)
     . evalState (Target mempty mempty (Set.fromList searchPaths))
     . runError ((ExitFailure 1 <$) . outputDocLn . prettyNotice) pure

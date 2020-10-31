@@ -65,8 +65,7 @@ repl searchPaths
   . runReadlineWithHistory
   . evalState (defaultREPLState & target_.searchPaths_ .~ Set.fromList searchPaths)
   . evalEmpty
-  . evalState (toFlag LogTraces False)
-  . runTrace Nil
+  . runTrace Nil (toFlag LogTraces False)
   . runTime
   $ loop
 
