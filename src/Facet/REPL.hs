@@ -115,7 +115,7 @@ loop = do
       let ops = foldMap (operators . snd <=< (`lookupM` graph)) (toList targets)
       (dParse, action) <- time $ rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
       outputStrLn (show dParse)
-      runAction src action
+      runReader src $ runAction action
     Nothing  -> pure ()
   loop
   where
@@ -128,8 +128,8 @@ loop = do
 -- - shell commands
 commands :: Commands Action
 commands = choice
-  [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure (Action (const (outputDocLn helpDoc)))
-  , command ["quit", "q"]       "exit the repl"                      Nothing        $ pure (Action (const empty))
+  [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure (Action (outputDocLn helpDoc))
+  , command ["quit", "q"]       "exit the repl"                      Nothing        $ pure (Action empty)
   , command ["show"]            "show compiler state"                (Just "field") $ choice
     [ showPaths   <$ token (string "paths")
     , showModules <$ token (string "modules")
@@ -143,7 +143,7 @@ commands = choice
     [ removePath   <$ token (string "path")   <*> path'
     , removeTarget <$ token (string "target") <*> some mname
     ]
-  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (const (target_ `zoom` reloadModules)))
+  , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (target_ `zoom` reloadModules))
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ showType <$> runFacet [] expr
   , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
@@ -154,49 +154,46 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-runAction :: (Has Empty sig m, Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State REPL) sig m, Has (Time Instant) sig m, Has Trace sig m, MonadIO m) => Source -> Action -> m ()
-runAction src (Action f) = f src
-
-newtype Action = Action (forall sig m . (Has Empty sig m, Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (State REPL) sig m, Has (Time Instant) sig m, Has Trace sig m, MonadIO m) => Source -> m ())
+newtype Action = Action { runAction :: forall sig m . (Has Empty sig m, Has (Error (Notice.Notice (Doc Style))) sig m, Has Output sig m, Has (Reader Source) sig m, Has (State REPL) sig m, Has (Time Instant) sig m, Has Trace sig m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action
 
-showPaths   = Action $ \ _ -> do
+showPaths   = Action $ do
   dir <- liftIO getCurrentDirectory
   outputDocLn $ nest 2 $ reflow "current working directory:" </> pretty dir
   searchPaths <- uses (target_.searchPaths_) toList
   unless (null searchPaths)
     $ outputDocLn $ nest 2 $ pretty ("search paths:" :: Text) <\> unlines (map pretty searchPaths)
 
-showModules = Action $ \ _ -> uses (target_.modules_) (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
+showModules = Action $ uses (target_.modules_) (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
 
-showTargets = Action $ \ _ -> uses (target_.targets_) (unlines . map pretty . toList) >>= outputDocLn
+showTargets = Action $ uses (target_.targets_) (unlines . map pretty . toList) >>= outputDocLn
 
 addPath :: FilePath -> Action
-addPath path = Action $ \ _ -> target_.searchPaths_ %= Set.insert path
+addPath path = Action $ target_.searchPaths_ %= Set.insert path
 
 addTarget :: [MName] -> Action
-addTarget targets = Action $ \ _ -> do
+addTarget targets = Action $ do
   target_.targets_ %= Set.union (Set.fromList targets)
   target_ `zoom` reloadModules
 
 removePath :: FilePath -> Action
-removePath path = Action $ \ _ -> target_.searchPaths_ %= Set.delete path
+removePath path = Action $ target_.searchPaths_ %= Set.delete path
 
 -- FIXME: remove things depending on it
 removeTarget :: [MName] -> Action
-removeTarget targets = Action $ \ _ -> target_.targets_ %= (Set.\\ Set.fromList targets)
+removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets)
 
 showType :: S.Ann (S.Expr Void) -> Action
-showType e = Action $ \ src -> do
-  e ::: _T <- elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.synth (Elab.synthExpr e))
+showType e = Action $ do
+  e ::: _T <- elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.synth (Elab.synthExpr e))
   outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
 
 showEval :: S.Ann (S.Expr Void) -> Action
-showEval e = Action $ \ src -> do
-  (dElab, e' ::: _T) <- time $ elab src $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:T "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
-  (dEval, e'') <- time $ elab src $ runEvalMain (eval e')
+showEval e = Action $ do
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:T "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
+  (dEval, e'') <- time $ elab $ runEvalMain (eval e')
   outputStrLn $ show dElab
   outputStrLn $ show dEval
   outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil _T)))
@@ -229,8 +226,9 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-elab :: Has (State REPL) sig m => Source -> I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC Module (ReaderC Graph (ReaderC Span m))) a -> m a
-elab src m = do
+elab :: (Has (Reader Source) sig m, Has (State REPL) sig m) => I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC Module (ReaderC Graph (ReaderC Span m))) a -> m a
+elab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
+  src <- ask
   runReader (span src) . runReader graph . runReader localDefs . rethrowElabErrors src $ m
