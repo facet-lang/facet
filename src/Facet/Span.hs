@@ -12,6 +12,8 @@ module Facet.Span
 import Control.Lens (Lens', lens)
 import Data.Functor.Classes (showsBinaryWith)
 
+-- TODO: HasSpan class
+
 -- Positions
 
 data Pos = Pos
