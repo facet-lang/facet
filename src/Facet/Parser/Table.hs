@@ -7,6 +7,7 @@ module Facet.Parser.Table
 , Row
 , Table
 , build
+, buildRow
 ) where
 
 import Control.Applicative (Alternative(..))
