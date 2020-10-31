@@ -131,6 +131,7 @@ typeSig
   -> p (S.Ann (S.Comp Void))
 typeSig binding body = anned $ do
   bindings <- many (try (binding <* arrow))
+  -- FIXME: this is too greedy, we need to parse the signature as part of body.
   S.Comp bindings <$> optional sig <*> body
 
 exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.UName -> p (S.Ann (S.Binding Void))
