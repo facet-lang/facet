@@ -19,11 +19,15 @@ module Facet.Surface
 , Import(..)
   -- * Annotations
 , Ann(..)
+, ann_
+, comments_
+, out_
 , annUnary
 , annBinary
 , Comment(..)
 ) where
 
+import Control.Lens (Lens, Lens', lens)
 import Data.Function (on)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
@@ -169,6 +173,15 @@ instance Ord a => Ord (Ann a) where
 
 instance Show a => Show (Ann a) where
   showsPrec p = showsPrec p . out
+
+ann_ :: Lens' (Ann a) Span
+ann_ = lens ann (\ a ann -> a{ ann })
+
+comments_ :: Lens' (Ann a) (Stack (Span, Comment))
+comments_ = lens comments (\ a comments -> a{ comments })
+
+out_ :: Lens (Ann a) (Ann b) a b
+out_ = lens out (\ a out -> a{ out })
 
 
 annUnary :: (Ann (Expr Ann Void) -> Expr Ann Void) -> Ann (Expr Ann Void) -> Ann (Expr Ann Void)
