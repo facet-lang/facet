@@ -147,9 +147,9 @@ nonBinding = anned $ S.Binding Ex (pure N.__) <$> option [] sig <*> tatom
 -- Types
 
 -- FIXME: kind ascriptions
-monotypeTable :: Table (S.Ann (S.Type Void))
+monotypeTable :: TokenParsing p => Table p (S.Ann (S.Type Void))
 monotypeTable =
-  [ [ (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
+  [ [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   ]
 
 
@@ -195,20 +195,20 @@ sig = brackets (commaSep delta) <?> "signature"
 
 -- Expressions
 
-exprTable :: Table (S.Ann (S.Expr Void))
+exprTable :: TokenParsing p => Table p (S.Ann (S.Expr Void))
 exprTable =
-  [ [ (N.Infix (pack ":"), N.R, foldr1 (S.annBinary S.As)) ]
-  , [ (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
+  [ [ parseOperator (N.Infix (pack ":"), N.R, foldr1 (S.annBinary S.As)) ]
+  , [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   -- FIXME: model this as application to unit instead
   -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
-  , [ (N.Postfix (pack "!"), N.L, S.annUnary S.Force . head) ]
+  , [ parseOperator (N.Postfix (pack "!"), N.L, S.annUnary S.Force . head) ]
   ]
 
 -- FIXME: this is responsible for a massive slowdown on nested parens.
 expr :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr Void))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
 expr = do
   ops <- get
-  let rec = build (ops:exprTable) $ choice
+  let rec = build (map parseOperator ops:exprTable) $ choice
         [ comp
         , hole
         , evar

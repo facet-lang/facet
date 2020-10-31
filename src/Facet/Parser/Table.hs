@@ -35,9 +35,9 @@ atom :: p a -> OperatorParser p a
 atom p _ _ = p
 
 type OperatorParser p a = p a -> p a -> p a
-type Row a = [Operator a]
-type Table a = [Row a]
+type Row p a = [OperatorParser p a]
+type Table p a = [Row p a]
 
 -- | Build a parser for a Table.
-build :: TokenParsing p => Table a -> p a -> p a
-build = flip (foldr (\ ps next -> let self = foldr (\ p rest -> parseOperator p self rest <|> rest) next ps in self))
+build :: TokenParsing p => Table p a -> p a -> p a
+build = flip (foldr (\ ps next -> let self = foldr (\ p rest -> p self rest <|> rest) next ps in self))
