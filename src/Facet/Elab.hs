@@ -16,6 +16,7 @@ module Facet.Elab
 , comp
 , ($$)
 , lam
+, thunk
 , string
   -- * Modules
 , elabModule
@@ -353,6 +354,13 @@ lam n b = Check $ \ _T -> trace "lam" $ do
   b' <- elabBinder $ \ v -> checkComp (b (n ::: _A) ::: _B v)
   pure $ VLam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)]
 
+thunk :: Check Expr -> Check Expr
+thunk e = Check $ \ _T -> do
+  _C <- expectComp "when checking thunk" _T
+  case _C of
+    Comp s t -> local (s ++) $ check (e ::: t)
+    ForAll{} -> check (e ::: _T)
+
 
 -- FIXME: go find the pattern matching matrix algorithm
 elabClauses :: [S.Clause Void] -> Check Expr
@@ -579,6 +587,9 @@ expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectQuantifier :: String -> Type -> Elab (Binding, Type -> Comp)
 expectQuantifier = expectMatch (\case{ ForAll t b -> pure (t, b) ; _ -> Nothing } <=< stripEmpty) "{_} -> _"
+
+expectComp :: String -> Type -> Elab Comp
+expectComp = expectMatch stripEmpty "{_}"
 
 stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case
