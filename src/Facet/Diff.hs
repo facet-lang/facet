@@ -8,10 +8,13 @@ import           Data.Void
 import           Facet.Name (Meta(..))
 import           Facet.Surface
 
-applyChange :: (Expr Meta, Expr Meta) -> (Expr Void) -> Maybe (Expr Void)
+applyChange :: (Open Expr, Open Expr) -> Closed Expr -> Maybe (Closed Expr)
 applyChange (d, i) = ins i <=< del d
 
-del :: Expr Meta -> Expr Void -> Maybe (IntMap.IntMap (Expr Void))
+type Closed f = f Void
+type Open f = f Meta
+
+del :: Open Expr -> Closed Expr -> Maybe (IntMap.IntMap (Closed Expr))
 del = go IntMap.empty
   where
   go m = curry $ \case
@@ -42,7 +45,7 @@ del = go IntMap.empty
   goAnn go (Ann _ c1 e1) (Ann _ c2 e2) = guard (c1 == c2) *> go e1 e2
 
 
-ins :: Expr Meta -> IntMap.IntMap (Expr Void) -> Maybe (Expr Void)
+ins :: Open Expr -> IntMap.IntMap (Closed Expr) -> Maybe (Closed Expr)
 ins d m = case d of
   M i -> IntMap.lookup (getMeta i) m
   s   -> traverse (const Nothing) s
