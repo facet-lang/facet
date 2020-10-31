@@ -215,6 +215,8 @@ VOp (q :$ es) $$ a = VOp (q :$ (es :> a))
 VComp t       $$ a
   | ForAll _ b <- t = case b (snd a) of
     t@ForAll{} -> VComp t
+    -- FIXME: it’s not clear to me that it’s ok to discard the signature.
+    -- maybe this should still be a nullary computation which gets eliminated with !.
     Comp _ t   -> t
 VLam _ b      $$ a = case' (snd a) b
 _             $$ _ = error "can’t apply non-neutral/forall type"
