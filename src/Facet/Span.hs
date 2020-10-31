@@ -5,8 +5,6 @@ module Facet.Span
 , column_
   -- * Spans
 , Span(..)
-, start_
-, end_
 , HasSpan(..)
 ) where
 
@@ -43,13 +41,13 @@ instance Semigroup Span where
 instance Show Span where
   showsPrec p (Span s e) = showsBinaryWith showsPrec showsPrec "Span" p s e
 
-start_, end_ :: Lens' Span Pos
-start_ = lens start (\p s -> p { start = s })
-end_   = lens end   (\p e -> p { end   = e })
-
 
 class HasSpan t where
   span_ :: Lens' t Span
+
+  start_, end_ :: Lens' t Pos
+  start_ = span_ . lens start (\ p s -> p { start = s })
+  end_   = span_ . lens end   (\ p e -> p { end   = e })
 
 
 instance HasSpan Span where
