@@ -145,9 +145,7 @@ instantiate (e ::: _T) = case _T of
   _                           -> pure $ e ::: _T
 
 
-switch
-  :: Synth a
-  -> Check a
+switch :: Synth a -> Check a
 switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
 as :: Check a ::: Check Type -> Synth a
@@ -171,19 +169,13 @@ resolveWith lookup m n = asks lookup >>= \case
       -- FIXME: resolve ambiguities by type.
       _                 -> ambiguousName m n (map (\ (q :=: _ ::: _) -> q) defs)
 
-resolve
-  :: DName
-  -> Elab (QName :=: Maybe Def ::: Comp)
+resolve :: DName -> Elab (QName :=: Maybe Def ::: Comp)
 resolve n = resolveWith (lookupD n) Nothing n
 
-resolveC
-  :: UName
-  -> Elab (QName :=: Maybe Def ::: Comp)
+resolveC :: UName -> Elab (QName :=: Maybe Def ::: Comp)
 resolveC n = resolveWith (lookupC n) Nothing (C n)
 
-resolveQ
-  :: QName
-  -> Elab (QName :=: Maybe Def ::: Comp)
+resolveQ :: QName -> Elab (QName :=: Maybe Def ::: Comp)
 resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
   Just (q' :=: d ::: _T) -> pure $ q' :=: d ::: _T
   Nothing                -> freeVariable (Just m) n
@@ -192,9 +184,7 @@ resolveMD :: Maybe MName -> DName -> Elab (QName :=: Maybe Def ::: Comp)
 resolveMD m n = maybe (resolve n) (resolveQ . (:.: n)) m
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global
-  :: QName ::: Comp
-  -> Synth Value
+global :: QName ::: Comp -> Synth Value
 global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 
 lookupInContext :: DName -> Context Type -> Maybe (Level, Type)
@@ -214,10 +204,7 @@ lookupInSig m n mod graph = matchWith $ \case
   _                            -> Nothing
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
-var
-  :: Maybe MName
-  -> DName
-  -> Synth Value
+var :: Maybe MName -> DName -> Synth Value
 var m n = Synth $ ask >>= \ ctx -> case m of
   Nothing
     | Just (i, _T) <- lookupInContext n ctx
@@ -234,15 +221,10 @@ var m n = Synth $ ask >>= \ ctx -> case m of
         n :=: _ ::: _T <- resolveMD m n
         synth $ global (n ::: _T)
 
-hole
-  :: UName
-  -> Check a
+hole :: UName -> Check a
 hole n = Check $ \ _T -> err $ Hole n _T
 
-($$)
-  :: Synth Value
-  -> Check Value
-  -> Synth Value
+($$) :: Synth Value -> Check Value -> Synth Value
 f $$ a = Synth $ do
   f' ::: _F <- synth f
   -- FIXME: check that the signatures match
@@ -251,30 +233,19 @@ f $$ a = Synth $ do
   pure $ f' C.$$ (Ex, a') ::: VComp (_B a')
 
 
-elabBinder
-  :: Has (Reader (Context Type)) sig m
-  => (Value -> m Value)
-  -> m (Value -> Value)
+elabBinder :: Has (Reader (Context Type)) sig m => (Value -> m Value) -> m (Value -> Value)
 elabBinder b = do
   d <- asks @(Context Type) level
   b' <- b (free d)
   pure $ \ v -> C.bind d v b'
 
-elabBinders
-  :: (Traversable t, Has (Reader (Context Type)) sig m)
-  => t (UName ::: Type)
-  -> (t (UName ::: Type) -> m Value)
-  -> m (t Type -> Value)
+elabBinders :: (Traversable t, Has (Reader (Context Type)) sig m) => t (UName ::: Type) -> (t (UName ::: Type) -> m Value) -> m (t Type -> Value)
 elabBinders p b = do
   d <- asks @(Context Type) level
   b' <- b p
   pure $ \ v -> C.binds (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
-(|-)
-  :: Has (Reader (Context Type)) sig m
-  => UName ::: Type
-  -> m a
-  -> m a
+(|-) :: Has (Reader (Context Type)) sig m => UName ::: Type -> m a -> m a
 t |- b = local @(Context Type) (|> t) b
 
 infix 1 |-
@@ -282,10 +253,7 @@ infix 1 |-
 
 -- Expressions
 
-synthExpr
-  :: HasCallStack
-  => S.Ann (S.Expr Void)
-  -> Synth Expr
+synthExpr :: HasCallStack => S.Ann (S.Expr Void) -> Synth Expr
 synthExpr (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
   S.Var m n    -> var m n
   S.Type       -> _Type
@@ -303,10 +271,7 @@ synthExpr (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr
-  :: HasCallStack
-  => S.Ann (S.Expr Void)
-  -> Check Expr
+checkExpr :: HasCallStack => S.Ann (S.Expr Void) -> Check Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (setSpan s) $ case e of
   S.Hole  n    -> hole n
   S.Lam cs     -> elabClauses cs
@@ -370,10 +335,7 @@ comp s t = Synth $ do
   pure $ Comp s' t' ::: VType
 
 
-lam
-  :: (Pl, UName)
-  -> (UName ::: Type -> Check Expr)
-  -> Check Expr
+lam :: (Pl, UName) -> (UName ::: Type -> Check Expr) -> Check Expr
 lam n b = Check $ \ _T -> do
   -- FIXME: how does the effect adjustment change this?
   (Binding _ _ _ _T, _B) <- expectQuantifier "when checking lambda" _T
