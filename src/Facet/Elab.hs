@@ -54,7 +54,6 @@ import           Data.Traversable (for, mapAccumL)
 import           Data.Void
 import           Facet.Context as Context
 import           Facet.Core hiding (global, ($$))
-import qualified Facet.Core as Binding (Binding(..))
 import qualified Facet.Core as C
 import           Facet.Effect.Time.System
 import           Facet.Effect.Trace as Trace
@@ -229,8 +228,8 @@ hole n = Check $ \ _T -> err $ Hole n _T
 f $$ a = Synth $ do
   f' ::: _F <- synth f
   -- FIXME: check that the signatures match
-  (_A, _B) <- expectQuantifier "in application" _F
-  a' <- check (a ::: Binding.type' _A)
+  (Binding _ _ _ _A, _B) <- expectQuantifier "in application" _F
+  a' <- check (a ::: _A)
   pure $ f' C.$$ (Ex, a') ::: VComp (_B a')
 
 
