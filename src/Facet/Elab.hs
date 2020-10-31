@@ -454,6 +454,7 @@ elabTermDef
 elabTermDef _T expr = runReader (S.ann expr) $ elab $ go (checkExpr expr) _T
   where
   go k t = case t of
+    -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     Comp s _T                    -> local (s ++) $ check (k ::: _T)
     ForAll (Binding p n _ _T) _B -> do
       b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
