@@ -313,6 +313,7 @@ generalize s v
 
 
 -- FIXME: should we define eta-expansion of types?
+-- FIXME: this doesn’t check whether the value is already eta-long.
 etaExpand :: Value ::: Type -> Value
 etaExpand (v ::: _T) = case _T of
   VComp _T -> go v _T
