@@ -240,7 +240,7 @@ f $$ a = Synth $ trace "$$" $ do
   f' ::: _F <- synth f
   -- FIXME: check that the signatures match
   (Binding _ _ delta _A, _B) <- expectQuantifier "in application" _F
-  a' <- maybe id (local . (++)) delta $ check (a ::: _A)
+  a' <- extendSig delta $ check (a ::: _A)
   pure $ f' C.$$ (Ex, a') ::: VComp (_B a')
 
 
@@ -356,7 +356,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
 
 thunk :: Check Expr -> Check Expr
 thunk e = Check $ \case
-  VComp (Comp s t)  -> maybe id (local . (++)) s $ check (e ::: VComp (Comp s t))
+  VComp (Comp s t)  -> extendSig s $ check (e ::: VComp (Comp s t))
   VComp _T@ForAll{} -> check (e ::: VComp _T)
   t                 -> check (e ::: t)
 
@@ -474,7 +474,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (
   go k t = case t of
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
-    Comp s _T                    -> maybe id (local . (++)) s $ check (k ::: _T)
+    Comp s _T                    -> extendSig s $ check (k ::: _T)
     -- FIXME: can this use lam?
     ForAll (Binding p n _ _T) _B -> do
       b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
@@ -525,6 +525,9 @@ runContext = runReader Context.empty
 
 runSig :: ReaderC [Value] m a -> m a
 runSig = runReader []
+
+extendSig :: Has (Reader [Value]) sig m => Maybe [Value] -> m a -> m a
+extendSig = maybe id (local . (++))
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
@@ -636,8 +639,7 @@ check (m ::: _T) = trace "check" $ runCheck m _T
 
 checkComp :: (Check a ::: Comp) -> Elab a
 checkComp (m ::: _T) = trace "checkComp" $ case _T of
-  -- FIXME: extract a helper to extend the sig
-  Comp sig _T -> maybe id (local . (++)) sig (runCheck m _T)
+  Comp sig _T -> extendSig sig (runCheck m _T)
   _           -> runCheck m (VComp _T)
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
