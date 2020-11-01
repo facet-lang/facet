@@ -302,8 +302,9 @@ mqname name = token (anned (runUnspaced (mk <$> many (comp <* dot) <*> Unspaced 
   comp = ident tnameStyle
 
 qname :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann N.QName)
-qname = token (anned (runUnspaced (fmap (N.:.:) . foldl' (N.:.) . N.MName <$> comp <* dot <*> many (comp <* dot) <*> (dename <|> dtname))))
+qname = token (anned (runUnspaced (mk <$> NE.some1 (comp <* dot) <*> (dename <|> dtname))))
   where
+  mk (n NE.:| ns) = (foldl' (N.:.) (N.MName n) ns N.:.:)
   comp = ident tnameStyle
 
 
