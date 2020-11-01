@@ -96,10 +96,12 @@ unify = unifyComp
     KType                   :===: _                       -> nope
     KInterface              :===: KInterface              -> pure KInterface
     KInterface              :===: _                       -> nope
-    VPrim p1                :===: VPrim p2                -> VPrim p1 <$ unless (p1 == p2) nope
-    VPrim{}                 :===: _                       -> nope
     ECon{}                  :===: _                       -> nope
     ELam{}                  :===: _                       -> nope
+    TString                 :===: TString                 -> pure TString
+    TString{}               :===: _                       -> nope
+    EString s1              :===: EString s2              -> EString s1 <$ unless (s1 == s2) nope
+    EString{}               :===: _                       -> nope
     EOp{}                   :===: _                       -> nope
     where
     -- FIXME: build and display a diff of the root types
@@ -322,7 +324,7 @@ _Interface :: Synth Type
 _Interface = Synth $ pure $ KInterface ::: Comp Nothing KType
 
 _String :: Synth Type
-_String = Synth $ pure $ VPrim TString ::: Comp Nothing KType
+_String = Synth $ pure $ TString ::: Comp Nothing KType
 
 
 forAll :: Check Binding -> (Name ::: Comp -> Check Comp) -> Synth Comp
@@ -414,7 +416,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
 
 
 string :: Text -> Synth Expr
-string s = Synth $ pure $ VPrim (EString s) ::: Comp Nothing (VPrim TString)
+string s = Synth $ pure $ EString s ::: Comp Nothing TString
 
 
 -- Declarations

@@ -191,9 +191,8 @@ printValue env = \case
     in elim h' id e
   C.ECon (n :$ p) -> app (group (var (qvar n))) (fmap ((Ex,) . printValue env) p)
   C.EOp (q :$ sp) -> app (group (var (qvar q))) (fmap (fmap (printValue env)) sp)
-  C.VPrim p -> case p of
-    C.TString   -> annotate Type $ pretty "String"
-    C.EString s -> annotate Lit $ pretty (show s)
+  C.TString   -> annotate Type $ pretty "String"
+  C.EString s -> annotate Lit $ pretty (show s)
   where
   d = Level (length env)
 

@@ -3,7 +3,6 @@ module Facet.Core
   Value(..)
 , Type
 , Expr
-, Prim(..)
 , Comp(..)
 , substComp
 , bindComp
@@ -90,18 +89,13 @@ data Value
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var :$ (Pl, Value))
   | ECon (QName :$ Expr)
+  | TString
+  | EString Text
   -- | Effect operation and its parameters.
   | EOp (QName :$ (Pl, Expr))
-  -- | Primitive types and values.
-  | VPrim Prim
 
 type Type = Value
 type Expr = Value
-
-data Prim
-  = TString
-  | EString Text
-  deriving (Eq, Ord, Show)
 
 
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
@@ -260,8 +254,9 @@ substWith f = go
     ELam p b      -> ELam p (map clause b)
     VNe (v :$ a)  -> f v $$* fmap (fmap go) a
     ECon c        -> ECon (fmap go c)
+    TString       -> TString
+    EString s     -> EString s
     EOp (q :$ sp) -> EOp (q :$ fmap (fmap go) sp)
-    VPrim p       -> VPrim p
 
   clause (Clause p b) = Clause p (go . b)
 
@@ -353,10 +348,9 @@ sortOf ctx = \case
   ELam{}        -> STerm
   VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
   ECon _        -> STerm
+  TString       -> SType
+  EString _     -> STerm
   EOp _         -> STerm -- FIXME: will this always be true?
-  VPrim p       -> case p of
-    TString   -> SType
-    EString _ -> STerm
 
 sortOfComp :: Stack Sort -> Comp -> Sort
 sortOfComp ctx = \case
