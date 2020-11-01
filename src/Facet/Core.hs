@@ -50,6 +50,7 @@ module Facet.Core
 , imports_
 , decls_
 , lookupC
+, lookupE
 , lookupD
 , Import(..)
 , Decl(..)
@@ -402,6 +403,15 @@ lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList 
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
   matchDef (Decl   d     _)  = maybe empty pure d >>= unDData >>= matchWith matchCon
   matchCon (n' :=: v ::: _T) = (name :.: n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
+
+-- | Look up effect operations.
+lookupE :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
+-- FIXME: produce multiple results, if they exist.
+lookupE n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
+  where
+  -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
+  matchDef (Decl   d     _)  = maybe empty pure d >>= unDInterface >>= matchWith matchCon
+  matchCon (n' ::: _T) = (name :.: n' :=: Nothing ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
