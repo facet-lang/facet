@@ -22,7 +22,7 @@ import Facet.Stack
 import Facet.Style
 import Silkscreen
 
-
+-- FIXME: generalize the flag to a predicate determining which portions of the trace to log
 runTrace :: Stack (Doc Style) -> Flag LogTraces -> TraceC m a -> m a
 runTrace stack flag (TraceC m) = runReader flag (m stack)
 
