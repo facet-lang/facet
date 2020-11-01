@@ -165,7 +165,6 @@ unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 -- Elimination
 
--- FIXME: model force as an elimination of TRet.
 ($$) :: HasCallStack => Value -> (Pl, Value) -> Value
 VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
 EOp (q :$ es) $$ a = EOp (q :$ (es :> a))
