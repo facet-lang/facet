@@ -10,6 +10,7 @@ module Facet.Name
 , __
 , MName(..)
 , QName(..)
+, MQName(..)
 , moduleName
 , Name(..)
 , Assoc(..)
@@ -109,6 +110,14 @@ instance P.Pretty QName where
 
 moduleName :: QName -> MName
 moduleName (mname :.: _) = mname
+
+
+-- | /M/aybe /q/ualified names.
+data MQName = Maybe MName :? Name
+  deriving (Eq, Ord, Show)
+
+instance P.Pretty MQName where
+  pretty (m :? n) = maybe id (\ m n -> pretty m <> dot <> n) m (pretty n)
 
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.

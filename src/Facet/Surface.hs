@@ -40,7 +40,7 @@ import Facet.Syntax
 -- Expressions
 
 data Expr a
-  = Var (Maybe MName) Name
+  = Var MQName
   | Hole Name
   | Type
   | TInterface
@@ -62,10 +62,10 @@ type Type = Expr
 
 
 free :: Name -> Expr a
-free = Var Nothing
+free = Var . (Nothing :?)
 
 qual :: QName -> Expr a
-qual (m :.: n) = Var (Just m) n
+qual (m :.: n) = Var (Just m :? n)
 
 
 data Comp a = Comp
@@ -96,7 +96,7 @@ deriving instance Eq   a => Eq   (Binding a)
 deriving instance Show a => Show (Binding a)
 
 
-data Interface a = Interface (Ann (Maybe MName, Name)) (Stack (Ann (Type a)))
+data Interface a = Interface (Ann MQName) (Stack (Ann (Type a)))
   deriving (Foldable, Functor, Traversable)
 
 deriving instance Eq   a => Eq   (Interface a)

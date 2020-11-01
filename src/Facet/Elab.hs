@@ -165,32 +165,31 @@ as (m ::: _T) = Synth $ do
 
 resolveWith
   :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Comp))
-  -> Maybe MName
-  -> Name
+  -> MQName
   -> Elab (QName :=: Maybe Def ::: Comp)
-resolveWith lookup m n = asks lookup >>= \case
+resolveWith lookup n = asks lookup >>= \case
   Just (n' :=: d ::: _T) -> pure $ n' :=: d ::: _T
   Nothing                -> do
     defs <- asks (foldMap (lookup . snd) . getGraph)
     case defs of
-      []                -> freeVariable m n
+      []                -> freeVariable n
       [n' :=: d ::: _T] -> pure $ n' :=: d ::: _T
       -- FIXME: resolve ambiguities by type.
-      _                 -> ambiguousName m n (map (\ (q :=: _ ::: _) -> q) defs)
+      _                 -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) defs)
 
 resolve :: Name -> Elab (QName :=: Maybe Def ::: Comp)
-resolve n = resolveWith (lookupD n) Nothing n
+resolve n = resolveWith (lookupD n) (Nothing :? n)
 
 resolveC :: Name -> Elab (QName :=: Maybe Def ::: Comp)
-resolveC n = resolveWith (lookupC n) Nothing n
+resolveC n = resolveWith (lookupC n) (Nothing :? n)
 
 resolveQ :: QName -> Elab (QName :=: Maybe Def ::: Comp)
 resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
   Just (q' :=: d ::: _T) -> pure $ q' :=: d ::: _T
-  Nothing                -> freeVariable (Just m) n
+  Nothing                -> freeVariable (Just m :? n)
 
-resolveMD :: Maybe MName -> Name -> Elab (QName :=: Maybe Def ::: Comp)
-resolveMD m n = maybe (resolve n) (resolveQ . (:.: n)) m
+resolveMD :: MQName -> Elab (QName :=: Maybe Def ::: Comp)
+resolveMD (m :? n) = maybe (resolve n) (resolveQ . (:.: n)) m
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global :: QName ::: Comp -> Synth Value
@@ -199,8 +198,8 @@ global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 lookupInContext :: Name -> Context Type -> Maybe (Level, Type)
 lookupInContext = lookupLevel
 
-lookupInSig :: Maybe MName -> Name -> Module -> Graph -> [Value] -> Maybe (QName ::: Comp)
-lookupInSig m n mod graph = matchWith $ \case
+lookupInSig :: MQName -> Module -> Graph -> [Value] -> Maybe (QName ::: Comp)
+lookupInSig (m :? n) mod graph = matchWith $ \case
   VNe (Global q@(m':.:_) :$ _) -> do
     guard (maybe True (== m') m)
     (_ :=: Just (DInterface defs) ::: _) <- lookupQ q mod graph
@@ -211,19 +210,19 @@ lookupInSig m n mod graph = matchWith $ \case
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: Maybe MName -> Name -> Synth Value
-var m n = Synth $ trace "var" $ ask >>= \ ctx -> case m of
+var :: MQName -> Synth Value
+var n@(m :? n') = Synth $ trace "var" $ ask >>= \ ctx -> case m of
   Nothing
-    | Just (i, _T) <- lookupInContext n ctx
+    | Just (i, _T) <- lookupInContext n' ctx
     -> pure (free i ::: _T)
   _ -> do
     (mod, graph, sig) <- (,,) <$> ask <*> ask <*> ask
-    case lookupInSig m n mod graph sig of
+    case lookupInSig n mod graph sig of
       Just (n ::: _T) -> do
         n ::: _T <- instantiate (VOp (n :$ Nil) ::: _T)
         pure $ n ::: VComp _T
       _ -> do
-        n :=: _ ::: _T <- resolveMD m n
+        n :=: _ ::: _T <- resolveMD n
         synth $ global (n ::: _T)
 
 hole :: Name -> Check a
@@ -260,7 +259,7 @@ infix 1 |-
 
 synthExpr :: HasCallStack => S.Ann (S.Expr Void) -> Synth Expr
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
-  S.Var m n    -> var m n
+  S.Var n      -> var n
   S.Type       -> _Type
   S.TInterface -> _Interface
   S.TString    -> _String
@@ -305,8 +304,8 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
 elabSig :: S.Ann (S.Interface Void) -> Check Value
-elabSig (S.Ann s _ (S.Interface (S.Ann s' _ (m, n)) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
-  check (switch (foldl' ($$) (mapSynth (setSpan s') (var m n)) (checkExpr <$> sp)) ::: _T)
+elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
+  check (switch (foldl' ($$) (mapSynth (setSpan s') (var n)) (checkExpr <$> sp)) ::: _T)
 
 elabSTelescope :: S.Ann (S.Comp Void) -> Synth Comp
 elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabSTelescope") $ foldr
@@ -551,9 +550,9 @@ data Err = Err
   }
 
 data Reason
-  = FreeVariable (Maybe MName) Name
+  = FreeVariable MQName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
-  | AmbiguousName (Maybe MName) Name [QName]
+  | AmbiguousName MQName [QName]
   | CouldNotSynthesize String
   | Mismatch String (Either String Type) Type
   | Hole Name Type
@@ -576,11 +575,11 @@ couldNotUnify msg t1 t2 = mismatch msg (Right t2) t1
 couldNotSynthesize :: String -> Elab a
 couldNotSynthesize = err . CouldNotSynthesize
 
-freeVariable :: Maybe MName -> Name -> Elab a
-freeVariable m n = err $ FreeVariable m n
+freeVariable :: MQName -> Elab a
+freeVariable n = err $ FreeVariable n
 
-ambiguousName :: Maybe MName -> Name -> [QName] -> Elab a
-ambiguousName n d qs = err $ AmbiguousName n d qs
+ambiguousName :: MQName -> [QName] -> Elab a
+ambiguousName n qs = err $ AmbiguousName n qs
 
 
 -- Patterns

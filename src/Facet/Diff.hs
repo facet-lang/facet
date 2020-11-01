@@ -18,7 +18,7 @@ del :: Open Expr -> Closed Expr -> Maybe (IntMap.IntMap (Closed Expr))
 del = go IntMap.empty
   where
   go m = curry $ \case
-    (Var m1 n1, Var m2 n2)   -> m <$ guard (m1 == m2 && n1 == n2)
+    (Var n1, Var n2)         -> m <$ guard (n1 == n2)
     (Var{}, _)               -> Nothing
     (Hole n1, Hole n2)       -> m <$ guard (n1 == n2)
     (Hole{}, _)              -> Nothing

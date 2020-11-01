@@ -94,6 +94,7 @@ data Precedence
   | Var
   deriving (Bounded, Eq, Ord, Show)
 
+-- FIXME: move this into Facet.Style or something instead.
 data Highlight
   = Nest Int
   | Name Level
@@ -150,24 +151,25 @@ f $$ a = askingPrec $ \case
 
 -- Algebras
 
+-- FIXME: 🔥 this
 data Var
-  = Global (Maybe MName) Name
+  = Global MQName
   | TLocal Name Level
   | Local Name Level
   | Metavar Meta
   | Cons Name
 
 qvar :: QName -> Var
-qvar (m :.: n) = Global (Just m) n
+qvar (m :.: n) = Global (Just m :? n)
 
 
 printVar :: ((Int -> Print) -> Name -> Level -> Print) -> Var -> Print
 printVar name = \case
-  Global _ n -> setPrec Var (pretty n)
-  TLocal n d -> name upper n d
-  Local  n d -> name lower n d
-  Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
-  Cons     n -> setPrec Var (annotate Con (pretty n))
+  Global (_ :? n) -> setPrec Var (pretty n)
+  TLocal n d      -> name upper n d
+  Local  n d      -> name lower n d
+  Metavar  m      -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
+  Cons     n      -> setPrec Var (annotate Con (pretty n))
 
 
 -- Core printers
@@ -215,14 +217,14 @@ printTelescope env = \case
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
   $   mname
-  ::: Just (var (Global (Just (MName (T.pack "Kernel"))) (U (T.pack "Module"))))
+  ::: Just (var (qvar (MName (T.pack "Kernel"):.:U (T.pack "Module"))))
   :=: (map (\ (C.Import n) -> import' n) is, map def (Map.toList ds))
   where
   def (n, C.Decl Nothing  t) = ann
-    $   var (Global (Just mname) n)
+    $   var (qvar (mname:.:n))
     ::: printTelescope Nil t
   def (n, C.Decl (Just d) t) = ann
-    $   var (Global (Just mname) n)
+    $   var (qvar (mname:.:n))
     ::: defn (printTelescope Nil t
     :=: case d of
       C.DTerm b  -> printValue Nil b

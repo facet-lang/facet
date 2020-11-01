@@ -9,7 +9,6 @@ import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
 import           Facet.Core (Sort(..), Type, sortOf)
 import           Facet.Elab as Elab
-import qualified Facet.Name as N
 import           Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print hiding (Hole)
@@ -45,8 +44,8 @@ rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context, callStack } -
 
 printReason :: Stack Print -> Reason -> Doc Print.Highlight
 printReason ctx = group . \case
-  FreeVariable m n       -> fillSep [reflow "variable not in scope:", prettyMaybeQual m n]
-  AmbiguousName m n qs   -> fillSep [reflow "ambiguous name", prettyMaybeQual m n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
+  FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
+  AmbiguousName n qs     -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
   Mismatch msg exp act   -> reflow msg
       <> hardline <> pretty "expected:" <> print exp'
@@ -59,8 +58,6 @@ printReason ctx = group . \case
   Hole n _T              ->
     let _T' = printType ctx _T
     in fillSep [reflow "found hole", pretty n, colon, _T' ]
-  where
-  prettyMaybeQual m n = maybe (pretty n) (pretty . (N.:.: n)) m
 
 
 printType :: Stack Print -> Type -> Doc Print.Highlight
