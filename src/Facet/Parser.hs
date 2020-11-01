@@ -180,7 +180,7 @@ tatom = build monotypeTable $ parens type'
 tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
 tvar = choice
   [ token (anned (runUnspaced (S.free <$> tname  <?> "variable")))
-  , fmap S.qual <$> qname
+  , fmap S.qual <$> qname tname
   ]
 
 
@@ -229,7 +229,7 @@ evar = choice
   [ token (anned (runUnspaced (S.free <$> ename <?> "variable")))
     -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
   , try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname)))))
-  , fmap S.qual <$> qname
+  , fmap S.qual <$> qname dename
   ]
 
 hole :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
@@ -301,8 +301,8 @@ mqname name = token (anned (runUnspaced (mk <$> many (comp <* dot) <*> Unspaced 
   mk (n:ns) = (Just (foldl' (N.:.) (N.MName n) ns) N.:?)
   comp = ident tnameStyle
 
-qname :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann N.QName)
-qname = token (anned (runUnspaced (mk <$> NE.some1 (comp <* dot) <*> (dename <|> dtname))))
+qname :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann N.QName)
+qname name = token (anned (runUnspaced (mk <$> NE.some1 (comp <* dot) <*> Unspaced name)))
   where
   mk (n NE.:| ns) = (foldl' (N.:.) (N.MName n) ns N.:.:)
   comp = ident tnameStyle
