@@ -336,6 +336,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
 thunk :: Check Expr -> Check Expr
 thunk e = Check $ \case
   -- FIXME: pretty sure this is redundant
+  -- FIXME: this should convert non-value type to value type, i.e. it should _clear_ the sig. Note that 'force' and '$$' eliminate computation obligations.
   TComp s t -> extendSig s $ check (e ::: TComp s t)
   t         -> check (e ::: t)
 
