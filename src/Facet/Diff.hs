@@ -24,8 +24,8 @@ del = go IntMap.empty
     (Hole{}, _)              -> Nothing
     (KType, KType)           -> pure m
     (KType, _)               -> Nothing
-    (TInterface, TInterface) -> pure m
-    (TInterface, _)          -> Nothing
+    (KInterface, KInterface) -> pure m
+    (KInterface, _)          -> Nothing
     (TString, TString)       -> pure m
     (TString, _)             -> Nothing
     (Thunk e1, Thunk e2)     -> goAnn (go m) e1 e2

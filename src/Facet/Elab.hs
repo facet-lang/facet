@@ -262,7 +262,7 @@ synthExpr :: HasCallStack => S.Ann (S.Expr Void) -> Synth Expr
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Var n      -> var n
   S.KType      -> _Type
-  S.TInterface -> _Interface
+  S.KInterface -> _Interface
   S.TString    -> _String
   S.TComp t    -> VComp <$> elabSTelescope t
   S.App f a    -> synthExpr f $$ checkExpr a
@@ -284,7 +284,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
   S.Force e    -> checkExpr e -- FIXME: this should convert between computation and value type
   S.Var{}      -> synth
   S.KType      -> synth
-  S.TInterface -> synth
+  S.KInterface -> synth
   S.TString    -> synth
   S.TComp{}    -> synth
   S.App{}      -> synth

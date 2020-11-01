@@ -43,7 +43,7 @@ data Expr a
   = Var MQName
   | Hole Name
   | KType
-  | TInterface
+  | KInterface
   | TString
   | TComp (Ann (Comp a))
   | Lam [Clause a]
