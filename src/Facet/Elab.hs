@@ -591,7 +591,7 @@ expectQuantifier :: String -> Type -> Elab (Binding, Type -> Type)
 expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
 
 expectComp :: String -> Type -> Elab ([Type], Type)
-expectComp = expectMatch (\case{ TRet s t -> pure (s, t) ; _ -> Nothing }) "{_}"
+expectComp = expectMatch (\case{ TRet s t -> pure (s, t) ; _ -> Nothing }) "{_"
 
 
 -- Machinery
