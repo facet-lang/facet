@@ -91,7 +91,7 @@ data Value
   | VNe (Var :$ (Pl, Value))
   | ECon (QName :$ Expr)
   -- | Effect operation and its parameters.
-  | VOp (QName :$ (Pl, Expr))
+  | EOp (QName :$ (Pl, Expr))
   -- | Primitive types and values.
   | VPrim Prim
 
@@ -214,7 +214,7 @@ unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 ($$) :: HasCallStack => Value -> (Pl, Value) -> Value
 VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
-VOp (q :$ es) $$ a = VOp (q :$ (es :> a))
+EOp (q :$ es) $$ a = EOp (q :$ (es :> a))
 TComp t       $$ a
   | ForAll _ b <- t = case b (snd a) of
     t@ForAll{} -> TComp t
@@ -260,7 +260,7 @@ substWith f = go
     ELam p b      -> ELam p (map clause b)
     VNe (v :$ a)  -> f v $$* fmap (fmap go) a
     ECon c        -> ECon (fmap go c)
-    VOp (q :$ sp) -> VOp (q :$ fmap (fmap go) sp)
+    EOp (q :$ sp) -> EOp (q :$ fmap (fmap go) sp)
     VPrim p       -> VPrim p
 
   clause (Clause p b) = Clause p (go . b)
@@ -353,7 +353,7 @@ sortOf ctx = \case
   ELam{}        -> STerm
   VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
   ECon _        -> STerm
-  VOp _         -> STerm -- FIXME: will this always be true?
+  EOp _         -> STerm -- FIXME: will this always be true?
   VPrim p       -> case p of
     TString   -> SType
     VString _ -> STerm

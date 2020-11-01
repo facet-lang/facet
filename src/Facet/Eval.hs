@@ -45,6 +45,6 @@ eval = \case
 
   TComp (Comp Nothing v) -> eval v
 
-  VOp op -> Eval $ \ h -> h op
+  EOp op -> Eval $ \ h -> h op
 
   v          -> pure v

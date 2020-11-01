@@ -100,7 +100,7 @@ unify = unifyComp
     VPrim{}                 :===: _                       -> nope
     ECon{}                  :===: _                       -> nope
     ELam{}                  :===: _                       -> nope
-    VOp{}                   :===: _                       -> nope
+    EOp{}                   :===: _                       -> nope
     where
     -- FIXME: build and display a diff of the root types
     nope = couldNotUnify "mismatch" (Comp Nothing t1) (Comp Nothing t2)
@@ -221,7 +221,7 @@ var n@(m :? n') = Synth $ trace "var" $ ask >>= \ ctx -> case m of
     (mod, graph, sig) <- (,,) <$> ask <*> ask <*> ask
     case lookupInSig n mod graph sig of
       Just (n ::: _T) -> do
-        n ::: _T <- instantiate (VOp (n :$ Nil) ::: _T)
+        n ::: _T <- instantiate (EOp (n :$ Nil) ::: _T)
         pure $ n ::: _T
       _ -> do
         n :=: _ ::: _T <- resolveMD n
