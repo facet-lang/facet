@@ -200,7 +200,6 @@ lookupInContext :: DName -> Context Type -> Maybe (Level, Type)
 lookupInContext n ctx = (`lookupLevel` ctx) =<< eOrT n
   where
   eOrT (E n) = Just n
-  eOrT (T n) = Just n
   eOrT _     = Nothing
 
 lookupInSig :: Maybe MName -> UName -> Module -> Graph -> [Value] -> Maybe (QName ::: Comp)

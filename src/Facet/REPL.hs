@@ -195,7 +195,7 @@ showType e = Action $ do
   outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:T "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:E "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
   (dEval, e'') <- time $ elab $ runEvalMain (eval e')
   outputStrLn $ show dElab
   outputStrLn $ show dEval

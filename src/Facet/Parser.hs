@@ -179,7 +179,7 @@ tatom = build monotypeTable $ parens type'
 
 tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
 tvar = choice
-  [ token (anned (runUnspaced (S.free . N.T <$> tname  <?> "variable")))
+  [ token (anned (runUnspaced (S.free . N.E <$> tname  <?> "variable")))
   , fmap S.qual <$> qname
   ]
 
@@ -195,7 +195,7 @@ sig = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
-  mkHead cs = (uncurry (foldl' (N.:.) . N.MName) <$> uncons (NE.init cs), N.T (N.UName (NE.last cs)))
+  mkHead cs = (uncurry (foldl' (N.:.) . N.MName) <$> uncons (NE.init cs), N.E (N.UName (NE.last cs)))
   comp = ident tnameStyle
 
 
@@ -287,7 +287,7 @@ tname = ident tnameStyle
 
 dename, dtname :: (Monad p, TokenParsing p) => p N.DName
 dename  = N.E <$> ident dnameStyle <|> N.O <$> oname
-dtname  = N.T <$> tname
+dtname  = N.E <$> tname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
 mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy comp dot))

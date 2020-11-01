@@ -84,7 +84,7 @@ kernel = Module kernelName [] [] $ Map.fromList
   [ (typeName, Decl (Just (DTerm VType)) (Comp mempty VType))
   ]
   where
-  typeName = T (UName (TS.pack "Type"))
+  typeName = E (UName (TS.pack "Type"))
   kernelName = MName (TS.pack "Kernel")
 
 

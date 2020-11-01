@@ -216,7 +216,7 @@ printTelescope env = \case
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
   $   mname
-  ::: Just (var (Global (Just (MName (T.pack "Kernel"))) (T (UName (T.pack "Module")))))
+  ::: Just (var (Global (Just (MName (T.pack "Kernel"))) (E (UName (T.pack "Module")))))
   :=: (map (\ (C.Import n) -> import' n) is, map def (Map.toList ds))
   where
   def (n, C.Decl Nothing  t) = ann
