@@ -208,7 +208,7 @@ printComp env = \case
           | otherwise        = [tintro n d]
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printComp env' b')
-  C.Comp s _T -> sig env s _T
+  C.TRet s _T -> sig env s _T
   where
   d = Level (length env)
 

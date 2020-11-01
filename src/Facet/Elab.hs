@@ -88,8 +88,8 @@ unify = unifyComp
     VNe (h1 :$ e1)          :===: VNe (h2 :$ e2)          -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
     TSusp t1                :===: TSusp t2                -> TSusp <$> unifyComp t1 t2
     -- FIXME: these make me feel icky
-    TSusp (Comp Nothing t1) :===: t2                      -> unifyValue t1 t2
-    t1                      :===: TSusp (Comp Nothing t2) -> unifyValue t1 t2
+    TSusp (TRet Nothing t1) :===: t2                      -> unifyValue t1 t2
+    t1                      :===: TSusp (TRet Nothing t2) -> unifyValue t1 t2
     VNe{}                   :===: _                       -> nope
     TSusp{}                 :===: _                       -> nope
     KType                   :===: KType                   -> pure KType
@@ -105,7 +105,7 @@ unify = unifyComp
     EOp{}                   :===: _                       -> nope
     where
     -- FIXME: build and display a diff of the root types
-    nope = couldNotUnify "mismatch" (Comp Nothing t1) (Comp Nothing t2)
+    nope = couldNotUnify "mismatch" (TRet Nothing t1) (TRet Nothing t2)
 
     unifySpine sp1 sp2 = unless (length sp1 == length sp2) nope *> sequenceA (zipWith unifyArg sp1 sp2)
     unifyArg (p1, a1) (p2, a2) = (p1,) <$ unless (p1 == p2) nope <*> unifyValue a1 a2
@@ -118,9 +118,9 @@ unify = unifyComp
       let v = free d
       b <- unifyComp (b1 v) (b2 v)
       pure $ TForAll (Binding p1 n1 t) (\ v -> bindComp d v b)
-    Comp s1 t1      :===: Comp s2 t2      -> Comp <$> unifySig s1 s2 <*> unifyValue t1 t2
-    Comp Nothing t1 :===: t2              -> fromValue <$> unifyValue t1 (TSusp t2)
-    t1              :===: Comp Nothing t2 -> fromValue <$> unifyValue (TSusp t1) t2
+    TRet s1 t1      :===: TRet s2 t2      -> TRet <$> unifySig s1 s2 <*> unifyValue t1 t2
+    TRet Nothing t1 :===: t2              -> fromValue <$> unifyValue t1 (TSusp t2)
+    t1              :===: TRet Nothing t2 -> fromValue <$> unifyValue (TSusp t1) t2
     _               :===: _               -> nope
     where
     nope = couldNotUnify "mismatch" c1 c2
@@ -162,9 +162,9 @@ switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ 
 
 as :: Check a ::: Check Type -> Synth a
 as (m ::: _T) = Synth $ do
-  _T' <- check (_T ::: Comp Nothing KType)
-  a <- check (m ::: Comp Nothing _T')
-  pure $ a ::: Comp Nothing _T'
+  _T' <- check (_T ::: TRet Nothing KType)
+  a <- check (m ::: TRet Nothing _T')
+  pure $ a ::: TRet Nothing _T'
 
 resolveWith
   :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Comp))
@@ -300,9 +300,9 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
 elabBinding :: S.Ann (S.Binding Void) -> [(Pos, Check Binding)]
 elabBinding (S.Ann s _ (S.Binding p n d t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
-    d' <- traverse (traverse (check . (::: Comp Nothing KInterface) . elabSig)) d
+    d' <- traverse (traverse (check . (::: TRet Nothing KInterface) . elabSig)) d
     t' <- check (checkExpr t ::: _T)
-    pure $ Binding p n (Comp d' t'))
+    pure $ Binding p n (TRet d' t'))
   | n <- maybe [Nothing] (map Just . toList) n ]
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
@@ -318,28 +318,28 @@ elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabST
 
 
 _Type :: Synth Type
-_Type = Synth $ pure $ KType ::: Comp Nothing KType
+_Type = Synth $ pure $ KType ::: TRet Nothing KType
 
 _Interface :: Synth Type
-_Interface = Synth $ pure $ KInterface ::: Comp Nothing KType
+_Interface = Synth $ pure $ KInterface ::: TRet Nothing KType
 
 _String :: Synth Type
-_String = Synth $ pure $ TString ::: Comp Nothing KType
+_String = Synth $ pure $ TString ::: TRet Nothing KType
 
 
 forAll :: Check Binding -> (Name ::: Comp -> Check Comp) -> Synth Comp
 forAll t b = Synth $ trace "forAll" $ do
   -- FIXME: should we check that the signature is empty?
-  _T@Binding{ name, type' = _A } <- check (t ::: Comp Nothing KType)
+  _T@Binding{ name, type' = _A } <- check (t ::: TRet Nothing KType)
   d <- asks @(Context Comp) level
-  _B <- check (b (fromMaybe __ name ::: _A) ::: Comp Nothing KType)
-  pure $ TForAll _T (\ v -> bindComp d v _B) ::: Comp Nothing KType
+  _B <- check (b (fromMaybe __ name ::: _A) ::: TRet Nothing KType)
+  pure $ TForAll _T (\ v -> bindComp d v _B) ::: TRet Nothing KType
 
 comp :: Maybe [Check Value] -> Check Type -> Synth Comp
 comp s t = Synth $ trace "comp" $ do
-  s' <- traverse (traverse (check . (::: Comp Nothing KInterface))) s
-  t' <- check (t ::: Comp Nothing KType)
-  pure $ Comp s' t' ::: Comp Nothing KType
+  s' <- traverse (traverse (check . (::: TRet Nothing KInterface))) s
+  t' <- check (t ::: TRet Nothing KType)
+  pure $ TRet s' t' ::: TRet Nothing KType
 
 
 lam :: Name -> (Name ::: Comp -> Check Expr) -> Check Expr
@@ -353,7 +353,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
 thunk :: Check Expr -> Check Expr
 thunk e = Check $ \case
   -- FIXME: pretty sure this is redundant
-  Comp s t -> extendSig s $ check (e ::: Comp s t)
+  TRet s t -> extendSig s $ check (e ::: TRet s t)
   t        -> check (e ::: t)
 
 
@@ -387,7 +387,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
     mod <- ask
     graph <- ask
     case _A of
-      Comp (Just sig) _
+      TRet (Just sig) _
         | Just (q ::: _T') <- lookupInSig n mod graph sig
         -> do
           _T'' <- inst _T'
@@ -416,7 +416,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
 
 
 string :: Text -> Synth Expr
-string s = Synth $ pure $ EString s ::: Comp Nothing TString
+string s = Synth $ pure $ EString s ::: TRet Nothing TString
 
 
 -- Declarations
@@ -436,7 +436,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
     : map (\ (n :=: c ::: c_T) -> (n, Decl (Just (DTerm c)) c_T)) cs
   where
   go k = \case
-    Comp _ _                     -> check (k ::: Comp Nothing KType)
+    TRet _ _                     -> check (k ::: TRet Nothing KType)
     -- FIXME: can sigs appear here?
     TForAll (Binding _ n _T) _B -> do
       d <- asks @(Context Comp) level
@@ -454,12 +454,12 @@ elabInterfaceDef
   -> m Decl
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
-    (n :::) <$> elabTele (go (check (switch (elabSTelescope t) ::: Comp Nothing KType)) _T)
+    (n :::) <$> elabTele (go (check (switch (elabSTelescope t) ::: TRet Nothing KType)) _T)
   pure $ Decl (Just (DInterface cs)) _T
   where
   go k = \case
     -- FIXME: check that the interface is a member of the sig.
-    Comp _ _                     -> k
+    TRet _ _                     -> k
     TForAll (Binding _ n _T) _B -> do
       d <- asks @(Context Comp) level
       _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
@@ -476,7 +476,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (
   go k t = case t of
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
-    Comp _ _                          -> check (k ::: t)
+    TRet _ _                          -> check (k ::: t)
     -- we’ve exhausted the named parameters; the rest is up to the body.
     TForAll (Binding _ Nothing _T) _B  -> check (k ::: t)
     -- FIXME: can this use lam?
@@ -503,7 +503,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elabTele $ check (switch (elabSTelescope tele) ::: Comp Nothing KType)
+      _T <- runModule . elabTele $ check (switch (elabSTelescope tele) ::: TRet Nothing KType)
 
       decls_.at dname .= Just (Decl Nothing _T)
       case def of
@@ -600,12 +600,12 @@ expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing
 
 stripEmptyComp :: Comp -> Maybe Comp
 stripEmptyComp = \case
-  Comp Nothing t -> stripEmpty t
+  TRet Nothing t -> stripEmpty t
   t              -> Just t
 
 stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case
-  TSusp (Comp Nothing t) -> stripEmpty t
+  TSusp (TRet Nothing t) -> stripEmpty t
   TSusp t                -> Just t
   _                      -> Nothing
 
@@ -647,7 +647,7 @@ elabWith f = runSubstWith f . runContext . runSig . runElab
 
 check :: (Check a ::: Comp) -> Elab a
 check (m ::: _T) = trace "check" $ case _T of
-  Comp sig _ -> extendSig sig (runCheck m _T)
+  TRet sig _ -> extendSig sig (runCheck m _T)
   _          -> runCheck m _T
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.

@@ -100,14 +100,14 @@ type Expr = Value
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
   = TForAll Binding (Type -> Comp)
-  | Comp (Maybe [Value]) Type
+  | TRet (Maybe [Value]) Type
 
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
   where
   go = \case
     TForAll t b -> TForAll (binding t) (go . b)
-    Comp s t    -> Comp (map (substWith f) <$> s) (substWith f t)
+    TRet s t    -> TRet (map (substWith f) <$> s) (substWith f t)
 
   binding (Binding p n t) = Binding p n (go t)
 
@@ -128,7 +128,7 @@ bindsComp s
 fromValue :: Value -> Comp
 fromValue = \case
   TSusp t -> t
-  t       -> Comp mempty t
+  t       -> TRet mempty t
 
 
 unBind :: Has Empty sig m => Comp -> m (Binding, Value -> Comp)
@@ -213,7 +213,7 @@ TSusp t       $$ a
     t@TForAll{} -> TSusp t
     -- FIXME: it’s not clear to me that it’s ok to discard the signature.
     -- maybe this should still be a nullary computation which gets eliminated with !.
-    Comp _ t    -> t
+    TRet _ t    -> t
 ELam _ b      $$ a = case' (snd a) b
 _             $$ _ = error "can’t apply non-neutral/forall type"
 
@@ -301,7 +301,7 @@ applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution h
 generalize :: Subst -> Value -> Value
 generalize s v
   | null b    = apply s v
-  | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (Comp Nothing (subst (IntMap.mapMaybe tm s <> s') v)) b)
+  | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (TRet Nothing (subst (IntMap.mapMaybe tm s <> s') v)) b)
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -341,7 +341,7 @@ sortOf ctx = \case
 sortOfComp :: Stack Sort -> Comp -> Sort
 sortOfComp ctx = \case
   TForAll (Binding _ _ _T) _B -> let _T' = sortOfComp ctx _T in min _T' (sortOfComp (ctx :> _T') (_B (free (Level (length ctx)))))
-  Comp _ _T                   -> sortOf ctx _T
+  TRet _ _T                   -> sortOf ctx _T
 
 
 -- Patterns
