@@ -12,7 +12,7 @@ module Facet.Name
 , MName(..)
 , QName(..)
 , moduleName
-, DName(..)
+, Name(..)
 , Assoc(..)
 , Op(..)
 , OpN(..)
@@ -113,7 +113,7 @@ instance P.Pretty MName where
 
 
 -- | Qualified names, consisting of a module name and declaration name.
-data QName = MName :.: DName
+data QName = MName :.: Name
   deriving (Eq, Ord, Show)
 
 instance P.Pretty QName where
@@ -124,12 +124,12 @@ moduleName (mname :.: _) = mname
 
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.
-data DName
+data Name
   = U UName
   | O Op
   deriving (Eq, Ord, Show)
 
-instance P.Pretty DName where
+instance P.Pretty Name where
   pretty = \case
     U n -> P.pretty n
     O o -> P.pretty o

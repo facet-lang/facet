@@ -166,7 +166,7 @@ as (m ::: _T) = Synth $ do
 resolveWith
   :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Comp))
   -> Maybe MName
-  -> DName
+  -> Name
   -> Elab (QName :=: Maybe Def ::: Comp)
 resolveWith lookup m n = asks lookup >>= \case
   Just (n' :=: d ::: _T) -> pure $ n' :=: d ::: _T
@@ -178,7 +178,7 @@ resolveWith lookup m n = asks lookup >>= \case
       -- FIXME: resolve ambiguities by type.
       _                 -> ambiguousName m n (map (\ (q :=: _ ::: _) -> q) defs)
 
-resolve :: DName -> Elab (QName :=: Maybe Def ::: Comp)
+resolve :: Name -> Elab (QName :=: Maybe Def ::: Comp)
 resolve n = resolveWith (lookupD n) Nothing n
 
 resolveC :: UName -> Elab (QName :=: Maybe Def ::: Comp)
@@ -189,14 +189,14 @@ resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
   Just (q' :=: d ::: _T) -> pure $ q' :=: d ::: _T
   Nothing                -> freeVariable (Just m) n
 
-resolveMD :: Maybe MName -> DName -> Elab (QName :=: Maybe Def ::: Comp)
+resolveMD :: Maybe MName -> Name -> Elab (QName :=: Maybe Def ::: Comp)
 resolveMD m n = maybe (resolve n) (resolveQ . (:.: n)) m
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global :: QName ::: Comp -> Synth Value
 global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 
-lookupInContext :: DName -> Context Type -> Maybe (Level, Type)
+lookupInContext :: Name -> Context Type -> Maybe (Level, Type)
 lookupInContext n ctx = (`lookupLevel` ctx) =<< eOrT n
   where
   eOrT (U n) = Just n
@@ -214,7 +214,7 @@ lookupInSig m n mod graph = matchWith $ \case
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: Maybe MName -> DName -> Synth Value
+var :: Maybe MName -> Name -> Synth Value
 var m n = Synth $ trace "var" $ ask >>= \ ctx -> case m of
   Nothing
     | Just (i, _T) <- lookupInContext n ctx
@@ -423,7 +423,7 @@ elabDataDef
   :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => QName ::: Comp
   -> [S.Ann (UName ::: S.Ann (S.Comp Void))]
-  -> m [(DName, Decl)]
+  -> m [(Name, Decl)]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
@@ -556,9 +556,9 @@ data Err = Err
   }
 
 data Reason
-  = FreeVariable (Maybe MName) DName
+  = FreeVariable (Maybe MName) Name
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
-  | AmbiguousName (Maybe MName) DName [QName]
+  | AmbiguousName (Maybe MName) Name [QName]
   | CouldNotSynthesize String
   | Mismatch String (Either String Type) Type
   | Hole UName Type
@@ -581,10 +581,10 @@ couldNotUnify msg t1 t2 = mismatch msg (Right t2) t1
 couldNotSynthesize :: String -> Elab a
 couldNotSynthesize = err . CouldNotSynthesize
 
-freeVariable :: Maybe MName -> DName -> Elab a
+freeVariable :: Maybe MName -> Name -> Elab a
 freeVariable m n = err $ FreeVariable m n
 
-ambiguousName :: Maybe MName -> DName -> [QName] -> Elab a
+ambiguousName :: Maybe MName -> Name -> [QName] -> Elab a
 ambiguousName n d qs = err $ AmbiguousName n d qs
 
 

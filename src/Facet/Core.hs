@@ -382,7 +382,7 @@ data Module = Module
   -- FIXME: record source references to operators to contextualize parse errors.
   , operators :: [(Op, Assoc)]
   -- FIXME: record source references to definitions to contextualize ambiguous name errors.
-  , decls     :: Map.Map DName Decl
+  , decls     :: Map.Map Name Decl
   }
 
 name_ :: Lens' Module MName
@@ -391,7 +391,7 @@ name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
 imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })
 
-decls_ :: Lens' Module (Map.Map DName Decl)
+decls_ :: Lens' Module (Map.Map Name Decl)
 decls_ = lens decls (\ m decls -> m{ decls })
 
 
@@ -404,7 +404,7 @@ lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList 
   matchCon (n' :=: v ::: _T) = (name :.: U n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
-lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Comp)
+lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
 lookupD n Module{ name = mname, decls } = maybe empty pure $ do
   Decl d _T <- Map.lookup n decls
   pure $ mname :.: n :=: d ::: _T

@@ -40,7 +40,7 @@ import Facet.Syntax
 -- Expressions
 
 data Expr a
-  = Var (Maybe MName) DName
+  = Var (Maybe MName) Name
   | Hole UName
   | Type
   | TInterface
@@ -61,7 +61,7 @@ deriving instance Show a => Show (Expr a)
 type Type = Expr
 
 
-free :: DName -> Expr a
+free :: Name -> Expr a
 free = Var Nothing
 
 qual :: QName -> Expr a
@@ -96,7 +96,7 @@ deriving instance Eq   a => Eq   (Binding a)
 deriving instance Show a => Show (Binding a)
 
 
-data Interface a = Interface (Ann (Maybe MName, DName)) (Stack (Ann (Type a)))
+data Interface a = Interface (Ann (Maybe MName, Name)) (Stack (Ann (Type a)))
   deriving (Foldable, Functor, Traversable)
 
 deriving instance Eq   a => Eq   (Interface a)
@@ -150,7 +150,7 @@ data Module a = Module
   , imports   :: [Ann Import]
   -- FIXME: store source references for operators’ definitions, for error reporting
   , operators :: [(Op, Assoc)]
-  , defs      :: [Ann (DName, Ann (Decl a))]
+  , defs      :: [Ann (Name, Ann (Decl a))]
   }
   deriving (Foldable, Functor, Traversable)
 

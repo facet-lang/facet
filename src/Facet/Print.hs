@@ -151,7 +151,7 @@ f $$ a = askingPrec $ \case
 -- Algebras
 
 data Var
-  = Global (Maybe MName) DName
+  = Global (Maybe MName) Name
   | TLocal UName Level
   | Local UName Level
   | Metavar Meta
