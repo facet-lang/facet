@@ -17,7 +17,6 @@ module Facet.Elab
 , ($$)
 , lam
 , thunk
-, force
 , string
   -- * Modules
 , elabModule
@@ -340,13 +339,6 @@ thunk e = Check $ \case
   TComp s t -> extendSig s $ check (e ::: TComp s t)
   t         -> check (e ::: t)
 
-force :: Synth Expr -> Synth Expr
-force e = Synth $ trace "force" $ do
-  e' ::: _T <- synth e
-  (_s, _T') <- expectComp "when forcing computation" _T
-  -- FIXME: check the signature against the ambient sig
-  pure $ e' ::: _T'
-
 
 -- FIXME: go find the pattern matching matrix algorithm
 elabClauses :: [S.Clause Void] -> Check Expr
@@ -587,9 +579,6 @@ expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectQuantifier :: String -> Type -> Elab (Binding, Type -> Type)
 expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
-
-expectComp :: String -> Type -> Elab ([Type], Type)
-expectComp = expectMatch (\case{ TComp s t -> pure (s, t) ; _ -> Nothing }) "{_"
 
 
 -- Machinery
