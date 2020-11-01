@@ -109,7 +109,7 @@ substCompWith f = go
     TForAll t b -> TForAll (binding t) (go . b)
     TRet s t    -> TRet (map (substWith f) <$> s) (substWith f t)
 
-  binding (Binding p n t) = Binding p n (go t)
+  binding (Binding p n s t) = Binding p n (map (substWith f) <$> s) (substWith f t)
 
 substComp :: IntMap.IntMap Value -> Comp -> Comp
 substComp s
@@ -140,7 +140,7 @@ unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
 data Clause = Clause
-  { pattern :: Pattern (Name ::: Comp)
+  { pattern :: Pattern (Name ::: Type)
   , branch  :: Pattern Value -> Value
   }
 
@@ -151,7 +151,8 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 data Binding = Binding
   { pl    :: Pl
   , name  :: Maybe Name
-  , type' :: Comp
+  , delta :: Maybe [Value]
+  , type' :: Type
   }
 
 
@@ -257,7 +258,7 @@ substWith f = go
     EString s     -> EString s
     EOp (q :$ sp) -> EOp (q :$ fmap (fmap go) sp)
 
-  clause (Clause p b) = Clause p (go . b)
+  clause (Clause p b) = Clause (fmap go <$> p) (go . b)
 
 -- | Substitute metavars.
 subst :: IntMap.IntMap Value -> Value -> Value
@@ -281,12 +282,12 @@ substMeta :: IntMap.IntMap Value -> Var -> Value
 substMeta s = unVar global free (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) s))
 
 
-type Subst = IntMap.IntMap (Maybe Value ::: Comp)
+type Subst = IntMap.IntMap (Maybe Value ::: Type)
 
 emptySubst :: Subst
 emptySubst = IntMap.empty
 
-insertSubst :: Meta -> Maybe Value ::: Comp -> Subst -> Subst
+insertSubst :: Meta -> Maybe Value ::: Type -> Subst -> Subst
 insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
 
 -- | Apply the substitution to the value.
@@ -301,7 +302,7 @@ applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution h
 generalize :: Subst -> Value -> Value
 generalize s v
   | null b    = apply s v
-  | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (TRet Nothing (subst (IntMap.mapMaybe tm s <> s') v)) b)
+  | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (TRet Nothing (subst (IntMap.mapMaybe tm s <> s') v)) b)
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -310,7 +311,7 @@ generalize s v
 generalizeComp :: Subst -> Comp -> Comp
 generalizeComp s v
   | null b    = applyComp s v
-  | otherwise = foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
+  | otherwise = foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -340,8 +341,8 @@ sortOf ctx = \case
 
 sortOfComp :: Stack Sort -> Comp -> Sort
 sortOfComp ctx = \case
-  TForAll (Binding _ _ _T) _B -> let _T' = sortOfComp ctx _T in min _T' (sortOfComp (ctx :> _T') (_B (free (Level (length ctx)))))
-  TRet _ _T                   -> sortOf ctx _T
+  TForAll (Binding _ _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOfComp (ctx :> _T') (_B (free (Level (length ctx)))))
+  TRet _ _T                     -> sortOf ctx _T
 
 
 -- Patterns
