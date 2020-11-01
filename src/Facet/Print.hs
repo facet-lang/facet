@@ -198,8 +198,8 @@ printValue env = \case
 
 printComp :: Stack Print -> C.Comp -> Print
 printComp env = \case
-  C.ForAll t b ->
-    let (vs, (_, b')) = splitr C.unBind' (d, C.ForAll t b)
+  C.TForAll t b ->
+    let (vs, (_, b')) = splitr C.unBind' (d, C.TForAll t b)
         binding env (C.Binding p n _T) =
           let _T' = printComp env _T
           in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Level (length env)) ::: _T'))

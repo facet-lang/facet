@@ -100,15 +100,15 @@ type Expr = Value
 
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
-  = ForAll Binding (Type -> Comp)
+  = TForAll Binding (Type -> Comp)
   | Comp (Maybe [Value]) Type
 
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
   where
   go = \case
-    ForAll t b -> ForAll (binding t) (go . b)
-    Comp s t   -> Comp (map (substWith f) <$> s) (substWith f t)
+    TForAll t b -> TForAll (binding t) (go . b)
+    Comp s t    -> Comp (map (substWith f) <$> s) (substWith f t)
 
   binding (Binding p n t) = Binding p n (go t)
 
@@ -133,7 +133,7 @@ fromValue = \case
 
 
 unBind :: Has Empty sig m => Comp -> m (Binding, Value -> Comp)
-unBind = \case{ ForAll t b -> pure (t, b) ; _ -> empty }
+unBind = \case{ TForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
 unBind' :: Has Empty sig m => (Level, Comp) -> m (Binding, (Level, Comp))
@@ -210,11 +210,11 @@ unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
 EOp (q :$ es) $$ a = EOp (q :$ (es :> a))
 TComp t       $$ a
-  | ForAll _ b <- t = case b (snd a) of
-    t@ForAll{} -> TComp t
+  | TForAll _ b <- t = case b (snd a) of
+    t@TForAll{} -> TComp t
     -- FIXME: it’s not clear to me that it’s ok to discard the signature.
     -- maybe this should still be a nullary computation which gets eliminated with !.
-    Comp _ t   -> t
+    Comp _ t    -> t
 ELam _ b      $$ a = case' (snd a) b
 _             $$ _ = error "can’t apply non-neutral/forall type"
 
@@ -266,7 +266,7 @@ subst s
   | IntMap.null s = id
   | otherwise     = substWith (substMeta s)
 
--- | ForAll a free variable.
+-- | TForAll a free variable.
 bind :: Level -> Value -> Value -> Value
 bind k v = binds (IntMap.singleton (getLevel k) v)
 
@@ -302,7 +302,7 @@ applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution h
 generalize :: Subst -> Value -> Value
 generalize s v
   | null b    = apply s v
-  | otherwise = TComp (foldr (\ (d, _T) b -> ForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (Comp Nothing (subst (IntMap.mapMaybe tm s <> s') v)) b)
+  | otherwise = TComp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (Comp Nothing (subst (IntMap.mapMaybe tm s <> s') v)) b)
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -311,7 +311,7 @@ generalize s v
 generalizeComp :: Subst -> Comp -> Comp
 generalizeComp s v
   | null b    = applyComp s v
-  | otherwise = foldr (\ (d, _T) b -> ForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
+  | otherwise = foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -326,9 +326,9 @@ etaExpand (v ::: _T) = case _T of
   _        -> v
   where
   go v = \case
-    ForAll Binding{ pl, type' } _B -> ELam pl [Clause (PVar (__ ::: type')) (\ var -> let var' = unsafeUnPVar var in go (v $$ (pl, var')) (_B var'))]
+    TForAll Binding{ pl, type' } _B -> ELam pl [Clause (PVar (__ ::: type')) (\ var -> let var' = unsafeUnPVar var in go (v $$ (pl, var')) (_B var'))]
     -- FIXME: should this recur on _T?
-    Comp _sig _T                   -> v
+    Comp _sig _T                    -> v
 
 
 -- Classification
@@ -354,8 +354,8 @@ sortOf ctx = \case
 
 sortOfComp :: Stack Sort -> Comp -> Sort
 sortOfComp ctx = \case
-  ForAll (Binding _ _ _T) _B -> let _T' = sortOfComp ctx _T in min _T' (sortOfComp (ctx :> _T') (_B (free (Level (length ctx)))))
-  Comp _ _T                  -> sortOf ctx _T
+  TForAll (Binding _ _ _T) _B -> let _T' = sortOfComp ctx _T in min _T' (sortOfComp (ctx :> _T') (_B (free (Level (length ctx)))))
+  Comp _ _T                   -> sortOf ctx _T
 
 
 -- Patterns

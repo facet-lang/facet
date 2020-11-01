@@ -111,13 +111,13 @@ unify = unifyComp
     unifyArg (p1, a1) (p2, a2) = (p1,) <$ unless (p1 == p2) nope <*> unifyValue a1 a2
 
   unifyComp c1 c2 = case c1 :===: c2 of
-    ForAll (Binding p1 n1 t1) b1 :===: ForAll (Binding p2 _  t2) b2 -> do
+    TForAll (Binding p1 n1 t1) b1 :===: TForAll (Binding p2 _  t2) b2 -> do
       unless (p1 == p2) nope
       t <- unifyComp t1 t2
       d <- asks @(Context Comp) level
       let v = free d
       b <- unifyComp (b1 v) (b2 v)
-      pure $ ForAll (Binding p1 n1 t) (\ v -> bindComp d v b)
+      pure $ TForAll (Binding p1 n1 t) (\ v -> bindComp d v b)
     Comp s1 t1      :===: Comp s2 t2      -> Comp <$> unifySig s1 s2 <*> unifyValue t1 t2
     Comp Nothing t1 :===: t2              -> fromValue <$> unifyValue t1 (TComp t2)
     t1              :===: Comp Nothing t2 -> fromValue <$> unifyValue (TComp t1) t2
@@ -151,7 +151,7 @@ meta _T = do
 -- FIXME: can we avoid metas if we instantiate against a whole spine?
 instantiate :: Expr ::: Comp -> Elab (Expr ::: Comp)
 instantiate (e ::: _T) = case _T of
-  ForAll (Binding Im _ _T) _B -> do
+  TForAll (Binding Im _ _T) _B -> do
     m <- metavar <$> meta _T
     instantiate (e C.$$ (Im, m) ::: _B m)
   _                           -> pure $ e ::: _T
@@ -333,7 +333,7 @@ forAll t b = Synth $ trace "forAll" $ do
   _T@Binding{ name, type' = _A } <- check (t ::: Comp Nothing KType)
   d <- asks @(Context Comp) level
   _B <- check (b (fromMaybe __ name ::: _A) ::: Comp Nothing KType)
-  pure $ ForAll _T (\ v -> bindComp d v _B) ::: Comp Nothing KType
+  pure $ TForAll _T (\ v -> bindComp d v _B) ::: Comp Nothing KType
 
 comp :: Maybe [Check Value] -> Check Type -> Synth Comp
 comp s t = Synth $ trace "comp" $ do
@@ -391,15 +391,15 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
         | Just (q ::: _T') <- lookupInSig n mod graph sig
         -> do
           _T'' <- inst _T'
-          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: ForAll (Binding Ex Nothing _T) (const _A)))
+          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TForAll (Binding Ex Nothing _T) (const _A)))
       _ -> freeVariable n
   -- FIXME: warn if using PAll with an empty sig.
   S.PAll n -> k (PVar (n  ::: _A))
   where
   inst = \case
   -- FIXME: assert that the signature is empty
-    ForAll (Binding Im _ _T) _B -> meta _T >>= inst . _B . metavar
-    _T                          -> pure _T
+    TForAll (Binding Im _ _T) _B -> meta _T >>= inst . _B . metavar
+    _T                           -> pure _T
   subpatterns = go
     where
     go _T' = \case
@@ -438,14 +438,14 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   go k = \case
     Comp _ _                     -> check (k ::: Comp Nothing KType)
     -- FIXME: can sigs appear here?
-    ForAll (Binding _ n _T) _B -> do
+    TForAll (Binding _ n _T) _B -> do
       d <- asks @(Context Comp) level
       _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
-      pure $ ForAll (Binding Im n _T) (\ v -> bindComp d v _B')
+      pure $ TForAll (Binding Im n _T) (\ v -> bindComp d v _B')
   con q fs = \case
     -- FIXME: can this use lam?
-    ForAll (Binding p n _T) _B -> ELam p [Clause (PVar (fromMaybe __ n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
-    _T                         -> ECon (q :$ fs)
+    TForAll (Binding p n _T) _B -> ELam p [Clause (PVar (fromMaybe __ n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
+    _T                          -> ECon (q :$ fs)
 
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
@@ -460,10 +460,10 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   go k = \case
     -- FIXME: check that the interface is a member of the sig.
     Comp _ _                     -> k
-    ForAll (Binding _ n _T) _B -> do
+    TForAll (Binding _ n _T) _B -> do
       d <- asks @(Context Comp) level
       _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
-      pure $ ForAll (Binding Im n _T) (\ v -> bindComp d v _B')
+      pure $ TForAll (Binding Im n _T) (\ v -> bindComp d v _B')
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
@@ -478,9 +478,9 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     Comp _ _                          -> check (k ::: t)
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    ForAll (Binding _ Nothing _T) _B  -> check (k ::: t)
+    TForAll (Binding _ Nothing _T) _B  -> check (k ::: t)
     -- FIXME: can this use lam?
-    ForAll (Binding p (Just n) _T) _B -> do
+    TForAll (Binding p (Just n) _T) _B -> do
       -- FIXME: use the sig… somehow…
       -- FIXME: should signatures end up in the context?
       b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
@@ -596,7 +596,7 @@ expectMatch :: (Comp -> Maybe out) -> String -> String -> Comp -> Elab out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectQuantifier :: String -> Comp -> Elab (Binding, Type -> Comp)
-expectQuantifier = expectMatch (\case{ ForAll t b -> pure (t, b) ; _ -> Nothing } <=< stripEmptyComp) "{_} -> _"
+expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing } <=< stripEmptyComp) "{_} -> _"
 
 stripEmptyComp :: Comp -> Maybe Comp
 stripEmptyComp = \case
