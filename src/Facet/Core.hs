@@ -428,9 +428,12 @@ data Decl = Decl
   , type' :: Comp
   }
 
+-- FIXME: submodules
 data Def
   = DTerm Value
+  -- FIXME: this should be a module.
   | DData [Name :=: Value ::: Comp]
+  -- FIXME: this should be a module.
   | DInterface [Name ::: Comp]
 
 unDData :: Has Empty sig m => Def -> m [Name :=: Value ::: Comp]
