@@ -178,15 +178,14 @@ printValue env = \case
   C.KType -> annotate Type $ pretty "Type"
   C.KInterface -> annotate Type $ pretty "Interface"
   C.TSusp t -> braces (printValue env t)
-  C.TForAll t b ->
-    let (vs, (_, b')) = splitr C.unForAll' (d, C.TForAll t b)
-        binding env (C.Binding p n _T) =
-          let _T' = printValue env _T
-          in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Level (length env)) ::: _T'))
+  C.TForAll (C.Binding p n _T) b ->
+    let _T' = printValue env _T
+        env' = env :> tvar env ((p, fromMaybe __ n) ::: _T')
+        vs' = [(p, name p (fromMaybe __ n) (Level (length env)) ::: _T')]
         name p n d
           | n == __, Ex <- p = []
           | otherwise        = [tintro n d]
-        (env', vs') = mapAccumL binding env vs
+        b' = b (C.free d)
     in fn vs' (printValue env' b')
   C.TRet s _T -> sig env s _T
   C.ELam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
