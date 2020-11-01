@@ -89,9 +89,9 @@ data Value
   | VLam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var :$ (Pl, Value))
-  | VCon (QName :$ Value)
+  | VCon (QName :$ Expr)
   -- | Effect operation and its parameters.
-  | VOp (QName :$ (Pl, Value))
+  | VOp (QName :$ (Pl, Expr))
   -- | Primitive types and values.
   | VPrim Prim
 
