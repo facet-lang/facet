@@ -222,7 +222,7 @@ comp :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr Void))]) sig p, H
 comp = anned (braces (S.Lam <$> sepBy1 clause comma <|> S.Thunk <$> expr <|> pure (S.Lam [])))
 
 clause :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr Void))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Clause Void)
-clause = S.Clause <$> try (patternP <* arrow) <*> expr <?> "clause"
+clause = S.Clause <$> try (compPattern <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
 evar = choice
@@ -243,12 +243,17 @@ hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
 wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
 
-patternP :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Pattern Void))
-patternP = choice
+valuePattern :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Pattern Void))
+valuePattern = choice
   [ token (anned (runUnspaced (S.PVar <$> ename <?> "variable")))
   , anned (S.PWildcard <$  wildcard)
-  , try (parens (anned (S.PCon <$> mqname ename <*> many patternP)))
-  , try (brackets (anned (S.PEff <$> mqname ename <*> many patternP <* symbolic ';' <*> (ename <|> N.__ <$ wildcard))))
+  , try (parens (anned (S.PCon <$> mqname ename <*> many valuePattern)))
+  ] <?> "pattern"
+
+compPattern :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Pattern Void))
+compPattern = choice
+  [ valuePattern
+  , try (brackets (anned (S.PEff <$> mqname ename <*> many valuePattern <* symbolic ';' <*> (ename <|> N.__ <$ wildcard))))
   , brackets (try (token (anned (S.PAll <$> runUnspaced ename))))
   ] <?> "pattern"
 
