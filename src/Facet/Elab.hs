@@ -360,14 +360,14 @@ elabClauses :: [S.Clause Void] -> Check Expr
 elabClauses [S.Clause (S.Ann _ _ (S.PVar n)) b] = lam n $ \ v -> mapCheck (v |-) (checkExpr b)
 elabClauses cs = Check $ \ _T -> do
   -- FIXME: use the signature to elaborate the pattern
-  (Binding _ _ sig _A, _B) <- expectQuantifier "when checking clauses" _T
+  (Binding _ _ _ _A, _B) <- expectQuantifier "when checking clauses" _T
   d <- asks (level @Type)
   -- FIXME: I don’t see how this can be correct; the context will not hold a variable but rather a pattern of them.
   let _B' = _B (free d)
   cs' <- for cs $ \ (S.Clause p b) -> check
     (   elabPattern p (\ p' -> do
       Clause p' <$> elabBinders p' (foldr (|-) (checkComp (checkExpr b ::: _B'))))
-    ::: VComp (Comp sig _A))
+    ::: _A)
   pure $ VLam Ex cs'
 
 
