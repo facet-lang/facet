@@ -207,7 +207,7 @@ runEvalMain = runEval handle pure
   where
   handle (q :$ sp) k = case q of
     MName "Effect" :. "Console" :.: U "write"
-      | Nil:>(Ex, VPrim (VString s)) <- sp -> outputText s *> k unit
+      | Nil:>(Ex, VPrim (EString s)) <- sp -> outputText s *> k unit
     _                                      -> k (EOp (q :$ sp))
   unit = ECon (MName "Data" :. "Unit" :.: U "unit" :$ Nil)
 

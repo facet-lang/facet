@@ -100,7 +100,7 @@ type Expr = Value
 
 data Prim
   = TString
-  | VString Text
+  | EString Text
   deriving (Eq, Ord, Show)
 
 
@@ -356,7 +356,7 @@ sortOf ctx = \case
   EOp _         -> STerm -- FIXME: will this always be true?
   VPrim p       -> case p of
     TString   -> SType
-    VString _ -> STerm
+    EString _ -> STerm
 
 sortOfComp :: Stack Sort -> Comp -> Sort
 sortOfComp ctx = \case

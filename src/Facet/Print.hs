@@ -193,7 +193,7 @@ printValue env = \case
   C.EOp (q :$ sp) -> app (group (var (qvar q))) (fmap (fmap (printValue env)) sp)
   C.VPrim p -> case p of
     C.TString   -> annotate Type $ pretty "String"
-    C.VString s -> annotate Lit $ pretty (show s)
+    C.EString s -> annotate Lit $ pretty (show s)
   where
   d = Level (length env)
 

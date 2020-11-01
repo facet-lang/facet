@@ -414,7 +414,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
 
 
 string :: Text -> Synth Expr
-string s = Synth $ pure $ VPrim (VString s) ::: Comp Nothing (VPrim TString)
+string s = Synth $ pure $ VPrim (EString s) ::: Comp Nothing (VPrim TString)
 
 
 -- Declarations
