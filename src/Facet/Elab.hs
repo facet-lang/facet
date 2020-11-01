@@ -93,8 +93,8 @@ unify = unifyValue
       b <- unifyValue (b1 v) (b2 v)
       pure $ TForAll (Binding p1 n1 t) (\ v -> C.bind d v b)
     TForAll{}                     :===: _                             -> nope
-    TComp s1 t1                   :===: TComp s2 t2                   -> TComp <$> unifySig s1 s2 <*> unifyValue t1 t2
-    TComp{}                       :===: _                             -> nope
+    TRet s1 t1                    :===: TRet s2 t2                    -> TRet <$> unifySig s1 s2 <*> unifyValue t1 t2
+    TRet{}                        :===: _                             -> nope
     KType                         :===: KType                         -> pure KType
     KType                         :===: _                             -> nope
     KInterface                    :===: KInterface                    -> pure KInterface
@@ -285,7 +285,7 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
     d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
     t' <- check (checkExpr t ::: _T)
-    pure $ Binding p n (maybe id TComp d' t'))
+    pure $ Binding p n (maybe id TRet d' t'))
   | n <- maybe [Nothing] (map Just . toList) n ]
 
 -- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
@@ -322,7 +322,7 @@ comp :: Maybe [Check Value] -> Check Type -> Synth Type
 comp s t = Synth $ trace "comp" $ do
   s' <- traverse (traverse (check . (::: KInterface))) s
   t' <- check (t ::: KType)
-  pure $ maybe id TComp s' t' ::: KType
+  pure $ maybe id TRet s' t' ::: KType
 
 
 lam :: Name -> (Name ::: Type -> Check Expr) -> Check Expr
@@ -337,8 +337,8 @@ thunk :: Check Expr -> Check Expr
 thunk e = Check $ \case
   -- FIXME: pretty sure this is redundant
   -- FIXME: this should convert non-value type to value type, i.e. it should _clear_ the sig. Note that 'force' and '$$' eliminate computation obligations.
-  TComp s t -> extendSig s $ check (e ::: TComp s t)
-  t         -> check (e ::: t)
+  TRet s t -> extendSig s $ check (e ::: TRet s t)
+  t        -> check (e ::: t)
 
 force :: Synth Expr -> Synth Expr
 force e = Synth $ trace "force" $ do
@@ -378,7 +378,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
     mod <- ask
     graph <- ask
     case _A of
-      TComp sig _
+      TRet sig _
         | Just (q ::: _T') <- lookupInSig n mod graph sig
         -> do
           _T'' <- inst _T'
@@ -589,7 +589,7 @@ expectQuantifier :: String -> Type -> Elab (Binding, Type -> Type)
 expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
 
 expectComp :: String -> Type -> Elab ([Type], Type)
-expectComp = expectMatch (\case{ TComp s t -> pure (s, t) ; _ -> Nothing }) "{_"
+expectComp = expectMatch (\case{ TRet s t -> pure (s, t) ; _ -> Nothing }) "{_"
 
 
 -- Machinery
@@ -626,8 +626,8 @@ elabWith f = runSubstWith f . runContext . runSig . runElab
 
 check :: (Check a ::: Type) -> Elab a
 check (m ::: _T) = trace "check" $ case _T of
-  TComp sig _ -> extendSig sig (runCheck m _T)
-  _           -> runCheck m _T
+  TRet sig _ -> extendSig sig (runCheck m _T)
+  _          -> runCheck m _T
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
 newtype Check a = Check { runCheck :: Type -> Elab a }
