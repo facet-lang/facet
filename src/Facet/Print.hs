@@ -177,6 +177,7 @@ printValue :: Stack Print -> C.Value -> Print
 printValue env = \case
   C.KType -> annotate Type $ pretty "Type"
   C.KInterface -> annotate Type $ pretty "Interface"
+  C.TSusp t -> braces (printValue env t)
   C.TForAll t b ->
     let (vs, (_, b')) = splitr C.unForAll' (d, C.TForAll t b)
         binding env (C.Binding p n _T) =
