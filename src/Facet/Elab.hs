@@ -370,6 +370,7 @@ elabClauses cs = Check $ \ _T -> do
 
 
 -- FIXME: check for unique variable names
+-- FIXME: this isn’t really a synthesis or checking rule, it’s a different judgement altogether.
 elabPattern :: S.Ann (S.Pattern Void) -> (Pattern (Name ::: Comp) -> Elab a) -> Check a
 elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ case p of
   S.PWildcard -> k (PVar (__ ::: _A))
