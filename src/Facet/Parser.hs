@@ -115,10 +115,10 @@ termDecl = anned $ do
   pure (name, decl)
 
 dataDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann (S.Decl Void)))
-dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.DataDef <$> braces (commaSep con)))
+dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> tname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.DataDef <$> braces (commaSep con)))
 
 interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann (S.Decl Void)))
-interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.InterfaceDef <$> braces (commaSep con)))
+interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> tname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.InterfaceDef <$> braces (commaSep con)))
 
 con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name ::: S.Ann (S.Comp Void)))
 con = anned ((:::) <$> cname <* colon <*> tcomp)
@@ -285,9 +285,8 @@ cname, tname :: (Monad p, TokenParsing p) => p N.Name
 cname = ident cnameStyle
 tname = ident tnameStyle
 
-dename, dtname :: (Monad p, TokenParsing p) => p N.Name
+dename :: (Monad p, TokenParsing p) => p N.Name
 dename = N.U <$> ident dnameStyle <|> N.O <$> oname
-dtname = tname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
 mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy comp dot))
