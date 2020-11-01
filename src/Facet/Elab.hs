@@ -180,8 +180,8 @@ resolveWith lookup n = asks lookup >>= \case
 resolve :: Name -> Elab (QName :=: Maybe Def ::: Comp)
 resolve n = resolveWith (lookupD n) (Nothing :? n)
 
-resolveC :: Name -> Elab (QName :=: Maybe Def ::: Comp)
-resolveC n = resolveWith (lookupC n) (Nothing :? n)
+resolveC :: MQName -> Elab (QName :=: Maybe Def ::: Comp)
+resolveC n@(_ :? n') = resolveWith (lookupC n') n
 
 resolveQ :: QName -> Elab (QName :=: Maybe Def ::: Comp)
 resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case

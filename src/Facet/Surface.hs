@@ -113,8 +113,8 @@ deriving instance Show a => Show (Clause a)
 data Pattern a
   = PWildcard
   | PVar Name
-  | PCon Name [Ann (Pattern a)]
-  | PEff Name [Ann (Pattern a)] Name
+  | PCon MQName [Ann (Pattern a)]
+  | PEff MQName [Ann (Pattern a)] Name
   -- | Catch-all effect pattern. Matches values and effect operations.
   | PAll Name
   deriving (Foldable, Functor, Traversable)

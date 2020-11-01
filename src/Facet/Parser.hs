@@ -13,7 +13,7 @@ module Facet.Parser
 ) where
 
 import           Control.Algebra ((:+:))
-import           Control.Applicative (Alternative(..), (<**>))
+import           Control.Applicative (Alternative(..))
 import           Control.Carrier.Reader
 import qualified Control.Carrier.State.Strict as C
 import qualified Control.Carrier.Writer.Strict as C
@@ -121,7 +121,7 @@ interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p
 interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> tname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.InterfaceDef <$> braces (commaSep con)))
 
 con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name ::: S.Ann (S.Comp Void)))
-con = anned ((:::) <$> cname <* colon <*> tcomp)
+con = anned ((:::) <$> dename <* colon <*> tcomp)
 
 
 typeSig
@@ -247,11 +247,10 @@ patternP :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, Tok
 patternP = choice
   [ token (anned (runUnspaced (S.PVar <$> ename <?> "variable")))
   , anned (S.PWildcard <$  wildcard)
-  , try (parens (anned (S.PCon <$> cname <*> many patternP)))
-  , brackets (anned (ename <**> (makeEffectPattern <$> many patternP <* symbolic ';' <*> (ename <|> N.__ <$ wildcard) <|> pure S.PAll)))
+  , try (parens (anned (S.PCon <$> mqname ename <*> many patternP)))
+  , try (brackets (anned (S.PEff <$> mqname ename <*> many patternP <* symbolic ';' <*> (ename <|> N.__ <$ wildcard))))
+  , brackets (try (token (anned (S.PAll <$> runUnspaced ename))))
   ] <?> "pattern"
-  where
-  makeEffectPattern ps k op = S.PEff op ps k
 
 
 -- Names
@@ -281,8 +280,7 @@ _onameN = choice
   outOrPre c cs = bool (N.OutfixN c (init cs) (last cs)) (N.PrefixN c cs)
   postOrIn cs = bool (N.PostfixN (NE.init cs) (NE.last cs)) (N.InfixN cs)
 
-cname, tname :: (Monad p, TokenParsing p) => p N.Name
-cname = ident cnameStyle
+tname :: (Monad p, TokenParsing p) => p N.Name
 tname = ident tnameStyle
 
 dename :: (Monad p, TokenParsing p) => p N.Name
@@ -293,8 +291,8 @@ mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy co
   where
   comp = ident tnameStyle
 
-mqname :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann N.MQName)
-mqname name = token (anned (runUnspaced (mk <$> many (comp <* dot) <*> Unspaced name)))
+mqname :: (Has Parser sig p, TokenParsing p) => p N.Name -> p N.MQName
+mqname name = token (runUnspaced (mk <$> many (comp <* dot) <*> Unspaced name))
   where
   mk []     = (Nothing N.:?)
   mk (n:ns) = (Just (foldl' (N.:.) (N.MName n) ns) N.:?)
@@ -327,9 +325,6 @@ enameStyle = IdentifierStyle "name" (lower <|> char '_') nameChar reserved Ident
 
 onameStyle :: CharParsing p => IdentifierStyle p
 onameStyle = IdentifierStyle "operator" opChar opChar mempty Highlight.Operator ReservedOperator
-
-cnameStyle :: CharParsing p => IdentifierStyle p
-cnameStyle = IdentifierStyle "constructor name" lower nameChar reserved Constructor ReservedConstructor
 
 tnameStyle :: CharParsing p => IdentifierStyle p
 tnameStyle = IdentifierStyle "type name" upper nameChar reserved Identifier ReservedIdentifier
