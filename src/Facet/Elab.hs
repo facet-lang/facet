@@ -40,7 +40,7 @@ import           Control.Effect.Empty
 import           Control.Effect.Lens ((.=))
 import           Control.Effect.Sum
 import           Control.Lens (at, ix)
-import           Control.Monad (unless, (<=<))
+import           Control.Monad (unless)
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', for_, toList)
 import qualified Data.IntMap as IntMap
@@ -577,13 +577,7 @@ expectMatch :: (Type -> Maybe out) -> String -> String -> Type -> Elab out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectQuantifier :: String -> Type -> Elab (Binding, Type -> Type)
-expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing } <=< stripEmpty) "{_} -> _"
-
--- FIXME: is this even necessary?
-stripEmpty :: Type -> Maybe Type
-stripEmpty = \case
-  -- TComp [] t -> stripEmpty t
-  t               -> Just t
+expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
 
 
 -- Machinery
