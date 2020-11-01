@@ -7,7 +7,6 @@ module Facet.Print
 , ann
   -- * Core printers
 , printValue
-, printComp
 , printModule
   -- * Misc
 , intro
@@ -178,7 +177,17 @@ printValue :: Stack Print -> C.Value -> Print
 printValue env = \case
   C.KType -> annotate Type $ pretty "Type"
   C.KInterface -> annotate Type $ pretty "Interface"
-  C.TComp t -> printComp env t
+  C.TForAll t b ->
+    let (vs, (_, b')) = splitr C.unForAll' (d, C.TForAll t b)
+        binding env (C.Binding p n _T) =
+          let _T' = printValue env _T
+          in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Level (length env)) ::: _T'))
+        name p n d
+          | n == __, Ex <- p = []
+          | otherwise        = [tintro n d]
+        (env', vs') = mapAccumL binding env vs
+    in fn vs' (printValue env' b')
+  C.TComp s _T -> sig env s _T
   C.ELam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
   -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
   -- FIXME: should maybe print the quoted variable differently so it stands out.
@@ -196,23 +205,6 @@ printValue env = \case
   where
   d = Level (length env)
 
-printComp :: Stack Print -> C.Comp -> Print
-printComp env = \case
-  C.TForAll t b ->
-    let (vs, (_, b')) = splitr C.unBind' (d, C.TForAll t b)
-        binding env (C.Binding p n _T) =
-          let _T' = printComp env _T
-          in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Level (length env)) ::: _T'))
-        name p n d
-          | n == __, Ex <- p = []
-          | otherwise        = [tintro n d]
-        (env', vs') = mapAccumL binding env vs
-    in fn vs' (printComp env' b')
-  C.Comp s _T -> sig env s _T
-  where
-  d = Level (length env)
-
-
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
   $   mname
@@ -221,16 +213,16 @@ printModule (C.Module mname is _ ds) = module_
   where
   def (n, C.Decl Nothing  t) = ann
     $   var (qvar (mname:.:n))
-    ::: printComp Nil t
+    ::: printValue Nil t
   def (n, C.Decl (Just d) t) = ann
     $   var (qvar (mname:.:n))
-    ::: defn (printComp Nil t
+    ::: defn (printValue Nil t
     :=: case d of
       C.DTerm b  -> printValue Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) cs)
+        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printValue Nil _T)) cs)
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
-        (map (\ (n ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) os))
+        (map (\ (n ::: _T) -> ann (var (Cons n) ::: printValue Nil _T)) os))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
   import' n = pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
   module_ (n ::: t :=: (is, ds)) = ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
@@ -251,11 +243,9 @@ fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
   [] -> _T --> b
   _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
 tvar env n = group (var (TLocal (snd (tm n)) (Level (length env))))
-sig env s _T = tcomp (map (printValue env) <$> s) (printValue env _T)
+sig env s _T = tcomp (map (printValue env) s) (printValue env _T)
 app f as = group f $$* fmap (group . uncurry (unPl braces id)) as
-tcomp s t = case s of
-  Nothing -> t
-  Just s  -> brackets (commaSep s) <+> t
+tcomp s t = brackets (commaSep s) <+> t
 
 lvar env (p, n) = var (unPl TLocal Local p n (Level (length env)))
 

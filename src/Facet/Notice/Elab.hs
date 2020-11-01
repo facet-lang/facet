@@ -7,7 +7,7 @@ import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
-import           Facet.Core (Comp, Sort(..), sortOfComp)
+import           Facet.Core (Sort(..), Type, sortOf)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -31,12 +31,12 @@ rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context, callStack } -
     ]
   where
   combine (d, sort, print, ctx) (n ::: _T) =
-    let s = sortOfComp sort _T
+    let s = sortOf sort _T
         n' = name s n d
     in  ( succ d
         , sort  :> s
         , print :> n'
-        , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printComp print _T))) )
+        , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printValue print _T))) )
   name = \case
     STerm -> intro
     _     -> tintro
@@ -60,5 +60,5 @@ printReason ctx = group . \case
     in fillSep [reflow "found hole", pretty n, colon, _T' ]
 
 
-printType :: Stack Print -> Comp -> Doc Print.Highlight
-printType env = getPrint . printComp env
+printType :: Stack Print -> Type -> Doc Print.Highlight
+printType env = getPrint . printValue env
