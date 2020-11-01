@@ -14,6 +14,7 @@ module Facet.Core
 , Clause(..)
 , instantiateClause
 , Binding(..)
+  -- ** Variables
 , Var(..)
 , unVar
 , global
@@ -159,6 +160,8 @@ data Binding = Binding
   , type' :: Type
   }
 
+
+-- Variables
 
 data Var
   = Global QName -- ^ Global variables, considered equal by 'QName'.
