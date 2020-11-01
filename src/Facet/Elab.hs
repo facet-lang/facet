@@ -17,6 +17,7 @@ module Facet.Elab
 , ($$)
 , lam
 , thunk
+, force
 , string
   -- * Modules
 , elabModule
@@ -356,6 +357,12 @@ thunk e = Check $ \case
   TRet s t -> extendSig s $ check (e ::: TRet s t)
   t        -> check (e ::: t)
 
+force :: Synth Expr -> Synth Expr
+force e = Synth $ trace "force" $ do
+  e' ::: _T <- synth e
+  (_s, _T') <- expectRet "when forcing computation" _T
+  pure $ e' ::: TRet _s _T'
+
 
 -- FIXME: go find the pattern matching matrix algorithm
 elabClauses :: [S.Clause Void] -> Check Expr
@@ -608,6 +615,9 @@ stripEmpty = \case
   TSusp (TRet Nothing t) -> stripEmpty t
   TSusp t                -> Just t
   _                      -> Nothing
+
+expectRet :: String -> Comp -> Elab (Maybe [Value], Type)
+expectRet = expectMatch (\case { TRet s t -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
 -- Machinery
