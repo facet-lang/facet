@@ -79,7 +79,7 @@ data Value
   | ELam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var :$ (Pl, Value))
-  | TRet [Value] Type
+  | TComp [Value] Type
   | ECon (QName :$ Expr)
   | TString
   | EString Text
@@ -164,7 +164,7 @@ unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 -- Elimination
 
--- FIXME: model force as an elimination of TRet.
+-- FIXME: model force as an elimination of TComp.
 ($$) :: HasCallStack => Value -> (Pl, Value) -> Value
 VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
 EOp (q :$ es) $$ a = EOp (q :$ (es :> a))
@@ -205,7 +205,7 @@ substWith f = go
     KType         -> KType
     KInterface    -> KInterface
     TForAll t b   -> TForAll (binding t) (go . b)
-    TRet s t      -> TRet (map go s) (go t)
+    TComp s t     -> TComp (map go s) (go t)
     ELam p b      -> ELam p (map clause b)
     VNe (v :$ a)  -> f v $$* fmap (fmap go) a
     ECon c        -> ECon (fmap go c)
@@ -276,7 +276,7 @@ sortOf ctx = \case
   KType                       -> SKind
   KInterface                  -> SKind
   TForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
-  TRet _ _T                   -> sortOf ctx _T
+  TComp _ _T                  -> sortOf ctx _T
   ELam{}                      -> STerm
   VNe (h :$ sp)               -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
   ECon _                      -> STerm

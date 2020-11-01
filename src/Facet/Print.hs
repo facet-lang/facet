@@ -187,7 +187,7 @@ printValue env = \case
           | otherwise        = [tintro n d]
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printValue env' b')
-  C.TRet s _T -> sig env s _T
+  C.TComp s _T -> sig env s _T
   C.ELam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
   -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
   -- FIXME: should maybe print the quoted variable differently so it stands out.
