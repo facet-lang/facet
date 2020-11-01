@@ -176,7 +176,7 @@ printVar name = \case
 
 printValue :: Stack Print -> C.Value -> Print
 printValue env = \case
-  C.VType -> annotate Type $ pretty "Type"
+  C.KType -> annotate Type $ pretty "Type"
   C.VInterface -> annotate Type $ pretty "Interface"
   C.VComp t -> printComp env t
   C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b

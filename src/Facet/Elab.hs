@@ -92,8 +92,8 @@ unify = unifyComp
     t1                      :===: VComp (Comp Nothing t2) -> unifyValue t1 t2
     VNe{}                   :===: _                       -> nope
     VComp{}                 :===: _                       -> nope
-    VType                   :===: VType                   -> pure VType
-    VType                   :===: _                       -> nope
+    KType                   :===: KType                   -> pure KType
+    KType                   :===: _                       -> nope
     VInterface              :===: VInterface              -> pure VInterface
     VInterface              :===: _                       -> nope
     VPrim p1                :===: VPrim p2                -> VPrim p1 <$ unless (p1 == p2) nope
@@ -160,7 +160,7 @@ switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ 
 
 as :: Check a ::: Check Type -> Synth a
 as (m ::: _T) = Synth $ do
-  _T' <- check (_T ::: Comp Nothing VType)
+  _T' <- check (_T ::: Comp Nothing KType)
   a <- check (m ::: Comp Nothing _T')
   pure $ a ::: Comp Nothing _T'
 
@@ -316,28 +316,28 @@ elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabST
 
 
 _Type :: Synth Type
-_Type = Synth $ pure $ VType ::: Comp Nothing VType
+_Type = Synth $ pure $ KType ::: Comp Nothing KType
 
 _Interface :: Synth Type
-_Interface = Synth $ pure $ VInterface ::: Comp Nothing VType
+_Interface = Synth $ pure $ VInterface ::: Comp Nothing KType
 
 _String :: Synth Type
-_String = Synth $ pure $ VPrim TString ::: Comp Nothing VType
+_String = Synth $ pure $ VPrim TString ::: Comp Nothing KType
 
 
 forAll :: Check Binding -> (Name ::: Comp -> Check Comp) -> Synth Comp
 forAll t b = Synth $ trace "forAll" $ do
   -- FIXME: should we check that the signature is empty?
-  _T@Binding{ name, type' = _A } <- check (t ::: Comp Nothing VType)
+  _T@Binding{ name, type' = _A } <- check (t ::: Comp Nothing KType)
   d <- asks @(Context Comp) level
-  _B <- check (b (fromMaybe __ name ::: _A) ::: Comp Nothing VType)
-  pure $ ForAll _T (\ v -> bindComp d v _B) ::: Comp Nothing VType
+  _B <- check (b (fromMaybe __ name ::: _A) ::: Comp Nothing KType)
+  pure $ ForAll _T (\ v -> bindComp d v _B) ::: Comp Nothing KType
 
 comp :: Maybe [Check Value] -> Check Type -> Synth Comp
 comp s t = Synth $ trace "comp" $ do
   s' <- traverse (traverse (check . (::: Comp Nothing VInterface))) s
-  t' <- check (t ::: Comp Nothing VType)
-  pure $ Comp s' t' ::: Comp Nothing VType
+  t' <- check (t ::: Comp Nothing KType)
+  pure $ Comp s' t' ::: Comp Nothing KType
 
 
 lam :: Name -> (Name ::: Comp -> Check Expr) -> Check Expr
@@ -434,7 +434,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
     : map (\ (n :=: c ::: c_T) -> (n, Decl (Just (DTerm c)) c_T)) cs
   where
   go k = \case
-    Comp _ _                     -> check (k ::: Comp Nothing VType)
+    Comp _ _                     -> check (k ::: Comp Nothing KType)
     -- FIXME: can sigs appear here?
     ForAll (Binding _ n _T) _B -> do
       d <- asks @(Context Comp) level
@@ -452,7 +452,7 @@ elabInterfaceDef
   -> m Decl
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
-    (n :::) <$> elabTele (go (check (switch (elabSTelescope t) ::: Comp Nothing VType)) _T)
+    (n :::) <$> elabTele (go (check (switch (elabSTelescope t) ::: Comp Nothing KType)) _T)
   pure $ Decl (Just (DInterface cs)) _T
   where
   go k = \case
@@ -501,7 +501,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elabTele $ check (switch (elabSTelescope tele) ::: Comp Nothing VType)
+      _T <- runModule . elabTele $ check (switch (elabSTelescope tele) ::: Comp Nothing KType)
 
       decls_.at dname .= Just (Decl Nothing _T)
       case def of

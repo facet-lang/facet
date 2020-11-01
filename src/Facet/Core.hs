@@ -83,7 +83,7 @@ import           Prelude hiding (zip, zipWith)
 -- FIXME: thunk.
 -- FIXME: force.
 data Value
-  = VType
+  = KType
   | VInterface
   | VComp Comp
   | VLam Pl [Clause]
@@ -254,7 +254,7 @@ substWith :: (Var -> Value) -> Value -> Value
 substWith f = go
   where
   go = \case
-    VType         -> VType
+    KType         -> KType
     VInterface    -> VInterface
     VComp t       -> VComp (substCompWith f t)
     VLam p b      -> VLam p (map clause b)
@@ -347,7 +347,7 @@ data Sort
 -- | Classifies values according to whether or not they describe types.
 sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
-  VType         -> SKind
+  KType         -> SKind
   VInterface    -> SKind
   VComp t       -> sortOfComp ctx t
   VLam{}        -> STerm
