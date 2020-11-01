@@ -156,9 +156,9 @@ monotypeTable :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p
 monotypeTable =
   [ [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   , [ -- FIXME: we should treat these as globals.
-      atom (anned (S.KType      <$ token (string "Type")))
-    , atom (anned (S.TInterface <$ token (string "Interface")))
-    , atom (anned (S.TString    <$ token (string "String")))
+      atom (token (anned (S.KType      <$ string "Type")))
+    , atom (token (anned (S.TInterface <$ string "Interface")))
+    , atom (token (anned (S.TString    <$ string "String")))
       -- FIXME: holes in types
     , atom tvar
     ]
