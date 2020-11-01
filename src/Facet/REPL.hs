@@ -191,15 +191,15 @@ removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets
 showType, showEval :: S.Ann (S.Expr Void) -> Action
 
 showType e = Action $ do
-  e ::: _T <- elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.synth (Elab.synthExpr e))
-  outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
+  e ::: _T <- elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalizeComp s _T) (Elab.synth (Elab.synthExpr e))
+  outputDocLn (prettyCode (ann (printValue Nil e ::: printComp Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalizeComp s _T) $ local (VNe (Global (MName "Effect":."Console":.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
   (dEval, e'') <- time $ elab $ runEvalMain (eval e')
   outputStrLn $ show dElab
   outputStrLn $ show dEval
-  outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil _T)))
+  outputDocLn (prettyCode (ann (printValue Nil e'' ::: printComp Nil _T)))
 
 -- FIXME: should actually handle “syscall” effects here.
 runEvalMain :: Has Output sig m => Eval m a -> m a

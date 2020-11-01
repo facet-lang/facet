@@ -35,10 +35,12 @@ module Facet.Core
 , apply
 , applyComp
 , generalize
+, generalizeComp
 , etaExpand
   -- ** Classification
 , Sort(..)
 , sortOf
+, sortOfComp
   -- * Patterns
 , Pattern(..)
 , fill
@@ -114,7 +116,7 @@ substCompWith f = go
     ForAll t b -> ForAll (binding t) (go . b)
     Comp s t   -> Comp (map (substWith f) <$> s) (substWith f t)
 
-  binding (Binding p n d t) = Binding p n (map (substWith f) <$> d) (substWith f t)
+  binding (Binding p n t) = Binding p n (go t)
 
 substComp :: IntMap.IntMap Value -> Comp -> Comp
 substComp s
@@ -145,7 +147,7 @@ unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
 data Clause = Clause
-  { pattern :: Pattern (Name ::: Value)
+  { pattern :: Pattern (Name ::: Comp)
   , branch  :: Pattern Value -> Value
   }
 
@@ -156,8 +158,7 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 data Binding = Binding
   { pl    :: Pl
   , name  :: Maybe Name
-  , delta :: Maybe [Value]
-  , type' :: Value
+  , type' :: Comp
   }
 
 
@@ -286,12 +287,12 @@ substMeta :: IntMap.IntMap Value -> Var -> Value
 substMeta s = unVar global free (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) s))
 
 
-type Subst = IntMap.IntMap (Maybe Value ::: Type)
+type Subst = IntMap.IntMap (Maybe Value ::: Comp)
 
 emptySubst :: Subst
 emptySubst = IntMap.empty
 
-insertSubst :: Meta -> Maybe Value ::: Type -> Subst -> Subst
+insertSubst :: Meta -> Maybe Value ::: Comp -> Subst -> Subst
 insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
 
 -- | Apply the substitution to the value.
@@ -306,7 +307,16 @@ applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution h
 generalize :: Subst -> Value -> Value
 generalize s v
   | null b    = apply s v
-  | otherwise = VComp (foldr (\ (d, _T) b -> ForAll (Binding Im (Just __) mempty _T) (\ v -> bindComp d v b)) (Comp mempty (subst (IntMap.mapMaybe tm s <> s') v)) b)
+  | otherwise = VComp (foldr (\ (d, _T) b -> ForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (Comp Nothing (subst (IntMap.mapMaybe tm s <> s') v)) b)
+  where
+  (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
+    Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
+    Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
+
+generalizeComp :: Subst -> Comp -> Comp
+generalizeComp s v
+  | null b    = applyComp s v
+  | otherwise = foldr (\ (d, _T) b -> ForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -339,7 +349,7 @@ sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
   VType         -> SKind
   VInterface    -> SKind
-  VComp t       -> telescope ctx t
+  VComp t       -> sortOfComp ctx t
   VLam{}        -> STerm
   VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
   VCon _        -> STerm
@@ -347,10 +357,11 @@ sortOf ctx = \case
   VPrim p       -> case p of
     TString   -> SType
     VString _ -> STerm
-  where
-  telescope ctx = \case
-    ForAll (Binding _ _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (telescope (ctx :> _T') (_B (free (Level (length ctx)))))
-    Comp _ _T                    -> sortOf ctx _T
+
+sortOfComp :: Stack Sort -> Comp -> Sort
+sortOfComp ctx = \case
+  ForAll (Binding _ _ _T) _B -> let _T' = sortOfComp ctx _T in min _T' (sortOfComp (ctx :> _T') (_B (free (Level (length ctx)))))
+  Comp _ _T                  -> sortOf ctx _T
 
 
 -- Patterns
