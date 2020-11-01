@@ -388,7 +388,6 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
         | Just (q ::: _T') <- lookupInSig n mod graph sig
         -> do
           _T'' <- inst _T'
-          -- FIXME: given a command of type A… -> B, and expected argument type B', the continuation is of type B -> B' (modulo sigs)
           subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: ForAll (Binding Ex Nothing _T) (const _A)))
       _ -> freeVariable n
   -- FIXME: warn if using PAll with an empty sig.
