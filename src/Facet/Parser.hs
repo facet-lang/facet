@@ -179,7 +179,7 @@ tatom = build monotypeTable $ parens type'
 
 tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
 tvar = choice
-  [ token (anned (runUnspaced (S.free . N.E <$> tname  <?> "variable")))
+  [ token (anned (runUnspaced (S.free . N.U <$> tname  <?> "variable")))
   , fmap S.qual <$> qname
   ]
 
@@ -195,7 +195,7 @@ sig = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
-  mkHead cs = (uncurry (foldl' (N.:.) . N.MName) <$> uncons (NE.init cs), N.E (N.UName (NE.last cs)))
+  mkHead cs = (uncurry (foldl' (N.:.) . N.MName) <$> uncons (NE.init cs), N.U (N.UName (NE.last cs)))
   comp = ident tnameStyle
 
 
@@ -226,7 +226,7 @@ clause = S.Clause <$> try (patternP <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
 evar = choice
-  [ token (anned (runUnspaced (S.free . N.E <$> ename <?> "variable")))
+  [ token (anned (runUnspaced (S.free . N.U <$> ename <?> "variable")))
     -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
   , try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname)))))
   , fmap S.qual <$> qname
@@ -286,8 +286,8 @@ cname = ident cnameStyle
 tname = ident tnameStyle
 
 dename, dtname :: (Monad p, TokenParsing p) => p N.DName
-dename  = N.E <$> ident dnameStyle <|> N.O <$> oname
-dtname  = N.E <$> tname
+dename  = N.U <$> ident dnameStyle <|> N.O <$> oname
+dtname  = N.U <$> tname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
 mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy comp dot))

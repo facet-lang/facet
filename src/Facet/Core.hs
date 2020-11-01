@@ -401,7 +401,7 @@ lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList 
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
   matchDef (Decl   d     _)  = maybe empty pure d >>= unDData >>= matchWith matchCon
-  matchCon (n' :=: v ::: _T) = (name :.: E n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
+  matchCon (n' :=: v ::: _T) = (name :.: U n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => DName -> Module -> m (QName :=: Maybe Def ::: Comp)

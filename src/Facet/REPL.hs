@@ -195,7 +195,7 @@ showType e = Action $ do
   outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:E "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
   (dEval, e'') <- time $ elab $ runEvalMain (eval e')
   outputStrLn $ show dElab
   outputStrLn $ show dEval
@@ -206,10 +206,10 @@ runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
   handle (q :$ sp) k = case q of
-    MName "Effect" :. "Console" :.: E "write"
+    MName "Effect" :. "Console" :.: U "write"
       | Nil:>(Ex, VPrim (VString s)) <- sp -> outputText s *> k unit
     _                                      -> k (VOp (q :$ sp))
-  unit = VCon (MName "Data" :. "Unit" :.: E "unit" :$ Nil)
+  unit = VCon (MName "Data" :. "Unit" :.: U "unit" :$ Nil)
 
 
 helpDoc :: Doc Style

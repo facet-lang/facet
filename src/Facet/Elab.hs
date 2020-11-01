@@ -182,7 +182,7 @@ resolve :: DName -> Elab (QName :=: Maybe Def ::: Comp)
 resolve n = resolveWith (lookupD n) Nothing n
 
 resolveC :: UName -> Elab (QName :=: Maybe Def ::: Comp)
-resolveC n = resolveWith (lookupC n) Nothing (E n)
+resolveC n = resolveWith (lookupC n) Nothing (U n)
 
 resolveQ :: QName -> Elab (QName :=: Maybe Def ::: Comp)
 resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
@@ -199,7 +199,7 @@ global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 lookupInContext :: DName -> Context Type -> Maybe (Level, Type)
 lookupInContext n ctx = (`lookupLevel` ctx) =<< eOrT n
   where
-  eOrT (E n) = Just n
+  eOrT (U n) = Just n
   eOrT _     = Nothing
 
 lookupInSig :: Maybe MName -> UName -> Module -> Graph -> [Value] -> Maybe (QName ::: Comp)
@@ -208,7 +208,7 @@ lookupInSig m n mod graph = matchWith $ \case
     guard (maybe True (== m') m)
     (_ :=: Just (DInterface defs) ::: _) <- lookupQ q mod graph
     _T <- matchWith (\ (n' ::: _T) -> _T <$ guard (n' == n)) defs
-    pure $ m':.:E n ::: _T
+    pure $ m':.:U n ::: _T
   _                            -> Nothing
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
@@ -222,7 +222,7 @@ var m n = Synth $ trace "var" $ ask >>= \ ctx -> case m of
   _ -> do
     (mod, graph, sig) <- (,,) <$> ask <*> ask <*> ask
     case n of
-      E n
+      U n
         | Just (n ::: _T) <- lookupInSig m n mod graph sig
         -> do
           n ::: _T <- instantiate (VOp (n :$ Nil) ::: _T)
@@ -428,10 +428,10 @@ elabDataDef
 elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elabTele $ go (switch (elabSTelescope t)) _T
-    pure $ n :=: con (mname :.: E n) Nil c_T ::: c_T
+    pure $ n :=: con (mname :.: U n) Nil c_T ::: c_T
   pure
     $ (dname, Decl (Just (DData cs)) _T)
-    : map (\ (n :=: c ::: c_T) -> (E n, Decl (Just (DTerm c)) c_T)) cs
+    : map (\ (n :=: c ::: c_T) -> (U n, Decl (Just (DTerm c)) c_T)) cs
   where
   go k = \case
     Comp _ _                     -> check (k ::: VType)
