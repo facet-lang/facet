@@ -108,13 +108,6 @@ unify = unifyComp
     unifySpine sp1 sp2 = unless (length sp1 == length sp2) nope *> sequenceA (zipWith unifyArg sp1 sp2)
     unifyArg (p1, a1) (p2, a2) = (p1,) <$ unless (p1 == p2) nope <*> unifyValue a1 a2
 
-  solve (n :=: val') = do
-    subst <- get
-    -- FIXME: occurs check
-    case subst IntMap.! getMeta n of
-      Just val ::: _T -> unifyValue val' val
-      Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
-
   unifyComp c1 c2 = case c1 :===: c2 of
     ForAll (Binding p1 n1 t1) b1 :===: ForAll (Binding p2 _  t2) b2 -> do
       unless (p1 == p2) nope
@@ -133,6 +126,13 @@ unify = unifyComp
     -- FIXME: unify the signatures
     unifySig s1 _ = pure s1
     -- unifySig s1 s2 = unless (length s1 == length s2) nope *> sequenceA (zipWith go s1 s2)
+
+  solve (n :=: val') = do
+    subst <- get
+    -- FIXME: occurs check
+    case subst IntMap.! getMeta n of
+      Just val ::: _T -> unifyValue val' val
+      Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
 
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
