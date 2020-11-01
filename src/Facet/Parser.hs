@@ -49,7 +49,6 @@ import           Text.Parser.Token.Highlight as Highlight
 -- list literals
 -- string literals
 -- numeric literals
--- forcing nullary computations
 -- resolve module-local definitions in the parser
 -- resolve imported definitions in the parser
 
