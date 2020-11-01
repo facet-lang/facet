@@ -65,7 +65,6 @@ makeOperator (op, assoc) = (op, assoc, nary (N.O op))
 
 -- Modules
 
--- FIXME: preserve comments, presumably in 'S.Ann'
 module' :: (Has Parser sig p, Has (State [Operator (S.Ann (S.Expr Void))]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Module Void))
 module' = anned $ do
   (name, imports) <- moduleHeader
