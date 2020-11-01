@@ -111,14 +111,14 @@ termDecl = anned $ do
         _ -> pure N.N
       modify (makeOperator (op, assoc) :)
     _      -> pure ()
-  decl <- anned $ S.Decl <$ colon <*> typeSig (choice [ imBinding, exBinding ename ]) <*> (S.TermDef <$> comp)
+  decl <- anned $ S.Decl <$ colon <*> typeSig ename <*> (S.TermDef <$> comp)
   pure (name, decl)
 
 dataDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann (S.Decl Void)))
-dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> anned (S.Decl <$> typeSig (choice [ imBinding, exBinding tname ]) <*> (S.DataDef <$> braces (commaSep con)))
+dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.DataDef <$> braces (commaSep con)))
 
 interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann (S.Decl Void)))
-interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> anned (S.Decl <$> typeSig (choice [ imBinding, exBinding tname ]) <*> (S.InterfaceDef <$> braces (commaSep con)))
+interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.InterfaceDef <$> braces (commaSep con)))
 
 con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann (S.Comp Void)))
 con = anned ((:::) <$> cname <* colon <*> tcomp)
@@ -126,10 +126,10 @@ con = anned ((:::) <$> cname <* colon <*> tcomp)
 
 typeSig
   :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p)
-  => p (S.Ann (S.Binding Void))
+  => p N.UName -- ^ a parser for names occurring in explicit (parenthesized) bindings
   -> p (S.Ann (S.Comp Void))
-typeSig binding = anned $ do
-  bs1 <- many (try (binding <* arrow))
+typeSig name = anned $ do
+  bs1 <- many (try (choice [ imBinding, exBinding name ] <* arrow))
   bs2 <- many (try (nonBinding <* arrow))
   S.Comp (bs1 <> bs2) <$> optional sig <*> type'
 
