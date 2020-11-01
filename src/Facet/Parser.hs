@@ -239,16 +239,16 @@ hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
 wildcard :: (Monad p, TokenParsing p) => p ()
 wildcard = reserve enameStyle "_"
 
-valuePattern :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Pattern Void))
+valuePattern :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.ValPattern Void))
 valuePattern = choice
   [ token (anned (runUnspaced (S.PVar <$> ename <?> "variable")))
   , anned (S.PWildcard <$  wildcard)
   , try (parens (anned (S.PCon <$> mqname ename <*> many valuePattern)))
   ] <?> "pattern"
 
-compPattern :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Pattern Void))
+compPattern :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.EffPattern Void))
 compPattern = choice
-  [ valuePattern
+  [ anned (S.PVal <$> valuePattern)
   , try (brackets (anned (S.PEff <$> mqname ename <*> many valuePattern <* symbolic ';' <*> (ename <|> N.__ <$ wildcard))))
   , brackets (try (token (anned (S.PAll <$> runUnspaced ename))))
   ] <?> "pattern"

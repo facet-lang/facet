@@ -10,7 +10,9 @@ module Facet.Surface
 , Binding(..)
 , Interface(..)
 , Clause(..)
-, Pattern(..)
+  -- * Patterns
+, ValPattern(..)
+, EffPattern(..)
   -- * Declarations
 , Decl(..)
 , Def(..)
@@ -103,24 +105,33 @@ deriving instance Eq   a => Eq   (Interface a)
 deriving instance Show a => Show (Interface a)
 
 
-data Clause a = Clause (Ann (Pattern a)) (Ann (Expr a))
+data Clause a = Clause (Ann (EffPattern a)) (Ann (Expr a))
   deriving (Foldable, Functor, Traversable)
 
 deriving instance Eq   a => Eq   (Clause a)
 deriving instance Show a => Show (Clause a)
 
 
-data Pattern a
+-- Patterns
+
+data ValPattern a
   = PWildcard
   | PVar Name
-  | PCon MQName [Ann (Pattern a)]
-  | PEff MQName [Ann (Pattern a)] Name
-  -- | Catch-all effect pattern. Matches values and effect operations.
-  | PAll Name
+  | PCon MQName [Ann (ValPattern a)]
   deriving (Foldable, Functor, Traversable)
 
-deriving instance Eq   a => Eq   (Pattern a)
-deriving instance Show a => Show (Pattern a)
+deriving instance Eq   a => Eq   (ValPattern a)
+deriving instance Show a => Show (ValPattern a)
+
+data EffPattern a
+  = PEff MQName [Ann (ValPattern a)] Name
+  -- | Catch-all effect pattern. Matches values and effect operations.
+  | PAll Name
+  | PVal (Ann (ValPattern a))
+  deriving (Foldable, Functor, Traversable)
+
+deriving instance Eq   a => Eq   (EffPattern a)
+deriving instance Show a => Show (EffPattern a)
 
 
 -- Declarations

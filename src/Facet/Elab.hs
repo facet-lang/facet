@@ -367,7 +367,7 @@ force e = Synth $ trace "force" $ do
 
 -- FIXME: go find the pattern matching matrix algorithm
 elabClauses :: [S.Clause Void] -> Check Expr
-elabClauses [S.Clause (S.Ann _ _ (S.PVar n)) b] = lam n $ \ v -> mapCheck (v |-) (checkExpr b)
+elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = lam n $ \ v -> mapCheck (v |-) (checkExpr b)
 elabClauses cs = Check $ \ _T -> do
   -- FIXME: use the signature to elaborate the pattern
   (Binding _ _ s _A, _B) <- expectQuantifier "when checking clauses" _T
@@ -380,16 +380,11 @@ elabClauses cs = Check $ \ _T -> do
 
 
 -- FIXME: check for unique variable names
-elabPattern :: [Value] -> Type -> S.Ann (S.Pattern Void) -> (Pattern (Name ::: Type) -> Elab a) -> Elab a
+elabPattern :: [Value] -> Type -> S.Ann (S.EffPattern Void) -> (Pattern (Name ::: Type) -> Elab a) -> Elab a
 elabPattern sig = go
   where
   go _A (S.Ann s _ p) k = trace "elabPattern" $ setSpan s $ case p of
-    S.PWildcard -> k (PVar (__ ::: _A))
-    S.PVar n    -> k (PVar (n  ::: _A))
-    S.PCon n ps -> do
-      q :=: _ ::: _T' <- resolveC n
-      _T'' <- inst _T'
-      subpatterns _T'' ps $ \ _T ps' -> unify _A _T *> k (PCon (q :$ fromList ps'))
+    S.PVal p -> goVal _A p k
     S.PEff n ps v -> do
       mod <- ask
       graph <- ask
@@ -400,6 +395,15 @@ elabPattern sig = go
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> k (PVar (n  ::: _A))
+
+  goVal _A (S.Ann s _ p) k = setSpan s $ case p of
+    S.PWildcard -> k (PVar (__ ::: _A))
+    S.PVar n    -> k (PVar (n  ::: _A))
+    S.PCon n ps -> do
+      q :=: _ ::: _T' <- resolveC n
+      _T'' <- inst _T'
+      subpatterns _T'' ps $ \ _T ps' -> unify _A _T *> k (PCon (q :$ fromList ps'))
+
   inst = \case
   -- FIXME: assert that the signature is empty
     TForAll (Binding Im _ _s _T) _B -> meta _T >>= inst . _B . metavar
@@ -412,7 +416,7 @@ elabPattern sig = go
       -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
       -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
       v <- metavar <$> meta _A
-      go _A p (\ p' -> subpatterns (TSusp (_B v)) ps (\ _T ps' -> k _T (p' : ps')))
+      goVal _A p (\ p' -> subpatterns (TSusp (_B v)) ps (\ _T ps' -> k _T (p' : ps')))
 
 
 string :: Text -> Synth Expr
