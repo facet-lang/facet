@@ -94,8 +94,8 @@ unify = unifyComp
     VComp{}                 :===: _                       -> nope
     KType                   :===: KType                   -> pure KType
     KType                   :===: _                       -> nope
-    VInterface              :===: VInterface              -> pure VInterface
-    VInterface              :===: _                       -> nope
+    KInterface              :===: KInterface              -> pure KInterface
+    KInterface              :===: _                       -> nope
     VPrim p1                :===: VPrim p2                -> VPrim p1 <$ unless (p1 == p2) nope
     VPrim{}                 :===: _                       -> nope
     VCon{}                  :===: _                       -> nope
@@ -298,7 +298,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
 elabBinding :: S.Ann (S.Binding Void) -> [(Pos, Check Binding)]
 elabBinding (S.Ann s _ (S.Binding p n d t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
-    d' <- traverse (traverse (check . (::: Comp Nothing VInterface) . elabSig)) d
+    d' <- traverse (traverse (check . (::: Comp Nothing KInterface) . elabSig)) d
     t' <- check (checkExpr t ::: _T)
     pure $ Binding p n (Comp d' t'))
   | n <- maybe [Nothing] (map Just . toList) n ]
@@ -319,7 +319,7 @@ _Type :: Synth Type
 _Type = Synth $ pure $ KType ::: Comp Nothing KType
 
 _Interface :: Synth Type
-_Interface = Synth $ pure $ VInterface ::: Comp Nothing KType
+_Interface = Synth $ pure $ KInterface ::: Comp Nothing KType
 
 _String :: Synth Type
 _String = Synth $ pure $ VPrim TString ::: Comp Nothing KType
@@ -335,7 +335,7 @@ forAll t b = Synth $ trace "forAll" $ do
 
 comp :: Maybe [Check Value] -> Check Type -> Synth Comp
 comp s t = Synth $ trace "comp" $ do
-  s' <- traverse (traverse (check . (::: Comp Nothing VInterface))) s
+  s' <- traverse (traverse (check . (::: Comp Nothing KInterface))) s
   t' <- check (t ::: Comp Nothing KType)
   pure $ Comp s' t' ::: Comp Nothing KType
 

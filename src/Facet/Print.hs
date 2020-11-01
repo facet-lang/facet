@@ -177,7 +177,7 @@ printVar name = \case
 printValue :: Stack Print -> C.Value -> Print
 printValue env = \case
   C.KType -> annotate Type $ pretty "Type"
-  C.VInterface -> annotate Type $ pretty "Interface"
+  C.KInterface -> annotate Type $ pretty "Interface"
   C.VComp t -> printComp env t
   C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
   -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable

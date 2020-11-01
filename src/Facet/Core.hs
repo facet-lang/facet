@@ -84,7 +84,7 @@ import           Prelude hiding (zip, zipWith)
 -- FIXME: force.
 data Value
   = KType
-  | VInterface
+  | KInterface
   | VComp Comp
   | VLam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
@@ -255,7 +255,7 @@ substWith f = go
   where
   go = \case
     KType         -> KType
-    VInterface    -> VInterface
+    KInterface    -> KInterface
     VComp t       -> VComp (substCompWith f t)
     VLam p b      -> VLam p (map clause b)
     VNe (v :$ a)  -> f v $$* fmap (fmap go) a
@@ -348,7 +348,7 @@ data Sort
 sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
   KType         -> SKind
-  VInterface    -> SKind
+  KInterface    -> SKind
   VComp t       -> sortOfComp ctx t
   VLam{}        -> STerm
   VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
