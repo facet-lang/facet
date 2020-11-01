@@ -382,11 +382,16 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
   -- FIXME: look up the effect in the signature
   -- FIXME: need to get the signature from a Comp, but we haven’t got a Comp
   S.PEff n ps v -> do
-    -- let _ = lookupInSig
-    q :=: _ ::: _T' <- resolveC n
-    _T'' <- inst _T'
-    -- FIXME: what should the type of the continuation be? [effect result type] -> [remainder of body type after this pattern]?
-    subpatterns _A _T'' ps $ \ ps' -> k (PEff q (fromList ps') (v ::: VType)) -- FIXME: lies
+    mod <- ask
+    graph <- ask
+    case _A of
+      VComp (Comp (Just sig) _A)
+        | Just (q ::: _T') <- lookupInSig n mod graph sig
+        -> do
+          _T'' <- inst _T'
+          -- FIXME: what should the type of the continuation be? [effect result type] -> [remainder of body type after this pattern]?
+          subpatterns _A _T'' ps $ \ ps' -> k (PEff q (fromList ps') (v ::: VType)) -- FIXME: lies
+      _ -> freeVariable n
   -- FIXME: warn if using PAll with an empty sig.
   S.PAll n -> k (PVar (n  ::: _A))
   where
