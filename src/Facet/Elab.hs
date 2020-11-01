@@ -370,57 +370,49 @@ elabClauses :: [S.Clause Void] -> Check Expr
 elabClauses [S.Clause (S.Ann _ _ (S.PVar n)) b] = lam n $ \ v -> mapCheck (v |-) (checkExpr b)
 elabClauses cs = Check $ \ _T -> do
   -- FIXME: use the signature to elaborate the pattern
-  (Binding _ _ _s _A, _B) <- expectQuantifier "when checking clauses" _T
+  (Binding _ _ s _A, _B) <- expectQuantifier "when checking clauses" _T
   d <- asks (level @Type)
   -- FIXME: I don’t see how this can be correct; the context will not hold a variable but rather a pattern of them.
   let _B' = TSusp $ _B (free d)
-  cs' <- for cs $ \ (S.Clause p b) -> check
-    (   elabPattern p (\ p' -> do
-      Clause p' <$> elabBinders p' (foldr (|-) (check (checkExpr b ::: _B'))))
-    ::: _A)
+  cs' <- for cs $ \ (S.Clause p b) -> elabPattern (fromMaybe [] s) _A p (\ p' -> do
+    Clause p' <$> elabBinders p' (foldr (|-) (check (checkExpr b ::: _B'))))
   pure $ ELam Ex cs'
 
 
 -- FIXME: check for unique variable names
--- FIXME: this isn’t really a synthesis or checking rule, it’s a different judgement altogether.
-elabPattern :: S.Ann (S.Pattern Void) -> (Pattern (Name ::: Type) -> Elab a) -> Check a
-elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ case p of
-  S.PWildcard -> k (PVar (__ ::: _A))
-  S.PVar n    -> k (PVar (n  ::: _A))
-  S.PCon n ps -> do
-    q :=: _ ::: _T' <- resolveC n
-    _T'' <- inst _T'
-    subpatterns _T'' ps $ \ _T ps' -> unify _A _T *> k (PCon (q :$ fromList ps'))
-  S.PEff n ps v -> do
-    mod <- ask
-    graph <- ask
-    case _A of
-      TSusp (TRet (Just sig) _)
-        | Just (q ::: _T') <- lookupInSig n mod graph sig
-        -> do
+elabPattern :: [Value] -> Type -> S.Ann (S.Pattern Void) -> (Pattern (Name ::: Type) -> Elab a) -> Elab a
+elabPattern sig = go
+  where
+  go _A (S.Ann s _ p) k = trace "elabPattern" $ setSpan s $ case p of
+    S.PWildcard -> k (PVar (__ ::: _A))
+    S.PVar n    -> k (PVar (n  ::: _A))
+    S.PCon n ps -> do
+      q :=: _ ::: _T' <- resolveC n
+      _T'' <- inst _T'
+      subpatterns _T'' ps $ \ _T ps' -> unify _A _T *> k (PCon (q :$ fromList ps'))
+    S.PEff n ps v -> do
+      mod <- ask
+      graph <- ask
+      case lookupInSig n mod graph sig of
+        Just (q ::: _T') -> do
           _T'' <- inst _T'
           subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TSusp (TForAll (Binding Ex Nothing Nothing _T) (const (TRet Nothing _A)))))
-      _ -> freeVariable n
-  -- FIXME: warn if using PAll with an empty sig.
-  S.PAll n -> k (PVar (n  ::: _A))
-  where
+        _                -> freeVariable n
+    -- FIXME: warn if using PAll with an empty sig.
+    S.PAll n -> k (PVar (n  ::: _A))
   inst = \case
   -- FIXME: assert that the signature is empty
     TForAll (Binding Im _ _s _T) _B -> meta _T >>= inst . _B . metavar
     _T                              -> pure (TSusp _T)
-  subpatterns = go
-    where
-    go _T' = \case
-      []   -> \ k -> k _T' []
-      p:ps -> \ k -> do
-        -- FIXME: assert that the signature is empty
-        (Binding _ _ _s _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
-        -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
-        -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
-        v <- metavar <$> meta _A
-        check
-          (   elabPattern p (\ p' -> go (TSusp (_B v)) ps (\ _T ps' -> k _T (p' : ps')))
-          ::: _A)
+  subpatterns _T' = \case
+    []   -> \ k -> k _T' []
+    p:ps -> \ k -> do
+      -- FIXME: assert that the signature is empty
+      (Binding _ _ _s _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
+      -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
+      -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
+      v <- metavar <$> meta _A
+      go _A p (\ p' -> subpatterns (TSusp (_B v)) ps (\ _T ps' -> k _T (p' : ps')))
 
 
 string :: Text -> Synth Expr
