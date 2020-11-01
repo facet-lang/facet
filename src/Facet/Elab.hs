@@ -388,7 +388,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
         | Just (q ::: _T') <- lookupInSig n mod graph sig
         -> do
           _T'' <- inst _T'
-          -- FIXME: what should the type of the continuation be? [effect result type] -> [remainder of body type after this pattern]?
+          -- FIXME: given a command of type A… -> B, and expected argument type B', the continuation is of type B -> B' (modulo sigs)
           subpatterns _A _T'' ps $ \ ps' -> k (PEff q (fromList ps') (v ::: Comp Nothing VType)) -- FIXME: lies
       _ -> freeVariable n
   -- FIXME: warn if using PAll with an empty sig.
