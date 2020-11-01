@@ -256,7 +256,7 @@ synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Hole{}     -> nope
   S.Lam{}      -> nope
   S.Thunk{}    -> nope
-  S.Force e    -> force (synthExpr e)
+  S.Force{}    -> nope
   S.M v        -> case v of {}
   where
   nope = Synth $ couldNotSynthesize (show e)
@@ -266,7 +266,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
   S.Hole  n    -> hole n
   S.Lam cs     -> elabClauses cs
   S.Thunk e    -> thunk (checkExpr e)
-  S.Force{}    -> synth
+  S.Force e    -> checkExpr e -- FIXME: this should convert between computation and value type
   S.Var{}      -> synth
   S.KType      -> synth
   S.KInterface -> synth
