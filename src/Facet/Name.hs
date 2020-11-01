@@ -128,7 +128,6 @@ moduleName (mname :.: _) = mname
 -- | Declaration names; a choice of expression, constructor, term, or operator names.
 data DName
   = E UName
-  | C UName
   | T UName
   | O Op
   deriving (Eq, Ord, Show)
@@ -136,7 +135,6 @@ data DName
 instance P.Pretty DName where
   pretty = \case
     E n -> P.pretty n
-    C n -> P.pretty n
     T n -> P.pretty n
     O o -> P.pretty o
 

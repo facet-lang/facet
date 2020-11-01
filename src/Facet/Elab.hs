@@ -182,7 +182,7 @@ resolve :: DName -> Elab (QName :=: Maybe Def ::: Comp)
 resolve n = resolveWith (lookupD n) Nothing n
 
 resolveC :: UName -> Elab (QName :=: Maybe Def ::: Comp)
-resolveC n = resolveWith (lookupC n) Nothing (C n)
+resolveC n = resolveWith (lookupC n) Nothing (E n)
 
 resolveQ :: QName -> Elab (QName :=: Maybe Def ::: Comp)
 resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
@@ -388,6 +388,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
     subpatterns _A _T'' ps $ \ ps' -> k (PCon (q :$ fromList ps'))
   -- FIXME: look up the effect in the signature
   S.PEff n ps v -> do
+    -- let _ = lookupInSig
     q :=: _ ::: _T' <- resolveC n
     _T'' <- inst _T'
     -- FIXME: what should the type of the continuation be? [effect result type] -> [remainder of body type after this pattern]?
@@ -428,7 +429,7 @@ elabDataDef
 elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elabTele $ go (switch (elabSTelescope t)) _T
-    pure $ n :=: con (mname :.: C n) Nil c_T ::: c_T
+    pure $ n :=: con (mname :.: E n) Nil c_T ::: c_T
   pure
     $ (dname, Decl (Just (DData cs)) _T)
     : map (\ (n :=: c ::: c_T) -> (E n, Decl (Just (DTerm c)) c_T)) cs
