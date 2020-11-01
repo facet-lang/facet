@@ -189,7 +189,7 @@ printValue env = \case
         elim h sp  (es:>a) = elim h (sp . (:> fmap (printValue env) a)) es
         h' = C.unVar (group . var . qvar) ((env !) . getIndex . levelToIndex d) (group . var . Metavar) h
     in elim h' id e
-  C.VCon (n :$ p) -> app (group (var (qvar n))) (fmap ((Ex,) . printValue env) p)
+  C.ECon (n :$ p) -> app (group (var (qvar n))) (fmap ((Ex,) . printValue env) p)
   C.VOp (q :$ sp) -> app (group (var (qvar q))) (fmap (fmap (printValue env)) sp)
   C.VPrim p -> case p of
     C.TString   -> annotate Type $ pretty "String"

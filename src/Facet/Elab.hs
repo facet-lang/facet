@@ -98,7 +98,7 @@ unify = unifyComp
     KInterface              :===: _                       -> nope
     VPrim p1                :===: VPrim p2                -> VPrim p1 <$ unless (p1 == p2) nope
     VPrim{}                 :===: _                       -> nope
-    VCon{}                  :===: _                       -> nope
+    ECon{}                  :===: _                       -> nope
     ELam{}                  :===: _                       -> nope
     VOp{}                   :===: _                       -> nope
     where
@@ -443,7 +443,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   con q fs = \case
     -- FIXME: can this use lam?
     ForAll (Binding p n _T) _B -> ELam p [Clause (PVar (fromMaybe __ n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
-    _T                         -> VCon (q :$ fs)
+    _T                         -> ECon (q :$ fs)
 
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m

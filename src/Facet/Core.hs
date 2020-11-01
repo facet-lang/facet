@@ -89,7 +89,7 @@ data Value
   | ELam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var :$ (Pl, Value))
-  | VCon (QName :$ Expr)
+  | ECon (QName :$ Expr)
   -- | Effect operation and its parameters.
   | VOp (QName :$ (Pl, Expr))
   -- | Primitive types and values.
@@ -239,7 +239,7 @@ match :: Value -> Pattern b -> Maybe (Pattern Value)
 match = curry $ \case
   -- FIXME: this shouldn’t match computations
   (s,               PVar _)         -> Just (PVar s)
-  (VCon (n' :$ fs), PCon (n :$ ps)) -> do
+  (ECon (n' :$ fs), PCon (n :$ ps)) -> do
     guard (n == n')
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
     PCon . (n' :$) <$> sequenceA (zipWith match fs ps)
@@ -259,7 +259,7 @@ substWith f = go
     TComp t       -> TComp (substCompWith f t)
     ELam p b      -> ELam p (map clause b)
     VNe (v :$ a)  -> f v $$* fmap (fmap go) a
-    VCon c        -> VCon (fmap go c)
+    ECon c        -> ECon (fmap go c)
     VOp (q :$ sp) -> VOp (q :$ fmap (fmap go) sp)
     VPrim p       -> VPrim p
 
@@ -352,7 +352,7 @@ sortOf ctx = \case
   TComp t       -> sortOfComp ctx t
   ELam{}        -> STerm
   VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
-  VCon _        -> STerm
+  ECon _        -> STerm
   VOp _         -> STerm -- FIXME: will this always be true?
   VPrim p       -> case p of
     TString   -> SType
