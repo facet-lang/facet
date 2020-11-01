@@ -86,12 +86,12 @@ unify = unifyComp
     x                       :===: VNe (Metavar v :$ Nil)  -> solve (v :=: x)
     -- FIXME: resolve globals to try to progress past certain inequalities
     VNe (h1 :$ e1)          :===: VNe (h2 :$ e2)          -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
-    VComp t1                :===: VComp t2                -> VComp <$> unifyComp t1 t2
+    TComp t1                :===: TComp t2                -> TComp <$> unifyComp t1 t2
     -- FIXME: these make me feel icky
-    VComp (Comp Nothing t1) :===: t2                      -> unifyValue t1 t2
-    t1                      :===: VComp (Comp Nothing t2) -> unifyValue t1 t2
+    TComp (Comp Nothing t1) :===: t2                      -> unifyValue t1 t2
+    t1                      :===: TComp (Comp Nothing t2) -> unifyValue t1 t2
     VNe{}                   :===: _                       -> nope
-    VComp{}                 :===: _                       -> nope
+    TComp{}                 :===: _                       -> nope
     KType                   :===: KType                   -> pure KType
     KType                   :===: _                       -> nope
     KInterface              :===: KInterface              -> pure KInterface
@@ -117,8 +117,8 @@ unify = unifyComp
       b <- unifyComp (b1 v) (b2 v)
       pure $ ForAll (Binding p1 n1 t) (\ v -> bindComp d v b)
     Comp s1 t1      :===: Comp s2 t2      -> Comp <$> unifySig s1 s2 <*> unifyValue t1 t2
-    Comp Nothing t1 :===: t2              -> fromValue <$> unifyValue t1 (VComp t2)
-    t1              :===: Comp Nothing t2 -> fromValue <$> unifyValue (VComp t1) t2
+    Comp Nothing t1 :===: t2              -> fromValue <$> unifyValue t1 (TComp t2)
+    t1              :===: Comp Nothing t2 -> fromValue <$> unifyValue (TComp t1) t2
     _               :===: _               -> nope
     where
     nope = couldNotUnify "mismatch" c1 c2
@@ -264,7 +264,7 @@ synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.KType      -> _Type
   S.KInterface -> _Interface
   S.TString    -> _String
-  S.TComp t    -> VComp <$> elabSTelescope t
+  S.TComp t    -> TComp <$> elabSTelescope t
   S.App f a    -> synthExpr f $$ checkExpr a
   S.As t _T    -> as (checkExpr t ::: checkExpr _T)
   S.String s   -> string s
@@ -603,8 +603,8 @@ stripEmptyComp = \case
 
 stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case
-  VComp (Comp Nothing t) -> stripEmpty t
-  VComp t                -> Just t
+  TComp (Comp Nothing t) -> stripEmpty t
+  TComp t                -> Just t
   _                      -> Nothing
 
 

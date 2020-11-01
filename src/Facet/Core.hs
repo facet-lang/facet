@@ -85,7 +85,7 @@ import           Prelude hiding (zip, zipWith)
 data Value
   = KType
   | KInterface
-  | VComp Comp
+  | TComp Comp
   | VLam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var :$ (Pl, Value))
@@ -134,7 +134,7 @@ bindsComp s
 
 fromValue :: Value -> Comp
 fromValue = \case
-  VComp t -> t
+  TComp t -> t
   t       -> Comp mempty t
 
 
@@ -215,9 +215,9 @@ unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
 ($$) :: HasCallStack => Value -> (Pl, Value) -> Value
 VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
 VOp (q :$ es) $$ a = VOp (q :$ (es :> a))
-VComp t       $$ a
+TComp t       $$ a
   | ForAll _ b <- t = case b (snd a) of
-    t@ForAll{} -> VComp t
+    t@ForAll{} -> TComp t
     -- FIXME: it’s not clear to me that it’s ok to discard the signature.
     -- maybe this should still be a nullary computation which gets eliminated with !.
     Comp _ t   -> t
@@ -256,7 +256,7 @@ substWith f = go
   go = \case
     KType         -> KType
     KInterface    -> KInterface
-    VComp t       -> VComp (substCompWith f t)
+    TComp t       -> TComp (substCompWith f t)
     VLam p b      -> VLam p (map clause b)
     VNe (v :$ a)  -> f v $$* fmap (fmap go) a
     VCon c        -> VCon (fmap go c)
@@ -307,7 +307,7 @@ applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution h
 generalize :: Subst -> Value -> Value
 generalize s v
   | null b    = apply s v
-  | otherwise = VComp (foldr (\ (d, _T) b -> ForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (Comp Nothing (subst (IntMap.mapMaybe tm s <> s') v)) b)
+  | otherwise = TComp (foldr (\ (d, _T) b -> ForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (Comp Nothing (subst (IntMap.mapMaybe tm s <> s') v)) b)
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -327,7 +327,7 @@ generalizeComp s v
 -- FIXME: this doesn’t check whether the value is already eta-long.
 etaExpand :: Value ::: Type -> Value
 etaExpand (v ::: _T) = case _T of
-  VComp _T -> go v _T
+  TComp _T -> go v _T
   _        -> v
   where
   go v = \case
@@ -349,7 +349,7 @@ sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
   KType         -> SKind
   KInterface    -> SKind
-  VComp t       -> sortOfComp ctx t
+  TComp t       -> sortOfComp ctx t
   VLam{}        -> STerm
   VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
   VCon _        -> STerm
