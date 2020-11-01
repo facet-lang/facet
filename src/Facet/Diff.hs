@@ -22,8 +22,8 @@ del = go IntMap.empty
     (Var{}, _)               -> Nothing
     (Hole n1, Hole n2)       -> m <$ guard (n1 == n2)
     (Hole{}, _)              -> Nothing
-    (Type, Type)             -> pure m
-    (Type, _)                -> Nothing
+    (KType, KType)           -> pure m
+    (KType, _)               -> Nothing
     (TInterface, TInterface) -> pure m
     (TInterface, _)          -> Nothing
     (TString, TString)       -> pure m

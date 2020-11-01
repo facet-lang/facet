@@ -42,7 +42,7 @@ import Facet.Syntax
 data Expr a
   = Var MQName
   | Hole Name
-  | Type
+  | KType
   | TInterface
   | TString
   | TComp (Ann (Comp a))
