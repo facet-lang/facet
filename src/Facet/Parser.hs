@@ -294,6 +294,13 @@ mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy co
   where
   comp = ident tnameStyle
 
+mqname :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann N.MQName)
+mqname name = token (anned (runUnspaced (mk <$> many (comp <* dot) <*> Unspaced name)))
+  where
+  mk []     = (Nothing N.:?)
+  mk (n:ns) = (Just (foldl' (N.:.) (N.MName n) ns) N.:?)
+  comp = ident tnameStyle
+
 qname :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann N.QName)
 qname = token (anned (runUnspaced (fmap (N.:.:) . foldl' (N.:.) . N.MName <$> comp <* dot <*> many (comp <* dot) <*> (dename <|> dtname))))
   where
