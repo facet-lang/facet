@@ -13,13 +13,11 @@ module Facet.Name
 , QName(..)
 , moduleName
 , DName(..)
-, unEName
 , Assoc(..)
 , Op(..)
 , OpN(..)
 ) where
 
-import           Control.Effect.Empty
 import           Data.Functor.Classes (showsUnaryWith)
 import qualified Data.IntSet as IntSet
 import           Data.List.NonEmpty hiding (cons)
@@ -137,11 +135,6 @@ instance P.Pretty DName where
     E n -> P.pretty n
     T n -> P.pretty n
     O o -> P.pretty o
-
-unEName :: Has Empty sig m => DName -> m UName
-unEName = \case
-  E n -> pure n
-  _   -> empty
 
 
 -- | Associativity of an infix operator.
