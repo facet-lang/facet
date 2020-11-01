@@ -125,7 +125,9 @@ unify = unifyComp
 
     -- FIXME: unify the signatures
     unifySig s1 _ = pure s1
-    -- unifySig s1 s2 = unless (length s1 == length s2) nope *> sequenceA (zipWith go s1 s2)
+    -- unifySig Nothing Nothing     = pure Nothing
+    -- unifySig (Just s1) (Just s2) = Just <$ unless (length s1 == length s2) nope <*> sequenceA (zipWith unifyValue s1 s2)
+    -- unifySig _         _         = nope
 
   solve (n :=: val') = do
     subst <- get
