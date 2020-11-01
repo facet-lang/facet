@@ -144,7 +144,7 @@ unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
 data Clause = Clause
-  { pattern :: Pattern (UName ::: Value)
+  { pattern :: Pattern (Name ::: Value)
   , branch  :: Pattern Value -> Value
   }
 
@@ -154,7 +154,7 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 
 data Binding = Binding
   { pl    :: Pl
-  , name  :: Maybe UName
+  , name  :: Maybe Name
   , delta :: Maybe [Value]
   , type' :: Value
   }
@@ -396,12 +396,12 @@ decls_ = lens decls (\ m decls -> m{ decls })
 
 
 -- FIXME: produce multiple results, if they exist.
-lookupC :: Has Empty sig m => UName -> Module -> m (QName :=: Maybe Def ::: Comp)
+lookupC :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
 lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
   matchDef (Decl   d     _)  = maybe empty pure d >>= unDData >>= matchWith matchCon
-  matchCon (n' :=: v ::: _T) = (name :.: U n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
+  matchCon (n' :=: v ::: _T) = (name :.: n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
@@ -420,15 +420,15 @@ data Decl = Decl
 
 data Def
   = DTerm Value
-  | DData [UName :=: Value ::: Comp]
-  | DInterface [UName ::: Comp]
+  | DData [Name :=: Value ::: Comp]
+  | DInterface [Name ::: Comp]
 
-unDData :: Has Empty sig m => Def -> m [UName :=: Value ::: Comp]
+unDData :: Has Empty sig m => Def -> m [Name :=: Value ::: Comp]
 unDData = \case
   DData cs -> pure cs
   _        -> empty
 
-unDInterface :: Has Empty sig m => Def -> m [UName ::: Comp]
+unDInterface :: Has Empty sig m => Def -> m [Name ::: Comp]
 unDInterface = \case
   DInterface cs -> pure cs
   _             -> empty

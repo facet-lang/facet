@@ -41,7 +41,7 @@ import Facet.Syntax
 
 data Expr a
   = Var (Maybe MName) Name
-  | Hole UName
+  | Hole Name
   | Type
   | TInterface
   | TString
@@ -83,7 +83,7 @@ data Binding a = Binding
   -- | The names bound by this value. 'Nothing' indicates an unnamed binding (i.e. a regular old function type argument like @A -> B@), whereas 'Just' indicates one or more names are bound to a single type (e.g. a quantifier like @{ A, B : Type } -> C@).
   --
   -- This technically represents the same number of (total) cases as @[]@ would, but forces disjoint handling so we don’t accidentally e.g. bind or apply over a non-binding argument and truncate the list.
-  , names :: Maybe (NonEmpty UName)
+  , names :: Maybe (NonEmpty Name)
   -- | The signature, if any, provided at this position.
   --
   -- 'Nothing' indicates a value type; 'Just' with an empty list indicates a thunk with the ambient effects; 'Just' with one or more interfaces indicates that this position provides these effects. (Note that this can, in general, also hold signature variables.)
@@ -112,11 +112,11 @@ deriving instance Show a => Show (Clause a)
 
 data Pattern a
   = PWildcard
-  | PVar UName
-  | PCon UName [Ann (Pattern a)]
-  | PEff UName [Ann (Pattern a)] UName
+  | PVar Name
+  | PCon Name [Ann (Pattern a)]
+  | PEff Name [Ann (Pattern a)] Name
   -- | Catch-all effect pattern. Matches values and effect operations.
-  | PAll UName
+  | PAll Name
   deriving (Foldable, Functor, Traversable)
 
 deriving instance Eq   a => Eq   (Pattern a)
@@ -133,8 +133,8 @@ deriving instance Show a => Show (Decl a)
 
 
 data Def a
-  = DataDef [Ann (UName ::: Ann (Comp a))]
-  | InterfaceDef [Ann (UName ::: Ann (Comp a))]
+  = DataDef [Ann (Name ::: Ann (Comp a))]
+  | InterfaceDef [Ann (Name ::: Ann (Comp a))]
   | TermDef (Ann (Expr a))
   deriving (Foldable, Functor, Traversable)
 

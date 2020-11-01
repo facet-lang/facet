@@ -181,8 +181,8 @@ resolveWith lookup m n = asks lookup >>= \case
 resolve :: Name -> Elab (QName :=: Maybe Def ::: Comp)
 resolve n = resolveWith (lookupD n) Nothing n
 
-resolveC :: UName -> Elab (QName :=: Maybe Def ::: Comp)
-resolveC n = resolveWith (lookupC n) Nothing (U n)
+resolveC :: Name -> Elab (QName :=: Maybe Def ::: Comp)
+resolveC n = resolveWith (lookupC n) Nothing n
 
 resolveQ :: QName -> Elab (QName :=: Maybe Def ::: Comp)
 resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
@@ -197,18 +197,15 @@ global :: QName ::: Comp -> Synth Value
 global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 
 lookupInContext :: Name -> Context Type -> Maybe (Level, Type)
-lookupInContext n ctx = (`lookupLevel` ctx) =<< eOrT n
-  where
-  eOrT (U n) = Just n
-  eOrT _     = Nothing
+lookupInContext = lookupLevel
 
-lookupInSig :: Maybe MName -> UName -> Module -> Graph -> [Value] -> Maybe (QName ::: Comp)
+lookupInSig :: Maybe MName -> Name -> Module -> Graph -> [Value] -> Maybe (QName ::: Comp)
 lookupInSig m n mod graph = matchWith $ \case
   VNe (Global q@(m':.:_) :$ _) -> do
     guard (maybe True (== m') m)
     (_ :=: Just (DInterface defs) ::: _) <- lookupQ q mod graph
     _T <- matchWith (\ (n' ::: _T) -> _T <$ guard (n' == n)) defs
-    pure $ m':.:U n ::: _T
+    pure $ m':.:n ::: _T
   _                            -> Nothing
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
@@ -221,17 +218,15 @@ var m n = Synth $ trace "var" $ ask >>= \ ctx -> case m of
     -> pure (free i ::: _T)
   _ -> do
     (mod, graph, sig) <- (,,) <$> ask <*> ask <*> ask
-    case n of
-      U n
-        | Just (n ::: _T) <- lookupInSig m n mod graph sig
-        -> do
-          n ::: _T <- instantiate (VOp (n :$ Nil) ::: _T)
-          pure $ n ::: VComp _T
+    case lookupInSig m n mod graph sig of
+      Just (n ::: _T) -> do
+        n ::: _T <- instantiate (VOp (n :$ Nil) ::: _T)
+        pure $ n ::: VComp _T
       _ -> do
         n :=: _ ::: _T <- resolveMD m n
         synth $ global (n ::: _T)
 
-hole :: UName -> Check a
+hole :: Name -> Check a
 hole n = Check $ \ _T -> err $ Hole n _T
 
 ($$) :: Synth Value -> Check Value -> Synth Value
@@ -249,13 +244,13 @@ elabBinder b = do
   b' <- b (free d)
   pure $ \ v -> C.bind d v b'
 
-elabBinders :: (Traversable t, Has (Reader (Context Type)) sig m) => t (UName ::: Type) -> (t (UName ::: Type) -> m Value) -> m (t Type -> Value)
+elabBinders :: (Traversable t, Has (Reader (Context Type)) sig m) => t (Name ::: Type) -> (t (Name ::: Type) -> m Value) -> m (t Type -> Value)
 elabBinders p b = do
   d <- asks @(Context Type) level
   b' <- b p
   pure $ \ v -> binds (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
-(|-) :: Has (Reader (Context Type)) sig m => UName ::: Type -> m a -> m a
+(|-) :: Has (Reader (Context Type)) sig m => Name ::: Type -> m a -> m a
 t |- b = local @(Context Type) (|> t) b
 
 infix 1 |-
@@ -330,7 +325,7 @@ _String :: Synth Type
 _String = Synth $ pure $ VPrim TString ::: VType
 
 
-forAll :: Check Binding -> (UName ::: Type -> Check Comp) -> Synth Comp
+forAll :: Check Binding -> (Name ::: Type -> Check Comp) -> Synth Comp
 forAll t b = Synth $ trace "forAll" $ do
   -- FIXME: should we check that the signature is empty?
   _T@Binding{ name, type' = _A } <- check (t ::: VType)
@@ -345,7 +340,7 @@ comp s t = Synth $ trace "comp" $ do
   pure $ Comp s' t' ::: VType
 
 
-lam :: UName -> (UName ::: Type -> Check Expr) -> Check Expr
+lam :: Name -> (Name ::: Type -> Check Expr) -> Check Expr
 lam n b = Check $ \ _T -> trace "lam" $ do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (Binding pl _ _ _A, _B) <- expectQuantifier "when checking lambda" _T
@@ -377,7 +372,7 @@ elabClauses cs = Check $ \ _T -> do
 
 
 -- FIXME: check for unique variable names
-elabPattern :: S.Ann (S.Pattern Void) -> (Pattern (UName ::: Type) -> Elab a) -> Check a
+elabPattern :: S.Ann (S.Pattern Void) -> (Pattern (Name ::: Type) -> Elab a) -> Check a
 elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ case p of
   S.PWildcard -> k (PVar (__ ::: _A))
   S.PVar n    -> k (PVar (n  ::: _A))
@@ -422,16 +417,16 @@ string s = Synth $ pure $ VPrim (VString s) ::: VPrim TString
 elabDataDef
   :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => QName ::: Comp
-  -> [S.Ann (UName ::: S.Ann (S.Comp Void))]
+  -> [S.Ann (Name ::: S.Ann (S.Comp Void))]
   -> m [(Name, Decl)]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elabTele $ go (switch (elabSTelescope t)) _T
-    pure $ n :=: con (mname :.: U n) Nil c_T ::: c_T
+    pure $ n :=: con (mname :.: n) Nil c_T ::: c_T
   pure
     $ (dname, Decl (Just (DData cs)) _T)
-    : map (\ (n :=: c ::: c_T) -> (U n, Decl (Just (DTerm c)) c_T)) cs
+    : map (\ (n :=: c ::: c_T) -> (n, Decl (Just (DTerm c)) c_T)) cs
   where
   go k = \case
     Comp _ _                     -> check (k ::: VType)
@@ -448,7 +443,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => Comp
-  -> [S.Ann (UName ::: S.Ann (S.Comp Void))]
+  -> [S.Ann (Name ::: S.Ann (S.Comp Void))]
   -> m Decl
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
@@ -561,7 +556,7 @@ data Reason
   | AmbiguousName (Maybe MName) Name [QName]
   | CouldNotSynthesize String
   | Mismatch String (Either String Type) Type
-  | Hole UName Type
+  | Hole Name Type
 
 
 -- FIXME: apply the substitution before showing this to the user

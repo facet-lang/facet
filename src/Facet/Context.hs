@@ -16,13 +16,13 @@ import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
-newtype Context a = Context { elems :: S.Stack (UName ::: a) }
+newtype Context a = Context { elems :: S.Stack (Name ::: a) }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 empty :: Context a
 empty = Context S.Nil
 
-(|>) :: Context a -> UName ::: a -> Context a
+(|>) :: Context a -> Name ::: a -> Context a
 Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
@@ -30,16 +30,16 @@ infixl 5 |>
 level :: Context a -> Level
 level (Context c) = Level (length c)
 
-names :: Context a -> S.Stack UName
+names :: Context a -> S.Stack Name
 names = fmap tm . elems
 
-(!?) :: Context a -> Index -> Maybe (UName ::: a)
+(!?) :: Context a -> Index -> Maybe (Name ::: a)
 c !? i = elems c S.!? getIndex i
 
-(!) :: HasCallStack => Context a -> Index -> UName ::: a
+(!) :: HasCallStack => Context a -> Index -> Name ::: a
 c ! i = elems c S.! getIndex i
 
-lookupLevel :: UName -> Context a -> Maybe (Level, a)
+lookupLevel :: Name -> Context a -> Maybe (Level, a)
 lookupLevel n c = go (Index 0) $ elems c
   where
   go _ S.Nil                = Nothing

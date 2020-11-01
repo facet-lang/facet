@@ -152,16 +152,16 @@ f $$ a = askingPrec $ \case
 
 data Var
   = Global (Maybe MName) Name
-  | TLocal UName Level
-  | Local UName Level
+  | TLocal Name Level
+  | Local Name Level
   | Metavar Meta
-  | Cons UName
+  | Cons Name
 
 qvar :: QName -> Var
 qvar (m :.: n) = Global (Just m) n
 
 
-printVar :: ((Int -> Print) -> UName -> Level -> Print) -> Var -> Print
+printVar :: ((Int -> Print) -> Name -> Level -> Print) -> Var -> Print
 printVar name = \case
   Global _ n -> setPrec Var (pretty n)
   TLocal n d -> name upper n d
@@ -203,9 +203,8 @@ printTelescope env = \case
           let _T' = sig env s _T
           in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Level (length env)) ::: _T'))
         name p n d
-          | T.null (getUName n)
-          , Ex <- p             = []
-          | otherwise           = [tintro n d]
+          | n == __, Ex <- p = []
+          | otherwise        = [tintro n d]
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printTelescope env' b')
   C.Comp s _T -> sig env s _T
@@ -216,7 +215,7 @@ printTelescope env = \case
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
   $   mname
-  ::: Just (var (Global (Just (MName (T.pack "Kernel"))) (U (UName (T.pack "Module")))))
+  ::: Just (var (Global (Just (MName (T.pack "Kernel"))) (U (T.pack "Module"))))
   :=: (map (\ (C.Import n) -> import' n) is, map def (Map.toList ds))
   where
   def (n, C.Decl Nothing  t) = ann
@@ -236,12 +235,12 @@ printModule (C.Module mname is _ ds) = module_
   module_ (n ::: t :=: (is, ds)) = ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
   defn (a :=: b) = group a <> hardline <> group b
 
-intro, tintro :: UName -> Level -> Print
+intro, tintro :: Name -> Level -> Print
 intro = name lower
 tintro = name upper
 var = printVar name
 name f n d = setPrec Var . annotate (Name d) $
-  if T.null (getUName n) then
+  if n == __ then
     pretty '_' <> f (getLevel d)
   else
     pretty n

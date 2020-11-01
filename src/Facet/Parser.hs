@@ -120,20 +120,20 @@ dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> anne
 interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann (S.Decl Void)))
 interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.InterfaceDef <$> braces (commaSep con)))
 
-con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann (S.Comp Void)))
+con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name ::: S.Ann (S.Comp Void)))
 con = anned ((:::) <$> cname <* colon <*> tcomp)
 
 
 typeSig
   :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p)
-  => p N.UName -- ^ a parser for names occurring in explicit (parenthesized) bindings
+  => p N.Name -- ^ a parser for names occurring in explicit (parenthesized) bindings
   -> p (S.Ann (S.Comp Void))
 typeSig name = anned $ do
   bs1 <- many (try (choice [ imBinding, exBinding name ] <* arrow))
   bs2 <- many (try (nonBinding <* arrow))
   S.Comp (bs1 <> bs2) <$> optional sig <*> type'
 
-exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.UName -> p (S.Ann (S.Binding Void))
+exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann (S.Binding Void))
 -- NB: We map wildcards here (and only here) to __ rather than Nothing so that we mark the argument as bound when elaborating the body. e.g.:
 --
 -- const : { A, B : Type } -> (a : A) -> (_ : B) -> A
@@ -179,7 +179,7 @@ tatom = build monotypeTable $ parens type'
 
 tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
 tvar = choice
-  [ token (anned (runUnspaced (S.free . N.U <$> tname  <?> "variable")))
+  [ token (anned (runUnspaced (S.free <$> tname  <?> "variable")))
   , fmap S.qual <$> qname
   ]
 
@@ -195,7 +195,7 @@ sig = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
-  mkHead cs = (uncurry (foldl' (N.:.) . N.MName) <$> uncons (NE.init cs), N.U (N.UName (NE.last cs)))
+  mkHead cs = (uncurry (foldl' (N.:.) . N.MName) <$> uncons (NE.init cs), N.U (NE.last cs))
   comp = ident tnameStyle
 
 
@@ -226,7 +226,7 @@ clause = S.Clause <$> try (patternP <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
 evar = choice
-  [ token (anned (runUnspaced (S.free . N.U <$> ename <?> "variable")))
+  [ token (anned (runUnspaced (S.free <$> ename <?> "variable")))
     -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
   , try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname)))))
   , fmap S.qual <$> qname
@@ -256,7 +256,7 @@ patternP = choice
 
 -- Names
 
-ename :: (Monad p, TokenParsing p) => p N.UName
+ename :: (Monad p, TokenParsing p) => p N.Name
 ename  = ident enameStyle
 
 oname :: (Monad p, TokenParsing p) => p N.Op
@@ -281,13 +281,13 @@ _onameN = choice
   outOrPre c cs = bool (N.OutfixN c (init cs) (last cs)) (N.PrefixN c cs)
   postOrIn cs = bool (N.PostfixN (NE.init cs) (NE.last cs)) (N.InfixN cs)
 
-cname, tname :: (Monad p, TokenParsing p) => p N.UName
+cname, tname :: (Monad p, TokenParsing p) => p N.Name
 cname = ident cnameStyle
 tname = ident tnameStyle
 
 dename, dtname :: (Monad p, TokenParsing p) => p N.Name
-dename  = N.U <$> ident dnameStyle <|> N.O <$> oname
-dtname  = N.U <$> tname
+dename = N.U <$> ident dnameStyle <|> N.O <$> oname
+dtname = tname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
 mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy comp dot))

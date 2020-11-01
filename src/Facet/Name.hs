@@ -1,6 +1,5 @@
 module Facet.Name
-( UName(..)
-, Index(..)
+( Index(..)
 , Level(..)
 , levelToIndex
 , indexToLevel
@@ -23,21 +22,10 @@ import qualified Data.IntSet as IntSet
 import           Data.List.NonEmpty hiding (cons)
 import           Data.Semigroup
 import           Data.String (IsString(..))
-import           Data.Text (Text, unpack)
+import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Prettyprinter as P
 import           Silkscreen
-
--- | User-supplied name.
-newtype UName = UName { getUName :: Text }
-  deriving (Eq, IsString, Ord)
-
-instance Show UName where
-  showsPrec _ = showString . unpack . getUName
-
-instance P.Pretty UName where
-  pretty = P.pretty . getUName
-
 
 -- | De Bruijn indices, counting up from the binding site to the reference site (“inside out”).
 newtype Index = Index { getIndex :: Int }
@@ -97,8 +85,8 @@ instance (Vars a, Vars b) => Vars (a, b) where
   bind l (a, b) = (bind l a, bind l b)
 
 
-__ :: UName
-__ = UName T.empty
+__ :: Name
+__ = U T.empty
 
 
 -- | Module names.
@@ -125,9 +113,12 @@ moduleName (mname :.: _) = mname
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.
 data Name
-  = U UName
+  = U Text
   | O Op
   deriving (Eq, Ord, Show)
+
+instance IsString Name where
+  fromString = U . fromString
 
 instance P.Pretty Name where
   pretty = \case

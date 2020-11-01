@@ -8,7 +8,6 @@ module Facet.Lexer
 ) where
 
 import Data.Char (isSpace)
-import Data.Coerce
 import Data.Foldable (foldl')
 import Data.Text (Text, pack)
 import Facet.Effect.Parser
@@ -39,9 +38,9 @@ data TokenKind
   | OpIdent String
   | QIdent QName
   | MIdent MName
-  | EIdent UName
-  | TIdent UName
-  | HIdent UName
+  | EIdent Name
+  | TIdent Name
+  | HIdent Name
 
 
 token :: (CharParsing p, Has Parser sig p) => p Token
@@ -67,9 +66,9 @@ kind_ = choice
   , RAngle     <$  char '>' <?> ">"
   , QIdent     <$> ((:.:) <$> mname <* dot <*> choice [ U <$> ename, U <$> tname ])
   , MIdent     <$> mname
-  , EIdent     <$> ename
-  , TIdent     <$> tname
-  , HIdent     <$> ident (char '?') nameChar <?> "hole name"
+  , EIdent . U <$> ename
+  , TIdent . U <$> tname
+  , HIdent . U <$> ident (char '?') nameChar <?> "hole name"
   ]
   where
   mname = foldl' (:.) . MName <$> tcomp <* dot <*> sepBy tcomp dot <?> "module name"
@@ -77,11 +76,11 @@ kind_ = choice
   tname = tcomp <?> "type name"
   dot = char '.' <?> "."
   ecomp = ident (choice [ lower, char '_' ]) nameChar
-  tcomp :: (Coercible t Text, CharParsing p) => p t
+  tcomp :: CharParsing p => p Text
   tcomp = ident (choice [ upper, char '_' ]) nameChar
 
-ident :: (Coercible t Text, CharParsing p) => p Char -> p Char -> p t
-ident i r = fmap (coerce . pack) . (:) <$> i <*> many r
+ident :: CharParsing p => p Char -> p Char -> p Text
+ident i r = fmap pack . (:) <$> i <*> many r
 
 nameChar :: CharParsing p => p Char
 nameChar = choice [ alphaNum, char '_' ]
