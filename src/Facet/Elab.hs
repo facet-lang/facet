@@ -377,7 +377,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
   S.PCon n ps -> do
     q :=: _ ::: _T' <- resolveC n
     _T'' <- inst _T'
-    subpatterns _A _T'' ps $ \ ps' -> k (PCon (q :$ fromList ps'))
+    subpatterns _T'' ps $ \ _T ps' -> unify _A _T *> k (PCon (q :$ fromList ps'))
   -- FIXME: look up the effect in the signature
   -- FIXME: need to get the signature from a Comp, but we haven’t got a Comp
   S.PEff n ps v -> do
@@ -389,7 +389,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
         -> do
           _T'' <- inst _T'
           -- FIXME: given a command of type A… -> B, and expected argument type B', the continuation is of type B -> B' (modulo sigs)
-          subpatterns _A _T'' ps $ \ ps' -> k (PEff q (fromList ps') (v ::: Comp Nothing VType)) -- FIXME: lies
+          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: ForAll (Binding Ex Nothing _T) (const _A)))
       _ -> freeVariable n
   -- FIXME: warn if using PAll with an empty sig.
   S.PAll n -> k (PVar (n  ::: _A))
@@ -398,17 +398,17 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
   -- FIXME: assert that the signature is empty
     ForAll (Binding Im _ _T) _B -> meta _T >>= inst . _B . metavar
     _T                          -> pure _T
-  subpatterns _A = go
+  subpatterns = go
     where
     go _T' = \case
-      []   -> \ k -> unify _T' _A *> k []
+      []   -> \ k -> k _T' []
       p:ps -> \ k -> do
         -- FIXME: assert that the signature is empty
         (Binding _ _ _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
         -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
         v <- metavar <$> meta _A
         check
-          (   elabPattern p (\ p' -> go (_B v) ps (\ ps' -> k (p' : ps')))
+          (   elabPattern p (\ p' -> go (_B v) ps (\ _T ps' -> k _T (p' : ps')))
           ::: _A)
 
 

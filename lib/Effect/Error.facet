@@ -30,5 +30,6 @@ error
 -> [Error E] A
 -> R
 { [ throw e   ; _ ] -> failure e
-, [ catch a h ; k ] -> error (error failure success << k << h) (error failure success << k) a
+# FIXME: infinite loops
+# , [ catch a h ; k ] -> error (error failure success << k << h) (error failure success << k) a
 , a                 -> success a }
