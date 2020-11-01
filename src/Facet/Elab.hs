@@ -99,7 +99,7 @@ unify = unifyComp
     VPrim p1                :===: VPrim p2                -> VPrim p1 <$ unless (p1 == p2) nope
     VPrim{}                 :===: _                       -> nope
     VCon{}                  :===: _                       -> nope
-    VLam{}                  :===: _                       -> nope
+    ELam{}                  :===: _                       -> nope
     VOp{}                   :===: _                       -> nope
     where
     -- FIXME: build and display a diff of the root types
@@ -346,7 +346,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
   (Binding pl _ _A, _B) <- expectQuantifier "when checking lambda" _T
   -- FIXME: extend the signature if _B v is a Comp.
   b' <- elabBinder $ \ v -> check (b (n ::: _A) ::: _B v)
-  pure $ VLam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)]
+  pure $ ELam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)]
 
 thunk :: Check Expr -> Check Expr
 thunk e = Check $ \case
@@ -368,7 +368,7 @@ elabClauses cs = Check $ \ _T -> do
     (   elabPattern p (\ p' -> do
       Clause p' <$> elabBinders p' (foldr (|-) (check (checkExpr b ::: _B'))))
     ::: _A)
-  pure $ VLam Ex cs'
+  pure $ ELam Ex cs'
 
 
 -- FIXME: check for unique variable names
@@ -442,7 +442,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
       pure $ ForAll (Binding Im n _T) (\ v -> bindComp d v _B')
   con q fs = \case
     -- FIXME: can this use lam?
-    ForAll (Binding p n _T) _B -> VLam p [Clause (PVar (fromMaybe __ n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
+    ForAll (Binding p n _T) _B -> ELam p [Clause (PVar (fromMaybe __ n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
     _T                         -> VCon (q :$ fs)
 
 elabInterfaceDef
@@ -482,7 +482,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (
       -- FIXME: use the sig… somehow…
       -- FIXME: should signatures end up in the context?
       b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
-      pure $ VLam p [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
+      pure $ ELam p [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
 
 
 -- Modules

@@ -86,7 +86,7 @@ data Value
   = KType
   | KInterface
   | TComp Comp
-  | VLam Pl [Clause]
+  | ELam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var :$ (Pl, Value))
   | VCon (QName :$ Expr)
@@ -207,7 +207,7 @@ var = VNe . (:$ Nil)
 
 
 unLam :: Has Empty sig m => Value -> m (Pl, [Clause])
-unLam = \case{ VLam n b -> pure (n, b) ; _ -> empty }
+unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 
 -- Elimination
@@ -221,7 +221,7 @@ TComp t       $$ a
     -- FIXME: it’s not clear to me that it’s ok to discard the signature.
     -- maybe this should still be a nullary computation which gets eliminated with !.
     Comp _ t   -> t
-VLam _ b      $$ a = case' (snd a) b
+ELam _ b      $$ a = case' (snd a) b
 _             $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (HasCallStack, Foldable t) => Value -> t (Pl, Value) -> Value
@@ -257,7 +257,7 @@ substWith f = go
     KType         -> KType
     KInterface    -> KInterface
     TComp t       -> TComp (substCompWith f t)
-    VLam p b      -> VLam p (map clause b)
+    ELam p b      -> ELam p (map clause b)
     VNe (v :$ a)  -> f v $$* fmap (fmap go) a
     VCon c        -> VCon (fmap go c)
     VOp (q :$ sp) -> VOp (q :$ fmap (fmap go) sp)
@@ -331,7 +331,7 @@ etaExpand (v ::: _T) = case _T of
   _        -> v
   where
   go v = \case
-    ForAll Binding{ pl, type' } _B -> VLam pl [Clause (PVar (__ ::: type')) (\ var -> let var' = unsafeUnPVar var in go (v $$ (pl, var')) (_B var'))]
+    ForAll Binding{ pl, type' } _B -> ELam pl [Clause (PVar (__ ::: type')) (\ var -> let var' = unsafeUnPVar var in go (v $$ (pl, var')) (_B var'))]
     -- FIXME: should this recur on _T?
     Comp _sig _T                   -> v
 
@@ -350,7 +350,7 @@ sortOf ctx = \case
   KType         -> SKind
   KInterface    -> SKind
   TComp t       -> sortOfComp ctx t
-  VLam{}        -> STerm
+  ELam{}        -> STerm
   VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
   VCon _        -> STerm
   VOp _         -> STerm -- FIXME: will this always be true?
