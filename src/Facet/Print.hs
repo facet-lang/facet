@@ -7,7 +7,7 @@ module Facet.Print
 , ann
   -- * Core printers
 , printValue
-, printTelescope
+, printComp
 , printModule
   -- * Misc
 , intro
@@ -178,7 +178,7 @@ printValue :: Stack Print -> C.Value -> Print
 printValue env = \case
   C.VType -> annotate Type $ pretty "Type"
   C.VInterface -> annotate Type $ pretty "Interface"
-  C.VComp t -> printTelescope env t
+  C.VComp t -> printComp env t
   C.VLam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
   -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
   -- FIXME: should maybe print the quoted variable differently so it stands out.
@@ -197,8 +197,8 @@ printValue env = \case
   where
   d = Level (length env)
 
-printTelescope :: Stack Print -> C.Comp -> Print
-printTelescope env = \case
+printComp :: Stack Print -> C.Comp -> Print
+printComp env = \case
   C.ForAll t b ->
     let (vs, (_, b')) = splitr C.unBind' (d, C.ForAll t b)
         binding env (C.Binding p n s _T) =
@@ -208,7 +208,7 @@ printTelescope env = \case
           | n == __, Ex <- p = []
           | otherwise        = [tintro n d]
         (env', vs') = mapAccumL binding env vs
-    in fn vs' (printTelescope env' b')
+    in fn vs' (printComp env' b')
   C.Comp s _T -> sig env s _T
   where
   d = Level (length env)
@@ -222,16 +222,16 @@ printModule (C.Module mname is _ ds) = module_
   where
   def (n, C.Decl Nothing  t) = ann
     $   var (qvar (mname:.:n))
-    ::: printTelescope Nil t
+    ::: printComp Nil t
   def (n, C.Decl (Just d) t) = ann
     $   var (qvar (mname:.:n))
-    ::: defn (printTelescope Nil t
+    ::: defn (printComp Nil t
     :=: case d of
       C.DTerm b  -> printValue Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printTelescope Nil _T)) cs)
+        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) cs)
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
-        (map (\ (n ::: _T) -> ann (var (Cons n) ::: printTelescope Nil _T)) os))
+        (map (\ (n ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) os))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
   import' n = pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
   module_ (n ::: t :=: (is, ds)) = ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
