@@ -3,6 +3,8 @@ module Facet.Core
   Value(..)
 , Type
 , Expr
+, unForAll
+, unForAll'
 , Clause(..)
 , instantiateClause
 , Binding(..)
@@ -85,6 +87,14 @@ data Value
 
 type Type = Value
 type Expr = Value
+
+
+unForAll :: Has Empty sig m => Type -> m (Binding, Value -> Type)
+unForAll = \case{ TForAll t b -> pure (t, b) ; _ -> empty }
+
+-- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
+unForAll' :: Has Empty sig m => (Level, Type) -> m (Binding, (Level, Type))
+unForAll' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unForAll v
 
 
 data Clause = Clause
