@@ -111,14 +111,14 @@ termDecl = anned $ do
         _ -> pure N.N
       modify (makeOperator (op, assoc) :)
     _      -> pure ()
-  decl <- anned $ S.Decl <$ colon <*> typeSig (choice [ imBinding, exBinding ename ]) type' <*> (S.TermDef <$> comp)
+  decl <- anned $ S.Decl <$ colon <*> typeSig (choice [ imBinding, exBinding ename ]) <*> (S.TermDef <$> comp)
   pure (name, decl)
 
 dataDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann (S.Decl Void)))
-dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> anned (S.Decl <$> typeSig (choice [ imBinding, exBinding tname ]) type' <*> (S.DataDef <$> braces (commaSep con)))
+dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> dtname <* colon <*> anned (S.Decl <$> typeSig (choice [ imBinding, exBinding tname ]) <*> (S.DataDef <$> braces (commaSep con)))
 
 interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.DName, S.Ann (S.Decl Void)))
-interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> anned (S.Decl <$> typeSig (choice [ imBinding, exBinding tname ]) type' <*> (S.InterfaceDef <$> braces (commaSep con)))
+interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> dtname <* colon <*> anned (S.Decl <$> typeSig (choice [ imBinding, exBinding tname ]) <*> (S.InterfaceDef <$> braces (commaSep con)))
 
 con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.UName ::: S.Ann (S.Comp Void)))
 con = anned ((:::) <$> cname <* colon <*> tcomp)
@@ -127,12 +127,11 @@ con = anned ((:::) <$> cname <* colon <*> tcomp)
 typeSig
   :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p)
   => p (S.Ann (S.Binding Void))
-  -> p (S.Ann (S.Expr Void))
   -> p (S.Ann (S.Comp Void))
-typeSig binding body = anned $ do
-  bindings <- many (try (binding <* arrow))
-  -- FIXME: this is too greedy, we need to parse the signature as part of body.
-  S.Comp bindings <$> optional sig <*> body
+typeSig binding = anned $ do
+  bs1 <- many (try (binding <* arrow))
+  bs2 <- many (try (nonBinding <* arrow))
+  S.Comp (bs1 <> bs2) <$> optional sig <*> type'
 
 exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.UName -> p (S.Ann (S.Binding Void))
 -- NB: We map wildcards here (and only here) to __ rather than Nothing so that we mark the argument as bound when elaborating the body. e.g.:
