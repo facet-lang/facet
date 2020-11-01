@@ -355,7 +355,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
 thunk :: Check Expr -> Check Expr
 thunk e = Check $ \case
   -- FIXME: pretty sure this is redundant
-  TSusp (TRet s t) -> extendSig s $ check (e ::: t)
+  -- TSusp (TRet s t) -> extendSig s $ check (e ::: t)
   t                -> check (e ::: t)
 
 force :: Synth Expr -> Synth Expr
@@ -653,8 +653,8 @@ elabWith f = runSubstWith f . runContext . runSig . runElab
 
 check :: (Check a ::: Type) -> Elab a
 check (m ::: _T) = trace "check" $ case _T of
-  -- TRet sig _ -> extendSig sig (runCheck m _T)
-  _          -> runCheck m _T
+  TSusp (TRet sig _) -> extendSig sig (runCheck m _T)
+  _                  -> runCheck m _T
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
 newtype Check a = Check { runCheck :: Type -> Elab a }
