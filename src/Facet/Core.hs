@@ -3,8 +3,13 @@ module Facet.Core
   Value(..)
 , Type
 , Expr
-, unForAll
-, unForAll'
+, Comp(..)
+, substComp
+, bindComp
+, bindsComp
+, fromValue
+, unBind
+, unBind'
 , Clause(..)
 , instantiateClause
 , Binding(..)
@@ -27,10 +32,13 @@ module Facet.Core
 , emptySubst
 , insertSubst
 , apply
+, applyComp
 , generalize
+, generalizeComp
   -- ** Classification
 , Sort(..)
 , sortOf
+, sortOfComp
   -- * Patterns
 , Pattern(..)
 , fill
@@ -75,11 +83,10 @@ import           Prelude hiding (zip, zipWith)
 data Value
   = KType
   | KInterface
-  | TForAll Binding (Type -> Type)
+  | TComp Comp
   | ELam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var :$ (Pl, Value))
-  | TComp [Value] Type
   | ECon (QName :$ Expr)
   | TString
   | EString Text
@@ -90,16 +97,50 @@ type Type = Value
 type Expr = Value
 
 
-unForAll :: Has Empty sig m => Type -> m (Binding, Value -> Type)
-unForAll = \case{ TForAll t b -> pure (t, b) ; _ -> empty }
+-- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
+data Comp
+  = TForAll Binding (Type -> Comp)
+  | Comp (Maybe [Value]) Type
+
+substCompWith :: (Var -> Value) -> Comp -> Comp
+substCompWith f = go
+  where
+  go = \case
+    TForAll t b -> TForAll (binding t) (go . b)
+    Comp s t    -> Comp (map (substWith f) <$> s) (substWith f t)
+
+  binding (Binding p n t) = Binding p n (go t)
+
+substComp :: IntMap.IntMap Value -> Comp -> Comp
+substComp s
+  | IntMap.null s = id
+  | otherwise     = substCompWith (substMeta s)
+
+bindComp :: Level -> Value -> Comp -> Comp
+bindComp k v = bindsComp (IntMap.singleton (getLevel k) v)
+
+bindsComp :: IntMap.IntMap Value -> Comp -> Comp
+bindsComp s
+  | IntMap.null s = id
+  | otherwise     = substCompWith (substFree s)
+
+
+fromValue :: Value -> Comp
+fromValue = \case
+  TComp t -> t
+  t       -> Comp mempty t
+
+
+unBind :: Has Empty sig m => Comp -> m (Binding, Value -> Comp)
+unBind = \case{ TForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unForAll' :: Has Empty sig m => (Level, Type) -> m (Binding, (Level, Type))
-unForAll' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unForAll v
+unBind' :: Has Empty sig m => (Level, Comp) -> m (Binding, (Level, Comp))
+unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
 data Clause = Clause
-  { pattern :: Pattern (Name ::: Type)
+  { pattern :: Pattern (Name ::: Comp)
   , branch  :: Pattern Value -> Value
   }
 
@@ -110,7 +151,7 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 data Binding = Binding
   { pl    :: Pl
   , name  :: Maybe Name
-  , type' :: Type
+  , type' :: Comp
   }
 
 
@@ -164,11 +205,15 @@ unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 -- Elimination
 
--- FIXME: model force as an elimination of TComp.
 ($$) :: HasCallStack => Value -> (Pl, Value) -> Value
 VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
 EOp (q :$ es) $$ a = EOp (q :$ (es :> a))
-TForAll _ b   $$ a = b (snd a)
+TComp t       $$ a
+  | TForAll _ b <- t = case b (snd a) of
+    t@TForAll{} -> TComp t
+    -- FIXME: it’s not clear to me that it’s ok to discard the signature.
+    -- maybe this should still be a nullary computation which gets eliminated with !.
+    Comp _ t    -> t
 ELam _ b      $$ a = case' (snd a) b
 _             $$ _ = error "can’t apply non-neutral/forall type"
 
@@ -204,8 +249,7 @@ substWith f = go
   go = \case
     KType         -> KType
     KInterface    -> KInterface
-    TForAll t b   -> TForAll (binding t) (go . b)
-    TComp s t     -> TComp (map go s) (go t)
+    TComp t       -> TComp (substCompWith f t)
     ELam p b      -> ELam p (map clause b)
     VNe (v :$ a)  -> f v $$* fmap (fmap go) a
     ECon c        -> ECon (fmap go c)
@@ -214,7 +258,6 @@ substWith f = go
     EOp (q :$ sp) -> EOp (q :$ fmap (fmap go) sp)
 
   clause (Clause p b) = Clause p (go . b)
-  binding (Binding p n t) = Binding p n (go t)
 
 -- | Substitute metavars.
 subst :: IntMap.IntMap Value -> Value -> Value
@@ -238,24 +281,36 @@ substMeta :: IntMap.IntMap Value -> Var -> Value
 substMeta s = unVar global free (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) s))
 
 
-type Subst = IntMap.IntMap (Maybe Value ::: Type)
+type Subst = IntMap.IntMap (Maybe Value ::: Comp)
 
 emptySubst :: Subst
 emptySubst = IntMap.empty
 
-insertSubst :: Meta -> Maybe Value ::: Type -> Subst -> Subst
+insertSubst :: Meta -> Maybe Value ::: Comp -> Subst -> Subst
 insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
 
 -- | Apply the substitution to the value.
 apply :: Subst -> Expr -> Value
 apply = subst . IntMap.mapMaybe tm -- FIXME: error if the substitution has holes.
 
+applyComp :: Subst -> Comp -> Comp
+applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution has holes.
+
 
 -- FIXME: generalize terms and types simultaneously
 generalize :: Subst -> Value -> Value
 generalize s v
   | null b    = apply s v
-  | otherwise = foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) _T) (\ v -> bind d v b)) (subst (IntMap.mapMaybe tm s <> s') v) b
+  | otherwise = TComp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (Comp Nothing (subst (IntMap.mapMaybe tm s <> s') v)) b)
+  where
+  (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
+    Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
+    Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
+
+generalizeComp :: Subst -> Comp -> Comp
+generalizeComp s v
+  | null b    = applyComp s v
+  | otherwise = foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
@@ -273,16 +328,20 @@ data Sort
 -- | Classifies values according to whether or not they describe types.
 sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
-  KType                       -> SKind
-  KInterface                  -> SKind
-  TForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
-  TComp _ _T                  -> sortOf ctx _T
-  ELam{}                      -> STerm
-  VNe (h :$ sp)               -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
-  ECon _                      -> STerm
-  TString                     -> SType
-  EString _                   -> STerm
-  EOp _                       -> STerm -- FIXME: will this always be true?
+  KType         -> SKind
+  KInterface    -> SKind
+  TComp t       -> sortOfComp ctx t
+  ELam{}        -> STerm
+  VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
+  ECon _        -> STerm
+  TString       -> SType
+  EString _     -> STerm
+  EOp _         -> STerm -- FIXME: will this always be true?
+
+sortOfComp :: Stack Sort -> Comp -> Sort
+sortOfComp ctx = \case
+  TForAll (Binding _ _ _T) _B -> let _T' = sortOfComp ctx _T in min _T' (sortOfComp (ctx :> _T') (_B (free (Level (length ctx)))))
+  Comp _ _T                   -> sortOf ctx _T
 
 
 -- Patterns
@@ -329,7 +388,7 @@ decls_ = lens decls (\ m decls -> m{ decls })
 
 
 -- FIXME: produce multiple results, if they exist.
-lookupC :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Type)
+lookupC :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
 lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
@@ -337,7 +396,7 @@ lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList 
   matchCon (n' :=: v ::: _T) = (name :.: n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- | Look up effect operations.
-lookupE :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Type)
+lookupE :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
 -- FIXME: produce multiple results, if they exist.
 lookupE n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
   where
@@ -346,7 +405,7 @@ lookupE n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList 
   matchCon (n' ::: _T) = (name :.: n' :=: Nothing ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
-lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Type)
+lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
 lookupD n Module{ name = mname, decls } = maybe empty pure $ do
   Decl d _T <- Map.lookup n decls
   pure $ mname :.: n :=: d ::: _T
@@ -357,23 +416,23 @@ newtype Import = Import { name :: MName }
 -- FIXME: keep track of free variables in declarations so we can work incrementally
 data Decl = Decl
   { def   :: Maybe Def
-  , type' :: Type
+  , type' :: Comp
   }
 
 -- FIXME: submodules
 data Def
   = DTerm Value
   -- FIXME: this should be a module.
-  | DData [Name :=: Value ::: Type]
+  | DData [Name :=: Value ::: Comp]
   -- FIXME: this should be a module.
-  | DInterface [Name ::: Type]
+  | DInterface [Name ::: Comp]
 
-unDData :: Has Empty sig m => Def -> m [Name :=: Value ::: Type]
+unDData :: Has Empty sig m => Def -> m [Name :=: Value ::: Comp]
 unDData = \case
   DData cs -> pure cs
   _        -> empty
 
-unDInterface :: Has Empty sig m => Def -> m [Name ::: Type]
+unDInterface :: Has Empty sig m => Def -> m [Name ::: Comp]
 unDInterface = \case
   DInterface cs -> pure cs
   _             -> empty

@@ -43,6 +43,8 @@ eval = \case
         -> eval $ v $$* sp'
       _ -> pure $ VNe (h :$ sp')
 
+  TComp (Comp Nothing v) -> eval v
+
   EOp op -> Eval $ \ h -> h op
 
   v          -> pure v
