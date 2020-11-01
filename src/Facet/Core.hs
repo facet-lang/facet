@@ -70,10 +70,11 @@ import           Prelude hiding (zip, zipWith)
 
 -- Values
 
+-- FIXME: thunk.
+-- FIXME: force.
 data Value
   = KType
   | KInterface
-  | TSusp Type
   | TForAll Binding (Type -> Type)
   | ELam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
@@ -202,7 +203,6 @@ substWith f = go
   go = \case
     KType         -> KType
     KInterface    -> KInterface
-    TSusp t       -> TSusp (go t)
     TForAll t b   -> TForAll (binding t) (go . b)
     TRet s t      -> TRet (map go s) (go t)
     ELam p b      -> ELam p (map clause b)
@@ -274,7 +274,6 @@ sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
   KType                       -> SKind
   KInterface                  -> SKind
-  TSusp _                     -> SType
   TForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
   TRet _ _T                   -> sortOf ctx _T
   ELam{}                      -> STerm

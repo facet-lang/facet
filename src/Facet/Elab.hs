@@ -85,8 +85,6 @@ unify = unifyValue
     -- FIXME: resolve globals to try to progress past certain inequalities
     VNe (h1 :$ e1)                :===: VNe (h2 :$ e2)                -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
     VNe{}                         :===: _                             -> nope
-    TSusp t1                      :===: TSusp t2                      -> TSusp <$> unifyValue t1 t2
-    TSusp{}                       :===: _                             -> nope
     TForAll (Binding p1 n1 t1) b1 :===: TForAll (Binding p2 _  t2) b2 -> do
       unless (p1 == p2) nope
       t <- unifyValue t1 t2
