@@ -198,6 +198,7 @@ global (q ::: _T) = Synth $ fmap VComp <$> instantiate (C.global q ::: _T)
 lookupInContext :: Name -> Context Type -> Maybe (Level, Type)
 lookupInContext = lookupLevel
 
+-- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 lookupInSig :: MQName -> Module -> Graph -> [Value] -> Maybe (QName ::: Comp)
 lookupInSig (m :? n) mod graph = matchWith $ \case
   VNe (Global q@(m':.:_) :$ _) -> do
