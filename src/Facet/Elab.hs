@@ -378,8 +378,6 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
     q :=: _ ::: _T' <- resolveC n
     _T'' <- inst _T'
     subpatterns _T'' ps $ \ _T ps' -> unify _A _T *> k (PCon (q :$ fromList ps'))
-  -- FIXME: look up the effect in the signature
-  -- FIXME: need to get the signature from a Comp, but we haven’t got a Comp
   S.PEff n ps v -> do
     mod <- ask
     graph <- ask
