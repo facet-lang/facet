@@ -347,6 +347,7 @@ sortOfComp ctx = \case
 
 -- Patterns
 
+-- FIXME: is there any point to splitting this into separate value and effect patterns?
 data Pattern a
   = PVar a
   | PCon (QName :$ Pattern a)
