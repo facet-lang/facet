@@ -10,6 +10,7 @@ module Facet.Core
 , fromValue
 , unBind
 , unBind'
+, unLam
 , Clause(..)
 , instantiateClause
 , Binding(..)
@@ -18,7 +19,6 @@ module Facet.Core
 , global
 , free
 , metavar
-, unLam
   -- ** Elimination
 , ($$)
 , ($$*)
@@ -139,6 +139,10 @@ unBind' :: Has Empty sig m => (Level, Comp) -> m (Binding, (Level, Comp))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
+unLam :: Has Empty sig m => Value -> m (Pl, [Clause])
+unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
+
+
 data Clause = Clause
   { pattern :: Pattern (Name ::: Type)
   , branch  :: Pattern Value -> Value
@@ -198,10 +202,6 @@ metavar = var . Metavar
 
 var :: Var -> Value
 var = VNe . (:$ Nil)
-
-
-unLam :: Has Empty sig m => Value -> m (Pl, [Clause])
-unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 
 -- Elimination
