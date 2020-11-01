@@ -26,7 +26,6 @@ module Facet.Core
 , insertSubst
 , apply
 , generalize
-, etaExpand
   -- ** Classification
 , Sort(..)
 , sortOf
@@ -250,16 +249,6 @@ generalize s v
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
     Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
-
-
--- FIXME: should we define eta-expansion of types?
--- FIXME: this doesn’t check whether the value is already eta-long.
-etaExpand :: Value ::: Type -> Value
-etaExpand (v ::: _T) = go v _T
-  where
-  go v = \case
-    TForAll Binding{ pl, type' } _B -> ELam pl [Clause (PVar (__ ::: type')) (\ var -> let var' = unsafeUnPVar var in go (v $$ (pl, var')) (_B var'))]
-    _                               -> v
 
 
 -- Classification
