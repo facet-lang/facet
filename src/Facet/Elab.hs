@@ -404,6 +404,7 @@ elabPattern (S.Ann s _ p) k = Check $ \ _A -> trace "elabPattern" $ setSpan s $ 
         -- FIXME: assert that the signature is empty
         (Binding _ _ _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
         -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
+        -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
         v <- metavar <$> meta _A
         check
           (   elabPattern p (\ p' -> go (_B v) ps (\ _T ps' -> k _T (p' : ps')))
