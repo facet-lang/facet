@@ -49,8 +49,6 @@ import           Text.Parser.Token.Highlight as Highlight
 -- list literals
 -- string literals
 -- numeric literals
--- resolve module-local definitions in the parser
--- resolve imported definitions in the parser
 
 -- FIXME: allow operators to be introduced and scoped locally
 -- FIXME: signatures bind looser than ->
