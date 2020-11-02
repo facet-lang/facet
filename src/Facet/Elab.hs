@@ -83,6 +83,7 @@ unify :: Type -> Type -> Elab Type
 unify = unifyValue
   where
   unifyValue t1 t2 = trace "unify" $ case t1 :===: t2 of
+    VNe (Metavar v1 :$ Nil) :===: VNe (Metavar v2 :$ Nil) -> if v1 == v2 then pure (metavar v1) else solve (v1 :=: metavar v2)
     VNe (Metavar v :$ Nil)  :===: x                       -> solve (v :=: x)
     x                       :===: VNe (Metavar v :$ Nil)  -> solve (v :=: x)
     -- FIXME: resolve globals to try to progress past certain inequalities
