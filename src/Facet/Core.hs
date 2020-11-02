@@ -459,7 +459,6 @@ lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 newtype Import = Import { name :: MName }
 
 
--- FIXME: submodules
 data Def
   = DTerm Value
   | DData Scope
