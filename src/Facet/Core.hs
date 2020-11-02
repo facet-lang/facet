@@ -57,6 +57,7 @@ module Facet.Core
 , Scope(..)
 , decls_
 , scopeFromList
+, scopeToList
 , lookupScope
 , Import(..)
 , Def(..)
@@ -449,6 +450,9 @@ decls_ = coerced
 
 scopeFromList :: [Name :=: a ::: Comp] -> Scope a
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
+
+scopeToList :: Scope a -> [Name :=: a ::: Comp]
+scopeToList = map (\ (n, v ::: _T) -> (n :=: v ::: _T)) . Map.toList . decls
 
 lookupScope :: Has Empty sig m => Name -> Scope a -> m (Name :=: a ::: Comp)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
