@@ -10,8 +10,8 @@ module Facet.Name
 , __
 , MName(..)
 , QName(..)
-, MQName(..)
 , moduleName
+, MQName(..)
 , Name(..)
 , Assoc(..)
 , Op(..)
