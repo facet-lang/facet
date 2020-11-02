@@ -422,7 +422,7 @@ scope_ = lens scope (\ m scope -> m{ scope })
 lookupC :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
 lookupC n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList (decls scope))
   where
-  matchDef (d ::: _)  = do
+  matchDef (d ::: _) = do
     n :=: v ::: _T <- maybe empty pure d >>= unDData >>= lookupScope n
     pure $ name:.:n :=: v ::: _T
 
@@ -430,7 +430,7 @@ lookupC n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList 
 lookupE :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
 lookupE n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList (decls scope))
   where
-  matchDef (d ::: _)  = do
+  matchDef (d ::: _) = do
     n :=: _ ::: _T <- maybe empty pure d >>= unDInterface >>= lookupScope n
     pure $ name:.:n :=: Nothing ::: _T
 
