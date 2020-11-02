@@ -228,7 +228,7 @@ printModule (C.Module mname is _ ds) = module_
     :=: case d of
       C.DTerm b  -> printValue Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) cs)
+        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) (C.scopeToList cs))
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
         (map (\ (n ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) os))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group

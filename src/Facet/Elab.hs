@@ -439,7 +439,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
     c_T <- elabTele $ go (switch (elabSTelescope t)) _T
     pure $ n :=: con (mname :.: n) Nil c_T ::: c_T
   pure
-    $ (dname, Just (DData cs) ::: _T)
+    $ (dname, Just (DData (scopeFromList cs)) ::: _T)
     : map (\ (n :=: c ::: c_T) -> (n, Just (DTerm c) ::: c_T)) cs
   where
   go k = \case
