@@ -72,7 +72,6 @@ module' = anned $ do
   ops <- get @[Operator (S.Ann (S.Expr Void))]
   pure $ S.Module name imports (map (\ (op, assoc, _) -> (op, assoc)) ops) decls
 
--- FIXME: pick a better syntax for imports, something we can use in the REPL.
 moduleHeader :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (N.MName, [S.Ann S.Import])
 moduleHeader = (,) <$ reserve dnameStyle "module" <*> mname <* colon <* symbol "Module" <*> many import'
 
