@@ -56,6 +56,7 @@ module Facet.Core
 , lookupD
 , Scope(..)
 , decls_
+, scopeFromList
 , lookupScope
 , Import(..)
 , Def(..)
@@ -445,6 +446,9 @@ newtype Scope a = Scope { decls :: Map.Map Name (a ::: Comp) }
 
 decls_ :: Lens (Scope a) (Scope b) (Map.Map Name (a ::: Comp)) (Map.Map Name (b ::: Comp))
 decls_ = coerced
+
+scopeFromList :: [Name :=: a ::: Comp] -> Scope a
+scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
 
 lookupScope :: Has Empty sig m => Name -> Scope a -> m (Name :=: a ::: Comp)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
