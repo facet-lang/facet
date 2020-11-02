@@ -66,7 +66,7 @@ type Type = Expr
 free :: Name -> Expr a
 free = Var . (Nothing :?)
 
-qual :: QName -> Expr a
+qual :: Q Name -> Expr a
 qual (m :.: n) = Var (Just m :? n)
 
 

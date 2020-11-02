@@ -93,11 +93,11 @@ data Value
   | ELam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var :$ (Pl, Value))
-  | ECon (QName :$ Expr)
+  | ECon (Q Name :$ Expr)
   | TString
   | EString Text
   -- | Effect operation and its parameters.
-  | EOp (QName :$ (Pl, Expr))
+  | EOp (Q Name :$ (Pl, Expr))
 
 type Type = Value
 type Expr = Value
@@ -169,7 +169,7 @@ data Binding = Binding
 -- Variables
 
 data Var
-  = Global QName -- ^ Global variables, considered equal by 'QName'.
+  = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
   | Free Level
   | Metavar Meta -- ^ Metavariables, considered equal by 'Level'.
 
@@ -191,14 +191,14 @@ instance Ord Var where
     (Metavar m1, Metavar m2) -> m1 `compare` m2
     (Metavar _,  _)          -> LT
 
-unVar :: (QName -> a) -> (Level -> a) -> (Meta -> a) -> Var -> a
+unVar :: (Q Name -> a) -> (Level -> a) -> (Meta -> a) -> Var -> a
 unVar f g h = \case
   Global  n -> f n
   Free    n -> g n
   Metavar n -> h n
 
 
-global :: QName -> Value
+global :: Q Name -> Value
 global = var . Global
 
 free :: Level -> Value
@@ -379,8 +379,8 @@ sortOfComp ctx = \case
 -- FIXME: is there any point to splitting this into separate value and effect patterns?
 data Pattern a
   = PVar a
-  | PCon (QName :$ Pattern a)
-  | PEff QName (Stack (Pattern a)) a
+  | PCon (Q Name :$ Pattern a)
+  | PEff (Q Name) (Stack (Pattern a)) a
   deriving (Foldable, Functor, Traversable)
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
@@ -419,7 +419,7 @@ scope_ = lens scope (\ m scope -> m{ scope })
 
 
 -- FIXME: produce multiple results, if they exist.
-lookupC :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
+lookupC :: Has Empty sig m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
 lookupC n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList (decls scope))
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
@@ -428,7 +428,7 @@ lookupC n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList 
     pure $ name :.: n :=: v ::: _T
 
 -- | Look up effect operations.
-lookupE :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
+lookupE :: Has Empty sig m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
 -- FIXME: produce multiple results, if they exist.
 lookupE n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList (decls scope))
   where
@@ -438,7 +438,7 @@ lookupE n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList 
     pure $ name :.: n :=: Nothing ::: _T
 
 -- FIXME: produce multiple results, if they exist.
-lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
+lookupD :: Has Empty sig m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
 lookupD n Module{ name, scope } = maybe empty pure $ do
   d ::: _T <- Map.lookup n (decls scope)
   pure $ name :.: n :=: d ::: _T

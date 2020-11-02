@@ -159,7 +159,7 @@ data Var
   | Metavar Meta
   | Cons Name
 
-qvar :: QName -> Var
+qvar :: Q Name -> Var
 qvar (m :.: n) = Global (Just m :? n)
 
 

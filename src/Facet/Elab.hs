@@ -172,9 +172,9 @@ as (m ::: _T) = Synth $ do
   pure $ a ::: _T'
 
 resolveWith
-  :: (forall sig m . Has Empty sig m => Module -> m (QName :=: Maybe Def ::: Comp))
+  :: (forall sig m . Has Empty sig m => Module -> m (Q Name :=: Maybe Def ::: Comp))
   -> MQName
-  -> Elab (QName :=: Maybe Def ::: Comp)
+  -> Elab (Q Name :=: Maybe Def ::: Comp)
 resolveWith lookup n = asks lookup >>= \case
   Just (n' :=: d ::: _T) -> pure $ n' :=: d ::: _T
   Nothing                -> do
@@ -185,29 +185,29 @@ resolveWith lookup n = asks lookup >>= \case
       -- FIXME: resolve ambiguities by type.
       _                 -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) defs)
 
-resolve :: Name -> Elab (QName :=: Maybe Def ::: Comp)
+resolve :: Name -> Elab (Q Name :=: Maybe Def ::: Comp)
 resolve n = resolveWith (lookupD n) (Nothing :? n)
 
-resolveC :: MQName -> Elab (QName :=: Maybe Def ::: Comp)
+resolveC :: MQName -> Elab (Q Name :=: Maybe Def ::: Comp)
 resolveC n@(_ :? n') = resolveWith (lookupC n') n
 
-resolveQ :: QName -> Elab (QName :=: Maybe Def ::: Comp)
+resolveQ :: Q Name -> Elab (Q Name :=: Maybe Def ::: Comp)
 resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
   Just (q' :=: d ::: _T) -> pure $ q' :=: d ::: _T
   Nothing                -> freeVariable (Just m :? n)
 
-resolveMD :: MQName -> Elab (QName :=: Maybe Def ::: Comp)
+resolveMD :: MQName -> Elab (Q Name :=: Maybe Def ::: Comp)
 resolveMD (m :? n) = maybe (resolve n) (resolveQ . (:.: n)) m
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: QName ::: Comp -> Synth Value
+global :: Q Name ::: Comp -> Synth Value
 global (q ::: _T) = Synth $ instantiate (C.global q ::: _T)
 
 lookupInContext :: Name -> Context Type -> Maybe (Level, Type)
 lookupInContext = lookupLevel
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
-lookupInSig :: MQName -> Module -> Graph -> [Value] -> Maybe (QName ::: Comp)
+lookupInSig :: MQName -> Module -> Graph -> [Value] -> Maybe (Q Name ::: Comp)
 lookupInSig (m :? n) mod graph = matchWith $ \case
   VNe (Global q@(m':.:_) :$ _) -> do
     guard (maybe True (== m') m)
@@ -430,7 +430,7 @@ string s = Synth $ pure $ EString s ::: TString
 
 elabDataDef
   :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
-  => QName ::: Comp
+  => Q Name ::: Comp
   -> [S.Ann (Name ::: S.Ann (S.Comp Void))]
   -> m [Name :=: Maybe Def ::: Comp]
 -- FIXME: check that all constructors return the datatype.
@@ -567,7 +567,7 @@ data Err = Err
 data Reason
   = FreeVariable MQName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
-  | AmbiguousName MQName [QName]
+  | AmbiguousName MQName [Q Name]
   | CouldNotSynthesize String
   | Mismatch String (Either String Type) Type
   | Hole Name Type
@@ -593,7 +593,7 @@ couldNotSynthesize = err . CouldNotSynthesize
 freeVariable :: MQName -> Elab a
 freeVariable n = err $ FreeVariable n
 
-ambiguousName :: MQName -> [QName] -> Elab a
+ambiguousName :: MQName -> [Q Name] -> Elab a
 ambiguousName n qs = err $ AmbiguousName n qs
 
 

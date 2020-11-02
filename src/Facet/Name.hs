@@ -10,7 +10,7 @@ module Facet.Name
 , __
 , MName(..)
 , moduleNameFromList
-, QName(..)
+, Q(..)
 , moduleName
 , MQName(..)
 , Name(..)
@@ -103,13 +103,13 @@ moduleNameFromList list = maybe (MName (pure mempty)) MName (NE.nonEmpty list)
 
 
 -- | Qualified names, consisting of a module name and declaration name.
-data QName = MName :.: Name
+data Q a = MName :.: a
   deriving (Eq, Ord, Show)
 
-instance P.Pretty QName where
+instance P.Pretty a => P.Pretty (Q a) where
   pretty (m :.: n) = pretty m <> dot <> pretty n
 
-moduleName :: QName -> MName
+moduleName :: Q a -> MName
 moduleName (mname :.: _) = mname
 
 

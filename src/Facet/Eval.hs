@@ -35,10 +35,10 @@ eval = \case
 
 -- Machinery
 
-runEval :: (QName :$ (Pl, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: (Q Name :$ (Pl, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (QName :$ (Pl, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (Q Name :$ (Pl, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)

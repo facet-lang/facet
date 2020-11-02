@@ -298,7 +298,7 @@ mqname name = token (runUnspaced (mk <$> many (comp <* dot) <*> Unspaced name))
   mk (n:ns) = (Just (N.MName (n NE.:| ns)) N.:?)
   comp = ident tnameStyle
 
-qname :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann N.QName)
+qname :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann (N.Q N.Name))
 qname name = token (anned (runUnspaced (mk <$> NE.some1 (comp <* dot) <*> Unspaced name)))
   where
   mk (n NE.:| ns) = (N.MName (n NE.:| ns) N.:.:)
