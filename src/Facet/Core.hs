@@ -433,9 +433,9 @@ lookupE n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList 
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
-lookupD n Module{ name = mname, decls } = maybe empty pure $ do
+lookupD n Module{ name, decls } = maybe empty pure $ do
   Decl d _T <- Map.lookup n decls
-  pure $ mname :.: n :=: d ::: _T
+  pure $ name :.: n :=: d ::: _T
 
 
 newtype Import = Import { name :: MName }
