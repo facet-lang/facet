@@ -95,7 +95,7 @@ newtype MName = MName (NE.NonEmpty Text)
   deriving (Eq, Ord, Show)
 
 instance P.Pretty MName where
-  pretty (MName (n NE.:| s))  = concatWith (surround dot) (map pretty (n:s))
+  pretty (MName (n NE.:| s)) = concatWith (surround dot) (map pretty (n:s))
 
 
 -- | Qualified names, consisting of a module name and declaration name.
