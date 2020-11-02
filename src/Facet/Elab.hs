@@ -212,7 +212,7 @@ lookupInSig (m :? n) mod graph = matchWith $ \case
   VNe (Global q@(m':.:_) :$ _) -> do
     guard (maybe True (== m') m)
     (_ :=: Just (DInterface defs) ::: _) <- lookupQ q mod graph
-    _T <- matchWith (\ (n' ::: _T) -> _T <$ guard (n' == n)) defs
+    _ :=: _ ::: _T <- lookupScope n defs
     pure $ m':.:n ::: _T
   _                            -> Nothing
 
@@ -461,8 +461,8 @@ elabInterfaceDef
   -> m (Maybe Def ::: Comp)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
-    (n :::) <$> elabTele (go (check (switch (elabSTelescope t) ::: KType)) _T)
-  pure $ Just (DInterface cs) ::: _T
+    (\ _T -> n :=: () ::: _T) <$> elabTele (go (check (switch (elabSTelescope t) ::: KType)) _T)
+  pure $ Just (DInterface (scopeFromList cs)) ::: _T
   where
   go k = \case
     -- FIXME: check that the interface is a member of the sig.

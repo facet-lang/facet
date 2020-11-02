@@ -433,8 +433,9 @@ lookupE :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
 lookupE n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList (decls scope))
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
-  matchDef (d  ::: _)  = maybe empty pure d >>= unDInterface >>= matchWith matchCon
-  matchCon (n' ::: _T) = (name :.: n' :=: Nothing ::: _T) <$ guard (n == n')
+  matchDef (d ::: _)  = do
+    n :=: _ ::: _T <- maybe empty pure d >>= unDInterface >>= lookupScope n
+    pure $ name :.: n :=: Nothing ::: _T
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
@@ -466,15 +467,14 @@ newtype Import = Import { name :: MName }
 data Def
   = DTerm Value
   | DData (Scope Value)
-  -- FIXME: this should be a module.
-  | DInterface [Name ::: Comp]
+  | DInterface (Scope ())
 
 unDData :: Has Empty sig m => Def -> m (Scope Value)
 unDData = \case
   DData cs -> pure cs
   _        -> empty
 
-unDInterface :: Has Empty sig m => Def -> m [Name ::: Comp]
+unDInterface :: Has Empty sig m => Def -> m (Scope ())
 unDInterface = \case
   DInterface cs -> pure cs
   _             -> empty
