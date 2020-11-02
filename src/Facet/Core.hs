@@ -54,6 +54,7 @@ module Facet.Core
 , lookupC
 , lookupE
 , lookupD
+, Scope(..)
 , Import(..)
 , Def(..)
 , unDData
@@ -410,7 +411,7 @@ imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })
 
 decls_ :: Lens' Module (Map.Map Name (Maybe Def ::: Comp))
-decls_ = lens decls (\ m decls -> m{ decls })
+decls_ = lens (\ Module{decls} -> decls) (\ (Module n i o _) decls -> Module n i o decls)
 
 
 -- FIXME: produce multiple results, if they exist.
@@ -435,6 +436,9 @@ lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
 lookupD n Module{ name, decls } = maybe empty pure $ do
   d ::: _T <- Map.lookup n decls
   pure $ name :.: n :=: d ::: _T
+
+
+newtype Scope a = Scope { decls :: Map.Map Name (a ::: Comp) }
 
 
 newtype Import = Import { name :: MName }
