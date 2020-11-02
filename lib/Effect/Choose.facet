@@ -7,4 +7,4 @@ interface Choose : Interface
 
 _ | _ [left-assoc]
 : { A : Type } -> (l : [Choose] A) -> (r : [Choose] A) -> [Choose] A
-{ if choose! r l  }
+{ if choose! r l }
