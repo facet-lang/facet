@@ -48,6 +48,7 @@ import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Source
 import           Facet.Style
+import qualified Facet.Surface as Import (Import(..))
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Silkscreen
@@ -113,7 +114,7 @@ reloadModules = do
   outputDocLn (fillSep [status, reflow "modules loaded."])
   where
   ratio n d = pretty n <+> pretty "of" <+> pretty d
-  toNode (n, path, source, imports) = let imports' = map ((S.name :: S.Import -> MName) . S.out) imports in Node n imports' (n, path, source, imports')
+  toNode (n, path, source, imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
 
 loadModuleHeader :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
 loadModuleHeader searchPaths target = do
