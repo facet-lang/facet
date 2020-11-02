@@ -9,6 +9,7 @@ module Facet.Name
 , Vars(..)
 , __
 , MName(..)
+, moduleNameFromList
 , QName(..)
 , moduleName
 , MQName(..)
@@ -96,6 +97,9 @@ newtype MName = MName (NE.NonEmpty Text)
 
 instance P.Pretty MName where
   pretty (MName (n NE.:| s)) = concatWith (surround dot) (map pretty (n:s))
+
+moduleNameFromList :: [Text] -> MName
+moduleNameFromList list = maybe (MName (pure mempty)) MName (NE.nonEmpty list)
 
 
 -- | Qualified names, consisting of a module name and declaration name.
