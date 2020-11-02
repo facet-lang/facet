@@ -30,7 +30,7 @@ eval = \case
 
   EOp op -> Eval $ \ h -> h op
 
-  v          -> pure v
+  v -> pure v
 
 
 -- Machinery
