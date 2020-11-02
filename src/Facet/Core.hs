@@ -67,7 +67,7 @@ module Facet.Core
 ) where
 
 import           Control.Effect.Empty
-import           Control.Lens (Lens, Lens', coerced, lens)
+import           Control.Lens (Lens', coerced, lens)
 import           Data.Foldable (foldl', toList)
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
@@ -405,7 +405,7 @@ data Module = Module
   -- FIXME: record source references to operators to contextualize parse errors.
   , operators :: [(Op, Assoc)]
   -- FIXME: record source references to definitions to contextualize ambiguous name errors.
-  , scope     :: Scope (Maybe Def)
+  , scope     :: Scope
   }
 
 name_ :: Lens' Module MName
@@ -414,7 +414,7 @@ name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
 imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })
 
-scope_ :: Lens' Module (Scope (Maybe Def))
+scope_ :: Lens' Module Scope
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
@@ -425,7 +425,7 @@ lookupC n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList 
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
   matchDef (d ::: _)  = do
     n :=: v ::: _T <- maybe empty pure d >>= unDData >>= lookupScope n
-    pure $ name :.: n :=: Just (DTerm v) ::: _T
+    pure $ name :.: n :=: v ::: _T
 
 -- | Look up effect operations.
 lookupE :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
@@ -444,19 +444,19 @@ lookupD n Module{ name, scope } = maybe empty pure $ do
   pure $ name :.: n :=: d ::: _T
 
 
-newtype Scope a = Scope { decls :: Map.Map Name (a ::: Comp) }
+newtype Scope = Scope { decls :: Map.Map Name (Maybe Def ::: Comp) }
   deriving (Monoid, Semigroup)
 
-decls_ :: Lens (Scope a) (Scope b) (Map.Map Name (a ::: Comp)) (Map.Map Name (b ::: Comp))
+decls_ :: Lens' Scope (Map.Map Name (Maybe Def ::: Comp))
 decls_ = coerced
 
-scopeFromList :: [Name :=: a ::: Comp] -> Scope a
+scopeFromList :: [Name :=: Maybe Def ::: Comp] -> Scope
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
 
-scopeToList :: Scope a -> [Name :=: a ::: Comp]
+scopeToList :: Scope -> [Name :=: Maybe Def ::: Comp]
 scopeToList = map (\ (n, v ::: _T) -> (n :=: v ::: _T)) . Map.toList . decls
 
-lookupScope :: Has Empty sig m => Name -> Scope a -> m (Name :=: a ::: Comp)
+lookupScope :: Has Empty sig m => Name -> Scope -> m (Name :=: Maybe Def ::: Comp)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
@@ -466,15 +466,15 @@ newtype Import = Import { name :: MName }
 -- FIXME: submodules
 data Def
   = DTerm Value
-  | DData (Scope Value)
-  | DInterface (Scope ())
+  | DData Scope
+  | DInterface Scope
 
-unDData :: Has Empty sig m => Def -> m (Scope Value)
+unDData :: Has Empty sig m => Def -> m Scope
 unDData = \case
   DData cs -> pure cs
   _        -> empty
 
-unDInterface :: Has Empty sig m => Def -> m (Scope ())
+unDInterface :: Has Empty sig m => Def -> m Scope
 unDInterface = \case
   DInterface cs -> pure cs
   _             -> empty

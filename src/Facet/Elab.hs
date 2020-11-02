@@ -432,15 +432,15 @@ elabDataDef
   :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => QName ::: Comp
   -> [S.Ann (Name ::: S.Ann (S.Comp Void))]
-  -> m [(Name, Maybe Def ::: Comp)]
+  -> m [Name :=: Maybe Def ::: Comp]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elabTele $ go (switch (elabSTelescope t)) _T
-    pure $ n :=: con (mname :.: n) Nil c_T ::: c_T
+    pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T)) ::: c_T
   pure
-    $ (dname, Just (DData (scopeFromList cs)) ::: _T)
-    : map (\ (n :=: c ::: c_T) -> (n, Just (DTerm c) ::: c_T)) cs
+    $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
+    : cs
   where
   go k = \case
     TRet _ _                     -> check (k ::: KType)
@@ -461,7 +461,7 @@ elabInterfaceDef
   -> m (Maybe Def ::: Comp)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
-    (\ _T -> n :=: () ::: _T) <$> elabTele (go (check (switch (elabSTelescope t) ::: KType)) _T)
+    (\ _T -> n :=: Nothing ::: _T) <$> elabTele (go (check (switch (elabSTelescope t) ::: KType)) _T)
   pure $ Just (DInterface (scopeFromList cs)) ::: _T
   where
   go k = \case
@@ -516,7 +516,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
       case def of
         S.DataDef cs -> do
           decls <- runModule $ elabDataDef (mname :.: dname ::: _T) cs
-          Nothing <$ for_ decls (\ (dname, decl) -> scope_.decls_.at dname .= Just decl)
+          Nothing <$ for_ decls (\ (dname :=: decl) -> scope_.decls_.at dname .= Just decl)
 
         S.InterfaceDef os -> do
           decl <- runModule $ elabInterfaceDef _T os
