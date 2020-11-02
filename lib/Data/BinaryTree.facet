@@ -1,4 +1,4 @@
-module Data.BinaryTree
+module Data.BinaryTree : Module
 
 # import Algebra.Monoid
 # import Algebra.Semigroup
