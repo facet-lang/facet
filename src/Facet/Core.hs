@@ -439,6 +439,7 @@ lookupD n Module{ name, decls } = maybe empty pure $ do
 
 
 newtype Scope a = Scope { decls :: Map.Map Name (a ::: Comp) }
+  deriving (Monoid, Semigroup)
 
 
 newtype Import = Import { name :: MName }
