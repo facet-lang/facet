@@ -26,6 +26,7 @@ import           Control.Lens (Lens', at, lens)
 import           Control.Monad ((<=<))
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
@@ -87,7 +88,7 @@ kernel = Module kernelName [] [] $ Scope $ Map.fromList
   ]
   where
   typeName = U (TS.pack "Type")
-  kernelName = MName (TS.pack "Kernel")
+  kernelName = MName (TS.pack "Kernel" NE.:| [])
 
 
 -- Module loading
@@ -145,8 +146,7 @@ resolveName searchPaths name = do
       [] -> []
       _  -> [ nest 2 (reflow "search paths:" <\> concatWith (<\>) (map pretty searchPaths)) ]
   where
-  toPath (name :. component) = toPath name FP.</> TS.unpack component
-  toPath (MName component)   = TS.unpack component
+  toPath (MName components) = foldr1 (FP.</>) (TS.unpack <$> components)
 
 
 -- Errors

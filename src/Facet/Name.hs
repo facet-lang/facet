@@ -20,7 +20,7 @@ module Facet.Name
 
 import           Data.Functor.Classes (showsUnaryWith)
 import qualified Data.IntSet as IntSet
-import           Data.List.NonEmpty hiding (cons)
+import qualified Data.List.NonEmpty as NE
 import           Data.Semigroup
 import           Data.String (IsString(..))
 import           Data.Text (Text)
@@ -91,14 +91,11 @@ __ = U T.empty
 
 
 -- | Module names.
-data MName
-  = MName Text
-  | MName :. Text
+newtype MName = MName (NE.NonEmpty Text)
   deriving (Eq, Ord, Show)
 
 instance P.Pretty MName where
-  pretty (n :. s)  = pretty n <> dot <> pretty s
-  pretty (MName s) = pretty s
+  pretty (MName (n NE.:| s))  = concatWith (surround dot) (map pretty (n:s))
 
 
 -- | Qualified names, consisting of a module name and declaration name.
@@ -165,7 +162,7 @@ instance P.Pretty Op where
 data OpN
   = PrefixN  Text   [Text]
   | PostfixN [Text] Text
-  | InfixN   (NonEmpty Text)
+  | InfixN   (NE.NonEmpty Text)
   | OutfixN Text [Text] Text
   deriving (Eq, Ord, Show)
 

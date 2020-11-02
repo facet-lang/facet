@@ -190,7 +190,7 @@ sig = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
-  mkHead cs = (uncurry (foldl' (N.:.) . N.MName) <$> uncons (NE.init cs)) N.:? N.U (NE.last cs)
+  mkHead cs = (uncurry (fmap N.MName . foldr (NE.<|) . pure) <$> uncons (NE.init cs)) N.:? N.U (NE.last cs)
   comp = ident tnameStyle
 
 
@@ -287,7 +287,7 @@ dename :: (Monad p, TokenParsing p) => p N.Name
 dename = N.U <$> ident dnameStyle <|> N.O <$> oname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
-mname = token (runUnspaced (foldl' (N.:.) . N.MName <$> comp <* dot <*> sepBy comp dot))
+mname = token (runUnspaced (fmap N.MName . foldr (NE.<|) . pure <$> comp <* dot <*> sepBy comp dot))
   where
   comp = ident tnameStyle
 
@@ -295,13 +295,13 @@ mqname :: (Has Parser sig p, TokenParsing p) => p N.Name -> p N.MQName
 mqname name = token (runUnspaced (mk <$> many (comp <* dot) <*> Unspaced name))
   where
   mk []     = (Nothing N.:?)
-  mk (n:ns) = (Just (foldl' (N.:.) (N.MName n) ns) N.:?)
+  mk (n:ns) = (Just (N.MName (n NE.:| ns)) N.:?)
   comp = ident tnameStyle
 
 qname :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann N.QName)
 qname name = token (anned (runUnspaced (mk <$> NE.some1 (comp <* dot) <*> Unspaced name)))
   where
-  mk (n NE.:| ns) = (foldl' (N.:.) (N.MName n) ns N.:.:)
+  mk (n NE.:| ns) = (N.MName (n NE.:| ns) N.:.:)
   comp = ident tnameStyle
 
 

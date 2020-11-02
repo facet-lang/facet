@@ -18,6 +18,7 @@ import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
 import           Data.Foldable (toList)
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
@@ -95,7 +96,7 @@ defaultREPLState = REPL
   , target = defaultTarget
   }
   where
-  localDefs = Module (MName mempty) [] [] mempty
+  localDefs = Module (MName (mempty NE.:| [])) [] [] mempty
 
 defaultPromptFunction :: Int -> IO String
 defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ " <> plain
@@ -195,7 +196,7 @@ showType e = Action $ do
   outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName "Effect":."Console":.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (MName ("Effect" NE.:| ["Console"]):.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
   (dEval, e'') <- time $ elab $ runEvalMain (eval e')
   outputStrLn $ show dElab
   outputStrLn $ show dEval
@@ -206,10 +207,10 @@ runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
   handle (q :$ sp) k = case q of
-    MName "Effect" :. "Console" :.: U "write"
+    MName ("Effect" NE.:| ["Console"]) :.: U "write"
       | Nil:>(Ex, EString s) <- sp -> outputText s *> k unit
     _                                      -> k (EOp (q :$ sp))
-  unit = ECon (MName "Data" :. "Unit" :.: U "unit" :$ Nil)
+  unit = ECon (MName ("Data" NE.:| ["Unit"]) :.: U "unit" :$ Nil)
 
 
 helpDoc :: Doc Style

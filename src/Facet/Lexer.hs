@@ -8,7 +8,6 @@ module Facet.Lexer
 ) where
 
 import Data.Char (isSpace)
-import Data.Foldable (foldl')
 import Data.Text (Text, pack)
 import Facet.Effect.Parser
 import Facet.Name
@@ -71,7 +70,7 @@ kind_ = choice
   , HIdent . U <$> ident (char '?') nameChar <?> "hole name"
   ]
   where
-  mname = foldl' (:.) . MName <$> tcomp <* dot <*> sepBy tcomp dot <?> "module name"
+  mname = MName <$> sepByNonEmpty tcomp dot <?> "module name"
   ename = ecomp <?> "term name"
   tname = tcomp <?> "type name"
   dot = char '.' <?> "."
