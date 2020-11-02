@@ -4,6 +4,7 @@ module Facet.CLI
 
 import           Control.Monad (join)
 import           Data.Version (showVersion)
+import qualified Facet.Format as Format
 import qualified Facet.LSP as LSP
 import qualified Facet.REPL as REPL
 import qualified Facet.Run as Run
@@ -44,7 +45,7 @@ runFileParser = Run.runFile
   <*> strArgument (metavar "PATH")
 
 formatParser :: Parser (IO ExitCode)
-formatParser = pure ExitSuccess <$ some (strArgument @FilePath (metavar "PATH"))
+formatParser = Format.format <$> some (strArgument @FilePath (metavar "PATH"))
 
 lspParser :: Parser (IO ExitCode)
 lspParser = LSP.lsp <$> optional (strOption (long "path" <> metavar "PATH"))
