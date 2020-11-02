@@ -190,7 +190,7 @@ sig = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
-  mkHead cs = (uncurry (fmap N.MName . foldr (NE.<|) . pure) <$> uncons (NE.init cs)) N.:? N.U (NE.last cs)
+  mkHead cs = (uncurry (fmap N.moduleNameFromList . (:)) <$> uncons (NE.init cs)) N.:? N.U (NE.last cs)
   comp = ident tnameStyle
 
 

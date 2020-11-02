@@ -15,7 +15,6 @@ module Facet.Print
 ) where
 
 import           Data.Foldable (foldl', toList)
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (stimes)
@@ -217,7 +216,7 @@ printComp env = \case
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
   $   mname
-  ::: Just (var (qvar (MName (T.pack "Kernel" NE.:| []):.:U (T.pack "Module"))))
+  ::: Just (var (qvar (moduleNameFromList [T.pack "Kernel"]:.:U (T.pack "Module"))))
   :=: (map (\ (C.Import n) -> import' n) is, map def (Map.toList (C.decls ds)))
   where
   def (n, Nothing ::: t) = ann

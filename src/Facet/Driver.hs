@@ -26,7 +26,6 @@ import           Control.Lens (Lens', at, lens)
 import           Control.Monad ((<=<))
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
@@ -88,7 +87,7 @@ kernel = Module kernelName [] [] $ Scope $ Map.fromList
   ]
   where
   typeName = U (TS.pack "Type")
-  kernelName = MName (TS.pack "Kernel" NE.:| [])
+  kernelName = moduleNameFromList [TS.pack "Kernel"]
 
 
 -- Module loading
