@@ -20,6 +20,7 @@ module Facet.Core
 , global
 , free
 , metavar
+, occursIn
   -- ** Elimination
 , ($$)
 , ($$*)
@@ -205,6 +206,27 @@ metavar = var . Metavar
 
 var :: Var -> Value
 var = VNe . (:$ Nil)
+
+
+occursIn :: Meta -> Value -> Bool
+occursIn m = go (Level 0) -- FIXME: this should probably be doing something more sensible
+  where
+  go d = \case
+    KType          -> False
+    KInterface     -> False
+    TSusp c        -> comp d c
+    ELam _ cs      -> any (clause d) cs
+    VNe (h :$ sp)  -> unVar (const False) (const False) (== m) h || any (any (go d)) sp
+    ECon (_ :$ sp) -> any (go d) sp
+    TString        -> False
+    EString _      -> False
+    EOp (_ :$ sp)  -> any (any (go d)) sp
+
+  comp d = \case
+    TForAll t b -> binding d t || comp (succ d) (b (free d))
+    TRet s t    -> any (any (go d)) s || go d t
+  binding d (Binding _ _ s t) = any (any (go d)) s || go d t
+  clause d (Clause p b) = any (any (go d)) p || let (d', p') = fill (\ d -> (succ d, free d)) d p in go d' (b p')
 
 
 -- Elimination
