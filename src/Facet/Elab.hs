@@ -44,7 +44,7 @@ import           Control.Effect.Empty
 import           Control.Effect.Lens ((.=))
 import           Control.Effect.Sum
 import           Control.Lens (at, ix)
-import           Control.Monad (unless, (<=<))
+import           Control.Monad (unless, when, (<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl', for_, toList)
 import qualified Data.IntMap as IntMap
@@ -136,6 +136,8 @@ unify = unifyValue
   solve (n :=: val') = do
     subst <- get
     -- FIXME: occurs check
+    when (n `occursIn` val')
+      $ mismatch "infinite type" (Right (metavar n)) val'
     case subst IntMap.! getMeta n of
       Just val ::: _T -> unifyValue val' val
       Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
