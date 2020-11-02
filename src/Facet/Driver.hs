@@ -23,7 +23,6 @@ import           Control.Effect.Error
 import           Control.Effect.Lens (use, uses, (.=))
 import           Control.Effect.State
 import           Control.Lens (Lens', at, lens)
-import           Control.Monad ((<=<))
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
 import qualified Data.Map as Map
@@ -129,7 +128,7 @@ loadModuleHeader searchPaths target = do
 loadModule :: Has (State Target :+: Throw (Notice.Notice (Doc Style)) :+: Time Instant :+: Trace) sig m => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
   graph <- use modules_
-  let ops = foldMap (operators . snd <=< (`lookupM` graph)) imports
+  let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (Just name, op, assoc)) . operators . snd) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   m <- rethrowElabErrors src . runReader graph $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)

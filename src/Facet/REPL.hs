@@ -13,7 +13,7 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, uses, (%=))
 import           Control.Exception (handle)
 import           Control.Lens (Lens', lens, (&), (.~))
-import           Control.Monad (unless, (<=<))
+import           Control.Monad (unless)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
@@ -112,7 +112,7 @@ loop = do
     Just src -> do
       graph <- use (target_.modules_)
       targets <- use (target_.targets_)
-      let ops = foldMap (operators . snd <=< (`lookupM` graph)) (toList targets)
+      let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (Just name, op, assoc)) . operators . snd) (toList targets)
       (dParse, action) <- time $ rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
       outputStrLn (show dParse)
       runReader src $ runAction action

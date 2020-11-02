@@ -57,10 +57,10 @@ whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
 
 
-makeOperator :: (N.Op, N.Assoc) -> Operator (S.Ann (S.Expr Void))
-makeOperator (op, assoc) = (op, assoc, nary (N.O op))
+makeOperator :: (Maybe N.MName, N.Op, N.Assoc) -> Operator (S.Ann (S.Expr Void))
+makeOperator (name, op, assoc) = (op, assoc, nary (name N.:? N.O op))
   where
-  nary name es = foldl' (S.annBinary S.App) (S.Ann (S.ann (head es)) Nil (S.free name)) es
+  nary name es = foldl' (S.annBinary S.App) (S.Ann (S.ann (head es)) Nil (S.Var name)) es
 
 
 -- Modules
@@ -104,7 +104,7 @@ termDecl = anned $ do
           , N.A <$ symbol "assoc"
           ]
         _ -> pure N.N
-      modify (makeOperator (op, assoc) :)
+      modify (makeOperator (Nothing, op, assoc) :)
     _      -> pure ()
   decl <- anned $ S.Decl <$ colon <*> typeSig ename <*> (S.TermDef <$> comp)
   pure (name, decl)
