@@ -432,15 +432,15 @@ elabDataDef
   :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => QName ::: Comp
   -> [S.Ann (Name ::: S.Ann (S.Comp Void))]
-  -> m [(Name, Decl)]
+  -> m [(Name, Maybe Def ::: Comp)]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elabTele $ go (switch (elabSTelescope t)) _T
     pure $ n :=: con (mname :.: n) Nil c_T ::: c_T
   pure
-    $ (dname, Decl (Just (DData cs)) _T)
-    : map (\ (n :=: c ::: c_T) -> (n, Decl (Just (DTerm c)) c_T)) cs
+    $ (dname, Just (DData cs) ::: _T)
+    : map (\ (n :=: c ::: c_T) -> (n, Just (DTerm c) ::: c_T)) cs
   where
   go k = \case
     TRet _ _                     -> check (k ::: KType)
@@ -458,11 +458,11 @@ elabInterfaceDef
   :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => Comp
   -> [S.Ann (Name ::: S.Ann (S.Comp Void))]
-  -> m Decl
+  -> m (Maybe Def ::: Comp)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
     (n :::) <$> elabTele (go (check (switch (elabSTelescope t) ::: KType)) _T)
-  pure $ Decl (Just (DInterface cs)) _T
+  pure $ Just (DInterface cs) ::: _T
   where
   go k = \case
     -- FIXME: check that the interface is a member of the sig.
@@ -512,7 +512,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ setSpan s $ do
       _T <- runModule . elabTele $ check (switch (elabSTelescope tele) ::: KType)
 
-      decls_.at dname .= Just (Decl Nothing _T)
+      decls_.at dname .= Just (Nothing ::: _T)
       case def of
         S.DataDef cs -> do
           decls <- runModule $ elabDataDef (mname :.: dname ::: _T) cs
@@ -527,7 +527,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- then elaborate the terms
     trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> setSpan s $ tracePretty dname $ do
       t' <- runModule $ elabTermDef _T t
-      decls_.ix dname .= Decl (Just (DTerm t')) _T
+      decls_.ix dname .= (Just (DTerm t') ::: _T)
 
 
 runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b

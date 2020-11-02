@@ -219,10 +219,10 @@ printModule (C.Module mname is _ ds) = module_
   ::: Just (var (qvar (MName (T.pack "Kernel"):.:U (T.pack "Module"))))
   :=: (map (\ (C.Import n) -> import' n) is, map def (Map.toList ds))
   where
-  def (n, C.Decl Nothing  t) = ann
+  def (n, Nothing ::: t) = ann
     $   var (qvar (mname:.:n))
     ::: printComp Nil t
-  def (n, C.Decl (Just d) t) = ann
+  def (n, Just d  ::: t) = ann
     $   var (qvar (mname:.:n))
     ::: defn (printComp Nil t
     :=: case d of

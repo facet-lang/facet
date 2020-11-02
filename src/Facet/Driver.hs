@@ -49,6 +49,7 @@ import           Facet.Pretty
 import           Facet.Source
 import           Facet.Style
 import qualified Facet.Surface as S
+import           Facet.Syntax
 import           Silkscreen
 import           System.Directory (findFile)
 import qualified System.FilePath as FP
@@ -81,7 +82,7 @@ defaultTarget = Target
 kernel :: Module
 kernel = Module kernelName [] [] $ Map.fromList
   -- FIXME: this should really function as a synonym
-  [ (typeName, Decl (Just (DTerm KType)) (TRet Nothing KType))
+  [ (typeName, (Just (DTerm KType) ::: TRet Nothing KType))
   ]
   where
   typeName = U (TS.pack "Type")

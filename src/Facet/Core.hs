@@ -55,7 +55,6 @@ module Facet.Core
 , lookupE
 , lookupD
 , Import(..)
-, Decl(..)
 , Def(..)
 , unDData
 , unDInterface
@@ -401,7 +400,7 @@ data Module = Module
   -- FIXME: record source references to operators to contextualize parse errors.
   , operators :: [(Op, Assoc)]
   -- FIXME: record source references to definitions to contextualize ambiguous name errors.
-  , decls     :: Map.Map Name Decl
+  , decls     :: Map.Map Name (Maybe Def ::: Comp)
   }
 
 name_ :: Lens' Module MName
@@ -410,7 +409,7 @@ name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
 imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })
 
-decls_ :: Lens' Module (Map.Map Name Decl)
+decls_ :: Lens' Module (Map.Map Name (Maybe Def ::: Comp))
 decls_ = lens decls (\ m decls -> m{ decls })
 
 
@@ -419,7 +418,7 @@ lookupC :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
 lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
-  matchDef (Decl   d     _)  = maybe empty pure d >>= unDData >>= matchWith matchCon
+  matchDef (       d ::: _)  = maybe empty pure d >>= unDData >>= matchWith matchCon
   matchCon (n' :=: v ::: _T) = (name :.: n' :=: Just (DTerm v) ::: _T) <$ guard (n == n')
 
 -- | Look up effect operations.
@@ -428,23 +427,18 @@ lookupE :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
 lookupE n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
-  matchDef (Decl   d     _)  = maybe empty pure d >>= unDInterface >>= matchWith matchCon
+  matchDef (d  ::: _)  = maybe empty pure d >>= unDInterface >>= matchWith matchCon
   matchCon (n' ::: _T) = (name :.: n' :=: Nothing ::: _T) <$ guard (n == n')
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
 lookupD n Module{ name, decls } = maybe empty pure $ do
-  Decl d _T <- Map.lookup n decls
+  d ::: _T <- Map.lookup n decls
   pure $ name :.: n :=: d ::: _T
 
 
 newtype Import = Import { name :: MName }
 
--- FIXME: keep track of free variables in declarations so we can work incrementally
-data Decl = Decl
-  { def   :: Maybe Def
-  , type' :: Comp
-  }
 
 -- FIXME: submodules
 data Def
