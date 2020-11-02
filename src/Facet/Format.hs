@@ -5,5 +5,5 @@ module Facet.Format
 import System.Exit
 
 -- FIXME: allow module names w/ search paths
-format :: FilePath -> IO ExitCode
-format _ = pure ExitSuccess
+format :: [FilePath] -> FilePath -> IO ExitCode
+format _ _ = pure ExitSuccess
