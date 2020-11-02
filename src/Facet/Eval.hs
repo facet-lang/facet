@@ -1,7 +1,9 @@
 module Facet.Eval
-( runEval
+( -- * Evaluation
+  eval
+  -- * Machinery
+, runEval
 , Eval(..)
-, eval
 ) where
 
 import Control.Effect.Reader
@@ -10,25 +12,6 @@ import Facet.Core
 import Facet.Graph
 import Facet.Name
 import Facet.Syntax
-
-runEval :: (QName :$ (Pl, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
-runEval hdl k (Eval m) = m hdl k
-
-newtype Eval m a = Eval (forall r . (QName :$ (Pl, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
-
-instance Functor (Eval m) where
-  fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)
-
-instance Applicative (Eval m) where
-  pure a = Eval $ \ _ k -> k a
-  f <*> a = Eval $ \ hdl k -> runEval hdl (\ f' -> runEval hdl (\ a' -> k $! f' a') a) f
-
-instance Monad (Eval m) where
-  m >>= f = Eval $ \ hdl k -> runEval hdl (runEval hdl k . f) m
-
-instance MonadTrans Eval where
-  lift m = Eval $ \ _ k -> m >>= k
-
 
 -- FIXME: erase terms before evaluating.
 eval :: (Has (Reader Graph) sig m, Has (Reader Module) sig m) => Value -> Eval m Value
@@ -48,3 +31,24 @@ eval = \case
   EOp op -> Eval $ \ h -> h op
 
   v          -> pure v
+
+
+-- Machinery
+
+runEval :: (QName :$ (Pl, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval hdl k (Eval m) = m hdl k
+
+newtype Eval m a = Eval (forall r . (QName :$ (Pl, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
+
+instance Functor (Eval m) where
+  fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)
+
+instance Applicative (Eval m) where
+  pure a = Eval $ \ _ k -> k a
+  f <*> a = Eval $ \ hdl k -> runEval hdl (\ f' -> runEval hdl (\ a' -> k $! f' a') a) f
+
+instance Monad (Eval m) where
+  m >>= f = Eval $ \ hdl k -> runEval hdl (runEval hdl k . f) m
+
+instance MonadTrans Eval where
+  lift m = Eval $ \ _ k -> m >>= k
