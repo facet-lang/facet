@@ -22,15 +22,15 @@ argumentsParser = info
   <> header   "Facet - a functional, effectful language")
 
 -- TODO:
--- - format
 -- - build
 -- - diff
 -- - lint
 commands :: Mod CommandFields (IO ExitCode)
 commands
-  =  command "repl" (info replParser    (progDesc "run the repl"))
-  <> command "run"  (info runFileParser (progDesc "run a program"))
-  <> command "lsp"  (info lspParser     (progDesc "run an LSP server"))
+  =  command "repl"   (info replParser    (progDesc "run the repl"))
+  <> command "run"    (info runFileParser (progDesc "run a program"))
+  <> command "format" (info formatParser  (progDesc "format Facet sources"))
+  <> command "lsp"    (info lspParser     (progDesc "run an LSP server"))
 
 
 -- Command parsers
@@ -42,6 +42,9 @@ runFileParser :: Parser (IO ExitCode)
 runFileParser = Run.runFile
   <$> many searchPath
   <*> strArgument (metavar "PATH")
+
+formatParser :: Parser (IO ExitCode)
+formatParser = pure ExitSuccess <$ some (strArgument @FilePath (metavar "PATH"))
 
 lspParser :: Parser (IO ExitCode)
 lspParser = LSP.lsp <$> optional (strOption (long "path" <> metavar "PATH"))
