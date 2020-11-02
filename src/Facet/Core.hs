@@ -50,11 +50,12 @@ module Facet.Core
 , Module(..)
 , name_
 , imports_
-, decls_
+, scope_
 , lookupC
 , lookupE
 , lookupD
 , Scope(..)
+, decls_
 , Import(..)
 , Def(..)
 , unDData
@@ -63,7 +64,7 @@ module Facet.Core
 ) where
 
 import           Control.Effect.Empty
-import           Control.Lens (Lens', lens)
+import           Control.Lens (Lens, Lens', coerced, lens)
 import           Data.Foldable (foldl', toList)
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
@@ -401,7 +402,7 @@ data Module = Module
   -- FIXME: record source references to operators to contextualize parse errors.
   , operators :: [(Op, Assoc)]
   -- FIXME: record source references to definitions to contextualize ambiguous name errors.
-  , decls     :: Map.Map Name (Maybe Def ::: Comp)
+  , scope     :: Scope (Maybe Def)
   }
 
 name_ :: Lens' Module MName
@@ -410,13 +411,13 @@ name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
 imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })
 
-decls_ :: Lens' Module (Map.Map Name (Maybe Def ::: Comp))
-decls_ = lens (\ Module{decls} -> decls) (\ (Module n i o _) decls -> Module n i o decls)
+scope_ :: Lens' Module (Scope (Maybe Def))
+scope_ = lens scope (\ m scope -> m{ scope })
 
 
 -- FIXME: produce multiple results, if they exist.
 lookupC :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
-lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
+lookupC n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList (decls scope))
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
   matchDef (       d ::: _)  = maybe empty pure d >>= unDData >>= matchWith matchCon
@@ -425,7 +426,7 @@ lookupC n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList 
 -- | Look up effect operations.
 lookupE :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
 -- FIXME: produce multiple results, if they exist.
-lookupE n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList decls)
+lookupE n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList (decls scope))
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
   matchDef (d  ::: _)  = maybe empty pure d >>= unDInterface >>= matchWith matchCon
@@ -433,13 +434,16 @@ lookupE n Module{ name, decls } = maybe empty pure $ matchWith matchDef (toList 
 
 -- FIXME: produce multiple results, if they exist.
 lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Maybe Def ::: Comp)
-lookupD n Module{ name, decls } = maybe empty pure $ do
-  d ::: _T <- Map.lookup n decls
+lookupD n Module{ name, scope } = maybe empty pure $ do
+  d ::: _T <- Map.lookup n (decls scope)
   pure $ name :.: n :=: d ::: _T
 
 
 newtype Scope a = Scope { decls :: Map.Map Name (a ::: Comp) }
   deriving (Monoid, Semigroup)
+
+decls_ :: Lens (Scope a) (Scope b) (Map.Map Name (a ::: Comp)) (Map.Map Name (b ::: Comp))
+decls_ = coerced
 
 
 newtype Import = Import { name :: MName }

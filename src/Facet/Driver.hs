@@ -80,7 +80,7 @@ defaultTarget = Target
 
 
 kernel :: Module
-kernel = Module kernelName [] [] $ Map.fromList
+kernel = Module kernelName [] [] $ Scope $ Map.fromList
   -- FIXME: this should really function as a synonym
   [ (typeName, (Just (DTerm KType) ::: TRet Nothing KType))
   ]

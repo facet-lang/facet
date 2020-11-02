@@ -512,22 +512,22 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ setSpan s $ do
       _T <- runModule . elabTele $ check (switch (elabSTelescope tele) ::: KType)
 
-      decls_.at dname .= Just (Nothing ::: _T)
+      scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
         S.DataDef cs -> do
           decls <- runModule $ elabDataDef (mname :.: dname ::: _T) cs
-          Nothing <$ for_ decls (\ (dname, decl) -> decls_.at dname .= Just decl)
+          Nothing <$ for_ decls (\ (dname, decl) -> scope_.decls_.at dname .= Just decl)
 
         S.InterfaceDef os -> do
           decl <- runModule $ elabInterfaceDef _T os
-          Nothing <$ (decls_.at dname .= Just decl)
+          Nothing <$ (scope_.decls_.at dname .= Just decl)
 
         S.TermDef t -> pure (Just (S.ann tele, dname, t ::: _T))
 
     -- then elaborate the terms
     trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> setSpan s $ tracePretty dname $ do
       t' <- runModule $ elabTermDef _T t
-      decls_.ix dname .= (Just (DTerm t') ::: _T)
+      scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
 
 
 runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
