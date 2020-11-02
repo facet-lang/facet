@@ -11,7 +11,6 @@ module Facet.Name
 , MName(..)
 , moduleNameFromList
 , Q(..)
-, moduleName
 , MQName(..)
 , Name(..)
 , Assoc(..)
@@ -108,9 +107,6 @@ data Q a = MName :.: a
 
 instance P.Pretty a => P.Pretty (Q a) where
   pretty (m :.: n) = pretty m <> dot <> pretty n
-
-moduleName :: Q a -> MName
-moduleName (mname :.: _) = mname
 
 
 -- | /M/aybe /q/ualified names.
