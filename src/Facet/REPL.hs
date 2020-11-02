@@ -201,7 +201,6 @@ showEval e = Action $ do
   outputStrLn $ show dEval
   outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil _T)))
 
--- FIXME: should actually handle “syscall” effects here.
 runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
