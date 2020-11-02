@@ -51,6 +51,7 @@ import           Text.Parser.Token.Highlight as Highlight
 -- numeric literals
 
 -- FIXME: allow operators to be introduced and scoped locally
+-- FIXME: we can’t parse without knowing operators defined elsewhere
 
 whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
