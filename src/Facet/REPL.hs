@@ -230,9 +230,9 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-elab :: Has (Reader Source :+: State REPL) sig m => I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC Module (ReaderC Graph (ReaderC Span m))) a -> m a
+elab :: Has (Reader Source :+: State REPL) sig m => I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span m)))) a -> m a
 elab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
   src <- ask
-  runReader (span src) . runReader graph . runReader localDefs . rethrowElabErrors src $ m
+  runReader (span src) . runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors src $ m

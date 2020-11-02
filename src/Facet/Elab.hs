@@ -415,7 +415,7 @@ string s = Synth $ pure $ EString s ::: TString
 -- Declarations
 
 elabDataDef
-  :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
+  :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => Q Name ::: Comp
   -> [S.Ann (Name ::: S.Ann (S.Comp Void))]
   -> m [Name :=: Maybe Def ::: Comp]
@@ -441,7 +441,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
     _T                             -> ECon (q :$ fs)
 
 elabInterfaceDef
-  :: Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
+  :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => Comp
   -> [S.Ann (Name ::: S.Ann (S.Comp Void))]
   -> m (Maybe Def ::: Comp)
@@ -460,7 +460,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
-  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m)
   => Comp
   -> S.Ann (S.Expr Void)
   -> m Expr
@@ -603,7 +603,7 @@ expectRet = expectMatch (\case { TSusp (TRet s t) -> pure (s, t) ; _ -> Nothing 
 
 -- Machinery
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Value] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Reader (Context Type) :+: Reader Graph :+: Reader MName :+: Reader Module :+: Reader [Value] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -615,24 +615,25 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader Module :+: Reader [Value] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) Elab where
+instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader MName :+: Reader Module :+: Reader [Value] :+: Reader Span :+: State Subst :+: Throw Err :+: Trace) Elab where
   alg hdl sig ctx = case sig of
-    L rctx                          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
-    R (L graph)                     -> Elab $ alg (runElab . hdl) (inj graph) ctx
-    R (R (L mod))                   -> Elab $ alg (runElab . hdl) (inj mod)   ctx
-    R (R (R (L sig)))               -> Elab $ alg (runElab . hdl) (inj sig)   ctx
-    R (R (R (R (L span))))          -> Elab $ alg (runElab . hdl) (inj span)  ctx
-    R (R (R (R (R (L subst)))))     -> Elab $ alg (runElab . hdl) (inj subst) ctx
-    R (R (R (R (R (R (L throw)))))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
-    R (R (R (R (R (R (R trace)))))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
+    L rctx                              -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
+    R (L graph)                         -> Elab $ alg (runElab . hdl) (inj graph) ctx
+    R (R (L mname))                     -> Elab $ alg (runElab . hdl) (inj mname) ctx
+    R (R (R (L mod)))                   -> Elab $ alg (runElab . hdl) (inj mod)   ctx
+    R (R (R (R (L sig))))               -> Elab $ alg (runElab . hdl) (inj sig)   ctx
+    R (R (R (R (R (L span)))))          -> Elab $ alg (runElab . hdl) (inj span)  ctx
+    R (R (R (R (R (R (L subst))))))     -> Elab $ alg (runElab . hdl) (inj subst) ctx
+    R (R (R (R (R (R (R (L throw))))))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
+    R (R (R (R (R (R (R (R trace))))))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
-elab :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab Value -> m Value
+elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab Value -> m Value
 elab = elabWith (fmap pure . apply)
 
-elabTele :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab Comp -> m Comp
+elabTele :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab Comp -> m Comp
 elabTele = elabWith (fmap pure . applyComp)
 
-elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
+elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
 elabWith f = runSubstWith f . runContext . runSig . runElab
 
 
