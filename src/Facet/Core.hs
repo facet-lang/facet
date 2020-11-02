@@ -424,7 +424,7 @@ lookupC n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList 
   where
   -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
   matchDef (d ::: _)  = do
-    (n :=: v ::: _T) <- maybe empty pure d >>= unDData >>= lookupScope n
+    n :=: v ::: _T <- maybe empty pure d >>= unDData >>= lookupScope n
     pure $ name :.: n :=: Just (DTerm v) ::: _T
 
 -- | Look up effect operations.
