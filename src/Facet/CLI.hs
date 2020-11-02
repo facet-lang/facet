@@ -45,7 +45,7 @@ runFileParser = Run.runFile
   <*> strArgument (metavar "PATH")
 
 formatParser :: Parser (IO ExitCode)
-formatParser = Format.format <$> some (strArgument @FilePath (metavar "PATH"))
+formatParser = Format.format <$> strArgument @FilePath (metavar "PATH")
 
 lspParser :: Parser (IO ExitCode)
 lspParser = LSP.lsp <$> optional (strOption (long "path" <> metavar "PATH"))

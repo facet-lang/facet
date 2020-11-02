@@ -4,5 +4,5 @@ module Facet.Format
 
 import System.Exit
 
-format :: [FilePath] -> IO ExitCode
+format :: FilePath -> IO ExitCode
 format _ = pure ExitSuccess
