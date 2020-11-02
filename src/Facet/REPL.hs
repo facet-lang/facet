@@ -95,7 +95,7 @@ defaultREPLState = REPL
   , target = defaultTarget
   }
   where
-  localDefs = Module (moduleNameFromList []) [] [] mempty
+  localDefs = Module (fromList []) [] [] mempty
 
 defaultPromptFunction :: Int -> IO String
 defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ " <> plain
@@ -112,7 +112,7 @@ loop = do
     Just src -> do
       graph <- use (target_.modules_)
       targets <- use (target_.targets_)
-      let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (Just name, op, assoc)) . operators . snd) (toList targets)
+      let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) (toList targets)
       (dParse, action) <- time $ rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
       outputStrLn (show dParse)
       runReader src $ runAction action
@@ -166,9 +166,9 @@ showPaths   = Action $ do
   unless (null searchPaths)
     $ outputDocLn $ nest 2 $ pretty ("search paths:" :: Text) <\> unlines (map pretty searchPaths)
 
-showModules = Action $ uses (target_.modules_) (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
+showModules = Action $ uses (target_.modules_) (unlines . map (\ (name, (path, _)) -> prettyMName name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
 
-showTargets = Action $ uses (target_.targets_) (unlines . map pretty . toList) >>= outputDocLn
+showTargets = Action $ uses (target_.targets_) (unlines . map prettyMName . toList) >>= outputDocLn
 
 
 addPath, removePath :: FilePath -> Action
@@ -195,7 +195,7 @@ showType e = Action $ do
   outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (moduleNameFromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ local (VNe (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
   (dEval, e'') <- time $ elab $ runEvalMain (eval e')
   outputStrLn $ show dElab
   outputStrLn $ show dEval
@@ -207,10 +207,10 @@ runEvalMain = runEval handle pure
   where
   handle (q :$ sp) k = case q of
     m :.: U "write"
-      | m == moduleNameFromList ["Effect", "Console"]
+      | m == fromList ["Effect", "Console"]
       , Nil:>(Ex, EString s) <- sp -> outputText s *> k unit
     _                                      -> k (EOp (q :$ sp))
-  unit = ECon (moduleNameFromList ["Data", "Unit"] :.: U "unit" :$ Nil)
+  unit = ECon (fromList ["Data", "Unit"] :.: U "unit" :$ Nil)
 
 
 helpDoc :: Doc Style

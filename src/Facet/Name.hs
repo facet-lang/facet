@@ -8,16 +8,16 @@ module Facet.Name
 , getFVs
 , Vars(..)
 , __
-, MName(..)
-, moduleNameFromList
 , Q(..)
-, MQName(..)
+, MName
+, prettyMName
 , Name(..)
 , Assoc(..)
 , Op(..)
 , OpN(..)
 ) where
 
+import           Data.Foldable (foldr')
 import           Data.Functor.Classes (showsUnaryWith)
 import qualified Data.IntSet as IntSet
 import qualified Data.List.NonEmpty as NE
@@ -25,6 +25,7 @@ import           Data.Semigroup
 import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
+import           Facet.Stack
 import qualified Prettyprinter as P
 import           Silkscreen
 
@@ -90,15 +91,12 @@ __ :: Name
 __ = U T.empty
 
 
--- | Module names.
-newtype MName = MName (NE.NonEmpty Text)
-  deriving (Eq, Ord, Show)
+type MName = Stack Text
 
-instance P.Pretty MName where
-  pretty (MName (n NE.:| s)) = concatWith (surround dot) (map pretty (n:s))
-
-moduleNameFromList :: [Text] -> MName
-moduleNameFromList list = maybe (MName (pure mempty)) MName (NE.nonEmpty list)
+prettyMName :: Printer a => MName -> a
+prettyMName = \case
+  Nil   -> mempty
+  ns:>n -> foldr' (surround dot . pretty) (pretty n) ns
 
 
 -- | Qualified names, consisting of a module name and declaration name.
@@ -106,15 +104,7 @@ data Q a = MName :.: a
   deriving (Eq, Ord, Show)
 
 instance P.Pretty a => P.Pretty (Q a) where
-  pretty (m :.: n) = pretty m <> dot <> pretty n
-
-
--- | /M/aybe /q/ualified names.
-data MQName = Maybe MName :? Name
-  deriving (Eq, Ord, Show)
-
-instance P.Pretty MQName where
-  pretty (m :? n) = maybe id (\ m n -> pretty m <> dot <> n) m (pretty n)
+  pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
 
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.

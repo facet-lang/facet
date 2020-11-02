@@ -4,8 +4,6 @@ module Facet.Surface
 ( -- * Expressions
   Expr(..)
 , Type
-, free
-, qual
 , Comp(..)
 , Binding(..)
 , Interface(..)
@@ -42,7 +40,7 @@ import Facet.Syntax
 -- Expressions
 
 data Expr a
-  = Var MQName
+  = Var (Q Name)
   | Hole Name
   | KType
   | KInterface
@@ -61,13 +59,6 @@ deriving instance Eq   a => Eq   (Expr a)
 deriving instance Show a => Show (Expr a)
 
 type Type = Expr
-
-
-free :: Name -> Expr a
-free = Var . (Nothing :?)
-
-qual :: Q Name -> Expr a
-qual (m :.: n) = Var (Just m :? n)
 
 
 data Comp a = Comp
@@ -98,7 +89,7 @@ deriving instance Eq   a => Eq   (Binding a)
 deriving instance Show a => Show (Binding a)
 
 
-data Interface a = Interface (Ann MQName) (Stack (Ann (Type a)))
+data Interface a = Interface (Ann (Q Name)) (Stack (Ann (Type a)))
   deriving (Foldable, Functor, Traversable)
 
 deriving instance Eq   a => Eq   (Interface a)
@@ -117,14 +108,14 @@ deriving instance Show a => Show (Clause a)
 data ValPattern a
   = PWildcard
   | PVar Name
-  | PCon MQName [Ann (ValPattern a)]
+  | PCon (Q Name) [Ann (ValPattern a)]
   deriving (Foldable, Functor, Traversable)
 
 deriving instance Eq   a => Eq   (ValPattern a)
 deriving instance Show a => Show (ValPattern a)
 
 data EffPattern a
-  = PEff MQName [Ann (ValPattern a)] Name
+  = PEff (Q Name) [Ann (ValPattern a)] Name
   -- | Catch-all effect pattern. Matches values and effect operations.
   | PAll Name
   | PVal (Ann (ValPattern a))

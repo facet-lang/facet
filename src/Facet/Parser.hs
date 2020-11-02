@@ -28,7 +28,6 @@ import qualified Data.CharSet.Unicode as Unicode
 import           Data.Foldable (foldl')
 import           Data.Functor (void)
 import qualified Data.HashSet as HashSet
-import           Data.List (uncons)
 import qualified Data.List.NonEmpty as NE
 import           Data.Text (pack)
 import           Data.Void
@@ -57,8 +56,8 @@ whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
 
 
-makeOperator :: (Maybe N.MName, N.Op, N.Assoc) -> Operator (S.Ann (S.Expr Void))
-makeOperator (name, op, assoc) = (op, assoc, nary (name N.:? N.O op))
+makeOperator :: (N.MName, N.Op, N.Assoc) -> Operator (S.Ann (S.Expr Void))
+makeOperator (name, op, assoc) = (op, assoc, nary (name N.:.: N.O op))
   where
   nary name es = foldl' (S.annBinary S.App) (S.Ann (S.ann (head es)) Nil (S.Var name)) es
 
@@ -104,7 +103,7 @@ termDecl = anned $ do
           , N.A <$ symbol "assoc"
           ]
         _ -> pure N.N
-      modify (makeOperator (Nothing, op, assoc) :)
+      modify (makeOperator (Nil, op, assoc) :)
     _      -> pure ()
   decl <- anned $ S.Decl <$ colon <*> typeSig ename <*> (S.TermDef <$> comp)
   pure (name, decl)
@@ -173,10 +172,7 @@ tatom :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenP
 tatom = build monotypeTable $ parens type'
 
 tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
-tvar = choice
-  [ token (anned (runUnspaced (S.free <$> tname  <?> "variable")))
-  , fmap S.qual <$> qname tname
-  ]
+tvar = anned (S.Var <$> qname tname)
 
 
 -- Signatures
@@ -190,7 +186,7 @@ sig = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
-  mkHead cs = (uncurry (fmap N.moduleNameFromList . (:)) <$> uncons (NE.init cs)) N.:? N.U (NE.last cs)
+  mkHead cs = fromList (NE.init cs) N.:.: N.U (NE.last cs)
   comp = ident tnameStyle
 
 
@@ -221,10 +217,9 @@ clause = S.Clause <$> try (compPattern <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
 evar = choice
-  [ token (anned (runUnspaced (S.free <$> ename <?> "variable")))
+  [ anned (S.Var <$> qname ename)
     -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
-  , try (token (anned (runUnspaced (S.free . N.O <$> Unspaced (parens oname)))))
-  , fmap S.qual <$> qname dename
+  , try (anned (parens (S.Var <$> qname (N.O <$> oname))))
   ]
 
 hole :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.Expr Void))
@@ -242,13 +237,13 @@ valuePattern :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p,
 valuePattern = choice
   [ token (anned (runUnspaced (S.PVar <$> ename <?> "variable")))
   , anned (S.PWildcard <$  wildcard)
-  , try (parens (anned (S.PCon <$> mqname ename <*> many valuePattern)))
+  , try (parens (anned (S.PCon <$> qname ename <*> many valuePattern)))
   ] <?> "pattern"
 
 compPattern :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (S.EffPattern Void))
 compPattern = choice
   [ anned (S.PVal <$> valuePattern)
-  , try (brackets (anned (S.PEff <$> mqname ename <*> many valuePattern <* symbolic ';' <*> (ename <|> N.__ <$ wildcard))))
+  , try (brackets (anned (S.PEff <$> qname ename <*> many valuePattern <* symbolic ';' <*> (ename <|> N.__ <$ wildcard))))
   , brackets (try (token (anned (S.PAll <$> runUnspaced ename))))
   ] <?> "pattern"
 
@@ -287,22 +282,12 @@ dename :: (Monad p, TokenParsing p) => p N.Name
 dename = N.U <$> ident dnameStyle <|> N.O <$> oname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
-mname = token (runUnspaced (fmap N.MName . foldr (NE.<|) . pure <$> comp <* dot <*> sepBy comp dot))
+mname = token (runUnspaced (fromList <$> sepBy1 comp dot))
   where
   comp = ident tnameStyle
 
-mqname :: (Has Parser sig p, TokenParsing p) => p N.Name -> p N.MQName
-mqname name = token (runUnspaced (mk <$> many (comp <* dot) <*> Unspaced name))
-  where
-  mk []     = (Nothing N.:?)
-  mk (n:ns) = (Just (N.MName (n NE.:| ns)) N.:?)
-  comp = ident tnameStyle
-
-qname :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann (N.Q N.Name))
-qname name = token (anned (runUnspaced (mk <$> NE.some1 (comp <* dot) <*> Unspaced name)))
-  where
-  mk (n NE.:| ns) = (N.MName (n NE.:| ns) N.:.:)
-  comp = ident tnameStyle
+qname :: (Has Parser sig p, TokenParsing p) => p N.Name -> p (N.Q N.Name)
+qname name = token (runUnspaced (try ((N.:.:) <$> mname <*> Unspaced name) <|> (Nil N.:.:) <$> Unspaced name)) <?> "name"
 
 
 reserved :: HashSet.HashSet String

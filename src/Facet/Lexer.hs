@@ -12,6 +12,7 @@ import Data.Text (Text, pack)
 import Facet.Effect.Parser
 import Facet.Name
 import Facet.Span
+import Facet.Stack
 import Text.Parser.Char
 import Text.Parser.Combinators
 
@@ -70,7 +71,7 @@ kind_ = choice
   , HIdent . U <$> ident (char '?') nameChar <?> "hole name"
   ]
   where
-  mname = MName <$> sepByNonEmpty tcomp dot <?> "module name"
+  mname = fromList <$> sepBy1 tcomp dot <?> "module name"
   ename = ecomp <?> "term name"
   tname = tcomp <?> "type name"
   dot = char '.' <?> "."

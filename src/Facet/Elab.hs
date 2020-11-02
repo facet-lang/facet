@@ -37,6 +37,7 @@ module Facet.Elab
 ) where
 
 import           Control.Algebra
+import           Control.Applicative (Alternative)
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
@@ -172,46 +173,35 @@ as (m ::: _T) = Synth $ do
   pure $ a ::: _T'
 
 resolveWith
-  :: (forall sig m . Has Empty sig m => Module -> m (Q Name :=: Maybe Def ::: Comp))
-  -> MQName
+  :: (forall m . Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp))
+  -> Q Name
   -> Elab (Q Name :=: Maybe Def ::: Comp)
-resolveWith lookup n = asks lookup >>= \case
-  Just (n' :=: d ::: _T) -> pure $ n' :=: d ::: _T
-  Nothing                -> do
-    defs <- asks (foldMap (lookup . snd) . getGraph)
-    case defs of
-      []                -> freeVariable n
-      [n' :=: d ::: _T] -> pure $ n' :=: d ::: _T
-      -- FIXME: resolve ambiguities by type.
-      _                 -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) defs)
+resolveWith lookup n = lookupWith lookup n <$> ask <*> ask >>= \case
+  []  -> freeVariable n
+  [v] -> pure v
+  ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
 
-resolve :: Name -> Elab (Q Name :=: Maybe Def ::: Comp)
-resolve n = resolveWith (lookupD n) (Nothing :? n)
-
-resolveC :: MQName -> Elab (Q Name :=: Maybe Def ::: Comp)
-resolveC n@(_ :? n') = resolveWith (lookupC n') n
+resolveC :: Q Name -> Elab (Q Name :=: Maybe Def ::: Comp)
+resolveC = resolveWith lookupC
 
 resolveQ :: Q Name -> Elab (Q Name :=: Maybe Def ::: Comp)
-resolveQ q@(m :.: n) = lookupQ q <$> ask <*> ask >>= \case
-  Just (q' :=: d ::: _T) -> pure $ q' :=: d ::: _T
-  Nothing                -> freeVariable (Just m :? n)
-
-resolveMD :: MQName -> Elab (Q Name :=: Maybe Def ::: Comp)
-resolveMD (m :? n) = maybe (resolve n) (resolveQ . (:.: n)) m
+resolveQ = resolveWith lookupD
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global :: Q Name ::: Comp -> Synth Value
 global (q ::: _T) = Synth $ instantiate (C.global q ::: _T)
 
-lookupInContext :: Name -> Context Type -> Maybe (Level, Type)
-lookupInContext = lookupLevel
+lookupInContext :: Q Name -> Context Type -> Maybe (Level, Type)
+lookupInContext (m:.:n)
+  | m == Nil  = lookupLevel n
+  | otherwise = const Nothing
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
-lookupInSig :: MQName -> Module -> Graph -> [Value] -> Maybe (Q Name ::: Comp)
-lookupInSig (m :? n) mod graph = matchWith $ \case
+lookupInSig :: Q Name -> Module -> Graph -> [Value] -> Maybe (Q Name ::: Comp)
+lookupInSig (m :.: n) mod graph = matchWith $ \case
   VNe (Global q@(m':.:_) :$ _) -> do
-    guard (maybe True (== m') m)
-    (_ :=: Just (DInterface defs) ::: _) <- lookupQ q mod graph
+    guard (m == Nil || m == m')
+    _ :=: Just (DInterface defs) ::: _ <- lookupQ q mod graph
     _ :=: _ ::: _T <- lookupScope n defs
     pure $ m':.:n ::: _T
   _                            -> Nothing
@@ -219,20 +209,16 @@ lookupInSig (m :? n) mod graph = matchWith $ \case
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: MQName -> Synth Value
-var n@(m :? n') = Synth $ trace "var" $ ask >>= \ ctx -> case m of
-  Nothing
-    | Just (i, _T) <- lookupInContext n' ctx
-    -> pure (free i ::: _T)
-  _ -> do
-    (mod, graph, sig) <- (,,) <$> ask <*> ask <*> ask
-    case lookupInSig n mod graph sig of
-      Just (n ::: _T) -> do
-        n ::: _T <- instantiate (EOp (n :$ Nil) ::: _T)
-        pure $ n ::: _T
-      _ -> do
-        n :=: _ ::: _T <- resolveMD n
-        synth $ global (n ::: _T)
+var :: Q Name -> Synth Value
+var n = Synth $ trace "var" $ ask >>= \ ctx -> if
+  | Just (i, _T) <- lookupInContext n ctx -> pure (free i ::: _T)
+  | otherwise                             -> lookupInSig n <$> ask <*> ask <*> ask >>= \case
+    Just (n ::: _T) -> do
+      n ::: _T <- instantiate (EOp (n :$ Nil) ::: _T)
+      pure $ n ::: _T
+    _ -> do
+      n :=: _ ::: _T <- resolveQ n
+      synth $ global (n ::: _T)
 
 hole :: Name -> Check a
 hole n = Check $ \ _T -> err $ Hole n _T
@@ -500,7 +486,7 @@ elabModule
   :: (HasCallStack, Has (Reader Graph :+: Throw Err :+: Time Instant :+: Trace) sig m)
   => S.Ann (S.Module Void)
   -> m Module
-elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader s $ tracePretty mname $ do
+elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader s $ trace (prettyMName mname) $ do
   let (importedNames, imports) = mapAccumL (\ names (S.Ann _ _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
   imports_ .= imports
 
@@ -565,9 +551,9 @@ data Err = Err
   }
 
 data Reason
-  = FreeVariable MQName
+  = FreeVariable (Q Name)
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
-  | AmbiguousName MQName [Q Name]
+  | AmbiguousName (Q Name) [Q Name]
   | CouldNotSynthesize String
   | Mismatch String (Either String Type) Type
   | Hole Name Type
@@ -590,10 +576,10 @@ couldNotUnify msg t1 t2 = mismatch msg (Right t2) t1
 couldNotSynthesize :: String -> Elab a
 couldNotSynthesize = err . CouldNotSynthesize
 
-freeVariable :: MQName -> Elab a
+freeVariable :: Q Name -> Elab a
 freeVariable n = err $ FreeVariable n
 
-ambiguousName :: MQName -> [Q Name] -> Elab a
+ambiguousName :: Q Name -> [Q Name] -> Elab a
 ambiguousName n qs = err $ AmbiguousName n qs
 
 

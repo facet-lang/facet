@@ -153,23 +153,20 @@ f $$ a = askingPrec $ \case
 
 -- FIXME: 🔥 this
 data Var
-  = Global MQName
+  = Global (Q Name)
   | TLocal Name Level
   | Local Name Level
   | Metavar Meta
   | Cons Name
 
-qvar :: Q Name -> Var
-qvar (m :.: n) = Global (Just m :? n)
-
 
 printVar :: ((Int -> Print) -> Name -> Level -> Print) -> Var -> Print
 printVar name = \case
-  Global (_ :? n) -> setPrec Var (pretty n)
-  TLocal n d      -> name upper n d
-  Local  n d      -> name lower n d
-  Metavar  m      -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
-  Cons     n      -> setPrec Var (annotate Con (pretty n))
+  Global (_ :.: n) -> setPrec Var (pretty n)
+  TLocal n d       -> name upper n d
+  Local  n d       -> name lower n d
+  Metavar  m       -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
+  Cons     n       -> setPrec Var (annotate Con (pretty n))
 
 
 -- Core printers
@@ -187,10 +184,10 @@ printValue env = \case
           Nil -> h
           sp  -> app h sp
         elim h sp  (es:>a) = elim h (sp . (:> fmap (printValue env) a)) es
-        h' = C.unVar (group . var . qvar) ((env !) . getIndex . levelToIndex d) (group . var . Metavar) h
+        h' = C.unVar (group . var . Global) ((env !) . getIndex . levelToIndex d) (group . var . Metavar) h
     in elim h' id e
-  C.ECon (n :$ p) -> app (group (var (qvar n))) (fmap ((Ex,) . printValue env) p)
-  C.EOp (q :$ sp) -> app (group (var (qvar q))) (fmap (fmap (printValue env)) sp)
+  C.ECon (n :$ p) -> app (group (var (Global n))) (fmap ((Ex,) . printValue env) p)
+  C.EOp (q :$ sp) -> app (group (var (Global q))) (fmap (fmap (printValue env)) sp)
   C.TString   -> annotate Type $ pretty "String"
   C.EString s -> annotate Lit $ pretty (show s)
   where
@@ -216,14 +213,14 @@ printComp env = \case
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
   $   mname
-  ::: Just (var (qvar (moduleNameFromList [T.pack "Kernel"]:.:U (T.pack "Module"))))
+  ::: Just (var (Global (fromList [T.pack "Kernel"]:.:U (T.pack "Module"))))
   :=: (map (\ (C.Import n) -> import' n) is, map def (Map.toList (C.decls ds)))
   where
   def (n, Nothing ::: t) = ann
-    $   var (qvar (mname:.:n))
+    $   var (Global (Nil:.:n))
     ::: printComp Nil t
   def (n, Just d  ::: t) = ann
-    $   var (qvar (mname:.:n))
+    $   var (Global (Nil:.:n))
     ::: defn (printComp Nil t
     :=: case d of
       C.DTerm b  -> printValue Nil b
@@ -232,8 +229,8 @@ printModule (C.Module mname is _ ds) = module_
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
         (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) (C.scopeToList os)))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
-  import' n = pretty "import" <+> braces (enclose mempty mempty (setPrec Var (pretty n)))
-  module_ (n ::: t :=: (is, ds)) = ann (setPrec Var (pretty n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
+  import' n = pretty "import" <+> braces (enclose mempty mempty (setPrec Var (prettyMName n)))
+  module_ (n ::: t :=: (is, ds)) = ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
   defn (a :=: b) = group a <> hardline <> group b
 
 intro, tintro :: Name -> Level -> Print

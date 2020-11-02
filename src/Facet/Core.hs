@@ -66,13 +66,14 @@ module Facet.Core
 , matchWith
 ) where
 
-import           Control.Effect.Empty
+import           Control.Applicative (Alternative(..))
 import           Control.Lens (Lens', coerced, lens)
+import           Control.Monad (guard)
 import           Data.Foldable (foldl', toList)
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
-import           Data.Monoid (First(..))
+import           Data.Monoid (Alt(..))
 import           Data.Semialign
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
@@ -137,15 +138,15 @@ fromValue = \case
   t       -> TRet mempty t
 
 
-unBind :: Has Empty sig m => Comp -> m (Binding, Value -> Comp)
+unBind :: Alternative m => Comp -> m (Binding, Value -> Comp)
 unBind = \case{ TForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unBind' :: Has Empty sig m => (Level, Comp) -> m (Binding, (Level, Comp))
+unBind' :: Alternative m => (Level, Comp) -> m (Binding, (Level, Comp))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
-unLam :: Has Empty sig m => Value -> m (Pl, [Clause])
+unLam :: Alternative m => Value -> m (Pl, [Clause])
 unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 
@@ -408,7 +409,7 @@ data Module = Module
   , scope     :: Scope
   }
 
-name_ :: Lens' Module MName
+name_ :: Lens' Module (MName)
 name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
 
 imports_ :: Lens' Module [Import]
@@ -418,30 +419,25 @@ scope_ :: Lens' Module Scope
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
--- FIXME: produce multiple results, if they exist.
-lookupC :: Has Empty sig m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
+lookupC :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
 lookupC n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList (decls scope))
   where
-  -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
   matchDef (d ::: _)  = do
     n :=: v ::: _T <- maybe empty pure d >>= unDData >>= lookupScope n
-    pure $ name :.: n :=: v ::: _T
+    pure $ name:.:n :=: v ::: _T
 
 -- | Look up effect operations.
-lookupE :: Has Empty sig m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
--- FIXME: produce multiple results, if they exist.
+lookupE :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
 lookupE n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList (decls scope))
   where
-  -- FIXME: insert the constructors into the top-level scope instead of looking them up under the datatype.
   matchDef (d ::: _)  = do
     n :=: _ ::: _T <- maybe empty pure d >>= unDInterface >>= lookupScope n
-    pure $ name :.: n :=: Nothing ::: _T
+    pure $ name:.:n :=: Nothing ::: _T
 
--- FIXME: produce multiple results, if they exist.
-lookupD :: Has Empty sig m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
+lookupD :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
 lookupD n Module{ name, scope } = maybe empty pure $ do
   d ::: _T <- Map.lookup n (decls scope)
-  pure $ name :.: n :=: d ::: _T
+  pure $ name:.:n :=: d ::: _T
 
 
 newtype Scope = Scope { decls :: Map.Map Name (Maybe Def ::: Comp) }
@@ -456,7 +452,7 @@ scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
 scopeToList :: Scope -> [Name :=: Maybe Def ::: Comp]
 scopeToList = map (\ (n, v ::: _T) -> (n :=: v ::: _T)) . Map.toList . decls
 
-lookupScope :: Has Empty sig m => Name -> Scope -> m (Name :=: Maybe Def ::: Comp)
+lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Maybe Def ::: Comp)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
@@ -469,16 +465,16 @@ data Def
   | DData Scope
   | DInterface Scope
 
-unDData :: Has Empty sig m => Def -> m Scope
+unDData :: Alternative m => Def -> m Scope
 unDData = \case
   DData cs -> pure cs
   _        -> empty
 
-unDInterface :: Has Empty sig m => Def -> m Scope
+unDInterface :: Alternative m => Def -> m Scope
 unDInterface = \case
   DInterface cs -> pure cs
   _             -> empty
 
 
-matchWith :: Foldable t => (a -> Maybe b) -> t a -> Maybe b
-matchWith rel = getFirst . foldMap (First . rel)
+matchWith :: (Alternative m, Foldable t) => (a -> m b) -> t a -> m b
+matchWith rel = getAlt . foldMap (Alt . rel)

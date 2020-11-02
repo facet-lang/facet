@@ -46,6 +46,7 @@ import           Facet.Notice.Parser (rethrowParseErrors)
 import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Source
+import           Facet.Stack
 import           Facet.Style
 import qualified Facet.Surface as Import (Import(..))
 import qualified Facet.Surface as S
@@ -86,7 +87,7 @@ kernel = Module kernelName [] [] $ Scope $ Map.fromList
   ]
   where
   typeName = U (TS.pack "Type")
-  kernelName = moduleNameFromList [TS.pack "Kernel"]
+  kernelName = fromList [TS.pack "Kernel"]
 
 
 -- Module loading
@@ -102,7 +103,7 @@ reloadModules = do
   let nModules = length modules
   results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
     i <- fresh
-    outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
+    outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
 
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     (Just <$> loadModule name path src imports) `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
@@ -128,7 +129,7 @@ loadModuleHeader searchPaths target = do
 loadModule :: Has (State Target :+: Throw (Notice.Notice (Doc Style)) :+: Time Instant :+: Trace) sig m => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
   graph <- use modules_
-  let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (Just name, op, assoc)) . operators . snd) imports
+  let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   m <- rethrowElabErrors src . runReader graph $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)
@@ -140,11 +141,11 @@ resolveName searchPaths name = do
   path <- liftIO $ findFile searchPaths namePath
   case path of
     Just path -> pure path
-    Nothing   -> throwError @(Notice.Notice (Doc Style)) $ Notice.Notice (Just Notice.Error) Nothing (fillSep [pretty "module", squotes (pretty name), reflow "could not be found."]) $ case searchPaths of
+    Nothing   -> throwError @(Notice.Notice (Doc Style)) $ Notice.Notice (Just Notice.Error) Nothing (fillSep [pretty "module", squotes (prettyMName name), reflow "could not be found."]) $ case searchPaths of
       [] -> []
       _  -> [ nest 2 (reflow "search paths:" <\> concatWith (<\>) (map pretty searchPaths)) ]
   where
-  toPath (MName components) = foldr1 (FP.</>) (TS.unpack <$> components)
+  toPath components = foldr1 (FP.</>) (TS.unpack <$> components)
 
 
 -- Errors
@@ -158,4 +159,4 @@ ioErrorToNotice src err = Notice.Notice (Just Notice.Error) src (group (reflow (
 rethrowGraphErrors :: Maybe Source -> I.ThrowC (Notice.Notice (Doc Style)) GraphErr m a -> m a
 rethrowGraphErrors src = I.runThrow formatGraphErr
   where
-  formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) src (reflow "cyclic import") (map pretty (toList path))
+  formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) src (reflow "cyclic import") (map prettyMName (toList path))

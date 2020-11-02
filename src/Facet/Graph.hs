@@ -5,21 +5,22 @@ module Facet.Graph
 , restrict
 , insert
 , lookupM
+, lookupWith
 , lookupQ
 , GraphErr(..)
 , Node(..)
 , loadOrder
 ) where
 
+import           Control.Applicative (Alternative(..))
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Carrier.Writer.Church
-import           Control.Effect.Empty
 import           Control.Effect.Throw
 import           Control.Lens as Lens (At(..), Index, IxValue, Ixed(..), iso)
-import           Control.Monad (unless, when, (<=<))
+import           Control.Monad (guard, unless, when, (<=<))
 import           Control.Monad.Trans.Class
-import           Data.Foldable (for_)
+import           Data.Foldable (asum, for_)
 import qualified Data.Map as Map
 import           Data.Monoid (Endo(..))
 import qualified Data.Set as Set
@@ -47,15 +48,17 @@ restrict (Graph g) s = Graph $ Map.restrictKeys g s
 insert :: Maybe FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
 
-lookupM :: Has Empty sig m => MName -> Graph -> m (Maybe FilePath, Module)
+lookupM :: Alternative m => MName -> Graph -> m (Maybe FilePath, Module)
 lookupM n = maybe empty pure . Map.lookup n . getGraph
 
-lookupQ :: Has Empty sig m => Q Name -> Module -> Graph -> m (Q Name :=: Maybe Def ::: Comp)
-lookupQ (m:.:n) mod@Module{ name } g
-  | m == name = lookupD n mod
-  -- FIXME: produce multiple results for a module, if they exist.
-  | otherwise = lookupM m g >>= lookupD n . snd
+lookupWith :: (Alternative m, Monad m) => (Name -> Module -> m res) -> Q Name -> Module -> Graph -> m res
+lookupWith lookup (m:.:n) mod@Module{ name } graph
+  =   guard (m == name || m == Nil) *> lookup n mod
+  <|> guard (m == Nil) *> asum (lookup n . snd <$> getGraph graph)
+  <|> guard (m /= Nil) *> (lookupM m graph >>= lookup n . snd)
 
+lookupQ :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> m (Q Name :=: Maybe Def ::: Comp)
+lookupQ = lookupWith lookupD
 
 -- FIXME: enrich this with source references for each
 newtype GraphErr = CyclicImport (Stack MName)
