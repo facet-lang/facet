@@ -102,6 +102,7 @@ library
     Facet.Source
     Facet.Span
     Facet.Stack
+    Facet.Stack.NonEmpty
     Facet.Style
     Facet.Surface
     Facet.Syntax
