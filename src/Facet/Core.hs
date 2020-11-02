@@ -56,6 +56,7 @@ module Facet.Core
 , lookupD
 , Scope(..)
 , decls_
+, lookupScope
 , Import(..)
 , Def(..)
 , unDData
@@ -444,6 +445,9 @@ newtype Scope a = Scope { decls :: Map.Map Name (a ::: Comp) }
 
 decls_ :: Lens (Scope a) (Scope b) (Map.Map Name (a ::: Comp)) (Map.Map Name (b ::: Comp))
 decls_ = coerced
+
+lookupScope :: Has Empty sig m => Name -> Scope a -> m (Name :=: a ::: Comp)
+lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
 newtype Import = Import { name :: MName }
