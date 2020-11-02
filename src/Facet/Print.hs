@@ -212,9 +212,10 @@ printComp env = \case
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
-  $   mname
-  ::: Just (var (Global (fromList [T.pack "Kernel"]:.:U (T.pack "Module"))))
-  :=: (map (\ (C.Import n) -> import' n) is, map def (Map.toList (C.decls ds)))
+  mname
+  (var (Global (fromList [T.pack "Kernel"]:.:U (T.pack "Module"))))
+  (map (\ (C.Import n) -> import' n) is)
+  (map def (Map.toList (C.decls ds)))
   where
   def (n, Nothing ::: t) = ann
     $   var (Global (Nil:.:n))
@@ -227,10 +228,11 @@ printModule (C.Module mname is _ ds) = module_
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
         (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) (C.scopeToList cs))
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) (C.scopeToList os)))
+        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) (C.scopeToList os))
+      C.DModule ds -> block (concatWith (surround hardline) (map ((hardline <>) . def) (Map.toList (C.decls ds)))))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
   import' n = pretty "import" <+> braces (enclose mempty mempty (setPrec Var (prettyMName n)))
-  module_ (n ::: t :=: (is, ds)) = ann (setPrec Var (prettyMName n) ::: fromMaybe (pretty "Module") t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
+  module_ n t is ds = ann (setPrec Var (prettyMName n) ::: t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
   defn (a :=: b) = group a <> hardline <> group b
 
 intro, tintro :: Name -> Level -> Print

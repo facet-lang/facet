@@ -464,6 +464,7 @@ data Def
   = DTerm Value
   | DData Scope
   | DInterface Scope
+  | DModule Scope
 
 unDData :: Alternative m => Def -> m Scope
 unDData = \case
