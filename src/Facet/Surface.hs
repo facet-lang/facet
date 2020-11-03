@@ -52,7 +52,6 @@ data Expr a
   | App (Ann (Expr a)) (Ann (Expr a))
   | As (Ann (Expr a)) (Ann (Type a))
   | String Text
-  | M a
   deriving (Foldable, Functor, Traversable)
 
 deriving instance Eq   a => Eq   (Expr a)

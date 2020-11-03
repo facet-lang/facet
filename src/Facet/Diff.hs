@@ -37,7 +37,6 @@ del = go IntMap.empty
     (As e1 t1, As e2 t2)     -> goAnn (go m) e1 e2 >>= \ m' -> goAnn (go m') t1 t2
     (As{}, _)                -> Nothing
     (String s1, String s2)   -> m <$ guard (s1 == s2)
-    (M i, t)                 -> case IntMap.lookup (getMeta i) m of { Nothing -> pure (IntMap.insert (getMeta i) t m) ; Just t' -> m <$ guard (t == t') }
     -- FIXME: TComp, Lam
     _                        -> Nothing
 
@@ -46,6 +45,4 @@ del = go IntMap.empty
 
 
 ins :: Open Expr -> IntMap.IntMap (Closed Expr) -> Maybe (Closed Expr)
-ins d m = case d of
-  M i -> IntMap.lookup (getMeta i) m
-  s   -> traverse (const Nothing) s
+ins d _ = traverse (const Nothing) d
