@@ -100,7 +100,7 @@ prettyMName = \case
 
 
 -- | Qualified names, consisting of a module name and declaration name.
-data Q a = MName :.: a
+data Q a = MName :.: a -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
   deriving (Eq, Ord, Show)
 
 instance P.Pretty a => P.Pretty (Q a) where
