@@ -21,6 +21,7 @@ module Facet.Pretty
 , renderLazy
   -- * ANSI codes
 , setRGB
+, setRGBBack
 , setBold
   -- * Re-exports
 , PP.Doc
@@ -188,6 +189,9 @@ renderLazy =
 
 setRGB :: RGB Float -> SGR
 setRGB = SetRGBColor Foreground . uncurryRGB sRGB
+
+setRGBBack :: RGB Float -> SGR
+setRGBBack = SetRGBColor Background . uncurryRGB sRGB
 
 setBold :: SGR
 setBold = SetConsoleIntensity BoldIntensity
