@@ -97,8 +97,6 @@ data Value
   | EString Text
   -- | Effect operation and its parameters.
   | EOp (Q Name :$ (Pl, Expr))
-  -- | Diffs (arising from unification errors).
-  | VDiff Value Value
 
 type Type = Value
 type Expr = Value
@@ -226,7 +224,6 @@ occursIn m = go (Level 0) -- FIXME: this should probably be doing something more
     TString        -> False
     EString _      -> False
     EOp (_ :$ sp)  -> any (any (go d)) sp
-    VDiff v1 v2    -> go d v1 || go d v2
 
   comp d = \case
     TForAll t b -> binding d t || comp (succ d) (b (free d))
@@ -288,7 +285,6 @@ substWith f = go
     TString       -> TString
     EString s     -> EString s
     EOp (q :$ sp) -> EOp (q :$ fmap (fmap go) sp)
-    VDiff v1 v2   -> VDiff (go v1) (go v2)
 
   clause (Clause p b) = Clause (fmap go <$> p) (go . b)
 
@@ -370,7 +366,6 @@ sortOf ctx = \case
   TString       -> SType
   EString _     -> STerm
   EOp _         -> STerm -- FIXME: will this always be true?
-  VDiff t1 t2   -> sortOf ctx t1 `min` sortOf ctx t2
 
 sortOfComp :: Stack Sort -> Comp -> Sort
 sortOfComp ctx = \case

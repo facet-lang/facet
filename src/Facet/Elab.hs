@@ -105,8 +105,6 @@ unify = unifyValue
     EString s1              :===: EString s2              -> EString s1 <$ unless (s1 == s2) nope
     EString{}               :===: _                       -> nope
     EOp{}                   :===: _                       -> nope
-    VDiff l1 r1             :===: VDiff l2 r2             -> VDiff <$> unifyValue l1 l2 <*> unifyValue r1 r2
-    VDiff{}                 :===: _                       -> nope
     where
     -- FIXME: build and display a diff of the root types
     nope = couldNotUnify "mismatch" t1 t2
