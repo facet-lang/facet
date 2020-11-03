@@ -508,6 +508,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
       scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
 
 
+-- FIXME: do we need to shift levels internally? (how would levels be happening? this should be closed—but we certainly can’t /prove/ that it’s closed)
 addEffectVar :: Comp -> Comp
 addEffectVar _T = TForAll (Binding Im Nothing Nothing KInterface) (\ _E -> insertEffectVar _E _T)
 
