@@ -296,7 +296,6 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
     pure $ Binding p n d' t')
   | n <- maybe [Nothing] (map Just . toList) n ]
 
--- FIXME: synthesize the types of the operands against the type of the interface; this is a spine.
 elabSig :: S.Ann (S.Interface Void) -> Check Value
 elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
   check (switch (foldl' ($$) (mapSynth (setSpan s') (var n)) (checkExpr <$> sp)) ::: _T)
