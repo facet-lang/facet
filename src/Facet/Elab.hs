@@ -209,6 +209,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
+-- FIXME: effect ops should not generate their own signatures; they should take on the ambient signature so long as the operation is in the signature.
 var :: Q Name -> Synth Value
 var n = Synth $ trace "var" $ ask >>= \ ctx -> if
   | Just (i, _T) <- lookupInContext n ctx -> pure (free i ::: _T)
