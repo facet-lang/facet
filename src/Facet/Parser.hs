@@ -125,7 +125,7 @@ typeSig
 typeSig name = anned $ do
   bs1 <- many (try (choice [ imBinding, exBinding name ] <* arrow))
   bs2 <- many (try (nonBinding <* arrow))
-  S.Comp (bs1 <> bs2) <$> optional sig <*> type'
+  S.Comp (bs1 <> bs2) <$> optional sig <*> tatom
 
 exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann (S.Binding Void))
 -- NB: We map wildcards here (and only here) to __ rather than Nothing so that we mark the argument as bound when elaborating the body. e.g.:
