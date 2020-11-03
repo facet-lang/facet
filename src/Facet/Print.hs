@@ -198,14 +198,16 @@ printComp env = \case
   C.TForAll t b ->
     let (vs, (_, b')) = splitr C.unBind' (d, C.TForAll t b)
         binding env (C.Binding p n s _T) =
-          let _T' = sig env s _T
+          let _T' = maybe mempty (brackets . commaSep . map (printValue env)) s <> printValue env _T
           in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Level (length env)) ::: _T'))
         name p n d
           | n == __, Ex <- p = []
           | otherwise        = [tintro n d]
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printComp env' b')
-  C.TRet s _T -> sig env s _T
+  C.TRet s _T -> case s of
+    Nothing -> parens (brackets mempty <+> printValue env _T)
+    Just s  -> brackets (commaSep (map (printValue env) s)) <+> printValue env _T
   where
   d = Level (length env)
 
@@ -250,11 +252,7 @@ fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
   [] -> _T --> b
   _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
 tvar env n = group (var (TLocal (snd (tm n)) (Level (length env))))
-sig env s _T = tcomp (map (printValue env) <$> s) (printValue env _T)
 app f as = group f $$* fmap (group . uncurry (unPl braces id)) as
-tcomp s t = case s of
-  Nothing -> parens (brackets mempty <> t)
-  Just s  -> brackets (commaSep s) <+> t
 
 lvar env (p, n) = var (unPl TLocal Local p n (Level (length env)))
 
