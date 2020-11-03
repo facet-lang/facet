@@ -159,7 +159,11 @@ monotypeTable =
 
 
 type' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-type' = anned $ S.TComp <$> tcomp
+type' = anned $ mk <$> tcomp
+  where
+  -- FIXME: This is a gross hack.
+  mk (S.Ann _ _ (S.Comp [] Nothing (S.Ann _ _ t))) = t
+  mk c                                             = S.TComp c
 
 tcomp :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Comp)
 tcomp = anned $ do
