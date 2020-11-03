@@ -239,10 +239,10 @@ VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
 EOp (q :$ es) $$ a = EOp (q :$ (es :> a))
 TSusp t       $$ a
   | TForAll _ b <- t = case b (snd a) of
-    t@TForAll{} -> TSusp t
     -- FIXME: it’s not clear to me that it’s ok to discard the signature.
     -- maybe this should still be a nullary computation which gets eliminated with !.
-    TRet _ t    -> t
+    TRet _ t -> t
+    t        -> TSusp t
 ELam _ b      $$ a = case' (snd a) b
 _             $$ _ = error "can’t apply non-neutral/forall type"
 
