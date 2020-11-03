@@ -437,7 +437,6 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
       _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
       pure $ TForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
   con q fs = \case
-    -- FIXME: can this use lam?
     TForAll (Binding p n _s _T) _B -> ELam p [Clause (PVar (fromMaybe __ n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
     _T                             -> ECon (q :$ fs)
 
