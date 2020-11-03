@@ -104,8 +104,6 @@ data Highlight
   | Op
   | Lit
   | Hole Meta
-  | Expected
-  | Actual
   deriving (Eq, Show)
 
 op :: (Printer p, Ann p ~ Highlight) => p -> p
