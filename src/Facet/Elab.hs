@@ -519,6 +519,7 @@ insertEffectVar _E = go
   where
   go = \case
     TForAll b@Binding{ type' } _B -> TForAll b{ type' = case type' of { TSusp c -> TSusp (go c) ; t -> t } } (go . _B)
+    TRet _ KType                  -> TRet Nothing KType
     TRet s t                      -> TRet (Just (maybe [_E] (_E:) s)) t
 
 
