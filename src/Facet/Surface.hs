@@ -1,4 +1,3 @@
-{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Surface
 ( -- * Expressions
@@ -31,7 +30,6 @@ import Control.Lens (Lens, Lens', lens)
 import Data.Function (on)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
-import Data.Void
 import Facet.Name
 import Facet.Span
 import Facet.Stack
@@ -39,38 +37,33 @@ import Facet.Syntax
 
 -- Expressions
 
-data Expr a
+data Expr
   = Var (Q Name)
   | Hole Name
   | KType
   | KInterface
   | TString
-  | TComp (Ann (Comp a))
-  | Lam [Clause a]
-  | Thunk (Ann (Expr a))
-  | Force (Ann (Expr a))
-  | App (Ann (Expr a)) (Ann (Expr a))
-  | As (Ann (Expr a)) (Ann (Type a))
+  | TComp (Ann Comp)
+  | Lam [Clause]
+  | Thunk (Ann Expr)
+  | Force (Ann Expr)
+  | App (Ann Expr) (Ann Expr)
+  | As (Ann Expr) (Ann Type)
   | String Text
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance Eq   a => Eq   (Expr a)
-deriving instance Show a => Show (Expr a)
+  deriving (Eq, Show)
 
 type Type = Expr
 
 
-data Comp a = Comp
-  { bindings :: [Ann (Binding a)]
-  , delta    :: Maybe [Ann (Interface a)]
-  , type'    :: Ann (Type a)
+data Comp = Comp
+  { bindings :: [Ann Binding]
+  , delta    :: Maybe [Ann Interface]
+  , type'    :: Ann Type
   }
-  deriving (Foldable, Functor, Traversable)
+  deriving (Eq, Show)
 
-deriving instance Eq   a => Eq   (Comp a)
-deriving instance Show a => Show (Comp a)
 
-data Binding a = Binding
+data Binding = Binding
   { pl    :: Pl
   -- | The names bound by this value. 'Nothing' indicates an unnamed binding (i.e. a regular old function type argument like @A -> B@), whereas 'Just' indicates one or more names are bound to a single type (e.g. a quantifier like @{ A, B : Type } -> C@).
   --
@@ -79,84 +72,60 @@ data Binding a = Binding
   -- | The signature, if any, provided at this position.
   --
   -- 'Nothing' indicates a value type; 'Just' with an empty list indicates a thunk with the ambient effects; 'Just' with one or more interfaces indicates that this position provides these effects. (Note that this can, in general, also hold signature variables.)
-  , delta :: Maybe [Ann (Interface a)]
-  , type' :: Ann (Type a)
+  , delta :: Maybe [Ann Interface]
+  , type' :: Ann Type
   }
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance Eq   a => Eq   (Binding a)
-deriving instance Show a => Show (Binding a)
+  deriving (Eq, Show)
 
 
-data Interface a = Interface (Ann (Q Name)) (Stack (Ann (Type a)))
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance Eq   a => Eq   (Interface a)
-deriving instance Show a => Show (Interface a)
+data Interface = Interface (Ann (Q Name)) (Stack (Ann Type))
+  deriving (Eq, Show)
 
 
-data Clause a = Clause (Ann (EffPattern a)) (Ann (Expr a))
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance Eq   a => Eq   (Clause a)
-deriving instance Show a => Show (Clause a)
+data Clause = Clause (Ann EffPattern) (Ann Expr)
+  deriving (Eq, Show)
 
 
 -- Patterns
 
-data ValPattern a
+data ValPattern
   = PWildcard
   | PVar Name
-  | PCon (Q Name) [Ann (ValPattern a)]
-  deriving (Foldable, Functor, Traversable)
+  | PCon (Q Name) [Ann ValPattern]
+  deriving (Eq, Show)
 
-deriving instance Eq   a => Eq   (ValPattern a)
-deriving instance Show a => Show (ValPattern a)
 
-data EffPattern a
-  = PEff (Q Name) [Ann (ValPattern a)] Name
+data EffPattern
+  = PEff (Q Name) [Ann ValPattern] Name
   -- | Catch-all effect pattern. Matches values and effect operations.
   | PAll Name
-  | PVal (Ann (ValPattern a))
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance Eq   a => Eq   (EffPattern a)
-deriving instance Show a => Show (EffPattern a)
+  | PVal (Ann ValPattern)
+  deriving (Eq, Show)
 
 
 -- Declarations
 
-data Decl a = Decl (Ann (Comp a)) (Def a)
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance Eq   a => Eq   (Decl a)
-deriving instance Show a => Show (Decl a)
+data Decl = Decl (Ann Comp) Def
+  deriving (Eq, Show)
 
 
-data Def a
-  = DataDef [Ann (Name ::: Ann (Comp a))]
-  | InterfaceDef [Ann (Name ::: Ann (Comp a))]
-  | TermDef (Ann (Expr a))
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance Eq   a => Eq   (Def a)
-deriving instance Show a => Show (Def a)
-
+data Def
+  = DataDef [Ann (Name ::: Ann Comp)]
+  | InterfaceDef [Ann (Name ::: Ann Comp)]
+  | TermDef (Ann Expr)
+  deriving (Eq, Show)
 
 
 -- Modules
 
-data Module a = Module
+data Module = Module
   { name      :: MName
   , imports   :: [Ann Import]
   -- FIXME: store source references for operators’ definitions, for error reporting
   , operators :: [(Op, Assoc)]
-  , defs      :: [Ann (Name, Ann (Decl a))]
+  , defs      :: [Ann (Name, Ann Decl)]
   }
-  deriving (Foldable, Functor, Traversable)
-
-deriving instance Eq   a => Eq   (Module a)
-deriving instance Show a => Show (Module a)
+  deriving (Eq, Show)
 
 
 newtype Import = Import { name :: MName }
@@ -194,10 +163,10 @@ out_ :: Lens (Ann a) (Ann b) a b
 out_ = lens out (\ a out -> a{ out })
 
 
-annUnary :: (Ann (Expr Void) -> Expr Void) -> Ann (Expr Void) -> Ann (Expr Void)
+annUnary :: (Ann Expr -> Expr) -> Ann Expr -> Ann Expr
 annUnary f a = Ann (ann a) Nil (f a)
 
-annBinary :: (Ann (Expr Void) -> Ann (Expr Void) -> Expr Void) -> Ann (Expr Void) -> Ann (Expr Void) -> Ann (Expr Void)
+annBinary :: (Ann Expr -> Ann Expr -> Expr) -> Ann Expr -> Ann Expr -> Ann Expr
 annBinary f a b = Ann (ann a <> ann b) Nil (f a b)
 
 

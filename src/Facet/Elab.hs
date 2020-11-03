@@ -54,7 +54,6 @@ import           Data.Semialign
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Data.Void
 import           Facet.Context as Context
 import           Facet.Core hiding (global, ($$))
 import qualified Facet.Core as C
@@ -253,7 +252,7 @@ infix 1 |-
 
 -- Expressions
 
-synthExpr :: HasCallStack => S.Ann (S.Expr Void) -> Synth Expr
+synthExpr :: HasCallStack => S.Ann S.Expr -> Synth Expr
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Var n      -> var n
   S.KType      -> _Type
@@ -270,7 +269,7 @@ synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr :: HasCallStack => S.Ann (S.Expr Void) -> Check Expr
+checkExpr :: HasCallStack => S.Ann S.Expr -> Check Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e of
   S.Hole  n    -> hole n
   S.Lam cs     -> elabClauses cs
@@ -288,7 +287,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
   synth = switch (synthExpr expr)
 
 
-elabBinding :: S.Ann (S.Binding Void) -> [(Pos, Check Binding)]
+elabBinding :: S.Ann S.Binding -> [(Pos, Check Binding)]
 elabBinding (S.Ann s _ (S.Binding p n d t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
     d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
@@ -296,11 +295,11 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
     pure $ Binding p n d' t')
   | n <- maybe [Nothing] (map Just . toList) n ]
 
-elabSig :: S.Ann (S.Interface Void) -> Check Value
+elabSig :: S.Ann S.Interface -> Check Value
 elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
   check (switch (foldl' ($$) (mapSynth (setSpan s') (var n)) (checkExpr <$> sp)) ::: _T)
 
-elabSTelescope :: S.Ann (S.Comp Void) -> Synth Comp
+elabSTelescope :: S.Ann S.Comp -> Synth Comp
 elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabSTelescope") $ foldr
   (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> mapCheck (v |-) (switch b)))
   (mapSynth (setSpan (foldr (flip (foldr ((<>) . S.ann))) (S.ann t) d)) (comp (map elabSig <$> d) (checkExpr t)))
@@ -354,7 +353,7 @@ force e = Synth $ trace "force" $ do
 
 
 -- FIXME: go find the pattern matching matrix algorithm
-elabClauses :: [S.Clause Void] -> Check Expr
+elabClauses :: [S.Clause] -> Check Expr
 elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = lam n $ \ v -> mapCheck (v |-) (checkExpr b)
 elabClauses cs = Check $ \ _T -> do
   -- FIXME: use the signature to elaborate the pattern
@@ -368,7 +367,7 @@ elabClauses cs = Check $ \ _T -> do
 
 
 -- FIXME: check for unique variable names
-elabPattern :: [Value] -> Type -> S.Ann (S.EffPattern Void) -> (Pattern (Name ::: Type) -> Elab a) -> Elab a
+elabPattern :: [Value] -> Type -> S.Ann S.EffPattern -> (Pattern (Name ::: Type) -> Elab a) -> Elab a
 elabPattern sig = go
   where
   go _A (S.Ann s _ p) k = trace "elabPattern" $ setSpan s $ case p of
@@ -416,7 +415,7 @@ string s = Synth $ pure $ EString s ::: TString
 elabDataDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => Q Name ::: Comp
-  -> [S.Ann (Name ::: S.Ann (S.Comp Void))]
+  -> [S.Ann (Name ::: S.Ann S.Comp)]
   -> m [Name :=: Maybe Def ::: Comp]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
@@ -441,7 +440,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => Comp
-  -> [S.Ann (Name ::: S.Ann (S.Comp Void))]
+  -> [S.Ann (Name ::: S.Ann S.Comp)]
   -> m (Maybe Def ::: Comp)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
@@ -460,7 +459,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
 elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m)
   => Comp
-  -> S.Ann (S.Expr Void)
+  -> S.Ann S.Expr
   -> m Expr
 elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ check (go (checkExpr expr) ::: TSusp _T)
   where
@@ -477,7 +476,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ chec
 
 elabModule
   :: (HasCallStack, Has (Reader Graph :+: Throw Err :+: Time Instant :+: Trace) sig m)
-  => S.Ann (S.Module Void)
+  => S.Ann S.Module
   -> m Module
 elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader mname . runReader s $ trace (prettyMName mname) $ do
   let (importedNames, imports) = mapAccumL (\ names (S.Ann _ _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is

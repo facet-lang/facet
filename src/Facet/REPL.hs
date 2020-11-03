@@ -22,7 +22,6 @@ import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
 import           Data.Text (Text)
-import           Data.Void
 import           Facet.Carrier.Parser.Church hiding (Input)
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
@@ -188,7 +187,7 @@ addTarget targets = Action $ do
 removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets)
 
 
-showType, showEval :: S.Ann (S.Expr Void) -> Action
+showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
   e ::: _T <- elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.synth (Elab.synthExpr e))
