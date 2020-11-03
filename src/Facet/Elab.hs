@@ -258,7 +258,7 @@ synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.KType      -> _Type
   S.KInterface -> _Interface
   S.TString    -> _String
-  S.TComp t    -> TSusp <$> elabSTelescope t
+  S.TComp t    -> TSusp <$> elabComp t
   S.App f a    -> synthExpr f $$ checkExpr a
   S.As t _T    -> as (checkExpr t ::: checkExpr _T)
   S.String s   -> string s
@@ -299,8 +299,8 @@ elabSig :: S.Ann S.Interface -> Check Value
 elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
   check (switch (foldl' ($$) (mapSynth (setSpan s') (var n)) (checkExpr <$> sp)) ::: _T)
 
-elabSTelescope :: S.Ann S.Comp -> Synth Comp
-elabSTelescope (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabSTelescope") $ foldr
+elabComp :: S.Ann S.Comp -> Synth Comp
+elabComp (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabComp") $ foldr
   (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> mapCheck (v |-) (switch b)))
   (mapSynth (setSpan (foldr (flip (foldr ((<>) . S.ann))) (S.ann t) d)) (comp (map elabSig <$> d) (checkExpr t)))
   (elabBinding =<< bs)
@@ -420,7 +420,7 @@ elabDataDef
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
-    c_T <- elabTele $ go (switch (elabSTelescope t)) _T
+    c_T <- elabTele $ go (switch (elabComp t)) _T
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T)) ::: c_T
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
@@ -444,7 +444,7 @@ elabInterfaceDef
   -> m (Maybe Def ::: Comp)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
-    (\ _T -> n :=: Nothing ::: _T) <$> elabTele (go (check (switch (elabSTelescope t) ::: KType)) _T)
+    (\ _T -> n :=: Nothing ::: _T) <$> elabTele (go (check (switch (elabComp t) ::: KType)) _T)
   pure $ Just (DInterface (scopeFromList cs)) ::: _T
   where
   go k = \case
@@ -488,7 +488,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elabTele $ addEffectVar <$> check (switch (elabSTelescope tele) ::: KType)
+      _T <- runModule . elabTele $ addEffectVar <$> check (switch (elabComp tele) ::: KType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
