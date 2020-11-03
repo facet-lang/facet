@@ -98,7 +98,7 @@ data Value
   -- | Effect operation and its parameters.
   | EOp (Q Name :$ (Pl, Expr))
   -- | Diffs (arising from unification errors).
-  | VDiff Value Value -- FIXME: this would be better in a different representation that we could map back into Value, or in a fixpoint of Value.
+  | VDiff Value Value
 
 type Type = Value
 type Expr = Value
