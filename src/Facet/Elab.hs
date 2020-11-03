@@ -389,7 +389,7 @@ elabPattern sig = go
     S.PCon n ps -> do
       q :=: _ ::: _T' <- resolveC n
       _T'' <- inst _T'
-      subpatterns _T'' ps $ \ _T ps' -> unify _A _T *> k (PCon (q :$ fromList ps'))
+      subpatterns _T'' ps $ \ _T ps' -> unify _T _A *> k (PCon (q :$ fromList ps'))
 
   inst = \case
   -- FIXME: assert that the signature is empty
