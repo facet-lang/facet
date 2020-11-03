@@ -105,7 +105,7 @@ type Expr = Value
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
   = TForAll Binding (Type -> Comp)
-  | TRet (Maybe [Value]) Type
+  | TRet (Maybe [Value]) Type -- FIXME: the constraints here should not be in Maybe
 
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
