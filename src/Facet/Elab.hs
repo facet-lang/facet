@@ -47,7 +47,7 @@ import           Control.Effect.Sum
 import           Control.Lens (at, ix)
 import           Control.Monad (unless, when, (<=<))
 import           Data.Bifunctor (first)
-import           Data.Foldable (foldl', for_, toList)
+import           Data.Foldable (asum, foldl', for_, toList)
 import qualified Data.IntMap as IntMap
 import           Data.Maybe (catMaybes, fromMaybe)
 import           Data.Semialign
@@ -198,7 +198,7 @@ lookupInContext (m:.:n)
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 lookupInSig :: Q Name -> Module -> Graph -> [Value] -> Maybe (Q Name ::: Comp)
-lookupInSig (m :.: n) mod graph = matchWith $ \case
+lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   VNe (Global q@(m':.:_) :$ _) -> do
     guard (m == Nil || m == m')
     _ :=: Just (DInterface defs) ::: _ <- lookupQ q mod graph

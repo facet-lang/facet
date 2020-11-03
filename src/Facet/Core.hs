@@ -63,7 +63,6 @@ module Facet.Core
 , Def(..)
 , unDData
 , unDInterface
-, matchWith
 ) where
 
 import           Control.Applicative (Alternative(..))
@@ -73,7 +72,6 @@ import           Data.Foldable (asum, foldl', toList)
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
-import           Data.Monoid (Alt(..))
 import           Data.Semialign
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
@@ -255,7 +253,7 @@ infixl 9 $$, $$*
 
 
 case' :: HasCallStack => Value -> [Clause] -> Value
-case' s cs = case matchWith (\ (Clause p f) -> f <$> match s p) cs of
+case' s cs = case asum ((\ (Clause p f) -> f <$> match s p) <$> cs) of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
@@ -474,7 +472,3 @@ unDInterface :: Alternative m => Def -> m Scope
 unDInterface = \case
   DInterface cs -> pure cs
   _             -> empty
-
-
-matchWith :: (Alternative m, Foldable t) => (a -> m b) -> t a -> m b
-matchWith rel = getAlt . foldMap (Alt . rel)
