@@ -465,11 +465,11 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ chec
   where
   go :: Check Expr -> Check Expr
   go k = Check $ \ _T -> case _T of
-    TSusp (TForAll Binding{ name = Just n} _) -> check (lam n (\ v -> mapCheck (v |-) (go k)) ::: _T)
+    TSusp (TForAll Binding{ name = Just n } _) -> check (lam n (\ v -> mapCheck (v |-) (go k)) ::: _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                                         -> check (k ::: _T)
+    _                                          -> check (k ::: _T)
 
 
 -- Modules
