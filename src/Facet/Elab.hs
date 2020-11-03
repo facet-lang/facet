@@ -465,20 +465,15 @@ elabTermDef
   => Comp
   -> S.Ann (S.Expr Void)
   -> m Expr
-elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ go (checkExpr expr) _T
+elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ check (go (checkExpr expr) ::: TSusp _T)
   where
-  go k t = case t of
+  go :: Check Expr -> Check Expr
+  go k = Check $ \ _T -> case _T of
+    TSusp (TForAll Binding{ name = Just n} _) -> check (lam n (\ v -> mapCheck (v |-) (go k)) ::: _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
-    TRet _ _                              -> check (k ::: TSusp t)
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    TForAll (Binding _ Nothing _s _T) _B  -> check (k ::: TSusp t)
-    -- FIXME: can this use lam?
-    TForAll (Binding p (Just n) _s _T) _B -> do
-      -- FIXME: use the sig… somehow…
-      -- FIXME: should signatures end up in the context?
-      b' <- elabBinder $ \ v -> n ::: _T |- go k (_B v)
-      pure $ ELam p [Clause (PVar (n ::: _T)) (b' . unsafeUnPVar)]
+    _                                         -> check (k ::: _T)
 
 
 -- Modules
