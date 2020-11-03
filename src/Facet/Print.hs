@@ -253,7 +253,7 @@ tvar env n = group (var (TLocal (snd (tm n)) (Level (length env))))
 sig env s _T = tcomp (map (printValue env) <$> s) (printValue env _T)
 app f as = group f $$* fmap (group . uncurry (unPl braces id)) as
 tcomp s t = case s of
-  Nothing -> t
+  Nothing -> parens (brackets mempty <> t)
   Just s  -> brackets (commaSep s) <+> t
 
 lvar env (p, n) = var (unPl TLocal Local p n (Level (length env)))
