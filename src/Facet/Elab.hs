@@ -341,7 +341,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
   pure $ ELam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)]
 
 thunk :: Check Expr -> Check Expr
-thunk e = Check $ \case
+thunk e = Check $ trace "thunk" . \case
   -- FIXME: pretty sure this is redundant
   -- TSusp (TRet s t) -> extendSig s $ check (e ::: t)
   t                -> check (e ::: t)
