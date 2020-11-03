@@ -22,7 +22,7 @@ import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
 import           Facet.Name
-import           Facet.Pretty (lower, upper)
+import           Facet.Pretty (lower, upper, (<\>))
 import           Facet.Stack
 import           Facet.Syntax
 import qualified Prettyprinter as PP
@@ -192,6 +192,8 @@ printValue env = \case
   C.EOp (q :$ sp) -> app (group (var (Global q))) (fmap (fmap (printValue env)) sp)
   C.TString   -> annotate Type $ pretty "String"
   C.EString s -> annotate Lit $ pretty (show s)
+  -- FIXME: maybe print both types separately but style the differing region appropriately for either
+  C.VDiff v1 v2 -> align (annotate Actual (printValue env v1) <\> annotate Expected (printValue env v2))
   where
   d = Level (length env)
 
