@@ -210,6 +210,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 -- FIXME: effect ops should not generate their own signatures; they should take on the ambient signature so long as the operation is in the signature.
+-- otherwise put, we should think of the signature as being like the context (an input altered during elaboration, not an output), and of the signature attached to a TRet as a sort of row-polymorphic constraint: [Foo] A really means [Foo|E] A, where E is the ambient signature. So we must /instantiate/ E to the ambient signature, and then check the predicate.
 var :: Q Name -> Synth Value
 var n = Synth $ trace "var" $ ask >>= \ ctx -> if
   | Just (i, _T) <- lookupInContext n ctx -> pure (free i ::: _T)
