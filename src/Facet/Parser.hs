@@ -124,7 +124,7 @@ typeSig
 typeSig name = anned $ do
   bs1 <- many (try (choice [ imBinding, exBinding name ] <* arrow))
   bs2 <- many (try (nonBinding <* arrow))
-  S.Comp (bs1 <> bs2) <$> optional sig <*> tatom
+  S.Comp (bs1 <> bs2) <$> optional sig <*> monotype
 
 exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann S.Binding)
 -- NB: We map wildcards here (and only here) to __ rather than Nothing so that we mark the argument as bound when elaborating the body. e.g.:
@@ -139,7 +139,7 @@ imBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, To
 imBinding = anned $ braces $ S.Binding Im . Just . NE.fromList <$> commaSep1 tname <* colon <*> optional sig <*> type'
 
 nonBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Binding)
-nonBinding = anned $ S.Binding Ex Nothing <$> optional sig <*> tatom
+nonBinding = anned $ S.Binding Ex Nothing <$> optional sig <*> monotype
 
 
 -- Types
@@ -164,11 +164,11 @@ type' = anned $ S.TComp <$> tcomp
 tcomp :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Comp)
 tcomp = anned $ do
   bindings <- many (try (choice [ imBinding, nonBinding ] <* arrow))
-  S.Comp bindings <$> optional sig <*> tatom
+  S.Comp bindings <$> optional sig <*> monotype
 
 -- FIXME: support type operators
-tatom :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-tatom = build monotypeTable $ parens type'
+monotype :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
+monotype = build monotypeTable $ parens type'
 
 tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
 tvar = anned (S.Var <$> qname tname)
