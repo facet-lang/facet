@@ -69,7 +69,7 @@ module Facet.Core
 import           Control.Applicative (Alternative(..))
 import           Control.Lens (Lens', coerced, lens)
 import           Control.Monad (guard)
-import           Data.Foldable (foldl', toList)
+import           Data.Foldable (asum, foldl', toList)
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
@@ -420,7 +420,7 @@ scope_ = lens scope (\ m scope -> m{ scope })
 
 
 lookupC :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
-lookupC n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList (decls scope))
+lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
     n :=: v ::: _T <- maybe empty pure d >>= unDData >>= lookupScope n
@@ -428,7 +428,7 @@ lookupC n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList 
 
 -- | Look up effect operations.
 lookupE :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
-lookupE n Module{ name, scope } = maybe empty pure $ matchWith matchDef (toList (decls scope))
+lookupE n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
     n :=: _ ::: _T <- maybe empty pure d >>= unDInterface >>= lookupScope n
