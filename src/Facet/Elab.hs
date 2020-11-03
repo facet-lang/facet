@@ -491,7 +491,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elabTele $ check (switch (elabSTelescope tele) ::: KType)
+      _T <- runModule . elabTele $ addEffectVar <$> check (switch (elabSTelescope tele) ::: KType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
@@ -509,6 +509,17 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> setSpan s $ tracePretty dname $ do
       t' <- runModule $ elabTermDef _T t
       scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
+
+
+addEffectVar :: Comp -> Comp
+addEffectVar _T = TForAll (Binding Im Nothing Nothing KInterface) (\ _E -> insertEffectVar _E _T)
+
+insertEffectVar :: Type -> Comp -> Comp
+insertEffectVar _E = go
+  where
+  go = \case
+    TForAll b@Binding{ type' } _B -> TForAll b{ type' = case type' of { TSusp c -> TSusp (go c) ; t -> t } } (go . _B)
+    TRet s t                      -> TRet (Just (maybe [_E] (_E:) s)) t
 
 
 runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
