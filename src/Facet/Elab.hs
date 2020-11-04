@@ -422,6 +422,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elabTele $ go (switch (elabComp t)) _T
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T)) ::: c_T
+  -- FIXME: constructor functions should have signatures, but constructors should not.
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
     : cs
