@@ -205,9 +205,7 @@ printComp env = \case
           | otherwise        = [tintro n d]
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printComp env' b')
-  C.TRet s _T -> case s of
-    Nothing -> parens (brackets mempty <+> printValue env _T)
-    Just s  -> brackets (commaSep (map (printValue env) s)) <+> printValue env _T
+  C.TRet s _T -> brackets (commaSep (map (printValue env) s)) <+> printValue env _T
   where
   d = Level (length env)
 

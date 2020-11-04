@@ -105,14 +105,14 @@ type Expr = Value
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
   = TForAll Binding (Type -> Comp)
-  | TRet (Maybe [Value]) Type -- FIXME: the constraints here should not be in Maybe
+  | TRet [Value] Type
 
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
   where
   go = \case
     TForAll t b -> TForAll (binding t) (go . b)
-    TRet s t    -> TRet (map (substWith f) <$> s) (substWith f t)
+    TRet s t    -> TRet (map (substWith f) s) (substWith f t)
 
   binding (Binding p n s t) = Binding p n (map (substWith f) <$> s) (substWith f t)
 
@@ -227,7 +227,7 @@ occursIn m = go (Level 0) -- FIXME: this should probably be doing something more
 
   comp d = \case
     TForAll t b -> binding d t || comp (succ d) (b (free d))
-    TRet s t    -> any (any (go d)) s || go d t
+    TRet s t    -> any (go d) s || go d t
   binding d (Binding _ _ s t) = any (any (go d)) s || go d t
   clause d (Clause p b) = any (any (go d)) p || let (d', p') = fill (\ d -> (succ d, free d)) d p in go d' (b p')
 
@@ -331,7 +331,7 @@ applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution h
 generalize :: Subst -> Value -> Value
 generalize s v
   | null b    = apply s v
-  | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (TRet Nothing (subst (IntMap.mapMaybe tm s <> s') v)) b)
+  | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (TRet [] (subst (IntMap.mapMaybe tm s <> s') v)) b)
   where
   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)

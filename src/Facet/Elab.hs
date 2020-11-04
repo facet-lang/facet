@@ -90,8 +90,8 @@ unify = unifyValue
     VNe (h1 :$ e1)          :===: VNe (h2 :$ e2)          -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
     TSusp t1                :===: TSusp t2                -> TSusp <$> unifyComp t1 t2
     -- FIXME: these make me feel icky
-    TSusp (TRet Nothing t1) :===: t2                      -> unifyValue t1 t2
-    t1                      :===: TSusp (TRet Nothing t2) -> unifyValue t1 t2
+    TSusp (TRet [] t1)      :===: t2                      -> unifyValue t1 t2
+    t1                      :===: TSusp (TRet [] t2)      -> unifyValue t1 t2
     VNe{}                   :===: _                       -> nope
     TSusp{}                 :===: _                       -> nope
     KType                   :===: KType                   -> pure KType
@@ -121,10 +121,10 @@ unify = unifyValue
       let v = free d
       b <- unifyComp (b1 v) (b2 v)
       pure $ TForAll (Binding p1 n1 s t) (\ v -> bindComp d v b)
-    TRet s1 t1      :===: TRet s2 t2      -> TRet <$> unifySig s1 s2 <*> unifyValue t1 t2
-    TRet Nothing t1 :===: t2              -> fromValue <$> unifyValue t1 (TSusp t2)
-    t1              :===: TRet Nothing t2 -> fromValue <$> unifyValue (TSusp t1) t2
-    _               :===: _               -> nope
+    TRet s1 t1 :===: TRet s2 t2 -> TRet <$> unifySig s1 s2 <*> unifyValue t1 t2
+    TRet [] t1 :===: t2         -> fromValue <$> unifyValue t1 (TSusp t2)
+    t1         :===: TRet [] t2 -> fromValue <$> unifyValue (TSusp t1) t2
+    _          :===: _          -> nope
     where
     nope = couldNotUnify "mismatch" (TSusp c1) (TSusp c2)
 
@@ -302,7 +302,7 @@ elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s 
 elabComp :: S.Ann S.Comp -> Synth Comp
 elabComp (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabComp") $ foldr
   (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> mapCheck (v |-) (switch b)))
-  (mapSynth (setSpan (foldr (flip (foldr ((<>) . S.ann))) (S.ann t) d)) (comp (map elabSig <$> d) (checkExpr t)))
+  (mapSynth (setSpan (foldr (flip (foldr ((<>) . S.ann))) (S.ann t) d)) (comp (maybe [] (map elabSig) d) (checkExpr t)))
   (elabBinding =<< bs)
 
 
@@ -324,9 +324,9 @@ forAll t b = Synth $ trace "forAll" $ do
   _B <- check (b (fromMaybe __ name ::: _A) ::: KType)
   pure $ TForAll _T (\ v -> bindComp d v _B) ::: KType
 
-comp :: Maybe [Check Value] -> Check Type -> Synth Comp
+comp :: [Check Value] -> Check Type -> Synth Comp
 comp s t = Synth $ trace "comp" $ do
-  s' <- traverse (traverse (check . (::: KInterface))) s
+  s' <- traverse (check . (::: KInterface)) s
   t' <- check (t ::: KType)
   pure $ TRet s' t' ::: KType
 
@@ -378,7 +378,7 @@ elabPattern sig = go
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
-          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TSusp (TForAll (Binding Ex Nothing Nothing _T) (const (TRet Nothing _A)))))
+          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TSusp (TForAll (Binding Ex Nothing Nothing _T) (const (TRet [] _A)))))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> k (PVar (n  ::: _A))
@@ -519,8 +519,8 @@ insertEffectVar _E = go
   go = \case
     -- FIXME: we can probably skip implicits because otherwise we might try to insert effect vars into e.g. polykinds
     TForAll b@Binding{ type' } _B -> TForAll b{ type' = case type' of { TSusp c -> TSusp (go c) ; t -> t } } (go . _B)
-    TRet _ KType                  -> TRet Nothing KType
-    TRet s t                      -> TRet (Just (maybe [_E] (_E:) s)) t
+    TRet _ KType                  -> TRet [] KType
+    TRet s t                      -> TRet (_E:s) t
 
 
 runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
@@ -600,11 +600,11 @@ expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing
 
 stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case
-  TSusp (TRet Nothing t) -> stripEmpty t
-  TSusp t                -> Just t
-  _                      -> Nothing
+  TSusp (TRet [] t) -> stripEmpty t
+  TSusp t           -> Just t
+  _                 -> Nothing
 
-expectRet :: String -> Type -> Elab (Maybe [Value], Type)
+expectRet :: String -> Type -> Elab ([Value], Type)
 expectRet = expectMatch (\case { TSusp (TRet s t) -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
@@ -646,7 +646,7 @@ elabWith f = runSubstWith f . runContext . runSig . runElab
 
 check :: (Check a ::: Type) -> Elab a
 check (m ::: _T) = trace "check" $ case _T of
-  TSusp (TRet sig _) -> extendSig sig (runCheck m _T)
+  TSusp (TRet sig _) -> extendSig (Just sig) (runCheck m _T)
   _                  -> runCheck m _T
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
