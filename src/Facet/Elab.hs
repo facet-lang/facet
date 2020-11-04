@@ -427,9 +427,9 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
     : cs
   where
   go k = \case
-    TRet _ _                     -> check (k ::: KType)
+    TRet _ _                       -> check (k ::: KType)
     -- FIXME: can sigs appear here?
-    TForAll (Binding _ n s _T) _B -> do
+    TForAll (Binding _ n s _T) _B  -> do
       d <- asks @(Context Type) level
       _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
       pure $ TForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
