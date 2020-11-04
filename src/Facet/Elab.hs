@@ -29,7 +29,6 @@ module Facet.Elab
   -- * Machinery
 , Elab(..)
 , elab
-, elabTele
 , elabWith
 , check
 , Check(..)
@@ -420,7 +419,7 @@ elabDataDef
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
-    c_T <- elabTele $ go (switch (elabComp t)) _T
+    c_T <- elabWith (fmap pure . applyComp) $ go (switch (elabComp t)) _T
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T)) ::: c_T
   -- FIXME: constructor functions should have signatures, but constructors should not.
   pure
@@ -445,7 +444,7 @@ elabInterfaceDef
   -> m (Maybe Def ::: Comp)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
-    (\ _T -> n :=: Nothing ::: _T) <$> elabTele (go (check (switch (elabComp t) ::: KType)) _T)
+    (\ _T -> n :=: Nothing ::: _T) <$> elabWith (fmap pure . applyComp) (go (check (switch (elabComp t) ::: KType)) _T)
   pure $ Just (DInterface (scopeFromList cs)) ::: _T
   where
   go k = \case
@@ -489,7 +488,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ setSpan s $ do
-      _T <- runModule . elabTele $ addEffectVar <$> check (switch (elabComp tele) ::: KType)
+      _T <- runModule . elabWith (fmap pure . applyComp) $ addEffectVar <$> check (switch (elabComp tele) ::: KType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
@@ -636,9 +635,6 @@ instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader MName :+: Re
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab Value -> m Value
 elab = elabWith (fmap pure . apply)
-
-elabTele :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab Comp -> m Comp
-elabTele = elabWith (fmap pure . applyComp)
 
 elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
 elabWith f = runSubstWith f . runContext . runSig . runElab
