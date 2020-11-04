@@ -122,8 +122,8 @@ unify = unifyValue
       b <- unifyComp (b1 v) (b2 v)
       pure $ TForAll (Binding p1 n1 s t) (\ v -> bindComp d v b)
     TRet s1 t1 :===: TRet s2 t2 -> TRet <$> unifySig s1 s2 <*> unifyValue t1 t2
-    TRet [] t1 :===: t2         -> fromValue <$> unifyValue t1 (TSusp t2)
-    t1         :===: TRet [] t2 -> fromValue <$> unifyValue (TSusp t1) t2
+    TRet [] t1 :===: t2         -> TRet [] <$> unifyValue t1 (TSusp t2)
+    t1         :===: TRet [] t2 -> TRet [] <$> unifyValue (TSusp t1) t2
     _          :===: _          -> nope
     where
     nope = couldNotUnify "mismatch" (TSusp c1) (TSusp c2)

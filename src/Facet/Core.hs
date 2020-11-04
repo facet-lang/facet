@@ -7,7 +7,6 @@ module Facet.Core
 , substComp
 , bindComp
 , bindsComp
-, fromValue
 , unBind
 , unBind'
 , unLam
@@ -129,12 +128,6 @@ bindsComp :: IntMap.IntMap Value -> Comp -> Comp
 bindsComp s
   | IntMap.null s = id
   | otherwise     = substCompWith (substFree s)
-
-
-fromValue :: Value -> Comp
-fromValue = \case
-  TSusp t -> t
-  t       -> TRet mempty t
 
 
 unBind :: Alternative m => Comp -> m (Binding, Value -> Comp)
