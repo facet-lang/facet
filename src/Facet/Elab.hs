@@ -28,7 +28,6 @@ module Facet.Elab
 , Reason(..)
   -- * Machinery
 , Elab(..)
-, elab
 , elabWith
 , check
 , Check(..)
@@ -461,7 +460,7 @@ elabTermDef
   => Comp
   -> S.Ann S.Expr
   -> m Expr
-elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ check (go (checkExpr expr) ::: TSusp _T)
+elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elabWith (fmap pure . apply) $ check (go (checkExpr expr) ::: TSusp _T)
   where
   go :: Check Expr -> Check Expr
   go k = Check $ \ _T -> case _T of
@@ -632,9 +631,6 @@ instance Algebra (Reader (Context Type) :+: Reader Graph :+: Reader MName :+: Re
     R (R (R (R (R (R (L subst))))))     -> Elab $ alg (runElab . hdl) (inj subst) ctx
     R (R (R (R (R (R (R (L throw))))))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
     R (R (R (R (R (R (R (R trace))))))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
-
-elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab Value -> m Value
-elab = elabWith (fmap pure . apply)
 
 elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
 elabWith f = runSubstWith f . runContext . runSig . runElab
