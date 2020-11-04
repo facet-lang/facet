@@ -327,6 +327,7 @@ applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution h
 
 
 -- FIXME: generalize terms and types simultaneously
+-- FIXME: generalize terms with ELam instead of TForAll
 generalize :: Subst -> Value -> Value
 generalize s v
   | null b    = apply s v
