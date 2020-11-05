@@ -626,6 +626,18 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
+onTop :: (Name :=: Value ::: Type -> Elab (Maybe [Name :=: Value ::: Type])) -> Elab ()
+onTop f = do
+  ctx <- gets elems
+  (gamma, elem) <- case ctx of
+    gamma :> elem -> pure (Context gamma, elem)
+    Nil           -> error "wtf empty context" -- FIXME: make this a real error
+  put gamma
+  case elem of
+    n :=: Just v ::: _T -> f (n :=: v ::: _T) >>= modify . maybe (|> elem) (flip (<><))
+    _                   -> onTop f *> modify (|> elem)
+
+
 newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State (Context Type) :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
