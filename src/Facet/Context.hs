@@ -68,5 +68,5 @@ infixl 5 <><
 restore :: Applicative m => a -> m (a, Maybe (Suffix b))
 restore = pure . (,Nothing)
 
-replace :: Applicative m => a -> Suffix b -> m (a, Maybe (Suffix b))
-replace a = pure . (a,) . Just
+replace :: Applicative m => Suffix b -> a -> m (a, Maybe (Suffix b))
+replace a = pure . (,Just a)
