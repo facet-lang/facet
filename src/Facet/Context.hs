@@ -1,6 +1,7 @@
 module Facet.Context
 ( -- * Contexts
   Context(..)
+, Entry
 , empty
 , (|>)
 , level
@@ -18,13 +19,15 @@ import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
-newtype Context a = Context { elems :: S.Stack (Name :=: Maybe a ::: a) }
+newtype Context a = Context { elems :: S.Stack (Entry a) }
   deriving (Eq, Ord, Show)
+
+type Entry a = (Name :=: Maybe a ::: a)
 
 empty :: Context a
 empty = Context S.Nil
 
-(|>) :: Context a -> Name :=: Maybe a ::: a -> Context a
+(|>) :: Context a -> Entry a -> Context a
 Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
@@ -32,10 +35,10 @@ infixl 5 |>
 level :: Context a -> Level
 level (Context c) = Level (length c)
 
-(!?) :: Context a -> Index -> Maybe (Name :=: Maybe a ::: a)
+(!?) :: Context a -> Index -> Maybe (Entry a)
 c !? i = elems c S.!? getIndex i
 
-(!) :: HasCallStack => Context a -> Index -> Name :=: Maybe a ::: a
+(!) :: HasCallStack => Context a -> Index -> Entry a
 c ! i = elems c S.! getIndex i
 
 lookupLevel :: Name -> Context a -> Maybe (Level, Maybe a ::: a)
