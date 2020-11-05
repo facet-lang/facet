@@ -635,7 +635,7 @@ onTop f = do
     Nil           -> error "wtf empty context" -- FIXME: make this a real error
   put gamma
   case elem of
-    n :=: Flex v ::: _T -> f (level ctx) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
+    n :=: Flex v ::: _T -> f (level gamma) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
     _                   -> onTop f <* modify (|> elem)
