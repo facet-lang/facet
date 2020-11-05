@@ -74,6 +74,7 @@ import           Prelude hiding (span, zipWith)
 -- - tacit (eta-reduced) definitions w/ effects
 -- - mutual recursion? does this work already? who knows
 -- - datatypes containing computations
+-- - separate the core elaborator language from the elaboration of surface terms
 
 -- General
 
