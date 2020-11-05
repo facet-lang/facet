@@ -26,7 +26,7 @@ rethrowElabErrors :: Source -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors src = L.runThrow $ \ Err{ span, reason, context, callStack } ->
   let (_, _, printCtx, ctx) = foldl combine (0, Nil, Nil, Nil) (elems context)
   in Notice.Notice (Just Error) (Just (slice src span)) (reAnnotate Code (printReason printCtx reason))
-    [ nest 2 (pretty "Bindings" <\> concatWith (surround hardline) (toList ctx))
+    [ nest 2 (pretty "Context" <\> concatWith (surround hardline) (toList ctx))
     , nest 2 (pretty "Trace" <\> concatWith (surround hardline) (toList callStack))
     ]
   where
