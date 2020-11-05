@@ -4,6 +4,7 @@ module Facet.Core
 , Type
 , Expr
 , Comp(..)
+, Sig(..)
 , substComp
 , bindComp
 , bindsComp
@@ -106,6 +107,8 @@ data Comp
   = TForAll Binding (Type -> Comp)
   -- FIXME: it would be nice to clearly represent the distinction between effect constraints vs. effect signature variable
   | TRet [Value] Type
+
+data Sig = Sig (Maybe Value) [Value]
 
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
