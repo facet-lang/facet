@@ -70,8 +70,6 @@ import           GHC.Stack
 import           Prelude hiding (span, zipWith)
 
 -- TODO:
--- - forcing
--- - thunks
 -- - clause/pattern matrices
 -- - tacit (eta-reduced) definitions w/ effects
 -- - mutual recursion? does this work already? who knows
