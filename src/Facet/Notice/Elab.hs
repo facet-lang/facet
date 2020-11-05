@@ -35,7 +35,7 @@ rethrowElabErrors src = L.runThrow rethrow
     (_, _, printCtx, ctx) = foldl combine (0, Nil, Nil, Nil) (elems context)
     subst' = map (\ (m, v ::: _T) -> reAnnotate Code (getPrint (ann (mvar (Meta m) ::: printValue Nil _T))) <> case v of
       Nothing -> mempty
-      Just v  -> space <> reAnnotate Code (getPrint (printValue Nil v))) $ IntMap.toList subst
+      Just v  -> space <> pretty '=' <+> reAnnotate Code (getPrint (printValue Nil v))) $ IntMap.toList subst
   combine (d, sort, print, ctx) (n :=: _ ::: _T) =
     let s = sortOf sort _T
         n' = name s n d
