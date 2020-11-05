@@ -22,7 +22,7 @@ import           Prelude hiding (lookup)
 newtype Context a = Context { elems :: S.Stack (Entry a) }
   deriving (Eq, Ord, Show)
 
-type Entry a = (Name :=: Maybe a ::: a)
+type Entry a = Name :=: Maybe a ::: a
 
 empty :: Context a
 empty = Context S.Nil
