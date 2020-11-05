@@ -190,7 +190,7 @@ resolveQ = resolveWith lookupD
 global :: Q Name ::: Comp -> Synth Value
 global (q ::: _T) = Synth $ instantiate (C.global q ::: _T)
 
-lookupInContext :: Q Name -> Context Type -> Maybe (Level, Maybe Value ::: Type)
+lookupInContext :: Q Name -> Context Type -> Maybe (Level, Solution Value ::: Type)
 lookupInContext (m:.:n)
   | m == Nil  = lookupLevel n
   | otherwise = const Nothing
@@ -245,7 +245,7 @@ elabBinders p b = do
 (|-) :: Has (State (Context Type)) sig m => Name ::: Type -> m a -> m a
 (n ::: _T) |- b = do
   ctx <- get
-  put (ctx |> (n :=: Nothing ::: _T))
+  put (ctx |> (n :=: Rigid ::: _T))
   a <- b
   a <$ put ctx
 
@@ -627,7 +627,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: (Name :=: Value ::: Type -> Elab (a, Maybe [Name :=: Value ::: Type])) -> Elab a
+onTop :: (Name :=: Maybe Value ::: Type -> Elab (a, Maybe [Name :=: Value ::: Type])) -> Elab a
 onTop f = do
   ctx <- gets elems
   (gamma, elem) <- case ctx of
@@ -635,7 +635,7 @@ onTop f = do
     Nil           -> error "wtf empty context" -- FIXME: make this a real error
   put gamma
   case elem of
-    n :=: Just v ::: _T -> f (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
+    n :=: Flex v ::: _T -> f (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
     _                   -> onTop f <* modify (|> elem)

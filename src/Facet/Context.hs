@@ -2,6 +2,7 @@ module Facet.Context
 ( -- * Contexts
   Context(..)
 , Entry
+, Solution(..)
 , empty
 , (|>)
 , level
@@ -22,7 +23,12 @@ import           Prelude hiding (lookup)
 newtype Context a = Context { elems :: S.Stack (Entry a) }
   deriving (Eq, Ord, Show)
 
-type Entry a = Name :=: Maybe a ::: a
+type Entry a = Name :=: Solution a ::: a
+
+data Solution a
+  = Flex (Maybe a)
+  | Rigid
+  deriving (Eq, Ord, Show)
 
 empty :: Context a
 empty = Context S.Nil
@@ -41,7 +47,7 @@ c !? i = elems c S.!? getIndex i
 (!) :: HasCallStack => Context a -> Index -> Entry a
 c ! i = elems c S.! getIndex i
 
-lookupLevel :: Name -> Context a -> Maybe (Level, Maybe a ::: a)
+lookupLevel :: Name -> Context a -> Maybe (Level, Solution a ::: a)
 lookupLevel n c = go (Index 0) $ elems c
   where
   go _ S.Nil                = Nothing
@@ -53,6 +59,6 @@ lookupLevel n c = go (Index 0) $ elems c
 type Suffix a = [Name :=: a ::: a]
 
 (<><) :: Context a -> Suffix a -> Context a
-(<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> (n :=: Just v ::: _T))
+(<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> (n :=: Flex (Just v) ::: _T))
 
 infixl 5 <><

@@ -37,8 +37,8 @@ rethrowElabErrors src = L.runThrow rethrow
         , sort  :> s
         , print :> n'
         , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printValue print _T))) <> case v of
-          Nothing -> mempty
-          Just v  -> space <> pretty '=' <+> reAnnotate Code (getPrint (printValue print v)) )
+          Flex (Just v) -> space <> pretty '=' <+> reAnnotate Code (getPrint (printValue print v))
+          _             -> mempty )
   name = \case
     STerm -> intro
     _     -> tintro
