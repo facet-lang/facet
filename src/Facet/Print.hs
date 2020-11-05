@@ -209,7 +209,7 @@ printComp env = \case
   where
   d = Level (length env)
 
-  sig (C.Sig v s) = brackets (maybe id (\ v s -> printValue env v <+> pipe <+> s) v (commaSep (map (printValue env) s)))
+  sig (C.Sig v s) = brackets (maybe mempty (\ v -> printValue env v <> pipe) v <> commaSep (map (printValue env) s))
 
 
 printModule :: C.Module -> Print
