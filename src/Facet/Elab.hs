@@ -335,7 +335,7 @@ lam :: Name -> (Name ::: Type -> Check Expr) -> Check Expr
 lam n b = Check $ \ _T -> trace "lam" $ do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (Binding pl _ _s _A, _B) <- expectQuantifier "when checking lambda" _T
-  -- FIXME: extend the signature if _B v is a Comp.
+  -- FIXME: extend the signature if _B v is a TRet.
   b' <- elabBinder $ \ v -> check (b (n ::: _A) ::: TSusp (_B v))
   pure $ ELam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)]
 
