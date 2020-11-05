@@ -643,16 +643,23 @@ onTop_ :: (Level -> Name :=: Maybe Value ::: Type -> Elab (Maybe (Suffix Type)))
 onTop_ f = onTop (\ d e -> ((),) <$> f d e)
 
 
-solve :: Level -> Type -> Elab ()
+solve :: Level -> Type -> Elab Type
 solve v = go v []
   where
-  go :: Level -> Suffix Type -> Type -> Elab ()
+  go :: Level -> Suffix Type -> Type -> Elab Value
   go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (unVar (const False) (== g) (const False)) t || occursInSuffix (unVar (const False) (== g) (const False)) ext, d) of
     (True,  True,  _)       -> mismatch "infinite type" (Right (metavar (Meta (getLevel g)))) t
-    (True,  False, Nothing) -> replace () (ext ++ [ n :=: Just t ::: _K ])
-    (True,  False, Just t') -> modify (<>< ext) *> unify' t' t *> restore ()
-    (False, True,  _)       -> go v ((n :=: d ::: _K):ext) t *> replace () []
-    (False, False, _)       -> go v ext t *> restore ()
+    (True,  False, Nothing) -> replace t (ext ++ [ n :=: Just t ::: _K ])
+    (True,  False, Just t') -> do
+      modify (<>< ext)
+      t'' <- unify' t' t
+      restore t''
+    (False, True,  _)       -> do
+      t' <- go v ((n :=: d ::: _K):ext) t
+      replace t' []
+    (False, False, _)       -> do
+      t' <- go v ext t
+      restore t'
 
   occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
 
