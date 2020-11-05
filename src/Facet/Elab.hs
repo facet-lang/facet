@@ -627,15 +627,15 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: (Name :=: Maybe Value ::: Type -> Elab (a, Maybe [Name :=: Value ::: Type])) -> Elab a
+onTop :: (Level -> Name :=: Maybe Value ::: Type -> Elab (a, Maybe [Name :=: Value ::: Type])) -> Elab a
 onTop f = do
-  ctx <- gets elems
-  (gamma, elem) <- case ctx of
+  ctx <- get
+  (gamma, elem) <- case elems ctx of
     gamma :> elem -> pure (Context gamma, elem)
     Nil           -> error "wtf empty context" -- FIXME: make this a real error
   put gamma
   case elem of
-    n :=: Flex v ::: _T -> f (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
+    n :=: Flex v ::: _T -> f (level ctx) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
     _                   -> onTop f <* modify (|> elem)
