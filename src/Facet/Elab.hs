@@ -154,7 +154,6 @@ meta _T = do
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
--- FIXME: can we avoid metas if we instantiate against a whole spine?
 instantiate :: Expr ::: Comp -> Elab (Expr ::: Type)
 instantiate (e ::: _T) = case _T of
   TForAll (Binding Im _ _ _T) _B -> do
