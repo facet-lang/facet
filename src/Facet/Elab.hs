@@ -137,7 +137,7 @@ unify = unifyValue
 
   solve (n :=: val') = do
     subst <- get
-    when (unVar (const False) (const False) (== n) `occursIn` val')
+    when ((== Metavar n) `occursIn` val')
       $ mismatch "infinite type" (Right (metavar n)) val'
     case subst IntMap.! getMeta n of
       Just val ::: _T -> unifyValue val' val
@@ -647,7 +647,7 @@ solve :: Level -> Type -> Elab Type
 solve v = go v []
   where
   go :: Level -> Suffix Type -> Type -> Elab Value
-  go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (unVar (const False) (== g) (const False)) t || occursInSuffix (unVar (const False) (== g) (const False)) ext, d) of
+  go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (== Free g) t || occursInSuffix (== Free g) ext, d) of
     (True,  True,  _)       -> mismatch "infinite type" (Right (metavar (Meta (getLevel g)))) t
     (True,  False, Nothing) -> replace (ext ++ [ n :=: Just t ::: _K ]) t
     (True,  False, Just t') -> modify (<>< ext) >> unify' t' t >>= restore
