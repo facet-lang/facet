@@ -7,6 +7,7 @@ module Facet.Context
 , (!?)
 , (!)
 , lookupLevel
+, Suffix
 ) where
 
 import           Facet.Name
@@ -42,3 +43,6 @@ lookupLevel n c = go (Index 0) $ elems c
   go i (cs S.:> (n' :=: a))
     | n == n'               = Just (indexToLevel (level c) i, a)
     | otherwise             = go (succ i) cs
+
+
+type Suffix a = [Name :=: a ::: a]
