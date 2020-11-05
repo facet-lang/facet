@@ -3,7 +3,6 @@ module Facet.Notice.Elab
   rethrowElabErrors
 ) where
 
-import           Data.Foldable (toList)
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
@@ -26,8 +25,8 @@ rethrowElabErrors :: Source -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors src = L.runThrow rethrow
   where
   rethrow Err{ span, reason, context, callStack } = Notice.Notice (Just Error) (Just (slice src span)) (reAnnotate Code (printReason printCtx reason))
-    [ nest 2 (pretty "Context" <\> concatWith (<\>) (toList ctx))
-    , nest 2 (pretty "Trace" <\> concatWith (<\>) (toList callStack))
+    [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
+    , nest 2 (pretty "Trace" <\> concatWith (<\>) callStack)
     ]
     where
     (_, _, printCtx, ctx) = foldl combine (0, Nil, Nil, Nil) (elems context)
