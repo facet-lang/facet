@@ -205,9 +205,11 @@ printComp env = \case
           | otherwise        = [tintro n d]
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printComp env' b')
-  C.TRet (C.Sig v s) _T -> brackets (maybe id (\ v s -> printValue env v <+> pipe <+> s) v (commaSep (map (printValue env) s))) <+> printValue env _T
+  C.TRet s _T -> sig s <+> printValue env _T
   where
   d = Level (length env)
+
+  sig (C.Sig v s) = brackets (maybe id (\ v s -> printValue env v <+> pipe <+> s) v (commaSep (map (printValue env) s)))
 
 
 printModule :: C.Module -> Print
