@@ -558,6 +558,7 @@ data Err = Err
   , callStack :: Stack Message -- FIXME: keep source references for each message.
   }
 
+-- FIXME: add a constructor for more free-form errors?
 data Reason
   = FreeVariable (Q Name)
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
