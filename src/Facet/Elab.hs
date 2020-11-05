@@ -190,7 +190,7 @@ resolveQ = resolveWith lookupD
 global :: Q Name ::: Comp -> Synth Value
 global (q ::: _T) = Synth $ instantiate (C.global q ::: _T)
 
-lookupInContext :: Q Name -> Context Type -> Maybe (Level, Type)
+lookupInContext :: Q Name -> Context Type -> Maybe (Level, Maybe Value ::: Type)
 lookupInContext (m:.:n)
   | m == Nil  = lookupLevel n
   | otherwise = const Nothing
@@ -210,8 +210,8 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: Q Name -> Synth Value
 var n = Synth $ trace "var" $ view context_ >>= \ ctx -> if
-  | Just (i, _T) <- lookupInContext n ctx -> pure (free i ::: _T)
-  | otherwise                             -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph (interfaces sig)) >>= \case
+  | Just (i, _ ::: _T) <- lookupInContext n ctx -> pure (free i ::: _T)
+  | otherwise                                   -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph (interfaces sig)) >>= \case
     Just (n ::: _T) -> do
       n ::: _T <- instantiate (EOp (n :$ Nil) ::: _T)
       pure $ n ::: _T
@@ -243,7 +243,7 @@ elabBinders p b = do
   pure $ \ v -> binds (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
 (|-) :: Has (Reader ElabContext) sig m => Name ::: Type -> m a -> m a
-t |- b = locally context_ (|> t) b
+(n ::: _T) |- b = locally context_ (|> (n :=: Nothing ::: _T)) b
 
 infix 1 |-
 

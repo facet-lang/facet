@@ -36,7 +36,7 @@ rethrowElabErrors src = L.runThrow rethrow
     subst' = map (\ (m, v ::: _T) -> reAnnotate Code (getPrint (ann (mvar (Meta m) ::: printValue Nil _T))) <> case v of
       Nothing -> mempty
       Just v  -> space <> reAnnotate Code (getPrint (printValue Nil v))) $ IntMap.toList subst
-  combine (d, sort, print, ctx) (n ::: _T) =
+  combine (d, sort, print, ctx) (n :=: _ ::: _T) =
     let s = sortOf sort _T
         n' = name s n d
     in  ( succ d
