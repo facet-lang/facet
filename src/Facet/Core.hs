@@ -12,6 +12,7 @@ module Facet.Core
 , unLam
 , Sig(..)
 , effectVar_
+, interfaces_
 , Clause(..)
 , instantiateClause
 , Binding(..)
@@ -151,6 +152,9 @@ data Sig = Sig
 
 effectVar_ :: Lens' Sig (Maybe Value)
 effectVar_ = lens effectVar (\ s effectVar -> s{ effectVar })
+
+interfaces_ :: Lens' Sig [Value]
+interfaces_ = lens interfaces (\ s interfaces -> s{ interfaces })
 
 
 data Clause = Clause
