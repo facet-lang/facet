@@ -143,7 +143,10 @@ unLam :: Alternative m => Value -> m (Pl, [Clause])
 unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 
-data Sig = Sig (Maybe Value) [Value]
+data Sig = Sig
+  { effectVar  :: Maybe Value
+  , interfaces :: [Value]
+  }
 
 
 data Clause = Clause
