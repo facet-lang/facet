@@ -220,15 +220,15 @@ var :: Var -> Value
 var = VNe . (:$ Nil)
 
 
-occursIn :: Meta -> Value -> Bool
-occursIn m = go (Level 0) -- FIXME: this should probably be doing something more sensible
+occursIn :: (Var -> Bool) -> Value -> Bool
+occursIn p = go (Level 0) -- FIXME: this should probably be doing something more sensible
   where
   go d = \case
     KType          -> False
     KInterface     -> False
     TSusp c        -> comp d c
     ELam _ cs      -> any (clause d) cs
-    VNe (h :$ sp)  -> unVar (const False) (const False) (== m) h || any (any (go d)) sp
+    VNe (h :$ sp)  -> p h || any (any (go d)) sp
     ECon (_ :$ sp) -> any (go d) sp
     TString        -> False
     EString _      -> False
