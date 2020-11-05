@@ -137,7 +137,6 @@ unify = unifyValue
 
   solve (n :=: val') = do
     subst <- get
-    -- FIXME: occurs check
     when (n `occursIn` val')
       $ mismatch "infinite type" (Right (metavar n)) val'
     case subst IntMap.! getMeta n of
