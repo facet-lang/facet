@@ -627,7 +627,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: (Name :=: Value ::: Type -> Elab (Maybe [Name :=: Value ::: Type])) -> Elab ()
+onTop :: (Name :=: Value ::: Type -> Elab (a, Maybe [Name :=: Value ::: Type])) -> Elab a
 onTop f = do
   ctx <- gets elems
   (gamma, elem) <- case ctx of
@@ -635,8 +635,10 @@ onTop f = do
     Nil           -> error "wtf empty context" -- FIXME: make this a real error
   put gamma
   case elem of
-    n :=: Just v ::: _T -> f (n :=: v ::: _T) >>= modify . maybe (|> elem) (flip (<><))
-    _                   -> onTop f *> modify (|> elem)
+    n :=: Just v ::: _T -> f (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
+      Just v  -> modify (<>< v)
+      Nothing -> modify (|> elem)
+    _                   -> onTop f <* modify (|> elem)
 
 
 newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State (Context Type) :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
