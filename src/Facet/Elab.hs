@@ -643,6 +643,22 @@ onTop_ :: (Level -> Name :=: Maybe Value ::: Type -> Elab (Maybe (Suffix Type)))
 onTop_ f = onTop (\ d e -> ((),) <$> f d e)
 
 
+solve :: Level -> Type -> Elab ()
+solve v = go v []
+  where
+  go :: Level -> Suffix Type -> Type -> Elab ()
+  go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (unVar (const False) (== g) (const False)) t || occursInSuffix (unVar (const False) (== g) (const False)) ext, d) of
+    (True,  True,  _)       -> mismatch "infinite type" (Right (metavar (Meta (getLevel g)))) t
+    (True,  False, Nothing) -> replace () (ext ++ [ n :=: Just t ::: _K ])
+    (True,  False, Just t') -> modify (<>< ext) *> unify' t' t *> restore ()
+    (False, True,  _)       -> go v ((n :=: d ::: _K):ext) t *> replace () []
+    (False, False, _)       -> go v ext t *> restore ()
+
+  occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
+
+  unify' t1 t2 = mismatch "mismatch" (Right t2) t1
+
+
 newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State (Context Type) :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
