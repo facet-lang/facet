@@ -11,6 +11,8 @@ module Facet.Context
 , lookupLevel
 , Suffix
 , (<><)
+, restore
+, replace
 ) where
 
 import           Data.Foldable (foldl')
@@ -62,3 +64,9 @@ type Suffix a = [Name :=: Maybe a ::: a]
 (<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> (n :=: Flex v ::: _T))
 
 infixl 5 <><
+
+restore :: Applicative m => m (Maybe (Suffix a))
+restore = pure Nothing
+
+replace :: Applicative m => Suffix a -> m (Maybe (Suffix a))
+replace = pure . Just
