@@ -11,6 +11,7 @@ module Facet.Context
 , (<><)
 ) where
 
+import           Data.Foldable (foldl')
 import           Facet.Name
 import qualified Facet.Stack as S
 import           Facet.Syntax
@@ -49,7 +50,6 @@ lookupLevel n c = go (Index 0) $ elems c
 type Suffix a = [Name :=: a ::: a]
 
 (<><) :: Context a -> Suffix a -> Context a
-gamma <>< []                   = gamma
-gamma <>< ((n :=: v ::: _T):s) = gamma |> (n :=: Just v ::: _T) <>< s
+(<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> (n :=: Just v ::: _T))
 
 infixl 5 <><
