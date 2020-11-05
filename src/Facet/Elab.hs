@@ -621,6 +621,7 @@ sig_ = lens sig (\ e sig -> e{ sig })
 span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
+
 newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
