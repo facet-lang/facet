@@ -639,6 +639,9 @@ onTop f = do
       Nothing -> modify (|> elem)
     _                   -> onTop f <* modify (|> elem)
 
+onTop_ :: (Level -> Name :=: Maybe Value ::: Type -> Elab (Maybe [Name :=: Value ::: Type])) -> Elab ()
+onTop_ f = onTop (\ d e -> ((),) <$> f d e)
+
 
 newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State (Context Type) :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
 
