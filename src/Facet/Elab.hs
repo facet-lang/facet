@@ -547,7 +547,6 @@ runWithSpan k (S.Ann s _ a) = runReader s (k a)
 data Err = Err
   { span      :: Span
   , reason    :: Reason
-  , subst     :: Subst
   , context   :: Context Type
   , callStack :: Stack Message -- FIXME: keep source references for each message.
   }
@@ -564,10 +563,9 @@ data Reason
 -- FIXME: apply the substitution before showing this to the user
 err :: Reason -> Elab a
 err reason = do
-  subst <- get
   (ctx, span) <- asks ((,) <$> (context :: ElabContext -> Context Type) <*> (span :: ElabContext -> Span))
   callStack <- Trace.callStack
-  throwError $ Err span reason subst ctx callStack
+  throwError $ Err span reason ctx callStack
 
 mismatch :: String -> Either String Type -> Type -> Elab a
 mismatch msg exp act = err $ Mismatch msg exp act
