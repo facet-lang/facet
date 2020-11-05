@@ -37,8 +37,8 @@ module Facet.Core
 , insertSubst
 , apply
 , applyComp
--- , generalize
--- , generalizeComp
+, generalize
+, generalizeComp
   -- ** Classification
 , Sort(..)
 , sortOf
@@ -338,23 +338,23 @@ applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution h
 
 -- FIXME: generalize terms and types simultaneously
 -- FIXME: generalize terms with ELam instead of TForAll
--- generalize :: Subst -> Value -> Value
--- generalize s v
---   | null b    = apply s v
---   | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (TRet [] (subst (IntMap.mapMaybe tm s <> s') v)) b)
---   where
---   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
---     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
---     Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
+generalize :: Subst -> Value -> Value
+generalize s v
+  | null b    = apply s v
+  | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (TRet (Sig Nothing []) (subst (IntMap.mapMaybe tm s <> s') v)) b)
+  where
+  (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
+    Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
+    Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
 
--- generalizeComp :: Subst -> Comp -> Comp
--- generalizeComp s v
---   | null b    = applyComp s v
---   | otherwise = foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
---   where
---   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
---     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
---     Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
+generalizeComp :: Subst -> Comp -> Comp
+generalizeComp s v
+  | null b    = applyComp s v
+  | otherwise = foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
+  where
+  (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
+    Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
+    Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
 
 
 -- Classification
