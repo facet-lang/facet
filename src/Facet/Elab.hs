@@ -656,7 +656,8 @@ solve v = go v []
 
   occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
 
-  unify' t1 t2 = mismatch "mismatch" (Right t2) t1
+unify' :: Type -> Type -> Elab Type
+unify' t1 t2 = mismatch "mismatch" (Right t2) t1
 
 
 newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State (Context Type) :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
