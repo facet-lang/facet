@@ -4,7 +4,6 @@ module Facet.Context
 , empty
 , (|>)
 , level
-, names
 , (!?)
 , (!)
 , lookupLevel
@@ -29,9 +28,6 @@ infixl 5 |>
 
 level :: Context a -> Level
 level (Context c) = Level (length c)
-
-names :: Context a -> S.Stack Name
-names = fmap tm . elems
 
 (!?) :: Context a -> Index -> Maybe (Name ::: a)
 c !? i = elems c S.!? getIndex i
