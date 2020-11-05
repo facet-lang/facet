@@ -42,7 +42,7 @@ import           Control.Carrier.Error.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Empty
-import           Control.Effect.Lens (view, views, (.=))
+import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Sum
 import           Control.Lens (Lens', at, ix, lens)
 import           Control.Monad (unless, when, (<=<))
@@ -209,7 +209,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: Q Name -> Synth Value
-var n = Synth $ trace "var" $ view context_ >>= \ ctx -> if
+var n = Synth $ trace "var" $ get >>= \ ctx -> if
   | Just (i, _ ::: _T) <- lookupInContext n ctx -> pure (free i ::: _T)
   | otherwise                                   -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph (interfaces sig)) >>= \case
     Just (n ::: _T) -> do
@@ -230,20 +230,24 @@ f $$ a = Synth $ trace "$$" $ do
   pure $ f' C.$$ (Ex, a') ::: TSusp (_B a')
 
 
-elabBinder :: Has (Reader ElabContext) sig m => (Value -> m Value) -> m (Value -> Value)
+elabBinder :: Has (State (Context Type)) sig m => (Value -> m Value) -> m (Value -> Value)
 elabBinder b = do
   d <- depth
   b' <- b (free d)
   pure $ \ v -> C.bind d v b'
 
-elabBinders :: (Traversable t, Has (Reader ElabContext) sig m) => t (Name ::: Type) -> (t (Name ::: Type) -> m Value) -> m (t Type -> Value)
+elabBinders :: (Traversable t, Has (State (Context Type)) sig m) => t (Name ::: Type) -> (t (Name ::: Type) -> m Value) -> m (t Type -> Value)
 elabBinders p b = do
   d <- depth
   b' <- b p
   pure $ \ v -> binds (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
-(|-) :: Has (Reader ElabContext) sig m => Name ::: Type -> m a -> m a
-(n ::: _T) |- b = locally context_ (|> (n :=: Nothing ::: _T)) b
+(|-) :: Has (State (Context Type)) sig m => Name ::: Type -> m a -> m a
+(n ::: _T) |- b = do
+  ctx <- get
+  put (ctx |> (n :=: Nothing ::: _T))
+  a <- b
+  a <$ put ctx
 
 infix 1 |-
 
@@ -529,8 +533,8 @@ runSubstWith with = runState with emptySubst
 extendSig :: Has (Reader ElabContext) sig m => Maybe [Value] -> m a -> m a
 extendSig = maybe id (locally (sig_.interfaces_) . (++))
 
-depth :: Has (Reader ElabContext) sig m => m Level
-depth = views context_ level
+depth :: Has (State (Context Type)) sig m => m Level
+depth = gets @(Context Type) level
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
@@ -566,7 +570,8 @@ data Reason
 -- FIXME: apply the substitution before showing this to the user
 err :: Reason -> Elab a
 err reason = do
-  (ctx, span) <- asks ((,) <$> (context :: ElabContext -> Context Type) <*> (span :: ElabContext -> Span))
+  ctx <- get
+  span <- view span_
   callStack <- Trace.callStack
   throwError $ Err span reason ctx callStack
 
@@ -607,16 +612,12 @@ expectRet = expectMatch (\case { TSusp (TRet s t) -> pure (s, t) ; _ -> Nothing 
 -- Machinery
 
 data ElabContext = ElabContext
-  { context :: Context Type
-  , graph   :: Graph
+  { graph   :: Graph
   , _mname  :: MName
   , module' :: Module
   , sig     :: Sig
   , span    :: Span
   }
-
-context_ :: Lens' ElabContext (Context Type)
-context_ = lens (context :: ElabContext -> Context Type) (\ e context -> (e :: ElabContext){ context })
 
 sig_ :: Lens' ElabContext Sig
 sig_ = lens sig (\ e sig -> e{ sig })
@@ -625,7 +626,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State (Context Type) :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -637,17 +638,18 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Reader ElabContext :+: State Subst :+: Throw Err :+: Trace) Elab where
+instance Algebra (Reader ElabContext :+: State (Context Type) :+: State Subst :+: Throw Err :+: Trace) Elab where
   alg hdl sig ctx = case sig of
-    L rctx          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
-    R (L subst)     -> Elab $ alg (runElab . hdl) (inj subst) ctx
-    R (R (L throw)) -> Elab $ alg (runElab . hdl) (inj throw) ctx
-    R (R (R trace)) -> Elab $ alg (runElab . hdl) (inj trace) ctx
+    L rctx              -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
+    R (L sctx)          -> Elab $ alg (runElab . hdl) (inj sctx)  ctx
+    R (R (L subst))     -> Elab $ alg (runElab . hdl) (inj subst) ctx
+    R (R (R (L throw))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
+    R (R (R (R trace))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
 elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
-elabWith f = runSubstWith f . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
+elabWith f = runSubstWith f . evalState (Context.empty @Type) . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
   where
-  mkContext = ElabContext Context.empty <$> ask <*> ask <*> ask <*> pure (Sig Nothing []) <*> ask
+  mkContext = ElabContext <$> ask <*> ask <*> ask <*> pure (Sig Nothing []) <*> ask
 
 
 check :: (Check a ::: Type) -> Elab a
