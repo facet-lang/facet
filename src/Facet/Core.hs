@@ -37,8 +37,8 @@ module Facet.Core
 , insertSubst
 , apply
 , applyComp
-, generalize
-, generalizeComp
+-- , generalize
+-- , generalizeComp
   -- ** Classification
 , Sort(..)
 , sortOf
@@ -107,17 +107,17 @@ type Expr = Value
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
   = TForAll Binding (Type -> Comp)
-  -- FIXME: it would be nice to clearly represent the distinction between effect constraints vs. effect signature variable
-  | TRet [Value] Type
+  | TRet Sig Type
 
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
   where
   go = \case
     TForAll t b -> TForAll (binding t) (go . b)
-    TRet s t    -> TRet (map (substWith f) s) (substWith f t)
+    TRet s t    -> TRet (sig s) (substWith f t)
 
   binding (Binding p n s t) = Binding p n (map (substWith f) <$> s) (substWith f t)
+  sig (Sig v s) = Sig (substWith f <$> v) (map (substWith f) s)
 
 substComp :: IntMap.IntMap Value -> Comp -> Comp
 substComp s
@@ -236,8 +236,9 @@ occursIn m = go (Level 0) -- FIXME: this should probably be doing something more
 
   comp d = \case
     TForAll t b -> binding d t || comp (succ d) (b (free d))
-    TRet s t    -> any (go d) s || go d t
+    TRet s t    -> sig d s || go d t
   binding d (Binding _ _ s t) = any (any (go d)) s || go d t
+  sig d (Sig v s) = any (go d) v || any (go d) s
   clause d (Clause p b) = any (any (go d)) p || let (d', p') = fill (\ d -> (succ d, free d)) d p in go d' (b p')
 
 
@@ -337,23 +338,23 @@ applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution h
 
 -- FIXME: generalize terms and types simultaneously
 -- FIXME: generalize terms with ELam instead of TForAll
-generalize :: Subst -> Value -> Value
-generalize s v
-  | null b    = apply s v
-  | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (TRet [] (subst (IntMap.mapMaybe tm s <> s') v)) b)
-  where
-  (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
-    Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
-    Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
+-- generalize :: Subst -> Value -> Value
+-- generalize s v
+--   | null b    = apply s v
+--   | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (TRet [] (subst (IntMap.mapMaybe tm s <> s') v)) b)
+--   where
+--   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
+--     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
+--     Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
 
-generalizeComp :: Subst -> Comp -> Comp
-generalizeComp s v
-  | null b    = applyComp s v
-  | otherwise = foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
-  where
-  (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
-    Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
-    Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
+-- generalizeComp :: Subst -> Comp -> Comp
+-- generalizeComp s v
+--   | null b    = applyComp s v
+--   | otherwise = foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
+--   where
+--   (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
+--     Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
+--     Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
 
 
 -- Classification

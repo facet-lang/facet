@@ -83,28 +83,28 @@ unify :: Type -> Type -> Elab Type
 unify = unifyValue
   where
   unifyValue t1 t2 = trace "unify" $ case t1 :===: t2 of
-    VNe (Metavar v1 :$ Nil) :===: VNe (Metavar v2 :$ Nil) -> if v1 == v2 then pure (metavar v1) else solve (v1 :=: metavar v2)
-    VNe (Metavar v :$ Nil)  :===: x                       -> solve (v :=: x)
-    x                       :===: VNe (Metavar v :$ Nil)  -> solve (v :=: x)
+    VNe (Metavar v1 :$ Nil)          :===: VNe (Metavar v2 :$ Nil)          -> if v1 == v2 then pure (metavar v1) else solve (v1 :=: metavar v2)
+    VNe (Metavar v :$ Nil)           :===: x                                -> solve (v :=: x)
+    x                                :===: VNe (Metavar v :$ Nil)           -> solve (v :=: x)
     -- FIXME: resolve globals to try to progress past certain inequalities
-    VNe (h1 :$ e1)          :===: VNe (h2 :$ e2)          -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
-    TSusp t1                :===: TSusp t2                -> TSusp <$> unifyComp t1 t2
+    VNe (h1 :$ e1)                   :===: VNe (h2 :$ e2)                   -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
+    TSusp t1                         :===: TSusp t2                         -> TSusp <$> unifyComp t1 t2
     -- FIXME: these make me feel icky
-    TSusp (TRet [] t1)      :===: t2                      -> unifyValue t1 t2
-    t1                      :===: TSusp (TRet [] t2)      -> unifyValue t1 t2
-    VNe{}                   :===: _                       -> nope
-    TSusp{}                 :===: _                       -> nope
-    KType                   :===: KType                   -> pure KType
-    KType                   :===: _                       -> nope
-    KInterface              :===: KInterface              -> pure KInterface
-    KInterface              :===: _                       -> nope
-    ECon{}                  :===: _                       -> nope
-    ELam{}                  :===: _                       -> nope
-    TString                 :===: TString                 -> pure TString
-    TString{}               :===: _                       -> nope
-    EString s1              :===: EString s2              -> EString s1 <$ unless (s1 == s2) nope
-    EString{}               :===: _                       -> nope
-    EOp{}                   :===: _                       -> nope
+    TSusp (TRet (Sig Nothing []) t1) :===: t2                               -> unifyValue t1 t2
+    t1                               :===: TSusp (TRet (Sig Nothing []) t2) -> unifyValue t1 t2
+    VNe{}                            :===: _                                -> nope
+    TSusp{}                          :===: _                                -> nope
+    KType                            :===: KType                            -> pure KType
+    KType                            :===: _                                -> nope
+    KInterface                       :===: KInterface                       -> pure KInterface
+    KInterface                       :===: _                                -> nope
+    ECon{}                           :===: _                                -> nope
+    ELam{}                           :===: _                                -> nope
+    TString                          :===: TString                          -> pure TString
+    TString{}                        :===: _                                -> nope
+    EString s1                       :===: EString s2                       -> EString s1 <$ unless (s1 == s2) nope
+    EString{}                        :===: _                                -> nope
+    EOp{}                            :===: _                                -> nope
     where
     -- FIXME: build and display a diff of the root types
     nope = couldNotUnify "mismatch" t1 t2
@@ -121,10 +121,11 @@ unify = unifyValue
       let v = free d
       b <- unifyComp (b1 v) (b2 v)
       pure $ TForAll (Binding p1 n1 s t) (\ v -> bindComp d v b)
-    TRet s1 t1 :===: TRet s2 t2 -> TRet <$> unifySig s1 s2 <*> unifyValue t1 t2
-    TRet [] t1 :===: t2         -> TRet [] <$> unifyValue t1 (TSusp t2)
-    t1         :===: TRet [] t2 -> TRet [] <$> unifyValue (TSusp t1) t2
-    _          :===: _          -> nope
+    TRet s1 t1               :===: TRet s2 t2               -> TRet <$> unifySig s1 s2 <*> unifyValue t1 t2
+    -- FIXME: these are probably wrong
+    TRet (Sig Nothing []) t1 :===: t2                       -> TRet (Sig Nothing []) <$> unifyValue t1 (TSusp t2)
+    t1                       :===: TRet (Sig Nothing []) t2 -> TRet (Sig Nothing []) <$> unifyValue (TSusp t1) t2
+    _                        :===: _                        -> nope
     where
     nope = couldNotUnify "mismatch" (TSusp c1) (TSusp c2)
 
@@ -213,7 +214,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 var :: Q Name -> Synth Value
 var n = Synth $ trace "var" $ view context_ >>= \ ctx -> if
   | Just (i, _T) <- lookupInContext n ctx -> pure (free i ::: _T)
-  | otherwise                             -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph sig) >>= \case
+  | otherwise                             -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph (interfaces sig)) >>= \case
     Just (n ::: _T) -> do
       n ::: _T <- instantiate (EOp (n :$ Nil) ::: _T)
       pure $ n ::: _T
@@ -328,7 +329,7 @@ comp :: [Check Value] -> Check Type -> Synth Comp
 comp s t = Synth $ trace "comp" $ do
   s' <- traverse (check . (::: KInterface)) s
   t' <- check (t ::: KType)
-  pure $ TRet s' t' ::: KType
+  pure $ TRet (Sig Nothing s') t' ::: KType
 
 
 lam :: Name -> (Name ::: Type -> Check Expr) -> Check Expr
@@ -348,6 +349,7 @@ thunk e = Check $ trace "thunk" . \case
 force :: Synth Expr -> Synth Expr
 force e = Synth $ trace "force" $ do
   e' ::: _T <- synth e
+  -- FIXME: should we check the signature? or can we rely on it already having been checked?
   (_s, _T') <- expectRet "when forcing computation" _T
   pure $ e' ::: _T'
 
@@ -377,7 +379,8 @@ elabPattern sig = go
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
-          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TSusp (TForAll (Binding Ex Nothing Nothing _T) (const (TRet sig _A)))))
+          -- FIXME: this should get the ambient effect var
+          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TSusp (TForAll (Binding Ex Nothing Nothing _T) (const (TRet (Sig Nothing sig) _A)))))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> k (PVar (n  ::: _A))
@@ -449,7 +452,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   where
   go k = \case
     -- FIXME: check that the interface is a member of the sig.
-    TRet _ _                     -> k
+    TRet _ _                      -> k
     TForAll (Binding _ n s _T) _B -> do
       d <- views context_ level
       _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
@@ -518,15 +521,16 @@ insertEffectVar _E = go
   go = \case
     -- FIXME: we can probably skip implicits because otherwise we might try to insert effect vars into e.g. polykinds
     TForAll b@Binding{ type' } _B -> TForAll b{ type' = case type' of { TSusp c -> TSusp (go c) ; t -> t } } (go . _B)
-    TRet _ KType                  -> TRet [] KType
-    TRet s t                      -> TRet (_E:s) t
+    TRet s KType                  -> TRet s KType
+    -- FIXME: is this right?
+    TRet s t                      -> TRet s{ effectVar = Just _E } t
 
 
 runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
 runSubstWith with = runState with emptySubst
 
 extendSig :: Has (Reader ElabContext) sig m => Maybe [Value] -> m a -> m a
-extendSig = maybe id (locally sig_ . (++))
+extendSig = maybe id (locally (sig_.interfaces_) . (++))
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
@@ -592,11 +596,11 @@ expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing
 
 stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case
-  TSusp (TRet [] t) -> stripEmpty t
-  TSusp t           -> Just t
-  _                 -> Nothing
+  TSusp (TRet (Sig Nothing []) t) -> stripEmpty t
+  TSusp t                         -> Just t
+  _                               -> Nothing
 
-expectRet :: String -> Type -> Elab ([Value], Type)
+expectRet :: String -> Type -> Elab (Sig, Type)
 expectRet = expectMatch (\case { TSusp (TRet s t) -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
@@ -607,14 +611,14 @@ data ElabContext = ElabContext
   , graph   :: Graph
   , _mname  :: MName
   , module' :: Module
-  , sig     :: [Value]
+  , sig     :: Sig
   , span    :: Span
   }
 
 context_ :: Lens' ElabContext (Context Type)
 context_ = lens (context :: ElabContext -> Context Type) (\ e context -> (e :: ElabContext){ context })
 
-sig_ :: Lens' ElabContext [Value]
+sig_ :: Lens' ElabContext Sig
 sig_ = lens sig (\ e sig -> e{ sig })
 
 span_ :: Lens' ElabContext Span
@@ -642,12 +646,12 @@ instance Algebra (Reader ElabContext :+: State Subst :+: Throw Err :+: Trace) El
 elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
 elabWith f = runSubstWith f . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
   where
-  mkContext = ElabContext Context.empty <$> ask <*> ask <*> ask <*> pure [] <*> ask
+  mkContext = ElabContext Context.empty <$> ask <*> ask <*> ask <*> pure (Sig Nothing []) <*> ask
 
 
 check :: (Check a ::: Type) -> Elab a
 check (m ::: _T) = trace "check" $ case _T of
-  TSusp (TRet sig _) -> extendSig (Just sig) (runCheck m _T)
+  -- TSusp (TRet sig _) -> extendSig sig (runCheck m _T)
   _                  -> runCheck m _T
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.

@@ -26,7 +26,7 @@ eval = \case
         -> eval $ v $$* sp'
       _ -> pure $ VNe (h :$ sp')
 
-  TSusp (TRet [] v) -> eval v
+  TSusp (TRet (Sig Nothing []) v) -> eval v
 
   EOp op -> Eval $ \ h -> h op
 

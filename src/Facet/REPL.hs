@@ -190,11 +190,11 @@ removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets
 showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
-  e ::: _T <- elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.synth (Elab.synthExpr e))
+  e ::: _T <- elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ apply s e ::: apply s _T) (Elab.synth (Elab.synthExpr e))
   outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ locally Elab.sig_ (VNe (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ apply s e ::: apply s _T) $ locally (Elab.sig_.interfaces_) (VNe (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
   (dEval, e'') <- time $ elab $ runEvalMain (eval e')
   outputStrLn $ show dElab
   outputStrLn $ show dEval
