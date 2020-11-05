@@ -626,7 +626,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: (Level -> Name :=: Maybe Value ::: Type -> Elab (a, Maybe [Name :=: Value ::: Type])) -> Elab a
+onTop :: (Level -> Name :=: Maybe Value ::: Type -> Elab (a, Maybe (Suffix Type))) -> Elab a
 onTop f = do
   ctx <- get
   (gamma, elem) <- case elems ctx of
@@ -639,7 +639,7 @@ onTop f = do
       Nothing -> modify (|> elem)
     _                   -> onTop f <* modify (|> elem)
 
-onTop_ :: (Level -> Name :=: Maybe Value ::: Type -> Elab (Maybe [Name :=: Value ::: Type])) -> Elab ()
+onTop_ :: (Level -> Name :=: Maybe Value ::: Type -> Elab (Maybe (Suffix Type))) -> Elab ()
 onTop_ f = onTop (\ d e -> ((),) <$> f d e)
 
 

@@ -56,9 +56,9 @@ lookupLevel n c = go (Index 0) $ elems c
     | otherwise             = go (succ i) cs
 
 
-type Suffix a = [Name :=: a ::: a]
+type Suffix a = [Name :=: Maybe a ::: a]
 
 (<><) :: Context a -> Suffix a -> Context a
-(<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> (n :=: Flex (Just v) ::: _T))
+(<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> (n :=: Flex v ::: _T))
 
 infixl 5 <><
