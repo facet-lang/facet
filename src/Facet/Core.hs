@@ -4,13 +4,13 @@ module Facet.Core
 , Type
 , Expr
 , Comp(..)
-, Sig(..)
 , substComp
 , bindComp
 , bindsComp
 , unBind
 , unBind'
 , unLam
+, Sig(..)
 , Clause(..)
 , instantiateClause
 , Binding(..)
@@ -108,8 +108,6 @@ data Comp
   -- FIXME: it would be nice to clearly represent the distinction between effect constraints vs. effect signature variable
   | TRet [Value] Type
 
-data Sig = Sig (Maybe Value) [Value]
-
 substCompWith :: (Var -> Value) -> Comp -> Comp
 substCompWith f = go
   where
@@ -143,6 +141,9 @@ unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 unLam :: Alternative m => Value -> m (Pl, [Clause])
 unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
+
+
+data Sig = Sig (Maybe Value) [Value]
 
 
 data Clause = Clause
