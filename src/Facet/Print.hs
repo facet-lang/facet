@@ -153,8 +153,7 @@ f $$ a = askingPrec $ \case
 
 -- FIXME: 🔥 this
 data Var
-  = Global (Q Name)
-  | TLocal Name Level
+  = TLocal Name Level
   | Local Name Level
   | Metavar Meta
   | Cons Name
@@ -162,11 +161,10 @@ data Var
 
 printVar :: ((Int -> Print) -> Name -> Level -> Print) -> Var -> Print
 printVar name = \case
-  Global (_ :.: n) -> setPrec Var (pretty n)
-  TLocal n d       -> name upper n d
-  Local  n d       -> name lower n d
-  Metavar  m       -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
-  Cons     n       -> setPrec Var (annotate Con (pretty n))
+  TLocal n d -> name upper n d
+  Local  n d -> name lower n d
+  Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
+  Cons     n -> setPrec Var (annotate Con (pretty n))
 
 
 -- Core printers
@@ -184,10 +182,10 @@ printValue env = \case
           Nil -> h
           sp  -> app h sp
         elim h sp  (es:>a) = elim h (sp . (:> fmap (printValue env) a)) es
-        h' = C.unVar (group . var . Global) ((env !) . getIndex . levelToIndex d) (group . var . Metavar) h
+        h' = C.unVar (group . qvar) ((env !) . getIndex . levelToIndex d) (group . var . Metavar) h
     in elim h' id e
-  C.ECon (n :$ p) -> app (group (var (Global n))) (fmap ((Ex,) . printValue env) p)
-  C.EOp (q :$ sp) -> app (group (var (Global q))) (fmap (fmap (printValue env)) sp)
+  C.ECon (n :$ p) -> app (group (qvar n)) (fmap ((Ex,) . printValue env) p)
+  C.EOp (q :$ sp) -> app (group (qvar q)) (fmap (fmap (printValue env)) sp)
   C.TString   -> annotate Type $ pretty "String"
   C.EString s -> annotate Lit $ pretty (show s)
   where
@@ -215,15 +213,15 @@ printComp env = \case
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
   mname
-  (var (Global (fromList [T.pack "Kernel"]:.:U (T.pack "Module"))))
+  (qvar (fromList [T.pack "Kernel"]:.:U (T.pack "Module")))
   (map (\ (C.Import n) -> import' n) is)
   (map def (Map.toList (C.decls ds)))
   where
   def (n, Nothing ::: t) = ann
-    $   var (Global (Nil:.:n))
+    $   qvar (Nil:.:n)
     ::: printComp Nil t
   def (n, Just d  ::: t) = ann
-    $   var (Global (Nil:.:n))
+    $   qvar (Nil:.:n)
     ::: defn (printComp Nil t
     :=: case d of
       C.DTerm b  -> printValue Nil b
@@ -240,6 +238,7 @@ printModule (C.Module mname is _ ds) = module_
 intro, tintro :: Name -> Level -> Print
 intro = name lower
 tintro = name upper
+qvar (_ :.: n) = setPrec Var (pretty n)
 var = printVar name
 name f n d = setPrec Var . annotate (Name d) $
   if n == __ then
