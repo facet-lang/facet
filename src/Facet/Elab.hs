@@ -117,7 +117,7 @@ unify = unifyValue
       unless (p1 == p2) nope
       s <- unifySig s1 s2
       t <- unifyValue t1 t2
-      d <- views context_ level
+      d <- depth
       let v = free d
       b <- unifyComp (b1 v) (b2 v)
       pure $ TForAll (Binding p1 n1 s t) (\ v -> bindComp d v b)
@@ -232,13 +232,13 @@ f $$ a = Synth $ trace "$$" $ do
 
 elabBinder :: Has (Reader ElabContext) sig m => (Value -> m Value) -> m (Value -> Value)
 elabBinder b = do
-  d <- views context_ level
+  d <- depth
   b' <- b (free d)
   pure $ \ v -> C.bind d v b'
 
 elabBinders :: (Traversable t, Has (Reader ElabContext) sig m) => t (Name ::: Type) -> (t (Name ::: Type) -> m Value) -> m (t Type -> Value)
 elabBinders p b = do
-  d <- views context_ level
+  d <- depth
   b' <- b p
   pure $ \ v -> binds (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
@@ -318,7 +318,7 @@ forAll :: Check Binding -> (Name ::: Type -> Check Comp) -> Synth Comp
 forAll t b = Synth $ trace "forAll" $ do
   -- FIXME: should we check that the signature is empty?
   _T@Binding{ name, type' = _A } <- check (t ::: KType)
-  d <- views context_ level
+  d <- depth
   _B <- check (b (fromMaybe __ name ::: _A) ::: KType)
   pure $ TForAll _T (\ v -> bindComp d v _B) ::: KType
 
@@ -357,7 +357,7 @@ elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = lam n $ \
 elabClauses cs = Check $ \ _T -> do
   -- FIXME: use the signature to elaborate the pattern
   (Binding _ _ s _A, _B) <- expectQuantifier "when checking clauses" _T
-  d <- views context_ level
+  d <- depth
   -- FIXME: I don’t see how this can be correct; the context will not hold a variable but rather a pattern of them.
   let _B' = TSusp $ _B (free d)
   cs' <- for cs $ \ (S.Clause p b) -> elabPattern (fromMaybe [] s) _A p (\ p' -> do
@@ -430,7 +430,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
     TRet _ _                       -> check (k ::: KType)
     -- FIXME: can sigs appear here?
     TForAll (Binding _ n s _T) _B  -> do
-      d <- views context_ level
+      d <- depth
       _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
       pure $ TForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
   con q fs = \case
@@ -451,7 +451,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
     -- FIXME: check that the interface is a member of the sig.
     TRet _ _                      -> k
     TForAll (Binding _ n s _T) _B -> do
-      d <- views context_ level
+      d <- depth
       _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
       pure $ TForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
 
@@ -528,6 +528,9 @@ runSubstWith with = runState with emptySubst
 
 extendSig :: Has (Reader ElabContext) sig m => Maybe [Value] -> m a -> m a
 extendSig = maybe id (locally (sig_.interfaces_) . (++))
+
+depth :: Has (Reader ElabContext) sig m => m Level
+depth = views context_ level
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
