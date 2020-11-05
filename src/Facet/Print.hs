@@ -12,6 +12,7 @@ module Facet.Print
   -- * Misc
 , intro
 , tintro
+, mvar
 ) where
 
 import           Data.Foldable (foldl', toList)
@@ -155,7 +156,6 @@ f $$ a = askingPrec $ \case
 data Var
   = TLocal Name Level
   | Local Name Level
-  | Metavar Meta
   | Cons Name
 
 
@@ -163,7 +163,6 @@ printVar :: ((Int -> Print) -> Name -> Level -> Print) -> Var -> Print
 printVar name = \case
   TLocal n d -> name upper n d
   Local  n d -> name lower n d
-  Metavar  m -> setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
   Cons     n -> setPrec Var (annotate Con (pretty n))
 
 
@@ -182,7 +181,7 @@ printValue env = \case
           Nil -> h
           sp  -> app h sp
         elim h sp  (es:>a) = elim h (sp . (:> fmap (printValue env) a)) es
-        h' = C.unVar (group . qvar) ((env !) . getIndex . levelToIndex d) (group . var . Metavar) h
+        h' = C.unVar (group . qvar) ((env !) . getIndex . levelToIndex d) (group . mvar) h
     in elim h' id e
   C.ECon (n :$ p) -> app (group (qvar n)) (fmap ((Ex,) . printValue env) p)
   C.EOp (q :$ sp) -> app (group (qvar q)) (fmap (fmap (printValue env)) sp)
@@ -239,6 +238,10 @@ intro, tintro :: Name -> Level -> Print
 intro = name lower
 tintro = name upper
 qvar (_ :.: n) = setPrec Var (pretty n)
+
+mvar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Meta -> p
+mvar m = setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
+
 var = printVar name
 name f n d = setPrec Var . annotate (Name d) $
   if n == __ then
