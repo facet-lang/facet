@@ -65,8 +65,8 @@ type Suffix a = [Name :=: Maybe a ::: a]
 
 infixl 5 <><
 
-restore :: Applicative m => m (Maybe (Suffix a))
-restore = pure Nothing
+restore :: Applicative m => a -> m (a, Maybe (Suffix b))
+restore = pure . (,Nothing)
 
-replace :: Applicative m => Suffix a -> m (Maybe (Suffix a))
-replace = pure . Just
+replace :: Applicative m => a -> Suffix b -> m (a, Maybe (Suffix b))
+replace a = pure . (a,) . Just
