@@ -8,6 +8,7 @@ module Facet.Context
 , (!)
 , lookupLevel
 , Suffix
+, (<><)
 ) where
 
 import           Facet.Name
@@ -46,3 +47,9 @@ lookupLevel n c = go (Index 0) $ elems c
 
 
 type Suffix a = [Name :=: a ::: a]
+
+(<><) :: Context a -> Suffix a -> Context a
+gamma <>< []                   = gamma
+gamma <>< ((n :=: v ::: _T):s) = gamma |> (n :=: Just v ::: _T) <>< s
+
+infixl 5 <><
