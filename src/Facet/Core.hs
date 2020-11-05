@@ -85,8 +85,6 @@ import           Prelude hiding (zip, zipWith)
 
 -- Values
 
--- FIXME: thunk.
--- FIXME: force.
 data Value
   = KType
   | KInterface
