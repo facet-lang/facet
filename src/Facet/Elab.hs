@@ -378,7 +378,7 @@ elabPattern sig = go
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
-          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TSusp (TForAll (Binding Ex Nothing Nothing _T) (const (TRet [] _A)))))
+          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TSusp (TForAll (Binding Ex Nothing Nothing _T) (const (TRet sig _A)))))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> k (PVar (n  ::: _A))
