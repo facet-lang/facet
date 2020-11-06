@@ -76,7 +76,7 @@ data Type a
 - ❌ (almost?) impossible to eliminate possibility of failure under binders by e.g. rebuilding w/ `Identity`
   - running the actions eagerly means needing to substitute
   - `weaken :: Type Identity a -> Type Maybe a` requires `strengthen :: Type Maybe a -> Maybe (Type Identity a)`, which in turn requires substitution because you can’t eliminate the `Maybe` under the binder
-  - might actually be impossible to define `strengthen` without substitution, period
+  - might actually be impossible to define `strengthen` without substitution, period (for any effect stronger than `Reader`, which you probably don’t want to represent under binders anyway because it means the context is getting delayed and thus potentially lost)
 - ❌ “exotic” terms
 
 
