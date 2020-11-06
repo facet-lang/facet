@@ -16,6 +16,7 @@ data Type
 - ❌ can’t unify
 - ❌ can’t fold without unfold
 - ❌ can’t represent open terms
+- ❌ “exotic” terms
 
 
 ## Open (polymorphic), no effects
@@ -34,3 +35,4 @@ data Type a
 - ❌ thus, unification requires picking a domain for the variables
 - ❌ can’t close once opened, or at least, not easily
 - ❌ can’t close when built under a monad
+- ❌ “exotic” terms
