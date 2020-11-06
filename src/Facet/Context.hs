@@ -2,6 +2,7 @@ module Facet.Context
 ( -- * Contexts
   Context(..)
 , Entry(..)
+, entryVar
 , entryName
 , entryType
 , empty
@@ -27,18 +28,23 @@ import           Prelude hiding (lookup)
 newtype Context = Context { elems :: S.Stack Entry }
 
 data Entry
-  = Tm Name Type
-  | Ty Name (Maybe Type) Type
+  = Tm Int Name Type
+  | Ty Int Name (Maybe Type) Type
+
+entryVar :: Entry -> Int
+entryVar = \case
+  Tm v _   _ -> v
+  Ty v _ _ _ -> v
 
 entryName :: Entry -> Name
 entryName = \case
-  Tm n   _ -> n
-  Ty n _ _ -> n
+  Tm _ n   _ -> n
+  Ty _ n _ _ -> n
 
 entryType :: Entry -> Type
 entryType = \case
-  Tm _   t -> t
-  Ty _ _ t -> t
+  Tm _ _   t -> t
+  Ty _ _ _ t -> t
 
 
 empty :: Context
@@ -67,10 +73,10 @@ lookupLevel n c = go (Index 0) $ elems c
     | otherwise        = go (succ i) cs
 
 
-type Suffix = [Name :=: Maybe Type ::: Type]
+type Suffix = [(Int, Name) :=: Maybe Type ::: Type]
 
 (<><) :: Context -> Suffix -> Context
-(<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> Ty n v _T)
+(<><) = foldl' (\ gamma ((i, n) :=: v ::: _T) -> gamma |> Ty i n v _T)
 
 infixl 5 <><
 

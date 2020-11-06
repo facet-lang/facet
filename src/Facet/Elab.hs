@@ -178,7 +178,8 @@ elabBinders p b = do
 (|-) :: Has (State Context) sig m => Name ::: Type -> m a -> m a
 (n ::: _T) |- b = do
   ctx <- get
-  put (ctx |> Tm n _T)
+  -- FIXME: this should use Fresh
+  put (ctx |> Tm (length (elems ctx)) n _T)
   a <- b
   a <$ put ctx
 
@@ -568,7 +569,7 @@ onTop f = do
     Nil           -> error "wtf empty context" -- FIXME: make this a real error
   put gamma
   case elem of
-    Ty n v _T -> f (Meta (length (elems gamma))) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
+    Ty i n v _T -> f (Meta i) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
     _                   -> onTop f <* modify (|> elem)
@@ -580,9 +581,9 @@ solve v = go v []
   go :: Meta -> Suffix -> Type -> Elab Value
   go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (== Metavar g) t || occursInSuffix (== Metavar g) ext, d) of
     (True,  True,  _)       -> mismatch "infinite type" (Right (metavar g)) t
-    (True,  False, Nothing) -> replace (ext ++ [ n :=: Just t ::: _K ]) t
+    (True,  False, Nothing) -> replace (ext ++ [ (getMeta g, n) :=: Just t ::: _K ]) t
     (True,  False, Just t') -> modify (<>< ext) >> unify t' t >>= restore
-    (False, True,  _)       -> go v ((n :=: d ::: _K):ext) t >>= replace []
+    (False, True,  _)       -> go v (((getMeta g, n) :=: d ::: _K):ext) t >>= replace []
     (False, False, _)       -> go v ext t >>= restore
 
   occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
@@ -592,8 +593,8 @@ unify :: Type -> Type -> Elab Type
 unify t1 t2 = case (t1, t2) of
   (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> onTop $ \ g (n :=: d ::: _K) -> case (g == v1, g == v2, d) of
     (True,  True,  _)       -> restore (metavar v1)
-    (True,  False, Nothing) -> replace [n :=: Just (metavar v2) ::: _K] (metavar v2)
-    (False, True,  Nothing) -> replace [n :=: Just (metavar v1) ::: _K] (metavar v1)
+    (True,  False, Nothing) -> replace [(getMeta g, n) :=: Just (metavar v2) ::: _K] (metavar v2)
+    (False, True,  Nothing) -> replace [(getMeta g, n) :=: Just (metavar v1) ::: _K] (metavar v1)
     (True,  False, Just t)  -> unify (metavar v2) t >>= restore
     (False, True,  Just t)  -> unify (metavar v1) t >>= restore
     (False, False, _)       -> unify (metavar v1) (metavar v2) >>= restore
