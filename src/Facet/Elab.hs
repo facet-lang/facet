@@ -45,7 +45,7 @@ import           Control.Effect.Empty
 import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Sum
 import           Control.Lens (Lens', at, ix, lens)
-import           Control.Monad (unless, when, (<=<))
+import           Control.Monad (unless, (<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable (asum, foldl', for_, toList)
 import qualified Data.IntMap as IntMap
@@ -77,72 +77,6 @@ import           Prelude hiding (span, zipWith)
 -- - separate the core elaborator language from the elaboration of surface terms
 
 -- General
-
--- FIXME: we don’t get good source references during unification
-unify :: Type -> Type -> Elab Type
-unify = unifyValue
-  where
-  unifyValue t1 t2 = trace "unify" $ case t1 :===: t2 of
-    VNe (Metavar v1 :$ Nil)          :===: VNe (Metavar v2 :$ Nil)          -> if v1 == v2 then pure (metavar v1) else solve (v1 :=: metavar v2)
-    VNe (Metavar v :$ Nil)           :===: x                                -> solve (v :=: x)
-    x                                :===: VNe (Metavar v :$ Nil)           -> solve (v :=: x)
-    -- FIXME: resolve globals to try to progress past certain inequalities
-    VNe (h1 :$ e1)                   :===: VNe (h2 :$ e2)                   -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
-    TSusp t1                         :===: TSusp t2                         -> TSusp <$> unifyComp t1 t2
-    -- FIXME: these make me feel icky
-    TSusp (TRet (Sig Nothing []) t1) :===: t2                               -> unifyValue t1 t2
-    t1                               :===: TSusp (TRet (Sig Nothing []) t2) -> unifyValue t1 t2
-    VNe{}                            :===: _                                -> nope
-    TSusp{}                          :===: _                                -> nope
-    KType                            :===: KType                            -> pure KType
-    KType                            :===: _                                -> nope
-    KInterface                       :===: KInterface                       -> pure KInterface
-    KInterface                       :===: _                                -> nope
-    ECon{}                           :===: _                                -> nope
-    ELam{}                           :===: _                                -> nope
-    TString                          :===: TString                          -> pure TString
-    TString{}                        :===: _                                -> nope
-    EString s1                       :===: EString s2                       -> EString s1 <$ unless (s1 == s2) nope
-    EString{}                        :===: _                                -> nope
-    EOp{}                            :===: _                                -> nope
-    where
-    -- FIXME: build and display a diff of the root types
-    nope = couldNotUnify "mismatch" t1 t2
-
-    unifySpine sp1 sp2 = unless (length sp1 == length sp2) nope *> sequenceA (zipWith unifyArg sp1 sp2)
-    unifyArg (p1, a1) (p2, a2) = (p1,) <$ unless (p1 == p2) nope <*> unifyValue a1 a2
-
-  unifyComp c1 c2 = case c1 :===: c2 of
-    TForAll (Binding p1 n1 s1 t1) b1 :===: TForAll (Binding p2 _  s2 t2) b2 -> do
-      unless (p1 == p2) nope
-      s <- unifySig s1 s2
-      t <- unifyValue t1 t2
-      d <- depth
-      let v = free d
-      b <- unifyComp (b1 v) (b2 v)
-      pure $ TForAll (Binding p1 n1 s t) (\ v -> bindComp d v b)
-    TRet s1 t1               :===: TRet s2 t2               -> TRet <$> unifySig s1 s2 <*> unifyValue t1 t2
-    -- FIXME: these are probably wrong
-    TRet (Sig Nothing []) t1 :===: t2                       -> TRet (Sig Nothing []) <$> unifyValue t1 (TSusp t2)
-    t1                       :===: TRet (Sig Nothing []) t2 -> TRet (Sig Nothing []) <$> unifyValue (TSusp t1) t2
-    _                        :===: _                        -> nope
-    where
-    nope = couldNotUnify "mismatch" (TSusp c1) (TSusp c2)
-
-    -- FIXME: unify the signatures
-    unifySig s1 _ = pure s1
-    -- unifySig Nothing Nothing     = pure Nothing
-    -- unifySig (Just s1) (Just s2) = Just <$ unless (length s1 == length s2) nope <*> sequenceA (zipWith unifyValue s1 s2)
-    -- unifySig _         _         = nope
-
-  solve (n :=: val') = do
-    subst <- get
-    when ((== Metavar n) `occursIn` val')
-      $ mismatch "infinite type" (Right (metavar n)) val'
-    case subst IntMap.! getMeta n of
-      Just val ::: _T -> unifyValue val' val
-      Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
-
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
 meta :: Type -> Elab Meta
@@ -647,21 +581,22 @@ solve v = go v []
   go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (== Metavar g) t || occursInSuffix (== Metavar g) ext, d) of
     (True,  True,  _)       -> mismatch "infinite type" (Right (metavar g)) t
     (True,  False, Nothing) -> replace (ext ++ [ n :=: Just t ::: _K ]) t
-    (True,  False, Just t') -> modify (<>< ext) >> unify' t' t >>= restore
+    (True,  False, Just t') -> modify (<>< ext) >> unify t' t >>= restore
     (False, True,  _)       -> go v ((n :=: d ::: _K):ext) t >>= replace []
     (False, False, _)       -> go v ext t >>= restore
 
   occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
 
-unify' :: Type -> Type -> Elab Type
-unify' t1 t2 = case (t1, t2) of
+-- FIXME: we don’t get good source references during unification
+unify :: Type -> Type -> Elab Type
+unify t1 t2 = case (t1, t2) of
   (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> onTop $ \ g (n :=: d ::: _K) -> case (g == v1, g == v2, d) of
     (True,  True,  _)       -> restore (metavar v1)
     (True,  False, Nothing) -> replace [n :=: Just (metavar v2) ::: _K] (metavar v2)
     (False, True,  Nothing) -> replace [n :=: Just (metavar v1) ::: _K] (metavar v1)
-    (True,  False, Just t)  -> unify' (metavar v2) t >>= restore
-    (False, True,  Just t)  -> unify' (metavar v1) t >>= restore
-    (False, False, _)       -> unify' (metavar v1) (metavar v2) >>= restore
+    (True,  False, Just t)  -> unify (metavar v2) t >>= restore
+    (False, True,  Just t)  -> unify (metavar v1) t >>= restore
+    (False, False, _)       -> unify (metavar v1) (metavar v2) >>= restore
   (VNe (Metavar v1 :$ Nil), t2)                      -> solve v1 t2
   (t1, VNe (Metavar v2 :$ Nil))                      -> solve v2 t1
   (KType, KType)                                     -> pure KType
@@ -672,15 +607,15 @@ unify' t1 t2 = case (t1, t2) of
   (TSusp{}, _)                                       -> nope
   (ELam{}, ELam{})                                   -> nope
   (ELam{}, _)                                        -> nope
-  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))                 -> foldl' (C.$$) <$> var v1 v2 <*> spine (pl unify') sp1 sp2
+  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))                 -> foldl' (C.$$) <$> var v1 v2 <*> spine (pl unify) sp1 sp2
   (VNe{}, _)                                         -> nope
-  (ECon (q1 :$ sp1), ECon (q2 :$ sp2))               -> ECon . (q1 :$) <$ unless (q1 == q2) nope <*> spine unify' sp1 sp2
+  (ECon (q1 :$ sp1), ECon (q2 :$ sp2))               -> ECon . (q1 :$) <$ unless (q1 == q2) nope <*> spine unify sp1 sp2
   (ECon{}, _)                                        -> nope
   (TString, TString)                                 -> pure TString
   (TString, _)                                       -> nope
   (EString e1, EString e2)                           -> EString e1 <$ unless (e1 == e2) nope
   (EString{}, _)                                     -> nope
-  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> EOp . (q1 :$) <$ unless (q1 == q2) nope <*> spine (pl unify') sp1 sp2
+  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> EOp . (q1 :$) <$ unless (q1 == q2) nope <*> spine (pl unify) sp1 sp2
   (EOp{}, _)                                         -> nope
   where
   nope = couldNotUnify "mismatch" t1 t2
@@ -700,12 +635,12 @@ unify' t1 t2 = case (t1, t2) of
   comp c1 c2 = case (c1, c2) of
     (TForAll t1 b1, TForAll t2 b2) -> TForAll <$> binding t1 t2 <*> do { d <- depth ; b' <- comp (b1 (free d)) (b2 (free d)) ; pure (\ v -> bindComp d v b') }
     (TForAll{}, _)                 -> nope
-    (TRet s1 t1, TRet s2 t2)       -> TRet <$> sig s1 s2 <*> unify' t1 t2
+    (TRet s1 t1, TRet s2 t2)       -> TRet <$> sig s1 s2 <*> unify t1 t2
     (TRet{}, _)                    -> nope
 
-  binding (Binding p1 n1 d1 t1) (Binding p2 _ d2 t2) = Binding p1 n1 <$ unless (p1 == p2) nope <*> eff (spine unify') d1 d2 <*> unify' t1 t2
+  binding (Binding p1 n1 d1 t1) (Binding p2 _ d2 t2) = Binding p1 n1 <$ unless (p1 == p2) nope <*> eff (spine unify) d1 d2 <*> unify t1 t2
 
-  sig (Sig e1 c1) (Sig e2 c2) = Sig <$> eff unify' e1 e2 <*> spine unify' c1 c2
+  sig (Sig e1 c1) (Sig e2 c2) = Sig <$> eff unify e1 e2 <*> spine unify c1 c2
 
   eff f e1 e2 = case (e1, e2) of
     (Nothing, Nothing) -> pure Nothing
