@@ -74,6 +74,8 @@ data Type a
 - ❌ can’t close when built under a monad
 - ❌ no way to tell if it’s total or not; errors could be hiding under binders
 - ❌ (almost?) impossible to eliminate possibility of failure under binders by e.g. rebuilding w/ `Identity`
+  - running the actions eagerly means needing to substitute
+  - `weaken :: Type Identity a -> Type Maybe a` requires `strengthen :: Type Maybe a -> Maybe (Type Identity a)`, which in turn requires substitution because you can’t eliminate the `Maybe` under the binder
 - ❌ “exotic” terms
 
 
