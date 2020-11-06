@@ -659,8 +659,8 @@ unify' t1 t2 = case (t1, t2) of
     (True,  True,  _)       -> restore (metavar v1)
     (True,  False, Nothing) -> replace [n :=: Just (metavar v2) ::: _K] (metavar v2)
     (False, True,  Nothing) -> replace [n :=: Just (metavar v1) ::: _K] (metavar v1)
-    (True,  False, Just t)  -> unify (metavar v2) t >>= restore
-    (False, True,  Just t)  -> unify (metavar v1) t >>= restore
+    (True,  False, Just t)  -> unify' (metavar v2) t >>= restore
+    (False, True,  Just t)  -> unify' (metavar v1) t >>= restore
     (False, False, _)       -> unify' (metavar v1) (metavar v2) >>= restore
   (VNe (Metavar v1 :$ Nil), t2)                      -> solve v1 t2
   (t1, VNe (Metavar v2 :$ Nil))                      -> solve v2 t1
