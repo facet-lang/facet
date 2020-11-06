@@ -639,9 +639,6 @@ onTop f = do
       Nothing -> modify (|> elem)
     _                   -> onTop f <* modify (|> elem)
 
-onTop_ :: (Level -> Name :=: Maybe Value ::: Type -> Elab (Maybe (Suffix Type))) -> Elab ()
-onTop_ f = onTop (\ d e -> ((),) <$> f d e)
-
 
 solve :: Level -> Type -> Elab Type
 solve v = go v []
