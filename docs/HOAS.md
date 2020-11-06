@@ -36,3 +36,22 @@ data Type a
 - ❌ can’t close once opened, or at least, not easily
 - ❌ can’t close when built under a monad
 - ❌ “exotic” terms
+
+
+## Open (de Bruijn levels/indices), no effects
+
+```haskell
+data Type
+  = VFree Level
+  | KType
+  | TForAll Type (Type -> Type)
+  | TApp Type Type
+```
+
+- ✅ can fold by stashing results in a context and referencing the corresponding level in the `VFree` constructor
+- ✅ operations (e.g. unification) don’t fix a specific variable domain because it’s always fixed at `Level`, so this doesn’t make it harder to pretty-print
+- ❌ scope-safety is not obvious from the type
+- ❌ incorrect levels ⇒ 💥
+- ❌ unification requires building the body outside of the binder, and then substituting for the bound variable inside of it
+- ❌ can’t close, period
+- ❌ “exotic” terms
