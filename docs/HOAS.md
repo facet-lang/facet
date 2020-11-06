@@ -3,7 +3,7 @@
 I keep forgetting the relative benefits and limitations of variations on HOAS, so I’m writing them here to remind myself.
 
 
-## Closed, no effects
+## Closed
 
 ```haskell
 data Type
@@ -19,7 +19,7 @@ data Type
 - ❌ “exotic” terms
 
 
-## Open (polymorphic), no effects
+## Open (polymorphic)
 
 ```haskell
 data Type a
@@ -38,7 +38,7 @@ data Type a
 - ❌ “exotic” terms
 
 
-## Open (de Bruijn levels/indices), no effects
+## Open (de Bruijn levels/indices)
 
 ```haskell
 data Type
