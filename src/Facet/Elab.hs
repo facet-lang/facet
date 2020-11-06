@@ -657,7 +657,54 @@ solve v = go v []
   occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
 
 unify' :: Type -> Type -> Elab Type
-unify' t1 t2 = mismatch "mismatch" (Right t2) t1
+unify' t1 t2 = case (t1, t2) of
+  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))   -> foldl' (C.$$) <$> var v1 v2 <*> spine (pl unify') sp1 sp2
+  (VNe{}, _)                           -> nope
+  (KType, KType)                       -> pure KType
+  (KType, _)                           -> nope
+  (KInterface, KInterface)             -> pure KInterface
+  (KInterface, _)                      -> nope
+  (TSusp c1, TSusp c2)                 -> TSusp <$> comp c1 c2
+  (TSusp{}, _)                         -> nope
+  (ELam{}, ELam{})                     -> nope
+  (ELam{}, _)                          -> nope
+  (ECon (q1 :$ sp1), ECon (q2 :$ sp2)) -> ECon . (q1 :$) <$ unless (q1 == q2) nope <*> spine unify' sp1 sp2
+  (ECon{}, _)                          -> nope
+  (TString, TString)                   -> pure TString
+  (TString, _)                         -> nope
+  (EString e1, EString e2)             -> EString e1 <$ unless (e1 == e2) nope
+  (EString{}, _)                       -> nope
+  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))   -> EOp . (q1 :$) <$ unless (q1 == q2) nope <*> spine (pl unify') sp1 sp2
+  (EOp{}, _)                           -> nope
+  where
+  nope = mismatch "mismatch" (Right t2) t1
+
+  var v1 v2 = case (v1, v2) of
+    (Global q1, Global q2)   -> C.global q1 <$ unless (q1 == q2) nope
+    (Global{}, _)            -> nope
+    (Free v1, Free v2)       -> C.free v1 <$ unless (v1 == v2) nope
+    (Free{}, _)              -> nope
+    (Metavar v1, Metavar v2) -> C.metavar v1 <$ unless (v1 == v2) nope
+    (Metavar{}, _)           -> nope
+
+  pl f (p1, t1) (p2, t2) = (p1,) <$ unless (p1 == p2) nope <*> f t1 t2
+
+  spine f sp1 sp2 = unless (length sp1 == length sp2) nope *> sequenceA (zipWith f sp1 sp2)
+
+  comp c1 c2 = case (c1, c2) of
+    (TForAll t1 b1, TForAll t2 b2) -> TForAll <$> binding t1 t2 <*> do { d <- depth ; b' <- comp (b1 (free d)) (b2 (free d)) ; pure (\ v -> bindComp d v b') }
+    (TForAll{}, _)                 -> nope
+    (TRet s1 t1, TRet s2 t2)       -> TRet <$> sig s1 s2 <*> unify' t1 t2
+    (TRet{}, _)                    -> nope
+
+  binding (Binding p1 n1 d1 t1) (Binding p2 _ d2 t2) = Binding p1 n1 <$ unless (p1 == p2) nope <*> eff (spine unify') d1 d2 <*> unify' t1 t2
+
+  sig (Sig e1 c1) (Sig e2 c2) = Sig <$> eff unify' e1 e2 <*> spine unify' c1 c2
+
+  eff f e1 e2 = case (e1, e2) of
+    (Nothing, Nothing) -> pure Nothing
+    (Just e1, Just e2) -> Just <$> f e1 e2
+    _                  -> nope
 
 
 newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State (Context Type) :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
