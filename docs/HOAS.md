@@ -75,3 +75,22 @@ data Type a
 - ❌ no way to tell if it’s total or not; errors could be hiding under binders
 - ❌ (almost?) impossible to eliminate possibility of failure under binders by e.g. rebuilding w/ `Identity`
 - ❌ “exotic” terms
+
+
+## Open (parametrically polymorphic)
+
+```haskell
+data Type a
+  = Type
+  | ForAll (Type a) (a -> Type a)
+  | App (Type a) (Type a)
+```
+
+- ✅ scope-safety is obvious from the type (e.g. `Type Void` is closed, as is `forall x . Type x`)
+- ✅ can fold reasonably directly
+- ✅ rules out “exotic” terms
+- ❌ unification requires building the body outside of the binder, and then substituting for the bound variable inside of it
+- ❌ thus, unification requires picking a domain for the variables
+- ❌ can’t close once opened, or at least, not easily
+- ❌ can’t close when built under a monad
+- ❌ can’t do NbE spine forms without an actual evaluator?
