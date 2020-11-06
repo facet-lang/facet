@@ -626,7 +626,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: (Level -> Name :=: Maybe Value ::: Type -> Elab (a, Maybe (Suffix Type))) -> Elab a
+onTop :: (Meta -> Name :=: Maybe Value ::: Type -> Elab (a, Maybe (Suffix Type))) -> Elab a
 onTop f = do
   ctx <- get
   (gamma, elem) <- case elems ctx of
@@ -634,18 +634,18 @@ onTop f = do
     Nil           -> error "wtf empty context" -- FIXME: make this a real error
   put gamma
   case elem of
-    n :=: Flex v ::: _T -> f (level gamma) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
+    n :=: Flex v ::: _T -> f (Meta (length (elems gamma))) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
     _                   -> onTop f <* modify (|> elem)
 
 
-solve :: Level -> Type -> Elab Type
+solve :: Meta -> Type -> Elab Type
 solve v = go v []
   where
-  go :: Level -> Suffix Type -> Type -> Elab Value
-  go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (== Free g) t || occursInSuffix (== Free g) ext, d) of
-    (True,  True,  _)       -> mismatch "infinite type" (Right (metavar (Meta (getLevel g)))) t
+  go :: Meta -> Suffix Type -> Type -> Elab Value
+  go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (== Metavar g) t || occursInSuffix (== Metavar g) ext, d) of
+    (True,  True,  _)       -> mismatch "infinite type" (Right (metavar g)) t
     (True,  False, Nothing) -> replace (ext ++ [ n :=: Just t ::: _K ]) t
     (True,  False, Just t') -> modify (<>< ext) >> unify' t' t >>= restore
     (False, True,  _)       -> go v ((n :=: d ::: _K):ext) t >>= replace []
