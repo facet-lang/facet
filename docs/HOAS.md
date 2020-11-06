@@ -132,6 +132,7 @@ There are two models for this: one where you do most of your work in `Expr` and 
   - when building the terms in the first place
   - when instantiating globals
 - ❌ doesn’t obviate the need for substitution
+- ❌ have to define everything twice
 
 ### Work in `Value`:
 
@@ -147,3 +148,4 @@ There are two models for this: one where you do most of your work in `Expr` and 
   - for α-equivalence or any other operation you want to drop into the quoted representation for
 - ❌ working in HOAS is still hard
 - ❌ doesn’t obviate the need for substitution
+- ❌ have to define everything twice
