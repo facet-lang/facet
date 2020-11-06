@@ -1,6 +1,6 @@
 # HOAS
 
-I keep forgetting the relative benefits and limitations of variations on HOAS, so I’m writing them here to remind myself.
+I keep forgetting the relative benefits and limitations of variations on HOAS, so I’m writing them here to remind myself. NB: none of these are doing the hereditary substitution/NbE representation for binders; that’s intentional since it’s largely orthogonal.
 
 
 ## Closed
