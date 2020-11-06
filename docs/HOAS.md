@@ -18,7 +18,7 @@ data Type
 - ❌ can’t represent open terms
 
 
-## Open, no effects
+## Open (polymorphic), no effects
 
 ```haskell
 data Type a
