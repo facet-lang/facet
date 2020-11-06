@@ -30,7 +30,7 @@ module Facet.Elab
 , ElabContext(..)
 , sig_
 , Elab(..)
-, elabWith
+, elab
 , check
 , Check(..)
 , Synth(..)
@@ -39,6 +39,7 @@ module Facet.Elab
 import           Control.Algebra
 import           Control.Applicative (Alternative)
 import           Control.Carrier.Error.Church
+import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Empty
@@ -81,9 +82,10 @@ import           Prelude hiding (span, zipWith)
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
 meta :: Type -> Elab Meta
 meta _T = do
-  subst <- get
-  let m = Meta (length subst)
-  m <$ put (insertSubst m (Nothing ::: _T) subst)
+  i <- fresh
+  ctx <- get
+  let m = Meta i
+  m <$ put (ctx |> Ty i __ Nothing _T)
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
@@ -175,11 +177,11 @@ elabBinders p b = do
   b' <- b p
   pure $ \ v -> binds (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
 
-(|-) :: Has (State Context) sig m => Name ::: Type -> m a -> m a
+(|-) :: Has (Fresh :+: State Context) sig m => Name ::: Type -> m a -> m a
 (n ::: _T) |- b = do
   ctx <- get
-  -- FIXME: this should use Fresh
-  put (ctx |> Tm (length (elems ctx)) n _T)
+  i <- fresh
+  put (ctx |> Tm i n _T)
   a <- b
   a <$ put ctx
 
@@ -357,7 +359,7 @@ elabDataDef
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
-    c_T <- elabWith (fmap pure . applyComp) $ go (switch (elabComp t)) _T
+    c_T <- elab $ go (switch (elabComp t)) _T
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T)) ::: c_T
   -- FIXME: constructor functions should have signatures, but constructors should not.
   pure
@@ -382,7 +384,7 @@ elabInterfaceDef
   -> m (Maybe Def ::: Comp)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
-    (\ _T -> n :=: Nothing ::: _T) <$> elabWith (fmap pure . applyComp) (go (check (switch (elabComp t) ::: KType)) _T)
+    (\ _T -> n :=: Nothing ::: _T) <$> elab (go (check (switch (elabComp t) ::: KType)) _T)
   pure $ Just (DInterface (scopeFromList cs)) ::: _T
   where
   go k = \case
@@ -399,7 +401,7 @@ elabTermDef
   => Comp
   -> S.Ann S.Expr
   -> m Expr
-elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elabWith (fmap pure . apply) $ check (go (checkExpr expr) ::: TSusp _T)
+elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elab $ check (go (checkExpr expr) ::: TSusp _T)
   where
   go :: Check Expr -> Check Expr
   go k = Check $ \ _T -> case _T of
@@ -426,7 +428,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ local (const s) $ do
-      _T <- runModule . elabWith (fmap pure . applyComp) $ addEffectVar <$> check (switch (elabComp tele) ::: KType)
+      _T <- runModule . elab $ addEffectVar <$> check (switch (elabComp tele) ::: KType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
@@ -460,9 +462,6 @@ insertEffectVar _E = go
     -- FIXME: is this right?
     TRet s t                      -> TRet s{ effectVar = Just _E } t
 
-
-runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
-runSubstWith with = runState with emptySubst
 
 extendSig :: Has (Reader ElabContext) sig m => Maybe [Value] -> m a -> m a
 extendSig = maybe id (locally (sig_.interfaces_) . (++))
@@ -651,7 +650,7 @@ unify t1 t2 = case (t1, t2) of
     _                  -> nope
 
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State Context :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -663,16 +662,16 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Reader ElabContext :+: State Context :+: State Subst :+: Throw Err :+: Trace) Elab where
+instance Algebra (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) Elab where
   alg hdl sig ctx = case sig of
-    L rctx              -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
-    R (L sctx)          -> Elab $ alg (runElab . hdl) (inj sctx)  ctx
-    R (R (L subst))     -> Elab $ alg (runElab . hdl) (inj subst) ctx
+    L fresh             -> Elab $ alg (runElab . hdl) (inj fresh) ctx
+    R (L rctx)          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
+    R (R (L sctx))      -> Elab $ alg (runElab . hdl) (inj sctx)  ctx
     R (R (R (L throw))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
     R (R (R (R trace))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
-elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
-elabWith f = runSubstWith f . evalState Context.empty . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
+elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab a -> m a
+elab = evalFresh 0 . evalState Context.empty . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
   where
   mkContext = ElabContext <$> ask <*> ask <*> ask <*> pure (Sig Nothing []) <*> ask
 
