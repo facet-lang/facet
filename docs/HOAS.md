@@ -55,3 +55,23 @@ data Type
 - ❌ unification requires building the body outside of the binder, and then substituting for the bound variable inside of it
 - ❌ can’t close, period
 - ❌ “exotic” terms
+
+
+## Open (polymorphic), effects
+
+```haskell
+data Type a
+  = VFree a
+  | KType
+  | TForAll (Type a) (Type a -> Maybe (Type a))
+  | TApp (Type a) (Type a)
+```
+
+- ✅ scope-safety is obvious from the type (e.g. `Type Void` is closed, as is `forall x . Type x`)
+- ✅ can fold by stashing results in `VFree` constructor
+- ✅ unification can occur under the binder, without having to pick a domain or substitute
+- ❌ can’t close once opened, or at least, not easily
+- ❌ can’t close when built under a monad
+- ❌ no way to tell if it’s total or not; errors could be hiding under binders
+- ❌ almost impossible to eliminate possibility of failure under binders by e.g. rebuilding w/ `Identity`
+- ❌ “exotic” terms
