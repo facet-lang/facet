@@ -73,5 +73,5 @@ data Type a
 - ❌ can’t close once opened, or at least, not easily
 - ❌ can’t close when built under a monad
 - ❌ no way to tell if it’s total or not; errors could be hiding under binders
-- ❌ almost impossible to eliminate possibility of failure under binders by e.g. rebuilding w/ `Identity`
+- ❌ (almost?) impossible to eliminate possibility of failure under binders by e.g. rebuilding w/ `Identity`
 - ❌ “exotic” terms
