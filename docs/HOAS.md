@@ -94,3 +94,53 @@ data Type a
 - ❌ can’t close once opened, or at least, not easily
 - ❌ can’t close when built under a monad
 - ❌ can’t do NbE spine forms without an actual evaluator?
+
+
+## Open (de bruijn levels/indices), quotation
+
+```haskell
+data Value
+  = VFree Level
+  | VType
+  | VForAll Value (Value -> Value)
+  | VApp Value Value
+
+data Expr
+  = EVar Index
+  | EType
+  | EForAll Expr Expr
+  | EApp Expr Expr
+
+eval :: [Value Level] -> Expr -> Value Level
+quote :: Level -> Value Level -> Expr
+```
+
+There are two models for this: one where you do most of your work in `Expr` and use `Value` for NbE, one where you do most of your work in `Value` and use `Expr` for `==` and `show`.
+
+### Work in `Expr`:
+
+- ✅ can fold trivially
+- ✅ first-order representation (`Expr`) enables easy α-equivalence (`Eq`), `Show`, etc.
+- ✅ unification is “easy”
+- ❌ scope-safety is not indicated by the types
+- ❌ easy to make mistakes with de Bruijn indices/levels
+- ❌ “exotic” terms in `Value`
+- ❌ have to `eval` and `quote` a lot:
+  - when building the terms in the first place
+  - when instantiating globals
+- ❌ doesn’t obviate the need for substitution
+
+### Work in `Value`:
+
+- ✅ can fold by stashing results in a context and referencing the corresponding level in the `Free` constructor
+- ✅ operations (e.g. unification) don’t fix a specific variable domain because it’s always fixed at `Level`, so this doesn’t make it harder to pretty-print
+- ✅ first-order representation (`Expr`) enables easy α-equivalence (`Eq`), `Show`, etc.
+- ✅ unification and other challenging operations can be done in the first-order representation
+- ❌ scope-safety is not indicated by the types
+- ❌ easy to make mistakes with de Bruijn indices/levels
+- ❌ “exotic” terms in `Value`
+- ❌ have to `eval` and `quote` a lot:
+  - when showing errors
+  - for α-equivalence or any other operation you want to drop into the quoted representation for
+- ❌ working in HOAS is still hard
+- ❌ doesn’t obviate the need for substitution
