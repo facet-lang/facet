@@ -655,10 +655,8 @@ solve v = go v []
 
 unify' :: Type -> Type -> Elab Type
 unify' t1 t2 = case (t1, t2) of
-  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))   -> foldl' (C.$$) <$> var v1 v2 <*> spine (pl unify') sp1 sp2
   (VNe (Metavar v1 :$ Nil), t2)        -> solve v1 t2
   (t1, VNe (Metavar v2 :$ Nil))        -> solve v2 t1
-  (VNe{}, _)                           -> nope
   (KType, KType)                       -> pure KType
   (KType, _)                           -> nope
   (KInterface, KInterface)             -> pure KInterface
@@ -667,6 +665,8 @@ unify' t1 t2 = case (t1, t2) of
   (TSusp{}, _)                         -> nope
   (ELam{}, ELam{})                     -> nope
   (ELam{}, _)                          -> nope
+  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))   -> foldl' (C.$$) <$> var v1 v2 <*> spine (pl unify') sp1 sp2
+  (VNe{}, _)                           -> nope
   (ECon (q1 :$ sp1), ECon (q2 :$ sp2)) -> ECon . (q1 :$) <$ unless (q1 == q2) nope <*> spine unify' sp1 sp2
   (ECon{}, _)                          -> nope
   (TString, TString)                   -> pure TString
