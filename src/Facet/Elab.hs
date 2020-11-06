@@ -123,7 +123,7 @@ resolveQ = resolveWith lookupD
 global :: Q Name ::: Comp -> Synth Value
 global (q ::: _T) = Synth $ instantiate (C.global q ::: _T)
 
-lookupInContext :: Q Name -> Context -> Maybe (Level, Solution ::: Type)
+lookupInContext :: Q Name -> Context -> Maybe (Level, Type)
 lookupInContext (m:.:n)
   | m == Nil  = lookupLevel n
   | otherwise = const Nothing
@@ -143,8 +143,8 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: Q Name -> Synth Value
 var n = Synth $ trace "var" $ get >>= \ ctx -> if
-  | Just (i, _ ::: _T) <- lookupInContext n ctx -> pure (free i ::: _T)
-  | otherwise                                   -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph (interfaces sig)) >>= \case
+  | Just (i, _T) <- lookupInContext n ctx -> pure (free i ::: _T)
+  | otherwise                             -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph (interfaces sig)) >>= \case
     Just (n ::: _T) -> do
       n ::: _T <- instantiate (EOp (n :$ Nil) ::: _T)
       pure $ n ::: _T
@@ -178,7 +178,7 @@ elabBinders p b = do
 (|-) :: Has (State Context) sig m => Name ::: Type -> m a -> m a
 (n ::: _T) |- b = do
   ctx <- get
-  put (ctx |> (n :=: Rigid ::: _T))
+  put (ctx |> Tm n _T)
   a <- b
   a <$ put ctx
 
@@ -568,7 +568,7 @@ onTop f = do
     Nil           -> error "wtf empty context" -- FIXME: make this a real error
   put gamma
   case elem of
-    n :=: Flex v ::: _T -> f (Meta (length (elems gamma))) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
+    Ty n v _T -> f (Meta (length (elems gamma))) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
     _                   -> onTop f <* modify (|> elem)

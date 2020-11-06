@@ -30,15 +30,16 @@ rethrowElabErrors src = L.runThrow rethrow
     ]
     where
     (_, _, printCtx, ctx) = foldl combine (0, Nil, Nil, Nil) (elems context)
-  combine (d, sort, print, ctx) (n :=: v ::: _T) =
-    let s = sortOf sort _T
-        n' = name s n d
+  combine (d, sort, print, ctx) e =
+    let _T = entryType e
+        s = sortOf sort _T
+        n' = name s (entryName e) d
     in  ( succ d
         , sort  :> s
         , print :> n'
-        , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printValue print _T))) <> case v of
-          Flex (Just v) -> space <> pretty '=' <+> reAnnotate Code (getPrint (printValue print v))
-          _             -> mempty )
+        , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printValue print _T))) <> case e of
+          Ty _ (Just v) _ -> space <> pretty '=' <+> reAnnotate Code (getPrint (printValue print v))
+          _               -> mempty )
   name = \case
     STerm -> intro
     _     -> tintro

@@ -1,8 +1,9 @@
 module Facet.Context
 ( -- * Contexts
   Context(..)
-, Entry
-, Solution(..)
+, Entry(..)
+, entryName
+, entryType
 , empty
 , (|>)
 , level
@@ -25,11 +26,20 @@ import           Prelude hiding (lookup)
 
 newtype Context = Context { elems :: S.Stack Entry }
 
-type Entry = Name :=: Solution ::: Type
+data Entry
+  = Tm Name Type
+  | Ty Name (Maybe Type) Type
 
-data Solution
-  = Flex (Maybe Type)
-  | Rigid
+entryName :: Entry -> Name
+entryName = \case
+  Tm n   _ -> n
+  Ty n _ _ -> n
+
+entryType :: Entry -> Type
+entryType = \case
+  Tm _   t -> t
+  Ty _ _ t -> t
+
 
 empty :: Context
 empty = Context S.Nil
@@ -48,19 +58,19 @@ c !? i = elems c S.!? getIndex i
 (!) :: HasCallStack => Context -> Index -> Entry
 c ! i = elems c S.! getIndex i
 
-lookupLevel :: Name -> Context -> Maybe (Level, Solution ::: Type)
+lookupLevel :: Name -> Context -> Maybe (Level, Type)
 lookupLevel n c = go (Index 0) $ elems c
   where
-  go _ S.Nil                = Nothing
-  go i (cs S.:> (n' :=: a))
-    | n == n'               = Just (indexToLevel (level c) i, a)
-    | otherwise             = go (succ i) cs
+  go _ S.Nil           = Nothing
+  go i (cs S.:> e)
+    | n == entryName e = Just (indexToLevel (level c) i, entryType e)
+    | otherwise        = go (succ i) cs
 
 
 type Suffix = [Name :=: Maybe Type ::: Type]
 
 (<><) :: Context -> Suffix -> Context
-(<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> (n :=: Flex v ::: _T))
+(<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> Ty n v _T)
 
 infixl 5 <><
 
