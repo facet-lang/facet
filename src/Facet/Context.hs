@@ -16,40 +16,39 @@ module Facet.Context
 ) where
 
 import           Data.Foldable (foldl')
+import           Facet.Core
 import           Facet.Name
 import qualified Facet.Stack as S
 import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
-newtype Context a = Context { elems :: S.Stack (Entry a) }
-  deriving (Eq, Ord, Show)
+newtype Context = Context { elems :: S.Stack Entry }
 
-type Entry a = Name :=: Solution a ::: a
+type Entry = Name :=: Solution ::: Type
 
-data Solution a
-  = Flex (Maybe a)
+data Solution
+  = Flex (Maybe Type)
   | Rigid
-  deriving (Eq, Ord, Show)
 
-empty :: Context a
+empty :: Context
 empty = Context S.Nil
 
-(|>) :: Context a -> Entry a -> Context a
+(|>) :: Context -> Entry -> Context
 Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
 
-level :: Context a -> Level
+level :: Context -> Level
 level (Context c) = Level (length c)
 
-(!?) :: Context a -> Index -> Maybe (Entry a)
+(!?) :: Context -> Index -> Maybe Entry
 c !? i = elems c S.!? getIndex i
 
-(!) :: HasCallStack => Context a -> Index -> Entry a
+(!) :: HasCallStack => Context -> Index -> Entry
 c ! i = elems c S.! getIndex i
 
-lookupLevel :: Name -> Context a -> Maybe (Level, Solution a ::: a)
+lookupLevel :: Name -> Context -> Maybe (Level, Solution ::: Type)
 lookupLevel n c = go (Index 0) $ elems c
   where
   go _ S.Nil                = Nothing
@@ -58,15 +57,15 @@ lookupLevel n c = go (Index 0) $ elems c
     | otherwise             = go (succ i) cs
 
 
-type Suffix a = [Name :=: Maybe a ::: a]
+type Suffix = [Name :=: Maybe Type ::: Type]
 
-(<><) :: Context a -> Suffix a -> Context a
+(<><) :: Context -> Suffix -> Context
 (<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> (n :=: Flex v ::: _T))
 
 infixl 5 <><
 
-restore :: Applicative m => a -> m (a, Maybe (Suffix b))
+restore :: Applicative m => a -> m (a, Maybe Suffix)
 restore = pure . (,Nothing)
 
-replace :: Applicative m => Suffix b -> a -> m (a, Maybe (Suffix b))
+replace :: Applicative m => Suffix -> a -> m (a, Maybe Suffix)
 replace a = pure . (,Just a)
