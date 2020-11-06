@@ -683,7 +683,7 @@ unify' t1 t2 = case (t1, t2) of
   (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> EOp . (q1 :$) <$ unless (q1 == q2) nope <*> spine (pl unify') sp1 sp2
   (EOp{}, _)                                         -> nope
   where
-  nope = mismatch "mismatch" (Right t2) t1
+  nope = couldNotUnify "mismatch" t1 t2
 
   var v1 v2 = case (v1, v2) of
     (Global q1, Global q2)   -> C.global q1 <$ unless (q1 == q2) nope
