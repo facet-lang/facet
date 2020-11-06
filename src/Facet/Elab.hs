@@ -604,6 +604,8 @@ unify t1 t2 = case (t1, t2) of
   (KInterface, KInterface)                           -> pure KInterface
   (KInterface, _)                                    -> nope
   (TSusp c1, TSusp c2)                               -> TSusp <$> comp c1 c2
+  (TSusp (TRet (Sig Nothing []) t1), t2)             -> unify t1 t2
+  (t1, TSusp (TRet (Sig Nothing []) t2))             -> unify t1 t2
   (TSusp{}, _)                                       -> nope
   (ELam{}, ELam{})                                   -> nope
   (ELam{}, _)                                        -> nope
