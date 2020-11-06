@@ -655,26 +655,33 @@ solve v = go v []
 
 unify' :: Type -> Type -> Elab Type
 unify' t1 t2 = case (t1, t2) of
-  (VNe (Metavar v1 :$ Nil), t2)        -> solve v1 t2
-  (t1, VNe (Metavar v2 :$ Nil))        -> solve v2 t1
-  (KType, KType)                       -> pure KType
-  (KType, _)                           -> nope
-  (KInterface, KInterface)             -> pure KInterface
-  (KInterface, _)                      -> nope
-  (TSusp c1, TSusp c2)                 -> TSusp <$> comp c1 c2
-  (TSusp{}, _)                         -> nope
-  (ELam{}, ELam{})                     -> nope
-  (ELam{}, _)                          -> nope
-  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))   -> foldl' (C.$$) <$> var v1 v2 <*> spine (pl unify') sp1 sp2
-  (VNe{}, _)                           -> nope
-  (ECon (q1 :$ sp1), ECon (q2 :$ sp2)) -> ECon . (q1 :$) <$ unless (q1 == q2) nope <*> spine unify' sp1 sp2
-  (ECon{}, _)                          -> nope
-  (TString, TString)                   -> pure TString
-  (TString, _)                         -> nope
-  (EString e1, EString e2)             -> EString e1 <$ unless (e1 == e2) nope
-  (EString{}, _)                       -> nope
-  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))   -> EOp . (q1 :$) <$ unless (q1 == q2) nope <*> spine (pl unify') sp1 sp2
-  (EOp{}, _)                           -> nope
+  (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> onTop $ \ g (n :=: d ::: _K) -> case (g == v1, g == v2, d) of
+    (True,  True,  _)       -> restore (metavar v1)
+    (True,  False, Nothing) -> replace [n :=: Just (metavar v2) ::: _K] (metavar v2)
+    (False, True,  Nothing) -> replace [n :=: Just (metavar v1) ::: _K] (metavar v1)
+    (True,  False, Just t)  -> unify (metavar v2) t >>= restore
+    (False, True,  Just t)  -> unify (metavar v1) t >>= restore
+    (False, False, _)       -> unify' (metavar v1) (metavar v2) >>= restore
+  (VNe (Metavar v1 :$ Nil), t2)                      -> solve v1 t2
+  (t1, VNe (Metavar v2 :$ Nil))                      -> solve v2 t1
+  (KType, KType)                                     -> pure KType
+  (KType, _)                                         -> nope
+  (KInterface, KInterface)                           -> pure KInterface
+  (KInterface, _)                                    -> nope
+  (TSusp c1, TSusp c2)                               -> TSusp <$> comp c1 c2
+  (TSusp{}, _)                                       -> nope
+  (ELam{}, ELam{})                                   -> nope
+  (ELam{}, _)                                        -> nope
+  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))                 -> foldl' (C.$$) <$> var v1 v2 <*> spine (pl unify') sp1 sp2
+  (VNe{}, _)                                         -> nope
+  (ECon (q1 :$ sp1), ECon (q2 :$ sp2))               -> ECon . (q1 :$) <$ unless (q1 == q2) nope <*> spine unify' sp1 sp2
+  (ECon{}, _)                                        -> nope
+  (TString, TString)                                 -> pure TString
+  (TString, _)                                       -> nope
+  (EString e1, EString e2)                           -> EString e1 <$ unless (e1 == e2) nope
+  (EString{}, _)                                     -> nope
+  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> EOp . (q1 :$) <$ unless (q1 == q2) nope <*> spine (pl unify') sp1 sp2
+  (EOp{}, _)                                         -> nope
   where
   nope = mismatch "mismatch" (Right t2) t1
 
