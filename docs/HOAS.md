@@ -79,7 +79,7 @@ data Type a
 - ❌ “exotic” terms
 
 
-## Open (parametrically polymorphic)
+## Open (weak polymorphic)
 
 ```haskell
 data Type a
