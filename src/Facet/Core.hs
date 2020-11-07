@@ -534,7 +534,7 @@ eval env = \case
   QVar v          -> unVar global ((env !) . getIndex) metavar v
   QKType          -> KType
   QKInterface     -> KInterface
-  QTSusp c        -> comp c
+  QTSusp c        -> comp env c
   QELam p cs      -> ELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) b)) cs
   QApp f a        -> eval env f $$ (eval env <$> a)
   QECon (n :$ sp) -> ECon $ n :$ (eval env <$> sp)
@@ -542,4 +542,4 @@ eval env = \case
   QEString s      -> EString s
   QEOp n          -> EOp $ n :$ Nil
   where
-  comp (QComp bs s t) = TSusp (foldr (\ t b env -> TForAll (eval env <$> t) (\ v -> b (env:>v))) (\ env -> TRet (eval env <$> s) (eval env t)) bs env)
+  comp env (QComp bs s t) = TSusp (foldr (\ t b env -> TForAll (eval env <$> t) (\ v -> b (env:>v))) (\ env -> TRet (eval env <$> s) (eval env t)) bs env)
