@@ -147,6 +147,7 @@ data Sig a = Sig
   { effectVar  :: Maybe a
   , interfaces :: [a]
   }
+  deriving (Foldable, Functor, Traversable)
 
 effectVar_ :: Lens' (Sig a) (Maybe a)
 effectVar_ = lens effectVar (\ s effectVar -> s{ effectVar })
@@ -170,6 +171,7 @@ data Binding a = Binding
   , delta :: Maybe [a]
   , type' :: a
   }
+  deriving (Foldable, Functor, Traversable)
 
 
 -- Variables
@@ -178,6 +180,7 @@ data Var a
   = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
   | Free a
   | Metavar Meta -- ^ Metavariables, considered equal by 'Level'.
+  deriving (Foldable, Functor, Traversable)
 
 instance Eq a => Eq (Var a) where
   (==) = curry $ \case
