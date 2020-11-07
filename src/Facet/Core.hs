@@ -71,6 +71,7 @@ module Facet.Core
 , quote
 , quoteComp
 , eval
+, evalComp
 ) where
 
 import           Control.Applicative (Alternative(..))
@@ -534,12 +535,13 @@ eval env = \case
   QVar v          -> unVar global ((env !) . getIndex) metavar v
   QKType          -> KType
   QKInterface     -> KInterface
-  QTSusp c        -> comp env c
+  QTSusp c        -> evalComp env c
   QELam p cs      -> ELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) b)) cs
   QApp f a        -> eval env f $$ (eval env <$> a)
   QECon (n :$ sp) -> ECon $ n :$ (eval env <$> sp)
   QTString        -> TString
   QEString s      -> EString s
   QEOp n          -> EOp $ n :$ Nil
-  where
-  comp env (QComp bs s t) = TSusp (foldr (\ t b env -> TForAll (eval env <$> t) (\ v -> b (env:>v))) (\ env -> TRet (eval env <$> s) (eval env t)) bs env)
+
+evalComp :: Stack Value -> QComp -> Value
+evalComp env (QComp bs s t) = TSusp (foldr (\ t b env -> TForAll (eval env <$> t) (\ v -> b (env:>v))) (\ env -> TRet (eval env <$> s) (eval env t)) bs env)
