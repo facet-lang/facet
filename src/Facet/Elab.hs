@@ -279,9 +279,8 @@ lam n b = Check $ \ _T -> trace "lam" $ do
 
 thunk :: Check Expr -> Check Expr
 thunk e = Check $ trace "thunk" . \case
-  -- FIXME: pretty sure this is redundant
-  -- TSusp (TRet s t) -> extendSig s $ check (e ::: t)
-  t                -> check (e ::: t)
+  TSusp (TRet (Sig _ s) t) -> extendSig (Just s) $ check (e ::: t)
+  t                        -> check (e ::: t)
 
 force :: Synth Expr -> Synth Expr
 force e = Synth $ trace "force" $ do
