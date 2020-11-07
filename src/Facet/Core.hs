@@ -91,7 +91,7 @@ data Value
   | TSusp Comp
   | ELam Pl [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | VNe (Var :$ (Pl, Value))
+  | VNe (Var Level :$ (Pl, Value))
   | ECon (Q Name :$ Expr)
   | TString
   | EString Text
@@ -107,7 +107,7 @@ data Comp
   = TForAll Binding (Type -> Comp)
   | TRet Sig Type
 
-substCompWith :: (Var -> Value) -> Comp -> Comp
+substCompWith :: (Var Level -> Value) -> Comp -> Comp
 substCompWith f = go
   where
   go = \case
@@ -174,12 +174,12 @@ data Binding = Binding
 
 -- Variables
 
-data Var
+data Var a
   = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
-  | Free Level
+  | Free a
   | Metavar Meta -- ^ Metavariables, considered equal by 'Level'.
 
-instance Eq Var where
+instance Eq a => Eq (Var a) where
   (==) = curry $ \case
     (Global  q1, Global  q2) -> q1 == q2
     (Global  _,  _)          -> False
@@ -188,7 +188,7 @@ instance Eq Var where
     (Metavar m1, Metavar m2) -> m1 == m2
     (Metavar _,  _)          -> False
 
-instance Ord Var where
+instance Ord a => Ord (Var a) where
   compare = curry $ \case
     (Global  q1, Global  q2) -> q1 `compare` q2
     (Global  _,  _)          -> LT
@@ -197,7 +197,7 @@ instance Ord Var where
     (Metavar m1, Metavar m2) -> m1 `compare` m2
     (Metavar _,  _)          -> LT
 
-unVar :: (Q Name -> a) -> (Level -> a) -> (Meta -> a) -> Var -> a
+unVar :: (Q Name -> b) -> (a -> b) -> (Meta -> b) -> Var a -> b
 unVar f g h = \case
   Global  n -> f n
   Free    n -> g n
@@ -214,11 +214,11 @@ metavar :: Meta -> Value
 metavar = var . Metavar
 
 
-var :: Var -> Value
+var :: Var Level -> Value
 var = VNe . (:$ Nil)
 
 
-occursIn :: (Var -> Bool) -> Value -> Bool
+occursIn :: (Var Level -> Bool) -> Value -> Bool
 occursIn p = go (Level 0) -- FIXME: this should probably be doing something more sensible
   where
   go d = \case
@@ -280,7 +280,7 @@ match = curry $ \case
 
 -- Substitution
 
-substWith :: (Var -> Value) -> Value -> Value
+substWith :: (Var Level -> Value) -> Value -> Value
 substWith f = go
   where
   go = \case
@@ -311,10 +311,10 @@ binds s
   | IntMap.null s = id
   | otherwise     = substWith (substFree s)
 
-substFree :: IntMap.IntMap Value -> Var -> Value
+substFree :: IntMap.IntMap Value -> Var Level -> Value
 substFree s = unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) s)) metavar
 
-substMeta :: IntMap.IntMap Value -> Var -> Value
+substMeta :: IntMap.IntMap Value -> Var Level -> Value
 substMeta s = unVar global free (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) s))
 
 
