@@ -125,9 +125,9 @@ resolveQ = resolveWith lookupD
 global :: Q Name ::: Comp -> Synth Value
 global (q ::: _T) = Synth $ instantiate (C.global q ::: _T)
 
-lookupInContext :: Q Name -> Context -> Maybe (Level, Type)
+lookupInContext :: Q Name -> Context -> Maybe (Index, Type)
 lookupInContext (m:.:n)
-  | m == Nil  = \ c -> (\ (i, t) -> (indexToLevel (level c) i, t)) <$> lookupIndex n c
+  | m == Nil  = lookupIndex n
   | otherwise = const Nothing
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
@@ -145,7 +145,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: Q Name -> Synth Value
 var n = Synth $ trace "var" $ get >>= \ ctx -> if
-  | Just (i, _T) <- lookupInContext n ctx -> pure (free i ::: _T)
+  | Just (i, _T) <- lookupInContext n ctx -> pure (free (indexToLevel (level ctx) i) ::: _T)
   | otherwise                             -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph (interfaces sig)) >>= \case
     Just (n ::: _T) -> do
       n ::: _T <- instantiate (EOp (n :$ Nil) ::: _T)
