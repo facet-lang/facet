@@ -127,7 +127,7 @@ global (q ::: _T) = Synth $ instantiate (C.global q ::: _T)
 
 lookupInContext :: Q Name -> Context -> Maybe (Level, Type)
 lookupInContext (m:.:n)
-  | m == Nil  = lookupLevel n
+  | m == Nil  = \ c -> (\ (i, t) -> (indexToLevel (level c) i, t)) <$> lookupIndex n c
   | otherwise = const Nothing
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig

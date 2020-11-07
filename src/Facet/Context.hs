@@ -10,7 +10,7 @@ module Facet.Context
 , level
 , (!?)
 , (!)
-, lookupLevel
+, lookupIndex
 , Suffix
 , (<><)
 , restore
@@ -64,12 +64,12 @@ c !? i = elems c S.!? getIndex i
 (!) :: HasCallStack => Context -> Index -> Entry
 c ! i = elems c S.! getIndex i
 
-lookupLevel :: Name -> Context -> Maybe (Level, Type)
-lookupLevel n c = go (Index 0) $ elems c
+lookupIndex :: Name -> Context -> Maybe (Index, Type)
+lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil           = Nothing
   go i (cs S.:> e)
-    | n == entryName e = Just (indexToLevel (level c) i, entryType e)
+    | n == entryName e = Just (i, entryType e)
     | otherwise        = go (succ i) cs
 
 
