@@ -69,6 +69,7 @@ module Facet.Core
 , Quote(..)
 , QComp(..)
 , quote
+, quoteComp
 , eval
 ) where
 
@@ -511,7 +512,7 @@ quote :: Level -> Value -> Quote
 quote d = \case
   KType          -> QKType
   KInterface     -> QKInterface
-  TSusp c        -> QTSusp (comp d c QComp)
+  TSusp c        -> QTSusp (quoteComp d c)
   ELam p cs      -> QELam p (map (clause d) cs)
   VNe (n :$ sp)  -> foldl' QApp (QVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
   ECon (n :$ sp) -> QECon (n :$ (quote d <$> sp))
@@ -519,10 +520,14 @@ quote d = \case
   EString s      -> QEString s
   EOp (n :$ sp)  -> foldl' QApp (QEOp n) (fmap (quote d) <$> sp)
   where
-  comp d = \case
-    TForAll t b -> \ k -> comp (succ d) (b (free d)) $ \ b s t' -> k ((quote d <$> t):b) s t'
-    TRet s t    -> \ k -> k [] (quote d <$> s) (quote d t)
   clause d (Clause p b) = let (d', p') = fill (\ d -> (d, free d)) d p in (p, quote d' (b p'))
+
+quoteComp :: Level -> Comp -> QComp
+quoteComp d c = go d c QComp
+  where
+  go d = \case
+    TForAll t b -> \ k -> go (succ d) (b (free d)) $ \ b s t' -> k ((quote d <$> t):b) s t'
+    TRet s t    -> \ k -> k [] (quote d <$> s) (quote d t)
 
 eval :: Stack Value -> Quote -> Value
 eval env = \case
