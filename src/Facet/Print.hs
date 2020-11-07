@@ -261,7 +261,7 @@ lvar env (p, n) = var (unPl TLocal Local p n (Level (length env)))
 
 clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow <+> printValue env' (b (snd <$> p'))
   where
-  ((_, env'), p') = mapAccumL (\ (d, env) (n ::: _) -> let v = lvar env (pl, n) in ((succ d, env :> v), (v, C.free d))) (Level (length env), env) p
+  ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = lvar env (pl, n) in ((succ d, env :> v), (v, C.free d))) (Level (length env), env) p
 pat = \case
   C.PVar n         -> n
   C.PCon (n :$ ps) -> parens (hsep (annotate Con (pretty n):map pat (toList ps)))

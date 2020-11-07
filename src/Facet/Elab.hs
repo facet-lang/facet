@@ -275,7 +275,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
   (Binding pl _ _s _A, _B) <- expectQuantifier "when checking lambda" _T
   -- FIXME: extend the signature if _B v is a TRet.
   b' <- elabBinder $ \ v -> check (b (n ::: _A) ::: TSusp (_B v))
-  pure $ ELam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)]
+  pure $ ELam pl [Clause (PVar n) (b' . unsafeUnPVar)]
 
 thunk :: Check Expr -> Check Expr
 thunk e = Check $ trace "thunk" . \case
@@ -300,7 +300,7 @@ elabClauses cs = Check $ \ _T -> do
   -- FIXME: I don’t see how this can be correct; the context will not hold a variable but rather a pattern of them.
   let _B' = TSusp $ _B (free d)
   cs' <- for cs $ \ (S.Clause p b) -> elabPattern (fromMaybe [] s) _A p (\ p' -> do
-    Clause p' <$> elabBinders p' (foldr (|-) (check (checkExpr b ::: _B'))))
+    Clause (tm <$> p') <$> elabBinders p' (foldr (|-) (check (checkExpr b ::: _B'))))
   pure $ ELam Ex cs'
 
 
@@ -373,7 +373,7 @@ elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
       _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
       pure $ TForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
   con q fs = \case
-    TForAll (Binding p n _s _T) _B -> ELam p [Clause (PVar (fromMaybe __ n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
+    TForAll (Binding p n _s _T) _B -> ELam p [Clause (PVar (fromMaybe __ n)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
     _T                             -> ECon (q :$ fs)
 
 elabInterfaceDef

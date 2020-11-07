@@ -157,7 +157,7 @@ interfaces_ = lens interfaces (\ s interfaces -> s{ interfaces })
 
 
 data Clause = Clause
-  { pattern :: Pattern (Name ::: Type)
+  { pattern :: Pattern Name
   , branch  :: Pattern Value -> Value
   }
 
@@ -240,7 +240,7 @@ occursIn p = go (Level 0) -- FIXME: this should probably be doing something more
     TRet s t    -> sig d s || go d t
   binding d (Binding _ _ s t) = any (any (go d)) s || go d t
   sig d (Sig v s) = any (go d) v || any (go d) s
-  clause d (Clause p b) = any (any (go d)) p || let (d', p') = fill (\ d -> (succ d, free d)) d p in go d' (b p')
+  clause d (Clause p b) = let (d', p') = fill (\ d -> (succ d, free d)) d p in go d' (b p')
 
 
 -- Elimination
@@ -297,7 +297,7 @@ substWith f = go
     EString s     -> EString s
     EOp (q :$ sp) -> EOp (q :$ fmap (fmap go) sp)
 
-  clause (Clause p b) = Clause (fmap go <$> p) (go . b)
+  clause (Clause p b) = Clause p (go . b)
 
 -- | Substitute metavars.
 subst :: IntMap.IntMap Value -> Value -> Value
