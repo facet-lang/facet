@@ -65,6 +65,8 @@ module Facet.Core
 , Def(..)
 , unDData
 , unDInterface
+  -- * Quotation
+, Quote(..)
 ) where
 
 import           Control.Applicative (Alternative(..))
@@ -484,3 +486,18 @@ unDInterface :: Alternative m => Def -> m Scope
 unDInterface = \case
   DInterface cs -> pure cs
   _             -> empty
+
+
+-- Quotation
+
+data Quote
+  = QVar (Var Index)
+  | QKType
+  | QKInterface
+  | QTSusp [Binding Quote] (Sig Quote) Quote
+  | QELam Pl [(Pattern Name, Quote)]
+  | QApp Quote (Pl, Quote)
+  | QECon (Q Name :$ Quote)
+  | QTString
+  | QEString Text
+  | QEOp (Q Name)
