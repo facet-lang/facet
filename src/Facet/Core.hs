@@ -67,6 +67,7 @@ module Facet.Core
 , unDInterface
   -- * Quotation
 , Quote(..)
+, QComp(..)
 , quote
 , eval
 ) where
@@ -496,7 +497,7 @@ data Quote
   = QVar (Var Index)
   | QKType
   | QKInterface
-  | QTSusp [Binding Quote] (Sig Quote) Quote
+  | QTSusp QComp
   | QELam Pl [(Pattern Name, Quote)]
   | QApp Quote (Pl, Quote)
   | QECon (Q Name :$ Quote)
@@ -504,11 +505,13 @@ data Quote
   | QEString Text
   | QEOp (Q Name)
 
+data QComp = QComp [Binding Quote] (Sig Quote) Quote
+
 quote :: Level -> Value -> Quote
 quote d = \case
   KType          -> QKType
   KInterface     -> QKInterface
-  TSusp c        -> comp d c QTSusp
+  TSusp c        -> QTSusp (comp d c QComp)
   ELam p cs      -> QELam p (map (clause d) cs)
   VNe (n :$ sp)  -> foldl' QApp (QVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
   ECon (n :$ sp) -> QECon (n :$ (quote d <$> sp))
@@ -526,10 +529,12 @@ eval env = \case
   QVar v          -> unVar global ((env !) . getIndex) metavar v
   QKType          -> KType
   QKInterface     -> KInterface
-  QTSusp bs s t   -> TSusp (foldr (\ t b env -> TForAll (eval env <$> t) (\ v -> b (env:>v))) (\ env -> TRet (eval env <$> s) (eval env t)) bs env)
+  QTSusp c        -> comp c
   QELam p cs      -> ELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) b)) cs
   QApp f a        -> eval env f $$ (eval env <$> a)
   QECon (n :$ sp) -> ECon $ n :$ (eval env <$> sp)
   QTString        -> TString
   QEString s      -> EString s
   QEOp n          -> EOp $ n :$ Nil
+  where
+  comp (QComp bs s t) = TSusp (foldr (\ t b env -> TForAll (eval env <$> t) (\ v -> b (env:>v))) (\ env -> TRet (eval env <$> s) (eval env t)) bs env)
