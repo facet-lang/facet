@@ -104,7 +104,7 @@ type Expr = Value
 
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
-  = TForAll Binding (Type -> Comp)
+  = TForAll (Binding Type) (Type -> Comp)
   | TRet (Sig Value) Type
 
 substCompWith :: (Var Level -> Value) -> Comp -> Comp
@@ -131,11 +131,11 @@ bindsComp s
   | otherwise     = substCompWith (substFree s)
 
 
-unBind :: Alternative m => Comp -> m (Binding, Value -> Comp)
+unBind :: Alternative m => Comp -> m (Binding Value, Value -> Comp)
 unBind = \case{ TForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unBind' :: Alternative m => (Level, Comp) -> m (Binding, (Level, Comp))
+unBind' :: Alternative m => (Level, Comp) -> m (Binding Value, (Level, Comp))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
@@ -164,11 +164,11 @@ instantiateClause :: Level -> Clause -> (Level, Value)
 instantiateClause d (Clause p b) = b <$> bindPattern d p
 
 
-data Binding = Binding
+data Binding a = Binding
   { pl    :: Pl
   , name  :: Maybe Name
-  , delta :: Maybe [Value]
-  , type' :: Type
+  , delta :: Maybe [a]
+  , type' :: a
   }
 
 

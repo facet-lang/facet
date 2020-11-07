@@ -225,7 +225,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
   synth = switch (synthExpr expr)
 
 
-elabBinding :: S.Ann S.Binding -> [(Pos, Check Binding)]
+elabBinding :: S.Ann S.Binding -> [(Pos, Check (Binding Value))]
 elabBinding (S.Ann s _ (S.Binding p n d t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
     d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
@@ -254,7 +254,7 @@ _String :: Synth Type
 _String = Synth $ pure $ TString ::: KType
 
 
-forAll :: Check Binding -> (Name ::: Type -> Check Comp) -> Synth Comp
+forAll :: Check (Binding Value) -> (Name ::: Type -> Check Comp) -> Synth Comp
 forAll t b = Synth $ trace "forAll" $ do
   -- FIXME: should we check that the signature is empty?
   _T@Binding{ name, type' = _A } <- check (t ::: KType)
@@ -529,7 +529,7 @@ ambiguousName n qs = err $ AmbiguousName n qs
 expectMatch :: (Type -> Maybe out) -> String -> String -> Type -> Elab out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifier :: String -> Type -> Elab (Binding, Type -> Comp)
+expectQuantifier :: String -> Type -> Elab (Binding Value, Type -> Comp)
 expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing } <=< stripEmpty) "{_} -> _"
 
 stripEmpty :: Type -> Maybe Comp
