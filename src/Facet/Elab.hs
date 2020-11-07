@@ -538,7 +538,7 @@ stripEmpty = \case
   TSusp t                         -> Just t
   _                               -> Nothing
 
-expectRet :: String -> Type -> Elab (Sig, Type)
+expectRet :: String -> Type -> Elab (Sig Value, Type)
 expectRet = expectMatch (\case { TSusp (TRet s t) -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
@@ -548,11 +548,11 @@ data ElabContext = ElabContext
   { graph   :: Graph
   , _mname  :: MName
   , module' :: Module
-  , sig     :: Sig
+  , sig     :: Sig Value
   , span    :: Span
   }
 
-sig_ :: Lens' ElabContext Sig
+sig_ :: Lens' ElabContext (Sig Value)
 sig_ = lens sig (\ e sig -> e{ sig })
 
 span_ :: Lens' ElabContext Span

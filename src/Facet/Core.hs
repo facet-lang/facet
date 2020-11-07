@@ -105,7 +105,7 @@ type Expr = Value
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
   = TForAll Binding (Type -> Comp)
-  | TRet Sig Type
+  | TRet (Sig Value) Type
 
 substCompWith :: (Var Level -> Value) -> Comp -> Comp
 substCompWith f = go
@@ -143,15 +143,15 @@ unLam :: Alternative m => Value -> m (Pl, [Clause])
 unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 
-data Sig = Sig
-  { effectVar  :: Maybe Value
-  , interfaces :: [Value]
+data Sig a = Sig
+  { effectVar  :: Maybe a
+  , interfaces :: [a]
   }
 
-effectVar_ :: Lens' Sig (Maybe Value)
+effectVar_ :: Lens' (Sig a) (Maybe a)
 effectVar_ = lens effectVar (\ s effectVar -> s{ effectVar })
 
-interfaces_ :: Lens' Sig [Value]
+interfaces_ :: Lens' (Sig a) [a]
 interfaces_ = lens interfaces (\ s interfaces -> s{ interfaces })
 
 
