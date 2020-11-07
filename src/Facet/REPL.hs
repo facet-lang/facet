@@ -27,7 +27,7 @@ import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Time.System
 import           Facet.Carrier.Trace.Output
-import           Facet.Core
+import           Facet.Core hiding (eval)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import           Facet.Eval

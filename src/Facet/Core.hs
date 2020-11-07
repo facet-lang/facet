@@ -68,6 +68,7 @@ module Facet.Core
   -- * Quotation
 , Quote(..)
 , quote
+, eval
 ) where
 
 import           Control.Applicative (Alternative(..))
@@ -519,3 +520,16 @@ quote d = \case
     TForAll t b -> \ k -> comp (succ d) (b (free d)) $ \ b s t' -> k ((quote d <$> t):b) s t'
     TRet s t    -> \ k -> k [] (quote d <$> s) (quote d t)
   clause d (Clause p b) = let (d', p') = fill (\ d -> (d, free d)) d p in (p, quote d' (b p'))
+
+eval :: Stack Value -> Quote -> Value
+eval env = \case
+  QVar v          -> unVar global ((env !) . getIndex) metavar v
+  QKType          -> KType
+  QKInterface     -> KInterface
+  QTSusp bs s t   -> TSusp (foldr (\ t b env -> TForAll (eval env <$> t) (\ v -> b (env:>v))) (\ env -> TRet (eval env <$> s) (eval env t)) bs env)
+  QELam p cs      -> ELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) b)) cs
+  QApp f a        -> eval env f $$ (eval env <$> a)
+  QECon (n :$ sp) -> ECon $ n :$ (eval env <$> sp)
+  QTString        -> TString
+  QEString s      -> EString s
+  QEOp n          -> EOp $ n :$ Nil

@@ -8,7 +8,7 @@ module Facet.Eval
 
 import Control.Effect.Reader
 import Control.Monad.Trans.Class
-import Facet.Core
+import Facet.Core hiding (eval)
 import Facet.Graph
 import Facet.Name
 import Facet.Syntax
