@@ -551,7 +551,7 @@ onTop f = do
     Ty n v _T -> f (level gamma) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
-    _                   -> onTop f <* modify (|> elem)
+    _         -> onTop f <* modify (|> elem)
 
 
 solve :: Level -> Type -> Elab Type
