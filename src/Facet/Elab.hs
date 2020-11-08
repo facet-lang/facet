@@ -173,11 +173,9 @@ f $$ a = Synth $ trace "$$" $ do
 infix 1 |-
 
 
-(>-) :: Binding Quote -> Elab a -> Elab a
+(>-) :: Binding Value -> Elab a -> Elab a
 -- FIXME: should this do something about the signature?
-Binding _ n _s _T >- m = do
-  env <- gets (fmap entryDef . elems)
-  fromMaybe __ n ::: eval env _T |- m
+Binding _ n _s _T >- m = trace ">-" $ fromMaybe __ n ::: _T |- m
 
 infix 1 >-
 
@@ -233,7 +231,11 @@ elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s 
 
 elabComp :: S.Ann S.Comp -> Synth QComp
 elabComp (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s . trace "elabComp" $
-  foldr (\ b k bs -> check (snd b ::: KType) >>= \ b' -> b' >- k (b':bs)) (\ bs' -> do
+  foldr (\ b k bs -> do
+    b' <- check (snd b ::: KType)
+    env <- gets (fmap entryDef . elems)
+    fmap (eval env) b' >- k (b':bs))
+  (\ bs' -> do
     d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
     t' <- check (checkExpr t ::: KType)
     -- FIXME: add the effect var and populate this authoritatively
@@ -252,13 +254,13 @@ _String :: Synth Quote
 _String = Synth $ pure $ QTString ::: KType
 
 
-lam :: Name -> (Name ::: Type -> Check Quote) -> Check Quote
+lam :: Name -> Check Quote -> Check Quote
 lam n b = Check $ \ _T -> trace "lam" $ do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
-  (Binding pl _ _s _A, _B) <- expectQuantifier "when checking lambda" _T
+  (t@(Binding pl _ _s _A), _B) <- expectQuantifier "when checking lambda" _T
   -- FIXME: extend the signature if _B v is a TRet.
   d <- depth
-  b' <- check (b (n ::: _A) ::: TSusp (_B (free d)))
+  b' <- t >- check (b ::: TSusp (_B (free d)))
   pure $ QELam pl [(PVar n, b')]
 
 thunk :: Check a -> Check a
@@ -276,7 +278,7 @@ force e = Synth $ trace "force" $ do
 
 -- FIXME: go find the pattern matching matrix algorithm
 elabClauses :: [S.Clause] -> Check Quote
-elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = lam n $ \ v -> mapCheck (v |-) (checkExpr b)
+elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = lam n $ checkExpr b
 elabClauses cs = Check $ \ _T -> do
   -- FIXME: use the signature to elaborate the pattern
   (Binding _ _ s _A, _B) <- expectQuantifier "when checking clauses" _T
@@ -284,7 +286,7 @@ elabClauses cs = Check $ \ _T -> do
   -- FIXME: I don’t see how this can be correct; the context will not hold a variable but rather a pattern of them.
   let _B' = TSusp $ _B (free d)
   cs' <- for cs $ \ (S.Clause p b) -> elabPattern (fromMaybe [] s) _A p (\ p' -> do
-    (tm <$> p',) <$> foldr (|-) (check (checkExpr b ::: _B')) p')
+    (tm <$> p',) <$> check (checkExpr b ::: _B'))
   pure $ QELam Ex cs'
 
 
@@ -321,11 +323,11 @@ elabPattern sig = go
     []   -> \ k -> k _T' []
     p:ps -> \ k -> do
       -- FIXME: assert that the signature is empty
-      (Binding _ _ _s _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
+      (t@(Binding _ _ _s _A), _B) <- expectQuantifier "when checking constructor pattern" _T'
       -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
       -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
-      v <- free <$> meta _A
-      goVal _A p (\ p' -> subpatterns (TSusp (_B v)) ps (\ _T ps' -> k _T (p' : ps')))
+      d <- depth
+      t >- goVal _A p (\ p' -> subpatterns (TSusp (_B (free d))) ps (\ _T ps' -> k _T (p' : ps')))
 
 
 string :: Text -> Synth Quote
@@ -344,10 +346,7 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     let QComp bs _ _ = quoteComp 0 _T
-    QComp bs' s t <- elab $ foldr (>-) (check (switch (elabComp t) ::: KType)) bs
-    -- FIXME: there’s no way this can work if the constructor uses any type parameters or whatever
-    -- FIXME: extend the context
-    -- FIXME: extend the context with Bindings
+    QComp bs' s t <- elab $ foldr (\ b k -> gets (fmap entryDef . elems) >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs
     let c_T = evalComp Nil (QComp (bs <> bs') s t)
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T)) ::: c_T
   -- FIXME: constructor functions should have signatures, but constructors should not.
@@ -368,7 +367,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $ do
     -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
     let QComp bs _ _ = quoteComp 0 _T
-    QComp bs' s t <- elab $ foldr (>-) (check (switch (elabComp t) ::: KType)) bs
+    QComp bs' s t <- elab $ foldr (\ b k -> gets (fmap entryDef . elems) >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs
     -- FIXME: check that the interface is a member of the sig.
     let _T = evalComp Nil (QComp (bs <> bs') s t)
     pure $ n :=: Nothing ::: _T
@@ -384,7 +383,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
   elab $ eval Nil <$> check (go (checkExpr expr) ::: TSusp _T)
   where
   go k = Check $ \ _T -> case _T of
-    TSusp (TForAll Binding{ name = Just n } _) -> check (lam n (\ v -> mapCheck (v |-) (go k)) ::: _T)
+    TSusp (TForAll Binding{ name = Just n } _) -> check (lam n (go k) ::: _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
