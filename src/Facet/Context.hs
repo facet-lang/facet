@@ -4,6 +4,7 @@ module Facet.Context
 , Entry(..)
 , entryVar
 , entryName
+, entryDef
 , entryType
 , empty
 , (|>)
@@ -41,6 +42,11 @@ entryName :: Entry -> Name
 entryName = \case
   Tm _ n   _ -> n
   Ty _ n _ _ -> n
+
+entryDef :: Entry -> Maybe Type
+entryDef = \case
+  Tm _ _   _ -> Nothing
+  Ty _ _ v _ -> v
 
 entryType :: Entry -> Type
 entryType = \case
