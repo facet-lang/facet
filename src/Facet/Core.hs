@@ -532,7 +532,7 @@ quoteComp d c = go d c QComp
 
 eval :: Stack (Maybe Value) -> Quote -> Value
 eval env = \case
-  QVar v          -> unVar global (\ i -> fromMaybe (free (indexToLevel (Level (length env)) i)) (env ! (getIndex i))) metavar v
+  QVar v          -> unVar global (\ i -> fromMaybe (free (indexToLevel (Level (length env)) i)) (env ! getIndex i)) metavar v
   QKType          -> KType
   QKInterface     -> KInterface
   QTSusp c        -> TSusp $ evalComp env c
