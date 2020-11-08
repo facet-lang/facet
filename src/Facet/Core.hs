@@ -29,9 +29,6 @@ module Facet.Core
   -- ** Substitution
 , bind
 , binds
-, Subst
-, emptySubst
-, insertSubst
   -- ** Classification
 , Sort(..)
 , sortOf
@@ -296,15 +293,6 @@ binds s
 
 substFree :: IntMap.IntMap Value -> Var Level -> Value
 substFree s = unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) s))
-
-
-type Subst = IntMap.IntMap (Maybe Value ::: Type)
-
-emptySubst :: Subst
-emptySubst = IntMap.empty
-
-insertSubst :: Meta -> Maybe Value ::: Type -> Subst -> Subst
-insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
 
 
 -- Classification
