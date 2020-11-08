@@ -336,11 +336,12 @@ string s = Synth $ pure $ QEString s ::: TString
 
 elabDataDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
-  => Q Name ::: Comp
+  => Name ::: Comp
   -> [S.Ann (Name ::: S.Ann S.Comp)]
   -> m [Name :=: Maybe Def ::: Comp]
 -- FIXME: check that all constructors return the datatype.
-elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
+elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
+  mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     let QComp bs _ _ = quoteComp 0 _T
     QComp bs' s t <- elab $ foldr (>-) (check (switch (elabComp t) ::: KType)) bs
@@ -412,7 +413,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
         S.DataDef cs -> do
-          decls <- runModule $ elabDataDef (mname :.: dname ::: _T) cs
+          decls <- runModule $ elabDataDef (dname ::: _T) cs
           Nothing <$ for_ decls (\ (dname :=: decl) -> scope_.decls_.at dname .= Just decl)
 
         S.InterfaceDef os -> do
