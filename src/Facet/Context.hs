@@ -28,6 +28,7 @@ import           Prelude hiding (lookup)
 newtype Context = Context { elems :: S.Stack Entry }
 
 data Entry
+  -- FIXME: constructor names are unclear; Tm is typing, Ty is meta.
   = Tm Int Name Type
   | Ty Int Name (Maybe Type) Type
 
