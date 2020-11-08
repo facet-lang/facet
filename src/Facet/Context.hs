@@ -2,7 +2,6 @@ module Facet.Context
 ( -- * Contexts
   Context(..)
 , Entry(..)
-, entryVar
 , entryName
 , entryDef
 , entryType
@@ -30,28 +29,23 @@ newtype Context = Context { elems :: S.Stack Entry }
 
 data Entry
   -- FIXME: constructor names are unclear; Tm is typing, Ty is meta.
-  = Tm Int Name Type
-  | Ty Int Name (Maybe Type) Type
-
-entryVar :: Entry -> Int
-entryVar = \case
-  Tm v _   _ -> v
-  Ty v _ _ _ -> v
+  = Tm Name Type
+  | Ty Name (Maybe Type) Type
 
 entryName :: Entry -> Name
 entryName = \case
-  Tm _ n   _ -> n
-  Ty _ n _ _ -> n
+  Tm n   _ -> n
+  Ty n _ _ -> n
 
 entryDef :: Entry -> Maybe Type
 entryDef = \case
-  Tm _ _   _ -> Nothing
-  Ty _ _ v _ -> v
+  Tm _   _ -> Nothing
+  Ty _ v _ -> v
 
 entryType :: Entry -> Type
 entryType = \case
-  Tm _ _   t -> t
-  Ty _ _ _ t -> t
+  Tm _   t -> t
+  Ty _ _ t -> t
 
 
 empty :: Context
@@ -80,10 +74,10 @@ lookupIndex n = go (Index 0) . elems
     | otherwise        = go (succ i) cs
 
 
-type Suffix = [(Int, Name) :=: Maybe Type ::: Type]
+type Suffix = [Name :=: Maybe Type ::: Type]
 
 (<><) :: Context -> Suffix -> Context
-(<><) = foldl' (\ gamma ((i, n) :=: v ::: _T) -> gamma |> Ty i n v _T)
+(<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> Ty n v _T)
 
 infixl 5 <><
 

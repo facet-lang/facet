@@ -77,12 +77,10 @@ import           Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Type -> Elab Meta
+meta :: Type -> Elab Level
 meta _T = do
-  i <- fresh
   ctx <- get
-  let m = Meta i
-  m <$ put (ctx |> Ty i __ Nothing _T)
+  level ctx <$ put (ctx |> Ty __ Nothing _T)
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
@@ -90,7 +88,7 @@ instantiate :: Quote ::: Comp -> Elab (Quote ::: Type)
 instantiate (e ::: _T) = case _T of
   TForAll (Binding Im _ _ _T) _B -> do
     m <- meta _T
-    instantiate (QApp e (Im, QVar (Metavar m)) ::: _B (metavar m))
+    instantiate (QApp e (Im, QVar (Free (Index 0))) ::: _B (free m))
   _                              -> pure $ e ::: TSusp _T
 
 
@@ -164,12 +162,12 @@ f $$ a = Synth $ trace "$$" $ do
   pure $ QApp f' (Ex, a') ::: TSusp (_B (free d))
 
 
-(|-) :: Has (Fresh :+: State Context) sig m => Name ::: Type -> m a -> m a
+(|-) :: Has (State Context) sig m => Name ::: Type -> m a -> m a
 (n ::: _T) |- b = do
-  i <- fresh
-  modify (|> Tm i n _T)
+  i <- depth
+  modify (|> Tm n _T)
   a <- b
-  let extract (gamma :> Tm j _ _) | i == j = gamma
+  let extract (gamma :> Tm _ _) | i == level (Context gamma) = gamma
       extract (gamma :> e@Ty{})            = extract gamma :> e
       extract (_     :> _)                 = error "bad context entry"
       extract Nil                          = error "bad context"
@@ -320,7 +318,7 @@ elabPattern sig = go
 
   inst = \case
   -- FIXME: assert that the signature is empty
-    TForAll (Binding Im _ _s _T) _B -> meta _T >>= inst . _B . metavar
+    TForAll (Binding Im _ _s _T) _B -> meta _T >>= inst . _B . free
     _T                              -> pure (TSusp _T)
   subpatterns _T' = \case
     []   -> \ k -> k _T' []
@@ -329,7 +327,7 @@ elabPattern sig = go
       (Binding _ _ _s _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
       -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
       -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
-      v <- metavar <$> meta _A
+      v <- free <$> meta _A
       goVal _A p (\ p' -> subpatterns (TSusp (_B v)) ps (\ _T ps' -> k _T (p' : ps')))
 
 
@@ -544,7 +542,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: (Meta -> Name :=: Maybe Value ::: Type -> Elab (a, Maybe Suffix)) -> Elab a
+onTop :: (Level -> Name :=: Maybe Value ::: Type -> Elab (a, Maybe Suffix)) -> Elab a
 onTop f = do
   ctx <- get
   (gamma, elem) <- case elems ctx of
@@ -552,21 +550,21 @@ onTop f = do
     Nil           -> error "wtf empty context" -- FIXME: make this a real error
   put gamma
   case elem of
-    Ty i n v _T -> f (Meta i) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
+    Ty n v _T -> f (level gamma) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
     _                   -> onTop f <* modify (|> elem)
 
 
-solve :: Meta -> Type -> Elab Type
+solve :: Level -> Type -> Elab Type
 solve v = go v []
   where
-  go :: Meta -> Suffix -> Type -> Elab Value
-  go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (== Metavar g) t || occursInSuffix (== Metavar g) ext, d) of
-    (True,  True,  _)       -> mismatch "infinite type" (Right (metavar g)) t
-    (True,  False, Nothing) -> replace (ext ++ [ (getMeta g, n) :=: Just t ::: _K ]) t
+  go :: Level -> Suffix -> Type -> Elab Value
+  go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (== Free g) t || occursInSuffix (== Free g) ext, d) of
+    (True,  True,  _)       -> mismatch "infinite type" (Right (free g)) t
+    (True,  False, Nothing) -> replace (ext ++ [ n :=: Just t ::: _K ]) t
     (True,  False, Just t') -> modify (<>< ext) >> unify t' t >>= restore
-    (False, True,  _)       -> go v (((getMeta g, n) :=: d ::: _K):ext) t >>= replace []
+    (False, True,  _)       -> go v ((n :=: d ::: _K):ext) t >>= replace []
     (False, False, _)       -> go v ext t >>= restore
 
   occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
@@ -574,35 +572,35 @@ solve v = go v []
 -- FIXME: we don’t get good source references during unification
 unify :: Type -> Type -> Elab Type
 unify t1 t2 = case (t1, t2) of
-  (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> onTop $ \ g (n :=: d ::: _K) -> case (g == v1, g == v2, d) of
-    (True,  True,  _)       -> restore (metavar v1)
-    (True,  False, Nothing) -> replace [(getMeta g, n) :=: Just (metavar v2) ::: _K] (metavar v2)
-    (False, True,  Nothing) -> replace [(getMeta g, n) :=: Just (metavar v1) ::: _K] (metavar v1)
-    (True,  False, Just t)  -> unify (metavar v2) t >>= restore
-    (False, True,  Just t)  -> unify (metavar v1) t >>= restore
-    (False, False, _)       -> unify (metavar v1) (metavar v2) >>= restore
-  (VNe (Metavar v1 :$ Nil), t2)                      -> solve v1 t2
-  (t1, VNe (Metavar v2 :$ Nil))                      -> solve v2 t1
-  (KType, KType)                                     -> pure KType
-  (KType, _)                                         -> nope
-  (KInterface, KInterface)                           -> pure KInterface
-  (KInterface, _)                                    -> nope
-  (TSusp c1, TSusp c2)                               -> TSusp <$> comp c1 c2
-  (TSusp (TRet (Sig Nothing []) t1), t2)             -> unify t1 t2
-  (t1, TSusp (TRet (Sig Nothing []) t2))             -> unify t1 t2
-  (TSusp{}, _)                                       -> nope
-  (ELam{}, ELam{})                                   -> nope
-  (ELam{}, _)                                        -> nope
-  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))                 -> foldl' (C.$$) <$> var v1 v2 <*> spine (pl unify) sp1 sp2
-  (VNe{}, _)                                         -> nope
-  (ECon (q1 :$ sp1), ECon (q2 :$ sp2))               -> ECon . (q1 :$) <$ unless (q1 == q2) nope <*> spine unify sp1 sp2
-  (ECon{}, _)                                        -> nope
-  (TString, TString)                                 -> pure TString
-  (TString, _)                                       -> nope
-  (EString e1, EString e2)                           -> EString e1 <$ unless (e1 == e2) nope
-  (EString{}, _)                                     -> nope
-  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> EOp . (q1 :$) <$ unless (q1 == q2) nope <*> spine (pl unify) sp1 sp2
-  (EOp{}, _)                                         -> nope
+  (VNe (Free v1 :$ Nil), VNe (Free v2 :$ Nil)) -> onTop $ \ g (n :=: d ::: _K) -> case (g == v1, g == v2, d) of
+    (True,  True,  _)       -> restore (free v1)
+    (True,  False, Nothing) -> replace [n :=: Just (free v2) ::: _K] (free v2)
+    (False, True,  Nothing) -> replace [n :=: Just (free v1) ::: _K] (free v1)
+    (True,  False, Just t)  -> unify (free v2) t >>= restore
+    (False, True,  Just t)  -> unify (free v1) t >>= restore
+    (False, False, _)       -> unify (free v1) (free v2) >>= restore
+  (VNe (Free v1 :$ Nil), t2)                   -> solve v1 t2
+  (t1, VNe (Free v2 :$ Nil))                   -> solve v2 t1
+  (KType, KType)                               -> pure KType
+  (KType, _)                                   -> nope
+  (KInterface, KInterface)                     -> pure KInterface
+  (KInterface, _)                              -> nope
+  (TSusp c1, TSusp c2)                         -> TSusp <$> comp c1 c2
+  (TSusp (TRet (Sig Nothing []) t1), t2)       -> unify t1 t2
+  (t1, TSusp (TRet (Sig Nothing []) t2))       -> unify t1 t2
+  (TSusp{}, _)                                 -> nope
+  (ELam{}, ELam{})                             -> nope
+  (ELam{}, _)                                  -> nope
+  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))           -> foldl' (C.$$) <$> var v1 v2 <*> spine (pl unify) sp1 sp2
+  (VNe{}, _)                                   -> nope
+  (ECon (q1 :$ sp1), ECon (q2 :$ sp2))         -> ECon . (q1 :$) <$ unless (q1 == q2) nope <*> spine unify sp1 sp2
+  (ECon{}, _)                                  -> nope
+  (TString, TString)                           -> pure TString
+  (TString, _)                                 -> nope
+  (EString e1, EString e2)                     -> EString e1 <$ unless (e1 == e2) nope
+  (EString{}, _)                               -> nope
+  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))           -> EOp . (q1 :$) <$ unless (q1 == q2) nope <*> spine (pl unify) sp1 sp2
+  (EOp{}, _)                                   -> nope
   where
   nope = couldNotUnify "mismatch" t1 t2
 
