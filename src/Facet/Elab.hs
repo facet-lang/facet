@@ -37,7 +37,6 @@ module Facet.Elab
 import           Control.Algebra
 import           Control.Applicative (Alternative)
 import           Control.Carrier.Error.Church
-import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Empty
@@ -632,7 +631,7 @@ unify t1 t2 = case (t1, t2) of
     _                  -> nope
 
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State Context :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -644,16 +643,15 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) Elab where
+instance Algebra (Reader ElabContext :+: State Context :+: Throw Err :+: Trace) Elab where
   alg hdl sig ctx = case sig of
-    L fresh             -> Elab $ alg (runElab . hdl) (inj fresh) ctx
-    R (L rctx)          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
-    R (R (L sctx))      -> Elab $ alg (runElab . hdl) (inj sctx)  ctx
-    R (R (R (L throw))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
-    R (R (R (R trace))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
+    L rctx          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
+    R (L sctx)      -> Elab $ alg (runElab . hdl) (inj sctx)  ctx
+    R (R (L throw)) -> Elab $ alg (runElab . hdl) (inj throw) ctx
+    R (R (R trace)) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab a -> m a
-elab = evalFresh 0 . evalState Context.empty . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
+elab = evalState Context.empty . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
   where
   mkContext = ElabContext <$> ask <*> ask <*> ask <*> pure (Sig Nothing []) <*> ask
 
