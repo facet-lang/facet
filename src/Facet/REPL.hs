@@ -28,6 +28,7 @@ import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Time.System
 import           Facet.Carrier.Trace.Output
 import           Facet.Core hiding (eval)
+import qualified Facet.Core as Core
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import           Facet.Eval
@@ -191,11 +192,13 @@ showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
   e ::: _T <- elab $ Elab.elab (Elab.synth (Elab.synthExpr e))
-  outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
+  let e'  = Core.eval Nil e
+  outputDocLn (prettyCode (ann (printValue Nil e' ::: printValue Nil _T)))
 
 showEval e = Action $ do
   (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ locally (Elab.sig_.interfaces_) (VNe (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
-  (dEval, e'') <- time $ elab $ runEvalMain (eval e')
+  let e''  = Core.eval Nil e'
+  (dEval, e'') <- time $ elab $ runEvalMain (eval e'')
   outputStrLn $ show dElab
   outputStrLn $ show dEval
   outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil _T)))
