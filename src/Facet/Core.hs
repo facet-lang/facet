@@ -4,7 +4,6 @@ module Facet.Core
 , Type
 , Expr
 , Comp(..)
-, substComp
 , bindComp
 , bindsComp
 , unBind
@@ -21,7 +20,6 @@ module Facet.Core
 , unVar
 , global
 , free
-, metavar
 , occursIn
   -- ** Elimination
 , ($$)
@@ -29,16 +27,11 @@ module Facet.Core
 , case'
 , match
   -- ** Substitution
-, subst
 , bind
 , binds
 , Subst
 , emptySubst
 , insertSubst
-, apply
-, applyComp
-, generalize
-, generalizeComp
   -- ** Classification
 , Sort(..)
 , sortOf
@@ -124,11 +117,6 @@ substCompWith f = go
   binding (Binding p n s t) = Binding p n (map (substWith f) <$> s) (substWith f t)
   sig (Sig v s) = Sig (substWith f <$> v) (map (substWith f) s)
 
-substComp :: IntMap.IntMap Value -> Comp -> Comp
-substComp s
-  | IntMap.null s = id
-  | otherwise     = substCompWith (substMeta s)
-
 bindComp :: Level -> Value -> Comp -> Comp
 bindComp k v = bindsComp (IntMap.singleton (getLevel k) v)
 
@@ -186,7 +174,6 @@ data Binding a = Binding
 data Var a
   = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
   | Free a
-  | Metavar Meta -- ^ Metavariables, considered equal by 'Level'.
   deriving (Foldable, Functor, Traversable)
 
 instance Eq a => Eq (Var a) where
@@ -195,8 +182,6 @@ instance Eq a => Eq (Var a) where
     (Global  _,  _)          -> False
     (Free    l1, Free    l2) -> l1 == l2
     (Free    _,  _)          -> False
-    (Metavar m1, Metavar m2) -> m1 == m2
-    (Metavar _,  _)          -> False
 
 instance Ord a => Ord (Var a) where
   compare = curry $ \case
@@ -204,14 +189,11 @@ instance Ord a => Ord (Var a) where
     (Global  _,  _)          -> LT
     (Free    l1, Free    l2) -> l1 `compare` l2
     (Free    _,  _)          -> LT
-    (Metavar m1, Metavar m2) -> m1 `compare` m2
-    (Metavar _,  _)          -> LT
 
-unVar :: (Q Name -> b) -> (a -> b) -> (Meta -> b) -> Var a -> b
-unVar f g h = \case
+unVar :: (Q Name -> b) -> (a -> b) -> Var a -> b
+unVar f g = \case
   Global  n -> f n
   Free    n -> g n
-  Metavar n -> h n
 
 
 global :: Q Name -> Value
@@ -219,9 +201,6 @@ global = var . Global
 
 free :: Level -> Value
 free = var . Free
-
-metavar :: Meta -> Value
-metavar = var . Metavar
 
 
 var :: Var Level -> Value
@@ -306,12 +285,6 @@ substWith f = go
 
   clause (Clause p b) = Clause p (go . b)
 
--- | Substitute metavars.
-subst :: IntMap.IntMap Value -> Value -> Value
-subst s
-  | IntMap.null s = id
-  | otherwise     = substWith (substMeta s)
-
 -- | TForAll a free variable.
 bind :: Level -> Value -> Value -> Value
 bind k v = binds (IntMap.singleton (getLevel k) v)
@@ -322,10 +295,7 @@ binds s
   | otherwise     = substWith (substFree s)
 
 substFree :: IntMap.IntMap Value -> Var Level -> Value
-substFree s = unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) s)) metavar
-
-substMeta :: IntMap.IntMap Value -> Var Level -> Value
-substMeta s = unVar global free (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) s))
+substFree s = unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) s))
 
 
 type Subst = IntMap.IntMap (Maybe Value ::: Type)
@@ -335,34 +305,6 @@ emptySubst = IntMap.empty
 
 insertSubst :: Meta -> Maybe Value ::: Type -> Subst -> Subst
 insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
-
--- | Apply the substitution to the value.
-apply :: Subst -> Expr -> Value
-apply = subst . IntMap.mapMaybe tm -- FIXME: error if the substitution has holes.
-
-applyComp :: Subst -> Comp -> Comp
-applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution has holes.
-
-
--- FIXME: generalize terms and types simultaneously
--- FIXME: generalize terms with ELam instead of TForAll
-generalize :: Subst -> Value -> Value
-generalize s v
-  | null b    = apply s v
-  | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (TRet (Sig Nothing []) (subst (IntMap.mapMaybe tm s <> s') v)) b)
-  where
-  (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
-    Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
-    Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
-
-generalizeComp :: Subst -> Comp -> Comp
-generalizeComp s v
-  | null b    = applyComp s v
-  | otherwise = foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
-  where
-  (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
-    Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
-    Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
 
 
 -- Classification
@@ -380,7 +322,7 @@ sortOf ctx = \case
   KInterface    -> SKind
   TSusp t       -> sortOfComp ctx t
   ELam{}        -> STerm
-  VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
+  VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) h : toList (sortOf ctx . snd <$> sp))
   ECon _        -> STerm
   TString       -> SType
   EString _     -> STerm
@@ -532,7 +474,7 @@ quoteComp d c = go d c QComp
 
 eval :: Stack (Maybe Value) -> Quote -> Value
 eval env = \case
-  QVar v          -> unVar global (\ i -> fromMaybe (free (indexToLevel (Level (length env)) i)) (env ! getIndex i)) metavar v
+  QVar v          -> unVar global (\ i -> fromMaybe (free (indexToLevel (Level (length env)) i)) (env ! getIndex i)) v
   QKType          -> KType
   QKInterface     -> KInterface
   QTSusp c        -> TSusp $ evalComp env c

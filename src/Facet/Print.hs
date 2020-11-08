@@ -12,7 +12,6 @@ module Facet.Print
   -- * Misc
 , intro
 , tintro
-, mvar
 ) where
 
 import           Data.Foldable (foldl', toList)
@@ -182,7 +181,7 @@ printValue env = \case
           sp  -> app h sp
         elim h sp  (es:>a) = elim h (sp . (:> fmap (printValue env) a)) es
         -- FIXME: this throws an exception when pretty-printing the metacontext because entries can depend on variables bound in the context
-        h' = C.unVar (group . qvar) ((env !) . getIndex . levelToIndex d) (group . mvar) h
+        h' = C.unVar (group . qvar) ((env !) . getIndex . levelToIndex d) h
     in elim h' id e
   C.ECon (n :$ p) -> app (group (qvar n)) (fmap ((Ex,) . printValue env) p)
   C.EOp (q :$ sp) -> app (group (qvar q)) (fmap (fmap (printValue env)) sp)
@@ -239,9 +238,6 @@ intro, tintro :: Name -> Level -> Print
 intro = name lower
 tintro = name upper
 qvar (_ :.: n) = setPrec Var (pretty n)
-
-mvar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Meta -> p
-mvar m = setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
 
 var = printVar name
 name f n d = setPrec Var . annotate (Name d) $

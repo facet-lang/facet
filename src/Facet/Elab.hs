@@ -19,8 +19,6 @@ module Facet.Elab
 , string
   -- * Modules
 , elabModule
-, apply
-, applyComp
   -- * Errors
 , Err(..)
 , Reason(..)
@@ -604,12 +602,10 @@ unify t1 t2 = case (t1, t2) of
   nope = couldNotUnify "mismatch" t1 t2
 
   var v1 v2 = case (v1, v2) of
-    (Global q1, Global q2)   -> C.global q1 <$ unless (q1 == q2) nope
-    (Global{}, _)            -> nope
-    (Free v1, Free v2)       -> C.free v1 <$ unless (v1 == v2) nope
-    (Free{}, _)              -> nope
-    (Metavar v1, Metavar v2) -> C.metavar v1 <$ unless (v1 == v2) nope
-    (Metavar{}, _)           -> nope
+    (Global q1, Global q2) -> C.global q1 <$ unless (q1 == q2) nope
+    (Global{}, _)          -> nope
+    (Free v1, Free v2)     -> C.free v1 <$ unless (v1 == v2) nope
+    (Free{}, _)            -> nope
 
   pl f (p1, t1) (p2, t2) = (p1,) <$ unless (p1 == p2) nope <*> f t1 t2
 
