@@ -180,6 +180,7 @@ elabBinders p b = do
 (|-) :: Has (Fresh :+: State Context) sig m => Name ::: Type -> m a -> m a
 (n ::: _T) |- b = do
   ctx <- get
+  -- FIXME: /Type Inference in Context/ does a bunch of other stuff to extract the right part of the context
   i <- fresh
   put (ctx |> Tm i n _T)
   a <- b
