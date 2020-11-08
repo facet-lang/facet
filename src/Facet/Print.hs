@@ -103,7 +103,6 @@ data Highlight
   | Type
   | Op
   | Lit
-  | Hole Meta
   deriving (Eq, Show)
 
 op :: (Printer p, Ann p ~ Highlight) => p -> p

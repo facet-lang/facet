@@ -11,7 +11,7 @@ module Facet.Style
 import           Data.Colour.RGBSpace.HSL
 import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Maybe (fromMaybe)
-import           Facet.Name (Level(getLevel), Meta(..))
+import           Facet.Name (Level(getLevel))
 import qualified Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print
@@ -72,7 +72,6 @@ terminalCodeStyle = \case
   Type    -> [setRGB (hsl 60 0.5 0.5)]
   Con     -> [setRGB (hsl 15 0.8 0.5)]
   Lit     -> [setBold]
-  Hole m  -> [setBold, setRGB (pick (-getMeta m) 0.5 0.45)]
   where
   pick i s l = hsl (fromIntegral i * phi * 30) s l
   phi = 1.618033988749895

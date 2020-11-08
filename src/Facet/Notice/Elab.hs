@@ -10,7 +10,7 @@ import           Facet.Core (Sort(..), Type, sortOf)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
-import           Facet.Print as Print hiding (Hole)
+import           Facet.Print as Print
 import           Facet.Source
 import           Facet.Stack
 import           Facet.Style

@@ -35,7 +35,7 @@ import           Facet.Eval
 import           Facet.Flag
 import           Facet.Graph
 import           Facet.Lens
-import           Facet.Name hiding (Meta)
+import           Facet.Name
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab
 import           Facet.Notice.Parser

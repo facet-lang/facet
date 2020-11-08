@@ -3,7 +3,6 @@ module Facet.Name
 , Level(..)
 , levelToIndex
 , indexToLevel
-, Meta(..)
 , FVs(..)
 , getFVs
 , Vars(..)
@@ -48,10 +47,6 @@ levelToIndex (Level d) (Level level) = Index $ d - level - 1
 
 indexToLevel :: Level -> Index -> Level
 indexToLevel (Level d) (Index index) = Level $ d - index - 1
-
-
-newtype Meta = Meta { getMeta :: Int }
-  deriving (Eq, Ord, Show)
 
 
 newtype FVs = FVs { runFVs :: IntSet.IntSet -> IntSet.IntSet -> IntSet.IntSet }
