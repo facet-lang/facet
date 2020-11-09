@@ -87,14 +87,14 @@ data Value
   = KType
   | KInterface
   | TSusp Comp
-  | ELam Pl [Clause]
+  | ELam Icit [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | VNe (Var Level :$ (Pl, Value))
+  | VNe (Var Level :$ (Icit, Value))
   | ECon (Q Name :$ Expr)
   | TString
   | EString Text
   -- | Effect operation and its parameters.
-  | EOp (Q Name :$ (Pl, Expr))
+  | EOp (Q Name :$ (Icit, Expr))
 
 type Type = Value
 type Expr = Value
@@ -132,7 +132,7 @@ unBind' :: Alternative m => (Level, Comp) -> m (Binding Value, (Level, Comp))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
-unLam :: Alternative m => Value -> m (Pl, [Clause])
+unLam :: Alternative m => Value -> m (Icit, [Clause])
 unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 
@@ -159,7 +159,7 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 
 
 data Binding a = Binding
-  { pl    :: Pl
+  { pl    :: Icit
   , name  :: Maybe Name
   , delta :: Maybe [a]
   , type' :: a
@@ -238,7 +238,7 @@ occursIn p = go (Level 0) -- FIXME: this should probably be doing something more
 
 -- Elimination
 
-($$) :: HasCallStack => Value -> (Pl, Value) -> Value
+($$) :: HasCallStack => Value -> (Icit, Value) -> Value
 VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
 EOp (q :$ es) $$ a = EOp (q :$ (es :> a))
 TSusp t       $$ a
@@ -250,7 +250,7 @@ TSusp t       $$ a
 ELam _ b      $$ a = case' (snd a) b
 _             $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (HasCallStack, Foldable t) => Value -> t (Pl, Value) -> Value
+($$*) :: (HasCallStack, Foldable t) => Value -> t (Icit, Value) -> Value
 ($$*) = foldl' ($$)
 
 infixl 9 $$, $$*
@@ -440,8 +440,8 @@ data Quote
   | QKType
   | QKInterface
   | QTSusp QComp
-  | QELam Pl [(Pattern Name, Quote)]
-  | QApp Quote (Pl, Quote)
+  | QELam Icit [(Pattern Name, Quote)]
+  | QApp Quote (Icit, Quote)
   | QECon (Q Name :$ Quote)
   | QTString
   | QEString Text

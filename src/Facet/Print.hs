@@ -144,7 +144,7 @@ f $$ a = askingPrec $ \case
 ($$*) :: Foldable t => Print -> t Print -> Print
 ($$*) = fmap group . foldl' ($$)
 
-(>~>) :: ((Pl, Print) ::: Print) -> Print -> Print
+(>~>) :: ((Icit, Print) ::: Print) -> Print -> Print
 ((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (setPrec Var n ::: t) <> line))) </> arrow <+> b)
 
 

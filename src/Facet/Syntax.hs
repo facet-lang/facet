@@ -7,7 +7,7 @@ module Facet.Syntax
 , (:$)(..)
 , splitl
 , splitr
-, Pl(..)
+, Icit(..)
 , unPl
 ) where
 
@@ -112,26 +112,26 @@ splitr un = go id
 
 
 -- | Im/explicit.
-data Pl
+data Icit
   = Im
   | Ex
   deriving (Bounded, Enum, Eq, Ord, Show)
 
-instance Semigroup Pl where
+instance Semigroup Icit where
   Im <> Im = Im
   _  <> _  = Ex
 
-instance Monoid Pl where
+instance Monoid Icit where
   mempty = Im
 
-instance Semiring Pl where
+instance Semiring Icit where
   Ex >< Ex = Ex
   _  >< _  = Im
 
-instance Unital Pl where
+instance Unital Icit where
   one = Ex
 
-unPl :: a -> a -> Pl -> a
+unPl :: a -> a -> Icit -> a
 unPl im ex = \case
   Im -> im
   Ex -> ex
