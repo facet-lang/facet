@@ -418,18 +418,18 @@ quoteComp d c = go d c QComp
     TForAll t b -> \ k -> go (succ d) (b (free d)) $ \ b s t' -> k ((quote d <$> t):b) s t'
     TRet s t    -> \ k -> k [] (quote d <$> s) (quote d t)
 
-eval :: HasCallStack => Stack Value -> Quote -> Value
+eval :: HasCallStack => Stack (Maybe Value) -> Quote -> Value
 eval env = \case
-  QVar v          -> unVar global ((env !) . getIndex) metavar v
+  QVar v          -> unVar global (\ i -> fromMaybe (free (indexToLevel (Level (length env)) i)) (env ! getIndex i)) metavar v
   QKType          -> KType
   QKInterface     -> KInterface
   QTSusp c        -> TSusp $ evalComp env c
-  QELam p cs      -> ELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) b)) cs
+  QELam p cs      -> ELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (\ env v -> env :> Just v) env p) b)) cs
   QApp f a        -> eval env f $$ (eval env <$> a)
   QECon (n :$ sp) -> ECon $ n :$ (eval env <$> sp)
   QTString        -> TString
   QEString s      -> EString s
   QEOp n          -> EOp $ n :$ Nil
 
-evalComp :: HasCallStack => Stack Value -> QComp -> Comp
-evalComp env (QComp bs s t) = foldr (\ t b env -> TForAll (eval env <$> t) (b . (env :>))) (\ env -> TRet (eval env <$> s) (eval env t)) bs env
+evalComp :: HasCallStack => Stack (Maybe Value) -> QComp -> Comp
+evalComp env (QComp bs s t) = foldr (\ t b env -> TForAll (eval env <$> t) (\ v -> b (env :> Just v))) (\ env -> TRet (eval env <$> s) (eval env t)) bs env
