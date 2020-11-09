@@ -346,6 +346,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
+    -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
     let QComp bs _ _ = quoteComp 0 _T
     QComp bs' s t <- elab $ foldr (\ b k -> gets (fmap entryDef . elems) >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs
     let c_T = evalComp Nil (QComp (bs <> bs') s t)
