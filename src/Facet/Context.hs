@@ -7,7 +7,6 @@ module Facet.Context
 , empty
 , (|>)
 , level
-, (!?)
 , (!)
 , lookupIndex
 , Suffix
@@ -54,10 +53,6 @@ infixl 5 |>
 
 level :: Context -> Level
 level (Context c) = Level (length c)
-
--- FIXME: skip Ty entries
-(!?) :: Context -> Index -> Maybe Entry
-c !? i = elems c S.!? getIndex i
 
 -- FIXME: skip Ty entries
 (!) :: HasCallStack => Context -> Index -> Entry
