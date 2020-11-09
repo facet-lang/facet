@@ -159,7 +159,7 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 
 
 data Binding a = Binding
-  { pl    :: Icit
+  { icit  :: Icit
   , name  :: Maybe Name
   , delta :: Maybe [a]
   , type' :: a
