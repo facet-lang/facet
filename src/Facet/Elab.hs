@@ -556,7 +556,6 @@ onTop f = do
 solve :: HasCallStack => Level -> Type -> Elab Type
 solve v = go v []
   where
-  go :: Level -> Suffix -> Type -> Elab Value
   go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (== Free g) t || occursInSuffix (== Free g) ext, d) of
     (True,  True,  _)       -> mismatch "infinite type" (Right (free g)) t
     (True,  False, Nothing) -> replace (ext ++ [ n :=: Just t ::: _K ]) t
