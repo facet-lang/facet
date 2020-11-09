@@ -95,7 +95,7 @@ switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ 
 
 as :: Check Quote ::: Check Quote -> Synth Quote
 as (m ::: _T) = Synth $ trace "as" $ do
-  env <- gets (fmap entryDef . elems)
+  env <- gets toEnv
   _T' <- eval env <$> check (_T ::: KType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
@@ -234,7 +234,7 @@ elabComp :: S.Ann S.Comp -> Synth QComp
 elabComp (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s . trace "elabComp" $
   foldr (\ b k bs -> do
     b' <- check (snd b ::: KType)
-    env <- gets (fmap entryDef . elems)
+    env <- gets toEnv
     fmap (eval env) b' >- k (bs . (b':)))
   (\ bs' -> do
     d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
@@ -349,7 +349,7 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
     -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
     let QComp bs _ _ = quoteComp 0 _T
         bs' = map (set icit_ Im) bs
-    QComp bs'' s t <- elab $ foldr (\ b k -> gets (fmap entryDef . elems) >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs'
+    QComp bs'' s t <- elab $ foldr (\ b k -> gets toEnv >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs'
     let c_T = evalComp Nil (QComp (bs' <> bs'') s t)
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T)) ::: c_T
   -- FIXME: constructor functions should have signatures, but constructors should not.
@@ -371,7 +371,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
     -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
     let QComp bs _ _ = quoteComp 0 _T
         bs' = map (set icit_ Im) bs
-    QComp bs'' s t <- elab $ foldr (\ b k -> gets (fmap entryDef . elems) >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs'
+    QComp bs'' s t <- elab $ foldr (\ b k -> gets toEnv >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs'
     -- FIXME: check that the interface is a member of the sig.
     let _T = evalComp Nil (QComp (bs' <> bs'') s t)
     pure $ n :=: Nothing ::: _T

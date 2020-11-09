@@ -9,6 +9,7 @@ module Facet.Context
 , level
 , (!)
 , lookupIndex
+, toEnv
 , Suffix
 , (<><)
 , restore
@@ -75,6 +76,11 @@ lookupIndex n = go (Index 0) . elems
     | n == n'         = Just (i, t)
     | otherwise       = go (succ i) cs
   go i (cs S.:> Ty{}) = go i cs
+
+
+-- | Construct an environment suitable for evaluation from a 'Context'.
+toEnv :: Context -> S.Stack (Maybe Value)
+toEnv = fmap entryDef . elems
 
 
 type Suffix = [Meta :=: Maybe Type ::: Type]
