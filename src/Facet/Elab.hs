@@ -539,7 +539,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: (Level -> Name :=: Maybe Value ::: Type -> Elab (a, Maybe Suffix)) -> Elab a
+onTop :: HasCallStack => (Level -> Name :=: Maybe Value ::: Type -> Elab (a, Maybe Suffix)) -> Elab a
 onTop f = do
   ctx <- get
   (gamma, elem) <- case elems ctx of
@@ -553,7 +553,7 @@ onTop f = do
     _         -> onTop f <* modify (|> elem)
 
 
-solve :: Level -> Type -> Elab Type
+solve :: HasCallStack => Level -> Type -> Elab Type
 solve v = go v []
   where
   go :: Level -> Suffix -> Type -> Elab Value
@@ -567,7 +567,7 @@ solve v = go v []
   occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
 
 -- FIXME: we don’t get good source references during unification
-unify :: Type -> Type -> Elab Type
+unify :: HasCallStack => Type -> Type -> Elab Type
 unify t1 t2 = case (t1, t2) of
   (VNe (Free v1 :$ Nil), VNe (Free v2 :$ Nil)) -> onTop $ \ g (n :=: d ::: _K) -> case (g == v1, g == v2, d) of
     (True,  True,  _)       -> restore (free v1)
