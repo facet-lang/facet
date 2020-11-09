@@ -66,6 +66,7 @@ import           Control.Lens (Lens', coerced, lens)
 import           Control.Monad (guard)
 import           Data.Foldable (asum, foldl', toList)
 import qualified Data.Map as Map
+import           Data.Maybe (fromMaybe)
 import           Data.Semialign
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
