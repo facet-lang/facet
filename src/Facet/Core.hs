@@ -4,8 +4,6 @@ module Facet.Core
 , Type
 , Expr
 , Comp(..)
-, bindComp
-, bindsComp
 , unBind
 , unBind'
 , unLam
@@ -28,9 +26,6 @@ module Facet.Core
 , ($$*)
 , case'
 , match
-  -- ** Substitution
-, bind
-, binds
   -- ** Classification
 , Sort(..)
 , sortOf
@@ -70,9 +65,7 @@ import           Control.Applicative (Alternative(..))
 import           Control.Lens (Lens', coerced, lens)
 import           Control.Monad (guard)
 import           Data.Foldable (asum, foldl', toList)
-import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
-import           Data.Maybe (fromMaybe)
 import           Data.Semialign
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
@@ -105,24 +98,6 @@ type Expr = Value
 data Comp
   = TForAll (Binding Type) (Type -> Comp)
   | TRet (Sig Value) Type
-
-substCompWith :: (Var Level -> Value) -> Comp -> Comp
-substCompWith f = go
-  where
-  go = \case
-    TForAll t b -> TForAll (binding t) (go . b)
-    TRet s t    -> TRet (sig s) (substWith f t)
-
-  binding (Binding p n s t) = Binding p n (map (substWith f) <$> s) (substWith f t)
-  sig (Sig v s) = Sig (substWith f <$> v) (map (substWith f) s)
-
-bindComp :: Level -> Value -> Comp -> Comp
-bindComp k v = bindsComp (IntMap.singleton (getLevel k) v)
-
-bindsComp :: IntMap.IntMap Value -> Comp -> Comp
-bindsComp s
-  | IntMap.null s = id
-  | otherwise     = substCompWith (substFree s)
 
 
 unBind :: Alternative m => Comp -> m (Binding Value, Value -> Comp)
@@ -276,37 +251,6 @@ match = curry $ \case
   (_,               PCon _)         -> Nothing
   -- FIXME: match effect patterns against computations (?)
   (_,               PEff{})         -> Nothing
-
-
--- Substitution
-
-substWith :: (Var Level -> Value) -> Value -> Value
-substWith f = go
-  where
-  go = \case
-    KType         -> KType
-    KInterface    -> KInterface
-    TSusp t       -> TSusp (substCompWith f t)
-    ELam p b      -> ELam p (map clause b)
-    VNe (v :$ a)  -> f v $$* fmap (fmap go) a
-    ECon c        -> ECon (fmap go c)
-    TString       -> TString
-    EString s     -> EString s
-    EOp (q :$ sp) -> EOp (q :$ fmap (fmap go) sp)
-
-  clause (Clause p b) = Clause p (go . b)
-
--- | TForAll a free variable.
-bind :: Level -> Value -> Value -> Value
-bind k v = binds (IntMap.singleton (getLevel k) v)
-
-binds :: IntMap.IntMap Value -> Value -> Value
-binds s
-  | IntMap.null s = id
-  | otherwise     = substWith (substFree s)
-
-substFree :: IntMap.IntMap Value -> Var Level -> Value
-substFree s = unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) s)) metavar
 
 
 -- Classification
