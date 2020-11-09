@@ -15,6 +15,7 @@ module Facet.Core
 , Clause(..)
 , instantiateClause
 , Binding(..)
+, icit_
   -- ** Variables
 , Var(..)
 , unVar
@@ -165,6 +166,9 @@ data Binding a = Binding
   , type' :: a
   }
   deriving (Foldable, Functor, Traversable)
+
+icit_ :: Lens' (Binding a) Icit
+icit_ = lens icit (\ b icit -> b{ icit })
 
 
 -- Variables
