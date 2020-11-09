@@ -159,7 +159,7 @@ f $$ a = Synth $ trace "$$" $ do
   pure $ QApp f' (Ex, a') ::: TSusp (_B (free d))
 
 
-(|-) :: Has (State Context) sig m => Name ::: Type -> m a -> m a
+(|-) :: (HasCallStack, Has (State Context) sig m) => Name ::: Type -> m a -> m a
 (n ::: _T) |- b = do
   i <- depth
   modify (|> Tm n _T)
@@ -173,7 +173,7 @@ f $$ a = Synth $ trace "$$" $ do
 infix 1 |-
 
 
-(>-) :: Binding Value -> Elab a -> Elab a
+(>-) :: HasCallStack => Binding Value -> Elab a -> Elab a
 -- FIXME: should this do something about the signature?
 Binding _ n _s _T >- m = trace ">-" $ fromMaybe __ n ::: _T |- m
 
