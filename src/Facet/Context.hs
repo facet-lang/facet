@@ -30,6 +30,7 @@ newtype Context = Context { elems :: S.Stack Entry }
 data Entry
   -- FIXME: constructor names are unclear; Tm is typing, Ty is meta.
   = Tm Name Type
+  -- FIXME: metas should have an Int instead of a Name.
   | Ty Name (Maybe Type) Type
 
 entryName :: Entry -> Name
