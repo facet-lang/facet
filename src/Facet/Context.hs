@@ -84,8 +84,8 @@ type Suffix = [Meta :=: Maybe Type ::: Type]
 
 infixl 5 <><
 
-restore :: Applicative m => a -> m (a, Maybe Suffix)
-restore = pure . (,Nothing)
+restore :: Applicative m => m (Maybe Suffix)
+restore = pure Nothing
 
-replace :: Applicative m => Suffix -> a -> m (a, Maybe Suffix)
-replace a = pure . (,Just a)
+replace :: Applicative m => Suffix -> m (Maybe Suffix)
+replace a = pure (Just a)

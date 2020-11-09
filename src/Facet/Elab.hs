@@ -44,7 +44,7 @@ import           Control.Effect.Sum
 import           Control.Lens (Lens', at, ix, lens)
 import           Control.Monad (unless, (<=<))
 import           Data.Bifunctor (first)
-import           Data.Foldable (asum, foldl', for_, toList)
+import           Data.Foldable (asum, foldl', for_, sequenceA_, toList)
 import           Data.Maybe (catMaybes, fromMaybe)
 import           Data.Semialign
 import qualified Data.Set as Set
@@ -52,7 +52,6 @@ import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Context as Context
 import           Facet.Core hiding (global, ($$))
-import qualified Facet.Core as C
 import           Facet.Effect.Time.System
 import           Facet.Effect.Trace as Trace
 import           Facet.Graph as Graph
@@ -541,7 +540,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: HasCallStack => (Meta :=: Maybe Value ::: Type -> Elab (a, Maybe Suffix)) -> Elab a
+onTop :: HasCallStack => (Meta :=: Maybe Value ::: Type -> Elab (Maybe Suffix)) -> Elab ()
 onTop f = do
   ctx <- get
   (gamma, elem) <- case elems ctx of
@@ -549,85 +548,85 @@ onTop f = do
     Nil           -> error "wtf empty context" -- FIXME: make this a real error
   put gamma
   case elem of
-    Ty n v _T -> f (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
+    Ty n v _T -> f (n :=: v ::: _T) >>= \case
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
     _         -> onTop f <* modify (|> elem)
 
 
-solve :: HasCallStack => Meta -> Type -> Elab Type
+solve :: HasCallStack => Meta -> Type -> Elab ()
 solve v = go v []
   where
   go v ext t = onTop $ \ (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) t || occursInSuffix (== Metavar m) ext, d) of
     (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
-    (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ]) t
-    (True,  False, Just t') -> modify (<>< ext) >> unify t' t >>= restore
-    (False, True,  _)       -> go v ((m :=: d ::: _K):ext) t >>= replace []
-    (False, False, _)       -> go v ext t >>= restore
+    (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ])
+    (True,  False, Just t') -> modify (<>< ext) >> unify t' t >> restore
+    (False, True,  _)       -> go v ((m :=: d ::: _K):ext) t >> replace []
+    (False, False, _)       -> go v ext t >> restore
 
   occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
 
 -- FIXME: we don’t get good source references during unification
-unify :: HasCallStack => Type -> Type -> Elab Type
+unify :: HasCallStack => Type -> Type -> Elab ()
 unify t1 t2 = case (t1, t2) of
   (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> onTop $ \ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
-    (True,  True,  _)       -> restore (metavar v1)
-    (True,  False, Nothing) -> replace [g :=: Just (metavar v2) ::: _K] (metavar v2)
-    (False, True,  Nothing) -> replace [g :=: Just (metavar v1) ::: _K] (metavar v1)
-    (True,  False, Just t)  -> unify (metavar v2) t >>= restore
-    (False, True,  Just t)  -> unify (metavar v1) t >>= restore
-    (False, False, _)       -> unify (metavar v1) (metavar v2) >>= restore
+    (True,  True,  _)       -> restore
+    (True,  False, Nothing) -> replace [g :=: Just (metavar v2) ::: _K]
+    (False, True,  Nothing) -> replace [g :=: Just (metavar v1) ::: _K]
+    (True,  False, Just t)  -> unify (metavar v2) t >> restore
+    (False, True,  Just t)  -> unify (metavar v1) t >> restore
+    (False, False, _)       -> unify (metavar v1) (metavar v2) >> restore
   (VNe (Metavar v1 :$ Nil), t2)                -> solve v1 t2
   (t1, VNe (Metavar v2 :$ Nil))                -> solve v2 t1
-  (KType, KType)                               -> pure KType
+  (KType, KType)                               -> pure ()
   (KType, _)                                   -> nope
-  (KInterface, KInterface)                     -> pure KInterface
+  (KInterface, KInterface)                     -> pure ()
   (KInterface, _)                              -> nope
-  (TSusp c1, TSusp c2)                         -> TSusp <$> comp c1 c2
+  (TSusp c1, TSusp c2)                         -> comp c1 c2
   (TSusp (TRet (Sig Nothing []) t1), t2)       -> unify t1 t2
   (t1, TSusp (TRet (Sig Nothing []) t2))       -> unify t1 t2
   (TSusp{}, _)                                 -> nope
   (ELam{}, ELam{})                             -> nope
   (ELam{}, _)                                  -> nope
-  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))           -> foldl' (C.$$) <$> var v1 v2 <*> spine (pl unify) sp1 sp2
+  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))           -> var v1 v2 >> spine (pl unify) sp1 sp2
   (VNe{}, _)                                   -> nope
-  (ECon (q1 :$ sp1), ECon (q2 :$ sp2))         -> ECon . (q1 :$) <$ unless (q1 == q2) nope <*> spine unify sp1 sp2
+  (ECon (q1 :$ sp1), ECon (q2 :$ sp2))         -> unless (q1 == q2) nope >> spine unify sp1 sp2
   (ECon{}, _)                                  -> nope
-  (TString, TString)                           -> pure TString
+  (TString, TString)                           -> pure ()
   (TString, _)                                 -> nope
-  (EString e1, EString e2)                     -> EString e1 <$ unless (e1 == e2) nope
+  (EString e1, EString e2)                     -> unless (e1 == e2) nope
   (EString{}, _)                               -> nope
-  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))           -> EOp . (q1 :$) <$ unless (q1 == q2) nope <*> spine (pl unify) sp1 sp2
+  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))           -> unless (q1 == q2) nope >> spine (pl unify) sp1 sp2
   (EOp{}, _)                                   -> nope
   where
   nope = couldNotUnify "mismatch" t1 t2
 
   var v1 v2 = case (v1, v2) of
-    (Global q1, Global q2)   -> C.global q1 <$ unless (q1 == q2) nope
+    (Global q1, Global q2)   -> unless (q1 == q2) nope
     (Global{}, _)            -> nope
-    (Free v1, Free v2)       -> C.free v1 <$ unless (v1 == v2) nope
+    (Free v1, Free v2)       -> unless (v1 == v2) nope
     (Free{}, _)              -> nope
-    (Metavar m1, Metavar m2) -> C.metavar m1 <$ unless (m1 == m2) nope
+    (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
     (Metavar{}, _)           -> nope
 
-  pl f (p1, t1) (p2, t2) = (p1,) <$ unless (p1 == p2) nope <*> f t1 t2
+  pl f (p1, t1) (p2, t2) = unless (p1 == p2) nope >> f t1 t2
 
-  spine f sp1 sp2 = unless (length sp1 == length sp2) nope *> sequenceA (zipWith f sp1 sp2)
+  spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> sequenceA_ (zipWith f sp1 sp2)
 
   comp c1 c2 = case (c1, c2) of
     -- FIXME: unify purely statefully so we don’t have to substitute
-    (TForAll t1 b1, TForAll t2 b2) -> TForAll <$> binding t1 t2 <*> do { d <- depth ; b' <- comp (b1 (free d)) (b2 (free d)) ; pure (\ v -> bindComp d v b') }
+    (TForAll t1 b1, TForAll t2 b2) -> do { binding t1 t2 ; d <- depth ; comp (b1 (free d)) (b2 (free d)) ; pure () }
     (TForAll{}, _)                 -> nope
-    (TRet s1 t1, TRet s2 t2)       -> TRet <$> sig s1 s2 <*> unify t1 t2
+    (TRet s1 t1, TRet s2 t2)       -> sig s1 s2 >> unify t1 t2
     (TRet{}, _)                    -> nope
 
-  binding (Binding p1 n1 d1 t1) (Binding p2 _ d2 t2) = Binding p1 n1 <$ unless (p1 == p2) nope <*> eff (spine unify) d1 d2 <*> unify t1 t2
+  binding (Binding p1 _ d1 t1) (Binding p2 _ d2 t2) = unless (p1 == p2) nope >> eff (spine unify) d1 d2 >> unify t1 t2
 
-  sig (Sig e1 c1) (Sig e2 c2) = Sig <$> eff unify e1 e2 <*> spine unify c1 c2
+  sig (Sig e1 c1) (Sig e2 c2) = eff unify e1 e2 >> spine unify c1 c2
 
   eff f e1 e2 = case (e1, e2) of
-    (Nothing, Nothing) -> pure Nothing
-    (Just e1, Just e2) -> Just <$> f e1 e2
+    (Nothing, Nothing) -> pure ()
+    (Just e1, Just e2) -> f e1 e2
     _                  -> nope
 
 
