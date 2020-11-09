@@ -89,7 +89,7 @@ instantiate (e ::: _T) = case _T of
   _                              -> pure $ e ::: TSusp _T
 
 
-switch :: Synth a -> Check a
+switch :: HasCallStack => Synth a -> Check a
 switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
 as :: Check Quote ::: Check Quote -> Synth Quote
