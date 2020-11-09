@@ -576,28 +576,28 @@ unify t1 t2 = case (t1, t2) of
     (True,  False, Just t)  -> unify (metavar v2) t >> restore
     (False, True,  Just t)  -> unify (metavar v1) t >> restore
     (False, False, _)       -> unify (metavar v1) (metavar v2) >> restore
-  (VNe (Metavar v1 :$ Nil), t2)                -> solve v1 t2
-  (t1, VNe (Metavar v2 :$ Nil))                -> solve v2 t1
-  (KType, KType)                               -> pure ()
-  (KType, _)                                   -> nope
-  (KInterface, KInterface)                     -> pure ()
-  (KInterface, _)                              -> nope
-  (TSusp c1, TSusp c2)                         -> comp c1 c2
-  (TSusp (TRet (Sig Nothing []) t1), t2)       -> unify t1 t2
-  (t1, TSusp (TRet (Sig Nothing []) t2))       -> unify t1 t2
-  (TSusp{}, _)                                 -> nope
-  (ELam{}, ELam{})                             -> nope
-  (ELam{}, _)                                  -> nope
-  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))           -> var v1 v2 >> spine (pl unify) sp1 sp2
-  (VNe{}, _)                                   -> nope
-  (ECon (q1 :$ sp1), ECon (q2 :$ sp2))         -> unless (q1 == q2) nope >> spine unify sp1 sp2
-  (ECon{}, _)                                  -> nope
-  (TString, TString)                           -> pure ()
-  (TString, _)                                 -> nope
-  (EString e1, EString e2)                     -> unless (e1 == e2) nope
-  (EString{}, _)                               -> nope
-  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))           -> unless (q1 == q2) nope >> spine (pl unify) sp1 sp2
-  (EOp{}, _)                                   -> nope
+  (VNe (Metavar v1 :$ Nil), t2)                      -> solve v1 t2
+  (t1, VNe (Metavar v2 :$ Nil))                      -> solve v2 t1
+  (KType, KType)                                     -> pure ()
+  (KType, _)                                         -> nope
+  (KInterface, KInterface)                           -> pure ()
+  (KInterface, _)                                    -> nope
+  (TSusp c1, TSusp c2)                               -> comp c1 c2
+  (TSusp (TRet (Sig Nothing []) t1), t2)             -> unify t1 t2
+  (t1, TSusp (TRet (Sig Nothing []) t2))             -> unify t1 t2
+  (TSusp{}, _)                                       -> nope
+  (ELam{}, ELam{})                                   -> nope
+  (ELam{}, _)                                        -> nope
+  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))                 -> var v1 v2 >> spine (pl unify) sp1 sp2
+  (VNe{}, _)                                         -> nope
+  (ECon (q1 :$ sp1), ECon (q2 :$ sp2))               -> unless (q1 == q2) nope >> spine unify sp1 sp2
+  (ECon{}, _)                                        -> nope
+  (TString, TString)                                 -> pure ()
+  (TString, _)                                       -> nope
+  (EString e1, EString e2)                           -> unless (e1 == e2) nope
+  (EString{}, _)                                     -> nope
+  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> unless (q1 == q2) nope >> spine (pl unify) sp1 sp2
+  (EOp{}, _)                                         -> nope
   where
   nope = couldNotUnify "mismatch" t1 t2
 
