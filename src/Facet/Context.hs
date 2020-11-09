@@ -28,6 +28,8 @@ newtype Context = Context { elems :: S.Stack Entry }
 
 data Entry
   -- FIXME: constructor names are unclear; Tm is typing, Ty is meta.
+  -- FIXME: record implicitness in the context.
+  -- FIXME: record sort in the context.
   = Tm Name Type
   | Ty Meta (Maybe Type) Type
 
