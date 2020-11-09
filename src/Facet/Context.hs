@@ -25,42 +25,42 @@ import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
-newtype Context = Context { elems :: S.Stack Entry }
+newtype Context a = Context { elems :: S.Stack (Entry a) }
 
-data Entry
+data Entry a
   -- FIXME: constructor names are unclear; Tm is typing, Ty is meta.
   -- FIXME: record implicitness in the context.
   -- FIXME: record sort in the context.
-  = Tm Name Type
-  | Ty Meta (Maybe Type) Type
+  = Tm Name a
+  | Ty Meta (Maybe a) a
 
-entryDef :: Entry -> Maybe Type
+entryDef :: Entry a -> Maybe a
 entryDef = \case
   Tm _   _ -> Nothing
   Ty _ v _ -> v
 
-entryType :: Entry -> Type
+entryType :: Entry a -> a
 entryType = \case
   Tm _   t -> t
   Ty _ _ t -> t
 
 
-empty :: Context
+empty :: Context a
 empty = Context S.Nil
 
-(|>) :: Context -> Entry -> Context
+(|>) :: Context a -> Entry a -> Context a
 Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
 
-level :: Context -> Level
+level :: Context a -> Level
 level (Context es) = go 0 es
   where
   go n S.Nil          = n
   go n (es S.:> Tm{}) = go (n + 1) es
   go n (es S.:> Ty{}) = go  n      es
 
-(!) :: HasCallStack => Context -> Index -> Entry
+(!) :: HasCallStack => Context a -> Index -> Entry a
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
   where
   go (es S.:> e@Tm{}) i
@@ -69,7 +69,7 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
   go (es S.:> _)      i = go es i
   go _                _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: Name -> Context -> Maybe (Index, Type)
+lookupIndex :: Name -> Context a -> Maybe (Index, a)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil          = Nothing
@@ -80,7 +80,7 @@ lookupIndex n = go (Index 0) . elems
 
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context -> S.Stack Value
+toEnv :: Context Type -> S.Stack Type
 toEnv = go 0 . elems
   where
   go _ S.Nil              = S.Nil
@@ -88,15 +88,15 @@ toEnv = go 0 . elems
   go i (es S.:> Ty m d _) = go       i  es S.:> fromMaybe (metavar m) d
 
 
-type Suffix = [Meta :=: Maybe Type ::: Type]
+type Suffix a = [Meta :=: Maybe a ::: a]
 
-(<><) :: Context -> Suffix -> Context
+(<><) :: Context a -> Suffix a -> Context a
 (<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> Ty n v _T)
 
 infixl 5 <><
 
-restore :: Applicative m => m (Maybe Suffix)
+restore :: Applicative m => m (Maybe (Suffix a))
 restore = pure Nothing
 
-replace :: Applicative m => Suffix -> m (Maybe Suffix)
+replace :: Applicative m => Suffix a -> m (Maybe (Suffix a))
 replace a = pure (Just a)
