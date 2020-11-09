@@ -41,7 +41,7 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Empty
 import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Sum
-import           Control.Lens (Lens', at, ix, lens)
+import           Control.Lens (Lens', at, ix, lens, set)
 import           Control.Monad (unless, (<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable (asum, foldl', for_, sequenceA_, toList)
@@ -348,8 +348,9 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
     let QComp bs _ _ = quoteComp 0 _T
-    QComp bs' s t <- elab $ foldr (\ b k -> gets (fmap entryDef . elems) >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs
-    let c_T = evalComp Nil (QComp (bs <> bs') s t)
+        bs' = map (set icit_ Im) bs
+    QComp bs'' s t <- elab $ foldr (\ b k -> gets (fmap entryDef . elems) >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs'
+    let c_T = evalComp Nil (QComp (bs' <> bs'') s t)
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T)) ::: c_T
   -- FIXME: constructor functions should have signatures, but constructors should not.
   pure
@@ -369,9 +370,10 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $ do
     -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
     let QComp bs _ _ = quoteComp 0 _T
-    QComp bs' s t <- elab $ foldr (\ b k -> gets (fmap entryDef . elems) >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs
+        bs' = map (set icit_ Im) bs
+    QComp bs'' s t <- elab $ foldr (\ b k -> gets (fmap entryDef . elems) >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs'
     -- FIXME: check that the interface is a member of the sig.
-    let _T = evalComp Nil (QComp (bs <> bs') s t)
+    let _T = evalComp Nil (QComp (bs' <> bs'') s t)
     pure $ n :=: Nothing ::: _T
   pure $ Just (DInterface (scopeFromList cs)) ::: _T
 
