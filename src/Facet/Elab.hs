@@ -93,7 +93,7 @@ switch :: Synth a -> Check a
 switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
 as :: Check Quote ::: Check Quote -> Synth Quote
-as (m ::: _T) = Synth $ do
+as (m ::: _T) = Synth $ trace "as" $ do
   env <- gets (fmap entryDef . elems)
   _T' <- eval env <$> check (_T ::: KType)
   a <- check (m ::: _T')
