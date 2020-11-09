@@ -234,14 +234,14 @@ elabComp (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s . trace "elabComp" $
   foldr (\ b k bs -> do
     b' <- check (snd b ::: KType)
     env <- gets (fmap entryDef . elems)
-    fmap (eval env) b' >- k (b':bs))
+    fmap (eval env) b' >- k (bs . (b':)))
   (\ bs' -> do
     d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
     t' <- check (checkExpr t ::: KType)
     -- FIXME: add the effect var and populate this authoritatively
-    pure $ QComp bs' (Sig Nothing (fromMaybe [] d')) t' ::: KType)
+    pure $ QComp (bs' []) (Sig Nothing (fromMaybe [] d')) t' ::: KType)
   (elabBinding =<< bs)
-  []
+  id
 
 
 _Type :: Synth Quote
