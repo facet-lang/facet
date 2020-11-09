@@ -57,7 +57,12 @@ level (Context c) = Level (length c)
 
 -- FIXME: skip Ty entries
 (!) :: HasCallStack => Context -> Index -> Entry
-c ! i = elems c S.! getIndex i
+Context es' ! Index i' = withFrozenCallStack $ go es' i'
+  where
+  go (es S.:> e) i
+    | i == 0       = e
+    | otherwise    = go es (i - 1)
+  go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
 lookupIndex :: Name -> Context -> Maybe (Index, Type)
 lookupIndex n = go (Index 0) . elems
