@@ -51,6 +51,7 @@ Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
 
+-- FIXME: don’t count Ty entries.
 level :: Context -> Level
 level (Context c) = Level (length c)
 
