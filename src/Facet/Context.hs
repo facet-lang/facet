@@ -51,9 +51,12 @@ Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
 
--- FIXME: don’t count Ty entries.
 level :: Context -> Level
-level (Context c) = Level (length c)
+level (Context es) = go 0 es
+  where
+  go n S.Nil          = n
+  go n (es S.:> Tm{}) = go (n + 1) es
+  go n (es S.:> Ty{}) = go  n      es
 
 (!) :: HasCallStack => Context -> Index -> Entry
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
