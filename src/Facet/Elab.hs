@@ -59,7 +59,7 @@ import           Facet.Graph as Graph
 import           Facet.Lens
 import           Facet.Name hiding (L, R)
 import           Facet.Span (Pos, Span(..))
-import           Facet.Stack hiding ((!?))
+import           Facet.Stack
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
