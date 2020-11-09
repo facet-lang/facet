@@ -460,7 +460,7 @@ quoteComp d c = go d c QComp
     TForAll t b -> \ k -> go (succ d) (b (free d)) $ \ b s t' -> k ((quote d <$> t):b) s t'
     TRet s t    -> \ k -> k [] (quote d <$> s) (quote d t)
 
-eval :: Stack (Maybe Value) -> Quote -> Value
+eval :: HasCallStack => Stack (Maybe Value) -> Quote -> Value
 eval env = \case
   QVar v          -> unVar global (\ i -> fromMaybe (free (indexToLevel (Level (length env)) i)) (env ! getIndex i)) v
   QKType          -> KType
@@ -473,5 +473,5 @@ eval env = \case
   QEString s      -> EString s
   QEOp n          -> EOp $ n :$ Nil
 
-evalComp :: Stack (Maybe Value) -> QComp -> Comp
+evalComp :: HasCallStack => Stack (Maybe Value) -> QComp -> Comp
 evalComp env (QComp bs s t) = foldr (\ t b env -> TForAll (eval env <$> t) (\ v -> b (env :> Just v))) (\ env -> TRet (eval env <$> s) (eval env t)) bs env
