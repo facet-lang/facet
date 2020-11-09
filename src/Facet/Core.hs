@@ -20,6 +20,7 @@ module Facet.Core
 , unVar
 , global
 , free
+, metavar
 , occursIn
   -- ** Elimination
 , ($$)
@@ -171,6 +172,7 @@ data Binding a = Binding
 data Var a
   = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
   | Free a
+  | Metavar Meta
   deriving (Foldable, Functor, Traversable)
 
 instance Eq a => Eq (Var a) where
@@ -179,6 +181,8 @@ instance Eq a => Eq (Var a) where
     (Global  _,  _)          -> False
     (Free    l1, Free    l2) -> l1 == l2
     (Free    _,  _)          -> False
+    (Metavar m1, Metavar m2) -> m1 == m2
+    (Metavar _,  _)          -> False
 
 instance Ord a => Ord (Var a) where
   compare = curry $ \case
@@ -186,11 +190,14 @@ instance Ord a => Ord (Var a) where
     (Global  _,  _)          -> LT
     (Free    l1, Free    l2) -> l1 `compare` l2
     (Free    _,  _)          -> LT
+    (Metavar m1, Metavar m2) -> m1 `compare` m2
+    (Metavar _,  _)          -> LT
 
-unVar :: (Q Name -> b) -> (a -> b) -> Var a -> b
-unVar f g = \case
+unVar :: (Q Name -> b) -> (a -> b) -> (Meta -> b) -> Var a -> b
+unVar f g h = \case
   Global  n -> f n
   Free    n -> g n
+  Metavar n -> h n
 
 
 global :: Q Name -> Value
@@ -198,6 +205,9 @@ global = var . Global
 
 free :: Level -> Value
 free = var . Free
+
+metavar :: Meta -> Value
+metavar = var . Metavar
 
 
 var :: Var Level -> Value
@@ -292,7 +302,7 @@ binds s
   | otherwise     = substWith (substFree s)
 
 substFree :: IntMap.IntMap Value -> Var Level -> Value
-substFree s = unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) s))
+substFree s = unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) s)) metavar
 
 
 -- Classification
@@ -310,7 +320,7 @@ sortOf ctx = \case
   KInterface    -> SKind
   TSusp t       -> sortOfComp ctx t
   ELam{}        -> STerm
-  VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) h : toList (sortOf ctx . snd <$> sp))
+  VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
   ECon _        -> STerm
   TString       -> SType
   EString _     -> STerm
@@ -462,7 +472,7 @@ quoteComp d c = go d c QComp
 
 eval :: HasCallStack => Stack (Maybe Value) -> Quote -> Value
 eval env = \case
-  QVar v          -> unVar global (\ i -> fromMaybe (free (indexToLevel (Level (length env)) i)) (env ! getIndex i)) v
+  QVar v          -> unVar global (\ i -> fromMaybe (free (indexToLevel (Level (length env)) i)) (env ! getIndex i)) metavar v
   QKType          -> KType
   QKInterface     -> KInterface
   QTSusp c        -> TSusp $ evalComp env c

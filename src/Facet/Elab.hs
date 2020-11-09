@@ -35,6 +35,7 @@ module Facet.Elab
 import           Control.Algebra
 import           Control.Applicative (Alternative)
 import           Control.Carrier.Error.Church
+import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Empty
@@ -77,7 +78,8 @@ import           Prelude hiding (span, zipWith)
 meta :: Type -> Elab Level
 meta _T = do
   ctx <- get
-  level ctx <$ put (ctx |> Ty __ Nothing _T)
+  m <- Meta <$> fresh
+  level ctx <$ put (ctx |> Ty m Nothing _T)
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
@@ -539,7 +541,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: HasCallStack => (Level -> Name :=: Maybe Value ::: Type -> Elab (a, Maybe Suffix)) -> Elab a
+onTop :: HasCallStack => (Meta :=: Maybe Value ::: Type -> Elab (a, Maybe Suffix)) -> Elab a
 onTop f = do
   ctx <- get
   (gamma, elem) <- case elems ctx of
@@ -547,20 +549,20 @@ onTop f = do
     Nil           -> error "wtf empty context" -- FIXME: make this a real error
   put gamma
   case elem of
-    Ty n v _T -> f (level gamma) (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
+    Ty n v _T -> f (n :=: v ::: _T) >>= \ (a, x) -> a <$ case x of
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
     _         -> onTop f <* modify (|> elem)
 
 
-solve :: HasCallStack => Level -> Type -> Elab Type
+solve :: HasCallStack => Meta -> Type -> Elab Type
 solve v = go v []
   where
-  go v ext t = onTop $ \ g (n :=: d ::: _K) -> case (g == v, occursIn (== Free g) t || occursInSuffix (== Free g) ext, d) of
-    (True,  True,  _)       -> mismatch "infinite type" (Right (free g)) t
-    (True,  False, Nothing) -> replace (ext ++ [ n :=: Just t ::: _K ]) t
+  go v ext t = onTop $ \ (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) t || occursInSuffix (== Metavar m) ext, d) of
+    (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
+    (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ]) t
     (True,  False, Just t') -> modify (<>< ext) >> unify t' t >>= restore
-    (False, True,  _)       -> go v ((n :=: d ::: _K):ext) t >>= replace []
+    (False, True,  _)       -> go v ((m :=: d ::: _K):ext) t >>= replace []
     (False, False, _)       -> go v ext t >>= restore
 
   occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
@@ -568,15 +570,15 @@ solve v = go v []
 -- FIXME: we don’t get good source references during unification
 unify :: HasCallStack => Type -> Type -> Elab Type
 unify t1 t2 = case (t1, t2) of
-  (VNe (Free v1 :$ Nil), VNe (Free v2 :$ Nil)) -> onTop $ \ g (n :=: d ::: _K) -> case (g == v1, g == v2, d) of
-    (True,  True,  _)       -> restore (free v1)
-    (True,  False, Nothing) -> replace [n :=: Just (free v2) ::: _K] (free v2)
-    (False, True,  Nothing) -> replace [n :=: Just (free v1) ::: _K] (free v1)
-    (True,  False, Just t)  -> unify (free v2) t >>= restore
-    (False, True,  Just t)  -> unify (free v1) t >>= restore
-    (False, False, _)       -> unify (free v1) (free v2) >>= restore
-  (VNe (Free v1 :$ Nil), t2)                   -> solve v1 t2
-  (t1, VNe (Free v2 :$ Nil))                   -> solve v2 t1
+  (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> onTop $ \ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
+    (True,  True,  _)       -> restore (metavar v1)
+    (True,  False, Nothing) -> replace [g :=: Just (metavar v2) ::: _K] (metavar v2)
+    (False, True,  Nothing) -> replace [g :=: Just (metavar v1) ::: _K] (metavar v1)
+    (True,  False, Just t)  -> unify (metavar v2) t >>= restore
+    (False, True,  Just t)  -> unify (metavar v1) t >>= restore
+    (False, False, _)       -> unify (metavar v1) (metavar v2) >>= restore
+  (VNe (Metavar v1 :$ Nil), t2)                -> solve v1 t2
+  (t1, VNe (Metavar v2 :$ Nil))                -> solve v2 t1
   (KType, KType)                               -> pure KType
   (KType, _)                                   -> nope
   (KInterface, KInterface)                     -> pure KInterface
@@ -601,10 +603,12 @@ unify t1 t2 = case (t1, t2) of
   nope = couldNotUnify "mismatch" t1 t2
 
   var v1 v2 = case (v1, v2) of
-    (Global q1, Global q2) -> C.global q1 <$ unless (q1 == q2) nope
-    (Global{}, _)          -> nope
-    (Free v1, Free v2)     -> C.free v1 <$ unless (v1 == v2) nope
-    (Free{}, _)            -> nope
+    (Global q1, Global q2)   -> C.global q1 <$ unless (q1 == q2) nope
+    (Global{}, _)            -> nope
+    (Free v1, Free v2)       -> C.free v1 <$ unless (v1 == v2) nope
+    (Free{}, _)              -> nope
+    (Metavar m1, Metavar m2) -> C.metavar m1 <$ unless (m1 == m2) nope
+    (Metavar{}, _)           -> nope
 
   pl f (p1, t1) (p2, t2) = (p1,) <$ unless (p1 == p2) nope <*> f t1 t2
 
@@ -626,7 +630,7 @@ unify t1 t2 = case (t1, t2) of
     _                  -> nope
 
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State Context :+: Throw Err :+: Trace) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -638,15 +642,16 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Reader ElabContext :+: State Context :+: Throw Err :+: Trace) Elab where
+instance Algebra (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) Elab where
   alg hdl sig ctx = case sig of
-    L rctx          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
-    R (L sctx)      -> Elab $ alg (runElab . hdl) (inj sctx)  ctx
-    R (R (L throw)) -> Elab $ alg (runElab . hdl) (inj throw) ctx
-    R (R (R trace)) -> Elab $ alg (runElab . hdl) (inj trace) ctx
+    L fresh             -> Elab $ alg (runElab . hdl) (inj fresh) ctx
+    R (L rctx)          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
+    R (R (L sctx))      -> Elab $ alg (runElab . hdl) (inj sctx)  ctx
+    R (R (R (L throw))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
+    R (R (R (R trace))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab a -> m a
-elab = evalState Context.empty . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
+elab = evalFresh 0 . evalState Context.empty . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
   where
   mkContext = ElabContext <$> ask <*> ask <*> ask <*> pure (Sig Nothing []) <*> ask
 
