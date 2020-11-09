@@ -615,6 +615,7 @@ unify t1 t2 = case (t1, t2) of
   spine f sp1 sp2 = unless (length sp1 == length sp2) nope *> sequenceA (zipWith f sp1 sp2)
 
   comp c1 c2 = case (c1, c2) of
+    -- FIXME: unify purely statefully so we don’t have to substitute
     (TForAll t1 b1, TForAll t2 b2) -> TForAll <$> binding t1 t2 <*> do { d <- depth ; b' <- comp (b1 (free d)) (b2 (free d)) ; pure (\ v -> bindComp d v b') }
     (TForAll{}, _)                 -> nope
     (TRet s1 t1, TRet s2 t2)       -> TRet <$> sig s1 s2 <*> unify t1 t2
