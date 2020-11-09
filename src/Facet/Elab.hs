@@ -165,9 +165,9 @@ f $$ a = Synth $ trace "$$" $ do
   modify (|> Tm n _T)
   a <- b
   let extract (gamma :> Tm _ _) | i == level (Context gamma) = gamma
-      extract (gamma :> e@Ty{})            = extract gamma :> e
-      extract (_     :> _)                 = error "bad context entry"
-      extract Nil                          = error "bad context"
+      extract (gamma :> e@Ty{})                              = extract gamma :> e
+      extract (_     :> _)                                   = error "bad context entry"
+      extract Nil                                            = error "bad context"
   a <$ modify (Context . extract . elems)
 
 infix 1 |-
