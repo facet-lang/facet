@@ -55,14 +55,14 @@ infixl 5 |>
 level :: Context -> Level
 level (Context c) = Level (length c)
 
--- FIXME: skip Ty entries
 (!) :: HasCallStack => Context -> Index -> Entry
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
   where
-  go (es S.:> e) i
-    | i == 0       = e
-    | otherwise    = go es (i - 1)
-  go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
+  go (es S.:> e@Tm{}) i
+    | i == 0            = e
+    | otherwise         = go es (i - 1)
+  go (es S.:> _)      i = go es i
+  go _                _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
 lookupIndex :: Name -> Context -> Maybe (Index, Type)
 lookupIndex n = go (Index 0) . elems
