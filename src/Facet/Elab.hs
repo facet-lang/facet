@@ -161,7 +161,7 @@ f $$ a = Synth $ trace "$$" $ do
   pure $ QApp f' (Ex, a') ::: TSusp (_B (free d))
 
 
-(|-) :: (HasCallStack, Has (State Context) sig m) => Name ::: Type -> m a -> m a
+(|-) :: HasCallStack => Name ::: Type -> Elab a -> Elab a
 (n ::: _T) |- b = do
   i <- depth
   modify (|> Tm n _T)
