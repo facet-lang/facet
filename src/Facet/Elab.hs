@@ -452,14 +452,6 @@ extendSig = maybe id (locally (sig_.interfaces_) . (++))
 depth :: Has (State (Context Type)) sig m => m Level
 depth = gets @(Context Type) level
 
--- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context Type -> Stack Type
-toEnv = go 0 . elems
-  where
-  go _ Nil              = Nil
-  go i (es :> Tm _   _) = go (succ i) es :> free (indexToLevel (Level (length es)) i)
-  go i (es :> Ty m d _) = go       i  es :> fromMaybe (metavar m) d
-
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
   mod <- get

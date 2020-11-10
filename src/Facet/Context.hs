@@ -9,6 +9,7 @@ module Facet.Context
 , level
 , (!)
 , lookupIndex
+, toEnv
 , Suffix
 , (<><)
 , restore
@@ -16,6 +17,8 @@ module Facet.Context
 ) where
 
 import           Data.Foldable (foldl')
+import           Data.Maybe (fromMaybe)
+import           Facet.Core
 import           Facet.Name
 import qualified Facet.Stack as S
 import           Facet.Syntax
@@ -74,6 +77,15 @@ lookupIndex n = go (Index 0) . elems
     | n == n'         = Just (i, t)
     | otherwise       = go (succ i) cs
   go i (cs S.:> Ty{}) = go i cs
+
+
+-- | Construct an environment suitable for evaluation from a 'Context'.
+toEnv :: Context Type -> S.Stack Type
+toEnv = go 0 . elems
+  where
+  go _ S.Nil              = S.Nil
+  go i (es S.:> Tm _   _) = go (succ i) es S.:> free (indexToLevel (Level (length es)) i)
+  go i (es S.:> Ty m d _) = go       i  es S.:> fromMaybe (metavar m) d
 
 
 type Suffix a = [Meta :=: Maybe a ::: a]
