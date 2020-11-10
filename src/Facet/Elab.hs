@@ -447,7 +447,7 @@ extendSig :: Has (Reader ElabContext) sig m => Maybe [Value] -> m a -> m a
 extendSig = maybe id (locally (sig_.interfaces_) . (++))
 
 depth :: Has (State Context) sig m => m Level
-depth = gets @Context level
+depth = gets level
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
