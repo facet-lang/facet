@@ -161,10 +161,11 @@ f $$ a = Synth $ trace "$$" $ do
   pure $ QApp f' (Ex, a') ::: TSusp (_B (free d))
 
 
-(|-) :: HasCallStack => Name ::: Type -> Elab a -> Elab a
-(n ::: _T) |- b = trace "|-" $ do
+(|-) :: HasCallStack => Binding Value -> Elab a -> Elab a
+-- FIXME: should this do something about the signature?
+Binding _ n _s _T |- b = trace "|-" $ do
   i <- depth
-  modify (|> Tm n _T)
+  modify (|> Tm (fromMaybe __ n) _T)
   a <- b
   let extract (gamma :> Tm _ _) | i == level (Context gamma) = gamma
       extract (gamma :> e@Ty{})                              = extract gamma :> e
@@ -176,8 +177,7 @@ infix 1 |-
 
 
 (>-) :: HasCallStack => Binding Value -> Elab a -> Elab a
--- FIXME: should this do something about the signature?
-Binding _ n _s _T >- m = trace ">-" $ fromMaybe __ n ::: _T |- m
+b >- m = trace ">-" $ b |- m
 
 infix 1 >-
 
