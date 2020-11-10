@@ -8,7 +8,6 @@ import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
 import           Facet.Core (Sort(..), Type, sortOf)
 import           Facet.Elab as Elab
-import           Facet.Name (__)
 import           Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print
@@ -34,7 +33,9 @@ rethrowElabErrors src = L.runThrow rethrow
   combine (d, sort, print, ctx) e =
     let _T = entryType e
         s = sortOf sort _T
-        n' = name s (case e of { Tm n _ -> n ; Ty{} -> __ }) d
+        n' = case e of
+          Tm n   _ -> name s n d
+          Ty m _ _ -> meta m
     in  ( succ d
         , sort  :> s
         , print :> n'
