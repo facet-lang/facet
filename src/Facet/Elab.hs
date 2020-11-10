@@ -119,7 +119,7 @@ resolveQ = resolveWith lookupD
 global :: Q Name ::: Comp -> Synth Quote
 global (q ::: _T) = Synth $ instantiate (QVar (Global q) ::: _T)
 
-lookupInContext :: Q Name -> Context Type -> Maybe (Index, Type)
+lookupInContext :: Q Name -> Context -> Maybe (Index, Type)
 lookupInContext (m:.:n)
   | m == Nil  = lookupIndex n
   | otherwise = const Nothing
@@ -160,7 +160,7 @@ f $$ a = Synth $ trace "$$" $ do
   pure $ QApp f' (Ex, a') ::: TSusp (_B (free d))
 
 
-(|-) :: (HasCallStack, Has (State (Context Type)) sig m) => Name ::: Type -> m a -> m a
+(|-) :: (HasCallStack, Has (State Context) sig m) => Name ::: Type -> m a -> m a
 (n ::: _T) |- b = do
   i <- depth
   modify (|> Tm n _T)
@@ -169,7 +169,7 @@ f $$ a = Synth $ trace "$$" $ do
       extract (gamma :> e@Ty{})                              = extract gamma :> e
       extract (_     :> _)                                   = error "bad context entry"
       extract Nil                                            = error "bad context"
-  a <$ modify (Context . extract . elems @Type)
+  a <$ modify (Context . extract . elems)
 
 infix 1 |-
 
@@ -449,8 +449,8 @@ insertEffectVar _E = go
 extendSig :: Has (Reader ElabContext) sig m => Maybe [Value] -> m a -> m a
 extendSig = maybe id (locally (sig_.interfaces_) . (++))
 
-depth :: Has (State (Context Type)) sig m => m Level
-depth = gets @(Context Type) level
+depth :: Has (State Context) sig m => m Level
+depth = gets @Context level
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
@@ -470,7 +470,7 @@ runWithSpan k (S.Ann s _ a) = runReader s (k a)
 data Err = Err
   { span      :: Span
   , reason    :: Reason
-  , context   :: Context Type
+  , context   :: Context
   , callStack :: Stack Message -- FIXME: keep source references for each message.
   }
 
@@ -543,7 +543,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: HasCallStack => (Meta :=: Maybe Value ::: Type -> Elab (Maybe (Suffix Type))) -> Elab ()
+onTop :: HasCallStack => (Meta :=: Maybe Value ::: Type -> Elab (Maybe Suffix)) -> Elab ()
 onTop f = do
   ctx <- get
   (gamma, elem) <- case elems ctx of
@@ -633,7 +633,7 @@ unify t1 t2 = case (t1, t2) of
     _                  -> nope
 
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Fresh :+: Reader ElabContext :+: State (Context Type) :+: Throw Err :+: Trace) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -645,7 +645,7 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Fresh :+: Reader ElabContext :+: State (Context Type) :+: Throw Err :+: Trace) Elab where
+instance Algebra (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) Elab where
   alg hdl sig ctx = case sig of
     L fresh             -> Elab $ alg (runElab . hdl) (inj fresh) ctx
     R (L rctx)          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
@@ -654,7 +654,7 @@ instance Algebra (Fresh :+: Reader ElabContext :+: State (Context Type) :+: Thro
     R (R (R (R trace))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab a -> m a
-elab = evalFresh 0 . evalState (Context.empty @Type) . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
+elab = evalFresh 0 . evalState Context.empty . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
   where
   mkContext = ElabContext <$> ask <*> ask <*> ask <*> pure (Sig Nothing []) <*> ask
 
