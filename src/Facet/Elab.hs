@@ -22,9 +22,10 @@ module Facet.Elab
   -- * Errors
 , Err(..)
 , Reason(..)
-  -- * Machinery
+  -- * Unification
 , ElabContext(..)
 , sig_
+  -- * Machinery
 , Elab(..)
 , elab
 , check
@@ -526,7 +527,7 @@ expectRet :: String -> Type -> Elab (Sig Value, Type)
 expectRet = expectMatch (\case { TSusp (TRet s t) -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
--- Machinery
+-- Unification
 
 data ElabContext = ElabContext
   { graph   :: Graph
@@ -632,6 +633,8 @@ unify t1 t2 = case (t1, t2) of
     (Just e1, Just e2) -> f e1 e2
     _                  -> nope
 
+
+-- Machinery
 
 newtype Elab a = Elab { runElab :: forall sig m . Has (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) sig m => m a }
 
