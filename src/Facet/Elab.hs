@@ -156,8 +156,9 @@ f $$ a = Synth $ trace "$$" $ do
   f' ::: _F <- synth f
   (Binding _ _ s _A, _B) <- expectQuantifier "in application" _F
   a' <- extendSig s (check (a ::: _A))
-  d <- depth
-  pure $ QApp f' (Ex, a') ::: TSusp (_B (free d))
+  env <- gets toEnv
+  let a'' = uncurry eval env a'
+  pure $ QApp f' (Ex, a') ::: TSusp (_B a'')
 
 
 (|-) :: HasCallStack => Binding Value -> Elab a -> Elab a
