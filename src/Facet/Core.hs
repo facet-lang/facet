@@ -65,6 +65,7 @@ import           Control.Applicative (Alternative(..))
 import           Control.Lens (Lens', coerced, lens)
 import           Control.Monad (guard)
 import           Data.Foldable (asum, foldl', toList)
+import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import           Data.Semialign
 import           Data.Text (Text)
@@ -418,18 +419,18 @@ quoteComp d c = go d c QComp
     TForAll t b -> \ k -> go (succ d) (b (free d)) $ \ b s t' -> k ((quote d <$> t):b) s t'
     TRet s t    -> \ k -> k [] (quote d <$> s) (quote d t)
 
-eval :: HasCallStack => Stack Value -> Quote -> Value
-eval env = \case
+eval :: HasCallStack => Stack Value -> IntMap.IntMap Value -> Quote -> Value
+eval env metas = \case
   QVar v          -> unVar global ((env !) . getIndex) metavar v
   QKType          -> KType
   QKInterface     -> KInterface
-  QTSusp c        -> TSusp $ evalComp env c
-  QELam p cs      -> ELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) b)) cs
-  QApp f a        -> eval env f $$ (eval env <$> a)
-  QECon (n :$ sp) -> ECon $ n :$ (eval env <$> sp)
+  QTSusp c        -> TSusp $ evalComp env metas c
+  QELam p cs      -> ELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) metas b)) cs
+  QApp f a        -> eval env metas f $$ (eval env metas <$> a)
+  QECon (n :$ sp) -> ECon $ n :$ (eval env metas <$> sp)
   QTString        -> TString
   QEString s      -> EString s
   QEOp n          -> EOp $ n :$ Nil
 
-evalComp :: HasCallStack => Stack Value -> QComp -> Comp
-evalComp env (QComp bs s t) = foldr (\ t b env -> TForAll (eval env <$> t) (b . (env :>))) (\ env -> TRet (eval env <$> s) (eval env t)) bs env
+evalComp :: HasCallStack => Stack Value -> IntMap.IntMap Value -> QComp -> Comp
+evalComp env metas (QComp bs s t) = foldr (\ t b env -> TForAll (eval env metas <$> t) (b . (env :>))) (\ env -> TRet (eval env metas <$> s) (eval env metas t)) bs env

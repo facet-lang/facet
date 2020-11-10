@@ -17,6 +17,7 @@ module Facet.Context
 ) where
 
 import           Data.Foldable (foldl')
+import qualified Data.IntMap as IntMap
 import           Data.Maybe (fromMaybe)
 import           Facet.Core
 import           Facet.Name
@@ -80,12 +81,18 @@ lookupIndex n = go (Index 0) . elems
 
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context -> S.Stack Value
-toEnv = go 0 . elems
+toEnv :: Context -> (S.Stack Value, IntMap.IntMap Value)
+toEnv c = (locals 0 (elems c), metas (elems c))
   where
-  go _ S.Nil              = S.Nil
-  go i (es S.:> Tm _   _) = go (succ i) es S.:> free (indexToLevel (Level (length es)) i)
-  go i (es S.:> Ty m d _) = go       i  es S.:> fromMaybe (metavar m) d
+  d = level c
+  locals i = \case
+    S.Nil            -> S.Nil
+    bs S.:> Tm _   _ -> locals (succ i) bs S.:> free (indexToLevel d i)
+    bs S.:> Ty _ _ _ -> locals i bs
+  metas = \case
+    S.Nil            -> mempty
+    bs S.:> Tm _   _ -> metas bs
+    bs S.:> Ty m v _ -> IntMap.insert (getMeta m) (fromMaybe (metavar m) v) (metas bs)
 
 
 type Suffix = [Meta :=: Maybe Type ::: Type]

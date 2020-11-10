@@ -96,7 +96,7 @@ switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ 
 as :: Check Quote ::: Check Quote -> Synth Quote
 as (m ::: _T) = Synth $ trace "as" $ do
   env <- gets toEnv
-  _T' <- eval env <$> check (_T ::: KType)
+  _T' <- uncurry eval env <$> check (_T ::: KType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -235,7 +235,7 @@ elabComp (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s . trace "elabComp" $
   foldr (\ b k bs -> do
     b' <- check (snd b ::: KType)
     env <- gets toEnv
-    fmap (eval env) b' >- k (bs . (b':)))
+    fmap (uncurry eval env) b' >- k (bs . (b':)))
   (\ bs' -> do
     d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
     t' <- check (checkExpr t ::: KType)
@@ -349,8 +349,8 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
     -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
     let QComp bs _ _ = quoteComp 0 _T
         bs' = map (set icit_ Im) bs
-    QComp bs'' s t <- elab $ foldr (\ b k -> gets toEnv >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs'
-    let c_T = evalComp Nil (QComp (bs' <> bs'') s t)
+    QComp bs'' s t <- elab $ foldr (\ b k -> gets toEnv >>= \ env -> fmap (uncurry eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs'
+    let c_T = evalComp Nil mempty (QComp (bs' <> bs'') s t)
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T)) ::: c_T
   -- FIXME: constructor functions should have signatures, but constructors should not.
   pure
@@ -371,9 +371,9 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
     -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
     let QComp bs _ _ = quoteComp 0 _T
         bs' = map (set icit_ Im) bs
-    QComp bs'' s t <- elab $ foldr (\ b k -> gets toEnv >>= \ env -> fmap (eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs'
+    QComp bs'' s t <- elab $ foldr (\ b k -> gets toEnv >>= \ env -> fmap (uncurry eval env) b >- k) (check (switch (elabComp t) ::: KType)) bs'
     -- FIXME: check that the interface is a member of the sig.
-    let _T = evalComp Nil (QComp (bs' <> bs'') s t)
+    let _T = evalComp Nil mempty (QComp (bs' <> bs'') s t)
     pure $ n :=: Nothing ::: _T
   pure $ Just (DInterface (scopeFromList cs)) ::: _T
 
@@ -384,7 +384,7 @@ elabTermDef
   -> S.Ann S.Expr
   -> m Expr
 elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
-  elab $ eval Nil <$> check (go (checkExpr expr) ::: TSusp _T)
+  elab $ eval Nil mempty <$> check (go (checkExpr expr) ::: TSusp _T)
   where
   go k = Check $ \ _T -> case _T of
     TSusp (TForAll Binding{ name = Just n } _) -> tracePretty n $ check (lam n (go k) ::: _T)
@@ -411,7 +411,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ local (const s) $ do
       -- FIXME: add the effect var to the QComp before evaluating.
-      _T <- runModule . elab $ addEffectVar . evalComp Nil <$> check (switch (elabComp tele) ::: KType)
+      _T <- runModule . elab $ addEffectVar . evalComp Nil mempty <$> check (switch (elabComp tele) ::: KType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
