@@ -159,24 +159,6 @@ data Var a
   | Metavar Meta
   deriving (Foldable, Functor, Traversable)
 
-instance Eq a => Eq (Var a) where
-  (==) = curry $ \case
-    (Global  q1, Global  q2) -> q1 == q2
-    (Global  _,  _)          -> False
-    (Free    l1, Free    l2) -> l1 == l2
-    (Free    _,  _)          -> False
-    (Metavar m1, Metavar m2) -> m1 == m2
-    (Metavar _,  _)          -> False
-
-instance Ord a => Ord (Var a) where
-  compare = curry $ \case
-    (Global  q1, Global  q2) -> q1 `compare` q2
-    (Global  _,  _)          -> LT
-    (Free    l1, Free    l2) -> l1 `compare` l2
-    (Free    _,  _)          -> LT
-    (Metavar m1, Metavar m2) -> m1 `compare` m2
-    (Metavar _,  _)          -> LT
-
 unVar :: (Q Name -> b) -> (a -> b) -> (Meta -> b) -> Var a -> b
 unVar f g h = \case
   Global  n -> f n
