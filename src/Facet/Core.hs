@@ -14,6 +14,7 @@ module Facet.Core
 , instantiateClause
 , Binding(..)
 , icit_
+, type_
   -- ** Variables
 , Var(..)
 , unVar
@@ -145,6 +146,9 @@ data Binding a = Binding
 
 icit_ :: Lens' (Binding a) Icit
 icit_ = lens icit (\ b icit -> b{ icit })
+
+type_ :: Lens' (Binding a) a
+type_ = lens type' (\ b type' -> b{ type' })
 
 
 -- Variables
