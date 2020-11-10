@@ -568,7 +568,7 @@ solve v = go v []
 
 -- FIXME: we don’t get good source references during unification
 unify :: HasCallStack => Type -> Type -> Elab ()
-unify t1 t2 = case (t1, t2) of
+unify t1 t2 = trace "unify" $ case (t1, t2) of
   (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> onTop $ \ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
     (True,  True,  _)       -> restore
     (True,  False, Nothing) -> replace [g :=: Just (metavar v2) ::: _K]
