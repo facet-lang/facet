@@ -166,6 +166,7 @@ f $$ a = Synth $ trace "$$" $ do
 -- FIXME: should this do something about the signature?
 Binding _ n _s _T |- b = trace "|-" $ do
   i <- depth
+  -- FIXME: should the context allow names in Maybe?
   modify (|> Tm (fromMaybe __ n) _T)
   a <- b
   let extract (gamma :> Tm _ _) | i == level (Context gamma) = gamma
