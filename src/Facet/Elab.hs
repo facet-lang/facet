@@ -552,19 +552,6 @@ onTop f = do
       Nothing -> modify (|> elem)
     _         -> onTop f <* modify (|> elem)
 
-
-solve :: HasCallStack => Meta -> Type -> Elab ()
-solve v = go v []
-  where
-  go v ext t = onTop $ \ (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) t || occursInSuffix (== Metavar m) ext, d) of
-    (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
-    (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ])
-    (True,  False, Just t') -> modify (<>< ext) >> unify t' t >> restore
-    (False, True,  _)       -> go v ((m :=: d ::: _K):ext) t >> replace []
-    (False, False, _)       -> go v ext t >> restore
-
-  occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
-
 -- FIXME: we don’t get good source references during unification
 unify :: HasCallStack => Type -> Type -> Elab ()
 unify t1 t2 = trace "unify" $ value t1 t2
@@ -576,9 +563,9 @@ unify t1 t2 = trace "unify" $ value t1 t2
       (True,  True,  _)       -> restore
       (True,  False, Nothing) -> replace [g :=: Just (metavar v2) ::: _K]
       (False, True,  Nothing) -> replace [g :=: Just (metavar v1) ::: _K]
-      (True,  False, Just t)  -> unify (metavar v2) t >> restore
-      (False, True,  Just t)  -> unify (metavar v1) t >> restore
-      (False, False, _)       -> unify (metavar v1) (metavar v2) >> restore
+      (True,  False, Just t)  -> value (metavar v2) t >> restore
+      (False, True,  Just t)  -> value (metavar v1) t >> restore
+      (False, False, _)       -> value (metavar v1) (metavar v2) >> restore
     (VNe (Metavar v1 :$ Nil), t2)                      -> solve v1 t2
     (t1, VNe (Metavar v2 :$ Nil))                      -> solve v2 t1
     (KType, KType)                                     -> pure ()
@@ -586,20 +573,20 @@ unify t1 t2 = trace "unify" $ value t1 t2
     (KInterface, KInterface)                           -> pure ()
     (KInterface, _)                                    -> nope
     (TSusp c1, TSusp c2)                               -> comp c1 c2
-    (TSusp (TRet (Sig Nothing []) t1), t2)             -> unify t1 t2
-    (t1, TSusp (TRet (Sig Nothing []) t2))             -> unify t1 t2
+    (TSusp (TRet (Sig Nothing []) t1), t2)             -> value t1 t2
+    (t1, TSusp (TRet (Sig Nothing []) t2))             -> value t1 t2
     (TSusp{}, _)                                       -> nope
     (ELam{}, ELam{})                                   -> nope
     (ELam{}, _)                                        -> nope
-    (VNe (v1 :$ sp1), VNe (v2 :$ sp2))                 -> var v1 v2 >> spine (pl unify) sp1 sp2
+    (VNe (v1 :$ sp1), VNe (v2 :$ sp2))                 -> var v1 v2 >> spine (pl value) sp1 sp2
     (VNe{}, _)                                         -> nope
-    (ECon (q1 :$ sp1), ECon (q2 :$ sp2))               -> unless (q1 == q2) nope >> spine unify sp1 sp2
+    (ECon (q1 :$ sp1), ECon (q2 :$ sp2))               -> unless (q1 == q2) nope >> spine value sp1 sp2
     (ECon{}, _)                                        -> nope
     (TString, TString)                                 -> pure ()
     (TString, _)                                       -> nope
     (EString e1, EString e2)                           -> unless (e1 == e2) nope
     (EString{}, _)                                     -> nope
-    (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> unless (q1 == q2) nope >> spine (pl unify) sp1 sp2
+    (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> unless (q1 == q2) nope >> spine (pl value) sp1 sp2
     (EOp{}, _)                                         -> nope
 
   var v1 v2 = case (v1, v2) of
@@ -617,17 +604,29 @@ unify t1 t2 = trace "unify" $ value t1 t2
   comp c1 c2 = case (c1, c2) of
     (TForAll t1 b1, TForAll t2 b2) -> do { binding t1 t2 ; d <- depth ; t1 |- comp (b1 (free d)) (b2 (free d)) ; pure () }
     (TForAll{}, _)                 -> nope
-    (TRet s1 t1, TRet s2 t2)       -> sig s1 s2 >> unify t1 t2
+    (TRet s1 t1, TRet s2 t2)       -> sig s1 s2 >> value t1 t2
     (TRet{}, _)                    -> nope
 
-  binding (Binding p1 _ d1 t1) (Binding p2 _ d2 t2) = unless (p1 == p2) nope >> eff (spine unify) d1 d2 >> unify t1 t2
+  binding (Binding p1 _ d1 t1) (Binding p2 _ d2 t2) = unless (p1 == p2) nope >> eff (spine value) d1 d2 >> value t1 t2
 
-  sig (Sig e1 c1) (Sig e2 c2) = eff unify e1 e2 >> spine unify c1 c2
+  sig (Sig e1 c1) (Sig e2 c2) = eff value e1 e2 >> spine value c1 c2
 
   eff f e1 e2 = case (e1, e2) of
     (Nothing, Nothing) -> pure ()
     (Just e1, Just e2) -> f e1 e2
     _                  -> nope
+
+  solve :: HasCallStack => Meta -> Type -> Elab ()
+  solve v = go v []
+    where
+    go v ext t = onTop $ \ (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) t || occursInSuffix (== Metavar m) ext, d) of
+      (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
+      (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ])
+      (True,  False, Just t') -> modify (<>< ext) >> value t' t >> restore
+      (False, True,  _)       -> go v ((m :=: d ::: _K):ext) t >> replace []
+      (False, False, _)       -> go v ext t >> restore
+
+  occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
 
 
 -- Machinery
