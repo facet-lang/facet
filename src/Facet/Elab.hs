@@ -75,11 +75,10 @@ import           Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Type -> Elab Level
+meta :: Type -> Elab Meta
 meta _T = do
-  ctx <- get
   m <- Meta <$> fresh
-  level ctx <$ put (ctx |> Ty m Nothing _T)
+  m <$ modify (|> Ty m Nothing _T)
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
@@ -87,7 +86,7 @@ instantiate :: Quote ::: Comp -> Elab (Quote ::: Type)
 instantiate (e ::: _T) = case _T of
   TForAll (Binding Im _ _ _T) _B -> do
     m <- meta _T
-    instantiate (QApp e (Im, QVar (Free (Index 0))) ::: _B (free m))
+    instantiate (QApp e (Im, QVar (Free (Index 0))) ::: _B (metavar m))
   _                              -> pure $ e ::: TSusp _T
 
 
@@ -315,7 +314,7 @@ elabPattern sig = go
 
   inst = \case
   -- FIXME: assert that the signature is empty
-    TForAll (Binding Im _ _s _T) _B -> meta _T >>= inst . _B . free
+    TForAll (Binding Im _ _s _T) _B -> meta _T >>= inst . _B . metavar
     _T                              -> pure (TSusp _T)
   subpatterns _T' = \case
     []   -> \ k -> k _T' []
