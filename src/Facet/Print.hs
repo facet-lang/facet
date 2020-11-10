@@ -12,6 +12,7 @@ module Facet.Print
   -- * Misc
 , intro
 , tintro
+, meta
 ) where
 
 import           Data.Foldable (foldl', toList)
@@ -97,7 +98,7 @@ data Precedence
 -- FIXME: move this into Facet.Style or something instead.
 data Highlight
   = Nest Int
-  | Name Level
+  | Name Int
   | Keyword
   | Con
   | Type
@@ -157,10 +158,10 @@ data Var
   | Cons Name
 
 
-printVar :: ((Int -> Print) -> Name -> Level -> Print) -> Var -> Print
+printVar :: ((Int -> Print) -> Name -> Int -> Print) -> Var -> Print
 printVar name = \case
-  TLocal n d -> name upper n d
-  Local  n d -> name lower n d
+  TLocal n d -> name upper n (getLevel d)
+  Local  n d -> name lower n (getLevel d)
   Cons     n -> setPrec Var (annotate Con (pretty n))
 
 
@@ -235,14 +236,19 @@ printModule (C.Module mname is _ ds) = module_
   defn (a :=: b) = group a <> hardline <> group b
 
 intro, tintro :: Name -> Level -> Print
-intro  = name lower
-tintro = name upper
+intro  n = name lower n . getLevel
+tintro n = name upper n . getLevel
 qvar (_ :.: n) = setPrec Var (pretty n)
 
+meta :: Meta -> Print
+meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m
+
 var = printVar name
+
+name :: (Int -> Print) -> Name -> Int -> Print
 name f n d = setPrec Var . annotate (Name d) $
   if n == __ then
-    pretty '_' <> f (getLevel d)
+    pretty '_' <> f d
   else
     pretty n
 

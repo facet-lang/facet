@@ -11,7 +11,6 @@ module Facet.Style
 import           Data.Colour.RGBSpace.HSL
 import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Maybe (fromMaybe)
-import           Facet.Name (Level(getLevel))
 import qualified Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print
@@ -66,7 +65,7 @@ terminalStyle = \case
 terminalCodeStyle :: Print.Highlight -> [SGR]
 terminalCodeStyle = \case
   Nest i  -> [setRGB (pick i 0.4 0.8)]
-  Name i  -> [setRGB (pick (-getLevel i) 0.8 0.6)]
+  Name i  -> [setRGB (pick (-i) 0.8 0.6)]
   Keyword -> [setRGB (hsl 300 0.7 0.4)]
   Op      -> [setRGB (hsl 180 0.7 0.4)]
   Type    -> [setRGB (hsl 60 0.5 0.5)]
