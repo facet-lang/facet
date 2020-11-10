@@ -567,38 +567,40 @@ solve v = go v []
 
 -- FIXME: we don’t get good source references during unification
 unify :: HasCallStack => Type -> Type -> Elab ()
-unify t1 t2 = trace "unify" $ case (t1, t2) of
-  (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> onTop $ \ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
-    (True,  True,  _)       -> restore
-    (True,  False, Nothing) -> replace [g :=: Just (metavar v2) ::: _K]
-    (False, True,  Nothing) -> replace [g :=: Just (metavar v1) ::: _K]
-    (True,  False, Just t)  -> unify (metavar v2) t >> restore
-    (False, True,  Just t)  -> unify (metavar v1) t >> restore
-    (False, False, _)       -> unify (metavar v1) (metavar v2) >> restore
-  (VNe (Metavar v1 :$ Nil), t2)                      -> solve v1 t2
-  (t1, VNe (Metavar v2 :$ Nil))                      -> solve v2 t1
-  (KType, KType)                                     -> pure ()
-  (KType, _)                                         -> nope
-  (KInterface, KInterface)                           -> pure ()
-  (KInterface, _)                                    -> nope
-  (TSusp c1, TSusp c2)                               -> comp c1 c2
-  (TSusp (TRet (Sig Nothing []) t1), t2)             -> unify t1 t2
-  (t1, TSusp (TRet (Sig Nothing []) t2))             -> unify t1 t2
-  (TSusp{}, _)                                       -> nope
-  (ELam{}, ELam{})                                   -> nope
-  (ELam{}, _)                                        -> nope
-  (VNe (v1 :$ sp1), VNe (v2 :$ sp2))                 -> var v1 v2 >> spine (pl unify) sp1 sp2
-  (VNe{}, _)                                         -> nope
-  (ECon (q1 :$ sp1), ECon (q2 :$ sp2))               -> unless (q1 == q2) nope >> spine unify sp1 sp2
-  (ECon{}, _)                                        -> nope
-  (TString, TString)                                 -> pure ()
-  (TString, _)                                       -> nope
-  (EString e1, EString e2)                           -> unless (e1 == e2) nope
-  (EString{}, _)                                     -> nope
-  (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> unless (q1 == q2) nope >> spine (pl unify) sp1 sp2
-  (EOp{}, _)                                         -> nope
+unify t1 t2 = trace "unify" $ value t1 t2
   where
   nope = couldNotUnify "mismatch" t1 t2
+
+  value t1 t2 = case (t1, t2) of
+    (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> onTop $ \ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
+      (True,  True,  _)       -> restore
+      (True,  False, Nothing) -> replace [g :=: Just (metavar v2) ::: _K]
+      (False, True,  Nothing) -> replace [g :=: Just (metavar v1) ::: _K]
+      (True,  False, Just t)  -> unify (metavar v2) t >> restore
+      (False, True,  Just t)  -> unify (metavar v1) t >> restore
+      (False, False, _)       -> unify (metavar v1) (metavar v2) >> restore
+    (VNe (Metavar v1 :$ Nil), t2)                      -> solve v1 t2
+    (t1, VNe (Metavar v2 :$ Nil))                      -> solve v2 t1
+    (KType, KType)                                     -> pure ()
+    (KType, _)                                         -> nope
+    (KInterface, KInterface)                           -> pure ()
+    (KInterface, _)                                    -> nope
+    (TSusp c1, TSusp c2)                               -> comp c1 c2
+    (TSusp (TRet (Sig Nothing []) t1), t2)             -> unify t1 t2
+    (t1, TSusp (TRet (Sig Nothing []) t2))             -> unify t1 t2
+    (TSusp{}, _)                                       -> nope
+    (ELam{}, ELam{})                                   -> nope
+    (ELam{}, _)                                        -> nope
+    (VNe (v1 :$ sp1), VNe (v2 :$ sp2))                 -> var v1 v2 >> spine (pl unify) sp1 sp2
+    (VNe{}, _)                                         -> nope
+    (ECon (q1 :$ sp1), ECon (q2 :$ sp2))               -> unless (q1 == q2) nope >> spine unify sp1 sp2
+    (ECon{}, _)                                        -> nope
+    (TString, TString)                                 -> pure ()
+    (TString, _)                                       -> nope
+    (EString e1, EString e2)                           -> unless (e1 == e2) nope
+    (EString{}, _)                                     -> nope
+    (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> unless (q1 == q2) nope >> spine (pl unify) sp1 sp2
+    (EOp{}, _)                                         -> nope
 
   var v1 v2 = case (v1, v2) of
     (Global q1, Global q2)   -> unless (q1 == q2) nope
