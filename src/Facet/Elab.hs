@@ -162,7 +162,7 @@ f $$ a = Synth $ trace "$$" $ do
 
 
 (|-) :: HasCallStack => Name ::: Type -> Elab a -> Elab a
-(n ::: _T) |- b = do
+(n ::: _T) |- b = trace "|-" $ do
   i <- depth
   modify (|> Tm n _T)
   a <- b
