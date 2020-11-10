@@ -276,8 +276,8 @@ force e = Synth $ trace "force" $ do
 
 -- FIXME: go find the pattern matching matrix algorithm
 elabClauses :: [S.Clause] -> Check Quote
-elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = lam n $ checkExpr b
-elabClauses cs = Check $ \ _T -> do
+elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = mapCheck (trace "elabClauses") $ lam n $ checkExpr b
+elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
   -- FIXME: use the signature to elaborate the pattern
   (Binding _ _ s _A, _B) <- expectQuantifier "when checking clauses" _T
   d <- depth
