@@ -118,7 +118,7 @@ data Sig a = Sig
   { effectVar  :: Maybe a
   , interfaces :: [a]
   }
-  deriving (Foldable, Functor, Traversable)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 effectVar_ :: Lens' (Sig a) (Maybe a)
 effectVar_ = lens effectVar (\ s effectVar -> s{ effectVar })
@@ -142,7 +142,7 @@ data Binding a = Binding
   , delta :: Maybe [a]
   , type' :: a
   }
-  deriving (Foldable, Functor, Traversable)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 icit_ :: Lens' (Binding a) Icit
 icit_ = lens icit (\ b icit -> b{ icit })
@@ -157,7 +157,7 @@ data Var a
   = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
   | Free a
   | Metavar Meta
-  deriving (Foldable, Functor, Traversable)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 unVar :: (Q Name -> b) -> (a -> b) -> (Meta -> b) -> Var a -> b
 unVar f g h = \case
@@ -274,7 +274,7 @@ data Pattern a
   = PVar a
   | PCon (Q Name :$ Pattern a)
   | PEff (Q Name) (Stack (Pattern a)) a
-  deriving (Foldable, Functor, Traversable)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)
@@ -381,8 +381,10 @@ data Quote
   | QTString
   | QEString Text
   | QEOp (Q Name)
+  deriving (Eq, Ord, Show)
 
 data QComp = QComp [Binding Quote] (Sig Quote) Quote
+  deriving (Eq, Ord, Show)
 
 quote :: Level -> Value -> Quote
 quote d = \case
