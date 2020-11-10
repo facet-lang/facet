@@ -235,7 +235,7 @@ printModule (C.Module mname is _ ds) = module_
   defn (a :=: b) = group a <> hardline <> group b
 
 intro, tintro :: Name -> Level -> Print
-intro = name lower
+intro  = name lower
 tintro = name upper
 qvar (_ :.: n) = setPrec Var (pretty n)
 
