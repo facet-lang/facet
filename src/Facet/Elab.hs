@@ -162,6 +162,7 @@ f $$ a = Synth $ trace "$$" $ do
 
 
 (|-) :: HasCallStack => Binding Value -> Elab a -> Elab a
+-- FIXME: this isn’t _quite_ the shape we want to push onto the context because e.g. constructor patterns can bind multiple variables but they’d all have the same icit & signature.
 -- FIXME: should this do something about the signature?
 Binding _ n _s _T |- b = trace "|-" $ do
   i <- depth
