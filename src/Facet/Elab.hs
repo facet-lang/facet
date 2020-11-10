@@ -614,7 +614,7 @@ unify t1 t2 = case (t1, t2) of
   spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> sequenceA_ (zipWith f sp1 sp2)
 
   comp c1 c2 = case (c1, c2) of
-    (TForAll t1 b1, TForAll t2 b2) -> do { binding t1 t2 ; d <- depth ; comp (b1 (free d)) (b2 (free d)) ; pure () }
+    (TForAll t1 b1, TForAll t2 b2) -> do { binding t1 t2 ; d <- depth ; t1 |- comp (b1 (free d)) (b2 (free d)) ; pure () }
     (TForAll{}, _)                 -> nope
     (TRet s1 t1, TRet s2 t2)       -> sig s1 s2 >> unify t1 t2
     (TRet{}, _)                    -> nope
