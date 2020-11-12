@@ -34,13 +34,13 @@ rethrowElabErrors src = L.runThrow rethrow
     let _T = entryType e
         s = sortOf sort _T
         n' = case e of
-          Tm n   _ -> name s n d
-          Ty m _ _ -> meta m
+          Rigid n   _ -> name s n d
+          Flex  m _ _ -> meta m
     in  ( succ d
         , sort  :> s
         , print :> n'
         , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printValue print _T))) <> case e of
-          Ty _ v _ -> space <> pretty '=' <+> case v of
+          Flex _ v _ -> space <> pretty '=' <+> case v of
             Just v -> reAnnotate Code (getPrint (printValue print v))
             _      -> pretty '?'
           _        -> mempty )

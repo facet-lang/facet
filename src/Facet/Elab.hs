@@ -78,7 +78,7 @@ import           Prelude hiding (span, zipWith)
 meta :: Type -> Elab Meta
 meta _T = do
   m <- Meta <$> fresh
-  m <$ modify (|> Ty m Nothing _T)
+  m <$ modify (|> Flex m Nothing _T)
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
@@ -167,12 +167,12 @@ f $$ a = Synth $ trace "$$" $ do
 Binding _ n _s _T |- b = trace "|-" $ do
   i <- depth
   -- FIXME: should the context allow names in Maybe?
-  modify (|> Tm (fromMaybe __ n) _T)
+  modify (|> Rigid (fromMaybe __ n) _T)
   a <- b
-  let extract (gamma :> Tm _ _) | i == level (Context gamma) = gamma
-      extract (gamma :> e@Ty{})                              = extract gamma :> e
-      extract (_     :> _)                                   = error "bad context entry"
-      extract Nil                                            = error "bad context"
+  let extract (gamma :> Rigid _ _) | i == level (Context gamma) = gamma
+      extract (gamma :> e@Flex{})                               = extract gamma :> e
+      extract (_     :> _)                                      = error "bad context entry"
+      extract Nil                                               = error "bad context"
   a <$ modify (Context . extract . elems)
 
 infix 1 |-
@@ -548,7 +548,7 @@ onTop f = do
     Nil           -> error "wtf empty context" -- FIXME: make this a real error
   put gamma
   case elem of
-    Ty n v _T -> f (n :=: v ::: _T) >>= \case
+    Flex n v _T -> f (n :=: v ::: _T) >>= \case
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
     _         -> onTop f <* modify (|> elem)
