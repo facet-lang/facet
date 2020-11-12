@@ -560,7 +560,7 @@ unify t1 t2 = trace "unify" $ value t1 t2
   nope = couldNotUnify "mismatch" t1 t2
 
   value t1 t2 = case (t1, t2) of
-    (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> onTop $ \ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
+    (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> trace "flex-flex" $ onTop $ \ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
       (True,  True,  _)       -> restore
       (True,  False, Nothing) -> replace [g :=: Just (metavar v2) ::: _K]
       (False, True,  Nothing) -> replace [g :=: Just (metavar v1) ::: _K]
