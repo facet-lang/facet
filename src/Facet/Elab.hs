@@ -618,7 +618,7 @@ unify t1 t2 = trace "unify" $ value t1 t2
     _                  -> nope
 
   solve :: HasCallStack => Meta -> Type -> Elab ()
-  solve v = go v []
+  solve v = trace "solve" . go v []
     where
     go v ext t = onTop $ \ (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) t || occursInSuffix (== Metavar m) ext, d) of
       (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
