@@ -228,8 +228,8 @@ elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s 
   check (switch (foldl' ($$) (mapSynth (setSpan s') (var n)) (checkExpr <$> sp)) ::: _T)
 
 elabComp :: S.Ann S.Comp -> Synth QComp
-elabComp (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s . trace "elabComp" $
-  foldr (\ b k bs -> do
+elabComp (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s . trace "elabComp" $ foldr
+  (\ b k bs -> do
     b' <- check (snd b ::: KType)
     env <- gets toEnv
     fmap (uncurry eval env) b' |- k (bs . (b':)))
