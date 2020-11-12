@@ -317,11 +317,11 @@ elabPattern sig = go
   -- FIXME: assert that the signature is empty
     TForAll (Binding Im _ _s _T) _B -> meta _T >>= inst . _B . metavar
     _T                              -> pure _T
-  subpatterns _T' = \case
-    []   -> \ k -> k (TSusp _T') []
+  subpatterns _A = \case
+    []   -> \ k -> k (TSusp _A) []
     p:ps -> \ k -> do
       -- FIXME: assert that the signature is empty
-      (t@(Binding _ _ _s _A), _B) <- expectQuantifier "when checking constructor pattern" (TSusp _T')
+      (t@(Binding _ _ _s _A), _B) <- expectQuantifier "when checking constructor pattern" (TSusp _A)
       -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
       -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
       d <- depth
