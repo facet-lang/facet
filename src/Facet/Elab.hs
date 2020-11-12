@@ -86,7 +86,7 @@ instantiate :: Quote ::: Comp -> Elab (Quote ::: Type)
 instantiate (e ::: _T) = case _T of
   TForAll (Binding Im _ _ _T) _B -> do
     m <- meta (Nothing ::: _T)
-    instantiate (QApp e (Im, QVar (Free (Index 0))) ::: _B (metavar m))
+    instantiate (QApp e (Im, QVar (Metavar m)) ::: _B (metavar m))
   _                              -> pure $ e ::: TSusp _T
 
 
