@@ -141,9 +141,7 @@ var :: Q Name -> Synth Quote
 var n = Synth $ trace "var" $ get >>= \ ctx -> if
   | Just (i, _T) <- lookupInContext n ctx -> pure (QVar (Free i) ::: _T)
   | otherwise                             -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph (interfaces sig)) >>= \case
-    Just (n ::: _T) -> do
-      n ::: _T <- instantiate (QEOp n ::: _T)
-      pure $ n ::: _T
+    Just (n ::: _T) -> instantiate (QEOp n ::: _T)
     _ -> do
       n :=: _ ::: _T <- resolveQ n
       synth $ global (n ::: _T)
