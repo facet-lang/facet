@@ -55,8 +55,8 @@ printReason ctx = group . \case
   AmbiguousName n qs     -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
   Mismatch msg exp act   -> reflow msg
-      <> hardline <> pretty "expected:" <> print exp'
-      <> hardline <> pretty "  actual:" <> print act'
+    <> hardline <> pretty "expected:" <> print exp'
+    <> hardline <> pretty "  actual:" <> print act'
     where
     exp' = either reflow (printType ctx) exp
     act' = printType ctx act
