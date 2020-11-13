@@ -12,8 +12,6 @@ module Facet.Elab
 , synthExpr
 , checkExpr
 , _Type
-, forAll
-, comp
 , ($$)
 , lam
 , thunk
@@ -21,16 +19,15 @@ module Facet.Elab
 , string
   -- * Modules
 , elabModule
-, apply
-, applyComp
   -- * Errors
 , Err(..)
 , Reason(..)
-  -- * Machinery
+  -- * Unification
 , ElabContext(..)
 , sig_
+  -- * Machinery
 , Elab(..)
-, elabWith
+, elab
 , check
 , Check(..)
 , Synth(..)
@@ -39,16 +36,16 @@ module Facet.Elab
 import           Control.Algebra
 import           Control.Applicative (Alternative)
 import           Control.Carrier.Error.Church
+import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Empty
-import           Control.Effect.Lens (view, views, (.=))
+import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Sum
-import           Control.Lens (Lens', at, ix, lens)
-import           Control.Monad (unless, when, (<=<))
+import           Control.Lens (Lens', at, ix, lens, set)
+import           Control.Monad (unless, (<=<))
 import           Data.Bifunctor (first)
-import           Data.Foldable (asum, foldl', for_, toList)
-import qualified Data.IntMap as IntMap
+import           Data.Foldable (asum, foldl', for_, sequenceA_, toList)
 import           Data.Maybe (catMaybes, fromMaybe)
 import           Data.Semialign
 import qualified Data.Set as Set
@@ -56,14 +53,13 @@ import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Context as Context
 import           Facet.Core hiding (global, ($$))
-import qualified Facet.Core as C
 import           Facet.Effect.Time.System
 import           Facet.Effect.Trace as Trace
 import           Facet.Graph as Graph
 import           Facet.Lens
 import           Facet.Name hiding (L, R)
 import           Facet.Span (Pos, Span(..))
-import           Facet.Stack hiding ((!?))
+import           Facet.Stack
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
@@ -78,96 +74,29 @@ import           Prelude hiding (span, zipWith)
 
 -- General
 
--- FIXME: we don’t get good source references during unification
-unify :: Type -> Type -> Elab Type
-unify = unifyValue
-  where
-  unifyValue t1 t2 = trace "unify" $ case t1 :===: t2 of
-    VNe (Metavar v1 :$ Nil)          :===: VNe (Metavar v2 :$ Nil)          -> if v1 == v2 then pure (metavar v1) else solve (v1 :=: metavar v2)
-    VNe (Metavar v :$ Nil)           :===: x                                -> solve (v :=: x)
-    x                                :===: VNe (Metavar v :$ Nil)           -> solve (v :=: x)
-    -- FIXME: resolve globals to try to progress past certain inequalities
-    VNe (h1 :$ e1)                   :===: VNe (h2 :$ e2)                   -> VNe . (h1 :$) <$ unless (h1 == h2) nope <*> unifySpine e1 e2
-    TSusp t1                         :===: TSusp t2                         -> TSusp <$> unifyComp t1 t2
-    -- FIXME: these make me feel icky
-    TSusp (TRet (Sig Nothing []) t1) :===: t2                               -> unifyValue t1 t2
-    t1                               :===: TSusp (TRet (Sig Nothing []) t2) -> unifyValue t1 t2
-    VNe{}                            :===: _                                -> nope
-    TSusp{}                          :===: _                                -> nope
-    KType                            :===: KType                            -> pure KType
-    KType                            :===: _                                -> nope
-    KInterface                       :===: KInterface                       -> pure KInterface
-    KInterface                       :===: _                                -> nope
-    ECon{}                           :===: _                                -> nope
-    ELam{}                           :===: _                                -> nope
-    TString                          :===: TString                          -> pure TString
-    TString{}                        :===: _                                -> nope
-    EString s1                       :===: EString s2                       -> EString s1 <$ unless (s1 == s2) nope
-    EString{}                        :===: _                                -> nope
-    EOp{}                            :===: _                                -> nope
-    where
-    -- FIXME: build and display a diff of the root types
-    nope = couldNotUnify "mismatch" t1 t2
-
-    unifySpine sp1 sp2 = unless (length sp1 == length sp2) nope *> sequenceA (zipWith unifyArg sp1 sp2)
-    unifyArg (p1, a1) (p2, a2) = (p1,) <$ unless (p1 == p2) nope <*> unifyValue a1 a2
-
-  unifyComp c1 c2 = case c1 :===: c2 of
-    TForAll (Binding p1 n1 s1 t1) b1 :===: TForAll (Binding p2 _  s2 t2) b2 -> do
-      unless (p1 == p2) nope
-      s <- unifySig s1 s2
-      t <- unifyValue t1 t2
-      d <- views context_ level
-      let v = free d
-      b <- unifyComp (b1 v) (b2 v)
-      pure $ TForAll (Binding p1 n1 s t) (\ v -> bindComp d v b)
-    TRet s1 t1               :===: TRet s2 t2               -> TRet <$> unifySig s1 s2 <*> unifyValue t1 t2
-    -- FIXME: these are probably wrong
-    TRet (Sig Nothing []) t1 :===: t2                       -> TRet (Sig Nothing []) <$> unifyValue t1 (TSusp t2)
-    t1                       :===: TRet (Sig Nothing []) t2 -> TRet (Sig Nothing []) <$> unifyValue (TSusp t1) t2
-    _                        :===: _                        -> nope
-    where
-    nope = couldNotUnify "mismatch" (TSusp c1) (TSusp c2)
-
-    -- FIXME: unify the signatures
-    unifySig s1 _ = pure s1
-    -- unifySig Nothing Nothing     = pure Nothing
-    -- unifySig (Just s1) (Just s2) = Just <$ unless (length s1 == length s2) nope <*> sequenceA (zipWith unifyValue s1 s2)
-    -- unifySig _         _         = nope
-
-  solve (n :=: val') = do
-    subst <- get
-    -- FIXME: occurs check
-    when (n `occursIn` val')
-      $ mismatch "infinite type" (Right (metavar n)) val'
-    case subst IntMap.! getMeta n of
-      Just val ::: _T -> unifyValue val' val
-      Nothing  ::: _T -> val' <$ put (insertSubst n (Just val' ::: _T) subst)
-
-
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Type -> Elab Meta
-meta _T = do
-  subst <- get
-  let m = Meta (length subst)
-  m <$ put (insertSubst m (Nothing ::: _T) subst)
+meta :: (Maybe Value ::: Type) -> Elab Meta
+meta (v ::: _T) = do
+  m <- Meta <$> fresh
+  m <$ modify (|> Flex m v _T)
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
-instantiate :: Expr ::: Comp -> Elab (Expr ::: Type)
+instantiate :: Quote ::: Comp -> Elab (Quote ::: Type)
 instantiate (e ::: _T) = case _T of
   TForAll (Binding Im _ _ _T) _B -> do
-    m <- metavar <$> meta _T
-    instantiate (e C.$$ (Im, m) ::: _B m)
+    m <- meta (Nothing ::: _T)
+    instantiate (QApp e (Im, QVar (Metavar m)) ::: _B (metavar m))
   _                              -> pure $ e ::: TSusp _T
 
 
-switch :: Synth a -> Check a
+switch :: HasCallStack => Synth a -> Check a
 switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
-as :: Check a ::: Check Type -> Synth a
-as (m ::: _T) = Synth $ do
-  _T' <- check (_T ::: KType)
+as :: Check Quote ::: Check Quote -> Synth Quote
+as (m ::: _T) = Synth $ trace "as" $ do
+  env <- gets toEnv
+  _T' <- uncurry eval env <$> check (_T ::: KType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -187,12 +116,12 @@ resolveQ :: Q Name -> Elab (Q Name :=: Maybe Def ::: Comp)
 resolveQ = resolveWith lookupD
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Q Name ::: Comp -> Synth Value
-global (q ::: _T) = Synth $ instantiate (C.global q ::: _T)
+global :: Q Name ::: Comp -> Synth Quote
+global (q ::: _T) = Synth $ instantiate (QVar (Global q) ::: _T)
 
-lookupInContext :: Q Name -> Context Type -> Maybe (Level, Type)
+lookupInContext :: Q Name -> Context -> Maybe (Index, Type)
 lookupInContext (m:.:n)
-  | m == Nil  = lookupLevel n
+  | m == Nil  = lookupIndex n
   | otherwise = const Nothing
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
@@ -208,12 +137,12 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: Q Name -> Synth Value
-var n = Synth $ trace "var" $ view context_ >>= \ ctx -> if
-  | Just (i, _T) <- lookupInContext n ctx -> pure (free i ::: _T)
+var :: Q Name -> Synth Quote
+var n = Synth $ trace "var" $ get >>= \ ctx -> if
+  | Just (i, _T) <- lookupInContext n ctx -> pure (QVar (Free i) ::: _T)
   | otherwise                             -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph (interfaces sig)) >>= \case
     Just (n ::: _T) -> do
-      n ::: _T <- instantiate (EOp (n :$ Nil) ::: _T)
+      n ::: _T <- instantiate (QEOp n ::: _T)
       pure $ n ::: _T
     _ -> do
       n :=: _ ::: _T <- resolveQ n
@@ -222,41 +151,42 @@ var n = Synth $ trace "var" $ view context_ >>= \ ctx -> if
 hole :: Name -> Check a
 hole n = Check $ \ _T -> err $ Hole n _T
 
-($$) :: Synth Value -> Check Value -> Synth Value
+($$) :: Synth Quote -> Check Quote -> Synth Quote
 f $$ a = Synth $ trace "$$" $ do
   f' ::: _F <- synth f
   (Binding _ _ s _A, _B) <- expectQuantifier "in application" _F
   a' <- extendSig s (check (a ::: _A))
-  pure $ f' C.$$ (Ex, a') ::: TSusp (_B a')
+  env <- gets toEnv
+  let a'' = uncurry eval env a'
+  pure $ QApp f' (Ex, a') ::: TSusp (_B a'')
 
 
-elabBinder :: Has (Reader ElabContext) sig m => (Value -> m Value) -> m (Value -> Value)
-elabBinder b = do
-  d <- views context_ level
-  b' <- b (free d)
-  pure $ \ v -> C.bind d v b'
-
-elabBinders :: (Traversable t, Has (Reader ElabContext) sig m) => t (Name ::: Type) -> (t (Name ::: Type) -> m Value) -> m (t Type -> Value)
-elabBinders p b = do
-  d <- views context_ level
-  b' <- b p
-  pure $ \ v -> binds (snd (foldl' (\ (d, s) v -> (succ d, IntMap.insert (getLevel d) v s)) (d, IntMap.empty) v)) b'
-
-(|-) :: Has (Reader ElabContext) sig m => Name ::: Type -> m a -> m a
-t |- b = locally context_ (|> t) b
+(|-) :: HasCallStack => Binding Value -> Elab a -> Elab a
+-- FIXME: this isn’t _quite_ the shape we want to push onto the context because e.g. constructor patterns can bind multiple variables but they’d all have the same icit & signature.
+-- FIXME: should this do something about the signature?
+Binding _ n _s _T |- b = trace "|-" $ do
+  i <- depth
+  -- FIXME: should the context allow names in Maybe?
+  modify (|> Rigid (fromMaybe __ n) _T)
+  a <- b
+  let extract (gamma :> Rigid _ _) | i == level (Context gamma) = gamma
+      extract (gamma :> e@Flex{})                               = extract gamma :> e
+      extract (_     :> _)                                      = error "bad context entry"
+      extract Nil                                               = error "bad context"
+  a <$ modify (Context . extract . elems)
 
 infix 1 |-
 
 
 -- Expressions
 
-synthExpr :: HasCallStack => S.Ann S.Expr -> Synth Expr
+synthExpr :: HasCallStack => S.Ann S.Expr -> Synth Quote
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Var n      -> var n
   S.KType      -> _Type
   S.KInterface -> _Interface
   S.TString    -> _String
-  S.TComp t    -> TSusp <$> elabComp t
+  S.TComp t    -> QTSusp <$> elabComp t
   S.App f a    -> synthExpr f $$ checkExpr a
   S.As t _T    -> as (checkExpr t ::: checkExpr _T)
   S.String s   -> string s
@@ -267,7 +197,7 @@ synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr :: HasCallStack => S.Ann S.Expr -> Check Expr
+checkExpr :: HasCallStack => S.Ann S.Expr -> Check Quote
 checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e of
   S.Hole  n    -> hole n
   S.Lam cs     -> elabClauses cs
@@ -285,7 +215,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
   synth = switch (synthExpr expr)
 
 
-elabBinding :: S.Ann S.Binding -> [(Pos, Check Binding)]
+elabBinding :: S.Ann S.Binding -> [(Pos, Check (Binding Quote))]
 elabBinding (S.Ann s _ (S.Binding p n d t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
     d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
@@ -293,57 +223,50 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
     pure $ Binding p n d' t')
   | n <- maybe [Nothing] (map Just . toList) n ]
 
-elabSig :: S.Ann S.Interface -> Check Value
+elabSig :: S.Ann S.Interface -> Check Quote
 elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
   check (switch (foldl' ($$) (mapSynth (setSpan s') (var n)) (checkExpr <$> sp)) ::: _T)
 
-elabComp :: S.Ann S.Comp -> Synth Comp
-elabComp (S.Ann s _ (S.Comp bs d t)) = mapSynth (setSpan s . trace "elabComp") $ foldr
-  (\ (p, t) b -> mapSynth (setSpan (Span p (end s))) $ forAll t (\ v -> mapCheck (v |-) (switch b)))
-  (mapSynth (setSpan (foldr (flip (foldr ((<>) . S.ann))) (S.ann t) d)) (comp (maybe [] (map elabSig) d) (checkExpr t)))
+elabComp :: S.Ann S.Comp -> Synth QComp
+elabComp (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s . trace "elabComp" $ foldr
+  (\ b k bs -> do
+    b' <- check (snd b ::: KType)
+    env <- gets toEnv
+    fmap (uncurry eval env) b' |- k (bs . (b':)))
+  (\ bs' -> do
+    d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
+    t' <- check (checkExpr t ::: KType)
+    -- FIXME: add the effect var and populate this authoritatively
+    pure $ QComp (bs' []) (Sig Nothing (fromMaybe [] d')) t' ::: KType)
   (elabBinding =<< bs)
+  id
 
 
-_Type :: Synth Type
-_Type = Synth $ pure $ KType ::: KType
+_Type :: Synth Quote
+_Type = Synth $ pure $ QKType ::: KType
 
-_Interface :: Synth Type
-_Interface = Synth $ pure $ KInterface ::: KType
+_Interface :: Synth Quote
+_Interface = Synth $ pure $ QKInterface ::: KType
 
-_String :: Synth Type
-_String = Synth $ pure $ TString ::: KType
-
-
-forAll :: Check Binding -> (Name ::: Type -> Check Comp) -> Synth Comp
-forAll t b = Synth $ trace "forAll" $ do
-  -- FIXME: should we check that the signature is empty?
-  _T@Binding{ name, type' = _A } <- check (t ::: KType)
-  d <- views context_ level
-  _B <- check (b (fromMaybe __ name ::: _A) ::: KType)
-  pure $ TForAll _T (\ v -> bindComp d v _B) ::: KType
-
-comp :: [Check Value] -> Check Type -> Synth Comp
-comp s t = Synth $ trace "comp" $ do
-  s' <- traverse (check . (::: KInterface)) s
-  t' <- check (t ::: KType)
-  pure $ TRet (Sig Nothing s') t' ::: KType
+_String :: Synth Quote
+_String = Synth $ pure $ QTString ::: KType
 
 
-lam :: Name -> (Name ::: Type -> Check Expr) -> Check Expr
+lam :: Name -> Check Quote -> Check Quote
 lam n b = Check $ \ _T -> trace "lam" $ do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
-  (Binding pl _ _s _A, _B) <- expectQuantifier "when checking lambda" _T
+  (t@(Binding pl _ _s _A), _B) <- expectQuantifier "when checking lambda" _T
   -- FIXME: extend the signature if _B v is a TRet.
-  b' <- elabBinder $ \ v -> check (b (n ::: _A) ::: TSusp (_B v))
-  pure $ ELam pl [Clause (PVar (n ::: _A)) (b' . unsafeUnPVar)]
+  d <- depth
+  b' <- t |- check (b ::: TSusp (_B (free d)))
+  pure $ QELam pl [(PVar n, b')]
 
-thunk :: Check Expr -> Check Expr
+thunk :: Check a -> Check a
 thunk e = Check $ trace "thunk" . \case
-  -- FIXME: pretty sure this is redundant
-  -- TSusp (TRet s t) -> extendSig s $ check (e ::: t)
-  t                -> check (e ::: t)
+  TSusp (TRet (Sig _ s) t) -> extendSig (Just s) $ check (e ::: t)
+  t                        -> check (e ::: t)
 
-force :: Synth Expr -> Synth Expr
+force :: Synth a -> Synth a
 force e = Synth $ trace "force" $ do
   e' ::: _T <- synth e
   -- FIXME: should we check the signature? or can we rely on it already having been checked?
@@ -352,17 +275,17 @@ force e = Synth $ trace "force" $ do
 
 
 -- FIXME: go find the pattern matching matrix algorithm
-elabClauses :: [S.Clause] -> Check Expr
-elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = lam n $ \ v -> mapCheck (v |-) (checkExpr b)
-elabClauses cs = Check $ \ _T -> do
+elabClauses :: [S.Clause] -> Check Quote
+elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = mapCheck (trace "elabClauses") $ lam n $ checkExpr b
+elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
   -- FIXME: use the signature to elaborate the pattern
   (Binding _ _ s _A, _B) <- expectQuantifier "when checking clauses" _T
-  d <- views context_ level
+  d <- depth
   -- FIXME: I don’t see how this can be correct; the context will not hold a variable but rather a pattern of them.
   let _B' = TSusp $ _B (free d)
   cs' <- for cs $ \ (S.Clause p b) -> elabPattern (fromMaybe [] s) _A p (\ p' -> do
-    Clause p' <$> elabBinders p' (foldr (|-) (check (checkExpr b ::: _B'))))
-  pure $ ELam Ex cs'
+    (tm <$> p',) <$> check (checkExpr b ::: _B'))
+  pure $ QELam Ex cs'
 
 
 -- FIXME: check for unique variable names
@@ -392,49 +315,47 @@ elabPattern sig = go
 
   inst = \case
   -- FIXME: assert that the signature is empty
-    TForAll (Binding Im _ _s _T) _B -> meta _T >>= inst . _B . metavar
-    _T                              -> pure (TSusp _T)
-  subpatterns _T' = \case
-    []   -> \ k -> k _T' []
-    p:ps -> \ k -> do
+    TForAll (Binding Im _ _s _T) _B -> meta (Nothing ::: _T) >>= inst . _B . metavar
+    _T                              -> pure _T
+  subpatterns = flip $ foldr
+    (\ p rest _A k -> do
       -- FIXME: assert that the signature is empty
-      (Binding _ _ _s _A, _B) <- expectQuantifier "when checking constructor pattern" _T'
+      (t@(Binding _ _ _s _A), _B) <- expectQuantifier "when checking constructor pattern" (TSusp _A)
       -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
       -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
-      v <- metavar <$> meta _A
-      goVal _A p (\ p' -> subpatterns (TSusp (_B v)) ps (\ _T ps' -> k _T (p' : ps')))
+      d <- depth
+      t |- goVal _A p (\ p' -> rest (_B (free d)) (\ _T ps' -> k _T (p' : ps'))))
+      (\ _A k -> k (TSusp _A) [])
 
 
-string :: Text -> Synth Expr
-string s = Synth $ pure $ EString s ::: TString
+string :: Text -> Synth Quote
+string s = Synth $ pure $ QEString s ::: TString
 
 
 -- Declarations
 
 elabDataDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
-  => Q Name ::: Comp
+  => Name ::: Comp
   -> [S.Ann (Name ::: S.Ann S.Comp)]
   -> m [Name :=: Maybe Def ::: Comp]
 -- FIXME: check that all constructors return the datatype.
-elabDataDef (mname :.: dname ::: _T) constructors = trace "elabDataDef" $ do
+elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
+  mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
-    c_T <- elabWith (fmap pure . applyComp) $ go (switch (elabComp t)) _T
+    -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
+    let QComp bs _ _ = quoteComp 0 _T
+        bs' = map (set icit_ Im) bs
+    QComp bs'' s t <- elab $ foldr (\ b k -> gets toEnv >>= \ env -> fmap (uncurry eval env) b |- k) (check (switch (elabComp t) ::: KType)) bs'
+    let c_T = evalComp Nil mempty (QComp (bs' <> bs'') s t)
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T)) ::: c_T
   -- FIXME: constructor functions should have signatures, but constructors should not.
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
     : cs
   where
-  go k = \case
-    TRet _ _                       -> check (k ::: KType)
-    -- FIXME: can sigs appear here?
-    TForAll (Binding _ n s _T) _B  -> do
-      d <- views context_ level
-      _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
-      pure $ TForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
   con q fs = \case
-    TForAll (Binding p n _s _T) _B -> ELam p [Clause (PVar (fromMaybe __ n ::: _T)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
+    TForAll (Binding p n _s _T) _B -> ELam p [Clause (PVar (fromMaybe __ n)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
     _T                             -> ECon (q :$ fs)
 
 elabInterfaceDef
@@ -443,17 +364,15 @@ elabInterfaceDef
   -> [S.Ann (Name ::: S.Ann S.Comp)]
   -> m (Maybe Def ::: Comp)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
-  cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $
-    (\ _T -> n :=: Nothing ::: _T) <$> elabWith (fmap pure . applyComp) (go (check (switch (elabComp t) ::: KType)) _T)
-  pure $ Just (DInterface (scopeFromList cs)) ::: _T
-  where
-  go k = \case
+  cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $ do
+    -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
+    let QComp bs _ _ = quoteComp 0 _T
+        bs' = map (set icit_ Im) bs
+    QComp bs'' s t <- elab $ foldr (\ b k -> gets toEnv >>= \ env -> fmap (uncurry eval env) b |- k) (check (switch (elabComp t) ::: KType)) bs'
     -- FIXME: check that the interface is a member of the sig.
-    TRet _ _                      -> k
-    TForAll (Binding _ n s _T) _B -> do
-      d <- views context_ level
-      _B' <- fromMaybe __ n ::: _T |- go k (_B (free d))
-      pure $ TForAll (Binding Im n s _T) (\ v -> bindComp d v _B')
+    let _T = evalComp Nil mempty (QComp (bs' <> bs'') s t)
+    pure $ n :=: Nothing ::: _T
+  pure $ Just (DInterface (scopeFromList cs)) ::: _T
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
@@ -461,11 +380,11 @@ elabTermDef
   => Comp
   -> S.Ann S.Expr
   -> m Expr
-elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ elabWith (fmap pure . apply) $ check (go (checkExpr expr) ::: TSusp _T)
+elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
+  elab $ eval Nil mempty <$> check (go (checkExpr expr) ::: TSusp _T)
   where
-  go :: Check Expr -> Check Expr
   go k = Check $ \ _T -> case _T of
-    TSusp (TForAll Binding{ name = Just n } _) -> check (lam n (\ v -> mapCheck (v |-) (go k)) ::: _T)
+    TSusp (TForAll Binding{ name = Just n } _) -> tracePretty n $ check (lam n (go k) ::: _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
@@ -488,12 +407,13 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ local (const s) $ do
-      _T <- runModule . elabWith (fmap pure . applyComp) $ addEffectVar <$> check (switch (elabComp tele) ::: KType)
+      -- FIXME: add the effect var to the QComp before evaluating.
+      _T <- runModule . elab $ addEffectVar . evalComp Nil mempty <$> check (switch (elabComp tele) ::: KType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
         S.DataDef cs -> do
-          decls <- runModule $ elabDataDef (mname :.: dname ::: _T) cs
+          decls <- runModule $ elabDataDef (dname ::: _T) cs
           Nothing <$ for_ decls (\ (dname :=: decl) -> scope_.decls_.at dname .= Just decl)
 
         S.InterfaceDef os -> do
@@ -523,11 +443,11 @@ insertEffectVar _E = go
     TRet s t                      -> TRet s{ effectVar = Just _E } t
 
 
-runSubstWith :: (Subst -> a -> m b) -> StateC Subst m a -> m b
-runSubstWith with = runState with emptySubst
-
 extendSig :: Has (Reader ElabContext) sig m => Maybe [Value] -> m a -> m a
 extendSig = maybe id (locally (sig_.interfaces_) . (++))
+
+depth :: Has (State Context) sig m => m Level
+depth = gets level
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
@@ -547,11 +467,11 @@ runWithSpan k (S.Ann s _ a) = runReader s (k a)
 data Err = Err
   { span      :: Span
   , reason    :: Reason
-  , subst     :: Subst
-  , context   :: Context Type
+  , context   :: Context
   , callStack :: Stack Message -- FIXME: keep source references for each message.
   }
 
+-- FIXME: add a constructor for more free-form errors?
 data Reason
   = FreeVariable (Q Name)
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
@@ -564,10 +484,10 @@ data Reason
 -- FIXME: apply the substitution before showing this to the user
 err :: Reason -> Elab a
 err reason = do
-  subst <- get
-  (ctx, span) <- asks ((,) <$> (context :: ElabContext -> Context Type) <*> (span :: ElabContext -> Span))
+  ctx <- get
+  span <- view span_
   callStack <- Trace.callStack
-  throwError $ Err span reason subst ctx callStack
+  throwError $ Err span reason ctx callStack
 
 mismatch :: String -> Either String Type -> Type -> Elab a
 mismatch msg exp act = err $ Mismatch msg exp act
@@ -590,7 +510,7 @@ ambiguousName n qs = err $ AmbiguousName n qs
 expectMatch :: (Type -> Maybe out) -> String -> String -> Type -> Elab out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifier :: String -> Type -> Elab (Binding, Type -> Comp)
+expectQuantifier :: String -> Type -> Elab (Binding Value, Type -> Comp)
 expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing } <=< stripEmpty) "{_} -> _"
 
 stripEmpty :: Type -> Maybe Comp
@@ -599,31 +519,120 @@ stripEmpty = \case
   TSusp t                         -> Just t
   _                               -> Nothing
 
-expectRet :: String -> Type -> Elab (Sig, Type)
+expectRet :: String -> Type -> Elab (Sig Value, Type)
 expectRet = expectMatch (\case { TSusp (TRet s t) -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
--- Machinery
+-- Unification
 
 data ElabContext = ElabContext
-  { context :: Context Type
-  , graph   :: Graph
+  { graph   :: Graph
   , _mname  :: MName
   , module' :: Module
-  , sig     :: Sig
+  , sig     :: Sig Value
   , span    :: Span
   }
 
-context_ :: Lens' ElabContext (Context Type)
-context_ = lens (context :: ElabContext -> Context Type) (\ e context -> (e :: ElabContext){ context })
-
-sig_ :: Lens' ElabContext Sig
+sig_ :: Lens' ElabContext (Sig Value)
 sig_ = lens sig (\ e sig -> e{ sig })
 
 span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Reader ElabContext :+: State Subst :+: Throw Err :+: Trace) sig m => m a }
+
+onTop :: HasCallStack => (Meta :=: Maybe Value ::: Type -> Elab (Maybe Suffix)) -> Elab ()
+onTop f = do
+  ctx <- get
+  (gamma, elem) <- case elems ctx of
+    gamma :> elem -> pure (Context gamma, elem)
+    Nil           -> error "wtf empty context" -- FIXME: make this a real error
+  put gamma
+  case elem of
+    Flex n v _T -> f (n :=: v ::: _T) >>= \case
+      Just v  -> modify (<>< v)
+      Nothing -> modify (|> elem)
+    _         -> onTop f <* modify (|> elem)
+
+-- FIXME: we don’t get good source references during unification
+unify :: HasCallStack => Type -> Type -> Elab ()
+unify t1 t2 = trace "unify" $ value t1 t2
+  where
+  nope = couldNotUnify "mismatch" t1 t2
+
+  value t1 t2 = case (t1, t2) of
+    (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> trace "flex-flex" $ onTop $ \ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
+      (True,  True,  _)       -> restore
+      (True,  False, Nothing) -> replace [g :=: Just (metavar v2) ::: _K]
+      (False, True,  Nothing) -> replace [g :=: Just (metavar v1) ::: _K]
+      (True,  False, Just t)  -> value (metavar v2) t >> restore
+      (False, True,  Just t)  -> value (metavar v1) t >> restore
+      (False, False, _)       -> value (metavar v1) (metavar v2) >> restore
+    (VNe (Metavar v1 :$ Nil), t2)                      -> solve v1 t2
+    (t1, VNe (Metavar v2 :$ Nil))                      -> solve v2 t1
+    (KType, KType)                                     -> pure ()
+    (KType, _)                                         -> nope
+    (KInterface, KInterface)                           -> pure ()
+    (KInterface, _)                                    -> nope
+    (TSusp c1, TSusp c2)                               -> comp c1 c2
+    (TSusp (TRet (Sig Nothing []) t1), t2)             -> value t1 t2
+    (t1, TSusp (TRet (Sig Nothing []) t2))             -> value t1 t2
+    (TSusp{}, _)                                       -> nope
+    (ELam{}, ELam{})                                   -> nope
+    (ELam{}, _)                                        -> nope
+    (VNe (v1 :$ sp1), VNe (v2 :$ sp2))                 -> var v1 v2 >> spine (pl value) sp1 sp2
+    (VNe{}, _)                                         -> nope
+    (ECon (q1 :$ sp1), ECon (q2 :$ sp2))               -> unless (q1 == q2) nope >> spine value sp1 sp2
+    (ECon{}, _)                                        -> nope
+    (TString, TString)                                 -> pure ()
+    (TString, _)                                       -> nope
+    (EString e1, EString e2)                           -> unless (e1 == e2) nope
+    (EString{}, _)                                     -> nope
+    (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> unless (q1 == q2) nope >> spine (pl value) sp1 sp2
+    (EOp{}, _)                                         -> nope
+
+  var v1 v2 = case (v1, v2) of
+    (Global q1, Global q2)   -> unless (q1 == q2) nope
+    (Global{}, _)            -> nope
+    (Free v1, Free v2)       -> unless (v1 == v2) nope
+    (Free{}, _)              -> nope
+    (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
+    (Metavar{}, _)           -> nope
+
+  pl f (p1, t1) (p2, t2) = unless (p1 == p2) nope >> f t1 t2
+
+  spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> sequenceA_ (zipWith f sp1 sp2)
+
+  comp c1 c2 = case (c1, c2) of
+    (TForAll t1 b1, TForAll t2 b2) -> do { binding t1 t2 ; d <- depth ; t1 |- comp (b1 (free d)) (b2 (free d)) ; pure () }
+    (TForAll{}, _)                 -> nope
+    (TRet s1 t1, TRet s2 t2)       -> sig s1 s2 >> value t1 t2
+    (TRet{}, _)                    -> nope
+
+  binding (Binding p1 _ d1 t1) (Binding p2 _ d2 t2) = unless (p1 == p2) nope >> eff (spine value) d1 d2 >> value t1 t2
+
+  sig (Sig e1 c1) (Sig e2 c2) = eff value e1 e2 >> spine value c1 c2
+
+  eff f e1 e2 = case (e1, e2) of
+    (Nothing, Nothing) -> pure ()
+    (Just e1, Just e2) -> f e1 e2
+    _                  -> nope
+
+  solve :: HasCallStack => Meta -> Type -> Elab ()
+  solve v = trace "solve" . go v []
+    where
+    go v ext t = onTop $ \ (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) t || occursInSuffix (== Metavar m) ext, d) of
+      (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
+      (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ])
+      (True,  False, Just t') -> modify (<>< ext) >> value t' t >> restore
+      (False, True,  _)       -> go v ((m :=: d ::: _K):ext) t >> replace []
+      (False, False, _)       -> go v ext t >> restore
+
+  occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
+
+
+-- Machinery
+
+newtype Elab a = Elab { runElab :: forall sig m . Has (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -635,17 +644,18 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Reader ElabContext :+: State Subst :+: Throw Err :+: Trace) Elab where
+instance Algebra (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) Elab where
   alg hdl sig ctx = case sig of
-    L rctx          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
-    R (L subst)     -> Elab $ alg (runElab . hdl) (inj subst) ctx
-    R (R (L throw)) -> Elab $ alg (runElab . hdl) (inj throw) ctx
-    R (R (R trace)) -> Elab $ alg (runElab . hdl) (inj trace) ctx
+    L fresh             -> Elab $ alg (runElab . hdl) (inj fresh) ctx
+    R (L rctx)          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
+    R (R (L sctx))      -> Elab $ alg (runElab . hdl) (inj sctx)  ctx
+    R (R (R (L throw))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
+    R (R (R (R trace))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
-elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => (Subst -> a -> m b) -> Elab a -> m b
-elabWith f = runSubstWith f . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
+elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab a -> m a
+elab = evalFresh 0 . evalState Context.empty . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
   where
-  mkContext = ElabContext Context.empty <$> ask <*> ask <*> ask <*> pure (Sig Nothing []) <*> ask
+  mkContext = ElabContext <$> ask <*> ask <*> ask <*> pure (Sig Nothing []) <*> ask
 
 
 check :: (Check a ::: Type) -> Elab a

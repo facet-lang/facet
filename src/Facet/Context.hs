@@ -1,48 +1,108 @@
 module Facet.Context
 ( -- * Contexts
   Context(..)
+, Entry(..)
+, entryDef
+, entryType
 , empty
 , (|>)
 , level
-, names
-, (!?)
 , (!)
-, lookupLevel
+, lookupIndex
+, toEnv
+, Suffix
+, (<><)
+, restore
+, replace
 ) where
 
+import           Data.Foldable (foldl')
+import qualified Data.IntMap as IntMap
+import           Data.Maybe (fromMaybe)
+import           Facet.Core
 import           Facet.Name
 import qualified Facet.Stack as S
 import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
-newtype Context a = Context { elems :: S.Stack (Name ::: a) }
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+newtype Context = Context { elems :: S.Stack Entry }
 
-empty :: Context a
+data Entry
+  -- FIXME: record implicitness in the context.
+  -- FIXME: record sort in the context.
+  = Rigid Name Type
+  | Flex Meta (Maybe Type) Type
+
+entryDef :: Entry -> Maybe Type
+entryDef = \case
+  Rigid _   _ -> Nothing
+  Flex  _ v _ -> v
+
+entryType :: Entry -> Type
+entryType = \case
+  Rigid _   t -> t
+  Flex  _ _ t -> t
+
+
+empty :: Context
 empty = Context S.Nil
 
-(|>) :: Context a -> Name ::: a -> Context a
+(|>) :: Context -> Entry -> Context
 Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
 
-level :: Context a -> Level
-level (Context c) = Level (length c)
-
-names :: Context a -> S.Stack Name
-names = fmap tm . elems
-
-(!?) :: Context a -> Index -> Maybe (Name ::: a)
-c !? i = elems c S.!? getIndex i
-
-(!) :: HasCallStack => Context a -> Index -> Name ::: a
-c ! i = elems c S.! getIndex i
-
-lookupLevel :: Name -> Context a -> Maybe (Level, a)
-lookupLevel n c = go (Index 0) $ elems c
+level :: Context -> Level
+level (Context es) = go 0 es
   where
-  go _ S.Nil                = Nothing
-  go i (cs S.:> (n' ::: a))
-    | n == n'               = Just (indexToLevel (level c) i, a)
-    | otherwise             = go (succ i) cs
+  go n S.Nil             = n
+  go n (es S.:> Rigid{}) = go (n + 1) es
+  go n (es S.:> Flex{})  = go  n      es
+
+(!) :: HasCallStack => Context -> Index -> Entry
+Context es' ! Index i' = withFrozenCallStack $ go es' i'
+  where
+  go (es S.:> e@Rigid{}) i
+    | i == 0               = e
+    | otherwise            = go es (i - 1)
+  go (es S.:> _)         i = go es i
+  go _                   _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
+
+lookupIndex :: Name -> Context -> Maybe (Index, Type)
+lookupIndex n = go (Index 0) . elems
+  where
+  go _ S.Nil            = Nothing
+  go i (cs S.:> Rigid n' t)
+    | n == n'           = Just (i, t)
+    | otherwise         = go (succ i) cs
+  go i (cs S.:> Flex{}) = go i cs
+
+
+-- | Construct an environment suitable for evaluation from a 'Context'.
+toEnv :: Context -> (S.Stack Value, IntMap.IntMap Value)
+toEnv c = (locals 0 (elems c), metas (elems c))
+  where
+  d = level c
+  locals i = \case
+    S.Nil               -> S.Nil
+    bs S.:> Rigid _   _ -> locals (succ i) bs S.:> free (indexToLevel d i)
+    bs S.:> Flex  _ _ _ -> locals i bs
+  metas = \case
+    S.Nil               -> mempty
+    bs S.:> Rigid _   _ -> metas bs
+    bs S.:> Flex  m v _ -> IntMap.insert (getMeta m) (fromMaybe (metavar m) v) (metas bs)
+
+
+type Suffix = [Meta :=: Maybe Type ::: Type]
+
+(<><) :: Context -> Suffix -> Context
+(<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> Flex n v _T)
+
+infixl 5 <><
+
+restore :: Applicative m => m (Maybe Suffix)
+restore = pure Nothing
+
+replace :: Applicative m => Suffix -> m (Maybe Suffix)
+replace a = pure (Just a)

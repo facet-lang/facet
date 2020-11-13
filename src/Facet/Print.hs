@@ -12,7 +12,7 @@ module Facet.Print
   -- * Misc
 , intro
 , tintro
-, mvar
+, meta
 ) where
 
 import           Data.Foldable (foldl', toList)
@@ -98,13 +98,12 @@ data Precedence
 -- FIXME: move this into Facet.Style or something instead.
 data Highlight
   = Nest Int
-  | Name Level
+  | Name Int
   | Keyword
   | Con
   | Type
   | Op
   | Lit
-  | Hole Meta
   deriving (Eq, Show)
 
 op :: (Printer p, Ann p ~ Highlight) => p -> p
@@ -146,7 +145,7 @@ f $$ a = askingPrec $ \case
 ($$*) :: Foldable t => Print -> t Print -> Print
 ($$*) = fmap group . foldl' ($$)
 
-(>~>) :: ((Pl, Print) ::: Print) -> Print -> Print
+(>~>) :: ((Icit, Print) ::: Print) -> Print -> Print
 ((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (setPrec Var n ::: t) <> line))) </> arrow <+> b)
 
 
@@ -159,10 +158,10 @@ data Var
   | Cons Name
 
 
-printVar :: ((Int -> Print) -> Name -> Level -> Print) -> Var -> Print
+printVar :: ((Int -> Print) -> Name -> Int -> Print) -> Var -> Print
 printVar name = \case
-  TLocal n d -> name upper n d
-  Local  n d -> name lower n d
+  TLocal n d -> name upper n (getLevel d)
+  Local  n d -> name lower n (getLevel d)
   Cons     n -> setPrec Var (annotate Con (pretty n))
 
 
@@ -174,15 +173,14 @@ printValue env = \case
   C.KInterface -> annotate Type $ pretty "Interface"
   C.TSusp t -> printComp env t
   C.ELam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
-  -- FIXME: there’s no way of knowing if the quoted variable was a type or expression variable
-  -- FIXME: should maybe print the quoted variable differently so it stands out.
   C.VNe (h :$ e) ->
     let elim h sp  Nil     = case sp Nil of
           Nil -> h
           sp  -> app h sp
         elim h sp  (es:>a) = elim h (sp . (:> fmap (printValue env) a)) es
         -- FIXME: this throws an exception when pretty-printing the metacontext because entries can depend on variables bound in the context
-        h' = C.unVar (group . qvar) ((env !) . getIndex . levelToIndex d) (group . mvar) h
+        -- FIXME: should push metas into the context and look up stuff by meta name
+        h' = C.unVar (group . qvar) ((env !) . getIndex . levelToIndex d) meta h
     in elim h' id e
   C.ECon (n :$ p) -> app (group (qvar n)) (fmap ((Ex,) . printValue env) p)
   C.EOp (q :$ sp) -> app (group (qvar q)) (fmap (fmap (printValue env)) sp)
@@ -236,17 +234,19 @@ printModule (C.Module mname is _ ds) = module_
   defn (a :=: b) = group a <> hardline <> group b
 
 intro, tintro :: Name -> Level -> Print
-intro = name lower
-tintro = name upper
+intro  n = name lower n . getLevel
+tintro n = name upper n . getLevel
 qvar (_ :.: n) = setPrec Var (pretty n)
 
-mvar :: (PrecedencePrinter p, P.Level p ~ Precedence, Ann p ~ Highlight) => Meta -> p
-mvar m = setPrec Var (annotate (Hole m) (pretty '?' <> upper (getMeta m)))
+meta :: Meta -> Print
+meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m
 
 var = printVar name
+
+name :: (Int -> Print) -> Name -> Int -> Print
 name f n d = setPrec Var . annotate (Name d) $
   if n == __ then
-    pretty '_' <> f (getLevel d)
+    pretty '_' <> f d
   else
     pretty n
 
@@ -261,7 +261,7 @@ lvar env (p, n) = var (unPl TLocal Local p n (Level (length env)))
 
 clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow <+> printValue env' (b (snd <$> p'))
   where
-  ((_, env'), p') = mapAccumL (\ (d, env) (n ::: _) -> let v = lvar env (pl, n) in ((succ d, env :> v), (v, C.free d))) (Level (length env), env) p
+  ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = lvar env (pl, n) in ((succ d, env :> v), (v, C.free d))) (Level (length env), env) p
 pat = \case
   C.PVar n         -> n
   C.PCon (n :$ ps) -> parens (hsep (annotate Con (pretty n):map pat (toList ps)))

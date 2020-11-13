@@ -27,20 +27,21 @@ import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Time.System
 import           Facet.Carrier.Trace.Output
-import           Facet.Core
+import           Facet.Core hiding (eval)
+import qualified Facet.Core as Core
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import           Facet.Eval
 import           Facet.Flag
 import           Facet.Graph
 import           Facet.Lens
-import           Facet.Name hiding (Meta)
+import           Facet.Name
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab
 import           Facet.Notice.Parser
 import           Facet.Parser as Parser
 import           Facet.Pretty
-import           Facet.Print as Print hiding (Comp, Type)
+import           Facet.Print as Print hiding (Comp, Type, meta)
 import           Facet.REPL.Parser
 import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Span (Span)
@@ -190,12 +191,14 @@ removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets
 showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
-  e ::: _T <- elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) (Elab.synth (Elab.synthExpr e))
-  outputDocLn (prettyCode (ann (printValue Nil e ::: printValue Nil _T)))
+  e ::: _T <- elab $ Elab.elab (Elab.synth (Elab.synthExpr e))
+  let e'  = Core.eval Nil mempty e
+  outputDocLn (prettyCode (ann (printValue Nil e' ::: printValue Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elabWith (\ s (e ::: _T) -> pure $ generalize s e ::: generalize s _T) $ locally (Elab.sig_.interfaces_) (VNe (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
-  (dEval, e'') <- time $ elab $ runEvalMain (eval e')
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ locally (Elab.sig_.interfaces_) (VNe (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
+  let e''  = Core.eval Nil mempty e'
+  (dEval, e'') <- time $ elab $ runEvalMain (eval e'')
   outputStrLn $ show dElab
   outputStrLn $ show dEval
   outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil _T)))

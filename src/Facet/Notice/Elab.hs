@@ -3,16 +3,14 @@ module Facet.Notice.Elab
   rethrowElabErrors
 ) where
 
-import qualified Data.IntMap as IntMap
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
 import           Facet.Core (Sort(..), Type, sortOf)
 import           Facet.Elab as Elab
-import           Facet.Name (Meta(..))
 import           Facet.Notice as Notice
 import           Facet.Pretty
-import           Facet.Print as Print hiding (Hole)
+import           Facet.Print as Print
 import           Facet.Source
 import           Facet.Stack
 import           Facet.Style
@@ -26,23 +24,26 @@ import           Silkscreen
 rethrowElabErrors :: Source -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors src = L.runThrow rethrow
   where
-  rethrow Err{ span, reason, subst, context, callStack } = Notice.Notice (Just Error) (Just (slice src span)) (reAnnotate Code (printReason printCtx reason))
-    [ nest 2 (pretty "Metacontext" <\> concatWith (<\>) subst')
-    , nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
+  rethrow Err{ span, reason, context, callStack } = Notice.Notice (Just Error) (Just (slice src span)) (reAnnotate Code (printReason printCtx reason))
+    [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
     , nest 2 (pretty "Trace" <\> concatWith (<\>) callStack)
     ]
     where
     (_, _, printCtx, ctx) = foldl combine (0, Nil, Nil, Nil) (elems context)
-    subst' = map (\ (m, v ::: _T) -> reAnnotate Code (getPrint (ann (mvar (Meta m) ::: printValue Nil _T))) <> case v of
-      Nothing -> mempty
-      Just v  -> space <> reAnnotate Code (getPrint (printValue Nil v))) $ IntMap.toList subst
-  combine (d, sort, print, ctx) (n ::: _T) =
-    let s = sortOf sort _T
-        n' = name s n d
+  combine (d, sort, print, ctx) e =
+    let _T = entryType e
+        s = sortOf sort _T
+        n' = case e of
+          Rigid n   _ -> name s n d
+          Flex  m _ _ -> meta m
     in  ( succ d
         , sort  :> s
         , print :> n'
-        , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printValue print _T))) )
+        , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printValue print _T))) <> case e of
+          Flex _ v _ -> space <> pretty '=' <+> case v of
+            Just v -> reAnnotate Code (getPrint (printValue print v))
+            _      -> pretty '?'
+          _        -> mempty )
   name = \case
     STerm -> intro
     _     -> tintro

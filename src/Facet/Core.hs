@@ -4,9 +4,6 @@ module Facet.Core
 , Type
 , Expr
 , Comp(..)
-, substComp
-, bindComp
-, bindsComp
 , unBind
 , unBind'
 , unLam
@@ -16,6 +13,8 @@ module Facet.Core
 , Clause(..)
 , instantiateClause
 , Binding(..)
+, icit_
+, type_
   -- ** Variables
 , Var(..)
 , unVar
@@ -28,17 +27,6 @@ module Facet.Core
 , ($$*)
 , case'
 , match
-  -- ** Substitution
-, subst
-, bind
-, binds
-, Subst
-, emptySubst
-, insertSubst
-, apply
-, applyComp
-, generalize
-, generalizeComp
   -- ** Classification
 , Sort(..)
 , sortOf
@@ -65,6 +53,13 @@ module Facet.Core
 , Def(..)
 , unDData
 , unDInterface
+  -- * Quotation
+, Quote(..)
+, QComp(..)
+, quote
+, quoteComp
+, eval
+, evalComp
 ) where
 
 import           Control.Applicative (Alternative(..))
@@ -73,7 +68,6 @@ import           Control.Monad (guard)
 import           Data.Foldable (asum, foldl', toList)
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
-import           Data.Maybe (fromMaybe)
 import           Data.Semialign
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
@@ -85,20 +79,18 @@ import           Prelude hiding (zip, zipWith)
 
 -- Values
 
--- FIXME: thunk.
--- FIXME: force.
 data Value
   = KType
   | KInterface
   | TSusp Comp
-  | ELam Pl [Clause]
+  | ELam Icit [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | VNe (Var :$ (Pl, Value))
+  | VNe (Var Level :$ (Icit, Value))
   | ECon (Q Name :$ Expr)
   | TString
   | EString Text
   -- | Effect operation and its parameters.
-  | EOp (Q Name :$ (Pl, Expr))
+  | EOp (Q Name :$ (Icit, Expr))
 
 type Type = Value
 type Expr = Value
@@ -106,59 +98,37 @@ type Expr = Value
 
 -- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
 data Comp
-  = TForAll Binding (Type -> Comp)
-  | TRet Sig Type
-
-substCompWith :: (Var -> Value) -> Comp -> Comp
-substCompWith f = go
-  where
-  go = \case
-    TForAll t b -> TForAll (binding t) (go . b)
-    TRet s t    -> TRet (sig s) (substWith f t)
-
-  binding (Binding p n s t) = Binding p n (map (substWith f) <$> s) (substWith f t)
-  sig (Sig v s) = Sig (substWith f <$> v) (map (substWith f) s)
-
-substComp :: IntMap.IntMap Value -> Comp -> Comp
-substComp s
-  | IntMap.null s = id
-  | otherwise     = substCompWith (substMeta s)
-
-bindComp :: Level -> Value -> Comp -> Comp
-bindComp k v = bindsComp (IntMap.singleton (getLevel k) v)
-
-bindsComp :: IntMap.IntMap Value -> Comp -> Comp
-bindsComp s
-  | IntMap.null s = id
-  | otherwise     = substCompWith (substFree s)
+  = TForAll (Binding Type) (Type -> Comp)
+  | TRet (Sig Value) Type
 
 
-unBind :: Alternative m => Comp -> m (Binding, Value -> Comp)
+unBind :: Alternative m => Comp -> m (Binding Value, Value -> Comp)
 unBind = \case{ TForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unBind' :: Alternative m => (Level, Comp) -> m (Binding, (Level, Comp))
+unBind' :: Alternative m => (Level, Comp) -> m (Binding Value, (Level, Comp))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
-unLam :: Alternative m => Value -> m (Pl, [Clause])
+unLam :: Alternative m => Value -> m (Icit, [Clause])
 unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 
-data Sig = Sig
-  { effectVar  :: Maybe Value
-  , interfaces :: [Value]
+data Sig a = Sig
+  { effectVar  :: Maybe a
+  , interfaces :: [a]
   }
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-effectVar_ :: Lens' Sig (Maybe Value)
+effectVar_ :: Lens' (Sig a) (Maybe a)
 effectVar_ = lens effectVar (\ s effectVar -> s{ effectVar })
 
-interfaces_ :: Lens' Sig [Value]
+interfaces_ :: Lens' (Sig a) [a]
 interfaces_ = lens interfaces (\ s interfaces -> s{ interfaces })
 
 
 data Clause = Clause
-  { pattern :: Pattern (Name ::: Type)
+  { pattern :: Pattern Name
   , branch  :: Pattern Value -> Value
   }
 
@@ -166,40 +136,30 @@ instantiateClause :: Level -> Clause -> (Level, Value)
 instantiateClause d (Clause p b) = b <$> bindPattern d p
 
 
-data Binding = Binding
-  { pl    :: Pl
+data Binding a = Binding
+  { icit  :: Icit
   , name  :: Maybe Name
-  , delta :: Maybe [Value]
-  , type' :: Type
+  , delta :: Maybe [a]
+  , type' :: a
   }
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+icit_ :: Lens' (Binding a) Icit
+icit_ = lens icit (\ b icit -> b{ icit })
+
+type_ :: Lens' (Binding a) a
+type_ = lens type' (\ b type' -> b{ type' })
 
 
 -- Variables
 
-data Var
+data Var a
   = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
-  | Free Level
-  | Metavar Meta -- ^ Metavariables, considered equal by 'Level'.
+  | Free a
+  | Metavar Meta
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-instance Eq Var where
-  (==) = curry $ \case
-    (Global  q1, Global  q2) -> q1 == q2
-    (Global  _,  _)          -> False
-    (Free    l1, Free    l2) -> l1 == l2
-    (Free    _,  _)          -> False
-    (Metavar m1, Metavar m2) -> m1 == m2
-    (Metavar _,  _)          -> False
-
-instance Ord Var where
-  compare = curry $ \case
-    (Global  q1, Global  q2) -> q1 `compare` q2
-    (Global  _,  _)          -> LT
-    (Free    l1, Free    l2) -> l1 `compare` l2
-    (Free    _,  _)          -> LT
-    (Metavar m1, Metavar m2) -> m1 `compare` m2
-    (Metavar _,  _)          -> LT
-
-unVar :: (Q Name -> a) -> (Level -> a) -> (Meta -> a) -> Var -> a
+unVar :: (Q Name -> b) -> (a -> b) -> (Meta -> b) -> Var a -> b
 unVar f g h = \case
   Global  n -> f n
   Free    n -> g n
@@ -216,19 +176,19 @@ metavar :: Meta -> Value
 metavar = var . Metavar
 
 
-var :: Var -> Value
+var :: Var Level -> Value
 var = VNe . (:$ Nil)
 
 
-occursIn :: Meta -> Value -> Bool
-occursIn m = go (Level 0) -- FIXME: this should probably be doing something more sensible
+occursIn :: (Var Level -> Bool) -> Value -> Bool
+occursIn p = go (Level 0) -- FIXME: this should probably be doing something more sensible
   where
   go d = \case
     KType          -> False
     KInterface     -> False
     TSusp c        -> comp d c
     ELam _ cs      -> any (clause d) cs
-    VNe (h :$ sp)  -> unVar (const False) (const False) (== m) h || any (any (go d)) sp
+    VNe (h :$ sp)  -> p h || any (any (go d)) sp
     ECon (_ :$ sp) -> any (go d) sp
     TString        -> False
     EString _      -> False
@@ -239,12 +199,12 @@ occursIn m = go (Level 0) -- FIXME: this should probably be doing something more
     TRet s t    -> sig d s || go d t
   binding d (Binding _ _ s t) = any (any (go d)) s || go d t
   sig d (Sig v s) = any (go d) v || any (go d) s
-  clause d (Clause p b) = any (any (go d)) p || let (d', p') = fill (\ d -> (succ d, free d)) d p in go d' (b p')
+  clause d (Clause p b) = let (d', p') = fill (\ d -> (succ d, free d)) d p in go d' (b p')
 
 
 -- Elimination
 
-($$) :: HasCallStack => Value -> (Pl, Value) -> Value
+($$) :: HasCallStack => Value -> (Icit, Value) -> Value
 VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
 EOp (q :$ es) $$ a = EOp (q :$ (es :> a))
 TSusp t       $$ a
@@ -256,7 +216,7 @@ TSusp t       $$ a
 ELam _ b      $$ a = case' (snd a) b
 _             $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (HasCallStack, Foldable t) => Value -> t (Pl, Value) -> Value
+($$*) :: (HasCallStack, Foldable t) => Value -> t (Icit, Value) -> Value
 ($$*) = foldl' ($$)
 
 infixl 9 $$, $$*
@@ -278,83 +238,6 @@ match = curry $ \case
   (_,               PCon _)         -> Nothing
   -- FIXME: match effect patterns against computations (?)
   (_,               PEff{})         -> Nothing
-
-
--- Substitution
-
-substWith :: (Var -> Value) -> Value -> Value
-substWith f = go
-  where
-  go = \case
-    KType         -> KType
-    KInterface    -> KInterface
-    TSusp t       -> TSusp (substCompWith f t)
-    ELam p b      -> ELam p (map clause b)
-    VNe (v :$ a)  -> f v $$* fmap (fmap go) a
-    ECon c        -> ECon (fmap go c)
-    TString       -> TString
-    EString s     -> EString s
-    EOp (q :$ sp) -> EOp (q :$ fmap (fmap go) sp)
-
-  clause (Clause p b) = Clause (fmap go <$> p) (go . b)
-
--- | Substitute metavars.
-subst :: IntMap.IntMap Value -> Value -> Value
-subst s
-  | IntMap.null s = id
-  | otherwise     = substWith (substMeta s)
-
--- | TForAll a free variable.
-bind :: Level -> Value -> Value -> Value
-bind k v = binds (IntMap.singleton (getLevel k) v)
-
-binds :: IntMap.IntMap Value -> Value -> Value
-binds s
-  | IntMap.null s = id
-  | otherwise     = substWith (substFree s)
-
-substFree :: IntMap.IntMap Value -> Var -> Value
-substFree s = unVar global (\ v -> fromMaybe (free v) (IntMap.lookup (getLevel v) s)) metavar
-
-substMeta :: IntMap.IntMap Value -> Var -> Value
-substMeta s = unVar global free (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) s))
-
-
-type Subst = IntMap.IntMap (Maybe Value ::: Type)
-
-emptySubst :: Subst
-emptySubst = IntMap.empty
-
-insertSubst :: Meta -> Maybe Value ::: Type -> Subst -> Subst
-insertSubst n (v ::: _T) = IntMap.insert (getMeta n) (v ::: _T)
-
--- | Apply the substitution to the value.
-apply :: Subst -> Expr -> Value
-apply = subst . IntMap.mapMaybe tm -- FIXME: error if the substitution has holes.
-
-applyComp :: Subst -> Comp -> Comp
-applyComp = substComp . IntMap.mapMaybe tm -- FIXME: error if the substitution has holes.
-
-
--- FIXME: generalize terms and types simultaneously
--- FIXME: generalize terms with ELam instead of TForAll
-generalize :: Subst -> Value -> Value
-generalize s v
-  | null b    = apply s v
-  | otherwise = TSusp (foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (TRet (Sig Nothing []) (subst (IntMap.mapMaybe tm s <> s') v)) b)
-  where
-  (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
-    Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
-    Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
-
-generalizeComp :: Subst -> Comp -> Comp
-generalizeComp s v
-  | null b    = applyComp s v
-  | otherwise = foldr (\ (d, _T) b -> TForAll (Binding Im (Just __) Nothing _T) (\ v -> bindComp d v b)) (substComp (IntMap.mapMaybe tm s <> s') v) b
-  where
-  (s', b, _) = IntMap.foldlWithKey' (\ (s, b, d) m (v ::: _T) -> case v of
-    Nothing -> (IntMap.insert m (free d) s, b :> (d, _T), succ d)
-    Just _v -> (s, b, d)) (mempty, Nil, Level 0) s
 
 
 -- Classification
@@ -391,7 +274,7 @@ data Pattern a
   = PVar a
   | PCon (Q Name :$ Pattern a)
   | PEff (Q Name) (Stack (Pattern a)) a
-  deriving (Foldable, Functor, Traversable)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)
@@ -483,3 +366,59 @@ unDInterface :: Alternative m => Def -> m Scope
 unDInterface = \case
   DInterface cs -> pure cs
   _             -> empty
+
+
+-- Quotation
+
+data Quote
+  = QVar (Var Index)
+  | QKType
+  | QKInterface
+  | QTSusp QComp
+  | QELam Icit [(Pattern Name, Quote)]
+  | QApp Quote (Icit, Quote)
+  | QECon (Q Name :$ Quote)
+  | QTString
+  | QEString Text
+  | QEOp (Q Name)
+  deriving (Eq, Ord, Show)
+
+data QComp = QComp [Binding Quote] (Sig Quote) Quote
+  deriving (Eq, Ord, Show)
+
+quote :: Level -> Value -> Quote
+quote d = \case
+  KType          -> QKType
+  KInterface     -> QKInterface
+  TSusp c        -> QTSusp (quoteComp d c)
+  ELam p cs      -> QELam p (map (clause d) cs)
+  VNe (n :$ sp)  -> foldl' QApp (QVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
+  ECon (n :$ sp) -> QECon (n :$ (quote d <$> sp))
+  TString        -> QTString
+  EString s      -> QEString s
+  EOp (n :$ sp)  -> foldl' QApp (QEOp n) (fmap (quote d) <$> sp)
+  where
+  clause d (Clause p b) = let (d', p') = fill (\ d -> (d, free d)) d p in (p, quote d' (b p'))
+
+quoteComp :: Level -> Comp -> QComp
+quoteComp d c = go d c QComp
+  where
+  go d = \case
+    TForAll t b -> \ k -> go (succ d) (b (free d)) $ \ b s t' -> k ((quote d <$> t):b) s t'
+    TRet s t    -> \ k -> k [] (quote d <$> s) (quote d t)
+
+eval :: HasCallStack => Stack Value -> IntMap.IntMap Value -> Quote -> Value
+eval env metas = \case
+  QVar v          -> unVar global ((env !) . getIndex) metavar v
+  QKType          -> KType
+  QKInterface     -> KInterface
+  QTSusp c        -> TSusp $ evalComp env metas c
+  QELam p cs      -> ELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) metas b)) cs
+  QApp f a        -> eval env metas f $$ (eval env metas <$> a)
+  QECon (n :$ sp) -> ECon $ n :$ (eval env metas <$> sp)
+  QTString        -> TString
+  QEString s      -> EString s
+  QEOp n          -> EOp $ n :$ Nil
+
+evalComp :: HasCallStack => Stack Value -> IntMap.IntMap Value -> QComp -> Comp
+evalComp env metas (QComp bs s t) = foldr (\ t b env -> TForAll (eval env metas <$> t) (b . (env :>))) (\ env -> TRet (eval env metas <$> s) (eval env metas t)) bs env
