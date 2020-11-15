@@ -525,7 +525,7 @@ expectRet = expectMatch (\case { TSusp (TRet s t) -> pure (s, t) ; _ -> Nothing 
 
 data ElabContext = ElabContext
   { graph   :: Graph
-  , _mname  :: MName
+  , mname   :: MName
   , module' :: Module
   , sig     :: Sig Value
   , span    :: Span
