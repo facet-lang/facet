@@ -654,7 +654,9 @@ elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+:
 elab = evalFresh 0 . evalState Context.empty . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
   where
   mkContext = ElabContext <$> ask <*> ask <*> ask <*> mkSig <*> ask
-  mkSig = pure $ Sig Nothing []
+  mkSig = do
+    m <- meta (Nothing ::: KInterface)
+    pure $ Sig (Just (metavar m)) []
 
 
 check :: (Check a ::: Type) -> Elab a
