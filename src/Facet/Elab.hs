@@ -653,7 +653,8 @@ instance Algebra (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab a -> m a
 elab = evalFresh 0 . evalState Context.empty . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
   where
-  mkContext = ElabContext <$> ask <*> ask <*> ask <*> pure (Sig Nothing []) <*> ask
+  mkContext = ElabContext <$> ask <*> ask <*> ask <*> mkSig <*> ask
+  mkSig = pure $ Sig Nothing []
 
 
 check :: (Check a ::: Type) -> Elab a
