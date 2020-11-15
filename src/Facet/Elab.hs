@@ -75,7 +75,7 @@ import           Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: (Maybe Value ::: Type) -> Elab Meta
+meta :: Has (Fresh :+: State Context) sig m => (Maybe Value ::: Type) -> m Meta
 meta (v ::: _T) = do
   m <- Meta <$> fresh
   m <$ modify (|> Flex m v _T)
