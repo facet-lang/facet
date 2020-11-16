@@ -37,9 +37,11 @@ rethrowElabErrors src = L.runThrow rethrow
           Rigid n   _ -> name s n d
           Flex  m _ _ -> meta m
     in  ( succ d
-        , sort  :> s
-        , print :> n'
-        , ctx   :> reAnnotate Code (getPrint (ann (n' ::: printValue print _T))) <> case e of
+        , sort :> s
+        , case e of
+          Flex{} -> print
+          _      -> print :> n'
+        , ctx  :> reAnnotate Code (getPrint (ann (n' ::: printValue print _T))) <> case e of
           Flex _ v _ -> space <> pretty '=' <+> case v of
             Just v -> reAnnotate Code (getPrint (printValue print v))
             _      -> pretty '?'
