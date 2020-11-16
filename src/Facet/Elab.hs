@@ -167,10 +167,10 @@ Binding _ n _s _T |- b = trace "|-" $ do
   -- FIXME: should the context allow names in Maybe?
   modify (|> Rigid (fromMaybe __ n) _T)
   a <- b
-  let extract (gamma :> Rigid _ _) | i == level (Context gamma) = gamma
-      extract (gamma :> e@Flex{})                               = extract gamma :> e
-      extract (_     :> _)                                      = error "bad context entry"
-      extract Nil                                               = error "bad context"
+  let extract (gamma :> Rigid{}) | i == level (Context gamma) = gamma
+      extract (gamma :> e@Flex{})                             = extract gamma :> e
+      extract (_     :> _)                                    = error "bad context entry"
+      extract Nil                                             = error "bad context"
   a <$ modify (Context . extract . elems)
 
 infix 1 |-
