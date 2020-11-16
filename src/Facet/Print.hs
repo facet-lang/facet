@@ -149,15 +149,6 @@ f $$ a = askingPrec $ \case
 ((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (setPrec Var n ::: t) <> line))) </> arrow <+> b)
 
 
--- Algebras
-
--- FIXME: 🔥 this
-data Var
-  = TLocal Name Level
-  | Local Name Level
-  | Cons Name
-
-
 -- Core printers
 
 printValue :: Stack Print -> C.Value -> Print
@@ -215,9 +206,9 @@ printModule (C.Module mname is _ ds) = module_
     :=: case d of
       C.DTerm b  -> printValue Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) (C.scopeToList cs))
+        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printComp Nil _T)) (C.scopeToList cs))
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (var (Cons n) ::: printComp Nil _T)) (C.scopeToList os))
+        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printComp Nil _T)) (C.scopeToList os))
       C.DModule ds -> block (concatWith (surround hardline) (map ((hardline <>) . def) (Map.toList (C.decls ds)))))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
   import' n = pretty "import" <+> braces (enclose mempty mempty (setPrec Var (prettyMName n)))
@@ -232,10 +223,9 @@ qvar (_ :.: n) = setPrec Var (pretty n)
 meta :: Meta -> Print
 meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m
 
-var = \case
-  TLocal n d -> name upper n (getLevel d)
-  Local  n d -> name lower n (getLevel d)
-  Cons     n -> setPrec Var (annotate Con (pretty n))
+tlocal n d = name upper n (getLevel d)
+local  n d = name lower n (getLevel d)
+cname    n = setPrec Var (annotate Con (pretty n))
 
 name :: (Int -> Print) -> Name -> Int -> Print
 name f n d = setPrec Var . annotate (Name d) $
@@ -248,10 +238,10 @@ name f n d = setPrec Var . annotate (Name d) $
 fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
   [] -> _T --> b
   _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
-tvar env n = group (var (TLocal (snd (tm n)) (Level (length env))))
+tvar env n = group (tlocal (snd (tm n)) (Level (length env)))
 app f as = group f $$* fmap (group . uncurry (unPl braces id)) as
 
-lvar env (p, n) = var (unPl TLocal Local p n (Level (length env)))
+lvar env (p, n) = unPl tlocal local p n (Level (length env))
 
 clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow <+> printValue env' (b (snd <$> p'))
   where
