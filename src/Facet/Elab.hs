@@ -319,11 +319,11 @@ elabPattern sig = go
   subpatterns = flip $ foldr
     (\ p rest _A k -> do
       -- FIXME: assert that the signature is empty
-      (t@(Binding _ _ _s _A), _B) <- expectQuantifier "when checking constructor pattern" (TSusp _A)
+      (Binding _ _ _s _A, _B) <- expectQuantifier "when checking constructor pattern" (TSusp _A)
       -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
       -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
       d <- depth
-      t |- goVal _A p (\ p' -> rest (_B (free d)) (\ _T ps' -> k _T (p' : ps'))))
+      goVal _A p (\ p' -> rest (_B (free d)) (\ _T ps' -> k _T (p' : ps'))))
       (\ _A k -> k (TSusp _A) [])
 
 
