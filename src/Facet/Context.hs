@@ -36,8 +36,8 @@ data Entry
 
 entryDef :: Entry -> Maybe Type
 entryDef = \case
-  Rigid _   _ -> Nothing
-  Flex  _ v _ -> v
+  Rigid{}    -> Nothing
+  Flex _ v _ -> v
 
 entryType :: Entry -> Type
 entryType = \case
