@@ -257,7 +257,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
   (t@(Binding pl _ _s _A), _B) <- expectQuantifier "when checking lambda" _T
   -- FIXME: extend the signature if _B v is a TRet.
   d <- depth
-  b' <- t |- check (b ::: TSusp (_B (free d)))
+  b' <- t{ name = Just n } |- check (b ::: TSusp (_B (free d)))
   pure $ QELam pl [(PVar n, b')]
 
 thunk :: Check a -> Check a
