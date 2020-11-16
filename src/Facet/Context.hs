@@ -30,7 +30,6 @@ newtype Context = Context { elems :: S.Stack Entry }
 
 data Entry
   -- FIXME: record implicitness in the context.
-  -- FIXME: record sort in the context.
   = Rigid Name Type
   | Flex Meta (Maybe Type) Type
 
