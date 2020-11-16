@@ -158,13 +158,6 @@ data Var
   | Cons Name
 
 
-printVar :: ((Int -> Print) -> Name -> Int -> Print) -> Var -> Print
-printVar name = \case
-  TLocal n d -> name upper n (getLevel d)
-  Local  n d -> name lower n (getLevel d)
-  Cons     n -> setPrec Var (annotate Con (pretty n))
-
-
 -- Core printers
 
 printValue :: Stack Print -> C.Value -> Print
@@ -239,7 +232,10 @@ qvar (_ :.: n) = setPrec Var (pretty n)
 meta :: Meta -> Print
 meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m
 
-var = printVar name
+var = \case
+  TLocal n d -> name upper n (getLevel d)
+  Local  n d -> name lower n (getLevel d)
+  Cons     n -> setPrec Var (annotate Con (pretty n))
 
 name :: (Int -> Print) -> Name -> Int -> Print
 name f n d = setPrec Var . annotate (Name d) $
