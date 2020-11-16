@@ -3,6 +3,7 @@ module Facet.Stack
 ( Stack(..)
 , fromList
 , (!)
+, (!?)
 ) where
 
 import Data.Foldable (foldl', toList)
@@ -84,3 +85,11 @@ as' ! i' = withFrozenCallStack $ go as' i'
     | i == 0     = a
     | otherwise  = go as (i - 1)
   go _         _ = error $ "Facet.Stack.!: index (" <> show i' <> ") out of bounds (" <> show (length as') <> ")"
+
+-- | Safe indexing.
+--
+-- The index functions like a De Bruijn index, counting down from the /top/ of the stack (i.e. right-to-left).
+(!?) :: Stack a -> Int -> Maybe a
+Nil       !? _ = Nothing
+(_  :> a) !? 0 = Just a
+(as :> _) !? i = as !? (i - 1)
