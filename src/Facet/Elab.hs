@@ -654,7 +654,7 @@ instance Algebra (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab a -> m a
 elab m = evalFresh 0 . evalState Context.empty $ do
   ctx <- mkContext
-  runReader ctx . runElab $ Binding Im (Just "ε") Nothing KInterface |- m
+  runReader ctx . runElab $ m
   where
   mkContext = ElabContext <$> ask <*> ask <*> ask <*> mkSig <*> ask
   mkSig = do
