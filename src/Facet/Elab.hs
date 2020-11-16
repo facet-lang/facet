@@ -617,14 +617,14 @@ unify t1 t2 = trace "unify" $ value t1 t2
     _                  -> nope
 
   solve :: HasCallStack => Meta -> Type -> Elab ()
-  solve v = trace "solve" . go v []
+  solve v t = trace "solve" $ go []
     where
-    go v ext t = onTop $ \ (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) t || occursInSuffix (== Metavar m) ext, d) of
+    go ext = onTop $ \ (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) t || occursInSuffix (== Metavar m) ext, d) of
       (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
       (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ])
       (True,  False, Just t') -> modify (<>< ext) >> value t' t >> restore
-      (False, True,  _)       -> go v ((m :=: d ::: _K):ext) t >> replace []
-      (False, False, _)       -> go v ext t >> restore
+      (False, True,  _)       -> go ((m :=: d ::: _K):ext) >> replace []
+      (False, False, _)       -> go ext >> restore
 
   occursInSuffix m = any (\ (_ :=: v ::: _T) -> maybe False (occursIn m) v || occursIn m _T)
 
