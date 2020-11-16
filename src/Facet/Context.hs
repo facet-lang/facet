@@ -85,13 +85,13 @@ toEnv c = (locals 0 (elems c), metas (elems c))
   where
   d = level c
   locals i = \case
-    S.Nil               -> S.Nil
-    bs S.:> Rigid _   _ -> locals (succ i) bs S.:> free (indexToLevel d i)
-    bs S.:> Flex  _ _ _ -> locals i bs
+    S.Nil           -> S.Nil
+    bs S.:> Rigid{} -> locals (succ i) bs S.:> free (indexToLevel d i)
+    bs S.:> Flex{}  -> locals i bs
   metas = \case
-    S.Nil               -> mempty
-    bs S.:> Rigid _   _ -> metas bs
-    bs S.:> Flex  m v _ -> IntMap.insert (getMeta m) (fromMaybe (metavar m) v) (metas bs)
+    S.Nil              -> mempty
+    bs S.:> Rigid{}    -> metas bs
+    bs S.:> Flex m v _ -> IntMap.insert (getMeta m) (fromMaybe (metavar m) v) (metas bs)
 
 
 type Suffix = [Meta :=: Maybe Type ::: Type]
