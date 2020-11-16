@@ -302,11 +302,11 @@ elabPattern sig = go
           subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TSusp (TForAll (Binding Ex Nothing Nothing _T) (const (TRet (Sig e sig) _A)))))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
-    S.PAll n -> k (PVar (n  ::: _A))
+    S.PAll n -> Binding Ex (Just n) Nothing _A |- k (PVar (n  ::: _A))
 
   goVal _A (S.Ann s _ p) k = setSpan s $ case p of
     S.PWildcard -> k (PVar (__ ::: _A))
-    S.PVar n    -> k (PVar (n  ::: _A))
+    S.PVar n    -> Binding Ex (Just n) Nothing _A |- k (PVar (n  ::: _A))
     S.PCon n ps -> do
       q :=: _ ::: _T' <- resolveC n
       _T'' <- inst _T'
