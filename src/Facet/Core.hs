@@ -115,12 +115,12 @@ unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
 
 
 data Sig a = Sig
-  { effectVar  :: Maybe a
+  { effectVar  :: a
   , interfaces :: [a]
   }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-effectVar_ :: Lens' (Sig a) (Maybe a)
+effectVar_ :: Lens' (Sig a) a
 effectVar_ = lens effectVar (\ s effectVar -> s{ effectVar })
 
 interfaces_ :: Lens' (Sig a) [a]
@@ -198,7 +198,7 @@ occursIn p = go (Level 0) -- FIXME: this should probably be doing something more
     TForAll t b -> binding d t || comp (succ d) (b (free d))
     TRet s t    -> sig d s || go d t
   binding d (Binding _ _ s t) = any (any (go d)) s || go d t
-  sig d (Sig v s) = any (go d) v || any (go d) s
+  sig d (Sig v s) = go d v || any (go d) s
   clause d (Clause p b) = let (d', p') = fill (\ d -> (succ d, free d)) d p in go d' (b p')
 
 

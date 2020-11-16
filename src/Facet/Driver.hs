@@ -83,7 +83,7 @@ defaultTarget = Target
 kernel :: Module
 kernel = Module kernelName [] [] $ Scope $ Map.fromList
   -- FIXME: this should really function as a synonym
-  [ (typeName, Just (DTerm KType) ::: TForAll (Binding Im (Just (U (TS.pack "ε"))) Nothing KInterface) (\ _E -> TRet (Sig (Just _E) []) KType)) ]
+  [ (typeName, Just (DTerm KType) ::: TForAll (Binding Im (Just (U (TS.pack "ε"))) Nothing KInterface) (\ _E -> TRet (Sig _E []) KType)) ]
   where
   typeName = U (TS.pack "Type")
   kernelName = fromList [TS.pack "Kernel"]

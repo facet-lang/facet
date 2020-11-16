@@ -40,7 +40,7 @@ import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Empty
-import           Control.Effect.Lens (view, (.=))
+import           Control.Effect.Lens (view, views, (.=))
 import           Control.Effect.Sum
 import           Control.Lens (Lens', at, ix, lens, set)
 import           Control.Monad (unless, (<=<))
@@ -234,8 +234,9 @@ elabComp (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s . trace "elabComp" $ fo
   (\ bs' -> do
     d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
     t' <- check (checkExpr t ::: KType)
-    -- FIXME: add the effect var and populate this authoritatively
-    pure $ QComp (bs' []) (Sig Nothing (fromMaybe [] d')) t' ::: KType)
+    level <- depth
+    e <- views (sig_.effectVar_) (quote level)
+    pure $ QComp (bs' []) (Sig e (fromMaybe [] d')) t' ::: KType)
   (elabBinding =<< bs)
   id
 
@@ -297,8 +298,8 @@ elabPattern sig = go
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
-          -- FIXME: this should get the ambient effect var
-          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TSusp (TForAll (Binding Ex Nothing Nothing _T) (const (TRet (Sig Nothing sig) _A)))))
+          e <- view (sig_.effectVar_)
+          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TSusp (TForAll (Binding Ex Nothing Nothing _T) (const (TRet (Sig e sig) _A)))))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> k (PVar (n  ::: _A))
@@ -438,7 +439,7 @@ insertEffectVar _E = go
     TForAll b@Binding{ type' } _B -> TForAll b{ type' = case type' of { TSusp c -> TSusp (go c) ; t -> t } } (go . _B)
     TRet s KType                  -> TRet s KType
     -- FIXME: is this right?
-    TRet s t                      -> TRet s{ effectVar = Just _E } t
+    TRet s t                      -> TRet s{ effectVar = _E } t
 
 
 extendSig :: Has (Reader ElabContext) sig m => Maybe [Value] -> m a -> m a
@@ -513,9 +514,9 @@ expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing
 
 stripEmpty :: Type -> Maybe Comp
 stripEmpty = \case
-  TSusp (TRet (Sig Nothing []) t) -> stripEmpty t
-  TSusp t                         -> Just t
-  _                               -> Nothing
+  TSusp (TRet (Sig _ []) t) -> stripEmpty t
+  TSusp t                   -> Just t
+  _                         -> Nothing
 
 expectRet :: String -> Type -> Elab (Sig Value, Type)
 expectRet = expectMatch (\case { TSusp (TRet s t) -> pure (s, t) ; _ -> Nothing }) "{_}"
@@ -572,8 +573,8 @@ unify t1 t2 = trace "unify" $ value t1 t2
     (KInterface, KInterface)                           -> pure ()
     (KInterface, _)                                    -> nope
     (TSusp c1, TSusp c2)                               -> comp c1 c2
-    (TSusp (TRet (Sig Nothing []) t1), t2)             -> value t1 t2
-    (t1, TSusp (TRet (Sig Nothing []) t2))             -> value t1 t2
+    (TSusp (TRet (Sig _ []) t1), t2)                   -> value t1 t2
+    (t1, TSusp (TRet (Sig _ []) t2))                   -> value t1 t2
     (TSusp{}, _)                                       -> nope
     (ELam{}, ELam{})                                   -> nope
     (ELam{}, _)                                        -> nope
@@ -608,7 +609,7 @@ unify t1 t2 = trace "unify" $ value t1 t2
 
   binding (Binding p1 _ d1 t1) (Binding p2 _ d2 t2) = unless (p1 == p2) nope >> eff (spine value) d1 d2 >> value t1 t2
 
-  sig (Sig e1 c1) (Sig e2 c2) = eff value e1 e2 >> spine value c1 c2
+  sig (Sig e1 c1) (Sig e2 c2) = value e1 e2 >> spine value c1 c2
 
   eff f e1 e2 = case (e1, e2) of
     (Nothing, Nothing) -> pure ()
@@ -651,12 +652,14 @@ instance Algebra (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :
     R (R (R (R trace))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab a -> m a
-elab = evalFresh 0 . evalState Context.empty . (\ m -> do { ctx <- mkContext ; runReader ctx m}) . runElab
+elab m = evalFresh 0 . evalState Context.empty $ do
+  ctx <- mkContext
+  runReader ctx . runElab $ Binding Im (Just "ε") Nothing KInterface |- m
   where
   mkContext = ElabContext <$> ask <*> ask <*> ask <*> mkSig <*> ask
   mkSig = do
     m <- meta (Nothing ::: KInterface)
-    pure $ Sig (Just (metavar m)) []
+    pure $ Sig (metavar m) []
 
 
 check :: (Check a ::: Type) -> Elab a
