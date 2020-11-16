@@ -211,7 +211,7 @@ printModule (C.Module mname is _ ds) = module_
         (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printComp Nil _T)) (C.scopeToList os))
       C.DModule ds -> block (concatWith (surround hardline) (map ((hardline <>) . def) (Map.toList (C.decls ds)))))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
-  import' n = pretty "import" <+> braces (enclose mempty mempty (setPrec Var (prettyMName n)))
+  import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))
   module_ n t is ds = ann (setPrec Var (prettyMName n) ::: t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
   defn (a :=: b) = group a <> hardline <> group b
 
