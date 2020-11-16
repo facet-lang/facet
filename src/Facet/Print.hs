@@ -178,8 +178,6 @@ printValue env = \case
           Nil -> h
           sp  -> app h sp
         elim h sp  (es:>a) = elim h (sp . (:> fmap (printValue env) a)) es
-        -- FIXME: this throws an exception when pretty-printing the metacontext because entries can depend on variables bound in the context
-        -- FIXME: should push metas into the context and look up stuff by meta name
         h' = C.unVar (group . qvar) (\ d' -> fromMaybe (pretty (getLevel d')) $ env !? getIndex (levelToIndex d d')) meta h
     in elim h' id e
   C.ECon (n :$ p) -> app (group (qvar n)) (fmap ((Ex,) . printValue env) p)
