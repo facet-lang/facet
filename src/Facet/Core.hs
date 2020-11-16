@@ -342,7 +342,7 @@ scopeFromList :: [Name :=: Maybe Def ::: Comp] -> Scope
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
 
 scopeToList :: Scope -> [Name :=: Maybe Def ::: Comp]
-scopeToList = map (\ (n, v ::: _T) -> (n :=: v ::: _T)) . Map.toList . decls
+scopeToList = map (\ (n, v ::: _T) -> n :=: v ::: _T) . Map.toList . decls
 
 lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Maybe Def ::: Comp)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
