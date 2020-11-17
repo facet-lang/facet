@@ -131,17 +131,17 @@ commands = choice
   [ command ["help", "h", "?"]  "display this list of commands"      Nothing        $ pure (Action (outputDocLn helpDoc))
   , command ["quit", "q"]       "exit the repl"                      Nothing        $ pure (Action empty)
   , command ["show"]            "show compiler state"                (Just "field") $ choice
-    [ showPaths   <$ token (string "paths")
-    , showModules <$ token (string "modules")
-    , showTargets <$ token (string "targets")
+    [ showPaths   <$ symbol "paths"
+    , showModules <$ symbol "modules"
+    , showTargets <$ symbol "targets"
     ]
   , command ["add"]             "add a module/path to the repl"      (Just "item")  $ choice
-    [ addPath   <$ token (string "path")   <*> path'
-    , addTarget <$ token (string "target") <*> some mname
+    [ addPath   <$ symbol "path"   <*> path'
+    , addTarget <$ symbol "target" <*> some mname
     ]
   , command ["remove", "rm"]    "remove a module/path from the repl" (Just "item")  $ choice
-    [ removePath   <$ token (string "path")   <*> path'
-    , removeTarget <$ token (string "target") <*> some mname
+    [ removePath   <$ symbol "path"   <*> path'
+    , removeTarget <$ symbol "target" <*> some mname
     ]
   , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (target_ `zoom` reloadModules))
   , command ["set"]             "set a flag"                         (Just "flag")
