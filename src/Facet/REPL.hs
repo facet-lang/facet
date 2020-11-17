@@ -41,7 +41,7 @@ import           Facet.Notice.Elab
 import           Facet.Notice.Parser
 import           Facet.Parser as Parser
 import           Facet.Pretty
-import           Facet.Print as Print hiding (Comp, Type, meta)
+import           Facet.Print as Print hiding (Comp, meta)
 import           Facet.REPL.Parser
 import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Span (Span)
@@ -199,7 +199,7 @@ showType, showEval :: S.Ann S.Expr -> Action
 showType e = Action $ do
   e ::: _T <- elab $ Elab.elab (Elab.synth (Elab.synthExpr e))
   let e'  = Core.eval Nil mempty e
-  outputDocLn (prettyCode (ann (printValue Nil e' ::: printValue Nil _T)))
+  outputDocLn (getPrint (ann (printValue Nil e' ::: printValue Nil _T)))
 
 showEval e = Action $ do
   (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ locally (Elab.sig_.interfaces_) (VNe (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
@@ -207,7 +207,7 @@ showEval e = Action $ do
   (dEval, e'') <- time $ elab $ runEvalMain (eval e'')
   outputStrLn $ show dElab
   outputStrLn $ show dEval
-  outputDocLn (prettyCode (ann (printValue Nil e'' ::: printValue Nil _T)))
+  outputDocLn (getPrint (ann (printValue Nil e'' ::: printValue Nil _T)))
 
 runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure

@@ -3,7 +3,6 @@ module Facet.Print
 ( getPrint
 , Print(..)
 , Precedence(..)
-, Highlight(..)
 , ann
   -- * Core printers
 , printValue
@@ -22,9 +21,10 @@ import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
-import           Facet.Name
+import           Facet.Name as Name
 import           Facet.Pretty (lower, upper)
 import           Facet.Stack
+import           Facet.Style
 import           Facet.Syntax
 import qualified Prettyprinter as PP
 import           Silkscreen as P
@@ -32,11 +32,11 @@ import           Silkscreen.Printer.Prec hiding (Level)
 import qualified Silkscreen.Printer.Prec as P
 import           Silkscreen.Printer.Rainbow as P
 
-getPrint :: Print -> PP.Doc Highlight
+getPrint :: Print -> PP.Doc Style
 getPrint = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
 
 
-data Print = Print { fvs :: FVs, doc :: Prec Precedence (Rainbow (PP.Doc Highlight)) }
+data Print = Print { fvs :: FVs, doc :: Prec Precedence (Rainbow (PP.Doc Style)) }
 
 instance Semigroup Print where
   Print v1 d1 <> Print v2 d2 = Print (v1 <> v2) (d1 <> d2)
@@ -50,7 +50,7 @@ instance Vars Print where
   bind l d = Print (bind l (fvs d)) (doc d)
 
 instance Printer Print where
-  type Ann Print = Highlight
+  type Ann Print = Style
 
   liftDoc0 a = Print mempty (liftDoc0 a)
   liftDoc1 f (Print v d) = Print v (liftDoc1 f d)
@@ -95,22 +95,11 @@ data Precedence
   | Var
   deriving (Bounded, Eq, Ord, Show)
 
--- FIXME: move this into Facet.Style or something instead.
-data Highlight
-  = Nest Int
-  | Name Int
-  | Keyword
-  | Con
-  | Type
-  | Op
-  | Lit
-  deriving (Eq, Show)
-
-op :: (Printer p, Ann p ~ Highlight) => p -> p
+op :: (Printer p, Ann p ~ Style) => p -> p
 op = annotate Op
 
 
-arrow :: (Printer p, Ann p ~ Highlight) => p
+arrow :: (Printer p, Ann p ~ Style) => p
 arrow = op (pretty "->")
 
 comp :: Print -> Print
@@ -169,7 +158,7 @@ printValue env = \case
   C.TString   -> annotate Type $ pretty "String"
   C.EString s -> annotate Lit $ pretty (show s)
   where
-  d = Level (length env)
+  d = Name.Level (length env)
 
 printComp :: Stack Print -> C.Comp -> Print
 printComp env = \case
@@ -177,7 +166,7 @@ printComp env = \case
     let (vs, (_, b')) = splitr C.unBind' (d, C.TForAll t b)
         binding env (C.Binding p n s _T) =
           let _T' = maybe mempty (brackets . commaSep . map (printValue env)) s <> printValue env _T
-          in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Level (length env)) ::: _T'))
+          in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Name.Level (length env)) ::: _T'))
         name p n d
           | n == __, Ex <- p = []
           | otherwise        = [tintro n d]
@@ -185,7 +174,7 @@ printComp env = \case
     in fn vs' (printComp env' b')
   C.TRet s _T -> sig s <+> printValue env _T
   where
-  d = Level (length env)
+  d = Name.Level (length env)
 
   sig (C.Sig v s) = brackets (printValue env v <> pipe <> commaSep (map (printValue env) s))
 
@@ -238,14 +227,14 @@ name f n d = setPrec Var . annotate (Name d) $
 fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
   [] -> _T --> b
   _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
-tvar env n = group (tlocal (snd (tm n)) (Level (length env)))
+tvar env n = group (tlocal (snd (tm n)) (Name.Level (length env)))
 app f as = group f $$* fmap (group . uncurry (unPl braces id)) as
 
-lvar env (p, n) = unPl tlocal local p n (Level (length env))
+lvar env (p, n) = unPl tlocal local p n (Name.Level (length env))
 
 clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow <+> printValue env' (b (snd <$> p'))
   where
-  ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = lvar env (pl, n) in ((succ d, env :> v), (v, C.free d))) (Level (length env), env) p
+  ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = lvar env (pl, n) in ((succ d, env :> v), (v, C.free d))) (Name.Level (length env), env) p
 pat = \case
   C.PVar n         -> n
   C.PCon (n :$ ps) -> parens (hsep (annotate Con (pretty n):map pat (toList ps)))

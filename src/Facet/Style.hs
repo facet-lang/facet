@@ -2,9 +2,7 @@
 module Facet.Style
 ( Style(..)
 , terminalStyle
-, terminalCodeStyle
   -- * Pretty-printing
-, prettyCode
 , prettyNotice
 ) where
 
@@ -13,7 +11,6 @@ import           Data.List.NonEmpty (NonEmpty(..))
 import           Data.Maybe (fromMaybe)
 import qualified Facet.Notice as Notice
 import           Facet.Pretty
-import           Facet.Print as Print
 import           Facet.Source
 import qualified Facet.Span as Span
 import qualified Prettyprinter as P
@@ -26,7 +23,13 @@ data Style
   | Progress
   | Command
   -- Code
-  | Code Print.Highlight
+  | Nest Int
+  | Name Int
+  | Keyword
+  | Con
+  | Type
+  | Op
+  | Lit
   -- Notices
   | Path
   | Level Notice.Level
@@ -47,7 +50,13 @@ terminalStyle = \case
   Success  -> [setRGB (hsl 120 1 0.5)]
   Progress -> [setRGB (hsl 0 0 0.5), setBold]
   Command  -> [setRGB (hsl 180 1 0.5)]
-  Code s   -> terminalCodeStyle s
+  Nest i  -> [setRGB (pick i 0.4 0.8)]
+  Name i  -> [setRGB (pick (-i) 0.8 0.6)]
+  Keyword -> [setRGB (hsl 300 0.7 0.4)]
+  Op      -> [setRGB (hsl 180 0.7 0.4)]
+  Type    -> [setRGB (hsl 60 0.5 0.5)]
+  Con     -> [setRGB (hsl 15 0.8 0.5)]
+  Lit     -> [setBold]
   Path      -> [setBold]
   Level l -> case l of
     Notice.Info  -> [setRGB (hsl 0 0 0.5)]
@@ -61,26 +70,12 @@ terminalStyle = \case
   Context   -> []
   Key       -> [setRGB (hsl 120 0.8 0.4)]
   Unit      -> [setRGB (hsl 0 0 0.5)]
-
-terminalCodeStyle :: Print.Highlight -> [SGR]
-terminalCodeStyle = \case
-  Nest i  -> [setRGB (pick i 0.4 0.8)]
-  Name i  -> [setRGB (pick (-i) 0.8 0.6)]
-  Keyword -> [setRGB (hsl 300 0.7 0.4)]
-  Op      -> [setRGB (hsl 180 0.7 0.4)]
-  Type    -> [setRGB (hsl 60 0.5 0.5)]
-  Con     -> [setRGB (hsl 15 0.8 0.5)]
-  Lit     -> [setBold]
   where
   pick i s l = hsl (fromIntegral i * phi * 30) s l
   phi = 1.618033988749895
 
 
 -- Pretty-printing
-
-prettyCode :: Print -> Doc Style
-prettyCode = P.reAnnotate Code . getPrint
-
 
 prettyNotice :: Notice.Notice (P.Doc Style) -> P.Doc Style
 prettyNotice (Notice.Notice level src reason context) = concatWith (surround hardline) (concat

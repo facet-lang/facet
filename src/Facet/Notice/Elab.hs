@@ -16,7 +16,6 @@ import           Facet.Stack
 import           Facet.Style
 import           Facet.Syntax
 import           Prelude hiding (unlines)
-import           Prettyprinter (reAnnotate)
 import           Silkscreen
 
 -- Elaboration
@@ -24,7 +23,7 @@ import           Silkscreen
 rethrowElabErrors :: Source -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors src = L.runThrow rethrow
   where
-  rethrow Err{ span, reason, context, callStack } = Notice.Notice (Just Error) (Just (slice src span)) (reAnnotate Code (printReason printCtx reason))
+  rethrow Err{ span, reason, context, callStack } = Notice.Notice (Just Error) (Just (slice src span)) (printReason printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
     , nest 2 (pretty "Trace" <\> concatWith (<\>) callStack)
     ]
@@ -41,9 +40,9 @@ rethrowElabErrors src = L.runThrow rethrow
         , case e of
           Flex{} -> print
           _      -> print :> n'
-        , ctx  :> reAnnotate Code (getPrint (ann (n' ::: printValue print _T))) <> case e of
+        , ctx  :> getPrint (ann (n' ::: printValue print _T)) <> case e of
           Flex _ v _ -> space <> pretty '=' <+> case v of
-            Just v -> reAnnotate Code (getPrint (printValue print v))
+            Just v -> getPrint (printValue print v)
             _      -> pretty '?'
           _        -> mempty )
   name = \case
@@ -51,7 +50,7 @@ rethrowElabErrors src = L.runThrow rethrow
     _     -> tintro
 
 
-printReason :: Stack Print -> Reason -> Doc Print.Highlight
+printReason :: Stack Print -> Reason -> Doc Style
 printReason ctx = group . \case
   FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n qs     -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
@@ -70,5 +69,5 @@ printReason ctx = group . \case
   Invariant s -> reflow s
 
 
-printType :: Stack Print -> Type -> Doc Print.Highlight
+printType :: Stack Print -> Type -> Doc Style
 printType env = getPrint . printValue env
