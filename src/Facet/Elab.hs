@@ -544,7 +544,7 @@ onTop f = do
   ctx <- get
   (gamma, elem) <- case elems ctx of
     gamma :> elem -> pure (Context gamma, elem)
-    Nil           -> error "wtf empty context" -- FIXME: make this a real error
+    Nil           -> err $ Invariant "onTop in empty context"
   put gamma
   case elem of
     Flex n v _T -> f (n :=: v ::: _T) >>= \case
