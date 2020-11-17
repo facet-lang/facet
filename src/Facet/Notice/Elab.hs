@@ -67,6 +67,7 @@ printReason ctx = group . \case
   Hole n _T              ->
     let _T' = printType ctx _T
     in fillSep [reflow "found hole", pretty n, colon, _T' ]
+  Invariant s -> reflow s
 
 
 printType :: Stack Print -> Type -> Doc Print.Highlight

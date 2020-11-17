@@ -478,6 +478,7 @@ data Reason
   | CouldNotSynthesize String
   | Mismatch String (Either String Type) Type
   | Hole Name Type
+  | Invariant String
 
 
 -- FIXME: apply the substitution before showing this to the user
