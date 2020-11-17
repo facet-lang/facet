@@ -144,6 +144,8 @@ commands = choice
     , removeTarget <$ token (string "target") <*> some mname
     ]
   , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (target_ `zoom` reloadModules))
+  , command ["set"]             "set a flag"                         (Just "flag")
+    $ setLogTraces <$> choice [ False <$ symbol "no-log-traces", True <$ symbol "log-traces" ]
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ showType <$> runFacet [] expr
   , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
@@ -186,6 +188,10 @@ addTarget targets = Action $ do
 
 -- FIXME: remove things depending on it
 removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets)
+
+
+setLogTraces :: Bool -> Action
+setLogTraces b = Action $ put (toFlag LogTraces b)
 
 
 showType, showEval :: S.Ann S.Expr -> Action
