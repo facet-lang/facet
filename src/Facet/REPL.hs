@@ -154,7 +154,7 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State REPL :+: Time Instant :+: Trace) sig m, Has Trace sig m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State REPL :+: Time Instant :+: Trace) sig m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action
