@@ -104,7 +104,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ "
   plain = setSGRCode [] <> "\STX"
 
 
-loop :: (Has (Empty :+: Input :+: Output :+: State REPL :+: Time Instant :+: Trace) sig m, MonadIO m) => m ()
+loop :: (Has (Empty :+: Input :+: Output :+: State (Flag LogTraces) :+: State REPL :+: Time Instant :+: Trace) sig m, MonadIO m) => m ()
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
@@ -154,7 +154,7 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State REPL :+: Time Instant :+: Trace) sig m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State (Flag LogTraces) :+: State REPL :+: Time Instant :+: Trace) sig m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action
