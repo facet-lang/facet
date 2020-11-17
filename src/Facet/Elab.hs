@@ -213,7 +213,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
   synth = switch (synthExpr expr)
 
 
-elabBinding :: S.Ann S.Binding -> [(Pos, Check (Binding Quote))]
+elabBinding :: HasCallStack => S.Ann S.Binding -> [(Pos, Check (Binding Quote))]
 elabBinding (S.Ann s _ (S.Binding p n d t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
     d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
@@ -221,11 +221,11 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
     pure $ Binding p n d' t')
   | n <- maybe [Nothing] (map Just . toList) n ]
 
-elabSig :: S.Ann S.Interface -> Check Quote
+elabSig :: HasCallStack => S.Ann S.Interface -> Check Quote
 elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
   check (switch (foldl' ($$) (mapSynth (setSpan s') (var n)) (checkExpr <$> sp)) ::: _T)
 
-elabComp :: S.Ann S.Comp -> Synth QComp
+elabComp :: HasCallStack => S.Ann S.Comp -> Synth QComp
 elabComp (S.Ann s _ (S.Comp bs d t)) = Synth $ setSpan s . trace "elabComp" $ foldr
   (\ b k bs -> do
     b' <- check (snd b ::: KType)
@@ -274,7 +274,7 @@ force e = Synth $ trace "force" $ do
 
 
 -- FIXME: go find the pattern matching matrix algorithm
-elabClauses :: [S.Clause] -> Check Quote
+elabClauses :: HasCallStack => [S.Clause] -> Check Quote
 elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = mapCheck (trace "elabClauses") $ lam n $ checkExpr b
 elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
   -- FIXME: use the signature to elaborate the pattern
