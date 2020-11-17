@@ -86,10 +86,10 @@ prettyNotice :: Notice.Notice (P.Doc Style) -> P.Doc Style
 prettyNotice (Notice.Notice level src reason context) = concatWith (surround hardline) (concat
   [ pure header
   , foldMap pure (ref <$> src)
-  , (context >>= \ ctx -> [ mempty, annotate Context ctx ])])
+  , context >>= \ ctx -> [ mempty, annotate Context ctx ]])
   where
   header = nest 2 (group (fillSep
-    [ foldMap (\ (Source path span _ _) -> annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> prettySpan span <> colon) src <> (foldMap ((space <>) . (<> colon) . prettyLevel) level)
+    [ foldMap (\ (Source path span _ _) -> annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> prettySpan span <> colon) src <> foldMap ((space <>) . (<> colon) . prettyLevel) level
     , annotate Reason reason
     ]))
 
