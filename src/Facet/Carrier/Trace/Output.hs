@@ -39,4 +39,4 @@ instance Has Output sig m => Algebra (Trace :+: State (Flag LogTraces) :+: sig) 
       when logTraces $ outputDocLn (stimes (length stack * 2) space <> msg)
       runTraceC (hdl (m <$ ctx)) (stack:>msg)
     L CallStack     -> pure (stack <$ ctx)
-    R other     -> alg ((`runTraceC` stack) . hdl) other ctx
+    R other         -> alg ((`runTraceC` stack) . hdl) other ctx
