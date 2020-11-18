@@ -540,7 +540,7 @@ span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span
 
 
 onTop :: HasCallStack => (Meta :=: Maybe Value ::: Type -> Elab (Maybe Suffix)) -> Elab ()
-onTop f = do
+onTop f = trace "onTop" $ do
   ctx <- get
   (gamma, elem) <- case elems ctx of
     gamma :> elem -> pure (Context gamma, elem)
