@@ -558,7 +558,7 @@ unify t1 t2 = trace "unify" $ value t1 t2
   where
   nope = couldNotUnify "mismatch" t1 t2
 
-  value t1 t2 = case (t1, t2) of
+  value t1 t2 = trace "unify value" $ case (t1, t2) of
     (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> trace "flex-flex" $ onTop $ \ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
       (True,  True,  _)       -> restore
       (True,  False, Nothing) -> replace [g :=: Just (metavar v2) ::: _K]
@@ -589,7 +589,7 @@ unify t1 t2 = trace "unify" $ value t1 t2
     (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> unless (q1 == q2) nope >> spine (pl value) sp1 sp2
     (EOp{}, _)                                         -> nope
 
-  var v1 v2 = case (v1, v2) of
+  var v1 v2 = trace "unify var" $ case (v1, v2) of
     (Global q1, Global q2)   -> unless (q1 == q2) nope
     (Global{}, _)            -> nope
     (Free v1, Free v2)       -> unless (v1 == v2) nope
@@ -599,17 +599,17 @@ unify t1 t2 = trace "unify" $ value t1 t2
 
   pl f (p1, t1) (p2, t2) = unless (p1 == p2) nope >> f t1 t2
 
-  spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> sequenceA_ (zipWith f sp1 sp2)
+  spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> sequenceA_ (zipWith f sp1 sp2)
 
-  comp c1 c2 = case (c1, c2) of
+  comp c1 c2 = trace "unify comp" $ case (c1, c2) of
     (TForAll t1 b1, TForAll t2 b2) -> do { binding t1 t2 ; d <- depth ; t1 |- comp (b1 (free d)) (b2 (free d)) ; pure () }
     (TForAll{}, _)                 -> nope
     (TRet s1 t1, TRet s2 t2)       -> sig s1 s2 >> value t1 t2
     (TRet{}, _)                    -> nope
 
-  binding (Binding p1 _ d1 t1) (Binding p2 _ d2 t2) = unless (p1 == p2) nope >> eff (spine value) d1 d2 >> value t1 t2
+  binding (Binding p1 _ d1 t1) (Binding p2 _ d2 t2) = trace "unify binding" $ unless (p1 == p2) nope >> eff (spine value) d1 d2 >> value t1 t2
 
-  sig (Sig e1 c1) (Sig e2 c2) = value e1 e2 >> spine value c1 c2
+  sig (Sig e1 c1) (Sig e2 c2) = trace "unify sig" $ value e1 e2 >> spine value c1 c2
 
   eff f e1 e2 = case (e1, e2) of
     (Nothing, Nothing) -> pure ()
