@@ -124,6 +124,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Continue after errors on a declaration-by-declaration basis.
 
+- Add entire composite patterns to contexts. One entry for the whole pattern at type A, with sub-entries for each sub-pattern at decomposed types.
+
 
 ### Pretty-printer
 
