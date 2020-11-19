@@ -563,7 +563,7 @@ unify t1 t2 = trace "unify" $ value t1 t2
       (True,  True,  _)       -> restore
       (True,  False, Nothing) -> replace [v1 :=: Just (metavar v2) ::: _K]
       (False, True,  Nothing) -> replace [v2 :=: Just (metavar v1) ::: _K]
-      (True,  False, Just t)  -> value (metavar v2) t >> restore
+      (True,  False, Just t)  -> value t (metavar v2) >> restore
       (False, True,  Just t)  -> value (metavar v1) t >> restore
       (False, False, _)       -> value (metavar v1) (metavar v2) >> restore
     (VNe (Metavar v1 :$ Nil), t2)                      -> solve v1 t2
