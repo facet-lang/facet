@@ -561,8 +561,8 @@ unify t1 t2 = trace "unify" $ value t1 t2
   value t1 t2 = trace "unify value" $ case (t1, t2) of
     (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> trace "flex-flex" $ onTop $ \ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
       (True,  True,  _)       -> restore
-      (True,  False, Nothing) -> replace [g :=: Just (metavar v2) ::: _K]
-      (False, True,  Nothing) -> replace [g :=: Just (metavar v1) ::: _K]
+      (True,  False, Nothing) -> replace [v1 :=: Just (metavar v2) ::: _K]
+      (False, True,  Nothing) -> replace [v2 :=: Just (metavar v1) ::: _K]
       (True,  False, Just t)  -> value (metavar v2) t >> restore
       (False, True,  Just t)  -> value (metavar v1) t >> restore
       (False, False, _)       -> value (metavar v1) (metavar v2) >> restore
