@@ -180,8 +180,8 @@ var :: Var Level -> Value
 var = VNe . (:$ Nil)
 
 
-occursIn :: (Var Level -> Bool) -> Value -> Bool
-occursIn p = go (Level 0) -- FIXME: this should probably be doing something more sensible
+occursIn :: (Var Level -> Bool) -> Level -> Value -> Bool
+occursIn p = go
   where
   go d = \case
     KType          -> False

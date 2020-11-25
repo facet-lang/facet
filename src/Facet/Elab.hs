@@ -539,7 +539,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: HasCallStack => (Meta :=: Maybe Value ::: Type -> Elab (Maybe Suffix)) -> Elab ()
+onTop :: HasCallStack => (Level -> Meta :=: Maybe Value ::: Type -> Elab (Maybe Suffix)) -> Elab ()
 onTop f = trace "onTop" $ do
   ctx <- get
   (gamma, elem) <- case elems ctx of
@@ -547,7 +547,7 @@ onTop f = trace "onTop" $ do
     Nil           -> err $ Invariant "onTop in empty context"
   put gamma
   case elem of
-    Flex n v _T -> f (n :=: v ::: _T) >>= \case
+    Flex n v _T -> f (level gamma) (n :=: v ::: _T) >>= \case
       Just v  -> modify (<>< v)
       Nothing -> modify (|> elem)
     _         -> onTop f <* modify (|> elem)
@@ -559,7 +559,7 @@ unify t1 t2 = trace "unify" $ value t1 t2
   nope = couldNotUnify "mismatch" t1 t2
 
   value t1 t2 = trace "unify value" $ case (t1, t2) of
-    (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> trace "flex-flex" $ onTop $ \ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
+    (VNe (Metavar v1 :$ Nil), VNe (Metavar v2 :$ Nil)) -> trace "flex-flex" $ onTop $ \ _ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
       (True,  True,  _)       -> restore
       (True,  False, Nothing) -> replace [v1 :=: Just (metavar v2) ::: _K]
       (False, True,  Nothing) -> replace [v2 :=: Just (metavar v1) ::: _K]
@@ -619,7 +619,7 @@ unify t1 t2 = trace "unify" $ value t1 t2
   solve :: HasCallStack => Meta -> Type -> Elab ()
   solve v t = trace "solve" $ go []
     where
-    go ext = onTop $ \ (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) t, d) of
+    go ext = onTop $ \ lvl (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) lvl t, d) of
       (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
       (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ])
       (True,  False, Just t') -> modify (<>< ext) >> value t' t >> restore
