@@ -17,14 +17,14 @@ import Facet.Pretty
 import Facet.Stack
 import Facet.Style
 
-trace :: Has Trace sig m => Doc Style -> m a -> m a
+trace :: Has Trace sig m => Message -> m a -> m a
 trace s m = send (Trace s m)
 
 tracePretty :: (Has Trace sig m, Pretty b) => b -> m a -> m a
 tracePretty = trace . pretty
 
 -- FIXME: Text, probably
-callStack :: Has Trace sig m => m (Stack (Doc Style))
+callStack :: Has Trace sig m => m (Stack Message)
 callStack = send CallStack
 
 type Message = Doc Style
