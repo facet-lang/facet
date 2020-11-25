@@ -58,12 +58,14 @@ import           Facet.Effect.Trace as Trace
 import           Facet.Graph as Graph
 import           Facet.Lens
 import           Facet.Name hiding (L, R)
+import qualified Facet.Print as Print
 import           Facet.Span (Pos, Span(..))
 import           Facet.Stack
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding (span, zipWith)
+import qualified Silkscreen
 
 -- TODO:
 -- - clause/pattern matrices
@@ -422,7 +424,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
         S.TermDef t -> pure (Just (S.ann tele, dname, t ::: _T))
 
     -- then elaborate the terms
-    trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> local (const s) $ tracePretty dname $ do
+    trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> local (const s) $ trace (Print.getPrint (Silkscreen.pretty dname Silkscreen.<+> Silkscreen.colon Silkscreen.<+> Print.printComp Nil _T)) $ do
       t' <- runModule $ elabTermDef _T t
       scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
 
