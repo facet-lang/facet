@@ -65,6 +65,7 @@ repl searchPaths
   . runReadlineWithHistory
   . evalState (defaultREPLState & target_.searchPaths_ .~ Set.fromList searchPaths)
   . evalEmpty
+  -- FIXME: move this (and any other flags) into the driver
   . runTrace Nil (toFlag LogTraces False)
   . runTime
   $ loop
