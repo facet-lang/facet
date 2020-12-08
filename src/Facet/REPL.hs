@@ -41,7 +41,7 @@ import           Facet.Notice.Elab
 import           Facet.Notice.Parser
 import           Facet.Parser as Parser
 import           Facet.Pretty
-import           Facet.Print as Print hiding (Comp, meta)
+import           Facet.Print as Print hiding (meta)
 import           Facet.REPL.Parser
 import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Span (Span)

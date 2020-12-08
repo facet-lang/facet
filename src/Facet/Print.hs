@@ -6,7 +6,6 @@ module Facet.Print
 , ann
   -- * Core printers
 , printValue
-, printComp
 , printModule
   -- * Misc
 , intro
@@ -144,7 +143,17 @@ printValue :: Stack Print -> C.Value -> Print
 printValue env = \case
   C.KType -> annotate Type $ pretty "Type"
   C.KInterface -> annotate Type $ pretty "Interface"
-  C.TSusp t -> printComp env t
+  C.TForAll t b ->
+    let (vs, (_, b')) = splitr C.unBind' (d, C.TForAll t b)
+        binding env (C.Binding p n _T) =
+          let _T' = printValue env _T
+          in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Name.Level (length env)) ::: _T'))
+        name p n d
+          | n == __, Ex <- p = []
+          | otherwise        = [tintro n d]
+        (env', vs') = mapAccumL binding env vs
+    in fn vs' (printValue env' b')
+  C.TComp s t -> sig s <+> printValue env t
   C.ELam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
   C.VNe (h :$ e) ->
     let elim h sp  Nil     = case sp Nil of
@@ -159,23 +168,6 @@ printValue env = \case
   C.EString s -> annotate Lit $ pretty (show s)
   where
   d = Name.Level (length env)
-
-printComp :: Stack Print -> C.Comp -> Print
-printComp env = \case
-  C.TForAll t b ->
-    let (vs, (_, b')) = splitr C.unBind' (d, C.TForAll t b)
-        binding env (C.Binding p n s _T) =
-          let _T' = maybe mempty (brackets . commaSep . map (printValue env)) s <> printValue env _T
-          in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Name.Level (length env)) ::: _T'))
-        name p n d
-          | n == __, Ex <- p = []
-          | otherwise        = [tintro n d]
-        (env', vs') = mapAccumL binding env vs
-    in fn vs' (printComp env' b')
-  C.TRet s _T -> sig s <+> printValue env _T
-  where
-  d = Name.Level (length env)
-
   sig (C.Sig v s) = brackets (printValue env v <> pipe <> commaSep (map (printValue env) s))
 
 
@@ -188,16 +180,16 @@ printModule (C.Module mname is _ ds) = module_
   where
   def (n, Nothing ::: t) = ann
     $   qvar (Nil:.:n)
-    ::: printComp Nil t
+    ::: printValue Nil t
   def (n, Just d  ::: t) = ann
     $   qvar (Nil:.:n)
-    ::: defn (printComp Nil t
+    ::: defn (printValue Nil t
     :=: case d of
       C.DTerm b  -> printValue Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printComp Nil _T)) (C.scopeToList cs))
+        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printValue Nil _T)) (C.scopeToList cs))
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printComp Nil _T)) (C.scopeToList os))
+        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printValue Nil _T)) (C.scopeToList os))
       C.DModule ds -> block (concatWith (surround hardline) (map ((hardline <>) . def) (Map.toList (C.decls ds)))))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
   import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))

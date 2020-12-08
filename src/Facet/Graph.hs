@@ -57,7 +57,7 @@ lookupWith lookup (m:.:n) mod@Module{ name } graph
   <|> guard (m == Nil) *> asum (lookup n . snd <$> getGraph graph)
   <|> guard (m /= Nil) *> (lookupM m graph >>= lookup n . snd)
 
-lookupQ :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> m (Q Name :=: Maybe Def ::: Comp)
+lookupQ :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> m (Q Name :=: Maybe Def ::: Type)
 lookupQ = lookupWith lookupD
 
 -- FIXME: enrich this with source references for each
