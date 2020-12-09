@@ -182,6 +182,15 @@ Binding _ n _T |- b = trace "|-" $ do
 infix 1 |-
 
 
+abstract :: Elab Quote -> Type -> Elab Quote
+abstract body = \case
+  TForAll t b -> do
+    level <- depth
+    b' <- t |- abstract body (b (free level))
+    pure $ QTForAll (quote level <$> set icit_ Im t) b'
+  _           -> body
+
+
 -- Expressions
 
 synthExpr :: HasCallStack => S.Ann S.Expr -> Synth Quote
@@ -364,12 +373,6 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
     : cs
   where
-  abstract body = \case
-    TForAll t b -> do
-      level <- depth
-      b' <- t |- abstract body (b (free level))
-      pure $ QTForAll (quote level <$> set icit_ Im t) b'
-    _                         -> body
   con q fs = \case
     TForAll (Binding p n _T) _B -> ELam p [Clause (PVar (fromMaybe __ n)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
     _T                          -> ECon (q :$ fs)
