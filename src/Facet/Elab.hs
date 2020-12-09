@@ -186,12 +186,14 @@ infix 1 |-
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
 abstract :: Elab Quote -> Type -> Elab Quote
-abstract body = \case
-  TForAll t b -> do
-    level <- depth
-    b' <- t |- abstract body (b (free level))
-    pure $ QTForAll (quote level <$> set icit_ Im t) b'
-  _           -> body
+abstract body = go
+  where
+  go = \case
+    TForAll t b -> do
+      level <- depth
+      b' <- t |- go (b (free level))
+      pure $ QTForAll (quote level <$> set icit_ Im t) b'
+    _           -> body
 
 
 -- Expressions
