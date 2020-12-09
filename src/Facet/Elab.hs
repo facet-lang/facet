@@ -418,7 +418,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ local (const s) $ do
       -- FIXME: add the effect var to the QComp before evaluating.
-      _T <- runModule . elab $ addEffectVar . eval Nil mempty <$> check (switch (elabComp tele) ::: KType)
+      _T <- runModule . elab $ eval Nil mempty <$> check (switch (elabComp tele) ::: KType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
@@ -436,21 +436,6 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> local (const s) $ trace (Print.getPrint (Silkscreen.pretty dname Silkscreen.<+> Silkscreen.colon Silkscreen.<+> Print.printValue Nil _T)) $ do
       t' <- runModule $ elabTermDef _T t
       scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
-
-
--- FIXME: do we need to shift levels internally? (how would levels be happening? this should be closed—but we certainly can’t /prove/ that it’s closed)
-addEffectVar :: Type -> Type
-addEffectVar _T = TForAll (Binding Im (Just "ε") KInterface) (`insertEffectVar` _T)
-
-insertEffectVar :: Type -> Type -> Type
-insertEffectVar _E = go
-  where
-  go = \case
-    -- FIXME: we can probably skip implicits because otherwise we might try to insert effect vars into e.g. polykinds
-    TForAll b@Binding{ type' } _B -> TForAll b{ type' = go type' } (go . _B)
-    TComp s KType                 -> TComp s KType
-    -- FIXME: is this right?
-    TComp s t                     -> TComp s{ effectVar = _E } t
 
 
 extendSig :: Has (Reader ElabContext) sig m => Maybe [Value] -> m a -> m a
