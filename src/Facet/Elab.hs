@@ -182,6 +182,9 @@ Binding _ n _T |- b = trace "|-" $ do
 infix 1 |-
 
 
+-- | Elaborate a type abstracted over another type’s parameters.
+--
+-- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
 abstract :: Elab Quote -> Type -> Elab Quote
 abstract body = \case
   TForAll t b -> do
