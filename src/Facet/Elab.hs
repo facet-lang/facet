@@ -387,7 +387,7 @@ elabInterfaceDef
   -> m (Maybe Def ::: Type)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $ do
-    _T' <- elab $ check (switch (elabComp t) ::: KType)
+    _T' <- elab $ abstract (check (switch (elabComp t) ::: KType)) _T
     -- FIXME: check that the interface is a member of the sig.
     let _T'' = eval Nil mempty _T'
     pure $ n :=: Nothing ::: _T''
