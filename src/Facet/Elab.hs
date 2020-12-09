@@ -42,7 +42,7 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Empty
 import           Control.Effect.Lens (view, views, (.=))
 import           Control.Effect.Sum
-import           Control.Lens (Lens', at, ix, lens)
+import           Control.Lens (Lens', at, ix, lens, set)
 import           Control.Monad (unless)
 import           Data.Bifunctor (first)
 import           Data.Foldable (asum, foldl', for_, sequenceA_, toList)
@@ -357,15 +357,19 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
-    -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
-    c_T <- elab $ check (switch (elabComp t) ::: KType)
+    c_T <- elab $ abstract (check (switch (elabComp t) ::: KType)) _T
     let c_T' = eval Nil mempty c_T
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T')) ::: c_T'
-  -- FIXME: constructor functions should have signatures, but constructors should not.
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
     : cs
   where
+  abstract body = \case
+    TForAll t b -> do
+      level <- depth
+      b' <- t |- abstract body (b (free level))
+      pure $ QTForAll (quote level <$> set icit_ Im t) b'
+    _                         -> body
   con q fs = \case
     TForAll (Binding p n _T) _B -> ELam p [Clause (PVar (fromMaybe __ n)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
     _T                          -> ECon (q :$ fs)
@@ -377,7 +381,6 @@ elabInterfaceDef
   -> m (Maybe Def ::: Type)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $ do
-    -- FIXME: we should unpack the Comp instead of quoting so we don’t have to re-eval everything.
     _T' <- elab $ check (switch (elabComp t) ::: KType)
     -- FIXME: check that the interface is a member of the sig.
     let _T'' = eval Nil mempty _T'
