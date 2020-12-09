@@ -244,11 +244,14 @@ elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ fo
     b' ::: _ <- fmap (uncurry eval env) t' |- b
     pure $ QTForAll t' b' ::: KType)
   (do
-    d' <- traverse (traverse (check . (::: KInterface) . elabSig)) d
     b' <- check (checkExpr b ::: KType)
-    level <- depth
-    e <- views (sig_.effectVar_) (quote level)
-    pure $ QTComp (Sig e (fromMaybe [] d')) b' ::: KType)
+    case d of
+      Just d -> do
+        d' <- traverse (check . (::: KInterface) . elabSig) d
+        level <- depth
+        e <- views (sig_.effectVar_) (quote level)
+        pure $ QTComp (Sig e d') b' ::: KType
+      Nothing -> pure (b' ::: KType))
   (elabBinding =<< bs)
 
 -- comp type has a list of bindings, maybe a list of constraints, and a return type; turn the latter two into a QTComp and the former into a series of QTForAlls
