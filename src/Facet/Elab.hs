@@ -321,10 +321,10 @@ elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
 elabPattern :: Type -> S.Ann S.EffPattern -> (Pattern (Name ::: Type) -> Elab a) -> Elab a
 elabPattern = go
   where
-  sig = []
   go _A (S.Ann s _ p) k = trace "elabPattern" $ setSpan s $ case p of
     S.PVal p -> goVal _A p k
     S.PEff n ps v -> do
+      let sig = []
       ElabContext{ module' = mod, graph } <- ask
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
