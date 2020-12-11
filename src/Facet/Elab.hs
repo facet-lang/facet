@@ -312,15 +312,16 @@ elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
   d <- depth
   -- FIXME: I don’t see how this can be correct; the context will not hold a variable but rather a pattern of them.
   let _B' = _B (free d)
-  cs' <- for cs $ \ (S.Clause p b) -> elabPattern [] _A p (\ p' -> (tm <$> p',) <$> check (checkExpr b ::: _B'))
+  cs' <- for cs $ \ (S.Clause p b) -> elabPattern _A p (\ p' -> (tm <$> p',) <$> check (checkExpr b ::: _B'))
   pure $ QELam Ex cs'
 
 
 -- FIXME: check for unique variable names
 -- FIXME: get the sig from the argument type
-elabPattern :: [Value] -> Type -> S.Ann S.EffPattern -> (Pattern (Name ::: Type) -> Elab a) -> Elab a
-elabPattern sig = go
+elabPattern :: Type -> S.Ann S.EffPattern -> (Pattern (Name ::: Type) -> Elab a) -> Elab a
+elabPattern = go
   where
+  sig = []
   go _A (S.Ann s _ p) k = trace "elabPattern" $ setSpan s $ case p of
     S.PVal p -> goVal _A p k
     S.PEff n ps v -> do
