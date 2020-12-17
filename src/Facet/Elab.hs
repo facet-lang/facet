@@ -299,7 +299,7 @@ force :: Synth a -> Synth a
 force e = Synth $ trace "force" $ do
   e' ::: _T <- synth e
   -- FIXME: should we check the signature? or can we rely on it already having been checked?
-  (_s, _T') <- expectRet "when forcing computation" _T
+  (_s, _T') <- expectComp "when forcing computation" _T
   pure $ e' ::: _T'
 
 
@@ -520,8 +520,8 @@ expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 expectQuantifier :: String -> Type -> Elab (Binding Value, Type -> Type)
 expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
 
-expectRet :: String -> Type -> Elab (Sig Value, Type)
-expectRet = expectMatch (\case { TComp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
+expectComp :: String -> Type -> Elab (Sig Value, Type)
+expectComp = expectMatch (\case { TComp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
 -- Unification
