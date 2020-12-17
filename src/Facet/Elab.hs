@@ -317,15 +317,14 @@ elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
 
 
 -- FIXME: check for unique variable names
--- FIXME: get the sig from the argument type
 elabPattern :: Type -> S.Ann S.EffPattern -> (Pattern (Name ::: Type) -> Elab a) -> Elab a
 elabPattern = go
   where
   go _A (S.Ann s _ p) k = trace "elabPattern" $ setSpan s $ case p of
     S.PVal p -> goVal _A p k
     S.PEff n ps v -> do
-      let sig = []
       ElabContext{ module' = mod, graph } <- ask
+      (Sig _ sig, _) <- expectComp "when elaborating pattern" _A
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
