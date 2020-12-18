@@ -324,12 +324,12 @@ elabPattern = go
     S.PVal p -> goVal _A p k
     S.PEff n ps v -> do
       ElabContext{ module' = mod, graph } <- ask
-      (Sig _ sig, _) <- expectComp "when elaborating pattern" _A
+      (Sig _ sig, _A') <- expectComp "when elaborating pattern" _A
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
           e <- view (sig_.effectVar_)
-          subpatterns _T'' ps $ \ _T ps' -> let t = TForAll (Binding Ex Nothing _T) (const (TComp (Sig e sig) _A)) in Binding Ex (Just v) t |- k (PEff q (fromList ps') (v ::: t))
+          subpatterns _T'' ps $ \ _T ps' -> let t = TForAll (Binding Ex Nothing _T) (const (TComp (Sig e sig) _A')) in Binding Ex (Just v) t |- k (PEff q (fromList ps') (v ::: t))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> Binding Ex (Just n) _A |- k (PVar (n  ::: _A))
