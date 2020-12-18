@@ -329,7 +329,7 @@ elabPattern = go
         Just (q ::: _T') -> do
           _T'' <- inst _T'
           e <- view (sig_.effectVar_)
-          subpatterns _T'' ps $ \ _T ps' -> k (PEff q (fromList ps') (v ::: TForAll (Binding Ex Nothing _T) (const (TComp (Sig e sig) _A))))
+          subpatterns _T'' ps $ \ _T ps' -> let t = TForAll (Binding Ex Nothing _T) (const (TComp (Sig e sig) _A)) in Binding Ex (Just v) t |- k (PEff q (fromList ps') (v ::: t))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> Binding Ex (Just n) _A |- k (PVar (n  ::: _A))
