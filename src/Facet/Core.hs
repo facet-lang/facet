@@ -3,7 +3,6 @@ module Facet.Core
   Value(..)
 , Type
 , Expr
-, Comp(..)
 , unBind
 , unBind'
 , unLam
@@ -30,7 +29,6 @@ module Facet.Core
   -- ** Classification
 , Sort(..)
 , sortOf
-, sortOfComp
   -- * Patterns
 , Pattern(..)
 , fill
@@ -55,11 +53,8 @@ module Facet.Core
 , unDInterface
   -- * Quotation
 , Quote(..)
-, QComp(..)
 , quote
-, quoteComp
 , eval
-, evalComp
 ) where
 
 import           Control.Applicative (Alternative(..))
@@ -82,7 +77,8 @@ import           Prelude hiding (zip, zipWith)
 data Value
   = KType
   | KInterface
-  | TSusp Comp
+  | TForAll (Binding Type) (Type -> Type)
+  | TComp (Sig Type) Type
   | ELam Icit [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var Level :$ (Icit, Value))
@@ -96,17 +92,11 @@ type Type = Value
 type Expr = Value
 
 
--- | A computation type, represented as a (possibly polymorphic) telescope with signatures on every argument and return.
-data Comp
-  = TForAll (Binding Type) (Type -> Comp)
-  | TRet (Sig Value) Type
-
-
-unBind :: Alternative m => Comp -> m (Binding Value, Value -> Comp)
+unBind :: Alternative m => Type -> m (Binding Type, Type -> Type)
 unBind = \case{ TForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unBind' :: Alternative m => (Level, Comp) -> m (Binding Value, (Level, Comp))
+unBind' :: Alternative m => (Level, Type) -> m (Binding Type, (Level, Type))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
@@ -139,7 +129,6 @@ instantiateClause d (Clause p b) = b <$> bindPattern d p
 data Binding a = Binding
   { icit  :: Icit
   , name  :: Maybe Name
-  , delta :: Maybe [a]
   , type' :: a
   }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -186,7 +175,8 @@ occursIn p = go
   go d = \case
     KType          -> False
     KInterface     -> False
-    TSusp c        -> comp d c
+    TForAll t b    -> binding d t || go (succ d) (b (free d))
+    TComp s t      -> sig d s || go d t
     ELam _ cs      -> any (clause d) cs
     VNe (h :$ sp)  -> p h || any (any (go d)) sp
     ECon (_ :$ sp) -> any (go d) sp
@@ -194,10 +184,7 @@ occursIn p = go
     EString _      -> False
     EOp (_ :$ sp)  -> any (any (go d)) sp
 
-  comp d = \case
-    TForAll t b -> binding d t || comp (succ d) (b (free d))
-    TRet s t    -> sig d s || go d t
-  binding d (Binding _ _ s t) = any (any (go d)) s || go d t
+  binding d (Binding _ _ t) = go d t
   sig d (Sig v s) = go d v || any (go d) s
   clause d (Clause p b) = let (d', p') = fill (\ d -> (succ d, free d)) d p in go d' (b p')
 
@@ -207,12 +194,7 @@ occursIn p = go
 ($$) :: HasCallStack => Value -> (Icit, Value) -> Value
 VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
 EOp (q :$ es) $$ a = EOp (q :$ (es :> a))
-TSusp t       $$ a
-  | TForAll _ b <- t = case b (snd a) of
-    -- FIXME: it’s not clear to me that it’s ok to discard the signature.
-    -- maybe this should still be a nullary computation which gets eliminated with !.
-    TRet _ t -> t
-    t        -> TSusp t
+TForAll _ b   $$ a = b (snd a)
 ELam _ b      $$ a = case' (snd a) b
 _             $$ _ = error "can’t apply non-neutral/forall type"
 
@@ -251,20 +233,16 @@ data Sort
 -- | Classifies values according to whether or not they describe types.
 sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
-  KType         -> SKind
-  KInterface    -> SKind
-  TSusp t       -> sortOfComp ctx t
-  ELam{}        -> STerm
-  VNe (h :$ sp) -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
-  ECon _        -> STerm
-  TString       -> SType
-  EString _     -> STerm
-  EOp _         -> STerm -- FIXME: will this always be true?
-
-sortOfComp :: Stack Sort -> Comp -> Sort
-sortOfComp ctx = \case
-  TForAll (Binding _ _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOfComp (ctx :> _T') (_B (free (Level (length ctx)))))
-  TRet _ _T                     -> sortOf ctx _T
+  KType                       -> SKind
+  KInterface                  -> SKind
+  TForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
+  TComp _ _T                  -> sortOf ctx _T
+  ELam{}                      -> STerm
+  VNe (h :$ sp)               -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
+  ECon _                      -> STerm
+  TString                     -> SType
+  EString _                   -> STerm
+  EOp _                       -> STerm -- FIXME: will this always be true?
 
 
 -- Patterns
@@ -311,7 +289,7 @@ scope_ :: Lens' Module Scope
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
-lookupC :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
+lookupC :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type)
 lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
@@ -319,32 +297,32 @@ lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls sc
     pure $ name:.:n :=: v ::: _T
 
 -- | Look up effect operations.
-lookupE :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
+lookupE :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type)
 lookupE n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
     n :=: _ ::: _T <- maybe empty pure d >>= unDInterface >>= lookupScope n
     pure $ name:.:n :=: Nothing ::: _T
 
-lookupD :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Comp)
+lookupD :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type)
 lookupD n Module{ name, scope } = maybe empty pure $ do
   d ::: _T <- Map.lookup n (decls scope)
   pure $ name:.:n :=: d ::: _T
 
 
-newtype Scope = Scope { decls :: Map.Map Name (Maybe Def ::: Comp) }
+newtype Scope = Scope { decls :: Map.Map Name (Maybe Def ::: Type) }
   deriving (Monoid, Semigroup)
 
-decls_ :: Lens' Scope (Map.Map Name (Maybe Def ::: Comp))
+decls_ :: Lens' Scope (Map.Map Name (Maybe Def ::: Type))
 decls_ = coerced
 
-scopeFromList :: [Name :=: Maybe Def ::: Comp] -> Scope
+scopeFromList :: [Name :=: Maybe Def ::: Type] -> Scope
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
 
-scopeToList :: Scope -> [Name :=: Maybe Def ::: Comp]
+scopeToList :: Scope -> [Name :=: Maybe Def ::: Type]
 scopeToList = map (\ (n, v ::: _T) -> n :=: v ::: _T) . Map.toList . decls
 
-lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Maybe Def ::: Comp)
+lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Maybe Def ::: Type)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
@@ -374,7 +352,8 @@ data Quote
   = QVar (Var Index)
   | QKType
   | QKInterface
-  | QTSusp QComp
+  | QTForAll (Binding Quote) Quote
+  | QTComp (Sig Quote) Quote
   | QELam Icit [(Pattern Name, Quote)]
   | QApp Quote (Icit, Quote)
   | QECon (Q Name :$ Quote)
@@ -383,14 +362,12 @@ data Quote
   | QEOp (Q Name)
   deriving (Eq, Ord, Show)
 
-data QComp = QComp [Binding Quote] (Sig Quote) Quote
-  deriving (Eq, Ord, Show)
-
 quote :: Level -> Value -> Quote
 quote d = \case
   KType          -> QKType
   KInterface     -> QKInterface
-  TSusp c        -> QTSusp (quoteComp d c)
+  TForAll t b    -> QTForAll (quote d <$> t) (quote (succ d) (b (free d)))
+  TComp s t      -> QTComp (quote d <$> s) (quote d t)
   ELam p cs      -> QELam p (map (clause d) cs)
   VNe (n :$ sp)  -> foldl' QApp (QVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
   ECon (n :$ sp) -> QECon (n :$ (quote d <$> sp))
@@ -400,25 +377,16 @@ quote d = \case
   where
   clause d (Clause p b) = let (d', p') = fill (\ d -> (d, free d)) d p in (p, quote d' (b p'))
 
-quoteComp :: Level -> Comp -> QComp
-quoteComp d c = go d c QComp
-  where
-  go d = \case
-    TForAll t b -> \ k -> go (succ d) (b (free d)) $ \ b s t' -> k ((quote d <$> t):b) s t'
-    TRet s t    -> \ k -> k [] (quote d <$> s) (quote d t)
-
 eval :: HasCallStack => Stack Value -> IntMap.IntMap Value -> Quote -> Value
 eval env metas = \case
   QVar v          -> unVar global ((env !) . getIndex) metavar v
   QKType          -> KType
   QKInterface     -> KInterface
-  QTSusp c        -> TSusp $ evalComp env metas c
+  QTForAll t b    -> TForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
+  QTComp s t      -> TComp (eval env metas <$> s) (eval env metas t)
   QELam p cs      -> ELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) metas b)) cs
   QApp f a        -> eval env metas f $$ (eval env metas <$> a)
   QECon (n :$ sp) -> ECon $ n :$ (eval env metas <$> sp)
   QTString        -> TString
   QEString s      -> EString s
   QEOp n          -> EOp $ n :$ Nil
-
-evalComp :: HasCallStack => Stack Value -> IntMap.IntMap Value -> QComp -> Comp
-evalComp env metas (QComp bs s t) = foldr (\ t b env -> TForAll (eval env metas <$> t) (b . (env :>))) (\ env -> TRet (eval env metas <$> s) (eval env metas t)) bs env

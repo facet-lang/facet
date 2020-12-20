@@ -10,7 +10,7 @@ interface State : (S : Type) -> Interface
 , put : S -> [State S] Unit }
 
 modify : { S : Type } -> (f : S -> S) -> [State S] Unit
-{ put (f get!) }
+{ (put (f get!))! }
 
 
 # Handlers
