@@ -101,8 +101,8 @@ switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ 
 
 as :: Check Quote ::: Check Quote -> Synth Quote
 as (m ::: _T) = Synth $ trace "as" $ do
-  env <- gets toEnv
-  _T' <- uncurry eval env <$> check (_T ::: KType)
+  eval <- gets evalIn
+  _T' <- eval <$> check (_T ::: KType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -160,8 +160,8 @@ f $$ a = Synth $ trace "$$" $ do
   f' ::: _F <- synth f
   (Binding _ _ _A, _B) <- expectQuantifier "in application" _F
   a' <- check (a ::: _A)
-  env <- gets toEnv
-  let a'' = uncurry eval env a'
+  eval <- gets evalIn
+  let a'' = eval a'
   pure $ QApp f' (Ex, a') ::: _B a''
 
 
@@ -254,8 +254,8 @@ elabComp :: HasCallStack => S.Ann S.Comp -> Synth Quote
 elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ foldr
   (\ t b -> do
     t' <- check (snd t ::: KType)
-    env <- gets toEnv
-    b' ::: _ <- fmap (uncurry eval env) t' |- b
+    eval <- gets evalIn
+    b' ::: _ <- fmap eval t' |- b
     pure $ QTForAll t' b' ::: KType)
   (do
     b' <- check (checkExpr b ::: KType)
