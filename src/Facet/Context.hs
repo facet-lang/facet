@@ -10,6 +10,7 @@ module Facet.Context
 , (!)
 , lookupIndex
 , toEnv
+, evalIn
 , Suffix
 , (<><)
 , restore
@@ -91,6 +92,9 @@ toEnv c = (locals 0 (elems c), metas (elems c))
     S.Nil              -> mempty
     bs S.:> Rigid{}    -> metas bs
     bs S.:> Flex m v _ -> IntMap.insert (getMeta m) (fromMaybe (metavar m) v) (metas bs)
+
+evalIn :: Context -> Quote -> Value
+evalIn = uncurry eval . toEnv
 
 
 type Suffix = [Meta :=: Maybe Type ::: Type]
