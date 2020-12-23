@@ -40,7 +40,7 @@ import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Empty
-import           Control.Effect.Lens (view, views, (.=))
+import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Sum
 import           Control.Lens (Lens', at, ix, lens, set)
 import           Control.Monad (unless)
@@ -87,7 +87,7 @@ meta (v ::: _T) = do
 instantiate :: Quote ::: Type -> Elab (Quote ::: Type)
 instantiate (e ::: _T) = case _T of
   TForAll (Binding Im _ KInterface) _B -> do
-    v <- view (sig_.effectVar_)
+    v <- askEffectVar
     d <- depth
     instantiate (QApp e (Im, quote d v) ::: _B v)
   TForAll (Binding Im _ _T) _B -> do
@@ -241,8 +241,8 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
       Just d -> do
         d' <- traverse (check . (::: KInterface) . elabSig) d
         level <- depth
-        e <- views (sig_.effectVar_) (quote level)
-        pure $ Binding p n (QTComp (Sig e d') t')
+        e <- askEffectVar
+        pure $ Binding p n (QTComp (Sig (quote level e) d') t')
       Nothing -> pure $ Binding p n t')
   | n <- maybe [Nothing] (map Just . toList) n ]
 
@@ -263,8 +263,8 @@ elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ fo
       Just d -> do
         d' <- traverse (check . (::: KInterface) . elabSig) d
         level <- depth
-        e <- views (sig_.effectVar_) (quote level)
-        pure $ QTComp (Sig e d') b' ::: KType
+        e <- askEffectVar
+        pure $ QTComp (Sig (quote level e) d') b' ::: KType
       Nothing -> pure (b' ::: KType))
   (elabBinding =<< bs)
 
@@ -328,7 +328,7 @@ elabPattern = go
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
-          e <- view (sig_.effectVar_)
+          e <- askEffectVar
           subpatterns _T'' ps $ \ _T ps' -> let t = TForAll (Binding Ex Nothing _T) (const (TComp (Sig e sig) _A')) in Binding Ex (Just v) t |- k (PEff q (fromList ps') (v ::: t))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
@@ -451,6 +451,9 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 extendSig :: Has (Reader ElabContext) sig m => Maybe [Value] -> m a -> m a
 extendSig = maybe id (locally (sig_.interfaces_) . (++))
+
+askEffectVar :: Has (Reader ElabContext) sig m => m Value
+askEffectVar = view (sig_.effectVar_)
 
 depth :: Has (State Context) sig m => m Level
 depth = gets level
