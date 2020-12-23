@@ -203,7 +203,7 @@ showType e = Action $ do
   outputDocLn (getPrint (ann (printValue Nil e' ::: printValue Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ locally (Elab.sig_.interfaces_) (VNe (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ locally interfaces_ (VNe (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
   let e''  = Core.eval Nil mempty e'
   (dEval, e'') <- time $ elab $ runEvalMain (eval e'')
   outputStrLn $ show dElab

@@ -24,7 +24,6 @@ module Facet.Elab
 , Reason(..)
   -- * Unification
 , ElabContext(..)
-, sig_
   -- * Machinery
 , Elab(..)
 , elab
@@ -146,7 +145,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 var :: Q Name -> Synth Quote
 var n = Synth $ trace "var" $ get >>= \ ctx -> if
   | Just (i, _T) <- lookupInContext n ctx -> pure (QVar (Free i) ::: _T)
-  | otherwise                             -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph (interfaces sig)) >>= \case
+  | otherwise                             -> ask >>= \ sig -> asks (\ ElabContext{ module', graph } -> lookupInSig n module' graph (interfaces sig)) >>= \case
     Just (n ::: _T) -> instantiate (QEOp n ::: _T)
     _ -> do
       n :=: _ ::: _T <- resolveQ n
@@ -449,11 +448,11 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
       scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
 
 
-extendSig :: Has (Reader ElabContext) sig m => Maybe [Value] -> m a -> m a
-extendSig = maybe id (locally (sig_.interfaces_) . (++))
+extendSig :: Has (Reader (Sig Value)) sig m => Maybe [Value] -> m a -> m a
+extendSig = maybe id (locally interfaces_ . (++))
 
-askEffectVar :: Has (Reader ElabContext) sig m => m Value
-askEffectVar = view (sig_.effectVar_)
+askEffectVar :: Has (Reader (Sig Value)) sig m => m Value
+askEffectVar = view effectVar_
 
 depth :: Has (State Context) sig m => m Level
 depth = gets level
@@ -532,12 +531,8 @@ data ElabContext = ElabContext
   { graph   :: Graph
   , mname   :: MName
   , module' :: Module
-  , sig     :: Sig Value
   , span    :: Span
   }
-
-sig_ :: Lens' ElabContext (Sig Value)
-sig_ = lens sig (\ e sig -> e{ sig })
 
 span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
@@ -622,7 +617,7 @@ unify t1 t2 = trace "unify" $ value t1 t2
 
 -- Machinery
 
-newtype Elab a = Elab { runElab :: forall sig m . Has (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) sig m => m a }
+newtype Elab a = Elab { runElab :: forall sig m . Has (Fresh :+: Reader ElabContext :+: Reader (Sig Value) :+: State Context :+: Throw Err :+: Trace) sig m => m a }
 
 instance Functor Elab where
   fmap f (Elab m) = Elab (fmap f m)
@@ -634,20 +629,22 @@ instance Applicative Elab where
 instance Monad Elab where
   Elab m >>= f = Elab $ m >>= runElab . f
 
-instance Algebra (Fresh :+: Reader ElabContext :+: State Context :+: Throw Err :+: Trace) Elab where
+instance Algebra (Fresh :+: Reader ElabContext :+: Reader (Sig Value) :+: State Context :+: Throw Err :+: Trace) Elab where
   alg hdl sig ctx = case sig of
-    L fresh             -> Elab $ alg (runElab . hdl) (inj fresh) ctx
-    R (L rctx)          -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
-    R (R (L sctx))      -> Elab $ alg (runElab . hdl) (inj sctx)  ctx
-    R (R (R (L throw))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
-    R (R (R (R trace))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
+    L fresh                 -> Elab $ alg (runElab . hdl) (inj fresh) ctx
+    R (L rctx)              -> Elab $ alg (runElab . hdl) (inj rctx)  ctx
+    R (R (L rsig))          -> Elab $ alg (runElab . hdl) (inj rsig)  ctx
+    R (R (R (L sctx)))      -> Elab $ alg (runElab . hdl) (inj sctx)  ctx
+    R (R (R (R (L throw)))) -> Elab $ alg (runElab . hdl) (inj throw) ctx
+    R (R (R (R (R trace)))) -> Elab $ alg (runElab . hdl) (inj trace) ctx
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab a -> m a
 elab m = evalFresh 0 . evalState Context.empty $ do
   ctx <- mkContext
-  runReader ctx . runElab $ m
+  sig <- mkSig
+  runReader sig . runReader ctx . runElab $ m
   where
-  mkContext = ElabContext <$> ask <*> ask <*> ask <*> mkSig <*> ask
+  mkContext = ElabContext <$> ask <*> ask <*> ask <*> ask
   mkSig = do
     m <- meta (Nothing ::: KInterface)
     pure $ Sig (metavar m) []
