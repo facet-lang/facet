@@ -84,7 +84,7 @@ meta (v ::: _T) = do
 -- FIXME: can implicits have effects? what do we do about the signature?
 instantiate :: Algebra sig m => Quote ::: Type -> Elab m (Quote ::: Type)
 instantiate (e ::: _T) = case _T of
-  TForAll (Binding Im _ KInterface) _B -> do
+  TForAll (Binding Im _ KInterface) _B -> do -- FIXME: this forces there to be exactly one effect var
     v <- askEffectVar
     d <- depth
     instantiate (QApp e (Im, quote d v) ::: _B v)
