@@ -141,10 +141,10 @@ f $$ a = askingPrec $ \case
 
 printValue :: Stack Print -> C.Value -> Print
 printValue env = \case
-  C.KType -> annotate Type $ pretty "Type"
-  C.KInterface -> annotate Type $ pretty "Interface"
-  C.TForAll t b ->
-    let (vs, (_, b')) = splitr C.unBind' (d, C.TForAll t b)
+  C.VKType -> annotate Type $ pretty "Type"
+  C.VKInterface -> annotate Type $ pretty "Interface"
+  C.VTForAll t b ->
+    let (vs, (_, b')) = splitr C.unBind' (d, C.VTForAll t b)
         binding env (C.Binding p n _T) =
           let _T' = printValue env _T
           in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Name.Level (length env)) ::: _T'))
@@ -153,8 +153,8 @@ printValue env = \case
           | otherwise        = [tintro n d]
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printValue env' b')
-  C.TComp s t -> sig s <+> printValue env t
-  C.ELam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
+  C.VTComp s t -> sig s <+> printValue env t
+  C.VELam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
   C.VNe (h :$ e) ->
     let elim h sp  Nil     = case sp Nil of
           Nil -> h
@@ -162,10 +162,10 @@ printValue env = \case
         elim h sp  (es:>a) = elim h (sp . (:> fmap (printValue env) a)) es
         h' = C.unVar (group . qvar) (\ d' -> fromMaybe (pretty (getLevel d')) $ env !? getIndex (levelToIndex d d')) meta h
     in elim h' id e
-  C.ECon (n :$ p) -> app (group (qvar n)) (fmap ((Ex,) . printValue env) p)
-  C.EOp (q :$ sp) -> app (group (qvar q)) (fmap (fmap (printValue env)) sp)
-  C.TString   -> annotate Type $ pretty "String"
-  C.EString s -> annotate Lit $ pretty (show s)
+  C.VECon (n :$ p) -> app (group (qvar n)) (fmap ((Ex,) . printValue env) p)
+  C.VEOp (q :$ sp) -> app (group (qvar q)) (fmap (fmap (printValue env)) sp)
+  C.VTString   -> annotate Type $ pretty "String"
+  C.VEString s -> annotate Lit $ pretty (show s)
   where
   d = Name.Level (length env)
   sig (C.Sig v s) = brackets (printValue env v <> pipe <> commaSep (map (printValue env) s))

@@ -73,22 +73,22 @@ import           Prelude hiding (zip, zipWith)
 -- Values
 
 data Value
-  = KType
-  | KInterface
-  | TForAll (Binding Value) (Value -> Value)
-  | TComp (Sig Value) Value
-  | ELam Icit [Clause]
+  = VKType
+  | VKInterface
+  | VTForAll (Binding Value) (Value -> Value)
+  | VTComp (Sig Value) Value
+  | VELam Icit [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var Level :$ (Icit, Value))
-  | ECon (Q Name :$ Value)
-  | TString
-  | EString Text
+  | VECon (Q Name :$ Value)
+  | VTString
+  | VEString Text
   -- | Effect operation and its parameters.
-  | EOp (Q Name :$ (Icit, Value))
+  | VEOp (Q Name :$ (Icit, Value))
 
 
 unBind :: Alternative m => Value -> m (Binding Value, Value -> Value)
-unBind = \case{ TForAll t b -> pure (t, b) ; _ -> empty }
+unBind = \case{ VTForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
 unBind' :: Alternative m => (Level, Value) -> m (Binding Value, (Level, Value))
@@ -96,7 +96,7 @@ unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
 unLam :: Alternative m => Value -> m (Icit, [Clause])
-unLam = \case{ ELam n b -> pure (n, b) ; _ -> empty }
+unLam = \case{ VELam n b -> pure (n, b) ; _ -> empty }
 
 
 data Sig a = Sig
@@ -168,16 +168,16 @@ occursIn :: (Var Level -> Bool) -> Level -> Value -> Bool
 occursIn p = go
   where
   go d = \case
-    KType          -> False
-    KInterface     -> False
-    TForAll t b    -> binding d t || go (succ d) (b (free d))
-    TComp s t      -> sig d s || go d t
-    ELam _ cs      -> any (clause d) cs
-    VNe (h :$ sp)  -> p h || any (any (go d)) sp
-    ECon (_ :$ sp) -> any (go d) sp
-    TString        -> False
-    EString _      -> False
-    EOp (_ :$ sp)  -> any (any (go d)) sp
+    VKType          -> False
+    VKInterface     -> False
+    VTForAll t b    -> binding d t || go (succ d) (b (free d))
+    VTComp s t      -> sig d s || go d t
+    VELam _ cs      -> any (clause d) cs
+    VNe (h :$ sp)   -> p h || any (any (go d)) sp
+    VECon (_ :$ sp) -> any (go d) sp
+    VTString        -> False
+    VEString _      -> False
+    VEOp (_ :$ sp)  -> any (any (go d)) sp
 
   binding d (Binding _ _ t) = go d t
   sig d (Sig v s) = go d v || any (go d) s
@@ -187,11 +187,11 @@ occursIn p = go
 -- Elimination
 
 ($$) :: HasCallStack => Value -> (Icit, Value) -> Value
-VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
-EOp (q :$ es) $$ a = EOp (q :$ (es :> a))
-TForAll _ b   $$ a = b (snd a)
-ELam _ b      $$ a = case' (snd a) b
-_             $$ _ = error "can’t apply non-neutral/forall type"
+VNe  (h :$ es) $$ a = VNe (h :$ (es :> a))
+VEOp (q :$ es) $$ a = VEOp (q :$ (es :> a))
+VTForAll _ b   $$ a = b (snd a)
+VELam _ b      $$ a = case' (snd a) b
+_              $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (HasCallStack, Foldable t) => Value -> t (Icit, Value) -> Value
 ($$*) = foldl' ($$)
@@ -207,14 +207,14 @@ case' s cs = case asum ((\ (Clause p f) -> f <$> match s p) <$> cs) of
 match :: Value -> Pattern b -> Maybe (Pattern Value)
 match = curry $ \case
   -- FIXME: this shouldn’t match computations
-  (s,               PVar _)         -> Just (PVar s)
-  (ECon (n' :$ fs), PCon (n :$ ps)) -> do
+  (s,                PVar _)         -> Just (PVar s)
+  (VECon (n' :$ fs), PCon (n :$ ps)) -> do
     guard (n == n')
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
     PCon . (n' :$) <$> sequenceA (zipWith match fs ps)
-  (_,               PCon _)         -> Nothing
+  (_,                PCon _)         -> Nothing
   -- FIXME: match effect patterns against computations (?)
-  (_,               PEff{})         -> Nothing
+  (_,                PEff{})         -> Nothing
 
 
 -- Classification
@@ -228,16 +228,16 @@ data Sort
 -- | Classifies values according to whether or not they describe types.
 sortOf :: Stack Sort -> Value -> Sort
 sortOf ctx = \case
-  KType                       -> SKind
-  KInterface                  -> SKind
-  TForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
-  TComp _ _T                  -> sortOf ctx _T
-  ELam{}                      -> STerm
-  VNe (h :$ sp)               -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
-  ECon _                      -> STerm
-  TString                     -> SType
-  EString _                   -> STerm
-  EOp _                       -> STerm -- FIXME: will this always be true?
+  VKType                       -> SKind
+  VKInterface                  -> SKind
+  VTForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
+  VTComp _ _T                  -> sortOf ctx _T
+  VELam{}                      -> STerm
+  VNe (h :$ sp)                -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
+  VECon _                      -> STerm
+  VTString                     -> SType
+  VEString _                   -> STerm
+  VEOp _                       -> STerm -- FIXME: will this always be true?
 
 
 -- Patterns
@@ -359,29 +359,29 @@ data Expr
 
 quote :: Level -> Value -> Expr
 quote d = \case
-  KType          -> QKType
-  KInterface     -> QKInterface
-  TForAll t b    -> QTForAll (quote d <$> t) (quote (succ d) (b (free d)))
-  TComp s t      -> QTComp (quote d <$> s) (quote d t)
-  ELam p cs      -> QELam p (map (clause d) cs)
-  VNe (n :$ sp)  -> foldl' QApp (QVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
-  ECon (n :$ sp) -> QECon (n :$ (quote d <$> sp))
-  TString        -> QTString
-  EString s      -> QEString s
-  EOp (n :$ sp)  -> foldl' QApp (QEOp n) (fmap (quote d) <$> sp)
+  VKType          -> QKType
+  VKInterface     -> QKInterface
+  VTForAll t b    -> QTForAll (quote d <$> t) (quote (succ d) (b (free d)))
+  VTComp s t      -> QTComp (quote d <$> s) (quote d t)
+  VELam p cs      -> QELam p (map (clause d) cs)
+  VNe (n :$ sp)   -> foldl' QApp (QVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
+  VECon (n :$ sp) -> QECon (n :$ (quote d <$> sp))
+  VTString        -> QTString
+  VEString s      -> QEString s
+  VEOp (n :$ sp)  -> foldl' QApp (QEOp n) (fmap (quote d) <$> sp)
   where
   clause d (Clause p b) = let (d', p') = fill (\ d -> (d, free d)) d p in (p, quote d' (b p'))
 
 eval :: HasCallStack => Stack Value -> IntMap.IntMap Value -> Expr -> Value
 eval env metas = \case
   QVar v          -> unVar global ((env !) . getIndex) metavar v
-  QKType          -> KType
-  QKInterface     -> KInterface
-  QTForAll t b    -> TForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
-  QTComp s t      -> TComp (eval env metas <$> s) (eval env metas t)
-  QELam p cs      -> ELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) metas b)) cs
+  QKType          -> VKType
+  QKInterface     -> VKInterface
+  QTForAll t b    -> VTForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
+  QTComp s t      -> VTComp (eval env metas <$> s) (eval env metas t)
+  QELam p cs      -> VELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) metas b)) cs
   QApp f a        -> eval env metas f $$ (eval env metas <$> a)
-  QECon (n :$ sp) -> ECon $ n :$ (eval env metas <$> sp)
-  QTString        -> TString
-  QEString s      -> EString s
-  QEOp n          -> EOp $ n :$ Nil
+  QECon (n :$ sp) -> VECon $ n :$ (eval env metas <$> sp)
+  QTString        -> VTString
+  QEString s      -> VEString s
+  QEOp n          -> VEOp $ n :$ Nil

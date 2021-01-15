@@ -26,9 +26,9 @@ eval = \case
         -> eval $ v $$* sp'
       _ -> pure $ VNe (h :$ sp')
 
-  TComp (Sig _ []) v -> eval v
+  VTComp (Sig _ []) v -> eval v
 
-  EOp op -> Eval $ \ h -> h op
+  VEOp op -> Eval $ \ h -> h op
 
   v -> pure v
 

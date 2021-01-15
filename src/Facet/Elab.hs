@@ -84,11 +84,11 @@ meta (v ::: _T) = do
 -- FIXME: can implicits have effects? what do we do about the signature?
 instantiate :: Has (Reader (Sig Value)) sig m => Expr ::: Value -> Elab m (Expr ::: Value)
 instantiate (e ::: _T) = case _T of
-  TForAll (Binding Im _ KInterface) _B -> do -- FIXME: this forces there to be exactly one effect var
+  VTForAll (Binding Im _ VKInterface) _B -> do -- FIXME: this forces there to be exactly one effect var
     v <- askEffectVar
     d <- depth
     instantiate (QApp e (Im, quote d v) ::: _B v)
-  TForAll (Binding Im _ _T) _B -> do
+  VTForAll (Binding Im _ _T) _B -> do
     m <- meta (Nothing ::: _T)
     instantiate (QApp e (Im, QVar (Metavar m)) ::: _B (metavar m))
   _                              -> pure $ e ::: _T
@@ -100,7 +100,7 @@ switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ 
 as :: Has Trace sig m => Check m Expr ::: Check m Expr -> Synth m Expr
 as (m ::: _T) = Synth $ trace "as" $ do
   eval <- gets evalIn
-  _T' <- eval <$> check (_T ::: KType)
+  _T' <- eval <$> check (_T ::: VKType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -188,7 +188,7 @@ abstract :: Has (Throw Err :+: Trace) sig m => Elab m Expr -> Value -> Elab m Ex
 abstract body = go
   where
   go = \case
-    TForAll t b -> do
+    VTForAll t b -> do
       level <- depth
       b' <- t |- go (b (free level))
       pure $ QTForAll (quote level <$> set icit_ Im t) b'
@@ -238,7 +238,7 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
     t' <- check (checkExpr t ::: _T)
     case d of
       Just d -> do
-        d' <- traverse (check . (::: KInterface) . elabSig) d
+        d' <- traverse (check . (::: VKInterface) . elabSig) d
         level <- depth
         e <- askEffectVar
         pure $ Binding p n (QTComp (Sig (quote level e) d') t')
@@ -252,32 +252,32 @@ elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s 
 elabComp :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m Expr
 elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ foldr
   (\ t b -> do
-    t' <- check (snd t ::: KType)
+    t' <- check (snd t ::: VKType)
     eval <- gets evalIn
     b' ::: _ <- fmap eval t' |- b
-    pure $ QTForAll t' b' ::: KType)
+    pure $ QTForAll t' b' ::: VKType)
   (do
-    b' <- check (checkExpr b ::: KType)
+    b' <- check (checkExpr b ::: VKType)
     case d of
       Just d -> do
-        d' <- traverse (check . (::: KInterface) . elabSig) d
+        d' <- traverse (check . (::: VKInterface) . elabSig) d
         level <- depth
         e <- askEffectVar
-        pure $ QTComp (Sig (quote level e) d') b' ::: KType
-      Nothing -> pure (b' ::: KType))
+        pure $ QTComp (Sig (quote level e) d') b' ::: VKType
+      Nothing -> pure (b' ::: VKType))
   (elabBinding =<< bs)
 
 -- comp type has a list of bindings, maybe a list of constraints, and a return type; turn the latter two into a QTComp and the former into a series of QTForAlls
 
 
 _Type :: Synth m Expr
-_Type = Synth $ pure $ QKType ::: KType
+_Type = Synth $ pure $ QKType ::: VKType
 
 _Interface :: Synth m Expr
-_Interface = Synth $ pure $ QKInterface ::: KType
+_Interface = Synth $ pure $ QKInterface ::: VKType
 
 _String :: Synth m Expr
-_String = Synth $ pure $ QTString ::: KType
+_String = Synth $ pure $ QTString ::: VKType
 
 
 lam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
@@ -291,8 +291,8 @@ lam n b = Check $ \ _T -> trace "lam" $ do
 
 thunk :: Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m => Check m a -> Check m a
 thunk e = Check $ trace "thunk" . \case
-  TComp (Sig _ s) t -> extendSig (Just s) $ check (e ::: t)
-  t                 -> check (e ::: t)
+  VTComp (Sig _ s) t -> extendSig (Just s) $ check (e ::: t)
+  t                  -> check (e ::: t)
 
 force :: Has (Throw Err :+: Trace) sig m => Synth m a -> Synth m a
 force e = Synth $ trace "force" $ do
@@ -328,7 +328,7 @@ elabPattern = go
         Just (q ::: _T') -> do
           _T'' <- inst _T'
           e <- askEffectVar
-          subpatterns _T'' ps $ \ _T ps' -> let t = TForAll (Binding Ex Nothing _T) (const (TComp (Sig e sig) _A')) in Binding Ex (Just v) t |- k (PEff q (fromList ps') (v ::: t))
+          subpatterns _T'' ps $ \ _T ps' -> let t = VTForAll (Binding Ex Nothing _T) (const (VTComp (Sig e sig) _A')) in Binding Ex (Just v) t |- k (PEff q (fromList ps') (v ::: t))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> Binding Ex (Just n) _A |- k (PVar (n  ::: _A))
@@ -342,8 +342,8 @@ elabPattern = go
       subpatterns _T'' ps $ \ _T ps' -> unify _T _A *> k (PCon (q :$ fromList ps'))
 
   inst = \case
-    TForAll (Binding Im _ _T) _B -> meta (Nothing ::: _T) >>= inst . _B . metavar
-    _T                           -> pure _T
+    VTForAll (Binding Im _ _T) _B -> meta (Nothing ::: _T) >>= inst . _B . metavar
+    _T                            -> pure _T
   subpatterns = flip $ foldr
     (\ p rest _A k -> do
       -- FIXME: assert that the signature is empty
@@ -356,7 +356,7 @@ elabPattern = go
 
 
 string :: Text -> Synth m Expr
-string s = Synth $ pure $ QEString s ::: TString
+string s = Synth $ pure $ QEString s ::: VTString
 
 
 -- Declarations
@@ -370,7 +370,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
-    c_T <- runReader (Sig (free (Level 0)) []) $ elab $ abstract (check (switch (elabComp t) ::: KType)) _T
+    c_T <- runReader (Sig (free (Level 0)) []) $ elab $ abstract (check (switch (elabComp t) ::: VKType)) _T
     let c_T' = eval Nil mempty c_T
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T')) ::: c_T'
   pure
@@ -378,8 +378,8 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
     : cs
   where
   con q fs = \case
-    TForAll (Binding p n _T) _B -> ELam p [Clause (PVar (fromMaybe __ n)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
-    _T                          -> ECon (q :$ fs)
+    VTForAll (Binding p n _T) _B -> VELam p [Clause (PVar (fromMaybe __ n)) (\ v -> let v' = unsafeUnPVar v in con q (fs :> v') (_B v'))]
+    _T                           -> VECon (q :$ fs)
 
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
@@ -388,7 +388,7 @@ elabInterfaceDef
   -> m (Maybe Def ::: Value)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $ do
-    _T' <- runReader (Sig (free (Level 0)) []) $ elab $ abstract (check (switch (elabComp t) ::: KType)) _T
+    _T' <- runReader (Sig (free (Level 0)) []) $ elab $ abstract (check (switch (elabComp t) ::: VKType)) _T
     -- FIXME: check that the interface is a member of the sig.
     let _T'' = eval Nil mempty _T'
     pure $ n :=: Nothing ::: _T''
@@ -404,11 +404,11 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
   runReader (Sig (free (Level 0)) []) $ elab $ Binding Im (Just (U "ε")) (free (Level 0)) |- eval Nil mempty <$> check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    TForAll Binding{ name = Just n } _ -> tracePretty n $ check (lam n (go k) ::: _T)
+    VTForAll Binding{ name = Just n } _ -> tracePretty n $ check (lam n (go k) ::: _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                                  -> check (k ::: _T)
+    _                                   -> check (k ::: _T)
 
 
 -- Modules
@@ -428,7 +428,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ local (const s) $ do
       -- FIXME: add the effect var to the QComp before evaluating.
-      _T <- runModule $ runReader (Sig (free (Level 0)) []) $ elab $ eval Nil mempty <$> check (switch (elabComp tele) ::: KType)
+      _T <- runModule $ runReader (Sig (free (Level 0)) []) $ elab $ eval Nil mempty <$> check (switch (elabComp tele) ::: VKType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
@@ -519,10 +519,10 @@ expectMatch :: Has (Throw Err :+: Trace) sig m => (Value -> Maybe out) -> String
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectQuantifier :: Has (Throw Err :+: Trace) sig m => String -> Value -> Elab m (Binding Value, Value -> Value)
-expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
+expectQuantifier = expectMatch (\case{ VTForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
 
 expectComp :: Has (Throw Err :+: Trace) sig m => String -> Value -> Elab m (Sig Value, Value)
-expectComp = expectMatch (\case { TComp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
+expectComp = expectMatch (\case { VTComp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
 -- Unification
@@ -567,26 +567,26 @@ unify t1 t2 = trace "unify" $ value t1 t2
       (False, False, _)       -> value (metavar v1) (metavar v2) >> restore
     (VNe (Metavar v1 :$ Nil), t2)                      -> solve v1 t2
     (t1, VNe (Metavar v2 :$ Nil))                      -> solve v2 t1
-    (KType, KType)                                     -> pure ()
-    (KType, _)                                         -> nope
-    (KInterface, KInterface)                           -> pure ()
-    (KInterface, _)                                    -> nope
-    (TForAll t1 b1, TForAll t2 b2)                     -> do { binding t1 t2 ; d <- depth ; t1 |- value (b1 (free d)) (b2 (free d)) ; pure () }
-    (TForAll{}, _)                                     -> nope
-    (TComp s1 t1, TComp s2 t2)                         -> sig s1 s2 >> value t1 t2
-    (TComp{}, _)                                       -> nope
-    (ELam{}, ELam{})                                   -> nope
-    (ELam{}, _)                                        -> nope
+    (VKType, VKType)                                   -> pure ()
+    (VKType, _)                                        -> nope
+    (VKInterface, VKInterface)                         -> pure ()
+    (VKInterface, _)                                   -> nope
+    (VTForAll t1 b1, VTForAll t2 b2)                   -> do { binding t1 t2 ; d <- depth ; t1 |- value (b1 (free d)) (b2 (free d)) ; pure () }
+    (VTForAll{}, _)                                    -> nope
+    (VTComp s1 t1, VTComp s2 t2)                       -> sig s1 s2 >> value t1 t2
+    (VTComp{}, _)                                      -> nope
+    (VELam{}, VELam{})                                 -> nope
+    (VELam{}, _)                                       -> nope
     (VNe (v1 :$ sp1), VNe (v2 :$ sp2))                 -> var v1 v2 >> spine (pl value) sp1 sp2
     (VNe{}, _)                                         -> nope
-    (ECon (q1 :$ sp1), ECon (q2 :$ sp2))               -> unless (q1 == q2) nope >> spine value sp1 sp2
-    (ECon{}, _)                                        -> nope
-    (TString, TString)                                 -> pure ()
-    (TString, _)                                       -> nope
-    (EString e1, EString e2)                           -> unless (e1 == e2) nope
-    (EString{}, _)                                     -> nope
-    (EOp (q1 :$ sp1), EOp (q2 :$ sp2))                 -> unless (q1 == q2) nope >> spine (pl value) sp1 sp2
-    (EOp{}, _)                                         -> nope
+    (VECon (q1 :$ sp1), VECon (q2 :$ sp2))             -> unless (q1 == q2) nope >> spine value sp1 sp2
+    (VECon{}, _)                                       -> nope
+    (VTString, VTString)                               -> pure ()
+    (VTString, _)                                      -> nope
+    (VEString e1, VEString e2)                         -> unless (e1 == e2) nope
+    (VEString{}, _)                                    -> nope
+    (VEOp (q1 :$ sp1), VEOp (q2 :$ sp2))               -> unless (q1 == q2) nope >> spine (pl value) sp1 sp2
+    (VEOp{}, _)                                        -> nope
 
   var v1 v2 = trace "unify var" $ case (v1, v2) of
     (Global q1, Global q2)   -> unless (q1 == q2) nope

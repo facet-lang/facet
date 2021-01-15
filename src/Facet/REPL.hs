@@ -216,9 +216,9 @@ runEvalMain = runEval handle pure
   handle (q :$ sp) k = case q of
     m :.: U "write"
       | m == fromList ["Effect", "Console"]
-      , Nil:>(Ex, EString s) <- sp -> outputText s *> k unit
-    _                                      -> k (EOp (q :$ sp))
-  unit = ECon (fromList ["Data", "Unit"] :.: U "unit" :$ Nil)
+      , Nil:>(Ex, VEString s) <- sp -> outputText s *> k unit
+    _                               -> k (VEOp (q :$ sp))
+  unit = VECon (fromList ["Data", "Unit"] :.: U "unit" :$ Nil)
 
 
 helpDoc :: Doc Style
