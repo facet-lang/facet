@@ -3,6 +3,8 @@
 module Facet.Surface
 ( -- * Expressions
   Expr(..)
+, Type
+, Term
 , Comp(..)
 , Binding(..)
 , Interface(..)
@@ -37,26 +39,28 @@ import Facet.Syntax
 
 -- Expressions
 
-data Expr where
-  Var :: Q Name -> Expr
-  Hole :: Name -> Expr
-  KType :: Expr
-  KInterface :: Expr
-  TString :: Expr
-  TComp :: Ann Comp -> Expr
-  Lam :: [Clause] -> Expr
-  Thunk :: Ann Expr -> Expr
-  Force :: Ann Expr -> Expr
-  App :: Ann Expr -> Ann Expr -> Expr
-  As :: Ann Expr -> Ann Expr -> Expr
-  String :: Text -> Expr
-  deriving (Eq, Show)
+data Expr sort where
+  Var :: Q Name -> Expr sort
+  Hole :: Name -> Expr sort
+  KType :: Expr Type
+  KInterface :: Expr Type
+  TString :: Expr Type
+  TComp :: Ann Comp -> Expr Type
+  Lam :: [Clause] -> Expr Term
+  Thunk :: Ann (Expr Term) -> Expr Term
+  Force :: Ann (Expr Term) -> Expr Term
+  App :: Ann (Expr sort) -> Ann (Expr sort) -> Expr sort
+  As :: Ann (Expr sort) -> Ann (Expr Type) -> Expr sort
+  String :: Text -> Expr Term
+
+deriving instance Eq   (Expr sort)
+deriving instance Show (Expr sort)
 
 
 data Comp = Comp
   { bindings :: [Ann Binding]
   , delta    :: Maybe [Ann Interface]
-  , type'    :: Ann Expr
+  , type'    :: Ann (Expr Type)
   }
   deriving (Eq, Show)
 
@@ -71,16 +75,16 @@ data Binding = Binding
   --
   -- 'Nothing' indicates a value type; 'Just' with an empty list indicates a thunk with the ambient effects; 'Just' with one or more interfaces indicates that this position provides these effects. (Note that this can, in general, also hold signature variables.)
   , delta :: Maybe [Ann Interface]
-  , type' :: Ann Expr
+  , type' :: Ann (Expr Type)
   }
   deriving (Eq, Show)
 
 
-data Interface = Interface (Ann (Q Name)) (Stack (Ann Expr))
+data Interface = Interface (Ann (Q Name)) (Stack (Ann (Expr Type)))
   deriving (Eq, Show)
 
 
-data Clause = Clause (Ann EffPattern) (Ann Expr)
+data Clause = Clause (Ann EffPattern) (Ann (Expr Term))
   deriving (Eq, Show)
 
 
@@ -110,7 +114,7 @@ data Decl = Decl (Ann Comp) Def
 data Def
   = DataDef [Ann (Name ::: Ann Comp)]
   | InterfaceDef [Ann (Name ::: Ann Comp)]
-  | TermDef (Ann Expr)
+  | TermDef (Ann (Expr Term))
   deriving (Eq, Show)
 
 
@@ -161,10 +165,10 @@ out_ :: Lens (Ann a) (Ann b) a b
 out_ = lens out (\ a out -> a{ out })
 
 
-annUnary :: (Ann Expr -> Expr) -> Ann Expr -> Ann Expr
+annUnary :: (Ann (Expr sort) -> Expr sort) -> Ann (Expr sort) -> Ann (Expr sort)
 annUnary f a = Ann (ann a) Nil (f a)
 
-annBinary :: (Ann Expr -> Ann Expr -> Expr) -> Ann Expr -> Ann Expr -> Ann Expr
+annBinary :: (Ann (Expr sort) -> Ann (Expr sort2) -> Expr sort) -> Ann (Expr sort) -> Ann (Expr sort2) -> Ann (Expr sort)
 annBinary f a b = Ann (ann a <> ann b) Nil (f a b)
 
 

@@ -195,7 +195,7 @@ setLogTraces :: Bool -> Action
 setLogTraces b = Action $ put (toFlag LogTraces b)
 
 
-showType, showEval :: S.Ann S.Expr -> Action
+showType, showEval :: S.Ann (S.Expr sort) -> Action
 
 showType e = Action $ do
   e ::: _T <- elab $ Elab.elab (Elab.synth (Elab.synthExpr e))

@@ -1,4 +1,6 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- | This module defines the /elaboration/ of terms in 'S.Expr' into values in 'Value'.
 --
 -- Elaboration is the only way 'Value's are constructed from untrusted terms, and so typechecking is performed at this point. If elaboration succeeds and a 'Value' is returned, that 'Value' does not require further verification; hence, 'Value's elide source span information.
@@ -197,7 +199,7 @@ abstract body = go
 
 -- Expressions
 
-synthExpr :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Synth m Expr
+synthExpr :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann (S.Expr sort) -> Synth m Expr
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Var n      -> var n
   S.KType      -> _Type
@@ -214,7 +216,7 @@ synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Check m Expr
+checkExpr :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann (S.Expr sort) -> Check m Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e of
   S.Hole  n    -> hole n
   S.Lam cs     -> elabClauses cs
@@ -398,7 +400,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
 elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m)
   => Value
-  -> S.Ann S.Expr
+  -> S.Ann (S.Expr Term)
   -> m Value
 elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
   runReader (Sig (free (Level 0)) []) $ elab $ Binding Im (Just (U "ε")) (free (Level 0)) |- eval Nil mempty <$> check (go (checkExpr expr) ::: _T)
@@ -552,7 +554,7 @@ onTop f = trace "onTop" $ do
     _         -> onTop f <* modify (|> elem)
 
 -- FIXME: we don’t get good source references during unification
-unify :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => Value -> Value -> Elab m ()
+unify :: forall m sig . (HasCallStack, Has (Throw Err :+: Trace) sig m) => Value -> Value -> Elab m ()
 unify t1 t2 = trace "unify" $ value t1 t2
   where
   nope = couldNotUnify "mismatch" t1 t2
@@ -598,6 +600,7 @@ unify t1 t2 = trace "unify" $ value t1 t2
 
   pl f (p1, t1) (p2, t2) = unless (p1 == p2) nope >> f t1 t2
 
+  spine :: (Foldable t, Zip t) => (a -> a -> Elab m ()) -> t a -> t a -> Elab m ()
   spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> sequenceA_ (zipWith f sp1 sp2)
 
   binding (Binding p1 _ t1) (Binding p2 _ t2) = trace "unify binding" $ unless (p1 == p2) nope >> value t1 t2
