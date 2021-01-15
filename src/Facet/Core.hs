@@ -344,18 +344,18 @@ unDInterface = \case
 
 -- Quotation
 
-data Expr
-  = Var (Var Index)
-  | KType
-  | KInterface
-  | TForAll (Binding Expr) Expr
-  | TComp (Sig Expr) Expr
-  | ELam Icit [(Pattern Name, Expr)]
-  | App Expr (Icit, Expr)
-  | ECon (Q Name :$ Expr)
-  | TString
-  | EString Text
-  | EOp (Q Name)
+data Expr where
+  Var :: Var Index -> Expr
+  KType :: Expr
+  KInterface :: Expr
+  TForAll :: Binding Expr -> Expr -> Expr
+  TComp :: Sig Expr -> Expr -> Expr
+  ELam :: Icit -> [(Pattern Name, Expr)] -> Expr
+  App :: Expr -> (Icit, Expr) -> Expr
+  ECon :: Q Name :$ Expr -> Expr
+  TString :: Expr
+  EString :: Text -> Expr
+  EOp :: Q Name -> Expr
   deriving (Eq, Ord, Show)
 
 quote :: Level -> Value -> Expr
