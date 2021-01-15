@@ -31,15 +31,15 @@ newtype Context = Context { elems :: S.Stack Entry }
 
 data Entry
   -- FIXME: record implicitness in the context.
-  = Rigid Name Type
-  | Flex Meta (Maybe Type) Type
+  = Rigid Name Value
+  | Flex Meta (Maybe Value) Value
 
-entryDef :: Entry -> Maybe Type
+entryDef :: Entry -> Maybe Value
 entryDef = \case
   Rigid{}    -> Nothing
   Flex _ v _ -> v
 
-entryType :: Entry -> Type
+entryType :: Entry -> Value
 entryType = \case
   Rigid _   t -> t
   Flex  _ _ t -> t
@@ -69,7 +69,7 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
   go (es S.:> _)         i = go es i
   go _                   _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: Name -> Context -> Maybe (Index, Type)
+lookupIndex :: Name -> Context -> Maybe (Index, Value)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = Nothing
@@ -97,7 +97,7 @@ evalIn :: Context -> Quote -> Value
 evalIn = uncurry eval . toEnv
 
 
-type Suffix = [Meta :=: Maybe Type ::: Type]
+type Suffix = [Meta :=: Maybe Value ::: Value]
 
 (<><) :: Context -> Suffix -> Context
 (<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> Flex n v _T)

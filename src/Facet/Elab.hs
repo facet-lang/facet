@@ -75,14 +75,14 @@ import qualified Silkscreen
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Has (Fresh :+: State Context) sig m => (Maybe Value ::: Type) -> m Meta
+meta :: Has (Fresh :+: State Context) sig m => (Maybe Value ::: Value) -> m Meta
 meta (v ::: _T) = do
   m <- Meta <$> fresh
   m <$ modify (|> Flex m v _T)
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
-instantiate :: Has (Reader (Sig Value)) sig m => Quote ::: Type -> Elab m (Quote ::: Type)
+instantiate :: Has (Reader (Sig Value)) sig m => Quote ::: Value -> Elab m (Quote ::: Value)
 instantiate (e ::: _T) = case _T of
   TForAll (Binding Im _ KInterface) _B -> do -- FIXME: this forces there to be exactly one effect var
     v <- askEffectVar
@@ -106,31 +106,31 @@ as (m ::: _T) = Synth $ trace "as" $ do
 
 resolveWith
   :: Has (Throw Err :+: Trace) sig m
-  => (forall m . Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type))
+  => (forall m . Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Value))
   -> Q Name
-  -> Elab m (Q Name :=: Maybe Def ::: Type)
+  -> Elab m (Q Name :=: Maybe Def ::: Value)
 resolveWith lookup n = asks (\ ElabContext{ module', graph } -> lookupWith lookup n module' graph) >>= \case
   []  -> freeVariable n
   [v] -> pure v
   ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
 
-resolveC :: Has (Throw Err :+: Trace) sig m => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type)
+resolveC :: Has (Throw Err :+: Trace) sig m => Q Name -> Elab m (Q Name :=: Maybe Def ::: Value)
 resolveC = resolveWith lookupC
 
-resolveQ :: Has (Throw Err :+: Trace) sig m => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type)
+resolveQ :: Has (Throw Err :+: Trace) sig m => Q Name -> Elab m (Q Name :=: Maybe Def ::: Value)
 resolveQ = resolveWith lookupD
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Has (Reader (Sig Value)) sig m => Q Name ::: Type -> Synth m Quote
+global :: Has (Reader (Sig Value)) sig m => Q Name ::: Value -> Synth m Quote
 global (q ::: _T) = Synth $ instantiate (QVar (Global q) ::: _T)
 
-lookupInContext :: Q Name -> Context -> Maybe (Index, Type)
+lookupInContext :: Q Name -> Context -> Maybe (Index, Value)
 lookupInContext (m:.:n)
   | m == Nil  = lookupIndex n
   | otherwise = const Nothing
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
-lookupInSig :: Q Name -> Module -> Graph -> [Value] -> Maybe (Q Name ::: Type)
+lookupInSig :: Q Name -> Module -> Graph -> [Value] -> Maybe (Q Name ::: Value)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   VNe (Global q@(m':.:_) :$ _) -> do
     guard (m == Nil || m == m')
@@ -184,7 +184,7 @@ infix 1 |-
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstract :: Has (Throw Err :+: Trace) sig m => Elab m Quote -> Type -> Elab m Quote
+abstract :: Has (Throw Err :+: Trace) sig m => Elab m Quote -> Value -> Elab m Quote
 abstract body = go
   where
   go = \case
@@ -316,7 +316,7 @@ elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
 
 
 -- FIXME: check for unique variable names
-elabPattern :: Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m => Type -> S.Ann S.EffPattern -> (Pattern (Name ::: Type) -> Elab m a) -> Elab m a
+elabPattern :: Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m => Value -> S.Ann S.EffPattern -> (Pattern (Name ::: Value) -> Elab m a) -> Elab m a
 elabPattern = go
   where
   go _A (S.Ann s _ p) k = trace "elabPattern" $ setSpan s $ case p of
@@ -363,9 +363,9 @@ string s = Synth $ pure $ QEString s ::: TString
 
 elabDataDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
-  => Name ::: Type
+  => Name ::: Value
   -> [S.Ann (Name ::: S.Ann S.Comp)]
-  -> m [Name :=: Maybe Def ::: Type]
+  -> m [Name :=: Maybe Def ::: Value]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   mname <- ask
@@ -383,9 +383,9 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
 
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
-  => Type
+  => Value
   -> [S.Ann (Name ::: S.Ann S.Comp)]
-  -> m (Maybe Def ::: Type)
+  -> m (Maybe Def ::: Value)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $ do
     _T' <- runReader (Sig (free (Level 0)) []) $ elab $ abstract (check (switch (elabComp t) ::: KType)) _T
@@ -397,9 +397,9 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m)
-  => Type
+  => Value
   -> S.Ann S.Expr
-  -> m Expr
+  -> m Value
 elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
   runReader (Sig (free (Level 0)) []) $ elab $ Binding Im (Just (U "ε")) (free (Level 0)) |- eval Nil mempty <$> check (go (checkExpr expr) ::: _T)
   where
@@ -484,8 +484,8 @@ data Reason
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
   | AmbiguousName (Q Name) [Q Name]
   | CouldNotSynthesize String
-  | Mismatch String (Either String Type) Type
-  | Hole Name Type
+  | Mismatch String (Either String Value) Value
+  | Hole Name Value
   | Invariant String
 
 
@@ -497,10 +497,10 @@ err reason = do
   callStack <- Trace.callStack
   throwError $ Err span reason ctx callStack
 
-mismatch :: Has (Throw Err :+: Trace) sig m => String -> Either String Type -> Type -> Elab m a
+mismatch :: Has (Throw Err :+: Trace) sig m => String -> Either String Value -> Value -> Elab m a
 mismatch msg exp act = err $ Mismatch msg exp act
 
-couldNotUnify :: Has (Throw Err :+: Trace) sig m => String -> Type -> Type -> Elab m a
+couldNotUnify :: Has (Throw Err :+: Trace) sig m => String -> Value -> Value -> Elab m a
 couldNotUnify msg t1 t2 = mismatch msg (Right t2) t1
 
 couldNotSynthesize :: Has (Throw Err :+: Trace) sig m => String -> Elab m a
@@ -515,13 +515,13 @@ ambiguousName n qs = err $ AmbiguousName n qs
 
 -- Patterns
 
-expectMatch :: Has (Throw Err :+: Trace) sig m => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
+expectMatch :: Has (Throw Err :+: Trace) sig m => (Value -> Maybe out) -> String -> String -> Value -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifier :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Binding Value, Type -> Type)
+expectQuantifier :: Has (Throw Err :+: Trace) sig m => String -> Value -> Elab m (Binding Value, Value -> Value)
 expectQuantifier = expectMatch (\case{ TForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
 
-expectComp :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Sig Value, Type)
+expectComp :: Has (Throw Err :+: Trace) sig m => String -> Value -> Elab m (Sig Value, Value)
 expectComp = expectMatch (\case { TComp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
@@ -538,7 +538,7 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => (Level -> Meta :=: Maybe Value ::: Type -> Elab m (Maybe Suffix)) -> Elab m ()
+onTop :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => (Level -> Meta :=: Maybe Value ::: Value -> Elab m (Maybe Suffix)) -> Elab m ()
 onTop f = trace "onTop" $ do
   ctx <- get
   (gamma, elem) <- case elems ctx of
@@ -552,7 +552,7 @@ onTop f = trace "onTop" $ do
     _         -> onTop f <* modify (|> elem)
 
 -- FIXME: we don’t get good source references during unification
-unify :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => Type -> Type -> Elab m ()
+unify :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => Value -> Value -> Elab m ()
 unify t1 t2 = trace "unify" $ value t1 t2
   where
   nope = couldNotUnify "mismatch" t1 t2
@@ -627,22 +627,22 @@ elab m = evalFresh 0 . evalState Context.empty $ do
   mkContext = ElabContext <$> ask <*> ask <*> ask <*> ask
 
 
-check :: Has Trace sig m => (Check m a ::: Type) -> Elab m a
+check :: Has Trace sig m => (Check m a ::: Value) -> Elab m a
 check (m ::: _T) = trace "check" $ case _T of
   -- TSusp (TRet sig _) -> extendSig sig (runCheck m _T)
   _                  -> runCheck m _T
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
-newtype Check m a = Check { runCheck :: Type -> Elab m a }
-  deriving (Functor) via ReaderC Type (Elab m)
+newtype Check m a = Check { runCheck :: Value -> Elab m a }
+  deriving (Functor) via ReaderC Value (Elab m)
 
 mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
 mapCheck f m = Check $ \ _T -> f (runCheck m _T)
 
-newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
+newtype Synth m a = Synth { synth :: Elab m (a ::: Value) }
 
 instance Functor (Synth m) where
   fmap f (Synth m) = Synth (first f <$> m)
 
-mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m b
+mapSynth :: (Elab m (a ::: Value) -> Elab m (b ::: Value)) -> Synth m a -> Synth m b
 mapSynth f = Synth . f . synth

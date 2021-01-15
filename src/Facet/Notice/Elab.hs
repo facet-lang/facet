@@ -6,7 +6,7 @@ module Facet.Notice.Elab
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
-import           Facet.Core (Sort(..), Type, sortOf)
+import           Facet.Core (Sort(..), Value, sortOf)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -69,5 +69,5 @@ printReason ctx = group . \case
   Invariant s -> reflow s
 
 
-printType :: Stack Print -> Type -> Doc Style
+printType :: Stack Print -> Value -> Doc Style
 printType env = getPrint . printValue env

@@ -1,8 +1,6 @@
 module Facet.Core
 ( -- * Values
   Value(..)
-, Type
-, Expr
 , unBind
 , unBind'
 , unLam
@@ -77,26 +75,23 @@ import           Prelude hiding (zip, zipWith)
 data Value
   = KType
   | KInterface
-  | TForAll (Binding Type) (Type -> Type)
-  | TComp (Sig Type) Type
+  | TForAll (Binding Value) (Value -> Value)
+  | TComp (Sig Value) Value
   | ELam Icit [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var Level :$ (Icit, Value))
-  | ECon (Q Name :$ Expr)
+  | ECon (Q Name :$ Value)
   | TString
   | EString Text
   -- | Effect operation and its parameters.
-  | EOp (Q Name :$ (Icit, Expr))
-
-type Type = Value
-type Expr = Value
+  | EOp (Q Name :$ (Icit, Value))
 
 
-unBind :: Alternative m => Type -> m (Binding Type, Type -> Type)
+unBind :: Alternative m => Value -> m (Binding Value, Value -> Value)
 unBind = \case{ TForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unBind' :: Alternative m => (Level, Type) -> m (Binding Type, (Level, Type))
+unBind' :: Alternative m => (Level, Value) -> m (Binding Value, (Level, Value))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
@@ -289,7 +284,7 @@ scope_ :: Lens' Module Scope
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
-lookupC :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type)
+lookupC :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Value)
 lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
@@ -297,32 +292,32 @@ lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls sc
     pure $ name:.:n :=: v ::: _T
 
 -- | Look up effect operations.
-lookupE :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type)
+lookupE :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Value)
 lookupE n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
     n :=: _ ::: _T <- maybe empty pure d >>= unDInterface >>= lookupScope n
     pure $ name:.:n :=: Nothing ::: _T
 
-lookupD :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type)
+lookupD :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Value)
 lookupD n Module{ name, scope } = maybe empty pure $ do
   d ::: _T <- Map.lookup n (decls scope)
   pure $ name:.:n :=: d ::: _T
 
 
-newtype Scope = Scope { decls :: Map.Map Name (Maybe Def ::: Type) }
+newtype Scope = Scope { decls :: Map.Map Name (Maybe Def ::: Value) }
   deriving (Monoid, Semigroup)
 
-decls_ :: Lens' Scope (Map.Map Name (Maybe Def ::: Type))
+decls_ :: Lens' Scope (Map.Map Name (Maybe Def ::: Value))
 decls_ = coerced
 
-scopeFromList :: [Name :=: Maybe Def ::: Type] -> Scope
+scopeFromList :: [Name :=: Maybe Def ::: Value] -> Scope
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
 
-scopeToList :: Scope -> [Name :=: Maybe Def ::: Type]
+scopeToList :: Scope -> [Name :=: Maybe Def ::: Value]
 scopeToList = map (\ (n, v ::: _T) -> n :=: v ::: _T) . Map.toList . decls
 
-lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Maybe Def ::: Type)
+lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Maybe Def ::: Value)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
