@@ -145,7 +145,7 @@ nonBinding = anned $ S.Binding Ex Nothing <$> optional sig <*> monotype
 -- Types
 
 -- FIXME: kind ascriptions
-monotypeTable :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => Table p (S.Ann S.Type)
+monotypeTable :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => Table p (S.Ann S.Expr)
 monotypeTable =
   [ [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   , [ -- FIXME: we should treat these as globals.
@@ -159,7 +159,7 @@ monotypeTable =
   ]
 
 
-type' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
+type' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
 type' = anned $ mk <$> tcomp
   where
   -- FIXME: This is a gross hack.
@@ -172,7 +172,7 @@ tcomp = anned $ do
   S.Comp bindings <$> optional sig <*> monotype
 
 -- FIXME: support type operators
-monotype :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
+monotype :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
 monotype = build monotypeTable $ parens type'
 
 tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)

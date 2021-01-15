@@ -2,7 +2,6 @@
 module Facet.Surface
 ( -- * Expressions
   Expr(..)
-, Type
 , Comp(..)
 , Binding(..)
 , Interface(..)
@@ -48,24 +47,22 @@ data Expr
   | Thunk (Ann Expr)
   | Force (Ann Expr)
   | App (Ann Expr) (Ann Expr)
-  | As (Ann Expr) (Ann Type)
+  | As (Ann Expr) (Ann Expr)
   | String Text
   deriving (Eq, Show)
-
-type Type = Expr
 
 
 data Comp = Comp
   { bindings :: [Ann Binding]
   , delta    :: Maybe [Ann Interface]
-  , type'    :: Ann Type
+  , type'    :: Ann Expr
   }
   deriving (Eq, Show)
 
 
 data Binding = Binding
   { icit  :: Icit
-  -- | The names bound by this value. 'Nothing' indicates an unnamed binding (i.e. a regular old function type argument like @A -> B@), whereas 'Just' indicates one or more names are bound to a single type (e.g. a quantifier like @{ A, B : Type } -> C@).
+  -- | The names bound by this value. 'Nothing' indicates an unnamed binding (i.e. a regular old function type argument like @A -> B@), whereas 'Just' indicates one or more names are bound to a single type (e.g. a quantifier like @{ A, B : Expr } -> C@).
   --
   -- This technically represents the same number of (total) cases as @[]@ would, but forces disjoint handling so we don’t accidentally e.g. bind or apply over a non-binding argument and truncate the list.
   , names :: Maybe (NonEmpty Name)
@@ -73,12 +70,12 @@ data Binding = Binding
   --
   -- 'Nothing' indicates a value type; 'Just' with an empty list indicates a thunk with the ambient effects; 'Just' with one or more interfaces indicates that this position provides these effects. (Note that this can, in general, also hold signature variables.)
   , delta :: Maybe [Ann Interface]
-  , type' :: Ann Type
+  , type' :: Ann Expr
   }
   deriving (Eq, Show)
 
 
-data Interface = Interface (Ann (Q Name)) (Stack (Ann Type))
+data Interface = Interface (Ann (Q Name)) (Stack (Ann Expr))
   deriving (Eq, Show)
 
 
