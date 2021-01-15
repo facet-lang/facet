@@ -344,44 +344,44 @@ unDInterface = \case
 -- Quotation
 
 data Expr
-  = QVar (Var Index)
-  | QKType
-  | QKInterface
-  | QTForAll (Binding Expr) Expr
-  | QTComp (Sig Expr) Expr
-  | QELam Icit [(Pattern Name, Expr)]
-  | QApp Expr (Icit, Expr)
-  | QECon (Q Name :$ Expr)
-  | QTString
-  | QEString Text
-  | QEOp (Q Name)
+  = Var (Var Index)
+  | KType
+  | KInterface
+  | TForAll (Binding Expr) Expr
+  | TComp (Sig Expr) Expr
+  | ELam Icit [(Pattern Name, Expr)]
+  | App Expr (Icit, Expr)
+  | ECon (Q Name :$ Expr)
+  | TString
+  | EString Text
+  | EOp (Q Name)
   deriving (Eq, Ord, Show)
 
 quote :: Level -> Value -> Expr
 quote d = \case
-  VKType          -> QKType
-  VKInterface     -> QKInterface
-  VTForAll t b    -> QTForAll (quote d <$> t) (quote (succ d) (b (free d)))
-  VTComp s t      -> QTComp (quote d <$> s) (quote d t)
-  VELam p cs      -> QELam p (map (clause d) cs)
-  VNe (n :$ sp)   -> foldl' QApp (QVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
-  VECon (n :$ sp) -> QECon (n :$ (quote d <$> sp))
-  VTString        -> QTString
-  VEString s      -> QEString s
-  VEOp (n :$ sp)  -> foldl' QApp (QEOp n) (fmap (quote d) <$> sp)
+  VKType          -> KType
+  VKInterface     -> KInterface
+  VTForAll t b    -> TForAll (quote d <$> t) (quote (succ d) (b (free d)))
+  VTComp s t      -> TComp (quote d <$> s) (quote d t)
+  VELam p cs      -> ELam p (map (clause d) cs)
+  VNe (n :$ sp)   -> foldl' App (Var (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
+  VECon (n :$ sp) -> ECon (n :$ (quote d <$> sp))
+  VTString        -> TString
+  VEString s      -> EString s
+  VEOp (n :$ sp)  -> foldl' App (EOp n) (fmap (quote d) <$> sp)
   where
   clause d (Clause p b) = let (d', p') = fill (\ d -> (d, free d)) d p in (p, quote d' (b p'))
 
 eval :: HasCallStack => Stack Value -> IntMap.IntMap Value -> Expr -> Value
 eval env metas = \case
-  QVar v          -> unVar global ((env !) . getIndex) metavar v
-  QKType          -> VKType
-  QKInterface     -> VKInterface
-  QTForAll t b    -> VTForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
-  QTComp s t      -> VTComp (eval env metas <$> s) (eval env metas t)
-  QELam p cs      -> VELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) metas b)) cs
-  QApp f a        -> eval env metas f $$ (eval env metas <$> a)
-  QECon (n :$ sp) -> VECon $ n :$ (eval env metas <$> sp)
-  QTString        -> VTString
-  QEString s      -> VEString s
-  QEOp n          -> VEOp $ n :$ Nil
+  Var v          -> unVar global ((env !) . getIndex) metavar v
+  KType          -> VKType
+  KInterface     -> VKInterface
+  TForAll t b    -> VTForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
+  TComp s t      -> VTComp (eval env metas <$> s) (eval env metas t)
+  ELam p cs      -> VELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) metas b)) cs
+  App f a        -> eval env metas f $$ (eval env metas <$> a)
+  ECon (n :$ sp) -> VECon $ n :$ (eval env metas <$> sp)
+  TString        -> VTString
+  EString s      -> VEString s
+  EOp n          -> VEOp $ n :$ Nil
