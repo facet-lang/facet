@@ -82,7 +82,7 @@ meta (v ::: _T) = do
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
-instantiate :: Algebra sig m => Quote ::: Type -> Elab m (Quote ::: Type)
+instantiate :: Has (Reader (Sig Value)) sig m => Quote ::: Type -> Elab m (Quote ::: Type)
 instantiate (e ::: _T) = case _T of
   TForAll (Binding Im _ KInterface) _B -> do -- FIXME: this forces there to be exactly one effect var
     v <- askEffectVar
@@ -121,7 +121,7 @@ resolveQ :: Has (Throw Err :+: Trace) sig m => Q Name -> Elab m (Q Name :=: Mayb
 resolveQ = resolveWith lookupD
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Algebra sig m => Q Name ::: Type -> Synth m Quote
+global :: Has (Reader (Sig Value)) sig m => Q Name ::: Type -> Synth m Quote
 global (q ::: _T) = Synth $ instantiate (QVar (Global q) ::: _T)
 
 lookupInContext :: Q Name -> Context -> Maybe (Index, Type)
@@ -142,7 +142,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: Has (Throw Err :+: Trace) sig m => Q Name -> Synth m Quote
+var :: Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m => Q Name -> Synth m Quote
 var n = Synth $ trace "var" $ get >>= \ ctx -> if
   | Just (i, _T) <- lookupInContext n ctx -> pure (QVar (Free i) ::: _T)
   | otherwise                             -> ask >>= \ sig -> asks (\ ElabContext{ module', graph } -> lookupInSig n module' graph (interfaces sig)) >>= \case
@@ -197,7 +197,7 @@ abstract body = go
 
 -- Expressions
 
-synthExpr :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Synth m Quote
+synthExpr :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Synth m Quote
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Var n      -> var n
   S.KType      -> _Type
@@ -214,7 +214,7 @@ synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Check m Quote
+checkExpr :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Check m Quote
 checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e of
   S.Hole  n    -> hole n
   S.Lam cs     -> elabClauses cs
@@ -232,7 +232,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
   synth = switch (synthExpr expr)
 
 
-elabBinding :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Binding -> [(Pos, Check m (Binding Quote))]
+elabBinding :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Binding -> [(Pos, Check m (Binding Quote))]
 elabBinding (S.Ann s _ (S.Binding p n d t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
     t' <- check (checkExpr t ::: _T)
@@ -245,11 +245,11 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
       Nothing -> pure $ Binding p n t')
   | n <- maybe [Nothing] (map Just . toList) n ]
 
-elabSig :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Check m Quote
+elabSig :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Check m Quote
 elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
   check (switch (foldl' ($$) (mapSynth (setSpan s') (var n)) (checkExpr <$> sp)) ::: _T)
 
-elabComp :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m Quote
+elabComp :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m Quote
 elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ foldr
   (\ t b -> do
     t' <- check (snd t ::: KType)
@@ -289,7 +289,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
   b' <- t{ name = Just n } |- check (b ::: _B (free d))
   pure $ QELam pl [(PVar n, b')]
 
-thunk :: Has (Throw Err :+: Trace) sig m => Check m a -> Check m a
+thunk :: Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m => Check m a -> Check m a
 thunk e = Check $ trace "thunk" . \case
   TComp (Sig _ s) t -> extendSig (Just s) $ check (e ::: t)
   t                 -> check (e ::: t)
@@ -303,7 +303,7 @@ force e = Synth $ trace "force" $ do
 
 
 -- FIXME: go find the pattern matching matrix algorithm
-elabClauses :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => [S.Clause] -> Check m Quote
+elabClauses :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => [S.Clause] -> Check m Quote
 elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = mapCheck (trace "elabClauses") $ lam n $ checkExpr b
 elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
   -- FIXME: use the signature to elaborate the pattern
@@ -316,7 +316,7 @@ elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
 
 
 -- FIXME: check for unique variable names
-elabPattern :: Has (Throw Err :+: Trace) sig m => Type -> S.Ann S.EffPattern -> (Pattern (Name ::: Type) -> Elab m a) -> Elab m a
+elabPattern :: Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m => Type -> S.Ann S.EffPattern -> (Pattern (Name ::: Type) -> Elab m a) -> Elab m a
 elabPattern = go
   where
   go _A (S.Ann s _ p) k = trace "elabPattern" $ setSpan s $ case p of
@@ -370,7 +370,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
-    c_T <- elab $ abstract (check (switch (elabComp t) ::: KType)) _T
+    c_T <- runReader (Sig (free (Level 0)) []) $ elab $ abstract (check (switch (elabComp t) ::: KType)) _T
     let c_T' = eval Nil mempty c_T
     pure $ n :=: Just (DTerm (con (mname :.: n) Nil c_T')) ::: c_T'
   pure
@@ -388,7 +388,7 @@ elabInterfaceDef
   -> m (Maybe Def ::: Type)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $ do
-    _T' <- elab $ abstract (check (switch (elabComp t) ::: KType)) _T
+    _T' <- runReader (Sig (free (Level 0)) []) $ elab $ abstract (check (switch (elabComp t) ::: KType)) _T
     -- FIXME: check that the interface is a member of the sig.
     let _T'' = eval Nil mempty _T'
     pure $ n :=: Nothing ::: _T''
@@ -401,7 +401,7 @@ elabTermDef
   -> S.Ann S.Expr
   -> m Expr
 elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
-  elab $ eval Nil mempty <$> check (go (checkExpr expr) ::: _T)
+  runReader (Sig (free (Level 0)) []) $ elab $ Binding Im (Just (U "ε")) (free (Level 0)) |- eval Nil mempty <$> check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
     TForAll Binding{ name = Just n } _ -> tracePretty n $ check (lam n (go k) ::: _T)
@@ -428,7 +428,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ local (const s) $ do
       -- FIXME: add the effect var to the QComp before evaluating.
-      _T <- runModule . elab $ eval Nil mempty <$> check (switch (elabComp tele) ::: KType)
+      _T <- runModule $ runReader (Sig (free (Level 0)) []) $ elab $ eval Nil mempty <$> check (switch (elabComp tele) ::: KType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
@@ -616,19 +616,15 @@ unify t1 t2 = trace "unify" $ value t1 t2
 
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC (Sig Value) (StateC Context (FreshC m))) a }
-  deriving (Algebra (Reader ElabContext :+: Reader (Sig Value) :+: State Context :+: Fresh :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (StateC Context (FreshC m)) a }
+  deriving (Algebra (Reader ElabContext :+: State Context :+: Fresh :+: sig), Applicative, Functor, Monad)
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab m a -> m a
 elab m = evalFresh 0 . evalState Context.empty $ do
   ctx <- mkContext
-  sig <- mkSig
-  runReader sig . runReader ctx . runElab $ m
+  runReader ctx . runElab $ m
   where
   mkContext = ElabContext <$> ask <*> ask <*> ask <*> ask
-  mkSig = do
-    m <- meta (Nothing ::: KInterface)
-    pure $ Sig (metavar m) []
 
 
 check :: Has Trace sig m => (Check m a ::: Type) -> Elab m a
