@@ -82,7 +82,7 @@ meta (v ::: _T) = do
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
-instantiate :: Has (Reader (Sig Value)) sig m => Quote ::: Value -> Elab m (Quote ::: Value)
+instantiate :: Has (Reader (Sig Value)) sig m => Expr ::: Value -> Elab m (Expr ::: Value)
 instantiate (e ::: _T) = case _T of
   TForAll (Binding Im _ KInterface) _B -> do -- FIXME: this forces there to be exactly one effect var
     v <- askEffectVar
@@ -97,7 +97,7 @@ instantiate (e ::: _T) = case _T of
 switch :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => Synth m a -> Check m a
 switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
-as :: Has Trace sig m => Check m Quote ::: Check m Quote -> Synth m Quote
+as :: Has Trace sig m => Check m Expr ::: Check m Expr -> Synth m Expr
 as (m ::: _T) = Synth $ trace "as" $ do
   eval <- gets evalIn
   _T' <- eval <$> check (_T ::: KType)
@@ -121,7 +121,7 @@ resolveQ :: Has (Throw Err :+: Trace) sig m => Q Name -> Elab m (Q Name :=: Mayb
 resolveQ = resolveWith lookupD
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Has (Reader (Sig Value)) sig m => Q Name ::: Value -> Synth m Quote
+global :: Has (Reader (Sig Value)) sig m => Q Name ::: Value -> Synth m Expr
 global (q ::: _T) = Synth $ instantiate (QVar (Global q) ::: _T)
 
 lookupInContext :: Q Name -> Context -> Maybe (Index, Value)
@@ -142,7 +142,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m => Q Name -> Synth m Quote
+var :: Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m => Q Name -> Synth m Expr
 var n = Synth $ trace "var" $ get >>= \ ctx -> if
   | Just (i, _T) <- lookupInContext n ctx -> pure (QVar (Free i) ::: _T)
   | otherwise                             -> ask >>= \ sig -> asks (\ ElabContext{ module', graph } -> lookupInSig n module' graph (interfaces sig)) >>= \case
@@ -154,7 +154,7 @@ var n = Synth $ trace "var" $ get >>= \ ctx -> if
 hole :: Has (Throw Err :+: Trace) sig m => Name -> Check m a
 hole n = Check $ \ _T -> err $ Hole n _T
 
-($$) :: Has (Throw Err :+: Trace) sig m => Synth m Quote -> Check m Quote -> Synth m Quote
+($$) :: Has (Throw Err :+: Trace) sig m => Synth m Expr -> Check m Expr -> Synth m Expr
 f $$ a = Synth $ trace "$$" $ do
   f' ::: _F <- synth f
   (Binding _ _ _A, _B) <- expectQuantifier "in application" _F
@@ -184,7 +184,7 @@ infix 1 |-
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstract :: Has (Throw Err :+: Trace) sig m => Elab m Quote -> Value -> Elab m Quote
+abstract :: Has (Throw Err :+: Trace) sig m => Elab m Expr -> Value -> Elab m Expr
 abstract body = go
   where
   go = \case
@@ -197,7 +197,7 @@ abstract body = go
 
 -- Expressions
 
-synthExpr :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Synth m Quote
+synthExpr :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Synth m Expr
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Var n      -> var n
   S.KType      -> _Type
@@ -214,7 +214,7 @@ synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Check m Quote
+checkExpr :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Check m Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e of
   S.Hole  n    -> hole n
   S.Lam cs     -> elabClauses cs
@@ -232,7 +232,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
   synth = switch (synthExpr expr)
 
 
-elabBinding :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Binding -> [(Pos, Check m (Binding Quote))]
+elabBinding :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Binding -> [(Pos, Check m (Binding Expr))]
 elabBinding (S.Ann s _ (S.Binding p n d t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
     t' <- check (checkExpr t ::: _T)
@@ -245,11 +245,11 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
       Nothing -> pure $ Binding p n t')
   | n <- maybe [Nothing] (map Just . toList) n ]
 
-elabSig :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Check m Quote
+elabSig :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Check m Expr
 elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
   check (switch (foldl' ($$) (mapSynth (setSpan s') (var n)) (checkExpr <$> sp)) ::: _T)
 
-elabComp :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m Quote
+elabComp :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m Expr
 elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ foldr
   (\ t b -> do
     t' <- check (snd t ::: KType)
@@ -270,17 +270,17 @@ elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ fo
 -- comp type has a list of bindings, maybe a list of constraints, and a return type; turn the latter two into a QTComp and the former into a series of QTForAlls
 
 
-_Type :: Synth m Quote
+_Type :: Synth m Expr
 _Type = Synth $ pure $ QKType ::: KType
 
-_Interface :: Synth m Quote
+_Interface :: Synth m Expr
 _Interface = Synth $ pure $ QKInterface ::: KType
 
-_String :: Synth m Quote
+_String :: Synth m Expr
 _String = Synth $ pure $ QTString ::: KType
 
 
-lam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Quote -> Check m Quote
+lam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
 lam n b = Check $ \ _T -> trace "lam" $ do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (t@(Binding pl _ _A), _B) <- expectQuantifier "when checking lambda" _T
@@ -303,7 +303,7 @@ force e = Synth $ trace "force" $ do
 
 
 -- FIXME: go find the pattern matching matrix algorithm
-elabClauses :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => [S.Clause] -> Check m Quote
+elabClauses :: (HasCallStack, Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m) => [S.Clause] -> Check m Expr
 elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = mapCheck (trace "elabClauses") $ lam n $ checkExpr b
 elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
   -- FIXME: use the signature to elaborate the pattern
@@ -355,7 +355,7 @@ elabPattern = go
       (\ _A k -> k _A [])
 
 
-string :: Text -> Synth m Quote
+string :: Text -> Synth m Expr
 string s = Synth $ pure $ QEString s ::: TString
 
 

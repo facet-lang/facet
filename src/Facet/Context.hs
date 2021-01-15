@@ -93,7 +93,7 @@ toEnv c = (locals 0 (elems c), metas (elems c))
     bs S.:> Rigid{}    -> metas bs
     bs S.:> Flex m v _ -> IntMap.insert (getMeta m) (fromMaybe (metavar m) v) (metas bs)
 
-evalIn :: Context -> Quote -> Value
+evalIn :: Context -> Expr -> Value
 evalIn = uncurry eval . toEnv
 
 

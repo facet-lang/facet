@@ -50,7 +50,7 @@ module Facet.Core
 , unDData
 , unDInterface
   -- * Quotation
-, Quote(..)
+, Expr(..)
 , quote
 , eval
 ) where
@@ -343,21 +343,21 @@ unDInterface = \case
 
 -- Quotation
 
-data Quote
+data Expr
   = QVar (Var Index)
   | QKType
   | QKInterface
-  | QTForAll (Binding Quote) Quote
-  | QTComp (Sig Quote) Quote
-  | QELam Icit [(Pattern Name, Quote)]
-  | QApp Quote (Icit, Quote)
-  | QECon (Q Name :$ Quote)
+  | QTForAll (Binding Expr) Expr
+  | QTComp (Sig Expr) Expr
+  | QELam Icit [(Pattern Name, Expr)]
+  | QApp Expr (Icit, Expr)
+  | QECon (Q Name :$ Expr)
   | QTString
   | QEString Text
   | QEOp (Q Name)
   deriving (Eq, Ord, Show)
 
-quote :: Level -> Value -> Quote
+quote :: Level -> Value -> Expr
 quote d = \case
   KType          -> QKType
   KInterface     -> QKInterface
@@ -372,7 +372,7 @@ quote d = \case
   where
   clause d (Clause p b) = let (d', p') = fill (\ d -> (d, free d)) d p in (p, quote d' (b p'))
 
-eval :: HasCallStack => Stack Value -> IntMap.IntMap Value -> Quote -> Value
+eval :: HasCallStack => Stack Value -> IntMap.IntMap Value -> Expr -> Value
 eval env metas = \case
   QVar v          -> unVar global ((env !) . getIndex) metavar v
   QKType          -> KType
