@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 module Facet.Core
 ( -- * Values
   Value(..)
@@ -72,19 +73,19 @@ import           Prelude hiding (zip, zipWith)
 
 -- Values
 
-data Value
-  = VKType
-  | VKInterface
-  | VTForAll (Binding Value) (Value -> Value)
-  | VTComp (Sig Value) Value
-  | VELam Icit [Clause]
+data Value where
+  VKType :: Value
+  VKInterface :: Value
+  VTForAll :: Binding Value -> (Value -> Value) -> Value
+  VTComp :: Sig Value -> Value -> Value
+  VELam :: Icit -> [Clause] -> Value
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  | VNe (Var Level :$ (Icit, Value))
-  | VECon (Q Name :$ Value)
-  | VTString
-  | VEString Text
+  VNe :: Var Level :$ (Icit, Value) -> Value
+  VECon :: Q Name :$ Value -> Value
+  VTString :: Value
+  VEString :: Text -> Value
   -- | Effect operation and its parameters.
-  | VEOp (Q Name :$ (Icit, Value))
+  VEOp :: Q Name :$ (Icit, Value) -> Value
 
 
 unBind :: Alternative m => Value -> m (Binding Value, Value -> Value)
