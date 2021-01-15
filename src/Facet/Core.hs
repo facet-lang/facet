@@ -1,6 +1,7 @@
 module Facet.Core
 ( -- * Values
   Value(..)
+, VType(..)
 , unBind
 , unBind'
 , unLam
@@ -53,6 +54,7 @@ module Facet.Core
 , Expr(..)
 , quote
 , eval
+, Type(..)
 ) where
 
 import           Control.Applicative (Alternative(..))
@@ -73,26 +75,29 @@ import           Prelude hiding (zip, zipWith)
 -- Values
 
 data Value
-  = VKType
-  | VKInterface
-  | VTForAll (Binding Value) (Value -> Value)
-  | VTComp (Sig Value) Value
-  | VELam Icit [Clause]
+  = VELam Icit [Clause]
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
   | VNe (Var Level :$ (Icit, Value))
   | VECon (Q Name :$ Value)
-  | VTString
   | VEString Text
   -- | Effect operation and its parameters.
   | VEOp (Q Name :$ (Icit, Value))
 
+data VType
+  = VKType
+  | VKInterface
+  | VTForAll (Binding VType) (VType -> VType)
+  | VTComp (Sig VType) VType
+  | VTString
+  -- | Neutral terms are an unreduced head followed by a stack of eliminators.
+  | VTNe (Var Level :$ (Icit, VType))
 
-unBind :: Alternative m => Value -> m (Binding Value, Value -> Value)
+unBind :: Alternative m => VType -> m (Binding VType, VType -> VType)
 unBind = \case{ VTForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unBind' :: Alternative m => (Level, Value) -> m (Binding Value, (Level, Value))
-unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
+unBind' :: Alternative m => (Level, VType) -> m (Binding VType, (Level, VType))
+unBind' (d, v) = fmap (\ _B -> (succ d, _B (tfree d))) <$> unBind v
 
 
 unLam :: Alternative m => Value -> m (Icit, [Clause])
@@ -345,14 +350,9 @@ unDInterface = \case
 
 data Expr
   = Var (Var Index)
-  | KType
-  | KInterface
-  | TForAll (Binding Expr) Expr
-  | TComp (Sig Expr) Expr
   | ELam Icit [(Pattern Name, Expr)]
   | App Expr (Icit, Expr)
   | ECon (Q Name :$ Expr)
-  | TString
   | EString Text
   | EOp (Q Name)
   deriving (Eq, Ord, Show)
@@ -385,3 +385,13 @@ eval env metas = \case
   TString        -> VTString
   EString s      -> VEString s
   EOp n          -> VEOp $ n :$ Nil
+
+
+data Type
+  = TVar (Var Index)
+  | KType
+  | KInterface
+  | TForAll (Binding Expr) Expr
+  | TComp (Sig Expr) Expr
+  | TString
+  | TApp Expr (Icit, Expr)
