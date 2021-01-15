@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Surface
 ( -- * Expressions
@@ -36,19 +37,19 @@ import Facet.Syntax
 
 -- Expressions
 
-data Expr
-  = Var (Q Name)
-  | Hole Name
-  | KType
-  | KInterface
-  | TString
-  | TComp (Ann Comp)
-  | Lam [Clause]
-  | Thunk (Ann Expr)
-  | Force (Ann Expr)
-  | App (Ann Expr) (Ann Expr)
-  | As (Ann Expr) (Ann Expr)
-  | String Text
+data Expr where
+  Var :: Q Name -> Expr
+  Hole :: Name -> Expr
+  KType :: Expr
+  KInterface :: Expr
+  TString :: Expr
+  TComp :: Ann Comp -> Expr
+  Lam :: [Clause] -> Expr
+  Thunk :: Ann Expr -> Expr
+  Force :: Ann Expr -> Expr
+  App :: Ann Expr -> Ann Expr -> Expr
+  As :: Ann Expr -> Ann Expr -> Expr
+  String :: Text -> Expr
   deriving (Eq, Show)
 
 
