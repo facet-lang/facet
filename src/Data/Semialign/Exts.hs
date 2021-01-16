@@ -1,6 +1,7 @@
 module Data.Semialign.Exts
 ( zipWithM
 , zipWithM_
+, module S
 ) where
 
 import Data.Foldable (sequenceA_)
