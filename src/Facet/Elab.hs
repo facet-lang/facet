@@ -89,11 +89,11 @@ instantiate (e ::: _T) = case _T of
   VTForAll (Binding Im _ VKInterface) _B -> do -- FIXME: this forces there to be exactly one effect var
     v <- askEffectVar
     d <- depth
-    instantiate (App e (Im, quote d v) ::: _B v)
+    instantiate (XApp e (Im, quote d v) ::: _B v)
   VTForAll (Binding Im _ _T) _B -> do
     m <- meta (Nothing ::: _T)
-    instantiate (App e (Im, Var (Metavar m)) ::: _B (metavar m))
-  _                              -> pure $ e ::: _T
+    instantiate (XApp e (Im, XVar (Metavar m)) ::: _B (metavar m))
+  _                                      -> pure $ e ::: _T
 
 
 switch :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => Synth m a -> Check m a
@@ -124,7 +124,7 @@ resolveQ = resolveWith lookupD
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global :: Has (Reader (Sig Value)) sig m => Q Name ::: Value -> Synth m Expr
-global (q ::: _T) = Synth $ instantiate (Var (Global q) ::: _T)
+global (q ::: _T) = Synth $ instantiate (XVar (Global q) ::: _T)
 
 lookupInContext :: Q Name -> Context -> Maybe (Index, Value)
 lookupInContext (m:.:n)
@@ -146,9 +146,9 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m => Q Name -> Synth m Expr
 var n = Synth $ trace "var" $ get >>= \ ctx -> if
-  | Just (i, _T) <- lookupInContext n ctx -> pure (Var (Free i) ::: _T)
+  | Just (i, _T) <- lookupInContext n ctx -> pure (XVar (Free i) ::: _T)
   | otherwise                             -> ask >>= \ sig -> asks (\ ElabContext{ module', graph } -> lookupInSig n module' graph (interfaces sig)) >>= \case
-    Just (n ::: _T) -> instantiate (EOp n ::: _T)
+    Just (n ::: _T) -> instantiate (XEOp n ::: _T)
     _ -> do
       n :=: _ ::: _T <- resolveQ n
       synth $ global (n ::: _T)
@@ -163,7 +163,7 @@ f $$ a = Synth $ trace "$$" $ do
   a' <- check (a ::: _A)
   eval <- gets evalIn
   let a'' = eval a'
-  pure $ App f' (Ex, a') ::: _B a''
+  pure $ XApp f' (Ex, a') ::: _B a''
 
 
 (|-) :: (HasCallStack, Has Trace sig m) => Binding Value -> Elab m a -> Elab m a
@@ -193,7 +193,7 @@ abstract body = go
     VTForAll t b -> do
       level <- depth
       b' <- t |- go (b (free level))
-      pure $ TForAll (quote level <$> set icit_ Im t) b'
+      pure $ XTForAll (quote level <$> set icit_ Im t) b'
     _           -> body
 
 
@@ -243,7 +243,7 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
         d' <- traverse (check . (::: VKInterface) . elabSig) d
         level <- depth
         e <- askEffectVar
-        pure $ Binding p n (TComp (Sig (quote level e) d') t')
+        pure $ Binding p n (XTComp (Sig (quote level e) d') t')
       Nothing -> pure $ Binding p n t')
   | n <- maybe [Nothing] (map Just . toList) n ]
 
@@ -257,7 +257,7 @@ elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ fo
     t' <- check (snd t ::: VKType)
     eval <- gets evalIn
     b' ::: _ <- fmap eval t' |- b
-    pure $ TForAll t' b' ::: VKType)
+    pure $ XTForAll t' b' ::: VKType)
   (do
     b' <- check (checkExpr b ::: VKType)
     case d of
@@ -265,7 +265,7 @@ elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ fo
         d' <- traverse (check . (::: VKInterface) . elabSig) d
         level <- depth
         e <- askEffectVar
-        pure $ TComp (Sig (quote level e) d') b' ::: VKType
+        pure $ XTComp (Sig (quote level e) d') b' ::: VKType
       Nothing -> pure (b' ::: VKType))
   (elabBinding =<< bs)
 
@@ -273,13 +273,13 @@ elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ fo
 
 
 _Type :: Synth m Expr
-_Type = Synth $ pure $ KType ::: VKType
+_Type = Synth $ pure $ XKType ::: VKType
 
 _Interface :: Synth m Expr
-_Interface = Synth $ pure $ KInterface ::: VKType
+_Interface = Synth $ pure $ XKInterface ::: VKType
 
 _String :: Synth m Expr
-_String = Synth $ pure $ TString ::: VKType
+_String = Synth $ pure $ XTString ::: VKType
 
 
 lam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
@@ -289,7 +289,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
   -- FIXME: extend the signature if _B v is a TRet.
   d <- depth
   b' <- t{ name = Just n } |- check (b ::: _B (free d))
-  pure $ ELam pl [(PVar n, b')]
+  pure $ XELam pl [(PVar n, b')]
 
 thunk :: Has (Reader (Sig Value) :+: Throw Err :+: Trace) sig m => Check m a -> Check m a
 thunk e = Check $ trace "thunk" . \case
@@ -314,7 +314,7 @@ elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
   -- FIXME: I don’t see how this can be correct; the context will not hold a variable but rather a pattern of them.
   let _B' = _B (free d)
   cs' <- for cs $ \ (S.Clause p b) -> elabPattern _A p (\ p' -> (tm <$> p',) <$> check (checkExpr b ::: _B'))
-  pure $ ELam Ex cs'
+  pure $ XELam Ex cs'
 
 
 -- FIXME: check for unique variable names
@@ -358,7 +358,7 @@ elabPattern = go
 
 
 string :: Text -> Synth m Expr
-string s = Synth $ pure $ EString s ::: VTString
+string s = Synth $ pure $ XEString s ::: VTString
 
 
 -- Declarations

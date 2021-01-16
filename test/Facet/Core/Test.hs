@@ -14,5 +14,5 @@ tests :: IO Bool
 tests = checkParallel $$(discover)
 
 prop_quotation_inverse = property $ do
-  let init = TForAll (Binding Im (Just (U "ε")) KInterface) (TForAll (Binding Im (Just (U "A")) KType) (TForAll (Binding Ex (Just (U "x")) (Var (Free 0))) (TComp (Sig (Var (Free 2)) []) (Var (Free 1)))))
+  let init = XTForAll (Binding Im (Just (U "ε")) XKInterface) (XTForAll (Binding Im (Just (U "A")) XKType) (XTForAll (Binding Ex (Just (U "x")) (XVar (Free 0))) (XTComp (Sig (XVar (Free 2)) []) (XVar (Free 1)))))
   quote 0 (eval Nil mempty init) === init
