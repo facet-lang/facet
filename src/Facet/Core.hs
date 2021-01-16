@@ -62,7 +62,7 @@ import           Control.Monad (guard)
 import           Data.Foldable (asum, foldl', toList)
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
-import           Data.Semialign
+import           Data.Semialign.Exts
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import           Facet.Name hiding (bind)
@@ -212,7 +212,7 @@ match = curry $ \case
   (VECon (n' :$ fs), PCon (n :$ ps)) -> do
     guard (n == n')
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
-    PCon . (n' :$) <$> sequenceA (zipWith match fs ps)
+    PCon . (n' :$) <$> zipWithM match fs ps
   (_,                PCon _)         -> Nothing
   -- FIXME: match effect patterns against computations (?)
   (_,                PEff{})         -> Nothing

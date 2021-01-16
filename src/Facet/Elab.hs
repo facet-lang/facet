@@ -45,9 +45,9 @@ import           Control.Effect.Lens (view, (.=))
 import           Control.Lens (Lens', at, ix, lens, set)
 import           Control.Monad (unless)
 import           Data.Bifunctor (first)
-import           Data.Foldable (asum, foldl', for_, sequenceA_, toList)
+import           Data.Foldable (asum, foldl', for_, toList)
 import           Data.Maybe (catMaybes, fromMaybe)
-import           Data.Semialign
+import           Data.Semialign.Exts
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
@@ -601,7 +601,7 @@ unify t1 t2 = trace "unify" $ value t1 t2
   pl f (p1, t1) (p2, t2) = unless (p1 == p2) nope >> f t1 t2
 
   spine :: (Foldable t, Zip t) => (a -> a -> Elab m ()) -> t a -> t a -> Elab m ()
-  spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> sequenceA_ (zipWith f sp1 sp2)
+  spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
   binding (Binding p1 _ t1) (Binding p2 _ t2) = trace "unify binding" $ unless (p1 == p2) nope >> value t1 t2
 
