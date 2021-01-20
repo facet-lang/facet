@@ -65,7 +65,7 @@ printReason ctx = group . \case
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T              ->
     let _T' = printType ctx _T
-    in fillSep [reflow "found hole", pretty n, colon, _T' ]
+    in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
 
 
