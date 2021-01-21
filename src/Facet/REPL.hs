@@ -203,7 +203,7 @@ showType e = Action $ do
   outputDocLn (getPrint (ann (printValue Nil e' ::: printValue Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ locally interfaces_ (VNe (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ locally interfaces_ (VNe @Type (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
   let e''  = Core.eval Nil mempty e'
   (dEval, e'') <- time $ elab $ runEvalMain (eval e'')
   outputStrLn $ show dElab
@@ -238,7 +238,7 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-elab :: Has (Reader Source :+: State REPL) sig m => I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span (ReaderC (Sig Value) m))))) a -> m a
+elab :: Has (Reader Source :+: State REPL) sig m => I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span (ReaderC (Sig (Value Type)) m))))) a -> m a
 elab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_

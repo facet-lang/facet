@@ -69,5 +69,5 @@ printReason ctx = group . \case
   Invariant s -> reflow s
 
 
-printType :: Stack Print -> Value -> Doc Style
+printType :: Stack Print -> Value Type -> Doc Style
 printType env = getPrint . printValue env

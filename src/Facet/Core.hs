@@ -1,7 +1,11 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 module Facet.Core
 ( -- * Values
   Value(..)
+, Elim(..)
+, Type
+, Term
 , unBind
 , unBind'
 , unLam
@@ -73,31 +77,35 @@ import           Prelude hiding (zip, zipWith)
 
 -- Values
 
-data Value where
-  VKType :: Value
-  VKInterface :: Value
-  VTForAll :: Binding Value -> (Value -> Value) -> Value
-  VTComp :: Sig Value -> Value -> Value
-  VELam :: Icit -> [Clause] -> Value
+data Value sort where
+  VKType :: Value Type
+  VKInterface :: Value Type
+  VTForAll :: Binding (Value Type) -> (Value Type -> Value Type) -> Value Type
+  VTComp :: Sig (Value Type) -> Value Type -> Value Type
+  VETLam :: (Value Type -> Value Term) -> Value Term
+  VELam :: [Clause] -> Value Term
   -- | Neutral terms are an unreduced head followed by a stack of eliminators.
-  VNe :: Var Level :$ (Icit, Value) -> Value
-  VECon :: Q Name :$ Value -> Value
-  VTString :: Value
-  VEString :: Text -> Value
+  VNe :: Var Level :$ Elim sort -> Value sort
+  VECon :: Q Name :$ Elim Term -> Value Term
+  VTString :: Value Type
+  VEString :: Text -> Value Term
   -- | Effect operation and its parameters.
-  VEOp :: Q Name :$ (Icit, Value) -> Value
+  VEOp :: Q Name :$ Elim Term -> Value Term
 
+data Elim sort
+  = EExApp (Value sort)
+  | EImApp (Value Type)
 
-unBind :: Alternative m => Value -> m (Binding Value, Value -> Value)
+unBind :: Alternative m => Value Type -> m (Binding (Value Type), Value Type -> Value Type)
 unBind = \case{ VTForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unBind' :: Alternative m => (Level, Value) -> m (Binding Value, (Level, Value))
+unBind' :: Alternative m => (Level, Value Type) -> m (Binding (Value Type), (Level, Value Type))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
-unLam :: Alternative m => Value -> m (Icit, [Clause])
-unLam = \case{ VELam n b -> pure (n, b) ; _ -> empty }
+unLam :: Alternative m => Value Term -> m [Clause]
+unLam = \case{ VELam b -> pure b ; _ -> empty }
 
 
 data Sig a = Sig
@@ -115,10 +123,10 @@ interfaces_ = lens interfaces (\ s interfaces -> s{ interfaces })
 
 data Clause = Clause
   { pattern :: Pattern Name
-  , branch  :: Pattern Value -> Value
+  , branch  :: Pattern (Value Term) -> Value Term
   }
 
-instantiateClause :: Level -> Clause -> (Level, Value)
+instantiateClause :: Level -> Clause -> (Level, Value Term)
 instantiateClause d (Clause p b) = b <$> bindPattern d p
 
 
@@ -151,61 +159,81 @@ unVar f g h = \case
   Metavar n -> h n
 
 
-global :: Q Name -> Value
+global :: Q Name -> Value sort
 global = var . Global
 
-free :: Level -> Value
+free :: Level -> Value sort
 free = var . Free
 
-metavar :: Meta -> Value
+metavar :: Meta -> Value sort
 metavar = var . Metavar
 
 
-var :: Var Level -> Value
+var :: Var Level -> Value sort
 var = VNe . (:$ Nil)
 
 
-occursIn :: (Var Level -> Bool) -> Level -> Value -> Bool
+occursIn :: (Var Level -> Bool) -> Level -> Value sort -> Bool
 occursIn p = go
   where
+  go :: Level -> Value sort -> Bool
   go d = \case
     VKType          -> False
     VKInterface     -> False
     VTForAll t b    -> binding d t || go (succ d) (b (free d))
     VTComp s t      -> sig d s || go d t
-    VELam _ cs      -> any (clause d) cs
-    VNe (h :$ sp)   -> p h || any (any (go d)) sp
-    VECon (_ :$ sp) -> any (go d) sp
+    VETLam b        -> go (succ d) (b (free d))
+    VELam cs        -> any (clause d) cs
+    VNe (h :$ sp)   -> p h || any (elim d) sp
+    VECon (_ :$ sp) -> any (elim d) sp
     VTString        -> False
     VEString _      -> False
-    VEOp (_ :$ sp)  -> any (any (go d)) sp
+    VEOp (_ :$ sp)  -> any (elim d) sp
 
+  elim :: Level -> Elim sort -> Bool
+  elim d = \case
+    EExApp a -> go d a
+    EImApp a -> go d a
+  binding :: Level -> Binding (Value Type) -> Bool
   binding d (Binding _ _ t) = go d t
+  sig :: Level -> Sig (Value Type) -> Bool
   sig d (Sig v s) = go d v || any (go d) s
   clause d (Clause p b) = let (d', p') = fill (\ d -> (succ d, free d)) d p in go d' (b p')
 
 
 -- Elimination
 
-($$) :: HasCallStack => Value -> (Icit, Value) -> Value
+-- ($$$) :: HasCallStack => Value Type -> (Icit, Value Type) -> Value Type
+-- VNe (h :$ es) $$$ a = VNe (h :$ (es :> a))
+
+
+
+($$) :: HasCallStack => Value sort -> Elim sort -> Value sort
 VNe  (h :$ es) $$ a = VNe (h :$ (es :> a))
 VEOp (q :$ es) $$ a = VEOp (q :$ (es :> a))
-VTForAll _ b   $$ a = b (snd a)
-VELam _ b      $$ a = case' (snd a) b
+VTForAll _ b   $$ a = b (case a of
+  EExApp a -> a
+  EImApp a -> a)
+VETLam b       $$ a = case a of
+  EExApp a -> _
+  EImApp a -> b a
+VELam b        $$ a = case a of
+  EExApp a -> case' a b
+  EImApp a -> _
 _              $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (HasCallStack, Foldable t) => Value -> t (Icit, Value) -> Value
+($$*) :: (HasCallStack, Foldable t) => Value sort -> t (Elim sort) -> Value sort
 ($$*) = foldl' ($$)
 
 infixl 9 $$, $$*
 
 
-case' :: HasCallStack => Value -> [Clause] -> Value
+case' :: HasCallStack => Value Term -> [Clause] -> Value Term
 case' s cs = case asum ((\ (Clause p f) -> f <$> match s p) <$> cs) of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
-match :: Value -> Pattern b -> Maybe (Pattern Value)
+match :: Value Term -> Pattern b -> Maybe (Pattern (Value Term))
 match = curry $ \case
   -- FIXME: this shouldn’t match computations
   (s,                PVar _)         -> Just (PVar s)
@@ -227,18 +255,24 @@ data Sort
   deriving (Bounded, Enum, Eq, Ord, Show)
 
 -- | Classifies values according to whether or not they describe types.
-sortOf :: Stack Sort -> Value -> Sort
+sortOf :: Stack Sort -> Value sort -> Sort
 sortOf ctx = \case
   VKType                       -> SKind
   VKInterface                  -> SKind
   VTForAll (Binding _ _ _T) _B -> let _T' = sortOf ctx _T in min _T' (sortOf (ctx :> _T') (_B (free (Level (length ctx)))))
   VTComp _ _T                  -> sortOf ctx _T
+  VETLam{}                     -> STerm
   VELam{}                      -> STerm
-  VNe (h :$ sp)                -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (sortOf ctx . snd <$> sp))
+  VNe (h :$ sp)                -> minimum (unVar (const SType) ((ctx !) . getIndex . levelToIndex (Level (length ctx))) (const SType) h : toList (elim ctx <$> sp))
   VECon _                      -> STerm
   VTString                     -> SType
   VEString _                   -> STerm
   VEOp _                       -> STerm -- FIXME: will this always be true?
+  where
+  elim :: Stack Sort -> Elim sort -> Sort
+  elim ctx = \case
+    EExApp a -> sortOf ctx a
+    EImApp a -> sortOf ctx a
 
 
 -- Patterns
@@ -253,7 +287,7 @@ data Pattern a
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)
 
-bindPattern :: Traversable t => Level -> t a -> (Level, t Value)
+bindPattern :: Traversable t => Level -> t a -> (Level, t (Value Term))
 bindPattern = fill (\ d -> (succ d, free d))
 
 unsafeUnPVar :: HasCallStack => Pattern a -> a
@@ -285,7 +319,7 @@ scope_ :: Lens' Module Scope
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
-lookupC :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Value)
+lookupC :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Value Type)
 lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
@@ -293,32 +327,32 @@ lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls sc
     pure $ name:.:n :=: v ::: _T
 
 -- | Look up effect operations.
-lookupE :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Value)
+lookupE :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Value Type)
 lookupE n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
     n :=: _ ::: _T <- maybe empty pure d >>= unDInterface >>= lookupScope n
     pure $ name:.:n :=: Nothing ::: _T
 
-lookupD :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Value)
+lookupD :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Value Type)
 lookupD n Module{ name, scope } = maybe empty pure $ do
   d ::: _T <- Map.lookup n (decls scope)
   pure $ name:.:n :=: d ::: _T
 
 
-newtype Scope = Scope { decls :: Map.Map Name (Maybe Def ::: Value) }
+newtype Scope = Scope { decls :: Map.Map Name (Maybe Def ::: Value Type) }
   deriving (Monoid, Semigroup)
 
-decls_ :: Lens' Scope (Map.Map Name (Maybe Def ::: Value))
+decls_ :: Lens' Scope (Map.Map Name (Maybe Def ::: Value Type))
 decls_ = coerced
 
-scopeFromList :: [Name :=: Maybe Def ::: Value] -> Scope
+scopeFromList :: [Name :=: Maybe Def ::: Value Type] -> Scope
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
 
-scopeToList :: Scope -> [Name :=: Maybe Def ::: Value]
+scopeToList :: Scope -> [Name :=: Maybe Def ::: Value Type]
 scopeToList = map (\ (n, v ::: _T) -> n :=: v ::: _T) . Map.toList . decls
 
-lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Maybe Def ::: Value)
+lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Maybe Def ::: Value Type)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
@@ -326,7 +360,7 @@ newtype Import = Import { name :: MName }
 
 
 data Def
-  = DTerm Value
+  = DTerm (Value Term)
   | DData Scope
   | DInterface Scope
   | DModule Scope
@@ -344,27 +378,32 @@ unDInterface = \case
 
 -- Quotation
 
-data Expr where
-  XVar :: Var Index -> Expr
-  XKType :: Expr
-  XKInterface :: Expr
-  XTForAll :: Binding Expr -> Expr -> Expr
-  XTComp :: Sig Expr -> Expr -> Expr
-  XELam :: Icit -> [(Pattern Name, Expr)] -> Expr
-  XApp :: Expr -> (Icit, Expr) -> Expr
-  XECon :: Q Name :$ Expr -> Expr
-  XTString :: Expr
-  XEString :: Text -> Expr
-  XEOp :: Q Name -> Expr
-  deriving (Eq, Ord, Show)
+data Expr sort where
+  XVar :: Var Index -> Expr sort
+  XKType :: Expr Type
+  XKInterface :: Expr Type
+  XTForAll :: Binding (Expr Type) -> Expr Type -> Expr Type
+  XTComp :: Sig (Expr Type) -> Expr Type -> Expr Type
+  XETLam :: Expr Type -> Expr Term
+  XELam :: [(Pattern Name, Expr Term)] -> Expr Term
+  XApp :: Expr sort -> (Icit, Expr sort) -> Expr sort
+  XECon :: Q Name :$ Expr Term -> Expr Term
+  XTString :: Expr Type
+  XEString :: Text -> Expr Term
+  XEOp :: Q Name -> Expr Term
 
-quote :: Level -> Value -> Expr
+deriving instance Eq   (Expr sort)
+deriving instance Ord  (Expr sort)
+deriving instance Show (Expr sort)
+
+quote :: Level -> Value sort -> Expr sort
 quote d = \case
   VKType          -> XKType
   VKInterface     -> XKInterface
   VTForAll t b    -> XTForAll (quote d <$> t) (quote (succ d) (b (free d)))
   VTComp s t      -> XTComp (quote d <$> s) (quote d t)
-  VELam p cs      -> XELam p (map (clause d) cs)
+  VETLam b        -> XETLam (quote (succ d) (b (free d)))
+  VELam cs        -> XELam (map (clause d) cs)
   VNe (n :$ sp)   -> foldl' XApp (XVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
   VECon (n :$ sp) -> XECon (n :$ (quote d <$> sp))
   VTString        -> XTString
@@ -373,14 +412,15 @@ quote d = \case
   where
   clause d (Clause p b) = let (d', p') = fill (\ d -> (d, free d)) d p in (p, quote d' (b p'))
 
-eval :: HasCallStack => Stack Value -> IntMap.IntMap Value -> Expr -> Value
+eval :: HasCallStack => Stack (Value sort) -> IntMap.IntMap (Value sort) -> Expr sort -> Value sort
 eval env metas = \case
   XVar v          -> unVar global ((env !) . getIndex) metavar v
   XKType          -> VKType
   XKInterface     -> VKInterface
   XTForAll t b    -> VTForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
   XTComp s t      -> VTComp (eval env metas <$> s) (eval env metas t)
-  XELam p cs      -> VELam p $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) metas b)) cs
+  XETLam b        -> VETLam (\ v -> eval (env :> v) metas b)
+  XELam cs        -> VELam $ map (\ (p, b) -> Clause p (\ p -> eval (foldl' (:>) env p) metas b)) cs
   XApp f a        -> eval env metas f $$ (eval env metas <$> a)
   XECon (n :$ sp) -> VECon $ n :$ (eval env metas <$> sp)
   XTString        -> VTString

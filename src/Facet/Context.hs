@@ -31,15 +31,15 @@ newtype Context = Context { elems :: S.Stack Entry }
 
 data Entry
   -- FIXME: record implicitness in the context.
-  = Rigid Name Value
-  | Flex Meta (Maybe Value) Value
+  = Rigid Name (Value Type)
+  | Flex Meta (Maybe (Value Type)) (Value Type)
 
-entryDef :: Entry -> Maybe Value
+entryDef :: Entry -> Maybe (Value Type)
 entryDef = \case
   Rigid{}    -> Nothing
   Flex _ v _ -> v
 
-entryType :: Entry -> Value
+entryType :: Entry -> Value Type
 entryType = \case
   Rigid _   t -> t
   Flex  _ _ t -> t
@@ -69,7 +69,7 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
   go (es S.:> _)         i = go es i
   go _                   _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: Name -> Context -> Maybe (Index, Value)
+lookupIndex :: Name -> Context -> Maybe (Index, Value Type)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = Nothing
@@ -80,7 +80,7 @@ lookupIndex n = go (Index 0) . elems
 
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context -> (S.Stack Value, IntMap.IntMap Value)
+toEnv :: Context -> (S.Stack (Value Type), IntMap.IntMap (Value Type))
 toEnv c = (locals 0 (elems c), metas (elems c))
   where
   d = level c
@@ -93,11 +93,11 @@ toEnv c = (locals 0 (elems c), metas (elems c))
     bs S.:> Rigid{}    -> metas bs
     bs S.:> Flex m v _ -> IntMap.insert (getMeta m) (fromMaybe (metavar m) v) (metas bs)
 
-evalIn :: Context -> Expr -> Value
+evalIn :: Context -> Expr Type -> Value Type
 evalIn = uncurry eval . toEnv
 
 
-type Suffix = [Meta :=: Maybe Value ::: Value]
+type Suffix = [Meta :=: Maybe (Value Type) ::: Value Type]
 
 (<><) :: Context -> Suffix -> Context
 (<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> Flex n v _T)

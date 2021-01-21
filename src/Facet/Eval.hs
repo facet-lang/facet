@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 module Facet.Eval
 ( -- * Evaluation
   eval
@@ -14,7 +15,7 @@ import Facet.Name
 import Facet.Syntax
 
 -- FIXME: erase terms before evaluating.
-eval :: (Has (Reader Graph) sig m, Has (Reader Module) sig m) => Value -> Eval m Value
+eval :: (Has (Reader Graph) sig m, Has (Reader Module) sig m) => Value Term -> Eval m (Value Term)
 eval = \case
   VNe (h :$ sp) -> do
     sp' <- traverse (traverse eval) sp
@@ -26,7 +27,7 @@ eval = \case
         -> eval $ v $$* sp'
       _ -> pure $ VNe (h :$ sp')
 
-  VTComp (Sig _ []) v -> eval v
+  -- VTComp (Sig _ []) v -> eval v
 
   VEOp op -> Eval $ \ h -> h op
 
@@ -35,10 +36,10 @@ eval = \case
 
 -- Machinery
 
-runEval :: (Q Name :$ (Icit, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: (Q Name :$ (Icit, Value Term) -> (Value Term -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (Q Name :$ (Icit, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (Q Name :$ (Icit, Value Term) -> (Value Term -> m r) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)

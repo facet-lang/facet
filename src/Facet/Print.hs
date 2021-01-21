@@ -139,7 +139,7 @@ f $$ a = askingPrec $ \case
 
 -- Core printers
 
-printValue :: Stack Print -> C.Value -> Print
+printValue :: Stack Print -> C.Value sort -> Print
 printValue env = \case
   C.VKType -> annotate Type $ pretty "Type"
   C.VKInterface -> annotate Type $ pretty "Interface"
@@ -168,6 +168,7 @@ printValue env = \case
   C.VEString s -> annotate Lit $ pretty (show s)
   where
   d = Name.Level (length env)
+  sig :: C.Sig (C.Value C.Type) -> Print
   sig (C.Sig v s) = brackets (printValue env v <> pipe <> commaSep (map (printValue env) s))
 
 
@@ -216,6 +217,7 @@ name f n d = setPrec Var . annotate (Name d) $
     pretty n
 
 -- FIXME: group quantifiers by kind again.
+fn :: Foldable t => t (Icit, [Print] ::: Print) -> Print -> Print
 fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
   [] -> _T --> b
   _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
