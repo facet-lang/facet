@@ -1,7 +1,5 @@
 module Facet.Syntax
-( Type
-, Term
-, (:::)(..)
+( (:::)(..)
 , tm
 , ty
 , (:===:)(..)
@@ -19,13 +17,6 @@ import Data.Bitraversable
 import Data.Functor.Classes
 import Facet.Semiring
 import Facet.Stack
-
--- | An explicit sort index for type- (and kind-, etc.) level expressions and values.
-data Type
-
--- | An explicit sort index for term-level expressions and values.
-data Term
-
 
 data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)

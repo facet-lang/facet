@@ -17,7 +17,7 @@ import           Control.Monad (unless)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
-import           Data.Foldable (toList)
+import           Data.Foldable (foldl', toList)
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
@@ -149,8 +149,8 @@ commands = choice
     $ setLogTraces <$> choice [ False <$ symbol "no-log-traces", True <$ symbol "log-traces" ]
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ showType <$> runFacet [] expr
-  , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
-    $ showType <$> runFacet [] Parser.type'
+  -- , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
+  --   $ showType <$> runFacet [] Parser.type'
   ]
 
 path' :: TokenParsing p => p FilePath
@@ -195,30 +195,29 @@ setLogTraces :: Bool -> Action
 setLogTraces b = Action $ put (toFlag LogTraces b)
 
 
-showType, showEval :: S.Ann (S.Expr sort) -> Action
+showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
   e ::: _T <- elab $ Elab.elab (Elab.synth (Elab.synthExpr e))
-  let e'  = Core.eval Nil mempty e
-  outputDocLn (getPrint (ann (printValue Nil e' ::: printValue Nil _T)))
+  outputDocLn (getPrint (ann (printExpr Nil e ::: printType Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ locally interfaces_ (VNe @Type (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
-  let e''  = Core.eval Nil mempty e'
-  (dEval, e'') <- time $ elab $ runEvalMain (eval e'')
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ Elab.synth (Elab.synthExpr e)
+  (dEval, Value e'') <- time $ elab $ runEvalMain (eval e')
   outputStrLn $ show dElab
   outputStrLn $ show dEval
-  outputDocLn (getPrint (ann (printValue Nil e'' ::: printValue Nil _T)))
+  outputDocLn (getPrint (ann (printExpr Nil e'' ::: printType Nil _T)))
 
 runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
-  handle (q :$ sp) k = case q of
-    m :.: U "write"
-      | m == fromList ["Effect", "Console"]
-      , Nil:>(Ex, VEString s) <- sp -> outputText s *> k unit
-    _                               -> k (VEOp (q :$ sp))
-  unit = VECon (fromList ["Data", "Unit"] :.: U "unit" :$ Nil)
+  handle (q :$ sp) k = k (Value (foldl' XApp (XOp q) (fmap getValue <$> sp)))
+  -- handle (q :$ sp) k = case q of
+  --   m :.: U "write"
+  --     | m == fromList ["Effect", "Console"]
+  --     , Nil:>(Ex, XString s) <- sp -> outputText s *> k unit
+  --   _                               -> k (VEOp (q :$ sp))
+  -- unit = XCon (fromList ["Data", "Unit"] :.: U "unit" :$ Nil)
 
 
 helpDoc :: Doc Style
@@ -238,7 +237,7 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-elab :: Has (Reader Source :+: State REPL) sig m => I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span (ReaderC (Sig (Value Type)) m))))) a -> m a
+elab :: Has (Reader Source :+: State REPL) sig m => I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span (ReaderC (Sig Type) m))))) a -> m a
 elab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_

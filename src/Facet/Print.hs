@@ -5,7 +5,8 @@ module Facet.Print
 , Precedence(..)
 , ann
   -- * Core printers
-, printValue
+, printType
+, printExpr
 , printModule
   -- * Misc
 , intro
@@ -139,38 +140,40 @@ f $$ a = askingPrec $ \case
 
 -- Core printers
 
-printValue :: Stack Print -> C.Value sort -> Print
-printValue env = \case
+printType :: Stack Print -> C.Type -> Print
+printType env = \case
   C.VKType -> annotate Type $ pretty "Type"
   C.VKInterface -> annotate Type $ pretty "Interface"
-  C.VTForAll t b ->
-    let (vs, (_, b')) = splitr C.unBind' (d, C.VTForAll t b)
+  C.VForAll t b ->
+    let (vs, (_, b')) = splitr C.unBind' (d, C.VForAll t b)
         binding env (C.Binding p n _T) =
-          let _T' = printValue env _T
+          let _T' = printType env _T
           in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Name.Level (length env)) ::: _T'))
         name p n d
           | n == __, Ex <- p = []
           | otherwise        = [tintro n d]
         (env', vs') = mapAccumL binding env vs
-    in fn vs' (printValue env' b')
-  C.VTComp s t -> sig s <+> printValue env t
-  C.VELam p b -> comp . nest 2 . group . commaSep $ map (clause env p) b
+    in fn vs' (printType env' b')
+  C.VComp s t -> sig s <+> printType env t
   C.VNe (h :$ e) ->
     let elim h sp  Nil     = case sp Nil of
           Nil -> h
           sp  -> app h sp
-        elim h sp  (es:>a) = elim h (sp . (:> fmap (printValue env) a)) es
+        elim h sp  (es:>a) = elim h (sp . (:> fmap (printType env) a)) es
         h' = C.unVar (group . qvar) (\ d' -> fromMaybe (pretty (getLevel d')) $ env !? getIndex (levelToIndex d d')) meta h
     in elim h' id e
-  C.VECon (n :$ p) -> app (group (qvar n)) (fmap ((Ex,) . printValue env) p)
-  C.VEOp (q :$ sp) -> app (group (qvar q)) (fmap (fmap (printValue env)) sp)
-  C.VTString   -> annotate Type $ pretty "String"
-  C.VEString s -> annotate Lit $ pretty (show s)
+  C.VString   -> annotate Type $ pretty "String"
   where
   d = Name.Level (length env)
-  sig :: C.Sig (C.Value C.Type) -> Print
-  sig (C.Sig v s) = brackets (printValue env v <> pipe <> commaSep (map (printValue env) s))
+  sig :: C.Sig C.Type -> Print
+  sig (C.Sig v s) = brackets (printType env v <> pipe <> commaSep (map (printType env) s))
 
+printExpr :: Stack Print -> C.Expr -> Print
+printExpr env = mempty
+  -- C.XVar v    -> _
+  -- C.XTLam b   -> _
+  -- C.XLam cs   -> _
+  -- C.XTApp e t -> printExpr env e $$ printType env t
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
@@ -181,16 +184,16 @@ printModule (C.Module mname is _ ds) = module_
   where
   def (n, Nothing ::: t) = ann
     $   qvar (Nil:.:n)
-    ::: printValue Nil t
+    ::: printType Nil t
   def (n, Just d  ::: t) = ann
     $   qvar (Nil:.:n)
-    ::: defn (printValue Nil t
+    ::: defn (printType Nil t
     :=: case d of
-      C.DTerm b  -> printValue Nil b
+      C.DTerm b  -> printExpr Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printValue Nil _T)) (C.scopeToList cs))
+        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printType Nil _T)) (C.scopeToList cs))
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printValue Nil _T)) (C.scopeToList os))
+        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printType Nil _T)) (C.scopeToList os))
       C.DModule ds -> block (concatWith (surround hardline) (map ((hardline <>) . def) (Map.toList (C.decls ds)))))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
   import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))
@@ -206,7 +209,6 @@ meta :: Meta -> Print
 meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m
 
 tlocal n d = name upper n (getLevel d)
-local  n d = name lower n (getLevel d)
 cname    n = setPrec Var (annotate Con (pretty n))
 
 name :: (Int -> Print) -> Name -> Int -> Print
@@ -223,13 +225,3 @@ fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
   _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
 tvar env n = group (tlocal (snd (tm n)) (Name.Level (length env)))
 app f as = group f $$* fmap (group . uncurry (unPl braces id)) as
-
-lvar env (p, n) = unPl tlocal local p n (Name.Level (length env))
-
-clause env pl (C.Clause p b) = unPl brackets id pl (pat (fst <$> p')) <+> arrow <+> printValue env' (b (snd <$> p'))
-  where
-  ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = lvar env (pl, n) in ((succ d, env :> v), (v, C.free d))) (Name.Level (length env), env) p
-pat = \case
-  C.PVar n         -> n
-  C.PCon (n :$ ps) -> parens (hsep (annotate Con (pretty n):map pat (toList ps)))
-  C.PEff q ps k    -> brackets (pretty q <+> hsep (map pat (toList ps)) <+> semi <+> k)

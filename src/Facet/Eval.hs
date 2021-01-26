@@ -1,45 +1,47 @@
 {-# LANGUAGE GADTs #-}
 module Facet.Eval
 ( -- * Evaluation
-  eval
+  Value(..)
+, eval
   -- * Machinery
 , runEval
 , Eval(..)
 ) where
 
-import Control.Effect.Reader
 import Control.Monad.Trans.Class
 import Facet.Core hiding (eval)
-import Facet.Graph
 import Facet.Name
 import Facet.Syntax
 
--- FIXME: erase terms before evaluating.
-eval :: (Has (Reader Graph) sig m, Has (Reader Module) sig m) => Value Term -> Eval m (Value Term)
+newtype Value = Value { getValue :: Expr }
+  deriving (Eq, Ord, Show)
+
+eval :: Expr -> Eval m Value
 eval = \case
-  VNe (h :$ sp) -> do
-    sp' <- traverse (traverse eval) sp
-    mod <- lift ask
-    graph <- lift ask
-    case h of
-      Global q
-        | Just (_ :=: Just (DTerm v) ::: _) <- lookupQ q mod graph
-        -> eval $ v $$* sp'
-      _ -> pure $ VNe (h :$ sp')
+  -- XApp op a -> _
+  -- VNe (h :$ sp) -> do
+  --   sp' <- traverse (traverse eval) sp
+  --   mod <- lift ask
+  --   graph <- lift ask
+  --   case h of
+  --     Global q
+  --       | Just (_ :=: Just (DTerm v) ::: _) <- lookupQ q mod graph
+  --       -> eval $ v $$* sp'
+  --     _ -> pure $ VNe (h :$ sp')
 
   -- VTComp (Sig _ []) v -> eval v
 
-  VEOp op -> Eval $ \ h -> h op
+  -- XOp op    -> Eval $ \ h -> h op
 
-  v -> pure v
+  v         -> pure (Value v)
 
 
 -- Machinery
 
-runEval :: (Q Name :$ (Icit, Value Term) -> (Value Term -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: (Q Name :$ (Icit, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (Q Name :$ (Icit, Value Term) -> (Value Term -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (Q Name :$ (Icit, Value) -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)

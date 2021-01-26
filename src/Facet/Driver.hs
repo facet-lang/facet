@@ -25,7 +25,6 @@ import           Control.Effect.State
 import           Control.Lens (Lens', at, lens)
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
-import qualified Data.Map as Map
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import qualified Data.Text as TS
@@ -50,7 +49,6 @@ import           Facet.Stack
 import           Facet.Style
 import qualified Facet.Surface as Import (Import(..))
 import qualified Facet.Surface as S
-import           Facet.Syntax
 import           Silkscreen
 import           System.Directory (findFile)
 import qualified System.FilePath as FP
@@ -81,11 +79,9 @@ defaultTarget = Target
 
 
 kernel :: Module
-kernel = Module kernelName [] [] $ Scope $ Map.fromList
-  -- FIXME: this should really function as a synonym
-  [ (typeName, Just (DTerm VKType) ::: VKType) ]
+kernel = Module kernelName [] [] $ Scope mempty
+  -- FIXME: include things like Type and Interface
   where
-  typeName = U (TS.pack "Type")
   kernelName = fromList [TS.pack "Kernel"]
 
 

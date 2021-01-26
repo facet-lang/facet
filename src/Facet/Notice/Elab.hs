@@ -6,7 +6,7 @@ module Facet.Notice.Elab
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import           Facet.Context
-import           Facet.Core (Sort(..), Value, sortOf)
+import           Facet.Core (Type)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -31,18 +31,18 @@ rethrowElabErrors src = L.runThrow rethrow
     (_, _, printCtx, ctx) = foldl combine (0, Nil, Nil, Nil) (elems context)
   combine (d, sort, print, ctx) e =
     let _T = entryType e
-        s = sortOf sort _T
+        s = entrySort e
         n' = case e of
-          Rigid n   _ -> name s n d
+          Rigid s n _ -> name s n d
           Flex  m _ _ -> meta m
     in  ( succ d
         , sort :> s
         , case e of
           Flex{} -> print
           _      -> print :> n'
-        , ctx  :> getPrint (ann (n' ::: printValue print _T)) <> case e of
+        , ctx  :> getPrint (ann (n' ::: printType print _T)) <> case e of
           Flex _ v _ -> space <> pretty '=' <+> case v of
-            Just v -> getPrint (printValue print v)
+            Just v -> printType' print v
             _      -> pretty '?'
           _        -> mempty )
   name = \case
@@ -59,15 +59,15 @@ printReason ctx = group . \case
     <> hardline <> pretty "expected:" <> print exp'
     <> hardline <> pretty "  actual:" <> print act'
     where
-    exp' = either reflow (printType ctx) exp
-    act' = printType ctx act
+    exp' = either reflow (printType' ctx) exp
+    act' = printType' ctx act
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T              ->
-    let _T' = printType ctx _T
+    let _T' = printType' ctx _T
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
 
 
-printType :: Stack Print -> Value Type -> Doc Style
-printType env = getPrint . printValue env
+printType' :: Stack Print -> Type -> Doc Style
+printType' env = getPrint . printType env
