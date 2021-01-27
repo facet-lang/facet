@@ -211,7 +211,7 @@ showEval e = Action $ do
 runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
-  handle (q :$ sp) k = k (Value (foldl' XApp (XOp q) (fmap getValue <$> sp)))
+  handle (q :$ sp) k = k (Value (foldl' XApp (XOp q) (getValue <$> sp)))
   -- handle (q :$ sp) k = case q of
   --   m :.: U "write"
   --     | m == fromList ["Effect", "Console"]

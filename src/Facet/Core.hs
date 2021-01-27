@@ -286,7 +286,7 @@ data Expr
   | XTLam Expr
   | XLam [(Pattern Name, Expr)]
   | XTApp Expr TExpr
-  | XApp Expr (Icit, Expr) -- FIXME: this Icit is redundant
+  | XApp Expr Expr
   | XCon (Q Name :$ Expr)
   | XString Text
   | XOp (Q Name) -- FIXME: this should have the arguments

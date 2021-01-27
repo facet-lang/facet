@@ -165,10 +165,10 @@ hole n = Check $ \ _T -> err $ Hole n _T
 app :: Has (Throw Err :+: Trace) sig m => (a -> (Icit, b) -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ trace "app" $ do
   f' ::: _F <- synth f
-  (Binding _ _ _A, _B) <- expectQuantifier "in application" _F
+  (Binding i _ _A, _B) <- expectQuantifier "in application" _F
   a' <- check (a ::: _A)
   d <- depth
-  pure $ mk f' (Ex, a') ::: _B (free d)
+  pure $ mk f' (i, a') ::: _B (free d)
 
 
 (|-) :: (HasCallStack, Has Trace sig m) => Binding Type -> Elab m a -> Elab m a
@@ -282,7 +282,7 @@ checkType = switch . synthType
 synthExpr :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Synth m Expr
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Var n    -> var n
-  S.App f a  -> app XApp (synthExpr f) (checkExpr a)
+  S.App f a  -> app (\ e -> XApp e . snd) (synthExpr f) (checkExpr a)
   S.As t _T  -> as (checkExpr t ::: checkType _T)
   S.String s -> string s
   S.Hole{}   -> nope

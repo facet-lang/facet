@@ -178,7 +178,7 @@ printExpr env = \case
   C.XTLam b       -> let v = tintro __ d in braces (braces v <+> arrow <+> printExpr (env :> v) b)
   C.XLam cs       -> comp (braces (commaSep (map clause cs)))
   C.XTApp e t     -> printExpr env e $$ braces (printTExpr env t)
-  C.XApp f a      -> printExpr env f $$ uncurry (unPl (braces . printExpr env) (printExpr env)) a
+  C.XApp f a      -> printExpr env f $$ printExpr env a
   C.XCon (n :$ p) -> app (group (qvar n)) (fmap ((Ex,) . printExpr env) p)
   C.XOp q         -> group (qvar q)
   C.XString s     -> annotate Lit $ pretty (show s)
