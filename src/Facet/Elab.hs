@@ -89,12 +89,8 @@ meta (v ::: _T) = do
 
 -- FIXME: does instantiation need to be guided by the expected type?
 -- FIXME: can implicits have effects? what do we do about the signature?
-instantiate :: Has (Reader (Sig Type)) sig m => Expr ::: Type -> Elab m (Expr ::: Type)
+instantiate :: Algebra sig m => Expr ::: Type -> Elab m (Expr ::: Type)
 instantiate (e ::: _T) = case _T of
-  VTForAll (Binding Im _ VKInterface) _B -> do -- FIXME: this forces there to be exactly one effect var
-    v <- askEffectVar
-    d <- depth
-    instantiate (XTApp e (quote d v) ::: _B v)
   VTForAll (Binding Im _ _T) _B -> do
     m <- meta (Nothing ::: _T)
     instantiate (XTApp e (TVar (Metavar m)) ::: _B (metavar m))
