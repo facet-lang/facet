@@ -69,13 +69,13 @@ import           Prelude hiding (zip, zipWith)
 data Type
   = VKType
   | VKInterface
-  | VForAll (Binding Type) (Type -> Type)
-  | VNe (Var Level :$ (Icit, Type))
-  | VComp (Sig Type) Type
-  | VString
+  | VTForAll (Binding Type) (Type -> Type)
+  | VTNe (Var Level :$ (Icit, Type))
+  | VTComp (Sig Type) Type
+  | VTString
 
 unBind :: Alternative m => Type -> m (Binding Type, Type -> Type)
-unBind = \case{ VForAll t b -> pure (t, b) ; _ -> empty }
+unBind = \case{ VTForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
 unBind' :: Alternative m => (Level, Type) -> m (Binding Type, (Level, Type))
@@ -135,19 +135,19 @@ metavar = var . Metavar
 
 
 var :: Var Level -> Type
-var = VNe . (:$ Nil)
+var = VTNe . (:$ Nil)
 
 
 occursIn :: (Var Level -> Bool) -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
-    VKType        -> False
-    VKInterface   -> False
-    VForAll t b   -> binding d t || go (succ d) (b (free d))
-    VComp s t     -> sig d s || go d t
-    VNe (h :$ sp) -> p h || any (any (go d)) sp
-    VString       -> False
+    VKType         -> False
+    VKInterface    -> False
+    VTForAll t b   -> binding d t || go (succ d) (b (free d))
+    VTComp s t     -> sig d s || go d t
+    VTNe (h :$ sp) -> p h || any (any (go d)) sp
+    VTString       -> False
 
   binding :: Level -> Binding Type -> Bool
   binding d (Binding _ _ t) = go d t
@@ -158,9 +158,9 @@ occursIn p = go
 -- Elimination
 
 ($$) :: HasCallStack => Type -> (Icit, Type) -> Type
-VNe (h :$ es) $$ a = VNe (h :$ (es :> a))
-VForAll _ b   $$ a = b (snd a)
-_             $$ _ = error "can’t apply non-neutral/forall type"
+VTNe (h :$ es) $$ a = VTNe (h :$ (es :> a))
+VTForAll _ b   $$ a = b (snd a)
+_              $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (HasCallStack, Foldable t) => Type -> t (Icit, Type) -> Type
 ($$*) = foldl' ($$)
@@ -297,19 +297,19 @@ data Expr
 
 quote :: Level -> Type -> TExpr
 quote d = \case
-  VKType        -> TType
-  VKInterface   -> TInterface
-  VForAll t b   -> TForAll (quote d <$> t) (quote (succ d) (b (free d)))
-  VComp s t     -> TComp (quote d <$> s) (quote d t)
-  VNe (n :$ sp) -> foldl' TApp (TVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
-  VString       -> TString
+  VKType         -> TType
+  VKInterface    -> TInterface
+  VTForAll t b   -> TForAll (quote d <$> t) (quote (succ d) (b (free d)))
+  VTComp s t     -> TComp (quote d <$> s) (quote d t)
+  VTNe (n :$ sp) -> foldl' TApp (TVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
+  VTString       -> TString
 
 eval :: HasCallStack => Stack Type -> IntMap.IntMap Type -> TExpr -> Type
 eval env metas = \case
   TVar v      -> unVar global ((env !) . getIndex) metavar v
   TType       -> VKType
   TInterface  -> VKInterface
-  TForAll t b -> VForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
-  TComp s t   -> VComp (eval env metas <$> s) (eval env metas t)
+  TForAll t b -> VTForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
+  TComp s t   -> VTComp (eval env metas <$> s) (eval env metas t)
   TApp f a    -> eval env metas f $$ (eval env metas <$> a)
-  TString     -> VString
+  TString     -> VTString

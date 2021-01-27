@@ -145,8 +145,8 @@ printType :: Stack Print -> C.Type -> Print
 printType env = \case
   C.VKType -> annotate Type $ pretty "Type"
   C.VKInterface -> annotate Type $ pretty "Interface"
-  C.VForAll t b ->
-    let (vs, (_, b')) = splitr C.unBind' (d, C.VForAll t b)
+  C.VTForAll t b ->
+    let (vs, (_, b')) = splitr C.unBind' (d, C.VTForAll t b)
         binding env (C.Binding p n _T) =
           let _T' = printType env _T
           in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Name.Level (length env)) ::: _T'))
@@ -155,15 +155,15 @@ printType env = \case
           | otherwise        = [tintro n d]
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printType env' b')
-  C.VComp s t -> sig s <+> printType env t
-  C.VNe (h :$ e) ->
+  C.VTComp s t -> sig s <+> printType env t
+  C.VTNe (h :$ e) ->
     let elim h sp  Nil     = case sp Nil of
           Nil -> h
           sp  -> app h sp
         elim h sp  (es:>a) = elim h (sp . (:> fmap (printType env) a)) es
         h' = C.unVar (group . qvar) (\ d' -> fromMaybe (pretty (getLevel d')) $ env !? getIndex (levelToIndex d d')) meta h
     in elim h' id e
-  C.VString   -> annotate Type $ pretty "String"
+  C.VTString   -> annotate Type $ pretty "String"
   where
   d = Name.Level (length env)
   sig :: C.Sig C.Type -> Print
