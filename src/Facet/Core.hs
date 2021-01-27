@@ -286,10 +286,10 @@ data Expr
   | XTLam Expr
   | XLam [(Pattern Name, Expr)]
   | XTApp Expr TExpr
-  | XApp Expr (Icit, Expr)
+  | XApp Expr (Icit, Expr) -- FIXME: this Icit is redundant
   | XCon (Q Name :$ Expr)
   | XString Text
-  | XOp (Q Name)
+  | XOp (Q Name) -- FIXME: this should have the arguments
   deriving (Eq, Ord, Show)
 
 
