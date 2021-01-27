@@ -6,6 +6,7 @@ module Facet.Print
 , ann
   -- * Core printers
 , printType
+, printTExpr
 , printExpr
 , printModule
   -- * Misc
@@ -168,12 +169,27 @@ printType env = \case
   sig :: C.Sig C.Type -> Print
   sig (C.Sig v s) = brackets (printType env v <> pipe <> commaSep (map (printType env) s))
 
+printTExpr :: Stack Print -> C.TExpr -> Print
+printTExpr = mempty
+
 printExpr :: Stack Print -> C.Expr -> Print
-printExpr env = mempty
-  -- C.XVar v    -> _
-  -- C.XTLam b   -> _
-  -- C.XLam cs   -> _
-  -- C.XTApp e t -> printExpr env e $$ printType env t
+printExpr env = \case
+  C.XVar v        -> C.unVar (group . qvar) (\ d' -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d') meta v
+  C.XTLam b       -> let v = tintro __ d in braces (braces v <+> arrow <+> printExpr (env :> v) b)
+  C.XLam cs       -> comp (braces (commaSep (map clause cs)))
+  C.XTApp e t     -> printExpr env e $$ braces (printTExpr env t)
+  C.XApp f a      -> printExpr env f $$ uncurry (unPl (braces . printExpr env) (printExpr env)) a
+  C.XCon (n :$ p) -> app (group (qvar n)) (fmap ((Ex,) . printExpr env) p)
+  C.XOp q         -> group (qvar q)
+  C.XString s     -> annotate Lit $ pretty (show s)
+  where
+  d = Name.Level (length env)
+  binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
+  clause (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> printExpr env' b
+  pat = \case
+    C.PVar n         -> n
+    C.PCon (n :$ ps) -> parens (hsep (annotate Con (pretty n):map pat (toList ps)))
+    C.PEff q ps k    -> brackets (pretty q <+> hsep (map pat (toList ps)) <+> semi <+> k)
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
@@ -209,6 +225,7 @@ meta :: Meta -> Print
 meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m
 
 tlocal n d = name upper n (getLevel d)
+local  n d = name lower n (getLevel d)
 cname    n = setPrec Var (annotate Con (pretty n))
 
 name :: (Int -> Print) -> Name -> Int -> Print
