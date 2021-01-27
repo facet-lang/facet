@@ -94,7 +94,7 @@ instantiate (e ::: _T) = case _T of
   VTForAll (Binding Im _ _T) _B -> do
     m <- meta (Nothing ::: _T)
     instantiate (XTApp e (TVar (Metavar m)) ::: _B (metavar m))
-  _                                      -> pure $ e ::: _T
+  _                             -> pure $ e ::: _T
 
 
 switch :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => Synth m a -> Check m a
