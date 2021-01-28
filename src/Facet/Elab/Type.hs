@@ -30,7 +30,7 @@ tvar n = Synth $ trace "tvar" $ gets (lookupInContext n) >>= \case
   Just (i, _T) -> pure $ TVar (Free i) ::: _T
   Nothing      -> do
     q :=: _ ::: _T <- resolveQ n
-    instantiate TApp $ TVar (Global q) ::: _T
+    instantiate TInst $ TVar (Global q) ::: _T
 
 
 _Type :: Synth m TExpr

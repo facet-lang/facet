@@ -158,10 +158,12 @@ printType env = \case
   C.VTArrow a b -> printType env a <+> arrow <+> printType env b
   C.VTComp s t -> sig s <+> printType env t
   C.VTNe (h :$ e) ->
-    let elim h sp  Nil     = case sp Nil of
+    let elim h sp Nil     = case sp Nil of
           Nil -> h
           sp  -> app h sp
-        elim h sp  (es:>a) = elim h (sp . (:> printType env a)) es
+        elim h sp (es:>a) = elim h (sp . (:> case a of
+          C.TEInst a -> braces (printType env a)
+          C.TEApp  a -> printType env a)) es
         h' = C.unVar (group . qvar) (\ d' -> fromMaybe (pretty (getLevel d')) $ env !? getIndex (levelToIndex d d')) meta h
     in elim h' id e
   C.VTString   -> annotate Type $ pretty "String"

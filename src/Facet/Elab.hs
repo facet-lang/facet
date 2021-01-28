@@ -278,7 +278,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (VTArrow{}, _)                                       -> nope
     (VTComp s1 t1, VTComp s2 t2)                         -> sig s1 s2 >> type' t1 t2
     (VTComp{}, _)                                        -> nope
-    (VTNe (v1 :$ sp1), VTNe (v2 :$ sp2))                 -> var v1 v2 >> spine type' sp1 sp2
+    (VTNe (v1 :$ sp1), VTNe (v2 :$ sp2))                 -> var v1 v2 >> spine telim sp1 sp2
     (VTNe{}, _)                                          -> nope
     (VTString, VTString)                                 -> pure ()
     (VTString, _)                                        -> nope
@@ -291,6 +291,11 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
     (Metavar{}, _)           -> nope
 
+  telim t1 t2 = case (t1, t2) of
+    (TEInst t1, TEInst t2) -> type' t1 t2
+    (TEInst{}, _)          -> nope
+    (TEApp t1, TEApp t2)   -> type' t1 t2
+    (TEApp{}, _)           -> nope
   spine :: (Foldable t, Zip t) => (a -> a -> Elab m ()) -> t a -> t a -> Elab m ()
   spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
