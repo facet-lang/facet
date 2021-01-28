@@ -175,15 +175,15 @@ abstract :: Has (Throw Err :+: Trace) sig m => Elab m TExpr -> Type -> Elab m TE
 abstract body = go
   where
   go = \case
-    VTForAll (n ::: t) b -> do
+    VTForAll (     n ::: t) b -> do
       level <- depth
       b' <- Just n ::: t |- go (b (free level))
       pure $ TForAll (n ::: quote level t) b'
-    VTArrow (Just n ::: a) b -> do
+    VTArrow  (Just n ::: a) b -> do
       level <- depth
       b' <- Just n ::: a |- go b
       pure $ TForAll (n ::: quote level a) b'
-    _            -> body
+    _                         -> body
 
 
 -- Declarations
