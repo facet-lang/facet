@@ -24,7 +24,7 @@ module Facet.Elab
 , couldNotSynthesize
 , freeVariable
 , expectMatch
-, expectQuantifier
+, expectFunction
   -- * Unification
 , ElabContext(..)
   -- * Machinery
@@ -138,13 +138,12 @@ instantiate inst = go
 hole :: Has (Throw Err :+: Trace) sig m => Name -> Check m a
 hole n = Check $ \ _T -> err $ Hole n _T
 
-app :: Has (Throw Err :+: Trace) sig m => (a -> (Icit, b) -> c) -> Synth m a -> Check m b -> Synth m c
+app :: Has (Throw Err :+: Trace) sig m => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ trace "app" $ do
   f' ::: _F <- synth f
-  (Binding i _ _A, _B) <- expectQuantifier "in application" _F
+  (_A, _B) <- expectFunction "in application" _F
   a' <- check (a ::: _A)
-  d <- depth
-  pure $ mk f' (i, a') ::: _B (free d)
+  pure $ mk f' a' ::: _B
 
 
 (|-) :: (HasCallStack, Has Trace sig m) => Binding Type -> Elab m a -> Elab m a
@@ -223,8 +222,8 @@ ambiguousName n qs = err $ AmbiguousName n qs
 expectMatch :: Has (Throw Err :+: Trace) sig m => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectQuantifier :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Binding Type, Type -> Type)
-expectQuantifier = expectMatch (\case{ VTForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
+expectFunction :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Type, Type)
+expectFunction = expectMatch (\case{ VTArrow t b -> pure (t, b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Unification

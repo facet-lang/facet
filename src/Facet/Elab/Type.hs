@@ -58,7 +58,7 @@ elabBinding (S.Ann s _ (S.Binding p n d t)) =
 
 elabSig :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Check m TExpr
 elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
-  check (switch (foldl' (app TApp) (mapSynth (setSpan s') (tvar n)) (checkType <$> sp)) ::: _T)
+  check (switch (foldl' (app (\ a b -> TApp a (Ex, b))) (mapSynth (setSpan s') (tvar n)) (checkType <$> sp)) ::: _T)
 
 elabComp :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m TExpr
 elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ foldr
@@ -86,7 +86,7 @@ synthType (S.Ann s _ e) = mapSynth (trace "synthType" . setSpan s) $ case e of
   S.KInterface -> _Interface
   S.TString    -> _String
   S.TComp t    -> elabComp t
-  S.TApp f a   -> app TApp (synthType f) (checkType a)
+  S.TApp f a   -> app (\ a b -> TApp a (Ex, b)) (synthType f) (checkType a)
 
 checkType :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Type -> Check m TExpr
 checkType = switch . synthType

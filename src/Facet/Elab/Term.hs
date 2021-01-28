@@ -143,7 +143,7 @@ string s = Synth $ pure $ XString s ::: VTString
 synthExpr :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Synth m Expr
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Var n    -> var n
-  S.App f a  -> app (\ e -> XApp e . snd) (synthExpr f) (checkExpr a)
+  S.App f a  -> app XApp (synthExpr f) (checkExpr a)
   S.As t _T  -> as (checkExpr t ::: checkType _T)
   S.String s -> string s
   S.Hole{}   -> nope
@@ -283,6 +283,9 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 
 -- Errors
+
+expectQuantifier :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Binding Type, Type -> Type)
+expectQuantifier = expectMatch (\case{ VTForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
 
 expectComp :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Sig Type, Type)
 expectComp = expectMatch (\case { VTComp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
