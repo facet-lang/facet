@@ -235,11 +235,12 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
   runReader (Sig (free (Level 0)) []) $ elab $ Just (U "ε") ::: free (Level 0) |- check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    VTForAll (n ::: _) _ -> tracePretty n $ check (tlam n (go k) ::: _T)
+    VTForAll (n ::: _) _     -> tracePretty n $ check (tlam n (go k) ::: _T)
+    VTArrow (Just n ::: _) _ -> tracePretty n $ check (lam  n (go k) ::: _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                    -> check (k ::: _T)
+    _                        -> check (k ::: _T)
 
 -- - we shouldn’t instantiate with the sig var
 -- - we should unify sig vars in application rule (but not specialize thus)
