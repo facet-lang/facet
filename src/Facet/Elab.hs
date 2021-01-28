@@ -124,7 +124,7 @@ resolveQ :: Has (Throw Err :+: Trace) sig m => Q Name -> Elab m (Q Name :=: Mayb
 resolveQ = resolveWith lookupD
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Has (Reader (Sig Type)) sig m => Q Name ::: Type -> Synth m Expr
+global :: Algebra sig m => Q Name ::: Type -> Synth m Expr
 global (q ::: _T) = Synth $ instantiate (XVar (Global q) ::: _T)
 
 lookupInContext :: Q Name -> Context -> Maybe (Index, Type)
