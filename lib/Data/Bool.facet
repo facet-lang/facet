@@ -18,18 +18,9 @@ _ || _ : Bool -> Bool -> Bool
 { (false) -> { x -> x }
 , _       -> { _ -> true } }
 
-if : { A : Type } -> (c : Bool) -> (t : [] A) -> (e : [] A) -> A
+if : { A : Type } -> (c : Bool) -> (t : {A}) -> (e : {A}) -> A
 { bool e t c }
 
-# FIXME: change the syntax for suspended computation types to this:
-# if : { A : Type } -> (c : Bool) -> (t : {A}) -> (e : {A}) -> A
-# { bool e t c }
-
-bool : { A : Type } -> (e : [] A) -> (t : [] A) -> Bool -> A
+bool : { A : Type } -> (e : {A}) -> (t : {A}) -> Bool -> A
 { (true)  -> t!
 , (false) -> e! }
-
-# FIXME: change the syntax for suspended computation types to this:
-# bool : { A : Type } -> (e : {A}) -> (t : {A}) -> Bool -> A
-# { (true)  -> t!
-# , (false) -> e! }
