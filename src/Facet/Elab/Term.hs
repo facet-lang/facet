@@ -177,6 +177,10 @@ abstract body = go
       level <- depth
       b' <- t |- go (b (free level))
       pure $ TForAll (quote level <$> t) b'
+    VTArrow  a b -> do
+      level <- depth
+      b' <- a |- go b
+      pure $ TForAll (quote level <$> a) b'
     _            -> body
 
 
