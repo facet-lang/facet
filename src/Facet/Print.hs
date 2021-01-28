@@ -155,7 +155,8 @@ printType env = \case
           | otherwise        = [tintro n d]
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printType env' b')
-  C.VTArrow a b -> printType env a <+> arrow <+> printType env b
+  C.VTArrow (Nothing ::: a) b -> printType env a <+> arrow <+> printType env b
+  C.VTArrow (Just n ::: a) b -> parens (ann (intro n d ::: printType env a)) <+> arrow <+> printType env b
   C.VTComp s t -> sig s <+> printType env t
   C.VTNe (h :$ e) ->
     let elim h sp Nil     = case sp Nil of

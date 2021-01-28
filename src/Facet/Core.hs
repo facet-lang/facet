@@ -66,7 +66,7 @@ data Type
   = VKType
   | VKInterface
   | VTForAll (Maybe Name ::: Type) (Type -> Type)
-  | VTArrow Type Type
+  | VTArrow (Maybe Name ::: Type) Type
   | VTNe (Var Level :$ TElim)
   | VTComp (Sig Type) Type
   | VTString
@@ -132,7 +132,7 @@ occursIn p = go
     VKType         -> False
     VKInterface    -> False
     VTForAll t b   -> binding d t || go (succ d) (b (free d))
-    VTArrow a b    -> go d a || go d b
+    VTArrow a b    -> binding d a || go d b
     VTComp s t     -> sig d s || go d t
     VTNe (h :$ sp) -> p h || any (elim d) sp
     VTString       -> False
@@ -270,7 +270,7 @@ data TExpr
   | TInterface
   | TString
   | TForAll (Maybe Name ::: TExpr) TExpr
-  | TArrow TExpr TExpr
+  | TArrow (Maybe Name ::: TExpr) TExpr
   | TComp (Sig TExpr) TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
@@ -295,7 +295,7 @@ quote d = \case
   VKType         -> TType
   VKInterface    -> TInterface
   VTForAll t b   -> TForAll (quote d <$> t) (quote (succ d) (b (free d)))
-  VTArrow a b    -> TArrow (quote d a) (quote d b)
+  VTArrow a b    -> TArrow (quote d <$> a) (quote d b)
   VTComp s t     -> TComp (quote d <$> s) (quote d t)
   VTNe (n :$ sp) -> foldl' (\ head -> \case
     TEInst a -> TInst head (quote d a)
@@ -308,7 +308,7 @@ eval env metas = \case
   TType       -> VKType
   TInterface  -> VKInterface
   TForAll t b -> VTForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
-  TArrow a b  -> VTArrow (eval env metas a) (eval env metas b)
+  TArrow a b  -> VTArrow (eval env metas <$> a) (eval env metas b)
   TComp s t   -> VTComp (eval env metas <$> s) (eval env metas t)
   TInst f a   -> eval env metas f $$ TEInst (eval env metas a)
   TApp  f a   -> eval env metas f $$ TEApp (eval env metas a)

@@ -141,7 +141,7 @@ hole n = Check $ \ _T -> err $ Hole n _T
 app :: Has (Throw Err :+: Trace) sig m => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ trace "app" $ do
   f' ::: _F <- synth f
-  (_A, _B) <- expectFunction "in application" _F
+  (_ ::: _A, _B) <- expectFunction "in application" _F
   a' <- check (a ::: _A)
   pure $ mk f' a' ::: _B
 
@@ -222,7 +222,7 @@ ambiguousName n qs = err $ AmbiguousName n qs
 expectMatch :: Has (Throw Err :+: Trace) sig m => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectFunction :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Type, Type)
+expectFunction :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Maybe Name ::: Type, Type)
 expectFunction = expectMatch (\case{ VTArrow t b -> pure (t, b) ; _ -> Nothing }) "_ -> _"
 
 
@@ -274,7 +274,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (VKInterface, _)                                     -> nope
     (VTForAll t1 b1, VTForAll t2 b2)                     -> do { binding t1 t2 ; d <- depth ; t1 |- type' (b1 (free d)) (b2 (free d)) }
     (VTForAll{}, _)                                      -> nope
-    (VTArrow a1 b1, VTArrow a2 b2)                       -> type' a1 a2 >> type' b1 b2
+    (VTArrow a1 b1, VTArrow a2 b2)                       -> binding a1 a2 >> type' b1 b2
     (VTArrow{}, _)                                       -> nope
     (VTComp s1 t1, VTComp s2 t2)                         -> sig s1 s2 >> type' t1 t2
     (VTComp{}, _)                                        -> nope

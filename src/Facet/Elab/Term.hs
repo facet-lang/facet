@@ -109,7 +109,7 @@ elabPattern = go
         Just (q ::: _T') -> do
           _T'' <- inst _T'
           e <- askEffectVar
-          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow _T (VTComp (Sig e sig) _A') in Just v ::: t |- k (PEff q (fromList ps') (v ::: t))
+          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow (Nothing ::: _T) (VTComp (Sig e sig) _A') in Just v ::: t |- k (PEff q (fromList ps') (v ::: t))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> Just n ::: _A |- k (PVar (n  ::: _A))
@@ -128,7 +128,7 @@ elabPattern = go
   subpatterns = flip $ foldr
     (\ p rest _A k -> do
       -- FIXME: assert that the signature is empty
-      (_A, _B) <- expectFunction "when checking constructor pattern" _A
+      (_ ::: _A, _B) <- expectFunction "when checking constructor pattern" _A
       -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
       -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
       goVal _A p (\ p' -> rest _B (\ _T ps' -> k _T (p' : ps'))))
