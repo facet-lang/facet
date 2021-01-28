@@ -279,7 +279,7 @@ data TExpr
   | TInterface
   | TString
   | TForAll (Binding TExpr) TExpr
-  | TExpr :-> TExpr
+  | TArrow TExpr TExpr
   | TComp (Sig TExpr) TExpr
   | TApp TExpr (Icit, TExpr)
   deriving (Eq, Ord, Show)
@@ -303,7 +303,7 @@ quote d = \case
   VKType         -> TType
   VKInterface    -> TInterface
   VTForAll t b   -> TForAll (quote d <$> t) (quote (succ d) (b (free d)))
-  VTArrow a b    -> quote d a :-> quote d b
+  VTArrow a b    -> TArrow (quote d a) (quote d b)
   VTComp s t     -> TComp (quote d <$> s) (quote d t)
   VTNe (n :$ sp) -> foldl' TApp (TVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
   VTString       -> TString
@@ -314,7 +314,7 @@ eval env metas = \case
   TType       -> VKType
   TInterface  -> VKInterface
   TForAll t b -> VTForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
-  a :-> b     -> VTArrow (eval env metas a) (eval env metas b)
+  TArrow a b  -> VTArrow (eval env metas a) (eval env metas b)
   TComp s t   -> VTComp (eval env metas <$> s) (eval env metas t)
   TApp f a    -> eval env metas f $$ (eval env metas <$> a)
   TString     -> VTString
