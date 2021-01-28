@@ -5,7 +5,7 @@ module Facet.Elab.Type
 , _Type
 , _Interface
 , _String
-, elabComp
+, comp
 , synthType
 , checkType
 ) where
@@ -60,8 +60,8 @@ sig :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => 
 sig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "sig" $
   check (switch (foldl' (app (\ a b -> TApp a (Ex, b))) (mapSynth (setSpan s') (tvar n)) (checkType <$> sp)) ::: _T)
 
-elabComp :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m TExpr
-elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ foldr
+comp :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m TExpr
+comp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "comp" $ foldr
   (\ t b -> do
     t' <- check (snd t ::: VKType)
     eval <- gets evalIn
@@ -88,7 +88,7 @@ synthType (S.Ann s _ e) = mapSynth (trace "synthType" . setSpan s) $ case e of
   S.KType      -> _Type
   S.KInterface -> _Interface
   S.TString    -> _String
-  S.TComp t    -> elabComp t
+  S.TComp t    -> comp t
   S.TApp f a   -> app (\ a b -> TApp a (Ex, b)) (synthType f) (checkType a)
 
 checkType :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Type -> Check m TExpr
