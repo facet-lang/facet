@@ -178,7 +178,7 @@ abstract body = go
       level <- depth
       b' <- t |- go (b (free level))
       pure $ TForAll (quote level <$> set icit_ Im t) b'
-    _           -> body
+    _            -> body
 
 
 -- Declarations
