@@ -7,8 +7,6 @@ module Facet.Core
 , Sig(..)
 , effectVar_
 , interfaces_
-, Binding(..)
-, type_
   -- ** Variables
 , Var(..)
 , unVar
@@ -67,7 +65,7 @@ import           Prelude hiding (zip, zipWith)
 data Type
   = VKType
   | VKInterface
-  | VTForAll (Binding Type) (Type -> Type)
+  | VTForAll (Maybe Name ::: Type) (Type -> Type)
   | VTArrow Type Type
   | VTNe (Var Level :$ TElim)
   | VTComp (Sig Type) Type
@@ -77,11 +75,11 @@ data TElim
   = TEInst Type
   | TEApp Type
 
-unBind :: Alternative m => Type -> m (Binding Type, Type -> Type)
+unBind :: Alternative m => Type -> m (Maybe Name ::: Type, Type -> Type)
 unBind = \case{ VTForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unBind' :: Alternative m => (Level, Type) -> m (Binding Type, (Level, Type))
+unBind' :: Alternative m => (Level, Type) -> m (Maybe Name ::: Type, (Level, Type))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
@@ -96,16 +94,6 @@ effectVar_ = lens effectVar (\ s effectVar -> s{ effectVar })
 
 interfaces_ :: Lens' (Sig a) [a]
 interfaces_ = lens interfaces (\ s interfaces -> s{ interfaces })
-
-
-data Binding a = Binding
-  { name  :: Maybe Name
-  , type' :: a
-  }
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-type_ :: Lens' (Binding a) a
-type_ = lens type' (\ b type' -> b{ type' })
 
 
 -- Variables
@@ -153,7 +141,7 @@ occursIn p = go
     TEInst t -> go d t
     TEApp  t -> go d t
 
-  binding d (Binding _ t) = go d t
+  binding d (_ ::: t) = go d t
 
   sig d (Sig v s) = go d v || any (go d) s
 
@@ -281,7 +269,7 @@ data TExpr
   | TType
   | TInterface
   | TString
-  | TForAll (Binding TExpr) TExpr
+  | TForAll (Maybe Name ::: TExpr) TExpr
   | TArrow TExpr TExpr
   | TComp (Sig TExpr) TExpr
   | TInst TExpr TExpr
