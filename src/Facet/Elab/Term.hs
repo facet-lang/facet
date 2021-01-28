@@ -186,13 +186,13 @@ abstract body = go
 elabDataDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => Name ::: Type
-  -> [S.Ann (Name ::: S.Ann S.Comp)]
+  -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Maybe Def ::: Type]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
-    c_T <- runReader (Sig (free (Level 0)) []) $ elab $ abstract (check (switch (comp t) ::: VKType)) _T
+    c_T <- runReader (Sig (free (Level 0)) []) $ elab $ abstract (check (checkType t ::: VKType)) _T
     let c_T' = eval Nil mempty c_T
     pure $ n :=: Just (DTerm (con (mname :.: n) c_T')) ::: c_T'
   pure
@@ -210,11 +210,11 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
   => Type
-  -> [S.Ann (Name ::: S.Ann S.Comp)]
+  -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m (Maybe Def ::: Type)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $ do
-    _T' <- runReader (Sig (free (Level 0)) []) $ elab $ abstract (check (switch (comp t) ::: VKType)) _T
+    _T' <- runReader (Sig (free (Level 0)) []) $ elab $ abstract (check (checkType t ::: VKType)) _T
     -- FIXME: check that the interface is a member of the sig.
     let _T'' = eval Nil mempty _T'
     pure $ n :=: Nothing ::: _T''
@@ -262,7 +262,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ local (const s) $ do
       -- FIXME: add the effect var to the QComp before evaluating.
-      _T <- runModule $ runReader (Sig (free (Level 0)) []) $ elab $ eval Nil mempty <$> check (switch (comp tele) ::: VKType)
+      _T <- runModule $ runReader (Sig (free (Level 0)) []) $ elab $ eval Nil mempty <$> check (checkType tele ::: VKType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of

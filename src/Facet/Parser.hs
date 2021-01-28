@@ -30,6 +30,7 @@ import           Data.Functor (void)
 import qualified Data.HashSet as HashSet
 import qualified Data.List.NonEmpty as NE
 import           Data.Text (pack)
+import qualified Data.Text as Text
 import           Facet.Effect.Parser
 import qualified Facet.Name as N
 import           Facet.Parser.Table as Op
@@ -113,33 +114,15 @@ dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> tname <* colon <*> anned
 interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Decl))
 interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> tname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.InterfaceDef <$> braces (commaSep con)))
 
-con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name ::: S.Ann S.Comp))
-con = anned ((:::) <$> dename <* colon <*> tcomp)
+con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name ::: S.Ann S.Type))
+con = anned ((:::) <$> dename <* colon <*> type')
 
 
 typeSig
   :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p)
   => p N.Name -- ^ a parser for names occurring in explicit (parenthesized) bindings
-  -> p (S.Ann S.Comp)
-typeSig name = anned $ do
-  bs1 <- many (try (choice [ imBinding, exBinding name ] <* arrow))
-  bs2 <- many (try (nonBinding <* arrow))
-  S.Comp (bs1 <> bs2) <$> optional sig <*> monotype
-
-exBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann S.Binding)
--- NB: We map wildcards here (and only here) to __ rather than Nothing so that we mark the argument as bound when elaborating the body. e.g.:
---
--- const : { A, B : Type } -> (a : A) -> (_ : B) -> A
--- { a }
---
--- The wildcard must fulfill the obligation to consume a B for this to typecheck; Nothing instead indicates an obligation remaining to be fulfilled by the body.
-exBinding name = anned $ nesting $ try (S.Binding Ex . Just . pure <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> optional sig <*> type' <* rparen
-
-imBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Binding)
-imBinding = anned $ braces $ S.Binding Im . Just . NE.fromList <$> commaSep1 tname <* colon <*> optional sig <*> type'
-
-nonBinding :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Binding)
-nonBinding = anned $ S.Binding Ex Nothing <$> optional sig <*> monotype
+  -> p (S.Ann S.Type)
+typeSig name = choice [ forAll (typeSig name), bindArrow name (typeSig name), type' ]
 
 
 -- Types
@@ -147,7 +130,8 @@ nonBinding = anned $ S.Binding Ex Nothing <$> optional sig <*> monotype
 -- FIXME: kind ascriptions
 monotypeTable :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => Table p (S.Ann S.Type)
 monotypeTable =
-  [ [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.TApp)) ]
+  [ [ parseOperator (N.Infix (Text.pack "->"), N.R, foldr1 (S.annBinary (S.TArrow Nothing))) ]
+  , [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.TApp)) ]
   , [ -- FIXME: we should treat these as globals.
       atom (token (anned (S.KType      <$ string "Type")))
     , atom (token (anned (S.KInterface <$ string "Interface")))
@@ -155,21 +139,23 @@ monotypeTable =
       -- FIXME: holes in types
       -- FIXME: explicit suspended computation types (this is gonna be hard to disambiguate)
     , atom tvar
+    , atom (try compType)
     ]
   ]
 
 
 type' :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-type' = anned $ mk <$> tcomp
-  where
-  -- FIXME: This is a gross hack.
-  mk (S.Ann _ _ (S.Comp [] Nothing (S.Ann _ _ t))) = t
-  mk c                                             = S.TComp c
+type' = monotype
 
-tcomp :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Comp)
-tcomp = anned $ do
-  bindings <- many (try (choice [ imBinding, nonBinding ] <* arrow))
-  S.Comp bindings <$> optional sig <*> monotype
+
+forAll :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type)
+forAll k = make <$> anned (try (((,,) <$ lbrace <*> commaSep1 ((,) <$> position <*> tname) <* colon) <*> type' <* rbrace <* arrow) <*> k)
+  where
+  make (S.Ann s cs (ns, t, b)) = S.Ann s cs (S.out (foldr (\ (p, n) b -> S.Ann (Span p (end s)) Nil (S.TForAll n t b)) b ns))
+
+bindArrow :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann S.Type) -> p (S.Ann S.Type)
+bindArrow name k = anned (try (S.TArrow . Just <$ lparen <*> name <* colon) <*> type' <* rparen <* arrow <*> k)
+
 
 -- FIXME: support type operators
 monotype :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
@@ -179,11 +165,8 @@ tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenPa
 tvar = anned (S.TVar <$> qname tname)
 
 
--- Signatures
-
--- can appear:
--- - before an argument type
--- - before a return type
+compType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
+compType = anned $ braces (S.TComp <$> option [] sig <*> type')
 
 sig :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Interface]
 sig = brackets (commaSep delta) <?> "signature"
@@ -328,6 +311,12 @@ lparen = symbolic '('
 
 rparen :: TokenParsing p => p Char
 rparen = symbolic ')'
+
+lbrace :: TokenParsing p => p Char
+lbrace = symbolic '{'
+
+rbrace :: TokenParsing p => p Char
+rbrace = symbolic '}'
 
 
 anned :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p) => p a -> p (S.Ann a)

@@ -15,13 +15,12 @@ module Facet.Elab.Type
 import           Control.Algebra
 import           Control.Effect.State
 import           Control.Effect.Throw
-import           Data.Foldable (toList)
+import           Data.Foldable (foldl')
 import           Facet.Context
 import           Facet.Core
 import           Facet.Effect.Trace
 import           Facet.Elab
 import           Facet.Name
-import           Facet.Span (Pos, Span(start))
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
@@ -44,13 +43,13 @@ _String :: Synth m TExpr
 _String = Synth $ pure $ TString ::: VKType
 
 
-forAll :: Has Trace sig m => Check m (Binding TExpr) -> Check m TExpr -> Synth m TExpr
-forAll t b = Synth $ do
+forAll :: Has Trace sig m => Name -> Check m TExpr -> Check m TExpr -> Synth m TExpr
+forAll n t b = Synth $ do
   t' <- check (t ::: VKType)
   eval <- gets evalIn
-  let vt = fmap eval t'
-  b' <- vt |- check (b ::: VKType)
-  pure $ TForAll t' b' ::: VKType
+  let vt = eval t'
+  b' <- Binding Im (Just n) vt |- check (b ::: VKType)
+  pure $ TForAll (Binding Im (Just n) t') b' ::: VKType
 
 (-->) :: Has Trace sig m => Check m TExpr -> Check m TExpr -> Synth m TExpr
 a --> b = Synth $ do
@@ -59,37 +58,33 @@ a --> b = Synth $ do
   pure $ TArrow a' b' ::: VKType
 
 
-binding :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Binding -> [(Pos, Check m (Binding TExpr))]
-binding (S.Ann s _ (S.Binding p n _ t)) =
-  [ (start s, Check $ \ _T -> setSpan s . trace "binding" $ do
-    t' <- check (checkType t ::: _T)
-    pure $ Binding p n t')
-  | n <- maybe [Nothing] (map Just . toList) n ]
-
-comp :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m TExpr
-comp (S.Ann s _ (S.Comp bs _ b)) = Synth $ setSpan s . trace "comp" $ foldr
-  (\ t b -> check (snd t ::: VKType) >>= \case
-    Binding Im n t -> do
-      eval <- gets evalIn
-      b' ::: _ <- Binding Im n (eval t) |- b
-      pure $ TForAll (Binding Im n t) b' ::: VKType
-    Binding Ex _ t -> do
-      b' ::: _ <- b
-      pure $ TArrow t b' ::: VKType)
-  (do
-    b' <- check (checkType b ::: VKType)
-    pure (b' ::: VKType))
-  (binding =<< bs)
+comp :: Has Trace sig m => [Check m TExpr] -> Check m TExpr -> Synth m TExpr
+comp s t = Synth $ do
+  s' <- traverse (check . (::: VKInterface)) s
+  t' <- check (t ::: VKType)
+  -- FIXME: this is obviously wrong
+  pure $ TComp (Sig TType s') t' ::: VKType
 
 
 synthType :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Type -> Synth m TExpr
 synthType (S.Ann s _ e) = mapSynth (trace "synthType" . setSpan s) $ case e of
-  S.TVar n     -> tvar n
-  S.KType      -> _Type
-  S.KInterface -> _Interface
-  S.TString    -> _String
-  S.TComp t    -> comp t
-  S.TApp f a   -> app TApp (synthType f) (checkType a)
+  S.TVar n        -> tvar n
+  S.KType         -> _Type
+  S.KInterface    -> _Interface
+  S.TString       -> _String
+  S.TForAll n t b -> forAll n (checkType t) (checkType b)
+  S.TArrow  _ a b -> checkType a --> checkType b
+  S.TComp s t     -> comp (map (switch . synthInterface) s) (checkType t)
+  S.TApp f a      -> app TApp (synthType f) (checkType a)
 
+-- | Check a type at a kind.
+--
+-- NB: while synthesis is possible for all types at present, I reserve the right to change that.
 checkType :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Type -> Check m TExpr
 checkType = switch . synthType
+
+synthInterface :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Synth m TExpr
+synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (setSpan s) $
+  foldl' (app TApp) h' (checkType <$> sp)
+  where
+  h' = mapSynth (setSpan sh) (tvar h)

@@ -4,8 +4,6 @@ module Facet.Surface
   Type(..)
   -- * Expressions
 , Expr(..)
-, Comp(..)
-, Binding(..)
 , Interface(..)
 , Clause(..)
   -- * Patterns
@@ -29,7 +27,6 @@ module Facet.Surface
 
 import Control.Lens (Lens, Lens', lens)
 import Data.Function (on)
-import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import Facet.Name
 import Facet.Span
@@ -43,7 +40,9 @@ data Type
   | KType
   | KInterface
   | TString
-  | TComp (Ann Comp)
+  | TForAll Name (Ann Type) (Ann Type)
+  | TArrow (Maybe Name) (Ann Type) (Ann Type)
+  | TComp [Ann Interface] (Ann Type)
   | TApp (Ann Type) (Ann Type)
   deriving (Eq, Show)
 
@@ -56,29 +55,6 @@ data Expr
   | App (Ann Expr) (Ann Expr)
   | As (Ann Expr) (Ann Type)
   | String Text
-  deriving (Eq, Show)
-
-
-data Comp = Comp
-  { bindings :: [Ann Binding]
-  , delta    :: Maybe [Ann Interface]
-  , type'    :: Ann Type
-  }
-  deriving (Eq, Show)
-
-
-data Binding = Binding
-  { icit  :: Icit
-  -- | The names bound by this value. 'Nothing' indicates an unnamed binding (i.e. a regular old function type argument like @A -> B@), whereas 'Just' indicates one or more names are bound to a single type (e.g. a quantifier like @{ A, B : Expr } -> C@).
-  --
-  -- This technically represents the same number of (total) cases as @[]@ would, but forces disjoint handling so we don’t accidentally e.g. bind or apply over a non-binding argument and truncate the list.
-  , names :: Maybe (NonEmpty Name)
-  -- | The signature, if any, provided at this position.
-  --
-  -- 'Nothing' indicates a value type; 'Just' with an empty list indicates a thunk with the ambient effects; 'Just' with one or more interfaces indicates that this position provides these effects. (Note that this can, in general, also hold signature variables.)
-  , delta :: Maybe [Ann Interface]
-  , type' :: Ann Type
-  }
   deriving (Eq, Show)
 
 
@@ -109,13 +85,13 @@ data EffPattern
 
 -- Declarations
 
-data Decl = Decl (Ann Comp) Def
+data Decl = Decl (Ann Type) Def
   deriving (Eq, Show)
 
 
 data Def
-  = DataDef [Ann (Name ::: Ann Comp)]
-  | InterfaceDef [Ann (Name ::: Ann Comp)]
+  = DataDef [Ann (Name ::: Ann Type)]
+  | InterfaceDef [Ann (Name ::: Ann Type)]
   | TermDef (Ann Expr)
   deriving (Eq, Show)
 
