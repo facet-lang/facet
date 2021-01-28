@@ -49,15 +49,15 @@ binding (S.Ann s _ (S.Binding p n d t)) =
     t' <- check (checkType t ::: _T)
     case d of
       Just d -> do
-        d' <- traverse (check . (::: VKInterface) . elabSig) d
+        d' <- traverse (check . (::: VKInterface) . sig) d
         level <- depth
         e <- askEffectVar
         pure $ Binding p n (TComp (Sig (quote level e) d') t')
       Nothing -> pure $ Binding p n t')
   | n <- maybe [Nothing] (map Just . toList) n ]
 
-elabSig :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Check m TExpr
-elabSig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "elabSig" $
+sig :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Check m TExpr
+sig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "sig" $
   check (switch (foldl' (app (\ a b -> TApp a (Ex, b))) (mapSynth (setSpan s') (tvar n)) (checkType <$> sp)) ::: _T)
 
 elabComp :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m TExpr
@@ -74,7 +74,7 @@ elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ fo
     b' <- check (checkType b ::: VKType)
     case d of
       Just d -> do
-        d' <- traverse (check . (::: VKInterface) . elabSig) d
+        d' <- traverse (check . (::: VKInterface) . sig) d
         level <- depth
         e <- askEffectVar
         pure $ TComp (Sig (quote level e) d') b' ::: VKType
