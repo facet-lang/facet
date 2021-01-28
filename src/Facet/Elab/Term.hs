@@ -3,6 +3,7 @@ module Facet.Elab.Term
 ( -- * Terms
   global
 , var
+, tlam
 , lam
 , thunk
 , force
@@ -62,11 +63,16 @@ var n = Synth $ trace "var" $ get >>= \ ctx -> if
       synth $ global (n ::: _T)
 
 
+tlam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
+tlam n b = Check $ \ _T -> trace "tlam" $ do
+  (_ ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
+  d <- depth
+  b' <- Just n ::: _A |- check (b ::: _B (free d))
+  pure $ XTLam b'
+
 lam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
 lam n b = Check $ \ _T -> trace "lam" $ do
-  -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
   (_ ::: _A, _B) <- expectQuantifier "when checking lambda" _T
-  -- FIXME: extend the signature if _B v is a TRet.
   d <- depth
   b' <- Just n ::: _A |- check (b ::: _B (free d))
   pure $ XLam [(PVar n, b')]
@@ -233,6 +239,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
   runReader (Sig (free (Level 0)) []) $ elab $ Just (U "ε") ::: free (Level 0) |- check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
+    -- FIXME: this should be a tlam
     VTForAll (n ::: _) _ -> tracePretty n $ check (lam n (go k) ::: _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
