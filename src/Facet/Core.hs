@@ -71,7 +71,7 @@ data Type
   | VKInterface
   | VTForAll (Binding Type) (Type -> Type)
   | VTArrow Type Type
-  | VTNe (Var Level :$ (Icit, Type))
+  | VTNe (Var Level :$ Type)
   | VTComp (Sig Type) Type
   | VTString
 
@@ -148,7 +148,7 @@ occursIn p = go
     VTForAll t b   -> binding d t || go (succ d) (b (free d))
     VTArrow a b    -> go d a || go d b
     VTComp s t     -> sig d s || go d t
-    VTNe (h :$ sp) -> p h || any (any (go d)) sp
+    VTNe (h :$ sp) -> p h || any (go d) sp
     VTString       -> False
 
   binding :: Level -> Binding Type -> Bool
@@ -159,12 +159,12 @@ occursIn p = go
 
 -- Elimination
 
-($$) :: HasCallStack => Type -> (Icit, Type) -> Type
+($$) :: HasCallStack => Type -> Type -> Type
 VTNe (h :$ es) $$ a = VTNe (h :$ (es :> a))
-VTForAll _ b   $$ a = b (snd a)
+VTForAll _ b   $$ a = b a
 _              $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (HasCallStack, Foldable t) => Type -> t (Icit, Type) -> Type
+($$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
 ($$*) = foldl' ($$)
 
 infixl 9 $$, $$*
@@ -281,7 +281,7 @@ data TExpr
   | TForAll (Binding TExpr) TExpr
   | TArrow TExpr TExpr
   | TComp (Sig TExpr) TExpr
-  | TApp TExpr (Icit, TExpr)
+  | TApp TExpr TExpr
   deriving (Eq, Ord, Show)
 
 data Expr
@@ -305,7 +305,7 @@ quote d = \case
   VTForAll t b   -> TForAll (quote d <$> t) (quote (succ d) (b (free d)))
   VTArrow a b    -> TArrow (quote d a) (quote d b)
   VTComp s t     -> TComp (quote d <$> s) (quote d t)
-  VTNe (n :$ sp) -> foldl' TApp (TVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
+  VTNe (n :$ sp) -> foldl' TApp (TVar (levelToIndex d <$> n)) (quote d <$> sp)
   VTString       -> TString
 
 eval :: HasCallStack => Stack Type -> IntMap.IntMap Type -> TExpr -> Type
@@ -316,5 +316,5 @@ eval env metas = \case
   TForAll t b -> VTForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
   TArrow a b  -> VTArrow (eval env metas a) (eval env metas b)
   TComp s t   -> VTComp (eval env metas <$> s) (eval env metas t)
-  TApp f a    -> eval env metas f $$ (eval env metas <$> a)
+  TApp f a    -> eval env metas f $$ eval env metas a
   TString     -> VTString

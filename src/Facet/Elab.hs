@@ -278,7 +278,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (VTArrow{}, _)                                       -> nope
     (VTComp s1 t1, VTComp s2 t2)                         -> sig s1 s2 >> type' t1 t2
     (VTComp{}, _)                                        -> nope
-    (VTNe (v1 :$ sp1), VTNe (v2 :$ sp2))                 -> var v1 v2 >> spine (pl type') sp1 sp2
+    (VTNe (v1 :$ sp1), VTNe (v2 :$ sp2))                 -> var v1 v2 >> spine type' sp1 sp2
     (VTNe{}, _)                                          -> nope
     (VTString, VTString)                                 -> pure ()
     (VTString, _)                                        -> nope
@@ -290,8 +290,6 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (Free{}, _)              -> nope
     (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
     (Metavar{}, _)           -> nope
-
-  pl f (p1, t1) (p2, t2) = unless (p1 == p2) nope >> f t1 t2
 
   spine :: (Foldable t, Zip t) => (a -> a -> Elab m ()) -> t a -> t a -> Elab m ()
   spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2

@@ -161,7 +161,7 @@ printType env = \case
     let elim h sp  Nil     = case sp Nil of
           Nil -> h
           sp  -> app h sp
-        elim h sp  (es:>a) = elim h (sp . (:> fmap (printType env) a)) es
+        elim h sp  (es:>a) = elim h (sp . (:> printType env a)) es
         h' = C.unVar (group . qvar) (\ d' -> fromMaybe (pretty (getLevel d')) $ env !? getIndex (levelToIndex d d')) meta h
     in elim h' id e
   C.VTString   -> annotate Type $ pretty "String"
@@ -180,7 +180,7 @@ printExpr env = \case
   C.XLam cs       -> comp (braces (commaSep (map clause cs)))
   C.XInst e t     -> printExpr env e $$ braces (printTExpr env t)
   C.XApp f a      -> printExpr env f $$ printExpr env a
-  C.XCon (n :$ p) -> app (group (qvar n)) (fmap ((Ex,) . printExpr env) p)
+  C.XCon (n :$ p) -> app (group (qvar n)) (printExpr env <$> p)
   C.XOp q         -> group (qvar q)
   C.XString s     -> annotate Lit $ pretty (show s)
   where
@@ -242,4 +242,4 @@ fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
   [] -> _T --> b
   _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
 tvar env n = group (tlocal (snd (tm n)) (Name.Level (length env)))
-app f as = group f $$* fmap (group . uncurry (unPl braces id)) as
+app f as = group f $$* fmap group as
