@@ -6,16 +6,16 @@ import Data.Unit
 
 
 interface Input : Interface
-{ readLine : String -> [Input] Option String }
+{ readLine : String -> { [Input] Option String } }
 
 
 interface Output : Interface
-{ write : String -> [Output] Unit }
+{ write : String -> { [Output] Unit } }
 
-writeLine : (str : String) -> [Output] Unit
+writeLine : (str : String) -> { [Output] Unit }
 { write str ; write "\n" }
 
 
-dropOutput : { A : Type } -> [Output] A -> A
+dropOutput : { A : Type } -> { [Output] A } -> A
 { [write _ ; k] -> k unit
 , x             -> x }
