@@ -34,7 +34,7 @@ rethrowElabErrors src = L.runThrow rethrow
         s = entrySort e
         n' = case e of
           Rigid s n _ -> name s n d
-          Flex  m _ _ -> meta m
+          Flex  m _ _ -> Print.meta m
     in  ( succ d
         , sort :> s
         , case e of

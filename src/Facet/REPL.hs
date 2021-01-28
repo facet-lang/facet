@@ -28,9 +28,9 @@ import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Time.System
 import           Facet.Carrier.Trace.Output
 import           Facet.Core hiding (eval)
-import qualified Facet.Core as Core
 import           Facet.Driver
 import qualified Facet.Elab as Elab
+import qualified Facet.Elab.Term as Elab
 import           Facet.Eval
 import           Facet.Flag
 import           Facet.Graph

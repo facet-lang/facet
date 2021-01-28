@@ -35,7 +35,7 @@ import           Facet.Carrier.Time.System
 import           Facet.Core
 import           Facet.Effect.Readline
 import           Facet.Effect.Trace
-import qualified Facet.Elab as Elab
+import qualified Facet.Elab.Term as Elab
 import           Facet.Graph
 import           Facet.Lens
 import           Facet.Name
