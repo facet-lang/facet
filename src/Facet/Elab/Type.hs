@@ -43,9 +43,9 @@ _String :: Synth m TExpr
 _String = Synth $ pure $ TString ::: VKType
 
 
-elabBinding :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Binding -> [(Pos, Check m (Binding TExpr))]
-elabBinding (S.Ann s _ (S.Binding p n d t)) =
-  [ (start s, Check $ \ _T -> setSpan s . trace "elabBinding" $ do
+binding :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Binding -> [(Pos, Check m (Binding TExpr))]
+binding (S.Ann s _ (S.Binding p n d t)) =
+  [ (start s, Check $ \ _T -> setSpan s . trace "binding" $ do
     t' <- check (checkType t ::: _T)
     case d of
       Just d -> do
@@ -79,7 +79,7 @@ elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ fo
         e <- askEffectVar
         pure $ TComp (Sig (quote level e) d') b' ::: VKType
       Nothing -> pure (b' ::: VKType))
-  (elabBinding =<< bs)
+  (binding =<< bs)
 
 
 synthType :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Type -> Synth m TExpr
