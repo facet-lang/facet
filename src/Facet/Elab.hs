@@ -13,9 +13,9 @@ module Facet.Elab
 , resolveQ
 , resolveC
 , meta
-, (|-)
 , hole
 , app
+, (|-)
   -- * Errors
 , setSpan
 , Err(..)
