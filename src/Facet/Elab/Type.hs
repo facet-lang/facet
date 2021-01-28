@@ -13,10 +13,9 @@ module Facet.Elab.Type
 ) where
 
 import           Control.Algebra
-import           Control.Effect.Reader
 import           Control.Effect.State
 import           Control.Effect.Throw
-import           Data.Foldable (foldl', toList)
+import           Data.Foldable (toList)
 import           Facet.Context
 import           Facet.Core
 import           Facet.Effect.Trace
@@ -60,25 +59,15 @@ a --> b = Synth $ do
   pure $ TArrow a' b' ::: VKType
 
 
-binding :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Binding -> [(Pos, Check m (Binding TExpr))]
-binding (S.Ann s _ (S.Binding p n d t)) =
+binding :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Binding -> [(Pos, Check m (Binding TExpr))]
+binding (S.Ann s _ (S.Binding p n _ t)) =
   [ (start s, Check $ \ _T -> setSpan s . trace "binding" $ do
     t' <- check (checkType t ::: _T)
-    case d of
-      Just d -> do
-        d' <- traverse (check . (::: VKInterface) . sig) d
-        level <- depth
-        e <- askEffectVar
-        pure $ Binding p n (TComp (Sig (quote level e) d') t')
-      Nothing -> pure $ Binding p n t')
+    pure $ Binding p n t')
   | n <- maybe [Nothing] (map Just . toList) n ]
 
-sig :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Check m TExpr
-sig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . trace "sig" $
-  check (switch (foldl' (app TApp) (mapSynth (setSpan s') (tvar n)) (checkType <$> sp)) ::: _T)
-
-comp :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m TExpr
-comp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "comp" $ foldr
+comp :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m TExpr
+comp (S.Ann s _ (S.Comp bs _ b)) = Synth $ setSpan s . trace "comp" $ foldr
   (\ t b -> check (snd t ::: VKType) >>= \case
     Binding Im n t -> do
       eval <- gets evalIn
@@ -89,17 +78,11 @@ comp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "comp" $ foldr
       pure $ TArrow t b' ::: VKType)
   (do
     b' <- check (checkType b ::: VKType)
-    case d of
-      Just d -> do
-        d' <- traverse (check . (::: VKInterface) . sig) d
-        level <- depth
-        e <- askEffectVar
-        pure $ TComp (Sig (quote level e) d') b' ::: VKType
-      Nothing -> pure (b' ::: VKType))
+    pure (b' ::: VKType))
   (binding =<< bs)
 
 
-synthType :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Type -> Synth m TExpr
+synthType :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Type -> Synth m TExpr
 synthType (S.Ann s _ e) = mapSynth (trace "synthType" . setSpan s) $ case e of
   S.TVar n     -> tvar n
   S.KType      -> _Type
@@ -108,5 +91,5 @@ synthType (S.Ann s _ e) = mapSynth (trace "synthType" . setSpan s) $ case e of
   S.TComp t    -> comp t
   S.TApp f a   -> app TApp (synthType f) (checkType a)
 
-checkType :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Type -> Check m TExpr
+checkType :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Type -> Check m TExpr
 checkType = switch . synthType
