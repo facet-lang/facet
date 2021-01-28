@@ -25,19 +25,12 @@ import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 
-tinstantiate :: Algebra sig m => TExpr ::: Type -> Elab m (TExpr ::: Type)
-tinstantiate (e ::: _T) = case _T of
-  VTForAll (Binding Im _ _T) _B -> do
-    m <- meta (Nothing ::: _T)
-    tinstantiate (TApp e (Im, TVar (Metavar m)) ::: _B (metavar m))
-  _                            -> pure $ e ::: _T
-
 tvar :: Has (Throw Err :+: Trace) sig m => Q Name -> Synth m TExpr
 tvar n = Synth $ trace "tvar" $ gets (lookupInContext n) >>= \case
   Just (i, _T) -> pure $ TVar (Free i) ::: _T
   Nothing      -> do
     q :=: _ ::: _T <- resolveQ n
-    tinstantiate $ TVar (Global q) ::: _T
+    instantiate (\ e t -> TApp e (Im, t)) $ TVar (Global q) ::: _T
 
 
 _Type :: Synth m TExpr

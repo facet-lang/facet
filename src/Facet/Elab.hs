@@ -13,6 +13,7 @@ module Facet.Elab
 , resolveQ
 , resolveC
 , meta
+, instantiate
 , hole
 , app
 , (|-)
@@ -120,6 +121,18 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
     _ :=: _ ::: _T <- lookupScope n defs
     pure $ m':.:n ::: _T
   _                            -> Nothing
+
+
+-- FIXME: does instantiation need to be guided by the expected type?
+-- FIXME: can implicits have effects? what do we do about the signature?
+instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a ::: Type)
+instantiate inst = go
+  where
+  go (e ::: _T) = case _T of
+    VTForAll (Binding Im _ _T) _B -> do
+      m <- meta (Nothing ::: _T)
+      go (inst e (TVar (Metavar m)) ::: _B (metavar m))
+    _                             -> pure $ e ::: _T
 
 
 hole :: Has (Throw Err :+: Trace) sig m => Name -> Check m a

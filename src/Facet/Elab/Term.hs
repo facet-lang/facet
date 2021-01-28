@@ -46,16 +46,7 @@ import qualified Silkscreen
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global :: Algebra sig m => Q Name ::: Type -> Synth m Expr
-global (q ::: _T) = Synth $ instantiate (XVar (Global q) ::: _T)
-
--- FIXME: does instantiation need to be guided by the expected type?
--- FIXME: can implicits have effects? what do we do about the signature?
-instantiate :: Algebra sig m => Expr ::: Type -> Elab m (Expr ::: Type)
-instantiate (e ::: _T) = case _T of
-  VTForAll (Binding Im _ _T) _B -> do
-    m <- meta (Nothing ::: _T)
-    instantiate (XInst e (TVar (Metavar m)) ::: _B (metavar m))
-  _                             -> pure $ e ::: _T
+global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
@@ -65,7 +56,7 @@ var :: Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m => Q Name -> Synth 
 var n = Synth $ trace "var" $ get >>= \ ctx -> if
   | Just (i, _T) <- lookupInContext n ctx -> pure (XVar (Free i) ::: _T)
   | otherwise                             -> ask >>= \ sig -> asks (\ ElabContext{ module', graph } -> lookupInSig n module' graph (interfaces sig)) >>= \case
-    Just (n ::: _T) -> instantiate (XOp n ::: _T)
+    Just (n ::: _T) -> instantiate XInst (XOp n ::: _T)
     _ -> do
       n :=: _ ::: _T <- resolveQ n
       synth $ global (n ::: _T)
