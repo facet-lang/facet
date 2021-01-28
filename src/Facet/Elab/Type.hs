@@ -79,16 +79,14 @@ sig (S.Ann s _ (S.Interface (S.Ann s' _ n) sp)) = Check $ \ _T -> setSpan s . tr
 
 comp :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Comp -> Synth m TExpr
 comp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "comp" $ foldr
-  (\ t b -> do
-    t' <- check (snd t ::: VKType)
-    case t' of
-      Binding Im _ _ -> do
-        eval <- gets evalIn
-        b' ::: _ <- fmap eval t' |- b
-        pure $ TForAll t' b' ::: VKType
-      Binding Ex _ t -> do
-        b' ::: _ <- b
-        pure $ TArrow t b' ::: VKType)
+  (\ t b -> check (snd t ::: VKType) >>= \case
+    Binding Im n t -> do
+      eval <- gets evalIn
+      b' ::: _ <- Binding Im n (eval t) |- b
+      pure $ TForAll (Binding Im n t) b' ::: VKType
+    Binding Ex _ t -> do
+      b' ::: _ <- b
+      pure $ TArrow t b' ::: VKType)
   (do
     b' <- check (checkType b ::: VKType)
     case d of
