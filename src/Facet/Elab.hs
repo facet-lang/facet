@@ -296,7 +296,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (TEInst{}, _)          -> nope
     (TEApp t1, TEApp t2)   -> type' t1 t2
     (TEApp{}, _)           -> nope
-  spine :: (Foldable t, Zip t) => (a -> a -> Elab m ()) -> t a -> t a -> Elab m ()
+
   spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
   binding (Binding p1 _ t1) (Binding p2 _ t2) = trace "unify binding" $ unless (p1 == p2) nope >> type' t1 t2

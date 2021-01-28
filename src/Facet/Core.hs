@@ -158,9 +158,8 @@ occursIn p = go
     TEInst t -> go d t
     TEApp  t -> go d t
 
-  binding :: Level -> Binding Type -> Bool
   binding d (Binding _ _ t) = go d t
-  sig :: Level -> Sig Type -> Bool
+
   sig d (Sig v s) = go d v || any (go d) s
 
 
