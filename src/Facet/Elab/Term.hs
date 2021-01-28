@@ -94,11 +94,8 @@ elabClauses :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) si
 elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = mapCheck (trace "elabClauses") $ lam n $ checkExpr b
 elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
   -- FIXME: use the signature to elaborate the pattern
-  (_ ::: _A, _B) <- expectQuantifier "when checking clauses" _T
-  d <- depth
-  -- FIXME: I don’t see how this can be correct; the context will not hold a variable but rather a pattern of them.
-  let _B' = _B (free d)
-  XLam <$> for cs (\ (S.Clause p b) -> elabPattern _A p (\ p' -> (tm <$> p',) <$> check (checkExpr b ::: _B')))
+  (_ ::: _A, _B) <- expectFunction "when checking clauses" _T
+  XLam <$> for cs (\ (S.Clause p b) -> elabPattern _A p (\ p' -> (tm <$> p',) <$> check (checkExpr b ::: _B)))
 
 
 -- FIXME: check for unique variable names
