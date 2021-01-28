@@ -147,9 +147,9 @@ printType env = \case
   C.VKInterface -> annotate Type $ pretty "Interface"
   C.VTForAll t b ->
     let (vs, (_, b')) = splitr C.unBind' (d, C.VTForAll t b)
-        binding env (C.Binding p n _T) =
+        binding env (C.Binding n _T) =
           let _T' = printType env _T
-          in  (env :> tvar env ((p, fromMaybe __ n) ::: _T'), (p, name p (fromMaybe __ n) (Name.Level (length env)) ::: _T'))
+          in  (env :> tvar env ((Im, fromMaybe __ n) ::: _T'), (Im, name Im (fromMaybe __ n) (Name.Level (length env)) ::: _T'))
         name p n d
           | n == __, Ex <- p = []
           | otherwise        = [tintro n d]

@@ -22,7 +22,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens ((.=))
 import           Control.Effect.Throw
-import           Control.Lens (at, ix, set)
+import           Control.Lens (at, ix)
 import           Data.Foldable
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
@@ -65,7 +65,7 @@ var n = Synth $ trace "var" $ get >>= \ ctx -> if
 lam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
 lam n b = Check $ \ _T -> trace "lam" $ do
   -- FIXME: error if the signature is non-empty; variable patterns don’t catch effects.
-  (t@(Binding _ _ _A), _B) <- expectQuantifier "when checking lambda" _T
+  (t@(Binding _ _A), _B) <- expectQuantifier "when checking lambda" _T
   -- FIXME: extend the signature if _B v is a TRet.
   d <- depth
   b' <- t{ name = Just n } |- check (b ::: _B (free d))
@@ -89,7 +89,7 @@ elabClauses :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) si
 elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = mapCheck (trace "elabClauses") $ lam n $ checkExpr b
 elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
   -- FIXME: use the signature to elaborate the pattern
-  (Binding _ _ _A, _B) <- expectQuantifier "when checking clauses" _T
+  (Binding _ _A, _B) <- expectQuantifier "when checking clauses" _T
   d <- depth
   -- FIXME: I don’t see how this can be correct; the context will not hold a variable but rather a pattern of them.
   let _B' = _B (free d)
@@ -109,26 +109,26 @@ elabPattern = go
         Just (q ::: _T') -> do
           _T'' <- inst _T'
           e <- askEffectVar
-          subpatterns _T'' ps $ \ _T ps' -> let t = VTForAll (Binding Ex Nothing _T) (const (VTComp (Sig e sig) _A')) in Binding Ex (Just v) t |- k (PEff q (fromList ps') (v ::: t))
+          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow _T (VTComp (Sig e sig) _A') in Binding (Just v) t |- k (PEff q (fromList ps') (v ::: t))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
-    S.PAll n -> Binding Ex (Just n) _A |- k (PVar (n  ::: _A))
+    S.PAll n -> Binding (Just n) _A |- k (PVar (n  ::: _A))
 
   goVal _A (S.Ann s _ p) k = setSpan s $ case p of
     S.PWildcard -> k (PVar (__ ::: _A))
-    S.PVar n    -> Binding Ex (Just n) _A |- k (PVar (n  ::: _A))
+    S.PVar n    -> Binding (Just n) _A |- k (PVar (n  ::: _A))
     S.PCon n ps -> do
       q :=: _ ::: _T' <- resolveC n
       _T'' <- inst _T'
       subpatterns _T'' ps $ \ _T ps' -> unify _T _A *> k (PCon (q :$ fromList ps'))
 
   inst = \case
-    VTForAll (Binding Im _ _T) _B -> meta (Nothing ::: _T) >>= inst . _B . metavar
-    _T                            -> pure _T
+    VTForAll (Binding _ _T) _B -> meta (Nothing ::: _T) >>= inst . _B . metavar
+    _T                         -> pure _T
   subpatterns = flip $ foldr
     (\ p rest _A k -> do
       -- FIXME: assert that the signature is empty
-      (Binding _ _ _A, _B) <- expectQuantifier "when checking constructor pattern" _A
+      (Binding _ _A, _B) <- expectQuantifier "when checking constructor pattern" _A
       -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
       -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
       d <- depth
@@ -177,7 +177,7 @@ abstract body = go
     VTForAll t b -> do
       level <- depth
       b' <- t |- go (b (free level))
-      pure $ TForAll (quote level <$> set icit_ Im t) b'
+      pure $ TForAll (quote level <$> t) b'
     _            -> body
 
 
@@ -204,8 +204,8 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
       -- FIXME: earlier indices should be shifted
       -- FIXME: XTLam is only for the type parameters
       -- type parameters presumably shouldn’t be represented in the elaborated data
-      VTForAll (Binding _ _ _T) _B -> XTLam (go (fs :> XVar (Free (Index 0))) (_B (free (Level (length fs)))))
-      _T                           -> XCon (q :$ fs)
+      VTForAll (Binding _ _T) _B -> XTLam (go (fs :> XVar (Free (Index 0))) (_B (free (Level (length fs)))))
+      _T                         -> XCon (q :$ fs)
 
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
@@ -227,7 +227,7 @@ elabTermDef
   -> S.Ann S.Expr
   -> m Expr
 elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
-  runReader (Sig (free (Level 0)) []) $ elab $ Binding Im (Just (U "ε")) (free (Level 0)) |- check (go (checkExpr expr) ::: _T)
+  runReader (Sig (free (Level 0)) []) $ elab $ Binding (Just (U "ε")) (free (Level 0)) |- check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
     VTForAll Binding{ name = Just n } _ -> tracePretty n $ check (lam n (go k) ::: _T)

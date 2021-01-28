@@ -48,8 +48,8 @@ forAll n t b = Synth $ do
   t' <- check (t ::: VKType)
   eval <- gets evalIn
   let vt = eval t'
-  b' <- Binding Im (Just n) vt |- check (b ::: VKType)
-  pure $ TForAll (Binding Im (Just n) t') b' ::: VKType
+  b' <- Binding (Just n) vt |- check (b ::: VKType)
+  pure $ TForAll (Binding (Just n) t') b' ::: VKType
 
 (-->) :: Has Trace sig m => Check m TExpr -> Check m TExpr -> Synth m TExpr
 a --> b = Synth $ do

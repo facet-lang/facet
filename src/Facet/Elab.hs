@@ -129,7 +129,7 @@ instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a :::
 instantiate inst = go
   where
   go (e ::: _T) = case _T of
-    VTForAll (Binding Im _ _T) _B -> do
+    VTForAll (Binding _ _T) _B -> do
       m <- meta (Nothing ::: _T)
       go (inst e (TVar (Metavar m)) ::: _B (metavar m))
     _                             -> pure $ e ::: _T
@@ -149,7 +149,7 @@ app mk f a = Synth $ trace "app" $ do
 (|-) :: (HasCallStack, Has Trace sig m) => Binding Type -> Elab m a -> Elab m a
 -- FIXME: this isn’t _quite_ the shape we want to push onto the context because e.g. constructor patterns can bind multiple variables but they’d all have the same icit & signature.
 -- FIXME: should this do something about the signature?
-Binding _ n _T |- b = trace "|-" $ do
+Binding n _T |- b = trace "|-" $ do
   i <- depth
   -- FIXME: should the context allow names in Maybe?
   modify (|> Rigid STerm (fromMaybe __ n) _T)
@@ -299,7 +299,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
 
   spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
-  binding (Binding p1 _ t1) (Binding p2 _ t2) = trace "unify binding" $ unless (p1 == p2) nope >> type' t1 t2
+  binding (Binding _ t1) (Binding _ t2) = trace "unify binding" $ type' t1 t2
 
   sig (Sig e1 c1) (Sig e2 c2) = trace "unify sig" $ type' e1 e2 >> spine type' c1 c2
 

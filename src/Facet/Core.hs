@@ -8,7 +8,6 @@ module Facet.Core
 , effectVar_
 , interfaces_
 , Binding(..)
-, icit_
 , type_
   -- ** Variables
 , Var(..)
@@ -100,14 +99,10 @@ interfaces_ = lens interfaces (\ s interfaces -> s{ interfaces })
 
 
 data Binding a = Binding
-  { icit  :: Icit
-  , name  :: Maybe Name
+  { name  :: Maybe Name
   , type' :: a
   }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-icit_ :: Lens' (Binding a) Icit
-icit_ = lens icit (\ b icit -> b{ icit })
 
 type_ :: Lens' (Binding a) a
 type_ = lens type' (\ b type' -> b{ type' })
@@ -158,7 +153,7 @@ occursIn p = go
     TEInst t -> go d t
     TEApp  t -> go d t
 
-  binding d (Binding _ _ t) = go d t
+  binding d (Binding _ t) = go d t
 
   sig d (Sig v s) = go d v || any (go d) s
 
