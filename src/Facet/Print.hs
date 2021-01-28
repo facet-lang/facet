@@ -149,10 +149,7 @@ printType env = \case
     let (vs, (_, b')) = splitr C.unBind' (d, C.VTForAll t b)
         binding env (n ::: _T) =
           let _T' = printType env _T
-          in  (env :> tvar env ((Im, fromMaybe __ n) ::: _T'), (Im, name Im (fromMaybe __ n) (Name.Level (length env)) ::: _T'))
-        name p n d
-          | n == __, Ex <- p = []
-          | otherwise        = [tintro n d]
+          in  (env :> tvar env ((Im, n) ::: _T'), (Im, [tintro n (Name.Level (length env))] ::: _T'))
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printType env' b')
   C.VTArrow (Nothing ::: a) b -> printType env a <+> arrow <+> printType env b

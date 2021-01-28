@@ -272,9 +272,9 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (VKType, _)                                          -> nope
     (VKInterface, VKInterface)                           -> pure ()
     (VKInterface, _)                                     -> nope
-    (VTForAll t1 b1, VTForAll t2 b2)                     -> do { binding t1 t2 ; d <- depth ; t1 |- type' (b1 (free d)) (b2 (free d)) }
+    (VTForAll t1 b1, VTForAll t2 b2)                     -> do { type' (ty t1) (ty t2) ; d <- depth ; first Just t1 |- type' (b1 (free d)) (b2 (free d)) }
     (VTForAll{}, _)                                      -> nope
-    (VTArrow a1 b1, VTArrow a2 b2)                       -> binding a1 a2 >> type' b1 b2
+    (VTArrow a1 b1, VTArrow a2 b2)                       -> type' (ty a1) (ty a2) >> type' b1 b2
     (VTArrow{}, _)                                       -> nope
     (VTComp s1 t1, VTComp s2 t2)                         -> sig s1 s2 >> type' t1 t2
     (VTComp{}, _)                                        -> nope
@@ -298,8 +298,6 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (TEApp{}, _)           -> nope
 
   spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
-
-  binding (_ ::: t1) (_ ::: t2) = trace "unify binding" $ type' t1 t2
 
   sig (Sig e1 c1) (Sig e2 c2) = trace "unify sig" $ type' e1 e2 >> spine type' c1 c2
 

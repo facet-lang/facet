@@ -65,7 +65,7 @@ import           Prelude hiding (zip, zipWith)
 data Type
   = VKType
   | VKInterface
-  | VTForAll (Maybe Name ::: Type) (Type -> Type)
+  | VTForAll (Name ::: Type) (Type -> Type)
   | VTArrow (Maybe Name ::: Type) Type
   | VTNe (Var Level :$ TElim)
   | VTComp (Sig Type) Type
@@ -75,11 +75,11 @@ data TElim
   = TEInst Type
   | TEApp Type
 
-unBind :: Alternative m => Type -> m (Maybe Name ::: Type, Type -> Type)
+unBind :: Alternative m => Type -> m (Name ::: Type, Type -> Type)
 unBind = \case{ VTForAll t b -> pure (t, b) ; _ -> empty }
 
 -- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unBind' :: Alternative m => (Level, Type) -> m (Maybe Name ::: Type, (Level, Type))
+unBind' :: Alternative m => (Level, Type) -> m (Name ::: Type, (Level, Type))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
@@ -131,8 +131,8 @@ occursIn p = go
   go d = \case
     VKType         -> False
     VKInterface    -> False
-    VTForAll t b   -> binding d t || go (succ d) (b (free d))
-    VTArrow a b    -> binding d a || go d b
+    VTForAll t b   -> go d (ty t) || go (succ d) (b (free d))
+    VTArrow a b    -> go d (ty a) || go d b
     VTComp s t     -> sig d s || go d t
     VTNe (h :$ sp) -> p h || any (elim d) sp
     VTString       -> False
@@ -140,8 +140,6 @@ occursIn p = go
   elim d = \case
     TEInst t -> go d t
     TEApp  t -> go d t
-
-  binding d (_ ::: t) = go d t
 
   sig d (Sig v s) = go d v || any (go d) s
 
@@ -269,7 +267,7 @@ data TExpr
   | TType
   | TInterface
   | TString
-  | TForAll (Maybe Name ::: TExpr) TExpr
+  | TForAll (Name ::: TExpr) TExpr
   | TArrow (Maybe Name ::: TExpr) TExpr
   | TComp (Sig TExpr) TExpr
   | TInst TExpr TExpr

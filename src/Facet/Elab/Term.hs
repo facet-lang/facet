@@ -173,14 +173,14 @@ abstract :: Has (Throw Err :+: Trace) sig m => Elab m TExpr -> Type -> Elab m TE
 abstract body = go
   where
   go = \case
-    VTForAll t b -> do
+    VTForAll (n ::: t) b -> do
       level <- depth
-      b' <- t |- go (b (free level))
-      pure $ TForAll (quote level <$> t) b'
-    VTArrow  a b -> do
+      b' <- Just n ::: t |- go (b (free level))
+      pure $ TForAll (n ::: quote level t) b'
+    VTArrow (Just n ::: a) b -> do
       level <- depth
-      b' <- a |- go b
-      pure $ TForAll (quote level <$> a) b'
+      b' <- Just n ::: a |- go b
+      pure $ TForAll (n ::: quote level a) b'
     _            -> body
 
 
@@ -233,11 +233,11 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
   runReader (Sig (free (Level 0)) []) $ elab $ Just (U "ε") ::: free (Level 0) |- check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    VTForAll (Just n ::: _) _ -> tracePretty n $ check (lam n (go k) ::: _T)
+    VTForAll (n ::: _) _ -> tracePretty n $ check (lam n (go k) ::: _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                         -> check (k ::: _T)
+    _                    -> check (k ::: _T)
 
 -- - we shouldn’t instantiate with the sig var
 -- - we should unify sig vars in application rule (but not specialize thus)
@@ -287,7 +287,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 -- Errors
 
-expectQuantifier :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Maybe Name ::: Type, Type -> Type)
+expectQuantifier :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Name ::: Type, Type -> Type)
 expectQuantifier = expectMatch (\case{ VTForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
 
 expectComp :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Sig Type, Type)
