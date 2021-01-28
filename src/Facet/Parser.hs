@@ -115,7 +115,9 @@ interfaceDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p
 interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> tname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.InterfaceDef <$> braces (commaSep con)))
 
 con :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name ::: S.Ann S.Type))
-con = anned ((:::) <$> dename <* colon <*> type')
+con = anned ((:::) <$> dename <* colon <*> rec)
+  where
+  rec = choice [ forAll rec, type' ]
 
 
 typeSig
