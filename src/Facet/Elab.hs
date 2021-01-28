@@ -55,7 +55,7 @@ import Data.Maybe (fromMaybe)
 import Data.Semialign.Exts
 import Facet.Carrier.Trace.Output as Trace
 import Facet.Context as Context
-import Facet.Core hiding (global, ($$))
+import Facet.Core
 import Facet.Effect.Time.System
 import Facet.Graph as Graph
 import Facet.Lens
