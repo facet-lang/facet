@@ -72,9 +72,8 @@ tlam n b = Check $ \ _T -> trace "tlam" $ do
 
 lam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
 lam n b = Check $ \ _T -> trace "lam" $ do
-  (_ ::: _A, _B) <- expectQuantifier "when checking lambda" _T
-  d <- depth
-  b' <- Just n ::: _A |- check (b ::: _B (free d))
+  (_ ::: _A, _B) <- expectFunction "when checking lambda" _T
+  b' <- Just n ::: _A |- check (b ::: _B)
   pure $ XLam [(PVar n, b')]
 
 thunk :: Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m => Check m a -> Check m a
