@@ -285,7 +285,7 @@ data Expr
   = XVar (Var Index)
   | XTLam Expr
   | XLam [(Pattern Name, Expr)]
-  | XTApp Expr TExpr
+  | XInst Expr TExpr
   | XApp Expr Expr
   | XCon (Q Name :$ Expr)
   | XString Text

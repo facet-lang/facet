@@ -54,7 +54,7 @@ instantiate :: Algebra sig m => Expr ::: Type -> Elab m (Expr ::: Type)
 instantiate (e ::: _T) = case _T of
   VTForAll (Binding Im _ _T) _B -> do
     m <- meta (Nothing ::: _T)
-    instantiate (XTApp e (TVar (Metavar m)) ::: _B (metavar m))
+    instantiate (XInst e (TVar (Metavar m)) ::: _B (metavar m))
   _                             -> pure $ e ::: _T
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
