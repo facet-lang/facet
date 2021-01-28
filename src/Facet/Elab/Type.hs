@@ -64,11 +64,14 @@ comp :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) =>
 comp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "comp" $ foldr
   (\ t b -> do
     t' <- check (snd t ::: VKType)
-    eval <- gets evalIn
-    b' ::: _ <- fmap eval t' |- b
-    let _T = case t' of
-          Binding Im _ _ -> TForAll t' b'
-          Binding _  _ t -> TArrow t b'
+    _T <- case t' of
+      Binding Im _ _ -> do
+        eval <- gets evalIn
+        b' ::: _ <- fmap eval t' |- b
+        pure $ TForAll t' b'
+      Binding Ex _ t -> do
+        b' ::: _ <- b
+        pure $ TArrow t b'
     pure $ _T ::: VKType)
   (do
     b' <- check (checkType b ::: VKType)
