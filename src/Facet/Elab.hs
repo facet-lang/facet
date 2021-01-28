@@ -242,31 +242,31 @@ onTop f = trace "onTop" $ do
 
 -- FIXME: we don’t get good source references during unification
 unify :: forall m sig . (HasCallStack, Has (Throw Err :+: Trace) sig m) => Type -> Type -> Elab m ()
-unify t1 t2 = trace "unify" $ value t1 t2
+unify t1 t2 = trace "unify" $ type' t1 t2
   where
   nope = couldNotUnify "mismatch" t1 t2
 
-  value t1 t2 = trace "unify value" $ case (t1, t2) of
+  type' t1 t2 = trace "unify type'" $ case (t1, t2) of
     (VTNe (Metavar v1 :$ Nil), VTNe (Metavar v2 :$ Nil)) -> trace "flex-flex" $ onTop $ \ _ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
       (True,  True,  _)       -> restore
       (True,  False, Nothing) -> replace [v1 :=: Just (metavar v2) ::: _K]
       (False, True,  Nothing) -> replace [v2 :=: Just (metavar v1) ::: _K]
-      (True,  False, Just t)  -> value t (metavar v2) >> restore
-      (False, True,  Just t)  -> value (metavar v1) t >> restore
-      (False, False, _)       -> value (metavar v1) (metavar v2) >> restore
+      (True,  False, Just t)  -> type' t (metavar v2) >> restore
+      (False, True,  Just t)  -> type' (metavar v1) t >> restore
+      (False, False, _)       -> type' (metavar v1) (metavar v2) >> restore
     (VTNe (Metavar v1 :$ Nil), t2)                       -> solve v1 t2
     (t1, VTNe (Metavar v2 :$ Nil))                       -> solve v2 t1
     (VKType, VKType)                                     -> pure ()
     (VKType, _)                                          -> nope
     (VKInterface, VKInterface)                           -> pure ()
     (VKInterface, _)                                     -> nope
-    (VTForAll t1 b1, VTForAll t2 b2)                     -> do { binding t1 t2 ; d <- depth ; t1 |- value (b1 (free d)) (b2 (free d)) }
+    (VTForAll t1 b1, VTForAll t2 b2)                     -> do { binding t1 t2 ; d <- depth ; t1 |- type' (b1 (free d)) (b2 (free d)) }
     (VTForAll{}, _)                                      -> nope
-    (VTArrow a1 b1, VTArrow a2 b2)                       -> value a1 a2 >> value b1 b2
+    (VTArrow a1 b1, VTArrow a2 b2)                       -> type' a1 a2 >> type' b1 b2
     (VTArrow{}, _)                                       -> nope
-    (VTComp s1 t1, VTComp s2 t2)                         -> sig s1 s2 >> value t1 t2
+    (VTComp s1 t1, VTComp s2 t2)                         -> sig s1 s2 >> type' t1 t2
     (VTComp{}, _)                                        -> nope
-    (VTNe (v1 :$ sp1), VTNe (v2 :$ sp2))                 -> var v1 v2 >> spine (pl value) sp1 sp2
+    (VTNe (v1 :$ sp1), VTNe (v2 :$ sp2))                 -> var v1 v2 >> spine (pl type') sp1 sp2
     (VTNe{}, _)                                          -> nope
     (VTString, VTString)                                 -> pure ()
     (VTString, _)                                        -> nope
@@ -284,16 +284,16 @@ unify t1 t2 = trace "unify" $ value t1 t2
   spine :: (Foldable t, Zip t) => (a -> a -> Elab m ()) -> t a -> t a -> Elab m ()
   spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
-  binding (Binding p1 _ t1) (Binding p2 _ t2) = trace "unify binding" $ unless (p1 == p2) nope >> value t1 t2
+  binding (Binding p1 _ t1) (Binding p2 _ t2) = trace "unify binding" $ unless (p1 == p2) nope >> type' t1 t2
 
-  sig (Sig e1 c1) (Sig e2 c2) = trace "unify sig" $ value e1 e2 >> spine value c1 c2
+  sig (Sig e1 c1) (Sig e2 c2) = trace "unify sig" $ type' e1 e2 >> spine type' c1 c2
 
   solve v t = trace "solve" $ go []
     where
     go ext = onTop $ \ lvl (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) lvl t, d) of
       (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
       (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ])
-      (True,  False, Just t') -> modify (<>< ext) >> value t' t >> restore
+      (True,  False, Just t') -> modify (<>< ext) >> type' t' t >> restore
       (False, True,  _)       -> go ((m :=: d ::: _K):ext) >> replace []
       (False, False, _)       -> go ext >> restore
 
