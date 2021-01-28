@@ -111,21 +111,23 @@ reloadModules = do
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
 
-loadModuleHeader :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
+loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style)) :+: Time Instant) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
 loadModuleHeader searchPaths target = do
   path <- case target of
     Left path  -> pure path
     Right name -> resolveName searchPaths name
   src <- rethrowIOErrors Nothing $ readSourceFromFile path
   -- FIXME: validate that the name matches
-  (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
+  (dP, (name', is)) <- rethrowParseErrors @Style (time (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader))))
+  outputStrLn (show dP)
   pure (name', path, src, is)
 
-loadModule :: Has (State Target :+: Throw (Notice.Notice (Doc Style)) :+: Time Instant :+: Trace) sig m => MName -> FilePath -> Source -> [MName] -> m Module
+loadModule :: Has (Output :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Time Instant :+: Trace) sig m => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
   graph <- use modules_
   let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) imports
-  m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
+  (dM, m) <- rethrowParseErrors @Style (time (runParserWithSource src (runFacet (map makeOperator ops) (whole module'))))
+  outputStrLn (show dM)
   m <- rethrowElabErrors src . runReader graph $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)
   pure m
