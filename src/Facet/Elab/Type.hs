@@ -66,7 +66,10 @@ elabComp (S.Ann s _ (S.Comp bs d b)) = Synth $ setSpan s . trace "elabComp" $ fo
     t' <- check (snd t ::: VKType)
     eval <- gets evalIn
     b' ::: _ <- fmap eval t' |- b
-    pure $ TForAll t' b' ::: VKType)
+    let _T = case t' of
+          Binding Im _ _ -> TForAll t' b'
+          Binding _  _ t -> TArrow t b'
+    pure $ _T ::: VKType)
   (do
     b' <- check (checkType b ::: VKType)
     case d of
