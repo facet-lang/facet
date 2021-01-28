@@ -262,6 +262,8 @@ unify t1 t2 = trace "unify" $ value t1 t2
     (VKInterface, _)                                     -> nope
     (VTForAll t1 b1, VTForAll t2 b2)                     -> do { binding t1 t2 ; d <- depth ; t1 |- value (b1 (free d)) (b2 (free d)) }
     (VTForAll{}, _)                                      -> nope
+    (VTArrow a1 b1, VTArrow a2 b2)                       -> value a1 a2 >> value b1 b2
+    (VTArrow{}, _)                                       -> nope
     (VTComp s1 t1, VTComp s2 t2)                         -> sig s1 s2 >> value t1 t2
     (VTComp{}, _)                                        -> nope
     (VTNe (v1 :$ sp1), VTNe (v2 :$ sp2))                 -> var v1 v2 >> spine (pl value) sp1 sp2

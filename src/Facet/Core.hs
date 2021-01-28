@@ -70,6 +70,7 @@ data Type
   = VKType
   | VKInterface
   | VTForAll (Binding Type) (Type -> Type)
+  | VTArrow Type Type
   | VTNe (Var Level :$ (Icit, Type))
   | VTComp (Sig Type) Type
   | VTString
@@ -145,6 +146,7 @@ occursIn p = go
     VKType         -> False
     VKInterface    -> False
     VTForAll t b   -> binding d t || go (succ d) (b (free d))
+    VTArrow a b    -> go d a || go d b
     VTComp s t     -> sig d s || go d t
     VTNe (h :$ sp) -> p h || any (any (go d)) sp
     VTString       -> False
@@ -277,6 +279,7 @@ data TExpr
   | TInterface
   | TString
   | TForAll (Binding TExpr) TExpr
+  | TExpr :-> TExpr
   | TComp (Sig TExpr) TExpr
   | TApp TExpr (Icit, TExpr)
   deriving (Eq, Ord, Show)
@@ -300,6 +303,7 @@ quote d = \case
   VKType         -> TType
   VKInterface    -> TInterface
   VTForAll t b   -> TForAll (quote d <$> t) (quote (succ d) (b (free d)))
+  VTArrow a b    -> quote d a :-> quote d b
   VTComp s t     -> TComp (quote d <$> s) (quote d t)
   VTNe (n :$ sp) -> foldl' TApp (TVar (levelToIndex d <$> n)) (fmap (quote d) <$> sp)
   VTString       -> TString
@@ -310,6 +314,7 @@ eval env metas = \case
   TType       -> VKType
   TInterface  -> VKInterface
   TForAll t b -> VTForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
+  a :-> b     -> VTArrow (eval env metas a) (eval env metas b)
   TComp s t   -> VTComp (eval env metas <$> s) (eval env metas t)
   TApp f a    -> eval env metas f $$ (eval env metas <$> a)
   TString     -> VTString
