@@ -5,6 +5,8 @@ module Facet.Elab.Type
 , _Type
 , _Interface
 , _String
+, forAll
+, (-->)
 , comp
 , synthType
 , checkType
@@ -41,6 +43,21 @@ _Interface = Synth $ pure $ TInterface ::: VKType
 
 _String :: Synth m TExpr
 _String = Synth $ pure $ TString ::: VKType
+
+
+forAll :: Has Trace sig m => Check m (Binding TExpr) -> Check m TExpr -> Synth m TExpr
+forAll t b = Synth $ do
+  t' <- check (t ::: VKType)
+  eval <- gets evalIn
+  let vt = fmap eval t'
+  b' <- vt |- check (b ::: VKType)
+  pure $ TForAll t' b' ::: VKType
+
+(-->) :: Has Trace sig m => Check m TExpr -> Check m TExpr -> Synth m TExpr
+a --> b = Synth $ do
+  a' <- check (a ::: VKType)
+  b' <- check (b ::: VKType)
+  pure $ TArrow a' b' ::: VKType
 
 
 binding :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Binding -> [(Pos, Check m (Binding TExpr))]
