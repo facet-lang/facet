@@ -46,7 +46,7 @@ rethrowElabErrors src = L.runThrow rethrow
     _     -> tintro
 
 
-printReason :: Stack Print -> Reason -> Doc Style
+printReason :: Stack Print -> ErrReason -> Doc Style
 printReason ctx = group . \case
   FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n qs     -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))

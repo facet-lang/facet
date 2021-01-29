@@ -20,7 +20,7 @@ module Facet.Elab
   -- * Errors
 , setSpan
 , Err(..)
-, Reason(..)
+, ErrReason(..)
 , couldNotSynthesize
 , freeVariable
 , expectMatch
@@ -176,12 +176,12 @@ setSpan = locally span_ . const
 
 data Err = Err
   { span      :: Span
-  , reason    :: Reason
+  , reason    :: ErrReason
   , context   :: Context
   , callStack :: Stack Message -- FIXME: keep source references for each message.
   }
 
-data Reason
+data ErrReason
   = FreeVariable (Q Name)
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
   | AmbiguousName (Q Name) [Q Name]
@@ -192,7 +192,7 @@ data Reason
 
 
 -- FIXME: apply the substitution before showing this to the user
-err :: Has (Throw Err :+: Trace) sig m => Reason -> Elab m a
+err :: Has (Throw Err :+: Trace) sig m => ErrReason -> Elab m a
 err reason = do
   ctx <- get
   span <- view span_
