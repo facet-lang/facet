@@ -2,8 +2,6 @@ module Facet.Core
 ( -- * Types
   Type(..)
 , TElim(..)
-, unBind
-, unBind'
 , Sig(..)
 , interfaces_
   -- ** Variables
@@ -73,13 +71,6 @@ data Type
 data TElim
   = TEInst Type
   | TEApp Type
-
-unBind :: Alternative m => Type -> m (Name ::: Type, Type -> Type)
-unBind = \case{ VTForAll t b -> pure (t, b) ; _ -> empty }
-
--- | A variation on 'unBind' which can be conveniently chained with 'splitr' to strip a prefix of quantifiers off their eventual body.
-unBind' :: Alternative m => (Level, Type) -> m (Name ::: Type, (Level, Type))
-unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
 newtype Sig a = Sig { interfaces :: [a] }
