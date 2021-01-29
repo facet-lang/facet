@@ -74,6 +74,7 @@ library
     Facet.CLI
     Facet.Context
     Facet.Core
+    Facet.Core.Term
     Facet.Core.Type
     Facet.Diff
     Facet.Driver
