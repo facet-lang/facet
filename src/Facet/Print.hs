@@ -135,40 +135,11 @@ f $$ a = askingPrec $ \case
 ($$*) :: Foldable t => Print -> t Print -> Print
 ($$*) = fmap group . foldl' ($$)
 
-(>~>) :: Print ::: Print -> Print -> Print
-(n ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (braces (space <> ann (setPrec Var n ::: t) <> line))) </> arrow <+> b)
-
 
 -- Core printers
 
 printType :: Stack Print -> C.Type -> Print
-printType env = \case
-  C.VKType -> annotate Type $ pretty "Type"
-  C.VKInterface -> annotate Type $ pretty "Interface"
-  C.VTForAll t b ->
-    let (vs, (_, b')) = splitr C.unBind' (d, C.VTForAll t b)
-        binding env (n ::: _T) =
-          let _T' = printType env _T
-          in  (env :> tvar env (n ::: _T'), [tintro n (Name.Level (length env))] ::: _T')
-        (env', vs') = mapAccumL binding env vs
-    in fn vs' (printType env' b')
-  C.VTArrow (Nothing ::: a) b -> printType env a --> printType env b
-  C.VTArrow (Just n ::: a) b -> parens (ann (intro n d ::: printType env a)) --> printType env b
-  C.VTComp s t -> sig s <+> printType env t
-  C.VTNe (h :$ e) ->
-    let elim h sp Nil     = case sp Nil of
-          Nil -> h
-          sp  -> app h sp
-        elim h sp (es:>a) = elim h (sp . (:> case a of
-          C.TEInst a -> braces (printType env a)
-          C.TEApp  a -> printType env a)) es
-        h' = C.unVar (group . qvar) (\ d' -> fromMaybe (pretty (getLevel d')) $ env !? getIndex (levelToIndex d d')) meta h
-    in elim h' id e
-  C.VTString   -> annotate Type $ pretty "String"
-  where
-  d = Name.Level (length env)
-  sig :: C.Sig C.Type -> Print
-  sig (C.Sig s) = brackets (commaSep (map (printType env) s))
+printType env = printTExpr env . C.quote (Name.Level (length env))
 
 printTExpr :: Stack Print -> C.TExpr -> Print
 printTExpr env = \case
@@ -239,7 +210,6 @@ qvar (_ :.: n) = setPrec Var (pretty n)
 meta :: Meta -> Print
 meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m
 
-tlocal n d = name upper n (getLevel d)
 local  n d = name lower n (getLevel d)
 cname    n = setPrec Var (annotate Con (pretty n))
 
@@ -250,10 +220,4 @@ name f n d = setPrec Var . annotate (Name d) $
   else
     pretty n
 
--- FIXME: group quantifiers by kind again.
-fn :: Foldable t => t ([Print] ::: Print) -> Print -> Print
-fn = flip (foldr (\ (n ::: _T) b -> case n of
-  [] -> _T --> b
-  _  -> (group (commaSep n) ::: _T) >~> b))
-tvar env n = group (tlocal (tm n) (Name.Level (length env)))
 app f as = group f $$* fmap group as
