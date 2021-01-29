@@ -171,7 +171,21 @@ printType env = \case
   sig (C.Sig s) = brackets (commaSep (map (printType env) s))
 
 printTExpr :: Stack Print -> C.TExpr -> Print
-printTExpr = mempty
+printTExpr env = \case
+  C.TVar v                   -> C.unVar (group . qvar) (\ d -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d) meta v
+  C.TType                    -> annotate Type $ pretty "Type"
+  C.TInterface               -> annotate Type $ pretty "Interface"
+  C.TForAll (n ::: t) b      -> parens (ann (intro n d ::: printTExpr env t)) <+> arrow <+> printTExpr env b
+  C.TArrow (Nothing ::: a) b -> printTExpr env a <+> arrow <+> printTExpr env b
+  C.TArrow (Just n ::: a) b  -> parens (ann (intro n d ::: printTExpr env a)) <+> arrow <+> printTExpr env b
+  C.TComp s t                -> sig s <+> printTExpr env t
+  C.TInst f t                -> group (printTExpr env f) $$ group (braces (printTExpr env t))
+  C.TApp f a                 -> group (printTExpr env f) $$ group (printTExpr env a)
+  C.TString                  -> annotate Type $ pretty "String"
+  where
+  d = Name.Level (length env)
+  sig :: C.Sig C.TExpr -> Print
+  sig (C.Sig s) = brackets (commaSep (map (printTExpr env) s))
 
 printExpr :: Stack Print -> C.Expr -> Print
 printExpr env = \case
