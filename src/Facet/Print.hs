@@ -22,6 +22,9 @@ import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
+import qualified Facet.Core.Module as C
+import qualified Facet.Core.Term as C
+import qualified Facet.Core.Type as C
 import           Facet.Name as Name
 import           Facet.Pretty (lower, upper)
 import           Facet.Stack

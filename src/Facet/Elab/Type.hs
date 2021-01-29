@@ -18,6 +18,7 @@ import           Control.Effect.Throw
 import           Data.Foldable (foldl')
 import           Facet.Context
 import           Facet.Core
+import           Facet.Core.Type
 import           Facet.Effect.Trace
 import           Facet.Elab
 import           Facet.Name

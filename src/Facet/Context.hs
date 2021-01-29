@@ -22,7 +22,7 @@ module Facet.Context
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.Maybe (fromMaybe)
-import           Facet.Core
+import           Facet.Core.Type
 import           Facet.Name
 import qualified Facet.Stack as S
 import           Facet.Syntax

@@ -32,7 +32,7 @@ import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Time.System
-import           Facet.Core
+import           Facet.Core.Module
 import           Facet.Effect.Readline
 import           Facet.Effect.Trace
 import           Facet.Effect.Write

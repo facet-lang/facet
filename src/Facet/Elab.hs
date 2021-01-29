@@ -63,6 +63,9 @@ import Data.Semialign.Exts
 import Facet.Carrier.Trace.Output as Trace
 import Facet.Context as Context
 import Facet.Core
+import Facet.Core.Module
+import Facet.Core.Term
+import Facet.Core.Type
 import Facet.Effect.Write
 import Facet.Graph as Graph
 import Facet.Lens

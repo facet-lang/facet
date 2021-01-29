@@ -29,7 +29,8 @@ import           Facet.Carrier.Time.System
 import           Facet.Carrier.Trace.Output
 import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
-import           Facet.Core hiding (eval)
+import           Facet.Core.Module
+import           Facet.Core.Term
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
