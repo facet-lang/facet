@@ -179,12 +179,9 @@ allP n = Bind $ \ _sig _A b -> Check $ \ _B -> Just n ::: _A |- (pvar n,) <$> ch
 effP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
   ElabContext{ module', graph } <- ask
-  case lookupInSig n module' graph sig of
-    Just (q ::: _T) -> do
-      _ ::: _T' <- instantiate const (() ::: _T)
-      (ps', b') <- check (bind (fieldsP (Bind (\ sig _A' b -> ([],) <$> Check (\ _B -> Just v ::: VTArrow (Right []) _A' (VTComp sig _A) |- check (b ::: _B)))) ps ::: (sig, _T')) b ::: _B)
-      pure (PEff q (PVal <$> fromList ps') v, b')
-    _               -> freeVariable n
+  q ::: _T <- maybe (freeVariable n) (instantiate const) (lookupInSig n module' graph sig)
+  (ps', b') <- check (bind (fieldsP (Bind (\ sig _A' b -> ([],) <$> Check (\ _B -> Just v ::: VTArrow (Right []) _A' (VTComp sig _A) |- check (b ::: _B)))) ps ::: (sig, _T)) b ::: _B)
+  pure (PEff q (PVal <$> fromList ps') v, b')
 
 
 -- Expression elaboration
