@@ -353,7 +353,6 @@ elab m = evalFresh 0 . evalState Context.empty $ do
 check :: Has Trace sig m => (Check m a ::: Type) -> Elab m a
 check (m ::: _T) = trace "check" $ runCheck m _T
 
--- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
 newtype Check m a = Check { runCheck :: Type -> Elab m a }
   deriving (Applicative, Functor) via ReaderC Type (Elab m)
 
