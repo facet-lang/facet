@@ -10,6 +10,7 @@ module Facet.Elab.Term
 , string
   -- * Pattern combinators
 , wildcardP
+, varP
   -- * Expression elaboration
 , synthExpr
 , checkExpr
@@ -148,6 +149,9 @@ string s = Synth $ pure $ XString s ::: VTString
 wildcardP :: Bind m (ValuePattern Name)
 -- FIXME: add PWildcard to ValuePattern
 wildcardP = Bind $ \ _ _ -> fmap (PVar __,)
+
+varP :: Has Trace sig m => Name -> Bind m (ValuePattern Name)
+varP n = Bind $ \ _sig _A b -> Check $ \ _B -> (PVar n,) <$> (Just n ::: _A |- check (b ::: _B))
 
 
 -- Expression elaboration
