@@ -64,7 +64,6 @@ comp :: Has Trace sig m => [Check m TExpr] -> Check m TExpr -> Synth m TExpr
 comp s t = Synth $ do
   s' <- traverse (check . (::: VKInterface)) s
   t' <- check (t ::: VKType)
-  -- FIXME: this is obviously wrong
   pure $ TComp (Sig s') t' ::: VKType
 
 
