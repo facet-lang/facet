@@ -52,7 +52,6 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
--- FIXME: don’t do sig lookups for type vars
 var :: Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m => Q Name -> Synth m Expr
 var n = Synth $ trace "var" $ get >>= \ ctx -> if
   | Just (i, _T) <- lookupInContext n ctx -> pure (XVar (Free i) ::: _T)
