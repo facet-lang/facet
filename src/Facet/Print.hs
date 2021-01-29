@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Print
 ( getPrint
 , Print(..)
@@ -18,7 +19,6 @@ module Facet.Print
 import           Data.Foldable (foldl', toList)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
-import           Data.Semigroup (stimes)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core as C
@@ -37,47 +37,8 @@ getPrint :: Print -> PP.Doc Style
 getPrint = runRainbow (annotate . Nest) 0 . runPrec Null . doc . group
 
 
-data Print = Print { fvs :: FVs, doc :: Prec Precedence (Rainbow (PP.Doc Style)) }
-
-instance Semigroup Print where
-  Print v1 d1 <> Print v2 d2 = Print (v1 <> v2) (d1 <> d2)
-  stimes n (Print v d) = Print (stimes n v) (stimes n d)
-
-instance Monoid Print where
-  mempty = Print mempty mempty
-
-instance Vars Print where
-  cons l d = Print (cons l (fvs d)) (doc d)
-  bind l d = Print (bind l (fvs d)) (doc d)
-
-instance Printer Print where
-  type Ann Print = Style
-
-  liftDoc0 a = Print mempty (liftDoc0 a)
-  liftDoc1 f (Print v d) = Print v (liftDoc1 f d)
-  liftDoc2 f (Print v1 d1) (Print v2 d2) = Print (v1 <> v2) (liftDoc2 f d1 d2)
-
-  -- FIXME: these run everything twice which seems bad.
-  -- but then again, laziness.
-  column    f = Print (fvs (f 0))         (column    (doc . f))
-  nesting   f = Print (fvs (f 0))         (nesting   (doc . f))
-  pageWidth f = Print (fvs (f Unbounded)) (pageWidth (doc . f))
-
-  enclosing (Print vl dl) (Print vr dr) (Print vx dx) = Print (vl <> vr <> vx) (enclosing dl dr dx)
-
-  brackets (Print v d) = Print v (brackets d)
-  braces   (Print v d) = Print v (braces   d)
-  parens   (Print v d) = Print v (parens   d)
-  angles   (Print v d) = Print v (angles   d)
-  squotes  (Print v d) = Print v (squotes  d)
-  dquotes  (Print v d) = Print v (dquotes  d)
-
-instance PrecedencePrinter Print where
-  type Level Print = Precedence
-
-  -- FIXME: this is running things twice.
-  askingPrec f = Print (fvs (f minBound)) (askingPrec (doc . f))
-  localPrec f (Print v d) = Print v (localPrec f d)
+newtype Print = Print { doc :: Prec Precedence (Rainbow (PP.Doc Style)) }
+  deriving (Monoid, PrecedencePrinter, Printer, Semigroup)
 
 instance Show Print where
   showsPrec p = showsPrec p . getPrint
