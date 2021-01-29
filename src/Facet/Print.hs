@@ -152,8 +152,8 @@ printType env = \case
           in  (env :> tvar env (n ::: _T'), [tintro n (Name.Level (length env))] ::: _T')
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printType env' b')
-  C.VTArrow (Nothing ::: a) b -> printType env a <+> arrow <+> printType env b
-  C.VTArrow (Just n ::: a) b -> parens (ann (intro n d ::: printType env a)) <+> arrow <+> printType env b
+  C.VTArrow (Nothing ::: a) b -> printType env a --> printType env b
+  C.VTArrow (Just n ::: a) b -> parens (ann (intro n d ::: printType env a)) --> printType env b
   C.VTComp s t -> sig s <+> printType env t
   C.VTNe (h :$ e) ->
     let elim h sp Nil     = case sp Nil of
@@ -175,9 +175,9 @@ printTExpr env = \case
   C.TVar v                   -> C.unVar (group . qvar) (\ d -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d) meta v
   C.TType                    -> annotate Type $ pretty "Type"
   C.TInterface               -> annotate Type $ pretty "Interface"
-  C.TForAll (n ::: t) b      -> parens (ann (intro n d ::: printTExpr env t)) <+> arrow <+> printTExpr env b
-  C.TArrow (Nothing ::: a) b -> printTExpr env a <+> arrow <+> printTExpr env b
-  C.TArrow (Just n ::: a) b  -> parens (ann (intro n d ::: printTExpr env a)) <+> arrow <+> printTExpr env b
+  C.TForAll (n ::: t) b      -> parens (ann (intro n d ::: printTExpr env t)) --> printTExpr env b
+  C.TArrow (Nothing ::: a) b -> printTExpr env a --> printTExpr env b
+  C.TArrow (Just n ::: a) b  -> parens (ann (intro n d ::: printTExpr env a)) --> printTExpr env b
   C.TComp s t                -> sig s <+> printTExpr env t
   C.TInst f t                -> group (printTExpr env f) $$ group (braces (printTExpr env t))
   C.TApp f a                 -> group (printTExpr env f) $$ group (printTExpr env a)
