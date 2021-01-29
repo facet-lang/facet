@@ -155,8 +155,7 @@ printTExpr env = \case
   C.TString                  -> annotate Type $ pretty "String"
   where
   d = Name.Level (length env)
-  sig :: C.Sig C.TExpr -> Print
-  sig (C.Sig s) = brackets (commaSep (map (printTExpr env) s))
+  sig s = brackets (commaSep (map (printTExpr env) s))
 
 printExpr :: Stack Print -> C.Expr -> Print
 printExpr env = \case

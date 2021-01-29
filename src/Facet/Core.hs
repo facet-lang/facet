@@ -2,8 +2,6 @@ module Facet.Core
 ( -- * Types
   Type(..)
 , TElim(..)
-, Sig(..)
-, interfaces_
   -- ** Variables
 , Var(..)
 , unVar
@@ -65,19 +63,12 @@ data Type
   | VTForAll (Name ::: Type) (Type -> Type)
   | VTArrow (Maybe Name ::: Type) Type
   | VTNe (Var Level :$ TElim)
-  | VTComp (Sig Type) Type
+  | VTComp [Type] Type
   | VTString
 
 data TElim
   = TEInst Type
   | TEApp Type
-
-
-newtype Sig a = Sig { interfaces :: [a] }
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-interfaces_ :: Lens' (Sig a) [a]
-interfaces_ = lens interfaces (\ s interfaces -> s{ interfaces })
 
 
 -- Variables
@@ -117,15 +108,13 @@ occursIn p = go
     VKInterface    -> False
     VTForAll t b   -> go d (ty t) || go (succ d) (b (free d))
     VTArrow a b    -> go d (ty a) || go d b
-    VTComp s t     -> sig d s || go d t
+    VTComp s t     -> any (go d) s || go d t
     VTNe (h :$ sp) -> p h || any (elim d) sp
     VTString       -> False
 
   elim d = \case
     TEInst t -> go d t
     TEApp  t -> go d t
-
-  sig d (Sig s) = any (go d) s
 
 
 -- Elimination
@@ -253,7 +242,7 @@ data TExpr
   | TString
   | TForAll (Name ::: TExpr) TExpr
   | TArrow (Maybe Name ::: TExpr) TExpr
-  | TComp (Sig TExpr) TExpr
+  | TComp [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
   deriving (Eq, Ord, Show)

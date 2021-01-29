@@ -227,12 +227,12 @@ expectFunction = expectMatch (\case{ VTArrow t b -> pure (t, b) ; _ -> Nothing }
 data ElabContext = ElabContext
   { graph   :: Graph
   , mname   :: MName
-  , sig     :: Sig Type
+  , sig     :: [Type]
   , module' :: Module
   , span    :: Span
   }
 
-sig_ :: Lens' ElabContext (Sig Type)
+sig_ :: Lens' ElabContext [Type]
 sig_ = lens sig (\ e sig -> e{ sig })
 
 span_ :: Lens' ElabContext Span
@@ -299,7 +299,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
 
   spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
-  sig (Sig c1) (Sig c2) = trace "unify sig" $ spine type' c1 c2
+  sig c1 c2 = trace "unify sig" $ spine type' c1 c2
 
   solve v t = trace "solve" $ go []
     where
@@ -321,7 +321,7 @@ elab m = evalFresh 0 . evalState Context.empty $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
-  mkContext = ElabContext <$> ask <*> ask <*> pure (Sig []) <*> ask <*> ask
+  mkContext = ElabContext <$> ask <*> ask <*> pure [] <*> ask <*> ask
 
 
 check :: Has Trace sig m => (Check m a ::: Type) -> Elab m a

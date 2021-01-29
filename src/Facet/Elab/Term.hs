@@ -54,7 +54,7 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 var :: Has (Throw Err :+: Trace) sig m => Q Name -> Synth m Expr
 var n = Synth $ trace "var" $ get >>= \ ctx -> if
   | Just (i, _T) <- lookupInContext n ctx -> pure (XVar (Free i) ::: _T)
-  | otherwise                             -> view sig_ >>= \ sig -> asks (\ ElabContext{ module', graph } -> lookupInSig n module' graph (interfaces sig)) >>= \case
+  | otherwise                             -> view sig_ >>= \ sig -> asks (\ ElabContext{ module', graph } -> lookupInSig n module' graph sig) >>= \case
     Just (n ::: _T) -> instantiate XInst (XOp n ::: _T)
     _ -> do
       n :=: _ ::: _T <- resolveQ n
@@ -76,8 +76,8 @@ lam n b = Check $ \ _T -> trace "lam" $ do
 
 thunk :: Has Trace sig m => Check m a -> Check m a
 thunk e = Check $ trace "thunk" . \case
-  VTComp (Sig s) t -> extendSig (Just s) $ check (e ::: t)
-  t                -> check (e ::: t)
+  VTComp s t -> extendSig (Just s) $ check (e ::: t)
+  t          -> check (e ::: t)
 
 force :: Has (Throw Err :+: Trace) sig m => Synth m a -> Synth m a
 force e = Synth $ trace "force" $ do
@@ -104,11 +104,11 @@ elabPattern = go
     S.PVal p -> goVal _A p k
     S.PEff n ps v -> do
       ElabContext{ module' = mod, graph } <- ask
-      (Sig sig, _A') <- expectComp "when elaborating pattern" _A
+      (sig, _A') <- expectComp "when elaborating pattern" _A
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
-          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow (Nothing ::: _T) (VTComp (Sig sig) _A') in Just v ::: t |- k (PEff q (fromList ps') (v ::: t))
+          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow (Nothing ::: _T) (VTComp sig _A') in Just v ::: t |- k (PEff q (fromList ps') (v ::: t))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> Just n ::: _A |- k (PVar (n  ::: _A))
@@ -290,14 +290,14 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 expectQuantifier :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Name ::: Type, Type -> Type)
 expectQuantifier = expectMatch (\case{ VTForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
 
-expectComp :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Sig Type, Type)
+expectComp :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m ([Type], Type)
 expectComp = expectMatch (\case { VTComp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
 -- Elaboration
 
 extendSig :: Has (Reader ElabContext) sig m => Maybe [Type] -> m a -> m a
-extendSig = maybe id (locally (sig_.interfaces_) . (++))
+extendSig = maybe id (locally sig_ . (++))
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do

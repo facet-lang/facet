@@ -64,7 +64,7 @@ comp :: Has Trace sig m => [Check m TExpr] -> Check m TExpr -> Synth m TExpr
 comp s t = Synth $ do
   s' <- traverse (check . (::: VKInterface)) s
   t' <- check (t ::: VKType)
-  pure $ TComp (Sig s') t' ::: VKType
+  pure $ TComp s' t' ::: VKType
 
 
 synthType :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Type -> Synth m TExpr
