@@ -119,8 +119,7 @@ loadModuleHeader searchPaths target = do
     Right name -> resolveName searchPaths name
   src <- rethrowIOErrors Nothing $ readSourceFromFile path
   -- FIXME: validate that the name matches
-  (dP, (name', is)) <- rethrowParseErrors @Style (time (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader))))
-  outputStrLn (show dP)
+  (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
 
 loadModule :: Has (Output :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Time Instant :+: Trace :+: Write (Notice.Notice (Doc Style))) sig m => MName -> FilePath -> Source -> [MName] -> m Module
