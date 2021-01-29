@@ -258,14 +258,6 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
     -- we’ve exhausted the named parameters; the rest is up to the body.
     _                      -> check (k ::: _T)
 
--- - we shouldn’t instantiate with the sig var
--- - we should unify sig vars in application rule (but not specialize thus)
--- - we should check if the sig var is actually being used and only use the function argument in that case
--- - factor types and expressions separately
--- elabWithSig :: (Expr -> Expr) -> m Expr
--- elabWithSig f = do
---   _
-
 
 -- Modules
 
