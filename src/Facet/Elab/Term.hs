@@ -274,7 +274,6 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ local (const s) $ do
-      -- FIXME: add the effect var to the QComp before evaluating.
       _T <- runModule $ elab $ eval Nil mempty <$> check (checkType tele ::: VKType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
