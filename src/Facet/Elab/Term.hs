@@ -72,7 +72,7 @@ lam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
 lam n b = Check $ \ _T -> trace "lam" $ do
   (_ ::: _A, _B) <- expectFunction "when checking lambda" _T
   b' <- Just n ::: _A |- check (b ::: _B)
-  pure $ XLam [(PVar n, b')]
+  pure $ XLam [(pvar n, b')]
 
 thunk :: Has Trace sig m => Check m a -> Check m a
 thunk e = Check $ trace "thunk" . \case
