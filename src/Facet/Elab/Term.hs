@@ -105,8 +105,7 @@ string s = Synth $ pure $ XString s ::: VTString
 -- Pattern combinators
 
 wildcardP :: Bind m (ValuePattern Name)
--- FIXME: add PWildcard to ValuePattern
-wildcardP = Bind $ \ _ _ -> fmap (PVar __,)
+wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 
 varP :: Has Trace sig m => Name -> Bind m (ValuePattern Name)
 varP n = Bind $ \ _sig _A b -> Check $ \ _B -> (PVar n,) <$> (Just n ::: _A |- check (b ::: _B))
