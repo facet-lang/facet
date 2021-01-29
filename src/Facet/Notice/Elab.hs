@@ -23,7 +23,7 @@ import           Silkscreen
 rethrowElabErrors :: Source -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors src = L.runThrow rethrow
   where
-  rethrow Err{ span, reason, context, callStack } = Notice.Notice (Just Error) (Just (slice src span)) (printReason printCtx reason)
+  rethrow Err{ span, reason, context, callStack } = Notice.Notice (Just Error) (Just (slice src span)) (printErrReason printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
     , nest 2 (pretty "Trace" <\> concatWith (<\>) callStack)
     ]
@@ -46,8 +46,8 @@ rethrowElabErrors src = L.runThrow rethrow
     _     -> tintro
 
 
-printReason :: Stack Print -> ErrReason -> Doc Style
-printReason ctx = group . \case
+printErrReason :: Stack Print -> ErrReason -> Doc Style
+printErrReason ctx = group . \case
   FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n qs     -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
