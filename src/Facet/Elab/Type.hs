@@ -75,8 +75,8 @@ synthType (S.Ann s _ e) = mapSynth (trace "synthType" . setSpan s) $ case e of
   S.KInterface    -> _Interface
   S.TString       -> _String
   S.TForAll n t b -> forAll n (checkType t) (checkType b)
-  S.TArrow  n a b -> (maybe (Right []) Left n ::: checkType a) --> checkType b
-  S.TComp s t     -> comp (map (switch . synthInterface) s) (checkType t)
+  S.TArrow  n a b -> (map checkInterface <$> n ::: checkType a) --> checkType b
+  S.TComp s t     -> comp (map checkInterface s) (checkType t)
   S.TApp f a      -> app TApp (synthType f) (checkType a)
 
 -- | Check a type at a kind.
@@ -90,3 +90,6 @@ synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (setSpan s
   foldl' (app TApp) h' (checkType <$> sp)
   where
   h' = mapSynth (setSpan sh) (tvar h)
+
+checkInterface :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Check m TExpr
+checkInterface = switch . synthInterface

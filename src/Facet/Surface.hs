@@ -41,7 +41,7 @@ data Type
   | KInterface
   | TString
   | TForAll Name (Ann Type) (Ann Type)
-  | TArrow (Maybe Name) (Ann Type) (Ann Type)
+  | TArrow (Either Name [Ann Interface]) (Ann Type) (Ann Type)
   | TComp [Ann Interface] (Ann Type)
   | TApp (Ann Type) (Ann Type)
   deriving (Eq, Show)
