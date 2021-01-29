@@ -130,9 +130,8 @@ elabPattern = go
       _T'' <- inst _T'
       subpatterns _T'' ps $ \ _T ps' -> unify _T _A *> k (PCon (q :$ fromList ps'))
 
-  inst = \case
-    VTForAll _ _T _B -> meta (Nothing ::: _T) >>= inst . _B . metavar
-    _T               -> pure _T
+  inst _T = ty <$> instantiate const (() ::: _T)
+
   subpatterns = flip $ foldr
     (\ p rest _A k -> do
       -- FIXME: assert that the signature is empty
