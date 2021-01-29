@@ -41,10 +41,8 @@ rethrowElabErrors src = L.runThrow rethrow
           Flex{} -> print
           _      -> print :> n'
         , ctx  :> getPrint (ann (n' ::: printType print _T)) <> case e of
-          Flex _ v _ -> space <> pretty '=' <+> case v of
-            Just v -> printType' print v
-            _      -> pretty '?'
-          _        -> mempty )
+          Flex _ v _ -> space <> pretty '=' <+> maybe (pretty '?') (printType' print) v
+          _          -> mempty )
   name = \case
     STerm -> intro
     _     -> tintro
