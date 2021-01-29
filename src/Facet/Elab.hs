@@ -126,7 +126,6 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 
 
 -- FIXME: does instantiation need to be guided by the expected type?
--- FIXME: can implicits have effects? what do we do about the signature?
 instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a ::: Type)
 instantiate inst = go
   where
