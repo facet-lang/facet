@@ -158,13 +158,12 @@ conP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)
 conP n ps = Bind $ \ sig _A b -> Check $ \ _B -> do
   q :=: _ ::: _T <- resolveC n
   _ ::: _T' <- instantiate const (() ::: _T)
-  (ps', b') <- check (bind (fieldsP ps ::: (sig, _T')) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (pureBind []) ps ::: (sig, _T')) b ::: _B)
   pure (PCon (q :$ fromList ps'), b')
 
-fieldsP :: Has (Throw Err :+: Trace) sig m => [Bind m a] -> Bind m [a]
-fieldsP = foldr cons nil
+fieldsP :: Has (Throw Err :+: Trace) sig m => Bind m [a] -> [Bind m a] -> Bind m [a]
+fieldsP = foldr cons
   where
-  nil = Bind $ \ _ _ b -> ([],) <$> b
   cons p ps = Bind $ \ sig _A b -> Check $ \ _B -> do
     -- FIXME: assert that the signature is empty
     (_ ::: _A', _A'') <- expectFunction "when checking nested pattern" _A
@@ -183,7 +182,7 @@ effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
   case lookupInSig n module' graph sig of
     Just (q ::: _T) -> do
       _ ::: _T' <- instantiate const (() ::: _T)
-      (ps', b') <- check (bind (fieldsP ps ::: (sig, _T')) b ::: _B)
+      (ps', b') <- check (bind (fieldsP (pureBind []) ps ::: (sig, _T')) b ::: _B)
       pure (PEff q (PVal <$> fromList ps') v, b')
     _               -> freeVariable n
 
