@@ -6,11 +6,11 @@ import Data.Pair
 import Data.Unit
 
 interface State : (S : Type) -> Interface
-{ get : { [State S] S }
-, put : S -> { [State S] Unit } }
+{ get : S
+, put : S -> Unit }
 
 modify : { S : Type } -> (f : S -> S) -> { [State S] Unit }
-{ (put (f get!))! }
+{ put (f get) }
 
 
 # Handlers
