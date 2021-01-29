@@ -14,4 +14,4 @@ tests = checkParallel $$(discover)
 
 prop_quotation_inverse = property $ do
   let init = TForAll (U "A") TType (TArrow (Left (U "x")) (TVar (Free 0)) (TComp [] (TVar (Free 1))))
-  quote 0 (eval Nil mempty init) === init
+  quote 0 (eval mempty Nil init) === init

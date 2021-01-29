@@ -92,8 +92,8 @@ lookupIndex n = go (Index 0) . elems
 
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context -> (S.Stack Type, IntMap.IntMap Type)
-toEnv c = (locals 0 (elems c), metas (elems c))
+toEnv :: Context -> (IntMap.IntMap Type, S.Stack Type)
+toEnv c = (metas (elems c), locals 0 (elems c))
   where
   d = level c
   locals i = \case

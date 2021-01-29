@@ -283,14 +283,15 @@ quote d = \case
     TEApp  a -> TApp head (quote d a)) (TVar (levelToIndex d <$> n)) sp
   VTString       -> TString
 
-eval :: HasCallStack => Stack Type -> IntMap.IntMap Type -> TExpr -> Type
-eval env subst = \case
-  TVar v        -> unVar global ((env !) . getIndex) (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) subst)) v
-  TType         -> VKType
-  TInterface    -> VKInterface
-  TForAll n t b -> VTForAll n (eval env subst t) (\ v -> eval (env :> v) subst b)
-  TArrow n a b  -> VTArrow (map (eval env subst) <$> n) (eval env subst a) (eval env subst b)
-  TComp s t     -> VTComp (eval env subst <$> s) (eval env subst t)
-  TInst f a     -> eval env subst f $$ TEInst (eval env subst a)
-  TApp  f a     -> eval env subst f $$ TEApp (eval env subst a)
-  TString       -> VTString
+eval :: HasCallStack => IntMap.IntMap Type -> Stack Type -> TExpr -> Type
+eval subst = go where
+  go env = \case
+    TVar v        -> unVar global ((env !) . getIndex) (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) subst)) v
+    TType         -> VKType
+    TInterface    -> VKInterface
+    TForAll n t b -> VTForAll n (go env t) (\ v -> go (env :> v) b)
+    TArrow n a b  -> VTArrow (map (go env) <$> n) (go env a) (go env b)
+    TComp s t     -> VTComp (go env <$> s) (go env t)
+    TInst f a     -> go env f $$ TEInst (go env a)
+    TApp  f a     -> go env f $$ TEApp (go env a)
+    TString       -> VTString
