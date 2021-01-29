@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Facet.Elab.Term
-( -- * Terms
+( -- * Term combinators
   global
 , var
 , tlam
@@ -43,6 +43,8 @@ import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 import qualified Silkscreen
+
+-- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global :: Algebra sig m => Q Name ::: Type -> Synth m Expr
