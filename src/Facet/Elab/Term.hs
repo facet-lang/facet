@@ -11,6 +11,7 @@ module Facet.Elab.Term
   -- * Pattern combinators
 , wildcardP
 , varP
+, conP
 , fieldsP
   -- * Expression elaboration
 , synthExpr
@@ -153,6 +154,12 @@ wildcardP = Bind $ \ _ _ -> fmap (PVar __,)
 
 varP :: Has Trace sig m => Name -> Bind m (ValuePattern Name)
 varP n = Bind $ \ _sig _A b -> Check $ \ _B -> (PVar n,) <$> (Just n ::: _A |- check (b ::: _B))
+
+conP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
+conP n ps = Bind $ \ sig _A b -> Check $ \ _B -> do
+  q :=: _ ::: _T <- resolveC n
+  (ps', b') <- check (bind (fieldsP ps ::: (sig, _T)) b ::: _B)
+  pure (PCon (q :$ fromList ps'), b')
 
 fieldsP :: Has (Throw Err :+: Trace) sig m => [Bind m a] -> Bind m [a]
 fieldsP [] = Bind $ \ _ _ b -> ([],) <$> b
