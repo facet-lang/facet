@@ -28,6 +28,7 @@ module Facet.Elab
   -- * Warnings
 , Warn(..)
 , WarnReason(..)
+, warn
   -- * Unification
 , ElabContext(..)
 , sig_
@@ -53,6 +54,7 @@ import Control.Carrier.Reader
 import Control.Carrier.State.Church
 import Control.Effect.Empty
 import Control.Effect.Lens (view)
+import Control.Effect.Writer
 import Control.Lens (Lens', lens)
 import Control.Monad (unless)
 import Data.Bifunctor (first)
@@ -227,6 +229,12 @@ data Warn = Warn
 
 data WarnReason
   = RedundantCatchAll Name
+
+
+warn :: Has (Writer Warn) sig m => WarnReason -> Elab m ()
+warn reason = do
+  span <- view span_
+  tell $ Warn span reason
 
 
 -- Patterns
