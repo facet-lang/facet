@@ -158,7 +158,7 @@ conP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)
 conP n ps = Bind $ \ sig _A b -> Check $ \ _B -> do
   q :=: _ ::: _T <- resolveC n
   _ ::: _T' <- instantiate const (() ::: _T)
-  (ps', b') <- check (bind (fieldsP (pureBind []) ps ::: (sig, _T')) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (Bind (\ _sig _A' b -> ([],) <$> Check (\ _B -> unify _A' _A *> check (b ::: _B)))) ps ::: (sig, _T')) b ::: _B)
   pure (PCon (q :$ fromList ps'), b')
 
 fieldsP :: Has (Throw Err :+: Trace) sig m => Bind m [a] -> [Bind m a] -> Bind m [a]
