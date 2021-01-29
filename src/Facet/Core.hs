@@ -49,6 +49,7 @@ import           Control.Lens (Lens', coerced, lens)
 import           Data.Foldable (asum, foldl')
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
+import           Data.Maybe (fromMaybe)
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import           Facet.Name
@@ -284,7 +285,7 @@ quote d = \case
 
 eval :: HasCallStack => Stack Type -> IntMap.IntMap Type -> TExpr -> Type
 eval env subst = \case
-  TVar v        -> unVar global ((env !) . getIndex) metavar v
+  TVar v        -> unVar global ((env !) . getIndex) (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) subst)) v
   TType         -> VKType
   TInterface    -> VKInterface
   TForAll n t b -> VTForAll n (eval env subst t) (\ v -> eval (env :> v) subst b)
