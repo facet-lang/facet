@@ -11,6 +11,7 @@ module Facet.Elab.Term
   -- * Pattern combinators
 , wildcardP
 , varP
+, fieldsP
   -- * Expression elaboration
 , synthExpr
 , checkExpr
@@ -152,6 +153,13 @@ wildcardP = Bind $ \ _ _ -> fmap (PVar __,)
 
 varP :: Has Trace sig m => Name -> Bind m (ValuePattern Name)
 varP n = Bind $ \ _sig _A b -> Check $ \ _B -> (PVar n,) <$> (Just n ::: _A |- check (b ::: _B))
+
+fieldsP :: Has (Throw Err :+: Trace) sig m => [Bind m a] -> Bind m [a]
+fieldsP [] = Bind $ \ _ _ b -> ([],) <$> b
+fieldsP (p:ps) = Bind $ \ sig _A b -> Check $ \ _B -> do
+  (_ ::: _A', _A'') <- expectFunction "when checking nested pattern" _A
+  (p, (ps, b')) <- check (bind (p ::: (sig, _A')) (bind (fieldsP ps ::: (sig, _A'')) b) ::: _B)
+  pure (p:ps, b')
 
 
 -- Expression elaboration
