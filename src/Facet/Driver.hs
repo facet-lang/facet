@@ -35,12 +35,13 @@ import           Facet.Carrier.Time.System
 import           Facet.Core
 import           Facet.Effect.Readline
 import           Facet.Effect.Trace
+import           Facet.Effect.Write
 import qualified Facet.Elab.Term as Elab
 import           Facet.Graph
 import           Facet.Lens
 import           Facet.Name
 import qualified Facet.Notice as Notice
-import           Facet.Notice.Elab (rethrowElabErrors)
+import           Facet.Notice.Elab (rethrowElabErrors, rethrowElabWarnings)
 import           Facet.Notice.Parser (rethrowParseErrors)
 import           Facet.Parser
 import           Facet.Pretty
@@ -87,7 +88,7 @@ kernel = Module kernelName [] [] $ Scope mempty
 
 -- Module loading
 
-reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Target :+: Time Instant :+: Trace) sig m, MonadIO m) => m ()
+reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Target :+: Time Instant :+: Trace :+: Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m ()
 reloadModules = do
   searchPaths <- uses searchPaths_ toList
   modules <- targets_ ~> \ targets -> do
@@ -122,13 +123,13 @@ loadModuleHeader searchPaths target = do
   outputStrLn (show dP)
   pure (name', path, src, is)
 
-loadModule :: Has (Output :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Time Instant :+: Trace) sig m => MName -> FilePath -> Source -> [MName] -> m Module
+loadModule :: Has (Output :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Time Instant :+: Trace :+: Write (Notice.Notice (Doc Style))) sig m => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
   graph <- use modules_
   let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) imports
   (dM, m) <- rethrowParseErrors @Style (time (runParserWithSource src (runFacet (map makeOperator ops) (whole module'))))
   outputStrLn (show dM)
-  m <- rethrowElabErrors src . runReader graph $ Elab.elabModule m
+  m <- rethrowElabWarnings src . rethrowElabErrors src . runReader graph $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)
   pure m
 

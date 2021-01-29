@@ -27,6 +27,8 @@ import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Time.System
 import           Facet.Carrier.Trace.Output
+import           Facet.Carrier.Write.General
+import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core hiding (eval)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
@@ -109,7 +111,7 @@ loop :: (Has (Empty :+: Input :+: Output :+: State (Flag LogTraces) :+: State RE
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
-  runError (outputDocLn . prettyNotice) pure $ case resp of
+  runWrite (outputDocLn . prettyNotice) . runError (outputDocLn . prettyNotice) pure $ case resp of
     Just src -> do
       graph <- use (target_.modules_)
       targets <- use (target_.targets_)
@@ -157,7 +159,7 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State (Flag LogTraces) :+: State REPL :+: Time Instant :+: Trace) sig m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State (Flag LogTraces) :+: State REPL :+: Time Instant :+: Trace :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action
@@ -237,9 +239,9 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-elab :: Has (Reader Source :+: State REPL) sig m => I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span m)))) a -> m a
+elab :: Has (Reader Source :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span m))))) a -> m a
 elab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
   src <- ask
-  runReader (span src) . runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors src $ m
+  runReader (span src) . runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors src . rethrowElabWarnings src $ m

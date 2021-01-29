@@ -33,6 +33,7 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
+import           Control.Monad (unless)
 import           Data.Foldable
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
@@ -40,6 +41,7 @@ import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Core hiding (bindPattern, global)
 import           Facet.Effect.Trace
+import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type
 import           Facet.Graph
@@ -127,9 +129,10 @@ fieldsP = foldr cons
     pure (p':ps', b')
 
 
-allP :: Has Trace sig m => Name -> Bind m (Pattern Name)
--- FIXME: warn if using PAll with an empty sig.
-allP n = Bind $ \ _sig _A b -> Check $ \ _B -> Just n ::: _A |- (pvar n,) <$> check (b ::: _B)
+allP :: Has (Trace :+: Write Warn) sig m => Name -> Bind m (Pattern Name)
+allP n = Bind $ \ sig _A b -> Check $ \ _B -> do
+  unless (null sig) (warn (RedundantCatchAll n))
+  Just n ::: _A |- (pvar n,) <$> check (b ::: _B)
 
 effP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
@@ -141,7 +144,7 @@ effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
 
 -- Expression elaboration
 
-synthExpr :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Synth m Expr
+synthExpr :: (HasCallStack, Has (Throw Err :+: Trace :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Var n    -> var n
   S.App f a  -> app XApp (synthExpr f) (checkExpr a)
@@ -154,7 +157,7 @@ synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Check m Expr
+checkExpr :: (HasCallStack, Has (Throw Err :+: Trace :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e of
   S.Hole  n  -> hole n
   S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
@@ -169,7 +172,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
 
 
 -- FIXME: check for unique variable names
-bindPattern :: Has (Throw Err :+: Trace) sig m => S.Ann S.EffPattern -> Bind m (Pattern Name)
+bindPattern :: Has (Throw Err :+: Trace :+: Write Warn) sig m => S.Ann S.EffPattern -> Bind m (Pattern Name)
 bindPattern = go where
   go = withSpanB $ \case
     S.PAll n      -> allP n
@@ -241,7 +244,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
-  :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Trace) sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Trace :+: Write Warn) sig m)
   => Type
   -> S.Ann S.Expr
   -> m Expr
@@ -260,7 +263,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
 -- Modules
 
 elabModule
-  :: (HasCallStack, Has (Reader Graph :+: Throw Err :+: Trace) sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Throw Err :+: Trace :+: Write Warn) sig m)
   => S.Ann S.Module
   -> m Module
 elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader mname . runReader s $ trace (prettyMName mname) $ do
