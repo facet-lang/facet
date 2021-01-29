@@ -1,6 +1,9 @@
 module Facet.Core.Type
-( -- * Type values
-  Type(..)
+( -- * Type variables
+  TVar(..)
+, unTVar
+  -- * Type values
+, Type(..)
 , TElim(..)
 , global
 , free
@@ -25,6 +28,21 @@ import           Facet.Name
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
+
+-- Variables
+
+data TVar a
+  = TGlobal (Q Name) -- ^ Global variables, considered equal by 'QName'.
+  | TFree a
+  | TMetavar Meta
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+unTVar :: (Q Name -> b) -> (a -> b) -> (Meta -> b) -> TVar a -> b
+unTVar f g h = \case
+  TGlobal  n -> f n
+  TFree    n -> g n
+  TMetavar n -> h n
+
 
 -- Types
 
