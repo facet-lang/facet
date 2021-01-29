@@ -101,17 +101,17 @@ elabPattern :: Has (Throw Err :+: Trace) sig m => Type -> S.Ann S.EffPattern -> 
 elabPattern = go
   where
   go _A (S.Ann s _ p) k = trace "elabPattern" $ setSpan s $ case p of
-    S.PVal p -> goVal _A p k
+    S.PVal p -> goVal _A p (k . PVal)
     S.PEff n ps v -> do
       ElabContext{ module' = mod, graph } <- ask
       (sig, _A') <- expectComp "when elaborating pattern" _A
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
-          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow (Right []) _T (VTComp sig _A') in Just v ::: t |- k (PEff q (fromList ps') (v ::: t))
+          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow (Right []) _T (VTComp sig _A') in Just v ::: t |- k (PEff q (fromList (PVal <$> ps')) (v ::: t))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
-    S.PAll n -> Just n ::: _A |- k (PVar (n  ::: _A))
+    S.PAll n -> Just n ::: _A |- k (pvar (n  ::: _A))
 
   goVal _A (S.Ann s _ p) k = setSpan s $ case p of
     S.PWildcard -> k (PVar (__ ::: _A))

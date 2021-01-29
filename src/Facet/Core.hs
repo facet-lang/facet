@@ -13,7 +13,10 @@ module Facet.Core
 , ($$)
 , ($$*)
   -- * Patterns
+, ValuePattern(..)
 , Pattern(..)
+, pvar
+, pcon
 , fill
 , bindPattern
   -- * Modules
@@ -133,12 +136,22 @@ infixl 9 $$, $$*
 
 -- Patterns
 
--- FIXME: is there any point to splitting this into separate value and effect patterns?
-data Pattern a
+data ValuePattern a
   = PVar a
-  | PCon (Q Name :$ Pattern a)
-  | PEff (Q Name) (Stack (Pattern a)) a
+  | PCon (Q Name :$ ValuePattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+data Pattern a
+  = PEff (Q Name) (Stack (Pattern a)) a
+  | PVal (ValuePattern a)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+pvar :: a -> Pattern a
+pvar = PVal . PVar
+
+pcon :: Q Name :$ ValuePattern a -> Pattern a
+pcon = PVal . PCon
+
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)

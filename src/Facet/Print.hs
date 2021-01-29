@@ -172,10 +172,12 @@ printExpr env = \case
   d = Name.Level (length env)
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
   clause (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> printExpr env' b
-  pat = \case
+  vpat = \case
     C.PVar n         -> n
-    C.PCon (n :$ ps) -> parens (hsep (annotate Con (pretty n):map pat (toList ps)))
-    C.PEff q ps k    -> brackets (pretty q <+> hsep (map pat (toList ps)) <+> semi <+> k)
+    C.PCon (n :$ ps) -> parens (hsep (annotate Con (pretty n):map vpat (toList ps)))
+  pat = \case
+    C.PVal p      -> vpat p
+    C.PEff q ps k -> brackets (pretty q <+> hsep (map pat (toList ps)) <+> semi <+> k)
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
