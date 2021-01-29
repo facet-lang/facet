@@ -80,12 +80,9 @@ tlam n b = Check $ \ _T -> trace "tlam" $ do
   pure $ XTLam b'
 
 lam :: Has (Throw Err :+: Trace) sig m => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
-lam cs = Check $ \ _T -> XLam <$> traverse (check . (::: _T) . uncurry clause) cs
-
-clause :: Has (Throw Err :+: Trace) sig m => Bind m (Pattern Name) -> Check m Expr -> Check m (Pattern Name, Expr)
-clause p b = Check $ \ _T -> do
+lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking clause" _T
-  check (bind (p ::: _A) b ::: _B)
+  XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
 thunk :: Has Trace sig m => Check m a -> Check m a
