@@ -17,7 +17,6 @@ import           Control.Effect.State
 import           Control.Effect.Throw
 import           Data.Foldable (foldl')
 import           Facet.Context
-import           Facet.Core
 import           Facet.Core.Type
 import           Facet.Effect.Trace
 import           Facet.Elab
@@ -28,10 +27,10 @@ import           GHC.Stack
 
 tvar :: Has (Throw Err :+: Trace) sig m => Q Name -> Synth m TExpr
 tvar n = Synth $ trace "tvar" $ gets (lookupInContext n) >>= \case
-  Just (i, _T) -> pure $ TVar (Free i) ::: _T
+  Just (i, _T) -> pure $ TVar (TFree i) ::: _T
   Nothing      -> do
     q :=: _ ::: _T <- resolveQ n
-    instantiate TInst $ TVar (Global q) ::: _T
+    instantiate TInst $ TVar (TGlobal q) ::: _T
 
 
 _Type :: Synth m TExpr

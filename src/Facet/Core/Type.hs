@@ -23,7 +23,6 @@ module Facet.Core.Type
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.Maybe (fromMaybe)
-import           Facet.Core
 import           Facet.Name
 import           Facet.Stack
 import           Facet.Syntax
@@ -51,7 +50,7 @@ data Type
   | VKInterface
   | VTForAll Name Type (Type -> Type)
   | VTArrow (Either Name [Type]) Type Type
-  | VTNe (Var Level :$ TElim)
+  | VTNe (TVar Level :$ TElim)
   | VTComp [Type] Type
   | VTString
 
@@ -61,20 +60,20 @@ data TElim
 
 
 global :: Q Name -> Type
-global = var . Global
+global = var . TGlobal
 
 free :: Level -> Type
-free = var . Free
+free = var . TFree
 
 metavar :: Meta -> Type
-metavar = var . Metavar
+metavar = var . TMetavar
 
 
-var :: Var Level -> Type
+var :: TVar Level -> Type
 var = VTNe . (:$ Nil)
 
 
-occursIn :: (Var Level -> Bool) -> Level -> Type -> Bool
+occursIn :: (TVar Level -> Bool) -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
@@ -109,7 +108,7 @@ infixl 9 $$, $$*
 -- Type expressions
 
 data TExpr
-  = TVar (Var Index)
+  = TVar (TVar Index)
   | TType
   | TInterface
   | TString
@@ -138,7 +137,7 @@ quote d = \case
 eval :: HasCallStack => IntMap.IntMap Type -> Stack Type -> TExpr -> Type
 eval subst = go where
   go env = \case
-    TVar v        -> unVar global ((env !) . getIndex) (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) subst)) v
+    TVar v        -> unTVar global ((env !) . getIndex) (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) subst)) v
     TType         -> VKType
     TInterface    -> VKInterface
     TForAll n t b -> VTForAll n (go env t) (\ v -> go (env :> v) b)

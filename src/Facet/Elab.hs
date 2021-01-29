@@ -62,7 +62,6 @@ import Data.Maybe (fromMaybe)
 import Data.Semialign.Exts
 import Facet.Carrier.Trace.Output as Trace
 import Facet.Context as Context
-import Facet.Core
 import Facet.Core.Module
 import Facet.Core.Term
 import Facet.Core.Type
@@ -125,7 +124,7 @@ lookupInContext (m:.:n)
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 lookupInSig :: Q Name -> Module -> Graph -> [Type] -> Maybe (Q Name ::: Type)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
-  VTNe (Global q@(m':.:_) :$ _) -> do
+  VTNe (TGlobal q@(m':.:_) :$ _) -> do
     guard (m == Nil || m == m')
     _ :=: Just (DInterface defs) ::: _ <- lookupQ q mod graph
     _ :=: _ ::: _T <- lookupScope n defs
@@ -140,7 +139,7 @@ instantiate inst = go
   go (e ::: _T) = case _T of
     VTForAll _ _T _B -> do
       m <- meta (Nothing ::: _T)
-      go (inst e (TVar (Metavar m)) ::: _B (metavar m))
+      go (inst e (TVar (TMetavar m)) ::: _B (metavar m))
     _                -> pure $ e ::: _T
 
 
@@ -286,37 +285,37 @@ unify t1 t2 = trace "unify" $ type' t1 t2
   nope = couldNotUnify "mismatch" t1 t2
 
   type' t1 t2 = trace "unify type'" $ case (t1, t2) of
-    (VTNe (Metavar v1 :$ Nil), VTNe (Metavar v2 :$ Nil)) -> trace "flex-flex" $ onTop $ \ _ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
+    (VTNe (TMetavar v1 :$ Nil), VTNe (TMetavar v2 :$ Nil)) -> trace "flex-flex" $ onTop $ \ _ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
       (True,  True,  _)       -> restore
       (True,  False, Nothing) -> replace [v1 :=: Just (metavar v2) ::: _K]
       (False, True,  Nothing) -> replace [v2 :=: Just (metavar v1) ::: _K]
       (True,  False, Just t)  -> type' t (metavar v2) >> restore
       (False, True,  Just t)  -> type' (metavar v1) t >> restore
       (False, False, _)       -> type' (metavar v1) (metavar v2) >> restore
-    (VTNe (Metavar v1 :$ Nil), t2)                       -> solve v1 t2
-    (t1, VTNe (Metavar v2 :$ Nil))                       -> solve v2 t1
-    (VKType, VKType)                                     -> pure ()
-    (VKType, _)                                          -> nope
-    (VKInterface, VKInterface)                           -> pure ()
-    (VKInterface, _)                                     -> nope
-    (VTForAll n t1 b1, VTForAll _ t2 b2)                 -> do { type' t1 t2 ; d <- depth ; Just n ::: t1 |- type' (b1 (free d)) (b2 (free d)) }
-    (VTForAll{}, _)                                      -> nope
-    (VTArrow _ a1 b1, VTArrow _ a2 b2)                   -> type' a1 a2 >> type' b1 b2
-    (VTArrow{}, _)                                       -> nope
-    (VTComp s1 t1, VTComp s2 t2)                         -> sig s1 s2 >> type' t1 t2
-    (VTComp{}, _)                                        -> nope
-    (VTNe (v1 :$ sp1), VTNe (v2 :$ sp2))                 -> var v1 v2 >> spine telim sp1 sp2
-    (VTNe{}, _)                                          -> nope
-    (VTString, VTString)                                 -> pure ()
-    (VTString, _)                                        -> nope
+    (VTNe (TMetavar v1 :$ Nil), t2)                        -> solve v1 t2
+    (t1, VTNe (TMetavar v2 :$ Nil))                        -> solve v2 t1
+    (VKType, VKType)                                       -> pure ()
+    (VKType, _)                                            -> nope
+    (VKInterface, VKInterface)                             -> pure ()
+    (VKInterface, _)                                       -> nope
+    (VTForAll n t1 b1, VTForAll _ t2 b2)                   -> do { type' t1 t2 ; d <- depth ; Just n ::: t1 |- type' (b1 (free d)) (b2 (free d)) }
+    (VTForAll{}, _)                                        -> nope
+    (VTArrow _ a1 b1, VTArrow _ a2 b2)                     -> type' a1 a2 >> type' b1 b2
+    (VTArrow{}, _)                                         -> nope
+    (VTComp s1 t1, VTComp s2 t2)                           -> sig s1 s2 >> type' t1 t2
+    (VTComp{}, _)                                          -> nope
+    (VTNe (v1 :$ sp1), VTNe (v2 :$ sp2))                   -> var v1 v2 >> spine telim sp1 sp2
+    (VTNe{}, _)                                            -> nope
+    (VTString, VTString)                                   -> pure ()
+    (VTString, _)                                          -> nope
 
   var v1 v2 = trace "unify var" $ case (v1, v2) of
-    (Global q1, Global q2)   -> unless (q1 == q2) nope
-    (Global{}, _)            -> nope
-    (Free v1, Free v2)       -> unless (v1 == v2) nope
-    (Free{}, _)              -> nope
-    (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
-    (Metavar{}, _)           -> nope
+    (TGlobal q1, TGlobal q2)   -> unless (q1 == q2) nope
+    (TGlobal{}, _)             -> nope
+    (TFree v1, TFree v2)       -> unless (v1 == v2) nope
+    (TFree{}, _)               -> nope
+    (TMetavar m1, TMetavar m2) -> unless (m1 == m2) nope
+    (TMetavar{}, _)            -> nope
 
   telim t1 t2 = case (t1, t2) of
     (TEInst t1, TEInst t2) -> type' t1 t2
@@ -330,7 +329,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
 
   solve v t = trace "solve" $ go []
     where
-    go ext = onTop $ \ lvl (m :=: d ::: _K) -> case (m == v, occursIn (== Metavar m) lvl t, d) of
+    go ext = onTop $ \ lvl (m :=: d ::: _K) -> case (m == v, occursIn (== TMetavar m) lvl t, d) of
       (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
       (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ])
       (True,  False, Just t') -> modify (<>< ext) >> type' t' t >> restore
