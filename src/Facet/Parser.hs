@@ -132,7 +132,7 @@ typeSig name = choice [ forAll (typeSig name), bindArrow name (typeSig name), ty
 -- FIXME: kind ascriptions
 monotypeTable :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => Table p (S.Ann S.Type)
 monotypeTable =
-  [ [ parseOperator (N.Infix (Text.pack "->"), N.R, foldr1 (S.annBinary (S.TArrow (Right [])))) ]
+  [ [ functionType ]
   , [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.TApp)) ]
   , [ -- FIXME: we should treat these as globals.
       atom (token (anned (S.KType      <$ string "Type")))
@@ -157,6 +157,9 @@ forAll k = make <$> anned (try (((,,) <$ lbrace <*> commaSep1 ((,) <$> position 
 
 bindArrow :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann S.Type) -> p (S.Ann S.Type)
 bindArrow name k = anned (try (S.TArrow . Left <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen <* arrow <*> k)
+
+functionType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type) -> p (S.Ann S.Type)
+functionType self next = anned (uncurry (S.TArrow . Right) <$> try ((,) <$> option [] signature <*> next <* arrow) <*> self) <|> next
 
 
 -- FIXME: support type operators
