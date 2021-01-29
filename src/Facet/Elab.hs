@@ -27,6 +27,7 @@ module Facet.Elab
 , expectFunction
   -- * Unification
 , ElabContext(..)
+, sig_
   -- * Machinery
 , Elab(..)
 , depth
@@ -226,9 +227,13 @@ expectFunction = expectMatch (\case{ VTArrow t b -> pure (t, b) ; _ -> Nothing }
 data ElabContext = ElabContext
   { graph   :: Graph
   , mname   :: MName
+  , sig     :: Sig Type
   , module' :: Module
   , span    :: Span
   }
+
+sig_ :: Lens' ElabContext (Sig Type)
+sig_ = lens sig (\ e sig -> e{ sig })
 
 span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
@@ -316,7 +321,7 @@ elab m = evalFresh 0 . evalState Context.empty $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
-  mkContext = ElabContext <$> ask <*> ask <*> ask <*> ask
+  mkContext = ElabContext <$> ask <*> ask <*> pure (Sig []) <*> ask <*> ask
 
 
 check :: Has Trace sig m => (Check m a ::: Type) -> Elab m a
