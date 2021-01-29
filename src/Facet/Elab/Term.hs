@@ -129,7 +129,6 @@ fieldsP = foldr cons
 
 allP :: Has Trace sig m => Name -> Bind m (Pattern Name)
 -- FIXME: warn if using PAll with an empty sig.
--- FIXME: this is wrong; add PAll to Pattern.
 allP n = Bind $ \ _sig _A b -> Check $ \ _B -> Just n ::: _A |- (pvar n,) <$> check (b ::: _B)
 
 effP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
