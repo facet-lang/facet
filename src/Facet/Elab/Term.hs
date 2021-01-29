@@ -18,6 +18,7 @@ module Facet.Elab.Term
   -- * Expression elaboration
 , synthExpr
 , checkExpr
+, bindPattern
   -- * Declarations
 , elabDataDef
 , elabInterfaceDef
@@ -37,7 +38,7 @@ import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Core hiding (global)
+import           Facet.Core hiding (bindPattern, global)
 import           Facet.Effect.Trace
 import           Facet.Elab
 import           Facet.Elab.Type
@@ -213,6 +214,19 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
   synth = switch (synthExpr expr)
 
 
+bindPattern :: Has (Throw Err :+: Trace) sig m => S.Ann S.EffPattern -> Bind m (Pattern Name)
+bindPattern = go where
+  go = withSpanB $ \case
+    S.PAll n      -> allP n
+    S.PVal p      -> PVal <$> goVal p
+    S.PEff n ps v -> effP n (map goVal ps) v
+
+  goVal = withSpanB $ \case
+    S.PWildcard -> wildcardP
+    S.PVar n    -> varP n
+    S.PCon n ps -> conP n (map goVal ps)
+
+
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
@@ -354,3 +368,6 @@ runModule m = do
 
 runWithSpan :: (a -> ReaderC Span m b) -> S.Ann a -> m b
 runWithSpan k (S.Ann s _ a) = runReader s (k a)
+
+withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
+withSpanB k (S.Ann s _ a) = mapBind (setSpan s) (k a)
