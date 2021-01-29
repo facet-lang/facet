@@ -283,13 +283,13 @@ quote d = \case
   VTString       -> TString
 
 eval :: HasCallStack => Stack Type -> IntMap.IntMap Type -> TExpr -> Type
-eval env metas = \case
+eval env subst = \case
   TVar v        -> unVar global ((env !) . getIndex) metavar v
   TType         -> VKType
   TInterface    -> VKInterface
-  TForAll n t b -> VTForAll n (eval env metas t) (\ v -> eval (env :> v) metas b)
-  TArrow n a b  -> VTArrow (map (eval env metas) <$> n) (eval env metas a) (eval env metas b)
-  TComp s t     -> VTComp (eval env metas <$> s) (eval env metas t)
-  TInst f a     -> eval env metas f $$ TEInst (eval env metas a)
-  TApp  f a     -> eval env metas f $$ TEApp (eval env metas a)
+  TForAll n t b -> VTForAll n (eval env subst t) (\ v -> eval (env :> v) subst b)
+  TArrow n a b  -> VTArrow (map (eval env subst) <$> n) (eval env subst a) (eval env subst b)
+  TComp s t     -> VTComp (eval env subst <$> s) (eval env subst t)
+  TInst f a     -> eval env subst f $$ TEInst (eval env subst a)
+  TApp  f a     -> eval env subst f $$ TEApp (eval env subst a)
   TString       -> VTString
