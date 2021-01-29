@@ -2,7 +2,7 @@ module Effect.Reader : Module
 
 interface Reader : (R : Type) -> Interface
 { ask : R
-, local : { A : Type } -> (R -> R) -> { [Reader R] A } -> A }
+, local : { A : Type } -> (R -> R) -> [Reader R] A -> A }
 
 reader : { R, A : Type } -> (r : R) -> [Reader R] A -> A
 { a               -> a
