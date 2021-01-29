@@ -136,7 +136,7 @@ effP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)
 effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
   ElabContext{ module', graph } <- ask
   q ::: _T <- maybe (freeVariable n) (instantiate const) (lookupInSig n module' graph sig)
-  (ps', b') <- check (bind (fieldsP (Bind (\ sig _A' b -> ([],) <$> Check (\ _B -> Just v ::: VTArrow (Right []) _A' (VTComp sig _A) |- check (b ::: _B)))) ps ::: (sig, _T)) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (Bind (\ _sig _A' b -> ([],) <$> Check (\ _B -> Just v ::: VTArrow (Right []) _A' _A |- check (b ::: _B)))) ps ::: (sig, _T)) b ::: _B)
   pure (PEff q (PVal <$> fromList ps') v, b')
 
 
