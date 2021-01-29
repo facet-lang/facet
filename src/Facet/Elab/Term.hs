@@ -137,8 +137,6 @@ elabPattern = go
     (\ p rest _A k -> do
       -- FIXME: assert that the signature is empty
       (_ ::: _A, _B) <- expectFunction "when checking constructor pattern" _A
-      -- FIXME: is this right? should we use `free` instead? if so, what do we push onto the context?
-      -- FIXME: I think this definitely isn’t right, as it instantiates variables which should remain polymorphic. We kind of need to open this existentially, I think?
       goVal _A p (\ p' -> rest _B (\ _T ps' -> k _T (p' : ps'))))
       (\ _A k -> k _A [])
 
