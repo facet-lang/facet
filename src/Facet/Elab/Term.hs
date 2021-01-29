@@ -297,8 +297,8 @@ expectComp = expectMatch (\case { VTComp s t -> pure (s, t) ; _ -> Nothing }) "{
 
 -- Elaboration
 
-extendSig :: Has (Reader (Sig Type)) sig m => Maybe [Type] -> m a -> m a
-extendSig = maybe id (locally interfaces_ . (++))
+extendSig :: Has (Reader ElabContext) sig m => Maybe [Type] -> m a -> m a
+extendSig = maybe id (locally (sig_.interfaces_) . (++))
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
