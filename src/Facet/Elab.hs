@@ -25,6 +25,9 @@ module Facet.Elab
 , freeVariable
 , expectMatch
 , expectFunction
+  -- * Warnings
+, Warn(..)
+, WarnReason(..)
   -- * Unification
 , ElabContext(..)
 , sig_
@@ -213,6 +216,17 @@ freeVariable n = err $ FreeVariable n
 
 ambiguousName :: Has (Throw Err :+: Trace) sig m => Q Name -> [Q Name] -> Elab m a
 ambiguousName n qs = err $ AmbiguousName n qs
+
+
+-- Warnings
+
+data Warn = Warn
+  { span   :: Span
+  , reason :: WarnReason
+  }
+
+data WarnReason
+  = RedundantCatchAll
 
 
 -- Patterns
