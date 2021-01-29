@@ -334,6 +334,7 @@ newtype Check m a = Check { runCheck :: Type -> Elab m a }
 mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
 mapCheck f m = Check $ \ _T -> f (runCheck m _T)
 
+
 newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
 
 instance Functor (Synth m) where
