@@ -167,8 +167,8 @@ fieldsP = foldr cons nil
   cons p ps = Bind $ \ sig _A b -> Check $ \ _B -> do
     -- FIXME: assert that the signature is empty
     (_ ::: _A', _A'') <- expectFunction "when checking nested pattern" _A
-    (p, (ps, b')) <- check (bind (p ::: (sig, _A')) (bind (ps ::: (sig, _A'')) b) ::: _B)
-    pure (p:ps, b')
+    (p', (ps', b')) <- check (bind (p ::: (sig, _A')) (bind (ps ::: (sig, _A'')) b) ::: _B)
+    pure (p':ps', b')
 
 
 allP :: Has Trace sig m => Name -> Bind m (Pattern Name)
