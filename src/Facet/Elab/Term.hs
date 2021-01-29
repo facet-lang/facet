@@ -229,7 +229,7 @@ elabTermDef
   -> S.Ann S.Expr
   -> m Expr
 elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
-  elab $ Just (U "ε") ::: free (Level 0) |- check (go (checkExpr expr) ::: _T)
+  elab $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
     VTForAll (n ::: _) _     -> tracePretty n $ check (tlam n (go k) ::: _T)
