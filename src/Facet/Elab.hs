@@ -40,7 +40,6 @@ module Facet.Elab
 , bind
 , Bind(..)
 , mapBind
-, pureBind
 ) where
 
 import Control.Algebra
@@ -355,6 +354,3 @@ newtype Bind m a = Bind { runBind :: forall x . [Type] -> Type -> Check m x -> C
 
 mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
 mapBind f m = Bind $ \ sig _A b -> mapCheck f (runBind m sig _A b)
-
-pureBind :: a -> Bind m a
-pureBind a = Bind $ \ _ _ -> fmap (a,)
