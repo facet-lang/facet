@@ -14,6 +14,7 @@ module Facet.Elab.Term
 , conP
 , fieldsP
 , allP
+, effP
   -- * Expression elaboration
 , synthExpr
 , checkExpr
@@ -175,6 +176,16 @@ allP :: Has Trace sig m => Name -> Bind m (Pattern Name)
 -- FIXME: warn if using PAll with an empty sig.
 -- FIXME: this is wrong; add PAll to Pattern.
 allP n = Bind $ \ _sig _A b -> Check $ \ _B -> Just n ::: _A |- (pvar n,) <$> check (b ::: _B)
+
+effP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
+effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
+  ElabContext{ module', graph } <- ask
+  case lookupInSig n module' graph sig of
+    Just (q ::: _T) -> do
+      _ ::: _T' <- instantiate const (() ::: _T)
+      (ps', b') <- check (bind (fieldsP ps ::: (sig, _T')) b ::: _B)
+      pure (PEff q (PVal <$> fromList ps') v, b')
+    _                -> freeVariable n
 
 
 -- Expression elaboration
