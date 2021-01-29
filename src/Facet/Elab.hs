@@ -29,7 +29,6 @@ module Facet.Elab
 , ElabContext(..)
   -- * Machinery
 , Elab(..)
-, askEffectVar
 , depth
 , elab
 , check
@@ -162,9 +161,6 @@ n ::: _T |- b = trace "|-" $ do
 
 infix 1 |-
 
-
-askEffectVar :: Has (Reader (Sig Type)) sig m => m Type
-askEffectVar = view effectVar_
 
 depth :: Has (State Context) sig m => m Level
 depth = gets level
@@ -299,7 +295,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
 
   spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
-  sig (Sig e1 c1) (Sig e2 c2) = trace "unify sig" $ type' e1 e2 >> spine type' c1 c2
+  sig (Sig c1) (Sig c2) = trace "unify sig" $ spine type' c1 c2
 
   solve v t = trace "solve" $ go []
     where

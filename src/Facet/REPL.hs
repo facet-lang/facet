@@ -242,4 +242,4 @@ elab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
   src <- ask
-  runReader (Sig (free (Name.Level 0)) []) . runReader (span src) . runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors src $ m
+  runReader (Sig []) . runReader (span src) . runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors src $ m

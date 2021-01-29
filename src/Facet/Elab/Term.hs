@@ -78,8 +78,8 @@ lam n b = Check $ \ _T -> trace "lam" $ do
 
 thunk :: Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m => Check m a -> Check m a
 thunk e = Check $ trace "thunk" . \case
-  VTComp (Sig _ s) t -> extendSig (Just s) $ check (e ::: t)
-  t                  -> check (e ::: t)
+  VTComp (Sig s) t -> extendSig (Just s) $ check (e ::: t)
+  t                -> check (e ::: t)
 
 force :: Has (Throw Err :+: Trace) sig m => Synth m a -> Synth m a
 force e = Synth $ trace "force" $ do
@@ -106,12 +106,11 @@ elabPattern = go
     S.PVal p -> goVal _A p k
     S.PEff n ps v -> do
       ElabContext{ module' = mod, graph } <- ask
-      (Sig _ sig, _A') <- expectComp "when elaborating pattern" _A
+      (Sig sig, _A') <- expectComp "when elaborating pattern" _A
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
-          e <- askEffectVar
-          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow (Nothing ::: _T) (VTComp (Sig e sig) _A') in Just v ::: t |- k (PEff q (fromList ps') (v ::: t))
+          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow (Nothing ::: _T) (VTComp (Sig sig) _A') in Just v ::: t |- k (PEff q (fromList ps') (v ::: t))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> Just n ::: _A |- k (PVar (n  ::: _A))
@@ -232,7 +231,7 @@ elabTermDef
   -> S.Ann S.Expr
   -> m Expr
 elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
-  runReader (Sig (free (Level 0)) []) $ elab $ Just (U "ε") ::: free (Level 0) |- check (go (checkExpr expr) ::: _T)
+  runReader (Sig @Type []) $ elab $ Just (U "ε") ::: free (Level 0) |- check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
     VTForAll (n ::: _) _     -> tracePretty n $ check (tlam n (go k) ::: _T)

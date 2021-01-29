@@ -168,7 +168,7 @@ printType env = \case
   where
   d = Name.Level (length env)
   sig :: C.Sig C.Type -> Print
-  sig (C.Sig v s) = brackets (printType env v <> pipe <> commaSep (map (printType env) s))
+  sig (C.Sig s) = brackets (commaSep (map (printType env) s))
 
 printTExpr :: Stack Print -> C.TExpr -> Print
 printTExpr = mempty

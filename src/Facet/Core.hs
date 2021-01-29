@@ -5,7 +5,6 @@ module Facet.Core
 , unBind
 , unBind'
 , Sig(..)
-, effectVar_
 , interfaces_
   -- ** Variables
 , Var(..)
@@ -83,14 +82,8 @@ unBind' :: Alternative m => (Level, Type) -> m (Name ::: Type, (Level, Type))
 unBind' (d, v) = fmap (\ _B -> (succ d, _B (free d))) <$> unBind v
 
 
-data Sig a = Sig
-  { effectVar  :: a
-  , interfaces :: [a]
-  }
+newtype Sig a = Sig { interfaces :: [a] }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-effectVar_ :: Lens' (Sig a) a
-effectVar_ = lens effectVar (\ s effectVar -> s{ effectVar })
 
 interfaces_ :: Lens' (Sig a) [a]
 interfaces_ = lens interfaces (\ s interfaces -> s{ interfaces })
@@ -141,7 +134,7 @@ occursIn p = go
     TEInst t -> go d t
     TEApp  t -> go d t
 
-  sig d (Sig v s) = go d v || any (go d) s
+  sig d (Sig s) = any (go d) s
 
 
 -- Elimination
