@@ -19,14 +19,12 @@ import Facet.Syntax
 data Var a
   = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
   | Free a
-  | Metavar Meta
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-unVar :: (Q Name -> b) -> (a -> b) -> (Meta -> b) -> Var a -> b
-unVar f g h = \case
+unVar :: (Q Name -> b) -> (a -> b) -> Var a -> b
+unVar f g = \case
   Global  n -> f n
   Free    n -> g n
-  Metavar n -> h n
 
 
 -- Term values

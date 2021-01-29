@@ -124,7 +124,7 @@ printTExpr env = \case
 
 printExpr :: Stack Print -> C.Expr -> Print
 printExpr env = \case
-  C.XVar v        -> C.unVar (group . qvar) (\ d' -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d') meta v
+  C.XVar v        -> C.unVar (group . qvar) (\ d' -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d') v
   C.XTLam b       -> let v = tintro __ d in braces (braces v <+> arrow <+> printExpr (env :> v) b)
   C.XLam cs       -> comp (braces (commaSep (map clause cs)))
   C.XInst e t     -> printExpr env e $$ braces (printTExpr env t)
