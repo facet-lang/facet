@@ -108,7 +108,7 @@ elabPattern = go
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
-          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow Nothing _T (VTComp sig _A') in Just v ::: t |- k (PEff q (fromList ps') (v ::: t))
+          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow (Right []) _T (VTComp sig _A') in Just v ::: t |- k (PEff q (fromList ps') (v ::: t))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> Just n ::: _A |- k (PVar (n  ::: _A))
@@ -176,7 +176,7 @@ abstract body = go
       level <- depth
       b' <- Just n ::: t |- go (b (free level))
       pure $ TForAll n (quote level t) b'
-    VTArrow  (Just n) a b -> do
+    VTArrow  (Left n) a b -> do
       level <- depth
       b' <- Just n ::: a |- go b
       pure $ TForAll n (quote level a) b'
@@ -233,7 +233,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
   where
   go k = Check $ \ _T -> case _T of
     VTForAll      n  _ _ -> tracePretty n $ check (tlam n (go k) ::: _T)
-    VTArrow (Just n) _ _ -> tracePretty n $ check (lam  n (go k) ::: _T)
+    VTArrow (Left n) _ _ -> tracePretty n $ check (lam  n (go k) ::: _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.

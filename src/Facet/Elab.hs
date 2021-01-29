@@ -218,7 +218,7 @@ ambiguousName n qs = err $ AmbiguousName n qs
 expectMatch :: Has (Throw Err :+: Trace) sig m => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectFunction :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Maybe Name ::: Type, Type)
+expectFunction :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Either Name [Type] ::: Type, Type)
 expectFunction = expectMatch (\case{ VTArrow n t b -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _"
 
 
