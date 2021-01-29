@@ -28,15 +28,13 @@ rethrowElabErrors src = L.runThrow rethrow
     , nest 2 (pretty "Trace" <\> concatWith (<\>) callStack)
     ]
     where
-    (_, _, printCtx, ctx) = foldl combine (0, Nil, Nil, Nil) (elems context)
-  combine (d, sort, print, ctx) e =
+    (_, printCtx, ctx) = foldl combine (0, Nil, Nil) (elems context)
+  combine (d, print, ctx) e =
     let _T = entryType e
-        s = entrySort e
         n' = case e of
           Rigid s n _ -> name s n d
           Flex  m _ _ -> Print.meta m
     in  ( succ d
-        , sort :> s
         , case e of
           Flex{} -> print
           _      -> print :> n'
