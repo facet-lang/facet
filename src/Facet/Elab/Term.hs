@@ -39,7 +39,7 @@ import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Core hiding (bindPattern, global)
+import           Facet.Core hiding (global)
 import           Facet.Effect.Trace
 import           Facet.Effect.Write
 import           Facet.Elab

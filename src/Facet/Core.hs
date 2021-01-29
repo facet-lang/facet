@@ -18,7 +18,6 @@ module Facet.Core
 , pvar
 , pcon
 , fill
-, bindPattern
   -- * Modules
 , Module(..)
 , name_
@@ -158,9 +157,6 @@ pcon = PVal . PCon
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)
-
-bindPattern :: Traversable t => Level -> t a -> (Level, t Type)
-bindPattern = fill (\ d -> (succ d, free d))
 
 
 -- Modules
