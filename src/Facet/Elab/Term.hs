@@ -163,6 +163,7 @@ conP n ps = Bind $ \ sig _A b -> Check $ \ _B -> do
 fieldsP :: Has (Throw Err :+: Trace) sig m => [Bind m a] -> Bind m [a]
 fieldsP [] = Bind $ \ _ _ b -> ([],) <$> b
 fieldsP (p:ps) = Bind $ \ sig _A b -> Check $ \ _B -> do
+  -- FIXME: assert that the signature is empty
   (_ ::: _A', _A'') <- expectFunction "when checking nested pattern" _A
   (p, (ps, b')) <- check (bind (p ::: (sig, _A')) (bind (fieldsP ps ::: (sig, _A'')) b) ::: _B)
   pure (p:ps, b')
