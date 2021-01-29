@@ -60,8 +60,8 @@ import           Prelude hiding (zip, zipWith)
 data Type
   = VKType
   | VKInterface
-  | VTForAll (Name ::: Type) (Type -> Type)
-  | VTArrow (Maybe Name ::: Type) Type
+  | VTForAll Name Type (Type -> Type)
+  | VTArrow (Maybe Name) Type Type
   | VTNe (Var Level :$ TElim)
   | VTComp [Type] Type
   | VTString
@@ -106,8 +106,8 @@ occursIn p = go
   go d = \case
     VKType         -> False
     VKInterface    -> False
-    VTForAll t b   -> go d (ty t) || go (succ d) (b (free d))
-    VTArrow a b    -> go d (ty a) || go d b
+    VTForAll _ t b -> go d t || go (succ d) (b (free d))
+    VTArrow _ a b  -> go d a || go d b
     VTComp s t     -> any (go d) s || go d t
     VTNe (h :$ sp) -> p h || any (elim d) sp
     VTString       -> False
@@ -121,7 +121,7 @@ occursIn p = go
 
 ($$) :: HasCallStack => Type -> TElim -> Type
 VTNe (h :$ es) $$ a = VTNe (h :$ (es :> a))
-VTForAll _ b   $$ a = b (case a of
+VTForAll _ _ b $$ a = b (case a of
   TEInst a -> a
   TEApp  a -> a) -- FIXME: technically this should only ever be TEInst
 _              $$ _ = error "can’t apply non-neutral/forall type"
@@ -240,8 +240,8 @@ data TExpr
   | TType
   | TInterface
   | TString
-  | TForAll (Name ::: TExpr) TExpr
-  | TArrow (Maybe Name ::: TExpr) TExpr
+  | TForAll Name TExpr TExpr
+  | TArrow (Maybe Name) TExpr TExpr
   | TComp [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
@@ -265,8 +265,8 @@ quote :: Level -> Type -> TExpr
 quote d = \case
   VKType         -> TType
   VKInterface    -> TInterface
-  VTForAll t b   -> TForAll (quote d <$> t) (quote (succ d) (b (free d)))
-  VTArrow a b    -> TArrow (quote d <$> a) (quote d b)
+  VTForAll n t b -> TForAll n (quote d t) (quote (succ d) (b (free d)))
+  VTArrow n a b  -> TArrow n (quote d a) (quote d b)
   VTComp s t     -> TComp (quote d <$> s) (quote d t)
   VTNe (n :$ sp) -> foldl' (\ head -> \case
     TEInst a -> TInst head (quote d a)
@@ -275,12 +275,12 @@ quote d = \case
 
 eval :: HasCallStack => Stack Type -> IntMap.IntMap Type -> TExpr -> Type
 eval env metas = \case
-  TVar v      -> unVar global ((env !) . getIndex) metavar v
-  TType       -> VKType
-  TInterface  -> VKInterface
-  TForAll t b -> VTForAll (eval env metas <$> t) (\ v -> eval (env :> v) metas b)
-  TArrow a b  -> VTArrow (eval env metas <$> a) (eval env metas b)
-  TComp s t   -> VTComp (eval env metas <$> s) (eval env metas t)
-  TInst f a   -> eval env metas f $$ TEInst (eval env metas a)
-  TApp  f a   -> eval env metas f $$ TEApp (eval env metas a)
-  TString     -> VTString
+  TVar v        -> unVar global ((env !) . getIndex) metavar v
+  TType         -> VKType
+  TInterface    -> VKInterface
+  TForAll n t b -> VTForAll n (eval env metas t) (\ v -> eval (env :> v) metas b)
+  TArrow n a b  -> VTArrow n (eval env metas a) (eval env metas b)
+  TComp s t     -> VTComp (eval env metas <$> s) (eval env metas t)
+  TInst f a     -> eval env metas f $$ TEInst (eval env metas a)
+  TApp  f a     -> eval env metas f $$ TEApp (eval env metas a)
+  TString       -> VTString

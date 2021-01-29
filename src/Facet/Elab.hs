@@ -128,10 +128,10 @@ instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a :::
 instantiate inst = go
   where
   go (e ::: _T) = case _T of
-    VTForAll (_ ::: _T) _B -> do
+    VTForAll _ _T _B -> do
       m <- meta (Nothing ::: _T)
       go (inst e (TVar (Metavar m)) ::: _B (metavar m))
-    _                             -> pure $ e ::: _T
+    _                -> pure $ e ::: _T
 
 
 hole :: Has (Throw Err :+: Trace) sig m => Name -> Check m a
@@ -219,7 +219,7 @@ expectMatch :: Has (Throw Err :+: Trace) sig m => (Type -> Maybe out) -> String 
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectFunction :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Maybe Name ::: Type, Type)
-expectFunction = expectMatch (\case{ VTArrow t b -> pure (t, b) ; _ -> Nothing }) "_ -> _"
+expectFunction = expectMatch (\case{ VTArrow n t b -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Unification
@@ -272,9 +272,9 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (VKType, _)                                          -> nope
     (VKInterface, VKInterface)                           -> pure ()
     (VKInterface, _)                                     -> nope
-    (VTForAll t1 b1, VTForAll t2 b2)                     -> do { type' (ty t1) (ty t2) ; d <- depth ; first Just t1 |- type' (b1 (free d)) (b2 (free d)) }
+    (VTForAll n t1 b1, VTForAll _ t2 b2)                 -> do { type' t1 t2 ; d <- depth ; Just n ::: t1 |- type' (b1 (free d)) (b2 (free d)) }
     (VTForAll{}, _)                                      -> nope
-    (VTArrow a1 b1, VTArrow a2 b2)                       -> type' (ty a1) (ty a2) >> type' b1 b2
+    (VTArrow _ a1 b1, VTArrow _ a2 b2)                   -> type' a1 a2 >> type' b1 b2
     (VTArrow{}, _)                                       -> nope
     (VTComp s1 t1, VTComp s2 t2)                         -> sig s1 s2 >> type' t1 t2
     (VTComp{}, _)                                        -> nope

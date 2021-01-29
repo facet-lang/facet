@@ -108,7 +108,7 @@ elabPattern = go
       case lookupInSig n mod graph sig of
         Just (q ::: _T') -> do
           _T'' <- inst _T'
-          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow (Nothing ::: _T) (VTComp sig _A') in Just v ::: t |- k (PEff q (fromList ps') (v ::: t))
+          subpatterns _T'' ps $ \ _T ps' -> let t = VTArrow Nothing _T (VTComp sig _A') in Just v ::: t |- k (PEff q (fromList ps') (v ::: t))
         _                -> freeVariable n
     -- FIXME: warn if using PAll with an empty sig.
     S.PAll n -> Just n ::: _A |- k (PVar (n  ::: _A))
@@ -122,8 +122,8 @@ elabPattern = go
       subpatterns _T'' ps $ \ _T ps' -> unify _T _A *> k (PCon (q :$ fromList ps'))
 
   inst = \case
-    VTForAll (_ ::: _T) _B -> meta (Nothing ::: _T) >>= inst . _B . metavar
-    _T                     -> pure _T
+    VTForAll _ _T _B -> meta (Nothing ::: _T) >>= inst . _B . metavar
+    _T               -> pure _T
   subpatterns = flip $ foldr
     (\ p rest _A k -> do
       -- FIXME: assert that the signature is empty
@@ -172,15 +172,15 @@ abstract :: Has Trace sig m => Elab m TExpr -> Type -> Elab m TExpr
 abstract body = go
   where
   go = \case
-    VTForAll (     n ::: t) b -> do
+    VTForAll       n  t b -> do
       level <- depth
       b' <- Just n ::: t |- go (b (free level))
-      pure $ TForAll (n ::: quote level t) b'
-    VTArrow  (Just n ::: a) b -> do
+      pure $ TForAll n (quote level t) b'
+    VTArrow  (Just n) a b -> do
       level <- depth
       b' <- Just n ::: a |- go b
-      pure $ TForAll (n ::: quote level a) b'
-    _                         -> body
+      pure $ TForAll n (quote level a) b'
+    _                     -> body
 
 
 -- Declarations
@@ -206,8 +206,8 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
       -- FIXME: earlier indices should be shifted
       -- FIXME: XTLam is only for the type parameters
       -- type parameters presumably shouldn’t be represented in the elaborated data
-      VTForAll (_ ::: _T) _B -> XTLam (go (fs :> XVar (Free (Index 0))) (_B (free (Level (length fs)))))
-      _T                     -> XCon (q :$ fs)
+      VTForAll _ _T _B -> XTLam (go (fs :> XVar (Free (Index 0))) (_B (free (Level (length fs)))))
+      _T               -> XCon (q :$ fs)
 
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Trace) sig m
@@ -232,12 +232,12 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
   elab $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    VTForAll (n ::: _) _     -> tracePretty n $ check (tlam n (go k) ::: _T)
-    VTArrow (Just n ::: _) _ -> tracePretty n $ check (lam  n (go k) ::: _T)
+    VTForAll      n  _ _ -> tracePretty n $ check (tlam n (go k) ::: _T)
+    VTArrow (Just n) _ _ -> tracePretty n $ check (lam  n (go k) ::: _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                        -> check (k ::: _T)
+    _                    -> check (k ::: _T)
 
 -- - we shouldn’t instantiate with the sig var
 -- - we should unify sig vars in application rule (but not specialize thus)
@@ -288,7 +288,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 -- Errors
 
 expectQuantifier :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Name ::: Type, Type -> Type)
-expectQuantifier = expectMatch (\case{ VTForAll t b -> pure (t, b) ; _ -> Nothing }) "{_} -> _"
+expectQuantifier = expectMatch (\case{ VTForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
 
 expectComp :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m ([Type], Type)
 expectComp = expectMatch (\case { VTComp s t -> pure (s, t) ; _ -> Nothing }) "{_}"

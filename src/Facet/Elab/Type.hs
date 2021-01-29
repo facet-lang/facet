@@ -49,13 +49,13 @@ forAll n t b = Synth $ do
   eval <- gets evalIn
   let vt = eval t'
   b' <- Just n ::: vt |- check (b ::: VKType)
-  pure $ TForAll (n ::: t') b' ::: VKType
+  pure $ TForAll n t' b' ::: VKType
 
 (-->) :: Has Trace sig m => Maybe Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
 (n ::: a) --> b = Synth $ do
   a' <- check (a ::: VKType)
   b' <- check (b ::: VKType)
-  pure $ TArrow (n ::: a') b' ::: VKType
+  pure $ TArrow n a' b' ::: VKType
 
 infixr 1 -->
 
