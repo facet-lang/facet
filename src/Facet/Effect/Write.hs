@@ -12,4 +12,4 @@ import Control.Algebra
 import Data.Kind (Type)
 
 data Write a (m :: Type -> Type) k where
-  Write :: a -> Write a m k
+  Write :: a -> Write a m ()
