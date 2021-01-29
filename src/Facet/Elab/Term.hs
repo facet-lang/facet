@@ -21,7 +21,7 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens ((.=))
+import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
 import           Data.Foldable
@@ -51,10 +51,10 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m => Q Name -> Synth m Expr
+var :: Has (Throw Err :+: Trace) sig m => Q Name -> Synth m Expr
 var n = Synth $ trace "var" $ get >>= \ ctx -> if
   | Just (i, _T) <- lookupInContext n ctx -> pure (XVar (Free i) ::: _T)
-  | otherwise                             -> ask >>= \ sig -> asks (\ ElabContext{ module', graph } -> lookupInSig n module' graph (interfaces sig)) >>= \case
+  | otherwise                             -> view sig_ >>= \ sig -> asks (\ ElabContext{ module', graph } -> lookupInSig n module' graph (interfaces sig)) >>= \case
     Just (n ::: _T) -> instantiate XInst (XOp n ::: _T)
     _ -> do
       n :=: _ ::: _T <- resolveQ n
@@ -74,7 +74,7 @@ lam n b = Check $ \ _T -> trace "lam" $ do
   b' <- Just n ::: _A |- check (b ::: _B)
   pure $ XLam [(PVar n, b')]
 
-thunk :: Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m => Check m a -> Check m a
+thunk :: Has Trace sig m => Check m a -> Check m a
 thunk e = Check $ trace "thunk" . \case
   VTComp (Sig s) t -> extendSig (Just s) $ check (e ::: t)
   t                -> check (e ::: t)
@@ -88,7 +88,7 @@ force e = Synth $ trace "force" $ do
 
 
 -- FIXME: go find the pattern matching matrix algorithm
-elabClauses :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => [S.Clause] -> Check m Expr
+elabClauses :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => [S.Clause] -> Check m Expr
 elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = mapCheck (trace "elabClauses") $ lam n $ checkExpr b
 elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
   -- FIXME: use the signature to elaborate the pattern
@@ -97,7 +97,7 @@ elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
 
 
 -- FIXME: check for unique variable names
-elabPattern :: Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m => Type -> S.Ann S.EffPattern -> (Pattern (Name ::: Type) -> Elab m a) -> Elab m a
+elabPattern :: Has (Throw Err :+: Trace) sig m => Type -> S.Ann S.EffPattern -> (Pattern (Name ::: Type) -> Elab m a) -> Elab m a
 elabPattern = go
   where
   go _A (S.Ann s _ p) k = trace "elabPattern" $ setSpan s $ case p of
@@ -138,7 +138,7 @@ string :: Text -> Synth m Expr
 string s = Synth $ pure $ XString s ::: VTString
 
 
-synthExpr :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Synth m Expr
+synthExpr :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Synth m Expr
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   S.Var n    -> var n
   S.App f a  -> app XApp (synthExpr f) (checkExpr a)
@@ -151,7 +151,7 @@ synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr :: (HasCallStack, Has (Reader (Sig Type) :+: Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Check m Expr
+checkExpr :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Check m Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e of
   S.Hole  n  -> hole n
   S.Lam cs   -> elabClauses cs
@@ -168,7 +168,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (trace "checkExpr" . setSpan s) $ case e
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstract :: Has (Throw Err :+: Trace) sig m => Elab m TExpr -> Type -> Elab m TExpr
+abstract :: Has Trace sig m => Elab m TExpr -> Type -> Elab m TExpr
 abstract body = go
   where
   go = \case
@@ -229,7 +229,7 @@ elabTermDef
   -> S.Ann S.Expr
   -> m Expr
 elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
-  runReader (Sig @Type []) $ elab $ Just (U "ε") ::: free (Level 0) |- check (go (checkExpr expr) ::: _T)
+  elab $ Just (U "ε") ::: free (Level 0) |- check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
     VTForAll (n ::: _) _     -> tracePretty n $ check (tlam n (go k) ::: _T)
