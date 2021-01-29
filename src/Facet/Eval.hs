@@ -9,7 +9,7 @@ module Facet.Eval
 ) where
 
 import Control.Monad.Trans.Class
-import Facet.Core.Term
+import Facet.Core.Term hiding (Value)
 import Facet.Name
 import Facet.Syntax
 
