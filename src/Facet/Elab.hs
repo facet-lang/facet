@@ -226,7 +226,7 @@ data Warn = Warn
   }
 
 data WarnReason
-  = RedundantCatchAll
+  = RedundantCatchAll Name
 
 
 -- Patterns
