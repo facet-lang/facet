@@ -7,15 +7,12 @@ module Facet.Syntax
 , (:$)(..)
 , splitl
 , splitr
-, Icit(..)
-, unPl
 ) where
 
 import Data.Bifoldable
 import Data.Bifunctor
 import Data.Bitraversable
 import Data.Functor.Classes
-import Facet.Semiring
 import Facet.Stack
 
 data a ::: b = a ::: b
@@ -109,29 +106,3 @@ splitr un = go id
   go as t = case un t of
     Just (a, t') -> go (as . (a:)) t'
     Nothing      -> (as [], t)
-
-
--- | Im/explicit.
-data Icit
-  = Im
-  | Ex
-  deriving (Bounded, Enum, Eq, Ord, Show)
-
-instance Semigroup Icit where
-  Im <> Im = Im
-  _  <> _  = Ex
-
-instance Monoid Icit where
-  mempty = Im
-
-instance Semiring Icit where
-  Ex >< Ex = Ex
-  _  >< _  = Im
-
-instance Unital Icit where
-  one = Ex
-
-unPl :: a -> a -> Icit -> a
-unPl im ex = \case
-  Im -> im
-  Ex -> ex
