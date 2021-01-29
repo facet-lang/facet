@@ -8,6 +8,8 @@ module Facet.Elab.Term
 , thunk
 , force
 , string
+  -- * Pattern combinators
+, wildcardP
   -- * Expression elaboration
 , synthExpr
 , checkExpr
@@ -139,6 +141,13 @@ elabPattern = go
 
 string :: Text -> Synth m Expr
 string s = Synth $ pure $ XString s ::: VTString
+
+
+-- Pattern combinators
+
+wildcardP :: Bind m (ValuePattern Name)
+-- FIXME: add PWildcard to ValuePattern
+wildcardP = Bind $ \ _ _ -> fmap (PVar __,)
 
 
 -- Expression elaboration
