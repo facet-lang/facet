@@ -13,6 +13,7 @@ module Facet.Elab.Term
 , varP
 , conP
 , fieldsP
+, allP
   -- * Expression elaboration
 , synthExpr
 , checkExpr
@@ -167,6 +168,10 @@ fieldsP (p:ps) = Bind $ \ sig _A b -> Check $ \ _B -> do
   (_ ::: _A', _A'') <- expectFunction "when checking nested pattern" _A
   (p, (ps, b')) <- check (bind (p ::: (sig, _A')) (bind (fieldsP ps ::: (sig, _A'')) b) ::: _B)
   pure (p:ps, b')
+
+
+allP :: Has Trace sig m => Name -> Bind m (Pattern Name)
+allP n = Bind $ \ _sig _A b -> Check $ \ _B -> Just n ::: _A |- (pvar n,) <$> check (b ::: _B)
 
 
 -- Expression elaboration
