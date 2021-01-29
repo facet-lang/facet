@@ -149,7 +149,7 @@ printTExpr env = \case
   C.TForAll n t b       -> braces (ann (intro n d ::: printTExpr env t)) --> printTExpr (env :> intro n d) b
   C.TArrow Nothing a b  -> printTExpr env a --> printTExpr env b
   C.TArrow (Just n) a b -> parens (ann (intro n d ::: printTExpr env a)) --> printTExpr env b
-  C.TComp s t           -> sig s <+> printTExpr env t
+  C.TComp s t           -> braces (sig s <+> printTExpr env t)
   C.TInst f t           -> group (printTExpr env f) $$ group (braces (printTExpr env t))
   C.TApp f a            -> group (printTExpr env f) $$ group (printTExpr env a)
   C.TString             -> annotate Type $ pretty "String"
