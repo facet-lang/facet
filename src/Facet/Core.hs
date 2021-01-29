@@ -136,11 +136,13 @@ infixl 9 $$, $$*
 
 -- Patterns
 
+-- FIXME: add wildcards
 data ValuePattern a
   = PVar a
   | PCon (Q Name :$ ValuePattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+-- FIXME: add PAll
 data Pattern a
   = PEff (Q Name) (Stack (Pattern a)) a
   | PVal (ValuePattern a)
