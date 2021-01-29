@@ -79,11 +79,14 @@ tlam n b = Check $ \ _T -> trace "tlam" $ do
   b' <- Just n ::: _A |- check (b ::: _B (free d))
   pure $ XTLam b'
 
-lam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
-lam n b = Check $ \ _T -> trace "lam" $ do
-  (_ ::: _A, _B) <- expectFunction "when checking lambda" _T
-  b' <- Just n ::: _A |- check (b ::: _B)
-  pure $ XLam [(pvar n, b')]
+lam :: Has (Throw Err :+: Trace) sig m => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
+lam cs = Check $ \ _T -> XLam <$> traverse (check . (::: _T) . uncurry clause) cs
+
+clause :: Has (Throw Err :+: Trace) sig m => Bind m (Pattern Name) -> Check m Expr -> Check m (Pattern Name, Expr)
+clause p b = Check $ \ _T -> do
+  (_A, _B) <- expectTacitFunction "when checking clause" _T
+  check (bind (p ::: _A) b ::: _B)
+
 
 thunk :: Has Trace sig m => Check m a -> Check m a
 thunk e = Check $ trace "thunk" . \case
@@ -100,7 +103,7 @@ force e = Synth $ trace "force" $ do
 
 -- FIXME: go find the pattern matching matrix algorithm
 elabClauses :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => [S.Clause] -> Check m Expr
-elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = mapCheck (trace "elabClauses") $ lam n $ checkExpr b
+elabClauses [S.Clause (S.Ann _ _ (S.PVal (S.Ann _ _ (S.PVar n)))) b] = mapCheck (trace "elabClauses") $ lam [(PVal <$> varP n, checkExpr b)]
 elabClauses cs = Check $ \ _T -> trace "elabClauses" $ do
   -- FIXME: use the signature to elaborate the pattern
   (_ ::: _A, _B) <- expectFunction "when checking clauses" _T
@@ -294,12 +297,12 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
   elab $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    VTForAll      n  _ _ -> tracePretty n $ check (tlam n (go k) ::: _T)
-    VTArrow (Left n) _ _ -> tracePretty n $ check (lam  n (go k) ::: _T)
+    VTForAll      n   _  _ -> tracePretty n $ check (tlam n (go k) ::: _T)
+    VTArrow (Left n) _A _B -> tracePretty n $ check (lam [(PVal <$> varP n, go k)] ::: VTArrow (Right []) _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                    -> check (k ::: _T)
+    _                      -> check (k ::: _T)
 
 -- - we shouldn’t instantiate with the sig var
 -- - we should unify sig vars in application rule (but not specialize thus)
@@ -351,6 +354,10 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 expectQuantifier :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Name ::: Type, Type -> Type)
 expectQuantifier = expectMatch (\case{ VTForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
+
+-- | Expect a tacit (non-variable-binding) function type.
+expectTacitFunction :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (([Type], Type), Type)
+expectTacitFunction = expectMatch (\case{ VTArrow (Right s) t b -> pure ((s, t), b) ; _ -> Nothing }) "_ -> _"
 
 expectComp :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m ([Type], Type)
 expectComp = expectMatch (\case { VTComp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
