@@ -142,9 +142,9 @@ data ValuePattern a
   | PCon (Q Name :$ ValuePattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
--- FIXME: add PAll
 data Pattern a
   = PEff (Q Name) (Stack (Pattern a)) a
+  | PAll a
   | PVal (ValuePattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 

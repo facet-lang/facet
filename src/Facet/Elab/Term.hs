@@ -132,7 +132,7 @@ fieldsP = foldr cons
 allP :: Has (Trace :+: Write Warn) sig m => Name -> Bind m (Pattern Name)
 allP n = Bind $ \ sig _A b -> Check $ \ _B -> do
   unless (null sig) (warn (RedundantCatchAll n))
-  Just n ::: _A |- (pvar n,) <$> check (b ::: _B)
+  Just n ::: _A |- (PAll n,) <$> check (b ::: _B)
 
 effP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
