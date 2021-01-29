@@ -54,7 +54,6 @@ import Control.Carrier.Reader
 import Control.Carrier.State.Church
 import Control.Effect.Empty
 import Control.Effect.Lens (view)
-import Control.Effect.Writer
 import Control.Lens (Lens', lens)
 import Control.Monad (unless)
 import Data.Bifunctor (first)
@@ -64,6 +63,7 @@ import Data.Semialign.Exts
 import Facet.Carrier.Trace.Output as Trace
 import Facet.Context as Context
 import Facet.Core
+import Facet.Effect.Write
 import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
@@ -231,10 +231,10 @@ data WarnReason
   = RedundantCatchAll Name
 
 
-warn :: Has (Writer Warn) sig m => WarnReason -> Elab m ()
+warn :: Has (Write Warn) sig m => WarnReason -> Elab m ()
 warn reason = do
   span <- view span_
-  tell $ Warn span reason
+  write $ Warn span reason
 
 
 -- Patterns
