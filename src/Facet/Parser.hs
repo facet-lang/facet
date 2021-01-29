@@ -30,7 +30,6 @@ import           Data.Functor (void)
 import qualified Data.HashSet as HashSet
 import qualified Data.List.NonEmpty as NE
 import           Data.Text (pack)
-import qualified Data.Text as Text
 import           Facet.Effect.Parser
 import qualified Facet.Name as N
 import           Facet.Parser.Table as Op
