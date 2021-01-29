@@ -175,7 +175,7 @@ printTExpr env = \case
   C.TVar v                   -> C.unVar (group . qvar) (\ d -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d) meta v
   C.TType                    -> annotate Type $ pretty "Type"
   C.TInterface               -> annotate Type $ pretty "Interface"
-  C.TForAll (n ::: t) b      -> parens (ann (intro n d ::: printTExpr env t)) --> printTExpr env b
+  C.TForAll (n ::: t) b      -> parens (ann (intro n d ::: printTExpr env t)) --> printTExpr (env :> intro n d) b
   C.TArrow (Nothing ::: a) b -> printTExpr env a --> printTExpr env b
   C.TArrow (Just n ::: a) b  -> parens (ann (intro n d ::: printTExpr env a)) --> printTExpr env b
   C.TComp s t                -> sig s <+> printTExpr env t
