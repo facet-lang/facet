@@ -51,7 +51,7 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
-import           Facet.Name hiding (bind)
+import           Facet.Name
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
