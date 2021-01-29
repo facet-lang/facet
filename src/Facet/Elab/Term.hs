@@ -30,7 +30,6 @@ import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Core hiding (global)
-import           Facet.Effect.Time.System
 import           Facet.Effect.Trace
 import           Facet.Elab
 import           Facet.Elab.Type
@@ -187,7 +186,7 @@ abstract body = go
 -- Declarations
 
 elabDataDef
-  :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
+  :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Trace) sig m
   => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Maybe Def ::: Type]
@@ -211,7 +210,7 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
       _T                     -> XCon (q :$ fs)
 
 elabInterfaceDef
-  :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m
+  :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Trace) sig m
   => Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m (Maybe Def ::: Type)
@@ -225,7 +224,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
-  :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Time Instant :+: Trace) sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Trace) sig m)
   => Type
   -> S.Ann S.Expr
   -> m Expr
@@ -252,7 +251,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
 -- Modules
 
 elabModule
-  :: (HasCallStack, Has (Reader Graph :+: Throw Err :+: Time Instant :+: Trace) sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Throw Err :+: Trace) sig m)
   => S.Ann S.Module
   -> m Module
 elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader mname . runReader s $ trace (prettyMName mname) $ do
