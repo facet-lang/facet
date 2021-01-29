@@ -185,7 +185,7 @@ effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
       _ ::: _T' <- instantiate const (() ::: _T)
       (ps', b') <- check (bind (fieldsP ps ::: (sig, _T')) b ::: _B)
       pure (PEff q (PVal <$> fromList ps') v, b')
-    _                -> freeVariable n
+    _               -> freeVariable n
 
 
 -- Expression elaboration
