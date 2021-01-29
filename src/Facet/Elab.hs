@@ -37,6 +37,9 @@ module Facet.Elab
 , mapCheck
 , Synth(..)
 , mapSynth
+, bind
+, Bind(..)
+, mapBind
 ) where
 
 import Control.Algebra
@@ -342,3 +345,13 @@ instance Functor (Synth m) where
 
 mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m b
 mapSynth f = Synth . f . synth
+
+
+bind :: Bind m a ::: ([Type], Type) -> Check m b -> Check m (a, b)
+bind (p ::: (s, _T)) = runBind p s _T
+
+newtype Bind m a = Bind { runBind :: forall x . [Type] -> Type -> Check m x -> Check m (a, x) }
+  deriving (Functor)
+
+mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
+mapBind f m = Bind $ \ sig _A b -> mapCheck f (runBind m sig _A b)
