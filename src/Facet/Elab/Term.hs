@@ -87,7 +87,7 @@ lam cs = Check $ \ _T -> do
 
 thunk :: Has Trace sig m => Check m a -> Check m a
 thunk e = Check $ trace "thunk" . \case
-  VTComp s t -> extendSig (Just s) $ check (e ::: t)
+  VTComp s t -> extendSig s $ check (e ::: t)
   t          -> check (e ::: t)
 
 force :: Has (Throw Err :+: Trace) sig m => Synth m a -> Synth m a
@@ -309,8 +309,8 @@ expectComp = expectMatch (\case { VTComp s t -> pure (s, t) ; _ -> Nothing }) "{
 
 -- Elaboration
 
-extendSig :: Has (Reader ElabContext) sig m => Maybe [Type] -> m a -> m a
-extendSig = maybe id (locally sig_ . (++))
+extendSig :: Has (Reader ElabContext) sig m => [Type] -> m a -> m a
+extendSig = locally sig_ . (++)
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
