@@ -8,6 +8,7 @@ module Facet.Elab.Term
 , thunk
 , force
 , string
+  -- * Expression elaboration
 , synthExpr
 , checkExpr
   -- * Declarations
@@ -139,6 +140,8 @@ elabPattern = go
 string :: Text -> Synth m Expr
 string s = Synth $ pure $ XString s ::: VTString
 
+
+-- Expression elaboration
 
 synthExpr :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Expr -> Synth m Expr
 synthExpr (S.Ann s _ e) = mapSynth (trace "synthExpr" . setSpan s) $ case e of
