@@ -168,10 +168,10 @@ tvar = anned (S.TVar <$> qname tname)
 
 
 compType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-compType = anned $ braces (S.TComp <$> option [] sig <*> type')
+compType = anned $ braces (S.TComp <$> option [] signature <*> type')
 
-sig :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Interface]
-sig = brackets (commaSep delta) <?> "signature"
+signature :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Interface]
+signature = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
