@@ -55,7 +55,6 @@ import Data.Semialign.Exts
 import Facet.Carrier.Trace.Output as Trace
 import Facet.Context as Context
 import Facet.Core
-import Facet.Effect.Time.System
 import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
@@ -312,7 +311,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
 newtype Elab m a = Elab { runElab :: ReaderC ElabContext (StateC Context (FreshC m)) a }
   deriving (Algebra (Reader ElabContext :+: State Context :+: Fresh :+: sig), Applicative, Functor, Monad)
 
-elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span :+: Throw Err :+: Time Instant :+: Trace) sig m => Elab m a -> m a
+elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m a -> m a
 elab m = evalFresh 0 . evalState Context.empty $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
