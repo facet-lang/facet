@@ -1,10 +1,12 @@
 module Facet.Notice.Elab
 ( -- * Elaboration
   rethrowElabErrors
+, rethrowElabWarnings
 ) where
 
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
+import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
 import           Facet.Core (Type)
 import           Facet.Elab as Elab
@@ -63,6 +65,16 @@ printErrReason ctx = group . \case
     let _T' = printType' ctx _T
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
+
+
+rethrowElabWarnings :: Source -> L.WriteC (Notice (Doc Style)) Warn m a -> m a
+rethrowElabWarnings src = L.runWrite inject
+  where
+  inject Elab.Warn{ span, reason } = Notice.Notice (Just Notice.Warn) (Just (slice src span)) (printWarnReason reason) []
+
+printWarnReason :: WarnReason -> Doc Style
+printWarnReason = \case
+  RedundantCatchAll n -> fillSep [reflow "redundant catch all pattern", pretty n]
 
 
 printType' :: Stack Print -> Type -> Doc Style
