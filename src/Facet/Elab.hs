@@ -331,7 +331,7 @@ check (m ::: _T) = trace "check" $ runCheck m _T
 
 -- FIXME: it’d be pretty cool if this produced a witness for the satisfaction of the checked type.
 newtype Check m a = Check { runCheck :: Type -> Elab m a }
-  deriving (Functor) via ReaderC Type (Elab m)
+  deriving (Applicative, Functor) via ReaderC Type (Elab m)
 
 mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
 mapCheck f m = Check $ \ _T -> f (runCheck m _T)
