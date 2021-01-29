@@ -135,8 +135,8 @@ f $$ a = askingPrec $ \case
 ($$*) :: Foldable t => Print -> t Print -> Print
 ($$*) = fmap group . foldl' ($$)
 
-(>~>) :: ((Icit, Print) ::: Print) -> Print -> Print
-((pl, n) ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (unPl braces parens pl (space <> ann (setPrec Var n ::: t) <> line))) </> arrow <+> b)
+(>~>) :: Print ::: Print -> Print -> Print
+(n ::: t) >~> b = prec FnR (flatAlt (column (\ i -> nesting (\ j -> stimes (j + 3 - i) space))) mempty <> group (align (braces (space <> ann (setPrec Var n ::: t) <> line))) </> arrow <+> b)
 
 
 -- Core printers
@@ -149,7 +149,7 @@ printType env = \case
     let (vs, (_, b')) = splitr C.unBind' (d, C.VTForAll t b)
         binding env (n ::: _T) =
           let _T' = printType env _T
-          in  (env :> tvar env ((Im, n) ::: _T'), (Im, [tintro n (Name.Level (length env))] ::: _T'))
+          in  (env :> tvar env (n ::: _T'), [tintro n (Name.Level (length env))] ::: _T')
         (env', vs') = mapAccumL binding env vs
     in fn vs' (printType env' b')
   C.VTArrow (Nothing ::: a) b -> printType env a <+> arrow <+> printType env b
@@ -237,9 +237,9 @@ name f n d = setPrec Var . annotate (Name d) $
     pretty n
 
 -- FIXME: group quantifiers by kind again.
-fn :: Foldable t => t (Icit, [Print] ::: Print) -> Print -> Print
-fn = flip (foldr (\ (pl, n ::: _T) b -> case n of
+fn :: Foldable t => t ([Print] ::: Print) -> Print -> Print
+fn = flip (foldr (\ (n ::: _T) b -> case n of
   [] -> _T --> b
-  _  -> ((pl, group (commaSep n)) ::: _T) >~> b))
-tvar env n = group (tlocal (snd (tm n)) (Name.Level (length env)))
+  _  -> (group (commaSep n) ::: _T) >~> b))
+tvar env n = group (tlocal (tm n) (Name.Level (length env)))
 app f as = group f $$* fmap group as
