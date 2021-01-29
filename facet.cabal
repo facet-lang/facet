@@ -69,6 +69,7 @@ library
     Facet.Carrier.Throw.Inject
     Facet.Carrier.Time.System
     Facet.Carrier.Trace.Output
+    Facet.Carrier.Write.General
     Facet.Carrier.Write.Inject
     Facet.CLI
     Facet.Context
