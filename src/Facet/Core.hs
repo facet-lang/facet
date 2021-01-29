@@ -16,7 +16,6 @@ module Facet.Core
 , Pattern(..)
 , fill
 , bindPattern
-, unsafeUnPVar
   -- * Modules
 , Module(..)
 , name_
@@ -146,11 +145,6 @@ fill f = mapAccumL (const . f)
 
 bindPattern :: Traversable t => Level -> t a -> (Level, t Type)
 bindPattern = fill (\ d -> (succ d, free d))
-
-unsafeUnPVar :: HasCallStack => Pattern a -> a
-unsafeUnPVar = \case
-  PVar a -> a
-  _      -> error "unsafeUnPVar: non-PVar pattern"
 
 
 -- Modules
