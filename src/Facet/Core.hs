@@ -1,9 +1,6 @@
 module Facet.Core
-( -- ** Variables
-  Var(..)
-, unVar
-  -- * Patterns
-, ValuePattern(..)
+( -- * Patterns
+  ValuePattern(..)
 , Pattern(..)
 , pvar
 , pcon
@@ -15,21 +12,6 @@ import Facet.Name
 import Facet.Stack
 import Facet.Syntax
 import Prelude hiding (zip, zipWith)
-
--- Variables
-
-data Var a
-  = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
-  | Free a
-  | Metavar Meta
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-unVar :: (Q Name -> b) -> (a -> b) -> (Meta -> b) -> Var a -> b
-unVar f g h = \case
-  Global  n -> f n
-  Free    n -> g n
-  Metavar n -> h n
-
 
 -- Patterns
 

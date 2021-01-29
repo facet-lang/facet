@@ -1,6 +1,9 @@
 module Facet.Core.Term
-( -- * Term values
-  Value(..)
+( -- * Term variables
+  Var(..)
+, unVar
+  -- * Term values
+, Value(..)
   -- * Term expressions
 , Expr(..)
 ) where
@@ -10,6 +13,21 @@ import Facet.Core
 import Facet.Core.Type
 import Facet.Name
 import Facet.Syntax
+
+-- Term variables
+
+data Var a
+  = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
+  | Free a
+  | Metavar Meta
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+unVar :: (Q Name -> b) -> (a -> b) -> (Meta -> b) -> Var a -> b
+unVar f g h = \case
+  Global  n -> f n
+  Free    n -> g n
+  Metavar n -> h n
+
 
 -- Term values
 
