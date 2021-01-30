@@ -31,9 +31,8 @@ rethrowElabErrors src = L.runThrow rethrow
     ]
     where
     (_, printCtx, ctx) = foldl combine (0, Nil, Nil) (elems context)
-  combine (d, print, ctx) e =
-    let (n', _T) = case e of
-          Rigid n _T -> (intro n d, _T)
+  combine (d, print, ctx) (n ::: _T) =
+    let n' = intro n d
     in  ( succ d
         , print :> n'
         , ctx  :> getPrint (ann (n' ::: printType print _T)) )

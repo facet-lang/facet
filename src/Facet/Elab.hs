@@ -156,7 +156,7 @@ app mk f a = Synth $ trace "app" $ do
 
 
 (|-) :: Has Trace sig m => Name ::: Type -> Elab m a -> Elab m a
-n ::: _T |- b = trace "|-" $ locally context_ (|> Rigid n _T) b
+e |- b = trace "|-" $ locally context_ (|> e) b
 
 infix 1 |-
 
