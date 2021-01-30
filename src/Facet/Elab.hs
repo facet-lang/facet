@@ -164,7 +164,6 @@ n ::: _T |- b = trace "|-" $ do
   modify (|> Rigid n _T)
   a <- b
   let extract (gamma :> Rigid{}) | i == level (Context gamma) = gamma
-      extract (gamma :> e@Flex{})                             = extract gamma :> e
       extract (_     :> _)                                    = error "bad context entry"
       extract Nil                                             = error "bad context"
   a <$ modify (Context . extract . elems)

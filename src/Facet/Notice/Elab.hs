@@ -32,17 +32,11 @@ rethrowElabErrors src = L.runThrow rethrow
     where
     (_, printCtx, ctx) = foldl combine (0, Nil, Nil) (elems context)
   combine (d, print, ctx) e =
-    let _T = entryType e
-        n' = case e of
-          Rigid n _   -> intro n d
-          Flex  m _ _ -> Print.meta m
+    let (n', _T) = case e of
+          Rigid n _T -> (intro n d, _T)
     in  ( succ d
-        , case e of
-          Flex{} -> print
-          _      -> print :> n'
-        , ctx  :> getPrint (ann (n' ::: printType print _T)) <> case e of
-          Flex _ v _ -> space <> pretty '=' <+> maybe (pretty '?') (printType' print) v
-          _          -> mempty )
+        , print :> n'
+        , ctx  :> getPrint (ann (n' ::: printType print _T)) )
 
 
 printErrReason :: Stack Print -> ErrReason -> Doc Style
