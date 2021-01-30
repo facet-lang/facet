@@ -36,6 +36,7 @@ module Facet.Elab
 , Elab(..)
 , depth
 , elab
+, elabType
 , check
 , Check(..)
 , mapCheck
@@ -343,6 +344,13 @@ newtype Elab m a = Elab { runElab :: ReaderC ElabContext (StateC Context (FreshC
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m a -> m a
 elab m = evalFresh 0 . evalState Context.empty $ do
+  ctx <- mkContext
+  runReader ctx . runElab $ m
+  where
+  mkContext = ElabContext <$> ask <*> ask <*> pure [] <*> ask <*> ask
+
+elabType :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m TExpr -> m Type
+elabType m = evalFresh 0 . runState (\ ctx t -> pure (evalIn ctx t)) Context.empty $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
