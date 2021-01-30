@@ -74,9 +74,9 @@ var n = Synth $ trace "var" $ get >>= \ ctx -> if
       synth $ global (n ::: _T)
 
 
-tlam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
-tlam n b = Check $ \ _T -> trace "tlam" $ do
-  (_ ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
+tlam :: Has (Throw Err :+: Trace) sig m => Check m Expr -> Check m Expr
+tlam b = Check $ \ _T -> trace "tlam" $ do
+  (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
   b' <- n ::: _A |- check (b ::: _B (T.free d))
   pure $ XTLam b'
@@ -250,7 +250,7 @@ elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
   elabTerm $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    VTForAll      n   _  _ -> tracePretty n $ check (tlam n (go k) ::: _T)
+    VTForAll      n   _  _ -> tracePretty n $ check (tlam (go k) ::: _T)
     VTArrow (Left n) _A _B -> tracePretty n $ check (lam [(PVal <$> varP n, go k)] ::: VTArrow (Right []) _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
