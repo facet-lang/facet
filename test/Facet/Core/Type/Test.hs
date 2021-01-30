@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Facet.Core.Test
+module Facet.Core.Type.Test
 ( tests
 ) where
 

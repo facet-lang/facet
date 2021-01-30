@@ -153,7 +153,7 @@ test-suite test
   hs-source-dirs: test
   other-modules:
     Facet.Carrier.Parser.Church.Test
-    Facet.Core.Test
+    Facet.Core.Type.Test
     Facet.Source.Test
   main-is: Test.hs
   build-depends:
