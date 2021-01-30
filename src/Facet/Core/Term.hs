@@ -4,6 +4,9 @@ module Facet.Core.Term
 , unVar
   -- * Term values
 , Value(..)
+, global
+, free
+, var
   -- * Term expressions
 , Expr(..)
 ) where
@@ -36,6 +39,17 @@ data Value
   | VCon (Q Name :$ Value)
   | VString Text
   | VOp (Q Name :$ Value)
+
+
+global :: Q Name -> Value
+global = var . Global
+
+free :: Level -> Value
+free = var . Free
+
+
+var :: Var Level -> Value
+var = VNe . (:$ Nil)
 
 
 -- Term expressions
