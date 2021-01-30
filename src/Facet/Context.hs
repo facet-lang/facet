@@ -11,12 +11,10 @@ module Facet.Context
 , toEnv
 , evalIn
 , Suffix
-, (<><)
 , restore
 , replace
 ) where
 
-import           Data.Foldable (foldl')
 import           Facet.Core.Type
 import           Facet.Name
 import qualified Facet.Stack as S
@@ -90,11 +88,6 @@ evalIn = uncurry eval . toEnv
 
 
 type Suffix = [Meta :=: Maybe Type ::: Type]
-
-(<><) :: Context -> Suffix -> Context
-(<><) = foldl' (\ gamma (n :=: v ::: _T) -> gamma |> Flex n v _T)
-
-infixl 5 <><
 
 restore :: Applicative m => m (Maybe Suffix)
 restore = pure Nothing
