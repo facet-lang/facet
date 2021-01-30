@@ -114,3 +114,4 @@ replace a = pure (Just a)
 
 
 newtype Subst = Subst (IntMap.IntMap (Maybe Type ::: Type))
+  deriving (Monoid, Semigroup)
