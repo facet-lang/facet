@@ -1,0 +1,5 @@
+packages: .
+tests: True
+
+package facet
+  ghc-options: -Werror

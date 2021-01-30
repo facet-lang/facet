@@ -2,8 +2,8 @@ cabal-version:       2.2
 
 name:                facet
 version:             0.0.0.0
-synopsis:            algebraic effects for elaboration
--- description:
+synopsis:            a typed functional programming language with effects and handlers
+description:         a typed functional programming language with algebraic effects and handlers
 homepage:            https://github.com/robrix/facet
 bug-reports:         https://github.com/robrix/facet/issues
 license:             BSD-3-Clause
@@ -13,6 +13,8 @@ maintainer:          rob.rix@me.com
 copyright:           2020 Rob Rix
 category:            Language
 
+tested-with:
+  GHC == 8.10.3
 
 common common
   default-language: Haskell2010
@@ -117,6 +119,8 @@ library
     Facet.Timing
   other-modules:
     Paths_facet
+  autogen-modules:
+    Paths_facet
   build-depends:
     , ansi-terminal
     , base ^>= 4.14
@@ -171,3 +175,8 @@ executable facetc
   build-depends:
     , base
     , facet
+
+
+source-repository head
+  type:     git
+  location: https://github.com/robrix/facet
