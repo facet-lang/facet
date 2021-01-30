@@ -15,6 +15,8 @@ module Facet.Context
 , (<><)
 , restore
 , replace
+  -- * Metacontexts
+, Metacontext(..)
 ) where
 
 import           Data.Foldable (foldl')
@@ -109,3 +111,6 @@ restore = pure Nothing
 
 replace :: Applicative m => Suffix -> m (Maybe Suffix)
 replace a = pure (Just a)
+
+
+newtype Metacontext = Metacontext (IntMap.IntMap (Maybe Type ::: Type))
