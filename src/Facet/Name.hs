@@ -8,7 +8,6 @@ module Facet.Name
 , MName
 , prettyMName
 , Q(..)
-, q
 , Name(..)
 , Assoc(..)
 , Op(..)
@@ -68,9 +67,6 @@ data Q a = MName :.: a -- FIXME: use Name on the lhs so we can accommodate datat
 
 instance P.Pretty a => P.Pretty (Q a) where
   pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
-
-q :: [Text] -> a -> Q a
-q m n = fromList m :.: n
 
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.
