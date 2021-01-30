@@ -207,10 +207,8 @@ showType e = Action $ do
   outputDocLn (getPrint (ann (printExpr Nil e ::: printType Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
-  (dEval, e'') <- time $ elab $ runEvalMain (eval (E.eval mempty e'))
-  outputStrLn $ show dElab
-  outputStrLn $ show dEval
+  e' ::: _T <- elab $ Elab.elab $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
+  e'' <- elab $ runEvalMain (eval (E.eval mempty e'))
   outputDocLn (getPrint (ann (printValue Nil e'' ::: printType Nil _T)))
 
 runEvalMain :: Has Output sig m => Eval m a -> m a
