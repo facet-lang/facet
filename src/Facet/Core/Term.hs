@@ -125,7 +125,7 @@ data Expr
   | XApp Expr Expr
   | XCon (Q Name :$ Expr)
   | XString Text
-  | XOp (Q Name) -- FIXME: this should have the arguments
+  | XOp (Q Name)
   deriving (Eq, Ord, Show)
 
 
