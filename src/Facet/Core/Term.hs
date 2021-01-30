@@ -1,7 +1,6 @@
 module Facet.Core.Term
 ( -- * Term variables
   Var(..)
-, unVar
   -- * Patterns
 , ValuePattern(..)
 , Pattern(..)
@@ -44,11 +43,6 @@ data Var a
   = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
   | Free a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-unVar :: (Q Name -> b) -> (a -> b) -> Var a -> b
-unVar f g = \case
-  Global  n -> f n
-  Free    n -> g n
 
 
 -- Patterns
@@ -174,11 +168,12 @@ quote d = \case
 eval :: HasCallStack => IntMap.IntMap T.Type -> Expr -> Value
 eval subst = go Nil Nil where
   go tenv env = \case
-    XVar v         -> unVar global ((env !) . getIndex) v
-    XTLam b        -> VTLam (\ _T -> go (tenv :> _T) env b)
-    XLam cs        -> VLam (map (\ (p, b) -> (p, \ p -> go tenv (foldl' (:>) env p) b)) cs)
-    XInst f a      -> go tenv env f $$$ T.eval subst tenv a
-    XApp  f a      -> go tenv env f $$ go tenv env a
-    XCon (n :$ fs) -> VCon (n :$ (go tenv env <$> fs))
-    XString s      -> VString s
-    XOp n          -> VOp (n :$ Nil)
+    XVar (Global n) -> global n
+    XVar (Free v)   -> env ! getIndex v
+    XTLam b         -> VTLam (\ _T -> go (tenv :> _T) env b)
+    XLam cs         -> VLam (map (\ (p, b) -> (p, \ p -> go tenv (foldl' (:>) env p) b)) cs)
+    XInst f a       -> go tenv env f $$$ T.eval subst tenv a
+    XApp  f a       -> go tenv env f $$ go tenv env a
+    XCon (n :$ fs)  -> VCon (n :$ (go tenv env <$> fs))
+    XString s       -> VString s
+    XOp n           -> VOp (n :$ Nil)
