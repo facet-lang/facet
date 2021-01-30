@@ -2,7 +2,6 @@ module Facet.Context
 ( -- * Contexts
   Context(..)
 , Entry(..)
-, entryType
 , empty
 , (|>)
 , level
@@ -22,10 +21,6 @@ newtype Context = Context { elems :: S.Stack Entry }
 data Entry
   -- FIXME: record implicitness in the context.
   = Rigid Name Type
-
-entryType :: Entry -> Type
-entryType = \case
-  Rigid   _ t -> t
 
 
 empty :: Context
