@@ -12,11 +12,11 @@ module Facet.Core.Term
 , Expr(..)
 ) where
 
-import Data.Text (Text)
-import Facet.Core
-import Facet.Core.Type
-import Facet.Name
-import Facet.Syntax
+import           Data.Text (Text)
+import           Facet.Core
+import qualified Facet.Core.Type as T
+import           Facet.Name
+import           Facet.Syntax
 
 -- Term variables
 
@@ -34,7 +34,7 @@ unVar f g = \case
 -- Term values
 
 data Value
-  = VTLam (Type -> Value)
+  = VTLam (T.Type -> Value)
   | VLam [(Pattern Name, Pattern Value -> Value)]
   | VNe (Var Level :$ Elim)
   | VCon (Q Name :$ Value)
@@ -63,7 +63,7 @@ data Expr
   = XVar (Var Index)
   | XTLam Expr
   | XLam [(Pattern Name, Expr)]
-  | XInst Expr TExpr
+  | XInst Expr T.TExpr
   | XApp Expr Expr
   | XCon (Q Name :$ Expr)
   | XString Text
