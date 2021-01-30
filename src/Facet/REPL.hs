@@ -26,7 +26,6 @@ import           Data.Text (Text)
 import           Facet.Carrier.Parser.Church hiding (Input)
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
-import           Facet.Carrier.Time.System
 import           Facet.Carrier.Trace.Output
 import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
@@ -73,7 +72,6 @@ repl searchPaths
   . evalEmpty
   -- FIXME: move this (and any other flags) into the driver
   . runTrace Nil (toFlag LogTraces False)
-  . runTime
   $ loop
 
 
@@ -111,7 +109,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ "
   plain = setSGRCode [] <> "\STX"
 
 
-loop :: (Has (Empty :+: Input :+: Output :+: State (Flag LogTraces) :+: State REPL :+: Time Instant :+: Trace) sig m, MonadIO m) => m ()
+loop :: (Has (Empty :+: Input :+: Output :+: State (Flag LogTraces) :+: State REPL :+: Trace) sig m, MonadIO m) => m ()
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
@@ -162,7 +160,7 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State (Flag LogTraces) :+: State REPL :+: Time Instant :+: Trace :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State (Flag LogTraces) :+: State REPL :+: Trace :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action
