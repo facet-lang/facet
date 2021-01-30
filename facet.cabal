@@ -3,7 +3,7 @@ cabal-version:       2.2
 name:                facet
 version:             0.0.0.0
 synopsis:            a typed functional programming language with effects and handlers
--- description:
+description:         a typed functional programming language with algebraic effects and handlers
 homepage:            https://github.com/robrix/facet
 bug-reports:         https://github.com/robrix/facet/issues
 license:             BSD-3-Clause
