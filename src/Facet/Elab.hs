@@ -89,6 +89,17 @@ meta (v ::: _T) = do
   m <$ modify (|> Flex m v _T)
 
 
+-- FIXME: does instantiation need to be guided by the expected type?
+instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a ::: Type)
+instantiate inst = go
+  where
+  go (e ::: _T) = case _T of
+    VTForAll _ _T _B -> do
+      m <- meta (Nothing ::: _T)
+      go (inst e (TVar (TMetavar m)) ::: _B (metavar m))
+    _                -> pure $ e ::: _T
+
+
 switch :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => Synth m a -> Check m a
 switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
@@ -129,17 +140,6 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
     _ :=: _ ::: _T <- lookupScope n defs
     pure $ m':.:n ::: _T
   _                            -> Nothing
-
-
--- FIXME: does instantiation need to be guided by the expected type?
-instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a ::: Type)
-instantiate inst = go
-  where
-  go (e ::: _T) = case _T of
-    VTForAll _ _T _B -> do
-      m <- meta (Nothing ::: _T)
-      go (inst e (TVar (TMetavar m)) ::: _B (metavar m))
-    _                -> pure $ e ::: _T
 
 
 hole :: Has (Throw Err :+: Trace) sig m => Name -> Check m a
