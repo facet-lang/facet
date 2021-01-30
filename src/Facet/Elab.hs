@@ -159,7 +159,7 @@ app mk f a = Synth $ trace "app" $ do
 n ::: _T |- b = trace "|-" $ do
   i <- depth
   -- FIXME: should the context allow names in Maybe?
-  modify (|> Rigid STerm n _T)
+  modify (|> Rigid n _T)
   a <- b
   let extract (gamma :> Rigid{}) | i == level (Context gamma) = gamma
       extract (gamma :> e@Flex{})                             = extract gamma :> e

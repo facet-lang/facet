@@ -34,7 +34,7 @@ rethrowElabErrors src = L.runThrow rethrow
   combine (d, print, ctx) e =
     let _T = entryType e
         n' = case e of
-          Rigid s n _ -> name s n d
+          Rigid n _   -> intro n d
           Flex  m _ _ -> Print.meta m
     in  ( succ d
         , case e of
@@ -43,9 +43,6 @@ rethrowElabErrors src = L.runThrow rethrow
         , ctx  :> getPrint (ann (n' ::: printType print _T)) <> case e of
           Flex _ v _ -> space <> pretty '=' <+> maybe (pretty '?') (printType' print) v
           _          -> mempty )
-  name = \case
-    STerm -> intro
-    _     -> tintro
 
 
 printErrReason :: Stack Print -> ErrReason -> Doc Style

@@ -38,7 +38,7 @@ data Sort
 
 data Entry
   -- FIXME: record implicitness in the context.
-  = Rigid Sort Name Type
+  = Rigid Name Type
   | Flex Meta (Maybe Type) Type
 
 entryDef :: Entry -> Maybe Type
@@ -48,13 +48,13 @@ entryDef = \case
 
 entryType :: Entry -> Type
 entryType = \case
-  Rigid _ _ t -> t
+  Rigid   _ t -> t
   Flex  _ _ t -> t
 
 entrySort :: Entry -> Sort
 entrySort = \case
-  Rigid s _ _ -> s
-  Flex{}      -> SType
+  Rigid{} -> STerm
+  Flex{}  -> SType
 
 
 empty :: Context
@@ -85,7 +85,7 @@ lookupIndex :: Name -> Context -> Maybe (Index, Type)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = Nothing
-  go i (cs S.:> Rigid _ n' t)
+  go i (cs S.:> Rigid n' t)
     | n == n'           = Just (i, t)
     | otherwise         = go (succ i) cs
   go i (cs S.:> Flex{}) = go i cs
