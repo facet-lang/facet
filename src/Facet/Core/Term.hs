@@ -36,7 +36,7 @@ unVar f g = \case
 data Value
   = VTLam (Type -> Value)
   | VLam [(Pattern Name, Pattern Value -> Value)]
-  | VNe (Var Level :$ Either Type Value)
+  | VNe (Var Level :$ Elim)
   | VCon (Q Name :$ Value)
   | VString Text
   | VOp (Q Name :$ Value)
