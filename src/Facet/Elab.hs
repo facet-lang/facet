@@ -87,9 +87,9 @@ import Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Has (Fresh :+: State Context) sig m => (Maybe Type ::: Type) -> m Meta
+meta :: Has (State Context :+: State Subst) sig m => (Maybe Type ::: Type) -> m Meta
 meta (v ::: _T) = do
-  m <- Meta <$> fresh
+  m <- state (declareMeta _T)
   m <$ modify (|> Flex m v _T)
 
 
