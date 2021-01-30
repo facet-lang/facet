@@ -11,6 +11,8 @@ module Facet.Core.Term
   -- ** Elimination
 , ($$)
 , ($$*)
+, ($$$)
+, ($$$*)
   -- * Term expressions
 , Expr(..)
   -- * Quotation
@@ -48,7 +50,7 @@ unVar f g = \case
 data Value
   = VTLam (T.Type -> Value)
   | VLam [(Pattern Name, Pattern Value -> Value)]
-  | VNe (Var Level :$ Elim)
+  | VNe (Var Level :$ T.Type :$ Value)
   | VCon (Q Name :$ Value)
   | VString Text
   | VOp (Q Name :$ Value)
@@ -66,21 +68,31 @@ free = var . Free
 
 
 var :: Var Level -> Value
-var = VNe . (:$ Nil)
+var = VNe . (:$ Nil) . (:$ Nil)
 
 
 -- Elimination
 
-($$) :: HasCallStack => Value -> Elim -> Value
-VNe (h :$ es) $$ a       = VNe (h :$ (es :> a))
-VTLam b       $$ EInst a = b a
-VLam cs       $$ EApp  a = case' a cs
-_             $$ _       = error "can’t apply non-neutral/lambda value"
+($$) :: HasCallStack => Value -> Value -> Value
+VNe (h :$ ts :$ es) $$ a = VNe (h :$ ts :$ (es :> a))
+VLam cs             $$ a = case' a cs
+_                   $$ _ = error "can’t apply non-neutral/lambda value"
 
-($$*) :: (HasCallStack, Foldable t) => Value -> t Elim -> Value
+($$*) :: (HasCallStack, Foldable t) => Value -> t Value -> Value
 ($$*) = foldl' ($$)
 
 infixl 9 $$, $$*
+
+
+($$$) :: HasCallStack => Value -> T.Type -> Value
+VNe (h :$ ts :$ es) $$$ t = VNe (h :$ (ts :> t) :$ es)
+VTLam b             $$$ t = b t
+_                   $$$ _ = error "can’t apply non-neutral/lambda value"
+
+($$$*) :: (HasCallStack, Foldable t) => Value -> t T.Type -> Value
+($$$*) = foldl' ($$$)
+
+infixl 9 $$$, $$$*
 
 
 case' :: HasCallStack => Value -> [(Pattern Name, Pattern Value -> Value)] -> Value
@@ -121,14 +133,12 @@ data Expr
 
 quote :: Level -> Value -> Expr
 quote d = \case
-  VTLam b        -> XTLam (quote (succ d) (b (T.free d)))
-  VLam cs        -> XLam (map (\ (p, b) -> (p, let (d', p') = fill (\ d -> (succ d, free d)) d p in quote d' (b p'))) cs)
-  VNe (h :$ sp)  -> foldl' (\ head -> \case
-    EInst _T -> XInst head (T.quote d _T)
-    EApp a   -> XApp head (quote d a)) (XVar (levelToIndex d <$> h)) sp
-  VCon (n :$ fs) -> XCon (n :$ (quote d <$> fs))
-  VString s      -> XString s
-  VOp (n :$ sp)  -> foldl' XApp (XOp n) (quote d <$> sp)
+  VTLam b             -> XTLam (quote (succ d) (b (T.free d)))
+  VLam cs             -> XLam (map (\ (p, b) -> (p, let (d', p') = fill (\ d -> (succ d, free d)) d p in quote d' (b p'))) cs)
+  VNe (h :$ ts :$ as) -> let h' = XVar (levelToIndex d <$> h) ; h'' = foldl' XInst h' (T.quote d <$> ts) in foldl' XApp h'' (quote d <$> as)
+  VCon (n :$ fs)      -> XCon (n :$ (quote d <$> fs))
+  VString s           -> XString s
+  VOp (n :$ sp)       -> foldl' XApp (XOp n) (quote d <$> sp)
 
 eval :: HasCallStack => IntMap.IntMap T.Type -> Expr -> Value
 eval subst = go Nil Nil where
@@ -136,8 +146,8 @@ eval subst = go Nil Nil where
     XVar v         -> unVar global ((env !) . getIndex) v
     XTLam b        -> VTLam (\ _T -> go (tenv :> _T) env b)
     XLam cs        -> VLam (map (\ (p, b) -> (p, \ p -> go tenv (foldl' (:>) env p) b)) cs)
-    XInst f a      -> go tenv env f $$ EInst (T.eval subst tenv a)
-    XApp  f a      -> go tenv env f $$ EApp (go tenv env a)
+    XInst f a      -> go tenv env f $$$ T.eval subst tenv a
+    XApp  f a      -> go tenv env f $$ go tenv env a
     XCon (n :$ fs) -> VCon (n :$ (go tenv env <$> fs))
     XString s      -> VString s
     XOp n          -> VOp (n :$ Nil)
