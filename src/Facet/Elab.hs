@@ -187,6 +187,7 @@ data Err = Err
   { span      :: Span
   , reason    :: ErrReason
   , context   :: Context
+  , subst     :: Subst
   , callStack :: Stack Message -- FIXME: keep source references for each message.
   }
 
@@ -204,9 +205,10 @@ data ErrReason
 err :: Has (Throw Err :+: Trace) sig m => ErrReason -> Elab m a
 err reason = do
   ctx <- get
+  subst <- get
   span <- view span_
   callStack <- Trace.callStack
-  throwError $ Err span reason ctx callStack
+  throwError $ Err span reason ctx subst callStack
 
 mismatch :: Has (Throw Err :+: Trace) sig m => String -> Either String Type -> Type -> Elab m a
 mismatch msg exp act = err $ Mismatch msg exp act
