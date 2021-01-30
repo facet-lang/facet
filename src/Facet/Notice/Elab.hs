@@ -37,7 +37,7 @@ rethrowElabErrors src = L.runThrow rethrow
     in  ( succ d
         , print :> n'
         , ctx  :> getPrint (ann (n' ::: printType print _T)) )
-
+-- space <> pretty '=' <+> maybe (pretty '?') (printType' print) v
 
 printErrReason :: Stack Print -> ErrReason -> Doc Style
 printErrReason ctx = group . \case

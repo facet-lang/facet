@@ -13,6 +13,7 @@ module Facet.Elab.Type
 ) where
 
 import           Control.Algebra
+import           Control.Effect.Lens (views)
 import           Control.Effect.State
 import           Control.Effect.Throw
 import           Data.Foldable (foldl')
@@ -26,7 +27,7 @@ import           Facet.Syntax
 import           GHC.Stack
 
 tvar :: Has (Throw Err :+: Trace) sig m => Q Name -> Synth m TExpr
-tvar n = Synth $ trace "tvar" $ gets (lookupInContext n) >>= \case
+tvar n = Synth $ trace "tvar" $ views context_ (lookupInContext n) >>= \case
   Just (i, _T) -> pure $ TVar (TFree i) ::: _T
   Nothing      -> do
     q :=: _ ::: _T <- resolveQ n
@@ -46,7 +47,7 @@ _String = Synth $ pure $ TString ::: VKType
 forAll :: Has Trace sig m => Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
 forAll (n ::: t) b = Synth $ do
   t' <- check (t ::: VKType)
-  env <- gets toEnv
+  env <- views context_ toEnv
   subst <- get
   let vt = eval subst env t'
   b' <- n ::: vt |- check (b ::: VKType)
