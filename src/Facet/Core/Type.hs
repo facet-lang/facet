@@ -28,6 +28,7 @@ import           Facet.Name
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
+import           Prelude hiding (lookup)
 
 -- Variables
 
@@ -129,12 +130,12 @@ quote d = \case
     TEApp  a -> TApp head (quote d a)) (TVar (levelToIndex d <$> n)) sp
   VTString       -> TString
 
-eval :: HasCallStack => IntMap.IntMap Type -> Stack Type -> TExpr -> Type
+eval :: HasCallStack => Subst -> Stack Type -> TExpr -> Type
 eval subst = go where
   go env = \case
     TVar (TGlobal n)  -> global n
     TVar (TFree v)    -> env ! getIndex v
-    TVar (TMetavar m) -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) subst)
+    TVar (TMetavar m) -> fromMaybe (metavar m) (tm =<< lookup m subst)
     TType             -> VKType
     TInterface        -> VKInterface
     TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> v) b)
@@ -149,3 +150,6 @@ eval subst = go where
 
 newtype Subst = Subst (IntMap.IntMap (Maybe Type ::: Type))
   deriving (Monoid, Semigroup)
+
+lookup :: Meta -> Subst -> Maybe (Maybe Type ::: Type)
+lookup (Meta i) (Subst metas) = IntMap.lookup i metas
