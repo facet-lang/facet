@@ -8,7 +8,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (Type)
+import           Facet.Core.Type (Type, metas)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -25,18 +25,20 @@ import           Silkscreen
 rethrowElabErrors :: Source -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors src = L.runThrow rethrow
   where
-  rethrow Err{ span, reason, context, callStack } = Notice.Notice (Just Error) [slice src span] (printErrReason printCtx reason)
+  rethrow Err{ span, reason, context, subst, callStack } = Notice.Notice (Just Error) [slice src span] (printErrReason printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
+    , nest 2 (pretty "Metacontext" <\> concatWith (<\>) subst')
     , nest 2 (pretty "Trace" <\> concatWith (<\>) callStack)
     ]
     where
     (_, printCtx, ctx) = foldl combine (0, Nil, Nil) (elems context)
+    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType printCtx) v ::: printType printCtx _T))) (metas subst)
   combine (d, print, ctx) (n ::: _T) =
     let n' = intro n d
     in  ( succ d
         , print :> n'
         , ctx  :> getPrint (ann (n' ::: printType print _T)) )
--- space <> pretty '=' <+> maybe (pretty '?') (printType' print) v
+
 
 printErrReason :: Stack Print -> ErrReason -> Doc Style
 printErrReason ctx = group . \case
