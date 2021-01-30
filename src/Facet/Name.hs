@@ -5,9 +5,9 @@ module Facet.Name
 , indexToLevel
 , Meta(..)
 , __
-, Q(..)
 , MName
 , prettyMName
+, Q(..)
 , Name(..)
 , Assoc(..)
 , Op(..)
