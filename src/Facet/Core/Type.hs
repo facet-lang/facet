@@ -23,6 +23,7 @@ module Facet.Core.Type
 , lookupMeta
 , solveMeta
 , declareMeta
+, metas
 ) where
 
 import           Data.Foldable (foldl')
@@ -168,3 +169,6 @@ solveMeta (Meta i) t (Subst metas) = Subst (IntMap.update (\ (_ ::: _T) -> Just 
 declareMeta :: Type -> Subst -> (Subst, Meta)
 declareMeta _K (Subst metas) = (Subst (IntMap.insert v (Nothing ::: _K) metas), Meta v) where
   v = maybe 0 (succ . fst . fst) (IntMap.maxViewWithKey metas)
+
+metas :: Subst -> [Meta :=: Maybe Type ::: Type]
+metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)
