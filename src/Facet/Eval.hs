@@ -9,14 +9,11 @@ module Facet.Eval
 ) where
 
 import Control.Monad.Trans.Class
-import Facet.Core.Term hiding (Value, eval)
+import Facet.Core.Term hiding (eval)
 import Facet.Name
 import Facet.Syntax
 
-newtype Value = Value { getValue :: Expr }
-  deriving (Eq, Ord, Show)
-
-eval :: Expr -> Eval m Value
+eval :: Value -> Eval m Value
 eval = \case
   -- XApp op a -> _
   -- VNe (h :$ sp) -> do
@@ -33,7 +30,7 @@ eval = \case
 
   -- XOp op    -> Eval $ \ h -> h op
 
-  v         -> pure (Value v)
+  v         -> pure v
 
 
 -- Machinery

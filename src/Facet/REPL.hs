@@ -17,7 +17,7 @@ import           Control.Monad (unless)
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
-import           Data.Foldable (foldl', toList)
+import           Data.Foldable (toList)
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
@@ -31,6 +31,7 @@ import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
 import           Facet.Core.Term hiding (eval)
+import qualified Facet.Core.Term as E
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
@@ -206,15 +207,15 @@ showType e = Action $ do
 
 showEval e = Action $ do
   (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ Elab.synth (Elab.synthExpr e)
-  (dEval, Value e'') <- time $ elab $ runEvalMain (eval e')
+  (dEval, e'') <- time $ elab $ runEvalMain (eval (E.eval mempty e'))
   outputStrLn $ show dElab
   outputStrLn $ show dEval
-  outputDocLn (getPrint (ann (printExpr Nil e'' ::: printType Nil _T)))
+  outputDocLn (getPrint (ann (printValue Nil e'' ::: printType Nil _T)))
 
 runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
-  handle (q :$ sp) k = k (Value (foldl' XApp (XOp q) (getValue <$> sp)))
+  handle (q :$ sp) k = k (VOp (q :$ sp))
   -- handle (q :$ sp) k = case q of
   --   m :.: U "write"
   --     | m == fromList ["Effect", "Console"]
