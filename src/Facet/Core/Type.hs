@@ -19,6 +19,7 @@ module Facet.Core.Type
 , eval
   -- * Substitution
 , Subst(..)
+, lookup
 ) where
 
 import           Data.Foldable (foldl')
