@@ -10,6 +10,7 @@ module Facet.Context
 , (!)
 , lookupIndex
 , toEnv
+, evalIn
 , Suffix
 , (<><)
 , restore
@@ -19,7 +20,7 @@ module Facet.Context
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Data.Maybe (fromMaybe)
-import           Facet.Core
+import           Facet.Core.Type
 import           Facet.Name
 import qualified Facet.Stack as S
 import           Facet.Syntax
@@ -40,7 +41,7 @@ entryDef = \case
 
 entryType :: Entry -> Type
 entryType = \case
-  Rigid _   t -> t
+  Rigid   _ t -> t
   Flex  _ _ t -> t
 
 
@@ -79,8 +80,8 @@ lookupIndex n = go (Index 0) . elems
 
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context -> (S.Stack Value, IntMap.IntMap Value)
-toEnv c = (locals 0 (elems c), metas (elems c))
+toEnv :: Context -> (IntMap.IntMap Type, S.Stack Type)
+toEnv c = (metas (elems c), locals 0 (elems c))
   where
   d = level c
   locals i = \case
@@ -91,6 +92,9 @@ toEnv c = (locals 0 (elems c), metas (elems c))
     S.Nil              -> mempty
     bs S.:> Rigid{}    -> metas bs
     bs S.:> Flex m v _ -> IntMap.insert (getMeta m) (fromMaybe (metavar m) v) (metas bs)
+
+evalIn :: Context -> TExpr -> Type
+evalIn = uncurry eval . toEnv
 
 
 type Suffix = [Meta :=: Maybe Type ::: Type]

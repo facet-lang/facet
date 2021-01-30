@@ -4,13 +4,10 @@ module Facet.Name
 , levelToIndex
 , indexToLevel
 , Meta(..)
-, FVs(..)
-, getFVs
-, Vars(..)
 , __
-, Q(..)
 , MName
 , prettyMName
+, Q(..)
 , Name(..)
 , Assoc(..)
 , Op(..)
@@ -19,9 +16,7 @@ module Facet.Name
 
 import           Data.Foldable (foldr')
 import           Data.Functor.Classes (showsUnaryWith)
-import qualified Data.IntSet as IntSet
 import qualified Data.List.NonEmpty as NE
-import           Data.Semigroup
 import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -52,39 +47,6 @@ indexToLevel (Level d) (Index index) = Level $ d - index - 1
 
 newtype Meta = Meta { getMeta :: Int }
   deriving (Eq, Ord, Show)
-
-
-newtype FVs = FVs { runFVs :: IntSet.IntSet -> IntSet.IntSet -> IntSet.IntSet }
-
-getFVs :: FVs -> IntSet.IntSet
-getFVs v = runFVs v mempty mempty
-
-instance Semigroup FVs where
-  FVs v1 <> FVs v2 = FVs $ \ b -> v1 b . v2 b
-
-  stimes = stimesIdempotentMonoid
-
-instance Monoid FVs where
-  mempty = FVs $ const id
-
-
-class Monoid v => Vars v where
-  cons :: Level -> v -> v
-  bind :: Level -> v -> v
-
-  {-# MINIMAL cons, bind #-}
-
-instance Vars FVs where
-  cons (Level l) (FVs v) = FVs $ \ b -> v b . if l `IntSet.member` b then id else IntSet.insert l
-  bind (Level l) (FVs r) = FVs $ \ b -> r (IntSet.insert l b)
-
-instance Vars b => Vars (a -> b) where
-  cons l = fmap (cons l)
-  bind l = fmap (cons l)
-
-instance (Vars a, Vars b) => Vars (a, b) where
-  cons l (a, b) = (cons l a, cons l b)
-  bind l (a, b) = (bind l a, bind l b)
 
 
 __ :: Name

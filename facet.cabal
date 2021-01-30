@@ -57,6 +57,7 @@ common common
 library
   import: common
   exposed-modules:
+    Data.Semialign.Exts
     Facet.Carrier.Error.Lens
     Facet.Carrier.Output.IO
     Facet.Carrier.Parser.Church
@@ -68,9 +69,13 @@ library
     Facet.Carrier.Throw.Inject
     Facet.Carrier.Time.System
     Facet.Carrier.Trace.Output
+    Facet.Carrier.Write.General
+    Facet.Carrier.Write.Inject
     Facet.CLI
     Facet.Context
-    Facet.Core
+    Facet.Core.Module
+    Facet.Core.Term
+    Facet.Core.Type
     Facet.Diff
     Facet.Driver
     Facet.Effect.Parser
@@ -79,7 +84,10 @@ library
     Facet.Effect.Time
     Facet.Effect.Time.System
     Facet.Effect.Trace
+    Facet.Effect.Write
     Facet.Elab
+    Facet.Elab.Term
+    Facet.Elab.Type
     Facet.Eval
     Facet.Flag
     Facet.Format
@@ -145,7 +153,7 @@ test-suite test
   hs-source-dirs: test
   other-modules:
     Facet.Carrier.Parser.Church.Test
-    Facet.Core.Test
+    Facet.Core.Type.Test
     Facet.Source.Test
   main-is: Test.hs
   build-depends:

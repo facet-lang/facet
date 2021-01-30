@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 module Facet.REPL
@@ -25,17 +26,20 @@ import           Data.Text (Text)
 import           Facet.Carrier.Parser.Church hiding (Input)
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
-import           Facet.Carrier.Time.System
 import           Facet.Carrier.Trace.Output
-import           Facet.Core hiding (eval)
-import qualified Facet.Core as Core
+import           Facet.Carrier.Write.General
+import qualified Facet.Carrier.Write.Inject as I
+import           Facet.Core.Module
+import           Facet.Core.Term hiding (eval)
+import           Facet.Core.Type as T hiding (eval)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
+import qualified Facet.Elab.Term as Elab
 import           Facet.Eval
 import           Facet.Flag
 import           Facet.Graph
 import           Facet.Lens
-import           Facet.Name
+import           Facet.Name as Name
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab
 import           Facet.Notice.Parser
@@ -67,7 +71,6 @@ repl searchPaths
   . evalEmpty
   -- FIXME: move this (and any other flags) into the driver
   . runTrace Nil (toFlag LogTraces False)
-  . runTime
   $ loop
 
 
@@ -105,17 +108,16 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ "
   plain = setSGRCode [] <> "\STX"
 
 
-loop :: (Has (Empty :+: Input :+: Output :+: State (Flag LogTraces) :+: State REPL :+: Time Instant :+: Trace) sig m, MonadIO m) => m ()
+loop :: (Has (Empty :+: Input :+: Output :+: State (Flag LogTraces) :+: State REPL :+: Trace) sig m, MonadIO m) => m ()
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
-  runError (outputDocLn . prettyNotice) pure $ case resp of
+  runWrite (outputDocLn . prettyNotice) . runError (outputDocLn . prettyNotice) pure $ case resp of
     Just src -> do
       graph <- use (target_.modules_)
       targets <- use (target_.targets_)
       let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) (toList targets)
-      (dParse, action) <- time $ rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
-      outputStrLn (show dParse)
+      action <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
       runReader src $ runAction action
     Nothing  -> pure ()
   loop
@@ -149,15 +151,15 @@ commands = choice
     $ setLogTraces <$> choice [ False <$ symbol "no-log-traces", True <$ symbol "log-traces" ]
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ showType <$> runFacet [] expr
-  , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
-    $ showType <$> runFacet [] Parser.type'
+  -- , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
+  --   $ showType <$> runFacet [] Parser.type'
   ]
 
 path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State (Flag LogTraces) :+: State REPL :+: Time Instant :+: Trace) sig m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State (Flag LogTraces) :+: State REPL :+: Trace :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action
@@ -198,27 +200,22 @@ setLogTraces b = Action $ put (toFlag LogTraces b)
 showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
-  e ::: _T <- elab $ Elab.elab (Elab.synth (Elab.synthExpr e))
-  let e'  = Core.eval Nil mempty e
-  outputDocLn (getPrint (ann (printValue Nil e' ::: printValue Nil _T)))
+  e ::: _T <- runElab $ Elab.elabSynth (Elab.synth (Elab.synthExpr e))
+  outputDocLn (getPrint (ann (printValue Nil e ::: printType Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ locally (Elab.sig_.interfaces_) (VNe (Global (fromList ["Effect", "Console"]:.:U "Output"):$Nil):) $ Elab.synth (Elab.synthExpr e)
-  let e''  = Core.eval Nil mempty e'
-  (dEval, e'') <- time $ elab $ runEvalMain (eval e'')
-  outputStrLn $ show dElab
-  outputStrLn $ show dEval
-  outputDocLn (getPrint (ann (printValue Nil e'' ::: printValue Nil _T)))
+  e' ::: _T <- runElab $ Elab.elabSynth $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
+  e'' <- runElab $ runEvalMain (eval e')
+  outputDocLn (getPrint (ann (printValue Nil e'' ::: printType Nil _T)))
 
 runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
   handle (q :$ sp) k = case q of
-    m :.: U "write"
-      | m == fromList ["Effect", "Console"]
-      , Nil:>(Ex, EString s) <- sp -> outputText s *> k unit
-    _                                      -> k (EOp (q :$ sp))
-  unit = ECon (fromList ["Data", "Unit"] :.: U "unit" :$ Nil)
+    FromList ["Effect", "Console"] :.: U "write"
+      | FromList [VString s] <- sp -> outputText s *> k unit
+    _                              -> k (VOp (q :$ sp))
+  unit = VCon (["Data", "Unit"] :.: U "unit" :$ Nil)
 
 
 helpDoc :: Doc Style
@@ -238,9 +235,9 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-elab :: Has (Reader Source :+: State REPL) sig m => I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span m)))) a -> m a
-elab m = do
+runElab :: Has (Reader Source :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span m))))) a -> m a
+runElab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
   src <- ask
-  runReader (span src) . runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors src $ m
+  runReader (span src) . runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors src . rethrowElabWarnings src $ m

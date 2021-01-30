@@ -3,8 +3,8 @@ module Effect.Choose : Module
 import Data.Bool
 
 interface Choose : Interface
-{ choose : [Choose] Bool }
+{ choose : Bool }
 
 _ | _ [left-assoc]
-: { A : Type } -> (l : [Choose] A) -> (r : [Choose] A) -> [Choose] A
-{ if choose! r l }
+: { A : Type } -> (l : { A }) -> (r : { A }) -> { [Choose] A }
+{ if choose r l }

@@ -25,23 +25,22 @@ import           Control.Effect.State
 import           Control.Lens (Lens', at, lens)
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
-import qualified Data.Map as Map
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import qualified Data.Text as TS
 import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.Throw.Inject as I
-import           Facet.Carrier.Time.System
-import           Facet.Core
+import           Facet.Core.Module
 import           Facet.Effect.Readline
 import           Facet.Effect.Trace
-import qualified Facet.Elab as Elab
+import           Facet.Effect.Write
+import qualified Facet.Elab.Term as Elab
 import           Facet.Graph
 import           Facet.Lens
 import           Facet.Name
 import qualified Facet.Notice as Notice
-import           Facet.Notice.Elab (rethrowElabErrors)
+import           Facet.Notice.Elab (rethrowElabErrors, rethrowElabWarnings)
 import           Facet.Notice.Parser (rethrowParseErrors)
 import           Facet.Parser
 import           Facet.Pretty
@@ -50,7 +49,6 @@ import           Facet.Stack
 import           Facet.Style
 import qualified Facet.Surface as Import (Import(..))
 import qualified Facet.Surface as S
-import           Facet.Syntax
 import           Silkscreen
 import           System.Directory (findFile)
 import qualified System.FilePath as FP
@@ -81,17 +79,15 @@ defaultTarget = Target
 
 
 kernel :: Module
-kernel = Module kernelName [] [] $ Scope $ Map.fromList
-  -- FIXME: this should really function as a synonym
-  [ (typeName, Just (DTerm KType) ::: KType) ]
+kernel = Module kernelName [] [] $ Scope mempty
+  -- FIXME: include things like Type and Interface
   where
-  typeName = U (TS.pack "Type")
   kernelName = fromList [TS.pack "Kernel"]
 
 
 -- Module loading
 
-reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Target :+: Time Instant :+: Trace) sig m, MonadIO m) => m ()
+reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Target :+: Trace :+: Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m ()
 reloadModules = do
   searchPaths <- uses searchPaths_ toList
   modules <- targets_ ~> \ targets -> do
@@ -115,7 +111,7 @@ reloadModules = do
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
 
-loadModuleHeader :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
+loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
 loadModuleHeader searchPaths target = do
   path <- case target of
     Left path  -> pure path
@@ -125,12 +121,12 @@ loadModuleHeader searchPaths target = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
 
-loadModule :: Has (State Target :+: Throw (Notice.Notice (Doc Style)) :+: Time Instant :+: Trace) sig m => MName -> FilePath -> Source -> [MName] -> m Module
+loadModule :: Has (Output :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Trace :+: Write (Notice.Notice (Doc Style))) sig m => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
   graph <- use modules_
   let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
-  m <- rethrowElabErrors src . runReader graph $ Elab.elabModule m
+  m <- rethrowElabWarnings src . rethrowElabErrors src . runReader graph $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)
   pure m
 

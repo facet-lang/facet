@@ -4,7 +4,7 @@ import Data.Bool
 import Data.Unit
 
 interface Empty : Interface
-{ empty : { A : Type } -> [Empty] A }
+{ empty : { A : Type } -> A }
 
-guard : (c : Bool) -> [Empty] Unit
-{ if c { unit } { empty! } }
+guard : (c : Bool) -> { [Empty] Unit }
+{ if c { unit } { empty } }

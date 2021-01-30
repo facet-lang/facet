@@ -6,13 +6,13 @@ import Data.Unit
 
 
 interface Input : Interface
-{ readLine : String -> [Input] Option String }
+{ readLine : String -> Option String }
 
 
 interface Output : Interface
-{ write : String -> [Output] Unit }
+{ write : String -> Unit }
 
-writeLine : (str : String) -> [Output] Unit
+writeLine : (str : String) -> { [Output] Unit }
 { write str ; write "\n" }
 
 
