@@ -28,7 +28,6 @@ module Facet.Core.Type
 
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
-import           Data.Maybe (fromMaybe)
 import           Facet.Name
 import           Facet.Stack
 import           Facet.Syntax
@@ -140,7 +139,7 @@ eval subst = go where
   go env = \case
     TVar (TGlobal n)  -> global n
     TVar (TFree v)    -> env ! getIndex v
-    TVar (TMetavar m) -> fromMaybe (metavar m) (tm =<< lookup m subst)
+    TVar (TMetavar m) -> maybe (metavar m) tm (lookupMeta m subst)
     TType             -> VKType
     TInterface        -> VKInterface
     TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> v) b)
