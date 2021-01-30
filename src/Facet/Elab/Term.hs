@@ -216,9 +216,8 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
-    c_T <- elab $ abstract (check (checkType t ::: VKType)) _T
-    let c_T' = T.eval mempty Nil c_T
-    pure $ n :=: Just (DTerm (E.eval mempty (con (mname :.: n) c_T'))) ::: c_T'
+    c_T <- elabType $ abstract (check (checkType t ::: VKType)) _T
+    pure $ n :=: Just (DTerm (E.eval mempty (con (mname :.: n) c_T))) ::: c_T
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
     : cs
@@ -238,10 +237,9 @@ elabInterfaceDef
   -> m (Maybe Def ::: Type)
 elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $ do
-    _T' <- elab $ abstract (check (checkType t ::: VKType)) _T
+    _T' <- elabType $ abstract (check (checkType t ::: VKType)) _T
     -- FIXME: check that the interface is a member of the sig.
-    let _T'' = T.eval mempty Nil _T'
-    pure $ n :=: Nothing ::: _T''
+    pure $ n :=: Nothing ::: _T'
   pure $ Just (DInterface (scopeFromList cs)) ::: _T
 
 -- FIXME: add a parameter for the effect signature.
@@ -278,7 +276,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ local (const s) $ do
-      _T <- runModule $ elab $ T.eval mempty Nil <$> check (checkType tele ::: VKType)
+      _T <- runModule $ elabType $ check (checkType tele ::: VKType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
