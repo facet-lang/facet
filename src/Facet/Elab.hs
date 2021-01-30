@@ -87,10 +87,10 @@ import Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Has (State Context :+: State Subst) sig m => Maybe Type ::: Type -> m Meta
-meta (v ::: _T) = do
+meta :: Has (State Context :+: State Subst) sig m => Type -> m Meta
+meta _T = do
   m <- state (declareMeta _T)
-  m <$ modify (|> Flex m v _T)
+  m <$ modify (|> Flex m Nothing _T)
 
 
 -- FIXME: does instantiation need to be guided by the expected type?
@@ -99,7 +99,7 @@ instantiate inst = go
   where
   go (e ::: _T) = case _T of
     VTForAll _ _T _B -> do
-      m <- meta (Nothing ::: _T)
+      m <- meta _T
       go (inst e (TVar (TMetavar m)) ::: _B (metavar m))
     _                -> pure $ e ::: _T
 
