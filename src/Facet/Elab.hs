@@ -287,13 +287,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
   nope = couldNotUnify "mismatch" t1 t2
 
   type' t1 t2 = trace "unify type'" $ case (t1, t2) of
-    (VTNe (TMetavar v1 :$ Nil), VTNe (TMetavar v2 :$ Nil)) -> trace "flex-flex" $ onTop $ \ _ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
-      (True,  True,  _)       -> restore
-      (True,  False, Nothing) -> replace [v1 :=: Just (metavar v2) ::: _K]
-      (False, True,  Nothing) -> replace [v2 :=: Just (metavar v1) ::: _K]
-      (True,  False, Just t)  -> type' t (metavar v2) >> restore
-      (False, True,  Just t)  -> type' (metavar v1) t >> restore
-      (False, False, _)       -> type' (metavar v1) (metavar v2) >> restore
+    (VTNe (TMetavar v1 :$ Nil), VTNe (TMetavar v2 :$ Nil)) -> flexFlex v1 v2
     (VTNe (TMetavar v1 :$ Nil), t2)                        -> solve v1 t2
     (t1, VTNe (TMetavar v2 :$ Nil))                        -> solve v2 t1
     (VKType, VKType)                                       -> pure ()
@@ -329,14 +323,24 @@ unify t1 t2 = trace "unify" $ type' t1 t2
 
   sig c1 c2 = trace "unify sig" $ spine type' c1 c2
 
-  solve v t = trace "solve" $ go []
-    where
-    go ext = onTop $ \ lvl (m :=: d ::: _K) -> case (m == v, occursIn (== TMetavar m) lvl t, d) of
-      (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
-      (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ])
-      (True,  False, Just t') -> modify (<>< ext) >> type' t' t >> restore
-      (False, True,  _)       -> go ((m :=: d ::: _K):ext) >> replace []
-      (False, False, _)       -> go ext >> restore
+  flexFlex v1 v2
+    | v1 == v2  = pure ()
+    | otherwise = trace "flex-flex" $ do
+      (t1, t2) <- gets (\ s -> (T.lookupMeta v1 s, T.lookupMeta v2 s))
+      case (t1, t2) of
+        (Just t1, Just t2) -> type' (ty t1) (ty t2)
+        (Just t1, Nothing) -> type' (metavar v2) (tm t1)
+        (Nothing, Just t2) -> type' (metavar v1) (tm t2)
+        (Nothing, Nothing) -> solve v1 (metavar v2)
+
+  solve v t = trace "solve" $ do
+    d <- depth
+    if occursIn (== TMetavar v) d t then
+      mismatch "infinite type" (Right (metavar v)) t
+    else
+      gets (T.lookupMeta v) >>= \case
+        Nothing          -> modify (T.solveMeta v t)
+        Just (t' ::: _T) -> type' t' t
 
 
 -- Machinery
