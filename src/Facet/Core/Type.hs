@@ -30,7 +30,7 @@ import           GHC.Stack
 -- Variables
 
 data TVar a
-  = TGlobal (Q Name) -- ^ Global variables, considered equal by 'QName'.
+  = TGlobal (Q Name) -- ^ Global variables, considered equal by 'Q' 'Name'.
   | TFree a
   | TMetavar Meta
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)

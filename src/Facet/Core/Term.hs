@@ -40,7 +40,7 @@ import           GHC.Stack
 -- Term variables
 
 data Var a
-  = Global (Q Name) -- ^ Global variables, considered equal by 'QName'.
+  = Global (Q Name) -- ^ Global variables, considered equal by 'Q' 'Name'.
   | Free a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
