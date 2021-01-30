@@ -215,13 +215,12 @@ showEval e = Action $ do
 runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
-  handle (q :$ sp) k = k (VOp (q :$ sp))
-  -- handle (q :$ sp) k = case q of
-  --   m :.: U "write"
-  --     | m == fromList ["Effect", "Console"]
-  --     , Nil:>(Ex, XString s) <- sp -> outputText s *> k unit
-  --   _                               -> k (VEOp (q :$ sp))
-  -- unit = XCon (fromList ["Data", "Unit"] :.: U "unit" :$ Nil)
+  handle (q :$ sp) k = case q of
+    m :.: U "write"
+      | m == fromList ["Effect", "Console"]
+      , Nil :> VString s <- sp -> outputText s *> k unit
+    _                          -> k (VOp (q :$ sp))
+  unit = VCon (fromList ["Data", "Unit"] :.: U "unit" :$ Nil)
 
 
 helpDoc :: Doc Style
