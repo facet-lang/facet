@@ -247,9 +247,9 @@ elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Trace :+: Write Warn) sig m)
   => Type
   -> S.Ann S.Expr
-  -> m Expr
+  -> m Value
 elabTermDef _T expr = runReader (S.ann expr) $ trace "elabTermDef" $ do
-  elab $ check (go (checkExpr expr) ::: _T)
+  elabTerm $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
     VTForAll      n   _  _ -> tracePretty n $ check (tlam n (go k) ::: _T)
@@ -293,7 +293,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- then elaborate the terms
     trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> local (const s) $ trace (Print.getPrint (Silkscreen.pretty dname Silkscreen.<+> Silkscreen.colon Silkscreen.<+> Print.printType Nil _T)) $ do
       t' <- runModule $ elabTermDef _T t
-      scope_.decls_.ix dname .= (Just (DTerm (E.eval mempty t')) ::: _T)
+      scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
 
 
 -- Errors
