@@ -345,7 +345,7 @@ newtype Elab m a = Elab { runElab :: ReaderC ElabContext (FreshC (StateC Context
   deriving (Algebra (Reader ElabContext :+: Fresh :+: State Context :+: sig), Applicative, Functor, Monad)
 
 elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => (Context -> a -> m b) -> Elab m a -> m b
-elabWith k m = runState k Context.empty . evalFresh 0$ do
+elabWith k m = runState k Context.empty . evalFresh 0 $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
