@@ -21,9 +21,9 @@ rethrowParseErrors = L.runThrow (uncurry errToNotice)
 
 errToNotice :: Source -> Parse.Err -> Notice (Doc a)
 errToNotice source Parse.Err{ Parse.input = Parse.Input pos _, Parse.reason, Parse.expected } = Notice
-  { level   = Just Error
-  , source  = Just (slice source (Span pos pos))
-  , reason  = fillSep (map pretty (words (fromMaybe "unknown error" reason))) <> if null expected then mempty else comma <+> fillSep (pretty "expected" <> colon : punctuate comma (map pretty (toList expected)))
-  , context = []
+  { level      = Just Error
+  , references = [slice source (Span pos pos)]
+  , reason     = fillSep (map pretty (words (fromMaybe "unknown error" reason))) <> if null expected then mempty else comma <+> fillSep (pretty "expected" <> colon : punctuate comma (map pretty (toList expected)))
+  , context    = []
   }
 {-# INLINE errToNotice #-}

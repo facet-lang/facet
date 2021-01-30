@@ -22,7 +22,7 @@ import           System.Exit
 runFile :: [FilePath] -> FilePath -> IO ExitCode
 runFile searchPaths path = runStack $ do
   targetHead <- loadModuleHeader searchPaths (Left path)
-  modules <- rethrowGraphErrors Nothing $ loadOrder (fmap toNode . loadModuleHeader searchPaths . Right) [toNode targetHead]
+  modules <- rethrowGraphErrors [] $ loadOrder (fmap toNode . loadModuleHeader searchPaths . Right) [toNode targetHead]
   -- FIXME: look up and evaluate the main function in the module we were passed?
   ExitSuccess <$ for_ modules (\ (name, path, src, imports) -> loadModule name path src imports)
   where

@@ -25,7 +25,7 @@ import           Silkscreen
 rethrowElabErrors :: Source -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors src = L.runThrow rethrow
   where
-  rethrow Err{ span, reason, context, callStack } = Notice.Notice (Just Error) (Just (slice src span)) (printErrReason printCtx reason)
+  rethrow Err{ span, reason, context, callStack } = Notice.Notice (Just Error) [slice src span] (printErrReason printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
     , nest 2 (pretty "Trace" <\> concatWith (<\>) callStack)
     ]
@@ -67,7 +67,7 @@ printErrReason ctx = group . \case
 rethrowElabWarnings :: Source -> L.WriteC (Notice (Doc Style)) Warn m a -> m a
 rethrowElabWarnings src = L.runWrite inject
   where
-  inject Elab.Warn{ span, reason } = Notice.Notice (Just Notice.Warn) (Just (slice src span)) (printWarnReason reason) []
+  inject Elab.Warn{ span, reason } = Notice.Notice (Just Notice.Warn) [slice src span] (printWarnReason reason) []
 
 printWarnReason :: WarnReason -> Doc Style
 printWarnReason = \case
