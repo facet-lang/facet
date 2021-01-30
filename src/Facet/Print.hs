@@ -109,7 +109,9 @@ printType env = printTExpr env . CT.quote (Name.Level (length env))
 
 printTExpr :: Stack Print -> C.TExpr -> Print
 printTExpr env = \case
-  C.TVar v                -> C.unTVar (group . qvar) (\ d -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d) meta v
+  C.TVar (C.TGlobal n)    -> group (qvar n)
+  C.TVar (C.TFree d)      -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
+  C.TVar (C.TMetavar m)   -> meta m
   C.TType                 -> annotate Type $ pretty "Type"
   C.TInterface            -> annotate Type $ pretty "Interface"
   C.TForAll n t b         -> braces (ann (intro n d ::: printTExpr env t)) --> printTExpr (env :> intro n d) b

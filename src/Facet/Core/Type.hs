@@ -1,7 +1,6 @@
 module Facet.Core.Type
 ( -- * Type variables
   TVar(..)
-, unTVar
   -- * Type values
 , Type(..)
 , TElim(..)
@@ -35,12 +34,6 @@ data TVar a
   | TFree a
   | TMetavar Meta
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-unTVar :: (Q Name -> b) -> (a -> b) -> (Meta -> b) -> TVar a -> b
-unTVar f g h = \case
-  TGlobal  n -> f n
-  TFree    n -> g n
-  TMetavar n -> h n
 
 
 -- Types
@@ -137,12 +130,14 @@ quote d = \case
 eval :: HasCallStack => IntMap.IntMap Type -> Stack Type -> TExpr -> Type
 eval subst = go where
   go env = \case
-    TVar v        -> unTVar global ((env !) . getIndex) (\ m -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) subst)) v
-    TType         -> VKType
-    TInterface    -> VKInterface
-    TForAll n t b -> VTForAll n (go env t) (\ v -> go (env :> v) b)
-    TArrow n a b  -> VTArrow (map (go env) <$> n) (go env a) (go env b)
-    TComp s t     -> VTComp (go env <$> s) (go env t)
-    TInst f a     -> go env f $$ TEInst (go env a)
-    TApp  f a     -> go env f $$ TEApp (go env a)
-    TString       -> VTString
+    TVar (TGlobal n)  -> global n
+    TVar (TFree v)    -> env ! getIndex v
+    TVar (TMetavar m) -> fromMaybe (metavar m) (IntMap.lookup (getMeta m) subst)
+    TType             -> VKType
+    TInterface        -> VKInterface
+    TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> v) b)
+    TArrow n a b      -> VTArrow (map (go env) <$> n) (go env a) (go env b)
+    TComp s t         -> VTComp (go env <$> s) (go env t)
+    TInst f a         -> go env f $$ TEInst (go env a)
+    TApp  f a         -> go env f $$ TEApp (go env a)
+    TString           -> VTString
