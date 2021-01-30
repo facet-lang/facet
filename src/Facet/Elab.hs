@@ -340,25 +340,25 @@ unify t1 t2 = trace "unify" $ type' t1 t2
 
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (StateC Context (FreshC m)) a }
-  deriving (Algebra (Reader ElabContext :+: State Context :+: Fresh :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (FreshC (StateC Context m)) a }
+  deriving (Algebra (Reader ElabContext :+: Fresh :+: State Context :+: sig), Applicative, Functor, Monad)
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m a -> m a
-elab m = evalFresh 0 . evalState Context.empty $ do
+elab m = evalState Context.empty . evalFresh 0 $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
   mkContext = ElabContext <$> ask <*> ask <*> pure [] <*> ask <*> ask
 
 elabType :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m TExpr -> m Type
-elabType m = evalFresh 0 . runState (\ ctx t -> pure (evalIn ctx t)) Context.empty $ do
+elabType m = runState (\ ctx t -> pure (evalIn ctx t)) Context.empty . evalFresh 0 $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
   mkContext = ElabContext <$> ask <*> ask <*> pure [] <*> ask <*> ask
 
 elabTerm :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m Expr -> m Value
-elabTerm m = evalFresh 0 . runState (\ ctx e -> pure (E.eval (fst (toEnv ctx)) e)) Context.empty $ do
+elabTerm m = runState (\ ctx e -> pure (E.eval (fst (toEnv ctx)) e)) Context.empty . evalFresh 0 $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
