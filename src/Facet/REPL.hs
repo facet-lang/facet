@@ -216,10 +216,9 @@ runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
   handle (q :$ sp) k = case q of
-    m :.: U "write"
-      | m == fromList ["Effect", "Console"]
-      , Nil :> VString s <- sp -> outputText s *> k unit
-    _                          -> k (VOp (q :$ sp))
+    FromList ["Effect", "Console"] :.: U "write"
+      | FromList [VString s] <- sp -> outputText s *> k unit
+    _                              -> k (VOp (q :$ sp))
   unit = VCon (fromList ["Data", "Unit"] :.: U "unit" :$ Nil)
 
 
