@@ -30,7 +30,7 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (view, (.=))
+import           Control.Effect.Lens (views, (.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
 import           Control.Monad (unless)
@@ -65,9 +65,9 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: Has (Throw Err :+: Trace) sig m => Q Name -> Synth m Expr
-var n = Synth $ trace "var" $ view context_ >>= \ ctx -> if
-  | Just (i, _T) <- lookupInContext n ctx -> pure (XVar (Free i) ::: _T)
-  | otherwise                             -> view sig_ >>= \ sig -> asks (\ ElabContext{ module', graph } -> lookupInSig n module' graph sig) >>= \case
+var n = Synth $ trace "var" $ views context_ (lookupInContext n) >>= \case
+  Just (i, _T) -> pure (XVar (Free i) ::: _T)
+  _            -> asks (\ ElabContext{ module', graph, sig } -> lookupInSig n module' graph sig) >>= \case
     Just (n ::: _T) -> instantiate XInst (XOp n ::: _T)
     _ -> do
       n :=: _ ::: _T <- resolveQ n
