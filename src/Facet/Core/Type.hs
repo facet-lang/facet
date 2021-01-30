@@ -162,4 +162,4 @@ insert (Meta i) t (Subst metas) = Subst (IntMap.insert i t metas)
 
 declareMeta :: Type -> Subst -> (Subst, Meta)
 declareMeta _K (Subst metas) = (Subst (IntMap.insert v (Nothing ::: _K) metas), Meta v) where
-  v = maybe 0 (succ . fst . fst) (IntMap.minViewWithKey metas)
+  v = maybe 0 (succ . fst . fst) (IntMap.maxViewWithKey metas)
