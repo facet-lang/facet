@@ -40,7 +40,7 @@ import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Core.Module
-import           Facet.Core.Term hiding (global, var)
+import           Facet.Core.Term as E hiding (global, var)
 import           Facet.Core.Type as T hiding (global, var)
 import           Facet.Effect.Trace
 import           Facet.Effect.Write
@@ -218,7 +218,7 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elab $ abstract (check (checkType t ::: VKType)) _T
     let c_T' = T.eval mempty Nil c_T
-    pure $ n :=: Just (DTerm (con (mname :.: n) c_T')) ::: c_T'
+    pure $ n :=: Just (DTerm (E.eval mempty (con (mname :.: n) c_T'))) ::: c_T'
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
     : cs
@@ -295,7 +295,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- then elaborate the terms
     trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> local (const s) $ trace (Print.getPrint (Silkscreen.pretty dname Silkscreen.<+> Silkscreen.colon Silkscreen.<+> Print.printType Nil _T)) $ do
       t' <- runModule $ elabTermDef _T t
-      scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
+      scope_.decls_.ix dname .= (Just (DTerm (E.eval mempty t')) ::: _T)
 
 
 -- Errors

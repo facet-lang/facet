@@ -8,6 +8,7 @@ module Facet.Print
   -- * Core printers
 , printType
 , printTExpr
+, printValue
 , printExpr
 , printModule
   -- * Misc
@@ -23,6 +24,7 @@ import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core.Module as C
 import qualified Facet.Core.Term as C
+import qualified Facet.Core.Term as CE
 import qualified Facet.Core.Type as C
 import qualified Facet.Core.Type as CT
 import           Facet.Name as Name
@@ -122,6 +124,9 @@ printTExpr env = \case
   d = Name.Level (length env)
   sig s = brackets (commaSep (map (printTExpr env) s))
 
+printValue :: Stack Print -> C.Value -> Print
+printValue env = printExpr env . CE.quote (Name.Level (length env))
+
 printExpr :: Stack Print -> C.Expr -> Print
 printExpr env = \case
   C.XVar v        -> C.unVar (group . qvar) (\ d' -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d') v
@@ -159,7 +164,7 @@ printModule (C.Module mname is _ ds) = module_
     $   qvar (Nil:.:n)
     ::: defn (printType Nil t
     :=: case d of
-      C.DTerm b  -> printExpr Nil b
+      C.DTerm b  -> printValue Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
         (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printType Nil _T)) (C.scopeToList cs))
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
