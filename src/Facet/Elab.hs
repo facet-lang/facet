@@ -106,7 +106,7 @@ switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ 
 
 as :: Has Trace sig m => Check m Expr ::: Check m TExpr -> Synth m Expr
 as (m ::: _T) = Synth $ trace "as" $ do
-  (_, env) <- gets toEnv
+  env <- gets toEnv
   subst <- get
   _T' <- T.eval subst env <$> check (_T ::: VKType)
   a <- check (m ::: _T')
@@ -344,13 +344,13 @@ elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) si
 elab = elabWith (const (const pure))
 
 elabType :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m TExpr -> m Type
-elabType = elabWith (\ subst ctx t -> pure (T.eval subst (snd (toEnv ctx)) t))
+elabType = elabWith (\ subst ctx t -> pure (T.eval subst (toEnv ctx) t))
 
 elabTerm :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m Expr -> m Value
-elabTerm = elabWith (\ subst ctx e -> pure (E.eval subst (snd (toEnv ctx)) e))
+elabTerm = elabWith (\ subst ctx e -> pure (E.eval subst (toEnv ctx) e))
 
 elabSynth :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m (Expr ::: Type) -> m (Value ::: Type)
-elabSynth = elabWith (\ subst ctx (e ::: _T) -> let (_, env) = toEnv ctx in pure (E.eval subst env e ::: T.eval subst env (T.quote 0 _T)))
+elabSynth = elabWith (\ subst ctx (e ::: _T) -> let env = toEnv ctx in pure (E.eval subst env e ::: T.eval subst env (T.quote 0 _T)))
 
 
 check :: Has Trace sig m => (Check m a ::: Type) -> Elab m a

@@ -46,7 +46,7 @@ _String = Synth $ pure $ TString ::: VKType
 forAll :: Has Trace sig m => Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
 forAll (n ::: t) b = Synth $ do
   t' <- check (t ::: VKType)
-  (_, env) <- gets toEnv
+  env <- gets toEnv
   subst <- get
   let vt = eval subst env t'
   b' <- n ::: vt |- check (b ::: VKType)

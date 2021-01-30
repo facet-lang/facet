@@ -60,13 +60,10 @@ lookupIndex n = go (Index 0) . elems
 
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context -> (Subst, S.Stack Type)
-toEnv c = (metas (elems c), locals 0 (elems c))
+toEnv :: Context -> S.Stack Type
+toEnv c = locals 0 (elems c)
   where
   d = level c
   locals i = \case
     S.Nil           -> S.Nil
     bs S.:> Rigid{} -> locals (succ i) bs S.:> free (indexToLevel d i)
-  metas = \case
-    S.Nil           -> mempty
-    bs S.:> Rigid{} -> metas bs
