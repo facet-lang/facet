@@ -21,7 +21,6 @@ import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
-import qualified Facet.Core as C
 import qualified Facet.Core.Module as C
 import qualified Facet.Core.Term as C
 import qualified Facet.Core.Type as C

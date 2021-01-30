@@ -39,7 +39,6 @@ import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Core
 import           Facet.Core.Module
 import           Facet.Core.Term hiding (global, var)
 import           Facet.Core.Type as T hiding (global, var)
