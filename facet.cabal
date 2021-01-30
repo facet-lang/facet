@@ -117,6 +117,8 @@ library
     Facet.Timing
   other-modules:
     Paths_facet
+  autogen-modules:
+    Paths_facet
   build-depends:
     , ansi-terminal
     , base ^>= 4.14
