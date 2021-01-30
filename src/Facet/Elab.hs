@@ -37,6 +37,7 @@ module Facet.Elab
 , depth
 , elab
 , elabType
+, elabTerm
 , check
 , Check(..)
 , mapCheck
@@ -63,7 +64,7 @@ import Data.Semialign.Exts
 import Facet.Carrier.Trace.Output as Trace
 import Facet.Context as Context
 import Facet.Core.Module
-import Facet.Core.Term
+import Facet.Core.Term as E
 import Facet.Core.Type as T
 import Facet.Effect.Write
 import Facet.Graph as Graph
@@ -351,6 +352,13 @@ elab m = evalFresh 0 . evalState Context.empty $ do
 
 elabType :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m TExpr -> m Type
 elabType m = evalFresh 0 . runState (\ ctx t -> pure (evalIn ctx t)) Context.empty $ do
+  ctx <- mkContext
+  runReader ctx . runElab $ m
+  where
+  mkContext = ElabContext <$> ask <*> ask <*> pure [] <*> ask <*> ask
+
+elabTerm :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m Expr -> m Value
+elabTerm m = evalFresh 0 . runState (\ ctx e -> pure (E.eval (fst (toEnv ctx)) e)) Context.empty $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
