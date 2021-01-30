@@ -352,25 +352,13 @@ elabWith k m = runState k Context.empty . evalFresh 0 $ do
   mkContext = ElabContext <$> ask <*> ask <*> pure [] <*> ask <*> ask
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m a -> m a
-elab m = evalState Context.empty . evalFresh 0 $ do
-  ctx <- mkContext
-  runReader ctx . runElab $ m
-  where
-  mkContext = ElabContext <$> ask <*> ask <*> pure [] <*> ask <*> ask
+elab = elabWith (const pure)
 
 elabType :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m TExpr -> m Type
-elabType m = runState (\ ctx t -> pure (evalIn ctx t)) Context.empty . evalFresh 0 $ do
-  ctx <- mkContext
-  runReader ctx . runElab $ m
-  where
-  mkContext = ElabContext <$> ask <*> ask <*> pure [] <*> ask <*> ask
+elabType = elabWith (\ ctx t -> pure (evalIn ctx t))
 
 elabTerm :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m Expr -> m Value
-elabTerm m = runState (\ ctx e -> pure (E.eval (fst (toEnv ctx)) e)) Context.empty . evalFresh 0 $ do
-  ctx <- mkContext
-  runReader ctx . runElab $ m
-  where
-  mkContext = ElabContext <$> ask <*> ask <*> pure [] <*> ask <*> ask
+elabTerm = elabWith (\ ctx e -> pure (E.eval (fst (toEnv ctx)) e))
 
 
 check :: Has Trace sig m => (Check m a ::: Type) -> Elab m a
