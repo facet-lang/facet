@@ -8,23 +8,26 @@ module Facet.Eval
 , Eval(..)
 ) where
 
+import Control.Algebra
+import Control.Effect.Reader
 import Control.Monad.Trans.Class
+import Facet.Core.Module
 import Facet.Core.Term hiding (eval)
+import Facet.Graph
 import Facet.Name
 import Facet.Syntax
 
-eval :: Value -> Eval m Value
+eval :: Has (Reader Graph :+: Reader Module) sig m => Value -> Eval m Value
 eval = \case
-  -- XApp op a -> _
-  -- VNe (h :$ sp) -> do
-  --   sp' <- traverse (traverse eval) sp
-  --   mod <- lift ask
-  --   graph <- lift ask
-  --   case h of
-  --     Global q
-  --       | Just (_ :=: Just (DTerm v) ::: _) <- lookupQ q mod graph
-  --       -> eval $ v $$* sp'
-  --     _ -> pure $ VNe (h :$ sp')
+  VNe (h :$ ts :$ sp) -> do
+    sp' <- traverse eval sp
+    mod <- lift ask
+    graph <- lift ask
+    case h of
+      Global q
+        | Just (_ :=: Just (DTerm v) ::: _) <- lookupQ q mod graph
+        -> eval $ v $$* sp'
+      _ -> pure $ VNe (h :$ ts :$ sp')
 
   -- VTComp (Sig _ []) v -> eval v
 
