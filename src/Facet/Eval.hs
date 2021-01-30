@@ -29,7 +29,7 @@ eval = \case
         -> eval $ v $$* sp'
       _ -> pure $ VNe (h :$ ts :$ sp')
 
-  -- XOp op    -> Eval $ \ h -> h op
+  VOp op    -> Eval $ \ h -> h op
 
   v         -> pure v
 
