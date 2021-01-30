@@ -269,19 +269,6 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => (Level -> Meta :=: Maybe Type ::: Type -> Elab m (Maybe Suffix)) -> Elab m ()
-onTop f = trace "onTop" $ do
-  ctx <- get
-  (gamma, elem) <- case elems ctx of
-    gamma :> elem -> pure (Context gamma, elem)
-    Nil           -> err $ Invariant "onTop in empty context"
-  put gamma
-  case elem of
-    Flex n v _T -> f (level gamma) (n :=: v ::: _T) >>= \case
-      Just v  -> modify (<>< v)
-      Nothing -> modify (|> elem)
-    _         -> onTop f <* modify (|> elem)
-
 -- FIXME: we don’t get good source references during unification
 unify :: forall m sig . (HasCallStack, Has (Throw Err :+: Trace) sig m) => Type -> Type -> Elab m ()
 unify t1 t2 = trace "unify" $ type' t1 t2
