@@ -43,8 +43,8 @@ _String :: Synth m TExpr
 _String = Synth $ pure $ TString ::: VKType
 
 
-forAll :: Has Trace sig m => Name -> Check m TExpr -> Check m TExpr -> Synth m TExpr
-forAll n t b = Synth $ do
+forAll :: Has Trace sig m => Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
+forAll (n ::: t) b = Synth $ do
   t' <- check (t ::: VKType)
   eval <- gets evalIn
   let vt = eval t'
@@ -74,7 +74,7 @@ synthType (S.Ann s _ e) = mapSynth (trace "synthType" . setSpan s) $ case e of
   S.KType         -> _Type
   S.KInterface    -> _Interface
   S.TString       -> _String
-  S.TForAll n t b -> forAll n (checkType t) (checkType b)
+  S.TForAll n t b -> forAll (n ::: checkType t) (checkType b)
   S.TArrow  n a b -> (map checkInterface <$> n ::: checkType a) --> checkType b
   S.TComp s t     -> comp (map checkInterface s) (checkType t)
   S.TApp f a      -> app TApp (synthType f) (checkType a)
