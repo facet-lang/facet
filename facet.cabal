@@ -175,3 +175,8 @@ executable facetc
   build-depends:
     , base
     , facet
+
+
+source-repository head
+  type:     git
+  location: https://github.com/robrix/facet
