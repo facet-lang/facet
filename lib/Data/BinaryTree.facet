@@ -13,10 +13,10 @@ map : { A, B : Type } -> (f : A -> B) -> BinaryTree A -> BinaryTree B
 , (leaf a)     -> leaf (f a)
 , (branch l r) -> branch (map f l) (map f r) }
 
-# semigroup : { A, B : Type } -> { [Semigroup (BinaryTree A)] B } -> B
+# semigroup : { A, B : Type } -> [Semigroup (BinaryTree A)] B -> B
 # { [l <> r ; k] -> k (branch l r)
 # , x            -> x }
 
-# monoid : { A, B : Type } -> { [Monoid (BinaryTree A)] B } -> B
+# monoid : { A, B : Type } -> [Monoid (BinaryTree A)] B -> B
 # { [zero ; k] -> k nil
 # , x          -> x }
