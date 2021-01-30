@@ -41,8 +41,8 @@ import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Core
 import           Facet.Core.Module
-import           Facet.Core.Term
-import           Facet.Core.Type hiding (global, var)
+import           Facet.Core.Term hiding (global, var)
+import           Facet.Core.Type as T hiding (global, var)
 import           Facet.Effect.Trace
 import           Facet.Effect.Write
 import           Facet.Elab
@@ -81,7 +81,7 @@ tlam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
 tlam n b = Check $ \ _T -> trace "tlam" $ do
   (_ ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
-  b' <- Just n ::: _A |- check (b ::: _B (free d))
+  b' <- Just n ::: _A |- check (b ::: _B (T.free d))
   pure $ XTLam b'
 
 lam :: Has (Throw Err :+: Trace) sig m => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
@@ -197,12 +197,12 @@ abstract body = go
   go = \case
     VTForAll       n  t b -> do
       level <- depth
-      b' <- Just n ::: t |- go (b (free level))
-      pure $ TForAll n (quote level t) b'
+      b' <- Just n ::: t |- go (b (T.free level))
+      pure $ TForAll n (T.quote level t) b'
     VTArrow  (Left n) a b -> do
       level <- depth
       b' <- Just n ::: a |- go b
-      pure $ TForAll n (quote level a) b'
+      pure $ TForAll n (T.quote level a) b'
     _                     -> body
 
 
@@ -218,7 +218,7 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elab $ abstract (check (checkType t ::: VKType)) _T
-    let c_T' = eval mempty Nil c_T
+    let c_T' = T.eval mempty Nil c_T
     pure $ n :=: Just (DTerm (con (mname :.: n) c_T')) ::: c_T'
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
@@ -229,7 +229,7 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
       -- FIXME: earlier indices should be shifted
       -- FIXME: XTLam is only for the type parameters
       -- type parameters presumably shouldn’t be represented in the elaborated data
-      VTForAll _ _T _B -> XTLam (go (fs :> XVar (Free (Index 0))) (_B (free (Level (length fs)))))
+      VTForAll _ _T _B -> XTLam (go (fs :> XVar (Free (Index 0))) (_B (T.free (Level (length fs)))))
       _T               -> XCon (q :$ fs)
 
 elabInterfaceDef
@@ -241,7 +241,7 @@ elabInterfaceDef _T constructors = trace "elabInterfaceDef" $ do
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> tracePretty n $ do
     _T' <- elab $ abstract (check (checkType t ::: VKType)) _T
     -- FIXME: check that the interface is a member of the sig.
-    let _T'' = eval mempty Nil _T'
+    let _T'' = T.eval mempty Nil _T'
     pure $ n :=: Nothing ::: _T''
   pure $ Just (DInterface (scopeFromList cs)) ::: _T
 
@@ -279,7 +279,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- trace "types" $ for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> tracePretty dname $ local (const s) $ do
-      _T <- runModule $ elab $ eval mempty Nil <$> check (checkType tele ::: VKType)
+      _T <- runModule $ elab $ T.eval mempty Nil <$> check (checkType tele ::: VKType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of

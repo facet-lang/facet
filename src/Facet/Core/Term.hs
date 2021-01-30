@@ -13,10 +13,14 @@ module Facet.Core.Term
 , ($$*)
   -- * Term expressions
 , Expr(..)
+  -- * Quotation
+, quote
+, eval
 ) where
 
 import           Control.Monad (guard)
 import           Data.Foldable (asum, foldl')
+import qualified Data.IntMap as IntMap
 import           Data.Semialign.Exts (zipWithM)
 import           Data.Text (Text)
 import           Facet.Core
@@ -111,3 +115,29 @@ data Expr
   | XString Text
   | XOp (Q Name) -- FIXME: this should have the arguments
   deriving (Eq, Ord, Show)
+
+
+-- Quotation
+
+quote :: Level -> Value -> Expr
+quote d = \case
+  VTLam b        -> XTLam (quote (succ d) (b (T.free d)))
+  VLam cs        -> XLam (map (\ (p, b) -> (p, let (d', p') = fill (\ d -> (succ d, free d)) d p in quote d' (b p'))) cs)
+  VNe (h :$ sp)  -> foldl' (\ head -> \case
+    EInst _T -> XInst head (T.quote d _T)
+    EApp a   -> XApp head (quote d a)) (XVar (levelToIndex d <$> h)) sp
+  VCon (n :$ fs) -> XCon (n :$ (quote d <$> fs))
+  VString s      -> XString s
+  VOp (n :$ sp)  -> foldl' XApp (XOp n) (quote d <$> sp)
+
+eval :: HasCallStack => IntMap.IntMap T.Type -> Expr -> Value
+eval subst = go Nil Nil where
+  go tenv env = \case
+    XVar v         -> unVar global ((env !) . getIndex) v
+    XTLam b        -> VTLam (\ _T -> go (tenv :> _T) env b)
+    XLam cs        -> VLam (map (\ (p, b) -> (p, \ p -> go tenv (foldl' (:>) env p) b)) cs)
+    XInst f a      -> go tenv env f $$ EInst (T.eval subst tenv a)
+    XApp  f a      -> go tenv env f $$ EApp (go tenv env a)
+    XCon (n :$ fs) -> VCon (n :$ (go tenv env <$> fs))
+    XString s      -> VString s
+    XOp n          -> VOp (n :$ Nil)

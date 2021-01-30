@@ -25,6 +25,7 @@ import qualified Facet.Core as C
 import qualified Facet.Core.Module as C
 import qualified Facet.Core.Term as C
 import qualified Facet.Core.Type as C
+import qualified Facet.Core.Type as CT
 import           Facet.Name as Name
 import           Facet.Pretty (lower, upper)
 import           Facet.Stack
@@ -103,7 +104,7 @@ f $$ a = askingPrec $ \case
 -- Core printers
 
 printType :: Stack Print -> C.Type -> Print
-printType env = printTExpr env . C.quote (Name.Level (length env))
+printType env = printTExpr env . CT.quote (Name.Level (length env))
 
 printTExpr :: Stack Print -> C.TExpr -> Print
 printTExpr env = \case
