@@ -156,8 +156,6 @@ app mk f a = Synth $ trace "app" $ do
 
 
 (|-) :: (HasCallStack, Has Trace sig m) => Name ::: Type -> Elab m a -> Elab m a
--- FIXME: this isn’t _quite_ the shape we want to push onto the context because e.g. constructor patterns can bind multiple variables but they’d all have the same icit & signature.
--- FIXME: should this do something about the signature?
 n ::: _T |- b = trace "|-" $ do
   i <- depth
   -- FIXME: should the context allow names in Maybe?
