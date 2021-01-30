@@ -5,7 +5,6 @@ module Facet.Context
 , Entry(..)
 , entryDef
 , entryType
-, entrySort
 , empty
 , (|>)
 , level
@@ -50,11 +49,6 @@ entryType :: Entry -> Type
 entryType = \case
   Rigid   _ t -> t
   Flex  _ _ t -> t
-
-entrySort :: Entry -> Sort
-entrySort = \case
-  Rigid{} -> STerm
-  Flex{}  -> SType
 
 
 empty :: Context
