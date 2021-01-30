@@ -10,7 +10,6 @@ module Facet.Context
 , lookupIndex
 , toEnv
 , evalIn
-, Suffix
 ) where
 
 import           Facet.Core.Type
@@ -83,6 +82,3 @@ toEnv c = (metas (elems c), locals 0 (elems c))
 
 evalIn :: Context -> TExpr -> Type
 evalIn = uncurry eval . toEnv
-
-
-type Suffix = [Meta :=: Maybe Type ::: Type]
