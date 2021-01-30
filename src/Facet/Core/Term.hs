@@ -8,15 +8,23 @@ module Facet.Core.Term
 , global
 , free
 , var
+  -- ** Elimination
+, ($$)
+, ($$*)
   -- * Term expressions
 , Expr(..)
 ) where
 
+import           Control.Monad (guard)
+import           Data.Foldable (asum, foldl')
+import           Data.Semialign.Exts (zipWithM)
 import           Data.Text (Text)
 import           Facet.Core
 import qualified Facet.Core.Type as T
 import           Facet.Name
+import           Facet.Stack
 import           Facet.Syntax
+import           GHC.Stack
 
 -- Term variables
 
@@ -55,6 +63,40 @@ free = var . Free
 
 var :: Var Level -> Value
 var = VNe . (:$ Nil)
+
+
+-- Elimination
+
+($$) :: HasCallStack => Value -> Elim -> Value
+VNe (h :$ es) $$ a       = VNe (h :$ (es :> a))
+VTLam b       $$ EInst a = b a
+VLam cs       $$ EApp  a = case' a cs
+_             $$ _       = error "can’t apply non-neutral/lambda value"
+
+($$*) :: (HasCallStack, Foldable t) => Value -> t Elim -> Value
+($$*) = foldl' ($$)
+
+infixl 9 $$, $$*
+
+
+case' :: HasCallStack => Value -> [(Pattern Name, Pattern Value -> Value)] -> Value
+case' s cs = case asum (map (\ (p, f) -> f <$> match s p) cs) of
+  Just v -> v
+  _      -> error "non-exhaustive patterns in lambda"
+
+match :: Value -> Pattern b -> Maybe (Pattern Value)
+match = curry $ \case
+  (s, PAll _)  -> Just (PAll s)
+  -- FIXME: match effect patterns against computations (?)
+  (_, PEff{})  -> Nothing
+  (s, PVal p') -> PVal <$> value s p'
+  where
+  value = curry $ \case
+    (_,               PWildcard)      -> Just PWildcard
+    (s,               PVar _)         -> Just (PVar s)
+    -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
+    (VCon (n' :$ fs), PCon (n :$ ps)) -> PCon . (n' :$) <$ guard (n == n') <*> zipWithM value fs ps
+    (_, PCon{})                       -> Nothing
 
 
 -- Term expressions
