@@ -73,7 +73,6 @@ library
     Facet.Carrier.Write.Inject
     Facet.CLI
     Facet.Context
-    Facet.Core
     Facet.Core.Module
     Facet.Core.Term
     Facet.Core.Type
