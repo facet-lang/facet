@@ -21,6 +21,7 @@ module Facet.Core.Type
 , Subst(..)
 , lookup
 , insert
+, lookupMeta
 , solveMeta
 , declareMeta
 ) where
@@ -160,6 +161,11 @@ lookup (Meta i) (Subst metas) = IntMap.lookup i metas
 
 insert :: Meta -> Maybe Type ::: Type -> Subst -> Subst
 insert (Meta i) t (Subst metas) = Subst (IntMap.insert i t metas)
+
+lookupMeta :: Meta -> Subst -> Maybe (Type ::: Type)
+lookupMeta (Meta i) (Subst metas) = do
+  v ::: _T <- IntMap.lookup i metas
+  (::: _T) <$> v
 
 solveMeta :: Meta -> Type -> Subst -> Subst
 solveMeta (Meta i) t (Subst metas) = Subst (IntMap.update (\ (_ ::: _T) -> Just (Just t ::: _T)) i metas)
