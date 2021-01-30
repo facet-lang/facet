@@ -18,7 +18,6 @@ module Facet.Context
 ) where
 
 import           Data.Foldable (foldl')
-import qualified Data.IntMap as IntMap
 import           Facet.Core.Type
 import           Facet.Name
 import qualified Facet.Stack as S
@@ -80,7 +79,7 @@ lookupIndex n = go (Index 0) . elems
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
 toEnv :: Context -> (Subst, S.Stack Type)
-toEnv c = (Subst (metas (elems c)), locals 0 (elems c))
+toEnv c = (metas (elems c), locals 0 (elems c))
   where
   d = level c
   locals i = \case
@@ -90,7 +89,7 @@ toEnv c = (Subst (metas (elems c)), locals 0 (elems c))
   metas = \case
     S.Nil              -> mempty
     bs S.:> Rigid{}    -> metas bs
-    bs S.:> Flex m v t -> IntMap.insert (getMeta m) (v ::: t) (metas bs)
+    bs S.:> Flex m v t -> insert m (v ::: t) (metas bs)
 
 evalIn :: Context -> TExpr -> Type
 evalIn = uncurry eval . toEnv
