@@ -1,7 +1,10 @@
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 -- | Really just a snoc list, but the shoe fits if you squish things up just right.
 module Facet.Stack
 ( Stack(..)
 , fromList
+, pattern FromList
 , (!)
 , (!?)
 ) where
@@ -73,6 +76,11 @@ instance Ord1 Stack where
 
 fromList :: [a] -> Stack a
 fromList = foldl' (:>) Nil
+
+pattern FromList :: [a] -> Stack a
+pattern FromList xs <- (toList -> xs)
+  where
+  FromList xs = fromList xs
 
 
 -- | Unsafe indexing (throws an exception for out-of-bounds indices).
