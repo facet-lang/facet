@@ -9,7 +9,6 @@ module Facet.Context
 , (!)
 , lookupIndex
 , toEnv
-, evalIn
 ) where
 
 import           Facet.Core.Type
@@ -79,6 +78,3 @@ toEnv c = (metas (elems c), locals 0 (elems c))
     S.Nil              -> mempty
     bs S.:> Rigid{}    -> metas bs
     bs S.:> Flex m v t -> insert m (v ::: t) (metas bs)
-
-evalIn :: Context -> TExpr -> Type
-evalIn = uncurry eval . toEnv
