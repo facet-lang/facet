@@ -8,7 +8,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (Type)
+import           Facet.Core.Type (Type, metas)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -25,24 +25,19 @@ import           Silkscreen
 rethrowElabErrors :: Source -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors src = L.runThrow rethrow
   where
-  rethrow Err{ span, reason, context, callStack } = Notice.Notice (Just Error) (Just (slice src span)) (printErrReason printCtx reason)
+  rethrow Err{ span, reason, context, subst, callStack } = Notice.Notice (Just Error) [slice src span] (printErrReason printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
+    , nest 2 (pretty "Metacontext" <\> concatWith (<\>) subst')
     , nest 2 (pretty "Trace" <\> concatWith (<\>) callStack)
     ]
     where
     (_, printCtx, ctx) = foldl combine (0, Nil, Nil) (elems context)
-  combine (d, print, ctx) e =
-    let _T = entryType e
-        n' = case e of
-          Rigid n _   -> intro n d
-          Flex  m _ _ -> Print.meta m
+    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType printCtx) v ::: printType printCtx _T))) (metas subst)
+  combine (d, print, ctx) (n ::: _T) =
+    let n' = intro n d
     in  ( succ d
-        , case e of
-          Flex{} -> print
-          _      -> print :> n'
-        , ctx  :> getPrint (ann (n' ::: printType print _T)) <> case e of
-          Flex _ v _ -> space <> pretty '=' <+> maybe (pretty '?') (printType' print) v
-          _          -> mempty )
+        , print :> n'
+        , ctx  :> getPrint (ann (n' ::: printType print _T)) )
 
 
 printErrReason :: Stack Print -> ErrReason -> Doc Style
@@ -67,7 +62,7 @@ printErrReason ctx = group . \case
 rethrowElabWarnings :: Source -> L.WriteC (Notice (Doc Style)) Warn m a -> m a
 rethrowElabWarnings src = L.runWrite inject
   where
-  inject Elab.Warn{ span, reason } = Notice.Notice (Just Notice.Warn) (Just (slice src span)) (printWarnReason reason) []
+  inject Elab.Warn{ span, reason } = Notice.Notice (Just Notice.Warn) [slice src span] (printWarnReason reason) []
 
 printWarnReason :: WarnReason -> Doc Style
 printWarnReason = \case

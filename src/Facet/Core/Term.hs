@@ -27,7 +27,6 @@ module Facet.Core.Term
 
 import           Control.Monad (guard)
 import           Data.Foldable (asum, foldl')
-import qualified Data.IntMap as IntMap
 import           Data.Semialign.Exts (zipWithM)
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
@@ -166,7 +165,7 @@ quote d = \case
   VString s           -> XString s
   VOp (n :$ sp)       -> foldl' XApp (XOp n) (quote d <$> sp)
 
-eval :: HasCallStack => IntMap.IntMap T.Type -> Stack T.Type -> Expr -> Value
+eval :: HasCallStack => T.Subst -> Stack T.Type -> Expr -> Value
 eval subst tenv = go tenv Nil where
   go tenv env = \case
     XVar (Global n) -> global n

@@ -94,7 +94,7 @@ reloadModules = do
     -- FIXME: remove stale modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
     targetHeads <- traverse (loadModuleHeader searchPaths . Right) (toList targets)
-    rethrowGraphErrors Nothing $ loadOrder (fmap toNode . loadModuleHeader searchPaths . Right) (map toNode targetHeads)
+    rethrowGraphErrors [] $ loadOrder (fmap toNode . loadModuleHeader searchPaths . Right) (map toNode targetHeads)
   let nModules = length modules
   results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
     i <- fresh
@@ -116,7 +116,7 @@ loadModuleHeader searchPaths target = do
   path <- case target of
     Left path  -> pure path
     Right name -> resolveName searchPaths name
-  src <- rethrowIOErrors Nothing $ readSourceFromFile path
+  src <- rethrowIOErrors [] $ readSourceFromFile path
   -- FIXME: validate that the name matches
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
@@ -136,7 +136,7 @@ resolveName searchPaths name = do
   path <- liftIO $ findFile searchPaths namePath
   case path of
     Just path -> pure path
-    Nothing   -> throwError @(Notice.Notice (Doc Style)) $ Notice.Notice (Just Notice.Error) Nothing (fillSep [pretty "module", squotes (prettyMName name), reflow "could not be found."]) $ case searchPaths of
+    Nothing   -> throwError @(Notice.Notice (Doc Style)) $ Notice.Notice (Just Notice.Error) [] (fillSep [pretty "module", squotes (prettyMName name), reflow "could not be found."]) $ case searchPaths of
       [] -> []
       _  -> [ nest 2 (reflow "search paths:" <\> concatWith (<\>) (map pretty searchPaths)) ]
   where
@@ -145,13 +145,13 @@ resolveName searchPaths name = do
 
 -- Errors
 
-rethrowIOErrors :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => Maybe Source -> IO a -> m a
-rethrowIOErrors src m = liftIO (tryIOError m) >>= either (throwError . ioErrorToNotice src) pure
+rethrowIOErrors :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [Source] -> IO a -> m a
+rethrowIOErrors refs m = liftIO (tryIOError m) >>= either (throwError . ioErrorToNotice refs) pure
 
-ioErrorToNotice :: Maybe Source -> IOError -> Notice.Notice (Doc Style)
-ioErrorToNotice src err = Notice.Notice (Just Notice.Error) src (group (reflow (show err))) []
+ioErrorToNotice :: [Source] -> IOError -> Notice.Notice (Doc Style)
+ioErrorToNotice refs err = Notice.Notice (Just Notice.Error) refs (group (reflow (show err))) []
 
-rethrowGraphErrors :: Maybe Source -> I.ThrowC (Notice.Notice (Doc Style)) GraphErr m a -> m a
-rethrowGraphErrors src = I.runThrow formatGraphErr
+rethrowGraphErrors :: [Source] -> I.ThrowC (Notice.Notice (Doc Style)) GraphErr m a -> m a
+rethrowGraphErrors refs = I.runThrow formatGraphErr
   where
-  formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) src (reflow "cyclic import") (map prettyMName (toList path))
+  formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) refs (reflow "cyclic import") (map prettyMName (toList path))

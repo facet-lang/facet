@@ -3,7 +3,7 @@ module Facet.Notice
   Level(..)
 , Notice(..)
 , level_
-, source_
+, references_
 , reason_
 , context_
 ) where
@@ -20,19 +20,19 @@ data Level
   deriving (Eq, Ord, Show)
 
 data Notice a = Notice
-  { level   :: !(Maybe Level)
+  { level      :: !(Maybe Level)
   -- FIXME: support multiple source references for e.g. cyclic import errors
-  , source  :: !(Maybe Source)
-  , reason  :: !a
-  , context :: ![a]
+  , references :: ![Source]
+  , reason     :: !a
+  , context    :: ![a]
   }
   deriving (Show)
 
 level_ :: Lens' (Notice a) (Maybe Level)
 level_ = lens level $ \ n level -> n{ level }
 
-source_ :: Lens' (Notice a) (Maybe Source)
-source_ = lens source $ \ n source -> n{ source }
+references_ :: Lens' (Notice a) [Source]
+references_ = lens references $ \ n references -> n{ references }
 
 reason_ :: Lens' (Notice a) a
 reason_ = lens reason $ \ n reason -> n{ reason }

@@ -31,6 +31,7 @@ module Facet.Elab
 , warn
   -- * Unification
 , ElabContext(..)
+, context_
 , sig_
   -- * Machinery
 , Elab(..)
@@ -53,11 +54,10 @@ module Facet.Elab
 import Control.Algebra
 import Control.Applicative (Alternative)
 import Control.Carrier.Error.Church
-import Control.Carrier.Fresh.Church
 import Control.Carrier.Reader
 import Control.Carrier.State.Church
 import Control.Effect.Empty
-import Control.Effect.Lens (view)
+import Control.Effect.Lens (view, views)
 import Control.Lens (Lens', lens)
 import Control.Monad (unless)
 import Data.Bifunctor (first)
@@ -75,7 +75,6 @@ import Facet.Name hiding (L, R)
 import Facet.Span (Span(..))
 import Facet.Stack
 import Facet.Syntax
-import GHC.Stack
 import Prelude hiding (span, zipWith)
 
 -- TODO:
@@ -87,10 +86,8 @@ import Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Has (Fresh :+: State Context) sig m => (Maybe Type ::: Type) -> m Meta
-meta (v ::: _T) = do
-  m <- Meta <$> fresh
-  m <$ modify (|> Flex m v _T)
+meta :: Has (State Subst) sig m => Type -> m Meta
+meta _T = state (declareMeta _T)
 
 
 -- FIXME: does instantiation need to be guided by the expected type?
@@ -99,18 +96,19 @@ instantiate inst = go
   where
   go (e ::: _T) = case _T of
     VTForAll _ _T _B -> do
-      m <- meta (Nothing ::: _T)
+      m <- meta _T
       go (inst e (TVar (TMetavar m)) ::: _B (metavar m))
     _                -> pure $ e ::: _T
 
 
-switch :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => Synth m a -> Check m a
+switch :: Has (Throw Err :+: Trace) sig m => Synth m a -> Check m a
 switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
 as :: Has Trace sig m => Check m Expr ::: Check m TExpr -> Synth m Expr
 as (m ::: _T) = Synth $ trace "as" $ do
-  eval <- gets evalIn
-  _T' <- eval <$> check (_T ::: VKType)
+  env <- views context_ toEnv
+  subst <- get
+  _T' <- T.eval subst env <$> check (_T ::: VKType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -157,25 +155,14 @@ app mk f a = Synth $ trace "app" $ do
   pure $ mk f' a' ::: _B
 
 
-(|-) :: (HasCallStack, Has Trace sig m) => Name ::: Type -> Elab m a -> Elab m a
--- FIXME: this isn’t _quite_ the shape we want to push onto the context because e.g. constructor patterns can bind multiple variables but they’d all have the same icit & signature.
--- FIXME: should this do something about the signature?
-n ::: _T |- b = trace "|-" $ do
-  i <- depth
-  -- FIXME: should the context allow names in Maybe?
-  modify (|> Rigid n _T)
-  a <- b
-  let extract (gamma :> Rigid{}) | i == level (Context gamma) = gamma
-      extract (gamma :> e@Flex{})                             = extract gamma :> e
-      extract (_     :> _)                                    = error "bad context entry"
-      extract Nil                                             = error "bad context"
-  a <$ modify (Context . extract . elems)
+(|-) :: Has Trace sig m => Name ::: Type -> Elab m a -> Elab m a
+e |- b = trace "|-" $ locally context_ (|> e) b
 
 infix 1 |-
 
 
-depth :: Has (State Context) sig m => m Level
-depth = gets level
+depth :: Has (Reader ElabContext) sig m => m Level
+depth = views context_ level
 
 
 -- Errors
@@ -188,6 +175,7 @@ data Err = Err
   { span      :: Span
   , reason    :: ErrReason
   , context   :: Context
+  , subst     :: Subst
   , callStack :: Stack Message -- FIXME: keep source references for each message.
   }
 
@@ -204,10 +192,11 @@ data ErrReason
 -- FIXME: apply the substitution before showing this to the user
 err :: Has (Throw Err :+: Trace) sig m => ErrReason -> Elab m a
 err reason = do
-  ctx <- get
+  ctx <- view context_
+  subst <- get
   span <- view span_
   callStack <- Trace.callStack
-  throwError $ Err span reason ctx callStack
+  throwError $ Err span reason ctx subst callStack
 
 mismatch :: Has (Throw Err :+: Trace) sig m => String -> Either String Type -> Type -> Elab m a
 mismatch msg exp act = err $ Mismatch msg exp act
@@ -256,10 +245,14 @@ expectFunction = expectMatch (\case{ VTArrow n t b -> pure (n ::: t, b) ; _ -> N
 data ElabContext = ElabContext
   { graph   :: Graph
   , mname   :: MName
+  , context :: Context
   , sig     :: [Type]
   , module' :: Module
   , span    :: Span
   }
+
+context_ :: Lens' ElabContext Context
+context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
 
 sig_ :: Lens' ElabContext [Type]
 sig_ = lens sig (\ e sig -> e{ sig })
@@ -268,33 +261,14 @@ span_ :: Lens' ElabContext Span
 span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
 
 
-onTop :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => (Level -> Meta :=: Maybe Type ::: Type -> Elab m (Maybe Suffix)) -> Elab m ()
-onTop f = trace "onTop" $ do
-  ctx <- get
-  (gamma, elem) <- case elems ctx of
-    gamma :> elem -> pure (Context gamma, elem)
-    Nil           -> err $ Invariant "onTop in empty context"
-  put gamma
-  case elem of
-    Flex n v _T -> f (level gamma) (n :=: v ::: _T) >>= \case
-      Just v  -> modify (<>< v)
-      Nothing -> modify (|> elem)
-    _         -> onTop f <* modify (|> elem)
-
 -- FIXME: we don’t get good source references during unification
-unify :: forall m sig . (HasCallStack, Has (Throw Err :+: Trace) sig m) => Type -> Type -> Elab m ()
+unify :: Has (Throw Err :+: Trace) sig m => Type -> Type -> Elab m ()
 unify t1 t2 = trace "unify" $ type' t1 t2
   where
   nope = couldNotUnify "mismatch" t1 t2
 
   type' t1 t2 = trace "unify type'" $ case (t1, t2) of
-    (VTNe (TMetavar v1 :$ Nil), VTNe (TMetavar v2 :$ Nil)) -> trace "flex-flex" $ onTop $ \ _ (g :=: d ::: _K) -> case (g == v1, g == v2, d) of
-      (True,  True,  _)       -> restore
-      (True,  False, Nothing) -> replace [v1 :=: Just (metavar v2) ::: _K]
-      (False, True,  Nothing) -> replace [v2 :=: Just (metavar v1) ::: _K]
-      (True,  False, Just t)  -> type' t (metavar v2) >> restore
-      (False, True,  Just t)  -> type' (metavar v1) t >> restore
-      (False, False, _)       -> type' (metavar v1) (metavar v2) >> restore
+    (VTNe (TMetavar v1 :$ Nil), VTNe (TMetavar v2 :$ Nil)) -> flexFlex v1 v2
     (VTNe (TMetavar v1 :$ Nil), t2)                        -> solve v1 t2
     (t1, VTNe (TMetavar v2 :$ Nil))                        -> solve v2 t1
     (VKType, VKType)                                       -> pure ()
@@ -330,39 +304,49 @@ unify t1 t2 = trace "unify" $ type' t1 t2
 
   sig c1 c2 = trace "unify sig" $ spine type' c1 c2
 
-  solve v t = trace "solve" $ go []
-    where
-    go ext = onTop $ \ lvl (m :=: d ::: _K) -> case (m == v, occursIn (== TMetavar m) lvl t, d) of
-      (True,  True,  _)       -> mismatch "infinite type" (Right (metavar m)) t
-      (True,  False, Nothing) -> replace (ext ++ [ m :=: Just t ::: _K ])
-      (True,  False, Just t') -> modify (<>< ext) >> type' t' t >> restore
-      (False, True,  _)       -> go ((m :=: d ::: _K):ext) >> replace []
-      (False, False, _)       -> go ext >> restore
+  flexFlex v1 v2
+    | v1 == v2  = pure ()
+    | otherwise = trace "flex-flex" $ do
+      (t1, t2) <- gets (\ s -> (T.lookupMeta v1 s, T.lookupMeta v2 s))
+      case (t1, t2) of
+        (Just t1, Just t2) -> type' (ty t1) (ty t2)
+        (Just t1, Nothing) -> type' (metavar v2) (tm t1)
+        (Nothing, Just t2) -> type' (metavar v1) (tm t2)
+        (Nothing, Nothing) -> solve v1 (metavar v2)
+
+  solve v t = trace "solve" $ do
+    d <- depth
+    if occursIn (== TMetavar v) d t then
+      mismatch "infinite type" (Right (metavar v)) t
+    else
+      gets (T.lookupMeta v) >>= \case
+        Nothing          -> modify (T.solveMeta v t)
+        Just (t' ::: _T) -> type' t' t
 
 
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (FreshC (StateC Context m)) a }
-  deriving (Algebra (Reader ElabContext :+: Fresh :+: State Context :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (StateC Subst m) a }
+  deriving (Algebra (Reader ElabContext :+: State Subst :+: sig), Applicative, Functor, Monad)
 
-elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => (Context -> a -> m b) -> Elab m a -> m b
-elabWith k m = runState k Context.empty . evalFresh 0 $ do
+elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => (Subst -> a -> m b) -> Elab m a -> m b
+elabWith k m = runState k mempty $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
-  mkContext = ElabContext <$> ask <*> ask <*> pure [] <*> ask <*> ask
+  mkContext = ElabContext <$> ask <*> ask <*> pure Context.empty <*> pure [] <*> ask <*> ask
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m a -> m a
 elab = elabWith (const pure)
 
 elabType :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m TExpr -> m Type
-elabType = elabWith (\ ctx t -> pure (evalIn ctx t))
+elabType = elabWith (\ subst t -> pure (T.eval subst Nil t))
 
 elabTerm :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m Expr -> m Value
-elabTerm = elabWith (\ ctx e -> pure (uncurry E.eval (toEnv ctx) e))
+elabTerm = elabWith (\ subst e -> pure (E.eval subst Nil e))
 
 elabSynth :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m (Expr ::: Type) -> m (Value ::: Type)
-elabSynth = elabWith (\ ctx (e ::: _T) -> let (subst, env) = toEnv ctx in pure (E.eval subst env e ::: T.eval subst env (T.quote 0 _T)))
+elabSynth = elabWith (\ subst (e ::: _T) -> pure (E.eval subst Nil e ::: T.eval subst Nil (T.quote 0 _T)))
 
 
 check :: Has Trace sig m => (Check m a ::: Type) -> Elab m a
