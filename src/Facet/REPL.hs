@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 module Facet.REPL
@@ -219,7 +220,7 @@ runEvalMain = runEval handle pure
     FromList ["Effect", "Console"] :.: U "write"
       | FromList [VString s] <- sp -> outputText s *> k unit
     _                              -> k (VOp (q :$ sp))
-  unit = VCon (fromList ["Data", "Unit"] :.: U "unit" :$ Nil)
+  unit = VCon (["Data", "Unit"] :.: U "unit" :$ Nil)
 
 
 helpDoc :: Doc Style
