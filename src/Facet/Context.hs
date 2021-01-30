@@ -32,10 +32,7 @@ Context as |> a = Context (as S.:> a)
 infixl 5 |>
 
 level :: Context -> Level
-level (Context es) = go 0 es
-  where
-  go n S.Nil             = n
-  go n (es S.:> Rigid{}) = go (n + 1) es
+level (Context es) = Level (length es)
 
 (!) :: HasCallStack => Context -> Index -> Entry
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
