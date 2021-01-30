@@ -1,7 +1,6 @@
 module Facet.Context
 ( -- * Contexts
   Context(..)
-, Sort(..)
 , Entry(..)
 , entryDef
 , entryType
@@ -29,11 +28,6 @@ import           GHC.Stack
 import           Prelude hiding (lookup)
 
 newtype Context = Context { elems :: S.Stack Entry }
-
-data Sort
-  = STerm
-  | SType
-  deriving (Bounded, Enum, Eq, Ord, Show)
 
 data Entry
   -- FIXME: record implicitness in the context.
