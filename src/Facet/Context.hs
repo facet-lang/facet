@@ -12,7 +12,6 @@ module Facet.Context
 , evalIn
 , Suffix
 , restore
-, replace
 ) where
 
 import           Facet.Core.Type
@@ -91,6 +90,3 @@ type Suffix = [Meta :=: Maybe Type ::: Type]
 
 restore :: Applicative m => m (Maybe Suffix)
 restore = pure Nothing
-
-replace :: Applicative m => Suffix -> m (Maybe Suffix)
-replace a = pure (Just a)
