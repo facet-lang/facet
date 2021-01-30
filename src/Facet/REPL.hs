@@ -31,7 +31,6 @@ import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
 import           Facet.Core.Term hiding (eval)
-import qualified Facet.Core.Term as E
 import           Facet.Core.Type as T hiding (eval)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
@@ -201,12 +200,12 @@ setLogTraces b = Action $ put (toFlag LogTraces b)
 showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
-  e ::: _T <- runElab $ Elab.elab (Elab.synth (Elab.synthExpr e))
-  outputDocLn (getPrint (ann (printExpr Nil e ::: printType Nil _T)))
+  e ::: _T <- runElab $ Elab.elabSynth (Elab.synth (Elab.synthExpr e))
+  outputDocLn (getPrint (ann (printValue Nil e ::: printType Nil _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- runElab $ Elab.elab $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
-  e'' <- runElab $ runEvalMain (eval (E.eval mempty e'))
+  e' ::: _T <- runElab $ Elab.elabSynth $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
+  e'' <- runElab $ runEvalMain (eval e')
   outputDocLn (getPrint (ann (printValue Nil e'' ::: printType Nil _T)))
 
 runEvalMain :: Has Output sig m => Eval m a -> m a
