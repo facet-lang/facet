@@ -11,7 +11,6 @@ module Facet.Context
 , toEnv
 , evalIn
 , Suffix
-, restore
 ) where
 
 import           Facet.Core.Type
@@ -87,6 +86,3 @@ evalIn = uncurry eval . toEnv
 
 
 type Suffix = [Meta :=: Maybe Type ::: Type]
-
-restore :: Applicative m => m (Maybe Suffix)
-restore = pure Nothing
