@@ -49,13 +49,11 @@ import           Facet.Elab.Type
 import           Facet.Graph
 import           Facet.Lens
 import           Facet.Name
-import qualified Facet.Print as Print
 import           Facet.Span (Span(..))
 import           Facet.Stack
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
-import qualified Silkscreen
 
 -- Term combinators
 
@@ -291,7 +289,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
         S.TermDef t -> pure (Just (S.ann tele, dname, t ::: _T))
 
     -- then elaborate the terms
-    trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> local (const s) $ trace (Print.getPrint (Silkscreen.pretty dname Silkscreen.<+> Silkscreen.colon Silkscreen.<+> Print.printType Nil _T)) $ do
+    trace "definitions" $ for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> local (const s) $ do
       t' <- runModule $ elabTermDef _T t
       scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
 
