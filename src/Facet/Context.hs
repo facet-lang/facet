@@ -2,7 +2,6 @@ module Facet.Context
 ( -- * Contexts
   Context(..)
 , Entry(..)
-, entryDef
 , entryType
 , empty
 , (|>)
@@ -31,11 +30,6 @@ data Entry
   -- FIXME: record implicitness in the context.
   = Rigid Name Type
   | Flex Meta (Maybe Type) Type
-
-entryDef :: Entry -> Maybe Type
-entryDef = \case
-  Rigid{}    -> Nothing
-  Flex _ v _ -> v
 
 entryType :: Entry -> Type
 entryType = \case
