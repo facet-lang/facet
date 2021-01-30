@@ -15,8 +15,6 @@ module Facet.Context
 , (<><)
 , restore
 , replace
-  -- * Metacontexts
-, Subst(..)
 ) where
 
 import           Data.Foldable (foldl')
@@ -111,7 +109,3 @@ restore = pure Nothing
 
 replace :: Applicative m => Suffix -> m (Maybe Suffix)
 replace a = pure (Just a)
-
-
-newtype Subst = Subst (IntMap.IntMap (Maybe Type ::: Type))
-  deriving (Monoid, Semigroup)

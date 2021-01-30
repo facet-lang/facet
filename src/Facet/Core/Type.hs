@@ -17,6 +17,8 @@ module Facet.Core.Type
   -- * Quotation
 , quote
 , eval
+  -- * Substitution
+, Subst(..)
 ) where
 
 import           Data.Foldable (foldl')
@@ -141,3 +143,9 @@ eval subst = go where
     TInst f a         -> go env f $$ TEInst (go env a)
     TApp  f a         -> go env f $$ TEApp (go env a)
     TString           -> VTString
+
+
+-- Substitution
+
+newtype Subst = Subst (IntMap.IntMap (Maybe Type ::: Type))
+  deriving (Monoid, Semigroup)
