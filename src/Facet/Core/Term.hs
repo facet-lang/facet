@@ -4,6 +4,7 @@ module Facet.Core.Term
 , unVar
   -- * Term values
 , Value(..)
+, Elim(..)
 , global
 , free
 , var
@@ -39,6 +40,10 @@ data Value
   | VCon (Q Name :$ Value)
   | VString Text
   | VOp (Q Name :$ Value)
+
+data Elim
+  = EInst T.Type
+  | EApp Value
 
 
 global :: Q Name -> Value
