@@ -80,7 +80,7 @@ tlam :: Has (Throw Err :+: Trace) sig m => Name -> Check m Expr -> Check m Expr
 tlam n b = Check $ \ _T -> trace "tlam" $ do
   (_ ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
-  b' <- Just n ::: _A |- check (b ::: _B (T.free d))
+  b' <- n ::: _A |- check (b ::: _B (T.free d))
   pure $ XTLam b'
 
 lam :: Has (Throw Err :+: Trace) sig m => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
@@ -112,7 +112,7 @@ wildcardP :: Bind m (ValuePattern Name)
 wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 
 varP :: Has Trace sig m => Name -> Bind m (ValuePattern Name)
-varP n = Bind $ \ _sig _A b -> Check $ \ _B -> (PVar n,) <$> (Just n ::: _A |- check (b ::: _B))
+varP n = Bind $ \ _sig _A b -> Check $ \ _B -> (PVar n,) <$> (n ::: _A |- check (b ::: _B))
 
 conP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
 conP n ps = Bind $ \ sig _A b -> Check $ \ _B -> do
@@ -134,13 +134,13 @@ fieldsP = foldr cons
 allP :: Has (Trace :+: Write Warn) sig m => Name -> Bind m (Pattern Name)
 allP n = Bind $ \ sig _A b -> Check $ \ _B -> do
   unless (null sig) (warn (RedundantCatchAll n))
-  Just n ::: _A |- (PAll n,) <$> check (b ::: _B)
+  n ::: _A |- (PAll n,) <$> check (b ::: _B)
 
 effP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
   ElabContext{ module', graph } <- ask
   q ::: _T <- maybe (freeVariable n) (instantiate const) (lookupInSig n module' graph sig)
-  (ps', b') <- check (bind (fieldsP (Bind (\ _sig _A' b -> ([],) <$> Check (\ _B -> Just v ::: VTArrow (Right []) _A' _A |- check (b ::: _B)))) ps ::: (sig, _T)) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (Bind (\ _sig _A' b -> ([],) <$> Check (\ _B -> v ::: VTArrow (Right []) _A' _A |- check (b ::: _B)))) ps ::: (sig, _T)) b ::: _B)
   pure (PEff q (PVal <$> fromList ps') v, b')
 
 
@@ -196,11 +196,11 @@ abstract body = go
   go = \case
     VTForAll       n  t b -> do
       level <- depth
-      b' <- Just n ::: t |- go (b (T.free level))
+      b' <- n ::: t |- go (b (T.free level))
       pure $ TForAll n (T.quote level t) b'
     VTArrow  (Left n) a b -> do
       level <- depth
-      b' <- Just n ::: a |- go b
+      b' <- n ::: a |- go b
       pure $ TForAll n (T.quote level a) b'
     _                     -> body
 

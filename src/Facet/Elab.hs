@@ -58,7 +58,6 @@ import Control.Lens (Lens', lens)
 import Control.Monad (unless)
 import Data.Bifunctor (first)
 import Data.Foldable (asum)
-import Data.Maybe (fromMaybe)
 import Data.Semialign.Exts
 import Facet.Carrier.Trace.Output as Trace
 import Facet.Context as Context
@@ -154,13 +153,13 @@ app mk f a = Synth $ trace "app" $ do
   pure $ mk f' a' ::: _B
 
 
-(|-) :: (HasCallStack, Has Trace sig m) => Maybe Name ::: Type -> Elab m a -> Elab m a
+(|-) :: (HasCallStack, Has Trace sig m) => Name ::: Type -> Elab m a -> Elab m a
 -- FIXME: this isn’t _quite_ the shape we want to push onto the context because e.g. constructor patterns can bind multiple variables but they’d all have the same icit & signature.
 -- FIXME: should this do something about the signature?
 n ::: _T |- b = trace "|-" $ do
   i <- depth
   -- FIXME: should the context allow names in Maybe?
-  modify (|> Rigid STerm (fromMaybe __ n) _T)
+  modify (|> Rigid STerm n _T)
   a <- b
   let extract (gamma :> Rigid{}) | i == level (Context gamma) = gamma
       extract (gamma :> e@Flex{})                             = extract gamma :> e
@@ -298,7 +297,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (VKType, _)                                            -> nope
     (VKInterface, VKInterface)                             -> pure ()
     (VKInterface, _)                                       -> nope
-    (VTForAll n t1 b1, VTForAll _ t2 b2)                   -> do { type' t1 t2 ; d <- depth ; Just n ::: t1 |- type' (b1 (T.free d)) (b2 (T.free d)) }
+    (VTForAll n t1 b1, VTForAll _ t2 b2)                   -> do { type' t1 t2 ; d <- depth ; n ::: t1 |- type' (b1 (T.free d)) (b2 (T.free d)) }
     (VTForAll{}, _)                                        -> nope
     (VTArrow _ a1 b1, VTArrow _ a2 b2)                     -> type' a1 a2 >> type' b1 b2
     (VTArrow{}, _)                                         -> nope

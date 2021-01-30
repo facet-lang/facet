@@ -48,7 +48,7 @@ forAll n t b = Synth $ do
   t' <- check (t ::: VKType)
   eval <- gets evalIn
   let vt = eval t'
-  b' <- Just n ::: vt |- check (b ::: VKType)
+  b' <- n ::: vt |- check (b ::: VKType)
   pure $ TForAll n t' b' ::: VKType
 
 (-->) :: Has Trace sig m => Either Name [Check m TExpr] ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
