@@ -19,7 +19,6 @@ module Facet.Core.Type
 , eval
   -- * Substitution
 , Subst(..)
-, lookup
 , insert
 , lookupMeta
 , solveMeta
@@ -154,9 +153,6 @@ eval subst = go where
 
 newtype Subst = Subst (IntMap.IntMap (Maybe Type ::: Type))
   deriving (Monoid, Semigroup)
-
-lookup :: Meta -> Subst -> Maybe (Maybe Type ::: Type)
-lookup (Meta i) (Subst metas) = IntMap.lookup i metas
 
 insert :: Meta -> Maybe Type ::: Type -> Subst -> Subst
 insert (Meta i) t (Subst metas) = Subst (IntMap.insert i t metas)
