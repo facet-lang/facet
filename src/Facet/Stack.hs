@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 -- | Really just a snoc list, but the shoe fits if you squish things up just right.
 module Facet.Stack
@@ -9,11 +10,12 @@ module Facet.Stack
 , (!?)
 ) where
 
-import Data.Foldable (foldl', toList)
-import Data.Functor.Classes
-import Data.Semialign
-import Data.These
-import GHC.Stack
+import           Data.Foldable (foldl', toList)
+import           Data.Functor.Classes
+import           Data.Semialign
+import           Data.These
+import qualified GHC.Exts as X
+import           GHC.Stack
 
 data Stack a
   = Nil
@@ -81,6 +83,13 @@ pattern FromList :: [a] -> Stack a
 pattern FromList xs <- (toList -> xs)
   where
   FromList xs = fromList xs
+
+
+instance X.IsList (Stack a) where
+  type Item (Stack a) = a
+
+  toList   = toList
+  fromList = fromList
 
 
 -- | Unsafe indexing (throws an exception for out-of-bounds indices).
