@@ -126,8 +126,7 @@ loadModule :: Has (Output :+: State Target :+: Throw (Notice.Notice (Doc Style))
 loadModule name path src imports = do
   graph <- use modules_
   let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) imports
-  (dM, m) <- rethrowParseErrors @Style (time (runParserWithSource src (runFacet (map makeOperator ops) (whole module'))))
-  outputStrLn (show dM)
+  m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   m <- rethrowElabWarnings src . rethrowElabErrors src . runReader graph $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)
   pure m
