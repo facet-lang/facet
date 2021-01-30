@@ -20,6 +20,7 @@ module Facet.Core.Type
   -- * Substitution
 , Subst(..)
 , lookup
+, insert
 ) where
 
 import           Data.Foldable (foldl')
@@ -154,3 +155,6 @@ newtype Subst = Subst (IntMap.IntMap (Maybe Type ::: Type))
 
 lookup :: Meta -> Subst -> Maybe (Maybe Type ::: Type)
 lookup (Meta i) (Subst metas) = IntMap.lookup i metas
+
+insert :: Meta -> Type ::: Type -> Subst -> Subst
+insert (Meta i) (t ::: k) (Subst metas) = Subst (IntMap.insert i (Just t ::: k) metas)
