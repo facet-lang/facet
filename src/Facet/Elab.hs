@@ -336,24 +336,24 @@ unify t1 t2 = trace "unify" $ type' t1 t2
 newtype Elab m a = Elab { runElab :: ReaderC ElabContext (StateC Subst (StateC Context m)) a }
   deriving (Algebra (Reader ElabContext :+: State Subst :+: State Context :+: sig), Applicative, Functor, Monad)
 
-elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => (Context -> a -> m b) -> Elab m a -> m b
-elabWith k m = runState (\ ctx (_subst, a) -> k ctx a) Context.empty . runState (curry pure) mempty $ do
+elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => (Subst -> Context -> a -> m b) -> Elab m a -> m b
+elabWith k m = runState (\ ctx (subst, a) -> k subst ctx a) Context.empty . runState (curry pure) mempty $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
   mkContext = ElabContext <$> ask <*> ask <*> pure [] <*> ask <*> ask
 
 elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m a -> m a
-elab = elabWith (const pure)
+elab = elabWith (const (const pure))
 
 elabType :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m TExpr -> m Type
-elabType = elabWith (\ ctx t -> pure (uncurry T.eval (toEnv ctx) t))
+elabType = elabWith (\ subst ctx t -> pure (T.eval subst (snd (toEnv ctx)) t))
 
 elabTerm :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m Expr -> m Value
-elabTerm = elabWith (\ ctx e -> pure (uncurry E.eval (toEnv ctx) e))
+elabTerm = elabWith (\ subst ctx e -> pure (E.eval subst (snd (toEnv ctx)) e))
 
 elabSynth :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m (Expr ::: Type) -> m (Value ::: Type)
-elabSynth = elabWith (\ ctx (e ::: _T) -> let (subst, env) = toEnv ctx in pure (E.eval subst env e ::: T.eval subst env (T.quote 0 _T)))
+elabSynth = elabWith (\ subst ctx (e ::: _T) -> let (_, env) = toEnv ctx in pure (E.eval subst env e ::: T.eval subst env (T.quote 0 _T)))
 
 
 check :: Has Trace sig m => (Check m a ::: Type) -> Elab m a
