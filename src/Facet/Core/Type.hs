@@ -21,6 +21,7 @@ module Facet.Core.Type
 , Subst(..)
 , lookup
 , insert
+, declareMeta
 ) where
 
 import           Data.Foldable (foldl')
@@ -158,3 +159,9 @@ lookup (Meta i) (Subst metas) = IntMap.lookup i metas
 
 insert :: Meta -> Maybe Type ::: Type -> Subst -> Subst
 insert (Meta i) t (Subst metas) = Subst (IntMap.insert i t metas)
+
+declareMeta :: Type -> Subst -> (Subst, Meta)
+declareMeta _K (Subst metas) = (Subst (IntMap.insert v (Nothing ::: _K) metas), Meta v) where
+  v = case IntMap.minViewWithKey metas of
+    Nothing          -> 0
+    Just ((k, _), _) -> k + 1
