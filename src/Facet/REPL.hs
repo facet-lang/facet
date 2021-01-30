@@ -120,8 +120,7 @@ loop = do
       graph <- use (target_.modules_)
       targets <- use (target_.targets_)
       let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) (toList targets)
-      (dParse, action) <- time $ rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
-      outputStrLn (show dParse)
+      action <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
       runReader src $ runAction action
     Nothing  -> pure ()
   loop
