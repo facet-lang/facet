@@ -33,6 +33,7 @@ import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
 import           Facet.Core.Term hiding (eval)
 import qualified Facet.Core.Term as E
+import           Facet.Core.Type as T hiding (eval)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
@@ -207,7 +208,7 @@ showType e = Action $ do
   outputDocLn (getPrint (ann (printExpr Nil e ::: printType Nil _T)))
 
 showEval e = Action $ do
-  (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ Elab.synth (Elab.synthExpr e)
+  (dElab, e' ::: _T) <- time $ elab $ Elab.elab $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
   (dEval, e'') <- time $ elab $ runEvalMain (eval (E.eval mempty e'))
   outputStrLn $ show dElab
   outputStrLn $ show dEval
