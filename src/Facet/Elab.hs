@@ -53,7 +53,6 @@ module Facet.Elab
 import Control.Algebra
 import Control.Applicative (Alternative)
 import Control.Carrier.Error.Church
-import Control.Carrier.Fresh.Church
 import Control.Carrier.Reader
 import Control.Carrier.State.Church
 import Control.Effect.Empty
@@ -342,11 +341,11 @@ unify t1 t2 = trace "unify" $ type' t1 t2
 
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (FreshC (StateC Subst (StateC Context m))) a }
-  deriving (Algebra (Reader ElabContext :+: Fresh :+: State Subst :+: State Context :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (StateC Subst (StateC Context m)) a }
+  deriving (Algebra (Reader ElabContext :+: State Subst :+: State Context :+: sig), Applicative, Functor, Monad)
 
 elabWith :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => (Context -> a -> m b) -> Elab m a -> m b
-elabWith k m = runState (\ ctx (_subst, a) -> k ctx a) Context.empty . runState (curry pure) mempty . evalFresh 0 $ do
+elabWith k m = runState (\ ctx (_subst, a) -> k ctx a) Context.empty . runState (curry pure) mempty $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
