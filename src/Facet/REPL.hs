@@ -201,12 +201,12 @@ setLogTraces b = Action $ put (toFlag LogTraces b)
 showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
-  e ::: _T <- elab $ Elab.elab (Elab.synth (Elab.synthExpr e))
+  e ::: _T <- runElab $ Elab.elab (Elab.synth (Elab.synthExpr e))
   outputDocLn (getPrint (ann (printExpr Nil e ::: printType Nil _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- elab $ Elab.elab $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
-  e'' <- elab $ runEvalMain (eval (E.eval mempty e'))
+  e' ::: _T <- runElab $ Elab.elab $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
+  e'' <- runElab $ runEvalMain (eval (E.eval mempty e'))
   outputDocLn (getPrint (ann (printValue Nil e'' ::: printType Nil _T)))
 
 runEvalMain :: Has Output sig m => Eval m a -> m a
@@ -236,8 +236,8 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-elab :: Has (Reader Source :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span m))))) a -> m a
-elab m = do
+runElab :: Has (Reader Source :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span m))))) a -> m a
+runElab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
   src <- ask
