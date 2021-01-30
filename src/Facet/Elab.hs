@@ -359,10 +359,10 @@ elabType :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span
 elabType = elabWith (\ ctx t -> pure (evalIn ctx t))
 
 elabTerm :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m Expr -> m Value
-elabTerm = elabWith (\ ctx e -> pure (E.eval (fst (toEnv ctx)) e))
+elabTerm = elabWith (\ ctx e -> pure (uncurry E.eval (toEnv ctx) e))
 
 elabSynth :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m (Expr ::: Type) -> m (Value ::: Type)
-elabSynth = elabWith (\ ctx (e ::: _T) -> let (subst, env) = toEnv ctx in pure (E.eval subst e ::: T.eval subst env (T.quote 0 _T)))
+elabSynth = elabWith (\ ctx (e ::: _T) -> let (subst, env) = toEnv ctx in pure (E.eval subst env e ::: T.eval subst env (T.quote 0 _T)))
 
 
 check :: Has Trace sig m => (Check m a ::: Type) -> Elab m a

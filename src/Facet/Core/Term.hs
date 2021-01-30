@@ -166,8 +166,8 @@ quote d = \case
   VString s           -> XString s
   VOp (n :$ sp)       -> foldl' XApp (XOp n) (quote d <$> sp)
 
-eval :: HasCallStack => IntMap.IntMap T.Type -> Expr -> Value
-eval subst = go Nil Nil where
+eval :: HasCallStack => IntMap.IntMap T.Type -> Stack T.Type -> Expr -> Value
+eval subst tenv = go tenv Nil where
   go tenv env = \case
     XVar (Global n) -> global n
     XVar (Free v)   -> env ! getIndex v

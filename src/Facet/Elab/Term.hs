@@ -217,7 +217,7 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elabType $ abstract (check (checkType t ::: VKType)) _T
-    pure $ n :=: Just (DTerm (E.eval mempty (con (mname :.: n) c_T))) ::: c_T
+    pure $ n :=: Just (DTerm (E.eval mempty Nil (con (mname :.: n) c_T))) ::: c_T
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
     : cs
