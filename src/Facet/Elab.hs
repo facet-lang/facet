@@ -64,7 +64,7 @@ import Facet.Carrier.Trace.Output as Trace
 import Facet.Context as Context
 import Facet.Core.Module
 import Facet.Core.Term
-import Facet.Core.Type
+import Facet.Core.Type as T
 import Facet.Effect.Write
 import Facet.Graph as Graph
 import Facet.Lens
@@ -298,7 +298,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (VKType, _)                                            -> nope
     (VKInterface, VKInterface)                             -> pure ()
     (VKInterface, _)                                       -> nope
-    (VTForAll n t1 b1, VTForAll _ t2 b2)                   -> do { type' t1 t2 ; d <- depth ; Just n ::: t1 |- type' (b1 (free d)) (b2 (free d)) }
+    (VTForAll n t1 b1, VTForAll _ t2 b2)                   -> do { type' t1 t2 ; d <- depth ; Just n ::: t1 |- type' (b1 (T.free d)) (b2 (T.free d)) }
     (VTForAll{}, _)                                        -> nope
     (VTArrow _ a1 b1, VTArrow _ a2 b2)                     -> type' a1 a2 >> type' b1 b2
     (VTArrow{}, _)                                         -> nope
