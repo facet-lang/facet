@@ -79,6 +79,9 @@ instance (Semiring a, Semiring b, Semiring c) => Semiring (a, b, c) where
 class (Monoid s, Semiring s) => Unital s where
   one :: s
 
+instance Unital () where
+  one = ()
+
 instance (Unital a, Unital b) => Unital (a, b) where
   one = (one, one)
 
