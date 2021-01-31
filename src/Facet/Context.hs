@@ -19,7 +19,11 @@ import           Prelude hiding (lookup)
 
 newtype Context = Context { elems :: S.Stack Entry }
 
-data Entry = Entry Name (Tropical Integer) Type
+data Entry = Entry
+  { name     :: Name
+  , quantity :: Tropical Integer
+  , type'    :: Type
+  }
 
 empty :: Context
 empty = Context S.Nil
