@@ -22,6 +22,9 @@ class (Semiring r, Semigroup m) => LeftModule r m | m -> r where
   (><<) :: r -> m -> m
   infixr 7 ><<
 
+instance Semiring r => LeftModule r [r] where
+  r ><< rs = map (r ><) rs
+
 
 data Few
   = Zero
