@@ -27,7 +27,7 @@ scalarMultDefault :: (Semiring r, Functor f) => r -> f r -> f r
 scalarMultDefault = fmap . (><)
 
 instance Semiring r => LeftModule r [r] where
-  r ><< rs = map (r ><) rs
+  (><<) = scalarMultDefault
 
 
 data Few
