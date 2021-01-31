@@ -79,6 +79,9 @@ class (Monoid s, Semiring s) => Unital s where
 instance (Unital a, Unital b) => Unital (a, b) where
   one = (one, one)
 
+instance (Unital a, Unital b, Unital c) => Unital (a, b, c) where
+  one = (one, one, one)
+
 
 zero :: Unital s => s
 zero = mempty
