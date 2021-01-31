@@ -19,7 +19,7 @@ import qualified Facet.Stack as S
 import           GHC.Stack
 import           Prelude hiding (lookup, zipWith)
 
-type Quantity = Tropical Integer
+type Quantity = Few
 
 newtype Context = Context { elems :: S.Stack Entry }
 
