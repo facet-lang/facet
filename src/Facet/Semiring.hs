@@ -6,7 +6,7 @@ module Facet.Semiring
 , zero
   -- * Module classes
 , LeftModule(..)
-, scalarMultDefault
+, scaleDefault
   -- * Semiring datatypes
 , Few(..)
 ) where
@@ -30,14 +30,14 @@ class (Semiring r, Semigroup m) => LeftModule r m | m -> r where
   (><<) :: r -> m -> m
   infixr 7 ><<
 
-scalarMultDefault :: (Semiring r, Functor f) => r -> f r -> f r
-scalarMultDefault = fmap . (><)
+scaleDefault :: (Semiring r, Functor f) => r -> f r -> f r
+scaleDefault = fmap . (><)
 
 instance Semiring r => LeftModule r [r] where
-  (><<) = scalarMultDefault
+  (><<) = scaleDefault
 
 instance Semiring r => LeftModule r (Maybe r) where
-  (><<) = scalarMultDefault
+  (><<) = scaleDefault
 
 
 -- Semiring datatypes
