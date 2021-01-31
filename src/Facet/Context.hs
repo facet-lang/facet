@@ -34,6 +34,9 @@ data Entry = Entry
 instance Semigroup Entry where
   Entry _ q1 _ <> Entry n q2 _T = Entry n (q1 <> q2) _T
 
+instance LeftModule (Tropical Integer) Entry where
+  q1 ><< Entry n q2 _T = Entry n (q1 >< q2) _T
+
 empty :: Context
 empty = Context S.Nil
 
