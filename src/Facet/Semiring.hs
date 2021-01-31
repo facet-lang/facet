@@ -140,3 +140,6 @@ data Tropical a
 
 instance Ord a => Semigroup (Tropical a) where
   (<>) = min
+
+instance Ord a => Monoid (Tropical a) where
+  mempty = Infinity
