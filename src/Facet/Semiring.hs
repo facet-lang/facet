@@ -101,9 +101,6 @@ class (Semiring r, Semigroup m) => LeftModule r m | m -> r where
 scaleDefault :: (Semiring r, Functor f) => r -> f r -> f r
 scaleDefault = fmap . (><)
 
-instance Semiring r => LeftModule r [r] where
-  (><<) = scaleDefault
-
 instance Semiring r => LeftModule r (Maybe r) where
   (><<) = scaleDefault
 
