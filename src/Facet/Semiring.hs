@@ -53,6 +53,10 @@ class Semigroup s => Semiring s where
   (><) :: s -> s -> s
   infixr 7 ><
 
+instance (Semiring a, Semiring b) => Semiring (a, b) where
+  (a1, b1) >< (a2, b2) = (a1 >< a2, b1 >< b2)
+
+
 -- | Unital semirings extend 'Semiring's with a multiplicative unit, 'one', satisfyiing:
 --
 -- Left-identity:
