@@ -14,6 +14,7 @@ import           Data.Foldable (foldl', toList)
 import           Data.Functor.Classes
 import           Data.Semialign
 import           Data.These
+import           Facet.Semiring
 import qualified GHC.Exts as X
 import           GHC.Stack
 
@@ -33,6 +34,9 @@ instance Semigroup (Stack a) where
 
 instance Monoid (Stack a) where
   mempty = Nil
+
+instance Semiring r => LeftModule r (Stack r) where
+  scale = scaleDefault
 
 instance Semialign Stack where
   align Nil     Nil     = Nil
