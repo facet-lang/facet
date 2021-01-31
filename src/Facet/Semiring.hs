@@ -75,6 +75,25 @@ zero = mempty
 
 -- Module classes
 
+-- | A left /R/-module /M/ (for a 'Semiring' /R/) is a 'Semigroup' extended with a scalar multiplication operator 'scale' (or '><<') satisfying:
+--
+-- Left-distributivity of ><< over <> (on /M/):
+--
+-- @
+-- r ><< (m <> n) ≡ r ><< m <> r ><< n
+-- @
+--
+-- Left-distributivity of <> (on /R/) over ><<:
+--
+-- @
+-- (r <> s) ><< m ≡ r ><< m <> s ><< m
+-- @
+--
+-- Associativity:
+--
+-- @
+-- (r >< s) ><< m ≡ r ><< (s ><< m)
+-- @
 class (Semiring r, Semigroup m) => LeftModule r m | m -> r where
   scale :: r -> m -> m
 
