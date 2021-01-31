@@ -37,7 +37,6 @@ module Facet.Elab
 , Elab(..)
 , depth
 , elabWith
-, elab
 , elabType
 , elabTerm
 , elabSynth
@@ -336,9 +335,6 @@ elabWith k m = runState k mempty $ do
   runReader ctx . runElab $ m
   where
   mkContext = ElabContext <$> ask <*> ask <*> pure Context.empty <*> pure [] <*> ask <*> ask
-
-elab :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m a -> m a
-elab = elabWith (const pure)
 
 elabType :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m TExpr -> m Type
 elabType = elabWith (\ subst t -> pure (T.eval subst Nil t))
