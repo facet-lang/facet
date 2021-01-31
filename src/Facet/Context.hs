@@ -1,6 +1,7 @@
 module Facet.Context
 ( -- * Contexts
   Context(..)
+, Entry(..)
 , empty
 , (|>)
 , level
@@ -12,16 +13,17 @@ module Facet.Context
 import           Facet.Core.Type
 import           Facet.Name
 import qualified Facet.Stack as S
-import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
-newtype Context = Context { elems :: S.Stack (Name ::: Type) }
+newtype Context = Context { elems :: S.Stack Entry }
+
+data Entry = Entry Name Type
 
 empty :: Context
 empty = Context S.Nil
 
-(|>) :: Context -> Name ::: Type -> Context
+(|>) :: Context -> Entry -> Context
 Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
@@ -29,7 +31,7 @@ infixl 5 |>
 level :: Context -> Level
 level (Context es) = Level (length es)
 
-(!) :: HasCallStack => Context -> Index -> Name ::: Type
+(!) :: HasCallStack => Context -> Index -> Entry
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
   where
   go (es S.:> e) i
@@ -41,7 +43,7 @@ lookupIndex :: Name -> Context -> Maybe (Index, Type)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = Nothing
-  go i (cs S.:> (n' ::: t))
+  go i (cs S.:> Entry n' t)
     | n == n'           = Just (i, t)
     | otherwise         = go (succ i) cs
 
