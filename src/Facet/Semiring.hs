@@ -53,6 +53,19 @@ class Semigroup s => Semiring s where
   (><) :: s -> s -> s
   infixr 7 ><
 
+-- | Unital semirings extend 'Semiring's with a multiplicative unit, 'one', satisfyiing:
+--
+-- Left-identity:
+--
+-- @
+-- one >< a ≡ a
+-- @
+--
+-- Right-identity:
+--
+-- @
+-- a >< one ≡ a
+-- @
 class (Monoid s, Semiring s) => Unital s where
   one :: s
 
