@@ -31,6 +31,10 @@ data Entry = Entry
   , type'    :: Type
   }
 
+-- | A precondition for use of this instance is that one only ever '<>'s pairs of 'Entry's assigning the same type to the same variable.
+instance Semigroup Entry where
+  Entry _ q1 _ <> Entry n q2 _T = Entry n (q1 <> q2) _T
+
 empty :: Context
 empty = Context S.Nil
 
