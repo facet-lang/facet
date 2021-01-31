@@ -136,3 +136,4 @@ instance Unital Few where
 data Tropical a
   = Infinity
   | Finite a
+  deriving (Eq, Ord, Show)
