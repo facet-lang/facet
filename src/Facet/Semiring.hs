@@ -56,6 +56,9 @@ class Semigroup s => Semiring s where
 instance (Semiring a, Semiring b) => Semiring (a, b) where
   (a1, b1) >< (a2, b2) = (a1 >< a2, b1 >< b2)
 
+instance (Semiring a, Semiring b, Semiring c) => Semiring (a, b, c) where
+  (a1, b1, c1) >< (a2, b2, c2) = (a1 >< a2, b1 >< b2, c1 >< c2)
+
 
 -- | Unital semirings extend 'Semiring's with a multiplicative unit, 'one', satisfyiing:
 --
