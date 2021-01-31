@@ -148,3 +148,6 @@ instance (Num a, Ord a) => Semiring (Tropical a) where
   Infinity >< _        = Infinity
   _        >< Infinity = Infinity
   Finite a >< Finite b = Finite (a + b)
+
+instance (Num a, Ord a) => Unital (Tropical a) where
+  one = Finite 0
