@@ -40,9 +40,9 @@ level (Context es) = Level (length es)
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
   where
   go (es S.:> e) i
-    | i == 0               = e
-    | otherwise            = go es (i - 1)
-  go _                   _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
+    | i == 0       = e
+    | otherwise    = go es (i - 1)
+  go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
 lookupIndex :: Name -> Context -> Maybe (Index, Type)
 lookupIndex n = go (Index 0) . elems
