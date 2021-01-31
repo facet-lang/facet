@@ -143,3 +143,8 @@ instance Ord a => Semigroup (Tropical a) where
 
 instance Ord a => Monoid (Tropical a) where
   mempty = Infinity
+
+instance (Num a, Ord a) => Semiring (Tropical a) where
+  Infinity >< _        = Infinity
+  _        >< Infinity = Infinity
+  Finite a >< Finite b = Finite (a + b)
