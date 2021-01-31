@@ -22,8 +22,7 @@ newtype Context = Context { elems :: S.Stack Entry }
 
 -- | A precondition for use of this instance is that one only ever '<>'s 'Context's assigning the same types to the same variables in the same order.
 instance Semigroup Context where
-  Context e1 <> Context e2 = Context (zipWith combine e1 e2) where
-    combine (Entry _ q1 _) (Entry n q2 _T) = Entry n (q1 <> q2) _T
+  Context e1 <> Context e2 = Context (zipWith (<>) e1 e2)
 
 data Entry = Entry
   { name     :: Name
