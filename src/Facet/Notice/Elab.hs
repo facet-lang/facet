@@ -4,6 +4,7 @@ module Facet.Notice.Elab
 , rethrowElabWarnings
 ) where
 
+import           Data.Foldable (foldl')
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
@@ -31,7 +32,7 @@ rethrowElabErrors src = L.runThrow rethrow
     , nest 2 (pretty "Trace" <\> concatWith (<\>) callStack)
     ]
     where
-    (_, printCtx, ctx) = foldl combine (0, Nil, Nil) (elems context)
+    (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
     subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType printCtx) v ::: printType printCtx _T))) (metas subst)
   combine (d, print, ctx) (Entry n _T) =
     let n' = intro n d
