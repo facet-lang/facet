@@ -131,8 +131,8 @@ instance Unital Few where
 
 
 data Tropical a
-  = Infinity
-  | Finite a
+  = Finite a
+  | Infinity
   deriving (Eq, Ord, Show)
 
 instance Ord a => Semigroup (Tropical a) where
