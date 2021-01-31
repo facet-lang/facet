@@ -10,14 +10,20 @@ module Facet.Context
 , toEnv
 ) where
 
+import           Data.Semialign
 import           Facet.Core.Type
 import           Facet.Name
 import           Facet.Semiring
 import qualified Facet.Stack as S
 import           GHC.Stack
-import           Prelude hiding (lookup)
+import           Prelude hiding (lookup, zipWith)
 
 newtype Context = Context { elems :: S.Stack Entry }
+
+-- | A precondition for use of this instance is that one only ever '<>'s 'Context's assigning the same types to the same variables in the same order.
+instance Semigroup Context where
+  Context e1 <> Context e2 = Context (zipWith combine e1 e2) where
+    combine (Entry _ q1 _) (Entry n q2 _T) = Entry n (q1 <> q2) _T
 
 data Entry = Entry
   { name     :: Name
