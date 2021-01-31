@@ -1,12 +1,17 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Semiring
-( Semiring(..)
+( -- * Semiring classes
+  Semiring(..)
 , Unital(..)
 , zero
+  -- * Module classes
 , LeftModule(..)
 , scalarMultDefault
+  -- * Semiring datatypes
 , Few(..)
 ) where
+
+-- Semiring classes
 
 class Semigroup s => Semiring s where
   (><) :: s -> s -> s
@@ -18,6 +23,8 @@ class (Monoid s, Semiring s) => Unital s where
 zero :: Unital s => s
 zero = mempty
 
+
+-- Module classes
 
 class (Semiring r, Semigroup m) => LeftModule r m | m -> r where
   (><<) :: r -> m -> m
@@ -32,6 +39,8 @@ instance Semiring r => LeftModule r [r] where
 instance Semiring r => LeftModule r (Maybe r) where
   (><<) = scalarMultDefault
 
+
+-- Semiring datatypes
 
 data Few
   = Zero
