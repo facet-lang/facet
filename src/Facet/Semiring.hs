@@ -29,6 +29,9 @@ scalarMultDefault = fmap . (><)
 instance Semiring r => LeftModule r [r] where
   (><<) = scalarMultDefault
 
+instance Semiring r => LeftModule r (Maybe r) where
+  (><<) = scalarMultDefault
+
 
 data Few
   = Zero
