@@ -10,7 +10,7 @@ module Facet.Stack
 , (!?)
 ) where
 
-import Data.Foldable (foldl')
+import Data.Foldable (foldl', foldr')
 import Data.Functor.Classes
 import Data.Semialign
 import Data.These
@@ -89,7 +89,7 @@ pattern FromList xs <- (toList -> xs)
 instance IsList (Stack a) where
   type Item (Stack a) = a
 
-  toList   = foldr  (:)  []
+  toList   = foldr' (:)  []
   fromList = foldl' (:>) Nil
 
 
