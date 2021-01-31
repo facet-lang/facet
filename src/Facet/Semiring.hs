@@ -6,7 +6,6 @@ module Facet.Semiring
 , zero
   -- * Module classes
 , LeftModule(..)
-, (><<)
 , scaleDefault
   -- * Semiring datatypes
 , Few(..)
@@ -75,7 +74,7 @@ zero = mempty
 
 -- Module classes
 
--- | A left /R/-module /M/ (for a 'Semiring' /R/) is a 'Semigroup' extended with a scalar multiplication operator 'scale' (or '><<') satisfying:
+-- | A left /R/-module /M/ (for a 'Semiring' /R/) is a 'Semigroup' extended with a '><<' (scalar multiplication) operation satisfying:
 --
 -- Left-distributivity of ><< over <> (on /M/):
 --
@@ -95,21 +94,17 @@ zero = mempty
 -- (r >< s) ><< m ≡ r ><< (s ><< m)
 -- @
 class (Semiring r, Semigroup m) => LeftModule r m | m -> r where
-  scale :: r -> m -> m
-
-(><<) :: LeftModule r m => r -> m -> m
-(><<) = scale
-
-infixr 7 ><<
+  (><<) :: r -> m -> m
+  infixr 7 ><<
 
 scaleDefault :: (Semiring r, Functor f) => r -> f r -> f r
 scaleDefault = fmap . (><)
 
 instance Semiring r => LeftModule r [r] where
-  scale = scaleDefault
+  (><<) = scaleDefault
 
 instance Semiring r => LeftModule r (Maybe r) where
-  scale = scaleDefault
+  (><<) = scaleDefault
 
 
 -- Semiring datatypes

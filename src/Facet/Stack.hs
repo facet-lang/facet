@@ -36,7 +36,7 @@ instance Monoid (Stack a) where
   mempty = Nil
 
 instance Semiring r => LeftModule r (Stack r) where
-  scale = scaleDefault
+  (><<) = scaleDefault
 
 instance Semialign Stack where
   align Nil     Nil     = Nil
