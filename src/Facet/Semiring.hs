@@ -14,6 +14,41 @@ module Facet.Semiring
 
 -- Semiring classes
 
+-- | Semirings extend 'Semigroup's with an '><' (multiplication) operation satisfying:
+--
+-- Associativity:
+--
+-- @
+-- a >< (b >< c) ≡ (a >< b) >< c
+-- @
+--
+-- Left-distributivity:
+--
+-- @
+-- a >< (b <> c) ≡ (a >< b) <> (a >< c)
+-- @
+--
+-- Right-distributivity:
+--
+-- @
+-- (a <> b) >< c ≡ (a >< c) <> (b >< c)
+-- @
+--
+-- Contrary to many presentations, we do not require '<>' (addition) to be commutative, or for the type to be a 'Monoid'. However, if it /is/ a 'Monoid', then we additionally require '><' to satisfy:
+--
+-- Left-annihilation:
+--
+-- @
+-- zero >< a ≡ zero
+-- @
+--
+-- Right-annihilation:
+--
+-- @
+-- a >< zero ≡ zero
+-- @
+--
+-- where 'zero' is a synonym for 'mempty', defined below.
 class Semigroup s => Semiring s where
   (><) :: s -> s -> s
   infixr 7 ><
