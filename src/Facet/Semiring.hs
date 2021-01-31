@@ -1,7 +1,9 @@
+{-# LANGUAGE FunctionalDependencies #-}
 module Facet.Semiring
 ( Semiring(..)
 , Unital(..)
 , zero
+, LeftModule(..)
 , Few(..)
 ) where
 
@@ -14,6 +16,11 @@ class (Monoid s, Semiring s) => Unital s where
 
 zero :: Unital s => s
 zero = mempty
+
+
+class Semiring r => LeftModule r m | m -> r where
+  (><<) :: r -> m -> m
+  infixr 7 ><<
 
 
 data Few
