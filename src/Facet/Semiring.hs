@@ -4,6 +4,7 @@ module Facet.Semiring
 , Unital(..)
 , zero
 , LeftModule(..)
+, scalarMultDefault
 , Few(..)
 ) where
 
@@ -21,6 +22,9 @@ zero = mempty
 class (Semiring r, Semigroup m) => LeftModule r m | m -> r where
   (><<) :: r -> m -> m
   infixr 7 ><<
+
+scalarMultDefault :: (Semiring r, Functor f) => r -> f r -> f r
+scalarMultDefault = fmap . (><)
 
 instance Semiring r => LeftModule r [r] where
   r ><< rs = map (r ><) rs
