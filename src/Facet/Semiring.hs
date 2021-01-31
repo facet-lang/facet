@@ -18,7 +18,7 @@ zero :: Unital s => s
 zero = mempty
 
 
-class Semiring r => LeftModule r m | m -> r where
+class (Semiring r, Semigroup m) => LeftModule r m | m -> r where
   (><<) :: r -> m -> m
   infixr 7 ><<
 
