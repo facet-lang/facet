@@ -33,7 +33,7 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Lens ((.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
-import           Control.Monad (unless)
+import           Control.Monad (when)
 import           Data.Foldable
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
@@ -130,7 +130,7 @@ fieldsP = foldr cons
 
 allP :: Has (Trace :+: Write Warn) sig m => Name -> Bind m (Pattern Name)
 allP n = Bind $ \ sig _A b -> Check $ \ _B -> do
-  unless (null sig) (warn (RedundantCatchAll n))
+  when (null sig) (warn (RedundantCatchAll n))
   n ::: _A |- (PAll n,) <$> check (b ::: _B)
 
 effP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
