@@ -137,3 +137,6 @@ data Tropical a
   = Infinity
   | Finite a
   deriving (Eq, Ord, Show)
+
+instance Ord a => Semigroup (Tropical a) where
+  (<>) = min
