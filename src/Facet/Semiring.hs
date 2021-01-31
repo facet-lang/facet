@@ -9,6 +9,7 @@ module Facet.Semiring
 , scaleDefault
   -- * Semiring datatypes
 , Few(..)
+, Tropical(..)
 ) where
 
 -- Semiring classes
@@ -130,3 +131,8 @@ instance Semiring Few where
 
 instance Unital Few where
   one = One
+
+
+data Tropical a
+  = Infinity
+  | Finite a
