@@ -12,13 +12,14 @@ module Facet.Context
 
 import           Facet.Core.Type
 import           Facet.Name
+import           Facet.Semiring
 import qualified Facet.Stack as S
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
 newtype Context = Context { elems :: S.Stack Entry }
 
-data Entry = Entry Name Type
+data Entry = Entry Name (Tropical Integer) Type
 
 empty :: Context
 empty = Context S.Nil
@@ -43,7 +44,7 @@ lookupIndex :: Name -> Context -> Maybe (Index, Type)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = Nothing
-  go i (cs S.:> Entry n' t)
+  go i (cs S.:> Entry n' _ t)
     | n == n'           = Just (i, t)
     | otherwise         = go (succ i) cs
 

@@ -72,6 +72,7 @@ import Facet.Effect.Write
 import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
+import Facet.Semiring (one)
 import Facet.Span (Span(..))
 import Facet.Stack
 import Facet.Syntax
@@ -156,7 +157,7 @@ app mk f a = Synth $ trace "app" $ do
 
 
 (|-) :: Has Trace sig m => Name ::: Type -> Elab m a -> Elab m a
-n ::: _T |- b = trace "|-" $ locally context_ (|> Entry n _T) b
+n ::: _T |- b = trace "|-" $ locally context_ (|> Entry n one _T) b
 
 infix 1 |-
 
