@@ -24,6 +24,9 @@ newtype Context = Context { elems :: S.Stack Entry }
 instance Semigroup Context where
   Context e1 <> Context e2 = Context (zipWith (<>) e1 e2)
 
+instance LeftModule (Tropical Integer) Context where
+  q ><< Context e = Context ((q ><<) <$> e)
+
 data Entry = Entry
   { name     :: Name
   , quantity :: Tropical Integer
