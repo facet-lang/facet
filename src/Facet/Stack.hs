@@ -10,13 +10,13 @@ module Facet.Stack
 , (!?)
 ) where
 
-import           Data.Foldable (foldl', toList)
-import           Data.Functor.Classes
-import           Data.Semialign
-import           Data.These
-import           Facet.Semiring
-import qualified GHC.Exts as X
-import           GHC.Stack
+import Data.Foldable (foldl')
+import Data.Functor.Classes
+import Data.Semialign
+import Data.These
+import Facet.Semiring
+import GHC.Exts
+import GHC.Stack
 
 data Stack a
   = Nil
@@ -80,20 +80,17 @@ instance Ord1 Stack where
     go _        _        = GT
 
 
-fromList :: [a] -> Stack a
-fromList = foldl' (:>) Nil
-
 pattern FromList :: [a] -> Stack a
 pattern FromList xs <- (toList -> xs)
   where
   FromList xs = fromList xs
 
 
-instance X.IsList (Stack a) where
+instance IsList (Stack a) where
   type Item (Stack a) = a
 
-  toList   = toList
-  fromList = fromList
+  toList   = foldr  (:)  []
+  fromList = foldl' (:>) Nil
 
 
 -- | Unsafe indexing (throws an exception for out-of-bounds indices).
