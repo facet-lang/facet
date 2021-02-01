@@ -48,7 +48,6 @@ import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type
 import           Facet.Graph
-import           Facet.Lens
 import           Facet.Name
 import           Facet.Semiring (Few(..), zero)
 import           Facet.Span (Span(..))
@@ -309,9 +308,6 @@ expectComp = expectMatch (\case { VTComp s t -> pure (s, t) ; _ -> Nothing }) "{
 
 
 -- Elaboration
-
-extendSig :: Has (Reader ElabContext) sig m => [Type] -> m a -> m a
-extendSig = locally sig_ . (++)
 
 runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
