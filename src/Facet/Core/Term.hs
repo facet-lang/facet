@@ -112,7 +112,10 @@ infixl 9 $$, $$*
 ($$$) :: HasCallStack => Value -> T.Type -> Value
 VNe (h :$ ts :$ es) $$$ t = VNe (h :$ (ts :> t) :$ es)
 VTLam b             $$$ t = b t
-_                   $$$ _ = error "can’t instantiate non-neutral/type lambda value"
+VLam _              $$$ _ = error "can’t instantiate lambda"
+VCon _              $$$ _ = error "can’t instantiate constructor"
+VString _           $$$ _ = error "can’t instantiate string"
+VOp _               $$$ _ = error "can’t instantiate operator"
 
 ($$$*) :: (HasCallStack, Foldable t) => Value -> t T.Type -> Value
 ($$$*) = foldl' ($$$)
