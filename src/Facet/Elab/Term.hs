@@ -39,6 +39,7 @@ import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
+import           Facet.Context (Binding(..))
 import           Facet.Core.Module
 import           Facet.Core.Term as E hiding (global, var)
 import           Facet.Core.Type as T hiding (global, var)
@@ -49,6 +50,7 @@ import           Facet.Elab.Type
 import           Facet.Graph
 import           Facet.Lens
 import           Facet.Name
+import           Facet.Semiring (Few(..), zero)
 import           Facet.Span (Span(..))
 import           Facet.Stack
 import qualified Facet.Surface as S
@@ -77,7 +79,7 @@ tlam :: Has (Throw Err :+: Trace) sig m => Check m Expr -> Check m Expr
 tlam b = Check $ \ _T -> trace "tlam" $ do
   (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
-  b' <- n ::: _A |- check (b ::: _B (T.free d))
+  b' <- Binding n zero _A |- check (b ::: _B (T.free d))
   pure $ XTLam b'
 
 lam :: Has (Throw Err :+: Trace) sig m => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
@@ -109,7 +111,7 @@ wildcardP :: Bind m (ValuePattern Name)
 wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 
 varP :: Has Trace sig m => Name -> Bind m (ValuePattern Name)
-varP n = Bind $ \ _sig _A b -> Check $ \ _B -> (PVar n,) <$> (n ::: _A |- check (b ::: _B))
+varP n = Bind $ \ _sig _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n Many _A |- check (b ::: _B))
 
 conP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
 conP n ps = Bind $ \ sig _A b -> Check $ \ _B -> do
@@ -131,13 +133,13 @@ fieldsP = foldr cons
 allP :: Has (Trace :+: Write Warn) sig m => Name -> Bind m (Pattern Name)
 allP n = Bind $ \ sig _A b -> Check $ \ _B -> do
   when (null sig) (warn (RedundantCatchAll n))
-  n ::: _A |- (PAll n,) <$> check (b ::: _B)
+  Binding n Many _A |- (PAll n,) <$> check (b ::: _B)
 
 effP :: Has (Throw Err :+: Trace) sig m => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
   ElabContext{ module', graph } <- ask
   q ::: _T <- maybe (freeVariable n) (instantiate const) (lookupInSig n module' graph sig)
-  (ps', b') <- check (bind (fieldsP (Bind (\ _sig _A' b -> ([],) <$> Check (\ _B -> v ::: VTArrow (Right []) _A' _A |- check (b ::: _B)))) ps ::: (sig, _T)) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (Bind (\ _sig _A' b -> ([],) <$> Check (\ _B -> Binding v Many (VTArrow (Right []) _A' _A) |- check (b ::: _B)))) ps ::: (sig, _T)) b ::: _B)
   pure (PEff q (PVal <$> fromList ps') v, b')
 
 
@@ -193,11 +195,11 @@ abstract body = go
   go = \case
     VTForAll       n  t b -> do
       level <- depth
-      b' <- n ::: t |- go (b (T.free level))
+      b' <- Binding n zero t |- go (b (T.free level))
       pure $ TForAll n (T.quote level t) b'
     VTArrow  (Left n) a b -> do
       level <- depth
-      b' <- n ::: a |- go b
+      b' <- Binding n zero a |- go b
       pure $ TForAll n (T.quote level a) b'
     _                     -> body
 

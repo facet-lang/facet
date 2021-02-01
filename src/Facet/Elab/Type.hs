@@ -22,6 +22,7 @@ import           Facet.Core.Type
 import           Facet.Effect.Trace
 import           Facet.Elab
 import           Facet.Name
+import           Facet.Semiring (zero)
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
@@ -50,7 +51,7 @@ forAll (n ::: t) b = Synth $ do
   env <- views context_ toEnv
   subst <- get
   let vt = eval subst env t'
-  b' <- n ::: vt |- check (b ::: VKType)
+  b' <- Binding n zero vt |- check (b ::: VKType)
   pure $ TForAll n t' b' ::: VKType
 
 (-->) :: Has Trace sig m => Either Name [Check m TExpr] ::: Check m TExpr -> Check m TExpr -> Synth m TExpr

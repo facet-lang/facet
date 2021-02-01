@@ -71,7 +71,7 @@ import Facet.Effect.Write
 import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
-import Facet.Semiring (one)
+import Facet.Semiring (Few(..))
 import Facet.Span (Span(..))
 import Facet.Stack
 import Facet.Syntax
@@ -155,8 +155,8 @@ app mk f a = Synth $ trace "app" $ do
   pure $ mk f' a' ::: _B
 
 
-(|-) :: Has Trace sig m => Name ::: Type -> Elab m a -> Elab m a
-n ::: _T |- b = trace "|-" $ locally context_ (|> Binding n one _T) b
+(|-) :: Has Trace sig m => Binding -> Elab m a -> Elab m a
+t |- b = trace "|-" $ locally context_ (|> t) b
 
 infix 1 |-
 
@@ -275,7 +275,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (VKType, _)                                            -> nope
     (VKInterface, VKInterface)                             -> pure ()
     (VKInterface, _)                                       -> nope
-    (VTForAll n t1 b1, VTForAll _ t2 b2)                   -> do { type' t1 t2 ; d <- depth ; n ::: t1 |- type' (b1 (T.free d)) (b2 (T.free d)) }
+    (VTForAll n t1 b1, VTForAll _ t2 b2)                   -> do { type' t1 t2 ; d <- depth ; Binding n Many t1 |- type' (b1 (T.free d)) (b2 (T.free d)) }
     (VTForAll{}, _)                                        -> nope
     (VTArrow _ a1 b1, VTArrow _ a2 b2)                     -> type' a1 a2 >> type' b1 b2
     (VTArrow{}, _)                                         -> nope
