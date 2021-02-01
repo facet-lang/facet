@@ -115,7 +115,7 @@ VTLam b             $$$ t = b t
 VLam _              $$$ _ = error "can’t instantiate lambda"
 VCon _              $$$ _ = error "can’t instantiate constructor"
 VString _           $$$ _ = error "can’t instantiate string"
-VOp _               $$$ _ = error "can’t instantiate operator"
+VOp (h :$ ts :$ es) $$$ t = VOp (h :$ (ts :> t) :$ es)
 
 ($$$*) :: (HasCallStack, Foldable t) => Value -> t T.Type -> Value
 ($$$*) = foldl' ($$$)
