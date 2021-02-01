@@ -151,8 +151,8 @@ hole n = Check $ \ _T -> err $ Hole n _T
 app :: Has (Throw Err :+: Trace) sig m => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ trace "app" $ do
   f' ::: _F <- synth f
-  (_ ::: _A, _B) <- expectFunction "in application" _F
-  a' <- check (a ::: _A)
+  (m ::: _A, _B) <- expectFunction "in application" _F
+  a' <- either (const id) extendSig m $ check (a ::: _A)
   pure $ mk f' a' ::: _B
 
 
