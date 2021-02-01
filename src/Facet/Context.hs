@@ -2,7 +2,7 @@ module Facet.Context
 ( -- * Contexts
   Quantity
 , Context(..)
-, Entry(..)
+, Binding(..)
 , empty
 , (|>)
 , level
@@ -21,7 +21,7 @@ import           Prelude hiding (lookup, zipWith)
 
 type Quantity = Few
 
-newtype Context = Context { elems :: S.Stack Entry }
+newtype Context = Context { elems :: S.Stack Binding }
 
 -- | A precondition for use of this instance is that one only ever '<>'s 'Context's assigning the same types to the same variables in the same order.
 instance Semigroup Context where
@@ -30,23 +30,23 @@ instance Semigroup Context where
 instance LeftModule Quantity Context where
   q ><< Context e = Context ((q ><<) <$> e)
 
-data Entry = Entry
+data Binding = Binding
   { name     :: Name
   , quantity :: Quantity
   , type'    :: Type
   }
 
--- | A precondition for use of this instance is that one only ever '<>'s pairs of 'Entry's assigning the same type to the same variable.
-instance Semigroup Entry where
-  Entry _ q1 _ <> Entry n q2 _T = Entry n (q1 <> q2) _T
+-- | A precondition for use of this instance is that one only ever '<>'s pairs of 'Binding's assigning the same type to the same variable.
+instance Semigroup Binding where
+  Binding _ q1 _ <> Binding n q2 _T = Binding n (q1 <> q2) _T
 
-instance LeftModule Quantity Entry where
-  q1 ><< Entry n q2 _T = Entry n (q1 >< q2) _T
+instance LeftModule Quantity Binding where
+  q1 ><< Binding n q2 _T = Binding n (q1 >< q2) _T
 
 empty :: Context
 empty = Context S.Nil
 
-(|>) :: Context -> Entry -> Context
+(|>) :: Context -> Binding -> Context
 Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
@@ -54,7 +54,7 @@ infixl 5 |>
 level :: Context -> Level
 level (Context es) = Level (length es)
 
-(!) :: HasCallStack => Context -> Index -> Entry
+(!) :: HasCallStack => Context -> Index -> Binding
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
   where
   go (es S.:> e) i
@@ -66,7 +66,7 @@ lookupIndex :: Name -> Context -> Maybe (Index, Type)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = Nothing
-  go i (cs S.:> Entry n' _ t)
+  go i (cs S.:> Binding n' _ t)
     | n == n'           = Just (i, t)
     | otherwise         = go (succ i) cs
 

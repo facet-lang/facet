@@ -34,7 +34,7 @@ rethrowElabErrors src = L.runThrow rethrow
     where
     (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
     subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType printCtx) v ::: printType printCtx _T))) (metas subst)
-  combine (d, print, ctx) (Entry n _ _T) =
+  combine (d, print, ctx) (Binding n _ _T) =
     let n' = intro n d
     in  ( succ d
         , print :> n'
