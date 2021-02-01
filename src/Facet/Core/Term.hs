@@ -77,7 +77,7 @@ data Value
   | VNe (Var Level :$ T.Type :$ Value)
   | VCon (Q Name :$ Value)
   | VString Text
-  | VOp (Q Name :$ Value)
+  | VOp (Q Name :$ T.Type :$ Value)
 
 data Elim
   = EInst T.Type
@@ -166,7 +166,7 @@ quote d = \case
   VNe (h :$ ts :$ as) -> let h' = XVar (levelToIndex d <$> h) ; h'' = foldl' XInst h' (T.quote d <$> ts) in foldl' XApp h'' (quote d <$> as)
   VCon (n :$ fs)      -> XCon (n :$ (quote d <$> fs))
   VString s           -> XString s
-  VOp (n :$ sp)       -> foldl' XApp (XOp n) (quote d <$> sp)
+  VOp (n :$ ts :$ sp) -> foldl' XApp (foldl' XInst (XOp n) (T.quote d <$> ts)) (quote d <$> sp)
 
 eval :: HasCallStack => T.Subst -> Stack T.Type -> Expr -> Value
 eval subst tenv = go tenv Nil where
@@ -179,4 +179,4 @@ eval subst tenv = go tenv Nil where
     XApp  f a       -> go tenv env f $$ go tenv env a
     XCon (n :$ fs)  -> VCon (n :$ (go tenv env <$> fs))
     XString s       -> VString s
-    XOp n           -> VOp (n :$ Nil)
+    XOp n           -> VOp (n :$ Nil :$ Nil)
