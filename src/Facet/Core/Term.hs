@@ -101,7 +101,7 @@ var = VNe . (:$ Nil) . (:$ Nil)
 VNe (h :$ ts :$ es) $$ a = VNe (h :$ ts :$ (es :> a))
 VLam cs             $$ a = case' a cs
 VTLam _             $$ _ = error "can’t apply type lambda"
-VCon _              $$ _ = error "can’t apply constructor"
+VCon (q :$ _)       $$ _ = error $ "can’t apply constructor " <> show q
 VString _           $$ _ = error "can’t apply string"
 VOp (h :$ es)       $$ a = VOp (h :$ (es :> a))
 
@@ -115,7 +115,7 @@ infixl 9 $$, $$*
 VNe (h :$ ts :$ es) $$$ t = VNe (h :$ (ts :> t) :$ es)
 VTLam b             $$$ t = b t
 VLam _              $$$ _ = error "can’t instantiate lambda"
-VCon _              $$$ _ = error "can’t instantiate constructor"
+VCon (q :$ _)       $$$ _ = error $ "can’t instantiate constructor " <> show q
 VString _           $$$ _ = error "can’t instantiate string"
 VOp (h :$ ts :$ es) $$$ t = VOp (h :$ (ts :> t) :$ es)
 
