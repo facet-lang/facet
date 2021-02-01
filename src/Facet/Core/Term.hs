@@ -112,7 +112,7 @@ infixl 9 $$, $$*
 ($$$) :: HasCallStack => Value -> T.Type -> Value
 VNe (h :$ ts :$ es) $$$ t = VNe (h :$ (ts :> t) :$ es)
 VTLam b             $$$ t = b t
-_                   $$$ _ = error "can’t apply non-neutral/lambda value"
+_                   $$$ _ = error "can’t instantiate non-neutral/type lambda value"
 
 ($$$*) :: (HasCallStack, Foldable t) => Value -> t T.Type -> Value
 ($$$*) = foldl' ($$$)
