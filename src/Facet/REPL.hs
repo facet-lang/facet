@@ -31,7 +31,7 @@ import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
 import           Facet.Core.Term hiding (eval)
-import           Facet.Core.Type as T hiding (eval)
+import           Facet.Core.Type as T hiding (eval, showType)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
