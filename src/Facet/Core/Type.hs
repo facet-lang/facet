@@ -118,7 +118,7 @@ showType env p = \case
   VTArrow n t b  -> case n of
     Left  n -> paren (name n <+> char ':' <+> showType env 0 t) <+> string "->" <+> showType env 0 b
     Right s -> sig s <+> showType env 1 t <+> string "->" <+> showType env 0 b
-  VTNe (f :$ as) -> foldl' (<+>) (head f) (elim <$> as)
+  VTNe (f :$ as) -> parenIf (p > 10) $ foldl' (<+>) (head f) (elim <$> as)
   VTComp s t     -> brace (sig s <+> showType env 0 t)
   VTString       -> string "String"
   where
