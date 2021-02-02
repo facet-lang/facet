@@ -118,11 +118,12 @@ showType env = \case
   VTArrow n t b  -> case n of
     Left  n -> paren (name n <+> char ':' <+> showType env t) <+> string "->" <+> setPrec 0 (showType env b)
     Right s -> sig s <+> setPrec 1 (showType env t) <+> string "->" <+> setPrec 0 (showType env b)
-  VTNe (f :$ as) -> prec 10 $ foldl' (<+>) (head f) (elim <$> as)
+  VTNe (f :$ as) -> foldl' app (head f) as
   VTComp s t     -> brace (sig s <+> showType env t)
   VTString       -> string "String"
   where
   sig s = bracket (commaSep (map (showType env) s))
+  app f a = prec 10 $ f <+> elim a
   elim = \case
     TEInst t -> brace (showType env t)
     TEApp  t -> setPrec 11 (showType env t)
