@@ -10,6 +10,7 @@ module Facet.Show
 , brace
 , bracket
 , commaSep
+, qname
 , name
 , op
 ) where
@@ -47,6 +48,9 @@ bracket b = char '[' <> b <> char ']'
 commaSep :: [Endo String] -> Endo String
 commaSep = fold . intersperse (string ", ")
 
+
+qname :: Q Name -> Endo String
+qname (m :.: n) = foldr (<.>) (name n) (text <$> m)
 
 name :: Name -> Endo String
 name = \case
