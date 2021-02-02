@@ -110,22 +110,22 @@ infixl 9 $$, $$*
 
 -- Debugging
 
-showType :: Stack ShowP -> Int -> Type -> ShowP
-showType env p = \case
+showType :: Stack ShowP -> Type -> ShowP
+showType env = \case
   VKType         -> string "Type"
   VKInterface    -> string "Interface"
-  VTForAll n t b -> parenIf (p > 0) $ brace (name n <+> char ':' <+> showType env 0 t) <+> string "->" <+> showType (env :> name n) 0 (b (free (Level (length env))))
+  VTForAll n t b -> prec 0 $ brace (name n <+> char ':' <+> setPrec 0 (showType env t)) <+> string "->" <+> setPrec 0 (showType (env :> name n) (b (free (Level (length env)))))
   VTArrow n t b  -> case n of
-    Left  n -> paren (name n <+> char ':' <+> showType env 0 t) <+> string "->" <+> showType env 0 b
-    Right s -> sig s <+> showType env 1 t <+> string "->" <+> showType env 0 b
-  VTNe (f :$ as) -> parenIf (p > 10) $ foldl' (<+>) (head f) (elim <$> as)
-  VTComp s t     -> brace (sig s <+> showType env 0 t)
+    Left  n -> paren (name n <+> char ':' <+> showType env t) <+> string "->" <+> setPrec 0 (showType env b)
+    Right s -> sig s <+> setPrec 1 (showType env t) <+> string "->" <+> setPrec 0 (showType env b)
+  VTNe (f :$ as) -> prec 10 $ foldl' (<+>) (head f) (elim <$> as)
+  VTComp s t     -> brace (sig s <+> showType env t)
   VTString       -> string "String"
   where
-  sig s = bracket (commaSep (map (showType env 0) s))
+  sig s = bracket (commaSep (map (showType env) s))
   elim = \case
-    TEInst t -> brace (showType env 0 t)
-    TEApp  t -> showType env 11 t
+    TEInst t -> brace (showType env t)
+    TEApp  t -> setPrec 11 (showType env t)
   head = \case
     TGlobal q  -> qname q
     TFree v    -> env ! getIndex (levelToIndex (Level (length env)) v)
