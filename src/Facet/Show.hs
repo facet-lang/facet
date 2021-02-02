@@ -74,3 +74,6 @@ runShow' p (Show' f) = f p
 
 instance Semigroup Show' where
   a <> b = Show' $ \ p -> runShow' p b . runShow' p a
+
+instance Monoid Show' where
+  mempty = Show' (const id)
