@@ -114,7 +114,10 @@ app _ (VString _)           _ = error "can’t apply string"
 app _ (VOp (h :$ es))       a = VOp (h :$ (es :> a))
 
 ($$*) :: (HasCallStack, Foldable t) => Value -> t Value -> Value
-($$*) = foldl' ($$)
+($$*) = appAll 0
+
+appAll :: (HasCallStack, Foldable t) => Level -> Value -> t Value -> Value
+appAll = foldl' . app
 
 infixl 9 $$, $$*
 
