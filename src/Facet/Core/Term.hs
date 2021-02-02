@@ -152,7 +152,7 @@ match = curry $ \case
 
 -- Debugging
 
-showValue :: HasCallStack => Stack (Endo String) -> Stack (Endo String) -> Level -> Int -> Value -> Endo String
+showValue :: Stack (Endo String) -> Stack (Endo String) -> Level -> Int -> Value -> Endo String
 showValue tenv env d p = \case
   VTLam b             -> brace (brace (string (toAlpha alpha (length tenv))) <+> string "->" <+> showValue (tenv :> string (toAlpha alpha (length tenv))) env (succ d) 0 (b (T.free d)))
   VLam cs             -> brace (commaSep (map clause cs))
