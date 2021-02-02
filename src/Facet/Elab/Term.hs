@@ -34,6 +34,7 @@ import           Control.Effect.Lens ((.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
 import           Control.Monad (when)
+import           Data.Either (fromLeft)
 import           Data.Foldable
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
@@ -226,13 +227,13 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
       -- FIXME: earlier indices should be shifted
       -- FIXME: XTLam is only for the type parameters
       -- type parameters presumably shouldn’t be represented in the elaborated data
-      VTForAll      n  _T _B -> do
+      VTForAll n _T _B -> do
         d <- depth
         check (tlam (go (ts :> d) fs) ::: VTForAll n _T _B)
-      VTArrow (Left n) _A _B -> do
+      VTArrow  n _A _B -> do
         d <- depth
-        check (lam [(PVal <$> varP n, go ts (fs :> d))] ::: VTArrow (Left n) _A _B)
-      _T                     -> do
+        check (lam [(PVal <$> varP (fromLeft __ n), go ts (fs :> d))] ::: VTArrow n _A _B)
+      _T               -> do
         d <- depth
         pure $ XCon (q :$ (TVar . TFree . levelToIndex d <$> ts) :$ (XVar . Free . levelToIndex d <$> fs))
 
