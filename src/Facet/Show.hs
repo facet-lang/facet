@@ -67,4 +67,7 @@ op = \case
   Outfix o p -> text o <> string " _ " <> text p
 
 
-newtype Show' = Show' { runShow' :: Int -> String -> String }
+newtype Show' = Show' (Int -> String -> String)
+
+runShow' :: Int -> Show' -> String -> String
+runShow' p (Show' f) = f p
