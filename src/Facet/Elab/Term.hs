@@ -228,7 +228,7 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
       -- type parameters presumably shouldn’t be represented in the elaborated data
       VTForAll n _T _B -> do
         d <- depth
-        check (tlam (go (ts :> XVar (Free (levelToIndex d (Level (length ts))))) fs) ::: VTForAll n _T _B)
+        check (tlam (go (ts :> TVar (TFree (levelToIndex d (Level (length ts))))) fs) ::: VTForAll n _T _B)
       _T               -> pure $ XCon (q :$ fs)
 
 elabInterfaceDef
