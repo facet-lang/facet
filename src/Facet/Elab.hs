@@ -76,6 +76,7 @@ import Facet.Semiring (Few(..))
 import Facet.Span (Span(..))
 import Facet.Stack
 import Facet.Syntax
+import GHC.Stack
 import Prelude hiding (span, zipWith)
 
 -- TODO:
@@ -340,10 +341,10 @@ elabWith k m = runState k mempty $ do
   where
   mkContext = ElabContext <$> ask <*> ask <*> pure Context.empty <*> pure [] <*> ask <*> ask
 
-elabType :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m TExpr -> m Type
+elabType :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m) => Elab m TExpr -> m Type
 elabType = elabWith (\ subst t -> pure (T.eval subst Nil t))
 
-elabTerm :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m Expr -> m Value
+elabTerm :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m) => Elab m Expr -> m Value
 elabTerm = elabWith (\ subst e -> pure (E.eval subst Nil e))
 
 elabSynth :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Reader Span) sig m => Elab m (Expr ::: Type) -> m (Value ::: Type)
