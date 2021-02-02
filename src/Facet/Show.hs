@@ -69,14 +69,11 @@ op = \case
 
 newtype Show' = Show' (Int -> String -> String)
 
-runShow' :: Int -> Show' -> String -> String
-runShow' p (Show' f) = f p
-
 instance Semigroup Show' where
-  a <> b = Show' $ \ p -> runShow' p b . runShow' p a
+  a <> b = Show' $ \ p -> showsPrec p b . showsPrec p a
 
 instance Monoid Show' where
   mempty = Show' (const id)
 
 instance Show Show' where
-  showsPrec = runShow'
+  showsPrec p (Show' f) = f p
