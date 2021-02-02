@@ -13,6 +13,7 @@ module Facet.Show
 , qname
 , name
 , op
+, ShowP(..)
 ) where
 
 import Data.Foldable (fold)
