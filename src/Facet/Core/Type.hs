@@ -30,7 +30,6 @@ module Facet.Core.Type
 
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
-import           Data.Monoid (Endo(..))
 import           Data.Text (unpack)
 import           Facet.Name
 import           Facet.Show
@@ -112,27 +111,26 @@ infixl 9 $$, $$*
 
 -- Debugging
 
-showType :: Int -> Type -> ShowS
-showType p = appEndo . go Nil p where
-  go env p = \case
-    VKType         -> string "Type"
-    VKInterface    -> string "Interface"
-    VTForAll n t b -> parenIf (p > 0) $ brace (name n <+> char ':' <+> go env 0 t) <+> string "->" <+> go (env :> name n) 0 (b (free (Level (length env))))
-    VTArrow n t b  -> case n of
-      Left  n -> paren (name n <+> char ':' <+> go env 0 t) <+> string "->" <+> go env 0 b
-      Right s -> sig s <+> go env 1 t <+> string "->" <+> go env 0 b
-    VTNe (f :$ as) -> foldl' (<+>) (head f) (elim <$> as)
-    VTComp s t     -> brace (sig s <+> go env 0 t)
-    VTString       -> string "String"
-    where
-    sig s = bracket (commaSep (map (go env 0) s))
-    elim = \case
-      TEInst t -> brace (go env 0 t)
-      TEApp  t -> go env 11 t
-    head = \case
-      TGlobal (m :.: n) -> foldr (<.>) (name n) (text <$> m)
-      TFree v           -> env ! getIndex (levelToIndex (Level (length env)) v)
-      TMetavar m        -> char '?' <> string (show (getMeta m))
+showType :: Stack (Endo String) -> Int -> Type -> Endo String
+showType env p = \case
+  VKType         -> string "Type"
+  VKInterface    -> string "Interface"
+  VTForAll n t b -> parenIf (p > 0) $ brace (name n <+> char ':' <+> showType env 0 t) <+> string "->" <+> showType (env :> name n) 0 (b (free (Level (length env))))
+  VTArrow n t b  -> case n of
+    Left  n -> paren (name n <+> char ':' <+> showType env 0 t) <+> string "->" <+> showType env 0 b
+    Right s -> sig s <+> showType env 1 t <+> string "->" <+> showType env 0 b
+  VTNe (f :$ as) -> foldl' (<+>) (head f) (elim <$> as)
+  VTComp s t     -> brace (sig s <+> showType env 0 t)
+  VTString       -> string "String"
+  where
+  sig s = bracket (commaSep (map (showType env 0) s))
+  elim = \case
+    TEInst t -> brace (showType env 0 t)
+    TEApp  t -> showType env 11 t
+  head = \case
+    TGlobal (m :.: n) -> foldr (<.>) (name n) (text <$> m)
+    TFree v           -> env ! getIndex (levelToIndex (Level (length env)) v)
+    TMetavar m        -> char '?' <> string (show (getMeta m))
 
 name :: Name -> Endo String
 name = \case
