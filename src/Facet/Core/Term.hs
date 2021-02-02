@@ -28,6 +28,7 @@ module Facet.Core.Term
 ) where
 
 import           Control.Monad (guard)
+import           Data.Either (fromRight)
 import           Data.Foldable (asum, foldl')
 import           Data.Semialign.Exts (zipWithM)
 import           Data.Text (Text)
@@ -204,15 +205,15 @@ quote d = \case
   VString s            -> XString s
   VOp (n :$ ts :$ sp)  -> foldl' XApp (foldl' XInst (XOp n) (T.quote d <$> ts)) (quote d <$> sp)
 
-eval :: HasCallStack => T.Subst -> Stack T.Type -> Expr -> Value
-eval subst tenv = go tenv Nil where
-  go tenv env = \case
+eval :: HasCallStack => T.Subst -> Stack (Either T.Type Value) -> Expr -> Value
+eval subst = go where
+  go env = \case
     XVar (Global n)      -> global n
-    XVar (Free v)        -> env ! getIndex v
-    XTLam b              -> VTLam (\ _T -> go (tenv :> _T) env b)
-    XLam cs              -> VLam (map (\ (p, b) -> (p, \ p -> go tenv (foldl' (:>) env p) b)) cs)
-    XInst f a            -> go tenv env f $$$ T.eval subst tenv a
-    XApp  f a            -> go tenv env f $$ go tenv env a
-    XCon (n :$ ts :$ fs) -> VCon (n :$ (T.eval subst tenv <$> ts) :$ (go tenv env <$> fs))
+    XVar (Free v)        -> fromRight (error ("type variable at index " <> show v)) (env ! getIndex v)
+    XTLam b              -> VTLam (\ _T -> go (env :> Left _T) b)
+    XLam cs              -> VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (\ env' v -> env' :> Right v) env p) b)) cs)
+    XInst f a            -> go env f $$$ T.eval subst env a
+    XApp  f a            -> go env f $$ go env a
+    XCon (n :$ ts :$ fs) -> VCon (n :$ (T.eval subst env <$> ts) :$ (go env <$> fs))
     XString s            -> VString s
     XOp n                -> VOp (n :$ Nil :$ Nil)

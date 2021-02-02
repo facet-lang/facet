@@ -110,7 +110,7 @@ as :: Has Trace sig m => Check m Expr ::: Check m TExpr -> Synth m Expr
 as (m ::: _T) = Synth $ trace "as" $ do
   env <- views context_ toEnv
   subst <- get
-  _T' <- T.eval subst env <$> check (_T ::: VKType)
+  _T' <- T.eval subst (Left <$> env) <$> check (_T ::: VKType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 

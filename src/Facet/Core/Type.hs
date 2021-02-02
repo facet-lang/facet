@@ -28,6 +28,7 @@ module Facet.Core.Type
 , metas
 ) where
 
+import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
 import           Facet.Name
@@ -162,15 +163,15 @@ quote d = \case
     TEApp  a -> TApp head (quote d a)) (TVar (levelToIndex d <$> n)) sp
   VTString       -> TString
 
-eval :: HasCallStack => Subst -> Stack Type -> TExpr -> Type
+eval :: HasCallStack => Subst -> Stack (Either Type a) -> TExpr -> Type
 eval subst = go where
   go env = \case
     TVar (TGlobal n)  -> global n
-    TVar (TFree v)    -> env ! getIndex v
+    TVar (TFree v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TVar (TMetavar m) -> maybe (metavar m) tm (lookupMeta m subst)
     TType             -> VKType
     TInterface        -> VKInterface
-    TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> v) b)
+    TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n a b      -> VTArrow (map (go env) <$> n) (go env a) (go env b)
     TComp s t         -> VTComp (go env <$> s) (go env t)
     TInst f a         -> go env f $$ TEInst (go env a)

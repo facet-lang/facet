@@ -50,7 +50,7 @@ forAll (n ::: t) b = Synth $ do
   t' <- check (t ::: VKType)
   env <- views context_ toEnv
   subst <- get
-  let vt = eval subst env t'
+  let vt = eval subst (Left <$> env) t'
   b' <- Binding n zero vt |- check (b ::: VKType)
   pure $ TForAll n t' b' ::: VKType
 
