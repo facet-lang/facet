@@ -53,6 +53,7 @@ data ValuePattern a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data Pattern a
+  -- FIXME: pretty sure the sub-patterns should be ValuePatterns instead
   = PEff (Q Name) (Stack (Pattern a)) a
   | PAll a
   | PVal (ValuePattern a)
