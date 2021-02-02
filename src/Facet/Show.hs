@@ -65,3 +65,6 @@ op = \case
   Postfix o  -> string "_ " <> text o
   Infix o    -> string "_ " <> text o <> string " _"
   Outfix o p -> text o <> string " _ " <> text p
+
+
+newtype Show' = Show' { runShow' :: Int -> String -> String }
