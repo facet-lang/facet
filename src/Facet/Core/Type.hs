@@ -127,9 +127,9 @@ showType env p = \case
     TEInst t -> brace (showType env 0 t)
     TEApp  t -> showType env 11 t
   head = \case
-    TGlobal (m :.: n) -> foldr (<.>) (name n) (text <$> m)
-    TFree v           -> env ! getIndex (levelToIndex (Level (length env)) v)
-    TMetavar m        -> char '?' <> string (show (getMeta m))
+    TGlobal q  -> qname q
+    TFree v    -> env ! getIndex (levelToIndex (Level (length env)) v)
+    TMetavar m -> char '?' <> string (show (getMeta m))
 
 
 -- Type expressions
