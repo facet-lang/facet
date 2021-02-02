@@ -106,7 +106,7 @@ var = VNe . (:$ Nil) . (:$ Nil)
 VNe (h :$ ts :$ es) $$ a = VNe (h :$ ts :$ (es :> a))
 VLam cs             $$ a = case' a cs
 VTLam _             $$ _ = error "can’t apply type lambda"
-VCon (q :$ fs)      $$ _ = error $ "can’t apply constructor " <> show (showValue Nil Nil 0 (VCon (q :$ fs)))
+VCon (q :$ fs)      $$ _ = error $ "can’t apply constructor " <> show (showValue Nil Nil (VCon (q :$ fs)))
 VString _           $$ _ = error "can’t apply string"
 VOp (h :$ es)       $$ a = VOp (h :$ (es :> a))
 
@@ -152,16 +152,16 @@ match = curry $ \case
 
 -- Debugging
 
-showValue :: HasCallStack => Stack ShowP -> Stack ShowP -> Int -> Value -> ShowP
-showValue tenv env p = \case
-  VTLam b              -> brace (brace (string (toAlpha alpha (length tenv))) <+> string "->" <+> showValue (tenv :> string (toAlpha alpha (length tenv))) env 0 (b (T.free (Level (length tenv)))))
+showValue :: HasCallStack => Stack ShowP -> Stack ShowP -> Value -> ShowP
+showValue tenv env = \case
+  VTLam b              -> brace (brace (string (toAlpha alpha (length tenv))) <+> string "->" <+> setPrec 0 (showValue (tenv :> string (toAlpha alpha (length tenv))) env (b (T.free (Level (length tenv))))))
   VLam cs              -> brace (commaSep (map clause cs))
-  VNe (f :$ ts :$ sp)  -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (head f) (brace . T.showType tenv <$> ts)) (showValue tenv env 11 <$> sp)
-  VCon (q :$ ts :$ fs) -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (qname q) (brace . T.showType tenv <$> ts)) (showValue tenv env 11 <$> fs)
+  VNe (f :$ ts :$ sp)  -> prec 10 $ foldl' (<+>) (foldl' (<+>) (head f) (brace . T.showType tenv <$> ts)) (setPrec 11 . showValue tenv env <$> sp)
+  VCon (q :$ ts :$ fs) -> prec 10 $ foldl' (<+>) (foldl' (<+>) (qname q) (brace . T.showType tenv <$> ts)) (setPrec 11 . showValue tenv env <$> fs)
   VString s            -> text s
-  VOp (f :$ ts :$ sp)  -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (qname f) (brace . T.showType tenv <$> ts)) (showValue tenv env 11 <$> sp)
+  VOp (f :$ ts :$ sp)  -> prec 10 $ foldl' (<+>) (foldl' (<+>) (qname f) (brace . T.showType tenv <$> ts)) (setPrec 11 . showValue tenv env <$> sp)
   where
-  clause (p, b) = pat p <+> string "->" <+> showValue tenv env' 0 (b p')
+  clause (p, b) = pat p <+> string "->" <+> setPrec 0 (showValue tenv env' (b p'))
     where
     ((env', _), p') = mapAccumL (\ (env, d) n -> ((env :> name n, succ d), free d)) (env, Level (length env)) p
   pat = \case
