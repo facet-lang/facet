@@ -1,5 +1,5 @@
 module Facet.Show
-( Endo
+( Endo(..)
 , (<+>)
 , (<.>)
 , char
