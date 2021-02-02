@@ -131,15 +131,15 @@ printValue env = printExpr env . CE.quote (Name.Level (length env))
 
 printExpr :: Stack Print -> C.Expr -> Print
 printExpr env = \case
-  C.XVar (C.Global n) -> group (qvar n)
-  C.XVar (C.Free d')  -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
-  C.XTLam b           -> let v = tintro __ d in braces (braces v <+> arrow <+> printExpr (env :> v) b)
-  C.XLam cs           -> comp (braces (commaSep (map clause cs)))
-  C.XInst e t         -> printExpr env e $$ braces (printTExpr env t)
-  C.XApp f a          -> printExpr env f $$ printExpr env a
-  C.XCon (n :$ p)     -> group (qvar n) $$* (group . printExpr env <$> p)
-  C.XOp q             -> group (qvar q)
-  C.XString s         -> annotate Lit $ pretty (show s)
+  C.XVar (C.Global n)  -> group (qvar n)
+  C.XVar (C.Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
+  C.XTLam b            -> let v = tintro __ d in braces (braces v <+> arrow <+> printExpr (env :> v) b)
+  C.XLam cs            -> comp (braces (commaSep (map clause cs)))
+  C.XInst e t          -> printExpr env e $$ braces (printTExpr env t)
+  C.XApp f a           -> printExpr env f $$ printExpr env a
+  C.XCon (n :$ t :$ p) -> group (qvar n) $$* (group . printTExpr env <$> t) $$* (group . printExpr env <$> p)
+  C.XOp q              -> group (qvar q)
+  C.XString s          -> annotate Lit $ pretty (show s)
   where
   d = Name.Level (length env)
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'

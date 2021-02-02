@@ -232,7 +232,7 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
       VTArrow  (Left n) _A _B -> do
         d <- depth
         check (lam [(PVal <$> varP n, go ts (fs :> XVar (Free (levelToIndex d (Level (length fs))))))] ::: VTArrow (Left n) _A _B)
-      _T               -> pure $ XCon (q :$ fs)
+      _T               -> pure $ XCon (q :$ ts :$ fs)
 
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Trace) sig m
