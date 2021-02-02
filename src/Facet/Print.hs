@@ -137,7 +137,7 @@ printExpr env = \case
   C.XLam cs            -> comp (braces (commaSep (map clause cs)))
   C.XInst e t          -> printExpr env e $$ braces (printTExpr env t)
   C.XApp f a           -> printExpr env f $$ printExpr env a
-  C.XCon (n :$ t :$ p) -> group (qvar n) $$* (group . printTExpr env <$> t) $$* (group . printExpr env <$> p)
+  C.XCon (n :$ t :$ p) -> group (qvar n) $$* (group . braces . printTExpr env <$> t) $$* (group . printExpr env <$> p)
   C.XOp q              -> group (qvar q)
   C.XString s          -> annotate Lit $ pretty (show s)
   where
