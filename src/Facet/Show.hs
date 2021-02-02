@@ -21,6 +21,8 @@ import Data.Monoid (Endo(..))
 import Data.Text (Text, unpack)
 import Facet.Name
 
+-- FIXME: can we do this as a silkscreen printer instead?
+
 (<+>) :: Endo String -> Endo String -> Endo String
 a <+> b = a <> char ' ' <> b
 
