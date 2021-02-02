@@ -109,6 +109,7 @@ library
     Facet.REPL.Parser
     Facet.Run
     Facet.Semiring
+    Facet.Show
     Facet.Source
     Facet.Span
     Facet.Stack
