@@ -10,6 +10,7 @@ module Facet.Show
 , brace
 , bracket
 , commaSep
+, prec
 , qname
 , name
 , op
@@ -50,6 +51,10 @@ bracket b = char '[' <> b <> char ']'
 
 commaSep :: [ShowP] -> ShowP
 commaSep = fold . intersperse (string ", ")
+
+
+prec :: Int -> ShowP -> ShowP
+prec p s = ShowP (\ p' -> showsPrec p' (parenIf (p' > p) s))
 
 
 qname :: Q Name -> ShowP
