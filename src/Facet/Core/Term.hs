@@ -18,6 +18,8 @@ module Facet.Core.Term
 , ($$*)
 , ($$$)
 , ($$$*)
+  -- ** Debugging
+, showValue
   -- * Term expressions
 , Expr(..)
   -- * Quotation
@@ -32,6 +34,8 @@ import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core.Type as T
 import           Facet.Name
+import           Facet.Pretty (toAlpha)
+import           Facet.Show
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack
@@ -144,6 +148,34 @@ match = curry $ \case
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
     (VCon (n' :$ fs), PCon (n :$ ps)) -> PCon . (n' :$) <$ guard (n == n') <*> zipWithM value fs ps
     (_, PCon{})                       -> Nothing
+
+
+-- Debugging
+
+showValue :: Stack (Endo String) -> Stack (Endo String) -> Int -> Value -> Endo String
+showValue tenv env p = \case
+  VTLam b             -> brace (brace (string (toAlpha alpha (length tenv))) <+> string "->" <+> showValue (tenv :> string (toAlpha alpha (length tenv))) env 0 (b (T.free (Level (length tenv)))))
+  VLam cs             -> brace (commaSep (map clause cs))
+  VNe (f :$ ts :$ sp) -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (head f) (T.showType tenv 11 <$> ts)) (showValue tenv env 11 <$> sp)
+  VCon (q :$ fs)      -> parenIf (p > 10) $ foldl' (<+>) (qname q) (showValue tenv env 11 <$> fs)
+  VString s           -> text s
+  VOp (f :$ ts :$ sp) -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (qname f) (T.showType tenv 11 <$> ts)) (showValue tenv env 11 <$> sp)
+  where
+  clause (p, b) = pat p <+> string "->" <+> showValue tenv env' 0 (b p')
+    where
+    ((env', _), p') = mapAccumL (\ (env, d) n -> ((env :> name n, succ d), free d)) (env, Level (length env)) p
+  pat = \case
+    PAll n      -> bracket (name n)
+    PVal p      -> vpat p
+    PEff n ps k -> bracket (foldl' (<+>) (qname n) (pat <$> ps) <+> char ';' <+> name k)
+  vpat = \case
+    PWildcard      -> char '_'
+    PVar n         -> name n
+    PCon (f :$ ps) -> paren $ foldl' (<+>) (qname f) (vpat <$> ps)
+  alpha = ['A'..'Z']
+  head = \case
+    Global (m :.: n) -> foldr (<.>) (name n) (text <$> m)
+    Free v           -> env ! getIndex (levelToIndex (Level (length env)) v)
 
 
 -- Term expressions
