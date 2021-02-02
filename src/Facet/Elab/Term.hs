@@ -221,14 +221,14 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
     : cs
   where
-  con q = go Nil where
-    go fs = Check $ \case
+  con q = go Nil Nil where
+    go ts fs = Check $ \case
       -- FIXME: earlier indices should be shifted
       -- FIXME: XTLam is only for the type parameters
       -- type parameters presumably shouldn’t be represented in the elaborated data
       VTForAll n _T _B -> do
         d <- depth
-        check (tlam (go (fs :> XVar (Free (levelToIndex d (Level (length fs)))))) ::: VTForAll n _T _B)
+        check (tlam (go (ts :> XVar (Free (levelToIndex d (Level (length fs))))) fs) ::: VTForAll n _T _B)
       _T               -> pure $ XCon (q :$ fs)
 
 elabInterfaceDef
