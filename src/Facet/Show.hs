@@ -77,3 +77,6 @@ instance Semigroup Show' where
 
 instance Monoid Show' where
   mempty = Show' (const id)
+
+instance Show Show' where
+  showsPrec = runShow'
