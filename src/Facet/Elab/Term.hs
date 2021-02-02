@@ -229,6 +229,9 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
       VTForAll n _T _B -> do
         d <- depth
         check (tlam (go (ts :> TVar (TFree (levelToIndex d (Level (length ts))))) fs) ::: VTForAll n _T _B)
+      VTArrow  (Left n) _A _B -> do
+        d <- depth
+        check (lam [(PVal <$> varP n, go ts (fs :> XVar (Free (levelToIndex d (Level (length fs))))))] ::: VTArrow (Left n) _A _B)
       _T               -> pure $ XCon (q :$ fs)
 
 elabInterfaceDef
