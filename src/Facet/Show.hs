@@ -10,12 +10,15 @@ module Facet.Show
 , brace
 , bracket
 , commaSep
+, name
+, op
 ) where
 
 import Data.Foldable (fold)
 import Data.List (intersperse)
 import Data.Monoid (Endo(..))
 import Data.Text (Text, unpack)
+import Facet.Name
 
 (<+>) :: Endo String -> Endo String -> Endo String
 a <+> b = a <> char ' ' <> b
@@ -43,3 +46,16 @@ bracket b = char '[' <> b <> char ']'
 
 commaSep :: [Endo String] -> Endo String
 commaSep = fold . intersperse (string ", ")
+
+
+name :: Name -> Endo String
+name = \case
+  U t -> string (unpack t)
+  O o -> op o
+
+op :: Op -> Endo String
+op = \case
+  Prefix o   -> text o <> string " _"
+  Postfix o  -> string "_ " <> text o
+  Infix o    -> string "_ " <> text o <> string " _"
+  Outfix o p -> text o <> string " _ " <> text p

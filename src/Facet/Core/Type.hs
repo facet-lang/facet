@@ -30,7 +30,6 @@ module Facet.Core.Type
 
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
-import           Data.Text (unpack)
 import           Facet.Name
 import           Facet.Show
 import           Facet.Stack
@@ -131,18 +130,6 @@ showType env p = \case
     TGlobal (m :.: n) -> foldr (<.>) (name n) (text <$> m)
     TFree v           -> env ! getIndex (levelToIndex (Level (length env)) v)
     TMetavar m        -> char '?' <> string (show (getMeta m))
-
-name :: Name -> Endo String
-name = \case
-  U t -> string (unpack t)
-  O o -> op o
-
-op :: Op -> Endo String
-op = \case
-  Prefix o   -> text o <> string " _"
-  Postfix o  -> string "_ " <> text o
-  Infix o    -> string "_ " <> text o <> string " _"
-  Outfix o p -> text o <> string " _ " <> text p
 
 
 -- Type expressions
