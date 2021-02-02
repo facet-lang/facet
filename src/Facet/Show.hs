@@ -11,6 +11,7 @@ module Facet.Show
 , bracket
 , commaSep
 , prec
+, setPrec
 , qname
 , name
 , op
@@ -55,6 +56,9 @@ commaSep = fold . intersperse (string ", ")
 
 prec :: Int -> ShowP -> ShowP
 prec p s = ShowP (\ p' -> showsPrec p' (parenIf (p' > p) s))
+
+setPrec :: Int -> ShowP -> ShowP
+setPrec p (ShowP f) = ShowP $ const (f p)
 
 
 qname :: Q Name -> ShowP
