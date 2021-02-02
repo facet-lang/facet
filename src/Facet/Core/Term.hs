@@ -106,7 +106,7 @@ var = VNe . (:$ Nil) . (:$ Nil)
 VNe (h :$ ts :$ es) $$ a = VNe (h :$ ts :$ (es :> a))
 VLam cs             $$ a = case' a cs
 VTLam _             $$ _ = error "can’t apply type lambda"
-VCon (q :$ fs)      $$ _ = error $ "can’t apply constructor " <> appEndo (showValue Nil Nil 0 (VCon (q :$ fs))) ""
+VCon (q :$ fs)      $$ _ = error $ "can’t apply constructor " <> show (showValue Nil Nil 0 (VCon (q :$ fs)))
 VString _           $$ _ = error "can’t apply string"
 VOp (h :$ es)       $$ a = VOp (h :$ (es :> a))
 
@@ -152,7 +152,7 @@ match = curry $ \case
 
 -- Debugging
 
-showValue :: HasCallStack => Stack (Endo String) -> Stack (Endo String) -> Int -> Value -> Endo String
+showValue :: HasCallStack => Stack ShowP -> Stack ShowP -> Int -> Value -> ShowP
 showValue tenv env p = \case
   VTLam b              -> brace (brace (string (toAlpha alpha (length tenv))) <+> string "->" <+> showValue (tenv :> string (toAlpha alpha (length tenv))) env 0 (b (T.free (Level (length tenv)))))
   VLam cs              -> brace (commaSep (map clause cs))

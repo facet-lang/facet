@@ -24,43 +24,43 @@ import Facet.Name
 
 -- FIXME: can we do this as a silkscreen printer instead?
 
-(<+>) :: Endo String -> Endo String -> Endo String
+(<+>) :: ShowP -> ShowP -> ShowP
 a <+> b = a <> char ' ' <> b
 
-(<.>) :: Endo String -> Endo String -> Endo String
+(<.>) :: ShowP -> ShowP -> ShowP
 a <.> b = a <> char '.' <> b
 
-char :: Char -> Endo String
-char = Endo . showChar
+char :: Char -> ShowP
+char = ShowP . const . showChar
 
-string :: String -> Endo String
-string = Endo . showString
+string :: String -> ShowP
+string = ShowP . const . showString
 
-text :: Text -> Endo String
-text = Endo . showString . unpack
+text :: Text -> ShowP
+text = ShowP . const . showString . unpack
 
-parenIf :: Bool -> Endo String -> Endo String
+parenIf :: Bool -> ShowP -> ShowP
 parenIf True  = paren
 parenIf False = id
 
-paren, brace, bracket :: Endo String -> Endo String
+paren, brace, bracket :: ShowP -> ShowP
 paren   b = char '(' <> b <> char ')'
 brace   b = char '{' <> b <> char '}'
 bracket b = char '[' <> b <> char ']'
 
-commaSep :: [Endo String] -> Endo String
+commaSep :: [ShowP] -> ShowP
 commaSep = fold . intersperse (string ", ")
 
 
-qname :: Q Name -> Endo String
+qname :: Q Name -> ShowP
 qname (m :.: n) = foldr (<.>) (name n) (text <$> m)
 
-name :: Name -> Endo String
+name :: Name -> ShowP
 name = \case
   U t -> string (unpack t)
   O o -> op o
 
-op :: Op -> Endo String
+op :: Op -> ShowP
 op = \case
   Prefix o   -> text o <> string " _"
   Postfix o  -> string "_ " <> text o

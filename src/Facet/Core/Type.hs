@@ -110,7 +110,7 @@ infixl 9 $$, $$*
 
 -- Debugging
 
-showType :: Stack (Endo String) -> Int -> Type -> Endo String
+showType :: Stack ShowP -> Int -> Type -> ShowP
 showType env p = \case
   VKType         -> string "Type"
   VKInterface    -> string "Interface"
