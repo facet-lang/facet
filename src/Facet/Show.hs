@@ -71,7 +71,7 @@ op = \case
 newtype ShowP = ShowP (Int -> String -> String)
 
 instance Semigroup ShowP where
-  a <> b = ShowP $ \ p -> showsPrec p b . showsPrec p a
+  a <> b = ShowP $ \ p -> showsPrec p a . showsPrec p b
 
 instance Monoid ShowP where
   mempty = ShowP (const id)
