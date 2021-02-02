@@ -67,13 +67,13 @@ op = \case
   Outfix o p -> text o <> string " _ " <> text p
 
 
-newtype Show' = Show' (Int -> String -> String)
+newtype ShowP = ShowP (Int -> String -> String)
 
-instance Semigroup Show' where
-  a <> b = Show' $ \ p -> showsPrec p b . showsPrec p a
+instance Semigroup ShowP where
+  a <> b = ShowP $ \ p -> showsPrec p b . showsPrec p a
 
-instance Monoid Show' where
-  mempty = Show' (const id)
+instance Monoid ShowP where
+  mempty = ShowP (const id)
 
-instance Show Show' where
-  showsPrec p (Show' f) = f p
+instance Show ShowP where
+  showsPrec p (ShowP f) = f p
