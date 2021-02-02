@@ -71,3 +71,6 @@ newtype Show' = Show' (Int -> String -> String)
 
 runShow' :: Int -> Show' -> String -> String
 runShow' p (Show' f) = f p
+
+instance Semigroup Show' where
+  a <> b = Show' $ \ p -> runShow' p b . runShow' p a
