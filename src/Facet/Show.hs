@@ -46,9 +46,9 @@ parenIf True  = paren
 parenIf False = id
 
 paren, brace, bracket :: ShowP -> ShowP
-paren   b = char '(' <> b <> char ')'
-brace   b = char '{' <> b <> char '}'
-bracket b = char '[' <> b <> char ']'
+paren   b = char '(' <> setPrec 0 b <> char ')'
+brace   b = char '{' <> setPrec 0 b <> char '}'
+bracket b = char '[' <> setPrec 0 b <> char ']'
 
 commaSep :: [ShowP] -> ShowP
 commaSep = fold . intersperse (string ", ")
