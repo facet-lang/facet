@@ -28,9 +28,8 @@ module Facet.Core.Type
 , metas
 ) where
 
-import           Data.Foldable (fold, foldl')
+import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
-import           Data.List (intersperse)
 import           Data.Monoid (Endo(..))
 import           Data.Text (unpack)
 import           Facet.Name
@@ -126,7 +125,7 @@ showType p = appEndo . go Nil p where
     VTComp s t     -> brace (sig s <+> go env 0 t)
     VTString       -> string "String"
     where
-    sig s = bracket (fold (intersperse (string ", ") (map (go env 0) s)))
+    sig s = bracket (commaSep (map (go env 0) s))
     elim = \case
       TEInst t -> brace (go env 0 t)
       TEApp  t -> go env 11 t

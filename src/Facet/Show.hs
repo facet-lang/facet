@@ -9,8 +9,11 @@ module Facet.Show
 , paren
 , brace
 , bracket
+, commaSep
 ) where
 
+import Data.Foldable (fold)
+import Data.List (intersperse)
 import Data.Monoid (Endo(..))
 import Data.Text (Text, unpack)
 
@@ -37,3 +40,6 @@ paren, brace, bracket :: Endo String -> Endo String
 paren   b = char '(' <> b <> char ')'
 brace   b = char '{' <> b <> char '}'
 bracket b = char '[' <> b <> char ']'
+
+commaSep :: [Endo String] -> Endo String
+commaSep = fold . intersperse (string ", ")
