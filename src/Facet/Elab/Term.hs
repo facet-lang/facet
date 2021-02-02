@@ -215,18 +215,21 @@ elabDataDef (dname ::: _T) constructors = trace "elabDataDef" $ do
   mname <- ask
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elabType $ abstract (check (checkType t ::: VKType)) _T
-    pure $ n :=: Just (DTerm (E.eval mempty Nil (con (mname :.: n) c_T))) ::: c_T
+    con' <- elabTerm $ check (con (mname :.: n) ::: c_T)
+    pure $ n :=: Just (DTerm con') ::: c_T
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
     : cs
   where
   con q = go Nil where
-    go fs = \case
+    go fs = Check $ \case
       -- FIXME: earlier indices should be shifted
       -- FIXME: XTLam is only for the type parameters
       -- type parameters presumably shouldn’t be represented in the elaborated data
-      VTForAll _ _T _B -> XTLam (go (fs :> XVar (Free (Index 0))) (_B (T.free (Level (length fs)))))
-      _T               -> XCon (q :$ fs)
+      VTForAll n _T _B -> do
+        d <- depth
+        check (tlam (go (fs :> XVar (Free (levelToIndex d (Level (length fs)))))) ::: VTForAll n _T _B)
+      _T               -> pure $ XCon (q :$ fs)
 
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Trace) sig m
