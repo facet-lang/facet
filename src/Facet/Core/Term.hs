@@ -156,10 +156,10 @@ showValue :: HasCallStack => Stack ShowP -> Stack ShowP -> Int -> Value -> ShowP
 showValue tenv env p = \case
   VTLam b              -> brace (brace (string (toAlpha alpha (length tenv))) <+> string "->" <+> showValue (tenv :> string (toAlpha alpha (length tenv))) env 0 (b (T.free (Level (length tenv)))))
   VLam cs              -> brace (commaSep (map clause cs))
-  VNe (f :$ ts :$ sp)  -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (head f) (T.showType tenv <$> ts)) (showValue tenv env 11 <$> sp)
-  VCon (q :$ ts :$ fs) -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (qname q) (T.showType tenv <$> ts)) (showValue tenv env 11 <$> fs)
+  VNe (f :$ ts :$ sp)  -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (head f) (brace . T.showType tenv <$> ts)) (showValue tenv env 11 <$> sp)
+  VCon (q :$ ts :$ fs) -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (qname q) (brace . T.showType tenv <$> ts)) (showValue tenv env 11 <$> fs)
   VString s            -> text s
-  VOp (f :$ ts :$ sp)  -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (qname f) (T.showType tenv <$> ts)) (showValue tenv env 11 <$> sp)
+  VOp (f :$ ts :$ sp)  -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (qname f) (brace . T.showType tenv <$> ts)) (showValue tenv env 11 <$> sp)
   where
   clause (p, b) = pat p <+> string "->" <+> showValue tenv env' 0 (b p')
     where
