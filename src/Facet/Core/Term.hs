@@ -106,7 +106,7 @@ var = VNe . (:$ Nil) . (:$ Nil)
 VNe (h :$ ts :$ es) $$ a = VNe (h :$ ts :$ (es :> a))
 VLam cs             $$ a = case' a cs
 VTLam _             $$ _ = error "can’t apply type lambda"
-VCon (q :$ fs)      $$ _ = error $ "can’t apply constructor " <> appEndo (showValue Nil Nil 0 0 (VCon (q :$ fs))) ""
+VCon (q :$ fs)      $$ _ = error $ "can’t apply constructor " <> appEndo (showValue Nil Nil 0 (VCon (q :$ fs))) ""
 VString _           $$ _ = error "can’t apply string"
 VOp (h :$ es)       $$ a = VOp (h :$ (es :> a))
 
@@ -152,18 +152,18 @@ match = curry $ \case
 
 -- Debugging
 
-showValue :: Stack (Endo String) -> Stack (Endo String) -> Level -> Int -> Value -> Endo String
-showValue tenv env d p = \case
-  VTLam b             -> brace (brace (string (toAlpha alpha (length tenv))) <+> string "->" <+> showValue (tenv :> string (toAlpha alpha (length tenv))) env (succ d) 0 (b (T.free d)))
+showValue :: Stack (Endo String) -> Stack (Endo String) -> Int -> Value -> Endo String
+showValue tenv env p = \case
+  VTLam b             -> brace (brace (string (toAlpha alpha (length tenv))) <+> string "->" <+> showValue (tenv :> string (toAlpha alpha (length tenv))) env 0 (b (T.free (Level (length tenv)))))
   VLam cs             -> brace (commaSep (map clause cs))
-  VNe (f :$ ts :$ sp) -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (head f) (T.showType tenv 11 <$> ts)) (showValue tenv env d 11 <$> sp)
-  VCon (q :$ fs)      -> parenIf (p > 10) $ foldl' (<+>) (qname q) (showValue tenv env d 11 <$> fs)
+  VNe (f :$ ts :$ sp) -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (head f) (T.showType tenv 11 <$> ts)) (showValue tenv env 11 <$> sp)
+  VCon (q :$ fs)      -> parenIf (p > 10) $ foldl' (<+>) (qname q) (showValue tenv env 11 <$> fs)
   VString s           -> text s
-  VOp (f :$ ts :$ sp) -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (qname f) (T.showType tenv 11 <$> ts)) (showValue tenv env d 11 <$> sp)
+  VOp (f :$ ts :$ sp) -> parenIf (p > 10) $ foldl' (<+>) (foldl' (<+>) (qname f) (T.showType tenv 11 <$> ts)) (showValue tenv env 11 <$> sp)
   where
-  clause (p, b) = pat p <+> string "->" <+> showValue tenv env' d 0 (b p')
+  clause (p, b) = pat p <+> string "->" <+> showValue tenv env' 0 (b p')
     where
-    ((env', _), p') = mapAccumL (\ (env, d) n -> ((env :> name n, succ d), free d)) (env, d) p
+    ((env', _), p') = mapAccumL (\ (env, d) n -> ((env :> name n, succ d), free d)) (env, Level (length env)) p
   pat = \case
     PAll n      -> bracket (name n)
     PVal p      -> vpat p
@@ -175,7 +175,7 @@ showValue tenv env d p = \case
   alpha = ['A'..'Z']
   head = \case
     Global (m :.: n) -> foldr (<.>) (name n) (text <$> m)
-    Free v           -> env ! getIndex (levelToIndex d v)
+    Free v           -> env ! getIndex (levelToIndex (Level (length env)) v)
 
 
 -- Term expressions
