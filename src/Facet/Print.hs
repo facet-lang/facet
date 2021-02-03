@@ -5,6 +5,8 @@ module Facet.Print
 , Print(..)
 , Precedence(..)
 , ann
+  -- * Options
+, Options(..)
   -- * Core printers
 , printType
 , printTExpr
@@ -100,6 +102,14 @@ f $$ a = askingPrec $ \case
 
 ($$*) :: Foldable t => Print -> t Print -> Print
 ($$*) = fmap group . foldl' ($$)
+
+
+-- Options
+
+data Options = Options
+  { qname         :: Q Name -> Print
+  , instantiation :: Print -> Print -> Print
+  }
 
 
 -- Core printers
