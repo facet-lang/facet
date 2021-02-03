@@ -1,3 +1,4 @@
+{-# LANGUAGE ViewPatterns #-}
 module Facet.Eval
 ( -- * Evaluation
   Value(..)
@@ -24,8 +25,7 @@ eval = \case
     mod <- lift ask
     graph <- lift ask
     case h of
-      Global q
-        | Just (_ :=: Just (DTerm v) ::: _) <- lookupQ graph mod q
+      Global (lookupQ graph mod -> Just (_ :=: Just (DTerm v) ::: _))
         -> eval $ v $$$* ts $$* sp'
       _ -> pure $ VNe (h :$ ts :$ sp')
 
