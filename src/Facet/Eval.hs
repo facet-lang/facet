@@ -1,4 +1,3 @@
-{-# LANGUAGE ViewPatterns #-}
 module Facet.Eval
 ( -- * Evaluation
   Value(..)
