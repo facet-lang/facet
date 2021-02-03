@@ -8,6 +8,7 @@ module Facet.Print
   -- * Options
 , Options(..)
 , verboseOptions
+, quietOptions
 , qualified
 , unqualified
 , printInstantiation
@@ -120,6 +121,12 @@ verboseOptions :: Options
 verboseOptions = Options
   { qname         = qualified
   , instantiation = printInstantiation
+  }
+
+quietOptions :: Options
+quietOptions = Options
+  { qname         = unqualified
+  , instantiation = suppressInstantiation
   }
 
 qualified, unqualified :: Q Name -> Print
