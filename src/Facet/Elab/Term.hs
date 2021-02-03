@@ -172,7 +172,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (setSpan s) $ case e of
 
 
 -- FIXME: check for unique variable names
-bindPattern :: Has (Throw Err :+: Write Warn) sig m => S.Ann S.EffPattern -> Bind m (Pattern Name)
+bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.EffPattern -> Bind m (Pattern Name)
 bindPattern = go where
   go = withSpanB $ \case
     S.PAll n      -> allP n
