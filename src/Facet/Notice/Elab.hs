@@ -28,7 +28,7 @@ import           Silkscreen
 rethrowElabErrors :: Source -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors src = L.runThrow rethrow
   where
-  rethrow Err{ span, reason, context, subst, callStack } = Notice.Notice (Just Error) [slice src span] (printErrReason printCtx reason)
+  rethrow Err{ span, reason, context, subst, callStack } = Notice.Notice (Just Error) [slice src span] (printErrReason opts printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
     , nest 2 (pretty "Metacontext" <\> concatWith (<\>) subst')
     , pretty (prettyCallStack callStack)
@@ -48,8 +48,8 @@ rethrowElabErrors src = L.runThrow rethrow
     Many -> pretty "ω"
 
 
-printErrReason :: Stack Print -> ErrReason -> Doc Style
-printErrReason ctx = group . \case
+printErrReason :: Options -> Stack Print -> ErrReason -> Doc Style
+printErrReason opts ctx = group . \case
   FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n qs     -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
@@ -65,8 +65,6 @@ printErrReason ctx = group . \case
     let _T' = getPrint (printType opts ctx _T)
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
-  where
-  opts = quietOptions
 
 
 rethrowElabWarnings :: Source -> L.WriteC (Notice (Doc Style)) Warn m a -> m a
