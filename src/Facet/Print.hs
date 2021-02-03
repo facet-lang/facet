@@ -144,10 +144,11 @@ printType :: Options -> Stack Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
 printTExpr :: Options -> Stack Print -> C.TExpr -> Print
-printTExpr Options{} = go
+printTExpr Options{ qname } = go
   where
+  qvar = group . setPrec Var . qname
   go env = \case
-    C.TVar (C.TGlobal n)    -> group (qvar n)
+    C.TVar (C.TGlobal n)    -> qvar n
     C.TVar (C.TFree d)      -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
     C.TVar (C.TMetavar m)   -> meta m
     C.TType                 -> annotate Type $ pretty "Type"
