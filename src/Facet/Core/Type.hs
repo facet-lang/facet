@@ -30,6 +30,7 @@ module Facet.Core.Type
 , metas
   -- * Usage
 , Usage(..)
+, singleton
 ) where
 
 import           Data.Either (fromLeft)
@@ -222,3 +223,6 @@ instance Monoid Usage where
 
 instance LeftModule Quantity Usage where
   q ><< Usage a = Usage ((q ><) <$> a)
+
+singleton :: Level -> Quantity -> Usage
+singleton (Level i) q = Usage (IntMap.singleton i q)
