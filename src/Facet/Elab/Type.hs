@@ -19,7 +19,6 @@ import           Control.Effect.Throw
 import           Data.Foldable (foldl')
 import           Facet.Context
 import           Facet.Core.Type
-import           Facet.Effect.Trace
 import           Facet.Elab
 import           Facet.Name
 import           Facet.Semiring (zero)
@@ -27,8 +26,8 @@ import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 
-tvar :: Has (Throw Err :+: Trace) sig m => Q Name -> Synth m TExpr
-tvar n = Synth $ trace "tvar" $ views context_ (lookupInContext n) >>= \case
+tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m TExpr
+tvar n = Synth $ views context_ (lookupInContext n) >>= \case
   Just (i, _T) -> pure $ TVar (TFree i) ::: _T
   Nothing      -> do
     q :=: _ ::: _T <- resolveQ n
@@ -45,7 +44,7 @@ _String :: Synth m TExpr
 _String = Synth $ pure $ TString ::: VKType
 
 
-forAll :: Has Trace sig m => Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
+forAll :: (HasCallStack, Algebra sig m) => Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
 forAll (n ::: t) b = Synth $ do
   t' <- check (t ::: VKType)
   env <- views context_ toEnv
@@ -54,7 +53,7 @@ forAll (n ::: t) b = Synth $ do
   b' <- Binding n zero vt |- check (b ::: VKType)
   pure $ TForAll n t' b' ::: VKType
 
-(-->) :: Has Trace sig m => Either Name [Check m TExpr] ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
+(-->) :: Either Name [Check m TExpr] ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
 (n ::: a) --> b = Synth $ do
   n' <- traverse (traverse (\ e -> check (e ::: VKInterface))) n
   a' <- check (a ::: VKType)
@@ -64,15 +63,15 @@ forAll (n ::: t) b = Synth $ do
 infixr 1 -->
 
 
-comp :: Has Trace sig m => [Check m TExpr] -> Check m TExpr -> Synth m TExpr
+comp :: [Check m TExpr] -> Check m TExpr -> Synth m TExpr
 comp s t = Synth $ do
   s' <- traverse (check . (::: VKInterface)) s
   t' <- check (t ::: VKType)
   pure $ TComp s' t' ::: VKType
 
 
-synthType :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Type -> Synth m TExpr
-synthType (S.Ann s _ e) = mapSynth (trace "synthType" . setSpan s) $ case e of
+synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
+synthType (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
   S.TVar n        -> tvar n
   S.KType         -> _Type
   S.KInterface    -> _Interface
@@ -85,14 +84,14 @@ synthType (S.Ann s _ e) = mapSynth (trace "synthType" . setSpan s) $ case e of
 -- | Check a type at a kind.
 --
 -- NB: while synthesis is possible for all types at present, I reserve the right to change that.
-checkType :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Type -> Check m TExpr
+checkType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m TExpr
 checkType = switch . synthType
 
-synthInterface :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Synth m TExpr
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m TExpr
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (setSpan s) $
   foldl' (app TApp) h' (checkType <$> sp)
   where
   h' = mapSynth (setSpan sh) (tvar h)
 
-checkInterface :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => S.Ann S.Interface -> Check m TExpr
+checkInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check m TExpr
 checkInterface = switch . synthInterface

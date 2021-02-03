@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- | This module defines the /elaboration/ of terms in 'S.Expr' into values in 'Type'.
 --
@@ -63,7 +62,6 @@ import Control.Monad (unless)
 import Data.Bifunctor (first)
 import Data.Foldable (asum)
 import Data.Semialign.Exts
-import Facet.Carrier.Trace.Output as Trace
 import Facet.Context as Context
 import Facet.Core.Module
 import Facet.Core.Term as E
@@ -103,11 +101,11 @@ instantiate inst = go
     _                -> pure $ e ::: _T
 
 
-switch :: Has (Throw Err :+: Trace) sig m => Synth m a -> Check m a
-switch (Synth m) = Check $ trace "switch" . \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
+switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
+switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
-as :: Has Trace sig m => Check m Expr ::: Check m TExpr -> Synth m Expr
-as (m ::: _T) = Synth $ trace "as" $ do
+as :: (HasCallStack, Algebra sig m) => Check m Expr ::: Check m TExpr -> Synth m Expr
+as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
   _T' <- T.eval subst (Left <$> env) <$> check (_T ::: VKType)
@@ -149,16 +147,16 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
 hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 
-app :: (Has (Throw Err :+: Trace) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
-app mk f a = Synth $ trace "app" $ do
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
+app mk f a = Synth $ do
   f' ::: _F <- synth f
   (m ::: _A, _B) <- expectFunction "in application" _F
   a' <- either (const id) extendSig m $ check (a ::: _A)
   pure $ mk f' a' ::: _B
 
 
-(|-) :: Has Trace sig m => Binding -> Elab m a -> Elab m a
-t |- b = trace "|-" $ locally context_ (|> t) b
+(|-) :: Algebra sig m => Binding -> Elab m a -> Elab m a
+t |- b = locally context_ (|> t) b
 
 infix 1 |-
 
@@ -237,10 +235,10 @@ warn reason = do
 
 -- Patterns
 
-expectMatch :: Has (Throw Err :+: Trace) sig m => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
+expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectFunction :: Has (Throw Err :+: Trace) sig m => String -> Type -> Elab m (Either Name [Type] ::: Type, Type)
+expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Either Name [Type] ::: Type, Type)
 expectFunction = expectMatch (\case{ VTArrow n t b -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _"
 
 
@@ -265,12 +263,12 @@ span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span
 
 
 -- FIXME: we don’t get good source references during unification
-unify :: Has (Throw Err :+: Trace) sig m => Type -> Type -> Elab m ()
-unify t1 t2 = trace "unify" $ type' t1 t2
+unify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m ()
+unify t1 t2 = type' t1 t2
   where
   nope = couldNotUnify "mismatch" t1 t2
 
-  type' t1 t2 = trace "unify type'" $ case (t1, t2) of
+  type' = curry $ \case
     (VTNe (TMetavar v1 :$ Nil :$ Nil), VTNe (TMetavar v2 :$ Nil :$ Nil)) -> flexFlex v1 v2
     (VTNe (TMetavar v1 :$ Nil :$ Nil), t2)                               -> solve v1 t2
     (t1, VTNe (TMetavar v2 :$ Nil :$ Nil))                               -> solve v2 t1
@@ -289,7 +287,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (VTString, VTString)                                                 -> pure ()
     (VTString, _)                                                        -> nope
 
-  var v1 v2 = trace "unify var" $ case (v1, v2) of
+  var = curry $ \case
     (TGlobal q1, TGlobal q2)   -> unless (q1 == q2) nope
     (TGlobal{}, _)             -> nope
     (TFree v1, TFree v2)       -> unless (v1 == v2) nope
@@ -297,13 +295,13 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (TMetavar m1, TMetavar m2) -> unless (m1 == m2) nope
     (TMetavar{}, _)            -> nope
 
-  spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
+  spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
-  sig c1 c2 = trace "unify sig" $ spine type' c1 c2
+  sig c1 c2 = spine type' c1 c2
 
   flexFlex v1 v2
     | v1 == v2  = pure ()
-    | otherwise = trace "flex-flex" $ do
+    | otherwise = do
       (t1, t2) <- gets (\ s -> (T.lookupMeta v1 s, T.lookupMeta v2 s))
       case (t1, t2) of
         (Just t1, Just t2) -> type' (ty t1) (ty t2)
@@ -311,7 +309,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
         (Nothing, Just t2) -> type' (metavar v1) (tm t2)
         (Nothing, Nothing) -> solve v1 (metavar v2)
 
-  solve v t = trace "solve" $ do
+  solve v t = do
     d <- depth
     if occursIn (== TMetavar v) d t then
       mismatch "infinite type" (Right (metavar v)) t
@@ -343,8 +341,8 @@ elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Span) sig m => Elab 
 elabSynth = elabWith (\ subst (e ::: _T) -> pure (E.eval subst Nil e ::: T.eval subst Nil (T.quote 0 _T)))
 
 
-check :: Has Trace sig m => (Check m a ::: Type) -> Elab m a
-check (m ::: _T) = trace "check" $ runCheck m _T
+check :: (Check m a ::: Type) -> Elab m a
+check (m ::: _T) = runCheck m _T
 
 newtype Check m a = Check { runCheck :: Type -> Elab m a }
   deriving (Applicative, Functor) via ReaderC Type (Elab m)
