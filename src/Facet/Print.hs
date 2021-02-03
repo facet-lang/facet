@@ -145,9 +145,9 @@ printExpr env = \case
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
   clause (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> printExpr env' b
   vpat = \case
-    C.PWildcard      -> pretty '_'
-    C.PVar n         -> n
-    C.PCon (n :$ ps) -> parens (hsep (annotate Con (pretty n):map vpat (toList ps)))
+    C.PWildcard          -> pretty '_'
+    C.PVar n             -> n
+    C.PCon (_:.:n :$ ps) -> parens (hsep (annotate Con (pretty n):map vpat (toList ps)))
   pat = \case
     C.PAll n      -> brackets n
     C.PVal p      -> vpat p
