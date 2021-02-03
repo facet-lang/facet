@@ -72,7 +72,7 @@ import Facet.Effect.Write
 import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
-import Facet.Semiring (zero, (><<))
+import Facet.Semiring (one, zero, (><<))
 import Facet.Source (Source, slice)
 import Facet.Span (Span(..))
 import Facet.Stack
@@ -267,6 +267,7 @@ data StaticContext = StaticContext
   { graph   :: Graph
   , module' :: Module
   , source  :: Source
+  , scale   :: Quantity
   }
 
 data ElabContext = ElabContext
@@ -348,21 +349,21 @@ unify t1 t2 = type' t1 t2
 newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC Subst m))) a }
   deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State Subst :+: sig), Applicative, Functor, Monad)
 
-elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => (Subst -> a -> m b) -> Elab m a -> m b
-elabWith k m = runState k mempty . runWriter (const pure) $ do
+elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst -> a -> m b) -> Elab m a -> m b
+elabWith scale k m = runState k mempty . runWriter (const pure) $ do
   (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
-  let stat = StaticContext{ graph, module', source }
+  let stat = StaticContext{ graph, module', source, scale }
       ctx  = ElabContext{ context = Context.empty, sig = [], spans = Nil }
   runReader stat . runReader ctx . runElab $ m
 
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
-elabType = elabWith (\ subst t -> pure (T.eval subst Nil t))
+elabType = elabWith zero (\ subst t -> pure (T.eval subst Nil t))
 
 elabTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m Expr -> m Value
-elabTerm = elabWith (\ subst e -> pure (E.eval subst Nil e))
+elabTerm = elabWith one (\ subst e -> pure (E.eval subst Nil e))
 
-elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m (Expr ::: Type) -> m (Value ::: Type)
-elabSynth = elabWith (\ subst (e ::: _T) -> pure (E.eval subst Nil e ::: T.eval subst Nil (T.quote 0 _T)))
+elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> Elab m (Expr ::: Type) -> m (Value ::: Type)
+elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (E.eval subst Nil e ::: T.eval subst Nil (T.quote 0 _T)))
 
 
 check :: (Check m a ::: Type) -> Elab m a

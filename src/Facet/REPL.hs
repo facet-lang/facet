@@ -45,6 +45,7 @@ import           Facet.Parser as Parser
 import           Facet.Pretty
 import           Facet.Print as Print hiding (meta)
 import           Facet.REPL.Parser
+import           Facet.Semiring (one)
 import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Stack
 import           Facet.Style as Style
@@ -190,12 +191,12 @@ removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets
 showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
-  e ::: _T <- runElab $ Elab.elabSynth (Elab.synth (Elab.synthExpr e))
+  e ::: _T <- runElab $ Elab.elabSynth one (Elab.synth (Elab.synthExpr e))
   opts <- get
   outputDocLn (getPrint (ann (printValue opts Nil e ::: printType opts Nil _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- runElab $ Elab.elabSynth $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
+  e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
   e'' <- runElab $ runEvalMain (eval e')
   opts <- get
   outputDocLn (getPrint (ann (printValue opts Nil e'' ::: printType opts Nil _T)))
