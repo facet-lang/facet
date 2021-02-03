@@ -280,7 +280,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (VKType, _)                                                          -> nope
     (VKInterface, VKInterface)                                           -> pure ()
     (VKInterface, _)                                                     -> nope
-    (VTForAll n t1 b1, VTForAll _ t2 b2)                                 -> do { type' t1 t2 ; d <- depth ; Binding n Many t1 |- type' (b1 (T.free d)) (b2 (T.free d)) }
+    (VTForAll n t1 b1, VTForAll _ t2 b2)                                 -> type' t1 t2 >> depth >>= \ d -> Binding n Many t1 |- type' (b1 (T.free d)) (b2 (T.free d))
     (VTForAll{}, _)                                                      -> nope
     (VTArrow _ a1 b1, VTArrow _ a2 b2)                                   -> type' a1 a2 >> type' b1 b2
     (VTArrow{}, _)                                                       -> nope
