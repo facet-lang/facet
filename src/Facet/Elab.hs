@@ -72,7 +72,7 @@ import Facet.Effect.Write
 import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
-import Facet.Semiring (zero)
+import Facet.Semiring (zero, (><<))
 import Facet.Source (Source, slice)
 import Facet.Span (Span(..))
 import Facet.Stack
@@ -153,9 +153,8 @@ hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ do
   f' ::: _F <- synth f
-  -- FIXME: use the quantity
-  (m ::: (_q, _A), _B) <- expectFunction "in application" _F
-  a' <- either (const id) extendSig m $ check (a ::: _A)
+  (m ::: (q, _A), _B) <- expectFunction "in application" _F
+  a' <- either (const id) extendSig m $ censor @Usage (q ><<) $ check (a ::: _A)
   pure $ mk f' a' ::: _B
 
 
