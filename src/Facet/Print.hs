@@ -166,7 +166,7 @@ printValue :: Options -> Stack Print -> C.Value -> Print
 printValue opts env = printExpr opts env . CE.quote (Name.Level (length env))
 
 printExpr :: Options -> Stack Print -> C.Expr -> Print
-printExpr Options{} = go
+printExpr Options{ qname } = go
   where
   go env = \case
     C.XVar (C.Global n)  -> group (qvar n)
@@ -181,9 +181,9 @@ printExpr Options{} = go
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
   clause env (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> go env' b
   vpat = \case
-    C.PWildcard          -> pretty '_'
-    C.PVar n             -> n
-    C.PCon (_:.:n :$ ps) -> parens (hsep (annotate Con (pretty n):map vpat (toList ps)))
+    C.PWildcard      -> pretty '_'
+    C.PVar n         -> n
+    C.PCon (n :$ ps) -> parens (hsep (annotate Con (qname n):map vpat (toList ps)))
   pat = \case
     C.PAll n      -> brackets n
     C.PVal p      -> vpat p
