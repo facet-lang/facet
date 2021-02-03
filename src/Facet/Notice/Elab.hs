@@ -25,8 +25,8 @@ import           Silkscreen
 
 -- Elaboration
 
-rethrowElabErrors :: Source -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
-rethrowElabErrors src = L.runThrow rethrow
+rethrowElabErrors :: Options -> Source -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
+rethrowElabErrors opts src = L.runThrow rethrow
   where
   rethrow Err{ span, reason, context, subst, callStack } = Notice.Notice (Just Error) [slice src span] (printErrReason opts printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
@@ -36,7 +36,6 @@ rethrowElabErrors src = L.runThrow rethrow
     where
     (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
     subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printType opts printCtx _T))) (metas subst)
-  opts = quietOptions
   combine (d, print, ctx) (Binding n m _T) =
     let n' = intro n d
     in  ( succ d

@@ -43,6 +43,7 @@ import           Facet.Notice.Elab (rethrowElabErrors, rethrowElabWarnings)
 import           Facet.Notice.Parser (rethrowParseErrors)
 import           Facet.Parser
 import           Facet.Pretty
+import           Facet.Print (quietOptions)
 import           Facet.Source
 import           Facet.Stack
 import           Facet.Style
@@ -125,7 +126,7 @@ loadModule name path src imports = do
   graph <- use modules_
   let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
-  m <- rethrowElabWarnings src . rethrowElabErrors src . runReader graph $ Elab.elabModule m
+  m <- rethrowElabWarnings src . rethrowElabErrors quietOptions src . runReader graph $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)
   pure m
 
