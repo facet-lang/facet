@@ -38,7 +38,6 @@ import           Facet.Name
 import           Facet.Pretty (toAlpha)
 import           Facet.Show
 import           Facet.Stack
-import           Facet.Syntax
 import           GHC.Stack
 
 -- Term variables
@@ -54,7 +53,7 @@ data Var a
 data ValuePattern a
   = PWildcard
   | PVar a
-  | PCon (Q Name :$ ValuePattern a)
+  | PCon (Q Name) (Stack (ValuePattern a))
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data Pattern a
@@ -67,8 +66,8 @@ data Pattern a
 pvar :: a -> Pattern a
 pvar = PVal . PVar
 
-pcon :: Q Name :$ ValuePattern a -> Pattern a
-pcon = PVal . PCon
+pcon :: Q Name -> Stack (ValuePattern a) -> Pattern a
+pcon n fs = PVal $ PCon n fs
 
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
@@ -140,11 +139,11 @@ match = curry $ \case
   (s, PVal p') -> PVal <$> value s p'
   where
   value = curry $ \case
-    (_,                    PWildcard) -> Just PWildcard
-    (s,                    PVar _)    -> Just (PVar s)
+    (_,            PWildcard) -> Just PWildcard
+    (s,            PVar _)    -> Just (PVar s)
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
-    (VCon n' _ fs, PCon (n :$ ps))    -> PCon . (n' :$) <$ guard (n == n') <*> zipWithM value fs ps
-    (_, PCon{})                       -> Nothing
+    (VCon n' _ fs, PCon n ps) -> PCon n' <$ guard (n == n') <*> zipWithM value fs ps
+    (_, PCon{})               -> Nothing
 
 
 -- Debugging
@@ -168,9 +167,9 @@ showValue tenv env = \case
     PVal p      -> vpat p
     PEff n ps k -> bracket (foldl' (<+>) (qname n) (pat <$> ps) <+> char ';' <+> name k)
   vpat = \case
-    PWildcard      -> char '_'
-    PVar n         -> name n
-    PCon (f :$ ps) -> paren $ foldl' (<+>) (qname f) (vpat <$> ps)
+    PWildcard -> char '_'
+    PVar n    -> name n
+    PCon f ps -> paren $ foldl' (<+>) (qname f) (vpat <$> ps)
   alpha = ['A'..'Z']
   head = \case
     Global (m :.: n) -> foldr (<.>) (name n) (text <$> m)
