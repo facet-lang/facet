@@ -56,7 +56,7 @@ import Control.Carrier.Error.Church
 import Control.Carrier.Reader
 import Control.Carrier.State.Church
 import Control.Effect.Empty
-import Control.Effect.Lens (view, views)
+import Control.Effect.Lens (views)
 import Control.Lens (Lens', lens)
 import Control.Monad (unless)
 import Data.Bifunctor (first)
@@ -209,10 +209,9 @@ applySubst ctx subst r = case r of
 -- FIXME: apply the substitution before showing this to the user
 err :: (HasCallStack, Has (Throw Err) sig m) => ErrReason -> Elab m a
 err reason = do
-  ctx <- view context_
+  ElabContext{ context, spans } <- ask
   subst <- get
-  span <- views spans_ peek
-  throwError $ Err span (applySubst ctx subst reason) ctx subst GHC.Stack.callStack
+  throwError $ Err (peek spans) (applySubst context subst reason) context subst GHC.Stack.callStack
 
 mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String Type -> Type -> Elab m a
 mismatch msg exp act = withFrozenCallStack $ err $ Mismatch msg exp act
@@ -244,8 +243,8 @@ data WarnReason
 
 warn :: Has (Write Warn) sig m => WarnReason -> Elab m ()
 warn reason = do
-  span <- views spans_ peek
-  write $ Warn span reason
+  ElabContext{ spans } <- ask
+  write $ Warn (peek spans) reason
 
 
 -- Patterns
