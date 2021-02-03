@@ -72,7 +72,7 @@ import Facet.Effect.Write
 import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
-import Facet.Semiring (Few(..))
+import Facet.Semiring (zero)
 import Facet.Span (Span(..))
 import Facet.Stack
 import Facet.Syntax
@@ -280,7 +280,7 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (VKType, _)                                                          -> nope
     (VKInterface, VKInterface)                                           -> pure ()
     (VKInterface, _)                                                     -> nope
-    (VTForAll n t1 b1, VTForAll _ t2 b2)                                 -> type' t1 t2 >> depth >>= \ d -> Binding n Many t1 |- type' (b1 (T.free d)) (b2 (T.free d))
+    (VTForAll n t1 b1, VTForAll _ t2 b2)                                 -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
     (VTForAll{}, _)                                                      -> nope
     (VTArrow _ a1 b1, VTArrow _ a2 b2)                                   -> type' a1 a2 >> type' b1 b2
     (VTArrow{}, _)                                                       -> nope
