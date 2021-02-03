@@ -151,7 +151,8 @@ hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ do
   f' ::: _F <- synth f
-  (m ::: _A, _B) <- expectFunction "in application" _F
+  -- FIXME: use the quantity
+  (m ::: (_q, _A), _B) <- expectFunction "in application" _F
   a' <- either (const id) extendSig m $ check (a ::: _A)
   pure $ mk f' a' ::: _B
 
@@ -252,8 +253,8 @@ warn reason = do
 expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Either Name [Type] ::: Type, Type)
-expectFunction = expectMatch (\case{ VTArrow n t b -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _"
+expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Either Name [Type] ::: (Quantity, Type), Type)
+expectFunction = expectMatch (\case{ VTArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Unification
@@ -293,7 +294,8 @@ unify t1 t2 = type' t1 t2
     (VKInterface, _)                                         -> nope
     (VTForAll n t1 b1, VTForAll _ t2 b2)                     -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
     (VTForAll{}, _)                                          -> nope
-    (VTArrow _ a1 b1, VTArrow _ a2 b2)                       -> type' a1 a2 >> type' b1 b2
+    -- FIXME: this must unify the signatures
+    (VTArrow _ q1 a1 b1, VTArrow _ q2 a2 b2)                 -> unless (q1 == q2) nope >> type' a1 a2 >> type' b1 b2
     (VTArrow{}, _)                                           -> nope
     (VTComp s1 t1, VTComp s2 t2)                             -> sig s1 s2 >> type' t1 t2
     (VTComp{}, _)                                            -> nope
@@ -375,11 +377,11 @@ mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m
 mapSynth f = Synth . f . synth
 
 
-bind :: Bind m a ::: ([Type], Type) -> Check m b -> Check m (a, b)
-bind (p ::: (s, _T)) = runBind p s _T
+bind :: Bind m a ::: ([Type], Quantity, Type) -> Check m b -> Check m (a, b)
+bind (p ::: (s, q, _T)) = runBind p s q _T
 
-newtype Bind m a = Bind { runBind :: forall x . [Type] -> Type -> Check m x -> Check m (a, x) }
+newtype Bind m a = Bind { runBind :: forall x . [Type] -> Quantity -> Type -> Check m x -> Check m (a, x) }
   deriving (Functor)
 
 mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
-mapBind f m = Bind $ \ sig _A b -> mapCheck f (runBind m sig _A b)
+mapBind f m = Bind $ \ sig q _A b -> mapCheck f (runBind m sig q _A b)

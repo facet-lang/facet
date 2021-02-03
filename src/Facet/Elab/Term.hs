@@ -107,39 +107,39 @@ string s = Synth $ pure $ XString s ::: VTString
 -- Pattern combinators
 
 wildcardP :: Bind m (ValuePattern Name)
-wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
+wildcardP = Bind $ \ _ _ _ -> fmap (PWildcard,)
 
 varP :: Algebra sig m => Name -> Bind m (ValuePattern Name)
-varP n = Bind $ \ _sig _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n Many _A |- check (b ::: _B))
+varP n = Bind $ \ _sig q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q _A |- check (b ::: _B))
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
-conP n ps = Bind $ \ sig _A b -> Check $ \ _B -> do
-  q :=: _ ::: _T <- resolveC n
+conP n ps = Bind $ \ sig q _A b -> Check $ \ _B -> do
+  n' :=: _ ::: _T <- resolveC n
   _ ::: _T' <- instantiate const (() ::: _T)
-  (ps', b') <- check (bind (fieldsP (Bind (\ _sig _A' b -> ([],) <$> Check (\ _B -> unify _A' _A *> check (b ::: _B)))) ps ::: (sig, _T')) b ::: _B)
-  pure (PCon q (fromList ps'), b')
+  (ps', b') <- check (bind (fieldsP (Bind (\ _sig _q' _A' b -> ([],) <$> Check (\ _B -> unify _A' _A *> check (b ::: _B)))) ps ::: (sig, q, _T')) b ::: _B)
+  pure (PCon n' (fromList ps'), b')
 
 fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind m [a] -> [Bind m a] -> Bind m [a]
 fieldsP = foldr cons
   where
-  cons p ps = Bind $ \ sig _A b -> Check $ \ _B -> do
+  cons p ps = Bind $ \ sig q _A b -> Check $ \ _B -> do
     -- FIXME: assert that the signature is empty
-    (_ ::: _A', _A'') <- expectFunction "when checking nested pattern" _A
-    (p', (ps', b')) <- check (bind (p ::: (sig, _A')) (bind (ps ::: (sig, _A'')) b) ::: _B)
+    (_ ::: (q', _A'), _A'') <- expectFunction "when checking nested pattern" _A
+    (p', (ps', b')) <- check (bind (p ::: (sig, q', _A')) (bind (ps ::: (sig, q, _A'')) b) ::: _B)
     pure (p':ps', b')
 
 
 allP :: Has (Write Warn) sig m => Name -> Bind m (Pattern Name)
-allP n = Bind $ \ sig _A b -> Check $ \ _B -> do
+allP n = Bind $ \ sig q _A b -> Check $ \ _B -> do
   when (null sig) (warn (RedundantCatchAll n))
-  Binding n Many _A |- (PAll n,) <$> check (b ::: _B)
+  Binding n q _A |- (PAll n,) <$> check (b ::: _B)
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
-effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
+effP n ps v = Bind $ \ sig q _A b -> Check $ \ _B -> do
   ElabContext{ module', graph } <- ask
-  q ::: _T <- maybe (freeVariable n) (instantiate const) (lookupInSig n module' graph sig)
-  (ps', b') <- check (bind (fieldsP (Bind (\ _sig _A' b -> ([],) <$> Check (\ _B -> Binding v Many (VTArrow (Right []) _A' _A) |- check (b ::: _B)))) ps ::: (sig, _T)) b ::: _B)
-  pure (PEff q (PVal <$> fromList ps') v, b')
+  n' ::: _T <- maybe (freeVariable n) (instantiate const) (lookupInSig n module' graph sig)
+  (ps', b') <- check (bind (fieldsP (Bind (\ _sig q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (VTArrow (Right []) Many _A' _A) |- check (b ::: _B)))) ps ::: (sig, q, _T)) b ::: _B)
+  pure (PEff n' (PVal <$> fromList ps') v, b')
 
 
 -- Expression elaboration
@@ -192,15 +192,15 @@ abstract :: Algebra sig m => Elab m TExpr -> Type -> Elab m TExpr
 abstract body = go
   where
   go = \case
-    VTForAll       n  t b -> do
+    VTForAll       n    t b -> do
       level <- depth
       b' <- Binding n zero t |- go (b (T.free level))
       pure $ TForAll n (T.quote level t) b'
-    VTArrow  (Left n) a b -> do
+    VTArrow  (Left n) q a b -> do
       level <- depth
-      b' <- Binding n zero a |- go b
+      b' <- Binding n q a |- go b
       pure $ TForAll n (T.quote level a) b'
-    _                     -> body
+    _                       -> body
 
 
 -- Declarations
@@ -226,13 +226,13 @@ elabDataDef (dname ::: _T) constructors = do
       -- FIXME: earlier indices should be shifted
       -- FIXME: XTLam is only for the type parameters
       -- type parameters presumably shouldn’t be represented in the elaborated data
-      VTForAll n _T _B -> do
+      VTForAll n   _T _B -> do
         d <- depth
         check (tlam (go (ts :> d) fs) ::: VTForAll n _T _B)
-      VTArrow  n _A _B -> do
+      VTArrow  n q _A _B -> do
         d <- depth
-        check (lam [(PVal <$> varP (fromLeft __ n), go ts (fs :> d))] ::: VTArrow n _A _B)
-      _T               -> do
+        check (lam [(PVal <$> varP (fromLeft __ n), go ts (fs :> d))] ::: VTArrow n q _A _B)
+      _T                 -> do
         d <- depth
         pure $ XCon q (TVar . TFree . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
@@ -258,12 +258,12 @@ elabTermDef _T expr = do
   elabTerm $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    VTForAll{}             -> check (tlam (go k) ::: _T)
-    VTArrow (Left n) _A _B -> check (lam [(PVal <$> varP n, go k)] ::: VTArrow (Right []) _A _B)
+    VTForAll{}               -> check (tlam (go k) ::: _T)
+    VTArrow (Left n) q _A _B -> check (lam [(PVal <$> varP n, go k)] ::: VTArrow (Right []) q _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                      -> check (k ::: _T)
+    _                        -> check (k ::: _T)
 
 
 -- Modules
@@ -308,8 +308,8 @@ expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> E
 expectQuantifier = expectMatch (\case{ VTForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
-expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (([Type], Type), Type)
-expectTacitFunction = expectMatch (\case{ VTArrow (Right s) t b -> pure ((s, t), b) ; _ -> Nothing }) "_ -> _"
+expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (([Type], Quantity, Type), Type)
+expectTacitFunction = expectMatch (\case{ VTArrow (Right s) q t b -> pure ((s, q, t), b) ; _ -> Nothing }) "_ -> _"
 
 expectComp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
 expectComp = expectMatch (\case { VTComp s t -> pure (s, t) ; _ -> Nothing }) "{_}"

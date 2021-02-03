@@ -35,7 +35,7 @@ import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
 import           Facet.Name
-import           Facet.Semiring (Few(..))
+import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Show
 import           Facet.Stack
 import           Facet.Syntax
@@ -59,7 +59,7 @@ data Type
   = VKType
   | VKInterface
   | VTForAll Name Type (Type -> Type)
-  | VTArrow (Either Name [Type]) Type Type
+  | VTArrow (Either Name [Type]) Quantity Type Type
   | VTNe (TVar Level) (Stack Type) (Stack Type)
   | VTComp [Type] Type
   | VTString
@@ -83,13 +83,13 @@ occursIn :: (TVar Level -> Bool) -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
-    VKType         -> False
-    VKInterface    -> False
-    VTForAll _ t b -> go d t || go (succ d) (b (free d))
-    VTArrow n a b  -> any (any (go d)) n || go d a || go d b
-    VTComp s t     -> any (go d) s || go d t
-    VTNe h ts sp   -> p h || any (go d) ts || any (go d) sp
-    VTString       -> False
+    VKType          -> False
+    VKInterface     -> False
+    VTForAll _ t b  -> go d t || go (succ d) (b (free d))
+    VTArrow n _ a b -> any (any (go d)) n || go d a || go d b
+    VTComp s t      -> any (go d) s || go d t
+    VTNe h ts sp    -> p h || any (go d) ts || any (go d) sp
+    VTString        -> False
 
 
 -- Elimination
@@ -121,9 +121,9 @@ showType env = \case
   VKType         -> string "Type"
   VKInterface    -> string "Interface"
   VTForAll n t b -> prec 0 $ brace (name n <+> char ':' <+> setPrec 0 (showType env t)) <+> string "->" <+> setPrec 0 (showType (env :> name n) (b (free (Level (length env)))))
-  VTArrow n t b  -> case n of
-    Left  n -> paren (name n <+> char ':' <+> showType env t) <+> string "->" <+> setPrec 0 (showType env b)
-    Right s -> sig s <+> setPrec 1 (showType env t) <+> string "->" <+> setPrec 0 (showType env b)
+  VTArrow n q t b  -> case n of
+    Left  n -> paren (name n <+> char ':' <+> mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
+    Right s -> sig s <+> setPrec 1 (mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
   VTNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
   VTComp s t     -> brace (sig s <+> showType env t)
   VTString       -> string "String"
@@ -135,6 +135,10 @@ showType env = \case
     TGlobal q  -> qname q
     TFree v    -> env ! getIndex (levelToIndex (Level (length env)) v)
     TMetavar m -> char '?' <> string (show (getMeta m))
+  mult q = if
+    | q == zero -> (char '0' <+>)
+    | q == one  -> (char '1' <+>)
+    | otherwise -> id
 
 
 -- Type expressions
@@ -145,7 +149,7 @@ data TExpr
   | TInterface
   | TString
   | TForAll Name TExpr TExpr
-  | TArrow (Either Name [TExpr]) TExpr TExpr
+  | TArrow (Either Name [TExpr]) Quantity TExpr TExpr
   | TComp [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
@@ -156,13 +160,13 @@ data TExpr
 
 quote :: Level -> Type -> TExpr
 quote d = \case
-  VKType         -> TType
-  VKInterface    -> TInterface
-  VTForAll n t b -> TForAll n (quote d t) (quote (succ d) (b (free d)))
-  VTArrow n a b  -> TArrow (map (quote d) <$> n) (quote d a) (quote d b)
-  VTComp s t     -> TComp (quote d <$> s) (quote d t)
-  VTNe n ts sp   -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
-  VTString       -> TString
+  VKType          -> TType
+  VKInterface     -> TInterface
+  VTForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
+  VTArrow n q a b -> TArrow (map (quote d) <$> n) q (quote d a) (quote d b)
+  VTComp s t      -> TComp (quote d <$> s) (quote d t)
+  VTNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
+  VTString        -> TString
 
 eval :: HasCallStack => Subst -> Stack (Either Type a) -> TExpr -> Type
 eval subst = go where
@@ -173,7 +177,7 @@ eval subst = go where
     TType             -> VKType
     TInterface        -> VKInterface
     TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> Left v) b)
-    TArrow n a b      -> VTArrow (map (go env) <$> n) (go env a) (go env b)
+    TArrow n q a b    -> VTArrow (map (go env) <$> n) q (go env a) (go env b)
     TComp s t         -> VTComp (go env <$> s) (go env t)
     TInst f a         -> go env f $$$ go env a
     TApp  f a         -> go env f $$  go env a

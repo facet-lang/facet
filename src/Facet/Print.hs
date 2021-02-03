@@ -37,6 +37,7 @@ import qualified Facet.Core.Type as C
 import qualified Facet.Core.Type as CT
 import           Facet.Name as Name
 import           Facet.Pretty (lower, upper)
+import           Facet.Semiring (one, zero)
 import           Facet.Stack
 import           Facet.Style
 import           Facet.Syntax
@@ -148,22 +149,26 @@ printTExpr Options{ qname, instantiation } = go
   where
   qvar = group . setPrec Var . qname
   go env = \case
-    C.TVar (C.TGlobal n)    -> qvar n
-    C.TVar (C.TFree d)      -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
-    C.TVar (C.TMetavar m)   -> meta m
-    C.TType                 -> annotate Type $ pretty "Type"
-    C.TInterface            -> annotate Type $ pretty "Interface"
-    C.TForAll n t b         -> braces (ann (intro n d ::: go env t)) --> go (env :> intro n d) b
-    C.TArrow (Right []) a b -> go env a --> go env b
-    C.TArrow (Right s) a b  -> (sig s <+> go env a) --> go env b
-    C.TArrow (Left n)   a b -> parens (ann (intro n d ::: go env a)) --> go env b
-    C.TComp s t             -> braces (sig s <+> go env t)
-    C.TInst f t             -> group (go env f) `instantiation` group (braces (go env t))
-    C.TApp f a              -> group (go env f) $$ group (go env a)
-    C.TString               -> annotate Type $ pretty "String"
+    C.TVar (C.TGlobal n)      -> qvar n
+    C.TVar (C.TFree d)        -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
+    C.TVar (C.TMetavar m)     -> meta m
+    C.TType                   -> annotate Type $ pretty "Type"
+    C.TInterface              -> annotate Type $ pretty "Interface"
+    C.TForAll n t b           -> braces (ann (intro n d ::: go env t)) --> go (env :> intro n d) b
+    C.TArrow (Right []) q a b -> mult q (go env a) --> go env b
+    C.TArrow (Right s)  q a b -> (sig s <+> mult q (go env a)) --> go env b
+    C.TArrow (Left n)   q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
+    C.TComp s t               -> braces (sig s <+> go env t)
+    C.TInst f t               -> group (go env f) `instantiation` group (braces (go env t))
+    C.TApp f a                -> group (go env f) $$ group (go env a)
+    C.TString                 -> annotate Type $ pretty "String"
     where
     d = Name.Level (length env)
     sig s = brackets (commaSep (map (go env) s))
+    mult q = if
+      | q == zero -> (pretty '0' <+>)
+      | q == one  -> (pretty '1' <+>)
+      | otherwise -> id
 
 printValue :: Options -> Stack Print -> C.Value -> Print
 printValue opts env = printExpr opts env . CE.quote (Name.Level (length env))

@@ -21,7 +21,7 @@ import           Facet.Context
 import           Facet.Core.Type
 import           Facet.Elab
 import           Facet.Name
-import           Facet.Semiring (zero)
+import           Facet.Semiring (Few(..), zero)
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
@@ -53,12 +53,12 @@ forAll (n ::: t) b = Synth $ do
   b' <- Binding n zero vt |- check (b ::: VKType)
   pure $ TForAll n t' b' ::: VKType
 
-(-->) :: Either Name [Check m TExpr] ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
+(-->) :: Either Name [Check m TExpr] ::: Check m (Quantity, TExpr) -> Check m TExpr -> Synth m TExpr
 (n ::: a) --> b = Synth $ do
   n' <- traverse (traverse (\ e -> check (e ::: VKInterface))) n
-  a' <- check (a ::: VKType)
+  (q', a') <- check (a ::: VKType)
   b' <- check (b ::: VKType)
-  pure $ TArrow n' a' b' ::: VKType
+  pure $ TArrow n' q' a' b' ::: VKType
 
 infixr 1 -->
 
@@ -77,7 +77,7 @@ synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.KInterface    -> _Interface
   S.TString       -> _String
   S.TForAll n t b -> forAll (n ::: checkType t) (checkType b)
-  S.TArrow  n a b -> (map checkInterface <$> n ::: checkType a) --> checkType b
+  S.TArrow  n a b -> (map checkInterface <$> n ::: ((Many,) <$> checkType a)) --> checkType b
   S.TComp s t     -> comp (map checkInterface s) (checkType t)
   S.TApp f a      -> app TApp (synthType f) (checkType a)
 
