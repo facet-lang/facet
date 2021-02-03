@@ -31,12 +31,14 @@ module Facet.Core.Type
   -- * Usage
 , Usage(..)
 , singleton
+, lookupUsage
 ) where
 
 import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
+import           Data.Maybe (fromMaybe)
 import           Facet.Name
 import           Facet.Semiring
 import           Facet.Show
@@ -226,3 +228,6 @@ instance LeftModule Quantity Usage where
 
 singleton :: Level -> Quantity -> Usage
 singleton (Level i) q = Usage (IntMap.singleton i q)
+
+lookupUsage :: Level -> Usage -> Quantity
+lookupUsage (Level i) (Usage a) = fromMaybe zero (IntMap.lookup i a)
