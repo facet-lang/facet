@@ -192,12 +192,14 @@ showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
   e ::: _T <- runElab $ Elab.elabSynth (Elab.synth (Elab.synthExpr e))
-  outputDocLn (getPrint (ann (printValue quietOptions Nil e ::: printType quietOptions Nil _T)))
+  opts <- get
+  outputDocLn (getPrint (ann (printValue opts Nil e ::: printType opts Nil _T)))
 
 showEval e = Action $ do
   e' ::: _T <- runElab $ Elab.elabSynth $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
   e'' <- runElab $ runEvalMain (eval e')
-  outputDocLn (getPrint (ann (printValue quietOptions Nil e'' ::: printType quietOptions Nil _T)))
+  opts <- get
+  outputDocLn (getPrint (ann (printValue opts Nil e'' ::: printType opts Nil _T)))
 
 runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
