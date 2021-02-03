@@ -69,6 +69,7 @@ rethrowElabWarnings src = L.runWrite inject
 printWarnReason :: WarnReason -> Doc Style
 printWarnReason = \case
   RedundantCatchAll n -> fillSep [reflow "redundant catch all pattern", pretty n]
+  RedundantVariable n -> fillSep [reflow "redundant variable", pretty n]
 
 
 printType' :: Stack Print -> Type -> Doc Style

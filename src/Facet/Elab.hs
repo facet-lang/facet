@@ -225,6 +225,7 @@ data Warn = Warn
 
 data WarnReason
   = RedundantCatchAll Name
+  | RedundantVariable Name
 
 
 warn :: Has (Write Warn) sig m => WarnReason -> Elab m ()
