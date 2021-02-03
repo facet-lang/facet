@@ -9,31 +9,31 @@ const
 { x }
 
 flip
-: { A, B, C : Type } -> (f : 1 A -> B -> C) -> (1 B -> 1 A -> C)
+: { A, B, C : Type } -> (f : 1 (A -> B -> C)) -> (B -> A -> C)
 # NB: I’ve removed nested, chained pattern matching for the time being.
 { b -> { a -> f a b } }
 
 
 _ << _ [assoc]
-: { A, B, C : Type } -> (f : 1 B -> C) -> (g : 1 A -> B) -> (1 A -> C)
+: { A, B, C : Type } -> (f : 1 (B -> C)) -> (g : 1 (A -> B)) -> (A -> C)
 { a -> f (g a) }
 
 _ >> _ [assoc]
-: { A, B, C : Type } -> (g : 1 A -> B) -> (f : 1 B -> C) -> (1 A -> C)
+: { A, B, C : Type } -> (g : 1 (A -> B)) -> (f : 1 (B -> C)) -> (A -> C)
 { a -> f (g a) }
 
 
 _ <| _ [right-assoc]
-: { A, B : Type } -> (f : 1 A -> B) -> (a : 1 A) -> B
+: { A, B : Type } -> (f : 1 (A -> B)) -> (a : A) -> B
 { f a }
 
 _ |> _ [left-assoc]
-: { A, B : Type } -> (a : 1 A) -> (f : 1 A -> B) -> B
+: { A, B : Type } -> (a : A) -> (f : 1 (A -> B)) -> B
 { f a }
 
 
 case
-: { A, B : Type } -> 1 A -> 1 (A -> B) -> B
+: { A, B : Type } -> A -> 1 (A -> B) -> B
 { (_ |> _) }
 
 
