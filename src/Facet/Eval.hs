@@ -1,4 +1,3 @@
-{-# LANGUAGE GADTs #-}
 module Facet.Eval
 ( -- * Evaluation
   Value(..)
