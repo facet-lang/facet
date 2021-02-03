@@ -36,6 +36,7 @@ import           Control.Lens (at, ix)
 import           Control.Monad (when)
 import           Data.Either (fromLeft)
 import           Data.Foldable
+import           Data.Functor
 import           Data.Maybe (catMaybes)
 import qualified Data.Set as Set
 import           Data.Text (Text)
@@ -67,7 +68,7 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
-  | Just (i, _, _T) <- lookupInContext n context       -> pure (XVar (Free i) ::: _T)
+  | Just (i, q, _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
   | Just (n ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (XOp n ::: _T)
   | otherwise                                          -> do
     n :=: _ ::: _T <- resolveQ n
