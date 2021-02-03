@@ -61,7 +61,6 @@ import Control.Lens (Lens', lens)
 import Control.Monad (unless)
 import Data.Bifunctor (first)
 import Data.Foldable (asum)
-import Data.Maybe (fromMaybe)
 import Data.Semialign.Exts
 import Facet.Context as Context
 import Facet.Core.Module
@@ -72,7 +71,7 @@ import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
 import Facet.Semiring (zero)
-import Facet.Source (Source(..), slice)
+import Facet.Source (Source, slice)
 import Facet.Span (Span(..))
 import Facet.Stack
 import Facet.Syntax
@@ -233,7 +232,7 @@ ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
 -- Warnings
 
 data Warn = Warn
-  { span   :: Span
+  { source :: Source
   , reason :: WarnReason
   }
 
@@ -244,8 +243,8 @@ data WarnReason
 
 warn :: Has (Write Warn) sig m => WarnReason -> Elab m ()
 warn reason = do
-  ElabContext{ source = Source{ span }, spans } <- ask
-  write $ Warn (fromMaybe span (peek spans)) reason
+  ElabContext{ source, spans } <- ask
+  write $ Warn (maybe source (slice source) (peek spans)) reason
 
 
 -- Patterns
