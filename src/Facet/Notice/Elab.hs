@@ -14,7 +14,7 @@ import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print
-import           Facet.Semiring (Few(..))
+import           Facet.Semiring (one, zero)
 import           Facet.Source
 import           Facet.Stack
 import           Facet.Style
@@ -41,10 +41,10 @@ rethrowElabErrors opts src = L.runThrow rethrow
     in  ( succ d
         , print :> n'
         , ctx  :> getPrint (ann (n' ::: mult m (printType opts print _T))) )
-  mult = \case
-    Zero -> (pretty "0" <+>)
-    One  -> (pretty "1" <+>)
-    Many -> id
+  mult m = if
+    | m == zero -> (pretty "0" <+>)
+    | m == one  -> (pretty "1" <+>)
+    | otherwise -> id
 
 
 printErrReason :: Options -> Stack Print -> ErrReason -> Doc Style
