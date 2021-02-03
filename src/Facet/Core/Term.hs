@@ -142,8 +142,8 @@ match = curry $ \case
   (s, PVal p') -> PVal <$> value s p'
   where
   value = curry $ \case
-    (_,               PWildcard)           -> Just PWildcard
-    (s,               PVar _)              -> Just (PVar s)
+    (_,                    PWildcard)      -> Just PWildcard
+    (s,                    PVar _)         -> Just (PVar s)
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
     (VCon (n' :$ _ :$ fs), PCon (n :$ ps)) -> PCon . (n' :$) <$ guard (n == n') <*> zipWithM value fs ps
     (_, PCon{})                            -> Nothing
