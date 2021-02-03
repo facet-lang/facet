@@ -138,7 +138,7 @@ lookupInContext (m:.:n)
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 lookupInSig :: Q Name -> Module -> Graph -> [Type] -> Maybe (Q Name ::: Type)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
-  VTNe (TGlobal q@(m':.:_) :$ _) -> do
+  VTNe (TGlobal q@(m':.:_) :$ _ :$ _) -> do
     guard (m == Nil || m == m')
     _ :=: Just (DInterface defs) ::: _ <- lookupQ q mod graph
     _ :=: _ ::: _T <- lookupScope n defs
@@ -273,23 +273,23 @@ unify t1 t2 = trace "unify" $ type' t1 t2
   nope = couldNotUnify "mismatch" t1 t2
 
   type' t1 t2 = trace "unify type'" $ case (t1, t2) of
-    (VTNe (TMetavar v1 :$ Nil), VTNe (TMetavar v2 :$ Nil)) -> flexFlex v1 v2
-    (VTNe (TMetavar v1 :$ Nil), t2)                        -> solve v1 t2
-    (t1, VTNe (TMetavar v2 :$ Nil))                        -> solve v2 t1
-    (VKType, VKType)                                       -> pure ()
-    (VKType, _)                                            -> nope
-    (VKInterface, VKInterface)                             -> pure ()
-    (VKInterface, _)                                       -> nope
-    (VTForAll n t1 b1, VTForAll _ t2 b2)                   -> do { type' t1 t2 ; d <- depth ; Binding n Many t1 |- type' (b1 (T.free d)) (b2 (T.free d)) }
-    (VTForAll{}, _)                                        -> nope
-    (VTArrow _ a1 b1, VTArrow _ a2 b2)                     -> type' a1 a2 >> type' b1 b2
-    (VTArrow{}, _)                                         -> nope
-    (VTComp s1 t1, VTComp s2 t2)                           -> sig s1 s2 >> type' t1 t2
-    (VTComp{}, _)                                          -> nope
-    (VTNe (v1 :$ sp1), VTNe (v2 :$ sp2))                   -> var v1 v2 >> spine telim sp1 sp2
-    (VTNe{}, _)                                            -> nope
-    (VTString, VTString)                                   -> pure ()
-    (VTString, _)                                          -> nope
+    (VTNe (TMetavar v1 :$ Nil :$ Nil), VTNe (TMetavar v2 :$ Nil :$ Nil)) -> flexFlex v1 v2
+    (VTNe (TMetavar v1 :$ Nil :$ Nil), t2)                               -> solve v1 t2
+    (t1, VTNe (TMetavar v2 :$ Nil :$ Nil))                               -> solve v2 t1
+    (VKType, VKType)                                                     -> pure ()
+    (VKType, _)                                                          -> nope
+    (VKInterface, VKInterface)                                           -> pure ()
+    (VKInterface, _)                                                     -> nope
+    (VTForAll n t1 b1, VTForAll _ t2 b2)                                 -> do { type' t1 t2 ; d <- depth ; Binding n Many t1 |- type' (b1 (T.free d)) (b2 (T.free d)) }
+    (VTForAll{}, _)                                                      -> nope
+    (VTArrow _ a1 b1, VTArrow _ a2 b2)                                   -> type' a1 a2 >> type' b1 b2
+    (VTArrow{}, _)                                                       -> nope
+    (VTComp s1 t1, VTComp s2 t2)                                         -> sig s1 s2 >> type' t1 t2
+    (VTComp{}, _)                                                        -> nope
+    (VTNe (v1 :$ ts1 :$ sp1), VTNe (v2 :$ ts2 :$ sp2))                   -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
+    (VTNe{}, _)                                                          -> nope
+    (VTString, VTString)                                                 -> pure ()
+    (VTString, _)                                                        -> nope
 
   var v1 v2 = trace "unify var" $ case (v1, v2) of
     (TGlobal q1, TGlobal q2)   -> unless (q1 == q2) nope
@@ -298,12 +298,6 @@ unify t1 t2 = trace "unify" $ type' t1 t2
     (TFree{}, _)               -> nope
     (TMetavar m1, TMetavar m2) -> unless (m1 == m2) nope
     (TMetavar{}, _)            -> nope
-
-  telim t1 t2 = case (t1, t2) of
-    (TEInst t1, TEInst t2) -> type' t1 t2
-    (TEInst{}, _)          -> nope
-    (TEApp t1, TEApp t2)   -> type' t1 t2
-    (TEApp{}, _)           -> nope
 
   spine f sp1 sp2 = trace "unify spine" $ unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
