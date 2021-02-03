@@ -46,7 +46,6 @@ import           Facet.Pretty
 import           Facet.Print as Print hiding (meta)
 import           Facet.REPL.Parser
 import           Facet.Source (Source(..), sourceFromString)
-import           Facet.Span (Span)
 import           Facet.Stack
 import           Facet.Style as Style
 import qualified Facet.Surface as S
@@ -228,10 +227,10 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-runElab :: Has (Reader Source :+: State Options :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph (ReaderC Span m))))) a -> m a
+runElab :: Has (Reader Source :+: State Options :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph m)))) a -> m a
 runElab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
   src <- ask
   opts <- get
-  runReader (span src) . runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors opts . rethrowElabWarnings src $ m
+  runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors opts . rethrowElabWarnings src $ m
