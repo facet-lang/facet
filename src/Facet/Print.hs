@@ -162,24 +162,24 @@ printTExpr env = \case
   d = Name.Level (length env)
   sig s = brackets (commaSep (map (printTExpr env) s))
 
-printValue :: Stack Print -> C.Value -> Print
-printValue env = printExpr env . CE.quote (Name.Level (length env))
+printValue :: Options -> Stack Print -> C.Value -> Print
+printValue opts env = printExpr opts env . CE.quote (Name.Level (length env))
 
-printExpr :: Stack Print -> C.Expr -> Print
-printExpr env = \case
-  C.XVar (C.Global n)  -> group (qvar n)
-  C.XVar (C.Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
-  C.XTLam b            -> let v = tintro __ d in braces (braces v <+> arrow <+> printExpr (env :> v) b)
-  C.XLam cs            -> comp (commaSep (map clause cs))
-  C.XInst e t          -> printExpr env e $$ braces (printTExpr env t)
-  C.XApp f a           -> printExpr env f $$ printExpr env a
-  C.XCon (n :$ t :$ p) -> group (qvar n) $$* (group . braces . printTExpr env <$> t) $$* (group . printExpr env <$> p)
-  C.XOp q              -> group (qvar q)
-  C.XString s          -> annotate Lit $ pretty (show s)
+printExpr :: Options -> Stack Print -> C.Expr -> Print
+printExpr Options{} = go
   where
-  d = Name.Level (length env)
+  go env = \case
+    C.XVar (C.Global n)  -> group (qvar n)
+    C.XVar (C.Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
+    C.XTLam b            -> let { d = Name.Level (length env) ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env :> v) b)
+    C.XLam cs            -> comp (commaSep (map (clause env) cs))
+    C.XInst e t          -> go env e $$ braces (printTExpr env t)
+    C.XApp f a           -> go env f $$ go env a
+    C.XCon (n :$ t :$ p) -> group (qvar n) $$* (group . braces . printTExpr env <$> t) $$* (group . go env <$> p)
+    C.XOp q              -> group (qvar q)
+    C.XString s          -> annotate Lit $ pretty (show s)
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
-  clause (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> printExpr env' b
+  clause env (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> go env' b
   vpat = \case
     C.PWildcard          -> pretty '_'
     C.PVar n             -> n
@@ -203,7 +203,7 @@ printModule (C.Module mname is _ ds) = module_
     $   qvar (Nil:.:n)
     ::: defn (printType Nil t
     :=: case d of
-      C.DTerm b  -> printValue Nil b
+      C.DTerm b  -> printValue quietOptions Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
         (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printType Nil _T)) (C.scopeToList cs))
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
