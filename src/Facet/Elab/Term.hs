@@ -294,10 +294,10 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
           decl <- runModule $ elabInterfaceDef _T os
           scope_.decls_.at dname .= Just decl
 
-        S.TermDef t -> pure (Just (S.ann tele, dname, t ::: _T))
+        S.TermDef t -> pure (Just (dname, t ::: _T))
 
     -- then elaborate the terms
-    for_ (catMaybes es) $ \ (s, dname, t ::: _T) -> local (const s) $ do
+    for_ (catMaybes es) $ \ (dname, t ::: _T) -> do
       t' <- runModule $ elabTermDef _T t
       scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
 
