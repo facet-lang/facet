@@ -346,15 +346,15 @@ unify t1 t2 = type' t1 t2
 
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (StateC Subst m) a }
-  deriving (Algebra (Reader ElabContext :+: State Subst :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (StateC Subst m)) a }
+  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: sig), Applicative, Functor, Monad)
 
 elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => (Subst -> a -> m b) -> Elab m a -> m b
 elabWith k m = runState k mempty $ do
-  ctx <- mkContext
-  runReader ctx . runElab $ m
-  where
-  mkContext = ElabContext <$> ask <*> ask <*> ask <*> pure Context.empty <*> pure [] <*> pure Nil
+  (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
+  let stat = StaticContext{ graph, module', source }
+      ctx  = ElabContext{ graph, module', source, context = Context.empty, sig = [], spans = Nil }
+  runReader stat . runReader ctx . runElab $ m
 
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
 elabType = elabWith (\ subst t -> pure (T.eval subst Nil t))
