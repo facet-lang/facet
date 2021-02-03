@@ -175,7 +175,7 @@ setSpan = locally span_ . const
 
 
 data Err = Err
-  { span      :: Span
+  { span      :: Maybe Span
   , reason    :: ErrReason
   , context   :: Context
   , subst     :: Subst
@@ -211,7 +211,7 @@ err reason = do
   ctx <- view context_
   subst <- get
   span <- view span_
-  throwError $ Err span (applySubst ctx subst reason) ctx subst GHC.Stack.callStack
+  throwError $ Err (Just span) (applySubst ctx subst reason) ctx subst GHC.Stack.callStack
 
 mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String Type -> Type -> Elab m a
 mismatch msg exp act = withFrozenCallStack $ err $ Mismatch msg exp act
