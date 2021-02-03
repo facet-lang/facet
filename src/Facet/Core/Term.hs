@@ -155,12 +155,14 @@ showValue :: HasCallStack => Stack ShowP -> Stack ShowP -> Value -> ShowP
 showValue tenv env = \case
   VTLam b              -> brace (brace (string (toAlpha alpha (length tenv))) <+> string "->" <+> setPrec 0 (showValue (tenv :> string (toAlpha alpha (length tenv))) env (b (T.free (Level (length tenv))))))
   VLam cs              -> brace (commaSep (map clause cs))
-  VNe (f :$ ts :$ sp)  -> foldl' app (foldl' app (head f) (brace . T.showType tenv <$> ts)) (setPrec 11 . showValue tenv env <$> sp)
-  VCon (q :$ ts :$ fs) -> foldl' app (foldl' app (qname q) (brace . T.showType tenv <$> ts)) (setPrec 11 . showValue tenv env <$> fs)
+  VNe (f :$ ts :$ sp)  -> head f `apps` (brace . T.showType tenv <$> ts) `apps` (setPrec 11 . showValue tenv env <$> sp)
+  VCon (q :$ ts :$ fs) -> qname q `apps` (brace . T.showType tenv <$> ts) `apps` (setPrec 11 . showValue tenv env <$> fs)
   VString s            -> text s
-  VOp (f :$ ts :$ sp)  -> foldl' app (foldl' app (qname f) (brace . T.showType tenv <$> ts)) (setPrec 11 . showValue tenv env <$> sp)
+  VOp (f :$ ts :$ sp)  -> qname f `apps` (brace . T.showType tenv <$> ts) `apps` (setPrec 11 . showValue tenv env <$> sp)
   where
   app f a = prec 10 (f <+> a)
+  apps = foldl' app
+  infixl 9 `apps`
   clause (p, b) = pat p <+> string "->" <+> setPrec 0 (showValue tenv env' (b p'))
     where
     ((env', _), p') = mapAccumL (\ (env, d) n -> ((env :> name n, succ d), free d)) (env, Level (length env)) p
