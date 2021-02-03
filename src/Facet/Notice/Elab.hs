@@ -9,7 +9,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (Type, metas)
+import           Facet.Core.Type (metas)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -35,12 +35,13 @@ rethrowElabErrors src = L.runThrow rethrow
     ]
     where
     (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
-    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType printCtx) v ::: printType printCtx _T))) (metas subst)
+    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printType opts printCtx _T))) (metas subst)
+  opts = quietOptions
   combine (d, print, ctx) (Binding n m _T) =
     let n' = intro n d
     in  ( succ d
         , print :> n'
-        , ctx  :> getPrint (ann (n' ::: qty m <+> printType print _T)) )
+        , ctx  :> getPrint (ann (n' ::: qty m <+> printType opts print _T)) )
   qty = \case
     Zero -> pretty "0"
     One  -> pretty "1"
@@ -56,14 +57,16 @@ printErrReason ctx = group . \case
     <> hardline <> pretty "expected:" <> print exp'
     <> hardline <> pretty "  actual:" <> print act'
     where
-    exp' = either reflow (printType' ctx) exp
-    act' = printType' ctx act
+    exp' = either reflow (getPrint . printType opts ctx) exp
+    act' = getPrint (printType opts ctx act)
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T              ->
-    let _T' = printType' ctx _T
+    let _T' = getPrint (printType opts ctx _T)
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
+  where
+  opts = quietOptions
 
 
 rethrowElabWarnings :: Source -> L.WriteC (Notice (Doc Style)) Warn m a -> m a
@@ -75,7 +78,3 @@ printWarnReason :: WarnReason -> Doc Style
 printWarnReason = \case
   RedundantCatchAll n -> fillSep [reflow "redundant catch all pattern", pretty n]
   RedundantVariable n -> fillSep [reflow "redundant variable", pretty n]
-
-
-printType' :: Stack Print -> Type -> Doc Style
-printType' env = getPrint . printType env
