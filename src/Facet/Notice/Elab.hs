@@ -15,7 +15,6 @@ import           Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print
 import           Facet.Semiring (one, zero)
-import           Facet.Source
 import           Facet.Stack
 import           Facet.Style
 import           Facet.Syntax
@@ -66,8 +65,8 @@ printErrReason opts ctx = group . \case
   Invariant s -> reflow s
 
 
-rethrowElabWarnings :: Source -> L.WriteC (Notice (Doc Style)) Warn m a -> m a
-rethrowElabWarnings _ = L.runWrite inject
+rethrowElabWarnings :: L.WriteC (Notice (Doc Style)) Warn m a -> m a
+rethrowElabWarnings = L.runWrite inject
   where
   inject Elab.Warn{ source, reason } = Notice.Notice (Just Notice.Warn) [source] (printWarnReason reason) []
 

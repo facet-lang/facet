@@ -227,10 +227,9 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-runElab :: Has (Reader Source :+: State Options :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph m)))) a -> m a
+runElab :: Has (State Options :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph m)))) a -> m a
 runElab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
-  src <- ask
   opts <- get
-  runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors opts . rethrowElabWarnings src $ m
+  runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors opts . rethrowElabWarnings $ m
