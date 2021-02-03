@@ -14,6 +14,7 @@ import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print
+import           Facet.Semiring (Few(..))
 import           Facet.Source
 import           Facet.Stack
 import           Facet.Style
@@ -35,11 +36,15 @@ rethrowElabErrors src = L.runThrow rethrow
     where
     (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
     subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType printCtx) v ::: printType printCtx _T))) (metas subst)
-  combine (d, print, ctx) (Binding n _ _T) =
+  combine (d, print, ctx) (Binding n m _T) =
     let n' = intro n d
     in  ( succ d
         , print :> n'
-        , ctx  :> getPrint (ann (n' ::: printType print _T)) )
+        , ctx  :> getPrint (ann (n' ::: qty m <+> printType print _T)) )
+  qty = \case
+    Zero -> pretty "0"
+    One  -> pretty "1"
+    Many -> pretty "ω"
 
 
 printErrReason :: Stack Print -> ErrReason -> Doc Style
