@@ -191,6 +191,19 @@ data ErrReason
   | Hole Name Type
   | Invariant String
 
+applySubst :: Context -> Subst -> ErrReason -> ErrReason
+applySubst ctx subst r = case r of
+  FreeVariable{}       -> r
+  AmbiguousName{}      -> r
+  CouldNotSynthesize{} -> r
+  Mismatch m exp act   -> Mismatch m (roundtrip <$> exp) (roundtrip act)
+  Hole n t             -> Hole n (roundtrip t)
+  Invariant{}          -> r
+  where
+  env = toEnv ctx
+  d = level ctx
+  roundtrip = T.eval subst (Left <$> env) . T.quote d
+
 
 -- FIXME: apply the substitution before showing this to the user
 err :: (HasCallStack, Has (Throw Err) sig m) => ErrReason -> Elab m a
@@ -198,7 +211,7 @@ err reason = do
   ctx <- view context_
   subst <- get
   span <- view span_
-  throwError $ Err span reason ctx subst GHC.Stack.callStack
+  throwError $ Err span (applySubst ctx subst reason) ctx subst GHC.Stack.callStack
 
 mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String Type -> Type -> Elab m a
 mismatch msg exp act = withFrozenCallStack $ err $ Mismatch msg exp act
