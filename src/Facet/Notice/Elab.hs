@@ -40,11 +40,11 @@ rethrowElabErrors opts src = L.runThrow rethrow
     let n' = intro n d
     in  ( succ d
         , print :> n'
-        , ctx  :> getPrint (ann (n' ::: qty m <+> printType opts print _T)) )
-  qty = \case
-    Zero -> pretty "0"
-    One  -> pretty "1"
-    Many -> pretty "ω"
+        , ctx  :> getPrint (ann (n' ::: mult m (printType opts print _T))) )
+  mult = \case
+    Zero -> (pretty "0" <+>)
+    One  -> (pretty "1" <+>)
+    Many -> id
 
 
 printErrReason :: Options -> Stack Print -> ErrReason -> Doc Style
