@@ -9,6 +9,8 @@ module Facet.Print
 , Options(..)
 , qualified
 , unqualified
+, printInstantiation
+, suppressInstantiation
   -- * Core printers
 , printType
 , printTExpr
@@ -116,6 +118,10 @@ data Options = Options
 qualified, unqualified :: Q Name -> Print
 qualified = pretty
 unqualified (_:.:n) = pretty n
+
+printInstantiation, suppressInstantiation :: Print -> Print -> Print
+printInstantiation = ($$)
+suppressInstantiation = const
 
 
 -- Core printers
