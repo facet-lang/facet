@@ -119,7 +119,7 @@ resolveWith
   => (forall m . Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type))
   -> Q Name
   -> Elab m (Q Name :=: Maybe Def ::: Type)
-resolveWith lookup n = asks (\ ElabContext{ module', graph } -> lookupWith lookup n module' graph) >>= \case
+resolveWith lookup n = asks (\ ElabContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
   ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
@@ -140,7 +140,7 @@ lookupInSig :: Q Name -> Module -> Graph -> [Type] -> Maybe (Q Name ::: Type)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   VTNe (TGlobal q@(m':.:_) :$ _ :$ _) -> do
     guard (m == Nil || m == m')
-    _ :=: Just (DInterface defs) ::: _ <- lookupQ q mod graph
+    _ :=: Just (DInterface defs) ::: _ <- lookupQ graph mod q
     _ :=: _ ::: _T <- lookupScope n defs
     pure $ m':.:n ::: _T
   _                            -> Nothing

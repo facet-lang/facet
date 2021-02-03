@@ -26,7 +26,7 @@ eval = \case
     graph <- lift ask
     case h of
       Global q
-        | Just (_ :=: Just (DTerm v) ::: _) <- lookupQ q mod graph
+        | Just (_ :=: Just (DTerm v) ::: _) <- lookupQ graph mod q
         -> eval $ v $$$* ts $$* sp'
       _ -> pure $ VNe (h :$ ts :$ sp')
 
