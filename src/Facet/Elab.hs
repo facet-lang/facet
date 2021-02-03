@@ -73,7 +73,7 @@ import Facet.Effect.Write
 import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
-import Facet.Semiring (one, zero, (><<))
+import Facet.Semiring
 import Facet.Source (Source, slice)
 import Facet.Span (Span(..))
 import Facet.Stack
@@ -160,7 +160,9 @@ app mk f a = Synth $ do
 
 
 (|-) :: Algebra sig m => Binding -> Elab m a -> Elab m a
-t |- b = locally context_ (|> t) b
+t |- b = do
+  sigma <- asks scale
+  locally context_ (|> t{ quantity = sigma >< quantity t }) b
 
 infix 1 |-
 
