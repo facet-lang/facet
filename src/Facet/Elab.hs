@@ -36,6 +36,7 @@ module Facet.Elab
   -- * Machinery
 , Elab(..)
 , depth
+, use
 , extendSig
 , elabWith
 , elabType
@@ -166,6 +167,11 @@ infix 1 |-
 
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
+
+use :: Has (Reader ElabContext :+: Writer Usage) sig m => Index -> Quantity -> m ()
+use i q = do
+  d <- depth
+  tell (T.singleton (indexToLevel d i) q)
 
 extendSig :: Has (Reader ElabContext) sig m => [Type] -> m a -> m a
 extendSig = locally sig_ . (++)
