@@ -124,7 +124,6 @@ fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind m [a] -> [Bind m a] -> 
 fieldsP = foldr cons
   where
   cons p ps = Bind $ \ sig q _A b -> Check $ \ _B -> do
-    -- FIXME: assert that the signature is empty
     (_ ::: (q', _A'), _A'') <- expectFunction "when checking nested pattern" _A
     (p', (ps', b')) <- check (bind (p ::: (sig, q', _A')) (bind (ps ::: (sig, q, _A'')) b) ::: _B)
     pure (p':ps', b')
