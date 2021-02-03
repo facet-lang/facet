@@ -233,7 +233,7 @@ ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
 -- Warnings
 
 data Warn = Warn
-  { span   :: Maybe Span
+  { span   :: Span
   , reason :: WarnReason
   }
 
@@ -244,8 +244,8 @@ data WarnReason
 
 warn :: Has (Write Warn) sig m => WarnReason -> Elab m ()
 warn reason = do
-  ElabContext{ spans } <- ask
-  write $ Warn (peek spans) reason
+  ElabContext{ source = Source{ span }, spans } <- ask
+  write $ Warn (fromMaybe span (peek spans)) reason
 
 
 -- Patterns
