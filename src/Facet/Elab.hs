@@ -131,11 +131,9 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Q Name -> Context -> Maybe (Index, Type)
+lookupInContext :: Q Name -> Context -> Maybe (Index, Quantity, Type)
 lookupInContext (m:.:n)
-  | m == Nil  = \ ctx -> do
-    (i, _, _T) <- lookupIndex n ctx
-    pure (i, _T)
+  | m == Nil  = lookupIndex n
   | otherwise = const Nothing
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig

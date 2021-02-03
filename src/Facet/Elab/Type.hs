@@ -28,8 +28,8 @@ import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m TExpr
 tvar n = Synth $ views context_ (lookupInContext n) >>= \case
-  Just (i, _T) -> pure $ TVar (TFree i) ::: _T
-  Nothing      -> do
+  Just (i, _, _T) -> pure $ TVar (TFree i) ::: _T
+  Nothing         -> do
     q :=: _ ::: _T <- resolveQ n
     instantiate TInst $ TVar (TGlobal q) ::: _T
 

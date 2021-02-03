@@ -67,7 +67,7 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
-  | Just (i, _T)    <- lookupInContext n context       -> pure (XVar (Free i) ::: _T)
+  | Just (i, _, _T) <- lookupInContext n context       -> pure (XVar (Free i) ::: _T)
   | Just (n ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (XOp n ::: _T)
   | otherwise                                          -> do
     n :=: _ ::: _T <- resolveQ n
