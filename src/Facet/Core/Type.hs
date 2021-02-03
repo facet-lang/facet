@@ -28,6 +28,8 @@ module Facet.Core.Type
 , solveMeta
 , declareMeta
 , metas
+  -- * Usage
+, Usage(..)
 ) where
 
 import           Data.Either (fromLeft)
@@ -206,3 +208,8 @@ declareMeta _K (Subst metas) = (Subst (IntMap.insert v (Nothing ::: _K) metas), 
 
 metas :: Subst -> [Meta :=: Maybe Type ::: Type]
 metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)
+
+
+-- Usage
+
+newtype Usage = Usage (IntMap.IntMap Quantity)
