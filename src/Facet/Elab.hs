@@ -17,7 +17,7 @@ module Facet.Elab
 , app
 , (|-)
   -- * Errors
-, setSpan
+, pushSpan
 , Err(..)
 , ErrReason(..)
 , couldNotSynthesize
@@ -170,8 +170,8 @@ extendSig = locally sig_ . (++)
 
 -- Errors
 
-setSpan :: Has (Reader ElabContext) sig m => Span -> m a -> m a
-setSpan = locally spans_ . flip (:>)
+pushSpan :: Has (Reader ElabContext) sig m => Span -> m a -> m a
+pushSpan = locally spans_ . flip (:>)
 
 
 data Err = Err

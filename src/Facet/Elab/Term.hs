@@ -144,7 +144,7 @@ effP n ps v = Bind $ \ sig _A b -> Check $ \ _B -> do
 -- Expression elaboration
 
 synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
-synthExpr (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
+synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> var n
   S.App f a  -> app XApp (synthExpr f) (checkExpr a)
   S.As t _T  -> as (checkExpr t ::: checkType _T)
@@ -157,7 +157,7 @@ synthExpr (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
   nope = Synth $ couldNotSynthesize (show e)
 
 checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
-checkExpr expr@(S.Ann s _ e) = mapCheck (setSpan s) $ case e of
+checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Hole  n  -> hole n
   S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
   S.Thunk e  -> thunk (checkExpr e)
@@ -322,4 +322,4 @@ runModule m = do
   runReader mod m
 
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
-withSpanB k (S.Ann s _ a) = mapBind (setSpan s) (k a)
+withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)

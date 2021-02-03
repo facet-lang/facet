@@ -71,7 +71,7 @@ comp s t = Synth $ do
 
 
 synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
-synthType (S.Ann s _ e) = mapSynth (setSpan s) $ case e of
+synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TVar n        -> tvar n
   S.KType         -> _Type
   S.KInterface    -> _Interface
@@ -88,10 +88,10 @@ checkType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m TE
 checkType = switch . synthType
 
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m TExpr
-synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (setSpan s) $
+synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
   foldl' (app TApp) h' (checkType <$> sp)
   where
-  h' = mapSynth (setSpan sh) (tvar h)
+  h' = mapSynth (pushSpan sh) (tvar h)
 
 checkInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check m TExpr
 checkInterface = switch . synthInterface
