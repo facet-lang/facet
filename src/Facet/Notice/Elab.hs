@@ -69,7 +69,7 @@ printErrReason opts ctx = group . \case
 rethrowElabWarnings :: Source -> L.WriteC (Notice (Doc Style)) Warn m a -> m a
 rethrowElabWarnings src = L.runWrite inject
   where
-  inject Elab.Warn{ span, reason } = Notice.Notice (Just Notice.Warn) [slice src span] (printWarnReason reason) []
+  inject Elab.Warn{ span, reason } = Notice.Notice (Just Notice.Warn) (foldMap (pure . slice src) span) (printWarnReason reason) []
 
 printWarnReason :: WarnReason -> Doc Style
 printWarnReason = \case
