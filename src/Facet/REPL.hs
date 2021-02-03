@@ -207,8 +207,8 @@ runEvalMain = runEval handle pure
   handle (q :$ ts :$ sp) k = case q of
     FromList ["Effect", "Console"] :.: U "write"
       | FromList [VString s] <- sp -> outputText s *> k unit
-    _                              -> k (VOp (q :$ ts :$ sp))
-  unit = VCon (["Data", "Unit"] :.: U "unit" :$ Nil :$ Nil)
+    _                              -> k (VOp q ts sp)
+  unit = VCon (["Data", "Unit"] :.: U "unit") Nil Nil
 
 
 helpDoc :: Doc Style

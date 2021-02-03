@@ -19,18 +19,18 @@ import Facet.Syntax
 
 eval :: Has (Reader Graph :+: Reader Module) sig m => Value -> Eval m Value
 eval = \case
-  VNe (h :$ ts :$ sp) -> do
+  VNe h ts sp  -> do
     sp' <- traverse eval sp
     mod <- lift ask
     graph <- lift ask
     case h of
       Global (lookupQ graph mod -> Just (_ :=: Just (DTerm v) ::: _))
         -> eval $ v $$$* ts $$* sp'
-      _ -> pure $ VNe (h :$ ts :$ sp')
+      _ -> pure $ VNe h ts sp'
 
-  VOp op    -> Eval $ \ h -> h op
+  VOp op ts as -> Eval $ \ h -> h (op :$ ts :$ as)
 
-  v         -> pure v
+  v            -> pure v
 
 
 -- Machinery

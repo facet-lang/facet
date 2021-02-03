@@ -80,10 +80,10 @@ fill f = mapAccumL (const . f)
 data Value
   = VTLam (T.Type -> Value)
   | VLam [(Pattern Name, Pattern Value -> Value)]
-  | VNe (Var Level :$ T.Type :$ Value)
-  | VCon (Q Name :$ T.Type :$ Value)
+  | VNe (Var Level) (Stack T.Type) (Stack Value)
+  | VCon (Q Name) (Stack T.Type) (Stack Value)
   | VString Text
-  | VOp (Q Name :$ T.Type :$ Value)
+  | VOp (Q Name) (Stack T.Type) (Stack Value)
 
 data Elim
   = EInst T.Type
@@ -98,16 +98,16 @@ free = var . Free
 
 
 var :: Var Level -> Value
-var = VNe . (:$ Nil) . (:$ Nil)
+var v = VNe v Nil Nil
 
 
 -- Elimination
 
 ($$) :: HasCallStack => Value -> Value -> Value
-VNe (h :$ ts :$ es) $$ a = VNe (h :$ ts :$ (es :> a))
-VLam cs             $$ a = case' a cs
-VOp (h :$ es)       $$ a = VOp (h :$ (es :> a))
-v                   $$ a = error $ "can’t apply " <> show (showValue Nil Nil v <+> showValue Nil Nil a)
+VNe h ts es $$ a = VNe h ts (es :> a)
+VLam cs     $$ a = case' a cs
+VOp h ts es $$ a = VOp h ts (es :> a)
+v           $$ a = error $ "can’t apply " <> show (showValue Nil Nil v <+> showValue Nil Nil a)
 
 ($$*) :: (HasCallStack, Foldable t) => Value -> t Value -> Value
 ($$*) = foldl' ($$)
@@ -116,10 +116,10 @@ infixl 9 $$, $$*
 
 
 ($$$) :: HasCallStack => Value -> T.Type -> Value
-VNe (h :$ ts :$ es) $$$ t = VNe (h :$ (ts :> t) :$ es)
-VTLam b             $$$ t = b t
-VOp (h :$ ts :$ es) $$$ t = VOp (h :$ (ts :> t) :$ es)
-v                   $$$ t = error $ "can’t instantiate " <> show (showValue Nil Nil v <+> T.showType Nil t)
+VNe h ts es $$$ t = VNe h (ts :> t) es
+VTLam b     $$$ t = b t
+VOp h ts es $$$ t = VOp h (ts :> t) es
+v           $$$ t = error $ "can’t instantiate " <> show (showValue Nil Nil v <+> T.showType Nil t)
 
 ($$$*) :: (HasCallStack, Foldable t) => Value -> t T.Type -> Value
 ($$$*) = foldl' ($$$)
@@ -140,23 +140,23 @@ match = curry $ \case
   (s, PVal p') -> PVal <$> value s p'
   where
   value = curry $ \case
-    (_,                    PWildcard)      -> Just PWildcard
-    (s,                    PVar _)         -> Just (PVar s)
+    (_,                    PWildcard) -> Just PWildcard
+    (s,                    PVar _)    -> Just (PVar s)
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
-    (VCon (n' :$ _ :$ fs), PCon (n :$ ps)) -> PCon . (n' :$) <$ guard (n == n') <*> zipWithM value fs ps
-    (_, PCon{})                            -> Nothing
+    (VCon n' _ fs, PCon (n :$ ps))    -> PCon . (n' :$) <$ guard (n == n') <*> zipWithM value fs ps
+    (_, PCon{})                       -> Nothing
 
 
 -- Debugging
 
 showValue :: HasCallStack => Stack ShowP -> Stack ShowP -> Value -> ShowP
 showValue tenv env = \case
-  VTLam b              -> brace (brace (string (toAlpha alpha (length tenv))) <+> string "->" <+> setPrec 0 (showValue (tenv :> string (toAlpha alpha (length tenv))) env (b (T.free (Level (length tenv))))))
-  VLam cs              -> brace (commaSep (map clause cs))
-  VNe (f :$ ts :$ sp)  -> head f $$* (brace . T.showType tenv <$> ts) $$* (setPrec 11 . showValue tenv env <$> sp)
-  VCon (q :$ ts :$ fs) -> qname q $$* (brace . T.showType tenv <$> ts) $$* (setPrec 11 . showValue tenv env <$> fs)
-  VString s            -> text s
-  VOp (f :$ ts :$ sp)  -> qname f $$* (brace . T.showType tenv <$> ts) $$* (setPrec 11 . showValue tenv env <$> sp)
+  VTLam b      -> brace (brace (string (toAlpha alpha (length tenv))) <+> string "->" <+> setPrec 0 (showValue (tenv :> string (toAlpha alpha (length tenv))) env (b (T.free (Level (length tenv))))))
+  VLam cs      -> brace (commaSep (map clause cs))
+  VNe f ts sp  -> head f $$* (brace . T.showType tenv <$> ts) $$* (setPrec 11 . showValue tenv env <$> sp)
+  VCon q ts fs -> qname q $$* (brace . T.showType tenv <$> ts) $$* (setPrec 11 . showValue tenv env <$> fs)
+  VString s    -> text s
+  VOp f ts sp  -> qname f $$* (brace . T.showType tenv <$> ts) $$* (setPrec 11 . showValue tenv env <$> sp)
   where
   ($$*) = foldl' (\ f a -> prec 10 (f <+> a))
   infixl 9 $$*
@@ -195,12 +195,12 @@ data Expr
 
 quote :: Level -> Value -> Expr
 quote d = \case
-  VTLam b              -> XTLam (quote (succ d) (b (T.free d)))
-  VLam cs              -> XLam (map (\ (p, b) -> (p, let (d', p') = fill (\ d -> (succ d, free d)) d p in quote d' (b p'))) cs)
-  VNe (h :$ ts :$ as)  -> let h' = XVar (levelToIndex d <$> h) ; h'' = foldl' XInst h' (T.quote d <$> ts) in foldl' XApp h'' (quote d <$> as)
-  VCon (n :$ ts :$ fs) -> XCon (n :$ (T.quote d <$> ts) :$ (quote d <$> fs))
-  VString s            -> XString s
-  VOp (n :$ ts :$ sp)  -> foldl' XApp (foldl' XInst (XOp n) (T.quote d <$> ts)) (quote d <$> sp)
+  VTLam b      -> XTLam (quote (succ d) (b (T.free d)))
+  VLam cs      -> XLam (map (\ (p, b) -> (p, let (d', p') = fill (\ d -> (succ d, free d)) d p in quote d' (b p'))) cs)
+  VNe h ts as  -> let h' = XVar (levelToIndex d <$> h) ; h'' = foldl' XInst h' (T.quote d <$> ts) in foldl' XApp h'' (quote d <$> as)
+  VCon n ts fs -> XCon (n :$ (T.quote d <$> ts) :$ (quote d <$> fs))
+  VString s    -> XString s
+  VOp n ts sp  -> foldl' XApp (foldl' XInst (XOp n) (T.quote d <$> ts)) (quote d <$> sp)
 
 eval :: HasCallStack => T.Subst -> Stack (Either T.Type Value) -> Expr -> Value
 eval subst = go where
@@ -211,6 +211,6 @@ eval subst = go where
     XLam cs              -> VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (\ env' v -> env' :> Right v) env p) b)) cs)
     XInst f a            -> go env f $$$ T.eval subst env a
     XApp  f a            -> go env f $$ go env a
-    XCon (n :$ ts :$ fs) -> VCon (n :$ (T.eval subst env <$> ts) :$ (go env <$> fs))
+    XCon (n :$ ts :$ fs) -> VCon n (T.eval subst env <$> ts) (go env <$> fs)
     XString s            -> VString s
-    XOp n                -> VOp (n :$ Nil :$ Nil)
+    XOp n                -> VOp n Nil Nil
