@@ -66,7 +66,7 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: Has (Throw Err :+: Trace) sig m => Q Name -> Synth m Expr
+var :: (HasCallStack, Has (Throw Err :+: Trace) sig m) => Q Name -> Synth m Expr
 var n = Synth $ trace "var" $ ask >>= \ ElabContext{ module', graph, context, sig } -> if
   | Just (i, _T)    <- lookupInContext n context       -> pure (XVar (Free i) ::: _T)
   | Just (n ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (XOp n ::: _T)

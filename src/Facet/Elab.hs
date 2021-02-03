@@ -115,7 +115,7 @@ as (m ::: _T) = Synth $ trace "as" $ do
   pure $ a ::: _T'
 
 resolveWith
-  :: Has (Throw Err :+: Trace) sig m
+  :: (HasCallStack, Has (Throw Err) sig m)
   => (forall m . Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type))
   -> Q Name
   -> Elab m (Q Name :=: Maybe Def ::: Type)
@@ -124,10 +124,10 @@ resolveWith lookup n = asks (\ ElabContext{ module', graph } -> lookupWith looku
   [v] -> pure v
   ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
 
-resolveC :: Has (Throw Err :+: Trace) sig m => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type)
+resolveC :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type)
 resolveC = resolveWith lookupC
 
-resolveQ :: Has (Throw Err :+: Trace) sig m => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type)
+resolveQ :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type)
 resolveQ = resolveWith lookupD
 
 lookupInContext :: Q Name -> Context -> Maybe (Index, Type)
@@ -146,10 +146,10 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   _                            -> Nothing
 
 
-hole :: Has (Throw Err :+: Trace) sig m => Name -> Check m a
-hole n = Check $ \ _T -> err $ Hole n _T
+hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
+hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 
-app :: Has (Throw Err :+: Trace) sig m => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
+app :: (Has (Throw Err :+: Trace) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ trace "app" $ do
   f' ::: _F <- synth f
   (m ::: _A, _B) <- expectFunction "in application" _F
@@ -181,7 +181,7 @@ data Err = Err
   , reason    :: ErrReason
   , context   :: Context
   , subst     :: Subst
-  , callStack :: Stack Message -- FIXME: keep source references for each message.
+  , callStack :: CallStack
   }
 
 data ErrReason
@@ -195,28 +195,27 @@ data ErrReason
 
 
 -- FIXME: apply the substitution before showing this to the user
-err :: Has (Throw Err :+: Trace) sig m => ErrReason -> Elab m a
+err :: (HasCallStack, Has (Throw Err) sig m) => ErrReason -> Elab m a
 err reason = do
   ctx <- view context_
   subst <- get
   span <- view span_
-  callStack <- Trace.callStack
-  throwError $ Err span reason ctx subst callStack
+  throwError $ Err span reason ctx subst GHC.Stack.callStack
 
-mismatch :: Has (Throw Err :+: Trace) sig m => String -> Either String Type -> Type -> Elab m a
-mismatch msg exp act = err $ Mismatch msg exp act
+mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String Type -> Type -> Elab m a
+mismatch msg exp act = withFrozenCallStack $ err $ Mismatch msg exp act
 
-couldNotUnify :: Has (Throw Err :+: Trace) sig m => String -> Type -> Type -> Elab m a
-couldNotUnify msg t1 t2 = mismatch msg (Right t2) t1
+couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Type -> Elab m a
+couldNotUnify msg t1 t2 = withFrozenCallStack $ mismatch msg (Right t2) t1
 
-couldNotSynthesize :: Has (Throw Err :+: Trace) sig m => String -> Elab m a
-couldNotSynthesize = err . CouldNotSynthesize
+couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
+couldNotSynthesize v = withFrozenCallStack $ err $ CouldNotSynthesize v
 
-freeVariable :: Has (Throw Err :+: Trace) sig m => Q Name -> Elab m a
-freeVariable n = err $ FreeVariable n
+freeVariable :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m a
+freeVariable n = withFrozenCallStack $ err $ FreeVariable n
 
-ambiguousName :: Has (Throw Err :+: Trace) sig m => Q Name -> [Q Name] -> Elab m a
-ambiguousName n qs = err $ AmbiguousName n qs
+ambiguousName :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Q Name] -> Elab m a
+ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
 
 
 -- Warnings

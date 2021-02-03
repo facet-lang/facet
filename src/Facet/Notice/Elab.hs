@@ -18,6 +18,7 @@ import           Facet.Source
 import           Facet.Stack
 import           Facet.Style
 import           Facet.Syntax
+import           GHC.Stack
 import           Prelude hiding (unlines)
 import           Silkscreen
 
@@ -29,7 +30,7 @@ rethrowElabErrors src = L.runThrow rethrow
   rethrow Err{ span, reason, context, subst, callStack } = Notice.Notice (Just Error) [slice src span] (printErrReason printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
     , nest 2 (pretty "Metacontext" <\> concatWith (<\>) subst')
-    , nest 2 (pretty "Trace" <\> concatWith (<\>) callStack)
+    , pretty (prettyCallStack callStack)
     ]
     where
     (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
