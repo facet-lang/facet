@@ -1,6 +1,7 @@
 module Facet.Core.Type
 ( -- * Type variables
   TVar(..)
+, Quantity
   -- * Type values
 , Type(..)
 , global
@@ -34,6 +35,7 @@ import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
 import           Facet.Name
+import           Facet.Semiring (Few(..))
 import           Facet.Show
 import           Facet.Stack
 import           Facet.Syntax
@@ -47,6 +49,8 @@ data TVar a
   | TFree a
   | TMetavar Meta
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+type Quantity = Few
 
 
 -- Types

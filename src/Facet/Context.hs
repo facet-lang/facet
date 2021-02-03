@@ -19,8 +19,6 @@ import qualified Facet.Stack as S
 import           GHC.Stack
 import           Prelude hiding (lookup, zipWith)
 
-type Quantity = Few
-
 newtype Context = Context { elems :: S.Stack Binding }
 
 -- | A precondition for use of this instance is that one only ever '<>'s 'Context's assigning the same types to the same variables in the same order.
