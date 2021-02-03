@@ -158,7 +158,7 @@ bindArrow :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, To
 bindArrow name k = anned (try (S.TArrow . Left <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen <* arrow <*> k)
 
 functionType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type) -> p (S.Ann S.Type)
-functionType self next = anned (uncurry (S.TArrow . Right) <$> try ((,) <$> option [] signature <*> next <* arrow) <*> self) <|> next
+functionType self next = anned (try (S.TArrow . Right <$> option [] signature <*> next <* arrow) <*> self) <|> next
 
 
 -- FIXME: support type operators
