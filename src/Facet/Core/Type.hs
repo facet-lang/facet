@@ -37,7 +37,7 @@ import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
 import           Facet.Name
-import           Facet.Semiring (Few(..), one, zero)
+import           Facet.Semiring
 import           Facet.Show
 import           Facet.Stack
 import           Facet.Syntax
@@ -219,3 +219,6 @@ instance Semigroup Usage where
 
 instance Monoid Usage where
   mempty = Usage mempty
+
+instance LeftModule Quantity Usage where
+  q ><< Usage a = Usage ((q ><) <$> a)
