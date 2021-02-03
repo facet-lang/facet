@@ -169,15 +169,16 @@ printExpr :: Options -> Stack Print -> C.Expr -> Print
 printExpr Options{ qname } = go
   where
   go env = \case
-    C.XVar (C.Global n)  -> group (qvar n)
+    C.XVar (C.Global n)  -> qvar n
     C.XVar (C.Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
     C.XTLam b            -> let { d = Name.Level (length env) ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env :> v) b)
     C.XLam cs            -> comp (commaSep (map (clause env) cs))
     C.XInst e t          -> go env e $$ braces (printTExpr env t)
     C.XApp f a           -> go env f $$ go env a
-    C.XCon (n :$ t :$ p) -> group (qvar n) $$* (group . braces . printTExpr env <$> t) $$* (group . go env <$> p)
-    C.XOp q              -> group (qvar q)
+    C.XCon (n :$ t :$ p) -> qvar n $$* (group . braces . printTExpr env <$> t) $$* (group . go env <$> p)
+    C.XOp q              -> qvar q
     C.XString s          -> annotate Lit $ pretty (show s)
+  qvar = group . setPrec Var . qname
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
   clause env (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> go env' b
   vpat = \case
