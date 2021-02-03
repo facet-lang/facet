@@ -94,7 +94,6 @@ meta :: Has (State Subst) sig m => Type -> m Meta
 meta _T = state (declareMeta _T)
 
 
--- FIXME: does instantiation need to be guided by the expected type?
 instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a ::: Type)
 instantiate inst = go
   where
