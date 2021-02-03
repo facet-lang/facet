@@ -8,6 +8,7 @@ module Facet.Stack
 , pattern FromList
 , (!)
 , (!?)
+, peek
 ) where
 
 import Data.Foldable (foldl', foldr')
@@ -111,3 +112,9 @@ as' ! i' = withFrozenCallStack $ go as' i'
 Nil       !? _ = Nothing
 (_  :> a) !? 0 = Just a
 (as :> _) !? i = as !? (i - 1)
+
+-- | Safe retrieval of the top of the stack.
+peek :: Stack a -> Maybe a
+peek = \case
+  _ :> h -> Just h
+  _      -> Nothing
