@@ -127,7 +127,7 @@ loadModule name path src imports = do
   let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   opts <- get
-  m <- rethrowElabWarnings src . rethrowElabErrors opts src . runReader graph $ Elab.elabModule m
+  m <- rethrowElabWarnings src . rethrowElabErrors opts src . runReader graph . runReader src $ Elab.elabModule m
   modules_.at name .= Just (Just path, m)
   pure m
 

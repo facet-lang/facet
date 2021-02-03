@@ -50,6 +50,7 @@ import           Facet.Elab.Type
 import           Facet.Graph
 import           Facet.Name
 import           Facet.Semiring (Few(..), zero)
+import           Facet.Source (Source)
 import           Facet.Stack
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -205,7 +206,7 @@ abstract body = go
 -- Declarations
 
 elabDataDef
-  :: Has (Reader Graph :+: Reader Module :+: Throw Err) sig m
+  :: Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m
   => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Maybe Def ::: Type]
@@ -236,7 +237,7 @@ elabDataDef (dname ::: _T) constructors = do
         pure $ XCon q (TVar . TFree . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
 elabInterfaceDef
-  :: Has (Reader Graph :+: Reader Module :+: Throw Err) sig m
+  :: Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m
   => Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m (Maybe Def ::: Type)
@@ -249,7 +250,7 @@ elabInterfaceDef _T constructors = do
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
-  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Throw Err :+: Write Warn) sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Type
   -> S.Ann S.Expr
   -> m Value
@@ -268,7 +269,7 @@ elabTermDef _T expr = do
 -- Modules
 
 elabModule
-  :: (HasCallStack, Has (Reader Graph :+: Throw Err :+: Write Warn) sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => S.Ann S.Module
   -> m Module
 elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) $ do

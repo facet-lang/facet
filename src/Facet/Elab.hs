@@ -71,6 +71,7 @@ import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
 import Facet.Semiring (zero)
+import Facet.Source (Source)
 import Facet.Span (Span(..))
 import Facet.Stack
 import Facet.Syntax
@@ -261,6 +262,7 @@ expectFunction = expectMatch (\case{ VTArrow n t b -> pure (n ::: t, b) ; _ -> N
 data ElabContext = ElabContext
   { graph   :: Graph
   , module' :: Module
+  , source  :: Source
   , context :: Context
   , sig     :: [Type]
   , spans   :: Stack Span
@@ -338,20 +340,20 @@ unify t1 t2 = type' t1 t2
 newtype Elab m a = Elab { runElab :: ReaderC ElabContext (StateC Subst m) a }
   deriving (Algebra (Reader ElabContext :+: State Subst :+: sig), Applicative, Functor, Monad)
 
-elabWith :: Has (Reader Graph :+: Reader Module) sig m => (Subst -> a -> m b) -> Elab m a -> m b
+elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => (Subst -> a -> m b) -> Elab m a -> m b
 elabWith k m = runState k mempty $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
-  mkContext = ElabContext <$> ask <*> ask <*> pure Context.empty <*> pure [] <*> pure Nil
+  mkContext = ElabContext <$> ask <*> ask <*> ask <*> pure Context.empty <*> pure [] <*> pure Nil
 
-elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Elab m TExpr -> m Type
+elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
 elabType = elabWith (\ subst t -> pure (T.eval subst Nil t))
 
-elabTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Elab m Expr -> m Value
+elabTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m Expr -> m Value
 elabTerm = elabWith (\ subst e -> pure (E.eval subst Nil e))
 
-elabSynth :: Has (Reader Graph :+: Reader Module) sig m => Elab m (Expr ::: Type) -> m (Value ::: Type)
+elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m (Expr ::: Type) -> m (Value ::: Type)
 elabSynth = elabWith (\ subst (e ::: _T) -> pure (E.eval subst Nil e ::: T.eval subst Nil (T.quote 0 _T)))
 
 
