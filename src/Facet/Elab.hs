@@ -249,9 +249,9 @@ expectFunction = expectMatch (\case{ VTArrow n t b -> pure (n ::: t, b) ; _ -> N
 
 data ElabContext = ElabContext
   { graph   :: Graph
+  , module' :: Module
   , context :: Context
   , sig     :: [Type]
-  , module' :: Module
   , span    :: Span
   }
 
@@ -332,7 +332,7 @@ elabWith k m = runState k mempty $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
-  mkContext = ElabContext <$> ask <*> pure Context.empty <*> pure [] <*> ask <*> ask
+  mkContext = ElabContext <$> ask <*> ask <*> pure Context.empty <*> pure [] <*> ask
 
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Span) sig m) => Elab m TExpr -> m Type
 elabType = elabWith (\ subst t -> pure (T.eval subst Nil t))
