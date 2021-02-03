@@ -33,7 +33,7 @@ import Facet.Span
 import Facet.Stack
 import Facet.Syntax
 
--- Expressions
+-- Types
 
 data Type
   = TVar (Q Name)
@@ -45,6 +45,9 @@ data Type
   | TComp [Ann Interface] (Ann Type)
   | TApp (Ann Type) (Ann Type)
   deriving (Eq, Show)
+
+
+-- Expressions
 
 data Expr
   = Var (Q Name)
