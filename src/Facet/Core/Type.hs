@@ -216,3 +216,6 @@ newtype Usage = Usage (IntMap.IntMap Quantity)
 
 instance Semigroup Usage where
   Usage a <> Usage b = Usage (IntMap.unionWith (<>) a b)
+
+instance Monoid Usage where
+  mempty = Usage mempty
