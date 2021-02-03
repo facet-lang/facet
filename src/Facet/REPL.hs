@@ -204,7 +204,7 @@ showEval e = Action $ do
 runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
-  handle (q :$ ts :$ sp) k = case q of
+  handle q ts sp k = case q of
     FromList ["Effect", "Console"] :.: U "write"
       | FromList [VString s] <- sp -> outputText s *> k unit
     _                              -> k (VOp q ts sp)

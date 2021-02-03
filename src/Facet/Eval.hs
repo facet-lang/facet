@@ -15,6 +15,7 @@ import Facet.Core.Term hiding (eval)
 import Facet.Core.Type (Type)
 import Facet.Graph
 import Facet.Name
+import Facet.Stack
 import Facet.Syntax
 
 eval :: Has (Reader Graph :+: Reader Module) sig m => Value -> Eval m Value
@@ -28,17 +29,17 @@ eval = \case
         -> eval $ v $$$* ts $$* sp'
       _ -> pure $ VNe h ts sp'
 
-  VOp op ts as -> Eval $ \ h -> h (op :$ ts :$ as)
+  VOp op ts as -> Eval $ \ h -> h op ts as
 
   v            -> pure v
 
 
 -- Machinery
 
-runEval :: (Q Name :$ Type :$ Value -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: (Q Name -> Stack Type -> Stack Value -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (Q Name :$ Type :$ Value -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (Q Name -> Stack Type -> Stack Value -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)
