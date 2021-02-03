@@ -16,8 +16,8 @@ import           Control.Algebra
 import           Control.Effect.Lens (views)
 import           Control.Effect.State
 import           Control.Effect.Throw
-import           Control.Effect.Writer
 import           Data.Foldable (foldl')
+import           Data.Functor (($>))
 import           Facet.Context
 import           Facet.Core.Type
 import           Facet.Elab
@@ -29,10 +29,7 @@ import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m TExpr
 tvar n = Synth $ views context_ (lookupInContext n) >>= \case
-  Just (i, q, _T) -> do
-    d <- depth
-    tell (singleton (indexToLevel d i) q)
-    pure $ TVar (TFree i) ::: _T
+  Just (i, q, _T) -> use i q $> (TVar (TFree i) ::: _T)
   Nothing         -> do
     q :=: _ ::: _T <- resolveQ n
     instantiate TInst $ TVar (TGlobal q) ::: _T
