@@ -33,7 +33,6 @@ import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Core.Module
 import           Facet.Effect.Readline
-import           Facet.Effect.Trace
 import           Facet.Effect.Write
 import qualified Facet.Elab.Term as Elab
 import           Facet.Graph
@@ -87,7 +86,7 @@ kernel = Module kernelName [] [] $ Scope mempty
 
 -- Module loading
 
-reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Target :+: Trace :+: Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m ()
+reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Target :+: Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m ()
 reloadModules = do
   searchPaths <- uses searchPaths_ toList
   modules <- targets_ ~> \ targets -> do
@@ -121,7 +120,7 @@ loadModuleHeader searchPaths target = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (name', path, src, is)
 
-loadModule :: Has (Output :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Trace :+: Write (Notice.Notice (Doc Style))) sig m => MName -> FilePath -> Source -> [MName] -> m Module
+loadModule :: Has (Output :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
   graph <- use modules_
   let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) imports
