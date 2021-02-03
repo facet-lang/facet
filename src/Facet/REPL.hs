@@ -66,6 +66,7 @@ repl searchPaths
   . fmap (const ExitSuccess)
   . runReadlineWithHistory
   . evalState (defaultREPLState & target_.searchPaths_ .~ Set.fromList searchPaths)
+  . evalState quietOptions
   . evalEmpty
   $ loop
 
@@ -104,7 +105,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ "
   plain = setSGRCode [] <> "\STX"
 
 
-loop :: (Has (Empty :+: Input :+: Output :+: State REPL) sig m, MonadIO m) => m ()
+loop :: (Has (Empty :+: Input :+: Output :+: State Options :+: State REPL) sig m, MonadIO m) => m ()
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
@@ -153,7 +154,7 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State REPL :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State Options :+: State REPL :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action

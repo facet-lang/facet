@@ -11,6 +11,7 @@ import           Facet.Carrier.Time.System
 import           Facet.Carrier.Write.General
 import           Facet.Driver
 import           Facet.Graph
+import           Facet.Print (quietOptions)
 import           Facet.Style
 import qualified Facet.Surface as Import (Import(..))
 import qualified Facet.Surface as S
@@ -30,3 +31,4 @@ runFile searchPaths path = runStack $ do
     . evalState (Target mempty mempty (Set.fromList searchPaths))
     . runError ((ExitFailure 1 <$) . outputDocLn . prettyNotice) pure
     . runWrite (outputDocLn . prettyNotice)
+    . evalState quietOptions
