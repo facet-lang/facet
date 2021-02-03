@@ -302,7 +302,7 @@ unify t1 t2 = type' t1 t2
     (VTForAll n t1 b1, VTForAll _ t2 b2)                     -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
     (VTForAll{}, _)                                          -> nope
     -- FIXME: this must unify the signatures
-    (VTArrow _ q1 a1 b1, VTArrow _ q2 a2 b2)                 -> unless (q1 == q2) nope >> type' a1 a2 >> type' b1 b2
+    (VTArrow _ _ a1 b1, VTArrow _ _ a2 b2)                   -> type' a1 a2 >> type' b1 b2
     (VTArrow{}, _)                                           -> nope
     (VTComp s1 t1, VTComp s2 t2)                             -> sig s1 s2 >> type' t1 t2
     (VTComp{}, _)                                            -> nope
