@@ -106,10 +106,8 @@ var = VNe . (:$ Nil) . (:$ Nil)
 ($$) :: HasCallStack => Value -> Value -> Value
 VNe (h :$ ts :$ es) $$ a = VNe (h :$ ts :$ (es :> a))
 VLam cs             $$ a = case' a cs
-VTLam _             $$ _ = error "can’t apply type lambda"
-VCon c              $$ _ = error $ "can’t apply constructor " <> show (showValue Nil Nil (VCon c))
-VString _           $$ _ = error "can’t apply string"
 VOp (h :$ es)       $$ a = VOp (h :$ (es :> a))
+v                   $$ a = error $ "can’t apply " <> show (showValue Nil Nil v <+> showValue Nil Nil a)
 
 ($$*) :: (HasCallStack, Foldable t) => Value -> t Value -> Value
 ($$*) = foldl' ($$)
