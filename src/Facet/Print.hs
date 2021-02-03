@@ -144,7 +144,7 @@ printType :: Options -> Stack Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
 printTExpr :: Options -> Stack Print -> C.TExpr -> Print
-printTExpr Options{ qname } = go
+printTExpr Options{ qname, instantiation } = go
   where
   qvar = group . setPrec Var . qname
   go env = \case
@@ -158,7 +158,7 @@ printTExpr Options{ qname } = go
     C.TArrow (Right s) a b  -> (sig s <+> go env a) --> go env b
     C.TArrow (Left n)   a b -> parens (ann (intro n d ::: go env a)) --> go env b
     C.TComp s t             -> braces (sig s <+> go env t)
-    C.TInst f t             -> group (go env f) $$ group (braces (go env t))
+    C.TInst f t             -> group (go env f) `instantiation` group (braces (go env t))
     C.TApp f a              -> group (go env f) $$ group (go env a)
     C.TString               -> annotate Type $ pretty "String"
     where
