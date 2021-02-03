@@ -134,7 +134,7 @@ printExpr env = \case
   C.XVar (C.Global n)  -> group (qvar n)
   C.XVar (C.Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
   C.XTLam b            -> let v = tintro __ d in braces (braces v <+> arrow <+> printExpr (env :> v) b)
-  C.XLam cs            -> comp (braces (commaSep (map clause cs)))
+  C.XLam cs            -> comp (commaSep (map clause cs))
   C.XInst e t          -> printExpr env e $$ braces (printTExpr env t)
   C.XApp f a           -> printExpr env f $$ printExpr env a
   C.XCon (n :$ t :$ p) -> group (qvar n) $$* (group . braces . printTExpr env <$> t) $$* (group . printExpr env <$> p)
