@@ -50,7 +50,6 @@ import           Facet.Elab.Type
 import           Facet.Graph
 import           Facet.Name
 import           Facet.Semiring (Few(..), zero)
-import           Facet.Span (Span(..))
 import           Facet.Stack
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -213,7 +212,7 @@ elabDataDef
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
-  cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
+  cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ abstract (check (checkType t ::: VKType)) _T
     con' <- elabTerm $ check (con (mname :.: n) ::: c_T)
     pure $ n :=: Just (DTerm con') ::: c_T
@@ -242,7 +241,7 @@ elabInterfaceDef
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m (Maybe Def ::: Type)
 elabInterfaceDef _T constructors = do
-  cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
+  cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstract (check (checkType t ::: VKType)) _T
     -- FIXME: check that the interface is a member of the sig.
     pure $ n :=: Nothing ::: _T'
@@ -254,7 +253,7 @@ elabTermDef
   => Type
   -> S.Ann S.Expr
   -> m Value
-elabTermDef _T expr = runReader (S.ann expr) $ do
+elabTermDef _T expr = do
   elabTerm $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
@@ -272,7 +271,7 @@ elabModule
   :: (HasCallStack, Has (Reader Graph :+: Throw Err :+: Write Warn) sig m)
   => S.Ann S.Module
   -> m Module
-elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader s $ do
+elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) $ do
   let (importedNames, imports) = mapAccumL (\ names (S.Ann _ _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
   imports_ .= imports
 
@@ -281,7 +280,7 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann s _ (S.Decl tele def))) -> local (const s) $ do
+    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl tele def))) -> do
       _T <- runModule $ elabType $ check (checkType tele ::: VKType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
@@ -321,9 +320,6 @@ runModule :: Has (State Module) sig m => ReaderC Module m a -> m a
 runModule m = do
   mod <- get
   runReader mod m
-
-runWithSpan :: (a -> ReaderC Span m b) -> S.Ann a -> m b
-runWithSpan k (S.Ann s _ a) = runReader s (k a)
 
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
 withSpanB k (S.Ann s _ a) = mapBind (setSpan s) (k a)
