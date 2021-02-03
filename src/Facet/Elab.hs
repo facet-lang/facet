@@ -56,6 +56,7 @@ import Control.Applicative (Alternative)
 import Control.Carrier.Error.Church
 import Control.Carrier.Reader
 import Control.Carrier.State.Church
+import Control.Carrier.Writer.Church
 import Control.Effect.Empty
 import Control.Effect.Lens (views)
 import Control.Lens (Lens', lens)
@@ -345,11 +346,11 @@ unify t1 t2 = type' t1 t2
 
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (StateC Subst m)) a }
-  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC Subst m))) a }
+  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State Subst :+: sig), Applicative, Functor, Monad)
 
 elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => (Subst -> a -> m b) -> Elab m a -> m b
-elabWith k m = runState k mempty $ do
+elabWith k m = runState k mempty . runWriter (const pure) $ do
   (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
   let stat = StaticContext{ graph, module', source }
       ctx  = ElabContext{ context = Context.empty, sig = [], spans = Nil }
