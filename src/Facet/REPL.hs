@@ -234,4 +234,4 @@ runElab m = do
   localDefs <- use localDefs_
   src <- ask
   opts <- get
-  runReader (span src) . runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors opts src . rethrowElabWarnings src $ m
+  runReader (span src) . runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors opts . rethrowElabWarnings src $ m
