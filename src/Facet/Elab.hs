@@ -133,7 +133,9 @@ resolveQ = resolveWith lookupD
 
 lookupInContext :: Q Name -> Context -> Maybe (Index, Type)
 lookupInContext (m:.:n)
-  | m == Nil  = lookupIndex n
+  | m == Nil  = \ ctx -> do
+    (i, _, _T) <- lookupIndex n ctx
+    pure (i, _T)
   | otherwise = const Nothing
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig

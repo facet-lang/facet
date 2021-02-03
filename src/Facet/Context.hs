@@ -60,12 +60,12 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
     | otherwise    = go es (i - 1)
   go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: Name -> Context -> Maybe (Index, Type)
+lookupIndex :: Name -> Context -> Maybe (Index, Quantity, Type)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = Nothing
-  go i (cs S.:> Binding n' _ t)
-    | n == n'           = Just (i, t)
+  go i (cs S.:> Binding n' q t)
+    | n == n'           = Just (i, q, t)
     | otherwise         = go (succ i) cs
 
 
