@@ -272,7 +272,7 @@ elabModule
   :: (HasCallStack, Has (Reader Graph :+: Throw Err :+: Write Warn) sig m)
   => S.Ann S.Module
   -> m Module
-elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader mname . runReader s $ do
+elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) . runReader s $ do
   let (importedNames, imports) = mapAccumL (\ names (S.Ann _ _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
   imports_ .= imports
 
