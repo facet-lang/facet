@@ -171,7 +171,7 @@ extendSig = locally sig_ . (++)
 -- Errors
 
 setSpan :: Has (Reader ElabContext) sig m => Span -> m a -> m a
-setSpan = locally span_ . const
+setSpan = locally spans_ . flip (:>)
 
 
 data Err = Err
@@ -210,8 +210,8 @@ err :: (HasCallStack, Has (Throw Err) sig m) => ErrReason -> Elab m a
 err reason = do
   ctx <- view context_
   subst <- get
-  span <- view span_
-  throwError $ Err (Just span) (applySubst ctx subst reason) ctx subst GHC.Stack.callStack
+  span <- views spans_ peek
+  throwError $ Err span (applySubst ctx subst reason) ctx subst GHC.Stack.callStack
 
 mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String Type -> Type -> Elab m a
 mismatch msg exp act = withFrozenCallStack $ err $ Mismatch msg exp act
@@ -243,8 +243,8 @@ data WarnReason
 
 warn :: Has (Write Warn) sig m => WarnReason -> Elab m ()
 warn reason = do
-  span <- view span_
-  write $ Warn (Just span) reason
+  span <- views spans_ peek
+  write $ Warn span reason
 
 
 -- Patterns
@@ -263,7 +263,7 @@ data ElabContext = ElabContext
   , module' :: Module
   , context :: Context
   , sig     :: [Type]
-  , span    :: Span
+  , spans   :: Stack Span
   }
 
 context_ :: Lens' ElabContext Context
@@ -272,8 +272,8 @@ context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: Elab
 sig_ :: Lens' ElabContext [Type]
 sig_ = lens sig (\ e sig -> e{ sig })
 
-span_ :: Lens' ElabContext Span
-span_ = lens (span :: ElabContext -> Span) (\ e span -> (e :: ElabContext){ span })
+spans_ :: Lens' ElabContext (Stack Span)
+spans_ = lens spans (\ e spans -> e{ spans })
 
 
 -- FIXME: we don’t get good source references during unification
@@ -338,20 +338,20 @@ unify t1 t2 = type' t1 t2
 newtype Elab m a = Elab { runElab :: ReaderC ElabContext (StateC Subst m) a }
   deriving (Algebra (Reader ElabContext :+: State Subst :+: sig), Applicative, Functor, Monad)
 
-elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Span) sig m => (Subst -> a -> m b) -> Elab m a -> m b
+elabWith :: Has (Reader Graph :+: Reader Module) sig m => (Subst -> a -> m b) -> Elab m a -> m b
 elabWith k m = runState k mempty $ do
   ctx <- mkContext
   runReader ctx . runElab $ m
   where
-  mkContext = ElabContext <$> ask <*> ask <*> pure Context.empty <*> pure [] <*> ask
+  mkContext = ElabContext <$> ask <*> ask <*> pure Context.empty <*> pure [] <*> pure Nil
 
-elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Span) sig m) => Elab m TExpr -> m Type
+elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Elab m TExpr -> m Type
 elabType = elabWith (\ subst t -> pure (T.eval subst Nil t))
 
-elabTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Span) sig m) => Elab m Expr -> m Value
+elabTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Elab m Expr -> m Value
 elabTerm = elabWith (\ subst e -> pure (E.eval subst Nil e))
 
-elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Span) sig m => Elab m (Expr ::: Type) -> m (Value ::: Type)
+elabSynth :: Has (Reader Graph :+: Reader Module) sig m => Elab m (Expr ::: Type) -> m (Value ::: Type)
 elabSynth = elabWith (\ subst (e ::: _T) -> pure (E.eval subst Nil e ::: T.eval subst Nil (T.quote 0 _T)))
 
 
