@@ -66,7 +66,7 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m Expr
-var n = Synth $ ask >>= \ ElabContext{ module', graph, context, sig } -> if
+var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, _T)    <- lookupInContext n context       -> pure (XVar (Free i) ::: _T)
   | Just (n ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (XOp n ::: _T)
   | otherwise                                          -> do
@@ -136,7 +136,7 @@ allP n = Bind $ \ sig q _A b -> Check $ \ _B -> do
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ sig q _A b -> Check $ \ _B -> do
-  ElabContext{ module', graph } <- ask
+  StaticContext{ module', graph } <- ask
   n' ::: _T <- maybe (freeVariable n) (instantiate const) (lookupInSig n module' graph sig)
   (ps', b') <- check (bind (fieldsP (Bind (\ _sig q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (VTArrow (Right []) Many _A' _A) |- check (b ::: _B)))) ps ::: (sig, q, _T)) b ::: _B)
   pure (PEff n' (PVal <$> fromList ps') v, b')

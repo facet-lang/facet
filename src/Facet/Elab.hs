@@ -119,7 +119,7 @@ resolveWith
   => (forall m . Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type))
   -> Q Name
   -> Elab m (Q Name :=: Maybe Def ::: Type)
-resolveWith lookup n = asks (\ ElabContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
+resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
   ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
@@ -211,7 +211,8 @@ applySubst ctx subst r = case r of
 -- FIXME: apply the substitution before showing this to the user
 err :: (HasCallStack, Has (Throw Err) sig m) => ErrReason -> Elab m a
 err reason = do
-  ElabContext{ context, source, spans } <- ask
+  StaticContext{ source } <- ask
+  ElabContext{ context, spans } <- ask
   subst <- get
   throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
 
@@ -245,7 +246,8 @@ data WarnReason
 
 warn :: Has (Write Warn) sig m => WarnReason -> Elab m ()
 warn reason = do
-  ElabContext{ source, spans } <- ask
+  StaticContext{ source } <- ask
+  ElabContext{ spans } <- ask
   write $ Warn (maybe source (slice source) (peek spans)) reason
 
 
@@ -268,10 +270,7 @@ data StaticContext = StaticContext
   }
 
 data ElabContext = ElabContext
-  { graph   :: Graph
-  , module' :: Module
-  , source  :: Source
-  , context :: Context
+  { context :: Context
   , sig     :: [Type]
   , spans   :: Stack Span
   }
@@ -353,7 +352,7 @@ elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => (Sub
 elabWith k m = runState k mempty $ do
   (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
   let stat = StaticContext{ graph, module', source }
-      ctx  = ElabContext{ graph, module', source, context = Context.empty, sig = [], spans = Nil }
+      ctx  = ElabContext{ context = Context.empty, sig = [], spans = Nil }
   runReader stat . runReader ctx . runElab $ m
 
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
