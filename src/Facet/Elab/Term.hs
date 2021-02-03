@@ -286,13 +286,13 @@ elabModule (S.Ann s _ (S.Module mname is os ds)) = execState (Module mname [] os
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
-        S.DataDef cs -> do
+        S.DataDef cs -> Nothing <$ do
           decls <- runModule $ elabDataDef (dname ::: _T) cs
-          Nothing <$ for_ decls (\ (dname :=: decl) -> scope_.decls_.at dname .= Just decl)
+          for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
-        S.InterfaceDef os -> do
+        S.InterfaceDef os -> Nothing <$ do
           decl <- runModule $ elabInterfaceDef _T os
-          Nothing <$ (scope_.decls_.at dname .= Just decl)
+          scope_.decls_.at dname .= Just decl
 
         S.TermDef t -> pure (Just (S.ann tele, dname, t ::: _T))
 
