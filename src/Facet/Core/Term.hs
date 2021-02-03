@@ -118,10 +118,8 @@ infixl 9 $$, $$*
 ($$$) :: HasCallStack => Value -> T.Type -> Value
 VNe (h :$ ts :$ es) $$$ t = VNe (h :$ (ts :> t) :$ es)
 VTLam b             $$$ t = b t
-VLam _              $$$ _ = error "can’t instantiate lambda"
-VCon (q :$ _ :$ _)  $$$ _ = error $ "can’t instantiate constructor " <> show q
-VString _           $$$ _ = error "can’t instantiate string"
 VOp (h :$ ts :$ es) $$$ t = VOp (h :$ (ts :> t) :$ es)
+v                   $$$ t = error $ "can’t instantiate " <> show (showValue Nil Nil v <+> T.showType Nil t)
 
 ($$$*) :: (HasCallStack, Foldable t) => Value -> t T.Type -> Value
 ($$$*) = foldl' ($$$)
