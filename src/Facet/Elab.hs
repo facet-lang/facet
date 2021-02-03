@@ -72,7 +72,7 @@ import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
 import Facet.Semiring (zero)
-import Facet.Source (Source(..))
+import Facet.Source (Source(..), slice)
 import Facet.Span (Span(..))
 import Facet.Stack
 import Facet.Syntax
@@ -177,7 +177,7 @@ pushSpan = locally spans_ . flip (:>)
 
 
 data Err = Err
-  { span      :: Span
+  { source    :: Source
   , reason    :: ErrReason
   , context   :: Context
   , subst     :: Subst
@@ -210,9 +210,9 @@ applySubst ctx subst r = case r of
 -- FIXME: apply the substitution before showing this to the user
 err :: (HasCallStack, Has (Throw Err) sig m) => ErrReason -> Elab m a
 err reason = do
-  ElabContext{ context, source = Source{ span }, spans } <- ask
+  ElabContext{ context, source, spans } <- ask
   subst <- get
-  throwError $ Err (fromMaybe span (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
+  throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
 
 mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String Type -> Type -> Elab m a
 mismatch msg exp act = withFrozenCallStack $ err $ Mismatch msg exp act
