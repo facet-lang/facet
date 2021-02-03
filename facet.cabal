@@ -71,7 +71,6 @@ library
     Facet.Carrier.State.Lens
     Facet.Carrier.Throw.Inject
     Facet.Carrier.Time.System
-    Facet.Carrier.Trace.Output
     Facet.Carrier.Write.General
     Facet.Carrier.Write.Inject
     Facet.CLI
@@ -86,7 +85,6 @@ library
     Facet.Effect.Readline
     Facet.Effect.Time
     Facet.Effect.Time.System
-    Facet.Effect.Trace
     Facet.Effect.Write
     Facet.Elab
     Facet.Elab.Term

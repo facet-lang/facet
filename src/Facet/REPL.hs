@@ -26,7 +26,6 @@ import           Data.Text (Text)
 import           Facet.Carrier.Parser.Church hiding (Input)
 import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
-import           Facet.Carrier.Trace.Output
 import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
@@ -36,7 +35,6 @@ import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
 import           Facet.Eval
-import           Facet.Flag
 import           Facet.Graph
 import           Facet.Lens
 import           Facet.Name as Name
@@ -69,8 +67,6 @@ repl searchPaths
   . runReadlineWithHistory
   . evalState (defaultREPLState & target_.searchPaths_ .~ Set.fromList searchPaths)
   . evalEmpty
-  -- FIXME: move this (and any other flags) into the driver
-  . runTrace Nil (toFlag LogTraces False)
   $ loop
 
 
@@ -108,7 +104,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ "
   plain = setSGRCode [] <> "\STX"
 
 
-loop :: (Has (Empty :+: Input :+: Output :+: State (Flag LogTraces) :+: State REPL :+: Trace) sig m, MonadIO m) => m ()
+loop :: (Has (Empty :+: Input :+: Output :+: State REPL) sig m, MonadIO m) => m ()
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
@@ -147,8 +143,6 @@ commands = choice
     , removeTarget <$ symbol "target" <*> some mname
     ]
   , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (target_ `zoom` reloadModules))
-  , command ["set"]             "set a flag"                         (Just "flag")
-    $ setLogTraces <$> choice [ False <$ symbol "no-log-traces", True <$ symbol "log-traces" ]
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ showType <$> runFacet [] expr
   -- , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
@@ -159,7 +153,7 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State (Flag LogTraces) :+: State REPL :+: Trace :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State REPL :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action
@@ -191,10 +185,6 @@ addTarget targets = Action $ do
 
 -- FIXME: remove things depending on it
 removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets)
-
-
-setLogTraces :: Bool -> Action
-setLogTraces b = Action $ put (toFlag LogTraces b)
 
 
 showType, showEval :: S.Ann S.Expr -> Action
