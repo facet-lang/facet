@@ -30,7 +30,7 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens ((.=))
+import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
 import           Control.Monad (when)
@@ -41,7 +41,7 @@ import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Context (Binding(..))
-import           Facet.Core.Module
+import           Facet.Core.Module as Module
 import           Facet.Core.Term as E hiding (global, var)
 import           Facet.Core.Type as T hiding (global, var)
 import           Facet.Effect.Write
@@ -206,13 +206,13 @@ abstract body = go
 -- Declarations
 
 elabDataDef
-  :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err) sig m
+  :: Has (Reader Graph :+: Reader Module :+: Throw Err) sig m
   => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Maybe Def ::: Type]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _T) constructors = do
-  mname <- ask
+  mname <- view name_
   cs <- for constructors $ runWithSpan $ \ (n ::: t) -> do
     c_T <- elabType $ abstract (check (checkType t ::: VKType)) _T
     con' <- elabTerm $ check (con (mname :.: n) ::: c_T)
@@ -237,7 +237,7 @@ elabDataDef (dname ::: _T) constructors = do
         pure $ XCon q (TVar . TFree . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
 elabInterfaceDef
-  :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err) sig m
+  :: Has (Reader Graph :+: Reader Module :+: Throw Err) sig m
   => Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m (Maybe Def ::: Type)
@@ -250,7 +250,7 @@ elabInterfaceDef _T constructors = do
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
-  :: (HasCallStack, Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err :+: Write Warn) sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Throw Err :+: Write Warn) sig m)
   => Type
   -> S.Ann S.Expr
   -> m Value
