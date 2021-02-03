@@ -166,16 +166,16 @@ printValue :: Options -> Stack Print -> C.Value -> Print
 printValue opts env = printExpr opts env . CE.quote (Name.Level (length env))
 
 printExpr :: Options -> Stack Print -> C.Expr -> Print
-printExpr Options{ qname } = go
+printExpr Options{ qname, instantiation } = go
   where
   go env = \case
     C.XVar (C.Global n)  -> qvar n
     C.XVar (C.Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
     C.XTLam b            -> let { d = Name.Level (length env) ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env :> v) b)
     C.XLam cs            -> comp (commaSep (map (clause env) cs))
-    C.XInst e t          -> go env e $$ braces (printTExpr env t)
+    C.XInst e t          -> go env e `instantiation` braces (printTExpr env t)
     C.XApp f a           -> go env f $$ go env a
-    C.XCon (n :$ t :$ p) -> qvar n $$* (group . braces . printTExpr env <$> t) $$* (group . go env <$> p)
+    C.XCon (n :$ t :$ p) -> foldl' instantiation (qvar n) (group . braces . printTExpr env <$> t) $$* (group . go env <$> p)
     C.XOp q              -> qvar q
     C.XString s          -> annotate Lit $ pretty (show s)
   qvar = group . setPrec Var . qname
