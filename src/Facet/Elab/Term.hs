@@ -234,7 +234,7 @@ elabDataDef (dname ::: _T) constructors = do
         check (lam [(PVal <$> varP (fromLeft __ n), go ts (fs :> d))] ::: VTArrow n _A _B)
       _T               -> do
         d <- depth
-        pure $ XCon (q :$ (TVar . TFree . levelToIndex d <$> ts) :$ (XVar . Free . levelToIndex d <$> fs))
+        pure $ XCon q (TVar . TFree . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
 elabInterfaceDef
   :: Has (Reader Graph :+: Reader MName :+: Reader Module :+: Throw Err) sig m

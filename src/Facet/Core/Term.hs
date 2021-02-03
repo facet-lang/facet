@@ -185,7 +185,7 @@ data Expr
   | XLam [(Pattern Name, Expr)]
   | XInst Expr T.TExpr
   | XApp Expr Expr
-  | XCon (Q Name :$ T.TExpr :$ Expr)
+  | XCon (Q Name) (Stack T.TExpr) (Stack Expr)
   | XString Text
   | XOp (Q Name)
   deriving (Eq, Ord, Show)
@@ -198,19 +198,19 @@ quote d = \case
   VTLam b      -> XTLam (quote (succ d) (b (T.free d)))
   VLam cs      -> XLam (map (\ (p, b) -> (p, let (d', p') = fill (\ d -> (succ d, free d)) d p in quote d' (b p'))) cs)
   VNe h ts as  -> let h' = XVar (levelToIndex d <$> h) ; h'' = foldl' XInst h' (T.quote d <$> ts) in foldl' XApp h'' (quote d <$> as)
-  VCon n ts fs -> XCon (n :$ (T.quote d <$> ts) :$ (quote d <$> fs))
+  VCon n ts fs -> XCon n (T.quote d <$> ts) (quote d <$> fs)
   VString s    -> XString s
   VOp n ts sp  -> foldl' XApp (foldl' XInst (XOp n) (T.quote d <$> ts)) (quote d <$> sp)
 
 eval :: HasCallStack => T.Subst -> Stack (Either T.Type Value) -> Expr -> Value
 eval subst = go where
   go env = \case
-    XVar (Global n)      -> global n
-    XVar (Free v)        -> fromRight (error ("type variable at index " <> show v)) (env ! getIndex v)
-    XTLam b              -> VTLam (\ _T -> go (env :> Left _T) b)
-    XLam cs              -> VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (\ env' v -> env' :> Right v) env p) b)) cs)
-    XInst f a            -> go env f $$$ T.eval subst env a
-    XApp  f a            -> go env f $$ go env a
-    XCon (n :$ ts :$ fs) -> VCon n (T.eval subst env <$> ts) (go env <$> fs)
-    XString s            -> VString s
-    XOp n                -> VOp n Nil Nil
+    XVar (Global n) -> global n
+    XVar (Free v)   -> fromRight (error ("type variable at index " <> show v)) (env ! getIndex v)
+    XTLam b         -> VTLam (\ _T -> go (env :> Left _T) b)
+    XLam cs         -> VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (\ env' v -> env' :> Right v) env p) b)) cs)
+    XInst f a       -> go env f $$$ T.eval subst env a
+    XApp  f a       -> go env f $$ go env a
+    XCon n ts fs    -> VCon n (T.eval subst env <$> ts) (go env <$> fs)
+    XString s       -> VString s
+    XOp n           -> VOp n Nil Nil
