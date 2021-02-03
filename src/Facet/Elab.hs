@@ -29,6 +29,7 @@ module Facet.Elab
 , WarnReason(..)
 , warn
   -- * Unification
+, StaticContext(..)
 , ElabContext(..)
 , context_
 , sig_
@@ -258,6 +259,13 @@ expectFunction = expectMatch (\case{ VTArrow n q t b -> pure (n ::: (q, t), b) ;
 
 
 -- Unification
+
+-- | Context which doesn’t change during elaboration of a single term.
+data StaticContext = StaticContext
+  { graph   :: Graph
+  , module' :: Module
+  , source  :: Source
+  }
 
 data ElabContext = ElabContext
   { graph   :: Graph
