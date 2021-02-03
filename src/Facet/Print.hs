@@ -7,6 +7,7 @@ module Facet.Print
 , ann
   -- * Options
 , Options(..)
+, verboseOptions
 , qualified
 , unqualified
 , printInstantiation
@@ -113,6 +114,12 @@ f $$ a = askingPrec $ \case
 data Options = Options
   { qname         :: Q Name -> Print
   , instantiation :: Print -> Print -> Print
+  }
+
+verboseOptions :: Options
+verboseOptions = Options
+  { qname         = qualified
+  , instantiation = printInstantiation
   }
 
 qualified, unqualified :: Q Name -> Print
