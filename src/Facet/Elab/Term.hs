@@ -111,7 +111,7 @@ string s = Synth $ pure $ XString s ::: VTString
 wildcardP :: Bind m (ValuePattern Name)
 wildcardP = Bind $ \ _ _ _ -> fmap (PWildcard,)
 
-varP :: Algebra sig m => Name -> Bind m (ValuePattern Name)
+varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (ValuePattern Name)
 varP n = Bind $ \ _sig q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q _A |- check (b ::: _B))
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
@@ -130,7 +130,7 @@ fieldsP = foldr cons
     pure (p':ps', b')
 
 
-allP :: Has (Write Warn) sig m => Name -> Bind m (Pattern Name)
+allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (Pattern Name)
 allP n = Bind $ \ sig q _A b -> Check $ \ _B -> do
   when (null sig) (warn (RedundantCatchAll n))
   Binding n q _A |- (PAll n,) <$> check (b ::: _B)
@@ -189,7 +189,7 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstract :: Algebra sig m => Elab m TExpr -> Type -> Elab m TExpr
+abstract :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Type -> Elab m TExpr
 abstract body = go
   where
   go = \case

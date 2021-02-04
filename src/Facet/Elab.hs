@@ -80,6 +80,7 @@ import Facet.Span (Span(..))
 import Facet.Stack
 import Facet.Syntax
 import Facet.Usage as Usage
+import Facet.Vars as Vars
 import GHC.Stack
 import Prelude hiding (span, zipWith)
 
@@ -160,10 +161,15 @@ app mk f a = Synth $ do
   pure $ mk f' a' ::: _B
 
 
-(|-) :: Algebra sig m => Binding -> Elab m a -> Elab m a
-t |- b = do
+(|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a
+Binding n q _T |- b = do
   sigma <- asks scale
-  locally context_ (|> t{ quantity = sigma >< quantity t }) b
+  d <- depth
+  (u, a) <- censor (`Usage.restrict` Vars.singleton d) $ listen $ locally context_ (|> Binding n (sigma >< q) _T) b
+  let q' = Usage.lookup d u
+  unless (q' == sigma >< q)
+    $ resourceMismatch n (sigma >< q) q'
+  pure a
 
 infix 1 |-
 

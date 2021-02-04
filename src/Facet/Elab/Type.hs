@@ -45,7 +45,7 @@ _String :: Synth m TExpr
 _String = Synth $ pure $ TString ::: VKType
 
 
-forAll :: (HasCallStack, Algebra sig m) => Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
 forAll (n ::: t) b = Synth $ do
   t' <- check (t ::: VKType)
   env <- views context_ toEnv
