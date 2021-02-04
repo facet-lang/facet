@@ -9,7 +9,6 @@ module Facet.Core.Term
 , fill
   -- * Term values
 , Value(..)
-, Elim(..)
 , global
 , free
 , var
@@ -83,10 +82,6 @@ data Value
   | VCon (Q Name) (Stack T.Type) (Stack Value)
   | VString Text
   | VOp (Q Name) (Stack T.Type) (Stack Value)
-
-data Elim
-  = EInst T.Type
-  | EApp Value
 
 
 global :: Q Name -> Value
