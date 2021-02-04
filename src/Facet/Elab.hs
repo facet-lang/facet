@@ -165,10 +165,11 @@ app mk f a = Synth $ do
 Binding n q _T |- b = do
   sigma <- asks scale
   d <- depth
-  (u, a) <- censor (`Usage.restrict` Vars.singleton d) $ listen $ locally context_ (|> Binding n (sigma >< q) _T) b
+  let exp = sigma >< q
+  (u, a) <- censor (`Usage.restrict` Vars.singleton d) $ listen $ locally context_ (|> Binding n exp _T) b
   let q' = Usage.lookup d u
-  unless (q' <= sigma >< q)
-    $ resourceMismatch n (sigma >< q) q'
+  unless (q' <= exp)
+    $ resourceMismatch n exp q'
   pure a
 
 infix 1 |-
