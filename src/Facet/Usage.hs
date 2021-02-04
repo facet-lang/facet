@@ -6,6 +6,7 @@ module Facet.Usage
 , singleton
 , lookup
 , restrict
+, withoutVars
 ) where
 
 import qualified Data.IntMap as IntMap
@@ -41,3 +42,6 @@ lookup (Level i) (Usage a) = fromMaybe zero (IntMap.lookup i a)
 
 restrict :: Usage -> Vars.Vars -> Usage
 restrict (Usage u) (Vars.Vars v) = Usage (u `IntMap.restrictKeys` v)
+
+withoutVars :: Usage -> Vars.Vars -> Usage
+withoutVars (Usage u) (Vars.Vars v) = Usage (u `IntMap.withoutKeys` v)
