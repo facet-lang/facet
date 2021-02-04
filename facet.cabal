@@ -117,6 +117,7 @@ library
     Facet.Surface
     Facet.Syntax
     Facet.Timing
+    Facet.Usage
     Facet.Vars
   other-modules:
     Paths_facet
