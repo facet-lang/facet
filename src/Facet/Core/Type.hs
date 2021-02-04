@@ -33,21 +33,19 @@ module Facet.Core.Type
 , singleton
 , lookupUsage
 , restrictUsage
-  -- * Vars
-, Vars(..)
 ) where
 
 import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
-import qualified Data.IntSet as IntSet
 import           Data.Maybe (fromMaybe)
 import           Facet.Name
 import           Facet.Semiring
 import           Facet.Show
 import           Facet.Stack
 import           Facet.Syntax
+import           Facet.Vars
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
@@ -238,8 +236,3 @@ lookupUsage (Level i) (Usage a) = fromMaybe zero (IntMap.lookup i a)
 
 restrictUsage :: Usage -> Vars -> Usage
 restrictUsage (Usage u) (Vars v) = Usage (u `IntMap.restrictKeys` v)
-
-
--- Vars
-
-newtype Vars = Vars IntSet.IntSet
