@@ -5,7 +5,7 @@ module Facet.Usage
 , Usage(..)
 , singleton
 , lookupUsage
-, restrictUsage
+, restrict
 ) where
 
 import qualified Data.IntMap as IntMap
@@ -38,5 +38,5 @@ singleton (Level i) q = Usage (IntMap.singleton i q)
 lookupUsage :: Level -> Usage -> Quantity
 lookupUsage (Level i) (Usage a) = fromMaybe zero (IntMap.lookup i a)
 
-restrictUsage :: Usage -> Vars -> Usage
-restrictUsage (Usage u) (Vars v) = Usage (u `IntMap.restrictKeys` v)
+restrict :: Usage -> Vars -> Usage
+restrict (Usage u) (Vars v) = Usage (u `IntMap.restrictKeys` v)
