@@ -55,6 +55,7 @@ import           Facet.Source (Source)
 import           Facet.Stack
 import qualified Facet.Surface as S
 import           Facet.Syntax
+import           Facet.Usage hiding (restrict)
 import           GHC.Stack
 
 -- Term combinators
