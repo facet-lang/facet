@@ -196,7 +196,7 @@ printExpr opts@Options{ qname, instantiation } = go
   pat = \case
     C.PAll n      -> brackets n
     C.PVal p      -> vpat p
-    C.PEff q ps k -> brackets (pretty q <+> hsep (map pat (toList ps)) <+> semi <+> k)
+    C.PEff q ps k -> brackets (pretty q <+> hsep (map vpat (toList ps)) <+> semi <+> k)
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_

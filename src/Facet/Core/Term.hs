@@ -56,8 +56,7 @@ data ValuePattern a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data Pattern a
-  -- FIXME: pretty sure the sub-patterns should be ValuePatterns instead
-  = PEff (Q Name) (Stack (Pattern a)) a
+  = PEff (Q Name) (Stack (ValuePattern a)) a
   | PAll a
   | PVal (ValuePattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -160,7 +159,7 @@ showValue tenv env = \case
   pat = \case
     PAll n      -> bracket (name n)
     PVal p      -> vpat p
-    PEff n ps k -> bracket (foldl' (<+>) (qname n) (pat <$> ps) <+> char ';' <+> name k)
+    PEff n ps k -> bracket (foldl' (<+>) (qname n) (vpat <$> ps) <+> char ';' <+> name k)
   vpat = \case
     PWildcard -> char '_'
     PVar n    -> name n

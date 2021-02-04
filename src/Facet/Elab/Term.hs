@@ -139,7 +139,7 @@ effP n ps v = Bind $ \ sig q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   n' ::: _T <- maybe (freeVariable n) (instantiate const) (lookupInSig n module' graph sig)
   (ps', b') <- check (bind (fieldsP (Bind (\ _sig q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (VTArrow (Right []) Many _A' _A) |- check (b ::: _B)))) ps ::: (sig, q, _T)) b ::: _B)
-  pure (PEff n' (PVal <$> fromList ps') v, b')
+  pure (PEff n' (fromList ps') v, b')
 
 
 -- Expression elaboration
