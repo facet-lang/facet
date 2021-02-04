@@ -12,7 +12,7 @@ import qualified Data.IntMap as IntMap
 import           Data.Maybe (fromMaybe)
 import           Facet.Name
 import           Facet.Semiring
-import           Facet.Vars
+import qualified Facet.Vars as Vars
 import           Prelude hiding (lookup)
 
 -- Quantities
@@ -39,5 +39,5 @@ singleton (Level i) q = Usage (IntMap.singleton i q)
 lookup :: Level -> Usage -> Quantity
 lookup (Level i) (Usage a) = fromMaybe zero (IntMap.lookup i a)
 
-restrict :: Usage -> Vars -> Usage
-restrict (Usage u) (Vars v) = Usage (u `IntMap.restrictKeys` v)
+restrict :: Usage -> Vars.Vars -> Usage
+restrict (Usage u) (Vars.Vars v) = Usage (u `IntMap.restrictKeys` v)
