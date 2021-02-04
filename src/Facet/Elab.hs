@@ -167,9 +167,9 @@ Binding n q _T |- b = do
   d <- depth
   let exp = sigma >< q
   (u, a) <- censor (`Usage.restrict` Vars.singleton d) $ listen $ locally context_ (|> Binding n exp _T) b
-  let q' = Usage.lookup d u
-  unless (q' <= exp)
-    $ resourceMismatch n exp q'
+  let act = Usage.lookup d u
+  unless (act <= exp)
+    $ resourceMismatch n exp act
   pure a
 
 infix 1 |-
