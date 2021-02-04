@@ -4,7 +4,7 @@ module Facet.Usage
   -- * Usage
 , Usage(..)
 , singleton
-, lookupUsage
+, lookup
 , restrict
 ) where
 
@@ -13,6 +13,7 @@ import           Data.Maybe (fromMaybe)
 import           Facet.Name
 import           Facet.Semiring
 import           Facet.Vars
+import           Prelude hiding (lookup)
 
 -- Quantities
 
@@ -35,8 +36,8 @@ instance LeftModule Quantity Usage where
 singleton :: Level -> Quantity -> Usage
 singleton (Level i) q = Usage (IntMap.singleton i q)
 
-lookupUsage :: Level -> Usage -> Quantity
-lookupUsage (Level i) (Usage a) = fromMaybe zero (IntMap.lookup i a)
+lookup :: Level -> Usage -> Quantity
+lookup (Level i) (Usage a) = fromMaybe zero (IntMap.lookup i a)
 
 restrict :: Usage -> Vars -> Usage
 restrict (Usage u) (Vars v) = Usage (u `IntMap.restrictKeys` v)
