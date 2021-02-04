@@ -21,6 +21,7 @@ module Facet.Elab
 , Err(..)
 , ErrReason(..)
 , couldNotSynthesize
+, resourceMismatch
 , freeVariable
 , expectMatch
 , expectFunction
@@ -234,6 +235,9 @@ couldNotUnify msg t1 t2 = withFrozenCallStack $ mismatch msg (Right t2) t1
 
 couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
 couldNotSynthesize v = withFrozenCallStack $ err $ CouldNotSynthesize v
+
+resourceMismatch :: (HasCallStack, Has (Throw Err) sig m) => Name -> Quantity -> Quantity -> Elab m a
+resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp act
 
 freeVariable :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m a
 freeVariable n = withFrozenCallStack $ err $ FreeVariable n
