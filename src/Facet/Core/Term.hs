@@ -138,7 +138,7 @@ match = curry $ \case
     (s,            PVar _)    -> Just (PVar s)
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
     (VCon n' _ fs, PCon n ps) -> PCon n' <$ guard (n == n') <*> zipWithM value fs ps
-    (_, PCon{})               -> Nothing
+    (_,            PCon{})    -> Nothing
 
 
 -- Debugging
