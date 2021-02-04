@@ -14,7 +14,7 @@ import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print
-import           Facet.Semiring (one, zero)
+import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Stack
 import           Facet.Style
 import           Facet.Syntax
@@ -51,6 +51,14 @@ printErrReason opts ctx = group . \case
   FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n qs     -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
   CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
+  ResourceMismatch n e a -> fillSep [reflow "uses of variable", pretty n, reflow "didn’t match requirements"]
+    <> hardline <> pretty "expected:" <+> prettyQ e
+    <> hardline <> pretty "  actual:" <+> prettyQ a
+    where
+    prettyQ = \case
+      Zero -> pretty "0"
+      One  -> pretty "1"
+      Many -> pretty "arbitrarily many"
   Mismatch msg exp act   -> reflow msg
     <> hardline <> pretty "expected:" <> print exp'
     <> hardline <> pretty "  actual:" <> print act'

@@ -198,6 +198,7 @@ data ErrReason
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
   | AmbiguousName (Q Name) [Q Name]
   | CouldNotSynthesize String
+  | ResourceMismatch Name Quantity Quantity
   | Mismatch String (Either String Type) Type
   | Hole Name Type
   | Invariant String
@@ -207,6 +208,7 @@ applySubst ctx subst r = case r of
   FreeVariable{}       -> r
   AmbiguousName{}      -> r
   CouldNotSynthesize{} -> r
+  ResourceMismatch{}   -> r
   Mismatch m exp act   -> Mismatch m (roundtrip <$> exp) (roundtrip act)
   Hole n t             -> Hole n (roundtrip t)
   Invariant{}          -> r
