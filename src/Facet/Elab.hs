@@ -167,7 +167,7 @@ Binding n q _T |- b = do
   d <- depth
   (u, a) <- censor (`Usage.restrict` Vars.singleton d) $ listen $ locally context_ (|> Binding n (sigma >< q) _T) b
   let q' = Usage.lookup d u
-  unless (q' == sigma >< q)
+  unless (q' <= sigma >< q)
     $ resourceMismatch n (sigma >< q) q'
   pure a
 
