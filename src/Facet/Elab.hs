@@ -168,11 +168,18 @@ Binding n q _T |- b = do
   let exp = sigma >< q
   (u, a) <- censor (`Usage.restrict` Vars.singleton d) $ listen $ locally context_ (|> Binding n exp _T) b
   let act = Usage.lookup d u
-  unless (act <= exp)
+  unless (act `sat` exp)
     $ resourceMismatch n exp act
   pure a
 
 infix 1 |-
+
+-- | Test whether the first quantity suffices to satisfy a requirement of the second.
+sat :: Quantity -> Quantity -> Bool
+sat a b
+  | b == zero = a == b
+  | b == one  = a == b
+  | otherwise = True
 
 
 depth :: Has (Reader ElabContext) sig m => m Level
