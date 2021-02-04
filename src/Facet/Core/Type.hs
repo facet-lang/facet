@@ -1,7 +1,6 @@
 module Facet.Core.Type
 ( -- * Type variables
   TVar(..)
-, Quantity
   -- * Type values
 , Type(..)
 , global
@@ -28,24 +27,18 @@ module Facet.Core.Type
 , solveMeta
 , declareMeta
 , metas
-  -- * Usage
-, Usage(..)
-, singleton
-, lookupUsage
-, restrictUsage
 ) where
 
 import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
-import           Data.Maybe (fromMaybe)
 import           Facet.Name
 import           Facet.Semiring
 import           Facet.Show
 import           Facet.Stack
 import           Facet.Syntax
-import           Facet.Vars
+import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
@@ -56,8 +49,6 @@ data TVar a
   | TFree a
   | TMetavar Meta
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-type Quantity = Few
 
 
 -- Types
@@ -213,26 +204,3 @@ declareMeta _K (Subst metas) = (Subst (IntMap.insert v (Nothing ::: _K) metas), 
 
 metas :: Subst -> [Meta :=: Maybe Type ::: Type]
 metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)
-
-
--- Usage
-
-newtype Usage = Usage (IntMap.IntMap Quantity)
-
-instance Semigroup Usage where
-  Usage a <> Usage b = Usage (IntMap.unionWith (<>) a b)
-
-instance Monoid Usage where
-  mempty = Usage mempty
-
-instance LeftModule Quantity Usage where
-  q ><< Usage a = Usage ((q ><) <$> a)
-
-singleton :: Level -> Quantity -> Usage
-singleton (Level i) q = Usage (IntMap.singleton i q)
-
-lookupUsage :: Level -> Usage -> Quantity
-lookupUsage (Level i) (Usage a) = fromMaybe zero (IntMap.lookup i a)
-
-restrictUsage :: Usage -> Vars -> Usage
-restrictUsage (Usage u) (Vars v) = Usage (u `IntMap.restrictKeys` v)

@@ -25,7 +25,7 @@ import qualified Data.Map as Map
 import           Data.Monoid (Endo(..))
 import qualified Data.Set as Set
 import           Facet.Core.Module
-import           Facet.Core.Type hiding (insert, singleton)
+import           Facet.Core.Type hiding (insert)
 import           Facet.Name
 import           Facet.Stack
 import           Facet.Syntax

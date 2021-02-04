@@ -16,6 +16,7 @@ import           Facet.Core.Type
 import           Facet.Name
 import           Facet.Semiring
 import qualified Facet.Stack as S
+import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup, zipWith)
 

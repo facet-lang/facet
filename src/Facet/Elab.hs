@@ -78,6 +78,7 @@ import Facet.Source (Source, slice)
 import Facet.Span (Span(..))
 import Facet.Stack
 import Facet.Syntax
+import Facet.Usage as Usage
 import GHC.Stack
 import Prelude hiding (span, zipWith)
 
@@ -172,7 +173,7 @@ depth = views context_ level
 use :: Has (Reader ElabContext :+: Writer Usage) sig m => Index -> Quantity -> m ()
 use i q = do
   d <- depth
-  tell (T.singleton (indexToLevel d i) q)
+  tell (Usage.singleton (indexToLevel d i) q)
 
 extendSig :: Has (Reader ElabContext) sig m => [Type] -> m a -> m a
 extendSig = locally sig_ . (++)
