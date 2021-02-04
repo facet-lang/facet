@@ -255,8 +255,8 @@ elabTermDef
   => Type
   -> S.Ann S.Expr
   -> m Value
-elabTermDef _T expr = do
-  elabTerm $ check (go (checkExpr expr) ::: _T)
+elabTermDef _T expr@(S.Ann s _ _) = do
+  elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
     VTForAll{}               -> check (tlam (go k) ::: _T)
