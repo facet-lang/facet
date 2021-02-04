@@ -27,8 +27,6 @@ module Facet.Core.Term
 ) where
 
 import           Control.Monad (guard)
-import           Data.Bifunctor
-import           Data.Coerce (coerce)
 import           Data.Either (fromRight)
 import           Data.Foldable (asum, foldl')
 import           Data.Semialign.Exts (zipWithM)
@@ -43,17 +41,10 @@ import           GHC.Stack
 
 -- Term variables
 
-data Var t a
+data Var a
   = Global (Q Name) -- ^ Global variables, considered equal by 'Q' 'Name'.
   | Free a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-instance Bifunctor Var where
-  bimap _ g = \case
-    Global n -> Global n
-    Free a   -> Free (g a)
-  first _ = coerce
-  second = fmap
 
 
 -- Patterns
@@ -86,7 +77,7 @@ fill f = mapAccumL (const . f)
 data Value
   = VTLam (T.Type -> Value)
   | VLam [(Pattern Name, Pattern Value -> Value)]
-  | VNe (Var T.Type Level) (Stack T.Type) (Stack Value)
+  | VNe (Var Level) (Stack T.Type) (Stack Value)
   | VCon (Q Name) (Stack T.Type) (Stack Value)
   | VString Text
   | VOp (Q Name) (Stack T.Type) (Stack Value)
@@ -99,7 +90,7 @@ free :: Level -> Value
 free = var . Free
 
 
-var :: Var T.Type Level -> Value
+var :: Var Level -> Value
 var v = VNe v Nil Nil
 
 
@@ -182,7 +173,7 @@ showValue tenv env = \case
 -- Term expressions
 
 data Expr
-  = XVar (Var T.TExpr Index)
+  = XVar (Var Index)
   | XTLam Expr
   | XLam [(Pattern Name, Expr)]
   | XInst Expr T.TExpr
@@ -199,7 +190,7 @@ quote :: Level -> Value -> Expr
 quote d = \case
   VTLam b      -> XTLam (quote (succ d) (b (T.free d)))
   VLam cs      -> XLam (map (\ (p, b) -> (p, let (d', p') = fill (\ d -> (succ d, free d)) d p in quote d' (b p'))) cs)
-  VNe h ts as  -> let h' = XVar (coerce (levelToIndex d <$> h)) ; h'' = foldl' XInst h' (T.quote d <$> ts) in foldl' XApp h'' (quote d <$> as)
+  VNe h ts as  -> let h' = XVar (levelToIndex d <$> h) ; h'' = foldl' XInst h' (T.quote d <$> ts) in foldl' XApp h'' (quote d <$> as)
   VCon n ts fs -> XCon n (T.quote d <$> ts) (quote d <$> fs)
   VString s    -> XString s
   VOp n ts sp  -> foldl' XApp (foldl' XInst (XOp n) (T.quote d <$> ts)) (quote d <$> sp)
