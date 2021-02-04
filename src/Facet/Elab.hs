@@ -166,7 +166,7 @@ Binding n q _T |- b = do
   sigma <- asks scale
   d <- depth
   let exp = sigma >< q
-  (u, a) <- censor (`Usage.restrict` Vars.singleton d) $ listen $ locally context_ (|> Binding n exp _T) b
+  (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> Binding n exp _T) b
   let act = Usage.lookup d u
   unless (act `sat` exp)
     $ resourceMismatch n exp act
