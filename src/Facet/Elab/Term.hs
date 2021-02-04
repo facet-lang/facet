@@ -207,7 +207,7 @@ abstract body = go
 -- Declarations
 
 elabDataDef
-  :: Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m
+  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
   => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Maybe Def ::: Type]
@@ -238,7 +238,7 @@ elabDataDef (dname ::: _T) constructors = do
         pure $ XCon q (TVar . TFree . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
 elabInterfaceDef
-  :: Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m
+  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
   => Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m (Maybe Def ::: Type)
