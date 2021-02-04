@@ -32,12 +32,15 @@ module Facet.Core.Type
 , Usage(..)
 , singleton
 , lookupUsage
+  -- * Vars
+, Vars(..)
 ) where
 
 import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
+import qualified Data.IntSet as IntSet
 import           Data.Maybe (fromMaybe)
 import           Facet.Name
 import           Facet.Semiring
@@ -231,3 +234,8 @@ singleton (Level i) q = Usage (IntMap.singleton i q)
 
 lookupUsage :: Level -> Usage -> Quantity
 lookupUsage (Level i) (Usage a) = fromMaybe zero (IntMap.lookup i a)
+
+
+-- Vars
+
+newtype Vars = Vars IntSet.IntSet
