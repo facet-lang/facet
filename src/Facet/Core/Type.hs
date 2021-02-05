@@ -19,6 +19,7 @@ module Facet.Core.Type
 , showType
   -- * Type expressions
 , TExpr(..)
+, CTExpr(..)
   -- * Quotation
 , quote
 , eval
@@ -170,6 +171,15 @@ data TExpr
   | TRet [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
+  deriving (Eq, Ord, Show)
+
+data CTExpr
+  = CEVar (TVar Index)
+  | CEForAll Name CTExpr CTExpr
+  | CEArrow (Maybe Name) Quantity CTExpr CTExpr
+  | CTInst CTExpr CTExpr
+  | CTApp CTExpr CTExpr
+  | CTRet [CTExpr] TExpr
   deriving (Eq, Ord, Show)
 
 
