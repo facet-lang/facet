@@ -187,7 +187,7 @@ data CTExpr
   | CEArrow (Maybe Name) Quantity CTExpr CTExpr
   | CEInst CTExpr CTExpr
   | CEApp CTExpr CTExpr
-  | CERet [CTExpr] TExpr
+  | CERet [CTExpr] VTExpr
   deriving (Eq, Ord, Show)
 
 
