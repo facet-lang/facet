@@ -7,6 +7,7 @@ module Facet.Core.Type
 , free
 , metavar
 , var
+, unRet
 , occursIn
   -- ** Elimination
 , ($$)
@@ -29,6 +30,7 @@ module Facet.Core.Type
 , metas
 ) where
 
+import           Control.Effect.Empty
 import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
 import           Data.Function ((&))
@@ -76,6 +78,12 @@ metavar = var . TMetavar
 
 var :: TVar Level -> Type
 var v = VTNe v Nil Nil
+
+
+unRet :: Has Empty sig m => Type -> m ([Type], Type)
+unRet = \case
+  VTRet sig _T -> pure (sig, _T)
+  _T           -> empty
 
 
 occursIn :: (TVar Level -> Bool) -> Level -> Type -> Bool
