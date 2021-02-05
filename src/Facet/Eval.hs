@@ -12,7 +12,7 @@ import Control.Effect.Reader
 import Control.Monad.Trans.Class
 import Facet.Core.Module
 import Facet.Core.Term hiding (eval)
-import Facet.Core.Type (Type)
+import Facet.Core.Type (VType)
 import Facet.Graph
 import Facet.Name
 import Facet.Stack
@@ -36,10 +36,10 @@ eval = \case
 
 -- Machinery
 
-runEval :: (Q Name -> Stack Type -> Stack Value -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: (Q Name -> Stack VType -> Stack Value -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (Q Name -> Stack Type -> Stack Value -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (Q Name -> Stack VType -> Stack Value -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)

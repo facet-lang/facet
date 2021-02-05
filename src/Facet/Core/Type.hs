@@ -1,8 +1,8 @@
 module Facet.Core.Type
-( -- * Type variables
+( -- * Variables
   TVar(..)
-  -- * Type values
-, Type(..)
+  -- * Types
+, VType(..)
 , global
 , free
 , metavar
@@ -55,38 +55,38 @@ data TVar a
 
 -- Types
 
-data Type
+data VType
   = VKType
   | VKInterface
-  | VTForAll Name Type (Type -> Type)
-  | VTArrow (Maybe Name) Quantity Type Type
-  | VTNe (TVar Level) (Stack Type) (Stack Type)
-  | VTSusp Type
-  | VTRet [Type] Type
+  | VTForAll Name VType (VType -> VType)
+  | VTArrow (Maybe Name) Quantity VType VType
+  | VTNe (TVar Level) (Stack VType) (Stack VType)
+  | VTSusp VType
+  | VTRet [VType] VType
   | VTString
 
 
-global :: Q Name -> Type
+global :: Q Name -> VType
 global = var . TGlobal
 
-free :: Level -> Type
+free :: Level -> VType
 free = var . TFree
 
-metavar :: Meta -> Type
+metavar :: Meta -> VType
 metavar = var . TMetavar
 
 
-var :: TVar Level -> Type
+var :: TVar Level -> VType
 var v = VTNe v Nil Nil
 
 
-unRet :: Has Empty sig m => Type -> m ([Type], Type)
+unRet :: Has Empty sig m => VType -> m ([VType], VType)
 unRet = \case
   VTRet sig _T -> pure (sig, _T)
   _T           -> empty
 
 
-occursIn :: (TVar Level -> Bool) -> Level -> Type -> Bool
+occursIn :: (TVar Level -> Bool) -> Level -> VType -> Bool
 occursIn p = go
   where
   go d = \case
@@ -102,21 +102,21 @@ occursIn p = go
 
 -- Elimination
 
-($$) :: HasCallStack => Type -> Type -> Type
+($$) :: HasCallStack => VType -> VType -> VType
 VTNe h ts es $$ a = VTNe h ts (es :> a)
 _            $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
+($$*) :: (HasCallStack, Foldable t) => VType -> t VType -> VType
 ($$*) = foldl' ($$)
 
 infixl 9 $$, $$*
 
-($$$) :: HasCallStack => Type -> Type -> Type
+($$$) :: HasCallStack => VType -> VType -> VType
 VTNe h ts es   $$$ t = VTNe h (ts :> t) es
 VTForAll _ _ b $$$ t = b t
 _              $$$ _ = error "can’t apply non-neutral/forall type"
 
-($$$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
+($$$*) :: (HasCallStack, Foldable t) => VType -> t VType -> VType
 ($$$*) = foldl' ($$)
 
 infixl 9 $$$, $$$*
@@ -124,9 +124,9 @@ infixl 9 $$$, $$$*
 
 -- Debugging
 
-showType :: Stack ShowP -> Type -> ShowP
+showType :: Stack ShowP -> VType -> ShowP
 showType env = \case
-  VKType         -> string "Type"
+  VKType         -> string "VType"
   VKInterface    -> string "Interface"
   VTForAll n t b -> prec 0 $ brace (name n <+> char ':' <+> setPrec 0 (showType env t)) <+> string "->" <+> setPrec 0 (showType (env :> name n) (b (free (Level (length env)))))
   VTArrow n q t b  -> case n of
@@ -168,7 +168,7 @@ data TExpr
 
 -- Quotation
 
-quote :: Level -> Type -> TExpr
+quote :: Level -> VType -> TExpr
 quote d = \case
   VKType          -> TType
   VKInterface     -> TInterface
@@ -179,7 +179,7 @@ quote d = \case
   VTNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
   VTString        -> TString
 
-eval :: HasCallStack => Subst -> Stack (Either Type a) -> TExpr -> Type
+eval :: HasCallStack => Subst -> Stack (Either VType a) -> TExpr -> VType
 eval subst = go where
   go env = \case
     TVar (TGlobal n)  -> global n
@@ -198,23 +198,23 @@ eval subst = go where
 
 -- Substitution
 
-newtype Subst = Subst (IntMap.IntMap (Maybe Type ::: Type))
+newtype Subst = Subst (IntMap.IntMap (Maybe VType ::: VType))
   deriving (Monoid, Semigroup)
 
-insert :: Meta -> Maybe Type ::: Type -> Subst -> Subst
+insert :: Meta -> Maybe VType ::: VType -> Subst -> Subst
 insert (Meta i) t (Subst metas) = Subst (IntMap.insert i t metas)
 
-lookupMeta :: Meta -> Subst -> Maybe (Type ::: Type)
+lookupMeta :: Meta -> Subst -> Maybe (VType ::: VType)
 lookupMeta (Meta i) (Subst metas) = do
   v ::: _T <- IntMap.lookup i metas
   (::: _T) <$> v
 
-solveMeta :: Meta -> Type -> Subst -> Subst
+solveMeta :: Meta -> VType -> Subst -> Subst
 solveMeta (Meta i) t (Subst metas) = Subst (IntMap.update (\ (_ ::: _T) -> Just (Just t ::: _T)) i metas)
 
-declareMeta :: Type -> Subst -> (Subst, Meta)
+declareMeta :: VType -> Subst -> (Subst, Meta)
 declareMeta _K (Subst metas) = (Subst (IntMap.insert v (Nothing ::: _K) metas), Meta v) where
   v = maybe 0 (succ . fst . fst) (IntMap.maxViewWithKey metas)
 
-metas :: Subst -> [Meta :=: Maybe Type ::: Type]
+metas :: Subst -> [Meta :=: Maybe VType ::: VType]
 metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)

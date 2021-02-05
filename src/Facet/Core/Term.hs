@@ -75,12 +75,12 @@ fill f = mapAccumL (const . f)
 -- Term values
 
 data Value
-  = VTLam (T.Type -> Value)
+  = VTLam (T.VType -> Value)
   | VLam [(Pattern Name, Pattern Value -> Value)]
-  | VNe (Var Level) (Stack T.Type) (Stack Value)
-  | VCon (Q Name) (Stack T.Type) (Stack Value)
+  | VNe (Var Level) (Stack T.VType) (Stack Value)
+  | VCon (Q Name) (Stack T.VType) (Stack Value)
   | VString Text
-  | VOp (Q Name) (Stack T.Type) (Stack Value)
+  | VOp (Q Name) (Stack T.VType) (Stack Value)
 
 
 global :: Q Name -> Value
@@ -108,13 +108,13 @@ v           $$ a = error $ "can’t apply " <> show (showValue Nil Nil v <+> sho
 infixl 9 $$, $$*
 
 
-($$$) :: HasCallStack => Value -> T.Type -> Value
+($$$) :: HasCallStack => Value -> T.VType -> Value
 VNe h ts es $$$ t = VNe h (ts :> t) es
 VTLam b     $$$ t = b t
 VOp h ts es $$$ t = VOp h (ts :> t) es
 v           $$$ t = error $ "can’t instantiate " <> show (showValue Nil Nil v <+> T.showType Nil t)
 
-($$$*) :: (HasCallStack, Foldable t) => Value -> t T.Type -> Value
+($$$*) :: (HasCallStack, Foldable t) => Value -> t T.VType -> Value
 ($$$*) = foldl' ($$$)
 
 infixl 9 $$$, $$$*
@@ -195,7 +195,7 @@ quote d = \case
   VString s    -> XString s
   VOp n ts sp  -> foldl' XApp (foldl' XInst (XOp n) (T.quote d <$> ts)) (quote d <$> sp)
 
-eval :: HasCallStack => T.Subst -> Stack (Either T.Type Value) -> Expr -> Value
+eval :: HasCallStack => T.Subst -> Stack (Either T.VType Value) -> Expr -> Value
 eval subst = go where
   go env = \case
     XVar (Global n) -> global n
