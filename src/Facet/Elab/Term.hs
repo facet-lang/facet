@@ -33,11 +33,9 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
-import           Control.Monad (when)
-import           Data.Either (fromLeft)
 import           Data.Foldable
 import           Data.Functor
-import           Data.Maybe (catMaybes)
+import           Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
@@ -109,37 +107,40 @@ string s = Synth $ pure $ XString s ::: VTString
 -- Pattern combinators
 
 wildcardP :: Bind m (ValuePattern Name)
-wildcardP = Bind $ \ _ _ _ -> fmap (PWildcard,)
+wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 
 varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (ValuePattern Name)
-varP n = Bind $ \ _sig q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q _A |- check (b ::: _B))
+varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q _A |- check (b ::: _B))
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
-conP n ps = Bind $ \ sig q _A b -> Check $ \ _B -> do
+conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   n' :=: _ ::: _T <- resolveC n
   _ ::: _T' <- instantiate const (() ::: _T)
-  (ps', b') <- check (bind (fieldsP (Bind (\ _sig _q' _A' b -> ([],) <$> Check (\ _B -> unify _A' _A *> check (b ::: _B)))) ps ::: (sig, q, _T')) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify _A' _A *> check (b ::: _B)))) ps ::: (q, _T')) b ::: _B)
   pure (PCon n' (fromList ps'), b')
 
 fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind m [a] -> [Bind m a] -> Bind m [a]
 fieldsP = foldr cons
   where
-  cons p ps = Bind $ \ sig q _A b -> Check $ \ _B -> do
+  cons p ps = Bind $ \ q _A b -> Check $ \ _B -> do
     (_ ::: (q', _A'), _A'') <- expectFunction "when checking nested pattern" _A
-    (p', (ps', b')) <- check (bind (p ::: (sig, q', _A')) (bind (ps ::: (sig, q, _A'')) b) ::: _B)
+    (p', (ps', b')) <- check (bind (p ::: (q', _A')) (bind (ps ::: (q, _A'')) b) ::: _B)
     pure (p':ps', b')
 
 
 allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (Pattern Name)
-allP n = Bind $ \ sig q _A b -> Check $ \ _B -> do
-  when (null sig) (warn (RedundantCatchAll n))
+allP n = Bind $ \ q _A b -> Check $ \ _B -> do
+  case _A of
+    VTRet (_:_) _ -> pure ()
+    _             -> warn (RedundantCatchAll n)
   Binding n q _A |- (PAll n,) <$> check (b ::: _B)
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
-effP n ps v = Bind $ \ sig q _A b -> Check $ \ _B -> do
+effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
+  (sig, _A') <- expectRet "when checking effect pattern" _A
   n' ::: _T <- maybe (freeVariable n) (instantiate const) (lookupInSig n module' graph sig)
-  (ps', b') <- check (bind (fieldsP (Bind (\ _sig q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (VTArrow (Right []) Many _A' _A) |- check (b ::: _B)))) ps ::: (sig, q, _T)) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (VTArrow Nothing Many _A' _A) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (PEff n' (fromList ps') v, b')
 
 
@@ -197,7 +198,7 @@ abstract body = go
       level <- depth
       b' <- Binding n zero t |- go (b (T.free level))
       pure $ TForAll n (T.quote level t) b'
-    VTArrow  (Left n) q a b -> do
+    VTArrow  (Just n) q a b -> do
       level <- depth
       b' <- Binding n q a |- go b
       pure $ TForAll n (T.quote level a) b'
@@ -232,7 +233,7 @@ elabDataDef (dname ::: _T) constructors = do
         check (tlam (go (ts :> d) fs) ::: VTForAll n _T _B)
       VTArrow  n q _A _B -> do
         d <- depth
-        check (lam [(PVal <$> varP (fromLeft __ n), go ts (fs :> d))] ::: VTArrow n q _A _B)
+        check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: VTArrow n q _A _B)
       _T                 -> do
         d <- depth
         pure $ XCon q (TVar . TFree . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
@@ -260,7 +261,7 @@ elabTermDef _T expr@(S.Ann s _ _) = do
   where
   go k = Check $ \ _T -> case _T of
     VTForAll{}               -> check (tlam (go k) ::: _T)
-    VTArrow (Left n) q _A _B -> check (lam [(PVal <$> varP n, go k)] ::: VTArrow (Right []) q _A _B)
+    VTArrow (Just n) q _A _B -> check (lam [(PVal <$> varP n, go k)] ::: VTArrow Nothing q _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
@@ -309,8 +310,12 @@ expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> E
 expectQuantifier = expectMatch (\case{ VTForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
-expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (([Type], Quantity, Type), Type)
-expectTacitFunction = expectMatch (\case{ VTArrow (Right s) q t b -> pure ((s, q, t), b) ; _ -> Nothing }) "_ -> _"
+expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ((Quantity, Type), Type)
+expectTacitFunction = expectMatch (\case{ VTArrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _"
+
+-- | Expect a computation type with effects.
+expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
+expectRet = expectMatch (\case{ VTRet s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
 
 expectSusp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m Type
 expectSusp = expectMatch (\case { VTSusp t -> pure t ; _ -> Nothing }) "{_}"

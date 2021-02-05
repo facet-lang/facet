@@ -156,8 +156,9 @@ hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ do
   f' ::: _F <- synth f
-  (m ::: (q, _A), _B) <- expectFunction "in application" _F
-  a' <- either (const id) extendSig m $ censor @Usage (q ><<) $ check (a ::: _A)
+  (_ ::: (q, _A), _B) <- expectFunction "in application" _F
+  -- FIXME: test _A for Ret and extend the sig
+  a' <- censor @Usage (q ><<) $ check (a ::: _A)
   pure $ mk f' a' ::: _B
 
 
@@ -284,7 +285,7 @@ warn reason = do
 expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Either Name [Type] ::: (Quantity, Type), Type)
+expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
 expectFunction = expectMatch (\case{ VTArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 
@@ -415,11 +416,11 @@ mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m
 mapSynth f = Synth . f . synth
 
 
-bind :: Bind m a ::: ([Type], Quantity, Type) -> Check m b -> Check m (a, b)
-bind (p ::: (s, q, _T)) = runBind p s q _T
+bind :: Bind m a ::: (Quantity, Type) -> Check m b -> Check m (a, b)
+bind (p ::: (q, _T)) = runBind p q _T
 
-newtype Bind m a = Bind { runBind :: forall x . [Type] -> Quantity -> Type -> Check m x -> Check m (a, x) }
+newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check m x -> Check m (a, x) }
   deriving (Functor)
 
 mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
-mapBind f m = Bind $ \ sig q _A b -> mapCheck f (runBind m sig q _A b)
+mapBind f m = Bind $ \ q _A b -> mapCheck f (runBind m q _A b)

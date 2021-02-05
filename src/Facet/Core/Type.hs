@@ -57,7 +57,7 @@ data Type
   = VKType
   | VKInterface
   | VTForAll Name Type (Type -> Type)
-  | VTArrow (Either Name [Type]) Quantity Type Type
+  | VTArrow (Maybe Name) Quantity Type Type
   | VTNe (TVar Level) (Stack Type) (Stack Type)
   | VTSusp Type
   | VTRet [Type] Type
@@ -85,7 +85,7 @@ occursIn p = go
     VKType          -> False
     VKInterface     -> False
     VTForAll _ t b  -> go d t || go (succ d) (b (free d))
-    VTArrow n _ a b -> any (any (go d)) n || go d a || go d b
+    VTArrow _ _ a b -> go d a || go d b
     VTSusp t        -> go d t
     VTRet s t       -> any (go d) s || go d t
     VTNe h ts sp    -> p h || any (go d) ts || any (go d) sp
@@ -122,8 +122,8 @@ showType env = \case
   VKInterface    -> string "Interface"
   VTForAll n t b -> prec 0 $ brace (name n <+> char ':' <+> setPrec 0 (showType env t)) <+> string "->" <+> setPrec 0 (showType (env :> name n) (b (free (Level (length env)))))
   VTArrow n q t b  -> case n of
-    Left  n -> paren (name n <+> char ':' <+> mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
-    Right s -> sig s <+> setPrec 1 (mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
+    Just  n -> paren (name n <+> char ':' <+> mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
+    Nothing -> setPrec 1 (mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
   VTNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
   VTSusp t       -> brace (showType env t)
   VTRet s t      -> sig s <+> showType env t
@@ -150,7 +150,7 @@ data TExpr
   | TInterface
   | TString
   | TForAll Name TExpr TExpr
-  | TArrow (Either Name [TExpr]) Quantity TExpr TExpr
+  | TArrow (Maybe Name) Quantity TExpr TExpr
   | TSusp TExpr
   | TRet [TExpr] TExpr
   | TInst TExpr TExpr
@@ -165,7 +165,7 @@ quote d = \case
   VKType          -> TType
   VKInterface     -> TInterface
   VTForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
-  VTArrow n q a b -> TArrow (map (quote d) <$> n) q (quote d a) (quote d b)
+  VTArrow n q a b -> TArrow n q (quote d a) (quote d b)
   VTSusp t        -> TSusp (quote d t)
   VTRet s t       -> TRet (quote d <$> s) (quote d t)
   VTNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
@@ -180,7 +180,7 @@ eval subst = go where
     TType             -> VKType
     TInterface        -> VKInterface
     TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> Left v) b)
-    TArrow n q a b    -> VTArrow (map (go env) <$> n) q (go env a) (go env b)
+    TArrow n q a b    -> VTArrow n q (go env a) (go env b)
     TSusp t           -> VTSusp (go env t)
     TRet s t          -> VTRet (go env <$> s) (go env t)
     TInst f a         -> go env f $$$ go env a

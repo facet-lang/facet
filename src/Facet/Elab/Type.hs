@@ -54,12 +54,11 @@ forAll (n ::: t) b = Synth $ do
   b' <- Binding n zero vt |- check (b ::: VKType)
   pure $ TForAll n t' b' ::: VKType
 
-(-->) :: Either Name [Check m TExpr] ::: Check m (Quantity, TExpr) -> Check m TExpr -> Synth m TExpr
+(-->) :: Maybe Name ::: Check m (Quantity, TExpr) -> Check m TExpr -> Synth m TExpr
 (n ::: a) --> b = Synth $ do
-  n' <- traverse (traverse (\ e -> check (e ::: VKInterface))) n
   (q', a') <- check (a ::: VKType)
   b' <- check (b ::: VKType)
-  pure $ TArrow n' q' a' b' ::: VKType
+  pure $ TArrow n q' a' b' ::: VKType
 
 infixr 1 -->
 
@@ -78,7 +77,7 @@ synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.KInterface      -> _Interface
   S.TString         -> _String
   S.TForAll n t b   -> forAll (n ::: checkType t) (checkType b)
-  S.TArrow  n q a b -> (map checkInterface <$> n ::: ((maybe Many interpretMul q,) <$> checkType a)) --> checkType b
+  S.TArrow  n q a b -> (either Just (const Nothing) n ::: ((maybe Many interpretMul q,) <$> checkType a)) --> checkType b
   S.TComp s t       -> comp (map checkInterface s) (checkType t)
   S.TApp f a        -> app TApp (synthType f) (checkType a)
   where
