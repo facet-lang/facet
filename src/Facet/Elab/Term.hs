@@ -98,7 +98,7 @@ force :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Synth m a
 force e = Synth $ do
   e' ::: _T <- synth e
   -- FIXME: should we check the signature? or can we rely on it already having been checked?
-  (_s, _T') <- expectComp "when forcing computation" _T
+  (_s, _T') <- expectSusp "when forcing suspended computation" _T
   pure $ e' ::: _T'
 
 
@@ -312,8 +312,8 @@ expectQuantifier = expectMatch (\case{ VTForAll n t b -> pure (n ::: t, b) ; _ -
 expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (([Type], Quantity, Type), Type)
 expectTacitFunction = expectMatch (\case{ VTArrow (Right s) q t b -> pure ((s, q, t), b) ; _ -> Nothing }) "_ -> _"
 
-expectComp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
-expectComp = expectMatch (\case { VTSusp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
+expectSusp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
+expectSusp = expectMatch (\case { VTSusp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
 -- Elaboration
