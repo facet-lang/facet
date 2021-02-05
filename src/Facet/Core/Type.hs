@@ -1,7 +1,6 @@
 module Facet.Core.Type
 ( -- * Types
   Type(..)
-, CType(..)
 , global
 , free
 , metavar
@@ -17,8 +16,6 @@ module Facet.Core.Type
 , showType
   -- * Type expressions
 , TExpr(..)
-, VTExpr(..)
-, CTExpr(..)
   -- * Quotation
 , quote
 , eval
@@ -36,8 +33,6 @@ import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
-import           Facet.Core.Type.Expr
-import           Facet.Core.Type.Value
 import           Facet.Name
 import           Facet.Semiring
 import           Facet.Show

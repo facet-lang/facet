@@ -78,8 +78,6 @@ library
     Facet.Core.Module
     Facet.Core.Term
     Facet.Core.Type
-    Facet.Core.Type.Expr
-    Facet.Core.Type.Value
     Facet.Diff
     Facet.Driver
     Facet.Effect.Parser
