@@ -179,7 +179,7 @@ bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.E
 bindPattern = go where
   go = withSpanB $ \case
     S.PAll n      -> allP n
-    S.PVal p      -> PVal <$> goVal p
+    S.PVal p      -> Bind $ \ q _T -> let _T' = case _T of { VTRet _ _T -> _T ; _ -> _T } in bind (PVal <$> goVal p ::: (q, _T'))
     S.PEff n ps v -> effP n (map goVal ps) v
 
   goVal = withSpanB $ \case
