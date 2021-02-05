@@ -15,11 +15,11 @@ flip
 
 
 _ << _ [assoc]
-: { A, B, C : Type } -> (f : 1 (B -> C)) -> (g : 1 (A -> B)) -> (A -> C)
+: { A, B, C : Type } -> (f : B -> C) -> (g : A -> B) -> (A -> C)
 { a -> f (g a) }
 
 _ >> _ [assoc]
-: { A, B, C : Type } -> (g : 1 (A -> B)) -> (f : 1 (B -> C)) -> (A -> C)
+: { A, B, C : Type } -> (g : A -> B) -> (f : B -> C) -> (A -> C)
 { a -> f (g a) }
 
 
