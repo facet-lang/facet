@@ -179,7 +179,7 @@ bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.E
 bindPattern = go where
   go = withSpanB $ \case
     S.PAll n      -> allP n
-    S.PVal p      -> Bind $ \ q _T -> let _T' = case _T of { VTRet _ _T -> _T ; _ -> _T } in bind (PVal <$> goVal p ::: (q, _T'))
+    S.PVal p      -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, snd (retValType _T)))
     S.PEff n ps v -> effP n (map goVal ps) v
 
   goVal = withSpanB $ \case
@@ -317,6 +317,11 @@ expectTacitFunction = expectMatch (\case{ VTArrow Nothing q t b -> pure ((q, t),
 -- | Expect a computation type with effects.
 expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
 expectRet = expectMatch (\case{ VTRet s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
+
+retValType :: Type -> ([Type], Type)
+retValType = \case
+  VTRet sig _T -> (sig, _T)
+  _T           -> ([],  _T)
 
 expectSusp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m Type
 expectSusp = expectMatch (\case { VTSusp t -> pure t ; _ -> Nothing }) "{_}"
