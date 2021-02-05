@@ -39,6 +39,7 @@ import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
 import           Facet.Core.Type.Expr
+import           Facet.Core.Type.Value
 import           Facet.Name
 import           Facet.Semiring
 import           Facet.Show
@@ -59,12 +60,6 @@ data VType
   | VTSusp VType
   | VTRet [VType] VType
   | VTString
-
-data CType
-  = CForAll Name CType (CType -> CType)
-  | CArrow (Maybe Name) Quantity CType CType
-  | CNe (TVar Level) (Stack CType) (Stack CType)
-  | CRet [CType] VType
 
 
 global :: Q Name -> VType
