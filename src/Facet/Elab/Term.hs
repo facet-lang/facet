@@ -91,7 +91,7 @@ lam cs = Check $ \ _T -> do
 
 thunk :: Algebra sig m => Check m a -> Check m a
 thunk e = Check $ \case
-  VTComp s t -> extendSig s $ check (e ::: t)
+  VTSusp s t -> extendSig s $ check (e ::: t)
   t          -> check (e ::: t)
 
 force :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Synth m a
@@ -313,7 +313,7 @@ expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -
 expectTacitFunction = expectMatch (\case{ VTArrow (Right s) q t b -> pure ((s, q, t), b) ; _ -> Nothing }) "_ -> _"
 
 expectComp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
-expectComp = expectMatch (\case { VTComp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
+expectComp = expectMatch (\case { VTSusp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
 
 
 -- Elaboration

@@ -59,7 +59,7 @@ data Type
   | VTForAll Name Type (Type -> Type)
   | VTArrow (Either Name [Type]) Quantity Type Type
   | VTNe (TVar Level) (Stack Type) (Stack Type)
-  | VTComp [Type] Type
+  | VTSusp [Type] Type
   | VTString
 
 
@@ -85,7 +85,7 @@ occursIn p = go
     VKInterface     -> False
     VTForAll _ t b  -> go d t || go (succ d) (b (free d))
     VTArrow n _ a b -> any (any (go d)) n || go d a || go d b
-    VTComp s t      -> any (go d) s || go d t
+    VTSusp s t      -> any (go d) s || go d t
     VTNe h ts sp    -> p h || any (go d) ts || any (go d) sp
     VTString        -> False
 
@@ -123,7 +123,7 @@ showType env = \case
     Left  n -> paren (name n <+> char ':' <+> mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
     Right s -> sig s <+> setPrec 1 (mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
   VTNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
-  VTComp s t     -> brace (sig s <+> showType env t)
+  VTSusp s t     -> brace (sig s <+> showType env t)
   VTString       -> string "String"
   where
   sig s = bracket (commaSep (map (showType env) s))
@@ -162,7 +162,7 @@ quote d = \case
   VKInterface     -> TInterface
   VTForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
   VTArrow n q a b -> TArrow (map (quote d) <$> n) q (quote d a) (quote d b)
-  VTComp s t      -> TComp (quote d <$> s) (quote d t)
+  VTSusp s t      -> TComp (quote d <$> s) (quote d t)
   VTNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
   VTString        -> TString
 
@@ -176,7 +176,7 @@ eval subst = go where
     TInterface        -> VKInterface
     TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b    -> VTArrow (map (go env) <$> n) q (go env a) (go env b)
-    TComp s t         -> VTComp (go env <$> s) (go env t)
+    TComp s t         -> VTSusp (go env <$> s) (go env t)
     TInst f a         -> go env f $$$ go env a
     TApp  f a         -> go env f $$  go env a
     TString           -> VTString
