@@ -12,7 +12,7 @@ handle : { E, A : Type } -> (h : E -> A) -> [Error E] A -> [Error E] A
 { [a] -> { catch a h } }
 
 try : { E, A : Type } -> [Error E] A -> [Error E] Either E A
-{ [a] -> handle inl (inr a) }
+{ [a] -> catch (inr a) inl }
 
 except : { E, A : Type } -> (e : Either E A) -> [Error E] A
 { either throw id e }
