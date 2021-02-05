@@ -110,3 +110,13 @@ Regardless, values and computations are related via an adjunction between functo
 ```
 
 Importantly, these are all term-level judgements; none of these describe the type formers. There is no thunk type per se; rather, types are grouped into the computation types and the value types, rather like polarization does.
+
+
+----
+
+
+## Feb 5th, 2021
+
+[Reading the slides from another of Levy’s presentations](https://www.cs.bham.ac.uk/~pbl/mgsfastlam.pdf), we see that CBPV’s value/computation divide can be seen as relating to the β and η laws for a given type. Since a value _is_, a term at value _type_ can’t perform effects, whereas a computation _returning_ a value might. Levy uses a set _E_ = {_CRASH_, _BANG_} of errors to illustrate; e.g. “a computation like Γ ⊢c M : A denotes a function ⟦M⟧ : ⟦Γ⟧ → ⟦A⟧ + E”.
+
+One can interpret the β and η laws in the pure lambda calculus as meaning “anything at type Bool is a boolean” (for one). But this fails to hold for computations: `error CRASH : Bool` no longer has this property, and is clearly not a value.
