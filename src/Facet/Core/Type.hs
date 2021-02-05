@@ -3,6 +3,7 @@ module Facet.Core.Type
   TVar(..)
   -- * Types
 , VType(..)
+, CType(..)
 , global
 , free
 , metavar
@@ -64,6 +65,9 @@ data VType
   | VTSusp VType
   | VTRet [VType] VType
   | VTString
+
+
+data CType
 
 
 global :: Q Name -> VType
