@@ -120,3 +120,27 @@ Importantly, these are all term-level judgements; none of these describe the typ
 [Reading the slides from another of Levy’s presentations](https://www.cs.bham.ac.uk/~pbl/mgsfastlam.pdf), we see that CBPV’s value/computation divide can be seen as relating to the β and η laws for a given type. Since a value _is_, a term at value _type_ can’t perform effects, whereas a computation _returning_ a value might. Levy uses a set _E_ = {_CRASH_, _BANG_} of errors to illustrate; e.g. “a computation like Γ ⊢c M : A denotes a function ⟦M⟧ : ⟦Γ⟧ → ⟦A⟧ + E”.
 
 One can interpret the β and η laws in the pure lambda calculus as meaning “anything at type Bool is a boolean” (for one). But this fails to hold for computations: `error CRASH : Bool` no longer has this property, and is clearly not a value.
+
+Facet’s value types include kinds like Type and Interface, (currently) built-in types like String, and user-defined datatypes. Values themselves, then, are inhabitants of these types, including e.g. fully-applied constructors. In CBPV values also include variables, but that’s less clear in Facet.
+
+In Facet, we want functions to act on both values and computations—values for the usual meaning of function application, and computations for functions-as-handlers. Thus, it seems the context should hold variables of computation type. Consider:
+
+```facet
+try : { E, A : Type } -> [Error E] A -> [Error E] Either E A
+{ [a] -> catch (inr a) inl }
+```
+
+Here, we want to forward a computation `a` along to `catch` for handling. This isn’t going to work if `a` is of value type, because any errors will have been thrown in the caller’s context, and `try` will never have the opportunity to catch them.
+
+On the other hand, a regular handler (here focusing solely on `Throw`) paints a slightly different picture:
+
+```facet
+rethrow : { E, E' : Type } -> (f : E' -> E) -> [Throw E'] A -> [Throw E] A
+{ [throw e ; _] -> throw (f e)
+, a             -> a }
+```
+In the first clause, we only bind a single variable (`e`), of value type. In the second, again, `a` is a variable of value type: if there were effects other than `throw` in that position, they should have been issued/handled before control reaches this point.
+
+As discussed above, computations embed values via `return`; values embed computations via `thunk` (in Facet, `{x}` is a 0-ary suspended computation). So the general solution is probably to place variables of computation type in the context and treat value patterns as automatically lifted over `return`s.
+
+(Alternatively, the pattern `[a]` could bind a variable `a` of suspended computation type, requiring us to `!` (force) it to use it elsewhere. The two approaches are broadly equivalent, but it feels a bit strange to change the apparent type like that.)
