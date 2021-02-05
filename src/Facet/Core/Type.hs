@@ -45,14 +45,14 @@ import           Prelude hiding (lookup)
 -- Types
 
 data Type
-  = VKType
-  | VKInterface
-  | VTForAll Name Type (Type -> Type)
-  | VTArrow (Maybe Name) Quantity Type Type
-  | VTNe (Var Meta Level) (Stack Type) (Stack Type)
-  | VTSusp Type
-  | VTRet [Type] Type
-  | VTString
+  = VType
+  | VInterface
+  | VForAll Name Type (Type -> Type)
+  | VArrow (Maybe Name) Quantity Type Type
+  | VNe (Var Meta Level) (Stack Type) (Stack Type)
+  | VSusp Type
+  | VRet [Type] Type
+  | VString
 
 
 global :: Q Name -> Type
@@ -66,34 +66,34 @@ metavar = var . Metavar
 
 
 var :: Var Meta Level -> Type
-var v = VTNe v Nil Nil
+var v = VNe v Nil Nil
 
 
 unRet :: Has Empty sig m => Type -> m ([Type], Type)
 unRet = \case
-  VTRet sig _T -> pure (sig, _T)
-  _T           -> empty
+  VRet sig _T -> pure (sig, _T)
+  _T          -> empty
 
 
 occursIn :: (Var Meta Level -> Bool) -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
-    VKType          -> False
-    VKInterface     -> False
-    VTForAll _ t b  -> go d t || go (succ d) (b (free d))
-    VTArrow _ _ a b -> go d a || go d b
-    VTSusp t        -> go d t
-    VTRet s t       -> any (go d) s || go d t
-    VTNe h ts sp    -> p h || any (go d) ts || any (go d) sp
-    VTString        -> False
+    VType          -> False
+    VInterface     -> False
+    VForAll _ t b  -> go d t || go (succ d) (b (free d))
+    VArrow _ _ a b -> go d a || go d b
+    VSusp t        -> go d t
+    VRet s t       -> any (go d) s || go d t
+    VNe h ts sp    -> p h || any (go d) ts || any (go d) sp
+    VString        -> False
 
 
 -- Elimination
 
 ($$) :: HasCallStack => Type -> Type -> Type
-VTNe h ts es $$ a = VTNe h ts (es :> a)
-_            $$ _ = error "can’t apply non-neutral/forall type"
+VNe h ts es $$ a = VNe h ts (es :> a)
+_           $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
 ($$*) = foldl' ($$)
@@ -101,9 +101,9 @@ _            $$ _ = error "can’t apply non-neutral/forall type"
 infixl 9 $$, $$*
 
 ($$$) :: HasCallStack => Type -> Type -> Type
-VTNe h ts es   $$$ t = VTNe h (ts :> t) es
-VTForAll _ _ b $$$ t = b t
-_              $$$ _ = error "can’t apply non-neutral/forall type"
+VNe h ts es   $$$ t = VNe h (ts :> t) es
+VForAll _ _ b $$$ t = b t
+_             $$$ _ = error "can’t apply non-neutral/forall type"
 
 ($$$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
 ($$$*) = foldl' ($$)
@@ -115,16 +115,16 @@ infixl 9 $$$, $$$*
 
 showType :: Stack ShowP -> Type -> ShowP
 showType env = \case
-  VKType         -> string "Type"
-  VKInterface    -> string "Interface"
-  VTForAll n t b -> prec 0 $ brace (name n <+> char ':' <+> setPrec 0 (showType env t)) <+> string "->" <+> setPrec 0 (showType (env :> name n) (b (free (Level (length env)))))
-  VTArrow n q t b  -> case n of
+  VType         -> string "Type"
+  VInterface    -> string "Interface"
+  VForAll n t b -> prec 0 $ brace (name n <+> char ':' <+> setPrec 0 (showType env t)) <+> string "->" <+> setPrec 0 (showType (env :> name n) (b (free (Level (length env)))))
+  VArrow n q t b  -> case n of
     Just  n -> paren (name n <+> char ':' <+> mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
     Nothing -> setPrec 1 (mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
-  VTNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
-  VTSusp t       -> brace (showType env t)
-  VTRet s t      -> sig s <+> showType env t
-  VTString       -> string "String"
+  VNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
+  VSusp t       -> brace (showType env t)
+  VRet s t      -> sig s <+> showType env t
+  VString       -> string "String"
   where
   sig s = bracket (commaSep (map (showType env) s))
   ($$*) = foldl' (\ f a -> prec 10 (f <+> a))
@@ -159,14 +159,14 @@ data TExpr
 
 quote :: Level -> Type -> TExpr
 quote d = \case
-  VKType          -> TType
-  VKInterface     -> TInterface
-  VTForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
-  VTArrow n q a b -> TArrow n q (quote d a) (quote d b)
-  VTSusp t        -> TSusp (quote d t)
-  VTRet s t       -> TRet (quote d <$> s) (quote d t)
-  VTNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
-  VTString        -> TString
+  VType          -> TType
+  VInterface     -> TInterface
+  VForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
+  VArrow n q a b -> TArrow n q (quote d a) (quote d b)
+  VSusp t        -> TSusp (quote d t)
+  VRet s t       -> TRet (quote d <$> s) (quote d t)
+  VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
+  VString        -> TString
 
 eval :: HasCallStack => Subst -> Stack (Either Type a) -> TExpr -> Type
 eval subst = go where
@@ -174,15 +174,15 @@ eval subst = go where
     TVar (Global n)  -> global n
     TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TVar (Metavar m) -> maybe (metavar m) tm (lookupMeta m subst)
-    TType            -> VKType
-    TInterface       -> VKInterface
-    TForAll n t b    -> VTForAll n (go env t) (\ v -> go (env :> Left v) b)
-    TArrow n q a b   -> VTArrow n q (go env a) (go env b)
-    TSusp t          -> VTSusp (go env t)
-    TRet s t         -> VTRet (go env <$> s) (go env t)
+    TType            -> VType
+    TInterface       -> VInterface
+    TForAll n t b    -> VForAll n (go env t) (\ v -> go (env :> Left v) b)
+    TArrow n q a b   -> VArrow n q (go env a) (go env b)
+    TSusp t          -> VSusp (go env t)
+    TRet s t         -> VRet (go env <$> s) (go env t)
     TInst f a        -> go env f $$$ go env a
     TApp  f a        -> go env f $$  go env a
-    TString          -> VTString
+    TString          -> VString
 
 
 -- Substitution

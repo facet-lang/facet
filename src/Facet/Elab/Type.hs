@@ -36,45 +36,45 @@ tvar n = Synth $ views context_ (lookupInContext n) >>= \case
 
 
 _Type :: Synth m TExpr
-_Type = Synth $ pure $ TType ::: VKType
+_Type = Synth $ pure $ TType ::: VType
 
 _Interface :: Synth m TExpr
-_Interface = Synth $ pure $ TInterface ::: VKType
+_Interface = Synth $ pure $ TInterface ::: VType
 
 _String :: Synth m TExpr
-_String = Synth $ pure $ TString ::: VKType
+_String = Synth $ pure $ TString ::: VType
 
 
 forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
 forAll (n ::: t) b = Synth $ do
-  t' <- check (t ::: VKType)
+  t' <- check (t ::: VType)
   env <- views context_ toEnv
   subst <- get
   let vt = eval subst (Left <$> env) t'
-  b' <- Binding n zero vt |- check (b ::: VKType)
-  pure $ TForAll n t' b' ::: VKType
+  b' <- Binding n zero vt |- check (b ::: VType)
+  pure $ TForAll n t' b' ::: VType
 
 (-->) :: Algebra sig m => Maybe Name ::: Check m (Quantity, TExpr) -> Check m TExpr -> Synth m TExpr
 (n ::: a) --> b = Synth $ do
-  (q', a') <- check (a ::: VKType)
-  b' <- check (b ::: VKType)
-  pure $ TArrow n q' a' b' ::: VKType
+  (q', a') <- check (a ::: VType)
+  b' <- check (b ::: VType)
+  pure $ TArrow n q' a' b' ::: VType
 
 infixr 1 -->
 
 
 comp :: Algebra sig m => Check m TExpr -> Synth m TExpr
 comp t = Synth $ do
-  t' <- check (t ::: VKType)
+  t' <- check (t ::: VType)
   -- FIXME: classify types by universe (value/computation) and check that this is a computation type being suspended
-  pure $ TSusp t' ::: VKType
+  pure $ TSusp t' ::: VType
 
 ret :: Algebra sig m => [Check m TExpr] -> Check m TExpr -> Synth m TExpr
 ret s t = Synth $ do
-  s' <- traverse (check . (::: VKInterface)) s
+  s' <- traverse (check . (::: VInterface)) s
   -- FIXME: classify types by universe (value/computation) and check that this is a value type being returned
-  t' <- check (t ::: VKType)
-  pure $ TRet s' t' ::: VKType
+  t' <- check (t ::: VType)
+  pure $ TRet s' t' ::: VType
 
 
 synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr

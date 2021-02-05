@@ -101,7 +101,7 @@ instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a :::
 instantiate inst = go
   where
   go (e ::: _T) = case _T of
-    VTForAll _ _T _B -> do
+    VForAll _ _T _B -> do
       m <- meta _T
       go (inst e (TVar (Metavar m)) ::: _B (metavar m))
     _                -> pure $ e ::: _T
@@ -114,7 +114,7 @@ as :: (HasCallStack, Algebra sig m) => Check m Expr ::: Check m TExpr -> Synth m
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
-  _T' <- T.eval subst (Left <$> env) <$> check (_T ::: VKType)
+  _T' <- T.eval subst (Left <$> env) <$> check (_T ::: VType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -142,7 +142,7 @@ lookupInContext (m:.:n)
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 lookupInSig :: Q Name -> Module -> Graph -> [Type] -> Maybe (Q Name ::: Type)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
-  VTNe (Global q@(m':.:_)) _ _ -> do
+  T.VNe (Global q@(m':.:_)) _ _ -> do
     guard (m == Nil || m == m')
     _ :=: Just (DInterface defs) ::: _ <- lookupQ graph mod q
     _ :=: _ ::: _T <- lookupScope n defs
@@ -286,7 +286,7 @@ expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> S
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-expectFunction = expectMatch (\case{ VTArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
+expectFunction = expectMatch (\case{ VArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Unification
@@ -322,27 +322,27 @@ unify t1 t2 = type' t1 t2
   nope = couldNotUnify "mismatch" t1 t2
 
   type' = curry $ \case
-    (VTNe (Metavar v1) Nil Nil, VTNe (Metavar v2) Nil Nil) -> flexFlex v1 v2
-    (VTNe (Metavar v1) Nil Nil, t2)                        -> solve v1 t2
-    (t1, VTNe (Metavar v2) Nil Nil)                        -> solve v2 t1
-    (VKType, VKType)                                       -> pure ()
-    (VKType, _)                                            -> nope
-    (VKInterface, VKInterface)                             -> pure ()
-    (VKInterface, _)                                       -> nope
-    (VTForAll n t1 b1, VTForAll _ t2 b2)                   -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
-    (VTForAll{}, _)                                        -> nope
+    (T.VNe (Metavar v1) Nil Nil, T.VNe (Metavar v2) Nil Nil) -> flexFlex v1 v2
+    (T.VNe (Metavar v1) Nil Nil, t2)                         -> solve v1 t2
+    (t1, T.VNe (Metavar v2) Nil Nil)                         -> solve v2 t1
+    (VType, VType)                                           -> pure ()
+    (VType, _)                                               -> nope
+    (VInterface, VInterface)                                 -> pure ()
+    (VInterface, _)                                          -> nope
+    (VForAll n t1 b1, VForAll _ t2 b2)                       -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
+    (VForAll{}, _)                                           -> nope
     -- FIXME: this must unify the signatures
-    (VTArrow _ _ a1 b1, VTArrow _ _ a2 b2)                 -> type' a1 a2 >> type' b1 b2
-    (VTArrow{}, _)                                         -> nope
-    (VTSusp t1, VTSusp t2)                                 -> type' t1 t2
-    (VTSusp{}, _)                                          -> nope
-    (VTRet s1 t1, VTRet s2 t2)                             -> sig s1 s2 >> type' t1 t2
-    (VTRet _ t1, t2)                                       -> type' t1 t2
-    (t1, VTRet _ t2)                                       -> type' t1 t2
-    (VTNe v1 ts1 sp1, VTNe v2 ts2 sp2)                     -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
-    (VTNe{}, _)                                            -> nope
-    (VTString, VTString)                                   -> pure ()
-    (VTString, _)                                          -> nope
+    (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                     -> type' a1 a2 >> type' b1 b2
+    (VArrow{}, _)                                            -> nope
+    (VSusp t1, VSusp t2)                                     -> type' t1 t2
+    (VSusp{}, _)                                             -> nope
+    (VRet s1 t1, VRet s2 t2)                                 -> sig s1 s2 >> type' t1 t2
+    (VRet _ t1, t2)                                          -> type' t1 t2
+    (t1, VRet _ t2)                                          -> type' t1 t2
+    (T.VNe v1 ts1 sp1, T.VNe v2 ts2 sp2)                     -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
+    (T.VNe{}, _)                                             -> nope
+    (T.VString, T.VString)                                   -> pure ()
+    (T.VString, _)                                           -> nope
 
   var = curry $ \case
     (Global q1, Global q2)   -> unless (q1 == q2) nope
