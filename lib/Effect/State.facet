@@ -9,7 +9,7 @@ interface State : (S : Type) -> Interface
 { get : S
 , put : S -> Unit }
 
-modify : { S : Type } -> (f : S -> S) -> { [State S] Unit }
+modify : { S : Type } -> (f : S -> S) -> [State S] Unit
 { put (f get) }
 
 

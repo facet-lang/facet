@@ -12,7 +12,7 @@ interface Input : Interface
 interface Output : Interface
 { write : String -> Unit }
 
-writeLine : (str : String) -> { [Output] Unit }
+writeLine : (str : String) -> [Output] Unit
 { write str ; write "\n" }
 
 

@@ -6,5 +6,5 @@ import Data.Unit
 interface Empty : Interface
 { empty : { A : Type } -> A }
 
-guard : (c : Bool) -> { [Empty] Unit }
+guard : (c : Bool) -> [Empty] Unit
 { if c { unit } { empty } }

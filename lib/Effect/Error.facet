@@ -8,13 +8,13 @@ interface Error : (E : Type) -> Interface
 { throw : { A : Type } -> E -> A
 , catch : { A : Type } -> [Error E] A -> (E -> A) -> A }
 
-handle : { E, A : Type } -> (h : E -> A) -> [Error E] A -> { [Error E] A }
+handle : { E, A : Type } -> (h : E -> A) -> [Error E] A -> [Error E] A
 { [a] -> { catch a h } }
 
-try : { E, A : Type } -> [Error E] A -> { [Error E] Either E A }
+try : { E, A : Type } -> [Error E] A -> [Error E] Either E A
 { [a] -> handle inl (inr a) }
 
-except : { E, A : Type } -> (e : Either E A) -> { [Error E] A }
+except : { E, A : Type } -> (e : Either E A) -> [Error E] A
 { either throw id e }
 
 
