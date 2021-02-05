@@ -87,10 +87,11 @@ lam cs = Check $ \ _T -> do
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
-thunk :: Check m a -> Check m a
+thunk :: Algebra sig m => Check m a -> Check m a
 thunk e = Check $ \case
-  VTSusp t -> check (e ::: t)
-  t        -> check (e ::: t)
+  VTSusp t  -> check (e ::: t)
+  VTRet s t -> extendSig s $ check (e ::: t)
+  t         -> check (e ::: t)
 
 force :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Synth m a
 force e = Synth $ do
