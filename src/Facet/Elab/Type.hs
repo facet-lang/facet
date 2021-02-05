@@ -63,11 +63,18 @@ forAll (n ::: t) b = Synth $ do
 infixr 1 -->
 
 
-comp :: [Check m TExpr] -> Check m TExpr -> Synth m TExpr
-comp s t = Synth $ do
-  s' <- traverse (check . (::: VKInterface)) s
+comp :: Check m TExpr -> Synth m TExpr
+comp t = Synth $ do
   t' <- check (t ::: VKType)
-  pure $ TSusp (TRet s' t') ::: VKType
+  -- FIXME: classify types by universe (value/computation) and check that this is a computation type being suspended
+  pure $ TSusp t' ::: VKType
+
+ret :: [Check m TExpr] -> Check m TExpr -> Synth m TExpr
+ret s t = Synth $ do
+  s' <- traverse (check . (::: VKInterface)) s
+  -- FIXME: classify types by universe (value/computation) and check that this is a value type being returned
+  t' <- check (t ::: VKType)
+  pure $ TRet s' t' ::: VKType
 
 
 synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
@@ -77,8 +84,9 @@ synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.KInterface      -> _Interface
   S.TString         -> _String
   S.TForAll n t b   -> forAll (n ::: checkType t) (checkType b)
-  S.TArrow  n q a b -> (either Just (const Nothing) n ::: ((maybe Many interpretMul q,) <$> checkType a)) --> checkType b
-  S.TComp s t       -> comp (map checkInterface s) (checkType t)
+  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkType a)) --> checkType b
+  S.TComp t         -> comp (checkType t)
+  S.TRet s t        -> ret (map checkInterface s) (checkType t)
   S.TApp f a        -> app TApp (synthType f) (checkType a)
   where
   interpretMul = \case
