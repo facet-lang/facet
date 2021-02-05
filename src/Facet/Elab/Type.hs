@@ -29,10 +29,10 @@ import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m TExpr
 tvar n = Synth $ views context_ (lookupInContext n) >>= \case
-  Just (i, q, _T) -> use i q $> (TVar (TFree i) ::: _T)
+  Just (i, q, _T) -> use i q $> (TVar (Free i) ::: _T)
   Nothing         -> do
     q :=: _ ::: _T <- resolveQ n
-    instantiate TInst $ TVar (TGlobal q) ::: _T
+    instantiate TInst $ TVar (Global q) ::: _T
 
 
 _Type :: Synth m TExpr

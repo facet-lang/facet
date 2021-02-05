@@ -1,23 +1,13 @@
 module Facet.Core.Type.Expr
-( -- * Variables
-  TVar(..)
-  -- * Value types
-, VTExpr(..)
+( -- * Value types
+  VTExpr(..)
   -- * Computation types
 , CTExpr(..)
 ) where
 
 import Facet.Name
+import Facet.Syntax
 import Facet.Usage
-
--- Variables
-
-data TVar a
-  = TGlobal (Q Name) -- ^ Global variables, considered equal by 'Q' 'Name'.
-  | TFree a
-  | TMetavar Meta
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
 
 -- Value types
 
@@ -32,7 +22,7 @@ data VTExpr
 -- Computation types
 
 data CTExpr
-  = CEVar (TVar Index)
+  = CEVar (Var Index)
   | CEForAll Name CTExpr CTExpr
   | CEArrow (Maybe Name) Quantity CTExpr CTExpr
   | CEInst CTExpr CTExpr

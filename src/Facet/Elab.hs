@@ -103,7 +103,7 @@ instantiate inst = go
   go (e ::: _T) = case _T of
     VTForAll _ _T _B -> do
       m <- meta _T
-      go (inst e (TVar (TMetavar m)) ::: _B (metavar m))
+      go (inst e (TVar (Metavar m)) ::: _B (metavar m))
     _                -> pure $ e ::: _T
 
 
@@ -142,7 +142,7 @@ lookupInContext (m:.:n)
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 lookupInSig :: Q Name -> Module -> Graph -> [Type] -> Maybe (Q Name ::: Type)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
-  VTNe (TGlobal q@(m':.:_)) _ _ -> do
+  VTNe (Global q@(m':.:_)) _ _ -> do
     guard (m == Nil || m == m')
     _ :=: Just (DInterface defs) ::: _ <- lookupQ graph mod q
     _ :=: _ ::: _T <- lookupScope n defs
@@ -322,35 +322,35 @@ unify t1 t2 = type' t1 t2
   nope = couldNotUnify "mismatch" t1 t2
 
   type' = curry $ \case
-    (VTNe (TMetavar v1) Nil Nil, VTNe (TMetavar v2) Nil Nil) -> flexFlex v1 v2
-    (VTNe (TMetavar v1) Nil Nil, t2)                         -> solve v1 t2
-    (t1, VTNe (TMetavar v2) Nil Nil)                         -> solve v2 t1
-    (VKType, VKType)                                         -> pure ()
-    (VKType, _)                                              -> nope
-    (VKInterface, VKInterface)                               -> pure ()
-    (VKInterface, _)                                         -> nope
-    (VTForAll n t1 b1, VTForAll _ t2 b2)                     -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
-    (VTForAll{}, _)                                          -> nope
+    (VTNe (Metavar v1) Nil Nil, VTNe (Metavar v2) Nil Nil) -> flexFlex v1 v2
+    (VTNe (Metavar v1) Nil Nil, t2)                        -> solve v1 t2
+    (t1, VTNe (Metavar v2) Nil Nil)                        -> solve v2 t1
+    (VKType, VKType)                                       -> pure ()
+    (VKType, _)                                            -> nope
+    (VKInterface, VKInterface)                             -> pure ()
+    (VKInterface, _)                                       -> nope
+    (VTForAll n t1 b1, VTForAll _ t2 b2)                   -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
+    (VTForAll{}, _)                                        -> nope
     -- FIXME: this must unify the signatures
-    (VTArrow _ _ a1 b1, VTArrow _ _ a2 b2)                   -> type' a1 a2 >> type' b1 b2
-    (VTArrow{}, _)                                           -> nope
-    (VTSusp t1, VTSusp t2)                                   -> type' t1 t2
-    (VTSusp{}, _)                                            -> nope
-    (VTRet s1 t1, VTRet s2 t2)                               -> sig s1 s2 >> type' t1 t2
-    (VTRet _ t1, t2)                                         -> type' t1 t2
-    (t1, VTRet _ t2)                                         -> type' t1 t2
-    (VTNe v1 ts1 sp1, VTNe v2 ts2 sp2)                       -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
-    (VTNe{}, _)                                              -> nope
-    (VTString, VTString)                                     -> pure ()
-    (VTString, _)                                            -> nope
+    (VTArrow _ _ a1 b1, VTArrow _ _ a2 b2)                 -> type' a1 a2 >> type' b1 b2
+    (VTArrow{}, _)                                         -> nope
+    (VTSusp t1, VTSusp t2)                                 -> type' t1 t2
+    (VTSusp{}, _)                                          -> nope
+    (VTRet s1 t1, VTRet s2 t2)                             -> sig s1 s2 >> type' t1 t2
+    (VTRet _ t1, t2)                                       -> type' t1 t2
+    (t1, VTRet _ t2)                                       -> type' t1 t2
+    (VTNe v1 ts1 sp1, VTNe v2 ts2 sp2)                     -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
+    (VTNe{}, _)                                            -> nope
+    (VTString, VTString)                                   -> pure ()
+    (VTString, _)                                          -> nope
 
   var = curry $ \case
-    (TGlobal q1, TGlobal q2)   -> unless (q1 == q2) nope
-    (TGlobal{}, _)             -> nope
-    (TFree v1, TFree v2)       -> unless (v1 == v2) nope
-    (TFree{}, _)               -> nope
-    (TMetavar m1, TMetavar m2) -> unless (m1 == m2) nope
-    (TMetavar{}, _)            -> nope
+    (Global q1, Global q2)   -> unless (q1 == q2) nope
+    (Global{}, _)            -> nope
+    (Free v1, Free v2)       -> unless (v1 == v2) nope
+    (Free{}, _)              -> nope
+    (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
+    (Metavar{}, _)           -> nope
 
   spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
@@ -368,7 +368,7 @@ unify t1 t2 = type' t1 t2
 
   solve v t = do
     d <- depth
-    if occursIn (== TMetavar v) d t then
+    if occursIn (== Metavar v) d t then
       mismatch "infinite type" (Right (metavar v)) t
     else
       gets (T.lookupMeta v) >>= \case

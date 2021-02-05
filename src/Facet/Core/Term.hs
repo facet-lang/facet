@@ -1,8 +1,6 @@
 module Facet.Core.Term
-( -- * Term variables
-  Var(..)
-  -- * Patterns
-, ValuePattern(..)
+( -- * Patterns
+  ValuePattern(..)
 , Pattern(..)
 , pvar
 , pcon
@@ -37,15 +35,8 @@ import           Facet.Name
 import           Facet.Pretty (toAlpha)
 import           Facet.Show
 import           Facet.Stack
+import           Facet.Syntax
 import           GHC.Stack
-
--- Term variables
-
-data Var a
-  = Global (Q Name) -- ^ Global variables, considered equal by 'Q' 'Name'.
-  | Free a
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
 
 -- Patterns
 
@@ -168,6 +159,7 @@ showValue tenv env = \case
   head = \case
     Global (m :.: n) -> foldr (<.>) (name n) (text <$> m)
     Free v           -> env ! getIndex (levelToIndex (Level (length env)) v)
+    Metavar _        -> error "metavar in term"
 
 
 -- Term expressions
@@ -198,12 +190,13 @@ quote d = \case
 eval :: HasCallStack => T.Subst -> Stack (Either T.Type Value) -> Expr -> Value
 eval subst = go where
   go env = \case
-    XVar (Global n) -> global n
-    XVar (Free v)   -> fromRight (error ("type variable at index " <> show v)) (env ! getIndex v)
-    XTLam b         -> VTLam (\ _T -> go (env :> Left _T) b)
-    XLam cs         -> VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (\ env' v -> env' :> Right v) env p) b)) cs)
-    XInst f a       -> go env f $$$ T.eval subst env a
-    XApp  f a       -> go env f $$ go env a
-    XCon n ts fs    -> VCon n (T.eval subst env <$> ts) (go env <$> fs)
-    XString s       -> VString s
-    XOp n           -> VOp n Nil Nil
+    XVar (Global n)  -> global n
+    XVar (Free v)    -> fromRight (error ("type variable at index " <> show v)) (env ! getIndex v)
+    XVar (Metavar _) -> error "metavar in term"
+    XTLam b          -> VTLam (\ _T -> go (env :> Left _T) b)
+    XLam cs          -> VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (\ env' v -> env' :> Right v) env p) b)) cs)
+    XInst f a        -> go env f $$$ T.eval subst env a
+    XApp  f a        -> go env f $$ go env a
+    XCon n ts fs     -> VCon n (T.eval subst env <$> ts) (go env <$> fs)
+    XString s        -> VString s
+    XOp n            -> VOp n Nil Nil

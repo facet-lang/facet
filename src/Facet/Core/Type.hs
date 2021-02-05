@@ -1,8 +1,6 @@
 module Facet.Core.Type
-( -- * Type variables
-  TVar(..)
-  -- * Types
-, Type(..)
+( -- * Types
+  Type(..)
 , CType(..)
 , global
 , free
@@ -56,23 +54,23 @@ data Type
   | VKInterface
   | VTForAll Name Type (Type -> Type)
   | VTArrow (Maybe Name) Quantity Type Type
-  | VTNe (TVar Level) (Stack Type) (Stack Type)
+  | VTNe (Var Level) (Stack Type) (Stack Type)
   | VTSusp Type
   | VTRet [Type] Type
   | VTString
 
 
 global :: Q Name -> Type
-global = var . TGlobal
+global = var . Global
 
 free :: Level -> Type
-free = var . TFree
+free = var . Free
 
 metavar :: Meta -> Type
-metavar = var . TMetavar
+metavar = var . Metavar
 
 
-var :: TVar Level -> Type
+var :: Var Level -> Type
 var v = VTNe v Nil Nil
 
 
@@ -82,7 +80,7 @@ unRet = \case
   _T           -> empty
 
 
-occursIn :: (TVar Level -> Bool) -> Level -> Type -> Bool
+occursIn :: (Var Level -> Bool) -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
@@ -137,9 +135,9 @@ showType env = \case
   ($$*) = foldl' (\ f a -> prec 10 (f <+> a))
   infixl 9 $$*
   head = \case
-    TGlobal q  -> qname q
-    TFree v    -> env ! getIndex (levelToIndex (Level (length env)) v)
-    TMetavar m -> char '?' <> string (show (getMeta m))
+    Global q  -> qname q
+    Free v    -> env ! getIndex (levelToIndex (Level (length env)) v)
+    Metavar m -> char '?' <> string (show (getMeta m))
   mult q = if
     | q == zero -> (char '0' <+>)
     | q == one  -> (char '1' <+>)
@@ -149,7 +147,7 @@ showType env = \case
 -- Type expressions
 
 data TExpr
-  = TVar (TVar Index)
+  = TVar (Var Index)
   | TType
   | TInterface
   | TString
@@ -178,18 +176,18 @@ quote d = \case
 eval :: HasCallStack => Subst -> Stack (Either Type a) -> TExpr -> Type
 eval subst = go where
   go env = \case
-    TVar (TGlobal n)  -> global n
-    TVar (TFree v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
-    TVar (TMetavar m) -> maybe (metavar m) tm (lookupMeta m subst)
-    TType             -> VKType
-    TInterface        -> VKInterface
-    TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> Left v) b)
-    TArrow n q a b    -> VTArrow n q (go env a) (go env b)
-    TSusp t           -> VTSusp (go env t)
-    TRet s t          -> VTRet (go env <$> s) (go env t)
-    TInst f a         -> go env f $$$ go env a
-    TApp  f a         -> go env f $$  go env a
-    TString           -> VTString
+    TVar (Global n)  -> global n
+    TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
+    TVar (Metavar m) -> maybe (metavar m) tm (lookupMeta m subst)
+    TType            -> VKType
+    TInterface       -> VKInterface
+    TForAll n t b    -> VTForAll n (go env t) (\ v -> go (env :> Left v) b)
+    TArrow n q a b   -> VTArrow n q (go env a) (go env b)
+    TSusp t          -> VTSusp (go env t)
+    TRet s t         -> VTRet (go env <$> s) (go env t)
+    TInst f a        -> go env f $$$ go env a
+    TApp  f a        -> go env f $$  go env a
+    TString          -> VTString
 
 
 -- Substitution
