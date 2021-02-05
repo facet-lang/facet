@@ -54,7 +54,7 @@ data Type
   | VKInterface
   | VTForAll Name Type (Type -> Type)
   | VTArrow (Maybe Name) Quantity Type Type
-  | VTNe (Var Level) (Stack Type) (Stack Type)
+  | VTNe (Var Meta Level) (Stack Type) (Stack Type)
   | VTSusp Type
   | VTRet [Type] Type
   | VTString
@@ -70,7 +70,7 @@ metavar :: Meta -> Type
 metavar = var . Metavar
 
 
-var :: Var Level -> Type
+var :: Var Meta Level -> Type
 var v = VTNe v Nil Nil
 
 
@@ -80,7 +80,7 @@ unRet = \case
   _T           -> empty
 
 
-occursIn :: (Var Level -> Bool) -> Level -> Type -> Bool
+occursIn :: (Var Meta Level -> Bool) -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
@@ -147,7 +147,7 @@ showType env = \case
 -- Type expressions
 
 data TExpr
-  = TVar (Var Index)
+  = TVar (Var Meta Index)
   | TType
   | TInterface
   | TString

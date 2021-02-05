@@ -22,7 +22,7 @@ data VTExpr
 -- Computation types
 
 data CTExpr
-  = CEVar (Var Index)
+  = CEVar (Var Meta Index)
   | CEForAll Name CTExpr CTExpr
   | CEArrow (Maybe Name) Quantity CTExpr CTExpr
   | CEInst CTExpr CTExpr

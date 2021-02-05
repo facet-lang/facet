@@ -30,6 +30,7 @@ import           Data.Foldable (asum, foldl')
 import           Data.Semialign.Exts (zipWithM)
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
+import           Data.Void (Void)
 import qualified Facet.Core.Type as T
 import           Facet.Name
 import           Facet.Pretty (toAlpha)
@@ -68,7 +69,7 @@ fill f = mapAccumL (const . f)
 data Value
   = VTLam (T.Type -> Value)
   | VLam [(Pattern Name, Pattern Value -> Value)]
-  | VNe (Var Level) (Stack T.Type) (Stack Value)
+  | VNe (Var Void Level) (Stack T.Type) (Stack Value)
   | VCon (Q Name) (Stack T.Type) (Stack Value)
   | VString Text
   | VOp (Q Name) (Stack T.Type) (Stack Value)
@@ -81,7 +82,7 @@ free :: Level -> Value
 free = var . Free
 
 
-var :: Var Level -> Value
+var :: Var Void Level -> Value
 var v = VNe v Nil Nil
 
 
@@ -156,16 +157,17 @@ showValue tenv env = \case
     PVar n    -> name n
     PCon f ps -> paren $ foldl' (<+>) (qname f) (vpat <$> ps)
   alpha = ['A'..'Z']
+  head :: Var Void Level -> ShowP
   head = \case
     Global (m :.: n) -> foldr (<.>) (name n) (text <$> m)
     Free v           -> env ! getIndex (levelToIndex (Level (length env)) v)
-    Metavar _        -> error "metavar in term"
+    Metavar m        -> case m of {}
 
 
 -- Term expressions
 
 data Expr
-  = XVar (Var Index)
+  = XVar (Var Void Index)
   | XTLam Expr
   | XLam [(Pattern Name, Expr)]
   | XInst Expr T.TExpr
@@ -192,7 +194,7 @@ eval subst = go where
   go env = \case
     XVar (Global n)  -> global n
     XVar (Free v)    -> fromRight (error ("type variable at index " <> show v)) (env ! getIndex v)
-    XVar (Metavar _) -> error "metavar in term"
+    XVar (Metavar m) -> case m of {}
     XTLam b          -> VTLam (\ _T -> go (env :> Left _T) b)
     XLam cs          -> VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (\ env' v -> env' :> Right v) env p) b)) cs)
     XInst f a        -> go env f $$$ T.eval subst env a

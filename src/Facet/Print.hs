@@ -180,7 +180,7 @@ printExpr opts@Options{ qname, instantiation } = go
   go env = \case
     C.XVar (Global n)  -> qvar n
     C.XVar (Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
-    C.XVar (Metavar _) -> error "metavar in term"
+    C.XVar (Metavar m) -> case m of {}
     C.XTLam b          -> let { d = Name.Level (length env) ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env :> v) b)
     C.XLam cs          -> comp (commaSep (map (clause env) cs))
     C.XInst e t        -> go env e `instantiation` braces (printTExpr opts env t)

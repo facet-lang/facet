@@ -24,5 +24,5 @@ data VType
 data CType
   = CForAll Name CType (CType -> CType)
   | CArrow (Maybe Name) Quantity CType CType
-  | CNe (Var Level) (Stack CType) (Stack CType)
+  | CNe (Var Meta Level) (Stack CType) (Stack CType)
   | CRet [CType] VType
