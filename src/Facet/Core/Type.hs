@@ -177,9 +177,9 @@ data CTExpr
   = CEVar (TVar Index)
   | CEForAll Name CTExpr CTExpr
   | CEArrow (Maybe Name) Quantity CTExpr CTExpr
-  | CTInst CTExpr CTExpr
-  | CTApp CTExpr CTExpr
-  | CTRet [CTExpr] TExpr
+  | CEInst CTExpr CTExpr
+  | CEApp CTExpr CTExpr
+  | CERet [CTExpr] TExpr
   deriving (Eq, Ord, Show)
 
 
