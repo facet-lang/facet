@@ -9,7 +9,7 @@ interface Error : (E : Type) -> Interface
 , catch : { A : Type } -> [Error E] A -> (E -> A) -> A }
 
 handle : { E, A : Type } -> (h : E -> A) -> [Error E] A -> [Error E] A
-{ [a] -> { catch a h } }
+{ [a] -> catch a h }
 
 try : { E, A : Type } -> [Error E] A -> [Error E] Either E A
 { [a] -> catch (inr a) inl }
