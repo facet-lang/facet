@@ -13,6 +13,10 @@ import Facet.Usage
 -- Value types
 
 data VType
+  = VType
+  | VInterface
+  | VString
+  | VSusp CType
 
 
 -- Computation types
