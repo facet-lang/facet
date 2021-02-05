@@ -19,6 +19,7 @@ module Facet.Core.Type
 , showType
   -- * Type expressions
 , TExpr(..)
+, VTExpr(..)
 , CTExpr(..)
   -- * Quotation
 , quote
@@ -171,6 +172,13 @@ data TExpr
   | TRet [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
+  deriving (Eq, Ord, Show)
+
+data VTExpr
+  = VEType
+  | VEInterface
+  | VEString
+  | VESusp CTExpr
   deriving (Eq, Ord, Show)
 
 data CTExpr
