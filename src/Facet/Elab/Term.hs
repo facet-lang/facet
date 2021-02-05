@@ -59,7 +59,7 @@ import           GHC.Stack
 -- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Algebra sig m => Q Name ::: VType -> Synth m Expr
+global :: Algebra sig m => Q Name ::: Type -> Synth m Expr
 global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
@@ -191,7 +191,7 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstract :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> VType -> Elab m TExpr
+abstract :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Type -> Elab m TExpr
 abstract body = go
   where
   go = \case
@@ -210,9 +210,9 @@ abstract body = go
 
 elabDataDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
-  => Name ::: VType
+  => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m [Name :=: Maybe Def ::: VType]
+  -> m [Name :=: Maybe Def ::: Type]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
@@ -241,9 +241,9 @@ elabDataDef (dname ::: _T) constructors = do
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
-  => VType
+  => Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m (Maybe Def ::: VType)
+  -> m (Maybe Def ::: Type)
 elabInterfaceDef _T constructors = do
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstract (check (checkType t ::: VKType)) _T
@@ -254,7 +254,7 @@ elabInterfaceDef _T constructors = do
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
-  => VType
+  => Type
   -> S.Ann S.Expr
   -> m Value
 elabTermDef _T expr@(S.Ann s _ _) = do
@@ -307,18 +307,18 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 -- Errors
 
-expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> VType -> Elab m (Name ::: VType, VType -> VType)
+expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Name ::: Type, Type -> Type)
 expectQuantifier = expectMatch (\case{ VTForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
-expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> VType -> Elab m ((Quantity, VType), VType)
+expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ((Quantity, Type), Type)
 expectTacitFunction = expectMatch (\case{ VTArrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _"
 
 -- | Expect a computation type with effects.
-expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> VType -> Elab m ([VType], VType)
+expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
 expectRet = expectMatch (\case{ VTRet s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
 
-expectSusp :: (HasCallStack, Has (Throw Err) sig m) => String -> VType -> Elab m VType
+expectSusp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m Type
 expectSusp = expectMatch (\case { VTSusp t -> pure t ; _ -> Nothing }) "{_}"
 
 

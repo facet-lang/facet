@@ -141,7 +141,7 @@ suppressInstantiation = const
 
 -- Core printers
 
-printType :: Options -> Stack Print -> C.VType -> Print
+printType :: Options -> Stack Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
 printTExpr :: Options -> Stack Print -> C.TExpr -> Print

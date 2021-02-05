@@ -32,7 +32,7 @@ instance LeftModule Quantity Context where
 data Binding = Binding
   { name     :: Name
   , quantity :: Quantity
-  , type'    :: VType
+  , type'    :: Type
   }
 
 -- | A precondition for use of this instance is that one only ever '<>'s pairs of 'Binding's assigning the same type to the same variable.
@@ -61,7 +61,7 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
     | otherwise    = go es (i - 1)
   go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: Name -> Context -> Maybe (Index, Quantity, VType)
+lookupIndex :: Name -> Context -> Maybe (Index, Quantity, Type)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = Nothing
@@ -71,7 +71,7 @@ lookupIndex n = go (Index 0) . elems
 
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context -> S.Stack VType
+toEnv :: Context -> S.Stack Type
 toEnv c = locals 0 (elems c)
   where
   d = level c

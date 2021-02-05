@@ -50,7 +50,7 @@ scope_ :: Lens' Module Scope
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
-lookupC :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: VType)
+lookupC :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type)
 lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
@@ -58,32 +58,32 @@ lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls sc
     pure $ name:.:n :=: v ::: _T
 
 -- | Look up effect operations.
-lookupE :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: VType)
+lookupE :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type)
 lookupE n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
     n :=: _ ::: _T <- maybe empty pure d >>= unDInterface >>= lookupScope n
     pure $ name:.:n :=: Nothing ::: _T
 
-lookupD :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: VType)
+lookupD :: Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type)
 lookupD n Module{ name, scope } = maybe empty pure $ do
   d ::: _T <- Map.lookup n (decls scope)
   pure $ name:.:n :=: d ::: _T
 
 
-newtype Scope = Scope { decls :: Map.Map Name (Maybe Def ::: VType) }
+newtype Scope = Scope { decls :: Map.Map Name (Maybe Def ::: Type) }
   deriving (Monoid, Semigroup)
 
-decls_ :: Lens' Scope (Map.Map Name (Maybe Def ::: VType))
+decls_ :: Lens' Scope (Map.Map Name (Maybe Def ::: Type))
 decls_ = coerced
 
-scopeFromList :: [Name :=: Maybe Def ::: VType] -> Scope
+scopeFromList :: [Name :=: Maybe Def ::: Type] -> Scope
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
 
-scopeToList :: Scope -> [Name :=: Maybe Def ::: VType]
+scopeToList :: Scope -> [Name :=: Maybe Def ::: Type]
 scopeToList = map (\ (n, v ::: _T) -> n :=: v ::: _T) . Map.toList . decls
 
-lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Maybe Def ::: VType)
+lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Maybe Def ::: Type)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
