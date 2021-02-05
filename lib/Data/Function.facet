@@ -5,7 +5,7 @@ id
 { x }
 
 const
-: { A, B : Type } -> (x : 1 A) -> (_ : B) -> A
+: { A, B : Type } -> (x : 1 A) -> (_ : 0 B) -> A
 { x }
 
 flip
