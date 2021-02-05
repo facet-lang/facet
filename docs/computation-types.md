@@ -143,4 +143,4 @@ In the first clause, we only bind a single variable (`e`), of value type. In the
 
 As discussed above, computations embed values via `return`; values embed computations via `thunk` (in Facet, `{x}` is a 0-ary suspended computation). So the general solution is probably to place variables of computation type in the context and treat value patterns as automatically lifted over `return`s.
 
-(Alternatively, the pattern `[a]` could bind a variable `a` of suspended computation type, requiring us to `!` (force) it to use it elsewhere. The two approaches are broadly equivalent, but it feels a bit strange to change the apparent type like that.)
+(Alternatively, the pattern `[a]` could bind a variable `a` of suspended computation type, requiring us to `!` (force) it to use it elsewhere. The two approaches are broadly equivalent, but it feels a bit strange to change the apparent type like that. On the other hand, it’s unfortunate that `a` claims to be able to perform effects!)
