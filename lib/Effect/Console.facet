@@ -17,5 +17,5 @@ writeLine : (str : String) -> { [Output] Unit }
 
 
 dropOutput : { A : Type } -> [Output] A -> A
-{ [write _ ; k] -> k unit
+{ [write _ ; k] -> dropOutput (k unit)
 , x             -> x }
