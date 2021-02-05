@@ -180,7 +180,7 @@ tvar = anned (S.TVar <$> qname tname)
 
 
 suspendedCompType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-suspendedCompType = anned $ braces (S.TComp <$> type')
+suspendedCompType = anned $ braces (S.TSusp <$> type')
 
 signature :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Interface]
 signature = brackets (commaSep delta) <?> "signature"
