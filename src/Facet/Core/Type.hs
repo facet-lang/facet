@@ -38,6 +38,7 @@ import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
+import           Facet.Core.Type.Expr
 import           Facet.Name
 import           Facet.Semiring
 import           Facet.Show
@@ -46,15 +47,6 @@ import           Facet.Syntax
 import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup)
-
--- Variables
-
-data TVar a
-  = TGlobal (Q Name) -- ^ Global variables, considered equal by 'Q' 'Name'.
-  | TFree a
-  | TMetavar Meta
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
 
 -- Types
 
@@ -172,22 +164,6 @@ data TExpr
   | TRet [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
-  deriving (Eq, Ord, Show)
-
-data VTExpr
-  = VEType
-  | VEInterface
-  | VEString
-  | VESusp CTExpr
-  deriving (Eq, Ord, Show)
-
-data CTExpr
-  = CEVar (TVar Index)
-  | CEForAll Name CTExpr CTExpr
-  | CEArrow (Maybe Name) Quantity CTExpr CTExpr
-  | CEInst CTExpr CTExpr
-  | CEApp CTExpr CTExpr
-  | CERet [CTExpr] VTExpr
   deriving (Eq, Ord, Show)
 
 
