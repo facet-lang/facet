@@ -54,7 +54,7 @@ forAll (n ::: t) b = Synth $ do
   b' <- Binding n zero vt |- check (b ::: VKType)
   pure $ TForAll n t' b' ::: VKType
 
-(-->) :: Maybe Name ::: Check m (Quantity, TExpr) -> Check m TExpr -> Synth m TExpr
+(-->) :: Algebra sig m => Maybe Name ::: Check m (Quantity, TExpr) -> Check m TExpr -> Synth m TExpr
 (n ::: a) --> b = Synth $ do
   (q', a') <- check (a ::: VKType)
   b' <- check (b ::: VKType)
@@ -63,13 +63,13 @@ forAll (n ::: t) b = Synth $ do
 infixr 1 -->
 
 
-comp :: Check m TExpr -> Synth m TExpr
+comp :: Algebra sig m => Check m TExpr -> Synth m TExpr
 comp t = Synth $ do
   t' <- check (t ::: VKType)
   -- FIXME: classify types by universe (value/computation) and check that this is a computation type being suspended
   pure $ TSusp t' ::: VKType
 
-ret :: [Check m TExpr] -> Check m TExpr -> Synth m TExpr
+ret :: Algebra sig m => [Check m TExpr] -> Check m TExpr -> Synth m TExpr
 ret s t = Synth $ do
   s' <- traverse (check . (::: VKInterface)) s
   -- FIXME: classify types by universe (value/computation) and check that this is a value type being returned

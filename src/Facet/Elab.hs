@@ -397,8 +397,10 @@ elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Qua
 elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (E.eval subst Nil e ::: T.eval subst Nil (T.quote 0 _T)))
 
 
-check :: (Check m a ::: Type) -> Elab m a
-check (m ::: _T) = runCheck m _T
+check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
+check (m ::: _T) = case unRet _T of
+  Just (sig, _) -> extendSig sig $ runCheck m _T
+  Nothing       -> runCheck m _T
 
 newtype Check m a = Check { runCheck :: Type -> Elab m a }
   deriving (Applicative, Functor) via ReaderC Type (Elab m)
