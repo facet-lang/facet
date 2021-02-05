@@ -59,7 +59,8 @@ data Type
   | VTForAll Name Type (Type -> Type)
   | VTArrow (Either Name [Type]) Quantity Type Type
   | VTNe (TVar Level) (Stack Type) (Stack Type)
-  | VTSusp [Type] Type
+  | VTSusp Type
+  | VTRet [Type] Type
   | VTString
 
 
@@ -85,7 +86,8 @@ occursIn p = go
     VKInterface     -> False
     VTForAll _ t b  -> go d t || go (succ d) (b (free d))
     VTArrow n _ a b -> any (any (go d)) n || go d a || go d b
-    VTSusp s t      -> any (go d) s || go d t
+    VTSusp t        -> go d t
+    VTRet s t       -> any (go d) s || go d t
     VTNe h ts sp    -> p h || any (go d) ts || any (go d) sp
     VTString        -> False
 
@@ -123,7 +125,8 @@ showType env = \case
     Left  n -> paren (name n <+> char ':' <+> mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
     Right s -> sig s <+> setPrec 1 (mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
   VTNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
-  VTSusp s t     -> brace (sig s <+> showType env t)
+  VTSusp t       -> brace (showType env t)
+  VTRet s t      -> sig s <+> showType env t
   VTString       -> string "String"
   where
   sig s = bracket (commaSep (map (showType env) s))
@@ -148,7 +151,8 @@ data TExpr
   | TString
   | TForAll Name TExpr TExpr
   | TArrow (Either Name [TExpr]) Quantity TExpr TExpr
-  | TSusp [TExpr] TExpr
+  | TSusp TExpr
+  | TRet [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
   deriving (Eq, Ord, Show)
@@ -162,7 +166,8 @@ quote d = \case
   VKInterface     -> TInterface
   VTForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
   VTArrow n q a b -> TArrow (map (quote d) <$> n) q (quote d a) (quote d b)
-  VTSusp s t      -> TSusp (quote d <$> s) (quote d t)
+  VTSusp t        -> TSusp (quote d t)
+  VTRet s t       -> TRet (quote d <$> s) (quote d t)
   VTNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
   VTString        -> TString
 
@@ -176,7 +181,8 @@ eval subst = go where
     TInterface        -> VKInterface
     TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b    -> VTArrow (map (go env) <$> n) q (go env a) (go env b)
-    TSusp s t         -> VTSusp (go env <$> s) (go env t)
+    TSusp t           -> VTSusp (go env t)
+    TRet s t          -> VTRet (go env <$> s) (go env t)
     TInst f a         -> go env f $$$ go env a
     TApp  f a         -> go env f $$  go env a
     TString           -> VTString

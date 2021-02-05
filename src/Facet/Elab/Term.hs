@@ -89,16 +89,16 @@ lam cs = Check $ \ _T -> do
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
-thunk :: Algebra sig m => Check m a -> Check m a
+thunk :: Check m a -> Check m a
 thunk e = Check $ \case
-  VTSusp s t -> extendSig s $ check (e ::: t)
-  t          -> check (e ::: t)
+  VTSusp t -> check (e ::: t)
+  t        -> check (e ::: t)
 
 force :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Synth m a
 force e = Synth $ do
   e' ::: _T <- synth e
   -- FIXME: should we check the signature? or can we rely on it already having been checked?
-  (_s, _T') <- expectSusp "when forcing suspended computation" _T
+  _T' <- expectSusp "when forcing suspended computation" _T
   pure $ e' ::: _T'
 
 
@@ -312,8 +312,8 @@ expectQuantifier = expectMatch (\case{ VTForAll n t b -> pure (n ::: t, b) ; _ -
 expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (([Type], Quantity, Type), Type)
 expectTacitFunction = expectMatch (\case{ VTArrow (Right s) q t b -> pure ((s, q, t), b) ; _ -> Nothing }) "_ -> _"
 
-expectSusp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
-expectSusp = expectMatch (\case { VTSusp s t -> pure (s, t) ; _ -> Nothing }) "{_}"
+expectSusp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m Type
+expectSusp = expectMatch (\case { VTSusp t -> pure t ; _ -> Nothing }) "{_}"
 
 
 -- Elaboration
