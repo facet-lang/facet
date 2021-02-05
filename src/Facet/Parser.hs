@@ -140,7 +140,7 @@ monotypeTable =
       -- FIXME: holes in types
       -- FIXME: explicit suspended computation types (this is gonna be hard to disambiguate)
     , atom tvar
-    , atom (try compType)
+    , atom (try suspendedCompType)
     ]
   ]
 
@@ -172,8 +172,8 @@ tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenPa
 tvar = anned (S.TVar <$> qname tname)
 
 
-compType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-compType = anned $ braces (S.TComp <$> option [] signature <*> type')
+suspendedCompType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
+suspendedCompType = anned $ braces (S.TComp <$> option [] signature <*> type')
 
 signature :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Interface]
 signature = brackets (commaSep delta) <?> "signature"
