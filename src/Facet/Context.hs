@@ -1,6 +1,8 @@
 module Facet.Context
 ( -- * Contexts
-  Context(..)
+  Quantity
+, Context(..)
+, Binding(..)
 , empty
 , (|>)
 , level
@@ -9,19 +11,41 @@ module Facet.Context
 , toEnv
 ) where
 
+import           Data.Semialign
 import           Facet.Core.Type
 import           Facet.Name
+import           Facet.Semiring
 import qualified Facet.Stack as S
-import           Facet.Syntax
+import           Facet.Usage
 import           GHC.Stack
-import           Prelude hiding (lookup)
+import           Prelude hiding (lookup, zipWith)
 
-newtype Context = Context { elems :: S.Stack (Name ::: Type) }
+newtype Context = Context { elems :: S.Stack Binding }
+
+-- | A precondition for use of this instance is that one only ever '<>'s 'Context's assigning the same types to the same variables in the same order.
+instance Semigroup Context where
+  Context e1 <> Context e2 = Context (zipWith (<>) e1 e2)
+
+instance LeftModule Quantity Context where
+  q ><< Context e = Context ((q ><<) <$> e)
+
+data Binding = Binding
+  { name     :: Name
+  , quantity :: Quantity
+  , type'    :: Type
+  }
+
+-- | A precondition for use of this instance is that one only ever '<>'s pairs of 'Binding's assigning the same type to the same variable.
+instance Semigroup Binding where
+  Binding _ q1 _ <> Binding n q2 _T = Binding n (q1 <> q2) _T
+
+instance LeftModule Quantity Binding where
+  q1 ><< Binding n q2 _T = Binding n (q1 >< q2) _T
 
 empty :: Context
 empty = Context S.Nil
 
-(|>) :: Context -> Name ::: Type -> Context
+(|>) :: Context -> Binding -> Context
 Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
@@ -29,20 +53,20 @@ infixl 5 |>
 level :: Context -> Level
 level (Context es) = Level (length es)
 
-(!) :: HasCallStack => Context -> Index -> Name ::: Type
+(!) :: HasCallStack => Context -> Index -> Binding
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
   where
   go (es S.:> e) i
-    | i == 0               = e
-    | otherwise            = go es (i - 1)
-  go _                   _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
+    | i == 0       = e
+    | otherwise    = go es (i - 1)
+  go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: Name -> Context -> Maybe (Index, Type)
+lookupIndex :: Name -> Context -> Maybe (Index, Quantity, Type)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = Nothing
-  go i (cs S.:> (n' ::: t))
-    | n == n'           = Just (i, t)
+  go i (cs S.:> Binding n' q t)
+    | n == n'           = Just (i, q, t)
     | otherwise         = go (succ i) cs
 
 

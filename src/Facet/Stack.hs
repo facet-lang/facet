@@ -8,14 +8,16 @@ module Facet.Stack
 , pattern FromList
 , (!)
 , (!?)
+, peek
 ) where
 
-import           Data.Foldable (foldl', toList)
-import           Data.Functor.Classes
-import           Data.Semialign
-import           Data.These
-import qualified GHC.Exts as X
-import           GHC.Stack
+import Data.Foldable (foldl', foldr')
+import Data.Functor.Classes
+import Data.Semialign
+import Data.These
+import Facet.Semiring
+import GHC.Exts
+import GHC.Stack
 
 data Stack a
   = Nil
@@ -33,6 +35,9 @@ instance Semigroup (Stack a) where
 
 instance Monoid (Stack a) where
   mempty = Nil
+
+instance Semiring r => LeftModule r (Stack r) where
+  (><<) = scaleDefault
 
 instance Semialign Stack where
   align Nil     Nil     = Nil
@@ -76,20 +81,17 @@ instance Ord1 Stack where
     go _        _        = GT
 
 
-fromList :: [a] -> Stack a
-fromList = foldl' (:>) Nil
-
 pattern FromList :: [a] -> Stack a
 pattern FromList xs <- (toList -> xs)
   where
   FromList xs = fromList xs
 
 
-instance X.IsList (Stack a) where
+instance IsList (Stack a) where
   type Item (Stack a) = a
 
-  toList   = toList
-  fromList = fromList
+  toList   = foldr' (:)  []
+  fromList = foldl' (:>) Nil
 
 
 -- | Unsafe indexing (throws an exception for out-of-bounds indices).
@@ -110,3 +112,9 @@ as' ! i' = withFrozenCallStack $ go as' i'
 Nil       !? _ = Nothing
 (_  :> a) !? 0 = Just a
 (as :> _) !? i = as !? (i - 1)
+
+-- | Safe retrieval of the top of the stack.
+peek :: Stack a -> Maybe a
+peek = \case
+  _ :> h -> Just h
+  _      -> Nothing

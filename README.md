@@ -43,6 +43,11 @@ script/repl # actually launch the repl
 `haskell-language-server` integration is also provided, and I edit in VS Code configured to use it.
 
 
+### Organization
+
+Haskell sources for the compiler &c. are in `src`. Facet sources for its standard libraries are in `lib`.
+
+
 ## Syntax
 
 A quick overview of facet’s syntax. Note that this is subject to change.

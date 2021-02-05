@@ -55,6 +55,7 @@ common common
     TupleSections
     TypeApplications
     TypeOperators
+    ViewPatterns
 
 library
   import: common
@@ -70,7 +71,6 @@ library
     Facet.Carrier.State.Lens
     Facet.Carrier.Throw.Inject
     Facet.Carrier.Time.System
-    Facet.Carrier.Trace.Output
     Facet.Carrier.Write.General
     Facet.Carrier.Write.Inject
     Facet.CLI
@@ -85,7 +85,6 @@ library
     Facet.Effect.Readline
     Facet.Effect.Time
     Facet.Effect.Time.System
-    Facet.Effect.Trace
     Facet.Effect.Write
     Facet.Elab
     Facet.Elab.Term
@@ -109,6 +108,7 @@ library
     Facet.REPL.Parser
     Facet.Run
     Facet.Semiring
+    Facet.Show
     Facet.Source
     Facet.Span
     Facet.Stack
@@ -117,6 +117,8 @@ library
     Facet.Surface
     Facet.Syntax
     Facet.Timing
+    Facet.Usage
+    Facet.Vars
   other-modules:
     Paths_facet
   autogen-modules:

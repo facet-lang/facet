@@ -2,9 +2,7 @@ module Facet.Syntax
 ( (:::)(..)
 , tm
 , ty
-, (:===:)(..)
 , (:=:)(..)
-, (:$)(..)
 , splitl
 , splitr
 ) where
@@ -48,21 +46,6 @@ ty :: a ::: b -> b
 ty (_ ::: b) = b
 
 
-data a :===: b = a :===: b
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-infix 0 :===:
-
-instance Bifoldable (:===:) where
-  bifoldMap = bifoldMapDefault
-
-instance Bifunctor (:===:) where
-  bimap = bimapDefault
-
-instance Bitraversable (:===:) where
-  bitraverse f g (a :===: b) = (:===:) <$> f a <*> g b
-
-
 data a :=: b = a :=: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
@@ -76,21 +59,6 @@ instance Bifunctor (:=:) where
 
 instance Bitraversable (:=:) where
   bitraverse f g (a :=: b) = (:=:) <$> f a <*> g b
-
-
-data a :$ b = a :$ Stack b
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-infixl 9 :$
-
-instance Bifoldable (:$) where
-  bifoldMap = bifoldMapDefault
-
-instance Bifunctor (:$) where
-  bimap = bimapDefault
-
-instance Bitraversable (:$) where
-  bitraverse f g (h :$ sp) = (:$) <$> f h <*> traverse g sp
 
 
 splitl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)

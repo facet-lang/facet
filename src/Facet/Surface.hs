@@ -2,6 +2,7 @@
 module Facet.Surface
 ( -- * Types
   Type(..)
+, Mul(..)
   -- * Expressions
 , Expr(..)
 , Interface(..)
@@ -33,7 +34,7 @@ import Facet.Span
 import Facet.Stack
 import Facet.Syntax
 
--- Expressions
+-- Types
 
 data Type
   = TVar (Q Name)
@@ -41,10 +42,16 @@ data Type
   | KInterface
   | TString
   | TForAll Name (Ann Type) (Ann Type)
-  | TArrow (Either Name [Ann Interface]) (Ann Type) (Ann Type)
+  | TArrow (Either Name [Ann Interface]) (Maybe Mul) (Ann Type) (Ann Type)
   | TComp [Ann Interface] (Ann Type)
   | TApp (Ann Type) (Ann Type)
   deriving (Eq, Show)
+
+data Mul = Zero | One
+  deriving (Bounded, Enum, Eq, Ord, Show)
+
+
+-- Expressions
 
 data Expr
   = Var (Q Name)

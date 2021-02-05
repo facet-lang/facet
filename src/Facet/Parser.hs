@@ -155,10 +155,13 @@ forAll k = make <$> anned (try (((,,) <$ lbrace <*> commaSep1 ((,) <$> position 
   make (S.Ann s cs (ns, t, b)) = S.Ann s cs (S.out (foldr (\ (p, n) b -> S.Ann (Span p (end s)) Nil (S.TForAll n t b)) b ns))
 
 bindArrow :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann S.Type) -> p (S.Ann S.Type)
-bindArrow name k = anned (try (S.TArrow . Left <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen <* arrow <*> k)
+bindArrow name k = anned (try (S.TArrow . Left <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> optional mul <*> type' <* rparen <* arrow <*> k)
 
 functionType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type) -> p (S.Ann S.Type)
-functionType self next = anned (uncurry (S.TArrow . Right) <$> try ((,) <$> option [] signature <*> next <* arrow) <*> self) <|> next
+functionType self next = anned (try (S.TArrow . Right <$> option [] signature <*> optional mul <*> next <* arrow) <*> self) <|> next
+
+mul :: TokenParsing p => p S.Mul
+mul = choice [ S.Zero <$ token (char '0'), S.One <$ token (char '1') ]
 
 
 -- FIXME: support type operators
@@ -186,8 +189,8 @@ signature = brackets (commaSep delta) <?> "signature"
 exprTable :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => Table p (S.Ann S.Expr)
 exprTable =
   -- FIXME: parse this as a unary operator or something
-  [ -- [ parseOperator (N.Infix (pack ":"), N.R, foldr1 (S.annBinary S.As)) ]
-    [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
+  [ [ ascription ]
+  , [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   -- FIXME: model this as application to unit instead
   -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
   , [ parseOperator (N.Postfix (pack "!"), N.L, S.annUnary S.Force . head) ]
@@ -199,6 +202,9 @@ expr = do
   ops <- get
   let rec = build (map parseOperator ops:exprTable) $ parens rec
   rec
+
+ascription :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr) -> p (S.Ann S.Expr) -> p (S.Ann S.Expr)
+ascription _self next = anned (S.As <$> try (next <* colon) <*> type') <|> next
 
 comp :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation

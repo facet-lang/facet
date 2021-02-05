@@ -5,6 +5,14 @@ module Facet.Print
 , Print(..)
 , Precedence(..)
 , ann
+  -- * Options
+, Options(..)
+, verboseOptions
+, quietOptions
+, qualified
+, unqualified
+, printInstantiation
+, suppressInstantiation
   -- * Core printers
 , printType
 , printTExpr
@@ -29,6 +37,7 @@ import qualified Facet.Core.Type as C
 import qualified Facet.Core.Type as CT
 import           Facet.Name as Name
 import           Facet.Pretty (lower, upper)
+import           Facet.Semiring (one, zero)
 import           Facet.Stack
 import           Facet.Style
 import           Facet.Syntax
@@ -102,56 +111,92 @@ f $$ a = askingPrec $ \case
 ($$*) = fmap group . foldl' ($$)
 
 
+-- Options
+
+data Options = Options
+  { qname         :: Q Name -> Print
+  , instantiation :: Print -> Print -> Print
+  }
+
+verboseOptions :: Options
+verboseOptions = Options
+  { qname         = qualified
+  , instantiation = printInstantiation
+  }
+
+quietOptions :: Options
+quietOptions = Options
+  { qname         = unqualified
+  , instantiation = suppressInstantiation
+  }
+
+qualified, unqualified :: Q Name -> Print
+qualified = pretty
+unqualified (_:.:n) = pretty n
+
+printInstantiation, suppressInstantiation :: Print -> Print -> Print
+printInstantiation = ($$)
+suppressInstantiation = const
+
+
 -- Core printers
 
-printType :: Stack Print -> C.Type -> Print
-printType env = printTExpr env . CT.quote (Name.Level (length env))
+printType :: Options -> Stack Print -> C.Type -> Print
+printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
-printTExpr :: Stack Print -> C.TExpr -> Print
-printTExpr env = \case
-  C.TVar (C.TGlobal n)    -> group (qvar n)
-  C.TVar (C.TFree d)      -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
-  C.TVar (C.TMetavar m)   -> meta m
-  C.TType                 -> annotate Type $ pretty "Type"
-  C.TInterface            -> annotate Type $ pretty "Interface"
-  C.TForAll n t b         -> braces (ann (intro n d ::: printTExpr env t)) --> printTExpr (env :> intro n d) b
-  C.TArrow (Right []) a b -> printTExpr env a --> printTExpr env b
-  C.TArrow (Right s) a b  -> (sig s <+> printTExpr env a) --> printTExpr env b
-  C.TArrow (Left n)   a b -> parens (ann (intro n d ::: printTExpr env a)) --> printTExpr env b
-  C.TComp s t             -> braces (sig s <+> printTExpr env t)
-  C.TInst f t             -> group (printTExpr env f) $$ group (braces (printTExpr env t))
-  C.TApp f a              -> group (printTExpr env f) $$ group (printTExpr env a)
-  C.TString               -> annotate Type $ pretty "String"
+printTExpr :: Options -> Stack Print -> C.TExpr -> Print
+printTExpr Options{ qname, instantiation } = go
   where
-  d = Name.Level (length env)
-  sig s = brackets (commaSep (map (printTExpr env) s))
+  qvar = group . setPrec Var . qname
+  go env = \case
+    C.TVar (C.TGlobal n)      -> qvar n
+    C.TVar (C.TFree d)        -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
+    C.TVar (C.TMetavar m)     -> meta m
+    C.TType                   -> annotate Type $ pretty "Type"
+    C.TInterface              -> annotate Type $ pretty "Interface"
+    C.TForAll n t b           -> braces (ann (intro n d ::: go env t)) --> go (env :> intro n d) b
+    C.TArrow (Right []) q a b -> mult q (go env a) --> go env b
+    C.TArrow (Right s)  q a b -> (sig s <+> mult q (go env a)) --> go env b
+    C.TArrow (Left n)   q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
+    C.TComp s t               -> braces (sig s <+> go env t)
+    C.TInst f t               -> group (go env f) `instantiation` group (braces (go env t))
+    C.TApp f a                -> group (go env f) $$ group (go env a)
+    C.TString                 -> annotate Type $ pretty "String"
+    where
+    d = Name.Level (length env)
+    sig s = brackets (commaSep (map (go env) s))
+    mult q = if
+      | q == zero -> (pretty '0' <+>)
+      | q == one  -> (pretty '1' <+>)
+      | otherwise -> id
 
-printValue :: Stack Print -> C.Value -> Print
-printValue env = printExpr env . CE.quote (Name.Level (length env))
+printValue :: Options -> Stack Print -> C.Value -> Print
+printValue opts env = printExpr opts env . CE.quote (Name.Level (length env))
 
-printExpr :: Stack Print -> C.Expr -> Print
-printExpr env = \case
-  C.XVar (C.Global n) -> group (qvar n)
-  C.XVar (C.Free d')  -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
-  C.XTLam b           -> let v = tintro __ d in braces (braces v <+> arrow <+> printExpr (env :> v) b)
-  C.XLam cs           -> comp (braces (commaSep (map clause cs)))
-  C.XInst e t         -> printExpr env e $$ braces (printTExpr env t)
-  C.XApp f a          -> printExpr env f $$ printExpr env a
-  C.XCon (n :$ p)     -> group (qvar n) $$* (group . printExpr env <$> p)
-  C.XOp q             -> group (qvar q)
-  C.XString s         -> annotate Lit $ pretty (show s)
+printExpr :: Options -> Stack Print -> C.Expr -> Print
+printExpr opts@Options{ qname, instantiation } = go
   where
-  d = Name.Level (length env)
+  go env = \case
+    C.XVar (C.Global n) -> qvar n
+    C.XVar (C.Free d')  -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
+    C.XTLam b           -> let { d = Name.Level (length env) ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env :> v) b)
+    C.XLam cs           -> comp (commaSep (map (clause env) cs))
+    C.XInst e t         -> go env e `instantiation` braces (printTExpr opts env t)
+    C.XApp f a          -> go env f $$ go env a
+    C.XCon n t p        -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
+    C.XOp q             -> qvar q
+    C.XString s         -> annotate Lit $ pretty (show s)
+  qvar = group . setPrec Var . qname
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
-  clause (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> printExpr env' b
+  clause env (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> go env' b
   vpat = \case
-    C.PWildcard      -> pretty '_'
-    C.PVar n         -> n
-    C.PCon (n :$ ps) -> parens (hsep (annotate Con (pretty n):map vpat (toList ps)))
+    C.PWildcard -> pretty '_'
+    C.PVar n    -> n
+    C.PCon n ps -> parens (hsep (annotate Con (qname n):map vpat (toList ps)))
   pat = \case
     C.PAll n      -> brackets n
     C.PVal p      -> vpat p
-    C.PEff q ps k -> brackets (pretty q <+> hsep (map pat (toList ps)) <+> semi <+> k)
+    C.PEff q ps k -> brackets (pretty q <+> hsep (map vpat (toList ps)) <+> semi <+> k)
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
@@ -162,21 +207,22 @@ printModule (C.Module mname is _ ds) = module_
   where
   def (n, Nothing ::: t) = ann
     $   qvar (Nil:.:n)
-    ::: printType Nil t
+    ::: printType opts Nil t
   def (n, Just d  ::: t) = ann
     $   qvar (Nil:.:n)
-    ::: defn (printType Nil t
+    ::: defn (printType opts Nil t
     :=: case d of
-      C.DTerm b  -> printValue Nil b
+      C.DTerm b  -> printValue opts Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printType Nil _T)) (C.scopeToList cs))
+        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printType opts Nil _T)) (C.scopeToList cs))
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList
-        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printType Nil _T)) (C.scopeToList os))
+        (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printType opts Nil _T)) (C.scopeToList os))
       C.DModule ds -> block (concatWith (surround hardline) (map ((hardline <>) . def) (Map.toList (C.decls ds)))))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
   import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))
   module_ n t is ds = ann (setPrec Var (prettyMName n) ::: t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
   defn (a :=: b) = group a <> hardline <> group b
+  opts = quietOptions
 
 intro, tintro :: Name -> Level -> Print
 intro  n = name lower n . getLevel

@@ -8,12 +8,10 @@ import           Data.Foldable (for_)
 import qualified Data.Set as Set
 import           Facet.Carrier.Output.IO
 import           Facet.Carrier.Time.System
-import           Facet.Carrier.Trace.Output
 import           Facet.Carrier.Write.General
 import           Facet.Driver
-import           Facet.Flag
 import           Facet.Graph
-import           Facet.Stack
+import           Facet.Print (quietOptions)
 import           Facet.Style
 import qualified Facet.Surface as Import (Import(..))
 import qualified Facet.Surface as S
@@ -30,7 +28,7 @@ runFile searchPaths path = runStack $ do
   runStack
     = runOutput
     . runTime
-    . runTrace Nil (toFlag LogTraces False)
     . evalState (Target mempty mempty (Set.fromList searchPaths))
     . runError ((ExitFailure 1 <$) . outputDocLn . prettyNotice) pure
     . runWrite (outputDocLn . prettyNotice)
+    . evalState quietOptions

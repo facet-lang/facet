@@ -1,4 +1,3 @@
-{-# LANGUAGE GADTs #-}
 module Facet.Eval
 ( -- * Evaluation
   Value(..)
@@ -13,33 +12,34 @@ import Control.Effect.Reader
 import Control.Monad.Trans.Class
 import Facet.Core.Module
 import Facet.Core.Term hiding (eval)
+import Facet.Core.Type (Type)
 import Facet.Graph
 import Facet.Name
+import Facet.Stack
 import Facet.Syntax
 
 eval :: Has (Reader Graph :+: Reader Module) sig m => Value -> Eval m Value
 eval = \case
-  VNe (h :$ ts :$ sp) -> do
+  VNe h ts sp  -> do
     sp' <- traverse eval sp
     mod <- lift ask
     graph <- lift ask
     case h of
-      Global q
-        | Just (_ :=: Just (DTerm v) ::: _) <- lookupQ q mod graph
+      Global (lookupQ graph mod -> Just (_ :=: Just (DTerm v) ::: _))
         -> eval $ v $$$* ts $$* sp'
-      _ -> pure $ VNe (h :$ ts :$ sp')
+      _ -> pure $ VNe h ts sp'
 
-  VOp op    -> Eval $ \ h -> h op
+  VOp op ts as -> Eval $ \ h -> h op ts as
 
-  v         -> pure v
+  v            -> pure v
 
 
 -- Machinery
 
-runEval :: (Q Name :$ Value -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: (Q Name -> Stack Type -> Stack Value -> (Value -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (Q Name :$ Value -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (Q Name -> Stack Type -> Stack Value -> (Value -> m r) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)

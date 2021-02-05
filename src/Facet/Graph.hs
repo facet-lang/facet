@@ -52,13 +52,13 @@ insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
 lookupM :: Alternative m => MName -> Graph -> m (Maybe FilePath, Module)
 lookupM n = maybe empty pure . Map.lookup n . getGraph
 
-lookupWith :: (Alternative m, Monad m) => (Name -> Module -> m res) -> Q Name -> Module -> Graph -> m res
-lookupWith lookup (m:.:n) mod@Module{ name } graph
+lookupWith :: (Alternative m, Monad m) => (Name -> Module -> m res) -> Graph -> Module -> Q Name -> m res
+lookupWith lookup graph mod@Module{ name } (m:.:n)
   =   guard (m == name || m == Nil) *> lookup n mod
   <|> guard (m == Nil) *> asum (lookup n . snd <$> getGraph graph)
   <|> guard (m /= Nil) *> (lookupM m graph >>= lookup n . snd)
 
-lookupQ :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> m (Q Name :=: Maybe Def ::: Type)
+lookupQ :: (Alternative m, Monad m) => Graph -> Module -> Q Name -> m (Q Name :=: Maybe Def ::: Type)
 lookupQ = lookupWith lookupD
 
 -- FIXME: enrich this with source references for each

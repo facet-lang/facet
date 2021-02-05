@@ -1,15 +1,15 @@
 module Data.Function : Module
 
 id
-: { A : Type } -> (x : A) -> A
+: { A : Type } -> (x : 1 A) -> A
 { x }
 
 const
-: { A, B : Type } -> (x : A) -> (_ : B) -> A
+: { A, B : Type } -> (x : 1 A) -> (_ : 0 B) -> A
 { x }
 
 flip
-: { A, B, C : Type } -> (f : A -> B -> C) -> (B -> A -> C)
+: { A, B, C : Type } -> (f : 1 (A -> B -> C)) -> (B -> A -> C)
 # NB: I’ve removed nested, chained pattern matching for the time being.
 { b -> { a -> f a b } }
 
@@ -24,16 +24,16 @@ _ >> _ [assoc]
 
 
 _ <| _ [right-assoc]
-: { A, B : Type } -> (f : A -> B) -> (a : A) -> B
+: { A, B : Type } -> (f : 1 (A -> B)) -> (a : A) -> B
 { f a }
 
 _ |> _ [left-assoc]
-: { A, B : Type } -> (a : A) -> (f : A -> B) -> B
+: { A, B : Type } -> (a : A) -> (f : 1 (A -> B)) -> B
 { f a }
 
 
 case
-: { A, B : Type } -> A -> (A -> B) -> B
+: { A, B : Type } -> A -> 1 (A -> B) -> B
 { (_ |> _) }
 
 
@@ -43,5 +43,5 @@ fix
 
 
 _ ; _ [right-assoc]
-: { A, B : Type } -> (_ : A) -> (b : B) -> B
+: { A, B : Type } -> (_ : A) -> (b : 1 B) -> B
 { b }

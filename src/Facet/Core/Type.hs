@@ -3,7 +3,6 @@ module Facet.Core.Type
   TVar(..)
   -- * Type values
 , Type(..)
-, TElim(..)
 , global
 , free
 , metavar
@@ -12,6 +11,10 @@ module Facet.Core.Type
   -- ** Elimination
 , ($$)
 , ($$*)
+, ($$$)
+, ($$$*)
+  -- ** Debugging
+, showType
   -- * Type expressions
 , TExpr(..)
   -- * Quotation
@@ -26,11 +29,16 @@ module Facet.Core.Type
 , metas
 ) where
 
+import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
+import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
 import           Facet.Name
+import           Facet.Semiring
+import           Facet.Show
 import           Facet.Stack
 import           Facet.Syntax
+import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
@@ -49,14 +57,10 @@ data Type
   = VKType
   | VKInterface
   | VTForAll Name Type (Type -> Type)
-  | VTArrow (Either Name [Type]) Type Type
-  | VTNe (TVar Level :$ TElim)
+  | VTArrow (Either Name [Type]) Quantity Type Type
+  | VTNe (TVar Level) (Stack Type) (Stack Type)
   | VTComp [Type] Type
   | VTString
-
-data TElim
-  = TEInst Type
-  | TEApp Type
 
 
 global :: Q Name -> Type
@@ -70,39 +74,69 @@ metavar = var . TMetavar
 
 
 var :: TVar Level -> Type
-var = VTNe . (:$ Nil)
+var v = VTNe v Nil Nil
 
 
 occursIn :: (TVar Level -> Bool) -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
-    VKType         -> False
-    VKInterface    -> False
-    VTForAll _ t b -> go d t || go (succ d) (b (free d))
-    VTArrow n a b  -> any (any (go d)) n || go d a || go d b
-    VTComp s t     -> any (go d) s || go d t
-    VTNe (h :$ sp) -> p h || any (elim d) sp
-    VTString       -> False
-
-  elim d = \case
-    TEInst t -> go d t
-    TEApp  t -> go d t
+    VKType          -> False
+    VKInterface     -> False
+    VTForAll _ t b  -> go d t || go (succ d) (b (free d))
+    VTArrow n _ a b -> any (any (go d)) n || go d a || go d b
+    VTComp s t      -> any (go d) s || go d t
+    VTNe h ts sp    -> p h || any (go d) ts || any (go d) sp
+    VTString        -> False
 
 
 -- Elimination
 
-($$) :: HasCallStack => Type -> TElim -> Type
-VTNe (h :$ es) $$ a = VTNe (h :$ (es :> a))
-VTForAll _ _ b $$ a = b (case a of
-  TEInst a -> a
-  TEApp  a -> a) -- FIXME: technically this should only ever be TEInst
-_              $$ _ = error "can’t apply non-neutral/forall type"
+($$) :: HasCallStack => Type -> Type -> Type
+VTNe h ts es $$ a = VTNe h ts (es :> a)
+_            $$ _ = error "can’t apply non-neutral/forall type"
 
-($$*) :: (HasCallStack, Foldable t) => Type -> t TElim -> Type
+($$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
 ($$*) = foldl' ($$)
 
 infixl 9 $$, $$*
+
+($$$) :: HasCallStack => Type -> Type -> Type
+VTNe h ts es   $$$ t = VTNe h (ts :> t) es
+VTForAll _ _ b $$$ t = b t
+_              $$$ _ = error "can’t apply non-neutral/forall type"
+
+($$$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
+($$$*) = foldl' ($$)
+
+infixl 9 $$$, $$$*
+
+
+-- Debugging
+
+showType :: Stack ShowP -> Type -> ShowP
+showType env = \case
+  VKType         -> string "Type"
+  VKInterface    -> string "Interface"
+  VTForAll n t b -> prec 0 $ brace (name n <+> char ':' <+> setPrec 0 (showType env t)) <+> string "->" <+> setPrec 0 (showType (env :> name n) (b (free (Level (length env)))))
+  VTArrow n q t b  -> case n of
+    Left  n -> paren (name n <+> char ':' <+> mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
+    Right s -> sig s <+> setPrec 1 (mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
+  VTNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
+  VTComp s t     -> brace (sig s <+> showType env t)
+  VTString       -> string "String"
+  where
+  sig s = bracket (commaSep (map (showType env) s))
+  ($$*) = foldl' (\ f a -> prec 10 (f <+> a))
+  infixl 9 $$*
+  head = \case
+    TGlobal q  -> qname q
+    TFree v    -> env ! getIndex (levelToIndex (Level (length env)) v)
+    TMetavar m -> char '?' <> string (show (getMeta m))
+  mult q = if
+    | q == zero -> (char '0' <+>)
+    | q == one  -> (char '1' <+>)
+    | otherwise -> id
 
 
 -- Type expressions
@@ -113,7 +147,7 @@ data TExpr
   | TInterface
   | TString
   | TForAll Name TExpr TExpr
-  | TArrow (Either Name [TExpr]) TExpr TExpr
+  | TArrow (Either Name [TExpr]) Quantity TExpr TExpr
   | TComp [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
@@ -124,29 +158,27 @@ data TExpr
 
 quote :: Level -> Type -> TExpr
 quote d = \case
-  VKType         -> TType
-  VKInterface    -> TInterface
-  VTForAll n t b -> TForAll n (quote d t) (quote (succ d) (b (free d)))
-  VTArrow n a b  -> TArrow (map (quote d) <$> n) (quote d a) (quote d b)
-  VTComp s t     -> TComp (quote d <$> s) (quote d t)
-  VTNe (n :$ sp) -> foldl' (\ head -> \case
-    TEInst a -> TInst head (quote d a)
-    TEApp  a -> TApp head (quote d a)) (TVar (levelToIndex d <$> n)) sp
-  VTString       -> TString
+  VKType          -> TType
+  VKInterface     -> TInterface
+  VTForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
+  VTArrow n q a b -> TArrow (map (quote d) <$> n) q (quote d a) (quote d b)
+  VTComp s t      -> TComp (quote d <$> s) (quote d t)
+  VTNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
+  VTString        -> TString
 
-eval :: HasCallStack => Subst -> Stack Type -> TExpr -> Type
+eval :: HasCallStack => Subst -> Stack (Either Type a) -> TExpr -> Type
 eval subst = go where
   go env = \case
     TVar (TGlobal n)  -> global n
-    TVar (TFree v)    -> env ! getIndex v
+    TVar (TFree v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TVar (TMetavar m) -> maybe (metavar m) tm (lookupMeta m subst)
     TType             -> VKType
     TInterface        -> VKInterface
-    TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> v) b)
-    TArrow n a b      -> VTArrow (map (go env) <$> n) (go env a) (go env b)
+    TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> Left v) b)
+    TArrow n q a b    -> VTArrow (map (go env) <$> n) q (go env a) (go env b)
     TComp s t         -> VTComp (go env <$> s) (go env t)
-    TInst f a         -> go env f $$ TEInst (go env a)
-    TApp  f a         -> go env f $$ TEApp (go env a)
+    TInst f a         -> go env f $$$ go env a
+    TApp  f a         -> go env f $$  go env a
     TString           -> VTString
 
 
