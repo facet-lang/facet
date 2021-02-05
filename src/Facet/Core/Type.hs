@@ -66,7 +66,6 @@ data VType
   | VTRet [VType] VType
   | VTString
 
-
 data CType
 
 
