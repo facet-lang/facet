@@ -148,7 +148,7 @@ data TExpr
   | TString
   | TForAll Name TExpr TExpr
   | TArrow (Either Name [TExpr]) Quantity TExpr TExpr
-  | TComp [TExpr] TExpr
+  | TSusp [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
   deriving (Eq, Ord, Show)
@@ -162,7 +162,7 @@ quote d = \case
   VKInterface     -> TInterface
   VTForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
   VTArrow n q a b -> TArrow (map (quote d) <$> n) q (quote d a) (quote d b)
-  VTSusp s t      -> TComp (quote d <$> s) (quote d t)
+  VTSusp s t      -> TSusp (quote d <$> s) (quote d t)
   VTNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
   VTString        -> TString
 
@@ -176,7 +176,7 @@ eval subst = go where
     TInterface        -> VKInterface
     TForAll n t b     -> VTForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b    -> VTArrow (map (go env) <$> n) q (go env a) (go env b)
-    TComp s t         -> VTSusp (go env <$> s) (go env t)
+    TSusp s t         -> VTSusp (go env <$> s) (go env t)
     TInst f a         -> go env f $$$ go env a
     TApp  f a         -> go env f $$  go env a
     TString           -> VTString

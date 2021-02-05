@@ -158,7 +158,7 @@ printTExpr Options{ qname, instantiation } = go
     C.TArrow (Right []) q a b -> mult q (go env a) --> go env b
     C.TArrow (Right s)  q a b -> (sig s <+> mult q (go env a)) --> go env b
     C.TArrow (Left n)   q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
-    C.TComp s t               -> braces (sig s <+> go env t)
+    C.TSusp s t               -> braces (sig s <+> go env t)
     C.TInst f t               -> group (go env f) `instantiation` group (braces (go env t))
     C.TApp f a                -> group (go env f) $$ group (go env a)
     C.TString                 -> annotate Type $ pretty "String"
