@@ -43,6 +43,7 @@ module Facet.Elab
 , elabType
 , elabTerm
 , elabSynth
+  -- * Judgements
 , check
 , Check(..)
 , mapCheck
@@ -397,6 +398,8 @@ elabTerm = elabWith one (\ subst e -> pure (E.eval subst Nil e))
 elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> Elab m (Expr ::: Type) -> m (Value ::: Type)
 elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (E.eval subst Nil e ::: T.eval subst Nil (T.quote 0 _T)))
 
+
+-- Judgements
 
 check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
 check (m ::: _T) = case unRet _T of
