@@ -171,18 +171,18 @@ quote d = \case
 eval :: HasCallStack => Subst -> Stack (Either Type a) -> TExpr -> Type
 eval subst = go where
   go env = \case
+    TType            -> VType
+    TInterface       -> VInterface
+    TString          -> VString
+    TSusp t          -> VSusp (go env t)
     TVar (Global n)  -> global n
     TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TVar (Metavar m) -> maybe (metavar m) tm (lookupMeta m subst)
-    TType            -> VType
-    TInterface       -> VInterface
     TForAll n t b    -> VForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> VArrow n q (go env a) (go env b)
-    TSusp t          -> VSusp (go env t)
     TRet s t         -> VRet (go env <$> s) (go env t)
     TInst f a        -> go env f $$$ go env a
     TApp  f a        -> go env f $$  go env a
-    TString          -> VString
 
 
 -- Substitution
