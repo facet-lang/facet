@@ -47,12 +47,12 @@ import           Prelude hiding (lookup)
 data Type
   = VType
   | VInterface
+  | VString
+  | VSusp Type
   | VForAll Name Type (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
   | VNe (Var Meta Level) (Stack Type) (Stack Type)
-  | VSusp Type
   | VRet [Type] Type
-  | VString
 
 
 global :: Q Name -> Type
