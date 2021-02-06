@@ -27,7 +27,7 @@ import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 
-tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m TExpr
+tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth Type m TExpr
 tvar n = Synth $ views context_ (lookupInContext n) >>= \case
   Just (i, q, _T) -> use i q $> (TVar (Free i) ::: _T)
   Nothing         -> do
@@ -35,17 +35,17 @@ tvar n = Synth $ views context_ (lookupInContext n) >>= \case
     instantiate TInst $ TVar (Global q) ::: _T
 
 
-_Type :: Synth m TExpr
+_Type :: Synth Type m TExpr
 _Type = Synth $ pure $ TType ::: VType
 
-_Interface :: Synth m TExpr
+_Interface :: Synth Type m TExpr
 _Interface = Synth $ pure $ TInterface ::: VType
 
-_String :: Synth m TExpr
+_String :: Synth Type m TExpr
 _String = Synth $ pure $ TString ::: VType
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check Type m TExpr -> Check Type m TExpr -> Synth m TExpr
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check Type m TExpr -> Check Type m TExpr -> Synth Type m TExpr
 forAll (n ::: t) b = Synth $ do
   t' <- check (t ::: VType)
   env <- views context_ toEnv
@@ -54,7 +54,7 @@ forAll (n ::: t) b = Synth $ do
   b' <- Binding n zero vt |- check (b ::: VType)
   pure $ TForAll n t' b' ::: VType
 
-(-->) :: Algebra sig m => Maybe Name ::: Check Type m (Quantity, TExpr) -> Check Type m TExpr -> Synth m TExpr
+(-->) :: Algebra sig m => Maybe Name ::: Check Type m (Quantity, TExpr) -> Check Type m TExpr -> Synth Type m TExpr
 (n ::: a) --> b = Synth $ do
   (q', a') <- check (a ::: VType)
   b' <- check (b ::: VType)
@@ -63,13 +63,13 @@ forAll (n ::: t) b = Synth $ do
 infixr 1 -->
 
 
-comp :: Algebra sig m => Check Type m TExpr -> Synth m TExpr
+comp :: Algebra sig m => Check Type m TExpr -> Synth Type m TExpr
 comp t = Synth $ do
   t' <- check (t ::: VType)
   -- FIXME: classify types by universe (value/computation) and check that this is a computation type being suspended
   pure $ TSusp t' ::: VType
 
-ret :: Algebra sig m => [Check Type m TExpr] -> Check Type m TExpr -> Synth m TExpr
+ret :: Algebra sig m => [Check Type m TExpr] -> Check Type m TExpr -> Synth Type m TExpr
 ret s t = Synth $ do
   s' <- traverse (check . (::: VInterface)) s
   -- FIXME: classify types by universe (value/computation) and check that this is a value type being returned
@@ -77,7 +77,7 @@ ret s t = Synth $ do
   pure $ TRet s' t' ::: VType
 
 
-synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
+synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth Type m TExpr
 synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TVar n          -> tvar n
   S.KType           -> _Type
@@ -99,7 +99,7 @@ synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
 checkType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check Type m TExpr
 checkType = switch . synthType
 
-synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m TExpr
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth Type m TExpr
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
   foldl' (app TApp) h' (checkType <$> sp)
   where
