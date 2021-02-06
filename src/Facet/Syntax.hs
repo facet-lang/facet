@@ -3,6 +3,9 @@ module Facet.Syntax
 , tm
 , ty
 , (:=:)(..)
+  -- * Variables
+, Var(..)
+  -- * Decomposition
 , splitl
 , splitr
 ) where
@@ -11,6 +14,7 @@ import Data.Bifoldable
 import Data.Bifunctor
 import Data.Bitraversable
 import Data.Functor.Classes
+import Facet.Name
 import Facet.Stack
 
 data a ::: b = a ::: b
@@ -60,6 +64,17 @@ instance Bifunctor (:=:) where
 instance Bitraversable (:=:) where
   bitraverse f g (a :=: b) = (:=:) <$> f a <*> g b
 
+
+-- Variables
+
+data Var m a
+  = Global (Q Name) -- ^ Global variables, considered equal by 'Q' 'Name'.
+  | Free a
+  | Metavar m
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+
+-- Decomposition
 
 splitl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)
 splitl un = go id

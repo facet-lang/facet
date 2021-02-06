@@ -132,15 +132,15 @@ typeSig name = choice [ forAll (typeSig name), bindArrow name (typeSig name), ty
 monotypeTable :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => Table p (S.Ann S.Type)
 monotypeTable =
   [ [ functionType ]
+  , [ retType ]
   , [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.TApp)) ]
   , [ -- FIXME: we should treat these as globals.
       atom (token (anned (S.KType      <$ string "Type")))
     , atom (token (anned (S.KInterface <$ string "Interface")))
     , atom (token (anned (S.TString    <$ string "String")))
       -- FIXME: holes in types
-      -- FIXME: explicit suspended computation types (this is gonna be hard to disambiguate)
     , atom tvar
-    , atom (try compType)
+    , atom (try suspendedCompType)
     ]
   ]
 
@@ -155,13 +155,19 @@ forAll k = make <$> anned (try (((,,) <$ lbrace <*> commaSep1 ((,) <$> position 
   make (S.Ann s cs (ns, t, b)) = S.Ann s cs (S.out (foldr (\ (p, n) b -> S.Ann (Span p (end s)) Nil (S.TForAll n t b)) b ns))
 
 bindArrow :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann S.Type) -> p (S.Ann S.Type)
-bindArrow name k = anned (try (S.TArrow . Left <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> optional mul <*> type' <* rparen <* arrow <*> k)
+bindArrow name k = anned (try (S.TArrow . Just <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> optional mul <*> type' <* rparen <* arrow <*> k)
 
 functionType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type) -> p (S.Ann S.Type)
-functionType self next = anned (try (S.TArrow . Right <$> option [] signature <*> optional mul <*> next <* arrow) <*> self) <|> next
+functionType self next = anned (try (S.TArrow Nothing <$> optional mul <*> next <* arrow) <*> self) <|> next
 
 mul :: TokenParsing p => p S.Mul
 mul = choice [ S.Zero <$ token (char '0'), S.One <$ token (char '1') ]
+
+
+retType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type) -> p (S.Ann S.Type)
+retType _ next = mk <$> anned ((,) <$> optional signature <*> next)
+  where
+  mk (S.Ann s c (sig, _T)) = maybe id (\ sig -> S.Ann s c . S.TRet sig) sig _T
 
 
 -- FIXME: support type operators
@@ -172,8 +178,8 @@ tvar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenPa
 tvar = anned (S.TVar <$> qname tname)
 
 
-compType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-compType = anned $ braces (S.TComp <$> option [] signature <*> type')
+suspendedCompType :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
+suspendedCompType = anned $ braces (S.TSusp <$> type')
 
 signature :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Interface]
 signature = brackets (commaSep delta) <?> "signature"

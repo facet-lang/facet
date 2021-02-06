@@ -29,7 +29,7 @@ import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
-import           Facet.Core.Term hiding (eval)
+import           Facet.Core.Term as E hiding (eval)
 import           Facet.Core.Type as T hiding (eval, showType)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
@@ -206,7 +206,7 @@ runEvalMain = runEval handle pure
   where
   handle q ts sp k = case q of
     FromList ["Effect", "Console"] :.: U "write"
-      | FromList [VString s] <- sp -> outputText s *> k unit
+      | FromList [E.VString s] <- sp -> outputText s *> k unit
     _                              -> k (VOp q ts sp)
   unit = VCon (["Data", "Unit"] :.: U "unit") Nil Nil
 

@@ -101,9 +101,9 @@ instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a :::
 instantiate inst = go
   where
   go (e ::: _T) = case _T of
-    VTForAll _ _T _B -> do
+    VForAll _ _T _B -> do
       m <- meta _T
-      go (inst e (TVar (TMetavar m)) ::: _B (metavar m))
+      go (inst e (TVar (Metavar m)) ::: _B (metavar m))
     _                -> pure $ e ::: _T
 
 
@@ -114,7 +114,7 @@ as :: (HasCallStack, Algebra sig m) => Check m Expr ::: Check m TExpr -> Synth m
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
-  _T' <- T.eval subst (Left <$> env) <$> check (_T ::: VKType)
+  _T' <- T.eval subst (Left <$> env) <$> check (_T ::: VType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -142,7 +142,7 @@ lookupInContext (m:.:n)
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 lookupInSig :: Q Name -> Module -> Graph -> [Type] -> Maybe (Q Name ::: Type)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
-  VTNe (TGlobal q@(m':.:_)) _ _ -> do
+  T.VNe (Global q@(m':.:_)) _ _ -> do
     guard (m == Nil || m == m')
     _ :=: Just (DInterface defs) ::: _ <- lookupQ graph mod q
     _ :=: _ ::: _T <- lookupScope n defs
@@ -156,8 +156,9 @@ hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ do
   f' ::: _F <- synth f
-  (m ::: (q, _A), _B) <- expectFunction "in application" _F
-  a' <- either (const id) extendSig m $ censor @Usage (q ><<) $ check (a ::: _A)
+  (_ ::: (q, _A), _B) <- expectFunction "in application" _F
+  -- FIXME: test _A for Ret and extend the sig
+  a' <- censor @Usage (q ><<) $ check (a ::: _A)
   pure $ mk f' a' ::: _B
 
 
@@ -284,8 +285,8 @@ warn reason = do
 expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Either Name [Type] ::: (Quantity, Type), Type)
-expectFunction = expectMatch (\case{ VTArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
+expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
+expectFunction = expectMatch (\case{ VArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Unification
@@ -321,32 +322,35 @@ unify t1 t2 = type' t1 t2
   nope = couldNotUnify "mismatch" t1 t2
 
   type' = curry $ \case
-    (VTNe (TMetavar v1) Nil Nil, VTNe (TMetavar v2) Nil Nil) -> flexFlex v1 v2
-    (VTNe (TMetavar v1) Nil Nil, t2)                         -> solve v1 t2
-    (t1, VTNe (TMetavar v2) Nil Nil)                         -> solve v2 t1
-    (VKType, VKType)                                         -> pure ()
-    (VKType, _)                                              -> nope
-    (VKInterface, VKInterface)                               -> pure ()
-    (VKInterface, _)                                         -> nope
-    (VTForAll n t1 b1, VTForAll _ t2 b2)                     -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
-    (VTForAll{}, _)                                          -> nope
+    (T.VNe (Metavar v1) Nil Nil, T.VNe (Metavar v2) Nil Nil) -> flexFlex v1 v2
+    (T.VNe (Metavar v1) Nil Nil, t2)                         -> solve v1 t2
+    (t1, T.VNe (Metavar v2) Nil Nil)                         -> solve v2 t1
+    (VType, VType)                                           -> pure ()
+    (VType, _)                                               -> nope
+    (VInterface, VInterface)                                 -> pure ()
+    (VInterface, _)                                          -> nope
+    (VForAll n t1 b1, VForAll _ t2 b2)                       -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
+    (VForAll{}, _)                                           -> nope
     -- FIXME: this must unify the signatures
-    (VTArrow _ _ a1 b1, VTArrow _ _ a2 b2)                   -> type' a1 a2 >> type' b1 b2
-    (VTArrow{}, _)                                           -> nope
-    (VTComp s1 t1, VTComp s2 t2)                             -> sig s1 s2 >> type' t1 t2
-    (VTComp{}, _)                                            -> nope
-    (VTNe v1 ts1 sp1, VTNe v2 ts2 sp2)                       -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
-    (VTNe{}, _)                                              -> nope
-    (VTString, VTString)                                     -> pure ()
-    (VTString, _)                                            -> nope
+    (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                     -> type' a1 a2 >> type' b1 b2
+    (VArrow{}, _)                                            -> nope
+    (VSusp t1, VSusp t2)                                     -> type' t1 t2
+    (VSusp{}, _)                                             -> nope
+    (VRet s1 t1, VRet s2 t2)                                 -> sig s1 s2 >> type' t1 t2
+    (VRet _ t1, t2)                                          -> type' t1 t2
+    (t1, VRet _ t2)                                          -> type' t1 t2
+    (T.VNe v1 ts1 sp1, T.VNe v2 ts2 sp2)                     -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
+    (T.VNe{}, _)                                             -> nope
+    (T.VString, T.VString)                                   -> pure ()
+    (T.VString, _)                                           -> nope
 
   var = curry $ \case
-    (TGlobal q1, TGlobal q2)   -> unless (q1 == q2) nope
-    (TGlobal{}, _)             -> nope
-    (TFree v1, TFree v2)       -> unless (v1 == v2) nope
-    (TFree{}, _)               -> nope
-    (TMetavar m1, TMetavar m2) -> unless (m1 == m2) nope
-    (TMetavar{}, _)            -> nope
+    (Global q1, Global q2)   -> unless (q1 == q2) nope
+    (Global{}, _)            -> nope
+    (Free v1, Free v2)       -> unless (v1 == v2) nope
+    (Free{}, _)              -> nope
+    (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
+    (Metavar{}, _)           -> nope
 
   spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
@@ -364,7 +368,7 @@ unify t1 t2 = type' t1 t2
 
   solve v t = do
     d <- depth
-    if occursIn (== TMetavar v) d t then
+    if occursIn (== Metavar v) d t then
       mismatch "infinite type" (Right (metavar v)) t
     else
       gets (T.lookupMeta v) >>= \case
@@ -394,8 +398,10 @@ elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Qua
 elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (E.eval subst Nil e ::: T.eval subst Nil (T.quote 0 _T)))
 
 
-check :: (Check m a ::: Type) -> Elab m a
-check (m ::: _T) = runCheck m _T
+check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
+check (m ::: _T) = case unRet _T of
+  Just (sig, _) -> extendSig sig $ runCheck m _T
+  Nothing       -> runCheck m _T
 
 newtype Check m a = Check { runCheck :: Type -> Elab m a }
   deriving (Applicative, Functor) via ReaderC Type (Elab m)
@@ -413,11 +419,11 @@ mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m
 mapSynth f = Synth . f . synth
 
 
-bind :: Bind m a ::: ([Type], Quantity, Type) -> Check m b -> Check m (a, b)
-bind (p ::: (s, q, _T)) = runBind p s q _T
+bind :: Bind m a ::: (Quantity, Type) -> Check m b -> Check m (a, b)
+bind (p ::: (q, _T)) = runBind p q _T
 
-newtype Bind m a = Bind { runBind :: forall x . [Type] -> Quantity -> Type -> Check m x -> Check m (a, x) }
+newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check m x -> Check m (a, x) }
   deriving (Functor)
 
 mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
-mapBind f m = Bind $ \ sig q _A b -> mapCheck f (runBind m sig q _A b)
+mapBind f m = Bind $ \ q _A b -> mapCheck f (runBind m q _A b)

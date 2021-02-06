@@ -12,10 +12,10 @@ interface Input : Interface
 interface Output : Interface
 { write : String -> Unit }
 
-writeLine : (str : String) -> { [Output] Unit }
+writeLine : (str : String) -> [Output] Unit
 { write str ; write "\n" }
 
 
 dropOutput : { A : Type } -> [Output] A -> A
-{ [write _ ; k] -> k unit
+{ [write _ ; k] -> dropOutput (k unit)
 , x             -> x }
