@@ -87,10 +87,10 @@ lam cs = Check $ \ _T -> do
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
-thunk :: Algebra sig m => Check m a -> Check m a
-thunk e = Check $ \case
-  VSusp t -> check (e ::: t)
-  t       -> check (e ::: t)
+thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m a -> Check m a
+thunk e = Check $ \ _T -> do
+  _T' <- expectSusp "when thunking computation" _T
+  check (e ::: _T')
 
 force :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Synth m a
 force e = Synth $ do
