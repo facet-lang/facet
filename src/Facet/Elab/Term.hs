@@ -89,9 +89,8 @@ lam cs = Check $ \ _T -> do
 
 thunk :: Algebra sig m => Check m a -> Check m a
 thunk e = Check $ \case
-  VSusp t  -> check (e ::: t)
-  VRet s t -> extendSig s $ check (e ::: t)
-  t        -> check (e ::: t)
+  VSusp t -> check (e ::: t)
+  t       -> check (e ::: t)
 
 force :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Synth m a
 force e = Synth $ do
