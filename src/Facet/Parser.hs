@@ -104,8 +104,12 @@ termDecl = anned $ do
         _ -> pure N.N
       modify (makeOperator (Nil, op, assoc) :)
     _      -> pure ()
-  decl <- anned $ S.Decl <$ colon <*> typeSig ename <*> (S.TermDef <$> thunk)
+  decl <- anned $ S.Decl <$ colon <*> typeSig ename <*> (S.TermDef <$> body)
   pure (name, decl)
+
+body :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
+-- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
+body = anned (braces (S.Lam <$> sepBy1 clause comma <|> S.Thunk <$> expr <|> pure (S.Lam [])))
 
 dataDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Decl))
 dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> tname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.DataDef <$> braces (commaSep con)))
