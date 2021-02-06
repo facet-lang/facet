@@ -161,12 +161,12 @@ quote :: Level -> Type -> TExpr
 quote d = \case
   VType          -> TType
   VInterface     -> TInterface
+  VString        -> TString
+  VSusp t        -> TSusp (quote d t)
   VForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
-  VSusp t        -> TSusp (quote d t)
   VRet s t       -> TRet (quote d <$> s) (quote d t)
   VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
-  VString        -> TString
 
 eval :: HasCallStack => Subst -> Stack (Either Type a) -> TExpr -> Type
 eval subst = go where
