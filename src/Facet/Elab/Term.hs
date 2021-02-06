@@ -97,7 +97,8 @@ force :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Synth m a
 force e = Synth $ do
   e' ::: _T <- synth e
   -- FIXME: should we check the signature? or can we rely on it already having been checked?
-  _T' <- expectSusp "when forcing suspended computation" _T
+  _T' <- metavar <$> meta VType
+  unify _T (VSusp _T')
   pure $ e' ::: _T'
 
 
