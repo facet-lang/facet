@@ -319,9 +319,6 @@ expectTacitFunction = expectMatch (\case{ VArrow Nothing q t b -> pure ((q, t), 
 expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
 expectRet = expectMatch (\case{ VRet s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
 
-expectSusp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m Type
-expectSusp = expectMatch (\case { VSusp t -> pure t ; _ -> Nothing }) "{_}"
-
 
 -- Elaboration
 
