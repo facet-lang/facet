@@ -54,7 +54,6 @@ data VType
   | VInterface
   | VString
   | VSusp (Ann Type)
-  | VVar (Q Name)
   deriving (Eq, Show)
 
 data Mul = Zero | One
