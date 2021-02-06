@@ -2,6 +2,7 @@
 module Facet.Surface
 ( -- * Types
   Type(..)
+, VType(..)
 , Mul(..)
   -- * Expressions
 , Expr(..)
@@ -46,6 +47,13 @@ data Type
   | TSusp (Ann Type)
   | TRet [Ann Interface] (Ann Type)
   | TApp (Ann Type) (Ann Type)
+  deriving (Eq, Show)
+
+data VType
+  = VType
+  | VInterface
+  | VString
+  | VSusp (Ann Type)
   deriving (Eq, Show)
 
 data Mul = Zero | One
