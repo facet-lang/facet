@@ -142,13 +142,13 @@ showType env = \case
 -- Type expressions
 
 data TExpr
-  = TVar (Var Meta Index)
-  | TType
+  = TType
   | TInterface
   | TString
+  | TSusp TExpr
+  | TVar (Var Meta Index)
   | TForAll Name TExpr TExpr
   | TArrow (Maybe Name) Quantity TExpr TExpr
-  | TSusp TExpr
   | TRet [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
