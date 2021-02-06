@@ -139,7 +139,6 @@ monotypeTable =
     , atom (token (anned (S.KInterface <$ string "Interface")))
     , atom (token (anned (S.TString    <$ string "String")))
       -- FIXME: holes in types
-      -- FIXME: explicit suspended computation types (this is gonna be hard to disambiguate)
     , atom tvar
     , atom (try suspendedCompType)
     ]
