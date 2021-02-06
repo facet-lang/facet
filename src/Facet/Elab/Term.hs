@@ -89,7 +89,8 @@ lam cs = Check $ \ _T -> do
 
 thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m a -> Check m a
 thunk e = Check $ \ _T -> do
-  _T' <- expectSusp "when thunking computation" _T
+  _T' <- metavar <$> meta VType
+  unify _T (VSusp _T')
   check (e ::: _T')
 
 force :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Synth m a
