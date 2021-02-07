@@ -227,9 +227,6 @@ elabDataDef (dname ::: _T) constructors = do
   where
   con q = go Nil Nil where
     go ts fs = Check $ \case
-      -- FIXME: earlier indices should be shifted
-      -- FIXME: XTLam is only for the type parameters
-      -- type parameters presumably shouldn’t be represented in the elaborated data
       VForAll n   _T _B -> do
         d <- depth
         check (tlam (go (ts :> d) fs) ::: VForAll n _T _B)
