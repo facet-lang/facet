@@ -45,17 +45,17 @@ eval = go Nil
       f' <- go env f
       a' <- go env a
       f' $$ a'
-    XCon n _ fs      -> VCon n Nil <$> traverse (go env) fs
+    XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
-    XOp n            -> pure $ VOp n Nil Nil
+    XOp n            -> pure $ VOp n Nil
 
 
 -- Machinery
 
-runEval :: (Q Name -> Stack T.Type -> Stack (Value m (Var Void Level)) -> (Value m (Var Void Level) -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: (Q Name -> Stack (Value m (Var Void Level)) -> (Value m (Var Void Level) -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (Q Name -> Stack T.Type -> Stack (Value m (Var Void Level)) -> (Value m (Var Void Level) -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (Q Name -> Stack (Value m (Var Void Level)) -> (Value m (Var Void Level) -> m r) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)
@@ -76,22 +76,22 @@ instance MonadTrans Eval where
 data Value m a
   = VTLam (T.Type -> Eval m (Value m a))
   | VLam [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))]
-  | VNe a (Stack T.Type) (Stack (Value m a))
-  | VCon (Q Name) (Stack T.Type) (Stack (Value m a))
+  | VNe a (Stack (Value m a))
+  | VCon (Q Name) (Stack (Value m a))
   | VString Text
-  | VOp (Q Name) (Stack T.Type) (Stack (Value m a))
+  | VOp (Q Name) (Stack (Value m a))
 
 var :: a -> Value m a
-var v = VNe v Nil Nil
+var v = VNe v Nil
 
 
 -- Elimination
 
 ($$) :: HasCallStack => Value m a -> Value m a -> Eval m (Value m a)
-VNe h ts es $$ a = pure $ VNe h ts (es :> a)
-VLam cs     $$ a = case' a cs
-VOp h ts es $$ a = pure $ VOp h ts (es :> a)
-_           $$ _ = error "can’t apply"
+VNe h es $$ a = pure $ VNe h (es :> a)
+VLam cs  $$ a = case' a cs
+VOp h es $$ a = pure $ VOp h (es :> a)
+_        $$ _ = error "can’t apply"
 
 infixl 9 $$
 
@@ -109,20 +109,20 @@ match = curry $ \case
   (s, PVal p') -> PVal <$> value s p'
   where
   value = curry $ \case
-    (_,            PWildcard) -> Just PWildcard
-    (s,            PVar _)    -> Just (PVar s)
+    (_,          PWildcard) -> Just PWildcard
+    (s,          PVar _)    -> Just (PVar s)
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
-    (VCon n' _ fs, PCon n ps) -> PCon n' <$ guard (n == n') <*> zipWithM value fs ps
-    (_,            PCon{})    -> Nothing
+    (VCon n' fs, PCon n ps) -> PCon n' <$ guard (n == n') <*> zipWithM value fs ps
+    (_,          PCon{})    -> Nothing
 
 
 -- Quotation
 
 quoteExpr :: Level -> Value m (Var Void Level) -> Eval m Expr
 quoteExpr d = \case
-  VTLam b      -> XTLam <$> (quoteExpr (succ d) =<< b (T.free d))
-  VLam cs      -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, var (Free d))) d p in quoteExpr d' =<< b p') cs
-  VNe h ts as  -> foldl' XApp (foldl' XInst (XVar (levelToIndex d <$> h)) (T.quote d <$> ts)) <$> traverse (quoteExpr d) as
-  VCon n ts fs -> XCon n (T.quote d <$> ts) <$> traverse (quoteExpr d) fs
-  VString s    -> pure $ XString s
-  VOp n ts sp  -> foldl' XApp (foldl' XInst (XOp n) (T.quote d <$> ts)) <$> traverse (quoteExpr d) sp
+  VTLam b   -> XTLam <$> (quoteExpr (succ d) =<< b (T.free d))
+  VLam cs   -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, var (Free d))) d p in quoteExpr d' =<< b p') cs
+  VNe h as  -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quoteExpr d) as
+  VCon n fs -> XCon n Nil <$> traverse (quoteExpr d) fs
+  VString s -> pure $ XString s
+  VOp n sp  -> foldl' XApp (XOp n) <$> traverse (quoteExpr d) sp
