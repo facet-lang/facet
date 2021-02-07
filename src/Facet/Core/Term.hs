@@ -52,5 +52,5 @@ data Expr
   | XApp Expr Expr
   | XCon (Q Name) (Stack T.TExpr) (Stack Expr)
   | XString Text
-  | XOp (Q Name)
+  | XOp (Q Name) (Stack T.TExpr) (Stack Expr)
   deriving (Eq, Ord, Show)

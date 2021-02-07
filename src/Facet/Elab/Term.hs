@@ -249,7 +249,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstractType (check (checkType t ::: VType)) _T
     -- FIXME: check that the interface is a member of the sig.
-    op' <- elabTerm $ check (abstractTerm (foldl' XApp . foldl' XInst (XOp (mname :.: n))) ::: _T')
+    op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
     pure $ n :=: Just (DTerm op') ::: _T'
   pure [ dname :=: Just (DInterface (scopeFromList cs)) ::: _T ]
 

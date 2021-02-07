@@ -46,7 +46,7 @@ eval = go Nil
       f' $$ a'
     XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
-    XOp n            -> pure $ VOp n Nil
+    XOp n _ sp       -> VOp n <$> traverse (go env) sp
 
 
 -- Machinery
@@ -122,4 +122,4 @@ quoteExpr d = \case
   VNe h as  -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quoteExpr d) as
   VCon n fs -> XCon n Nil <$> traverse (quoteExpr d) fs
   VString s -> pure $ XString s
-  VOp n sp  -> foldl' XApp (XOp n) <$> traverse (quoteExpr d) sp
+  VOp n sp  -> XOp n Nil <$> traverse (quoteExpr d) sp
