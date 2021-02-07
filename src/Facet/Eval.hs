@@ -15,6 +15,7 @@ import Control.Effect.Reader
 import Control.Monad (guard)
 import Control.Monad.Trans.Class
 import Data.Foldable (asum, foldl')
+import Data.Maybe (fromMaybe)
 import Data.Semialign.Exts (zipWithM)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -91,9 +92,7 @@ var v = VNe v Nil
 -- Elimination
 
 case' :: HasCallStack => Value m a -> [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))] -> Eval m (Value m a)
-case' s cs = case asum (map (\ (p, f) -> f <$> match s p) cs) of
-  Just v -> v
-  _      -> error "non-exhaustive patterns in lambda"
+case' s cs = fromMaybe (error "non-exhaustive patterns in lambda") (asum (map (\ (p, f) -> f <$> match s p) cs))
 
 match :: Alternative f => Value m a -> Pattern b -> f (Pattern (Value m a))
 match = curry $ \case
