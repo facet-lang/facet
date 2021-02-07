@@ -43,7 +43,9 @@ eval = go Nil
     XApp  f a        -> do
       f' <- go env f
       a' <- go env a
-      f' $$ a'
+      case f' of
+        VLam cs -> case' a' cs
+        _       -> error "throw a real error (apply)"
     XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> VOp n <$> traverse (go env) sp
@@ -84,13 +86,6 @@ var v = VNe v Nil
 
 
 -- Elimination
-
-($$) :: HasCallStack => Value m a -> Value m a -> Eval m (Value m a)
-VLam cs  $$ a = case' a cs
-_        $$ _ = error "can’t apply"
-
-infixl 9 $$
-
 
 case' :: HasCallStack => Value m a -> [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))] -> Eval m (Value m a)
 case' s cs = case asum (map (\ (p, f) -> f <$> match s p) cs) of
