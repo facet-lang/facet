@@ -200,6 +200,7 @@ signature = brackets (commaSep delta) <?> "signature"
 exprTable :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => Table p (S.Ann S.Expr)
 exprTable =
   -- FIXME: parse this as a unary operator or something
+  -- FIXME: better yet, generalize operators to allow different syntactic types on either side (following the associativity)
   [ [ ascription ]
   , [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   -- FIXME: model this as application to unit instead
