@@ -39,9 +39,9 @@ eval = go Nil
         _                                 -> error "throw a real error here"
     XVar (Free v)    -> pure $ fromRight (error ("type variable at index " <> show v)) (env ! getIndex v)
     XVar (Metavar m) -> case m of {}
-    XTLam b          -> pure $ VTLam (\ _T -> go (env :> Left _T) b)
+    XTLam b          -> go env b
     XLam cs          -> pure $ VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (\ env' v -> env' :> Right v) env p) b)) cs)
-    XInst f a        -> ($$$ T.eval mempty env a) =<< go env f
+    XInst f _        -> go env f
     XApp  f a        -> do
       f' <- go env f
       a' <- go env a
@@ -95,15 +95,6 @@ VOp h ts es $$ a = pure $ VOp h ts (es :> a)
 _           $$ _ = error "can’t apply"
 
 infixl 9 $$
-
-
-($$$) :: HasCallStack => Value m a -> T.Type -> Eval m (Value m a)
-VNe h ts es $$$ t = pure $ VNe h (ts :> t) es
-VTLam b     $$$ t = b t
-VOp h ts es $$$ t = pure $ VOp h (ts :> t) es
-_           $$$ _ = error "can’t instantiate"
-
-infixl 9 $$$
 
 
 case' :: HasCallStack => Value m a -> [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))] -> Eval m (Value m a)
