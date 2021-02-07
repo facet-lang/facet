@@ -10,6 +10,7 @@ module Facet.Eval
 ) where
 
 import Control.Algebra
+import Control.Applicative (Alternative(..))
 import Control.Effect.Reader
 import Control.Monad (guard)
 import Control.Monad.Trans.Class
@@ -94,19 +95,19 @@ case' s cs = case asum (map (\ (p, f) -> f <$> match s p) cs) of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
-match :: Value m a -> Pattern b -> Maybe (Pattern (Value m a))
+match :: Alternative f => Value m a -> Pattern b -> f (Pattern (Value m a))
 match = curry $ \case
-  (s, PAll _)  -> Just (PAll s)
+  (s, PAll _)  -> pure (PAll s)
   -- FIXME: match effect patterns against computations (?)
-  (_, PEff{})  -> Nothing
+  (_, PEff{})  -> empty
   (s, PVal p') -> PVal <$> value s p'
   where
   value = curry $ \case
-    (_,          PWildcard) -> Just PWildcard
-    (s,          PVar _)    -> Just (PVar s)
+    (_,          PWildcard) -> pure PWildcard
+    (s,          PVar _)    -> pure (PVar s)
     -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
     (VCon n' fs, PCon n ps) -> PCon n' <$ guard (n == n') <*> zipWithM value fs ps
-    (_,          PCon{})    -> Nothing
+    (_,          PCon{})    -> empty
 
 
 -- Quotation
