@@ -13,7 +13,6 @@ import           Control.Algebra
 import           Control.Effect.Reader
 import           Control.Monad (guard)
 import           Control.Monad.Trans.Class
-import           Data.Either (fromRight)
 import           Data.Foldable (asum, foldl')
 import           Data.Semialign.Exts (zipWithM)
 import           Data.Text (Text)
@@ -37,16 +36,16 @@ eval = go Nil
       case lookupQ graph mod n of
         Just (_ :=: Just (DTerm v) ::: _) -> go env v
         _                                 -> error "throw a real error here"
-    XVar (Free v)    -> pure $ fromRight (error ("type variable at index " <> show v)) (env ! getIndex v)
+    XVar (Free v)    -> pure $ env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go env b
-    XLam cs          -> pure $ VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (\ env' v -> env' :> Right v) env p) b)) cs)
+    XLam cs          -> pure $ VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (:>) env p) b)) cs)
     XInst f _        -> go env f
     XApp  f a        -> do
       f' <- go env f
       a' <- go env a
       f' $$ a'
-    XCon n ts fs     -> VCon n (T.eval mempty env <$> ts) <$> traverse (go env) fs
+    XCon n _ fs      -> VCon n Nil <$> traverse (go env) fs
     XString s        -> pure $ VString s
     XOp n            -> pure $ VOp n Nil Nil
 
