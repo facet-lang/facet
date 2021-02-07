@@ -72,10 +72,6 @@ data Value
   | VOp (Q Name) (Stack T.Type) (Stack Value)
 
 
-free :: Level -> Value
-free = var . Free
-
-
 var :: Var Void Level -> Value
 var v = VNe v Nil Nil
 
@@ -141,7 +137,7 @@ showValue tenv env = \case
   infixl 9 $$*
   clause (p, b) = pat p <+> string "->" <+> setPrec 0 (showValue tenv env' (b p'))
     where
-    ((env', _), p') = mapAccumL (\ (env, d) n -> ((env :> name n, succ d), free d)) (env, Level (length env)) p
+    ((env', _), p') = mapAccumL (\ (env, d) n -> ((env :> name n, succ d), var (Free d))) (env, Level (length env)) p
   pat = \case
     PAll n      -> bracket (name n)
     PVal p      -> vpat p
@@ -177,7 +173,7 @@ data Expr
 quote :: Level -> Value -> Expr
 quote d = \case
   VTLam b      -> XTLam (quote (succ d) (b (T.free d)))
-  VLam cs      -> XLam (map (\ (p, b) -> (p, let (d', p') = fill (\ d -> (succ d, free d)) d p in quote d' (b p'))) cs)
+  VLam cs      -> XLam (map (\ (p, b) -> (p, let (d', p') = fill (\ d -> (succ d, var (Free d))) d p in quote d' (b p'))) cs)
   VNe h ts as  -> let h' = XVar (levelToIndex d <$> h) ; h'' = foldl' XInst h' (T.quote d <$> ts) in foldl' XApp h'' (quote d <$> as)
   VCon n ts fs -> XCon n (T.quote d <$> ts) (quote d <$> fs)
   VString s    -> XString s
