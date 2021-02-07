@@ -251,9 +251,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
     -- FIXME: check that the interface is a member of the sig.
     op' <- elabTerm $ check (abstractTerm (foldl' XApp . foldl' XInst (XOp (mname :.: n))) ::: _T')
     pure $ n :=: Just (DTerm op') ::: _T'
-  pure
-    $ (dname :=: Just (DInterface (scopeFromList cs)) ::: _T)
-    : []
+  pure [ dname :=: Just (DInterface (scopeFromList cs)) ::: _T ]
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
