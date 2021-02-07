@@ -140,13 +140,13 @@ lookupInContext (m:.:n)
   | otherwise = const Alt.empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
-lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Type] -> m (Q Name ::: Type)
+lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Type] -> m (Q Name :=: Maybe Def ::: Type)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   T.VNe (Global q@(m':.:_)) _ _ -> do
     guard (m == Nil || m == m')
     defs <- interfaceScope =<< lookupQ graph mod q
-    _ :=: _ ::: _T <- lookupScope n defs
-    pure $ m':.:n ::: _T
+    _ :=: d ::: _T <- lookupScope n defs
+    pure $ m':.:n :=: d ::: _T
   _                             -> Alt.empty
   where
   interfaceScope (_ :=: d ::: _) = case d of { Just (DInterface defs) -> pure defs ; _ -> Alt.empty }

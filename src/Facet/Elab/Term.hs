@@ -68,7 +68,7 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, q, _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
-  | Just (n ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (XOp n ::: _T)
+  | Just (_ :=: Just (DTerm x) ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
   | otherwise                                          -> do
     n :=: _ ::: _T <- resolveQ n
     synth $ global (n ::: _T)
@@ -141,7 +141,7 @@ effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectRet "when checking effect pattern" _A
-  n' ::: _T <- maybe (freeVariable n) (instantiate const) (lookupInSig n module' graph sig)
+  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (lookupInSig n module' graph sig)
   (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (VArrow Nothing Many _A' _A) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (PEff n' (fromList ps') v, b')
 
