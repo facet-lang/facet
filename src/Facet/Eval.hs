@@ -77,12 +77,12 @@ instance MonadTrans Eval where
 data Value m a
   = VTLam (T.Type -> Eval m (Value m a))
   | VLam [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))]
-  | VNe (Var Void Level) (Stack T.Type) (Stack (Value m a))
+  | VNe a (Stack T.Type) (Stack (Value m a))
   | VCon (Q Name) (Stack T.Type) (Stack (Value m a))
   | VString Text
   | VOp (Q Name) (Stack T.Type) (Stack (Value m a))
 
-var :: Var Void Level -> Value m a
+var :: a -> Value m a
 var v = VNe v Nil Nil
 
 
@@ -128,7 +128,7 @@ match = curry $ \case
 
 -- Quotation
 
-quoteExpr :: Level -> Value m a -> Eval m Expr
+quoteExpr :: Level -> Value m (Var Void Level) -> Eval m Expr
 quoteExpr d = \case
   VTLam b      -> XTLam <$> (quoteExpr (succ d) =<< b (T.free d))
   VLam cs      -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, var (Free d))) d p in quoteExpr d' =<< b p') cs
