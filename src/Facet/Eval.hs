@@ -9,6 +9,8 @@ module Facet.Eval
 , quoteExpr
 ) where
 
+import           Control.Algebra
+import           Control.Effect.Reader
 import           Control.Monad (guard)
 import           Control.Monad.Trans.Class
 import           Data.Either (fromRight)
@@ -16,18 +18,25 @@ import           Data.Foldable (asum, foldl')
 import           Data.Semialign.Exts (zipWithM)
 import           Data.Text (Text)
 import           Data.Void (Void)
+import           Facet.Core.Module
 import           Facet.Core.Term
 import qualified Facet.Core.Type as T
+import           Facet.Graph
 import           Facet.Name
 import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack (HasCallStack)
 
-eval :: Expr -> Eval m (Value m)
+eval :: Has (Reader Graph :+: Reader Module) sig m => Expr -> Eval m (Value m)
 eval = go Nil
   where
   go env = \case
-    XVar (Global n)  -> pure $ var (Global n)
+    XVar (Global n)  -> do
+      mod <- lift ask
+      graph <- lift ask
+      case lookupQ graph mod n of
+        Just (_ :=: Just (DTerm v) ::: _) -> go env v
+        _                                 -> error "throw a real error here"
     XVar (Free v)    -> pure $ fromRight (error ("type variable at index " <> show v)) (env ! getIndex v)
     XVar (Metavar m) -> case m of {}
     XTLam b          -> pure $ VTLam (\ _T -> go (env :> Left _T) b)
