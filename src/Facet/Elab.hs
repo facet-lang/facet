@@ -55,7 +55,7 @@ module Facet.Elab
 ) where
 
 import Control.Algebra
-import Control.Applicative (Alternative)
+import Control.Applicative as Alt (Alternative(..))
 import Control.Carrier.Error.Church
 import Control.Carrier.Reader
 import Control.Carrier.State.Church
@@ -135,10 +135,10 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Q Name -> Context -> Maybe (Index, Quantity, Type)
+lookupInContext :: Alternative m => Q Name -> Context -> m (Index, Quantity, Type)
 lookupInContext (m:.:n)
   | m == Nil  = lookupIndex n
-  | otherwise = const Nothing
+  | otherwise = const Alt.empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 lookupInSig :: Q Name -> Module -> Graph -> [Type] -> Maybe (Q Name ::: Type)
