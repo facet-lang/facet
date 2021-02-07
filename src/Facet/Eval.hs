@@ -88,7 +88,6 @@ var v = VNe v Nil
 ($$) :: HasCallStack => Value m a -> Value m a -> Eval m (Value m a)
 VNe h es $$ a = pure $ VNe h (es :> a)
 VLam cs  $$ a = case' a cs
-VOp h es $$ a = pure $ VOp h (es :> a)
 _        $$ _ = error "can’t apply"
 
 infixl 9 $$
