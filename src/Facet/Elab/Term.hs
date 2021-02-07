@@ -206,6 +206,20 @@ abstractType body = go
       pure $ TForAll n (T.quote level a) b'
     _                       -> body
 
+abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Stack TExpr -> Stack Expr -> Expr) -> Check m Expr
+abstractTerm body = go Nil Nil
+  where
+  go ts fs = Check $ \case
+    VForAll n   _T _B -> do
+      d <- depth
+      check (tlam (go (ts :> d) fs) ::: VForAll n _T _B)
+    VArrow  n q _A _B -> do
+      d <- depth
+      check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: VArrow n q _A _B)
+    _T                 -> do
+      d <- depth
+      pure $ body (TVar . Free . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
+
 
 -- Declarations
 
@@ -219,23 +233,11 @@ elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ abstractType (check (checkType t ::: VType)) _T
-    con' <- elabTerm $ check (con (mname :.: n) ::: c_T)
+    con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
     pure $ n :=: Just (DTerm con') ::: c_T
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
     : cs
-  where
-  con q = go Nil Nil where
-    go ts fs = Check $ \case
-      VForAll n   _T _B -> do
-        d <- depth
-        check (tlam (go (ts :> d) fs) ::: VForAll n _T _B)
-      VArrow  n q _A _B -> do
-        d <- depth
-        check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: VArrow n q _A _B)
-      _T                 -> do
-        d <- depth
-        pure $ XCon q (TVar . Free . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
