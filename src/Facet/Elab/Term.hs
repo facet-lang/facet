@@ -192,8 +192,8 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstract :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Type -> Elab m TExpr
-abstract body = go
+abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Type -> Elab m TExpr
+abstractType body = go
   where
   go = \case
     VForAll       n    t b -> do
@@ -218,7 +218,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    c_T <- elabType $ abstract (check (checkType t ::: VType)) _T
+    c_T <- elabType $ abstractType (check (checkType t ::: VType)) _T
     con' <- elabTerm $ check (con (mname :.: n) ::: c_T)
     pure $ n :=: Just (DTerm con') ::: c_T
   pure
@@ -244,7 +244,7 @@ elabInterfaceDef
   -> m (Maybe Def ::: Type)
 elabInterfaceDef _T constructors = do
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    _T' <- elabType $ abstract (check (checkType t ::: VType)) _T
+    _T' <- elabType $ abstractType (check (checkType t ::: VType)) _T
     -- FIXME: check that the interface is a member of the sig.
     pure $ n :=: Nothing ::: _T'
   pure $ Just (DInterface (scopeFromList cs)) ::: _T
