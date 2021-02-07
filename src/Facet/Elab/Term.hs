@@ -243,13 +243,15 @@ elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
   => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m (Name :=: Maybe Def ::: Type)
+  -> m [Name :=: Maybe Def ::: Type]
 elabInterfaceDef (dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstractType (check (checkType t ::: VType)) _T
     -- FIXME: check that the interface is a member of the sig.
     pure $ n :=: Nothing ::: _T'
-  pure $ dname :=: Just (DInterface (scopeFromList cs)) ::: _T
+  pure
+    $ (dname :=: Just (DInterface (scopeFromList cs)) ::: _T)
+    : []
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
@@ -294,8 +296,8 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
           for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
         S.InterfaceDef os -> Nothing <$ do
-          dname :=: decl <- runModule $ elabInterfaceDef (dname ::: _T) os
-          scope_.decls_.at dname .= Just decl
+          decls <- runModule $ elabInterfaceDef (dname ::: _T) os
+          for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
         S.TermDef t -> pure (Just (dname, t ::: _T))
 
