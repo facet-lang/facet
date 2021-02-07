@@ -14,8 +14,7 @@ import Control.Applicative (Alternative(..))
 import Control.Effect.Reader
 import Control.Monad (guard)
 import Control.Monad.Trans.Class
-import Data.Foldable (asum, foldl')
-import Data.Maybe (fromMaybe)
+import Data.Foldable (foldl')
 import Data.Semialign.Exts (zipWithM)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -26,6 +25,7 @@ import Facet.Name
 import Facet.Stack
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
+import Prelude hiding (zipWith)
 
 eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value m (Var Void Level))
 eval = go Nil
@@ -92,21 +92,18 @@ var v = VNe v Nil
 -- Elimination
 
 case' :: HasCallStack => Value m a -> [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))] -> Eval m (Value m a)
-case' s cs = fromMaybe (error "non-exhaustive patterns in lambda") (asum (map (\ (p, f) -> f <$> match s p) cs))
-
-match :: Alternative f => Value m a -> Pattern b -> f (Pattern (Value m a))
-match = curry $ \case
-  (s, PAll _)  -> pure (PAll s)
-  -- FIXME: match effect patterns against computations (?)
-  (_, PEff{})  -> empty
-  (s, PVal p') -> PVal <$> value s p'
+case' s = foldr (uncurry (match s)) (error "non-exhaustive patterns in lambda")
   where
-  value = curry $ \case
-    (_,          PWildcard) -> pure PWildcard
-    (s,          PVar _)    -> pure (PVar s)
-    -- NB: we’re assuming they’re the same length because they’ve passed elaboration.
-    (VCon n' fs, PCon n ps) -> PCon n' <$ guard (n == n') <*> zipWithM value fs ps
-    (_,          PCon{})    -> empty
+  match s p f k = case p of
+    PAll _  -> f (PAll s)
+    PEff{}  -> k
+    PVal p' -> maybe k (f . PVal) (value s p')
+  value s p = case p of
+    PWildcard -> pure PWildcard
+    PVar _    -> pure (PVar s)
+    PCon n ps
+      | VCon n' fs <- s -> PCon n' <$ guard (n == n') <*> zipWithM value fs ps
+    PCon{}    -> empty
 
 
 -- Quotation
