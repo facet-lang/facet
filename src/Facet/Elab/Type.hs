@@ -45,7 +45,7 @@ _String :: Synth m TExpr
 _String = Synth $ pure $ TString ::: VType
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check Type m TExpr -> Check Type m TExpr -> Synth m TExpr
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
 forAll (n ::: t) b = Synth $ do
   t' <- check (t ::: VType)
   env <- views context_ toEnv
@@ -54,7 +54,7 @@ forAll (n ::: t) b = Synth $ do
   b' <- Binding n zero vt |- check (b ::: VType)
   pure $ TForAll n t' b' ::: VType
 
-(-->) :: Algebra sig m => Maybe Name ::: Check Type m (Quantity, TExpr) -> Check Type m TExpr -> Synth m TExpr
+(-->) :: Algebra sig m => Maybe Name ::: Check m (Quantity, TExpr) -> Check m TExpr -> Synth m TExpr
 (n ::: a) --> b = Synth $ do
   (q', a') <- check (a ::: VType)
   b' <- check (b ::: VType)
@@ -63,13 +63,13 @@ forAll (n ::: t) b = Synth $ do
 infixr 1 -->
 
 
-comp :: Algebra sig m => Check Type m TExpr -> Synth m TExpr
+comp :: Algebra sig m => Check m TExpr -> Synth m TExpr
 comp t = Synth $ do
   t' <- check (t ::: VType)
   -- FIXME: classify types by universe (value/computation) and check that this is a computation type being suspended
   pure $ TSusp t' ::: VType
 
-ret :: Algebra sig m => [Check Type m TExpr] -> Check Type m TExpr -> Synth m TExpr
+ret :: Algebra sig m => [Check m TExpr] -> Check m TExpr -> Synth m TExpr
 ret s t = Synth $ do
   s' <- traverse (check . (::: VInterface)) s
   -- FIXME: classify types by universe (value/computation) and check that this is a value type being returned
@@ -96,7 +96,7 @@ synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
 -- | Check a type at a kind.
 --
 -- NB: while synthesis is possible for all types at present, I reserve the right to change that.
-checkType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check Type m TExpr
+checkType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m TExpr
 checkType = switch . synthType
 
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m TExpr
@@ -105,5 +105,5 @@ synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan 
   where
   h' = mapSynth (pushSpan sh) (tvar h)
 
-checkInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check Type m TExpr
+checkInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check m TExpr
 checkInterface = switch . synthInterface

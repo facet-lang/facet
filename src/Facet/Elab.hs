@@ -108,10 +108,10 @@ instantiate inst = go
     _                -> pure $ e ::: _T
 
 
-switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check Type m a
+switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
 switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
-as :: (HasCallStack, Algebra sig m) => Check Type m Expr ::: Check Type m TExpr -> Synth m Expr
+as :: (HasCallStack, Algebra sig m) => Check m Expr ::: Check m TExpr -> Synth m Expr
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
@@ -151,10 +151,10 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   _                             -> Nothing
 
 
-hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check Type m a
+hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
 hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check Type m b -> Synth m c
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
@@ -401,15 +401,15 @@ elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (E.eval subst Nil e
 
 -- Judgements
 
-check :: Algebra sig m => (Check Type m a ::: Type) -> Elab m a
+check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
 check (m ::: _T) = case unRet _T of
   Just (sig, _) -> extendSig sig $ runCheck m _T
   Nothing       -> runCheck m _T
 
-newtype Check ty m a = Check { runCheck :: ty -> Elab m a }
-  deriving (Applicative, Functor) via ReaderC ty (Elab m)
+newtype Check m a = Check { runCheck :: Type -> Elab m a }
+  deriving (Applicative, Functor) via ReaderC Type (Elab m)
 
-mapCheck :: (Elab m a -> Elab m b) -> Check ty m a -> Check ty m b
+mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
 mapCheck f m = Check $ \ _T -> f (runCheck m _T)
 
 
@@ -422,10 +422,10 @@ mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m
 mapSynth f = Synth . f . synth
 
 
-bind :: Bind m a ::: (Quantity, Type) -> Check Type m b -> Check Type m (a, b)
+bind :: Bind m a ::: (Quantity, Type) -> Check m b -> Check m (a, b)
 bind (p ::: (q, _T)) = runBind p q _T
 
-newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check Type m x -> Check Type m (a, x) }
+newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check m x -> Check m (a, x) }
   deriving (Functor)
 
 mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b

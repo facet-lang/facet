@@ -74,20 +74,20 @@ var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabConte
     synth $ global (n ::: _T)
 
 
-tlam :: (HasCallStack, Has (Throw Err) sig m) => Check Type m Expr -> Check Type m Expr
+tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
   b' <- Binding n zero _A |- check (b ::: _B (T.free d))
   pure $ XTLam b'
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check Type m Expr)] -> Check Type m Expr
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
 lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking clause" _T
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
-thunk :: (HasCallStack, Has (Throw Err) sig m) => Check Type m a -> Check Type m a
+thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m a -> Check m a
 thunk e = Check $ \ _T -> do
   _T' <- metavar <$> meta VType
   unify _T (VSusp _T')
@@ -161,7 +161,7 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check Type m Expr
+checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Hole  n  -> hole n
   S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
