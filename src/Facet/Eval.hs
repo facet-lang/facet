@@ -25,7 +25,7 @@ import Facet.Stack
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
 
-eval :: Has (Reader Graph :+: Reader Module) sig m => Expr -> Eval m (Value m a)
+eval :: Has (Reader Graph :+: Reader Module) sig m => Expr -> Eval m (Value m (Var Void Level))
 eval = go Nil
   where
   go env = \case
@@ -48,7 +48,9 @@ eval = go Nil
         _       -> error "throw a real error (apply)"
     XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
-    XOp n _ sp       -> VOp n <$> traverse (go env) sp
+    XOp n _ sp       -> do
+      sp' <- traverse (go env) sp
+      Eval $ \ h k -> h n sp' k
 
 
 -- Machinery
