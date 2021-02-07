@@ -25,7 +25,7 @@ import Facet.Stack
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
 
-eval :: Has (Reader Graph :+: Reader Module) sig m => Expr -> Eval m (Value m (Var Void Level))
+eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value m (Var Void Level))
 eval = go Nil
   where
   go env = \case
