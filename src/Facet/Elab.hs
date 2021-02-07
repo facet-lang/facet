@@ -60,10 +60,9 @@ import Control.Carrier.Error.Church
 import Control.Carrier.Reader
 import Control.Carrier.State.Church
 import Control.Carrier.Writer.Church
-import Control.Effect.Empty
 import Control.Effect.Lens (views)
 import Control.Lens (Lens', lens)
-import Control.Monad (unless)
+import Control.Monad (guard, unless)
 import Data.Bifunctor (first)
 import Data.Foldable (asum)
 import Data.Semialign.Exts
@@ -141,14 +140,16 @@ lookupInContext (m:.:n)
   | otherwise = const Alt.empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
-lookupInSig :: Q Name -> Module -> Graph -> [Type] -> Maybe (Q Name ::: Type)
+lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Type] -> m (Q Name ::: Type)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   T.VNe (Global q@(m':.:_)) _ _ -> do
     guard (m == Nil || m == m')
-    _ :=: Just (DInterface defs) ::: _ <- lookupQ graph mod q
+    defs <- interfaceScope =<< lookupQ graph mod q
     _ :=: _ ::: _T <- lookupScope n defs
     pure $ m':.:n ::: _T
-  _                             -> Nothing
+  _                             -> Alt.empty
+  where
+  interfaceScope (_ :=: d ::: _) = case d of { Just (DInterface defs) -> pure defs ; _ -> Alt.empty }
 
 
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
