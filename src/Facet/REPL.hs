@@ -196,9 +196,9 @@ showType e = Action $ do
 
 showEval e = Action $ do
   e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
-  e'' <- runElab $ runEvalMain (eval e')
+  e'' <- runElab $ runEvalMain (quoteExpr 0 =<< eval e')
   opts <- get
-  outputDocLn (getPrint (ann (printExpr opts Nil (quoteExpr 0 e'') ::: printType opts Nil _T)))
+  outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
 runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
