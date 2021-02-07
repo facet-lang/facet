@@ -7,8 +7,6 @@ module Facet.Core.Term
 , fill
   -- * Term values
 , Value(..)
-, global
-, free
   -- ** Elimination
 , ($$)
 , ($$*)
