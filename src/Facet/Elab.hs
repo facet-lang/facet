@@ -396,8 +396,8 @@ elabType = elabWith zero (\ subst t -> pure (T.eval subst Nil t))
 elabTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m Expr -> m Expr
 elabTerm = elabWith one (\ subst e -> pure (E.quote 0 (E.eval subst Nil e)))
 
-elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> Elab m (Expr ::: Type) -> m (Value ::: Type)
-elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (E.eval subst Nil e ::: T.eval subst Nil (T.quote 0 _T)))
+elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> Elab m (Expr ::: Type) -> m (Expr ::: Type)
+elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (E.quote 0 (E.eval subst Nil e) ::: T.eval subst Nil (T.quote 0 _T)))
 
 
 -- Judgements
