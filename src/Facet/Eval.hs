@@ -26,7 +26,6 @@ import           GHC.Stack (HasCallStack)
 eval :: Expr -> Eval m (Value m)
 eval = go Nil
   where
-  go :: Stack (Either T.Type (Value m)) -> Expr -> Eval m (Value m)
   go env = \case
     XVar (Global n)  -> pure $ var (Global n)
     XVar (Free v)    -> pure $ fromRight (error ("type variable at index " <> show v)) (env ! getIndex v)
