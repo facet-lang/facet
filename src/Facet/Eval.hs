@@ -27,7 +27,7 @@ import           Facet.Stack
 import           Facet.Syntax
 import           GHC.Stack (HasCallStack)
 
-eval :: Has (Reader Graph :+: Reader Module) sig m => Expr -> Eval m (Value m)
+eval :: Has (Reader Graph :+: Reader Module) sig m => Expr -> Eval m (Value m a)
 eval = go Nil
   where
   go env = \case
@@ -53,10 +53,10 @@ eval = go Nil
 
 -- Machinery
 
-runEval :: (Q Name -> Stack T.Type -> Stack (Value m) -> (Value m -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: (Q Name -> Stack T.Type -> Stack (Value m ()) -> (Value m () -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (Q Name -> Stack T.Type -> Stack (Value m) -> (Value m -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (Q Name -> Stack T.Type -> Stack (Value m ()) -> (Value m () -> m r) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)
@@ -74,21 +74,21 @@ instance MonadTrans Eval where
 
 -- Values
 
-data Value m
-  = VTLam (T.Type -> Eval m (Value m))
-  | VLam [(Pattern Name, Pattern (Value m) -> Eval m (Value m))]
-  | VNe (Var Void Level) (Stack T.Type) (Stack (Value m))
-  | VCon (Q Name) (Stack T.Type) (Stack (Value m))
+data Value m a
+  = VTLam (T.Type -> Eval m (Value m a))
+  | VLam [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))]
+  | VNe (Var Void Level) (Stack T.Type) (Stack (Value m a))
+  | VCon (Q Name) (Stack T.Type) (Stack (Value m a))
   | VString Text
-  | VOp (Q Name) (Stack T.Type) (Stack (Value m))
+  | VOp (Q Name) (Stack T.Type) (Stack (Value m a))
 
-var :: Var Void Level -> Value m
+var :: Var Void Level -> Value m a
 var v = VNe v Nil Nil
 
 
 -- Elimination
 
-($$) :: HasCallStack => Value m -> Value m -> Eval m (Value m)
+($$) :: HasCallStack => Value m a -> Value m a -> Eval m (Value m a)
 VNe h ts es $$ a = pure $ VNe h ts (es :> a)
 VLam cs     $$ a = case' a cs
 VOp h ts es $$ a = pure $ VOp h ts (es :> a)
@@ -97,7 +97,7 @@ _           $$ _ = error "can’t apply"
 infixl 9 $$
 
 
-($$$) :: HasCallStack => Value m -> T.Type -> Eval m (Value m)
+($$$) :: HasCallStack => Value m a -> T.Type -> Eval m (Value m a)
 VNe h ts es $$$ t = pure $ VNe h (ts :> t) es
 VTLam b     $$$ t = b t
 VOp h ts es $$$ t = pure $ VOp h (ts :> t) es
@@ -106,12 +106,12 @@ _           $$$ _ = error "can’t instantiate"
 infixl 9 $$$
 
 
-case' :: HasCallStack => Value m -> [(Pattern Name, Pattern (Value m) -> Eval m (Value m))] -> Eval m (Value m)
+case' :: HasCallStack => Value m a -> [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))] -> Eval m (Value m a)
 case' s cs = case asum (map (\ (p, f) -> f <$> match s p) cs) of
   Just v -> v
   _      -> error "non-exhaustive patterns in lambda"
 
-match :: Value m -> Pattern b -> Maybe (Pattern (Value m))
+match :: Value m a -> Pattern b -> Maybe (Pattern (Value m a))
 match = curry $ \case
   (s, PAll _)  -> Just (PAll s)
   -- FIXME: match effect patterns against computations (?)
@@ -128,7 +128,7 @@ match = curry $ \case
 
 -- Quotation
 
-quoteExpr :: Level -> Value m -> Eval m Expr
+quoteExpr :: Level -> Value m a -> Eval m Expr
 quoteExpr d = \case
   VTLam b      -> XTLam <$> (quoteExpr (succ d) =<< b (T.free d))
   VLam cs      -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, var (Free d))) d p in quoteExpr d' =<< b p') cs
