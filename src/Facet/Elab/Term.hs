@@ -241,10 +241,10 @@ elabDataDef (dname ::: _T) constructors = do
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
-  => Type
+  => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m (Maybe Def ::: Type)
-elabInterfaceDef _T constructors = do
+elabInterfaceDef (_dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstractType (check (checkType t ::: VType)) _T
     -- FIXME: check that the interface is a member of the sig.
@@ -294,7 +294,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
           for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
         S.InterfaceDef os -> Nothing <$ do
-          decl <- runModule $ elabInterfaceDef _T os
+          decl <- runModule $ elabInterfaceDef (dname ::: _T) os
           scope_.decls_.at dname .= Just decl
 
         S.TermDef t -> pure (Just (dname, t ::: _T))
