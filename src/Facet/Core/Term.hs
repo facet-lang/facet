@@ -72,9 +72,6 @@ data Value
   | VOp (Q Name) (Stack T.Type) (Stack Value)
 
 
-global :: Q Name -> Value
-global = var . Global
-
 free :: Level -> Value
 free = var . Free
 
@@ -189,7 +186,7 @@ quote d = \case
 eval :: HasCallStack => T.Subst -> Stack (Either T.Type Value) -> Expr -> Value
 eval subst = go where
   go env = \case
-    XVar (Global n)  -> global n
+    XVar (Global n)  -> var (Global n)
     XVar (Free v)    -> fromRight (error ("type variable at index " <> show v)) (env ! getIndex v)
     XVar (Metavar m) -> case m of {}
     XTLam b          -> VTLam (\ _T -> go (env :> Left _T) b)
