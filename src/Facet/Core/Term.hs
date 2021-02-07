@@ -9,7 +9,6 @@ module Facet.Core.Term
 , Value(..)
 , global
 , free
-, var
   -- ** Elimination
 , ($$)
 , ($$*)

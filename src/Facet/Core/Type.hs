@@ -4,7 +4,6 @@ module Facet.Core.Type
 , global
 , free
 , metavar
-, var
 , unRet
 , occursIn
   -- ** Elimination
