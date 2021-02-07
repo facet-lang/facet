@@ -29,13 +29,11 @@ import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
-import           Facet.Core.Term as E hiding (eval)
-import qualified Facet.Core.Term as E
 import           Facet.Core.Type as T hiding (eval, showType)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
-import           Facet.Eval
+import           Facet.Eval as E
 import           Facet.Graph
 import           Facet.Lens
 import           Facet.Name as Name
@@ -198,9 +196,9 @@ showType e = Action $ do
 
 showEval e = Action $ do
   e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
-  e'' <- runElab $ runEvalMain (eval (E.eval mempty Nil e'))
+  e'' <- runElab $ runEvalMain (eval e')
   opts <- get
-  outputDocLn (getPrint (ann (printValue opts Nil e'' ::: printType opts Nil _T)))
+  outputDocLn (getPrint (ann (printExpr opts Nil (quoteExpr 0 e'') ::: printType opts Nil _T)))
 
 runEvalMain :: Has Output sig m => Eval m a -> m a
 runEvalMain = runEval handle pure

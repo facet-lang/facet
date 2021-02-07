@@ -16,7 +16,6 @@ module Facet.Print
   -- * Core printers
 , printType
 , printTExpr
-, printValue
 , printExpr
 , printModule
   -- * Misc
@@ -32,7 +31,6 @@ import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core.Module as C
 import qualified Facet.Core.Term as C
-import qualified Facet.Core.Term as CE
 import qualified Facet.Core.Type as C
 import qualified Facet.Core.Type as CT
 import           Facet.Name as Name
@@ -170,9 +168,6 @@ printTExpr Options{ qname, instantiation } = go
       | q == zero -> (pretty '0' <+>)
       | q == one  -> (pretty '1' <+>)
       | otherwise -> id
-
-printValue :: Options -> Stack Print -> C.Value -> Print
-printValue opts env = printExpr opts env . CE.quote (Name.Level (length env))
 
 printExpr :: Options -> Stack Print -> C.Expr -> Print
 printExpr opts@Options{ qname, instantiation } = go

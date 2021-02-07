@@ -393,11 +393,11 @@ elabWith scale k m = runState k mempty . runWriter (const pure) $ do
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
 elabType = elabWith zero (\ subst t -> pure (T.eval subst Nil t))
 
-elabTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m Expr -> m Expr
-elabTerm = elabWith one (\ subst e -> pure (E.quote 0 (E.eval subst Nil e)))
+elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Expr -> m Expr
+elabTerm = elabWith one (const pure)
 
-elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> Elab m (Expr ::: Type) -> m (Expr ::: Type)
-elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (E.quote 0 (E.eval subst Nil e) ::: T.eval subst Nil (T.quote 0 _T)))
+elabSynth :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (Expr ::: Type) -> m (Expr ::: Type)
+elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (e ::: T.eval subst Nil (T.quote 0 _T)))
 
 
 -- Judgements
