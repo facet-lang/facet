@@ -7,16 +7,17 @@ module Facet.Eval
 , Eval(..)
 ) where
 
-import Control.Algebra
-import Control.Effect.Reader
-import Control.Monad.Trans.Class
-import Facet.Core.Module
-import Facet.Core.Term hiding (eval)
-import Facet.Core.Type (Type)
-import Facet.Graph
-import Facet.Name
-import Facet.Stack
-import Facet.Syntax
+import           Control.Algebra
+import           Control.Effect.Reader
+import           Control.Monad.Trans.Class
+import           Facet.Core.Module
+import           Facet.Core.Term hiding (eval)
+import qualified Facet.Core.Term as Term
+import           Facet.Core.Type (Type)
+import           Facet.Graph
+import           Facet.Name
+import           Facet.Stack
+import           Facet.Syntax
 
 eval :: Has (Reader Graph :+: Reader Module) sig m => Value -> Eval m Value
 eval = \case
@@ -26,7 +27,7 @@ eval = \case
     graph <- lift ask
     case h of
       Global (lookupQ graph mod -> Just (_ :=: Just (DTerm v) ::: _))
-        -> eval $ v $$$* ts $$* sp'
+        -> eval $ Term.eval mempty Nil v $$$* ts $$* sp'
       _ -> pure $ VNe h ts sp'
 
   VOp op ts as -> Eval $ \ h -> h op ts as

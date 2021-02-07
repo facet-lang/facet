@@ -91,7 +91,7 @@ newtype Import = Import { name :: MName }
 
 
 data Def
-  = DTerm Value
+  = DTerm Expr
   | DData Scope
   | DInterface Scope
   | DModule Scope
