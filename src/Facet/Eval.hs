@@ -9,22 +9,21 @@ module Facet.Eval
 , quoteExpr
 ) where
 
-import           Control.Algebra
-import           Control.Effect.Reader
-import           Control.Monad (guard)
-import           Control.Monad.Trans.Class
-import           Data.Foldable (asum, foldl')
-import           Data.Semialign.Exts (zipWithM)
-import           Data.Text (Text)
-import           Data.Void (Void)
-import           Facet.Core.Module
-import           Facet.Core.Term
-import qualified Facet.Core.Type as T
-import           Facet.Graph
-import           Facet.Name
-import           Facet.Stack
-import           Facet.Syntax
-import           GHC.Stack (HasCallStack)
+import Control.Algebra
+import Control.Effect.Reader
+import Control.Monad (guard)
+import Control.Monad.Trans.Class
+import Data.Foldable (asum, foldl')
+import Data.Semialign.Exts (zipWithM)
+import Data.Text (Text)
+import Data.Void (Void)
+import Facet.Core.Module
+import Facet.Core.Term
+import Facet.Graph
+import Facet.Name
+import Facet.Stack
+import Facet.Syntax
+import GHC.Stack (HasCallStack)
 
 eval :: Has (Reader Graph :+: Reader Module) sig m => Expr -> Eval m (Value m a)
 eval = go Nil
@@ -74,8 +73,7 @@ instance MonadTrans Eval where
 -- Values
 
 data Value m a
-  = VTLam (T.Type -> Eval m (Value m a))
-  | VLam [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))]
+  = VLam [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))]
   | VNe a (Stack (Value m a))
   | VCon (Q Name) (Stack (Value m a))
   | VString Text
@@ -120,7 +118,6 @@ match = curry $ \case
 
 quoteExpr :: Level -> Value m (Var Void Level) -> Eval m Expr
 quoteExpr d = \case
-  VTLam b   -> XTLam <$> (quoteExpr (succ d) =<< b (T.free d))
   VLam cs   -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, var (Free d))) d p in quoteExpr d' =<< b p') cs
   VNe h as  -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quoteExpr d) as
   VCon n fs -> XCon n Nil <$> traverse (quoteExpr d) fs
