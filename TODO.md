@@ -126,6 +126,12 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
   - Although note that there’s some relationship between these and effects that should be explored.
 
+- Module (and submodule) -level ambient effects.
+
+  - Extends ubiquitous tools à la “`printf` debugging” to be precisely scoped w/ minimal boilerplate.
+
+  - Extend to module hierarchies/compilation targets?
+
 
 ## Components
 
