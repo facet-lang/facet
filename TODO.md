@@ -87,7 +87,7 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
   These aren’t usually necessary due to type variables bound in the signature necessarily being in scope in the body, but there might be cases where you’d want them.
 
-- Ascription.
+- ✅ Ascription.
 
 - Restore nested, chained pattern matching.
 
