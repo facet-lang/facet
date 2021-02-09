@@ -122,6 +122,10 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
   cf https://github.com/goldfirere/ghc-proposals/blob/local-modules/proposals/0000-local-modules.rst
 
+- Module parameters.
+
+  - Although note that there’s some relationship between these and effects that should be explored.
+
 
 ## Components
 
