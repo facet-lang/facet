@@ -97,7 +97,7 @@ case' s = foldr (uncurry (match s)) (error "non-exhaustive patterns in lambda")
     PAll _  -> f (PAll s)
     PEff{}  -> k
     PVal p' -> maybe k (f . PVal) (value s p')
-  value s p = case p of
+  value s = \case
     PWildcard -> pure PWildcard
     PVar _    -> pure (PVar s)
     PCon n ps
