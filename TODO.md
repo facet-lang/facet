@@ -22,7 +22,7 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Self-host.
 
-- Can we eliminate metavariable substitution by instantiating globals against a spine of values directly?
+- ✅ Can we eliminate metavariable substitution by instantiating globals against a spine of values directly?
 
 
 ## Language
