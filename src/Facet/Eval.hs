@@ -50,7 +50,7 @@ eval = force Nil <=< go Nil
   app env f a = case f of
     VNe h sp -> pure $ VNe h (sp:>a)
     -- FIXME: check to see if this handles any effects
-    VLam cs  -> force env a >>= \ a' -> case' a' cs
+    VLam cs  -> force env a >>= \ a' -> case' a' cs >>= force env
     _        -> error "throw a real error (apply)"
   force env = \case
     VNe (Global n) sp -> do
