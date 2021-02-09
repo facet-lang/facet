@@ -59,12 +59,12 @@ eval = go Nil
 
 -- Machinery
 
-data Op m a = Op (Q Name) (Stack (Value m a))
+data Op a = Op (Q Name) (Stack a)
 
-runEval :: (forall x . Op m x -> (Value m x -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: (forall x . Op (Value m x) -> (Value m x -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (forall x . Op m x -> (Value m x -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (forall x . Op (Value m x) -> (Value m x -> m r) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)
