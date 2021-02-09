@@ -18,7 +18,6 @@ import Control.Monad.Trans.Class
 import Data.Foldable (foldl')
 import Data.Semialign.Exts (zipWithM)
 import Data.Text (Text)
-import Data.Void (Void)
 import Facet.Core.Module
 import Facet.Core.Term
 import Facet.Graph
@@ -28,7 +27,7 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value m (Var Void Level))
+eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value m Level)
 eval = go Nil
   where
   go env = \case
@@ -111,9 +110,9 @@ case' s = foldr (uncurry (match s)) (error "non-exhaustive patterns in lambda")
 
 -- Quotation
 
-quoteExpr :: Level -> Value m (Var Void Level) -> Eval m Expr
+quoteExpr :: Level -> Value m Level -> Eval m Expr
 quoteExpr d = \case
-  VLam cs   -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, var (Free d))) d p in quoteExpr d' =<< b p') cs
-  VNe h as  -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quoteExpr d) as
+  VLam cs   -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, var d)) d p in quoteExpr d' =<< b p') cs
+  VNe h as  -> foldl' XApp (XVar (Free (levelToIndex d h))) <$> traverse (quoteExpr d) as
   VCon n fs -> XCon n Nil <$> traverse (quoteExpr d) fs
   VString s -> pure $ XString s
