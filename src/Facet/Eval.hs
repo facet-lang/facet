@@ -53,14 +53,15 @@ eval = force Nil <=< go Nil
     -- FIXME: check to see if this handles any effects
     VLam cs  -> force env a >>= \ a' -> case' a' cs
     _        -> error "throw a real error (apply)"
-  resolve env n = do
-    mod <- lift ask
-    graph <- lift ask
-    case lookupQ graph mod n of
-      Just (_ :=: Just (DTerm v) ::: _) -> go env v
-      _                                 -> error "throw a real error here"
   force env = \case
-    VNe (Global n) sp -> resolve env n >>= \ v -> foldM (app env) v sp
+    VNe (Global n) sp -> do
+      mod <- lift ask
+      graph <- lift ask
+      case lookupQ graph mod n of
+        Just (_ :=: Just (DTerm v) ::: _) -> do
+          v' <- go env v
+          foldM (app env) v' sp
+        _                                 -> error "throw a real error here"
     v                 -> pure v
 
 
