@@ -2,6 +2,7 @@ module Facet.Eval
 ( -- * Evaluation
   eval
   -- * Machinery
+, Op(..)
 , runEval
 , Eval(..)
   -- * Values
@@ -21,7 +22,7 @@ import Data.Void (Void)
 import Facet.Core.Module
 import Facet.Core.Term
 import Facet.Graph
-import Facet.Name
+import Facet.Name hiding (Op)
 import Facet.Stack
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
@@ -53,15 +54,17 @@ eval = go Nil
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
-      Eval $ \ h k -> h n sp' k
+      Eval $ \ h k -> h (Op n sp') k
 
 
 -- Machinery
 
-runEval :: (forall x . Q Name -> Stack (Value m x) -> (Value m x -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+data Op m a = Op (Q Name) (Stack (Value m a))
+
+runEval :: (forall x . Op m x -> (Value m x -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (forall x . Q Name -> Stack (Value m x) -> (Value m x -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (forall x . Op m x -> (Value m x -> m r) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)
