@@ -18,7 +18,7 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - Enriched intermediate languages for optimization.
 
 - Definition-level incremental computation.
-  - Definitional-level dependency tracking.
+  - Definition-level dependency tracking.
 
 - Self-host.
 
