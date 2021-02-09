@@ -57,10 +57,10 @@ eval = go Nil
 
 -- Machinery
 
-runEval :: (Q Name -> Stack (Value m (Var Void Level)) -> (Value m (Var Void Level) -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: (forall x . Q Name -> Stack (Value m x) -> (Value m x -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (Q Name -> Stack (Value m (Var Void Level)) -> (Value m (Var Void Level) -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (forall x . Q Name -> Stack (Value m x) -> (Value m x -> m r) -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)
