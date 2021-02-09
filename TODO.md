@@ -54,6 +54,12 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Annotate `Expr` with `Span`s for error reporting.
 
+  - Initially, decorate `Expr` itself.
+
+  - Eventually, encode debug info as an effect.
+
+  - Ideally, emit DWARF data.
+
 
 ### Surface
 
