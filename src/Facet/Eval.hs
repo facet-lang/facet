@@ -36,7 +36,6 @@ eval = force Nil <=< go Nil
     XVar (Free v)    -> pure $ env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go env b
-    -- FIXME: this evaluates far too much
     XLam cs          -> pure $ VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (:>) env p) b)) cs)
     XInst f _        -> go env f
     XApp  f a        -> do
