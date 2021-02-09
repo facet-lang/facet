@@ -83,12 +83,9 @@ instance MonadTrans Eval where
 
 data Value m a
   = VLam [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))]
-  | VNe a (Stack (Value m a))
+  | VVar a
   | VCon (Q Name) (Stack (Value m a))
   | VString Text
-
-var :: a -> Value m a
-var v = VNe v Nil
 
 
 -- Elimination
@@ -112,7 +109,7 @@ case' s = foldr (uncurry (match s)) (error "non-exhaustive patterns in lambda")
 
 quoteExpr :: Level -> Value m Level -> Eval m Expr
 quoteExpr d = \case
-  VLam cs   -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, var d)) d p in quoteExpr d' =<< b p') cs
-  VNe h as  -> foldl' XApp (XVar (Free (levelToIndex d h))) <$> traverse (quoteExpr d) as
+  VLam cs   -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VVar d)) d p in quoteExpr d' =<< b p') cs
+  VVar h    -> pure $ XVar (Free (levelToIndex d h))
   VCon n fs -> XCon n Nil <$> traverse (quoteExpr d) fs
   VString s -> pure $ XString s
