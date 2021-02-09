@@ -48,6 +48,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - ✅ Effects.
 
+- Eliminate `PAll` patterns, since they complicate the theory enormously by introducing variables which can be of either computation or value type at any particular instantiation.
+
 
 ### Surface
 
