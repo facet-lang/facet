@@ -40,17 +40,16 @@ eval = force Nil <=< go Nil
     XInst f _        -> go env f
     XApp  f a        -> do
       f' <- go env f
-      a' <- go env a
-      app env f' a'
+      app env f' (go env a)
     XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
       Eval $ \ h k -> h (Op n sp') k
   app env f a = case f of
-    VNe h sp -> pure $ VNe h (sp:>a)
+    VNe h sp -> a >>= \ a' -> pure $ VNe h (sp:>a')
     -- FIXME: check to see if this handles any effects
-    VLam cs  -> force env a >>= \ a' -> case' a' cs
+    VLam cs  -> a >>= force env >>= \ a' -> case' a' cs
     _        -> error "throw a real error (apply)"
   force env = \case
     VNe (Global n) sp -> do
@@ -59,7 +58,7 @@ eval = force Nil <=< go Nil
       case lookupQ graph mod n of
         Just (_ :=: Just (DTerm v) ::: _) -> do
           v' <- go env v
-          force env =<< foldM (app env) v' sp
+          force env =<< foldM (app env) v' (pure <$> sp)
         _                                 -> error "throw a real error here"
     v                 -> pure v
 
