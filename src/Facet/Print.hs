@@ -5,6 +5,8 @@ module Facet.Print
 , Print(..)
 , Precedence(..)
 , ann
+, ($$)
+, ($$*)
   -- * Options
 , Options(..)
 , verboseOptions
