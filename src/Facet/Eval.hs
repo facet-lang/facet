@@ -13,7 +13,7 @@ module Facet.Eval
 import Control.Algebra
 import Control.Applicative (Alternative(..))
 import Control.Effect.Reader
-import Control.Monad (guard)
+import Control.Monad (foldM, guard, (<=<))
 import Control.Monad.Trans.Class
 import Data.Foldable (foldl')
 import Data.Semialign.Exts (zipWithM)
@@ -29,10 +29,10 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value m (Var Void Level))
-eval = go Nil
+eval = force Nil <=< go Nil
   where
   go env = \case
-    XVar (Global n)  -> resolve env n
+    XVar (Global n)  -> pure $ VNe (Global n) Nil
     XVar (Free v)    -> pure $ env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go env b
@@ -42,16 +42,16 @@ eval = go Nil
     XApp  f a        -> do
       f' <- go env f
       a' <- go env a
-      f' $$ a'
+      app env f' a'
     XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
       Eval $ \ h k -> h (Op n sp') k
-  f $$ a = case f of
+  app env f a = case f of
     VNe h sp -> pure $ VNe h (sp:>a)
     -- FIXME: check to see if this handles any effects
-    VLam cs  -> case' a cs
+    VLam cs  -> force env a >>= \ a' -> case' a' cs
     _        -> error "throw a real error (apply)"
   resolve env n = do
     mod <- lift ask
@@ -59,6 +59,9 @@ eval = go Nil
     case lookupQ graph mod n of
       Just (_ :=: Just (DTerm v) ::: _) -> go env v
       _                                 -> error "throw a real error here"
+  force env = \case
+    VNe (Global n) sp -> resolve env n >>= \ v -> foldM (app env) v sp
+    v                 -> pure v
 
 
 -- Machinery
