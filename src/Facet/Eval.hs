@@ -32,12 +32,7 @@ eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Ev
 eval = go Nil
   where
   go env = \case
-    XVar (Global n)  -> do
-      mod <- lift ask
-      graph <- lift ask
-      case lookupQ graph mod n of
-        Just (_ :=: Just (DTerm v) ::: _) -> go env v
-        _                                 -> error "throw a real error here"
+    XVar (Global n)  -> resolve env n
     XVar (Free v)    -> pure $ env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go env b
@@ -58,6 +53,12 @@ eval = go Nil
     -- FIXME: check to see if this handles any effects
     VLam cs  -> case' a cs
     _        -> error "throw a real error (apply)"
+  resolve env n = do
+    mod <- lift ask
+    graph <- lift ask
+    case lookupQ graph mod n of
+      Just (_ :=: Just (DTerm v) ::: _) -> go env v
+      _                                 -> error "throw a real error here"
 
 
 -- Machinery
