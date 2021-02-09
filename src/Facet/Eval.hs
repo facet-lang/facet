@@ -50,7 +50,7 @@ eval = force Nil <=< go Nil
   app env f a = case f of
     VNe h sp -> pure $ VNe h (sp:>a)
     -- FIXME: check to see if this handles any effects
-    VLam cs  -> force env a >>= \ a' -> case' a' cs >>= force env
+    VLam cs  -> force env a >>= \ a' -> case' a' cs
     _        -> error "throw a real error (apply)"
   force env = \case
     VNe (Global n) sp -> do
@@ -59,7 +59,7 @@ eval = force Nil <=< go Nil
       case lookupQ graph mod n of
         Just (_ :=: Just (DTerm v) ::: _) -> do
           v' <- go env v
-          foldM (app env) v' sp
+          force env =<< foldM (app env) v' sp
         _                                 -> error "throw a real error here"
     v                 -> pure v
 
