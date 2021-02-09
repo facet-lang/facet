@@ -44,9 +44,9 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Represent the elaboration of modules with a `letrec` binding a record of definitions.
 
-- Computations.
+- ✅ Computations.
 
-- Effects.
+- ✅ Effects.
 
 
 ### Surface
