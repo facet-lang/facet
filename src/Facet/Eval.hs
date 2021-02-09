@@ -7,7 +7,7 @@ module Facet.Eval
 , Eval(..)
   -- * Values
 , Value(..)
-, quoteExpr
+, quote
 ) where
 
 import Control.Algebra
@@ -107,9 +107,9 @@ case' s = foldr (uncurry (match s)) (error "non-exhaustive patterns in lambda")
 
 -- Quotation
 
-quoteExpr :: Level -> Value m Level -> Eval m Expr
-quoteExpr d = \case
-  VLam cs   -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VVar d)) d p in quoteExpr d' =<< b p') cs
+quote :: Level -> Value m Level -> Eval m Expr
+quote d = \case
+  VLam cs   -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VVar d)) d p in quote d' =<< b p') cs
   VVar h    -> pure $ XVar (Free (levelToIndex d h))
-  VCon n fs -> XCon n Nil <$> traverse (quoteExpr d) fs
+  VCon n fs -> XCon n Nil <$> traverse (quote d) fs
   VString s -> pure $ XString s
