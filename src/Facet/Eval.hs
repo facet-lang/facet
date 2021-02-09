@@ -46,6 +46,7 @@ eval = go Nil
       f' <- go env f
       a' <- go env a
       case f' of
+        -- FIXME: check to see if this handles any effects
         VLam cs -> case' a' cs
         _       -> error "throw a real error (apply)"
     XCon n _ fs      -> VCon n <$> traverse (go env) fs
