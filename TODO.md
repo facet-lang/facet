@@ -52,6 +52,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Separate effect & value patterns in lambdas. A little more work at elaboration time will make it much easier to deal with the separate computation and value matching.
 
+- Annotate `Expr` with `Span`s for error reporting.
+
 
 ### Surface
 
