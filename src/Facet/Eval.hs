@@ -84,7 +84,6 @@ data Value m a
   | VNe a (Stack (Value m a))
   | VCon (Q Name) (Stack (Value m a))
   | VString Text
-  | VOp (Q Name) (Stack (Value m a))
 
 var :: a -> Value m a
 var v = VNe v Nil
@@ -115,4 +114,3 @@ quoteExpr d = \case
   VNe h as  -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quoteExpr d) as
   VCon n fs -> XCon n Nil <$> traverse (quoteExpr d) fs
   VString s -> pure $ XString s
-  VOp n sp  -> XOp n Nil <$> traverse (quoteExpr d) sp

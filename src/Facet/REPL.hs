@@ -200,13 +200,13 @@ showEval e = Action $ do
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
-runEvalMain :: Has Output sig m => Eval m a -> m a
+runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output) sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
   handle q sp k = case q of
     FromList ["Effect", "Console"] :.: U "write"
       | FromList [E.VString s] <- sp -> outputText s *> k unit
-    _                                -> k (VOp q sp)
+    _                                -> error "unhandled operation" -- FIXME: throw a real error
   unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 
