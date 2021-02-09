@@ -47,15 +47,17 @@ eval = go Nil
     XApp  f a        -> do
       f' <- go env f
       a' <- go env a
-      case f' of
-        -- FIXME: check to see if this handles any effects
-        VLam cs -> case' a' cs
-        _       -> error "throw a real error (apply)"
+      f' $$ a'
     XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
       Eval $ \ h k -> h (Op n sp') k
+  f $$ a = case f of
+    VNe h sp -> pure $ VNe h (sp:>a)
+    -- FIXME: check to see if this handles any effects
+    VLam cs  -> case' a cs
+    _        -> error "throw a real error (apply)"
 
 
 -- Machinery
