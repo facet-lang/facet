@@ -5,6 +5,7 @@ module Facet.Core.Term
 , Pattern(..)
 , pvar
 , pcon
+, peff
 , fill
   -- * Term expressions
 , Expr(..)
@@ -30,7 +31,7 @@ data EffectPattern a = POp (Q Name) (Stack (ValuePattern a)) a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data Pattern a
-  = PEff (Q Name) (Stack (ValuePattern a)) a
+  = PEff (EffectPattern a)
   | PVal (ValuePattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
@@ -39,6 +40,9 @@ pvar = PVal . PVar
 
 pcon :: Q Name -> Stack (ValuePattern a) -> Pattern a
 pcon n fs = PVal $ PCon n fs
+
+peff :: Q Name -> Stack (ValuePattern a) -> a -> Pattern a
+peff o vs k = PEff $ POp o vs k
 
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)

@@ -192,9 +192,10 @@ printExpr opts@Options{ qname, instantiation } = go
     C.PWildcard -> pretty '_'
     C.PVar n    -> n
     C.PCon n ps -> parens (hsep (annotate Con (qname n):map vpat (toList ps)))
+  epat (C.POp q ps k) = brackets (pretty q <+> hsep (map vpat (toList ps)) <+> semi <+> k)
   pat = \case
-    C.PVal p      -> vpat p
-    C.PEff q ps k -> brackets (pretty q <+> hsep (map vpat (toList ps)) <+> semi <+> k)
+    C.PVal p -> vpat p
+    C.PEff p -> epat p
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
