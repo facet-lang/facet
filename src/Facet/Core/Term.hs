@@ -27,6 +27,7 @@ data ValuePattern a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data EffectPattern a = POp (Q Name) (Stack (ValuePattern a)) a
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data Pattern a
   = PEff (Q Name) (Stack (ValuePattern a)) a
