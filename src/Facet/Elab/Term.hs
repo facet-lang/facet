@@ -179,7 +179,6 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
 bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.EffPattern -> Bind m (Pattern Name)
 bindPattern = go where
   go = withSpanB $ \case
-    S.PAll n      -> allP n
     S.PVal p      -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unRet _T)))
     S.PEff n ps v -> effP n (map goVal ps) v
 

@@ -256,7 +256,6 @@ compPattern :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, 
 compPattern = choice
   [ anned (S.PVal <$> valuePattern)
   , try (brackets (anned (S.PEff <$> qname ename <*> many valuePattern <* symbolic ';' <*> (ename <|> N.__ <$ wildcard))))
-  , brackets (try (token (anned (S.PAll <$> runUnspaced ename))))
   ] <?> "pattern"
 
 
