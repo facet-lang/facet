@@ -1,7 +1,7 @@
 module Facet.Core.Term
 ( -- * Patterns
   ValuePattern(..)
-, EffectPattern(..)
+, Pattern(..)
 , pvar
 , pcon
 , fill
@@ -25,15 +25,15 @@ data ValuePattern a
   | PCon (Q Name) (Stack (ValuePattern a))
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-data EffectPattern a
+data Pattern a
   = PEff (Q Name) (Stack (ValuePattern a)) a
   | PVal (ValuePattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-pvar :: a -> EffectPattern a
+pvar :: a -> Pattern a
 pvar = PVal . PVar
 
-pcon :: Q Name -> Stack (ValuePattern a) -> EffectPattern a
+pcon :: Q Name -> Stack (ValuePattern a) -> Pattern a
 pcon n fs = PVal $ PCon n fs
 
 
@@ -46,7 +46,7 @@ fill f = mapAccumL (const . f)
 data Expr
   = XVar (Var Void Index)
   | XTLam Expr
-  | XLam [(EffectPattern Name, Expr)]
+  | XLam [(Pattern Name, Expr)]
   | XInst Expr T.TExpr
   | XApp Expr Expr
   | XCon (Q Name) (Stack T.TExpr) (Stack Expr)
