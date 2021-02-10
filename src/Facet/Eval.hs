@@ -106,7 +106,6 @@ case' :: HasCallStack => Value m a -> [(Pattern Name, Pattern (Value m a) -> Eva
 case' s = foldr (uncurry (match s)) (error "non-exhaustive patterns in lambda")
   where
   match s p f k = case p of
-    PAll _  -> f (PAll s)
     PEff{}  -> k
     PVal p' -> maybe k (f . PVal) (value s p')
   value s = \case

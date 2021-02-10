@@ -27,7 +27,6 @@ data ValuePattern a
 
 data Pattern a
   = PEff (Q Name) (Stack (ValuePattern a)) a
-  | PAll a
   | PVal (ValuePattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
