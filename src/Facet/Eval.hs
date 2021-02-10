@@ -94,7 +94,7 @@ instance MonadTrans Eval where
 -- Values
 
 data Value m a
-  = VLam [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))]
+  = VLam [(EffectPattern Name, EffectPattern (Value m a) -> Eval m (Value m a))]
   | VNe a (Stack (Value m a))
   | VCon (Q Name) (Stack (Value m a))
   | VString Text
@@ -102,7 +102,7 @@ data Value m a
 
 -- Elimination
 
-case' :: HasCallStack => Value m a -> [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))] -> Eval m (Value m a)
+case' :: HasCallStack => Value m a -> [(EffectPattern Name, EffectPattern (Value m a) -> Eval m (Value m a))] -> Eval m (Value m a)
 case' s = foldr (uncurry (match s)) (error "non-exhaustive patterns in lambda")
   where
   match s p f k = case p of

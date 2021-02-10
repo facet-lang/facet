@@ -80,7 +80,7 @@ tlam b = Check $ \ _T -> do
   b' <- Binding n zero _A |- check (b ::: _B (T.free d))
   pure $ XTLam b'
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (EffectPattern Name), Check m Expr)] -> Check m Expr
 lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking clause" _T
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
@@ -129,7 +129,7 @@ fieldsP = foldr cons
     pure (p':ps', b')
 
 
-effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
+effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (EffectPattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectRet "when checking effect pattern" _A
@@ -168,7 +168,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.EffPattern -> Bind m (Pattern Name)
+bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.EffPattern -> Bind m (EffectPattern Name)
 bindPattern = go where
   go = withSpanB $ \case
     S.PVal p      -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unRet _T)))
