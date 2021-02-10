@@ -1,6 +1,7 @@
 module Facet.Core.Term
 ( -- * Patterns
   ValuePattern(..)
+, EffectPattern(..)
 , Pattern(..)
 , pvar
 , pcon
@@ -24,6 +25,8 @@ data ValuePattern a
   | PVar a
   | PCon (Q Name) (Stack (ValuePattern a))
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+data EffectPattern a = POp (Q Name) (Stack (ValuePattern a)) a
 
 data Pattern a
   = PEff (Q Name) (Stack (ValuePattern a)) a
