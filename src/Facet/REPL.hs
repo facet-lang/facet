@@ -29,6 +29,7 @@ import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
+import           Facet.Core.Term (Expr)
 import           Facet.Core.Type as T hiding (eval, showType)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
@@ -196,14 +197,14 @@ showType e = Action $ do
 
 showEval e = Action $ do
   e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
-  e'' <- runElab $ runEvalMain pure (E.quote 0 =<< eval e')
+  e'' <- runElab $ runEvalMain e'
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
-runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => (a -> m r) -> Eval m a -> m r
-runEvalMain k = go
+runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m => Expr -> m Expr
+runEvalMain e = go (E.quote 0 =<< eval handle e)
   where
-  go = runEval handle k
+  go = runEval handle pure
   handle (E.Op q sp k) = case q of
     FromList ["Effect", "Console"] :.: U "write"
       | FromList [E.VString s] <- sp -> outputText s *> go (k unit)
