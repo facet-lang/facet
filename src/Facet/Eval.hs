@@ -31,7 +31,7 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value m)
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value (Eval m))
 eval = force Nil <=< go Nil
   where
   go env = \case
@@ -41,16 +41,16 @@ eval = force Nil <=< go Nil
     XTLam b          -> go env b
     XLam cs          -> pure $ VLam (map fst cs) (\ v -> Eval (body v))
       where
-      body :: forall r . Eval m (Value m) -> (Op m (Value m) -> m r) -> (Value m -> m r) -> m r
+      body :: forall r . Eval m (Value (Eval m)) -> (Op (Eval m) (Value (Eval m)) -> m r) -> (Value (Eval m) -> m r) -> m r
       body v toph topk = runEval h k v
         where
         cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
         (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
         -- run the effect handling cases
-        h :: Op m (Value m) -> m r
+        h :: Op (Eval m) (Value (Eval m)) -> m r
         h op = foldr (\ (p, b) rest -> maybe rest (runEval h k . b . fmap pure . PEff) (matchE p op)) (toph op) es
         -- run the value handling cases
-        k :: Value m -> m r
+        k :: Value (Eval m) -> m r
         k v = runEval toph topk $ force env v >>= \ v' -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v')) (error "non-exhaustive patterns in lambda") vs
     XInst f _        -> go env f
     XApp  f a        -> do
@@ -83,12 +83,12 @@ eval = force Nil <=< go Nil
 
 -- Machinery
 
-data Op m a = Op (Q Name) (Stack (Value m)) (Value m -> Eval m a)
+data Op m a = Op (Q Name) (Stack (Value m)) (Value m -> m a)
 
-runEval :: (Op m a -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: (Op (Eval m) a -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (Op m a -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (Op (Eval m) a -> m r) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap = liftM
@@ -107,8 +107,8 @@ instance MonadTrans Eval where
 -- Values
 
 data Value m
-  = VLam [Pattern Name] (Eval m (Value m) -> Eval m (Value m))
-  | VNe (Var Void Level) (Stack (Eval m (Value m)))
+  = VLam [Pattern Name] (m (Value m) -> m (Value m))
+  | VNe (Var Void Level) (Stack (m (Value m)))
   -- fixme: should we represent thunks & forcing explicitly?
   -- fixme: should these be computations too?
   | VOp (Q Name) (Stack (Value m)) (Value m)
@@ -118,7 +118,7 @@ data Value m
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Op m (Value m) -> Maybe (EffectPattern (Value m))
+matchE :: Monad m => EffectPattern Name -> Op m (Value m) -> Maybe (EffectPattern (Value m))
 matchE (POp n ps _) (Op n' fs k) = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VLam [PVal (PVar __)] (k =<<))
 
 matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
@@ -132,7 +132,7 @@ matchV p s = case p of
 
 -- Quotation
 
-quote :: Level -> Value m -> Eval m Expr
+quote :: Monad m => Level -> Value m -> m Expr
 quote d = \case
   VLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VNe (Free d) Nil)) d p in quote d' =<< b (pure (constructP p'))) ps
   VNe h sp   -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quote d =<<) sp
