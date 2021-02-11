@@ -32,52 +32,52 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value (Eval m))
-eval = force Nil <=< go Nil
+eval = force () Nil <=< go () Nil
   where
-  go env = \case
+  go hdl env = \case
     XVar (Global n)  -> pure $ VNe (Global n) Nil
     XVar (Free v)    -> env ! getIndex v
     XVar (Metavar m) -> case m of {}
-    XTLam b          -> go env b
+    XTLam b          -> go hdl env b
     XLam cs          -> pure $ VLam (map fst cs) (\ v -> Eval (body v))
       where
       body :: forall r . Eval m (Value (Eval m)) -> (Op (Eval m) (Value (Eval m)) -> m r) -> (Value (Eval m) -> m r) -> m r
       body v toph topk = runEval h k v
         where
-        cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
+        cs' = map (\ (p, e) -> (p, \ p' -> go hdl (foldl' (:>) env p') e)) cs
         (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
         -- run the effect handling cases
         h :: Op (Eval m) (Value (Eval m)) -> m r
         h op = foldr (\ (p, b) rest -> maybe rest (runEval h k . b . fmap pure . PEff) (matchE p op)) (toph op) es
         -- run the value handling cases
         k :: Value (Eval m) -> m r
-        k v = runEval toph topk $ force env v >>= \ v' -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v')) (error "non-exhaustive patterns in lambda") vs
-    XInst f _        -> go env f
+        k v = runEval toph topk $ force hdl env v >>= \ v' -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v')) (error "non-exhaustive patterns in lambda") vs
+    XInst f _        -> go hdl env f
     XApp  f a        -> do
-      f' <- go env f
-      app f' (go env a)
-    XCon n _ fs      -> VCon n <$> traverse (go env) fs
+      f' <- go hdl env f
+      app f' (go hdl env a)
+    XCon n _ fs      -> VCon n <$> traverse (go hdl env) fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
-      sp' <- traverse (go env) sp
+      sp' <- traverse (go hdl env) sp
       Eval $ \ h _ -> h (Op n sp' pure)
   app f a = case f of
     VNe h sp -> pure $ VNe h (sp:>a)
     VLam _ b -> b a
     _        -> error "throw a real error (apply)"
-  force env = \case
-    VNe n sp -> forceN env n sp
+  force hdl env = \case
+    VNe n sp -> forceN hdl env n sp
     v        -> pure v
-  forceN env (Global n)  sp = forceGlobal env n sp
-  forceN _   (Free n)    sp = pure $ VNe (Free n) sp
-  forceN _   (Metavar m) _  = case m of {}
-  forceGlobal env n sp = do
+  forceN hdl env (Global n)  sp = forceGlobal hdl env n sp
+  forceN _   _   (Free n)    sp = pure $ VNe (Free n) sp
+  forceN _   _   (Metavar m) _  = case m of {}
+  forceGlobal hdl env n sp = do
     mod <- lift ask
     graph <- lift ask
     case lookupQ graph mod n of
       Just (_ :=: Just (DTerm v) ::: _) -> do
-        v' <- go env v
-        force env =<< foldM app v' sp
+        v' <- go hdl env v
+        force hdl env =<< foldM app v' sp
       _                                 -> error "throw a real error here"
 
 
