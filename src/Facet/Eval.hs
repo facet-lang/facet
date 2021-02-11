@@ -50,9 +50,7 @@ eval = force Nil <=< go Nil
         (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
         -- run the effect handling cases
         h :: Op m (Value m (Var Void Level)) -> m r
-        h = foldr (\ (p, b) rest op -> case matchE p op of
-          Just p' -> runEval h k (b (pure <$> PEff p'))
-          Nothing -> rest op) toph es
+        h = foldr (\ (p, b) rest op -> maybe (rest op) (runEval h k . b . fmap pure . PEff) (matchE p op)) toph es
         -- run the value handling cases
         k :: Value m (Var Void Level) -> m r
         k v = runEval toph topk $ vcase v vs
