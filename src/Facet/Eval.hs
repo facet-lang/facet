@@ -128,9 +128,7 @@ matchE (POp n ps _) (Op n' fs k) = POp n' <$ guard (n == n') <*> zipWithM matchV
 
 
 vcase :: HasCallStack => Value r m a -> [(ValuePattern Name, Pattern (Eval r m (Value r m a)) -> Eval r m (Value r m a))] -> Eval r m (Value r m a)
-vcase s = foldr (uncurry (matchP s)) (error "non-exhaustive patterns in lambda")
-  where
-  matchP s p f k = maybe k (f . fmap pure . PVal) (matchV p s)
+vcase s = foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p s)) (error "non-exhaustive patterns in lambda")
 
 matchV :: ValuePattern Name -> Value r m a -> Maybe (ValuePattern (Value r m a))
 matchV p s = case p of
