@@ -73,7 +73,7 @@ eval = force Nil <=< go Nil
     VLam _ b -> b a
     _        -> error "throw a real error (apply)"
   force env = \case
-    VNe (Global n) sp -> forceN env n sp
+    VNe (Global n) sp -> forceN env n (pure <$> sp)
     v                 -> pure v
   forceN env n sp = do
     mod <- lift ask
@@ -81,7 +81,7 @@ eval = force Nil <=< go Nil
     case lookupQ graph mod n of
       Just (_ :=: Just (DTerm v) ::: _) -> do
         v' <- go env v
-        force env =<< foldM app v' (pure <$> sp)
+        force env =<< foldM app v' sp
       _                                 -> error "throw a real error here"
 
 
