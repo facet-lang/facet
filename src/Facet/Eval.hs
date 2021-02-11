@@ -53,24 +53,24 @@ eval = force Nil <=< go Nil
         h op = foldr (\ (p, b) rest -> maybe rest (runEval h k . b . fmap pure . PEff) (matchE p op)) (toph op) es
         -- run the value handling cases
         k :: Value r m (Var Void Level) -> m r
-        k v = runEval toph topk $ vcase v vs
+        k v = runEval toph topk $ force env v >>= \ v' -> vcase v' vs
     XInst f _        -> go env f
     XApp  f a        -> do
       f' <- go env f
-      app env f' (go env a)
+      app f' (go env a)
     XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
       Eval $ \ h _ -> h (Op n sp' pure)
-  app env f a = case f of
+  app f a = case f of
     VNe h sp -> a >>= \ a' -> pure $ VNe h (sp:>a')
     {-
     Σ ⊢op f ~> { [e;k] -> b, x -> y }     Σ, [e;k] -> b ⊢op a ~> a'
     ---------------------------------------------------------------
     Σ ⊢op f a ~> [x|->a']y
     -}
-    VLam _ b -> b (a >>= force env)
+    VLam _ b -> b a
     _        -> error "throw a real error (apply)"
   force env = \case
     VNe (Global n) sp -> do
@@ -79,7 +79,7 @@ eval = force Nil <=< go Nil
       case lookupQ graph mod n of
         Just (_ :=: Just (DTerm v) ::: _) -> do
           v' <- go env v
-          force env =<< foldM (app env) v' (pure <$> sp)
+          force env =<< foldM app v' (pure <$> sp)
         _                                 -> error "throw a real error here"
     v                 -> pure v
 
