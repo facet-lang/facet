@@ -64,7 +64,7 @@ eval = force Nil <=< go Nil
       sp' <- traverse (go env) sp
       Eval $ \ h _ -> h (Op n sp' pure)
   app f a = case f of
-    VNe h sp -> a >>= \ a' -> pure $ VNe h (sp:>a')
+    VNe h sp -> pure $ VNe h (sp:>a)
     {-
     Σ ⊢op f ~> { [e;k] -> b, x -> y }     Σ, [e;k] -> b ⊢op a ~> a'
     ---------------------------------------------------------------
@@ -75,7 +75,7 @@ eval = force Nil <=< go Nil
   force env = \case
     VNe n sp -> forceN env n sp
     v        -> pure v
-  forceN env (Global n)  sp = forceGlobal env n (pure <$> sp)
+  forceN env (Global n)  sp = forceGlobal env n sp
   forceN _   (Free n)    sp = pure $ VNe (Free n) sp
   forceN _   (Metavar m) _  = case m of {}
   forceGlobal env n sp = do
@@ -115,7 +115,7 @@ instance MonadTrans (Eval r) where
 
 data Value r m a
   = VLam [Pattern Name] (Eval r m (Value r m a) -> Eval r m (Value r m a))
-  | VNe a (Stack (Value r m a))
+  | VNe a (Stack (Eval r m (Value r m a)))
   | VOp (Q Name) (Stack (Value r m a)) (Value r m a)
   | VCon (Q Name) (Stack (Value r m a))
   | VString Text
@@ -146,7 +146,7 @@ matchV p s = case p of
 quote :: Level -> Value r m (Var Void Level) -> Eval r m Expr
 quote d = \case
   VLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VNe (Free d) Nil)) d p in quote d' =<< b (pure (constructP p'))) ps
-  VNe h sp   -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quote d) sp
+  VNe h sp   -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quote d =<<) sp
   VOp q fs k -> XApp <$> quote d k <*> (XOp q Nil <$> traverse (quote d) fs)
   VCon n fs  -> XCon n Nil <$> traverse (quote d) fs
   VString s  -> pure $ XString s
