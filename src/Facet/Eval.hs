@@ -10,8 +10,6 @@ module Facet.Eval
   -- * Values
 , Value(..)
 , quote
-  -- * Elimination
-, vcase
 ) where
 
 import Control.Algebra
@@ -53,7 +51,7 @@ eval = force Nil <=< go Nil
         h op = foldr (\ (p, b) rest -> maybe rest (runEval h k . b . fmap pure . PEff) (matchE p op)) (toph op) es
         -- run the value handling cases
         k :: Value r m (Var Void Level) -> m r
-        k v = runEval toph topk $ force env v >>= \ v' -> vcase v' vs
+        k v = runEval toph topk $ force env v >>= \ v' -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v')) (error "non-exhaustive patterns in lambda") vs
     XInst f _        -> go env f
     XApp  f a        -> do
       f' <- go env f
@@ -125,10 +123,6 @@ data Value r m a
 
 matchE :: EffectPattern Name -> Op r m (Value r m (Var Void Level)) -> Maybe (EffectPattern (Value r m (Var Void Level)))
 matchE (POp n ps _) (Op n' fs k) = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VLam [PVal (PVar __)] (k =<<))
-
-
-vcase :: HasCallStack => Value r m a -> [(ValuePattern Name, Pattern (Eval r m (Value r m a)) -> Eval r m (Value r m a))] -> Eval r m (Value r m a)
-vcase s = foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p s)) (error "non-exhaustive patterns in lambda")
 
 matchV :: ValuePattern Name -> Value r m a -> Maybe (ValuePattern (Value r m a))
 matchV p s = case p of
