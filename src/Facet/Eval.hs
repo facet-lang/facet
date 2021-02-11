@@ -73,7 +73,7 @@ eval = force Nil <=< go Nil
 
 data Op a = Op (Q Name) (Stack a)
 
-newtype Handler m r = Handler { runHandler :: forall x . Op (Value m x) -> (Value m x -> m r) -> m r }
+newtype Handler m r = Handler { runHandler :: Op (Value m (Var Void Level)) -> (Value m (Var Void Level) -> m r) -> m r }
 
 runEval :: Handler m r -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
