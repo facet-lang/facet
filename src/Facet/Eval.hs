@@ -12,7 +12,6 @@ module Facet.Eval
 , Value(..)
 , quote
   -- * Elimination
-, ecase
 , vcase
 ) where
 
@@ -126,17 +125,6 @@ data Value m a
 
 
 -- Elimination
-
-ecase :: forall m r . [(EffectPattern Name, Pattern (Eval m (Value m (Var Void Level))) -> Eval m (Value m (Var Void Level)))] -> Handler m r (Value m (Var Void Level)) -> Handler m r (Value m (Var Void Level))
-ecase cs hdl = go
-  where
-  go :: Handler m r (Value m (Var Void Level))
-  go = foldr combine hdl cs
-  combine :: (EffectPattern Name, Pattern (Eval m (Value m (Var Void Level))) -> Eval m (Value m (Var Void Level))) -> Handler m r (Value m (Var Void Level)) -> Handler m r (Value m (Var Void Level))
-  combine (p, b) rest = \ op k -> case matchE p op (VLam [PVal (PVar __)] (k =<<)) of
-    -- FIXME: runk is not obviously non-bogus
-    Just p' -> let runk = runEval go runk . k in runEval go runk (b (pure <$> PEff p'))
-    Nothing -> rest op k
 
 matchE :: EffectPattern Name -> Op (Value m a) -> Value m a -> Maybe (EffectPattern (Value m a))
 matchE (POp n ps _) (Op n' fs) k = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure k
