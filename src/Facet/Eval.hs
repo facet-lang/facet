@@ -32,7 +32,7 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => (Op (Eval m) (Value (Eval m)) -> m (Value (Eval m))) -> Expr -> Eval m (Value (Eval m))
-eval hdl = force hdl Nil <=< go hdl Nil
+eval = \ hdl -> force hdl Nil <=< go hdl Nil
   where
   go hdl env = \case
     XVar (Global n)  -> pure $ VNe (Global n) Nil
