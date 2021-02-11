@@ -50,11 +50,11 @@ eval = force Nil <=< go Nil
         cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
         (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
         -- run the effect handling cases
-        h :: Op (Value m (Var Void Level)) -> (Value m (Var Void Level) -> Eval m (Value m (Var Void Level))) -> m r
+        h :: Op m (Value m (Var Void Level)) -> m r
         h = foldr combine toph es
-        combine (p, b) rest = \ op k' -> case matchE p op (VLam [PVal (PVar __)] (k' =<<)) of
+        combine (p, b) rest = \ op -> case matchE p op of
           Just p' -> runEval h k (b (pure <$> PEff p'))
-          Nothing -> rest op k'
+          Nothing -> rest op
         -- run the value handling cases
         k :: Value m (Var Void Level) -> m r
         k v = runEval toph topk $ vcase v vs
@@ -66,7 +66,7 @@ eval = force Nil <=< go Nil
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
-      Eval $ \ h _ -> h (Op n sp') pure
+      Eval $ \ h _ -> h (Op n sp' pure)
   app env f a = case f of
     VNe h sp -> a >>= \ a' -> pure $ VNe h (sp:>a')
     -- FIXME: check to see if this handles any effects
@@ -91,9 +91,9 @@ eval = force Nil <=< go Nil
 
 -- Machinery
 
-data Op a = Op (Q Name) (Stack a)
+data Op m a = Op (Q Name) (Stack (Value m (Var Void Level))) (Value m (Var Void Level) -> Eval m a)
 
-type Handler m r a = Op (Value m (Var Void Level)) -> (Value m (Var Void Level) -> Eval m a) -> m r
+type Handler m r a = Op m a -> m r
 
 runEval :: Handler m r a -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
@@ -108,7 +108,7 @@ instance Applicative (Eval m) where
   (<*>) = ap
 
 instance Monad (Eval m) where
-  m >>= f = Eval $ \ hdl k -> runEval (\ op k' -> hdl op (f <=< k')) (runEval hdl k . f) m
+  m >>= f = Eval $ \ hdl k -> runEval (\ (Op q fs k') -> hdl (Op q fs (f <=< k'))) (runEval hdl k . f) m
 
 instance MonadTrans Eval where
   lift m = Eval $ \ _ k -> m >>= k
@@ -126,8 +126,8 @@ data Value m a
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Op (Value m a) -> Value m a -> Maybe (EffectPattern (Value m a))
-matchE (POp n ps _) (Op n' fs) k = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure k
+matchE :: EffectPattern Name -> Op m (Value m (Var Void Level)) -> Maybe (EffectPattern (Value m (Var Void Level)))
+matchE (POp n ps _) (Op n' fs k) = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VLam [PVal (PVar __)] (k =<<))
 
 
 vcase :: HasCallStack => Value m a -> [(ValuePattern Name, Pattern (Eval m (Value m a)) -> Eval m (Value m a))] -> Eval m (Value m a)

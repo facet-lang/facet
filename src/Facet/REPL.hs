@@ -203,7 +203,7 @@ showEval e = Action $ do
 runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => Eval m a -> m a
 runEvalMain = runEval handle pure
   where
-  handle (E.Op q sp) k = case q of
+  handle (E.Op q sp k) = case q of
     FromList ["Effect", "Console"] :.: U "write"
       | FromList [E.VString s] <- sp -> outputText s *> runEval handle pure (k unit)
     _                                -> unhandled q sp
