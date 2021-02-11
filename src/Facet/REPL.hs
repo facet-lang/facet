@@ -201,11 +201,11 @@ showEval e = Action $ do
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
 runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => Eval m a -> m a
-runEvalMain = runEval (Handler handle) pure
+runEvalMain = runEval handle pure
   where
   handle (E.Op q sp) k = case q of
     FromList ["Effect", "Console"] :.: U "write"
-      | FromList [E.VString s] <- sp -> outputText s *> k unit
+      | FromList [E.VString s] <- sp -> outputText s *> runEval handle pure (k unit)
     _                                -> unhandled q sp
   unit = VCon (["Data", "Unit"] :.: U "unit") Nil
   unhandled q _sp = do

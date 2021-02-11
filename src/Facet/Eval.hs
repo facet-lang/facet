@@ -3,7 +3,7 @@ module Facet.Eval
   eval
   -- * Machinery
 , Op(..)
-, Handler(..)
+, Handler
 , runEval
 , Eval(..)
   -- * Values
@@ -14,7 +14,7 @@ module Facet.Eval
 import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Effect.Reader
-import Control.Monad (foldM, guard, (<=<))
+import Control.Monad (ap, foldM, guard, liftM, (<=<))
 import Control.Monad.Trans.Class
 import Data.Foldable (foldl')
 import Data.Semialign.Exts (zipWithM)
@@ -46,7 +46,7 @@ eval = force Nil <=< go Nil
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
-      Eval $ \ h k -> runHandler h (Op n sp') k
+      Eval $ \ h _ -> h (Op n sp') pure
   app env f a = case f of
     VNe h sp -> a >>= \ a' -> pure $ VNe h (sp:>a')
     -- FIXME: check to see if this handles any effects
@@ -73,22 +73,22 @@ eval = force Nil <=< go Nil
 
 data Op a = Op (Q Name) (Stack a)
 
-newtype Handler m r = Handler { runHandler :: Op (Value m (Var Void Level)) -> (Value m (Var Void Level) -> m r) -> m r }
+type Handler m r a = Op (Value m (Var Void Level)) -> (Value m (Var Void Level) -> Eval m a) -> m r
 
-runEval :: Handler m r -> (a -> m r) -> Eval m a -> m r
+runEval :: Handler m r a -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . Handler m r -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . Handler m r a -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
-  fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)
+  fmap = liftM
 
 instance Applicative (Eval m) where
   pure a = Eval $ \ _ k -> k a
-  f <*> a = Eval $ \ hdl k -> runEval hdl (\ f' -> runEval hdl (\ a' -> k $! f' a') a) f
+  (<*>) = ap
 
 instance Monad (Eval m) where
-  m >>= f = Eval $ \ hdl k -> runEval hdl (runEval hdl k . f) m
+  m >>= f = Eval $ \ hdl k -> runEval (\ op k' -> hdl op (f <=< k')) (runEval hdl k . f) m
 
 instance MonadTrans Eval where
   lift m = Eval $ \ _ k -> m >>= k
