@@ -73,9 +73,12 @@ eval = force Nil <=< go Nil
     VLam _ b -> b a
     _        -> error "throw a real error (apply)"
   force env = \case
-    VNe (Global n) sp -> forceN env n (pure <$> sp)
-    v                 -> pure v
-  forceN env n sp = do
+    VNe n sp -> forceN env n sp
+    v        -> pure v
+  forceN env (Global n)  sp = forceGlobal env n (pure <$> sp)
+  forceN _   (Free n)    sp = pure $ VNe (Free n) sp
+  forceN _   (Metavar m) _  = case m of {}
+  forceGlobal env n sp = do
     mod <- lift ask
     graph <- lift ask
     case lookupQ graph mod n of
