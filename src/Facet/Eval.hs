@@ -63,11 +63,6 @@ eval = force Nil <=< go Nil
       Eval $ \ h _ -> h (Op n sp' pure)
   app f a = case f of
     VNe h sp -> pure $ VNe h (sp:>a)
-    {-
-    Σ ⊢op f ~> { [e;k] -> b, x -> y }     Σ, [e;k] -> b ⊢op a ~> a'
-    ---------------------------------------------------------------
-    Σ ⊢op f a ~> [x|->a']y
-    -}
     VLam _ b -> b a
     _        -> error "throw a real error (apply)"
   force env = \case
