@@ -200,7 +200,7 @@ showEval e = Action $ do
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
-runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => (a -> m r) -> Eval r m a -> m r
+runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => (a -> m r) -> Eval m a -> m r
 runEvalMain k = go
   where
   go = runEval handle k
