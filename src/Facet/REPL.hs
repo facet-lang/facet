@@ -196,16 +196,17 @@ showType e = Action $ do
 
 showEval e = Action $ do
   e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
-  e'' <- runElab $ runEvalMain (E.quote 0 =<< eval e')
+  e'' <- runElab $ runEvalMain pure (E.quote 0 =<< eval e')
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
-runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => Eval r m r -> m r
-runEvalMain = runEval handle pure
+runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => (a -> m r) -> Eval r m a -> m r
+runEvalMain k = go
   where
+  go = runEval handle k
   handle (E.Op q sp k) = case q of
     FromList ["Effect", "Console"] :.: U "write"
-      | FromList [E.VString s] <- sp -> outputText s *> runEval handle pure (k unit)
+      | FromList [E.VString s] <- sp -> outputText s *> go (k unit)
     _                                -> unhandled q sp
   unit = VCon (["Data", "Unit"] :.: U "unit") Nil
   unhandled q _sp = do
