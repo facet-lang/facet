@@ -31,7 +31,7 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value m (Var Void Level))
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value m)
 eval = force Nil <=< go Nil
   where
   go env = \case
@@ -41,16 +41,16 @@ eval = force Nil <=< go Nil
     XTLam b          -> go env b
     XLam cs          -> pure $ VLam (map fst cs) (\ v -> Eval (body v))
       where
-      body :: forall r . Eval m (Value m (Var Void Level)) -> (Op m (Value m (Var Void Level)) -> m r) -> (Value m (Var Void Level) -> m r) -> m r
+      body :: forall r . Eval m (Value m) -> (Op m (Value m) -> m r) -> (Value m -> m r) -> m r
       body v toph topk = runEval h k v
         where
         cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
         (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
         -- run the effect handling cases
-        h :: Op m (Value m (Var Void Level)) -> m r
+        h :: Op m (Value m) -> m r
         h op = foldr (\ (p, b) rest -> maybe rest (runEval h k . b . fmap pure . PEff) (matchE p op)) (toph op) es
         -- run the value handling cases
-        k :: Value m (Var Void Level) -> m r
+        k :: Value m -> m r
         k v = runEval toph topk $ force env v >>= \ v' -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v')) (error "non-exhaustive patterns in lambda") vs
     XInst f _        -> go env f
     XApp  f a        -> do
@@ -83,7 +83,7 @@ eval = force Nil <=< go Nil
 
 -- Machinery
 
-data Op m a = Op (Q Name) (Stack (Value m (Var Void Level))) (Value m (Var Void Level) -> Eval m a)
+data Op m a = Op (Q Name) (Stack (Value m)) (Value m -> Eval m a)
 
 runEval :: (Op m a -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
@@ -106,22 +106,22 @@ instance MonadTrans Eval where
 
 -- Values
 
-data Value m a
-  = VLam [Pattern Name] (Eval m (Value m a) -> Eval m (Value m a))
-  | VNe a (Stack (Eval m (Value m a)))
+data Value m
+  = VLam [Pattern Name] (Eval m (Value m) -> Eval m (Value m))
+  | VNe (Var Void Level) (Stack (Eval m (Value m)))
   -- fixme: should we represent thunks & forcing explicitly?
   -- fixme: should these be computations too?
-  | VOp (Q Name) (Stack (Value m a)) (Value m a)
-  | VCon (Q Name) (Stack (Value m a))
+  | VOp (Q Name) (Stack (Value m)) (Value m)
+  | VCon (Q Name) (Stack (Value m))
   | VString Text
 
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Op m (Value m (Var Void Level)) -> Maybe (EffectPattern (Value m (Var Void Level)))
+matchE :: EffectPattern Name -> Op m (Value m) -> Maybe (EffectPattern (Value m))
 matchE (POp n ps _) (Op n' fs k) = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VLam [PVal (PVar __)] (k =<<))
 
-matchV :: ValuePattern Name -> Value m a -> Maybe (ValuePattern (Value m a))
+matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
 matchV p s = case p of
   PWildcard -> pure PWildcard
   PVar _    -> pure (PVar s)
@@ -132,7 +132,7 @@ matchV p s = case p of
 
 -- Quotation
 
-quote :: Level -> Value m (Var Void Level) -> Eval m Expr
+quote :: Level -> Value m -> Eval m Expr
 quote d = \case
   VLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VNe (Free d) Nil)) d p in quote d' =<< b (pure (constructP p'))) ps
   VNe h sp   -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quote d =<<) sp
@@ -141,16 +141,16 @@ quote d = \case
   VString s  -> pure $ XString s
 
 
-constructP :: Pattern (Value m (Var Void Level)) -> Value m (Var Void Level)
+constructP :: Pattern (Value m) -> Value m
 constructP = \case
   PVal v -> constructV v
   PEff e -> constructE e
 
-constructV :: ValuePattern (Value m (Var Void Level)) -> Value m (Var Void Level)
+constructV :: ValuePattern (Value m) -> Value m
 constructV = \case
   PWildcard -> VString "wildcard" -- FIXME: maybe should provide a variable here anyway?
   PVar v    -> v
   PCon q fs -> VCon q (constructV <$> fs)
 
-constructE :: EffectPattern (Value m (Var Void Level)) -> Value m (Var Void Level)
+constructE :: EffectPattern (Value m) -> Value m
 constructE (POp q fs k) = VOp q (constructV <$> fs) k
