@@ -109,6 +109,8 @@ instance MonadTrans (Eval r) where
 data Value r m a
   = VLam [Pattern Name] (Eval r m (Value r m a) -> Eval r m (Value r m a))
   | VNe a (Stack (Eval r m (Value r m a)))
+  -- fixme: should we represent thunks & forcing explicitly?
+  -- fixme: should these be computations too?
   | VOp (Q Name) (Stack (Value r m a)) (Value r m a)
   | VCon (Q Name) (Stack (Value r m a))
   | VString Text
