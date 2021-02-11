@@ -9,6 +9,8 @@ module Facet.Eval
   -- * Values
 , Value(..)
 , quote
+  -- * Elimination
+, case'
 ) where
 
 import Control.Algebra hiding (Handler)
