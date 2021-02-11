@@ -38,10 +38,10 @@ eval = force Nil <=< go Nil
   where
   go env = \case
     XVar (Global n)  -> pure $ VNe (Global n) Nil
-    XVar (Free v)    -> pure $ env ! getIndex v
+    XVar (Free v)    -> env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go env b
-    XLam cs          -> pure $ VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (:>) env p) b)) cs)
+    XLam cs          -> pure $ VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (\ e v -> e :> pure v) env p) b)) cs)
     XInst f _        -> go env f
     XApp  f a        -> do
       f' <- go env f
