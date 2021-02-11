@@ -41,7 +41,7 @@ eval = force Nil <=< go Nil
     XVar (Free v)    -> env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go env b
-    XLam cs          -> pure $ VLam (map fst cs) (\ v -> Eval (body v))
+    XLam cs          -> pure $ VLam (map fst cs) (Eval . body)
       where
       body :: Eval r m (Value r m (Var Void Level)) -> (Op r m (Value r m (Var Void Level)) -> m r) -> (Value r m (Var Void Level) -> m r) -> m r
       body v toph topk = runEval h k v
