@@ -3,6 +3,7 @@ module Facet.Eval
   eval
   -- * Machinery
 , Op(..)
+, Handler(..)
 , runEval
 , Eval(..)
   -- * Values
@@ -10,7 +11,7 @@ module Facet.Eval
 , quote
 ) where
 
-import Control.Algebra
+import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Effect.Reader
 import Control.Monad (foldM, guard, (<=<))
@@ -71,6 +72,8 @@ eval = force Nil <=< go Nil
 -- Machinery
 
 data Op a = Op (Q Name) (Stack a)
+
+newtype Handler m r = Handler { runHandler :: forall x . Op (Value m x) -> (Value m x -> m r) -> m r }
 
 runEval :: (forall x . Op (Value m x) -> (Value m x -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
