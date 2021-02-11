@@ -41,7 +41,7 @@ eval = force Nil <=< go Nil
     XVar (Free v)    -> env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go env b
-    XLam cs          -> pure $ VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (\ e v -> e :> pure v) env p) b)) cs)
+    XLam cs          -> pure $ VLam (map (\ (p, b) -> (p, \ p -> go (foldl' (:>) env p) b)) cs)
     XInst f _        -> go env f
     XApp  f a        -> do
       f' <- go env f
@@ -102,7 +102,7 @@ instance MonadTrans Eval where
 
 data Value m a
   -- FIXME: can we represent this as Val -> Eval Val without losing quotation?
-  = VLam [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))]
+  = VLam [(Pattern Name, Pattern (Eval m (Value m a)) -> Eval m (Value m a))]
   | VNe a (Stack (Value m a))
   | VCon (Q Name) (Stack (Value m a))
   | VString Text
@@ -116,7 +116,7 @@ ecase cs hdl = go
   go :: Handler m r (Value m (Var Void Level))
   go = foldr combine hdl cs
   combine :: (EffectPattern Name, Pattern (Value m (Var Void Level)) -> Eval m (Value m (Var Void Level))) -> Handler m r (Value m (Var Void Level)) -> Handler m r (Value m (Var Void Level))
-  combine (p, b) rest = \ op k -> case matchE p op (VLam [(PVal (PVar __), \case{ PVal (PVar v) -> k v ; _ -> error "effect continuation called with non-PVar pattern" })]) of
+  combine (p, b) rest = \ op k -> case matchE p op (VLam [(PVal (PVar __), \case{ PVal (PVar v) -> k =<< v ; _ -> error "effect continuation called with non-PVar pattern" })]) of
     -- FIXME: runk is not obviously non-bogus
     Just p' -> let runk = runEval go runk . k in runEval go runk (b (PEff p'))
     Nothing -> rest op k
@@ -125,12 +125,12 @@ matchE :: EffectPattern Name -> Op (Value m a) -> Value m a -> Maybe (EffectPatt
 matchE (POp n ps _) (Op n' fs) k = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure k
 
 
-case' :: HasCallStack => Value m a -> [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))] -> Eval m (Value m a)
+case' :: HasCallStack => Value m a -> [(Pattern Name, Pattern (Eval m (Value m a)) -> Eval m (Value m a))] -> Eval m (Value m a)
 case' s = foldr (uncurry (matchP s)) (error "non-exhaustive patterns in lambda")
   where
   matchP s p f k = case p of
     PEff{}  -> k
-    PVal p' -> maybe k (f . PVal) (matchV p' s)
+    PVal p' -> maybe k (f . fmap pure . PVal) (matchV p' s)
 
 matchV :: ValuePattern Name -> Value m a -> Maybe (ValuePattern (Value m a))
 matchV p s = case p of
@@ -145,7 +145,7 @@ matchV p s = case p of
 
 quote :: Level -> Value m (Var Void Level) -> Eval m Expr
 quote d = \case
-  VLam cs   -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VNe (Free d) Nil)) d p in quote d' =<< b p') cs
+  VLam cs   -> XLam <$> traverse (\ (p, b) -> (p,) <$> let (d', p') = fill (\ d -> (succ d, pure (VNe (Free d) Nil))) d p in quote d' =<< b p') cs
   VNe h sp  -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quote d) sp
   VCon n fs -> XCon n Nil <$> traverse (quote d) fs
   VString s -> pure $ XString s
