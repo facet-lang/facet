@@ -200,7 +200,7 @@ showEval e = Action $ do
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
-runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => Eval m a -> m a
+runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => Eval r m r -> m r
 runEvalMain = runEval handle pure
   where
   handle (E.Op q sp k) = case q of
