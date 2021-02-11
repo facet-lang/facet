@@ -46,7 +46,7 @@ eval = force Nil <=< go Nil
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
-      Eval $ \ h k -> h (Op n sp') k
+      Eval $ \ h k -> runHandler h (Op n sp') k
   app env f a = case f of
     VNe h sp -> a >>= \ a' -> pure $ VNe h (sp:>a')
     -- FIXME: check to see if this handles any effects
@@ -75,10 +75,10 @@ data Op a = Op (Q Name) (Stack a)
 
 newtype Handler m r = Handler { runHandler :: forall x . Op (Value m x) -> (Value m x -> m r) -> m r }
 
-runEval :: (forall x . Op (Value m x) -> (Value m x -> m r) -> m r) -> (a -> m r) -> Eval m a -> m r
+runEval :: Handler m r -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (forall x . Op (Value m x) -> (Value m x -> m r) -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . Handler m r -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap f (Eval m) = Eval $ \ hdl k -> m hdl (k . f)
