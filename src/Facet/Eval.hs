@@ -68,7 +68,6 @@ eval = force Nil <=< go Nil
       Eval $ \ h _ -> h (Op n sp' pure)
   app env f a = case f of
     VNe h sp -> a >>= \ a' -> pure $ VNe h (sp:>a')
-    -- FIXME: check to see if this handles any effects
     {-
     Σ ⊢op f ~> { [e;k] -> b, x -> y }     Σ, [e;k] -> b ⊢op a ~> a'
     ---------------------------------------------------------------
