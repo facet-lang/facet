@@ -107,17 +107,19 @@ data Value m a
 -- Elimination
 
 case' :: HasCallStack => Value m a -> [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))] -> Eval m (Value m a)
-case' s = foldr (uncurry (match s)) (error "non-exhaustive patterns in lambda")
+case' s = foldr (uncurry (matchP s)) (error "non-exhaustive patterns in lambda")
   where
-  match s p f k = case p of
+  matchP s p f k = case p of
     PEff{}  -> k
-    PVal p' -> maybe k (f . PVal) (value s p')
-  value s = \case
-    PWildcard -> pure PWildcard
-    PVar _    -> pure (PVar s)
-    PCon n ps
-      | VCon n' fs <- s -> PCon n' <$ guard (n == n') <*> zipWithM value fs ps
-    PCon{}    -> empty
+    PVal p' -> maybe k (f . PVal) (matchV p' s)
+
+matchV :: ValuePattern Name -> Value m a -> Maybe (ValuePattern (Value m a))
+matchV p s = case p of
+  PWildcard -> pure PWildcard
+  PVar _    -> pure (PVar s)
+  PCon n ps
+    | VCon n' fs <- s -> PCon n' <$ guard (n == n') <*> zipWithM matchV ps fs
+  PCon{}    -> empty
 
 
 -- Quotation
