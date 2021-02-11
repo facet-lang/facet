@@ -97,6 +97,7 @@ instance MonadTrans Eval where
 -- Values
 
 data Value m a
+  -- FIXME: can we represent this as Val -> Eval Val without losing quotation?
   = VLam [(Pattern Name, Pattern (Value m a) -> Eval m (Value m a))]
   | VNe a (Stack (Value m a))
   | VCon (Q Name) (Stack (Value m a))
