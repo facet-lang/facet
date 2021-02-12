@@ -58,6 +58,7 @@ data Expr
   | XLam [(Pattern Name, Expr)]
   | XApp Expr Expr
   | XThunk Expr
+  | XForce Expr
   | XCon (Q Name) (Stack T.TExpr) (Stack Expr)
   | XString Text
   | XOp (Q Name) (Stack T.TExpr) (Stack Expr)
