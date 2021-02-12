@@ -54,8 +54,8 @@ fill f = mapAccumL (const . f)
 data Expr
   = XVar (Var Void Index)
   | XTLam Expr
-  | XLam [(Pattern Name, Expr)]
   | XInst Expr T.TExpr
+  | XLam [(Pattern Name, Expr)]
   | XApp Expr Expr
   | XCon (Q Name) (Stack T.TExpr) (Stack Expr)
   | XString Text
