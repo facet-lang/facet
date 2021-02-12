@@ -14,6 +14,7 @@ module Facet.Eval
 , Comp(..)
 , creturn
 , Elim(..)
+  -- * Quotation
 , quoteV
 , quoteC
 ) where
