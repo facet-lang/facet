@@ -130,7 +130,7 @@ unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 data Value' m
-  = VVar Expr
+  = VVar (Var Void Level)
   | VThunk' (m (Comp m))
   | VCon' (Q Name) (Stack (Value' m))
   | VString' Text
@@ -185,16 +185,16 @@ quoteV d = \case
 quoteV' :: Monad m => Level -> Value' m -> m Expr
 quoteV' d = \case
   VThunk' b  -> XThunk <$> (quoteC d =<< b)
-  VVar h     -> pure h
+  VVar h     -> pure $ XVar (levelToIndex d <$> h)
   VCon' n fs -> XCon n Nil <$> traverse (quoteV' d) fs
   VString' s -> pure $ XString s
 
 quoteC :: Monad m => Level -> Comp m -> m Expr
 quoteC d = \case
-  CLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, d)) d p in quoteC d' =<< b (constructP' (VVar . XVar . Free . levelToIndex d' <$> p'))) ps
+  CLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VVar (Free d))) d p in quoteC d' =<< b (constructP' p')) ps
   COp n fs k -> XApp <$> quoteC d k <*> (XOp n Nil <$> traverse (quoteV' d) fs)
   CNe v sp   -> foldl' (&) <$> quoteV' d v <*> traverse (quoteE d) sp
-  CLet v b   -> quoteC d v >>= \ v' -> quoteC (succ d) =<< b (VVar v')
+  CLet v b   -> XApp . XLam . pure . (PVal (PVar __),) <$> (quoteC (succ d) =<< b (VVar (Free d))) <*> quoteC d v
 
 quoteE :: Monad m => Level -> Elim m -> m (Expr -> Expr)
 quoteE d = \case
