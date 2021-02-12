@@ -13,7 +13,7 @@ module Facet.Eval
 , Comp(..)
 , Elim(..)
 , unit
-, quote
+, quoteV
 , quoteC
 ) where
 
@@ -154,26 +154,26 @@ matchV p s = case p of
 
 -- Quotation
 
-quote :: Monad m => Level -> Value m -> m Expr
-quote d = \case
-  VLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VNe (Free d) Nil)) d p in quote d' =<< b (pure (constructP p'))) ps
-  VThunk b   -> XThunk <$> (quote d =<< b)
-  VNe h sp   -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quote d =<<) sp
-  VOp q fs k -> XApp <$> quote d k <*> (XOp q Nil <$> traverse (quote d) fs)
-  VCon n fs  -> XCon n Nil <$> traverse (quote d) fs
+quoteV :: Monad m => Level -> Value m -> m Expr
+quoteV d = \case
+  VLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VNe (Free d) Nil)) d p in quoteV d' =<< b (pure (constructP p'))) ps
+  VThunk b   -> XThunk <$> (quoteV d =<< b)
+  VNe h sp   -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quoteV d =<<) sp
+  VOp q fs k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
+  VCon n fs  -> XCon n Nil <$> traverse (quoteV d) fs
   VString s  -> pure $ XString s
 
 
 quoteC :: Monad m => Level -> Comp m -> m Expr
 quoteC d = \case
   CLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VNe (Free d) Nil)) d p in quoteC d' (b (constructP p'))) ps
-  CReturn v  -> quote d v
-  COp n fs k -> XApp <$> quoteC d k <*> (XOp n Nil <$> traverse (quote d) fs)
+  CReturn v  -> quoteV d v
+  COp n fs k -> XApp <$> quoteC d k <*> (XOp n Nil <$> traverse (quoteV d) fs)
   CNe h sp   -> foldl' (&) (XVar (levelToIndex d <$> h)) <$> traverse (quoteE d) sp
 
 quoteE :: Monad m => Level -> Elim m -> m (Expr -> Expr)
 quoteE d = \case
-  EApp v -> flip XApp <$> quote d v
+  EApp v -> flip XApp <$> quoteV d v
   EForce -> pure XForce
 
 
