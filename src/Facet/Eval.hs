@@ -10,10 +10,10 @@ module Facet.Eval
 , Eval(..)
   -- * Values
 , Value(..)
+, unit
 , Comp(..)
 , creturn
 , Elim(..)
-, unit
 , quoteV
 , quoteC
 ) where
