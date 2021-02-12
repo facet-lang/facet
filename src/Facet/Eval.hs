@@ -140,7 +140,7 @@ data Comp m
   = CLam [Pattern Name] (Value' m -> m (Comp m))
   | COp (Q Name) (Stack (Value' m)) (Comp m)
   | CNe (Value' m) (Stack (Elim m))
-  | CLet (Comp m) (Value' m -> m (Comp m))
+  | CLet (m (Comp m)) (Value' m -> m (Comp m))
 
 creturn :: Value' m -> Comp m
 creturn v = CNe v Nil
@@ -195,7 +195,7 @@ quoteC d = \case
   CLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VVar (Free d))) d p in quoteC d' =<< b (constructP' p')) ps
   COp n fs k -> XApp <$> quoteC d k <*> (XOp n Nil <$> traverse (quoteV' d) fs)
   CNe v sp   -> foldl' (&) <$> quoteV' d v <*> traverse (quoteE d) sp
-  CLet v b   -> XApp . XLam . pure . (PVal (PVar __),) <$> (quoteC (succ d) =<< b (VVar (Free d))) <*> quoteC d v
+  CLet v b   -> XApp . XLam . pure . (PVal (PVar __),) <$> (quoteC (succ d) =<< b (VVar (Free d))) <*> (quoteC d =<< v)
 
 quoteE :: Monad m => Level -> Elim m -> m (Expr -> Expr)
 quoteE d = \case
