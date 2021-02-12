@@ -209,7 +209,6 @@ runEvalMain e = go (E.quote 0 =<< eval handle e)
     FromList ["Effect", "Console"] :.: U "write"
       | FromList [E.VString s] <- sp -> outputText s *> go (k unit)
     _                                -> unhandled q sp
-  unit = VCon (["Data", "Unit"] :.: U "unit") Nil
   unhandled q _sp = do
     Options{ qname } <- get
     throwError $ Notice.Notice (Just Notice.Error) [] (fillSep [reflow "unhandled effect operator", getPrint (qname q)]) []

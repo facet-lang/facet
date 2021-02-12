@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Facet.Eval
@@ -9,6 +10,7 @@ module Facet.Eval
 , Eval(..)
   -- * Values
 , Value(..)
+, unit
 , quote
 ) where
 
@@ -114,6 +116,9 @@ data Value m
   | VOp (Q Name) (Stack (Value m)) (Value m)
   | VCon (Q Name) (Stack (Value m))
   | VString Text
+
+unit :: Value m
+unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 
 -- Elimination
