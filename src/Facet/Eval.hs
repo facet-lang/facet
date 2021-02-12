@@ -39,6 +39,7 @@ eval = \ hdl -> force hdl Nil <=< go hdl Nil
     XVar (Free v)    -> env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go hdl env b
+    XInst f _        -> go hdl env f
     XLam cs          -> pure $ VLam (map fst cs) (\ v -> Eval (body v))
       where
       body :: forall r . Eval m (Value (Eval m)) -> (Op (Eval m) (Value (Eval m)) -> m r) -> (Value (Eval m) -> m r) -> m r
@@ -52,7 +53,6 @@ eval = \ hdl -> force hdl Nil <=< go hdl Nil
         -- run the value handling cases
         k :: Value (Eval m) -> m r
         k v = runEval toph topk $ force hdl env v >>= \ v' -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v')) (error "non-exhaustive patterns in lambda") vs
-    XInst f _        -> go hdl env f
     XApp  f a        -> do
       f' <- go hdl env f
       app f' (go hdl env a)
