@@ -179,8 +179,8 @@ printExpr opts@Options{ qname, instantiation } = go
     C.XVar (Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
     C.XVar (Metavar m) -> case m of {}
     C.XTLam b          -> let { d = Name.Level (length env) ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env :> v) b)
-    C.XLam cs          -> comp (commaSep (map (clause env) cs))
     C.XInst e t        -> go env e `instantiation` braces (printTExpr opts env t)
+    C.XLam cs          -> comp (commaSep (map (clause env) cs))
     C.XApp f a         -> go env f $$ go env a
     C.XCon n t p       -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
     C.XOp n t p        -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
