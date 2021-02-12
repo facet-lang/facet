@@ -15,6 +15,7 @@ module Facet.Eval
 , Comp(..)
 , creturn
 , Elim(..)
+, ($$)
   -- * Quotation
 , quoteV
 , quoteC
@@ -145,6 +146,13 @@ creturn v = CNe v Nil
 data Elim m
   = EApp (Value' m)
   | EForce
+
+($$) :: Applicative m => Comp m -> Elim m -> m (Comp m)
+CLam _ f            $$ EApp a = f a
+CNe (VThunk' b) Nil $$ EForce = b
+CNe h sp            $$ e      = pure $ CNe h (sp :> e)
+_                   $$ EForce = error "can’t force non-thunk/neutral comp"
+_                   $$ EApp _ = error "can’t apply non-function/neutral comp"
 
 
 -- Elimination
