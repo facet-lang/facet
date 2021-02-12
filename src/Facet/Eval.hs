@@ -10,8 +10,11 @@ module Facet.Eval
 , Eval(..)
   -- * Values
 , Value(..)
+, Comp(..)
+, Elim(..)
 , unit
 , quote
+, quoteC
 ) where
 
 import Control.Algebra
@@ -122,6 +125,16 @@ data Value m
 
 unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
+
+data Comp m
+  = CLam [Pattern Name] (Value m -> Comp m)
+  | CReturn (Value m)
+  | COp (Q Name) (Stack (Value m)) (Comp m)
+  | CNe (Var Void Level) (Stack (Elim m))
+
+data Elim m
+  = EApp (Value m)
+  | EForce
 
 
 -- Elimination
