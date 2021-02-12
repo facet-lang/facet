@@ -115,7 +115,7 @@ data Value m
   = VLam [Pattern Name] (m (Value m) -> m (Value m))
   | VNe (Var Void Level) (Stack (m (Value m)))
   -- fixme: should we represent thunks & forcing explicitly?
-  | VThunk (Value m)
+  | VThunk (m (Value m))
   -- fixme: should these be computations too?
   | VOp (Q Name) (Stack (Value m)) (Value m)
   | VCon (Q Name) (Stack (Value m))
@@ -144,7 +144,7 @@ matchV p s = case p of
 quote :: Monad m => Level -> Value m -> m Expr
 quote d = \case
   VLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VNe (Free d) Nil)) d p in quote d' =<< b (pure (constructP p'))) ps
-  VThunk b   -> XThunk <$> quote d b
+  VThunk b   -> XThunk <$> (quote d =<< b)
   VNe h sp   -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quote d =<<) sp
   VOp q fs k -> XApp <$> quote d k <*> (XOp q Nil <$> traverse (quote d) fs)
   VCon n fs  -> XCon n Nil <$> traverse (quote d) fs
