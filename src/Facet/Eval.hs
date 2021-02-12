@@ -11,6 +11,7 @@ module Facet.Eval
   -- * Values
 , Value(..)
 , unit
+, Value'(..)
 , Comp(..)
 , creturn
 , Elim(..)
@@ -127,16 +128,22 @@ data Value m
 unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
-data Comp m
-  = CLam [Pattern Name] (Value m -> m (Comp m))
-  | COp (Q Name) (Stack (Value m)) (Comp m)
-  | CNe (Value m) (Stack (Elim m))
+data Value' m
+  = VVar (Var Void Level)
+  | VThunk' (m (Comp m))
+  | VCon' (Q Name) (Stack (Value' m))
+  | VString' Text
 
-creturn :: Value m -> Comp m
+data Comp m
+  = CLam [Pattern Name] (Value' m -> m (Comp m))
+  | COp (Q Name) (Stack (Value' m)) (Comp m)
+  | CNe (Value' m) (Stack (Elim m))
+
+creturn :: Value' m -> Comp m
 creturn v = CNe v Nil
 
 data Elim m
-  = EApp (Value m)
+  = EApp (Value' m)
   | EForce
 
 
@@ -166,15 +173,22 @@ quoteV d = \case
   VString s  -> pure $ XString s
 
 
+quoteV' :: Monad m => Level -> Value' m -> m Expr
+quoteV' d = \case
+  VThunk' b  -> XThunk <$> (quoteC d =<< b)
+  VVar h     -> pure $ XVar (levelToIndex d <$> h)
+  VCon' n fs -> XCon n Nil <$> traverse (quoteV' d) fs
+  VString' s -> pure $ XString s
+
 quoteC :: Monad m => Level -> Comp m -> m Expr
 quoteC d = \case
-  CLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VNe (Free d) Nil)) d p in quoteC d' =<< b (constructP p')) ps
-  COp n fs k -> XApp <$> quoteC d k <*> (XOp n Nil <$> traverse (quoteV d) fs)
-  CNe v sp   -> foldl' (&) <$> quoteV d v <*> traverse (quoteE d) sp
+  CLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VVar (Free d))) d p in quoteC d' =<< b (constructP' p')) ps
+  COp n fs k -> XApp <$> quoteC d k <*> (XOp n Nil <$> traverse (quoteV' d) fs)
+  CNe v sp   -> foldl' (&) <$> quoteV' d v <*> traverse (quoteE d) sp
 
 quoteE :: Monad m => Level -> Elim m -> m (Expr -> Expr)
 quoteE d = \case
-  EApp v -> flip XApp <$> quoteV d v
+  EApp v -> flip XApp <$> quoteV' d v
   EForce -> pure XForce
 
 
@@ -191,3 +205,18 @@ constructV = \case
 
 constructE :: EffectPattern (Value m) -> Value m
 constructE (POp q fs k) = VOp q (constructV <$> fs) k
+
+
+constructP' :: Applicative m => Pattern (Value' m) -> Value' m
+constructP' = \case
+  PVal v -> constructV' v
+  PEff e -> constructE' e
+
+constructV' :: ValuePattern (Value' m) -> Value' m
+constructV' = \case
+  PWildcard -> VString' "wildcard" -- FIXME: maybe should provide a variable here anyway?
+  PVar v    -> v
+  PCon q fs -> VCon' q (constructV' <$> fs)
+
+constructE' :: Applicative m => EffectPattern (Value' m) -> Value' m
+constructE' (POp q fs k) = VThunk' (pure (COp q (constructV' <$> fs) (creturn k)))
