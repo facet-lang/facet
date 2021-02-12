@@ -127,7 +127,6 @@ unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 data Comp m
   = CLam [Pattern Name] (Value m -> m (Comp m))
-  | CReturn (Value m)
   | COp (Q Name) (Stack (Value m)) (Comp m)
   | CNe (Var Void Level) (Stack (Elim m))
 
@@ -165,7 +164,6 @@ quoteV d = \case
 quoteC :: Monad m => Level -> Comp m -> m Expr
 quoteC d = \case
   CLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VNe (Free d) Nil)) d p in quoteC d' =<< b (constructP p')) ps
-  CReturn v  -> quoteV d v
   COp n fs k -> XApp <$> quoteC d k <*> (XOp n Nil <$> traverse (quoteV d) fs)
   CNe h sp   -> foldl' (&) (XVar (levelToIndex d <$> h)) <$> traverse (quoteE d) sp
 
