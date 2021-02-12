@@ -58,8 +58,7 @@ eval = \ hdl -> force hdl Nil <=< go hdl Nil
     XApp  f a        -> do
       f' <- go hdl env f
       app f' (go hdl env a)
-    -- FIXME: this is incorrect. thunks are values, lambdas are computations.
-    XThunk b         -> pure $ VLam [PVal PWildcard] (const (go hdl env b))
+    XThunk b         -> pure $ VThunk (go hdl env b)
     XForce t         -> go hdl env t >>= (`app` pure unit)
     XCon n _ fs      -> VCon n <$> traverse (go hdl env) fs
     XString s        -> pure $ VString s
