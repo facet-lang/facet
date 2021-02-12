@@ -52,6 +52,7 @@ eval = \ hdl -> force hdl Nil <=< go hdl Nil
     XInst f _        -> go hdl env f
     XLam cs          -> pure $ VLam (map fst cs) body
       where
+      -- FIXME: it’s really uncomfortable that this takes computations to computations. function application fundamentally is, and should remain, value to computation. effect handling is different and should be applied disjointly.
       body :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
       body v = Eval $ \ toph topk ->
         let cs' = map (\ (p, e) -> (p, \ p' -> go hdl (foldl' (:>) env p') e)) cs
