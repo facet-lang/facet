@@ -24,6 +24,7 @@ import Control.Monad (ap, foldM, guard, liftM, (<=<))
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Foldable (foldl')
+import Data.Function
 import Data.Semialign.Exts (zipWithM)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -161,6 +162,19 @@ quote d = \case
   VOp q fs k -> XApp <$> quote d k <*> (XOp q Nil <$> traverse (quote d) fs)
   VCon n fs  -> XCon n Nil <$> traverse (quote d) fs
   VString s  -> pure $ XString s
+
+
+quoteC :: Monad m => Level -> Comp m -> m Expr
+quoteC d = \case
+  CLam ps b  -> XLam <$> traverse (\ p -> (p,) <$> let (d', p') = fill (\ d -> (succ d, VNe (Free d) Nil)) d p in quoteC d' (b (constructP p'))) ps
+  CReturn v  -> quote d v
+  COp n fs k -> XApp <$> quoteC d k <*> (XOp n Nil <$> traverse (quote d) fs)
+  CNe h sp   -> foldl' (&) (XVar (levelToIndex d <$> h)) <$> traverse (quoteE d) sp
+
+quoteE :: Monad m => Level -> Elim m -> m (Expr -> Expr)
+quoteE d = \case
+  EApp v -> flip XApp <$> quote d v
+  EForce -> pure XForce
 
 
 constructP :: Pattern (Value m) -> Value m
