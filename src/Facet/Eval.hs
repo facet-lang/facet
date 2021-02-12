@@ -11,6 +11,7 @@ module Facet.Eval
   -- * Values
 , Value(..)
 , Comp(..)
+, creturn
 , Elim(..)
 , unit
 , quoteV
@@ -129,6 +130,9 @@ data Comp m
   = CLam [Pattern Name] (Value m -> m (Comp m))
   | COp (Q Name) (Stack (Value m)) (Comp m)
   | CNe (Value m) (Stack (Elim m))
+
+creturn :: Value m -> Comp m
+creturn v = CNe v Nil
 
 data Elim m
   = EApp (Value m)
