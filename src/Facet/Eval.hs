@@ -58,6 +58,7 @@ eval = \ hdl -> force hdl Nil <=< go hdl Nil
     XApp  f a        -> do
       f' <- go hdl env f
       app f' (go hdl env a)
+    XThunk b         -> pure $ VLam [PVal PWildcard] (const (go hdl env b))
     XCon n _ fs      -> VCon n <$> traverse (go hdl env) fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
