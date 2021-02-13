@@ -147,3 +147,15 @@ In the first clause, we only bind a single variable (`e`), of value type. In the
 As discussed above, computations embed values via `return`; values embed computations via `thunk` (in Facet, `{x}` is a 0-ary suspended computation). So the general solution is probably to place variables of computation type in the context and treat value patterns as automatically lifted over `return`s.
 
 (Alternatively, the pattern `[a]` could bind a variable `a` of suspended computation type, requiring us to `!` (force) it to use it elsewhere. The two approaches are broadly equivalent, but it feels a bit strange to change the apparent type like that. On the other hand, it’s unfortunate that variable patterns such as `a` and `e` claim to be able to perform effects!)
+
+
+----
+
+## Feb 13th, 2021
+
+Having made more progress with the evaluator, I think the situation is somewhat simpler than previously feared:
+
+1. Variables are values.
+2. Data constructors (`true`, `false`, etc.) are values.
+3. Functions, including effect handlers, take values to computations.
+4. Effect patterns don’t really match against computations because they aren’t evaluated the way other pattern cases are; they’re rather more like a dynamically scoped variable binding. Note that this doesn’t invalidate 3 because effect handlers also have to handle return values, and thus include a regular value-to-computation function.
