@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Eval
 ( -- * Evaluation
   eval
@@ -53,7 +54,7 @@ eval = force Nil <=< go Nil
         let cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
             (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
             -- run the effect handling cases
-            h op = foldr (\ (p, b) rest -> maybe rest (runEval h k . b . fmap pure . PEff) (matchE p op)) (toph op) es
+            h op = foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PEff) (matchE p op)) (toph op) es
             -- run the value handling cases
             k v = runEval toph topk $ force env v >>= \ v' -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v')) (error "non-exhaustive patterns in lambda") vs
         in runEval h k v
@@ -66,8 +67,7 @@ eval = force Nil <=< go Nil
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
-      -- FIXME: should we really discard the contintinuation here?
-      Eval $ \ h _ -> h (Op n sp' pure)
+      Eval $ \ h k -> runEval h k (h (Op n sp' pure))
   app f a = case f of
     VNe h sp -> pure $ VNe h (sp:>a)
     VLam _ b -> b a
@@ -90,14 +90,14 @@ eval = force Nil <=< go Nil
 
 -- Machinery
 
-data Op m a = Op (Q Name) (Stack (Value m)) (Value m -> m a)
+data Op m = Op (Q Name) (Stack (Value m)) (Value m -> m (Value m))
 
-type Handler r m a = Op (Eval m) a -> m r
+type Handler m = Op m -> m (Value m)
 
-runEval :: Handler r m a -> (a -> m r) -> Eval m a -> m r
+runEval :: Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . Handler r m a -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . Handler (Eval m) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap = liftM
@@ -107,10 +107,13 @@ instance Applicative (Eval m) where
   (<*>) = ap
 
 instance Monad (Eval m) where
-  m >>= f = Eval $ \ hdl k -> runEval (\ (Op q fs k') -> hdl (Op q fs (f <=< k'))) (runEval hdl k . f) m
+  m >>= f = Eval $ \ hdl k -> runEval hdl (runEval hdl k . f) m
 
 instance MonadTrans Eval where
   lift m = Eval $ \ _ k -> m >>= k
+
+instance Algebra sig m => Algebra sig (Eval m) where
+  alg hdl sig ctx = Eval $ \ h k -> alg (runEval h pure . hdl) sig ctx >>= k
 
 
 -- Values
@@ -131,7 +134,7 @@ unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 -- Elimination
 
-matchE :: Monad m => EffectPattern Name -> Op m (Value m) -> Maybe (EffectPattern (Value m))
+matchE :: Monad m => EffectPattern Name -> Op m -> Maybe (EffectPattern (Value m))
 matchE (POp n ps _) (Op n' fs k) = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VLam [PVal (PVar __)] (k =<<))
 
 matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))

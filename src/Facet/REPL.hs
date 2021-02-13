@@ -207,7 +207,7 @@ runEvalMain e = go (E.quoteV 0 =<< eval e)
   go = runEval handle pure
   handle (E.Op q sp k) = case q of
     FromList ["Effect", "Console"] :.: U "write"
-      | FromList [E.VString s] <- sp -> outputText s *> go (k unit)
+      | FromList [E.VString s] <- sp -> outputText s *> k unit
     _                                -> unhandled q sp
   unhandled q _sp = do
     Options{ qname } <- get
