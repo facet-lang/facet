@@ -6,6 +6,7 @@ module Facet.Eval
   eval
   -- * Machinery
 , Op(..)
+, Handler
 , runEval
 , Eval(..)
   -- * Values
@@ -21,7 +22,7 @@ module Facet.Eval
 , quoteC
 ) where
 
-import Control.Algebra
+import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Effect.Reader
 import Control.Monad (ap, foldM, guard, liftM, (<=<))
@@ -41,7 +42,7 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => (Op (Eval m) (Value (Eval m)) -> m (Value (Eval m))) -> Expr -> Eval m (Value (Eval m))
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Handler (Value (Eval m)) m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
 eval = \ hdl -> force hdl Nil <=< go hdl Nil
   where
   go hdl env = \case
@@ -96,10 +97,12 @@ eval = \ hdl -> force hdl Nil <=< go hdl Nil
 
 data Op m a = Op (Q Name) (Stack (Value m)) (Value m -> m a)
 
-runEval :: (Op (Eval m) a -> m r) -> (a -> m r) -> Eval m a -> m r
+type Handler r m a = Op (Eval m) a -> m r
+
+runEval :: Handler r m a -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . (Op (Eval m) a -> m r) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . Handler r m a -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap = liftM
