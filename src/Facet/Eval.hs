@@ -48,7 +48,7 @@ eval = force Nil <=< go Nil
     XInst f _        -> go env f
     XLam cs          -> pure $ VLam
       (map fst cs)
-      (\ toph op -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PEff) (matchE p op)) (toph op) es)
+      (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PEff) (matchE p op k)) (toph op k) es)
       -- FIXME: forcing in the closure’s environment instead of the caller’s is almost certainly wrong
       ((\ v -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs) <=< force env)
       where
@@ -61,7 +61,7 @@ eval = force Nil <=< go Nil
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
-      Eval $ \ h k -> runEval h k (h (Op n sp' pure))
+      Eval $ \ h k -> runEval h k (h (Op n sp') pure)
   app f a = case f of
     VNe h sp   -> pure $ VNe h (sp:>a)
     VLam _ h k -> extendHandler h a >>= k
@@ -87,9 +87,9 @@ extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
 
 -- Machinery
 
-data Op m = Op (Q Name) (Stack (Value m)) (Value m -> m (Value m))
+data Op m = Op (Q Name) (Stack (Value m))
 
-type Handler m = Op m -> m (Value m)
+type Handler m = Op m -> (Value m -> m (Value m)) -> m (Value m)
 
 runEval :: Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
@@ -134,8 +134,8 @@ unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Op m -> Maybe (EffectPattern (Value m))
-matchE (POp n ps _) (Op n' fs k) = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VLam [PVal (PVar __)] id k)
+matchE :: EffectPattern Name -> Op m -> (Value m -> m (Value m)) -> Maybe (EffectPattern (Value m))
+matchE (POp n ps _) (Op n' fs) k = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VLam [PVal (PVar __)] id k)
 
 matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
 matchV p s = case p of
@@ -160,7 +160,7 @@ quoteV d = \case
 quoteClause :: Monad m => Level -> (Handler m -> Handler m) -> (Value m -> m (Value m)) -> Pattern Name -> m (Pattern Name, Expr)
 quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
   PVal p'           -> k (constructV p')
-  PEff (POp q fs k) -> h (\ (Op q fs _) -> pure (VOp q fs k)) (Op q (constructV <$> fs) pure)
+  PEff (POp q fs k) -> h (\ (Op q fs) _ -> pure (VOp q fs k)) (Op q (constructV <$> fs)) pure
   where
   (d', p') = fill ((,) <$> succ <*> free) d p
 

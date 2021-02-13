@@ -205,7 +205,7 @@ runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Grap
 runEvalMain e = go (E.quoteV 0 =<< eval e)
   where
   go = runEval handle pure
-  handle (E.Op q sp k) = case q of
+  handle (E.Op q sp) k = case q of
     FromList ["Effect", "Console"] :.: U "write"
       | FromList [E.VString s] <- sp -> outputText s *> k unit
     _                                -> unhandled q sp
