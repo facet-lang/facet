@@ -43,6 +43,7 @@ module Facet.Elab
 , elabType
 , elabTerm
 , elabSynth
+  -- * Judgements
 , check
 , Check(..)
 , mapCheck
@@ -54,15 +55,14 @@ module Facet.Elab
 ) where
 
 import Control.Algebra
-import Control.Applicative (Alternative)
+import Control.Applicative as Alt (Alternative(..))
 import Control.Carrier.Error.Church
 import Control.Carrier.Reader
 import Control.Carrier.State.Church
 import Control.Carrier.Writer.Church
-import Control.Effect.Empty
 import Control.Effect.Lens (views)
 import Control.Lens (Lens', lens)
-import Control.Monad (unless)
+import Control.Monad (guard, unless)
 import Data.Bifunctor (first)
 import Data.Foldable (asum)
 import Data.Semialign.Exts
@@ -134,20 +134,23 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Q Name -> Context -> Maybe (Index, Quantity, Type)
+lookupInContext :: Alternative m => Q Name -> Context -> m (Index, Quantity, Type)
 lookupInContext (m:.:n)
   | m == Nil  = lookupIndex n
-  | otherwise = const Nothing
+  | otherwise = const Alt.empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
-lookupInSig :: Q Name -> Module -> Graph -> [Type] -> Maybe (Q Name ::: Type)
+-- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
+lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Type] -> m (Q Name :=: Maybe Def ::: Type)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   T.VNe (Global q@(m':.:_)) _ _ -> do
     guard (m == Nil || m == m')
-    _ :=: Just (DInterface defs) ::: _ <- lookupQ graph mod q
-    _ :=: _ ::: _T <- lookupScope n defs
-    pure $ m':.:n ::: _T
-  _                             -> Nothing
+    defs <- interfaceScope =<< lookupQ graph mod q
+    _ :=: d ::: _T <- lookupScope n defs
+    pure $ m':.:n :=: d ::: _T
+  _                             -> Alt.empty
+  where
+  interfaceScope (_ :=: d ::: _) = case d of { Just (DInterface defs) -> pure defs ; _ -> Alt.empty }
 
 
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
@@ -391,12 +394,14 @@ elabWith scale k m = runState k mempty . runWriter (const pure) $ do
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
 elabType = elabWith zero (\ subst t -> pure (T.eval subst Nil t))
 
-elabTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m Expr -> m Value
-elabTerm = elabWith one (\ subst e -> pure (E.eval subst Nil e))
+elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Expr -> m Expr
+elabTerm = elabWith one (const pure)
 
-elabSynth :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> Elab m (Expr ::: Type) -> m (Value ::: Type)
-elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (E.eval subst Nil e ::: T.eval subst Nil (T.quote 0 _T)))
+elabSynth :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (Expr ::: Type) -> m (Expr ::: Type)
+elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (e ::: T.eval subst Nil (T.quote 0 _T)))
 
+
+-- Judgements
 
 check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
 check (m ::: _T) = case unRet _T of

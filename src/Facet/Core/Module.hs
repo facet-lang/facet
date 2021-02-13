@@ -14,6 +14,7 @@ module Facet.Core.Module
 , lookupScope
 , Import(..)
 , Def(..)
+, unDTerm
 , unDData
 , unDInterface
 ) where
@@ -91,10 +92,15 @@ newtype Import = Import { name :: MName }
 
 
 data Def
-  = DTerm Value
+  = DTerm Expr
   | DData Scope
   | DInterface Scope
   | DModule Scope
+
+unDTerm :: Alternative m => Def -> m Expr
+unDTerm = \case
+  DTerm expr -> pure expr
+  _          -> empty
 
 unDData :: Alternative m => Def -> m Scope
 unDData = \case

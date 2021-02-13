@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
+-- FIXME: redefine this as a tree w/ qualifiers operating as paths
 module Facet.Graph
 ( Graph(..)
 , singleton

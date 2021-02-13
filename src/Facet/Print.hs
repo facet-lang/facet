@@ -5,6 +5,8 @@ module Facet.Print
 , Print(..)
 , Precedence(..)
 , ann
+, ($$)
+, ($$*)
   -- * Options
 , Options(..)
 , verboseOptions
@@ -16,7 +18,6 @@ module Facet.Print
   -- * Core printers
 , printType
 , printTExpr
-, printValue
 , printExpr
 , printModule
   -- * Misc
@@ -32,7 +33,6 @@ import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core.Module as C
 import qualified Facet.Core.Term as C
-import qualified Facet.Core.Term as CE
 import qualified Facet.Core.Type as C
 import qualified Facet.Core.Type as CT
 import           Facet.Name as Name
@@ -171,9 +171,6 @@ printTExpr Options{ qname, instantiation } = go
       | q == one  -> (pretty '1' <+>)
       | otherwise -> id
 
-printValue :: Options -> Stack Print -> C.Value -> Print
-printValue opts env = printExpr opts env . CE.quote (Name.Level (length env))
-
 printExpr :: Options -> Stack Print -> C.Expr -> Print
 printExpr opts@Options{ qname, instantiation } = go
   where
@@ -182,11 +179,13 @@ printExpr opts@Options{ qname, instantiation } = go
     C.XVar (Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
     C.XVar (Metavar m) -> case m of {}
     C.XTLam b          -> let { d = Name.Level (length env) ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env :> v) b)
-    C.XLam cs          -> comp (commaSep (map (clause env) cs))
     C.XInst e t        -> go env e `instantiation` braces (printTExpr opts env t)
+    C.XLam cs          -> comp (commaSep (map (clause env) cs))
     C.XApp f a         -> go env f $$ go env a
+    C.XThunk b         -> comp (go env b)
+    C.XForce b         -> go env b <> op (pretty '!') -- FIXME: figure out a precedence for this
     C.XCon n t p       -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
-    C.XOp q            -> qvar q
+    C.XOp n t p        -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
     C.XString s        -> annotate Lit $ pretty (show s)
   qvar = group . setPrec Var . qname
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
@@ -195,10 +194,10 @@ printExpr opts@Options{ qname, instantiation } = go
     C.PWildcard -> pretty '_'
     C.PVar n    -> n
     C.PCon n ps -> parens (hsep (annotate Con (qname n):map vpat (toList ps)))
+  epat (C.POp q ps k) = brackets (pretty q <+> hsep (map vpat (toList ps)) <+> semi <+> k)
   pat = \case
-    C.PAll n      -> brackets n
-    C.PVal p      -> vpat p
-    C.PEff q ps k -> brackets (pretty q <+> hsep (map vpat (toList ps)) <+> semi <+> k)
+    C.PVal p -> vpat p
+    C.PEff p -> epat p
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
@@ -214,7 +213,7 @@ printModule (C.Module mname is _ ds) = module_
     $   qvar (Nil:.:n)
     ::: defn (printType opts Nil t
     :=: case d of
-      C.DTerm b  -> printValue opts Nil b
+      C.DTerm b  -> printExpr opts Nil b
       C.DData cs -> annotate Keyword (pretty "data") <+> declList
         (map (\ (n :=: _ ::: _T) -> ann (cname n ::: printType opts Nil _T)) (C.scopeToList cs))
       C.DInterface os -> annotate Keyword (pretty "interface") <+> declList

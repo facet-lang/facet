@@ -85,8 +85,6 @@ data ValPattern
 
 data EffPattern
   = PEff (Q Name) [Ann ValPattern] Name
-  -- | Catch-all effect pattern. Matches values and effect operations.
-  | PAll Name
   | PVal (Ann ValPattern)
   deriving (Eq, Show)
 

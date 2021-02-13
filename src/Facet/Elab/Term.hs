@@ -13,7 +13,6 @@ module Facet.Elab.Term
 , varP
 , conP
 , fieldsP
-, allP
 , effP
   -- * Expression elaboration
 , synthExpr
@@ -41,8 +40,8 @@ import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Context (Binding(..))
 import           Facet.Core.Module as Module
-import           Facet.Core.Term as E hiding (global, var)
-import           Facet.Core.Type as T hiding (global, var)
+import           Facet.Core.Term as E
+import           Facet.Core.Type as T hiding (global)
 import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type
@@ -68,7 +67,7 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, q, _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
-  | Just (n ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (XOp n ::: _T)
+  | Just (_ :=: Just (DTerm x) ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
   | otherwise                                          -> do
     n :=: _ ::: _T <- resolveQ n
     synth $ global (n ::: _T)
@@ -87,17 +86,18 @@ lam cs = Check $ \ _T -> do
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
-thunk :: Algebra sig m => Check m a -> Check m a
-thunk e = Check $ \case
-  VSusp t  -> check (e ::: t)
-  VRet s t -> extendSig s $ check (e ::: t)
-  t        -> check (e ::: t)
+thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m a -> Check m a
+thunk e = Check $ \ _T -> do
+  _T' <- metavar <$> meta VType
+  unify _T (VSusp _T')
+  check (e ::: _T')
 
 force :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Synth m a
 force e = Synth $ do
   e' ::: _T <- synth e
   -- FIXME: should we check the signature? or can we rely on it already having been checked?
-  _T' <- expectSusp "when forcing suspended computation" _T
+  _T' <- metavar <$> meta VType
+  unify _T (VSusp _T')
   pure $ e' ::: _T'
 
 
@@ -129,20 +129,13 @@ fieldsP = foldr cons
     pure (p':ps', b')
 
 
-allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (Pattern Name)
-allP n = Bind $ \ q _A b -> Check $ \ _B -> do
-  case _A of
-    VRet (_:_) _ -> pure ()
-    _            -> warn (RedundantCatchAll n)
-  Binding n q _A |- (PAll n,) <$> check (b ::: _B)
-
 effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectRet "when checking effect pattern" _A
-  n' ::: _T <- maybe (freeVariable n) (instantiate const) (lookupInSig n module' graph sig)
+  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (lookupInSig n module' graph sig)
   (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (VArrow Nothing Many _A' _A) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
-  pure (PEff n' (fromList ps') v, b')
+  pure (peff n' (fromList ps') v, b')
 
 
 -- Expression elaboration
@@ -178,7 +171,6 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
 bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.EffPattern -> Bind m (Pattern Name)
 bindPattern = go where
   go = withSpanB $ \case
-    S.PAll n      -> allP n
     S.PVal p      -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unRet _T)))
     S.PEff n ps v -> effP n (map goVal ps) v
 
@@ -191,8 +183,8 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstract :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Type -> Elab m TExpr
-abstract body = go
+abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Type -> Elab m TExpr
+abstractType body = go
   where
   go = \case
     VForAll       n    t b -> do
@@ -204,6 +196,20 @@ abstract body = go
       b' <- Binding n q a |- go b
       pure $ TForAll n (T.quote level a) b'
     _                       -> body
+
+abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Stack TExpr -> Stack Expr -> Expr) -> Check m Expr
+abstractTerm body = go Nil Nil
+  where
+  go ts fs = Check $ \case
+    VForAll n   _T _B -> do
+      d <- depth
+      check (tlam (go (ts :> d) fs) ::: VForAll n _T _B)
+    VArrow  n q _A _B -> do
+      d <- depth
+      check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: VArrow n q _A _B)
+    _T                 -> do
+      d <- depth
+      pure $ body (TVar . Free . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
 
 -- Declarations
@@ -217,46 +223,33 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    c_T <- elabType $ abstract (check (checkType t ::: VType)) _T
-    con' <- elabTerm $ check (con (mname :.: n) ::: c_T)
+    c_T <- elabType $ abstractType (check (checkType t ::: VType)) _T
+    con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
     pure $ n :=: Just (DTerm con') ::: c_T
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
     : cs
-  where
-  con q = go Nil Nil where
-    go ts fs = Check $ \case
-      -- FIXME: earlier indices should be shifted
-      -- FIXME: XTLam is only for the type parameters
-      -- type parameters presumably shouldn’t be represented in the elaborated data
-      VForAll n   _T _B -> do
-        d <- depth
-        check (tlam (go (ts :> d) fs) ::: VForAll n _T _B)
-      VArrow  n q _A _B -> do
-        d <- depth
-        check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: VArrow n q _A _B)
-      _T                 -> do
-        d <- depth
-        pure $ XCon q (TVar . Free . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
-  => Type
+  => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m (Maybe Def ::: Type)
-elabInterfaceDef _T constructors = do
+  -> m [Name :=: Maybe Def ::: Type]
+elabInterfaceDef (dname ::: _T) constructors = do
+  mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    _T' <- elabType $ abstract (check (checkType t ::: VType)) _T
+    _T' <- elabType $ abstractType (check (checkType t ::: VType)) _T
     -- FIXME: check that the interface is a member of the sig.
-    pure $ n :=: Nothing ::: _T'
-  pure $ Just (DInterface (scopeFromList cs)) ::: _T
+    op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
+    pure $ n :=: Just (DTerm op') ::: _T'
+  pure [ dname :=: Just (DInterface (scopeFromList cs)) ::: _T ]
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Type
   -> S.Ann S.Expr
-  -> m Value
+  -> m Expr
 elabTermDef _T expr@(S.Ann s _ _) = do
   elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
@@ -294,8 +287,8 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
           for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
         S.InterfaceDef os -> Nothing <$ do
-          decl <- runModule $ elabInterfaceDef _T os
-          scope_.decls_.at dname .= Just decl
+          decls <- runModule $ elabInterfaceDef (dname ::: _T) os
+          for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
         S.TermDef t -> pure (Just (dname, t ::: _T))
 
@@ -317,9 +310,6 @@ expectTacitFunction = expectMatch (\case{ VArrow Nothing q t b -> pure ((q, t), 
 -- | Expect a computation type with effects.
 expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
 expectRet = expectMatch (\case{ VRet s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
-
-expectSusp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m Type
-expectSusp = expectMatch (\case { VSusp t -> pure t ; _ -> Nothing }) "{_}"
 
 
 -- Elaboration

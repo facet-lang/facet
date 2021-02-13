@@ -18,11 +18,11 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - Enriched intermediate languages for optimization.
 
 - Definition-level incremental computation.
-  - Definitional-level dependency tracking.
+  - Definition-level dependency tracking.
 
 - Self-host.
 
-- Can we eliminate metavariable substitution by instantiating globals against a spine of values directly?
+- ✅ Can we eliminate metavariable substitution by instantiating globals against a spine of values directly?
 
 
 ## Language
@@ -44,9 +44,21 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Represent the elaboration of modules with a `letrec` binding a record of definitions.
 
-- Computations.
+- ✅ Computations.
 
-- Effects.
+- ✅ Effects.
+
+- Eliminate `PAll` patterns, since they complicate the theory enormously by introducing variables which can be of either computation or value type at any particular instantiation.
+
+- Separate effect & value patterns in lambdas. A little more work at elaboration time will make it much easier to deal with the separate computation and value matching.
+
+- Annotate `Expr` with `Span`s for error reporting.
+
+  - Initially, decorate `Expr` itself.
+
+  - Eventually, encode debug info as an effect.
+
+  - Ideally, emit DWARF data.
 
 
 ### Surface
@@ -75,7 +87,7 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
   These aren’t usually necessary due to type variables bound in the signature necessarily being in scope in the body, but there might be cases where you’d want them.
 
-- Ascription.
+- ✅ Ascription.
 
 - Restore nested, chained pattern matching.
 
@@ -109,6 +121,16 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 - Datatypes and interfaces should introduce local modules, preserved on export.
 
   cf https://github.com/goldfirere/ghc-proposals/blob/local-modules/proposals/0000-local-modules.rst
+
+- Module parameters.
+
+  - Although note that there’s some relationship between these and effects that should be explored.
+
+- Module (and submodule) -level ambient effects.
+
+  - Extends ubiquitous tools à la “`printf` debugging” to be precisely scoped w/ minimal boilerplate.
+
+  - Extend to module hierarchies/compilation targets?
 
 
 ## Components

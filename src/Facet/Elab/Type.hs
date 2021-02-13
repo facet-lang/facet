@@ -7,7 +7,7 @@ module Facet.Elab.Type
 , _String
 , forAll
 , (-->)
-, comp
+, susp
 , synthType
 , checkType
 ) where
@@ -63,8 +63,8 @@ forAll (n ::: t) b = Synth $ do
 infixr 1 -->
 
 
-comp :: Algebra sig m => Check m TExpr -> Synth m TExpr
-comp t = Synth $ do
+susp :: Algebra sig m => Check m TExpr -> Synth m TExpr
+susp t = Synth $ do
   t' <- check (t ::: VType)
   -- FIXME: classify types by universe (value/computation) and check that this is a computation type being suspended
   pure $ TSusp t' ::: VType
@@ -85,7 +85,7 @@ synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TString         -> _String
   S.TForAll n t b   -> forAll (n ::: checkType t) (checkType b)
   S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkType a)) --> checkType b
-  S.TSusp t         -> comp (checkType t)
+  S.TSusp t         -> susp (checkType t)
   S.TRet s t        -> ret (map checkInterface s) (checkType t)
   S.TApp f a        -> app TApp (synthType f) (checkType a)
   where

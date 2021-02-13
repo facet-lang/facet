@@ -104,8 +104,13 @@ termDecl = anned $ do
         _ -> pure N.N
       modify (makeOperator (Nil, op, assoc) :)
     _      -> pure ()
-  decl <- anned $ S.Decl <$ colon <*> typeSig ename <*> (S.TermDef <$> comp)
+  decl <- anned $ S.Decl <$ colon <*> typeSig ename <*> (S.TermDef <$> body)
   pure (name, decl)
+
+body :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
+-- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
+body = fmap (either S.out id) <$> anned (braces (Right . S.Lam <$> sepBy1 clause comma <|> Left <$> expr <|> pure (Right (S.Lam []))))
+
 
 dataDecl :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Decl))
 dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> tname <* colon <*> anned (S.Decl <$> typeSig tname <*> (S.DataDef <$> braces (commaSep con)))
@@ -195,12 +200,13 @@ signature = brackets (commaSep delta) <?> "signature"
 exprTable :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => Table p (S.Ann S.Expr)
 exprTable =
   -- FIXME: parse this as a unary operator or something
+  -- FIXME: better yet, generalize operators to allow different syntactic types on either side (following the associativity)
   [ [ ascription ]
   , [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
   -- FIXME: model this as application to unit instead
   -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
   , [ parseOperator (N.Postfix (pack "!"), N.L, S.annUnary S.Force . head) ]
-  , [ atom comp, atom hole, atom evar, atom (token (anned (runUnspaced (S.String <$> stringLiteral)))) ]
+  , [ atom thunk, atom hole, atom evar, atom (token (anned (runUnspaced (S.String <$> stringLiteral)))) ]
   ]
 
 expr :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
@@ -212,19 +218,21 @@ expr = do
 ascription :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr) -> p (S.Ann S.Expr) -> p (S.Ann S.Expr)
 ascription _self next = anned (S.As <$> try (next <* colon) <*> type') <|> next
 
-comp :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
+thunk :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
-comp = anned (braces (S.Lam <$> sepBy1 clause comma <|> S.Thunk <$> expr <|> pure (S.Lam [])))
+thunk = anned (braces (S.Lam <$> sepBy1 clause comma <|> S.Thunk <$> expr <|> pure (S.Lam [])))
 
 clause :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p S.Clause
 clause = S.Clause <$> try (compPattern <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
 evar = choice
-  [ anned (S.Var <$> qname ename)
+  [ token (anned (runUnspaced (S.Var <$> try ((N.:.:) . fromList <$> many (comp <* dot) <*> ename))))
     -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
   , try (anned (parens (S.Var <$> qname (N.O <$> oname))))
   ]
+  where
+  comp = ident tnameStyle
 
 hole :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
 hole = token (anned (runUnspaced (S.Hole <$> ident hnameStyle)))
@@ -248,7 +256,6 @@ compPattern :: (Has Parser sig p, Has (Writer (Stack (Span, S.Comment))) sig p, 
 compPattern = choice
   [ anned (S.PVal <$> valuePattern)
   , try (brackets (anned (S.PEff <$> qname ename <*> many valuePattern <* symbolic ';' <*> (ename <|> N.__ <$ wildcard))))
-  , brackets (try (token (anned (S.PAll <$> runUnspaced ename))))
   ] <?> "pattern"
 
 

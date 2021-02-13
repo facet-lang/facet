@@ -29,12 +29,12 @@ import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
-import           Facet.Core.Term as E hiding (eval)
+import           Facet.Core.Term (Expr)
 import           Facet.Core.Type as T hiding (eval, showType)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
-import           Facet.Eval
+import           Facet.Eval as E
 import           Facet.Graph
 import           Facet.Lens
 import           Facet.Name as Name
@@ -193,22 +193,25 @@ showType, showEval :: S.Ann S.Expr -> Action
 showType e = Action $ do
   e ::: _T <- runElab $ Elab.elabSynth one (Elab.synth (Elab.synthExpr e))
   opts <- get
-  outputDocLn (getPrint (ann (printValue opts Nil e ::: printType opts Nil _T)))
+  outputDocLn (getPrint (ann (printExpr opts Nil e ::: printType opts Nil _T)))
 
 showEval e = Action $ do
   e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
-  e'' <- runElab $ runEvalMain (eval e')
+  e'' <- runElab $ runEvalMain e'
   opts <- get
-  outputDocLn (getPrint (ann (printValue opts Nil e'' ::: printType opts Nil _T)))
+  outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
-runEvalMain :: Has Output sig m => Eval m a -> m a
-runEvalMain = runEval handle pure
+runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m => Expr -> m Expr
+runEvalMain e = go (E.quoteV 0 =<< eval e)
   where
-  handle q ts sp k = case q of
+  go = runEval handle pure
+  handle (E.Op q sp k) = case q of
     FromList ["Effect", "Console"] :.: U "write"
       | FromList [E.VString s] <- sp -> outputText s *> k unit
-    _                              -> k (VOp q ts sp)
-  unit = VCon (["Data", "Unit"] :.: U "unit") Nil Nil
+    _                                -> unhandled q sp
+  unhandled q _sp = do
+    Options{ qname } <- get
+    throwError $ Notice.Notice (Just Notice.Error) [] (fillSep [reflow "unhandled effect operator", getPrint (qname q)]) []
 
 
 helpDoc :: Doc Style
