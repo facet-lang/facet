@@ -66,6 +66,7 @@ eval = force Nil <=< go Nil
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
+      -- FIXME: should we really discard the contintinuation here?
       Eval $ \ h _ -> h (Op n sp' pure)
   app f a = case f of
     VNe h sp -> pure $ VNe h (sp:>a)
