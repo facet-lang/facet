@@ -121,7 +121,7 @@ data Value m
   -- fixme: should we represent thunks & forcing explicitly?
   | VThunk (m (Value m))
   -- fixme: should these be computations too?
-  | VOp (Q Name) (Stack (Value m)) (Value m)
+  | VOp (Op m) (Value m)
   | VCon (Q Name) (Stack (Value m))
   | VString Text
 
@@ -150,17 +150,17 @@ matchV p s = case p of
 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
-  VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
-  VThunk b    -> XThunk <$> (quoteV d =<< b)
-  VNe h sp    -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quoteV d =<<) sp
-  VOp q fs k  -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
-  VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
-  VString s   -> pure $ XString s
+  VLam ps h k     -> XLam <$> traverse (quoteClause d h k) ps
+  VThunk b        -> XThunk <$> (quoteV d =<< b)
+  VNe h sp        -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quoteV d =<<) sp
+  VOp (Op q fs) k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
+  VCon n fs       -> XCon n Nil <$> traverse (quoteV d) fs
+  VString s       -> pure $ XString s
 
 quoteClause :: Monad m => Level -> (Handler m -> Handler m) -> (Value m -> m (Value m)) -> Pattern Name -> m (Pattern Name, Expr)
 quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
   PVal p'           -> k (constructV p')
-  PEff (POp q fs k) -> h (\ (Op q fs) _ -> pure (VOp q fs k)) (Op q (constructV <$> fs)) pure
+  PEff (POp q fs k) -> h (\ op _ -> pure (VOp op k)) (Op q (constructV <$> fs)) pure
   where
   (d', p') = fill ((,) <$> succ <*> free) d p
 
