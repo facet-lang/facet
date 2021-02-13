@@ -165,7 +165,7 @@ constructP = \case
 
 constructV :: ValuePattern (Value m) -> Value m
 constructV = \case
-  PWildcard -> VString "wildcard" -- FIXME: maybe should provide a variable here anyway?
+  PWildcard -> unit -- FIXME: maybe should provide a variable here anyway?
   PVar v    -> v
   PCon q fs -> VCon q (constructV <$> fs)
 
