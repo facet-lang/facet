@@ -87,9 +87,9 @@ extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
 
 -- Machinery
 
-data Op m = Op (Q Name) (Stack (Value m))
+data Op a = Op (Q Name) (Stack a)
 
-type Handler m = Op m -> (Value m -> m (Value m)) -> m (Value m)
+type Handler m = Op (Value m) -> (Value m -> m (Value m)) -> m (Value m)
 
 runEval :: Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
@@ -121,7 +121,7 @@ data Value m
   -- fixme: should we represent thunks & forcing explicitly?
   | VThunk (m (Value m))
   -- fixme: should these be computations too?
-  | VOp (Op m) (Value m)
+  | VOp (Op (Value m)) (Value m)
   | VCon (Q Name) (Stack (Value m))
   | VString Text
 
@@ -134,7 +134,7 @@ unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Op m -> (Value m -> m (Value m)) -> Maybe (EffectPattern (Value m))
+matchE :: EffectPattern Name -> Op (Value m) -> (Value m -> m (Value m)) -> Maybe (EffectPattern (Value m))
 matchE (POp n ps _) (Op n' fs) k = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VLam [PVal (PVar __)] id k)
 
 matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
