@@ -50,21 +50,21 @@ eval = force Nil <=< go Nil
       (map fst cs)
       (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PEff) (matchE p op k)) (toph op k) es)
       -- FIXME: forcing in the closure’s environment instead of the caller’s is almost certainly wrong
-      ((\ v -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs) <=< force env)
+      (\ v -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
       where
       cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
       (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
-    XApp  f a        -> go env f >>= (`app` go env a)
+    XApp  f a        -> go env f >>= \ f' -> app env f' (go env a)
     XThunk b         -> pure $ VThunk (go env b)
-    XForce t         -> go env t >>= (`app` pure unit)
+    XForce t         -> go env t >>= \ t' -> app env t' (pure unit)
     XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
       Eval $ \ h k -> runEval h k (h (Op n sp') pure)
-  app f a = case f of
+  app env f a = case f of
     VNe h sp   -> pure $ VNe h (sp:>a)
-    VLam _ h k -> extendHandler h a >>= k
+    VLam _ h k -> extendHandler h (a >>= force env) >>= k
     _          -> error "throw a real error (apply)"
   force env = \case
     VNe n sp -> forceN env n sp
@@ -78,7 +78,7 @@ eval = force Nil <=< go Nil
     case lookupQ graph mod n of
       Just (_ :=: Just (DTerm v) ::: _) -> do
         v' <- go env v
-        force env =<< foldM app v' sp
+        force env =<< foldM (app env) v' sp
       _                                 -> error "throw a real error here"
 
 extendHandler :: (Handler (Eval m) -> Handler (Eval m)) -> Eval m a -> Eval m a
