@@ -38,51 +38,57 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value (Eval m))
-eval = force Nil <=< go Nil
+eval = force <=< go
   where
-  go env = \case
+  go = \case
     XVar (Global n)  -> pure $ VNe (Global n) Nil
-    XVar (Free v)    -> env ! getIndex v
+    XVar (Free v)    -> lookupEnv v
     XVar (Metavar m) -> case m of {}
-    XTLam b          -> go env b
-    XInst f _        -> go env f
+    XTLam b          -> go b
+    XInst f _        -> go f
     XLam cs          -> pure $ VLam
       (map fst cs)
       (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PEff) (matchE p op k)) (toph op k) es)
       -- FIXME: forcing in the closure’s environment instead of the caller’s is almost certainly wrong
       (\ v -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
       where
-      cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
+      cs' = map (\ (p, e) -> (p, foldr bind (go e))) cs
       (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
-    XApp  f a        -> go env f >>= \ f' -> app env f' (go env a)
-    XThunk b         -> pure $ VThunk (go env b)
-    XForce t         -> go env t >>= \ t' -> app env t' (pure unit)
-    XCon n _ fs      -> VCon n <$> traverse (go env) fs
+    XApp  f a        -> go f >>= \ f' -> app f' (go a)
+    XThunk b         -> pure $ VThunk (go b)
+    XForce t         -> go t >>= \ t' -> app t' (pure unit)
+    XCon n _ fs      -> VCon n <$> traverse go fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
-      sp' <- traverse (go env) sp
+      sp' <- traverse go sp
       Eval $ \ env h k -> runEval env h k (h (Op n sp') pure)
-  app env f a = case f of
+  app f a = case f of
     VNe h sp   -> pure $ VNe h (sp:>a)
-    VLam _ h k -> extendHandler h (a >>= force env) >>= k
+    VLam _ h k -> extendHandler h (a >>= force) >>= k
     _          -> error "throw a real error (apply)"
-  force env = \case
-    VNe n sp -> forceN env n sp
+  force = \case
+    VNe n sp -> forceN n sp
     v        -> pure v
-  forceN env (Global n)  sp = forceGlobal env n sp
-  forceN _   (Free n)    sp = pure $ VNe (Free n) sp
-  forceN _   (Metavar m) _  = case m of {}
-  forceGlobal env n sp = do
+  forceN (Global n)  sp = forceGlobal n sp
+  forceN (Free n)    sp = pure $ VNe (Free n) sp
+  forceN (Metavar m) _  = case m of {}
+  forceGlobal n sp = do
     mod <- lift ask
     graph <- lift ask
     case lookupQ graph mod n of
       Just (_ :=: Just (DTerm v) ::: _) -> do
-        v' <- go env v
-        force env =<< foldM (app env) v' sp
+        v' <- go v
+        force =<< foldM app v' sp
       _                                 -> error "throw a real error here"
 
 extendHandler :: (Handler (Eval m) -> Handler (Eval m)) -> Eval m a -> Eval m a
 extendHandler ext (Eval run) = Eval $ \ env h -> run env (ext h)
+
+lookupEnv :: Index -> Eval m (Value (Eval m))
+lookupEnv (Index i) = Eval $ \ env h k -> runEval env h k (env ! i)
+
+bind :: Eval m (Value (Eval m)) -> Eval m a -> Eval m a
+bind a (Eval run) = Eval $ \ env h k -> run (env :> a) h k
 
 
 -- Machinery
