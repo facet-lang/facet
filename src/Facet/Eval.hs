@@ -61,7 +61,7 @@ eval = force Nil <=< go Nil
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
-      Eval $ \ h k -> runEval h k (h (Op n sp') pure)
+      Eval $ \ env h k -> runEval env h k (h (Op n sp') pure)
   app env f a = case f of
     VNe h sp   -> pure $ VNe h (sp:>a)
     VLam _ h k -> extendHandler h (a >>= force env) >>= k
@@ -82,7 +82,7 @@ eval = force Nil <=< go Nil
       _                                 -> error "throw a real error here"
 
 extendHandler :: (Handler (Eval m) -> Handler (Eval m)) -> Eval m a -> Eval m a
-extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
+extendHandler ext (Eval run) = Eval $ \ env h -> run env (ext h)
 
 
 -- Machinery
@@ -91,26 +91,28 @@ data Op a = Op (Q Name) (Stack a)
 
 type Handler m = Op (Value m) -> (Value m -> m (Value m)) -> m (Value m)
 
-runEval :: Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
-runEval hdl k (Eval m) = m hdl k
+type Env m = Stack (m (Value m))
 
-newtype Eval m a = Eval (forall r . Handler (Eval m) -> (a -> m r) -> m r)
+runEval :: Env (Eval m) -> Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
+runEval env hdl k (Eval m) = m env hdl k
+
+newtype Eval m a = Eval (forall r . Env (Eval m) -> Handler (Eval m) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap = liftM
 
 instance Applicative (Eval m) where
-  pure a = Eval $ \ _ k -> k a
+  pure a = Eval $ \ _ _ k -> k a
   (<*>) = ap
 
 instance Monad (Eval m) where
-  m >>= f = Eval $ \ hdl k -> runEval hdl (runEval hdl k . f) m
+  m >>= f = Eval $ \ env hdl k -> runEval env hdl (runEval env hdl k . f) m
 
 instance MonadTrans Eval where
-  lift m = Eval $ \ _ k -> m >>= k
+  lift m = Eval $ \ _ _ k -> m >>= k
 
 instance Algebra sig m => Algebra sig (Eval m) where
-  alg hdl sig ctx = Eval $ \ h k -> alg (runEval h pure . hdl) sig ctx >>= k
+  alg hdl sig ctx = Eval $ \ env h k -> alg (runEval env h pure . hdl) sig ctx >>= k
 
 
 -- Values
