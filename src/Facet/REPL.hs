@@ -9,12 +9,13 @@ import           Control.Algebra
 import           Control.Applicative ((<|>))
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
+import           Control.Carrier.Fail.Either
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use, uses, (%=))
 import           Control.Exception (handle)
 import           Control.Lens (Lens', lens, (&), (.~))
-import           Control.Monad (unless)
+import           Control.Monad (unless, (<=<))
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
@@ -109,7 +110,7 @@ loop :: (Has (Empty :+: Input :+: Output :+: State Options :+: State REPL) sig m
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
-  runWrite (outputDocLn . prettyNotice) . runError (outputDocLn . prettyNotice) pure $ case resp of
+  runWrite (outputDocLn . prettyNotice) . (either outputStrLn pure <=< runFail) . runError (outputDocLn . prettyNotice) pure $ case resp of
     Just src -> do
       graph <- use (target_.modules_)
       targets <- use (target_.targets_)
@@ -154,7 +155,7 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State Options :+: State REPL :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State Options :+: State REPL :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadFail m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action
@@ -201,7 +202,7 @@ showEval e = Action $ do
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
-runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m => Expr -> m Expr
+runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
 runEvalMain e = runEval handle pure (E.quoteV 0 =<< eval e)
   where
   handle (E.Op q sp) k = case q of
