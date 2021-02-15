@@ -157,7 +157,7 @@ checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Exp
 checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Hole  n  -> hole n
   S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
-  S.Thunk e  -> thunk (checkExpr e)
+  S.Thunk{}  -> synth
   S.Force{}  -> synth
   S.Var{}    -> synth
   S.App{}    -> synth
