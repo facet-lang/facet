@@ -5,3 +5,6 @@ data Unit : Type
 
 force : { A : Type } -> (c : Unit -> A) -> A
 { c unit }
+
+_ ! : { A : Type } -> (Unit -> A) -> A
+{ force }
