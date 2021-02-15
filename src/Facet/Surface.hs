@@ -44,7 +44,7 @@ data Type
   | TString
   | TForAll Name (Ann Type) (Ann Type)
   | TArrow (Maybe Name) (Maybe Mul) (Ann Type) (Ann Type)
-  | TRet [Ann Interface] (Ann Type)
+  | TComp [Ann Interface] (Ann Type)
   | TApp (Ann Type) (Ann Type)
   deriving (Eq, Show)
 
