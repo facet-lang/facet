@@ -2,3 +2,6 @@ module Data.Unit : Module
 
 data Unit : Type
 { unit : Unit }
+
+force : { A : Type } -> (c : Unit -> A) -> A
+{ c unit }
