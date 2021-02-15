@@ -62,7 +62,6 @@ eval = runReader Nil . go
     XApp  f a        -> do
       VLam _ h k <- go f
       extendHandler h (go a) >>= lift . k
-    XThunk b         -> asks (\ env -> VThunk (runReader env (go b)))
     XCon n _ fs      -> VCon n <$> traverse go fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
@@ -113,8 +112,6 @@ data Value m
   = VFree Level
   -- | Neutral; effect operations, only used during quotation.
   | VOp (Op (Value m)) (Value m)
-  -- | Value; thunks, wrapping computations.
-  | VThunk (m (Value m))
   -- | Value; data constructors.
   | VCon (Q Name) (Snoc (Value m))
   -- | Value; strings.
@@ -145,7 +142,6 @@ matchV p s = case p of
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k     -> XLam <$> traverse (quoteClause d h k) ps
-  VThunk b        -> XThunk <$> (quoteV d =<< b)
   VFree lvl       -> pure (XVar (Free (levelToIndex d lvl)))
   VOp (Op q fs) k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
   VCon n fs       -> XCon n Nil <$> traverse (quoteV d) fs

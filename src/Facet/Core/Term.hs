@@ -57,7 +57,6 @@ data Expr
   | XInst Expr T.TExpr
   | XLam [(Pattern Name, Expr)]
   | XApp Expr Expr
-  | XThunk Expr
   | XCon (Q Name) (Snoc T.TExpr) (Snoc Expr)
   | XString Text
   | XOp (Q Name) (Snoc T.TExpr) (Snoc Expr)
