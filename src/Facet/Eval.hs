@@ -109,12 +109,12 @@ instance Algebra sig m => Algebra sig (Eval m) where
 -- Values
 
 data Value m
-  = VLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Value m))
-  | VFree Level
-  | VThunk (m (Value m))
+  = VFree Level
   | VOp (Op (Value m)) (Value m)
+  | VThunk (m (Value m))
   | VCon (Q Name) (Stack (Value m))
   | VString Text
+  | VLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Value m))
 
 unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
