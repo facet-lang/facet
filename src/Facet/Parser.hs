@@ -45,7 +45,6 @@ import           Text.Parser.Token.Highlight as Highlight
 
 -- TODO:
 -- list literals
--- string literals
 -- numeric literals
 
 -- FIXME: allow operators to be introduced and scoped locally
