@@ -53,18 +53,18 @@ eval = force <=< go
       where
       cs' = map (\ (p, e) -> (p, foldr bind (go e))) cs
       (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
-    XApp  f a        -> go f >>= \ f' -> app f' (go a)
+    XApp  f a        -> go f >>= \ f' -> app f' (EApp (go a))
     XThunk b         -> pure $ VThunk (go b)
-    XForce t         -> go t >>= \ t' -> app t' (pure unit)
+    XForce t         -> go t >>= \ t' -> app t' (EApp (pure unit))
     XCon n _ fs      -> VCon n <$> traverse go fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse go sp
       Eval $ \ env h k -> runEval env h k (h (Op n sp') pure)
-  app f a = case f of
-    VNe h sp   -> pure $ VNe h (sp:>a)
-    VLam _ h k -> extendHandler h (a >>= force) >>= k
-    _          -> error "throw a real error (apply)"
+  app f a = case (f, a) of
+    (VNe h sp, a)        -> pure $ VNe h (sp:>a)
+    (VLam _ h k, EApp a) -> extendHandler h (a >>= force) >>= k
+    _                    -> error "throw a real error (apply)"
   force = \case
     VNe (Global n) sp -> do
       mod <- lift ask
@@ -115,13 +115,16 @@ instance Algebra sig m => Algebra sig (Eval m) where
 
 data Value m
   = VLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Value m))
-  | VNe (Var Void Level) (Stack (m (Value m)))
+  | VNe (Var Void Level) (Stack (Elim m))
   -- fixme: should we represent thunks & forcing explicitly?
   | VThunk (m (Value m))
   -- fixme: should these be computations too?
   | VOp (Op (Value m)) (Value m)
   | VCon (Q Name) (Stack (Value m))
   | VString Text
+
+data Elim m
+  = EApp (m (Value m))
 
 free :: Level -> Value m
 free v = VNe (Free v) Nil
@@ -150,7 +153,7 @@ quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k     -> XLam <$> traverse (quoteClause d h k) ps
   VThunk b        -> XThunk <$> (quoteV d =<< b)
-  VNe h sp        -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (quoteV d =<<) sp
+  VNe h sp        -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (\ (EApp a) -> quoteV d =<< a) sp
   VOp (Op q fs) k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
   VCon n fs       -> XCon n Nil <$> traverse (quoteV d) fs
   VString s       -> pure $ XString s
