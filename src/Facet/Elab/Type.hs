@@ -67,7 +67,7 @@ ret s t = Synth $ do
   s' <- traverse (check . (::: VInterface)) s
   -- FIXME: classify types by universe (value/computation) and check that this is a value type being returned
   t' <- check (t ::: VType)
-  pure $ TRet s' t' ::: VType
+  pure $ TComp s' t' ::: VType
 
 
 synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
