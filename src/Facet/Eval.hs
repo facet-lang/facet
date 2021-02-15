@@ -20,7 +20,7 @@ module Facet.Eval
 import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Effect.Reader
-import Control.Monad (ap, foldM, guard, liftM, (<=<))
+import Control.Monad (ap, guard, liftM)
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Foldable (foldl')
@@ -38,10 +38,15 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value (Eval m))
-eval = force Nil <=< go Nil
+eval = go Nil
   where
   go env = \case
-    XVar (Global n)  -> pure $ VNe (Global n) Nil
+    XVar (Global n)  -> do
+      mod <- lift ask
+      graph <- lift ask
+      case lookupQ graph mod n of
+        Just (_ :=: Just (DTerm v) ::: _) -> go env v
+        _                                 -> error "throw a real error here"
     XVar (Free v)    -> pure $ env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go env b
@@ -53,29 +58,19 @@ eval = force Nil <=< go Nil
       where
       cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
       (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
-    XApp  f a        -> go env f >>= \ f' -> app env f' (EApp (go env a))
+    XApp  f a        -> go env f >>= \ f' -> app f' (EApp (go env a))
     XThunk b         -> pure $ VThunk (go env b)
-    XForce t         -> go env t >>= \ t' -> app env t' EForce
+    XForce t         -> go env t >>= \ t' -> app t' EForce
     XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
       Eval $ \ h k -> runEval h k (h (Op n sp') pure)
-  app env f a = case (f, a) of
+  app f a = case (f, a) of
     (VNe h sp, a)        -> pure $ VNe h (sp:>a)
-    (VLam _ h k, EApp a) -> extendHandler h (a >>= force env) >>= k
+    (VLam _ h k, EApp a) -> extendHandler h a >>= k
     (VThunk b, EForce)   -> b
     _                    -> error "throw a real error (apply)"
-  force env = \case
-    VNe (Global n) sp -> do
-      mod <- lift ask
-      graph <- lift ask
-      case lookupQ graph mod n of
-        Just (_ :=: Just (DTerm v) ::: _) -> do
-          v' <- go env v
-          force env =<< foldM (app env) v' sp
-        _                                 -> error "throw a real error here"
-    v                 -> pure v
 
 extendHandler :: (Handler (Eval m) -> Handler (Eval m)) -> Eval m a -> Eval m a
 extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
