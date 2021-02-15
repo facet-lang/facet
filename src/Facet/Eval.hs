@@ -55,7 +55,7 @@ eval = go Nil
       (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
       (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
       where
-      cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
+      cs' = map (fmap (\ e p' -> go (foldl' (:>) env p') e)) cs
       (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
     XApp  f a        -> do
       VLam _ h k <- go env f
