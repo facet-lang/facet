@@ -202,9 +202,8 @@ showEval e = Action $ do
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
 runEvalMain :: Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m => Expr -> m Expr
-runEvalMain e = go (E.quoteV 0 =<< eval e)
+runEvalMain e = runEval handle pure (E.quoteV 0 =<< eval e)
   where
-  go = runEval handle pure
   handle (E.Op q sp) k = case q of
     FromList ["Effect", "Console"] :.: U "write"
       | FromList [E.VString s] <- sp -> outputText s *> k unit
