@@ -19,7 +19,7 @@ module Facet.Eval
 
 import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
-import Control.Effect.Reader
+import Control.Carrier.Reader
 import Control.Monad (ap, guard, liftM)
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
@@ -37,41 +37,44 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Value (Eval m))
-eval = go Nil
+eval = runReader Nil . go
   where
-  go env = \case
+  go :: Expr -> ReaderC (Stack (Value (Eval m))) (Eval m) (Value (Eval m))
+  go = \case
     XVar (Global n)  -> do
       mod <- lift ask
       graph <- lift ask
       case lookupQ graph mod n of
-        Just (_ :=: Just (DTerm v) ::: _) -> go env v
+        Just (_ :=: Just (DTerm v) ::: _) -> go v
         _                                 -> error "throw a real error here"
-    XVar (Free v)    -> pure $ env ! getIndex v
+    XVar (Free v)    -> asks (! getIndex v)
     XVar (Metavar m) -> case m of {}
-    XTLam b          -> go env b
-    XInst f _        -> go env f
-    XLam cs          -> pure $ VLam
-      (map fst cs)
-      (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
-      (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
-      where
-      cs' = map (fmap (\ e p' -> go (foldl' (:>) env p') e)) cs
-      (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
+    XTLam b          -> go b
+    XInst f _        -> go f
+    XLam cs          -> do
+      env <- ask
+      let cs' = map (fmap (\ e p' -> runReader (foldl' (:>) env p') (go e))) cs
+          (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
+      pure $ VLam
+        (map fst cs)
+        (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
+        (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
     XApp  f a        -> do
-      VLam _ h k <- go env f
-      extendHandler h (go env a) >>= k
-    XThunk b         -> pure $ VThunk (go env b)
+      VLam _ h k <- go f
+      extendHandler h (go a) >>= lift . k
+    XThunk b         -> asks (\ env -> VThunk (runReader env (go b)))
     XForce t         -> do
-      VThunk b <- go env t
-      b
-    XCon n _ fs      -> VCon n <$> traverse (go env) fs
+      VThunk b <- go t
+      lift b
+    XCon n _ fs      -> VCon n <$> traverse go fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
-      sp' <- traverse (go env) sp
-      Eval $ \ h k -> runEval h k (h (Op n sp') pure)
-
-extendHandler :: (Handler (Eval m) -> Handler (Eval m)) -> Eval m a -> Eval m a
-extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
+      sp' <- traverse go sp
+      lift $ Eval $ \ h k -> runEval h k (h (Op n sp') pure)
+    where
+    extendHandler ext m = ReaderC $ \ env -> do
+      let Eval run = runReader env m
+      Eval $ \ h -> run (ext h)
 
 
 -- Machinery
