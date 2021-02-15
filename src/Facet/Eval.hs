@@ -49,7 +49,6 @@ eval = force Nil <=< go Nil
     XLam cs          -> pure $ VLam
       (map fst cs)
       (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
-      -- FIXME: forcing in the closure’s environment instead of the caller’s is almost certainly wrong
       (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
       where
       cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
