@@ -338,8 +338,6 @@ unify t1 t2 = type' t1 t2
     -- FIXME: this must unify the signatures
     (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                     -> type' a1 a2 >> type' b1 b2
     (VArrow{}, _)                                            -> nope
-    (VSusp t1, VSusp t2)                                     -> type' t1 t2
-    (VSusp{}, _)                                             -> nope
     (VRet s1 t1, VRet s2 t2)                                 -> sig s1 s2 >> type' t1 t2
     (VRet _ t1, t2)                                          -> type' t1 t2
     (t1, VRet _ t2)                                          -> type' t1 t2
