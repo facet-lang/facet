@@ -5,7 +5,6 @@ module Facet.Elab.Term
 , var
 , tlam
 , lam
-, thunk
 , force
 , string
   -- * Pattern combinators
@@ -85,12 +84,6 @@ lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking clause" _T
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
-
-thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m a -> Check m a
-thunk e = Check $ \ _T -> do
-  _T' <- metavar <$> meta VType
-  unify _T (VSusp _T')
-  check (e ::: _T')
 
 force :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Synth m a
 force e = Synth $ do
