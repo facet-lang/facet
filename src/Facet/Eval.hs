@@ -116,7 +116,6 @@ instance Algebra sig m => Algebra sig (Eval m) where
 data Value m
   = VLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Value m))
   | VNe (Var Void Level) (Stack (Elim m))
-  -- fixme: should we represent thunks & forcing explicitly?
   | VThunk (m (Value m))
   -- fixme: should these be computations too?
   | VOp (Op (Value m)) (Value m)
