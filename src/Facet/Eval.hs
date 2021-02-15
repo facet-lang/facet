@@ -38,49 +38,46 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value (Eval m))
-eval = force <=< go
+eval = force Nil <=< go Nil
   where
-  go = \case
+  go env = \case
     XVar (Global n)  -> pure $ VNe (Global n) Nil
-    XVar (Free v)    -> Eval $ \ env _ k -> k $ env ! getIndex v
+    XVar (Free v)    -> pure $ env ! getIndex v
     XVar (Metavar m) -> case m of {}
-    XTLam b          -> go b
-    XInst f _        -> go f
+    XTLam b          -> go env b
+    XInst f _        -> go env f
     XLam cs          -> pure $ VLam
       (map fst cs)
       (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
       (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
       where
-      cs' = map (\ (p, e) -> (p, foldr bind (go e))) cs
+      cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
       (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
-    XApp  f a        -> go f >>= \ f' -> app f' (EApp (go a))
-    XThunk b         -> pure $ VThunk (go b)
-    XForce t         -> go t >>= \ t' -> app t' EForce
-    XCon n _ fs      -> VCon n <$> traverse go fs
+    XApp  f a        -> go env f >>= \ f' -> app env f' (EApp (go env a))
+    XThunk b         -> pure $ VThunk (go env b)
+    XForce t         -> go env t >>= \ t' -> app env t' EForce
+    XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
-      sp' <- traverse go sp
-      Eval $ \ env h k -> runEval env h k (h (Op n sp') pure)
-  app f a = case (f, a) of
+      sp' <- traverse (go env) sp
+      Eval $ \ h k -> runEval h k (h (Op n sp') pure)
+  app env f a = case (f, a) of
     (VNe h sp, a)        -> pure $ VNe h (sp:>a)
-    (VLam _ h k, EApp a) -> extendHandler h (a >>= force) >>= k
+    (VLam _ h k, EApp a) -> extendHandler h (a >>= force env) >>= k
     _                    -> error "throw a real error (apply)"
-  force = \case
+  force env = \case
     VNe (Global n) sp -> do
       mod <- lift ask
       graph <- lift ask
       case lookupQ graph mod n of
         Just (_ :=: Just (DTerm v) ::: _) -> do
-          v' <- go v
-          force =<< foldM app v' sp
+          v' <- go env v
+          force env =<< foldM (app env) v' sp
         _                                 -> error "throw a real error here"
     v                 -> pure v
 
-bind :: Value (Eval m) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
-bind v (Eval run) = Eval $ \ env -> run (env :> v)
-
 extendHandler :: (Handler (Eval m) -> Handler (Eval m)) -> Eval m a -> Eval m a
-extendHandler ext (Eval run) = Eval $ \ env h -> run env (ext h)
+extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
 
 
 -- Machinery
@@ -89,26 +86,26 @@ data Op a = Op (Q Name) (Stack a)
 
 type Handler m = Op (Value m) -> (Value m -> m (Value m)) -> m (Value m)
 
-runEval :: Stack (Value (Eval m)) -> Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
-runEval env hdl k (Eval m) = m env hdl k
+runEval :: Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
+runEval hdl k (Eval m) = m hdl k
 
-newtype Eval m a = Eval (forall r . Stack (Value (Eval m)) -> Handler (Eval m) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . Handler (Eval m) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap = liftM
 
 instance Applicative (Eval m) where
-  pure a = Eval $ \ _ _ k -> k a
+  pure a = Eval $ \ _ k -> k a
   (<*>) = ap
 
 instance Monad (Eval m) where
-  m >>= f = Eval $ \ env hdl k -> runEval env hdl (runEval env hdl k . f) m
+  m >>= f = Eval $ \ hdl k -> runEval hdl (runEval hdl k . f) m
 
 instance MonadTrans Eval where
-  lift m = Eval $ \ _ _ k -> m >>= k
+  lift m = Eval $ \ _ k -> m >>= k
 
 instance Algebra sig m => Algebra sig (Eval m) where
-  alg hdl sig ctx = Eval $ \ env h k -> alg (runEval env h pure . hdl) sig ctx >>= k
+  alg hdl sig ctx = Eval $ \ h k -> alg (runEval h pure . hdl) sig ctx >>= k
 
 
 -- Values
