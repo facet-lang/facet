@@ -37,7 +37,7 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m) => Expr -> Eval m (Value (Eval m))
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Value (Eval m))
 eval = go Nil
   where
   go env = \case
@@ -58,18 +58,19 @@ eval = go Nil
       where
       cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
       (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
-    XApp  f a        -> go env f >>= \ f' -> app f' (EApp (go env a))
+    XApp  f a        -> do
+      VLam _ h k <- go env f
+      a' <- extendHandler h (go env a)
+      k a'
     XThunk b         -> pure $ VThunk (go env b)
-    XForce t         -> go env t >>= \ t' -> app t' EForce
+    XForce t         -> do
+      VThunk b <- go env t
+      b
     XCon n _ fs      -> VCon n <$> traverse (go env) fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
       sp' <- traverse (go env) sp
       Eval $ \ h k -> runEval h k (h (Op n sp') pure)
-  app f a = case (f, a) of
-    (VLam _ h k, EApp a) -> extendHandler h a >>= k
-    (VThunk b, EForce)   -> b
-    _                    -> error "throw a real error (apply)"
 
 extendHandler :: (Handler (Eval m) -> Handler (Eval m)) -> Eval m a -> Eval m a
 extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
