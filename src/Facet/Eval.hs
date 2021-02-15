@@ -67,7 +67,6 @@ eval = go Nil
       sp' <- traverse (go env) sp
       Eval $ \ h k -> runEval h k (h (Op n sp') pure)
   app f a = case (f, a) of
-    (VNe h sp, a)        -> pure $ VNe h (sp:>a)
     (VLam _ h k, EApp a) -> extendHandler h a >>= k
     (VThunk b, EForce)   -> b
     _                    -> error "throw a real error (apply)"
