@@ -55,14 +55,14 @@ eval = runReader Nil . go
     XInst f _        -> go f
     XLam cs          -> do
       env <- ask
-      let cs' = map (fmap (\ e p' -> bindP p' (go e))) cs
+      let bindP :: Foldable t => t (Value (Eval m)) -> ReaderC (Snoc (Value (Eval m))) (Eval m) a -> (Eval m) a
           bindP = runReader . foldl' (:>) env
-          (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
+          (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
           lamV k = VThunk (CLam [pvar __] id k)
       pure $ CLam
         (map fst cs)
-        (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op (lamV k))) (toph op k) es)
-        (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
+        (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (\ p -> bindP p (go b)) (matchE p op (lamV k))) (toph op k) es)
+        (\ v -> foldr (\ (p, b) rest -> maybe rest (\ p -> bindP p (go b)) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
     XApp  f a        -> do
       CLam _ h k <- force =<< go f
       extendHandler h (go a) >>= to >>= lift . k
