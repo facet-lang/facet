@@ -55,7 +55,8 @@ eval = runReader Nil . go
     XInst f _        -> go f
     XLam cs          -> do
       env <- ask
-      let cs' = map (fmap (\ e p' -> runReader (foldl' (:>) env p') (go e))) cs
+      let cs' = map (fmap (\ e p' -> bindP p' (go e))) cs
+          bindP = runReader . foldl' (:>) env
           (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
           lamV k = VThunk (CLam [pvar __] id k)
       pure $ CLam
