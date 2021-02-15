@@ -149,7 +149,7 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   S.Thunk{}  -> nope
-  S.Force e  -> force (synthExpr e)
+  S.Force{}  -> nope
   where
   nope = Synth $ couldNotSynthesize (show e)
 
