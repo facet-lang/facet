@@ -55,7 +55,7 @@ eval = force <=< go
       (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
     XApp  f a        -> go f >>= \ f' -> app f' (EApp (go a))
     XThunk b         -> pure $ VThunk (go b)
-    XForce t         -> go t >>= \ t' -> app t' (EApp (pure unit))
+    XForce t         -> go t >>= \ t' -> app t' EForce
     XCon n _ fs      -> VCon n <$> traverse go fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
