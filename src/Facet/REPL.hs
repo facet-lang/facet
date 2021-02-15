@@ -35,6 +35,7 @@ import           Facet.Core.Type as T hiding (eval, showType)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
+import qualified Facet.Elab.Type as Elab
 import           Facet.Eval as E
 import           Facet.Graph
 import           Facet.Lens
@@ -147,8 +148,8 @@ commands = choice
   , command ["reload", "r"]     "reload the loaded modules"          Nothing        $ pure (Action (target_ `zoom` reloadModules))
   , command ["type", "t"]       "show the type of <expr>"            (Just "expr")
     $ showType <$> runFacet [] expr
-  -- , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
-  --   $ showType <$> runFacet [] Parser.type'
+  , command ["kind", "k"]       "show the kind of <type>"            (Just "type")
+    $ showKind <$> runFacet [] Parser.type'
   ]
 
 path' :: TokenParsing p => p FilePath
@@ -212,6 +213,12 @@ runEvalMain e = runEval handle pure (E.quoteV 0 =<< eval e)
   unhandled q _sp = do
     Options{ qname } <- get
     throwError $ Notice.Notice (Just Notice.Error) [] (fillSep [reflow "unhandled effect operator", getPrint (qname q)]) []
+
+showKind :: S.Ann S.Type -> Action
+showKind _T = Action $ do
+  _T ::: _K <- runElab $ Elab.elabSynthType one (Elab.synth (Elab.synthType _T))
+  opts <- get
+  outputDocLn (getPrint (ann (printType opts Nil _T ::: printType opts Nil _K)))
 
 
 helpDoc :: Doc Style
