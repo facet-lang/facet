@@ -64,6 +64,7 @@ eval = force Nil <=< go Nil
   app env f a = case (f, a) of
     (VNe h sp, a)        -> pure $ VNe h (sp:>a)
     (VLam _ h k, EApp a) -> extendHandler h (a >>= force env) >>= k
+    (VThunk b, EForce)   -> b
     _                    -> error "throw a real error (apply)"
   force env = \case
     VNe (Global n) sp -> do
