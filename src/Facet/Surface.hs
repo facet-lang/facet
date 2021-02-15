@@ -58,7 +58,6 @@ data Expr
   = Var (Q Name)
   | Hole Name
   | Lam [Clause]
-  | Thunk (Ann Expr)
   | Force (Ann Expr)
   | App (Ann Expr) (Ann Expr)
   | As (Ann Expr) (Ann Type)
