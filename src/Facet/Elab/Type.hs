@@ -62,8 +62,8 @@ forAll (n ::: t) b = Synth $ do
 infixr 1 -->
 
 
-ret :: Algebra sig m => [Check m TExpr] -> Check m TExpr -> Synth m TExpr
-ret s t = Synth $ do
+comp :: Algebra sig m => [Check m TExpr] -> Check m TExpr -> Synth m TExpr
+comp s t = Synth $ do
   s' <- traverse (check . (::: VInterface)) s
   -- FIXME: classify types by universe (value/computation) and check that this is a value type being returned
   t' <- check (t ::: VType)
@@ -78,7 +78,7 @@ synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TString         -> _String
   S.TForAll n t b   -> forAll (n ::: checkType t) (checkType b)
   S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkType a)) --> checkType b
-  S.TComp s t       -> ret (map checkInterface s) (checkType t)
+  S.TComp s t       -> comp (map checkInterface s) (checkType t)
   S.TApp f a        -> app TApp (synthType f) (checkType a)
   where
   interpretMul = \case
