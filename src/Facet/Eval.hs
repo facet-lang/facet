@@ -57,7 +57,7 @@ eval = runReader Nil . go
       env <- ask
       let cs' = map (fmap (\ e p' -> runReader (foldl' (:>) env p') (go e))) cs
           (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
-          lamV k = VThunk (CLam [PVal (PVar __)] id k)
+          lamV k = VThunk (CLam [pvar __] id k)
       pure $ CLam
         (map fst cs)
         (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op (lamV k))) (toph op k) es)
