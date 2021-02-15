@@ -57,9 +57,10 @@ eval = runReader Nil . go
       env <- ask
       let cs' = map (fmap (\ e p' -> runReader (foldl' (:>) env p') (go e))) cs
           (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
+          lamV k = VThunk (CLam [PVal (PVar __)] id k)
       pure $ CLam
         (map fst cs)
-        (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
+        (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op (lamV k))) (toph op k) es)
         (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
     XApp  f a        -> do
       CLam _ h k <- force =<< go f
@@ -140,8 +141,8 @@ data Comp m
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Op (Value m) -> (Value m -> m (Comp m)) -> Maybe (EffectPattern (Value m))
-matchE (POp n ps _) (Op n' fs) k = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VThunk (CLam [PVal (PVar __)] id k))
+matchE :: EffectPattern Name -> Op (Value m) -> Value m -> Maybe (EffectPattern (Value m))
+matchE (POp n ps _) (Op n' fs) k = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure k
 
 matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
 matchV p s = case p of
