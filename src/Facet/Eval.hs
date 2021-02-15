@@ -13,14 +13,16 @@ module Facet.Eval
   -- * Values
 , Value(..)
 , unit
+, Comp(..)
   -- * Quotation
 , quoteV
+, quoteC
 ) where
 
 import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Carrier.Reader
-import Control.Monad (ap, guard, liftM)
+import Control.Monad (ap, guard, liftM, (<=<))
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Foldable (foldl')
@@ -36,10 +38,10 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Value (Eval m))
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Comp (Eval m))
 eval = runReader Nil . go
   where
-  go :: Expr -> ReaderC (Snoc (Value (Eval m))) (Eval m) (Value (Eval m))
+  go :: Expr -> ReaderC (Snoc (Value (Eval m))) (Eval m) (Comp (Eval m))
   go = \case
     XVar (Global n)  -> do
       mod <- lift ask
@@ -47,7 +49,7 @@ eval = runReader Nil . go
       case lookupQ graph mod n of
         Just (_ :=: Just (DTerm v) ::: _) -> go v
         _                                 -> error "throw a real error here"
-    XVar (Free v)    -> asks (! getIndex v)
+    XVar (Free v)    -> asks (CReturn . (! getIndex v))
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go b
     XInst f _        -> go f
@@ -55,20 +57,27 @@ eval = runReader Nil . go
       env <- ask
       let cs' = map (fmap (\ e p' -> runReader (foldl' (:>) env p') (go e))) cs
           (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
-      pure $ VLam
+      pure $ CLam
         (map fst cs)
         (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
         (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
     XApp  f a        -> do
-      VLam _ h k <- go f
-      extendHandler h (go a) >>= lift . k
-    XCon n _ fs      -> VCon n <$> traverse go fs
-    XString s        -> pure $ VString s
+      CLam _ h k <- force =<< go f
+      extendHandler h (go a) >>= to >>= lift . k
+    XCon n _ fs      -> CReturn . VCon n <$> traverse (to <=< go) fs
+    XString s        -> pure $ CReturn $ VString s
     XOp n _ sp       -> do
       -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-      sp' <- traverse go sp
-      lift $ Eval $ \ h k -> runEval h k (h (Op n sp') pure)
+      sp' <- traverse (to <=< go) sp
+      lift $ Eval $ \ h k -> runEval h k (h (Op n sp') (pure . CReturn))
     where
+    -- NB: CPS would probably be more faithful to Levy’s treatment
+    to v = do
+      CReturn v' <- pure v
+      pure v'
+    force = \case
+      CReturn (VThunk b) -> pure b
+      c                  -> pure c
     extendHandler ext m = ReaderC $ \ env -> do
       let Eval run = runReader env m
       Eval $ \ h -> run (ext h)
@@ -78,7 +87,7 @@ eval = runReader Nil . go
 
 data Op a = Op (Q Name) (Snoc a)
 
-type Handler m = Op (Value m) -> (Value m -> m (Value m)) -> m (Value m)
+type Handler m = Op (Value m) -> (Value m -> m (Comp m)) -> m (Comp m)
 
 runEval :: Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
@@ -110,23 +119,29 @@ instance Algebra sig m => Algebra sig (Eval m) where
 data Value m
   -- | Neutral; variables, only used during quotation
   = VFree Level
-  -- | Neutral; effect operations, only used during quotation.
-  | VOp (Op (Value m)) (Value m)
   -- | Value; data constructors.
   | VCon (Q Name) (Snoc (Value m))
   -- | Value; strings.
   | VString Text
-  -- | Computation; lambdas.
-  | VLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Value m))
+  -- | Thunks embed computations into values.
+  | VThunk (Comp m)
 
 unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
+type Cont m = Value m -> m (Comp m)
+
+data Comp m
+  -- | Neutral; effect operations, only used during quotation (so it doesn’t much matter that the continuation is a value).
+  = COp (Op (Value m)) (Value m)
+  | CLam [Pattern Name] (Handler m -> Handler m) (Cont m)
+  | CReturn (Value m)
+
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Op (Value m) -> (Value m -> m (Value m)) -> Maybe (EffectPattern (Value m))
-matchE (POp n ps _) (Op n' fs) k = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VLam [PVal (PVar __)] id k)
+matchE :: EffectPattern Name -> Op (Value m) -> (Value m -> m (Comp m)) -> Maybe (EffectPattern (Value m))
+matchE (POp n ps _) (Op n' fs) k = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VThunk (CLam [PVal (PVar __)] id k))
 
 matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
 matchV p s = case p of
@@ -141,16 +156,22 @@ matchV p s = case p of
 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
-  VLam ps h k     -> XLam <$> traverse (quoteClause d h k) ps
-  VFree lvl       -> pure (XVar (Free (levelToIndex d lvl)))
-  VOp (Op q fs) k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
-  VCon n fs       -> XCon n Nil <$> traverse (quoteV d) fs
-  VString s       -> pure $ XString s
+  VFree lvl -> pure (XVar (Free (levelToIndex d lvl)))
+  VCon n fs -> XCon n Nil <$> traverse (quoteV d) fs
+  VString s -> pure $ XString s
+  VThunk c  -> quoteC d c
 
-quoteClause :: Monad m => Level -> (Handler m -> Handler m) -> (Value m -> m (Value m)) -> Pattern Name -> m (Pattern Name, Expr)
-quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
+quoteC :: Monad m => Level -> Comp m -> m Expr
+quoteC d = \case
+  COp (Op q fs) k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
+  CLam ps h k     -> XLam <$> traverse (quoteClause d h k) ps
+  CReturn v       -> quoteV d v
+
+
+quoteClause :: Monad m => Level -> (Handler m -> Handler m) -> (Value m -> m (Comp m)) -> Pattern Name -> m (Pattern Name, Expr)
+quoteClause d h k p = fmap (p,) . quoteC d' =<< case p' of
   PVal p'           -> k (constructV p')
-  PEff (POp q fs k) -> h (\ op _ -> pure (VOp op k)) (Op q (constructV <$> fs)) pure
+  PEff (POp q fs k) -> h (\ op _ -> pure (COp op k)) (Op q (constructV <$> fs)) (pure . CReturn)
   where
   (d', p') = fill ((,) <$> succ <*> VFree) d p
 
