@@ -63,9 +63,6 @@ eval = runReader Nil . go
       VLam _ h k <- go f
       extendHandler h (go a) >>= lift . k
     XThunk b         -> asks (\ env -> VThunk (runReader env (go b)))
-    XForce t         -> do
-      VThunk b <- go t
-      lift b
     XCon n _ fs      -> VCon n <$> traverse go fs
     XString s        -> pure $ VString s
     XOp n _ sp       -> do
