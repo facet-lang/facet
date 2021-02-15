@@ -153,7 +153,7 @@ quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k     -> XLam <$> traverse (quoteClause d h k) ps
   VThunk b        -> XThunk <$> (quoteV d =<< b)
-  VNe h sp        -> foldl' XApp (XVar (levelToIndex d <$> h)) <$> traverse (\ (EApp a) -> quoteV d =<< a) sp
+  VNe h sp        -> foldl' (&) (XVar (levelToIndex d <$> h)) <$> traverse (\case{ EApp a -> fmap (flip XApp) . quoteV d =<< a }) sp
   VOp (Op q fs) k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
   VCon n fs       -> XCon n Nil <$> traverse (quoteV d) fs
   VString s       -> pure $ XString s
