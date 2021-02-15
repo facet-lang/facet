@@ -109,11 +109,17 @@ instance Algebra sig m => Algebra sig (Eval m) where
 -- Values
 
 data Value m
+  -- | Neutral; variables, only used during quotation
   = VFree Level
+  -- | Neutral; effect operations, only used during quotation.
   | VOp (Op (Value m)) (Value m)
+  -- | Value; thunks, wrapping computations.
   | VThunk (m (Value m))
+  -- | Value; data constructors.
   | VCon (Q Name) (Stack (Value m))
+  -- | Value; strings.
   | VString Text
+  -- | Computation; lambdas.
   | VLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Value m))
 
 unit :: Value m
