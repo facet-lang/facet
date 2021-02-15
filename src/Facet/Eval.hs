@@ -112,7 +112,6 @@ data Value m
   = VLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Value m))
   | VFree Level
   | VThunk (m (Value m))
-  -- fixme: should these be computations too?
   | VOp (Op (Value m)) (Value m)
   | VCon (Q Name) (Stack (Value m))
   | VString Text
