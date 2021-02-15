@@ -8,6 +8,7 @@ module Facet.Surface
 , Interface(..)
 , Clause(..)
   -- * Patterns
+, Pattern(..)
 , ValPattern(..)
 , EffPattern(..)
   -- * Declarations
@@ -68,11 +69,16 @@ data Interface = Interface (Ann (Q Name)) (Snoc (Ann Type))
   deriving (Eq, Show)
 
 
-data Clause = Clause (Ann EffPattern) (Ann Expr)
+data Clause = Clause (Ann Pattern) (Ann Expr)
   deriving (Eq, Show)
 
 
 -- Patterns
+
+data Pattern
+  = PVal (Ann ValPattern)
+  | PEff (Ann EffPattern)
+  deriving (Eq, Show)
 
 data ValPattern
   = PWildcard
@@ -80,10 +86,7 @@ data ValPattern
   | PCon (Q Name) [Ann ValPattern]
   deriving (Eq, Show)
 
-
-data EffPattern
-  = PEff (Q Name) [Ann ValPattern] Name
-  | PVal (Ann ValPattern)
+data EffPattern = POp (Q Name) [Ann ValPattern] Name
   deriving (Eq, Show)
 
 

@@ -245,10 +245,10 @@ valuePattern = choice
   , try (parens (anned (S.PCon <$> qname ename <*> many valuePattern)))
   ] <?> "pattern"
 
-compPattern :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.EffPattern)
+compPattern :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Pattern)
 compPattern = choice
   [ anned (S.PVal <$> valuePattern)
-  , try (brackets (anned (S.PEff <$> qname ename <*> many valuePattern <* symbolic ';' <*> (ename <|> N.__ <$ wildcard))))
+  , anned (S.PEff <$> try (brackets (anned (S.POp <$> qname ename <*> many valuePattern <* symbolic ';' <*> (ename <|> N.__ <$ wildcard)))))
   ] <?> "pattern"
 
 
