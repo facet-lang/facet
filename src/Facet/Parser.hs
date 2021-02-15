@@ -182,6 +182,7 @@ tvar :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenPar
 tvar = anned (S.TVar <$> qname tname)
 
 
+-- FIXME: parse {A} as a synonym for Unit -> A. Better yet, implement mixfix type operators & type synonyms, and define it as a synonym in Data.Unit.
 suspendedCompType :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
 suspendedCompType = anned $ braces (S.TSusp <$> type')
 
