@@ -59,8 +59,7 @@ eval = go Nil
       (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
     XApp  f a        -> do
       VLam _ h k <- go env f
-      a' <- extendHandler h (go env a)
-      k a'
+      extendHandler h (go env a) >>= k
     XThunk b         -> pure $ VThunk (go env b)
     XForce t         -> do
       VThunk b <- go env t
