@@ -30,8 +30,8 @@ import Control.Lens (Lens, Lens', lens)
 import Data.Function (on)
 import Data.Text (Text)
 import Facet.Name
+import Facet.Snoc
 import Facet.Span
-import Facet.Stack
 import Facet.Syntax
 
 -- Types
@@ -66,7 +66,7 @@ data Expr
   deriving (Eq, Show)
 
 
-data Interface = Interface (Ann (Q Name)) (Stack (Ann Type))
+data Interface = Interface (Ann (Q Name)) (Snoc (Ann Type))
   deriving (Eq, Show)
 
 
@@ -122,7 +122,7 @@ newtype Import = Import { name :: MName }
 
 data Ann a = Ann
   { ann      :: Span
-  , comments :: Stack (Span, Comment)
+  , comments :: Snoc (Span, Comment)
   , out      :: a
   }
   deriving (Foldable, Functor, Traversable)
@@ -142,7 +142,7 @@ instance HasSpan (Ann a) where
 ann_ :: Lens' (Ann a) Span
 ann_ = lens ann (\ a ann -> a{ ann })
 
-comments_ :: Lens' (Ann a) (Stack (Span, Comment))
+comments_ :: Lens' (Ann a) (Snoc (Span, Comment))
 comments_ = lens comments (\ a comments -> a{ comments })
 
 out_ :: Lens (Ann a) (Ann b) a b

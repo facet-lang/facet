@@ -31,7 +31,7 @@ import Facet.Core.Module
 import Facet.Core.Term
 import Facet.Graph
 import Facet.Name hiding (Op)
-import Facet.Stack
+import Facet.Snoc
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
@@ -39,7 +39,7 @@ import Prelude hiding (zipWith)
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Value (Eval m))
 eval = runReader Nil . go
   where
-  go :: Expr -> ReaderC (Stack (Value (Eval m))) (Eval m) (Value (Eval m))
+  go :: Expr -> ReaderC (Snoc (Value (Eval m))) (Eval m) (Value (Eval m))
   go = \case
     XVar (Global n)  -> do
       mod <- lift ask
@@ -79,7 +79,7 @@ eval = runReader Nil . go
 
 -- Machinery
 
-data Op a = Op (Q Name) (Stack a)
+data Op a = Op (Q Name) (Snoc a)
 
 type Handler m = Op (Value m) -> (Value m -> m (Value m)) -> m (Value m)
 
@@ -118,7 +118,7 @@ data Value m
   -- | Value; thunks, wrapping computations.
   | VThunk (m (Value m))
   -- | Value; data constructors.
-  | VCon (Q Name) (Stack (Value m))
+  | VCon (Q Name) (Snoc (Value m))
   -- | Value; strings.
   | VString Text
   -- | Computation; lambdas.

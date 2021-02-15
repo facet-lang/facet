@@ -76,9 +76,9 @@ import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
 import Facet.Semiring
+import Facet.Snoc
 import Facet.Source (Source, slice)
 import Facet.Span (Span(..))
-import Facet.Stack
 import Facet.Syntax
 import Facet.Usage as Usage
 import Facet.Vars as Vars
@@ -306,7 +306,7 @@ data StaticContext = StaticContext
 data ElabContext = ElabContext
   { context :: Context
   , sig     :: [Type]
-  , spans   :: Stack Span
+  , spans   :: Snoc Span
   }
 
 context_ :: Lens' ElabContext Context
@@ -315,7 +315,7 @@ context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: Elab
 sig_ :: Lens' ElabContext [Type]
 sig_ = lens sig (\ e sig -> e{ sig })
 
-spans_ :: Lens' ElabContext (Stack Span)
+spans_ :: Lens' ElabContext (Snoc Span)
 spans_ = lens spans (\ e spans -> e{ spans })
 
 

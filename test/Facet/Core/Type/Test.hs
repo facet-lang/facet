@@ -6,7 +6,7 @@ module Facet.Core.Type.Test
 
 import Facet.Core.Type
 import Facet.Name
-import Facet.Stack
+import Facet.Snoc
 import Facet.Syntax
 import Hedgehog hiding (Var, eval)
 

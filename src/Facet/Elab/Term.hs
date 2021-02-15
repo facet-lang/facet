@@ -48,8 +48,8 @@ import           Facet.Elab.Type
 import           Facet.Graph
 import           Facet.Name
 import           Facet.Semiring (Few(..), zero)
+import           Facet.Snoc
 import           Facet.Source (Source)
-import           Facet.Stack
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Facet.Usage hiding (restrict)
@@ -197,7 +197,7 @@ abstractType body = go
       pure $ TForAll n (T.quote level a) b'
     _                       -> body
 
-abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Stack TExpr -> Stack Expr -> Expr) -> Check m Expr
+abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc Expr -> Expr) -> Check m Expr
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case

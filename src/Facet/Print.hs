@@ -38,7 +38,7 @@ import qualified Facet.Core.Type as CT
 import           Facet.Name as Name
 import           Facet.Pretty (lower, upper)
 import           Facet.Semiring (one, zero)
-import           Facet.Stack
+import           Facet.Snoc
 import           Facet.Style
 import           Facet.Syntax
 import qualified Prettyprinter as PP
@@ -141,10 +141,10 @@ suppressInstantiation = const
 
 -- Core printers
 
-printType :: Options -> Stack Print -> C.Type -> Print
+printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
-printTExpr :: Options -> Stack Print -> C.TExpr -> Print
+printTExpr :: Options -> Snoc Print -> C.TExpr -> Print
 printTExpr Options{ qname, instantiation } = go
   where
   qvar = group . setPrec Var . qname
@@ -171,7 +171,7 @@ printTExpr Options{ qname, instantiation } = go
       | q == one  -> (pretty '1' <+>)
       | otherwise -> id
 
-printExpr :: Options -> Stack Print -> C.Expr -> Print
+printExpr :: Options -> Snoc Print -> C.Expr -> Print
 printExpr opts@Options{ qname, instantiation } = go
   where
   go env = \case

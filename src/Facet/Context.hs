@@ -16,12 +16,12 @@ import           Data.Semialign
 import           Facet.Core.Type
 import           Facet.Name
 import           Facet.Semiring
-import qualified Facet.Stack as S
+import qualified Facet.Snoc as S
 import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup, zipWith)
 
-newtype Context = Context { elems :: S.Stack Binding }
+newtype Context = Context { elems :: S.Snoc Binding }
 
 -- | A precondition for use of this instance is that one only ever '<>'s 'Context's assigning the same types to the same variables in the same order.
 instance Semigroup Context where
@@ -72,7 +72,7 @@ lookupIndex n = go (Index 0) . elems
 
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context -> S.Stack Type
+toEnv :: Context -> S.Snoc Type
 toEnv c = locals 0 (elems c)
   where
   d = level c

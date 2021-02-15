@@ -28,7 +28,7 @@ import qualified Data.Set as Set
 import           Facet.Core.Module
 import           Facet.Core.Type hiding (insert)
 import           Facet.Name
-import           Facet.Stack
+import           Facet.Snoc
 import           Facet.Syntax
 
 newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Module) }
@@ -63,7 +63,7 @@ lookupQ :: (Alternative m, Monad m) => Graph -> Module -> Q Name -> m (Q Name :=
 lookupQ = lookupWith lookupD
 
 -- FIXME: enrich this with source references for each
-newtype GraphErr = CyclicImport (Stack MName)
+newtype GraphErr = CyclicImport (Snoc MName)
 
 data Node a = Node MName [MName] a
 

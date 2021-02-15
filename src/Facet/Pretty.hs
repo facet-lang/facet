@@ -41,7 +41,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
-import           Facet.Stack
+import           Facet.Snoc
 import           Prelude hiding (unlines)
 import qualified Prettyprinter as PP
 import           Silkscreen hiding (column, width)
@@ -154,7 +154,7 @@ renderIO h stream = do
     pure l
   unsafePop = do
     i :> _ <- get
-    put (i :: Stack [SGR])
+    put (i :: Snoc [SGR])
 
 renderLazy :: PP.SimpleDocStream [SGR] -> TL.Text
 renderLazy =
@@ -166,7 +166,7 @@ renderLazy =
       unsafePop Nil     = error "popping an empty stack"
       unsafePop (xs:>x) = (x, xs)
 
-      go :: Stack [SGR] -> PP.SimpleDocStream [SGR] -> TLB.Builder
+      go :: Snoc [SGR] -> PP.SimpleDocStream [SGR] -> TLB.Builder
       go s sds = case sds of
         PP.SFail -> error "fail"
         PP.SEmpty -> mempty

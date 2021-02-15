@@ -20,7 +20,7 @@ import qualified Data.List.NonEmpty as NE
 import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
-import           Facet.Stack
+import           Facet.Snoc
 import qualified Prettyprinter as P
 import           Silkscreen
 
@@ -53,7 +53,7 @@ __ :: Name
 __ = U T.empty
 
 
-type MName = Stack Text
+type MName = Snoc Text
 
 prettyMName :: Printer a => MName -> a
 prettyMName = \case

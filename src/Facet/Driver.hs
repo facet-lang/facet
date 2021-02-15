@@ -44,8 +44,8 @@ import           Facet.Notice.Parser (rethrowParseErrors)
 import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Print (Options)
+import           Facet.Snoc
 import           Facet.Source
-import           Facet.Stack
 import           Facet.Style
 import qualified Facet.Surface as Import (Import(..))
 import qualified Facet.Surface as S

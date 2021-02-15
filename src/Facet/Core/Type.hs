@@ -35,7 +35,7 @@ import qualified Data.IntMap as IntMap
 import           Facet.Name
 import           Facet.Semiring
 import           Facet.Show
-import           Facet.Stack
+import           Facet.Snoc
 import           Facet.Syntax
 import           Facet.Usage
 import           GHC.Stack
@@ -50,7 +50,7 @@ data Type
   | VSusp Type
   | VForAll Name Type (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
-  | VNe (Var Meta Level) (Stack Type) (Stack Type)
+  | VNe (Var Meta Level) (Snoc Type) (Snoc Type)
   | VRet [Type] Type
 
 
@@ -112,7 +112,7 @@ infixl 9 $$$, $$$*
 
 -- Debugging
 
-showType :: Stack ShowP -> Type -> ShowP
+showType :: Snoc ShowP -> Type -> ShowP
 showType env = \case
   VType         -> string "Type"
   VInterface    -> string "Interface"
@@ -167,7 +167,7 @@ quote d = \case
   VRet s t       -> TRet (quote d <$> s) (quote d t)
   VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
 
-eval :: HasCallStack => Subst -> Stack (Either Type a) -> TExpr -> Type
+eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
   go env = \case
     TType            -> VType

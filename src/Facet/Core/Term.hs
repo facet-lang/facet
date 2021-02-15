@@ -16,7 +16,7 @@ import           Data.Traversable (mapAccumL)
 import           Data.Void (Void)
 import qualified Facet.Core.Type as T
 import           Facet.Name
-import           Facet.Stack
+import           Facet.Snoc
 import           Facet.Syntax
 
 -- Patterns
@@ -24,10 +24,10 @@ import           Facet.Syntax
 data ValuePattern a
   = PWildcard
   | PVar a
-  | PCon (Q Name) (Stack (ValuePattern a))
+  | PCon (Q Name) (Snoc (ValuePattern a))
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-data EffectPattern a = POp (Q Name) (Stack (ValuePattern a)) a
+data EffectPattern a = POp (Q Name) (Snoc (ValuePattern a)) a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data Pattern a
@@ -38,10 +38,10 @@ data Pattern a
 pvar :: a -> Pattern a
 pvar = PVal . PVar
 
-pcon :: Q Name -> Stack (ValuePattern a) -> Pattern a
+pcon :: Q Name -> Snoc (ValuePattern a) -> Pattern a
 pcon n fs = PVal $ PCon n fs
 
-peff :: Q Name -> Stack (ValuePattern a) -> a -> Pattern a
+peff :: Q Name -> Snoc (ValuePattern a) -> a -> Pattern a
 peff o vs k = PEff $ POp o vs k
 
 
@@ -59,7 +59,7 @@ data Expr
   | XApp Expr Expr
   | XThunk Expr
   | XForce Expr
-  | XCon (Q Name) (Stack T.TExpr) (Stack Expr)
+  | XCon (Q Name) (Snoc T.TExpr) (Snoc Expr)
   | XString Text
-  | XOp (Q Name) (Stack T.TExpr) (Stack Expr)
+  | XOp (Q Name) (Snoc T.TExpr) (Snoc Expr)
   deriving (Eq, Ord, Show)

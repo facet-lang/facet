@@ -15,7 +15,7 @@ import Data.Bifunctor
 import Data.Bitraversable
 import Data.Functor.Classes
 import Facet.Name
-import Facet.Stack
+import Facet.Snoc
 
 data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -76,7 +76,7 @@ data Var m a
 
 -- Decomposition
 
-splitl :: (t -> Maybe (t, a)) -> t -> (t, Stack a)
+splitl :: (t -> Maybe (t, a)) -> t -> (t, Snoc a)
 splitl un = go id
   where
   go as t = case un t of

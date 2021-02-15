@@ -48,8 +48,8 @@ import           Facet.Pretty
 import           Facet.Print as Print hiding (meta)
 import           Facet.REPL.Parser
 import           Facet.Semiring (one)
+import           Facet.Snoc
 import           Facet.Source (Source(..), sourceFromString)
-import           Facet.Stack
 import           Facet.Style as Style
 import qualified Facet.Surface as S
 import           Facet.Syntax

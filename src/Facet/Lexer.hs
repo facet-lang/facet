@@ -11,8 +11,8 @@ import Data.Char (isSpace)
 import Data.Text (Text, pack)
 import Facet.Effect.Parser
 import Facet.Name
+import Facet.Snoc
 import Facet.Span
-import Facet.Stack
 import Text.Parser.Char
 import Text.Parser.Combinators
 

@@ -109,10 +109,10 @@ library
     Facet.Run
     Facet.Semiring
     Facet.Show
+    Facet.Snoc
+    Facet.Snoc.NonEmpty
     Facet.Source
     Facet.Span
-    Facet.Stack
-    Facet.Stack.NonEmpty
     Facet.Style
     Facet.Surface
     Facet.Syntax

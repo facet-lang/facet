@@ -15,7 +15,7 @@ import           Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print
 import           Facet.Semiring (Few(..), one, zero)
-import           Facet.Stack
+import           Facet.Snoc
 import           Facet.Style
 import           Facet.Syntax
 import           GHC.Stack
@@ -46,7 +46,7 @@ rethrowElabErrors opts = L.runThrow rethrow
     | otherwise -> id
 
 
-printErrReason :: Options -> Stack Print -> ErrReason -> Doc Style
+printErrReason :: Options -> Snoc Print -> ErrReason -> Doc Style
 printErrReason opts ctx = group . \case
   FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n qs     -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
