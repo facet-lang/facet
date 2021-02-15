@@ -203,9 +203,6 @@ exprTable =
   -- FIXME: better yet, generalize operators to allow different syntactic types on either side (following the associativity)
   [ [ ascription ]
   , [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
-  -- FIXME: model this as application to unit instead
-  -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
-  , [ parseOperator (N.Postfix (pack "!"), N.L, S.annUnary S.Force . head) ]
   , [ atom thunk, atom hole, atom evar, atom (token (anned (runUnspaced (S.String <$> stringLiteral)))) ]
   ]
 
