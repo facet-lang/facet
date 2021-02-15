@@ -66,19 +66,15 @@ eval = force <=< go
     VLam _ h k -> extendHandler h (a >>= force) >>= k
     _          -> error "throw a real error (apply)"
   force = \case
-    VNe n sp -> forceN n sp
-    v        -> pure v
-  forceN (Global n)  sp = forceGlobal n sp
-  forceN (Free n)    sp = pure $ VNe (Free n) sp
-  forceN (Metavar m) _  = case m of {}
-  forceGlobal n sp = do
-    mod <- lift ask
-    graph <- lift ask
-    case lookupQ graph mod n of
-      Just (_ :=: Just (DTerm v) ::: _) -> do
-        v' <- go v
-        force =<< foldM app v' sp
-      _                                 -> error "throw a real error here"
+    VNe (Global n) sp -> do
+      mod <- lift ask
+      graph <- lift ask
+      case lookupQ graph mod n of
+        Just (_ :=: Just (DTerm v) ::: _) -> do
+          v' <- go v
+          force =<< foldM app v' sp
+        _                                 -> error "throw a real error here"
+    v                 -> pure v
 
 bind :: Value (Eval m) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 bind v (Eval run) = Eval $ \ env -> run (env :> v)
