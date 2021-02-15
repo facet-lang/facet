@@ -27,7 +27,6 @@ import Data.Foldable (foldl')
 import Data.Function
 import Data.Semialign.Exts (zipWithM)
 import Data.Text (Text)
-import Data.Void (Void)
 import Facet.Core.Module
 import Facet.Core.Term
 import Facet.Graph
@@ -111,19 +110,12 @@ instance Algebra sig m => Algebra sig (Eval m) where
 
 data Value m
   = VLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Value m))
-  | VNe (Var Void Level) (Stack (Elim m))
+  | VFree Level
   | VThunk (m (Value m))
   -- fixme: should these be computations too?
   | VOp (Op (Value m)) (Value m)
   | VCon (Q Name) (Stack (Value m))
   | VString Text
-
-data Elim m
-  = EApp (m (Value m))
-  | EForce
-
-free :: Level -> Value m
-free v = VNe (Free v) Nil
 
 unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
@@ -149,7 +141,7 @@ quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k     -> XLam <$> traverse (quoteClause d h k) ps
   VThunk b        -> XThunk <$> (quoteV d =<< b)
-  VNe h sp        -> foldl' (&) (XVar (levelToIndex d <$> h)) <$> traverse (\case{ EApp a -> fmap (flip XApp) . quoteV d =<< a ; EForce -> pure XForce }) sp
+  VFree lvl       -> pure (XVar (Free (levelToIndex d lvl)))
   VOp (Op q fs) k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
   VCon n fs       -> XCon n Nil <$> traverse (quoteV d) fs
   VString s       -> pure $ XString s
@@ -159,7 +151,7 @@ quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
   PVal p'           -> k (constructV p')
   PEff (POp q fs k) -> h (\ op _ -> pure (VOp op k)) (Op q (constructV <$> fs)) pure
   where
-  (d', p') = fill ((,) <$> succ <*> free) d p
+  (d', p') = fill ((,) <$> succ <*> VFree) d p
 
 
 constructV :: ValuePattern (Value m) -> Value m
