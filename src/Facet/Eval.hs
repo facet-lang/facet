@@ -42,15 +42,15 @@ eval = force Nil <=< go Nil
   where
   go env = \case
     XVar (Global n)  -> pure $ VNe (Global n) Nil
-    XVar (Free v)    -> env ! getIndex v
+    XVar (Free v)    -> pure $ env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go env b
     XInst f _        -> go env f
     XLam cs          -> pure $ VLam
       (map fst cs)
-      (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PEff) (matchE p op k)) (toph op k) es)
+      (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
       -- FIXME: forcing in the closure’s environment instead of the caller’s is almost certainly wrong
-      (\ v -> foldr (\ (p, b) rest -> maybe rest (b . fmap pure . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
+      (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
       where
       cs' = map (\ (p, e) -> (p, \ p' -> go (foldl' (:>) env p') e)) cs
       (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
