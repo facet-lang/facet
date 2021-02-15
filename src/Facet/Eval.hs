@@ -96,6 +96,9 @@ instance Applicative (Eval m) where
 instance Monad (Eval m) where
   m >>= f = Eval $ \ hdl k -> runEval hdl (runEval hdl k . f) m
 
+instance MonadFail m => MonadFail (Eval m) where
+  fail = lift . fail
+
 instance MonadTrans Eval where
   lift m = Eval $ \ _ k -> m >>= k
 
