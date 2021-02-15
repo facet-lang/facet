@@ -49,6 +49,7 @@ import           Text.Parser.Token.Highlight as Highlight
 
 -- FIXME: allow operators to be introduced and scoped locally
 -- FIXME: we can’t parse without knowing operators defined elsewhere
+-- FIXME: parse {A} as a synonym for Unit -> A. Better yet, implement mixfix type operators & type synonyms, and define it as a synonym in Data.Unit.
 
 whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
@@ -144,7 +145,6 @@ monotypeTable =
     , atom (token (anned (S.TString    <$ string "String")))
       -- FIXME: holes in types
     , atom tvar
-    , atom (try suspendedCompType)
     ]
   ]
 
@@ -181,10 +181,6 @@ monotype = build monotypeTable $ parens type'
 tvar :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
 tvar = anned (S.TVar <$> qname tname)
 
-
--- FIXME: parse {A} as a synonym for Unit -> A. Better yet, implement mixfix type operators & type synonyms, and define it as a synonym in Data.Unit.
-suspendedCompType :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-suspendedCompType = anned $ braces (S.TSusp <$> type')
 
 signature :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Interface]
 signature = brackets (commaSep delta) <?> "signature"
