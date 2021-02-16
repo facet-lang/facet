@@ -22,11 +22,11 @@ module Facet.Eval
 import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Carrier.Reader
+import Control.Effect.NonDet (foldMapA)
 import Control.Monad (ap, guard, liftM, (<=<))
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Function
-import Data.Monoid (First(..))
 import Data.Semialign.Exts (zipWithM)
 import Data.Text (Text)
 import Facet.Core.Module
@@ -59,8 +59,8 @@ eval = runReader Nil . go
           lamV = VThunk . CLam [pvar __] id
       pure $ CLam
         (map fst cs)
-        (\ toph op k -> maybe (toph op k) (\ (f, b) -> runReader (f env :> lamV k) b) $ getFirst (foldMap (\ (p, b) -> First ((,b) <$> matchE p op)) es))
-        (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ getFirst (foldMap (\ (p, b) -> First ((,b) <$> matchV p v)) vs))
+        (\ toph op k -> maybe (toph op k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op) es)
+        (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
     XApp  f a        -> do
       CLam _ h k <- force =<< go f
       extendHandler h (go a) >>= to >>= lift . k
