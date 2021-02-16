@@ -131,7 +131,7 @@ unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 type Cont m = Value m -> m (Comp m)
 
 data Comp m
-  -- | Neutral; effect operations, only used during quotation (so it doesn’t much matter that the continuation is a value).
+  -- | Neutral; effect operations, only used during quotation.
   = COp (Op (Value m)) (Value m)
   | CLam [Pattern Name] (Handler m -> Handler m) (Cont m)
   | CReturn (Value m)
