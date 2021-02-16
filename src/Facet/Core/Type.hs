@@ -47,7 +47,6 @@ data Type
   = VType
   | VInterface
   | VString
-  | VSusp Type
   | VForAll Name Type (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
   | VNe (Var Meta Level) (Snoc Type) (Snoc Type)
@@ -82,7 +81,6 @@ occursIn p = go
     VInterface     -> False
     VForAll _ t b  -> go d t || go (succ d) (b (free d))
     VArrow _ _ a b -> go d a || go d b
-    VSusp t        -> go d t
     VRet s t       -> any (go d) s || go d t
     VNe h ts sp    -> p h || any (go d) ts || any (go d) sp
     VString        -> False
@@ -121,7 +119,6 @@ showType env = \case
     Just  n -> paren (name n <+> char ':' <+> mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
     Nothing -> setPrec 1 (mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
   VNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
-  VSusp t       -> brace (showType env t)
   VRet s t      -> sig s <+> showType env t
   VString       -> string "String"
   where
@@ -144,7 +141,6 @@ data TExpr
   = TType
   | TInterface
   | TString
-  | TSusp TExpr
   | TVar (Var Meta Index)
   | TForAll Name TExpr TExpr
   | TArrow (Maybe Name) Quantity TExpr TExpr
@@ -161,7 +157,6 @@ quote d = \case
   VType          -> TType
   VInterface     -> TInterface
   VString        -> TString
-  VSusp t        -> TSusp (quote d t)
   VForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
   VRet s t       -> TRet (quote d <$> s) (quote d t)
@@ -173,7 +168,6 @@ eval subst = go where
     TType            -> VType
     TInterface       -> VInterface
     TString          -> VString
-    TSusp t          -> VSusp (go env t)
     TVar (Global n)  -> global n
     TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TVar (Metavar m) -> maybe (metavar m) tm (lookupMeta m subst)

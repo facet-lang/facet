@@ -157,7 +157,6 @@ printTExpr Options{ qname, instantiation } = go
     C.TForAll      n    t b -> braces (ann (intro n d ::: go env t)) --> go (env :> intro n d) b
     C.TArrow Nothing  q a b -> mult q (go env a) --> go env b
     C.TArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
-    C.TSusp t               -> braces (go env t)
     C.TRet [] t             -> go env t
     C.TRet s t              -> sig s <+> go env t
     C.TInst f t             -> group (go env f) `instantiation` group (braces (go env t))
@@ -182,8 +181,6 @@ printExpr opts@Options{ qname, instantiation } = go
     C.XInst e t        -> go env e `instantiation` braces (printTExpr opts env t)
     C.XLam cs          -> comp (commaSep (map (clause env) cs))
     C.XApp f a         -> go env f $$ go env a
-    C.XThunk b         -> comp (go env b)
-    C.XForce b         -> go env b <> op (pretty '!') -- FIXME: figure out a precedence for this
     C.XCon n t p       -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
     C.XOp n t p        -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
     C.XString s        -> annotate Lit $ pretty (show s)

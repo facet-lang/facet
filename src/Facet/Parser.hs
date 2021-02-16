@@ -49,6 +49,7 @@ import           Text.Parser.Token.Highlight as Highlight
 
 -- FIXME: allow operators to be introduced and scoped locally
 -- FIXME: we can’t parse without knowing operators defined elsewhere
+-- FIXME: parse {A} as a synonym for Unit -> A. Better yet, implement mixfix type operators & type synonyms, and define it as a synonym in Data.Unit.
 
 whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
@@ -144,7 +145,6 @@ monotypeTable =
     , atom (token (anned (S.TString    <$ string "String")))
       -- FIXME: holes in types
     , atom tvar
-    , atom (try suspendedCompType)
     ]
   ]
 
@@ -182,9 +182,6 @@ tvar :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenPar
 tvar = anned (S.TVar <$> qname tname)
 
 
-suspendedCompType :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type)
-suspendedCompType = anned $ braces (S.TSusp <$> type')
-
 signature :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Interface]
 signature = brackets (commaSep delta) <?> "signature"
   where
@@ -202,9 +199,6 @@ exprTable =
   -- FIXME: better yet, generalize operators to allow different syntactic types on either side (following the associativity)
   [ [ ascription ]
   , [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.App)) ]
-  -- FIXME: model this as application to unit instead
-  -- FIXME: can we parse () as a library-definable symbol? nullfix, maybe?
-  , [ parseOperator (N.Postfix (pack "!"), N.L, S.annUnary S.Force . head) ]
   , [ atom thunk, atom hole, atom evar, atom (token (anned (runUnspaced (S.String <$> stringLiteral)))) ]
   ]
 
@@ -219,7 +213,7 @@ ascription _self next = anned (S.As <$> try (next <* colon) <*> type') <|> next
 
 thunk :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
 -- NB: We parse sepBy1 and the empty case separately so that it doesn’t succeed at matching 0 clauses and then expect a closing brace when it sees a nullary computation
-thunk = anned (braces (S.Lam <$> sepBy1 clause comma <|> S.Thunk <$> expr <|> pure (S.Lam [])))
+thunk = anned (braces (S.Lam <$> sepBy1 clause comma <|> {-S.Thunk <$> expr <|>-} pure (S.Lam [])))
 
 clause :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p S.Clause
 clause = S.Clause <$> try (compPattern <* arrow) <*> expr <?> "clause"
@@ -251,10 +245,10 @@ valuePattern = choice
   , try (parens (anned (S.PCon <$> qname ename <*> many valuePattern)))
   ] <?> "pattern"
 
-compPattern :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.EffPattern)
+compPattern :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Pattern)
 compPattern = choice
   [ anned (S.PVal <$> valuePattern)
-  , try (brackets (anned (S.PEff <$> qname ename <*> many valuePattern <* symbolic ';' <*> (ename <|> N.__ <$ wildcard))))
+  , anned (S.PEff <$> try (brackets (anned (S.POp <$> qname ename <*> many valuePattern <* symbolic ';' <*> (ename <|> N.__ <$ wildcard)))))
   ] <?> "pattern"
 
 

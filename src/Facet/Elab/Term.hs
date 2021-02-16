@@ -5,8 +5,6 @@ module Facet.Elab.Term
 , var
 , tlam
 , lam
-, thunk
-, force
 , string
   -- * Pattern combinators
 , wildcardP
@@ -86,21 +84,6 @@ lam cs = Check $ \ _T -> do
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
-thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m a -> Check m a
-thunk e = Check $ \ _T -> do
-  _T' <- metavar <$> meta VType
-  unify _T (VSusp _T')
-  check (e ::: _T')
-
-force :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Synth m a
-force e = Synth $ do
-  e' ::: _T <- synth e
-  -- FIXME: should we check the signature? or can we rely on it already having been checked?
-  _T' <- metavar <$> meta VType
-  unify _T (VSusp _T')
-  pure $ e' ::: _T'
-
-
 string :: Text -> Synth m Expr
 string s = Synth $ pure $ XString s ::: T.VString
 
@@ -148,8 +131,6 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.String s -> string s
   S.Hole{}   -> nope
   S.Lam{}    -> nope
-  S.Thunk{}  -> nope
-  S.Force e  -> force (synthExpr e)
   where
   nope = Synth $ couldNotSynthesize (show e)
 
@@ -157,8 +138,6 @@ checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Exp
 checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Hole  n  -> hole n
   S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
-  S.Thunk e  -> thunk (checkExpr e)
-  S.Force{}  -> synth
   S.Var{}    -> synth
   S.App{}    -> synth
   S.As{}     -> synth
@@ -168,11 +147,11 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.EffPattern -> Bind m (Pattern Name)
+bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind m (Pattern Name)
 bindPattern = go where
   go = withSpanB $ \case
-    S.PVal p      -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unRet _T)))
-    S.PEff n ps v -> effP n (map goVal ps) v
+    S.PVal p -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unRet _T)))
+    S.PEff p -> withSpanB (\ (S.POp n ps v) -> effP n (map goVal ps) v) p
 
   goVal = withSpanB $ \case
     S.PWildcard -> wildcardP

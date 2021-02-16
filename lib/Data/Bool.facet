@@ -1,5 +1,7 @@
 module Data.Bool : Module
 
+import Data.Unit
+
 data Bool : Type
 { false : Bool
 , true : Bool }
@@ -18,9 +20,9 @@ _ || _ : Bool -> Bool -> Bool
 { (false) -> { x -> x }
 , _       -> { _ -> true } }
 
-if : { A : Type } -> (c : Bool) -> (t : {A}) -> (e : {A}) -> A
+if : { A : Type } -> (c : Bool) -> (t : Unit -> A) -> (e : Unit -> A) -> A
 { bool e t c }
 
-bool : { A : Type } -> (e : {A}) -> (t : {A}) -> Bool -> A
+bool : { A : Type } -> (e : Unit -> A) -> (t : Unit -> A) -> Bool -> A
 { (true)  -> t!
 , (false) -> e! }

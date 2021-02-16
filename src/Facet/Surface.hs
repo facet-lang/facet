@@ -8,6 +8,7 @@ module Facet.Surface
 , Interface(..)
 , Clause(..)
   -- * Patterns
+, Pattern(..)
 , ValPattern(..)
 , EffPattern(..)
   -- * Declarations
@@ -43,7 +44,6 @@ data Type
   | TString
   | TForAll Name (Ann Type) (Ann Type)
   | TArrow (Maybe Name) (Maybe Mul) (Ann Type) (Ann Type)
-  | TSusp (Ann Type)
   | TRet [Ann Interface] (Ann Type)
   | TApp (Ann Type) (Ann Type)
   deriving (Eq, Show)
@@ -58,8 +58,6 @@ data Expr
   = Var (Q Name)
   | Hole Name
   | Lam [Clause]
-  | Thunk (Ann Expr)
-  | Force (Ann Expr)
   | App (Ann Expr) (Ann Expr)
   | As (Ann Expr) (Ann Type)
   | String Text
@@ -70,11 +68,16 @@ data Interface = Interface (Ann (Q Name)) (Snoc (Ann Type))
   deriving (Eq, Show)
 
 
-data Clause = Clause (Ann EffPattern) (Ann Expr)
+data Clause = Clause (Ann Pattern) (Ann Expr)
   deriving (Eq, Show)
 
 
 -- Patterns
+
+data Pattern
+  = PVal (Ann ValPattern)
+  | PEff (Ann EffPattern)
+  deriving (Eq, Show)
 
 data ValPattern
   = PWildcard
@@ -82,10 +85,7 @@ data ValPattern
   | PCon (Q Name) [Ann ValPattern]
   deriving (Eq, Show)
 
-
-data EffPattern
-  = PEff (Q Name) [Ann ValPattern] Name
-  | PVal (Ann ValPattern)
+data EffPattern = POp (Q Name) [Ann ValPattern] Name
   deriving (Eq, Show)
 
 

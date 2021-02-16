@@ -1,10 +1,11 @@
 module Effect.Empty : Module
 
 import Data.Bool
+import Data.Function
 import Data.Unit
 
 interface Empty : Interface
 { empty : { A : Type } -> A }
 
 guard : (c : Bool) -> [Empty] Unit
-{ if c { unit } { empty } }
+{ if c id { (unit) -> empty } }
