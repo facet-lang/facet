@@ -129,12 +129,10 @@ data Value m
 unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
-type Cont m = Value m -> m (Comp m)
-
 data Comp m
   -- | Neutral; effect operations, only used during quotation.
   = COp (Op (Value m)) (Value m)
-  | CLam [Pattern Name] (Handler m -> Handler m) (Cont m)
+  | CLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Comp m))
   | CReturn (Value m)
 
 
