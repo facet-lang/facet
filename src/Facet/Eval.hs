@@ -58,7 +58,7 @@ eval = runReader Nil . go
       let bindP :: Foldable t => t (Value (Eval m)) -> ReaderC (Snoc (Value (Eval m))) (Eval m) a -> (Eval m) a
           bindP = runReader . foldl' (:>) env
           (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-          lamV k = VThunk (CLam [pvar __] id k)
+          lamV = VThunk . CLam [pvar __] id
       pure $ CLam
         (map fst cs)
         (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (\ p -> bindP p (go b)) (matchE p op (lamV k))) (toph op k) es)
