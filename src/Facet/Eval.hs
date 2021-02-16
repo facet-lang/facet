@@ -25,7 +25,6 @@ import Control.Carrier.Reader
 import Control.Monad (ap, guard, liftM, (<=<))
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
-import Data.Foldable (foldl')
 import Data.Function
 import Data.Semialign.Exts (zipWithM)
 import Data.Text (Text)
@@ -55,14 +54,12 @@ eval = runReader Nil . go
     XInst f _        -> go f
     XLam cs          -> do
       env <- ask
-      let bindP :: Foldable t => t (Value (Eval m)) -> ReaderC (Snoc (Value (Eval m))) (Eval m) a -> (Eval m) a
-          bindP = runReader . foldl' (:>) env
-          (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
+      let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
           lamV = VThunk . CLam [pvar __] id
       pure $ CLam
         (map fst cs)
-        (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (\ p -> bindP p (go b)) (matchE p op (lamV k))) (toph op k) es)
-        (\ v -> foldr (\ (p, b) rest -> maybe rest (\ p -> bindP p (go b)) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
+        (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (\ f -> runReader (f env :> lamV k) (go b)) (matchE p op)) (toph op k) es)
+        (\ v -> foldr (\ (p, b) rest -> maybe rest (\ f -> runReader (f env) (go b)) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
     XApp  f a        -> do
       CLam _ h k <- force =<< go f
       extendHandler h (go a) >>= to >>= lift . k
@@ -142,15 +139,15 @@ data Comp m
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Op (Value m) -> Value m -> Maybe (EffectPattern (Value m))
-matchE (POp n ps _) (Op n' fs) k = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure k
+matchE :: EffectPattern Name -> Op (Value m) -> Maybe (Snoc (Value m) -> Snoc (Value m))
+matchE (POp n ps _) (Op n' fs) = foldr (.) id <$ guard (n == n') <*> zipWithM matchV ps fs
 
-matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
+matchV :: ValuePattern Name -> Value m -> Maybe (Snoc (Value m) -> Snoc (Value m))
 matchV p s = case p of
-  PWildcard -> pure PWildcard
-  PVar _    -> pure (PVar s)
+  PWildcard -> pure id
+  PVar _    -> pure (:> s)
   PCon n ps
-    | VCon n' fs <- s -> PCon n' <$ guard (n == n') <*> zipWithM matchV ps fs
+    | VCon n' fs <- s -> foldr (.) id <$ guard (n == n') <*> zipWithM matchV ps fs
   PCon{}    -> empty
 
 
