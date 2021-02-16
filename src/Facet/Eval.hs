@@ -62,7 +62,7 @@ eval = runReader Nil . go
         (\ toph op k -> maybe (toph op k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op) es)
         (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
     XApp  f a        -> do
-      CLam _ h k <- force =<< go f
+      CLam _ h k <- go f
       extendHandler h (go a) >>= to >>= lift . k
     XCon n _ fs      -> creturn . VCon n =<< traverse (to <=< go) fs
     XString s        -> creturn $ VString s
@@ -75,9 +75,6 @@ eval = runReader Nil . go
     to v = do
       CReturn v' <- pure v
       pure v'
-    force = \case
-      CReturn (VThunk b) -> pure b
-      c                  -> pure c
     extendHandler ext m = ReaderC $ \ env -> do
       let Eval run = runReader env m
       Eval $ \ h -> run (ext h)
