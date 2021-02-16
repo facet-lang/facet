@@ -49,7 +49,7 @@ eval = runReader Nil . go
       case lookupQ graph mod n of
         Just (_ :=: Just (DTerm v) ::: _) -> go v
         _                                 -> error "throw a real error here"
-    XVar (Free v)    -> asks (CReturn . (! getIndex v))
+    XVar (Free v)    -> asks (creturn . (! getIndex v))
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go b
     XInst f _        -> go f
@@ -64,12 +64,12 @@ eval = runReader Nil . go
     XApp  f a        -> do
       CLam _ h k <- force =<< go f
       extendHandler h (go a) >>= to >>= lift . k
-    XCon n _ fs      -> CReturn . VCon n <$> traverse (to <=< go) fs
-    XString s        -> pure $ CReturn $ VString s
+    XCon n _ fs      -> creturn . VCon n <$> traverse (to <=< go) fs
+    XString s        -> pure $ creturn $ VString s
     XOp n _ sp       -> do
       -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
       sp' <- traverse (to <=< go) sp
-      lift $ Eval $ \ h k -> runEval h k (h (Op n sp') (pure . CReturn))
+      lift $ Eval $ \ h k -> runEval h k (h (Op n sp') (pure . creturn))
     where
     -- NB: CPS would probably be more faithful to Levy’s treatment
     to v = do
@@ -134,6 +134,11 @@ data Comp m
   = COp (Op (Value m)) (Value m)
   | CLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Comp m))
   | CReturn (Value m)
+
+creturn :: Value m -> Comp m
+creturn = \case
+  VThunk c -> c
+  v        -> CReturn v
 
 
 -- Elimination
