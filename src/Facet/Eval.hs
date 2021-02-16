@@ -55,12 +55,12 @@ eval = runReader Nil . go
     XInst f _        -> go f
     XLam cs          -> do
       env <- ask
-      let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
+      let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, go b) ; (PVal v, b) -> Right (v, go b) }) cs)
           lamV = VThunk . CLam [pvar __] id
       pure $ CLam
         (map fst cs)
-        (\ toph op k -> maybe (toph op k) (\ (f, b) -> runReader (f env :> lamV k) (go b)) $ getFirst (foldMap (\ (p, b) -> First ((,b) <$> matchE p op)) es))
-        (\ v -> maybe (error "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) (go b)) $ getFirst (foldMap (\ (p, b) -> First ((,b) <$> matchV p v)) vs))
+        (\ toph op k -> maybe (toph op k) (\ (f, b) -> runReader (f env :> lamV k) b) $ getFirst (foldMap (\ (p, b) -> First ((,b) <$> matchE p op)) es))
+        (\ v -> maybe (error "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ getFirst (foldMap (\ (p, b) -> First ((,b) <$> matchV p v)) vs))
     XApp  f a        -> do
       CLam _ h k <- force =<< go f
       extendHandler h (go a) >>= to >>= lift . k
