@@ -26,6 +26,7 @@ import Control.Monad (ap, guard, liftM, (<=<))
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Function
+import Data.Monoid (First(..))
 import Data.Semialign.Exts (zipWithM)
 import Data.Text (Text)
 import Facet.Core.Module
@@ -58,8 +59,8 @@ eval = runReader Nil . go
           lamV = VThunk . CLam [pvar __] id
       pure $ CLam
         (map fst cs)
-        (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (\ f -> runReader (f env :> lamV k) (go b)) (matchE p op)) (toph op k) es)
-        (\ v -> foldr (\ (p, b) rest -> maybe rest (\ f -> runReader (f env) (go b)) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
+        (\ toph op k -> maybe (toph op k) (\ (f, b) -> runReader (f env :> lamV k) (go b)) $ getFirst (foldMap (\ (p, b) -> First ((,b) <$> matchE p op)) es))
+        (\ v -> maybe (error "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) (go b)) $ getFirst (foldMap (\ (p, b) -> First ((,b) <$> matchV p v)) vs))
     XApp  f a        -> do
       CLam _ h k <- force =<< go f
       extendHandler h (go a) >>= to >>= lift . k
