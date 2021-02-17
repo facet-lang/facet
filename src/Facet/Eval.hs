@@ -42,10 +42,7 @@ eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m
 eval = runReader Nil . evalC
 
 evalC :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> EnvC m (Comp (Eval m))
-evalC = \case
-  XVar (Global n)  -> global n >>= evalC
-  XVar (Free v)    -> creturn =<< var v
-  XVar (Metavar m) -> case m of {}
+evalC e = case e of
   XTLam b          -> evalC b
   XInst f _        -> evalC f
   XLam cs          -> do
@@ -59,13 +56,15 @@ evalC = \case
   XApp  f a        -> do
     CLam _ h k <- evalC f
     extendHandler h (evalC a) >>= to >>= lift . k
-  XCon n _ fs      -> creturn . VCon n =<< traverse (to <=< evalC) fs
-  XString s        -> creturn $ VString s
   XOp n _ sp       -> do
     -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
     sp' <- traverse (to <=< evalC) sp
     lift $ Eval $ \ h k -> runEval h k (h (Op n sp') creturn)
+  XVar{}           -> return
+  XCon{}           -> return
+  XString{}        -> return
   where
+  return = creturn =<< evalV e
   -- NB: CPS would probably be more faithful to Levy’s treatment
   to v = do
     CReturn v' <- pure v
@@ -73,6 +72,21 @@ evalC = \case
   extendHandler ext m = ReaderC $ \ env -> do
     let Eval run = runReader env m
     Eval $ \ h -> run (ext h)
+
+evalV :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> EnvC m (Value (Eval m))
+evalV e = case e of
+  XVar (Global n)  -> evalV =<< global n
+  XVar (Free v)    -> var v
+  XVar (Metavar m) -> case m of {}
+  XCon n _ fs      -> VCon n <$> traverse evalV fs
+  XString s        -> pure $ VString s
+  XTLam{}          -> thunk
+  XInst{}          -> thunk
+  XLam{}           -> thunk
+  XApp{}           -> thunk
+  XOp{}            -> thunk
+  where
+  thunk = VThunk <$> evalC e
 
 
 -- Combinators
