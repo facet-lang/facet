@@ -53,10 +53,7 @@ evalC e = case e of
       (\ toph op sp k -> maybe (toph op sp k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op sp) es)
       (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
   XApp  f a        -> evalC f $$ evalV a
-  XOp n _ sp       -> do
-    -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-    sp' <- traverse evalV sp
-    lift $ Eval $ \ h k -> runEval h k (h n sp' creturn)
+  XOp n _ sp       -> op n (evalV <$> sp)
   XVar{}           -> return
   XCon{}           -> return
   XString{}        -> return
@@ -102,6 +99,12 @@ f $$ a = do
   ReaderC $ \ env -> Eval $ \ h' k' -> runEval (h h') (runEval h' k' . k) (runReader env a)
 
 infixl 9 $$
+
+-- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
+op :: Q Name -> Snoc (EnvC m (Value (Eval m))) -> EnvC m (Comp (Eval m))
+op n sp = do
+  sp' <- sequenceA sp
+  lift $ Eval $ \ h k -> runEval h k (h n sp' creturn)
 
 
 -- Machinery
