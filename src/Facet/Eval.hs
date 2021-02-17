@@ -42,21 +42,14 @@ eval = runReader Nil . evalC
 
 evalC :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> EnvC m (Comp (Eval m))
 evalC e = case e of
-  XTLam b          -> evalC b
-  XInst f _        -> evalC f
-  XLam cs          -> do
-    env <- ask
-    let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, evalC b) ; (PVal v, b) -> Right (v, evalC b) }) cs)
-        lamV = VThunk . CLam [pvar __] id
-    pure $ CLam
-      (map fst cs)
-      (\ toph op sp k -> maybe (toph op sp k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op sp) es)
-      (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
-  XApp  f a        -> evalC f $$ evalV a
-  XOp n _ sp       -> op n (evalV <$> sp)
-  XVar{}           -> return
-  XCon{}           -> return
-  XString{}        -> return
+  XTLam b    -> evalC b
+  XInst f _  -> evalC f
+  XLam cs    -> lam (fmap evalC <$> cs)
+  XApp  f a  -> evalC f $$ evalV a
+  XOp n _ sp -> op n (evalV <$> sp)
+  XVar{}     -> return
+  XCon{}     -> return
+  XString{}  -> return
   where
   return = creturn =<< evalV e
   -- NB: CPS would probably be more faithful to Levy’s treatment
@@ -92,6 +85,16 @@ global n = do
 var :: HasCallStack => Index -> EnvC m (Value (Eval m))
 var (Index v) = ReaderC $ \ env -> pure (env ! v)
 
+
+lam :: (Algebra sig m, MonadFail m) => [(Pattern Name, EnvC m (Comp (Eval m)))] -> EnvC m (Comp (Eval m))
+lam cs = do
+  env <- ask
+  let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
+      lamV = VThunk . CLam [pvar __] id
+  pure $ CLam
+    (map fst cs)
+    (\ toph op sp k -> maybe (toph op sp k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op sp) es)
+    (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
 
 ($$) :: MonadFail m => EnvC m (Comp (Eval m)) -> EnvC m (Value (Eval m)) -> EnvC m (Comp (Eval m))
 f $$ a = do
