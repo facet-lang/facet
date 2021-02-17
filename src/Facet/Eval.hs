@@ -54,7 +54,6 @@ evalC e = case e of
   XString{}  -> return
   where
   return = creturn =<< evalV e
-  -- NB: CPS would probably be more faithful to Levy’s treatment
 
 evalV :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> EnvC m (Value (Eval m))
 evalV e = case e of
