@@ -6,7 +6,6 @@ module Facet.Eval
 ( -- * Evaluation
   eval
   -- * Machinery
-, Op(..)
 , Handler
 , runEval
 , Eval(..)
@@ -51,13 +50,13 @@ evalC e = case e of
         lamV = VThunk . CLam [pvar __] id
     pure $ CLam
       (map fst cs)
-      (\ toph op k -> maybe (toph op k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op) es)
+      (\ toph op sp k -> maybe (toph op sp k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op sp) es)
       (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
   XApp  f a        -> evalC f $$ evalV a
   XOp n _ sp       -> do
     -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
     sp' <- traverse evalV sp
-    lift $ Eval $ \ h k -> runEval h k (h (Op n sp') creturn)
+    lift $ Eval $ \ h k -> runEval h k (h n sp' creturn)
   XVar{}           -> return
   XCon{}           -> return
   XString{}        -> return
@@ -107,9 +106,7 @@ infixl 9 $$
 
 -- Machinery
 
-data Op a = Op (Q Name) (Snoc a)
-
-type Handler m = Op (Value m) -> (Value m -> m (Comp m)) -> m (Comp m)
+type Handler m = Q Name -> Snoc (Value m) -> (Value m -> m (Comp m)) -> m (Comp m)
 
 runEval :: Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
@@ -159,7 +156,7 @@ unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 -- | Terminal computations.
 data Comp m
   -- | Neutral; effect operations, only used during quotation.
-  = COp (Op (Value m)) (Value m)
+  = COp (Q Name) (Snoc (Value m)) (Value m)
   | CLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Comp m))
   | CReturn (Value m)
 
@@ -171,8 +168,8 @@ creturn = pure . \case
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Op (Value m) -> Maybe (Snoc (Value m) -> Snoc (Value m))
-matchE (POp n ps _) (Op n' fs) = foldr (.) id <$ guard (n == n') <*> zipWithM matchV ps fs
+matchE :: EffectPattern Name -> Q Name -> Snoc (Value m) -> Maybe (Snoc (Value m) -> Snoc (Value m))
+matchE (POp n ps _) n' fs = foldr (.) id <$ guard (n == n') <*> zipWithM matchV ps fs
 
 matchV :: ValuePattern Name -> Value m -> Maybe (Snoc (Value m) -> Snoc (Value m))
 matchV p s = case p of
@@ -194,15 +191,15 @@ quoteV d = \case
 
 quoteC :: Monad m => Level -> Comp m -> m Expr
 quoteC d = \case
-  COp (Op q fs) k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
-  CLam ps h k     -> XLam <$> traverse (quoteClause d h k) ps
-  CReturn v       -> quoteV d v
+  COp q fs k  -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
+  CLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
+  CReturn v   -> quoteV d v
 
 
 quoteClause :: Monad m => Level -> (Handler m -> Handler m) -> (Value m -> m (Comp m)) -> Pattern Name -> m (Pattern Name, Expr)
 quoteClause d h k p = fmap (p,) . quoteC d' =<< case p' of
   PVal p'           -> k (constructV p')
-  PEff (POp q fs k) -> h (\ op _ -> pure (COp op k)) (Op q (constructV <$> fs)) (pure . CReturn)
+  PEff (POp q fs k) -> h (\ op sp _ -> pure (COp op sp k)) q (constructV <$> fs) (pure . CReturn)
   where
   (d', p') = fill ((,) <$> succ <*> VFree) d p
 
