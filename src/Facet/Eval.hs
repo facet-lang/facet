@@ -39,44 +39,43 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Comp (Eval m))
-eval = runReader Nil . go
+eval = go Nil
   where
-  go :: Expr -> ReaderC (Snoc (Value (Eval m))) (Eval m) (Comp (Eval m))
-  go = \case
+  go :: Snoc (Value (Eval m)) -> Expr -> Eval m (Comp (Eval m))
+  go env = \case
     XVar (Global n)  -> do
       mod <- ask
       graph <- ask
       case lookupQ graph mod n of
-        Just (_ :=: Just (DTerm v) ::: _) -> go v
+        Just (_ :=: Just (DTerm v) ::: _) -> go env v
         _                                 -> error "throw a real error here"
-    XVar (Free v)    -> creturn =<< asks (! getIndex v)
+    XVar (Free v)    -> creturn (env ! getIndex v)
     XVar (Metavar m) -> case m of {}
-    XTLam b          -> go b
-    XInst f _        -> go f
+    XTLam b          -> go env b
+    XInst f _        -> go env f
     XLam cs          -> do
-      env <- ask
-      let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, go b) ; (PVal v, b) -> Right (v, go b) }) cs)
+      let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
           lamV = VThunk . CLam [pvar __] id
       pure $ CLam
         (map fst cs)
-        (\ toph op k -> maybe (toph op k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op) es)
-        (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
+        (\ toph op k -> maybe (toph op k) (\ (f, b) -> go (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op) es)
+        (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> go (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
     XApp  f a        -> do
-      CLam _ h k <- go f
-      extendHandler h (go a) >>= to >>= lift . k
-    XCon n _ fs      -> creturn . VCon n =<< traverse (to <=< go) fs
+      CLam _ h k <- go env f
+      extendHandler h (go env a) >>= to >>= k
+    XCon n _ fs      -> creturn . VCon n =<< traverse (to <=< go env) fs
     XString s        -> creturn $ VString s
     XOp n _ sp       -> do
       -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-      sp' <- traverse (to <=< go) sp
-      lift $ Eval $ \ h k -> runEval h k (h (Op n sp') creturn)
+      sp' <- traverse (to <=< go env) sp
+      Eval $ \ h k -> runEval h k (h (Op n sp') creturn)
     where
     -- NB: CPS would probably be more faithful to Levy’s treatment
     to v = do
       CReturn v' <- pure v
       pure v'
-    extendHandler ext m = ReaderC $ \ env -> do
-      let Eval run = runReader env m
+    extendHandler ext m = do
+      let Eval run = m
       Eval $ \ h -> run (ext h)
 
 
