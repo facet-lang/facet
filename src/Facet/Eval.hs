@@ -41,7 +41,7 @@ import Prelude hiding (zipWith)
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Comp (Eval m))
 eval = runReader Nil . go
   where
-  go :: Expr -> ReaderC (Snoc (Value (Eval m))) (Eval m) (Comp (Eval m))
+  go :: Expr -> EnvC m (Comp (Eval m))
   go = \case
     XVar (Global n)  -> do
       mod <- ask
@@ -78,6 +78,9 @@ eval = runReader Nil . go
     extendHandler ext m = ReaderC $ \ env -> do
       let Eval run = runReader env m
       Eval $ \ h -> run (ext h)
+
+
+type EnvC m = ReaderC (Snoc (Value (Eval m))) (Eval m)
 
 
 -- Machinery
