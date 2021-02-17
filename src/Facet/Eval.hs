@@ -38,7 +38,9 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Expr -> Eval m (Comp (Eval m))
+type Env m = Snoc (Value (Eval m))
+
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Env m -> Expr -> Eval m (Comp (Eval m))
 eval env = \case
   XVar (Global n)  -> do
     mod <- ask
