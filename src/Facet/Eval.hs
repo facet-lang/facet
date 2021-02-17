@@ -39,40 +39,40 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Comp (Eval m))
-eval = runReader Nil . go
+eval = runReader Nil . evalC
+
+evalC :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> EnvC m (Comp (Eval m))
+evalC = \case
+  XVar (Global n)  -> global n >>= evalC
+  XVar (Free v)    -> creturn =<< var v
+  XVar (Metavar m) -> case m of {}
+  XTLam b          -> evalC b
+  XInst f _        -> evalC f
+  XLam cs          -> do
+    env <- ask
+    let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, evalC b) ; (PVal v, b) -> Right (v, evalC b) }) cs)
+        lamV = VThunk . CLam [pvar __] id
+    pure $ CLam
+      (map fst cs)
+      (\ toph op k -> maybe (toph op k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op) es)
+      (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
+  XApp  f a        -> do
+    CLam _ h k <- evalC f
+    extendHandler h (evalC a) >>= to >>= lift . k
+  XCon n _ fs      -> creturn . VCon n =<< traverse (to <=< evalC) fs
+  XString s        -> creturn $ VString s
+  XOp n _ sp       -> do
+    -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
+    sp' <- traverse (to <=< evalC) sp
+    lift $ Eval $ \ h k -> runEval h k (h (Op n sp') creturn)
   where
-  go :: Expr -> EnvC m (Comp (Eval m))
-  go = \case
-    XVar (Global n)  -> global n >>= go
-    XVar (Free v)    -> creturn =<< var v
-    XVar (Metavar m) -> case m of {}
-    XTLam b          -> go b
-    XInst f _        -> go f
-    XLam cs          -> do
-      env <- ask
-      let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, go b) ; (PVal v, b) -> Right (v, go b) }) cs)
-          lamV = VThunk . CLam [pvar __] id
-      pure $ CLam
-        (map fst cs)
-        (\ toph op k -> maybe (toph op k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op) es)
-        (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
-    XApp  f a        -> do
-      CLam _ h k <- go f
-      extendHandler h (go a) >>= to >>= lift . k
-    XCon n _ fs      -> creturn . VCon n =<< traverse (to <=< go) fs
-    XString s        -> creturn $ VString s
-    XOp n _ sp       -> do
-      -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-      sp' <- traverse (to <=< go) sp
-      lift $ Eval $ \ h k -> runEval h k (h (Op n sp') creturn)
-    where
-    -- NB: CPS would probably be more faithful to Levy’s treatment
-    to v = do
-      CReturn v' <- pure v
-      pure v'
-    extendHandler ext m = ReaderC $ \ env -> do
-      let Eval run = runReader env m
-      Eval $ \ h -> run (ext h)
+  -- NB: CPS would probably be more faithful to Levy’s treatment
+  to v = do
+    CReturn v' <- pure v
+    pure v'
+  extendHandler ext m = ReaderC $ \ env -> do
+    let Eval run = runReader env m
+    Eval $ \ h -> run (ext h)
 
 
 -- Combinators
