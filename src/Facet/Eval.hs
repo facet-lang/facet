@@ -82,7 +82,7 @@ evalV e = case e of
   XApp{}           -> thunk
   XOp{}            -> thunk
   where
-  thunk = VThunk <$> evalC e
+  thunk = vthunk <$> evalC e
 
 
 -- Combinators
@@ -151,6 +151,11 @@ data Value m
   | VString Text
   -- | Thunks embed computations into values.
   | VThunk (Comp m)
+
+vthunk :: Comp m -> Value m
+vthunk = \case
+  CReturn v -> v
+  c         -> VThunk c
 
 unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
