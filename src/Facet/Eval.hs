@@ -191,12 +191,11 @@ matchE :: EffectPattern Name -> Q Name -> Snoc (Value m) -> Maybe (Snoc (Value m
 matchE (POp n ps _) n' fs = guard (n == n') *> matchSpine ps fs
 
 matchV :: ValuePattern Name -> Value m -> Maybe (Snoc (Value m) -> Snoc (Value m))
-matchV p s = case p of
-  PWildcard -> pure id
-  PVar _    -> pure (:> s)
-  PCon n ps
-    | VCon n' fs <- s -> guard (n == n') *> matchSpine ps fs
-  PCon{}    -> empty
+matchV = curry $ \case
+  (PWildcard, _)          -> pure id
+  (PVar _,    s)          -> pure (:> s)
+  (PCon n ps, VCon n' fs) -> guard (n == n') *> matchSpine ps fs
+  (PCon{},    _)          -> empty
 
 matchSpine :: (Traversable t, Zip t) => t (ValuePattern Name) -> t (Value m) -> Maybe (Snoc (Value m) -> Snoc (Value m))
 matchSpine ps sp = foldr (.) id <$> zipWithM matchV ps sp
