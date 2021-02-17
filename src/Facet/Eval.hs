@@ -188,15 +188,18 @@ creturn = pure . \case
 -- Elimination
 
 matchE :: EffectPattern Name -> Q Name -> Snoc (Value m) -> Maybe (Snoc (Value m) -> Snoc (Value m))
-matchE (POp n ps _) n' fs = foldr (.) id <$ guard (n == n') <*> zipWithM matchV ps fs
+matchE (POp n ps _) n' fs = guard (n == n') *> matchSpine ps fs
 
 matchV :: ValuePattern Name -> Value m -> Maybe (Snoc (Value m) -> Snoc (Value m))
 matchV p s = case p of
   PWildcard -> pure id
   PVar _    -> pure (:> s)
   PCon n ps
-    | VCon n' fs <- s -> foldr (.) id <$ guard (n == n') <*> zipWithM matchV ps fs
+    | VCon n' fs <- s -> guard (n == n') *> matchSpine ps fs
   PCon{}    -> empty
+
+matchSpine :: Snoc (ValuePattern Name) -> Snoc (Value m) -> Maybe (Snoc (Value m) -> Snoc (Value m))
+matchSpine ps sp = foldr (.) id <$> zipWithM matchV ps sp
 
 
 -- Quotation
