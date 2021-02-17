@@ -44,8 +44,8 @@ eval = runReader Nil . go
   go :: Expr -> ReaderC (Snoc (Value (Eval m))) (Eval m) (Comp (Eval m))
   go = \case
     XVar (Global n)  -> do
-      mod <- lift ask
-      graph <- lift ask
+      mod <- ask
+      graph <- ask
       case lookupQ graph mod n of
         Just (_ :=: Just (DTerm v) ::: _) -> go v
         _                                 -> error "throw a real error here"
