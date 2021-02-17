@@ -126,6 +126,7 @@ data Value m
 unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
+-- | Terminal computations.
 data Comp m
   -- | Neutral; effect operations, only used during quotation.
   = COp (Op (Value m)) (Value m)
