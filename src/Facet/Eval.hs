@@ -27,7 +27,7 @@ import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Function
 import Data.Maybe (fromMaybe)
-import Data.Semialign.Exts (zipWithM)
+import Data.Semialign.Exts (Zip, zipWithM)
 import Data.Text (Text)
 import Facet.Core.Module
 import Facet.Core.Term
@@ -198,7 +198,7 @@ matchV p s = case p of
     | VCon n' fs <- s -> guard (n == n') *> matchSpine ps fs
   PCon{}    -> empty
 
-matchSpine :: Snoc (ValuePattern Name) -> Snoc (Value m) -> Maybe (Snoc (Value m) -> Snoc (Value m))
+matchSpine :: (Traversable t, Zip t) => t (ValuePattern Name) -> t (Value m) -> Maybe (Snoc (Value m) -> Snoc (Value m))
 matchSpine ps sp = foldr (.) id <$> zipWithM matchV ps sp
 
 
