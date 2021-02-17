@@ -104,11 +104,7 @@ var (Index v) = ReaderC $ \ env -> pure (env ! v)
 ($$) :: MonadFail m => EnvC m (Comp (Eval m)) -> EnvC m (Value (Eval m)) -> EnvC m (Comp (Eval m))
 f $$ a = do
   CLam _ h k <- f
-  extendHandler h a >>= lift . k
-  where
-  extendHandler ext m = ReaderC $ \ env -> do
-    let Eval run = runReader env m
-    Eval $ \ h -> run (ext h)
+  ReaderC $ \ env -> Eval $ \ h' k' -> runEval (h h') (runEval h' k' . k) (runReader env a)
 
 infixl 9 $$
 
