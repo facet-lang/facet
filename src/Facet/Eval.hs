@@ -44,7 +44,7 @@ eval = runReader Nil . go
   go :: Expr -> EnvC m (Comp (Eval m))
   go = \case
     XVar (Global n)  -> global n >>= go
-    XVar (Free v)    -> creturn =<< asks (! getIndex v)
+    XVar (Free v)    -> creturn =<< var v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go b
     XInst f _        -> go f
@@ -86,6 +86,9 @@ global n = do
   case lookupQ graph mod n of
     Just (_ :=: Just (DTerm v) ::: _) -> pure v
     _                                 -> fail $ "free variable: " <> show n
+
+var :: HasCallStack => Index -> EnvC m (Value (Eval m))
+var (Index v) = ReaderC $ \ env -> pure (env ! v)
 
 
 -- Machinery
