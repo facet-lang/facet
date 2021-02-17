@@ -25,9 +25,10 @@ import Control.Effect.NonDet (foldMapA)
 import Control.Monad (ap, guard, liftM)
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
+import Data.Foldable (foldl')
 import Data.Function
 import Data.Maybe (fromMaybe)
-import Data.Semialign.Exts (Zip, zipWithM)
+import Data.Semialign.Exts (zipWithM)
 import Data.Text (Text)
 import Facet.Core.Module
 import Facet.Core.Term
@@ -87,32 +88,21 @@ var :: HasCallStack => Index -> EnvC m (Value (Eval m))
 var (Index v) = ReaderC $ \ env -> pure (env ! v)
 
 
-lam :: (Algebra sig m, MonadFail m) => [(Pattern Name, EnvC m (Comp (Eval m)))] -> EnvC m (Comp (Eval m))
+lam :: forall m sig . Algebra sig m => [(Pattern Name, EnvC m (Comp (Eval m)))] -> EnvC m (Comp (Eval m))
 lam cs = do
-  let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-      lamV = VThunk . CLam [pvar __] id
-      withK b f k = local (\ env -> f (env :> lamV (runReader env . k))) b
-  lam'
-    (map fst cs)
-    (\ op sp -> foldMapA (\ (p, b) -> withK b <$> matchE p op sp) es)
-    (\ v -> foldMapA (\ (p, b) -> (`local` b) <$> matchV p v) vs)
-
-lam'
-  :: (Algebra sig m, MonadFail m)
-  => [Pattern Name]
-  -> (Q Name -> Snoc (Value (Eval m)) -> Maybe ((Value (Eval m) -> EnvC m (Comp (Eval m))) -> EnvC m (Comp (Eval m))))
-  -> (Value (Eval m) -> Maybe (EnvC m (Comp (Eval m))))
-  -> EnvC m (Comp (Eval m))
-lam' ps h k = do
   env <- ask
-  pure $ CLam ps
-    (\ h' op sp k -> maybe (h' op sp k) (runReader env . ($ (lift . k))) (h op sp))
-    (runReader env . fromMaybe (fail "non-exhaustive patterns in lambda") . k)
+  let clause p b = case p of
+        PVal p -> Right (p, (`runReader` b) . foldl' (:>) env)
+        PEff p -> Left  (p, (`runReader` b) . foldl' (:>) env)
+  pure $ CLam (map (uncurry clause) cs)
 
 ($$) :: MonadFail m => EnvC m (Comp (Eval m)) -> EnvC m (Value (Eval m)) -> EnvC m (Comp (Eval m))
 f $$ a = do
-  CLam _ h k <- f
-  ReaderC $ \ env -> Eval $ \ h' k' -> runEval (h h') (runEval h' k' . k) (runReader env a)
+  CLam cs <- f
+  let (es, vs) = partitionEithers cs
+      handler h op sp k = fromMaybe (h op sp k) (foldMapA (\ (p, b) -> b . ($ k) <$> matchE p op sp) es)
+      cont v = fromMaybe (fail "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> b <$> matchV p v) vs)
+  ReaderC $ \ env -> Eval $ \ h' k' -> runEval (handler h') (runEval h' k' . cont) (runReader env a)
 
 infixl 9 $$
 
@@ -176,7 +166,7 @@ unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 data Comp m
   -- | Neutral; effect operations, only used during quotation.
   = COp (Q Name) (Snoc (Value m)) (Value m)
-  | CLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Comp m))
+  | CLam [Either (EffectPattern Name, EffectPattern (Value m) -> m (Comp m)) (ValuePattern Name, ValuePattern (Value m) -> m (Comp m))]
   | CReturn (Value m)
 
 creturn :: Applicative f => Value m -> f (Comp m)
@@ -187,18 +177,20 @@ creturn = pure . \case
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Q Name -> Snoc (Value m) -> Maybe (Snoc (Value m) -> Snoc (Value m))
-matchE (POp n ps _) n' fs = guard (n == n') *> matchSpine ps fs
+matchE :: MonadFail m => EffectPattern Name -> Q Name -> Snoc (Value m) -> Maybe ((Value m -> m (Comp m)) -> EffectPattern (Value m))
+matchE (POp n ps _) n' fs = mk <$ guard (n == n') <*> zipWithM matchV ps fs
+  where
+  mk sp k = POp n' sp (VThunk (CLam [Right (PVar __, unPVar k)]))
+  unPVar k = \case
+    PVar v -> k v
+    _      -> fail "unexpected non-variable pattern given to continuation"
 
-matchV :: ValuePattern Name -> Value m -> Maybe (Snoc (Value m) -> Snoc (Value m))
+matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
 matchV = curry $ \case
-  (PWildcard, _)          -> pure id
-  (PVar _,    s)          -> pure (:> s)
-  (PCon n ps, VCon n' fs) -> guard (n == n') *> matchSpine ps fs
+  (PWildcard, _)          -> pure PWildcard
+  (PVar _,    s)          -> pure (PVar s)
+  (PCon n ps, VCon n' fs) -> PCon n' <$ guard (n == n') <*> zipWithM matchV ps fs
   (PCon{},    _)          -> empty
-
-matchSpine :: (Traversable t, Zip t) => t (ValuePattern Name) -> t (Value m) -> Maybe (Snoc (Value m) -> Snoc (Value m))
-matchSpine ps sp = foldr (.) id <$> zipWithM matchV ps sp
 
 
 -- Quotation
@@ -212,21 +204,15 @@ quoteV d = \case
 
 quoteC :: Monad m => Level -> Comp m -> m Expr
 quoteC d = \case
-  COp q fs k  -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
-  CLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
-  CReturn v   -> quoteV d v
+  COp q fs k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
+  CLam cs    -> XLam <$> traverse (quoteClause d) cs
+  CReturn v  -> quoteV d v
 
-
-quoteClause :: Monad m => Level -> (Handler m -> Handler m) -> (Value m -> m (Comp m)) -> Pattern Name -> m (Pattern Name, Expr)
-quoteClause d h k p = fmap (p,) . quoteC d' =<< case p' of
-  PVal p'           -> k (constructV p')
-  PEff (POp q fs k) -> h (\ op sp _ -> pure (COp op sp k)) q (constructV <$> fs) (pure . CReturn)
+quoteClause :: Monad m => Level -> Either (EffectPattern Name, EffectPattern (Value m) -> m (Comp m)) (ValuePattern Name, ValuePattern (Value m) -> m (Comp m)) -> m (Pattern Name, Expr)
+quoteClause d p = fmap (pn,) $ case p of
+  Right (p, k) -> let (d', p') = fillV p in quoteC d' =<< k p'
+  Left  (p, h) -> let (d', p') = fillV p in quoteC d' =<< h p'
   where
-  (d', p') = fill ((,) <$> succ <*> VFree) d p
-
-
-constructV :: ValuePattern (Value m) -> Value m
-constructV = \case
-  PWildcard -> unit -- FIXME: maybe should provide a variable here anyway?
-  PVar v    -> v
-  PCon q fs -> VCon q (constructV <$> fs)
+  pn = either (PEff . fst) (PVal . fst) p
+  fillV :: Traversable t => t Name -> (Level, t (Value m))
+  fillV = fill ((,) <$> succ <*> VFree) d
