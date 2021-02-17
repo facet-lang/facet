@@ -26,6 +26,7 @@ import Control.Monad (ap, guard, liftM)
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Function
+import Data.Maybe (fromMaybe)
 import Data.Semialign.Exts (zipWithM)
 import Data.Text (Text)
 import Facet.Core.Module
@@ -88,13 +89,25 @@ var (Index v) = ReaderC $ \ env -> pure (env ! v)
 
 lam :: (Algebra sig m, MonadFail m) => [(Pattern Name, EnvC m (Comp (Eval m)))] -> EnvC m (Comp (Eval m))
 lam cs = do
-  env <- ask
   let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
       lamV = VThunk . CLam [pvar __] id
-  pure $ CLam
+      withK b f k = local (\ env -> f (env :> lamV (runReader env . k))) b
+  lam'
     (map fst cs)
-    (\ toph op sp k -> maybe (toph op sp k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op sp) es)
-    (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
+    (\ op sp -> foldMapA (\ (p, b) -> withK b <$> matchE p op sp) es)
+    (\ v -> foldMapA (\ (p, b) -> (`local` b) <$> matchV p v) vs)
+
+lam'
+  :: (Algebra sig m, MonadFail m)
+  => [Pattern Name]
+  -> (Q Name -> Snoc (Value (Eval m)) -> Maybe ((Value (Eval m) -> EnvC m (Comp (Eval m))) -> EnvC m (Comp (Eval m))))
+  -> (Value (Eval m) -> Maybe (EnvC m (Comp (Eval m))))
+  -> EnvC m (Comp (Eval m))
+lam' ps h k = do
+  env <- ask
+  pure $ CLam ps
+    (\ h' op sp k -> maybe (h' op sp k) (runReader env . ($ (lift . k))) (h op sp))
+    (runReader env . fromMaybe (fail "non-exhaustive patterns in lambda") . k)
 
 ($$) :: MonadFail m => EnvC m (Comp (Eval m)) -> EnvC m (Value (Eval m)) -> EnvC m (Comp (Eval m))
 f $$ a = do
