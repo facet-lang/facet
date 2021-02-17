@@ -23,7 +23,7 @@ import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Carrier.Reader
 import Control.Effect.NonDet (foldMapA)
-import Control.Monad (ap, guard, liftM, (<=<))
+import Control.Monad (ap, guard, liftM)
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Function
@@ -58,7 +58,7 @@ evalC e = case e of
     extendHandler h (evalC a) >>= to >>= lift . k
   XOp n _ sp       -> do
     -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-    sp' <- traverse (to <=< evalC) sp
+    sp' <- traverse evalV sp
     lift $ Eval $ \ h k -> runEval h k (h (Op n sp') creturn)
   XVar{}           -> return
   XCon{}           -> return
