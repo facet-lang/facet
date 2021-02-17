@@ -43,12 +43,7 @@ eval = runReader Nil . go
   where
   go :: Expr -> EnvC m (Comp (Eval m))
   go = \case
-    XVar (Global n)  -> do
-      mod <- ask
-      graph <- ask
-      case lookupQ graph mod n of
-        Just (_ :=: Just (DTerm v) ::: _) -> go v
-        _                                 -> error "throw a real error here"
+    XVar (Global n)  -> global n >>= go
     XVar (Free v)    -> creturn =<< asks (! getIndex v)
     XVar (Metavar m) -> case m of {}
     XTLam b          -> go b
@@ -80,7 +75,17 @@ eval = runReader Nil . go
       Eval $ \ h -> run (ext h)
 
 
+-- Combinators
+
 type EnvC m = ReaderC (Snoc (Value (Eval m))) (Eval m)
+
+global :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Q Name -> EnvC m Expr
+global n = do
+  mod <- ask
+  graph <- ask
+  case lookupQ graph mod n of
+    Just (_ :=: Just (DTerm v) ::: _) -> pure v
+    _                                 -> fail $ "free variable: " <> show n
 
 
 -- Machinery
