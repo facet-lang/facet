@@ -53,11 +53,7 @@ evalC e = case e of
       (map fst cs)
       (\ toph op k -> maybe (toph op k) (\ (f, b) -> runReader (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op) es)
       (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> runReader (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
-  XApp  f a        -> do
-    let force v = do
-          VThunk c <- pure v
-          pure c
-    (force =<< evalV f) $$ evalV a
+  XApp  f a        -> evalC f $$ evalV a
   XOp n _ sp       -> do
     -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
     sp' <- traverse evalV sp
