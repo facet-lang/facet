@@ -39,43 +39,41 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Expr -> Eval m (Comp (Eval m))
-eval = go
+eval env = \case
+  XVar (Global n)  -> do
+    mod <- ask
+    graph <- ask
+    case lookupQ graph mod n of
+      Just (_ :=: Just (DTerm v) ::: _) -> eval env v
+      _                                 -> error "throw a real error here"
+  XVar (Free v)    -> creturn (env ! getIndex v)
+  XVar (Metavar m) -> case m of {}
+  XTLam b          -> eval env b
+  XInst f _        -> eval env f
+  XLam cs          -> do
+    let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
+        lamV = VThunk . CLam [pvar __] id
+    pure $ CLam
+      (map fst cs)
+      (\ toph op k -> maybe (toph op k) (\ (f, b) -> eval (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op) es)
+      (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> eval (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
+  XApp  f a        -> do
+    CLam _ h k <- eval env f
+    extendHandler h (eval env a) >>= to >>= k
+  XCon n _ fs      -> creturn . VCon n =<< traverse (to <=< eval env) fs
+  XString s        -> creturn $ VString s
+  XOp n _ sp       -> do
+    -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
+    sp' <- traverse (to <=< eval env) sp
+    Eval $ \ h k -> runEval h k (h (Op n sp') creturn)
   where
-  go env = \case
-    XVar (Global n)  -> do
-      mod <- ask
-      graph <- ask
-      case lookupQ graph mod n of
-        Just (_ :=: Just (DTerm v) ::: _) -> go env v
-        _                                 -> error "throw a real error here"
-    XVar (Free v)    -> creturn (env ! getIndex v)
-    XVar (Metavar m) -> case m of {}
-    XTLam b          -> go env b
-    XInst f _        -> go env f
-    XLam cs          -> do
-      let (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-          lamV = VThunk . CLam [pvar __] id
-      pure $ CLam
-        (map fst cs)
-        (\ toph op k -> maybe (toph op k) (\ (f, b) -> go (f env :> lamV k) b) $ foldMapA (\ (p, b) -> (,b) <$> matchE p op) es)
-        (\ v -> maybe (fail "non-exhaustive patterns in lambda") (\ (f, b) -> go (f env) b) $ foldMapA (\ (p, b) -> (,b) <$> matchV p v) vs)
-    XApp  f a        -> do
-      CLam _ h k <- go env f
-      extendHandler h (go env a) >>= to >>= k
-    XCon n _ fs      -> creturn . VCon n =<< traverse (to <=< go env) fs
-    XString s        -> creturn $ VString s
-    XOp n _ sp       -> do
-      -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-      sp' <- traverse (to <=< go env) sp
-      Eval $ \ h k -> runEval h k (h (Op n sp') creturn)
-    where
-    -- NB: CPS would probably be more faithful to Levy’s treatment
-    to v = do
-      CReturn v' <- pure v
-      pure v'
-    extendHandler ext m = do
-      let Eval run = m
-      Eval $ \ h -> run (ext h)
+  -- NB: CPS would probably be more faithful to Levy’s treatment
+  to v = do
+    CReturn v' <- pure v
+    pure v'
+  extendHandler ext m = do
+    let Eval run = m
+    Eval $ \ h -> run (ext h)
 
 
 -- Machinery
