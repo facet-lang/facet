@@ -57,8 +57,7 @@ evalC e = case e of
     let force v = do
           VThunk c <- pure v
           pure c
-    CLam _ h k <- force =<< evalV f
-    extendHandler h (evalV a) >>= lift . k
+    (force =<< evalV f) $$ evalV a
   XOp n _ sp       -> do
     -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
     sp' <- traverse evalV sp
@@ -69,9 +68,6 @@ evalC e = case e of
   where
   return = creturn =<< evalV e
   -- NB: CPS would probably be more faithful to Levy’s treatment
-  extendHandler ext m = ReaderC $ \ env -> do
-    let Eval run = runReader env m
-    Eval $ \ h -> run (ext h)
 
 evalV :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> EnvC m (Value (Eval m))
 evalV e = case e of
@@ -103,6 +99,18 @@ global n = do
 
 var :: HasCallStack => Index -> EnvC m (Value (Eval m))
 var (Index v) = ReaderC $ \ env -> pure (env ! v)
+
+
+($$) :: MonadFail m => EnvC m (Comp (Eval m)) -> EnvC m (Value (Eval m)) -> EnvC m (Comp (Eval m))
+f $$ a = do
+  CLam _ h k <- f
+  extendHandler h a >>= lift . k
+  where
+  extendHandler ext m = ReaderC $ \ env -> do
+    let Eval run = runReader env m
+    Eval $ \ h -> run (ext h)
+
+infixl 9 $$
 
 
 -- Machinery
