@@ -182,7 +182,7 @@ printExpr opts@Options{ qname, instantiation } = go
     C.XLam cs          -> comp (commaSep (map (clause env) cs))
     C.XApp f a         -> go env f $$ go env a
     C.XCon n t p       -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
-    C.XOp n t p        -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
+    C.XOp n t p        -> pretty '#' <> brackets (foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p))
     C.XString s        -> annotate Lit $ pretty (show s)
   qvar = group . setPrec Var . qname
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
