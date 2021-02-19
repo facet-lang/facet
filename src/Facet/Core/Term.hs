@@ -74,6 +74,8 @@ data CExpr
   | CXOp (Q Name) (Snoc T.TExpr) (Snoc VExpr)
   | CXForce VExpr
   | CXReturn VExpr
+  -- | Evaluates the first operand, and then evaluates the second providing the value returned by the first as a variable in the environment.
+  | CXBind CExpr CExpr
   deriving (Eq, Ord, Show)
 
 data VExpr
