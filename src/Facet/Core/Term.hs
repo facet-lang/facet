@@ -73,6 +73,7 @@ data CExpr
   | CXApp CExpr VExpr
   | CXOp (Q Name) (Snoc T.TExpr) (Snoc VExpr)
   | CXForce VExpr
+  | CXReturn VExpr
   deriving (Eq, Ord, Show)
 
 data VExpr
