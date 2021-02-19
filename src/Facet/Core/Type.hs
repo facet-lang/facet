@@ -175,7 +175,7 @@ data TExpr
   deriving (Eq, Ord, Show)
 
 data CTExpr
-  = CXForAll Name TExpr TExpr
+  = CXForAll Name CTExpr CTExpr
   | CXArrow (Maybe Name) Quantity VTExpr CTExpr
   | CXComp [CTExpr] CTExpr
   | CXInst CTExpr VTExpr
