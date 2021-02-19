@@ -186,13 +186,16 @@ abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc Exp
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
-    VForAll n   _T _B -> do
+    VForAll n           _T  _B -> do
       d <- depth
       check (tlam (go (ts :> d) fs) ::: VForAll n _T _B)
-    VArrow  n q _A _B -> do
+    VArrow  n q (VRet s _A) _B -> do
+      d <- depth
+      check (lam [(PEff <$> allP (fromMaybe __ n), go ts (fs :> d))] ::: VArrow n q (VRet s _A) _B)
+    VArrow  n q         _A  _B -> do
       d <- depth
       check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: VArrow n q _A _B)
-    _T                 -> do
+    _T                         -> do
       d <- depth
       pure $ body (TVar . Free . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
