@@ -176,11 +176,11 @@ data TExpr
 
 data CTExpr
   = CXForAll Name TExpr TExpr
-  | CXArrow (Maybe Name) Quantity TExpr TExpr
-  | CXComp [TExpr] TExpr
-  | CXInst TExpr TExpr
-  | CXApp TExpr TExpr
-  | CXF TExpr
+  | CXArrow (Maybe Name) Quantity VTExpr CTExpr
+  | CXComp [CTExpr] CTExpr
+  | CXInst CTExpr VTExpr
+  | CXApp CTExpr VTExpr
+  | CXF VTExpr
   deriving (Eq, Ord, Show)
 
 data VTExpr
@@ -188,7 +188,7 @@ data VTExpr
   | VXInterface
   | VXString
   | VXVar (Var Meta Index)
-  | VXU TExpr
+  | VXU CTExpr
   deriving (Eq, Ord, Show)
 
 
