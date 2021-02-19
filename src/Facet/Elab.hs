@@ -94,7 +94,7 @@ import Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Has (State Subst) sig m => Type -> m Meta
+meta :: Has (State (Subst Type)) sig m => Type -> m Meta
 meta _T = state (declareMeta _T)
 
 
@@ -210,7 +210,7 @@ data Err = Err
   { source    :: Source
   , reason    :: ErrReason
   , context   :: Context
-  , subst     :: Subst
+  , subst     :: Subst Type
   , callStack :: CallStack
   }
 
@@ -224,7 +224,7 @@ data ErrReason
   | Hole Name Type
   | Invariant String
 
-applySubst :: Context -> Subst -> ErrReason -> ErrReason
+applySubst :: Context -> Subst Type -> ErrReason -> ErrReason
 applySubst ctx subst r = case r of
   FreeVariable{}       -> r
   AmbiguousName{}      -> r
@@ -384,10 +384,10 @@ unify t1 t2 = type' t1 t2
 
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC Subst m))) a }
-  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State Subst :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC (Subst Type) m))) a }
+  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State (Subst Type) :+: sig), Applicative, Functor, Monad)
 
-elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst -> a -> m b) -> Elab m a -> m b
+elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst Type -> a -> m b) -> Elab m a -> m b
 elabWith scale k m = runState k mempty . runWriter (const pure) $ do
   (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
   let stat = StaticContext{ graph, module', source, scale }

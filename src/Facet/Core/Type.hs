@@ -225,7 +225,7 @@ quoteV d = \case
   String    -> VXString
   U t       -> VXU (quoteC d t)
 
-eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
+eval :: HasCallStack => Subst Type -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
   go env = \case
     TType            -> VType
@@ -245,23 +245,23 @@ eval subst = go where
 
 -- Substitution
 
-newtype Subst = Subst (IntMap.IntMap (Maybe Type ::: Type))
+newtype Subst t = Subst (IntMap.IntMap (Maybe t ::: t))
   deriving (Monoid, Semigroup)
 
-insert :: Meta -> Maybe Type ::: Type -> Subst -> Subst
+insert :: Meta -> Maybe t ::: t -> Subst t -> Subst t
 insert (Meta i) t (Subst metas) = Subst (IntMap.insert i t metas)
 
-lookupMeta :: Meta -> Subst -> Maybe (Type ::: Type)
+lookupMeta :: Meta -> Subst t -> Maybe (t ::: t)
 lookupMeta (Meta i) (Subst metas) = do
   v ::: _T <- IntMap.lookup i metas
   (::: _T) <$> v
 
-solveMeta :: Meta -> Type -> Subst -> Subst
+solveMeta :: Meta -> t -> Subst t -> Subst t
 solveMeta (Meta i) t (Subst metas) = Subst (IntMap.update (\ (_ ::: _T) -> Just (Just t ::: _T)) i metas)
 
-declareMeta :: Type -> Subst -> (Subst, Meta)
+declareMeta :: t -> Subst t -> (Subst t, Meta)
 declareMeta _K (Subst metas) = (Subst (IntMap.insert v (Nothing ::: _K) metas), Meta v) where
   v = maybe 0 (succ . fst . fst) (IntMap.maxViewWithKey metas)
 
-metas :: Subst -> [Meta :=: Maybe Type ::: Type]
+metas :: Subst t -> [Meta :=: Maybe t ::: t]
 metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)
