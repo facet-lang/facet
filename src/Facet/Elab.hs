@@ -410,7 +410,7 @@ elabSynthType scale = elabWith scale (\ subst (_T ::: _K) -> pure (T.eval subst 
 -- Judgements
 
 check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
-check (m ::: _T) = case unRet _T of
+check (m ::: _T) = case unComp _T of
   Just (sig, _) -> extendSig sig $ runCheck m _T
   Nothing       -> runCheck m _T
 
