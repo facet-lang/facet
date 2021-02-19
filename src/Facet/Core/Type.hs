@@ -60,6 +60,7 @@ data Type
 
 data CType
   = ForAll Name CType (VType -> CType)
+  | Arrow (Maybe Name) Quantity CType CType
   | Comp [CType] CType
   | Ne (Var Meta Level) (Snoc CType) (Snoc VType)
   | F VType
