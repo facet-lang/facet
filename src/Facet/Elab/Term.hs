@@ -239,12 +239,13 @@ elabTermDef _T expr@(S.Ann s _ _) = do
   elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    VForAll{}               -> check (tlam (go k) ::: _T)
-    VArrow (Just n) q _A _B -> check (lam [(PVal <$> varP n, go k)] ::: VArrow Nothing q _A _B)
+    VForAll{}                        -> check (tlam (go k) ::: _T)
+    VArrow (Just n) q (VRet s _A) _B -> check (lam [(PEff <$> allP n, go k)] ::: VArrow Nothing q (VRet s _A) _B)
+    VArrow (Just n) q _A _B          -> check (lam [(PVal <$> varP n, go k)] ::: VArrow Nothing q _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                       -> check (k ::: _T)
+    _                                -> check (k ::: _T)
 
 
 -- Modules
