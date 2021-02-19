@@ -178,7 +178,7 @@ data CTExpr
   = CXForAll Name CTExpr CTExpr
   | CXArrow (Maybe Name) Quantity VTExpr CTExpr
   | CXComp [CTExpr] CTExpr
-  | CXInst CTExpr VTExpr
+  | CXInst CTExpr CTExpr
   | CXApp CTExpr VTExpr
   | CXF VTExpr
   deriving (Eq, Ord, Show)
