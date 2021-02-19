@@ -153,6 +153,8 @@ data TExpr
   | TComp [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
+  | TF TExpr
+  | TU TExpr
   deriving (Eq, Ord, Show)
 
 
@@ -167,8 +169,8 @@ quote d = \case
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
   VComp s t      -> TComp (quote d <$> s) (quote d t)
   VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
-  VF t           -> quote d t
-  VU t           -> quote d t
+  VF t           -> TF (quote d t)
+  VU t           -> TU (quote d t)
 
 eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
@@ -184,6 +186,8 @@ eval subst = go where
     TComp s t        -> VComp (go env <$> s) (go env t)
     TInst f a        -> go env f $$$ go env a
     TApp  f a        -> go env f $$  go env a
+    TF t             -> VF (go env t)
+    TU t             -> VU (go env t)
 
 
 -- Substitution
