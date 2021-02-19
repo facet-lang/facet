@@ -72,6 +72,7 @@ data CExpr
   | CXLam [(Pattern Name, CExpr)]
   | CXApp CExpr VExpr
   | CXOp (Q Name) (Snoc T.TExpr) (Snoc VExpr)
+  | CXForce VExpr
   deriving (Eq, Ord, Show)
 
 data VExpr
