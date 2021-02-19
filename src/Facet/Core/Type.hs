@@ -50,7 +50,7 @@ data Type
   | VForAll Name Type (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
   | VNe (Var Meta Level) (Snoc Type) (Snoc Type)
-  | VRet [Type] Type
+  | VComp [Type] Type
 
 
 global :: Q Name -> Type
@@ -69,8 +69,8 @@ var v = VNe v Nil Nil
 
 unRet :: Has Empty sig m => Type -> m ([Type], Type)
 unRet = \case
-  VRet sig _T -> pure (sig, _T)
-  _T          -> empty
+  VComp sig _T -> pure (sig, _T)
+  _T           -> empty
 
 
 occursIn :: (Var Meta Level -> Bool) -> Level -> Type -> Bool
@@ -81,7 +81,7 @@ occursIn p = go
     VInterface     -> False
     VForAll _ t b  -> go d t || go (succ d) (b (free d))
     VArrow _ _ a b -> go d a || go d b
-    VRet s t       -> any (go d) s || go d t
+    VComp s t      -> any (go d) s || go d t
     VNe h ts sp    -> p h || any (go d) ts || any (go d) sp
     VString        -> False
 
@@ -119,7 +119,7 @@ showType env = \case
     Just  n -> paren (name n <+> char ':' <+> mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
     Nothing -> setPrec 1 (mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
   VNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
-  VRet s t      -> sig s <+> showType env t
+  VComp s t      -> sig s <+> showType env t
   VString       -> string "String"
   where
   sig s = bracket (commaSep (map (showType env) s))
@@ -159,7 +159,7 @@ quote d = \case
   VString        -> TString
   VForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
-  VRet s t       -> TComp (quote d <$> s) (quote d t)
+  VComp s t      -> TComp (quote d <$> s) (quote d t)
   VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
 
 eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
@@ -173,7 +173,7 @@ eval subst = go where
     TVar (Metavar m) -> maybe (metavar m) tm (lookupMeta m subst)
     TForAll n t b    -> VForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> VArrow n q (go env a) (go env b)
-    TComp s t        -> VRet (go env <$> s) (go env t)
+    TComp s t        -> VComp (go env <$> s) (go env t)
     TInst f a        -> go env f $$$ go env a
     TApp  f a        -> go env f $$  go env a
 

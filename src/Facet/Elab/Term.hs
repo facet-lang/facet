@@ -116,7 +116,7 @@ fieldsP = foldr cons
 allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _A') <- expectRet "when checking catch-all pattern" _A
-  (PAll n,) <$> (Binding n q (VRet sig _A') |- check (b ::: _B))
+  (PAll n,) <$> (Binding n q (VComp sig _A') |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
@@ -189,9 +189,9 @@ abstractTerm body = go Nil Nil
     VForAll n           _T  _B -> do
       d <- depth
       check (tlam (go (ts :> d) fs) ::: VForAll n _T _B)
-    VArrow  n q (VRet s _A) _B -> do
+    VArrow  n q (VComp s _A) _B -> do
       d <- depth
-      check (lam [(PEff <$> allP (fromMaybe __ n), go ts (fs :> d))] ::: VArrow n q (VRet s _A) _B)
+      check (lam [(PEff <$> allP (fromMaybe __ n), go ts (fs :> d))] ::: VArrow n q (VComp s _A) _B)
     VArrow  n q         _A  _B -> do
       d <- depth
       check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: VArrow n q _A _B)
@@ -242,13 +242,13 @@ elabTermDef _T expr@(S.Ann s _ _) = do
   elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    VForAll{}                        -> check (tlam (go k) ::: _T)
-    VArrow (Just n) q (VRet s _A) _B -> check (lam [(PEff <$> allP n, go k)] ::: VArrow Nothing q (VRet s _A) _B)
-    VArrow (Just n) q _A _B          -> check (lam [(PVal <$> varP n, go k)] ::: VArrow Nothing q _A _B)
+    VForAll{}                         -> check (tlam (go k) ::: _T)
+    VArrow (Just n) q (VComp s _A) _B -> check (lam [(PEff <$> allP n, go k)] ::: VArrow Nothing q (VComp s _A) _B)
+    VArrow (Just n) q _A _B           -> check (lam [(PVal <$> varP n, go k)] ::: VArrow Nothing q _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                                -> check (k ::: _T)
+    _                                 -> check (k ::: _T)
 
 
 -- Modules
@@ -298,7 +298,7 @@ expectTacitFunction = expectMatch (\case{ VArrow Nothing q t b -> pure ((q, t), 
 
 -- | Expect a computation type with effects.
 expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
-expectRet = expectMatch (\case{ VRet s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
+expectRet = expectMatch (\case{ VComp s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
 
 
 -- Elaboration
