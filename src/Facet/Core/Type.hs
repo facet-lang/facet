@@ -64,7 +64,7 @@ data CType
   = ForAll Name CType (VType -> CType)
   | Arrow (Maybe Name) Quantity VType CType
   | Comp [CType] CType
-  | Ne (Var Meta Level) (Snoc CType) (Snoc VType)
+  | Ne (Var Meta Level) (Snoc VType) (Snoc VType)
   | F VType
 
 data VType
@@ -181,7 +181,7 @@ data CTExpr
   = CXForAll Name CTExpr CTExpr
   | CXArrow (Maybe Name) Quantity VTExpr CTExpr
   | CXComp [CTExpr] CTExpr
-  | CXInst CTExpr CTExpr
+  | CXInst CTExpr VTExpr
   | CXApp CTExpr VTExpr
   | CXF VTExpr
   deriving (Eq, Ord, Show)
@@ -214,7 +214,7 @@ quoteC d = \case
   ForAll n t b  -> CXForAll n (quoteC d t) (quoteC (succ d) (b (Var (Free d))))
   Arrow n q a b -> CXArrow n q (quoteV d a) (quoteC d b)
   Comp s t      -> CXComp (quoteC d <$> s) (quoteC d t)
-  Ne n ts sp    -> foldl' (&) (foldl' (&) (CXF (VXVar (levelToIndex d <$> n))) (flip CXInst . quoteC d <$> ts)) (flip CXApp . quoteV d <$> sp)
+  Ne n ts sp    -> foldl' (&) (foldl' (&) (CXF (VXVar (levelToIndex d <$> n))) (flip CXInst . quoteV d <$> ts)) (flip CXApp . quoteV d <$> sp)
   F t           -> CXF (quoteV d t)
 
 quoteV :: Level -> VType -> VTExpr
