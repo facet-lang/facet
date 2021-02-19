@@ -114,8 +114,9 @@ fieldsP = foldr cons
 
 
 allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (EffectPattern Name)
--- FIXME: check that the _A actually has effects.
-allP n = Bind $ \ q _A b -> Check $ \ _B -> (PAll n,) <$> (Binding n q _A |- check (b ::: _B))
+allP n = Bind $ \ q _A b -> Check $ \ _B -> do
+  (sig, _A') <- expectRet "when checking catch-all pattern" _A
+  (PAll n,) <$> (Binding n q (VRet sig _A') |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
