@@ -111,7 +111,7 @@ instantiate inst = go
 switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
 switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
-as :: (HasCallStack, Algebra sig m) => Check m Expr ::: Check m TExpr -> Synth m Expr
+as :: (HasCallStack, Algebra sig m) => Check m a ::: Check m TExpr -> Synth m a
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
