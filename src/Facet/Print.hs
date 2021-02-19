@@ -191,7 +191,9 @@ printExpr opts@Options{ qname, instantiation } = go
     C.PWildcard -> pretty '_'
     C.PVar n    -> n
     C.PCon n ps -> parens (hsep (annotate Con (qname n):map vpat (toList ps)))
-  epat (C.POp q ps k) = brackets (pretty q <+> hsep (map vpat (toList ps)) <+> semi <+> k)
+  epat = \case
+    C.PAll n     -> n
+    C.POp q ps k -> brackets (pretty q <+> hsep (map vpat (toList ps)) <+> semi <+> k)
   pat = \case
     C.PVal p -> vpat p
     C.PEff p -> epat p

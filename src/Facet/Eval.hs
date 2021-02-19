@@ -177,9 +177,13 @@ creturn = pure . \case
 -- Elimination
 
 matchE :: MonadFail m => EffectPattern Name -> Q Name -> Snoc (Value m) -> Maybe ((Value m -> m (Comp m)) -> EffectPattern (Value m))
-matchE (POp n ps _) n' fs = mk <$ guard (n == n') <*> zipWithM matchV ps fs
+matchE p n' fs = case p of
+  -- FIXME: I can’t see how this could possibly be correct
+  PAll _     -> pure $ \ k -> PAll (VThunk (COp n' fs (cont k)))
+  POp n ps _ -> mk <$ guard (n == n') <*> zipWithM matchV ps fs
   where
-  mk sp k = POp n' sp (VThunk (CLam [Right (PVar __, unPVar k)]))
+  mk sp k = POp n' sp (cont k)
+  cont k = VThunk (CLam [Right (PVar __, unPVar k)])
   unPVar k = \case
     PVar v -> k v
     _      -> fail "unexpected non-variable pattern given to continuation"
