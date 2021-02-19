@@ -1,6 +1,8 @@
 module Facet.Core.Type
 ( -- * Types
   Type(..)
+, C
+, V
 , CType(..)
 , VType(..)
 , global
@@ -61,6 +63,12 @@ data Type
   | VComp [Type] Type
   | VF Type
   | VU Type
+
+-- | Type tag for the computation universe.
+data C
+
+-- | Type tag for the value universe.
+data V
 
 data CType
   = ForAll Name CType (VType -> CType)
