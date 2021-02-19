@@ -66,7 +66,8 @@ data CType
   | F VType
 
 data VType
-  = Type
+  = Var (Var Meta Level)
+  | Type
   | Interface
   | String
   | U CType
