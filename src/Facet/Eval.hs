@@ -53,7 +53,7 @@ evalC e = case e of
   XCon{}     -> return
   XString{}  -> return
   where
-  return = creturn =<< evalV e
+  return = lift . creturn =<< evalV e
 
 evalV :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> EnvC m (Value (Eval m))
 evalV e = case e of
@@ -168,7 +168,7 @@ data Comp m
   | CLam [Either (EffectPattern Name, EffectPattern (Value m) -> m (Comp m)) (ValuePattern Name, ValuePattern (Value m) -> m (Comp m))]
   | CReturn (Value m)
 
-creturn :: Applicative f => Value m -> f (Comp m)
+creturn :: Applicative m => Value m -> m (Comp m)
 creturn = pure . \case
   VThunk c -> c
   v        -> CReturn v
