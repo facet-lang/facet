@@ -64,11 +64,11 @@ kind_ = choice
   , RBracket   <$  char ']' <?> "]"
   , LAngle     <$  char '<' <?> "<"
   , RAngle     <$  char '>' <?> ">"
-  , QIdent     <$> ((:.:) <$> mname <* dot <*> choice [ U <$> ename, U <$> tname ])
+  , QIdent     <$> ((:.:) <$> mname <* dot <*> choice [ N <$> ename, N <$> tname ])
   , MIdent     <$> mname
-  , EIdent . U <$> ename
-  , TIdent . U <$> tname
-  , HIdent . U <$> ident (char '?') nameChar <?> "hole name"
+  , EIdent . N <$> ename
+  , TIdent . N <$> tname
+  , HIdent . N <$> ident (char '?') nameChar <?> "hole name"
   ]
   where
   mname = fromList <$> sepBy1 tcomp dot <?> "module name"
