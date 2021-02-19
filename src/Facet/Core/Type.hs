@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 module Facet.Core.Type
 ( -- * Types
   Type(..)
@@ -69,6 +70,21 @@ data C
 
 -- | Type tag for the value universe.
 data V
+
+
+data Type' u where
+  ForAll' :: Name -> Type' C -> (Type' V -> Type' C) -> Type' C
+  Arrow' :: Maybe Name -> Quantity -> Type' V -> Type' C -> Type' C
+  Comp' :: [Type' C] -> Type' C -> Type' C
+  Ne' :: Var Meta Level -> Snoc (Type' V) -> Snoc (Type' V) -> Type' C
+  F' :: Type' V -> Type' C
+
+  Var' :: Var Meta Level -> Type' V
+  Type' :: Type' V
+  Interface' :: Type' V
+  String' :: Type' V
+  U' :: Type' C -> Type' V
+
 
 data CType
   = ForAll Name CType (VType -> CType)
