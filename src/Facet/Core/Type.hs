@@ -51,6 +51,8 @@ data Type
   | VArrow (Maybe Name) Quantity Type Type
   | VNe (Var Meta Level) (Snoc Type) (Snoc Type)
   | VComp [Type] Type
+  | VF Type
+  | VU Type
 
 
 global :: Q Name -> Type
@@ -84,6 +86,8 @@ occursIn p = go
     VComp s t      -> any (go d) s || go d t
     VNe h ts sp    -> p h || any (go d) ts || any (go d) sp
     VString        -> False
+    VF t           -> go d t
+    VU t           -> go d t
 
 
 -- Elimination
@@ -121,6 +125,8 @@ showType env = \case
   VNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
   VComp s t     -> sig s <+> showType env t
   VString       -> string "String"
+  VF t          -> showType env t
+  VU t          -> showType env t
   where
   sig s = bracket (commaSep (map (showType env) s))
   ($$*) = foldl' (\ f a -> prec 10 (f <+> a))
@@ -161,6 +167,8 @@ quote d = \case
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
   VComp s t      -> TComp (quote d <$> s) (quote d t)
   VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
+  VF t           -> quote d t
+  VU t           -> quote d t
 
 eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where

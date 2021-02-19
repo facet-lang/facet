@@ -345,6 +345,10 @@ unify t1 t2 = type' t1 t2
     (VNe{}, _)                                           -> nope
     (VString, VString)                                   -> pure ()
     (VString, _)                                         -> nope
+    (VF t1, VF t2)                                       -> type' t1 t2
+    (VF{}, _)                                            -> nope
+    (VU t1, VU t2)                                       -> type' t1 t2
+    (VU{}, _)                                            -> nope
 
   var = curry $ \case
     (Global q1, Global q2)   -> unless (q1 == q2) nope
