@@ -198,7 +198,7 @@ showType e = Action $ do
   outputDocLn (getPrint (ann (printExpr opts Nil e ::: printType opts Nil _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
+  e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:N "Output"):) $ Elab.synth (Elab.synthExpr e)
   e'' <- runElab $ runEvalMain e'
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
@@ -207,7 +207,7 @@ runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Gra
 runEvalMain e = runEval handle pure (E.quoteC 0 =<< eval e)
   where
   handle q sp k = case q of
-    FromList ["Effect", "Console"] :.: U "write"
+    FromList ["Effect", "Console"] :.: N "write"
       | FromList [E.VString s] <- sp -> outputText s *> k unit
     _                                -> unhandled q sp
   unhandled q _sp = do

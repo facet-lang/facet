@@ -159,7 +159,7 @@ vthunk = \case
   c         -> VThunk c
 
 unit :: Value m
-unit = VCon (["Data", "Unit"] :.: U "unit") Nil
+unit = VCon (["Data", "Unit"] :.: N "unit") Nil
 
 -- | Terminal computations.
 data Comp m

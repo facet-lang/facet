@@ -188,7 +188,7 @@ signature = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
-  mkHead cs = fromList (NE.init cs) N.:.: N.U (NE.last cs)
+  mkHead cs = fromList (NE.init cs) N.:.: N.N (NE.last cs)
   comp = ident tnameStyle
 
 
@@ -284,7 +284,7 @@ tname :: (Monad p, TokenParsing p) => p N.Name
 tname = ident tnameStyle
 
 dename :: (Monad p, TokenParsing p) => p N.Name
-dename = N.U <$> ident dnameStyle <|> N.O <$> oname
+dename = N.N <$> ident dnameStyle <|> N.O <$> oname
 
 mname :: (Monad p, TokenParsing p) => p N.MName
 mname = token (runUnspaced (fromList <$> sepBy1 comp dot))

@@ -203,7 +203,7 @@ printExpr opts@Options{ qname, instantiation } = go
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
   mname
-  (qvar (fromList [T.pack "Kernel"]:.:U (T.pack "Module")))
+  (qvar (fromList [T.pack "Kernel"]:.:N (T.pack "Module")))
   (map (\ (C.Import n) -> import' n) is)
   (map def (Map.toList (C.decls ds)))
   where

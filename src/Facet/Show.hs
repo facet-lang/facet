@@ -66,7 +66,7 @@ qname (m :.: n) = foldr (<.>) (name n) (text <$> m)
 
 name :: Name -> ShowP
 name = \case
-  U t -> string (unpack t)
+  N t -> string (unpack t)
   O o -> op o
 
 op :: Op -> ShowP

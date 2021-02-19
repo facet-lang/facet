@@ -50,7 +50,7 @@ newtype Meta = Meta { getMeta :: Int }
 
 
 __ :: Name
-__ = U T.empty
+__ = N T.empty
 
 
 type MName = Snoc Text
@@ -71,16 +71,16 @@ instance P.Pretty a => P.Pretty (Q a) where
 
 -- | Declaration names; a choice of regular or operator names.
 data Name
-  = U Text
+  = N Text
   | O Op
   deriving (Eq, Ord, Show)
 
 instance IsString Name where
-  fromString = U . fromString
+  fromString = N . fromString
 
 instance P.Pretty Name where
   pretty = \case
-    U n -> P.pretty n
+    N n -> P.pretty n
     O o -> P.pretty o
 
 
