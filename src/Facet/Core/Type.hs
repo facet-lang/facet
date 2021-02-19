@@ -24,6 +24,8 @@ module Facet.Core.Type
 , quoteC
 , quoteV
 , eval
+, evalC
+, evalV
   -- * Substitution
 , Subst(..)
 , insert
@@ -130,6 +132,16 @@ _             $$$ _ = error "can’t apply non-neutral/forall type"
 ($$$*) = foldl' ($$)
 
 infixl 9 $$$, $$$*
+
+
+app :: HasCallStack => CType -> VType -> CType
+app (Ne h ts es) a = Ne h ts (es :> a)
+app _            _ = error "can’t apply non-neutral/forall type"
+
+inst :: HasCallStack => CType -> VType -> CType
+inst (Ne h ts es)   t = Ne h (ts :> t) es
+inst (ForAll _ _ b) t = b t
+inst _              _ = error "can’t apply non-neutral/forall type"
 
 
 -- Debugging
@@ -241,6 +253,27 @@ eval subst = go where
     TApp  f a        -> go env f $$  go env a
     TF t             -> VF (go env t)
     TU t             -> VU (go env t)
+
+evalC :: HasCallStack => Subst VType -> Snoc (Either VType a) -> CTExpr -> CType
+evalC subst = go where
+  go env = \case
+    CXForAll n t b  -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
+    CXArrow n q a b -> Arrow n q (evalV subst env a) (go env b)
+    CXComp s t      -> Comp (go env <$> s) (go env t)
+    CXInst f a      -> go env f `inst` evalV subst env a
+    CXApp  f a      -> go env f `app`  evalV subst env a
+    CXF t           -> F (evalV subst env t)
+
+evalV :: HasCallStack => Subst VType -> Snoc (Either VType a) -> VTExpr -> VType
+evalV subst = go where
+  go env = \case
+    VXType            -> Type
+    VXInterface       -> Interface
+    VXString          -> String
+    VXVar (Global n)  -> Var (Global n)
+    VXVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
+    VXVar (Metavar m) -> maybe (Var (Metavar m)) tm (lookupMeta m subst)
+    VXU t             -> U (evalC subst env t)
 
 
 -- Substitution
