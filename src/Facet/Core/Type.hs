@@ -73,7 +73,7 @@ data V
 data CType
   = ForAll Name CType (VType -> CType)
   | Arrow (Maybe Name) Quantity VType CType
-  | Comp [CType] CType
+  | Comp [CType] CType -- FIXME: I think this should probably be combined with F and Ne
   | Ne (Var Meta Level) (Snoc VType) (Snoc VType)
   | F VType
 
