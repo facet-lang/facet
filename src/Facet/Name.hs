@@ -69,7 +69,7 @@ instance P.Pretty a => P.Pretty (Q a) where
   pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
 
 
--- | Declaration names; a choice of expression, constructor, term, or operator names.
+-- | Declaration names; a choice of regular or operator names.
 data Name
   = U Text
   | O Op
