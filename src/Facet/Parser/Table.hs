@@ -21,13 +21,13 @@ type Operator a = (Op, Assoc, [a] -> a)
 
 parseOperator :: TokenParsing p => Operator a -> OperatorParser p a
 parseOperator = \case
-  (Prefix   s, _, op) -> \ self next -> unary op <$ textSymbol s <*> self <|> next
-  (Postfix  s, _, op) -> \ _    next -> foldl' (&) <$> next <*> many (unary op <$ textSymbol s)
-  (Infix    s, N, op) -> \ _    next -> next <**> (flip (binary op) <$ textSymbol s <*> next <|> pure id)
-  (Infix    s, L, op) -> \ _    next -> chainl1 next (binary op <$ textSymbol s)
-  (Infix    s, R, op) -> \ self next -> next <**> (flip (binary op) <$ textSymbol s <*> self <|> pure id)
-  (Infix    s, A, op) -> \ _    next -> chainr1 next (binary op <$ textSymbol s)
-  (Outfix s e, _, op) -> \ self next -> unary op <$ textSymbol s <*> nesting self <* textSymbol e <|> next
+  (Prefix   s, _,   op) -> \ self next -> unary op <$ textSymbol s <*> self <|> next
+  (Postfix  s, _,   op) -> \ _    next -> foldl' (&) <$> next <*> many (unary op <$ textSymbol s)
+  (Infix    s, Non, op) -> \ _    next -> next <**> (flip (binary op) <$ textSymbol s <*> next <|> pure id)
+  (Infix    s, L,   op) -> \ _    next -> chainl1 next (binary op <$ textSymbol s)
+  (Infix    s, R,   op) -> \ self next -> next <**> (flip (binary op) <$ textSymbol s <*> self <|> pure id)
+  (Infix    s, A,   op) -> \ _    next -> chainr1 next (binary op <$ textSymbol s)
+  (Outfix s e, _,   op) -> \ self next -> unary op <$ textSymbol s <*> nesting self <* textSymbol e <|> next
   where
   unary f a = f [a]
   binary f a b = f [a, b]

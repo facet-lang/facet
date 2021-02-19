@@ -85,7 +85,7 @@ instance P.Pretty Name where
 
 
 -- | Associativity of an infix operator.
-data Assoc = N | L | R | A
+data Assoc = Non | L | R | A
   deriving (Eq, Ord, Show)
 
 -- | Mixfix operator names, restricted to unary (prefix, postfix, outfix) & binary (infix).

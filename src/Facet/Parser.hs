@@ -95,13 +95,13 @@ termDecl = anned $ do
   case name of
     N.O op -> do
       assoc <- case op of
-        N.Infix _ -> option N.N $ brackets $ choice
-          [ N.N <$ symbol "non-assoc"
-          , N.L <$ symbol "left-assoc"
-          , N.R <$ symbol "right-assoc"
-          , N.A <$ symbol "assoc"
+        N.Infix _ -> option N.Non $ brackets $ choice
+          [ N.Non <$ symbol "non-assoc"
+          , N.L   <$ symbol "left-assoc"
+          , N.R   <$ symbol "right-assoc"
+          , N.A   <$ symbol "assoc"
           ]
-        _ -> pure N.N
+        _ -> pure N.Non
       modify (makeOperator (Nil, op, assoc) :)
     _      -> pure ()
   decl <- anned $ S.Decl <$ colon <*> typeSig ename <*> (S.TermDef <$> body)
@@ -171,7 +171,8 @@ mul = choice [ S.Zero <$ token (char '0'), S.One <$ token (char '1') ]
 retType :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type) -> p (S.Ann S.Type)
 retType _ next = mk <$> anned ((,) <$> optional signature <*> next)
   where
-  mk (S.Ann s c (sig, _T)) = maybe id (\ sig -> S.Ann s c . S.TComp sig) sig _T
+  mk (S.Ann s c (sig, _T)) = maybe id (\ sig -> S.Ann s c . S.TComp
+   sig) sig _T
 
 
 -- FIXME: support type operators
