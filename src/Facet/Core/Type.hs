@@ -21,6 +21,8 @@ module Facet.Core.Type
 , VTExpr(..)
   -- * Quotation
 , quote
+, quoteC
+, quoteV
 , eval
   -- * Substitution
 , Subst(..)
@@ -206,6 +208,22 @@ quote d = \case
   VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
   VF t           -> TF (quote d t)
   VU t           -> TU (quote d t)
+
+quoteC :: Level -> CType -> CTExpr
+quoteC d = \case
+  ForAll n t b  -> CXForAll n (quoteC d t) (quoteC (succ d) (b (Var (Free d))))
+  Arrow n q a b -> CXArrow n q (quoteV d a) (quoteC d b)
+  Comp s t      -> CXComp (quoteC d <$> s) (quoteC d t)
+  Ne n ts sp    -> foldl' (&) (foldl' (&) (CXF (VXVar (levelToIndex d <$> n))) (flip CXInst . quoteC d <$> ts)) (flip CXApp . quoteV d <$> sp)
+  F t           -> CXF (quoteV d t)
+
+quoteV :: Level -> VType -> VTExpr
+quoteV d = \case
+  Var n     -> VXVar (levelToIndex d <$> n)
+  Type      -> VXType
+  Interface -> VXInterface
+  String    -> VXString
+  U t       -> VXU (quoteC d t)
 
 eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
