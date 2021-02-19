@@ -9,6 +9,8 @@ module Facet.Core.Term
 , fill
   -- * Term expressions
 , Expr(..)
+, CExpr(..)
+, VExpr(..)
 ) where
 
 import           Data.Text (Text)
@@ -62,4 +64,18 @@ data Expr
   | XCon (Q Name) (Snoc T.TExpr) (Snoc Expr)
   | XString Text
   | XOp (Q Name) (Snoc T.TExpr) (Snoc Expr)
+  deriving (Eq, Ord, Show)
+
+data CExpr
+  = CXTLam CExpr
+  | CXInst CExpr T.TExpr
+  | CXLam [(Pattern Name, CExpr)]
+  | CXApp CExpr VExpr
+  | CXOp (Q Name) (Snoc T.TExpr) (Snoc VExpr)
+  deriving (Eq, Ord, Show)
+
+data VExpr
+  = VXVar (Var Void Index)
+  | VXCon (Q Name) (Snoc T.TExpr) (Snoc VExpr)
+  | VXString Text
   deriving (Eq, Ord, Show)
