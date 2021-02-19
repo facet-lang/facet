@@ -1,6 +1,8 @@
 module Facet.Core.Type
 ( -- * Types
   Type(..)
+, CType(..)
+, VType(..)
 , global
 , free
 , metavar
@@ -53,6 +55,18 @@ data Type
   | VComp [Type] Type
   | VF Type
   | VU Type
+
+data CType
+  = ForAll Name CType (VType -> CType)
+  | Comp [CType] CType
+  | Ne (Var Meta Level) (Snoc CType) (Snoc VType)
+  | F VType
+
+data VType
+  = Type
+  | Interface
+  | String
+  | U CType
 
 
 global :: Q Name -> Type
