@@ -119,7 +119,7 @@ showType env = \case
     Just  n -> paren (name n <+> char ':' <+> mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
     Nothing -> setPrec 1 (mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
   VNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
-  VComp s t      -> sig s <+> showType env t
+  VComp s t     -> sig s <+> showType env t
   VString       -> string "String"
   where
   sig s = bracket (commaSep (map (showType env) s))
