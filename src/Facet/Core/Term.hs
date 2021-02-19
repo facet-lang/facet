@@ -78,4 +78,5 @@ data VExpr
   = VXVar (Var Void Index)
   | VXCon (Q Name) (Snoc T.TExpr) (Snoc VExpr)
   | VXString Text
+  | VXThunk CExpr
   deriving (Eq, Ord, Show)
