@@ -11,6 +11,7 @@ module Facet.Elab.Term
 , varP
 , conP
 , fieldsP
+, allP
 , effP
   -- * Expression elaboration
 , synthExpr
@@ -111,6 +112,10 @@ fieldsP = foldr cons
     (p', (ps', b')) <- check (bind (p ::: (q', _A')) (bind (ps ::: (q, _A'')) b) ::: _B)
     pure (p':ps', b')
 
+
+allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (EffectPattern Name)
+-- FIXME: check that the _A actually has effects.
+allP n = Bind $ \ q _A b -> Check $ \ _B -> (PAll n,) <$> (Binding n q _A |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
