@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Facet.Elab.Type
 ( -- * Types
@@ -79,14 +80,15 @@ synthTypeC ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkTypeV a)) --> checkTypeC b
   S.TComp s t       -> comp (map checkInterfaceV s) (checkTypeV t)
   S.TApp f a        -> app TApp (synthTypeC f) (checkTypeV a)
-  S.TVar{}          -> shift
-  S.KType           -> shift
-  S.KInterface      -> shift
-  S.TString         -> shift
+  S.TVar{}          -> toC
+  S.KType           -> toC
+  S.KInterface      -> toC
+  S.TString         -> toC
   where
-  shift = Synth $ do
-    _T ::: _K <- synth (synthTypeV ty)
-    pure $ TComp [] _T ::: _K
+  toC = shift <$> synthTypeV ty
+  shift = \case
+    TThunk _T -> _T
+    _T        -> TComp [] _T
   interpretMul = \case
     S.Zero -> zero
     S.One  -> one
@@ -97,12 +99,15 @@ synthTypeV ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.KType      -> _Type
   S.KInterface -> _Interface
   S.TString    -> _String
-  S.TForAll{}  -> shift
-  S.TArrow{}   -> shift
-  S.TComp{}    -> shift
-  S.TApp{}     -> shift
+  S.TForAll{}  -> toV
+  S.TArrow{}   -> toV
+  S.TComp{}    -> toV
+  S.TApp{}     -> toV
   where
-  shift = TThunk <$> synthTypeC ty
+  toV = shift <$> synthTypeC ty
+  shift = \case
+    TComp [] _T -> _T
+    _T          -> TThunk _T
 
 -- | Check a type at a kind.
 --
