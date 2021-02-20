@@ -206,7 +206,7 @@ showEval e = Action $ do
 runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
 runEvalMain e = runEval handle pure (E.quoteC 0 =<< eval e)
   where
-  handle :: Has (Throw (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => Q Name -> Snoc (Value V m) -> (Value V m -> m (Comp C m)) -> m (Comp C m)
+  handle :: Has (Throw (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => Q Name -> Snoc (Value V m) -> (Value V m -> m (Value C m)) -> m (Value C m)
   handle q sp k = case q of
     FromList ["Effect", "Console"] :.: N "write"
       | FromList [E.VString s] <- sp -> outputText s *> k unit
