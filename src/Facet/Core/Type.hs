@@ -4,13 +4,13 @@ module Facet.Core.Type
   Type(..)
 , N
 , P
-, mkComp
 , unComp
-, mkThunk
 , unThunk
 , occursIn
   -- * Type expressions
 , TExpr(..)
+  -- * Shifts
+, Shift(..)
   -- * Quotation
 , quote
 , eval
@@ -49,19 +49,16 @@ data Type u where
   String :: Type P
   Thunk :: Type N -> Type P
 
-
-mkComp :: Type P -> Type N
-mkComp t = fromMaybe (Comp [] t) (unThunk t)
+instance Shift Type where
+  shiftP t = fromMaybe (Comp [] t) (unThunk t)
+  shiftN = \case
+    Comp [] t -> t
+    t         -> Thunk t
 
 unComp :: Has Empty sig m => Type N -> m ([Type P], Type P)
 unComp = \case
   Comp sig _T -> pure (sig, _T)
   _T          -> empty
-
-mkThunk :: Type N -> Type P
-mkThunk = \case
-  Comp [] t -> t
-  t         -> Thunk t
 
 unThunk :: Has Empty sig m => Type P -> m (Type N)
 unThunk = \case
@@ -109,6 +106,21 @@ deriving instance Eq   (TExpr u)
 deriving instance Ord  (TExpr u)
 deriving instance Show (TExpr u)
 
+instance Shift TExpr where
+  shiftP = \case
+    TThunk t -> t
+    t        -> TComp [] t
+  shiftN = \case
+    TComp [] t -> t
+    t          -> TThunk t
+
+
+-- Shifting
+
+class Shift t where
+  shiftP :: t P -> t N
+  shiftN :: t N -> t P
+
 
 -- Quotation
 
@@ -130,7 +142,7 @@ eval subst = go where
   go env = \case
     TForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> Arrow n q (eval subst env a) (go env b)
-    TComp [] t       -> mkComp (go env t)
+    TComp [] t       -> shiftP (go env t)
     TComp s t        -> Comp (go env <$> s) (go env t)
     TApp  f a        -> go env f `app`  eval subst env a
     TType            -> Type
@@ -139,7 +151,7 @@ eval subst = go where
     TVar (Global n)  -> Var (Global n)
     TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TVar (Metavar m) -> maybe (Var (Metavar m)) tm (lookupMeta m subst)
-    TThunk t         -> mkThunk (go env t)
+    TThunk t         -> shiftN (go env t)
 
 
 -- Substitution
