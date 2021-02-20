@@ -6,8 +6,7 @@
 module Facet.Eval
 ( -- * Evaluation
   eval
-, evalV'
-, evalC'
+, eval'
   -- * Machinery
 , Handler
 , runEval
@@ -72,31 +71,28 @@ evalV e = case e of
   where
   thunk = vthunk <$> evalC e
 
-evalC' :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr' C -> EnvC m (Value C (Eval m))
-evalC' = \case
-  EXTLam b    -> evalC' b
-  EXInst f _  -> evalC' f
-  EXLam cs    -> lam (fmap evalC' <$> cs)
-  EXApp  f a  -> evalC' f $$ evalV' a
-  EXOp n _ sp -> op n (evalV' <$> sp)
-  EXReturn v  -> lift . creturn =<< evalV' v
-  EXForce v   -> do
+eval' :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr' u -> EnvC m (Value u (Eval m))
+eval' = \case
+  EXTLam b          -> eval' b
+  EXInst f _        -> eval' f
+  EXLam cs          -> lam (fmap eval' <$> cs)
+  EXApp  f a        -> eval' f $$ eval' a
+  EXOp n _ sp       -> op n (eval' <$> sp)
+  EXReturn v        -> lift . creturn =<< eval' v
+  EXForce v         -> do
      -- enforced by the types; force takes a value of type U B, i.e. a thunk.
-    VThunk v' <- evalV' v
+    VThunk v' <- eval' v
     pure v'
-  EXBind a b  -> do
+  EXBind a b        -> do
      -- enforced by the types; bind takes a computation of type F A on the left, i.e. a return.
-    CReturn a' <- evalC' a
-    local (:> a') (evalC' b)
-
-evalV' :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr' V -> EnvC m (Value V (Eval m))
-evalV' = \case
+    CReturn a' <- eval' a
+    local (:> a') (eval' b)
   EXVar (Global n)  -> evalV =<< global n -- this will have to do until we store values in the global environment
   EXVar (Free v)    -> var v
   EXVar (Metavar m) -> case m of {}
-  EXCon n _ fs      -> VCon n <$> traverse evalV' fs
+  EXCon n _ fs      -> VCon n <$> traverse eval' fs
   EXString s        -> pure $ VString s
-  EXThunk b         -> VThunk <$> evalC' b -- this is definitely wrong, VThunk should definitely hold a computation
+  EXThunk b         -> VThunk <$> eval' b -- this is definitely wrong, VThunk should definitely hold a computation
 
 
 -- Combinators
