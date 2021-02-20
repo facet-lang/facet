@@ -19,6 +19,7 @@ module Facet.Core.Type
 , showType
   -- * Type expressions
 , TExpr(..)
+, TExpr'(..)
 , CTExpr(..)
 , VTExpr(..)
   -- * Quotation
@@ -196,6 +197,19 @@ data TExpr
   | TF TExpr
   | TU TExpr
   deriving (Eq, Ord, Show)
+
+data TExpr' u where
+  TXForAll :: Name -> CTExpr -> CTExpr -> TExpr' C
+  TXArrow :: Maybe Name -> Quantity -> TExpr' V -> TExpr' C -> TExpr' C
+  TXComp :: [TExpr' C] -> TExpr' C -> TExpr' C
+  TXInst :: TExpr' C -> TExpr' V -> TExpr' C
+  TXApp :: TExpr' C -> TExpr' V -> TExpr' C
+  TXF :: TExpr' V -> TExpr' C
+  TXType :: TExpr' V
+  TXInterface :: TExpr' V
+  TXString :: TExpr' V
+  TXVar :: Var Meta Index -> TExpr' V
+  TXU :: TExpr' C -> TExpr' V
 
 data CTExpr
   = CXForAll Name CTExpr CTExpr
