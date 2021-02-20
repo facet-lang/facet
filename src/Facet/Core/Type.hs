@@ -59,7 +59,7 @@ data Type
   | VNe (Var Meta Level) (Snoc Type) (Snoc Type)
   | VComp [Type] Type
   | VF Type
-  | VU Type
+  | VThunk Type
 
 
 data Type' u where
@@ -73,7 +73,7 @@ data Type' u where
   Type :: Type' V
   Interface :: Type' V
   String :: Type' V
-  U :: Type' C -> Type' V
+  Thunk :: Type' C -> Type' V
 
 
 global :: Q Name -> Type
@@ -108,7 +108,7 @@ occursIn p = go
     VNe h ts sp    -> p h || any (go d) ts || any (go d) sp
     VString        -> False
     VF t           -> go d t
-    VU t           -> go d t
+    VThunk t       -> go d t
 
 
 -- Elimination
@@ -157,7 +157,7 @@ showType env = \case
   VComp s t     -> sig s <+> showType env t
   VString       -> string "String"
   VF t          -> showType env t
-  VU t          -> showType env t
+  VThunk t          -> showType env t
   where
   sig s = bracket (commaSep (map (showType env) s))
   ($$*) = foldl' (\ f a -> prec 10 (f <+> a))
@@ -185,7 +185,7 @@ data TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
   | TF TExpr
-  | TU TExpr
+  | TThunk TExpr
   deriving (Eq, Ord, Show)
 
 data TExpr' u where
@@ -199,7 +199,7 @@ data TExpr' u where
   TXInterface :: TExpr' V
   TXString :: TExpr' V
   TXVar :: Var Meta Index -> TExpr' V
-  TXU :: TExpr' C -> TExpr' V
+  TXThunk :: TExpr' C -> TExpr' V
 
 deriving instance Eq   (TExpr' u)
 deriving instance Ord  (TExpr' u)
@@ -218,7 +218,7 @@ quote d = \case
   VComp s t      -> TComp (quote d <$> s) (quote d t)
   VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
   VF t           -> TF (quote d t)
-  VU t           -> TU (quote d t)
+  VThunk t       -> TThunk (quote d t)
 
 quote' :: Level -> Type' u -> TExpr' u
 quote' d = \case
@@ -231,7 +231,7 @@ quote' d = \case
   Type          -> TXType
   Interface     -> TXInterface
   String        -> TXString
-  U t           -> TXU (quote' d t)
+  Thunk t       -> TXThunk (quote' d t)
 
 eval :: HasCallStack => Subst Type -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
@@ -248,7 +248,7 @@ eval subst = go where
     TInst f a        -> go env f $$$ go env a
     TApp  f a        -> go env f $$  go env a
     TF t             -> VF (go env t)
-    TU t             -> VU (go env t)
+    TThunk t         -> VThunk (go env t)
 
 eval' :: HasCallStack => Subst (Type' V) -> Snoc (Either (Type' V) a) -> TExpr' u -> Type' u
 eval' subst = go where
@@ -266,7 +266,7 @@ eval' subst = go where
     TXVar (Global n)  -> Var (Global n)
     TXVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TXVar (Metavar m) -> maybe (Var (Metavar m)) tm (lookupMeta m subst)
-    TXU t             -> U (eval' subst env t)
+    TXThunk t         -> Thunk (eval' subst env t)
 
 
 -- Substitution
