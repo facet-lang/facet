@@ -258,7 +258,6 @@ eval subst = go where
 
 eval' :: HasCallStack => Subst (Type' V) -> Snoc (Either (Type' V) a) -> TExpr' u -> Type' u
 eval' subst = go where
-  go :: Snoc (Either (Type' V) a) -> TExpr' u -> Type' u
   go env = \case
     TXForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
     TXArrow n q a b   -> Arrow n q (eval' subst env a) (go env b)
