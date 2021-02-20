@@ -211,6 +211,10 @@ data TExpr' u where
   TXVar :: Var Meta Index -> TExpr' V
   TXU :: TExpr' C -> TExpr' V
 
+deriving instance Eq   (TExpr' u)
+deriving instance Ord  (TExpr' u)
+deriving instance Show (TExpr' u)
+
 data CTExpr
   = CXForAll Name CTExpr CTExpr
   | CXArrow (Maybe Name) Quantity VTExpr CTExpr
