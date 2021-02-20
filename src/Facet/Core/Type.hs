@@ -65,7 +65,7 @@ data Type
 data Type' u where
   ForAll :: Name -> Type' C -> (Type' V -> Type' C) -> Type' C
   Arrow :: Maybe Name -> Quantity -> Type' V -> Type' C -> Type' C
-  Comp :: [Type' C] -> Type' C -> Type' C -- FIXME: I think this should probably be combined with F and Ne
+  Comp :: [Type' V] -> Type' V -> Type' C -- FIXME: I think this should probably be combined with F and Ne
   Ne :: Var Meta Level -> Snoc (Type' V) -> Snoc (Type' V) -> Type' C
   F :: Type' V -> Type' C
 
@@ -191,7 +191,7 @@ data TExpr
 data TExpr' u where
   TXForAll :: Name -> TExpr' C -> TExpr' C -> TExpr' C
   TXArrow :: Maybe Name -> Quantity -> TExpr' V -> TExpr' C -> TExpr' C
-  TXComp :: [TExpr' C] -> TExpr' C -> TExpr' C
+  TXComp :: [TExpr' V] -> TExpr' V -> TExpr' C
   TXInst :: TExpr' C -> TExpr' V -> TExpr' C
   TXApp :: TExpr' C -> TExpr' V -> TExpr' C
   TXF :: TExpr' V -> TExpr' C
@@ -252,6 +252,7 @@ eval subst = go where
 
 eval' :: HasCallStack => Subst (Type' V) -> Snoc (Either (Type' V) a) -> TExpr' u -> Type' u
 eval' subst = go where
+  go :: Snoc (Either (Type' V) a) -> TExpr' u -> Type' u
   go env = \case
     TXForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
     TXArrow n q a b   -> Arrow n q (eval' subst env a) (go env b)
