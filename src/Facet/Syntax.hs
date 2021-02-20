@@ -8,6 +8,9 @@ module Facet.Syntax
   -- * Decomposition
 , splitl
 , splitr
+  -- * Universes
+, C
+, V
 ) where
 
 import Data.Bifoldable
@@ -89,3 +92,12 @@ splitr un = go id
   go as t = case un t of
     Just (a, t') -> go (as . (a:)) t'
     Nothing      -> (as [], t)
+
+
+-- Universes
+
+-- | Type tag for the computation universe.
+data C
+
+-- | Type tag for the value universe.
+data V

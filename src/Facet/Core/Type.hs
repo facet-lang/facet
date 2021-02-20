@@ -61,12 +61,6 @@ data Type
   | VF Type
   | VU Type
 
--- | Type tag for the computation universe.
-data C
-
--- | Type tag for the value universe.
-data V
-
 
 data Type' u where
   ForAll :: Name -> Type' C -> (Type' V -> Type' C) -> Type' C
