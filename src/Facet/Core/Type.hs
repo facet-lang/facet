@@ -4,8 +4,7 @@ module Facet.Core.Type
   Type(..)
 , C
 , V
-, CType(..)
-, VType(..)
+, Type'
 , global
 , free
 , metavar
@@ -73,32 +72,17 @@ data V
 
 
 data Type' u where
-  ForAll' :: Name -> Type' C -> (Type' V -> Type' C) -> Type' C
-  Arrow' :: Maybe Name -> Quantity -> Type' V -> Type' C -> Type' C
-  Comp' :: [Type' C] -> Type' C -> Type' C
-  Ne' :: Var Meta Level -> Snoc (Type' V) -> Snoc (Type' V) -> Type' C
-  F' :: Type' V -> Type' C
+  ForAll :: Name -> Type' C -> (Type' V -> Type' C) -> Type' C
+  Arrow :: Maybe Name -> Quantity -> Type' V -> Type' C -> Type' C
+  Comp :: [Type' C] -> Type' C -> Type' C -- FIXME: I think this should probably be combined with F and Ne
+  Ne :: Var Meta Level -> Snoc (Type' V) -> Snoc (Type' V) -> Type' C
+  F :: Type' V -> Type' C
 
-  Var' :: Var Meta Level -> Type' V
-  Type' :: Type' V
-  Interface' :: Type' V
-  String' :: Type' V
-  U' :: Type' C -> Type' V
-
-
-data CType
-  = ForAll Name CType (VType -> CType)
-  | Arrow (Maybe Name) Quantity VType CType
-  | Comp [CType] CType -- FIXME: I think this should probably be combined with F and Ne
-  | Ne (Var Meta Level) (Snoc VType) (Snoc VType)
-  | F VType
-
-data VType
-  = Var (Var Meta Level)
-  | Type
-  | Interface
-  | String
-  | U CType
+  Var :: Var Meta Level -> Type' V
+  Type :: Type' V
+  Interface :: Type' V
+  String :: Type' V
+  U :: Type' C -> Type' V
 
 
 global :: Q Name -> Type
@@ -158,11 +142,11 @@ _             $$$ _ = error "can’t apply non-neutral/forall type"
 infixl 9 $$$, $$$*
 
 
-app :: HasCallStack => CType -> VType -> CType
+app :: HasCallStack => Type' C -> Type' V -> Type' C
 app (Ne h ts es) a = Ne h ts (es :> a)
 app _            _ = error "can’t apply non-neutral/forall type"
 
-inst :: HasCallStack => CType -> VType -> CType
+inst :: HasCallStack => Type' C -> Type' V -> Type' C
 inst (Ne h ts es)   t = Ne h (ts :> t) es
 inst (ForAll _ _ b) t = b t
 inst _              _ = error "can’t apply non-neutral/forall type"
@@ -245,7 +229,7 @@ quote d = \case
   VF t           -> TF (quote d t)
   VU t           -> TU (quote d t)
 
-quoteC :: Level -> CType -> CTExpr
+quoteC :: Level -> Type' C -> CTExpr
 quoteC d = \case
   ForAll n t b  -> CXForAll n (quoteC d t) (quoteC (succ d) (b (Var (Free d))))
   Arrow n q a b -> CXArrow n q (quoteV d a) (quoteC d b)
@@ -253,7 +237,7 @@ quoteC d = \case
   Ne n ts sp    -> foldl' (&) (foldl' (&) (CXF (VXVar (levelToIndex d <$> n))) (flip CXInst . quoteV d <$> ts)) (flip CXApp . quoteV d <$> sp)
   F t           -> CXF (quoteV d t)
 
-quoteV :: Level -> VType -> VTExpr
+quoteV :: Level -> Type' V -> VTExpr
 quoteV d = \case
   Var n     -> VXVar (levelToIndex d <$> n)
   Type      -> VXType
@@ -278,7 +262,7 @@ eval subst = go where
     TF t             -> VF (go env t)
     TU t             -> VU (go env t)
 
-evalC :: HasCallStack => Subst VType -> Snoc (Either VType a) -> CTExpr -> CType
+evalC :: HasCallStack => Subst (Type' V) -> Snoc (Either (Type' V) a) -> CTExpr -> Type' C
 evalC subst = go where
   go env = \case
     CXForAll n t b  -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
@@ -288,7 +272,7 @@ evalC subst = go where
     CXApp  f a      -> go env f `app`  evalV subst env a
     CXF t           -> F (evalV subst env t)
 
-evalV :: HasCallStack => Subst VType -> Snoc (Either VType a) -> VTExpr -> VType
+evalV :: HasCallStack => Subst (Type' V) -> Snoc (Either (Type' V) a) -> VTExpr -> Type' V
 evalV subst = go where
   go env = \case
     VXType            -> Type
