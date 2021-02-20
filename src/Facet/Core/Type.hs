@@ -37,7 +37,6 @@ module Facet.Core.Type
 import           Control.Effect.Empty
 import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
-import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
 import           Facet.Name
 import           Facet.Semiring
@@ -216,7 +215,7 @@ quote d = \case
   VForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
   VComp s t      -> TComp (quote d <$> s) (quote d t)
-  VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
+  VNe n ts sp    -> foldl' TApp (foldl' TInst (TVar (levelToIndex d <$> n)) (quote d <$> ts)) (quote d <$> sp)
   VF t           -> TF (quote d t)
   VThunk t       -> TThunk (quote d t)
 
@@ -225,7 +224,7 @@ quote' d = \case
   ForAll n t b  -> TXForAll n (quote' d t) (quote' (succ d) (b (Var (Free d))))
   Arrow n q a b -> TXArrow n q (quote' d a) (quote' d b)
   Comp s t      -> TXComp (quote' d <$> s) (quote' d t)
-  Ne n ts sp    -> foldl' (&) (foldl' (&) (TXF (TXVar (levelToIndex d <$> n))) (flip TXInst . quote' d <$> ts)) (flip TXApp . quote' d <$> sp)
+  Ne n ts sp    -> foldl' TXApp (foldl' TXInst (TXF (TXVar (levelToIndex d <$> n))) (quote' d <$> ts)) (quote' d <$> sp)
   F t           -> TXF (quote' d t)
   Var n         -> TXVar (levelToIndex d <$> n)
   Type          -> TXType
