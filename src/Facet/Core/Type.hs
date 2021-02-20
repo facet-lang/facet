@@ -4,6 +4,7 @@ module Facet.Core.Type
   Type(..)
 , N
 , P
+, mkComp
 , unComp
 , unThunk
 , occursIn
@@ -25,6 +26,7 @@ import           Control.Effect.Empty
 import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
+import           Data.Maybe (fromMaybe)
 import           Facet.Name
 import           Facet.Snoc
 import           Facet.Syntax
@@ -46,6 +48,9 @@ data Type u where
   String :: Type P
   Thunk :: Type N -> Type P
 
+
+mkComp :: Type P -> Type N
+mkComp t = fromMaybe (Comp [] t) (unThunk t)
 
 unComp :: Has Empty sig m => Type N -> m ([Type P], Type P)
 unComp = \case
