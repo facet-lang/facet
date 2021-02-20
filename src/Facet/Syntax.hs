@@ -9,8 +9,8 @@ module Facet.Syntax
 , splitl
 , splitr
   -- * Universes
-, C
-, V
+, N
+, P
 ) where
 
 import Data.Bifoldable
@@ -97,7 +97,7 @@ splitr un = go id
 -- Universes
 
 -- | Type tag for the negative type universe (“computations”).
-data C
+data N
 
 -- | Type tag for the positive type universe (“values”).
-data V
+data P

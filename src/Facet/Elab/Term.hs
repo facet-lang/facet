@@ -60,7 +60,7 @@ import           GHC.Stack
 -- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Algebra sig m => Q Name ::: Type V -> Synth m Expr
+global :: Algebra sig m => Q Name ::: Type P -> Synth m Expr
 global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
@@ -171,10 +171,10 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstractType :: forall u m sig . (HasCallStack, Has (Throw Err) sig m) => Elab m (TExpr C) -> Type u -> Elab m (TExpr C)
+abstractType :: forall u m sig . (HasCallStack, Has (Throw Err) sig m) => Elab m (TExpr N) -> Type u -> Elab m (TExpr N)
 abstractType body = go
   where
-  go :: Type v -> Elab m (TExpr C)
+  go :: Type v -> Elab m (TExpr N)
   go = \case
     Thunk t               -> go t
     ForAll       n    t b -> do
@@ -187,7 +187,7 @@ abstractType body = go
       pure $ TForAll n (T.quote level a) b'
     _                      -> body
 
-abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc (TExpr V) -> Snoc Expr -> Expr) -> Check m Expr
+abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc (TExpr P) -> Snoc Expr -> Expr) -> Check m Expr
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
@@ -209,9 +209,9 @@ abstractTerm body = go Nil Nil
 
 elabDataDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
-  => Name ::: Type V
+  => Name ::: Type P
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m [Name :=: Maybe Def ::: Type V]
+  -> m [Name :=: Maybe Def ::: Type P]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
@@ -225,9 +225,9 @@ elabDataDef (dname ::: _T) constructors = do
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
-  => Name ::: Type V
+  => Name ::: Type P
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m [Name :=: Maybe Def ::: Type V]
+  -> m [Name :=: Maybe Def ::: Type P]
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
@@ -240,7 +240,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
-  => Type V
+  => Type P
   -> S.Ann S.Expr
   -> m Expr
 elabTermDef _T expr@(S.Ann s _ _) = do
@@ -294,15 +294,15 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 -- Errors
 
-expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> Type V -> Elab m (Name ::: Type V, Type V -> Type C)
+expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m (Name ::: Type P, Type P -> Type N)
 expectQuantifier = expectMatch (\case{ ForAll n t b -> pure (n ::: t, b) ; _ -> Nothing } <=< unThunk) "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
-expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type V -> Elab m ((Quantity, Type V), Type C)
+expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m ((Quantity, Type P), Type N)
 expectTacitFunction = expectMatch (\case{ Arrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing } <=< unThunk) "_ -> _"
 
 -- | Expect a computation type with effects.
-expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type V -> Elab m ([Type V], Type V)
+expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m ([Type P], Type P)
 expectRet = expectMatch (\case{ Comp s t -> pure (s, t) ; _ -> Nothing } <=< unThunk) "[_] _"
 
 

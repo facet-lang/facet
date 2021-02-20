@@ -30,7 +30,7 @@ import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 
-tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m (TExpr V)
+tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m (TExpr P)
 tvar n = Synth $ views context_ (lookupInContext n) >>= \case
   Just (i, q, _T) -> use i q $> (TVar (Free i) ::: _T)
   Nothing         -> do
@@ -38,17 +38,17 @@ tvar n = Synth $ views context_ (lookupInContext n) >>= \case
     pure $ TVar (Global q) ::: _T
 
 
-_Type :: Synth m (TExpr V)
+_Type :: Synth m (TExpr P)
 _Type = Synth $ pure $ TType ::: Type
 
-_Interface :: Synth m (TExpr V)
+_Interface :: Synth m (TExpr P)
 _Interface = Synth $ pure $ TInterface ::: Type
 
-_String :: Synth m (TExpr V)
+_String :: Synth m (TExpr P)
 _String = Synth $ pure $ TString ::: Type
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check m (TExpr V) -> Check m (TExpr C) -> Synth m (TExpr C)
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check m (TExpr P) -> Check m (TExpr N) -> Synth m (TExpr N)
 forAll (n ::: t) b = Synth $ do
   t' <- check (t ::: Type)
   env <- views context_ toEnv
@@ -57,7 +57,7 @@ forAll (n ::: t) b = Synth $ do
   b' <- Binding n zero vt |- check (b ::: Type)
   pure $ TForAll n t' b' ::: Type
 
-(-->) :: Algebra sig m => Maybe Name ::: Check m (Quantity, TExpr V) -> Check m (TExpr C) -> Synth m (TExpr C)
+(-->) :: Algebra sig m => Maybe Name ::: Check m (Quantity, TExpr P) -> Check m (TExpr N) -> Synth m (TExpr N)
 (n ::: a) --> b = Synth $ do
   (q', a') <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -66,7 +66,7 @@ forAll (n ::: t) b = Synth $ do
 infixr 1 -->
 
 
-comp :: Algebra sig m => [Check m (TExpr V)] -> Check m (TExpr V) -> Synth m (TExpr C)
+comp :: Algebra sig m => [Check m (TExpr P)] -> Check m (TExpr P) -> Synth m (TExpr N)
 comp s t = Synth $ do
   s' <- traverse (check . (::: Interface)) s
   -- FIXME: classify types by universe (value/computation) and check that this is a value type being returned
@@ -74,7 +74,7 @@ comp s t = Synth $ do
   pure $ TComp s' t' ::: Type
 
 
-synthTypeC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (TExpr C)
+synthTypeC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (TExpr N)
 synthTypeC ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TForAll n t b   -> forAll (n ::: checkTypeV t) (checkTypeC b)
   S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkTypeV a)) --> checkTypeC b
@@ -93,7 +93,7 @@ synthTypeC ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
     S.Zero -> zero
     S.One  -> one
 
-synthTypeV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (TExpr V)
+synthTypeV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (TExpr P)
 synthTypeV ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TVar n     -> tvar n -- FIXME: instantiate in synthType instead
   S.KType      -> _Type
@@ -112,20 +112,20 @@ synthTypeV ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
 -- | Check a type at a kind.
 --
 -- NB: while synthesis is possible for all types at present, I reserve the right to change that.
-checkTypeC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m (TExpr C)
+checkTypeC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m (TExpr N)
 checkTypeC = switch . synthTypeC
 
 -- | Check a type at a kind.
 --
 -- NB: while synthesis is possible for all types at present, I reserve the right to change that.
-checkTypeV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m (TExpr V)
+checkTypeV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m (TExpr P)
 checkTypeV = switch . synthTypeV
 
-synthInterfaceC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (TExpr C)
+synthInterfaceC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (TExpr N)
 synthInterfaceC (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
   foldl' (app TApp) h' (checkTypeV <$> sp)
   where
   h' = mapSynth (pushSpan sh . fmap (first (TComp []))) (tvar h)
 
-checkInterfaceV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check m (TExpr V)
+checkInterfaceV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check m (TExpr P)
 checkInterfaceV = switch . fmap TThunk . synthInterfaceC

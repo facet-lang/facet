@@ -2,8 +2,8 @@
 module Facet.Core.Type
 ( -- * Types
   Type(..)
-, C
-, V
+, N
+, P
 , global
 , free
 , metavar
@@ -38,38 +38,38 @@ import           Prelude hiding (lookup)
 -- Types
 
 data Type u where
-  ForAll :: Name -> Type V -> (Type V -> Type C) -> Type C
-  Arrow :: Maybe Name -> Quantity -> Type V -> Type C -> Type C
-  Comp :: [Type V] -> Type V -> Type C
-  Ne :: Var Meta Level -> Snoc (Type V) -> Type C
+  ForAll :: Name -> Type P -> (Type P -> Type N) -> Type N
+  Arrow :: Maybe Name -> Quantity -> Type P -> Type N -> Type N
+  Comp :: [Type P] -> Type P -> Type N
+  Ne :: Var Meta Level -> Snoc (Type P) -> Type N
 
-  Var :: Var Meta Level -> Type V
-  Type :: Type V
-  Interface :: Type V
-  String :: Type V
-  Thunk :: Type C -> Type V
+  Var :: Var Meta Level -> Type P
+  Type :: Type P
+  Interface :: Type P
+  String :: Type P
+  Thunk :: Type N -> Type P
 
 
-global :: Q Name -> Type C
+global :: Q Name -> Type N
 global = var . Global
 
-free :: Level -> Type C
+free :: Level -> Type N
 free = var . Free
 
-metavar :: Meta -> Type C
+metavar :: Meta -> Type N
 metavar = var . Metavar
 
 
-var :: Var Meta Level -> Type C
+var :: Var Meta Level -> Type N
 var v = Ne v Nil
 
 
-unComp :: Has Empty sig m => Type C -> m ([Type V], Type V)
+unComp :: Has Empty sig m => Type N -> m ([Type P], Type P)
 unComp = \case
   Comp sig _T -> pure (sig, _T)
   _T          -> empty
 
-unThunk :: Has Empty sig m => Type V -> m (Type C)
+unThunk :: Has Empty sig m => Type P -> m (Type N)
 unThunk = \case
   Thunk t -> pure t
   _       -> empty
@@ -93,7 +93,7 @@ occursIn p = go
 
 -- Elimination
 
-app :: HasCallStack => Type C -> Type V -> Type C
+app :: HasCallStack => Type N -> Type P -> Type N
 app (Ne h es) a = Ne h (es :> a)
 app _         _ = error "can’t apply non-neutral/forall type"
 
@@ -101,15 +101,15 @@ app _         _ = error "can’t apply non-neutral/forall type"
 -- Type expressions
 
 data TExpr u where
-  TForAll :: Name -> TExpr V -> TExpr C -> TExpr C
-  TArrow :: Maybe Name -> Quantity -> TExpr V -> TExpr C -> TExpr C
-  TComp :: [TExpr V] -> TExpr V -> TExpr C
-  TApp :: TExpr C -> TExpr V -> TExpr C
-  TType :: TExpr V
-  TInterface :: TExpr V
-  TString :: TExpr V
-  TVar :: Var Meta Index -> TExpr V
-  TThunk :: TExpr C -> TExpr V
+  TForAll :: Name -> TExpr P -> TExpr N -> TExpr N
+  TArrow :: Maybe Name -> Quantity -> TExpr P -> TExpr N -> TExpr N
+  TComp :: [TExpr P] -> TExpr P -> TExpr N
+  TApp :: TExpr N -> TExpr P -> TExpr N
+  TType :: TExpr P
+  TInterface :: TExpr P
+  TString :: TExpr P
+  TVar :: Var Meta Index -> TExpr P
+  TThunk :: TExpr N -> TExpr P
 
 deriving instance Eq   (TExpr u)
 deriving instance Ord  (TExpr u)
@@ -130,9 +130,9 @@ quote d = \case
   String        -> TString
   Thunk t       -> TThunk (quote d t)
 
-eval :: HasCallStack => Subst (Type V) -> Snoc (Either (Type V) a) -> TExpr u -> Type u
+eval :: HasCallStack => Subst (Type P) -> Snoc (Either (Type P) a) -> TExpr u -> Type u
 eval subst = go where
-  go :: Snoc (Either (Type V) a) -> TExpr u -> Type u
+  go :: Snoc (Either (Type P) a) -> TExpr u -> Type u
   go env = \case
     TForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> Arrow n q (eval subst env a) (go env b)
