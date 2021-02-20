@@ -22,8 +22,7 @@ module Facet.Core.Type
 , TExpr'(..)
   -- * Quotation
 , quote
-, quoteC
-, quoteV
+, quote'
 , eval
 , evalC
 , evalV
@@ -228,21 +227,18 @@ quote d = \case
   VF t           -> TF (quote d t)
   VU t           -> TU (quote d t)
 
-quoteC :: Level -> Type' C -> TExpr' C
-quoteC d = \case
-  ForAll n t b  -> TXForAll n (quoteC d t) (quoteC (succ d) (b (Var (Free d))))
-  Arrow n q a b -> TXArrow n q (quoteV d a) (quoteC d b)
-  Comp s t      -> TXComp (quoteC d <$> s) (quoteC d t)
-  Ne n ts sp    -> foldl' (&) (foldl' (&) (TXF (TXVar (levelToIndex d <$> n))) (flip TXInst . quoteV d <$> ts)) (flip TXApp . quoteV d <$> sp)
-  F t           -> TXF (quoteV d t)
-
-quoteV :: Level -> Type' V -> TExpr' V
-quoteV d = \case
-  Var n     -> TXVar (levelToIndex d <$> n)
-  Type      -> TXType
-  Interface -> TXInterface
-  String    -> TXString
-  U t       -> TXU (quoteC d t)
+quote' :: Level -> Type' u -> TExpr' u
+quote' d = \case
+  ForAll n t b  -> TXForAll n (quote' d t) (quote' (succ d) (b (Var (Free d))))
+  Arrow n q a b -> TXArrow n q (quote' d a) (quote' d b)
+  Comp s t      -> TXComp (quote' d <$> s) (quote' d t)
+  Ne n ts sp    -> foldl' (&) (foldl' (&) (TXF (TXVar (levelToIndex d <$> n))) (flip TXInst . quote' d <$> ts)) (flip TXApp . quote' d <$> sp)
+  F t           -> TXF (quote' d t)
+  Var n         -> TXVar (levelToIndex d <$> n)
+  Type          -> TXType
+  Interface     -> TXInterface
+  String        -> TXString
+  U t           -> TXU (quote' d t)
 
 eval :: HasCallStack => Subst Type -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
