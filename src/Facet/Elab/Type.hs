@@ -86,7 +86,7 @@ synthTypeC ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   where
   shift = Synth $ do
     _T ::: _K <- synth (synthTypeV ty)
-    instantiate TInst (TComp [] _T ::: _K)
+    pure $ TComp [] _T ::: _K
   interpretMul = \case
     S.Zero -> zero
     S.One  -> one
@@ -120,7 +120,7 @@ synthInterfaceC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface ->
 synthInterfaceC (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
   foldl' (app TApp) h' (checkTypeV <$> sp)
   where
-  h' = mapSynth (pushSpan sh . instantiate TInst . first (TComp []) =<<) (tvar h)
+  h' = mapSynth (pushSpan sh . fmap (first (TComp []))) (tvar h)
 
 checkInterfaceV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check m (TExpr V)
 checkInterfaceV = switch . fmap TThunk . synthInterfaceC

@@ -41,7 +41,7 @@ data Type u where
   ForAll :: Name -> Type V -> (Type V -> Type C) -> Type C
   Arrow :: Maybe Name -> Quantity -> Type V -> Type C -> Type C
   Comp :: [Type V] -> Type V -> Type C
-  Ne :: Var Meta Level -> Snoc (Type V) -> Snoc (Type V) -> Type C
+  Ne :: Var Meta Level -> Snoc (Type V) -> Type C
 
   Var :: Var Meta Level -> Type V
   Type :: Type V
@@ -61,7 +61,7 @@ metavar = var . Metavar
 
 
 var :: Var Meta Level -> Type C
-var v = Ne v Nil Nil
+var v = Ne v Nil
 
 
 unComp :: Has Empty sig m => Type C -> m ([Type V], Type V)
@@ -86,7 +86,7 @@ occursIn p = go
     ForAll _ t b  -> go d t || go (succ d) (b (Var (Free d)))
     Arrow _ _ a b -> go d a || go d b
     Comp s t      -> any (go d) s || go d t
-    Ne h ts sp    -> p h || any (go d) ts || any (go d) sp
+    Ne h sp       -> p h || any (go d) sp
     String        -> False
     Thunk t       -> go d t
 
@@ -94,13 +94,8 @@ occursIn p = go
 -- Elimination
 
 app :: HasCallStack => Type C -> Type V -> Type C
-app (Ne h ts es) a = Ne h ts (es :> a)
-app _            _ = error "can’t apply non-neutral/forall type"
-
-inst :: HasCallStack => Type C -> Type V -> Type C
-inst (Ne h ts es)   t = Ne h (ts :> t) es
-inst (ForAll _ _ b) t = b t
-inst _              _ = error "can’t apply non-neutral/forall type"
+app (Ne h es) a = Ne h (es :> a)
+app _         _ = error "can’t apply non-neutral/forall type"
 
 
 -- Type expressions
@@ -109,7 +104,6 @@ data TExpr u where
   TForAll :: Name -> TExpr V -> TExpr C -> TExpr C
   TArrow :: Maybe Name -> Quantity -> TExpr V -> TExpr C -> TExpr C
   TComp :: [TExpr V] -> TExpr V -> TExpr C
-  TInst :: TExpr C -> TExpr V -> TExpr C
   TApp :: TExpr C -> TExpr V -> TExpr C
   TType :: TExpr V
   TInterface :: TExpr V
@@ -129,7 +123,7 @@ quote d = \case
   ForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (Var (Free d))))
   Arrow n q a b -> TArrow n q (quote d a) (quote d b)
   Comp s t      -> TComp (quote d <$> s) (quote d t)
-  Ne n ts sp    -> foldl' TApp (foldl' TInst (TComp [] (TVar (levelToIndex d <$> n))) (quote d <$> ts)) (quote d <$> sp)
+  Ne n sp       -> foldl' TApp (TComp [] (TVar (levelToIndex d <$> n))) (quote d <$> sp)
   Var n         -> TVar (levelToIndex d <$> n)
   Type          -> TType
   Interface     -> TInterface
@@ -143,7 +137,6 @@ eval subst = go where
     TForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> Arrow n q (eval subst env a) (go env b)
     TComp s t        -> Comp (go env <$> s) (go env t)
-    TInst f a        -> go env f `inst` eval subst env a
     TApp  f a        -> go env f `app`  eval subst env a
     TType            -> Type
     TInterface       -> Interface

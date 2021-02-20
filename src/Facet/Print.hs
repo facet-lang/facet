@@ -145,7 +145,7 @@ printType :: Options -> Snoc Print -> C.Type u -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
 printTExpr :: Options -> Snoc Print -> C.TExpr u -> Print
-printTExpr Options{ qname, instantiation } = go
+printTExpr Options{ qname } = go
   where
   qvar = group . setPrec Var . qname
   go :: Snoc Print -> C.TExpr u -> Print
@@ -160,7 +160,6 @@ printTExpr Options{ qname, instantiation } = go
     C.TArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
     C.TComp [] t            -> go env t
     C.TComp s t             -> sig s <+> go env t
-    C.TInst f t             -> group (go env f) `instantiation` group (braces (go env t))
     C.TApp f a              -> group (go env f) $$ group (go env a)
     C.TString               -> annotate Type $ pretty "String"
     C.TThunk t              -> go env t
