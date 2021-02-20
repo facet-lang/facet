@@ -141,13 +141,14 @@ suppressInstantiation = const
 
 -- Core printers
 
-printType :: Options -> Snoc Print -> C.Type -> Print
+printType :: Options -> Snoc Print -> C.Type u -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
-printTExpr :: Options -> Snoc Print -> C.TExpr -> Print
+printTExpr :: Options -> Snoc Print -> C.TExpr u -> Print
 printTExpr Options{ qname, instantiation } = go
   where
   qvar = group . setPrec Var . qname
+  go :: Snoc Print -> C.TExpr u -> Print
   go env = \case
     C.TVar (Global n)       -> qvar n
     C.TVar (Free d)         -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
@@ -165,6 +166,7 @@ printTExpr Options{ qname, instantiation } = go
     C.TThunk t              -> go env t
     where
     d = Name.Level (length env)
+    sig :: [C.TExpr u] -> Print
     sig s = brackets (commaSep (map (go env) s))
     mult q = if
       | q == zero -> (pretty '0' <+>)

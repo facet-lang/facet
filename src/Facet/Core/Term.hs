@@ -58,26 +58,26 @@ fill f = mapAccumL (const . f)
 data Expr
   = XVar (Var Void Index)
   | XTLam Expr
-  | XInst Expr T.TExpr
+  | XInst Expr (T.TExpr V)
   | XLam [(Pattern Name, Expr)]
   | XApp Expr Expr
-  | XCon (Q Name) (Snoc T.TExpr) (Snoc Expr)
+  | XCon (Q Name) (Snoc (T.TExpr V)) (Snoc Expr)
   | XString Text
-  | XOp (Q Name) (Snoc T.TExpr) (Snoc Expr)
+  | XOp (Q Name) (Snoc (T.TExpr V)) (Snoc Expr)
   deriving (Eq, Ord, Show)
 
 data Expr' u where
   EXTLam :: Expr' C -> Expr' C
-  EXInst :: Expr' C -> T.TExpr' V -> Expr' C
+  EXInst :: Expr' C -> T.TExpr V -> Expr' C
   EXLam :: [(Pattern Name, Expr' C)] -> Expr' C
   EXApp :: Expr' C -> Expr' V -> Expr' C
-  EXOp :: Q Name -> Snoc (T.TExpr' V) -> Snoc (Expr' V) -> Expr' C
+  EXOp :: Q Name -> Snoc (T.TExpr V) -> Snoc (Expr' V) -> Expr' C
   EXForce :: Expr' V -> Expr' C
   EXReturn :: Expr' V -> Expr' C
   -- | Evaluates the first operand, and then evaluates the second providing the value returned by the first as a variable in the environment.
   EXBind :: Expr' C -> Expr' C -> Expr' C
   EXVar :: Var Void Index -> Expr' V
-  EXCon :: Q Name -> Snoc (T.TExpr' V) -> Snoc (Expr' V) -> Expr' V
+  EXCon :: Q Name -> Snoc (T.TExpr V) -> Snoc (Expr' V) -> Expr' V
   EXString :: Text -> Expr' V
   EXThunk :: Expr' C -> Expr' V
 

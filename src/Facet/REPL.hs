@@ -31,7 +31,7 @@ import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
 import           Facet.Core.Term (Expr)
-import           Facet.Core.Type as T hiding (eval, showType)
+import           Facet.Core.Type as T hiding (eval)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
@@ -198,7 +198,7 @@ showType e = Action $ do
   outputDocLn (getPrint (ann (printExpr opts Nil e ::: printType opts Nil _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:N "Output"):) $ Elab.synth (Elab.synthExpr e)
+  e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.Var (Global (["Effect", "Console"]:.:N "Output")):) $ Elab.synth (Elab.synthExpr e)
   e'' <- runElab $ runEvalMain e'
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
@@ -217,7 +217,7 @@ runEvalMain e = runEval handle pure (E.quoteC 0 =<< eval e)
 
 showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
-  _T ::: _K <- runElab $ Elab.elabSynthType one (Elab.synth (Elab.synthType _T))
+  _T ::: _K <- runElab $ Elab.elabSynthType one (Elab.synth (Elab.synthTypeV _T))
   opts <- get
   outputDocLn (getPrint (ann (printType opts Nil _T ::: printType opts Nil _K)))
 
