@@ -138,7 +138,7 @@ eval subst = go where
     TVar (Global n)  -> Var (Global n)
     TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TVar (Metavar m) -> maybe (Var (Metavar m)) tm (lookupMeta m subst)
-    TThunk t         -> Thunk (go env t)
+    TThunk t         -> mkThunk (go env t)
 
 
 -- Substitution
