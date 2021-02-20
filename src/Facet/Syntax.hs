@@ -96,8 +96,8 @@ splitr un = go id
 
 -- Universes
 
--- | Type tag for the computation universe.
+-- | Type tag for the negative type universe (“computations”).
 data C
 
--- | Type tag for the value universe.
+-- | Type tag for the positive type universe (“values”).
 data V
