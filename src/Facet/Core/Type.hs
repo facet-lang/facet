@@ -57,16 +57,14 @@ data Type
   | VArrow (Maybe Name) Quantity Type Type
   | VNe (Var Meta Level) (Snoc Type) (Snoc Type)
   | VComp [Type] Type
-  | VF Type
   | VThunk Type
 
 
 data Type' u where
   ForAll :: Name -> Type' V -> (Type' V -> Type' C) -> Type' C
   Arrow :: Maybe Name -> Quantity -> Type' V -> Type' C -> Type' C
-  Comp :: [Type' V] -> Type' V -> Type' C -- FIXME: I think this should probably be combined with F and Ne
+  Comp :: [Type' V] -> Type' V -> Type' C
   Ne :: Var Meta Level -> Snoc (Type' V) -> Snoc (Type' V) -> Type' C
-  F :: Type' V -> Type' C
 
   Var :: Var Meta Level -> Type' V
   Type :: Type' V
@@ -106,7 +104,6 @@ occursIn p = go
     VComp s t      -> any (go d) s || go d t
     VNe h ts sp    -> p h || any (go d) ts || any (go d) sp
     VString        -> False
-    VF t           -> go d t
     VThunk t       -> go d t
 
 
@@ -155,7 +152,6 @@ showType env = \case
   VNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
   VComp s t     -> sig s <+> showType env t
   VString       -> string "String"
-  VF t          -> showType env t
   VThunk t          -> showType env t
   where
   sig s = bracket (commaSep (map (showType env) s))
@@ -183,7 +179,6 @@ data TExpr
   | TComp [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
-  | TF TExpr
   | TThunk TExpr
   deriving (Eq, Ord, Show)
 
@@ -193,7 +188,6 @@ data TExpr' u where
   TXComp :: [TExpr' V] -> TExpr' V -> TExpr' C
   TXInst :: TExpr' C -> TExpr' V -> TExpr' C
   TXApp :: TExpr' C -> TExpr' V -> TExpr' C
-  TXF :: TExpr' V -> TExpr' C
   TXType :: TExpr' V
   TXInterface :: TExpr' V
   TXString :: TExpr' V
@@ -216,7 +210,6 @@ quote d = \case
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
   VComp s t      -> TComp (quote d <$> s) (quote d t)
   VNe n ts sp    -> foldl' TApp (foldl' TInst (TVar (levelToIndex d <$> n)) (quote d <$> ts)) (quote d <$> sp)
-  VF t           -> TF (quote d t)
   VThunk t       -> TThunk (quote d t)
 
 quote' :: Level -> Type' u -> TExpr' u
@@ -224,8 +217,7 @@ quote' d = \case
   ForAll n t b  -> TXForAll n (quote' d t) (quote' (succ d) (b (Var (Free d))))
   Arrow n q a b -> TXArrow n q (quote' d a) (quote' d b)
   Comp s t      -> TXComp (quote' d <$> s) (quote' d t)
-  Ne n ts sp    -> foldl' TXApp (foldl' TXInst (TXF (TXVar (levelToIndex d <$> n))) (quote' d <$> ts)) (quote' d <$> sp)
-  F t           -> TXF (quote' d t)
+  Ne n ts sp    -> foldl' TXApp (foldl' TXInst (TXComp [] (TXVar (levelToIndex d <$> n))) (quote' d <$> ts)) (quote' d <$> sp)
   Var n         -> TXVar (levelToIndex d <$> n)
   Type          -> TXType
   Interface     -> TXInterface
@@ -246,7 +238,6 @@ eval subst = go where
     TComp s t        -> VComp (go env <$> s) (go env t)
     TInst f a        -> go env f $$$ go env a
     TApp  f a        -> go env f $$  go env a
-    TF t             -> VF (go env t)
     TThunk t         -> VThunk (go env t)
 
 eval' :: HasCallStack => Subst (Type' V) -> Snoc (Either (Type' V) a) -> TExpr' u -> Type' u
@@ -258,7 +249,6 @@ eval' subst = go where
     TXComp s t        -> Comp (go env <$> s) (go env t)
     TXInst f a        -> go env f `inst` go env a
     TXApp  f a        -> go env f `app`  go env a
-    TXF t             -> F (go env t)
     TXType            -> Type
     TXInterface       -> Interface
     TXString          -> String

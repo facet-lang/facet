@@ -345,8 +345,6 @@ unify t1 t2 = type' t1 t2
     (VNe{}, _)                                           -> nope
     (VString, VString)                                   -> pure ()
     (VString, _)                                         -> nope
-    (VF t1, VF t2)                                       -> type' t1 t2
-    (VF{}, _)                                            -> nope
     (VThunk t1, VThunk t2)                               -> type' t1 t2
     (VThunk{}, _)                                        -> nope
 
