@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 module Facet.Core.Term
 ( -- * Patterns
   ValuePattern(..)
@@ -9,6 +10,7 @@ module Facet.Core.Term
 , fill
   -- * Term expressions
 , Expr(..)
+, Expr'(..)
 , CExpr(..)
 , VExpr(..)
 ) where
@@ -65,6 +67,25 @@ data Expr
   | XString Text
   | XOp (Q Name) (Snoc T.TExpr) (Snoc Expr)
   deriving (Eq, Ord, Show)
+
+data Expr' u where
+  EXTLam :: Expr' C -> Expr' C
+  EXInst :: Expr' C -> T.TExpr' V -> Expr' C
+  EXLam :: [(Pattern Name, Expr' C)] -> Expr' C
+  EXApp :: Expr' C -> Expr' V -> Expr' C
+  EXOp :: Q Name -> Snoc (T.TExpr' V) -> Snoc (Expr' V) -> Expr' C
+  EXForce :: Expr' V -> Expr' C
+  EXReturn :: Expr' V -> Expr' C
+  -- | Evaluates the first operand, and then evaluates the second providing the value returned by the first as a variable in the environment.
+  EXBind :: Expr' C -> Expr' C -> Expr' C
+  EXVar :: Var Void Index -> Expr' V
+  EXCon :: Q Name -> Snoc (T.TExpr' V) -> Snoc (Expr' V) -> Expr' V
+  EXString :: Text -> Expr' V
+  EXThunk :: Expr' C -> Expr' V
+
+deriving instance Eq   (Expr' u)
+deriving instance Ord  (Expr' u)
+deriving instance Show (Expr' u)
 
 data CExpr
   = CXTLam CExpr
