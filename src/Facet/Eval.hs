@@ -85,7 +85,7 @@ eval' = \case
     pure v'
   EXBind a b        -> do
      -- enforced by the types; bind takes a computation of type F A on the left, i.e. a return.
-    CReturn a' <- eval' a
+    VReturn a' <- eval' a
     local (:> a') (eval' b)
   EXVar (Global n)  -> evalV =<< global n -- this will have to do until we store values in the global environment
   EXVar (Free v)    -> var v
@@ -117,11 +117,11 @@ lam cs = do
   let clause p b = case p of
         PVal p -> Right (p, (`runReader` b) . foldl' (:>) env)
         PEff p -> Left  (p, (`runReader` b) . foldl' (:>) env)
-  pure $ CLam (map (uncurry clause) cs)
+  pure $ VLam (map (uncurry clause) cs)
 
 ($$) :: MonadFail m => EnvC m (Value N (Eval m)) -> EnvC m (Value P (Eval m)) -> EnvC m (Value N (Eval m))
 f $$ a = do
-  CLam cs <- f
+  VLam cs <- f
   let (es, vs) = partitionEithers cs
       handler h op sp k = fromMaybe (h op sp k) (foldMapA (\ (p, b) -> b . ($ k) <$> matchE p op sp) es)
       cont v = fromMaybe (fail "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> b <$> matchV p v) vs)
@@ -177,13 +177,13 @@ data Value u m where
   -- | Thunks embed computations into values.
   VThunk :: Value N m -> Value P m
   -- | Neutral; effect operations, only used during quotation.
-  COp :: Q Name -> Snoc (Value P m) -> Value P m -> Value N m
-  CLam :: [Either (EffectPattern Name, EffectPattern (Value P m) -> m (Value N m)) (ValuePattern Name, ValuePattern (Value P m) -> m (Value N m))] -> Value N m
-  CReturn :: Value P m -> Value N m
+  VOp :: Q Name -> Snoc (Value P m) -> Value P m -> Value N m
+  VLam :: [Either (EffectPattern Name, EffectPattern (Value P m) -> m (Value N m)) (ValuePattern Name, ValuePattern (Value P m) -> m (Value N m))] -> Value N m
+  VReturn :: Value P m -> Value N m
 
 vthunk :: Value N m -> Value P m
 vthunk = \case
-  CReturn v -> v
+  VReturn v -> v
   c         -> VThunk c
 
 unit :: Value P m
@@ -192,7 +192,7 @@ unit = VCon (["Data", "Unit"] :.: N "unit") Nil
 creturn :: Applicative m => Value P m -> m (Value N m)
 creturn = pure . \case
   VThunk c -> c
-  v        -> CReturn v
+  v        -> VReturn v
 
 
 -- Elimination
@@ -200,11 +200,11 @@ creturn = pure . \case
 matchE :: MonadFail m => EffectPattern Name -> Q Name -> Snoc (Value P m) -> Maybe ((Value P m -> m (Value N m)) -> EffectPattern (Value P m))
 matchE p n' fs = case p of
   -- FIXME: I can’t see how this could possibly be correct
-  PAll _     -> pure $ \ k -> PAll (VThunk (COp n' fs (cont k)))
+  PAll _     -> pure $ \ k -> PAll (VThunk (VOp n' fs (cont k)))
   POp n ps _ -> mk <$ guard (n == n') <*> zipWithM matchV ps fs
   where
   mk sp k = POp n' sp (cont k)
-  cont k = VThunk (CLam [Right (PVar __, unPVar k)])
+  cont k = VThunk (VLam [Right (PVar __, unPVar k)])
   unPVar k = \case
     PVar v -> k v
     _      -> fail "unexpected non-variable pattern given to continuation"
@@ -228,9 +228,9 @@ quoteV d = \case
 
 quoteC :: Monad m => Level -> Value N m -> m Expr
 quoteC d = \case
-  COp q fs k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
-  CLam cs    -> XLam <$> traverse (quoteClause d) cs
-  CReturn v  -> quoteV d v
+  VOp q fs k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
+  VLam cs    -> XLam <$> traverse (quoteClause d) cs
+  VReturn v  -> quoteV d v
 
 quoteClause :: Monad m => Level -> Either (EffectPattern Name, EffectPattern (Value P m) -> m (Value N m)) (ValuePattern Name, ValuePattern (Value P m) -> m (Value N m)) -> m (Pattern Name, Expr)
 quoteClause d p = fmap (pn,) $ case p of
