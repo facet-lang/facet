@@ -199,7 +199,7 @@ data TExpr
   deriving (Eq, Ord, Show)
 
 data TExpr' u where
-  TXForAll :: Name -> CTExpr -> CTExpr -> TExpr' C
+  TXForAll :: Name -> TExpr' C -> TExpr' C -> TExpr' C
   TXArrow :: Maybe Name -> Quantity -> TExpr' V -> TExpr' C -> TExpr' C
   TXComp :: [TExpr' C] -> TExpr' C -> TExpr' C
   TXInst :: TExpr' C -> TExpr' V -> TExpr' C
