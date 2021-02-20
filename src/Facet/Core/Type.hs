@@ -129,12 +129,12 @@ quote d = \case
   ForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (Var (Free d))))
   Arrow n q a b -> TArrow n q (quote d a) (quote d b)
   Comp s t      -> TComp (quote d <$> s) (quote d t)
-  Ne n sp       -> foldl' TApp (TComp [] (TVar (levelToIndex d <$> n))) (quote d <$> sp)
+  Ne n sp       -> foldl' TApp (shiftP (TVar (levelToIndex d <$> n))) (quote d <$> sp)
   Var n         -> TVar (levelToIndex d <$> n)
   Type          -> TType
   Interface     -> TInterface
   String        -> TString
-  Thunk t       -> TThunk (quote d t)
+  Thunk t       -> shiftN (quote d t)
 
 eval :: HasCallStack => Subst (Type P) -> Snoc (Either (Type P) a) -> TExpr u -> Type u
 eval subst = go where
