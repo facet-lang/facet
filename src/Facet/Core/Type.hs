@@ -20,8 +20,6 @@ module Facet.Core.Type
   -- * Type expressions
 , TExpr(..)
 , TExpr'(..)
-, CTExpr(..)
-, VTExpr(..)
   -- * Quotation
 , quote
 , quoteC
@@ -215,23 +213,6 @@ deriving instance Eq   (TExpr' u)
 deriving instance Ord  (TExpr' u)
 deriving instance Show (TExpr' u)
 
-data CTExpr
-  = CXForAll Name CTExpr CTExpr
-  | CXArrow (Maybe Name) Quantity VTExpr CTExpr
-  | CXComp [CTExpr] CTExpr
-  | CXInst CTExpr VTExpr
-  | CXApp CTExpr VTExpr
-  | CXF VTExpr
-  deriving (Eq, Ord, Show)
-
-data VTExpr
-  = VXType
-  | VXInterface
-  | VXString
-  | VXVar (Var Meta Index)
-  | VXU CTExpr
-  deriving (Eq, Ord, Show)
-
 
 -- Quotation
 
@@ -247,21 +228,21 @@ quote d = \case
   VF t           -> TF (quote d t)
   VU t           -> TU (quote d t)
 
-quoteC :: Level -> Type' C -> CTExpr
+quoteC :: Level -> Type' C -> TExpr' C
 quoteC d = \case
-  ForAll n t b  -> CXForAll n (quoteC d t) (quoteC (succ d) (b (Var (Free d))))
-  Arrow n q a b -> CXArrow n q (quoteV d a) (quoteC d b)
-  Comp s t      -> CXComp (quoteC d <$> s) (quoteC d t)
-  Ne n ts sp    -> foldl' (&) (foldl' (&) (CXF (VXVar (levelToIndex d <$> n))) (flip CXInst . quoteV d <$> ts)) (flip CXApp . quoteV d <$> sp)
-  F t           -> CXF (quoteV d t)
+  ForAll n t b  -> TXForAll n (quoteC d t) (quoteC (succ d) (b (Var (Free d))))
+  Arrow n q a b -> TXArrow n q (quoteV d a) (quoteC d b)
+  Comp s t      -> TXComp (quoteC d <$> s) (quoteC d t)
+  Ne n ts sp    -> foldl' (&) (foldl' (&) (TXF (TXVar (levelToIndex d <$> n))) (flip TXInst . quoteV d <$> ts)) (flip TXApp . quoteV d <$> sp)
+  F t           -> TXF (quoteV d t)
 
-quoteV :: Level -> Type' V -> VTExpr
+quoteV :: Level -> Type' V -> TExpr' V
 quoteV d = \case
-  Var n     -> VXVar (levelToIndex d <$> n)
-  Type      -> VXType
-  Interface -> VXInterface
-  String    -> VXString
-  U t       -> VXU (quoteC d t)
+  Var n     -> TXVar (levelToIndex d <$> n)
+  Type      -> TXType
+  Interface -> TXInterface
+  String    -> TXString
+  U t       -> TXU (quoteC d t)
 
 eval :: HasCallStack => Subst Type -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
@@ -280,26 +261,26 @@ eval subst = go where
     TF t             -> VF (go env t)
     TU t             -> VU (go env t)
 
-evalC :: HasCallStack => Subst (Type' V) -> Snoc (Either (Type' V) a) -> CTExpr -> Type' C
+evalC :: HasCallStack => Subst (Type' V) -> Snoc (Either (Type' V) a) -> TExpr' C -> Type' C
 evalC subst = go where
   go env = \case
-    CXForAll n t b  -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
-    CXArrow n q a b -> Arrow n q (evalV subst env a) (go env b)
-    CXComp s t      -> Comp (go env <$> s) (go env t)
-    CXInst f a      -> go env f `inst` evalV subst env a
-    CXApp  f a      -> go env f `app`  evalV subst env a
-    CXF t           -> F (evalV subst env t)
+    TXForAll n t b  -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
+    TXArrow n q a b -> Arrow n q (evalV subst env a) (go env b)
+    TXComp s t      -> Comp (go env <$> s) (go env t)
+    TXInst f a      -> go env f `inst` evalV subst env a
+    TXApp  f a      -> go env f `app`  evalV subst env a
+    TXF t           -> F (evalV subst env t)
 
-evalV :: HasCallStack => Subst (Type' V) -> Snoc (Either (Type' V) a) -> VTExpr -> Type' V
+evalV :: HasCallStack => Subst (Type' V) -> Snoc (Either (Type' V) a) -> TExpr' V -> Type' V
 evalV subst = go where
   go env = \case
-    VXType            -> Type
-    VXInterface       -> Interface
-    VXString          -> String
-    VXVar (Global n)  -> Var (Global n)
-    VXVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
-    VXVar (Metavar m) -> maybe (Var (Metavar m)) tm (lookupMeta m subst)
-    VXU t             -> U (evalC subst env t)
+    TXType            -> Type
+    TXInterface       -> Interface
+    TXString          -> String
+    TXVar (Global n)  -> Var (Global n)
+    TXVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
+    TXVar (Metavar m) -> maybe (Var (Metavar m)) tm (lookupMeta m subst)
+    TXU t             -> U (evalC subst env t)
 
 
 -- Substitution
