@@ -63,7 +63,7 @@ data Type
 
 
 data Type' u where
-  ForAll :: Name -> Type' C -> (Type' V -> Type' C) -> Type' C
+  ForAll :: Name -> Type' V -> (Type' V -> Type' C) -> Type' C
   Arrow :: Maybe Name -> Quantity -> Type' V -> Type' C -> Type' C
   Comp :: [Type' V] -> Type' V -> Type' C -- FIXME: I think this should probably be combined with F and Ne
   Ne :: Var Meta Level -> Snoc (Type' V) -> Snoc (Type' V) -> Type' C
@@ -189,7 +189,7 @@ data TExpr
   deriving (Eq, Ord, Show)
 
 data TExpr' u where
-  TXForAll :: Name -> TExpr' C -> TExpr' C -> TExpr' C
+  TXForAll :: Name -> TExpr' V -> TExpr' C -> TExpr' C
   TXArrow :: Maybe Name -> Quantity -> TExpr' V -> TExpr' C -> TExpr' C
   TXComp :: [TExpr' V] -> TExpr' V -> TExpr' C
   TXInst :: TExpr' C -> TExpr' V -> TExpr' C
