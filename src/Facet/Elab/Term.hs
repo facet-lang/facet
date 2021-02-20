@@ -136,7 +136,7 @@ synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Exp
 synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> var n
   S.App f a  -> app XApp (synthExpr f) (checkExpr a)
-  S.As t _T  -> as (checkExpr t ::: checkTypeV _T)
+  S.As t _T  -> as (checkExpr t ::: checkTypeP _T)
   S.String s -> string s
   S.Hole{}   -> nope
   S.Lam{}    -> nope
@@ -216,7 +216,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    c_T <- elabType $ TThunk <$> abstractType (check (checkTypeC t ::: Type)) _T
+    c_T <- elabType $ TThunk <$> abstractType (check (checkTypeN t ::: Type)) _T
     con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
     pure $ n :=: Just (DTerm con') ::: c_T
   pure
@@ -231,7 +231,7 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    _T' <- elabType $ TThunk <$> abstractType (check (checkTypeC t ::: Type)) _T
+    _T' <- elabType $ TThunk <$> abstractType (check (checkTypeN t ::: Type)) _T
     -- FIXME: check that the interface is a member of the sig.
     op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
     pure $ n :=: Just (DTerm op') ::: _T'
@@ -272,7 +272,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl tele def))) -> do
-      _T <- runModule $ elabType $ check (checkTypeV tele ::: Type)
+      _T <- runModule $ elabType $ check (checkTypeP tele ::: Type)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of

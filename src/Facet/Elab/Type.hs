@@ -8,10 +8,10 @@ module Facet.Elab.Type
 , _String
 , forAll
 , (-->)
-, synthTypeC
-, synthTypeV
-, checkTypeC
-, checkTypeV
+, synthTypeN
+, synthTypeP
+, checkTypeN
+, checkTypeP
 ) where
 
 import           Control.Algebra
@@ -74,18 +74,18 @@ comp s t = Synth $ do
   pure $ TComp s' t' ::: Type
 
 
-synthTypeC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (TExpr N)
-synthTypeC ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.TForAll n t b   -> forAll (n ::: checkTypeV t) (checkTypeC b)
-  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkTypeV a)) --> checkTypeC b
-  S.TComp s t       -> comp (map checkInterfaceV s) (checkTypeV t)
-  S.TApp f a        -> app TApp (synthTypeC f) (checkTypeV a)
+synthTypeN :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (TExpr N)
+synthTypeN ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+  S.TForAll n t b   -> forAll (n ::: checkTypeP t) (checkTypeN b)
+  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkTypeP a)) --> checkTypeN b
+  S.TComp s t       -> comp (map checkInterfaceV s) (checkTypeP t)
+  S.TApp f a        -> app TApp (synthTypeN f) (checkTypeP a)
   S.TVar{}          -> toC
   S.KType           -> toC
   S.KInterface      -> toC
   S.TString         -> toC
   where
-  toC = shift <$> synthTypeV ty
+  toC = shift <$> synthTypeP ty
   shift = \case
     TThunk _T -> _T
     _T        -> TComp [] _T
@@ -93,8 +93,8 @@ synthTypeC ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
     S.Zero -> zero
     S.One  -> one
 
-synthTypeV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (TExpr P)
-synthTypeV ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+synthTypeP :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (TExpr P)
+synthTypeP ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TVar n     -> tvar n -- FIXME: instantiate in synthType instead
   S.KType      -> _Type
   S.KInterface -> _Interface
@@ -104,7 +104,7 @@ synthTypeV ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TComp{}    -> toV
   S.TApp{}     -> toV
   where
-  toV = shift <$> synthTypeC ty
+  toV = shift <$> synthTypeN ty
   shift = \case
     TComp [] _T -> _T
     _T          -> TThunk _T
@@ -112,18 +112,18 @@ synthTypeV ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
 -- | Check a type at a kind.
 --
 -- NB: while synthesis is possible for all types at present, I reserve the right to change that.
-checkTypeC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m (TExpr N)
-checkTypeC = switch . synthTypeC
+checkTypeN :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m (TExpr N)
+checkTypeN = switch . synthTypeN
 
 -- | Check a type at a kind.
 --
 -- NB: while synthesis is possible for all types at present, I reserve the right to change that.
-checkTypeV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m (TExpr P)
-checkTypeV = switch . synthTypeV
+checkTypeP :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m (TExpr P)
+checkTypeP = switch . synthTypeP
 
 synthInterfaceC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (TExpr N)
 synthInterfaceC (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
-  foldl' (app TApp) h' (checkTypeV <$> sp)
+  foldl' (app TApp) h' (checkTypeP <$> sp)
   where
   h' = mapSynth (pushSpan sh . fmap (first (TComp []))) (tvar h)
 
