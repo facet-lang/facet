@@ -172,15 +172,15 @@ instance Algebra sig m => Algebra sig (Eval m) where
 
 -- Values
 
-data Value m
+data Value m where
   -- | Neutral; variables, only used during quotation
-  = VFree Level
+  VFree :: Level -> Value m
   -- | Value; data constructors.
-  | VCon (Q Name) (Snoc (Value m))
+  VCon :: Q Name -> Snoc (Value m) -> Value m
   -- | Value; strings.
-  | VString Text
+  VString :: Text -> Value m
   -- | Thunks embed computations into values.
-  | VThunk (Comp m)
+  VThunk :: Comp m -> Value m
 
 vthunk :: Comp m -> Value m
 vthunk = \case
@@ -191,11 +191,11 @@ unit :: Value m
 unit = VCon (["Data", "Unit"] :.: N "unit") Nil
 
 -- | Terminal computations.
-data Comp m
+data Comp m where
   -- | Neutral; effect operations, only used during quotation.
-  = COp (Q Name) (Snoc (Value m)) (Value m)
-  | CLam [Either (EffectPattern Name, EffectPattern (Value m) -> m (Comp m)) (ValuePattern Name, ValuePattern (Value m) -> m (Comp m))]
-  | CReturn (Value m)
+  COp :: Q Name -> Snoc (Value m) -> Value m -> Comp m
+  CLam :: [Either (EffectPattern Name, EffectPattern (Value m) -> m (Comp m)) (ValuePattern Name, ValuePattern (Value m) -> m (Comp m))] -> Comp m
+  CReturn :: Value m -> Comp m
 
 creturn :: Applicative m => Value m -> m (Comp m)
 creturn = pure . \case
