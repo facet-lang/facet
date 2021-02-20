@@ -4,9 +4,6 @@ module Facet.Core.Type
   Type(..)
 , N
 , P
-, global
-, free
-, metavar
 , unComp
 , unThunk
 , occursIn
@@ -48,20 +45,6 @@ data Type u where
   Interface :: Type P
   String :: Type P
   Thunk :: Type N -> Type P
-
-
-global :: Q Name -> Type N
-global = var . Global
-
-free :: Level -> Type N
-free = var . Free
-
-metavar :: Meta -> Type N
-metavar = var . Metavar
-
-
-var :: Var Meta Level -> Type N
-var v = Ne v Nil
 
 
 unComp :: Has Empty sig m => Type N -> m ([Type P], Type P)
