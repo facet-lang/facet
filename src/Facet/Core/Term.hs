@@ -11,8 +11,6 @@ module Facet.Core.Term
   -- * Term expressions
 , Expr(..)
 , Expr'(..)
-, CExpr(..)
-, VExpr(..)
 ) where
 
 import           Data.Text (Text)
@@ -86,22 +84,3 @@ data Expr' u where
 deriving instance Eq   (Expr' u)
 deriving instance Ord  (Expr' u)
 deriving instance Show (Expr' u)
-
-data CExpr
-  = CXTLam CExpr
-  | CXInst CExpr T.TExpr
-  | CXLam [(Pattern Name, CExpr)]
-  | CXApp CExpr VExpr
-  | CXOp (Q Name) (Snoc T.TExpr) (Snoc VExpr)
-  | CXForce VExpr
-  | CXReturn VExpr
-  -- | Evaluates the first operand, and then evaluates the second providing the value returned by the first as a variable in the environment.
-  | CXBind CExpr CExpr
-  deriving (Eq, Ord, Show)
-
-data VExpr
-  = VXVar (Var Void Index)
-  | VXCon (Q Name) (Snoc T.TExpr) (Snoc VExpr)
-  | VXString Text
-  | VXThunk CExpr
-  deriving (Eq, Ord, Show)
