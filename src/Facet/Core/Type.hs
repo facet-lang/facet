@@ -130,6 +130,7 @@ eval subst = go where
   go env = \case
     TForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> Arrow n q (eval subst env a) (go env b)
+    TComp [] t       -> mkComp (go env t)
     TComp s t        -> Comp (go env <$> s) (go env t)
     TApp  f a        -> go env f `app`  eval subst env a
     TType            -> Type
