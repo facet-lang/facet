@@ -85,10 +85,7 @@ synthTypeN ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.KInterface      -> toC
   S.TString         -> toC
   where
-  toC = shift <$> synthTypeP ty
-  shift = \case
-    TThunk _T -> _T
-    _T        -> TComp [] _T
+  toC = shiftP <$> synthTypeP ty
   interpretMul = \case
     S.Zero -> zero
     S.One  -> one
@@ -104,10 +101,7 @@ synthTypeP ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TComp{}    -> toV
   S.TApp{}     -> toV
   where
-  toV = shift <$> synthTypeN ty
-  shift = \case
-    TComp [] _T -> _T
-    _T          -> TThunk _T
+  toV = shiftN <$> synthTypeN ty
 
 -- | Check a type at a kind.
 --
