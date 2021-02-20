@@ -255,18 +255,18 @@ eval' subst = go where
   go :: Snoc (Either (Type' V) a) -> TExpr' u -> Type' u
   go env = \case
     TXForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
-    TXArrow n q a b   -> Arrow n q (eval' subst env a) (go env b)
+    TXArrow n q a b   -> Arrow n q (go env a) (go env b)
     TXComp s t        -> Comp (go env <$> s) (go env t)
-    TXInst f a        -> go env f `inst` eval' subst env a
-    TXApp  f a        -> go env f `app`  eval' subst env a
-    TXF t             -> F (eval' subst env t)
+    TXInst f a        -> go env f `inst` go env a
+    TXApp  f a        -> go env f `app`  go env a
+    TXF t             -> F (go env t)
     TXType            -> Type
     TXInterface       -> Interface
     TXString          -> String
     TXVar (Global n)  -> Var (Global n)
     TXVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TXVar (Metavar m) -> maybe (Var (Metavar m)) tm (lookupMeta m subst)
-    TXThunk t         -> Thunk (eval' subst env t)
+    TXThunk t         -> Thunk (go env t)
 
 
 -- Substitution
