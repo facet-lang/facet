@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -72,31 +73,31 @@ evalV e = case e of
   where
   thunk = vthunk <$> evalC e
 
-evalC' :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => CExpr -> EnvC m (Comp (Eval m))
+evalC' :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr' C -> EnvC m (Comp (Eval m))
 evalC' = \case
-  CXTLam b    -> evalC' b
-  CXInst f _  -> evalC' f
-  CXLam cs    -> lam (fmap evalC' <$> cs)
-  CXApp  f a  -> evalC' f $$ evalV' a
-  CXOp n _ sp -> op n (evalV' <$> sp)
-  CXReturn v  -> lift . creturn =<< evalV' v
-  CXForce v   -> do
+  EXTLam b    -> evalC' b
+  EXInst f _  -> evalC' f
+  EXLam cs    -> lam (fmap evalC' <$> cs)
+  EXApp  f a  -> evalC' f $$ evalV' a
+  EXOp n _ sp -> op n (evalV' <$> sp)
+  EXReturn v  -> lift . creturn =<< evalV' v
+  EXForce v   -> do
      -- enforced by the types; force takes a value of type U B, i.e. a thunk.
     VThunk v' <- evalV' v
     pure v'
-  CXBind a b  -> do
+  EXBind a b  -> do
      -- enforced by the types; bind takes a computation of type F A on the left, i.e. a return.
     CReturn a' <- evalC' a
     local (:> a') (evalC' b)
 
-evalV' :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => VExpr -> EnvC m (Value (Eval m))
+evalV' :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr' V -> EnvC m (Value (Eval m))
 evalV' = \case
-  VXVar (Global n)  -> evalV =<< global n -- this will have to do until we store values in the global environment
-  VXVar (Free v)    -> var v
-  VXVar (Metavar m) -> case m of {}
-  VXCon n _ fs      -> VCon n <$> traverse evalV' fs
-  VXString s        -> pure $ VString s
-  VXThunk b         -> VThunk <$> evalC' b -- this is definitely wrong, VThunk should definitely hold a computation
+  EXVar (Global n)  -> evalV =<< global n -- this will have to do until we store values in the global environment
+  EXVar (Free v)    -> var v
+  EXVar (Metavar m) -> case m of {}
+  EXCon n _ fs      -> VCon n <$> traverse evalV' fs
+  EXString s        -> pure $ VString s
+  EXThunk b         -> VThunk <$> evalC' b -- this is definitely wrong, VThunk should definitely hold a computation
 
 
 -- Combinators
