@@ -158,11 +158,11 @@ printTExpr Options{ qname } = go
     C.TForAll      n    t b -> braces (ann (intro n d ::: go env t)) --> go (env :> intro n d) b
     C.TArrow Nothing  q a b -> mult q (go env a) --> go env b
     C.TArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
-    C.TComp [] t            -> go env t
-    C.TComp s t             -> sig s <+> go env t
+    C.TComp [] t            -> pretty '↑' <+> go env t
+    C.TComp s t             -> pretty '↑' <+> sig s <+> go env t
     C.TApp f a              -> group (go env f) $$ group (go env a)
     C.TString               -> annotate Type $ pretty "String"
-    C.TThunk t              -> go env t
+    C.TThunk t              -> pretty '↓' <+> go env t
     where
     d = Name.Level (length env)
     sig :: [C.TExpr u] -> Print
