@@ -6,6 +6,7 @@ module Facet.Core.Type
 , P
 , mkComp
 , unComp
+, mkThunk
 , unThunk
 , occursIn
   -- * Type expressions
@@ -56,6 +57,11 @@ unComp :: Has Empty sig m => Type N -> m ([Type P], Type P)
 unComp = \case
   Comp sig _T -> pure (sig, _T)
   _T          -> empty
+
+mkThunk :: Type N -> Type P
+mkThunk = \case
+  Comp [] t -> t
+  t         -> Thunk t
 
 unThunk :: Has Empty sig m => Type P -> m (Type N)
 unThunk = \case
