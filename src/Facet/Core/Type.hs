@@ -47,8 +47,8 @@ data Type u where
   Ne :: Var Meta Level -> Snoc (Type P) -> Type N
 
   Var :: Var Meta Level -> Type P
-  Type :: Type u
-  Interface :: Type u
+  Type :: Type P
+  Interface :: Type P
   String :: Type P
   Thunk :: Type N -> Type P
 
@@ -109,8 +109,8 @@ data TExpr u where
   TArrow :: Maybe Name -> Quantity -> TExpr P -> TExpr N -> TExpr N
   TComp :: [TExpr P] -> TExpr P -> TExpr N
   TApp :: TExpr N -> TExpr P -> TExpr N
-  TType :: TExpr u
-  TInterface :: TExpr u
+  TType :: TExpr P
+  TInterface :: TExpr P
   TString :: TExpr P
   TVar :: Var Meta Index -> TExpr P
   TThunk :: TExpr N -> TExpr P
