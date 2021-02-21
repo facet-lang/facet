@@ -69,7 +69,6 @@ infixr 1 -->
 comp :: Algebra sig m => [Check m (TExpr P)] -> Check m (TExpr P) -> Synth m (TExpr N)
 comp s t = Synth $ do
   s' <- traverse (check . (::: Interface)) s
-  -- FIXME: classify types by universe (value/computation) and check that this is a value type being returned
   t' <- check (t ::: Type)
   pure $ TComp s' t' ::: Type
 
