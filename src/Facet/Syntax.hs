@@ -9,7 +9,6 @@ module Facet.Syntax
 , splitl
 , splitr
   -- * Universes
-, K
 , N
 , P
 ) where
@@ -96,9 +95,6 @@ splitr un = go id
 
 
 -- Universes
-
--- | Type tag for the kind universe.
-data K
 
 -- | Type tag for the negative type universe (“computations”).
 data N
