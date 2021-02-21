@@ -79,7 +79,7 @@ tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
-  b' <- Binding n zero _A |- check (b ::: Thunk (_B (Var (Free d))))
+  b' <- Binding n zero _A |- check (b ::: Thunk (_B (free d)))
   pure $ XTLam b'
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
@@ -179,7 +179,7 @@ abstractType body = go
     Thunk t               -> go t
     ForAll       n    t b -> do
       level <- depth
-      b' <- Binding n zero t |- go (b (Var (Free level)))
+      b' <- Binding n zero t |- go (b (free level))
       pure $ TForAll n (T.quote level t) b'
     Arrow  (Just n) q a b -> do
       level <- depth

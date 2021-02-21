@@ -139,7 +139,7 @@ class Shift t where
 
 quote :: Level -> Type u -> TExpr u
 quote d = \case
-  ForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (Var (Free d))))
+  ForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
   Arrow n q a b -> TArrow n q (quote d a) (quote d b)
   Comp s t      -> TComp (quote d <$> s) (quote d t)
   Ne n sp       -> foldl' TApp (shiftP (TVar (levelToIndex d <$> n))) (quote d <$> sp)
@@ -161,9 +161,9 @@ eval subst = go where
     TType            -> Type
     TInterface       -> Interface
     TString          -> String
-    TVar (Global n)  -> Var (Global n)
+    TVar (Global n)  -> global n
     TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
-    TVar (Metavar m) -> maybe (Var (Metavar m)) tm (lookupMeta m subst)
+    TVar (Metavar m) -> maybe (metavar m) tm (lookupMeta m subst)
     TThunk t         -> shiftN (go env t)
 
 

@@ -107,7 +107,7 @@ instantiate inst = \case
   go (e ::: _T) = case _T of
     ForAll _ _T _B -> do
       m <- meta _T
-      go (inst e (TVar (Metavar m)) ::: _B (Var (Metavar m)))
+      go (inst e (TVar (Metavar m)) ::: _B (metavar m))
     _              -> pure $ e ::: _T
 
 
@@ -380,15 +380,15 @@ unify t1 t2 = type' t1 t2
       (t1, t2) <- gets (\ s -> (T.lookupMeta @(Type P) v1 s, T.lookupMeta v2 s))
       case (t1, t2) of
         (Just t1, Just t2) -> type' (ty t1) (ty t2)
-        (Just t1, Nothing) -> type' (Var (Metavar v2)) (tm t1)
-        (Nothing, Just t2) -> type' (Var (Metavar v1)) (tm t2)
-        (Nothing, Nothing) -> solve v1 (Var (Metavar v2))
+        (Just t1, Nothing) -> type' (metavar v2) (tm t1)
+        (Nothing, Just t2) -> type' (metavar v1) (tm t2)
+        (Nothing, Nothing) -> solve v1 (metavar v2)
 
   solve :: HasCallStack => Meta -> Type P -> Elab m ()
   solve v t = do
     d <- depth
     if occursIn (== Metavar v) d t then
-      mismatch "infinite type" (Right (Var (Metavar v))) t
+      mismatch "infinite type" (Right (metavar v)) t
     else
       gets (T.lookupMeta @(Type P) v) >>= \case
         Nothing          -> modify (T.solveMeta @(Type P) v t)
