@@ -332,30 +332,25 @@ unify t1 t2 = type' t1 t2
 
   type' :: Type v -> Type v -> Elab m ()
   type' = curry $ \case
-    (Var (Metavar v1), Var (Metavar v2))       -> flexFlex v1 v2
-    (Var (Metavar v1), t2)                     -> solve v1 t2
-    (t1, Var (Metavar v2))                     -> solve v2 t1
-    (Ne (Metavar v1) Nil, Ne (Metavar v2) Nil) -> flexFlex v1 v2
-    (Ne (Metavar v1) Nil, t2)                  -> solve v1 (Thunk t2)
-    (t1, Ne (Metavar v2) Nil)                  -> solve v2 (Thunk t1)
-    (Type, Type)                               -> pure ()
-    (Type, _)                                  -> nope
-    (Interface, Interface)                     -> pure ()
-    (Interface, _)                             -> nope
-    (ForAll n t1 b1, ForAll _ t2 b2)           -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (Var (Free d))) (b2 (Var (Free d)))
-    (ForAll{}, _)                              -> nope
-    (Arrow _ _ a1 b1, Arrow _ _ a2 b2)         -> type' a1 a2 >> type' b1 b2
-    (Arrow{}, _)                               -> nope
-    (Comp s1 t1, Comp s2 t2)                   -> sig s1 s2 >> type' t1 t2
-    (Comp{}, _)                                -> nope
-    (Var v1, Var v2)                           -> var v1 v2
-    (Var{}, _)                                 -> nope
-    (Ne v1 sp1, Ne v2 sp2)                     -> var v1 v2 >> spine type' sp1 sp2
-    (Ne{}, _)                                  -> nope
-    (String, String)                           -> pure ()
-    (String, _)                                -> nope
-    (Thunk t1, Thunk t2)                       -> type' t1 t2
-    (Thunk{}, _)                               -> nope
+    (Var (Metavar v1), Var (Metavar v2)) -> flexFlex v1 v2
+    (Var (Metavar v1), t2)               -> solve v1 t2
+    (t1, Var (Metavar v2))               -> solve v2 t1
+    (Type, Type)                         -> pure ()
+    (Type, _)                            -> nope
+    (Interface, Interface)               -> pure ()
+    (Interface, _)                       -> nope
+    (ForAll n t1 b1, ForAll _ t2 b2)     -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (Var (Free d))) (b2 (Var (Free d)))
+    (ForAll{}, _)                        -> nope
+    (Arrow _ _ a1 b1, Arrow _ _ a2 b2)   -> type' a1 a2 >> type' b1 b2
+    (Arrow{}, _)                         -> nope
+    (Comp s1 t1 sp1, Comp s2 t2 sp2)     -> sig s1 s2 >> type' t1 t2 >> spine type' sp1 sp2
+    (Comp{}, _)                          -> nope
+    (Var v1, Var v2)                     -> var v1 v2
+    (Var{}, _)                           -> nope
+    (String, String)                     -> pure ()
+    (String, _)                          -> nope
+    (Thunk t1, Thunk t2)                 -> type' t1 t2
+    (Thunk{}, _)                         -> nope
 
   var :: Eq a => Var Meta a -> Var Meta a -> Elab m ()
   var = curry $ \case
@@ -422,8 +417,8 @@ elabSynthType scale = elabWith scale (\ subst (_T ::: _K) -> pure (T.eval subst 
 
 check :: Algebra sig m => (Check m a ::: Type P) -> Elab m a
 check (m ::: _T) = case unComp =<< unThunk _T of
-  Just (sig, _) -> extendSig sig $ runCheck m _T
-  Nothing       -> runCheck m _T
+  Just (sig, _, _) -> extendSig sig $ runCheck m _T
+  Nothing          -> runCheck m _T
 
 newtype Check m a = Check { runCheck :: Type P -> Elab m a }
   deriving (Applicative, Functor) via ReaderC (Type P) (Elab m)

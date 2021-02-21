@@ -118,15 +118,15 @@ fieldsP = foldr cons
 
 allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
-  (sig, _A') <- expectRet "when checking catch-all pattern" _A
-  (PAll n,) <$> (Binding n q (Thunk (Comp sig _A')) |- check (b ::: _B))
+  (sig, _A', sp) <- expectRet "when checking catch-all pattern" _A
+  (PAll n,) <$> (Binding n q (Thunk (Comp sig _A' sp)) |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
-  (sig, _A') <- expectRet "when checking effect pattern" _A
+  (sig, _A', sp) <- expectRet "when checking effect pattern" _A
   n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (lookupInSig n module' graph sig)
-  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Thunk (Arrow Nothing Many _A' (Comp [] _A))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Thunk (Arrow Nothing Many _A' (Comp [] _A sp))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
 
@@ -159,7 +159,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
 bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind m (Pattern Name)
 bindPattern = go where
   go = withSpanB $ \case
-    S.PVal p -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unComp =<< unThunk _T)))
+    S.PVal p -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T (\ (_, _A, sp) -> Thunk (Comp [] _A sp)) (unComp =<< unThunk _T)))
     S.PEff p -> withSpanB (\ (S.POp n ps v) -> effP n (map goVal ps) v) p
 
   goVal = withSpanB $ \case
@@ -191,13 +191,13 @@ abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc (TExpr P) -> Snoc
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
-    Thunk (ForAll n                  _T   _B) -> do
+    Thunk (ForAll n                  _T      _B) -> do
       d <- depth
       check (tlam (go (ts :> d) fs) ::: Thunk (ForAll n _T _B))
-    Thunk (Arrow  n q (Thunk (Comp s _A)) _B) -> do
+    Thunk (Arrow  n q (Thunk (Comp s _A sp)) _B) -> do
       d <- depth
-      check (lam [(PEff <$> allP (fromMaybe __ n), go ts (fs :> d))] ::: Thunk (Arrow n q (Thunk (Comp s _A)) _B))
-    Thunk (Arrow  n q                _A   _B) -> do
+      check (lam [(PEff <$> allP (fromMaybe __ n), go ts (fs :> d))] ::: Thunk (Arrow n q (Thunk (Comp s _A sp)) _B))
+    Thunk (Arrow  n q                _A      _B) -> do
       d <- depth
       check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: Thunk (Arrow n q _A _B))
     _T                        -> do
@@ -247,13 +247,13 @@ elabTermDef _T expr@(S.Ann s _ _) = do
   elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    Thunk ForAll{}                                  -> check (tlam (go k) ::: _T)
-    Thunk (Arrow (Just n) q (Thunk (Comp s _A)) _B) -> check (lam [(PEff <$> allP n, go k)] ::: Thunk (Arrow Nothing q (Thunk (Comp s _A)) _B))
-    Thunk (Arrow (Just n) q _A _B)                  -> check (lam [(PVal <$> varP n, go k)] ::: Thunk (Arrow Nothing q _A _B))
+    Thunk ForAll{}                                     -> check (tlam (go k) ::: _T)
+    Thunk (Arrow (Just n) q (Thunk (Comp s _A sp)) _B) -> check (lam [(PEff <$> allP n, go k)] ::: Thunk (Arrow Nothing q (Thunk (Comp s _A sp)) _B))
+    Thunk (Arrow (Just n) q _A _B)                     -> check (lam [(PVal <$> varP n, go k)] ::: Thunk (Arrow Nothing q _A _B))
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                                               -> check (k ::: _T)
+    _                                                  -> check (k ::: _T)
 
 
 -- Modules
@@ -302,8 +302,8 @@ expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P
 expectTacitFunction = expectMatch (\case{ Arrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing } <=< unThunk) "_ -> _"
 
 -- | Expect a computation type with effects.
-expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m ([Type P], Type P)
-expectRet = expectMatch (\case{ Comp s t -> pure (s, t) ; _ -> Nothing } <=< unThunk) "[_] _"
+expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m ([Type P], Type P, Snoc (Type P))
+expectRet = expectMatch (\case{ Comp s t sp -> pure (s, t, sp) ; _ -> Nothing } <=< unThunk) "[_] _"
 
 
 -- Elaboration

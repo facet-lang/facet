@@ -40,8 +40,7 @@ import           Prelude hiding (lookup)
 data Type u where
   ForAll :: Name -> Type P -> (Type P -> Type N) -> Type N
   Arrow :: Maybe Name -> Quantity -> Type P -> Type N -> Type N
-  Comp :: [Type P] -> Type P -> Type N
-  Ne :: Var Meta Level -> Snoc (Type P) -> Type N
+  Comp :: [Type P] -> Type P -> Snoc (Type P) -> Type N
 
   Var :: Var Meta Level -> Type P
   Type :: Type P
@@ -50,15 +49,15 @@ data Type u where
   Thunk :: Type N -> Type P
 
 instance Shift Type where
-  shiftP t = fromMaybe (Comp [] t) (unThunk t)
+  shiftP t = fromMaybe (Comp [] t Nil) (unThunk t)
   shiftN = \case
-    Comp [] t -> t
-    t         -> Thunk t
+    Comp [] t Nil -> t
+    t             -> Thunk t
 
-unComp :: Has Empty sig m => Type N -> m ([Type P], Type P)
+unComp :: Has Empty sig m => Type N -> m ([Type P], Type P, Snoc (Type P))
 unComp = \case
-  Comp sig _T -> pure (sig, _T)
-  _T          -> empty
+  Comp sig n _T -> pure (sig, n, _T)
+  _T            -> empty
 
 unThunk :: Has Empty sig m => Type P -> m (Type N)
 unThunk = \case
@@ -76,8 +75,7 @@ occursIn p = go
     Interface     -> False
     ForAll _ t b  -> go d t || go (succ d) (b (Var (Free d)))
     Arrow _ _ a b -> go d a || go d b
-    Comp s t      -> any (go d) s || go d t
-    Ne h sp       -> p h || any (go d) sp
+    Comp s h sp   -> any (go d) s || go d h || any (go d) sp
     String        -> False
     Thunk t       -> go d t
 
@@ -85,8 +83,8 @@ occursIn p = go
 -- Elimination
 
 app :: HasCallStack => Type N -> Type P -> Type N
-app (Ne h es) a = Ne h (es :> a)
-app _         _ = error "can’t apply non-neutral/forall type"
+app (Comp s h es) a = Comp s h (es :> a)
+app _             _ = error "can’t apply non-neutral/forall type"
 
 
 -- Type expressions
@@ -128,8 +126,7 @@ quote :: Level -> Type u -> TExpr u
 quote d = \case
   ForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (Var (Free d))))
   Arrow n q a b -> TArrow n q (quote d a) (quote d b)
-  Comp s t      -> TComp (quote d <$> s) (quote d t)
-  Ne n sp       -> foldl' TApp (shiftP (TVar (levelToIndex d <$> n))) (quote d <$> sp)
+  Comp s n sp   -> TComp (quote d <$> s) (TThunk (foldl' TApp (shiftP (quote d n)) (quote d <$> sp)))
   Var n         -> TVar (levelToIndex d <$> n)
   Type          -> TType
   Interface     -> TInterface
@@ -143,8 +140,8 @@ eval subst = go where
     TForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> Arrow n q (go env a) (go env b)
     TComp [] t       -> shiftP (go env t)
-    TComp s t        -> Comp (go env <$> s) (go env t)
-    TApp  f a        -> go env f `app`  go env a
+    TComp s t        -> Comp (go env <$> s) (go env t) Nil
+    TApp f a         -> go env f `app` go env a
     TType            -> Type
     TInterface       -> Interface
     TString          -> String
