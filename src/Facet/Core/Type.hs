@@ -58,18 +58,14 @@ instance Shift Type where
     Comp [] t -> t
     t         -> Thunk t
 
-global :: Q Name -> Type N
-global = var . Global
+global :: Q Name -> Type P
+global = Var . Global
 
-free :: Level -> Type N
-free = var . Free
+free :: Level -> Type P
+free = Var . Free
 
-metavar :: Meta -> Type N
-metavar = var . Metavar
-
-
-var :: Var Meta Level -> Type N
-var v = Ne v Nil
+metavar :: Meta -> Type P
+metavar = Var . Metavar
 
 
 unComp :: Has Empty sig m => Type N -> m ([Type P], Type P)
