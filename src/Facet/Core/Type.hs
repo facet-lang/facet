@@ -68,12 +68,12 @@ metavar :: Meta -> Type P
 metavar = Var . Metavar
 
 
-unComp :: Has Empty sig m => Type N -> m ([Type P], Type P)
+unComp :: Has Empty sig m => Type n -> m ([Type P], Type P)
 unComp = \case
   Comp sig _T -> pure (sig, _T)
   _T          -> empty
 
-unThunk :: Has Empty sig m => Type P -> m (Type N)
+unThunk :: Has Empty sig m => Type p -> m (Type N)
 unThunk = \case
   Thunk t -> pure t
   _       -> empty
