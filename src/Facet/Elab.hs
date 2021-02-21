@@ -328,9 +328,10 @@ spans_ = lens spans (\ e spans -> e{ spans })
 unify :: forall u m sig . (HasCallStack, Has (Throw Err) sig m) => Type u -> Type u -> Elab m ()
 unify t1 t2 = type' t1 t2
   where
+  nope :: HasCallStack => Elab m a
   nope = couldNotUnify "mismatch" t1 t2
 
-  type' :: Type v -> Type v -> Elab m ()
+  type' :: HasCallStack => Type v -> Type v -> Elab m ()
   type' = curry $ \case
     (Var (Metavar v1), Var (Metavar v2))       -> flexFlex v1 v2
     (Var (Metavar v1), t2)                     -> solve v1 t2
@@ -357,7 +358,7 @@ unify t1 t2 = type' t1 t2
     (Thunk t1, Thunk t2)                       -> type' t1 t2
     (Thunk{}, _)                               -> nope
 
-  var :: Eq a => Var Meta a -> Var Meta a -> Elab m ()
+  var :: (HasCallStack, Eq a) => Var Meta a -> Var Meta a -> Elab m ()
   var = curry $ \case
     (Global q1, Global q2)   -> unless (q1 == q2) nope
     (Global{}, _)            -> nope
@@ -366,12 +367,13 @@ unify t1 t2 = type' t1 t2
     (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
     (Metavar{}, _)           -> nope
 
-  spine :: (Foldable t, Zip t) => (a -> b -> Elab m ()) -> t a -> t b -> Elab m ()
+  spine :: (HasCallStack, Foldable t, Zip t) => (a -> b -> Elab m ()) -> t a -> t b -> Elab m ()
   spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
-  sig :: (Foldable t, Zip t) => t (Type v) -> t (Type v) -> Elab m ()
+  sig :: (HasCallStack, Foldable t, Zip t) => t (Type v) -> t (Type v) -> Elab m ()
   sig c1 c2 = spine type' c1 c2
 
+  flexFlex :: HasCallStack => Meta -> Meta -> Elab m ()
   flexFlex v1 v2
     | v1 == v2  = pure ()
     | otherwise = do
@@ -382,7 +384,7 @@ unify t1 t2 = type' t1 t2
         (Nothing, Just t2) -> type' (Var (Metavar v1)) (tm t2)
         (Nothing, Nothing) -> solve v1 (Var (Metavar v2))
 
-  solve :: Meta -> Type P -> Elab m ()
+  solve :: HasCallStack => Meta -> Type P -> Elab m ()
   solve v t = do
     d <- depth
     if occursIn (== Metavar v) d t then
