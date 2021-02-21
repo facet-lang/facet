@@ -43,7 +43,7 @@ import           Data.Traversable (for, mapAccumL)
 import           Facet.Context (Binding(..))
 import           Facet.Core.Module as Module
 import           Facet.Core.Term as E
-import           Facet.Core.Type as T
+import           Facet.Core.Type as T hiding (global)
 import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type
