@@ -144,7 +144,7 @@ eval subst = go where
     TArrow n q a b   -> Arrow n q (go env a) (go env b)
     TComp [] t       -> shiftP (go env t)
     TComp s t        -> Comp (go env <$> s) (go env t)
-    TApp  f a        -> go env f `app`  go env a
+    TApp f a         -> go env f `app` go env a
     TType            -> Type
     TInterface       -> Interface
     TString          -> String
