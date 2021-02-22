@@ -156,7 +156,7 @@ quote d = \case
 
   Ne n sp       -> foldl' TApp (TVar (levelToIndex d <$> n)) (quote d <$> sp)
   String        -> TString
-  Thunk t       -> shiftN (quote d t)
+  Thunk t       -> TThunk (quote d t)
 
 eval :: HasCallStack => Subst (Type P) -> Snoc (Either (Type P) a) -> TExpr u -> Type u
 eval subst = go where
@@ -167,14 +167,13 @@ eval subst = go where
     TArrow' a b      -> Arrow' (go env a) (go env b)
     TForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> Arrow n q (go env a) (go env b)
-    TComp [] t       -> shiftP (go env t)
     TComp s t        -> Comp (go env <$> s) (go env t)
     TApp f a         -> go env f `app` go env a
     TString          -> String
     TVar (Global n)  -> global n
     TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TVar (Metavar m) -> maybe (metavar m) tm (lookupMeta m subst)
-    TThunk t         -> shiftN (go env t)
+    TThunk t         -> Thunk (go env t)
 
 
 -- Substitution
