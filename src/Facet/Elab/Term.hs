@@ -230,8 +230,8 @@ elabInterfaceDef
   -> m [Name :=: Maybe Def ::: Type P]
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
-  cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    _T' <- elabType $ TThunk <$> abstractType (check (checkTypeN t ::: Type)) _T
+  cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
+    _T' <- elabType $ pushSpan s $ TThunk <$> abstractType (check (checkTypeN t ::: Type)) _T
     -- FIXME: check that the interface is a member of the sig.
     op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
     pure $ n :=: Just (DTerm op') ::: _T'
