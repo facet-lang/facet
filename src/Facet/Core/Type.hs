@@ -41,11 +41,13 @@ import           Prelude hiding (lookup)
 -- Types
 
 data Type u where
+  -- Negative
   ForAll :: Name -> Type P -> (Type P -> Type N) -> Type N
   Arrow :: Maybe Name -> Quantity -> Type P -> Type N -> Type N
   Comp :: [Type P] -> Type P -> Type N
   Ne :: Var Meta Level -> Snoc (Type P) -> Type N
 
+  -- Positive
   Var :: Var Meta Level -> Type P
   Type :: Type P
   Interface :: Type P
