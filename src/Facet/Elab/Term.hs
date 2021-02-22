@@ -215,8 +215,8 @@ elabDataDef
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
-  cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    c_T <- elabType $ TThunk <$> abstractType (check (checkTypeN t ::: Type)) _T
+  cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
+    c_T <- elabType $ pushSpan s $ TThunk <$> abstractType (check (checkTypeN t ::: Type)) _T
     con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
     pure $ n :=: Just (DTerm con') ::: c_T
   pure
