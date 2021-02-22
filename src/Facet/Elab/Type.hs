@@ -18,7 +18,6 @@ import           Control.Algebra
 import           Control.Effect.Lens (views)
 import           Control.Effect.State
 import           Control.Effect.Throw
-import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
 import           Facet.Context
@@ -78,7 +77,7 @@ synthTypeN ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TForAll n t b   -> forAll (n ::: checkTypeP t) (checkTypeN b)
   S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkTypeP a)) --> checkTypeN b
   S.TComp s t       -> comp (map checkInterfaceV s) (checkTypeP t)
-  S.TApp f a        -> app TApp (synthTypeN f) (checkTypeP a)
+  S.TApp{}          -> toC
   S.TVar{}          -> toC
   S.KType           -> toC
   S.KInterface      -> toC
@@ -95,10 +94,10 @@ synthTypeP ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.KType      -> _Type
   S.KInterface -> _Interface
   S.TString    -> _String
+  S.TApp f a   -> app TApp (synthTypeP f) (checkTypeP a)
   S.TForAll{}  -> toV
   S.TArrow{}   -> toV
   S.TComp{}    -> toV
-  S.TApp{}     -> toV
   where
   toV = shiftN <$> synthTypeN ty
 
@@ -114,11 +113,9 @@ checkTypeN = switch . synthTypeN
 checkTypeP :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m (TExpr P)
 checkTypeP = switch . synthTypeP
 
-synthInterfaceC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (TExpr N)
+synthInterfaceC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (TExpr P)
 synthInterfaceC (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
-  foldl' (app TApp) h' (checkTypeP <$> sp)
-  where
-  h' = mapSynth (pushSpan sh . fmap (first (TComp []))) (tvar h)
+  foldl' (app TApp) (mapSynth (pushSpan sh) (tvar h)) (checkTypeP <$> sp)
 
 checkInterfaceV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check m (TExpr P)
-checkInterfaceV = switch . fmap TThunk . synthInterfaceC
+checkInterfaceV = switch . synthInterfaceC

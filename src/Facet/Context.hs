@@ -17,7 +17,6 @@ import           Facet.Core.Type
 import           Facet.Name
 import           Facet.Semiring
 import qualified Facet.Snoc as S
-import           Facet.Syntax
 import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup, zipWith)
@@ -79,4 +78,4 @@ toEnv c = locals 0 (elems c)
   d = level c
   locals i = \case
     S.Nil     -> S.Nil
-    bs S.:> _ -> locals (succ i) bs S.:> Var (Free (indexToLevel d i))
+    bs S.:> _ -> locals (succ i) bs S.:> free (indexToLevel d i)

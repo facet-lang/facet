@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 module Facet.Syntax
 ( (:::)(..)
 , tm
@@ -97,8 +98,8 @@ splitr un = go id
 
 -- Universes
 
--- | Type tag for the type universe (types”).
-data T
+-- | Type tag for the type universe (“types”).
+type T = P -- FIXME: this is bad, but convenient
 
 -- | Type tag for the negative type universe (“computations”).
 data N

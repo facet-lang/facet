@@ -148,7 +148,7 @@ lookupInContext (m:.:n)
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
 lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Type P] -> m (Q Name :=: Maybe Def ::: Type P)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
-  T.Var (Global q@(m':.:_)) -> do
+  T.Ne (Global q@(m':.:_)) Nil -> do
     guard (m == Nil || m == m')
     defs <- interfaceScope =<< lookupQ graph mod q
     _ :=: d ::: _T <- lookupScope n defs
@@ -333,24 +333,21 @@ unify t1 t2 = type' t1 t2
 
   type' :: HasCallStack => Type v -> Type v -> Elab m ()
   type' = curry $ \case
-    (Var (Metavar v1), Var (Metavar v2))       -> flexFlex v1 v2
-    (Var (Metavar v1), t2)                     -> solve v1 t2
-    (t1, Var (Metavar v2))                     -> solve v2 t1
     (Ne (Metavar v1) Nil, Ne (Metavar v2) Nil) -> flexFlex v1 v2
-    (Ne (Metavar v1) Nil, t2)                  -> solve v1 (Thunk t2)
-    (t1, Ne (Metavar v2) Nil)                  -> solve v2 (Thunk t1)
+    (Ne (Metavar v1) Nil, t2)                  -> solve v1 t2
+    (t1, Ne (Metavar v2) Nil)                  -> solve v2 t1
     (Type, Type)                               -> pure ()
     (Type, _)                                  -> nope
     (Interface, Interface)                     -> pure ()
     (Interface, _)                             -> nope
-    (ForAll n t1 b1, ForAll _ t2 b2)           -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (Var (Free d))) (b2 (Var (Free d)))
+    (Arrow' a1 b1, Arrow' a2 b2)               -> type' a1 a2 >> type' b1 b2
+    (Arrow'{}, _)                              -> nope
+    (ForAll n t1 b1, ForAll _ t2 b2)           -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (free d)) (b2 (free d))
     (ForAll{}, _)                              -> nope
     (Arrow _ _ a1 b1, Arrow _ _ a2 b2)         -> type' a1 a2 >> type' b1 b2
     (Arrow{}, _)                               -> nope
     (Comp s1 t1, Comp s2 t2)                   -> sig s1 s2 >> type' t1 t2
     (Comp{}, _)                                -> nope
-    (Var v1, Var v2)                           -> var v1 v2
-    (Var{}, _)                                 -> nope
     (Ne v1 sp1, Ne v2 sp2)                     -> var v1 v2 >> spine type' sp1 sp2
     (Ne{}, _)                                  -> nope
     (String, String)                           -> pure ()

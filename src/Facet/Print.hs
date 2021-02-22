@@ -150,19 +150,20 @@ printTExpr Options{ qname } = go
   qvar = group . setPrec Var . qname
   go :: Snoc Print -> C.TExpr u -> Print
   go env = \case
-    C.TVar (Global n)       -> qvar n
-    C.TVar (Free d)         -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
-    C.TVar (Metavar m)      -> meta m
     C.TType                 -> annotate Type $ pretty "Type"
     C.TInterface            -> annotate Type $ pretty "Interface"
+    C.TArrow'           a b -> go env a --> go env b
     C.TForAll      n    t b -> braces (ann (intro n d ::: go env t)) --> go (env :> intro n d) b
     C.TArrow Nothing  q a b -> mult q (go env a) --> go env b
     C.TArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
     C.TComp [] t            -> pretty '↑' <+> go env t
     C.TComp s t             -> pretty '↑' <+> sig s <+> go env t
-    C.TApp f a              -> group (go env f) $$ group (go env a)
+    C.TVar (Global n)       -> qvar n
+    C.TVar (Free d)         -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
+    C.TVar (Metavar m)      -> meta m
     C.TString               -> annotate Type $ pretty "String"
     C.TThunk t              -> pretty '↓' <+> go env t
+    C.TApp f a              -> group (go env f) $$ group (go env a)
     where
     d = Name.Level (length env)
     sig :: [C.TExpr u] -> Print
