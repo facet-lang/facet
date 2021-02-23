@@ -42,7 +42,7 @@ rethrowElabErrors opts = L.runThrow rethrow
           Ty _T -> printType opts print _T
     in  ( succ d
         , print :> n'
-        , ctx  :> getPrint (ann (n' ::: mult m _T')) )
+        , ctx   :> getPrint (ann (n' ::: mult m _T')) )
   mult m = if
     | m == zero -> (pretty "0" <+>)
     | m == one  -> (pretty "1" <+>)
