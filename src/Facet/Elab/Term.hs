@@ -272,8 +272,8 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl tele def))) -> do
-      _T <- runModule $ elabType $ check (checkTypeP tele ::: Type)
+    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl ty def))) -> do
+      _T <- runModule $ elabType $ check (checkTypeP ty ::: Type)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
