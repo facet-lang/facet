@@ -103,7 +103,7 @@ checkTypeT = switch . synthTypeT
 
 synthTypeN :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth T m (TExpr N)
 synthTypeN ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.TForAll n t b   -> forAll (n ::: checkTypeP t) (checkTypeN b)
+  S.TForAll n t b   -> forAll (n ::: checkTypeT t) (checkTypeN b)
   S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkTypeP a)) --> checkTypeN b
   S.TComp s t       -> comp (map checkInterfaceV s) (checkTypeP t)
   S.TApp{}          -> toC
