@@ -46,6 +46,8 @@ module Facet.Elab
 , elabSynth
 , elabSynthType
   -- * Judgements
+, isType
+, IsType(..)
 , check
 , Check(..)
 , mapCheck
@@ -418,6 +420,13 @@ elabSynthType scale = elabWith scale (\ subst (_T ::: _K) -> pure (T.eval subst 
 
 
 -- Judgements
+
+isType :: IsType m a ::: Type T -> Elab m a
+isType (m ::: _T) = runIsType m _T
+
+newtype IsType m a = IsType { runIsType :: Type T -> Elab m a }
+  deriving (Applicative, Functor) via ReaderC (Type P) (Elab m)
+
 
 check :: Algebra sig m => (Check m a ::: Type P) -> Elab m a
 check (m ::: _T) = case unComp =<< unThunk _T of
