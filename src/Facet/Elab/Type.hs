@@ -67,7 +67,6 @@ forAll (n ::: t) b = Synth $ do
 infixr 1 -->
 
 (==>) :: Algebra sig m => Maybe Name ::: Check T m (TExpr T) -> Check T m (TExpr T) -> Synth T m (TExpr T)
--- FIXME: use the name in TArrow'.
 (n ::: a) ==> b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
