@@ -96,7 +96,7 @@ import Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Has (State (Subst (Type P))) sig m => Type P -> m Meta
+meta :: Has (State (Subst P)) sig m => Type P -> m Meta
 meta _T = state (declareMeta _T)
 
 
@@ -214,7 +214,7 @@ data Err = Err
   { source    :: Source
   , reason    :: ErrReason
   , context   :: Context
-  , subst     :: Subst (Type P)
+  , subst     :: Subst P
   , callStack :: CallStack
   }
 
@@ -228,7 +228,7 @@ data ErrReason
   | forall u . Hole Name (Type u)
   | Invariant String
 
-applySubst :: Context -> Subst (Type P) -> ErrReason -> ErrReason
+applySubst :: Context -> Subst P -> ErrReason -> ErrReason
 applySubst ctx subst r = case r of
   FreeVariable{}       -> r
   AmbiguousName{}      -> r
@@ -375,7 +375,7 @@ unify t1 t2 = type' t1 t2
   flexFlex v1 v2
     | v1 == v2  = pure ()
     | otherwise = do
-      (t1, t2) <- gets (\ s -> (T.lookupMeta @(Type P) v1 s, T.lookupMeta v2 s))
+      (t1, t2) <- gets (\ s -> (T.lookupMeta @P v1 s, T.lookupMeta v2 s))
       case (t1, t2) of
         (Just t1, Just t2) -> type' (ty t1) (ty t2)
         (Just t1, Nothing) -> type' (metavar v2) (tm t1)
@@ -388,17 +388,17 @@ unify t1 t2 = type' t1 t2
     if occursIn (== Metavar v) d t then
       mismatch "infinite type" (Right (metavar v)) t
     else
-      gets (T.lookupMeta @(Type P) v) >>= \case
-        Nothing          -> modify (T.solveMeta @(Type P) v t)
+      gets (T.lookupMeta @P v) >>= \case
+        Nothing          -> modify (T.solveMeta @P v t)
         Just (t' ::: _T) -> type' t' t
 
 
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC (Subst (Type P)) m))) a }
-  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State (Subst (Type P)) :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC (Subst P) m))) a }
+  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State (Subst P) :+: sig), Applicative, Functor, Monad)
 
-elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst (Type P) -> a -> m b) -> Elab m a -> m b
+elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst P -> a -> m b) -> Elab m a -> m b
 elabWith scale k m = runState k mempty . runWriter (const pure) $ do
   (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
   let stat = StaticContext{ graph, module', source, scale }
