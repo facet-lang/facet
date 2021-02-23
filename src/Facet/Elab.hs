@@ -111,7 +111,7 @@ instantiate inst = \case
     _              -> pure $ e ::: _T
 
 
-switch :: (HasCallStack, Has (Throw Err) sig m) => Synth P m a -> Check P m a
+switch :: (HasCallStack, Has (Throw Err) sig m) => Synth p m a -> Check p m a
 switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
 as :: (HasCallStack, Algebra sig m) => Check P m a ::: Check P m (TExpr P) -> Synth P m a
