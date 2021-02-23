@@ -82,7 +82,7 @@ tlam b = Check $ \ _T -> do
   b' <- Binding n zero _A |- check (b ::: Thunk (_B (free d)))
   pure $ XTLam b'
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check P m (Expr P))] -> Check P m (Expr P)
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind P P m (Pattern Name), Check P m (Expr P))] -> Check P m (Expr P)
 lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking clause" _T
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: Thunk _B)) cs
@@ -94,20 +94,20 @@ string s = Synth $ pure $ XString s ::: T.String
 
 -- Pattern combinators
 
-wildcardP :: Bind m (ValuePattern Name)
+wildcardP :: Bind P P m (ValuePattern Name)
 wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 
-varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (ValuePattern Name)
+varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind P P m (ValuePattern Name)
 varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q _A |- check (b ::: _B))
 
-conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
+conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P P m (ValuePattern Name)] -> Bind P P m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   n' :=: _ ::: _T <- resolveC n
   _ ::: _T' <- instantiate const (() ::: _T)
   (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify _A' _A *> check (b ::: _B)))) ps ::: (q, _T')) b ::: _B)
   pure (PCon n' (fromList ps'), b')
 
-fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind m [a] -> [Bind m a] -> Bind m [a]
+fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind P P m [a] -> [Bind P P m a] -> Bind P P m [a]
 fieldsP = foldr cons
   where
   cons p ps = Bind $ \ q _A b -> Check $ \ _B -> do
@@ -116,12 +116,12 @@ fieldsP = foldr cons
     pure (p':ps', b')
 
 
-allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (EffectPattern Name)
+allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind P P m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _A') <- expectRet "when checking catch-all pattern" _A
   (PAll n,) <$> (Binding n q (Thunk (Comp sig _A')) |- check (b ::: _B))
 
-effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
+effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P P m (ValuePattern Name)] -> Name -> Bind P P m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectRet "when checking effect pattern" _A
@@ -156,7 +156,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind m (Pattern Name)
+bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind P P m (Pattern Name)
 bindPattern = go where
   go = withSpanB $ \case
     S.PVal p -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unComp =<< unThunk _T)))
@@ -318,5 +318,5 @@ runModule m = do
   mod <- get
   runReader mod m
 
-withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
+withSpanB :: Algebra sig m => (a -> Bind p q m b) -> S.Ann a -> Bind p q m b
 withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)

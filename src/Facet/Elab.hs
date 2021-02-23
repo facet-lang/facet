@@ -441,11 +441,11 @@ mapSynth :: (Elab m (a ::: Type p) -> Elab m (b ::: Type q)) -> Synth p m a -> S
 mapSynth f = Synth . f . synth
 
 
-bind :: Bind m a ::: (Quantity, Type P) -> Check P m b -> Check P m (a, b)
+bind :: Bind p q m a ::: (Quantity, Type p) -> Check q m b -> Check q m (a, b)
 bind (p ::: (q, _T)) = runBind p q _T
 
-newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type P -> Check P m x -> Check P m (a, x) }
+newtype Bind p q m a = Bind { runBind :: forall x . Quantity -> Type p -> Check q m x -> Check q m (a, x) }
   deriving (Functor)
 
-mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
+mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind p q m a -> Bind p q m b
 mapBind f m = Bind $ \ q _A b -> mapCheck f (runBind m q _A b)
