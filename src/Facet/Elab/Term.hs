@@ -257,7 +257,7 @@ abstractTerm body = go Nil Nil
 
 elabDataDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
-  => Name ::: Type P
+  => Name ::: Type T
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Maybe Def ::: Type P]
 -- FIXME: check that all constructors return the datatype.
@@ -273,7 +273,7 @@ elabDataDef (dname ::: _T) constructors = do
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
-  => Name ::: Type P
+  => Name ::: Type T
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Maybe Def ::: Type P]
 elabInterfaceDef (dname ::: _T) constructors = do
