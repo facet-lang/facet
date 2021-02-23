@@ -42,7 +42,7 @@ import           Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context (Binding(..))
+import           Facet.Context (Binding(..), VarType(..))
 import           Facet.Core.Module as Module
 import           Facet.Core.Term as E
 import           Facet.Core.Type as T hiding (global)
@@ -70,7 +70,7 @@ global (q ::: _T) = Synth $ pure $ XVar (Global q) ::: _T
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth P m (Expr P)
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
-  | Just (i, q, _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
+  | Just (i, q, Tm _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
   | Just (_ :=: Just (DTerm x) ::: _T) <- lookupInSig n module' graph sig -> pure (x ::: _T)
   | otherwise                                          -> do
     n :=: _ ::: _T <- resolveQ n
@@ -81,7 +81,7 @@ tlam :: (HasCallStack, Has (Throw Err) sig m) => Check N m (Expr N) -> Check N m
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
-  b' <- Binding n zero _A |- check (b ::: _B (free d))
+  b' <- Binding n zero (Ty _A) |- check (b ::: _B (free d))
   pure $ XTLam b'
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind P N m (Pattern Name), Check N m (Expr N))] -> Check N m (Expr N)
@@ -119,7 +119,7 @@ wildcardP :: Bind P N m (ValuePattern Name)
 wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 
 varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind P N m (ValuePattern Name)
-varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q _A |- check (b ::: _B))
+varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q (Tm _A) |- check (b ::: _B))
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P N m (ValuePattern Name)] -> Bind P N m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
@@ -141,14 +141,14 @@ fieldsP = foldr cons
 allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind P N m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _A') <- expectRet "when checking catch-all pattern" _A
-  (PAll n,) <$> (Binding n q (Thunk (Comp sig _A')) |- check (b ::: _B))
+  (PAll n,) <$> (Binding n q (Tm (Thunk (Comp sig _A'))) |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P N m (ValuePattern Name)] -> Name -> Bind P N m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectRet "when checking effect pattern" _A
   n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (lookupInSig n module' graph sig)
-  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Thunk (Arrow Nothing Many _A' (Comp [] _A))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Tm (Thunk (Arrow Nothing Many _A' (Comp [] _A)))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
 
@@ -227,11 +227,11 @@ abstractType body = go
     Thunk t             -> go t
     ForAll       n  t b -> do
       level <- depth
-      b' <- Binding n zero t |- go (b (free level))
+      b' <- Binding n zero (Ty t) |- go (b (free level))
       pure $ TForAll n (T.quote level t) b'
     Arrow' (Just n) a b -> do
       level <- depth
-      b' <- Binding n zero a |- go b
+      b' <- Binding n zero (Ty a) |- go b
       pure $ TForAll n (T.quote level a) b'
     _                   -> body
 

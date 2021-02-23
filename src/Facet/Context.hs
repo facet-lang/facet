@@ -35,7 +35,7 @@ instance LeftModule Quantity Context where
 data Binding = Binding
   { name     :: Name
   , quantity :: Quantity
-  , type'    :: Type P
+  , type'    :: VarType
   }
 
 data VarType
@@ -68,7 +68,7 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
     | otherwise    = go es (i - 1)
   go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: Alt.Alternative m => Name -> Context -> m (Index, Quantity, Type P)
+lookupIndex :: Alt.Alternative m => Name -> Context -> m (Index, Quantity, VarType)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = Alt.empty

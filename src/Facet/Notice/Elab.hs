@@ -37,9 +37,12 @@ rethrowElabErrors opts = L.runThrow rethrow
     subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printType opts printCtx _T))) (metas subst)
   combine (d, print, ctx) (Binding n m _T) =
     let n' = intro n d
+        _T' = case _T of
+          Tm _T -> printType opts print _T
+          Ty _T -> printType opts print _T
     in  ( succ d
         , print :> n'
-        , ctx  :> getPrint (ann (n' ::: mult m (printType opts print _T))) )
+        , ctx  :> getPrint (ann (n' ::: mult m _T')) )
   mult m = if
     | m == zero -> (pretty "0" <+>)
     | m == one  -> (pretty "1" <+>)

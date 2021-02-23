@@ -139,7 +139,7 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type P)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Alternative m => Q Name -> Context -> m (Index, Quantity, Type P)
+lookupInContext :: Alternative m => Q Name -> Context -> m (Index, Quantity, VarType)
 lookupInContext (m:.:n)
   | m == Nil  = lookupIndex n
   | otherwise = const Alt.empty
@@ -343,7 +343,7 @@ unify t1 t2 = type' t1 t2
     (Interface, _)                             -> nope
     (Arrow' _ a1 b1, Arrow' _ a2 b2)           -> type' a1 a2 >> type' b1 b2
     (Arrow'{}, _)                              -> nope
-    (ForAll n t1 b1, ForAll _ t2 b2)           -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (free d)) (b2 (free d))
+    (ForAll n t1 b1, ForAll _ t2 b2)           -> type' t1 t2 >> depth >>= \ d -> Binding n zero (Ty t1) |- type' (b1 (free d)) (b2 (free d))
     (ForAll{}, _)                              -> nope
     (Arrow _ _ a1 b1, Arrow _ _ a2 b2)         -> type' a1 a2 >> type' b1 b2
     (Arrow{}, _)                               -> nope

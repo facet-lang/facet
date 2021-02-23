@@ -35,8 +35,8 @@ import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth T m (TExpr T)
 tvar n = Synth $ views context_ (lookupInContext n) >>= \case
-  Just (i, q, _T) -> use i q $> (TVar (Free i) ::: _T)
-  Nothing         -> do
+  Just (i, q, Ty _T) -> use i q $> (TVar (Free i) ::: _T)
+  _                  -> do
     q :=: _ ::: _T <- resolveQ n
     pure $ TVar (Global q) ::: _T
 
@@ -57,7 +57,7 @@ forAll (n ::: t) b = Synth $ do
   env <- views context_ toEnv
   subst <- get
   let vt = eval subst (Left <$> env) t'
-  b' <- Binding n zero vt |- check (b ::: Type)
+  b' <- Binding n zero (Ty vt) |- check (b ::: Type)
   pure $ TForAll n t' b' ::: Type
 
 (-->) :: Algebra sig m => Maybe Name ::: Check T m (Quantity, TExpr P) -> Check T m (TExpr N) -> Synth T m (TExpr N)
