@@ -53,10 +53,11 @@ scope_ :: Lens' Module Scope
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
-lookupC :: (Alternative m, Monad m) => Name -> Module -> m (ScopeEntry (Q Name))
+lookupC :: (Alternative m, Monad m) => Name -> Module -> m (Q Name :=: Maybe (Expr P) ::: Type P)
 lookupC n Module{ name, scope } = foldMapA matchDef (decls scope)
   where
-  matchDef = fmap (first (name :.:)) . lookupScope n . tm <=< unDData
+  matchDef = matchTerm <=< lookupScope n . tm <=< unDData
+  matchTerm (n :=: d) = (name :.: n :=: ) <$> unDTerm d
 
 -- | Look up effect operations.
 lookupE :: (Alternative m, Monad m) => Name -> Module -> m (ScopeEntry (Q Name))

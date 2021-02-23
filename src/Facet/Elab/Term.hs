@@ -126,10 +126,7 @@ varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q (Tm _A) |
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P N m (ValuePattern Name)] -> Bind P N m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
-  n' :=: d <- resolveC n
-  _ ::: _T <- case d of
-    DTerm _ _T -> instantiate const (() ::: _T)
-    _          -> freeVariable n'
+  n' :=: _ ::: _T <- traverse (instantiate const) =<< resolveC n
   (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify _A' _A *> check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (PCon n' (fromList ps'), b')
 
