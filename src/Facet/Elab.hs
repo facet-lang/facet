@@ -422,6 +422,9 @@ elabSynthType scale = elabWith scale (\ subst (_T ::: _K) -> pure (T.eval subst 
 
 newtype IsType m a = IsType { isType :: Elab m (a ::: Type T) }
 
+instance Functor (IsType m) where
+  fmap f (IsType m) = IsType (first f <$> m)
+
 
 check :: Algebra sig m => (Check m a ::: Type P) -> Elab m a
 check (m ::: _T) = case unComp =<< unThunk _T of
