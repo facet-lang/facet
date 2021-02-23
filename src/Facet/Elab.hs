@@ -125,18 +125,18 @@ as (m ::: _T) = Synth $ do
 
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
-  => (forall m . Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type P))
+  => (forall m . Alternative m => Name -> Module -> m (Q Name :=: Maybe (Def P) ::: Type P))
   -> Q Name
-  -> Elab m (Q Name :=: Maybe Def ::: Type P)
+  -> Elab m (Q Name :=: Maybe (Def P) ::: Type P)
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
   ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
 
-resolveC :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type P)
+resolveC :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe (Def P) ::: Type P)
 resolveC = resolveWith lookupC
 
-resolveQ :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type P)
+resolveQ :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe (Def P) ::: Type P)
 resolveQ = resolveWith lookupD
 
 lookupInContext :: Alternative m => Q Name -> Context -> m (Index, Quantity, VarType)
@@ -147,7 +147,7 @@ lookupInContext (m:.:n)
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: this can’t differentiate between different instantiations of the same effect (i.e. based on type)
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Type P] -> m (Q Name :=: Maybe Def ::: Type P)
+lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Type P] -> m (Q Name :=: Maybe (Def P) ::: Type P)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   T.Ne (Global q@(m':.:_)) Nil -> do
     guard (m == Nil || m == m')
