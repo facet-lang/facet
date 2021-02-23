@@ -131,7 +131,7 @@ resolveWith
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
-  ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
+  ds  -> ambiguousName n (map (\ (q :=: _) -> q) ds)
 
 resolveC :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (ScopeEntry (Q Name))
 resolveC = resolveWith lookupC
@@ -152,11 +152,11 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   T.Ne (Global q@(m':.:_)) Nil -> do
     guard (m == Nil || m == m')
     defs <- interfaceScope =<< lookupQ graph mod q
-    _ :=: d ::: _T <- lookupScope n defs
-    pure $ m':.:n :=: d ::: _T
+    _ :=: d <- lookupScope n defs
+    pure $ m':.:n :=: d
   _                            -> Alt.empty
   where
-  interfaceScope (_ :=: d ::: _) = case d of { Just (DInterface defs) -> pure defs ; _ -> Alt.empty }
+  interfaceScope (_ :=: d) = case d of { DInterface defs _ -> pure defs ; _ -> Alt.empty }
 
 
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check p m a

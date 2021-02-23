@@ -22,6 +22,8 @@ module Facet.Core.Module
 
 import           Control.Applicative (Alternative(..))
 import           Control.Lens (Lens', coerced, lens)
+import           Control.Monad ((<=<))
+import           Data.Bifunctor (first)
 import           Data.Foldable (asum)
 import qualified Data.Map as Map
 import           Facet.Core.Term
@@ -55,37 +57,33 @@ scope_ = lens scope (\ m scope -> m{ scope })
 lookupC :: Alternative m => Name -> Module -> m (ScopeEntry (Q Name))
 lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
-  matchDef (d ::: _) = do
-    n :=: v ::: _T <- maybe empty pure d >>= unDData >>= lookupScope n
-    pure $ name:.:n :=: v ::: _T
+  matchDef = fmap (first (name :.:)) . lookupScope n . tm <=< unDData
 
 -- | Look up effect operations.
 lookupE :: Alternative m => Name -> Module -> m (ScopeEntry (Q Name))
 lookupE n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
-  matchDef (d ::: _) = do
-    n :=: _ ::: _T <- maybe empty pure d >>= unDInterface >>= lookupScope n
-    pure $ name:.:n :=: Nothing ::: _T
+  matchDef = fmap (first (name:.:)) . lookupScope n . tm <=< unDInterface
 
 lookupD :: Alternative m => Name -> Module -> m (ScopeEntry (Q Name))
 lookupD n Module{ name, scope } = maybe empty pure $ do
-  d ::: _T <- Map.lookup n (decls scope)
-  pure $ name:.:n :=: d ::: _T
+  d <- Map.lookup n (decls scope)
+  pure $ name:.:n :=: d
 
 
-newtype Scope = Scope { decls :: Map.Map Name (Maybe (Def P) ::: Type P) }
+newtype Scope = Scope { decls :: Map.Map Name Def }
   deriving (Monoid, Semigroup)
 
-type ScopeEntry n = n :=: Maybe (Def P) ::: Type P
+type ScopeEntry n = n :=: Def
 
-decls_ :: Lens' Scope (Map.Map Name (Maybe (Def P) ::: Type P))
+decls_ :: Lens' Scope (Map.Map Name Def)
 decls_ = coerced
 
 scopeFromList :: [ScopeEntry Name] -> Scope
-scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
+scopeFromList = Scope . Map.fromList . map (\ (n :=: d) -> (n, d))
 
 scopeToList :: Scope -> [ScopeEntry Name]
-scopeToList = map (\ (n, v ::: _T) -> n :=: v ::: _T) . Map.toList . decls
+scopeToList = map (uncurry (:=:)) . Map.toList . decls
 
 lookupScope :: Alternative m => Name -> Scope -> m (ScopeEntry Name)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
@@ -94,23 +92,23 @@ lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 newtype Import = Import { name :: MName }
 
 
-data Def u
-  = DTerm (Expr P)
-  | DData Scope
-  | DInterface Scope
-  | DModule Scope
+data Def
+  = DTerm (Maybe (Expr P)) (Type P)
+  | DData Scope (Type T)
+  | DInterface Scope (Type T)
+  | DModule Scope (Type T)
 
-unDTerm :: Alternative m => Def P -> m (Expr P)
+unDTerm :: Alternative m => Def -> m (Maybe (Expr P) ::: Type P)
 unDTerm = \case
-  DTerm expr -> pure expr
+  DTerm e _T -> pure (e ::: _T)
   _          -> empty
 
-unDData :: Alternative m => Def T -> m Scope
+unDData :: Alternative m => Def -> m (Scope ::: Type T)
 unDData = \case
-  DData cs -> pure cs
-  _        -> empty
+  DData cs _T -> pure (cs ::: _T)
+  _           -> empty
 
-unDInterface :: Alternative m => Def T -> m Scope
+unDInterface :: Alternative m => Def -> m (Scope ::: Type T)
 unDInterface = \case
-  DInterface cs -> pure cs
-  _             -> empty
+  DInterface cs _T -> pure (cs ::: _T)
+  _                -> empty

@@ -24,6 +24,7 @@ import           Control.Effect.Writer (censor)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
 import           Facet.Context
+import           Facet.Core.Module
 import           Facet.Core.Type
 import           Facet.Elab
 import           Facet.Name
@@ -37,7 +38,11 @@ tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth T m (TExpr T)
 tvar n = Synth $ views context_ (lookupInContext n) >>= \case
   Just (i, q, Ty _T) -> use i q $> (TVar (Free i) ::: _T)
   _                  -> do
-    q :=: _ ::: _T <- resolveQ n
+    q :=: d <- resolveQ n
+    _T <- case d of
+      DData      _ _K -> pure _K
+      DInterface _ _K -> pure _K
+      _               -> freeVariable q
     pure $ TVar (Global q) ::: _T
 
 

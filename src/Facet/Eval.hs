@@ -75,8 +75,8 @@ global n = do
   mod <- ask
   graph <- ask
   case lookupQ graph mod n of
-    Just (_ :=: Just (DTerm v) ::: _) -> pure v
-    _                                 -> fail $ "free variable: " <> show n
+    Just (_ :=: DTerm (Just v) _) -> pure v
+    _                             -> fail $ "free variable: " <> show n
 
 var :: HasCallStack => Index -> EnvC m (Value P (Eval m))
 var (Index v) = ReaderC $ \ env -> pure (env ! v)
