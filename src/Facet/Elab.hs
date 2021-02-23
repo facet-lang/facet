@@ -159,7 +159,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   interfaceScope (_ :=: d ::: _) = case d of { Just (DInterface defs) -> pure defs ; _ -> Alt.empty }
 
 
-hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check P m a
+hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check p m a
 hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth P m a -> Check P m b -> Synth P m c
@@ -225,7 +225,7 @@ data ErrReason
   | CouldNotSynthesize String
   | ResourceMismatch Name Quantity Quantity
   | forall u v . Mismatch String (Either String (Type u)) (Type v)
-  | Hole Name (Type P)
+  | forall u . Hole Name (Type u)
   | Invariant String
 
 applySubst :: Context -> Subst (Type P) -> ErrReason -> ErrReason
