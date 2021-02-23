@@ -20,15 +20,17 @@ import           Control.Algebra
 import           Control.Effect.Lens (views)
 import           Control.Effect.State
 import           Control.Effect.Throw
+import           Control.Effect.Writer (censor)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
 import           Facet.Context
 import           Facet.Core.Type
 import           Facet.Elab
 import           Facet.Name
-import           Facet.Semiring (Few(..), one, zero)
+import           Facet.Semiring (Few(..), one, zero, (><<))
 import qualified Facet.Surface as S
 import           Facet.Syntax
+import           Facet.Usage
 import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth T m (TExpr T)
@@ -82,13 +84,22 @@ comp s t = Synth $ do
   pure $ TComp s' t' ::: Type
 
 
+tapp :: (HasCallStack, Has (Throw Err) sig m) => Synth T m (TExpr T) -> Check T m (TExpr T) -> Synth T m (TExpr T)
+tapp f a = Synth $ do
+  f' ::: _F <- synth f
+  (_ ::: _A, _B) <- expectTypeConstructor "in type-level application" _F
+  -- FIXME: test _A for Ret and extend the sig
+  a' <- censor @Usage (zero ><<) $ check (a ::: _A)
+  pure $ TApp f' a' ::: _B
+
+
 synthTypeT :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth T m (TExpr T)
 synthTypeT (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.KType          -> _Type
   S.KInterface     -> _Interface
   S.TString        -> _String
   S.TVar n         -> tvar n
-  S.TApp f a       -> app TApp (synthTypeT f) (checkTypeT a)
+  S.TApp f a       -> tapp (synthTypeT f) (checkTypeT a)
   -- FIXME: verify that the quantity is zero
   S.TArrow n _ a b -> (n ::: checkTypeT a) ==> checkTypeT b
   S.TForAll{}      -> nope "quantifier"
@@ -122,7 +133,8 @@ synthTypeP ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.KType      -> _Type
   S.KInterface -> _Interface
   S.TString    -> _String
-  S.TApp f a   -> app TApp (synthTypeP f) (checkTypeP a)
+  -- FIXME: this should probably be a failure case
+  S.TApp f a   -> tapp (synthTypeP f) (checkTypeP a)
   S.TForAll{}  -> toV
   S.TArrow{}   -> toV
   S.TComp{}    -> toV
@@ -143,7 +155,12 @@ checkTypeP = switch . synthTypeP
 
 synthInterfaceC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth T m (TExpr P)
 synthInterfaceC (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
-  foldl' (app TApp) (mapSynth (pushSpan sh) (tvar h)) (checkTypeP <$> sp)
+  foldl' tapp (mapSynth (pushSpan sh) (tvar h)) (checkTypeP <$> sp)
 
 checkInterfaceV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check T m (TExpr P)
 checkInterfaceV = switch . synthInterfaceC
+
+
+-- | Expect a type constructor.
+expectTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => String -> Type T -> Elab m (Maybe Name ::: Type T, Type T)
+expectTypeConstructor = expectMatch (\case{ Arrow' n t b -> pure (n ::: t, b) ; _ -> Nothing }) "_ => _"

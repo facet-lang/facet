@@ -177,20 +177,31 @@ printTExpr Options{ qname } = go
 printExpr :: Options -> Snoc Print -> C.Expr p -> Print
 printExpr opts@Options{ qname, instantiation } = go
   where
+  go :: Snoc Print -> C.Expr p -> Print
   go env = \case
     C.XVar (Global n)  -> qvar n
     C.XVar (Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
     C.XVar (Metavar m) -> case m of {}
-    C.XTLam b          -> let { d = Name.Level (length env) ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env :> v) b)
+    C.XTLam b          -> braces (braces v <+> arrow <+> go (env :> v) b)
     C.XInst e t        -> go env e `instantiation` braces (printTExpr opts env t)
     C.XLam cs          -> comp (commaSep (map (clause env) cs))
+      where
+      clause env (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> go env' b
     C.XApp f a         -> go env f $$ go env a
     C.XCon n t p       -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
     C.XOp n t p        -> pretty '#' <> brackets (foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p))
     C.XString s        -> annotate Lit $ pretty (show s)
+    -- FIXME: add options controlling printing of shifts &c.
+    C.XForce t         -> go env t <> pretty '!'
+    C.XThunk c         -> braces (go env c)
+    C.XReturn v        -> go env v
+    -- FIXME: maybe print as @x <- a; b@ instead?
+    C.XBind a b        -> go env a <+> pretty "to" <+> v <+> dot <+> go (env :> v) b
+    where
+    d = Name.Level (length env)
+    v = tintro __ d
   qvar = group . setPrec Var . qname
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
-  clause env (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> go env' b
   vpat = \case
     C.PWildcard -> pretty '_'
     C.PVar n    -> n

@@ -16,8 +16,10 @@ module Facet.Elab.Term
 , allP
 , effP
   -- * Expression elaboration
-, synthExpr
-, checkExpr
+, synthExprN
+, checkExprN
+, synthExprP
+, checkExprP
 , bindPattern
   -- * Declarations
 , elabDataDef
@@ -59,9 +61,9 @@ import           GHC.Stack
 
 -- Term combinators
 
--- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Algebra sig m => Q Name ::: Type P -> Synth P m (Expr P)
-global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
+-- FIXME: how the hell are we supposed to handle instantiation?
+global :: Q Name ::: Type P -> Synth P m (Expr P)
+global (q ::: _T) = Synth $ pure $ XVar (Global q) ::: _T
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
@@ -69,59 +71,79 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth P m (Expr P)
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, q, _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
-  | Just (_ :=: Just (DTerm x) ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
+  | Just (_ :=: Just (DTerm x) ::: _T) <- lookupInSig n module' graph sig -> pure (x ::: _T)
   | otherwise                                          -> do
     n :=: _ ::: _T <- resolveQ n
     synth $ global (n ::: _T)
 
 
-tlam :: (HasCallStack, Has (Throw Err) sig m) => Check P m (Expr P) -> Check P m (Expr P)
+tlam :: (HasCallStack, Has (Throw Err) sig m) => Check N m (Expr N) -> Check N m (Expr N)
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
-  b' <- Binding n zero _A |- check (b ::: Thunk (_B (free d)))
+  b' <- Binding n zero _A |- check (b ::: _B (free d))
   pure $ XTLam b'
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind P P m (Pattern Name), Check P m (Expr P))] -> Check P m (Expr P)
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind P N m (Pattern Name), Check N m (Expr N))] -> Check N m (Expr N)
 lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking clause" _T
-  XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: Thunk _B)) cs
+  XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
 string :: Text -> Synth P m (Expr P)
 string s = Synth $ pure $ XString s ::: T.String
 
 
+-- Polarity shifts
+
+thunk :: (HasCallStack, Has (Throw Err) sig m) => Check N m (Expr N) -> Check P m (Expr P)
+thunk c = Check $ \ _T -> do
+  _C <- expectThunk "when thunking computation" _T
+  c' <- check (c ::: _C)
+  pure $ XThunk c'
+
+thunkS :: Synth N m (Expr N) -> Synth P m (Expr P)
+thunkS c = Synth $ do
+  c' ::: _C <- synth c
+  pure $ XThunk c' ::: Thunk _C
+
+retS :: Synth P m (Expr P) -> Synth N m (Expr N)
+retS v = Synth $ do
+  v' ::: _V <- synth v
+  pure $ XReturn v' ::: Comp [] _V
+
+
 -- Pattern combinators
 
-wildcardP :: Bind P P m (ValuePattern Name)
+wildcardP :: Bind P N m (ValuePattern Name)
 wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 
-varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind P P m (ValuePattern Name)
+varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind P N m (ValuePattern Name)
 varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q _A |- check (b ::: _B))
 
-conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P P m (ValuePattern Name)] -> Bind P P m (ValuePattern Name)
+conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P N m (ValuePattern Name)] -> Bind P N m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   n' :=: _ ::: _T <- resolveC n
   _ ::: _T' <- instantiate const (() ::: _T)
   (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify _A' _A *> check (b ::: _B)))) ps ::: (q, _T')) b ::: _B)
   pure (PCon n' (fromList ps'), b')
 
-fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind P P m [a] -> [Bind P P m a] -> Bind P P m [a]
+fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind P N m [a] -> [Bind P N m a] -> Bind P N m [a]
 fieldsP = foldr cons
   where
   cons p ps = Bind $ \ q _A b -> Check $ \ _B -> do
+    _A <- expectThunk "when checking nested pattern" _A
     (_ ::: (q', _A'), _A'') <- expectFunction "when checking nested pattern" _A
     (p', (ps', b')) <- check (bind (p ::: (q', _A')) (bind (ps ::: (q, Thunk _A'')) b) ::: _B)
     pure (p':ps', b')
 
 
-allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind P P m (EffectPattern Name)
+allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind P N m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _A') <- expectRet "when checking catch-all pattern" _A
   (PAll n,) <$> (Binding n q (Thunk (Comp sig _A')) |- check (b ::: _B))
 
-effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P P m (ValuePattern Name)] -> Name -> Bind P P m (Pattern Name)
+effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P N m (ValuePattern Name)] -> Name -> Bind P N m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectRet "when checking effect pattern" _A
@@ -132,31 +154,57 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 
 -- Expression elaboration
 
-synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth P m (Expr P)
-synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.Var n    -> var n
-  S.App f a  -> app XApp (synthExpr f) (checkExpr a)
-  S.As t _T  -> as (checkExpr t ::: checkTypeP _T)
-  S.String s -> string s
+synthExprN :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth N m (Expr N)
+synthExprN expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+  S.App f a  -> app XApp (synthExprN f) (checkExprP a)
+  S.As t _T  -> as (checkExprN t ::: checkTypeN _T)
+  S.Var{}    -> shift
+  S.String{} -> shift
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   where
+  shift = retS (synthExprP expr)
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check P m (Expr P)
-checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
+checkExprN :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check N m (Expr N)
+checkExprN expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Hole  n  -> hole n
-  S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
+  S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprN b)) cs)
   S.Var{}    -> synth
   S.App{}    -> synth
   S.As{}     -> synth
   S.String{} -> synth
   where
-  synth = switch (synthExpr expr)
+  synth = switch (synthExprN expr)
+
+
+synthExprP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth P m (Expr P)
+synthExprP expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+  S.Var n    -> var n
+  S.App{}    -> shift
+  S.As t _T  -> as (checkExprP t ::: checkTypeP _T)
+  S.String s -> string s
+  S.Hole{}   -> nope
+  S.Lam{}    -> nope
+  where
+  shift = thunkS (synthExprN expr)
+  nope = Synth $ couldNotSynthesize (show e)
+
+checkExprP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check P m (Expr P)
+checkExprP expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
+  S.Hole  n  -> hole n
+  S.Lam{}    -> shift
+  S.Var{}    -> synth
+  S.App{}    -> synth
+  S.As{}     -> synth
+  S.String{} -> synth
+  where
+  shift = thunk (checkExprN expr)
+  synth = switch (synthExprP expr)
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind P P m (Pattern Name)
+bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind P N m (Pattern Name)
 bindPattern = go where
   go = withSpanB $ \case
     S.PVal p -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unComp =<< unThunk _T)))
@@ -187,20 +235,20 @@ abstractType body = go
       pure $ TForAll n (T.quote level a) b'
     _                   -> body
 
-abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc (TExpr P) -> Snoc (Expr P) -> Expr P) -> Check P m (Expr P)
+abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc (TExpr P) -> Snoc (Expr P) -> Expr N) -> Check N m (Expr N)
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
-    Thunk (ForAll n                  _T   _B) -> do
+    ForAll n                  _T   _B -> do
       d <- depth
-      check (tlam (go (ts :> d) fs) ::: Thunk (ForAll n _T _B))
-    Thunk (Arrow  n q (Thunk (Comp s _A)) _B) -> do
+      check (tlam (go (ts :> d) fs) ::: ForAll n _T _B)
+    Arrow  n q (Thunk (Comp s _A)) _B -> do
       d <- depth
-      check (lam [(PEff <$> allP (fromMaybe __ n), go ts (fs :> d))] ::: Thunk (Arrow n q (Thunk (Comp s _A)) _B))
-    Thunk (Arrow  n q                _A   _B) -> do
+      check (lam [(PEff <$> allP (fromMaybe __ n), go ts (fs :> d))] ::: Arrow n q (Thunk (Comp s _A)) _B)
+    Arrow  n q                _A   _B -> do
       d <- depth
-      check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: Thunk (Arrow n q _A _B))
-    _T                        -> do
+      check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: Arrow n q _A _B)
+    _T                                -> do
       d <- depth
       pure $ body (TVar . Free . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
@@ -216,8 +264,8 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    c_T <- elabType $ pushSpan s $ shiftN <$> abstractType (check (checkTypeN t ::: Type)) _T
-    con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
+    c_T <- elabType $ pushSpan s $ TThunk <$> abstractType (check (checkTypeN t ::: Type)) _T
+    con' <- elabTerm $ check (thunk (abstractTerm (\ ts fs -> XReturn (XCon (mname :.: n) ts fs))) ::: c_T)
     pure $ n :=: Just (DTerm con') ::: c_T
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
@@ -231,9 +279,9 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    _T' <- elabType $ pushSpan s $ shiftN <$> abstractType (check (checkTypeN t ::: Type)) _T
+    _T' <- elabType $ pushSpan s $ TThunk <$> abstractType (check (checkTypeN t ::: Type)) _T
     -- FIXME: check that the interface is a member of the sig.
-    op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
+    op' <- elabTerm $ check (thunk (abstractTerm (XOp (mname :.: n))) ::: _T')
     pure $ n :=: Just (DTerm op') ::: _T'
   pure [ dname :=: Just (DInterface (scopeFromList cs)) ::: _T ]
 
@@ -244,17 +292,17 @@ elabTermDef
   -> S.Ann S.Expr
   -> m (Expr P)
 elabTermDef _T expr@(S.Ann s _ _) = do
-  elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
+  elabTerm $ pushSpan s $ check (thunk (go (checkExprN expr)) ::: _T)
   where
-  go :: Has (Throw Err) sig m => Check p m (Expr P) -> Check p m (Expr P)
+  go :: Has (Throw Err) sig m => Check N m (Expr N) -> Check N m (Expr N)
   go k = Check $ \ _T -> case _T of
-    Thunk ForAll{}                                  -> check (tlam (go k) ::: _T)
-    Thunk (Arrow (Just n) q (Thunk (Comp s _A)) _B) -> check (lam [(PEff <$> allP n, go k)] ::: Thunk (Arrow Nothing q (Thunk (Comp s _A)) _B))
-    Thunk (Arrow (Just n) q _A _B)                  -> check (lam [(PVal <$> varP n, go k)] ::: Thunk (Arrow Nothing q _A _B))
+    ForAll{}                                -> check (tlam (go k) ::: _T)
+    Arrow (Just n) q (Thunk (Comp s _A)) _B -> check (lam [(PEff <$> allP n, go k)] ::: Arrow Nothing q (Thunk (Comp s _A)) _B)
+    Arrow (Just n) q _A _B                  -> check (lam [(PVal <$> varP n, go k)] ::: Arrow Nothing q _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                                               -> check (k ::: _T)
+    _                                       -> check (k ::: _T)
 
 
 -- Modules
@@ -299,16 +347,21 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 -- Errors
 
-expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m (Name ::: Type P, Type P -> Type N)
-expectQuantifier = expectMatch (\case{ ForAll n t b -> pure (n ::: t, b) ; _ -> Nothing } <=< unThunk) "{_} -> _"
+expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> Type N -> Elab m (Name ::: Type P, Type P -> Type N)
+expectQuantifier = expectMatch (\case{ ForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
-expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m ((Quantity, Type P), Type N)
-expectTacitFunction = expectMatch (\case{ Arrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing } <=< unThunk) "_ -> _"
+expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type N -> Elab m ((Quantity, Type P), Type N)
+expectTacitFunction = expectMatch (\case{ Arrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _"
 
 -- | Expect a computation type with effects.
 expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m ([Type P], Type P)
+-- FIXME: expectations should be composable so we can expect a thunk and a comp separately
 expectRet = expectMatch (\case{ Comp s t -> pure (s, t) ; _ -> Nothing } <=< unThunk) "[_] _"
+
+-- | Expect a value type wrapping a computation.
+expectThunk :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m (Type N)
+expectThunk = expectMatch unThunk "thunk _"
 
 
 -- Elaboration

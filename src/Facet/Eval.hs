@@ -15,8 +15,7 @@ module Facet.Eval
 , Value(..)
 , unit
   -- * Quotation
-, quoteV
-, quoteC
+, quote
 ) where
 
 import Control.Algebra hiding (Handler)
@@ -40,59 +39,31 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall p m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr p -> Eval m (Value N (Eval m))
-eval = runReader Nil . evalC
+eval :: forall p m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr p -> Eval m (Value p (Eval m))
+eval = runReader Nil . eval'
 
-evalC :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr p -> EnvC m (Value N (Eval m))
-evalC e = case e of
-  XTLam b    -> evalC b
-  XInst f _  -> evalC f
-  XLam cs    -> lam (fmap evalC <$> cs)
-  XApp  f a  -> evalC f $$ evalV a
-  XOp n _ sp -> op n (evalV <$> sp)
-  XVar{}     -> return
-  XCon{}     -> return
-  XString{}  -> return
-  where
-  return = lift . creturn =<< evalV e
-
-evalV :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr p -> EnvC m (Value P (Eval m))
-evalV e = case e of
-  XVar (Global n)  -> evalV =<< global n
-  XVar (Free v)    -> var v
-  XVar (Metavar m) -> case m of {}
-  XCon n _ fs      -> VCon n <$> traverse evalV fs
-  XString s        -> pure $ VString s
-  XTLam{}          -> thunk
-  XInst{}          -> thunk
-  XLam{}           -> thunk
-  XApp{}           -> thunk
-  XOp{}            -> thunk
-  where
-  thunk = vthunk <$> evalC e
-
-eval' :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr' u -> EnvC m (Value u (Eval m))
+eval' :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr u -> EnvC m (Value u (Eval m))
 eval' = \case
-  EXTLam b          -> eval' b
-  EXInst f _        -> eval' f
-  EXLam cs          -> lam (fmap eval' <$> cs)
-  EXApp  f a        -> eval' f $$ eval' a
-  EXOp n _ sp       -> op n (eval' <$> sp)
-  EXReturn v        -> lift . creturn =<< eval' v
-  EXForce v         -> do
+  XTLam b          -> eval' b
+  XInst f _        -> eval' f
+  XLam cs          -> lam (fmap eval' <$> cs)
+  XApp  f a        -> eval' f $$ eval' a
+  XOp n _ sp       -> op n (eval' <$> sp)
+  XReturn v        -> lift . creturn =<< eval' v
+  XForce v         -> do
      -- enforced by the types; force takes a value of type U B, i.e. a thunk.
     VThunk v' <- eval' v
     pure v'
-  EXBind a b        -> do
+  XBind a b        -> do
      -- enforced by the types; bind takes a computation of type F A on the left, i.e. a return.
     VReturn a' <- eval' a
     local (:> a') (eval' b)
-  EXVar (Global n)  -> evalV =<< global n -- this will have to do until we store values in the global environment
-  EXVar (Free v)    -> var v
-  EXVar (Metavar m) -> case m of {}
-  EXCon n _ fs      -> VCon n <$> traverse eval' fs
-  EXString s        -> pure $ VString s
-  EXThunk b         -> VThunk <$> eval' b -- this is definitely wrong, VThunk should definitely hold a computation
+  XVar (Global n)  -> eval' =<< global n -- this will have to do until we store values in the global environment
+  XVar (Free v)    -> var v
+  XVar (Metavar m) -> case m of {}
+  XCon n _ fs      -> VCon n <$> traverse eval' fs
+  XString s        -> pure $ VString s
+  XThunk b         -> VThunk <$> eval' b -- this is definitely wrong, VThunk should definitely hold a computation
 
 
 -- Combinators
@@ -181,11 +152,6 @@ data Value u m where
   VLam :: [Either (EffectPattern Name, EffectPattern (Value P m) -> m (Value N m)) (ValuePattern Name, ValuePattern (Value P m) -> m (Value N m))] -> Value N m
   VReturn :: Value P m -> Value N m
 
-vthunk :: Value N m -> Value P m
-vthunk = \case
-  VReturn v -> v
-  c         -> VThunk c
-
 unit :: Value P m
 unit = VCon (["Data", "Unit"] :.: N "unit") Nil
 
@@ -219,23 +185,21 @@ matchV = curry $ \case
 
 -- Quotation
 
-quoteV :: Monad m => Level -> Value P m -> m (Expr P)
-quoteV d = \case
-  VFree lvl -> pure (XVar (Free (levelToIndex d lvl)))
-  VCon n fs -> XCon n Nil <$> traverse (quoteV d) fs
-  VString s -> pure $ XString s
-  VThunk c  -> quoteC d c
+quote :: Monad m => Level -> Value p m -> m (Expr p)
+quote d = \case
+  VFree lvl  -> pure (XVar (Free (levelToIndex d lvl)))
+  VCon n fs  -> XCon n Nil <$> traverse (quote d) fs
+  VString s  -> pure $ XString s
+  VThunk c   -> XThunk <$> quote d c
 
-quoteC :: Monad m => Level -> Value N m -> m (Expr P)
-quoteC d = \case
-  VOp q fs k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
+  VOp q fs k -> XApp . XForce <$> quote d k <*> (XThunk . XOp q Nil <$> traverse (quote d) fs)
   VLam cs    -> XLam <$> traverse (quoteClause d) cs
-  VReturn v  -> quoteV d v
+  VReturn v  -> XReturn <$> quote d v
 
-quoteClause :: Monad m => Level -> Either (EffectPattern Name, EffectPattern (Value P m) -> m (Value N m)) (ValuePattern Name, ValuePattern (Value P m) -> m (Value N m)) -> m (Pattern Name, Expr P)
+quoteClause :: Monad m => Level -> Either (EffectPattern Name, EffectPattern (Value P m) -> m (Value N m)) (ValuePattern Name, ValuePattern (Value P m) -> m (Value N m)) -> m (Pattern Name, Expr N)
 quoteClause d p = fmap (pn,) $ case p of
-  Right (p, k) -> let (d', p') = fillV p in quoteC d' =<< k p'
-  Left  (p, h) -> let (d', p') = fillV p in quoteC d' =<< h p'
+  Right (p, k) -> let (d', p') = fillV p in quote d' =<< k p'
+  Left  (p, h) -> let (d', p') = fillV p in quote d' =<< h p'
   where
   pn = either (PEff . fst) (PVal . fst) p
   fillV :: Traversable t => t Name -> (Level, t (Value P m))

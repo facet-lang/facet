@@ -65,7 +65,7 @@ import Control.Carrier.State.Church
 import Control.Carrier.Writer.Church
 import Control.Effect.Lens (views)
 import Control.Lens (Lens', lens)
-import Control.Monad (guard, unless, (<=<))
+import Control.Monad (guard, unless)
 import Data.Bifunctor (first)
 import Data.Foldable (asum)
 import Data.Semialign.Exts
@@ -162,13 +162,13 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check p m a
 hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth P m a -> Check P m b -> Synth P m c
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth N m a -> Check P m b -> Synth N m c
 app mk f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
   -- FIXME: test _A for Ret and extend the sig
   a' <- censor @Usage (q ><<) $ check (a ::: _A)
-  pure $ mk f' a' ::: Thunk _B
+  pure $ mk f' a' ::: _B
 
 
 (|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a
@@ -295,8 +295,8 @@ warn reason = do
 expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type u -> Maybe out) -> String -> String -> Type u -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m (Maybe Name ::: (Quantity, Type P), Type N)
-expectFunction = expectMatch (\case{ Arrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing } <=< unThunk) "_ -> _"
+expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type N -> Elab m (Maybe Name ::: (Quantity, Type P), Type N)
+expectFunction = expectMatch (\case{ Arrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Unification
@@ -405,7 +405,7 @@ elabWith scale k m = runState k mempty . runWriter (const pure) $ do
       ctx  = ElabContext{ context = Context.empty, sig = [], spans = Nil }
   runReader stat . runReader ctx . runElab $ m
 
-elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr P) -> m (Type P)
+elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr p) -> m (Type p)
 elabType = elabWith zero (\ subst t -> pure (T.eval subst Nil t))
 
 elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m (Expr p) -> m (Expr p)
