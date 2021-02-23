@@ -29,7 +29,7 @@ import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 
-tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth T m (TExpr P)
+tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth T m (TExpr T)
 tvar n = Synth $ views context_ (lookupInContext n) >>= \case
   Just (i, q, _T) -> use i q $> (TVar (Free i) ::: _T)
   Nothing         -> do
@@ -37,17 +37,17 @@ tvar n = Synth $ views context_ (lookupInContext n) >>= \case
     pure $ TVar (Global q) ::: _T
 
 
-_Type :: Synth T m (TExpr P)
+_Type :: Synth T m (TExpr T)
 _Type = Synth $ pure $ TType ::: Type
 
-_Interface :: Synth T m (TExpr P)
+_Interface :: Synth T m (TExpr T)
 _Interface = Synth $ pure $ TInterface ::: Type
 
 _String :: Synth T m (TExpr P)
 _String = Synth $ pure $ TString ::: Type
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check T m (TExpr P) -> Check T m (TExpr N) -> Synth T m (TExpr N)
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check T m (TExpr T) -> Check T m (TExpr N) -> Synth T m (TExpr N)
 forAll (n ::: t) b = Synth $ do
   t' <- check (t ::: Type)
   env <- views context_ toEnv
