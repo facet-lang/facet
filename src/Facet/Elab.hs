@@ -113,10 +113,10 @@ instantiate inst = \case
     _              -> pure $ e ::: _T
 
 
-switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
+switch :: (HasCallStack, Has (Throw Err) sig m) => Synth P m a -> Check m a
 switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
-as :: (HasCallStack, Algebra sig m) => Check m a ::: Check m (TExpr P) -> Synth m a
+as :: (HasCallStack, Algebra sig m) => Check m a ::: Check m (TExpr P) -> Synth P m a
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
@@ -163,7 +163,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
 hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth P m a -> Check m b -> Synth P m c
 app mk f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
@@ -442,12 +442,12 @@ mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
 mapCheck f m = Check $ \ _T -> f (runCheck m _T)
 
 
-newtype Synth m a = Synth { synth :: Elab m (a ::: Type P) }
+newtype Synth p m a = Synth { synth :: Elab m (a ::: Type p) }
 
-instance Functor (Synth m) where
+instance Functor (Synth p m) where
   fmap f (Synth m) = Synth (first f <$> m)
 
-mapSynth :: (Elab m (a ::: Type P) -> Elab m (b ::: Type P)) -> Synth m a -> Synth m b
+mapSynth :: (Elab m (a ::: Type p) -> Elab m (b ::: Type q)) -> Synth p m a -> Synth q m b
 mapSynth f = Synth . f . synth
 
 

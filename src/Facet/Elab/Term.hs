@@ -60,13 +60,13 @@ import           GHC.Stack
 -- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Algebra sig m => Q Name ::: Type P -> Synth m Expr
+global :: Algebra sig m => Q Name ::: Type P -> Synth P m Expr
 global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m Expr
+var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth P m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, q, _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
   | Just (_ :=: Just (DTerm x) ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
@@ -88,7 +88,7 @@ lam cs = Check $ \ _T -> do
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: Thunk _B)) cs
 
 
-string :: Text -> Synth m Expr
+string :: Text -> Synth P m Expr
 string s = Synth $ pure $ XString s ::: T.String
 
 
@@ -132,7 +132,7 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 
 -- Expression elaboration
 
-synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
+synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth P m Expr
 synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> var n
   S.App f a  -> app XApp (synthExpr f) (checkExpr a)
