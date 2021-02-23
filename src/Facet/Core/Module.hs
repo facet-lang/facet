@@ -8,6 +8,7 @@ module Facet.Core.Module
 , lookupE
 , lookupD
 , Scope(..)
+, ScopeEntry
 , decls_
 , scopeFromList
 , scopeToList
@@ -74,6 +75,8 @@ lookupD n Module{ name, scope } = maybe empty pure $ do
 
 newtype Scope = Scope { decls :: Map.Map Name (Maybe (Def P) ::: Type P) }
   deriving (Monoid, Semigroup)
+
+type ScopeEntry = Name :=: Maybe (Def P) ::: Type P
 
 decls_ :: Lens' Scope (Map.Map Name (Maybe (Def P) ::: Type P))
 decls_ = coerced
