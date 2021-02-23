@@ -40,10 +40,10 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Value N (Eval m))
+eval :: forall p m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr p -> Eval m (Value N (Eval m))
 eval = runReader Nil . evalC
 
-evalC :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> EnvC m (Value N (Eval m))
+evalC :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr p -> EnvC m (Value N (Eval m))
 evalC e = case e of
   XTLam b    -> evalC b
   XInst f _  -> evalC f
@@ -56,7 +56,7 @@ evalC e = case e of
   where
   return = lift . creturn =<< evalV e
 
-evalV :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> EnvC m (Value P (Eval m))
+evalV :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr p -> EnvC m (Value P (Eval m))
 evalV e = case e of
   XVar (Global n)  -> evalV =<< global n
   XVar (Free v)    -> var v
@@ -99,7 +99,7 @@ eval' = \case
 
 type EnvC m = ReaderC (Snoc (Value P (Eval m))) (Eval m)
 
-global :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Q Name -> EnvC m Expr
+global :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Q Name -> EnvC m (Expr P)
 global n = do
   mod <- ask
   graph <- ask
@@ -219,20 +219,20 @@ matchV = curry $ \case
 
 -- Quotation
 
-quoteV :: Monad m => Level -> Value P m -> m Expr
+quoteV :: Monad m => Level -> Value P m -> m (Expr P)
 quoteV d = \case
   VFree lvl -> pure (XVar (Free (levelToIndex d lvl)))
   VCon n fs -> XCon n Nil <$> traverse (quoteV d) fs
   VString s -> pure $ XString s
   VThunk c  -> quoteC d c
 
-quoteC :: Monad m => Level -> Value N m -> m Expr
+quoteC :: Monad m => Level -> Value N m -> m (Expr P)
 quoteC d = \case
   VOp q fs k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
   VLam cs    -> XLam <$> traverse (quoteClause d) cs
   VReturn v  -> quoteV d v
 
-quoteClause :: Monad m => Level -> Either (EffectPattern Name, EffectPattern (Value P m) -> m (Value N m)) (ValuePattern Name, ValuePattern (Value P m) -> m (Value N m)) -> m (Pattern Name, Expr)
+quoteClause :: Monad m => Level -> Either (EffectPattern Name, EffectPattern (Value P m) -> m (Value N m)) (ValuePattern Name, ValuePattern (Value P m) -> m (Value N m)) -> m (Pattern Name, Expr P)
 quoteClause d p = fmap (pn,) $ case p of
   Right (p, k) -> let (d', p') = fillV p in quoteC d' =<< k p'
   Left  (p, h) -> let (d', p') = fillV p in quoteC d' =<< h p'

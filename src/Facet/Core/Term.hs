@@ -55,15 +55,15 @@ fill f = mapAccumL (const . f)
 
 -- Term expressions
 
-data Expr
+data Expr u
   = XVar (Var Void Index)
-  | XTLam Expr
-  | XInst Expr (T.TExpr P)
-  | XLam [(Pattern Name, Expr)]
-  | XApp Expr Expr
-  | XCon (Q Name) (Snoc (T.TExpr P)) (Snoc Expr)
+  | XTLam (Expr u)
+  | XInst (Expr u) (T.TExpr P)
+  | XLam [(Pattern Name, Expr u)]
+  | XApp (Expr u) (Expr u)
+  | XCon (Q Name) (Snoc (T.TExpr P)) (Snoc (Expr u))
   | XString Text
-  | XOp (Q Name) (Snoc (T.TExpr P)) (Snoc Expr)
+  | XOp (Q Name) (Snoc (T.TExpr P)) (Snoc (Expr u))
   deriving (Eq, Ord, Show)
 
 data Expr' u where

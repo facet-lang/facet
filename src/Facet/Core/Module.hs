@@ -92,12 +92,12 @@ newtype Import = Import { name :: MName }
 
 
 data Def
-  = DTerm Expr
+  = DTerm (Expr P)
   | DData Scope
   | DInterface Scope
   | DModule Scope
 
-unDTerm :: Alternative m => Def -> m Expr
+unDTerm :: Alternative m => Def -> m (Expr P)
 unDTerm = \case
   DTerm expr -> pure expr
   _          -> empty

@@ -174,7 +174,7 @@ printTExpr Options{ qname } = go
       | q == one  -> (pretty '1' <+>)
       | otherwise -> id
 
-printExpr :: Options -> Snoc Print -> C.Expr -> Print
+printExpr :: Options -> Snoc Print -> C.Expr p -> Print
 printExpr opts@Options{ qname, instantiation } = go
   where
   go env = \case

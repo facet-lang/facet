@@ -60,13 +60,13 @@ import           GHC.Stack
 -- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Algebra sig m => Q Name ::: Type P -> Synth P m Expr
+global :: Algebra sig m => Q Name ::: Type P -> Synth P m (Expr P)
 global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth P m Expr
+var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth P m (Expr P)
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, q, _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
   | Just (_ :=: Just (DTerm x) ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
@@ -75,20 +75,20 @@ var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabConte
     synth $ global (n ::: _T)
 
 
-tlam :: (HasCallStack, Has (Throw Err) sig m) => Check P m Expr -> Check P m Expr
+tlam :: (HasCallStack, Has (Throw Err) sig m) => Check P m (Expr P) -> Check P m (Expr P)
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
   b' <- Binding n zero _A |- check (b ::: Thunk (_B (free d)))
   pure $ XTLam b'
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check P m Expr)] -> Check P m Expr
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check P m (Expr P))] -> Check P m (Expr P)
 lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking clause" _T
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: Thunk _B)) cs
 
 
-string :: Text -> Synth P m Expr
+string :: Text -> Synth P m (Expr P)
 string s = Synth $ pure $ XString s ::: T.String
 
 
@@ -132,7 +132,7 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 
 -- Expression elaboration
 
-synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth P m Expr
+synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth P m (Expr P)
 synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> var n
   S.App f a  -> app XApp (synthExpr f) (checkExpr a)
@@ -143,7 +143,7 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check P m Expr
+checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check P m (Expr P)
 checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Hole  n  -> hole n
   S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
@@ -187,7 +187,7 @@ abstractType body = go
       pure $ TForAll n (T.quote level a) b'
     _                   -> body
 
-abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc (TExpr P) -> Snoc Expr -> Expr) -> Check P m Expr
+abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc (TExpr P) -> Snoc (Expr P) -> Expr P) -> Check P m (Expr P)
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
@@ -242,11 +242,11 @@ elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Type P
   -> S.Ann S.Expr
-  -> m Expr
+  -> m (Expr P)
 elabTermDef _T expr@(S.Ann s _ _) = do
   elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
-  go :: Has (Throw Err) sig m => Check p m Expr -> Check p m Expr
+  go :: Has (Throw Err) sig m => Check p m (Expr P) -> Check p m (Expr P)
   go k = Check $ \ _T -> case _T of
     Thunk ForAll{}                                  -> check (tlam (go k) ::: _T)
     Thunk (Arrow (Just n) q (Thunk (Comp s _A)) _B) -> check (lam [(PEff <$> allP n, go k)] ::: Thunk (Arrow Nothing q (Thunk (Comp s _A)) _B))

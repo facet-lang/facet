@@ -203,7 +203,7 @@ showEval e = Action $ do
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
-runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
+runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr P -> m (Expr P)
 runEvalMain e = runEval handle pure (E.quoteC 0 =<< eval e)
   where
   handle :: Has (Throw (Notice.Notice (Doc Style)) :+: Output :+: State Options) sig m => Q Name -> Snoc (Value P m) -> (Value P m -> m (Value N m)) -> m (Value N m)
