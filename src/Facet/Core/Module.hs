@@ -8,7 +8,6 @@ module Facet.Core.Module
 , lookupE
 , lookupD
 , Scope(..)
-, ScopeEntry
 , decls_
 , scopeFromList
 , scopeToList
@@ -60,30 +59,28 @@ lookupC n Module{ name, scope } = foldMapA matchDef (decls scope)
   matchTerm (n :=: d) = (name :.: n :=: ) <$> unDTerm d
 
 -- | Look up effect operations.
-lookupE :: (Alternative m, Monad m) => Name -> Module -> m (ScopeEntry (Q Name))
+lookupE :: (Alternative m, Monad m) => Name -> Module -> m (Q Name :=: Def)
 lookupE n Module{ name, scope } = foldMapA matchDef (decls scope)
   where
   matchDef = fmap (first (name:.:)) . lookupScope n . tm <=< unDInterface
 
-lookupD :: Alternative m => Name -> Module -> m (ScopeEntry (Q Name))
+lookupD :: Alternative m => Name -> Module -> m (Q Name :=: Def)
 lookupD n Module{ name, scope } = maybe empty (pure . first (name:.:)) (lookupScope n scope)
 
 
 newtype Scope = Scope { decls :: Map.Map Name Def }
   deriving (Monoid, Semigroup)
 
-type ScopeEntry n = n :=: Def
-
 decls_ :: Lens' Scope (Map.Map Name Def)
 decls_ = coerced
 
-scopeFromList :: [ScopeEntry Name] -> Scope
+scopeFromList :: [Name :=: Def] -> Scope
 scopeFromList = Scope . Map.fromList . map (\ (n :=: d) -> (n, d))
 
-scopeToList :: Scope -> [ScopeEntry Name]
+scopeToList :: Scope -> [Name :=: Def]
 scopeToList = map (uncurry (:=:)) . Map.toList . decls
 
-lookupScope :: Alternative m => Name -> Scope -> m (ScopeEntry Name)
+lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Def)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 

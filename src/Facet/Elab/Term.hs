@@ -261,7 +261,7 @@ elabDataDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
   => Name ::: Type T
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m [ScopeEntry Name]
+  -> m [Name :=: Def]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
@@ -277,7 +277,7 @@ elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
   => Name ::: Type T
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m [ScopeEntry Name]
+  -> m [Name :=: Def]
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do

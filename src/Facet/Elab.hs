@@ -136,7 +136,7 @@ resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith loo
 resolveC :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe (Expr P) ::: Type P)
 resolveC = resolveWith lookupC
 
-resolveQ :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (ScopeEntry (Q Name))
+resolveQ :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Def)
 resolveQ = resolveWith lookupD
 
 lookupInContext :: Alternative m => Q Name -> Context -> m (Index, Quantity, VarType)
@@ -147,7 +147,7 @@ lookupInContext (m:.:n)
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: this can’t differentiate between different instantiations of the same effect (i.e. based on type)
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Type P] -> m (ScopeEntry (Q Name))
+lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Type P] -> m (Q Name :=: Def)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   T.Ne (Global q@(m':.:_)) Nil -> do
     guard (m == Nil || m == m')
