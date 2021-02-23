@@ -347,7 +347,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 -- Errors
 
-expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> Type N -> Elab m (Name ::: Type P, Type P -> Type N)
+expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> Type N -> Elab m (Name ::: Type T, Type P -> Type N)
 expectQuantifier = expectMatch (\case{ ForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
