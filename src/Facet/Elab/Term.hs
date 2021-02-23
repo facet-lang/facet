@@ -176,16 +176,16 @@ abstractType body = go
   where
   go :: Type v -> Elab m (TExpr N)
   go = \case
-    Thunk t               -> go t
-    ForAll       n    t b -> do
+    Thunk t             -> go t
+    ForAll       n  t b -> do
       level <- depth
       b' <- Binding n zero t |- go (b (free level))
       pure $ TForAll n (T.quote level t) b'
-    Arrow  (Just n) q a b -> do
+    Arrow' (Just n) a b -> do
       level <- depth
-      b' <- Binding n q a |- go b
+      b' <- Binding n zero a |- go b
       pure $ TForAll n (T.quote level a) b'
-    _                      -> body
+    _                   -> body
 
 abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc (TExpr P) -> Snoc Expr -> Expr) -> Check P m Expr
 abstractTerm body = go Nil Nil
