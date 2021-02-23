@@ -76,18 +76,18 @@ lookupD n Module{ name, scope } = maybe empty pure $ do
 newtype Scope = Scope { decls :: Map.Map Name (Maybe (Def P) ::: Type P) }
   deriving (Monoid, Semigroup)
 
-type ScopeEntry = Name :=: Maybe (Def P) ::: Type P
+type ScopeEntry n = n :=: Maybe (Def P) ::: Type P
 
 decls_ :: Lens' Scope (Map.Map Name (Maybe (Def P) ::: Type P))
 decls_ = coerced
 
-scopeFromList :: [ScopeEntry] -> Scope
+scopeFromList :: [ScopeEntry Name] -> Scope
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
 
-scopeToList :: Scope -> [ScopeEntry]
+scopeToList :: Scope -> [ScopeEntry Name]
 scopeToList = map (\ (n, v ::: _T) -> n :=: v ::: _T) . Map.toList . decls
 
-lookupScope :: Alternative m => Name -> Scope -> m ScopeEntry
+lookupScope :: Alternative m => Name -> Scope -> m (ScopeEntry Name)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
