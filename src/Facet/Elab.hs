@@ -21,6 +21,7 @@ module Facet.Elab
 , pushSpan
 , Err(..)
 , ErrReason(..)
+, err
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
