@@ -81,13 +81,13 @@ type ScopeEntry = Name :=: Maybe (Def P) ::: Type P
 decls_ :: Lens' Scope (Map.Map Name (Maybe (Def P) ::: Type P))
 decls_ = coerced
 
-scopeFromList :: [Name :=: Maybe (Def P) ::: Type P] -> Scope
+scopeFromList :: [ScopeEntry] -> Scope
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v ::: _T) -> (n, v ::: _T))
 
-scopeToList :: Scope -> [Name :=: Maybe (Def P) ::: Type P]
+scopeToList :: Scope -> [ScopeEntry]
 scopeToList = map (\ (n, v ::: _T) -> n :=: v ::: _T) . Map.toList . decls
 
-lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Maybe (Def P) ::: Type P)
+lookupScope :: Alternative m => Name -> Scope -> m ScopeEntry
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
