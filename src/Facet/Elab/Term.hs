@@ -75,14 +75,14 @@ var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabConte
     synth $ global (n ::: _T)
 
 
-tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
+tlam :: (HasCallStack, Has (Throw Err) sig m) => Check P m Expr -> Check P m Expr
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
   b' <- Binding n zero _A |- check (b ::: Thunk (_B (free d)))
   pure $ XTLam b'
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check P m Expr)] -> Check P m Expr
 lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking clause" _T
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: Thunk _B)) cs
@@ -143,7 +143,7 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
+checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check P m Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Hole  n  -> hole n
   S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
@@ -187,7 +187,7 @@ abstractType body = go
       pure $ TForAll n (T.quote level a) b'
     _                      -> body
 
-abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc (TExpr P) -> Snoc Expr -> Expr) -> Check m Expr
+abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc (TExpr P) -> Snoc Expr -> Expr) -> Check P m Expr
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
@@ -246,6 +246,7 @@ elabTermDef
 elabTermDef _T expr@(S.Ann s _ _) = do
   elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
+  go :: Has (Throw Err) sig m => Check p m Expr -> Check p m Expr
   go k = Check $ \ _T -> case _T of
     Thunk ForAll{}                                  -> check (tlam (go k) ::: _T)
     Thunk (Arrow (Just n) q (Thunk (Comp s _A)) _B) -> check (lam [(PEff <$> allP n, go k)] ::: Thunk (Arrow Nothing q (Thunk (Comp s _A)) _B))

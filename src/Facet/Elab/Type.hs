@@ -47,7 +47,7 @@ _String :: Synth P m (TExpr P)
 _String = Synth $ pure $ TString ::: Type
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check m (TExpr P) -> Check m (TExpr N) -> Synth P m (TExpr N)
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check P m (TExpr P) -> Check P m (TExpr N) -> Synth P m (TExpr N)
 forAll (n ::: t) b = Synth $ do
   t' <- check (t ::: Type)
   env <- views context_ toEnv
@@ -56,7 +56,7 @@ forAll (n ::: t) b = Synth $ do
   b' <- Binding n zero vt |- check (b ::: Type)
   pure $ TForAll n t' b' ::: Type
 
-(-->) :: Algebra sig m => Maybe Name ::: Check m (Quantity, TExpr P) -> Check m (TExpr N) -> Synth P m (TExpr N)
+(-->) :: Algebra sig m => Maybe Name ::: Check P m (Quantity, TExpr P) -> Check P m (TExpr N) -> Synth P m (TExpr N)
 (n ::: a) --> b = Synth $ do
   (q', a') <- check (a ::: Type)
   b' <- check (b ::: Type)
@@ -65,7 +65,7 @@ forAll (n ::: t) b = Synth $ do
 infixr 1 -->
 
 
-comp :: Algebra sig m => [Check m (TExpr P)] -> Check m (TExpr P) -> Synth P m (TExpr N)
+comp :: Algebra sig m => [Check P m (TExpr P)] -> Check P m (TExpr P) -> Synth P m (TExpr N)
 comp s t = Synth $ do
   s' <- traverse (check . (::: Interface)) s
   t' <- check (t ::: Type)
@@ -105,18 +105,18 @@ synthTypeP ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
 -- | Check a type at a kind.
 --
 -- NB: while synthesis is possible for all types at present, I reserve the right to change that.
-checkTypeN :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m (TExpr N)
+checkTypeN :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check P m (TExpr N)
 checkTypeN = switch . synthTypeN
 
 -- | Check a type at a kind.
 --
 -- NB: while synthesis is possible for all types at present, I reserve the right to change that.
-checkTypeP :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m (TExpr P)
+checkTypeP :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check P m (TExpr P)
 checkTypeP = switch . synthTypeP
 
 synthInterfaceC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth P m (TExpr P)
 synthInterfaceC (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
   foldl' (app TApp) (mapSynth (pushSpan sh) (tvar h)) (checkTypeP <$> sp)
 
-checkInterfaceV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check m (TExpr P)
+checkInterfaceV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check P m (TExpr P)
 checkInterfaceV = switch . synthInterfaceC
