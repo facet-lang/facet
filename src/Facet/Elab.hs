@@ -125,7 +125,7 @@ as (m ::: _T) = Synth $ do
 
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
-  => (forall m . Alternative m => Name -> Module -> m (Q Name :=: x))
+  => (forall m . (Alternative m, Monad m) => Name -> Module -> m (Q Name :=: x))
   -> Q Name
   -> Elab m (Q Name :=: x)
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
