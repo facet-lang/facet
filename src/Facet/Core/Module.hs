@@ -59,8 +59,8 @@ lookupC n Module{ name, scope } = foldMapA matchDef (decls scope)
   matchDef = fmap (first (name :.:)) . lookupScope n . tm <=< unDData
 
 -- | Look up effect operations.
-lookupE :: Alternative m => Name -> Module -> m (ScopeEntry (Q Name))
-lookupE n Module{ name, scope } = maybe empty pure $ foldMapA matchDef (decls scope)
+lookupE :: (Alternative m, Monad m) => Name -> Module -> m (ScopeEntry (Q Name))
+lookupE n Module{ name, scope } = foldMapA matchDef (decls scope)
   where
   matchDef = fmap (first (name:.:)) . lookupScope n . tm <=< unDInterface
 
