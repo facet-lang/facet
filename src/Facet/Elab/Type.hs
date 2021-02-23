@@ -93,7 +93,6 @@ tapp :: (HasCallStack, Has (Throw Err) sig m) => Synth T m (TExpr T) -> Check T 
 tapp f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: _A, _B) <- expectTypeConstructor "in type-level application" _F
-  -- FIXME: test _A for Ret and extend the sig
   a' <- censor @Usage (zero ><<) $ check (a ::: _A)
   pure $ TApp f' a' ::: _B
 
