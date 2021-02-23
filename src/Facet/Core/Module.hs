@@ -20,11 +20,10 @@ module Facet.Core.Module
 , unDInterface
 ) where
 
-import           Control.Applicative (Alternative(..))
+import           Control.Effect.NonDet
 import           Control.Lens (Lens', coerced, lens)
 import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
-import           Data.Foldable (asum)
 import qualified Data.Map as Map
 import           Facet.Core.Term
 import           Facet.Core.Type
@@ -55,13 +54,13 @@ scope_ = lens scope (\ m scope -> m{ scope })
 
 
 lookupC :: Alternative m => Name -> Module -> m (ScopeEntry (Q Name))
-lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
+lookupC n Module{ name, scope } = maybe empty pure $ foldMapA matchDef (decls scope)
   where
   matchDef = fmap (first (name :.:)) . lookupScope n . tm <=< unDData
 
 -- | Look up effect operations.
 lookupE :: Alternative m => Name -> Module -> m (ScopeEntry (Q Name))
-lookupE n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
+lookupE n Module{ name, scope } = maybe empty pure $ foldMapA matchDef (decls scope)
   where
   matchDef = fmap (first (name:.:)) . lookupScope n . tm <=< unDInterface
 
