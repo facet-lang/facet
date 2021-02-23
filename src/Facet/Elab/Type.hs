@@ -8,6 +8,8 @@ module Facet.Elab.Type
 , _String
 , forAll
 , (-->)
+, synthTypeT
+, checkTypeT
 , synthTypeN
 , synthTypeP
 , checkTypeN
@@ -64,12 +66,39 @@ forAll (n ::: t) b = Synth $ do
 
 infixr 1 -->
 
+(==>) :: Algebra sig m => Maybe Name ::: Check T m (TExpr T) -> Check T m (TExpr T) -> Synth T m (TExpr T)
+-- FIXME: use the name in TArrow'.
+(_ ::: a) ==> b = Synth $ do
+  a' <- check (a ::: Type)
+  b' <- check (b ::: Type)
+  pure $ TArrow' a' b' ::: Type
+
+infixr 1 ==>
+
 
 comp :: Algebra sig m => [Check T m (TExpr P)] -> Check T m (TExpr P) -> Synth T m (TExpr N)
 comp s t = Synth $ do
   s' <- traverse (check . (::: Interface)) s
   t' <- check (t ::: Type)
   pure $ TComp s' t' ::: Type
+
+
+synthTypeT :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth T m (TExpr T)
+synthTypeT (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+  S.KType          -> _Type
+  S.KInterface     -> _Interface
+  S.TString        -> _String
+  S.TVar n         -> tvar n
+  S.TApp f a       -> app TApp (synthTypeT f) (checkTypeT a)
+  -- FIXME: verify that the quantity is zero
+  S.TArrow n _ a b -> (n ::: checkTypeT a) ==> checkTypeT b
+  S.TForAll{}      -> nope "quantifier"
+  S.TComp{}        -> nope "computation"
+  where
+  nope s = Synth $ err $ Invariant $ s <> " cannot be lifted to the kind level"
+
+checkTypeT :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check T m (TExpr T)
+checkTypeT = switch . synthTypeT
 
 
 synthTypeN :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth T m (TExpr N)
