@@ -53,8 +53,8 @@ scope_ :: Lens' Module Scope
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
-lookupC :: Alternative m => Name -> Module -> m (ScopeEntry (Q Name))
-lookupC n Module{ name, scope } = maybe empty pure $ foldMapA matchDef (decls scope)
+lookupC :: (Alternative m, Monad m) => Name -> Module -> m (ScopeEntry (Q Name))
+lookupC n Module{ name, scope } = foldMapA matchDef (decls scope)
   where
   matchDef = fmap (first (name :.:)) . lookupScope n . tm <=< unDData
 
