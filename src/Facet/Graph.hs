@@ -26,10 +26,8 @@ import qualified Data.Map as Map
 import           Data.Monoid (Endo(..))
 import qualified Data.Set as Set
 import           Facet.Core.Module
-import           Facet.Core.Type hiding (insert)
 import           Facet.Name
 import           Facet.Snoc
-import           Facet.Syntax
 
 newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Module) }
   deriving (Semigroup, Monoid)
@@ -59,7 +57,7 @@ lookupWith lookup graph mod@Module{ name } (m:.:n)
   <|> guard (m == Nil) *> asum (lookup n . snd <$> getGraph graph)
   <|> guard (m /= Nil) *> (lookupM m graph >>= lookup n . snd)
 
-lookupQ :: (Alternative m, Monad m) => Graph -> Module -> Q Name -> m (Q Name :=: Maybe (Def P) ::: Type P)
+lookupQ :: (Alternative m, Monad m) => Graph -> Module -> Q Name -> m (ScopeEntry (Q Name))
 lookupQ = lookupWith lookupD
 
 -- FIXME: enrich this with source references for each
