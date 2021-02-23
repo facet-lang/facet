@@ -3,6 +3,7 @@ module Facet.Context
   Quantity
 , Context(..)
 , Binding(..)
+, VarType(..)
 , empty
 , (|>)
 , level
@@ -17,6 +18,7 @@ import           Facet.Core.Type
 import           Facet.Name
 import           Facet.Semiring
 import qualified Facet.Snoc as S
+import           Facet.Syntax
 import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup, zipWith)
@@ -35,6 +37,10 @@ data Binding = Binding
   , quantity :: Quantity
   , type'    :: Type P
   }
+
+data VarType
+  = Tm (Type P)
+  | Ty (Type T)
 
 -- | A precondition for use of this instance is that one only ever '<>'s pairs of 'Binding's assigning the same type to the same variable.
 instance Semigroup Binding where
