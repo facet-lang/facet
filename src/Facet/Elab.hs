@@ -341,7 +341,7 @@ unify t1 t2 = type' t1 t2
     (Type, _)                                  -> nope
     (Interface, Interface)                     -> pure ()
     (Interface, _)                             -> nope
-    (Arrow' a1 b1, Arrow' a2 b2)               -> type' a1 a2 >> type' b1 b2
+    (Arrow' _ a1 b1, Arrow' _ a2 b2)           -> type' a1 a2 >> type' b1 b2
     (Arrow'{}, _)                              -> nope
     (ForAll n t1 b1, ForAll _ t2 b2)           -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (free d)) (b2 (free d))
     (ForAll{}, _)                              -> nope

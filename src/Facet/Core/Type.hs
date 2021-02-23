@@ -44,7 +44,7 @@ data Type u where
   -- Types
   Type :: Type T
   Interface :: Type T
-  Arrow' :: Type T -> Type T -> Type T
+  Arrow' :: Maybe Name -> Type T -> Type T -> Type T
 
   -- Negative
   ForAll :: Name -> Type T -> (Type P -> Type N) -> Type N
@@ -90,8 +90,8 @@ occursIn p = go
   go d = \case
     Type          -> False
     Interface     -> False
-    Arrow' a b    -> go d a || go d b
-    ForAll _ t b  -> go d t || go (succ d) (b (free d))
+    Arrow'  _ a b -> go d a || go d b
+    ForAll  _ t b -> go d t || go (succ d) (b (free d))
     Arrow _ _ a b -> go d a || go d b
     Comp s t      -> any (go d) s || go d t
     Ne h sp       -> p h || any (go d) sp
@@ -111,7 +111,7 @@ app _         _ = error "can’t apply non-neutral/forall type"
 data TExpr u where
   TType :: TExpr T
   TInterface :: TExpr T
-  TArrow' :: TExpr T -> TExpr T -> TExpr T
+  TArrow' :: Maybe Name -> TExpr T -> TExpr T -> TExpr T
 
   TForAll :: Name -> TExpr T -> TExpr N -> TExpr N
   TArrow :: Maybe Name -> Quantity -> TExpr P -> TExpr N -> TExpr N
@@ -148,7 +148,7 @@ quote :: Level -> Type u -> TExpr u
 quote d = \case
   Type          -> TType
   Interface     -> TInterface
-  Arrow' a b    -> TArrow' (quote d a) (quote d b)
+  Arrow' n a b  -> TArrow' n (quote d a) (quote d b)
 
   ForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
   Arrow n q a b -> TArrow n q (quote d a) (quote d b)
@@ -164,7 +164,7 @@ eval subst = go where
   go env = \case
     TType            -> Type
     TInterface       -> Interface
-    TArrow' a b      -> Arrow' (go env a) (go env b)
+    TArrow' n a b    -> Arrow' n (go env a) (go env b)
     TForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> Arrow n q (go env a) (go env b)
     TComp s t        -> Comp (go env <$> s) (go env t)
