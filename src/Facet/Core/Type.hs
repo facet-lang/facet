@@ -178,13 +178,13 @@ eval subst = go where
 
 -- Substitution
 
-newtype Subst u = Subst (IntMap.IntMap (Maybe (Type u) ::: Type u))
+newtype Subst u = Subst (IntMap.IntMap (Maybe (Type u) ::: Type T))
   deriving (Monoid, Semigroup)
 
-insert :: Meta -> Maybe (Type u) ::: Type u -> Subst u -> Subst u
+insert :: Meta -> Maybe (Type u) ::: Type T -> Subst u -> Subst u
 insert (Meta i) t (Subst metas) = Subst (IntMap.insert i t metas)
 
-lookupMeta :: Meta -> Subst u -> Maybe (Type u ::: Type u)
+lookupMeta :: Meta -> Subst u -> Maybe (Type u ::: Type T)
 lookupMeta (Meta i) (Subst metas) = do
   v ::: _T <- IntMap.lookup i metas
   (::: _T) <$> v
@@ -192,9 +192,9 @@ lookupMeta (Meta i) (Subst metas) = do
 solveMeta :: Meta -> Type u -> Subst u -> Subst u
 solveMeta (Meta i) t (Subst metas) = Subst (IntMap.update (\ (_ ::: _T) -> Just (Just t ::: _T)) i metas)
 
-declareMeta :: Type u -> Subst u -> (Subst u, Meta)
+declareMeta :: Type T -> Subst u -> (Subst u, Meta)
 declareMeta _K (Subst metas) = (Subst (IntMap.insert v (Nothing ::: _K) metas), Meta v) where
   v = maybe 0 (succ . fst . fst) (IntMap.maxViewWithKey metas)
 
-metas :: Subst u -> [Meta :=: Maybe (Type u) ::: Type u]
+metas :: Subst u -> [Meta :=: Maybe (Type u) ::: Type T]
 metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)

@@ -97,7 +97,7 @@ import Prelude hiding (span, zipWith)
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
 meta :: Has (State (Subst P)) sig m => Type P -> m Meta
-meta _T = state (declareMeta _T)
+meta _T = state (declareMeta @P _T)
 
 
 instantiate :: Algebra sig m => (a -> TExpr P -> a) -> a ::: Type P -> Elab m (a ::: Type P)
