@@ -120,7 +120,7 @@ synthTypeN :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth T m
 synthTypeN ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TForAll n t b   -> forAll (n ::: checkTypeT t) (checkTypeN b)
   S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkTypeP a)) --> checkTypeN b
-  S.TComp s t       -> comp (map checkInterfaceV s) (checkTypeP t)
+  S.TComp s t       -> comp (map checkInterface s) (checkTypeP t)
   S.TApp{}          -> toC
   S.TVar{}          -> toC
   S.KType           -> toC
@@ -158,12 +158,12 @@ checkTypeN = switch . synthTypeN
 checkTypeP :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check T m (TExpr P)
 checkTypeP = switch . synthTypeP
 
-synthInterfaceC :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth T m (TExpr P)
-synthInterfaceC (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth T m (TExpr P)
+synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
   foldl' tapp (mapSynth (pushSpan sh) (tvar h)) (checkTypeP <$> sp)
 
-checkInterfaceV :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check T m (TExpr P)
-checkInterfaceV = switch . synthInterfaceC
+checkInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check T m (TExpr P)
+checkInterface = switch . synthInterface
 
 
 -- | Expect a type constructor.
