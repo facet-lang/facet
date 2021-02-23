@@ -65,9 +65,7 @@ lookupE n Module{ name, scope } = foldMapA matchDef (decls scope)
   matchDef = fmap (first (name:.:)) . lookupScope n . tm <=< unDInterface
 
 lookupD :: Alternative m => Name -> Module -> m (ScopeEntry (Q Name))
-lookupD n Module{ name, scope } = maybe empty pure $ do
-  d <- Map.lookup n (decls scope)
-  pure $ name:.:n :=: d
+lookupD n Module{ name, scope } = maybe empty (pure . first (name:.:)) (lookupScope n scope)
 
 
 newtype Scope = Scope { decls :: Map.Map Name Def }
