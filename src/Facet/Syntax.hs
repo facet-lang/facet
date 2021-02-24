@@ -13,6 +13,7 @@ module Facet.Syntax
 , T
 , N
 , P
+, Some(..)
 ) where
 
 import Data.Bifoldable
@@ -106,3 +107,6 @@ data N
 
 -- | Type tag for the positive type universe (“values”).
 data P
+
+data Some t where
+  Some :: t u -> Some t

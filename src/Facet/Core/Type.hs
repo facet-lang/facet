@@ -2,7 +2,6 @@
 module Facet.Core.Type
 ( -- * Types
   Type(..)
-, SomeType(..)
 , N
 , P
 , global
@@ -56,9 +55,6 @@ data Type u where
   Ne :: Var Meta Level -> Snoc (Type P) -> Type P
   String :: Type P
   Thunk :: Type N -> Type P
-
-data SomeType where
-  SomeType :: Type u -> SomeType
 
 instance Shift Type where
   shiftP t = fromMaybe (Comp [] t) (unThunk t)
