@@ -113,13 +113,21 @@ data N
 data P
 
 data Some t where
-  Some :: t u -> Some t
+  SomeT :: t T -> Some t
+  SomeN :: t N -> Some t
+  SomeP :: t P -> Some t
 
 instance (forall x . Show (t x)) => Show (Some t) where
   showsPrec p = foldSome (showsUnaryWith showsPrec "Some" p)
 
 mapSome :: (forall u . t u -> t' u) -> Some t -> Some t'
-mapSome f (Some t) = Some (f t)
+mapSome f = \case
+  SomeT t -> SomeT (f t)
+  SomeN t -> SomeN (f t)
+  SomeP t -> SomeP (f t)
 
 foldSome :: (forall u . t u -> a) -> Some t -> a
-foldSome f (Some t) = f t
+foldSome f = \case
+  SomeT t -> f t
+  SomeN t -> f t
+  SomeP t -> f t
