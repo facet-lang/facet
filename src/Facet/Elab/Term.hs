@@ -227,19 +227,19 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstractType :: forall u m sig . (HasCallStack, Has (Throw Err) sig m) => Elab m (TExpr N) -> Type u -> Elab m (TExpr N)
+abstractType :: forall u m sig . (HasCallStack, Has (Throw Err) sig m) => Elab m (TExpr N) -> Check u m (TExpr N)
 abstractType body = go
   where
-  go :: Type v -> Elab m (TExpr N)
-  go = \case
-    Thunk t             -> go t
+  go :: Check v m (TExpr N)
+  go = Check $ \case
+    Thunk t             -> check (go ::: t)
     ForAll       n  t b -> do
       level <- depth
-      b' <- Binding n zero (Ty t) |- go (b (free level))
+      b' <- Binding n zero (Ty t) |- check (go ::: b (free level))
       pure $ TForAll n (T.quote level t) b'
     Arrow' (Just n) a b -> do
       level <- depth
-      b' <- Binding n zero (Ty a) |- go b
+      b' <- Binding n zero (Ty a) |- check (go ::: b)
       pure $ TForAll n (T.quote level a) b'
     _                   -> body
 
@@ -272,7 +272,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    c_T <- elabType $ pushSpan s $ TThunk <$> abstractType (check (switch (synthTypeN t) ::: Type)) _T
+    c_T <- elabType $ pushSpan s $ TThunk <$> check (abstractType (check (switch (synthTypeN t) ::: Type)) ::: _T)
     con' <- elabTerm $ check (thunk (abstractTerm (\ ts fs -> XReturn (XCon (mname :.: n) ts fs))) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
   pure
@@ -287,7 +287,7 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    _T' <- elabType $ pushSpan s $ TThunk <$> abstractType (check (switch (synthTypeN t) ::: Type)) _T
+    _T' <- elabType $ pushSpan s $ TThunk <$> check (abstractType (check (switch (synthTypeN t) ::: Type)) ::: _T)
     -- FIXME: check that the interface is a member of the sig.
     op' <- elabTerm $ check (thunk (abstractTerm (XOp (mname :.: n))) ::: _T')
     pure $ n :=: DTerm (Just op') _T'
