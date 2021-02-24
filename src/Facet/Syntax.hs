@@ -1,4 +1,6 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Syntax
 ( (:::)(..)
 , tm
@@ -112,6 +114,9 @@ data P
 
 data Some t where
   Some :: t u -> Some t
+
+instance (forall x . Show (t x)) => Show (Some t) where
+  showsPrec p = foldSome (showsUnaryWith showsPrec "Some" p)
 
 mapSome :: (forall u . t u -> t' u) -> Some t -> Some t'
 mapSome f (Some t) = Some (f t)
