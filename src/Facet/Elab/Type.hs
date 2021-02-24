@@ -9,11 +9,8 @@ module Facet.Elab.Type
 , forAll
 , (-->)
 , synthTypeT
-, checkTypeT
 , synthTypeN
 , synthTypeP
-, checkTypeN
-, checkTypeP
 ) where
 
 import           Control.Algebra
@@ -103,23 +100,20 @@ synthTypeT (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.KInterface     -> _Interface
   S.TString        -> _String
   S.TVar n         -> tvar n
-  S.TApp f a       -> tapp (synthTypeT f) (checkTypeT a)
+  S.TApp f a       -> tapp (synthTypeT f) (switch (synthTypeT a))
   -- FIXME: verify that the quantity is zero
-  S.TArrow n _ a b -> (n ::: checkTypeT a) ==> checkTypeT b
+  S.TArrow n _ a b -> (n ::: switch (synthTypeT a)) ==> switch (synthTypeT b)
   S.TForAll{}      -> nope "quantifier"
   S.TComp{}        -> nope "computation"
   where
   nope s = Synth $ err $ Invariant $ s <> " cannot be lifted to the kind level"
 
-checkTypeT :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check T m (TExpr T)
-checkTypeT = switch . synthTypeT
-
 
 synthTypeN :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth T m (TExpr N)
 synthTypeN ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.TForAll n t b   -> forAll (n ::: checkTypeT t) (checkTypeN b)
-  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkTypeP a)) --> checkTypeN b
-  S.TComp s t       -> comp (map checkInterface s) (checkTypeP t)
+  S.TForAll n t b   -> forAll (n ::: switch (synthTypeT t)) (switch (synthTypeN b))
+  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (synthTypeP a))) --> switch (synthTypeN b)
+  S.TComp s t       -> comp (map checkInterface s) (switch (synthTypeP t))
   S.TApp{}          -> toC
   S.TVar{}          -> toC
   S.KType           -> toC
@@ -138,28 +132,17 @@ synthTypeP ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.KInterface -> _Interface
   S.TString    -> _String
   -- FIXME: this should probably be a failure case
-  S.TApp f a   -> tapp (synthTypeP f) (checkTypeP a)
+  S.TApp f a   -> tapp (synthTypeP f) (switch (synthTypeP a))
   S.TForAll{}  -> toV
   S.TArrow{}   -> toV
   S.TComp{}    -> toV
   where
   toV = shiftN <$> synthTypeN ty
 
--- | Check a type at a kind.
---
--- NB: while synthesis is possible for all types at present, I reserve the right to change that.
-checkTypeN :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check T m (TExpr N)
-checkTypeN = switch . synthTypeN
-
--- | Check a type at a kind.
---
--- NB: while synthesis is possible for all types at present, I reserve the right to change that.
-checkTypeP :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check T m (TExpr P)
-checkTypeP = switch . synthTypeP
 
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth T m (TExpr P)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
-  foldl' tapp (mapSynth (pushSpan sh) (tvar h)) (checkTypeP <$> sp)
+  foldl' tapp (mapSynth (pushSpan sh) (tvar h)) (switch . synthTypeP <$> sp)
 
 checkInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check T m (TExpr P)
 checkInterface = switch . synthInterface
