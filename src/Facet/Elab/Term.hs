@@ -132,17 +132,16 @@ varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q (Tm _A) |
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P N m (ValuePattern Name)] -> Bind P N m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
-  n' :=: _ ::: _T <- traverse (instantiate const) =<< resolveC n
-  (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify _A' _A *> check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
+  n' :=: _ ::: _T <- traverse (instantiate const . fmap shiftP) =<< resolveC n
+  (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify _A' (Comp [] _A) *> check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (PCon n' (fromList ps'), b')
 
-fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind P N m [a] -> [Bind P N m a] -> Bind P N m [a]
+fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind N N m [a] -> [Bind P N m a] -> Bind N N m [a]
 fieldsP = foldr cons
   where
   cons p ps = Bind $ \ q _A b -> Check $ \ _B -> do
-    _A <- expectThunk "when checking nested pattern" _A
     (_ ::: (q', _A'), _A'') <- expectFunction "when checking nested pattern" _A
-    (p', (ps', b')) <- check (bind (p ::: (q', _A')) (bind (ps ::: (q, Thunk _A'')) b) ::: _B)
+    (p', (ps', b')) <- check (bind (p ::: (q', _A')) (bind (ps ::: (q, _A'')) b) ::: _B)
     pure (p':ps', b')
 
 
@@ -155,8 +154,8 @@ effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P N m (ValuePat
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectRet "when checking effect pattern" _A
-  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (traverse unDData =<< lookupInSig n module' graph sig)
-  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Tm (Thunk (Arrow Nothing Many _A' (Comp [] _A)))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
+  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: shiftP _T)) (traverse unDData =<< lookupInSig n module' graph sig)
+  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Tm (Thunk (Arrow Nothing Many (shiftN _A') (Comp [] _A)))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
 

@@ -100,10 +100,8 @@ meta :: Has (State (Subst P)) sig m => Type T -> m Meta
 meta _T = state (declareMeta @P _T)
 
 
-instantiate :: Algebra sig m => (a -> TExpr P -> a) -> a ::: Type P -> Elab m (a ::: Type P)
-instantiate inst = \case
-  e ::: Thunk c -> fmap Thunk <$> go (e ::: c)
-  e ::: _T      -> pure (e ::: _T)
+instantiate :: Algebra sig m => (a -> TExpr P -> a) -> a ::: Type N -> Elab m (a ::: Type N)
+instantiate inst = go
   where
   go (e ::: _T) = case _T of
     ForAll _ _T _B -> do
