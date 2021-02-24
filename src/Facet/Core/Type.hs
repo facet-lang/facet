@@ -49,7 +49,7 @@ data Type u where
   -- Negative
   ForAll :: Name -> Type T -> (Type P -> Type N) -> Type N
   Arrow :: Maybe Name -> Quantity -> Type P -> Type N -> Type N
-  Comp :: [Type P] -> Type P -> Type N
+  Comp :: [Type T] -> Type P -> Type N
 
   -- Positive
   Ne :: Var Meta Level -> Snoc (Some Type) -> Type P
@@ -72,7 +72,7 @@ metavar :: Meta -> Type P
 metavar m = Ne (Metavar m) Nil
 
 
-unComp :: Has Empty sig m => Type n -> m ([Type P], Type P)
+unComp :: Has Empty sig m => Type n -> m ([Type T], Type P)
 unComp = \case
   Comp sig _T -> pure (sig, _T)
   _T          -> empty
@@ -115,7 +115,7 @@ data TExpr u where
 
   TForAll :: Name -> TExpr T -> TExpr N -> TExpr N
   TArrow :: Maybe Name -> Quantity -> TExpr P -> TExpr N -> TExpr N
-  TComp :: [TExpr P] -> TExpr P -> TExpr N
+  TComp :: [TExpr T] -> TExpr P -> TExpr N
 
   TVar :: Var Meta Index -> TExpr P
   TApp :: TExpr P -> Some TExpr -> TExpr P

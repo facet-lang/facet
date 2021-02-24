@@ -200,7 +200,7 @@ use i q = do
   d <- depth
   tell (Usage.singleton (indexToLevel d i) q)
 
-extendSig :: Has (Reader ElabContext) sig m => [Type P] -> m a -> m a
+extendSig :: Has (Reader ElabContext) sig m => [Type T] -> m a -> m a
 extendSig = locally sig_ . (++)
 
 
@@ -311,14 +311,14 @@ data StaticContext = StaticContext
 
 data ElabContext = ElabContext
   { context :: Context
-  , sig     :: [Type P]
+  , sig     :: [Type T]
   , spans   :: Snoc Span
   }
 
 context_ :: Lens' ElabContext Context
 context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
 
-sig_ :: Lens' ElabContext [Type P]
+sig_ :: Lens' ElabContext [Type T]
 sig_ = lens sig (\ e sig -> e{ sig })
 
 spans_ :: Lens' ElabContext (Snoc Span)
