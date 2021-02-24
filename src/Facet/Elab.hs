@@ -349,7 +349,7 @@ unify t1 t2 = type' t1 t2
     (Arrow{}, _)                               -> nope
     (Comp s1 t1, Comp s2 t2)                   -> sig s1 s2 >> type' t1 t2
     (Comp{}, _)                                -> nope
-    (Ne v1 sp1, Ne v2 sp2)                     -> var v1 v2 >> spine type' sp1 sp2
+    (Ne v1 sp1, Ne v2 sp2)                     -> var v1 v2 >> spine (foldSome2 type' nope) sp1 sp2
     (Ne{}, _)                                  -> nope
     (String, String)                           -> pure ()
     (String, _)                                -> nope

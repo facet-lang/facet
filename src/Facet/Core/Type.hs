@@ -52,7 +52,7 @@ data Type u where
   Comp :: [Type P] -> Type P -> Type N
 
   -- Positive
-  Ne :: Var Meta Level -> Snoc (Type P) -> Type P
+  Ne :: Var Meta Level -> Snoc (Some Type) -> Type P
   String :: Type P
   Thunk :: Type N -> Type P
 
@@ -94,14 +94,14 @@ occursIn p = go
     ForAll  _ t b -> go d t || go (succ d) (b (free d))
     Arrow _ _ a b -> go d a || go d b
     Comp s t      -> any (go d) s || go d t
-    Ne h sp       -> p h || any (go d) sp
+    Ne h sp       -> p h || any (foldSome (go d)) sp
     String        -> False
     Thunk t       -> go d t
 
 
 -- Elimination
 
-app :: HasCallStack => Type P -> Type P -> Type P
+app :: HasCallStack => Type P -> Some Type -> Type P
 app (Ne h es) a = Ne h (es :> a)
 app _         _ = error "can’t apply non-neutral/forall type"
 
@@ -118,7 +118,7 @@ data TExpr u where
   TComp :: [TExpr P] -> TExpr P -> TExpr N
 
   TVar :: Var Meta Index -> TExpr P
-  TApp :: TExpr P -> TExpr P -> TExpr P
+  TApp :: TExpr P -> Some TExpr -> TExpr P
   TString :: TExpr P
   TThunk :: TExpr N -> TExpr P
 
@@ -154,7 +154,7 @@ quote d = \case
   Arrow n q a b -> TArrow n q (quote d a) (quote d b)
   Comp s t      -> TComp (quote d <$> s) (quote d t)
 
-  Ne n sp       -> foldl' TApp (TVar (levelToIndex d <$> n)) (quote d <$> sp)
+  Ne n sp       -> foldl' TApp (TVar (levelToIndex d <$> n)) (mapSome (quote d) <$> sp)
   String        -> TString
   Thunk t       -> TThunk (quote d t)
 
@@ -168,7 +168,7 @@ eval subst = go where
     TForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> Arrow n q (go env a) (go env b)
     TComp s t        -> Comp (go env <$> s) (go env t)
-    TApp f a         -> go env f `app` go env a
+    TApp f a         -> go env f `app` mapSome (go env) a
     TString          -> String
     TVar (Global n)  -> global n
     TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)

@@ -164,7 +164,7 @@ printTExpr Options{ qname } = go
     C.TVar (Metavar m)       -> meta m
     C.TString                -> annotate Type $ pretty "String"
     C.TThunk t               -> prec Shift $ pretty '↓' <+> go env t
-    C.TApp f a               -> group (go env f) $$ group (go env a)
+    C.TApp f a               -> group (go env f) $$ group (foldSome (go env) a)
     where
     d = Name.Level (length env)
     sig :: [C.TExpr u] -> Print

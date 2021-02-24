@@ -91,7 +91,7 @@ tapp f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: _A, _B) <- expectTypeConstructor "in type-level application" _F
   a' <- censor @Usage (zero ><<) $ check (a ::: _A)
-  pure $ TApp f' a' ::: _B
+  pure $ TApp f' (SomeT a') ::: _B
 
 
 synthTypeT :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth T m (TExpr T)
