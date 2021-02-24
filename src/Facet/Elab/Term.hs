@@ -155,7 +155,7 @@ effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P N m (ValuePat
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectRet "when checking effect pattern" _A
-  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) ((\ (n :=: d) -> (n :=:) <$> unDData d) =<< lookupInSig n module' graph sig)
+  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (traverse unDData =<< lookupInSig n module' graph sig)
   (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Tm (Thunk (Arrow Nothing Many _A' (Comp [] _A)))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
