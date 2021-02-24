@@ -322,24 +322,23 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl ty def))) -> do
-      case def of
-        S.DataDef cs -> Nothing <$ do
-          _T <- runModule $ elabType $ check (switch (synthTypeT ty) ::: Type)
-          scope_.decls_.at dname .= Just (DData mempty _T)
-          decls <- runModule $ elabDataDef (dname ::: _T) cs
-          for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
+    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl ty def))) -> case def of
+      S.DataDef cs -> Nothing <$ do
+        _T <- runModule $ elabType $ check (switch (synthTypeT ty) ::: Type)
+        scope_.decls_.at dname .= Just (DData mempty _T)
+        decls <- runModule $ elabDataDef (dname ::: _T) cs
+        for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
-        S.InterfaceDef os -> Nothing <$ do
-          _T <- runModule $ elabType $ check (switch (synthTypeT ty) ::: Type)
-          scope_.decls_.at dname .= Just (DInterface mempty _T)
-          decls <- runModule $ elabInterfaceDef (dname ::: _T) os
-          for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
+      S.InterfaceDef os -> Nothing <$ do
+        _T <- runModule $ elabType $ check (switch (synthTypeT ty) ::: Type)
+        scope_.decls_.at dname .= Just (DInterface mempty _T)
+        decls <- runModule $ elabInterfaceDef (dname ::: _T) os
+        for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
-        S.TermDef t -> do
-          _T <- runModule $ elabType $ check (switch (synthTypeP ty) ::: Type)
-          scope_.decls_.at dname .= Just (DTerm Nothing _T)
-          pure (Just (dname, t ::: _T))
+      S.TermDef t -> do
+        _T <- runModule $ elabType $ check (switch (synthTypeP ty) ::: Type)
+        scope_.decls_.at dname .= Just (DTerm Nothing _T)
+        pure (Just (dname, t ::: _T))
 
     -- then elaborate the terms
     for_ (catMaybes es) $ \ (dname, t ::: _T) -> do
