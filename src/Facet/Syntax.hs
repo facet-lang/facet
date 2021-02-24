@@ -117,6 +117,14 @@ data Some t where
   SomeN :: t N -> Some t
   SomeP :: t P -> Some t
 
+instance (forall x . Eq (t x)) => Eq (Some t) where
+  SomeT t1 == SomeT t2 = t1 == t2
+  SomeT{}  == _        = False
+  SomeN t1 == SomeN t2 = t1 == t2
+  SomeN{}  == _        = False
+  SomeP t1 == SomeP t2 = t1 == t2
+  SomeP{}  == _        = False
+
 instance (forall x . Show (t x)) => Show (Some t) where
   showsPrec p = foldSome (showsUnaryWith showsPrec "Some" p)
 
