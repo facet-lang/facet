@@ -15,6 +15,7 @@ module Facet.Syntax
 , P
 , Some(..)
 , mapSome
+, foldSome
 ) where
 
 import Data.Bifoldable
@@ -114,3 +115,6 @@ data Some t where
 
 mapSome :: (forall u . t u -> t' u) -> Some t -> Some t'
 mapSome f (Some t) = Some (f t)
+
+foldSome :: (forall u . t u -> a) -> Some t -> a
+foldSome f (Some t) = f t
