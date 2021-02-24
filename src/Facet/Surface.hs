@@ -14,6 +14,7 @@ module Facet.Surface
   -- * Declarations
 , Decl(..)
 , Def(..)
+, DefKind(..)
   -- * Modules
 , Module(..)
 , Import(..)
@@ -96,9 +97,13 @@ data Decl = Decl (Ann Type) Def
 
 
 data Def
-  = DataDef [Ann (Name ::: Ann Type)]
-  | InterfaceDef [Ann (Name ::: Ann Type)]
+  = TypeDef DefKind [Ann (Name ::: Ann Type)]
   | TermDef (Ann Expr)
+  deriving (Eq, Show)
+
+data DefKind
+  = DataDef
+  | InterfaceDef
   deriving (Eq, Show)
 
 
