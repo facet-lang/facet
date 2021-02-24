@@ -125,6 +125,14 @@ instance (forall x . Eq (t x)) => Eq (Some t) where
   SomeP t1 == SomeP t2 = t1 == t2
   SomeP{}  == _        = False
 
+instance (forall x . Ord (t x)) => Ord (Some t) where
+  SomeT t1 `compare` SomeT t2 = t1 `compare` t2
+  SomeT{}  `compare` _        = LT
+  SomeN t1 `compare` SomeN t2 = t1 `compare` t2
+  SomeN{}  `compare` _        = LT
+  SomeP t1 `compare` SomeP t2 = t1 `compare` t2
+  SomeP{}  `compare` _        = LT
+
 instance (forall x . Show (t x)) => Show (Some t) where
   showsPrec p = foldSome (showsUnaryWith showsPrec "Some" p)
 
