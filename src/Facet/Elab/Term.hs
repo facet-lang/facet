@@ -325,13 +325,11 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl ty def))) -> case def of
       S.TypeDef k cs -> Nothing <$ do
         _T <- runModule $ elabType $ check (switch (synthTypeT ty) ::: Type)
-        decls <- case k of
-          S.DataDef -> do
-            scope_.decls_.at dname .= Just (DData mempty _T)
-            runModule $ elabDataDef (dname ::: _T) cs
-          S.InterfaceDef  -> do
-            scope_.decls_.at dname .= Just (DInterface mempty _T)
-            runModule $ elabInterfaceDef (dname ::: _T) cs
+        let (cons, elab) = case k of
+              S.DataDef      -> (DData, elabDataDef)
+              S.InterfaceDef -> (DInterface, elabInterfaceDef)
+        scope_.decls_.at dname .= Just (cons mempty _T)
+        decls <- runModule $ elab (dname ::: _T) cs
         for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
       S.TermDef t -> do
