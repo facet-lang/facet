@@ -8,6 +8,9 @@ module Facet.Elab.Term
 , tlam
 , lam
 , string
+  -- * Polarity shifts
+, force
+, thunk
   -- * Pattern combinators
 , wildcardP
 , varP
@@ -98,6 +101,9 @@ string s = Synth $ pure $ XString s ::: T.String
 
 
 -- Polarity shifts
+
+force :: Has (Throw Err) sig m => Check P m (Expr P) -> Check N m (Expr N)
+force t = Check $ \ _T -> XForce <$> check (t ::: Thunk _T)
 
 thunk :: (HasCallStack, Has (Throw Err) sig m) => Check N m (Expr N) -> Check P m (Expr P)
 thunk c = Check $ \ _T -> do
