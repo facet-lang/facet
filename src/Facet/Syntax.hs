@@ -18,6 +18,7 @@ module Facet.Syntax
 , Some(..)
 , mapSome
 , foldSome
+, foldSome2
 ) where
 
 import Data.Bifoldable
@@ -147,3 +148,10 @@ foldSome f = \case
   SomeT t -> f t
   SomeN t -> f t
   SomeP t -> f t
+
+foldSome2 :: (forall u . t u -> t u -> a) -> a -> Some t -> Some t -> a
+foldSome2 f z = curry $ \case
+  (SomeT t1, SomeT t2) -> f t1 t2
+  (SomeN t1, SomeN t2) -> f t1 t2
+  (SomeP t1, SomeP t2) -> f t1 t2
+  _                    -> z
