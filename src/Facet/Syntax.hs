@@ -135,7 +135,10 @@ instance (forall x . Ord (t x)) => Ord (Some t) where
   SomeP{}  `compare` _        = LT
 
 instance (forall x . Show (t x)) => Show (Some t) where
-  showsPrec p = foldSome (showsUnaryWith showsPrec "Some" p)
+  showsPrec d = \case
+    SomeT t -> showsUnaryWith showsPrec "SomeT" d t
+    SomeN n -> showsUnaryWith showsPrec "SomeT" d n
+    SomeP p -> showsUnaryWith showsPrec "SomeT" d p
 
 mapSome :: (forall u . t u -> t' u) -> Some t -> Some t'
 mapSome f = \case
