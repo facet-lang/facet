@@ -114,7 +114,7 @@ f $$ a = askingPrec $ \case
 -- Options
 
 data Options = Options
-  { qname         :: Q Name -> Print
+  { qname         :: QName -> Print
   , instantiation :: Print -> Print -> Print
   }
 
@@ -130,7 +130,7 @@ quietOptions = Options
   , instantiation = suppressInstantiation
   }
 
-qualified, unqualified :: Q Name -> Print
+qualified, unqualified :: QName -> Print
 qualified = pretty
 unqualified (_:.:n) = pretty n
 

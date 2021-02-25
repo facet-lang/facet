@@ -26,7 +26,7 @@ import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 
-tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m TExpr
+tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m TExpr
 tvar n = Synth $ views context_ (lookupInContext n) >>= \case
   Just (i, q, _T) -> use i q $> (TVar (Free i) ::: _T)
   Nothing         -> do

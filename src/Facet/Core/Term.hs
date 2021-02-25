@@ -24,10 +24,10 @@ import           Facet.Syntax
 data ValuePattern a
   = PWildcard
   | PVar a
-  | PCon (Q Name) (Snoc (ValuePattern a))
+  | PCon QName (Snoc (ValuePattern a))
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-data EffectPattern a = POp (Q Name) (Snoc (ValuePattern a)) a
+data EffectPattern a = POp QName (Snoc (ValuePattern a)) a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data Pattern a
@@ -38,10 +38,10 @@ data Pattern a
 pvar :: a -> Pattern a
 pvar = PVal . PVar
 
-pcon :: Q Name -> Snoc (ValuePattern a) -> Pattern a
+pcon :: QName -> Snoc (ValuePattern a) -> Pattern a
 pcon n fs = PVal $ PCon n fs
 
-peff :: Q Name -> Snoc (ValuePattern a) -> a -> Pattern a
+peff :: QName -> Snoc (ValuePattern a) -> a -> Pattern a
 peff o vs k = PEff $ POp o vs k
 
 
@@ -57,7 +57,7 @@ data Expr
   | XInst Expr T.TExpr
   | XLam [(Pattern Name, Expr)]
   | XApp Expr Expr
-  | XCon (Q Name) (Snoc T.TExpr) (Snoc Expr)
+  | XCon QName (Snoc T.TExpr) (Snoc Expr)
   | XString Text
-  | XOp (Q Name) (Snoc T.TExpr) (Snoc Expr)
+  | XOp QName (Snoc T.TExpr) (Snoc Expr)
   deriving (Eq, Ord, Show)

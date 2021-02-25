@@ -61,7 +61,7 @@ setPrec :: Int -> ShowP -> ShowP
 setPrec p (ShowP f) = ShowP $ const (f p)
 
 
-qname :: Q Name -> ShowP
+qname :: QName -> ShowP
 qname (m :.: n) = foldr (<.>) (name n) (text <$> m)
 
 name :: Name -> ShowP

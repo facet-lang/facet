@@ -76,7 +76,7 @@ eval = runReader Nil . go
 
 -- Machinery
 
-data Op a = Op (Q Name) (Snoc a)
+data Op a = Op QName (Snoc a)
 
 type Handler m = Op (Value m) -> (Value m -> m (Value m)) -> m (Value m)
 
@@ -113,7 +113,7 @@ data Value m
   -- | Neutral; effect operations, only used during quotation.
   | VOp (Op (Value m)) (Value m)
   -- | Value; data constructors.
-  | VCon (Q Name) (Snoc (Value m))
+  | VCon QName (Snoc (Value m))
   -- | Value; strings.
   | VString Text
   -- | Computation; lambdas.

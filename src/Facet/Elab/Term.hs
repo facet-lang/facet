@@ -56,13 +56,13 @@ import           GHC.Stack
 -- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Algebra sig m => Q Name ::: Type -> Synth m Expr
+global :: Algebra sig m => QName ::: Type -> Synth m Expr
 global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth m Expr
+var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, q, _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
   | Just (_ :=: Just (DTerm x) ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
@@ -96,7 +96,7 @@ wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (ValuePattern Name)
 varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q _A |- check (b ::: _B))
 
-conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
+conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   n' :=: _ ::: _T <- resolveC n
   _ ::: _T' <- instantiate const (() ::: _T)
@@ -112,7 +112,7 @@ fieldsP = foldr cons
     pure (p':ps', b')
 
 
-effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
+effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectRet "when checking effect pattern" _A

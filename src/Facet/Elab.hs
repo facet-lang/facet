@@ -121,28 +121,28 @@ as (m ::: _T) = Synth $ do
 
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
-  => (forall m . Alternative m => Name -> Module -> m (Q Name :=: Maybe Def ::: Type))
-  -> Q Name
-  -> Elab m (Q Name :=: Maybe Def ::: Type)
+  => (forall m . Alternative m => Name -> Module -> m (QName :=: Maybe Def ::: Type))
+  -> QName
+  -> Elab m (QName :=: Maybe Def ::: Type)
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
   ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
 
-resolveC :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type)
+resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Maybe Def ::: Type)
 resolveC = resolveWith lookupC
 
-resolveQ :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe Def ::: Type)
+resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Maybe Def ::: Type)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Alternative m => Q Name -> Context -> m (Index, Quantity, Type)
+lookupInContext :: Alternative m => QName -> Context -> m (Index, Quantity, Type)
 lookupInContext (m:.:n)
   | m == Nil  = lookupIndex n
   | otherwise = const Alt.empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Type] -> m (Q Name :=: Maybe Def ::: Type)
+lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Type] -> m (QName :=: Maybe Def ::: Type)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
   T.VNe (Global q@(m':.:_)) _ _ -> do
     guard (m == Nil || m == m')
@@ -214,9 +214,9 @@ data Err = Err
   }
 
 data ErrReason
-  = FreeVariable (Q Name)
+  = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
-  | AmbiguousName (Q Name) [Q Name]
+  | AmbiguousName QName [QName]
   | CouldNotSynthesize String
   | ResourceMismatch Name Quantity Quantity
   | Mismatch String (Either String Type) Type
@@ -258,10 +258,10 @@ couldNotSynthesize v = withFrozenCallStack $ err $ CouldNotSynthesize v
 resourceMismatch :: (HasCallStack, Has (Throw Err) sig m) => Name -> Quantity -> Quantity -> Elab m a
 resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp act
 
-freeVariable :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m a
+freeVariable :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m a
 freeVariable n = withFrozenCallStack $ err $ FreeVariable n
 
-ambiguousName :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Q Name] -> Elab m a
+ambiguousName :: (HasCallStack, Has (Throw Err) sig m) => QName -> [QName] -> Elab m a
 ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
 
 
