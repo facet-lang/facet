@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Facet.Name
 ( Index(..)
 , Level(..)
@@ -14,7 +15,7 @@ module Facet.Name
 , OpN(..)
 ) where
 
-import           Data.Foldable (foldr')
+import           Data.Foldable (foldr', toList)
 import           Data.Functor.Classes (showsUnaryWith)
 import qualified Data.List.NonEmpty as NE
 import           Data.String (IsString(..))
@@ -63,7 +64,10 @@ prettyMName = \case
 
 -- | Qualified names, consisting of a module name and declaration name.
 data Q a = MName :.: a -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show a => Show (Q a) where
+  showsPrec p (m :.: n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":.:" . showsPrec 10 n
 
 instance P.Pretty a => P.Pretty (Q a) where
   pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
