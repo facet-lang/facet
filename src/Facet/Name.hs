@@ -67,7 +67,7 @@ data QName = MName :.: Name -- FIXME: use Name on the lhs so we can accommodate 
   deriving (Eq, Ord)
 
 instance Show QName where
-  showsPrec p (m :.: n) = showParen (p > 9) $ foldr (\ h t -> showString (T.unpack h) . showChar '.' . t) (showString ":.:" . showsPrec 10 n) m
+  showsPrec p (m :.: n) = showParen (p > 9) $ foldr (\ h t -> showString (T.unpack h) . showChar '.' . t) (case n of { N n -> showString (T.unpack n) ; O o -> shows o }) m
 
 instance P.Pretty QName where
   pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
