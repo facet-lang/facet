@@ -31,7 +31,7 @@ import           Facet.Syntax
 import           Facet.Usage
 import           GHC.Stack
 
-tvar :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth T m (TExpr T)
+tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth T m (TExpr T)
 tvar n = Synth $ views context_ (lookupInContext n) >>= \case
   Just (i, q, Ty _T) -> use i q $> (TVar (Free i) ::: _T)
   _                  -> do

@@ -39,7 +39,7 @@ import Facet.Syntax
 -- Types
 
 data Type
-  = TVar (Q Name)
+  = TVar QName
   | KType
   | KInterface
   | TString
@@ -56,7 +56,7 @@ data Mul = Zero | One
 -- Expressions
 
 data Expr
-  = Var (Q Name)
+  = Var QName
   | Hole Name
   | Lam [Clause]
   | App (Ann Expr) (Ann Expr)
@@ -65,7 +65,7 @@ data Expr
   deriving (Eq, Show)
 
 
-data Interface = Interface (Ann (Q Name)) (Snoc (Ann Type))
+data Interface = Interface (Ann QName) (Snoc (Ann Type))
   deriving (Eq, Show)
 
 
@@ -83,10 +83,10 @@ data Pattern
 data ValPattern
   = PWildcard
   | PVar Name
-  | PCon (Q Name) [Ann ValPattern]
+  | PCon QName [Ann ValPattern]
   deriving (Eq, Show)
 
-data EffPattern = POp (Q Name) [Ann ValPattern] Name
+data EffPattern = POp QName [Ann ValPattern] Name
   deriving (Eq, Show)
 
 

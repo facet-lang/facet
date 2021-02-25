@@ -70,7 +70,7 @@ eval' = \case
 
 type EnvC m = ReaderC (Snoc (Value P (Eval m))) (Eval m)
 
-global :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Q Name -> EnvC m (Expr P)
+global :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => QName -> EnvC m (Expr P)
 global n = do
   mod <- ask
   graph <- ask
@@ -101,7 +101,7 @@ f $$ a = do
 infixl 9 $$
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: Q Name -> Snoc (EnvC m (Value P (Eval m))) -> EnvC m (Value N (Eval m))
+op :: QName -> Snoc (EnvC m (Value P (Eval m))) -> EnvC m (Value N (Eval m))
 op n sp = do
   sp' <- sequenceA sp
   lift $ Eval $ \ h k -> runEval h k (h n sp' creturn)
@@ -109,7 +109,7 @@ op n sp = do
 
 -- Machinery
 
-type Handler m = Q Name -> Snoc (Value P m) -> (Value P m -> m (Value N m)) -> m (Value N m)
+type Handler m = QName -> Snoc (Value P m) -> (Value P m -> m (Value N m)) -> m (Value N m)
 
 runEval :: Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
@@ -142,13 +142,13 @@ data Value u m where
   -- | Neutral; variables, only used during quotation
   VFree :: Level -> Value P m
   -- | Value; data constructors.
-  VCon :: Q Name -> Snoc (Value P m) -> Value P m
+  VCon :: QName -> Snoc (Value P m) -> Value P m
   -- | Value; strings.
   VString :: Text -> Value P m
   -- | Thunks embed computations into values.
   VThunk :: Value N m -> Value P m
   -- | Neutral; effect operations, only used during quotation.
-  VOp :: Q Name -> Snoc (Value P m) -> Value P m -> Value N m
+  VOp :: QName -> Snoc (Value P m) -> Value P m -> Value N m
   VLam :: [Either (EffectPattern Name, EffectPattern (Value P m) -> m (Value N m)) (ValuePattern Name, ValuePattern (Value P m) -> m (Value N m))] -> Value N m
   VReturn :: Value P m -> Value N m
 
@@ -163,7 +163,7 @@ creturn = pure . \case
 
 -- Elimination
 
-matchE :: MonadFail m => EffectPattern Name -> Q Name -> Snoc (Value P m) -> Maybe ((Value P m -> m (Value N m)) -> EffectPattern (Value P m))
+matchE :: MonadFail m => EffectPattern Name -> QName -> Snoc (Value P m) -> Maybe ((Value P m -> m (Value N m)) -> EffectPattern (Value P m))
 matchE p n' fs = case p of
   -- FIXME: I can’t see how this could possibly be correct
   PAll _     -> pure $ \ k -> PAll (VThunk (VOp n' fs (cont k)))

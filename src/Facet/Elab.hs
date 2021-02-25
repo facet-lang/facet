@@ -123,21 +123,21 @@ as (m ::: _T) = Synth $ do
 
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
-  => (forall m . (Alternative m, Monad m) => Name -> Module -> m (Q Name :=: x))
-  -> Q Name
-  -> Elab m (Q Name :=: x)
+  => (forall m . (Alternative m, Monad m) => Name -> Module -> m (QName :=: x))
+  -> QName
+  -> Elab m (QName :=: x)
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
   ds  -> ambiguousName n (map (\ (q :=: _) -> q) ds)
 
-resolveC :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Maybe (Expr P) ::: Type P)
+resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Maybe (Expr P) ::: Type P)
 resolveC = resolveWith lookupC
 
-resolveQ :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m (Q Name :=: Def)
+resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Def)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Alternative m => Q Name -> Context -> m (Index, Quantity, VarType)
+lookupInContext :: Alternative m => QName -> Context -> m (Index, Quantity, VarType)
 lookupInContext (m:.:n)
   | m == Nil  = lookupIndex n
   | otherwise = const Alt.empty
@@ -145,7 +145,7 @@ lookupInContext (m:.:n)
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: this can’t differentiate between different instantiations of the same effect (i.e. based on type)
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Interface Type] -> m (Q Name :=: Def)
+lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Interface Type] -> m (QName :=: Def)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap . (. getInterface) $ \case
   T.Ne (Global q@(m':.:_)) Nil -> do
     guard (m == Nil || m == m')
@@ -217,9 +217,9 @@ data Err = Err
   }
 
 data ErrReason
-  = FreeVariable (Q Name)
+  = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
-  | AmbiguousName (Q Name) [Q Name]
+  | AmbiguousName QName [QName]
   | CouldNotSynthesize String
   | ResourceMismatch Name Quantity Quantity
   | forall u v . Mismatch String (Either String (Type u)) (Type v)
@@ -262,10 +262,10 @@ couldNotSynthesize v = withFrozenCallStack $ err $ CouldNotSynthesize v
 resourceMismatch :: (HasCallStack, Has (Throw Err) sig m) => Name -> Quantity -> Quantity -> Elab m a
 resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp act
 
-freeVariable :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Elab m a
+freeVariable :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m a
 freeVariable n = withFrozenCallStack $ err $ FreeVariable n
 
-ambiguousName :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Q Name] -> Elab m a
+ambiguousName :: (HasCallStack, Has (Throw Err) sig m) => QName -> [QName] -> Elab m a
 ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
 
 

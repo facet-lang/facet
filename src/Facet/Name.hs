@@ -8,7 +8,7 @@ module Facet.Name
 , __
 , MName
 , prettyMName
-, Q(..)
+, QName(..)
 , Name(..)
 , Assoc(..)
 , Op(..)
@@ -63,13 +63,13 @@ prettyMName = \case
 
 
 -- | Qualified names, consisting of a module name and declaration name.
-data Q a = MName :.: a -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
+data QName = MName :.: Name -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
   deriving (Eq, Ord)
 
-instance Show a => Show (Q a) where
+instance Show QName where
   showsPrec p (m :.: n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":.:" . showsPrec 10 n
 
-instance P.Pretty a => P.Pretty (Q a) where
+instance P.Pretty QName where
   pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
 
 

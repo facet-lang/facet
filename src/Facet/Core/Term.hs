@@ -25,12 +25,12 @@ import           Facet.Syntax
 data ValuePattern a
   = PWildcard
   | PVar a
-  | PCon (Q Name) (Snoc (ValuePattern a))
+  | PCon QName (Snoc (ValuePattern a))
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data EffectPattern a
   = PAll a
-  | POp (Q Name) (Snoc (ValuePattern a)) a
+  | POp QName (Snoc (ValuePattern a)) a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data Pattern a
@@ -41,10 +41,10 @@ data Pattern a
 pvar :: a -> Pattern a
 pvar = PVal . PVar
 
-pcon :: Q Name -> Snoc (ValuePattern a) -> Pattern a
+pcon :: QName -> Snoc (ValuePattern a) -> Pattern a
 pcon n fs = PVal $ PCon n fs
 
-peff :: Q Name -> Snoc (ValuePattern a) -> a -> Pattern a
+peff :: QName -> Snoc (ValuePattern a) -> a -> Pattern a
 peff o vs k = PEff $ POp o vs k
 
 
@@ -59,13 +59,13 @@ data Expr u where
   XInst :: Expr N -> T.TExpr P -> Expr N
   XLam :: [(Pattern Name, Expr N)] -> Expr N
   XApp :: Expr N -> Expr P -> Expr N
-  XOp :: Q Name -> Snoc (T.TExpr P) -> Snoc (Expr P) -> Expr N
+  XOp :: QName -> Snoc (T.TExpr P) -> Snoc (Expr P) -> Expr N
   XForce :: Expr P -> Expr N
   XReturn :: Expr P -> Expr N
   -- | Evaluates the first operand, and then evaluates the second providing the value returned by the first as a variable in the environment.
   XBind :: Expr N -> Expr N -> Expr N
   XVar :: Var Void Index -> Expr P
-  XCon :: Q Name -> Snoc (T.TExpr P) -> Snoc (Expr P) -> Expr P
+  XCon :: QName -> Snoc (T.TExpr P) -> Snoc (Expr P) -> Expr P
   XString :: Text -> Expr P
   XThunk :: Expr N -> Expr P
 

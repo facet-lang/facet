@@ -65,13 +65,13 @@ import           GHC.Stack
 -- Term combinators
 
 -- FIXME: how the hell are we supposed to handle instantiation?
-global :: Q Name ::: Type P -> Synth P m (Expr P)
+global :: QName ::: Type P -> Synth P m (Expr P)
 global (q ::: _T) = Synth $ pure $ XVar (Global q) ::: _T
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> Synth P m (Expr P)
+var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth P m (Expr P)
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, q, Tm _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
   | Just (_ :=: DTerm (Just x) _T) <- lookupInSig n module' graph sig -> pure (x ::: _T)
@@ -130,7 +130,7 @@ wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind P N m (ValuePattern Name)
 varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q (Tm _A) |- check (b ::: _B))
 
-conP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P N m (ValuePattern Name)] -> Bind P N m (ValuePattern Name)
+conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind P N m (ValuePattern Name)] -> Bind P N m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   n' :=: _ ::: _T <- traverse (instantiate const . fmap shiftP) =<< resolveC n
   (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify _A' (Comp [] _A) *> check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
@@ -150,7 +150,7 @@ allP n = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _A') <- expectRet "when checking catch-all pattern" _A
   (PAll n,) <$> (Binding n q (Tm (Thunk (Comp sig _A'))) |- check (b ::: _B))
 
-effP :: (HasCallStack, Has (Throw Err) sig m) => Q Name -> [Bind P N m (ValuePattern Name)] -> Name -> Bind P N m (Pattern Name)
+effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind P N m (ValuePattern Name)] -> Name -> Bind P N m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectRet "when checking effect pattern" _A

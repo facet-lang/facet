@@ -291,7 +291,7 @@ mname = token (runUnspaced (fromList <$> sepBy1 comp dot))
   where
   comp = ident tnameStyle
 
-qname :: (Has Parser sig p, TokenParsing p) => p N.Name -> p (N.Q N.Name)
+qname :: (Has Parser sig p, TokenParsing p) => p N.Name -> p N.QName
 qname name = token (runUnspaced (try ((N.:.:) <$> mname <*> Unspaced name) <|> (Nil N.:.:) <$> Unspaced name)) <?> "name"
 
 

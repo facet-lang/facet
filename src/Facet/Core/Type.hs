@@ -71,7 +71,7 @@ instance Shift Type where
     Comp [] t -> t
     t         -> Thunk t
 
-global :: Q Name -> Type P
+global :: QName -> Type P
 global n = Ne (Global n) Nil
 
 free :: Level -> Type P
