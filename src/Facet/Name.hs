@@ -15,7 +15,7 @@ module Facet.Name
 , OpN(..)
 ) where
 
-import           Data.Foldable (foldr', toList)
+import           Data.Foldable (foldr')
 import           Data.Functor.Classes (showsUnaryWith)
 import qualified Data.List.NonEmpty as NE
 import           Data.String (IsString(..))
@@ -67,7 +67,7 @@ data QName = MName :.: Name -- FIXME: use Name on the lhs so we can accommodate 
   deriving (Eq, Ord)
 
 instance Show QName where
-  showsPrec p (m :.: n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":.:" . showsPrec 10 n
+  showsPrec p (m :.: n) = showParen (p > 9) $ foldr (\ h t -> showString (T.unpack h) . showChar '.' . t) (showString ":.:" . showsPrec 10 n) m
 
 instance P.Pretty QName where
   pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
