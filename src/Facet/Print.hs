@@ -167,8 +167,8 @@ printTExpr Options{ qname } = go
     C.TApp f a               -> group (go env f) $$ group (foldSome (go env) a)
     where
     d = Name.Level (length env)
-    sig :: [C.TExpr u] -> Print
-    sig s = brackets (commaSep (map (go env) s))
+    sig :: [C.Interface C.TExpr] -> Print
+    sig s = brackets (commaSep (map (go env . C.getInterface) s))
     mult q = if
       | q == zero -> (pretty '0' <+>)
       | q == one  -> (pretty '1' <+>)

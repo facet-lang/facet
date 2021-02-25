@@ -352,7 +352,7 @@ expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type N
 expectTacitFunction = expectMatch (\case{ Arrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _"
 
 -- | Expect a computation type with effects.
-expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m ([Type P], Type P)
+expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type P -> Elab m ([Interface Type], Type P)
 -- FIXME: expectations should be composable so we can expect a thunk and a comp separately
 expectRet = expectMatch (\case{ Comp s t -> pure (s, t) ; _ -> Nothing } <=< unThunk) "[_] _"
 

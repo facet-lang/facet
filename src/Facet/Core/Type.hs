@@ -1,7 +1,9 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Core.Type
 ( -- * Types
-  Type(..)
+  Interface(..)
+, Type(..)
 , N
 , P
 , global
@@ -40,6 +42,13 @@ import           Prelude hiding (lookup)
 
 -- Types
 
+newtype Interface ty = IInterface { getInterface :: ty T }
+
+deriving instance Eq   (ty T) => Eq   (Interface ty)
+deriving instance Ord  (ty T) => Ord  (Interface ty)
+deriving instance Show (ty T) => Show (Interface ty)
+
+
 data Type u where
   -- Types
   Type :: Type T
@@ -49,7 +58,7 @@ data Type u where
   -- Negative
   ForAll :: Name -> Type T -> (Type P -> Type N) -> Type N
   Arrow :: Maybe Name -> Quantity -> Type P -> Type N -> Type N
-  Comp :: [Type T] -> Type P -> Type N
+  Comp :: [Interface Type] -> Type P -> Type N
 
   -- Positive
   Ne :: Var Meta Level -> Snoc (Some Type) -> Type P
@@ -72,7 +81,7 @@ metavar :: Meta -> Type P
 metavar m = Ne (Metavar m) Nil
 
 
-unComp :: Has Empty sig m => Type n -> m ([Type T], Type P)
+unComp :: Has Empty sig m => Type n -> m ([Interface Type], Type P)
 unComp = \case
   Comp sig _T -> pure (sig, _T)
   _T          -> empty
@@ -93,7 +102,7 @@ occursIn p = go
     Arrow'  _ a b -> go d a || go d b
     ForAll  _ t b -> go d t || go (succ d) (b (free d))
     Arrow _ _ a b -> go d a || go d b
-    Comp s t      -> any (go d) s || go d t
+    Comp s t      -> any (go d . getInterface) s || go d t
     Ne h sp       -> p h || any (foldSome (go d)) sp
     String        -> False
     Thunk t       -> go d t
@@ -115,7 +124,7 @@ data TExpr u where
 
   TForAll :: Name -> TExpr T -> TExpr N -> TExpr N
   TArrow :: Maybe Name -> Quantity -> TExpr P -> TExpr N -> TExpr N
-  TComp :: [TExpr T] -> TExpr P -> TExpr N
+  TComp :: [Interface TExpr] -> TExpr P -> TExpr N
 
   TVar :: Var Meta Index -> TExpr P
   TApp :: TExpr P -> Some TExpr -> TExpr P
@@ -152,7 +161,7 @@ quote d = \case
 
   ForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
   Arrow n q a b -> TArrow n q (quote d a) (quote d b)
-  Comp s t      -> TComp (quote d <$> s) (quote d t)
+  Comp s t      -> TComp (IInterface . quote d . getInterface <$> s) (quote d t)
 
   Ne n sp       -> foldl' TApp (TVar (levelToIndex d <$> n)) (mapSome (quote d) <$> sp)
   String        -> TString
@@ -167,7 +176,7 @@ eval subst = go where
     TArrow' n a b    -> Arrow' n (go env a) (go env b)
     TForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> Arrow n q (go env a) (go env b)
-    TComp s t        -> Comp (go env <$> s) (go env t)
+    TComp s t        -> Comp (IInterface . go env . getInterface <$> s) (go env t)
     TApp f a         -> go env f `app` mapSome (go env) a
     TString          -> String
     TVar (Global n)  -> global n

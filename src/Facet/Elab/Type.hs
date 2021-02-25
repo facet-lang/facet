@@ -79,7 +79,7 @@ infixr 1 -->
 infixr 1 ==>
 
 
-comp :: Algebra sig m => [Check T m (TExpr P)] -> Check T m (TExpr P) -> Synth T m (TExpr N)
+comp :: Algebra sig m => [Check T m (Interface TExpr)] -> Check T m (TExpr P) -> Synth T m (TExpr N)
 comp s t = Synth $ do
   s' <- traverse (check . (::: Interface)) s
   t' <- check (t ::: Type)
@@ -140,8 +140,8 @@ synthTypeP ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   toV = shiftN <$> synthTypeN ty
 
 
-synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth T m (TExpr P)
-synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth T m (Interface TExpr)
+synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) . fmap IInterface $
   foldl' tapp (mapSynth (pushSpan sh) (tvar h)) (switch . synthTypeP <$> sp)
 
 

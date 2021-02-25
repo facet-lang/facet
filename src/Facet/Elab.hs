@@ -145,8 +145,8 @@ lookupInContext (m:.:n)
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: this can’t differentiate between different instantiations of the same effect (i.e. based on type)
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Type P] -> m (Q Name :=: Def)
-lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
+lookupInSig :: (Alternative m, Monad m) => Q Name -> Module -> Graph -> [Interface Type] -> m (Q Name :=: Def)
+lookupInSig (m :.: n) mod graph = fmap asum . fmap . (. getInterface) $ \case
   T.Ne (Global q@(m':.:_)) Nil -> do
     guard (m == Nil || m == m')
     defs <- interfaceScope =<< lookupQ graph mod q
@@ -198,7 +198,7 @@ use i q = do
   d <- depth
   tell (Usage.singleton (indexToLevel d i) q)
 
-extendSig :: Has (Reader ElabContext) sig m => [Type T] -> m a -> m a
+extendSig :: Has (Reader ElabContext) sig m => [Interface Type] -> m a -> m a
 extendSig = locally sig_ . (++)
 
 
@@ -309,14 +309,14 @@ data StaticContext = StaticContext
 
 data ElabContext = ElabContext
   { context :: Context
-  , sig     :: [Type T]
+  , sig     :: [Interface Type]
   , spans   :: Snoc Span
   }
 
 context_ :: Lens' ElabContext Context
 context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
 
-sig_ :: Lens' ElabContext [Type T]
+sig_ :: Lens' ElabContext [Interface Type]
 sig_ = lens sig (\ e sig -> e{ sig })
 
 spans_ :: Lens' ElabContext (Snoc Span)
@@ -366,8 +366,8 @@ unify t1 t2 = type' t1 t2
   spine :: (HasCallStack, Foldable t, Zip t) => (a -> b -> Elab m ()) -> t a -> t b -> Elab m ()
   spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
-  sig :: (HasCallStack, Foldable t, Zip t) => t (Type v) -> t (Type v) -> Elab m ()
-  sig c1 c2 = spine type' c1 c2
+  sig :: (HasCallStack, Foldable t, Zip t) => t (Interface Type) -> t (Interface Type) -> Elab m ()
+  sig c1 c2 = spine type' (getInterface <$> c1) (getInterface <$> c2)
 
   flexFlex :: HasCallStack => Meta -> Meta -> Elab m ()
   flexFlex v1 v2
