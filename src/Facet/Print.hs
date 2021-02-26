@@ -151,8 +151,6 @@ printTExpr Options{ qname } = go
   go env = \case
     C.TType                  -> annotate Type $ pretty "Type"
     C.TInterface             -> annotate Type $ pretty "Interface"
-    C.TArrow' (Just n)   a b -> parens (ann (intro n d ::: go env a)) --> go env b
-    C.TArrow' Nothing    a b -> go env a --> go env b
     C.TForAll       n    t b -> braces (ann (intro n d ::: go env t)) --> go (env :> intro n d) b
     C.TArrow  Nothing  q a b -> mult q (go env a) --> go env b
     C.TArrow  (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b

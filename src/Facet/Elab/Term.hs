@@ -228,7 +228,7 @@ abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Check m
 abstractType body = go
   where
   go = Check $ \case
-    Arrow' (Just n) a b -> do
+    Arrow (Just n) _ a b -> do
       level <- depth
       b' <- Binding n zero a |- check (go ::: b)
       pure $ TForAll n (T.quote level a) b'

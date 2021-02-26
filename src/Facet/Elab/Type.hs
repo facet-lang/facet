@@ -69,14 +69,6 @@ forAll (n ::: t) b = Synth $ do
 
 infixr 1 -->
 
-(==>) :: Algebra sig m => Maybe Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
-(n ::: a) ==> b = Synth $ do
-  a' <- check (a ::: Type)
-  b' <- check (b ::: Type)
-  pure $ TArrow' n a' b' ::: Type
-
-infixr 1 ==>
-
 
 comp :: Algebra sig m => [Check m (Interface TExpr)] -> Check m TExpr -> Synth m TExpr
 comp s t = Synth $ do
@@ -88,7 +80,8 @@ comp s t = Synth $ do
 tapp :: (HasCallStack, Has (Throw Err) sig m) => Synth m TExpr -> Check m TExpr -> Synth m TExpr
 tapp f a = Synth $ do
   f' ::: _F <- synth f
-  (_ ::: _A, _B) <- expectTypeConstructor "in type-level application" _F
+  -- FIXME: verify that the quantity is zero?
+  (_ ::: (_, _A), _B) <- expectFunction "in type-level application" _F
   a' <- censor @Usage (zero ><<) $ check (a ::: _A)
   pure $ TApp f' a' ::: _B
 
@@ -101,7 +94,7 @@ synthTypeT (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TVar n         -> tvar n
   S.TApp f a       -> tapp (synthTypeT f) (switch (synthTypeT a))
   -- FIXME: verify that the quantity is zero
-  S.TArrow n _ a b -> (n ::: switch (synthTypeT a)) ==> switch (synthTypeT b)
+  S.TArrow n _ a b -> (n ::: (zero,) <$> switch (synthTypeT a)) --> switch (synthTypeT b)
   S.TForAll{}      -> nope "quantifier"
   S.TComp{}        -> nope "computation"
   where
@@ -142,8 +135,3 @@ synthTypeP ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (Interface TExpr)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) . fmap IInterface $
   foldl' tapp (mapSynth (pushSpan sh) (tvar h)) (switch . synthTypeP <$> sp)
-
-
--- | Expect a type constructor.
-expectTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Maybe Name ::: Type, Type)
-expectTypeConstructor = expectMatch (\case{ Arrow' n t b -> pure (n ::: t, b) ; _ -> Nothing }) "_ => _"
