@@ -141,14 +141,13 @@ suppressInstantiation = const
 
 -- Core printers
 
-printType :: Options -> Snoc Print -> C.Type u -> Print
+printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
-printTExpr :: Options -> Snoc Print -> C.TExpr u -> Print
+printTExpr :: Options -> Snoc Print -> C.TExpr -> Print
 printTExpr Options{ qname } = go
   where
   qvar = group . setPrec Var . qname
-  go :: Snoc Print -> C.TExpr u -> Print
   go env = \case
     C.TType                  -> annotate Type $ pretty "Type"
     C.TInterface             -> annotate Type $ pretty "Interface"
@@ -164,7 +163,7 @@ printTExpr Options{ qname } = go
     C.TVar (Metavar m)       -> meta m
     C.TString                -> annotate Type $ pretty "String"
     C.TThunk t               -> prec Shift $ pretty '↓' <+> go env t
-    C.TApp f a               -> group (go env f) $$ group (foldSome (go env) a)
+    C.TApp f a               -> group (go env f) $$ group (go env a)
     where
     d = Name.Level (length env)
     sig :: [C.Interface C.TExpr] -> Print
@@ -174,10 +173,9 @@ printTExpr Options{ qname } = go
       | q == one  -> (pretty '1' <+>)
       | otherwise -> id
 
-printExpr :: Options -> Snoc Print -> C.Expr p -> Print
+printExpr :: Options -> Snoc Print -> C.Expr -> Print
 printExpr opts@Options{ qname, instantiation } = go
   where
-  go :: Snoc Print -> C.Expr p -> Print
   go env = \case
     C.XVar (Global n)  -> qvar n
     C.XVar (Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'

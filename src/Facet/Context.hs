@@ -3,7 +3,6 @@ module Facet.Context
   Quantity
 , Context(..)
 , Binding(..)
-, VarType(..)
 , empty
 , (|>)
 , level
@@ -18,7 +17,6 @@ import           Facet.Core.Type
 import           Facet.Name
 import           Facet.Semiring
 import qualified Facet.Snoc as S
-import           Facet.Syntax
 import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup, zipWith)
@@ -35,12 +33,8 @@ instance LeftModule Quantity Context where
 data Binding = Binding
   { name     :: Name
   , quantity :: Quantity
-  , type'    :: VarType
+  , type'    :: Type
   }
-
-data VarType
-  = Tm (Type P)
-  | Ty (Type T)
 
 -- | A precondition for use of this instance is that one only ever '<>'s pairs of 'Binding's assigning the same type to the same variable.
 instance Semigroup Binding where
@@ -68,7 +62,7 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
     | otherwise    = go es (i - 1)
   go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: Alt.Alternative m => Name -> Context -> m (Index, Quantity, VarType)
+lookupIndex :: Alt.Alternative m => Name -> Context -> m (Index, Quantity, Type)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = Alt.empty
@@ -78,7 +72,7 @@ lookupIndex n = go (Index 0) . elems
 
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context -> S.Snoc (Type P)
+toEnv :: Context -> S.Snoc Type
 toEnv c = locals 0 (elems c)
   where
   d = level c

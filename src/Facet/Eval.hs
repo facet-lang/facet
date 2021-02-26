@@ -1,4 +1,3 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -39,10 +38,10 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall p m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr p -> Eval m (Value p (Eval m))
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Value (Eval m))
 eval = runReader Nil . eval'
 
-eval' :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr u -> EnvC m (Value u (Eval m))
+eval' :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> EnvC m (Value (Eval m))
 eval' = \case
   XTLam b          -> eval' b
   XInst f _        -> eval' f
@@ -68,9 +67,9 @@ eval' = \case
 
 -- Combinators
 
-type EnvC m = ReaderC (Snoc (Value P (Eval m))) (Eval m)
+type EnvC m = ReaderC (Snoc (Value (Eval m))) (Eval m)
 
-global :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => QName -> EnvC m (Expr P)
+global :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => QName -> EnvC m Expr
 global n = do
   mod <- ask
   graph <- ask
@@ -78,11 +77,11 @@ global n = do
     Just (_ :=: DTerm (Just v) _) -> pure v
     _                             -> fail $ "free variable: " <> show n
 
-var :: HasCallStack => Index -> EnvC m (Value P (Eval m))
+var :: HasCallStack => Index -> EnvC m (Value (Eval m))
 var (Index v) = ReaderC $ \ env -> pure (env ! v)
 
 
-lam :: forall m sig . Algebra sig m => [(Pattern Name, EnvC m (Value N (Eval m)))] -> EnvC m (Value N (Eval m))
+lam :: forall m sig . Algebra sig m => [(Pattern Name, EnvC m (Value (Eval m)))] -> EnvC m (Value (Eval m))
 lam cs = do
   env <- ask
   let clause p b = case p of
@@ -90,7 +89,7 @@ lam cs = do
         PEff p -> Left  (p, (`runReader` b) . foldl' (:>) env)
   pure $ VLam (map (uncurry clause) cs)
 
-($$) :: MonadFail m => EnvC m (Value N (Eval m)) -> EnvC m (Value P (Eval m)) -> EnvC m (Value N (Eval m))
+($$) :: MonadFail m => EnvC m (Value (Eval m)) -> EnvC m (Value (Eval m)) -> EnvC m (Value (Eval m))
 f $$ a = do
   VLam cs <- f
   let (es, vs) = partitionEithers cs
@@ -101,7 +100,7 @@ f $$ a = do
 infixl 9 $$
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: QName -> Snoc (EnvC m (Value P (Eval m))) -> EnvC m (Value N (Eval m))
+op :: QName -> Snoc (EnvC m (Value (Eval m))) -> EnvC m (Value (Eval m))
 op n sp = do
   sp' <- sequenceA sp
   lift $ Eval $ \ h k -> runEval h k (h n sp' creturn)
@@ -109,7 +108,7 @@ op n sp = do
 
 -- Machinery
 
-type Handler m = QName -> Snoc (Value P m) -> (Value P m -> m (Value N m)) -> m (Value N m)
+type Handler m = QName -> Snoc (Value m) -> (Value m -> m (Value m)) -> m (Value m)
 
 runEval :: Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
 runEval hdl k (Eval m) = m hdl k
@@ -138,24 +137,24 @@ instance Algebra sig m => Algebra sig (Eval m) where
 
 -- Values
 
-data Value u m where
+data Value m
   -- | Neutral; variables, only used during quotation
-  VFree :: Level -> Value P m
+  = VFree Level
   -- | Value; data constructors.
-  VCon :: QName -> Snoc (Value P m) -> Value P m
+  | VCon QName (Snoc (Value m))
   -- | Value; strings.
-  VString :: Text -> Value P m
+  | VString Text
   -- | Thunks embed computations into values.
-  VThunk :: Value N m -> Value P m
+  | VThunk (Value m)
   -- | Neutral; effect operations, only used during quotation.
-  VOp :: QName -> Snoc (Value P m) -> Value P m -> Value N m
-  VLam :: [Either (EffectPattern Name, EffectPattern (Value P m) -> m (Value N m)) (ValuePattern Name, ValuePattern (Value P m) -> m (Value N m))] -> Value N m
-  VReturn :: Value P m -> Value N m
+  | VOp QName (Snoc (Value m)) (Value m)
+  | VLam [Either (EffectPattern Name, EffectPattern (Value m) -> m (Value m)) (ValuePattern Name, ValuePattern (Value m) -> m (Value m))]
+  | VReturn (Value m)
 
-unit :: Value P m
+unit :: Value m
 unit = VCon (["Data", "Unit"] :.: N "unit") Nil
 
-creturn :: Applicative m => Value P m -> m (Value N m)
+creturn :: Applicative m => Value m -> m (Value m)
 creturn = pure . \case
   VThunk c -> c
   v        -> VReturn v
@@ -163,7 +162,7 @@ creturn = pure . \case
 
 -- Elimination
 
-matchE :: MonadFail m => EffectPattern Name -> QName -> Snoc (Value P m) -> Maybe ((Value P m -> m (Value N m)) -> EffectPattern (Value P m))
+matchE :: MonadFail m => EffectPattern Name -> QName -> Snoc (Value m) -> Maybe ((Value m -> m (Value m)) -> EffectPattern (Value m))
 matchE p n' fs = case p of
   -- FIXME: I can’t see how this could possibly be correct
   PAll _     -> pure $ \ k -> PAll (VThunk (VOp n' fs (cont k)))
@@ -175,7 +174,7 @@ matchE p n' fs = case p of
     PVar v -> k v
     _      -> fail "unexpected non-variable pattern given to continuation"
 
-matchV :: ValuePattern Name -> Value P m -> Maybe (ValuePattern (Value P m))
+matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
 matchV = curry $ \case
   (PWildcard, _)          -> pure PWildcard
   (PVar _,    s)          -> pure (PVar s)
@@ -185,7 +184,7 @@ matchV = curry $ \case
 
 -- Quotation
 
-quote :: Monad m => Level -> Value p m -> m (Expr p)
+quote :: Monad m => Level -> Value m -> m Expr
 quote d = \case
   VFree lvl  -> pure (XVar (Free (levelToIndex d lvl)))
   VCon n fs  -> XCon n Nil <$> traverse (quote d) fs
@@ -196,11 +195,11 @@ quote d = \case
   VLam cs    -> XLam <$> traverse (quoteClause d) cs
   VReturn v  -> XReturn <$> quote d v
 
-quoteClause :: Monad m => Level -> Either (EffectPattern Name, EffectPattern (Value P m) -> m (Value N m)) (ValuePattern Name, ValuePattern (Value P m) -> m (Value N m)) -> m (Pattern Name, Expr N)
+quoteClause :: Monad m => Level -> Either (EffectPattern Name, EffectPattern (Value m) -> m (Value m)) (ValuePattern Name, ValuePattern (Value m) -> m (Value m)) -> m (Pattern Name, Expr)
 quoteClause d p = fmap (pn,) $ case p of
   Right (p, k) -> let (d', p') = fillV p in quote d' =<< k p'
   Left  (p, h) -> let (d', p') = fillV p in quote d' =<< h p'
   where
   pn = either (PEff . fst) (PVal . fst) p
-  fillV :: Traversable t => t Name -> (Level, t (Value P m))
+  fillV :: Traversable t => t Name -> (Level, t (Value m))
   fillV = fill ((,) <$> succ <*> VFree) d

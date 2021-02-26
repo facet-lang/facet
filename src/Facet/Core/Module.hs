@@ -52,7 +52,7 @@ scope_ :: Lens' Module Scope
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
-lookupC :: (Alternative m, Monad m) => Name -> Module -> m (QName :=: Maybe (Expr P) ::: Type P)
+lookupC :: (Alternative m, Monad m) => Name -> Module -> m (QName :=: Maybe Expr ::: Type)
 lookupC n Module{ name, scope } = foldMapA matchDef (decls scope)
   where
   matchDef = matchTerm <=< lookupScope n . tm <=< unDData
@@ -88,22 +88,22 @@ newtype Import = Import { name :: MName }
 
 
 data Def
-  = DTerm (Maybe (Expr P)) (Type P)
-  | DData Scope (Type T)
-  | DInterface Scope (Type T)
-  | DModule Scope (Type T)
+  = DTerm (Maybe Expr) Type
+  | DData Scope Type
+  | DInterface Scope Type
+  | DModule Scope Type
 
-unDTerm :: Alternative m => Def -> m (Maybe (Expr P) ::: Type P)
+unDTerm :: Alternative m => Def -> m (Maybe Expr ::: Type)
 unDTerm = \case
   DTerm e _T -> pure (e ::: _T)
   _          -> empty
 
-unDData :: Alternative m => Def -> m (Scope ::: Type T)
+unDData :: Alternative m => Def -> m (Scope ::: Type)
 unDData = \case
   DData cs _T -> pure (cs ::: _T)
   _           -> empty
 
-unDInterface :: Alternative m => Def -> m (Scope ::: Type T)
+unDInterface :: Alternative m => Def -> m (Scope ::: Type)
 unDInterface = \case
   DInterface cs _T -> pure (cs ::: _T)
   _                -> empty
