@@ -116,11 +116,6 @@ thunkS c = Synth $ do
   c' ::: _C <- synth c
   pure $ XThunk c' ::: Thunk _C
 
-retS :: Synth P m (Expr P) -> Synth N m (Expr N)
-retS v = Synth $ do
-  v' ::: _V <- synth v
-  pure $ XReturn v' ::: Comp [] _V
-
 
 -- Pattern combinators
 
@@ -170,7 +165,11 @@ synthExprN expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   where
-  shift = retS (synthExprP expr)
+  shift = Synth $ do
+    v' ::: _V <- synth (synthExprP expr)
+    case _V of
+      Thunk _T -> pure $ XForce  v' ::: _T
+      _T       -> pure $ XReturn v' ::: Comp [] _T
   nope = Synth $ couldNotSynthesize (show e)
 
 checkExprN :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check N m (Expr N)
