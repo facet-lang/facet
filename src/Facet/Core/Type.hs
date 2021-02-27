@@ -63,16 +63,6 @@ instance Shift Type where
     Comp [] t -> t
     t         -> Thunk t
 
-global :: QName -> Type
-global n = Ne (Global n) Nil
-
-free :: Level -> Type
-free l = Ne (Free l) Nil
-
-metavar :: Meta -> Type
-metavar m = Ne (Metavar m) Nil
-
-
 -- | The polarity of a 'Type'. Returns in 'Maybe' because some 'Type's (e.g. 'Type' itself) are kinds, which aren’t polarized.
 instance HasPolarity Type where
   polarity = \case
@@ -88,6 +78,15 @@ instance HasPolarity Type where
     Ne{}          -> Just Pos
     String        -> Just Pos
     Thunk{}       -> Just Pos
+
+global :: QName -> Type
+global n = Ne (Global n) Nil
+
+free :: Level -> Type
+free l = Ne (Free l) Nil
+
+metavar :: Meta -> Type
+metavar m = Ne (Metavar m) Nil
 
 
 unComp :: Has Empty sig m => Type -> m ([Interface Type], Type)
