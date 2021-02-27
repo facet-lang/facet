@@ -85,18 +85,19 @@ tapp f a = Synth $ do
 
 
 elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
-elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.TForAll n t b   -> forAll (n ::: switch (elabType t)) (switch (elabType b))
-  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (pos (elabType a)))) --> switch (neg (elabType b))
-  S.TComp s t       -> comp (map (switch . synthInterface) s) (switch (pos (elabType t)))
-  S.TApp f a        -> tapp (elabType f) (switch (elabType a))
-  S.TVar n          -> tvar n
-  S.KType           -> _Type
-  S.KInterface      -> _Interface
-  S.TString         -> _String
+elabType = go
   where
+  go (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+    S.TForAll n t b   -> forAll (n ::: switch (go t)) (switch (go b))
+    S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (pos a))) --> switch (neg b)
+    S.TComp s t       -> comp (map (switch . synthInterface) s) (switch (pos t))
+    S.TApp f a        -> tapp (go f) (switch (go a))
+    S.TVar n          -> tvar n
+    S.KType           -> _Type
+    S.KInterface      -> _Interface
+    S.TString         -> _String
   pos b = Synth $ do
-    t ::: _T <- synth b
+    t ::: _T <- synth (go b)
     pure $ (if not (isNeg t) then t else TThunk t) ::: _T
   isPos = \case
     TVar{}   -> True
@@ -104,7 +105,7 @@ elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
     TThunk{} -> True
     _        -> False
   neg b = Synth $ do
-    t ::: _T <- synth b
+    t ::: _T <- synth (go b)
     pure $ (if not (isPos t) then t else TComp [] t) ::: _T
   isNeg = \case
     TForAll{} -> True
