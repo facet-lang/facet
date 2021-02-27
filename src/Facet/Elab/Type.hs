@@ -7,7 +7,7 @@ module Facet.Elab.Type
 , _String
 , forAll
 , (-->)
-, synthType
+, elabType
 ) where
 
 import           Control.Algebra
@@ -84,12 +84,12 @@ tapp f a = Synth $ do
   pure $ TApp f' a' ::: _B
 
 
-synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
-synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.TForAll n t b   -> forAll (n ::: switch (synthType t)) (switch (synthType b))
-  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (pos (synthType a)))) --> switch (neg (synthType b))
-  S.TComp s t       -> comp (map (switch . synthInterface) s) (switch (pos (synthType t)))
-  S.TApp f a        -> tapp (synthType f) (switch (synthType a))
+elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
+elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+  S.TForAll n t b   -> forAll (n ::: switch (elabType t)) (switch (elabType b))
+  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (pos (elabType a)))) --> switch (neg (elabType b))
+  S.TComp s t       -> comp (map (switch . synthInterface) s) (switch (pos (elabType t)))
+  S.TApp f a        -> tapp (elabType f) (switch (elabType a))
   S.TVar n          -> tvar n
   S.KType           -> _Type
   S.KInterface      -> _Interface
@@ -118,4 +118,4 @@ synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
 
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (Interface TExpr)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) . fmap IInterface $
-  foldl' tapp (mapSynth (pushSpan sh) (tvar h)) (switch . synthType <$> sp)
+  foldl' tapp (mapSynth (pushSpan sh) (tvar h)) (switch . elabType <$> sp)

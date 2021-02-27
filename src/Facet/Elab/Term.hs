@@ -158,7 +158,7 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 synthExprN :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
 synthExprN expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.App f a  -> app XApp (synthExprN f) (checkExprP a)
-  S.As t _T  -> as (checkExprN t ::: switch (synthType _T))
+  S.As t _T  -> as (checkExprN t ::: switch (elabType _T))
   S.Var{}    -> shift
   S.String{} -> shift
   S.Hole{}   -> nope
@@ -187,7 +187,7 @@ synthExprP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Ex
 synthExprP expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> var n
   S.App{}    -> shift
-  S.As t _T  -> as (checkExprP t ::: switch (synthType _T))
+  S.As t _T  -> as (checkExprP t ::: switch (elabType _T))
   S.String s -> string s
   S.Hole{}   -> nope
   S.Lam{}    -> nope
@@ -263,7 +263,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    c_T <- runElabType $ pushSpan (S.ann t) $ shiftN <$> check (abstractType (check (switch (synthType t) ::: Type)) ::: _T)
+    c_T <- runElabType $ pushSpan (S.ann t) $ shiftN <$> check (abstractType (check (switch (elabType t) ::: Type)) ::: _T)
     con' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> XReturn (XCon (mname :.: n) ts fs))) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
   pure
@@ -278,7 +278,7 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    _T' <- runElabType $ pushSpan (S.ann t) $ shiftN <$> check (abstractType (check (switch (synthType t) ::: Type)) ::: _T)
+    _T' <- runElabType $ pushSpan (S.ann t) $ shiftN <$> check (abstractType (check (switch (elabType t) ::: Type)) ::: _T)
     -- FIXME: check that the interface is a member of the sig.
     op' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (XOp (mname :.: n))) ::: _T')
     pure $ n :=: DTerm (Just op') _T'
@@ -321,7 +321,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- elaborate all the types first
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl ty def))) -> case def of
       S.TypeDef k cs -> Nothing <$ do
-        _T <- runModule $ runElabType $ check (switch (synthType ty) ::: Type)
+        _T <- runModule $ runElabType $ check (switch (elabType ty) ::: Type)
         let (cons, elab) = case k of
               S.DataDef      -> (DData,      elabDataDef)
               S.InterfaceDef -> (DInterface, elabInterfaceDef)
@@ -330,7 +330,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
         for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
       S.TermDef t -> do
-        _T <- runModule $ runElabType $ check (switch (synthType ty) ::: Type)
+        _T <- runModule $ runElabType $ check (switch (elabType ty) ::: Type)
         scope_.decls_.at dname .= Just (DTerm Nothing _T)
         pure (Just (dname, t ::: _T))
 
