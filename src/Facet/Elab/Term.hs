@@ -293,7 +293,6 @@ elabTermDef
 elabTermDef _T expr@(S.Ann s _ _) = do
   runElabTerm $ pushSpan s $ check (thunk (go (checkExprN expr)) ::: _T)
   where
-  go :: Has (Throw Err) sig m => Check m Expr -> Check m Expr
   go k = Check $ \ _T -> case _T of
     ForAll{}                                -> check (tlam (go k) ::: _T)
     Arrow (Just n) q (Thunk (Comp s _A)) _B -> check (lam [(PEff <$> allP n, go k)] ::: Arrow Nothing q (Thunk (Comp s _A)) _B)
