@@ -31,7 +31,7 @@ import           GHC.Stack
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m TExpr
 tvar n = Synth $ views context_ (lookupInContext n) >>= \case
   Just (i, q, _T) -> use i q $> (TVar (Free i) ::: _T)
-  _                  -> do
+  _               -> do
     q :=: d <- resolveQ n
     _T <- case d of
       DData      _ _K -> pure _K
