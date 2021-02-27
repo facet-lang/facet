@@ -100,3 +100,4 @@ splitr un = go id
 data Polarity
   = Neg
   | Pos
+  deriving (Bounded, Enum, Eq, Ord, Show)
