@@ -193,12 +193,12 @@ removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets
 showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
-  e ::: _T <- runElab $ Elab.elabSynth one (Elab.synth (Elab.synthExprP e))
+  e ::: _T <- runElab $ Elab.runElabSynth one (Elab.synth (Elab.synthExprP e))
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e ::: printType opts Nil _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.IInterface (T.global (["Effect", "Console"]:.:N "Output")):) $ Elab.synth (Elab.synthExprP e)
+  e' ::: _T <- runElab $ Elab.runElabSynth one $ locally Elab.sig_ (T.IInterface (T.global (["Effect", "Console"]:.:N "Output")):) $ Elab.synth (Elab.synthExprP e)
   e'' <- runElab $ runEvalMain e'
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
@@ -217,7 +217,7 @@ runEvalMain e = runEval handle pure (E.quote 0 =<< eval e)
 
 showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
-  _T ::: _K <- runElab $ Elab.elabSynthType one (Elab.synth (Elab.synthType _T))
+  _T ::: _K <- runElab $ Elab.runElabSynthType one (Elab.synth (Elab.synthType _T))
   opts <- get
   outputDocLn (getPrint (ann (printType opts Nil _T ::: printType opts Nil _K)))
 
