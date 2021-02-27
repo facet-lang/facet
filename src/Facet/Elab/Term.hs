@@ -297,7 +297,7 @@ elabTermDef _T expr@(S.Ann s _ _) = do
   go k = Check $ \ _T -> case _T of
     ForAll{}                                -> check (tlam (go k) ::: _T)
     Arrow (Just n) q (Thunk (Comp s _A)) _B -> check (lam [(PEff <$> allP n, go k)] ::: Arrow Nothing q (Thunk (Comp s _A)) _B)
-    Arrow (Just n) q _A _B                  -> check (lam [(PVal <$> varP n, go k)] ::: Arrow Nothing q _A _B)
+    Arrow (Just n) q                _A   _B -> check (lam [(PVal <$> varP n, go k)] ::: Arrow Nothing q _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
