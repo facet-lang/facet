@@ -98,20 +98,10 @@ elabType = go
     S.TString         -> _String
   pos b = Synth $ do
     t ::: _T <- synth (go b)
-    pure $ (if not (isNeg t) then t else TThunk t) ::: _T
-  isPos = \case
-    TVar{}   -> True
-    TString  -> True
-    TThunk{} -> True
-    _        -> False
+    pure $ (if polarity t /= Just Neg then t else TThunk t) ::: _T
   neg b = Synth $ do
     t ::: _T <- synth (go b)
-    pure $ (if not (isPos t) then t else TComp [] t) ::: _T
-  isNeg = \case
-    TForAll{} -> True
-    TArrow{}  -> True
-    TComp{}   -> True
-    _         -> False
+    pure $ (if polarity t /= Just Pos then t else TComp [] t) ::: _T
   interpretMul = \case
     S.Zero -> zero
     S.One  -> one
