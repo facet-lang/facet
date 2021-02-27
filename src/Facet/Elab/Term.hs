@@ -263,7 +263,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    c_T <- elabType $ pushSpan s $ shiftN <$> check (abstractType (check (switch (synthTypeN t) ::: Type)) ::: _T)
+    c_T <- elabType $ pushSpan (S.ann t) $ shiftN <$> check (abstractType (check (switch (synthTypeN t) ::: Type)) ::: _T)
     con' <- elabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> XReturn (XCon (mname :.: n) ts fs))) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
   pure
@@ -278,7 +278,7 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    _T' <- elabType $ pushSpan s $ shiftN <$> check (abstractType (check (switch (synthTypeN t) ::: Type)) ::: _T)
+    _T' <- elabType $ pushSpan (S.ann t) $ shiftN <$> check (abstractType (check (switch (synthTypeN t) ::: Type)) ::: _T)
     -- FIXME: check that the interface is a member of the sig.
     op' <- elabTerm $ pushSpan s $ check (thunk (abstractTerm (XOp (mname :.: n))) ::: _T')
     pure $ n :=: DTerm (Just op') _T'
