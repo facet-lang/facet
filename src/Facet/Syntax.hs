@@ -12,6 +12,7 @@ module Facet.Syntax
 , splitr
   -- * Polarity
 , Polarity(..)
+, HasPolarity(..)
 ) where
 
 import Data.Bifoldable
@@ -101,3 +102,6 @@ data Polarity
   = Neg
   | Pos
   deriving (Bounded, Enum, Eq, Ord, Show)
+
+class HasPolarity t where
+  polarity :: t -> Maybe Polarity
