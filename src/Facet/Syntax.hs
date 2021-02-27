@@ -10,6 +10,8 @@ module Facet.Syntax
   -- * Decomposition
 , splitl
 , splitr
+  -- * Polarity
+, Polarity(..)
 ) where
 
 import Data.Bifoldable
@@ -91,3 +93,10 @@ splitr un = go id
   go as t = case un t of
     Just (a, t') -> go (as . (a:)) t'
     Nothing      -> (as [], t)
+
+
+-- Polarity
+
+data Polarity
+  = Neg
+  | Pos
