@@ -7,9 +7,7 @@ module Facet.Elab.Type
 , _String
 , forAll
 , (-->)
-, synthTypeT
-, synthTypeN
-, synthTypeP
+, synthType
 ) where
 
 import           Control.Algebra
@@ -86,52 +84,38 @@ tapp f a = Synth $ do
   pure $ TApp f' a' ::: _B
 
 
-synthTypeT :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
-synthTypeT (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.KType          -> _Type
-  S.KInterface     -> _Interface
-  S.TString        -> _String
-  S.TVar n         -> tvar n
-  S.TApp f a       -> tapp (synthTypeT f) (switch (synthTypeT a))
-  -- FIXME: verify that the quantity is zero
-  S.TArrow n _ a b -> (n ::: (zero,) <$> switch (synthTypeT a)) --> switch (synthTypeT b)
-  S.TForAll{}      -> nope "quantifier"
-  S.TComp{}        -> nope "computation"
+synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
+synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+  S.TForAll n t b   -> forAll (n ::: switch (synthType t)) (switch (synthType b))
+  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (pos (synthType a)))) --> switch (neg (synthType b))
+  S.TComp s t       -> comp (map (switch . synthInterface) s) (switch (pos (synthType t)))
+  S.TApp f a        -> tapp (synthType f) (switch (synthType a))
+  S.TVar n          -> tvar n
+  S.KType           -> _Type
+  S.KInterface      -> _Interface
+  S.TString         -> _String
   where
-  nope s = Synth $ err $ Invariant $ s <> " cannot be lifted to the kind level"
-
-
-synthTypeN :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
-synthTypeN ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.TForAll n t b   -> forAll (n ::: switch (synthTypeT t)) (switch (synthTypeN b))
-  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (synthTypeP a))) --> switch (synthTypeN b)
-  S.TComp s t       -> comp (map (switch . synthInterface) s) (switch (synthTypeP t))
-  S.TApp{}          -> toC
-  S.TVar{}          -> toC
-  S.KType           -> toC
-  S.KInterface      -> toC
-  S.TString         -> toC
-  where
-  toC = shiftP <$> synthTypeP ty
+  pos b = Synth $ do
+    t ::: _T <- synth b
+    pure $ (if not (isNeg t) then t else TThunk t) ::: _T
+  isPos = \case
+    TVar{}   -> True
+    TString  -> True
+    TThunk{} -> True
+    _        -> False
+  neg b = Synth $ do
+    t ::: _T <- synth b
+    pure $ (if not (isPos t) then t else TComp [] t) ::: _T
+  isNeg = \case
+    TForAll{} -> True
+    TArrow{}  -> True
+    TComp{}   -> True
+    _         -> False
   interpretMul = \case
     S.Zero -> zero
     S.One  -> one
 
-synthTypeP :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
-synthTypeP ty@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.TVar n     -> tvar n -- FIXME: instantiate in synthType instead
-  S.KType      -> _Type
-  S.KInterface -> _Interface
-  S.TString    -> _String
-  -- FIXME: this should probably be a failure case
-  S.TApp f a   -> tapp (synthTypeP f) (switch (synthTypeP a))
-  S.TForAll{}  -> toV
-  S.TArrow{}   -> toV
-  S.TComp{}    -> toV
-  where
-  toV = shiftN <$> synthTypeN ty
-
 
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (Interface TExpr)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) . fmap IInterface $
-  foldl' tapp (mapSynth (pushSpan sh) (tvar h)) (switch . synthTypeP <$> sp)
+  foldl' tapp (mapSynth (pushSpan sh) (tvar h)) (switch . synthType <$> sp)
