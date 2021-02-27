@@ -79,6 +79,7 @@ instance HasPolarity Type where
     String        -> Just Pos
     Thunk{}       -> Just Pos
 
+
 global :: QName -> Type
 global n = Ne (Global n) Nil
 
