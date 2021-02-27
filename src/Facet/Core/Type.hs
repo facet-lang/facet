@@ -147,6 +147,24 @@ instance Shift TExpr where
     TComp [] t -> t
     t          -> TThunk t
 
+instance HasPolarity TExpr where
+  polarity = \case
+    TType          -> Nothing
+    TInterface     -> Nothing
+
+    -- FIXME: it would be nice for this to be more nuanced, e.g. the @nil@ list constructor of type @{ A : Type } -> List A@ could reasonably be positive since the forall doesn’t do computation
+    TForAll{}      -> Just Neg
+    -- the body is either a kind (@'Nothing'@) or negative (@'Just' 'Neg'@), so we just use its polarity for the arrow as a whole
+    TArrow _ _ _ b -> polarity b
+    TComp{}        -> Just Neg
+
+    -- FIXME: this will need to be reconsidered if we ever allow type constructors with arbitrary polarities, or e.g. embed the kind arrow as a symbol
+    TVar{}         -> Just Pos
+    -- FIXME: List is neutral (being as it’s Type -> Type), List A is positive, and there’s no guarantee that the neutral term is saturated
+    TApp{}         -> Just Pos
+    TString        -> Just Pos
+    TThunk{}       -> Just Pos
+
 
 -- Shifting
 
