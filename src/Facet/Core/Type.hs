@@ -74,6 +74,7 @@ metavar :: Meta -> Type
 metavar m = Ne (Metavar m) Nil
 
 
+-- | The polarity of a 'Type'. Returns in 'Maybe' because some 'Type's (e.g. 'Type' itself) are kinds, which aren’t polarized.
 polarity :: Type -> Maybe Polarity
 polarity = \case
   Type          -> Nothing
