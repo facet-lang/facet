@@ -112,9 +112,9 @@ reloadModules = do
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (ModuleHeader n path source imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
 
-data ModuleHeader = ModuleHeader MName FilePath Source [S.Ann S.Import]
+data ModuleHeader a = ModuleHeader MName FilePath Source [a]
 
-loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m ModuleHeader
+loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (ModuleHeader (S.Ann S.Import))
 loadModuleHeader searchPaths target = do
   path <- case target of
     Left path  -> pure path
