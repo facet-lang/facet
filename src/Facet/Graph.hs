@@ -62,6 +62,7 @@ lookupWith lookup graph mod@Module{ name } (m:.:n)
 lookupQ :: (Alternative m, Monad m) => Graph -> Module -> Q Name -> m (Q Name :=: Maybe Def ::: Type)
 lookupQ = lookupWith lookupD
 
+
 -- FIXME: enrich this with source references for each
 newtype GraphErr = CyclicImport (Snoc MName)
 
