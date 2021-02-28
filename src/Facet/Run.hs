@@ -5,7 +5,7 @@ module Facet.Run
 import           Control.Carrier.Error.Church
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (use)
-import           Control.Lens (at)
+import           Control.Lens (at, (^.))
 import           Data.Foldable (for_)
 import qualified Data.Set as Set
 import           Facet.Carrier.Output.IO
@@ -23,7 +23,8 @@ runFile searchPaths path = runStack $ do
   modules <- rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) [headerNode targetHead]
   -- FIXME: look up and evaluate the main function in the module we were passed?
   ExitSuccess <$ for_ modules (\ h@(ModuleHeader _ _ _ imports) -> do
-    loaded <- traverse (>>= snd) <$> traverse (use . (modules_.) . at) imports
+    modules <- use modules_
+    let loaded = traverse (\ name -> modules^.at name >>= snd) imports
     traverse (\ loaded -> loadModule h{ imports = loaded }) loaded)
   where
   runStack
