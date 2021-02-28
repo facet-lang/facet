@@ -20,7 +20,7 @@ runFile searchPaths path = runStack $ do
   targetHead <- loadModuleHeader searchPaths (Left path)
   modules <- rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) [headerNode targetHead]
   -- FIXME: look up and evaluate the main function in the module we were passed?
-  ExitSuccess <$ for_ modules (\ (ModuleHeader name path src imports) -> loadModule name path src imports)
+  ExitSuccess <$ for_ modules loadModule
   where
   runStack
     = runOutput
