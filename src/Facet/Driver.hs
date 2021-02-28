@@ -143,7 +143,7 @@ loadModuleHeader searchPaths target = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (ModuleHeader name' path src (map (Import.name . S.out) is))
 
-loadModule :: Has (Output :+: State Options :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => Graph -> ModuleHeader Module -> m (FilePath, Module)
+loadModule :: Has (Output :+: State Options :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => Graph -> ModuleHeader Module -> m (FilePath, Module)
 loadModule graph (ModuleHeader name path src imports) = do
   let ops = foldMap (map (\ (op, assoc) -> (name, op, assoc)) . operators) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
