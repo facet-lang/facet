@@ -22,9 +22,9 @@ runFile searchPaths path = runStack $ do
   targetHead <- loadModuleHeader searchPaths (Left path)
   modules <- rethrowGraphErrors [] $ loadOrder (fmap toNode . loadModuleHeader searchPaths . Right) [toNode targetHead]
   -- FIXME: look up and evaluate the main function in the module we were passed?
-  ExitSuccess <$ for_ modules (\ (name, path, src, imports) -> loadModule name path src imports)
+  ExitSuccess <$ for_ modules (\ (ModuleHeader name path src imports) -> loadModule name path src imports)
   where
-  toNode (ModuleHeader n path source imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
+  toNode h@(ModuleHeader n _ _ imports) = let imports' = map (Import.name . S.out) imports in Node n imports' h{ imports = imports' }
   runStack
     = runOutput
     . runTime

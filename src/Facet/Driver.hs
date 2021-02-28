@@ -97,7 +97,7 @@ reloadModules = do
     targetHeads <- traverse (loadModuleHeader searchPaths . Right) (toList targets)
     rethrowGraphErrors [] $ loadOrder (fmap toNode . loadModuleHeader searchPaths . Right) (map toNode targetHeads)
   let nModules = length modules
-  results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
+  results <- evalFresh 1 $ for modules $ \ (ModuleHeader name path src imports) -> do
     i <- fresh
     outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
 
@@ -110,7 +110,7 @@ reloadModules = do
   outputDocLn (fillSep [status, reflow "modules loaded."])
   where
   ratio n d = pretty n <+> pretty "of" <+> pretty d
-  toNode (ModuleHeader n path source imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
+  toNode h@(ModuleHeader n _ _ imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (h{ imports = imports' } :: ModuleHeader MName)
 
 data ModuleHeader a = ModuleHeader
   { moduleName :: MName
