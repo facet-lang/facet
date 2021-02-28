@@ -24,7 +24,7 @@ runFile searchPaths path = runStack $ do
   -- FIXME: look up and evaluate the main function in the module we were passed?
   ExitSuccess <$ for_ modules (\ (name, path, src, imports) -> loadModule name path src imports)
   where
-  toNode (n, path, source, imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
+  toNode (ModuleHeader n path source imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
   runStack
     = runOutput
     . runTime
