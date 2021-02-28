@@ -101,18 +101,20 @@ reloadModules = do
   let nModules = length modules
   results <- evalFresh 1 $ for modules $ \ h@(ModuleHeader name _ _ imports) -> do
     i <- fresh
-    outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
 
     graph <- use modules_
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     let loaded = traverse (\ name -> graph^.at name >>= snd) imports
     case loaded of
       Just loaded -> (do
+        outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
         (path, m) <- loadModule graph h{ imports = loaded }
         modules_.at name .= Just (Just path, Just m)
         pure (Just m))
         `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
-      Nothing -> pure Nothing
+      Nothing -> do
+        outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Skipping", prettyMName name ]))
+        pure Nothing
   let nSuccess = length (catMaybes results)
       status
         | nModules == nSuccess = annotate Success (pretty nModules)
