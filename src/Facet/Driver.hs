@@ -8,6 +8,7 @@ module Facet.Driver
 , kernel
   -- * Module loading
 , reloadModules
+, ModuleHeader(..)
 , loadModuleHeader
 , loadModule
 , resolveName
@@ -110,6 +111,8 @@ reloadModules = do
   where
   ratio n d = pretty n <+> pretty "of" <+> pretty d
   toNode (n, path, source, imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
+
+data ModuleHeader = ModuleHeader MName FilePath Source [S.Ann S.Import]
 
 loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
 loadModuleHeader searchPaths target = do
