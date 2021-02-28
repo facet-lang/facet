@@ -98,12 +98,14 @@ reloadModules = do
     targetHeads <- traverse (loadModuleHeader searchPaths . Right) (toList targets)
     rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) (map headerNode targetHeads)
   let nModules = length modules
-  results <- evalFresh 1 $ for modules $ \ h@(ModuleHeader name _ _ _) -> do
+  results <- evalFresh 1 $ for modules $ \ h@(ModuleHeader name _ _ imports) -> do
     i <- fresh
     outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
 
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
-    (Just <$> loadModule h) `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
+    loaded <- traverse (>>= snd) <$> traverse (use . (modules_.) . at) imports
+    for loaded $ \ loaded ->
+      (Just <$> loadModule h{ imports = loaded }) `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
   let nSuccess = length (catMaybes results)
       status
         | nModules == nSuccess = annotate Success (pretty nModules)
@@ -133,10 +135,10 @@ loadModuleHeader searchPaths target = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (ModuleHeader name' path src (map (Import.name . S.out) is))
 
-loadModule :: Has (Output :+: State Options :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => ModuleHeader MName -> m Module
+loadModule :: Has (Output :+: State Options :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => ModuleHeader Module -> m Module
 loadModule (ModuleHeader name path src imports) = do
   graph <- use modules_
-  let ops = foldMap (\ name -> lookupM name graph >>= maybe [] pure . snd >>= map (\ (op, assoc) -> (name, op, assoc)) . operators) imports
+  let ops = foldMap (map (\ (op, assoc) -> (name, op, assoc)) . operators) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   opts <- get
   m <- rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m
