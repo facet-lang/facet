@@ -31,32 +31,32 @@ import           Facet.Name
 import           Facet.Snoc
 import           Facet.Syntax
 
-newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Module) }
+newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Maybe Module) }
   deriving (Semigroup, Monoid)
 
 type instance Lens.Index Graph = MName
-type instance IxValue Graph = (Maybe FilePath, Module)
+type instance IxValue Graph = (Maybe FilePath, Maybe Module)
 
 instance Ixed Graph
 instance At   Graph where
   at i = iso getGraph Graph .at i
 
 singleton :: Maybe FilePath -> Module -> Graph
-singleton p m@Module{ name } = Graph (Map.singleton name (p, m))
+singleton p m@Module{ name } = Graph (Map.singleton name (p, Just m))
 
 restrict :: Graph -> Set.Set MName -> Graph
 restrict (Graph g) s = Graph $ Map.restrictKeys g s
 
 insert :: Maybe FilePath -> Module -> Graph -> Graph
-insert p m@Module{ name } = Graph . Map.insert name (p, m) . getGraph
+insert p m@Module{ name } = Graph . Map.insert name (p, Just m) . getGraph
 
 lookupM :: Alternative m => MName -> Graph -> m (Maybe FilePath, Module)
-lookupM n = maybe empty pure . Map.lookup n . getGraph
+lookupM n = maybe empty pure . (sequenceA <=< Map.lookup n . getGraph)
 
 lookupWith :: (Alternative m, Monad m) => (Name -> Module -> m res) -> Graph -> Module -> Q Name -> m res
 lookupWith lookup graph mod@Module{ name } (m:.:n)
   =   guard (m == name || m == Nil) *> lookup n mod
-  <|> guard (m == Nil) *> asum (lookup n . snd <$> getGraph graph)
+  <|> guard (m == Nil) *> asum (maybe empty (lookup n) . snd <$> getGraph graph)
   <|> guard (m /= Nil) *> (lookupM m graph >>= lookup n . snd)
 
 lookupQ :: (Alternative m, Monad m) => Graph -> Module -> Q Name -> m (Q Name :=: Maybe Def ::: Type)

@@ -128,7 +128,7 @@ loadModule name path src imports = do
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   opts <- get
   m <- rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m
-  modules_.at name .= Just (Just path, m)
+  modules_.at name .= Just (Just path, Just m)
   pure m
 
 resolveName :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> MName -> m FilePath
