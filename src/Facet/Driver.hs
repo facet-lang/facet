@@ -25,7 +25,7 @@ import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Effect.Lens (use, uses, (.=))
 import           Control.Effect.State
-import           Control.Lens (Lens, Lens', at, lens)
+import           Control.Lens (Lens, Lens', at, lens, (^.))
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
 import           Data.Maybe (catMaybes)
@@ -103,8 +103,9 @@ reloadModules = do
     i <- fresh
     outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
 
+    modules <- use modules_
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
-    loaded <- traverse (>>= snd) <$> traverse (use . (modules_.) . at) imports
+    let loaded = traverse (\ name -> modules^.at name >>= snd) imports
     for loaded $ \ loaded ->
       (Just <$> loadModule h{ imports = loaded }) `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
   let nSuccess = length (catMaybes results)
