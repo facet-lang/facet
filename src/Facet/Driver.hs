@@ -103,11 +103,11 @@ reloadModules = do
     i <- fresh
     outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
 
-    modules <- use modules_
+    graph <- use modules_
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
-    let loaded = traverse (\ name -> modules^.at name >>= snd) imports
+    let loaded = traverse (\ name -> graph^.at name >>= snd) imports
     for loaded $ \ loaded -> (do
-      (path, m) <- loadModule h{ imports = loaded }
+      (path, m) <- loadModule graph h{ imports = loaded }
       modules_.at name .= Just (Just path, Just m)
       pure (Just m))
       `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
@@ -143,9 +143,8 @@ loadModuleHeader searchPaths target = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (ModuleHeader name' path src (map (Import.name . S.out) is))
 
-loadModule :: Has (Output :+: State Options :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => ModuleHeader Module -> m (FilePath, Module)
-loadModule (ModuleHeader name path src imports) = do
-  graph <- use modules_
+loadModule :: Has (Output :+: State Options :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => Graph -> ModuleHeader Module -> m (FilePath, Module)
+loadModule graph (ModuleHeader name path src imports) = do
   let ops = foldMap (map (\ (op, assoc) -> (name, op, assoc)) . operators) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   opts <- get
