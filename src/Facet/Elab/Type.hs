@@ -88,7 +88,7 @@ elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TEx
 elabType = go
   where
   go (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-    S.TForAll n t b   -> forAll (n ::: switch (go t)) (switch (go b))
+    S.TForAll n t b   -> forAll (n ::: switch (go t)) (switch (neg b))
     S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (pos a))) --> switch (neg b)
     S.TComp s t       -> comp (map (switch . synthInterface) s) (switch (pos t))
     S.TApp f a        -> tapp (go f) (switch (go a))
