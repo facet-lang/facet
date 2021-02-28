@@ -106,8 +106,11 @@ reloadModules = do
     modules <- use modules_
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     let loaded = traverse (\ name -> modules^.at name >>= snd) imports
-    for loaded $ \ loaded ->
-      (Just <$> loadModule h{ imports = loaded }) `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
+    for loaded $ \ loaded -> (do
+      (path, m) <- loadModule h{ imports = loaded }
+      modules_.at name .= Just (Just path, Just m)
+      pure (Just m))
+      `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
   let nSuccess = length (catMaybes results)
       status
         | nModules == nSuccess = annotate Success (pretty nModules)
@@ -140,15 +143,14 @@ loadModuleHeader searchPaths target = do
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (ModuleHeader name' path src (map (Import.name . S.out) is))
 
-loadModule :: Has (Output :+: State Options :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => ModuleHeader Module -> m Module
+loadModule :: Has (Output :+: State Options :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => ModuleHeader Module -> m (FilePath, Module)
 loadModule (ModuleHeader name path src imports) = do
   graph <- use modules_
   let ops = foldMap (map (\ (op, assoc) -> (name, op, assoc)) . operators) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   opts <- get
   m <- rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m
-  modules_.at name .= Just (Just path, Just m)
-  pure m
+  pure (path, m)
 
 resolveName :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> MName -> m FilePath
 resolveName searchPaths name = do
