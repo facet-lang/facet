@@ -124,7 +124,7 @@ loadModuleHeader searchPaths target = do
 loadModule :: Has (Output :+: State Options :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => MName -> FilePath -> Source -> [MName] -> m Module
 loadModule name path src imports = do
   graph <- use modules_
-  let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) imports
+  let ops = foldMap (\ name -> lookupM name graph >>= maybe [] pure . snd >>= map (\ (op, assoc) -> (name, op, assoc)) . operators) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   opts <- get
   m <- rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m

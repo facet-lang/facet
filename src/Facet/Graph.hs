@@ -50,14 +50,14 @@ restrict (Graph g) s = Graph $ Map.restrictKeys g s
 insert :: Maybe FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, Just m) . getGraph
 
-lookupM :: Alternative m => MName -> Graph -> m (Maybe FilePath, Module)
-lookupM n = maybe empty pure . (sequenceA <=< Map.lookup n . getGraph)
+lookupM :: Alternative m => MName -> Graph -> m (Maybe FilePath, Maybe Module)
+lookupM n = maybe empty pure . Map.lookup n . getGraph
 
 lookupWith :: (Alternative m, Monad m) => (Name -> Module -> m res) -> Graph -> Module -> Q Name -> m res
 lookupWith lookup graph mod@Module{ name } (m:.:n)
   =   guard (m == name || m == Nil) *> lookup n mod
   <|> guard (m == Nil) *> asum (maybe empty (lookup n) . snd <$> getGraph graph)
-  <|> guard (m /= Nil) *> (lookupM m graph >>= lookup n . snd)
+  <|> guard (m /= Nil) *> (lookupM m graph >>= maybe empty pure . snd >>= lookup n)
 
 lookupQ :: (Alternative m, Monad m) => Graph -> Module -> Q Name -> m (Q Name :=: Maybe Def ::: Type)
 lookupQ = lookupWith lookupD
