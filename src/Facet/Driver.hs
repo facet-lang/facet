@@ -9,6 +9,7 @@ module Facet.Driver
   -- * Module loading
 , reloadModules
 , ModuleHeader(..)
+, imports_
 , headerNode
 , loadModuleHeader
 , loadModule
@@ -24,7 +25,7 @@ import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Effect.Lens (use, uses, (.=))
 import           Control.Effect.State
-import           Control.Lens (Lens', at, lens)
+import           Control.Lens (Lens, Lens', at, lens)
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
 import           Data.Maybe (catMaybes)
@@ -33,7 +34,7 @@ import qualified Data.Text as TS
 import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.Throw.Inject as I
-import           Facet.Core.Module
+import           Facet.Core.Module hiding (imports, imports_)
 import           Facet.Effect.Readline
 import           Facet.Effect.Write
 import qualified Facet.Elab.Term as Elab
@@ -121,6 +122,9 @@ data ModuleHeader a = ModuleHeader
   , imports    :: [a]
   }
   deriving (Foldable, Functor, Traversable)
+
+imports_ :: Lens (ModuleHeader a) (ModuleHeader b) [a] [b]
+imports_ = lens imports (\ h imports -> h{ imports })
 
 headerNode :: ModuleHeader MName -> Node (ModuleHeader MName)
 headerNode h@(ModuleHeader n _ _ imports) = Node n imports h
