@@ -9,6 +9,7 @@ module Facet.Driver
   -- * Module loading
 , reloadModules
 , ModuleHeader(..)
+, headerNode
 , loadModuleHeader
 , loadModule
 , resolveName
@@ -95,7 +96,7 @@ reloadModules = do
     -- FIXME: remove stale modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
     targetHeads <- traverse (loadModuleHeader searchPaths . Right) (toList targets)
-    rethrowGraphErrors [] $ loadOrder (fmap toNode . loadModuleHeader searchPaths . Right) (map toNode targetHeads)
+    rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) (map headerNode targetHeads)
   let nModules = length modules
   results <- evalFresh 1 $ for modules $ \ (ModuleHeader name path src imports) -> do
     i <- fresh
@@ -110,7 +111,6 @@ reloadModules = do
   outputDocLn (fillSep [status, reflow "modules loaded."])
   where
   ratio n d = pretty n <+> pretty "of" <+> pretty d
-  toNode h@(ModuleHeader n _ _ imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (h{ imports = imports' } :: ModuleHeader MName)
 
 data ModuleHeader a = ModuleHeader
   { moduleName :: MName
@@ -119,6 +119,9 @@ data ModuleHeader a = ModuleHeader
   , imports    :: [a]
   }
   deriving (Foldable, Functor, Traversable)
+
+headerNode :: ModuleHeader (S.Ann S.Import) -> Node (ModuleHeader MName)
+headerNode h@(ModuleHeader n _ _ imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (h{ imports = imports' } :: ModuleHeader MName)
 
 loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (ModuleHeader (S.Ann S.Import))
 loadModuleHeader searchPaths target = do
