@@ -113,6 +113,7 @@ reloadModules = do
   toNode (ModuleHeader n path source imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
 
 data ModuleHeader a = ModuleHeader MName FilePath Source [a]
+  deriving (Foldable, Functor, Traversable)
 
 loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (ModuleHeader (S.Ann S.Import))
 loadModuleHeader searchPaths target = do
