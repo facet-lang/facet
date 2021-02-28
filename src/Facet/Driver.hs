@@ -106,11 +106,13 @@ reloadModules = do
     graph <- use modules_
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     let loaded = traverse (\ name -> graph^.at name >>= snd) imports
-    for loaded $ \ loaded -> (do
-      (path, m) <- loadModule graph h{ imports = loaded }
-      modules_.at name .= Just (Just path, Just m)
-      pure (Just m))
-      `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
+    case loaded of
+      Just loaded -> (do
+        (path, m) <- loadModule graph h{ imports = loaded }
+        modules_.at name .= Just (Just path, Just m)
+        pure (Just m))
+        `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
+      Nothing -> pure Nothing
   let nSuccess = length (catMaybes results)
       status
         | nModules == nSuccess = annotate Success (pretty nModules)
