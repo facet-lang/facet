@@ -22,11 +22,11 @@ runFile searchPaths path = runStack $ do
   targetHead <- loadModuleHeader searchPaths (Left path)
   modules <- rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) [headerNode targetHead]
   -- FIXME: look up and evaluate the main function in the module we were passed?
-  ExitSuccess <$ for_ modules (\ h@(ModuleHeader name _ _ imports) -> do
+  ExitSuccess <$ for_ modules (\ h@(ModuleHeader name _ _ _) -> do
     graph <- use modules_
-    let loaded = traverse (\ name -> graph^.at name >>= snd) imports
+    let loaded = traverse (\ name -> graph^.at name >>= snd) h
     for_ loaded (\ loaded -> do
-      (path, m) <- loadModule graph h{ imports = loaded }
+      (path, m) <- loadModule graph loaded
       modules_.at name .= Just (Just path, Just m)
       pure m))
   where

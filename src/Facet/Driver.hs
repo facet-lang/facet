@@ -99,16 +99,16 @@ reloadModules = do
     targetHeads <- traverse (loadModuleHeader searchPaths . Right) (toList targets)
     rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) (map headerNode targetHeads)
   let nModules = length modules
-  results <- evalFresh 1 $ for modules $ \ h@(ModuleHeader name _ _ imports) -> do
+  results <- evalFresh 1 $ for modules $ \ h@(ModuleHeader name _ _ _) -> do
     i <- fresh
 
     graph <- use modules_
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
-    let loaded = traverse (\ name -> graph^.at name >>= snd) imports
+    let loaded = traverse (\ name -> graph^.at name >>= snd) h
     case loaded of
       Just loaded -> (do
         outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
-        (path, m) <- loadModule graph h{ imports = loaded }
+        (path, m) <- loadModule graph loaded
         modules_.at name .= Just (Just path, Just m)
         pure (Just m))
         `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
