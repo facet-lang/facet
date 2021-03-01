@@ -329,7 +329,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
         for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
       S.TermDef t -> do
-        _T <- runModule $ runElabType $ check (switch (elabType ty) ::: Type)
+        _T <- runModule $ runElabType $ check (switch (elabPosType ty) ::: Type)
         scope_.decls_.at dname .= Just (DTerm Nothing _T)
         pure (Just (dname, t ::: _T))
 
