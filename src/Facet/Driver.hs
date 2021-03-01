@@ -95,6 +95,7 @@ reloadModules = do
   searchPaths <- uses searchPaths_ toList
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
+    -- FIXME: only reload changed modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
     targetHeads <- traverse (loadModuleHeader searchPaths . Right) (toList targets)
     rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) (map headerNode targetHeads)
