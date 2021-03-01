@@ -4,6 +4,9 @@ module Facet.Run
 
 import           Control.Carrier.Error.Church
 import           Control.Carrier.State.Church
+import           Control.Effect.Lens (use)
+import           Control.Lens (at, (^.))
+import           Control.Monad ((<=<))
 import           Data.Foldable (for_)
 import qualified Data.Set as Set
 import           Facet.Carrier.Output.IO
@@ -12,19 +15,20 @@ import           Facet.Carrier.Write.General
 import           Facet.Driver
 import           Facet.Graph
 import           Facet.Print (quietOptions)
+import           Facet.Source as Source
 import           Facet.Style
-import qualified Facet.Surface as Import (Import(..))
-import qualified Facet.Surface as S
 import           System.Exit
 
 runFile :: [FilePath] -> FilePath -> IO ExitCode
 runFile searchPaths path = runStack $ do
   targetHead <- loadModuleHeader searchPaths (Left path)
-  modules <- rethrowGraphErrors [] $ loadOrder (fmap toNode . loadModuleHeader searchPaths . Right) [toNode targetHead]
+  modules <- rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) [headerNode targetHead]
   -- FIXME: look up and evaluate the main function in the module we were passed?
-  ExitSuccess <$ for_ modules (\ (name, path, src, imports) -> loadModule name path src imports)
+  ExitSuccess <$ for_ modules (\ h@(ModuleHeader name src _) -> do
+    graph <- use modules_
+    let loaded = traverse (\ name -> graph^.at name >>= snd) h
+    for_ loaded (storeModule name (Source.path src) <=< loadModule graph))
   where
-  toNode (n, path, source, imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
   runStack
     = runOutput
     . runTime
