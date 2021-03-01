@@ -16,7 +16,6 @@ import           Control.Algebra
 import           Control.Effect.Lens (views)
 import           Control.Effect.State
 import           Control.Effect.Throw
-import           Control.Effect.Writer (censor)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
 import           Facet.Context
@@ -24,10 +23,9 @@ import           Facet.Core.Module
 import           Facet.Core.Type
 import           Facet.Elab
 import           Facet.Name
-import           Facet.Semiring (Few(..), one, zero, (><<))
+import           Facet.Semiring (Few(..), one, zero)
 import qualified Facet.Surface as S
 import           Facet.Syntax
-import           Facet.Usage
 import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m TExpr
@@ -75,15 +73,6 @@ comp s t = Synth $ do
   s' <- traverse (check . (::: Interface)) s
   t' <- check (t ::: Type)
   pure $ TComp s' t' ::: Type
-
-
-tapp :: (HasCallStack, Has (Throw Err) sig m) => Synth m TExpr -> Check m TExpr -> Synth m TExpr
-tapp f a = Synth $ do
-  f' ::: _F <- synth f
-  -- FIXME: verify that the quantity is zero?
-  (_ ::: (_, _A), _B) <- expectFunction "in type-level application" _F
-  a' <- censor @Usage (zero ><<) $ check (a ::: _A)
-  pure $ TApp f' a' ::: _B
 
 
 elabType, elabPosType, elabNegType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
