@@ -92,7 +92,7 @@ elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TForAll n t b   -> forAll (n ::: switch (elabType t)) (switch (elabNegType b))
   S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (elabPosType a))) --> switch (elabNegType b)
   S.TComp s t       -> comp (map (switch . synthInterface) s) (switch (elabPosType t))
-  S.TApp f a        -> tapp (elabType f) (switch (elabType a))
+  S.TApp f a        -> app TApp (elabType f) (switch (elabType a))
   S.TVar n          -> tvar n
   S.KType           -> _Type
   S.KInterface      -> _Interface
