@@ -109,4 +109,4 @@ elabNegType = fmap (\ t -> if polarity t /= Just Pos then t else TComp [] t) . e
 
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (Interface TExpr)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) . fmap IInterface $
-  foldl' tapp (mapSynth (pushSpan sh) (tvar h)) (switch . elabType <$> sp)
+  foldl' (app TApp) (mapSynth (pushSpan sh) (tvar h)) (switch . elabType <$> sp)
