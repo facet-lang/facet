@@ -93,6 +93,7 @@ kernel = Module kernelName [] [] $ Scope mempty
 reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options :+: State Target :+: Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m ()
 reloadModules = do
   searchPaths <- uses searchPaths_ toList
+  modules_ .= singleton Nothing kernel
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
     -- FIXME: only reload changed modules
