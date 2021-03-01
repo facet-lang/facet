@@ -21,7 +21,6 @@ module Facet.Driver
 ) where
 
 import           Control.Algebra
-import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Effect.Lens (use, uses, (.=))
@@ -100,15 +99,14 @@ reloadModules = do
     targetHeads <- traverse (loadModuleHeader searchPaths . Right) (toList targets)
     rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) (map headerNode targetHeads)
   let nModules = length modules
-  results <- evalFresh 1 $ for modules $ \ h@(ModuleHeader name src _) -> do
-    i <- fresh
+  results <- for (zip [1..] modules) $ \ (i, h@(ModuleHeader name src _)) -> do
 
     graph <- use modules_
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     let loaded = traverse (\ name -> graph^.at name >>= snd) h
     case loaded of
       Just loaded -> (Just <$> do
-        outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
+        outputDocLn $ annotate Progress (brackets (ratio (i :: Int) nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
         storeModule name (path src) =<< loadModule graph loaded)
         `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
       Nothing -> do
