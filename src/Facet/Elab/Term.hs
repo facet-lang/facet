@@ -18,10 +18,10 @@ module Facet.Elab.Term
 , allP
 , effP
   -- * Expression elaboration
-, synthExprN
-, checkExprN
-, synthExprP
-, checkExprP
+, synthExprNeg
+, checkExprNeg
+, synthExprPos
+, checkExprPos
 , bindPattern
   -- * Declarations
 , elabDataDef
@@ -158,48 +158,48 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 
 -- Expression elaboration
 
-synthExprN :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
-synthExprN expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.App f a  -> app XApp (synthExprN f) (checkExprP a)
-  S.As t _T  -> as (checkExprN t ::: switch (elabType _T))
+synthExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
+synthExprNeg expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+  S.App f a  -> app XApp (synthExprNeg f) (checkExprPos a)
+  S.As t _T  -> as (checkExprNeg t ::: switch (elabType _T))
   S.Var{}    -> shift
   S.String{} -> shift
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   where
   shift = Synth $ do
-    v' ::: _V <- synth (synthExprP expr)
+    v' ::: _V <- synth (synthExprPos expr)
     case _V of
       Thunk _T -> pure $ XForce  v' ::: _T
       _T       -> pure $ XReturn v' ::: Comp [] _T
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExprN :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
-checkExprN expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
+checkExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
+checkExprNeg expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Hole  n  -> hole n
-  S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprN b)) cs)
+  S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs)
   S.Var{}    -> synth
   S.App{}    -> synth
   S.As{}     -> synth
   S.String{} -> synth
   where
-  synth = switch (synthExprN expr)
+  synth = switch (synthExprNeg expr)
 
 
-synthExprP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
-synthExprP expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+synthExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
+synthExprPos expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> var n
   S.App{}    -> shift
-  S.As t _T  -> as (checkExprP t ::: switch (elabType _T))
+  S.As t _T  -> as (checkExprPos t ::: switch (elabType _T))
   S.String s -> string s
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   where
-  shift = thunkS (synthExprN expr)
+  shift = thunkS (synthExprNeg expr)
   nope = Synth $ couldNotSynthesize (show e)
 
-checkExprP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
-checkExprP expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
+checkExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
+checkExprPos expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Hole  n  -> hole n
   S.Lam{}    -> shift
   S.Var{}    -> synth
@@ -207,8 +207,8 @@ checkExprP expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.As{}     -> synth
   S.String{} -> synth
   where
-  shift = thunk (checkExprN expr)
-  synth = switch (synthExprP expr)
+  shift = thunk (checkExprNeg expr)
+  synth = switch (synthExprPos expr)
 
 
 -- FIXME: check for unique variable names
@@ -294,7 +294,7 @@ elabTermDef
   -> S.Ann S.Expr
   -> m Expr
 elabTermDef _T expr@(S.Ann s _ _) = do
-  runElabTerm $ pushSpan s $ check (thunk (go (checkExprN expr)) ::: _T)
+  runElabTerm $ pushSpan s $ check (thunk (go (checkExprNeg expr)) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
     ForAll{}                                -> check (tlam (go k) ::: _T)
