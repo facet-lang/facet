@@ -102,13 +102,9 @@ elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
     S.Zero -> zero
     S.One  -> one
 
-elabPosType b = Synth $ do
-  t ::: _T <- synth (elabType b)
-  pure $ (if polarity t /= Just Neg then t else TThunk t) ::: _T
+elabPosType = fmap (\ t -> if polarity t /= Just Neg then t else TThunk t) . elabType
 
-elabNegType b = Synth $ do
-  t ::: _T <- synth (elabType b)
-  pure $ (if polarity t /= Just Pos then t else TComp [] t) ::: _T
+elabNegType = fmap (\ t -> if polarity t /= Just Pos then t else TComp [] t) . elabType
 
 
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (Interface TExpr)
