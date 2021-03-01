@@ -101,7 +101,6 @@ reloadModules = do
   let nModules = length modules
   results <- for (zip [1..] modules) $ \ (i, h@(ModuleHeader name src _)) -> do
     graph <- use modules_
-    -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     let loaded = traverse (\ name -> graph^.at name >>= snd) h
     case loaded of
       Just loaded -> (Just <$> do
