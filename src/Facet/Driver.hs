@@ -13,6 +13,7 @@ module Facet.Driver
 , headerNode
 , loadModuleHeader
 , loadModule
+, storeModule
 , resolveName
   -- * Errors
 , rethrowIOErrors
@@ -106,11 +107,9 @@ reloadModules = do
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     let loaded = traverse (\ name -> graph^.at name >>= snd) h
     case loaded of
-      Just loaded -> (do
+      Just loaded -> (Just <$> do
         outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
-        (path, m) <- loadModule graph loaded
-        modules_.at name .= Just (Just path, Just m)
-        pure (Just m))
+        uncurry (storeModule name) =<< loadModule graph loaded)
         `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
       Nothing -> do
         outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Skipping", prettyMName name ]))
@@ -154,6 +153,9 @@ loadModule graph (ModuleHeader name path src imports) = do
   opts <- get
   m <- rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m
   pure (path, m)
+
+storeModule :: Has (State Target) sig m => MName -> FilePath -> Module -> m ()
+storeModule name path m = modules_ .at name .= Just (Just path, Just m)
 
 resolveName :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> MName -> m FilePath
 resolveName searchPaths name = do

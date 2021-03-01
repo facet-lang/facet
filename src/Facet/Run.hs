@@ -4,8 +4,9 @@ module Facet.Run
 
 import           Control.Carrier.Error.Church
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, (.=))
+import           Control.Effect.Lens (use)
 import           Control.Lens (at, (^.))
+import           Control.Monad ((<=<))
 import           Data.Foldable (for_)
 import qualified Data.Set as Set
 import           Facet.Carrier.Output.IO
@@ -25,10 +26,7 @@ runFile searchPaths path = runStack $ do
   ExitSuccess <$ for_ modules (\ h@(ModuleHeader name _ _ _) -> do
     graph <- use modules_
     let loaded = traverse (\ name -> graph^.at name >>= snd) h
-    for_ loaded (\ loaded -> do
-      (path, m) <- loadModule graph loaded
-      modules_.at name .= Just (Just path, Just m)
-      pure m))
+    for_ loaded (uncurry (storeModule name) <=< loadModule graph))
   where
   runStack
     = runOutput
