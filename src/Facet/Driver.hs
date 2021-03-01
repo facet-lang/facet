@@ -100,7 +100,6 @@ reloadModules = do
     rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) (map headerNode targetHeads)
   let nModules = length modules
   results <- for (zip [1..] modules) $ \ (i, h@(ModuleHeader name src _)) -> do
-
     graph <- use modules_
     -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
     let loaded = traverse (\ name -> graph^.at name >>= snd) h
