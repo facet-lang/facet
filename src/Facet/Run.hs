@@ -15,6 +15,7 @@ import           Facet.Carrier.Write.General
 import           Facet.Driver
 import           Facet.Graph
 import           Facet.Print (quietOptions)
+import           Facet.Source as Source
 import           Facet.Style
 import           System.Exit
 
@@ -23,10 +24,10 @@ runFile searchPaths path = runStack $ do
   targetHead <- loadModuleHeader searchPaths (Left path)
   modules <- rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) [headerNode targetHead]
   -- FIXME: look up and evaluate the main function in the module we were passed?
-  ExitSuccess <$ for_ modules (\ h@(ModuleHeader name path _ _) -> do
+  ExitSuccess <$ for_ modules (\ h@(ModuleHeader name src _) -> do
     graph <- use modules_
     let loaded = traverse (\ name -> graph^.at name >>= snd) h
-    for_ loaded (storeModule name path <=< loadModule graph))
+    for_ loaded (storeModule name (Source.path src) <=< loadModule graph))
   where
   runStack
     = runOutput
