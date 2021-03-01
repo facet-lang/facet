@@ -8,8 +8,12 @@ module Facet.Driver
 , kernel
   -- * Module loading
 , reloadModules
+, ModuleHeader(..)
+, imports_
+, headerNode
 , loadModuleHeader
 , loadModule
+, storeModule
 , resolveName
   -- * Errors
 , rethrowIOErrors
@@ -17,12 +21,11 @@ module Facet.Driver
 ) where
 
 import           Control.Algebra
-import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Effect.Error
 import           Control.Effect.Lens (use, uses, (.=))
 import           Control.Effect.State
-import           Control.Lens (Lens', at, lens)
+import           Control.Lens (Lens, Lens', at, lens, (^.))
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
 import           Data.Maybe (catMaybes)
@@ -31,7 +34,7 @@ import qualified Data.Text as TS
 import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.Throw.Inject as I
-import           Facet.Core.Module
+import           Facet.Core.Module hiding (Import(name), imports, imports_)
 import           Facet.Effect.Readline
 import           Facet.Effect.Write
 import qualified Facet.Elab.Term as Elab
@@ -90,18 +93,25 @@ kernel = Module kernelName [] [] $ Scope mempty
 reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options :+: State Target :+: Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m ()
 reloadModules = do
   searchPaths <- uses searchPaths_ toList
+  modules_ .= singleton Nothing kernel
   modules <- targets_ ~> \ targets -> do
     -- FIXME: remove stale modules
+    -- FIXME: only reload changed modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
     targetHeads <- traverse (loadModuleHeader searchPaths . Right) (toList targets)
-    rethrowGraphErrors [] $ loadOrder (fmap toNode . loadModuleHeader searchPaths . Right) (map toNode targetHeads)
+    rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) (map headerNode targetHeads)
   let nModules = length modules
-  results <- evalFresh 1 $ for modules $ \ (name, path, src, imports) -> do
-    i <- fresh
-    outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
-
-    -- FIXME: skip gracefully (maybe print a message) if any of its imports are unavailable due to earlier errors
-    (Just <$> loadModule name path src imports) `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
+  results <- for (zip [1..] modules) $ \ (i, h@(ModuleHeader name src _)) -> do
+    graph <- use modules_
+    let loaded = traverse (\ name -> graph^.at name >>= snd) h
+    case loaded of
+      Just loaded -> (Just <$> do
+        outputDocLn $ annotate Progress (brackets (ratio (i :: Int) nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
+        storeModule name (path src) =<< loadModule graph loaded)
+        `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
+      Nothing -> do
+        outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Skipping", prettyMName name ]))
+        pure Nothing
   let nSuccess = length (catMaybes results)
       status
         | nModules == nSuccess = annotate Success (pretty nModules)
@@ -109,9 +119,21 @@ reloadModules = do
   outputDocLn (fillSep [status, reflow "modules loaded."])
   where
   ratio n d = pretty n <+> pretty "of" <+> pretty d
-  toNode (n, path, source, imports) = let imports' = map (Import.name . S.out) imports in Node n imports' (n, path, source, imports')
 
-loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (MName, FilePath, Source, [S.Ann S.Import])
+data ModuleHeader a = ModuleHeader
+  { moduleName :: MName
+  , source     :: Source
+  , imports    :: [a]
+  }
+  deriving (Foldable, Functor, Traversable)
+
+imports_ :: Lens (ModuleHeader a) (ModuleHeader b) [a] [b]
+imports_ = lens imports (\ h imports -> h{ imports })
+
+headerNode :: ModuleHeader MName -> Node (ModuleHeader MName)
+headerNode h@(ModuleHeader n _ imports) = Node n imports h
+
+loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (ModuleHeader MName)
 loadModuleHeader searchPaths target = do
   path <- case target of
     Left path  -> pure path
@@ -119,17 +141,17 @@ loadModuleHeader searchPaths target = do
   src <- rethrowIOErrors [] $ readSourceFromFile path
   -- FIXME: validate that the name matches
   (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
-  pure (name', path, src, is)
+  pure (ModuleHeader name' src (map (Import.name . S.out) is))
 
-loadModule :: Has (Output :+: State Options :+: State Target :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => MName -> FilePath -> Source -> [MName] -> m Module
-loadModule name path src imports = do
-  graph <- use modules_
-  let ops = foldMap (\ name -> lookupM name graph >>= map (\ (op, assoc) -> (name, op, assoc)) . operators . snd) imports
+loadModule :: Has (Output :+: State Options :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => Graph -> ModuleHeader Module -> m Module
+loadModule graph (ModuleHeader _ src imports) = do
+  let ops = foldMap (\ m -> map (\ (op, assoc) -> (name m, op, assoc)) (operators m)) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   opts <- get
-  m <- rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m
-  modules_.at name .= Just (Just path, m)
-  pure m
+  rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m
+
+storeModule :: Has (State Target) sig m => MName -> Maybe FilePath -> Module -> m ()
+storeModule name path m = modules_ .at name .= Just (path, Just m)
 
 resolveName :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> MName -> m FilePath
 resolveName searchPaths name = do
