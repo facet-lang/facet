@@ -35,7 +35,7 @@ import qualified Data.Text as TS
 import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.Throw.Inject as I
-import           Facet.Core.Module hiding (imports, imports_)
+import           Facet.Core.Module as Module hiding (Import(name), imports, imports_)
 import           Facet.Effect.Readline
 import           Facet.Effect.Write
 import qualified Facet.Elab.Term as Elab
@@ -146,8 +146,8 @@ loadModuleHeader searchPaths target = do
   pure (ModuleHeader name' src (map (Import.name . S.out) is))
 
 loadModule :: Has (Output :+: State Options :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => Graph -> ModuleHeader Module -> m Module
-loadModule graph (ModuleHeader name src imports) = do
-  let ops = foldMap (map (\ (op, assoc) -> (name, op, assoc)) . operators) imports
+loadModule graph (ModuleHeader _ src imports) = do
+  let ops = foldMap (\ m -> map (\ (op, assoc) -> (Module.name m, op, assoc)) (operators m)) imports
   m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   opts <- get
   rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m
