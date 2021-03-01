@@ -8,6 +8,8 @@ module Facet.Elab.Type
 , forAll
 , (-->)
 , elabType
+, elabPosType
+, elabNegType
 ) where
 
 import           Control.Algebra
@@ -84,27 +86,29 @@ tapp f a = Synth $ do
   pure $ TApp f' a' ::: _B
 
 
-elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
-elabType = go
+elabType, elabPosType, elabNegType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
+
+elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+  S.TForAll n t b   -> forAll (n ::: switch (elabType t)) (switch (elabNegType b))
+  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (elabPosType a))) --> switch (elabNegType b)
+  S.TComp s t       -> comp (map (switch . synthInterface) s) (switch (elabPosType t))
+  S.TApp f a        -> tapp (elabType f) (switch (elabType a))
+  S.TVar n          -> tvar n
+  S.KType           -> _Type
+  S.KInterface      -> _Interface
+  S.TString         -> _String
   where
-  go (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-    S.TForAll n t b   -> forAll (n ::: switch (go t)) (switch (neg b))
-    S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (pos a))) --> switch (neg b)
-    S.TComp s t       -> comp (map (switch . synthInterface) s) (switch (pos t))
-    S.TApp f a        -> tapp (go f) (switch (go a))
-    S.TVar n          -> tvar n
-    S.KType           -> _Type
-    S.KInterface      -> _Interface
-    S.TString         -> _String
-  pos b = Synth $ do
-    t ::: _T <- synth (go b)
-    pure $ (if polarity t /= Just Neg then t else TThunk t) ::: _T
-  neg b = Synth $ do
-    t ::: _T <- synth (go b)
-    pure $ (if polarity t /= Just Pos then t else TComp [] t) ::: _T
   interpretMul = \case
     S.Zero -> zero
     S.One  -> one
+
+elabPosType b = Synth $ do
+  t ::: _T <- synth (elabType b)
+  pure $ (if polarity t /= Just Neg then t else TThunk t) ::: _T
+
+elabNegType b = Synth $ do
+  t ::: _T <- synth (elabType b)
+  pure $ (if polarity t /= Just Pos then t else TComp [] t) ::: _T
 
 
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (Interface TExpr)
