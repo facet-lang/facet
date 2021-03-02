@@ -100,14 +100,12 @@ meta _T = state (declareMeta _T)
 
 
 instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a ::: Type)
-instantiate inst (e ::: _T) = case _T of
-  Thunk _T -> go e _T -- FIXME: this should force the argument
-  _        -> go e _T
+instantiate inst = go
   where
-  go e _T = case _T of
+  go (e ::: _T) = case _T of
     ForAll _ _T _B -> do
       m <- meta _T
-      go (inst e (TVar (Metavar m))) (_B (metavar m))
+      go (inst e (TVar (Metavar m)) ::: _B (metavar m))
     _              -> pure $ e ::: _T
 
 
