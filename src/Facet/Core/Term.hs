@@ -9,6 +9,15 @@ module Facet.Core.Term
 , fill
   -- * Term expressions
 , Expr(..)
+  -- ** Negative term constructors
+, tlamE
+, instE
+, lamE
+, appE
+, opE
+, forceE
+, returnE
+, bindE
   -- ** Positive term constructors
 , varE
 , conE
@@ -73,6 +82,33 @@ data Expr
   | XString Text
   | XThunk Expr
   deriving (Eq, Ord, Show)
+
+
+-- Negative term constructors
+
+tlamE :: Neg Expr -> Neg Expr
+tlamE (Neg' b) = Neg' (XTLam b)
+
+instE :: Neg Expr -> Pos T.TExpr -> Neg Expr
+instE (Neg' f) (Pos' t) = Neg' (XInst f t)
+
+lamE :: [(Pattern Name, Neg Expr)] -> Neg Expr
+lamE cs = Neg' (XLam (map (fmap (\ (Neg' e) -> e)) cs))
+
+appE :: Neg Expr -> Pos Expr -> Neg Expr
+appE (Neg' f) (Pos' a) = Neg' (XApp f a)
+
+opE :: QName -> Snoc T.TExpr -> Snoc (Pos Expr) -> Neg Expr
+opE n ts fs = Neg' (XOp n ts ((\ (Pos' e) -> e) <$> fs))
+
+forceE :: Pos Expr -> Neg Expr
+forceE (Pos' t) = Neg' (XForce t)
+
+returnE :: Pos Expr -> Neg Expr
+returnE (Pos' t) = Neg' (XReturn t)
+
+bindE :: Neg Expr -> Neg Expr -> Neg Expr
+bindE (Neg' a) (Neg' b) = Neg' (XBind a b)
 
 
 -- Positive term constructors
