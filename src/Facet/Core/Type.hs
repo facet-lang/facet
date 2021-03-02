@@ -10,6 +10,17 @@ module Facet.Core.Type
 , occursIn
   -- * Type expressions
 , TExpr(..)
+  -- ** Negative type constructors
+, Neg
+, forAllT
+, arrowT
+, compT
+  -- ** Positive type constructors
+, Pos
+, varT
+, appT
+, stringT
+, thunkT
   -- * Shifts
 , shiftPosTExpr
 , shiftNegTExpr
@@ -150,6 +161,33 @@ instance HasPolarity TExpr where
     TApp{}         -> Just Pos
     TString        -> Just Pos
     TThunk{}       -> Just Pos
+
+
+newtype Neg t = Neg' t
+
+forAllT :: Name -> TExpr -> Neg TExpr -> Neg TExpr
+forAllT n t (Neg' b) = Neg' (TForAll n t b)
+
+arrowT :: (Maybe Name, Quantity, Pos TExpr) -> Neg TExpr -> Neg TExpr
+arrowT (n, q, Pos' a) (Neg' b) = Neg' (TArrow n q a b)
+
+compT :: [Interface TExpr] -> Pos TExpr -> Neg TExpr
+compT sig (Pos' t) = Neg' (TComp sig t)
+
+
+newtype Pos t = Pos' t
+
+varT :: Var Meta Index -> Pos TExpr
+varT v = Pos' (TVar v)
+
+appT :: Pos TExpr -> Pos TExpr -> Pos TExpr
+appT (Pos' f) (Pos' a) = Pos' (TApp f a)
+
+stringT :: Pos TExpr
+stringT = Pos' TString
+
+thunkT :: Neg TExpr -> Pos TExpr
+thunkT (Neg' t) = Pos' (TThunk t)
 
 
 -- Shifting
