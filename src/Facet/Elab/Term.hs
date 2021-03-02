@@ -184,7 +184,6 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   where
   synth = switch (synthExpr expr)
 
-
 checkExprNeg expr = Check $ \ _T -> tm . shiftNeg . (::: _T) <$> check (checkExpr expr ::: _T)
 
 checkExprPos expr = Check $ \ _T -> tm . shiftPos . (::: _T) <$> check (checkExpr expr ::: _T)
