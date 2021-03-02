@@ -9,6 +9,7 @@ module Facet.Core.Term
 , fill
   -- * Term expressions
 , Expr(..)
+, Term
 ) where
 
 import           Data.Text (Text)
@@ -68,3 +69,6 @@ data Expr
   | XString Text
   | XThunk Expr
   deriving (Eq, Ord, Show)
+
+
+type Term p = p Expr ::: p T.TExpr
