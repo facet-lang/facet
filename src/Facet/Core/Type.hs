@@ -22,6 +22,7 @@ module Facet.Core.Type
 , stringT
 , thunkT
   -- ** Type eliminators
+, uncompT
 , unthunkT
   -- * Shifts
 , shiftPosTExpr
@@ -193,6 +194,11 @@ thunkT (Neg' t) = Pos' (TThunk t)
 
 
 -- Type eliminators
+
+uncompT :: Has Empty sig m => Neg TExpr -> m ([Interface TExpr], Pos TExpr)
+uncompT = \case
+  Neg' (TComp sig _T) -> pure (sig, Pos' _T)
+  _                   -> empty
 
 unthunkT :: Has Empty sig m => Pos TExpr -> m (Neg TExpr)
 unthunkT = \case
