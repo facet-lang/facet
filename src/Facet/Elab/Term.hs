@@ -123,7 +123,7 @@ varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q _A |- che
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
-  n' :=: _ ::: _T <- traverse (instantiate const . fmap shiftP) =<< resolveC n
+  n' :=: _ ::: _T <- traverse (instantiate const) =<< resolveC n
   (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify (returnOf _A') _A *> check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (PCon n' (fromList ps'), b')
   where
@@ -148,8 +148,8 @@ effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern 
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectRet "when checking effect pattern" _A
-  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: shiftP _T)) (traverse unDData =<< lookupInSig n module' graph sig)
-  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Thunk (Arrow Nothing Many (shiftN _A') (Comp [] _A))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
+  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (traverse unDData =<< lookupInSig n module' graph sig)
+  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Thunk (Arrow Nothing Many _A' (Comp [] _A))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
 
@@ -256,12 +256,13 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    c_T <- runElabType $ pushSpan (S.ann t) $ shiftN <$> check (abstractType (check (switch (elabType t) ::: Type)) ::: _T)
+    c_T <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr <$> check (abstractType (check (switch (elabType t) ::: Type)) ::: _T)
     con' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> XReturn (XCon (mname :.: n) ts fs))) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
   pure
     $ (dname :=: DData (scopeFromList cs) _T)
     : cs
+
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
@@ -271,7 +272,7 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    _T' <- runElabType $ pushSpan (S.ann t) $ shiftN <$> check (abstractType (check (switch (elabType t) ::: Type)) ::: _T)
+    _T' <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr <$> check (abstractType (check (switch (elabType t) ::: Type)) ::: _T)
     -- FIXME: check that the interface is a member of the sig.
     op' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (XOp (mname :.: n))) ::: _T')
     pure $ n :=: DTerm (Just op') _T'

@@ -11,7 +11,8 @@ module Facet.Core.Type
   -- * Type expressions
 , TExpr(..)
   -- * Shifts
-, Shift(..)
+, shiftPosTExpr
+, shiftNegTExpr
   -- * Quotation
 , quote
 , eval
@@ -28,7 +29,6 @@ import           Control.Effect.Empty
 import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
 import qualified Data.IntMap as IntMap
-import           Data.Maybe (fromMaybe)
 import           Facet.Name
 import           Facet.Snoc
 import           Facet.Syntax
@@ -56,12 +56,6 @@ data Type
   | Ne (Var Meta Level) (Snoc Type)
   | String
   | Thunk Type
-
-instance Shift Type where
-  shiftP t = fromMaybe (Comp [] t) (unThunk t)
-  shiftN = \case
-    Comp [] t -> t
-    t         -> Thunk t
 
 -- | The polarity of a 'Type'. Returns in 'Maybe' because some 'Type's (e.g. 'Type' itself) are kinds, which aren’t polarized.
 instance HasPolarity Type where
@@ -139,14 +133,6 @@ data TExpr
   | TThunk TExpr
   deriving (Eq, Ord, Show)
 
-instance Shift TExpr where
-  shiftP = \case
-    TThunk t -> t
-    t        -> TComp [] t
-  shiftN = \case
-    TComp [] t -> t
-    t          -> TThunk t
-
 instance HasPolarity TExpr where
   polarity = \case
     TType          -> Nothing
@@ -168,9 +154,15 @@ instance HasPolarity TExpr where
 
 -- Shifting
 
-class Shift t where
-  shiftP :: t -> t
-  shiftN :: t -> t
+shiftPosTExpr :: TExpr -> TExpr
+shiftPosTExpr t
+  | Just Neg <- polarity t = TThunk t
+  | otherwise              =        t
+
+shiftNegTExpr :: TExpr -> TExpr
+shiftNegTExpr t
+  | Just Pos <- polarity t = TComp [] t
+  | otherwise              =          t
 
 
 -- Quotation
