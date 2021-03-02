@@ -75,13 +75,13 @@ global (q ::: _T) = Synth $ pure $ XVar (Global q) ::: _T
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, q, _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
-  | Just (_ :=: DTerm (Just x) _T) <- lookupInSig n module' graph sig -> pure (x ::: _T)
+  | Just (_ :=: DTerm (Just x) (Pos' _T)) <- lookupInSig n module' graph sig -> pure (x ::: _T)
   | otherwise                                             -> do
     n :=: d <- resolveQ n
     _T <- case d of
       DTerm _ _T -> pure _T
       _          -> freeVariable n
-    synth $ global (n ::: _T)
+    synth $ global (n ::: getPos _T)
 
 
 tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
@@ -126,7 +126,7 @@ conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   where
   -- FIXME: this feels a bit gross, but we have to accommodate both nullary (already data) and non-nullary (thunk (args… -> comp data)) constructors.
   returnOf = \case{ Comp [] _T' -> _T' ; _T -> _T }
-  forcing (e ::: _T) = case _T of
+  forcing (e ::: Pos' _T) = case _T of
     Thunk _T -> e ::: _T
     _        -> e ::: _T
 
@@ -261,7 +261,7 @@ elabDataDef (dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
     c_T <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switch (elabType t)) ::: _T)
     con' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> XReturn (XCon (mname :.: n) ts fs))) ::: c_T)
-    pure $ n :=: DTerm (Just con') c_T
+    pure $ n :=: DTerm (Just con') (Pos' c_T)
   pure
     $ (dname :=: DData (scopeFromList cs) _T)
     : cs
@@ -278,7 +278,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
     _T' <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switch (elabType t)) ::: _T)
     -- FIXME: check that the interface is a member of the sig.
     op' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (XOp (mname :.: n))) ::: _T')
-    pure $ n :=: DTerm (Just op') _T'
+    pure $ n :=: DTerm (Just op') (Pos' _T')
   pure [ dname :=: DInterface (scopeFromList cs) _T ]
 
 -- FIXME: add a parameter for the effect signature.
@@ -327,13 +327,13 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
       S.TermDef t -> do
         _T <- runModule $ runElabType $ getPos <$> check (switch (elabPosType ty) ::: Type)
-        scope_.decls_.at dname .= Just (DTerm Nothing _T)
+        scope_.decls_.at dname .= Just (DTerm Nothing (Pos' _T))
         pure (Just (dname, t ::: _T))
 
     -- then elaborate the terms
     for_ (catMaybes es) $ \ (dname, t ::: _T) -> do
       t' <- runModule $ elabTermDef _T t
-      scope_.decls_.ix dname .= DTerm (Just t') _T
+      scope_.decls_.ix dname .= DTerm (Just t') (Pos' _T)
 
 
 -- Errors

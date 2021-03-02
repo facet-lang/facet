@@ -219,8 +219,8 @@ printModule (C.Module mname is _ ds) = module_
   def (n :=: d) = ann
     $   qvar (Nil:.:n)
     ::: case d of
-      C.DTerm Nothing  _T -> printType opts Nil _T
-      C.DTerm (Just b) _T -> defn (printType opts Nil _T :=: printExpr opts Nil b)
+      C.DTerm Nothing  (Pos' _T) -> printType opts Nil _T
+      C.DTerm (Just b) (Pos' _T) -> defn (printType opts Nil _T :=: printExpr opts Nil b)
       C.DData cs _K -> annotate Keyword (pretty "data") <+> declList
         (map def (C.scopeToList cs))
       C.DInterface os _K -> annotate Keyword (pretty "interface") <+> declList
