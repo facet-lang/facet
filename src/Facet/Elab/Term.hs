@@ -162,7 +162,6 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   S.App f a  -> app XApp (synthExprNeg f) (checkExprPos a)
-  -- FIXME: is this correct? should we introduce a polarity shift if the type would require one?
   S.As t _T  -> as (checkExpr t ::: switch (elabType _T))
   S.String s -> string s
   where
