@@ -1,8 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Facet.Elab.Type
 ( -- * Types
-  tvar
-, _Type
+  _Type
 , _Interface
 , _String
 , forAll
@@ -27,9 +26,6 @@ import           Facet.Semiring (Few(..), one, zero)
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
-
-tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m (Pos TExpr)
-tvar = var varT
 
 var :: (HasCallStack, Has (Throw Err) sig m) => (Var Meta Index -> a) -> QName -> Synth m a
 var mk n = Synth $ views context_ (lookupInContext n) >>= \case
@@ -95,7 +91,7 @@ elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TArrow  n q a b -> Left <$> arrow (arrowT n (maybe Many interpretMul q)) (switch (elabPosType a)) (switch (elabNegType b))
   S.TComp s t       -> Left <$> comp (map (switch . synthInterface) s) (switch (elabPosType t))
   S.TApp f a        -> Right <$> app appT (elabPosType f) (switch (elabPosType a))
-  S.TVar n          -> Right <$> tvar n
+  S.TVar n          -> Right <$> var varT n
   S.TString         -> Right <$> _String
   S.KType           -> nope
   S.KInterface      -> nope
