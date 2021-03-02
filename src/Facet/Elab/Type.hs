@@ -31,9 +31,6 @@ import           GHC.Stack
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m (Pos TExpr)
 tvar = var varT
 
-kvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m TExpr
-kvar = var TVar
-
 var :: (HasCallStack, Has (Throw Err) sig m) => (Var Meta Index -> a) -> QName -> Synth m a
 var mk n = Synth $ views context_ (lookupInContext n) >>= \case
   Just (i, q, _T) -> use i q $> (mk (Free i) ::: _T)
@@ -83,7 +80,7 @@ elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TEx
 elabKind (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TArrow  n q a b -> arrow (TArrow n (maybe Many interpretMul q)) (switch (elabKind a)) (switch (elabKind b))
   S.TApp f a        -> app TApp (elabKind f) (switch (elabKind a))
-  S.TVar n          -> kvar n
+  S.TVar n          -> var TVar n
   S.KType           -> _Type
   S.KInterface      -> _Interface
   S.TComp{}         -> nope
@@ -120,4 +117,4 @@ interpretMul = \case
 
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (Interface TExpr)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) . fmap IInterface $
-  foldl' (app TApp) (mapSynth (pushSpan sh) (kvar h)) (switch . elabKind <$> sp)
+  foldl' (app TApp) (mapSynth (pushSpan sh) (var TVar h)) (switch . elabKind <$> sp)
