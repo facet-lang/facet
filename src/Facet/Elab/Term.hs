@@ -220,7 +220,7 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Check m TExpr
+abstractType :: (HasCallStack, Has (Throw Err) sig m) => Check m TExpr -> Check m TExpr
 abstractType body = go
   where
   go = Check $ \case
@@ -228,7 +228,7 @@ abstractType body = go
       level <- depth
       b' <- Binding n zero a |- check (go ::: b)
       pure $ TForAll n (T.quote level a) b'
-    _                    -> body
+    _                    -> check (body ::: Type)
 
 abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc Expr -> Expr) -> Check m Expr
 abstractTerm body = go Nil Nil
@@ -259,7 +259,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    c_T <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr <$> check (abstractType (check (switch (elabType t) ::: Type)) ::: _T)
+    c_T <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr <$> check (abstractType (switch (elabType t)) ::: _T)
     con' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> XReturn (XCon (mname :.: n) ts fs))) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
   pure
@@ -275,7 +275,7 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    _T' <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr <$> check (abstractType (check (switch (elabType t) ::: Type)) ::: _T)
+    _T' <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr <$> check (abstractType (switch (elabType t)) ::: _T)
     -- FIXME: check that the interface is a member of the sig.
     op' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (XOp (mname :.: n))) ::: _T')
     pure $ n :=: DTerm (Just op') _T'
