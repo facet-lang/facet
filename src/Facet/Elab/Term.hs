@@ -281,6 +281,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
     pure $ n :=: DTerm (Just op') (Pos' _T')
   pure [ dname :=: DInterface (scopeFromList cs) _T ]
 
+
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
