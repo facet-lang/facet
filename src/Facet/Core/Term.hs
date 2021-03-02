@@ -10,6 +10,11 @@ module Facet.Core.Term
   -- * Term expressions
 , Expr(..)
 , Term
+  -- ** Positive term constructors
+, varE
+, conE
+, stringE
+, thunkE
 ) where
 
 import           Data.Text (Text)
@@ -72,3 +77,18 @@ data Expr
 
 
 type Term p = p Expr ::: p T.TExpr
+
+
+-- Positive term constructors
+
+varE :: Var Void Index -> Pos T.TExpr -> Term Pos
+varE v _T = Pos' (XVar v) ::: _T
+
+conE :: QName -> Snoc T.TExpr -> Snoc (Term Pos) -> Pos T.TExpr -> Term Pos
+conE n ts fs _T = Pos' (XCon n ts ((\ (Pos' e ::: _) -> e) <$> fs)) ::: _T
+
+stringE :: Text -> Term Pos
+stringE s = Pos' (XString s) ::: T.stringT
+
+thunkE :: Term Neg -> Term Pos
+thunkE (Neg' e ::: _T) = Pos' (XThunk e) ::: T.thunkT _T
