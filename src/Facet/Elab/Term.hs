@@ -158,7 +158,7 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 synthExpr, synthExprNeg, synthExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
 
 synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.Var n    -> var n
+  S.Var n    -> Synth $ instantiate XInst =<< synth (var n)
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   S.App f a  -> app XApp (synthExprNeg f) (checkExprPos a)
