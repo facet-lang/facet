@@ -81,14 +81,14 @@ type Term p = p Expr ::: p T.TExpr
 
 -- Positive term constructors
 
-varE :: Var Void Index -> Pos T.TExpr -> Term Pos
-varE v _T = Pos' (XVar v) ::: _T
+varE :: Var Void Index -> Pos Expr
+varE v = Pos' (XVar v)
 
-conE :: QName -> Snoc T.TExpr -> Snoc (Term Pos) -> Pos T.TExpr -> Term Pos
-conE n ts fs _T = Pos' (XCon n ts ((\ (Pos' e ::: _) -> e) <$> fs)) ::: _T
+conE :: QName -> Snoc T.TExpr -> Snoc (Pos Expr) -> Pos T.TExpr -> Pos Expr
+conE n ts fs _T = Pos' (XCon n ts ((\ (Pos' e) -> e) <$> fs))
 
-stringE :: Text -> Term Pos
-stringE s = Pos' (XString s) ::: T.stringT
+stringE :: Text -> Pos Expr
+stringE s = Pos' (XString s)
 
-thunkE :: Term Neg -> Term Pos
-thunkE (Neg' e ::: _T) = Pos' (XThunk e) ::: T.thunkT _T
+thunkE :: Neg Expr -> Pos Expr
+thunkE (Neg' e) = Pos' (XThunk e)
