@@ -402,7 +402,7 @@ runElabWith scale k m = runState k mempty . runWriter (const pure) $ do
 runElabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
 runElabType = runElabWith zero (\ subst t -> pure (T.eval subst Nil t))
 
-runElabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Expr -> m Expr
+runElabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m a -> m a
 runElabTerm = runElabWith one (const pure)
 
 runElabSynth :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (a ::: Type) -> m (a ::: Type)
