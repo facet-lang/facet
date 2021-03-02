@@ -120,12 +120,15 @@ varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q _A |- che
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
-  n' :=: _ ::: _T <- traverse (instantiate const) =<< resolveC n
+  n' :=: _ ::: _T <- traverse (instantiate const . forcing) =<< resolveC n
   (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify (returnOf _A') _A *> check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (PCon n' (fromList ps'), b')
   where
   -- FIXME: this feels a bit gross, but we have to accommodate both nullary (already data) and non-nullary (thunk (args… -> comp data)) constructors.
   returnOf = \case{ Comp [] _T' -> _T' ; _T -> _T }
+  forcing (e ::: _T) = case _T of
+    Thunk _T -> e ::: _T
+    _        -> e ::: _T
 
 fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind m [a] -> [Bind m a] -> Bind m [a]
 fieldsP = foldr cons
