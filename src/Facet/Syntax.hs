@@ -13,6 +13,8 @@ module Facet.Syntax
   -- * Polarity
 , Polarity(..)
 , HasPolarity(..)
+, Neg(..)
+, Pos(..)
 ) where
 
 import Data.Bifoldable
@@ -105,3 +107,7 @@ data Polarity
 
 class HasPolarity t where
   polarity :: t -> Maybe Polarity
+
+newtype Neg t = Neg' t
+
+newtype Pos t = Pos' t
