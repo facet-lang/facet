@@ -126,6 +126,7 @@ conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   where
   -- FIXME: this feels a bit gross, but we have to accommodate both nullary (already data) and non-nullary (thunk (args… -> comp data)) constructors.
   returnOf = \case{ Comp [] _T' -> _T' ; _T -> _T }
+  -- FIXME: we’ll need to remove this when foralls are properly unpolarized.
   forcing (e ::: _T) = case _T of
     Thunk _T -> e ::: _T
     _        -> e ::: _T
