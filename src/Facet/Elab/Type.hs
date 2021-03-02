@@ -6,7 +6,6 @@ module Facet.Elab.Type
 , _Interface
 , _String
 , forAll
-, (-->)
 , elabKind
 , elabType
 , elabPosType
@@ -71,11 +70,6 @@ arrow mk a b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
   pure $ mk a' b' ::: Type
-
-(-->) :: Algebra sig m => Maybe Name ::: (Quantity, Check m (Pos TExpr)) -> Check m (Neg TExpr) -> Synth m (Neg TExpr)
-(n ::: (q, a)) --> b = arrow (arrowT n q) a b
-
-infixr 1 -->
 
 
 comp :: Algebra sig m => [Check m (Interface TExpr)] -> Check m (Pos TExpr) -> Synth m (Neg TExpr)
