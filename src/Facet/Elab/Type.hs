@@ -101,7 +101,7 @@ elabKind (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
 elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (Either (Neg TExpr) (Pos TExpr))
 elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TForAll n t b   -> Left <$> forAll (n ::: switch (elabKind t)) (switch (elabNegType b))
-  S.TArrow  n q a b -> Left <$> ((n ::: (maybe Many interpretMul q, switch (elabPosType a))) --> switch (elabNegType b))
+  S.TArrow  n q a b -> Left <$> arrow (arrowT n (maybe Many interpretMul q)) (switch (elabPosType a)) (switch (elabNegType b))
   S.TComp s t       -> Left <$> comp (map (switch . synthInterface) s) (switch (elabPosType t))
   S.TApp f a        -> Right <$> app appT (elabPosType f) (switch (elabPosType a))
   S.TVar n          -> Right <$> tvar n
