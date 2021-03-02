@@ -228,7 +228,7 @@ abstractType body = go
       level <- depth
       b' <- Binding n zero a |- check (go ::: b)
       pure $ TForAll n (T.quote level a) b'
-    _                   -> body
+    _                    -> body
 
 abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc Expr -> Expr) -> Check m Expr
 abstractTerm body = go Nil Nil
