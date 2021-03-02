@@ -59,11 +59,14 @@ forAll (n ::: t) b = Synth $ do
   b' <- Binding n zero vt |- check (b ::: Type)
   pure $ TForAll n t' b' ::: Type
 
-(-->) :: Algebra sig m => Maybe Name ::: (Quantity, Check m TExpr) -> Check m TExpr -> Synth m TExpr
-(n ::: (q, a)) --> b = Synth $ do
+arrow :: Algebra sig m => (a -> b -> c) -> Check m a -> Check m b -> Synth m c
+arrow mk a b = Synth $ do
   a' <- check (a ::: Type)
   b' <- check (b ::: Type)
-  pure $ TArrow n q a' b' ::: Type
+  pure $ mk a' b' ::: Type
+
+(-->) :: Algebra sig m => Maybe Name ::: (Quantity, Check m TExpr) -> Check m TExpr -> Synth m TExpr
+(n ::: (q, a)) --> b = arrow (TArrow n q) a b
 
 infixr 1 -->
 
