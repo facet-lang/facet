@@ -107,10 +107,7 @@ force :: Has (Throw Err) sig m => Check m Expr -> Check m Expr
 force t = Check $ \ _T -> XForce <$> check (t ::: Thunk _T)
 
 thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
-thunk c = Check $ \ _T -> do
-  _C <- expectThunk "when thunking computation" _T
-  c' <- check (c ::: _C)
-  pure $ XThunk c'
+thunk c = Check $ fmap XThunk . check . (c :::) <=< expectThunk "when thunking computation"
 
 
 -- Pattern combinators
