@@ -80,8 +80,8 @@ data Expr
 varE :: Var Void Index -> Pos Expr
 varE v = Pos' (XVar v)
 
-conE :: QName -> Snoc T.TExpr -> Snoc (Pos Expr) -> Pos T.TExpr -> Pos Expr
-conE n ts fs _T = Pos' (XCon n ts ((\ (Pos' e) -> e) <$> fs))
+conE :: QName -> Snoc T.TExpr -> Snoc (Pos Expr) -> Pos Expr
+conE n ts fs = Pos' (XCon n ts ((\ (Pos' e) -> e) <$> fs))
 
 stringE :: Text -> Pos Expr
 stringE s = Pos' (XString s)
