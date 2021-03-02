@@ -195,11 +195,11 @@ showType, showEval :: S.Ann S.Expr -> Action
 showType e = Action $ do
   e ::: _T <- runElab $ Elab.runElabSynth one (Elab.synth (Elab.synthExprPos e))
   opts <- get
-  outputDocLn (getPrint (ann (printExpr opts Nil e ::: printType opts Nil _T)))
+  outputDocLn (getPrint (ann (printExpr opts Nil (getPos e) ::: printType opts Nil _T)))
 
 showEval e = Action $ do
   e' ::: _T <- runElab $ Elab.runElabSynth one $ locally Elab.sig_ (T.IInterface (T.global (["Effect", "Console"]:.:N "Output")):) $ Elab.synth (Elab.synthExprPos e)
-  e'' <- runElab $ runEvalMain e'
+  e'' <- runElab . runEvalMain $ getPos e'
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 

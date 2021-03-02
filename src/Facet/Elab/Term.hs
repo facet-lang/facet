@@ -66,17 +66,17 @@ import           GHC.Stack
 -- Term combinators
 
 -- FIXME: how the hell are we supposed to handle instantiation?
-global :: QName ::: Type -> Synth m Expr
-global (q ::: _T) = Synth $ pure $ XVar (Global q) ::: _T
+global :: QName ::: Type -> Synth m (Pos Expr)
+global (q ::: _T) = Synth $ pure $ varE (Global q) ::: _T
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m Expr
+var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m (Pos Expr)
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
-  | Just (i, q, _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
-  | Just (_ :=: DTerm (Just x) (Pos' _T)) <- lookupInSig n module' graph sig -> pure (x ::: _T)
-  | otherwise                                             -> do
+  | Just (i, q, _T) <- lookupInContext n context                      -> use i q $> (varE (Free i) ::: _T)
+  | Just (_ :=: DTerm (Just x) _T) <- lookupInSig n module' graph sig -> pure (x ::: getPos _T)
+  | otherwise                                                         -> do
     n :=: d <- resolveQ n
     _T <- case d of
       DTerm _ _T -> pure _T
@@ -84,30 +84,30 @@ var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabConte
     synth $ global (n ::: getPos _T)
 
 
-tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
+tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m (Neg Expr) -> Check m (Neg Expr)
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
   b' <- Binding n zero _A |- check (b ::: _B (free d))
-  pure $ XTLam b'
+  pure $ tlamE b'
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m (Neg Expr))] -> Check m (Neg Expr)
 lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking clause" _T
-  XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
+  lamE <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
-string :: Text -> Synth m Expr
-string s = Synth $ pure $ XString s ::: T.String
+string :: Text -> Synth m (Pos Expr)
+string s = Synth $ pure $ stringE s ::: T.String
 
 
 -- Polarity shifts
 
-force :: Has (Throw Err) sig m => Check m Expr -> Check m Expr
-force t = Check $ \ _T -> XForce <$> check (t ::: Thunk _T)
+force :: Has (Throw Err) sig m => Check m (Pos Expr) -> Check m (Neg Expr)
+force t = Check $ \ _T -> forceE <$> check (t ::: Thunk _T)
 
-thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
-thunk c = Check $ fmap XThunk . check . (c :::) <=< expectThunk "when thunking computation"
+thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m (Neg Expr) -> Check m (Pos Expr)
+thunk c = Check $ fmap thunkE . check . (c :::) <=< expectThunk "when thunking computation"
 
 
 -- Pattern combinators
@@ -155,53 +155,56 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 
 -- Expression elaboration
 
-synthExpr, synthExprNeg, synthExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
-
+synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m (Either (Neg Expr) (Pos Expr))
 synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.Var n    -> Synth $ instantiate XInst . forcing =<< synth (var n)
+  S.Var n    -> Left <$> Synth (instantiate instE . forcing =<< synth (var n))
   S.Hole{}   -> nope
   S.Lam{}    -> nope
-  S.App f a  -> app XApp (synthExprNeg f) (checkExprPos a)
+  S.App f a  -> Left <$> app appE (synthExprNeg f) (checkExprPos a)
   S.As t _T  -> as (checkExpr t ::: either getNeg getPos <$> switch (elabType _T))
-  S.String s -> string s
+  S.String s -> Right <$> string s
   where
   nope = Synth $ couldNotSynthesize (show e)
   forcing (e ::: _T) = case _T of
-    Thunk _T -> XForce e ::: _T
-    _        -> e        ::: _T
+    Thunk _T -> forceE  e ::: _T
+    _        -> returnE e ::: Comp [] _T
 
-synthExprNeg = Synth . fmap shiftNeg . synth . synthExpr
+synthExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m (Neg Expr)
+synthExprNeg = Synth . fmap (\ (e ::: _T) -> either (::: _T) (shiftNeg . (::: _T)) e) . synth . synthExpr
 
-synthExprPos = Synth . fmap shiftPos . synth . synthExpr
+synthExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m (Pos Expr)
+synthExprPos = Synth . fmap (\ (e ::: _T) -> either (shiftPos . (::: _T)) (::: _T) e) . synth . synthExpr
 
 
-checkExpr, checkExprNeg, checkExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
-
+checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m (Either (Neg Expr) (Pos Expr))
 checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Var{}    -> synth
   S.Hole n   -> hole n
-  S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs)
+  S.Lam cs   -> Left <$> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs)
   S.App{}    -> synth
   S.As{}     -> synth
   S.String{} -> synth
   where
   synth = switch (synthExpr expr)
 
-checkExprNeg expr = Check $ \ _T -> tm . shiftNeg . (::: _T) <$> check (checkExpr expr ::: _T)
+checkExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m (Neg Expr)
+checkExprNeg expr = Check $ \ _T -> either id (tm . shiftNeg . (::: _T)) <$> check (checkExpr expr ::: _T)
 
-checkExprPos expr = Check $ \ _T -> tm . shiftPos . (::: _T) <$> check (checkExpr expr ::: _T)
+checkExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m (Pos Expr)
+checkExprPos expr = Check $ \ _T -> either (tm . shiftPos . (::: _T)) id <$> check (checkExpr expr ::: _T)
 
 
-shiftNeg (v ::: _T) = case _T of
-  Thunk _T                     -> XForce  v ::: _T
-  _T | Just Neg <- polarity _T -> v ::: _T
-     | otherwise               -> XReturn v ::: Comp [] _T
+shiftNeg :: Pos Expr ::: Type -> Neg Expr ::: Type
+shiftNeg = \case
+  v ::: Thunk _T -> forceE  v ::: _T
+  v :::       _T -> returnE v ::: Comp [] _T
 
+shiftPos :: Neg Expr ::: Type -> Pos Expr ::: Type
 shiftPos = \case
   -- FIXME: Is it ok to unwrap returns like this? Should we always just thunk it?
-  XReturn v ::: Comp [] _T           -> v ::: _T
-  v ::: _T | Just Pos <- polarity _T -> v ::: _T
-           | otherwise               -> XThunk v ::: Thunk _T
+  -- FIXME: define a pattern for return expressions
+  Neg' (XReturn v) ::: Comp [] _T -> Pos' v ::: _T
+  v                :::         _T -> thunkE v ::: Thunk _T
 
 
 -- FIXME: check for unique variable names
@@ -230,7 +233,7 @@ abstractType body = go
       pure $ forAllT n (T.quote level a) b'
     _                    -> check (body ::: Type)
 
-abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc Expr -> Expr) -> Check m Expr
+abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc (Pos Expr) -> Neg Expr) -> Check m (Neg Expr)
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
@@ -245,7 +248,7 @@ abstractTerm body = go Nil Nil
       check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: Arrow n q _A _B)
     _T                                -> do
       d <- depth
-      pure $ body (TVar . Free . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
+      pure $ body (TVar . Free . levelToIndex d <$> ts) (varE . Free . levelToIndex d <$> fs)
 
 
 -- Declarations
@@ -260,7 +263,7 @@ elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
     c_T <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switch (elabType t)) ::: _T)
-    con' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> XReturn (XCon (mname :.: n) ts fs))) ::: c_T)
+    con' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> returnE (conE (mname :.: n) ts fs))) ::: c_T)
     pure $ n :=: DTerm (Just con') (Pos' c_T)
   pure
     $ (dname :=: DData (scopeFromList cs) _T)
@@ -277,7 +280,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
     _T' <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switch (elabType t)) ::: _T)
     -- FIXME: check that the interface is a member of the sig.
-    op' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (XOp (mname :.: n))) ::: _T')
+    op' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (opE (mname :.: n))) ::: _T')
     pure $ n :=: DTerm (Just op') (Pos' _T')
   pure [ dname :=: DInterface (scopeFromList cs) _T ]
 
@@ -287,7 +290,7 @@ elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Type
   -> S.Ann S.Expr
-  -> m Expr
+  -> m (Pos Expr)
 elabTermDef _T expr@(S.Ann s _ _) = do
   runElabTerm $ pushSpan s $ check (thunk (go (checkExprNeg expr)) ::: _T)
   where
