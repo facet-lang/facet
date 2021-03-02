@@ -27,7 +27,6 @@ module Facet.Core.Type
 , unthunkT
   -- * Shifts
 , shiftPosTExpr
-, shiftNegTExpr
   -- * Quotation
 , quote
 , eval
@@ -218,11 +217,6 @@ shiftPosTExpr :: TExpr -> TExpr
 shiftPosTExpr t
   | Just Neg <- polarity t = TThunk t
   | otherwise              =        t
-
-shiftNegTExpr :: TExpr -> TExpr
-shiftNegTExpr t
-  | Just Pos <- polarity t = TComp [] t
-  | otherwise              =          t
 
 
 -- Quotation
