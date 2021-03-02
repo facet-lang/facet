@@ -170,9 +170,9 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
     Thunk _T -> XForce e ::: _T
     _        -> e        ::: _T
 
-synthExprNeg expr = Synth $ shiftNeg <$> synth (synthExpr expr)
+synthExprNeg = Synth . fmap shiftNeg . synth . synthExpr
 
-synthExprPos expr = Synth $ shiftPos <$> synth (synthExpr expr)
+synthExprPos = Synth . fmap shiftPos . synth . synthExpr
 
 
 checkExpr, checkExprNeg, checkExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
