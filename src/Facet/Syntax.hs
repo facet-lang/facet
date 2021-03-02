@@ -108,6 +108,6 @@ data Polarity
 class HasPolarity t where
   polarity :: t -> Maybe Polarity
 
-newtype Neg t = Neg' t
+newtype Neg t = Neg' { getNeg :: t }
 
-newtype Pos t = Pos' t
+newtype Pos t = Pos' { getPos :: t }
