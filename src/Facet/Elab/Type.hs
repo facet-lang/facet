@@ -59,11 +59,11 @@ forAll (n ::: t) b = Synth $ do
   b' <- Binding n zero vt |- check (b ::: Type)
   pure $ TForAll n t' b' ::: Type
 
-(-->) :: Algebra sig m => Maybe Name ::: Check m (Quantity, TExpr) -> Check m TExpr -> Synth m TExpr
-(n ::: a) --> b = Synth $ do
-  (q', a') <- check (a ::: Type)
+(-->) :: Algebra sig m => Maybe Name ::: (Quantity, Check m TExpr) -> Check m TExpr -> Synth m TExpr
+(n ::: (q, a)) --> b = Synth $ do
+  a' <- check (a ::: Type)
   b' <- check (b ::: Type)
-  pure $ TArrow n q' a' b' ::: Type
+  pure $ TArrow n q a' b' ::: Type
 
 infixr 1 -->
 
@@ -79,7 +79,7 @@ elabType, elabPosType, elabNegType :: (HasCallStack, Has (Throw Err) sig m) => S
 
 elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TForAll n t b   -> forAll (n ::: switch (elabType t)) (switch (elabNegType b))
-  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> switch (elabPosType a))) --> switch (elabNegType b)
+  S.TArrow  n q a b -> (n ::: (maybe Many interpretMul q, switch (elabPosType a))) --> switch (elabNegType b)
   S.TComp s t       -> comp (map (switch . synthInterface) s) (switch (elabPosType t))
   S.TApp f a        -> app TApp (elabType f) (switch (elabType a))
   S.TVar n          -> tvar n
