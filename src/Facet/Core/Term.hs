@@ -9,7 +9,6 @@ module Facet.Core.Term
 , fill
   -- * Term expressions
 , Expr(..)
-, Term
   -- ** Positive term constructors
 , varE
 , conE
@@ -74,9 +73,6 @@ data Expr
   | XString Text
   | XThunk Expr
   deriving (Eq, Ord, Show)
-
-
-type Term p = p Expr ::: p T.TExpr
 
 
 -- Positive term constructors
