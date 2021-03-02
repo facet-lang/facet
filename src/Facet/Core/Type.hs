@@ -163,6 +163,8 @@ instance HasPolarity TExpr where
     TThunk{}       -> Just Pos
 
 
+-- Negative type constructors
+
 forAllT :: Name -> TExpr -> Neg TExpr -> Neg TExpr
 forAllT n t (Neg' b) = Neg' (TForAll n t b)
 
@@ -172,6 +174,8 @@ arrowT (n, q, Pos' a) (Neg' b) = Neg' (TArrow n q a b)
 compT :: [Interface TExpr] -> Pos TExpr -> Neg TExpr
 compT sig (Pos' t) = Neg' (TComp sig t)
 
+
+-- Positive type constructors
 
 varT :: Var Meta Index -> Pos TExpr
 varT v = Pos' (TVar v)
