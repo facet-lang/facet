@@ -197,11 +197,10 @@ shiftNeg = \case
   v :::       _T -> returnE v ::: Comp [] _T
 
 shiftPos :: Neg Expr ::: Type -> Pos Expr ::: Type
-shiftPos = \case
+shiftPos (e ::: _T) = case unreturnE e ::: _T of
   -- FIXME: Is it ok to unwrap returns like this? Should we always just thunk it?
-  -- FIXME: define a pattern for return expressions
-  Neg (XReturn v) ::: Comp [] _T -> Pos    v ::: _T
-  v               :::         _T -> thunkE v ::: Thunk _T
+  Just v ::: Comp [] _T ->        v ::: _T
+  _      :::         _T -> thunkE e ::: Thunk _T
 
 
 -- FIXME: check for unique variable names
