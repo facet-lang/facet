@@ -200,8 +200,8 @@ unthunkT = \case
 
 shiftPosTExpr :: TExpr -> TExpr
 shiftPosTExpr t
-  | Just True <- polarity t = TThunk t
-  | otherwise               =        t
+  | Just False <- polarity t = TThunk t
+  | otherwise                =        t
 
 
 -- Quotation
