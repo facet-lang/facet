@@ -12,7 +12,6 @@ module Facet.Syntax
 , splitr
   -- * Polarity
 , Polarity(..)
-, HasPolarity(..)
 , Neg(..)
 , Pos(..)
 ) where
@@ -105,8 +104,6 @@ data Polarity
   | Pos
   deriving (Bounded, Enum, Eq, Ord, Show)
 
-class HasPolarity t where
-  polarity :: t -> Maybe Polarity
 
 newtype Neg t = Neg' { getNeg :: t }
 

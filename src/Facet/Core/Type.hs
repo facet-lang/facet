@@ -71,22 +71,6 @@ data Type
   | String
   | Thunk Type
 
--- | The polarity of a 'Type'. Returns in 'Maybe' because some 'Type's (e.g. 'Type' itself) are kinds, which aren’t polarized.
-instance HasPolarity Type where
-  polarity = \case
-    Type          -> Nothing
-    Interface     -> Nothing
-    -- FIXME: it would be nice for this to be more nuanced, e.g. the @nil@ list constructor of type @{ A : Type } -> List A@ could reasonably be positive since the forall doesn’t do computation
-    ForAll{}      -> Just Neg
-    -- the body is either a kind (@'Nothing'@) or negative (@'Just' 'Neg'@), so we just use its polarity for the arrow as a whole
-    Arrow _ _ _ b -> polarity b
-    Comp{}        -> Just Neg
-    -- FIXME: this will need to be reconsidered if we ever allow type constructors with arbitrary polarities, or e.g. embed the kind arrow as a symbol
-    -- FIXME: List is neutral (being as it’s Type -> Type), List A is positive, and there’s no guarantee that the neutral term is saturated
-    Ne{}          -> Just Pos
-    String        -> Just Pos
-    Thunk{}       -> Just Pos
-
 
 global :: QName -> Type
 global n = Ne (Global n) Nil
@@ -147,23 +131,24 @@ data TExpr
   | TThunk TExpr
   deriving (Eq, Ord, Show)
 
-instance HasPolarity TExpr where
-  polarity = \case
-    TType          -> Nothing
-    TInterface     -> Nothing
+-- | The polarity of a 'TExpr'. Returns in 'Maybe' because some 'TExpr's (e.g. 'TType') are kinds, which aren’t polarized.
+polarity :: TExpr -> Maybe Polarity
+polarity = \case
+  TType          -> Nothing
+  TInterface     -> Nothing
 
-    -- FIXME: it would be nice for this to be more nuanced, e.g. the @nil@ list constructor of type @{ A : Type } -> List A@ could reasonably be positive since the forall doesn’t do computation
-    TForAll{}      -> Just Neg
-    -- the body is either a kind (@'Nothing'@) or negative (@'Just' 'Neg'@), so we just use its polarity for the arrow as a whole
-    TArrow _ _ _ b -> polarity b
-    TComp{}        -> Just Neg
+  -- FIXME: it would be nice for this to be more nuanced, e.g. the @nil@ list constructor of type @{ A : Type } -> List A@ could reasonably be positive since the forall doesn’t do computation
+  TForAll{}      -> Just Neg
+  -- the body is either a kind (@'Nothing'@) or negative (@'Just' 'Neg'@), so we just use its polarity for the arrow as a whole
+  TArrow _ _ _ b -> polarity b
+  TComp{}        -> Just Neg
 
-    -- FIXME: this will need to be reconsidered if we ever allow type constructors with arbitrary polarities, or e.g. embed the kind arrow as a symbol
-    TVar{}         -> Just Pos
-    -- FIXME: List is neutral (being as it’s Type -> Type), List A is positive, and there’s no guarantee that the neutral term is saturated
-    TApp{}         -> Just Pos
-    TString        -> Just Pos
-    TThunk{}       -> Just Pos
+  -- FIXME: this will need to be reconsidered if we ever allow type constructors with arbitrary polarities, or e.g. embed the kind arrow as a symbol
+  TVar{}         -> Just Pos
+  -- FIXME: List is neutral (being as it’s Type -> Type), List A is positive, and there’s no guarantee that the neutral term is saturated
+  TApp{}         -> Just Pos
+  TString        -> Just Pos
+  TThunk{}       -> Just Pos
 
 
 -- Negative type constructors
