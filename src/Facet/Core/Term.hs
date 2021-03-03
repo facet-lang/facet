@@ -23,8 +23,11 @@ module Facet.Core.Term
 , conE
 , stringE
 , thunkE
+  -- ** Term eliminators
+, unreturnE
 ) where
 
+import           Control.Effect.Empty
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import           Data.Void (Void)
@@ -124,3 +127,11 @@ stringE s = Pos (XString s)
 
 thunkE :: Neg Expr -> Pos Expr
 thunkE (Neg e) = Pos (XThunk e)
+
+
+-- Term eliminators
+
+unreturnE :: Has Empty sig m => Neg Expr -> m (Pos Expr)
+unreturnE = \case
+  Neg (XReturn t) -> pure $ Pos t
+  _               -> empty
