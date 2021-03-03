@@ -98,6 +98,6 @@ splitr un = go id
 
 -- Polarity
 
-newtype Neg t = Neg' { getNeg :: t }
+newtype Neg t = Neg { getNeg :: t }
 
-newtype Pos t = Pos' { getPos :: t }
+newtype Pos t = Pos { getPos :: t }

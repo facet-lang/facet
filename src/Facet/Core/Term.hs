@@ -87,40 +87,40 @@ data Expr
 -- Negative term constructors
 
 tlamE :: Neg Expr -> Neg Expr
-tlamE (Neg' b) = Neg' (XTLam b)
+tlamE (Neg b) = Neg (XTLam b)
 
 instE :: Neg Expr -> T.TExpr -> Neg Expr
-instE (Neg' f) t = Neg' (XInst f t)
+instE (Neg f) t = Neg (XInst f t)
 
 lamE :: [(Pattern Name, Neg Expr)] -> Neg Expr
-lamE cs = Neg' (XLam (map (fmap (\ (Neg' e) -> e)) cs))
+lamE cs = Neg (XLam (map (fmap (\ (Neg e) -> e)) cs))
 
 appE :: Neg Expr -> Pos Expr -> Neg Expr
-appE (Neg' f) (Pos' a) = Neg' (XApp f a)
+appE (Neg f) (Pos a) = Neg (XApp f a)
 
 opE :: QName -> Snoc T.TExpr -> Snoc (Pos Expr) -> Neg Expr
-opE n ts fs = Neg' (XOp n ts ((\ (Pos' e) -> e) <$> fs))
+opE n ts fs = Neg (XOp n ts ((\ (Pos e) -> e) <$> fs))
 
 forceE :: Pos Expr -> Neg Expr
-forceE (Pos' t) = Neg' (XForce t)
+forceE (Pos t) = Neg (XForce t)
 
 returnE :: Pos Expr -> Neg Expr
-returnE (Pos' t) = Neg' (XReturn t)
+returnE (Pos t) = Neg (XReturn t)
 
 bindE :: Neg Expr -> Neg Expr -> Neg Expr
-bindE (Neg' a) (Neg' b) = Neg' (XBind a b)
+bindE (Neg a) (Neg b) = Neg (XBind a b)
 
 
 -- Positive term constructors
 
 varE :: Var Void Index -> Pos Expr
-varE v = Pos' (XVar v)
+varE v = Pos (XVar v)
 
 conE :: QName -> Snoc T.TExpr -> Snoc (Pos Expr) -> Pos Expr
-conE n ts fs = Pos' (XCon n ts ((\ (Pos' e) -> e) <$> fs))
+conE n ts fs = Pos (XCon n ts ((\ (Pos e) -> e) <$> fs))
 
 stringE :: Text -> Pos Expr
-stringE s = Pos' (XString s)
+stringE s = Pos (XString s)
 
 thunkE :: Neg Expr -> Pos Expr
-thunkE (Neg' e) = Pos' (XThunk e)
+thunkE (Neg e) = Pos (XThunk e)

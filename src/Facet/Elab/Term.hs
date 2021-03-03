@@ -126,7 +126,7 @@ conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   where
   -- FIXME: this feels a bit gross, but we have to accommodate both nullary (already data) and non-nullary (thunk (args… -> comp data)) constructors.
   returnOf = \case{ Comp [] _T' -> _T' ; _T -> _T }
-  forcing (e ::: Pos' _T) = case _T of
+  forcing (e ::: Pos _T) = case _T of
     Thunk _T -> e ::: _T
     _        -> e ::: _T
 
@@ -203,8 +203,8 @@ shiftPos :: Neg Expr ::: Type -> Pos Expr ::: Type
 shiftPos = \case
   -- FIXME: Is it ok to unwrap returns like this? Should we always just thunk it?
   -- FIXME: define a pattern for return expressions
-  Neg' (XReturn v) ::: Comp [] _T -> Pos' v ::: _T
-  v                :::         _T -> thunkE v ::: Thunk _T
+  Neg (XReturn v) ::: Comp [] _T -> Pos v ::: _T
+  v               :::         _T -> thunkE v ::: Thunk _T
 
 
 -- FIXME: check for unique variable names
@@ -264,7 +264,7 @@ elabDataDef (dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
     c_T <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switch (elabType t)) ::: _T)
     con' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> returnE (conE (mname :.: n) ts fs))) ::: c_T)
-    pure $ n :=: DTerm (Just con') (Pos' c_T)
+    pure $ n :=: DTerm (Just con') (Pos c_T)
   pure
     $ (dname :=: DData (scopeFromList cs) _T)
     : cs
@@ -281,7 +281,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
     _T' <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switch (elabType t)) ::: _T)
     -- FIXME: check that the interface is a member of the sig.
     op' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (opE (mname :.: n))) ::: _T')
-    pure $ n :=: DTerm (Just op') (Pos' _T')
+    pure $ n :=: DTerm (Just op') (Pos _T')
   pure [ dname :=: DInterface (scopeFromList cs) _T ]
 
 
@@ -331,13 +331,13 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
       S.TermDef t -> do
         _T <- runModule $ runElabType $ getPos <$> check (switch (elabPosType ty) ::: Type)
-        scope_.decls_.at dname .= Just (DTerm Nothing (Pos' _T))
+        scope_.decls_.at dname .= Just (DTerm Nothing (Pos _T))
         pure (Just (dname, t ::: _T))
 
     -- then elaborate the terms
     for_ (catMaybes es) $ \ (dname, t ::: _T) -> do
       t' <- runModule $ elabTermDef _T t
-      scope_.decls_.ix dname .= DTerm (Just t') (Pos' _T)
+      scope_.decls_.ix dname .= DTerm (Just t') (Pos _T)
 
 
 -- Errors

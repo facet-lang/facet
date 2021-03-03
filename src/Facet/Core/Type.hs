@@ -154,46 +154,46 @@ polarity = \case
 -- Negative type constructors
 
 forAllT :: Name -> TExpr -> Neg TExpr -> Neg TExpr
-forAllT n t (Neg' b) = Neg' (TForAll n t b)
+forAllT n t (Neg b) = Neg (TForAll n t b)
 
 arrowT :: Maybe Name -> Quantity -> Pos TExpr -> Neg TExpr -> Neg TExpr
-arrowT n q (Pos' a) (Neg' b) = Neg' (TArrow n q a b)
+arrowT n q (Pos a) (Neg b) = Neg (TArrow n q a b)
 
 compT :: [Interface TExpr] -> Pos TExpr -> Neg TExpr
-compT sig (Pos' t) = Neg' (TComp sig t)
+compT sig (Pos t) = Neg (TComp sig t)
 
 
 -- Positive type constructors
 
 varT :: Var Meta Index -> Pos TExpr
-varT v = Pos' (TVar v)
+varT v = Pos (TVar v)
 
 appT :: Pos TExpr -> Pos TExpr -> Pos TExpr
-appT (Pos' f) (Pos' a) = Pos' (TApp f a)
+appT (Pos f) (Pos a) = Pos (TApp f a)
 
 stringT :: Pos TExpr
-stringT = Pos' TString
+stringT = Pos TString
 
 thunkT :: Neg TExpr -> Pos TExpr
-thunkT (Neg' t) = Pos' (TThunk t)
+thunkT (Neg t) = Pos (TThunk t)
 
 
 -- Type eliminators
 
 unarrowT :: Has Empty sig m => Neg TExpr -> m (Maybe Name, Quantity, Pos TExpr, Neg TExpr)
 unarrowT = \case
-  Neg' (TArrow n q a b) -> pure (n, q, Pos' a, Neg' b)
-  _                     -> empty
+  Neg (TArrow n q a b) -> pure (n, q, Pos a, Neg b)
+  _                    -> empty
 
 uncompT :: Has Empty sig m => Neg TExpr -> m ([Interface TExpr], Pos TExpr)
 uncompT = \case
-  Neg' (TComp sig _T) -> pure (sig, Pos' _T)
-  _                   -> empty
+  Neg (TComp sig _T) -> pure (sig, Pos _T)
+  _                  -> empty
 
 unthunkT :: Has Empty sig m => Pos TExpr -> m (Neg TExpr)
 unthunkT = \case
-  Pos' (TThunk _T) -> pure (Neg' _T)
-  _                -> empty
+  Pos (TThunk _T) -> pure (Neg _T)
+  _               -> empty
 
 
 -- Shifting
