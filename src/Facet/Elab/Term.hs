@@ -110,14 +110,14 @@ force t = Check $ \ _T -> forceE <$> check (t ::: Thunk _T)
 thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m (Neg Expr) -> Check m (Pos Expr)
 thunk c = Check $ fmap thunkE . check . (c :::) <=< expectThunk "when thunking computation"
 
-(>>-) :: Has (Throw Err) sig m => (Quantity, Synth m (Neg Expr)) -> (Synth m (Pos Expr) -> Synth m (Neg Expr)) -> Synth m (Neg Expr)
-(q, v) >>- b = Synth $ do
+(>>-) :: Has (Throw Err) sig m => Synth m (Neg Expr) -> (Synth m (Pos Expr) -> Synth m (Neg Expr)) -> Synth m (Neg Expr)
+v >>- b = Synth $ do
   v' ::: _V <- synth v
   d <- depth
   let var = Synth $ do
         d' <- depth
         pure $ varE (Free (levelToIndex d' d)) ::: _V
-  b' ::: _T <- Binding __ q _V |- synth (b var)
+  b' ::: _T <- Binding __ Many _V |- synth (b var)
   pure $ bindE v' b' ::: _T
 
 infixl 1 >>-
