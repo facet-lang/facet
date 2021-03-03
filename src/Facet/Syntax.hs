@@ -11,7 +11,6 @@ module Facet.Syntax
 , splitl
 , splitr
   -- * Polarity
-, Polarity(..)
 , Neg(..)
 , Pos(..)
 ) where
@@ -98,12 +97,6 @@ splitr un = go id
 
 
 -- Polarity
-
-data Polarity
-  = Neg
-  | Pos
-  deriving (Bounded, Enum, Eq, Ord, Show)
-
 
 newtype Neg t = Neg' { getNeg :: t }
 
