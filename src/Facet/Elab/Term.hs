@@ -10,6 +10,7 @@ module Facet.Elab.Term
   -- * Polarity shifts
 , force
 , thunk
+, (>>-)
   -- * Pattern combinators
 , wildcardP
 , varP
@@ -108,6 +109,14 @@ force t = Check $ \ _T -> forceE <$> check (t ::: Thunk _T)
 
 thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m (Neg Expr) -> Check m (Pos Expr)
 thunk c = Check $ fmap thunkE . check . (c :::) <=< expectThunk "when thunking computation"
+
+(>>-) :: Has (Throw Err) sig m => (Quantity, Synth m (Neg Expr)) -> Check m (Neg Expr) -> Check m (Neg Expr)
+(q, v) >>- b = Check $ \ _T -> do
+  v' ::: _V <- synth v
+  b' <- Binding __ q _V |- check (b ::: _T)
+  pure $ bindE v' b'
+
+infixl 1 >>-
 
 
 -- Pattern combinators
