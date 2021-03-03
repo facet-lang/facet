@@ -203,7 +203,7 @@ shiftPos :: Neg Expr ::: Type -> Pos Expr ::: Type
 shiftPos = \case
   -- FIXME: Is it ok to unwrap returns like this? Should we always just thunk it?
   -- FIXME: define a pattern for return expressions
-  Neg (XReturn v) ::: Comp [] _T -> Pos v ::: _T
+  Neg (XReturn v) ::: Comp [] _T -> Pos    v ::: _T
   v               :::         _T -> thunkE v ::: Thunk _T
 
 
