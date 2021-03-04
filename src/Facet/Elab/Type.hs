@@ -99,24 +99,32 @@ elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   where
   nope = IsType $ couldNotSynthesize (show e <> " at the kind level")
 
-elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Either (Neg TExpr) (Pos TExpr))
-elabType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
-  S.TForAll n t b   -> Left <$> forAll (n ::: elabKind t) (elabNegType b)
-  S.TArrow  n q a b -> Left <$> arrow (arrowT n (maybe Many interpretMul q)) (elabPosType a) (elabNegType b)
-  S.TComp s t       -> Left <$> comp (map synthInterface s) (elabPosType t)
-  S.TApp f a        -> Right <$> app appT (elabPosType f) (elabPosType a)
-  S.TVar n          -> Right <$> var varT n
-  S.TString         -> Right <$> _String
+
+elabPosType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Pos TExpr)
+elabPosType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
+  S.TForAll n t b   -> thunkT <$> forAll (n ::: elabKind t) (elabNegType b)
+  S.TArrow  n q a b -> thunkT <$> arrow (arrowT n (maybe Many interpretMul q)) (elabPosType a) (elabNegType b)
+  S.TComp s t       -> thunkT <$> comp (map synthInterface s) (elabPosType t)
+  S.TApp f a        -> app appT (elabPosType f) (elabPosType a)
+  S.TVar n          -> var varT n
+  S.TString         -> _String
   S.KType           -> nope
   S.KInterface      -> nope
   where
   nope = IsType $ couldNotSynthesize (show e <> " at the type level")
 
-elabPosType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Pos TExpr)
-elabPosType = fmap (either thunkT id) . elabType
-
 elabNegType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Neg TExpr)
-elabNegType = fmap (either id (compT [])) . elabType
+elabNegType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
+  S.TForAll n t b   -> forAll (n ::: elabKind t) (elabNegType b)
+  S.TArrow  n q a b -> arrow (arrowT n (maybe Many interpretMul q)) (elabPosType a) (elabNegType b)
+  S.TComp s t       -> comp (map synthInterface s) (elabPosType t)
+  S.TApp f a        -> compT [] <$> app appT (elabPosType f) (elabPosType a)
+  S.TVar n          -> compT [] <$> var varT n
+  S.TString         -> compT [] <$> _String
+  S.KType           -> nope
+  S.KInterface      -> nope
+  where
+  nope = IsType $ couldNotSynthesize (show e <> " at the type level")
 
 
 interpretMul :: S.Mul -> Few
