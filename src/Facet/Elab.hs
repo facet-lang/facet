@@ -20,6 +20,7 @@ module Facet.Elab
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
+, expectType
 , expectMatch
 , expectFunction
   -- * Warnings
@@ -52,7 +53,7 @@ import Control.Carrier.State.Church
 import Control.Carrier.Writer.Church
 import Control.Effect.Lens (views)
 import Control.Lens (Lens', lens)
-import Control.Monad (guard, unless)
+import Control.Monad (guard, unless, (<=<))
 import Data.Foldable (asum)
 import Data.Semialign.Exts
 import Facet.Context as Context
@@ -244,6 +245,9 @@ warn reason = do
 
 
 -- Patterns
+
+expectType :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
+expectType pat exp s _T = expectMatch (pat <=< unSTerm) exp s (STerm _T)
 
 expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Sorted -> Maybe out) -> String -> String -> Sorted -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
