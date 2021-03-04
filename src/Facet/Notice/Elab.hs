@@ -10,6 +10,7 @@ import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
 import           Facet.Elab as Elab
+import qualified Facet.Name as Name
 import           Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Print as Print
@@ -34,10 +35,12 @@ rethrowElabErrors opts = L.runThrow rethrow
     ]
     where
     (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
-    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printType opts printCtx _T))) (metas subst)
+    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printKind opts (Name.Level (length printCtx)) _T))) (metas subst)
   combine (d, print, ctx) (Binding n m _T) =
     let n' = intro n d
-        _T' = printType opts print _T
+        _T' = case _T of
+          STerm _T -> printType opts print _T
+          SType _K -> printKind opts d _K
     in  ( succ d
         , print :> n'
         , ctx   :> getPrint (ann (n' ::: mult m _T')) )
@@ -64,8 +67,11 @@ printErrReason opts ctx = group . \case
     <> hardline <> pretty "expected:" <> print exp'
     <> hardline <> pretty "  actual:" <> print act'
     where
-    exp' = either reflow (getPrint . printType opts ctx) exp
-    act' = getPrint (printType opts ctx act)
+    printSorted = \case
+      STerm _T -> printType opts ctx _T
+      SType _K -> printKind opts (Name.Level (length ctx)) _K
+    exp' = either reflow (getPrint . printSorted) exp
+    act' = getPrint (printSorted act)
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T              ->

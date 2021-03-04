@@ -198,7 +198,7 @@ showType e = Action $ do
   outputDocLn (getPrint (ann (printExpr opts Nil (getPos e) ::: printType opts Nil _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- runElab $ Elab.runElabSynth one $ locally Elab.sig_ (T.IInterface (T.global (["Effect", "Console"]:.:N "Output")):) $ Elab.synth (Elab.synthExprPos e)
+  e' ::: _T <- runElab $ Elab.runElabSynth one $ locally Elab.sig_ (T.IInterface (T.KGlobal (["Effect", "Console"]:.:N "Output")):) $ Elab.synth (Elab.synthExprPos e)
   e'' <- runElab . runEvalMain $ getPos e'
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
@@ -217,9 +217,9 @@ runEvalMain e = runEval handle pure (E.quote 0 =<< eval e)
 
 showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
-  _T ::: _K <- runElab $ Elab.runElabSynthType one (Elab.isType (getPos <$> Elab.elabType _T))
+  _T ::: _K <- runElab $ Elab.runElabSynthKind one (Elab.isType (getPos <$> Elab.elabType _T))
   opts <- get
-  outputDocLn (getPrint (ann (printType opts Nil _T ::: printType opts Nil _K)))
+  outputDocLn (getPrint (ann (printType opts Nil _T ::: printKind opts 0 _K)))
 
 
 helpDoc :: Doc Style

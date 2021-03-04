@@ -89,21 +89,21 @@ newtype Import = Import { name :: MName }
 
 data Def
   = DTerm (Maybe (Pos Expr)) (Pos Type)
-  | DData Scope Type
-  | DInterface Scope Type
-  | DModule Scope Type
+  | DData Scope Kind
+  | DInterface Scope Kind
+  | DModule Scope Kind
 
 unDTerm :: Alternative m => Def -> m (Maybe (Pos Expr) ::: Pos Type)
 unDTerm = \case
   DTerm e _T -> pure (e ::: _T)
   _          -> empty
 
-unDData :: Alternative m => Def -> m (Scope ::: Type)
+unDData :: Alternative m => Def -> m (Scope ::: Kind)
 unDData = \case
   DData cs _T -> pure (cs ::: _T)
   _           -> empty
 
-unDInterface :: Alternative m => Def -> m (Scope ::: Type)
+unDInterface :: Alternative m => Def -> m (Scope ::: Kind)
 unDInterface = \case
   DInterface cs _T -> pure (cs ::: _T)
   _                -> empty

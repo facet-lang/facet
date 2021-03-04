@@ -16,6 +16,7 @@ module Facet.Print
 , printInstantiation
 , suppressInstantiation
   -- * Core printers
+, printKind
 , printType
 , printTExpr
 , printExpr
@@ -141,17 +142,27 @@ suppressInstantiation = const
 
 -- Core printers
 
+printKind :: Options -> Level -> C.Kind -> Print
+printKind Options{ qname } d = go
+  where
+  go = \case
+    C.Type                -> annotate Type $ pretty "Type"
+    C.Interface           -> annotate Type $ pretty "Interface"
+    C.KArrow Nothing  a b -> go a --> go b
+    C.KArrow (Just n) a b -> parens (ann (intro n d ::: go a)) --> go b
+    C.KApp a b            -> group (go a) $$ group (go b)
+    C.KGlobal n           -> qname n
+    C.KMeta m             -> meta m
+
 printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
 printTExpr :: Options -> Snoc Print -> C.TExpr -> Print
-printTExpr Options{ qname } = go
+printTExpr opts@Options{ qname } = go
   where
   qvar = group . setPrec Var . qname
   go env = \case
-    C.TType                  -> annotate Type $ pretty "Type"
-    C.TInterface             -> annotate Type $ pretty "Interface"
-    C.TForAll       n    t b -> braces (ann (intro n d ::: go env t)) --> go (env :> intro n d) b
+    C.TForAll       n    t b -> braces (ann (intro n d ::: printKind opts d t)) --> go (env :> intro n d) b
     C.TArrow  Nothing  q a b -> mult q (go env a) --> go env b
     C.TArrow  (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
     C.TComp [] t             -> prec Shift $ pretty '↑' <+> go env t
@@ -164,8 +175,8 @@ printTExpr Options{ qname } = go
     C.TApp f a               -> group (go env f) $$ group (go env a)
     where
     d = Name.Level (length env)
-    sig :: [C.Interface C.TExpr] -> Print
-    sig s = brackets (commaSep (map (go env . C.getInterface) s))
+    sig :: [C.Interface] -> Print
+    sig s = brackets (commaSep (map (printKind opts d . C.getInterface) s))
     mult q = if
       | q == zero -> (pretty '0' <+>)
       | q == one  -> (pretty '1' <+>)

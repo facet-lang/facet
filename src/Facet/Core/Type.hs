@@ -1,6 +1,7 @@
 module Facet.Core.Type
 ( -- * Types
   Interface(..)
+, Kind(..)
 , Type(..)
 , global
 , free
@@ -45,19 +46,23 @@ import Prelude hiding (lookup)
 
 -- Types
 
-newtype Interface ty = IInterface { getInterface :: ty }
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+newtype Interface = IInterface { getInterface :: Kind }
+  deriving (Eq, Ord, Show)
 
-
-data Type
-  -- Types
+data Kind
   = Type
   | Interface
+  | KArrow (Maybe Name) Kind Kind
+  | KApp Kind Kind
+  | KGlobal QName
+  | KMeta Meta
+  deriving (Eq, Ord, Show)
 
+data Type
   -- Negative
-  | ForAll Name Type (Type -> Type)
+  = ForAll Name Kind (Type -> Type)
   | Arrow (Maybe Name) Quantity Type Type
-  | Comp [Interface Type] Type
+  | Comp [Interface] Type
 
   -- Positive
   | Ne (Var Meta Level) (Snoc Type)
@@ -75,7 +80,7 @@ metavar :: Meta -> Type
 metavar m = Ne (Metavar m) Nil
 
 
-unComp :: Has Empty sig m => Type -> m ([Interface Type], Type)
+unComp :: Has Empty sig m => Type -> m ([Interface], Type)
 unComp = \case
   Comp sig _T -> pure (sig, _T)
   _T          -> empty
@@ -91,14 +96,24 @@ occursIn v = go
   where
   go :: Level -> Type -> Bool
   go d = \case
-    Type          -> False
-    Interface     -> False
-    ForAll  _ t b -> go d t || go (succ d) (b (free d))
+    ForAll  _ t b -> occursInKind v t || go (succ d) (b (free d))
     Arrow _ _ a b -> go d a || go d b
-    Comp s t      -> any (go d . getInterface) s || go d t
+    Comp s t      -> any (occursInKind v . getInterface) s || go d t
     Ne h sp       -> Metavar v == h || any (go d) sp
     String        -> False
     Thunk t       -> go d t
+
+occursInKind :: Meta -> Kind -> Bool
+occursInKind v = go
+  where
+  go = \case
+    Type         -> False
+    Interface    -> False
+    KArrow _ a b -> go a || go b
+    KApp a b     -> go a || go b
+    KGlobal{}    -> False
+    KMeta u      -> u == v
+
 
 
 -- Elimination
@@ -111,12 +126,9 @@ app _         _ = error "can’t apply non-neutral/forall type"
 -- Type expressions
 
 data TExpr
-  = TType
-  | TInterface
-
-  | TForAll Name TExpr TExpr
+  = TForAll Name Kind TExpr
   | TArrow (Maybe Name) Quantity TExpr TExpr
-  | TComp [Interface TExpr] TExpr
+  | TComp [Interface] TExpr
 
   | TVar (Var Meta Index)
   | TApp TExpr TExpr
@@ -127,9 +139,6 @@ data TExpr
 -- | The polarity of a 'TExpr'. Returns in 'Maybe' because some 'TExpr's (e.g. 'TType') are kinds, which aren’t polarized. 'False' is negative, 'True' is positive.
 polarity :: TExpr -> Maybe Bool
 polarity = \case
-  TType          -> Nothing
-  TInterface     -> Nothing
-
   -- FIXME: it would be nice for this to be more nuanced, e.g. the @nil@ list constructor of type @{ A : Type } -> List A@ could reasonably be positive since the forall doesn’t do computation
   TForAll{}      -> Just False
   -- the body is either a kind (@'Nothing'@) or negative (@'Just' 'False'@), so we just use its polarity for the arrow as a whole
@@ -146,13 +155,13 @@ polarity = \case
 
 -- Negative type constructors
 
-forAllT :: Name -> TExpr -> Neg TExpr -> Neg TExpr
+forAllT :: Name -> Kind -> Neg TExpr -> Neg TExpr
 forAllT n t (Neg b) = Neg (TForAll n t b)
 
 arrowT :: Maybe Name -> Quantity -> Pos TExpr -> Neg TExpr -> Neg TExpr
 arrowT n q (Pos a) (Neg b) = Neg (TArrow n q a b)
 
-compT :: [Interface TExpr] -> Pos TExpr -> Neg TExpr
+compT :: [Interface] -> Pos TExpr -> Neg TExpr
 compT sig (Pos t) = Neg (TComp sig t)
 
 
@@ -178,7 +187,7 @@ unarrowT = \case
   Neg (TArrow n q a b) -> pure (n, q, Pos a, Neg b)
   _                    -> empty
 
-uncompT :: Has Empty sig m => Neg TExpr -> m ([Interface TExpr], Pos TExpr)
+uncompT :: Has Empty sig m => Neg TExpr -> m ([Interface], Pos TExpr)
 uncompT = \case
   Neg (TComp sig _T) -> pure (sig, Pos _T)
   _                  -> empty
@@ -201,26 +210,21 @@ shiftPosTExpr t
 
 quote :: Level -> Type -> TExpr
 quote d = \case
-  Type          -> TType
-  Interface     -> TInterface
-
-  ForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
+  ForAll n t b  -> TForAll n t (quote (succ d) (b (free d)))
   Arrow n q a b -> TArrow n q (quote d a) (quote d b)
-  Comp s t      -> TComp (IInterface . quote d . getInterface <$> s) (quote d t)
+  Comp s t      -> TComp s (quote d t)
 
   Ne n sp       -> foldl' TApp (TVar (levelToIndex d <$> n)) (quote d <$> sp)
   String        -> TString
   Thunk t       -> TThunk (quote d t)
 
-eval :: HasCallStack => Subst Type Type -> Snoc (Either Type a) -> TExpr -> Type
+eval :: HasCallStack => Subst Type Kind -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
   go :: Snoc (Either Type a) -> TExpr -> Type
   go env = \case
-    TType            -> Type
-    TInterface       -> Interface
-    TForAll n t b    -> ForAll n (go env t) (\ v -> go (env :> Left v) b)
+    TForAll n t b    -> ForAll n t (\ v -> go (env :> Left v) b)
     TArrow n q a b   -> Arrow n q (go env a) (go env b)
-    TComp s t        -> Comp (IInterface . go env . getInterface <$> s) (go env t)
+    TComp s t        -> Comp s (go env t)
     TApp f a         -> go env f `app` go env a
     TString          -> String
     TVar (Global n)  -> global n

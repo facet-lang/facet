@@ -15,9 +15,8 @@ module Facet.Elab.Type
 
 import           Control.Algebra
 import           Control.Effect.Lens (views)
-import           Control.Effect.State
 import           Control.Effect.Throw
-import           Control.Effect.Writer
+import           Control.Monad (unless)
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
@@ -26,16 +25,15 @@ import           Facet.Core.Module
 import           Facet.Core.Type hiding (global)
 import           Facet.Elab
 import           Facet.Name
-import           Facet.Semiring (Few(..), one, zero, (><<))
+import           Facet.Semiring (Few(..), one, zero)
 import qualified Facet.Surface as S
 import           Facet.Syntax
-import           Facet.Usage (Usage)
 import           GHC.Stack
 
 var :: (HasCallStack, Has (Throw Err) sig m) => (Var Meta Index -> a) -> QName -> IsType m a
 var mk n = IsType $ views context_ (lookupInContext n) >>= \case
-  Just (i, q, _T) -> use i q $> (mk (Free i) ::: _T)
-  _               -> isType (mk . Global <$> global n)
+  Just (i, q, SType _T) -> use i q $> (mk (Free i) ::: _T)
+  _                     -> isType (mk . Global <$> global n)
 
 global :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m QName
 global n = IsType $ do
@@ -47,23 +45,20 @@ global n = IsType $ do
   pure $ q ::: _T
 
 
-_Type :: IsType m TExpr
-_Type = IsType $ pure $ TType ::: Type
+_Type :: IsType m Kind
+_Type = IsType $ pure $ Type ::: Type
 
-_Interface :: IsType m TExpr
-_Interface = IsType $ pure $ TInterface ::: Type
+_Interface :: IsType m Kind
+_Interface = IsType $ pure $ Interface ::: Type
 
 _String :: IsType m (Pos TExpr)
 _String = IsType $ pure $ stringT ::: Type
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m TExpr -> IsType m (Pos TExpr) -> IsType m (Pos TExpr)
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m (Pos TExpr) -> IsType m (Pos TExpr)
 forAll (n ::: t) b = IsType $ do
   t' <- checkIsType (t ::: Type)
-  env <- views context_ toEnv
-  subst <- get
-  let vt = eval subst (Left <$> env) t'
-  b' <- Binding n zero vt |- checkIsType (b ::: Type)
+  b' <- Binding n zero (SType t') |- checkIsType (b ::: Type)
   pure $ thunkT (forAllT n t' (compT [] b')) ::: Type
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
@@ -76,7 +71,7 @@ function :: (HasCallStack, Has (Throw Err) sig m) => Maybe Name ::: (Quantity, I
 function (n ::: (q, a)) = arrow (\ a b -> thunkT (arrowT n q a (compT [] b))) a
 
 
-comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m (Interface TExpr)] -> IsType m (Pos TExpr) -> IsType m (Neg TExpr)
+comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m Interface] -> IsType m (Pos TExpr) -> IsType m (Neg TExpr)
 comp s t = IsType $ do
   s' <- traverse (checkIsType . (::: Interface)) s
   t' <- checkIsType (t ::: Type)
@@ -86,21 +81,21 @@ app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> I
 app mk f a = IsType $ do
   f' ::: _F <- isType f
   -- FIXME: assert that the usage is zero.
-  (_ ::: (q, _A), _B) <- expectFunction "in application" _F
-  a' <- censor @Usage (q ><<) $ checkIsType (a ::: _A)
+  (_ ::: _A, _B) <- expectTypeConstructor "in application" _F
+  a' <- checkIsType (a ::: _A)
   pure $ mk f' a' ::: _B
 
 
-elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m TExpr
+elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m Kind
 elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
-  S.TArrow  n q a b -> arrow (TArrow n (maybe Many interpretMul q)) (elabKind a) (elabKind b)
-  S.TApp f a        -> app TApp (elabKind f) (elabKind a)
-  S.TVar n          -> var TVar n
-  S.KType           -> _Type
-  S.KInterface      -> _Interface
-  S.TComp{}         -> nope
-  S.TForAll{}       -> nope
-  S.TString         -> nope
+  S.TArrow n _ a b -> arrow (KArrow n) (elabKind a) (elabKind b)
+  S.TApp f a       -> app KApp (elabKind f) (elabKind a)
+  S.TVar n         -> KGlobal <$> global n
+  S.KType          -> _Type
+  S.KInterface     -> _Interface
+  S.TComp{}        -> nope
+  S.TForAll{}      -> nope
+  S.TString        -> nope
   where
   nope = IsType $ couldNotSynthesize (show e <> " at the kind level")
 
@@ -125,22 +120,26 @@ interpretMul = \case
   S.One  -> one
 
 
-synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m (Interface TExpr)
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m Interface
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapIsType (pushSpan s) . fmap IInterface $
-  foldl' (app TApp) (mapIsType (pushSpan sh) (var TVar h)) (elabKind <$> sp)
+  foldl' (app KApp) (mapIsType (pushSpan sh) (KGlobal <$> global h)) (elabKind <$> sp)
+
+
+expectTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => String -> Kind -> Elab m (Maybe Name ::: Kind, Kind)
+expectTypeConstructor msg = expectMatch (\case{ SType (KArrow n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _" msg . SType
 
 
 -- Judgements
 
-checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Type -> Elab m a
+checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Kind -> Elab m a
 checkIsType (m ::: _K) = do
   a ::: _KA <- isType m
-  a <$ unify _KA _K
+  a <$ unless (_KA == _K) (couldNotUnify "kind mismatch" (SType _KA) (SType _K))
 
-newtype IsType m a = IsType { isType :: Elab m (a ::: Type) }
+newtype IsType m a = IsType { isType :: Elab m (a ::: Kind) }
 
 instance Functor (IsType m) where
   fmap f (IsType m) = IsType (first f <$> m)
 
-mapIsType :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> IsType m a -> IsType m b
+mapIsType :: (Elab m (a ::: Kind) -> Elab m (b ::: Kind)) -> IsType m a -> IsType m b
 mapIsType f = IsType . f . isType
