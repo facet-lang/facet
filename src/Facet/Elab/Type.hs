@@ -23,7 +23,7 @@ import           Data.Foldable (foldl')
 import           Data.Functor (($>))
 import           Facet.Context
 import           Facet.Core.Module
-import           Facet.Core.Type
+import           Facet.Core.Type hiding (global)
 import           Facet.Elab
 import           Facet.Name
 import           Facet.Semiring (Few(..), one, zero, (><<))
@@ -35,13 +35,16 @@ import           GHC.Stack
 var :: (HasCallStack, Has (Throw Err) sig m) => (Var Meta Index -> a) -> QName -> IsType m a
 var mk n = IsType $ views context_ (lookupInContext n) >>= \case
   Just (i, q, _T) -> use i q $> (mk (Free i) ::: _T)
-  _               -> do
-    q :=: d <- resolveQ n
-    _T <- case d of
-      DData      _ _K -> pure _K
-      DInterface _ _K -> pure _K
-      _               -> freeVariable q
-    pure $ mk (Global q) ::: _T
+  _               -> isType (mk . Global <$> global n)
+
+global :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m QName
+global n = IsType $ do
+  q :=: d <- resolveQ n
+  _T <- case d of
+    DData      _ _K -> pure _K
+    DInterface _ _K -> pure _K
+    _               -> freeVariable q
+  pure $ q ::: _T
 
 
 _Type :: IsType m TExpr
