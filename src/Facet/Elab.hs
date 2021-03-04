@@ -256,7 +256,7 @@ expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Sorted -> Maybe out) ->
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-expectFunction msg = expectMatch (\case{ STerm (Arrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" msg . STerm
+expectFunction = expectType (\case{ Arrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Unification
