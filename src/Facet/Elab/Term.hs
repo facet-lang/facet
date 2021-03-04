@@ -155,11 +155,11 @@ hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
 switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
-as :: (HasCallStack, Algebra sig m) => Check m a ::: Check m TExpr -> Synth m a
+as :: (HasCallStack, Has (Throw Err) sig m) => Check m a ::: IsType m TExpr -> Synth m a
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
-  _T' <- T.eval subst (Left <$> env) <$> check (_T ::: Type)
+  _T' <- T.eval subst (Left <$> env) <$> checkIsType (_T ::: Type)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -215,7 +215,7 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   S.App f a  -> Left <$> app (synthExprNeg f) (checkExprPos a)
-  S.As t _T  -> as (checkExpr t ::: either getNeg getPos <$> switchIsType (elabType _T))
+  S.As t _T  -> as (checkExpr t ::: either getNeg getPos <$> elabType _T)
   S.String s -> Right <$> string s
   where
   nope = Synth $ couldNotSynthesize (show e)
