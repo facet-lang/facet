@@ -152,7 +152,6 @@ printKind Options{ qname } d = go
     C.KArrow (Just n) a b -> parens (ann (intro n d ::: go a)) --> go b
     C.KApp a b            -> group (go a) $$ group (go b)
     C.KGlobal n           -> qname n
-    C.KMeta m             -> meta m
 
 printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))

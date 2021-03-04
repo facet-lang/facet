@@ -55,7 +55,6 @@ data Kind
   | KArrow (Maybe Name) Kind Kind
   | KApp Kind Kind
   | KGlobal QName
-  | KMeta Meta
   deriving (Eq, Ord, Show)
 
 data Type
@@ -96,23 +95,12 @@ occursIn v = go
   where
   go :: Level -> Type -> Bool
   go d = \case
-    ForAll  _ t b -> occursInKind v t || go (succ d) (b (free d))
+    ForAll  _ _ b -> go (succ d) (b (free d))
     Arrow _ _ a b -> go d a || go d b
-    Comp s t      -> any (occursInKind v . getInterface) s || go d t
+    Comp _ t      -> go d t
     Ne h sp       -> Metavar v == h || any (go d) sp
     String        -> False
     Thunk t       -> go d t
-
-occursInKind :: Meta -> Kind -> Bool
-occursInKind v = go
-  where
-  go = \case
-    Type         -> False
-    Interface    -> False
-    KArrow _ a b -> go a || go b
-    KApp a b     -> go a || go b
-    KGlobal{}    -> False
-    KMeta u      -> u == v
 
 
 
