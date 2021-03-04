@@ -163,7 +163,7 @@ app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Ch
 app mk f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
-  -- FIXME: test _A for Ret and extend the sig
+  -- FIXME: test _A for Comp and extend the sig
   a' <- censor @Usage (q ><<) $ check (a ::: _A)
   pure $ mk f' a' ::: _B
 
