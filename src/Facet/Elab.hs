@@ -333,7 +333,7 @@ unify t1 t2 = type' t1 t2
   solve :: HasCallStack => Meta -> Type -> Elab m ()
   solve v t = do
     d <- depth
-    if occursIn (== Metavar v) d t then
+    if occursIn v d t then
       mismatch "infinite type" (Right (metavar v)) t
     else
       gets (lookupMeta @Type @Type v) >>= \case

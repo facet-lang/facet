@@ -86,8 +86,8 @@ unThunk = \case
   _       -> empty
 
 
-occursIn :: (Var Meta Level -> Bool) -> Level -> Type -> Bool
-occursIn p = go
+occursIn :: Meta -> Level -> Type -> Bool
+occursIn v = go
   where
   go :: Level -> Type -> Bool
   go d = \case
@@ -96,7 +96,7 @@ occursIn p = go
     ForAll  _ t b -> go d t || go (succ d) (b (free d))
     Arrow _ _ a b -> go d a || go d b
     Comp s t      -> any (go d . getInterface) s || go d t
-    Ne h sp       -> p h || any (go d) sp
+    Ne h sp       -> Metavar v == h || any (go d) sp
     String        -> False
     Thunk t       -> go d t
 
