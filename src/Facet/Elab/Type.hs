@@ -132,6 +132,8 @@ synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapIsType (pushSpan
   foldl' (app TApp) (mapIsType (pushSpan sh) (var TVar h)) (elabKind <$> sp)
 
 
+-- Judgements
+
 checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Type -> Elab m a
 checkIsType = check . first switchIsType
 
