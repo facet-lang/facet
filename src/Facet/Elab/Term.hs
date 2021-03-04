@@ -184,7 +184,7 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   S.App f a  -> Left <$> app (synthExprNeg f) (checkExprPos a)
-  S.As t _T  -> as (checkExpr t ::: either getNeg getPos <$> switch (elabType _T))
+  S.As t _T  -> as (checkExpr t ::: either getNeg getPos <$> switchIsType (elabType _T))
   S.String s -> Right <$> string s
   where
   nope = Synth $ couldNotSynthesize (show e)
@@ -281,7 +281,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    c_T <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switch (elabType t)) ::: _T)
+    c_T <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switchIsType (elabType t)) ::: _T)
     con' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> returnE (conE (mname :.: n) ts fs))) ::: c_T)
     pure $ n :=: DTerm (Just con') (Pos c_T)
   pure
@@ -297,7 +297,7 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    _T' <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switch (elabType t)) ::: _T)
+    _T' <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switchIsType (elabType t)) ::: _T)
     -- FIXME: check that the interface is a member of the sig.
     op' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (opE (mname :.: n))) ::: _T')
     pure $ n :=: DTerm (Just op') (Pos _T')
@@ -340,7 +340,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- elaborate all the types first
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl ty def))) -> case def of
       S.TypeDef k cs -> Nothing <$ do
-        _T <- runModule $ runElabType $ check (switch (elabKind ty) ::: Type)
+        _T <- runModule $ runElabType $ checkIsType (elabKind ty ::: Type)
         let (cons, elab) = case k of
               S.DataDef      -> (DData,      elabDataDef)
               S.InterfaceDef -> (DInterface, elabInterfaceDef)
@@ -349,7 +349,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
         for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
       S.TermDef t -> do
-        _T <- runModule $ runElabType $ getPos <$> check (switch (elabPosType ty) ::: Type)
+        _T <- runModule $ runElabType $ getPos <$> checkIsType (elabPosType ty ::: Type)
         scope_.decls_.at dname .= Just (DTerm Nothing (Pos _T))
         pure (Just (dname, t ::: _T))
 

@@ -35,8 +35,8 @@ import           Facet.Syntax
 import           Facet.Usage (Usage)
 import           GHC.Stack
 
-var :: (HasCallStack, Has (Throw Err) sig m) => (Var Meta Index -> a) -> QName -> Synth m a
-var mk n = Synth $ views context_ (lookupInContext n) >>= \case
+var :: (HasCallStack, Has (Throw Err) sig m) => (Var Meta Index -> a) -> QName -> IsType m a
+var mk n = IsType $ views context_ (lookupInContext n) >>= \case
   Just (i, q, _T) -> use i q $> (mk (Free i) ::: _T)
   _               -> do
     q :=: d <- resolveQ n
@@ -47,49 +47,49 @@ var mk n = Synth $ views context_ (lookupInContext n) >>= \case
     pure $ mk (Global q) ::: _T
 
 
-_Type :: Synth m TExpr
-_Type = Synth $ pure $ TType ::: Type
+_Type :: IsType m TExpr
+_Type = IsType $ pure $ TType ::: Type
 
-_Interface :: Synth m TExpr
-_Interface = Synth $ pure $ TInterface ::: Type
+_Interface :: IsType m TExpr
+_Interface = IsType $ pure $ TInterface ::: Type
 
-_String :: Synth m (Pos TExpr)
-_String = Synth $ pure $ stringT ::: Type
+_String :: IsType m (Pos TExpr)
+_String = IsType $ pure $ stringT ::: Type
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Synth m TExpr -> Synth m (Neg TExpr) -> Synth m (Neg TExpr)
-forAll (n ::: t) b = Synth $ do
-  t' <- check (switch t ::: Type)
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m TExpr -> IsType m (Neg TExpr) -> IsType m (Neg TExpr)
+forAll (n ::: t) b = IsType $ do
+  t' <- checkIsType (t ::: Type)
   env <- views context_ toEnv
   subst <- get
   let vt = eval subst (Left <$> env) t'
-  b' <- Binding n zero vt |- check (switch b ::: Type)
+  b' <- Binding n zero vt |- checkIsType (b ::: Type)
   pure $ forAllT n t' b' ::: Type
 
-arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Synth m b -> Synth m c
-arrow mk a b = Synth $ do
-  a' <- check (switch a ::: Type)
-  b' <- check (switch b ::: Type)
+arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
+arrow mk a b = IsType $ do
+  a' <- checkIsType (a ::: Type)
+  b' <- checkIsType (b ::: Type)
   pure $ mk a' b' ::: Type
 
 
-comp :: (HasCallStack, Has (Throw Err) sig m) => [Synth m (Interface TExpr)] -> Synth m (Pos TExpr) -> Synth m (Neg TExpr)
-comp s t = Synth $ do
-  s' <- traverse (check . (::: Interface) . switch) s
-  t' <- check (switch t ::: Type)
+comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m (Interface TExpr)] -> IsType m (Pos TExpr) -> IsType m (Neg TExpr)
+comp s t = IsType $ do
+  s' <- traverse (checkIsType . (::: Interface)) s
+  t' <- checkIsType (t ::: Type)
   pure $ compT s' t' ::: Type
 
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Synth m b -> Synth m c
-app mk f a = Synth $ do
-  f' ::: _F <- synth f
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
+app mk f a = IsType $ do
+  f' ::: _F <- isType f
   -- FIXME: assert that the usage is zero.
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
-  a' <- censor @Usage (q ><<) $ check (switch a ::: _A)
+  a' <- censor @Usage (q ><<) $ checkIsType (a ::: _A)
   pure $ mk f' a' ::: _B
 
 
-elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
-elabKind (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m TExpr
+elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TArrow  n q a b -> arrow (TArrow n (maybe Many interpretMul q)) (elabKind a) (elabKind b)
   S.TApp f a        -> app TApp (elabKind f) (elabKind a)
   S.TVar n          -> var TVar n
@@ -99,10 +99,10 @@ elabKind (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TForAll{}       -> nope
   S.TString         -> nope
   where
-  nope = Synth $ couldNotSynthesize (show e <> " at the kind level")
+  nope = IsType $ couldNotSynthesize (show e <> " at the kind level")
 
-elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (Either (Neg TExpr) (Pos TExpr))
-elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Either (Neg TExpr) (Pos TExpr))
+elabType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TForAll n t b   -> Left <$> forAll (n ::: elabKind t) (elabNegType b)
   S.TArrow  n q a b -> Left <$> arrow (arrowT n (maybe Many interpretMul q)) (elabPosType a) (elabNegType b)
   S.TComp s t       -> Left <$> comp (map synthInterface s) (elabPosType t)
@@ -112,12 +112,12 @@ elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.KType           -> nope
   S.KInterface      -> nope
   where
-  nope = Synth $ couldNotSynthesize (show e <> " at the type level")
+  nope = IsType $ couldNotSynthesize (show e <> " at the type level")
 
-elabPosType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (Pos TExpr)
+elabPosType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Pos TExpr)
 elabPosType = fmap (either thunkT id) . elabType
 
-elabNegType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (Neg TExpr)
+elabNegType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Neg TExpr)
 elabNegType = fmap (either id (compT [])) . elabType
 
 
@@ -127,9 +127,9 @@ interpretMul = \case
   S.One  -> one
 
 
-synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (Interface TExpr)
-synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) . fmap IInterface $
-  foldl' (app TApp) (mapSynth (pushSpan sh) (var TVar h)) (elabKind <$> sp)
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m (Interface TExpr)
+synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapIsType (pushSpan s) . fmap IInterface $
+  foldl' (app TApp) (mapIsType (pushSpan sh) (var TVar h)) (elabKind <$> sp)
 
 
 checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Type -> Elab m a
