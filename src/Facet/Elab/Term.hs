@@ -203,13 +203,13 @@ fieldsP = foldr cons
 
 allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
-  (sig, _A') <- expectRet "when checking catch-all pattern" _A
+  (sig, _A') <- expectComp "when checking catch-all pattern" _A
   (PAll n,) <$> (Binding n q (STerm (Thunk (Comp sig _A'))) |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
-  (sig, _A') <- expectRet "when checking effect pattern" _A
+  (sig, _A') <- expectComp "when checking effect pattern" _A
   n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: getPos _T)) (traverse unDTerm =<< lookupInSig n module' graph sig)
   (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (STerm (Thunk (Arrow Nothing Many _A' (Comp [] _A)))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
@@ -403,9 +403,9 @@ expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -
 expectTacitFunction msg = expectMatch (\case{ STerm (Arrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" msg . STerm
 
 -- | Expect a computation type with effects.
-expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Interface], Type)
+expectComp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Interface], Type)
 -- FIXME: expectations should be composable so we can expect a thunk and a comp separately
-expectRet msg = expectMatch (\case{ Comp s t -> pure (s, t) ; _ -> Nothing } <=< unThunk <=< unSTerm) "[_] _" msg . STerm
+expectComp msg = expectMatch (\case{ Comp s t -> pure (s, t) ; _ -> Nothing } <=< unThunk <=< unSTerm) "[_] _" msg . STerm
 
 -- | Expect a value type wrapping a computation.
 expectThunk :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m Type
