@@ -20,6 +20,7 @@ module Facet.Elab
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
+, expectKind
 , expectType
 , expectMatch
 , expectFunction
@@ -245,6 +246,9 @@ warn reason = do
 
 
 -- Patterns
+
+expectKind :: (HasCallStack, Has (Throw Err) sig m) => (Kind -> Maybe out) -> String -> String -> Kind -> Elab m out
+expectKind pat exp s _T = expectMatch (pat <=< unSType) exp s (SType _T)
 
 expectType :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
 expectType pat exp s _T = expectMatch (pat <=< unSTerm) exp s (STerm _T)
