@@ -2,6 +2,7 @@ module Facet.Core.Type
 ( -- * Types
   Sorted(..)
 , unSTerm
+, unSType
 , Interface(..)
 , Kind(..)
 , kglobal
@@ -56,6 +57,9 @@ data Sorted
 
 unSTerm :: Has Empty sig m => Sorted -> m Type
 unSTerm = \case{ STerm ty -> pure ty ; _ -> empty }
+
+unSType :: Has Empty sig m => Sorted -> m Kind
+unSType = \case{ SType ki -> pure ki ; _ -> empty }
 
 
 newtype Interface = IInterface { getInterface :: Kind }
