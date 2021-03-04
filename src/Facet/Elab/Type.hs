@@ -148,6 +148,4 @@ mapIsType :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> IsType m a -> IsTyp
 mapIsType f = IsType . f . isType
 
 switchIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a -> Check m a
-switchIsType m = Check $ \ _K -> do
-  a ::: _KA <- isType m
-  a <$ unify _KA _K
+switchIsType m = Check $ \ _K -> checkIsType (m ::: _K)
