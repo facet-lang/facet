@@ -12,6 +12,7 @@ module Facet.Elab.Term
 , thunk
 , (>>-)
   -- * General combinators
+, hole
 , switch
 , as
   -- * Pattern combinators
@@ -144,6 +145,9 @@ infixl 1 >>-
 
 
 -- General combinators
+
+hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
+hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 
 switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
 switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K

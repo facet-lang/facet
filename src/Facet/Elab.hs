@@ -11,7 +11,6 @@ module Facet.Elab
 , resolveC
 , meta
 , instantiate
-, hole
 , (|-)
   -- * Errors
 , pushSpan
@@ -134,10 +133,6 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap . (. getInterface) $ \case
   _                            -> Alt.empty
   where
   interfaceScope (_ :=: d) = case d of { DInterface defs _ -> pure defs ; _ -> Alt.empty }
-
-
-hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
-hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 
 
 (|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a
