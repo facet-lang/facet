@@ -207,52 +207,50 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 
 -- Expression elaboration
 
-synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m (Either (Neg Expr) (Pos Expr))
-synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.Var n    -> Left <$> Synth (instantiate instE . shiftNeg =<< synth (var n))
+synthExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m (Neg Expr)
+synthExprNeg (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+  S.Var n    -> Synth (instantiate instE =<< synth (returnE <$> var n))
   S.Hole{}   -> nope
   S.Lam{}    -> nope
-  S.App f a  -> Left <$> app (synthExprNeg f) (checkExprPos a)
-  S.As t _T  -> as (checkExpr t ::: either getNeg getPos <$> elabType _T)
-  S.String s -> Right <$> string s
+  S.App f a  -> app (synthExprNeg f) (checkExprPos a)
+  S.As t _T  -> as (checkExprNeg t ::: either getNeg getPos <$> elabType _T)
+  S.String s -> returnE <$> string s
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-synthExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m (Neg Expr)
-synthExprNeg = Synth . fmap (\ (e ::: _T) -> either (::: _T) (shiftNeg . (::: _T)) e) . synth . synthExpr
-
 synthExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m (Pos Expr)
-synthExprPos = Synth . fmap (\ (e ::: _T) -> either (shiftPos . (::: _T)) (::: _T) e) . synth . synthExpr
+synthExprPos (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+  S.Var n    -> var n
+  S.Hole{}   -> nope
+  S.Lam{}    -> nope
+  S.App{}    -> nope
+  S.As t _T  -> as (checkExprPos t ::: either getNeg getPos <$> elabType _T)
+  S.String s -> string s
+  where
+  nope = Synth $ couldNotSynthesize (show e)
 
 
-checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m (Either (Neg Expr) (Pos Expr))
-checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
+checkExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m (Neg Expr)
+checkExprNeg expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Var{}    -> synth
   S.Hole n   -> hole n
-  S.Lam cs   -> Left <$> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs)
+  S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs)
   S.App{}    -> synth
   S.As{}     -> synth
   S.String{} -> synth
   where
-  synth = switch (synthExpr expr)
-
-checkExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m (Neg Expr)
-checkExprNeg expr = Check $ \ _T -> either id (tm . shiftNeg . (::: _T)) <$> check (checkExpr expr ::: _T)
+  synth = switch (synthExprNeg expr)
 
 checkExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m (Pos Expr)
-checkExprPos expr = Check $ \ _T -> either (tm . shiftPos . (::: _T)) id <$> check (checkExpr expr ::: _T)
-
-
-shiftNeg :: Pos Expr ::: Type -> Neg Expr ::: Type
-shiftNeg = \case
-  v ::: Thunk _T -> forceE  v ::: _T
-  v :::       _T -> returnE v ::: Comp [] _T
-
-shiftPos :: Neg Expr ::: Type -> Pos Expr ::: Type
-shiftPos (e ::: _T) = case unreturnE e ::: _T of
-  -- FIXME: Is it ok to unwrap returns like this? Should we always just thunk it?
-  Just v ::: Comp [] _T ->        v ::: _T
-  _      :::         _T -> thunkE e ::: Thunk _T
+checkExprPos expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
+  S.Var{}    -> synth
+  S.Hole n   -> hole n
+  S.Lam cs   -> thunkE <$> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs)
+  S.App{}    -> synth
+  S.As{}     -> synth
+  S.String{} -> synth
+  where
+  synth = switch (synthExprPos expr)
 
 
 -- FIXME: check for unique variable names
