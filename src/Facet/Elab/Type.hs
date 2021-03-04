@@ -70,6 +70,9 @@ arrow mk a b = IsType $ do
   b' <- checkIsType (b ::: Type)
   pure $ mk a' b' ::: Type
 
+function :: (HasCallStack, Has (Throw Err) sig m) => Maybe Name ::: (Quantity, IsType m (Pos TExpr)) -> IsType m (Neg TExpr) -> IsType m (Neg TExpr)
+function (n ::: (q, a)) = arrow (arrowT n q) a
+
 
 comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m (Interface TExpr)] -> IsType m (Pos TExpr) -> IsType m (Neg TExpr)
 comp s t = IsType $ do
@@ -103,7 +106,7 @@ elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
 elabPosType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Pos TExpr)
 elabPosType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TForAll n t b   -> thunkT <$> forAll (n ::: elabKind t) (elabNegType b)
-  S.TArrow  n q a b -> thunkT <$> arrow (arrowT n (maybe Many interpretMul q)) (elabPosType a) (elabNegType b)
+  S.TArrow  n q a b -> thunkT <$> function (n ::: (maybe Many interpretMul q, elabPosType a)) (elabNegType b)
   S.TComp s t       -> thunkT <$> comp (map synthInterface s) (elabPosType t)
   S.TApp f a        -> app appT (elabPosType f) (elabPosType a)
   S.TVar n          -> var varT n
@@ -116,7 +119,7 @@ elabPosType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
 elabNegType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Neg TExpr)
 elabNegType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TForAll n t b   -> forAll (n ::: elabKind t) (elabNegType b)
-  S.TArrow  n q a b -> arrow (arrowT n (maybe Many interpretMul q)) (elabPosType a) (elabNegType b)
+  S.TArrow  n q a b -> function (n ::: (maybe Many interpretMul q, elabPosType a)) (elabNegType b)
   S.TComp s t       -> comp (map synthInterface s) (elabPosType t)
   S.TApp f a        -> compT [] <$> app appT (elabPosType f) (elabPosType a)
   S.TVar n          -> compT [] <$> var varT n
