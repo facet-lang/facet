@@ -133,9 +133,7 @@ synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan 
 
 
 checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Type -> Elab m a
-checkIsType (m ::: _K) = do
-  a ::: _KA <- isType m
-  a <$ unify _KA _K
+checkIsType = check . first switchIsType
 
 newtype IsType m a = IsType { isType :: Elab m (a ::: Type) }
 
