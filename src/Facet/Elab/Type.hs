@@ -80,6 +80,7 @@ comp s t = Synth $ do
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Synth m b -> Synth m c
 app mk f a = Synth $ do
   f' ::: _F <- synth f
+  -- FIXME: assert that the usage is zero.
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
   a' <- censor @Usage (q ><<) $ check (switch a ::: _A)
   pure $ mk f' a' ::: _B
