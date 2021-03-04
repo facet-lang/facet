@@ -25,7 +25,7 @@ import           Data.Functor (($>))
 import           Facet.Context
 import           Facet.Core.Module
 import           Facet.Core.Type
-import           Facet.Elab
+import           Facet.Elab hiding (app)
 import           Facet.Name
 import           Facet.Semiring (Few(..), one, zero, (><<))
 import qualified Facet.Surface as S
@@ -77,8 +77,8 @@ comp s t = Synth $ do
   t' <- check (switch t ::: Type)
   pure $ compT s' t' ::: Type
 
-tapp :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Synth m b -> Synth m c
-tapp mk f a = Synth $ do
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Synth m b -> Synth m c
+app mk f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
   -- FIXME: test _A for Comp and extend the sig
@@ -89,7 +89,7 @@ tapp mk f a = Synth $ do
 elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
 elabKind (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TArrow  n q a b -> arrow (TArrow n (maybe Many interpretMul q)) (elabKind a) (elabKind b)
-  S.TApp f a        -> tapp TApp (elabKind f) (elabKind a)
+  S.TApp f a        -> app TApp (elabKind f) (elabKind a)
   S.TVar n          -> var TVar n
   S.KType           -> _Type
   S.KInterface      -> _Interface
@@ -104,7 +104,7 @@ elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.TForAll n t b   -> Left <$> forAll (n ::: elabKind t) (elabNegType b)
   S.TArrow  n q a b -> Left <$> arrow (arrowT n (maybe Many interpretMul q)) (elabPosType a) (elabNegType b)
   S.TComp s t       -> Left <$> comp (map synthInterface s) (elabPosType t)
-  S.TApp f a        -> Right <$> tapp appT (elabPosType f) (elabPosType a)
+  S.TApp f a        -> Right <$> app appT (elabPosType f) (elabPosType a)
   S.TVar n          -> Right <$> var varT n
   S.TString         -> Right <$> _String
   S.KType           -> nope
@@ -127,7 +127,7 @@ interpretMul = \case
 
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (Interface TExpr)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) . fmap IInterface $
-  foldl' (tapp TApp) (mapSynth (pushSpan sh) (var TVar h)) (elabKind <$> sp)
+  foldl' (app TApp) (mapSynth (pushSpan sh) (var TVar h)) (elabKind <$> sp)
 
 
 newtype IsType m a = IsType { isType :: Elab m (a ::: Type) }
