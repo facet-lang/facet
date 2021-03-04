@@ -99,13 +99,13 @@ lam cs = Check $ \ _T -> do
   lamE <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
-app mk f a = Synth $ do
+app :: (HasCallStack, Has (Throw Err) sig m) => Synth m (Neg Expr) -> Check m (Pos Expr) -> Synth m (Neg Expr)
+app f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
   -- FIXME: test _A for Comp and extend the sig
   a' <- censor @Usage (q ><<) $ check (a ::: _A)
-  pure $ mk f' a' ::: _B
+  pure $ appE f' a' ::: _B
 
 
 string :: Text -> Synth m (Pos Expr)
@@ -183,7 +183,7 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> Left <$> Synth (instantiate instE . shiftNeg =<< synth (var n))
   S.Hole{}   -> nope
   S.Lam{}    -> nope
-  S.App f a  -> Left <$> app appE (synthExprNeg f) (checkExprPos a)
+  S.App f a  -> Left <$> app (synthExprNeg f) (checkExprPos a)
   S.As t _T  -> as (checkExpr t ::: either getNeg getPos <$> switch (elabType _T))
   S.String s -> Right <$> string s
   where
