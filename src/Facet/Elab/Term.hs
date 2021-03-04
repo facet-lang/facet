@@ -223,7 +223,7 @@ synthExprNeg (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   S.App f a  -> app (synthExprNeg f) (checkExprPos a)
-  S.As t _T  -> as (checkExprNeg t ::: getPos <$> elabPosType _T)
+  S.As t _T  -> as (checkExprNeg t ::: getPos <$> elabType _T)
   S.String s -> returnE <$> string s
   where
   nope = Synth $ couldNotSynthesize (show e)
@@ -234,7 +234,7 @@ synthExprPos (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   S.App{}    -> nope
-  S.As t _T  -> as (checkExprPos t ::: getPos <$> elabPosType _T)
+  S.As t _T  -> as (checkExprPos t ::: getPos <$> elabType _T)
   S.String s -> string s
   where
   nope = Synth $ couldNotSynthesize (show e)
@@ -318,7 +318,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    c_T <- runElabType $ pushSpan (S.ann t) $ getPos <$> check (abstractType (elabPosType t) ::: _T)
+    c_T <- runElabType $ pushSpan (S.ann t) $ getPos <$> check (abstractType (elabType t) ::: _T)
     con' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> returnE (conE (mname :.: n) ts fs))) ::: c_T)
     pure $ n :=: DTerm (Just con') (Pos c_T)
   pure
@@ -334,7 +334,7 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    _T' <- runElabType $ pushSpan (S.ann t) $ getPos <$> check (abstractType (elabPosType t) ::: _T)
+    _T' <- runElabType $ pushSpan (S.ann t) $ getPos <$> check (abstractType (elabType t) ::: _T)
     -- FIXME: check that the interface is a member of the sig.
     op' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (opE (mname :.: n))) ::: _T')
     pure $ n :=: DTerm (Just op') (Pos _T')
@@ -386,7 +386,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
         for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
       S.TermDef t -> do
-        _T <- runModule $ runElabType $ getPos <$> checkIsType (elabPosType ty ::: Type)
+        _T <- runModule $ runElabType $ getPos <$> checkIsType (elabType ty ::: Type)
         scope_.decls_.at dname .= Just (DTerm Nothing (Pos _T))
         pure (Just (dname, t ::: _T))
 

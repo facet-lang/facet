@@ -6,7 +6,7 @@ module Facet.Elab.Type
 , _String
 , forAll
 , elabKind
-, elabPosType
+, elabType
   -- * Judgements
 , checkIsType
 , IsType(..)
@@ -102,12 +102,12 @@ elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   nope = IsType $ couldNotSynthesize (show e <> " at the kind level")
 
 
-elabPosType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Pos TExpr)
-elabPosType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
-  S.TForAll n t b   -> forAll (n ::: elabKind t) (elabPosType b)
-  S.TArrow  n q a b -> function (n ::: (maybe Many interpretMul q, elabPosType a)) (elabPosType b)
-  S.TComp s t       -> thunkT <$> comp (map synthInterface s) (elabPosType t)
-  S.TApp f a        -> app appT (elabPosType f) (elabPosType a)
+elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Pos TExpr)
+elabType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
+  S.TForAll n t b   -> forAll (n ::: elabKind t) (elabType b)
+  S.TArrow  n q a b -> function (n ::: (maybe Many interpretMul q, elabType a)) (elabType b)
+  S.TComp s t       -> thunkT <$> comp (map synthInterface s) (elabType t)
+  S.TApp f a        -> app appT (elabType f) (elabType a)
   S.TVar n          -> var varT n
   S.TString         -> _String
   S.KType           -> nope
