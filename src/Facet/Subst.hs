@@ -38,4 +38,4 @@ metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)
 
 
 class Substitutable a v t | a -> v t where
-  (|->) :: Subst v t -> a -> a
+  applySubst :: Subst v t -> a -> a
