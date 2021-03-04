@@ -6,7 +6,6 @@ module Facet.Elab.Type
 , _String
 , forAll
 , elabKind
-, elabType
 , elabPosType
 , elabNegType
   -- * Judgements
