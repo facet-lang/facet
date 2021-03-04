@@ -23,10 +23,8 @@ module Facet.Elab.Term
 , allP
 , effP
   -- * Expression elaboration
-, synthExpr
 , synthExprNeg
 , synthExprPos
-, checkExpr
 , checkExprNeg
 , checkExprPos
 , bindPattern
