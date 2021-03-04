@@ -407,8 +407,6 @@ expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (
 -- FIXME: expectations should be composable so we can expect a thunk and a comp separately
 expectRet msg = expectMatch (\case{ Comp s t -> pure (s, t) ; _ -> Nothing } <=< unThunk <=< unSTerm) "[_] _" msg . STerm
 
-unSTerm = \case{ STerm ty -> Just ty ; _ -> Nothing }
-
 -- | Expect a value type wrapping a computation.
 expectThunk :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m Type
 expectThunk msg = expectMatch (unThunk <=< unSTerm) "thunk _" msg . STerm

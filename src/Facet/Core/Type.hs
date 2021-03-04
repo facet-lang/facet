@@ -1,6 +1,7 @@
 module Facet.Core.Type
 ( -- * Types
   Sorted(..)
+, unSTerm
 , Interface(..)
 , Kind(..)
 , kglobal
@@ -52,6 +53,9 @@ import Prelude hiding (lookup)
 data Sorted
   = STerm Type
   | SType Kind
+
+unSTerm :: Has Empty sig m => Sorted -> m Type
+unSTerm = \case{ STerm ty -> pure ty ; _ -> empty }
 
 
 newtype Interface = IInterface { getInterface :: Kind }
