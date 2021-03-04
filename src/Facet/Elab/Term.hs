@@ -37,6 +37,9 @@ module Facet.Elab.Term
   -- * Modules
 , elabModule
   -- * Judgements
+, check
+, Check(..)
+, mapCheck
 , Synth(..)
 , mapSynth
 , bind
@@ -419,6 +422,18 @@ withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 
 -- Judgements
 
+check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
+check (m ::: _T) = case unComp =<< unThunk _T of
+  Just (sig, _) -> extendSig sig $ runCheck m _T
+  Nothing       -> runCheck m _T
+
+newtype Check m a = Check { runCheck :: Type -> Elab m a }
+  deriving (Applicative, Functor) via ReaderC Type (Elab m)
+
+mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
+mapCheck f m = Check $ \ _T -> f (runCheck m _T)
+
+
 newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
 
 instance Functor (Synth m) where
@@ -436,3 +451,7 @@ newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check m x ->
 
 mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
 mapBind f m = Bind $ \ q _A b -> mapCheck f (runBind m q _A b)
+
+
+switchIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a -> Check m a
+switchIsType m = Check $ \ _K -> checkIsType (m ::: _K)

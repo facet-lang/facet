@@ -13,7 +13,6 @@ module Facet.Elab.Type
 , checkIsType
 , IsType(..)
 , mapIsType
-, switchIsType
 ) where
 
 import           Control.Algebra
@@ -146,6 +145,3 @@ instance Functor (IsType m) where
 
 mapIsType :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> IsType m a -> IsType m b
 mapIsType f = IsType . f . isType
-
-switchIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a -> Check m a
-switchIsType m = Check $ \ _K -> checkIsType (m ::: _K)

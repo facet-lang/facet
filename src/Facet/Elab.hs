@@ -41,10 +41,6 @@ module Facet.Elab
 , runElabTerm
 , runElabSynth
 , runElabSynthType
-  -- * Judgements
-, check
-, Check(..)
-, mapCheck
 ) where
 
 import Control.Algebra
@@ -377,17 +373,3 @@ runElabSynth scale = runElabWith scale (\ subst (e ::: _T) -> pure (e ::: T.eval
 
 runElabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (TExpr ::: Type) -> m (Type ::: Type)
 runElabSynthType scale = runElabWith scale (\ subst (_T ::: _K) -> pure (T.eval subst Nil _T ::: T.eval subst Nil (T.quote 0 _K)))
-
-
--- Judgements
-
-check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
-check (m ::: _T) = case unComp =<< unThunk _T of
-  Just (sig, _) -> extendSig sig $ runCheck m _T
-  Nothing       -> runCheck m _T
-
-newtype Check m a = Check { runCheck :: Type -> Elab m a }
-  deriving (Applicative, Functor) via ReaderC Type (Elab m)
-
-mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
-mapCheck f m = Check $ \ _T -> f (runCheck m _T)
