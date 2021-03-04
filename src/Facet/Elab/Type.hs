@@ -53,32 +53,32 @@ _String :: Synth m (Pos TExpr)
 _String = Synth $ pure $ stringT ::: Type
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check m TExpr -> Check m (Neg TExpr) -> Synth m (Neg TExpr)
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Synth m TExpr -> Synth m (Neg TExpr) -> Synth m (Neg TExpr)
 forAll (n ::: t) b = Synth $ do
-  t' <- check (t ::: Type)
+  t' <- check (switch t ::: Type)
   env <- views context_ toEnv
   subst <- get
   let vt = eval subst (Left <$> env) t'
-  b' <- Binding n zero vt |- check (b ::: Type)
+  b' <- Binding n zero vt |- check (switch b ::: Type)
   pure $ forAllT n t' b' ::: Type
 
-arrow :: Algebra sig m => (a -> b -> c) -> Check m a -> Check m b -> Synth m c
+arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Synth m b -> Synth m c
 arrow mk a b = Synth $ do
-  a' <- check (a ::: Type)
-  b' <- check (b ::: Type)
+  a' <- check (switch a ::: Type)
+  b' <- check (switch b ::: Type)
   pure $ mk a' b' ::: Type
 
 
-comp :: Algebra sig m => [Check m (Interface TExpr)] -> Check m (Pos TExpr) -> Synth m (Neg TExpr)
+comp :: (HasCallStack, Has (Throw Err) sig m) => [Synth m (Interface TExpr)] -> Synth m (Pos TExpr) -> Synth m (Neg TExpr)
 comp s t = Synth $ do
-  s' <- traverse (check . (::: Interface)) s
-  t' <- check (t ::: Type)
+  s' <- traverse (check . (::: Interface) . switch) s
+  t' <- check (switch t ::: Type)
   pure $ compT s' t' ::: Type
 
 
 elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
 elabKind (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.TArrow  n q a b -> arrow (TArrow n (maybe Many interpretMul q)) (switch (elabKind a)) (switch (elabKind b))
+  S.TArrow  n q a b -> arrow (TArrow n (maybe Many interpretMul q)) (elabKind a) (elabKind b)
   S.TApp f a        -> app TApp (elabKind f) (switch (elabKind a))
   S.TVar n          -> var TVar n
   S.KType           -> _Type
@@ -91,9 +91,9 @@ elabKind (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
 
 elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m (Either (Neg TExpr) (Pos TExpr))
 elabType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.TForAll n t b   -> Left <$> forAll (n ::: switch (elabKind t)) (switch (elabNegType b))
-  S.TArrow  n q a b -> Left <$> arrow (arrowT n (maybe Many interpretMul q)) (switch (elabPosType a)) (switch (elabNegType b))
-  S.TComp s t       -> Left <$> comp (map (switch . synthInterface) s) (switch (elabPosType t))
+  S.TForAll n t b   -> Left <$> forAll (n ::: elabKind t) (elabNegType b)
+  S.TArrow  n q a b -> Left <$> arrow (arrowT n (maybe Many interpretMul q)) (elabPosType a) (elabNegType b)
+  S.TComp s t       -> Left <$> comp (map synthInterface s) (elabPosType t)
   S.TApp f a        -> Right <$> app appT (elabPosType f) (switch (elabPosType a))
   S.TVar n          -> Right <$> var varT n
   S.TString         -> Right <$> _String
