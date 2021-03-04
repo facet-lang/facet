@@ -9,12 +9,16 @@ module Facet.Elab.Type
 , elabType
 , elabPosType
 , elabNegType
+  -- * Judgements
+, IsType(..)
+, mapIsType
 ) where
 
 import           Control.Algebra
 import           Control.Effect.Lens (views)
 import           Control.Effect.State
 import           Control.Effect.Throw
+import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
 import           Facet.Context
@@ -114,3 +118,12 @@ interpretMul = \case
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m (Interface TExpr)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) . fmap IInterface $
   foldl' (app TApp) (mapSynth (pushSpan sh) (var TVar h)) (switch . elabKind <$> sp)
+
+
+newtype IsType m a = IsType { isType :: Elab m (a ::: Type) }
+
+instance Functor (IsType m) where
+  fmap f (IsType m) = IsType (first f <$> m)
+
+mapIsType :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> IsType m a -> IsType m b
+mapIsType f = IsType . f . isType
