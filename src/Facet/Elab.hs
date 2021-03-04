@@ -14,7 +14,6 @@ module Facet.Elab
 , meta
 , instantiate
 , hole
-, app
 , (|-)
   -- * Errors
 , pushSpan
@@ -158,14 +157,6 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap . (. getInterface) $ \case
 
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
 hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
-
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
-app mk f a = Synth $ do
-  f' ::: _F <- synth f
-  (_ ::: (q, _A), _B) <- expectFunction "in application" _F
-  -- FIXME: test _A for Comp and extend the sig
-  a' <- censor @Usage (q ><<) $ check (a ::: _A)
-  pure $ mk f' a' ::: _B
 
 
 (|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a

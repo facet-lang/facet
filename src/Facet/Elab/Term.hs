@@ -39,6 +39,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Throw
+import           Control.Effect.Writer
 import           Control.Lens (at, ix)
 import           Control.Monad ((<=<))
 import           Data.Foldable
@@ -56,7 +57,7 @@ import           Facet.Elab
 import           Facet.Elab.Type
 import           Facet.Graph
 import           Facet.Name
-import           Facet.Semiring (Few(..), zero)
+import           Facet.Semiring (Few(..), zero, (><<))
 import           Facet.Snoc
 import           Facet.Source (Source)
 import qualified Facet.Surface as S
@@ -96,6 +97,15 @@ lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m
 lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking clause" _T
   lamE <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
+
+
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
+app mk f a = Synth $ do
+  f' ::: _F <- synth f
+  (_ ::: (q, _A), _B) <- expectFunction "in application" _F
+  -- FIXME: test _A for Comp and extend the sig
+  a' <- censor @Usage (q ><<) $ check (a ::: _A)
+  pure $ mk f' a' ::: _B
 
 
 string :: Text -> Synth m (Pos Expr)
