@@ -22,7 +22,6 @@ module Facet.Elab
 , freeVariable
 , expectKind
 , expectType
-, expectFunction
   -- * Warnings
 , Warn(..)
 , WarnReason(..)
@@ -254,9 +253,6 @@ expectType pat exp s _T = expectMatch (pat <=< unSTerm) exp s (STerm _T)
 
 expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Sorted -> Maybe out) -> String -> String -> Sorted -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
-
-expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-expectFunction = expectType (\case{ Arrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Unification
