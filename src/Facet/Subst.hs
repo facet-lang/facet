@@ -1,3 +1,4 @@
+{-# LANGUAGE FunctionalDependencies #-}
 module Facet.Subst
 ( -- * Substitutions
   Subst(..)
@@ -6,6 +7,8 @@ module Facet.Subst
 , solveMeta
 , declareMeta
 , metas
+  -- * Applying substitutions
+, Substitutable(..)
 ) where
 
 import qualified Data.IntMap as IntMap
@@ -32,3 +35,7 @@ declareMeta _K (Subst metas) = (Subst (IntMap.insert v (Nothing ::: _K) metas), 
 
 metas :: Subst v t -> [Meta :=: Maybe v ::: t]
 metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)
+
+
+class Substitutable a v t | a -> v t where
+  (|->) :: Subst v t -> a -> a
