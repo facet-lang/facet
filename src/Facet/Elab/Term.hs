@@ -395,6 +395,9 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 -- Errors
 
+-- FIXME: rename all the expect* actions to assert*.
+-- FIXME: can we get away without the extra message?
+-- FIXME: can we replace these by unification? Maybe not if we want to get names and quantities out?
 expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Name ::: Kind, Type -> Type)
 expectQuantifier = expectType (\case{ ForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
 
