@@ -65,6 +65,7 @@ import Facet.Semiring
 import Facet.Snoc
 import Facet.Source (Source, slice)
 import Facet.Span (Span(..))
+import Facet.Subst
 import Facet.Syntax
 import Facet.Usage as Usage
 import Facet.Vars as Vars
@@ -177,20 +178,20 @@ data ErrReason
   | Hole Name Type
   | Invariant String
 
-applySubst :: Subst Type Type -> Err -> Err
-applySubst subst e@Err{ reason, context } = e{ reason = reason' }
-  where
-  reason' = case reason of
-    FreeVariable{}       -> reason
-    AmbiguousName{}      -> reason
-    CouldNotSynthesize{} -> reason
-    ResourceMismatch{}   -> reason
-    Mismatch m exp act   -> Mismatch m (roundtrip <$> exp) (roundtrip act)
-    Hole n t             -> Hole n (roundtrip t)
-    Invariant{}          -> reason
-  env = toEnv context
-  d = level context
-  roundtrip = T.eval subst (Left <$> env) . T.quote d
+instance Substitutable Err Type Type where
+  applySubst subst e@Err{ reason, context } = e{ reason = reason' }
+    where
+    reason' = case reason of
+      FreeVariable{}       -> reason
+      AmbiguousName{}      -> reason
+      CouldNotSynthesize{} -> reason
+      ResourceMismatch{}   -> reason
+      Mismatch m exp act   -> Mismatch m (roundtrip <$> exp) (roundtrip act)
+      Hole n t             -> Hole n (roundtrip t)
+      Invariant{}          -> reason
+    env = toEnv context
+    d = level context
+    roundtrip = T.eval subst (Left <$> env) . T.quote d
 
 
 -- FIXME: apply the substitution before showing this to the user
