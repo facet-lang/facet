@@ -120,10 +120,10 @@ synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan 
   foldl' (app TApp) (mapSynth (pushSpan sh) (var TVar h)) (switch . elabKind <$> sp)
 
 
-newtype Is t m a = Is { is :: Elab m (a ::: Type) }
+newtype Is t m a = Is { is :: Elab m (a ::: t) }
 
 instance Functor (Is t m) where
   fmap f (Is m) = Is (first f <$> m)
 
-mapIs :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Is t m a -> Is t m b
+mapIs :: (Elab m (a ::: t) -> Elab m (b ::: t)) -> Is t m a -> Is t m b
 mapIs f = Is . f . is
