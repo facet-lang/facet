@@ -396,20 +396,20 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 -- Errors
 
 expectQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Name ::: Kind, Type -> Type)
-expectQuantifier msg = expectMatch (\case{ STerm (ForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" msg . STerm
+expectQuantifier = expectType (\case{ ForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
 expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ((Quantity, Type), Type)
-expectTacitFunction msg = expectMatch (\case{ STerm (Arrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" msg . STerm
+expectTacitFunction = expectType (\case{ Arrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _"
 
 -- | Expect a computation type with effects.
 expectComp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Interface], Type)
 -- FIXME: expectations should be composable so we can expect a thunk and a comp separately
-expectComp msg = expectMatch (\case{ Comp s t -> pure (s, t) ; _ -> Nothing } <=< unThunk <=< unSTerm) "[_] _" msg . STerm
+expectComp = expectType (\case{ Comp s t -> pure (s, t) ; _ -> Nothing } <=< unThunk) "[_] _"
 
 -- | Expect a value type wrapping a computation.
 expectThunk :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m Type
-expectThunk msg = expectMatch (unThunk <=< unSTerm) "thunk _" msg . STerm
+expectThunk = expectType unThunk "thunk _"
 
 
 -- Elaboration

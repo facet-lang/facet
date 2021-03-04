@@ -126,7 +126,7 @@ synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapIsType (pushSpan
 
 
 expectTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => String -> Kind -> Elab m (Maybe Name ::: Kind, Kind)
-expectTypeConstructor msg = expectMatch (\case{ SType (KArrow n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _" msg . SType
+expectTypeConstructor = expectKind (\case{ KArrow n t b -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Judgements

@@ -22,7 +22,6 @@ module Facet.Elab
 , freeVariable
 , expectKind
 , expectType
-, expectMatch
 , expectFunction
   -- * Warnings
 , Warn(..)
