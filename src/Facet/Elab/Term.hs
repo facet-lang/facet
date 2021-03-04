@@ -273,7 +273,7 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstractType :: (HasCallStack, Has (Throw Err) sig m) => Check m (Neg TExpr) -> Check m (Neg TExpr)
+abstractType :: (HasCallStack, Has (Throw Err) sig m) => IsType m (Neg TExpr) -> Check m (Neg TExpr)
 abstractType body = go
   where
   go = Check $ \case
@@ -281,7 +281,7 @@ abstractType body = go
       level <- depth
       b' <- Binding n zero a |- check (go ::: b)
       pure $ forAllT n (T.quote level a) b'
-    _                    -> check (body ::: Type)
+    _                    -> checkIsType (body ::: Type)
 
 abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc (Pos Expr) -> Neg Expr) -> Check m (Neg Expr)
 abstractTerm body = go Nil Nil
@@ -312,7 +312,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    c_T <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switchIsType (elabType t)) ::: _T)
+    c_T <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> elabType t) ::: _T)
     con' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> returnE (conE (mname :.: n) ts fs))) ::: c_T)
     pure $ n :=: DTerm (Just con') (Pos c_T)
   pure
@@ -328,7 +328,7 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
-    _T' <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> switchIsType (elabType t)) ::: _T)
+    _T' <- runElabType $ pushSpan (S.ann t) $ shiftPosTExpr . getNeg <$> check (abstractType (either id (compT []) <$> elabType t) ::: _T)
     -- FIXME: check that the interface is a member of the sig.
     op' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (opE (mname :.: n))) ::: _T')
     pure $ n :=: DTerm (Just op') (Pos _T')
@@ -451,7 +451,3 @@ newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check m x ->
 
 mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
 mapBind f m = Bind $ \ q _A b -> mapCheck f (runBind m q _A b)
-
-
-switchIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a -> Check m a
-switchIsType m = Check $ \ _K -> checkIsType (m ::: _K)
