@@ -114,6 +114,7 @@ library
     Facet.Source
     Facet.Span
     Facet.Style
+    Facet.Subst
     Facet.Surface
     Facet.Syntax
     Facet.Timing
