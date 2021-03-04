@@ -5,8 +5,6 @@
 module Facet.Elab
 ( -- * General
   unify
-, switch
-, as
 , lookupInContext
 , lookupInSig
 , resolveQ
@@ -48,11 +46,6 @@ module Facet.Elab
 , check
 , Check(..)
 , mapCheck
-, Synth(..)
-, mapSynth
-, bind
-, Bind(..)
-, mapBind
 ) where
 
 import Control.Algebra
@@ -64,7 +57,6 @@ import Control.Carrier.Writer.Church
 import Control.Effect.Lens (views)
 import Control.Lens (Lens', lens)
 import Control.Monad (guard, unless)
-import Data.Bifunctor (first)
 import Data.Foldable (asum)
 import Data.Semialign.Exts
 import Facet.Context as Context
@@ -107,17 +99,6 @@ instantiate inst = go
       go (inst e (TVar (Metavar m)) ::: _B (metavar m))
     _              -> pure $ e ::: _T
 
-
-switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
-switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
-
-as :: (HasCallStack, Algebra sig m) => Check m a ::: Check m TExpr -> Synth m a
-as (m ::: _T) = Synth $ do
-  env <- views context_ toEnv
-  subst <- get
-  _T' <- T.eval subst (Left <$> env) <$> check (_T ::: Type)
-  a <- check (m ::: _T')
-  pure $ a ::: _T'
 
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
@@ -415,22 +396,3 @@ newtype Check m a = Check { runCheck :: Type -> Elab m a }
 
 mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
 mapCheck f m = Check $ \ _T -> f (runCheck m _T)
-
-
-newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
-
-instance Functor (Synth m) where
-  fmap f (Synth m) = Synth (first f <$> m)
-
-mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m b
-mapSynth f = Synth . f . synth
-
-
-bind :: Bind m a ::: (Quantity, Type) -> Check m b -> Check m (a, b)
-bind (p ::: (q, _T)) = runBind p q _T
-
-newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check m x -> Check m (a, x) }
-  deriving (Functor)
-
-mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
-mapBind f m = Bind $ \ q _A b -> mapCheck f (runBind m q _A b)

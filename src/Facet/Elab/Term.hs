@@ -11,6 +11,9 @@ module Facet.Elab.Term
 , force
 , thunk
 , (>>-)
+  -- * General combinators
+, switch
+, as
   -- * Pattern combinators
 , wildcardP
 , varP
@@ -32,23 +35,30 @@ module Facet.Elab.Term
 , elabTermDef
   -- * Modules
 , elabModule
+  -- * Judgements
+, Synth(..)
+, mapSynth
+, bind
+, Bind(..)
+, mapBind
 ) where
 
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (view, (.=))
+import           Control.Effect.Lens (view, views, (.=))
 import           Control.Effect.Throw
 import           Control.Effect.Writer
 import           Control.Lens (at, ix)
 import           Control.Monad ((<=<))
+import           Data.Bifunctor (first)
 import           Data.Foldable
 import           Data.Functor
 import           Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context (Binding(..))
+import           Facet.Context (Binding(..), toEnv)
 import           Facet.Core.Module as Module
 import           Facet.Core.Term as E
 import           Facet.Core.Type as T hiding (global)
@@ -131,6 +141,20 @@ v >>- b = Synth $ do
   pure $ bindE v' b' ::: _T
 
 infixl 1 >>-
+
+
+-- General combinators
+
+switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
+switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
+
+as :: (HasCallStack, Algebra sig m) => Check m a ::: Check m TExpr -> Synth m a
+as (m ::: _T) = Synth $ do
+  env <- views context_ toEnv
+  subst <- get
+  _T' <- T.eval subst (Left <$> env) <$> check (_T ::: Type)
+  a <- check (m ::: _T')
+  pure $ a ::: _T'
 
 
 -- Pattern combinators
@@ -387,3 +411,24 @@ runModule m = do
 
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
 withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
+
+
+-- Judgements
+
+newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
+
+instance Functor (Synth m) where
+  fmap f (Synth m) = Synth (first f <$> m)
+
+mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m b
+mapSynth f = Synth . f . synth
+
+
+bind :: Bind m a ::: (Quantity, Type) -> Check m b -> Check m (a, b)
+bind (p ::: (q, _T)) = runBind p q _T
+
+newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check m x -> Check m (a, x) }
+  deriving (Functor)
+
+mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
+mapBind f m = Bind $ \ q _A b -> mapCheck f (runBind m q _A b)
