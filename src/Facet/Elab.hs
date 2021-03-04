@@ -10,7 +10,6 @@ module Facet.Elab
 , resolveQ
 , resolveC
 , meta
-, instantiate
 , (|-)
   -- * Errors
 , pushSpan
@@ -83,16 +82,6 @@ import Prelude hiding (span, zipWith)
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
 meta :: Has (State Subst) sig m => Type -> m Meta
 meta _T = state (declareMeta _T)
-
-
-instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a ::: Type)
-instantiate inst = go
-  where
-  go (e ::: _T) = case _T of
-    ForAll _ _T _B -> do
-      m <- meta _T
-      go (inst e (TVar (Metavar m)) ::: _B (metavar m))
-    _              -> pure $ e ::: _T
 
 
 resolveWith
