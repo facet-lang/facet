@@ -10,8 +10,8 @@ module Facet.Elab.Type
 , elabPosType
 , elabNegType
   -- * Judgements
-, IsType(..)
-, mapIsType
+, Is(..)
+, mapIs
 ) where
 
 import           Control.Algebra
@@ -120,10 +120,10 @@ synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan 
   foldl' (app TApp) (mapSynth (pushSpan sh) (var TVar h)) (switch . elabKind <$> sp)
 
 
-newtype IsType m a = IsType { isType :: Elab m (a ::: Type) }
+newtype Is t m a = Is { is :: Elab m (a ::: Type) }
 
-instance Functor (IsType m) where
-  fmap f (IsType m) = IsType (first f <$> m)
+instance Functor (Is t m) where
+  fmap f (Is m) = Is (first f <$> m)
 
-mapIsType :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> IsType m a -> IsType m b
-mapIsType f = IsType . f . isType
+mapIs :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Is t m a -> Is t m b
+mapIs f = Is . f . is
