@@ -108,7 +108,7 @@ tlam b = Check $ \ _T -> do
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m (Neg Expr))] -> Check m (Neg Expr)
 lam cs = Check $ \ _T -> do
-  (_A, _B) <- expectTacitFunction "when checking clause" _T
+  (_A, _B) <- expectTacitFunction "when checking function" _T
   lamE <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
