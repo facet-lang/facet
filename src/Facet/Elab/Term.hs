@@ -99,17 +99,19 @@ var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabConte
     synth $ global (n ::: getPos _T)
 
 
-tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m (Neg Expr) -> Check m (Neg Expr)
+-- | Elaborate a thunked type lambda from its body.
+tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m (Neg Expr) -> Check m (Pos Expr)
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
   d <- depth
   b' <- Binding n zero (SType _A) |- check (b ::: _B (free d))
-  pure $ tlamE b'
+  pure $ thunkE (tlamE b')
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m (Neg Expr))] -> Check m (Neg Expr)
+-- | Elaborate a thunked lambda from its clauses.
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m (Neg Expr))] -> Check m (Pos Expr)
 lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking function" _T
-  lamE <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
+  thunkE . lamE <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
 app :: (HasCallStack, Has (Throw Err) sig m) => Synth m (Neg Expr) -> Check m (Pos Expr) -> Synth m (Neg Expr)
@@ -244,7 +246,7 @@ checkExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.
 checkExprNeg expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Var{}    -> synth
   S.Hole n   -> hole n
-  S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs)
+  S.Lam cs   -> returnE <$> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs)
   S.App{}    -> synth
   S.As{}     -> synth
   S.String{} -> synth
@@ -255,7 +257,7 @@ checkExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.
 checkExprPos expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Var{}    -> synth
   S.Hole n   -> hole n
-  S.Lam cs   -> thunkE <$> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs)
+  S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs)
   S.App{}    -> synth
   S.As{}     -> synth
   S.String{} -> synth
@@ -286,19 +288,19 @@ abstractType body = go
     KArrow (Just n) a b -> thunkT . forAllT n a . compT [] <$> (Binding n zero (SType a) |- go b)
     _                   -> checkIsType (body ::: Type)
 
-abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc (Pos Expr) -> Neg Expr) -> Check m (Neg Expr)
+abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc (Pos Expr) -> Pos Expr) -> Check m (Pos Expr)
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
     ForAll n                  _T   _B -> do
       d <- depth
-      check (tlam (go (ts :> d) fs) ::: ForAll n _T _B)
+      check (tlam (returnE <$> go (ts :> d) fs) ::: ForAll n _T _B)
     Arrow  n q (Thunk (Comp s _A)) _B -> do
       d <- depth
-      check (lam [(PEff <$> allP (fromMaybe __ n), go ts (fs :> d))] ::: Arrow n q (Thunk (Comp s _A)) _B)
+      check (lam [(PEff <$> allP (fromMaybe __ n), returnE <$> go ts (fs :> d))] ::: Arrow n q (Thunk (Comp s _A)) _B)
     Arrow  n q                _A   _B -> do
       d <- depth
-      check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: Arrow n q _A _B)
+      check (lam [(PVal <$> varP (fromMaybe __ n), returnE <$> go ts (fs :> d))] ::: Arrow n q _A _B)
     _T                                -> do
       d <- depth
       pure $ body (TVar . Free . levelToIndex d <$> ts) (varE . Free . levelToIndex d <$> fs)
@@ -316,7 +318,7 @@ elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
     c_T <- runElabType $ pushSpan (S.ann t) $ getPos <$> abstractType (elabType t) _T
-    con' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (\ ts fs -> returnE (conE (mname :.: n) ts fs))) ::: c_T)
+    con' <- runElabTerm $ pushSpan s $ check (abstractTerm (conE (mname :.: n)) ::: c_T)
     pure $ n :=: DTerm (Just con') (Pos c_T)
   pure
     $ (dname :=: DData (scopeFromList cs) _T)
@@ -333,7 +335,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
     _T' <- runElabType $ pushSpan (S.ann t) $ getPos <$> abstractType (elabType t) _T
     -- FIXME: check that the interface is a member of the sig.
-    op' <- runElabTerm $ pushSpan s $ check (thunk (abstractTerm (opE (mname :.: n))) ::: _T')
+    op' <- runElabTerm $ pushSpan s $ check (abstractTerm (\ ts fs -> thunkE (opE (mname :.: n) ts fs)) ::: _T')
     pure $ n :=: DTerm (Just op') (Pos _T')
   pure [ dname :=: DInterface (scopeFromList cs) _T ]
 
@@ -344,13 +346,14 @@ elabTermDef
   => Type
   -> S.Ann S.Expr
   -> m (Pos Expr)
-elabTermDef _T expr@(S.Ann s _ _) = do
-  runElabTerm $ pushSpan s $ check (thunk (bind (checkExprNeg expr)) ::: _T)
+-- FIXME: this is wrong; we shouldn’t just indiscriminately thunk everything
+elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ thunkE <$> check (bind (checkExprNeg expr) ::: _T)
   where
+  -- bind :: Check m (Neg Expr) -> Check m (Neg Expr)
   bind k = Check $ \ _T -> case _T of
-    ForAll{}                                -> check (tlam (bind k) ::: _T)
-    Arrow (Just n) q (Thunk (Comp s _A)) _B -> check (lam [(PEff <$> allP n, bind k)] ::: Arrow Nothing q (Thunk (Comp s _A)) _B)
-    Arrow (Just n) q                _A   _B -> check (lam [(PVal <$> varP n, bind k)] ::: Arrow Nothing q _A _B)
+    ForAll{}                                -> returnE <$> check (tlam (bind k) ::: _T)
+    Arrow (Just n) q (Thunk (Comp s _A)) _B -> returnE <$> check (lam [(PEff <$> allP n, bind k)] ::: Arrow Nothing q (Thunk (Comp s _A)) _B)
+    Arrow (Just n) q                _A   _B -> returnE <$> check (lam [(PVal <$> varP n, bind k)] ::: Arrow Nothing q _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
