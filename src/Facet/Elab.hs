@@ -322,7 +322,7 @@ unify t1 t2 = type' t1 t2
   flexFlex v1 v2
     | v1 == v2  = pure ()
     | otherwise = do
-      (t1, t2) <- gets (\ s -> (lookupMeta v1 s, lookupMeta v2 s))
+      (t1, t2) <- gets (\ s -> (lookupMeta @Type @Type v1 s, lookupMeta v2 s))
       case (t1, t2) of
         (Just t1, Just t2) -> type' (tm t1) (tm t2)
         (Just t1, Nothing) -> type' (metavar v2) (tm t1)
