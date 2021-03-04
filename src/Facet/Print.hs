@@ -150,8 +150,7 @@ printKind Options{ qname } d = go
     C.Interface           -> annotate Type $ pretty "Interface"
     C.KArrow Nothing  a b -> go a --> go b
     C.KArrow (Just n) a b -> parens (ann (intro n d ::: go a)) --> go b
-    C.KApp a b            -> group (go a) $$ group (go b)
-    C.KGlobal n           -> qname n
+    C.KSpine h sp         -> group (qname h) $$* (group . go <$> sp)
 
 printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))

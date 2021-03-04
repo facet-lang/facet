@@ -89,8 +89,8 @@ app mk f a = IsType $ do
 elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m Kind
 elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TArrow n _ a b -> arrow (KArrow n) (elabKind a) (elabKind b)
-  S.TApp f a       -> app KApp (elabKind f) (elabKind a)
-  S.TVar n         -> KGlobal <$> global n
+  S.TApp f a       -> app kapp (elabKind f) (elabKind a)
+  S.TVar n         -> kglobal <$> global n
   S.KType          -> _Type
   S.KInterface     -> _Interface
   S.TComp{}        -> nope
@@ -122,7 +122,7 @@ interpretMul = \case
 
 synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m Interface
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapIsType (pushSpan s) . fmap IInterface $
-  foldl' (app KApp) (mapIsType (pushSpan sh) (KGlobal <$> global h)) (elabKind <$> sp)
+  foldl' (app kapp) (mapIsType (pushSpan sh) (kglobal <$> global h)) (elabKind <$> sp)
 
 
 expectTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => String -> Kind -> Elab m (Maybe Name ::: Kind, Kind)

@@ -2,6 +2,8 @@ module Facet.Core.Type
 ( -- * Types
   Interface(..)
 , Kind(..)
+, kglobal
+, kapp
 , Type(..)
 , global
 , free
@@ -53,9 +55,16 @@ data Kind
   = Type
   | Interface
   | KArrow (Maybe Name) Kind Kind
-  | KApp Kind Kind
-  | KGlobal QName
+  | KSpine QName (Snoc Kind)
   deriving (Eq, Ord, Show)
+
+kglobal :: QName -> Kind
+kglobal n = KSpine n Nil
+
+kapp :: Kind -> Kind -> Kind
+kapp (KSpine h as) a = KSpine h (as :> a)
+kapp _             _ = error "invalid kind application"
+
 
 data Type
   -- Negative

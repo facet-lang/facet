@@ -113,8 +113,7 @@ lookupInContext (m:.:n)
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
 lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Interface] -> m (QName :=: Def)
 lookupInSig (m :.: n) mod graph = fmap asum . fmap . (. getInterface) $ \case
-  -- FIXME: what about effects with operands? this seems incomplete
-  KGlobal q@(m':.:_) -> do
+  KSpine q@(m':.:_) _ -> do
     guard (m == Nil || m == m')
     defs <- fmap tm . unDInterface . def =<< lookupQ graph mod q
     _ :=: d <- lookupScope n defs
