@@ -10,6 +10,7 @@ module Facet.Elab.Type
 , elabPosType
 , elabNegType
   -- * Judgements
+, checkIsType
 , IsType(..)
 , mapIsType
 ) where
@@ -129,6 +130,11 @@ synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> 
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) . fmap IInterface $
   foldl' (app TApp) (mapSynth (pushSpan sh) (var TVar h)) (elabKind <$> sp)
 
+
+checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Type -> Elab m a
+checkIsType (m ::: _K) = do
+  a ::: _KA <- isType m
+  a <$ unify _KA _K
 
 newtype IsType m a = IsType { isType :: Elab m (a ::: Type) }
 
