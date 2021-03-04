@@ -177,18 +177,19 @@ data ErrReason
   | Hole Name Type
   | Invariant String
 
-applySubst :: Context -> Subst Type Type -> ErrReason -> ErrReason
-applySubst ctx subst r = case r of
-  FreeVariable{}       -> r
-  AmbiguousName{}      -> r
-  CouldNotSynthesize{} -> r
-  ResourceMismatch{}   -> r
-  Mismatch m exp act   -> Mismatch m (roundtrip <$> exp) (roundtrip act)
-  Hole n t             -> Hole n (roundtrip t)
-  Invariant{}          -> r
+applySubst :: Subst Type Type -> Err -> Err
+applySubst subst e@Err{ reason, context } = e{ reason = reason' }
   where
-  env = toEnv ctx
-  d = level ctx
+  reason' = case reason of
+    FreeVariable{}       -> reason
+    AmbiguousName{}      -> reason
+    CouldNotSynthesize{} -> reason
+    ResourceMismatch{}   -> reason
+    Mismatch m exp act   -> Mismatch m (roundtrip <$> exp) (roundtrip act)
+    Hole n t             -> Hole n (roundtrip t)
+    Invariant{}          -> reason
+  env = toEnv context
+  d = level context
   roundtrip = T.eval subst (Left <$> env) . T.quote d
 
 
@@ -198,7 +199,7 @@ err reason = do
   StaticContext{ source } <- ask
   ElabContext{ context, spans } <- ask
   subst <- get
-  throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
+  throwError $ applySubst subst $ Err (maybe source (slice source) (peek spans)) reason context subst GHC.Stack.callStack
 
 mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String Type -> Type -> Elab m a
 mismatch msg exp act = withFrozenCallStack $ err $ Mismatch msg exp act
