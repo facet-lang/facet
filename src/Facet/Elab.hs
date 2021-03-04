@@ -114,12 +114,10 @@ lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Interfac
 lookupInSig (m :.: n) mod graph = fmap asum . fmap . (. getInterface) $ \case
   T.Ne (Global q@(m':.:_)) Nil -> do
     guard (m == Nil || m == m')
-    defs <- interfaceScope =<< lookupQ graph mod q
+    defs <- fmap tm . unDInterface . def =<< lookupQ graph mod q
     _ :=: d <- lookupScope n defs
     pure $ m':.:n :=: d
   _                            -> Alt.empty
-  where
-  interfaceScope (_ :=: d) = case d of { DInterface defs _ -> pure defs ; _ -> Alt.empty }
 
 
 (|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a
