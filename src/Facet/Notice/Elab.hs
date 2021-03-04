@@ -9,6 +9,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
+import           Facet.Core.Type (Sorted(..))
 import           Facet.Elab as Elab
 import qualified Facet.Name as Name
 import           Facet.Notice as Notice

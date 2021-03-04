@@ -3,7 +3,6 @@ module Facet.Context
   Quantity
 , Context(..)
 , Binding(..)
-, Sorted(..)
 , empty
 , (|>)
 , level
@@ -36,10 +35,6 @@ data Binding = Binding
   , quantity :: Quantity
   , type'    :: Sorted
   }
-
-data Sorted
-  = STerm Type
-  | SType Kind
 
 -- | A precondition for use of this instance is that one only ever '<>'s pairs of 'Binding's assigning the same type to the same variable.
 instance Semigroup Binding where

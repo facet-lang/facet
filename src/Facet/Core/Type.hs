@@ -1,6 +1,7 @@
 module Facet.Core.Type
 ( -- * Types
-  Interface(..)
+  Sorted(..)
+, Interface(..)
 , Kind(..)
 , kglobal
 , kapp
@@ -47,6 +48,11 @@ import GHC.Stack
 import Prelude hiding (lookup)
 
 -- Types
+
+data Sorted
+  = STerm Type
+  | SType Kind
+
 
 newtype Interface = IInterface { getInterface :: Kind }
   deriving (Eq, Ord, Show)
