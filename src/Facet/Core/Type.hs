@@ -39,16 +39,16 @@ module Facet.Core.Type
 , metas
 ) where
 
-import           Control.Effect.Empty
-import           Data.Either (fromLeft)
-import           Data.Foldable (foldl')
-import qualified Data.IntMap as IntMap
-import           Facet.Name
-import           Facet.Snoc
-import           Facet.Syntax
-import           Facet.Usage
-import           GHC.Stack
-import           Prelude hiding (lookup)
+import Control.Effect.Empty
+import Data.Either (fromLeft)
+import Data.Foldable (foldl')
+import Facet.Name
+import Facet.Snoc
+import Facet.Subst
+import Facet.Syntax
+import Facet.Usage
+import GHC.Stack
+import Prelude hiding (lookup)
 
 -- Types
 
@@ -219,7 +219,7 @@ quote d = \case
   String        -> TString
   Thunk t       -> TThunk (quote d t)
 
-eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
+eval :: HasCallStack => Subst Type Type -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
   go :: Snoc (Either Type a) -> TExpr -> Type
   go env = \case
@@ -234,27 +234,3 @@ eval subst = go where
     TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TVar (Metavar m) -> maybe (metavar m) tm (lookupMeta m subst)
     TThunk t         -> Thunk (go env t)
-
-
--- Substitution
-
-newtype Subst = Subst (IntMap.IntMap (Maybe Type ::: Type))
-  deriving (Monoid, Semigroup)
-
-insert :: Meta -> Maybe Type ::: Type -> Subst -> Subst
-insert (Meta i) t (Subst metas) = Subst (IntMap.insert i t metas)
-
-lookupMeta :: Meta -> Subst -> Maybe (Type ::: Type)
-lookupMeta (Meta i) (Subst metas) = do
-  v ::: _T <- IntMap.lookup i metas
-  (::: _T) <$> v
-
-solveMeta :: Meta -> Type -> Subst -> Subst
-solveMeta (Meta i) t (Subst metas) = Subst (IntMap.update (\ (_ ::: _T) -> Just (Just t ::: _T)) i metas)
-
-declareMeta :: Type -> Subst -> (Subst, Meta)
-declareMeta _K (Subst metas) = (Subst (IntMap.insert v (Nothing ::: _K) metas), Meta v) where
-  v = maybe 0 (succ . fst . fst) (IntMap.maxViewWithKey metas)
-
-metas :: Subst -> [Meta :=: Maybe Type ::: Type]
-metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)
