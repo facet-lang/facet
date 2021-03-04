@@ -30,13 +30,6 @@ module Facet.Core.Type
   -- * Quotation
 , quote
 , eval
-  -- * Substitution
-, Subst(..)
-, insert
-, lookupMeta
-, solveMeta
-, declareMeta
-, metas
 ) where
 
 import Control.Effect.Empty

@@ -323,7 +323,7 @@ unify t1 t2 = type' t1 t2
   flexFlex v1 v2
     | v1 == v2  = pure ()
     | otherwise = do
-      (t1, t2) <- gets (\ s -> (T.lookupMeta v1 s, T.lookupMeta v2 s))
+      (t1, t2) <- gets (\ s -> (lookupMeta v1 s, lookupMeta v2 s))
       case (t1, t2) of
         (Just t1, Just t2) -> type' (ty t1) (ty t2)
         (Just t1, Nothing) -> type' (metavar v2) (tm t1)
@@ -336,8 +336,8 @@ unify t1 t2 = type' t1 t2
     if occursIn (== Metavar v) d t then
       mismatch "infinite type" (Right (metavar v)) t
     else
-      gets (T.lookupMeta @Type @Type v) >>= \case
-        Nothing          -> modify (T.solveMeta @Type @Type v t)
+      gets (lookupMeta @Type @Type v) >>= \case
+        Nothing          -> modify (solveMeta @Type @Type v t)
         Just (t' ::: _T) -> type' t' t
 
 
