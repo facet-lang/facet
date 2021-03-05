@@ -51,11 +51,11 @@ _Type = IsType $ pure $ Type ::: Type
 _Interface :: IsType m Kind
 _Interface = IsType $ pure $ Interface ::: Type
 
-_String :: IsType m (Pos TExpr)
+_String :: IsType m PTExpr
 _String = IsType $ pure $ stringT ::: Type
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m (Pos TExpr) -> IsType m (Pos TExpr)
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m PTExpr -> IsType m PTExpr
 forAll (n ::: t) b = IsType $ do
   t' <- checkIsType (t ::: Type)
   b' <- Binding n zero (SType t') |- checkIsType (b ::: Type)
@@ -67,11 +67,11 @@ arrow mk a b = IsType $ do
   b' <- checkIsType (b ::: Type)
   pure $ mk a' b' ::: Type
 
-function :: (HasCallStack, Has (Throw Err) sig m) => Maybe Name ::: (Quantity, IsType m (Pos TExpr)) -> IsType m (Pos TExpr) -> IsType m (Pos TExpr)
+function :: (HasCallStack, Has (Throw Err) sig m) => Maybe Name ::: (Quantity, IsType m PTExpr) -> IsType m PTExpr -> IsType m PTExpr
 function (n ::: (q, a)) = arrow (\ a b -> thunkT (arrowT n q a (compT [] b))) a
 
 
-comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m Interface] -> IsType m (Pos TExpr) -> IsType m (Neg TExpr)
+comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m Interface] -> IsType m PTExpr -> IsType m NTExpr
 comp s t = IsType $ do
   s' <- traverse (checkIsType . (::: Interface)) s
   t' <- checkIsType (t ::: Type)
@@ -100,7 +100,7 @@ elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   nope = IsType $ couldNotSynthesize (show e <> " at the kind level")
 
 
-elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Pos TExpr)
+elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m PTExpr
 elabType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TForAll n t b   -> forAll (n ::: elabKind t) (elabType b)
   S.TArrow  n q a b -> function (n ::: (maybe Many interpretMul q, elabType a)) (elabType b)

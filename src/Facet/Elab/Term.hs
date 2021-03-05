@@ -282,7 +282,7 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstractType :: (HasCallStack, Has (Throw Err) sig m) => IsType m (Pos TExpr) -> Kind -> Elab m (Pos TExpr)
+abstractType :: (HasCallStack, Has (Throw Err) sig m) => IsType m PTExpr -> Kind -> Elab m PTExpr
 abstractType body = go
   where
   go = \case
