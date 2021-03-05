@@ -35,8 +35,6 @@ module Facet.Core.Type
 , unarrowT
 , uncompT
 , unthunkT
-  -- * Shifts
-, shiftPosTExpr
   -- * Quotation
 , quote
 , eval
@@ -157,22 +155,6 @@ data TExpr
   | TThunk TExpr
   deriving (Eq, Ord, Show)
 
--- | The polarity of a 'TExpr'. Returns in 'Maybe' because some 'TExpr's (e.g. 'TType') are kinds, which aren’t polarized. 'False' is negative, 'True' is positive.
-polarity :: TExpr -> Maybe Bool
-polarity = \case
-  -- FIXME: it would be nice for this to be more nuanced, e.g. the @nil@ list constructor of type @{ A : Type } -> List A@ could reasonably be positive since the forall doesn’t do computation
-  TForAll{}      -> Just False
-  -- the body is either a kind (@'Nothing'@) or negative (@'Just' 'False'@), so we just use its polarity for the arrow as a whole
-  TArrow _ _ _ b -> polarity b
-  TComp{}        -> Just False
-
-  -- FIXME: this will need to be reconsidered if we ever allow type constructors with arbitrary polarities, or e.g. embed the kind arrow as a symbol
-  TVar{}         -> Just True
-  -- FIXME: List is neutral (being as it’s Type -> Type), List A is positive, and there’s no guarantee that the neutral term is saturated
-  TApp{}         -> Just True
-  TString        -> Just True
-  TThunk{}       -> Just True
-
 
 -- Negative type constructors
 
@@ -217,14 +199,6 @@ unthunkT :: Has Empty sig m => Pos TExpr -> m (Neg TExpr)
 unthunkT = \case
   Pos (TThunk _T) -> pure (Neg _T)
   _               -> empty
-
-
--- Shifting
-
-shiftPosTExpr :: TExpr -> TExpr
-shiftPosTExpr t
-  | Just False <- polarity t = TThunk t
-  | otherwise                =        t
 
 
 -- Quotation
