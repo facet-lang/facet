@@ -322,18 +322,16 @@ abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc PTExpr -> Snoc PE
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
-    ForAll n                         _T   _B -> do
+    ForAll n          _T _B  -> do
       d <- depth
       check (tlam (go (ts :> d) fs) ::: ForAll n _T _B)
-    Thunk (Arrow  n q (Thunk (Comp s _A)) _B) -> do
+    Thunk (Arrow  n q _A _B) -> do
       d <- depth
-      check (thunk (lam [(PEff <$> allP (fromMaybe __ n), shift (go ts (fs :> d)))]) ::: Thunk (Arrow n q (Thunk (Comp s _A)) _B))
-    Thunk (Arrow  n q                _A   _B) -> do
-      d <- depth
-      check (thunk (lam [(PVal <$> varP (fromMaybe __ n), shift (go ts (fs :> d)))]) ::: Thunk (Arrow n q _A _B))
-    _T                                        -> do
+      check (thunk (lam [(pat _A (fromMaybe __ n), shift (go ts (fs :> d)))]) ::: Thunk (Arrow n q _A _B))
+    _T                       -> do
       d <- depth
       pure $ body (TVar . Free . levelToIndex d <$> ts) (varE . Free . levelToIndex d <$> fs)
+  pat = \case{ Thunk Comp{} -> fmap PEff . allP ; _ -> fmap PVal . varP }
   shift e = Check (\ _T -> do
     (_, _T') <- assertComp "when abstracting a term" _T
     returnE <$> check (e ::: _T'))
