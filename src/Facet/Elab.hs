@@ -261,13 +261,13 @@ warn reason = do
 -- Patterns
 
 expectKind :: (HasCallStack, Has (Throw Err) sig m) => (Kind -> Maybe out) -> String -> String -> Kind -> Elab m out
-expectKind pat exp s _T = expectMatch (pat <=< unEK) exp s (EK _T)
+expectKind pat exp s _T = withFrozenCallStack $ expectMatch (pat <=< unEK) exp s (EK _T)
 
 expectNType :: (HasCallStack, Has (Throw Err) sig m) => (NType -> Maybe out) -> String -> String -> NType -> Elab m out
-expectNType pat exp s _T = expectMatch (pat <=< unEN) exp s (EN _T)
+expectNType pat exp s _T = withFrozenCallStack $ expectMatch (pat <=< unEN) exp s (EN _T)
 
 expectPType :: (HasCallStack, Has (Throw Err) sig m) => (PType -> Maybe out) -> String -> String -> PType -> Elab m out
-expectPType pat exp s _T = expectMatch (pat <=< unEP) exp s (EP _T)
+expectPType pat exp s _T = withFrozenCallStack $ expectMatch (pat <=< unEP) exp s (EP _T)
 
 expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (ErrType -> Maybe out) -> String -> String -> ErrType -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
