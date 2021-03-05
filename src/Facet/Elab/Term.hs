@@ -132,9 +132,11 @@ string s = Synth $ pure $ stringE s ::: T.String
 
 -- Polarity shifts
 
--- FIXME: this should probably be synthesized
-force :: Check PType m PExpr -> Check NType m NExpr
-force t = Check $ \ _T -> forceE <$> check (t ::: Thunk _T)
+force :: (HasCallStack, Has (Throw Err) sig m) => Synth PType m PExpr -> Synth NType m NExpr
+force t = Synth $ do
+  t' ::: _T <- synth t
+  _T' <- expectThunk "in force of thunk" _T
+  pure $ forceE t' ::: _T'
 
 thunk :: (HasCallStack, Has (Throw Err) sig m) => Check NType m NExpr -> Check PType m PExpr
 thunk c = Check $ fmap thunkE . check . (c :::) <=< expectThunk "when thunking computation"
