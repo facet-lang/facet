@@ -57,7 +57,7 @@ import           Control.Effect.Throw
 import           Control.Effect.Writer
 import           Control.Lens (at, ix)
 import           Control.Monad ((<=<))
-import           Data.Bifunctor (bimap, first)
+import           Data.Bifunctor (first)
 import           Data.Foldable
 import           Data.Functor
 import           Data.Maybe (catMaybes, fromMaybe)
@@ -138,6 +138,12 @@ force t = Check $ \ _T -> forceE <$> check (t ::: Thunk _T)
 
 thunk :: (HasCallStack, Has (Throw Err) sig m) => Check NType m NExpr -> Check PType m PExpr
 thunk c = Check $ fmap thunkE . check . (c :::) <=< expectThunk "when thunking computation"
+
+return' :: Algebra sig m => Synth PType m PExpr -> Synth NType m NExpr
+return' v = Synth $ do
+  v' ::: _V <- synth v
+  sig <- view sig_
+  pure $ returnE v' ::: Comp sig _V
 
 (>>-) :: Has (Throw Err) sig m => Synth NType m NExpr -> (Synth PType m PExpr -> Synth NType m NExpr) -> Synth NType m NExpr
 v >>- b = Synth $ do
@@ -249,7 +255,7 @@ synthExprNeg expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.As t _T  -> asN (checkExprNeg t ::: elabNType _T)
   S.String{} -> shift
   where
-  shift = Synth (bimap returnE (Comp []) <$> synth (synthExprPos expr))
+  shift = return' (synthExprPos expr)
   nope = Synth $ couldNotSynthesize (show e)
 
 synthExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth PType m PExpr
