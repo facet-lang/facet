@@ -265,7 +265,7 @@ synthExprPos (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> Synth (instantiate instE =<< synth (var n))
   S.Hole{}   -> nope
   S.Lam{}    -> nope
-  S.App{}    -> nope -- FIXME: should we try to shift?
+  S.App{}    -> nope
   S.As t _T  -> asP (checkExprPos t ::: elabPType _T)
   S.String s -> string s
   where
@@ -288,7 +288,7 @@ checkExprPos expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Var{}    -> synth
   S.Hole n   -> holeP n
   S.Lam cs   -> thunk (lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs))
-  S.App{}    -> synth
+  S.App{}    -> thunk (checkExprNeg expr)
   S.As{}     -> synth
   S.String{} -> synth
   where
