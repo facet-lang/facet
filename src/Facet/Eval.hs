@@ -25,12 +25,12 @@ import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Foldable (foldl')
 import Data.Function
-import Data.Semialign.Exts (zipWithM)
 import Data.Text (Text)
 import Facet.Core.Module
 import Facet.Core.Term
 import Facet.Graph
 import Facet.Name hiding (Op)
+import Facet.Semialign (zipWithM)
 import Facet.Snoc
 import Facet.Syntax
 import GHC.Stack (HasCallStack)

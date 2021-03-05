@@ -66,7 +66,6 @@ import Control.Lens (Lens', lens)
 import Control.Monad (guard, unless)
 import Data.Bifunctor (first)
 import Data.Foldable (asum)
-import Data.Semialign.Exts
 import Facet.Context as Context
 import Facet.Core.Module
 import Facet.Core.Term as E
@@ -75,6 +74,7 @@ import Facet.Effect.Write
 import Facet.Graph as Graph
 import Facet.Lens
 import Facet.Name hiding (L, R)
+import Facet.Semialign
 import Facet.Semiring
 import Facet.Snoc
 import Facet.Source (Source, slice)

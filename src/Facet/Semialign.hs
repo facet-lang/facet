@@ -1,4 +1,4 @@
-module Data.Semialign.Exts
+module Facet.Semialign
 ( zipWithM
 , zipWithM_
 , module S

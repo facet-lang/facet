@@ -60,7 +60,6 @@ common common
 library
   import: common
   exposed-modules:
-    Data.Semialign.Exts
     Facet.Carrier.Error.Lens
     Facet.Carrier.Output.IO
     Facet.Carrier.Parser.Church
@@ -107,6 +106,7 @@ library
     Facet.REPL
     Facet.REPL.Parser
     Facet.Run
+    Facet.Semialign
     Facet.Semiring
     Facet.Show
     Facet.Snoc
