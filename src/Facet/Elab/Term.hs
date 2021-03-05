@@ -248,14 +248,13 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 
 synthExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth NType m NExpr
 synthExprNeg expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
-  S.Var{}    -> shift
+  S.Var{}    -> return' (synthExprPos expr)
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   S.App f a  -> app (synthExprNeg f) (checkExprPos a)
   S.As t _T  -> asN (checkExprNeg t ::: elabNType _T)
-  S.String{} -> shift
+  S.String{} -> return' (synthExprPos expr)
   where
-  shift = return' (synthExprPos expr)
   nope = Synth $ couldNotSynthesize (show e)
 
 synthExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth PType m PExpr
