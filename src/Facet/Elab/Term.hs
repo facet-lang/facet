@@ -81,13 +81,13 @@ import           GHC.Stack
 -- Term combinators
 
 -- FIXME: how the hell are we supposed to handle instantiation?
-global :: QName ::: Type -> Synth m (Pos Expr)
+global :: QName ::: Type -> Synth Type m (Pos Expr)
 global (q ::: _T) = Synth $ pure $ varE (Global q) ::: _T
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m (Pos Expr)
+var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth Type m (Pos Expr)
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, q, STerm _T) <- lookupInContext n context                      -> use i q $> (varE (Free i) ::: _T)
   | Just (_ :=: DTerm (Just x) _T) <- lookupInSig n module' graph sig -> pure (x ::: getPos _T)
@@ -114,7 +114,7 @@ lam cs = Check $ \ _T -> do
   thunkE . lamE <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
-app :: (HasCallStack, Has (Throw Err) sig m) => Synth m (Neg Expr) -> Check Type m (Pos Expr) -> Synth m (Neg Expr)
+app :: (HasCallStack, Has (Throw Err) sig m) => Synth Type m (Neg Expr) -> Check Type m (Pos Expr) -> Synth Type m (Neg Expr)
 app f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
@@ -123,7 +123,7 @@ app f a = Synth $ do
   pure $ appE f' a' ::: _B
 
 
-string :: Text -> Synth m (Pos Expr)
+string :: Text -> Synth Type m (Pos Expr)
 string s = Synth $ pure $ stringE s ::: T.String
 
 
@@ -135,7 +135,7 @@ force t = Check $ \ _T -> forceE <$> check (t ::: Thunk _T)
 thunk :: (HasCallStack, Has (Throw Err) sig m) => Check Type m (Neg Expr) -> Check Type m (Pos Expr)
 thunk c = Check $ fmap thunkE . check . (c :::) <=< expectThunk "when thunking computation"
 
-(>>-) :: Has (Throw Err) sig m => Synth m (Neg Expr) -> (Synth m (Pos Expr) -> Synth m (Neg Expr)) -> Synth m (Neg Expr)
+(>>-) :: Has (Throw Err) sig m => Synth Type m (Neg Expr) -> (Synth Type m (Pos Expr) -> Synth Type m (Neg Expr)) -> Synth Type m (Neg Expr)
 v >>- b = Synth $ do
   v' ::: _V <- synth v
   d <- depth
@@ -162,10 +162,10 @@ instantiate inst = go
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check Type m a
 hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 
-switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check Type m a
+switch :: (HasCallStack, Has (Throw Err) sig m) => Synth Type m a -> Check Type m a
 switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
-as :: (HasCallStack, Has (Throw Err) sig m) => Check Type m a ::: IsType m TExpr -> Synth m a
+as :: (HasCallStack, Has (Throw Err) sig m) => Check Type m a ::: IsType m TExpr -> Synth Type m a
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
@@ -219,7 +219,7 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 
 -- Expression elaboration
 
-synthExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m (Neg Expr)
+synthExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth Type m (Neg Expr)
 synthExprNeg (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> Synth (instantiate instE =<< synth (returnE <$> var n))
   S.Hole{}   -> nope
@@ -230,7 +230,7 @@ synthExprNeg (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   where
   nope = Synth $ couldNotSynthesize (show e)
 
-synthExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m (Pos Expr)
+synthExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth Type m (Pos Expr)
 synthExprPos (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> var n
   S.Hole{}   -> nope
@@ -444,12 +444,12 @@ mapCheck :: (Elab m a -> Elab m b) -> Check t m a -> Check t m b
 mapCheck f m = Check $ \ _T -> f (runCheck m _T)
 
 
-newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
+newtype Synth t m a = Synth { synth :: Elab m (a ::: t) }
 
-instance Functor (Synth m) where
+instance Functor (Synth t m) where
   fmap f (Synth m) = Synth (first f <$> m)
 
-mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m b
+mapSynth :: (Elab m (a ::: t) -> Elab m (b ::: u)) -> Synth t m a -> Synth u m b
 mapSynth f = Synth . f . synth
 
 
