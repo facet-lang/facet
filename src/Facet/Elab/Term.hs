@@ -109,7 +109,7 @@ tlam b = Check $ \ _T -> do
   pure $ thunkE (tlamE b')
 
 -- | Elaborate a thunked lambda from its clauses.
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check NType m NExpr)] -> Check PType m PExpr
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind PType m (Pattern Name), Check NType m NExpr)] -> Check PType m PExpr
 lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking function" =<< expectThunk "when checking function" _T
   thunkE . lamE <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
@@ -177,13 +177,13 @@ as (m ::: _T) = Synth $ do
 
 -- Pattern combinators
 
-wildcardP :: Bind m (ValuePattern Name)
+wildcardP :: Bind PType m (ValuePattern Name)
 wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 
-varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (ValuePattern Name)
+varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind PType m (ValuePattern Name)
 varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q (STerm _A) |- check (b ::: _B))
 
-conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
+conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind PType m (ValuePattern Name)] -> Bind PType m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   n' :=: _ ::: _T <- traverse (instantiate const . forcing) =<< resolveC n
   (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify (returnOf _A') _A *> check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
@@ -195,7 +195,7 @@ conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
     Thunk _T -> e ::: _T
     _        -> e ::: _T
 
-fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind m [a] -> [Bind m a] -> Bind m [a]
+fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind PType m [a] -> [Bind PType m a] -> Bind PType m [a]
 fieldsP = foldr cons
   where
   cons p ps = Bind $ \ q _A b -> Check $ \ _B -> do
@@ -204,12 +204,12 @@ fieldsP = foldr cons
     pure (p':ps', b')
 
 
-allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (EffectPattern Name)
+allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind PType m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _A') <- expectComp "when checking catch-all pattern" =<< expectThunk "when checking catch-all pattern" _A
   (PAll n,) <$> (Binding n q (STerm (Thunk (Comp sig _A'))) |- check (b ::: _B))
 
-effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
+effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind PType m (ValuePattern Name)] -> Name -> Bind PType m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectComp "when checking effect pattern" =<< expectThunk "when checking effect pattern" _A
@@ -267,7 +267,7 @@ checkExprPos expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind m (Pattern Name)
+bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind PType m (Pattern Name)
 bindPattern = go where
   go = withSpanB $ \case
     S.PVal p -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unComp =<< unThunk _T)))
@@ -426,7 +426,7 @@ runModule m = do
   mod <- get
   runReader mod m
 
-withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
+withSpanB :: Algebra sig m => (a -> Bind t m b) -> S.Ann a -> Bind t m b
 withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 
 extendSigFor :: Has (Reader ElabContext) sig m => NType -> m a -> m a
@@ -456,11 +456,11 @@ mapSynth :: (Elab m (a ::: t) -> Elab m (b ::: u)) -> Synth t m a -> Synth u m b
 mapSynth f = Synth . f . synth
 
 
-bind :: Bind m a ::: (Quantity, PType) -> Check NType m b -> Check NType m (a, b)
+bind :: Bind t m a ::: (Quantity, t) -> Check NType m b -> Check NType m (a, b)
 bind (p ::: (q, _T)) = runBind p q _T
 
-newtype Bind m a = Bind { runBind :: forall x . Quantity -> PType -> Check NType m x -> Check NType m (a, x) }
+newtype Bind t m a = Bind { runBind :: forall x . Quantity -> t -> Check NType m x -> Check NType m (a, x) }
   deriving (Functor)
 
-mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
+mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind t m a -> Bind t m b
 mapBind f m = Bind $ \ q _A b -> mapCheck f (runBind m q _A b)
