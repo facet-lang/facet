@@ -64,8 +64,8 @@ printErrReason opts ctx = group . \case
       Zero -> pretty "0"
       One  -> pretty "1"
       Many -> pretty "arbitrarily many"
-  Mismatch exp act
-    -> hardline <> pretty "expected:" <> print exp'
+  Mismatch exp act       -> reflow "mismatch"
+    <> hardline <> pretty "expected:" <> print exp'
     <> hardline <> pretty "  actual:" <> print act'
     where
     exp' = either reflow printErrType exp
