@@ -437,7 +437,7 @@ extendSigFor _T m = case _T of
 
 -- Judgements
 
-check :: (Check Type m a ::: Type) -> Elab m a
+check :: (Check t m a ::: t) -> Elab m a
 check (m ::: _T) = runCheck m _T
 
 newtype Check t m a = Check { runCheck :: t -> Elab m a }
