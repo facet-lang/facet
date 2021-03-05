@@ -35,7 +35,6 @@ module Facet.Elab
 , Elab(..)
 , depth
 , use
-, extendSig
 , runElabWith
 , runElabKind
 , runElabType
@@ -149,9 +148,6 @@ use :: Has (Reader ElabContext :+: Writer Usage) sig m => Index -> Quantity -> m
 use i q = do
   d <- depth
   tell (Usage.singleton (indexToLevel d i) q)
-
-extendSig :: Has (Reader ElabContext) sig m => [Interface] -> m a -> m a
-extendSig = locally sig_ . (++)
 
 
 -- Errors
