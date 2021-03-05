@@ -102,7 +102,7 @@ var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabConte
 -- | Elaborate a thunked type lambda from its body.
 tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m (Neg Expr) -> Check m (Pos Expr)
 tlam b = Check $ \ _T -> do
-  (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" _T
+  (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" =<< expectThunk "when elaborating type abstraction" _T
   d <- depth
   b' <- Binding n zero (SType _A) |- check (b ::: _B (free d))
   pure $ thunkE (tlamE b')
@@ -110,7 +110,7 @@ tlam b = Check $ \ _T -> do
 -- | Elaborate a thunked lambda from its clauses.
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m (Neg Expr))] -> Check m (Pos Expr)
 lam cs = Check $ \ _T -> do
-  (_A, _B) <- expectTacitFunction "when checking function" _T
+  (_A, _B) <- expectTacitFunction "when checking function" =<< expectThunk "when checking function" _T
   thunkE . lamE <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
@@ -350,13 +350,13 @@ elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ thunkE <$> check 
   where
   -- bind :: Check m (Neg Expr) -> Check m (Neg Expr)
   bind k = Check $ \ _T -> case _T of
-    ForAll{}                                -> returnE <$> check (tlam (bind k) ::: _T)
-    Arrow (Just n) q (Thunk (Comp s _A)) _B -> returnE <$> check (lam [(PEff <$> allP n, bind k)] ::: Arrow Nothing q (Thunk (Comp s _A)) _B)
-    Arrow (Just n) q                _A   _B -> returnE <$> check (lam [(PVal <$> varP n, bind k)] ::: Arrow Nothing q _A _B)
+    Thunk ForAll{}                                  -> returnE <$> check (tlam (bind k) ::: _T)
+    Thunk (Arrow (Just n) q (Thunk (Comp s _A)) _B) -> returnE <$> check (lam [(PEff <$> allP n, bind k)] ::: Thunk (Arrow Nothing q (Thunk (Comp s _A)) _B))
+    Thunk (Arrow (Just n) q                _A   _B) -> returnE <$> check (lam [(PVal <$> varP n, bind k)] ::: Thunk (Arrow Nothing q _A _B))
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                                       -> check (k ::: _T)
+    _                                               -> check (k ::: _T)
 
 
 -- Modules
