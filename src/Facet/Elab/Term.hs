@@ -91,13 +91,13 @@ global (q ::: _T) = Synth $ pure $ varE (Global q) ::: _T
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth PType m PExpr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, q, STerm _T) <- lookupInContext n context                      -> use i q $> (varE (Free i) ::: _T)
-  | Just (_ :=: DTerm (Just x) _T) <- lookupInSig n module' graph sig -> pure (x ::: getPos _T)
+  | Just (_ :=: DTerm (Just x) _T) <- lookupInSig n module' graph sig -> pure (x ::: _T)
   | otherwise                                                         -> do
     n :=: d <- resolveQ n
     _T <- case d of
       DTerm _ _T -> pure _T
       _          -> freeVariable n
-    synth $ global (n ::: getPos _T)
+    synth $ global (n ::: _T)
 
 
 -- | Elaborate a thunked type lambda from its body.
@@ -191,7 +191,7 @@ conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   where
   -- FIXME: this feels a bit gross, but we have to accommodate both nullary (already data) and non-nullary (thunk (args… -> comp data)) constructors.
   returnOf = \case{ Comp [] _T -> _T ; _T -> _T }
-  forcing (e ::: Pos _T) = case _T of
+  forcing (e ::: _T) = case _T of
     Thunk _T -> e ::: _T
     _        -> e ::: _T
 
@@ -213,7 +213,7 @@ effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern 
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- expectComp "when checking effect pattern" =<< expectThunk "when checking effect pattern" _A
-  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: getPos _T)) (traverse unDTerm =<< lookupInSig n module' graph sig)
+  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (traverse unDTerm =<< lookupInSig n module' graph sig)
   (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (STerm (Thunk (Arrow Nothing Many _A' (Comp [] _A)))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
@@ -320,7 +320,7 @@ elabDataDef (dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann s _ (n ::: t)) -> do
     c_T <- runElabType $ pushSpan (S.ann t) $ getPos <$> abstractType (elabType t) _T
     con' <- runElabTerm $ pushSpan s $ check (abstractTerm (conE (mname :.: n)) ::: c_T)
-    pure $ n :=: DTerm (Just con') (Pos c_T)
+    pure $ n :=: DTerm (Just con') c_T
   pure
     $ (dname :=: DData (scopeFromList cs) _T)
     : cs
@@ -337,7 +337,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
     _T' <- runElabType $ pushSpan (S.ann t) $ getPos <$> abstractType (elabType t) _T
     -- FIXME: check that the interface is a member of the sig.
     op' <- runElabTerm $ pushSpan s $ check (abstractTerm (\ ts fs -> thunkE (opE (mname :.: n) ts fs)) ::: _T')
-    pure $ n :=: DTerm (Just op') (Pos _T')
+    pure $ n :=: DTerm (Just op') _T'
   pure [ dname :=: DInterface (scopeFromList cs) _T ]
 
 
@@ -387,13 +387,13 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
       S.TermDef t -> do
         _T <- runModule $ runElabType $ getPos <$> checkIsType (elabType ty ::: Type)
-        scope_.decls_.at dname .= Just (DTerm Nothing (Pos _T))
+        scope_.decls_.at dname .= Just (DTerm Nothing _T)
         pure (Just (dname, t ::: _T))
 
     -- then elaborate the terms
     for_ (catMaybes es) $ \ (dname, t ::: _T) -> do
       t' <- runModule $ elabTermDef _T t
-      scope_.decls_.ix dname .= DTerm (Just t') (Pos _T)
+      scope_.decls_.ix dname .= DTerm (Just t') _T
 
 
 -- Errors
