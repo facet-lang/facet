@@ -327,14 +327,16 @@ abstractTerm body = go Nil Nil
       check (tlam (go (ts :> d) fs) ::: ForAll n _T _B)
     Thunk (Arrow  n q _A _B) -> do
       d <- depth
-      check (thunk (lam [(pat _A (fromMaybe __ n), shift (go ts (fs :> d)))]) ::: Thunk (Arrow n q _A _B))
+      check (thunk (lam [(patFor _A (fromMaybe __ n), shift (go ts (fs :> d)))]) ::: Thunk (Arrow n q _A _B))
     _T                       -> do
       d <- depth
       pure $ body (TVar . Free . levelToIndex d <$> ts) (varE . Free . levelToIndex d <$> fs)
-  pat = \case{ Thunk Comp{} -> fmap PEff . allP ; _ -> fmap PVal . varP }
   shift e = Check (\ _T -> do
     (_, _T') <- assertComp "when abstracting a term" _T
     returnE <$> check (e ::: _T'))
+
+patFor :: (HasCallStack, Has (Throw Err) sig m) => PType -> Name -> Bind PType m (Pattern Name)
+patFor = \case{ Thunk Comp{} -> fmap PEff . allP ; _ -> fmap PVal . varP }
 
 
 -- Declarations
