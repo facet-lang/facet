@@ -251,14 +251,14 @@ warn reason = do
 
 -- Patterns
 
-assertKind :: (HasCallStack, Has (Throw Err) sig m) => (Kind -> Maybe out) -> String -> String -> Kind -> Elab m out
-assertKind pat exp _ _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EK _T)) pure (pat _T)
+assertKind :: (HasCallStack, Has (Throw Err) sig m) => (Kind -> Maybe out) -> String -> Kind -> Elab m out
+assertKind pat exp _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EK _T)) pure (pat _T)
 
-assertNType :: (HasCallStack, Has (Throw Err) sig m) => (NType -> Maybe out) -> String -> String -> NType -> Elab m out
-assertNType pat exp _ _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EN _T)) pure (pat _T)
+assertNType :: (HasCallStack, Has (Throw Err) sig m) => (NType -> Maybe out) -> String -> NType -> Elab m out
+assertNType pat exp _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EN _T)) pure (pat _T)
 
-assertPType :: (HasCallStack, Has (Throw Err) sig m) => (PType -> Maybe out) -> String -> String -> PType -> Elab m out
-assertPType pat exp _ _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EP _T)) pure (pat _T)
+assertPType :: (HasCallStack, Has (Throw Err) sig m) => (PType -> Maybe out) -> String -> PType -> Elab m out
+assertPType pat exp _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EP _T)) pure (pat _T)
 
 
 -- Unification

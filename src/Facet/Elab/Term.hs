@@ -106,7 +106,7 @@ var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabConte
 -- | Elaborate a thunked type lambda from its body.
 tlam :: (HasCallStack, Has (Throw Err) sig m) => Check PType m PExpr -> Check PType m PExpr
 tlam b = Check $ \ _T -> do
-  (n ::: _A, _B) <- assertQuantifier "when checking type abstraction" _T
+  (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
   b' <- Binding n zero (SType _A) |- check (b ::: _B (free d))
   pure $ tlamE b'
@@ -114,14 +114,14 @@ tlam b = Check $ \ _T -> do
 -- | Elaborate a thunked lambda from its clauses.
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind PType m (Pattern Name), Check NType m NExpr)] -> Check NType m NExpr
 lam cs = Check $ \ _T -> do
-  (_A, _B) <- assertTacitFunction "when checking function" _T
+  (_A, _B) <- assertTacitFunction _T
   lamE <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
 app :: (HasCallStack, Has (Throw Err) sig m) => Synth NType m NExpr -> Check PType m PExpr -> Synth NType m NExpr
 app f a = Synth $ do
   f' ::: _F <- synth f
-  (_ ::: (q, _A), _B) <- assertFunction "in application" _F
+  (_ ::: (q, _A), _B) <- assertFunction _F
   a' <- censor @Usage (q ><<) $ extendSigFor _A $ check (a ::: _A)
   pure $ appE f' a' ::: _B
 
@@ -136,11 +136,11 @@ force :: (HasCallStack, Has (Throw Err) sig m) => Synth PType m PExpr -> Synth N
 force t = Synth $ do
   t' ::: _T <- synth t
   -- FIXME: assert by unification
-  _T' <- assertThunk "in force of thunk" _T
+  _T' <- assertThunk _T
   pure $ forceE t' ::: _T'
 
 thunk :: (HasCallStack, Has (Throw Err) sig m) => Check NType m NExpr -> Check PType m PExpr
-thunk c = Check $ fmap thunkE . check . (c :::) <=< assertThunk "when thunking computation"
+thunk c = Check $ fmap thunkE . check . (c :::) <=< assertThunk
 
 return' :: Algebra sig m => Synth PType m PExpr -> Synth NType m NExpr
 return' v = Synth $ do
@@ -151,7 +151,7 @@ return' v = Synth $ do
 (>>-) :: Has (Throw Err) sig m => Synth NType m NExpr -> (Synth PType m PExpr -> Synth NType m NExpr) -> Synth NType m NExpr
 v >>- b = Synth $ do
   v' ::: _FV <- synth v
-  (_, _V) <- assertComp "in bind" _FV
+  (_, _V) <- assertComp _FV
   d <- depth
   let var = Synth $ do
         d' <- depth
@@ -223,15 +223,15 @@ fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind PType m [a] -> [Bind PT
 fieldsP = foldr cons
   where
   cons p ps = Bind $ \ q _A b -> Check $ \ _B -> do
-    (_ ::: (q', _A'), _A'') <- assertFunction "when checking nested pattern" =<< assertThunk "when checking nested pattern" _A
-    (_, _A''') <- assertComp "when checking nested pattern" _A''
+    (_ ::: (q', _A'), _A'') <- assertFunction =<< assertThunk _A
+    (_, _A''') <- assertComp _A''
     (p', (ps', b')) <- check (bind (p ::: (q', _A')) (bind (ps ::: (q, _A''')) b) ::: _B)
     pure (p':ps', b')
 
 
 allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind PType m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
-  (sig, _A') <- assertComp "when checking catch-all pattern" =<< assertThunk "when checking catch-all pattern" _A
+  (sig, _A') <- assertComp =<< assertThunk _A
   (PAll n,) <$> (Binding n q (STerm (Thunk (Comp sig _A'))) |- check (b ::: _B))
 
 op :: (HasCallStack, Has (Throw Err) sig m) => [Interface] -> QName -> Synth PType m QName
@@ -241,7 +241,7 @@ op sig n = Synth $ do
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind PType m (ValuePattern Name)] -> Name -> Bind PType m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
-  (sig, _A') <- assertComp "when checking effect pattern" =<< assertThunk "when checking effect pattern" _A
+  (sig, _A') <- assertComp =<< assertThunk _A
   n' ::: _T <- synth (op sig n)
   (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (STerm (Thunk (Arrow Nothing Many _A' (Comp [] _A)))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
@@ -332,7 +332,7 @@ abstractTerm body = go Nil Nil
       d <- depth
       pure $ body (TVar . Free . levelToIndex d <$> ts) (varE . Free . levelToIndex d <$> fs)
   shift e = Check (\ _T -> do
-    (_, _T') <- assertComp "when abstracting a term" _T
+    (_, _T') <- assertComp _T
     returnE <$> check (e ::: _T'))
 
 patFor :: (HasCallStack, Has (Throw Err) sig m) => PType -> Name -> Bind PType m (Pattern Name)
@@ -388,7 +388,7 @@ elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ either id id <$> 
     -- we’ve exhausted the named parameters; the rest is up to the body.
     _                              -> Left <$> check (thunk k ::: _T)
   shift e = Check (\ _T -> do
-    (_, _T') <- assertComp "when abstracting a term" _T
+    (_, _T') <- assertComp _T
     either forceE returnE <$> check (e ::: _T'))
 
 
@@ -432,22 +432,22 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 -- FIXME: can we get away without the extra message?
 -- FIXME: can we replace these by unification? Maybe not if we want to get names and quantities out?
-assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => String -> PType -> Elab m (Name ::: Kind, PType -> PType)
+assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => PType -> Elab m (Name ::: Kind, PType -> PType)
 assertQuantifier = assertPType (\case{ ForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
 
-assertFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> NType -> Elab m (Maybe Name ::: (Quantity, PType), NType)
+assertFunction :: (HasCallStack, Has (Throw Err) sig m) => NType -> Elab m (Maybe Name ::: (Quantity, PType), NType)
 assertFunction = assertNType (\case{ Arrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
-assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> NType -> Elab m ((Quantity, PType), NType)
+assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => NType -> Elab m ((Quantity, PType), NType)
 assertTacitFunction = assertNType (\case{ Arrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _"
 
 -- | Expect a computation type with effects.
-assertComp :: (HasCallStack, Has (Throw Err) sig m) => String -> NType -> Elab m ([Interface], PType)
+assertComp :: (HasCallStack, Has (Throw Err) sig m) => NType -> Elab m ([Interface], PType)
 assertComp = assertNType (\case{ Comp s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
 
 -- | Expect a value type wrapping a computation.
-assertThunk :: (HasCallStack, Has (Throw Err) sig m) => String -> PType -> Elab m NType
+assertThunk :: (HasCallStack, Has (Throw Err) sig m) => PType -> Elab m NType
 assertThunk = assertPType unThunk "thunk _"
 
 
