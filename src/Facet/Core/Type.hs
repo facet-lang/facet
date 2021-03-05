@@ -89,14 +89,14 @@ type PType = Type
 
 data Type
   -- Negative
-  = ForAll Name Kind (Type -> Type)
-  | Arrow (Maybe Name) Quantity Type Type
-  | Comp [Interface] Type
+  = ForAll Name Kind (PType -> NType)
+  | Arrow (Maybe Name) Quantity PType NType
+  | Comp [Interface] PType
 
   -- Positive
-  | Ne (Var Meta Level) (Snoc Type)
+  | Ne (Var Meta Level) (Snoc PType)
   | String
-  | Thunk Type
+  | Thunk NType
 
 
 global :: QName -> Type
