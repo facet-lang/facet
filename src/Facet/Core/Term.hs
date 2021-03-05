@@ -97,8 +97,8 @@ data Expr
 tlamE :: Neg Expr -> Neg Expr
 tlamE (Neg b) = Neg (XTLam b)
 
-instE :: Neg Expr -> T.TExpr -> Neg Expr
-instE (Neg f) t = Neg (XInst f t)
+instE :: Neg Expr -> T.PTExpr -> Neg Expr
+instE (Neg f) (Pos t) = Neg (XInst f t)
 
 lamE :: [(Pattern Name, Neg Expr)] -> Neg Expr
 lamE cs = Neg (XLam (map (fmap (\ (Neg e) -> e)) cs))

@@ -151,13 +151,13 @@ infixl 1 >>-
 
 -- General combinators
 
-instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a ::: Type)
+instantiate :: Algebra sig m => (a -> PTExpr -> a) -> a ::: NType -> Elab m (a ::: NType)
 instantiate inst = go
   where
   go (e ::: _T) = case _T of
     ForAll _ _T _B -> do
       m <- meta _T
-      go (inst e (TVar (Metavar m)) ::: _B (metavar m))
+      go (inst e (Pos (TVar (Metavar m))) ::: _B (metavar m))
     _              -> pure $ e ::: _T
 
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check PType m a
