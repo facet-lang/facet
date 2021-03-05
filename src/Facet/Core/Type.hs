@@ -17,6 +17,8 @@ module Facet.Core.Type
 , unThunk
 , occursIn
   -- * Type expressions
+, NTExpr
+, PTExpr
 , TExpr(..)
   -- ** Negative type constructors
 , Neg
@@ -140,6 +142,9 @@ app _         _ = error "can’t apply non-neutral/forall type"
 
 
 -- Type expressions
+
+type NTExpr = Neg TExpr
+type PTExpr = Pos TExpr
 
 data TExpr
   = TForAll Name Kind TExpr
