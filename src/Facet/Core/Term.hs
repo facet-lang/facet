@@ -8,6 +8,8 @@ module Facet.Core.Term
 , peff
 , fill
   -- * Term expressions
+, NExpr
+, PExpr
 , Expr(..)
   -- ** Negative term constructors
 , tlamE
@@ -69,6 +71,9 @@ fill f = mapAccumL (const . f)
 
 
 -- Term expressions
+
+type NExpr = Neg Expr
+type PExpr = Pos Expr
 
 data Expr
   = XTLam Expr
