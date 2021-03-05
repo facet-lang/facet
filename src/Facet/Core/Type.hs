@@ -7,6 +7,8 @@ module Facet.Core.Type
 , Kind(..)
 , kglobal
 , kapp
+, NType
+, PType
 , Type(..)
 , global
 , free
@@ -79,6 +81,9 @@ kapp :: Kind -> Kind -> Kind
 kapp (KSpine h as) a = KSpine h (as :> a)
 kapp _             _ = error "invalid kind application"
 
+
+type NType = Type
+type PType = Type
 
 data Type
   -- Negative
