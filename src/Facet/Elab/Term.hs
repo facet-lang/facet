@@ -430,16 +430,16 @@ runModule m = do
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
 withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 
-extendSig :: Has (Reader ElabContext) sig m => [Interface] -> m a -> m a
-extendSig = locally sig_ . (++)
+extendSigFor :: Has (Reader ElabContext) sig m => NType -> m a -> m a
+extendSigFor _T m = case _T of
+  Comp sig _ -> locally sig_ (++ sig) m
+  _          -> m
 
 
 -- Judgements
 
 check :: Algebra sig m => (Check Type m a ::: Type) -> Elab m a
-check (m ::: _T) = case unComp =<< unThunk _T of
-  Just (sig, _) -> extendSig sig $ runCheck m _T
-  Nothing       -> runCheck m _T
+check (m ::: _T) = extendSigFor _T $ runCheck m _T
 
 newtype Check t m a = Check { runCheck :: t -> Elab m a }
   deriving (Applicative, Functor) via ReaderC t (Elab m)
