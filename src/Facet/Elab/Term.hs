@@ -462,9 +462,9 @@ withSpanB :: Algebra sig m => (a -> Bind t m b) -> S.Ann a -> Bind t m b
 withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 
 extendSigFor :: Has (Reader ElabContext) sig m => PType -> m a -> m a
-extendSigFor _T m = case _T of
-  Thunk (Comp sig _) -> locally sig_ (++ sig) m
-  _                  -> m
+extendSigFor _T = case _T of
+  Thunk (Comp sig _) -> locally sig_ (++ sig)
+  _                  -> id
 
 
 -- Judgements
