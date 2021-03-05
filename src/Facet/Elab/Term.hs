@@ -120,7 +120,7 @@ app f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
   -- FIXME: test _A for Comp and extend the sig
-  a' <- censor @Usage (q ><<) $ check (a ::: _A)
+  a' <- censor @Usage (q ><<) $ extendSigFor _A $ check (a ::: _A)
   pure $ appE f' a' ::: _B
 
 
@@ -130,7 +130,8 @@ string s = Synth $ pure $ stringE s ::: T.String
 
 -- Polarity shifts
 
-force :: Has (Throw Err) sig m => Check PType m (Pos Expr) -> Check NType m (Neg Expr)
+-- FIXME: this should probably be synthesized
+force :: Check PType m (Pos Expr) -> Check NType m (Neg Expr)
 force t = Check $ \ _T -> forceE <$> check (t ::: Thunk _T)
 
 thunk :: (HasCallStack, Has (Throw Err) sig m) => Check NType m (Neg Expr) -> Check PType m (Pos Expr)
@@ -438,8 +439,8 @@ extendSigFor _T m = case _T of
 
 -- Judgements
 
-check :: Algebra sig m => (Check Type m a ::: Type) -> Elab m a
-check (m ::: _T) = extendSigFor _T $ runCheck m _T
+check :: (Check Type m a ::: Type) -> Elab m a
+check (m ::: _T) = runCheck m _T
 
 newtype Check t m a = Check { runCheck :: t -> Elab m a }
   deriving (Applicative, Functor) via ReaderC t (Elab m)
