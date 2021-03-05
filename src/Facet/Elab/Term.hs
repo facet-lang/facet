@@ -119,7 +119,6 @@ app :: (HasCallStack, Has (Throw Err) sig m) => Synth NType m (Neg Expr) -> Chec
 app f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
-  -- FIXME: test _A for Comp and extend the sig
   a' <- censor @Usage (q ><<) $ extendSigFor _A $ check (a ::: _A)
   pure $ appE f' a' ::: _B
 
