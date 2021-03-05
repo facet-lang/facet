@@ -349,7 +349,6 @@ elabTermDef
 -- FIXME: this is wrong; we shouldn’t just indiscriminately thunk everything
 elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ thunkE <$> check (bind (checkExprNeg expr) ::: _T)
   where
-  -- bind :: Check Type m NExpr -> Check Type m NExpr
   bind k = Check $ \ _T -> case _T of
     Thunk ForAll{}                                  -> returnE <$> check (tlam (bind k) ::: _T)
     Thunk (Arrow (Just n) q (Thunk (Comp s _A)) _B) -> returnE <$> check (lam [(PEff <$> allP n, bind k)] ::: Thunk (Arrow Nothing q (Thunk (Comp s _A)) _B))
