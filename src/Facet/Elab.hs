@@ -22,9 +22,9 @@ module Facet.Elab
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
-, expectKind
-, expectNType
-, expectPType
+, assertKind
+, assertNType
+, assertPType
   -- * Warnings
 , Warn(..)
 , WarnReason(..)
@@ -260,17 +260,17 @@ warn reason = do
 
 -- Patterns
 
-expectKind :: (HasCallStack, Has (Throw Err) sig m) => (Kind -> Maybe out) -> String -> String -> Kind -> Elab m out
-expectKind pat exp s _T = withFrozenCallStack $ expectMatch (pat <=< unEK) exp s (EK _T)
+assertKind :: (HasCallStack, Has (Throw Err) sig m) => (Kind -> Maybe out) -> String -> String -> Kind -> Elab m out
+assertKind pat exp s _T = withFrozenCallStack $ assertMatch (pat <=< unEK) exp s (EK _T)
 
-expectNType :: (HasCallStack, Has (Throw Err) sig m) => (NType -> Maybe out) -> String -> String -> NType -> Elab m out
-expectNType pat exp s _T = withFrozenCallStack $ expectMatch (pat <=< unEN) exp s (EN _T)
+assertNType :: (HasCallStack, Has (Throw Err) sig m) => (NType -> Maybe out) -> String -> String -> NType -> Elab m out
+assertNType pat exp s _T = withFrozenCallStack $ assertMatch (pat <=< unEN) exp s (EN _T)
 
-expectPType :: (HasCallStack, Has (Throw Err) sig m) => (PType -> Maybe out) -> String -> String -> PType -> Elab m out
-expectPType pat exp s _T = withFrozenCallStack $ expectMatch (pat <=< unEP) exp s (EP _T)
+assertPType :: (HasCallStack, Has (Throw Err) sig m) => (PType -> Maybe out) -> String -> String -> PType -> Elab m out
+assertPType pat exp s _T = withFrozenCallStack $ assertMatch (pat <=< unEP) exp s (EP _T)
 
-expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (ErrType -> Maybe out) -> String -> String -> ErrType -> Elab m out
-expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
+assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (ErrType -> Maybe out) -> String -> String -> ErrType -> Elab m out
+assertMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 
 -- Unification

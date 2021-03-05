@@ -82,7 +82,7 @@ app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> I
 app mk f a = IsType $ do
   f' ::: _F <- isType f
   -- FIXME: assert that the usage is zero.
-  (_ ::: _A, _B) <- expectTypeConstructor "in application" _F
+  (_ ::: _A, _B) <- assertTypeConstructor "in application" _F
   a' <- checkIsType (a ::: _A)
   pure $ mk f' a' ::: _B
 
@@ -144,8 +144,8 @@ synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapIsType (pushSpan
   foldl' (app kapp) (mapIsType (pushSpan sh) (kglobal <$> global h)) (elabKind <$> sp)
 
 
-expectTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => String -> Kind -> Elab m (Maybe Name ::: Kind, Kind)
-expectTypeConstructor = expectKind (\case{ KArrow n t b -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _"
+assertTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => String -> Kind -> Elab m (Maybe Name ::: Kind, Kind)
+assertTypeConstructor = assertKind (\case{ KArrow n t b -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Judgements
