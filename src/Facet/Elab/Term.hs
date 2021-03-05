@@ -288,7 +288,7 @@ checkExprPos expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Var{}    -> synth
   S.Hole n   -> holeP n
   S.Lam cs   -> thunk (lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs))
-  S.App{}    -> thunk (checkExprNeg expr)
+  S.App{}    -> synth
   S.As{}     -> synth
   S.String{} -> synth
   where
