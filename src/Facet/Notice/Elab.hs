@@ -75,7 +75,7 @@ printErrReason opts ctx = group . \case
   Hole n _T              ->
     let _T' = printErrType _T
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
-  Invariant s -> reflow s
+  Invariant s            -> reflow s
   where
   printErrType = getPrint . \case
     EN _T -> printNType opts ctx _T
