@@ -254,7 +254,7 @@ synthExprNeg expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var{}    -> return' (synthExprPos expr)
   S.Hole{}   -> nope
   S.Lam{}    -> nope
-  S.App f a  -> app (synthExprNeg f) (checkExprPos a)
+  S.App f a  -> app (force (synthExprPos f)) (checkExprPos a)
   S.As t _T  -> asN (checkExprNeg t ::: elabNType _T)
   S.String{} -> return' (synthExprPos expr)
   where
