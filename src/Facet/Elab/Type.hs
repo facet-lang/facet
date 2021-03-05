@@ -108,16 +108,15 @@ elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
 
 elabNType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m NTExpr
 elabNType expr@(S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
-  S.TForAll{}       -> shift (elabPType expr)
+  S.TForAll{}       -> comp [] (elabPType expr)
   S.TArrow  n q a b -> function (n ::: (maybe Many interpretMul q, elabPType a)) (elabNType b)
   S.TComp s t       -> comp (map synthInterface s) (elabPType t)
-  S.TApp{}          -> shift (elabPType expr)
-  S.TVar{}          -> shift (elabPType expr)
-  S.TString         -> shift (elabPType expr)
+  S.TApp{}          -> comp [] (elabPType expr)
+  S.TVar{}          -> comp [] (elabPType expr)
+  S.TString         -> comp [] (elabPType expr)
   S.KType           -> nope
   S.KInterface      -> nope
   where
-  shift = fmap (TComp [])
   nope = IsType $ couldNotSynthesize (show e <> " at the type level")
 
 elabPType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m PTExpr
