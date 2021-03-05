@@ -187,7 +187,7 @@ data ErrReason
   | AmbiguousName QName [QName]
   | CouldNotSynthesize String
   | ResourceMismatch Name Quantity Quantity
-  | Mismatch String (Either String ErrType) ErrType
+  | Mismatch (Either String ErrType) ErrType
   | Hole Name ErrType
   | Invariant String
 
@@ -199,7 +199,7 @@ instance Substitutable Err PType Kind where
       AmbiguousName{}      -> reason
       CouldNotSynthesize{} -> reason
       ResourceMismatch{}   -> reason
-      Mismatch m exp act   -> Mismatch m (applyErrType <$> exp) (applyErrType act)
+      Mismatch exp act     -> Mismatch (applyErrType <$> exp) (applyErrType act)
       Hole n t             -> Hole n (applyErrType t)
       Invariant{}          -> reason
     env = toEnv context
@@ -220,11 +220,11 @@ err reason = do
   subst <- get
   throwError $ applySubst subst $ Err (maybe source (slice source) (peek spans)) reason context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String ErrType -> ErrType -> Elab m a
-mismatch msg exp act = withFrozenCallStack $ err $ Mismatch msg exp act
+mismatch :: (HasCallStack, Has (Throw Err) sig m) => Either String ErrType -> ErrType -> Elab m a
+mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => String -> ErrType -> ErrType -> Elab m a
-couldNotUnify msg t1 t2 = withFrozenCallStack $ mismatch msg (Right t2) t1
+couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => ErrType -> ErrType -> Elab m a
+couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right t2) t1
 
 couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
 couldNotSynthesize v = withFrozenCallStack $ err $ CouldNotSynthesize v
@@ -270,7 +270,7 @@ assertPType :: (HasCallStack, Has (Throw Err) sig m) => (PType -> Maybe out) -> 
 assertPType pat exp s _T = withFrozenCallStack $ assertMatch (pat <=< unEP) exp s (EP _T)
 
 assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (ErrType -> Maybe out) -> String -> String -> ErrType -> Elab m out
-assertMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
+assertMatch pat exp _ _T = maybe (mismatch (Left exp) _T) pure (pat _T)
 
 
 -- Unification
@@ -317,7 +317,7 @@ unify = (ntype, ptype)
     (Comp{}, _)                        -> nope
     where
     nope :: HasCallStack => Elab m a
-    nope = couldNotUnify "mismatch" (EN t1) (EN t2)
+    nope = couldNotUnify (EN t1) (EN t2)
 
   ptype :: HasCallStack => PType -> PType -> Elab m ()
   ptype t1 t2 = case (t1, t2) of
@@ -334,9 +334,9 @@ unify = (ntype, ptype)
     (Thunk{}, _)                               -> nope
     where
     nope :: HasCallStack => Elab m a
-    nope = couldNotUnify "mismatch" (EP t1) (EP t2)
+    nope = couldNotUnify (EP t1) (EP t2)
 
-  kind t1 t2 = unless (t1 == t2) (couldNotUnify "mismatch" (EK t1) (EK t2))
+  kind t1 t2 = unless (t1 == t2) (couldNotUnify (EK t1) (EK t2))
 
   var :: HasCallStack => Var Meta Level -> Var Meta Level -> Elab m ()
   var v1 v2 = case (v1, v2) of
@@ -348,7 +348,7 @@ unify = (ntype, ptype)
     (Metavar{}, _)           -> nope
     where
     nope :: HasCallStack => Elab m a
-    nope = couldNotUnify "mismatch" (EP (Ne v1 Nil)) (EP (Ne v2 Nil))
+    nope = couldNotUnify (EP (Ne v1 Nil)) (EP (Ne v2 Nil))
 
   spineOr :: (Foldable t, Zip t) => Elab m () -> (a -> b -> Elab m ()) -> t a -> t b -> Elab m ()
   spineOr nope f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
@@ -371,7 +371,7 @@ unify = (ntype, ptype)
   solve v t = do
     d <- depth
     if occursInP v d t then
-      mismatch "infinite type" (Right (EP (metavar v))) (EP t)
+      mismatch (Right (EP (metavar v))) (EP t) -- FIXME: use a specialized error rather than mismatch
     else
       gets (lookupMeta @PType @Kind v) >>= \case
         Nothing          -> modify (solveMeta @PType @Kind v t)
