@@ -135,6 +135,7 @@ string s = Synth $ pure $ stringE s ::: T.String
 force :: (HasCallStack, Has (Throw Err) sig m) => Synth PType m PExpr -> Synth NType m NExpr
 force t = Synth $ do
   t' ::: _T <- synth t
+  -- FIXME: assert by unification
   _T' <- expectThunk "in force of thunk" _T
   pure $ forceE t' ::: _T'
 
