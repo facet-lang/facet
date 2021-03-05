@@ -54,7 +54,7 @@ import Control.Carrier.State.Church
 import Control.Carrier.Writer.Church
 import Control.Effect.Lens (views)
 import Control.Lens (Lens', lens)
-import Control.Monad (guard, unless, (<=<))
+import Control.Monad (guard, unless)
 import Data.Foldable (asum)
 import Data.Semialign.Exts
 import Facet.Context as Context
@@ -172,15 +172,6 @@ data ErrType
   | EN NType
   | EP PType
 
-unEK :: Alternative m => ErrType -> m Kind
-unEK = \case{ EK ki -> pure ki ; _ -> Alt.empty }
-
-unEN :: Alternative m => ErrType -> m NType
-unEN = \case{ EN ty -> pure ty ; _ -> Alt.empty }
-
-unEP :: Alternative m => ErrType -> m PType
-unEP = \case{ EP ty -> pure ty ; _ -> Alt.empty }
-
 data ErrReason
   = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
@@ -261,16 +252,13 @@ warn reason = do
 -- Patterns
 
 assertKind :: (HasCallStack, Has (Throw Err) sig m) => (Kind -> Maybe out) -> String -> String -> Kind -> Elab m out
-assertKind pat exp _ _T = withFrozenCallStack $ assertMatch (pat <=< unEK) exp (EK _T)
+assertKind pat exp _ _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EK _T)) pure (pat _T)
 
 assertNType :: (HasCallStack, Has (Throw Err) sig m) => (NType -> Maybe out) -> String -> String -> NType -> Elab m out
-assertNType pat exp _ _T = withFrozenCallStack $ assertMatch (pat <=< unEN) exp (EN _T)
+assertNType pat exp _ _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EN _T)) pure (pat _T)
 
 assertPType :: (HasCallStack, Has (Throw Err) sig m) => (PType -> Maybe out) -> String -> String -> PType -> Elab m out
-assertPType pat exp _ _T = withFrozenCallStack $ assertMatch (pat <=< unEP) exp (EP _T)
-
-assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (ErrType -> Maybe out) -> String -> ErrType -> Elab m out
-assertMatch pat exp _T = maybe (mismatch (Left exp) _T) pure (pat _T)
+assertPType pat exp _ _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EP _T)) pure (pat _T)
 
 
 -- Unification
