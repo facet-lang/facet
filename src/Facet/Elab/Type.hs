@@ -86,6 +86,11 @@ app mk f a = IsType $ do
   a' <- checkIsType (a ::: _A)
   pure $ mk f' a' ::: _B
 
+thunk :: (HasCallStack, Has (Throw Err) sig m) => IsType m NTExpr -> IsType m PTExpr
+thunk t = IsType $ do
+  t' <- checkIsType (t ::: Type)
+  pure $ TThunk t' ::: Type
+
 
 elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m Kind
 elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
@@ -118,15 +123,14 @@ elabNType expr@(S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
 elabPType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m PTExpr
 elabPType expr@(S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TForAll n t b -> forAll (n ::: elabKind t) (elabPType b)
-  S.TArrow{}      -> shift (elabNType expr)
-  S.TComp{}       -> shift (elabNType expr)
+  S.TArrow{}      -> thunk (elabNType expr)
+  S.TComp{}       -> thunk (elabNType expr)
   S.TApp f a      -> app TApp (elabPType f) (elabPType a)
   S.TVar n        -> var TVar n
   S.TString       -> _String
   S.KType         -> nope
   S.KInterface    -> nope
   where
-  shift = fmap TThunk
   nope = IsType $ couldNotSynthesize (show e <> " at the type level")
 
 
