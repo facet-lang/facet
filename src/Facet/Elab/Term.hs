@@ -100,7 +100,7 @@ var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabConte
 
 
 -- | Elaborate a thunked type lambda from its body.
-tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m (Neg Expr) -> Check m (Pos Expr)
+tlam :: (HasCallStack, Has (Throw Err) sig m) => Check Type m (Neg Expr) -> Check Type m (Pos Expr)
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- expectQuantifier "when checking type abstraction" =<< expectThunk "when elaborating type abstraction" _T
   d <- depth
@@ -108,13 +108,13 @@ tlam b = Check $ \ _T -> do
   pure $ thunkE (tlamE b')
 
 -- | Elaborate a thunked lambda from its clauses.
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m (Neg Expr))] -> Check m (Pos Expr)
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check Type m (Neg Expr))] -> Check Type m (Pos Expr)
 lam cs = Check $ \ _T -> do
   (_A, _B) <- expectTacitFunction "when checking function" =<< expectThunk "when checking function" _T
   thunkE . lamE <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 
-app :: (HasCallStack, Has (Throw Err) sig m) => Synth m (Neg Expr) -> Check m (Pos Expr) -> Synth m (Neg Expr)
+app :: (HasCallStack, Has (Throw Err) sig m) => Synth m (Neg Expr) -> Check Type m (Pos Expr) -> Synth m (Neg Expr)
 app f a = Synth $ do
   f' ::: _F <- synth f
   (_ ::: (q, _A), _B) <- expectFunction "in application" _F
@@ -129,10 +129,10 @@ string s = Synth $ pure $ stringE s ::: T.String
 
 -- Polarity shifts
 
-force :: Has (Throw Err) sig m => Check m (Pos Expr) -> Check m (Neg Expr)
+force :: Has (Throw Err) sig m => Check Type m (Pos Expr) -> Check Type m (Neg Expr)
 force t = Check $ \ _T -> forceE <$> check (t ::: Thunk _T)
 
-thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m (Neg Expr) -> Check m (Pos Expr)
+thunk :: (HasCallStack, Has (Throw Err) sig m) => Check Type m (Neg Expr) -> Check Type m (Pos Expr)
 thunk c = Check $ fmap thunkE . check . (c :::) <=< expectThunk "when thunking computation"
 
 (>>-) :: Has (Throw Err) sig m => Synth m (Neg Expr) -> (Synth m (Pos Expr) -> Synth m (Neg Expr)) -> Synth m (Neg Expr)
@@ -159,13 +159,13 @@ instantiate inst = go
       go (inst e (TVar (Metavar m)) ::: _B (metavar m))
     _              -> pure $ e ::: _T
 
-hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
+hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check Type m a
 hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 
-switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
+switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check Type m a
 switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
-as :: (HasCallStack, Has (Throw Err) sig m) => Check m a ::: IsType m TExpr -> Synth m a
+as :: (HasCallStack, Has (Throw Err) sig m) => Check Type m a ::: IsType m TExpr -> Synth m a
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
@@ -242,7 +242,7 @@ synthExprPos (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   nope = Synth $ couldNotSynthesize (show e)
 
 
-checkExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m (Neg Expr)
+checkExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check Type m (Neg Expr)
 checkExprNeg expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Var{}    -> synth
   S.Hole n   -> hole n
@@ -253,7 +253,7 @@ checkExprNeg expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   where
   synth = switch (synthExprNeg expr)
 
-checkExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m (Pos Expr)
+checkExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check Type m (Pos Expr)
 checkExprPos expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Var{}    -> synth
   S.Hole n   -> hole n
@@ -288,7 +288,7 @@ abstractType body = go
     KArrow (Just n) a b -> thunkT . forAllT n a . compT [] <$> (Binding n zero (SType a) |- go b)
     _                   -> checkIsType (body ::: Type)
 
-abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc (Pos Expr) -> Pos Expr) -> Check m (Pos Expr)
+abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc (Pos Expr) -> Pos Expr) -> Check Type m (Pos Expr)
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
@@ -348,7 +348,7 @@ elabTermDef
 -- FIXME: this is wrong; we shouldn’t just indiscriminately thunk everything
 elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ thunkE <$> check (bind (checkExprNeg expr) ::: _T)
   where
-  -- bind :: Check m (Neg Expr) -> Check m (Neg Expr)
+  -- bind :: Check Type m (Neg Expr) -> Check Type m (Neg Expr)
   bind k = Check $ \ _T -> case _T of
     Thunk ForAll{}                                  -> returnE <$> check (tlam (bind k) ::: _T)
     Thunk (Arrow (Just n) q (Thunk (Comp s _A)) _B) -> returnE <$> check (lam [(PEff <$> allP n, bind k)] ::: Thunk (Arrow Nothing q (Thunk (Comp s _A)) _B))
@@ -432,15 +432,15 @@ withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 
 -- Judgements
 
-check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
+check :: Algebra sig m => (Check Type m a ::: Type) -> Elab m a
 check (m ::: _T) = case unComp =<< unThunk _T of
   Just (sig, _) -> extendSig sig $ runCheck m _T
   Nothing       -> runCheck m _T
 
-newtype Check m a = Check { runCheck :: Type -> Elab m a }
-  deriving (Applicative, Functor) via ReaderC Type (Elab m)
+newtype Check t m a = Check { runCheck :: t -> Elab m a }
+  deriving (Applicative, Functor) via ReaderC t (Elab m)
 
-mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
+mapCheck :: (Elab m a -> Elab m b) -> Check t m a -> Check t m b
 mapCheck f m = Check $ \ _T -> f (runCheck m _T)
 
 
@@ -453,10 +453,10 @@ mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m
 mapSynth f = Synth . f . synth
 
 
-bind :: Bind m a ::: (Quantity, Type) -> Check m b -> Check m (a, b)
+bind :: Bind m a ::: (Quantity, Type) -> Check Type m b -> Check Type m (a, b)
 bind (p ::: (q, _T)) = runBind p q _T
 
-newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check m x -> Check m (a, x) }
+newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check Type m x -> Check Type m (a, x) }
   deriving (Functor)
 
 mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
