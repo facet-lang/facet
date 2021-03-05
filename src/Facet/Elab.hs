@@ -96,7 +96,7 @@ resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith loo
   [v] -> pure v
   ds  -> ambiguousName n (map (\ (q :=: _) -> q) ds)
 
-resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Maybe (Pos Expr) ::: Pos Type)
+resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Maybe PExpr ::: Pos Type)
 resolveC = resolveWith lookupC
 
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Def)
