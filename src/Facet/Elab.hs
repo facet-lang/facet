@@ -4,7 +4,8 @@
 -- Elaboration is the only way 'Type's are constructed from untrusted terms, and so typechecking is performed at this point. If elaboration succeeds and a 'Type' is returned, that 'Type' does not require further verification; hence, 'Type's elide source span information.
 module Facet.Elab
 ( -- * General
-  unify
+  unifyN
+, unifyP
 , lookupInContext
 , lookupInSig
 , resolveQ
@@ -14,6 +15,7 @@ module Facet.Elab
   -- * Errors
 , pushSpan
 , Err(..)
+, ErrType(..)
 , ErrReason(..)
 , err
 , couldNotUnify
@@ -21,7 +23,8 @@ module Facet.Elab
 , resourceMismatch
 , freeVariable
 , expectKind
-, expectType
+, expectNType
+, expectPType
   -- * Warnings
 , Warn(..)
 , WarnReason(..)
@@ -82,8 +85,8 @@ import Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Has (State (Subst Type Kind)) sig m => Kind -> m Meta
-meta _T = state (declareMeta @Kind @Type _T)
+meta :: Has (State (Subst PType Kind)) sig m => Kind -> m Meta
+meta _T = state (declareMeta @Kind @PType _T)
 
 
 resolveWith
@@ -117,7 +120,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap . (. getInterface) $ \case
     defs <- fmap tm . unDInterface . def =<< lookupQ graph mod q
     _ :=: d <- lookupScope n defs
     pure $ m':.:n :=: d
-  _                            -> Alt.empty
+  _                   -> Alt.empty
 
 
 (|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a
@@ -160,9 +163,23 @@ data Err = Err
   { source    :: Source
   , reason    :: ErrReason
   , context   :: Context
-  , subst     :: Subst Type Kind
+  , subst     :: Subst PType Kind
   , callStack :: CallStack
   }
+
+data ErrType
+  = EK Kind
+  | EN NType
+  | EP PType
+
+unEK :: Alternative m => ErrType -> m Kind
+unEK = \case{ EK ki -> pure ki ; _ -> Alt.empty }
+
+unEN :: Alternative m => ErrType -> m NType
+unEN = \case{ EN ty -> pure ty ; _ -> Alt.empty }
+
+unEP :: Alternative m => ErrType -> m PType
+unEP = \case{ EP ty -> pure ty ; _ -> Alt.empty }
 
 data ErrReason
   = FreeVariable QName
@@ -170,11 +187,11 @@ data ErrReason
   | AmbiguousName QName [QName]
   | CouldNotSynthesize String
   | ResourceMismatch Name Quantity Quantity
-  | Mismatch String (Either String Sorted) Sorted
-  | Hole Name Type
+  | Mismatch String (Either String ErrType) ErrType
+  | Hole Name ErrType
   | Invariant String
 
-instance Substitutable Err Type Kind where
+instance Substitutable Err PType Kind where
   applySubst subst e@Err{ reason, context } = e{ reason = reason' }
     where
     reason' = case reason of
@@ -182,15 +199,17 @@ instance Substitutable Err Type Kind where
       AmbiguousName{}      -> reason
       CouldNotSynthesize{} -> reason
       ResourceMismatch{}   -> reason
-      Mismatch m exp act   -> Mismatch m (applySorted <$> exp) (applySorted act)
-      Hole n t             -> Hole n (roundtrip t)
+      Mismatch m exp act   -> Mismatch m (applyErrType <$> exp) (applyErrType act)
+      Hole n t             -> Hole n (applyErrType t)
       Invariant{}          -> reason
     env = toEnv context
     d = level context
-    applySorted = \case
-      STerm ty -> STerm (roundtrip ty)
-      SType ki -> SType ki -- FIXME: can/should we substitute in this?
-    roundtrip = T.eval subst (Left <$> env) . T.quote d
+    applyErrType = \case
+      EN ty -> EN (roundtripN ty)
+      EP ty -> EP (roundtripP ty)
+      EK ki -> EK ki -- FIXME: can/should we substitute in this?
+    roundtripP = T.evalP subst (Left <$> env) . T.quoteP d
+    roundtripN = T.evalN subst (Left <$> env) . T.quoteN d
 
 
 -- FIXME: apply the substitution before showing this to the user
@@ -201,10 +220,10 @@ err reason = do
   subst <- get
   throwError $ applySubst subst $ Err (maybe source (slice source) (peek spans)) reason context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String Sorted -> Sorted -> Elab m a
+mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String ErrType -> ErrType -> Elab m a
 mismatch msg exp act = withFrozenCallStack $ err $ Mismatch msg exp act
 
-couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => String -> Sorted -> Sorted -> Elab m a
+couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => String -> ErrType -> ErrType -> Elab m a
 couldNotUnify msg t1 t2 = withFrozenCallStack $ mismatch msg (Right t2) t1
 
 couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
@@ -242,12 +261,15 @@ warn reason = do
 -- Patterns
 
 expectKind :: (HasCallStack, Has (Throw Err) sig m) => (Kind -> Maybe out) -> String -> String -> Kind -> Elab m out
-expectKind pat exp s _T = expectMatch (pat <=< unSType) exp s (SType _T)
+expectKind pat exp s _T = expectMatch (pat <=< unEK) exp s (EK _T)
 
-expectType :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
-expectType pat exp s _T = expectMatch (pat <=< unSTerm) exp s (STerm _T)
+expectNType :: (HasCallStack, Has (Throw Err) sig m) => (NType -> Maybe out) -> String -> String -> NType -> Elab m out
+expectNType pat exp s _T = expectMatch (pat <=< unEN) exp s (EN _T)
 
-expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Sorted -> Maybe out) -> String -> String -> Sorted -> Elab m out
+expectPType :: (HasCallStack, Has (Throw Err) sig m) => (PType -> Maybe out) -> String -> String -> PType -> Elab m out
+expectPType pat exp s _T = expectMatch (pat <=< unEP) exp s (EP _T)
+
+expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (ErrType -> Maybe out) -> String -> String -> ErrType -> Elab m out
 expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
 
@@ -278,75 +300,90 @@ spans_ = lens spans (\ e spans -> e{ spans })
 
 
 -- FIXME: we don’t get good source references during unification
-unify :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m ()
-unify t1 t2 = type' t1 t2
-  where
-  nope :: HasCallStack => Elab m a
-  nope = couldNotUnify "mismatch" (STerm t1) (STerm t2)
+unifyN :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => NType -> NType -> Elab m ()
+unifyN = fst unify
 
-  type' :: HasCallStack => Type -> Type -> Elab m ()
-  type' = curry $ \case
+unifyP :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => PType -> PType -> Elab m ()
+unifyP = snd unify
+
+unify :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => (NType -> NType -> Elab m (), PType -> PType -> Elab m ())
+unify = (ntype, ptype)
+  where
+  ntype :: HasCallStack => NType -> NType -> Elab m ()
+  ntype t1 t2 = case (t1, t2) of
+    (Arrow _ _ a1 b1, Arrow _ _ a2 b2) -> ptype a1 a2 >> ntype b1 b2
+    (Arrow{}, _)                       -> nope
+    (Comp s1 t1, Comp s2 t2)           -> sigOr nope s1 s2 >> ptype t1 t2
+    (Comp{}, _)                        -> nope
+    where
+    nope :: HasCallStack => Elab m a
+    nope = couldNotUnify "mismatch" (EN t1) (EN t2)
+
+  ptype :: HasCallStack => PType -> PType -> Elab m ()
+  ptype t1 t2 = case (t1, t2) of
+    (ForAll n t1 b1, ForAll _ t2 b2)           -> kind t1 t2 >> depth >>= \ d -> Binding n zero (SType t1) |- ptype (b1 (free d)) (b2 (free d))
+    (ForAll{}, _)                              -> nope
     (Ne (Metavar v1) Nil, Ne (Metavar v2) Nil) -> flexFlex v1 v2
     (Ne (Metavar v1) Nil, t2)                  -> solve v1 t2
     (t1, Ne (Metavar v2) Nil)                  -> solve v2 t1
-    (ForAll n t1 b1, ForAll _ t2 b2)           -> kind t1 t2 >> depth >>= \ d -> Binding n zero (SType t1) |- type' (b1 (free d)) (b2 (free d))
-    (ForAll{}, _)                              -> nope
-    (Arrow _ _ a1 b1, Arrow _ _ a2 b2)         -> type' a1 a2 >> type' b1 b2
-    (Arrow{}, _)                               -> nope
-    (Comp s1 t1, Comp s2 t2)                   -> sig s1 s2 >> type' t1 t2
-    (Comp{}, _)                                -> nope
-    (Ne v1 sp1, Ne v2 sp2)                     -> var v1 v2 >> spine type' sp1 sp2
+    (Ne v1 sp1, Ne v2 sp2)                     -> var v1 v2 >> spineOr nope ptype sp1 sp2
     (Ne{}, _)                                  -> nope
     (String, String)                           -> pure ()
     (String, _)                                -> nope
-    (Thunk t1, Thunk t2)                       -> type' t1 t2
+    (Thunk t1, Thunk t2)                       -> ntype t1 t2
     (Thunk{}, _)                               -> nope
+    where
+    nope :: HasCallStack => Elab m a
+    nope = couldNotUnify "mismatch" (EP t1) (EP t2)
 
-  kind t1 t2 = unless (t1 == t2) nope
+  kind t1 t2 = unless (t1 == t2) (couldNotUnify "mismatch" (EK t1) (EK t2))
 
-  var :: (HasCallStack, Eq a) => Var Meta a -> Var Meta a -> Elab m ()
-  var = curry $ \case
+  var :: HasCallStack => Var Meta Level -> Var Meta Level -> Elab m ()
+  var v1 v2 = case (v1, v2) of
     (Global q1, Global q2)   -> unless (q1 == q2) nope
     (Global{}, _)            -> nope
     (Free v1, Free v2)       -> unless (v1 == v2) nope
     (Free{}, _)              -> nope
     (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
     (Metavar{}, _)           -> nope
+    where
+    nope :: HasCallStack => Elab m a
+    nope = couldNotUnify "mismatch" (EP (Ne v1 Nil)) (EP (Ne v2 Nil))
 
-  spine :: (HasCallStack, Foldable t, Zip t) => (a -> b -> Elab m ()) -> t a -> t b -> Elab m ()
-  spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
+  spineOr :: (Foldable t, Zip t) => Elab m () -> (a -> b -> Elab m ()) -> t a -> t b -> Elab m ()
+  spineOr nope f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
-  sig :: (HasCallStack, Foldable t, Zip t) => t Interface -> t Interface -> Elab m ()
-  sig c1 c2 = spine kind (getInterface <$> c1) (getInterface <$> c2)
+  sigOr :: (Foldable t, Zip t) => Elab m () -> t Interface -> t Interface -> Elab m ()
+  sigOr nope c1 c2 = spineOr nope kind (getInterface <$> c1) (getInterface <$> c2)
 
   flexFlex :: HasCallStack => Meta -> Meta -> Elab m ()
   flexFlex v1 v2
     | v1 == v2  = pure ()
     | otherwise = do
-      (t1, t2) <- gets (\ s -> (lookupMeta @Type @Kind v1 s, lookupMeta v2 s))
+      (t1, t2) <- gets (\ s -> (lookupMeta @PType @Kind v1 s, lookupMeta v2 s))
       case (t1, t2) of
-        (Just t1, Just t2) -> type' (tm t1) (tm t2)
-        (Just t1, Nothing) -> type' (metavar v2) (tm t1)
-        (Nothing, Just t2) -> type' (metavar v1) (tm t2)
+        (Just t1, Just t2) -> ptype (tm t1) (tm t2)
+        (Just t1, Nothing) -> ptype (metavar v2) (tm t1)
+        (Nothing, Just t2) -> ptype (metavar v1) (tm t2)
         (Nothing, Nothing) -> solve v1 (metavar v2)
 
-  solve :: HasCallStack => Meta -> Type -> Elab m ()
+  solve :: HasCallStack => Meta -> PType -> Elab m ()
   solve v t = do
     d <- depth
-    if occursIn v d t then
-      mismatch "infinite type" (Right (STerm (metavar v))) (STerm t)
+    if occursInP v d t then
+      mismatch "infinite type" (Right (EP (metavar v))) (EP t)
     else
-      gets (lookupMeta @Type @Kind v) >>= \case
-        Nothing          -> modify (solveMeta @Type @Kind v t)
-        Just (t' ::: _T) -> type' t' t
+      gets (lookupMeta @PType @Kind v) >>= \case
+        Nothing          -> modify (solveMeta @PType @Kind v t)
+        Just (t' ::: _T) -> ptype t' t
 
 
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC (Subst Type Kind) m))) a }
-  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State (Subst Type Kind) :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC (Subst PType Kind) m))) a }
+  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State (Subst PType Kind) :+: sig), Applicative, Functor, Monad)
 
-runElabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst Type Kind -> a -> m b) -> Elab m a -> m b
+runElabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst PType Kind -> a -> m b) -> Elab m a -> m b
 runElabWith scale k m = runState k mempty . runWriter (const pure) $ do
   (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
   let stat = StaticContext{ graph, module', source, scale }
@@ -356,14 +393,14 @@ runElabWith scale k m = runState k mempty . runWriter (const pure) $ do
 runElabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Kind -> m Kind
 runElabKind = runElabWith zero (\ _ t -> pure t) -- FIXME: we should substitute in the kind
 
-runElabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
-runElabType = runElabWith zero (\ subst t -> pure (T.eval subst Nil t))
+runElabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m PTExpr -> m PType
+runElabType = runElabWith zero (\ subst t -> pure (T.evalP subst Nil t))
 
 runElabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m a -> m a
 runElabTerm = runElabWith one (const pure)
 
-runElabSynth :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (a ::: Type) -> m (a ::: Type)
-runElabSynth scale = runElabWith scale (\ subst (e ::: _T) -> pure (e ::: T.eval subst Nil (T.quote 0 _T)))
+runElabSynth :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (a ::: PType) -> m (a ::: PType)
+runElabSynth scale = runElabWith scale (\ subst (e ::: _T) -> pure (e ::: T.evalP subst Nil (T.quoteP 0 _T)))
 
-runElabSynthKind :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (TExpr ::: Kind) -> m (Type ::: Kind)
-runElabSynthKind scale = runElabWith scale (\ subst (_T ::: _K) -> pure (T.eval subst Nil _T ::: _K)) -- FIXME: we should substitute in the kind as well
+runElabSynthKind :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (PTExpr ::: Kind) -> m (PType ::: Kind)
+runElabSynthKind scale = runElabWith scale (\ subst (_T ::: _K) -> pure (T.evalP subst Nil _T ::: _K)) -- FIXME: we should substitute in the kind as well

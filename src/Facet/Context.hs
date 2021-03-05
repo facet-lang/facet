@@ -72,7 +72,7 @@ lookupIndex n = go (Index 0) . elems
 
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context -> S.Snoc Type
+toEnv :: Context -> S.Snoc PType
 toEnv c = locals 0 (elems c)
   where
   d = level c

@@ -7,37 +7,27 @@ module Facet.Core.Type
 , Kind(..)
 , kglobal
 , kapp
-, NType
-, PType
-, Type(..)
+, NType(..)
+, PType(..)
 , global
 , free
 , metavar
 , unComp
 , unThunk
-, occursIn
+, occursInN
+, occursInP
   -- * Type expressions
-, NTExpr
-, PTExpr
-, TExpr(..)
-  -- ** Negative type constructors
-, Neg
-, forAllT
-, arrowT
-, compT
-  -- ** Positive type constructors
-, Pos
-, varT
-, appT
-, stringT
-, thunkT
+, NTExpr(..)
+, PTExpr(..)
   -- ** Type eliminators
 , unarrowT
 , uncompT
 , unthunkT
   -- * Quotation
-, quote
-, eval
+, quoteN
+, quoteP
+, evalN
+, evalP
 ) where
 
 import Control.Effect.Empty
@@ -54,10 +44,10 @@ import Prelude hiding (lookup)
 -- Types
 
 data Sorted
-  = STerm Type
+  = STerm PType
   | SType Kind
 
-unSTerm :: Has Empty sig m => Sorted -> m Type
+unSTerm :: Has Empty sig m => Sorted -> m PType
 unSTerm = \case{ STerm ty -> pure ty ; _ -> empty }
 
 unSType :: Has Empty sig m => Sorted -> m Kind
@@ -82,147 +72,133 @@ kapp (KSpine h as) a = KSpine h (as :> a)
 kapp _             _ = error "invalid kind application"
 
 
-type NType = Type
-type PType = Type
-
-data Type
-  -- Negative
-  = ForAll Name Kind (PType -> NType)
-  | Arrow (Maybe Name) Quantity PType NType
+data NType
+  = Arrow (Maybe Name) Quantity PType NType
   | Comp [Interface] PType
 
-  -- Positive
+data PType
+  = ForAll Name Kind (PType -> PType)
   | Ne (Var Meta Level) (Snoc PType)
   | String
   | Thunk NType
 
 
-global :: QName -> Type
+global :: QName -> PType
 global n = Ne (Global n) Nil
 
-free :: Level -> Type
+free :: Level -> PType
 free l = Ne (Free l) Nil
 
-metavar :: Meta -> Type
+metavar :: Meta -> PType
 metavar m = Ne (Metavar m) Nil
 
 
-unComp :: Has Empty sig m => Type -> m ([Interface], Type)
+unComp :: Has Empty sig m => NType -> m ([Interface], PType)
 unComp = \case
   Comp sig _T -> pure (sig, _T)
   _T          -> empty
 
-unThunk :: Has Empty sig m => Type -> m Type
+unThunk :: Has Empty sig m => PType -> m NType
 unThunk = \case
   Thunk t -> pure t
   _       -> empty
 
 
-occursIn :: Meta -> Level -> Type -> Bool
-occursIn v = go
+occursInN :: Meta -> Level -> NType -> Bool
+occursInN = fst . occursIn
+
+occursInP :: Meta -> Level -> PType -> Bool
+occursInP = snd . occursIn
+
+occursIn :: Meta -> (Level -> NType -> Bool, Level -> PType -> Bool)
+occursIn v = (goN, goP)
   where
-  go :: Level -> Type -> Bool
-  go d = \case
-    ForAll  _ _ b -> go (succ d) (b (free d))
-    Arrow _ _ a b -> go d a || go d b
-    Comp _ t      -> go d t
-    Ne h sp       -> Metavar v == h || any (go d) sp
+  goN :: Level -> NType -> Bool
+  goN d = \case
+    Arrow _ _ a b -> goP d a || goN d b
+    Comp _ t      -> goP d t
+  goP :: Level -> PType -> Bool
+  goP d = \case
+    ForAll  _ _ b -> goP (succ d) (b (free d))
+    Ne h sp       -> Metavar v == h || any (goP d) sp
     String        -> False
-    Thunk t       -> go d t
+    Thunk t       -> goN d t
 
 
 
 -- Elimination
 
-app :: HasCallStack => Type -> Type -> Type
+app :: HasCallStack => PType -> PType -> PType
 app (Ne h es) a = Ne h (es :> a)
 app _         _ = error "can’t apply non-neutral/forall type"
 
 
 -- Type expressions
 
-type NTExpr = Neg TExpr
-type PTExpr = Pos TExpr
-
-data TExpr
-  = TForAll Name Kind TExpr
-  | TArrow (Maybe Name) Quantity TExpr TExpr
-  | TComp [Interface] TExpr
-
-  | TVar (Var Meta Index)
-  | TApp TExpr TExpr
-  | TString
-  | TThunk TExpr
+data NTExpr
+  = TArrow (Maybe Name) Quantity PTExpr NTExpr
+  | TComp [Interface] PTExpr
   deriving (Eq, Ord, Show)
 
-
--- Negative type constructors
-
-forAllT :: Name -> Kind -> Neg TExpr -> Neg TExpr
-forAllT n t (Neg b) = Neg (TForAll n t b)
-
-arrowT :: Maybe Name -> Quantity -> Pos TExpr -> Neg TExpr -> Neg TExpr
-arrowT n q (Pos a) (Neg b) = Neg (TArrow n q a b)
-
-compT :: [Interface] -> Pos TExpr -> Neg TExpr
-compT sig (Pos t) = Neg (TComp sig t)
-
-
--- Positive type constructors
-
-varT :: Var Meta Index -> Pos TExpr
-varT v = Pos (TVar v)
-
-appT :: Pos TExpr -> Pos TExpr -> Pos TExpr
-appT (Pos f) (Pos a) = Pos (TApp f a)
-
-stringT :: Pos TExpr
-stringT = Pos TString
-
-thunkT :: Neg TExpr -> Pos TExpr
-thunkT (Neg t) = Pos (TThunk t)
+data PTExpr
+  = TForAll Name Kind PTExpr
+  | TVar (Var Meta Index)
+  | TApp PTExpr PTExpr
+  | TString
+  | TThunk NTExpr
+  deriving (Eq, Ord, Show)
 
 
 -- Type eliminators
 
-unarrowT :: Has Empty sig m => Neg TExpr -> m (Maybe Name, Quantity, Pos TExpr, Neg TExpr)
+unarrowT :: Has Empty sig m => NTExpr -> m (Maybe Name, Quantity, PTExpr, NTExpr)
 unarrowT = \case
-  Neg (TArrow n q a b) -> pure (n, q, Pos a, Neg b)
-  _                    -> empty
+  TArrow n q a b -> pure (n, q, a, b)
+  _              -> empty
 
-uncompT :: Has Empty sig m => Neg TExpr -> m ([Interface], Pos TExpr)
+uncompT :: Has Empty sig m => NTExpr -> m ([Interface], PTExpr)
 uncompT = \case
-  Neg (TComp sig _T) -> pure (sig, Pos _T)
-  _                  -> empty
+  TComp sig _T -> pure (sig, _T)
+  _            -> empty
 
-unthunkT :: Has Empty sig m => Pos TExpr -> m (Neg TExpr)
+unthunkT :: Has Empty sig m => PTExpr -> m NTExpr
 unthunkT = \case
-  Pos (TThunk _T) -> pure (Neg _T)
-  _               -> empty
+  TThunk _T -> pure _T
+  _         -> empty
 
 
 -- Quotation
 
-quote :: Level -> Type -> TExpr
-quote d = \case
-  ForAll n t b  -> TForAll n t (quote (succ d) (b (free d)))
-  Arrow n q a b -> TArrow n q (quote d a) (quote d b)
-  Comp s t      -> TComp s (quote d t)
+quoteN :: Level -> NType -> NTExpr
+quoteN d = \case
+  Arrow n q a b -> TArrow n q (quoteP d a) (quoteN d b)
+  Comp s t      -> TComp s (quoteP d t)
 
-  Ne n sp       -> foldl' TApp (TVar (levelToIndex d <$> n)) (quote d <$> sp)
-  String        -> TString
-  Thunk t       -> TThunk (quote d t)
+quoteP :: Level -> PType -> PTExpr
+quoteP d = \case
+  ForAll n t b -> TForAll n t (quoteP (succ d) (b (free d)))
+  Ne n sp      -> foldl' TApp (TVar (levelToIndex d <$> n)) (quoteP d <$> sp)
+  String       -> TString
+  Thunk t      -> TThunk (quoteN d t)
 
-eval :: HasCallStack => Subst Type Kind -> Snoc (Either Type a) -> TExpr -> Type
-eval subst = go where
-  go :: Snoc (Either Type a) -> TExpr -> Type
-  go env = \case
-    TForAll n t b    -> ForAll n t (\ v -> go (env :> Left v) b)
-    TArrow n q a b   -> Arrow n q (go env a) (go env b)
-    TComp s t        -> Comp s (go env t)
-    TApp f a         -> go env f `app` go env a
+evalN :: HasCallStack => Subst PType Kind -> Snoc (Either PType a) -> NTExpr -> NType
+evalN = fst . eval
+
+evalP :: HasCallStack => Subst PType Kind -> Snoc (Either PType a) -> PTExpr -> PType
+evalP = snd . eval
+
+eval :: HasCallStack => Subst PType Kind -> (Snoc (Either PType a) -> NTExpr -> NType, Snoc (Either PType a) -> PTExpr -> PType)
+eval subst = (goN, goP) where
+  goN :: Snoc (Either PType a) -> NTExpr -> NType
+  goN env = \case
+    TArrow n q a b -> Arrow n q (goP env a) (goN env b)
+    TComp s t      -> Comp s (goP env t)
+  goP :: Snoc (Either PType a) -> PTExpr -> PType
+  goP env = \case
+    TForAll n t b    -> ForAll n t (\ v -> goP (env :> Left v) b)
+    TApp f a         -> goP env f `app` goP env a
     TString          -> String
     TVar (Global n)  -> global n
     TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
     TVar (Metavar m) -> maybe (metavar m) tm (lookupMeta m subst)
-    TThunk t         -> Thunk (go env t)
+    TThunk t         -> Thunk (goN env t)

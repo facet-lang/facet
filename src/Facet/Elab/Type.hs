@@ -6,7 +6,8 @@ module Facet.Elab.Type
 , _String
 , forAll
 , elabKind
-, elabType
+, elabNType
+, elabPType
   -- * Judgements
 , checkIsType
 , IsType(..)
@@ -52,14 +53,14 @@ _Interface :: IsType m Kind
 _Interface = IsType $ pure $ Interface ::: Type
 
 _String :: IsType m PTExpr
-_String = IsType $ pure $ stringT ::: Type
+_String = IsType $ pure $ TString ::: Type
 
 
 forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m PTExpr -> IsType m PTExpr
 forAll (n ::: t) b = IsType $ do
   t' <- checkIsType (t ::: Type)
   b' <- Binding n zero (SType t') |- checkIsType (b ::: Type)
-  pure $ thunkT (forAllT n t' (compT [] b')) ::: Type
+  pure $ TForAll n t' b' ::: Type
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
 arrow mk a b = IsType $ do
@@ -67,15 +68,15 @@ arrow mk a b = IsType $ do
   b' <- checkIsType (b ::: Type)
   pure $ mk a' b' ::: Type
 
-function :: (HasCallStack, Has (Throw Err) sig m) => Maybe Name ::: (Quantity, IsType m PTExpr) -> IsType m PTExpr -> IsType m PTExpr
-function (n ::: (q, a)) = arrow (\ a b -> thunkT (arrowT n q a (compT [] b))) a
+function :: (HasCallStack, Has (Throw Err) sig m) => Maybe Name ::: (Quantity, IsType m PTExpr) -> IsType m NTExpr -> IsType m NTExpr
+function (n ::: (q, a)) = arrow (TArrow n q) a
 
 
 comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m Interface] -> IsType m PTExpr -> IsType m NTExpr
 comp s t = IsType $ do
   s' <- traverse (checkIsType . (::: Interface)) s
   t' <- checkIsType (t ::: Type)
-  pure $ compT s' t' ::: Type
+  pure $ TComp s' t' ::: Type
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
 app mk f a = IsType $ do
@@ -100,17 +101,32 @@ elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   nope = IsType $ couldNotSynthesize (show e <> " at the kind level")
 
 
-elabType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m PTExpr
-elabType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
-  S.TForAll n t b   -> forAll (n ::: elabKind t) (elabType b)
-  S.TArrow  n q a b -> function (n ::: (maybe Many interpretMul q, elabType a)) (elabType b)
-  S.TComp s t       -> thunkT <$> comp (map synthInterface s) (elabType t)
-  S.TApp f a        -> app appT (elabType f) (elabType a)
-  S.TVar n          -> var varT n
-  S.TString         -> _String
+elabNType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m NTExpr
+elabNType expr@(S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
+  S.TForAll{}       -> shift
+  S.TArrow  n q a b -> function (n ::: (maybe Many interpretMul q, elabPType a)) (elabNType b)
+  S.TComp s t       -> comp (map synthInterface s) (elabPType t)
+  S.TApp{}          -> shift
+  S.TVar{}          -> shift
+  S.TString         -> shift
   S.KType           -> nope
   S.KInterface      -> nope
   where
+  shift = TComp [] <$> elabPType expr
+  nope = IsType $ couldNotSynthesize (show e <> " at the type level")
+
+elabPType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m PTExpr
+elabPType expr@(S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
+  S.TForAll n t b -> forAll (n ::: elabKind t) (elabPType b)
+  S.TArrow{}      -> shift
+  S.TComp{}       -> shift
+  S.TApp f a      -> app TApp (elabPType f) (elabPType a)
+  S.TVar n        -> var TVar n
+  S.TString       -> _String
+  S.KType         -> nope
+  S.KInterface    -> nope
+  where
+  shift = TThunk <$> elabNType expr
   nope = IsType $ couldNotSynthesize (show e <> " at the type level")
 
 
@@ -134,7 +150,7 @@ expectTypeConstructor = expectKind (\case{ KArrow n t b -> pure (n ::: t, b) ; _
 checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Kind -> Elab m a
 checkIsType (m ::: _K) = do
   a ::: _KA <- isType m
-  a <$ unless (_KA == _K) (couldNotUnify "kind mismatch" (SType _KA) (SType _K))
+  a <$ unless (_KA == _K) (couldNotUnify "kind mismatch" (EK _KA) (EK _K))
 
 newtype IsType m a = IsType { isType :: Elab m (a ::: Kind) }
 

@@ -77,16 +77,16 @@ type PExpr = Pos Expr
 
 data Expr
   = XTLam Expr
-  | XInst Expr T.TExpr
+  | XInst Expr T.PTExpr
   | XLam [(Pattern Name, Expr)]
   | XApp Expr Expr
-  | XOp QName (Snoc T.TExpr) (Snoc Expr)
+  | XOp QName (Snoc T.PTExpr) (Snoc Expr)
   | XForce Expr
   | XReturn Expr
   -- | Evaluates the first operand, and then evaluates the second providing the value returned by the first as a variable in the environment.
   | XBind Expr Expr
   | XVar (Var Void Index)
-  | XCon QName (Snoc T.TExpr) (Snoc Expr)
+  | XCon QName (Snoc T.PTExpr) (Snoc Expr)
   | XString Text
   | XThunk Expr
   deriving (Eq, Ord, Show)
@@ -94,11 +94,11 @@ data Expr
 
 -- Negative term constructors
 
-tlamE :: Neg Expr -> Neg Expr
-tlamE (Neg b) = Neg (XTLam b)
+tlamE :: Pos Expr -> Pos Expr
+tlamE (Pos b) = Pos (XTLam b)
 
-instE :: Neg Expr -> T.PTExpr -> Neg Expr
-instE (Neg f) (Pos t) = Neg (XInst f t)
+instE :: Pos Expr -> T.PTExpr -> Pos Expr
+instE (Pos f) t = Pos (XInst f t)
 
 lamE :: [(Pattern Name, Neg Expr)] -> Neg Expr
 lamE cs = Neg (XLam (map (fmap (\ (Neg e) -> e)) cs))
@@ -106,7 +106,7 @@ lamE cs = Neg (XLam (map (fmap (\ (Neg e) -> e)) cs))
 appE :: Neg Expr -> Pos Expr -> Neg Expr
 appE (Neg f) (Pos a) = Neg (XApp f a)
 
-opE :: QName -> Snoc T.TExpr -> Snoc (Pos Expr) -> Neg Expr
+opE :: QName -> Snoc T.PTExpr -> Snoc (Pos Expr) -> Neg Expr
 opE n ts fs = Neg (XOp n ts ((\ (Pos e) -> e) <$> fs))
 
 forceE :: Pos Expr -> Neg Expr
@@ -124,7 +124,7 @@ bindE (Neg a) (Neg b) = Neg (XBind a b)
 varE :: Var Void Index -> Pos Expr
 varE v = Pos (XVar v)
 
-conE :: QName -> Snoc T.TExpr -> Snoc (Pos Expr) -> Pos Expr
+conE :: QName -> Snoc T.PTExpr -> Snoc (Pos Expr) -> Pos Expr
 conE n ts fs = Pos (XCon n ts ((\ (Pos e) -> e) <$> fs))
 
 stringE :: Text -> Pos Expr

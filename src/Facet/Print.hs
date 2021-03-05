@@ -17,8 +17,10 @@ module Facet.Print
 , suppressInstantiation
   -- * Core printers
 , printKind
-, printType
-, printTExpr
+, printNType
+, printPType
+, printNTExpr
+, printPTExpr
 , printExpr
 , printModule
   -- * Misc
@@ -152,25 +154,27 @@ printKind Options{ qname } d = go
     C.KArrow (Just n) a b -> parens (ann (intro n d ::: go a)) --> go b
     C.KSpine h sp         -> group (qname h) $$* (group . go <$> sp)
 
-printType :: Options -> Snoc Print -> C.Type -> Print
-printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
+printNType :: Options -> Snoc Print -> C.NType -> Print
+printNType opts env = printNTExpr opts env . CT.quoteN (Name.Level (length env))
 
-printTExpr :: Options -> Snoc Print -> C.TExpr -> Print
-printTExpr opts@Options{ qname } = go
+printPType :: Options -> Snoc Print -> C.PType -> Print
+printPType opts env = printPTExpr opts env . CT.quoteP (Name.Level (length env))
+
+printNTExpr :: Options -> Snoc Print -> C.NTExpr -> Print
+printNTExpr = fst . printTExpr
+
+printPTExpr :: Options -> Snoc Print -> C.PTExpr -> Print
+printPTExpr = snd . printTExpr
+
+printTExpr :: Options -> (Snoc Print -> C.NTExpr -> Print, Snoc Print -> C.PTExpr -> Print)
+printTExpr opts@Options{ qname } = (goN, goP)
   where
   qvar = group . setPrec Var . qname
-  go env = \case
-    C.TForAll       n    t b -> braces (ann (intro n d ::: printKind opts d t)) --> go (env :> intro n d) b
-    C.TArrow  Nothing  q a b -> mult q (go env a) --> go env b
-    C.TArrow  (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
-    C.TComp [] t             -> prec Shift $ pretty '↑' <+> go env t
-    C.TComp s t              -> prec Shift $ pretty '↑' <+> sig s <+> go env t
-    C.TVar (Global n)        -> qvar n
-    C.TVar (Free d)          -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
-    C.TVar (Metavar m)       -> meta m
-    C.TString                -> annotate Type $ pretty "String"
-    C.TThunk t               -> prec Shift $ pretty '↓' <+> go env t
-    C.TApp f a               -> group (go env f) $$ group (go env a)
+  goN env = \case
+    C.TArrow  Nothing  q a b -> mult q (goP env a) --> goN env b
+    C.TArrow  (Just n) q a b -> parens (ann (intro n d ::: mult q (goP env a))) --> goN env b
+    C.TComp [] t             -> prec Shift $ pretty '↑' <+> goP env t
+    C.TComp s t              -> prec Shift $ pretty '↑' <+> sig s <+> goP env t
     where
     d = Name.Level (length env)
     sig :: [C.Interface] -> Print
@@ -179,6 +183,16 @@ printTExpr opts@Options{ qname } = go
       | q == zero -> (pretty '0' <+>)
       | q == one  -> (pretty '1' <+>)
       | otherwise -> id
+  goP env = \case
+    C.TForAll       n    t b -> braces (ann (intro n d ::: printKind opts d t)) --> goP (env :> intro n d) b
+    C.TVar (Global n)        -> qvar n
+    C.TVar (Free d)          -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
+    C.TVar (Metavar m)       -> meta m
+    C.TString                -> annotate Type $ pretty "String"
+    C.TThunk t               -> prec Shift $ pretty '↓' <+> goN env t
+    C.TApp f a               -> group (goP env f) $$ group (goP env a)
+    where
+    d = Name.Level (length env)
 
 printExpr :: Options -> Snoc Print -> C.Expr -> Print
 printExpr opts@Options{ qname, instantiation } = go
@@ -188,13 +202,13 @@ printExpr opts@Options{ qname, instantiation } = go
     C.XVar (Free d')   -> fromMaybe (pretty (getIndex d')) $ env !? getIndex d'
     C.XVar (Metavar m) -> case m of {}
     C.XTLam b          -> braces (braces v <+> arrow <+> go (env :> v) b)
-    C.XInst e t        -> go env e `instantiation` braces (printTExpr opts env t)
+    C.XInst e t        -> go env e `instantiation` braces (printPTExpr opts env t)
     C.XLam cs          -> comp (commaSep (map (clause env) cs))
       where
       clause env (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> go env' b
     C.XApp f a         -> go env f $$ go env a
-    C.XCon n t p       -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
-    C.XOp n t p        -> pretty '#' <> brackets (foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p))
+    C.XCon n t p       -> foldl' instantiation (qvar n) (group . braces . printPTExpr opts env <$> t) $$* (group . go env <$> p)
+    C.XOp n t p        -> pretty '#' <> brackets (foldl' instantiation (qvar n) (group . braces . printPTExpr opts env <$> t) $$* (group . go env <$> p))
     C.XString s        -> annotate Lit $ pretty (show s)
     -- FIXME: add options controlling printing of shifts &c.
     C.XForce t         -> go env t <> pretty '!'
@@ -228,8 +242,8 @@ printModule (C.Module mname is _ ds) = module_
   def (n :=: d) = ann
     $   qvar (Nil:.:n)
     ::: case d of
-      C.DTerm Nothing        _T ->       printType opts Nil _T
-      C.DTerm (Just (Pos b)) _T -> defn (printType opts Nil _T :=: printExpr opts Nil b)
+      C.DTerm Nothing        _T ->       printPType opts Nil _T
+      C.DTerm (Just (Pos b)) _T -> defn (printPType opts Nil _T :=: printExpr opts Nil b)
       C.DData cs _K -> annotate Keyword (pretty "data") <+> declList
         (map def (C.scopeToList cs))
       C.DInterface os _K -> annotate Keyword (pretty "interface") <+> declList

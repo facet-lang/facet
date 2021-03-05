@@ -31,7 +31,7 @@ import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
 import           Facet.Core.Term (Expr)
-import           Facet.Core.Type as T hiding (eval)
+import           Facet.Core.Type as T
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
@@ -195,13 +195,13 @@ showType, showEval :: S.Ann S.Expr -> Action
 showType e = Action $ do
   e ::: _T <- runElab $ Elab.runElabSynth one (Elab.synth (Elab.synthExprPos e))
   opts <- get
-  outputDocLn (getPrint (ann (printExpr opts Nil (getPos e) ::: printType opts Nil _T)))
+  outputDocLn (getPrint (ann (printExpr opts Nil (getPos e) ::: printPType opts Nil _T)))
 
 showEval e = Action $ do
   e' ::: _T <- runElab $ Elab.runElabSynth one $ locally Elab.sig_ (T.IInterface (T.kglobal (["Effect", "Console"]:.:N "Output")):) $ Elab.synth (Elab.synthExprPos e)
   e'' <- runElab . runEvalMain $ getPos e'
   opts <- get
-  outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
+  outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printPType opts Nil _T)))
 
 runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
 runEvalMain e = runEval handle pure (E.quote 0 =<< eval e)
@@ -217,9 +217,9 @@ runEvalMain e = runEval handle pure (E.quote 0 =<< eval e)
 
 showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
-  _T ::: _K <- runElab $ Elab.runElabSynthKind one (Elab.isType (getPos <$> Elab.elabType _T))
+  _T ::: _K <- runElab $ Elab.runElabSynthKind one (Elab.isType (Elab.elabPType _T))
   opts <- get
-  outputDocLn (getPrint (ann (printType opts Nil _T ::: printKind opts 0 _K)))
+  outputDocLn (getPrint (ann (printPType opts Nil _T ::: printKind opts 0 _K)))
 
 
 helpDoc :: Doc Style
