@@ -101,8 +101,9 @@ defaultREPLState = REPL
   localDefs = Module (fromList []) [] [] mempty
 
 defaultPromptFunction :: Int -> IO String
-defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ " <> plain
+defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> bold <> cyan <> "λ " <> plain
   where
+  bold = setSGRCode [setBold] <> "\STX"
   cyan = setSGRCode [setRGB (hsl 300 1 0.5)] <> "\STX"
   plain = setSGRCode [] <> "\STX"
 
