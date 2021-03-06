@@ -54,6 +54,7 @@ unSType :: Has Empty sig m => Sorted -> m Kind
 unSType = \case{ SType ki -> pure ki ; _ -> empty }
 
 
+-- FIXME: this doesn’t accommodate type parameters.
 newtype Interface = IInterface { getInterface :: Kind }
   deriving (Eq, Ord, Show)
 
