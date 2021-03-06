@@ -103,7 +103,7 @@ defaultREPLState = REPL
 defaultPromptFunction :: Int -> IO String
 defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> cyan <> "λ " <> plain
   where
-  cyan = setSGRCode [setRGB (hsl 180 1 0.5)] <> "\STX"
+  cyan = setSGRCode [setRGB (hsl 300 1 0.5)] <> "\STX"
   plain = setSGRCode [] <> "\STX"
 
 
