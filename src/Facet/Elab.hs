@@ -159,6 +159,7 @@ pushSpan :: Has (Reader ElabContext) sig m => Span -> m a -> m a
 pushSpan = locally spans_ . flip (:>)
 
 
+-- FIXME: include the expected type, if any.
 data Err = Err
   { source    :: Source
   , reason    :: ErrReason
