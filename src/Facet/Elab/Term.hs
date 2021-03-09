@@ -384,21 +384,19 @@ elabTermDef
   => PType
   -> S.Ann S.Expr
   -> m PExpr
-elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ check (bindPos (checkExprNeg expr) ::: _T)
+elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ check (bindPos ::: _T)
   where
-  bindPos :: (HasCallStack, Has (Throw Err) sig m) => Check NType m NExpr -> Check PType m PExpr
-  bindPos k = Check $ \case
-    _T@ForAll{} -> check (tlam (bindPos k) ::: _T)
-    Thunk _T    -> check (thunk (bindNeg k) ::: Thunk _T)
-    _T          -> check (bindPos k ::: _T)
-  bindNeg :: (HasCallStack, Has (Throw Err) sig m) => Check NType m NExpr -> Check NType m NExpr
-  bindNeg k = Check $ \case
-    Arrow (Just n) q _A _B -> check (lam [(patFor _A n, bindNeg k)] ::: Arrow Nothing q _A _B)
-    Comp sig _T            -> check (return'' (bindPos k) ::: Comp sig _T)
+  bindPos = Check $ \case
+    _T@ForAll{} -> check (tlam bindPos ::: _T)
+    Thunk _T    -> check (thunk bindNeg ::: Thunk _T)
+    _T          -> check (checkExprPos expr ::: _T)
+  bindNeg = Check $ \case
+    Arrow (Just n) q _A _B -> check (lam [(patFor _A n, bindNeg)] ::: Arrow Nothing q _A _B)
+    Comp sig _T            -> check (return'' bindPos ::: Comp sig _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _T                     -> check (k ::: _T)
+    _T                     -> check (checkExprNeg expr ::: _T)
 
 
 -- Modules
