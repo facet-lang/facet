@@ -392,7 +392,7 @@ elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ check (bindPos ::
     _T          -> check (checkExprPos expr ::: _T)
   bindNeg = Check $ \case
     Arrow (Just n) q _A _B -> check (lam [(patFor _A n, bindNeg)] ::: Arrow Nothing q _A _B)
-    Comp sig _T            -> check (return'' bindPos ::: Comp sig _T)
+    Comp sig (Thunk _T)    -> check (return'' bindPos ::: Comp sig (Thunk _T))
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
