@@ -148,6 +148,12 @@ return' v = Synth $ do
   sig <- view sig_
   pure $ returnE v' ::: Comp sig _V
 
+return'' :: (HasCallStack, Has (Throw Err) sig m) => Check PType m PExpr -> Check NType m NExpr
+return'' v = Check $ \ _N -> do
+  (_, _P) <- assertComp _N
+  v' <- check (v ::: _P)
+  pure $ returnE v'
+
 (>>-) :: Has (Throw Err) sig m => Synth NType m NExpr -> (Synth PType m PExpr -> Synth NType m NExpr) -> Synth NType m NExpr
 v >>- b = Synth $ do
   v' ::: _FV <- synth v
@@ -378,18 +384,21 @@ elabTermDef
   => PType
   -> S.Ann S.Expr
   -> m PExpr
-elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ either id id <$> check (bind (checkExprNeg expr) ::: _T)
+elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ check (bindPos (checkExprNeg expr) ::: _T)
   where
-  bind k = Check $ \case
-    _T@ForAll{}                    -> Right <$> check (tlam (either id id <$> bind k) ::: _T)
-    Thunk (Arrow (Just n) q _A _B) -> Right <$> check (thunk (lam [(patFor _A n, shift (bind k))]) ::: Thunk (Arrow Nothing q _A _B))
+  bindPos :: (HasCallStack, Has (Throw Err) sig m) => Check NType m NExpr -> Check PType m PExpr
+  bindPos k = Check $ \case
+    _T@ForAll{} -> check (tlam (bindPos k) ::: _T)
+    Thunk _T    -> check (thunk (bindNeg k) ::: Thunk _T)
+    _T          -> check (bindPos k ::: _T)
+  bindNeg :: (HasCallStack, Has (Throw Err) sig m) => Check NType m NExpr -> Check NType m NExpr
+  bindNeg k = Check $ \case
+    Arrow (Just n) q _A _B -> check (lam [(patFor _A n, bindNeg k)] ::: Arrow Nothing q _A _B)
+    Comp sig _T            -> check (return'' (bindPos k) ::: Comp sig _T)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _T                             -> Left <$> check (thunk k ::: _T)
-  shift e = Check (\ _T -> do
-    (_, _T') <- assertComp _T
-    either forceE returnE <$> check (e ::: _T'))
+    _T                     -> check (k ::: _T)
 
 
 -- Modules
