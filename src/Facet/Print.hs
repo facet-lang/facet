@@ -116,6 +116,7 @@ f $$ a = askingPrec $ \case
 
 -- Options
 
+-- FIXME: option to control whether names in arrow types are printed.
 data Options = Options
   { qname         :: QName -> Print
   , instantiation :: Print -> Print -> Print
