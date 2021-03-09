@@ -116,22 +116,24 @@ f $$ a = askingPrec $ \case
 
 -- Options
 
--- FIXME: option to control whether names in arrow types are printed.
 data Options = Options
   { qname         :: QName -> Print
   , instantiation :: Print -> Print -> Print
+  , sigBinding    :: Print ::: Print -> Print
   }
 
 verboseOptions :: Options
 verboseOptions = Options
   { qname         = qualified
   , instantiation = printInstantiation
+  , sigBinding    = ty
   }
 
 quietOptions :: Options
 quietOptions = Options
   { qname         = unqualified
   , instantiation = suppressInstantiation
+  , sigBinding    = ty
   }
 
 qualified, unqualified :: QName -> Print
@@ -168,12 +170,12 @@ printPTExpr :: Options -> Snoc Print -> C.PTExpr -> Print
 printPTExpr = snd . printTExpr
 
 printTExpr :: Options -> (Snoc Print -> C.NTExpr -> Print, Snoc Print -> C.PTExpr -> Print)
-printTExpr opts@Options{ qname } = (goN, goP)
+printTExpr opts@Options{ qname, sigBinding } = (goN, goP)
   where
   qvar = group . setPrec Var . qname
   goN env = \case
     C.TArrow  Nothing  q a b -> mult q (goP env a) --> goN env b
-    C.TArrow  (Just n) q a b -> parens (ann (intro n d ::: mult q (goP env a))) --> goN env b
+    C.TArrow  (Just n) q a b -> parens (sigBinding (intro n d ::: mult q (goP env a))) --> goN env b
     C.TComp [] t             -> prec Shift $ pretty '↑' <+> goP env t
     C.TComp s t              -> prec Shift $ pretty '↑' <+> sig s <+> goP env t
     where
@@ -243,8 +245,8 @@ printModule (C.Module mname is _ ds) = module_
   def (n :=: d) = ann
     $   qvar (Nil:.:n)
     ::: case d of
-      C.DTerm Nothing        _T ->       printPType opts Nil _T
-      C.DTerm (Just (Pos b)) _T -> defn (printPType opts Nil _T :=: printExpr opts Nil b)
+      C.DTerm Nothing        _T ->       printPType opts{ sigBinding = ann } Nil _T
+      C.DTerm (Just (Pos b)) _T -> defn (printPType opts{ sigBinding = ann } Nil _T :=: printExpr opts Nil b)
       C.DData cs _K -> annotate Keyword (pretty "data") <+> declList
         (map def (C.scopeToList cs))
       C.DInterface os _K -> annotate Keyword (pretty "interface") <+> declList
