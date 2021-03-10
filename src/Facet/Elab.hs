@@ -15,7 +15,7 @@ module Facet.Elab
   -- * Errors
 , pushSpan
 , Err(..)
-, ErrType(..)
+, HType(..)
 , ErrReason(..)
 , err
 , couldNotUnify
@@ -168,7 +168,8 @@ data Err = Err
   , callStack :: CallStack
   }
 
-data ErrType
+-- | Heterogeneous types.
+data HType
   = EK Kind
   | EN NType
   | EP PType
@@ -179,8 +180,8 @@ data ErrReason
   | AmbiguousName QName [QName]
   | CouldNotSynthesize String
   | ResourceMismatch Name Quantity Quantity
-  | Mismatch (Either String ErrType) ErrType
-  | Hole Name ErrType
+  | Mismatch (Either String HType) HType
+  | Hole Name HType
   | Invariant String
 
 instance Substitutable Err PType Kind where
@@ -212,10 +213,10 @@ err reason = do
   subst <- get
   throwError $ applySubst subst $ Err (maybe source (slice source) (peek spans)) reason context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Throw Err) sig m) => Either String ErrType -> ErrType -> Elab m a
+mismatch :: (HasCallStack, Has (Throw Err) sig m) => Either String HType -> HType -> Elab m a
 mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => ErrType -> ErrType -> Elab m a
+couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => HType -> HType -> Elab m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right t2) t1
 
 couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
