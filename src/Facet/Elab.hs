@@ -332,7 +332,7 @@ unify t1 t2 = unify t1 t2
     (Thunk t1, Thunk t2)                       -> unifyN t1 t2
     (Thunk{}, _)                               -> nope
 
-  kind t1 t2 = unless (t1 == t2) (couldNotUnify (HK t1) (HK t2))
+  kind t1 t2 = unless (t1 == t2) nope
 
   var :: HasCallStack => Var Meta Level -> Var Meta Level -> m ()
   var v1 v2 = case (v1, v2) of
