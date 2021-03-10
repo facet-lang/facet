@@ -297,8 +297,11 @@ unifyP :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => PType -> PType
 unifyP t1 t2 = unify (HP t1) (HP t2)
 
 unify :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => HType -> HType -> Elab m ()
-unify = htype
+unify t1 t2 = htype t1 t2
   where
+  nope :: HasCallStack => Elab m a
+  nope = couldNotUnify t1 t2
+
   htype :: HasCallStack => HType -> HType -> Elab m ()
   htype t1 t2 = case (t1, t2) of
     (HN n1, HN n2) -> ntype n1 n2
@@ -307,19 +310,13 @@ unify = htype
     (HP{}, _)      -> nope
     (HK k1, HK k2) -> kind k1 k2
     (HK{}, _)      -> nope
-    where
-    nope :: HasCallStack => Elab m a
-    nope = couldNotUnify t1 t2
 
   ntype :: HasCallStack => NType -> NType -> Elab m ()
   ntype t1 t2 = case (t1, t2) of
     (Arrow _ _ a1 b1, Arrow _ _ a2 b2) -> ptype a1 a2 >> ntype b1 b2
     (Arrow{}, _)                       -> nope
-    (Comp s1 t1, Comp s2 t2)           -> sigOr nope s1 s2 >> ptype t1 t2
+    (Comp s1 t1, Comp s2 t2)           -> sig s1 s2 >> ptype t1 t2
     (Comp{}, _)                        -> nope
-    where
-    nope :: HasCallStack => Elab m a
-    nope = couldNotUnify (HN t1) (HN t2)
 
   ptype :: HasCallStack => PType -> PType -> Elab m ()
   ptype t1 t2 = case (t1, t2) of
@@ -328,15 +325,12 @@ unify = htype
     (Ne (Metavar v1) Nil, Ne (Metavar v2) Nil) -> flexFlex v1 v2
     (Ne (Metavar v1) Nil, t2)                  -> solve v1 t2
     (t1, Ne (Metavar v2) Nil)                  -> solve v2 t1
-    (Ne v1 sp1, Ne v2 sp2)                     -> var v1 v2 >> spineOr nope ptype sp1 sp2
+    (Ne v1 sp1, Ne v2 sp2)                     -> var v1 v2 >> spine ptype sp1 sp2
     (Ne{}, _)                                  -> nope
     (String, String)                           -> pure ()
     (String, _)                                -> nope
     (Thunk t1, Thunk t2)                       -> ntype t1 t2
     (Thunk{}, _)                               -> nope
-    where
-    nope :: HasCallStack => Elab m a
-    nope = couldNotUnify (HP t1) (HP t2)
 
   kind t1 t2 = unless (t1 == t2) (couldNotUnify (HK t1) (HK t2))
 
@@ -348,15 +342,12 @@ unify = htype
     (Free{}, _)              -> nope
     (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
     (Metavar{}, _)           -> nope
-    where
-    nope :: HasCallStack => Elab m a
-    nope = couldNotUnify (HP (Ne v1 Nil)) (HP (Ne v2 Nil))
 
-  spineOr :: (Foldable t, Zip t) => Elab m () -> (a -> b -> Elab m ()) -> t a -> t b -> Elab m ()
-  spineOr nope f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
+  spine :: (Foldable t, Zip t) => (a -> b -> Elab m ()) -> t a -> t b -> Elab m ()
+  spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
-  sigOr :: (Foldable t, Zip t) => Elab m () -> t Interface -> t Interface -> Elab m ()
-  sigOr nope c1 c2 = spineOr nope kind (getInterface <$> c1) (getInterface <$> c2)
+  sig :: (Foldable t, Zip t) => t Interface -> t Interface -> Elab m ()
+  sig c1 c2 = spine kind (getInterface <$> c1) (getInterface <$> c2)
 
   flexFlex :: HasCallStack => Meta -> Meta -> Elab m ()
   flexFlex v1 v2
