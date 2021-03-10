@@ -206,23 +206,23 @@ instance Substitutable Err PType Kind where
 
 
 -- FIXME: apply the substitution before showing this to the user
-err :: (HasCallStack, Has (Throw Err) sig m) => ErrReason -> Elab m a
+err :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err) sig m) => ErrReason -> m a
 err reason = do
   StaticContext{ source } <- ask
   ElabContext{ context, spans } <- ask
   subst <- get
   throwError $ applySubst subst $ Err (maybe source (slice source) (peek spans)) reason context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Throw Err) sig m) => Either String HType -> HType -> Elab m a
+mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err) sig m) => Either String HType -> HType -> m a
 mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => HType -> HType -> Elab m a
+couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err) sig m) => HType -> HType -> m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right t2) t1
 
 couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
 couldNotSynthesize v = withFrozenCallStack $ err $ CouldNotSynthesize v
 
-resourceMismatch :: (HasCallStack, Has (Throw Err) sig m) => Name -> Quantity -> Quantity -> Elab m a
+resourceMismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err) sig m) => Name -> Quantity -> Quantity -> m a
 resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp act
 
 freeVariable :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m a
