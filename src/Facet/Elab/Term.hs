@@ -180,10 +180,10 @@ instantiate inst = go
     _                      -> pure $ e ::: _T
 
 holeN :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check NType m a
-holeN n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (EN _T)
+holeN n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (HN _T)
 
 holeP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check PType m a
-holeP n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (EP _T)
+holeP n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (HP _T)
 
 switchN :: (HasCallStack, Has (Throw Err) sig m) => Synth NType m a -> Check NType m a
 switchN (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unifyN _K' _K

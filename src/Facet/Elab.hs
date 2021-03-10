@@ -170,9 +170,9 @@ data Err = Err
 
 -- | Heterogeneous types.
 data HType
-  = EK Kind
-  | EN NType
-  | EP PType
+  = HK Kind
+  | HN NType
+  | HP PType
 
 data ErrReason
   = FreeVariable QName
@@ -198,9 +198,9 @@ instance Substitutable Err PType Kind where
     env = toEnv context
     d = level context
     applyErrType = \case
-      EN ty -> EN (roundtripN ty)
-      EP ty -> EP (roundtripP ty)
-      EK ki -> EK ki -- FIXME: can/should we substitute in this?
+      HN ty -> HN (roundtripN ty)
+      HP ty -> HP (roundtripP ty)
+      HK ki -> HK ki -- FIXME: can/should we substitute in this?
     roundtripP = T.evalP subst (Left <$> env) . T.quoteP d
     roundtripN = T.evalN subst (Left <$> env) . T.quoteN d
 
@@ -254,13 +254,13 @@ warn reason = do
 -- Patterns
 
 assertKind :: (HasCallStack, Has (Throw Err) sig m) => (Kind -> Maybe out) -> String -> Kind -> Elab m out
-assertKind pat exp _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EK _T)) pure (pat _T)
+assertKind pat exp _T = withFrozenCallStack $ maybe (mismatch (Left exp) (HK _T)) pure (pat _T)
 
 assertNType :: (HasCallStack, Has (Throw Err) sig m) => (NType -> Maybe out) -> String -> NType -> Elab m out
-assertNType pat exp _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EN _T)) pure (pat _T)
+assertNType pat exp _T = withFrozenCallStack $ maybe (mismatch (Left exp) (HN _T)) pure (pat _T)
 
 assertPType :: (HasCallStack, Has (Throw Err) sig m) => (PType -> Maybe out) -> String -> PType -> Elab m out
-assertPType pat exp _T = withFrozenCallStack $ maybe (mismatch (Left exp) (EP _T)) pure (pat _T)
+assertPType pat exp _T = withFrozenCallStack $ maybe (mismatch (Left exp) (HP _T)) pure (pat _T)
 
 
 -- Unification
@@ -307,7 +307,7 @@ unify = (ntype, ptype)
     (Comp{}, _)                        -> nope
     where
     nope :: HasCallStack => Elab m a
-    nope = couldNotUnify (EN t1) (EN t2)
+    nope = couldNotUnify (HN t1) (HN t2)
 
   ptype :: HasCallStack => PType -> PType -> Elab m ()
   ptype t1 t2 = case (t1, t2) of
@@ -324,9 +324,9 @@ unify = (ntype, ptype)
     (Thunk{}, _)                               -> nope
     where
     nope :: HasCallStack => Elab m a
-    nope = couldNotUnify (EP t1) (EP t2)
+    nope = couldNotUnify (HP t1) (HP t2)
 
-  kind t1 t2 = unless (t1 == t2) (couldNotUnify (EK t1) (EK t2))
+  kind t1 t2 = unless (t1 == t2) (couldNotUnify (HK t1) (HK t2))
 
   var :: HasCallStack => Var Meta Level -> Var Meta Level -> Elab m ()
   var v1 v2 = case (v1, v2) of
@@ -338,7 +338,7 @@ unify = (ntype, ptype)
     (Metavar{}, _)           -> nope
     where
     nope :: HasCallStack => Elab m a
-    nope = couldNotUnify (EP (Ne v1 Nil)) (EP (Ne v2 Nil))
+    nope = couldNotUnify (HP (Ne v1 Nil)) (HP (Ne v2 Nil))
 
   spineOr :: (Foldable t, Zip t) => Elab m () -> (a -> b -> Elab m ()) -> t a -> t b -> Elab m ()
   spineOr nope f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
@@ -361,7 +361,7 @@ unify = (ntype, ptype)
   solve v t = do
     d <- depth
     if occursInP v d t then
-      mismatch (Right (EP (metavar v))) (EP t) -- FIXME: use a specialized error rather than mismatch
+      mismatch (Right (HP (metavar v))) (HP t) -- FIXME: use a specialized error rather than mismatch
     else
       gets (lookupMeta @PType @Kind v) >>= \case
         Nothing          -> modify (solveMeta @PType @Kind v t)

@@ -78,9 +78,9 @@ printErrReason opts ctx = group . \case
   Invariant s            -> reflow s
   where
   printErrType = getPrint . \case
-    EN _T -> printNType opts ctx _T
-    EP _T -> printPType opts ctx _T
-    EK _K -> printKind opts (Name.Level (length ctx)) _K
+    HN _T -> printNType opts ctx _T
+    HP _T -> printPType opts ctx _T
+    HK _K -> printKind opts (Name.Level (length ctx)) _K
 
 
 rethrowElabWarnings :: L.WriteC (Notice (Doc Style)) Warn m a -> m a

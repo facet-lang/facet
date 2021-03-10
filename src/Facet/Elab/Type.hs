@@ -153,7 +153,7 @@ assertTypeConstructor = assertKind (\case{ KArrow n t b -> pure (n ::: t, b) ; _
 checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Kind -> Elab m a
 checkIsType (m ::: _K) = do
   a ::: _KA <- isType m
-  a <$ unless (_KA == _K) (couldNotUnify (EK _KA) (EK _K))
+  a <$ unless (_KA == _K) (couldNotUnify (HK _KA) (HK _K))
 
 newtype IsType m a = IsType { isType :: Elab m (a ::: Kind) }
 
