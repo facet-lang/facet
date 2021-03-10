@@ -290,19 +290,19 @@ spans_ = lens spans (\ e spans -> e{ spans })
 
 
 -- FIXME: we don’t get good source references during unification
-unifyN :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => NType -> NType -> Elab m ()
+unifyN :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => NType -> NType -> m ()
 unifyN t1 t2 = unify (HN t1) (HN t2)
 
-unifyP :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => PType -> PType -> Elab m ()
+unifyP :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => PType -> PType -> m ()
 unifyP t1 t2 = unify (HP t1) (HP t2)
 
-unify :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => HType -> HType -> Elab m ()
+unify :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => HType -> HType -> m ()
 unify t1 t2 = htype t1 t2
   where
-  nope :: HasCallStack => Elab m a
+  nope :: HasCallStack => m a
   nope = couldNotUnify t1 t2
 
-  htype :: HasCallStack => HType -> HType -> Elab m ()
+  htype :: HasCallStack => HType -> HType -> m ()
   htype t1 t2 = case (t1, t2) of
     (HN n1, HN n2) -> ntype n1 n2
     (HN{}, _)      -> nope
@@ -311,14 +311,14 @@ unify t1 t2 = htype t1 t2
     (HK k1, HK k2) -> kind k1 k2
     (HK{}, _)      -> nope
 
-  ntype :: HasCallStack => NType -> NType -> Elab m ()
+  ntype :: HasCallStack => NType -> NType -> m ()
   ntype t1 t2 = case (t1, t2) of
     (Arrow _ _ a1 b1, Arrow _ _ a2 b2) -> ptype a1 a2 >> ntype b1 b2
     (Arrow{}, _)                       -> nope
     (Comp s1 t1, Comp s2 t2)           -> sig s1 s2 >> ptype t1 t2
     (Comp{}, _)                        -> nope
 
-  ptype :: HasCallStack => PType -> PType -> Elab m ()
+  ptype :: HasCallStack => PType -> PType -> m ()
   ptype t1 t2 = case (t1, t2) of
     (ForAll n t1 b1, ForAll _ t2 b2)           -> kind t1 t2 >> depth >>= \ d -> Binding n zero (SType t1) |- ptype (b1 (free d)) (b2 (free d))
     (ForAll{}, _)                              -> nope
@@ -334,7 +334,7 @@ unify t1 t2 = htype t1 t2
 
   kind t1 t2 = unless (t1 == t2) (couldNotUnify (HK t1) (HK t2))
 
-  var :: HasCallStack => Var Meta Level -> Var Meta Level -> Elab m ()
+  var :: HasCallStack => Var Meta Level -> Var Meta Level -> m ()
   var v1 v2 = case (v1, v2) of
     (Global q1, Global q2)   -> unless (q1 == q2) nope
     (Global{}, _)            -> nope
@@ -343,13 +343,13 @@ unify t1 t2 = htype t1 t2
     (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
     (Metavar{}, _)           -> nope
 
-  spine :: (Foldable t, Zip t) => (a -> b -> Elab m ()) -> t a -> t b -> Elab m ()
+  spine :: (Foldable t, Zip t) => (a -> b -> m ()) -> t a -> t b -> m ()
   spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
-  sig :: (Foldable t, Zip t) => t Interface -> t Interface -> Elab m ()
+  sig :: (Foldable t, Zip t) => t Interface -> t Interface -> m ()
   sig c1 c2 = spine kind (getInterface <$> c1) (getInterface <$> c2)
 
-  flexFlex :: HasCallStack => Meta -> Meta -> Elab m ()
+  flexFlex :: HasCallStack => Meta -> Meta -> m ()
   flexFlex v1 v2
     | v1 == v2  = pure ()
     | otherwise = do
@@ -360,7 +360,7 @@ unify t1 t2 = htype t1 t2
         (Nothing, Just t2) -> ptype (metavar v1) (tm t2)
         (Nothing, Nothing) -> solve v1 (metavar v2)
 
-  solve :: HasCallStack => Meta -> PType -> Elab m ()
+  solve :: HasCallStack => Meta -> PType -> m ()
   solve v t = do
     d <- depth
     if occursInP v d t then
