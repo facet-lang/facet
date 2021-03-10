@@ -291,14 +291,26 @@ spans_ = lens spans (\ e spans -> e{ spans })
 
 -- FIXME: we don’t get good source references during unification
 unifyN :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => NType -> NType -> Elab m ()
-unifyN = fst unify
+unifyN t1 t2 = unify (HN t1) (HN t2)
 
 unifyP :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => PType -> PType -> Elab m ()
-unifyP = snd unify
+unifyP t1 t2 = unify (HP t1) (HP t2)
 
-unify :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => (NType -> NType -> Elab m (), PType -> PType -> Elab m ())
-unify = (ntype, ptype)
+unify :: forall m sig . (HasCallStack, Has (Throw Err) sig m) => HType -> HType -> Elab m ()
+unify = htype
   where
+  htype :: HasCallStack => HType -> HType -> Elab m ()
+  htype t1 t2 = case (t1, t2) of
+    (HN n1, HN n2) -> ntype n1 n2
+    (HN{}, _)      -> nope
+    (HP p1, HP p2) -> ptype p1 p2
+    (HP{}, _)      -> nope
+    (HK k1, HK k2) -> kind k1 k2
+    (HK{}, _)      -> nope
+    where
+    nope :: HasCallStack => Elab m a
+    nope = couldNotUnify t1 t2
+
   ntype :: HasCallStack => NType -> NType -> Elab m ()
   ntype t1 t2 = case (t1, t2) of
     (Arrow _ _ a1 b1, Arrow _ _ a2 b2) -> ptype a1 a2 >> ntype b1 b2
