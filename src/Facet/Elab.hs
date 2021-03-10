@@ -123,7 +123,7 @@ lookupInSig (m :.: n) mod graph = fmap asum . fmap . (. getInterface) $ \case
   _                   -> Alt.empty
 
 
-(|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a
+(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => Binding -> m a -> m a
 Binding n q _T |- b = do
   sigma <- asks scale
   d <- depth
