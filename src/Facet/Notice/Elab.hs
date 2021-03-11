@@ -35,12 +35,12 @@ rethrowElabErrors opts = L.runThrow rethrow
     ]
     where
     (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
-    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printPType opts printCtx) v ::: printKind opts printCtx _T))) (metas subst)
+    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printPType opts printCtx) v ::: printKindL opts printCtx _T))) (metas subst)
   combine (d, print, ctx) (Binding n m _T) =
     let n' = intro n d
         _T' = case _T of
           STerm _T -> printPType opts print _T
-          SType _K -> printKind opts print _K
+          SType _K -> printKindL opts print _K
     in  ( succ d
         , print :> n'
         , ctx   :> getPrint (ann (n' ::: mult m _T')) )
@@ -79,7 +79,7 @@ printErrReason opts ctx = group . \case
   printErrType = getPrint . \case
     HN _T -> printNType opts ctx _T
     HP _T -> printPType opts ctx _T
-    HK _K -> printKind opts ctx _K
+    HK _K -> printKindL opts ctx _K
 
 
 rethrowElabWarnings :: L.WriteC (Notice (Doc Style)) Warn m a -> m a

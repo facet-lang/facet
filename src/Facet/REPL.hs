@@ -220,7 +220,7 @@ showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
   _T ::: _K <- runElab $ Elab.runElabSynthKind one (Elab.isType (Elab.elabPType _T))
   opts <- get
-  outputDocLn (getPrint (ann (printPType opts Nil _T ::: printKind opts Nil _K)))
+  outputDocLn (getPrint (ann (printPType opts Nil _T ::: printKindL opts Nil _K)))
 
 
 helpDoc :: Doc Style

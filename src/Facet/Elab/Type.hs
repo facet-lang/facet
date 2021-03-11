@@ -46,20 +46,21 @@ global n = IsType $ do
   pure $ q ::: _T
 
 
-_Type :: IsType m Kind
+_Type :: IsType m (Kind Index)
 _Type = IsType $ pure $ Type ::: Type
 
-_Interface :: IsType m Kind
+_Interface :: IsType m (Kind Index)
 _Interface = IsType $ pure $ Interface ::: Type
 
 _String :: IsType m PTExpr
 _String = IsType $ pure $ TString ::: Type
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m PTExpr -> IsType m PTExpr
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m (Kind Index) -> IsType m PTExpr -> IsType m PTExpr
 forAll (n ::: t) b = IsType $ do
   t' <- checkIsType (t ::: Type)
-  b' <- Binding n zero (SType t') |- checkIsType (b ::: Type)
+  d <- depth
+  b' <- Binding n zero (SType (indexToLevel d <$> t')) |- checkIsType (b ::: Type)
   pure $ TForAll n t' b' ::: Type
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
@@ -72,7 +73,7 @@ function :: (HasCallStack, Has (Throw Err) sig m) => Maybe Name ::: (Quantity, I
 function (n ::: (q, a)) = arrow (TArrow n q) a
 
 
-comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m Interface] -> IsType m PTExpr -> IsType m NTExpr
+comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m (Interface Index)] -> IsType m PTExpr -> IsType m NTExpr
 comp s t = IsType $ do
   s' <- traverse (checkIsType . (::: Interface)) s
   t' <- checkIsType (t ::: Type)
@@ -92,7 +93,7 @@ thunk t = IsType $ do
   pure $ TThunk t' ::: Type
 
 
-elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m Kind
+elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (Kind Index)
 elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TArrow n _ a b -> arrow (KArrow n) (elabKind a) (elabKind b)
   S.TApp f a       -> app kapp (elabKind f) (elabKind a)
@@ -139,26 +140,26 @@ interpretMul = \case
   S.One  -> one
 
 
-synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m Interface
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m (Interface Index)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapIsType (pushSpan s) . fmap IInterface $
   foldl' (app kapp) (mapIsType (pushSpan sh) (kglobal <$> global h)) (elabKind <$> sp)
 
 
-assertTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => Kind -> Elab m (Maybe Name ::: Kind, Kind)
+assertTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => Kind Level -> Elab m (Maybe Name ::: Kind Level, Kind Level)
 assertTypeConstructor = assertKind (\case{ KArrow n t b -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Judgements
 
-checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Kind -> Elab m a
+checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Kind Level -> Elab m a
 checkIsType (m ::: _K) = do
   a ::: _KA <- isType m
   a <$ unless (_KA == _K) (couldNotUnify (HK _KA) (HK _K))
 
-newtype IsType m a = IsType { isType :: Elab m (a ::: Kind) }
+newtype IsType m a = IsType { isType :: Elab m (a ::: Kind Level) }
 
 instance Functor (IsType m) where
   fmap f (IsType m) = IsType (first f <$> m)
 
-mapIsType :: (Elab m (a ::: Kind) -> Elab m (b ::: Kind)) -> IsType m a -> IsType m b
+mapIsType :: (Elab m (a ::: Kind Level) -> Elab m (b ::: Kind Level)) -> IsType m a -> IsType m b
 mapIsType f = IsType . f . isType

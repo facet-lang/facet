@@ -24,24 +24,24 @@ import Facet.Usage
 import GHC.Stack
 
 -- FIXME: we don’t get good source references during unification
-unifyN :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => NType -> NType -> m ()
+unifyN :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err :+: Writer Usage) sig m) => NType -> NType -> m ()
 unifyN t1 t2 = runEmpty (couldNotUnify (HN t1) (HN t2)) pure (ntype t1 t2)
 
-unifyP :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => PType -> PType -> m ()
+unifyP :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err :+: Writer Usage) sig m) => PType -> PType -> m ()
 unifyP t1 t2 = runEmpty (couldNotUnify (HP t1) (HP t2)) pure (ptype t1 t2)
 
-unifyK :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => Kind -> Kind -> m ()
+unifyK :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err :+: Writer Usage) sig m) => Kind Level -> Kind Level -> m ()
 unifyK t1 t2 = runEmpty (couldNotUnify (HK t1) (HK t2)) pure (kind t1 t2)
 
 
-ntype :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => NType -> NType -> m ()
+ntype :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err :+: Writer Usage) sig m) => NType -> NType -> m ()
 ntype t1 t2 = case (t1, t2) of
   (Arrow _ _ a1 b1, Arrow _ _ a2 b2) -> ptype a1 a2 >> ntype b1 b2
   (Arrow{}, _)                       -> empty
   (Comp s1 t1, Comp s2 t2)           -> sig s1 s2 >> ptype t1 t2
   (Comp{}, _)                        -> empty
 
-ptype :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => PType -> PType -> m ()
+ptype :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err :+: Writer Usage) sig m) => PType -> PType -> m ()
 ptype t1 t2 = case (t1, t2) of
   (ForAll n t1 b1, ForAll _ t2 b2)           -> kind t1 t2 >> depth >>= \ d -> Binding n zero (SType t1) |- ptype (b1 (free d)) (b2 (free d))
   (ForAll{}, _)                              -> empty
@@ -55,7 +55,7 @@ ptype t1 t2 = case (t1, t2) of
   (Thunk t1, Thunk t2)                       -> ntype t1 t2
   (Thunk{}, _)                               -> empty
 
-kind :: Has Empty sig m => Kind -> Kind -> m ()
+kind :: Has Empty sig m => Kind Level -> Kind Level -> m ()
 kind t1 t2 = guard (t1 == t2)
 
 var :: (Has Empty sig m) => Var Meta Level -> Var Meta Level -> m ()
@@ -70,26 +70,26 @@ var v1 v2 = case (v1, v2) of
 spine :: (Foldable t, Zip t, Has Empty sig m) => (a -> b -> m ()) -> t a -> t b -> m ()
 spine f sp1 sp2 = guard (length sp1 == length sp2) >> zipWithM_ f sp1 sp2
 
-sig :: (Foldable t, Zip t, Has Empty sig m) => t Interface -> t Interface -> m ()
+sig :: (Foldable t, Zip t, Has Empty sig m) => t (Interface Level) -> t (Interface Level) -> m ()
 sig = spine (kind `on` getInterface)
 
-flexFlex :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Meta -> m ()
+flexFlex :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Meta -> m ()
 flexFlex v1 v2
   | v1 == v2  = pure ()
   | otherwise = do
-    (t1, t2) <- gets (\ s -> (lookupMeta @PType @Kind v1 s, lookupMeta v2 s))
+    (t1, t2) <- gets (\ s -> (lookupMeta @PType @(Kind Level) v1 s, lookupMeta v2 s))
     case (t1, t2) of
       (Just t1, Just t2) -> ptype (tm t1) (tm t2)
       (Just t1, Nothing) -> ptype (metavar v2) (tm t1)
       (Nothing, Just t2) -> ptype (metavar v1) (tm t2)
       (Nothing, Nothing) -> solve v1 (metavar v2)
 
-solve :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => Meta -> PType -> m ()
+solve :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err :+: Writer Usage) sig m) => Meta -> PType -> m ()
 solve v t = do
   d <- depth
   if occursInP v d t then
     mismatch (Right (HP (metavar v))) (HP t) -- FIXME: use a specialized error rather than mismatch
   else
-    gets (lookupMeta @PType @Kind v) >>= \case
-      Nothing          -> modify (solveMeta @PType @Kind v t)
+    gets (lookupMeta @PType @(Kind Level) v) >>= \case
+      Nothing          -> modify (solveMeta @PType @(Kind Level) v t)
       Just (t' ::: _T) -> ptype t' t

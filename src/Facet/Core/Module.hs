@@ -91,21 +91,21 @@ newtype Import = Import { name :: MName }
 
 data Def
   = DTerm (Maybe PExpr) PType
-  | DData Scope Kind
-  | DInterface Scope Kind
-  | DModule Scope Kind
+  | DData Scope (Kind Level)
+  | DInterface Scope (Kind Level)
+  | DModule Scope (Kind Level)
 
 unDTerm :: Has Empty sig m => Def -> m (Maybe PExpr ::: PType)
 unDTerm = \case
   DTerm e _T -> pure (e ::: _T)
   _          -> empty
 
-unDData :: Has Empty sig m => Def -> m (Scope ::: Kind)
+unDData :: Has Empty sig m => Def -> m (Scope ::: Kind Level)
 unDData = \case
   DData cs _T -> pure (cs ::: _T)
   _           -> empty
 
-unDInterface :: Has Empty sig m => Def -> m (Scope ::: Kind)
+unDInterface :: Has Empty sig m => Def -> m (Scope ::: Kind Level)
 unDInterface = \case
   DInterface cs _T -> pure (cs ::: _T)
   _                -> empty

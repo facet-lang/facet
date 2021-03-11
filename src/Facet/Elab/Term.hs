@@ -241,7 +241,7 @@ allP n = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _A') <- assertComp =<< assertThunk _A
   (PAll n,) <$> (Binding n q (STerm (Thunk (Comp sig _A'))) |- check (b ::: _B))
 
-op :: (HasCallStack, Has (Throw Err) sig m) => [Interface] -> QName -> Synth PType m QName
+op :: (HasCallStack, Has (Throw Err) sig m) => [Interface Level] -> QName -> Synth PType m QName
 op sig n = Synth $ do
   StaticContext{ module', graph } <- ask
   maybe (freeVariable n) (instantiate const . ((:::) <$> nm <*> ty . def)) (listToMaybe (traverse unDTerm =<< lookupInSig n module' graph sig))
@@ -318,11 +318,11 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstractType :: (HasCallStack, Has (Throw Err) sig m) => IsType m PTExpr -> Kind -> Elab m PTExpr
-abstractType body = go
+abstractType :: (HasCallStack, Has (Throw Err) sig m) => IsType m PTExpr -> Kind Level -> Elab m PTExpr
+abstractType body = go 0
   where
-  go = \case
-    KArrow (Just n) a b -> TForAll n a <$> (Binding n zero (SType a) |- go b)
+  go d = \case
+    KArrow (Just n) a b -> TForAll n (levelToIndex d <$> a) <$> (Binding n zero (SType a) |- go (succ d) b)
     _                   -> checkIsType (body ::: Type)
 
 abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc PTExpr -> Snoc PExpr -> Pos Expr) -> Check PType m PExpr
@@ -350,7 +350,7 @@ patFor = \case{ Thunk Comp{} -> fmap PEff . allP ; _ -> fmap PVal . varP }
 
 elabDataDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
-  => Name ::: Kind
+  => Name ::: Kind Level
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Def]
 -- FIXME: check that all constructors return the datatype.
@@ -367,7 +367,7 @@ elabDataDef (dname ::: _T) constructors = do
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
-  => Name ::: Kind
+  => Name ::: Kind Level
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Def]
 elabInterfaceDef (dname ::: _T) constructors = do
@@ -440,7 +440,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 -- FIXME: can we get away without the extra message?
 -- FIXME: can we replace these by unification? Maybe not if we want to get names and quantities out?
-assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => PType -> Elab m (Name ::: Kind, PType -> PType)
+assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => PType -> Elab m (Name ::: Kind Level, PType -> PType)
 assertQuantifier = assertPType (\case{ ForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => NType -> Elab m (Maybe Name ::: (Quantity, PType), NType)
@@ -451,7 +451,7 @@ assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => NType -> Elab m 
 assertTacitFunction = assertNType (\case{ Arrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _"
 
 -- | Expect a computation type with effects.
-assertComp :: (HasCallStack, Has (Throw Err) sig m) => NType -> Elab m ([Interface], PType)
+assertComp :: (HasCallStack, Has (Throw Err) sig m) => NType -> Elab m ([Interface Level], PType)
 assertComp = assertNType (\case{ Comp s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
 
 -- | Expect a value type wrapping a computation.

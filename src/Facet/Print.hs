@@ -16,7 +16,8 @@ module Facet.Print
 , printInstantiation
 , suppressInstantiation
   -- * Core printers
-, printKind
+, printKindL
+, printKindI
 , printNType
 , printPType
 , printNTExpr
@@ -147,8 +148,11 @@ suppressInstantiation = const
 
 -- Core printers
 
-printKind :: Options -> Snoc Print -> C.Kind -> Print
-printKind Options{ qname } env = go
+printKindL :: Options -> Snoc Print -> C.Kind Level -> Print
+printKindL opts env = printKindI opts env . fmap (levelToIndex (Name.Level (length env)))
+
+printKindI :: Options -> Snoc Print -> C.Kind Index -> Print
+printKindI Options{ qname } env = go
   where
   go = \case
     C.Type                -> annotate Type $ pretty "Type"
@@ -159,7 +163,7 @@ printKind Options{ qname } env = go
   d = Name.Level (length env)
   var = \case
     Global n  -> qname n
-    Free l    -> let i = levelToIndex d l in fromMaybe (pretty (getIndex i)) $ env !? getIndex i
+    Free i    -> fromMaybe (pretty (getIndex i)) $ env !? getIndex i
     Metavar m -> case m of {}
 
 printNType :: Options -> Snoc Print -> C.NType -> Print
@@ -185,14 +189,14 @@ printTExpr opts@Options{ qname, sigBinding } = (goN, goP)
     C.TComp s t              -> prec Shift $ pretty '↑' <+> sig s <+> goP env t
     where
     d = Name.Level (length env)
-    sig :: [C.Interface] -> Print
-    sig s = brackets (commaSep (map (printKind opts env . C.getInterface) s))
+    sig :: [C.Interface Index] -> Print
+    sig s = brackets (commaSep (map (printKindI opts env . C.getInterface) s))
     mult q = if
       | q == zero -> (pretty '0' <+>)
       | q == one  -> (pretty '1' <+>)
       | otherwise -> id
   goP env = \case
-    C.TForAll       n    t b -> braces (ann (intro n d ::: printKind opts env t)) --> goP (env :> intro n d) b
+    C.TForAll       n    t b -> braces (ann (intro n d ::: printKindI opts env t)) --> goP (env :> intro n d) b
     C.TVar (Global n)        -> qvar n
     C.TVar (Free d)          -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
     C.TVar (Metavar m)       -> meta m

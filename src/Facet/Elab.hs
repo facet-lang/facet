@@ -84,8 +84,8 @@ import           Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Has (State (Subst PType Kind)) sig m => Kind -> m Meta
-meta _T = state (declareMeta @Kind @PType _T)
+meta :: Has (State (Subst PType (Kind Level))) sig m => Kind Level -> m Meta
+meta _T = state (declareMeta @(Kind Level) @PType _T)
 
 
 resolveWith
@@ -112,7 +112,7 @@ lookupInContext (m:.:n)
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: this can’t differentiate between different instantiations of the same effect (i.e. based on type)
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Interface] -> m (QName :=: Def)
+lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Interface Level] -> m (QName :=: Def)
 lookupInSig (m :.: n) mod graph = getChoosing . foldMap (Choosing . go . getInterface)
   where
   go = \case
@@ -124,7 +124,7 @@ lookupInSig (m :.: n) mod graph = getChoosing . foldMap (Choosing . go . getInte
     _                   -> empty
 
 
-(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => Binding -> m a -> m a
+(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err :+: Writer Usage) sig m) => Binding -> m a -> m a
 Binding n q _T |- b = do
   sigma <- asks scale
   d <- depth
@@ -165,13 +165,13 @@ data Err = Err
   { source    :: Source
   , reason    :: ErrReason
   , context   :: Context
-  , subst     :: Subst PType Kind
+  , subst     :: Subst PType (Kind Level)
   , callStack :: CallStack
   }
 
 -- | Heterogeneous types.
 data HType
-  = HK Kind
+  = HK (Kind Level)
   | HN NType
   | HP PType
 
@@ -185,7 +185,7 @@ data ErrReason
   | Hole Name HType
   | Invariant String
 
-instance Substitutable Err PType Kind where
+instance Substitutable Err PType (Kind Level) where
   applySubst subst e@Err{ reason, context } = e{ reason = reason' }
     where
     reason' = case reason of
@@ -207,23 +207,23 @@ instance Substitutable Err PType Kind where
 
 
 -- FIXME: apply the substitution before showing this to the user
-err :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err) sig m) => ErrReason -> m a
+err :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err) sig m) => ErrReason -> m a
 err reason = do
   StaticContext{ source } <- ask
   ElabContext{ context, spans } <- ask
   subst <- get
   throwError $ applySubst subst $ Err (maybe source (slice source) (peek spans)) reason context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err) sig m) => Either String HType -> HType -> m a
+mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err) sig m) => Either String HType -> HType -> m a
 mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err) sig m) => HType -> HType -> m a
+couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err) sig m) => HType -> HType -> m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right t2) t1
 
 couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
 couldNotSynthesize v = withFrozenCallStack $ err $ CouldNotSynthesize v
 
-resourceMismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err) sig m) => Name -> Quantity -> Quantity -> m a
+resourceMismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType (Kind Level)) :+: Throw Err) sig m) => Name -> Quantity -> Quantity -> m a
 resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp act
 
 freeVariable :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m a
@@ -254,7 +254,7 @@ warn reason = do
 
 -- Patterns
 
-assertKind :: (HasCallStack, Has (Throw Err) sig m) => (Kind -> Maybe out) -> String -> Kind -> Elab m out
+assertKind :: (HasCallStack, Has (Throw Err) sig m) => (Kind Level -> Maybe out) -> String -> Kind Level -> Elab m out
 assertKind pat exp _T = withFrozenCallStack $ maybe (mismatch (Left exp) (HK _T)) pure (pat _T)
 
 assertNType :: (HasCallStack, Has (Throw Err) sig m) => (NType -> Maybe out) -> String -> NType -> Elab m out
@@ -276,14 +276,14 @@ data StaticContext = StaticContext
 
 data ElabContext = ElabContext
   { context :: Context
-  , sig     :: [Interface]
+  , sig     :: [Interface Level]
   , spans   :: Snoc Span
   }
 
 context_ :: Lens' ElabContext Context
 context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
 
-sig_ :: Lens' ElabContext [Interface]
+sig_ :: Lens' ElabContext [Interface Level]
 sig_ = lens sig (\ e sig -> e{ sig })
 
 spans_ :: Lens' ElabContext (Snoc Span)
@@ -292,18 +292,18 @@ spans_ = lens spans (\ e spans -> e{ spans })
 
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC (Subst PType Kind) m))) a }
-  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State (Subst PType Kind) :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC (Subst PType (Kind Level)) m))) a }
+  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State (Subst PType (Kind Level)) :+: sig), Applicative, Functor, Monad)
 
-runElabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst PType Kind -> a -> m b) -> Elab m a -> m b
+runElabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst PType (Kind Level) -> a -> m b) -> Elab m a -> m b
 runElabWith scale k m = runState k mempty . runWriter (const pure) $ do
   (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
   let stat = StaticContext{ graph, module', source, scale }
       ctx  = ElabContext{ context = Context.empty, sig = [], spans = Nil }
   runReader stat . runReader ctx . runElab $ m
 
-runElabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Kind -> m Kind
-runElabKind = runElabWith zero (\ _ t -> pure t) -- FIXME: we should substitute in the kind
+runElabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m (Kind Index) -> m (Kind Level)
+runElabKind = runElabWith zero (\ _ t -> pure (indexToLevel 0 <$> t)) -- FIXME: we should substitute in the kind
 
 runElabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m PTExpr -> m PType
 runElabType = runElabWith zero (\ subst t -> pure (T.evalP subst Nil t))
@@ -314,5 +314,5 @@ runElabTerm = runElabWith one (const pure)
 runElabSynth :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (a ::: PType) -> m (a ::: PType)
 runElabSynth scale = runElabWith scale (\ subst (e ::: _T) -> pure (e ::: T.evalP subst Nil (T.quoteP 0 _T)))
 
-runElabSynthKind :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (PTExpr ::: Kind) -> m (PType ::: Kind)
+runElabSynthKind :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (PTExpr ::: Kind Level) -> m (PType ::: Kind Level)
 runElabSynthKind scale = runElabWith scale (\ subst (_T ::: _K) -> pure (T.evalP subst Nil _T ::: _K)) -- FIXME: we should substitute in the kind as well

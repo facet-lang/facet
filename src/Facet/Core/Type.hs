@@ -47,43 +47,42 @@ import Prelude hiding (lookup)
 
 data Sorted
   = STerm PType
-  | SType Kind
+  | SType (Kind Level)
 
 unSTerm :: Has Empty sig m => Sorted -> m PType
 unSTerm = \case{ STerm ty -> pure ty ; _ -> empty }
 
-unSType :: Has Empty sig m => Sorted -> m Kind
+unSType :: Has Empty sig m => Sorted -> m (Kind Level)
 unSType = \case{ SType ki -> pure ki ; _ -> empty }
 
 
--- FIXME: this doesn’t accommodate type parameters.
-newtype Interface = IInterface { getInterface :: Kind }
-  deriving (Eq, Ord, Show)
+newtype Interface a = IInterface { getInterface :: Kind a }
+  deriving (Eq, Functor, Ord, Show)
 
-data Kind
+data Kind a
   = Type
   | Interface
-  | KArrow (Maybe Name) Kind Kind
-  | KSpine (Var Void Level) (Snoc Kind)
-  deriving (Eq, Ord, Show)
+  | KArrow (Maybe Name) (Kind a) (Kind a)
+  | KSpine (Var Void a) (Snoc (Kind a))
+  deriving (Eq, Functor, Ord, Show)
 
-kglobal :: QName -> Kind
+kglobal :: QName -> Kind a
 kglobal = kvar . Global
 
-kvar :: Var Void Level -> Kind
+kvar :: Var Void a -> Kind a
 kvar v = KSpine v Nil
 
-kapp :: Kind -> Kind -> Kind
+kapp :: Kind a -> Kind a -> Kind a
 kapp (KSpine h as) a = KSpine h (as :> a)
 kapp _             _ = error "invalid kind application"
 
 
 data NType
   = Arrow (Maybe Name) Quantity PType NType
-  | Comp [Interface] PType
+  | Comp [Interface Level] PType
 
 data PType
-  = ForAll Name Kind (PType -> PType)
+  = ForAll Name (Kind Level) (PType -> PType)
   | Ne (Var Meta Level) (Snoc PType)
   | String
   | Thunk NType
@@ -99,7 +98,7 @@ metavar :: Meta -> PType
 metavar m = Ne (Metavar m) Nil
 
 
-unComp :: Has Empty sig m => NType -> m ([Interface], PType)
+unComp :: Has Empty sig m => NType -> m ([Interface Level], PType)
 unComp = \case
   Comp sig _T -> pure (sig, _T)
   _T          -> empty
@@ -143,11 +142,11 @@ app _         _ = error "can’t apply non-neutral/forall type"
 
 data NTExpr
   = TArrow (Maybe Name) Quantity PTExpr NTExpr
-  | TComp [Interface] PTExpr
+  | TComp [Interface Index] PTExpr
   deriving (Eq, Ord, Show)
 
 data PTExpr
-  = TForAll Name Kind PTExpr
+  = TForAll Name (Kind Index) PTExpr
   | TVar (Var Meta Index)
   | TApp PTExpr PTExpr
   | TString
@@ -162,7 +161,7 @@ unarrowT = \case
   TArrow n q a b -> pure (n, q, a, b)
   _              -> empty
 
-uncompT :: Has Empty sig m => NTExpr -> m ([Interface], PTExpr)
+uncompT :: Has Empty sig m => NTExpr -> m ([Interface Index], PTExpr)
 uncompT = \case
   TComp sig _T -> pure (sig, _T)
   _            -> empty
@@ -178,30 +177,30 @@ unthunkT = \case
 quoteN :: Level -> NType -> NTExpr
 quoteN d = \case
   Arrow n q a b -> TArrow n q (quoteP d a) (quoteN d b)
-  Comp s t      -> TComp s (quoteP d t)
+  Comp s t      -> TComp (map (fmap (levelToIndex d)) s) (quoteP d t)
 
 quoteP :: Level -> PType -> PTExpr
 quoteP d = \case
-  ForAll n t b -> TForAll n t (quoteP (succ d) (b (free d)))
+  ForAll n t b -> TForAll n (levelToIndex d <$> t) (quoteP (succ d) (b (free d)))
   Ne n sp      -> foldl' TApp (TVar (levelToIndex d <$> n)) (quoteP d <$> sp)
   String       -> TString
   Thunk t      -> TThunk (quoteN d t)
 
-evalN :: HasCallStack => Subst PType Kind -> Snoc (Either PType a) -> NTExpr -> NType
+evalN :: HasCallStack => Subst PType (Kind Level) -> Snoc (Either PType a) -> NTExpr -> NType
 evalN = fst . eval
 
-evalP :: HasCallStack => Subst PType Kind -> Snoc (Either PType a) -> PTExpr -> PType
+evalP :: HasCallStack => Subst PType (Kind Level) -> Snoc (Either PType a) -> PTExpr -> PType
 evalP = snd . eval
 
-eval :: HasCallStack => Subst PType Kind -> (Snoc (Either PType a) -> NTExpr -> NType, Snoc (Either PType a) -> PTExpr -> PType)
+eval :: HasCallStack => Subst PType (Kind Level) -> (Snoc (Either PType a) -> NTExpr -> NType, Snoc (Either PType a) -> PTExpr -> PType)
 eval subst = (goN, goP) where
   goN :: Snoc (Either PType a) -> NTExpr -> NType
   goN env = \case
     TArrow n q a b -> Arrow n q (goP env a) (goN env b)
-    TComp s t      -> Comp s (goP env t)
+    TComp s t      -> Comp (map (fmap (indexToLevel (Level (length env)))) s) (goP env t)
   goP :: Snoc (Either PType a) -> PTExpr -> PType
   goP env = \case
-    TForAll n t b    -> ForAll n t (\ v -> goP (env :> Left v) b)
+    TForAll n t b    -> ForAll n (indexToLevel (Level (length env)) <$> t) (\ v -> goP (env :> Left v) b)
     TApp f a         -> goP env f `app` goP env a
     TString          -> String
     TVar (Global n)  -> global n
