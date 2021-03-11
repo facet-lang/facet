@@ -388,9 +388,9 @@ elabTermDef
 elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ check (bindPos ::: _T)
   where
   bindPos = Check $ \case
-    _T@ForAll{} -> check (tlam bindPos ::: _T)
-    Thunk _T    -> check (thunk bindNeg ::: Thunk _T)
-    _T          -> check (checkExprPos expr ::: _T)
+    _T@ForAll{}                    -> check (tlam bindPos ::: _T)
+    Thunk (Arrow (Just n) q _A _B) -> check (thunk (lam [(patFor _A n, bindNeg)]) ::: Thunk (Arrow Nothing q _A _B))
+    _T                             -> check (checkExprPos expr ::: _T)
   bindNeg = Check $ \case
     Arrow (Just n) q _A _B -> check (lam [(patFor _A n, bindNeg)] ::: Arrow Nothing q _A _B)
     Comp sig (Thunk _T)    -> check (return'' (thunk bindNeg) ::: Comp sig (Thunk _T))
