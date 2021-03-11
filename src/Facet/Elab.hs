@@ -116,7 +116,7 @@ lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Inte
 lookupInSig (m :.: n) mod graph = getChoosing . foldMap (Choosing . go . getInterface)
   where
   go = \case
-    KSpine q@(m':.:_) _ -> do
+    KSpine (Global q@(m':.:_)) _ -> do
       guard (m == Nil || m == m')
       defs <- fmap tm . unDInterface . def =<< lookupQ graph mod q
       _ :=: d <- lookupScope n defs

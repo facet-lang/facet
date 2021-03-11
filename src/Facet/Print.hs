@@ -147,15 +147,20 @@ suppressInstantiation = const
 
 -- Core printers
 
-printKind :: Options -> Level -> C.Kind -> Print
-printKind Options{ qname } d = go
+printKind :: Options -> Snoc Print -> C.Kind -> Print
+printKind Options{ qname } env = go
   where
   go = \case
     C.Type                -> annotate Type $ pretty "Type"
     C.Interface           -> annotate Type $ pretty "Interface"
     C.KArrow Nothing  a b -> go a --> go b
     C.KArrow (Just n) a b -> parens (ann (intro n d ::: go a)) --> go b
-    C.KSpine h sp         -> group (qname h) $$* (group . go <$> sp)
+    C.KSpine h sp         -> group (var h) $$* (group . go <$> sp)
+  d = Name.Level (length env)
+  var = \case
+    Global n  -> qname n
+    Free l    -> let i = levelToIndex d l in fromMaybe (pretty (getIndex i)) $ env !? getIndex i
+    Metavar m -> case m of {}
 
 printNType :: Options -> Snoc Print -> C.NType -> Print
 printNType opts env = printNTExpr opts env . CT.quoteN (Name.Level (length env))
@@ -181,13 +186,13 @@ printTExpr opts@Options{ qname, sigBinding } = (goN, goP)
     where
     d = Name.Level (length env)
     sig :: [C.Interface] -> Print
-    sig s = brackets (commaSep (map (printKind opts d . C.getInterface) s))
+    sig s = brackets (commaSep (map (printKind opts env . C.getInterface) s))
     mult q = if
       | q == zero -> (pretty '0' <+>)
       | q == one  -> (pretty '1' <+>)
       | otherwise -> id
   goP env = \case
-    C.TForAll       n    t b -> braces (ann (intro n d ::: printKind opts d t)) --> goP (env :> intro n d) b
+    C.TForAll       n    t b -> braces (ann (intro n d ::: printKind opts env t)) --> goP (env :> intro n d) b
     C.TVar (Global n)        -> qvar n
     C.TVar (Free d)          -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
     C.TVar (Metavar m)       -> meta m

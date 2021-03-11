@@ -33,6 +33,7 @@ module Facet.Core.Type
 import Control.Effect.Empty
 import Data.Either (fromLeft)
 import Data.Foldable (foldl')
+import Data.Void (Void)
 import Facet.Name
 import Facet.Snoc
 import Facet.Subst
@@ -62,11 +63,11 @@ data Kind
   = Type
   | Interface
   | KArrow (Maybe Name) Kind Kind
-  | KSpine QName (Snoc Kind)
+  | KSpine (Var Void Level) (Snoc Kind)
   deriving (Eq, Ord, Show)
 
 kglobal :: QName -> Kind
-kglobal n = KSpine n Nil
+kglobal n = KSpine (Global n) Nil
 
 kapp :: Kind -> Kind -> Kind
 kapp (KSpine h as) a = KSpine h (as :> a)
