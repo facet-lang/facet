@@ -334,19 +334,19 @@ unifyP' t1 t2 = case (t1, t2) of
   (Thunk{}, _)                               -> empty
 
 unifyK' :: Has Empty sig m => Kind -> Kind -> m ()
-unifyK' t1 t2 = unless (t1 == t2) empty
+unifyK' t1 t2 = guard (t1 == t2)
 
 var :: (Has Empty sig m) => Var Meta Level -> Var Meta Level -> m ()
 var v1 v2 = case (v1, v2) of
-  (Global q1, Global q2)   -> unless (q1 == q2) empty
+  (Global q1, Global q2)   -> guard (q1 == q2)
   (Global{}, _)            -> empty
-  (Free v1, Free v2)       -> unless (v1 == v2) empty
+  (Free v1, Free v2)       -> guard (v1 == v2)
   (Free{}, _)              -> empty
-  (Metavar m1, Metavar m2) -> unless (m1 == m2) empty
+  (Metavar m1, Metavar m2) -> guard (m1 == m2)
   (Metavar{}, _)           -> empty
 
 spine :: (Foldable t, Zip t, Has Empty sig m) => (a -> b -> m ()) -> t a -> t b -> m ()
-spine f sp1 sp2 = unless (length sp1 == length sp2) empty >> zipWithM_ f sp1 sp2
+spine f sp1 sp2 = guard (length sp1 == length sp2) >> zipWithM_ f sp1 sp2
 
 unifySig' :: (Foldable t, Zip t, Has Empty sig m) => t Interface -> t Interface -> m ()
 unifySig' c1 c2 = spine unifyK' (getInterface <$> c1) (getInterface <$> c2)
