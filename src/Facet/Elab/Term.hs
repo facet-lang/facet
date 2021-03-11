@@ -438,7 +438,6 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 -- Errors
 
--- FIXME: can we get away without the extra message?
 -- FIXME: can we replace these by unification? Maybe not if we want to get names and quantities out?
 assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => PType -> Elab m (Name ::: Kind Level, PType -> PType)
 assertQuantifier = assertPType (\case{ ForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
