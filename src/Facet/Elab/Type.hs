@@ -31,7 +31,7 @@ import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 
-var :: (HasCallStack, Has (Throw Err) sig m) => (Var Meta Index -> a) -> QName -> IsType m a
+var :: (HasCallStack, Has (Throw Err) sig m) => (Var x Index -> a) -> QName -> IsType m a
 var mk n = IsType $ views context_ (lookupInContext n) >>= \case
   Just (i, q, SType _T) -> use i q $> (mk (Free i) ::: _T)
   _                     -> isType (mk . Global <$> global n)
