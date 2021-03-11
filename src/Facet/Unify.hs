@@ -10,6 +10,7 @@ import Control.Effect.Reader
 import Control.Effect.State
 import Control.Effect.Throw
 import Control.Effect.Writer
+import Data.Function (on)
 import Facet.Context hiding (empty)
 import Facet.Core.Type
 import Facet.Elab
@@ -70,7 +71,7 @@ spine :: (Foldable t, Zip t, Has Empty sig m) => (a -> b -> m ()) -> t a -> t b 
 spine f sp1 sp2 = guard (length sp1 == length sp2) >> zipWithM_ f sp1 sp2
 
 unifySig' :: (Foldable t, Zip t, Has Empty sig m) => t Interface -> t Interface -> m ()
-unifySig' c1 c2 = spine unifyK' (getInterface <$> c1) (getInterface <$> c2)
+unifySig' = spine (unifyK' `on` getInterface)
 
 flexFlex :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Meta -> m ()
 flexFlex v1 v2
