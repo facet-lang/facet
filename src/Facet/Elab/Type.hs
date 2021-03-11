@@ -97,7 +97,7 @@ elabKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m (K
 elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TArrow n _ a b -> arrow (KArrow n) (elabKind a) (elabKind b)
   S.TApp f a       -> app kapp (elabKind f) (elabKind a)
-  S.TVar n         -> kglobal <$> global n
+  S.TVar n         -> var kvar n
   S.KType          -> _Type
   S.KInterface     -> _Interface
   S.TComp{}        -> nope
