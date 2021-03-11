@@ -2,7 +2,6 @@ module Facet.Unify
 ( unifyN
 , unifyP
 , unifyK
-, unify
 ) where
 
 import Control.Algebra
@@ -33,18 +32,6 @@ unifyP t1 t2 = runEmpty (couldNotUnify (HP t1) (HP t2)) pure (unifyP' t1 t2)
 unifyK :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => Kind -> Kind -> m ()
 unifyK t1 t2 = runEmpty (couldNotUnify (HK t1) (HK t2)) pure (unifyK' t1 t2)
 
-unify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => HType -> HType -> m ()
-unify t1 t2 = runEmpty (couldNotUnify t1 t2) pure (unify' t1 t2)
-
-
-unify' :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => HType -> HType -> m ()
-unify' t1 t2 = case (t1, t2) of
-  (HN n1, HN n2) -> unifyN' n1 n2
-  (HN{}, _)      -> empty
-  (HP p1, HP p2) -> unifyP' p1 p2
-  (HP{}, _)      -> empty
-  (HK k1, HK k2) -> unifyK' k1 k2
-  (HK{}, _)      -> empty
 
 unifyN' :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => NType -> NType -> m ()
 unifyN' t1 t2 = case (t1, t2) of
