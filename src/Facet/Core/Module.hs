@@ -58,7 +58,7 @@ lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Maybe 
 lookupC n Module{ name, scope } = getChoosing (foldMap (Choosing . matchDef) (decls scope))
   where
   matchDef = matchTerm <=< lookupScope n . tm <=< unDData
-  matchTerm (n :=: d) = (name :.: n :=: ) <$> unDTerm d
+  matchTerm (n :=: d) = (name :.: n :=:) <$> unDTerm d
 
 -- | Look up effect operations.
 lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
