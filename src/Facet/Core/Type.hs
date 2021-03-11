@@ -6,6 +6,7 @@ module Facet.Core.Type
 , Interface(..)
 , Kind(..)
 , kglobal
+, kvar
 , kapp
 , NType(..)
 , PType(..)
@@ -67,7 +68,10 @@ data Kind
   deriving (Eq, Ord, Show)
 
 kglobal :: QName -> Kind
-kglobal n = KSpine (Global n) Nil
+kglobal = kvar . Global
+
+kvar :: Var Void Level -> Kind
+kvar v = KSpine v Nil
 
 kapp :: Kind -> Kind -> Kind
 kapp (KSpine h as) a = KSpine h (as :> a)
