@@ -24,10 +24,10 @@ import GHC.Stack
 
 -- FIXME: we don’t get good source references during unification
 unifyN :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => NType -> NType -> m ()
-unifyN t1 t2 = unify (HN t1) (HN t2)
+unifyN t1 t2 = runEmpty (couldNotUnify (HN t1) (HN t2)) pure (unifyN' t1 t2)
 
 unifyP :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => PType -> PType -> m ()
-unifyP t1 t2 = unify (HP t1) (HP t2)
+unifyP t1 t2 = runEmpty (couldNotUnify (HP t1) (HP t2)) pure (unifyP' t1 t2)
 
 unify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => HType -> HType -> m ()
 unify t1 t2 = runEmpty (couldNotUnify t1 t2) pure (unify' t1 t2)
