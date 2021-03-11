@@ -46,35 +46,36 @@ module Facet.Elab
 , runElabSynthKind
 ) where
 
-import Control.Algebra
-import Control.Applicative as Alt (Alternative(..))
-import Control.Carrier.Error.Church
-import Control.Carrier.Reader
-import Control.Carrier.State.Church
-import Control.Carrier.Writer.Church
-import Control.Effect.Lens (views)
-import Control.Lens (Lens', lens)
-import Control.Monad (guard, unless)
-import Data.Foldable (asum)
-import Facet.Context as Context
-import Facet.Core.Module
-import Facet.Core.Term as E
-import Facet.Core.Type as T
-import Facet.Effect.Write
-import Facet.Graph as Graph
-import Facet.Lens
-import Facet.Name hiding (L, R)
-import Facet.Semialign
-import Facet.Semiring
-import Facet.Snoc
-import Facet.Source (Source, slice)
-import Facet.Span (Span(..))
-import Facet.Subst
-import Facet.Syntax
-import Facet.Usage as Usage
-import Facet.Vars as Vars
-import GHC.Stack
-import Prelude hiding (span, zipWith)
+import           Control.Algebra
+import           Control.Carrier.Error.Church
+import           Control.Carrier.Reader
+import           Control.Carrier.State.Church
+import           Control.Carrier.Writer.Church
+import           Control.Effect.Choose
+import           Control.Effect.Empty
+import           Control.Effect.Lens (views)
+import           Control.Lens (Lens', lens)
+import           Control.Monad (unless)
+import           Facet.Context hiding (empty)
+import qualified Facet.Context as Context
+import           Facet.Core.Module
+import           Facet.Core.Term as E
+import           Facet.Core.Type as T
+import           Facet.Effect.Write
+import           Facet.Graph as Graph
+import           Facet.Lens
+import           Facet.Name hiding (L, R)
+import           Facet.Semialign
+import           Facet.Semiring
+import           Facet.Snoc
+import           Facet.Source (Source, slice)
+import           Facet.Span (Span(..))
+import           Facet.Subst
+import           Facet.Syntax
+import           Facet.Usage as Usage
+import           Facet.Vars as Vars
+import           GHC.Stack
+import           Prelude hiding (span, zipWith)
 
 -- TODO:
 -- - clause/pattern matrices
@@ -91,7 +92,7 @@ meta _T = state (declareMeta @Kind @PType _T)
 
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
-  => (forall m . (Alternative m, Monad m) => Name -> Module -> m (QName :=: x))
+  => (forall sig m . Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: x))
   -> QName
   -> Elab m (QName :=: x)
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
@@ -105,22 +106,24 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Def)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Alternative m => QName -> Context -> m (Index, Quantity, Sorted)
+lookupInContext :: Has Empty sig m => QName -> Context -> m (Index, Quantity, Sorted)
 lookupInContext (m:.:n)
   | m == Nil  = lookupIndex n
-  | otherwise = const Alt.empty
+  | otherwise = const empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: this can’t differentiate between different instantiations of the same effect (i.e. based on type)
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Interface] -> m (QName :=: Def)
-lookupInSig (m :.: n) mod graph = fmap asum . fmap . (. getInterface) $ \case
-  KSpine q@(m':.:_) _ -> do
-    guard (m == Nil || m == m')
-    defs <- fmap tm . unDInterface . def =<< lookupQ graph mod q
-    _ :=: d <- lookupScope n defs
-    pure $ m':.:n :=: d
-  _                   -> Alt.empty
+lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Interface] -> m (QName :=: Def)
+lookupInSig (m :.: n) mod graph = getChoosing . foldMap (Choosing . go . getInterface)
+  where
+  go = \case
+    KSpine q@(m':.:_) _ -> do
+      guard (m == Nil || m == m')
+      defs <- fmap tm . unDInterface . def =<< lookupQ graph mod q
+      _ :=: d <- lookupScope n defs
+      pure $ m':.:n :=: d
+    _                   -> empty
 
 
 (|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => Binding -> m a -> m a

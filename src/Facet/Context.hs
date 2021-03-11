@@ -11,7 +11,7 @@ module Facet.Context
 , toEnv
 ) where
 
-import qualified Control.Applicative as Alt
+import qualified Control.Effect.Empty as E
 import           Data.Semialign
 import           Facet.Core.Type
 import           Facet.Name
@@ -62,10 +62,10 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
     | otherwise    = go es (i - 1)
   go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: Alt.Alternative m => Name -> Context -> m (Index, Quantity, Sorted)
+lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (Index, Quantity, Sorted)
 lookupIndex n = go (Index 0) . elems
   where
-  go _ S.Nil            = Alt.empty
+  go _ S.Nil            = E.empty
   go i (cs S.:> Binding n' q t)
     | n == n'           = pure (i, q, t)
     | otherwise         = go (succ i) cs

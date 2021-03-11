@@ -13,15 +13,17 @@ module Facet.Graph
 , loadOrder
 ) where
 
-import           Control.Applicative (Alternative(..))
+import           Control.Algebra ((:+:))
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Carrier.Writer.Church
+import           Control.Effect.Choose
+import           Control.Effect.Empty
 import           Control.Effect.Throw
 import           Control.Lens as Lens (At(..), Index, IxValue, Ixed(..), iso)
-import           Control.Monad (guard, unless, when, (<=<))
+import           Control.Monad (unless, when, (<=<))
 import           Control.Monad.Trans.Class
-import           Data.Foldable (asum, for_)
+import           Data.Foldable (for_)
 import qualified Data.Map as Map
 import           Data.Monoid (Endo(..))
 import qualified Data.Set as Set
@@ -49,16 +51,16 @@ restrict (Graph g) s = Graph $ Map.restrictKeys g s
 insert :: Maybe FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, Just m) . getGraph
 
-lookupM :: Alternative m => MName -> Graph -> m (Maybe FilePath, Maybe Module)
+lookupM :: Has Empty sig m => MName -> Graph -> m (Maybe FilePath, Maybe Module)
 lookupM n = maybe empty pure . Map.lookup n . getGraph
 
-lookupWith :: (Alternative m, Monad m) => (Name -> Module -> m res) -> Graph -> Module -> QName -> m res
+lookupWith :: Has (Choose :+: Empty) sig m => (Name -> Module -> m res) -> Graph -> Module -> QName -> m res
 lookupWith lookup graph mod@Module{ name } (m:.:n)
   =   guard (m == name || m == Nil) *> lookup n mod
-  <|> guard (m == Nil) *> asum (maybe empty (lookup n) . snd <$> getGraph graph)
+  <|> guard (m == Nil) *> getChoosing (foldMap (Choosing . maybe empty (lookup n) . snd) (getGraph graph))
   <|> guard (m /= Nil) *> (lookupM m graph >>= maybe empty pure . snd >>= lookup n)
 
-lookupQ :: (Alternative m, Monad m) => Graph -> Module -> QName -> m (QName :=: Def)
+lookupQ :: forall m sig . Has (Choose :+: Empty) sig m => Graph -> Module -> QName -> m (QName :=: Def)
 lookupQ = lookupWith lookupD
 
 

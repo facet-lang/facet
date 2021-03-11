@@ -60,7 +60,7 @@ import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable
 import           Data.Functor
-import           Data.Maybe (catMaybes, fromMaybe)
+import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
@@ -93,9 +93,9 @@ global (q ::: _T) = Synth $ pure $ varE (Global q) ::: _T
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth PType m PExpr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
-  | Just (i, q, STerm _T) <- lookupInContext n context                      -> use i q $> (varE (Free i) ::: _T)
-  | Just (_ :=: DTerm (Just x) _T) <- lookupInSig n module' graph sig -> pure (x ::: _T)
-  | otherwise                                                         -> do
+  | Just (i, q, STerm _T) <- lookupInContext n context           -> use i q $> (varE (Free i) ::: _T)
+  | [_ :=: DTerm (Just x) _T] <- lookupInSig n module' graph sig -> pure (x ::: _T)
+  | otherwise                                                    -> do
     n :=: d <- resolveQ n
     _T <- case d of
       DTerm _ _T -> pure _T
@@ -243,7 +243,7 @@ allP n = Bind $ \ q _A b -> Check $ \ _B -> do
 op :: (HasCallStack, Has (Throw Err) sig m) => [Interface] -> QName -> Synth PType m QName
 op sig n = Synth $ do
   StaticContext{ module', graph } <- ask
-  maybe (freeVariable n) (instantiate const . ((:::) <$> nm <*> ty . def)) (traverse unDTerm =<< lookupInSig n module' graph sig)
+  maybe (freeVariable n) (instantiate const . ((:::) <$> nm <*> ty . def)) (listToMaybe (traverse unDTerm =<< lookupInSig n module' graph sig))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind PType m (ValuePattern Name)] -> Name -> Bind PType m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do

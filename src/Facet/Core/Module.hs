@@ -19,7 +19,9 @@ module Facet.Core.Module
 , unDInterface
 ) where
 
-import           Control.Effect.NonDet
+import           Control.Algebra
+import           Control.Effect.Choose
+import           Control.Effect.Empty
 import           Control.Lens (Lens', coerced, lens)
 import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
@@ -52,19 +54,19 @@ scope_ :: Lens' Module Scope
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
-lookupC :: (Alternative m, Monad m) => Name -> Module -> m (QName :=: Maybe PExpr ::: PType)
-lookupC n Module{ name, scope } = foldMapA matchDef (decls scope)
+lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Maybe PExpr ::: PType)
+lookupC n Module{ name, scope } = getChoosing (foldMap (Choosing . matchDef) (decls scope))
   where
   matchDef = matchTerm <=< lookupScope n . tm <=< unDData
   matchTerm (n :=: d) = (name :.: n :=: ) <$> unDTerm d
 
 -- | Look up effect operations.
-lookupE :: (Alternative m, Monad m) => Name -> Module -> m (QName :=: Def)
-lookupE n Module{ name, scope } = foldMapA matchDef (decls scope)
+lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
+lookupE n Module{ name, scope } = getChoosing (foldMap (Choosing . matchDef) (decls scope))
   where
   matchDef = fmap (first (name:.:)) . lookupScope n . tm <=< unDInterface
 
-lookupD :: Alternative m => Name -> Module -> m (QName :=: Def)
+lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
 lookupD n Module{ name, scope } = maybe empty (pure . first (name:.:)) (lookupScope n scope)
 
 
@@ -80,7 +82,7 @@ scopeFromList = Scope . Map.fromList . map (\ (n :=: d) -> (n, d))
 scopeToList :: Scope -> [Name :=: Def]
 scopeToList = map (uncurry (:=:)) . Map.toList . decls
 
-lookupScope :: Alternative m => Name -> Scope -> m (Name :=: Def)
+lookupScope :: Has Empty sig m => Name -> Scope -> m (Name :=: Def)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
@@ -93,17 +95,17 @@ data Def
   | DInterface Scope Kind
   | DModule Scope Kind
 
-unDTerm :: Alternative m => Def -> m (Maybe PExpr ::: PType)
+unDTerm :: Has Empty sig m => Def -> m (Maybe PExpr ::: PType)
 unDTerm = \case
   DTerm e _T -> pure (e ::: _T)
   _          -> empty
 
-unDData :: Alternative m => Def -> m (Scope ::: Kind)
+unDData :: Has Empty sig m => Def -> m (Scope ::: Kind)
 unDData = \case
   DData cs _T -> pure (cs ::: _T)
   _           -> empty
 
-unDInterface :: Alternative m => Def -> m (Scope ::: Kind)
+unDInterface :: Has Empty sig m => Def -> m (Scope ::: Kind)
 unDInterface = \case
   DInterface cs _T -> pure (cs ::: _T)
   _                -> empty

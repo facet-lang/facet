@@ -73,9 +73,9 @@ global :: (Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => QName -> 
 global n = do
   mod <- ask
   graph <- ask
-  case lookupQ graph mod n of
-    Just (_ :=: DTerm (Just v) _) -> pure (getPos v)
-    _                             -> fail $ "free variable: " <> show n
+  case lookupQ @[] graph mod n of
+    [_ :=: DTerm (Just v) _] -> pure (getPos v)
+    _                        -> fail $ "free variable: " <> show n
 
 var :: HasCallStack => Index -> EnvC m (Value (Eval m))
 var (Index v) = ReaderC $ \ env -> pure (env ! v)
