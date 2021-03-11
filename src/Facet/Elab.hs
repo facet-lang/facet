@@ -300,39 +300,39 @@ unifyP :: forall m sig . (HasCallStack, Has (Reader ElabContext :+: Reader Stati
 unifyP t1 t2 = unify (HP t1) (HP t2)
 
 unify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => HType -> HType -> m ()
-unify t1 t2 = runEmpty (couldNotUnify t1 t2) pure (unify t1 t2)
+unify t1 t2 = runEmpty (couldNotUnify t1 t2) pure (unify' t1 t2)
   where
-  unify :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => HType -> HType -> m ()
-  unify t1 t2 = case (t1, t2) of
-    (HN n1, HN n2) -> unifyN n1 n2
+  unify' :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => HType -> HType -> m ()
+  unify' t1 t2 = case (t1, t2) of
+    (HN n1, HN n2) -> unifyN' n1 n2
     (HN{}, _)      -> empty
-    (HP p1, HP p2) -> unifyP p1 p2
+    (HP p1, HP p2) -> unifyP' p1 p2
     (HP{}, _)      -> empty
-    (HK k1, HK k2) -> unifyK k1 k2
+    (HK k1, HK k2) -> unifyK' k1 k2
     (HK{}, _)      -> empty
 
-  unifyN :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => NType -> NType -> m ()
-  unifyN t1 t2 = case (t1, t2) of
-    (Arrow _ _ a1 b1, Arrow _ _ a2 b2) -> unifyP a1 a2 >> unifyN b1 b2
+  unifyN' :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => NType -> NType -> m ()
+  unifyN' t1 t2 = case (t1, t2) of
+    (Arrow _ _ a1 b1, Arrow _ _ a2 b2) -> unifyP' a1 a2 >> unifyN' b1 b2
     (Arrow{}, _)                       -> empty
-    (Comp s1 t1, Comp s2 t2)           -> sig s1 s2 >> unifyP t1 t2
+    (Comp s1 t1, Comp s2 t2)           -> sig s1 s2 >> unifyP' t1 t2
     (Comp{}, _)                        -> empty
 
-  unifyP :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => PType -> PType -> m ()
-  unifyP t1 t2 = case (t1, t2) of
-    (ForAll n t1 b1, ForAll _ t2 b2)           -> unifyK t1 t2 >> depth >>= \ d -> Binding n zero (SType t1) |- unifyP (b1 (free d)) (b2 (free d))
+  unifyP' :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => PType -> PType -> m ()
+  unifyP' t1 t2 = case (t1, t2) of
+    (ForAll n t1 b1, ForAll _ t2 b2)           -> unifyK' t1 t2 >> depth >>= \ d -> Binding n zero (SType t1) |- unifyP' (b1 (free d)) (b2 (free d))
     (ForAll{}, _)                              -> empty
     (Ne (Metavar v1) Nil, Ne (Metavar v2) Nil) -> flexFlex v1 v2
     (Ne (Metavar v1) Nil, t2)                  -> solve v1 t2
     (t1, Ne (Metavar v2) Nil)                  -> solve v2 t1
-    (Ne v1 sp1, Ne v2 sp2)                     -> var v1 v2 >> spine unifyP sp1 sp2
+    (Ne v1 sp1, Ne v2 sp2)                     -> var v1 v2 >> spine unifyP' sp1 sp2
     (Ne{}, _)                                  -> empty
     (String, String)                           -> pure ()
     (String, _)                                -> empty
-    (Thunk t1, Thunk t2)                       -> unifyN t1 t2
+    (Thunk t1, Thunk t2)                       -> unifyN' t1 t2
     (Thunk{}, _)                               -> empty
 
-  unifyK t1 t2 = unless (t1 == t2) empty
+  unifyK' t1 t2 = unless (t1 == t2) empty
 
   var :: (Has Empty sig m) => Var Meta Level -> Var Meta Level -> m ()
   var v1 v2 = case (v1, v2) of
@@ -347,7 +347,7 @@ unify t1 t2 = runEmpty (couldNotUnify t1 t2) pure (unify t1 t2)
   spine f sp1 sp2 = unless (length sp1 == length sp2) empty >> zipWithM_ f sp1 sp2
 
   sig :: (Foldable t, Zip t, Has Empty sig m) => t Interface -> t Interface -> m ()
-  sig c1 c2 = spine unifyK (getInterface <$> c1) (getInterface <$> c2)
+  sig c1 c2 = spine unifyK' (getInterface <$> c1) (getInterface <$> c2)
 
   flexFlex :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Meta -> m ()
   flexFlex v1 v2
@@ -355,9 +355,9 @@ unify t1 t2 = runEmpty (couldNotUnify t1 t2) pure (unify t1 t2)
     | otherwise = do
       (t1, t2) <- gets (\ s -> (lookupMeta @PType @Kind v1 s, lookupMeta v2 s))
       case (t1, t2) of
-        (Just t1, Just t2) -> unifyP (tm t1) (tm t2)
-        (Just t1, Nothing) -> unifyP (metavar v2) (tm t1)
-        (Nothing, Just t2) -> unifyP (metavar v1) (tm t2)
+        (Just t1, Just t2) -> unifyP' (tm t1) (tm t2)
+        (Just t1, Nothing) -> unifyP' (metavar v2) (tm t1)
+        (Nothing, Just t2) -> unifyP' (metavar v1) (tm t2)
         (Nothing, Nothing) -> solve v1 (metavar v2)
 
   solve :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => Meta -> PType -> m ()
@@ -368,7 +368,7 @@ unify t1 t2 = runEmpty (couldNotUnify t1 t2) pure (unify t1 t2)
     else
       gets (lookupMeta @PType @Kind v) >>= \case
         Nothing          -> modify (solveMeta @PType @Kind v t)
-        Just (t' ::: _T) -> unifyP t' t
+        Just (t' ::: _T) -> unifyP' t' t
 
 
 -- Machinery
