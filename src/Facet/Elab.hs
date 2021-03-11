@@ -311,7 +311,7 @@ unify t1 t2 = unify t1 t2
     (HN{}, _)      -> nope
     (HP p1, HP p2) -> unifyP p1 p2
     (HP{}, _)      -> nope
-    (HK k1, HK k2) -> kind k1 k2
+    (HK k1, HK k2) -> unifyK k1 k2
     (HK{}, _)      -> nope
 
   unifyN :: HasCallStack => NType -> NType -> m ()
@@ -323,7 +323,7 @@ unify t1 t2 = unify t1 t2
 
   unifyP :: HasCallStack => PType -> PType -> m ()
   unifyP t1 t2 = case (t1, t2) of
-    (ForAll n t1 b1, ForAll _ t2 b2)           -> kind t1 t2 >> depth >>= \ d -> Binding n zero (SType t1) |- unifyP (b1 (free d)) (b2 (free d))
+    (ForAll n t1 b1, ForAll _ t2 b2)           -> unifyK t1 t2 >> depth >>= \ d -> Binding n zero (SType t1) |- unifyP (b1 (free d)) (b2 (free d))
     (ForAll{}, _)                              -> nope
     (Ne (Metavar v1) Nil, Ne (Metavar v2) Nil) -> flexFlex v1 v2
     (Ne (Metavar v1) Nil, t2)                  -> solve v1 t2
@@ -335,7 +335,7 @@ unify t1 t2 = unify t1 t2
     (Thunk t1, Thunk t2)                       -> unifyN t1 t2
     (Thunk{}, _)                               -> nope
 
-  kind t1 t2 = unless (t1 == t2) nope
+  unifyK t1 t2 = unless (t1 == t2) nope
 
   var :: HasCallStack => Var Meta Level -> Var Meta Level -> m ()
   var v1 v2 = case (v1, v2) of
@@ -350,7 +350,7 @@ unify t1 t2 = unify t1 t2
   spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
   sig :: (Foldable t, Zip t) => t Interface -> t Interface -> m ()
-  sig c1 c2 = spine kind (getInterface <$> c1) (getInterface <$> c2)
+  sig c1 c2 = spine unifyK (getInterface <$> c1) (getInterface <$> c2)
 
   flexFlex :: HasCallStack => Meta -> Meta -> m ()
   flexFlex v1 v2
