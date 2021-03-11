@@ -309,7 +309,7 @@ unify' t1 t2 = case (t1, t2) of
   (HN{}, _)      -> empty
   (HP p1, HP p2) -> unifyP' p1 p2
   (HP{}, _)      -> empty
-  (HK k1, HK k2) -> unifyK' k1 k2
+  (HK k1, HK k2) -> unifyAtom' k1 k2
   (HK{}, _)      -> empty
 
 unifyN' :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => NType -> NType -> m ()
@@ -321,7 +321,7 @@ unifyN' t1 t2 = case (t1, t2) of
 
 unifyP' :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => PType -> PType -> m ()
 unifyP' t1 t2 = case (t1, t2) of
-  (ForAll n t1 b1, ForAll _ t2 b2)           -> unifyK' t1 t2 >> depth >>= \ d -> Binding n zero (SType t1) |- unifyP' (b1 (free d)) (b2 (free d))
+  (ForAll n t1 b1, ForAll _ t2 b2)           -> unifyAtom' t1 t2 >> depth >>= \ d -> Binding n zero (SType t1) |- unifyP' (b1 (free d)) (b2 (free d))
   (ForAll{}, _)                              -> empty
   (Ne (Metavar v1) Nil, Ne (Metavar v2) Nil) -> flexFlex v1 v2
   (Ne (Metavar v1) Nil, t2)                  -> solve v1 t2
@@ -333,8 +333,8 @@ unifyP' t1 t2 = case (t1, t2) of
   (Thunk t1, Thunk t2)                       -> unifyN' t1 t2
   (Thunk{}, _)                               -> empty
 
-unifyK' :: Has Empty sig m => Kind -> Kind -> m ()
-unifyK' t1 t2 = unless (t1 == t2) empty
+unifyAtom' :: (Eq a, Has Empty sig m) => a -> a -> m ()
+unifyAtom' t1 t2 = unless (t1 == t2) empty
 
 var :: (Has Empty sig m) => Var Meta Level -> Var Meta Level -> m ()
 var v1 v2 = case (v1, v2) of
@@ -349,7 +349,7 @@ spine :: (Foldable t, Zip t, Has Empty sig m) => (a -> b -> m ()) -> t a -> t b 
 spine f sp1 sp2 = unless (length sp1 == length sp2) empty >> zipWithM_ f sp1 sp2
 
 unifySig' :: (Foldable t, Zip t, Has Empty sig m) => t Interface -> t Interface -> m ()
-unifySig' c1 c2 = spine unifyK' (getInterface <$> c1) (getInterface <$> c2)
+unifySig' c1 c2 = spine unifyAtom' (getInterface <$> c1) (getInterface <$> c2)
 
 flexFlex :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst PType Kind) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Meta -> m ()
 flexFlex v1 v2
