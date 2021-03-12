@@ -49,8 +49,7 @@ eval = go
     XInst f t        -> inst (go f) t
     XLam cs          -> do
       env <- askEnv
-      let cs' = map (fmap (\ e p' -> withEnv (foldl' (:>) env p') (go e))) cs
-      lam cs'
+      lam (map (fmap (\ e p' -> withEnv (foldl' (:>) env p') (go e))) cs)
     XApp  f a        -> do
       VLam _ h k <- go f
       extendHandler h (go a) >>= k
