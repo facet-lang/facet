@@ -28,6 +28,7 @@ import Data.Function
 import Data.Text (Text)
 import Facet.Core.Module
 import Facet.Core.Term
+import Facet.Core.Type (TExpr)
 import Facet.Graph
 import Facet.Name hiding (Op)
 import Facet.Semialign (zipWithM)
@@ -50,7 +51,7 @@ eval = go Nil
     XVar (Free v)    -> pure $ env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> tlam (go env b)
-    XInst f _        -> go env f
+    XInst f t        -> inst (go env f) t
     XLam cs          -> do
       let cs' = map (fmap (\ e p' -> go (foldl' (:>) env p') e)) cs
           (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
@@ -72,6 +73,9 @@ eval = go Nil
 
 tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 tlam = id
+
+inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
+inst = const
 
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
