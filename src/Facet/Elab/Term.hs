@@ -155,7 +155,7 @@ return'' v = Check $ \ _N -> do
   v' <- check (v ::: _P)
   pure $ returnE v'
 
-(>>-) :: Has (Throw Err) sig m => Synth NType m NExpr -> (Synth PType m PExpr -> Synth NType m NExpr) -> Synth NType m NExpr
+(>>-) :: (HasCallStack, Has (Throw Err) sig m) => Synth NType m NExpr -> (Synth PType m PExpr -> Synth NType m NExpr) -> Synth NType m NExpr
 v >>- b = Synth $ do
   v' ::: _FV <- synth v
   (_, _V) <- assertComp _FV
