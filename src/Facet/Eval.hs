@@ -73,13 +73,11 @@ inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
 inst = const
 
 lam :: HasCallStack => [(Pattern Name, Pattern (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
-lam cs = do
-  pure $ VLam
-    (map fst cs)
-    (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
-    (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
+lam cs = pure $ VLam (map fst cs) h k
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
+  h toph op k = foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es
+  k v = foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs
 
 app :: MonadFail m => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 app f (Eval a) = do
