@@ -62,7 +62,7 @@ eval = go Nil
     XOp n _ sp       -> do
       -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
       sp' <- traverse (go env) sp
-      Eval $ \ h k -> runEval h k (h (Op n sp') pure)
+      Eval $ \ h k env -> runEval h k env (h (Op n sp') pure)
     where
     extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
 
@@ -93,29 +93,29 @@ data Op a = Op QName (Snoc a)
 
 type Handler m = Op (Value m) -> (Value m -> m (Value m)) -> m (Value m)
 
-runEval :: Handler (Eval m) -> (a -> m r) -> Eval m a -> m r
-runEval hdl k (Eval m) = m hdl k
+runEval :: Handler (Eval m) -> (a -> m r) -> Snoc (Value (Eval m)) -> Eval m a -> m r
+runEval hdl k env (Eval m) = m hdl k env
 
-newtype Eval m a = Eval (forall r . Handler (Eval m) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . Handler (Eval m) -> (a -> m r) -> Snoc (Value (Eval m)) -> m r)
 
 instance Functor (Eval m) where
   fmap = liftM
 
 instance Applicative (Eval m) where
-  pure a = Eval $ \ _ k -> k a
+  pure a = Eval $ \ _ k _ -> k a
   (<*>) = ap
 
 instance Monad (Eval m) where
-  m >>= f = Eval $ \ hdl k -> runEval hdl (runEval hdl k . f) m
+  m >>= f = Eval $ \ hdl k env -> runEval hdl (runEval hdl k env . f) env m
 
 instance MonadFail m => MonadFail (Eval m) where
   fail = lift . fail
 
 instance MonadTrans Eval where
-  lift m = Eval $ \ _ k -> m >>= k
+  lift m = Eval $ \ _ k _ -> m >>= k
 
 instance Algebra sig m => Algebra sig (Eval m) where
-  alg hdl sig ctx = Eval $ \ h k -> alg (runEval h pure . hdl) sig ctx >>= k
+  alg hdl sig ctx = Eval $ \ h k env -> alg (runEval h pure env . hdl) sig ctx >>= k
 
 
 -- Values
