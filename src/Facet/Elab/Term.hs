@@ -149,12 +149,6 @@ return' v = Synth $ do
   sig <- view sig_
   pure $ returnE v' ::: Comp sig _V
 
-return'' :: (HasCallStack, Has (Throw Err) sig m) => Check PType m PExpr -> Check NType m NExpr
-return'' v = Check $ \ _N -> do
-  (_, _P) <- assertComp _N
-  v' <- check (v ::: _P)
-  pure $ returnE v'
-
 (>>-) :: (HasCallStack, Has (Throw Err) sig m) => Synth NType m NExpr -> (Synth PType m PExpr -> Synth NType m NExpr) -> Synth NType m NExpr
 v >>- b = Synth $ do
   v' ::: _FV <- synth v
@@ -220,19 +214,18 @@ varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q (STerm _A
 conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind PType m (ValuePattern Name)] -> Bind PType m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   n' :=: _ ::: _T <- traverse (instantiate const) =<< resolveC n
-  (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unifyP (returnOf _A') _A *> check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
+  let _T' = case _T of
+        Thunk _N -> _N
+        _T       -> Comp [] _T
+  (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unifyN _A' (Comp [] _A) *> check (b ::: _B)))) ps ::: (q, _T')) b ::: _B)
   pure (PCon n' (fromList ps'), b')
-  where
-  -- FIXME: this feels a bit gross, but we have to accommodate both nullary (already data) and non-nullary (thunk (args… -> comp data)) constructors.
-  returnOf = \case{ Thunk (Comp [] _T) -> _T ; _T -> _T }
 
-fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind PType m [a] -> [Bind PType m a] -> Bind PType m [a]
+fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind NType m [a] -> [Bind PType m a] -> Bind NType m [a]
 fieldsP = foldr cons
   where
   cons p ps = Bind $ \ q _A b -> Check $ \ _B -> do
-    (_ ::: (q', _A'), _A'') <- assertFunction =<< assertThunk _A
-    (_, _A''') <- assertComp _A''
-    (p', (ps', b')) <- check (bind (p ::: (q', _A')) (bind (ps ::: (q, _A''')) b) ::: _B)
+    (_ ::: (q', _A'), _A'') <- assertFunction _A
+    (p', (ps', b')) <- check (bind (p ::: (q', _A')) (bind (ps ::: (q, _A'')) b) ::: _B)
     pure (p':ps', b')
 
 
@@ -250,8 +243,15 @@ effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind PType m (ValuePa
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _A') <- assertComp =<< assertThunk _A
   n' ::: _T <- synth (op sig n)
-  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (STerm (Thunk (Arrow Nothing Many _A' (Comp [] _A)))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
+  let _T' = case _T of
+        Thunk _N -> _N
+        _T       -> Comp [] _T
+  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (STerm (Thunk (Arrow Nothing Many (shift _A') (Comp [] _A)))) |- check (b ::: _B)))) ps ::: (q, _T')) b ::: _B)
   pure (peff n' (fromList ps') v, b')
+  where
+  shift = \case
+    Comp _ _T -> _T
+    _T        -> error "non-shift type in return position"
 
 
 -- Expression elaboration
@@ -261,7 +261,7 @@ synthExprNeg expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var{}    -> return' (synthExprPos expr)
   S.Hole{}   -> nope
   S.Lam{}    -> nope
-  S.App f a  -> synthExprNeg f >>- \ f' -> Synth (do{ _ ::: _F <- synth f'; (_ ::: (_, _A), _B) <- assertFunction =<< assertThunk _F; a' <- check (checkExprNeg a ::: Comp [] _A) ; pure (a' ::: Comp [] _A) }) >>- \ a' -> app (force f') (switchP a')
+  S.App f a  -> app (force (synthExprPos f)) (checkExprPos a)
   S.As t _T  -> asN (checkExprNeg t ::: elabNType _T)
   S.String{} -> return' (synthExprPos expr)
   where
@@ -294,7 +294,7 @@ checkExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.
 checkExprPos expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Var{}    -> synth
   S.Hole n   -> holeP n
-  S.Lam cs   -> thunk (lam (map (\ (S.Clause p b) -> (bindPattern p, checkExprNeg b)) cs))
+  S.Lam{}    -> synth
   S.App{}    -> synth
   S.As{}     -> synth
   S.String{} -> synth
@@ -326,21 +326,28 @@ abstractType body = go 0
     _                   -> checkIsType (body ::: Type)
 
 abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc PTExpr -> Snoc PExpr -> Pos Expr) -> Check PType m PExpr
-abstractTerm body = go Nil Nil
+abstractTerm body = pos Nil Nil
   where
-  go ts fs = Check $ \case
+  pos ts fs = Check $ \case
     ForAll n          _T _B  -> do
       d <- depth
-      check (tlam (go (ts :> d) fs) ::: ForAll n _T _B)
+      check (tlam (pos (ts :> d) fs) ::: ForAll n _T _B)
     Thunk (Arrow  n q _A _B) -> do
       d <- depth
-      check (thunk (lam [(patFor _A (fromMaybe __ n), shift (go ts (fs :> d)))]) ::: Thunk (Arrow n q _A _B))
+      check (thunk (lam [(patFor _A (fromMaybe __ n), neg ts (fs :> d))]) ::: Thunk (Arrow n q _A _B))
     _T                       -> do
       d <- depth
       pure $ body (TVar . Free . levelToIndex d <$> ts) (varE . Free . levelToIndex d <$> fs)
-  shift e = Check (\ _T -> do
-    (_, _T') <- assertComp _T
-    returnE <$> check (e ::: _T'))
+  neg ts fs = Check $ \case
+    Arrow  n q _A _B -> do
+      d <- depth
+      check (lam [(patFor _A (fromMaybe __ n), neg ts (fs :> d))] ::: Arrow n q _A _B)
+    _T               -> do
+      d <- depth
+      pure $ returnE $ body (TVar . Free . levelToIndex d <$> ts) (varE . Free . levelToIndex d <$> fs)
+  -- shift e = Check (\ _T -> do
+  --   (_, _T') <- assertComp _T
+  --   returnE <$> check (e ::: _T'))
 
 patFor :: (HasCallStack, Has (Throw Err) sig m) => PType -> Name -> Bind PType m (Pattern Name)
 patFor = \case{ Thunk Comp{} -> fmap PEff . allP ; _ -> fmap PVal . varP }
@@ -388,12 +395,13 @@ elabTermDef
 elabTermDef _T expr@(S.Ann s _ _) = runElabTerm $ pushSpan s $ check (bindPos ::: _T)
   where
   bindPos = Check $ \case
-    _T@ForAll{}                    -> check (tlam bindPos ::: _T)
-    Thunk (Arrow (Just n) q _A _B) -> check (thunk (lam [(patFor _A n, bindNeg)]) ::: Thunk (Arrow Nothing q _A _B))
-    _T                             -> check (checkExprPos expr ::: _T)
+    _T@ForAll{} -> check (tlam bindPos ::: _T)
+    Thunk _N    -> check (thunk bindNeg ::: Thunk _N)
+    -- Thunk (Arrow (Just n) q _A _B) -> check (thunk (lam [(patFor _A n, bindNeg)]) ::: Thunk (Arrow Nothing q _A _B))
+    _T          -> check (checkExprPos expr ::: _T)
   bindNeg = Check $ \case
     Arrow (Just n) q _A _B -> check (lam [(patFor _A n, bindNeg)] ::: Arrow Nothing q _A _B)
-    Comp sig (Thunk _T)    -> check (return'' (thunk bindNeg) ::: Comp sig (Thunk _T))
+    -- Comp sig (Thunk _T)    -> check (return'' (thunk bindNeg) ::: Comp sig (Thunk _T))
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
