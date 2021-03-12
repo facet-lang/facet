@@ -49,7 +49,7 @@ eval = go Nil
         _                                 -> error "throw a real error here"
     XVar (Free v)    -> pure $ env ! getIndex v
     XVar (Metavar m) -> case m of {}
-    XTLam b          -> go env b
+    XTLam b          -> tlam (go env b)
     XInst f _        -> go env f
     XLam cs          -> do
       let cs' = map (fmap (\ e p' -> go (foldl' (:>) env p') e)) cs
@@ -69,6 +69,9 @@ eval = go Nil
       Eval $ \ h k -> runEval h k (h (Op n sp') pure)
     where
     extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
+
+tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
+tlam = id
 
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
