@@ -75,7 +75,7 @@ global n = do
     Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
     _                                 -> error "throw a real error here"
 
-var :: Index -> Eval m (Value (Eval m))
+var :: HasCallStack => Index -> Eval m (Value (Eval m))
 var v = (! getIndex v) <$> askEnv
 
 tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
