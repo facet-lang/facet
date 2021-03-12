@@ -42,12 +42,7 @@ eval = go Nil
   where
   go :: Snoc (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
   go env = \case
-    XVar (Global n)  -> do
-      mod <- ask
-      graph <- ask
-      case lookupQ graph mod n of
-        Just (_ :=: Just (DTerm v) ::: _) -> go env v
-        _                                 -> error "throw a real error here"
+    XVar (Global n)  -> global n >>= go env
     XVar (Free v)    -> pure $ env ! getIndex v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> tlam (go env b)
@@ -70,6 +65,14 @@ eval = go Nil
       Eval $ \ h k -> runEval h k (h (Op n sp') pure)
     where
     extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
+
+global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
+global n = do
+  mod <- ask
+  graph <- ask
+  case lookupQ graph mod n of
+    Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
+    _                                 -> error "throw a real error here"
 
 tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 tlam = id
