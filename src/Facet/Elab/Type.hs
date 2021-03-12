@@ -104,7 +104,7 @@ elabKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TForAll{}      -> nope
   S.TString        -> nope
   where
-  nope = IsType $ couldNotSynthesize (show e <> " at the kind level")
+  nope = IsType couldNotSynthesize
 
 
 elabNType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m NTExpr
@@ -118,7 +118,7 @@ elabNType expr@(S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.KType           -> nope
   S.KInterface      -> nope
   where
-  nope = IsType $ couldNotSynthesize (show e <> " at the type level")
+  nope = IsType couldNotSynthesize
 
 elabPType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m PTExpr
 elabPType expr@(S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
@@ -131,7 +131,7 @@ elabPType expr@(S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.KType         -> nope
   S.KInterface    -> nope
   where
-  nope = IsType $ couldNotSynthesize (show e <> " at the type level")
+  nope = IsType couldNotSynthesize
 
 
 interpretMul :: S.Mul -> Few

@@ -265,7 +265,7 @@ synthExprNeg expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.As t _T  -> asN (checkExprNeg t ::: elabNType _T)
   S.String{} -> return' (synthExprPos expr)
   where
-  nope = Synth $ couldNotSynthesize (show e)
+  nope = Synth couldNotSynthesize
 
 synthExprPos :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth PType m PExpr
 synthExprPos (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
@@ -276,7 +276,7 @@ synthExprPos (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.As t _T  -> asP (checkExprPos t ::: elabPType _T)
   S.String s -> string s
   where
-  nope = Synth $ couldNotSynthesize (show e)
+  nope = Synth couldNotSynthesize
 
 
 checkExprNeg :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check NType m NExpr
