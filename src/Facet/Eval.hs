@@ -61,7 +61,7 @@ eval = go Nil
     XApp  f a        -> do
       VLam _ h k <- go env f
       extendHandler h (go env a) >>= k
-    XCon n _ fs      -> VCon n <$> traverse (go env) fs
+    XCon n _ fs      -> con n (go env <$> fs)
     XString s        -> string s
     XOp n _ sp       -> do
       -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
@@ -72,6 +72,9 @@ eval = go Nil
 
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
+
+con :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+con n fs = VCon n <$> sequenceA fs
 
 
 -- Machinery
