@@ -53,10 +53,7 @@ eval = go
     XApp  f a        -> app (go f) (go a)
     XCon n _ fs      -> con n (go <$> fs)
     XString s        -> string s
-    XOp n _ sp       -> do
-      -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-      sp' <- traverse go sp
-      Eval $ \ h k env -> runEval h k env (h (Op n sp') pure)
+    XOp n _ sp       -> op n (go <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
 global n = do
@@ -94,6 +91,12 @@ string = pure . VString
 
 con :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
+
+-- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
+op :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+op n sp = do
+  sp' <- sequenceA sp
+  Eval $ \ h k env -> runEval h k env (h (Op n sp') pure)
 
 
 -- Machinery
