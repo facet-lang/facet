@@ -38,30 +38,31 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Value (Eval m))
-eval = go Nil
+eval = go
   where
-  go :: Snoc (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
-  go env = \case
-    XVar (Global n)  -> global n >>= go env
-    XVar (Free v)    -> pure $ env ! getIndex v
+  go :: Expr -> Eval m (Value (Eval m))
+  go = \case
+    XVar (Global n)  -> global n >>= go
+    XVar (Free v)    -> (! getIndex v) <$> askEnv
     XVar (Metavar m) -> case m of {}
-    XTLam b          -> tlam (go env b)
-    XInst f t        -> inst (go env f) t
+    XTLam b          -> tlam (go b)
+    XInst f t        -> inst (go f) t
     XLam cs          -> do
-      let cs' = map (fmap (\ e p' -> go (foldl' (:>) env p') e)) cs
+      env <- askEnv
+      let cs' = map (fmap (\ e p' -> withEnv (foldl' (:>) env p') (go e))) cs
           (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
       pure $ VLam
         (map fst cs)
         (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
         (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
     XApp  f a        -> do
-      VLam _ h k <- go env f
-      extendHandler h (go env a) >>= k
-    XCon n _ fs      -> con n (go env <$> fs)
+      VLam _ h k <- go f
+      extendHandler h (go a) >>= k
+    XCon n _ fs      -> con n (go <$> fs)
     XString s        -> string s
     XOp n _ sp       -> do
       -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-      sp' <- traverse (go env) sp
+      sp' <- traverse go sp
       Eval $ \ h k env -> runEval h k env (h (Op n sp') pure)
     where
     extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
@@ -95,6 +96,12 @@ type Handler m = Op (Value m) -> (Value m -> m (Value m)) -> m (Value m)
 
 runEval :: Handler (Eval m) -> (a -> m r) -> Snoc (Value (Eval m)) -> Eval m a -> m r
 runEval hdl k env (Eval m) = m hdl k env
+
+askEnv :: Eval m (Snoc (Value (Eval m)))
+askEnv = Eval $ \ _ k -> k
+
+withEnv :: Snoc (Value (Eval m)) -> Eval m a -> Eval m a
+withEnv e (Eval run) = Eval $ \ h k _ -> run h k e
 
 newtype Eval m a = Eval (forall r . Handler (Eval m) -> (a -> m r) -> Snoc (Value (Eval m)) -> m r)
 
