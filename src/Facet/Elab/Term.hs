@@ -261,7 +261,7 @@ synthExprNeg expr@(S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var{}    -> return' (synthExprPos expr)
   S.Hole{}   -> nope
   S.Lam{}    -> nope
-  S.App f a  -> app (force (synthExprPos f)) (checkExprPos a)
+  S.App f a  -> synthExprNeg f >>- \ f' -> Synth (do{ _ ::: _F <- synth f'; (_ ::: (_, _A), _B) <- assertFunction =<< assertThunk _F; a' <- check (checkExprNeg a ::: Comp [] _A) ; pure (a' ::: Comp [] _A) }) >>- \ a' -> app (force f') (switchP a')
   S.As t _T  -> asN (checkExprNeg t ::: elabNType _T)
   S.String{} -> return' (synthExprPos expr)
   where
