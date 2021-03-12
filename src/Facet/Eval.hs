@@ -50,11 +50,7 @@ eval = go
     XLam cs          -> do
       env <- askEnv
       let cs' = map (fmap (\ e p' -> withEnv (foldl' (:>) env p') (go e))) cs
-          (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
-      pure $ VLam
-        (map fst cs)
-        (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
-        (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
+      lam cs'
     XApp  f a        -> do
       VLam _ h k <- go f
       extendHandler h (go a) >>= k
@@ -83,6 +79,16 @@ tlam = id
 
 inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
 inst = const
+
+lam :: HasCallStack => [(Pattern Name, Pattern (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
+lam cs = do
+  pure $ VLam
+    (map fst cs)
+    (\ toph op k -> foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es)
+    (\ v -> foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs)
+  where
+  (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
+
 
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
