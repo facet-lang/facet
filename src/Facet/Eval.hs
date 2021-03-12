@@ -50,17 +50,13 @@ eval = go
     XLam cs          -> do
       env <- askEnv
       lam (map (fmap (\ e p' -> withEnv (foldl' (:>) env p') (go e))) cs)
-    XApp  f a        -> do
-      VLam _ h k <- go f
-      extendHandler h (go a) >>= k
+    XApp  f a        -> app (go f) (go a)
     XCon n _ fs      -> con n (go <$> fs)
     XString s        -> string s
     XOp n _ sp       -> do
       -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
       sp' <- traverse go sp
       Eval $ \ h k env -> runEval h k env (h (Op n sp') pure)
-    where
-    extendHandler ext (Eval run) = Eval $ \ h -> run (ext h)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
 global n = do
@@ -88,6 +84,10 @@ lam cs = do
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
 
+app :: MonadFail m => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
+app f (Eval a) = do
+  VLam _ h k <- f
+  Eval (a . h) >>= k
 
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
