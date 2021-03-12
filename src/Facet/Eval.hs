@@ -43,7 +43,7 @@ eval = go
   go :: Expr -> Eval m (Value (Eval m))
   go = \case
     XVar (Global n)  -> global n >>= go
-    XVar (Free v)    -> (! getIndex v) <$> askEnv
+    XVar (Free v)    -> var v
     XVar (Metavar m) -> case m of {}
     XTLam b          -> tlam (go b)
     XInst f t        -> inst (go f) t
@@ -74,6 +74,9 @@ global n = do
   case lookupQ graph mod n of
     Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
     _                                 -> error "throw a real error here"
+
+var :: Index -> Eval m (Value (Eval m))
+var v = (! getIndex v) <$> askEnv
 
 tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 tlam = id
