@@ -38,18 +38,18 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Value (Eval m))
-eval = \case
-  XVar (Global n)  -> global n >>= eval
-  XVar (Free v)    -> var v
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
+eval env = \case
+  XVar (Global n)  -> global n >>= eval env
+  XVar (Free v)    -> var env v
   XVar (Metavar m) -> case m of {}
-  XTLam b          -> tlam (eval b)
-  XInst f t        -> inst (eval f) t
-  XLam cs          -> lam (map (fmap (\ e vs -> withEnv vs (eval e))) cs)
-  XApp  f a        -> app (eval f) (eval a)
-  XCon n _ fs      -> con n (eval <$> fs)
+  XTLam b          -> tlam (eval env b)
+  XInst f t        -> inst (eval env f) t
+  XLam cs          -> lam env (map (fmap (flip eval)) cs)
+  XApp  f a        -> app (eval env f) (eval env a)
+  XCon n _ fs      -> con n (eval env <$> fs)
   XString s        -> string s
-  XOp n _ sp       -> op n (eval <$> sp)
+  XOp n _ sp       -> op n (eval env <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
 global n = do
@@ -59,8 +59,8 @@ global n = do
     Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
     _                                 -> error "throw a real error here"
 
-var :: HasCallStack => Index -> Eval m (Value (Eval m))
-var v = (! getIndex v) <$> askEnv
+var :: HasCallStack => Snoc (Value (Eval m)) -> Index -> Eval m (Value (Eval m))
+var env v = pure (env ! getIndex v)
 
 tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 tlam = id
@@ -68,9 +68,8 @@ tlam = id
 inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
 inst = const
 
-lam :: HasCallStack => [(Pattern Name, Snoc (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
-lam cs = do
-  env <- askEnv
+lam :: HasCallStack => Snoc (Value (Eval m)) -> [(Pattern Name, Snoc (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
+lam env cs = do
   pure $ VLam (map fst cs) (h env) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
@@ -92,7 +91,7 @@ con n fs = VCon n <$> sequenceA fs
 op :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 op n sp = do
   sp' <- sequenceA sp
-  Eval $ \ h k env -> runEval h k env (foldr (\ h rest -> maybe rest ($ pure) (h (Op n sp'))) (error ("unhandled operation: " <> show n)) h)
+  Eval $ \ h k -> runEval h k (foldr (\ h rest -> maybe rest ($ pure) (h (Op n sp'))) (error ("unhandled operation: " <> show n)) h)
 
 
 -- Machinery
@@ -101,35 +100,29 @@ data Op a = Op QName (Snoc a)
 
 type Handler m = Op (Value m) -> Maybe ((Value m -> m (Value m)) -> m (Value m))
 
-runEval :: Snoc (Handler (Eval m)) -> (a -> m r) -> Snoc (Value (Eval m)) -> Eval m a -> m r
-runEval hdl k env (Eval m) = m hdl k env
+runEval :: Snoc (Handler (Eval m)) -> (a -> m r) -> Eval m a -> m r
+runEval hdl k (Eval m) = m hdl k
 
-askEnv :: Eval m (Snoc (Value (Eval m)))
-askEnv = Eval $ \ _ k -> k
-
-withEnv :: Snoc (Value (Eval m)) -> Eval m a -> Eval m a
-withEnv e (Eval run) = Eval $ \ h k _ -> run h k e
-
-newtype Eval m a = Eval (forall r . Snoc (Handler (Eval m)) -> (a -> m r) -> Snoc (Value (Eval m)) -> m r)
+newtype Eval m a = Eval (forall r . Snoc (Handler (Eval m)) -> (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap = liftM
 
 instance Applicative (Eval m) where
-  pure a = Eval $ \ _ k _ -> k a
+  pure a = Eval $ \ _ k -> k a
   (<*>) = ap
 
 instance Monad (Eval m) where
-  m >>= f = Eval $ \ hdl k env -> runEval hdl (runEval hdl k env . f) env m
+  m >>= f = Eval $ \ hdl k -> runEval hdl (runEval hdl k . f) m
 
 instance MonadFail m => MonadFail (Eval m) where
   fail = lift . fail
 
 instance MonadTrans Eval where
-  lift m = Eval $ \ _ k _ -> m >>= k
+  lift m = Eval $ \ _ k -> m >>= k
 
 instance Algebra sig m => Algebra sig (Eval m) where
-  alg hdl sig ctx = Eval $ \ h k env -> alg (runEval h pure env . hdl) sig ctx >>= k
+  alg hdl sig ctx = Eval $ \ h k -> alg (runEval h pure . hdl) sig ctx >>= k
 
 
 -- Values
