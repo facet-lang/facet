@@ -205,15 +205,11 @@ showEval e = Action $ do
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
 runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
-runEvalMain e = runEval (Nil :> handle) pure (E.quoteV 0 =<< eval Nil Nil e)
+runEvalMain e = runEval (Nil :> (FromList ["Effect", "Console"] :.: U "write", handle)) pure (E.quoteV 0 =<< eval Nil Nil e)
   where
-  handle (E.Op q sp) = case q of
-    FromList ["Effect", "Console"] :.: U "write"
-      | FromList [E.VString s] <- sp -> Just $ \ k -> outputText s *> k unit
-    _                                -> Nothing
-  _unhandled q _sp = do
-    Options{ qname } <- get
-    throwError $ Notice.Notice (Just Notice.Error) [] (fillSep [reflow "unhandled effect operator", getPrint (qname q)]) []
+  handle (FromList [E.VString s]) k = outputText s *> k unit
+  handle _                        _ = unhandled
+  unhandled = throwError $ Notice.Notice (Just Notice.Error) [] (fillSep @(Doc Style) [reflow "unhandled effect operator"]) []
 
 showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
