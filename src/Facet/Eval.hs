@@ -45,9 +45,7 @@ eval = \case
   XVar (Metavar m) -> case m of {}
   XTLam b          -> tlam (eval b)
   XInst f t        -> inst (eval f) t
-  XLam cs          -> do
-    env <- askEnv
-    lam (map (fmap (\ e vs -> withEnv (env <> vs) (eval e))) cs)
+  XLam cs          -> lam (map (fmap (\ e vs -> withEnv vs (eval e))) cs)
   XApp  f a        -> app (eval f) (eval a)
   XCon n _ fs      -> con n (eval <$> fs)
   XString s        -> string s
@@ -71,11 +69,13 @@ inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
 inst = const
 
 lam :: HasCallStack => [(Pattern Name, Snoc (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
-lam cs = pure $ VLam (map fst cs) h k
+lam cs = do
+  env <- askEnv
+  pure $ VLam (map fst cs) (h env) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h op = foldMapA (\ (p, b) -> matchE (\ vs k -> b (vs :> VLam [pvar __] (const Nothing) k)) p op) es
-  k v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV b p v) vs)
+  h env op = foldMapA (\ (p, b) -> matchE (\ vs k -> b (env <> vs :> VLam [pvar __] (const Nothing) k)) p op) es
+  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV (b . (env <>)) p v) vs)
 
 app :: MonadFail m => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 app f (Eval a) = do
