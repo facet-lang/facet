@@ -44,7 +44,7 @@ eval = \case
   XVar (Free v)   -> var v
   XTLam b         -> tlam (eval b)
   XInst f t       -> inst (eval f) t
-  XLam cs         -> lam (map (fmap (\ e env -> withEnv env (eval e))) cs)
+  XLam cs         -> lam (map (fmap eval) cs)
   XApp  f a       -> app (eval f) (eval a)
   XCon n _ fs     -> con n (eval <$> fs)
   XString s       -> string s
@@ -62,12 +62,12 @@ tlam = id
 inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
 inst = const
 
-lam :: HasCallStack => [(Pattern Name, Snoc (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
+lam :: HasCallStack => [(Pattern Name, Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
 lam cs = Eval $ \ env hdl k' -> k' $ VLam (map fst cs) (h env hdl) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h env hdl = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> b (bindSpine env ps sp :> VLam [pvar __] Nil k))) hdl es
-  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
+  h env hdl = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> withEnv (bindSpine env ps sp :> VLam [pvar __] Nil k) b)) hdl es
+  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> (`withEnv` b) . (env <>) <$> matchV p v) vs)
 
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 app f a = do
