@@ -45,7 +45,7 @@ eval = \case
   XTLam b         -> tlam (eval b)
   XInst f t       -> inst (eval f) t
   XLam cs         -> lam (map (fmap (\ e env -> withEnv env (eval e))) cs)
-  XApp  f a       -> app (eval f) a
+  XApp  f a       -> app (eval f) (eval a)
   XCon n _ fs     -> con n (eval <$> fs)
   XString s       -> string s
   XOp n _ sp      -> op n (eval <$> sp)
@@ -69,11 +69,11 @@ lam cs = Eval $ \ env hdl k' -> k' $ VLam (map fst cs) (h env hdl) (k env)
   h env hdl = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> b (bindSpine env ps sp :> VLam [pvar __] Nil k))) hdl es
   k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 app f a = do
   f' <- f
   case f' of
-    VLam _ h k -> withHandlers h (eval a >>= force) >>= k
+    VLam _ h k -> withHandlers h (a >>= force) >>= k
     VNe v sp   -> pure $ VNe v (sp :> a)
     VOp n _    -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
@@ -142,7 +142,7 @@ instance Algebra sig m => Algebra sig (Eval m) where
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VNe (Var Level) (Snoc Expr)
+  = VNe (Var Level) (Snoc (m (Value m)))
   -- | Neutral; effect operations, only used during quotation.
   | VOp QName (Snoc (Value m))
   -- | Value; data constructors.
@@ -183,7 +183,7 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
-  VNe v sp    -> pure $ foldl' XApp (XVar (levelToIndex d <$> v)) sp
+  VNe v sp    -> foldl' XApp (XVar (levelToIndex d <$> v)) <$> traverse (quoteV d =<<) sp
   VOp q fs    -> XOp  q Nil <$> traverse (quoteV d) fs
   VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
   VString s   -> pure $ XString s
