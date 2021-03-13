@@ -96,6 +96,21 @@ op hdl n sp = do
   Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> h sp' k) (find ((n ==) . fst) hdl)
 
 
+-- | Hereditary substitution on values.
+force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Value m -> Eval m (Value m)
+force env hdl = \case
+  VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env f a) (resolve h >>= eval env hdl) sp
+  v                 -> pure v
+
+resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
+resolve n = do
+  mod <- lift ask
+  graph <- lift ask
+  case lookupQ graph mod n of
+    Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
+    _                                 -> error "throw a real error here"
+
+
 -- Machinery
 
 type Handler m = Snoc (Value m) -> (Value m -> m (Value m)) -> m (Value m)
