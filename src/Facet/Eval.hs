@@ -5,6 +5,7 @@
 module Facet.Eval
 ( -- * Evaluation
   eval
+, force
   -- * Machinery
 , Handler
 , runEval
@@ -39,7 +40,7 @@ import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Expr -> Eval m (Value m)
 eval env hdl = \case
-  XVar (Global n) -> global n >>= eval env hdl
+  XVar (Global n) -> global n
   XVar (Free v)   -> var env v
   XTLam b         -> tlam (eval env hdl b)
   XInst f t       -> inst (eval env hdl f) t
@@ -49,13 +50,8 @@ eval env hdl = \case
   XString s       -> string s
   XOp n _ sp      -> op hdl n (eval env hdl <$> sp)
 
-global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
-global n = do
-  mod <- lift ask
-  graph <- lift ask
-  case lookupQ graph mod n of
-    Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
-    _                                 -> error "throw a real error here"
+global :: QName -> Eval m (Value m)
+global n = pure $ VNe (Global n) Nil
 
 var :: HasCallStack => Snoc (Value m) -> Index -> Eval m (Value m)
 var env v = pure (env ! getIndex v)
@@ -78,9 +74,9 @@ app env hdl f a = do
           (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
           h = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runEval pure (b (bindSpine env ps sp :> VCont k)))) hdl es
           k v = maybe (error "non-exhaustive patterns in lambda") (runEval pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
-      eval env h a >>= lift . k
-    VCont k    -> eval env hdl a >>= lift . k
-    VFree v    -> fail $ "expected lambda, got var "    <> show v
+      eval env h a >>= force env hdl >>= lift . k
+    VCont k    -> eval env hdl a >>= force env hdl >>= lift . k
+    VNe v sp   -> pure $ VNe v (sp :> a)
     VOp n _ _  -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
     VString s  -> fail $ "expected lambda, got string " <> show s
@@ -96,6 +92,21 @@ op :: MonadFail m => Snoc (QName, Handler m) -> QName -> Snoc (Eval m (Value m))
 op hdl n sp = do
   sp' <- sequenceA sp
   Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> h sp' k) (find ((n ==) . fst) hdl)
+
+
+-- | Hereditary substitution on values.
+force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Value m -> Eval m (Value m)
+force env hdl = \case
+  VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env hdl f a) (eval env hdl =<< resolve h) sp
+  v                 -> pure v
+
+resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
+resolve n = do
+  mod <- lift ask
+  graph <- lift ask
+  case lookupQ graph mod n of
+    Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
+    _                                 -> error "throw a real error here"
 
 
 -- Machinery
@@ -128,7 +139,7 @@ instance MonadTrans Eval where
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VFree Level
+  = VNe (Var Level) (Snoc Expr)
   -- | Neutral; effect operations, only used during quotation.
   | VOp QName (Snoc (Value m)) (Value m)
   -- | Value; data constructors.
@@ -173,7 +184,7 @@ quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam _ cs  -> pure $ XLam cs
   VCont k    -> XLam <$> traverse (quoteClause d Nil k) [pvar __]
-  VFree v    -> pure $ XVar (Free (levelToIndex d v))
+  VNe v sp   -> pure $ foldl' XApp (XVar (levelToIndex d <$> v)) sp
   VOp q fs k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
   VCon n fs  -> XCon n Nil <$> traverse (quoteV d) fs
   VString s  -> pure $ XString s
@@ -183,7 +194,7 @@ quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
   PVal p'           -> k (constructV p')
   PEff (POp q fs _) -> maybe (error ("unhandled operation: " <> show q)) (\ (_, h) -> h (constructV <$> fs) pure) (find ((== q) . fst) h)
   where
-  (d', p') = fill ((,) <$> succ <*> VFree) d p
+  (d', p') = fill ((,) <$> succ <*> (`VNe` Nil) . Free) d p
 
 
 constructV :: ValuePattern (Value m) -> Value m
