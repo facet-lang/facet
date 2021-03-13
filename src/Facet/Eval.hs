@@ -38,22 +38,19 @@ import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Value (Eval m))
-eval = go
-  where
-  go :: Expr -> Eval m (Value (Eval m))
-  go = \case
-    XVar (Global n)  -> global n >>= go
-    XVar (Free v)    -> var v
-    XVar (Metavar m) -> case m of {}
-    XTLam b          -> tlam (go b)
-    XInst f t        -> inst (go f) t
-    XLam cs          -> do
-      env <- askEnv
-      lam (map (fmap (\ e p' -> withEnv (foldl' (:>) env p') (go e))) cs)
-    XApp  f a        -> app (go f) (go a)
-    XCon n _ fs      -> con n (go <$> fs)
-    XString s        -> string s
-    XOp n _ sp       -> op n (go <$> sp)
+eval = \case
+  XVar (Global n)  -> global n >>= eval
+  XVar (Free v)    -> var v
+  XVar (Metavar m) -> case m of {}
+  XTLam b          -> tlam (eval b)
+  XInst f t        -> inst (eval f) t
+  XLam cs          -> do
+    env <- askEnv
+    lam (map (fmap (\ e p' -> withEnv (foldl' (:>) env p') (eval e))) cs)
+  XApp  f a        -> app (eval f) (eval a)
+  XCon n _ fs      -> con n (eval <$> fs)
+  XString s        -> string s
+  XOp n _ sp       -> op n (eval <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
 global n = do
