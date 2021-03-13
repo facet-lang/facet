@@ -8,6 +8,7 @@ module Facet.Eval
 , force
   -- * Machinery
 , Handler(..)
+, Eval(..)
   -- * Values
 , Value(..)
 , unit
@@ -37,68 +38,66 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Expr -> ContT (Value m) m (Value m)
-eval env hdl = \case
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Value m)
+eval = \case
   XVar (Global n) -> global n
-  XVar (Free v)   -> var env v
-  XTLam b         -> tlam (eval env hdl b)
-  XInst f t       -> inst (eval env hdl f) t
-  XLam cs         -> lam env hdl (map (fmap (\ e env -> eval env hdl e)) cs)
-  XApp  f a       -> app env hdl (eval env hdl f) a
-  XCon n _ fs     -> con n (eval env hdl <$> fs)
+  XVar (Free v)   -> var v
+  XTLam b         -> tlam (eval b)
+  XInst f t       -> inst (eval f) t
+  XLam cs         -> lam (map (fmap (\ e env -> withEnv env (eval e))) cs)
+  XApp  f a       -> app (eval f) a
+  XCon n _ fs     -> con n (eval <$> fs)
   XString s       -> string s
-  XOp n _ sp      -> op n (eval env hdl <$> sp)
+  XOp n _ sp      -> op n (eval <$> sp)
 
-global :: QName -> ContT (Value m) m (Value m)
+global :: QName -> Eval m (Value m)
 global n = pure $ VNe (Global n) Nil
 
-var :: HasCallStack => Snoc (Value m) -> Index -> ContT (Value m) m (Value m)
-var env v = pure (env ! getIndex v)
+var :: HasCallStack => Index -> Eval m (Value m)
+var v = Eval $ \ env _ k -> k (env ! getIndex v)
 
-tlam :: ContT (Value m) m (Value m) -> ContT (Value m) m (Value m)
+tlam :: Eval m (Value m) -> Eval m (Value m)
 tlam = id
 
-inst :: ContT (Value m) m (Value m) -> TExpr -> ContT (Value m) m (Value m)
+inst :: Eval m (Value m) -> TExpr -> Eval m (Value m)
 inst = const
 
-lam :: (HasCallStack, Applicative m) => Snoc (Value m) -> Snoc (QName, Handler m) -> [(Pattern Name, Snoc (Value m) -> ContT (Value m) m (Value m))] -> ContT (Value m) m (Value m)
-lam env hdl cs = pure $ VLam (map fst cs) (h env) (k env)
+lam :: (HasCallStack, Applicative m) => [(Pattern Name, Snoc (Value m) -> Eval m (Value m))] -> Eval m (Value m)
+lam cs = Eval $ \ env hdl k' -> k' $ VLam (map fst cs) (h env hdl) (k env hdl)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> runContT (b (bindSpine env ps sp :> VLam [pvar __] Nil k)) pure)) hdl es
-  k env v = maybe (error "non-exhaustive patterns in lambda") (`runContT` pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
+  h env hdl = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> runEval (b (bindSpine env ps sp :> VLam [pvar __] Nil k)) env hdl pure)) hdl es
+  k env hdl v = maybe (error "non-exhaustive patterns in lambda") (\ m -> runEval m env hdl pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> ContT (Value m) m (Value m) -> Expr -> ContT (Value m) m (Value m)
-app env hdl f a = do
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Eval m (Value m) -> Expr -> Eval m (Value m)
+app f a = do
   f' <- f
   case f' of
-    VLam _ h k -> eval env h a >>= force env hdl >>= lift . k
+    VLam _ h k -> withHandlers h (eval a) >>= force >>= lift . k
     VNe v sp   -> pure $ VNe v (sp :> a)
     VOp n _    -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
     VString s  -> fail $ "expected lambda, got string " <> show s
 
-string :: Text -> ContT (Value m) m (Value m)
+string :: Text -> Eval m (Value m)
 string = pure . VString
 
-con :: QName -> Snoc (ContT (Value m) m (Value m)) -> ContT (Value m) m (Value m)
+con :: QName -> Snoc (Eval m (Value m)) -> Eval m (Value m)
 con n fs = VCon n <$> sequenceA fs
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: QName -> Snoc (ContT (Value m) m (Value m)) -> ContT (Value m) m (Value m)
-op n sp = do
-  sp' <- sequenceA sp
-  pure $ VOp n sp'
+op :: QName -> Snoc (Eval m (Value m)) -> Eval m (Value m)
+op n sp = VOp n <$> sequenceA sp
 
 
 -- | Hereditary substitution on values.
-force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Value m -> ContT (Value m) m (Value m)
-force env hdl = \case
-  VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env hdl f a) (eval env hdl =<< resolve h) sp
-  VOp n sp          -> ContT $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runHandler h sp k) (find ((n ==) . fst) hdl)
+force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Value m -> Eval m (Value m)
+force = \case
+  VNe (Global h) sp -> foldl' (\ f a -> force =<< app f a) (eval =<< resolve h) sp
+  VOp n sp          -> Eval $ \ _ hdl k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runHandler h sp k) (find ((n ==) . fst) hdl)
   v                 -> pure v
 
-resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> ContT (Value m) m Expr
+resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
 resolve n = do
   mod <- lift ask
   graph <- lift ask
@@ -110,6 +109,18 @@ resolve n = do
 -- Machinery
 
 newtype Handler m = Handler { runHandler :: Snoc (Value m) -> (Value m -> m (Value m)) -> m (Value m) }
+
+withEnv :: Snoc (Value m) -> Eval m a -> Eval m a
+withEnv env m = Eval $ \ _ -> runEval m env
+
+withHandlers :: Snoc (QName, Handler m) -> Eval m a -> Eval m a
+withHandlers hdl m = Eval $ \ env _ -> runEval m env hdl
+
+newtype Eval m a = Eval { runEval :: Snoc (Value m) -> Snoc (QName, Handler m) -> (a -> m (Value m)) -> m (Value m) }
+  deriving (Applicative, Functor, Monad, MonadFail) via ReaderC (Snoc (Value m)) (ReaderC (Snoc (QName, Handler m)) (ContT (Value m) m))
+
+instance MonadTrans Eval where
+  lift m = Eval $ \ _ _ k -> m >>= k
 
 
 -- Values

@@ -17,7 +17,6 @@ import           Control.Exception (handle)
 import           Control.Lens (Lens', lens, (&), (.~))
 import           Control.Monad (unless, (<=<))
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Cont
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
 import           Data.Foldable (toList)
@@ -206,7 +205,7 @@ showEval e = Action $ do
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
 runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
-runEvalMain e = E.quoteV 0 =<< runContT (force Nil Nil =<< eval Nil (Nil :> (write, Handler handle)) e) pure
+runEvalMain e = E.quoteV 0 =<< runEval (force =<< eval e) Nil (Nil :> (write, Handler handle)) pure
   where
   write = FromList ["Effect", "Console"] :.: U "write"
   handle (FromList [E.VString s]) k = outputText s *> k unit
