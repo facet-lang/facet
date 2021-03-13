@@ -25,7 +25,6 @@ import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Foldable
 import Data.Function
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Facet.Core.Module
 import Facet.Core.Term
@@ -73,7 +72,7 @@ lam env hdl cs = pure $ VLam (map fst cs) (h env) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
   h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runEval pure (b (bindSpine env ps sp :> VLam [pvar __] Nil k)))) hdl es
-  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> runEval pure . b . (env <>) <$> matchV p v) vs)
+  k env v = maybe (error "non-exhaustive patterns in lambda") (runEval pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
 
 app :: MonadFail m => Eval m (Value m) -> (Snoc (QName, Handler m) -> Eval m (Value m)) -> Eval m (Value m)
 app f a = do
