@@ -6,7 +6,6 @@ module Facet.Eval
 ( -- * Evaluation
   eval
   -- * Machinery
-, Op(..)
 , Handler
 , runEval
 , Eval(..)
@@ -97,8 +96,6 @@ op hdl n sp = do
 
 -- Machinery
 
-data Op a = Op QName (Snoc a)
-
 type Handler m = Snoc (Value m) -> (Value m -> m (Value m)) -> m (Value m)
 
 runEval :: (a -> m r) -> Eval m a -> m r
@@ -132,7 +129,7 @@ data Value m
   -- | Neutral; variables, only used during quotation
   = VFree Level
   -- | Neutral; effect operations, only used during quotation.
-  | VOp (Op (Value m)) (Value m)
+  | VOp QName (Snoc (Value m)) (Value m)
   -- | Value; data constructors.
   | VCon QName (Snoc (Value m))
   -- | Value; strings.
@@ -170,11 +167,11 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
-  VLam ps h k     -> XLam <$> traverse (quoteClause d h k) ps
-  VFree lvl       -> pure (XVar (Free (levelToIndex d lvl)))
-  VOp (Op q fs) k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
-  VCon n fs       -> XCon n Nil <$> traverse (quoteV d) fs
-  VString s       -> pure $ XString s
+  VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
+  VFree lvl   -> pure (XVar (Free (levelToIndex d lvl)))
+  VOp q fs k  -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
+  VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
+  VString s   -> pure $ XString s
 
 quoteClause :: Monad m => Level -> Snoc (QName, Handler m) -> (Value m -> m (Value m)) -> Pattern Name -> m (Pattern Name, Expr)
 quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
