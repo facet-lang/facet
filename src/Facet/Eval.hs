@@ -20,6 +20,7 @@ module Facet.Eval
 import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Carrier.Reader
+import Control.Effect.NonDet (foldMapA)
 import Control.Monad (ap, guard, liftM)
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
@@ -73,13 +74,13 @@ lam :: HasCallStack => [(Pattern Name, Pattern (Value (Eval m)) -> Eval m (Value
 lam cs = pure $ VLam (map fst cs) h k
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h toph op k = foldr (\ (p, b) rest -> maybe rest (b . PEff) (matchE p op k)) (toph op k) es
+  h op = foldMapA (\ (p, b) -> fmap (b . PEff) <$> matchE p op) es
   k v = foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs
 
 app :: MonadFail m => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 app f (Eval a) = do
   VLam _ h k <- f
-  Eval (a . h) >>= k
+  Eval (a . (:> h)) >>= k
 
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
@@ -91,16 +92,16 @@ con n fs = VCon n <$> sequenceA fs
 op :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 op n sp = do
   sp' <- sequenceA sp
-  Eval $ \ h k env -> runEval h k env (h (Op n sp') pure)
+  Eval $ \ h k env -> runEval h k env (foldr (\ h rest -> maybe rest ($ pure) (h (Op n sp'))) (error ("unhandled operation: " <> show n)) h)
 
 
 -- Machinery
 
 data Op a = Op QName (Snoc a)
 
-type Handler m = Op (Value m) -> (Value m -> m (Value m)) -> m (Value m)
+type Handler m = Op (Value m) -> Maybe ((Value m -> m (Value m)) -> m (Value m))
 
-runEval :: Handler (Eval m) -> (a -> m r) -> Snoc (Value (Eval m)) -> Eval m a -> m r
+runEval :: Snoc (Handler (Eval m)) -> (a -> m r) -> Snoc (Value (Eval m)) -> Eval m a -> m r
 runEval hdl k env (Eval m) = m hdl k env
 
 askEnv :: Eval m (Snoc (Value (Eval m)))
@@ -109,7 +110,7 @@ askEnv = Eval $ \ _ k -> k
 withEnv :: Snoc (Value (Eval m)) -> Eval m a -> Eval m a
 withEnv e (Eval run) = Eval $ \ h k _ -> run h k e
 
-newtype Eval m a = Eval (forall r . Handler (Eval m) -> (a -> m r) -> Snoc (Value (Eval m)) -> m r)
+newtype Eval m a = Eval (forall r . Snoc (Handler (Eval m)) -> (a -> m r) -> Snoc (Value (Eval m)) -> m r)
 
 instance Functor (Eval m) where
   fmap = liftM
@@ -143,7 +144,7 @@ data Value m
   -- | Value; strings.
   | VString Text
   -- | Computation; lambdas.
-  | VLam [Pattern Name] (Handler m -> Handler m) (Value m -> m (Value m))
+  | VLam [Pattern Name] (Handler m) (Value m -> m (Value m))
 
 unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
@@ -151,8 +152,10 @@ unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Op (Value m) -> (Value m -> m (Value m)) -> Maybe (EffectPattern (Value m))
-matchE (POp n ps _) (Op n' fs) k = POp n' <$ guard (n == n') <*> zipWithM matchV ps fs <*> pure (VLam [PVal (PVar __)] id k)
+matchE :: EffectPattern Name -> Op (Value m) -> Maybe ((Value m -> m (Value m)) -> EffectPattern (Value m))
+matchE (POp n ps _) (Op n' fs) = mk <$ guard (n == n') <*> zipWithM matchV ps fs
+  where
+  mk sp k = POp n' sp (VLam [PVal (PVar __)] (const Nothing) k)
 
 matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
 matchV p s = case p of
@@ -173,10 +176,10 @@ quoteV d = \case
   VCon n fs       -> XCon n Nil <$> traverse (quoteV d) fs
   VString s       -> pure $ XString s
 
-quoteClause :: Monad m => Level -> (Handler m -> Handler m) -> (Value m -> m (Value m)) -> Pattern Name -> m (Pattern Name, Expr)
+quoteClause :: Monad m => Level -> Handler m -> (Value m -> m (Value m)) -> Pattern Name -> m (Pattern Name, Expr)
 quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
   PVal p'           -> k (constructV p')
-  PEff (POp q fs k) -> h (\ op _ -> pure (VOp op k)) (Op q (constructV <$> fs)) pure
+  PEff (POp q fs _) -> maybe (error ("unhandled operation: " <> show q)) ($ pure) (h (Op q (constructV <$> fs)))
   where
   (d', p') = fill ((,) <$> succ <*> VFree) d p
 
