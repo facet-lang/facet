@@ -7,7 +7,7 @@ module Facet.Eval
   eval
 , force
   -- * Machinery
-, Handler
+, Handler(..)
   -- * Values
 , Value(..)
 , unit
@@ -65,7 +65,7 @@ lam :: (HasCallStack, Applicative m) => Snoc (Value m) -> Snoc (QName, Handler m
 lam env hdl cs = pure $ VLam (map fst cs) (h env) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runContT (b (bindSpine env ps sp :> VLam [pvar __] Nil k)) pure)) hdl es
+  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> runContT (b (bindSpine env ps sp :> VLam [pvar __] Nil k)) pure)) hdl es
   k env v = maybe (error "non-exhaustive patterns in lambda") (`runContT` pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
 
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> ContT (Value m) m (Value m) -> Expr -> ContT (Value m) m (Value m)
@@ -95,7 +95,7 @@ op n sp = do
 force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Value m -> ContT (Value m) m (Value m)
 force env hdl = \case
   VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env hdl f a) (eval env hdl =<< resolve h) sp
-  VOp n sp          -> ContT $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> h sp k) (find ((n ==) . fst) hdl)
+  VOp n sp          -> ContT $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runHandler h sp k) (find ((n ==) . fst) hdl)
   v                 -> pure v
 
 resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> ContT (Value m) m Expr
@@ -109,7 +109,7 @@ resolve n = do
 
 -- Machinery
 
-type Handler m = Snoc (Value m) -> (Value m -> m (Value m)) -> m (Value m)
+newtype Handler m = Handler { runHandler :: Snoc (Value m) -> (Value m -> m (Value m)) -> m (Value m) }
 
 
 -- Values
@@ -165,7 +165,7 @@ quoteV d = \case
 quoteClause :: Monad m => Level -> Snoc (QName, Handler m) -> (Value m -> m (Value m)) -> Pattern Name -> m (Pattern Name, Expr)
 quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
   PVal p'           -> k (constructV p')
-  PEff (POp q fs _) -> maybe (error ("unhandled operation: " <> show q)) (\ (_, h) -> h (constructV <$> fs) pure) (find ((== q) . fst) h)
+  PEff (POp q fs _) -> maybe (error ("unhandled operation: " <> show q)) (\ (_, h) -> runHandler h (constructV <$> fs) pure) (find ((== q) . fst) h)
   where
   (d', p') = fill ((,) <$> succ <*> (`VNe` Nil) . Free) d p
 
