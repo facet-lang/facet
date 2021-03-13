@@ -38,18 +38,18 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
-eval env = \case
-  XVar (Global n)  -> global n >>= eval env
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (QName, Snoc (Value (Eval m)) -> (Value (Eval m) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))) -> Expr -> Eval m (Value (Eval m))
+eval env hdl = \case
+  XVar (Global n)  -> global n >>= eval env hdl
   XVar (Free v)    -> var env v
   XVar (Metavar m) -> case m of {}
-  XTLam b          -> tlam (eval env b)
-  XInst f t        -> inst (eval env f) t
-  XLam cs          -> lam env (map (fmap (flip eval)) cs)
-  XApp  f a        -> app (eval env f) (eval env a)
-  XCon n _ fs      -> con n (eval env <$> fs)
+  XTLam b          -> tlam (eval env hdl b)
+  XInst f t        -> inst (eval env hdl f) t
+  XLam cs          -> lam env (map (fmap (\ e env -> eval env hdl e)) cs)
+  XApp  f a        -> app (eval env hdl f) (eval env hdl a)
+  XCon n _ fs      -> con n (eval env hdl <$> fs)
   XString s        -> string s
-  XOp n _ sp       -> op n (eval env <$> sp)
+  XOp n _ sp       -> op n (eval env hdl <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
 global n = do
