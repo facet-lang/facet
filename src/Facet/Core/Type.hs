@@ -11,8 +11,6 @@ module Facet.Core.Type
 , ($$*)
 , ($$$)
 , ($$$*)
-  -- ** Debugging
-, showType
   -- * Type expressions
 , TExpr(..)
   -- * Quotation
@@ -33,8 +31,6 @@ import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
 import           Facet.Name
-import           Facet.Semiring
-import           Facet.Show
 import           Facet.Snoc
 import           Facet.Syntax
 import           Facet.Usage
@@ -106,33 +102,6 @@ _             $$$ _ = error "can’t apply non-neutral/forall type"
 ($$$*) = foldl' ($$)
 
 infixl 9 $$$, $$$*
-
-
--- Debugging
-
-showType :: Snoc ShowP -> Type -> ShowP
-showType env = \case
-  VType         -> string "Type"
-  VInterface    -> string "Interface"
-  VForAll n t b -> prec 0 $ brace (name n <+> char ':' <+> setPrec 0 (showType env t)) <+> string "->" <+> setPrec 0 (showType (env :> name n) (b (free (Level (length env)))))
-  VArrow n q t b  -> case n of
-    Just  n -> paren (name n <+> char ':' <+> mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
-    Nothing -> setPrec 1 (mult q (showType env t)) <+> string "->" <+> setPrec 0 (showType env b)
-  VNe f ts as   -> head f $$* (brace . showType env <$> ts) $$* (setPrec 11 . showType env <$> as)
-  VRet s t      -> sig s <+> showType env t
-  VString       -> string "String"
-  where
-  sig s = bracket (commaSep (map (showType env) s))
-  ($$*) = foldl' (\ f a -> prec 10 (f <+> a))
-  infixl 9 $$*
-  head = \case
-    Global q  -> qname q
-    Free v    -> env ! getIndex (levelToIndex (Level (length env)) v)
-    Metavar m -> char '?' <> string (show (getMeta m))
-  mult q = if
-    | q == zero -> (char '0' <+>)
-    | q == one  -> (char '1' <+>)
-    | otherwise -> id
 
 
 -- Type expressions
