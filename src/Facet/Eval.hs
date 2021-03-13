@@ -77,7 +77,13 @@ lam env hdl cs = pure $ VLam (map fst cs) (h env) (k env)
 
 app :: MonadFail m => Eval m (Value m) -> (Snoc (QName, Handler m) -> Eval m (Value m)) -> Eval m (Value m)
 app f a = do
-  VLam _ h k <- f
+  f' <- f
+  (h, k) <- case f' of
+    VLam _ h k -> pure (h, k)
+    VFree v    -> fail $ "expected lambda, got var " <> show v
+    VOp n _ _  -> fail $ "expected lambda, got op " <> show n
+    VCon n _   -> fail $ "expected lambda, got con " <> show n
+    VString s  -> fail $ "expected lambda, got string " <> show s
   a h >>= lift . k
 
 string :: Text -> Eval m (Value m)
