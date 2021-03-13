@@ -39,7 +39,7 @@ import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Expr -> Eval m (Value m)
 eval env hdl = \case
-  XVar (Global n) -> global n >>= eval env hdl
+  XVar (Global n) -> global n
   XVar (Free v)   -> var env v
   XTLam b         -> tlam (eval env hdl b)
   XInst f t       -> inst (eval env hdl f) t
@@ -49,13 +49,8 @@ eval env hdl = \case
   XString s       -> string s
   XOp n _ sp      -> op hdl n (eval env hdl <$> sp)
 
-global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
-global n = do
-  mod <- lift ask
-  graph <- lift ask
-  case lookupQ graph mod n of
-    Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
-    _                                 -> error "throw a real error here"
+global :: QName -> Eval m (Value m)
+global n = pure $ VNe (Global n) Nil
 
 var :: HasCallStack => Snoc (Value m) -> Index -> Eval m (Value m)
 var env v = pure (env ! getIndex v)
