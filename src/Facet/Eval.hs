@@ -5,6 +5,7 @@
 module Facet.Eval
 ( -- * Evaluation
   eval
+, force
   -- * Machinery
 , Handler
 , runEval
