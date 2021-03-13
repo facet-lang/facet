@@ -8,8 +8,6 @@ module Facet.Eval
 , force
   -- * Machinery
 , Handler
-, runEval
-, Eval(..)
   -- * Values
 , Value(..)
 , unit
@@ -21,8 +19,9 @@ import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Carrier.Reader
 import Control.Effect.NonDet (foldMapA)
-import Control.Monad (ap, guard, join, liftM)
+import Control.Monad (guard, join)
 import Control.Monad.Trans.Class
+import Control.Monad.Trans.Cont
 import Data.Either (partitionEithers)
 import Data.Foldable
 import Data.Function
@@ -38,7 +37,7 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Expr -> Eval m (Value m)
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Expr -> ContT (Value m) m (Value m)
 eval env hdl = \case
   XVar (Global n) -> global n
   XVar (Free v)   -> var env v
@@ -50,26 +49,26 @@ eval env hdl = \case
   XString s       -> string s
   XOp n _ sp      -> op n (eval env hdl <$> sp)
 
-global :: QName -> Eval m (Value m)
+global :: QName -> ContT (Value m) m (Value m)
 global n = pure $ VNe (Global n) Nil
 
-var :: HasCallStack => Snoc (Value m) -> Index -> Eval m (Value m)
+var :: HasCallStack => Snoc (Value m) -> Index -> ContT (Value m) m (Value m)
 var env v = pure (env ! getIndex v)
 
-tlam :: Eval m (Value m) -> Eval m (Value m)
+tlam :: ContT (Value m) m (Value m) -> ContT (Value m) m (Value m)
 tlam = id
 
-inst :: Eval m (Value m) -> TExpr -> Eval m (Value m)
+inst :: ContT (Value m) m (Value m) -> TExpr -> ContT (Value m) m (Value m)
 inst = const
 
-lam :: (HasCallStack, Applicative m) => Snoc (Value m) -> Snoc (QName, Handler m) -> [(Pattern Name, Snoc (Value m) -> Eval m (Value m))] -> Eval m (Value m)
+lam :: (HasCallStack, Applicative m) => Snoc (Value m) -> Snoc (QName, Handler m) -> [(Pattern Name, Snoc (Value m) -> ContT (Value m) m (Value m))] -> ContT (Value m) m (Value m)
 lam env hdl cs = pure $ VLam (map fst cs) (h env) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runEval pure (b (bindSpine env ps sp :> VLam [pvar __] Nil k)))) hdl es
-  k env v = maybe (error "non-exhaustive patterns in lambda") (runEval pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
+  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runContT (b (bindSpine env ps sp :> VLam [pvar __] Nil k)) pure)) hdl es
+  k env v = maybe (error "non-exhaustive patterns in lambda") (`runContT` pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Eval m (Value m) -> Expr -> Eval m (Value m)
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> ContT (Value m) m (Value m) -> Expr -> ContT (Value m) m (Value m)
 app env hdl f a = do
   f' <- f
   case f' of
@@ -79,27 +78,27 @@ app env hdl f a = do
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
     VString s  -> fail $ "expected lambda, got string " <> show s
 
-string :: Text -> Eval m (Value m)
+string :: Text -> ContT (Value m) m (Value m)
 string = pure . VString
 
-con :: QName -> Snoc (Eval m (Value m)) -> Eval m (Value m)
+con :: QName -> Snoc (ContT (Value m) m (Value m)) -> ContT (Value m) m (Value m)
 con n fs = VCon n <$> sequenceA fs
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: QName -> Snoc (Eval m (Value m)) -> Eval m (Value m)
+op :: QName -> Snoc (ContT (Value m) m (Value m)) -> ContT (Value m) m (Value m)
 op n sp = do
   sp' <- sequenceA sp
   pure $ VOp n sp'
 
 
 -- | Hereditary substitution on values.
-force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Value m -> Eval m (Value m)
+force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Value m -> ContT (Value m) m (Value m)
 force env hdl = \case
   VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env hdl f a) (eval env hdl =<< resolve h) sp
-  VOp n sp          -> Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> h sp k) (find ((n ==) . fst) hdl)
+  VOp n sp          -> ContT $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> h sp k) (find ((n ==) . fst) hdl)
   v                 -> pure v
 
-resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
+resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> ContT (Value m) m Expr
 resolve n = do
   mod <- lift ask
   graph <- lift ask
@@ -111,27 +110,6 @@ resolve n = do
 -- Machinery
 
 type Handler m = Snoc (Value m) -> (Value m -> m (Value m)) -> m (Value m)
-
-runEval :: (a -> m (Value m)) -> Eval m a -> m (Value m)
-runEval k (Eval m) = m k
-
-newtype Eval m a = Eval ((a -> m (Value m)) -> m (Value m))
-
-instance Functor (Eval m) where
-  fmap = liftM
-
-instance Applicative (Eval m) where
-  pure a = Eval $ \ k -> k a
-  (<*>) = ap
-
-instance Monad (Eval m) where
-  m >>= f = Eval $ \ k -> runEval (runEval k . f) m
-
-instance MonadFail m => MonadFail (Eval m) where
-  fail = lift . fail
-
-instance MonadTrans Eval where
-  lift m = Eval $ \ k -> m >>= k
 
 
 -- Values
