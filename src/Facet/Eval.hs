@@ -48,7 +48,7 @@ eval env hdl = \case
   XApp  f a       -> app env hdl (eval env hdl f) a
   XCon n _ fs     -> con n (eval env hdl <$> fs)
   XString s       -> string s
-  XOp n _ sp      -> op hdl n (eval env hdl <$> sp)
+  XOp n _ sp      -> op n (eval env hdl <$> sp)
 
 global :: QName -> Eval m (Value m)
 global n = pure $ VNe (Global n) Nil
@@ -75,7 +75,7 @@ app env hdl f a = do
   case f' of
     VLam _ h k -> eval env h a >>= force env hdl >>= lift . k
     VNe v sp   -> pure $ VNe v (sp :> a)
-    VOp n _ _  -> fail $ "expected lambda, got op "     <> show n
+    VOp n _    -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
     VString s  -> fail $ "expected lambda, got string " <> show s
 
@@ -86,10 +86,10 @@ con :: QName -> Snoc (Eval m (Value m)) -> Eval m (Value m)
 con n fs = VCon n <$> sequenceA fs
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: MonadFail m => Snoc (QName, Handler m) -> QName -> Snoc (Eval m (Value m)) -> Eval m (Value m)
-op hdl n sp = do
+op :: QName -> Snoc (Eval m (Value m)) -> Eval m (Value m)
+op n sp = do
   sp' <- sequenceA sp
-  Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> h sp' k) (find ((n ==) . fst) hdl)
+  pure $ VOp n sp'
 
 
 -- | Hereditary substitution on values.
@@ -139,7 +139,7 @@ data Value m
   -- | Neutral; variables, only used during quotation
   = VNe (Var Level) (Snoc Expr)
   -- | Neutral; effect operations, only used during quotation.
-  | VOp QName (Snoc (Value m)) (Value m)
+  | VOp QName (Snoc (Value m))
   -- | Value; data constructors.
   | VCon QName (Snoc (Value m))
   -- | Value; strings.
@@ -179,7 +179,7 @@ quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
   VNe v sp    -> pure $ foldl' XApp (XVar (levelToIndex d <$> v)) sp
-  VOp q fs k  -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
+  VOp q fs    -> XOp  q Nil <$> traverse (quoteV d) fs
   VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
   VString s   -> pure $ XString s
 
