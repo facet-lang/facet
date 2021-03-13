@@ -73,7 +73,7 @@ app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) =
 app f a = do
   f' <- f
   case f' of
-    VLam _ h k -> withHandlers h (eval a) >>= force >>= lift . k
+    VLam _ h k -> withHandlers h (eval a >>= force) >>= lift . k
     VNe v sp   -> pure $ VNe v (sp :> a)
     VOp n _    -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
