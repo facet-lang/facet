@@ -69,8 +69,7 @@ inst :: Eval m (Value m) -> TExpr -> Eval m (Value m)
 inst = const
 
 lam :: (HasCallStack, Applicative m) => Snoc (Value m) -> Snoc (QName, Handler m) -> [(Pattern Name, Snoc (Value m) -> Eval m (Value m))] -> Eval m (Value m)
-lam env hdl cs = do
-  pure $ VLam (map fst cs) (h env) (k env)
+lam env hdl cs = pure $ VLam (map fst cs) (h env) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
   h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runEval pure (b (bindSpine env ps sp :> VLam [pvar __] Nil k)))) hdl es
