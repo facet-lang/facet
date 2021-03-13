@@ -74,6 +74,7 @@ app env hdl f a = do
   f' <- f
   case f' of
     VLam _ h k -> eval env h a >>= force env hdl >>= lift . k
+    VCont k    -> eval env hdl a >>= force env hdl >>= lift . k
     VNe v sp   -> pure $ VNe v (sp :> a)
     VOp n _ _  -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
@@ -146,6 +147,9 @@ data Value m
   | VString Text
   -- | Computation; lambdas.
   | VLam [Pattern Name] (Snoc (QName, Handler m)) (Value m -> m (Value m))
+  -- | Computation; continuations.
+  | VCont (Value m -> m (Value m))
+
 
 unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
@@ -178,6 +182,7 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
+  VCont k     -> XLam <$> traverse (quoteClause d Nil k) [pvar __]
   VNe v sp    -> pure $ foldl' XApp (XVar (levelToIndex d <$> v)) sp
   VOp q fs k  -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
   VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
