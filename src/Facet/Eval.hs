@@ -79,7 +79,7 @@ app f a = do
   f' <- f
   (h, k) <- case f' of
     VLam _ h k -> pure (h, k)
-    VFree v    -> fail $ "expected lambda, got var " <> show v
+    VNe v      -> fail $ "expected lambda, got var " <> show v
     VOp n _ _  -> fail $ "expected lambda, got op " <> show n
     VCon n _   -> fail $ "expected lambda, got con " <> show n
     VString s  -> fail $ "expected lambda, got string " <> show s
@@ -128,7 +128,7 @@ instance MonadTrans Eval where
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VFree Level
+  = VNe Level
   -- | Neutral; effect operations, only used during quotation.
   | VOp QName (Snoc (Value m)) (Value m)
   -- | Value; data constructors.
@@ -169,7 +169,7 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
-  VFree lvl   -> pure (XVar (Free (levelToIndex d lvl)))
+  VNe lvl     -> pure (XVar (Free (levelToIndex d lvl)))
   VOp q fs k  -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
   VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
   VString s   -> pure $ XString s
@@ -179,7 +179,7 @@ quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
   PVal p'           -> k (constructV p')
   PEff (POp q fs _) -> maybe (error ("unhandled operation: " <> show q)) (\ (_, h) -> h (constructV <$> fs) pure) (find ((== q) . fst) h)
   where
-  (d', p') = fill ((,) <$> succ <*> VFree) d p
+  (d', p') = fill ((,) <$> succ <*> VNe) d p
 
 
 constructV :: ValuePattern (Value m) -> Value m
