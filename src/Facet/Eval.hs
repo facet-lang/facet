@@ -126,7 +126,7 @@ instance MonadTrans Eval where
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VNe Level (Snoc Expr)
+  = VNe (Var Level) (Snoc Expr)
   -- | Neutral; effect operations, only used during quotation.
   | VOp QName (Snoc (Value m)) (Value m)
   -- | Value; data constructors.
@@ -167,7 +167,7 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
-  VNe lvl sp  -> pure $ foldl' XApp (XVar (Free (levelToIndex d lvl))) sp
+  VNe v sp    -> pure $ foldl' XApp (XVar (levelToIndex d <$> v)) sp
   VOp q fs k  -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
   VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
   VString s   -> pure $ XString s
@@ -177,7 +177,7 @@ quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
   PVal p'           -> k (constructV p')
   PEff (POp q fs _) -> maybe (error ("unhandled operation: " <> show q)) (\ (_, h) -> h (constructV <$> fs) pure) (find ((== q) . fst) h)
   where
-  (d', p') = fill ((,) <$> succ <*> (`VNe` Nil)) d p
+  (d', p') = fill ((,) <$> succ <*> (`VNe` Nil) . Free) d p
 
 
 constructV :: ValuePattern (Value m) -> Value m
