@@ -66,8 +66,8 @@ lam :: HasCallStack => [(Pattern Name, Eval m (Value (Eval m)))] -> Eval m (Valu
 lam cs = Eval $ \ env hdl k' -> k' $ VLam (map fst cs) (h env hdl) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h env hdl = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> withEnv (bindSpine env ps sp :> VLam [pvar __] Nil k) b)) hdl es
-  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> (`withEnv` b) . (env <>) <$> matchV p v) vs)
+  h env hdl = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> localEnv (<> (bindSpine env ps sp :> VLam [pvar __] Nil k)) b)) hdl es
+  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> (`localEnv` b) . flip (<>) . (env <>) <$> matchV p v) vs)
 
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 app f a = do
@@ -110,8 +110,8 @@ resolve n = do
 
 newtype Handler m = Handler { runHandler :: Snoc (Value m) -> (Value m -> m (Value m)) -> m (Value m) }
 
-withEnv :: Snoc (Value (Eval m)) -> Eval m a -> Eval m a
-withEnv env m = Eval $ \ _ -> runEval m env
+localEnv :: (Snoc (Value (Eval m)) -> Snoc (Value (Eval m))) -> Eval m a -> Eval m a
+localEnv f m = Eval $ runEval m . f
 
 localHandlers :: (Snoc (QName, Handler (Eval m)) -> Snoc (QName, Handler (Eval m))) -> Eval m a -> Eval m a
 localHandlers f m = Eval $ \ env -> runEval m env . f
