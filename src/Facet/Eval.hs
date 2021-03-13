@@ -92,7 +92,7 @@ con n fs = VCon n <$> sequenceA fs
 op :: MonadFail m => Snoc (QName, Handler (Eval m)) -> QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 op hdl n sp = do
   sp' <- sequenceA sp
-  Eval $ \ h k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h') -> runEval h k (h' sp' pure)) (find ((n ==) . fst) hdl)
+  Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval k (h sp' pure)) (find ((n ==) . fst) hdl)
 
 
 -- Machinery
@@ -101,29 +101,29 @@ data Op a = Op QName (Snoc a)
 
 type Handler m = Snoc (Value m) -> (Value m -> m (Value m)) -> m (Value m)
 
-runEval :: Snoc (QName, Handler (Eval m)) -> (a -> m r) -> Eval m a -> m r
-runEval hdl k (Eval m) = m hdl k
+runEval :: (a -> m r) -> Eval m a -> m r
+runEval k (Eval m) = m k
 
-newtype Eval m a = Eval (forall r . Snoc (QName, Handler (Eval m)) -> (a -> m r) -> m r)
+newtype Eval m a = Eval (forall r . (a -> m r) -> m r)
 
 instance Functor (Eval m) where
   fmap = liftM
 
 instance Applicative (Eval m) where
-  pure a = Eval $ \ _ k -> k a
+  pure a = Eval $ \ k -> k a
   (<*>) = ap
 
 instance Monad (Eval m) where
-  m >>= f = Eval $ \ hdl k -> runEval hdl (runEval hdl k . f) m
+  m >>= f = Eval $ \ k -> runEval (runEval k . f) m
 
 instance MonadFail m => MonadFail (Eval m) where
   fail = lift . fail
 
 instance MonadTrans Eval where
-  lift m = Eval $ \ _ k -> m >>= k
+  lift m = Eval $ \ k -> m >>= k
 
 instance Algebra sig m => Algebra sig (Eval m) where
-  alg hdl sig ctx = Eval $ \ h k -> alg (runEval h pure . hdl) sig ctx >>= k
+  alg hdl sig ctx = Eval $ \ k -> alg (runEval pure . hdl) sig ctx >>= k
 
 
 -- Values

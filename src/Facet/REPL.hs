@@ -205,7 +205,7 @@ showEval e = Action $ do
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
 runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
-runEvalMain e = runEval (Nil :> (FromList ["Effect", "Console"] :.: U "write", handle)) pure (E.quoteV 0 =<< eval Nil Nil e)
+runEvalMain e = runEval pure (E.quoteV 0 =<< eval Nil (Nil :> (FromList ["Effect", "Console"] :.: U "write", handle)) e)
   where
   handle (FromList [E.VString s]) k = outputText s *> k unit
   handle _                        _ = unhandled
