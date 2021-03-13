@@ -188,7 +188,7 @@ abstractTerm body = go Nil Nil
       check (lam [(PVal <$> varP (fromMaybe __ n), go ts (fs :> d))] ::: VArrow n q _A _B)
     _T                 -> do
       d <- depth
-      pure $ body (TVar . Free . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
+      pure $ body (TVar . Free . Right . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
 
 -- Declarations

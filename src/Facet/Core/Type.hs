@@ -45,7 +45,7 @@ data Type
   | VString
   | VForAll Name Type (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
-  | VNe (Var Meta Level) (Snoc Type) (Snoc Type)
+  | VNe (Var (Either Meta Level)) (Snoc Type) (Snoc Type)
   | VRet [Type] Type
 
 
@@ -53,13 +53,13 @@ global :: QName -> Type
 global = var . Global
 
 free :: Level -> Type
-free = var . Free
+free = var . Free . Right
 
 metavar :: Meta -> Type
-metavar = var . Metavar
+metavar = var . Free . Left
 
 
-var :: Var Meta Level -> Type
+var :: Var (Either Meta Level) -> Type
 var v = VNe v Nil Nil
 
 
@@ -69,7 +69,7 @@ unRet = \case
   _T          -> empty
 
 
-occursIn :: (Var Meta Level -> Bool) -> Level -> Type -> Bool
+occursIn :: (Var (Either Meta Level) -> Bool) -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
@@ -110,7 +110,7 @@ data TExpr
   = TType
   | TInterface
   | TString
-  | TVar (Var Meta Index)
+  | TVar (Var (Either Meta Index))
   | TForAll Name TExpr TExpr
   | TArrow (Maybe Name) Quantity TExpr TExpr
   | TRet [TExpr] TExpr
@@ -129,22 +129,22 @@ quote d = \case
   VForAll n t b  -> TForAll n (quote d t) (quote (succ d) (b (free d)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
   VRet s t       -> TRet (quote d <$> s) (quote d t)
-  VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (levelToIndex d <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
+  VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
 
 eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
   go env = \case
-    TType            -> VType
-    TInterface       -> VInterface
-    TString          -> VString
-    TVar (Global n)  -> global n
-    TVar (Free v)    -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
-    TVar (Metavar m) -> maybe (metavar m) tm (lookupMeta m subst)
-    TForAll n t b    -> VForAll n (go env t) (\ v -> go (env :> Left v) b)
-    TArrow n q a b   -> VArrow n q (go env a) (go env b)
-    TRet s t         -> VRet (go env <$> s) (go env t)
-    TInst f a        -> go env f $$$ go env a
-    TApp  f a        -> go env f $$  go env a
+    TType                 -> VType
+    TInterface            -> VInterface
+    TString               -> VString
+    TVar (Global n)       -> global n
+    TVar (Free (Right v)) -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
+    TVar (Free (Left m))  -> maybe (metavar m) tm (lookupMeta m subst)
+    TForAll n t b         -> VForAll n (go env t) (\ v -> go (env :> Left v) b)
+    TArrow n q a b        -> VArrow n q (go env a) (go env b)
+    TRet s t              -> VRet (go env <$> s) (go env t)
+    TInst f a             -> go env f $$$ go env a
+    TApp  f a             -> go env f $$  go env a
 
 
 -- Substitution

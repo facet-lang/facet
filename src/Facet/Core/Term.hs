@@ -13,7 +13,6 @@ module Facet.Core.Term
 
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
-import           Data.Void (Void)
 import qualified Facet.Core.Type as T
 import           Facet.Name
 import           Facet.Snoc
@@ -52,7 +51,7 @@ fill f = mapAccumL (const . f)
 -- Term expressions
 
 data Expr
-  = XVar (Var Void Index)
+  = XVar (Var Index)
   | XTLam Expr
   | XInst Expr T.TExpr
   | XLam [(Pattern Name, Expr)]

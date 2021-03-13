@@ -39,16 +39,15 @@ import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Expr -> Eval m (Value m)
 eval env hdl = \case
-  XVar (Global n)  -> global n >>= eval env hdl
-  XVar (Free v)    -> var env v
-  XVar (Metavar m) -> case m of {}
-  XTLam b          -> tlam (eval env hdl b)
-  XInst f t        -> inst (eval env hdl f) t
-  XLam cs          -> lam env hdl (map (fmap (\ e env -> eval env hdl e)) cs)
-  XApp  f a        -> app env (eval env hdl f) a
-  XCon n _ fs      -> con n (eval env hdl <$> fs)
-  XString s        -> string s
-  XOp n _ sp       -> op hdl n (eval env hdl <$> sp)
+  XVar (Global n) -> global n >>= eval env hdl
+  XVar (Free v)   -> var env v
+  XTLam b         -> tlam (eval env hdl b)
+  XInst f t       -> inst (eval env hdl f) t
+  XLam cs         -> lam env hdl (map (fmap (\ e env -> eval env hdl e)) cs)
+  XApp  f a       -> app env (eval env hdl f) a
+  XCon n _ fs     -> con n (eval env hdl <$> fs)
+  XString s       -> string s
+  XOp n _ sp      -> op hdl n (eval env hdl <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
 global n = do

@@ -67,10 +67,9 @@ instance Bitraversable (:=:) where
 
 -- Variables
 
-data Var m a
+data Var a
   = Global QName -- ^ Global variables, considered equal by 'QName'.
   | Free a
-  | Metavar m
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 

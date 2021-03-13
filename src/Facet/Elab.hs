@@ -104,7 +104,7 @@ instantiate inst = go
   go (e ::: _T) = case _T of
     VForAll _ _T _B -> do
       m <- meta _T
-      go (inst e (TVar (Metavar m)) ::: _B (metavar m))
+      go (inst e (TVar (Free (Left m))) ::: _B (metavar m))
     _                -> pure $ e ::: _T
 
 
@@ -326,33 +326,32 @@ unify t1 t2 = type' t1 t2
   nope = couldNotUnify "mismatch" t1 t2
 
   type' = curry $ \case
-    (T.VNe (Metavar v1) Nil Nil, T.VNe (Metavar v2) Nil Nil) -> flexFlex v1 v2
-    (T.VNe (Metavar v1) Nil Nil, t2)                         -> solve v1 t2
-    (t1, T.VNe (Metavar v2) Nil Nil)                         -> solve v2 t1
-    (VType, VType)                                           -> pure ()
-    (VType, _)                                               -> nope
-    (VInterface, VInterface)                                 -> pure ()
-    (VInterface, _)                                          -> nope
-    (VForAll n t1 b1, VForAll _ t2 b2)                       -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
-    (VForAll{}, _)                                           -> nope
+    (T.VNe (Free (Left v1)) Nil Nil, T.VNe (Free (Left v2)) Nil Nil) -> flexFlex v1 v2
+    (T.VNe (Free (Left v1)) Nil Nil, t2)                             -> solve v1 t2
+    (t1, T.VNe (Free (Left v2)) Nil Nil)                             -> solve v2 t1
+    (VType, VType)                                                   -> pure ()
+    (VType, _)                                                       -> nope
+    (VInterface, VInterface)                                         -> pure ()
+    (VInterface, _)                                                  -> nope
+    (VForAll n t1 b1, VForAll _ t2 b2)                               -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
+    (VForAll{}, _)                                                   -> nope
     -- FIXME: this must unify the signatures
-    (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                     -> type' a1 a2 >> type' b1 b2
-    (VArrow{}, _)                                            -> nope
-    (VRet s1 t1, VRet s2 t2)                                 -> sig s1 s2 >> type' t1 t2
-    (VRet _ t1, t2)                                          -> type' t1 t2
-    (t1, VRet _ t2)                                          -> type' t1 t2
-    (T.VNe v1 ts1 sp1, T.VNe v2 ts2 sp2)                     -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
-    (T.VNe{}, _)                                             -> nope
-    (T.VString, T.VString)                                   -> pure ()
-    (T.VString, _)                                           -> nope
+    (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                             -> type' a1 a2 >> type' b1 b2
+    (VArrow{}, _)                                                    -> nope
+    (VRet s1 t1, VRet s2 t2)                                         -> sig s1 s2 >> type' t1 t2
+    (VRet _ t1, t2)                                                  -> type' t1 t2
+    (t1, VRet _ t2)                                                  -> type' t1 t2
+    (T.VNe v1 ts1 sp1, T.VNe v2 ts2 sp2)                             -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
+    (T.VNe{}, _)                                                     -> nope
+    (T.VString, T.VString)                                           -> pure ()
+    (T.VString, _)                                                   -> nope
 
   var = curry $ \case
-    (Global q1, Global q2)   -> unless (q1 == q2) nope
-    (Global{}, _)            -> nope
-    (Free v1, Free v2)       -> unless (v1 == v2) nope
-    (Free{}, _)              -> nope
-    (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
-    (Metavar{}, _)           -> nope
+    (Global q1, Global q2)             -> unless (q1 == q2) nope
+    (Global{}, _)                      -> nope
+    (Free (Right v1), Free (Right v2)) -> unless (v1 == v2) nope
+    (Free (Left m1), Free (Left m2))   -> unless (m1 == m2) nope
+    (Free{}, _)                        -> nope
 
   spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
@@ -370,7 +369,7 @@ unify t1 t2 = type' t1 t2
 
   solve v t = do
     d <- depth
-    if occursIn (== Metavar v) d t then
+    if occursIn (== Free (Left v)) d t then
       mismatch "infinite type" (Right (metavar v)) t
     else
       gets (T.lookupMeta v) >>= \case
