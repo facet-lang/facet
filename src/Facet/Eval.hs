@@ -38,7 +38,7 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> Expr -> Eval m (Value (Eval m))
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Expr -> Eval m (Value m)
 eval env hdl = \case
   XVar (Global n)  -> global n >>= eval env hdl
   XVar (Free v)    -> var env v
@@ -53,55 +53,55 @@ eval env hdl = \case
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
 global n = do
-  mod <- ask
-  graph <- ask
+  mod <- lift ask
+  graph <- lift ask
   case lookupQ graph mod n of
     Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
     _                                 -> error "throw a real error here"
 
-var :: HasCallStack => Snoc (Value (Eval m)) -> Index -> Eval m (Value (Eval m))
+var :: HasCallStack => Snoc (Value m) -> Index -> Eval m (Value m)
 var env v = pure (env ! getIndex v)
 
-tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
+tlam :: Eval m (Value m) -> Eval m (Value m)
 tlam = id
 
-inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
+inst :: Eval m (Value m) -> TExpr -> Eval m (Value m)
 inst = const
 
-lam :: HasCallStack => Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> [(Pattern Name, Snoc (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
+lam :: (HasCallStack, Applicative m) => Snoc (Value m) -> Snoc (QName, Handler m) -> [(Pattern Name, Snoc (Value m) -> Eval m (Value m))] -> Eval m (Value m)
 lam env hdl cs = do
   pure $ VLam (map fst cs) (h env) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> b (bindSpine env ps sp :> VLam [pvar __] Nil k))) hdl es
-  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV (b . (env <>)) p v) vs)
+  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runEval pure (b (bindSpine env ps sp :> VLam [pvar __] Nil k)))) hdl es
+  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV (runEval pure . b . (env <>)) p v) vs)
 
-app :: MonadFail m => Eval m (Value (Eval m)) -> (Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+app :: MonadFail m => Eval m (Value m) -> (Snoc (QName, Handler m) -> Eval m (Value m)) -> Eval m (Value m)
 app f a = do
   VLam _ h k <- f
-  a h >>= k
+  a h >>= lift . k
 
-string :: Text -> Eval m (Value (Eval m))
+string :: Text -> Eval m (Value m)
 string = pure . VString
 
-con :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+con :: QName -> Snoc (Eval m (Value m)) -> Eval m (Value m)
 con n fs = VCon n <$> sequenceA fs
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: MonadFail m => Snoc (QName, Handler (Eval m)) -> QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+op :: MonadFail m => Snoc (QName, Handler m) -> QName -> Snoc (Eval m (Value m)) -> Eval m (Value m)
 op hdl n sp = do
   sp' <- sequenceA sp
-  Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval k (h sp' pure)) (find ((n ==) . fst) hdl)
+  Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> h sp' k) (find ((n ==) . fst) hdl)
 
 
 -- Machinery
 
 type Handler m = Snoc (Value m) -> (Value m -> m (Value m)) -> m (Value m)
 
-runEval :: (a -> m r) -> Eval m a -> m r
+runEval :: (a -> m (Value m)) -> Eval m a -> m (Value m)
 runEval k (Eval m) = m k
 
-newtype Eval m a = Eval (forall r . (a -> m r) -> m r)
+newtype Eval m a = Eval ((a -> m (Value m)) -> m (Value m))
 
 instance Functor (Eval m) where
   fmap = liftM
@@ -118,9 +118,6 @@ instance MonadFail m => MonadFail (Eval m) where
 
 instance MonadTrans Eval where
   lift m = Eval $ \ k -> m >>= k
-
-instance Algebra sig m => Algebra sig (Eval m) where
-  alg hdl sig ctx = Eval $ \ k -> alg (runEval pure . hdl) sig ctx >>= k
 
 
 -- Values
