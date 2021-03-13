@@ -45,7 +45,7 @@ eval env hdl = \case
   XTLam b         -> tlam (eval env hdl b)
   XInst f t       -> inst (eval env hdl f) t
   XLam cs         -> lam env hdl (map (fmap (\ e env -> eval env hdl e)) cs)
-  XApp  f a       -> app env (eval env hdl f) a
+  XApp  f a       -> app env hdl (eval env hdl f) a
   XCon n _ fs     -> con n (eval env hdl <$> fs)
   XString s       -> string s
   XOp n _ sp      -> op hdl n (eval env hdl <$> sp)
@@ -69,11 +69,11 @@ lam env hdl cs = pure $ VLam (map fst cs) (h env) (k env)
   h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runEval pure (b (bindSpine env ps sp :> VLam [pvar __] Nil k)))) hdl es
   k env v = maybe (error "non-exhaustive patterns in lambda") (runEval pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Eval m (Value m) -> Expr -> Eval m (Value m)
-app env f a = do
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Eval m (Value m) -> Expr -> Eval m (Value m)
+app env hdl f a = do
   f' <- f
   case f' of
-    VLam _ h k -> eval env h a >>= lift . k
+    VLam _ h k -> eval env h a >>= force env hdl >>= lift . k
     VNe v sp   -> pure $ VNe v (sp :> a)
     VOp n _ _  -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
@@ -95,7 +95,7 @@ op hdl n sp = do
 -- | Hereditary substitution on values.
 force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Value m -> Eval m (Value m)
 force env hdl = \case
-  VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env f a) (resolve h >>= eval env hdl) sp
+  VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env hdl f a) (resolve h >>= eval env hdl) sp
   v                 -> pure v
 
 resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
