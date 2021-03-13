@@ -162,6 +162,7 @@ printTExpr Options{ qname, instantiation } = go
     C.TInst f t             -> group (go env f) `instantiation` group (braces (go env t))
     C.TApp f a              -> group (go env f) $$ group (go env a)
     C.TString               -> annotate Type $ pretty "String"
+    C.TThunk c              -> braces (go env c)
     where
     d = Name.Level (length env)
     sig s = brackets (commaSep (map (go env) s))
