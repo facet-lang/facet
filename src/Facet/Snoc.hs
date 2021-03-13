@@ -10,6 +10,7 @@ module Facet.Snoc
 , peek
 ) where
 
+import Control.Applicative
 import Data.Foldable (foldl', foldr')
 import Data.Functor.Classes
 import Data.Semialign
@@ -57,6 +58,10 @@ instance Applicative Snoc where
     where
     go accum Nil     _  = accum Nil
     go accum (fs:>f) as = go (accum . flip (foldl (\ fas a -> fas :> f a)) as) fs as
+
+instance Alternative Snoc where
+  empty = Nil
+  (<|>) = (<>)
 
 instance Monad Snoc where
   as >>= f = go id as
