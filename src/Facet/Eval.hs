@@ -20,7 +20,7 @@ import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Carrier.Reader
 import Control.Effect.NonDet (foldMapA)
-import Control.Monad (ap, guard, join, liftM, (<=<))
+import Control.Monad (ap, guard, join, liftM)
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Foldable
@@ -45,7 +45,7 @@ eval env hdl = \case
   XTLam b          -> tlam (eval env hdl b)
   XInst f t        -> inst (eval env hdl f) t
   XLam cs          -> lam env hdl (map (fmap (\ e env -> eval env hdl e)) cs)
-  XApp  f a        -> app (eval env hdl f) (\ hdl -> eval env hdl a)
+  XApp  f a        -> app env (eval env hdl f) a
   XCon n _ fs      -> con n (eval env hdl <$> fs)
   XString s        -> string s
   XOp n _ sp       -> op hdl n (eval env hdl <$> sp)
@@ -74,12 +74,12 @@ lam env hdl cs = pure $ VLam (map fst cs) (h env) (k env)
   h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runEval pure (b (bindSpine env ps sp :> VLam [pvar __] Nil k)))) hdl es
   k env v = maybe (error "non-exhaustive patterns in lambda") (runEval pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
 
-app :: MonadFail m => Eval m (Value m) -> (Snoc (QName, Handler m) -> Eval m (Value m)) -> Eval m (Value m)
-app f a = do
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Eval m (Value m) -> Expr -> Eval m (Value m)
+app env f a = do
   f' <- f
   case f' of
-    VLam _ h k -> a h >>= lift . k
-    VNe v sp   -> pure $ VNe v (sp :> runEval pure . a)
+    VLam _ h k -> eval env h a >>= lift . k
+    VNe v sp   -> pure $ VNe v (sp :> a)
     VOp n _ _  -> fail $ "expected lambda, got op " <> show n
     VCon n _   -> fail $ "expected lambda, got con " <> show n
     VString s  -> fail $ "expected lambda, got string " <> show s
@@ -127,7 +127,7 @@ instance MonadTrans Eval where
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VNe Level (Snoc (Snoc (QName, Handler m) -> m (Value m)))
+  = VNe Level (Snoc Expr)
   -- | Neutral; effect operations, only used during quotation.
   | VOp QName (Snoc (Value m)) (Value m)
   -- | Value; data constructors.
@@ -168,7 +168,7 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
-  VNe lvl sp  -> foldl' XApp (XVar (Free (levelToIndex d lvl))) <$> traverse (quoteV d <=< ($ Nil)) sp
+  VNe lvl sp  -> pure $ foldl' XApp (XVar (Free (levelToIndex d lvl))) sp
   VOp q fs k  -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
   VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
   VString s   -> pure $ XString s
