@@ -66,7 +66,7 @@ lam :: (HasCallStack, Applicative m) => Snoc (Value m) -> Snoc (QName, Handler m
 lam env hdl cs = pure $ VLam (map fst cs) (h env) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runEval pure (b (bindSpine env ps sp :> VLam [pvar __] Nil k)))) hdl es
+  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runEval pure (b (bindSpine env ps sp :> VCont k)))) hdl es
   k env v = maybe (error "non-exhaustive patterns in lambda") (runEval pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
 
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Eval m (Value m) -> Expr -> Eval m (Value m)
