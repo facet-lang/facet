@@ -46,11 +46,11 @@ eval env hdl = \case
   XVar (Metavar m) -> case m of {}
   XTLam b          -> tlam (eval env hdl b)
   XInst f t        -> inst (eval env hdl f) t
-  XLam cs          -> lam env (map (fmap (\ e env -> eval env hdl e)) cs)
-  XApp  f a        -> app (eval env hdl f) (eval env hdl a)
+  XLam cs          -> lam env hdl (map (fmap (\ e env -> eval env hdl e)) cs)
+  XApp  f a        -> app (eval env hdl f) (\ hdl -> eval env hdl a)
   XCon n _ fs      -> con n (eval env hdl <$> fs)
   XString s        -> string s
-  XOp n _ sp       -> op n (eval env hdl <$> sp)
+  XOp n _ sp       -> op hdl n (eval env hdl <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
 global n = do
@@ -69,18 +69,18 @@ tlam = id
 inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
 inst = const
 
-lam :: HasCallStack => Snoc (Value (Eval m)) -> [(Pattern Name, Snoc (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
-lam env cs = do
+lam :: HasCallStack => Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> [(Pattern Name, Snoc (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
+lam env hdl cs = do
   pure $ VLam (map fst cs) (h env) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> b (bindSpine env ps sp :> VLam [pvar __] Nil k))) Nil es
+  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> b (bindSpine env ps sp :> VLam [pvar __] Nil k))) hdl es
   k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV (b . (env <>)) p v) vs)
 
-app :: MonadFail m => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
-app f (Eval a) = do
+app :: MonadFail m => Eval m (Value (Eval m)) -> (Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+app f a = do
   VLam _ h k <- f
-  Eval (a . (<> h)) >>= k
+  a h >>= k
 
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
@@ -89,10 +89,10 @@ con :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: MonadFail m => QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
-op n sp = do
+op :: MonadFail m => Snoc (QName, Handler (Eval m)) -> QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+op hdl n sp = do
   sp' <- sequenceA sp
-  Eval $ \ h k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h') -> runEval h k (h' sp' pure)) (find ((n ==) . fst) h)
+  Eval $ \ h k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h') -> runEval h k (h' sp' pure)) (find ((n ==) . fst) hdl)
 
 
 -- Machinery
