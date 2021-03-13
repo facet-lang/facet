@@ -80,8 +80,8 @@ app env f a = do
   case f' of
     VLam _ h k -> eval env h a >>= lift . k
     VNe v sp   -> pure $ VNe v (sp :> a)
-    VOp n _ _  -> fail $ "expected lambda, got op " <> show n
-    VCon n _   -> fail $ "expected lambda, got con " <> show n
+    VOp n _ _  -> fail $ "expected lambda, got op "     <> show n
+    VCon n _   -> fail $ "expected lambda, got con "    <> show n
     VString s  -> fail $ "expected lambda, got string " <> show s
 
 string :: Text -> Eval m (Value m)
