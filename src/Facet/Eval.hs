@@ -47,7 +47,7 @@ eval = \case
   XInst f t        -> inst (eval f) t
   XLam cs          -> do
     env <- askEnv
-    lam (map (fmap (\ e p' -> withEnv (foldl' (:>) env p') (eval e))) cs)
+    lam (map (fmap (\ e vs -> withEnv (env <> vs) (eval e))) cs)
   XApp  f a        -> app (eval f) (eval a)
   XCon n _ fs      -> con n (eval <$> fs)
   XString s        -> string s
@@ -70,12 +70,12 @@ tlam = id
 inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
 inst = const
 
-lam :: HasCallStack => [(Pattern Name, Pattern (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
+lam :: HasCallStack => [(Pattern Name, Snoc (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
 lam cs = pure $ VLam (map fst cs) h k
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h op = foldMapA (\ (p, b) -> fmap (b . PEff) <$> matchE p op) es
-  k v = foldr (\ (p, b) rest -> maybe rest (b . PVal) (matchV p v)) (error "non-exhaustive patterns in lambda") vs
+  h op = foldMapA (\ (p, b) -> matchE (\ vs k -> b (foldl' (foldl' (:>)) Nil vs :> VLam [pvar __] (const Nothing) k)) p op) es
+  k v = foldr (\ (p, b) rest -> maybe rest (b . foldl' (:>) Nil) (matchV p v)) (error "non-exhaustive patterns in lambda") vs
 
 app :: MonadFail m => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 app f (Eval a) = do
@@ -152,10 +152,8 @@ unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 -- Elimination
 
-matchE :: EffectPattern Name -> Op (Value m) -> Maybe ((Value m -> m (Value m)) -> EffectPattern (Value m))
-matchE (POp n ps _) (Op n' fs) = mk <$ guard (n == n') <*> zipWithM matchV ps fs
-  where
-  mk sp k = POp n' sp (VLam [PVal (PVar __)] (const Nothing) k)
+matchE :: (Snoc (ValuePattern (Value m)) -> a) -> EffectPattern Name -> Op (Value m) -> Maybe a
+matchE k (POp n ps _) (Op n' fs) = k <$ guard (n == n') <*> zipWithM matchV ps fs
 
 matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
 matchV p s = case p of
