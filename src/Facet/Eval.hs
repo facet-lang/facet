@@ -95,7 +95,7 @@ op hdl n sp = do
 -- | Hereditary substitution on values.
 force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Value m -> Eval m (Value m)
 force env hdl = \case
-  VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env hdl f a) (resolve h >>= eval env hdl) sp
+  VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env hdl f a) (eval env hdl =<< resolve h) sp
   v                 -> pure v
 
 resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
