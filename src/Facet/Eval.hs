@@ -21,11 +21,11 @@ import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Carrier.Reader
 import Control.Effect.NonDet (foldMapA)
-import Control.Monad (ap, guard, liftM)
+import Control.Monad (ap, guard, join, liftM)
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
-import Data.Foldable (foldl')
 import Data.Function
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Facet.Core.Module
 import Facet.Core.Term
@@ -74,8 +74,8 @@ lam :: HasCallStack => [(Pattern Name, Snoc (Value (Eval m)) -> Eval m (Value (E
 lam cs = pure $ VLam (map fst cs) h k
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h op = foldMapA (\ (p, b) -> matchE (\ vs k -> b (foldl' (foldl' (:>)) Nil vs :> VLam [pvar __] (const Nothing) k)) p op) es
-  k v = foldr (\ (p, b) rest -> maybe rest (b . foldl' (:>) Nil) (matchV p v)) (error "non-exhaustive patterns in lambda") vs
+  h op = foldMapA (\ (p, b) -> matchE (\ vs k -> b (vs :> VLam [pvar __] (const Nothing) k)) p op) es
+  k v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV b p v) vs)
 
 app :: MonadFail m => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 app f (Eval a) = do
@@ -152,15 +152,15 @@ unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 -- Elimination
 
-matchE :: (Snoc (ValuePattern (Value m)) -> a) -> EffectPattern Name -> Op (Value m) -> Maybe a
-matchE k (POp n ps _) (Op n' fs) = k <$ guard (n == n') <*> zipWithM matchV ps fs
+matchE :: (Snoc (Value m) -> a) -> EffectPattern Name -> Op (Value m) -> Maybe a
+matchE k (POp n ps _) (Op n' fs) = k . join <$ guard (n == n') <*> zipWithM (matchV id) ps fs
 
-matchV :: ValuePattern Name -> Value m -> Maybe (ValuePattern (Value m))
-matchV p s = case p of
-  PWildcard -> pure PWildcard
-  PVar _    -> pure (PVar s)
+matchV :: (Snoc (Value m) -> a) -> ValuePattern Name -> Value m -> Maybe a
+matchV k p s = case p of
+  PWildcard -> pure (k Nil)
+  PVar _    -> pure (k (Nil :> s))
   PCon n ps
-    | VCon n' fs <- s -> PCon n' <$ guard (n == n') <*> zipWithM matchV ps fs
+    | VCon n' fs <- s -> k . join <$ guard (n == n') <*> zipWithM (matchV id) ps fs
   PCon{}    -> empty
 
 
