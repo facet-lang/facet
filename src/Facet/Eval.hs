@@ -20,7 +20,7 @@ import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Carrier.Reader
 import Control.Effect.NonDet (foldMapA)
-import Control.Monad (ap, guard, join, liftM)
+import Control.Monad (ap, guard, join, liftM, (<=<))
 import Control.Monad.Trans.Class
 import Data.Either (partitionEithers)
 import Data.Foldable
@@ -79,7 +79,7 @@ app f a = do
   f' <- f
   case f' of
     VLam _ h k -> a h >>= lift . k
-    VNe v _sp  -> fail $ "expected lambda, got var " <> show v
+    VNe v sp   -> pure $ VNe v (sp :> runEval pure . a)
     VOp n _ _  -> fail $ "expected lambda, got op " <> show n
     VCon n _   -> fail $ "expected lambda, got con " <> show n
     VString s  -> fail $ "expected lambda, got string " <> show s
@@ -127,7 +127,7 @@ instance MonadTrans Eval where
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VNe Level (Snoc (Value m))
+  = VNe Level (Snoc (Snoc (QName, Handler m) -> m (Value m)))
   -- | Neutral; effect operations, only used during quotation.
   | VOp QName (Snoc (Value m)) (Value m)
   -- | Value; data constructors.
@@ -168,7 +168,7 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
-  VNe lvl sp  -> foldl' XApp (XVar (Free (levelToIndex d lvl))) <$> traverse (quoteV d) sp
+  VNe lvl sp  -> foldl' XApp (XVar (Free (levelToIndex d lvl))) <$> traverse (quoteV d <=< ($ Nil)) sp
   VOp q fs k  -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
   VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
   VString s   -> pure $ XString s
