@@ -73,7 +73,7 @@ app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) =
 app f a = do
   f' <- f
   case f' of
-    VLam _ h k -> withHandlers h (a >>= force) >>= k
+    VLam _ h k -> localHandlers (<> h) (a >>= force) >>= k
     VNe v sp   -> pure $ VNe v (sp :> a)
     VOp n _    -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
@@ -113,8 +113,8 @@ newtype Handler m = Handler { runHandler :: Snoc (Value m) -> (Value m -> m (Val
 withEnv :: Snoc (Value (Eval m)) -> Eval m a -> Eval m a
 withEnv env m = Eval $ \ _ -> runEval m env
 
-withHandlers :: Snoc (QName, Handler (Eval m)) -> Eval m a -> Eval m a
-withHandlers hdl m = Eval $ \ env _ -> runEval m env hdl
+localHandlers :: (Snoc (QName, Handler (Eval m)) -> Snoc (QName, Handler (Eval m))) -> Eval m a -> Eval m a
+localHandlers f m = Eval $ \ env -> runEval m env . f
 
 newtype Eval m a = Eval { runEval :: forall r . Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> (a -> m r) -> m r }
 
