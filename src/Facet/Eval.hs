@@ -44,7 +44,7 @@ eval env hdl = \case
   XVar (Free v)   -> var env v
   XTLam b         -> tlam (eval env hdl b)
   XInst f t       -> inst (eval env hdl f) t
-  XLam cs         -> lam env cs
+  XLam cs         -> lam env hdl (map (fmap (\ e env -> eval env hdl e)) cs)
   XApp  f a       -> app env hdl (eval env hdl f) a
   XCon n _ fs     -> con n (eval env hdl <$> fs)
   XString s       -> string s
@@ -62,19 +62,18 @@ tlam = id
 inst :: Eval m (Value m) -> TExpr -> Eval m (Value m)
 inst = const
 
-lam :: Snoc (Value m) -> [(Pattern Name, Expr)] -> Eval m (Value m)
-lam env cs = pure $ VLam env cs
+lam :: (HasCallStack, Applicative m) => Snoc (Value m) -> Snoc (QName, Handler m) -> [(Pattern Name, Snoc (Value m) -> Eval m (Value m))] -> Eval m (Value m)
+lam env hdl cs = pure $ VLam (map fst cs) (h env) (k env)
+  where
+  (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
+  h env = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runEval pure (b (bindSpine env ps sp :> VCont k)))) hdl es
+  k env v = maybe (error "non-exhaustive patterns in lambda") (runEval pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
 
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Eval m (Value m) -> Expr -> Eval m (Value m)
 app env hdl f a = do
   f' <- f
   case f' of
-    VLam env cs -> do
-      let cs' = map (fmap (\ e env -> eval env hdl e)) cs
-          (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
-          h = foldl' (\ prev (POp n ps _, b) -> prev :> (n, \ sp k -> runEval pure (b (bindSpine env ps sp :> VCont k)))) hdl es
-          k v = maybe (error "non-exhaustive patterns in lambda") (runEval pure) (foldMapA (\ (p, b) -> b . (env <>) <$> matchV p v) vs)
-      eval env h a >>= force env hdl >>= lift . k
+    VLam _ h k -> eval env h a >>= force env hdl >>= lift . k
     VCont k    -> eval env hdl a >>= force env hdl >>= lift . k
     VNe v sp   -> pure $ VNe v (sp :> a)
     VOp n _ _  -> fail $ "expected lambda, got op "     <> show n
@@ -147,7 +146,7 @@ data Value m
   -- | Value; strings.
   | VString Text
   -- | Computation; lambdas.
-  | VLam (Snoc (Value m)) [(Pattern Name, Expr)]
+  | VLam [Pattern Name] (Snoc (QName, Handler m)) (Value m -> m (Value m))
   -- | Computation; continuations.
   | VCont (Value m -> m (Value m))
 
@@ -182,12 +181,12 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
-  VLam _ cs  -> pure $ XLam cs
-  VCont k    -> XLam <$> traverse (quoteClause d Nil k) [pvar __]
-  VNe v sp   -> pure $ foldl' XApp (XVar (levelToIndex d <$> v)) sp
-  VOp q fs k -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
-  VCon n fs  -> XCon n Nil <$> traverse (quoteV d) fs
-  VString s  -> pure $ XString s
+  VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
+  VCont k     -> XLam <$> traverse (quoteClause d Nil k) [pvar __]
+  VNe v sp    -> pure $ foldl' XApp (XVar (levelToIndex d <$> v)) sp
+  VOp q fs k  -> XApp <$> quoteV d k <*> (XOp q Nil <$> traverse (quoteV d) fs)
+  VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
+  VString s   -> pure $ XString s
 
 quoteClause :: Monad m => Level -> Snoc (QName, Handler m) -> (Value m -> m (Value m)) -> Pattern Name -> m (Pattern Name, Expr)
 quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
