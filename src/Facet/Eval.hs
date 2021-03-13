@@ -96,6 +96,7 @@ op n sp = do
 force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value m) -> Snoc (QName, Handler m) -> Value m -> Eval m (Value m)
 force env hdl = \case
   VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env hdl f a) (eval env hdl =<< resolve h) sp
+  VOp n sp          -> Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> h sp k) (find ((n ==) . fst) hdl)
   v                 -> pure v
 
 resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
