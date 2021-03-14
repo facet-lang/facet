@@ -38,23 +38,23 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> Eval m (Value (Eval m))
-eval = \case
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> Expr -> Eval m (Value (Eval m))
+eval env hdl = \case
   XVar (Global n) -> global n
-  XVar (Free v)   -> var v
-  XTLam b         -> tlam (eval b)
-  XInst f t       -> inst (eval f) t
-  XLam cs         -> lam (map (fmap eval) cs)
-  XApp  f a       -> app (eval f) (eval a)
-  XCon n _ fs     -> con n (eval <$> fs)
+  XVar (Free v)   -> var env v
+  XTLam b         -> tlam (eval env hdl b)
+  XInst f t       -> inst (eval env hdl f) t
+  XLam cs         -> lam (map (fmap (\ e vs -> eval (env <> vs) hdl e)) cs)
+  XApp  f a       -> app env hdl (eval env hdl f) (\ hdl -> eval env hdl a)
+  XCon n _ fs     -> con n (eval env hdl <$> fs)
   XString s       -> string s
-  XOp n _ sp      -> op n (eval <$> sp)
+  XOp n _ sp      -> op n (eval env hdl <$> sp)
 
 global :: QName -> Eval m (Value (Eval m))
 global n = pure $ VNe (Global n) Nil
 
-var :: HasCallStack => Index -> Eval m (Value (Eval m))
-var v = Eval $ \ env _ k -> k (env ! getIndex v)
+var :: (HasCallStack, Applicative m) => Snoc (Value m) -> Index -> m (Value m)
+var env v = pure (env ! getIndex v)
 
 tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 tlam = id
@@ -62,18 +62,18 @@ tlam = id
 inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
 inst = const
 
-lam :: HasCallStack => [(Pattern Name, Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
-lam cs = Eval $ \ env hdl k' -> k' $ VLam (map fst cs) (h env hdl) (k env)
+lam :: HasCallStack => [(Pattern Name, Snoc (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
+lam cs = pure $ VLam (map fst cs) h k
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h env hdl = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> localEnv (const (bindSpine env ps sp :> VLam [pvar __] Nil k)) b)) hdl es
-  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV (\ vs -> localEnv (const (env <> vs)) b) p v) vs)
+  h = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> b (bindSpine Nil ps sp :> VLam [pvar __] Nil k))) Nil es
+  k v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV b p v) vs)
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
-app f a = do
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> (Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+app env hdl f a = do
   f' <- f
   case f' of
-    VLam _ h k -> localHandlers (<> h) (a >>= force) >>= k
+    VLam _ h k -> a (hdl <> h) >>= force env (hdl <> h) >>= k
     VNe v sp   -> pure $ VNe v (sp :> a)
     VOp n _    -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
@@ -91,10 +91,10 @@ op n sp = VOp n <$> sequenceA sp
 
 
 -- | Hereditary substitution on values.
-force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Value (Eval m) -> Eval m (Value (Eval m))
-force = \case
-  VNe (Global h) sp -> foldl' (\ f a -> force =<< app f a) (eval =<< resolve h) sp
-  VOp n sp          -> Eval $ \ env hdl k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp pure) env hdl k) (find ((n ==) . fst) hdl)
+force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> Value (Eval m) -> Eval m (Value (Eval m))
+force env hdl = \case
+  VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env hdl f a) (eval env hdl =<< resolve h) sp
+  VOp n sp          -> Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp pure) k) (find ((n ==) . fst) hdl)
   v                 -> pure v
 
 resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
@@ -110,39 +110,33 @@ resolve n = do
 
 newtype Handler m = Handler { runHandler :: Snoc (Value m) -> (Value m -> m (Value m)) -> m (Value m) }
 
-localEnv :: (Snoc (Value (Eval m)) -> Snoc (Value (Eval m))) -> Eval m a -> Eval m a
-localEnv f m = Eval $ runEval m . f
-
-localHandlers :: (Snoc (QName, Handler (Eval m)) -> Snoc (QName, Handler (Eval m))) -> Eval m a -> Eval m a
-localHandlers f m = Eval $ \ env -> runEval m env . f
-
-newtype Eval m a = Eval { runEval :: forall r . Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> (a -> m r) -> m r }
+newtype Eval m a = Eval { runEval :: forall r . (a -> m r) -> m r }
 
 instance Functor (Eval m) where
   fmap = liftM
 
 instance Applicative (Eval m) where
-  pure a = Eval $ \ _ _ k -> k a
+  pure a = Eval $ \ k -> k a
   (<*>) = ap
 
 instance Monad (Eval m) where
-  m >>= f = Eval $ \ env hdl k -> runEval m env hdl (\ a -> runEval (f a) env hdl k)
+  m >>= f = Eval $ \ k -> runEval m (\ a -> runEval (f a) k)
 
 instance MonadFail m => MonadFail (Eval m) where
   fail = lift . fail
 
 instance MonadTrans Eval where
-  lift m = Eval $ \ _ _ k -> m >>= k
+  lift m = Eval $ \ k -> m >>= k
 
 instance Algebra sig m => Algebra sig (Eval m) where
-  alg hdl sig ctx = Eval $ \ env handlers k -> alg (\ m -> runEval (hdl m) env handlers pure) sig ctx >>= k
+  alg hdl sig ctx = Eval $ \ k -> alg (\ m -> runEval (hdl m) pure) sig ctx >>= k
 
 
 -- Values
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VNe (Var Level) (Snoc (m (Value m)))
+  = VNe (Var Level) (Snoc (Snoc (QName, Handler m) -> m (Value m)))
   -- | Neutral; effect operations, only used during quotation.
   | VOp QName (Snoc (Value m))
   -- | Value; data constructors.
@@ -183,7 +177,7 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
-  VNe v sp    -> foldl' XApp (XVar (levelToIndex d <$> v)) <$> traverse (quoteV d =<<) sp
+  VNe v sp    -> foldl' XApp (XVar (levelToIndex d <$> v)) <$> traverse (\ a -> quoteV d =<< a Nil) sp
   VOp q fs    -> XOp  q Nil <$> traverse (quoteV d) fs
   VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
   VString s   -> pure $ XString s
