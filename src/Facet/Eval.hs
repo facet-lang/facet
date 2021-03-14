@@ -67,7 +67,7 @@ lam cs = Eval $ \ env hdl k' -> k' $ VLam (map fst cs) (h env hdl) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
   h env hdl = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> localEnv (<> (bindSpine env ps sp :> VLam [pvar __] Nil k)) b)) hdl es
-  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> (`localEnv` b) . flip (<>) . (env <>) <$> matchV id p v) vs)
+  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV (\ vs -> localEnv (const (env <> vs)) b) p v) vs)
 
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 app f a = do
