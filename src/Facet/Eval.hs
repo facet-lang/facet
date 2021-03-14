@@ -76,7 +76,7 @@ app f a = do
   f' <- f
   case f' of
     VLam _ h k -> localHandlers (<> h) (a >>= force) >>= k
-    VNe v sp   -> pure $ VNe v (sp :> a)
+    VNe v sp   -> pure $ VNe v (sp :> Just a)
     VOp n _    -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
     VString s  -> fail $ "expected lambda, got string " <> show s
@@ -90,8 +90,12 @@ thunk = pure . VThunk
 
 force' :: MonadFail m => Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 force' t = do
-  VThunk t' <- t
-  t'
+  t' <- t
+  case t' of
+    VThunk c -> c
+    VNe h sp -> pure $ VNe h (sp :> Nothing)
+    _        -> fail "attempt to force non-thunk"
+
 
 con :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
@@ -104,7 +108,7 @@ op n sp = VOp n <$> sequenceA sp
 -- | Hereditary substitution on values.
 force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Value (Eval m) -> Eval m (Value (Eval m))
 force = \case
-  VNe (Global h) sp -> foldl' (\ f a -> force =<< app f a) (eval =<< resolve h) sp
+  VNe (Global h) sp -> foldl' (\ f a -> force =<< maybe (force' f) (app f) a) (eval =<< resolve h) sp
   VOp n sp          -> Eval $ \ env hdl k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp pure) env hdl k) (find ((n ==) . fst) hdl)
   v                 -> pure v
 
@@ -153,7 +157,7 @@ instance Algebra sig m => Algebra sig (Eval m) where
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VNe (Var Level) (Snoc (m (Value m)))
+  = VNe (Var Level) (Snoc (Maybe (m (Value m))))
   -- | Neutral; effect operations, only used during quotation.
   | VOp QName (Snoc (Value m))
   -- | Value; data constructors.
@@ -196,7 +200,7 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
-  VNe v sp    -> foldl' XApp (XVar (levelToIndex d <$> v)) <$> traverse (quoteV d =<<) sp
+  VNe v sp    -> foldl' (&) (XVar (levelToIndex d <$> v)) <$> traverse (maybe (pure XForce) (fmap (flip XApp) . quoteV d =<<)) sp
   VOp q fs    -> XOp  q Nil <$> traverse (quoteV d) fs
   VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
   VString s   -> pure $ XString s
