@@ -48,7 +48,6 @@ eval = \case
   XApp  f a       -> app (eval f) (eval a)
   XCon n _ fs     -> con n (eval <$> fs)
   XString s       -> string s
-  XThunk c        -> thunk (eval c)
   XOp n _ sp      -> op n (eval <$> sp)
 
 global :: QName -> Eval m (Value (Eval m))
@@ -79,13 +78,9 @@ app f a = do
     VOp n _    -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
     VString s  -> fail $ "expected lambda, got string " <> show s
-    VThunk _   -> fail   "expected lambda, got thunk"
 
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
-
-thunk :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
-thunk = pure . VThunk
 
 con :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
@@ -154,8 +149,6 @@ data Value m
   | VCon QName (Snoc (Value m))
   -- | Value; strings.
   | VString Text
-  -- | Value; thunks.
-  | VThunk (m (Value m))
   -- | Computation; lambdas.
   | VLam [Pattern Name] (Snoc (QName, Handler m)) (Value m -> m (Value m))
 
@@ -194,7 +187,6 @@ quoteV d = \case
   VOp q fs    -> XOp  q Nil <$> traverse (quoteV d) fs
   VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
   VString s   -> pure $ XString s
-  VThunk c    -> fmap XThunk . quoteV d =<< c
 
 quoteClause :: Monad m => Level -> Snoc (QName, Handler m) -> (Value m -> m (Value m)) -> Pattern Name -> m (Pattern Name, Expr)
 quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
