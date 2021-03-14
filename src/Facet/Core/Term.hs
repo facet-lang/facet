@@ -59,6 +59,5 @@ data Expr
   | XCon QName (Snoc T.TExpr) (Snoc Expr)
   | XString Text
   | XThunk Expr
-  | XForce Expr
   | XOp QName (Snoc T.TExpr) (Snoc Expr)
   deriving (Eq, Ord, Show)
