@@ -67,7 +67,7 @@ lam cs = Eval $ \ env hdl k' -> k' $ VLam (map fst cs) (h env hdl) (k env)
   where
   (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
   h env hdl = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> localEnv (<> (bindSpine env ps sp :> VLam [pvar __] Nil k)) b)) hdl es
-  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> (`localEnv` b) . flip (<>) . (env <>) <$> matchV p v) vs)
+  k env v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> (`localEnv` b) . flip (<>) . (env <>) <$> matchV id p v) vs)
 
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Eval m (Value (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 app f a = do
@@ -158,12 +158,12 @@ unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 -- Elimination
 
-matchV :: ValuePattern Name -> Value m -> Maybe (Snoc (Value m))
-matchV p s = case p of
-  PWildcard -> pure Nil
-  PVar _    -> pure (Nil :> s)
+matchV :: (Snoc (Value m) -> a) -> ValuePattern Name -> Value m -> Maybe a
+matchV k p s = case p of
+  PWildcard -> pure (k Nil)
+  PVar _    -> pure (k (Nil :> s))
   PCon n ps
-    | VCon n' fs <- s -> join <$ guard (n == n') <*> zipWithM matchV ps fs
+    | VCon n' fs <- s -> k . join <$ guard (n == n') <*> zipWithM (matchV id) ps fs
   PCon{}    -> empty
 
 bindValue ::  Snoc (Value m) -> ValuePattern Name -> Value m -> Snoc (Value m)
