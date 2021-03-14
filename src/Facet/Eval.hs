@@ -49,6 +49,7 @@ eval = \case
   XCon n _ fs     -> con n (eval <$> fs)
   XString s       -> string s
   XThunk c        -> thunk (eval c)
+  XForce t        -> force' (eval t)
   XOp n _ sp      -> op n (eval <$> sp)
 
 global :: QName -> Eval m (Value (Eval m))
@@ -86,6 +87,11 @@ string = pure . VString
 
 thunk :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 thunk = pure . VThunk
+
+force' :: MonadFail m => Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
+force' t = do
+  VThunk t' <- t
+  t'
 
 con :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
