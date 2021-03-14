@@ -101,7 +101,7 @@ con :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+op :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m)) -- FIXME: make a thunk instead?
 op n sp = VOp n <$> sequenceA sp
 
 
