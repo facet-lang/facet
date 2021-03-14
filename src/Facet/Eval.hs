@@ -45,7 +45,7 @@ eval env hdl = \case
   XTLam b         -> tlam (eval env hdl b)
   XInst f t       -> inst (eval env hdl f) t
   XLam cs         -> lam (map (fmap (\ e vs -> eval (env <> vs) hdl e)) cs)
-  XApp  f a       -> app env hdl (eval env hdl f) (\ hdl -> eval env hdl a)
+  XApp  f a       -> app hdl (eval env hdl f) (\ hdl -> eval env hdl a)
   XCon n _ fs     -> con n (eval env hdl <$> fs)
   XString s       -> string s
   XOp n _ sp      -> op n (eval env hdl <$> sp)
@@ -69,11 +69,11 @@ lam cs = pure $ VLam (map fst cs) h k
   h = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> b (bindSpine Nil ps sp :> VLam [pvar __] Nil k))) Nil es
   k v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV b p v) vs)
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> (Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
-app env hdl f a = do
+app :: MonadFail m => Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> (Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+app hdl f a = do
   f' <- f
   case f' of
-    VLam _ h k -> a (hdl <> h) >>= force env (hdl <> h) >>= k
+    VLam _ h k -> a (hdl <> h) >>= k
     VNe v sp   -> pure $ VNe v (sp :> a)
     VOp n _    -> fail $ "expected lambda, got op "     <> show n
     VCon n _   -> fail $ "expected lambda, got con "    <> show n
@@ -93,7 +93,7 @@ op n sp = VOp n <$> sequenceA sp
 -- | Hereditary substitution on values.
 force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> Value (Eval m) -> Eval m (Value (Eval m))
 force env hdl = \case
-  VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app env hdl f a) (eval env hdl =<< resolve h) sp
+  VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app hdl f (\ hdl -> force env hdl =<< a hdl)) (eval env hdl =<< resolve h) sp
   VOp n sp          -> Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp pure) k) (find ((n ==) . fst) hdl)
   v                 -> pure v
 
