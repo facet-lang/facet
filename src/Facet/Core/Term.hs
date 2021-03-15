@@ -26,7 +26,8 @@ data ValuePattern a
   | PCon QName (Snoc (ValuePattern a))
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-data EffectPattern a = POp QName (Snoc (ValuePattern a)) a
+data EffectPattern a
+  = POp QName (Snoc (ValuePattern a)) a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data Pattern a
