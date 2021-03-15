@@ -27,7 +27,7 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (views, (.=))
+import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
 import           Data.Foldable
@@ -47,7 +47,6 @@ import           Facet.Graph
 import           Facet.Name
 import           Facet.Semiring (Few(..), zero)
 import           Facet.Snoc
-import           Facet.Snoc.NonEmpty (toSnoc)
 import           Facet.Source (Source)
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -57,7 +56,7 @@ import           GHC.Stack
 -- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Algebra sig m => QName ::: Type -> Synth m Expr
+global :: Algebra sig m => RName ::: Type -> Synth m Expr
 global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
@@ -201,10 +200,10 @@ elabDataDef
   -> m [Name :=: Maybe Def ::: Type]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _T) constructors = do
-  mname <- views name_ toSnoc
+  mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ abstractType (check (checkType t ::: VType)) _T
-    con' <- elabTerm $ check (abstractTerm (XCon (mname :. n)) ::: c_T)
+    con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
     pure $ n :=: Just (DTerm con') ::: c_T
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
@@ -216,11 +215,11 @@ elabInterfaceDef
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Maybe Def ::: Type]
 elabInterfaceDef (dname ::: _T) constructors = do
-  mname <- views name_ toSnoc
+  mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstractType (check (checkType t ::: VType)) _T
     -- FIXME: check that the interface is a member of the sig.
-    op' <- elabTerm $ check (abstractTerm (XOp (mname :. n)) ::: _T')
+    op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
     pure $ n :=: Just (DTerm op') ::: _T'
   pure [ dname :=: Just (DInterface (scopeFromList cs)) ::: _T ]
 

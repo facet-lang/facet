@@ -114,25 +114,25 @@ f $$ a = askingPrec $ \case
 -- Options
 
 data Options = Options
-  { qname         :: QName -> Print
+  { rname         :: RName -> Print
   , instantiation :: Print -> Print -> Print
   }
 
 verboseOptions :: Options
 verboseOptions = Options
-  { qname         = qualified
+  { rname         = qualified
   , instantiation = printInstantiation
   }
 
 quietOptions :: Options
 quietOptions = Options
-  { qname         = unqualified
+  { rname         = unqualified
   , instantiation = suppressInstantiation
   }
 
-qualified, unqualified :: QName -> Print
+qualified, unqualified :: RName -> Print
 qualified = pretty
-unqualified (_:.n) = pretty n
+unqualified (_:.:n) = pretty n
 
 printInstantiation, suppressInstantiation :: Print -> Print -> Print
 printInstantiation = ($$)
@@ -145,9 +145,9 @@ printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
 printTExpr :: Options -> Snoc Print -> C.TExpr -> Print
-printTExpr Options{ qname, instantiation } = go
+printTExpr Options{ rname, instantiation } = go
   where
-  qvar = group . setPrec Var . qname
+  qvar = group . setPrec Var . rname
   go env = \case
     C.TVar (Global n)       -> qvar n
     C.TVar (Free (Right d)) -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
@@ -171,7 +171,7 @@ printTExpr Options{ qname, instantiation } = go
       | otherwise -> id
 
 printExpr :: Options -> Snoc Print -> C.Expr -> Print
-printExpr opts@Options{ qname, instantiation } = go
+printExpr opts@Options{ rname, instantiation } = go
   where
   go env = \case
     C.XVar (Global n) -> qvar n
@@ -183,13 +183,13 @@ printExpr opts@Options{ qname, instantiation } = go
     C.XCon n t p      -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
     C.XOp n t p       -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
     C.XString s       -> annotate Lit $ pretty (show s)
-  qvar = group . setPrec Var . qname
+  qvar = group . setPrec Var . rname
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
   clause env (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> go env' b
   vpat = \case
     C.PWildcard -> pretty '_'
     C.PVar n    -> n
-    C.PCon n ps -> parens (hsep (annotate Con (qname n):map vpat (toList ps)))
+    C.PCon n ps -> parens (hsep (annotate Con (rname n):map vpat (toList ps)))
   epat (C.POp q ps k) = brackets (hsep (pretty q : map vpat (toList ps)) <+> semi <+> k)
   pat = \case
     C.PVal p -> vpat p

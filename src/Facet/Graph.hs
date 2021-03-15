@@ -60,7 +60,7 @@ lookupWith lookup graph mod@Module{ name } (m:.n)
   <|> guard (m == Nil) *> asum (maybe empty (lookup n) . snd <$> getGraph graph)
   <|> guard (m /= Nil) *> (lookupM (fromSnoc m) graph >>= maybe empty pure . snd >>= lookup n)
 
-lookupQ :: (Alternative m, Monad m) => Graph -> Module -> QName -> m (QName :=: Maybe Def ::: Type)
+lookupQ :: (Alternative m, Monad m) => Graph -> Module -> QName -> m (RName :=: Maybe Def ::: Type)
 lookupQ = lookupWith lookupD
 
 

@@ -49,7 +49,7 @@ data Type
   | VRet [Type] Type
 
 
-global :: QName -> Type
+global :: RName -> Type
 global = var . Global
 
 free :: Level -> Type

@@ -77,6 +77,7 @@ import Facet.Name hiding (L, R)
 import Facet.Semialign
 import Facet.Semiring
 import Facet.Snoc
+import Facet.Snoc.NonEmpty (toSnoc)
 import Facet.Source (Source, slice)
 import Facet.Span (Span(..))
 import Facet.Syntax
@@ -121,18 +122,18 @@ as (m ::: _T) = Synth $ do
 
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
-  => (forall m . Alternative m => Name -> Module -> m (QName :=: Maybe Def ::: Type))
+  => (forall m . Alternative m => Name -> Module -> m (RName :=: Maybe Def ::: Type))
   -> QName
-  -> Elab m (QName :=: Maybe Def ::: Type)
+  -> Elab m (RName :=: Maybe Def ::: Type)
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
   ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
 
-resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Maybe Def ::: Type)
+resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Def ::: Type)
 resolveC = resolveWith lookupC
 
-resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Maybe Def ::: Type)
+resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Def ::: Type)
 resolveQ = resolveWith lookupD
 
 lookupInContext :: Alternative m => QName -> Context -> m (Index, Quantity, Type)
@@ -142,13 +143,13 @@ lookupInContext (m:.n)
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Type] -> m (QName :=: Maybe Def ::: Type)
+lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Type] -> m (RName :=: Maybe Def ::: Type)
 lookupInSig (m :. n) mod graph = fmap asum . fmap $ \case
-  T.VNe (Global q@(m':._)) _ _ -> do
-    guard (m == Nil || m == m')
-    defs <- interfaceScope =<< lookupQ graph mod q
+  T.VNe (Global q@(m':.:_)) _ _ -> do
+    guard (m == Nil || m == toSnoc m')
+    defs <- interfaceScope =<< lookupQ graph mod (toQ q)
     _ :=: d ::: _T <- lookupScope n defs
-    pure $ m':.n :=: d ::: _T
+    pure $ m':.:n :=: d ::: _T
   _                             -> Alt.empty
   where
   interfaceScope (_ :=: d ::: _) = case d of { Just (DInterface defs) -> pure defs ; _ -> Alt.empty }
@@ -216,7 +217,7 @@ data Err = Err
 data ErrReason
   = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
-  | AmbiguousName QName [QName]
+  | AmbiguousName QName [RName]
   | CouldNotSynthesize String
   | ResourceMismatch Name Quantity Quantity
   | Mismatch String (Either String Type) Type
@@ -261,7 +262,7 @@ resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp 
 freeVariable :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m a
 freeVariable n = withFrozenCallStack $ err $ FreeVariable n
 
-ambiguousName :: (HasCallStack, Has (Throw Err) sig m) => QName -> [QName] -> Elab m a
+ambiguousName :: (HasCallStack, Has (Throw Err) sig m) => QName -> [RName] -> Elab m a
 ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
 
 

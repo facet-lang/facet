@@ -37,7 +37,7 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> Expr -> Eval m (Value (Eval m))
+eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (RName, Handler (Eval m)) -> Expr -> Eval m (Value (Eval m))
 eval env hdl = \case
   XVar (Global n) -> global n >>= eval env hdl
   XVar (Free v)   -> var env v
@@ -49,11 +49,11 @@ eval env hdl = \case
   XString s       -> string s
   XOp n _ sp      -> op hdl n (flip (eval env) <$> sp)
 
-global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
+global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
 global n = do
   mod <- lift ask
   graph <- lift ask
-  case lookupQ graph mod n of
+  case lookupQ graph mod (toQ n) of
     Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
     _                                 -> error "throw a real error here"
 
@@ -69,7 +69,7 @@ inst = const
 lam :: Snoc (Value (Eval m)) -> [(Pattern Name, Expr)] -> Eval m (Value (Eval m))
 lam env cs = pure $ VLam env cs
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> (Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> (Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 app hdl f a = do
   f' <- f
   case f' of
@@ -87,17 +87,17 @@ app hdl f a = do
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
 
-con :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+con :: RName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: MonadFail m => Snoc (QName, Handler (Eval m)) -> QName -> Snoc (Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+op :: MonadFail m => Snoc (RName, Handler (Eval m)) -> RName -> Snoc (Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 op hdl n sp = Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp pure) k) (find ((n ==) . fst) hdl)
 
 
 -- Machinery
 
-newtype Handler m = Handler { runHandler :: Snoc (Snoc (QName, Handler m) -> m (Value m)) -> (Value m -> m (Value m)) -> m (Value m) }
+newtype Handler m = Handler { runHandler :: Snoc (Snoc (RName, Handler m) -> m (Value m)) -> (Value m -> m (Value m)) -> m (Value m) }
 
 newtype Eval m a = Eval { runEval :: forall r . (a -> m r) -> m r }
 
@@ -127,7 +127,7 @@ data Value m
   -- | Neutral; variables, only used during quotation
   = VVar (Var Level)
   -- | Value; data constructors.
-  | VCon QName (Snoc (Value m))
+  | VCon RName (Snoc (Value m))
   -- | Value; strings.
   | VString Text
   -- | Computation; lambdas.
@@ -136,7 +136,7 @@ data Value m
   | VCont (Value m -> m (Value m))
 
 unit :: Value m
-unit = VCon (["Data", "Unit"] :. U "unit") Nil
+unit = VCon (["Data", "Unit"] :.: U "unit") Nil
 
 
 -- Elimination
