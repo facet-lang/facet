@@ -199,7 +199,7 @@ showType e = Action $ do
   outputDocLn (getPrint (ann (printExpr opts Nil e ::: printType opts Nil _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
+  e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.U "Output"):) $ Elab.synth (Elab.synthExpr e)
   e'' <- runElab $ runEvalMain e'
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
@@ -208,7 +208,7 @@ runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Gra
 runEvalMain e = runEval (E.quoteV 0 =<< eval Nil hdl e) pure
   where
   hdl = Nil :> (write, Handler handle)
-  write = FromList ["Effect", "Console"] :.: U "write"
+  write = FromList ["Effect", "Console"] :. U "write"
   handle (FromList [o]) k = do
     E.VString s <- o hdl
     outputText s *> k unit

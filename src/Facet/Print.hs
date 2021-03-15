@@ -132,7 +132,7 @@ quietOptions = Options
 
 qualified, unqualified :: QName -> Print
 qualified = pretty
-unqualified (_:.:n) = pretty n
+unqualified (_:.n) = pretty n
 
 printInstantiation, suppressInstantiation :: Print -> Print -> Print
 printInstantiation = ($$)
@@ -198,15 +198,15 @@ printExpr opts@Options{ qname, instantiation } = go
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
   mname
-  (qvar (fromList [T.pack "Kernel"]:.:U (T.pack "Module")))
+  (qvar (fromList [T.pack "Kernel"]:.U (T.pack "Module")))
   (map (\ (C.Import n) -> import' n) is)
   (map def (Map.toList (C.decls ds)))
   where
   def (n, Nothing ::: t) = ann
-    $   qvar (Nil:.:n)
+    $   qvar (Nil:.n)
     ::: printType opts Nil t
   def (n, Just d  ::: t) = ann
-    $   qvar (Nil:.:n)
+    $   qvar (Nil:.n)
     ::: defn (printType opts Nil t
     :=: case d of
       C.DTerm b  -> printExpr opts Nil b
@@ -224,7 +224,7 @@ printModule (C.Module mname is _ ds) = module_
 intro, tintro :: Name -> Level -> Print
 intro  n = name lower n . getLevel
 tintro n = name upper n . getLevel
-qvar (_ :.: n) = setPrec Var (pretty n)
+qvar (_ :. n) = setPrec Var (pretty n)
 
 meta :: Meta -> Print
 meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m

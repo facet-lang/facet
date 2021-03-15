@@ -136,7 +136,7 @@ data Value m
   | VCont (Value m -> m (Value m))
 
 unit :: Value m
-unit = VCon (["Data", "Unit"] :.: U "unit") Nil
+unit = VCon (["Data", "Unit"] :. U "unit") Nil
 
 
 -- Elimination

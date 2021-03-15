@@ -63,14 +63,14 @@ prettyMName = \case
 
 
 -- | Qualified names, consisting of a module name and declaration name.
-data QName = MName :.: Name -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
+data QName = MName :. Name -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
   deriving (Eq, Ord)
 
 instance Show QName where
-  showsPrec p (m :.: n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":.:" . showsPrec 10 n
+  showsPrec p (m :. n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":." . showsPrec 10 n
 
 instance P.Pretty QName where
-  pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
+  pretty (m :. n) = foldr' (surround dot . pretty) (pretty n) m
 
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.

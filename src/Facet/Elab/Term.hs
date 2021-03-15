@@ -203,7 +203,7 @@ elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ abstractType (check (checkType t ::: VType)) _T
-    con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
+    con' <- elabTerm $ check (abstractTerm (XCon (mname :. n)) ::: c_T)
     pure $ n :=: Just (DTerm con') ::: c_T
   pure
     $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
@@ -219,7 +219,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstractType (check (checkType t ::: VType)) _T
     -- FIXME: check that the interface is a member of the sig.
-    op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
+    op' <- elabTerm $ check (abstractTerm (XOp (mname :. n)) ::: _T')
     pure $ n :=: Just (DTerm op') ::: _T'
   pure [ dname :=: Just (DInterface (scopeFromList cs)) ::: _T ]
 

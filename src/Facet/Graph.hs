@@ -54,7 +54,7 @@ lookupM :: Alternative m => MName -> Graph -> m (Maybe FilePath, Maybe Module)
 lookupM n = maybe empty pure . Map.lookup n . getGraph
 
 lookupWith :: (Alternative m, Monad m) => (Name -> Module -> m res) -> Graph -> Module -> QName -> m res
-lookupWith lookup graph mod@Module{ name } (m:.:n)
+lookupWith lookup graph mod@Module{ name } (m:.n)
   =   guard (m == name || m == Nil) *> lookup n mod
   <|> guard (m == Nil) *> asum (maybe empty (lookup n) . snd <$> getGraph graph)
   <|> guard (m /= Nil) *> (lookupM m graph >>= maybe empty pure . snd >>= lookup n)
