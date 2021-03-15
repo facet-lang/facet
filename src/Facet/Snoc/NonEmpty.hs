@@ -30,6 +30,6 @@ pattern FromList xs <- (toList -> xs)
 instance IsList (NonEmpty a) where
   type Item (NonEmpty a) = a
 
-  toList   = foldr' (:)  []
+  toList          = foldr' (:)  []
   fromList (x:xs) = foldl' (|>) (Nil :|> x) xs
   fromList []     = error "fromList: empty list"
