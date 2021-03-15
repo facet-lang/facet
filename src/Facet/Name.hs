@@ -65,7 +65,7 @@ prettyMName = \case
 
 
 -- | Qualified names, consisting of a module name and declaration name.
-data QName = MName :. Name -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
+data QName = Snoc Text :. Name -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
   deriving (Eq, Ord)
 
 instance Show QName where
