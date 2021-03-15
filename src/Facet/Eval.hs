@@ -47,7 +47,7 @@ eval env hdl = \case
   XApp  f a       -> app hdl (eval env hdl f) (\ hdl -> eval env hdl a)
   XCon n _ fs     -> con n (eval env hdl <$> fs)
   XString s       -> string s
-  XOp n _ sp      -> op hdl n (eval env hdl <$> sp)
+  XOp n _ sp      -> op hdl n (flip (eval env) <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
 global n = do
@@ -91,9 +91,9 @@ con :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: MonadFail m => Snoc (QName, Handler (Eval m)) -> QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+op :: MonadFail m => Snoc (QName, Handler (Eval m)) -> QName -> Snoc (Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 op hdl n sp = do
-  sp' <- sequenceA sp
+  sp' <- traverse ($ hdl) sp
   Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp' pure) k) (find ((n ==) . fst) hdl)
 
 
