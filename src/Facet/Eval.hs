@@ -70,19 +70,17 @@ lam :: Snoc (Value (Eval m)) -> [(Pattern Name, Expr)] -> Eval m (Value (Eval m)
 lam env cs = pure $ VLam env cs
 
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> (Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
-app hdl f a = do
-  f' <- f
-  case f' of
-    VLam env cs -> do
-      let cs' = map (fmap (\ e vs -> eval (env <> vs) hdl e)) cs
-          (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
-          h = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> b (bindSpine Nil ps sp :> VCont k))) Nil es
-          k v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV b p v) vs)
-      a (hdl <> h) >>= k
-    VCont k     -> k =<< a hdl
-    VVar v      -> fail $ "expected lambda, got var "    <> show v
-    VCon n _    -> fail $ "expected lambda, got con "    <> show n
-    VString s   -> fail $ "expected lambda, got string " <> show s
+app hdl f a = f >>= \case
+  VLam env cs -> do
+    let cs' = map (fmap (\ e vs -> eval (env <> vs) hdl e)) cs
+        (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
+        h = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> b (bindSpine Nil ps sp :> VCont k))) Nil es
+        k v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV b p v) vs)
+    a (hdl <> h) >>= k
+  VCont k     -> k =<< a hdl
+  VVar v      -> fail $ "expected lambda, got var "    <> show v
+  VCon n _    -> fail $ "expected lambda, got con "    <> show n
+  VString s   -> fail $ "expected lambda, got string " <> show s
 
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
