@@ -74,7 +74,7 @@ instance P.Pretty QName where
 
 
 -- | Resolved names.
-data RName = NonEmpty Text :.: Name
+data RName = MName :.: Name
 
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.
