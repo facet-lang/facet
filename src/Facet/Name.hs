@@ -76,6 +76,12 @@ instance P.Pretty QName where
 -- | Resolved names.
 data RName = MName :.: Name
 
+instance Show RName where
+  showsPrec p (m :.: n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":.:" . showsPrec 10 n
+
+instance P.Pretty RName where
+  pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
+
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.
 data Name
