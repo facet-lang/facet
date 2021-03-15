@@ -37,7 +37,7 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (RName, Handler (Eval m)) -> Expr -> Eval m (Value (Eval m))
+eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (RName, Handler (Eval m)) -> Expr -> Eval m (Value (Eval m))
 eval env hdl = \case
   XVar (Global n) -> global n >>= eval env hdl
   XVar (Free v)   -> var env v
