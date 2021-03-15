@@ -3,6 +3,7 @@
 module Facet.Snoc.NonEmpty
 ( NonEmpty(..)
 , (|>)
+, toSnoc
 , pattern FromList
 ) where
 
@@ -19,6 +20,10 @@ infixl 5 :|>
 i :|> l |> l' = i :> l :|> l'
 
 infixl 5 |>
+
+
+toSnoc :: NonEmpty a -> Snoc a
+toSnoc (as:|>a) = as:>a
 
 
 pattern FromList :: [a] -> NonEmpty a
