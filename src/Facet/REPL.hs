@@ -209,8 +209,10 @@ runEvalMain e = runEval (E.quoteV 0 =<< eval Nil hdl e) pure
   where
   hdl = Nil :> (write, Handler handle)
   write = FromList ["Effect", "Console"] :.: U "write"
-  handle (FromList [E.VString s]) k = outputText s *> k unit
-  handle _                        _ = unhandled
+  handle (FromList [o]) k = do
+    E.VString s <- o hdl
+    outputText s *> k unit
+  handle _              _ = unhandled
   unhandled = throwError $ Notice.Notice (Just Notice.Error) [] (fillSep @(Doc Style) [reflow "unhandled effect operator"]) []
 
 showKind :: S.Ann S.Type -> Action
