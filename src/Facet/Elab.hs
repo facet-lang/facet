@@ -339,9 +339,9 @@ unify t1 t2 = type' t1 t2
     -- FIXME: this must unify the signatures
     (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                             -> type' a1 a2 >> type' b1 b2
     (VArrow{}, _)                                                    -> nope
-    (VRet s1 t1, VRet s2 t2)                                         -> sig s1 s2 >> type' t1 t2
-    (VRet _ t1, t2)                                                  -> type' t1 t2
-    (t1, VRet _ t2)                                                  -> type' t1 t2
+    (VComp s1 t1, VComp s2 t2)                                       -> sig s1 s2 >> type' t1 t2
+    (VComp _ t1, t2)                                                 -> type' t1 t2
+    (t1, VComp _ t2)                                                 -> type' t1 t2
     (T.VNe v1 ts1 sp1, T.VNe v2 ts2 sp2)                             -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
     (T.VNe{}, _)                                                     -> nope
     (T.VString, T.VString)                                           -> pure ()

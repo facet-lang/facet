@@ -172,7 +172,7 @@ mul = choice [ S.Zero <$ token (char '0'), S.One <$ token (char '1') ]
 retType :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type) -> p (S.Ann S.Type)
 retType _ next = mk <$> anned ((,) <$> optional signature <*> next)
   where
-  mk (S.Ann s c (sig, _T)) = maybe id (\ sig -> S.Ann s c . S.TRet sig) sig _T
+  mk (S.Ann s c (sig, _T)) = maybe id (\ sig -> S.Ann s c . S.TComp sig) sig _T
 
 
 -- FIXME: support type operators

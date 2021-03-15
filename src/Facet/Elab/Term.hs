@@ -115,7 +115,7 @@ fieldsP = foldr cons
 effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
-  (sig, _A') <- expectRet "when checking effect pattern" _A
+  (sig, _A') <- expectComp "when checking effect pattern" _A
   n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (lookupInSig n module' graph sig)
   (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (VArrow Nothing Many _A' _A) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
@@ -287,8 +287,8 @@ expectTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -
 expectTacitFunction = expectMatch (\case{ VArrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _"
 
 -- | Expect a computation type with effects.
-expectRet :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
-expectRet = expectMatch (\case{ VRet s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
+expectComp :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m ([Type], Type)
+expectComp = expectMatch (\case{ VComp s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
 
 
 -- Elaboration
