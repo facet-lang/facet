@@ -170,22 +170,8 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam _ cs -> pure $ XLam cs
-  VCont k   -> snd <$> quoteClause d Nil k (pvar __)
+  VCont k   -> quoteV (succ d) =<< k (VVar (Free d))
   VVar v    -> pure (XVar (levelToIndex d <$> v))
   VOp q fs  -> XOp  q Nil <$> traverse (quoteV d) fs
   VCon n fs -> XCon n Nil <$> traverse (quoteV d) fs
   VString s -> pure $ XString s
-
-quoteClause :: Monad m => Level -> Snoc (QName, Handler m) -> (Value m -> m (Value m)) -> Pattern Name -> m (Pattern Name, Expr)
-quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
-  PVal p'           -> k (constructV p')
-  PEff (POp q fs _) -> maybe (error ("unhandled operation: " <> show q)) (\ (_, h) -> runHandler h (constructV <$> fs) pure) (find ((== q) . fst) h)
-  where
-  (d', p') = fill ((,) <$> succ <*> VVar . Free) d p
-
-
-constructV :: ValuePattern (Value m) -> Value m
-constructV = \case
-  PWildcard -> unit -- FIXME: maybe should provide a variable here anyway?
-  PVar v    -> v
-  PCon q fs -> VCon q (constructV <$> fs)
