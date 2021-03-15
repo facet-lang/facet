@@ -27,7 +27,7 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (view, (.=))
+import           Control.Effect.Lens (views, (.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
 import           Data.Foldable
@@ -47,6 +47,7 @@ import           Facet.Graph
 import           Facet.Name
 import           Facet.Semiring (Few(..), zero)
 import           Facet.Snoc
+import           Facet.Snoc.NonEmpty (toSnoc)
 import           Facet.Source (Source)
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -200,7 +201,7 @@ elabDataDef
   -> m [Name :=: Maybe Def ::: Type]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _T) constructors = do
-  mname <- view name_
+  mname <- views name_ toSnoc
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ abstractType (check (checkType t ::: VType)) _T
     con' <- elabTerm $ check (abstractTerm (XCon (mname :. n)) ::: c_T)
@@ -215,7 +216,7 @@ elabInterfaceDef
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Maybe Def ::: Type]
 elabInterfaceDef (dname ::: _T) constructors = do
-  mname <- view name_
+  mname <- views name_ toSnoc
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstractType (check (checkType t ::: VType)) _T
     -- FIXME: check that the interface is a member of the sig.

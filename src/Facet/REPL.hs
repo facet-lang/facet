@@ -49,6 +49,7 @@ import           Facet.Print as Print hiding (meta)
 import           Facet.REPL.Parser
 import           Facet.Semiring (one)
 import           Facet.Snoc
+import           Facet.Snoc.NonEmpty (toSnoc)
 import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Style as Style
 import qualified Facet.Surface as S
@@ -98,7 +99,7 @@ defaultREPLState = REPL
   , target = defaultTarget
   }
   where
-  localDefs = Module (fromList []) [] [] mempty
+  localDefs = Module (fromList ["(interactive)"]) [] [] mempty
 
 defaultPromptFunction :: Int -> IO String
 defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> bold <> cyan <> "λ " <> plain
@@ -117,7 +118,7 @@ loop = do
       graph <- use (target_.modules_)
       targets <- use (target_.targets_)
       let ops = foldMap (\ name -> lookupM name graph >>= maybe [] pure . snd >>= map (\ (op, assoc) -> (name, op, assoc)) . operators) (toList targets)
-      action <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
+      action <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map (\ (n, a, b) -> makeOperator (toSnoc n, a, b)) ops) commandParser))
       runReader src $ runAction action
     Nothing  -> pure ()
   loop

@@ -56,12 +56,10 @@ __ :: Name
 __ = U T.empty
 
 
-type MName = Snoc Text
+type MName = NonEmpty Text
 
 prettyMName :: Printer a => MName -> a
-prettyMName = \case
-  Nil   -> mempty
-  ns:>n -> foldr' (surround dot . pretty) (pretty n) ns
+prettyMName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
 
 
 -- | Qualified names, consisting of a module name and declaration name.

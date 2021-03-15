@@ -26,6 +26,7 @@ import qualified Data.Map as Map
 import           Facet.Core.Term
 import           Facet.Core.Type
 import           Facet.Name
+import           Facet.Snoc.NonEmpty
 import           Facet.Syntax
 
 -- Modules
@@ -56,7 +57,7 @@ lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls sc
   where
   matchDef (d ::: _) = do
     n :=: v ::: _T <- maybe empty pure d >>= unDData >>= lookupScope n
-    pure $ name:.n :=: v ::: _T
+    pure $ toSnoc name:.n :=: v ::: _T
 
 -- | Look up effect operations.
 lookupE :: Alternative m => Name -> Module -> m (QName :=: Maybe Def ::: Type)
@@ -64,12 +65,12 @@ lookupE n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls sc
   where
   matchDef (d ::: _) = do
     n :=: _ ::: _T <- maybe empty pure d >>= unDInterface >>= lookupScope n
-    pure $ name:.n :=: Nothing ::: _T
+    pure $ toSnoc name:.n :=: Nothing ::: _T
 
 lookupD :: Alternative m => Name -> Module -> m (QName :=: Maybe Def ::: Type)
 lookupD n Module{ name, scope } = maybe empty pure $ do
   d ::: _T <- Map.lookup n (decls scope)
-  pure $ name:.n :=: d ::: _T
+  pure $ toSnoc name:.n :=: d ::: _T
 
 
 newtype Scope = Scope { decls :: Map.Map Name (Maybe Def ::: Type) }

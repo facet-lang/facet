@@ -48,6 +48,7 @@ import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Print (Options)
 import           Facet.Snoc
+import           Facet.Snoc.NonEmpty (toSnoc)
 import           Facet.Source
 import           Facet.Style
 import qualified Facet.Surface as Import (Import(..))
@@ -146,7 +147,7 @@ loadModuleHeader searchPaths target = do
 loadModule :: Has (Output :+: State Options :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => Graph -> ModuleHeader Module -> m Module
 loadModule graph (ModuleHeader _ src imports) = do
   let ops = foldMap (\ m -> map (\ (op, assoc) -> (name m, op, assoc)) (operators m)) imports
-  m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
+  m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map (\ (n, a, b) -> makeOperator (toSnoc n, a, b)) ops) (whole module')))
   opts <- get
   rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m
 
