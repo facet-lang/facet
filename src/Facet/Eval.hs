@@ -5,7 +5,6 @@
 module Facet.Eval
 ( -- * Evaluation
   eval
-, force
   -- * Machinery
 , Handler(..)
 , Eval(..)
@@ -40,18 +39,23 @@ import Prelude hiding (zipWith)
 
 eval :: forall m sig . (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> Expr -> Eval m (Value (Eval m))
 eval env hdl = \case
-  XVar (Global n) -> global n
+  XVar (Global n) -> global n >>= eval env hdl
   XVar (Free v)   -> var env v
   XTLam b         -> tlam (eval env hdl b)
   XInst f t       -> inst (eval env hdl f) t
-  XLam cs         -> lam (map (fmap (\ e vs -> eval (env <> vs) hdl e)) cs)
+  XLam cs         -> lam env cs
   XApp  f a       -> app hdl (eval env hdl f) (\ hdl -> eval env hdl a)
   XCon n _ fs     -> con n (eval env hdl <$> fs)
   XString s       -> string s
-  XOp n _ sp      -> op n (eval env hdl <$> sp)
+  XOp n _ sp      -> op hdl n (eval env hdl <$> sp)
 
-global :: QName -> Eval m (Value (Eval m))
-global n = pure $ VNe (Global n) Nil
+global :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
+global n = do
+  mod <- lift ask
+  graph <- lift ask
+  case lookupQ graph mod n of
+    Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
+    _                                 -> error "throw a real error here"
 
 var :: (HasCallStack, Applicative m) => Snoc (Value m) -> Index -> m (Value m)
 var env v = pure (env ! getIndex v)
@@ -62,22 +66,24 @@ tlam = id
 inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
 inst = const
 
-lam :: HasCallStack => [(Pattern Name, Snoc (Value (Eval m)) -> Eval m (Value (Eval m)))] -> Eval m (Value (Eval m))
-lam cs = pure $ VLam (map fst cs) h k
-  where
-  (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs)
-  h = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> b (bindSpine Nil ps sp :> VLam [pvar __] Nil k))) Nil es
-  k v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV b p v) vs)
+lam :: Snoc (Value (Eval m)) -> [(Pattern Name, Expr)] -> Eval m (Value (Eval m))
+lam env cs = pure $ VLam env cs
 
-app :: MonadFail m => Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> (Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> (Snoc (QName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 app hdl f a = do
   f' <- f
   case f' of
-    VLam _ h k -> a (hdl <> h) >>= k
-    VNe v sp   -> pure $ VNe v (sp :> a)
-    VOp n _    -> fail $ "expected lambda, got op "     <> show n
-    VCon n _   -> fail $ "expected lambda, got con "    <> show n
-    VString s  -> fail $ "expected lambda, got string " <> show s
+    VLam env cs -> do
+      let cs' = map (fmap (\ e vs -> eval (env <> vs) hdl e)) cs
+          (es, vs) = partitionEithers (map (\case{ (PEff e, b) -> Left (e, b) ; (PVal v, b) -> Right (v, b) }) cs')
+          h = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> b (bindSpine Nil ps sp :> VCont k))) Nil es
+          k v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV b p v) vs)
+      a (hdl <> h) >>= k
+    VCont k     -> k =<< a hdl
+    VVar v      -> fail $ "expected lambda, got var "    <> show v
+    VOp n _     -> fail $ "expected lambda, got op "     <> show n
+    VCon n _    -> fail $ "expected lambda, got con "    <> show n
+    VString s   -> fail $ "expected lambda, got string " <> show s
 
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
@@ -86,24 +92,10 @@ con :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
-op n sp = VOp n <$> sequenceA sp
-
-
--- | Hereditary substitution on values.
-force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (QName, Handler (Eval m)) -> Value (Eval m) -> Eval m (Value (Eval m))
-force env hdl = \case
-  VNe (Global h) sp -> foldl' (\ f a -> force env hdl =<< app hdl f (\ hdl -> force env hdl =<< a hdl)) (eval env hdl =<< resolve h) sp
-  VOp n sp          -> Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp pure) k) (find ((n ==) . fst) hdl)
-  v                 -> pure v
-
-resolve :: Has (Reader Graph :+: Reader Module) sig m => QName -> Eval m Expr
-resolve n = do
-  mod <- lift ask
-  graph <- lift ask
-  case lookupQ graph mod n of
-    Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
-    _                                 -> error "throw a real error here"
+op :: MonadFail m => Snoc (QName, Handler (Eval m)) -> QName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+op hdl n sp = do
+  sp' <- sequenceA sp
+  Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp' pure) k) (find ((n ==) . fst) hdl)
 
 
 -- Machinery
@@ -136,7 +128,7 @@ instance Algebra sig m => Algebra sig (Eval m) where
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VNe (Var Level) (Snoc (Snoc (QName, Handler m) -> m (Value m)))
+  = VVar (Var Level)
   -- | Neutral; effect operations, only used during quotation.
   | VOp QName (Snoc (Value m))
   -- | Value; data constructors.
@@ -144,7 +136,8 @@ data Value m
   -- | Value; strings.
   | VString Text
   -- | Computation; lambdas.
-  | VLam [Pattern Name] (Snoc (QName, Handler m)) (Value m -> m (Value m))
+  | VLam (Snoc (Value m)) [(Pattern Name, Expr)]
+  | VCont (Value m -> m (Value m))
 
 unit :: Value m
 unit = VCon (["Data", "Unit"] :.: U "unit") Nil
@@ -176,18 +169,19 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
-  VLam ps h k -> XLam <$> traverse (quoteClause d h k) ps
-  VNe v sp    -> foldl' XApp (XVar (levelToIndex d <$> v)) <$> traverse (\ a -> quoteV d =<< a Nil) sp
-  VOp q fs    -> XOp  q Nil <$> traverse (quoteV d) fs
-  VCon n fs   -> XCon n Nil <$> traverse (quoteV d) fs
-  VString s   -> pure $ XString s
+  VLam _ cs -> pure $ XLam cs
+  VCont k   -> snd <$> quoteClause d Nil k (pvar __)
+  VVar v    -> pure (XVar (levelToIndex d <$> v))
+  VOp q fs  -> XOp  q Nil <$> traverse (quoteV d) fs
+  VCon n fs -> XCon n Nil <$> traverse (quoteV d) fs
+  VString s -> pure $ XString s
 
 quoteClause :: Monad m => Level -> Snoc (QName, Handler m) -> (Value m -> m (Value m)) -> Pattern Name -> m (Pattern Name, Expr)
 quoteClause d h k p = fmap (p,) . quoteV d' =<< case p' of
   PVal p'           -> k (constructV p')
   PEff (POp q fs _) -> maybe (error ("unhandled operation: " <> show q)) (\ (_, h) -> runHandler h (constructV <$> fs) pure) (find ((== q) . fst) h)
   where
-  (d', p') = fill ((,) <$> succ <*> (`VNe` Nil) . Free) d p
+  (d', p') = fill ((,) <$> succ <*> VVar . Free) d p
 
 
 constructV :: ValuePattern (Value m) -> Value m
