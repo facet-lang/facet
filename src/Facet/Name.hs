@@ -75,6 +75,7 @@ instance P.Pretty QName where
 
 -- | Resolved names.
 data RName = MName :.: Name
+  deriving (Eq, Ord)
 
 instance Show RName where
   showsPrec p (m :.: n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":.:" . showsPrec 10 n
