@@ -132,6 +132,7 @@ data Value m
   | VString Text
   -- | Computation; lambdas.
   | VLam (Snoc (Value m)) [(Pattern Name, Expr)]
+  -- | Computation; continuations, used in effect handlers.
   | VCont (Value m -> m (Value m))
 
 unit :: Value m
