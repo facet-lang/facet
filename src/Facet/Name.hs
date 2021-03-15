@@ -9,6 +9,7 @@ module Facet.Name
 , MName
 , prettyMName
 , QName(..)
+, RName(..)
 , Name(..)
 , Assoc(..)
 , Op(..)
@@ -22,6 +23,7 @@ import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Facet.Snoc
+import           Facet.Snoc.NonEmpty
 import qualified Prettyprinter as P
 import           Silkscreen
 
@@ -71,6 +73,10 @@ instance Show QName where
 
 instance P.Pretty QName where
   pretty (m :. n) = foldr' (surround dot . pretty) (pretty n) m
+
+
+-- | Resolved names.
+data RName = NonEmpty Text :.: Name
 
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.
