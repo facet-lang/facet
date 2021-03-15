@@ -5,6 +5,6 @@ module Facet.Snoc.NonEmpty
 import Facet.Snoc
 
 data NonEmpty a = Snoc a :|> a
-  deriving (Eq, Foldable, Functor, Ord, Traversable)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infixl 5 :|>
