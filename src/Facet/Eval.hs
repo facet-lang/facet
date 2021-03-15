@@ -81,7 +81,6 @@ app hdl f a = do
       a (hdl <> h) >>= k
     VCont k     -> k =<< a hdl
     VVar v      -> fail $ "expected lambda, got var "    <> show v
-    VOp n _     -> fail $ "expected lambda, got op "     <> show n
     VCon n _    -> fail $ "expected lambda, got con "    <> show n
     VString s   -> fail $ "expected lambda, got string " <> show s
 
@@ -129,8 +128,6 @@ instance Algebra sig m => Algebra sig (Eval m) where
 data Value m
   -- | Neutral; variables, only used during quotation
   = VVar (Var Level)
-  -- | Neutral; effect operations, only used during quotation.
-  | VOp QName (Snoc (Value m))
   -- | Value; data constructors.
   | VCon QName (Snoc (Value m))
   -- | Value; strings.
@@ -172,6 +169,5 @@ quoteV d = \case
   VLam _ cs -> pure $ XLam cs
   VCont k   -> quoteV (succ d) =<< k (VVar (Free d))
   VVar v    -> pure (XVar (levelToIndex d <$> v))
-  VOp q fs  -> XOp  q Nil <$> traverse (quoteV d) fs
   VCon n fs -> XCon n Nil <$> traverse (quoteV d) fs
   VString s -> pure $ XString s
