@@ -31,7 +31,6 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
-import           Control.Monad (unless)
 import           Data.Foldable
 import           Data.Functor
 import           Data.Maybe (catMaybes, fromMaybe)
@@ -116,8 +115,8 @@ fieldsP = foldr cons
 
 allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
-  unless (case _A of { VComp{} -> True ; _ -> False }) (warn (RedundantCatchAll n))
-  (PAll n,) <$> (Binding n q _A |- check (b ::: _B))
+  (sig, _T) <- assertComp _A
+  (PAll n,) <$> (Binding n q (VThunk (VComp sig _T)) |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
