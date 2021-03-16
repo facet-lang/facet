@@ -166,10 +166,6 @@ abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Type ->
 abstractType body = go
   where
   go = \case
-    VForAll       n    t b -> do
-      level <- depth
-      b' <- Binding n zero t |- go (b (T.free level))
-      pure $ TForAll n (T.quote level t) b'
     VArrow  (Just n) q a b -> do
       level <- depth
       b' <- Binding n q a |- go b
