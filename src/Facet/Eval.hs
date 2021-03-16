@@ -18,7 +18,6 @@ module Facet.Eval
 import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Carrier.Reader
-import Control.Effect.NonDet (foldMapA)
 import Control.Monad (ap, guard, join, liftM)
 import Control.Monad.Trans.Class
 import Data.Foldable
@@ -74,11 +73,11 @@ app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) =
 app hdl f a = f >>= \case
   VLam env cs -> do
     let cs' = map (fmap (\ e vs -> eval (env <> vs) hdl e)) cs
-        (es, vs) = foldr combine ([], []) cs'
-        combine p (es, vs) = case p of { (PEff e, b) -> ((e, b):es, vs) ; (PVal v, b) -> (es, (v, b):vs) }
-        h = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> b (bindSpine Nil ps sp :> VCont k))) Nil es
-        k v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV b p v) vs)
-    a (hdl <> h) >>= k
+        (h, k) = foldl' combine (Nil, const Nothing) cs'
+        combine (es, vs) = \case
+          (PEff (POp n ps _), b) -> (es :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> b (bindSpine Nil ps sp :> VCont k)), vs)
+          (PVal p, b)            -> (es, \ v -> matchV b p v <|> vs v)
+    a (hdl <> h) >>= fromMaybe (error "non-exhaustive patterns in lambda") . k
   VCont k     -> k =<< a hdl
   VVar v      -> fail $ "expected lambda, got var "    <> show v
   VCon n _    -> fail $ "expected lambda, got con "    <> show n
