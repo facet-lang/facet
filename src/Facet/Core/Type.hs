@@ -47,6 +47,7 @@ data Type
   | VArrow (Maybe Name) Quantity Type Type
   | VNe (Var (Either Meta Level)) (Snoc Type) (Snoc Type)
   | VComp [Type] Type
+  | VThunk Type
 
 
 global :: RName -> Type
@@ -80,6 +81,7 @@ occursIn p = go
     VComp s t      -> any (go d) s || go d t
     VNe h ts sp    -> p h || any (go d) ts || any (go d) sp
     VString        -> False
+    VThunk t       -> go d t
 
 
 -- Elimination
@@ -116,6 +118,7 @@ data TExpr
   | TComp [TExpr] TExpr
   | TInst TExpr TExpr
   | TApp TExpr TExpr
+  | TThunk TExpr
   deriving (Eq, Ord, Show)
 
 
@@ -130,6 +133,7 @@ quote d = \case
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
   VComp s t      -> TComp (quote d <$> s) (quote d t)
   VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
+  VThunk t       -> TThunk (quote d t)
 
 eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
@@ -145,6 +149,7 @@ eval subst = go where
     TComp s t             -> VComp (go env <$> s) (go env t)
     TInst f a             -> go env f $$$ go env a
     TApp  f a             -> go env f $$  go env a
+    TThunk t              -> VThunk (go env t)
 
 
 -- Substitution
