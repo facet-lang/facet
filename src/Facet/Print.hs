@@ -166,10 +166,10 @@ printTExpr Options{ rname, instantiation } = go
     where
     d = Name.Level (length env)
     sig s = brackets (commaSep (map (go env) s))
-    mult q = if
-      | q == zero -> (pretty '0' <+>)
-      | q == one  -> (pretty '1' <+>)
-      | otherwise -> id
+  mult q = if
+    | q == zero -> (pretty '0' <+>)
+    | q == one  -> (pretty '1' <+>)
+    | otherwise -> id
 
 printExpr :: Options -> Snoc Print -> C.Expr -> Print
 printExpr opts@Options{ rname, instantiation } = go
