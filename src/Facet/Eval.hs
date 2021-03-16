@@ -77,7 +77,7 @@ app hdl f a = f >>= \case
         combine (es, vs) = \case
           (PEff (POp n ps _), b) -> (es :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> b (bindSpine Nil ps sp :> VCont k)), vs)
           (PVal p, b)            -> (es, \ v -> matchV b p v <|> vs v)
-          (PEff (PAll _), b)     -> (es, Just . b . (Nil:>))
+          (PEff (PAll _), b)     -> (es, \ v -> Just (b (Nil :> v)))
     a (hdl <> h) >>= fromMaybe (error "non-exhaustive patterns in lambda") . k
   VCont k     -> k =<< a hdl
   VVar v      -> fail $ "expected lambda, got var "    <> show v
