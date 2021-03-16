@@ -161,7 +161,7 @@ hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ do
   f' ::: _F <- synth f
-  (_ ::: (q, _A), _B) <- assertFunction "in application" _F
+  (_ ::: (q, _A), _B) <- assertFunction _F
   -- FIXME: test _A for Ret and extend the sig
   a' <- censor @Usage (q ><<) $ check (a ::: _A)
   pure $ mk f' a' ::: _B
@@ -220,7 +220,7 @@ data ErrReason
   | AmbiguousName QName [RName]
   | CouldNotSynthesize String
   | ResourceMismatch Name Quantity Quantity
-  | Mismatch String (Either String Type) Type
+  | Mismatch (Either String Type) Type
   | Hole Name Type
   | Invariant String
 
@@ -230,7 +230,7 @@ applySubst ctx subst r = case r of
   AmbiguousName{}      -> r
   CouldNotSynthesize{} -> r
   ResourceMismatch{}   -> r
-  Mismatch m exp act   -> Mismatch m (roundtrip <$> exp) (roundtrip act)
+  Mismatch exp act     -> Mismatch (roundtrip <$> exp) (roundtrip act)
   Hole n t             -> Hole n (roundtrip t)
   Invariant{}          -> r
   where
@@ -247,11 +247,11 @@ err reason = do
   subst <- get
   throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String Type -> Type -> Elab m a
-mismatch msg exp act = withFrozenCallStack $ err $ Mismatch msg exp act
+mismatch :: (HasCallStack, Has (Throw Err) sig m) => Either String Type -> Type -> Elab m a
+mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Type -> Elab m a
-couldNotUnify msg t1 t2 = withFrozenCallStack $ mismatch msg (Right t2) t1
+couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m a
+couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right t2) t1
 
 couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
 couldNotSynthesize v = withFrozenCallStack $ err $ CouldNotSynthesize v
@@ -287,10 +287,10 @@ warn reason = do
 
 -- Patterns
 
-assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
-assertMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
+assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> Type -> Elab m out
+assertMatch pat exp _T = maybe (mismatch (Left exp) _T) pure (pat _T)
 
-assertFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
+assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
 assertFunction = assertMatch (\case{ VArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 
@@ -324,7 +324,7 @@ spans_ = lens spans (\ e spans -> e{ spans })
 unify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m ()
 unify t1 t2 = type' t1 t2
   where
-  nope = couldNotUnify "mismatch" t1 t2
+  nope = couldNotUnify t1 t2
 
   type' = curry $ \case
     (VNe (Free (Left v1)) Nil Nil, VNe (Free (Left v2)) Nil Nil) -> flexFlex v1 v2
@@ -373,7 +373,7 @@ unify t1 t2 = type' t1 t2
   solve v t = do
     d <- depth
     if occursIn (== Free (Left v)) d t then
-      mismatch "infinite type" (Right (metavar v)) t
+      mismatch (Right (metavar v)) t
     else
       gets (T.lookupMeta v) >>= \case
         Nothing          -> modify (T.solveMeta v t)
