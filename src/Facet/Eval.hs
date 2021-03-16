@@ -72,12 +72,11 @@ lam env cs = pure $ VLam env cs
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
 app envCallSite hdl f a = f >>= \case
   VLam env cs -> do
-    let cs' = map (fmap (\ e vs -> eval (env <> vs) hdl e)) cs
-        (h, k) = foldl' combine (Nil, const Nothing) cs'
+    let (h, k) = foldl' combine (Nil, const Nothing) cs
         combine (es, vs) = \case
-          (PEff (POp n ps _), b) -> (es :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> b (bindSpine Nil ps sp :> VCont k)), vs)
-          (PVal p, b)            -> (es, \ v -> matchV b p v <|> vs v)
-          (PEff (PAll _), b)     -> (es, \ v -> Just (b (Nil :> v)))
+          (PEff (POp n ps _), b) -> (es :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> eval (bindSpine env ps sp :> VCont k) hdl b), vs)
+          (PVal p, b)            -> (es, \ v -> matchV (\ vs -> eval (env <> vs) hdl b) p v <|> vs v)
+          (PEff (PAll _), b)     -> (es, \ v -> Just (eval (env :> v) hdl b))
     eval envCallSite (hdl <> h) a >>= fromMaybe (error "non-exhaustive patterns in lambda") . k
   VCont k     -> k =<< eval envCallSite hdl a
   VVar v      -> fail $ "expected lambda, got var "    <> show v
