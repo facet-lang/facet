@@ -74,7 +74,8 @@ app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) =
 app hdl f a = f >>= \case
   VLam env cs -> do
     let cs' = map (fmap (\ e vs -> eval (env <> vs) hdl e)) cs
-        (es, vs) = foldr (\ p (es, vs) -> case p of { (PEff e, b) -> ((e, b):es, vs) ; (PVal v, b) -> (es, (v, b):vs) }) ([], []) cs'
+        (es, vs) = foldr combine ([], []) cs'
+        combine p (es, vs) = case p of { (PEff e, b) -> ((e, b):es, vs) ; (PVal v, b) -> (es, (v, b):vs) }
         h = foldl' (\ prev (POp n ps _, b) -> prev :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> b (bindSpine Nil ps sp :> VCont k))) Nil es
         k v = fromMaybe (error "non-exhaustive patterns in lambda") (foldMapA (\ (p, b) -> matchV b p v) vs)
     a (hdl <> h) >>= k
