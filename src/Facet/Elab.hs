@@ -145,7 +145,7 @@ lookupInContext (m:.n)
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
 lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Type] -> m (RName :=: Maybe Def ::: Type)
 lookupInSig (m :. n) mod graph = fmap asum . fmap $ \case
-  T.VNe (Global q@(m':.:_)) _ _ -> do
+  VNe (Global q@(m':.:_)) _ _ -> do
     guard (m == Nil || m == toSnoc m')
     defs <- interfaceScope =<< lookupQ graph mod (toQ q)
     _ :=: d ::: _T <- lookupScope n defs
@@ -327,27 +327,27 @@ unify t1 t2 = type' t1 t2
   nope = couldNotUnify "mismatch" t1 t2
 
   type' = curry $ \case
-    (T.VNe (Free (Left v1)) Nil Nil, T.VNe (Free (Left v2)) Nil Nil) -> flexFlex v1 v2
-    (T.VNe (Free (Left v1)) Nil Nil, t2)                             -> solve v1 t2
-    (t1, T.VNe (Free (Left v2)) Nil Nil)                             -> solve v2 t1
-    (VType, VType)                                                   -> pure ()
-    (VType, _)                                                       -> nope
-    (VInterface, VInterface)                                         -> pure ()
-    (VInterface, _)                                                  -> nope
-    (VForAll n t1 b1, VForAll _ t2 b2)                               -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
-    (VForAll{}, _)                                                   -> nope
+    (VNe (Free (Left v1)) Nil Nil, VNe (Free (Left v2)) Nil Nil) -> flexFlex v1 v2
+    (VNe (Free (Left v1)) Nil Nil, t2)                           -> solve v1 t2
+    (t1, VNe (Free (Left v2)) Nil Nil)                           -> solve v2 t1
+    (VType, VType)                                               -> pure ()
+    (VType, _)                                                   -> nope
+    (VInterface, VInterface)                                     -> pure ()
+    (VInterface, _)                                              -> nope
+    (VForAll n t1 b1, VForAll _ t2 b2)                           -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
+    (VForAll{}, _)                                               -> nope
     -- FIXME: this must unify the signatures
-    (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                             -> type' a1 a2 >> type' b1 b2
-    (VArrow{}, _)                                                    -> nope
-    (VComp s1 t1, VComp s2 t2)                                       -> sig s1 s2 >> type' t1 t2
-    (VComp _ t1, t2)                                                 -> type' t1 t2
-    (t1, VComp _ t2)                                                 -> type' t1 t2
-    (T.VNe v1 ts1 sp1, T.VNe v2 ts2 sp2)                             -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
-    (T.VNe{}, _)                                                     -> nope
-    (T.VString, T.VString)                                           -> pure ()
-    (T.VString, _)                                                   -> nope
-    (VThunk c1, VThunk c2)                                           -> type' c1 c2
-    (VThunk{}, _)                                                    -> nope
+    (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                         -> type' a1 a2 >> type' b1 b2
+    (VArrow{}, _)                                                -> nope
+    (VComp s1 t1, VComp s2 t2)                                   -> sig s1 s2 >> type' t1 t2
+    (VComp _ t1, t2)                                             -> type' t1 t2
+    (t1, VComp _ t2)                                             -> type' t1 t2
+    (VNe v1 ts1 sp1, VNe v2 ts2 sp2)                             -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
+    (VNe{}, _)                                                   -> nope
+    (VString, VString)                                           -> pure ()
+    (VString, _)                                                 -> nope
+    (VThunk c1, VThunk c2)                                       -> type' c1 c2
+    (VThunk{}, _)                                                -> nope
 
   var = curry $ \case
     (Global q1, Global q2)             -> unless (q1 == q2) nope
