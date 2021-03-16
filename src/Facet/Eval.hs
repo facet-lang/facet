@@ -77,7 +77,7 @@ app envCallSite hdl f a = f >>= \case
           (PEff (POp n ps _), b) -> (es :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> eval (bindSpine env ps sp :> VCont k) hdl b), vs)
           (PVal p, b)            -> (es, \ v -> matchV (\ vs -> eval (env <> vs) hdl b) p v <|> vs v)
           (PEff (PAll _), b)     -> (es, \ v -> Just (eval (env :> v) hdl b))
-    eval envCallSite (hdl <> h) a >>= fromMaybe (error "non-exhaustive patterns in lambda") . k
+    fromMaybe (error "non-exhaustive patterns in lambda") . k =<< eval envCallSite (hdl <> h) a
   VCont k     -> k =<< eval envCallSite hdl a
   VVar v      -> fail $ "expected lambda, got var "    <> show v
   VCon n _    -> fail $ "expected lambda, got con "    <> show n
