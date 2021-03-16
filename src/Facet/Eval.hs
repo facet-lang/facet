@@ -49,6 +49,7 @@ eval env hdl = \case
   XString s       -> string s
   XOp n _ sp      -> op hdl n (flip (eval env) <$> sp)
   XThunk t        -> thunk env t
+  XForce t        -> force hdl (eval env hdl t)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
 global n = do
@@ -96,6 +97,11 @@ op hdl n sp = Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ 
 
 thunk :: Applicative m => Snoc (Value n) -> Expr -> m (Value n)
 thunk env t = pure $ VThunk env t
+
+force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
+force hdl t = t >>= \case
+  VThunk env c -> eval env hdl c
+  _            -> fail "expected thunk"
 
 
 -- Machinery

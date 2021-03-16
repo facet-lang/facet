@@ -61,4 +61,5 @@ data Expr
   | XString Text
   | XOp RName (Snoc T.TExpr) (Snoc Expr)
   | XThunk Expr
+  | XForce Expr
   deriving (Eq, Ord, Show)
