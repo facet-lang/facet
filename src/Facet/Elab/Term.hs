@@ -31,6 +31,7 @@ import           Control.Carrier.State.Church
 import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
+import           Control.Monad (unless)
 import           Data.Foldable
 import           Data.Functor
 import           Data.Maybe (catMaybes, fromMaybe)
@@ -113,8 +114,10 @@ fieldsP = foldr cons
     pure (p':ps', b')
 
 
-allP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (EffectPattern Name)
-allP n = Bind $ \ q _A b -> Check $ \ _B -> (PAll n,) <$> (Binding n q _A |- check (b ::: _B))
+allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (EffectPattern Name)
+allP n = Bind $ \ q _A b -> Check $ \ _B -> do
+  unless (case _A of { VComp{} -> True ; _ -> False }) (warn (RedundantCatchAll n))
+  (PAll n,) <$> (Binding n q _A |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
@@ -176,7 +179,7 @@ abstractType body = go
       pure $ TForAll n (T.quote level a) b'
     _                       -> body
 
-abstractTerm :: (HasCallStack, Has (Throw Err) sig m) => (Snoc TExpr -> Snoc Expr -> Expr) -> Check m Expr
+abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TExpr -> Snoc Expr -> Expr) -> Check m Expr
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
@@ -190,7 +193,7 @@ abstractTerm body = go Nil Nil
       d <- depth
       pure $ body (TVar . Free . Right . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
 
-patternForArgType :: (HasCallStack, Has (Throw Err) sig m) => Type -> Name -> Bind m (Pattern Name)
+patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern Name)
 patternForArgType = \case
   VComp{} -> fmap PEff . allP
   _       -> fmap PVal . varP
@@ -199,7 +202,7 @@ patternForArgType = \case
 -- Declarations
 
 elabDataDef
-  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Maybe Def ::: Type]
@@ -215,7 +218,7 @@ elabDataDef (dname ::: _T) constructors = do
     : cs
 
 elabInterfaceDef
-  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err) sig m)
+  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Maybe Def ::: Type]
