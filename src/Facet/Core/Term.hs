@@ -60,4 +60,5 @@ data Expr
   | XCon RName (Snoc T.TExpr) (Snoc Expr)
   | XString Text
   | XOp RName (Snoc T.TExpr) (Snoc Expr)
+  | XThunk Expr
   deriving (Eq, Ord, Show)
