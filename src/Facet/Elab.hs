@@ -23,8 +23,8 @@ module Facet.Elab
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
-, expectMatch
-, expectFunction
+, assertMatch
+, assertFunction
   -- * Warnings
 , Warn(..)
 , WarnReason(..)
@@ -161,7 +161,7 @@ hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ do
   f' ::: _F <- synth f
-  (_ ::: (q, _A), _B) <- expectFunction "in application" _F
+  (_ ::: (q, _A), _B) <- assertFunction "in application" _F
   -- FIXME: test _A for Ret and extend the sig
   a' <- censor @Usage (q ><<) $ check (a ::: _A)
   pure $ mk f' a' ::: _B
@@ -287,11 +287,11 @@ warn reason = do
 
 -- Patterns
 
-expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
-expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
+assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
+assertMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
 
-expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-expectFunction = expectMatch (\case{ VArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
+assertFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
+assertFunction = assertMatch (\case{ VArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Unification
