@@ -42,7 +42,7 @@ eval env hdl = \case
   XTLam b         -> tlam (eval env hdl b)
   XInst f t       -> inst (eval env hdl f) t
   XLam cs         -> lam env cs
-  XApp  f a       -> app hdl (eval env hdl f) (\ hdl -> eval env hdl a)
+  XApp  f a       -> app env hdl (eval env hdl f) a
   XCon n _ fs     -> con n (eval env hdl <$> fs)
   XString s       -> string s
   XOp n _ sp      -> op hdl n (flip (eval env) <$> sp)
@@ -69,8 +69,8 @@ inst = const
 lam :: Snoc (Value (Eval m)) -> [(Pattern Name, Expr)] -> Eval m (Value (Eval m))
 lam env cs = pure $ VLam env cs
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> (Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
-app hdl f a = f >>= \case
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
+app envCallSite hdl f a = f >>= \case
   VLam env cs -> do
     let cs' = map (fmap (\ e vs -> eval (env <> vs) hdl e)) cs
         (h, k) = foldl' combine (Nil, const Nothing) cs'
@@ -78,8 +78,8 @@ app hdl f a = f >>= \case
           (PEff (POp n ps _), b) -> (es :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> b (bindSpine Nil ps sp :> VCont k)), vs)
           (PVal p, b)            -> (es, \ v -> matchV b p v <|> vs v)
           (PEff (PAll _), b)     -> (es, \ v -> Just (b (Nil :> v)))
-    a (hdl <> h) >>= fromMaybe (error "non-exhaustive patterns in lambda") . k
-  VCont k     -> k =<< a hdl
+    eval envCallSite (hdl <> h) a >>= fromMaybe (error "non-exhaustive patterns in lambda") . k
+  VCont k     -> k =<< eval envCallSite hdl a
   VVar v      -> fail $ "expected lambda, got var "    <> show v
   VCon n _    -> fail $ "expected lambda, got con "    <> show n
   VString s   -> fail $ "expected lambda, got string " <> show s
