@@ -10,6 +10,7 @@ module Facet.Elab.Type
 , synthType
 , checkType
   -- * Judgements
+, checkIsType
 , IsType(..)
 , mapIsType
 ) where
@@ -106,6 +107,11 @@ checkInterface = switch . synthInterface
 
 
 -- Judgements
+
+checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Type -> Elab m a
+checkIsType (m ::: _K) = do
+  a ::: _KA <- isType m
+  a <$ unify _KA _K
 
 newtype IsType m a = IsType { isType :: Elab m (a ::: Type) }
 
