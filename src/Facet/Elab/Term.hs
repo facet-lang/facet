@@ -195,7 +195,6 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> var n
   S.App f a  -> app XApp (synthExpr f) (checkExpr a)
   S.As t _T  -> as (checkExpr t ::: synthType _T)
-  S.Force t  -> force (synthExpr t)
   S.String s -> string s
   S.Hole{}   -> nope
   S.Lam{}    -> nope
@@ -208,7 +207,6 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Hole  n  -> hole n
   S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
   S.Thunk c  -> thunk (checkExpr c)
-  S.Force{}  -> synth
   S.Var{}    -> synth
   S.App{}    -> synth
   S.As{}     -> synth
