@@ -44,7 +44,7 @@ import           Prelude hiding (lookup)
 data Kind
   = KType
   | KInterface
-  | KArrow Kind Kind
+  | KArrow (Maybe Name) Kind Kind
 
 
 -- Types

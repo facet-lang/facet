@@ -142,11 +142,14 @@ suppressInstantiation = const
 
 -- Core printers
 
-printKind :: C.Kind -> Print
-printKind = \case
-  C.KType      -> annotate Type $ pretty "Type"
-  C.KInterface -> annotate Type $ pretty "Interface"
-  C.KArrow a b -> printKind a --> printKind b
+printKind :: Snoc Print -> C.Kind -> Print
+printKind env = \case
+  C.KType               -> annotate Type $ pretty "Type"
+  C.KInterface          -> annotate Type $ pretty "Interface"
+  C.KArrow Nothing  a b -> printKind env a --> printKind env b
+  C.KArrow (Just n) a b -> parens (ann (intro n d ::: printKind env a)) --> printKind env b
+  where
+  d = Name.Level (length env)
 
 printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
