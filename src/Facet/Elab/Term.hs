@@ -10,6 +10,7 @@ module Facet.Elab.Term
 , lam
 , app
 , thunk
+, force
 , string
   -- * Pattern combinators
 , wildcardP
@@ -131,6 +132,13 @@ thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
 thunk c = Check $ \ _T -> do
   _C <- assertThunk _T
   XThunk <$> check (c ::: _C)
+
+force :: (HasCallStack, Has (Throw Err) sig m) => Synth m Expr -> Synth m Expr
+force t = Synth $ do
+  t' ::: _T <- synth t
+  -- FIXME: assert by unification
+  _C <- assertThunk _T
+  pure $ XForce t' ::: _C
 
 
 string :: Text -> Synth m Expr
