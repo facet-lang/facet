@@ -42,8 +42,8 @@ import           Prelude hiding (lookup)
 -- Kinds
 
 data Kind
-  = Type
-  | Interface
+  = KType
+  | KInterface
 
 -- Types
 
