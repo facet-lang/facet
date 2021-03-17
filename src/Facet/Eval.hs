@@ -46,8 +46,6 @@ eval env hdl = \case
   XCon n _ fs     -> con n (eval env hdl <$> fs)
   XString s       -> string s
   XOp n _ sp      -> op hdl n (flip (eval env) <$> sp)
-  XThunk t        -> thunk env t
-  XForce t        -> force hdl (eval env hdl t)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
 global n = do
@@ -88,14 +86,6 @@ con n fs = VCon n <$> sequenceA fs
 op :: MonadFail m => [(RName, Handler (Eval m))] -> RName -> Snoc ([(RName, Handler (Eval m))] -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 op hdl n sp = Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp pure) k) (find ((n ==) . fst) hdl)
 
-thunk :: Applicative m => Snoc (Value n) -> Expr -> m (Value n)
-thunk env t = pure $ VThunk env t
-
-force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => [(RName, Handler (Eval m))] -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
-force hdl t = t >>= \case
-  VThunk env c -> eval env hdl c
-  _            -> fail "expected thunk"
-
 
 -- Machinery
 
@@ -132,8 +122,6 @@ data Value m
   | VCon RName (Snoc (Value m))
   -- | Value; strings.
   | VString Text
-  -- | Value; thunks.
-  | VThunk (Snoc (Value m)) Expr
   -- | Computation; lambdas.
   | VLam (Snoc (Value m)) [(Pattern Name, Expr)]
   -- | Computation; continuations, used in effect handlers.
@@ -169,9 +157,8 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
-  VLam _ cs  -> pure $ XLam cs
-  VCont k    -> quoteV (succ d) =<< k (VVar (Free d))
-  VVar v     -> pure (XVar (levelToIndex d <$> v))
-  VCon n fs  -> XCon n Nil <$> traverse (quoteV d) fs
-  VString s  -> pure $ XString s
-  VThunk _ t -> pure $ XThunk t
+  VLam _ cs -> pure $ XLam cs
+  VCont k   -> quoteV (succ d) =<< k (VVar (Free d))
+  VVar v    -> pure (XVar (levelToIndex d <$> v))
+  VCon n fs -> XCon n Nil <$> traverse (quoteV d) fs
+  VString s -> pure $ XString s
