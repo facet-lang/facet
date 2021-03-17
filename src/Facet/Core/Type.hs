@@ -1,6 +1,8 @@
 module Facet.Core.Type
-( -- * Types
-  Type(..)
+( -- * Kinds
+  Kind(..)
+  -- * Types
+, Type(..)
 , global
 , free
 , metavar
@@ -36,6 +38,12 @@ import           Facet.Syntax
 import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup)
+
+-- Kinds
+
+data Kind
+  = Type
+  | Interface
 
 -- Types
 
