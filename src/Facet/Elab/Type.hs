@@ -37,7 +37,7 @@ tvar n = IsType $ views context_ (lookupInContext n) >>= \case
   Just (i, q, Right _T) -> use i q $> (TVar (Free (Right i)) ::: _T)
   _                     -> do
     q :=: _ ::: _T <- resolveQ n
-    instantiate TInst $ TVar (Global q) ::: _T
+    pure $ TVar (Global q) ::: _T
 
 
 _Type :: IsType m TExpr
