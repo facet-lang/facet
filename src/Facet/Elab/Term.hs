@@ -60,6 +60,9 @@ import           GHC.Stack
 
 -- General combinators
 
+switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
+switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
+
 as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m TExpr -> Synth m Expr
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv

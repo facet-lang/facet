@@ -5,7 +5,6 @@
 module Facet.Elab
 ( -- * General
   unify
-, switch
 , lookupInContext
 , lookupInSig
 , resolveQ
@@ -104,9 +103,6 @@ instantiate inst = go
       go (inst e (TVar (Free (Left m))) ::: _B (metavar m))
     _                -> pure $ e ::: _T
 
-
-switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
-switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
 
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
