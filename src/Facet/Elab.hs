@@ -17,6 +17,7 @@ module Facet.Elab
 , Err(..)
 , ErrReason(..)
 , err
+, couldNotUnify
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
