@@ -65,6 +65,7 @@ import           Facet.Graph
 import           Facet.Name
 import           Facet.Semiring (Few(..), zero, (><<))
 import           Facet.Snoc
+import           Facet.Snoc.NonEmpty as NE
 import           Facet.Source (Source)
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -154,7 +155,7 @@ varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (ValuePattern Na
 varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q (wrap _A) |- check (b ::: _B))
   where
   wrap = \case
-    VComp sig _A -> VThunk (VComp sig _A)
+    VComp sig _A -> VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil Nil) (VComp sig _A)
     _T           -> _T
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
@@ -176,7 +177,7 @@ fieldsP = foldr cons
 allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _T) <- assertComp _A
-  (PAll n,) <$> (Binding n q (VThunk (VComp sig _T)) |- check (b ::: _B))
+  (PAll n,) <$> (Binding n q (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil Nil) (VComp sig _T)) |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
