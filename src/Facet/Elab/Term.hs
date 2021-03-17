@@ -27,6 +27,11 @@ module Facet.Elab.Term
   -- * Modules
 , elabModule
   -- * Judgements
+, check
+, Check(..)
+, mapCheck
+, Synth(..)
+, mapSynth
 , bind
 , Bind(..)
 , mapBind
@@ -39,6 +44,7 @@ import           Control.Effect.Lens (view, views, (.=))
 import           Control.Effect.Throw
 import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
+import           Data.Bifunctor (first)
 import           Data.Foldable
 import           Data.Functor
 import           Data.Maybe (catMaybes, fromMaybe)
@@ -344,6 +350,27 @@ withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 
 
 -- Judgements
+
+check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
+check (m ::: _T) = case unRet _T of
+  Just (sig, _) -> extendSig sig $ runCheck m _T
+  Nothing       -> runCheck m _T
+
+newtype Check m a = Check { runCheck :: Type -> Elab m a }
+  deriving (Applicative, Functor) via ReaderC Type (Elab m)
+
+mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
+mapCheck f m = Check $ \ _T -> f (runCheck m _T)
+
+
+newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
+
+instance Functor (Synth m) where
+  fmap f (Synth m) = Synth (first f <$> m)
+
+mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m b
+mapSynth f = Synth . f . synth
+
 
 bind :: Bind m a ::: (Quantity, Type) -> Check m b -> Check m (a, b)
 bind (p ::: (q, _T)) = runBind p q _T

@@ -41,12 +41,6 @@ module Facet.Elab
 , elabTerm
 , elabSynth
 , elabSynthType
-  -- * Judgements
-, check
-, Check(..)
-, mapCheck
-, Synth(..)
-, mapSynth
 ) where
 
 import Control.Algebra
@@ -58,7 +52,6 @@ import Control.Carrier.Writer.Church
 import Control.Effect.Lens (views)
 import Control.Lens (Lens', lens)
 import Control.Monad (guard, unless)
-import Data.Bifunctor (first)
 import Data.Foldable (asum)
 import Facet.Context as Context
 import Facet.Core.Module
@@ -374,26 +367,3 @@ elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (e ::: T.eval subst
 
 elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (TExpr ::: Type) -> m (Type ::: Type)
 elabSynthType scale = elabWith scale (\ subst (_T ::: _K) -> pure (T.eval subst Nil _T ::: T.eval subst Nil (T.quote 0 _K)))
-
-
--- Judgements
-
-check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
-check (m ::: _T) = case unRet _T of
-  Just (sig, _) -> extendSig sig $ runCheck m _T
-  Nothing       -> runCheck m _T
-
-newtype Check m a = Check { runCheck :: Type -> Elab m a }
-  deriving (Applicative, Functor) via ReaderC Type (Elab m)
-
-mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
-mapCheck f m = Check $ \ _T -> f (runCheck m _T)
-
-
-newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
-
-instance Functor (Synth m) where
-  fmap f (Synth m) = Synth (first f <$> m)
-
-mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m b
-mapSynth f = Synth . f . synth
