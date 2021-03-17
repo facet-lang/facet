@@ -32,7 +32,7 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (view, (.=))
+import           Control.Effect.Lens (view, views, (.=))
 import           Control.Effect.Throw
 import           Control.Lens (at, ix)
 import           Data.Foldable
@@ -41,7 +41,7 @@ import           Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context (Binding(..))
+import           Facet.Context (Binding(..), toEnv)
 import           Facet.Core.Module as Module
 import           Facet.Core.Term as E
 import           Facet.Core.Type as T hiding (global)
@@ -57,6 +57,17 @@ import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Facet.Usage hiding (restrict)
 import           GHC.Stack
+
+-- General combinators
+
+as :: (HasCallStack, Algebra sig m) => Check m Expr ::: Check m TExpr -> Synth m Expr
+as (m ::: _T) = Synth $ do
+  env <- views context_ toEnv
+  subst <- get
+  _T' <- T.eval subst (Left <$> env) <$> check (_T ::: VType)
+  a <- check (m ::: _T')
+  pure $ a ::: _T'
+
 
 -- Term combinators
 
