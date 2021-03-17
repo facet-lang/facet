@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Facet.Elab.Term
-( -- * Term combinators
-  global
+( -- * General combinators
+  switch
+, as
+  -- * Term combinators
+, global
 , var
 , tlam
 , lam
