@@ -46,7 +46,6 @@ data Type
   | TArrow (Maybe Name) (Maybe Mul) (Ann Type) (Ann Type)
   | TComp [Ann Interface] (Ann Type)
   | TApp (Ann Type) (Ann Type)
-  | TThunk (Ann Type)
   deriving (Eq, Show)
 
 data Mul = Zero | One
