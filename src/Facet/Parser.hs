@@ -14,9 +14,10 @@ module Facet.Parser
 
 import           Control.Algebra ((:+:))
 import           Control.Applicative (Alternative(..))
-import           Control.Carrier.Reader
+import qualified Control.Carrier.Reader as C
 import qualified Control.Carrier.State.Strict as C
 import qualified Control.Carrier.Writer.Strict as C
+import           Control.Effect.Reader
 import           Control.Effect.State
 import           Control.Effect.Writer
 import           Control.Monad.Fix
@@ -67,7 +68,7 @@ makeOperator (name, op, assoc) = (op, assoc, nary (name N.:. N.O op))
 module' :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Module)
 module' = anned $ do
   (name, imports) <- moduleHeader
-  decls <- many decl
+  decls <- C.runReader name (runReaderC (many decl))
   ops <- get @[Operator (S.Ann S.Expr)]
   pure $ S.Module name imports (map (\ (op, assoc, _) -> (op, assoc)) ops) decls
 
@@ -399,3 +400,38 @@ instance (Monad p, Parsing p) => Parsing (WriterC s p) where
   unexpected = lift . unexpected
   eof = lift eof
   notFollowedBy (WriterC (C.WriterC m)) = WriterC $ C.WriterC $ C.StateC $ \ s -> (s,) <$> notFollowedBy (C.evalState s m)
+
+
+newtype ReaderC r m a = ReaderC { runReaderC :: C.ReaderC r m a }
+  deriving (Algebra (Reader r :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadFix, MonadTrans)
+
+instance (Monad p, Parsing p) => Parsing (ReaderC r p) where
+  try (ReaderC m) = ReaderC $ C.ReaderC $ try . (`C.runReader` m)
+  ReaderC m <?> l = ReaderC $ C.ReaderC $ \ r -> C.runReader r m <?> l
+  unexpected = lift . unexpected
+  eof = lift eof
+  notFollowedBy (ReaderC m) = ReaderC $ C.ReaderC $ \ r -> notFollowedBy (C.runReader r m)
+
+instance (Monad p, CharParsing p) => CharParsing (ReaderC r p) where
+  satisfy = lift . satisfy
+  {-# INLINE satisfy #-}
+  char    = lift . char
+  {-# INLINE char #-}
+  notChar = lift . notChar
+  {-# INLINE notChar #-}
+  anyChar = lift anyChar
+  {-# INLINE anyChar #-}
+  string  = lift . string
+  {-# INLINE string #-}
+  text = lift . text
+  {-# INLINE text #-}
+
+instance (Monad p, TokenParsing p) => TokenParsing (ReaderC r p) where
+  nesting (ReaderC m) = ReaderC $ C.ReaderC $ nesting . (`C.runReader` m)
+  {-# INLINE nesting #-}
+  someSpace = lift someSpace
+  {-# INLINE someSpace #-}
+  semi      = lift semi
+  {-# INLINE semi #-}
+  highlight h (ReaderC m) = ReaderC $ C.ReaderC $ highlight h . (`C.runReader` m)
+  {-# INLINE highlight #-}
