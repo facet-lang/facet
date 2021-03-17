@@ -324,13 +324,11 @@ unify t1 t2 = type' t1 t2
 
   flexFlex v1 v2
     | v1 == v2  = pure ()
-    | otherwise = do
-      (t1, t2) <- gets (\ s -> (T.lookupMeta v1 s, T.lookupMeta v2 s))
-      case (t1, t2) of
-        (Just t1, Just t2) -> type' (tm t1) (tm t2)
-        (Just t1, Nothing) -> type' (metavar v2) (tm t1)
-        (Nothing, Just t2) -> type' (metavar v1) (tm t2)
-        (Nothing, Nothing) -> solve v1 (metavar v2)
+    | otherwise = gets (\ s -> (T.lookupMeta v1 s, T.lookupMeta v2 s)) >>= \case
+      (Just t1, Just t2) -> type' (tm t1) (tm t2)
+      (Just t1, Nothing) -> type' (metavar v2) (tm t1)
+      (Nothing, Just t2) -> type' (metavar v1) (tm t2)
+      (Nothing, Nothing) -> solve v1 (metavar v2)
 
   solve v t = do
     d <- depth
