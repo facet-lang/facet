@@ -62,6 +62,7 @@ data Expr
   | App (Ann Expr) (Ann Expr)
   | As (Ann Expr) (Ann Type)
   | Thunk (Ann Expr)
+  | Force (Ann Expr)
   | String Text
   deriving (Eq, Show)
 
