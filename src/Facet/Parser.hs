@@ -30,7 +30,7 @@ import           Data.Foldable (foldl')
 import           Data.Functor (void)
 import qualified Data.HashSet as HashSet
 import qualified Data.List.NonEmpty as NE
-import           Data.Text (Text, pack)
+import           Data.Text (pack)
 import           Facet.Effect.Parser
 import qualified Facet.Name as N
 import           Facet.Parser.Table as Op
@@ -57,8 +57,8 @@ whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
 
 
-makeOperator :: (Snoc Text, N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
-makeOperator (name, op, assoc) = (op, assoc, nary (name N.:. N.O op))
+makeOperator :: (N.MName, N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
+makeOperator (name, op, assoc) = (op, assoc, nary (toSnoc name N.:. N.O op))
   where
   nary name es = foldl' (S.annBinary S.App) (S.Ann (S.ann (head es)) Nil (S.Var name)) es
 
@@ -81,7 +81,7 @@ moduleHeader = (,) <$ reserve dnameStyle "module" <*> mname <* colon <* symbol "
 import' :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Import)
 import' = anned $ S.Import <$ reserve dnameStyle "import" <*> mname
 
-decl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Decl))
+decl :: (Has Parser sig p, Has (Reader N.MName) sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Decl))
 decl = choice
   [ termDecl
   , dataDecl
@@ -91,7 +91,7 @@ decl = choice
 -- FIXME: operators aren’t available until after their declarations have been parsed.
 -- FIXME: parse operator declarations in datatypes.
 -- FIXME: parse operator declarations in interfaces.
-termDecl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Decl))
+termDecl :: (Has Parser sig p, Has (Reader N.MName) sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Decl))
 termDecl = anned $ do
   name <- dename
   case name of
@@ -104,7 +104,8 @@ termDecl = anned $ do
           , N.A <$ symbol "assoc"
           ]
         _ -> pure N.N
-      modify (makeOperator (Nil, op, assoc) :)
+      mname <- ask
+      modify (makeOperator (mname, op, assoc) :)
     _      -> pure ()
   decl <- anned $ S.Decl <$ colon <*> typeSig ename <*> (S.TermDef <$> body)
   pure (name, decl)
