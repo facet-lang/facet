@@ -108,7 +108,6 @@ library
     Facet.Run
     Facet.Semialign
     Facet.Semiring
-    Facet.Show
     Facet.Snoc
     Facet.Snoc.NonEmpty
     Facet.Source

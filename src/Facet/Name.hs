@@ -9,6 +9,8 @@ module Facet.Name
 , MName
 , prettyMName
 , QName(..)
+, RName(..)
+, toQ
 , Name(..)
 , Assoc(..)
 , Op(..)
@@ -22,6 +24,7 @@ import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Facet.Snoc
+import           Facet.Snoc.NonEmpty
 import qualified Prettyprinter as P
 import           Silkscreen
 
@@ -54,23 +57,36 @@ __ :: Name
 __ = U T.empty
 
 
-type MName = Snoc Text
+type MName = NonEmpty Text
 
 prettyMName :: Printer a => MName -> a
-prettyMName = \case
-  Nil   -> mempty
-  ns:>n -> foldr' (surround dot . pretty) (pretty n) ns
+prettyMName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
 
 
 -- | Qualified names, consisting of a module name and declaration name.
-data QName = MName :.: Name -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
+data QName = Snoc Text :. Name -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
   deriving (Eq, Ord)
 
 instance Show QName where
-  showsPrec p (m :.: n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":.:" . showsPrec 10 n
+  showsPrec p (m :. n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":." . showsPrec 10 n
 
 instance P.Pretty QName where
+  pretty (m :. n) = foldr' (surround dot . pretty) (pretty n) m
+
+
+-- | Resolved names.
+data RName = MName :.: Name
+  deriving (Eq, Ord)
+
+instance Show RName where
+  showsPrec p (m :.: n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":.:" . showsPrec 10 n
+
+instance P.Pretty RName where
   pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
+
+-- | Weaken an 'RName' to a 'QName'. This is primarily used for performing lookups in the graph starting from an 'RName' where the stronger structure is not required.
+toQ :: RName -> QName
+toQ (m :.: n) = toSnoc m :. n
 
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.

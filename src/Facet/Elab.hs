@@ -5,26 +5,23 @@
 module Facet.Elab
 ( -- * General
   unify
-, switch
-, as
 , lookupInContext
 , lookupInSig
 , resolveQ
 , resolveC
 , meta
 , instantiate
-, hole
-, app
 , (|-)
   -- * Errors
 , pushSpan
 , Err(..)
 , ErrReason(..)
+, err
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
-, expectMatch
-, expectFunction
+, assertMatch
+, assertFunction
   -- * Warnings
 , Warn(..)
 , WarnReason(..)
@@ -42,17 +39,8 @@ module Facet.Elab
 , elabWith
 , elabType
 , elabTerm
-, elabSynth
+, elabSynthTerm
 , elabSynthType
-  -- * Judgements
-, check
-, Check(..)
-, mapCheck
-, Synth(..)
-, mapSynth
-, bind
-, Bind(..)
-, mapBind
 ) where
 
 import Control.Algebra
@@ -64,7 +52,6 @@ import Control.Carrier.Writer.Church
 import Control.Effect.Lens (views)
 import Control.Lens (Lens', lens)
 import Control.Monad (guard, unless)
-import Data.Bifunctor (first)
 import Data.Foldable (asum)
 import Facet.Context as Context
 import Facet.Core.Module
@@ -77,6 +64,7 @@ import Facet.Name hiding (L, R)
 import Facet.Semialign
 import Facet.Semiring
 import Facet.Snoc
+import Facet.Snoc.NonEmpty (toSnoc)
 import Facet.Source (Source, slice)
 import Facet.Span (Span(..))
 import Facet.Syntax
@@ -104,66 +92,43 @@ instantiate inst = go
   go (e ::: _T) = case _T of
     VForAll _ _T _B -> do
       m <- meta _T
-      go (inst e (TVar (Metavar m)) ::: _B (metavar m))
+      go (inst e (TVar (Free (Left m))) ::: _B (metavar m))
     _                -> pure $ e ::: _T
 
 
-switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
-switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
-
-as :: (HasCallStack, Algebra sig m) => Check m Expr ::: Check m TExpr -> Synth m Expr
-as (m ::: _T) = Synth $ do
-  env <- views context_ toEnv
-  subst <- get
-  _T' <- T.eval subst (Left <$> env) <$> check (_T ::: VType)
-  a <- check (m ::: _T')
-  pure $ a ::: _T'
-
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
-  => (forall m . Alternative m => Name -> Module -> m (QName :=: Maybe Def ::: Type))
+  => (forall m . Alternative m => Name -> Module -> m (RName :=: Maybe Def ::: Type))
   -> QName
-  -> Elab m (QName :=: Maybe Def ::: Type)
+  -> Elab m (RName :=: Maybe Def ::: Type)
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
   ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
 
-resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Maybe Def ::: Type)
+resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Def ::: Type)
 resolveC = resolveWith lookupC
 
-resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (QName :=: Maybe Def ::: Type)
+resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Def ::: Type)
 resolveQ = resolveWith lookupD
 
 lookupInContext :: Alternative m => QName -> Context -> m (Index, Quantity, Type)
-lookupInContext (m:.:n)
+lookupInContext (m:.n)
   | m == Nil  = lookupIndex n
   | otherwise = const Alt.empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Type] -> m (QName :=: Maybe Def ::: Type)
-lookupInSig (m :.: n) mod graph = fmap asum . fmap $ \case
-  T.VNe (Global q@(m':.:_)) _ _ -> do
-    guard (m == Nil || m == m')
-    defs <- interfaceScope =<< lookupQ graph mod q
+lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Type] -> m (RName :=: Maybe Def ::: Type)
+lookupInSig (m :. n) mod graph = fmap asum . fmap $ \case
+  VNe (Global q@(m':.:_)) _ _ -> do
+    guard (m == Nil || m == toSnoc m')
+    defs <- interfaceScope =<< lookupQ graph mod (toQ q)
     _ :=: d ::: _T <- lookupScope n defs
     pure $ m':.:n :=: d ::: _T
   _                             -> Alt.empty
   where
   interfaceScope (_ :=: d ::: _) = case d of { Just (DInterface defs) -> pure defs ; _ -> Alt.empty }
-
-
-hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
-hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
-
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
-app mk f a = Synth $ do
-  f' ::: _F <- synth f
-  (_ ::: (q, _A), _B) <- expectFunction "in application" _F
-  -- FIXME: test _A for Ret and extend the sig
-  a' <- censor @Usage (q ><<) $ check (a ::: _A)
-  pure $ mk f' a' ::: _B
 
 
 (|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a
@@ -216,10 +181,10 @@ data Err = Err
 data ErrReason
   = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
-  | AmbiguousName QName [QName]
+  | AmbiguousName QName [RName]
   | CouldNotSynthesize String
   | ResourceMismatch Name Quantity Quantity
-  | Mismatch String (Either String Type) Type
+  | Mismatch (Either String Type) Type
   | Hole Name Type
   | Invariant String
 
@@ -229,7 +194,7 @@ applySubst ctx subst r = case r of
   AmbiguousName{}      -> r
   CouldNotSynthesize{} -> r
   ResourceMismatch{}   -> r
-  Mismatch m exp act   -> Mismatch m (roundtrip <$> exp) (roundtrip act)
+  Mismatch exp act     -> Mismatch (roundtrip <$> exp) (roundtrip act)
   Hole n t             -> Hole n (roundtrip t)
   Invariant{}          -> r
   where
@@ -246,11 +211,11 @@ err reason = do
   subst <- get
   throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Throw Err) sig m) => String -> Either String Type -> Type -> Elab m a
-mismatch msg exp act = withFrozenCallStack $ err $ Mismatch msg exp act
+mismatch :: (HasCallStack, Has (Throw Err) sig m) => Either String Type -> Type -> Elab m a
+mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Type -> Elab m a
-couldNotUnify msg t1 t2 = withFrozenCallStack $ mismatch msg (Right t2) t1
+couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m a
+couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right t2) t1
 
 couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
 couldNotSynthesize v = withFrozenCallStack $ err $ CouldNotSynthesize v
@@ -261,7 +226,7 @@ resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp 
 freeVariable :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m a
 freeVariable n = withFrozenCallStack $ err $ FreeVariable n
 
-ambiguousName :: (HasCallStack, Has (Throw Err) sig m) => QName -> [QName] -> Elab m a
+ambiguousName :: (HasCallStack, Has (Throw Err) sig m) => QName -> [RName] -> Elab m a
 ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
 
 
@@ -286,11 +251,11 @@ warn reason = do
 
 -- Patterns
 
-expectMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> String -> Type -> Elab m out
-expectMatch pat exp s _T = maybe (mismatch s (Left exp) _T) pure (pat _T)
+assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> Type -> Elab m out
+assertMatch pat exp _T = maybe (mismatch (Left exp) _T) pure (pat _T)
 
-expectFunction :: (HasCallStack, Has (Throw Err) sig m) => String -> Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-expectFunction = expectMatch (\case{ VArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
+assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
+assertFunction = assertMatch (\case{ VArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Unification
@@ -323,36 +288,35 @@ spans_ = lens spans (\ e spans -> e{ spans })
 unify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m ()
 unify t1 t2 = type' t1 t2
   where
-  nope = couldNotUnify "mismatch" t1 t2
+  nope = couldNotUnify t1 t2
 
   type' = curry $ \case
-    (T.VNe (Metavar v1) Nil Nil, T.VNe (Metavar v2) Nil Nil) -> flexFlex v1 v2
-    (T.VNe (Metavar v1) Nil Nil, t2)                         -> solve v1 t2
-    (t1, T.VNe (Metavar v2) Nil Nil)                         -> solve v2 t1
-    (VType, VType)                                           -> pure ()
-    (VType, _)                                               -> nope
-    (VInterface, VInterface)                                 -> pure ()
-    (VInterface, _)                                          -> nope
-    (VForAll n t1 b1, VForAll _ t2 b2)                       -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
-    (VForAll{}, _)                                           -> nope
+    (VNe (Free (Left v1)) Nil Nil, VNe (Free (Left v2)) Nil Nil) -> flexFlex v1 v2
+    (VNe (Free (Left v1)) Nil Nil, t2)                           -> solve v1 t2
+    (t1, VNe (Free (Left v2)) Nil Nil)                           -> solve v2 t1
+    (VType, VType)                                               -> pure ()
+    (VType, _)                                                   -> nope
+    (VInterface, VInterface)                                     -> pure ()
+    (VInterface, _)                                              -> nope
+    (VForAll n t1 b1, VForAll _ t2 b2)                           -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
+    (VForAll{}, _)                                               -> nope
     -- FIXME: this must unify the signatures
-    (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                     -> type' a1 a2 >> type' b1 b2
-    (VArrow{}, _)                                            -> nope
-    (VRet s1 t1, VRet s2 t2)                                 -> sig s1 s2 >> type' t1 t2
-    (VRet _ t1, t2)                                          -> type' t1 t2
-    (t1, VRet _ t2)                                          -> type' t1 t2
-    (T.VNe v1 ts1 sp1, T.VNe v2 ts2 sp2)                     -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
-    (T.VNe{}, _)                                             -> nope
-    (T.VString, T.VString)                                   -> pure ()
-    (T.VString, _)                                           -> nope
+    (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                         -> type' a1 a2 >> type' b1 b2
+    (VArrow{}, _)                                                -> nope
+    (VComp s1 t1, VComp s2 t2)                                   -> sig s1 s2 >> type' t1 t2
+    (VComp _ t1, t2)                                             -> type' t1 t2
+    (t1, VComp _ t2)                                             -> type' t1 t2
+    (VNe v1 ts1 sp1, VNe v2 ts2 sp2)                             -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
+    (VNe{}, _)                                                   -> nope
+    (VString, VString)                                           -> pure ()
+    (VString, _)                                                 -> nope
 
   var = curry $ \case
-    (Global q1, Global q2)   -> unless (q1 == q2) nope
-    (Global{}, _)            -> nope
-    (Free v1, Free v2)       -> unless (v1 == v2) nope
-    (Free{}, _)              -> nope
-    (Metavar m1, Metavar m2) -> unless (m1 == m2) nope
-    (Metavar{}, _)           -> nope
+    (Global q1, Global q2)             -> unless (q1 == q2) nope
+    (Global{}, _)                      -> nope
+    (Free (Right v1), Free (Right v2)) -> unless (v1 == v2) nope
+    (Free (Left m1), Free (Left m2))   -> unless (m1 == m2) nope
+    (Free{}, _)                        -> nope
 
   spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
 
@@ -360,18 +324,16 @@ unify t1 t2 = type' t1 t2
 
   flexFlex v1 v2
     | v1 == v2  = pure ()
-    | otherwise = do
-      (t1, t2) <- gets (\ s -> (T.lookupMeta v1 s, T.lookupMeta v2 s))
-      case (t1, t2) of
-        (Just t1, Just t2) -> type' (tm t1) (tm t2)
-        (Just t1, Nothing) -> type' (metavar v2) (tm t1)
-        (Nothing, Just t2) -> type' (metavar v1) (tm t2)
-        (Nothing, Nothing) -> solve v1 (metavar v2)
+    | otherwise = gets (\ s -> (T.lookupMeta v1 s, T.lookupMeta v2 s)) >>= \case
+      (Just t1, Just t2) -> type' (tm t1) (tm t2)
+      (Just t1, Nothing) -> type' (metavar v2) (tm t1)
+      (Nothing, Just t2) -> type' (metavar v1) (tm t2)
+      (Nothing, Nothing) -> solve v1 (metavar v2)
 
   solve v t = do
     d <- depth
-    if occursIn (== Metavar v) d t then
-      mismatch "infinite type" (Right (metavar v)) t
+    if occursIn (== Free (Left v)) d t then
+      mismatch (Right (metavar v)) t
     else
       gets (T.lookupMeta v) >>= \case
         Nothing          -> modify (T.solveMeta v t)
@@ -396,41 +358,8 @@ elabType = elabWith zero (\ subst t -> pure (T.eval subst Nil t))
 elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Expr -> m Expr
 elabTerm = elabWith one (const pure)
 
-elabSynth :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (Expr ::: Type) -> m (Expr ::: Type)
-elabSynth scale = elabWith scale (\ subst (e ::: _T) -> pure (e ::: T.eval subst Nil (T.quote 0 _T)))
+elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (Expr ::: Type) -> m (Expr ::: Type)
+elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: T.eval subst Nil (T.quote 0 _T)))
 
-elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Quantity -> Elab m (TExpr ::: Type) -> m (Type ::: Type)
-elabSynthType scale = elabWith scale (\ subst (_T ::: _K) -> pure (T.eval subst Nil _T ::: T.eval subst Nil (T.quote 0 _K)))
-
-
--- Judgements
-
-check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
-check (m ::: _T) = case unRet _T of
-  Just (sig, _) -> extendSig sig $ runCheck m _T
-  Nothing       -> runCheck m _T
-
-newtype Check m a = Check { runCheck :: Type -> Elab m a }
-  deriving (Applicative, Functor) via ReaderC Type (Elab m)
-
-mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
-mapCheck f m = Check $ \ _T -> f (runCheck m _T)
-
-
-newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
-
-instance Functor (Synth m) where
-  fmap f (Synth m) = Synth (first f <$> m)
-
-mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m b
-mapSynth f = Synth . f . synth
-
-
-bind :: Bind m a ::: (Quantity, Type) -> Check m b -> Check m (a, b)
-bind (p ::: (q, _T)) = runBind p q _T
-
-newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check m x -> Check m (a, x) }
-  deriving (Functor)
-
-mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
-mapBind f m = Bind $ \ q _A b -> mapCheck f (runBind m q _A b)
+elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr ::: Type) -> m (Type ::: Type)
+elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst Nil _T ::: T.eval subst Nil (T.quote 0 _K)))

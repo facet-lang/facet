@@ -14,9 +14,10 @@ module Facet.Parser
 
 import           Control.Algebra ((:+:))
 import           Control.Applicative (Alternative(..))
-import           Control.Carrier.Reader
+import qualified Control.Carrier.Reader as C
 import qualified Control.Carrier.State.Strict as C
 import qualified Control.Carrier.Writer.Strict as C
+import           Control.Effect.Reader
 import           Control.Effect.State
 import           Control.Effect.Writer
 import           Control.Monad.Fix
@@ -34,6 +35,7 @@ import           Facet.Effect.Parser
 import qualified Facet.Name as N
 import           Facet.Parser.Table as Op
 import           Facet.Snoc
+import           Facet.Snoc.NonEmpty (toSnoc)
 import           Facet.Span
 import qualified Facet.Surface as S
 import           Facet.Syntax
@@ -56,7 +58,7 @@ whole p = whiteSpace *> p <* eof
 
 
 makeOperator :: (N.MName, N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
-makeOperator (name, op, assoc) = (op, assoc, nary (name N.:.: N.O op))
+makeOperator (name, op, assoc) = (op, assoc, nary (toSnoc name N.:. N.O op))
   where
   nary name es = foldl' (S.annBinary S.App) (S.Ann (S.ann (head es)) Nil (S.Var name)) es
 
@@ -66,7 +68,7 @@ makeOperator (name, op, assoc) = (op, assoc, nary (name N.:.: N.O op))
 module' :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Module)
 module' = anned $ do
   (name, imports) <- moduleHeader
-  decls <- many decl
+  decls <- C.runReader name (runReaderC (many decl))
   ops <- get @[Operator (S.Ann S.Expr)]
   pure $ S.Module name imports (map (\ (op, assoc, _) -> (op, assoc)) ops) decls
 
@@ -79,7 +81,7 @@ moduleHeader = (,) <$ reserve dnameStyle "module" <*> mname <* colon <* symbol "
 import' :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Import)
 import' = anned $ S.Import <$ reserve dnameStyle "import" <*> mname
 
-decl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Decl))
+decl :: (Has Parser sig p, Has (Reader N.MName) sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Decl))
 decl = choice
   [ termDecl
   , dataDecl
@@ -89,7 +91,7 @@ decl = choice
 -- FIXME: operators aren’t available until after their declarations have been parsed.
 -- FIXME: parse operator declarations in datatypes.
 -- FIXME: parse operator declarations in interfaces.
-termDecl :: (Has Parser sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Decl))
+termDecl :: (Has Parser sig p, Has (Reader N.MName) sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Decl))
 termDecl = anned $ do
   name <- dename
   case name of
@@ -102,7 +104,8 @@ termDecl = anned $ do
           , N.A <$ symbol "assoc"
           ]
         _ -> pure N.N
-      modify (makeOperator (Nil, op, assoc) :)
+      mname <- ask
+      modify (makeOperator (mname, op, assoc) :)
     _      -> pure ()
   decl <- anned $ S.Decl <$ colon <*> typeSig ename <*> (S.TermDef <$> body)
   pure (name, decl)
@@ -171,7 +174,7 @@ mul = choice [ S.Zero <$ token (char '0'), S.One <$ token (char '1') ]
 retType :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type) -> p (S.Ann S.Type)
 retType _ next = mk <$> anned ((,) <$> optional signature <*> next)
   where
-  mk (S.Ann s c (sig, _T)) = maybe id (\ sig -> S.Ann s c . S.TRet sig) sig _T
+  mk (S.Ann s c (sig, _T)) = maybe id (\ sig -> S.Ann s c . S.TComp sig) sig _T
 
 
 -- FIXME: support type operators
@@ -187,7 +190,7 @@ signature = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
   head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
-  mkHead cs = fromList (NE.init cs) N.:.: N.U (NE.last cs)
+  mkHead cs = fromList (NE.init cs) N.:. N.U (NE.last cs)
   comp = ident tnameStyle
 
 
@@ -220,7 +223,7 @@ clause = S.Clause <$> try (compPattern <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Expr)
 evar = choice
-  [ token (anned (runUnspaced (S.Var <$> try ((N.:.:) . fromList <$> many (comp <* dot) <*> ename))))
+  [ token (anned (runUnspaced (S.Var <$> try ((N.:.) . fromList <$> many (comp <* dot) <*> ename))))
     -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
   , try (anned (parens (S.Var <$> qname (N.O <$> oname))))
   ]
@@ -291,7 +294,7 @@ mname = token (runUnspaced (fromList <$> sepBy1 comp dot))
   comp = ident tnameStyle
 
 qname :: (Has Parser sig p, TokenParsing p) => p N.Name -> p N.QName
-qname name = token (runUnspaced (try ((N.:.:) <$> mname <*> Unspaced name) <|> (Nil N.:.:) <$> Unspaced name)) <?> "name"
+qname name = token (runUnspaced (try ((N.:.) . toSnoc <$> mname <*> Unspaced name) <|> (Nil N.:.) <$> Unspaced name)) <?> "name"
 
 
 reserved :: HashSet.HashSet String
@@ -398,3 +401,38 @@ instance (Monad p, Parsing p) => Parsing (WriterC s p) where
   unexpected = lift . unexpected
   eof = lift eof
   notFollowedBy (WriterC (C.WriterC m)) = WriterC $ C.WriterC $ C.StateC $ \ s -> (s,) <$> notFollowedBy (C.evalState s m)
+
+
+newtype ReaderC r m a = ReaderC { runReaderC :: C.ReaderC r m a }
+  deriving (Algebra (Reader r :+: sig), Alternative, Applicative, Functor, Monad, MonadFail, MonadFix, MonadTrans)
+
+instance (Monad p, Parsing p) => Parsing (ReaderC r p) where
+  try (ReaderC m) = ReaderC $ C.ReaderC $ try . (`C.runReader` m)
+  ReaderC m <?> l = ReaderC $ C.ReaderC $ \ r -> C.runReader r m <?> l
+  unexpected = lift . unexpected
+  eof = lift eof
+  notFollowedBy (ReaderC m) = ReaderC $ C.ReaderC $ \ r -> notFollowedBy (C.runReader r m)
+
+instance (Monad p, CharParsing p) => CharParsing (ReaderC r p) where
+  satisfy = lift . satisfy
+  {-# INLINE satisfy #-}
+  char    = lift . char
+  {-# INLINE char #-}
+  notChar = lift . notChar
+  {-# INLINE notChar #-}
+  anyChar = lift anyChar
+  {-# INLINE anyChar #-}
+  string  = lift . string
+  {-# INLINE string #-}
+  text = lift . text
+  {-# INLINE text #-}
+
+instance (Monad p, TokenParsing p) => TokenParsing (ReaderC r p) where
+  nesting (ReaderC m) = ReaderC $ C.ReaderC $ nesting . (`C.runReader` m)
+  {-# INLINE nesting #-}
+  someSpace = lift someSpace
+  {-# INLINE someSpace #-}
+  semi      = lift semi
+  {-# INLINE semi #-}
+  highlight h (ReaderC m) = ReaderC $ C.ReaderC $ highlight h . (`C.runReader` m)
+  {-# INLINE highlight #-}

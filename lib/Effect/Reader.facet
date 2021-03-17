@@ -1,5 +1,7 @@
 module Effect.Reader : Module
 
+import Data.Unit
+
 interface Reader : (R : Type) -> Interface
 { ask : R
 , local : { A : Type } -> (R -> R) -> [Reader R] A -> A }
@@ -7,4 +9,4 @@ interface Reader : (R : Type) -> Interface
 reader : { R, A : Type } -> (r : R) -> [Reader R] A -> A
 { a               -> a
 , [ask       ; k] -> reader r (k r)
-, [local f m ; k] -> reader r (k (reader (f r) m)) }
+, [local f m ; k] -> reader r (k (reader (f r) (m!))) }

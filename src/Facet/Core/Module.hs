@@ -51,7 +51,7 @@ scope_ :: Lens' Module Scope
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
-lookupC :: Alternative m => Name -> Module -> m (QName :=: Maybe Def ::: Type)
+lookupC :: Alternative m => Name -> Module -> m (RName :=: Maybe Def ::: Type)
 lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
@@ -59,14 +59,14 @@ lookupC n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls sc
     pure $ name:.:n :=: v ::: _T
 
 -- | Look up effect operations.
-lookupE :: Alternative m => Name -> Module -> m (QName :=: Maybe Def ::: Type)
+lookupE :: Alternative m => Name -> Module -> m (RName :=: Maybe Def ::: Type)
 lookupE n Module{ name, scope } = maybe empty pure $ asum (matchDef <$> decls scope)
   where
   matchDef (d ::: _) = do
     n :=: _ ::: _T <- maybe empty pure d >>= unDInterface >>= lookupScope n
     pure $ name:.:n :=: Nothing ::: _T
 
-lookupD :: Alternative m => Name -> Module -> m (QName :=: Maybe Def ::: Type)
+lookupD :: Alternative m => Name -> Module -> m (RName :=: Maybe Def ::: Type)
 lookupD n Module{ name, scope } = maybe empty pure $ do
   d ::: _T <- Map.lookup n (decls scope)
   pure $ name:.:n :=: d ::: _T

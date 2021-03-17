@@ -29,6 +29,7 @@ import           Facet.Core.Module
 import           Facet.Core.Type hiding (insert)
 import           Facet.Name
 import           Facet.Snoc
+import           Facet.Snoc.NonEmpty (fromSnoc, toSnoc)
 import           Facet.Syntax
 
 newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Maybe Module) }
@@ -54,12 +55,12 @@ lookupM :: Alternative m => MName -> Graph -> m (Maybe FilePath, Maybe Module)
 lookupM n = maybe empty pure . Map.lookup n . getGraph
 
 lookupWith :: (Alternative m, Monad m) => (Name -> Module -> m res) -> Graph -> Module -> QName -> m res
-lookupWith lookup graph mod@Module{ name } (m:.:n)
-  =   guard (m == name || m == Nil) *> lookup n mod
+lookupWith lookup graph mod@Module{ name } (m:.n)
+  =   guard (m == toSnoc name || m == Nil) *> lookup n mod
   <|> guard (m == Nil) *> asum (maybe empty (lookup n) . snd <$> getGraph graph)
-  <|> guard (m /= Nil) *> (lookupM m graph >>= maybe empty pure . snd >>= lookup n)
+  <|> guard (m /= Nil) *> (lookupM (fromSnoc m) graph >>= maybe empty pure . snd >>= lookup n)
 
-lookupQ :: (Alternative m, Monad m) => Graph -> Module -> QName -> m (QName :=: Maybe Def ::: Type)
+lookupQ :: (Alternative m, Monad m) => Graph -> Module -> QName -> m (RName :=: Maybe Def ::: Type)
 lookupQ = lookupWith lookupD
 
 

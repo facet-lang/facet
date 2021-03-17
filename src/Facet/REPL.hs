@@ -31,7 +31,7 @@ import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
 import           Facet.Core.Module
 import           Facet.Core.Term (Expr)
-import           Facet.Core.Type as T hiding (eval, showType)
+import           Facet.Core.Type as T hiding (eval)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
@@ -47,7 +47,6 @@ import           Facet.Parser as Parser
 import           Facet.Pretty
 import           Facet.Print as Print hiding (meta)
 import           Facet.REPL.Parser
-import           Facet.Semiring (one)
 import           Facet.Snoc
 import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Style as Style
@@ -98,7 +97,7 @@ defaultREPLState = REPL
   , target = defaultTarget
   }
   where
-  localDefs = Module (fromList []) [] [] mempty
+  localDefs = Module (fromList ["(interactive)"]) [] [] mempty
 
 defaultPromptFunction :: Int -> IO String
 defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> bold <> cyan <> "λ " <> plain
@@ -117,7 +116,7 @@ loop = do
       graph <- use (target_.modules_)
       targets <- use (target_.targets_)
       let ops = foldMap (\ name -> lookupM name graph >>= maybe [] pure . snd >>= map (\ (op, assoc) -> (name, op, assoc)) . operators) (toList targets)
-      action <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) commandParser))
+      action <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map (\ (n, a, b) -> makeOperator (n, a, b)) ops) commandParser))
       runReader src $ runAction action
     Nothing  -> pure ()
   loop
@@ -194,30 +193,30 @@ removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets
 showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
-  e ::: _T <- runElab $ Elab.elabSynth one (Elab.synth (Elab.synthExpr e))
+  e ::: _T <- runElab $ Elab.elabSynthTerm (Elab.synth (Elab.synthExpr e))
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e ::: printType opts Nil _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- runElab $ Elab.elabSynth one $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
+  e' ::: _T <- runElab $ Elab.elabSynthTerm $ locally Elab.sig_ (T.global (["Effect", "Console"]:.:U "Output"):) $ Elab.synth (Elab.synthExpr e)
   e'' <- runElab $ runEvalMain e'
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
 
 runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
-runEvalMain e = runEval handle pure (E.quoteV 0 =<< eval e)
+runEvalMain e = runEval (E.quoteV 0 =<< eval Nil hdl e) pure
   where
-  handle (E.Op q sp) k = case q of
-    FromList ["Effect", "Console"] :.: U "write"
-      | FromList [E.VString s] <- sp -> outputText s *> k unit
-    _                                -> unhandled q sp
-  unhandled q _sp = do
-    Options{ qname } <- get
-    throwError $ Notice.Notice (Just Notice.Error) [] (fillSep [reflow "unhandled effect operator", getPrint (qname q)]) []
+  hdl = [(write, Handler handle)]
+  write = fromList ["Effect", "Console"] :.: U "write"
+  handle (FromList [o]) k = do
+    E.VString s <- o hdl
+    outputText s *> k unit
+  handle _              _ = unhandled
+  unhandled = throwError $ Notice.Notice (Just Notice.Error) [] (fillSep @(Doc Style) [reflow "unhandled effect operator"]) []
 
 showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
-  _T ::: _K <- runElab $ Elab.elabSynthType one (Elab.synth (Elab.synthType _T))
+  _T ::: _K <- runElab $ Elab.elabSynthType (Elab.isType (Elab.synthType _T))
   opts <- get
   outputDocLn (getPrint (ann (printType opts Nil _T ::: printType opts Nil _K)))
 
