@@ -18,7 +18,7 @@ module Facet.Eval
 import Control.Algebra hiding (Handler)
 import Control.Applicative (Alternative(..))
 import Control.Carrier.Reader
-import Control.Monad (ap, guard, join, liftM)
+import Control.Monad (ap, guard, join, liftM, (>=>))
 import Control.Monad.Trans.Class
 import Data.Foldable
 import Data.Function
@@ -72,12 +72,12 @@ lam env cs = pure $ VLam env cs
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
 app envCallSite hdl f a = f >>= \case
   VLam env cs -> do
-    let (h, k) = foldl' combine (Nil, const Nothing) cs
+    let (h, k) = foldl' combine (Nil, const (error "non-exhaustive patterns in lambda")) cs
         combine (es, vs) = \case
           (PEff (POp n ps _), b) -> (es :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> eval (bindSpine env ps sp :> VCont k) hdl b), vs)
-          (PVal p, b)            -> (es, \ v -> matchV (\ vs -> eval (env <> vs) hdl b) p v <|> vs v)
-          (PEff (PAll _), b)     -> (es, \ v -> Just (eval (env :> v) hdl b))
-    fromMaybe (error "non-exhaustive patterns in lambda") . k =<< eval envCallSite (hdl <> h) a
+          (PEff (PAll _), b)     -> (es, eval envCallSite (hdl <> h) >=> \ v -> eval (env :> v) hdl b)
+          (PVal p, b)            -> (es, eval envCallSite (hdl <> h) >=> \ v -> fromMaybe (vs a) (matchV (\ vs -> eval (env <> vs) hdl b) p v))
+    k a
   VCont k     -> k =<< eval envCallSite hdl a
   VVar v      -> fail $ "expected lambda, got var "    <> show v
   VCon n _    -> fail $ "expected lambda, got con "    <> show n
