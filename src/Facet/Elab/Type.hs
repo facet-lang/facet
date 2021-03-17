@@ -84,6 +84,11 @@ comp s t = IsType $ do
   t' <- checkIsType (t ::: VType)
   pure $ TComp s' t' ::: VType
 
+thunk :: (HasCallStack, Has (Throw Err) sig m) => IsType m TExpr -> IsType m TExpr
+thunk c = IsType $ do
+  c' <- checkIsType (c ::: VType)
+  pure $ TThunk c' ::: VType
+
 
 synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m TExpr
 synthType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
@@ -95,6 +100,7 @@ synthType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> synthType a)) --> synthType b
   S.TComp s t       -> comp (map synthInterface s) (synthType t)
   S.TApp f a        -> app TApp (synthType f) (synthType a)
+  S.TThunk c        -> thunk (synthType c)
   where
   interpretMul = \case
     S.Zero -> zero
