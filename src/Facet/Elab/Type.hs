@@ -24,7 +24,7 @@ import           Data.Foldable (foldl')
 import           Data.Functor (($>))
 import           Facet.Context
 import           Facet.Core.Type
-import           Facet.Elab hiding (app)
+import           Facet.Elab
 import           Facet.Name
 import           Facet.Semiring (Few(..), one, zero, (><<))
 import qualified Facet.Surface as S

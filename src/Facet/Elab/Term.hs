@@ -37,6 +37,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Lens (view, views, (.=))
 import           Control.Effect.Throw
+import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
 import           Data.Foldable
 import           Data.Functor
@@ -53,7 +54,7 @@ import           Facet.Elab
 import           Facet.Elab.Type
 import           Facet.Graph
 import           Facet.Name
-import           Facet.Semiring (Few(..), zero)
+import           Facet.Semiring (Few(..), zero, (><<))
 import           Facet.Snoc
 import           Facet.Source (Source)
 import qualified Facet.Surface as S
@@ -108,6 +109,14 @@ lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m
 lam cs = Check $ \ _T -> do
   (_A, _B) <- assertTacitFunction _T
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
+
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
+app mk f a = Synth $ do
+  f' ::: _F <- synth f
+  (_ ::: (q, _A), _B) <- assertFunction _F
+  -- FIXME: test _A for Ret and extend the sig
+  a' <- censor @Usage (q ><<) $ check (a ::: _A)
+  pure $ mk f' a' ::: _B
 
 
 string :: Text -> Synth m Expr

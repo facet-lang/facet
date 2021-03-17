@@ -11,7 +11,6 @@ module Facet.Elab
 , resolveC
 , meta
 , instantiate
-, app
 , (|-)
   -- * Errors
 , pushSpan
@@ -137,15 +136,6 @@ lookupInSig (m :. n) mod graph = fmap asum . fmap $ \case
   _                             -> Alt.empty
   where
   interfaceScope (_ :=: d ::: _) = case d of { Just (DInterface defs) -> pure defs ; _ -> Alt.empty }
-
-
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
-app mk f a = Synth $ do
-  f' ::: _F <- synth f
-  (_ ::: (q, _A), _B) <- assertFunction _F
-  -- FIXME: test _A for Ret and extend the sig
-  a' <- censor @Usage (q ><<) $ check (a ::: _A)
-  pure $ mk f' a' ::: _B
 
 
 (|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a
