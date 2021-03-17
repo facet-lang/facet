@@ -60,11 +60,11 @@ import           GHC.Stack
 
 -- General combinators
 
-as :: (HasCallStack, Algebra sig m) => Check m Expr ::: Check m TExpr -> Synth m Expr
+as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m TExpr -> Synth m Expr
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
-  _T' <- T.eval subst (Left <$> env) <$> check (_T ::: VType)
+  _T' <- T.eval subst (Left <$> env) <$> checkIsType (_T ::: VType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -148,7 +148,7 @@ synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Exp
 synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Var n    -> var n
   S.App f a  -> app XApp (synthExpr f) (checkExpr a)
-  S.As t _T  -> as (checkExpr t ::: checkType _T)
+  S.As t _T  -> as (checkExpr t ::: synthType _T)
   S.String s -> string s
   S.Hole{}   -> nope
   S.Lam{}    -> nope
@@ -224,7 +224,7 @@ elabDataDef
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    c_T <- elabType $ abstractType (check (checkType t ::: VType)) _T
+    c_T <- elabType $ abstractType (checkIsType (synthType t ::: VType)) _T
     con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
     pure $ n :=: Just (DTerm con') ::: c_T
   pure
@@ -239,7 +239,7 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    _T' <- elabType $ abstractType (check (checkType t ::: VType)) _T
+    _T' <- elabType $ abstractType (checkIsType (synthType t ::: VType)) _T
     -- FIXME: check that the interface is a member of the sig.
     op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
     pure $ n :=: Just (DTerm op') ::: _T'
@@ -279,7 +279,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
     -- elaborate all the types first
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl tele def))) -> do
-      _T <- runModule $ elabType $ check (checkType tele ::: VType)
+      _T <- runModule $ elabType $ checkIsType (synthType tele ::: VType)
 
       scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of

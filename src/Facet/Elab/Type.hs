@@ -8,7 +8,6 @@ module Facet.Elab.Type
 , forAll
 , (-->)
 , synthType
-, checkType
   -- * Judgements
 , checkIsType
 , IsType(..)
@@ -19,91 +18,93 @@ import           Control.Algebra
 import           Control.Effect.Lens (views)
 import           Control.Effect.State
 import           Control.Effect.Throw
+import           Control.Effect.Writer (censor)
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
 import           Facet.Context
 import           Facet.Core.Type
-import           Facet.Elab
+import           Facet.Elab hiding (app)
 import           Facet.Name
-import           Facet.Semiring (Few(..), one, zero)
+import           Facet.Semiring (Few(..), one, zero, (><<))
 import qualified Facet.Surface as S
 import           Facet.Syntax
+import           Facet.Usage (Usage)
 import           GHC.Stack
 
-tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m TExpr
-tvar n = Synth $ views context_ (lookupInContext n) >>= \case
+tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TExpr
+tvar n = IsType $ views context_ (lookupInContext n) >>= \case
   Just (i, q, _T) -> use i q $> (TVar (Free (Right i)) ::: _T)
   Nothing         -> do
     q :=: _ ::: _T <- resolveQ n
     instantiate TInst $ TVar (Global q) ::: _T
 
 
-_Type :: Synth m TExpr
-_Type = Synth $ pure $ TType ::: VType
+_Type :: IsType m TExpr
+_Type = IsType $ pure $ TType ::: VType
 
-_Interface :: Synth m TExpr
-_Interface = Synth $ pure $ TInterface ::: VType
+_Interface :: IsType m TExpr
+_Interface = IsType $ pure $ TInterface ::: VType
 
-_String :: Synth m TExpr
-_String = Synth $ pure $ TString ::: VType
+_String :: IsType m TExpr
+_String = IsType $ pure $ TString ::: VType
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Check m TExpr -> Check m TExpr -> Synth m TExpr
-forAll (n ::: t) b = Synth $ do
-  t' <- check (t ::: VType)
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m TExpr -> IsType m TExpr -> IsType m TExpr
+forAll (n ::: t) b = IsType $ do
+  t' <- checkIsType (t ::: VType)
   env <- views context_ toEnv
   subst <- get
   let vt = eval subst (Left <$> env) t'
-  b' <- Binding n zero vt |- check (b ::: VType)
+  b' <- Binding n zero vt |- checkIsType (b ::: VType)
   pure $ TForAll n t' b' ::: VType
 
-(-->) :: Algebra sig m => Maybe Name ::: Check m (Quantity, TExpr) -> Check m TExpr -> Synth m TExpr
-(n ::: a) --> b = Synth $ do
-  (q', a') <- check (a ::: VType)
-  b' <- check (b ::: VType)
+(-->) :: (HasCallStack, Has (Throw Err) sig m) => Maybe Name ::: IsType m (Quantity, TExpr) -> IsType m TExpr -> IsType m TExpr
+(n ::: a) --> b = IsType $ do
+  (q', a') <- checkIsType (a ::: VType)
+  b' <- checkIsType (b ::: VType)
   pure $ TArrow n q' a' b' ::: VType
 
 infixr 1 -->
 
 
-comp :: Algebra sig m => [Check m TExpr] -> Check m TExpr -> Synth m TExpr
-comp s t = Synth $ do
-  s' <- traverse (check . (::: VInterface)) s
-  -- FIXME: classify types by universe (value/computation) and check that this is a value type being returned
-  t' <- check (t ::: VType)
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
+app mk f a = IsType $ do
+  f' ::: _F <- isType f
+  (_ ::: (q, _A), _B) <- assertFunction _F
+  -- FIXME: assert that the usage is zero
+  a' <- censor @Usage (q ><<) $ checkIsType (a ::: _A)
+  pure $ mk f' a' ::: _B
+
+
+comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m TExpr] -> IsType m TExpr -> IsType m TExpr
+comp s t = IsType $ do
+  s' <- traverse (checkIsType . (::: VInterface)) s
+  -- FIXME: polarize types and check that this is a value type being returned
+  t' <- checkIsType (t ::: VType)
   pure $ TComp s' t' ::: VType
 
 
-synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Synth m TExpr
-synthType (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m TExpr
+synthType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TVar n          -> tvar n
   S.KType           -> _Type
   S.KInterface      -> _Interface
   S.TString         -> _String
-  S.TForAll n t b   -> forAll (n ::: checkType t) (checkType b)
-  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> checkType a)) --> checkType b
-  S.TComp s t       -> comp (map checkInterface s) (checkType t)
-  S.TApp f a        -> app TApp (synthType f) (checkType a)
+  S.TForAll n t b   -> forAll (n ::: synthType t) (synthType b)
+  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> synthType a)) --> synthType b
+  S.TComp s t       -> comp (map synthInterface s) (synthType t)
+  S.TApp f a        -> app TApp (synthType f) (synthType a)
   where
   interpretMul = \case
     S.Zero -> zero
     S.One  -> one
 
--- | Check a type at a kind.
---
--- NB: while synthesis is possible for all types at present, I reserve the right to change that.
-checkType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Check m TExpr
-checkType = switch . synthType
-
-synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Synth m TExpr
-synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapSynth (pushSpan s) $
-  foldl' (app TApp) h' (checkType <$> sp)
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m TExpr
+synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapIsType (pushSpan s) $
+  foldl' (app TApp) h' (synthType <$> sp)
   where
-  h' = mapSynth (pushSpan sh) (tvar h)
-
-checkInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Check m TExpr
-checkInterface = switch . synthInterface
+  h' = mapIsType (pushSpan sh) (tvar h)
 
 
 -- Judgements
