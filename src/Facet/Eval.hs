@@ -35,7 +35,7 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (RName, Handler (Eval m)) -> Expr -> Eval m (Value (Eval m))
+eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> [(RName, Handler (Eval m))] -> Expr -> Eval m (Value (Eval m))
 eval env hdl = \case
   XVar (Global n) -> global n >>= eval env hdl
   XVar (Free v)   -> var env v
@@ -69,13 +69,13 @@ inst = const
 lam :: Snoc (Value (Eval m)) -> [(Pattern Name, Expr)] -> Eval m (Value (Eval m))
 lam env cs = pure $ VLam env cs
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> [(RName, Handler (Eval m))] -> Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
 app envCallSite hdl f a = f >>= \case
   VLam env cs -> k a where
     (h, k) = foldl' (\ (es, vs) -> \case
-      (PEff (POp n ps _), b) -> (es :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> eval (bindSpine env ps sp :> VCont k) hdl b), vs)
+      (PEff (POp n ps _), b) -> ((n, Handler $ \ sp k -> traverse ($ (h <> hdl)) sp >>= \ sp -> eval (bindSpine env ps sp :> VCont k) hdl b) : es, vs)
       (PEff (PAll _), b)     -> (es, \ a -> eval (env :> VThunk envCallSite a) hdl b)
-      (PVal p, b)            -> (es, eval envCallSite (hdl <> h) >=> fromMaybe (vs a) . matchV (\ vs -> eval (env <> vs) hdl b) p)) (Nil, const (fail "non-exhaustive patterns in lambda")) cs
+      (PVal p, b)            -> (es, eval envCallSite (h <> hdl) >=> fromMaybe (vs a) . matchV (\ vs -> eval (env <> vs) hdl b) p)) ([], const (fail "non-exhaustive patterns in lambda")) cs
   VCont k     -> k =<< eval envCallSite hdl a
   _           -> fail "expected lambda/continuation"
 
@@ -86,13 +86,13 @@ con :: RName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
 -- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
-op :: MonadFail m => Snoc (RName, Handler (Eval m)) -> RName -> Snoc (Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+op :: MonadFail m => [(RName, Handler (Eval m))] -> RName -> Snoc ([(RName, Handler (Eval m))] -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 op hdl n sp = Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp pure) k) (find ((n ==) . fst) hdl)
 
 thunk :: Applicative m => Snoc (Value n) -> Expr -> m (Value n)
 thunk env t = pure $ VThunk env t
 
-force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
+force :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => [(RName, Handler (Eval m))] -> Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 force hdl t = t >>= \case
   VThunk env c -> eval env hdl c
   _            -> fail "expected thunk"
@@ -100,7 +100,7 @@ force hdl t = t >>= \case
 
 -- Machinery
 
-newtype Handler m = Handler { runHandler :: Snoc (Snoc (RName, Handler m) -> m (Value m)) -> (Value m -> m (Value m)) -> m (Value m) }
+newtype Handler m = Handler { runHandler :: Snoc ([(RName, Handler m)] -> m (Value m)) -> (Value m -> m (Value m)) -> m (Value m) }
 
 newtype Eval m a = Eval { runEval :: forall r . (a -> m r) -> m r }
 

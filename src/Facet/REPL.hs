@@ -208,7 +208,7 @@ showEval e = Action $ do
 runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
 runEvalMain e = runEval (E.quoteV 0 =<< eval Nil hdl e) pure
   where
-  hdl = Nil :> (write, Handler handle)
+  hdl = [(write, Handler handle)]
   write = fromList ["Effect", "Console"] :.: U "write"
   handle (FromList [o]) k = do
     E.VString s <- o hdl
