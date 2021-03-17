@@ -4,7 +4,7 @@ module Facet.Core.Type
 , global
 , free
 , metavar
-, unRet
+, unComp
 , occursIn
   -- ** Elimination
 , ($$)
@@ -63,8 +63,8 @@ var :: Var (Either Meta Level) -> Type
 var v = VNe v Nil Nil
 
 
-unRet :: Has Empty sig m => Type -> m ([Type], Type)
-unRet = \case
+unComp :: Has Empty sig m => Type -> m ([Type], Type)
+unComp = \case
   VComp sig _T -> pure (sig, _T)
   _T           -> empty
 

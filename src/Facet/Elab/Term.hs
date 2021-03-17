@@ -202,7 +202,7 @@ checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
 bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind m (Pattern Name)
 bindPattern = go where
   go = withSpanB $ \case
-    S.PVal p -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unRet _T)))
+    S.PVal p -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unComp _T)))
     S.PEff p -> withSpanB (\ (S.POp n ps v) -> effP n (map goVal ps) v) p
 
   goVal = withSpanB $ \case
@@ -358,7 +358,7 @@ withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 -- Judgements
 
 check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
-check (m ::: _T) = case unRet _T of
+check (m ::: _T) = case unComp _T of
   Just (sig, _) -> extendSig sig $ runCheck m _T
   Nothing       -> runCheck m _T
 
