@@ -23,6 +23,10 @@ module Facet.Elab.Term
 , elabTermDef
   -- * Modules
 , elabModule
+  -- * Judgements
+, bind
+, Bind(..)
+, mapBind
 ) where
 
 import           Control.Algebra
@@ -307,3 +311,15 @@ runModule m = do
 
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
 withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
+
+
+-- Judgements
+
+bind :: Bind m a ::: (Quantity, Type) -> Check m b -> Check m (a, b)
+bind (p ::: (q, _T)) = runBind p q _T
+
+newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check m x -> Check m (a, x) }
+  deriving (Functor)
+
+mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
+mapBind f m = Bind $ \ q _A b -> mapCheck f (runBind m q _A b)
