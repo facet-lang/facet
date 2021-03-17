@@ -93,6 +93,10 @@ var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabConte
     synth $ global (n ::: _T)
 
 
+hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
+hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
+
+
 tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T

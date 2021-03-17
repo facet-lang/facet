@@ -11,7 +11,6 @@ module Facet.Elab
 , resolveC
 , meta
 , instantiate
-, hole
 , app
 , (|-)
   -- * Errors
@@ -139,9 +138,6 @@ lookupInSig (m :. n) mod graph = fmap asum . fmap $ \case
   where
   interfaceScope (_ :=: d ::: _) = case d of { Just (DInterface defs) -> pure defs ; _ -> Alt.empty }
 
-
-hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
-hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
 app mk f a = Synth $ do
