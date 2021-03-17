@@ -75,7 +75,7 @@ app envCallSite hdl f a = f >>= \case
     (h, k) = foldl' (\ (es, vs) -> \case
       (PEff (POp n ps _), b) -> (es :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> eval (bindSpine env ps sp :> VCont k) hdl b), vs)
       (PEff (PAll _), b)     -> (es, \ a -> eval (env :> VThunk envCallSite a) hdl b)
-      (PVal p, b)            -> (es, eval envCallSite (hdl <> h) >=> \ v -> fromMaybe (vs a) (matchV (\ vs -> eval (env <> vs) hdl b) p v))) (Nil, const (fail "non-exhaustive patterns in lambda")) cs
+      (PVal p, b)            -> (es, eval envCallSite (hdl <> h) >=> fromMaybe (vs a) . matchV (\ vs -> eval (env <> vs) hdl b) p)) (Nil, const (fail "non-exhaustive patterns in lambda")) cs
   VCont k     -> k =<< eval envCallSite hdl a
   _           -> fail "expected lambda/continuation"
 
