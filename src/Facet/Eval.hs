@@ -71,13 +71,12 @@ lam env cs = pure $ VLam env cs
 
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> Snoc (RName, Handler (Eval m)) -> Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
 app envCallSite hdl f a = f >>= \case
-  VLam env cs -> do
-    let (h, k) = foldl' combine (Nil, const (fail "non-exhaustive patterns in lambda")) cs
-        combine (es, vs) = \case
-          (PEff (POp n ps _), b) -> (es :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> eval (bindSpine env ps sp :> VCont k) hdl b), vs)
-          (PEff (PAll _), b)     -> (es, \ a -> eval (env :> VThunk envCallSite a) hdl b)
-          (PVal p, b)            -> (es, eval envCallSite (hdl <> h) >=> \ v -> fromMaybe (vs a) (matchV (\ vs -> eval (env <> vs) hdl b) p v))
-    k a
+  VLam env cs -> k a where
+    (h, k) = foldl' combine (Nil, const (fail "non-exhaustive patterns in lambda")) cs
+    combine (es, vs) = \case
+      (PEff (POp n ps _), b) -> (es :> (n, Handler $ \ sp k -> traverse ($ (hdl <> h)) sp >>= \ sp -> eval (bindSpine env ps sp :> VCont k) hdl b), vs)
+      (PEff (PAll _), b)     -> (es, \ a -> eval (env :> VThunk envCallSite a) hdl b)
+      (PVal p, b)            -> (es, eval envCallSite (hdl <> h) >=> \ v -> fromMaybe (vs a) (matchV (\ vs -> eval (env <> vs) hdl b) p v))
   VCont k     -> k =<< eval envCallSite hdl a
   _           -> fail "expected lambda/continuation"
 
