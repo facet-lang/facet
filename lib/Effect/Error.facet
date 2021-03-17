@@ -3,6 +3,7 @@ module Effect.Error
 
 import Data.Either
 import Data.Function
+import Data.Unit
 
 interface Error : (E : Type) -> Interface
 { throw : { A : Type } -> E -> A
@@ -30,5 +31,5 @@ error
 -> [Error E] A
 -> R
 { [ throw e   ; _ ] -> failure e
-, [ catch a h ; k ] -> error (error failure success << k << h) (error failure success << k) a
+, [ catch a h ; k ] -> error (error failure success << k << h) (error failure success << k) (a!)
 , a                 -> success a }
