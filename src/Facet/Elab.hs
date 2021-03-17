@@ -185,7 +185,7 @@ data ErrReason
   | AmbiguousName QName [RName]
   | CouldNotSynthesize String
   | ResourceMismatch Name Quantity Quantity
-  | Mismatch (Either String Type) Type
+  | Mismatch (Either String (Either Kind Type)) (Either Kind Type)
   | Hole Name Type
   | Invariant String
 
@@ -195,7 +195,7 @@ applySubst ctx subst r = case r of
   AmbiguousName{}      -> r
   CouldNotSynthesize{} -> r
   ResourceMismatch{}   -> r
-  Mismatch exp act     -> Mismatch (roundtrip <$> exp) (roundtrip act)
+  Mismatch exp act     -> Mismatch (fmap roundtrip <$> exp) (roundtrip <$> act)
   Hole n t             -> Hole n (roundtrip t)
   Invariant{}          -> r
   where
@@ -212,10 +212,10 @@ err reason = do
   subst <- get
   throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Throw Err) sig m) => Either String Type -> Type -> Elab m a
+mismatch :: (HasCallStack, Has (Throw Err) sig m) => Either String (Either Kind Type) -> Either Kind Type -> Elab m a
 mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m a
+couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => Either Kind Type -> Either Kind Type -> Elab m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right t2) t1
 
 couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
@@ -253,7 +253,7 @@ warn reason = do
 -- Patterns
 
 assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> Type -> Elab m out
-assertMatch pat exp _T = maybe (mismatch (Left exp) _T) pure (pat _T)
+assertMatch pat exp _T = maybe (mismatch (Left exp) (Right _T)) pure (pat _T)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
 assertFunction = assertMatch (\case{ VArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
@@ -289,7 +289,7 @@ spans_ = lens spans (\ e spans -> e{ spans })
 unify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m ()
 unify t1 t2 = type' t1 t2
   where
-  nope = couldNotUnify t1 t2
+  nope = couldNotUnify (Right t1) (Right t2)
 
   type' = curry $ \case
     (VNe (Free (Left v1)) Nil Nil, VNe (Free (Left v2)) Nil Nil) -> flexFlex v1 v2
@@ -334,7 +334,7 @@ unify t1 t2 = type' t1 t2
   solve v t = do
     d <- depth
     if occursIn (== Free (Left v)) d t then
-      mismatch (Right (metavar v)) t
+      mismatch (Right (Right (metavar v))) (Right t)
     else
       gets (T.lookupMeta v) >>= \case
         Nothing          -> modify (T.solveMeta v t)

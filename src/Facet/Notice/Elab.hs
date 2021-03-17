@@ -63,8 +63,8 @@ printErrReason opts ctx = group . \case
     <> hardline <> pretty "expected:" <> print exp'
     <> hardline <> pretty "  actual:" <> print act'
     where
-    exp' = either reflow (getPrint . printType opts ctx) exp
-    act' = getPrint (printType opts ctx act)
+    exp' = either reflow (getPrint . either printKind (printType opts ctx)) exp
+    act' = getPrint (either printKind (printType opts ctx) act)
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T              ->
