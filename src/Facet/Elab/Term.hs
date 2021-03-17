@@ -187,10 +187,10 @@ abstractTerm body = go Nil Nil
       check (tlam (go (ts :> d) fs) ::: VForAll n _T _B)
     VArrow  n q _A _B -> do
       d <- depth
-      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> d))] ::: VArrow n q _A _B)
+      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> XVar (Free (levelToIndex d' d))))] ::: VArrow n q _A _B)
     _T                 -> do
       d <- depth
-      pure $ body (TVar . Free . Right . levelToIndex d <$> ts) (XVar . Free . levelToIndex d <$> fs)
+      pure $ body (TVar . Free . Right . levelToIndex d <$> ts) (($ d) <$> fs)
 
 patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern Name)
 patternForArgType = \case
