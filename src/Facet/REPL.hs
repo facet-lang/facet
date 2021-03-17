@@ -218,7 +218,7 @@ runEvalMain e = runEval (E.quoteV 0 =<< eval Nil hdl e) pure
 
 showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
-  _T ::: _K <- runElab $ Elab.elabSynthType one (Elab.isType (Elab.synthType _T))
+  _T ::: _K <- runElab $ Elab.elabSynthType (Elab.isType (Elab.synthType _T))
   opts <- get
   outputDocLn (getPrint (ann (printType opts Nil _T ::: printType opts Nil _K)))
 
