@@ -125,6 +125,12 @@ app mk f a = Synth $ do
   pure $ mk f' a' ::: _B
 
 
+thunk :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
+thunk c = Check $ \ _T -> do
+  _C <- assertThunk _T
+  XThunk <$> check (c ::: _C)
+
+
 string :: Text -> Synth m Expr
 string s = Synth $ pure $ XString s ::: T.VString
 
@@ -178,6 +184,7 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.String s -> string s
   S.Hole{}   -> nope
   S.Lam{}    -> nope
+  S.Thunk{}  -> nope
   where
   nope = Synth $ couldNotSynthesize (show e)
 
@@ -185,6 +192,7 @@ checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Exp
 checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
   S.Hole  n  -> hole n
   S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
+  S.Thunk c  -> thunk (checkExpr c)
   S.Var{}    -> synth
   S.App{}    -> synth
   S.As{}     -> synth
@@ -337,6 +345,10 @@ assertTacitFunction = assertMatch (\case{ VArrow Nothing q t b -> pure ((q, t), 
 -- | Expect a computation type with effects.
 assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ([Type], Type)
 assertComp = assertMatch (\case{ VComp s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
+
+-- | Expect a thunk type.
+assertThunk :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m Type
+assertThunk = assertMatch (\case{ VThunk t -> pure t ; _ -> Nothing }) "{_}"
 
 
 -- Elaboration

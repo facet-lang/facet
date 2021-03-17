@@ -61,6 +61,7 @@ data Expr
   | Lam [Clause]
   | App (Ann Expr) (Ann Expr)
   | As (Ann Expr) (Ann Type)
+  | Thunk (Ann Expr)
   | String Text
   deriving (Eq, Show)
 
