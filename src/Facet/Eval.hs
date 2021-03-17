@@ -85,7 +85,6 @@ string = pure . VString
 con :: RName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
--- FIXME: I think this subverts scoped operations: we evaluate the arguments before the handler has had a chance to intervene. this doesn’t explain why it behaves the same when we use an explicit suspended computation, however.
 op :: MonadFail m => [(RName, Handler (Eval m))] -> RName -> Snoc ([(RName, Handler (Eval m))] -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 op hdl n sp = Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp pure) k) (find ((n ==) . fst) hdl)
 
