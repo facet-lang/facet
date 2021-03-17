@@ -34,8 +34,8 @@ import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TExpr
 tvar n = IsType $ views context_ (lookupInContext n) >>= \case
-  Just (i, q, _T) -> use i q $> (TVar (Free (Right i)) ::: _T)
-  Nothing         -> do
+  Just (i, q, Right _T) -> use i q $> (TVar (Free (Right i)) ::: _T)
+  _                     -> do
     q :=: _ ::: _T <- resolveQ n
     instantiate TInst $ TVar (Global q) ::: _T
 
@@ -56,7 +56,7 @@ forAll (n ::: t) b = IsType $ do
   env <- views context_ toEnv
   subst <- get
   let vt = eval subst (Left <$> env) t'
-  b' <- Binding n zero vt |- checkIsType (b ::: VType)
+  b' <- Binding n zero (Right vt) |- checkIsType (b ::: VType)
   pure $ TForAll n t' b' ::: VType
 
 (-->) :: (HasCallStack, Has (Throw Err) sig m) => Maybe Name ::: IsType m (Quantity, TExpr) -> IsType m TExpr -> IsType m TExpr

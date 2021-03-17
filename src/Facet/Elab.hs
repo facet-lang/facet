@@ -113,7 +113,7 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Def ::: Type)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Alternative m => QName -> Context -> m (Index, Quantity, Type)
+lookupInContext :: Alternative m => QName -> Context -> m (Index, Quantity, Either Kind Type)
 lookupInContext (m:.n)
   | m == Nil  = lookupIndex n
   | otherwise = const Alt.empty
@@ -299,7 +299,7 @@ unify t1 t2 = type' t1 t2
     (VType, _)                                                   -> nope
     (VInterface, VInterface)                                     -> pure ()
     (VInterface, _)                                              -> nope
-    (VForAll n t1 b1, VForAll _ t2 b2)                           -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
+    (VForAll n t1 b1, VForAll _ t2 b2)                           -> type' t1 t2 >> depth >>= \ d -> Binding n zero (Right t1) |- type' (b1 (T.free d)) (b2 (T.free d))
     (VForAll{}, _)                                               -> nope
     -- FIXME: this must unify the signatures
     (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                         -> type' a1 a2 >> type' b1 b2
