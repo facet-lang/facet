@@ -79,10 +79,7 @@ app envCallSite hdl f a = f >>= \case
           (PVal p, b)            -> (es, eval envCallSite (hdl <> h) >=> \ v -> fromMaybe (vs a) (matchV (\ vs -> eval (env <> vs) hdl b) p v))
     k a
   VCont k     -> k =<< eval envCallSite hdl a
-  VVar v      -> fail $ "expected lambda, got var "    <> show v
-  VCon n _    -> fail $ "expected lambda, got con "    <> show n
-  VString s   -> fail $ "expected lambda, got string " <> show s
-  VThunk{}    -> fail   "expected lambda, got thunk"
+  _           -> fail "expected lambda/continuation"
 
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
