@@ -8,6 +8,7 @@ module Facet.Elab.Term
 , var
 , tlam
 , lam
+, app
 , string
   -- * Pattern combinators
 , wildcardP
