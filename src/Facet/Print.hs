@@ -16,6 +16,7 @@ module Facet.Print
 , printInstantiation
 , suppressInstantiation
   -- * Core printers
+, printKind
 , printType
 , printTExpr
 , printExpr
@@ -140,6 +141,12 @@ suppressInstantiation = const
 
 
 -- Core printers
+
+printKind :: C.Kind -> Print
+printKind = \case
+  C.KType      -> annotate Type $ pretty "Type"
+  C.KInterface -> annotate Type $ pretty "Interface"
+  C.KArrow a b -> printKind a --> printKind b
 
 printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
