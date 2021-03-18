@@ -8,7 +8,8 @@ module Facet.Lens
 import Control.Carrier.State.Church
 import Control.Effect.Lens (use, (<~))
 import Control.Effect.Reader
-import Control.Lens (ASetter, Getting, Lens', over)
+import Control.Lens (ASetter, Getting, Lens')
+import Data.Functor.Identity
 
 zoom :: Has (State s) sig m => Lens' s a -> StateC a m () -> m ()
 zoom lens action = lens <~> (`execState` action)
@@ -30,3 +31,8 @@ infixr 2 <~>
 
 locally :: Has (Reader s) sig m => ASetter s s a b -> (a -> b) -> m r -> m r
 locally l f = local (over l f)
+
+
+over :: ASetter s t a b -> (a -> b) -> s -> t
+over l f = runIdentity . l (Identity . f)
+{-# INLINE over #-}
