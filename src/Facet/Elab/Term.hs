@@ -358,8 +358,8 @@ withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 
 check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
 check (m ::: _T) = case unComp _T of
-  Just (sig, _) -> extendSig sig $ runCheck m _T
-  Nothing       -> runCheck m _T
+  Just (sig, _T) -> extendSig sig $ runCheck m _T
+  Nothing        -> runCheck m _T
 
 newtype Check m a = Check { runCheck :: Type -> Elab m a }
   deriving (Applicative, Functor) via ReaderC Type (Elab m)
