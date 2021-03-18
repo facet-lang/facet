@@ -6,6 +6,7 @@ module Facet.Core.Type.Test
 
 import Facet.Core.Type
 import Facet.Name
+import Facet.Semiring
 import Facet.Snoc
 import Facet.Syntax
 import Hedgehog hiding (Var, eval)
@@ -14,5 +15,5 @@ tests :: IO Bool
 tests = checkParallel $$(discover)
 
 prop_quotation_inverse = property $ do
-  let init = TForAll (U "A") TType (TForAll (U "x") (TVar (Free (Right 0))) (TComp [] (TVar (Free (Right 1)))))
+  let init = TForAll (U "A") KType (TArrow (Just (U "x")) Many (TVar (Free (Right 0))) (TComp [] (TVar (Free (Right 1)))))
   quote 0 (eval mempty Nil init) === init

@@ -79,7 +79,7 @@ as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m TExpr -
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
-  _T' <- T.eval subst (Left <$> env) <$> checkIsType (_T ::: VType)
+  _T' <- T.eval subst (Left <$> env) <$> checkIsType (_T ::: KType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -110,7 +110,7 @@ tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
-  b' <- Binding n zero (Right _A) |- check (b ::: _B (T.free d))
+  b' <- Binding n zero (Left _A) |- check (b ::: _B (T.free d))
   pure $ XTLam b'
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
@@ -214,15 +214,12 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Type -> Elab m TExpr
+abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Kind -> Elab m TExpr
 abstractType body = go
   where
   go = \case
-    VArrow  (Just n) q a b -> do
-      level <- depth
-      b' <- Binding n q (Right a) |- go b
-      pure $ TForAll n (T.quote level a) b'
-    _                       -> body
+    KArrow  (Just n) a b -> TForAll n a <$> (Binding n zero (Left a) |- go b)
+    _                    -> body
 
 abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TExpr -> Snoc Expr -> Expr) -> Check m Expr
 abstractTerm body = go Nil Nil
@@ -248,29 +245,29 @@ patternForArgType = \case
 
 elabDataDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
-  => Name ::: Type
+  => Name ::: Kind
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Def]
 -- FIXME: check that all constructors return the datatype.
-elabDataDef (dname ::: _T) constructors = do
+elabDataDef (dname ::: _K) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    c_T <- elabType $ abstractType (checkIsType (synthType t ::: VType)) _T
+    c_T <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _K
     con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
   pure
-    $ (dname :=: DData (scopeFromList cs) _T)
+    $ (dname :=: DData (scopeFromList cs) _K)
     : cs
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
-  => Name ::: Type
+  => Name ::: Kind
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Def]
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    _T' <- elabType $ abstractType (checkIsType (synthType t ::: VType)) _T
+    _T' <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _T
     -- FIXME: check that the interface is a member of the sig.
     op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
     pure $ n :=: DTerm (Just op') _T'
@@ -309,23 +306,23 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl tele def))) -> do
-      _T <- runModule $ elabType $ checkIsType (synthType tele ::: VType)
+    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl tele def))) -> case def of
+      S.DataDef cs -> Nothing <$ do
+        _K <- runModule $ elabKind $ checkIsType (synthKind tele ::: KType)
+        scope_.decls_.at dname .= Just (DData mempty _K)
+        decls <- runModule $ elabDataDef (dname ::: _K) cs
+        for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
-      case def of
-        S.DataDef cs -> Nothing <$ do
-          scope_.decls_.at dname .= Just (DData mempty _T)
-          decls <- runModule $ elabDataDef (dname ::: _T) cs
-          for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
+      S.InterfaceDef os -> Nothing <$ do
+        _K <- runModule $ elabKind $ checkIsType (synthKind tele ::: KType)
+        scope_.decls_.at dname .= Just (DInterface mempty _K)
+        decls <- runModule $ elabInterfaceDef (dname ::: _K) os
+        for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
-        S.InterfaceDef os -> Nothing <$ do
-          scope_.decls_.at dname .= Just (DInterface mempty _T)
-          decls <- runModule $ elabInterfaceDef (dname ::: _T) os
-          for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
-
-        S.TermDef t -> do
-          scope_.decls_.at dname .= Just (DTerm Nothing _T)
-          pure (Just (dname, t ::: _T))
+      S.TermDef t -> do
+        _T <- runModule $ elabType $ checkIsType (synthType tele ::: KType)
+        scope_.decls_.at dname .= Just (DTerm Nothing _T)
+        pure (Just (dname, t ::: _T))
 
     -- then elaborate the terms
     for_ (catMaybes es) $ \ (dname, t ::: _T) -> do
@@ -335,7 +332,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 
 -- Errors
 
-assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name ::: Type, Type -> Type)
+assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name ::: Kind, Type -> Type)
 assertQuantifier = assertMatch (\case{ Right (VForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" . Right
 
 -- | Expect a tacit (non-variable-binding) function type.

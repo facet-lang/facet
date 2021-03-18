@@ -34,7 +34,7 @@ rethrowElabErrors opts = L.runThrow rethrow
     ]
     where
     (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
-    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printType opts printCtx _T))) (metas subst)
+    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printKind printCtx _T))) (metas subst)
   combine (d, print, ctx) (Binding n m _T) =
     let n' = intro n d
     in  ( succ d

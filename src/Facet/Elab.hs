@@ -84,7 +84,7 @@ import Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Has (State Subst) sig m => Type -> m Meta
+meta :: Has (State Subst) sig m => Kind -> m Meta
 meta _T = state (declareMeta _T)
 
 
@@ -300,7 +300,7 @@ unify t1 t2 = type' t1 t2
     (VType, _)                                                   -> nope
     (VInterface, VInterface)                                     -> pure ()
     (VInterface, _)                                              -> nope
-    (VForAll n t1 b1, VForAll _ t2 b2)                           -> type' t1 t2 >> depth >>= \ d -> Binding n zero (Right t1) |- type' (b1 (T.free d)) (b2 (T.free d))
+    (VForAll n t1 b1, VForAll _ t2 b2)                           -> kind t1 t2 >> depth >>= \ d -> Binding n zero (Left t1) |- type' (b1 (T.free d)) (b2 (T.free d))
     (VForAll{}, _)                                               -> nope
     -- FIXME: this must unify the signatures
     (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                         -> type' a1 a2 >> type' b1 b2
@@ -312,6 +312,8 @@ unify t1 t2 = type' t1 t2
     (VNe{}, _)                                                   -> nope
     (VString, VString)                                           -> pure ()
     (VString, _)                                                 -> nope
+
+  kind k1 k2 = unless (k1 == k2) nope
 
   var = curry $ \case
     (Global q1, Global q2)             -> unless (q1 == q2) nope
@@ -366,5 +368,5 @@ elabTerm = elabWith one (const pure)
 elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (Expr ::: Type) -> m (Expr ::: Type)
 elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: T.eval subst Nil (T.quote 0 _T)))
 
-elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr ::: Type) -> m (Type ::: Type)
-elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst Nil _T ::: T.eval subst Nil (T.quote 0 _K)))
+elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr ::: Kind) -> m (Type ::: Kind)
+elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst Nil _T ::: _K))

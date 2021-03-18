@@ -7,6 +7,7 @@ module Facet.Elab.Type
 , _String
 , forAll
 , (-->)
+, synthKind
 , synthType
   -- * Judgements
 , checkIsType
@@ -16,9 +17,8 @@ module Facet.Elab.Type
 
 import           Control.Algebra
 import           Control.Effect.Lens (views)
-import           Control.Effect.State
 import           Control.Effect.Throw
-import           Control.Effect.Writer (censor)
+import           Control.Monad (unless)
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
@@ -27,45 +27,47 @@ import           Facet.Core.Module
 import           Facet.Core.Type
 import           Facet.Elab
 import           Facet.Name
-import           Facet.Semiring (Few(..), one, zero, (><<))
+import           Facet.Semiring (Few(..), one, zero)
 import qualified Facet.Surface as S
 import           Facet.Syntax
-import           Facet.Usage (Usage)
 import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TExpr
 tvar n = IsType $ views context_ (lookupInContext n) >>= \case
-  Just (i, q, Right _T) -> use i q $> (TVar (Free (Right i)) ::: _T)
+  Just (i, q, Left _K) -> use i q $> (TVar (Free (Right i)) ::: _K)
   _                     -> resolveQ n >>= \case
     q :=: DData      _ _K -> pure $ TVar (Global q) ::: _K
     q :=: DInterface _ _K -> pure $ TVar (Global q) ::: _K
     _                     -> freeVariable n
 
 
-_Type :: IsType m TExpr
-_Type = IsType $ pure $ TType ::: VType
+_Type :: IsType m Kind
+_Type = IsType $ pure $ KType ::: KType
 
-_Interface :: IsType m TExpr
-_Interface = IsType $ pure $ TInterface ::: VType
+_Interface :: IsType m Kind
+_Interface = IsType $ pure $ KInterface ::: KType
 
 _String :: IsType m TExpr
-_String = IsType $ pure $ TString ::: VType
+_String = IsType $ pure $ TString ::: KType
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m TExpr -> IsType m TExpr -> IsType m TExpr
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m TExpr -> IsType m TExpr
 forAll (n ::: t) b = IsType $ do
-  t' <- checkIsType (t ::: VType)
-  env <- views context_ toEnv
-  subst <- get
-  let vt = eval subst (Left <$> env) t'
-  b' <- Binding n zero (Right vt) |- checkIsType (b ::: VType)
-  pure $ TForAll n t' b' ::: VType
+  t' <- checkIsType (t ::: KType)
+  b' <- Binding n zero (Left t') |- checkIsType (b ::: KType)
+  pure $ TForAll n t' b' ::: KType
+
+arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
+arrow mk a b = IsType $ do
+  a' <- checkIsType (a ::: KType)
+  b' <- checkIsType (b ::: KType)
+  pure $ mk a' b' ::: KType
 
 (-->) :: (HasCallStack, Has (Throw Err) sig m) => Maybe Name ::: IsType m (Quantity, TExpr) -> IsType m TExpr -> IsType m TExpr
 (n ::: a) --> b = IsType $ do
-  (q', a') <- checkIsType (a ::: VType)
-  b' <- checkIsType (b ::: VType)
-  pure $ TArrow n q' a' b' ::: VType
+  (q', a') <- checkIsType (a ::: KType)
+  b' <- checkIsType (b ::: KType)
+  pure $ TArrow n q' a' b' ::: KType
 
 infixr 1 -->
 
@@ -73,31 +75,46 @@ infixr 1 -->
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
 app mk f a = IsType $ do
   f' ::: _F <- isType f
-  (_ ::: (q, _A), _B) <- assertFunction _F
+  (_ ::: _A, _B) <- assertTypeConstructor _F
   -- FIXME: assert that the usage is zero
-  a' <- censor @Usage (q ><<) $ checkIsType (a ::: _A)
+  a' <- checkIsType (a ::: _A)
   pure $ mk f' a' ::: _B
 
 
 comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m TExpr] -> IsType m TExpr -> IsType m TExpr
 comp s t = IsType $ do
-  s' <- traverse (checkIsType . (::: VInterface)) s
+  s' <- traverse (checkIsType . (::: KInterface)) s
   -- FIXME: polarize types and check that this is a value type being returned
-  t' <- checkIsType (t ::: VType)
-  pure $ TComp s' t' ::: VType
+  t' <- checkIsType (t ::: KType)
+  pure $ TComp s' t' ::: KType
+
+
+synthKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m Kind
+synthKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
+  S.TArrow n _ a b -> arrow (KArrow n) (synthKind a) (synthKind b)
+  S.KType          -> _Type
+  S.KInterface     -> _Interface
+  S.TComp{}        -> nope
+  S.TForAll{}      -> nope
+  S.TString{}      -> nope
+  S.TApp{}         -> nope
+  S.TVar{}         -> nope
+  where
+  nope = IsType couldNotSynthesize
 
 
 synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m TExpr
 synthType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TVar n          -> tvar n
-  S.KType           -> _Type
-  S.KInterface      -> _Interface
+  S.KType           -> nope
+  S.KInterface      -> nope
   S.TString         -> _String
-  S.TForAll n t b   -> forAll (n ::: synthType t) (synthType b)
+  S.TForAll n t b   -> forAll (n ::: synthKind t) (synthType b)
   S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> synthType a)) --> synthType b
   S.TComp s t       -> comp (map synthInterface s) (synthType t)
   S.TApp f a        -> app TApp (synthType f) (synthType a)
   where
+  nope = IsType couldNotSynthesize
   interpretMul = \case
     S.Zero -> zero
     S.One  -> one
@@ -109,17 +126,23 @@ synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapIsType (pushSpan
   h' = mapIsType (pushSpan sh) (tvar h)
 
 
+-- Assertions
+
+assertTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => Kind -> Elab m (Maybe Name ::: Kind, Kind)
+assertTypeConstructor = assertMatch (\case{ Left (KArrow n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _" . Left
+
+
 -- Judgements
 
-checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Type -> Elab m a
+checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Kind -> Elab m a
 checkIsType (m ::: _K) = do
   a ::: _KA <- isType m
-  a <$ unify _KA _K
+  a <$ unless (_KA == _K) (couldNotUnify (Left _KA) (Left _K))
 
-newtype IsType m a = IsType { isType :: Elab m (a ::: Type) }
+newtype IsType m a = IsType { isType :: Elab m (a ::: Kind) }
 
 instance Functor (IsType m) where
   fmap f (IsType m) = IsType (first f <$> m)
 
-mapIsType :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> IsType m a -> IsType m b
+mapIsType :: (Elab m (a ::: Kind) -> Elab m (b ::: Kind)) -> IsType m a -> IsType m b
 mapIsType f = IsType . f . isType
