@@ -1,7 +1,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Surface
 ( -- * Types
-  Type(..)
+  Kind(..)
+, Type(..)
 , Mul(..)
   -- * Expressions
 , Expr(..)
@@ -11,8 +12,7 @@ module Facet.Surface
 , Pattern(..)
 , ValPattern(..)
 , EffPattern(..)
-  -- * Declarations
-, Decl(..)
+  -- * Definitions
 , Def(..)
   -- * Modules
 , Module(..)
@@ -37,12 +37,16 @@ import Facet.Syntax
 
 -- Types
 
+data Kind
+  = KType
+  | KInterface
+  | KArrow (Maybe Name) (Ann Kind) (Ann Kind)
+  deriving (Eq, Show)
+
 data Type
   = TVar QName
-  | KType
-  | KInterface
   | TString
-  | TForAll Name (Ann Type) (Ann Type)
+  | TForAll Name (Ann Kind) (Ann Type)
   | TArrow (Maybe Name) (Maybe Mul) (Ann Type) (Ann Type)
   | TComp [Ann Interface] (Ann Type)
   | TApp (Ann Type) (Ann Type)
@@ -91,14 +95,10 @@ data EffPattern = POp QName [Ann ValPattern] Name
 
 -- Declarations
 
-data Decl = Decl (Ann Type) Def
-  deriving (Eq, Show)
-
-
 data Def
-  = DataDef [Ann (Name ::: Ann Type)]
-  | InterfaceDef [Ann (Name ::: Ann Type)]
-  | TermDef (Ann Expr)
+  = DataDef [Ann (Name ::: Ann Type)] (Ann Kind)
+  | InterfaceDef [Ann (Name ::: Ann Type)] (Ann Kind)
+  | TermDef (Ann Expr) (Ann Type)
   deriving (Eq, Show)
 
 
@@ -109,7 +109,7 @@ data Module = Module
   , imports   :: [Ann Import]
   -- FIXME: store source references for operators’ definitions, for error reporting
   , operators :: [(Op, Assoc)]
-  , defs      :: [Ann (Name, Ann Decl)]
+  , defs      :: [Ann (Name, Ann Def)]
   }
   deriving (Eq, Show)
 

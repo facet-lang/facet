@@ -34,12 +34,12 @@ rethrowElabErrors opts = L.runThrow rethrow
     ]
     where
     (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
-    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printType opts printCtx _T))) (metas subst)
+    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printKind printCtx _T))) (metas subst)
   combine (d, print, ctx) (Binding n m _T) =
     let n' = intro n d
     in  ( succ d
         , print :> n'
-        , ctx  :> getPrint (ann (n' ::: mult m (printType opts print _T))) )
+        , ctx  :> getPrint (ann (n' ::: mult m (either (printKind print) (printType opts print) _T))) )
   mult m = if
     | m == zero -> (pretty "0" <+>)
     | m == one  -> (pretty "1" <+>)
@@ -50,7 +50,7 @@ printErrReason :: Options -> Snoc Print -> ErrReason -> Doc Style
 printErrReason opts ctx = group . \case
   FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n qs     -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
-  CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
+  CouldNotSynthesize     -> reflow "could not synthesize a type; try a type annotation"
   ResourceMismatch n e a -> fillSep [reflow "uses of variable", pretty n, reflow "didn’t match requirements"]
     <> hardline <> pretty "expected:" <+> prettyQ e
     <> hardline <> pretty "  actual:" <+> prettyQ a
@@ -63,8 +63,8 @@ printErrReason opts ctx = group . \case
     <> hardline <> pretty "expected:" <> print exp'
     <> hardline <> pretty "  actual:" <> print act'
     where
-    exp' = either reflow (getPrint . printType opts ctx) exp
-    act' = getPrint (printType opts ctx act)
+    exp' = either reflow (getPrint . either (printKind ctx) (printType opts ctx)) exp
+    act' = getPrint (either (printKind ctx) (printType opts ctx) act)
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T              ->

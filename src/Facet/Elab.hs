@@ -17,6 +17,7 @@ module Facet.Elab
 , Err(..)
 , ErrReason(..)
 , err
+, couldNotUnify
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
@@ -37,6 +38,7 @@ module Facet.Elab
 , use
 , extendSig
 , elabWith
+, elabKind
 , elabType
 , elabTerm
 , elabSynthTerm
@@ -82,7 +84,7 @@ import Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Has (State Subst) sig m => Type -> m Meta
+meta :: Has (State Subst) sig m => Kind -> m Meta
 meta _T = state (declareMeta _T)
 
 
@@ -98,37 +100,37 @@ instantiate inst = go
 
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
-  => (forall m . Alternative m => Name -> Module -> m (RName :=: Maybe Def ::: Type))
+  => (forall m . Alternative m => Name -> Module -> m (RName :=: d))
   -> QName
-  -> Elab m (RName :=: Maybe Def ::: Type)
+  -> Elab m (RName :=: d)
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
-  ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
+  ds  -> ambiguousName n (map (\ (q :=: _) -> q) ds)
 
-resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Def ::: Type)
+resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Expr ::: Type)
 resolveC = resolveWith lookupC
 
-resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Def ::: Type)
+resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Def)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Alternative m => QName -> Context -> m (Index, Quantity, Type)
+lookupInContext :: Alternative m => QName -> Context -> m (Index, Quantity, Either Kind Type)
 lookupInContext (m:.n)
   | m == Nil  = lookupIndex n
   | otherwise = const Alt.empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Type] -> m (RName :=: Maybe Def ::: Type)
+lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Type] -> m (RName :=: Def)
 lookupInSig (m :. n) mod graph = fmap asum . fmap $ \case
   VNe (Global q@(m':.:_)) _ _ -> do
     guard (m == Nil || m == toSnoc m')
     defs <- interfaceScope =<< lookupQ graph mod (toQ q)
-    _ :=: d ::: _T <- lookupScope n defs
-    pure $ m':.:n :=: d ::: _T
+    _ :=: d <- lookupScope n defs
+    pure $ m':.:n :=: d
   _                             -> Alt.empty
   where
-  interfaceScope (_ :=: d ::: _) = case d of { Just (DInterface defs) -> pure defs ; _ -> Alt.empty }
+  interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> Alt.empty }
 
 
 (|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a
@@ -182,9 +184,9 @@ data ErrReason
   = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
   | AmbiguousName QName [RName]
-  | CouldNotSynthesize String
+  | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
-  | Mismatch (Either String Type) Type
+  | Mismatch (Either String (Either Kind Type)) (Either Kind Type)
   | Hole Name Type
   | Invariant String
 
@@ -194,7 +196,7 @@ applySubst ctx subst r = case r of
   AmbiguousName{}      -> r
   CouldNotSynthesize{} -> r
   ResourceMismatch{}   -> r
-  Mismatch exp act     -> Mismatch (roundtrip <$> exp) (roundtrip act)
+  Mismatch exp act     -> Mismatch (fmap roundtrip <$> exp) (roundtrip <$> act)
   Hole n t             -> Hole n (roundtrip t)
   Invariant{}          -> r
   where
@@ -211,14 +213,14 @@ err reason = do
   subst <- get
   throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Throw Err) sig m) => Either String Type -> Type -> Elab m a
+mismatch :: (HasCallStack, Has (Throw Err) sig m) => Either String (Either Kind Type) -> Either Kind Type -> Elab m a
 mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m a
+couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => Either Kind Type -> Either Kind Type -> Elab m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right t2) t1
 
-couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
-couldNotSynthesize v = withFrozenCallStack $ err $ CouldNotSynthesize v
+couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => Elab m a
+couldNotSynthesize = withFrozenCallStack $ err CouldNotSynthesize
 
 resourceMismatch :: (HasCallStack, Has (Throw Err) sig m) => Name -> Quantity -> Quantity -> Elab m a
 resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp act
@@ -251,11 +253,11 @@ warn reason = do
 
 -- Patterns
 
-assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Type -> Maybe out) -> String -> Type -> Elab m out
+assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Either Kind Type -> Maybe out) -> String -> Either Kind Type -> Elab m out
 assertMatch pat exp _T = maybe (mismatch (Left exp) _T) pure (pat _T)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-assertFunction = assertMatch (\case{ VArrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
+assertFunction = assertMatch (\case{ Right (VArrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . Right
 
 
 -- Unification
@@ -288,19 +290,14 @@ spans_ = lens spans (\ e spans -> e{ spans })
 unify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m ()
 unify t1 t2 = type' t1 t2
   where
-  nope = couldNotUnify t1 t2
+  nope = couldNotUnify (Right t1) (Right t2)
 
   type' = curry $ \case
     (VNe (Free (Left v1)) Nil Nil, VNe (Free (Left v2)) Nil Nil) -> flexFlex v1 v2
     (VNe (Free (Left v1)) Nil Nil, t2)                           -> solve v1 t2
     (t1, VNe (Free (Left v2)) Nil Nil)                           -> solve v2 t1
-    (VType, VType)                                               -> pure ()
-    (VType, _)                                                   -> nope
-    (VInterface, VInterface)                                     -> pure ()
-    (VInterface, _)                                              -> nope
-    (VForAll n t1 b1, VForAll _ t2 b2)                           -> type' t1 t2 >> depth >>= \ d -> Binding n zero t1 |- type' (b1 (T.free d)) (b2 (T.free d))
+    (VForAll n t1 b1, VForAll _ t2 b2)                           -> kind t1 t2 >> depth >>= \ d -> Binding n zero (Left t1) |- type' (b1 (T.free d)) (b2 (T.free d))
     (VForAll{}, _)                                               -> nope
-    -- FIXME: this must unify the signatures
     (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                         -> type' a1 a2 >> type' b1 b2
     (VArrow{}, _)                                                -> nope
     (VComp s1 t1, VComp s2 t2)                                   -> sig s1 s2 >> type' t1 t2
@@ -310,6 +307,8 @@ unify t1 t2 = type' t1 t2
     (VNe{}, _)                                                   -> nope
     (VString, VString)                                           -> pure ()
     (VString, _)                                                 -> nope
+
+  kind k1 k2 = unless (k1 == k2) nope
 
   var = curry $ \case
     (Global q1, Global q2)             -> unless (q1 == q2) nope
@@ -333,7 +332,7 @@ unify t1 t2 = type' t1 t2
   solve v t = do
     d <- depth
     if occursIn (== Free (Left v)) d t then
-      mismatch (Right (metavar v)) t
+      mismatch (Right (Right (metavar v))) (Right t)
     else
       gets (T.lookupMeta v) >>= \case
         Nothing          -> modify (T.solveMeta v t)
@@ -352,6 +351,9 @@ elabWith scale k m = runState k mempty . runWriter (const pure) $ do
       ctx  = ElabContext{ context = Context.empty, sig = [], spans = Nil }
   runReader stat . runReader ctx . runElab $ m
 
+elabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Kind -> m Kind
+elabKind = elabWith zero (const pure)
+
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
 elabType = elabWith zero (\ subst t -> pure (T.eval subst Nil t))
 
@@ -361,5 +363,5 @@ elabTerm = elabWith one (const pure)
 elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (Expr ::: Type) -> m (Expr ::: Type)
 elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: T.eval subst Nil (T.quote 0 _T)))
 
-elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr ::: Type) -> m (Type ::: Type)
-elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst Nil _T ::: T.eval subst Nil (T.quote 0 _K)))
+elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr ::: Kind) -> m (Type ::: Kind)
+elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst Nil _T ::: _K))

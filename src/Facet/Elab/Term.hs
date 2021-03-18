@@ -79,7 +79,7 @@ as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m TExpr -
 as (m ::: _T) = Synth $ do
   env <- views context_ toEnv
   subst <- get
-  _T' <- T.eval subst (Left <$> env) <$> checkIsType (_T ::: VType)
+  _T' <- T.eval subst (Left <$> env) <$> checkIsType (_T ::: KType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -95,11 +95,11 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
-  | Just (i, q, _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
-  | Just (_ :=: Just (DTerm x) ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
-  | otherwise                                          -> do
-    n :=: _ ::: _T <- resolveQ n
-    synth $ global (n ::: _T)
+  | Just (i, q, Right _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
+  | Just (_ :=: DTerm (Just x) _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
+  | otherwise                                          -> resolveQ n >>= \case
+    n :=: DTerm _ _T -> synth $ global (n ::: _T)
+    _ :=: _          -> freeVariable n
 
 
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
@@ -110,7 +110,7 @@ tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
-  b' <- Binding n zero _A |- check (b ::: _B (T.free d))
+  b' <- Binding n zero (Left _A) |- check (b ::: _B (T.free d))
   pure $ XTLam b'
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
@@ -137,7 +137,7 @@ wildcardP :: Bind m (ValuePattern Name)
 wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 
 varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (ValuePattern Name)
-varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q (wrap _A) |- check (b ::: _B))
+varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q (Right (wrap _A)) |- check (b ::: _B))
   where
   wrap = \case
     VComp sig _A -> VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil Nil) (VComp sig _A)
@@ -162,14 +162,14 @@ fieldsP = foldr cons
 allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _T) <- assertComp _A
-  (PAll n,) <$> (Binding n q (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil Nil) (VComp sig _T)) |- check (b ::: _B))
+  (PAll n,) <$> (Binding n q (Right (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil Nil) (VComp sig _T))) |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- assertComp _A
-  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (lookupInSig n module' graph sig)
-  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (VArrow Nothing Many _A' _A) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
+  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (traverse unDTerm =<< lookupInSig n module' graph sig)
+  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Right (VArrow Nothing Many _A' _A)) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
 
@@ -184,7 +184,7 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   where
-  nope = Synth $ couldNotSynthesize (show e)
+  nope = Synth couldNotSynthesize
 
 checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
@@ -214,15 +214,12 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Type -> Elab m TExpr
+abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Kind -> Elab m TExpr
 abstractType body = go
   where
   go = \case
-    VArrow  (Just n) q a b -> do
-      level <- depth
-      b' <- Binding n q a |- go b
-      pure $ TForAll n (T.quote level a) b'
-    _                       -> body
+    KArrow  (Just n) a b -> TForAll n a <$> (Binding n zero (Left a) |- go b)
+    _                    -> body
 
 abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TExpr -> Snoc Expr -> Expr) -> Check m Expr
 abstractTerm body = go Nil Nil
@@ -248,33 +245,33 @@ patternForArgType = \case
 
 elabDataDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
-  => Name ::: Type
+  => Name ::: Kind
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m [Name :=: Maybe Def ::: Type]
+  -> m [Name :=: Def]
 -- FIXME: check that all constructors return the datatype.
-elabDataDef (dname ::: _T) constructors = do
+elabDataDef (dname ::: _K) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    c_T <- elabType $ abstractType (checkIsType (synthType t ::: VType)) _T
+    c_T <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _K
     con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
-    pure $ n :=: Just (DTerm con') ::: c_T
+    pure $ n :=: DTerm (Just con') c_T
   pure
-    $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
+    $ (dname :=: DData (scopeFromList cs) _K)
     : cs
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
-  => Name ::: Type
+  => Name ::: Kind
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m [Name :=: Maybe Def ::: Type]
+  -> m [Name :=: Def]
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    _T' <- elabType $ abstractType (checkIsType (synthType t ::: VType)) _T
+    _T' <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _T
     -- FIXME: check that the interface is a member of the sig.
     op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
-    pure $ n :=: Just (DTerm op') ::: _T'
-  pure [ dname :=: Just (DInterface (scopeFromList cs)) ::: _T ]
+    pure $ n :=: DTerm (Just op') _T'
+  pure [ dname :=: DInterface (scopeFromList cs) _T ]
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
@@ -309,39 +306,42 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl tele def))) -> do
-      _T <- runModule $ elabType $ checkIsType (synthType tele ::: VType)
+    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> case def of
+      S.DataDef cs tele -> Nothing <$ do
+        _K <- runModule $ elabKind $ checkIsType (synthKind tele ::: KType)
+        scope_.decls_.at dname .= Just (DData mempty _K)
+        decls <- runModule $ elabDataDef (dname ::: _K) cs
+        for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
-      scope_.decls_.at dname .= Just (Nothing ::: _T)
-      case def of
-        S.DataDef cs -> Nothing <$ do
-          decls <- runModule $ elabDataDef (dname ::: _T) cs
-          for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
+      S.InterfaceDef os tele -> Nothing <$ do
+        _K <- runModule $ elabKind $ checkIsType (synthKind tele ::: KType)
+        scope_.decls_.at dname .= Just (DInterface mempty _K)
+        decls <- runModule $ elabInterfaceDef (dname ::: _K) os
+        for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
-        S.InterfaceDef os -> Nothing <$ do
-          decls <- runModule $ elabInterfaceDef (dname ::: _T) os
-          for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
-
-        S.TermDef t -> pure (Just (dname, t ::: _T))
+      S.TermDef t tele -> do
+        _T <- runModule $ elabType $ checkIsType (synthType tele ::: KType)
+        scope_.decls_.at dname .= Just (DTerm Nothing _T)
+        pure (Just (dname, t ::: _T))
 
     -- then elaborate the terms
     for_ (catMaybes es) $ \ (dname, t ::: _T) -> do
       t' <- runModule $ elabTermDef _T t
-      scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
+      scope_.decls_.ix dname .= DTerm (Just t') _T
 
 
 -- Errors
 
-assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name ::: Type, Type -> Type)
-assertQuantifier = assertMatch (\case{ VForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
+assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name ::: Kind, Type -> Type)
+assertQuantifier = assertMatch (\case{ Right (VForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" . Right
 
 -- | Expect a tacit (non-variable-binding) function type.
 assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ((Quantity, Type), Type)
-assertTacitFunction = assertMatch (\case{ VArrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _"
+assertTacitFunction = assertMatch (\case{ Right (VArrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . Right
 
 -- | Expect a computation type with effects.
 assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ([Type], Type)
-assertComp = assertMatch (\case{ VComp s t -> pure (s, t) ; _ -> Nothing }) "[_] _"
+assertComp = assertMatch (\case{ Right (VComp s t) -> pure (s, t) ; _ -> Nothing }) "[_] _" . Right
 
 
 -- Elaboration
