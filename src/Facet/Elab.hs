@@ -184,7 +184,7 @@ data ErrReason
   = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
   | AmbiguousName QName [RName]
-  | CouldNotSynthesize String
+  | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
   | Mismatch (Either String (Either Kind Type)) (Either Kind Type)
   | Hole Name Type
@@ -219,8 +219,8 @@ mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
 couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => Either Kind Type -> Either Kind Type -> Elab m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right t2) t1
 
-couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => String -> Elab m a
-couldNotSynthesize v = withFrozenCallStack $ err $ CouldNotSynthesize v
+couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => Elab m a
+couldNotSynthesize = withFrozenCallStack $ err CouldNotSynthesize
 
 resourceMismatch :: (HasCallStack, Has (Throw Err) sig m) => Name -> Quantity -> Quantity -> Elab m a
 resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp act

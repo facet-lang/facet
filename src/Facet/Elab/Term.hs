@@ -184,7 +184,7 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   where
-  nope = Synth $ couldNotSynthesize (show e)
+  nope = Synth couldNotSynthesize
 
 checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
 checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of

@@ -50,7 +50,7 @@ printErrReason :: Options -> Snoc Print -> ErrReason -> Doc Style
 printErrReason opts ctx = group . \case
   FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n qs     -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
-  CouldNotSynthesize msg -> reflow "could not synthesize a type for" <> softline <> reflow msg
+  CouldNotSynthesize     -> reflow "could not synthesize a type; try a type annotation"
   ResourceMismatch n e a -> fillSep [reflow "uses of variable", pretty n, reflow "didn’t match requirements"]
     <> hardline <> pretty "expected:" <+> prettyQ e
     <> hardline <> pretty "  actual:" <+> prettyQ a
