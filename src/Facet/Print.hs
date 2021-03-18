@@ -161,8 +161,6 @@ printTExpr Options{ rname, instantiation } = go
     C.TVar (Global n)       -> qvar n
     C.TVar (Free (Right d)) -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
     C.TVar (Free (Left m))  -> meta m
-    C.TType                 -> annotate Type $ pretty "Type"
-    C.TInterface            -> annotate Type $ pretty "Interface"
     C.TForAll      n    t b -> braces (ann (intro n d ::: printKind env t)) --> go (env :> intro n d) b
     C.TArrow Nothing  q a b -> mult q (go env a) --> go env b
     C.TArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b

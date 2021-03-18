@@ -51,9 +51,7 @@ data Kind
 -- Types
 
 data Type
-  = VType
-  | VInterface
-  | VString
+  = VString
   | VForAll Name Kind (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
   | VNe (Var (Either Meta Level)) (Snoc Type) (Snoc Type)
@@ -84,8 +82,6 @@ occursIn :: (Var (Either Meta Level) -> Bool) -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
-    VType          -> False
-    VInterface     -> False
     VForAll _ _ b  -> go (succ d) (b (free d))
     VArrow _ _ a b -> go d a || go d b
     VComp s t      -> any (go d) s || go d t
@@ -118,9 +114,7 @@ infixl 9 $$$, $$$*
 -- Type expressions
 
 data TExpr
-  = TType
-  | TInterface
-  | TString
+  = TString
   | TVar (Var (Either Meta Index))
   | TForAll Name Kind TExpr
   | TArrow (Maybe Name) Quantity TExpr TExpr
@@ -134,8 +128,6 @@ data TExpr
 
 quote :: Level -> Type -> TExpr
 quote d = \case
-  VType          -> TType
-  VInterface     -> TInterface
   VString        -> TString
   VForAll n t b  -> TForAll n t (quote (succ d) (b (free d)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
@@ -145,8 +137,6 @@ quote d = \case
 eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
   go env = \case
-    TType                 -> VType
-    TInterface            -> VInterface
     TString               -> VString
     TVar (Global n)       -> global n
     TVar (Free (Right v)) -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
