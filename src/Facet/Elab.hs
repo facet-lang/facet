@@ -51,6 +51,7 @@ import Control.Carrier.Error.Church
 import Control.Carrier.Reader
 import Control.Carrier.State.Church
 import Control.Carrier.Writer.Church
+import Control.Effect.Lens (views)
 import Control.Lens (Lens', lens)
 import Control.Monad (guard, unless)
 import Data.Foldable (asum)
@@ -154,7 +155,7 @@ sat a b
 
 
 depth :: Has (Reader ElabContext) sig m => m Level
-depth = asks (level.(context :: ElabContext -> Context))
+depth = views context_ level
 
 use :: Has (Reader ElabContext :+: Writer Usage) sig m => Index -> Quantity -> m ()
 use i q = do
