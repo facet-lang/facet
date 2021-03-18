@@ -6,7 +6,6 @@ module Facet.Elab.Type
 , _Interface
 , _String
 , forAll
-, (-->)
 , synthKind
 , synthType
   -- * Judgements
@@ -63,14 +62,6 @@ arrow mk a b = IsType $ do
   b' <- checkIsType (b ::: KType)
   pure $ mk a' b' ::: KType
 
-(-->) :: (HasCallStack, Has (Throw Err) sig m) => Maybe Name ::: IsType m (Quantity, TExpr) -> IsType m TExpr -> IsType m TExpr
-(n ::: a) --> b = IsType $ do
-  (q', a') <- checkIsType (a ::: KType)
-  b' <- checkIsType (b ::: KType)
-  pure $ TArrow n q' a' b' ::: KType
-
-infixr 1 -->
-
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
 app mk f a = IsType $ do
@@ -101,7 +92,7 @@ synthType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TVar n          -> tvar n
   S.TString         -> _String
   S.TForAll n t b   -> forAll (n ::: synthKind t) (synthType b)
-  S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> synthType a)) --> synthType b
+  S.TArrow  n q a b -> arrow (TArrow n (maybe Many interpretMul q)) (synthType a) (synthType b)
   S.TComp s t       -> comp (map synthInterface s) (synthType t)
   S.TApp f a        -> app TApp (synthType f) (synthType a)
   where
