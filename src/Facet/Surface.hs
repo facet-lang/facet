@@ -11,8 +11,7 @@ module Facet.Surface
 , Pattern(..)
 , ValPattern(..)
 , EffPattern(..)
-  -- * Declarations
-, Decl(..)
+  -- * Definitions
 , Def(..)
   -- * Modules
 , Module(..)
@@ -91,14 +90,10 @@ data EffPattern = POp QName [Ann ValPattern] Name
 
 -- Declarations
 
-data Decl = Decl (Ann Type) Def
-  deriving (Eq, Show)
-
-
 data Def
-  = DataDef [Ann (Name ::: Ann Type)]
-  | InterfaceDef [Ann (Name ::: Ann Type)]
-  | TermDef (Ann Expr)
+  = DataDef [Ann (Name ::: Ann Type)] (Ann Type)
+  | InterfaceDef [Ann (Name ::: Ann Type)] (Ann Type)
+  | TermDef (Ann Expr) (Ann Type)
   deriving (Eq, Show)
 
 
@@ -109,7 +104,7 @@ data Module = Module
   , imports   :: [Ann Import]
   -- FIXME: store source references for operators’ definitions, for error reporting
   , operators :: [(Op, Assoc)]
-  , defs      :: [Ann (Name, Ann Decl)]
+  , defs      :: [Ann (Name, Ann Def)]
   }
   deriving (Eq, Show)
 

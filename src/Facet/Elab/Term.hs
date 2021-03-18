@@ -306,20 +306,20 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl tele def))) -> case def of
-      S.DataDef cs -> Nothing <$ do
+    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> case def of
+      S.DataDef cs tele -> Nothing <$ do
         _K <- runModule $ elabKind $ checkIsType (synthKind tele ::: KType)
         scope_.decls_.at dname .= Just (DData mempty _K)
         decls <- runModule $ elabDataDef (dname ::: _K) cs
         for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
-      S.InterfaceDef os -> Nothing <$ do
+      S.InterfaceDef os tele -> Nothing <$ do
         _K <- runModule $ elabKind $ checkIsType (synthKind tele ::: KType)
         scope_.decls_.at dname .= Just (DInterface mempty _K)
         decls <- runModule $ elabInterfaceDef (dname ::: _K) os
         for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
-      S.TermDef t -> do
+      S.TermDef t tele -> do
         _T <- runModule $ elabType $ checkIsType (synthType tele ::: KType)
         scope_.decls_.at dname .= Just (DTerm Nothing _T)
         pure (Just (dname, t ::: _T))
