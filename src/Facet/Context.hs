@@ -12,10 +12,8 @@ module Facet.Context
 ) where
 
 import qualified Control.Applicative as Alt
-import           Data.Semialign
 import           Facet.Core.Type
 import           Facet.Name
-import           Facet.Semiring
 import qualified Facet.Snoc as S
 import           Facet.Usage
 import           GHC.Stack
@@ -23,25 +21,12 @@ import           Prelude hiding (lookup, zipWith)
 
 newtype Context = Context { elems :: S.Snoc Binding }
 
--- | A precondition for use of this instance is that one only ever '<>'s 'Context's assigning the same types to the same variables in the same order.
-instance Semigroup Context where
-  Context e1 <> Context e2 = Context (zipWith (<>) e1 e2)
-
-instance LeftModule Quantity Context where
-  q ><< Context e = Context ((q ><<) <$> e)
-
 data Binding = Binding
   { name     :: Name
   , quantity :: Quantity
   , type'    :: Either Kind Type
   }
 
--- | A precondition for use of this instance is that one only ever '<>'s pairs of 'Binding's assigning the same type to the same variable.
-instance Semigroup Binding where
-  Binding _ q1 _ <> Binding n q2 _T = Binding n (q1 <> q2) _T
-
-instance LeftModule Quantity Binding where
-  q1 ><< Binding n q2 _T = Binding n (q1 >< q2) _T
 
 empty :: Context
 empty = Context S.Nil
