@@ -38,6 +38,7 @@ module Facet.Elab
 , use
 , extendSig
 , elabWith
+, elabKind
 , elabType
 , elabTerm
 , elabSynthTerm
@@ -352,6 +353,9 @@ elabWith scale k m = runState k mempty . runWriter (const pure) $ do
   let stat = StaticContext{ graph, module', source, scale }
       ctx  = ElabContext{ context = Context.empty, sig = [], spans = Nil }
   runReader stat . runReader ctx . runElab $ m
+
+elabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Kind -> m Kind
+elabKind = elabWith zero (const pure)
 
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
 elabType = elabWith zero (\ subst t -> pure (T.eval subst Nil t))
