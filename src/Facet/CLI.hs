@@ -5,7 +5,6 @@ module Facet.CLI
 import           Control.Monad (join)
 import           Data.Version (showVersion)
 import qualified Facet.Format as Format
-import qualified Facet.LSP as LSP
 import qualified Facet.REPL as REPL
 import qualified Facet.Run as Run
 import           Options.Applicative
@@ -31,7 +30,6 @@ commands
   =  command "repl"   (info replParser    (progDesc "run the repl"))
   <> command "run"    (info runFileParser (progDesc "run a program"))
   <> command "format" (info formatParser  (progDesc "format Facet sources"))
-  <> command "lsp"    (info lspParser     (progDesc "run an LSP server"))
 
 
 -- Command parsers
@@ -46,9 +44,6 @@ runFileParser = Run.runFile
 
 formatParser :: Parser (IO ExitCode)
 formatParser = Format.format <$> many searchPath <*> strArgument @FilePath (metavar "PATH")
-
-lspParser :: Parser (IO ExitCode)
-lspParser = LSP.lsp <$> optional (strOption (long "path" <> metavar "PATH"))
 
 
 -- Option parsers

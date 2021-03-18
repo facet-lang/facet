@@ -92,7 +92,6 @@ library
     Facet.Flag
     Facet.Format
     Facet.Graph
-    Facet.LSP
     Facet.Lens
     Facet.Name
     Facet.Notice
@@ -128,15 +127,12 @@ library
     , charset
     , colour
     , containers
-    , data-default
     , directory
     , exceptions ^>= 0.10
     , filepath
     , fused-effects
     , fused-effects-lens
     , haskeline ^>= 0.8.1
-    , haskell-lsp
-    , haskell-lsp-types
     , lens
     , optparse-applicative
     , parsers
