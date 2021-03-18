@@ -116,16 +116,22 @@ body = fmap (either S.out id) <$> anned (braces (Right . S.Lam <$> sepBy1 clause
 
 
 dataDecl :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Def))
-dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> tname <* colon <*> anned (typeSig tname <**> (S.DataDef <$> braces (commaSep con)))
+dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> tname <* colon <*> anned (kindSig tname <**> (S.DataDef <$> braces (commaSep con)))
 
 interfaceDecl :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Def))
-interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> tname <* colon <*> anned (typeSig tname <**> (S.InterfaceDef <$> braces (commaSep con)))
+interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> tname <* colon <*> anned (kindSig tname <**> (S.InterfaceDef <$> braces (commaSep con)))
 
 con :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann (N.Name ::: S.Ann S.Type))
 con = anned ((:::) <$> dename <* colon <*> rec)
   where
   rec = choice [ forAll rec, type' ]
 
+
+kindSig
+  :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p)
+  => p N.Name -- ^ a parser for names occurring in explicit (parenthesized) bindings
+  -> p (S.Ann S.Kind)
+kindSig name = choice [ kindArrow name (kindSig name), kind ]
 
 typeSig
   :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p)
@@ -136,6 +142,16 @@ typeSig name = choice [ forAll (typeSig name), bindArrow name (typeSig name), ty
 
 -- Types
 
+kind :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Kind)
+kind = choice
+  [ token (anned (S.KType      <$ string "Type"))
+  , token (anned (S.KInterface <$ string "Interface"))
+  ]
+
+kindArrow :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann S.Kind) -> p (S.Ann S.Kind)
+kindArrow name k = anned (try (S.KArrow . Just <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> kind <* rparen <* arrow <*> k)
+
+
 -- FIXME: kind ascriptions
 monotypeTable :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => Table p (S.Ann S.Type)
 monotypeTable =
@@ -143,9 +159,7 @@ monotypeTable =
   , [ retType ]
   , [ parseOperator (N.Infix mempty, N.L, foldl1 (S.annBinary S.TApp)) ]
   , [ -- FIXME: we should treat these as globals.
-      atom (token (anned (S.KType      <$ string "Type")))
-    , atom (token (anned (S.KInterface <$ string "Interface")))
-    , atom (token (anned (S.TString    <$ string "String")))
+      atom (token (anned (S.TString    <$ string "String")))
       -- FIXME: holes in types
     , atom tvar
     ]
@@ -157,7 +171,7 @@ type' = monotype
 
 
 forAll :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type)
-forAll k = make <$> anned (try (((,,) <$ lbrace <*> commaSep1 ((,) <$> position <*> tname) <* colon) <*> type' <* rbrace <* arrow) <*> k)
+forAll k = make <$> anned (try (((,,) <$ lbrace <*> commaSep1 ((,) <$> position <*> tname) <* colon) <*> kind <* rbrace <* arrow) <*> k)
   where
   make (S.Ann s cs (ns, t, b)) = S.Ann s cs (S.out (foldr (\ (p, n) b -> S.Ann (Span p (end s)) Nil (S.TForAll n t b)) b ns))
 

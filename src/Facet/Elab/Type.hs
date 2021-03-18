@@ -89,32 +89,22 @@ comp s t = IsType $ do
   pure $ TComp s' t' ::: KType
 
 
-synthKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m Kind
+synthKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Kind -> IsType m Kind
 synthKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
-  S.TArrow n _ a b -> arrow (KArrow n) (synthKind a) (synthKind b)
-  S.KType          -> _Type
-  S.KInterface     -> _Interface
-  S.TComp{}        -> nope
-  S.TForAll{}      -> nope
-  S.TString{}      -> nope
-  S.TApp{}         -> nope
-  S.TVar{}         -> nope
-  where
-  nope = IsType couldNotSynthesize
+  S.KArrow n a b -> arrow (KArrow n) (synthKind a) (synthKind b)
+  S.KType        -> _Type
+  S.KInterface   -> _Interface
 
 
 synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m TExpr
 synthType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TVar n          -> tvar n
-  S.KType           -> nope
-  S.KInterface      -> nope
   S.TString         -> _String
   S.TForAll n t b   -> forAll (n ::: synthKind t) (synthType b)
   S.TArrow  n q a b -> (n ::: ((maybe Many interpretMul q,) <$> synthType a)) --> synthType b
   S.TComp s t       -> comp (map synthInterface s) (synthType t)
   S.TApp f a        -> app TApp (synthType f) (synthType a)
   where
-  nope = IsType couldNotSynthesize
   interpretMul = \case
     S.Zero -> zero
     S.One  -> one
