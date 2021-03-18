@@ -60,6 +60,7 @@ import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type
 import           Facet.Graph
+import           Facet.Lens (locally)
 import           Facet.Name
 import           Facet.Semiring (Few(..), zero, (><<))
 import           Facet.Snoc
@@ -352,6 +353,9 @@ runModule m = do
 
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
 withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
+
+extendSig :: Has (Reader ElabContext) sig m => [Type] -> m a -> m a
+extendSig = locally sig_ . (++)
 
 
 -- Judgements
