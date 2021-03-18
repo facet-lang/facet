@@ -99,18 +99,18 @@ instantiate inst = go
 
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
-  => (forall m . Alternative m => Name -> Module -> m (RName :=: d ::: t))
+  => (forall m . Alternative m => Name -> Module -> m (RName :=: d))
   -> QName
-  -> Elab m (RName :=: d ::: t)
+  -> Elab m (RName :=: d)
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
-  ds  -> ambiguousName n (map (\ (q :=: _ ::: _) -> q) ds)
+  ds  -> ambiguousName n (map (\ (q :=: _) -> q) ds)
 
-resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Def ::: Type)
+resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Expr ::: Type)
 resolveC = resolveWith lookupC
 
-resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Def ::: Type)
+resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Def)
 resolveQ = resolveWith lookupD
 
 lookupInContext :: Alternative m => QName -> Context -> m (Index, Quantity, Either Kind Type)
@@ -120,16 +120,16 @@ lookupInContext (m:.n)
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Type] -> m (RName :=: Maybe Def ::: Type)
+lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Type] -> m (RName :=: Def)
 lookupInSig (m :. n) mod graph = fmap asum . fmap $ \case
   VNe (Global q@(m':.:_)) _ _ -> do
     guard (m == Nil || m == toSnoc m')
     defs <- interfaceScope =<< lookupQ graph mod (toQ q)
-    _ :=: d ::: _T <- lookupScope n defs
-    pure $ m':.:n :=: d ::: _T
+    _ :=: d <- lookupScope n defs
+    pure $ m':.:n :=: d
   _                             -> Alt.empty
   where
-  interfaceScope (_ :=: d ::: _) = case d of { Just (DInterface defs) -> pure defs ; _ -> Alt.empty }
+  interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> Alt.empty }
 
 
 (|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a

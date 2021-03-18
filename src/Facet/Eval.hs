@@ -52,8 +52,8 @@ global n = do
   mod <- lift ask
   graph <- lift ask
   case lookupQ graph mod (toQ n) of
-    Just (_ :=: Just (DTerm v) ::: _) -> pure v -- FIXME: store values in the module graph
-    _                                 -> error "throw a real error here"
+    Just (_ :=: DTerm (Just v) _) -> pure v -- FIXME: store values in the module graph
+    _                             -> error "throw a real error here"
 
 var :: (HasCallStack, Applicative m) => Snoc (Value m) -> Index -> m (Value m)
 var env v = pure (env ! getIndex v)

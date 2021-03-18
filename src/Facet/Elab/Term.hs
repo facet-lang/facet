@@ -96,10 +96,10 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
   | Just (i, q, Right _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
-  | Just (_ :=: Just (DTerm x) ::: _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
-  | otherwise                                          -> do
-    n :=: _ ::: _T <- resolveQ n
-    synth $ global (n ::: _T)
+  | Just (_ :=: DTerm (Just x) _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
+  | otherwise                                          -> resolveQ n >>= \case
+    n :=: DTerm _ _T -> synth $ global (n ::: _T)
+    _ :=: _          -> freeVariable n
 
 
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
@@ -168,7 +168,7 @@ effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern 
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- assertComp _A
-  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (lookupInSig n module' graph sig)
+  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (traverse unDTerm =<< lookupInSig n module' graph sig)
   (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Right (VArrow Nothing Many _A' _A)) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
@@ -250,31 +250,31 @@ elabDataDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m [Name :=: Maybe Def ::: Type]
+  -> m [Name :=: Def]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ abstractType (checkIsType (synthType t ::: VType)) _T
     con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
-    pure $ n :=: Just (DTerm con') ::: c_T
+    pure $ n :=: DTerm (Just con') c_T
   pure
-    $ (dname :=: Just (DData (scopeFromList cs)) ::: _T)
+    $ (dname :=: DData (scopeFromList cs) _T)
     : cs
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Name ::: Type
   -> [S.Ann (Name ::: S.Ann S.Type)]
-  -> m [Name :=: Maybe Def ::: Type]
+  -> m [Name :=: Def]
 elabInterfaceDef (dname ::: _T) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstractType (checkIsType (synthType t ::: VType)) _T
     -- FIXME: check that the interface is a member of the sig.
     op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
-    pure $ n :=: Just (DTerm op') ::: _T'
-  pure [ dname :=: Just (DInterface (scopeFromList cs)) ::: _T ]
+    pure $ n :=: DTerm (Just op') _T'
+  pure [ dname :=: DInterface (scopeFromList cs) _T ]
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
@@ -312,22 +312,25 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ (S.Decl tele def))) -> do
       _T <- runModule $ elabType $ checkIsType (synthType tele ::: VType)
 
-      scope_.decls_.at dname .= Just (Nothing ::: _T)
       case def of
         S.DataDef cs -> Nothing <$ do
+          scope_.decls_.at dname .= Just (DData mempty _T)
           decls <- runModule $ elabDataDef (dname ::: _T) cs
           for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
         S.InterfaceDef os -> Nothing <$ do
+          scope_.decls_.at dname .= Just (DInterface mempty _T)
           decls <- runModule $ elabInterfaceDef (dname ::: _T) os
           for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
-        S.TermDef t -> pure (Just (dname, t ::: _T))
+        S.TermDef t -> do
+          scope_.decls_.at dname .= Just (DTerm Nothing _T)
+          pure (Just (dname, t ::: _T))
 
     -- then elaborate the terms
     for_ (catMaybes es) $ \ (dname, t ::: _T) -> do
       t' <- runModule $ elabTermDef _T t
-      scope_.decls_.ix dname .= (Just (DTerm t') ::: _T)
+      scope_.decls_.ix dname .= DTerm (Just t') _T
 
 
 -- Errors
