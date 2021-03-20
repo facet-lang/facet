@@ -44,35 +44,36 @@ module Facet.Elab
 , elabSynthType
 ) where
 
-import Control.Algebra
-import Control.Applicative as Alt (Alternative(..))
-import Control.Carrier.Error.Church
-import Control.Carrier.Reader
-import Control.Carrier.State.Church
-import Control.Carrier.Writer.Church
-import Control.Effect.Lens (views)
-import Control.Lens (Lens', lens)
-import Control.Monad (guard, unless)
-import Data.Foldable (asum)
-import Facet.Context as Context
-import Facet.Core.Module
-import Facet.Core.Term as E
-import Facet.Core.Type as T
-import Facet.Effect.Write
-import Facet.Graph as Graph
-import Facet.Lens
-import Facet.Name hiding (L, R)
-import Facet.Semialign
-import Facet.Semiring
-import Facet.Snoc
-import Facet.Snoc.NonEmpty (toSnoc)
-import Facet.Source (Source, slice)
-import Facet.Span (Span(..))
-import Facet.Syntax
-import Facet.Usage as Usage
-import Facet.Vars as Vars
-import GHC.Stack
-import Prelude hiding (span, zipWith)
+import           Control.Algebra
+import           Control.Carrier.Error.Church
+import           Control.Carrier.Reader
+import           Control.Carrier.State.Church
+import           Control.Carrier.Writer.Church
+import           Control.Effect.Choose
+import           Control.Effect.Empty
+import           Control.Effect.Lens (views)
+import           Control.Lens (Lens', lens)
+import           Control.Monad (unless)
+import           Facet.Context hiding (empty)
+import qualified Facet.Context as Context (empty)
+import           Facet.Core.Module
+import           Facet.Core.Term as E
+import           Facet.Core.Type as T
+import           Facet.Effect.Write
+import           Facet.Graph as Graph
+import           Facet.Lens
+import           Facet.Name hiding (L, R)
+import           Facet.Semialign
+import           Facet.Semiring
+import           Facet.Snoc
+import           Facet.Snoc.NonEmpty (toSnoc)
+import           Facet.Source (Source, slice)
+import           Facet.Span (Span(..))
+import           Facet.Syntax
+import           Facet.Usage as Usage
+import           Facet.Vars as Vars
+import           GHC.Stack
+import           Prelude hiding (span, zipWith)
 
 -- TODO:
 -- - clause/pattern matrices
@@ -99,7 +100,7 @@ instantiate inst = go
 
 resolveWith
   :: (HasCallStack, Has (Throw Err) sig m)
-  => (forall m . Alternative m => Name -> Module -> m (RName :=: d))
+  => (forall sig m . Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: d))
   -> QName
   -> Elab m (RName :=: d)
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
@@ -113,23 +114,23 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Def)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Alternative m => QName -> Context -> m (Index, Quantity, Either Kind Type)
+lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (Index, Quantity, Either Kind Type)
 lookupInContext (m:.n)
   | m == Nil  = lookupIndex n
-  | otherwise = const Alt.empty
+  | otherwise = const empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: (Alternative m, Monad m) => QName -> Module -> Graph -> [Type] -> m (RName :=: Def)
-lookupInSig (m :. n) mod graph = fmap asum . fmap $ \case
+lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Type] -> m (RName :=: Def)
+lookupInSig (m :. n) mod graph = foldMapC $ \case
   VNe (Global q@(m':.:_)) _ _ -> do
     guard (m == Nil || m == toSnoc m')
     defs <- interfaceScope =<< lookupQ graph mod (toQ q)
     _ :=: d <- lookupScope n defs
     pure $ m':.:n :=: d
-  _                             -> Alt.empty
+  _                             -> empty
   where
-  interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> Alt.empty }
+  interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> empty }
 
 
 (|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a

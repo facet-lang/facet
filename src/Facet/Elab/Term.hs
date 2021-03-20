@@ -50,7 +50,7 @@ import           Control.Lens (at, ix)
 import           Data.Bifunctor (first)
 import           Data.Foldable
 import           Data.Functor
-import           Data.Maybe (catMaybes, fromMaybe)
+import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
@@ -100,9 +100,9 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
-  | Just (i, q, Right _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
-  | Just (_ :=: DTerm (Just x) _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
-  | otherwise                                          -> resolveQ n >>= \case
+  | [(i, q, Right _T)] <- lookupInContext n context              -> use i q $> (XVar (Free i) ::: _T)
+  | [_ :=: DTerm (Just x) _T] <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
+  | otherwise                                                    -> resolveQ n >>= \case
     n :=: DTerm _ _T -> synth $ global (n ::: _T)
     _ :=: _          -> freeVariable n
 
@@ -172,7 +172,7 @@ effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern 
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- assertComp _A
-  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (traverse unDTerm =<< lookupInSig n module' graph sig)
+  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (listToMaybe (traverse unDTerm =<< lookupInSig n module' graph sig))
   (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Right (VArrow Nothing Many _A' _A)) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
