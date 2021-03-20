@@ -59,7 +59,7 @@ printErrReason opts ctx = group . \case
       Zero -> pretty "0"
       One  -> pretty "1"
       Many -> pretty "arbitrarily many"
-  Mismatch (Exp exp) (Act act) -> pretty "mismatch"
+  Unify _ (Exp exp) (Act act) -> pretty "mismatch"
     <> hardline <> pretty "expected:" <> print exp'
     <> hardline <> pretty "  actual:" <> print act'
     where

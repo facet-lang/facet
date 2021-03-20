@@ -15,6 +15,7 @@ module Facet.Elab
 , pushSpan
 , Err(..)
 , ErrReason(..)
+, UnifyErrReason(..)
 , err
 , couldNotUnify
 , couldNotSynthesize
@@ -185,9 +186,13 @@ data ErrReason
   | AmbiguousName QName [RName]
   | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
-  | Mismatch (Exp (Either String (Either Kind Type))) (Act (Either Kind Type))
+  | Unify UnifyErrReason (Exp (Either String (Either Kind Type))) (Act (Either Kind Type))
   | Hole Name Type
   | Invariant String
+
+data UnifyErrReason
+  = Mismatch
+  | Occurs Meta Type
 
 applySubst :: Context -> Subst -> ErrReason -> ErrReason
 applySubst ctx subst r = case r of
@@ -195,7 +200,8 @@ applySubst ctx subst r = case r of
   AmbiguousName{}      -> r
   CouldNotSynthesize{} -> r
   ResourceMismatch{}   -> r
-  Mismatch exp act     -> Mismatch (fmap (fmap roundtrip) <$> exp) (fmap roundtrip <$> act)
+  -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
+  Unify r exp act      -> Unify r (fmap (fmap roundtrip) <$> exp) (fmap roundtrip <$> act)
   Hole n t             -> Hole n (roundtrip t)
   Invariant{}          -> r
   where
@@ -213,7 +219,7 @@ err reason = do
   throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
 
 mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Exp (Either String (Either Kind Type)) -> Act (Either Kind Type) -> m a
-mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
+mismatch exp act = withFrozenCallStack $ err $ Unify Mismatch exp act
 
 couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Exp (Either Kind Type) -> Act (Either Kind Type) -> m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right <$> t1) t2
