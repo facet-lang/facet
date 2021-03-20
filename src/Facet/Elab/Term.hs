@@ -368,9 +368,9 @@ require _ = pure () -- FIXME: validate the requirements against the provided sig
 -- Judgements
 
 check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
-check (m ::: _T) = case unComp _T of
-  Just (sig, _T) -> provide sig $ runCheck m _T
-  Nothing        -> runCheck m _T
+check (m ::: _T) = case _T of
+  VComp sig _T -> provide sig $ runCheck m _T
+  _T           -> runCheck m _T
 
 newtype Check m a = Check { runCheck :: Type -> Elab m a }
   deriving (Applicative, Functor) via ReaderC Type (Elab m)
