@@ -4,8 +4,7 @@
 -- Elaboration is the only way 'Type's are constructed from untrusted terms, and so typechecking is performed at this point. If elaboration succeeds and a 'Type' is returned, that 'Type' does not require further verification; hence, 'Type's elide source span information.
 module Facet.Elab
 ( -- * General
-  unify
-, lookupInContext
+  lookupInContext
 , lookupInSig
 , resolveQ
 , resolveC
@@ -32,6 +31,7 @@ module Facet.Elab
 , ElabContext(..)
 , context_
 , sig_
+, unify
   -- * Machinery
 , Elab(..)
 , depth
