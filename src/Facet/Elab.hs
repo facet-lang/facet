@@ -304,18 +304,18 @@ unifyType = curry $ \case
   (VString, _)                                         -> empty
 
 unifyKind :: Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m => Kind -> Kind -> m ()
-unifyKind k1 k2 = unless (k1 == k2) empty
+unifyKind k1 k2 = guard (k1 == k2)
 
 unifyVar :: (Eq a, Eq b, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Var (Either a b) -> Var (Either a b) -> m ()
 unifyVar = curry $ \case
-  (Global q1, Global q2)             -> unless (q1 == q2) empty
+  (Global q1, Global q2)             -> guard (q1 == q2)
   (Global{}, _)                      -> empty
-  (Free (Right v1), Free (Right v2)) -> unless (v1 == v2) empty
-  (Free (Left m1), Free (Left m2))   -> unless (m1 == m2) empty
+  (Free (Right v1), Free (Right v2)) -> guard (v1 == v2)
+  (Free (Left m1), Free (Left m2))   -> guard (m1 == m2)
   (Free{}, _)                        -> empty
 
 unifySpine :: (Foldable t, Zip t, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m ()
-unifySpine f sp1 sp2 = unless (length sp1 == length sp2) empty >> zipWithM_ f sp1 sp2
+unifySpine f sp1 sp2 = guard (length sp1 == length sp2) >> zipWithM_ f sp1 sp2
 
 flexFlex :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Meta -> Meta -> m ()
 flexFlex v1 v2
