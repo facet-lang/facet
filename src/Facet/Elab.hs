@@ -333,7 +333,7 @@ unifyVar = curry $ \case
   (Global q1, Global q2)             -> unless (q1 == q2) (throwError Mismatch)
   (Global{}, _)                      -> throwError Mismatch
   (Free (Right v1), Free (Right v2)) -> unless (v1 == v2) (throwError Mismatch)
-  (Free (Left m1), Free (Left m2))   -> unless (m1 == m2) (throwError Mismatch)
+  (Free (Left  m1), Free (Left  m2)) -> unless (m1 == m2) (throwError Mismatch)
   (Free{}, _)                        -> throwError Mismatch
 
 unifySpine :: (Foldable t, Zip t, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m ()
