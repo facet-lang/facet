@@ -358,8 +358,8 @@ runModule m = do
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
 withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 
-extendSig :: Has (Reader ElabContext) sig m => [Type] -> m a -> m a
-extendSig = locally sig_ . (++)
+provide :: Has (Reader ElabContext) sig m => [Type] -> m a -> m a
+provide = locally sig_ . (++)
 
 require :: [Type] -> Elab m ()
 require _ = pure () -- FIXME: validate the requirements against the provided sig
@@ -369,7 +369,7 @@ require _ = pure () -- FIXME: validate the requirements against the provided sig
 
 check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
 check (m ::: _T) = case unComp _T of
-  Just (sig, _T) -> extendSig sig $ runCheck m _T
+  Just (sig, _T) -> provide sig $ runCheck m _T
   Nothing        -> runCheck m _T
 
 newtype Check m a = Check { runCheck :: Type -> Elab m a }
