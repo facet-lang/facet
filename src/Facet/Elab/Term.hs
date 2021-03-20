@@ -27,6 +27,8 @@ module Facet.Elab.Term
 , elabTermDef
   -- * Modules
 , elabModule
+  -- * Elaboration
+, require
   -- * Judgements
 , check
 , Check(..)
@@ -358,6 +360,9 @@ withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 
 extendSig :: Has (Reader ElabContext) sig m => [Type] -> m a -> m a
 extendSig = locally sig_ . (++)
+
+require :: [Type] -> Elab m ()
+require _ = pure () -- FIXME: validate the requirements against the provided sig
 
 
 -- Judgements
