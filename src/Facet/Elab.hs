@@ -298,14 +298,14 @@ unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (unifyType t1 
     (VComp s1 t1, VComp s2 t2)                                   -> unifySig s1 s2 >> unifyType t1 t2
     (VComp _ t1, t2)                                             -> unifyType t1 t2
     (t1, VComp _ t2)                                             -> unifyType t1 t2
-    (VNe v1 ts1 sp1, VNe v2 ts2 sp2)                             -> var v1 v2 >> spine unifyType ts1 ts2 >> spine unifyType sp1 sp2
+    (VNe v1 ts1 sp1, VNe v2 ts2 sp2)                             -> unifyVar v1 v2 >> spine unifyType ts1 ts2 >> spine unifyType sp1 sp2
     (VNe{}, _)                                                   -> empty
     (VString, VString)                                           -> pure ()
     (VString, _)                                                 -> empty
 
   unifyKind k1 k2 = unless (k1 == k2) empty
 
-  var = curry $ \case
+  unifyVar = curry $ \case
     (Global q1, Global q2)             -> unless (q1 == q2) empty
     (Global{}, _)                      -> empty
     (Free (Right v1), Free (Right v2)) -> unless (v1 == v2) empty
