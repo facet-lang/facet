@@ -45,12 +45,12 @@ module Facet.Elab
 ) where
 
 import           Control.Algebra
+import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Carrier.Writer.Church
 import           Control.Effect.Choose
-import           Control.Effect.Empty
 import           Control.Effect.Lens (views)
 import           Control.Lens (Lens', lens)
 import           Control.Monad (unless)
@@ -285,7 +285,7 @@ spans_ = lens spans (\ e spans -> e{ spans })
 
 -- FIXME: we don’t get good source references during unification
 unify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m ()
-unify t1 t2 = type' t1 t2
+unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (type' t1 t2)
   where
   nope = couldNotUnify (Right t1) (Right t2)
 
