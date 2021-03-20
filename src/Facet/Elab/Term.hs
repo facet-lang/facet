@@ -77,9 +77,9 @@ import           GHC.Stack
 -- General combinators
 
 switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
-switch (Synth m) = Check $ \ _T -> do
-  a ::: _T' <- m
-  a <$ unify _T' _T
+switch (Synth m) = Check $ \ _T -> m >>= \case
+  a ::: VComp req _T' -> require req >> unify _T' _T $> a
+  a :::           _T' -> unify _T' _T $> a
 
 as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m TExpr -> Synth m Expr
 as (m ::: _T) = Synth $ do
