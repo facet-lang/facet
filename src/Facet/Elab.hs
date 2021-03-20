@@ -329,12 +329,7 @@ unifyKind :: Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+
 unifyKind k1 k2 = unless (k1 == k2) (throwError Mismatch)
 
 unifyVar :: (Eq a, Eq b, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m) => Var (Either a b) -> Var (Either a b) -> m ()
-unifyVar = curry $ \case
-  (Global q1, Global q2)             -> unless (q1 == q2) (throwError Mismatch)
-  (Global{}, _)                      -> throwError Mismatch
-  (Free (Right v1), Free (Right v2)) -> unless (v1 == v2) (throwError Mismatch)
-  (Free (Left  m1), Free (Left  m2)) -> unless (m1 == m2) (throwError Mismatch)
-  (Free{}, _)                        -> throwError Mismatch
+unifyVar v1 v2 = unless (v1 == v2) (throwError Mismatch)
 
 unifySpine :: (Foldable t, Zip t, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m ()
 unifySpine f sp1 sp2 = unless (length sp1 == length sp2) (throwError Mismatch) >> zipWithM_ f sp1 sp2
