@@ -123,12 +123,12 @@ lookupInContext (m:.n)
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
 lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Type] -> m (RName :=: Def)
 lookupInSig (m :. n) mod graph = foldMapC $ \case
-  VNe (Global q@(m':.:_)) _ _ -> do
+  VNe (Global q@(m':.:_)) _ -> do
     guard (m == Nil || m == toSnoc m')
     defs <- interfaceScope =<< lookupQ graph mod (toQ q)
     _ :=: d <- lookupScope n defs
     pure $ m':.:n :=: d
-  _                             -> empty
+  _                         -> empty
   where
   interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> empty }
 
@@ -289,20 +289,20 @@ unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (unifyType t1 
 
 unifyType :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m ()
 unifyType = curry $ \case
-  (VNe (Free (Left v1)) Nil Nil, VNe (Free (Left v2)) Nil Nil) -> flexFlex v1 v2
-  (VNe (Free (Left v1)) Nil Nil, t2)                           -> solve v1 t2
-  (t1, VNe (Free (Left v2)) Nil Nil)                           -> solve v2 t1
-  (VForAll n t1 b1, VForAll _ t2 b2)                           -> unifyKind t1 t2 >> depth >>= \ d -> Binding n zero (Left t1) |- unifyType (b1 (T.free d)) (b2 (T.free d))
-  (VForAll{}, _)                                               -> empty
-  (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                         -> unifyType a1 a2 >> unifyType b1 b2
-  (VArrow{}, _)                                                -> empty
-  (VComp s1 t1, VComp s2 t2)                                   -> unifySig s1 s2 >> unifyType t1 t2
-  (VComp _ t1, t2)                                             -> unifyType t1 t2
-  (t1, VComp _ t2)                                             -> unifyType t1 t2
-  (VNe v1 ts1 sp1, VNe v2 ts2 sp2)                             -> unifyVar v1 v2 >> unifySpine unifyType ts1 ts2 >> unifySpine unifyType sp1 sp2
-  (VNe{}, _)                                                   -> empty
-  (VString, VString)                                           -> pure ()
-  (VString, _)                                                 -> empty
+  (VNe (Free (Left v1)) Nil, VNe (Free (Left v2)) Nil) -> flexFlex v1 v2
+  (VNe (Free (Left v1)) Nil, t2)                       -> solve v1 t2
+  (t1, VNe (Free (Left v2)) Nil)                       -> solve v2 t1
+  (VForAll n t1 b1, VForAll _ t2 b2)                   -> unifyKind t1 t2 >> depth >>= \ d -> Binding n zero (Left t1) |- unifyType (b1 (T.free d)) (b2 (T.free d))
+  (VForAll{}, _)                                       -> empty
+  (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                 -> unifyType a1 a2 >> unifyType b1 b2
+  (VArrow{}, _)                                        -> empty
+  (VComp s1 t1, VComp s2 t2)                           -> unifySig s1 s2 >> unifyType t1 t2
+  (VComp _ t1, t2)                                     -> unifyType t1 t2
+  (t1, VComp _ t2)                                     -> unifyType t1 t2
+  (VNe v1 sp1, VNe v2 sp2)                             -> unifyVar v1 v2 >> unifySpine unifyType sp1 sp2
+  (VNe{}, _)                                           -> empty
+  (VString, VString)                                   -> pure ()
+  (VString, _)                                         -> empty
 
 unifyKind :: Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m => Kind -> Kind -> m ()
 unifyKind k1 k2 = unless (k1 == k2) empty

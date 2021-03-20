@@ -11,8 +11,6 @@ module Facet.Core.Type
   -- ** Elimination
 , ($$)
 , ($$*)
-, ($$$)
-, ($$$*)
   -- * Type expressions
 , TExpr(..)
   -- * Quotation
@@ -54,7 +52,7 @@ data Type
   = VString
   | VForAll Name Kind (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
-  | VNe (Var (Either Meta Level)) (Snoc Type) (Snoc Type)
+  | VNe (Var (Either Meta Level)) (Snoc Type)
   | VComp [Type] Type
 
 
@@ -69,7 +67,7 @@ metavar = var . Free . Left
 
 
 var :: Var (Either Meta Level) -> Type
-var v = VNe v Nil Nil
+var v = VNe v Nil
 
 
 unComp :: Has Empty sig m => Type -> m ([Type], Type)
@@ -85,30 +83,20 @@ occursIn p = go
     VForAll _ _ b  -> go (succ d) (b (free d))
     VArrow _ _ a b -> go d a || go d b
     VComp s t      -> any (go d) s || go d t
-    VNe h ts sp    -> p h || any (go d) ts || any (go d) sp
+    VNe h sp       -> p h || any (go d) sp
     VString        -> False
 
 
 -- Elimination
 
 ($$) :: HasCallStack => Type -> Type -> Type
-VNe h ts es $$ a = VNe h ts (es :> a)
+VNe h es $$ a    = VNe h (es :> a)
 _           $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
 ($$*) = foldl' ($$)
 
 infixl 9 $$, $$*
-
-($$$) :: HasCallStack => Type -> Type -> Type
-VNe h ts es   $$$ t = VNe h (ts :> t) es
-VForAll _ _ b $$$ t = b t
-_             $$$ _ = error "can’t apply non-neutral/forall type"
-
-($$$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
-($$$*) = foldl' ($$)
-
-infixl 9 $$$, $$$*
 
 
 -- Type expressions
@@ -119,7 +107,6 @@ data TExpr
   | TForAll Name Kind TExpr
   | TArrow (Maybe Name) Quantity TExpr TExpr
   | TComp [TExpr] TExpr
-  | TInst TExpr TExpr
   | TApp TExpr TExpr
   deriving (Eq, Ord, Show)
 
@@ -132,7 +119,7 @@ quote d = \case
   VForAll n t b  -> TForAll n t (quote (succ d) (b (free d)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
   VComp s t      -> TComp (quote d <$> s) (quote d t)
-  VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
+  VNe n sp       -> foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TApp . quote d <$> sp)
 
 eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
@@ -144,7 +131,6 @@ eval subst = go where
     TForAll n t b         -> VForAll n t (\ v -> go (env :> Left v) b)
     TArrow n q a b        -> VArrow n q (go env a) (go env b)
     TComp s t             -> VComp (go env <$> s) (go env t)
-    TInst f a             -> go env f $$$ go env a
     TApp  f a             -> go env f $$  go env a
 
 
