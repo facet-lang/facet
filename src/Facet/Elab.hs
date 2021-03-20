@@ -303,39 +303,43 @@ newtype Act a = Act { getAct :: a }
 
 -- FIXME: we don’t get good source references during unification
 unify :: (HasCallStack, Has (Throw Err) sig m) => Exp Type -> Act Type -> Elab m ()
-unify t1 t2 = runEmpty (couldNotUnify (Right <$> t1) (Right <$> t2)) pure (unifyType (getExp t1) (getAct t2))
+unify t1 t2 = runError catch pure (unifyType (getExp t1) (getAct t2))
+  where
+  catch = \case
+    Mismatch   -> couldNotUnify          (Right <$> t1) (Right <$> t2)
+    Occurs v t -> occursCheckFailure v t (Right <$> t1) (Right <$> t2)
 
-unifyType :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m ()
+unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m) => Type -> Type -> m ()
 unifyType = curry $ \case
   (VNe (Free (Left v1)) Nil, VNe (Free (Left v2)) Nil) -> flexFlex v1 v2
   (VNe (Free (Left v1)) Nil, t2)                       -> solve v1 t2
   (t1, VNe (Free (Left v2)) Nil)                       -> solve v2 t1
   (VForAll n t1 b1, VForAll _ t2 b2)                   -> unifyKind t1 t2 >> depth >>= \ d -> Binding n zero (Left t1) |- unifyType (b1 (T.free d)) (b2 (T.free d))
-  (VForAll{}, _)                                       -> empty
+  (VForAll{}, _)                                       -> throwError Mismatch
   (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                 -> unifyType a1 a2 >> unifyType b1 b2
-  (VArrow{}, _)                                        -> empty
+  (VArrow{}, _)                                        -> throwError Mismatch
   (VComp s1 t1, VComp s2 t2)                           -> unifySpine unifyType s1 s2 >> unifyType t1 t2
-  (VComp{}, _)                                         -> empty
+  (VComp{}, _)                                         -> throwError Mismatch
   (VNe v1 sp1, VNe v2 sp2)                             -> unifyVar v1 v2 >> unifySpine unifyType sp1 sp2
-  (VNe{}, _)                                           -> empty
+  (VNe{}, _)                                           -> throwError Mismatch
   (VString, VString)                                   -> pure ()
-  (VString, _)                                         -> empty
+  (VString, _)                                         -> throwError Mismatch
 
-unifyKind :: Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m => Kind -> Kind -> m ()
-unifyKind k1 k2 = guard (k1 == k2)
+unifyKind :: Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m => Kind -> Kind -> m ()
+unifyKind k1 k2 = unless (k1 == k2) (throwError Mismatch)
 
-unifyVar :: (Eq a, Eq b, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Var (Either a b) -> Var (Either a b) -> m ()
+unifyVar :: (Eq a, Eq b, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m) => Var (Either a b) -> Var (Either a b) -> m ()
 unifyVar = curry $ \case
-  (Global q1, Global q2)             -> guard (q1 == q2)
-  (Global{}, _)                      -> empty
-  (Free (Right v1), Free (Right v2)) -> guard (v1 == v2)
-  (Free (Left m1), Free (Left m2))   -> guard (m1 == m2)
-  (Free{}, _)                        -> empty
+  (Global q1, Global q2)             -> unless (q1 == q2) (throwError Mismatch)
+  (Global{}, _)                      -> throwError Mismatch
+  (Free (Right v1), Free (Right v2)) -> unless (v1 == v2) (throwError Mismatch)
+  (Free (Left m1), Free (Left m2))   -> unless (m1 == m2) (throwError Mismatch)
+  (Free{}, _)                        -> throwError Mismatch
 
-unifySpine :: (Foldable t, Zip t, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m ()
-unifySpine f sp1 sp2 = guard (length sp1 == length sp2) >> zipWithM_ f sp1 sp2
+unifySpine :: (Foldable t, Zip t, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m ()
+unifySpine f sp1 sp2 = unless (length sp1 == length sp2) (throwError Mismatch) >> zipWithM_ f sp1 sp2
 
-flexFlex :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Meta -> Meta -> m ()
+flexFlex :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m) => Meta -> Meta -> m ()
 flexFlex v1 v2
   | v1 == v2  = pure ()
   | otherwise = gets (\ s -> (T.lookupMeta v1 s, T.lookupMeta v2 s)) >>= \case
@@ -344,7 +348,7 @@ flexFlex v1 v2
     (Nothing, Just t2) -> unifyType (metavar v1) (tm t2)
     (Nothing, Nothing) -> solve v1 (metavar v2)
 
-solve :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Meta -> Type -> m ()
+solve :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m) => Meta -> Type -> m ()
 solve v t = do
   d <- depth
   if occursIn (== Free (Left v)) d t then
