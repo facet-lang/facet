@@ -9,7 +9,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (metas)
+import           Facet.Core.Type (metas, metavar)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -59,10 +59,13 @@ printErrReason opts ctx = group . \case
       Zero -> pretty "0"
       One  -> pretty "1"
       Many -> pretty "arbitrarily many"
-  Unify _ (Exp exp) (Act act) -> pretty "mismatch"
+  Unify r (Exp exp) (Act act) -> reason r
     <> hardline <> pretty "expected:" <> print exp'
     <> hardline <> pretty "  actual:" <> print act'
     where
+    reason = \case
+      Mismatch   -> pretty "mismatch"
+      Occurs v t -> reflow "infinite type:" <+> getPrint (printType opts ctx (metavar v)) <+> reflow "occurs in" <+> getPrint (printType opts ctx t)
     exp' = either reflow (getPrint . either (printKind ctx) (printType opts ctx)) exp
     act' = getPrint (either (printKind ctx) (printType opts ctx) act)
     -- line things up nicely for e.g. wrapped function types
