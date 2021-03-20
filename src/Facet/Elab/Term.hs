@@ -47,6 +47,7 @@ import           Control.Effect.Lens (view, views, (.=))
 import           Control.Effect.Throw
 import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
+import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable
 import           Data.Functor
@@ -345,7 +346,7 @@ assertTacitFunction = assertMatch (\case{ Right (VArrow Nothing q t b) -> pure (
 
 -- | Expect a computation type with effects.
 assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ([Type], Type)
-assertComp = assertMatch (\case{ Right (VComp s t) -> pure (s, t) ; _ -> Nothing }) "[_] _" . Right
+assertComp = assertMatch (unComp <=< either (const Nothing) Just) "[_] _" . Right
 
 
 -- Elaboration
