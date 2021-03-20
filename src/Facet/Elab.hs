@@ -133,7 +133,7 @@ lookupInSig (m :. n) mod graph = foldMapC $ \case
   interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> empty }
 
 
-(|-) :: (HasCallStack, Has (Throw Err) sig m) => Binding -> Elab m a -> Elab m a
+(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Binding -> m a -> m a
 Binding n q _T |- b = do
   sigma <- asks scale
   d <- depth
