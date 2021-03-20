@@ -296,7 +296,7 @@ unifyType = curry $ \case
   (VForAll{}, _)                                       -> empty
   (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                 -> unifyType a1 a2 >> unifyType b1 b2
   (VArrow{}, _)                                        -> empty
-  (VComp s1 t1, VComp s2 t2)                           -> unifySig s1 s2 >> unifyType t1 t2
+  (VComp s1 t1, VComp s2 t2)                           -> unifySpine unifyType s1 s2 >> unifyType t1 t2
   (VComp _ t1, t2)                                     -> unifyType t1 t2
   (t1, VComp _ t2)                                     -> unifyType t1 t2
   (VNe v1 sp1, VNe v2 sp2)                             -> unifyVar v1 v2 >> unifySpine unifyType sp1 sp2
@@ -317,9 +317,6 @@ unifyVar = curry $ \case
 
 unifySpine :: (Foldable t, Zip t, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m ()
 unifySpine f sp1 sp2 = unless (length sp1 == length sp2) empty >> zipWithM_ f sp1 sp2
-
-unifySig :: (Foldable t, Zip t, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => t Type -> t Type -> m ()
-unifySig = unifySpine unifyType
 
 flexFlex :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Meta -> Meta -> m ()
 flexFlex v1 v2
