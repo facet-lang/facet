@@ -181,7 +181,7 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 -- Expression elaboration
 
 synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
-synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+synthExpr = withSpanS $ \case
   S.Var n    -> var n
   S.App f a  -> app XApp (synthExpr f) (checkExpr a)
   S.As t _T  -> as (checkExpr t ::: synthType _T)
@@ -361,6 +361,9 @@ withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 
 withSpanC :: Algebra sig m => (a -> Check m b) -> S.Ann a -> Check m b
 withSpanC k (S.Ann s _ a) = mapCheck (pushSpan s) (k a)
+
+withSpanS :: Algebra sig m => (a -> Synth m b) -> S.Ann a -> Synth m b
+withSpanS k (S.Ann s _ a) = mapSynth (pushSpan s) (k a)
 
 provide :: Has (Reader ElabContext) sig m => [Type] -> m a -> m a
 provide = locally sig_ . (++)
