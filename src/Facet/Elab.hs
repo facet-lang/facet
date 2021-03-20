@@ -295,7 +295,7 @@ unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (unifyType t1 
     (VForAll{}, _)                                               -> empty
     (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                         -> unifyType a1 a2 >> unifyType b1 b2
     (VArrow{}, _)                                                -> empty
-    (VComp s1 t1, VComp s2 t2)                                   -> sig s1 s2 >> unifyType t1 t2
+    (VComp s1 t1, VComp s2 t2)                                   -> unifySig s1 s2 >> unifyType t1 t2
     (VComp _ t1, t2)                                             -> unifyType t1 t2
     (t1, VComp _ t2)                                             -> unifyType t1 t2
     (VNe v1 ts1 sp1, VNe v2 ts2 sp2)                             -> var v1 v2 >> spine unifyType ts1 ts2 >> spine unifyType sp1 sp2
@@ -314,7 +314,7 @@ unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (unifyType t1 
 
   spine f sp1 sp2 = unless (length sp1 == length sp2) empty >> zipWithM_ f sp1 sp2
 
-  sig c1 c2 = spine unifyType c1 c2
+  unifySig c1 c2 = spine unifyType c1 c2
 
   flexFlex v1 v2
     | v1 == v2  = pure ()
