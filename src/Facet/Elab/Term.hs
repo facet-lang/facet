@@ -192,7 +192,7 @@ synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
   nope = Synth couldNotSynthesize
 
 checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
-checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
+checkExpr expr = flip withSpanC expr $ \case
   S.Hole  n  -> hole n
   S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
   S.Var{}    -> synth
@@ -358,6 +358,9 @@ runModule m = do
 
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
 withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
+
+withSpanC :: Algebra sig m => (a -> Check m b) -> S.Ann a -> Check m b
+withSpanC k (S.Ann s _ a) = mapCheck (pushSpan s) (k a)
 
 provide :: Has (Reader ElabContext) sig m => [Type] -> m a -> m a
 provide = locally sig_ . (++)
