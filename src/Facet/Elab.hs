@@ -31,6 +31,8 @@ module Facet.Elab
 , ElabContext(..)
 , context_
 , sig_
+, Exp(..)
+, Act(..)
 , unify
   -- * Machinery
 , Elab(..)
@@ -183,7 +185,7 @@ data ErrReason
   | AmbiguousName QName [RName]
   | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
-  | Mismatch (Either String (Either Kind Type)) (Either Kind Type)
+  | Mismatch (Exp (Either String (Either Kind Type))) (Act (Either Kind Type))
   | Hole Name Type
   | Invariant String
 
@@ -193,7 +195,7 @@ applySubst ctx subst r = case r of
   AmbiguousName{}      -> r
   CouldNotSynthesize{} -> r
   ResourceMismatch{}   -> r
-  Mismatch exp act     -> Mismatch (fmap roundtrip <$> exp) (roundtrip <$> act)
+  Mismatch exp act     -> Mismatch (fmap (fmap roundtrip) <$> exp) (fmap roundtrip <$> act)
   Hole n t             -> Hole n (roundtrip t)
   Invariant{}          -> r
   where
@@ -210,11 +212,11 @@ err reason = do
   subst <- get
   throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Either String (Either Kind Type) -> Either Kind Type -> m a
+mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Exp (Either String (Either Kind Type)) -> Act (Either Kind Type) -> m a
 mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Either Kind Type -> Either Kind Type -> m a
-couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right t2) t1
+couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Exp (Either Kind Type) -> Act (Either Kind Type) -> m a
+couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right <$> t1) t2
 
 couldNotSynthesize :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => m a
 couldNotSynthesize = withFrozenCallStack $ err CouldNotSynthesize
@@ -251,7 +253,7 @@ warn reason = do
 -- Patterns
 
 assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Either Kind Type -> Maybe out) -> String -> Either Kind Type -> Elab m out
-assertMatch pat exp _T = maybe (mismatch (Left exp) _T) pure (pat _T)
+assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (pat _T)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
 assertFunction = assertMatch (\case{ Right (VArrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . Right
@@ -283,9 +285,15 @@ spans_ :: Lens' ElabContext (Snoc Span)
 spans_ = lens spans (\ e spans -> e{ spans })
 
 
+newtype Exp a = Exp { getExp :: a }
+  deriving (Functor)
+
+newtype Act a = Act { getAct :: a }
+  deriving (Functor)
+
 -- FIXME: we don’t get good source references during unification
-unify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m ()
-unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (unifyType t1 t2)
+unify :: (HasCallStack, Has (Throw Err) sig m) => Exp Type -> Act Type -> Elab m ()
+unify t1 t2 = runEmpty (couldNotUnify (Right <$> t1) (Right <$> t2)) pure (unifyType (getExp t1) (getAct t2))
 
 unifyType :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m ()
 unifyType = curry $ \case
@@ -330,7 +338,7 @@ solve :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticConte
 solve v t = do
   d <- depth
   if occursIn (== Free (Left v)) d t then
-    mismatch (Right (Right (metavar v))) (Right t)
+    mismatch (Exp (Right (Right (metavar v)))) (Act (Right t))
   else
     gets (T.lookupMeta v) >>= \case
       Nothing          -> modify (T.solveMeta v t)

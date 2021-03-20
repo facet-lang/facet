@@ -78,8 +78,8 @@ import           GHC.Stack
 
 switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
 switch (Synth m) = Check $ \ _T -> m >>= \case
-  a ::: VComp req _T' -> require req >> unify _T' _T $> a
-  a :::           _T' -> unify _T' _T $> a
+  a ::: VComp req _T' -> require req >> unify (Exp _T) (Act _T') $> a
+  a :::           _T' -> unify (Exp _T) (Act _T') $> a
 
 as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m TExpr -> Synth m Expr
 as (m ::: _T) = Synth $ do
@@ -152,7 +152,7 @@ conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern 
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   n' :=: _ ::: _T <- resolveC n
   _ ::: _T' <- instantiate const (() ::: _T)
-  (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify _A' _A *> check (b ::: _B)))) ps ::: (q, _T')) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify (Exp _A) (Act _A') *> check (b ::: _B)))) ps ::: (q, _T')) b ::: _B)
   pure (PCon n' (fromList ps'), b')
 
 fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind m [a] -> [Bind m a] -> Bind m [a]

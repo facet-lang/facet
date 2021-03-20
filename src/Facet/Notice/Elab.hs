@@ -48,10 +48,10 @@ rethrowElabErrors opts = L.runThrow rethrow
 
 printErrReason :: Options -> Snoc Print -> ErrReason -> Doc Style
 printErrReason opts ctx = group . \case
-  FreeVariable n         -> fillSep [reflow "variable not in scope:", pretty n]
-  AmbiguousName n qs     -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
-  CouldNotSynthesize     -> reflow "could not synthesize a type; try a type annotation"
-  ResourceMismatch n e a -> fillSep [reflow "uses of variable", pretty n, reflow "didn’t match requirements"]
+  FreeVariable n               -> fillSep [reflow "variable not in scope:", pretty n]
+  AmbiguousName n qs           -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
+  CouldNotSynthesize           -> reflow "could not synthesize a type; try a type annotation"
+  ResourceMismatch n e a       -> fillSep [reflow "uses of variable", pretty n, reflow "didn’t match requirements"]
     <> hardline <> pretty "expected:" <+> prettyQ e
     <> hardline <> pretty "  actual:" <+> prettyQ a
     where
@@ -59,7 +59,7 @@ printErrReason opts ctx = group . \case
       Zero -> pretty "0"
       One  -> pretty "1"
       Many -> pretty "arbitrarily many"
-  Mismatch exp act       -> pretty "mismatch"
+  Mismatch (Exp exp) (Act act) -> pretty "mismatch"
     <> hardline <> pretty "expected:" <> print exp'
     <> hardline <> pretty "  actual:" <> print act'
     where
@@ -67,7 +67,7 @@ printErrReason opts ctx = group . \case
     act' = getPrint (either (printKind ctx) (printType opts ctx) act)
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
-  Hole n _T              ->
+  Hole n _T                    ->
     let _T' = getPrint (printType opts ctx _T)
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
