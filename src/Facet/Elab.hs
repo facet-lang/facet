@@ -291,7 +291,7 @@ unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (unifyType t1 
     (VNe (Free (Left v1)) Nil Nil, VNe (Free (Left v2)) Nil Nil) -> flexFlex v1 v2
     (VNe (Free (Left v1)) Nil Nil, t2)                           -> solve v1 t2
     (t1, VNe (Free (Left v2)) Nil Nil)                           -> solve v2 t1
-    (VForAll n t1 b1, VForAll _ t2 b2)                           -> kind t1 t2 >> depth >>= \ d -> Binding n zero (Left t1) |- unifyType (b1 (T.free d)) (b2 (T.free d))
+    (VForAll n t1 b1, VForAll _ t2 b2)                           -> unifyKind t1 t2 >> depth >>= \ d -> Binding n zero (Left t1) |- unifyType (b1 (T.free d)) (b2 (T.free d))
     (VForAll{}, _)                                               -> empty
     (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                         -> unifyType a1 a2 >> unifyType b1 b2
     (VArrow{}, _)                                                -> empty
@@ -303,7 +303,7 @@ unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (unifyType t1 
     (VString, VString)                                           -> pure ()
     (VString, _)                                                 -> empty
 
-  kind k1 k2 = unless (k1 == k2) empty
+  unifyKind k1 k2 = unless (k1 == k2) empty
 
   var = curry $ \case
     (Global q1, Global q2)             -> unless (q1 == q2) empty
