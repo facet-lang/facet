@@ -203,29 +203,29 @@ applySubst ctx subst r = case r of
 
 
 -- FIXME: apply the substitution before showing this to the user
-err :: (HasCallStack, Has (Throw Err) sig m) => ErrReason -> Elab m a
+err :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => ErrReason -> m a
 err reason = do
   StaticContext{ source } <- ask
   ElabContext{ context, spans } <- ask
   subst <- get
   throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Throw Err) sig m) => Either String (Either Kind Type) -> Either Kind Type -> Elab m a
+mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Either String (Either Kind Type) -> Either Kind Type -> m a
 mismatch exp act = withFrozenCallStack $ err $ Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Throw Err) sig m) => Either Kind Type -> Either Kind Type -> Elab m a
+couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Either Kind Type -> Either Kind Type -> m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right t2) t1
 
-couldNotSynthesize :: (HasCallStack, Has (Throw Err) sig m) => Elab m a
+couldNotSynthesize :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => m a
 couldNotSynthesize = withFrozenCallStack $ err CouldNotSynthesize
 
-resourceMismatch :: (HasCallStack, Has (Throw Err) sig m) => Name -> Quantity -> Quantity -> Elab m a
+resourceMismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Name -> Quantity -> Quantity -> m a
 resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp act
 
-freeVariable :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m a
+freeVariable :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => QName -> m a
 freeVariable n = withFrozenCallStack $ err $ FreeVariable n
 
-ambiguousName :: (HasCallStack, Has (Throw Err) sig m) => QName -> [RName] -> Elab m a
+ambiguousName :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => QName -> [RName] -> m a
 ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
 
 
