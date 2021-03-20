@@ -285,20 +285,20 @@ spans_ = lens spans (\ e spans -> e{ spans })
 
 -- FIXME: we don’t get good source references during unification
 unify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m ()
-unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (type' t1 t2)
+unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (unifyType t1 t2)
   where
-  type' = curry $ \case
+  unifyType = curry $ \case
     (VNe (Free (Left v1)) Nil Nil, VNe (Free (Left v2)) Nil Nil) -> flexFlex v1 v2
     (VNe (Free (Left v1)) Nil Nil, t2)                           -> solve v1 t2
     (t1, VNe (Free (Left v2)) Nil Nil)                           -> solve v2 t1
-    (VForAll n t1 b1, VForAll _ t2 b2)                           -> kind t1 t2 >> depth >>= \ d -> Binding n zero (Left t1) |- type' (b1 (T.free d)) (b2 (T.free d))
+    (VForAll n t1 b1, VForAll _ t2 b2)                           -> kind t1 t2 >> depth >>= \ d -> Binding n zero (Left t1) |- unifyType (b1 (T.free d)) (b2 (T.free d))
     (VForAll{}, _)                                               -> empty
-    (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                         -> type' a1 a2 >> type' b1 b2
+    (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                         -> unifyType a1 a2 >> unifyType b1 b2
     (VArrow{}, _)                                                -> empty
-    (VComp s1 t1, VComp s2 t2)                                   -> sig s1 s2 >> type' t1 t2
-    (VComp _ t1, t2)                                             -> type' t1 t2
-    (t1, VComp _ t2)                                             -> type' t1 t2
-    (VNe v1 ts1 sp1, VNe v2 ts2 sp2)                             -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
+    (VComp s1 t1, VComp s2 t2)                                   -> sig s1 s2 >> unifyType t1 t2
+    (VComp _ t1, t2)                                             -> unifyType t1 t2
+    (t1, VComp _ t2)                                             -> unifyType t1 t2
+    (VNe v1 ts1 sp1, VNe v2 ts2 sp2)                             -> var v1 v2 >> spine unifyType ts1 ts2 >> spine unifyType sp1 sp2
     (VNe{}, _)                                                   -> empty
     (VString, VString)                                           -> pure ()
     (VString, _)                                                 -> empty
@@ -314,14 +314,14 @@ unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (type' t1 t2)
 
   spine f sp1 sp2 = unless (length sp1 == length sp2) empty >> zipWithM_ f sp1 sp2
 
-  sig c1 c2 = spine type' c1 c2
+  sig c1 c2 = spine unifyType c1 c2
 
   flexFlex v1 v2
     | v1 == v2  = pure ()
     | otherwise = gets (\ s -> (T.lookupMeta v1 s, T.lookupMeta v2 s)) >>= \case
-      (Just t1, Just t2) -> type' (tm t1) (tm t2)
-      (Just t1, Nothing) -> type' (metavar v2) (tm t1)
-      (Nothing, Just t2) -> type' (metavar v1) (tm t2)
+      (Just t1, Just t2) -> unifyType (tm t1) (tm t2)
+      (Just t1, Nothing) -> unifyType (metavar v2) (tm t1)
+      (Nothing, Just t2) -> unifyType (metavar v1) (tm t2)
       (Nothing, Nothing) -> solve v1 (metavar v2)
 
   solve v t = do
@@ -331,7 +331,7 @@ unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (type' t1 t2)
     else
       gets (T.lookupMeta v) >>= \case
         Nothing          -> modify (T.solveMeta v t)
-        Just (t' ::: _T) -> type' t' t
+        Just (t' ::: _T) -> unifyType t' t
 
 
 -- Machinery
