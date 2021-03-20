@@ -18,6 +18,7 @@ module Facet.Elab
 , UnifyErrReason(..)
 , err
 , couldNotUnify
+, occursCheckFailure
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
@@ -223,6 +224,9 @@ mismatch exp act = withFrozenCallStack $ err $ Unify Mismatch exp act
 
 couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Exp (Either Kind Type) -> Act (Either Kind Type) -> m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right <$> t1) t2
+
+occursCheckFailure :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Meta -> Type -> Exp (Either Kind Type) -> Act (Either Kind Type) -> m a
+occursCheckFailure m v exp act = withFrozenCallStack $ err $ Unify (Occurs m v) (Right <$> exp) act
 
 couldNotSynthesize :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => m a
 couldNotSynthesize = withFrozenCallStack $ err CouldNotSynthesize
