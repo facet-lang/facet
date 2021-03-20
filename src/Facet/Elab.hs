@@ -352,7 +352,7 @@ solve :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Sta
 solve v t = do
   d <- depth
   if occursIn (== Free (Left v)) d t then
-    mismatch (Exp (Right (Right (metavar v)))) (Act (Right t))
+    throwError (Occurs v t)
   else
     gets (T.lookupMeta v) >>= \case
       Nothing          -> modify (T.solveMeta v t)
