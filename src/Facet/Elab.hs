@@ -287,34 +287,32 @@ spans_ = lens spans (\ e spans -> e{ spans })
 unify :: (HasCallStack, Has (Throw Err) sig m) => Type -> Type -> Elab m ()
 unify t1 t2 = runEmpty (couldNotUnify (Right t1) (Right t2)) pure (type' t1 t2)
   where
-  nope = couldNotUnify (Right t1) (Right t2)
-
   type' = curry $ \case
     (VNe (Free (Left v1)) Nil Nil, VNe (Free (Left v2)) Nil Nil) -> flexFlex v1 v2
     (VNe (Free (Left v1)) Nil Nil, t2)                           -> solve v1 t2
     (t1, VNe (Free (Left v2)) Nil Nil)                           -> solve v2 t1
     (VForAll n t1 b1, VForAll _ t2 b2)                           -> kind t1 t2 >> depth >>= \ d -> Binding n zero (Left t1) |- type' (b1 (T.free d)) (b2 (T.free d))
-    (VForAll{}, _)                                               -> nope
+    (VForAll{}, _)                                               -> empty
     (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                         -> type' a1 a2 >> type' b1 b2
-    (VArrow{}, _)                                                -> nope
+    (VArrow{}, _)                                                -> empty
     (VComp s1 t1, VComp s2 t2)                                   -> sig s1 s2 >> type' t1 t2
     (VComp _ t1, t2)                                             -> type' t1 t2
     (t1, VComp _ t2)                                             -> type' t1 t2
     (VNe v1 ts1 sp1, VNe v2 ts2 sp2)                             -> var v1 v2 >> spine type' ts1 ts2 >> spine type' sp1 sp2
-    (VNe{}, _)                                                   -> nope
+    (VNe{}, _)                                                   -> empty
     (VString, VString)                                           -> pure ()
-    (VString, _)                                                 -> nope
+    (VString, _)                                                 -> empty
 
-  kind k1 k2 = unless (k1 == k2) nope
+  kind k1 k2 = unless (k1 == k2) empty
 
   var = curry $ \case
-    (Global q1, Global q2)             -> unless (q1 == q2) nope
-    (Global{}, _)                      -> nope
-    (Free (Right v1), Free (Right v2)) -> unless (v1 == v2) nope
-    (Free (Left m1), Free (Left m2))   -> unless (m1 == m2) nope
-    (Free{}, _)                        -> nope
+    (Global q1, Global q2)             -> unless (q1 == q2) empty
+    (Global{}, _)                      -> empty
+    (Free (Right v1), Free (Right v2)) -> unless (v1 == v2) empty
+    (Free (Left m1), Free (Left m2))   -> unless (m1 == m2) empty
+    (Free{}, _)                        -> empty
 
-  spine f sp1 sp2 = unless (length sp1 == length sp2) nope >> zipWithM_ f sp1 sp2
+  spine f sp1 sp2 = unless (length sp1 == length sp2) empty >> zipWithM_ f sp1 sp2
 
   sig c1 c2 = spine type' c1 c2
 
