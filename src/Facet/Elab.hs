@@ -222,7 +222,7 @@ mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: 
 mismatch exp act = withFrozenCallStack $ err $ Unify Mismatch exp act
 
 couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Exp (Either Kind Type) -> Act (Either Kind Type) -> m a
-couldNotUnify t1 t2 = withFrozenCallStack $ err $ Unify Mismatch (Right <$> t1) t2
+couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right <$> t1) t2
 
 couldNotSynthesize :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => m a
 couldNotSynthesize = withFrozenCallStack $ err CouldNotSynthesize
