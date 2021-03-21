@@ -201,21 +201,13 @@ checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Exp
 checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withSpanC expr $ \case
   S.Hole  n  -> hole n
   S.Lam cs   -> checkLam cs
-  S.Var{}    -> checkVar
-  S.App{}    -> checkApp
-  S.As{}     -> checkAs
-  S.String{} -> checkString
+  S.Var{}    -> switch (synthExpr expr)
+  S.App{}    -> switch (synthExpr expr)
+  S.As{}     -> switch (synthExpr expr)
+  S.String{} -> switch (synthExpr expr)
   where
   checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Check m Expr
   checkLam cs = lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
-  checkVar :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Check m Expr
-  checkVar = switch (synthExpr expr)
-  checkApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Check m Expr
-  checkApp = switch (synthExpr expr)
-  checkAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Check m Expr
-  checkAs = switch (synthExpr expr)
-  checkString :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Check m Expr
-  checkString = switch (synthExpr expr)
 
 
 -- FIXME: check for unique variable names
