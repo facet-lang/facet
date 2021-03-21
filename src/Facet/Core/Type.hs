@@ -2,6 +2,7 @@ module Facet.Core.Type
 ( -- * Kinds
   Kind(..)
   -- * Types
+, Interface
 , Type(..)
 , global
 , free
@@ -48,12 +49,14 @@ data Kind
 
 -- Types
 
+type Interface = Type
+
 data Type
   = VString
   | VForAll Name Kind (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
   | VNe (Var (Either Meta Level)) (Snoc Type)
-  | VComp [Type] Type
+  | VComp [Interface] Type
 
 
 global :: RName -> Type
