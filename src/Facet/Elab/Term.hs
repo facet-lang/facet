@@ -1,3 +1,4 @@
+{-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Facet.Elab.Term
 ( -- * General combinators
@@ -181,26 +182,40 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 -- Expression elaboration
 
 synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
-synthExpr = withSpanS $ \case
+synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanS $ \case
   S.Var n    -> var n
-  S.App f a  -> app XApp (synthExpr f) (checkExpr a)
-  S.As t _T  -> as (checkExpr t ::: synthType _T)
+  S.App f a  -> synthApp f a
+  S.As t _T  -> synthAs t _T
   S.String s -> string s
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   where
   nope = Synth couldNotSynthesize
+  synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Synth m Expr
+  synthApp f a = app XApp (synthExpr f) (checkExpr a)
+  synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Synth m Expr
+  synthAs t _T = as (checkExpr t ::: synthType _T)
+
 
 checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
-checkExpr expr = flip withSpanC expr $ \case
+checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withSpanC expr $ \case
   S.Hole  n  -> hole n
-  S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
-  S.Var{}    -> synth
-  S.App{}    -> synth
-  S.As{}     -> synth
-  S.String{} -> synth
+  S.Lam cs   -> checkLam cs
+  S.Var{}    -> checkVar
+  S.App{}    -> checkApp
+  S.As{}     -> checkAs
+  S.String{} -> checkString
   where
-  synth = switch (synthExpr expr)
+  checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Check m Expr
+  checkLam cs = lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
+  checkVar :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Check m Expr
+  checkVar = switch (synthExpr expr)
+  checkApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Check m Expr
+  checkApp = switch (synthExpr expr)
+  checkAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Check m Expr
+  checkAs = switch (synthExpr expr)
+  checkString :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Check m Expr
+  checkString = switch (synthExpr expr)
 
 
 -- FIXME: check for unique variable names
