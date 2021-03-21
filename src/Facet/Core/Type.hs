@@ -2,7 +2,7 @@ module Facet.Core.Type
 ( -- * Kinds
   Kind(..)
   -- * Types
-, Interface
+, Interface(..)
 , Type(..)
 , global
 , free
@@ -49,14 +49,15 @@ data Kind
 
 -- Types
 
-type Interface = Type
+data Interface a = Interface RName (Snoc a)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data Type
   = VString
   | VForAll Name Kind (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
   | VNe (Var (Either Meta Level)) (Snoc Type)
-  | VComp [Interface] Type
+  | VComp [Interface Type] Type
 
 
 global :: RName -> Type
@@ -73,7 +74,7 @@ var :: Var (Either Meta Level) -> Type
 var v = VNe v Nil
 
 
-unComp :: Has Empty sig m => Type -> m ([Interface], Type)
+unComp :: Has Empty sig m => Type -> m ([Interface Type], Type)
 unComp = \case
   VComp sig _T -> pure (sig, _T)
   _T           -> empty
@@ -85,9 +86,10 @@ occursIn p = go
   go d = \case
     VForAll _ _ b  -> go (succ d) (b (free d))
     VArrow _ _ a b -> go d a || go d b
-    VComp s t      -> any (go d) s || go d t
+    VComp s t      -> any (goI d) s || go d t
     VNe h sp       -> p h || any (go d) sp
     VString        -> False
+  goI d (Interface h sp) = p (Global h) || any (go d) sp
 
 
 -- Elimination
@@ -109,7 +111,7 @@ data TExpr
   | TVar (Var (Either Meta Index))
   | TForAll Name Kind TExpr
   | TArrow (Maybe Name) Quantity TExpr TExpr
-  | TComp [TExpr] TExpr
+  | TComp [Interface TExpr] TExpr
   | TApp TExpr TExpr
   deriving (Eq, Ord, Show)
 
@@ -121,7 +123,7 @@ quote d = \case
   VString        -> TString
   VForAll n t b  -> TForAll n t (quote (succ d) (b (free d)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
-  VComp s t      -> TComp (quote d <$> s) (quote d t)
+  VComp s t      -> TComp (fmap (quote d) <$> s) (quote d t)
   VNe n sp       -> foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TApp . quote d <$> sp)
 
 eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
@@ -133,7 +135,7 @@ eval subst = go where
     TVar (Free (Left m))  -> maybe (metavar m) tm (lookupMeta m subst)
     TForAll n t b         -> VForAll n t (\ v -> go (env :> Left v) b)
     TArrow n q a b        -> VArrow n q (go env a) (go env b)
-    TComp s t             -> VComp (go env <$> s) (go env t)
+    TComp s t             -> VComp (fmap (go env) <$> s) (go env t)
     TApp  f a             -> go env f $$  go env a
 
 

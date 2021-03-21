@@ -125,14 +125,12 @@ lookupInContext (m:.n)
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Type] -> m (RName :=: Def)
-lookupInSig (m :. n) mod graph = foldMapC $ \case
-  VNe (Global q@(m':.:_)) _ -> do
-    guard (m == Nil || m == toSnoc m')
-    defs <- interfaceScope =<< lookupQ graph mod (toQ q)
-    _ :=: d <- lookupScope n defs
-    pure $ m':.:n :=: d
-  _                         -> empty
+lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Interface Type] -> m (RName :=: Def)
+lookupInSig (m :. n) mod graph = foldMapC $ \ (Interface q@(m':.:_) _) -> do
+  guard (m == Nil || m == toSnoc m')
+  defs <- interfaceScope =<< lookupQ graph mod (toQ q)
+  _ :=: d <- lookupScope n defs
+  pure $ m':.:n :=: d
   where
   interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> empty }
 
@@ -281,14 +279,14 @@ data StaticContext = StaticContext
 
 data ElabContext = ElabContext
   { context :: Context
-  , sig     :: [Interface]
+  , sig     :: [Interface Type]
   , spans   :: Snoc Span
   }
 
 context_ :: Lens' ElabContext Context
 context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
 
-sig_ :: Lens' ElabContext [Interface]
+sig_ :: Lens' ElabContext [Interface Type]
 sig_ = lens sig (\ e sig -> e{ sig })
 
 spans_ :: Lens' ElabContext (Snoc Span)
@@ -318,7 +316,7 @@ unifyType = curry $ \case
   (VForAll{}, _)                                       -> throwError Mismatch
   (VArrow _ _ a1 b1, VArrow _ _ a2 b2)                 -> unifyType a1 a2 >> unifyType b1 b2
   (VArrow{}, _)                                        -> throwError Mismatch
-  (VComp s1 t1, VComp s2 t2)                           -> unifySpine unifyType s1 s2 >> unifyType t1 t2
+  (VComp s1 t1, VComp s2 t2)                           -> unifySpine unifyInterface s1 s2 >> unifyType t1 t2
   (VComp{}, _)                                         -> throwError Mismatch
   (VNe v1 sp1, VNe v2 sp2)                             -> unifyVar v1 v2 >> unifySpine unifyType sp1 sp2
   (VNe{}, _)                                           -> throwError Mismatch
@@ -330,6 +328,9 @@ unifyKind k1 k2 = unless (k1 == k2) (throwError Mismatch)
 
 unifyVar :: (Eq a, Eq b, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m) => Var (Either a b) -> Var (Either a b) -> m ()
 unifyVar v1 v2 = unless (v1 == v2) (throwError Mismatch)
+
+unifyInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m) => Interface Type -> Interface Type -> m ()
+unifyInterface (Interface h1 sp1) (Interface h2 sp2) = unless (h1 == h2) (throwError Mismatch) >> unifySpine unifyType sp1 sp2
 
 unifySpine :: (Foldable t, Zip t, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Throw UnifyErrReason :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m ()
 unifySpine f sp1 sp2 = unless (length sp1 == length sp2) (throwError Mismatch) >> zipWithM_ f sp1 sp2

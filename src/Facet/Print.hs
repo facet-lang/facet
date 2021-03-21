@@ -170,7 +170,8 @@ printTExpr Options{ rname } = go
     C.TString               -> annotate Type $ pretty "String"
     where
     d = Name.Level (length env)
-    sig s = brackets (commaSep (map (go env) s))
+    sig s = brackets (commaSep (map (interface env) s))
+    interface env (C.Interface h sp) = rname h $$* fmap (go env) sp
   mult q = if
     | q == zero -> (pretty '0' <+>)
     | q == one  -> (pretty '1' <+>)
