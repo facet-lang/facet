@@ -9,7 +9,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (metas, metavar)
+import           Facet.Core.Type (eval, metas, metavar, quote)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -33,13 +33,15 @@ rethrowElabErrors opts = L.runThrow rethrow
     , pretty (prettyCallStack callStack)
     ]
     where
-    (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
+    (_, _, printCtx, ctx) = foldl' combine (0, empty, Nil, Nil) (elems context)
     subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printKind printCtx _T))) (metas subst)
-  combine (d, print, ctx) (Binding n m _T) =
-    let n' = intro n d
-    in  ( succ d
-        , print :> n'
-        , ctx  :> getPrint (ann (n' ::: mult m (either (printKind print) (printType opts print) _T))) )
+    combine (d, env, print, ctx) (Binding n m _T) =
+      let n' = intro n d
+          roundtrip = eval subst (Left <$> toEnv env) . quote d
+      in  ( succ d
+          , env |> Binding n m _T
+          , print :> n'
+          , ctx :> getPrint (ann (n' ::: mult m (either (printKind print) (printType opts print . roundtrip) _T))) )
   mult m = if
     | m == zero -> (pretty "0" <+>)
     | m == one  -> (pretty "1" <+>)
