@@ -93,8 +93,8 @@ occursIn p = go
 -- Elimination
 
 ($$) :: HasCallStack => Type -> Type -> Type
-VNe h es $$ a    = VNe h (es :> a)
-_           $$ _ = error "can’t apply non-neutral/forall type"
+VNe h es $$ a = VNe h (es :> a)
+_        $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
 ($$*) = foldl' ($$)
