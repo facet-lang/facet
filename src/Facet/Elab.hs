@@ -281,14 +281,14 @@ data StaticContext = StaticContext
 
 data ElabContext = ElabContext
   { context :: Context
-  , sig     :: [Type]
+  , sig     :: [Interface]
   , spans   :: Snoc Span
   }
 
 context_ :: Lens' ElabContext Context
 context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
 
-sig_ :: Lens' ElabContext [Type]
+sig_ :: Lens' ElabContext [Interface]
 sig_ = lens sig (\ e sig -> e{ sig })
 
 spans_ :: Lens' ElabContext (Snoc Span)

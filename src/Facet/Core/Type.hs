@@ -73,7 +73,7 @@ var :: Var (Either Meta Level) -> Type
 var v = VNe v Nil
 
 
-unComp :: Has Empty sig m => Type -> m ([Type], Type)
+unComp :: Has Empty sig m => Type -> m ([Interface], Type)
 unComp = \case
   VComp sig _T -> pure (sig, _T)
   _T           -> empty

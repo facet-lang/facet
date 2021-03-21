@@ -345,7 +345,7 @@ assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (
 assertTacitFunction = assertMatch (\case{ Right (VArrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . Right
 
 -- | Expect a computation type with effects.
-assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ([Type], Type)
+assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ([Interface], Type)
 assertComp = assertMatch (unComp <=< either (const Nothing) Just) "[_] _" . Right
 
 
@@ -365,10 +365,10 @@ withSpanC k (S.Ann s _ a) = mapCheck (pushSpan s) (k a)
 withSpanS :: Algebra sig m => (a -> Synth m b) -> S.Ann a -> Synth m b
 withSpanS k (S.Ann s _ a) = mapSynth (pushSpan s) (k a)
 
-provide :: Has (Reader ElabContext) sig m => [Type] -> m a -> m a
+provide :: Has (Reader ElabContext) sig m => [Interface] -> m a -> m a
 provide = locally sig_ . (++)
 
-require :: [Type] -> Elab m ()
+require :: [Interface] -> Elab m ()
 require _ = pure () -- FIXME: validate the requirements against the provided sig
 
 
