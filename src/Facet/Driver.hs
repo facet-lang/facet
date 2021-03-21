@@ -98,6 +98,7 @@ reloadModules = do
     -- FIXME: remove stale modules
     -- FIXME: only reload changed modules
     -- FIXME: failed module header parses shouldn’t invalidate everything.
+    -- FIXME: allow later modules to load despite failures if at least types have elaborated correctly
     targetHeads <- traverse (loadModuleHeader searchPaths . Right) (toList targets)
     rethrowGraphErrors [] $ loadOrder (fmap headerNode . loadModuleHeader searchPaths . Right) (map headerNode targetHeads)
   let nModules = length modules
