@@ -126,10 +126,10 @@ lam cs = Check $ \ _T -> do
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Synth m a) -> (HasCallStack => Check m b) -> Synth m c
-app mk f a = Synth $ do
-  f' ::: _F <- synth f
+app mk operator operand = Synth $ do
+  f' ::: _F <- synth operator
   (_ ::: (q, _A), _B) <- assertFunction _F
-  a' <- censor @Usage (q ><<) $ check (a ::: _A)
+  a' <- censor @Usage (q ><<) $ check (operand ::: _A)
   pure $ mk f' a' ::: _B
 
 
