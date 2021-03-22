@@ -3,6 +3,8 @@ module Facet.Core.Type
   Kind(..)
   -- * Types
 , Interface(..)
+, NType(..)
+, PType(..)
 , Type(..)
 , global
 , free
@@ -51,6 +53,16 @@ data Kind
 
 data Interface a = Interface RName (Snoc a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+data NType
+  = NComp [Interface PType] PType
+  | NArrow (Maybe Name) Quantity PType NType
+  | NForAll Name Kind (PType -> NType)
+
+data PType
+  = PString
+  | PNe (Var (Either Meta Level)) (Snoc PType)
+  | PThunk NType
 
 data Type
   = VString
