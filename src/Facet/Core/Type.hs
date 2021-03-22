@@ -123,7 +123,7 @@ infixl 9 $$, $$*
 
 data NTExpr
   = NTXForAll Name Kind NTExpr
-  | NTXArrow Name Kind PTExpr NTExpr
+  | NTXArrow (Maybe Name) Kind PTExpr NTExpr
   | NTXComp [Interface PTExpr] PTExpr
   deriving (Eq, Ord, Show)
 
