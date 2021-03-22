@@ -22,6 +22,8 @@ module Facet.Core.Type
 , PTExpr(..)
 , TExpr(..)
   -- * Quotation
+, quoteN
+, quoteP
 , quote
 , eval
   -- * Substitution
@@ -162,6 +164,18 @@ data TExpr
 
 
 -- Quotation
+
+quoteN :: Level -> NType -> NTExpr
+quoteN d = \case
+  NForAll n   t b -> NTXForAll n t (quoteN (succ d) (b (pfree d)))
+  NArrow  n q a b -> NTXArrow n q (quoteP d a) (quoteN d b)
+  NComp       s p -> NTXComp (fmap (quoteP d) <$> s) (quoteP d p)
+
+quoteP :: Level -> PType -> PTExpr
+quoteP d = \case
+  PString  -> PTXString
+  PNe n sp -> foldl' (&) (PTXVar (fmap (levelToIndex d) <$> n)) (flip PTXApp . quoteP d <$> sp)
+  PThunk n -> PTXThunk (quoteN d n)
 
 quote :: Level -> Type -> TExpr
 quote d = \case
