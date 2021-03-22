@@ -42,7 +42,8 @@ unifyType = curry $ \case
   (VArrow _ _ a1 b1, VArrow n q a2 b2)                 -> VArrow n q <$> unifyType a1 a2 <*> unifyType b1 b2
   (VArrow{}, _)                                        -> mismatch
   (VComp s1 t1, VComp s2 t2)                           -> VComp <$> unifySpine unifyInterface s1 s2 <*> unifyType t1 t2
-  (VComp{}, _)                                         -> mismatch
+  (VComp s1 t1, t2)                                    -> VComp s1 <$> unifyType t1 t2
+  (t1, VComp s2 t2)                                    -> VComp s2 <$> unifyType t1 t2
   (VNe v1 sp1, VNe v2 sp2)                             -> VNe <$> unifyVar v1 v2 <*> unifySpine unifyType sp1 sp2
   (VNe{}, _)                                           -> mismatch
   (VString, VString)                                   -> pure VString
