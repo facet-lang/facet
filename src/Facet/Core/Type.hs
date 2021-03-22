@@ -13,6 +13,8 @@ module Facet.Core.Type
 , free
 , metavar
 , unComp
+, occursInN
+, occursInP
 , occursIn
   -- ** Elimination
 , ($$)
@@ -115,6 +117,23 @@ unComp = \case
   VComp sig _T -> pure (sig, _T)
   _T           -> empty
 
+
+occursInN :: (Var (Either Meta Level) -> Bool) -> Level -> NType -> Bool
+occursInN p = go
+  where
+  go d = \case
+    NForAll _ _ b  -> go (succ d) (b (pfree d))
+    NArrow _ _ a b -> occursInP p d a || go d b
+    NComp s t      -> any (goI d) s || occursInP p d t
+  goI d (Interface h sp) = p (Global h) || any (occursInP p d) sp
+
+occursInP :: (Var (Either Meta Level) -> Bool) -> Level -> PType -> Bool
+occursInP p = go
+  where
+  go d = \case
+    PNe h sp -> p h || any (go d) sp
+    PThunk n -> occursInN p d n
+    PString  -> False
 
 occursIn :: (Var (Either Meta Level) -> Bool) -> Level -> Type -> Bool
 occursIn p = go
