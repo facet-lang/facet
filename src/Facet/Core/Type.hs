@@ -66,6 +66,7 @@ data PType
   | PNe (Var (Either Meta Level)) (Snoc PType)
   | PThunk NType
 
+
 data Type
   = VString
   | VForAll Name Kind (Type -> Type)
