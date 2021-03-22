@@ -15,6 +15,8 @@ module Facet.Core.Type
 , ($$)
 , ($$*)
   -- * Type expressions
+, NTExpr(..)
+, PTExpr(..)
 , TExpr(..)
   -- * Quotation
 , quote
@@ -117,6 +119,19 @@ infixl 9 $$, $$*
 
 
 -- Type expressions
+
+data NTExpr
+  = NTXForAll Name Kind NTExpr
+  | NTXArrow Name Kind NTExpr
+  | NTXComp [Interface PTExpr] PTExpr
+  deriving (Eq, Ord, Show)
+
+data PTExpr
+  = PTXString
+  | PTXVar (Var (Either Meta Index))
+  | PTXThunk NTExpr
+  | PTXApp PTExpr PTExpr
+  deriving (Eq, Ord, Show)
 
 data TExpr
   = TString
