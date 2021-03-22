@@ -37,6 +37,7 @@ module Facet.Elab
 , Act(..)
   -- * Machinery
 , Elab(..)
+, evalTExpr
 , depth
 , use
 , elabWith
@@ -153,6 +154,9 @@ sat a b
   | b == one  = a == b
   | otherwise = True
 
+
+evalTExpr :: Has (Reader ElabContext :+: State Subst) sig m => TExpr -> m Type
+evalTExpr texpr = T.eval <$> get <*> views context_ (fmap Left . toEnv) <*> pure texpr
 
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
