@@ -72,6 +72,7 @@ import           Facet.Snoc.NonEmpty as NE
 import           Facet.Source (Source)
 import qualified Facet.Surface as S
 import           Facet.Syntax
+import           Facet.Unify
 import           Facet.Usage hiding (restrict)
 import           GHC.Stack
 
