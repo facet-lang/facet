@@ -34,6 +34,9 @@ occurs v t = ask >>= \ (t1 :=: t2) -> occursCheckFailure v t (Right <$> t1) (Rig
 
 unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Type :=: Act Type) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m Type
 unifyType = curry $ \case
+  (VComp s1 t1, VComp s2 t2)                           -> VComp <$> unifySpine unifyInterface s1 s2 <*> unifyType t1 t2
+  (VComp s1 t1, t2)                                    -> VComp s1 <$> unifyType t1 t2
+  (t1, VComp s2 t2)                                    -> VComp s2 <$> unifyType t1 t2
   (VNe (Free (Left v1)) Nil, VNe (Free (Left v2)) Nil) -> flexFlex v1 v2
   (VNe (Free (Left v1)) Nil, t2)                       -> solve v1 t2
   (t1, VNe (Free (Left v2)) Nil)                       -> solve v2 t1
@@ -41,9 +44,6 @@ unifyType = curry $ \case
   (VForAll{}, _)                                       -> mismatch
   (VArrow _ _ a1 b1, VArrow n q a2 b2)                 -> VArrow n q <$> unifyType a1 a2 <*> unifyType b1 b2
   (VArrow{}, _)                                        -> mismatch
-  (VComp s1 t1, VComp s2 t2)                           -> VComp <$> unifySpine unifyInterface s1 s2 <*> unifyType t1 t2
-  (VComp s1 t1, t2)                                    -> VComp s1 <$> unifyType t1 t2
-  (t1, VComp s2 t2)                                    -> VComp s2 <$> unifyType t1 t2
   (VNe v1 sp1, VNe v2 sp2)                             -> VNe <$> unifyVar v1 v2 <*> unifySpine unifyType sp1 sp2
   (VNe{}, _)                                           -> mismatch
   (VString, VString)                                   -> pure VString
