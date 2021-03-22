@@ -25,6 +25,8 @@ module Facet.Core.Type
 , quoteN
 , quoteP
 , quote
+, evalN
+, evalP
 , eval
   -- * Substitution
 , Subst(..)
@@ -128,6 +130,10 @@ occursIn p = go
 
 -- Elimination
 
+papp :: HasCallStack => PType -> PType -> PType
+PNe h es `papp` a = PNe h (es :> a)
+_        `papp` _ = error "can’t apply non-neutral/forall type"
+
 ($$) :: HasCallStack => Type -> Type -> Type
 VNe h es $$ a = VNe h (es :> a)
 _        $$ _ = error "can’t apply non-neutral/forall type"
@@ -196,6 +202,21 @@ eval subst = go where
     TArrow n q a b        -> VArrow n q (go env a) (go env b)
     TComp s t             -> VComp (fmap (go env) <$> s) (go env t)
     TApp  f a             -> go env f $$  go env a
+
+evalN :: HasCallStack => Subst PType -> Snoc (Either PType a) -> NTExpr -> NType
+evalN subst env = \case
+  NTXForAll n   t b -> NForAll n t (\ v -> evalN subst (env :> Left v) b)
+  NTXArrow  n q a b -> NArrow n q (evalP subst env a) (evalN subst env b)
+  NTXComp       s p -> NComp (fmap (evalP subst env) <$> s) (evalP subst env p)
+
+evalP :: HasCallStack => Subst PType -> Snoc (Either PType a) -> PTExpr -> PType
+evalP subst env = \case
+  PTXString               -> PString
+  PTXVar (Global n)       -> pglobal n
+  PTXVar (Free (Right v)) -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
+  PTXVar (Free (Left m))  -> maybe (pmetavar m) tm (lookupMeta m subst)
+  PTXThunk n              -> PThunk (evalN subst env n)
+  PTXApp f a              -> evalP subst env f `papp` evalP subst env a
 
 
 -- Substitution
