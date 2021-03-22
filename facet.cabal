@@ -115,6 +115,7 @@ library
     Facet.Surface
     Facet.Syntax
     Facet.Timing
+    Facet.Unify
     Facet.Usage
     Facet.Vars
   other-modules:
