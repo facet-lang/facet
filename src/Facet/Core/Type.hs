@@ -5,6 +5,9 @@ module Facet.Core.Type
 , Interface(..)
 , NType(..)
 , PType(..)
+, pglobal
+, pfree
+, pmetavar
 , Type(..)
 , global
 , free
@@ -65,6 +68,20 @@ data PType
   = PString
   | PNe (Var (Either Meta Level)) (Snoc PType)
   | PThunk NType
+
+
+pglobal :: RName -> PType
+pglobal = pvar . Global
+
+pfree :: Level -> PType
+pfree = pvar . Free . Right
+
+pmetavar :: Meta -> PType
+pmetavar = pvar . Free . Left
+
+
+pvar :: Var (Either Meta Level) -> PType
+pvar v = PNe v Nil
 
 
 data Type
