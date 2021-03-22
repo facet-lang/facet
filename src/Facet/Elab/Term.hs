@@ -44,7 +44,7 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (view, views, (.=))
+import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Throw
 import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
@@ -56,7 +56,7 @@ import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context (Binding(..), toEnv)
+import           Facet.Context (Binding(..))
 import           Facet.Core.Module as Module
 import           Facet.Core.Term as E
 import           Facet.Core.Type as T hiding (global)
@@ -85,9 +85,7 @@ switch (Synth m) = Check $ \ _Exp -> m >>= \case
 
 as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m TExpr -> Synth m Expr
 as (m ::: _T) = Synth $ do
-  env <- views context_ toEnv
-  subst <- get
-  _T' <- T.eval subst (Left <$> env) <$> checkIsType (_T ::: KType)
+  _T' <- evalTExpr =<< checkIsType (_T ::: KType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
