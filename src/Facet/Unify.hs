@@ -34,7 +34,7 @@ occurs v t = ask >>= \ (t1 :=: t2) -> occursCheckFailure v t (Right <$> t1) (Rig
 
 unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Type :=: Act Type) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m Type
 unifyType = curry $ \case
-  (VComp s1 t1, VComp s2 t2)                           -> VComp <$> unifySpine unifyInterface s1 s2 <*> unifyType t1 t2
+  (VComp s1 t1, VComp s2 t2)                           -> VComp <$> unifySpine (unifyInterface unifyType) s1 s2 <*> unifyType t1 t2
   (VComp s1 t1, t2)                                    -> VComp s1 <$> unifyType t1 t2
   (t1, VComp s2 t2)                                    -> VComp s2 <$> unifyType t1 t2
   (VNe (Free (Left v1)) Nil, VNe (Free (Left v2)) Nil) -> flexFlex v1 v2
@@ -57,8 +57,8 @@ unifyKind k1 k2 = if k1 == k2 then pure k2 else mismatch
 unifyVar :: (Eq a, Eq b, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Type :=: Act Type) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Var (Either a b) -> Var (Either a b) -> m (Var (Either a b))
 unifyVar v1 v2 = if v1 == v2 then pure v2 else mismatch
 
-unifyInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Type :=: Act Type) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Interface Type -> Interface Type -> m (Interface Type)
-unifyInterface (Interface h1 sp1) (Interface h2 sp2) = Interface h2 <$ unless (h1 == h2) mismatch <*> unifySpine unifyType sp1 sp2
+unifyInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Type :=: Act Type) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (a -> b -> m c) -> Interface a -> Interface b -> m (Interface c)
+unifyInterface with (Interface h1 sp1) (Interface h2 sp2) = Interface h2 <$ unless (h1 == h2) mismatch <*> unifySpine with sp1 sp2
 
 unifySpine :: (Traversable t, Zip t, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Type :=: Act Type) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m (t c)
 unifySpine f sp1 sp2 = unless (length sp1 == length sp2) mismatch >> zipWithM f sp1 sp2
