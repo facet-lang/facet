@@ -73,7 +73,7 @@ printErrReason opts ctx = group . \case
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T                    ->
-    let _T' = getPrint (printType opts ctx _T)
+    let _T' = getPrint (printSubject opts ctx _T)
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
 

@@ -109,7 +109,7 @@ var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabConte
 
 
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
-hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
+hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (ST _T)
 
 
 tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr

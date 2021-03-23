@@ -192,7 +192,7 @@ data ErrReason
   | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
   | Unify UnifyErrReason (Exp (Either String Subject)) (Act Subject)
-  | Hole Name Type
+  | Hole Name Subject
   | Invariant String
 
 data UnifyErrReason
@@ -207,7 +207,7 @@ applySubst ctx subst r = case r of
   ResourceMismatch{}   -> r
   -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
   Unify r exp act      -> Unify r (fmap roundtripS <$> exp) (roundtripS <$> act)
-  Hole n t             -> Hole n (roundtrip t)
+  Hole n t             -> Hole n (roundtripS t)
   Invariant{}          -> r
   where
   env = toEnv ctx
