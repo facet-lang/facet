@@ -19,9 +19,7 @@ module Facet.Print
 , printSubject
 , printKind
 , printNType
-, printNTExpr
 , printPType
-, printPTExpr
 , printType
 , printTExpr
 , printExpr
@@ -163,37 +161,36 @@ printKind env = \case
   d = Name.Level (length env)
 
 printNType :: Options -> Snoc Print -> C.NType -> Print
-printNType opts env = printNTExpr opts env . CT.quoteN (Name.Level (length env))
+printNType opts env = fst (printNPTExpr opts) env . CT.quoteN (Name.Level (length env))
 
-printNTExpr :: Options -> Snoc Print -> C.NTExpr -> Print
-printNTExpr opts@Options{ rname } env = \case
-  C.NTXComp [] _T           -> printPTExpr opts env _T
-  C.NTXComp s  _T           -> sig s <+> printPTExpr opts env _T
-  C.NTXArrow Nothing  q a b -> mult q (printPTExpr opts env a) --> printNTExpr opts env b
-  C.NTXArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (printPTExpr opts env a))) --> printNTExpr opts env b
-  C.NTXForAll n k b         -> braces (ann (intro n d ::: printKind env k)) --> printNTExpr opts (env :> intro n d) b
+printPType :: Options -> Snoc Print -> C.PType -> Print
+printPType opts env = snd (printNPTExpr opts) env . CT.quoteP (Name.Level (length env))
+
+printNPTExpr :: Options -> (Snoc Print -> C.NTExpr -> Print, Snoc Print -> C.PTExpr -> Print)
+printNPTExpr Options{ rname } = (neg, pos)
   where
-  d = Name.Level (length env)
-  sig s = brackets (commaSep (map (interface env) s))
-  interface env (C.Interface h sp) = rname h $$* fmap (printPTExpr opts env) sp
+  neg env = \case
+    C.NTXComp [] _T           -> pos env _T
+    C.NTXComp s  _T           -> sig env s <+> pos env _T
+    C.NTXArrow Nothing  q a b -> mult q (pos env a) --> neg env b
+    C.NTXArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (pos env a))) --> neg env b
+    C.NTXForAll n k b         -> braces (ann (intro n d ::: printKind env k)) --> neg (env :> intro n d) b
+    where
+    d = Name.Level (length env)
+  pos env = \case
+    C.PTXString               -> annotate Type $ pretty "String"
+    C.PTXVar (Global n)       -> qvar n
+    C.PTXVar (Free (Right d)) -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
+    C.PTXVar (Free (Left m))  -> meta m
+    C.PTXThunk n              -> prec Shift $ pretty '↓' <> neg env n
+    C.PTXApp f a              -> group (pos env f) $$ group (pos env a)
+  qvar = group . setPrec Var . rname
+  sig env s = brackets (commaSep (map (interface env) s))
+  interface env (C.Interface h sp) = rname h $$* fmap (pos env) sp
   mult q = if
     | q == zero -> (pretty '0' <+>)
     | q == one  -> (pretty '1' <+>)
     | otherwise -> id
-
-printPType :: Options -> Snoc Print -> C.PType -> Print
-printPType opts env = printPTExpr opts env . CT.quoteP (Name.Level (length env))
-
-printPTExpr :: Options -> Snoc Print -> C.PTExpr -> Print
-printPTExpr opts@Options{ rname } env = \case
-  C.PTXString               -> annotate Type $ pretty "String"
-  C.PTXVar (Global n)       -> qvar n
-  C.PTXVar (Free (Right d)) -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
-  C.PTXVar (Free (Left m))  -> meta m
-  C.PTXThunk n              -> prec Shift $ pretty '↓' <> printNTExpr opts env n
-  C.PTXApp f a              -> group (printPTExpr opts env f) $$ group (printPTExpr opts env a)
-  where
-  qvar = group . setPrec Var . rname
 
 printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
