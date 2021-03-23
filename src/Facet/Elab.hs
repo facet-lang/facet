@@ -14,6 +14,7 @@ module Facet.Elab
   -- * Errors
 , pushSpan
 , Err(..)
+, Subject(..)
 , ErrReason(..)
 , UnifyErrReason(..)
 , err
@@ -184,6 +185,10 @@ data Err = Err
   , subst     :: Subst Type
   , callStack :: CallStack
   }
+
+data Subject
+  = SK Kind
+  | ST Type
 
 data ErrReason
   = FreeVariable QName
