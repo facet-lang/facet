@@ -15,6 +15,7 @@ module Facet.Elab
 , pushSpan
 , Err(..)
 , Subject(..)
+, subjectType
 , ErrReason(..)
 , UnifyErrReason(..)
 , err
@@ -189,6 +190,11 @@ data Err = Err
 data Subject
   = SK Kind
   | ST Type
+
+subjectType :: Subject -> Maybe Type
+subjectType = \case
+  SK _K -> empty
+  ST _T -> pure _T
 
 data ErrReason
   = FreeVariable QName
