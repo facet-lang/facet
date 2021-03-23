@@ -27,10 +27,10 @@ unify :: (HasCallStack, Has (Throw Err) sig m) => Exp Type -> Act Type -> Elab m
 unify t1 t2 = runReader (t1 :=: t2) (unifyType (getExp t1) (getAct t2))
 
 mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Type :=: Act Type) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => m a
-mismatch   = ask >>= \ (t1 :=: t2) -> couldNotUnify          (Right <$> t1) (Right <$> t2)
+mismatch   = ask >>= \ (t1 :=: t2) -> couldNotUnify          (ST <$> t1) (ST <$> t2)
 
 occurs :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Type :=: Act Type) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Type -> m a
-occurs v t = ask >>= \ (t1 :=: t2) -> occursCheckFailure v t (Right <$> t1) (Right <$> t2)
+occurs v t = ask >>= \ (t1 :=: t2) -> occursCheckFailure v t (ST <$> t1) (ST <$> t2)
 
 unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Type :=: Act Type) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m Type
 unifyType = curry $ \case

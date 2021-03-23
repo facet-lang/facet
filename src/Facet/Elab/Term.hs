@@ -344,15 +344,15 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 -- Errors
 
 assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name ::: Kind, Type -> Type)
-assertQuantifier = assertMatch (\case{ Right (VForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" . Right
+assertQuantifier = assertMatch (\case{ ST (VForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" . ST
 
 -- | Expect a tacit (non-variable-binding) function type.
 assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ((Quantity, Type), Type)
-assertTacitFunction = assertMatch (\case{ Right (VArrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . Right
+assertTacitFunction = assertMatch (\case{ ST (VArrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . ST
 
 -- | Expect a computation type with effects.
 assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ([Interface Type], Type)
-assertComp = assertMatch (unComp <=< either (const Nothing) Just) "[_] _" . Right
+assertComp = assertMatch (unComp <=< subjectType) "[_] _" . ST
 
 
 -- Elaboration

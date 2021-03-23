@@ -206,7 +206,7 @@ data ErrReason
   | AmbiguousName QName [RName]
   | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
-  | Unify UnifyErrReason (Exp (Either String (Either Kind Type))) (Act (Either Kind Type))
+  | Unify UnifyErrReason (Exp (Either String Subject)) (Act Subject)
   | Hole Name Type
   | Invariant String
 
@@ -221,12 +221,15 @@ applySubst ctx subst r = case r of
   CouldNotSynthesize{} -> r
   ResourceMismatch{}   -> r
   -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
-  Unify r exp act      -> Unify r (fmap (fmap roundtrip) <$> exp) (fmap roundtrip <$> act)
+  Unify r exp act      -> Unify r (fmap roundtripS <$> exp) (roundtripS <$> act)
   Hole n t             -> Hole n (roundtrip t)
   Invariant{}          -> r
   where
   env = toEnv ctx
   d = level ctx
+  roundtripS = \case
+    SK k -> SK k
+    ST k -> ST $ roundtrip k
   roundtrip = T.eval subst (Left <$> env) . T.quote d
 
 
@@ -238,13 +241,13 @@ err reason = do
   subst <- get
   throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either String (Either Kind Type)) -> Act (Either Kind Type) -> m a
+mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either String Subject) -> Act Subject -> m a
 mismatch exp act = withFrozenCallStack $ err $ Unify Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either Kind Type) -> Act (Either Kind Type) -> m a
+couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp Subject -> Act Subject -> m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right <$> t1) t2
 
-occursCheckFailure :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Meta -> Type -> Exp (Either Kind Type) -> Act (Either Kind Type) -> m a
+occursCheckFailure :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Meta -> Type -> Exp Subject -> Act Subject -> m a
 occursCheckFailure m v exp act = withFrozenCallStack $ err $ Unify (Occurs m v) (Right <$> exp) act
 
 couldNotSynthesize :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => m a
@@ -281,11 +284,11 @@ warn reason = do
 
 -- Patterns
 
-assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Either Kind Type -> Maybe out) -> String -> Either Kind Type -> Elab m out
+assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Subject -> Maybe out) -> String -> Subject -> Elab m out
 assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (pat _T)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-assertFunction = assertMatch (\case{ Right (VArrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . Right
+assertFunction = assertMatch (\case{ ST (VArrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . ST
 
 
 -- Unification

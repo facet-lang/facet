@@ -68,8 +68,8 @@ printErrReason opts ctx = group . \case
     reason = \case
       Mismatch   -> pretty "mismatch"
       Occurs v t -> reflow "infinite type:" <+> getPrint (printType opts ctx (metavar v)) <+> reflow "occurs in" <+> getPrint (printType opts ctx t)
-    exp' = either reflow (getPrint . either (printKind ctx) (printType opts ctx)) exp
-    act' = getPrint (either (printKind ctx) (printType opts ctx) act)
+    exp' = either reflow (getPrint . unSubject (printKind ctx) (printType opts ctx)) exp
+    act' = getPrint (unSubject (printKind ctx) (printType opts ctx) act)
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T                    ->
