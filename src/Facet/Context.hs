@@ -9,6 +9,7 @@ module Facet.Context
 , (!)
 , lookupIndex
 , toEnv
+, toPEnv
 ) where
 
 import qualified Control.Effect.Empty as E
@@ -64,3 +65,12 @@ toEnv c = locals 0 (elems c)
   locals i = \case
     S.Nil     -> S.Nil
     bs S.:> _ -> locals (succ i) bs S.:> free (indexToLevel d i)
+
+-- | Construct an environment suitable for evaluation from a 'Context'.
+toPEnv :: Context -> S.Snoc PType
+toPEnv c = locals 0 (elems c)
+  where
+  d = level c
+  locals i = \case
+    S.Nil     -> S.Nil
+    bs S.:> _ -> locals (succ i) bs S.:> pfree (indexToLevel d i)
