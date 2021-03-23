@@ -13,6 +13,9 @@ module Facet.Core.Type
 , free
 , metavar
 , unComp
+, Subject(..)
+, unSubject
+, subjectType
 , occursInN
 , occursInP
 , occursIn
@@ -116,6 +119,19 @@ unComp :: Has Empty sig m => Type -> m ([Interface Type], Type)
 unComp = \case
   VComp sig _T -> pure (sig, _T)
   _T           -> empty
+
+
+data Subject
+  = SK Kind
+  | ST Type
+
+unSubject :: (Kind -> a) -> (Type -> a) -> Subject -> a
+unSubject fk ft = \case
+  SK k -> fk k
+  ST t -> ft t
+
+subjectType :: Subject -> Maybe Type
+subjectType = unSubject (const empty) pure
 
 
 occursInN :: (Var (Either Meta Level) -> Bool) -> Level -> NType -> Bool

@@ -9,7 +9,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (eval, metas, metavar, quote)
+import           Facet.Core.Type (eval, metas, metavar, quote, unSubject)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
