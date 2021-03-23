@@ -198,9 +198,7 @@ unSubject fk ft = \case
   ST t -> ft t
 
 subjectType :: Subject -> Maybe Type
-subjectType = \case
-  SK _K -> empty
-  ST _T -> pure _T
+subjectType = unSubject (const empty) pure
 
 data ErrReason
   = FreeVariable QName
