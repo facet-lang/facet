@@ -38,6 +38,7 @@ module Facet.Elab
   -- * Machinery
 , Elab(..)
 , evalTExpr
+, evalNTExpr
 , depth
 , use
 , elabWith
@@ -157,6 +158,9 @@ sat a b
 
 evalTExpr :: Has (Reader ElabContext :+: State (Subst Type)) sig m => TExpr -> m Type
 evalTExpr texpr = T.eval <$> get <*> views context_ (fmap Left . toEnv) <*> pure texpr
+
+evalNTExpr :: Has (Reader ElabContext :+: State (Subst PType)) sig m => NTExpr -> m NType
+evalNTExpr texpr = T.evalN <$> get <*> views context_ (fmap Left . toPEnv) <*> pure texpr
 
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
