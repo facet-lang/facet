@@ -30,7 +30,7 @@ mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: 
 mismatch   = ask >>= \ (t1 :=: t2) -> couldNotUnify          (ST <$> t1) (ST <$> t2)
 
 occurs :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Type :=: Act Type) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Type -> m a
-occurs v t = ask >>= \ (t1 :=: t2) -> occursCheckFailure v t (ST <$> t1) (ST <$> t2)
+occurs v t = ask >>= \ (t1 :=: t2) -> occursCheckFailure v (ST t) (ST <$> t1) (ST <$> t2)
 
 unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Type :=: Act Type) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m Type
 unifyType = curry $ \case
