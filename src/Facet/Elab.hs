@@ -15,6 +15,7 @@ module Facet.Elab
 , pushSpan
 , Err(..)
 , Subject(..)
+, unSubject
 , subjectType
 , ErrReason(..)
 , UnifyErrReason(..)
@@ -190,6 +191,11 @@ data Err = Err
 data Subject
   = SK Kind
   | ST Type
+
+unSubject :: (Kind -> a) -> (Type -> a) -> Subject -> a
+unSubject fk ft = \case
+  SK k -> fk k
+  ST t -> ft t
 
 subjectType :: Subject -> Maybe Type
 subjectType = \case
