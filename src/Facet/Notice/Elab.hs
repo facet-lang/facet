@@ -9,7 +9,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (eval, metas, metavar, quote, unSubject)
+import           Facet.Core.Type (eval, metas, metavar, quote)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -68,8 +68,8 @@ printErrReason opts ctx = group . \case
     reason = \case
       Mismatch   -> pretty "mismatch"
       Occurs v t -> reflow "infinite type:" <+> getPrint (printType opts ctx (metavar v)) <+> reflow "occurs in" <+> getPrint (printType opts ctx t)
-    exp' = either reflow (getPrint . unSubject (printKind ctx) (printType opts ctx)) exp
-    act' = getPrint (unSubject (printKind ctx) (printType opts ctx) act)
+    exp' = either reflow (getPrint . printSubject opts ctx) exp
+    act' = getPrint (printSubject opts ctx act)
     -- line things up nicely for e.g. wrapped function types
     print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T                    ->

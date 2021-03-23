@@ -16,6 +16,7 @@ module Facet.Print
 , printInstantiation
 , suppressInstantiation
   -- * Core printers
+, printSubject
 , printKind
 , printType
 , printTExpr
@@ -140,6 +141,11 @@ suppressInstantiation = const
 
 
 -- Core printers
+
+printSubject :: Options -> Snoc Print -> C.Subject -> Print
+printSubject opts env = \case
+  C.SK k -> printKind env k
+  C.ST t -> printType opts env t
 
 printKind :: Snoc Print -> C.Kind -> Print
 printKind env = \case
