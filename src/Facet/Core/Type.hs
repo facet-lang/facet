@@ -14,7 +14,6 @@ module Facet.Core.Type
 , metavar
 , unComp
 , Subject(..)
-, unSubject
 , subjectType
 , occursInN
 , occursInP
@@ -125,13 +124,10 @@ data Subject
   = SK Kind
   | ST Type
 
-unSubject :: (Kind -> a) -> (Type -> a) -> Subject -> a
-unSubject fk ft = \case
-  SK k -> fk k
-  ST t -> ft t
-
 subjectType :: Subject -> Maybe Type
-subjectType = unSubject (const empty) pure
+subjectType = \case
+  SK _K -> empty
+  ST _T -> pure _T
 
 
 occursInN :: (Var (Either Meta Level) -> Bool) -> Level -> NType -> Bool
