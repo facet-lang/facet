@@ -214,6 +214,8 @@ applySubst ctx subst r = case r of
   d = level ctx
   roundtripS = \case
     SK k -> SK k
+    SN n -> SN n -- FIXME: we can’t roundtrip SN and SP until we have polarized substs & envs
+    SP p -> SP p
     ST k -> ST $ roundtrip k
   roundtrip = T.eval subst (Left <$> env) . T.quote d
 

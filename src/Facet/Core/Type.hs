@@ -122,11 +122,15 @@ unComp = \case
 
 data Subject
   = SK Kind
+  | SN NType
+  | SP PType
   | ST Type
 
 subjectType :: Subject -> Maybe Type
 subjectType = \case
   SK _K -> empty
+  SN _N -> empty
+  SP _P -> empty
   ST _T -> pure _T
 
 
