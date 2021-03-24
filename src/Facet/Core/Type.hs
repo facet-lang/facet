@@ -3,11 +3,6 @@ module Facet.Core.Type
   Kind(..)
   -- * Types
 , Interface(..)
-, NType(..)
-, PType(..)
-, pglobal
-, pfree
-, pmetavar
 , Type(..)
 , global
 , free
@@ -15,8 +10,6 @@ module Facet.Core.Type
 , unComp
 , Subject(..)
 , subjectType
-, occursInN
-, occursInP
 , occursIn
   -- ** Elimination
 , ($$)
@@ -26,11 +19,7 @@ module Facet.Core.Type
 , PTExpr(..)
 , TExpr(..)
   -- * Quotation
-, quoteN
-, quoteP
 , quote
-, evalN
-, evalP
 , eval
   -- * Substitution
 , Subst(..)
@@ -67,31 +56,6 @@ data Kind
 data Interface a = Interface RName (Snoc a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-data NType
-  = NComp [Interface PType] PType
-  | NArrow (Maybe Name) Quantity PType NType
-  | NForAll Name Kind (PType -> NType)
-
-data PType
-  = PString
-  | PNe (Var (Either Meta Level)) (Snoc PType)
-  | PThunk NType
-
-
-pglobal :: RName -> PType
-pglobal = pvar . Global
-
-pfree :: Level -> PType
-pfree = pvar . Free . Right
-
-pmetavar :: Meta -> PType
-pmetavar = pvar . Free . Left
-
-
-pvar :: Var (Either Meta Level) -> PType
-pvar v = PNe v Nil
-
-
 data Type
   = VString
   | VForAll Name Kind (Type -> Type)
@@ -122,34 +86,13 @@ unComp = \case
 
 data Subject
   = SK Kind
-  | SN NType
-  | SP PType
   | ST Type
 
 subjectType :: Subject -> Maybe Type
 subjectType = \case
   SK _K -> empty
-  SN _N -> empty
-  SP _P -> empty
   ST _T -> pure _T
 
-
-occursInN :: (Var (Either Meta Level) -> Bool) -> Level -> NType -> Bool
-occursInN p = go
-  where
-  go d = \case
-    NForAll _ _ b  -> go (succ d) (b (pfree d))
-    NArrow _ _ a b -> occursInP p d a || go d b
-    NComp s t      -> any (goI d) s || occursInP p d t
-  goI d (Interface h sp) = p (Global h) || any (occursInP p d) sp
-
-occursInP :: (Var (Either Meta Level) -> Bool) -> Level -> PType -> Bool
-occursInP p = go
-  where
-  go d = \case
-    PNe h sp -> p h || any (go d) sp
-    PThunk n -> occursInN p d n
-    PString  -> False
 
 occursIn :: (Var (Either Meta Level) -> Bool) -> Level -> Type -> Bool
 occursIn p = go
@@ -164,10 +107,6 @@ occursIn p = go
 
 
 -- Elimination
-
-papp :: HasCallStack => PType -> PType -> PType
-PNe h es `papp` a = PNe h (es :> a)
-_        `papp` _ = error "can’t apply non-neutral/forall type"
 
 ($$) :: HasCallStack => Type -> Type -> Type
 VNe h es $$ a = VNe h (es :> a)
@@ -206,18 +145,6 @@ data TExpr
 
 -- Quotation
 
-quoteN :: Level -> NType -> NTExpr
-quoteN d = \case
-  NForAll n   t b -> NTXForAll n t (quoteN (succ d) (b (pfree d)))
-  NArrow  n q a b -> NTXArrow n q (quoteP d a) (quoteN d b)
-  NComp       s p -> NTXComp (fmap (quoteP d) <$> s) (quoteP d p)
-
-quoteP :: Level -> PType -> PTExpr
-quoteP d = \case
-  PString  -> PTXString
-  PNe n sp -> foldl' (&) (PTXVar (fmap (levelToIndex d) <$> n)) (flip PTXApp . quoteP d <$> sp)
-  PThunk n -> PTXThunk (quoteN d n)
-
 quote :: Level -> Type -> TExpr
 quote d = \case
   VString        -> TString
@@ -237,21 +164,6 @@ eval subst = go where
     TArrow n q a b        -> VArrow n q (go env a) (go env b)
     TComp s t             -> VComp (fmap (go env) <$> s) (go env t)
     TApp  f a             -> go env f $$  go env a
-
-evalN :: HasCallStack => Subst PType -> Snoc (Either PType a) -> NTExpr -> NType
-evalN subst env = \case
-  NTXForAll n   t b -> NForAll n t (\ v -> evalN subst (env :> Left v) b)
-  NTXArrow  n q a b -> NArrow n q (evalP subst env a) (evalN subst env b)
-  NTXComp       s p -> NComp (fmap (evalP subst env) <$> s) (evalP subst env p)
-
-evalP :: HasCallStack => Subst PType -> Snoc (Either PType a) -> PTExpr -> PType
-evalP subst env = \case
-  PTXString               -> PString
-  PTXVar (Global n)       -> pglobal n
-  PTXVar (Free (Right v)) -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
-  PTXVar (Free (Left m))  -> maybe (pmetavar m) tm (lookupMeta m subst)
-  PTXThunk n              -> PThunk (evalN subst env n)
-  PTXApp f a              -> evalP subst env f `papp` evalP subst env a
 
 
 -- Substitution

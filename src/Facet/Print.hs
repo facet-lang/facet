@@ -18,8 +18,6 @@ module Facet.Print
   -- * Core printers
 , printSubject
 , printKind
-, printNType
-, printPType
 , printType
 , printTExpr
 , printExpr
@@ -149,8 +147,6 @@ suppressInstantiation = const
 printSubject :: Options -> Snoc Print -> C.Subject -> Print
 printSubject opts env = \case
   C.SK k -> printKind env k
-  C.SN n -> printNType opts env n
-  C.SP p -> printPType opts env p
   C.ST t -> printType opts env t
 
 printKind :: Snoc Print -> C.Kind -> Print
@@ -161,38 +157,6 @@ printKind env = \case
   C.KArrow (Just n) a b -> parens (ann (intro n d ::: printKind env a)) --> printKind env b
   where
   d = Name.Level (length env)
-
-printNType :: Options -> Snoc Print -> C.NType -> Print
-printNType opts env = fst (printNPTExpr opts) env . CT.quoteN (Name.Level (length env))
-
-printPType :: Options -> Snoc Print -> C.PType -> Print
-printPType opts env = snd (printNPTExpr opts) env . CT.quoteP (Name.Level (length env))
-
-printNPTExpr :: Options -> (Snoc Print -> C.NTExpr -> Print, Snoc Print -> C.PTExpr -> Print)
-printNPTExpr Options{ rname } = (neg, pos)
-  where
-  neg env = \case
-    C.NTXComp [] _T           -> pos env _T
-    C.NTXComp s  _T           -> sig env s <+> pos env _T
-    C.NTXArrow Nothing  q a b -> mult q (pos env a) --> neg env b
-    C.NTXArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (pos env a))) --> neg env b
-    C.NTXForAll n k b         -> braces (ann (intro n d ::: printKind env k)) --> neg (env :> intro n d) b
-    where
-    d = Name.Level (length env)
-  pos env = \case
-    C.PTXString               -> annotate Type $ pretty "String"
-    C.PTXVar (Global n)       -> qvar n
-    C.PTXVar (Free (Right d)) -> fromMaybe (pretty (getIndex d)) $ env !? getIndex d
-    C.PTXVar (Free (Left m))  -> meta m
-    C.PTXThunk n              -> prec Shift $ pretty '↓' <> neg env n
-    C.PTXApp f a              -> group (pos env f) $$ group (pos env a)
-  qvar = group . setPrec Var . rname
-  sig env s = brackets (commaSep (map (interface env) s))
-  interface env (C.Interface h sp) = rname h $$* fmap (pos env) sp
-  mult q = if
-    | q == zero -> (pretty '0' <+>)
-    | q == one  -> (pretty '1' <+>)
-    | otherwise -> id
 
 printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
