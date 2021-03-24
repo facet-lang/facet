@@ -15,6 +15,7 @@ module Facet.Elab.Type
 ) where
 
 import           Control.Algebra
+import           Control.Applicative (liftA2)
 import           Control.Effect.Lens (views)
 import           Control.Effect.Throw
 import           Control.Monad (unless)
@@ -27,16 +28,22 @@ import           Facet.Core.Type
 import           Facet.Elab
 import           Facet.Name
 import           Facet.Semiring (Few(..), one, zero)
+import           Facet.Snoc
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TExpr
 tvar n = IsType $ views context_ (lookupInContext n) >>= \case
-  Just (i, q, Left _K) -> use i q $> (TVar (Free (Right i)) ::: _K)
-  _                     -> resolveQ n >>= \case
+  [(i, q, Left _K)] -> use i q $> (TVar (Free (Right i)) ::: _K)
+  _                 -> resolveQ n >>= \case
     q :=: DData      _ _K -> pure $ TVar (Global q) ::: _K
     q :=: DInterface _ _K -> pure $ TVar (Global q) ::: _K
+    _                     -> freeVariable n
+
+ivar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m RName
+ivar n = IsType $ resolveQ n >>= \case
+    q :=: DInterface _ _K -> pure $ q ::: _K
     _                     -> freeVariable n
 
 
@@ -72,7 +79,7 @@ app mk f a = IsType $ do
   pure $ mk f' a' ::: _B
 
 
-comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m TExpr] -> IsType m TExpr -> IsType m TExpr
+comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m (Interface TExpr)] -> IsType m TExpr -> IsType m TExpr
 comp s t = IsType $ do
   s' <- traverse (checkIsType . (::: KInterface)) s
   -- FIXME: polarize types and check that this is a value type being returned
@@ -100,17 +107,18 @@ synthType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
     S.Zero -> zero
     S.One  -> one
 
-synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m TExpr
-synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = mapIsType (pushSpan s) $
-  foldl' (app TApp) h' (synthType <$> sp)
-  where
-  h' = mapIsType (pushSpan sh) (tvar h)
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m (Interface TExpr)
+synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = IsType $ pushSpan s $ do
+  -- FIXME: check that the application actually result in an Interface
+  h' ::: _ <- pushSpan sh (isType (ivar h))
+  sp' <- foldl' (liftA2 (:>)) (pure Nil) (checkIsType . (::: KType) . synthType <$> sp)
+  pure $ Interface h' sp' ::: KInterface
 
 
 -- Assertions
 
 assertTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => Kind -> Elab m (Maybe Name ::: Kind, Kind)
-assertTypeConstructor = assertMatch (\case{ Left (KArrow n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _" . Left
+assertTypeConstructor = assertMatch (\case{ SK (KArrow n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _" . SK
 
 
 -- Judgements
@@ -118,7 +126,7 @@ assertTypeConstructor = assertMatch (\case{ Left (KArrow n t b) -> pure (n ::: t
 checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Kind -> Elab m a
 checkIsType (m ::: _K) = do
   a ::: _KA <- isType m
-  a <$ unless (_KA == _K) (couldNotUnify (Left _KA) (Left _K))
+  a <$ unless (_KA == _K) (couldNotUnify (Exp (SK _K)) (Act (SK _KA)))
 
 newtype IsType m a = IsType { isType :: Elab m (a ::: Kind) }
 

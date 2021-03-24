@@ -1,3 +1,4 @@
+{-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Facet.Elab.Term
 ( -- * General combinators
@@ -27,6 +28,8 @@ module Facet.Elab.Term
 , elabTermDef
   -- * Modules
 , elabModule
+  -- * Elaboration
+, require
   -- * Judgements
 , check
 , Check(..)
@@ -41,18 +44,19 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (view, views, (.=))
+import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Throw
 import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
+import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
 import           Data.Foldable
 import           Data.Functor
-import           Data.Maybe (catMaybes, fromMaybe)
+import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context (Binding(..), toEnv)
+import           Facet.Context (Binding(..))
 import           Facet.Core.Module as Module
 import           Facet.Core.Term as E
 import           Facet.Core.Type as T hiding (global)
@@ -60,6 +64,7 @@ import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type
 import           Facet.Graph
+import           Facet.Lens (locally)
 import           Facet.Name
 import           Facet.Semiring (Few(..), zero, (><<))
 import           Facet.Snoc
@@ -67,19 +72,20 @@ import           Facet.Snoc.NonEmpty as NE
 import           Facet.Source (Source)
 import qualified Facet.Surface as S
 import           Facet.Syntax
+import           Facet.Unify
 import           Facet.Usage hiding (restrict)
 import           GHC.Stack
 
 -- General combinators
 
 switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
-switch (Synth m) = Check $ \ _K -> m >>= \ (a ::: _K') -> a <$ unify _K' _K
+switch (Synth m) = Check $ \ _Exp -> m >>= \case
+  a ::: VComp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
+  a :::           _Act -> unify (Exp _Exp) (Act _Act) $> a
 
 as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m TExpr -> Synth m Expr
 as (m ::: _T) = Synth $ do
-  env <- views context_ toEnv
-  subst <- get
-  _T' <- T.eval subst (Left <$> env) <$> checkIsType (_T ::: KType)
+  _T' <- evalTExpr =<< checkIsType (_T ::: KType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -95,15 +101,15 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
-  | Just (i, q, Right _T) <- lookupInContext n context       -> use i q $> (XVar (Free i) ::: _T)
-  | Just (_ :=: DTerm (Just x) _T) <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
-  | otherwise                                          -> resolveQ n >>= \case
+  | [(i, q, Right _T)] <- lookupInContext n context              -> use i q $> (XVar (Free i) ::: _T)
+  | [_ :=: DTerm (Just x) _T] <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
+  | otherwise                                                    -> resolveQ n >>= \case
     n :=: DTerm _ _T -> synth $ global (n ::: _T)
     _ :=: _          -> freeVariable n
 
 
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
-hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
+hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (ST _T)
 
 
 tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
@@ -118,12 +124,11 @@ lam cs = Check $ \ _T -> do
   (_A, _B) <- assertTacitFunction _T
   XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
 
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Synth m a -> Check m b -> Synth m c
-app mk f a = Synth $ do
-  f' ::: _F <- synth f
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Synth m a) -> (HasCallStack => Check m b) -> Synth m c
+app mk operator operand = Synth $ do
+  f' ::: _F <- synth operator
   (_ ::: (q, _A), _B) <- assertFunction _F
-  -- FIXME: test _A for Ret and extend the sig
-  a' <- censor @Usage (q ><<) $ check (a ::: _A)
+  a' <- censor @Usage (q ><<) $ check (operand ::: _A)
   pure $ mk f' a' ::: _B
 
 
@@ -140,14 +145,14 @@ varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (ValuePattern Na
 varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q (Right (wrap _A)) |- check (b ::: _B))
   where
   wrap = \case
-    VComp sig _A -> VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil Nil) (VComp sig _A)
+    VComp sig _A -> VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (VComp sig _A)
     _T           -> _T
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
 conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
   n' :=: _ ::: _T <- resolveC n
   _ ::: _T' <- instantiate const (() ::: _T)
-  (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify _A' _A *> check (b ::: _B)))) ps ::: (q, _T')) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify (Exp _A) (Act _A') *> check (b ::: _B)))) ps ::: (q, _T')) b ::: _B)
   pure (PCon n' (fromList ps'), b')
 
 fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind m [a] -> [Bind m a] -> Bind m [a]
@@ -162,13 +167,13 @@ fieldsP = foldr cons
 allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _T) <- assertComp _A
-  (PAll n,) <$> (Binding n q (Right (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil Nil) (VComp sig _T))) |- check (b ::: _B))
+  (PAll n,) <$> (Binding n q (Right (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (VComp sig _T))) |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- assertComp _A
-  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (traverse unDTerm =<< lookupInSig n module' graph sig)
+  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (listToMaybe (traverse unDTerm =<< lookupInSig n module' graph sig))
   (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Right (VArrow Nothing Many _A' _A)) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
@@ -176,26 +181,32 @@ effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
 -- Expression elaboration
 
 synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
-synthExpr (S.Ann s _ e) = mapSynth (pushSpan s) $ case e of
+synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanS $ \case
   S.Var n    -> var n
-  S.App f a  -> app XApp (synthExpr f) (checkExpr a)
-  S.As t _T  -> as (checkExpr t ::: synthType _T)
+  S.App f a  -> synthApp f a
+  S.As t _T  -> synthAs t _T
   S.String s -> string s
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   where
   nope = Synth couldNotSynthesize
+  synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Synth m Expr
+  synthApp f a = app XApp (synthExpr f) (checkExpr a)
+  synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Synth m Expr
+  synthAs t _T = as (checkExpr t ::: synthType _T)
+
 
 checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
-checkExpr expr@(S.Ann s _ e) = mapCheck (pushSpan s) $ case e of
+checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withSpanC expr $ \case
   S.Hole  n  -> hole n
-  S.Lam cs   -> lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
-  S.Var{}    -> synth
-  S.App{}    -> synth
-  S.As{}     -> synth
-  S.String{} -> synth
+  S.Lam cs   -> checkLam cs
+  S.Var{}    -> switch (synthExpr expr)
+  S.App{}    -> switch (synthExpr expr)
+  S.As{}     -> switch (synthExpr expr)
+  S.String{} -> switch (synthExpr expr)
   where
-  synth = switch (synthExpr expr)
+  checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Check m Expr
+  checkLam cs = lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
 
 
 -- FIXME: check for unique variable names
@@ -333,15 +344,15 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 -- Errors
 
 assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name ::: Kind, Type -> Type)
-assertQuantifier = assertMatch (\case{ Right (VForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" . Right
+assertQuantifier = assertMatch (\case{ ST (VForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" . ST
 
 -- | Expect a tacit (non-variable-binding) function type.
 assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ((Quantity, Type), Type)
-assertTacitFunction = assertMatch (\case{ Right (VArrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . Right
+assertTacitFunction = assertMatch (\case{ ST (VArrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . ST
 
 -- | Expect a computation type with effects.
-assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ([Type], Type)
-assertComp = assertMatch (\case{ Right (VComp s t) -> pure (s, t) ; _ -> Nothing }) "[_] _" . Right
+assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ([Interface Type], Type)
+assertComp = assertMatch (unComp <=< subjectType) "[_] _" . ST
 
 
 -- Elaboration
@@ -354,13 +365,25 @@ runModule m = do
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
 withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 
+withSpanC :: Algebra sig m => (a -> Check m b) -> S.Ann a -> Check m b
+withSpanC k (S.Ann s _ a) = mapCheck (pushSpan s) (k a)
+
+withSpanS :: Algebra sig m => (a -> Synth m b) -> S.Ann a -> Synth m b
+withSpanS k (S.Ann s _ a) = mapSynth (pushSpan s) (k a)
+
+provide :: Has (Reader ElabContext) sig m => [Interface Type] -> m a -> m a
+provide = locally sig_ . (++)
+
+require :: [Interface Type] -> Elab m ()
+require _ = pure () -- FIXME: validate the requirements against the provided sig
+
 
 -- Judgements
 
 check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
-check (m ::: _T) = case unComp _T of
-  Just (sig, _) -> extendSig sig $ runCheck m _T
-  Nothing       -> runCheck m _T
+check (m ::: _T) = case _T of
+  VComp sig _T -> provide sig $ runCheck m _T
+  _T           -> runCheck m _T
 
 newtype Check m a = Check { runCheck :: Type -> Elab m a }
   deriving (Applicative, Functor) via ReaderC Type (Elab m)

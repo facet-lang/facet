@@ -2,17 +2,18 @@ module Facet.Core.Type
 ( -- * Kinds
   Kind(..)
   -- * Types
+, Interface(..)
 , Type(..)
 , global
 , free
 , metavar
 , unComp
+, Subject(..)
+, subjectType
 , occursIn
   -- ** Elimination
 , ($$)
 , ($$*)
-, ($$$)
-, ($$$*)
   -- * Type expressions
 , TExpr(..)
   -- * Quotation
@@ -50,12 +51,15 @@ data Kind
 
 -- Types
 
+data Interface a = Interface RName (Snoc a)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
 data Type
   = VString
   | VForAll Name Kind (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
-  | VNe (Var (Either Meta Level)) (Snoc Type) (Snoc Type)
-  | VComp [Type] Type
+  | VNe (Var (Either Meta Level)) (Snoc Type)
+  | VComp [Interface Type] Type
 
 
 global :: RName -> Type
@@ -69,13 +73,23 @@ metavar = var . Free . Left
 
 
 var :: Var (Either Meta Level) -> Type
-var v = VNe v Nil Nil
+var v = VNe v Nil
 
 
-unComp :: Has Empty sig m => Type -> m ([Type], Type)
+unComp :: Has Empty sig m => Type -> m ([Interface Type], Type)
 unComp = \case
   VComp sig _T -> pure (sig, _T)
   _T           -> empty
+
+
+data Subject
+  = SK Kind
+  | ST Type
+
+subjectType :: Subject -> Maybe Type
+subjectType = \case
+  SK _K -> empty
+  ST _T -> pure _T
 
 
 occursIn :: (Var (Either Meta Level) -> Bool) -> Level -> Type -> Bool
@@ -84,31 +98,22 @@ occursIn p = go
   go d = \case
     VForAll _ _ b  -> go (succ d) (b (free d))
     VArrow _ _ a b -> go d a || go d b
-    VComp s t      -> any (go d) s || go d t
-    VNe h ts sp    -> p h || any (go d) ts || any (go d) sp
+    VComp s t      -> any (goI d) s || go d t
+    VNe h sp       -> p h || any (go d) sp
     VString        -> False
+  goI d (Interface h sp) = p (Global h) || any (go d) sp
 
 
 -- Elimination
 
 ($$) :: HasCallStack => Type -> Type -> Type
-VNe h ts es $$ a = VNe h ts (es :> a)
-_           $$ _ = error "can’t apply non-neutral/forall type"
+VNe h es $$ a = VNe h (es :> a)
+_        $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
 ($$*) = foldl' ($$)
 
 infixl 9 $$, $$*
-
-($$$) :: HasCallStack => Type -> Type -> Type
-VNe h ts es   $$$ t = VNe h (ts :> t) es
-VForAll _ _ b $$$ t = b t
-_             $$$ _ = error "can’t apply non-neutral/forall type"
-
-($$$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
-($$$*) = foldl' ($$)
-
-infixl 9 $$$, $$$*
 
 
 -- Type expressions
@@ -118,8 +123,7 @@ data TExpr
   | TVar (Var (Either Meta Index))
   | TForAll Name Kind TExpr
   | TArrow (Maybe Name) Quantity TExpr TExpr
-  | TComp [TExpr] TExpr
-  | TInst TExpr TExpr
+  | TComp [Interface TExpr] TExpr
   | TApp TExpr TExpr
   deriving (Eq, Ord, Show)
 
@@ -131,8 +135,8 @@ quote d = \case
   VString        -> TString
   VForAll n t b  -> TForAll n t (quote (succ d) (b (free d)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
-  VComp s t      -> TComp (quote d <$> s) (quote d t)
-  VNe n ts sp    -> foldl' (&) (foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TInst . quote d <$> ts)) (flip TApp . quote d <$> sp)
+  VComp s t      -> TComp (fmap (quote d) <$> s) (quote d t)
+  VNe n sp       -> foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TApp . quote d <$> sp)
 
 eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
 eval subst = go where
@@ -143,8 +147,7 @@ eval subst = go where
     TVar (Free (Left m))  -> maybe (metavar m) tm (lookupMeta m subst)
     TForAll n t b         -> VForAll n t (\ v -> go (env :> Left v) b)
     TArrow n q a b        -> VArrow n q (go env a) (go env b)
-    TComp s t             -> VComp (go env <$> s) (go env t)
-    TInst f a             -> go env f $$$ go env a
+    TComp s t             -> VComp (fmap (go env) <$> s) (go env t)
     TApp  f a             -> go env f $$  go env a
 
 

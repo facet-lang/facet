@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -31,6 +30,7 @@ import Facet.Graph
 import Facet.Name hiding (Op)
 import Facet.Semialign (zipWithM)
 import Facet.Snoc
+import Facet.Snoc.NonEmpty as NE
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
@@ -52,8 +52,8 @@ global n = do
   mod <- lift ask
   graph <- lift ask
   case lookupQ graph mod (toQ n) of
-    Just (_ :=: DTerm (Just v) _) -> pure v -- FIXME: store values in the module graph
-    _                             -> error "throw a real error here"
+    [_ :=: DTerm (Just v) _] -> pure v -- FIXME: store values in the module graph
+    _                        -> error "throw a real error here"
 
 var :: (HasCallStack, Applicative m) => Snoc (Value m) -> Index -> m (Value m)
 var env v = pure (env ! getIndex v)
@@ -128,7 +128,7 @@ data Value m
   | VCont (Value m -> m (Value m))
 
 unit :: Value m
-unit = VCon (["Data", "Unit"] :.: U "unit") Nil
+unit = VCon (NE.FromList ["Data", "Unit"] :.: U "unit") Nil
 
 
 -- Elimination

@@ -16,6 +16,7 @@ module Facet.Print
 , printInstantiation
 , suppressInstantiation
   -- * Core printers
+, printSubject
 , printKind
 , printType
 , printTExpr
@@ -66,6 +67,7 @@ data Precedence
   | Comp
   | Expr
   | Pattern
+  | Shift
   | AppL
   | AppR
   | Var
@@ -113,6 +115,7 @@ f $$ a = askingPrec $ \case
 
 -- Options
 
+-- FIXME: add an option to control whether shifts are printed
 data Options = Options
   { rname         :: RName -> Print
   , instantiation :: Print -> Print -> Print
@@ -141,6 +144,11 @@ suppressInstantiation = const
 
 -- Core printers
 
+printSubject :: Options -> Snoc Print -> C.Subject -> Print
+printSubject opts env = \case
+  C.SK k -> printKind env k
+  C.ST t -> printType opts env t
+
 printKind :: Snoc Print -> C.Kind -> Print
 printKind env = \case
   C.KType               -> annotate Type $ pretty "Type"
@@ -154,7 +162,7 @@ printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
 printTExpr :: Options -> Snoc Print -> C.TExpr -> Print
-printTExpr Options{ rname, instantiation } = go
+printTExpr Options{ rname } = go
   where
   qvar = group . setPrec Var . rname
   go env = \case
@@ -166,12 +174,12 @@ printTExpr Options{ rname, instantiation } = go
     C.TArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
     C.TComp [] t            -> go env t
     C.TComp s t             -> sig s <+> go env t
-    C.TInst f t             -> group (go env f) `instantiation` group (braces (go env t))
     C.TApp f a              -> group (go env f) $$ group (go env a)
     C.TString               -> annotate Type $ pretty "String"
     where
     d = Name.Level (length env)
-    sig s = brackets (commaSep (map (go env) s))
+    sig s = brackets (commaSep (map (interface env) s))
+    interface env (C.Interface h sp) = rname h $$* fmap (go env) sp
   mult q = if
     | q == zero -> (pretty '0' <+>)
     | q == one  -> (pretty '1' <+>)
