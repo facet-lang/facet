@@ -19,6 +19,7 @@ module Facet.Core.Type
   -- * Quotation
 , quote
 , eval
+, apply
   -- * Substitution
 , Subst(..)
 , insert
@@ -149,6 +150,9 @@ eval subst = go where
     TArrow n q a b        -> VArrow n q (go env a) (go env b)
     TComp s t             -> VComp (fmap (go env) <$> s) (go env t)
     TApp  f a             -> go env f $$  go env a
+
+apply :: HasCallStack => Subst -> Snoc (Either Type a) -> Type -> Type
+apply subst env = eval subst env . quote (Level (length env))
 
 
 -- Substitution
