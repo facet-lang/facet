@@ -19,6 +19,7 @@ module Facet.Print
 , printSubject
 , printKind
 , printType
+, printInterface
 , printTExpr
 , printExpr
 , printModule
@@ -161,8 +162,11 @@ printKind env = \case
 printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
 
+printInterface :: Options -> Snoc Print -> C.Interface C.Type -> Print
+printInterface = printInterfaceWith printType
+
 printTExpr :: Options -> Snoc Print -> C.TExpr -> Print
-printTExpr Options{ rname } = go
+printTExpr opts@Options{ rname } = go
   where
   qvar = group . setPrec Var . rname
   go env = \case
@@ -179,11 +183,14 @@ printTExpr Options{ rname } = go
     where
     d = Name.Level (length env)
     sig s = brackets (commaSep (map (interface env) s))
-    interface env (C.Interface h sp) = rname h $$* fmap (go env) sp
+  interface = printInterfaceWith printTExpr opts
   mult q = if
     | q == zero -> (pretty '0' <+>)
     | q == one  -> (pretty '1' <+>)
     | otherwise -> id
+
+printInterfaceWith :: (Options -> Snoc Print -> a -> Print) -> Options -> Snoc Print -> C.Interface a -> Print
+printInterfaceWith with opts@Options{ rname } env (C.Interface h sp) = rname h $$* fmap (with opts env) sp
 
 printExpr :: Options -> Snoc Print -> C.Expr -> Print
 printExpr opts@Options{ rname, instantiation } = go

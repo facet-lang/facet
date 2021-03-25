@@ -9,7 +9,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (eval, metas, metavar, quote)
+import           Facet.Core.Type (apply, metas, metavar)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -27,17 +27,19 @@ import           Silkscreen
 rethrowElabErrors :: Options -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors opts = L.runThrow rethrow
   where
-  rethrow Err{ source, reason, context, subst, callStack } = Notice.Notice (Just Error) [source] (printErrReason opts printCtx reason)
+  rethrow Err{ source, reason, context, subst, sig, callStack } = Notice.Notice (Just Error) [source] (printErrReason opts printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
     , nest 2 (pretty "Metacontext" <\> concatWith (<\>) subst')
+    , nest 2 (pretty "Provided interfaces" <\> concatWith (<\>) sig')
     , pretty (prettyCallStack callStack)
     ]
     where
     (_, _, printCtx, ctx) = foldl' combine (0, empty, Nil, Nil) (elems context)
     subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printKind printCtx _T))) (metas subst)
+    sig' = getPrint . printInterface opts printCtx . fmap (apply subst (toEnv context)) <$> sig
     combine (d, env, print, ctx) (Binding n m _T) =
       let n' = intro n d
-          roundtrip = eval subst (Left <$> toEnv env) . quote d
+          roundtrip = apply subst (toEnv env)
       in  ( succ d
           , env |> Binding n m _T
           , print :> n'
@@ -76,6 +78,7 @@ printErrReason opts ctx = group . \case
     let _T' = getPrint (printSubject opts ctx _T)
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
+  MissingInterface i -> reflow "could not find required interface" <+> getPrint (printInterface opts ctx i)
 
 
 rethrowElabWarnings :: L.WriteC (Notice (Doc Style)) Warn m a -> m a

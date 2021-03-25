@@ -93,6 +93,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 - Support quantifying over effect variables.
 
+- `do`–style notation for lexically flattening nested syntax in CPS.
+
 
 ### Modules
 

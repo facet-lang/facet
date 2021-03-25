@@ -22,6 +22,7 @@ module Facet.Elab
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
+, missingInterface
 , assertMatch
 , assertFunction
   -- * Warnings
@@ -156,7 +157,7 @@ sat a b
 
 
 evalTExpr :: Has (Reader ElabContext :+: State Subst) sig m => TExpr -> m Type
-evalTExpr texpr = T.eval <$> get <*> views context_ (fmap Left . toEnv) <*> pure texpr
+evalTExpr texpr = T.eval <$> get <*> views context_ toEnv <*> pure texpr
 
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
@@ -178,9 +179,11 @@ data Err = Err
   , reason    :: ErrReason
   , context   :: Context
   , subst     :: Subst
+  , sig       :: [Interface Type]
   , callStack :: CallStack
   }
 
+-- FIXME: not all of these need contexts/metacontexts.
 data ErrReason
   = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
@@ -190,6 +193,7 @@ data ErrReason
   | Unify UnifyErrReason (Exp (Either String Subject)) (Act Subject)
   | Hole Name Subject
   | Invariant String
+  | MissingInterface (Interface Type)
 
 data UnifyErrReason
   = Mismatch
@@ -205,22 +209,22 @@ applySubst ctx subst r = case r of
   Unify r exp act      -> Unify r (fmap roundtripS <$> exp) (roundtripS <$> act)
   Hole n t             -> Hole n (roundtripS t)
   Invariant{}          -> r
+  MissingInterface i   -> MissingInterface (roundtrip <$> i)
   where
   env = toEnv ctx
-  d = level ctx
   roundtripS = \case
     SK k -> SK k
     ST k -> ST $ roundtrip k
-  roundtrip = T.eval subst (Left <$> env) . T.quote d
+  roundtrip = apply subst env
 
 
 -- FIXME: apply the substitution before showing this to the user
 err :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => ErrReason -> m a
 err reason = do
   StaticContext{ source } <- ask
-  ElabContext{ context, spans } <- ask
+  ElabContext{ context, sig, spans } <- ask
   subst <- get
-  throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
+  throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
 
 mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Exp (Either String Subject) -> Act Subject -> m a
 mismatch exp act = withFrozenCallStack $ err $ Unify Mismatch exp act
@@ -242,6 +246,9 @@ freeVariable n = withFrozenCallStack $ err $ FreeVariable n
 
 ambiguousName :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => QName -> [RName] -> m a
 ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
+
+missingInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Interface Type -> m a
+missingInterface i = withFrozenCallStack $ err $ MissingInterface i
 
 
 -- Warnings
@@ -292,7 +299,7 @@ context_ :: Lens' ElabContext Context
 context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
 
 sig_ :: Lens' ElabContext [Interface Type]
-sig_ = lens sig (\ e sig -> e{ sig })
+sig_ = lens (\ ElabContext{ sig } -> sig) (\ e sig -> (e :: ElabContext){ sig })
 
 spans_ :: Lens' ElabContext (Snoc Span)
 spans_ = lens spans (\ e spans -> e{ spans })

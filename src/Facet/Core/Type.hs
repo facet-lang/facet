@@ -19,6 +19,7 @@ module Facet.Core.Type
   -- * Quotation
 , quote
 , eval
+, apply
   -- * Substitution
 , Subst(..)
 , insert
@@ -29,7 +30,6 @@ module Facet.Core.Type
 ) where
 
 import           Control.Effect.Empty
-import           Data.Either (fromLeft)
 import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import qualified Data.IntMap as IntMap
@@ -138,17 +138,20 @@ quote d = \case
   VComp s t      -> TComp (fmap (quote d) <$> s) (quote d t)
   VNe n sp       -> foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TApp . quote d <$> sp)
 
-eval :: HasCallStack => Subst -> Snoc (Either Type a) -> TExpr -> Type
+eval :: HasCallStack => Subst -> Snoc Type -> TExpr -> Type
 eval subst = go where
   go env = \case
     TString               -> VString
     TVar (Global n)       -> global n
-    TVar (Free (Right v)) -> fromLeft (error ("term variable at index " <> show v)) (env ! getIndex v)
+    TVar (Free (Right v)) -> env ! getIndex v
     TVar (Free (Left m))  -> maybe (metavar m) tm (lookupMeta m subst)
-    TForAll n t b         -> VForAll n t (\ v -> go (env :> Left v) b)
+    TForAll n t b         -> VForAll n t (\ v -> go (env :> v) b)
     TArrow n q a b        -> VArrow n q (go env a) (go env b)
     TComp s t             -> VComp (fmap (go env) <$> s) (go env t)
     TApp  f a             -> go env f $$  go env a
+
+apply :: HasCallStack => Subst -> Snoc Type -> Type -> Type
+apply subst env = eval subst env . quote (Level (length env))
 
 
 -- Substitution

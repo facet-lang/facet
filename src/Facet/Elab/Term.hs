@@ -44,19 +44,20 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (view, (.=))
+import           Control.Effect.Lens (view, views, (.=))
 import           Control.Effect.Throw
 import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
 import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
+import           Data.Bool (bool)
 import           Data.Foldable
 import           Data.Functor
 import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context (Binding(..))
+import           Facet.Context (Binding(..), toEnv)
 import           Facet.Core.Module as Module
 import           Facet.Core.Term as E
 import           Facet.Core.Type as T hiding (global)
@@ -371,11 +372,21 @@ withSpanC k (S.Ann s _ a) = mapCheck (pushSpan s) (k a)
 withSpanS :: Algebra sig m => (a -> Synth m b) -> S.Ann a -> Synth m b
 withSpanS k (S.Ann s _ a) = mapSynth (pushSpan s) (k a)
 
-provide :: Has (Reader ElabContext) sig m => [Interface Type] -> m a -> m a
-provide = locally sig_ . (++)
+provide :: Has (Reader ElabContext :+: State Subst) sig m => [Interface Type] -> m a -> m a
+provide sig m = do
+  subst <- get
+  env <- views context_ toEnv
+  locally sig_ (fmap (fmap (apply subst env)) sig ++) m
 
-require :: [Interface Type] -> Elab m ()
-require _ = pure () -- FIXME: validate the requirements against the provided sig
+require :: (HasCallStack, Has (Throw Err) sig m) => [Interface Type] -> Elab m ()
+require req = do
+  prv <- view sig_
+  for_ req $ \ i -> findM (runEq . eqInterface i) prv >>= \case
+    Nothing -> missingInterface i
+    Just _  -> pure ()
+
+findM :: (Foldable t, Monad m) => (a -> m Bool) -> t a -> m (Maybe a)
+findM p = foldrM (\ a rest -> bool rest (Just a) <$> p a) Nothing
 
 
 -- Judgements
