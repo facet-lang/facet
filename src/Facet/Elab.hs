@@ -22,6 +22,7 @@ module Facet.Elab
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
+, missingInterface
 , assertMatch
 , assertFunction
   -- * Warnings
@@ -244,6 +245,9 @@ freeVariable n = withFrozenCallStack $ err $ FreeVariable n
 
 ambiguousName :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => QName -> [RName] -> m a
 ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
+
+missingInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Interface Type -> m a
+missingInterface i = withFrozenCallStack $ err $ MissingInterface i
 
 
 -- Warnings
