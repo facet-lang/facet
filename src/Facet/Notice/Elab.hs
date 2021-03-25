@@ -27,14 +27,16 @@ import           Silkscreen
 rethrowElabErrors :: Options -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors opts = L.runThrow rethrow
   where
-  rethrow Err{ source, reason, context, subst, callStack } = Notice.Notice (Just Error) [source] (printErrReason opts printCtx reason)
+  rethrow Err{ source, reason, context, subst, sig, callStack } = Notice.Notice (Just Error) [source] (printErrReason opts printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
     , nest 2 (pretty "Metacontext" <\> concatWith (<\>) subst')
+    , nest 2 (pretty "Provided interfaces" <\> concatWith (<\>) sig')
     , pretty (prettyCallStack callStack)
     ]
     where
     (_, _, printCtx, ctx) = foldl' combine (0, empty, Nil, Nil) (elems context)
     subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printKind printCtx _T))) (metas subst)
+    sig' = getPrint . printInterface opts printCtx <$> sig
     combine (d, env, print, ctx) (Binding n m _T) =
       let n' = intro n d
           roundtrip = eval subst (Left <$> toEnv env) . quote d
