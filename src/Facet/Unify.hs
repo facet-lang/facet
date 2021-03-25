@@ -1,17 +1,22 @@
 module Facet.Unify
-( Exp(..)
+( -- * Unification
+  Exp(..)
 , Act(..)
 , UnifyErrReason(..)
 , unify
+  -- * Equating
+, runEq
+, eqInterface
 ) where
 
+import Control.Carrier.Empty.Church
 import Control.Carrier.Reader
 import Control.Effect.State
 import Control.Effect.Sum
 import Control.Effect.Throw
 import Control.Effect.Writer
 import Control.Monad (unless)
-import Facet.Context
+import Facet.Context hiding (empty)
 import Facet.Core.Type
 import Facet.Elab
 import Facet.Name
@@ -21,6 +26,8 @@ import Facet.Snoc
 import Facet.Syntax
 import Facet.Usage
 import GHC.Stack
+
+-- Unification
 
 -- FIXME: we don’t get good source references during unification
 unify :: (HasCallStack, Has (Throw Err) sig m) => Exp Type -> Act Type -> Elab m Type
@@ -84,3 +91,29 @@ solve v t = do
     gets (lookupMeta v) >>= \case
       Nothing          -> t <$ modify (solveMeta v t)
       Just (t' ::: _T) -> unifyType t' t >>= \ t'' -> t'' <$ modify (solveMeta v t'')
+
+
+-- Equating
+
+runEq :: Applicative m => EmptyC m () -> m Bool
+runEq = execEmpty
+
+eqType :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m ()
+eqType = curry $ \case
+  (VComp s1 t1, VComp s2 t2)           -> eqSpine eqInterface s1 s2 *> eqType t1 t2
+  (VComp _ t1, t2)                     -> eqType t1 t2
+  (t1, VComp _ t2)                     -> eqType t1 t2
+  (VForAll _ t1 b1, VForAll n t2 b2)   -> depth >>= \ d -> guard (t1 == t2) *> (Binding n zero (Left t2) |- eqType (b1 (free d)) (b2 (free d)))
+  (VForAll{}, _)                       -> empty
+  (VArrow _ _ a1 b1, VArrow _ _ a2 b2) -> eqType a1 a2 *> eqType b1 b2
+  (VArrow{}, _)                        -> empty
+  (VNe v1 sp1, VNe v2 sp2)             -> guard (v1 == v2) *> eqSpine eqType sp1 sp2
+  (VNe{}, _)                           -> empty
+  (VString, VString)                   -> pure ()
+  (VString, _)                         -> empty
+
+eqInterface :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Interface Type -> Interface Type -> m ()
+eqInterface (Interface h1 sp1) (Interface h2 sp2) = guard (h1 == h2) *> eqSpine eqType sp1 sp2
+
+eqSpine :: (Foldable t, Zip t, Has Empty sig m) => (a -> b -> m ()) -> t a -> t b -> m ()
+eqSpine f sp1 sp2 = guard (length sp1 == length sp2) *> zipWithM_ f sp1 sp2
