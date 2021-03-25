@@ -190,6 +190,7 @@ data ErrReason
   | Unify UnifyErrReason (Exp (Either String Subject)) (Act Subject)
   | Hole Name Subject
   | Invariant String
+  | MissingInterface (Interface Type)
 
 data UnifyErrReason
   = Mismatch
@@ -205,6 +206,7 @@ applySubst ctx subst r = case r of
   Unify r exp act      -> Unify r (fmap roundtripS <$> exp) (roundtripS <$> act)
   Hole n t             -> Hole n (roundtripS t)
   Invariant{}          -> r
+  MissingInterface i   -> MissingInterface (roundtrip <$> i)
   where
   env = toEnv ctx
   d = level ctx

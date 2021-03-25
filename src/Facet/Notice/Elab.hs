@@ -76,6 +76,7 @@ printErrReason opts ctx = group . \case
     let _T' = getPrint (printSubject opts ctx _T)
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
+  MissingInterface i -> reflow "could not find required interface" <+> getPrint (printInterface opts ctx i)
 
 
 rethrowElabWarnings :: L.WriteC (Notice (Doc Style)) Warn m a -> m a
