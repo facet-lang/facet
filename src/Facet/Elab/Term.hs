@@ -50,6 +50,7 @@ import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
 import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
+import           Data.Bool (bool)
 import           Data.Foldable
 import           Data.Functor
 import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
@@ -374,8 +375,15 @@ withSpanS k (S.Ann s _ a) = mapSynth (pushSpan s) (k a)
 provide :: Has (Reader ElabContext) sig m => [Interface Type] -> m a -> m a
 provide = locally sig_ . (++)
 
-require :: [Interface Type] -> Elab m ()
-require _ = pure () -- FIXME: validate the requirements against the provided sig
+require :: (HasCallStack, Has (Throw Err) sig m) => [Interface Type] -> Elab m ()
+require req = do
+  prv <- view sig_
+  for_ req $ \ i -> findM (runEq . eqInterface i) prv >>= \case
+    Nothing -> missingInterface i
+    Just _  -> pure ()
+
+findM :: (Foldable t, Monad m) => (a -> m Bool) -> t a -> m (Maybe a)
+findM p = foldrM (\ a rest -> bool rest (Just a) <$> p a) Nothing
 
 
 -- Judgements
