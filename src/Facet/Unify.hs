@@ -24,7 +24,10 @@ import GHC.Stack
 
 -- FIXME: we don’t get good source references during unification
 unify :: (HasCallStack, Has (Throw Err) sig m) => Exp Type -> Act Type -> Elab m Type
-unify t1 t2 = runReader (fmap ST t1 :=: fmap ST t2) (unifyType (getExp t1) (getAct t2))
+unify t1 t2 = runUnify t1 t2 (unifyType (getExp t1) (getAct t2))
+
+runUnify :: Exp Type -> Act Type -> ReaderC (Exp Subject :=: Act Subject) m a -> m a
+runUnify t1 t2 = runReader (fmap ST t1 :=: fmap ST t2)
 
 mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => m a
 mismatch   = ask >>= \ (t1 :=: t2) -> couldNotUnify               t1 t2
