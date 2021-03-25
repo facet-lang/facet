@@ -182,6 +182,7 @@ data Err = Err
   , callStack :: CallStack
   }
 
+-- FIXME: not all of these need contexts/metacontexts.
 data ErrReason
   = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
