@@ -212,11 +212,10 @@ applySubst ctx subst r = case r of
   MissingInterface i   -> MissingInterface (roundtrip <$> i)
   where
   env = toEnv ctx
-  d = level ctx
   roundtripS = \case
     SK k -> SK k
     ST k -> ST $ roundtrip k
-  roundtrip = T.eval subst (Left <$> env) . T.quote d
+  roundtrip = apply subst (Left <$> env)
 
 
 -- FIXME: apply the substitution before showing this to the user
