@@ -9,7 +9,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (eval, metas, metavar, quote)
+import           Facet.Core.Type (apply, metas, metavar)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -39,7 +39,7 @@ rethrowElabErrors opts = L.runThrow rethrow
     sig' = getPrint . printInterface opts printCtx <$> sig
     combine (d, env, print, ctx) (Binding n m _T) =
       let n' = intro n d
-          roundtrip = eval subst (toEnv env) . quote d
+          roundtrip = apply subst (toEnv env)
       in  ( succ d
           , env |> Binding n m _T
           , print :> n'
