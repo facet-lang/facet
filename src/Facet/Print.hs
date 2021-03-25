@@ -19,6 +19,7 @@ module Facet.Print
 , printSubject
 , printKind
 , printType
+, printInterface
 , printTExpr
 , printExpr
 , printModule
@@ -160,6 +161,9 @@ printKind env = \case
 
 printType :: Options -> Snoc Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (Name.Level (length env))
+
+printInterface :: Options -> Snoc Print -> C.Interface C.Type -> Print
+printInterface = printInterfaceWith printType
 
 printTExpr :: Options -> Snoc Print -> C.TExpr -> Print
 printTExpr opts@Options{ rname } = go
