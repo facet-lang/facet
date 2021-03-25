@@ -157,7 +157,7 @@ sat a b
 
 
 evalTExpr :: Has (Reader ElabContext :+: State Subst) sig m => TExpr -> m Type
-evalTExpr texpr = T.eval <$> get <*> views context_ (fmap Left . toEnv) <*> pure texpr
+evalTExpr texpr = T.eval <$> get <*> views context_ toEnv <*> pure texpr
 
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
@@ -215,7 +215,7 @@ applySubst ctx subst r = case r of
   roundtripS = \case
     SK k -> SK k
     ST k -> ST $ roundtrip k
-  roundtrip = apply subst (Left <$> env)
+  roundtrip = apply subst env
 
 
 -- FIXME: apply the substitution before showing this to the user

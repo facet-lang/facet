@@ -39,7 +39,7 @@ rethrowElabErrors opts = L.runThrow rethrow
     sig' = getPrint . printInterface opts printCtx <$> sig
     combine (d, env, print, ctx) (Binding n m _T) =
       let n' = intro n d
-          roundtrip = eval subst (Left <$> toEnv env) . quote d
+          roundtrip = eval subst (toEnv env) . quote d
       in  ( succ d
           , env |> Binding n m _T
           , print :> n'
