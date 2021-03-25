@@ -179,6 +179,7 @@ data Err = Err
   , reason    :: ErrReason
   , context   :: Context
   , subst     :: Subst
+  , sig       :: [Interface Type]
   , callStack :: CallStack
   }
 
@@ -222,9 +223,9 @@ applySubst ctx subst r = case r of
 err :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => ErrReason -> m a
 err reason = do
   StaticContext{ source } <- ask
-  ElabContext{ context, spans } <- ask
+  ElabContext{ context, sig, spans } <- ask
   subst <- get
-  throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst GHC.Stack.callStack
+  throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
 
 mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Exp (Either String Subject) -> Act Subject -> m a
 mismatch exp act = withFrozenCallStack $ err $ Unify Mismatch exp act
@@ -299,7 +300,7 @@ context_ :: Lens' ElabContext Context
 context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
 
 sig_ :: Lens' ElabContext [Interface Type]
-sig_ = lens sig (\ e sig -> e{ sig })
+sig_ = lens (\ ElabContext{ sig } -> sig) (\ e sig -> (e :: ElabContext){ sig })
 
 spans_ :: Lens' ElabContext (Snoc Span)
 spans_ = lens spans (\ e spans -> e{ spans })
