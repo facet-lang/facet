@@ -7,6 +7,7 @@ module Facet.Core.Type
 , global
 , free
 , metavar
+, unNeutral
 , unComp
 , Subject(..)
 , subjectType
@@ -75,6 +76,11 @@ metavar = var . Free . Left
 var :: Var (Either Meta Level) -> Type
 var v = VNe v Nil
 
+
+unNeutral :: Has Empty sig m => Type -> m (Var (Either Meta Level), Snoc Type)
+unNeutral = \case
+  VNe h sp -> pure (h, sp)
+  _        -> empty
 
 unComp :: Has Empty sig m => Type -> m ([Interface Type], Type)
 unComp = \case
