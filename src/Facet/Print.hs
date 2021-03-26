@@ -22,6 +22,7 @@ module Facet.Print
 , printInterface
 , printTExpr
 , printExpr
+, printPattern
 , printModule
   -- * Misc
 , intro
