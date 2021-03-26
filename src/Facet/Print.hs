@@ -207,7 +207,13 @@ printExpr opts@Options{ rname, instantiation } = go
     C.XString s       -> annotate Lit $ pretty (show s)
   qvar = group . setPrec Var . rname
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
-  clause env (p, b) = binding env p $ \ env' p' -> pat p' <+> arrow <+> go env' b
+  clause env (p, b) = binding env p $ \ env' p' -> printPattern opts p' <+> arrow <+> go env' b
+
+printPattern :: Options -> C.Pattern Print -> Print
+printPattern Options{ rname } = \case
+  C.PVal p -> vpat p
+  C.PEff p -> epat p
+  where
   vpat = \case
     C.PWildcard -> pretty '_'
     C.PVar n    -> n
@@ -215,9 +221,6 @@ printExpr opts@Options{ rname, instantiation } = go
   epat = \case
     C.PAll n     -> n
     C.POp q ps k -> brackets (hsep (pretty q : map vpat (toList ps)) <+> semi <+> k)
-  pat = \case
-    C.PVal p -> vpat p
-    C.PEff p -> epat p
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
