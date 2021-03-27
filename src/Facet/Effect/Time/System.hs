@@ -5,11 +5,6 @@ module Facet.Effect.Time.System
 , timeWith
 , time
 , time_
-, epoch
-, sinceEpochWith
-, sinceEpoch
-, eraFrom
-, era
 , Time(..)
   -- * Measurements
 , Instant(..)
@@ -23,7 +18,7 @@ module Facet.Effect.Time.System
 
 import           Data.Fixed
 import           Data.Time.Clock.System
-import           Facet.Effect.Time hiding (epoch, eraFrom, now, sinceEpochWith, timeWith)
+import           Facet.Effect.Time hiding (now, timeWith)
 import qualified Facet.Effect.Time as T
 
 now :: Has (Time Instant) sig m => m Instant
@@ -41,28 +36,6 @@ time = timeWith since
 time_ :: Has (Time Instant) sig m => m a -> m Duration
 time_ = timeWith_ since
 {-# INLINE time_ #-}
-
-epoch :: Has (Time Instant) sig m => m Instant
-epoch = T.epoch
-{-# INLINE epoch #-}
-
-sinceEpochWith :: Has (Time Instant) sig m => (Instant -> Instant -> delta) -> m delta
-sinceEpochWith = T.sinceEpochWith
-{-# INLINE sinceEpochWith #-}
-
-sinceEpoch :: Has (Time Instant) sig m => m Duration
-sinceEpoch = sinceEpochWith since
-{-# INLINE sinceEpoch #-}
-
-eraFrom :: Has (Time Instant) sig m => Instant -> m a -> m a
-eraFrom = T.eraFrom
-{-# INLINE eraFrom #-}
-
-era :: Has (Time Instant) sig m => m a -> m a
-era m = do
-  epoch <- now
-  eraFrom epoch m
-{-# INLINE era #-}
 
 
 newtype Instant = Instant { getInstant :: SystemTime }
