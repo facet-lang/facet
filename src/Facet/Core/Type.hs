@@ -4,7 +4,9 @@ module Facet.Core.Type
   -- * Types
 , Interface(..)
 , Signature(..)
+, fromInterfaces
 , singleton
+, interfaces
 , mapSignature
 , Type(..)
 , global
@@ -37,6 +39,7 @@ import           Control.Effect.Empty
 import           Data.Foldable (foldl')
 import           Data.Function (on, (&))
 import qualified Data.IntMap as IntMap
+import qualified Data.Set as Set
 import           Facet.Name
 import           Facet.Snoc
 import           Facet.Syntax
@@ -58,14 +61,20 @@ data Kind
 data Interface a = Interface RName (Snoc a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-newtype Signature a = Signature { interfaces :: [Interface a] }
+newtype Signature a = Signature { getSignature :: Set.Set (Interface a) }
   deriving (Eq, Foldable, Monoid, Ord, Semigroup, Show)
 
-singleton :: Interface a -> Signature a
-singleton = Signature . pure
+fromInterfaces :: Ord a => [Interface a] -> Signature a
+fromInterfaces = Signature . Set.fromList
 
-mapSignature :: (a -> b) -> Signature a -> Signature b
-mapSignature f = Signature . map (fmap f) . interfaces
+singleton :: Interface a -> Signature a
+singleton = Signature . Set.singleton
+
+interfaces :: Signature a -> [Interface a]
+interfaces = Set.toList . getSignature
+
+mapSignature :: Ord b => (a -> b) -> Signature a -> Signature b
+mapSignature f = Signature . Set.map (fmap f) . getSignature
 
 
 data Type

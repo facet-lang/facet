@@ -84,7 +84,7 @@ comp s t = IsType $ do
   s' <- traverse (checkIsType . (::: KInterface)) s
   -- FIXME: polarize types and check that this is a value type being returned
   t' <- checkIsType (t ::: KType)
-  pure $ TComp (Signature s') t' ::: KType
+  pure $ TComp (fromInterfaces s') t' ::: KType
 
 
 synthKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Kind -> IsType m Kind
