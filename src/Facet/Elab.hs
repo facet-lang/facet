@@ -119,7 +119,7 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Def)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (Index, Quantity, Either Kind Type)
+lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (Index, Quantity, Classifier)
 lookupInContext (m:.n)
   | m == Nil  = lookupIndex n
   | otherwise = const empty

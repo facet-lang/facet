@@ -23,7 +23,7 @@ newtype Context = Context { elems :: S.Snoc Binding }
 data Binding = Binding
   { name     :: Name
   , quantity :: Quantity
-  , type'    :: Either Kind Type
+  , type'    :: Classifier
   }
 
 
@@ -46,7 +46,7 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
     | otherwise    = go es (i - 1)
   go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (Index, Quantity, Either Kind Type)
+lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (Index, Quantity, Classifier)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil            = E.empty

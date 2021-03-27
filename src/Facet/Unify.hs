@@ -51,7 +51,7 @@ unifyType = curry $ \case
   (VNe (Free (Left v1)) Nil, VNe (Free (Left v2)) Nil) -> flexFlex v1 v2
   (VNe (Free (Left v1)) Nil, t2)                       -> solve v1 t2
   (t1, VNe (Free (Left v2)) Nil)                       -> solve v2 t1
-  (VForAll _ t1 b1, VForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> (Binding n zero (Left t2) |- unifyType (b1 (free d)) (b2 (free d)))
+  (VForAll _ t1 b1, VForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> (Binding n zero (CK t2) |- unifyType (b1 (free d)) (b2 (free d)))
   (VForAll{}, _)                                       -> mismatch
   (VArrow _ _ a1 b1, VArrow n q a2 b2)                 -> VArrow n q <$> unifyType a1 a2 <*> unifyType b1 b2
   (VArrow{}, _)                                        -> mismatch
@@ -104,7 +104,7 @@ eqType = curry $ \case
   (VComp s1 t1, VComp s2 t2)           -> eqSpine eqInterface (interfaces s1) (interfaces s2) *> eqType t1 t2
   (VComp _ t1, t2)                     -> eqType t1 t2
   (t1, VComp _ t2)                     -> eqType t1 t2
-  (VForAll _ t1 b1, VForAll n t2 b2)   -> depth >>= \ d -> guard (t1 == t2) *> (Binding n zero (Left t2) |- eqType (b1 (free d)) (b2 (free d)))
+  (VForAll _ t1 b1, VForAll n t2 b2)   -> depth >>= \ d -> guard (t1 == t2) *> (Binding n zero (CK t2) |- eqType (b1 (free d)) (b2 (free d)))
   (VForAll{}, _)                       -> empty
   (VArrow _ _ a1 b1, VArrow _ _ a2 b2) -> eqType a1 a2 *> eqType b1 b2
   (VArrow{}, _)                        -> empty

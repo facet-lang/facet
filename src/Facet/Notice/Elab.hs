@@ -9,7 +9,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (apply, interfaces, metavar)
+import           Facet.Core.Type (Classifier(..), apply, interfaces, metavar)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice hiding (level)
 import           Facet.Pretty
@@ -44,7 +44,9 @@ rethrowElabErrors opts = L.runThrow rethrow
       in  ( succ d
           , env |> Binding n m _T
           , print :> n'
-          , ctx :> getPrint (ann (n' ::: mult m (either (printKind print) (printType opts print . roundtrip) _T))) )
+          , ctx :> getPrint (ann (n' ::: mult m (case _T of
+            CK _K -> printKind print _K
+            CT _T -> printType opts print (roundtrip _T)))) )
   mult m = if
     | m == zero -> (pretty "0" <+>)
     | m == one  -> (pretty "1" <+>)
