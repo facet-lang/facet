@@ -85,7 +85,7 @@ flexFlex v1 v2
 solve :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Meta -> Type -> m Type
 solve v t = do
   d <- depth
-  if occursIn (== Free (Left v)) d t then
+  if occursIn v d t then
     occurs v t
   else
     gets (lookupMeta v) >>= \case

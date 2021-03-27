@@ -112,17 +112,15 @@ subjectType = \case
   ST _T -> pure _T
 
 
-occursIn :: (Var (Either Meta Level) -> Bool) -> Level -> Type -> Bool
+occursIn :: Meta -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
     VForAll _ _ b  -> go (succ d) (b (free d))
     VArrow _ _ a b -> go d a || go d b
-    VComp s t      -> goS d s || go d t
-    VNe h sp       -> p h || any (go d) sp
+    VComp s t      -> any (go d) s || go d t
+    VNe h sp       -> any (either (== p) (const False)) h || any (go d) sp
     VString        -> False
-  goS d (Signature s) = any (goI d) s
-  goI d (Interface h sp) = p (Global h) || any (go d) sp
 
 
 -- Elimination
