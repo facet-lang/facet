@@ -3,6 +3,7 @@ module Facet.Effect.Time.System
 ( -- * Time effect
   now
 , timeWith
+, timeWith_
 , time
 , time_
 , Time(..)
@@ -18,7 +19,7 @@ module Facet.Effect.Time.System
 
 import           Data.Fixed
 import           Data.Time.Clock.System
-import           Facet.Effect.Time hiding (now, timeWith)
+import           Facet.Effect.Time hiding (now, timeWith, timeWith_)
 import qualified Facet.Effect.Time as T
 
 now :: Has (Time Instant) sig m => m Instant
@@ -28,6 +29,10 @@ now = T.now
 timeWith :: Has (Time Instant) sig m => (Instant -> Instant -> delta) -> m a -> m (delta, a)
 timeWith = T.timeWith
 {-# INLINE timeWith #-}
+
+timeWith_ :: Has (Time Instant) sig m => (Instant -> Instant -> delta) -> m a -> m delta
+timeWith_ = T.timeWith_
+{-# INLINE timeWith_ #-}
 
 time :: Has (Time Instant) sig m => m a -> m (Duration, a)
 time = timeWith since
