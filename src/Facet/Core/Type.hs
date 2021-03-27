@@ -32,7 +32,7 @@ module Facet.Core.Type
 
 import           Control.Effect.Empty
 import           Data.Foldable (foldl')
-import           Data.Function ((&))
+import           Data.Function (on, (&))
 import qualified Data.IntMap as IntMap
 import           Facet.Name
 import           Facet.Snoc
@@ -61,6 +61,9 @@ data Type
   | VArrow (Maybe Name) Quantity Type Type
   | VNe (Var (Either Meta Level)) (Snoc Type)
   | VComp [Interface Type] Type
+
+instance Eq Type where
+  (==) = (==) `on` quote 0
 
 
 global :: RName -> Type
