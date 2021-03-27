@@ -8,7 +8,6 @@ module Facet.Context
 , level
 , (!)
 , lookupIndex
-, toEnv
 ) where
 
 import qualified Control.Effect.Empty as E
@@ -54,8 +53,3 @@ lookupIndex n = go (Index 0) . elems
   go i (cs S.:> Binding n' q t)
     | n == n'           = pure (i, q, t)
     | otherwise         = go (succ i) cs
-
-
--- | Construct an environment suitable for evaluation from a 'Context'.
-toEnv :: Context -> S.Snoc Type
-toEnv = S.fromList . map free . enumFromTo 0 . level
