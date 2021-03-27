@@ -24,6 +24,7 @@ import Data.Function
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Facet.Core.Module
+import Facet.Core.Pattern
 import Facet.Core.Term
 import Facet.Core.Type (TExpr)
 import Facet.Graph

@@ -59,6 +59,7 @@ import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Context (Binding(..), toEnv)
 import           Facet.Core.Module as Module
+import           Facet.Core.Pattern
 import           Facet.Core.Term as E
 import           Facet.Core.Type as T hiding (global)
 import           Facet.Effect.Write

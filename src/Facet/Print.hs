@@ -35,6 +35,7 @@ import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
 import qualified Facet.Core.Module as C
+import           Facet.Core.Pattern
 import qualified Facet.Core.Term as C
 import qualified Facet.Core.Type as C
 import qualified Facet.Core.Type as CT
@@ -209,18 +210,18 @@ printExpr opts@Options{ rname, instantiation } = go
   binding env p f = let ((_, env'), p') = mapAccumL (\ (d, env) n -> let v = local n d in ((succ d, env :> v), v)) (Name.Level (length env), env) p in f env' p'
   clause env (p, b) = binding env p $ \ env' p' -> printPattern opts p' <+> arrow <+> go env' b
 
-printPattern :: Options -> C.Pattern Print -> Print
+printPattern :: Options -> Pattern Print -> Print
 printPattern Options{ rname } = \case
-  C.PVal p -> vpat p
-  C.PEff p -> epat p
+  PVal p -> vpat p
+  PEff p -> epat p
   where
   vpat = \case
-    C.PWildcard -> pretty '_'
-    C.PVar n    -> n
-    C.PCon n ps -> parens (hsep (annotate Con (rname n):map vpat (toList ps)))
+    PWildcard -> pretty '_'
+    PVar n    -> n
+    PCon n ps -> parens (hsep (annotate Con (rname n):map vpat (toList ps)))
   epat = \case
-    C.PAll n     -> n
-    C.POp q ps k -> brackets (hsep (pretty q : map vpat (toList ps)) <+> semi <+> k)
+    PAll n     -> n
+    POp q ps k -> brackets (hsep (pretty q : map vpat (toList ps)) <+> semi <+> k)
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
