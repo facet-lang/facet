@@ -125,8 +125,8 @@ lookupInContext (m:.n)
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> Signature Type -> m (RName :=: Def)
-lookupInSig (m :. n) mod graph = foldMapC (\ (Interface q@(m':.:_) _) -> do
+lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Signature Type] -> m (RName :=: Def)
+lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _) -> do
   guard (m == Nil || m == toSnoc m')
   defs <- interfaceScope =<< lookupQ graph mod (toQ q)
   _ :=: d <- lookupScope n defs
@@ -179,7 +179,7 @@ data Err = Err
   , reason    :: ErrReason
   , context   :: Context
   , subst     :: Subst
-  , sig       :: Signature Type
+  , sig       :: [Signature Type]
   , callStack :: CallStack
   }
 
@@ -291,14 +291,14 @@ data StaticContext = StaticContext
 
 data ElabContext = ElabContext
   { context :: Context
-  , sig     :: Signature Type
+  , sig     :: [Signature Type]
   , spans   :: Snoc Span
   }
 
 context_ :: Lens' ElabContext Context
 context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
 
-sig_ :: Lens' ElabContext (Signature Type)
+sig_ :: Lens' ElabContext [Signature Type]
 sig_ = lens (\ ElabContext{ sig } -> sig) (\ e sig -> (e :: ElabContext){ sig })
 
 spans_ :: Lens' ElabContext (Snoc Span)

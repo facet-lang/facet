@@ -174,7 +174,7 @@ effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern 
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- assertComp _A
-  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (listToMaybe (traverse unDTerm =<< lookupInSig n module' graph sig))
+  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (listToMaybe (traverse unDTerm =<< lookupInSig n module' graph [sig]))
   (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (Right (VArrow Nothing Many _A' _A)) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
@@ -376,17 +376,20 @@ provide :: Has (Reader ElabContext :+: State Subst) sig m => Signature Type -> m
 provide sig m = do
   subst <- get
   env <- views context_ toEnv
-  locally sig_ (mapSignature (apply subst env) sig <>) m
+  locally sig_ (mapSignature (apply subst env) sig :) m
 
 require :: (HasCallStack, Has (Throw Err) sig m) => Signature Type -> Elab m ()
 require req = do
   prv <- view sig_
-  for_ (interfaces req) $ \ i -> findM (runEq . eqInterface i) (interfaces prv) >>= \case
+  for_ (interfaces req) $ \ i -> findMaybeM (findM (runEq . eqInterface i) . interfaces) prv >>= \case
     Nothing -> missingInterface i
     Just _  -> pure ()
 
 findM :: (Foldable t, Monad m) => (a -> m Bool) -> t a -> m (Maybe a)
 findM p = foldrM (\ a rest -> bool rest (Just a) <$> p a) Nothing
+
+findMaybeM :: (Foldable t, Monad m) => (a -> m (Maybe b)) -> t a -> m (Maybe b)
+findMaybeM p = foldrM (\ a rest -> maybe rest Just <$> p a) Nothing
 
 
 -- Judgements
