@@ -58,7 +58,7 @@ data Interface a = Interface RName (Snoc a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 newtype Signature a = Signature { interfaces :: [Interface a] }
-  deriving (Eq, Foldable, Functor, Monoid, Ord, Semigroup, Show, Traversable)
+  deriving (Eq, Foldable, Functor, Monoid, Ord, Semigroup, Show)
 
 singleton :: Interface a -> Signature a
 singleton = Signature . pure
