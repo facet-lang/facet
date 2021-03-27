@@ -3,6 +3,7 @@ module Facet.Effect.Time
 ( -- * Time effect
   now
 , timeWith
+, timeWith_
 , epoch
 , sinceEpochWith
 , eraFrom
@@ -27,6 +28,10 @@ timeWith with m = do
   let d = with start end
   d `seq` pure (d, a)
 {-# INLINE timeWith #-}
+
+timeWith_ :: Has (Time instant) sig m => (instant -> instant -> delta) -> m a -> m delta
+timeWith_ with m = with <$> now <* m <*> now
+{-# INLINE timeWith_ #-}
 
 epoch :: Has (Time instant) sig m => m instant
 epoch = send Epoch
