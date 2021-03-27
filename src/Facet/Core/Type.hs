@@ -5,6 +5,7 @@ module Facet.Core.Type
 , Interface(..)
 , Signature(..)
 , singleton
+, mapSignature
 , Type(..)
 , global
 , free
@@ -58,10 +59,14 @@ data Interface a = Interface RName (Snoc a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 newtype Signature a = Signature { interfaces :: [Interface a] }
-  deriving (Eq, Foldable, Functor, Monoid, Ord, Semigroup, Show)
+  deriving (Eq, Foldable, Monoid, Ord, Semigroup, Show)
 
 singleton :: Interface a -> Signature a
 singleton = Signature . pure
+
+mapSignature :: (a -> b) -> Signature a -> Signature b
+mapSignature f = Signature . map (fmap f) . interfaces
+
 
 data Type
   = VString
@@ -154,7 +159,7 @@ quote d = \case
   VString        -> TString
   VForAll n t b  -> TForAll n t (quote (succ d) (b (free d)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
-  VComp s t      -> TComp (quote d <$> s) (quote d t)
+  VComp s t      -> TComp (mapSignature (quote d) s) (quote d t)
   VNe n sp       -> foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TApp . quote d <$> sp)
 
 eval :: HasCallStack => Subst -> Snoc Type -> TExpr -> Type
@@ -166,7 +171,7 @@ eval subst = go where
     TVar (Free (Left m))  -> maybe (metavar m) tm (lookupMeta m subst)
     TForAll n t b         -> VForAll n t (\ v -> go (env :> v) b)
     TArrow n q a b        -> VArrow n q (go env a) (go env b)
-    TComp s t             -> VComp (go env <$> s) (go env t)
+    TComp s t             -> VComp (mapSignature (go env) s) (go env t)
     TApp  f a             -> go env f $$  go env a
 
 apply :: HasCallStack => Subst -> Snoc Type -> Type -> Type

@@ -376,7 +376,7 @@ provide :: Has (Reader ElabContext :+: State Subst) sig m => Signature Type -> m
 provide sig m = do
   subst <- get
   env <- views context_ toEnv
-  locally sig_ (fmap (apply subst env) sig <>) m
+  locally sig_ (mapSignature (apply subst env) sig <>) m
 
 require :: (HasCallStack, Has (Throw Err) sig m) => Signature Type -> Elab m ()
 require req = do
