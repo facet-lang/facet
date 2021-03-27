@@ -36,9 +36,11 @@ module Facet.Core.Type
 ) where
 
 import           Control.Effect.Empty
+import           Control.Monad (join)
 import           Data.Foldable (foldl')
 import           Data.Function (on, (&))
 import qualified Data.IntMap as IntMap
+import           Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
 import           Facet.Name
 import           Facet.Snoc
@@ -177,7 +179,7 @@ eval subst = go where
     TString               -> VString
     TVar (Global n)       -> global n
     TVar (Free (Right v)) -> env ! getIndex v
-    TVar (Free (Left m))  -> maybe (metavar m) tm (lookupMeta m subst)
+    TVar (Free (Left m))  -> fromMaybe (metavar m) (lookupMeta m subst)
     TForAll n t b         -> VForAll n t (\ v -> go (env :> v) b)
     TArrow n q a b        -> VArrow n q (go env a) (go env b)
     TComp s t             -> VComp (mapSignature (go env) s) (go env t)
@@ -189,23 +191,21 @@ apply subst env = eval subst env . quote (Level (length env))
 
 -- Substitution
 
-newtype Subst = Subst (IntMap.IntMap (Maybe Type ::: Kind))
+newtype Subst = Subst (IntMap.IntMap (Maybe Type))
   deriving (Monoid, Semigroup)
 
-insert :: Meta -> Maybe Type ::: Kind -> Subst -> Subst
+insert :: Meta -> Maybe Type -> Subst -> Subst
 insert (Meta i) t (Subst metas) = Subst (IntMap.insert i t metas)
 
-lookupMeta :: Meta -> Subst -> Maybe (Type ::: Kind)
-lookupMeta (Meta i) (Subst metas) = do
-  v ::: _T <- IntMap.lookup i metas
-  (::: _T) <$> v
+lookupMeta :: Meta -> Subst -> Maybe Type
+lookupMeta (Meta i) (Subst metas) = join (IntMap.lookup i metas)
 
 solveMeta :: Meta -> Type -> Subst -> Subst
-solveMeta (Meta i) t (Subst metas) = Subst (IntMap.update (\ (_ ::: _T) -> Just (Just t ::: _T)) i metas)
+solveMeta (Meta i) t (Subst metas) = Subst (IntMap.update (const (Just (Just t))) i metas)
 
 declareMeta :: Kind -> Subst -> (Subst, Meta)
-declareMeta _K (Subst metas) = (Subst (IntMap.insert v (Nothing ::: _K) metas), Meta v) where
+declareMeta _K (Subst metas) = (Subst (IntMap.insert v Nothing metas), Meta v) where
   v = maybe 0 (succ . fst . fst) (IntMap.maxViewWithKey metas)
 
-metas :: Subst -> [Meta :=: Maybe Type ::: Kind]
+metas :: Subst -> [Meta :=: Maybe Type]
 metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)

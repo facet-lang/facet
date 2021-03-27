@@ -77,9 +77,9 @@ flexFlex :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: 
 flexFlex v1 v2
   | v1 == v2  = pure (metavar v2)
   | otherwise = gets (\ s -> (lookupMeta v1 s, lookupMeta v2 s)) >>= \case
-    (Just t1, Just t2) -> unifyType (tm t1) (tm t2)
-    (Just t1, Nothing) -> unifyType (metavar v2) (tm t1)
-    (Nothing, Just t2) -> unifyType (metavar v1) (tm t2)
+    (Just t1, Just t2) -> unifyType t1 t2
+    (Just t1, Nothing) -> unifyType (metavar v2) t1
+    (Nothing, Just t2) -> unifyType (metavar v1) t2
     (Nothing, Nothing) -> solve v1 (metavar v2)
 
 solve :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Meta -> Type -> m Type
@@ -89,8 +89,8 @@ solve v t = do
     occurs v t
   else
     gets (lookupMeta v) >>= \case
-      Nothing          -> t <$ modify (solveMeta v t)
-      Just (t' ::: _T) -> unifyType t' t >>= \ t'' -> t'' <$ modify (solveMeta v t'')
+      Nothing -> t <$ modify (solveMeta v t)
+      Just t' -> unifyType t' t >>= \ t'' -> t'' <$ modify (solveMeta v t'')
 
 
 -- Equating
