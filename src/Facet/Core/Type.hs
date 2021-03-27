@@ -65,6 +65,9 @@ data Type
 instance Eq Type where
   (==) = (==) `on` quote 0
 
+instance Ord Type where
+  compare = compare `on` quote 0
+
 
 global :: RName -> Type
 global = var . Global
