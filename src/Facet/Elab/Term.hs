@@ -355,7 +355,7 @@ assertTacitFunction = assertMatch (\case{ ST (VArrow Nothing q t b) -> pure ((q,
 
 -- | Expect a computation type with effects.
 assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Signature Type, Type)
-assertComp = assertMatch (unComp <=< subjectType) "[_] _" . ST
+assertComp = assertMatch (unComp <=< classifierType) "[_] _" . ST
 
 
 -- Elaboration

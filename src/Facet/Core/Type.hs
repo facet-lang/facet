@@ -15,7 +15,7 @@ module Facet.Core.Type
 , unNeutral
 , unComp
 , Classifier(..)
-, subjectType
+, classifierType
 , occursIn
   -- ** Elimination
 , ($$)
@@ -114,8 +114,8 @@ data Classifier
   = SK Kind
   | ST Type
 
-subjectType :: Classifier -> Maybe Type
-subjectType = \case
+classifierType :: Classifier -> Maybe Type
+classifierType = \case
   SK _K -> empty
   ST _T -> pure _T
 
