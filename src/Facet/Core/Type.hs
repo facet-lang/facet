@@ -166,7 +166,7 @@ quote d = \case
   VNe n sp       -> foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TApp . quote d <$> sp)
 
 eval :: HasCallStack => Subst Type -> Level -> TExpr -> Type
-eval subst d = go (fromList (map free [0..d])) where
+eval subst d = go (fromList (map free [0..pred d])) where
   go env = \case
     TString               -> VString
     TVar (Global n)       -> global n
