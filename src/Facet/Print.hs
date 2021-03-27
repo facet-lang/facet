@@ -147,7 +147,7 @@ suppressInstantiation = const
 
 -- Core printers
 
-printSubject :: Options -> Snoc Print -> C.Subject -> Print
+printSubject :: Options -> Snoc Print -> C.Classifier -> Print
 printSubject opts env = \case
   C.SK k -> printKind env k
   C.ST t -> printType opts env t
