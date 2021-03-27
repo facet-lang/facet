@@ -44,7 +44,7 @@ occurs v t = ask >>= \ (t1 :=: t2) -> occursCheckFailure v (ST t) t1 t2
 
 unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m Type
 unifyType = curry $ \case
-  (VComp s1 t1, VComp s2 t2)                           -> VComp <$> unifySpine unifyInterface s1 s2 <*> unifyType t1 t2
+  (VComp s1 t1, VComp s2 t2)                           -> VComp . Signature <$> unifySpine unifyInterface (interfaces s1) (interfaces s2) <*> unifyType t1 t2
   (VComp s1 t1, t2)                                    -> VComp s1 <$> unifyType t1 t2
   (t1, VComp s2 t2)                                    -> VComp s2 <$> unifyType t1 t2
   (VNe (Free (Left v1)) Nil, VNe (Free (Left v2)) Nil) -> flexFlex v1 v2
@@ -100,7 +100,7 @@ runEq = execEmpty
 
 eqType :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m ()
 eqType = curry $ \case
-  (VComp s1 t1, VComp s2 t2)           -> eqSpine eqInterface s1 s2 *> eqType t1 t2
+  (VComp s1 t1, VComp s2 t2)           -> eqSpine eqInterface (interfaces s1) (interfaces s2) *> eqType t1 t2
   (VComp _ t1, t2)                     -> eqType t1 t2
   (t1, VComp _ t2)                     -> eqType t1 t2
   (VForAll _ t1 b1, VForAll n t2 b2)   -> depth >>= \ d -> guard (t1 == t2) *> (Binding n zero (Left t2) |- eqType (b1 (free d)) (b2 (free d)))

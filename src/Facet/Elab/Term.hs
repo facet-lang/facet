@@ -352,7 +352,7 @@ assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (
 assertTacitFunction = assertMatch (\case{ ST (VArrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . ST
 
 -- | Expect a computation type with effects.
-assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ([Interface Type], Type)
+assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Signature Type, Type)
 assertComp = assertMatch (unComp <=< subjectType) "[_] _" . ST
 
 
@@ -372,16 +372,16 @@ withSpanC k (S.Ann s _ a) = mapCheck (pushSpan s) (k a)
 withSpanS :: Algebra sig m => (a -> Synth m b) -> S.Ann a -> Synth m b
 withSpanS k (S.Ann s _ a) = mapSynth (pushSpan s) (k a)
 
-provide :: Has (Reader ElabContext :+: State Subst) sig m => [Interface Type] -> m a -> m a
+provide :: Has (Reader ElabContext :+: State Subst) sig m => Signature Type -> m a -> m a
 provide sig m = do
   subst <- get
   env <- views context_ toEnv
-  locally sig_ (fmap (fmap (apply subst env)) sig ++) m
+  locally sig_ (fmap (apply subst env) sig <>) m
 
-require :: (HasCallStack, Has (Throw Err) sig m) => [Interface Type] -> Elab m ()
+require :: (HasCallStack, Has (Throw Err) sig m) => Signature Type -> Elab m ()
 require req = do
   prv <- view sig_
-  for_ req $ \ i -> findM (runEq . eqInterface i) prv >>= \case
+  for_ (interfaces req) $ \ i -> findM (runEq . eqInterface i) (interfaces prv) >>= \case
     Nothing -> missingInterface i
     Just _  -> pure ()
 

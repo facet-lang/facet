@@ -9,7 +9,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (apply, metas, metavar)
+import           Facet.Core.Type (apply, interfaces, metas, metavar)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -36,7 +36,7 @@ rethrowElabErrors opts = L.runThrow rethrow
     where
     (_, _, printCtx, ctx) = foldl' combine (0, empty, Nil, Nil) (elems context)
     subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printKind printCtx _T))) (metas subst)
-    sig' = getPrint . printInterface opts printCtx . fmap (apply subst (toEnv context)) <$> sig
+    sig' = getPrint . printInterface opts printCtx . fmap (apply subst (toEnv context)) <$> interfaces sig
     combine (d, env, print, ctx) (Binding n m _T) =
       let n' = intro n d
           roundtrip = apply subst (toEnv env)

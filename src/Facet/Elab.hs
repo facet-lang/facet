@@ -125,12 +125,12 @@ lookupInContext (m:.n)
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Interface Type] -> m (RName :=: Def)
-lookupInSig (m :. n) mod graph = foldMapC $ \ (Interface q@(m':.:_) _) -> do
+lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> Signature Type -> m (RName :=: Def)
+lookupInSig (m :. n) mod graph = foldMapC (\ (Interface q@(m':.:_) _) -> do
   guard (m == Nil || m == toSnoc m')
   defs <- interfaceScope =<< lookupQ graph mod (toQ q)
   _ :=: d <- lookupScope n defs
-  pure $ m':.:n :=: d
+  pure $ m':.:n :=: d) . interfaces
   where
   interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> empty }
 
@@ -179,7 +179,7 @@ data Err = Err
   , reason    :: ErrReason
   , context   :: Context
   , subst     :: Subst
-  , sig       :: [Interface Type]
+  , sig       :: Signature Type
   , callStack :: CallStack
   }
 
@@ -291,14 +291,14 @@ data StaticContext = StaticContext
 
 data ElabContext = ElabContext
   { context :: Context
-  , sig     :: [Interface Type]
+  , sig     :: Signature Type
   , spans   :: Snoc Span
   }
 
 context_ :: Lens' ElabContext Context
 context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
 
-sig_ :: Lens' ElabContext [Interface Type]
+sig_ :: Lens' ElabContext (Signature Type)
 sig_ = lens (\ ElabContext{ sig } -> sig) (\ e sig -> (e :: ElabContext){ sig })
 
 spans_ :: Lens' ElabContext (Snoc Span)
@@ -321,7 +321,7 @@ elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quan
 elabWith scale k m = runState k mempty . runWriter (const pure) $ do
   (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
   let stat = StaticContext{ graph, module', source, scale }
-      ctx  = ElabContext{ context = Context.empty, sig = [], spans = Nil }
+      ctx  = ElabContext{ context = Context.empty, sig = mempty, spans = Nil }
   runReader stat . runReader ctx . runElab $ m
 
 elabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Kind -> m Kind

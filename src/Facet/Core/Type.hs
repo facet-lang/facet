@@ -3,6 +3,8 @@ module Facet.Core.Type
   Kind(..)
   -- * Types
 , Interface(..)
+, Signature(..)
+, singleton
 , Type(..)
 , global
 , free
@@ -37,7 +39,7 @@ import qualified Data.IntMap as IntMap
 import           Facet.Name
 import           Facet.Snoc
 import           Facet.Syntax
-import           Facet.Usage
+import           Facet.Usage hiding (singleton)
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
@@ -55,12 +57,18 @@ data Kind
 data Interface a = Interface RName (Snoc a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+newtype Signature a = Signature { interfaces :: [Interface a] }
+  deriving (Eq, Foldable, Functor, Monoid, Ord, Semigroup, Show, Traversable)
+
+singleton :: Interface a -> Signature a
+singleton = Signature . pure
+
 data Type
   = VString
   | VForAll Name Kind (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
   | VNe (Var (Either Meta Level)) (Snoc Type)
-  | VComp [Interface Type] Type
+  | VComp (Signature Type) Type
 
 instance Eq Type where
   (==) = (==) `on` quote 0
@@ -88,7 +96,7 @@ unNeutral = \case
   VNe h sp -> pure (h, sp)
   _        -> empty
 
-unComp :: Has Empty sig m => Type -> m ([Interface Type], Type)
+unComp :: Has Empty sig m => Type -> m (Signature Type, Type)
 unComp = \case
   VComp sig _T -> pure (sig, _T)
   _T           -> empty
@@ -110,9 +118,10 @@ occursIn p = go
   go d = \case
     VForAll _ _ b  -> go (succ d) (b (free d))
     VArrow _ _ a b -> go d a || go d b
-    VComp s t      -> any (goI d) s || go d t
+    VComp s t      -> goS d s || go d t
     VNe h sp       -> p h || any (go d) sp
     VString        -> False
+  goS d (Signature s) = any (goI d) s
   goI d (Interface h sp) = p (Global h) || any (go d) sp
 
 
@@ -135,7 +144,7 @@ data TExpr
   | TVar (Var (Either Meta Index))
   | TForAll Name Kind TExpr
   | TArrow (Maybe Name) Quantity TExpr TExpr
-  | TComp [Interface TExpr] TExpr
+  | TComp (Signature TExpr) TExpr
   | TApp TExpr TExpr
   deriving (Eq, Ord, Show)
 
@@ -147,7 +156,7 @@ quote d = \case
   VString        -> TString
   VForAll n t b  -> TForAll n t (quote (succ d) (b (free d)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
-  VComp s t      -> TComp (fmap (quote d) <$> s) (quote d t)
+  VComp s t      -> TComp (quote d <$> s) (quote d t)
   VNe n sp       -> foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TApp . quote d <$> sp)
 
 eval :: HasCallStack => Subst -> Snoc Type -> TExpr -> Type
@@ -159,7 +168,7 @@ eval subst = go where
     TVar (Free (Left m))  -> maybe (metavar m) tm (lookupMeta m subst)
     TForAll n t b         -> VForAll n t (\ v -> go (env :> v) b)
     TArrow n q a b        -> VArrow n q (go env a) (go env b)
-    TComp s t             -> VComp (fmap (go env) <$> s) (go env t)
+    TComp s t             -> VComp (go env <$> s) (go env t)
     TApp  f a             -> go env f $$  go env a
 
 apply :: HasCallStack => Subst -> Snoc Type -> Type -> Type
