@@ -26,24 +26,16 @@ module Facet.Core.Type
 , quote
 , eval
 , apply
-  -- * Substitution
-, Subst(..)
-, insert
-, lookupMeta
-, solveMeta
-, declareMeta
-, metas
 ) where
 
 import           Control.Effect.Empty
-import           Control.Monad (join)
 import           Data.Foldable (foldl')
 import           Data.Function (on, (&))
-import qualified Data.IntMap as IntMap
 import           Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
 import           Facet.Name
 import           Facet.Snoc
+import           Facet.Subst
 import           Facet.Syntax
 import           Facet.Usage hiding (singleton)
 import           GHC.Stack
@@ -187,25 +179,3 @@ eval subst = go where
 
 apply :: HasCallStack => Subst Type -> Snoc Type -> Type -> Type
 apply subst env = eval subst env . quote (Level (length env))
-
-
--- Substitution
-
-newtype Subst t = Subst (IntMap.IntMap (Maybe t))
-  deriving (Monoid, Semigroup)
-
-insert :: Meta -> Maybe t -> Subst t -> Subst t
-insert (Meta i) t (Subst metas) = Subst (IntMap.insert i t metas)
-
-lookupMeta :: Meta -> Subst t -> Maybe t
-lookupMeta (Meta i) (Subst metas) = join (IntMap.lookup i metas)
-
-solveMeta :: Meta -> t -> Subst t -> Subst t
-solveMeta (Meta i) t (Subst metas) = Subst (IntMap.update (const (Just (Just t))) i metas)
-
-declareMeta :: Kind -> Subst t -> (Subst t, Meta)
-declareMeta _K (Subst metas) = (Subst (IntMap.insert v Nothing metas), Meta v) where
-  v = maybe 0 (succ . fst . fst) (IntMap.maxViewWithKey metas)
-
-metas :: Subst t -> [Meta :=: Maybe t]
-metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)

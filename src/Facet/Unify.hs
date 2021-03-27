@@ -23,6 +23,7 @@ import Facet.Name
 import Facet.Semialign
 import Facet.Semiring
 import Facet.Snoc
+import Facet.Subst
 import Facet.Syntax
 import Facet.Usage
 import GHC.Stack

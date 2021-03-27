@@ -73,6 +73,7 @@ import           Facet.Snoc
 import           Facet.Snoc.NonEmpty (toSnoc)
 import           Facet.Source (Source, slice)
 import           Facet.Span (Span(..))
+import           Facet.Subst
 import           Facet.Syntax
 import           Facet.Usage as Usage
 import           Facet.Vars as Vars
@@ -89,7 +90,7 @@ import           Prelude hiding (span, zipWith)
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
 meta :: Has (State (Subst Type)) sig m => Kind -> m Meta
-meta _T = state (declareMeta @Type _T)
+meta _T = state (declareMeta @Type)
 
 
 instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a ::: Type)

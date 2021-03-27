@@ -72,6 +72,7 @@ import           Facet.Semiring (Few(..), zero, (><<))
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty as NE
 import           Facet.Source (Source)
+import           Facet.Subst
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Facet.Unify

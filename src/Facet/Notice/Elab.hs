@@ -9,7 +9,7 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (apply, interfaces, metas, metavar)
+import           Facet.Core.Type (apply, interfaces, metavar)
 import           Facet.Elab as Elab
 import           Facet.Notice as Notice
 import           Facet.Pretty
@@ -17,6 +17,7 @@ import           Facet.Print as Print
 import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Snoc
 import           Facet.Style
+import           Facet.Subst (metas)
 import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding (unlines)
