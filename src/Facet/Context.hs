@@ -58,9 +58,4 @@ lookupIndex n = go (Index 0) . elems
 
 -- | Construct an environment suitable for evaluation from a 'Context'.
 toEnv :: Context -> S.Snoc Type
-toEnv c = locals 0 (elems c)
-  where
-  d = level c
-  locals i = \case
-    S.Nil     -> S.Nil
-    bs S.:> _ -> locals (succ i) bs S.:> free (indexToLevel d i)
+toEnv = S.fromList . map free . enumFromTo 0 . level
