@@ -36,13 +36,13 @@ unify t1 t2 = runUnify t1 t2 (unifyType (getExp t1) (getAct t2))
 runUnify :: Exp Type -> Act Type -> ReaderC (Exp Subject :=: Act Subject) m a -> m a
 runUnify t1 t2 = runReader (fmap ST t1 :=: fmap ST t2)
 
-mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => m a
+mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => m a
 mismatch   = ask >>= \ (t1 :=: t2) -> couldNotUnify               t1 t2
 
-occurs :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Meta -> Type -> m a
+occurs :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Type -> m a
 occurs v t = ask >>= \ (t1 :=: t2) -> occursCheckFailure v (ST t) t1 t2
 
-unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m Type
+unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m Type
 unifyType = curry $ \case
   (VComp s1 t1, VComp s2 t2)                           -> VComp . fromInterfaces <$> unifySpine unifyInterface (interfaces s1) (interfaces s2) <*> unifyType t1 t2
   (VComp s1 t1, t2)                                    -> VComp s1 <$> unifyType t1 t2
@@ -61,19 +61,19 @@ unifyType = curry $ \case
   where
   mkForAll d n k b = TForAll n k (quote (succ d) b)
 
-unifyKind :: Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m => Kind -> Kind -> m Kind
+unifyKind :: Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m => Kind -> Kind -> m Kind
 unifyKind k1 k2 = if k1 == k2 then pure k2 else mismatch
 
-unifyVar :: (Eq a, Eq b, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Var (Either a b) -> Var (Either a b) -> m (Var (Either a b))
+unifyVar :: (Eq a, Eq b, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Var (Either a b) -> Var (Either a b) -> m (Var (Either a b))
 unifyVar v1 v2 = if v1 == v2 then pure v2 else mismatch
 
-unifyInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Interface Type -> Interface Type -> m (Interface Type)
+unifyInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Interface Type -> Interface Type -> m (Interface Type)
 unifyInterface (Interface h1 sp1) (Interface h2 sp2) = Interface h2 <$ unless (h1 == h2) mismatch <*> unifySpine unifyType sp1 sp2
 
-unifySpine :: (Traversable t, Zip t, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m (t c)
+unifySpine :: (Traversable t, Zip t, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m (t c)
 unifySpine f sp1 sp2 = unless (length sp1 == length sp2) mismatch >> zipWithM f sp1 sp2
 
-flexFlex :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Meta -> Meta -> m Type
+flexFlex :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Meta -> m Type
 flexFlex v1 v2
   | v1 == v2  = pure (metavar v2)
   | otherwise = gets (\ s -> (lookupMeta v1 s, lookupMeta v2 s)) >>= \case
@@ -82,7 +82,7 @@ flexFlex v1 v2
     (Nothing, Just t2) -> unifyType (metavar v1) t2
     (Nothing, Nothing) -> solve v1 (metavar v2)
 
-solve :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Meta -> Type -> m Type
+solve :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Subject :=: Act Subject) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Type -> m Type
 solve v t = do
   d <- depth
   if occursIn v d t then
@@ -98,7 +98,7 @@ solve v t = do
 runEq :: Applicative m => EmptyC m () -> m Bool
 runEq = execEmpty
 
-eqType :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m ()
+eqType :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m ()
 eqType = curry $ \case
   (VComp s1 t1, VComp s2 t2)           -> eqSpine eqInterface (interfaces s1) (interfaces s2) *> eqType t1 t2
   (VComp _ t1, t2)                     -> eqType t1 t2
@@ -112,7 +112,7 @@ eqType = curry $ \case
   (VString, VString)                   -> pure ()
   (VString, _)                         -> empty
 
-eqInterface :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Interface Type -> Interface Type -> m ()
+eqInterface :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Interface Type -> Interface Type -> m ()
 eqInterface (Interface h1 sp1) (Interface h2 sp2) = guard (h1 == h2) *> eqSpine eqType sp1 sp2
 
 eqSpine :: (Foldable t, Zip t, Has Empty sig m) => (a -> b -> m ()) -> t a -> t b -> m ()

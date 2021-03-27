@@ -173,7 +173,7 @@ quote d = \case
   VComp s t      -> TComp (mapSignature (quote d) s) (quote d t)
   VNe n sp       -> foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TApp . quote d <$> sp)
 
-eval :: HasCallStack => Subst -> Snoc Type -> TExpr -> Type
+eval :: HasCallStack => Subst Type -> Snoc Type -> TExpr -> Type
 eval subst = go where
   go env = \case
     TString               -> VString
@@ -185,27 +185,27 @@ eval subst = go where
     TComp s t             -> VComp (mapSignature (go env) s) (go env t)
     TApp  f a             -> go env f $$  go env a
 
-apply :: HasCallStack => Subst -> Snoc Type -> Type -> Type
+apply :: HasCallStack => Subst Type -> Snoc Type -> Type -> Type
 apply subst env = eval subst env . quote (Level (length env))
 
 
 -- Substitution
 
-newtype Subst = Subst (IntMap.IntMap (Maybe Type))
+newtype Subst t = Subst (IntMap.IntMap (Maybe t))
   deriving (Monoid, Semigroup)
 
-insert :: Meta -> Maybe Type -> Subst -> Subst
+insert :: Meta -> Maybe t -> Subst t -> Subst t
 insert (Meta i) t (Subst metas) = Subst (IntMap.insert i t metas)
 
-lookupMeta :: Meta -> Subst -> Maybe Type
+lookupMeta :: Meta -> Subst t -> Maybe t
 lookupMeta (Meta i) (Subst metas) = join (IntMap.lookup i metas)
 
-solveMeta :: Meta -> Type -> Subst -> Subst
+solveMeta :: Meta -> t -> Subst t -> Subst t
 solveMeta (Meta i) t (Subst metas) = Subst (IntMap.update (const (Just (Just t))) i metas)
 
-declareMeta :: Kind -> Subst -> (Subst, Meta)
+declareMeta :: Kind -> Subst t -> (Subst t, Meta)
 declareMeta _K (Subst metas) = (Subst (IntMap.insert v Nothing metas), Meta v) where
   v = maybe 0 (succ . fst . fst) (IntMap.maxViewWithKey metas)
 
-metas :: Subst -> [Meta :=: Maybe Type]
+metas :: Subst t -> [Meta :=: Maybe t]
 metas (Subst metas) = map (\ (k, v) -> Meta k :=: v) (IntMap.toList metas)

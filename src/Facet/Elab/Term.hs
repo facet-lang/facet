@@ -373,7 +373,7 @@ withSpanC k (S.Ann s _ a) = mapCheck (pushSpan s) (k a)
 withSpanS :: Algebra sig m => (a -> Synth m b) -> S.Ann a -> Synth m b
 withSpanS k (S.Ann s _ a) = mapSynth (pushSpan s) (k a)
 
-provide :: Has (Reader ElabContext :+: State Subst) sig m => Signature Type -> m a -> m a
+provide :: Has (Reader ElabContext :+: State (Subst Type)) sig m => Signature Type -> m a -> m a
 provide sig m = do
   subst <- get
   env <- views context_ toEnv
