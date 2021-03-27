@@ -111,13 +111,13 @@ unComp = \case
 
 
 data Classifier
-  = SK Kind
-  | ST Type
+  = CK Kind
+  | CT Type
 
 classifierType :: Classifier -> Maybe Type
 classifierType = \case
-  SK _K -> empty
-  ST _T -> pure _T
+  CK _K -> empty
+  CT _T -> pure _T
 
 
 occursIn :: Meta -> Level -> Type -> Bool

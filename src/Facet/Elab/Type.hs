@@ -118,7 +118,7 @@ synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = IsType $ pushSpan s
 -- Assertions
 
 assertTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => Kind -> Elab m (Maybe Name ::: Kind, Kind)
-assertTypeConstructor = assertMatch (\case{ SK (KArrow n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _" . SK
+assertTypeConstructor = assertMatch (\case{ CK (KArrow n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _" . CK
 
 
 -- Judgements
@@ -126,7 +126,7 @@ assertTypeConstructor = assertMatch (\case{ SK (KArrow n t b) -> pure (n ::: t, 
 checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Kind -> Elab m a
 checkIsType (m ::: _K) = do
   a ::: _KA <- isType m
-  a <$ unless (_KA == _K) (couldNotUnify (Exp (SK _K)) (Act (SK _KA)))
+  a <$ unless (_KA == _K) (couldNotUnify (Exp (CK _K)) (Act (CK _KA)))
 
 newtype IsType m a = IsType { isType :: Elab m (a ::: Kind) }
 

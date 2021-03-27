@@ -149,8 +149,8 @@ suppressInstantiation = const
 
 printSubject :: Options -> Snoc Print -> C.Classifier -> Print
 printSubject opts env = \case
-  C.SK k -> printKind env k
-  C.ST t -> printType opts env t
+  C.CK k -> printKind env k
+  C.CT t -> printType opts env t
 
 printKind :: Snoc Print -> C.Kind -> Print
 printKind env = \case

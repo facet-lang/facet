@@ -214,8 +214,8 @@ applySubst ctx subst r = case r of
   where
   d = level ctx
   roundtripS = \case
-    SK k -> SK k
-    ST k -> ST $ roundtrip k
+    CK k -> CK k
+    CT k -> CT $ roundtrip k
   roundtrip = apply subst d
 
 
@@ -277,7 +277,7 @@ assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Classifier -> Maybe out
 assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (pat _T)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-assertFunction = assertMatch (\case{ ST (VArrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . ST
+assertFunction = assertMatch (\case{ CT (VArrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . CT
 
 
 -- Unification

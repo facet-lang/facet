@@ -112,7 +112,7 @@ var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabConte
 
 
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
-hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (ST _T)
+hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (CT _T)
 
 
 tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
@@ -347,15 +347,15 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 -- Errors
 
 assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name ::: Kind, Type -> Type)
-assertQuantifier = assertMatch (\case{ ST (VForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" . ST
+assertQuantifier = assertMatch (\case{ CT (VForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" . CT
 
 -- | Expect a tacit (non-variable-binding) function type.
 assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ((Quantity, Type), Type)
-assertTacitFunction = assertMatch (\case{ ST (VArrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . ST
+assertTacitFunction = assertMatch (\case{ CT (VArrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . CT
 
 -- | Expect a computation type with effects.
 assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Signature Type, Type)
-assertComp = assertMatch (unComp <=< classifierType) "[_] _" . ST
+assertComp = assertMatch (unComp <=< classifierType) "[_] _" . CT
 
 
 -- Elaboration
