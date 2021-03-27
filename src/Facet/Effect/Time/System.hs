@@ -4,6 +4,7 @@ module Facet.Effect.Time.System
   now
 , timeWith
 , time
+, time_
 , epoch
 , sinceEpochWith
 , sinceEpoch
@@ -36,6 +37,10 @@ timeWith = T.timeWith
 time :: Has (Time Instant) sig m => m a -> m (Duration, a)
 time = timeWith since
 {-# INLINE time #-}
+
+time_ :: Has (Time Instant) sig m => m a -> m Duration
+time_ = timeWith_ since
+{-# INLINE time_ #-}
 
 epoch :: Has (Time Instant) sig m => m Instant
 epoch = T.epoch
