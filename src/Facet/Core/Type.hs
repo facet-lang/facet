@@ -165,8 +165,8 @@ quote d = \case
   VComp s t      -> TComp (mapSignature (quote d) s) (quote d t)
   VNe n sp       -> foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TApp . quote d <$> sp)
 
-eval :: HasCallStack => Subst Type -> Snoc Type -> TExpr -> Type
-eval subst = go where
+eval :: HasCallStack => Subst Type -> Level -> TExpr -> Type
+eval subst d = go (fromList (map free [0..d])) where
   go env = \case
     TString               -> VString
     TVar (Global n)       -> global n
@@ -177,5 +177,5 @@ eval subst = go where
     TComp s t             -> VComp (mapSignature (go env) s) (go env t)
     TApp  f a             -> go env f $$  go env a
 
-apply :: HasCallStack => Subst Type -> Snoc Type -> Type -> Type
-apply subst env = eval subst env . quote (Level (length env))
+apply :: HasCallStack => Subst Type -> Level -> Type -> Type
+apply subst d = eval subst d . quote d

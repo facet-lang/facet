@@ -158,7 +158,7 @@ sat a b
 
 
 evalTExpr :: Has (Reader ElabContext :+: State (Subst Type)) sig m => TExpr -> m Type
-evalTExpr texpr = T.eval <$> get <*> views context_ toEnv <*> pure texpr
+evalTExpr texpr = T.eval <$> get <*> depth <*> pure texpr
 
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
@@ -212,11 +212,11 @@ applySubst ctx subst r = case r of
   Invariant{}          -> r
   MissingInterface i   -> MissingInterface (roundtrip <$> i)
   where
-  env = toEnv ctx
+  d = level ctx
   roundtripS = \case
     SK k -> SK k
     ST k -> ST $ roundtrip k
-  roundtrip = apply subst env
+  roundtrip = apply subst d
 
 
 -- FIXME: apply the substitution before showing this to the user
@@ -329,13 +329,13 @@ elabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab
 elabKind = elabWith zero (const pure)
 
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
-elabType = elabWith zero (\ subst t -> pure (T.eval subst Nil t))
+elabType = elabWith zero (\ subst t -> pure (T.eval subst 0 t))
 
 elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Expr -> m Expr
 elabTerm = elabWith one (const pure)
 
 elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (Expr ::: Type) -> m (Expr ::: Type)
-elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: T.eval subst Nil (T.quote 0 _T)))
+elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: T.eval subst 0 (T.quote 0 _T)))
 
 elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr ::: Kind) -> m (Type ::: Kind)
-elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst Nil _T ::: _K))
+elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst 0 _T ::: _K))

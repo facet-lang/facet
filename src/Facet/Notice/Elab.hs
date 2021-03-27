@@ -11,7 +11,7 @@ import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
 import           Facet.Core.Type (apply, interfaces, metavar)
 import           Facet.Elab as Elab
-import           Facet.Notice as Notice
+import           Facet.Notice as Notice hiding (level)
 import           Facet.Pretty
 import           Facet.Print as Print
 import           Facet.Semiring (Few(..), one, zero)
@@ -37,10 +37,10 @@ rethrowElabErrors opts = L.runThrow rethrow
     where
     (_, _, printCtx, ctx) = foldl' combine (0, empty, Nil, Nil) (elems context)
     subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v)) (metas subst)
-    sig' = getPrint . printInterface opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
+    sig' = getPrint . printInterface opts printCtx . fmap (apply subst (level context)) <$> (interfaces =<< sig)
     combine (d, env, print, ctx) (Binding n m _T) =
       let n' = intro n d
-          roundtrip = apply subst (toEnv env)
+          roundtrip = apply subst (level env)
       in  ( succ d
           , env |> Binding n m _T
           , print :> n'

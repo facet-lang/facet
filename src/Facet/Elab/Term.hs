@@ -44,7 +44,7 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (view, views, (.=))
+import           Control.Effect.Lens (view, (.=))
 import           Control.Effect.Throw
 import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
@@ -57,7 +57,7 @@ import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context (Binding(..), toEnv)
+import           Facet.Context (Binding(..))
 import           Facet.Core.Module as Module
 import           Facet.Core.Pattern
 import           Facet.Core.Term as E
@@ -377,8 +377,8 @@ withSpanS k (S.Ann s _ a) = mapSynth (pushSpan s) (k a)
 provide :: Has (Reader ElabContext :+: State (Subst Type)) sig m => Signature Type -> m a -> m a
 provide sig m = do
   subst <- get
-  env <- views context_ toEnv
-  locally sig_ (mapSignature (apply subst env) sig :) m
+  d <- depth
+  locally sig_ (mapSignature (apply subst d) sig :) m
 
 require :: (HasCallStack, Has (Throw Err) sig m) => Signature Type -> Elab m ()
 require req = do
