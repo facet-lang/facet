@@ -35,14 +35,13 @@ rethrowElabErrors opts = L.runThrow rethrow
     , pretty (prettyCallStack callStack)
     ]
     where
-    (_, _, printCtx, ctx) = foldl' combine (0, empty, Nil, Nil) (elems context)
+    (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
     subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v)) (metas subst)
     sig' = getPrint . printInterface opts printCtx . fmap (apply subst (level context)) <$> (interfaces =<< sig)
-    combine (d, env, print, ctx) (Binding n m _T) =
+    combine (d, print, ctx) (Binding n m _T) =
       let n' = intro n d
-          roundtrip = apply subst (level env)
+          roundtrip = apply subst d
       in  ( succ d
-          , env |> Binding n m _T
           , print :> n'
           , ctx :> getPrint (ann (n' ::: mult m (case _T of
             CK _K -> printKind print _K
