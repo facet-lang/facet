@@ -2,6 +2,7 @@ module Facet.Env
 ( Env(..)
 , (|>)
 , index
+, level
 ) where
 
 import Control.Applicative ((<|>))
@@ -24,3 +25,6 @@ index :: HasCallStack => Env v -> Index -> Name -> v
 index (Env vs) i n = fromMaybe (error ("Env.index: name (" <> show n <> ") not found")) (find (\ (n' :=: v) -> v <$ guard (n == n')) (vs ! getIndex i))
   where
   find f = foldr ((<|>) . f) Nothing
+
+level :: Env v -> Level
+level = Level . length . bindings
