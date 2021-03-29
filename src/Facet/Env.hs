@@ -1,5 +1,6 @@
 module Facet.Env
 ( Env(..)
+, empty
 , (|>)
 , index
 , level
@@ -15,6 +16,9 @@ import Facet.Syntax
 import GHC.Stack
 
 newtype Env v = Env { bindings :: Snoc (Pattern (Name :=: v)) }
+
+empty :: Env v
+empty = Env Nil
 
 (|>) :: Env v -> Pattern (Name :=: v) -> Env v
 Env vs |> v = Env (vs :> v)
