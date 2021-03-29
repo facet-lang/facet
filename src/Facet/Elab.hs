@@ -17,6 +17,7 @@ module Facet.Elab
 , ErrReason(..)
 , UnifyErrReason(..)
 , err
+, makeErr
 , couldNotUnify
 , occursCheckFailure
 , couldNotSynthesize
@@ -34,8 +35,6 @@ module Facet.Elab
 , ElabContext(..)
 , context_
 , sig_
-, Exp(..)
-, Act(..)
   -- * Machinery
 , Elab(..)
 , evalTExpr
@@ -58,13 +57,16 @@ import           Control.Carrier.Writer.Church
 import           Control.Effect.Choose
 import           Control.Effect.Lens (views)
 import           Control.Lens (Lens', lens)
-import           Control.Monad (unless)
+import           Control.Monad (unless, (<=<))
+import           Data.Foldable (for_)
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as Context (empty)
 import           Facet.Core.Module
+import           Facet.Core.Pattern
 import           Facet.Core.Term as E
 import           Facet.Core.Type as T
 import           Facet.Effect.Write
+import qualified Facet.Env as Env
 import           Facet.Graph as Graph
 import           Facet.Lens
 import           Facet.Name hiding (L, R)
@@ -73,6 +75,7 @@ import           Facet.Snoc
 import           Facet.Snoc.NonEmpty (toSnoc)
 import           Facet.Source (Source, slice)
 import           Facet.Span (Span(..))
+import           Facet.Subst
 import           Facet.Syntax
 import           Facet.Usage as Usage
 import           Facet.Vars as Vars
@@ -88,8 +91,8 @@ import           Prelude hiding (span, zipWith)
 -- General
 
 -- FIXME: should we give metas names so we can report holes or pattern variables cleanly?
-meta :: Has (State Subst) sig m => Kind -> m Meta
-meta _T = state (declareMeta _T)
+meta :: Has (State (Subst Type)) sig m => Kind -> m Meta
+meta _T = state (declareMeta @Type)
 
 
 instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a ::: Type)
@@ -118,32 +121,33 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Def)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (Index, Quantity, Either Kind Type)
+lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Quantity, Classifier)
 lookupInContext (m:.n)
   | m == Nil  = lookupIndex n
   | otherwise = const empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Interface Type] -> m (RName :=: Def)
-lookupInSig (m :. n) mod graph = foldMapC $ \ (Interface q@(m':.:_) _) -> do
+lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Signature Type] -> m (RName :=: Def)
+lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _) -> do
   guard (m == Nil || m == toSnoc m')
   defs <- interfaceScope =<< lookupQ graph mod (toQ q)
   _ :=: d <- lookupScope n defs
-  pure $ m':.:n :=: d
+  pure $ m':.:n :=: d) . interfaces
   where
   interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> empty }
 
 
-(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err :+: Writer Usage) sig m) => Binding -> m a -> m a
-Binding n q _T |- b = do
+(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (Quantity, Pattern (Name ::: Classifier)) -> m a -> m a
+(q, p) |- b = do
   sigma <- asks scale
   d <- depth
-  let exp = sigma >< q
-  (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> Binding n exp _T) b
-  let act = Usage.lookup d u
-  unless (act `sat` exp)
-    $ resourceMismatch n exp act
+  (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> (q, p)) b
+  for_ p $ \ (n ::: _T) -> do
+    let exp = sigma >< q
+        act = Usage.lookup (LName d n) u
+    unless (act `sat` exp)
+      $ resourceMismatch n exp act
   pure a
 
 infix 1 |-
@@ -156,16 +160,16 @@ sat a b
   | otherwise = True
 
 
-evalTExpr :: Has (Reader ElabContext :+: State Subst) sig m => TExpr -> m Type
+evalTExpr :: Has (Reader ElabContext :+: State (Subst Type)) sig m => TExpr -> m Type
 evalTExpr texpr = T.eval <$> get <*> views context_ toEnv <*> pure texpr
 
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
 
-use :: Has (Reader ElabContext :+: Writer Usage) sig m => Index -> Quantity -> m ()
-use i q = do
+use :: Has (Reader ElabContext :+: Writer Usage) sig m => LName Index -> Quantity -> m ()
+use n q = do
   d <- depth
-  tell (Usage.singleton (indexToLevel d i) q)
+  tell (Usage.singleton (indexToLevel d <$> n) q)
 
 
 -- Errors
@@ -178,8 +182,8 @@ data Err = Err
   { source    :: Source
   , reason    :: ErrReason
   , context   :: Context
-  , subst     :: Subst
-  , sig       :: [Interface Type]
+  , subst     :: Subst Type
+  , sig       :: [Signature Type]
   , callStack :: CallStack
   }
 
@@ -190,16 +194,16 @@ data ErrReason
   | AmbiguousName QName [RName]
   | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
-  | Unify UnifyErrReason (Exp (Either String Subject)) (Act Subject)
-  | Hole Name Subject
+  | Unify UnifyErrReason (Exp (Either String Classifier)) (Act Classifier)
+  | Hole Name Classifier
   | Invariant String
   | MissingInterface (Interface Type)
 
 data UnifyErrReason
   = Mismatch
-  | Occurs Meta Subject
+  | Occurs Meta Classifier
 
-applySubst :: Context -> Subst -> ErrReason -> ErrReason
+applySubst :: Context -> Subst Type -> ErrReason -> ErrReason
 applySubst ctx subst r = case r of
   FreeVariable{}       -> r
   AmbiguousName{}      -> r
@@ -211,43 +215,44 @@ applySubst ctx subst r = case r of
   Invariant{}          -> r
   MissingInterface i   -> MissingInterface (roundtrip <$> i)
   where
-  env = toEnv ctx
   roundtripS = \case
-    SK k -> SK k
-    ST k -> ST $ roundtrip k
-  roundtrip = apply subst env
+    CK k -> CK k
+    CT k -> CT $ roundtrip k
+  roundtrip = apply subst (toEnv ctx)
 
 
--- FIXME: apply the substitution before showing this to the user
-err :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => ErrReason -> m a
-err reason = do
+err :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => ErrReason -> m a
+err = throwError <=< makeErr
+
+makeErr :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => ErrReason -> m Err
+makeErr reason = do
   StaticContext{ source } <- ask
   ElabContext{ context, sig, spans } <- ask
   subst <- get
-  throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
+  pure $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Exp (Either String Subject) -> Act Subject -> m a
+mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either String Classifier) -> Act Classifier -> m a
 mismatch exp act = withFrozenCallStack $ err $ Unify Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Exp Subject -> Act Subject -> m a
+couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp Classifier -> Act Classifier -> m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right <$> t1) t2
 
-occursCheckFailure :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Meta -> Subject -> Exp Subject -> Act Subject -> m a
+occursCheckFailure :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Meta -> Classifier -> Exp Classifier -> Act Classifier -> m a
 occursCheckFailure m v exp act = withFrozenCallStack $ err $ Unify (Occurs m v) (Right <$> exp) act
 
-couldNotSynthesize :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => m a
+couldNotSynthesize :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => m a
 couldNotSynthesize = withFrozenCallStack $ err CouldNotSynthesize
 
-resourceMismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Name -> Quantity -> Quantity -> m a
+resourceMismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Name -> Quantity -> Quantity -> m a
 resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp act
 
-freeVariable :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => QName -> m a
+freeVariable :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => QName -> m a
 freeVariable n = withFrozenCallStack $ err $ FreeVariable n
 
-ambiguousName :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => QName -> [RName] -> m a
+ambiguousName :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => QName -> [RName] -> m a
 ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
 
-missingInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State Subst :+: Throw Err) sig m) => Interface Type -> m a
+missingInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Interface Type -> m a
 missingInterface i = withFrozenCallStack $ err $ MissingInterface i
 
 
@@ -272,11 +277,11 @@ warn reason = do
 
 -- Patterns
 
-assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Subject -> Maybe out) -> String -> Subject -> Elab m out
+assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Classifier -> Maybe out) -> String -> Classifier -> Elab m out
 assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (pat _T)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-assertFunction = assertMatch (\case{ ST (VArrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . ST
+assertFunction = assertMatch (\case{ CT (VArrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . CT
 
 
 -- Unification
@@ -291,50 +296,43 @@ data StaticContext = StaticContext
 
 data ElabContext = ElabContext
   { context :: Context
-  , sig     :: [Interface Type]
+  , sig     :: [Signature Type]
   , spans   :: Snoc Span
   }
 
 context_ :: Lens' ElabContext Context
 context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
 
-sig_ :: Lens' ElabContext [Interface Type]
+sig_ :: Lens' ElabContext [Signature Type]
 sig_ = lens (\ ElabContext{ sig } -> sig) (\ e sig -> (e :: ElabContext){ sig })
 
 spans_ :: Lens' ElabContext (Snoc Span)
 spans_ = lens spans (\ e spans -> e{ spans })
 
 
-newtype Exp a = Exp { getExp :: a }
-  deriving (Functor)
-
-newtype Act a = Act { getAct :: a }
-  deriving (Functor)
-
-
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC Subst m))) a }
-  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State Subst :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC (Subst Type) m))) a }
+  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State (Subst Type) :+: sig), Applicative, Functor, Monad)
 
-elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst -> a -> m b) -> Elab m a -> m b
+elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst Type -> a -> m b) -> Elab m a -> m b
 elabWith scale k m = runState k mempty . runWriter (const pure) $ do
   (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
   let stat = StaticContext{ graph, module', source, scale }
-      ctx  = ElabContext{ context = Context.empty, sig = [], spans = Nil }
+      ctx  = ElabContext{ context = Context.empty, sig = mempty, spans = Nil }
   runReader stat . runReader ctx . runElab $ m
 
 elabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Kind -> m Kind
 elabKind = elabWith zero (const pure)
 
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
-elabType = elabWith zero (\ subst t -> pure (T.eval subst Nil t))
+elabType = elabWith zero (\ subst t -> pure (T.eval subst Env.empty t))
 
 elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Expr -> m Expr
 elabTerm = elabWith one (const pure)
 
 elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (Expr ::: Type) -> m (Expr ::: Type)
-elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: T.eval subst Nil (T.quote 0 _T)))
+elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: T.eval subst Env.empty (T.quote 0 _T)))
 
 elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr ::: Kind) -> m (Type ::: Kind)
-elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst Nil _T ::: _K))
+elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst Env.empty _T ::: _K))

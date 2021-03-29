@@ -10,6 +10,7 @@ module Facet.Usage
 ) where
 
 import qualified Data.IntMap as IntMap
+import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           Facet.Name
 import           Facet.Semiring
@@ -23,7 +24,7 @@ type Quantity = Few
 
 -- Usage
 
-newtype Usage = Usage (IntMap.IntMap Quantity)
+newtype Usage = Usage (IntMap.IntMap (Map.Map Name Quantity))
 
 instance Semigroup Usage where
   Usage a <> Usage b = Usage (IntMap.unionWith (<>) a b)
@@ -32,13 +33,13 @@ instance Monoid Usage where
   mempty = Usage mempty
 
 instance LeftModule Quantity Usage where
-  q ><< Usage a = Usage ((q ><) <$> a)
+  q ><< Usage a = Usage (fmap (q ><) <$> a)
 
-singleton :: Level -> Quantity -> Usage
-singleton (Level i) q = Usage (IntMap.singleton i q)
+singleton :: LName Level -> Quantity -> Usage
+singleton (LName (Level i) n) q = Usage (IntMap.singleton i (Map.singleton n q))
 
-lookup :: Level -> Usage -> Quantity
-lookup (Level i) (Usage a) = fromMaybe zero (IntMap.lookup i a)
+lookup :: LName Level -> Usage -> Quantity
+lookup (LName (Level i) n) (Usage a) = fromMaybe zero (Map.lookup n =<< IntMap.lookup i a)
 
 restrict :: Usage -> Vars.Vars -> Usage
 restrict (Usage u) (Vars.Vars v) = Usage (u `IntMap.restrictKeys` v)

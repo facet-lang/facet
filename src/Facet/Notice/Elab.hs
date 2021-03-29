@@ -9,14 +9,17 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (apply, metas, metavar)
+import           Facet.Core.Type (Classifier(..), apply, free, interfaces, metavar)
 import           Facet.Elab as Elab
-import           Facet.Notice as Notice
+import qualified Facet.Env as Env
+import           Facet.Name (LName(..))
+import           Facet.Notice as Notice hiding (level)
 import           Facet.Pretty
 import           Facet.Print as Print
 import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Snoc
 import           Facet.Style
+import           Facet.Subst (metas)
 import           Facet.Syntax
 import           GHC.Stack
 import           Prelude hiding (unlines)
@@ -24,8 +27,8 @@ import           Silkscreen
 
 -- Elaboration
 
-rethrowElabErrors :: Options -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
-rethrowElabErrors opts = L.runThrow rethrow
+rethrowElabErrors :: Applicative m => Options -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
+rethrowElabErrors opts = L.runThrow (pure . rethrow)
   where
   rethrow Err{ source, reason, context, subst, sig, callStack } = Notice.Notice (Just Error) [source] (printErrReason opts printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
@@ -34,23 +37,25 @@ rethrowElabErrors opts = L.runThrow rethrow
     , pretty (prettyCallStack callStack)
     ]
     where
-    (_, _, printCtx, ctx) = foldl' combine (0, empty, Nil, Nil) (elems context)
-    subst' = map (\ (m :=: v ::: _T) -> getPrint (ann (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v ::: printKind printCtx _T))) (metas subst)
-    sig' = getPrint . printInterface opts printCtx . fmap (apply subst (toEnv context)) <$> sig
-    combine (d, env, print, ctx) (Binding n m _T) =
-      let n' = intro n d
-          roundtrip = apply subst (toEnv env)
+    (_, _, printCtx, ctx) = foldl' combine (0, Env.empty, Env.empty, Nil) (elems context)
+    subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v)) (metas subst)
+    sig' = getPrint . printInterface opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
+    combine (d, env, print, ctx) (m, p) =
+      let roundtrip = apply subst env
+          binding (n ::: _T) = ann (intro n d ::: mult m (case _T of
+            CK _K -> printKind print _K
+            CT _T -> printType opts print (roundtrip _T)))
       in  ( succ d
-          , env |> Binding n m _T
-          , print :> n'
-          , ctx :> getPrint (ann (n' ::: mult m (either (printKind print) (printType opts print . roundtrip) _T))) )
+          , env Env.|> ((\ (n ::: _T) -> n :=: free (LName d n)) <$> p)
+          , print Env.|> ((\ (n ::: _) -> n :=: intro n d) <$> p)
+          , ctx :> getPrint (printPattern opts (binding <$> p)) )
   mult m = if
     | m == zero -> (pretty "0" <+>)
     | m == one  -> (pretty "1" <+>)
     | otherwise -> id
 
 
-printErrReason :: Options -> Snoc Print -> ErrReason -> Doc Style
+printErrReason :: Options -> Env.Env Print -> ErrReason -> Doc Style
 printErrReason opts ctx = group . \case
   FreeVariable n               -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n qs           -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))

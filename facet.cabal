@@ -75,6 +75,7 @@ library
     Facet.CLI
     Facet.Context
     Facet.Core.Module
+    Facet.Core.Pattern
     Facet.Core.Term
     Facet.Core.Type
     Facet.Diff
@@ -88,6 +89,7 @@ library
     Facet.Elab
     Facet.Elab.Term
     Facet.Elab.Type
+    Facet.Env
     Facet.Eval
     Facet.Flag
     Facet.Format
@@ -112,6 +114,7 @@ library
     Facet.Source
     Facet.Span
     Facet.Style
+    Facet.Subst
     Facet.Surface
     Facet.Syntax
     Facet.Timing

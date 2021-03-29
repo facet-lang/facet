@@ -141,13 +141,13 @@ loadModuleHeader searchPaths target = do
     Right name -> resolveName searchPaths name
   src <- rethrowIOErrors [] $ readSourceFromFile path
   -- FIXME: validate that the name matches
-  (name', is) <- rethrowParseErrors @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
+  (name', is) <- rethrowParseErrors @_ @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (ModuleHeader name' src (map (Import.name . S.out) is))
 
 loadModule :: Has (Output :+: State Options :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => Graph -> ModuleHeader Module -> m Module
 loadModule graph (ModuleHeader _ src imports) = do
   let ops = foldMap (\ m -> map (\ (op, assoc) -> (name m, op, assoc)) (operators m)) imports
-  m <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
+  m <- rethrowParseErrors @_ @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   opts <- get
   rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m
 
@@ -175,7 +175,7 @@ rethrowIOErrors refs m = liftIO (tryIOError m) >>= either (throwError . ioErrorT
 ioErrorToNotice :: [Source] -> IOError -> Notice.Notice (Doc Style)
 ioErrorToNotice refs err = Notice.Notice (Just Notice.Error) refs (group (reflow (show err))) []
 
-rethrowGraphErrors :: [Source] -> I.ThrowC (Notice.Notice (Doc Style)) GraphErr m a -> m a
-rethrowGraphErrors refs = I.runThrow formatGraphErr
+rethrowGraphErrors :: Applicative m => [Source] -> I.ThrowC (Notice.Notice (Doc Style)) GraphErr m a -> m a
+rethrowGraphErrors refs = I.runThrow (pure . formatGraphErr)
   where
   formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) refs (reflow "cyclic import") (map prettyMName (toList path))

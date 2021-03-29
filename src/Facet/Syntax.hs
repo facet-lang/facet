@@ -3,11 +3,15 @@ module Facet.Syntax
 , tm
 , ty
 , (:=:)(..)
+, nm, def
   -- * Variables
 , Var(..)
   -- * Decomposition
 , splitl
 , splitr
+  -- * Assertion data
+, Exp(..)
+, Act(..)
 ) where
 
 import Data.Bifoldable
@@ -64,6 +68,12 @@ instance Bifunctor (:=:) where
 instance Bitraversable (:=:) where
   bitraverse f g (a :=: b) = (:=:) <$> f a <*> g b
 
+nm :: a :=: b -> a
+nm (a :=: _) = a
+
+def :: a :=: b -> b
+def (_ :=: b) = b
+
 
 -- Variables
 
@@ -88,3 +98,12 @@ splitr un = go id
   go as t = case un t of
     Just (a, t') -> go (as . (a:)) t'
     Nothing      -> (as [], t)
+
+
+-- Assertion data
+
+newtype Exp a = Exp { getExp :: a }
+  deriving (Functor)
+
+newtype Act a = Act { getAct :: a }
+  deriving (Functor)

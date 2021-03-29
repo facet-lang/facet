@@ -3,9 +3,7 @@ module Facet.Effect.Time
 ( -- * Time effect
   now
 , timeWith
-, epoch
-, sinceEpochWith
-, eraFrom
+, timeWith_
 , Time(..)
   -- * Re-exports
 , Algebra
@@ -14,6 +12,7 @@ module Facet.Effect.Time
 ) where
 
 import Control.Algebra
+import Data.Kind (Type)
 
 now :: Has (Time instant) sig m => m instant
 now = send Now
@@ -28,23 +27,9 @@ timeWith with m = do
   d `seq` pure (d, a)
 {-# INLINE timeWith #-}
 
-epoch :: Has (Time instant) sig m => m instant
-epoch = send Epoch
-{-# INLINE epoch #-}
+timeWith_ :: Has (Time instant) sig m => (instant -> instant -> delta) -> m a -> m delta
+timeWith_ with m = with <$> now <* m <*> now
+{-# INLINE timeWith_ #-}
 
-sinceEpochWith :: Has (Time instant) sig m => (instant -> instant -> delta) -> m delta
-sinceEpochWith with = do
-  now <- now
-  epoch <- epoch
-  let d = with epoch now
-  d `seq` pure d
-{-# INLINE sinceEpochWith #-}
-
-eraFrom :: Has (Time instant) sig m => instant -> m a -> m a
-eraFrom t m = send (EraFrom t m)
-{-# INLINE eraFrom #-}
-
-data Time instant m k where
-  Now     ::                   Time instant m instant
-  Epoch   ::                   Time instant m instant
-  EraFrom :: instant -> m a -> Time instant m a
+data Time instant (m :: Type -> Type) k where
+  Now :: Time instant m instant

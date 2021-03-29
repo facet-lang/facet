@@ -11,6 +11,7 @@ module Facet.Name
 , QName(..)
 , RName(..)
 , toQ
+, LName(..)
 , Name(..)
 , Assoc(..)
 , Op(..)
@@ -87,6 +88,11 @@ instance P.Pretty RName where
 -- | Weaken an 'RName' to a 'QName'. This is primarily used for performing lookups in the graph starting from an 'RName' where the stronger structure is not required.
 toQ :: RName -> QName
 toQ (m :.: n) = toSnoc m :. n
+
+
+-- | Local names, consisting of a 'Level' or 'Index' to a pattern in an 'Env' or 'Context' and a 'Name' bound by said pattern.
+data LName v = LName v Name
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.

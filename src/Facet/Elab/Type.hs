@@ -22,8 +22,8 @@ import           Control.Monad (unless)
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
-import           Facet.Context
 import           Facet.Core.Module
+import           Facet.Core.Pattern
 import           Facet.Core.Type
 import           Facet.Elab
 import           Facet.Name
@@ -35,8 +35,8 @@ import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TExpr
 tvar n = IsType $ views context_ (lookupInContext n) >>= \case
-  [(i, q, Left _K)] -> use i q $> (TVar (Free (Right i)) ::: _K)
-  _                 -> resolveQ n >>= \case
+  [(n', q, CK _K)] -> use n' q $> (TVar (Free (Right n')) ::: _K)
+  _                -> resolveQ n >>= \case
     q :=: DData      _ _K -> pure $ TVar (Global q) ::: _K
     q :=: DInterface _ _K -> pure $ TVar (Global q) ::: _K
     _                     -> freeVariable n
@@ -60,7 +60,7 @@ _String = IsType $ pure $ TString ::: KType
 forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m TExpr -> IsType m TExpr
 forAll (n ::: t) b = IsType $ do
   t' <- checkIsType (t ::: KType)
-  b' <- Binding n zero (Left t') |- checkIsType (b ::: KType)
+  b' <- (zero, pvar (n ::: CK t')) |- checkIsType (b ::: KType)
   pure $ TForAll n t' b' ::: KType
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
@@ -84,7 +84,7 @@ comp s t = IsType $ do
   s' <- traverse (checkIsType . (::: KInterface)) s
   -- FIXME: polarize types and check that this is a value type being returned
   t' <- checkIsType (t ::: KType)
-  pure $ TComp s' t' ::: KType
+  pure $ TComp (fromInterfaces s') t' ::: KType
 
 
 synthKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Kind -> IsType m Kind
@@ -118,7 +118,7 @@ synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = IsType $ pushSpan s
 -- Assertions
 
 assertTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => Kind -> Elab m (Maybe Name ::: Kind, Kind)
-assertTypeConstructor = assertMatch (\case{ SK (KArrow n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _" . SK
+assertTypeConstructor = assertMatch (\case{ CK (KArrow n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _" . CK
 
 
 -- Judgements
@@ -126,7 +126,7 @@ assertTypeConstructor = assertMatch (\case{ SK (KArrow n t b) -> pure (n ::: t, 
 checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Kind -> Elab m a
 checkIsType (m ::: _K) = do
   a ::: _KA <- isType m
-  a <$ unless (_KA == _K) (couldNotUnify (Exp (SK _K)) (Act (SK _KA)))
+  a <$ unless (_KA == _K) (couldNotUnify (Exp (CK _K)) (Act (CK _KA)))
 
 newtype IsType m a = IsType { isType :: Elab m (a ::: Kind) }
 
