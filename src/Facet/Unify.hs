@@ -36,7 +36,7 @@ unify :: (HasCallStack, Has (Throw Err) sig m) => Exp Type -> Act Type -> Elab m
 unify t1 t2 = runUnify t1 t2 (unifyType (getExp t1) (getAct t2))
 
 runUnify :: Has (Throw Err) sig m => Exp Type -> Act Type -> ErrorC (WithCallStack UnifyErrReason) (Elab m) a -> Elab m a
-runUnify t1 t2 = runError (withCallStack (\ r -> err (Unify (UnifyErr r (Right . CT <$> t1) (CT <$> t2))))) pure
+runUnify t1 t2 = runError (withCallStack (\ r -> err (Unify r (Right . CT <$> t1) (CT <$> t2)))) pure
 
 mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => m a
 mismatch   = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStack Mismatch

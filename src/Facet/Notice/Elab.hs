@@ -68,7 +68,7 @@ printErrReason opts ctx = group . \case
       Zero -> pretty "0"
       One  -> pretty "1"
       Many -> pretty "arbitrarily many"
-  Unify (UnifyErr r (Exp exp) (Act act)) -> reason r
+  Unify r (Exp exp) (Act act) -> reason r
     <> hardline <> pretty "expected:" <> print exp'
     <> hardline <> pretty "  actual:" <> print act'
     where
