@@ -116,7 +116,7 @@ loop = do
       graph <- use (target_.modules_)
       targets <- use (target_.targets_)
       let ops = foldMap (\ name -> lookupM name graph >>= maybe [] pure . snd >>= map (\ (op, assoc) -> (name, op, assoc)) . operators) (toList targets)
-      action <- rethrowParseErrors @Style (runParserWithSource src (runFacet (map (\ (n, a, b) -> makeOperator (n, a, b)) ops) commandParser))
+      action <- rethrowParseErrors @_ @Style (runParserWithSource src (runFacet (map (\ (n, a, b) -> makeOperator (n, a, b)) ops) commandParser))
       runReader src $ runAction action
     Nothing  -> pure ()
   loop

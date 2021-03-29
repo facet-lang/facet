@@ -27,8 +27,8 @@ import           Silkscreen
 
 -- Elaboration
 
-rethrowElabErrors :: Options -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
-rethrowElabErrors opts = L.runThrow rethrow
+rethrowElabErrors :: Applicative m => Options -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
+rethrowElabErrors opts = L.runThrow (pure . rethrow)
   where
   rethrow Err{ source, reason, context, subst, sig, callStack } = Notice.Notice (Just Error) [source] (printErrReason opts printCtx reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)

@@ -15,8 +15,8 @@ import           Silkscreen
 
 -- Parsing
 
-rethrowParseErrors :: L.ThrowC (Notice (Doc e)) (Source, Parse.Err) m a -> m a
-rethrowParseErrors = L.runThrow (uncurry errToNotice)
+rethrowParseErrors :: Applicative m => L.ThrowC (Notice (Doc e)) (Source, Parse.Err) m a -> m a
+rethrowParseErrors = L.runThrow (pure . uncurry errToNotice)
 
 
 errToNotice :: Source -> Parse.Err -> Notice (Doc a)
