@@ -3,6 +3,7 @@ module Facet.Syntax
 , tm
 , ty
 , (:=:)(..)
+, nm, def
   -- * Variables
 , Var(..)
   -- * Decomposition
@@ -63,6 +64,12 @@ instance Bifunctor (:=:) where
 
 instance Bitraversable (:=:) where
   bitraverse f g (a :=: b) = (:=:) <$> f a <*> g b
+
+nm :: a :=: b -> a
+nm (a :=: _) = a
+
+def :: a :=: b -> b
+def (_ :=: b) = b
 
 
 -- Variables
