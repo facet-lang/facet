@@ -54,6 +54,7 @@ import           Data.Bool (bool)
 import           Data.Foldable
 import           Data.Functor
 import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
+import           Data.Monoid (Ap(..), First(..))
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
@@ -391,7 +392,10 @@ findM :: (Foldable t, Monad m) => (a -> m Bool) -> t a -> m (Maybe a)
 findM p = foldrM (\ a rest -> bool rest (Just a) <$> p a) Nothing
 
 findMaybeM :: (Foldable t, Monad m) => (a -> m (Maybe b)) -> t a -> m (Maybe b)
-findMaybeM p = foldrM (\ a rest -> maybe rest Just <$> p a) Nothing
+findMaybeM p = fmap getFirst . foldMapM (fmap First . p)
+
+foldMapM :: (Foldable t, Applicative m, Monoid b) => (a -> m b) -> t a -> m b
+foldMapM f = getAp . foldMap (Ap . f)
 
 
 -- Judgements
