@@ -205,7 +205,7 @@ printExpr opts@Options{ rname, instantiation } = go
   go env = \case
     C.XVar (Global n) -> qvar n
     C.XVar (Free n)   -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
-    C.XTLam b         -> let { d = level env ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env |> pvar (__ :=: v)) b)
+    C.XTLam n b       -> let { d = level env ; v = tintro n d } in braces (braces v <+> arrow <+> go (env |> pvar (__ :=: v)) b)
     C.XInst e t       -> go env e `instantiation` braces (printTExpr opts env t)
     C.XLam cs         -> comp (commaSep (map (clause env) cs))
     C.XApp f a        -> go env f $$ go env a

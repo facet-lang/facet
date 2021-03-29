@@ -14,7 +14,7 @@ import           Facet.Syntax
 
 data Expr
   = XVar (Var (LName Index))
-  | XTLam Expr
+  | XTLam Name Expr
   | XInst Expr T.TExpr
   | XLam [(Pattern Name, Expr)]
   | XApp Expr Expr

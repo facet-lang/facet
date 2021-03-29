@@ -120,7 +120,7 @@ tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
   b' <- (zero, pvar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
-  pure $ XTLam b'
+  pure $ XTLam n b'
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
 lam cs = Check $ \ _T -> do
