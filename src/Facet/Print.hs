@@ -21,6 +21,7 @@ module Facet.Print
 , printType
 , printInterface
 , printTExpr
+, printNorm
 , printExpr
 , printPattern
 , printModule
@@ -41,6 +42,7 @@ import qualified Facet.Core.Type as C
 import qualified Facet.Core.Type as CT
 import           Facet.Env as Env
 import           Facet.Name as Name
+import qualified Facet.Norm as N
 import           Facet.Pretty (lower, upper)
 import           Facet.Semiring (one, zero)
 import           Facet.Snoc
@@ -193,6 +195,9 @@ printTExpr opts@Options{ rname } = go
 
 printInterfaceWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Print -> C.Interface a -> Print
 printInterfaceWith with opts@Options{ rname } env (C.Interface h sp) = rname h $$* fmap (with opts env) sp
+
+printNorm :: Options -> Env Print -> N.Norm -> Print
+printNorm opts env = printExpr opts env . N.quote (level env)
 
 printExpr :: Options -> Env Print -> C.Expr -> Print
 printExpr opts@Options{ rname, instantiation } = go
