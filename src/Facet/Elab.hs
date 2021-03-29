@@ -17,6 +17,7 @@ module Facet.Elab
 , ErrReason(..)
 , UnifyErrReason(..)
 , err
+, makeErr
 , couldNotUnify
 , occursCheckFailure
 , couldNotSynthesize
@@ -56,7 +57,7 @@ import           Control.Carrier.Writer.Church
 import           Control.Effect.Choose
 import           Control.Effect.Lens (views)
 import           Control.Lens (Lens', lens)
-import           Control.Monad (unless)
+import           Control.Monad (unless, (<=<))
 import           Data.Foldable (for_)
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as Context (empty)
@@ -221,11 +222,14 @@ applySubst ctx subst r = case r of
 
 
 err :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => ErrReason -> m a
-err reason = do
+err = throwError <=< makeErr
+
+makeErr :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => ErrReason -> m Err
+makeErr reason = do
   StaticContext{ source } <- ask
   ElabContext{ context, sig, spans } <- ask
   subst <- get
-  throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
+  pure $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
 
 mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either String Classifier) -> Act Classifier -> m a
 mismatch exp act = withFrozenCallStack $ err $ Unify Mismatch exp act
