@@ -18,7 +18,7 @@ import GHC.Stack
 import Prelude hiding (lookup)
 
 newtype Env v = Env { bindings :: Snoc (Pattern (Name :=: v)) }
-  deriving (Monoid, Semigroup)
+  deriving (Foldable, Functor, Monoid, Semigroup, Traversable)
 
 empty :: Env v
 empty = Env Nil
