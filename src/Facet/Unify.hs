@@ -5,12 +5,14 @@ module Facet.Unify
 , Act(..)
 , UnifyErrReason(..)
 , unify
+, runUnifyMaybe
   -- * Equating
 , runEq
 , eqInterface
 ) where
 
 import Control.Carrier.Empty.Church
+import Control.Carrier.Error.Church
 import Control.Effect.Reader
 import Control.Effect.State
 import Control.Effect.Sum
@@ -37,6 +39,9 @@ unify t1 t2 = runUnify t1 t2 (unifyType (getExp t1) (getAct t2))
 
 runUnify :: Has (Throw Err) sig m => Exp Type -> Act Type -> ThrowC Err (WithCallStack UnifyErrReason) (Elab m) a -> Elab m a
 runUnify t1 t2 = runThrow (withCallStack (\ r -> makeErr (Unify r (Right . CT <$> t1) (CT <$> t2))))
+
+runUnifyMaybe :: Applicative m => ErrorC (WithCallStack UnifyErrReason) m a -> m (Maybe a)
+runUnifyMaybe = runError (const (pure Nothing)) (pure . Just)
 
 mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => m a
 mismatch   = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStack Mismatch
