@@ -90,6 +90,7 @@ toQ :: RName -> QName
 toQ (m :.: n) = toSnoc m :. n
 
 
+-- | Local names, consisting of a 'Level' or 'Index' to a pattern in an 'Env' or 'Context' and a 'Name' bound by said pattern.
 data LName v = LName v Name
   deriving (Eq, Ord, Show)
 
