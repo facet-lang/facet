@@ -41,12 +41,12 @@ rethrowElabErrors opts = L.runThrow rethrow
     sig' = getPrint . printInterface opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
     combine (d, env, print, ctx) (m, p) =
       let roundtrip = apply subst env
-          binding (Binding n _T) = ann (intro n d ::: mult m (case _T of
+          binding (n ::: _T) = ann (intro n d ::: mult m (case _T of
             CK _K -> printKind print _K
             CT _T -> printType opts print (roundtrip _T)))
       in  ( succ d
-          , env Env.|> ((\ (Binding n _T) -> n :=: free d n) <$> p)
-          , print Env.|> ((\ (Binding n _) -> n :=: intro n d) <$> p)
+          , env Env.|> ((\ (n ::: _T) -> n :=: free d n) <$> p)
+          , print Env.|> ((\ (n ::: _) -> n :=: intro n d) <$> p)
           , ctx :> getPrint (printPattern opts (binding <$> p)) )
   mult m = if
     | m == zero -> (pretty "0" <+>)

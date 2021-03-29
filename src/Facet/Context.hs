@@ -2,7 +2,6 @@ module Facet.Context
 ( -- * Contexts
   Quantity
 , Context(..)
-, Binding(..)
 , empty
 , (|>)
 , level
@@ -23,18 +22,13 @@ import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
-newtype Context = Context { elems :: S.Snoc (Quantity, Pattern Binding) }
-
-data Binding = Binding
-  { name  :: Name
-  , type' :: Classifier
-  }
+newtype Context = Context { elems :: S.Snoc (Quantity, Pattern (Name ::: Classifier)) }
 
 
 empty :: Context
 empty = Context S.Nil
 
-(|>) :: Context -> (Quantity, Pattern Binding) -> Context
+(|>) :: Context -> (Quantity, Pattern (Name ::: Classifier)) -> Context
 Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
@@ -42,7 +36,7 @@ infixl 5 |>
 level :: Context -> Level
 level (Context es) = Level (length es)
 
-(!) :: HasCallStack => Context -> Index -> (Quantity, Pattern Binding)
+(!) :: HasCallStack => Context -> Index -> (Quantity, Pattern (Name ::: Classifier))
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
   where
   go (es S.:> e) i
@@ -55,9 +49,9 @@ lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil                                        = E.empty
   go i (cs S.:> (q, p))
-    | Just (Binding n' t) <- find ((== n) . name) p = pure (i, n', q, t)
+    | Just (n' ::: t) <- find ((== n) . tm) p = pure (i, n', q, t)
     | otherwise                                     = go (succ i) cs
 
 
 toEnv :: Context -> Env.Env Type
-toEnv c = Env.Env (S.fromList (zipWith (\ (_, p) d -> (\ b -> name b :=: free d (name b)) <$> p) (toList (elems c)) [0..pred (level c)]))
+toEnv c = Env.Env (S.fromList (zipWith (\ (_, p) d -> (\ b -> tm b :=: free d (tm b)) <$> p) (toList (elems c)) [0..pred (level c)]))
