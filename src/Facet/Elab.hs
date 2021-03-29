@@ -122,7 +122,7 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Def)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (Index, Name, Quantity, Classifier)
+lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Quantity, Classifier)
 lookupInContext (m:.n)
   | m == Nil  = lookupIndex n
   | otherwise = const empty
@@ -146,7 +146,7 @@ lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _)
   (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> (q, p)) b
   for_ p $ \ (n ::: _T) -> do
     let exp = sigma >< q
-        act = Usage.lookup d n u
+        act = Usage.lookup (LName d n) u
     unless (act `sat` exp)
       $ resourceMismatch n exp act
   pure a
@@ -167,10 +167,10 @@ evalTExpr texpr = T.eval <$> get <*> views context_ toEnv <*> pure texpr
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
 
-use :: Has (Reader ElabContext :+: Writer Usage) sig m => Index -> Name -> Quantity -> m ()
-use i n q = do
+use :: Has (Reader ElabContext :+: Writer Usage) sig m => LName Index -> Quantity -> m ()
+use n q = do
   d <- depth
-  tell (Usage.singleton (indexToLevel d i) n q)
+  tell (Usage.singleton (indexToLevel d <$> n) q)
 
 
 -- Errors

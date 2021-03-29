@@ -28,13 +28,13 @@ Env vs |> v = Env (vs :> v)
 
 infixl 5 |>
 
-lookup :: Env v -> Index -> Name -> Maybe v
-lookup (Env vs) i n = find (\ (n' :=: v) -> v <$ guard (n == n')) (vs ! getIndex i)
+lookup :: Env v -> LName Index -> Maybe v
+lookup (Env vs) (LName i n) = find (\ (n' :=: v) -> v <$ guard (n == n')) (vs ! getIndex i)
   where
   find f = foldr ((<|>) . f) Nothing
 
-index :: HasCallStack => Env v -> Index -> Name -> v
-index env i n = fromMaybe (error ("Env.index: name (" <> show n <> ") not found")) (lookup env i n)
+index :: HasCallStack => Env v -> LName Index -> v
+index env n = fromMaybe (error ("Env.index: name (" <> show n <> ") not found")) (lookup env n)
 
 level :: Env v -> Level
 level = Level . length . bindings

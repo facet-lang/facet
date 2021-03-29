@@ -12,6 +12,7 @@ import           Facet.Context
 import           Facet.Core.Type (Classifier(..), apply, free, interfaces, metavar)
 import           Facet.Elab as Elab
 import qualified Facet.Env as Env
+import           Facet.Name (LName(..))
 import           Facet.Notice as Notice hiding (level)
 import           Facet.Pretty
 import           Facet.Print as Print
@@ -45,7 +46,7 @@ rethrowElabErrors opts = L.runThrow rethrow
             CK _K -> printKind print _K
             CT _T -> printType opts print (roundtrip _T)))
       in  ( succ d
-          , env Env.|> ((\ (n ::: _T) -> n :=: free d n) <$> p)
+          , env Env.|> ((\ (n ::: _T) -> n :=: free (LName d n)) <$> p)
           , print Env.|> ((\ (n ::: _) -> n :=: intro n d) <$> p)
           , ctx :> getPrint (printPattern opts (binding <$> p)) )
   mult m = if

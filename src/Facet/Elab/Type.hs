@@ -35,8 +35,8 @@ import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TExpr
 tvar n = IsType $ views context_ (lookupInContext n) >>= \case
-  [(i, n', q, CK _K)] -> use i n' q $> (TVar (Free (Right (i, n'))) ::: _K)
-  _                   -> resolveQ n >>= \case
+  [(n', q, CK _K)] -> use n' q $> (TVar (Free (Right n')) ::: _K)
+  _                -> resolveQ n >>= \case
     q :=: DData      _ _K -> pure $ TVar (Global q) ::: _K
     q :=: DInterface _ _K -> pure $ TVar (Global q) ::: _K
     _                     -> freeVariable n

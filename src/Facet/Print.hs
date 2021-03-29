@@ -173,15 +173,15 @@ printTExpr opts@Options{ rname } = go
   where
   qvar = group . setPrec Var . rname
   go env = \case
-    C.TVar (Global n)            -> qvar n
-    C.TVar (Free (Right (d, n))) -> fromMaybe (pretty (getIndex d)) $ Env.lookup env d n
-    C.TVar (Free (Left m))       -> meta m
-    C.TForAll      n    t b      -> braces (ann (intro n d ::: printKind env t)) --> go (env |> pvar (n :=: intro n d)) b
-    C.TArrow Nothing  q a b      -> mult q (go env a) --> go env b
-    C.TArrow (Just n) q a b      -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
-    C.TComp s t                  -> if s == mempty then go env t else sig s <+> go env t
-    C.TApp f a                   -> group (go env f) $$ group (go env a)
-    C.TString                    -> annotate Type $ pretty "String"
+    C.TVar (Global n)       -> qvar n
+    C.TVar (Free (Right n)) -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
+    C.TVar (Free (Left m))  -> meta m
+    C.TForAll      n    t b -> braces (ann (intro n d ::: printKind env t)) --> go (env |> pvar (n :=: intro n d)) b
+    C.TArrow Nothing  q a b -> mult q (go env a) --> go env b
+    C.TArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
+    C.TComp s t             -> if s == mempty then go env t else sig s <+> go env t
+    C.TApp f a              -> group (go env f) $$ group (go env a)
+    C.TString               -> annotate Type $ pretty "String"
     where
     d = level env
     sig s = brackets (commaSep (map (interface env) (C.interfaces s)))
@@ -198,15 +198,17 @@ printExpr :: Options -> Env Print -> C.Expr -> Print
 printExpr opts@Options{ rname, instantiation } = go
   where
   go env = \case
-    C.XVar (Global n)    -> qvar n
-    C.XVar (Free (d, n)) -> fromMaybe (pretty (getIndex d)) $ Env.lookup env d n
-    C.XTLam b            -> let { d = level env ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env |> pvar (__ :=: v)) b)
-    C.XInst e t          -> go env e `instantiation` braces (printTExpr opts env t)
-    C.XLam cs            -> comp (commaSep (map (clause env) cs))
-    C.XApp f a           -> go env f $$ go env a
-    C.XCon n t p         -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
-    C.XOp n t p          -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
-    C.XString s          -> annotate Lit $ pretty (show s)
+    C.XVar (Global n) -> qvar n
+    C.XVar (Free n)   -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
+    C.XTLam b         -> let { d = level env ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env |> pvar (__ :=: v)) b)
+    C.XInst e t       -> go env e `instantiation` braces (printTExpr opts env t)
+    C.XLam cs         -> comp (commaSep (map (clause env) cs))
+    C.XApp f a        -> go env f $$ go env a
+    C.XCon n t p      -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
+    C.XOp n t p       -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
+    C.XString s       -> annotate Lit $ pretty (show s)
+    where
+    d = level env
   qvar = group . setPrec Var . rname
   clause env (p, b) = printPattern opts (def <$> p') <+> arrow <+> go (env |> p') b
     where
@@ -252,6 +254,9 @@ intro, tintro :: Name -> Level -> Print
 intro  n = name lower n . getLevel
 tintro n = name upper n . getLevel
 qvar (_ :. n) = setPrec Var (pretty n)
+
+lname :: LName Level -> Print
+lname (LName d n) = intro n d
 
 meta :: Meta -> Print
 meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m

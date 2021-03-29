@@ -18,7 +18,6 @@ import Control.Algebra hiding (Handler)
 import Control.Carrier.Reader
 import Control.Monad (ap, guard, liftM, (>=>))
 import Control.Monad.Trans.Class
-import Data.Bifunctor (first)
 import Data.Foldable
 import Data.Function
 import Data.Maybe (fromMaybe)
@@ -39,15 +38,15 @@ import Prelude hiding (zipWith)
 
 eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Env (Value (Eval m)) -> [(RName, Handler (Eval m))] -> Expr -> Eval m (Value (Eval m))
 eval env hdl = \case
-  XVar (Global n)    -> global n >>= eval env hdl
-  XVar (Free (v, n)) -> var env v n
-  XTLam b            -> tlam (eval env hdl b)
-  XInst f t          -> inst (eval env hdl f) t
-  XLam cs            -> lam env cs
-  XApp  f a          -> app env hdl (eval env hdl f) a
-  XCon n _ fs        -> con n (eval env hdl <$> fs)
-  XString s          -> string s
-  XOp n _ sp         -> op hdl n (flip (eval env) <$> sp)
+  XVar (Global n) -> global n >>= eval env hdl
+  XVar (Free n)   -> var env n
+  XTLam b         -> tlam (eval env hdl b)
+  XInst f t       -> inst (eval env hdl f) t
+  XLam cs         -> lam env cs
+  XApp  f a       -> app env hdl (eval env hdl f) a
+  XCon n _ fs     -> con n (eval env hdl <$> fs)
+  XString s       -> string s
+  XOp n _ sp      -> op hdl n (flip (eval env) <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
 global n = do
@@ -57,8 +56,8 @@ global n = do
     [_ :=: DTerm (Just v) _] -> pure v -- FIXME: store values in the module graph
     _                        -> error "throw a real error here"
 
-var :: (HasCallStack, Applicative m) => Env (Value m) -> Index -> Name -> m (Value m)
-var env v n = pure (index env v n)
+var :: (HasCallStack, Applicative m) => Env (Value m) -> LName Index -> m (Value m)
+var env n = pure (index env n)
 
 tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 tlam = id
@@ -119,7 +118,7 @@ instance Algebra sig m => Algebra sig (Eval m) where
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VVar (Var (Level, Name))
+  = VVar (Var (LName Level))
   -- | Value; data constructors.
   | VCon RName (Snoc (Value m))
   -- | Value; strings.
@@ -160,7 +159,7 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam _ cs -> pure $ XLam cs
-  VCont k   -> quoteV (succ d) =<< k (VVar (Free (d, __)))
-  VVar v    -> pure (XVar (first (levelToIndex d) <$> v))
+  VCont k   -> quoteV (succ d) =<< k (VVar (Free (LName d __)))
+  VVar v    -> pure (XVar (fmap (levelToIndex d) <$> v))
   VCon n fs -> XCon n Nil <$> traverse (quoteV d) fs
   VString s -> pure $ XString s

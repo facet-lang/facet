@@ -44,14 +44,14 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
     | otherwise    = go es (i - 1)
   go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (Index, Name, Quantity, Classifier)
+lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (LName Index, Quantity, Classifier)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil                                        = E.empty
   go i (cs S.:> (q, p))
-    | Just (n' ::: t) <- find ((== n) . tm) p = pure (i, n', q, t)
+    | Just (n' ::: t) <- find ((== n) . tm) p = pure (LName i n', q, t)
     | otherwise                                     = go (succ i) cs
 
 
 toEnv :: Context -> Env.Env Type
-toEnv c = Env.Env (S.fromList (zipWith (\ (_, p) d -> (\ b -> tm b :=: free d (tm b)) <$> p) (toList (elems c)) [0..pred (level c)]))
+toEnv c = Env.Env (S.fromList (zipWith (\ (_, p) d -> (\ b -> tm b :=: free (LName d (tm b))) <$> p) (toList (elems c)) [0..pred (level c)]))

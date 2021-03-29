@@ -104,7 +104,7 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
-  | [(i, n', q, CT _T)] <- lookupInContext n context             -> use i n' q $> (XVar (Free (i, n')) ::: _T)
+  | [(n', q, CT _T)] <- lookupInContext n context                -> use n' q $> (XVar (Free n') ::: _T)
   | [_ :=: DTerm (Just x) _T] <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
   | otherwise                                                    -> resolveQ n >>= \case
     n :=: DTerm _ _T -> synth $ global (n ::: _T)
@@ -119,7 +119,7 @@ tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
-  b' <- (zero, pvar (n ::: CK _A)) |- check (b ::: _B (T.free d n))
+  b' <- (zero, pvar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
   pure $ XTLam b'
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
@@ -241,13 +241,13 @@ abstractTerm body = go Nil Nil
   go ts fs = Check $ \case
     VForAll n   _T _B -> do
       d <- depth
-      check (tlam (go (ts :> (d, n)) fs) ::: VForAll n _T _B)
+      check (tlam (go (ts :> LName d n) fs) ::: VForAll n _T _B)
     VArrow  n q _A _B -> do
       d <- depth
-      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> XVar (Free (levelToIndex d' d, fromMaybe __ n))))] ::: VArrow n q _A _B)
+      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> XVar (Free (LName (levelToIndex d' d) (fromMaybe __ n)))))] ::: VArrow n q _A _B)
     _T                 -> do
       d <- depth
-      pure $ body (TVar . Free . Right . first (levelToIndex d) <$> ts) (fs <*> pure d)
+      pure $ body (TVar . Free . Right . fmap (levelToIndex d) <$> ts) (fs <*> pure d)
 
 patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern Name)
 patternForArgType = \case

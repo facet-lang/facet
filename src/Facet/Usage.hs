@@ -35,11 +35,11 @@ instance Monoid Usage where
 instance LeftModule Quantity Usage where
   q ><< Usage a = Usage (fmap (q ><) <$> a)
 
-singleton :: Level -> Name -> Quantity -> Usage
-singleton (Level i) n q = Usage (IntMap.singleton i (Map.singleton n q))
+singleton :: LName Level -> Quantity -> Usage
+singleton (LName (Level i) n) q = Usage (IntMap.singleton i (Map.singleton n q))
 
-lookup :: Level -> Name -> Usage -> Quantity
-lookup (Level i) n (Usage a) = fromMaybe zero (Map.lookup n =<< IntMap.lookup i a)
+lookup :: LName Level -> Usage -> Quantity
+lookup (LName (Level i) n) (Usage a) = fromMaybe zero (Map.lookup n =<< IntMap.lookup i a)
 
 restrict :: Usage -> Vars.Vars -> Usage
 restrict (Usage u) (Vars.Vars v) = Usage (u `IntMap.restrictKeys` v)
