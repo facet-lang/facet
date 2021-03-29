@@ -29,10 +29,13 @@ module Facet.Core.Type
 ) where
 
 import           Control.Effect.Empty
+import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import           Data.Function (on, (&))
 import           Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
+import           Facet.Core.Pattern
+import           Facet.Env hiding (empty)
 import           Facet.Name
 import           Facet.Snoc
 import           Facet.Subst
@@ -75,7 +78,7 @@ data Type
   = VString
   | VForAll Name Kind (Type -> Type)
   | VArrow (Maybe Name) Quantity Type Type
-  | VNe (Var (Either Meta Level)) (Snoc Type)
+  | VNe (Var (Either Meta (Level, Name))) (Snoc Type)
   | VComp (Signature Type) Type
 
 instance Eq Type where
@@ -88,18 +91,18 @@ instance Ord Type where
 global :: RName -> Type
 global = var . Global
 
-free :: Level -> Type
-free = var . Free . Right
+free :: Level -> Name -> Type
+free = curry (var . Free . Right)
 
 metavar :: Meta -> Type
 metavar = var . Free . Left
 
 
-var :: Var (Either Meta Level) -> Type
+var :: Var (Either Meta (Level, Name)) -> Type
 var v = VNe v Nil
 
 
-unNeutral :: Has Empty sig m => Type -> m (Var (Either Meta Level), Snoc Type)
+unNeutral :: Has Empty sig m => Type -> m (Var (Either Meta (Level, Name)), Snoc Type)
 unNeutral = \case
   VNe h sp -> pure (h, sp)
   _        -> empty
@@ -124,7 +127,7 @@ occursIn :: Meta -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
-    VForAll _ _ b  -> go (succ d) (b (free d))
+    VForAll n _ b  -> go (succ d) (b (free d n))
     VArrow _ _ a b -> go d a || go d b
     VComp s t      -> any (go d) s || go d t
     VNe h sp       -> any (either (== p) (const False)) h || any (go d) sp
@@ -147,7 +150,7 @@ infixl 9 $$, $$*
 
 data TExpr
   = TString
-  | TVar (Var (Either Meta Index))
+  | TVar (Var (Either Meta (Index, Name)))
   | TForAll Name Kind TExpr
   | TArrow (Maybe Name) Quantity TExpr TExpr
   | TComp (Signature TExpr) TExpr
@@ -160,22 +163,22 @@ data TExpr
 quote :: Level -> Type -> TExpr
 quote d = \case
   VString        -> TString
-  VForAll n t b  -> TForAll n t (quote (succ d) (b (free d)))
+  VForAll n t b  -> TForAll n t (quote (succ d) (b (free d n)))
   VArrow n q a b -> TArrow n q (quote d a) (quote d b)
   VComp s t      -> TComp (mapSignature (quote d) s) (quote d t)
-  VNe n sp       -> foldl' (&) (TVar (fmap (levelToIndex d) <$> n)) (flip TApp . quote d <$> sp)
+  VNe n sp       -> foldl' (&) (TVar (fmap (first (levelToIndex d)) <$> n)) (flip TApp . quote d <$> sp)
 
-eval :: HasCallStack => Subst Type -> Level -> TExpr -> Type
-eval subst d = go (fromList (map free [0..pred d])) where
+eval :: HasCallStack => Subst Type -> Env Type -> TExpr -> Type
+eval subst = go where
   go env = \case
-    TString               -> VString
-    TVar (Global n)       -> global n
-    TVar (Free (Right v)) -> env ! getIndex v
-    TVar (Free (Left m))  -> fromMaybe (metavar m) (lookupMeta m subst)
-    TForAll n t b         -> VForAll n t (\ v -> go (env :> v) b)
-    TArrow n q a b        -> VArrow n q (go env a) (go env b)
-    TComp s t             -> VComp (mapSignature (go env) s) (go env t)
-    TApp  f a             -> go env f $$  go env a
+    TString                    -> VString
+    TVar (Global n)            -> global n
+    TVar (Free (Right (v, n))) -> index env v n
+    TVar (Free (Left m))       -> fromMaybe (metavar m) (lookupMeta m subst)
+    TForAll n t b              -> VForAll n t (\ _T -> go (env |> pvar (n :=: _T)) b)
+    TArrow n q a b             -> VArrow n q (go env a) (go env b)
+    TComp s t                  -> VComp (mapSignature (go env) s) (go env t)
+    TApp  f a                  -> go env f $$  go env a
 
-apply :: HasCallStack => Subst Type -> Level -> Type -> Type
-apply subst d = eval subst d . quote d
+apply :: HasCallStack => Subst Type -> Env Type -> Type -> Type
+apply subst env = eval subst env . quote (level env)

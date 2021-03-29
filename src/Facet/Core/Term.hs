@@ -13,7 +13,7 @@ import           Facet.Syntax
 -- Term expressions
 
 data Expr
-  = XVar (Var Index)
+  = XVar (Var (Index, Name))
   | XTLam Expr
   | XInst Expr T.TExpr
   | XLam [(Pattern Name, Expr)]

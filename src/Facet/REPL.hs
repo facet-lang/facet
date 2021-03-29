@@ -195,16 +195,16 @@ showType, showEval :: S.Ann S.Expr -> Action
 showType e = Action $ do
   e ::: _T <- runElab $ Elab.elabSynthTerm (Elab.synth (Elab.synthExpr e))
   opts <- get
-  outputDocLn (getPrint (ann (printExpr opts Nil e ::: printType opts Nil _T)))
+  outputDocLn (getPrint (ann (printExpr opts mempty e ::: printType opts mempty _T)))
 
 showEval e = Action $ do
   e' ::: _T <- runElab $ Elab.elabSynthTerm $ locally Elab.sig_ (T.singleton (T.Interface (["Effect", "Console"]:.:U "Output") Nil) :) $ Elab.synth (Elab.synthExpr e)
   e'' <- runElab $ runEvalMain e'
   opts <- get
-  outputDocLn (getPrint (ann (printExpr opts Nil e'' ::: printType opts Nil _T)))
+  outputDocLn (getPrint (ann (printExpr opts mempty e'' ::: printType opts mempty _T)))
 
 runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
-runEvalMain e = runEval (E.quoteV 0 =<< eval Nil hdl e) pure
+runEvalMain e = runEval (E.quoteV 0 =<< eval mempty hdl e) pure
   where
   hdl = [(write, Handler handle)]
   write = fromList ["Effect", "Console"] :.: U "write"
@@ -218,7 +218,7 @@ showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
   _T ::: _K <- runElab $ Elab.elabSynthType (Elab.isType (Elab.synthType _T))
   opts <- get
-  outputDocLn (getPrint (ann (printType opts Nil _T ::: printKind Nil _K)))
+  outputDocLn (getPrint (ann (printType opts mempty _T ::: printKind mempty _K)))
 
 
 helpDoc :: Doc Style

@@ -44,7 +44,7 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (view, (.=))
+import           Control.Effect.Lens (view, views, (.=))
 import           Control.Effect.Throw
 import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
@@ -57,7 +57,7 @@ import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context (Binding(..))
+import           Facet.Context (Binding(..), toEnv)
 import           Facet.Core.Module as Module
 import           Facet.Core.Pattern
 import           Facet.Core.Term as E
@@ -104,7 +104,7 @@ global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m Expr
 var n = Synth $ ask >>= \ StaticContext{ module', graph } -> ask >>= \ ElabContext{ context, sig } -> if
-  | [(i, q, CT _T)] <- lookupInContext n context              -> use i q $> (XVar (Free i) ::: _T)
+  | [(i, n', q, CT _T)] <- lookupInContext n context             -> use i n' q $> (XVar (Free (i, n')) ::: _T)
   | [_ :=: DTerm (Just x) _T] <- lookupInSig n module' graph sig -> instantiate XInst (x ::: _T)
   | otherwise                                                    -> resolveQ n >>= \case
     n :=: DTerm _ _T -> synth $ global (n ::: _T)
@@ -119,7 +119,7 @@ tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
-  b' <- Binding n zero (CK _A) |- check (b ::: _B (T.free d))
+  b' <- pvar (Binding n zero (CK _A)) |- check (b ::: _B (T.free d n))
   pure $ XTLam b'
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
@@ -145,7 +145,7 @@ wildcardP :: Bind m (ValuePattern Name)
 wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 
 varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (ValuePattern Name)
-varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (Binding n q (CT (wrap _A)) |- check (b ::: _B))
+varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> (pvar (Binding n q (CT (wrap _A))) |- check (b ::: _B))
   where
   wrap = \case
     VComp sig _A -> VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (VComp sig _A)
@@ -170,14 +170,14 @@ fieldsP = foldr cons
 allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (EffectPattern Name)
 allP n = Bind $ \ q _A b -> Check $ \ _B -> do
   (sig, _T) <- assertComp _A
-  (PAll n,) <$> (Binding n q (CT (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (VComp sig _T))) |- check (b ::: _B))
+  (PAll n,) <$> (pvar (Binding n q (CT (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (VComp sig _T)))) |- check (b ::: _B))
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
 effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- assertComp _A
   n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (listToMaybe (traverse unDTerm =<< lookupInSig n module' graph [sig]))
-  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> Binding v q' (CT (VArrow Nothing Many _A' _A)) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
+  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> pvar (Binding v q' (CT (VArrow Nothing Many _A' _A))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
   pure (peff n' (fromList ps') v, b')
 
 
@@ -232,7 +232,7 @@ abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Kind ->
 abstractType body = go
   where
   go = \case
-    KArrow  (Just n) a b -> TForAll n a <$> (Binding n zero (CK a) |- go b)
+    KArrow  (Just n) a b -> TForAll n a <$> (pvar (Binding n zero (CK a)) |- go b)
     _                    -> body
 
 abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TExpr -> Snoc Expr -> Expr) -> Check m Expr
@@ -241,13 +241,13 @@ abstractTerm body = go Nil Nil
   go ts fs = Check $ \case
     VForAll n   _T _B -> do
       d <- depth
-      check (tlam (go (ts :> d) fs) ::: VForAll n _T _B)
+      check (tlam (go (ts :> (d, n)) fs) ::: VForAll n _T _B)
     VArrow  n q _A _B -> do
       d <- depth
-      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> XVar (Free (levelToIndex d' d))))] ::: VArrow n q _A _B)
+      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> XVar (Free (levelToIndex d' d, fromMaybe __ n))))] ::: VArrow n q _A _B)
     _T                 -> do
       d <- depth
-      pure $ body (TVar . Free . Right . levelToIndex d <$> ts) (fs <*> pure d)
+      pure $ body (TVar . Free . Right . first (levelToIndex d) <$> ts) (fs <*> pure d)
 
 patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern Name)
 patternForArgType = \case
@@ -377,8 +377,8 @@ withSpanS k (S.Ann s _ a) = mapSynth (pushSpan s) (k a)
 provide :: Has (Reader ElabContext :+: State (Subst Type)) sig m => Signature Type -> m a -> m a
 provide sig m = do
   subst <- get
-  d <- depth
-  locally sig_ (mapSignature (apply subst d) sig :) m
+  env <- views context_ toEnv
+  locally sig_ (mapSignature (apply subst env) sig :) m
 
 require :: (HasCallStack, Has (Throw Err) sig m) => Signature Type -> Elab m ()
 require req = do

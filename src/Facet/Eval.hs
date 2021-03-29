@@ -15,10 +15,10 @@ module Facet.Eval
 ) where
 
 import Control.Algebra hiding (Handler)
-import Control.Applicative (Alternative(..))
 import Control.Carrier.Reader
-import Control.Monad (ap, guard, join, liftM, (>=>))
+import Control.Monad (ap, guard, liftM, (>=>))
 import Control.Monad.Trans.Class
+import Data.Bifunctor (first)
 import Data.Foldable
 import Data.Function
 import Data.Maybe (fromMaybe)
@@ -27,26 +27,27 @@ import Facet.Core.Module
 import Facet.Core.Pattern
 import Facet.Core.Term
 import Facet.Core.Type (TExpr)
+import Facet.Env as Env
 import Facet.Graph
 import Facet.Name hiding (Op)
 import Facet.Semialign (zipWithM)
 import Facet.Snoc
-import Facet.Snoc.NonEmpty as NE
+import Facet.Snoc.NonEmpty as NE hiding ((|>))
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> [(RName, Handler (Eval m))] -> Expr -> Eval m (Value (Eval m))
+eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Env (Value (Eval m)) -> [(RName, Handler (Eval m))] -> Expr -> Eval m (Value (Eval m))
 eval env hdl = \case
-  XVar (Global n) -> global n >>= eval env hdl
-  XVar (Free v)   -> var env v
-  XTLam b         -> tlam (eval env hdl b)
-  XInst f t       -> inst (eval env hdl f) t
-  XLam cs         -> lam env cs
-  XApp  f a       -> app env hdl (eval env hdl f) a
-  XCon n _ fs     -> con n (eval env hdl <$> fs)
-  XString s       -> string s
-  XOp n _ sp      -> op hdl n (flip (eval env) <$> sp)
+  XVar (Global n)    -> global n >>= eval env hdl
+  XVar (Free (v, n)) -> var env v n
+  XTLam b            -> tlam (eval env hdl b)
+  XInst f t          -> inst (eval env hdl f) t
+  XLam cs            -> lam env cs
+  XApp  f a          -> app env hdl (eval env hdl f) a
+  XCon n _ fs        -> con n (eval env hdl <$> fs)
+  XString s          -> string s
+  XOp n _ sp         -> op hdl n (flip (eval env) <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
 global n = do
@@ -56,8 +57,8 @@ global n = do
     [_ :=: DTerm (Just v) _] -> pure v -- FIXME: store values in the module graph
     _                        -> error "throw a real error here"
 
-var :: (HasCallStack, Applicative m) => Snoc (Value m) -> Index -> m (Value m)
-var env v = pure (env ! getIndex v)
+var :: (HasCallStack, Applicative m) => Env (Value m) -> Index -> Name -> m (Value m)
+var env v n = pure (index env v n)
 
 tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 tlam = id
@@ -65,16 +66,16 @@ tlam = id
 inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
 inst = const
 
-lam :: Snoc (Value (Eval m)) -> [(Pattern Name, Expr)] -> Eval m (Value (Eval m))
+lam :: Env (Value (Eval m)) -> [(Pattern Name, Expr)] -> Eval m (Value (Eval m))
 lam env cs = pure $ VLam env cs
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Snoc (Value (Eval m)) -> [(RName, Handler (Eval m))] -> Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Env (Value (Eval m)) -> [(RName, Handler (Eval m))] -> Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
 app envCallSite hdl f a = f >>= \case
   VLam env cs -> k a where
     (h, k) = foldl' (\ (es, vs) -> \case
-      (PEff (POp n ps _), b) -> ((n, Handler $ \ sp k -> traverse ($ (h <> hdl)) sp >>= \ sp -> eval (bindSpine env ps sp :> VCont k) hdl b) : es, vs)
-      (PEff (PAll _), b)     -> (es, \ a -> eval (env :> VLam envCallSite [(pvar __, a)]) hdl b)
-      (PVal p, b)            -> (es, eval envCallSite (h <> hdl) >=> fromMaybe (vs a) . matchV (\ vs -> eval (env <> vs) hdl b) p)) ([], const (fail "non-exhaustive patterns in lambda")) cs
+      (PEff (POp n ps nk), b) -> ((n, Handler $ \ sp k -> traverse ($ (h <> hdl)) sp >>= \ sp -> eval (bindSpine env ps sp |> pvar (nk :=: VCont k)) hdl b) : es, vs)
+      (PEff (PAll n), b)      -> (es, \ a -> eval (env |> pvar (n :=: VLam envCallSite [(pvar __, a)])) hdl b)
+      (PVal p, b)             -> (es, eval envCallSite (h <> hdl) >=> fromMaybe (vs a) . matchV (\ vs -> eval (env |> PVal vs) hdl b) p)) ([], const (fail "non-exhaustive patterns in lambda")) cs
   VCont k     -> k =<< eval envCallSite hdl a
   _           -> fail "expected lambda/continuation"
 
@@ -118,13 +119,13 @@ instance Algebra sig m => Algebra sig (Eval m) where
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VVar (Var Level)
+  = VVar (Var (Level, Name))
   -- | Value; data constructors.
   | VCon RName (Snoc (Value m))
   -- | Value; strings.
   | VString Text
   -- | Computation; lambdas.
-  | VLam (Snoc (Value m)) [(Pattern Name, Expr)]
+  | VLam (Env (Value m)) [(Pattern Name, Expr)]
   -- | Computation; continuations, used in effect handlers.
   | VCont (Value m -> m (Value m))
 
@@ -134,21 +135,21 @@ unit = VCon (NE.FromList ["Data", "Unit"] :.: U "unit") Nil
 
 -- Elimination
 
-matchV :: (Snoc (Value m) -> a) -> ValuePattern Name -> Value m -> Maybe a
+matchV :: (ValuePattern (Name :=: Value m) -> a) -> ValuePattern Name -> Value m -> Maybe a
 matchV k p s = case p of
-  PWildcard -> pure (k Nil)
-  PVar _    -> pure (k (Nil :> s))
+  PWildcard -> pure (k PWildcard)
+  PVar n    -> pure (k (PVar (n :=: s)))
   PCon n ps
-    | VCon n' fs <- s -> k . join <$ guard (n == n') <*> zipWithM (matchV id) ps fs
-  PCon{}    -> empty
+    | VCon n' fs <- s -> k . PCon n' <$ guard (n == n') <*> zipWithM (matchV id) ps fs
+  PCon{}    -> Nothing
 
-bindValue ::  Snoc (Value m) -> ValuePattern Name -> Value m -> Snoc (Value m)
+bindValue ::  Env (Value m) -> ValuePattern Name -> Value m -> Env (Value m)
 bindValue env PWildcard   _           = env
-bindValue env (PVar _)    v           = env :> v
+bindValue env (PVar n)    v           = env |> pvar (n :=: v)
 bindValue env (PCon _ ps) (VCon _ fs) = bindSpine env ps fs
 bindValue env _           _           = env -- FIXME: probably not a good idea to fail silently
 
-bindSpine :: Snoc (Value m) -> Snoc (ValuePattern Name) -> Snoc (Value m) -> Snoc (Value m)
+bindSpine :: Env (Value m) -> Snoc (ValuePattern Name) -> Snoc (Value m) -> Env (Value m)
 bindSpine env Nil        Nil        = env
 bindSpine env (tp :> hp) (ts :> hs) = bindValue (bindSpine env tp ts) hp hs
 bindSpine env _          _          = env -- FIXME: probably not a good idea to fail silently
@@ -159,7 +160,7 @@ bindSpine env _          _          = env -- FIXME: probably not a good idea to 
 quoteV :: Monad m => Level -> Value m -> m Expr
 quoteV d = \case
   VLam _ cs -> pure $ XLam cs
-  VCont k   -> quoteV (succ d) =<< k (VVar (Free d))
-  VVar v    -> pure (XVar (levelToIndex d <$> v))
+  VCont k   -> quoteV (succ d) =<< k (VVar (Free (d, __)))
+  VVar v    -> pure (XVar (first (levelToIndex d) <$> v))
   VCon n fs -> XCon n Nil <$> traverse (quoteV d) fs
   VString s -> pure $ XString s

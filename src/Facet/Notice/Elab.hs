@@ -9,8 +9,9 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (Classifier(..), apply, interfaces, metavar)
+import           Facet.Core.Type (Classifier(..), apply, free, interfaces, metavar)
 import           Facet.Elab as Elab
+import qualified Facet.Env as Env
 import           Facet.Notice as Notice hiding (level)
 import           Facet.Pretty
 import           Facet.Print as Print
@@ -35,24 +36,25 @@ rethrowElabErrors opts = L.runThrow rethrow
     , pretty (prettyCallStack callStack)
     ]
     where
-    (_, printCtx, ctx) = foldl' combine (0, Nil, Nil) (elems context)
+    (_, _, printCtx, ctx) = foldl' combine (0, Env.empty, Env.empty, Nil) (elems context)
     subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v)) (metas subst)
-    sig' = getPrint . printInterface opts printCtx . fmap (apply subst (level context)) <$> (interfaces =<< sig)
-    combine (d, print, ctx) (Binding n m _T) =
-      let n' = intro n d
-          roundtrip = apply subst d
-      in  ( succ d
-          , print :> n'
-          , ctx :> getPrint (ann (n' ::: mult m (case _T of
+    sig' = getPrint . printInterface opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
+    combine (d, env, print, ctx) p =
+      let roundtrip = apply subst env
+          binding (Binding n m _T) = ann (intro n d ::: mult m (case _T of
             CK _K -> printKind print _K
-            CT _T -> printType opts print (roundtrip _T)))) )
+            CT _T -> printType opts print (roundtrip _T)))
+      in  ( succ d
+          , env Env.|> ((\ (Binding n _ _T) -> n :=: free d n) <$> p)
+          , print Env.|> ((\ (Binding n _ _) -> n :=: intro n d) <$> p)
+          , ctx :> getPrint (printPattern opts (binding <$> p)) )
   mult m = if
     | m == zero -> (pretty "0" <+>)
     | m == one  -> (pretty "1" <+>)
     | otherwise -> id
 
 
-printErrReason :: Options -> Snoc Print -> ErrReason -> Doc Style
+printErrReason :: Options -> Env.Env Print -> ErrReason -> Doc Style
 printErrReason opts ctx = group . \case
   FreeVariable n               -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n qs           -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))

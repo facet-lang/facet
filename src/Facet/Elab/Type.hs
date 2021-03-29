@@ -24,6 +24,7 @@ import           Data.Foldable (foldl')
 import           Data.Functor (($>))
 import           Facet.Context
 import           Facet.Core.Module
+import           Facet.Core.Pattern
 import           Facet.Core.Type
 import           Facet.Elab
 import           Facet.Name
@@ -35,8 +36,8 @@ import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TExpr
 tvar n = IsType $ views context_ (lookupInContext n) >>= \case
-  [(i, q, CK _K)] -> use i q $> (TVar (Free (Right i)) ::: _K)
-  _                 -> resolveQ n >>= \case
+  [(i, n', q, CK _K)] -> use i n' q $> (TVar (Free (Right (i, n'))) ::: _K)
+  _                   -> resolveQ n >>= \case
     q :=: DData      _ _K -> pure $ TVar (Global q) ::: _K
     q :=: DInterface _ _K -> pure $ TVar (Global q) ::: _K
     _                     -> freeVariable n
@@ -60,7 +61,7 @@ _String = IsType $ pure $ TString ::: KType
 forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m TExpr -> IsType m TExpr
 forAll (n ::: t) b = IsType $ do
   t' <- checkIsType (t ::: KType)
-  b' <- Binding n zero (CK t') |- checkIsType (b ::: KType)
+  b' <- pvar (Binding n zero (CK t')) |- checkIsType (b ::: KType)
   pure $ TForAll n t' b' ::: KType
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c

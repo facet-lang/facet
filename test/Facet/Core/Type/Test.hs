@@ -5,6 +5,7 @@ module Facet.Core.Type.Test
 ) where
 
 import Facet.Core.Type
+import Facet.Env
 import Facet.Name
 import Facet.Semiring
 import Facet.Syntax
@@ -14,5 +15,5 @@ tests :: IO Bool
 tests = checkParallel $$(discover)
 
 prop_quotation_inverse = property $ do
-  let init = TForAll (U "A") KType (TArrow (Just (U "x")) Many (TVar (Free (Right 0))) (TComp mempty (TVar (Free (Right 0)))))
-  quote 0 (eval mempty 0 init) === init
+  let init = TForAll (U "A") KType (TArrow (Just (U "x")) Many (TVar (Free (Right (0, "x")))) (TComp mempty (TVar (Free (Right (0, "x"))))))
+  quote 0 (eval mempty empty init) === init

@@ -59,12 +59,15 @@ import           Control.Effect.Choose
 import           Control.Effect.Lens (views)
 import           Control.Lens (Lens', lens)
 import           Control.Monad (unless)
+import           Data.Foldable (for_)
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as Context (empty)
 import           Facet.Core.Module
+import           Facet.Core.Pattern
 import           Facet.Core.Term as E
 import           Facet.Core.Type as T
 import           Facet.Effect.Write
+import qualified Facet.Env as Env
 import           Facet.Graph as Graph
 import           Facet.Lens
 import           Facet.Name hiding (L, R)
@@ -119,7 +122,7 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Def)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (Index, Quantity, Classifier)
+lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (Index, Name, Quantity, Classifier)
 lookupInContext (m:.n)
   | m == Nil  = lookupIndex n
   | otherwise = const empty
@@ -136,15 +139,16 @@ lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _)
   interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> empty }
 
 
-(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Binding -> m a -> m a
-Binding n q _T |- b = do
+(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Pattern Binding -> m a -> m a
+p |- b = do
   sigma <- asks scale
   d <- depth
-  let exp = sigma >< q
-  (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> Binding n exp _T) b
-  let act = Usage.lookup d u
-  unless (act `sat` exp)
-    $ resourceMismatch n exp act
+  (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> p) b
+  for_ p $ \ (Binding n q _T) -> do
+    let exp = sigma >< q
+        act = Usage.lookup d n u
+    unless (act `sat` exp)
+      $ resourceMismatch n exp act
   pure a
 
 infix 1 |-
@@ -158,15 +162,15 @@ sat a b
 
 
 evalTExpr :: Has (Reader ElabContext :+: State (Subst Type)) sig m => TExpr -> m Type
-evalTExpr texpr = T.eval <$> get <*> depth <*> pure texpr
+evalTExpr texpr = T.eval <$> get <*> views context_ toEnv <*> pure texpr
 
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
 
-use :: Has (Reader ElabContext :+: Writer Usage) sig m => Index -> Quantity -> m ()
-use i q = do
+use :: Has (Reader ElabContext :+: Writer Usage) sig m => Index -> Name -> Quantity -> m ()
+use i n q = do
   d <- depth
-  tell (Usage.singleton (indexToLevel d i) q)
+  tell (Usage.singleton (indexToLevel d i) n q)
 
 
 -- Errors
@@ -212,11 +216,10 @@ applySubst ctx subst r = case r of
   Invariant{}          -> r
   MissingInterface i   -> MissingInterface (roundtrip <$> i)
   where
-  d = level ctx
   roundtripS = \case
     CK k -> CK k
     CT k -> CT $ roundtrip k
-  roundtrip = apply subst d
+  roundtrip = apply subst (toEnv ctx)
 
 
 -- FIXME: apply the substitution before showing this to the user
@@ -329,13 +332,13 @@ elabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab
 elabKind = elabWith zero (const pure)
 
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
-elabType = elabWith zero (\ subst t -> pure (T.eval subst 0 t))
+elabType = elabWith zero (\ subst t -> pure (T.eval subst Env.empty t))
 
 elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Expr -> m Expr
 elabTerm = elabWith one (const pure)
 
 elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (Expr ::: Type) -> m (Expr ::: Type)
-elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: T.eval subst 0 (T.quote 0 _T)))
+elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: T.eval subst Env.empty (T.quote 0 _T)))
 
 elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr ::: Kind) -> m (Type ::: Kind)
-elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst 0 _T ::: _K))
+elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst Env.empty _T ::: _K))
