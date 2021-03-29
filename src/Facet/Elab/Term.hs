@@ -388,10 +388,7 @@ require req = do
     Just _  -> pure ()
 
 findMaybeM :: (Foldable t, Monad m) => (a -> m (Maybe b)) -> t a -> m (Maybe b)
-findMaybeM p = fmap getFirst . foldMapM (fmap First . p)
-
-foldMapM :: (Foldable t, Applicative m, Monoid b) => (a -> m b) -> t a -> m b
-foldMapM f = getAp . foldMap (Ap . f)
+findMaybeM p = getAp . fmap getFirst . foldMap (Ap . fmap First . p)
 
 
 -- Judgements
