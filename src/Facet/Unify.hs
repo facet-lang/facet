@@ -6,6 +6,7 @@ module Facet.Unify
 , UnifyErrReason(..)
 , unify
 , runUnifyMaybe
+, unifyType
   -- * Equating
 , runEq
 , eqInterface
