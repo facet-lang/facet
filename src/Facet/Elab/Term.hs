@@ -50,7 +50,6 @@ import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
 import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
-import           Data.Bool (bool)
 import           Data.Foldable
 import           Data.Functor
 import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
@@ -384,12 +383,9 @@ provide sig m = do
 require :: (HasCallStack, Has (Throw Err) sig m) => Signature Type -> Elab m ()
 require req = do
   prv <- view sig_
-  for_ (interfaces req) $ \ i -> findMaybeM (findM (runEq . eqInterface i) . interfaces) prv >>= \case
+  for_ (interfaces req) $ \ i -> findMaybeM (findMaybeM (runUnifyMaybe . unifyInterface i) . interfaces) prv >>= \case
     Nothing -> missingInterface i
     Just _  -> pure ()
-
-findM :: (Foldable t, Monad m) => (a -> m Bool) -> t a -> m (Maybe a)
-findM p = foldrM (\ a rest -> bool rest (Just a) <$> p a) Nothing
 
 findMaybeM :: (Foldable t, Monad m) => (a -> m (Maybe b)) -> t a -> m (Maybe b)
 findMaybeM p = fmap getFirst . foldMapM (fmap First . p)
