@@ -1,3 +1,4 @@
+{-# LANGUAGE ImplicitParams #-}
 module Facet.Unify
 ( -- * Unification
   Exp(..)
@@ -10,10 +11,10 @@ module Facet.Unify
 ) where
 
 import Control.Carrier.Empty.Church
-import Control.Carrier.Reader
+import Control.Carrier.Error.Church
+import Control.Effect.Reader
 import Control.Effect.State
 import Control.Effect.Sum
-import Control.Effect.Throw
 import Control.Effect.Writer
 import Control.Monad (unless)
 import Facet.Core.Pattern
@@ -34,16 +35,16 @@ import GHC.Stack
 unify :: (HasCallStack, Has (Throw Err) sig m) => Exp Type -> Act Type -> Elab m Type
 unify t1 t2 = runUnify t1 t2 (unifyType (getExp t1) (getAct t2))
 
-runUnify :: Exp Type -> Act Type -> ReaderC (Exp Classifier :=: Act Classifier) m a -> m a
-runUnify t1 t2 = runReader (fmap CT t1 :=: fmap CT t2)
+runUnify :: Has (Throw Err) sig m => Exp Type -> Act Type -> ErrorC (WithCallStack UnifyErrReason) (Elab m) a -> Elab m a
+runUnify t1 t2 = runError (withCallStack (\ r -> err (Unify (UnifyErr r (Right . CT <$> t1) (CT <$> t2))))) pure
 
-mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Classifier :=: Act Classifier) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => m a
-mismatch   = ask >>= \ (t1 :=: t2) -> couldNotUnify               t1 t2
+mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => m a
+mismatch   = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStack Mismatch
 
-occurs :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Classifier :=: Act Classifier) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Type -> m a
-occurs v t = ask >>= \ (t1 :=: t2) -> occursCheckFailure v (CT t) t1 t2
+occurs :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Meta -> Type -> m a
+occurs v t = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStack  (Occurs v (CT t))
 
-unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Classifier :=: Act Classifier) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m Type
+unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Type -> Type -> m Type
 unifyType = curry $ \case
   (VComp s1 t1, VComp s2 t2)                           -> VComp . fromInterfaces <$> unifySpine unifyInterface (interfaces s1) (interfaces s2) <*> unifyType t1 t2
   (VComp s1 t1, t2)                                    -> VComp s1 <$> unifyType t1 t2
@@ -62,19 +63,19 @@ unifyType = curry $ \case
   where
   mkForAll d n k b = TForAll n k (quote (succ d) b)
 
-unifyKind :: Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Classifier :=: Act Classifier) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m => Kind -> Kind -> m Kind
+unifyKind :: Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m => Kind -> Kind -> m Kind
 unifyKind k1 k2 = if k1 == k2 then pure k2 else mismatch
 
-unifyVar :: (Eq a, Eq b, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Classifier :=: Act Classifier) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Var (Either a b) -> Var (Either a b) -> m (Var (Either a b))
+unifyVar :: (Eq a, Eq b, HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Var (Either a b) -> Var (Either a b) -> m (Var (Either a b))
 unifyVar v1 v2 = if v1 == v2 then pure v2 else mismatch
 
-unifyInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Classifier :=: Act Classifier) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Interface Type -> Interface Type -> m (Interface Type)
+unifyInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Interface Type -> Interface Type -> m (Interface Type)
 unifyInterface (Interface h1 sp1) (Interface h2 sp2) = Interface h2 <$ unless (h1 == h2) mismatch <*> unifySpine unifyType sp1 sp2
 
-unifySpine :: (Traversable t, Zip t, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Classifier :=: Act Classifier) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m (t c)
+unifySpine :: (Traversable t, Zip t, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m (t c)
 unifySpine f sp1 sp2 = unless (length sp1 == length sp2) mismatch >> zipWithM f sp1 sp2
 
-flexFlex :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Classifier :=: Act Classifier) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Meta -> m Type
+flexFlex :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Meta -> Meta -> m Type
 flexFlex v1 v2
   | v1 == v2  = pure (metavar v2)
   | otherwise = gets (\ s -> (lookupMeta v1 s, lookupMeta v2 s)) >>= \case
@@ -83,7 +84,7 @@ flexFlex v1 v2
     (Nothing, Just t2) -> unifyType (metavar v1) t2
     (Nothing, Nothing) -> solve v1 (metavar v2)
 
-solve :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: Reader (Exp Classifier :=: Act Classifier) :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Meta -> Type -> m Type
+solve :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Meta -> Type -> m Type
 solve v t = do
   d <- depth
   if occursIn v d t then
@@ -118,3 +119,11 @@ eqInterface (Interface h1 sp1) (Interface h2 sp2) = guard (h1 == h2) *> eqSpine 
 
 eqSpine :: (Foldable t, Zip t, Has Empty sig m) => (a -> b -> m ()) -> t a -> t b -> m ()
 eqSpine f sp1 sp2 = guard (length sp1 == length sp2) *> zipWithM_ f sp1 sp2
+
+
+-- Callstacks
+
+data WithCallStack a = WithCallStack CallStack a
+
+withCallStack :: (HasCallStack => a -> b) -> WithCallStack a -> b
+withCallStack f (WithCallStack callStack a) = let ?callStack = callStack in f a
