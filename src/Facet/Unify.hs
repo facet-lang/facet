@@ -7,6 +7,7 @@ module Facet.Unify
 , unify
 , runUnifyMaybe
 , unifyType
+, unifyInterface
   -- * Equating
 , runEq
 , eqInterface
