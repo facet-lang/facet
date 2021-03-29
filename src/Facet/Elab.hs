@@ -220,7 +220,6 @@ applySubst ctx subst r = case r of
   roundtrip = apply subst (toEnv ctx)
 
 
--- FIXME: apply the substitution before showing this to the user
 err :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => ErrReason -> m a
 err reason = do
   StaticContext{ source } <- ask
