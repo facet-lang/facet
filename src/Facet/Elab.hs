@@ -15,6 +15,7 @@ module Facet.Elab
 , pushSpan
 , Err(..)
 , ErrReason(..)
+, UnifyErr(..)
 , UnifyErrReason(..)
 , err
 , couldNotUnify
@@ -195,10 +196,16 @@ data ErrReason
   | AmbiguousName QName [RName]
   | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
-  | Unify UnifyErrReason (Exp (Either String Classifier)) (Act Classifier)
+  | Unify UnifyErr
   | Hole Name Classifier
   | Invariant String
   | MissingInterface (Interface Type)
+
+data UnifyErr = UnifyErr
+  { reason   :: UnifyErrReason
+  , expected :: Exp (Either String Classifier)
+  , actual   :: Act Classifier
+  }
 
 data UnifyErrReason
   = Mismatch
@@ -211,11 +218,12 @@ applySubst ctx subst r = case r of
   CouldNotSynthesize{} -> r
   ResourceMismatch{}   -> r
   -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
-  Unify r exp act      -> Unify r (fmap roundtripS <$> exp) (roundtripS <$> act)
+  Unify uerr           -> Unify (unifyErr uerr)
   Hole n t             -> Hole n (roundtripS t)
   Invariant{}          -> r
   MissingInterface i   -> MissingInterface (roundtrip <$> i)
   where
+  unifyErr (UnifyErr r exp act) = UnifyErr r (fmap roundtripS <$> exp) (roundtripS <$> act)
   roundtripS = \case
     CK k -> CK k
     CT k -> CT $ roundtrip k
@@ -231,13 +239,13 @@ err reason = do
   throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
 
 mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either String Classifier) -> Act Classifier -> m a
-mismatch exp act = withFrozenCallStack $ err $ Unify Mismatch exp act
+mismatch exp act = withFrozenCallStack $ err $ Unify $ UnifyErr Mismatch exp act
 
 couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp Classifier -> Act Classifier -> m a
 couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right <$> t1) t2
 
 occursCheckFailure :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Meta -> Classifier -> Exp Classifier -> Act Classifier -> m a
-occursCheckFailure m v exp act = withFrozenCallStack $ err $ Unify (Occurs m v) (Right <$> exp) act
+occursCheckFailure m v exp act = withFrozenCallStack $ err $ Unify $ UnifyErr (Occurs m v) (Right <$> exp) act
 
 couldNotSynthesize :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => m a
 couldNotSynthesize = withFrozenCallStack $ err CouldNotSynthesize
