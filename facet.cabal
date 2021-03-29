@@ -95,12 +95,12 @@ library
     Facet.Format
     Facet.Graph
     Facet.Lens
+    Facet.Lexer
     Facet.Name
     Facet.Norm
     Facet.Notice
     Facet.Notice.Elab
     Facet.Notice.Parser
-    Facet.Lexer
     Facet.Parser
     Facet.Parser.Table
     Facet.Pretty
