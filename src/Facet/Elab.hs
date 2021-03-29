@@ -317,13 +317,6 @@ spans_ :: Lens' ElabContext (Snoc Span)
 spans_ = lens spans (\ e spans -> e{ spans })
 
 
-newtype Exp a = Exp { getExp :: a }
-  deriving (Functor)
-
-newtype Act a = Act { getAct :: a }
-  deriving (Functor)
-
-
 -- Machinery
 
 newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC (Subst Type) m))) a }

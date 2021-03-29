@@ -9,6 +9,9 @@ module Facet.Syntax
   -- * Decomposition
 , splitl
 , splitr
+  -- * Assertion data
+, Exp(..)
+, Act(..)
 ) where
 
 import Data.Bifoldable
@@ -95,3 +98,12 @@ splitr un = go id
   go as t = case un t of
     Just (a, t') -> go (as . (a:)) t'
     Nothing      -> (as [], t)
+
+
+-- Assertion data
+
+newtype Exp a = Exp { getExp :: a }
+  deriving (Functor)
+
+newtype Act a = Act { getAct :: a }
+  deriving (Functor)
