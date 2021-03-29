@@ -2,6 +2,7 @@ module Facet.Env
 ( Env(..)
 , empty
 , (|>)
+, lookup
 , index
 , level
 ) where
@@ -14,6 +15,7 @@ import Facet.Name
 import Facet.Snoc
 import Facet.Syntax
 import GHC.Stack
+import Prelude hiding (lookup)
 
 newtype Env v = Env { bindings :: Snoc (Pattern (Name :=: v)) }
 
@@ -24,6 +26,11 @@ empty = Env Nil
 Env vs |> v = Env (vs :> v)
 
 infixl 5 |>
+
+lookup :: Env v -> Index -> Name -> Maybe v
+lookup (Env vs) i n = find (\ (n' :=: v) -> v <$ guard (n == n')) (vs ! getIndex i)
+  where
+  find f = foldr ((<|>) . f) Nothing
 
 index :: HasCallStack => Env v -> Index -> Name -> v
 index (Env vs) i n = fromMaybe (error ("Env.index: name (" <> show n <> ") not found")) (find (\ (n' :=: v) -> v <$ guard (n == n')) (vs ! getIndex i))
