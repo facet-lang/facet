@@ -35,8 +35,6 @@ module Facet.Elab
 , ElabContext(..)
 , context_
 , sig_
-, Exp(..)
-, Act(..)
   -- * Machinery
 , Elab(..)
 , evalTExpr
