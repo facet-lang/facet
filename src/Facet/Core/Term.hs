@@ -18,7 +18,7 @@ data Expr
   | XInst Expr T.TExpr
   | XLam [(Pattern Name, Expr)]
   | XApp Expr Expr
-  | XCon RName (Snoc T.TExpr) (Snoc Expr)
+  | XCon RName (Snoc Expr)
   | XString Text
   | XOp RName (Snoc T.TExpr) (Snoc Expr)
   deriving (Eq, Ord, Show)
