@@ -33,9 +33,7 @@ lookup (Env vs) i n = find (\ (n' :=: v) -> v <$ guard (n == n')) (vs ! getIndex
   find f = foldr ((<|>) . f) Nothing
 
 index :: HasCallStack => Env v -> Index -> Name -> v
-index (Env vs) i n = fromMaybe (error ("Env.index: name (" <> show n <> ") not found")) (find (\ (n' :=: v) -> v <$ guard (n == n')) (vs ! getIndex i))
-  where
-  find f = foldr ((<|>) . f) Nothing
+index env i n = fromMaybe (error ("Env.index: name (" <> show n <> ") not found")) (lookup env i n)
 
 level :: Env v -> Level
 level = Level . length . bindings
