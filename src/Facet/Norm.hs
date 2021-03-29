@@ -1,2 +1,8 @@
 module Facet.Norm
-() where
+( Norm(..)
+) where
+
+import Data.Text (Text)
+
+data Norm
+  = NString Text
