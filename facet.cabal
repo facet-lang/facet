@@ -96,6 +96,7 @@ library
     Facet.Graph
     Facet.Lens
     Facet.Name
+    Facet.Norm
     Facet.Notice
     Facet.Notice.Elab
     Facet.Notice.Parser
