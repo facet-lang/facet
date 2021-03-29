@@ -61,7 +61,7 @@ _String = IsType $ pure $ TString ::: KType
 forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m TExpr -> IsType m TExpr
 forAll (n ::: t) b = IsType $ do
   t' <- checkIsType (t ::: KType)
-  b' <- pvar (Binding n zero (CK t')) |- checkIsType (b ::: KType)
+  b' <- (zero, pvar (Binding n (CK t'))) |- checkIsType (b ::: KType)
   pure $ TForAll n t' b' ::: KType
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c

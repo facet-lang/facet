@@ -139,12 +139,12 @@ lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _)
   interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> empty }
 
 
-(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Pattern Binding -> m a -> m a
-p |- b = do
+(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (Quantity, Pattern Binding) -> m a -> m a
+(q, p) |- b = do
   sigma <- asks scale
   d <- depth
-  (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> p) b
-  for_ p $ \ (Binding n q _T) -> do
+  (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> (q, p)) b
+  for_ p $ \ (Binding n _T) -> do
     let exp = sigma >< q
         act = Usage.lookup d n u
     unless (act `sat` exp)

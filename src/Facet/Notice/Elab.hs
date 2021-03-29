@@ -39,14 +39,14 @@ rethrowElabErrors opts = L.runThrow rethrow
     (_, _, printCtx, ctx) = foldl' combine (0, Env.empty, Env.empty, Nil) (elems context)
     subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v)) (metas subst)
     sig' = getPrint . printInterface opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
-    combine (d, env, print, ctx) p =
+    combine (d, env, print, ctx) (m, p) =
       let roundtrip = apply subst env
-          binding (Binding n m _T) = ann (intro n d ::: mult m (case _T of
+          binding (Binding n _T) = ann (intro n d ::: mult m (case _T of
             CK _K -> printKind print _K
             CT _T -> printType opts print (roundtrip _T)))
       in  ( succ d
-          , env Env.|> ((\ (Binding n _ _T) -> n :=: free d n) <$> p)
-          , print Env.|> ((\ (Binding n _ _) -> n :=: intro n d) <$> p)
+          , env Env.|> ((\ (Binding n _T) -> n :=: free d n) <$> p)
+          , print Env.|> ((\ (Binding n _) -> n :=: intro n d) <$> p)
           , ctx :> getPrint (printPattern opts (binding <$> p)) )
   mult m = if
     | m == zero -> (pretty "0" <+>)
