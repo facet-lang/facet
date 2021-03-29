@@ -8,9 +8,6 @@ module Facet.Unify
 , runUnifyMaybe
 , unifyType
 , unifyInterface
-  -- * Equating
-, runEq
-, eqInterface
 ) where
 
 import Control.Carrier.Empty.Church
@@ -100,32 +97,6 @@ solve v t = do
     gets (lookupMeta v) >>= \case
       Nothing -> t <$ modify (solveMeta v t)
       Just t' -> unifyType t' t >>= \ t'' -> t'' <$ modify (solveMeta v t'')
-
-
--- Equating
-
-runEq :: Applicative m => EmptyC m () -> m Bool
-runEq = execEmpty
-
-eqType :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Type -> Type -> m ()
-eqType = curry $ \case
-  (VComp s1 t1, VComp s2 t2)           -> eqSpine eqInterface (interfaces s1) (interfaces s2) *> eqType t1 t2
-  (VComp _ t1, t2)                     -> eqType t1 t2
-  (t1, VComp _ t2)                     -> eqType t1 t2
-  (VForAll _ t1 b1, VForAll n t2 b2)   -> depth >>= \ d -> guard (t1 == t2) *> ((zero, pvar (n ::: CK t2)) |- eqType (b1 (free (LName d n))) (b2 (free (LName d n))))
-  (VForAll{}, _)                       -> empty
-  (VArrow _ _ a1 b1, VArrow _ _ a2 b2) -> eqType a1 a2 *> eqType b1 b2
-  (VArrow{}, _)                        -> empty
-  (VNe v1 sp1, VNe v2 sp2)             -> guard (v1 == v2) *> eqSpine eqType sp1 sp2
-  (VNe{}, _)                           -> empty
-  (VString, VString)                   -> pure ()
-  (VString, _)                         -> empty
-
-eqInterface :: (HasCallStack, Has (Empty :+: Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => Interface Type -> Interface Type -> m ()
-eqInterface (Interface h1 sp1) (Interface h2 sp2) = guard (h1 == h2) *> eqSpine eqType sp1 sp2
-
-eqSpine :: (Foldable t, Zip t, Has Empty sig m) => (a -> b -> m ()) -> t a -> t b -> m ()
-eqSpine f sp1 sp2 = guard (length sp1 == length sp2) *> zipWithM_ f sp1 sp2
 
 
 -- Callstacks
