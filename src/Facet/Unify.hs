@@ -11,12 +11,12 @@ module Facet.Unify
 ) where
 
 import Control.Carrier.Empty.Church
-import Control.Carrier.Error.Church
 import Control.Effect.Reader
 import Control.Effect.State
 import Control.Effect.Sum
 import Control.Effect.Writer
 import Control.Monad (unless)
+import Facet.Carrier.Throw.Inject
 import Facet.Core.Pattern
 import Facet.Core.Type
 import Facet.Elab
@@ -35,8 +35,8 @@ import GHC.Stack
 unify :: (HasCallStack, Has (Throw Err) sig m) => Exp Type -> Act Type -> Elab m Type
 unify t1 t2 = runUnify t1 t2 (unifyType (getExp t1) (getAct t2))
 
-runUnify :: Has (Throw Err) sig m => Exp Type -> Act Type -> ErrorC (WithCallStack UnifyErrReason) (Elab m) a -> Elab m a
-runUnify t1 t2 = runError (withCallStack (\ r -> err (Unify r (Right . CT <$> t1) (CT <$> t2)))) pure
+runUnify :: Has (Throw Err) sig m => Exp Type -> Act Type -> ThrowC Err (WithCallStack UnifyErrReason) (Elab m) a -> Elab m a
+runUnify t1 t2 = runThrow (withCallStack (\ r -> makeErr (Unify r (Right . CT <$> t1) (CT <$> t2))))
 
 mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => m a
 mismatch   = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStack Mismatch
