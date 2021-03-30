@@ -54,6 +54,7 @@ norm env = \case
   XTLam _ b -> norm env b
   -- XTLam n b -> NTLam n (\ _T -> norm (env |> pvar (n :=: _T)) b)
   -- FIXME: define type patterns and extend @env@ so we can normalize XInst correctly
+  -- FIXME: take a @Subst@ so we can apply substitutions in the type at the same time
   XInst f _ -> norm env f
   -- XInst f t -> norm env f `ninst` T.eval mempty env t
   XApp f a  -> norm env f `napp`  norm env a
