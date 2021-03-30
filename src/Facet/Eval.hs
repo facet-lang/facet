@@ -46,7 +46,7 @@ eval env hdl = \case
   XApp  f a       -> app env hdl (eval env hdl f) a
   XCon n fs       -> con n (eval env hdl <$> fs)
   XString s       -> string s
-  XOp n _ sp      -> op hdl n (flip (eval env) <$> sp)
+  XOp n sp        -> op hdl n (flip (eval env) <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
 global n = do

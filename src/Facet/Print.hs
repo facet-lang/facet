@@ -210,7 +210,7 @@ printExpr opts@Options{ rname, instantiation } = go
     C.XLam cs         -> comp (commaSep (map (clause env) cs))
     C.XApp f a        -> go env f $$ go env a
     C.XCon n p        -> qvar n $$* (group . go env <$> p)
-    C.XOp n t p       -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
+    C.XOp n p         -> qvar n $$* (group . go env <$> p)
     C.XString s       -> annotate Lit $ pretty (show s)
     where
     d = level env
