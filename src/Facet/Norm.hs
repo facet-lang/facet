@@ -7,6 +7,7 @@ module Facet.Norm
 
 import           Control.Monad (guard)
 import           Data.Foldable (foldl')
+import           Data.Function (on)
 import           Data.Monoid
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
@@ -26,6 +27,12 @@ data Norm
   | NLam [(Pattern Name, Pattern (Name :=: Norm) -> Norm)]
   | NNe (Var (LName Level)) (Snoc Elim)
   | NOp RName (Snoc Norm)
+
+instance Eq Norm where
+  (==) = (==) `on` quote 0
+
+instance Ord Norm where
+  compare = compare `on` quote 0
 
 data Elim
   = EApp Norm
