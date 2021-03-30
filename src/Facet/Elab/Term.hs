@@ -120,7 +120,7 @@ tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
   b' <- (zero, pvar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
-  pure $ XTLam b'
+  pure $ XTLam n b'
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
 lam cs = Check $ \ _T -> do
@@ -267,7 +267,7 @@ elabDataDef (dname ::: _K) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _K
-    con' <- elabTerm $ check (abstractTerm (XCon (mname :.: n)) ::: c_T)
+    con' <- elabTerm $ check (abstractTerm (const (XCon (mname :.: n))) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
   pure
     $ (dname :=: DData (scopeFromList cs) _K)
@@ -283,7 +283,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _T
     -- FIXME: check that the interface is a member of the sig.
-    op' <- elabTerm $ check (abstractTerm (XOp (mname :.: n)) ::: _T')
+    op' <- elabTerm $ check (abstractTerm (const (XOp (mname :.: n))) ::: _T')
     pure $ n :=: DTerm (Just op') _T'
   pure [ dname :=: DInterface (scopeFromList cs) _T ]
 

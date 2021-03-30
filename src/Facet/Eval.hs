@@ -40,13 +40,13 @@ eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) 
 eval env hdl = \case
   XVar (Global n) -> global n >>= eval env hdl
   XVar (Free n)   -> var env n
-  XTLam b         -> tlam (eval env hdl b)
+  XTLam _ b       -> tlam (eval env hdl b)
   XInst f t       -> inst (eval env hdl f) t
   XLam cs         -> lam env cs
   XApp  f a       -> app env hdl (eval env hdl f) a
-  XCon n _ fs     -> con n (eval env hdl <$> fs)
+  XCon n fs       -> con n (eval env hdl <$> fs)
   XString s       -> string s
-  XOp n _ sp      -> op hdl n (flip (eval env) <$> sp)
+  XOp n sp        -> op hdl n (flip (eval env) <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
 global n = do
@@ -161,5 +161,5 @@ quoteV d = \case
   VLam _ cs -> pure $ XLam cs
   VCont k   -> quoteV (succ d) =<< k (VVar (Free (LName d __)))
   VVar v    -> pure (XVar (fmap (levelToIndex d) <$> v))
-  VCon n fs -> XCon n Nil <$> traverse (quoteV d) fs
+  VCon n fs -> XCon n <$> traverse (quoteV d) fs
   VString s -> pure $ XString s

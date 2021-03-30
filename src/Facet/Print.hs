@@ -21,6 +21,7 @@ module Facet.Print
 , printType
 , printInterface
 , printTExpr
+, printNorm
 , printExpr
 , printPattern
 , printModule
@@ -41,6 +42,7 @@ import qualified Facet.Core.Type as C
 import qualified Facet.Core.Type as CT
 import           Facet.Env as Env
 import           Facet.Name as Name
+import qualified Facet.Norm as N
 import           Facet.Pretty (lower, upper)
 import           Facet.Semiring (one, zero)
 import           Facet.Snoc
@@ -194,18 +196,21 @@ printTExpr opts@Options{ rname } = go
 printInterfaceWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Print -> C.Interface a -> Print
 printInterfaceWith with opts@Options{ rname } env (C.Interface h sp) = rname h $$* fmap (with opts env) sp
 
+printNorm :: Options -> Env Print -> N.Norm -> Print
+printNorm opts env = printExpr opts env . N.quote (level env)
+
 printExpr :: Options -> Env Print -> C.Expr -> Print
 printExpr opts@Options{ rname, instantiation } = go
   where
   go env = \case
     C.XVar (Global n) -> qvar n
     C.XVar (Free n)   -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
-    C.XTLam b         -> let { d = level env ; v = tintro __ d } in braces (braces v <+> arrow <+> go (env |> pvar (__ :=: v)) b)
+    C.XTLam n b       -> let { d = level env ; v = tintro n d } in braces (braces v <+> arrow <+> go (env |> pvar (__ :=: v)) b)
     C.XInst e t       -> go env e `instantiation` braces (printTExpr opts env t)
     C.XLam cs         -> comp (commaSep (map (clause env) cs))
     C.XApp f a        -> go env f $$ go env a
-    C.XCon n t p      -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
-    C.XOp n t p       -> foldl' instantiation (qvar n) (group . braces . printTExpr opts env <$> t) $$* (group . go env <$> p)
+    C.XCon n p        -> qvar n $$* (group . go env <$> p)
+    C.XOp n p         -> qvar n $$* (group . go env <$> p)
     C.XString s       -> annotate Lit $ pretty (show s)
     where
     d = level env
