@@ -227,10 +227,10 @@ printPattern Options{ rname } = \case
   vpat = \case
     PWildcard -> pretty '_'
     PVar n    -> n
-    PCon n ps -> parens (hsep (annotate Con (rname n):map vpat (toList ps)))
+    PCon n ps -> parens (annotate Con (rname n) $$* map vpat (toList ps))
   epat = \case
     PAll n     -> n
-    POp q ps k -> brackets (hsep (pretty q : map vpat (toList ps)) <+> semi <+> k)
+    POp q ps k -> brackets (pretty q $$* (group . vpat <$> ps) </> semi <+> group k)
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
