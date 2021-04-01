@@ -245,7 +245,7 @@ abstractTerm body = go Nil Nil
     VArrow  n q _A _B -> do
       d <- depth
       check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> XVar (Free (LName (levelToIndex d' d) (fromMaybe __ n)))))] ::: VArrow n q _A _B)
-    _T                 -> do
+    _T                -> do
       d <- depth
       pure $ body (TVar . Free . Right . fmap (levelToIndex d) <$> ts) (fs <*> pure d)
 
