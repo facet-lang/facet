@@ -125,7 +125,7 @@ tlam b = Check $ \ _T -> do
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
 lam cs = Check $ \ _T -> do
   (_A, _B) <- assertTacitFunction _T
-  XLam <$> traverse (\ (p, b) -> check (bind (p ::: _A) b ::: _B)) cs
+  XLam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Synth m a) -> (HasCallStack => Check m b) -> Synth m c
 app mk operator operand = Synth $ do
@@ -145,39 +145,39 @@ wildcardP :: Bind m (ValuePattern Name)
 wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
 
 varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (ValuePattern Name)
-varP n = Bind $ \ q _A b -> Check $ \ _B -> (PVar n,) <$> ((q, pvar (n ::: CT (wrap _A))) |- check (b ::: _B))
+varP n = Bind $ \ q _A b -> (PVar n,) <$> ((q, pvar (n ::: CT (wrap _A))) |- b)
   where
   wrap = \case
     VComp sig _A -> VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (VComp sig _A)
     _T           -> _T
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
-conP n ps = Bind $ \ q _A b -> Check $ \ _B -> do
+conP n ps = Bind $ \ q _A b -> do
   n' :=: _ ::: _T <- resolveC n
   _T' <- maybe (pure _T) (foldl' (\ _T _A -> ($ _A) . snd <$> (_T >>= assertQuantifier)) (pure _T) . snd) (unNeutral _A)
-  (ps', b') <- check (bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$> Check (\ _B -> unify (Exp _A) (Act _A') *> check (b ::: _B)))) ps ::: (q, _T')) b ::: _B)
+  (ps', b') <- bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$ unify (Exp _A) (Act _A') <*> b)) ps ::: (q, _T')) b
   pure (PCon n' (fromList ps'), b')
 
 fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind m [a] -> [Bind m a] -> Bind m [a]
 fieldsP = foldr cons
   where
-  cons p ps = Bind $ \ q _A b -> Check $ \ _B -> do
+  cons p ps = Bind $ \ q _A b -> do
     (_ ::: (q', _A'), _A'') <- assertFunction _A
-    (p', (ps', b')) <- check (bind (p ::: (q', _A')) (bind (ps ::: (q, _A'')) b) ::: _B)
+    (p', (ps', b')) <- bind (p ::: (q', _A')) (bind (ps ::: (q, _A'')) b)
     pure (p':ps', b')
 
 
 allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (EffectPattern Name)
-allP n = Bind $ \ q _A b -> Check $ \ _B -> do
+allP n = Bind $ \ q _A b -> do
   (sig, _T) <- assertComp _A
-  (PAll n,) <$> ((q, pvar (n ::: CT (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (VComp sig _T)))) |- check (b ::: _B))
+  (PAll n,) <$> ((q, pvar (n ::: CT (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (VComp sig _T)))) |- b)
 
 effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
-effP n ps v = Bind $ \ q _A b -> Check $ \ _B -> do
+effP n ps v = Bind $ \ q _A b -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- assertComp _A
   n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (listToMaybe (traverse unDTerm =<< lookupInSig n module' graph [sig]))
-  (ps', b') <- check (bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> Check (\ _B -> (q', pvar (v ::: CT (VArrow Nothing Many _A' _A))) |- check (b ::: _B)))) ps ::: (q, _T)) b ::: _B)
+  (ps', b') <- bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> ((q', pvar (v ::: CT (VArrow Nothing Many _A' _A))) |- b))) ps ::: (q, _T)) b
   pure (peff n' (fromList ps') v, b')
 
 
@@ -414,11 +414,11 @@ mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m
 mapSynth f = Synth . f . synth
 
 
-bind :: Bind m a ::: (Quantity, Type) -> Check m b -> Check m (a, b)
+bind :: Bind m a ::: (Quantity, Type) -> Elab m b -> Elab m (a, b)
 bind (p ::: (q, _T)) = runBind p q _T
 
-newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Check m x -> Check m (a, x) }
+newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Elab m x -> Elab m (a, x) }
   deriving (Functor)
 
 mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
-mapBind f m = Bind $ \ q _A b -> mapCheck f (runBind m q _A b)
+mapBind f m = Bind $ \ q _A b -> f (runBind m q _A b)
