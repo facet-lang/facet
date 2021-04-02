@@ -122,7 +122,7 @@ tlam b = Check $ \ _T -> do
   b' <- (zero, pvar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
   pure $ XTLam n b'
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern Name), Check m Expr)] -> Check m Expr
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name ::: Classifier)), Check m Expr)] -> Check m Expr
 lam cs = Check $ \ _T -> do
   (_A, _B) <- assertTacitFunction _T
   XLam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
@@ -141,44 +141,43 @@ string s = Synth $ pure $ XString s ::: T.VString
 
 -- Pattern combinators
 
-wildcardP :: Bind m (ValuePattern Name)
-wildcardP = Bind $ \ _ _ -> fmap (PWildcard,)
+wildcardP :: Bind m (ValuePattern (Name ::: Classifier))
+wildcardP = Bind $ \ _T k -> k PWildcard
 
-varP :: (HasCallStack, Has (Throw Err) sig m) => Name -> Bind m (ValuePattern Name)
-varP n = Bind $ \ q _A b -> (PVar n,) <$> ((q, pvar (n ::: CT (wrap _A))) |- b)
+varP :: Name -> Bind m (ValuePattern (Name ::: Classifier))
+varP n = Bind $ \ _A k -> k (PVar (n ::: CT (wrap _A)))
   where
   wrap = \case
     VComp sig _A -> VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (VComp sig _A)
     _T           -> _T
 
-conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Bind m (ValuePattern Name)
-conP n ps = Bind $ \ q _A b -> do
+conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern (Name ::: Classifier))] -> Bind m (ValuePattern (Name ::: Classifier))
+conP n fs = Bind $ \ _A k -> do
   n' :=: _ ::: _T <- resolveC n
   _T' <- maybe (pure _T) (foldl' (\ _T _A -> ($ _A) . snd <$> (_T >>= assertQuantifier)) (pure _T) . snd) (unNeutral _A)
-  (ps', b') <- bind (fieldsP (Bind (\ _q' _A' b -> ([],) <$ unify (Exp _A) (Act _A') <*> b)) ps ::: (q, _T')) b
-  pure (PCon n' (fromList ps'), b')
+  fs' <- runBind (fieldsP fs) _T' (\ (fs, _T) -> fs <$ unify (Exp _A) (Act _T))
+  k $ PCon n' (fromList fs')
 
-fieldsP :: (HasCallStack, Has (Throw Err) sig m) => Bind m [a] -> [Bind m a] -> Bind m [a]
-fieldsP = foldr cons
+fieldsP :: (HasCallStack, Has (Throw Err) sig m) => [Bind m a] -> Bind m ([a], Type)
+fieldsP = foldr cons nil
   where
-  cons p ps = Bind $ \ q _A b -> do
-    (_ ::: (q', _A'), _A'') <- assertFunction _A
-    (p', (ps', b')) <- bind (p ::: (q', _A')) (bind (ps ::: (q, _A'')) b)
-    pure (p':ps', b')
+  cons p ps = Bind $ \ _A k -> do
+    (_ ::: (_, _A'), _A'') <- assertFunction _A
+    runBind p _A' $ \ p' -> runBind ps _A'' (k . first (p' :))
+  nil = Bind $ \ _T k -> k ([], _T)
 
 
-allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (EffectPattern Name)
-allP n = Bind $ \ q _A b -> do
+allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (EffectPattern (Name ::: Classifier))
+allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
-  (PAll n,) <$> ((q, pvar (n ::: CT (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (VComp sig _T)))) |- b)
+  k (PAll (n ::: CT (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (VComp sig _T))))
 
-effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern Name)] -> Name -> Bind m (Pattern Name)
-effP n ps v = Bind $ \ q _A b -> do
+effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern (Name ::: Classifier))] -> Name -> Bind m (Pattern (Name ::: Classifier))
+effP n ps v = Bind $ \ _A k -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- assertComp _A
   n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (listToMaybe (traverse unDTerm =<< lookupInSig n module' graph [sig]))
-  (ps', b') <- bind (fieldsP (Bind (\ q' _A' b -> ([],) <$> ((q', pvar (v ::: CT (VArrow Nothing Many _A' _A))) |- b))) ps ::: (q, _T)) b
-  pure (peff n' (fromList ps') v, b')
+  runBind (fieldsP ps) _T $ \ (ps', _A') -> k (peff n' (fromList ps') (v ::: CT (VArrow Nothing Many _A' _A)))
 
 
 -- Expression elaboration
@@ -213,10 +212,10 @@ checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withS
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind m (Pattern Name)
+bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind m (Pattern (Name ::: Classifier))
 bindPattern = go where
   go = withSpanB $ \case
-    S.PVal p -> Bind $ \ q _T -> bind (PVal <$> goVal p ::: (q, maybe _T snd (unComp _T)))
+    S.PVal p -> Bind $ \ _T -> runBind (PVal <$> goVal p) (maybe _T snd (unComp _T))
     S.PEff p -> withSpanB (\ (S.POp n ps v) -> effP n (map goVal ps) v) p
 
   goVal = withSpanB $ \case
@@ -249,7 +248,7 @@ abstractTerm body = go Nil Nil
       d <- depth
       pure $ body (TVar . Free . Right . fmap (levelToIndex d) <$> ts) (fs <*> pure d)
 
-patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern Name)
+patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern (Name ::: Classifier))
 patternForArgType = \case
   VComp{} -> fmap PEff . allP
   _       -> fmap PVal . varP
@@ -414,11 +413,11 @@ mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m
 mapSynth f = Synth . f . synth
 
 
-bind :: Bind m a ::: (Quantity, Type) -> Elab m b -> Elab m (a, b)
-bind (p ::: (q, _T)) = runBind p q _T
+bind :: Has (Throw Err) sig m => Bind m (Pattern (Name ::: Classifier)) ::: (Quantity, Type) -> Elab m b -> Elab m (Pattern Name, b)
+bind (p ::: (q, _T)) m = runBind p _T (\ p' -> (tm <$> p',) <$> ((q, p') |- m))
 
-newtype Bind m a = Bind { runBind :: forall x . Quantity -> Type -> Elab m x -> Elab m (a, x) }
+newtype Bind m a = Bind { runBind :: forall x . Type -> (a -> Elab m x) -> Elab m x }
   deriving (Functor)
 
-mapBind :: (forall x . Elab m (a, x) -> Elab m (b, x)) -> Bind m a -> Bind m b
-mapBind f m = Bind $ \ q _A b -> f (runBind m q _A b)
+mapBind :: (forall x . Elab m x -> Elab m x) -> Bind m a -> Bind m a
+mapBind f m = Bind $ \ _A k -> runBind m _A (f . k)
