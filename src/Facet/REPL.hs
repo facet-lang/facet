@@ -204,15 +204,15 @@ showEval e = Action $ do
   outputDocLn (getPrint (ann (printExpr opts mempty e'' ::: printType opts mempty _T)))
 
 runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
-runEvalMain e = runEval (E.quoteV 0 =<< eval mempty hdl e) pure
-  where
-  hdl = [(write, Handler handle)]
-  write = fromList ["Effect", "Console"] :.: U "write"
-  handle (FromList [o]) k = do
-    E.VString s <- o hdl
-    outputText s *> k unit
-  handle _              _ = unhandled
-  unhandled = throwError $ Notice.Notice (Just Notice.Error) [] (fillSep @(Doc Style) [reflow "unhandled effect operator"]) []
+runEvalMain e = runEval (E.quoteV 0 =<< eval mempty e) pure
+  -- where
+  -- hdl = [(write, Handler handle)]
+  -- write = fromList ["Effect", "Console"] :.: U "write"
+  -- handle (FromList [o]) k = do
+  --   E.VString s <- o hdl
+  --   outputText s *> k unit
+  -- handle _              _ = unhandled
+  -- unhandled = throwError $ Notice.Notice (Just Notice.Error) [] (fillSep @(Doc Style) [reflow "unhandled effect operator"]) []
 
 showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do

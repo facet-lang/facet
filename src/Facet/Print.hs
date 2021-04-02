@@ -178,7 +178,7 @@ printTExpr opts@Options{ rname } = go
     C.TVar (Global n)       -> qvar n
     C.TVar (Free (Right n)) -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
     C.TVar (Free (Left m))  -> meta m
-    C.TForAll      n    t b -> braces (ann (intro n d ::: printKind env t)) --> go (env |> pvar (n :=: intro n d)) b
+    C.TForAll      n    t b -> braces (ann (intro n d ::: printKind env t)) --> go (env |> PVar (n :=: intro n d)) b
     C.TArrow Nothing  q a b -> mult q (go env a) --> go env b
     C.TArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
     C.TComp s t             -> if s == mempty then go env t else sig s <+> go env t
@@ -205,12 +205,11 @@ printExpr opts@Options{ rname, instantiation } = go
   go env = \case
     C.XVar (Global n) -> qvar n
     C.XVar (Free n)   -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
-    C.XTLam n b       -> let { d = level env ; v = tintro n d } in braces (braces v <+> arrow <+> go (env |> pvar (__ :=: v)) b)
+    C.XTLam n b       -> let { d = level env ; v = tintro n d } in braces (braces v <+> arrow <+> go (env |> PVar (__ :=: v)) b)
     C.XInst e t       -> go env e `instantiation` braces (printTExpr opts env t)
     C.XLam cs         -> comp (commaSep (map (clause env) cs))
     C.XApp f a        -> go env f $$ go env a
     C.XCon n p        -> qvar n $$* (group . go env <$> p)
-    C.XOp n p         -> qvar n $$* (group . go env <$> p)
     C.XString s       -> annotate Lit $ pretty (show s)
     where
     d = level env
@@ -220,17 +219,12 @@ printExpr opts@Options{ rname, instantiation } = go
     p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p)
 
 printPattern :: Options -> Pattern Print -> Print
-printPattern Options{ rname } = \case
-  PVal p -> vpat p
-  PEff p -> epat p
+printPattern Options{ rname } = go
   where
-  vpat = \case
+  go = \case
     PWildcard -> pretty '_'
     PVar n    -> n
-    PCon n ps -> parens (annotate Con (rname n) $$* map vpat (toList ps))
-  epat = \case
-    PAll n     -> n
-    POp q ps k -> brackets (flatAlt space mempty <> pretty q $$* (group . vpat <$> ps) </> semi <+> group (vpat k) <> flatAlt space mempty)
+    PCon n ps -> parens (annotate Con (rname n) $$* map go (toList ps))
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_

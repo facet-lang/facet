@@ -26,7 +26,6 @@ data Norm
   | NTLam Name (T.Type -> Norm)
   | NLam [(Pattern Name, Pattern (Name :=: Norm) -> Norm)]
   | NNe (Var (LName Level)) (Snoc Elim)
-  | NOp RName (Snoc Norm)
 
 instance Eq Norm where
   (==) = (==) `on` quote 0
@@ -46,7 +45,6 @@ quote d = \case
   NTLam n b -> XTLam n (quote (succ d) (b (T.free (LName d n))))
   NLam cs   -> XLam (map (\ (p, b) -> let (d', p') = mapAccumL (\ d n -> (succ d, n :=: NNe (Free (LName d n)) Nil)) d p in (p, quote d' (b p'))) cs)
   NNe v sp  -> foldl' quoteElim (XVar (fmap (levelToIndex d) <$> v)) sp
-  NOp n sp  -> XOp n (quote d <$> sp)
   where
   quoteElim h = \case
     EApp n  -> XApp h (quote d n)
@@ -66,7 +64,6 @@ norm env = \case
   -- XInst f t -> norm env f `ninst` T.eval mempty env t
   XApp f a  -> norm env f `napp`  norm env a
   XLam cs   -> NLam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
-  XOp n sp  -> NOp n (norm env <$> sp)
 
 
 napp :: Norm -> Norm -> Norm
@@ -79,15 +76,10 @@ napp f a = case f of
 
 match :: Norm -> Pattern Name -> Maybe (Pattern (Name :=: Norm))
 match s = \case
-  PVal p' -> PVal <$> matchV s p'
-  PEff _  -> Nothing
-
-matchV :: Norm -> ValuePattern Name -> Maybe (ValuePattern (Name :=: Norm))
-matchV s = \case
   PWildcard -> Just PWildcard
   PVar n    -> Just (PVar (n :=: s))
   PCon n ps -> case s of
-    NCon n' fs -> PCon n' <$ guard (n == n') <*> zipWithM matchV fs ps
+    NCon n' fs -> PCon n' <$ guard (n == n') <*> zipWithM match fs ps
     _          -> Nothing
 
 -- ninst :: Norm -> T.Type -> Norm

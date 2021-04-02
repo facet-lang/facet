@@ -20,5 +20,4 @@ data Expr
   | XApp Expr Expr
   | XCon RName (Snoc Expr)
   | XString Text
-  | XOp RName (Snoc Expr)
   deriving (Eq, Ord, Show)

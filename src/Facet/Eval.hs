@@ -5,7 +5,6 @@ module Facet.Eval
 ( -- * Evaluation
   eval
   -- * Machinery
-, Handler(..)
 , Eval(..)
   -- * Values
 , Value(..)
@@ -14,7 +13,7 @@ module Facet.Eval
 , quoteV
 ) where
 
-import Control.Algebra hiding (Handler)
+import Control.Algebra
 import Control.Carrier.Reader
 import Control.Monad (ap, guard, liftM, (>=>))
 import Control.Monad.Trans.Class
@@ -36,17 +35,16 @@ import Facet.Syntax
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Env (Value (Eval m)) -> [(RName, Handler (Eval m))] -> Expr -> Eval m (Value (Eval m))
-eval env hdl = \case
-  XVar (Global n) -> global n >>= eval env hdl
+eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Env (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
+eval env = \case
+  XVar (Global n) -> global n >>= eval env
   XVar (Free n)   -> var env n
-  XTLam _ b       -> tlam (eval env hdl b)
-  XInst f t       -> inst (eval env hdl f) t
+  XTLam _ b       -> tlam (eval env b)
+  XInst f t       -> inst (eval env f) t
   XLam cs         -> lam env cs
-  XApp  f a       -> app env hdl (eval env hdl f) a
-  XCon n fs       -> con n (eval env hdl <$> fs)
+  XApp  f a       -> app env (eval env f) a
+  XCon n fs       -> con n (eval env <$> fs)
   XString s       -> string s
-  XOp n sp        -> op hdl n (flip (eval env) <$> sp)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
 global n = do
@@ -68,14 +66,11 @@ inst = const
 lam :: Env (Value (Eval m)) -> [(Pattern Name, Expr)] -> Eval m (Value (Eval m))
 lam env cs = pure $ VLam env cs
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Env (Value (Eval m)) -> [(RName, Handler (Eval m))] -> Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
-app envCallSite hdl f a = f >>= \case
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Env (Value (Eval m)) -> Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
+app envCallSite f a = f >>= \case
   VLam env cs -> k a where
-    (h, k) = foldl' (\ (es, vs) -> \case
-      (PEff (POp n ps nk), b) -> ((n, Handler $ \ sp k -> traverse ($ (h <> hdl)) sp >>= \ sp -> eval (bindSpine env ps sp |> PVal ((:=: VCont k) <$> nk)) hdl b) : es, vs)
-      (PEff (PAll n), b)      -> (es, \ a -> eval (env |> pvar (n :=: VLam envCallSite [(pvar __, a)])) hdl b)
-      (PVal p, b)             -> (es, eval envCallSite (h <> hdl) >=> fromMaybe (vs a) . matchV (\ vs -> eval (env |> PVal vs) hdl b) p)) ([], const (fail "non-exhaustive patterns in lambda")) cs
-  VCont k     -> k =<< eval envCallSite hdl a
+    k = foldl' (\ vs (p, b) -> eval envCallSite >=> fromMaybe (vs a) . matchV (\ vs -> eval (env |> vs) b) p) (const (fail "non-exhaustive patterns in lambda")) cs
+  VCont k     -> k =<< eval envCallSite a
   _           -> fail "expected lambda/continuation"
 
 string :: Text -> Eval m (Value (Eval m))
@@ -84,13 +79,8 @@ string = pure . VString
 con :: RName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
-op :: MonadFail m => [(RName, Handler (Eval m))] -> RName -> Snoc ([(RName, Handler (Eval m))] -> Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
-op hdl n sp = Eval $ \ k -> maybe (fail ("unhandled operation: " <> show n)) (\ (_, h) -> runEval (runHandler h sp pure) k) (find ((n ==) . fst) hdl)
-
 
 -- Machinery
-
-newtype Handler m = Handler { runHandler :: Snoc ([(RName, Handler m)] -> m (Value m)) -> (Value m -> m (Value m)) -> m (Value m) }
 
 newtype Eval m a = Eval { runEval :: forall r . (a -> m r) -> m r }
 
@@ -134,24 +124,13 @@ unit = VCon (NE.FromList ["Data", "Unit"] :.: U "unit") Nil
 
 -- Elimination
 
-matchV :: (ValuePattern (Name :=: Value m) -> a) -> ValuePattern Name -> Value m -> Maybe a
+matchV :: (Pattern (Name :=: Value m) -> a) -> Pattern Name -> Value m -> Maybe a
 matchV k p s = case p of
   PWildcard -> pure (k PWildcard)
   PVar n    -> pure (k (PVar (n :=: s)))
   PCon n ps
     | VCon n' fs <- s -> k . PCon n' <$ guard (n == n') <*> zipWithM (matchV id) ps fs
   PCon{}    -> Nothing
-
-bindValue ::  Env (Value m) -> ValuePattern Name -> Value m -> Env (Value m)
-bindValue env PWildcard   _           = env
-bindValue env (PVar n)    v           = env |> pvar (n :=: v)
-bindValue env (PCon _ ps) (VCon _ fs) = bindSpine env ps fs
-bindValue env _           _           = env -- FIXME: probably not a good idea to fail silently
-
-bindSpine :: Env (Value m) -> Snoc (ValuePattern Name) -> Snoc (Value m) -> Env (Value m)
-bindSpine env Nil        Nil        = env
-bindSpine env (tp :> hp) (ts :> hs) = bindValue (bindSpine env tp ts) hp hs
-bindSpine env _          _          = env -- FIXME: probably not a good idea to fail silently
 
 
 -- Quotation

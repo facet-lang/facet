@@ -174,7 +174,7 @@ eval subst = go where
     TVar (Global n)       -> global n
     TVar (Free (Right n)) -> index env n
     TVar (Free (Left m))  -> fromMaybe (metavar m) (lookupMeta m subst)
-    TForAll n t b         -> VForAll n t (\ _T -> go (env |> pvar (n :=: _T)) b)
+    TForAll n t b         -> VForAll n t (\ _T -> go (env |> PVar (n :=: _T)) b)
     TArrow n q a b        -> VArrow n q (go env a) (go env b)
     TComp s t             -> VComp (mapSignature (go env) s) (go env t)
     TApp  f a             -> go env f $$  go env a

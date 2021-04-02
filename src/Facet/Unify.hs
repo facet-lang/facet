@@ -56,7 +56,7 @@ unifyType = curry $ \case
   (VNe (Free (Left v1)) Nil, VNe (Free (Left v2)) Nil) -> flexFlex v1 v2
   (VNe (Free (Left v1)) Nil, t2)                       -> solve v1 t2
   (t1, VNe (Free (Left v2)) Nil)                       -> solve v2 t1
-  (VForAll _ t1 b1, VForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> ((zero, pvar (n ::: CK t2)) |- unifyType (b1 (free (LName d n))) (b2 (free (LName d n))))
+  (VForAll _ t1 b1, VForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> ((zero, PVar (n ::: CK t2)) |- unifyType (b1 (free (LName d n))) (b2 (free (LName d n))))
   (VForAll{}, _)                                       -> mismatch
   (VArrow _ _ a1 b1, VArrow n q a2 b2)                 -> VArrow n q <$> unifyType a1 a2 <*> unifyType b1 b2
   (VArrow{}, _)                                        -> mismatch

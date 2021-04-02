@@ -17,7 +17,6 @@ module Facet.Elab.Term
 , conP
 , fieldsP
 , allP
-, effP
   -- * Expression elaboration
 , synthExpr
 , checkExpr
@@ -50,9 +49,10 @@ import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
 import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
+import           Data.Either (partitionEithers)
 import           Data.Foldable
 import           Data.Functor
-import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
+import           Data.Maybe (catMaybes, fromMaybe)
 import           Data.Monoid (Ap(..), First(..))
 import qualified Data.Set as Set
 import           Data.Text (Text)
@@ -119,13 +119,16 @@ tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
-  b' <- (zero, pvar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
+  b' <- (zero, PVar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
   pure $ XTLam n b'
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name ::: Classifier)), Check m Expr)] -> Check m Expr
 lam cs = Check $ \ _T -> do
   (_A, _B) <- assertTacitFunction _T
   XLam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
+
+lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Check m Expr -> Check m Expr
+lam1 p b = lam [(p, b)]
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Synth m a) -> (HasCallStack => Check m b) -> Synth m c
 app mk operator operand = Synth $ do
@@ -141,17 +144,17 @@ string s = Synth $ pure $ XString s ::: T.VString
 
 -- Pattern combinators
 
-wildcardP :: Bind m (ValuePattern (Name ::: Classifier))
+wildcardP :: Bind m (Pattern (Name ::: Classifier))
 wildcardP = Bind $ \ _T k -> k PWildcard
 
-varP :: Name -> Bind m (ValuePattern (Name ::: Classifier))
+varP :: Name -> Bind m (Pattern (Name ::: Classifier))
 varP n = Bind $ \ _A k -> k (PVar (n ::: CT (wrap _A)))
   where
   wrap = \case
     VComp sig _A -> VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (VComp sig _A)
     _T           -> _T
 
-conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern (Name ::: Classifier))] -> Bind m (ValuePattern (Name ::: Classifier))
+conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (Pattern (Name ::: Classifier))] -> Bind m (Pattern (Name ::: Classifier))
 conP n fs = Bind $ \ _A k -> do
   n' :=: _ ::: _T <- resolveC n
   _T' <- maybe (pure _T) (foldl' (\ _T _A -> ($ _A) . snd <$> (_T >>= assertQuantifier)) (pure _T) . snd) (unNeutral _A)
@@ -167,19 +170,10 @@ fieldsP = foldr cons nil
   nil = Bind $ \ _T k -> k ([], _T)
 
 
-allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (EffectPattern (Name ::: Classifier))
+allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (Pattern (Name ::: Classifier))
 allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
-  k (PAll (n ::: CT (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (VComp sig _T))))
-
-effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern (Name ::: Classifier))] -> Bind m (ValuePattern (Name ::: Classifier)) -> Bind m (Pattern (Name ::: Classifier))
-effP n ps v = Bind $ \ _A k -> do
-  StaticContext{ module', graph } <- ask
-  (sig, _A') <- assertComp _A
-  n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (listToMaybe (traverse unDTerm =<< lookupInSig n module' graph [sig]))
-  runBind (fieldsP ps) _T $ \ (ps', _A') ->
-    runBind v (VArrow Nothing Many _A' _A) $ \ v' ->
-    k (peff n' (fromList ps') v')
+  k (PVar (n ::: CT (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (VComp sig _T))))
 
 
 -- Expression elaboration
@@ -210,20 +204,21 @@ checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withS
   S.String{} -> switch (synthExpr expr)
   where
   checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Check m Expr
-  checkLam cs = lam (map (\ (S.Clause p b) -> (bindPattern p, checkExpr b)) cs)
+  checkLam cs = lam (snd vs)
+    where
+    vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: Check m Expr], [(Bind m (Pattern (Name ::: Classifier)), Check m Expr)])
+    vs = partitionEithers (map (\ (S.Clause (S.Ann _ _ p) b) -> case p of
+      S.PVal p                          -> Right (bindPattern p, checkExpr b)
+      S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: mapCheck (pushSpan s) (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k))) cs)
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Pattern -> Bind m (Pattern (Name ::: Classifier))
+bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.ValPattern -> Bind m (Pattern (Name ::: Classifier))
 bindPattern = go where
   go = withSpanB $ \case
-    S.PVal p -> Bind $ \ _T -> runBind (PVal <$> goVal p) (maybe _T snd (unComp _T))
-    S.PEff p -> withSpanB (\ (S.POp n ps v) -> effP n (map goVal ps) (goVal v)) p
-
-  goVal = withSpanB $ \case
     S.PWildcard -> wildcardP
     S.PVar n    -> varP n
-    S.PCon n ps -> conP n (map goVal ps)
+    S.PCon n ps -> conP n (map go ps)
 
 
 -- | Elaborate a type abstracted over another type’s parameters.
@@ -233,7 +228,7 @@ abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Kind ->
 abstractType body = go
   where
   go = \case
-    KArrow  (Just n) a b -> TForAll n a <$> ((zero, pvar (n ::: CK a)) |- go b)
+    KArrow  (Just n) a b -> TForAll n a <$> ((zero, PVar (n ::: CK a)) |- go b)
     _                    -> body
 
 abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TExpr -> Snoc Expr -> Expr) -> Check m Expr
@@ -252,8 +247,8 @@ abstractTerm body = go Nil Nil
 
 patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern (Name ::: Classifier))
 patternForArgType = \case
-  VComp{} -> fmap PEff . allP
-  _       -> fmap PVal . varP
+  VComp{} -> allP
+  _       -> varP
 
 
 -- Declarations
@@ -280,12 +275,9 @@ elabInterfaceDef
   -> [S.Ann (Name ::: S.Ann S.Type)]
   -> m [Name :=: Def]
 elabInterfaceDef (dname ::: _T) constructors = do
-  mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _T
-    -- FIXME: check that the interface is a member of the sig.
-    op' <- elabTerm $ check (abstractTerm (const (XOp (mname :.: n))) ::: _T')
-    pure $ n :=: DTerm (Just op') _T'
+    pure $ n :=: DTerm Nothing _T'
   pure [ dname :=: DInterface (scopeFromList cs) _T ]
 
 -- FIXME: add a parameter for the effect signature.
@@ -299,7 +291,7 @@ elabTermDef _T expr@(S.Ann s _ _) = do
   where
   go k = Check $ \ _T -> case _T of
     VForAll{}               -> check (tlam (go k) ::: _T)
-    VArrow (Just n) q _A _B -> check (lam [(PVal <$> varP n, go k)] ::: VArrow Nothing q _A _B)
+    VArrow (Just n) q _A _B -> check (lam [(varP n, go k)] ::: VArrow Nothing q _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
