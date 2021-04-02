@@ -230,7 +230,7 @@ printPattern Options{ rname } = \case
     PCon n ps -> parens (annotate Con (rname n) $$* map vpat (toList ps))
   epat = \case
     PAll n     -> n
-    POp q ps k -> brackets (flatAlt space mempty <> pretty q $$* (group . vpat <$> ps) </> semi <+> group k <> flatAlt space mempty)
+    POp q ps k -> brackets (flatAlt space mempty <> pretty q $$* (group . vpat <$> ps) </> semi <+> group (vpat k) <> flatAlt space mempty)
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_

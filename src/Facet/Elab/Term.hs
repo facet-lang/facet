@@ -172,12 +172,14 @@ allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
   k (PAll (n ::: CT (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (VComp sig _T))))
 
-effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern (Name ::: Classifier))] -> Name -> Bind m (Pattern (Name ::: Classifier))
+effP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (ValuePattern (Name ::: Classifier))] -> Bind m (ValuePattern (Name ::: Classifier)) -> Bind m (Pattern (Name ::: Classifier))
 effP n ps v = Bind $ \ _A k -> do
   StaticContext{ module', graph } <- ask
   (sig, _A') <- assertComp _A
   n' ::: _T <- maybe (freeVariable n) (\ (n :=: _ ::: _T) -> instantiate const (n ::: _T)) (listToMaybe (traverse unDTerm =<< lookupInSig n module' graph [sig]))
-  runBind (fieldsP ps) _T $ \ (ps', _A') -> k (peff n' (fromList ps') (v ::: CT (VArrow Nothing Many _A' _A)))
+  runBind (fieldsP ps) _T $ \ (ps', _A') ->
+    runBind v (VArrow Nothing Many _A' _A) $ \ v' ->
+    k (peff n' (fromList ps') v')
 
 
 -- Expression elaboration
@@ -216,7 +218,7 @@ bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.P
 bindPattern = go where
   go = withSpanB $ \case
     S.PVal p -> Bind $ \ _T -> runBind (PVal <$> goVal p) (maybe _T snd (unComp _T))
-    S.PEff p -> withSpanB (\ (S.POp n ps v) -> effP n (map goVal ps) v) p
+    S.PEff p -> withSpanB (\ (S.POp n ps v) -> effP n (map goVal ps) (goVal v)) p
 
   goVal = withSpanB $ \case
     S.PWildcard -> wildcardP

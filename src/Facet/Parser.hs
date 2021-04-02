@@ -265,7 +265,7 @@ valuePattern = choice
 compPattern :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Pattern)
 compPattern = choice
   [ anned (S.PVal <$> valuePattern)
-  , anned (S.PEff <$> try (brackets (anned (S.POp <$> qname ename <*> many valuePattern <* symbolic ';' <*> (ename <|> N.__ <$ wildcard)))))
+  , anned (S.PEff <$> try (brackets (anned (S.POp <$> qname ename <*> many valuePattern <* symbolic ';' <*> valuePattern))))
   ] <?> "pattern"
 
 

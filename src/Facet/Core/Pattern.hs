@@ -23,7 +23,7 @@ data ValuePattern a
 
 data EffectPattern a
   = PAll a
-  | POp RName (Snoc (ValuePattern a)) a
+  | POp RName (Snoc (ValuePattern a)) (ValuePattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data Pattern a
@@ -37,7 +37,7 @@ pvar = PVal . PVar
 pcon :: RName -> Snoc (ValuePattern a) -> Pattern a
 pcon n fs = PVal $ PCon n fs
 
-peff :: RName -> Snoc (ValuePattern a) -> a -> Pattern a
+peff :: RName -> Snoc (ValuePattern a) -> ValuePattern a -> Pattern a
 peff o vs k = PEff $ POp o vs k
 
 

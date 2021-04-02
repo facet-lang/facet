@@ -72,7 +72,7 @@ app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) =
 app envCallSite hdl f a = f >>= \case
   VLam env cs -> k a where
     (h, k) = foldl' (\ (es, vs) -> \case
-      (PEff (POp n ps nk), b) -> ((n, Handler $ \ sp k -> traverse ($ (h <> hdl)) sp >>= \ sp -> eval (bindSpine env ps sp |> pvar (nk :=: VCont k)) hdl b) : es, vs)
+      (PEff (POp n ps nk), b) -> ((n, Handler $ \ sp k -> traverse ($ (h <> hdl)) sp >>= \ sp -> eval (bindSpine env ps sp |> PVal ((:=: VCont k) <$> nk)) hdl b) : es, vs)
       (PEff (PAll n), b)      -> (es, \ a -> eval (env |> pvar (n :=: VLam envCallSite [(pvar __, a)])) hdl b)
       (PVal p, b)             -> (es, eval envCallSite (h <> hdl) >=> fromMaybe (vs a) . matchV (\ vs -> eval (env |> PVal vs) hdl b) p)) ([], const (fail "non-exhaustive patterns in lambda")) cs
   VCont k     -> k =<< eval envCallSite hdl a
