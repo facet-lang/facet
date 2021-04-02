@@ -60,6 +60,8 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
   - Ideally, emit DWARF data.
 
+- Type patterns, for use with type lambdas & probably quantifiers.
+
 
 ### Surface
 
