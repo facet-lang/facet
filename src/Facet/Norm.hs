@@ -22,7 +22,7 @@ import           Facet.Syntax
 
 data Norm
   = NString Text
-  | NCon RName (Snoc Norm)
+  | NCon RName [Norm]
   | NTLam Name (T.Type -> Norm)
   | NLam [(Pattern Name, Pattern (Name :=: Norm) -> Norm)]
   | NNe (Var (LName Level)) (Snoc Elim)

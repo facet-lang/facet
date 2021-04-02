@@ -29,7 +29,6 @@ import Facet.Env as Env
 import Facet.Graph
 import Facet.Name hiding (Op)
 import Facet.Semialign (zipWithM)
-import Facet.Snoc
 import Facet.Snoc.NonEmpty as NE hiding ((|>))
 import Facet.Syntax
 import GHC.Stack (HasCallStack)
@@ -76,7 +75,7 @@ app envCallSite f a = f >>= \case
 string :: Text -> Eval m (Value (Eval m))
 string = pure . VString
 
-con :: RName -> Snoc (Eval m (Value (Eval m))) -> Eval m (Value (Eval m))
+con :: RName -> [Eval m (Value (Eval m))] -> Eval m (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
 
@@ -110,7 +109,7 @@ data Value m
   -- | Neutral; variables, only used during quotation
   = VVar (Var (LName Level))
   -- | Value; data constructors.
-  | VCon RName (Snoc (Value m))
+  | VCon RName [Value m]
   -- | Value; strings.
   | VString Text
   -- | Computation; lambdas.
@@ -119,7 +118,7 @@ data Value m
   | VCont (Value m -> m (Value m))
 
 unit :: Value m
-unit = VCon (NE.FromList ["Data", "Unit"] :.: U "unit") Nil
+unit = VCon (NE.FromList ["Data", "Unit"] :.: U "unit") []
 
 
 -- Elimination

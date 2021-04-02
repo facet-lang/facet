@@ -263,7 +263,7 @@ elabDataDef (dname ::: _K) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _K
-    con' <- elabTerm $ check (abstractTerm (const (XCon (mname :.: n))) ::: c_T)
+    con' <- elabTerm $ check (abstractTerm (const (XCon (mname :.: n) . toList)) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
   pure
     $ (dname :=: DData (scopeFromList cs) _K)
