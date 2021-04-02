@@ -225,6 +225,7 @@ printPattern Options{ rname } = go
     PWildcard -> pretty '_'
     PVar n    -> n
     PCon n ps -> parens (annotate Con (rname n) $$* map go (toList ps))
+    PDict os  -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group v) os) <> flatAlt space line)
 
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_

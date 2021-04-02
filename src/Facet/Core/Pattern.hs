@@ -6,6 +6,7 @@ module Facet.Core.Pattern
 
 import Data.Traversable (mapAccumL)
 import Facet.Name
+import Facet.Syntax
 
 -- Patterns
 
@@ -13,6 +14,7 @@ data Pattern a
   = PWildcard
   | PVar a
   | PCon RName [Pattern a]
+  | PDict [RName :=: a]
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
