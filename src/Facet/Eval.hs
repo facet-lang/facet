@@ -132,7 +132,9 @@ matchV k p s = case p of
   PCon n ps
     | VCon n' fs <- s -> k . PCon n' <$ guard (n == n') <*> zipWithM (matchV id) ps fs
   PCon{}    -> Nothing
-  PDict _   -> Nothing
+  PDict ps
+    | VDict os <- s -> k . PDict <$> zipWithM (\ (n1 :=: p) (n2 :=: o) -> (n1 :=: (p :=: o)) <$ guard (n1 == n2)) ps os
+  PDict{}   -> Nothing
 
 
 -- Quotation
