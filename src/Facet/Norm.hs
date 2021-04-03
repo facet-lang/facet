@@ -8,6 +8,7 @@ module Facet.Norm
 import           Control.Monad (guard)
 import           Data.Foldable (foldl')
 import           Data.Function (on)
+import           Data.Maybe (fromMaybe)
 import           Data.Monoid
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
@@ -67,7 +68,7 @@ norm env = \case
   XApp f a   -> norm env f `napp`  norm env a
   XLam cs    -> NLam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
   XDict os   -> NDict (map (fmap (norm env)) os)
-  XLet p v b -> norm (env |> fmap (:=: norm env v) p) b
+  XLet p v b -> norm (env |> fromMaybe (error "norm: non-exhaustive pattern in let") (match (norm env v) p)) b
 
 
 napp :: Norm -> Norm -> Norm
