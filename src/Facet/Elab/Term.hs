@@ -86,9 +86,9 @@ switch (Synth m) = Check $ \ _Exp -> m >>= \case
   a ::: VComp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
   a :::           _Act -> unify (Exp _Exp) (Act _Act) $> a
 
-as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m TExpr -> Synth m Expr
+as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m Type -> Synth m Expr
 as (m ::: _T) = Synth $ do
-  _T' <- evalTExpr =<< checkIsType (_T ::: KType)
+  _T' <- checkIsType (_T ::: KType)
   a <- check (m ::: _T')
   pure $ a ::: _T'
 
@@ -191,7 +191,7 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanS $ \ca
   synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Synth m Expr
   synthApp f a = app XApp (synthExpr f) (checkExpr a)
   synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Synth m Expr
-  synthAs t _T = as (checkExpr t ::: synthType _T)
+  synthAs t _T = as (checkExpr t ::: mapIsType (>>= (\ (_T ::: _K) -> (::: _K) <$> evalTExpr _T)) (synthType _T))
 
 
 checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check m Expr
