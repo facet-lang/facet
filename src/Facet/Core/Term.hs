@@ -20,4 +20,5 @@ data Expr
   | XCon RName [Expr]
   | XString Text
   | XDict [RName :=: Expr]
+  | XLet Name Expr Expr
   deriving (Eq, Ord, Show)

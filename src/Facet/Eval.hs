@@ -45,6 +45,7 @@ eval env = \case
   XCon n fs       -> con n (eval env <$> fs)
   XString s       -> string s
   XDict os        -> VDict <$> traverse (traverse (eval env)) os
+  XLet n v b      -> eval env v >>= \ v' -> eval (env |> PVar (n :=: v')) b
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
 global n = do
