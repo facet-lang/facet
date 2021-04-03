@@ -84,7 +84,9 @@ match s = \case
   PCon n ps -> case s of
     NCon n' fs -> PCon n' <$ guard (n == n') <*> zipWithM match fs ps
     _          -> Nothing
-  PDict _   -> Nothing
+  PDict ps  -> case s of
+    NDict os -> PDict <$> zipWithM (\ (n1 :=: o) (n2 :=: p) -> (n1 :=: (p :=: o)) <$ guard (n1 == n2)) os ps
+    _        -> Nothing
 
 -- ninst :: Norm -> T.Type -> Norm
 -- ninst f t = case f of
