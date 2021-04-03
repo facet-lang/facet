@@ -26,6 +26,7 @@ data Norm
   | NTLam Name (T.Type -> Norm)
   | NLam [(Pattern Name, Pattern (Name :=: Norm) -> Norm)]
   | NNe (Var (LName Level)) (Snoc Elim)
+  | NDict [RName :=: Norm]
 
 instance Eq Norm where
   (==) = (==) `on` quote 0
@@ -45,6 +46,7 @@ quote d = \case
   NTLam n b -> XTLam n (quote (succ d) (b (T.free (LName d n))))
   NLam cs   -> XLam (map (\ (p, b) -> let (d', p') = mapAccumL (\ d n -> (succ d, n :=: NNe (Free (LName d n)) Nil)) d p in (p, quote d' (b p'))) cs)
   NNe v sp  -> foldl' quoteElim (XVar (fmap (levelToIndex d) <$> v)) sp
+  NDict os  -> XDict (map (fmap (quote d)) os)
   where
   quoteElim h = \case
     EApp n  -> XApp h (quote d n)
@@ -64,6 +66,7 @@ norm env = \case
   -- XInst f t -> norm env f `ninst` T.eval mempty env t
   XApp f a  -> norm env f `napp`  norm env a
   XLam cs   -> NLam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
+  XDict os  -> NDict (map (fmap (norm env)) os)
 
 
 napp :: Norm -> Norm -> Norm

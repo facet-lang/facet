@@ -211,6 +211,7 @@ printExpr opts@Options{ rname, instantiation } = go
     C.XApp f a        -> go env f $$ go env a
     C.XCon n p        -> qvar n $$* (group . go env <$> p)
     C.XString s       -> annotate Lit $ pretty (show s)
+    C.XDict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
     where
     d = level env
   qvar = group . setPrec Var . rname

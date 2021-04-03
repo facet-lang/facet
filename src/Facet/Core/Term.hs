@@ -19,4 +19,5 @@ data Expr
   | XApp Expr Expr
   | XCon RName [Expr]
   | XString Text
+  | XDict [RName :=: Expr]
   deriving (Eq, Ord, Show)

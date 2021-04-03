@@ -44,6 +44,7 @@ eval env = \case
   XApp  f a       -> app env (eval env f) a
   XCon n fs       -> con n (eval env <$> fs)
   XString s       -> string s
+  XDict os        -> VDict <$> traverse (traverse (eval env)) os
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
 global n = do
@@ -116,6 +117,7 @@ data Value m
   | VLam (Env (Value m)) [(Pattern Name, Expr)]
   -- | Computation; continuations, used in effect handlers.
   | VCont (Value m -> m (Value m))
+  | VDict [RName :=: Value m]
 
 unit :: Value m
 unit = VCon (NE.FromList ["Data", "Unit"] :.: U "unit") []
@@ -142,3 +144,4 @@ quoteV d = \case
   VVar v    -> pure (XVar (fmap (levelToIndex d) <$> v))
   VCon n fs -> XCon n <$> traverse (quoteV d) fs
   VString s -> pure $ XString s
+  VDict os  -> XDict <$> traverse (traverse (quoteV d)) os
