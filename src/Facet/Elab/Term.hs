@@ -11,6 +11,7 @@ module Facet.Elab.Term
 , lam
 , app
 , string
+, let'
   -- * Pattern combinators
 , wildcardP
 , varP
@@ -140,6 +141,13 @@ app mk operator operand = Synth $ do
 
 string :: Text -> Synth m Expr
 string s = Synth $ pure $ XString s ::: T.VString
+
+
+let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Synth m Expr -> Check m Expr -> Check m Expr
+let' p a b = Check $ \ _B -> do
+  a' ::: _A <- synth a
+  (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
+  pure $ XLet p' a' b'
 
 
 -- Pattern combinators
