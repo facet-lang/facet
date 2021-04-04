@@ -43,7 +43,7 @@ data Module = Module
   -- FIXME: record source references to operators to contextualize parse errors.
   , operators :: [(Op, Assoc)]
   -- FIXME: record source references to definitions to contextualize ambiguous name errors.
-  , scope     :: Scope
+  , scope     :: Scope Def
   }
 
 name_ :: Lens' Module MName
@@ -52,7 +52,7 @@ name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
 imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })
 
-scope_ :: Lens' Module Scope
+scope_ :: Lens' Module (Scope Def)
 scope_ = lens scope (\ m scope -> m{ scope })
 
 
@@ -85,19 +85,19 @@ lookupD :: Has Empty sig m => Name -> Module -> m (RName :=: Def)
 lookupD n Module{ name, scope } = maybe empty (pure . first (name:.:)) (lookupScope n scope)
 
 
-newtype Scope = Scope { decls :: Map.Map Name Def }
+newtype Scope a = Scope { decls :: Map.Map Name a }
   deriving (Monoid, Semigroup)
 
-decls_ :: Lens' Scope (Map.Map Name Def)
+decls_ :: Lens' (Scope Def) (Map.Map Name Def)
 decls_ = coerced
 
-scopeFromList :: [Name :=: Def] -> Scope
+scopeFromList :: [Name :=: Def] -> Scope Def
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v) -> (n, v))
 
-scopeToList :: Scope -> [Name :=: Def]
+scopeToList :: Scope Def -> [Name :=: Def]
 scopeToList = map (uncurry (:=:)) . Map.toList . decls
 
-lookupScope :: Has Empty sig m => Name -> Scope -> m (Name :=: Def)
+lookupScope :: Has Empty sig m => Name -> Scope Def -> m (Name :=: Def)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
@@ -106,21 +106,21 @@ newtype Import = Import { name :: MName }
 
 data Def
   = DTerm (Maybe Expr) Type
-  | DData Scope Kind
-  | DInterface Scope Kind
-  | DModule Scope Kind
+  | DData (Scope Def) Kind
+  | DInterface (Scope Def) Kind
+  | DModule (Scope Def) Kind
 
 unDTerm :: Has Empty sig m => Def -> m (Maybe Expr ::: Type)
 unDTerm = \case
   DTerm expr _T -> pure $ expr ::: _T
   _             -> empty
 
-unDData :: Has Empty sig m => Def -> m (Scope ::: Kind)
+unDData :: Has Empty sig m => Def -> m (Scope Def ::: Kind)
 unDData = \case
   DData cs _K -> pure $ cs ::: _K
   _           -> empty
 
-unDInterface :: Has Empty sig m => Def -> m (Scope ::: Kind)
+unDInterface :: Has Empty sig m => Def -> m (Scope Def ::: Kind)
 unDInterface = \case
   DInterface cs _K -> pure $ cs ::: _K
   _                -> empty
