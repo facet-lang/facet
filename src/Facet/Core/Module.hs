@@ -18,7 +18,6 @@ module Facet.Core.Module
 , unDTerm
 , unDData
 , unDInterface
-, Constructor(..)
 ) where
 
 import           Control.Algebra
@@ -125,6 +124,3 @@ unDInterface :: Has Empty sig m => Def -> m (Scope Def ::: Kind)
 unDInterface = \case
   DInterface cs _K -> pure $ cs ::: _K
   _                -> empty
-
-
-newtype Constructor = Constructor { fieldTypes :: [Type] }
