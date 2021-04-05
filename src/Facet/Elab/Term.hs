@@ -59,6 +59,8 @@ import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Context (toEnv)
+import           Facet.Core.Interface
+import           Facet.Core.Kind
 import           Facet.Core.Module as Module
 import           Facet.Core.Pattern
 import           Facet.Core.Term as E

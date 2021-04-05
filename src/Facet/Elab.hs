@@ -61,6 +61,8 @@ import           Control.Monad (unless, (<=<))
 import           Data.Foldable (for_)
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as Context (empty)
+import           Facet.Core.Interface
+import           Facet.Core.Kind
 import           Facet.Core.Module
 import           Facet.Core.Pattern
 import           Facet.Core.Term as E

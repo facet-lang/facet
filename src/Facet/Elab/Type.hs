@@ -22,6 +22,8 @@ import           Control.Monad (unless)
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
+import           Facet.Core.Interface
+import           Facet.Core.Kind
 import           Facet.Core.Module
 import           Facet.Core.Pattern
 import           Facet.Core.Type

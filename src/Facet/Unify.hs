@@ -18,6 +18,8 @@ import Control.Effect.Sum
 import Control.Effect.Writer
 import Control.Monad (unless)
 import Facet.Carrier.Throw.Inject
+import Facet.Core.Interface
+import Facet.Core.Kind
 import Facet.Core.Pattern
 import Facet.Core.Type
 import Facet.Elab

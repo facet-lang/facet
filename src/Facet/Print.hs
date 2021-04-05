@@ -35,6 +35,8 @@ import           Data.Foldable (foldl', toList)
 import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
+import           Facet.Core.Interface
+import           Facet.Core.Kind
 import qualified Facet.Core.Module as C
 import           Facet.Core.Pattern
 import qualified Facet.Core.Term as C
@@ -155,19 +157,19 @@ printSubject opts env = \case
   C.CK k -> printKind env k
   C.CT t -> printType opts env t
 
-printKind :: Env Print -> C.Kind -> Print
+printKind :: Env Print -> Kind -> Print
 printKind env = \case
-  C.KType               -> annotate Type $ pretty "Type"
-  C.KInterface          -> annotate Type $ pretty "Interface"
-  C.KArrow Nothing  a b -> printKind env a --> printKind env b
-  C.KArrow (Just n) a b -> parens (ann (intro n d ::: printKind env a)) --> printKind env b
+  KType               -> annotate Type $ pretty "Type"
+  KInterface          -> annotate Type $ pretty "Interface"
+  KArrow Nothing  a b -> printKind env a --> printKind env b
+  KArrow (Just n) a b -> parens (ann (intro n d ::: printKind env a)) --> printKind env b
   where
   d = level env
 
 printType :: Options -> Env Print -> C.Type -> Print
 printType opts env = printTExpr opts env . CT.quote (level env)
 
-printInterface :: Options -> Env Print -> C.Interface C.Type -> Print
+printInterface :: Options -> Env Print -> Interface C.Type -> Print
 printInterface = printInterfaceWith printType
 
 printTExpr :: Options -> Env Print -> C.TExpr -> Print
@@ -186,15 +188,15 @@ printTExpr opts@Options{ rname } = go
     C.TString               -> annotate Type $ pretty "String"
     where
     d = level env
-    sig s = brackets (commaSep (map (interface env) (C.interfaces s)))
+    sig s = brackets (commaSep (map (interface env) (interfaces s)))
   interface = printInterfaceWith printTExpr opts
   mult q = if
     | q == zero -> (pretty '0' <+>)
     | q == one  -> (pretty '1' <+>)
     | otherwise -> id
 
-printInterfaceWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Print -> C.Interface a -> Print
-printInterfaceWith with opts@Options{ rname } env (C.Interface h sp) = rname h $$* fmap (with opts env) sp
+printInterfaceWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Print -> Interface a -> Print
+printInterfaceWith with opts@Options{ rname } env (Interface h sp) = rname h $$* fmap (with opts env) sp
 
 printNorm :: Options -> Env Print -> N.Norm -> Print
 printNorm opts env = printExpr opts env . N.quote (level env)

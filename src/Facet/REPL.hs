@@ -29,9 +29,9 @@ import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
+import           Facet.Core.Interface as I
 import           Facet.Core.Module
 import           Facet.Core.Term (Expr)
-import           Facet.Core.Type as T hiding (eval)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
@@ -198,7 +198,7 @@ showType e = Action $ do
   outputDocLn (getPrint (ann (printExpr opts mempty e ::: printType opts mempty _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- runElab $ Elab.elabSynthTerm $ locally Elab.sig_ (T.singleton (T.Interface (["Effect", "Console"]:.:U "Output") Nil) :) $ Elab.synth (Elab.synthExpr e)
+  e' ::: _T <- runElab $ Elab.elabSynthTerm $ locally Elab.sig_ (I.singleton (I.Interface (["Effect", "Console"]:.:U "Output") Nil) :) $ Elab.synth (Elab.synthExpr e)
   e'' <- runElab $ runEvalMain e'
   opts <- get
   outputDocLn (getPrint (ann (printExpr opts mempty e'' ::: printType opts mempty _T)))

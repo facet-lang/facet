@@ -1,14 +1,6 @@
 module Facet.Core.Type
-( -- * Kinds
-  Kind(..)
-  -- * Types
-, Interface(..)
-, Signature(..)
-, fromInterfaces
-, singleton
-, interfaces
-, mapSignature
-, Type(..)
+( -- * Types
+  Type(..)
 , global
 , free
 , metavar
@@ -28,7 +20,5 @@ module Facet.Core.Type
 , apply
 ) where
 
-import Facet.Core.Interface
-import Facet.Core.Kind
 import Facet.Core.Type.Expr
 import Facet.Core.Type.Norm

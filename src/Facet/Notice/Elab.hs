@@ -9,7 +9,8 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Type (Classifier(..), apply, free, interfaces, metavar)
+import           Facet.Core.Interface (interfaces)
+import           Facet.Core.Type (Classifier(..), apply, free, metavar)
 import           Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Name (LName(..))
