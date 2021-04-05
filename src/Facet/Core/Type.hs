@@ -1,7 +1,7 @@
 module Facet.Core.Type
 ( module Facet.Core.Type.Norm
   -- * Type expressions
-, TExpr(..)
+, module Facet.Core.Type.Expr
 ) where
 
 import Facet.Core.Type.Expr
