@@ -102,7 +102,7 @@ instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a :::
 instantiate inst = go
   where
   go (e ::: _T) = case _T of
-    VForAll _ _T _B -> do
+    T.ForAll _ _T _B -> do
       m <- meta _T
       go (inst e (TVar (Free (Left m))) ::: _B (metavar m))
     _                -> pure $ e ::: _T
@@ -284,7 +284,7 @@ assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Classifier -> Maybe out
 assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (pat _T)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-assertFunction = assertMatch (\case{ CT (VArrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . CT
+assertFunction = assertMatch (\case{ CT (T.Arrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . CT
 
 
 -- Unification

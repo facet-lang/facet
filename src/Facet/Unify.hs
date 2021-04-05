@@ -18,18 +18,18 @@ import Control.Effect.Sum
 import Control.Effect.Writer
 import Control.Monad (unless)
 import Facet.Carrier.Throw.Inject
+import Facet.Elab
 import Facet.Interface
 import Facet.Kind
-import Facet.Pattern
-import Facet.Type.Expr
-import Facet.Type.Norm
-import Facet.Elab
 import Facet.Name
+import Facet.Pattern
 import Facet.Semialign
 import Facet.Semiring
 import Facet.Snoc
 import Facet.Subst
 import Facet.Syntax
+import Facet.Type.Expr
+import Facet.Type.Norm as T
 import Facet.Usage
 import GHC.Stack
 
@@ -53,20 +53,20 @@ occurs v t = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStac
 
 unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Type -> Type -> m Type
 unifyType = curry $ \case
-  (VComp s1 t1, VComp s2 t2)                           -> VComp . fromInterfaces <$> unifySpine unifyInterface (interfaces s1) (interfaces s2) <*> unifyType t1 t2
-  (VComp s1 t1, t2)                                    -> VComp s1 <$> unifyType t1 t2
-  (t1, VComp s2 t2)                                    -> VComp s2 <$> unifyType t1 t2
-  (VNe (Free (Left v1)) Nil, VNe (Free (Left v2)) Nil) -> flexFlex v1 v2
-  (VNe (Free (Left v1)) Nil, t2)                       -> solve v1 t2
-  (t1, VNe (Free (Left v2)) Nil)                       -> solve v2 t1
-  (VForAll _ t1 b1, VForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> ((zero, PVar (n ::: CK t2)) |- unifyType (b1 (free (LName d n))) (b2 (free (LName d n))))
-  (VForAll{}, _)                                       -> mismatch
-  (VArrow _ _ a1 b1, VArrow n q a2 b2)                 -> VArrow n q <$> unifyType a1 a2 <*> unifyType b1 b2
-  (VArrow{}, _)                                        -> mismatch
-  (VNe v1 sp1, VNe v2 sp2)                             -> VNe <$> unifyVar v1 v2 <*> unifySpine unifyType sp1 sp2
-  (VNe{}, _)                                           -> mismatch
-  (VString, VString)                                   -> pure VString
-  (VString, _)                                         -> mismatch
+  (T.Comp s1 t1, T.Comp s2 t2)                           -> T.Comp . fromInterfaces <$> unifySpine unifyInterface (interfaces s1) (interfaces s2) <*> unifyType t1 t2
+  (T.Comp s1 t1, t2)                                     -> T.Comp s1 <$> unifyType t1 t2
+  (t1, T.Comp s2 t2)                                     -> T.Comp s2 <$> unifyType t1 t2
+  (T.Ne (Free (Left v1)) Nil, T.Ne (Free (Left v2)) Nil) -> flexFlex v1 v2
+  (T.Ne (Free (Left v1)) Nil, t2)                        -> solve v1 t2
+  (t1, T.Ne (Free (Left v2)) Nil)                        -> solve v2 t1
+  (T.ForAll _ t1 b1, T.ForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> ((zero, PVar (n ::: CK t2)) |- unifyType (b1 (free (LName d n))) (b2 (free (LName d n))))
+  (T.ForAll{}, _)                                        -> mismatch
+  (T.Arrow _ _ a1 b1, T.Arrow n q a2 b2)                 -> T.Arrow n q <$> unifyType a1 a2 <*> unifyType b1 b2
+  (T.Arrow{}, _)                                         -> mismatch
+  (T.Ne v1 sp1, T.Ne v2 sp2)                             -> T.Ne <$> unifyVar v1 v2 <*> unifySpine unifyType sp1 sp2
+  (T.Ne{}, _)                                            -> mismatch
+  (T.String, T.String)                                   -> pure T.String
+  (T.String, _)                                          -> mismatch
   where
   mkForAll d n k b = TForAll n k (quote (succ d) b)
 

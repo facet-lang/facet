@@ -87,8 +87,8 @@ import           GHC.Stack
 
 switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
 switch (Synth m) = Check $ \ _Exp -> m >>= \case
-  a ::: VComp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
-  a :::           _Act -> unify (Exp _Exp) (Act _Act) $> a
+  a ::: T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
+  a :::            _Act -> unify (Exp _Exp) (Act _Act) $> a
 
 as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m Type -> Synth m Expr
 as (m ::: _T) = Synth $ do
@@ -143,7 +143,7 @@ app mk operator operand = Synth $ do
 
 
 string :: Text -> Synth m Expr
-string s = Synth $ pure $ XString s ::: T.VString
+string s = Synth $ pure $ XString s ::: T.String
 
 
 let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Synth m Expr -> Check m Expr -> Check m Expr
@@ -162,8 +162,8 @@ varP :: Name -> Bind m (Pattern (Name ::: Classifier))
 varP n = Bind $ \ _A k -> k (PVar (n ::: CT (wrap _A)))
   where
   wrap = \case
-    VComp sig _A -> VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (VComp sig _A)
-    _T           -> _T
+    T.Comp sig _A -> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (T.Comp sig _A)
+    _T            -> _T
 
 conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (Pattern (Name ::: Classifier))] -> Bind m (Pattern (Name ::: Classifier))
 conP n fs = Bind $ \ _A k -> do
@@ -184,7 +184,7 @@ fieldsP = foldr cons nil
 allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (Pattern (Name ::: Classifier))
 allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
-  k (PVar (n ::: CT (VArrow Nothing Many (VNe (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (VComp sig _T))))
+  k (PVar (n ::: CT (T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (T.Comp sig _T))))
 
 
 -- Expression elaboration
@@ -246,20 +246,20 @@ abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TE
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
-    VForAll n   _T _B -> do
+    T.ForAll n   _T _B -> do
       d <- depth
-      check (tlam (go (ts :> LName d n) fs) ::: VForAll n _T _B)
-    VArrow  n q _A _B -> do
+      check (tlam (go (ts :> LName d n) fs) ::: T.ForAll n _T _B)
+    T.Arrow  n q _A _B -> do
       d <- depth
-      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> XVar (Free (LName (levelToIndex d' d) (fromMaybe __ n)))))] ::: VArrow n q _A _B)
+      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> XVar (Free (LName (levelToIndex d' d) (fromMaybe __ n)))))] ::: T.Arrow n q _A _B)
     _T                -> do
       d <- depth
       pure $ body (TVar . Free . Right . fmap (levelToIndex d) <$> ts) (fs <*> pure d)
 
 patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern (Name ::: Classifier))
 patternForArgType = \case
-  VComp{} -> allP
-  _       -> varP
+  T.Comp{} -> allP
+  _        -> varP
 
 
 -- Declarations
@@ -301,12 +301,12 @@ elabTermDef _T expr@(S.Ann s _ _) = do
   elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    VForAll{}               -> check (tlam (go k) ::: _T)
-    VArrow (Just n) q _A _B -> check (lam [(varP n, go k)] ::: VArrow Nothing q _A _B)
+    T.ForAll{}               -> check (tlam (go k) ::: _T)
+    T.Arrow (Just n) q _A _B -> check (lam [(varP n, go k)] ::: T.Arrow Nothing q _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                       -> check (k ::: _T)
+    _                        -> check (k ::: _T)
 
 
 -- Modules
@@ -351,11 +351,11 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 -- Errors
 
 assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name ::: Kind, Type -> Type)
-assertQuantifier = assertMatch (\case{ CT (VForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" . CT
+assertQuantifier = assertMatch (\case{ CT (T.ForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" . CT
 
 -- | Expect a tacit (non-variable-binding) function type.
 assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ((Quantity, Type), Type)
-assertTacitFunction = assertMatch (\case{ CT (VArrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . CT
+assertTacitFunction = assertMatch (\case{ CT (T.Arrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . CT
 
 -- | Expect a computation type with effects.
 assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Signature Type, Type)
@@ -399,8 +399,8 @@ findMaybeM p = getAp . fmap getFirst . foldMap (Ap . fmap First . p)
 
 check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
 check (m ::: _T) = case _T of
-  VComp sig _T -> provide sig $ runCheck m _T
-  _T           -> runCheck m _T
+  T.Comp sig _T -> provide sig $ runCheck m _T
+  _T            -> runCheck m _T
 
 newtype Check m a = Check { runCheck :: Type -> Elab m a }
   deriving (Applicative, Functor) via ReaderC Type (Elab m)

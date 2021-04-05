@@ -38,11 +38,11 @@ import Prelude hiding (lookup)
 -- Types
 
 data Type
-  = VString
-  | VForAll Name Kind (Type -> Type)
-  | VArrow (Maybe Name) Quantity Type Type
-  | VNe (Var (Either Meta (LName Level))) (Snoc Type)
-  | VComp (Signature Type) Type
+  = String
+  | ForAll Name Kind (Type -> Type)
+  | Arrow (Maybe Name) Quantity Type Type
+  | Ne (Var (Either Meta (LName Level))) (Snoc Type)
+  | Comp (Signature Type) Type
 
 instance Eq Type where
   (==) = (==) `on` quote 0
@@ -62,18 +62,18 @@ metavar = var . Free . Left
 
 
 var :: Var (Either Meta (LName Level)) -> Type
-var v = VNe v Nil
+var v = Ne v Nil
 
 
 unNeutral :: Has Empty sig m => Type -> m (Var (Either Meta (LName Level)), Snoc Type)
 unNeutral = \case
-  VNe h sp -> pure (h, sp)
-  _        -> empty
+  Ne h sp -> pure (h, sp)
+  _       -> empty
 
 unComp :: Has Empty sig m => Type -> m (Signature Type, Type)
 unComp = \case
-  VComp sig _T -> pure (sig, _T)
-  _T           -> empty
+  Comp sig _T -> pure (sig, _T)
+  _T          -> empty
 
 
 data Classifier
@@ -90,18 +90,18 @@ occursIn :: Meta -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
-    VForAll n _ b  -> go (succ d) (b (free (LName d n)))
-    VArrow _ _ a b -> go d a || go d b
-    VComp s t      -> any (go d) s || go d t
-    VNe h sp       -> any (either (== p) (const False)) h || any (go d) sp
-    VString        -> False
+    ForAll n _ b  -> go (succ d) (b (free (LName d n)))
+    Arrow _ _ a b -> go d a || go d b
+    Comp s t      -> any (go d) s || go d t
+    Ne h sp       -> any (either (== p) (const False)) h || any (go d) sp
+    String        -> False
 
 
 -- Elimination
 
 ($$) :: HasCallStack => Type -> Type -> Type
-VNe h es $$ a = VNe h (es :> a)
-_        $$ _ = error "can’t apply non-neutral/forall type"
+Ne h es $$ a = Ne h (es :> a)
+_       $$ _ = error "can’t apply non-neutral/forall type"
 
 ($$*) :: (HasCallStack, Foldable t) => Type -> t Type -> Type
 ($$*) = foldl' ($$)
@@ -113,22 +113,22 @@ infixl 9 $$, $$*
 
 quote :: Level -> Type -> TExpr
 quote d = \case
-  VString        -> TString
-  VForAll n t b  -> TForAll n t (quote (succ d) (b (free (LName d n))))
-  VArrow n q a b -> TArrow n q (quote d a) (quote d b)
-  VComp s t      -> TComp (mapSignature (quote d) s) (quote d t)
-  VNe n sp       -> foldl' (&) (TVar (fmap (fmap (levelToIndex d)) <$> n)) (flip TApp . quote d <$> sp)
+  String        -> TString
+  ForAll n t b  -> TForAll n t (quote (succ d) (b (free (LName d n))))
+  Arrow n q a b -> TArrow n q (quote d a) (quote d b)
+  Comp s t      -> TComp (mapSignature (quote d) s) (quote d t)
+  Ne n sp       -> foldl' (&) (TVar (fmap (fmap (levelToIndex d)) <$> n)) (flip TApp . quote d <$> sp)
 
 eval :: HasCallStack => Subst Type -> Env Type -> TExpr -> Type
 eval subst = go where
   go env = \case
-    TString               -> VString
+    TString               -> String
     TVar (Global n)       -> global n
     TVar (Free (Right n)) -> index env n
     TVar (Free (Left m))  -> fromMaybe (metavar m) (lookupMeta m subst)
-    TForAll n t b         -> VForAll n t (\ _T -> go (env |> PVar (n :=: _T)) b)
-    TArrow n q a b        -> VArrow n q (go env a) (go env b)
-    TComp s t             -> VComp (mapSignature (go env) s) (go env t)
+    TForAll n t b         -> ForAll n t (\ _T -> go (env |> PVar (n :=: _T)) b)
+    TArrow n q a b        -> Arrow n q (go env a) (go env b)
+    TComp s t             -> Comp (mapSignature (go env) s) (go env t)
     TApp  f a             -> go env f $$  go env a
 
 apply :: HasCallStack => Subst Type -> Env Type -> Type -> Type
