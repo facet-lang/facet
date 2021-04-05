@@ -74,6 +74,7 @@ library
     Facet.Carrier.Write.Inject
     Facet.CLI
     Facet.Context
+    Facet.Core.Interface
     Facet.Core.Kind
     Facet.Core.Module
     Facet.Core.Pattern
