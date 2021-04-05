@@ -28,42 +28,23 @@ module Facet.Core.Type
 , apply
 ) where
 
-import           Control.Effect.Empty
-import           Data.Foldable (foldl')
-import           Data.Function (on, (&))
-import           Data.Maybe (fromMaybe)
-import qualified Data.Set as Set
-import           Facet.Core.Kind
-import           Facet.Core.Pattern
-import           Facet.Env hiding (empty)
-import           Facet.Name
-import           Facet.Snoc
-import           Facet.Subst
-import           Facet.Syntax
-import           Facet.Usage hiding (singleton)
-import           GHC.Stack
-import           Prelude hiding (lookup)
+import Control.Effect.Empty
+import Data.Foldable (foldl')
+import Data.Function (on, (&))
+import Data.Maybe (fromMaybe)
+import Facet.Core.Interface
+import Facet.Core.Kind
+import Facet.Core.Pattern
+import Facet.Env hiding (empty)
+import Facet.Name
+import Facet.Snoc
+import Facet.Subst
+import Facet.Syntax
+import Facet.Usage hiding (singleton)
+import GHC.Stack
+import Prelude hiding (lookup)
 
 -- Types
-
-data Interface a = Interface RName (Snoc a)
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-newtype Signature a = Signature { getSignature :: Set.Set (Interface a) }
-  deriving (Eq, Foldable, Monoid, Ord, Semigroup, Show)
-
-fromInterfaces :: Ord a => [Interface a] -> Signature a
-fromInterfaces = Signature . Set.fromList
-
-singleton :: Interface a -> Signature a
-singleton = Signature . Set.singleton
-
-interfaces :: Signature a -> [Interface a]
-interfaces = Set.toList . getSignature
-
-mapSignature :: Ord b => (a -> b) -> Signature a -> Signature b
-mapSignature f = Signature . Set.map (fmap f) . getSignature
-
 
 data Type
   = VString
