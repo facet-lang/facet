@@ -35,6 +35,7 @@ import Data.Maybe (fromMaybe)
 import Facet.Core.Interface
 import Facet.Core.Kind
 import Facet.Core.Pattern
+import Facet.Core.Type.Expr
 import Facet.Env hiding (empty)
 import Facet.Name
 import Facet.Snoc
@@ -116,18 +117,6 @@ _        $$ _ = error "can’t apply non-neutral/forall type"
 ($$*) = foldl' ($$)
 
 infixl 9 $$, $$*
-
-
--- Type expressions
-
-data TExpr
-  = TString
-  | TVar (Var (Either Meta (LName Index)))
-  | TForAll Name Kind TExpr
-  | TArrow (Maybe Name) Quantity TExpr TExpr
-  | TComp (Signature TExpr) TExpr
-  | TApp TExpr TExpr
-  deriving (Eq, Ord, Show)
 
 
 -- Quotation
