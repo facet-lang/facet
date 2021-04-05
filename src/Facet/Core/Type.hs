@@ -1,23 +1,7 @@
 module Facet.Core.Type
-( -- * Types
-  Type(..)
-, global
-, free
-, metavar
-, unNeutral
-, unComp
-, Classifier(..)
-, classifierType
-, occursIn
-  -- ** Elimination
-, ($$)
-, ($$*)
+( module Facet.Core.Type.Norm
   -- * Type expressions
 , TExpr(..)
-  -- * Quotation
-, quote
-, eval
-, apply
 ) where
 
 import Facet.Core.Type.Expr
