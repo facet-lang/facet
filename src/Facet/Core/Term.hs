@@ -5,7 +5,7 @@ module Facet.Core.Term
 
 import           Data.Text (Text)
 import           Facet.Core.Pattern
-import qualified Facet.Core.Type as T
+import qualified Facet.Core.Type.Expr as T
 import           Facet.Name
 import           Facet.Syntax
 

@@ -65,6 +65,7 @@ import           Facet.Core.Module as Module
 import           Facet.Core.Pattern
 import           Facet.Core.Term as E
 import           Facet.Core.Type as T hiding (global)
+import           Facet.Core.Type.Expr
 import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type

@@ -5,7 +5,8 @@ module Facet.Core.Type.Test
 ) where
 
 import Facet.Core.Kind
-import Facet.Core.Type
+import Facet.Core.Type.Expr
+import Facet.Core.Type.Norm
 import Facet.Env
 import Facet.Name
 import Facet.Semiring

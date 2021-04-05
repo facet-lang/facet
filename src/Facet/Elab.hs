@@ -67,6 +67,7 @@ import           Facet.Core.Module
 import           Facet.Core.Pattern
 import           Facet.Core.Term as E
 import           Facet.Core.Type as T
+import           Facet.Core.Type.Expr as T
 import           Facet.Effect.Write
 import qualified Facet.Env as Env
 import           Facet.Graph as Graph

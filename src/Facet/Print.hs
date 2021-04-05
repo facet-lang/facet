@@ -42,6 +42,7 @@ import           Facet.Core.Pattern
 import qualified Facet.Core.Term as C
 import qualified Facet.Core.Type as C
 import qualified Facet.Core.Type as CT
+import qualified Facet.Core.Type.Expr as TX
 import           Facet.Env as Env
 import           Facet.Name as Name
 import qualified Facet.Norm as N
@@ -172,20 +173,20 @@ printType opts env = printTExpr opts env . CT.quote (level env)
 printInterface :: Options -> Env Print -> Interface C.Type -> Print
 printInterface = printInterfaceWith printType
 
-printTExpr :: Options -> Env Print -> C.TExpr -> Print
+printTExpr :: Options -> Env Print -> TX.TExpr -> Print
 printTExpr opts@Options{ rname } = go
   where
   qvar = group . setPrec Var . rname
   go env = \case
-    C.TVar (Global n)       -> qvar n
-    C.TVar (Free (Right n)) -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
-    C.TVar (Free (Left m))  -> meta m
-    C.TForAll      n    t b -> braces (ann (intro n d ::: printKind env t)) --> go (env |> PVar (n :=: intro n d)) b
-    C.TArrow Nothing  q a b -> mult q (go env a) --> go env b
-    C.TArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
-    C.TComp s t             -> if s == mempty then go env t else sig s <+> go env t
-    C.TApp f a              -> group (go env f) $$ group (go env a)
-    C.TString               -> annotate Type $ pretty "String"
+    TX.TVar (Global n)       -> qvar n
+    TX.TVar (Free (Right n)) -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
+    TX.TVar (Free (Left m))  -> meta m
+    TX.TForAll      n    t b -> braces (ann (intro n d ::: printKind env t)) --> go (env |> PVar (n :=: intro n d)) b
+    TX.TArrow Nothing  q a b -> mult q (go env a) --> go env b
+    TX.TArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
+    TX.TComp s t             -> if s == mempty then go env t else sig s <+> go env t
+    TX.TApp f a              -> group (go env f) $$ group (go env a)
+    TX.TString               -> annotate Type $ pretty "String"
     where
     d = level env
     sig s = brackets (commaSep (map (interface env) (interfaces s)))

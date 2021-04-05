@@ -24,7 +24,7 @@ import Data.Text (Text)
 import Facet.Core.Module
 import Facet.Core.Pattern
 import Facet.Core.Term
-import Facet.Core.Type (TExpr)
+import Facet.Core.Type.Expr (TExpr)
 import Facet.Env as Env
 import Facet.Graph
 import Facet.Name hiding (Op)

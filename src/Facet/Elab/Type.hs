@@ -27,6 +27,7 @@ import           Facet.Core.Kind
 import           Facet.Core.Module
 import           Facet.Core.Pattern
 import           Facet.Core.Type
+import           Facet.Core.Type.Expr
 import           Facet.Elab
 import           Facet.Name
 import           Facet.Semiring (Few(..), one, zero)
