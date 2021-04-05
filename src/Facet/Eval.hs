@@ -21,16 +21,16 @@ import Data.Foldable
 import Data.Function
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Facet.Core.Module
-import Facet.Core.Pattern
-import Facet.Core.Term
-import Facet.Core.Type.Expr (TExpr)
 import Facet.Env as Env
 import Facet.Graph
+import Facet.Module
 import Facet.Name hiding (Op)
+import Facet.Pattern
 import Facet.Semialign (zipWithM)
 import Facet.Snoc.NonEmpty as NE hiding ((|>))
 import Facet.Syntax
+import Facet.Term
+import Facet.Type.Expr (TExpr)
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 

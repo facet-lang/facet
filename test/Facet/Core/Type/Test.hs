@@ -4,13 +4,13 @@ module Facet.Core.Type.Test
 ( tests
 ) where
 
-import Facet.Core.Kind
-import Facet.Core.Type.Expr
-import Facet.Core.Type.Norm
 import Facet.Env
+import Facet.Kind
 import Facet.Name
 import Facet.Semiring
 import Facet.Syntax
+import Facet.Type.Expr
+import Facet.Type.Norm
 import Hedgehog hiding (Var, eval)
 
 tests :: IO Bool

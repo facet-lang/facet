@@ -34,12 +34,12 @@ import qualified Data.Text as TS
 import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.Throw.Inject as I
-import           Facet.Core.Module hiding (Import(name), imports, imports_)
 import           Facet.Effect.Readline
 import           Facet.Effect.Write
 import qualified Facet.Elab.Term as Elab
 import           Facet.Graph
 import           Facet.Lens
+import           Facet.Module hiding (Import(name), imports, imports_)
 import           Facet.Name
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab (rethrowElabErrors, rethrowElabWarnings)

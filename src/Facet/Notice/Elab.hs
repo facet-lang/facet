@@ -9,10 +9,9 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
-import           Facet.Core.Interface (interfaces)
-import           Facet.Core.Type.Norm (Classifier(..), apply, free, metavar)
 import           Facet.Elab as Elab
 import qualified Facet.Env as Env
+import           Facet.Interface (interfaces)
 import           Facet.Name (LName(..))
 import           Facet.Notice as Notice hiding (level)
 import           Facet.Pretty
@@ -22,6 +21,7 @@ import           Facet.Snoc
 import           Facet.Style
 import           Facet.Subst (metas)
 import           Facet.Syntax
+import           Facet.Type.Norm (Classifier(..), apply, free, metavar)
 import           GHC.Stack
 import           Prelude hiding (unlines)
 import           Silkscreen

@@ -1,4 +1,4 @@
-module Facet.Core.Kind
+module Facet.Kind
 ( Kind(..)
 ) where
 

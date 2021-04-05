@@ -35,21 +35,21 @@ import           Data.Foldable (foldl', toList)
 import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
-import           Facet.Core.Interface
-import           Facet.Core.Kind
-import qualified Facet.Core.Module as C
-import           Facet.Core.Pattern
-import qualified Facet.Core.Term as C
-import qualified Facet.Core.Type.Expr as TX
-import qualified Facet.Core.Type.Norm as TN
 import           Facet.Env as Env
+import           Facet.Interface
+import           Facet.Kind
+import qualified Facet.Module as C
 import           Facet.Name as Name
 import qualified Facet.Norm as N
+import           Facet.Pattern
 import           Facet.Pretty (lower, upper)
 import           Facet.Semiring (one, zero)
 import           Facet.Snoc
 import           Facet.Style
 import           Facet.Syntax
+import qualified Facet.Term as C
+import qualified Facet.Type.Expr as TX
+import qualified Facet.Type.Norm as TN
 import qualified Prettyprinter as PP
 import           Silkscreen as P
 import           Silkscreen.Printer.Prec hiding (Level)

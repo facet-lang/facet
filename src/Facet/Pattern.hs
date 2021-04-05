@@ -1,4 +1,4 @@
-module Facet.Core.Pattern
+module Facet.Pattern
 ( -- * Patterns
   Pattern(..)
 , fill

@@ -1,9 +1,9 @@
-module Facet.Core.Type.Expr
+module Facet.Type.Expr
 ( TExpr(..)
 ) where
 
-import Facet.Core.Interface
-import Facet.Core.Kind
+import Facet.Interface
+import Facet.Kind
 import Facet.Name
 import Facet.Syntax
 import Facet.Usage

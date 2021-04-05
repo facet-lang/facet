@@ -1,13 +1,13 @@
-module Facet.Core.Term
+module Facet.Term
 ( -- * Term expressions
   Expr(..)
 ) where
 
 import           Data.Text (Text)
-import           Facet.Core.Pattern
-import qualified Facet.Core.Type.Expr as T
 import           Facet.Name
+import           Facet.Pattern
 import           Facet.Syntax
+import qualified Facet.Type.Expr as T
 
 -- Term expressions
 

@@ -29,16 +29,15 @@ import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
-import           Facet.Core.Interface as I
-import           Facet.Core.Module
-import           Facet.Core.Term (Expr)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
 import qualified Facet.Elab.Type as Elab
 import           Facet.Eval as E
 import           Facet.Graph
+import           Facet.Interface as I
 import           Facet.Lens
+import           Facet.Module
 import           Facet.Name as Name
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab
@@ -52,6 +51,7 @@ import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Style as Style
 import qualified Facet.Surface as S
 import           Facet.Syntax
+import           Facet.Term (Expr)
 import           Prelude hiding (span, unlines)
 import           Silkscreen as S hiding (Ann, line)
 import           System.Console.ANSI

@@ -1,4 +1,4 @@
-module Facet.Core.Module
+module Facet.Module
 ( -- * Modules
   Module(..)
 , name_
@@ -28,11 +28,11 @@ import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
 import           Data.Coerce
 import qualified Data.Map as Map
-import           Facet.Core.Kind
-import           Facet.Core.Term
-import           Facet.Core.Type.Norm
+import           Facet.Kind
 import           Facet.Name
 import           Facet.Syntax
+import           Facet.Term
+import           Facet.Type.Norm
 
 -- Modules
 

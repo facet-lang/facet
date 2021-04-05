@@ -12,14 +12,14 @@ import           Data.Maybe (fromMaybe)
 import           Data.Monoid
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
-import           Facet.Core.Pattern
-import           Facet.Core.Term
-import qualified Facet.Core.Type.Norm as T
 import           Facet.Env
 import           Facet.Name
+import           Facet.Pattern
 import           Facet.Semialign (zipWithM)
 import           Facet.Snoc
 import           Facet.Syntax
+import           Facet.Term
+import qualified Facet.Type.Norm as T
 
 data Norm
   = NString Text

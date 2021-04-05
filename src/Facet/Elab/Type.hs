@@ -22,18 +22,18 @@ import           Control.Monad (unless)
 import           Data.Bifunctor (first)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
-import           Facet.Core.Interface
-import           Facet.Core.Kind
-import           Facet.Core.Module
-import           Facet.Core.Pattern
-import           Facet.Core.Type.Expr
-import           Facet.Core.Type.Norm
 import           Facet.Elab
+import           Facet.Interface
+import           Facet.Kind
+import           Facet.Module
 import           Facet.Name
+import           Facet.Pattern
 import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Snoc
 import qualified Facet.Surface as S
 import           Facet.Syntax
+import           Facet.Type.Expr
+import           Facet.Type.Norm
 import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TExpr

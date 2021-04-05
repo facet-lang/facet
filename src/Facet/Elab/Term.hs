@@ -59,19 +59,16 @@ import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
 import           Facet.Context (toEnv)
-import           Facet.Core.Interface
-import           Facet.Core.Kind
-import           Facet.Core.Module as Module
-import           Facet.Core.Pattern
-import           Facet.Core.Term as E
-import           Facet.Core.Type.Expr
-import           Facet.Core.Type.Norm as T hiding (global)
 import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type
 import           Facet.Graph
+import           Facet.Interface
+import           Facet.Kind
 import           Facet.Lens (locally)
+import           Facet.Module as Module
 import           Facet.Name
+import           Facet.Pattern
 import           Facet.Semiring (Few(..), zero, (><<))
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty as NE
@@ -79,6 +76,9 @@ import           Facet.Source (Source)
 import           Facet.Subst
 import qualified Facet.Surface as S
 import           Facet.Syntax
+import           Facet.Term as E
+import           Facet.Type.Expr
+import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
 import           GHC.Stack

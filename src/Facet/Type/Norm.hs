@@ -1,4 +1,4 @@
-module Facet.Core.Type.Norm
+module Facet.Type.Norm
 ( -- * Types
   Type(..)
 , global
@@ -22,15 +22,15 @@ import Control.Effect.Empty
 import Data.Foldable (foldl')
 import Data.Function (on, (&))
 import Data.Maybe (fromMaybe)
-import Facet.Core.Interface
-import Facet.Core.Kind
-import Facet.Core.Pattern
-import Facet.Core.Type.Expr
 import Facet.Env hiding (empty)
+import Facet.Interface
+import Facet.Kind
 import Facet.Name
+import Facet.Pattern
 import Facet.Snoc
 import Facet.Subst
 import Facet.Syntax
+import Facet.Type.Expr
 import Facet.Usage hiding (singleton)
 import GHC.Stack
 import Prelude hiding (lookup)

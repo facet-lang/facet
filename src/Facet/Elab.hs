@@ -61,18 +61,15 @@ import           Control.Monad (unless, (<=<))
 import           Data.Foldable (for_)
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as Context (empty)
-import           Facet.Core.Interface
-import           Facet.Core.Kind
-import           Facet.Core.Module
-import           Facet.Core.Pattern
-import           Facet.Core.Term as E
-import           Facet.Core.Type.Expr as T
-import           Facet.Core.Type.Norm as T
 import           Facet.Effect.Write
 import qualified Facet.Env as Env
 import           Facet.Graph as Graph
+import           Facet.Interface
+import           Facet.Kind
 import           Facet.Lens
+import           Facet.Module
 import           Facet.Name hiding (L, R)
+import           Facet.Pattern
 import           Facet.Semiring
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty (toSnoc)
@@ -80,6 +77,9 @@ import           Facet.Source (Source, slice)
 import           Facet.Span (Span(..))
 import           Facet.Subst
 import           Facet.Syntax
+import           Facet.Term as E
+import           Facet.Type.Expr as T
+import           Facet.Type.Norm as T
 import           Facet.Usage as Usage
 import           Facet.Vars as Vars
 import           GHC.Stack

@@ -18,11 +18,11 @@ import Control.Effect.Sum
 import Control.Effect.Writer
 import Control.Monad (unless)
 import Facet.Carrier.Throw.Inject
-import Facet.Core.Interface
-import Facet.Core.Kind
-import Facet.Core.Pattern
-import Facet.Core.Type.Expr
-import Facet.Core.Type.Norm
+import Facet.Interface
+import Facet.Kind
+import Facet.Pattern
+import Facet.Type.Expr
+import Facet.Type.Norm
 import Facet.Elab
 import Facet.Name
 import Facet.Semialign
