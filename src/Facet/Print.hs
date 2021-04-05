@@ -40,9 +40,8 @@ import           Facet.Core.Kind
 import qualified Facet.Core.Module as C
 import           Facet.Core.Pattern
 import qualified Facet.Core.Term as C
-import qualified Facet.Core.Type as C
-import qualified Facet.Core.Type as CT
 import qualified Facet.Core.Type.Expr as TX
+import qualified Facet.Core.Type.Norm as TN
 import           Facet.Env as Env
 import           Facet.Name as Name
 import qualified Facet.Norm as N
@@ -153,10 +152,10 @@ suppressInstantiation = const
 
 -- Core printers
 
-printSubject :: Options -> Env Print -> C.Classifier -> Print
+printSubject :: Options -> Env Print -> TN.Classifier -> Print
 printSubject opts env = \case
-  C.CK k -> printKind env k
-  C.CT t -> printType opts env t
+  TN.CK k -> printKind env k
+  TN.CT t -> printType opts env t
 
 printKind :: Env Print -> Kind -> Print
 printKind env = \case
@@ -167,10 +166,10 @@ printKind env = \case
   where
   d = level env
 
-printType :: Options -> Env Print -> C.Type -> Print
-printType opts env = printTExpr opts env . CT.quote (level env)
+printType :: Options -> Env Print -> TN.Type -> Print
+printType opts env = printTExpr opts env . TN.quote (level env)
 
-printInterface :: Options -> Env Print -> Interface C.Type -> Print
+printInterface :: Options -> Env Print -> Interface TN.Type -> Print
 printInterface = printInterfaceWith printType
 
 printTExpr :: Options -> Env Print -> TX.TExpr -> Print

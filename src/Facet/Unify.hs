@@ -21,8 +21,8 @@ import Facet.Carrier.Throw.Inject
 import Facet.Core.Interface
 import Facet.Core.Kind
 import Facet.Core.Pattern
-import Facet.Core.Type
 import Facet.Core.Type.Expr
+import Facet.Core.Type.Norm
 import Facet.Elab
 import Facet.Name
 import Facet.Semialign

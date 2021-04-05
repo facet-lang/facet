@@ -13,7 +13,7 @@ module Facet.Context
 import qualified Control.Effect.Empty as E
 import           Data.Foldable (find, toList)
 import           Facet.Core.Pattern
-import           Facet.Core.Type
+import           Facet.Core.Type.Norm
 import qualified Facet.Env as Env
 import           Facet.Name
 import qualified Facet.Snoc as S

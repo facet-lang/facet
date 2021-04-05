@@ -30,7 +30,7 @@ import           Data.Coerce
 import qualified Data.Map as Map
 import           Facet.Core.Kind
 import           Facet.Core.Term
-import           Facet.Core.Type
+import           Facet.Core.Type.Norm
 import           Facet.Name
 import           Facet.Syntax
 

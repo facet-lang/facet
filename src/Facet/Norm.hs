@@ -14,7 +14,7 @@ import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import           Facet.Core.Pattern
 import           Facet.Core.Term
-import qualified Facet.Core.Type as T
+import qualified Facet.Core.Type.Norm as T
 import           Facet.Env
 import           Facet.Name
 import           Facet.Semialign (zipWithM)
