@@ -1,5 +1,5 @@
 module Facet.Type.Expr
-( TExpr(..)
+( Type(..)
 ) where
 
 import Facet.Interface
@@ -8,11 +8,11 @@ import Facet.Name
 import Facet.Syntax
 import Facet.Usage
 
-data TExpr
+data Type
   = TString
   | TVar (Var (Either Meta (LName Index)))
-  | TForAll Name Kind TExpr
-  | TArrow (Maybe Name) Quantity TExpr TExpr
-  | TComp (Signature TExpr) TExpr
-  | TApp TExpr TExpr
+  | TForAll Name Kind Type
+  | TArrow (Maybe Name) Quantity Type Type
+  | TComp (Signature Type) Type
+  | TApp Type Type
   deriving (Eq, Ord, Show)

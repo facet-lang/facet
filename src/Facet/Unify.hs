@@ -10,28 +10,28 @@ module Facet.Unify
 , unifyInterface
 ) where
 
-import Control.Carrier.Empty.Church
-import Control.Carrier.Error.Church
-import Control.Effect.Reader
-import Control.Effect.State
-import Control.Effect.Sum
-import Control.Effect.Writer
-import Control.Monad (unless)
-import Facet.Carrier.Throw.Inject
-import Facet.Elab
-import Facet.Interface
-import Facet.Kind
-import Facet.Name
-import Facet.Pattern
-import Facet.Semialign
-import Facet.Semiring
-import Facet.Snoc
-import Facet.Subst
-import Facet.Syntax
-import Facet.Type.Expr
-import Facet.Type.Norm as TN
-import Facet.Usage
-import GHC.Stack
+import           Control.Carrier.Empty.Church
+import           Control.Carrier.Error.Church
+import           Control.Effect.Reader
+import           Control.Effect.State
+import           Control.Effect.Sum
+import           Control.Effect.Writer
+import           Control.Monad (unless)
+import           Facet.Carrier.Throw.Inject
+import           Facet.Elab
+import           Facet.Interface
+import           Facet.Kind
+import           Facet.Name
+import           Facet.Pattern
+import           Facet.Semialign
+import           Facet.Semiring
+import           Facet.Snoc
+import           Facet.Subst
+import           Facet.Syntax
+import qualified Facet.Type.Expr as TX
+import           Facet.Type.Norm as TN
+import           Facet.Usage
+import           GHC.Stack
 
 -- Unification
 
@@ -68,7 +68,7 @@ unifyType = curry $ \case
   (TN.String, TN.String)                                   -> pure TN.String
   (TN.String, _)                                           -> mismatch
   where
-  mkForAll d n k b = TForAll n k (quote (succ d) b)
+  mkForAll d n k b = TX.TForAll n k (quote (succ d) b)
 
 unifyKind :: Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m => Kind -> Kind -> m Kind
 unifyKind k1 k2 = if k1 == k2 then pure k2 else mismatch

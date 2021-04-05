@@ -30,7 +30,7 @@ import Facet.Semialign (zipWithM)
 import Facet.Snoc.NonEmpty as NE hiding ((|>))
 import Facet.Syntax
 import Facet.Term
-import Facet.Type.Expr (TExpr)
+import Facet.Type.Expr (Type)
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
@@ -61,7 +61,7 @@ var env n = pure (index env n)
 tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
 tlam = id
 
-inst :: Eval m (Value (Eval m)) -> TExpr -> Eval m (Value (Eval m))
+inst :: Eval m (Value (Eval m)) -> Type -> Eval m (Value (Eval m))
 inst = const
 
 lam :: Env (Value (Eval m)) -> [(Pattern Name, Expr)] -> Eval m (Value (Eval m))

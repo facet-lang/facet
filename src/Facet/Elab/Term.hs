@@ -77,7 +77,7 @@ import           Facet.Subst
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Facet.Term as E
-import           Facet.Type.Expr
+import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
@@ -235,14 +235,14 @@ bindPattern = go where
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TExpr -> Kind -> Elab m TExpr
+abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TX.Type -> Kind -> Elab m TX.Type
 abstractType body = go
   where
   go = \case
-    KArrow  (Just n) a b -> TForAll n a <$> ((zero, PVar (n ::: CK a)) |- go b)
+    KArrow  (Just n) a b -> TX.TForAll n a <$> ((zero, PVar (n ::: CK a)) |- go b)
     _                    -> body
 
-abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TExpr -> Snoc Expr -> Expr) -> Check m Expr
+abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TX.Type -> Snoc Expr -> Expr) -> Check m Expr
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
@@ -254,7 +254,7 @@ abstractTerm body = go Nil Nil
       check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> XVar (Free (LName (levelToIndex d' d) (fromMaybe __ n)))))] ::: T.Arrow n q _A _B)
     _T                -> do
       d <- depth
-      pure $ body (TVar . Free . Right . fmap (levelToIndex d) <$> ts) (fs <*> pure d)
+      pure $ body (TX.TVar . Free . Right . fmap (levelToIndex d) <$> ts) (fs <*> pure d)
 
 patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern (Name ::: Classifier))
 patternForArgType = \case

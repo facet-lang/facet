@@ -32,16 +32,16 @@ import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Snoc
 import qualified Facet.Surface as S
 import           Facet.Syntax
-import           Facet.Type.Expr
+import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm
 import           GHC.Stack
 
-tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TExpr
+tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TX.Type
 tvar n = IsType $ views context_ (lookupInContext n) >>= \case
-  [(n', q, CK _K)] -> use n' q $> (TVar (Free (Right n')) ::: _K)
+  [(n', q, CK _K)] -> use n' q $> (TX.TVar (Free (Right n')) ::: _K)
   _                -> resolveQ n >>= \case
-    q :=: DData      _ _K -> pure $ TVar (Global q) ::: _K
-    q :=: DInterface _ _K -> pure $ TVar (Global q) ::: _K
+    q :=: DData      _ _K -> pure $ TX.TVar (Global q) ::: _K
+    q :=: DInterface _ _K -> pure $ TX.TVar (Global q) ::: _K
     _                     -> freeVariable n
 
 ivar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m RName
@@ -56,15 +56,15 @@ _Type = IsType $ pure $ KType ::: KType
 _Interface :: IsType m Kind
 _Interface = IsType $ pure $ KInterface ::: KType
 
-_String :: IsType m TExpr
-_String = IsType $ pure $ TString ::: KType
+_String :: IsType m TX.Type
+_String = IsType $ pure $ TX.TString ::: KType
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m TExpr -> IsType m TExpr
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m TX.Type -> IsType m TX.Type
 forAll (n ::: t) b = IsType $ do
   t' <- checkIsType (t ::: KType)
   b' <- (zero, PVar (n ::: CK t')) |- checkIsType (b ::: KType)
-  pure $ TForAll n t' b' ::: KType
+  pure $ TX.TForAll n t' b' ::: KType
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
 arrow mk a b = IsType $ do
@@ -82,12 +82,12 @@ app mk f a = IsType $ do
   pure $ mk f' a' ::: _B
 
 
-comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m (Interface TExpr)] -> IsType m TExpr -> IsType m TExpr
+comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m (Interface TX.Type)] -> IsType m TX.Type -> IsType m TX.Type
 comp s t = IsType $ do
   s' <- traverse (checkIsType . (::: KInterface)) s
   -- FIXME: polarize types and check that this is a value type being returned
   t' <- checkIsType (t ::: KType)
-  pure $ TComp (fromInterfaces s') t' ::: KType
+  pure $ TX.TComp (fromInterfaces s') t' ::: KType
 
 
 synthKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Kind -> IsType m Kind
@@ -97,20 +97,20 @@ synthKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.KInterface   -> _Interface
 
 
-synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m TExpr
+synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m TX.Type
 synthType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TVar n          -> tvar n
   S.TString         -> _String
   S.TForAll n t b   -> forAll (n ::: synthKind t) (synthType b)
-  S.TArrow  n q a b -> arrow (TArrow n (maybe Many interpretMul q)) (synthType a) (synthType b)
+  S.TArrow  n q a b -> arrow (TX.TArrow n (maybe Many interpretMul q)) (synthType a) (synthType b)
   S.TComp s t       -> comp (map synthInterface s) (synthType t)
-  S.TApp f a        -> app TApp (synthType f) (synthType a)
+  S.TApp f a        -> app TX.TApp (synthType f) (synthType a)
   where
   interpretMul = \case
     S.Zero -> zero
     S.One  -> one
 
-synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m (Interface TExpr)
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m (Interface TX.Type)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = IsType $ pushSpan s $ do
   -- FIXME: check that the application actually result in an Interface
   h' ::: _ <- pushSpan sh (isType (ivar h))

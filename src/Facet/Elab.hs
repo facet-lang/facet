@@ -78,7 +78,7 @@ import           Facet.Span (Span(..))
 import           Facet.Subst
 import           Facet.Syntax
 import           Facet.Term as E
-import           Facet.Type.Expr as T
+import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as TN
 import           Facet.Usage as Usage
 import           Facet.Vars as Vars
@@ -98,13 +98,13 @@ meta :: Has (State (Subst Type)) sig m => Kind -> m Meta
 meta _T = state (declareMeta @Type)
 
 
-instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a ::: Type)
+instantiate :: Algebra sig m => (a -> TX.Type -> a) -> a ::: Type -> Elab m (a ::: Type)
 instantiate inst = go
   where
   go (e ::: _T) = case _T of
     TN.ForAll _ _T _B -> do
       m <- meta _T
-      go (inst e (TVar (Free (Left m))) ::: _B (metavar m))
+      go (inst e (TX.TVar (Free (Left m))) ::: _B (metavar m))
     _                 -> pure $ e ::: _T
 
 
@@ -163,7 +163,7 @@ sat a b
   | otherwise = True
 
 
-evalTExpr :: Has (Reader ElabContext :+: State (Subst Type)) sig m => TExpr -> m Type
+evalTExpr :: Has (Reader ElabContext :+: State (Subst Type)) sig m => TX.Type -> m Type
 evalTExpr texpr = TN.eval <$> get <*> views context_ toEnv <*> pure texpr
 
 depth :: Has (Reader ElabContext) sig m => m Level
@@ -328,7 +328,7 @@ elabWith scale k m = runState k mempty . runWriter (const pure) $ do
 elabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Kind -> m Kind
 elabKind = elabWith zero (const pure)
 
-elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
+elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TX.Type -> m Type
 elabType = elabWith zero (\ subst t -> pure (TN.eval subst Env.empty t))
 
 elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Expr -> m Expr
@@ -337,5 +337,5 @@ elabTerm = elabWith one (const pure)
 elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (Expr ::: Type) -> m (Expr ::: Type)
 elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: TN.eval subst Env.empty (TN.quote 0 _T)))
 
-elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr ::: Kind) -> m (Type ::: Kind)
+elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TX.Type ::: Kind) -> m (Type ::: Kind)
 elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (TN.eval subst Env.empty _T ::: _K))

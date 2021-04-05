@@ -172,7 +172,7 @@ printType opts env = printTExpr opts env . TN.quote (level env)
 printInterface :: Options -> Env Print -> Interface TN.Type -> Print
 printInterface = printInterfaceWith printType
 
-printTExpr :: Options -> Env Print -> TX.TExpr -> Print
+printTExpr :: Options -> Env Print -> TX.Type -> Print
 printTExpr opts@Options{ rname } = go
   where
   qvar = group . setPrec Var . rname
