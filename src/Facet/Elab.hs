@@ -79,7 +79,7 @@ import           Facet.Subst
 import           Facet.Syntax
 import           Facet.Term as E
 import           Facet.Type.Expr as T
-import           Facet.Type.Norm as T
+import           Facet.Type.Norm as TN
 import           Facet.Usage as Usage
 import           Facet.Vars as Vars
 import           GHC.Stack
@@ -102,10 +102,10 @@ instantiate :: Algebra sig m => (a -> TExpr -> a) -> a ::: Type -> Elab m (a :::
 instantiate inst = go
   where
   go (e ::: _T) = case _T of
-    T.ForAll _ _T _B -> do
+    TN.ForAll _ _T _B -> do
       m <- meta _T
       go (inst e (TVar (Free (Left m))) ::: _B (metavar m))
-    _                -> pure $ e ::: _T
+    _                 -> pure $ e ::: _T
 
 
 resolveWith
@@ -164,7 +164,7 @@ sat a b
 
 
 evalTExpr :: Has (Reader ElabContext :+: State (Subst Type)) sig m => TExpr -> m Type
-evalTExpr texpr = T.eval <$> get <*> views context_ toEnv <*> pure texpr
+evalTExpr texpr = TN.eval <$> get <*> views context_ toEnv <*> pure texpr
 
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
@@ -284,7 +284,7 @@ assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Classifier -> Maybe out
 assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (pat _T)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-assertFunction = assertMatch (\case{ CT (T.Arrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . CT
+assertFunction = assertMatch (\case{ CT (TN.Arrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . CT
 
 
 -- Unification
@@ -329,13 +329,13 @@ elabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab
 elabKind = elabWith zero (const pure)
 
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TExpr -> m Type
-elabType = elabWith zero (\ subst t -> pure (T.eval subst Env.empty t))
+elabType = elabWith zero (\ subst t -> pure (TN.eval subst Env.empty t))
 
 elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Expr -> m Expr
 elabTerm = elabWith one (const pure)
 
 elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (Expr ::: Type) -> m (Expr ::: Type)
-elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: T.eval subst Env.empty (T.quote 0 _T)))
+elabSynthTerm = elabWith one (\ subst (e ::: _T) -> pure (e ::: TN.eval subst Env.empty (TN.quote 0 _T)))
 
 elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TExpr ::: Kind) -> m (Type ::: Kind)
-elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (T.eval subst Env.empty _T ::: _K))
+elabSynthType = elabWith zero (\ subst (_T ::: _K) -> pure (TN.eval subst Env.empty _T ::: _K))
