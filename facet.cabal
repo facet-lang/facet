@@ -79,6 +79,7 @@ library
     Facet.Core.Pattern
     Facet.Core.Term
     Facet.Core.Type
+    Facet.Core.Type.Expr
     Facet.Core.Type.Norm
     Facet.Diff
     Facet.Driver
