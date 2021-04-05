@@ -33,6 +33,7 @@ import           Data.Foldable (foldl')
 import           Data.Function (on, (&))
 import           Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
+import           Facet.Core.Kind
 import           Facet.Core.Pattern
 import           Facet.Env hiding (empty)
 import           Facet.Name
@@ -42,15 +43,6 @@ import           Facet.Syntax
 import           Facet.Usage hiding (singleton)
 import           GHC.Stack
 import           Prelude hiding (lookup)
-
--- Kinds
-
-data Kind
-  = KType
-  | KInterface
-  | KArrow (Maybe Name) Kind Kind
-  deriving (Eq, Ord, Show)
-
 
 -- Types
 
