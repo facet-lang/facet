@@ -9,10 +9,10 @@ import Facet.Syntax
 import Facet.Usage
 
 data Type
-  = TString
-  | TVar (Var (Either Meta (LName Index)))
-  | TForAll Name Kind Type
-  | TArrow (Maybe Name) Quantity Type Type
-  | TComp (Signature Type) Type
-  | TApp Type Type
+  = String
+  | Var (Var (Either Meta (LName Index)))
+  | ForAll Name Kind Type
+  | Arrow (Maybe Name) Quantity Type Type
+  | Comp (Signature Type) Type
+  | App Type Type
   deriving (Eq, Ord, Show)

@@ -114,23 +114,23 @@ infixl 9 $$, $$*
 
 quote :: Level -> Type -> TX.Type
 quote d = \case
-  String        -> TX.TString
-  ForAll n t b  -> TX.TForAll n t (quote (succ d) (b (free (LName d n))))
-  Arrow n q a b -> TX.TArrow n q (quote d a) (quote d b)
-  Comp s t      -> TX.TComp (mapSignature (quote d) s) (quote d t)
-  Ne n sp       -> foldl' (&) (TX.TVar (fmap (fmap (levelToIndex d)) <$> n)) (flip TX.TApp . quote d <$> sp)
+  String        -> TX.String
+  ForAll n t b  -> TX.ForAll n t (quote (succ d) (b (free (LName d n))))
+  Arrow n q a b -> TX.Arrow n q (quote d a) (quote d b)
+  Comp s t      -> TX.Comp (mapSignature (quote d) s) (quote d t)
+  Ne n sp       -> foldl' (&) (TX.Var (fmap (fmap (levelToIndex d)) <$> n)) (flip TX.App . quote d <$> sp)
 
 eval :: HasCallStack => Subst Type -> Env Type -> TX.Type -> Type
 eval subst = go where
   go env = \case
-    TX.TString               -> String
-    TX.TVar (Global n)       -> global n
-    TX.TVar (Free (Right n)) -> index env n
-    TX.TVar (Free (Left m))  -> fromMaybe (metavar m) (lookupMeta m subst)
-    TX.TForAll n t b         -> ForAll n t (\ _T -> go (env |> PVar (n :=: _T)) b)
-    TX.TArrow n q a b        -> Arrow n q (go env a) (go env b)
-    TX.TComp s t             -> Comp (mapSignature (go env) s) (go env t)
-    TX.TApp  f a             -> go env f $$  go env a
+    TX.String               -> String
+    TX.Var (Global n)       -> global n
+    TX.Var (Free (Right n)) -> index env n
+    TX.Var (Free (Left m))  -> fromMaybe (metavar m) (lookupMeta m subst)
+    TX.ForAll n t b         -> ForAll n t (\ _T -> go (env |> PVar (n :=: _T)) b)
+    TX.Arrow n q a b        -> Arrow n q (go env a) (go env b)
+    TX.Comp s t             -> Comp (mapSignature (go env) s) (go env t)
+    TX.App  f a             -> go env f $$  go env a
 
 apply :: HasCallStack => Subst Type -> Env Type -> Type -> Type
 apply subst env = eval subst env . quote (level env)

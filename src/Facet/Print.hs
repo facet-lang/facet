@@ -177,15 +177,15 @@ printTExpr opts@Options{ rname } = go
   where
   qvar = group . setPrec Var . rname
   go env = \case
-    TX.TVar (Global n)       -> qvar n
-    TX.TVar (Free (Right n)) -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
-    TX.TVar (Free (Left m))  -> meta m
-    TX.TForAll      n    t b -> braces (ann (intro n d ::: printKind env t)) --> go (env |> PVar (n :=: intro n d)) b
-    TX.TArrow Nothing  q a b -> mult q (go env a) --> go env b
-    TX.TArrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
-    TX.TComp s t             -> if s == mempty then go env t else sig s <+> go env t
-    TX.TApp f a              -> group (go env f) $$ group (go env a)
-    TX.TString               -> annotate Type $ pretty "String"
+    TX.Var (Global n)       -> qvar n
+    TX.Var (Free (Right n)) -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
+    TX.Var (Free (Left m))  -> meta m
+    TX.ForAll      n    t b -> braces (ann (intro n d ::: printKind env t)) --> go (env |> PVar (n :=: intro n d)) b
+    TX.Arrow Nothing  q a b -> mult q (go env a) --> go env b
+    TX.Arrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
+    TX.Comp s t             -> if s == mempty then go env t else sig s <+> go env t
+    TX.App f a              -> group (go env f) $$ group (go env a)
+    TX.String               -> annotate Type $ pretty "String"
     where
     d = level env
     sig s = brackets (commaSep (map (interface env) (interfaces s)))

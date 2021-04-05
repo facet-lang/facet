@@ -38,10 +38,10 @@ import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TX.Type
 tvar n = IsType $ views context_ (lookupInContext n) >>= \case
-  [(n', q, CK _K)] -> use n' q $> (TX.TVar (Free (Right n')) ::: _K)
+  [(n', q, CK _K)] -> use n' q $> (TX.Var (Free (Right n')) ::: _K)
   _                -> resolveQ n >>= \case
-    q :=: DData      _ _K -> pure $ TX.TVar (Global q) ::: _K
-    q :=: DInterface _ _K -> pure $ TX.TVar (Global q) ::: _K
+    q :=: DData      _ _K -> pure $ TX.Var (Global q) ::: _K
+    q :=: DInterface _ _K -> pure $ TX.Var (Global q) ::: _K
     _                     -> freeVariable n
 
 ivar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m RName
@@ -57,14 +57,14 @@ _Interface :: IsType m Kind
 _Interface = IsType $ pure $ KInterface ::: KType
 
 _String :: IsType m TX.Type
-_String = IsType $ pure $ TX.TString ::: KType
+_String = IsType $ pure $ TX.String ::: KType
 
 
 forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m TX.Type -> IsType m TX.Type
 forAll (n ::: t) b = IsType $ do
   t' <- checkIsType (t ::: KType)
   b' <- (zero, PVar (n ::: CK t')) |- checkIsType (b ::: KType)
-  pure $ TX.TForAll n t' b' ::: KType
+  pure $ TX.ForAll n t' b' ::: KType
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
 arrow mk a b = IsType $ do
@@ -87,7 +87,7 @@ comp s t = IsType $ do
   s' <- traverse (checkIsType . (::: KInterface)) s
   -- FIXME: polarize types and check that this is a value type being returned
   t' <- checkIsType (t ::: KType)
-  pure $ TX.TComp (fromInterfaces s') t' ::: KType
+  pure $ TX.Comp (fromInterfaces s') t' ::: KType
 
 
 synthKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Kind -> IsType m Kind
@@ -102,9 +102,9 @@ synthType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
   S.TVar n          -> tvar n
   S.TString         -> _String
   S.TForAll n t b   -> forAll (n ::: synthKind t) (synthType b)
-  S.TArrow  n q a b -> arrow (TX.TArrow n (maybe Many interpretMul q)) (synthType a) (synthType b)
+  S.TArrow  n q a b -> arrow (TX.Arrow n (maybe Many interpretMul q)) (synthType a) (synthType b)
   S.TComp s t       -> comp (map synthInterface s) (synthType t)
-  S.TApp f a        -> app TX.TApp (synthType f) (synthType a)
+  S.TApp f a        -> app TX.App (synthType f) (synthType a)
   where
   interpretMul = \case
     S.Zero -> zero

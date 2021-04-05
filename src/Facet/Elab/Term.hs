@@ -239,7 +239,7 @@ abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TX.Type -> Kind 
 abstractType body = go
   where
   go = \case
-    KArrow  (Just n) a b -> TX.TForAll n a <$> ((zero, PVar (n ::: CK a)) |- go b)
+    KArrow  (Just n) a b -> TX.ForAll n a <$> ((zero, PVar (n ::: CK a)) |- go b)
     _                    -> body
 
 abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TX.Type -> Snoc Expr -> Expr) -> Check m Expr
@@ -254,7 +254,7 @@ abstractTerm body = go Nil Nil
       check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> XVar (Free (LName (levelToIndex d' d) (fromMaybe __ n)))))] ::: T.Arrow n q _A _B)
     _T                -> do
       d <- depth
-      pure $ body (TX.TVar . Free . Right . fmap (levelToIndex d) <$> ts) (fs <*> pure d)
+      pure $ body (TX.Var . Free . Right . fmap (levelToIndex d) <$> ts) (fs <*> pure d)
 
 patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern (Name ::: Classifier))
 patternForArgType = \case

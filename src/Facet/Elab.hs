@@ -104,7 +104,7 @@ instantiate inst = go
   go (e ::: _T) = case _T of
     TN.ForAll _ _T _B -> do
       m <- meta _T
-      go (inst e (TX.TVar (Free (Left m))) ::: _B (metavar m))
+      go (inst e (TX.Var (Free (Left m))) ::: _B (metavar m))
     _                 -> pure $ e ::: _T
 
 

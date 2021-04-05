@@ -68,7 +68,7 @@ unifyType = curry $ \case
   (TN.String, TN.String)                                   -> pure TN.String
   (TN.String, _)                                           -> mismatch
   where
-  mkForAll d n k b = TX.TForAll n k (quote (succ d) b)
+  mkForAll d n k b = TX.ForAll n k (quote (succ d) b)
 
 unifyKind :: Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m => Kind -> Kind -> m Kind
 unifyKind k1 k2 = if k1 == k2 then pure k2 else mismatch
