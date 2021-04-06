@@ -243,12 +243,11 @@ printModule (C.Module mname is _ ds) = module_
   defBody = \case
     C.DTerm Nothing  _T ->       printType opts empty _T
     C.DTerm (Just b) _T -> defn (printType opts empty _T :=: printExpr opts empty b)
-    C.DData cs _K -> annotate Keyword (pretty "data") <+> declList
-      (map (def . fmap defBody) (C.scopeToList cs))
-    C.DInterface os _K -> annotate Keyword (pretty "interface") <+> declList
-      (map (def . fmap (printType opts empty)) (C.scopeToList os))
-    C.DModule ds _K -> block (concatWith (surround hardline) (map ((hardline <>) . def . fmap defBody) (C.scopeToList ds)))
-  declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
+    C.DData cs _K       -> annotate Keyword (pretty "data") <+> scope defBody cs
+    C.DInterface os _K  -> annotate Keyword (pretty "interface") <+> scope (printType opts empty) os
+    C.DModule ds _K     -> block (concatWith (surround hardline) (map ((hardline <>) . def . fmap defBody) (C.scopeToList ds)))
+  scope :: (a -> Print) -> C.Scope a -> Print
+  scope with = block . group . concatWith (surround (hardline <> comma <> space)) . map (group . def . fmap with) . C.scopeToList
   import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))
   module_ n t is ds = ann (setPrec Var (prettyMName n) ::: t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
   defn (a :=: b) = group a <> hardline <> group b
