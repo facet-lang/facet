@@ -225,14 +225,14 @@ checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withS
   S.App{}    -> switch (synthExpr expr)
   S.As{}     -> switch (synthExpr expr)
   S.String{} -> switch (synthExpr expr)
+
+checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Check m Expr
+checkLam cs = lam (snd vs)
   where
-  checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Check m Expr
-  checkLam cs = lam (snd vs)
-    where
-    vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: Check m Expr], [(Bind m (Pattern (Name ::: Classifier)), Check m Expr)])
-    vs = partitionEithers (map (\ (S.Clause (S.Ann _ _ p) b) -> case p of
-      S.PVal p                          -> Right (bindPattern p, checkExpr b)
-      S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: mapCheck (pushSpan s) (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k))) cs)
+  vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: Check m Expr], [(Bind m (Pattern (Name ::: Classifier)), Check m Expr)])
+  vs = partitionEithers (map (\ (S.Clause (S.Ann _ _ p) b) -> case p of
+    S.PVal p                          -> Right (bindPattern p, checkExpr b)
+    S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: mapCheck (pushSpan s) (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k))) cs)
 
 
 -- FIXME: check for unique variable names
