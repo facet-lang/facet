@@ -12,7 +12,6 @@ import Data.Text (Text, pack)
 import Facet.Effect.Parser
 import Facet.Name
 import Facet.Snoc
-import Facet.Snoc.NonEmpty
 import Facet.Span
 import Text.Parser.Char
 import Text.Parser.Combinators
@@ -65,7 +64,7 @@ kind_ = choice
   , RBracket   <$  char ']' <?> "]"
   , LAngle     <$  char '<' <?> "<"
   , RAngle     <$  char '>' <?> ">"
-  , QIdent     <$> ((:.) . toSnoc <$> mname <* dot <*> choice [ U <$> ename, U <$> tname ])
+  , QIdent     <$> (fmap toQ . (:.:) <$> mname <* dot <*> choice [ U <$> ename, U <$> tname ])
   , MIdent     <$> mname
   , EIdent . U <$> ename
   , TIdent . U <$> tname
