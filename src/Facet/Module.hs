@@ -92,7 +92,7 @@ newtype Scope a = Scope { decls :: Map.Map Name a }
 decls_ :: Lens (Scope a) (Scope b) (Map.Map Name a) (Map.Map Name b)
 decls_ = coerced
 
-scopeFromList :: [Name :=: Def] -> Scope Def
+scopeFromList :: [Name :=: a] -> Scope a
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v) -> (n, v))
 
 scopeToList :: Scope Def -> [Name :=: Def]
