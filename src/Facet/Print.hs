@@ -247,7 +247,7 @@ printModule (C.Module mname is _ ds) = module_
       C.DData cs _K -> annotate Keyword (pretty "data") <+> declList
         (map def (C.scopeToList cs))
       C.DInterface os _K -> annotate Keyword (pretty "interface") <+> declList
-        (map def (C.scopeToList os))
+        (map (def . fmap (C.DTerm Nothing)) (C.scopeToList os))
       C.DModule ds _K -> block (concatWith (surround hardline) (map ((hardline <>) . def) (C.scopeToList ds)))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
   import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))

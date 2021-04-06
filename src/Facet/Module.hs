@@ -25,7 +25,7 @@ import           Control.Effect.Choose
 import           Control.Effect.Empty
 import           Control.Lens (Lens, Lens', coerced, lens)
 import           Control.Monad ((<=<))
-import           Data.Bifunctor (first)
+import           Data.Bifunctor (Bifunctor(bimap), first)
 import           Data.Coerce
 import qualified Data.Map as Map
 import           Facet.Kind
@@ -80,7 +80,7 @@ lookupC n Module{ name, scope } = foldMapC matchDef (decls scope)
 lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: Def)
 lookupE n Module{ name, scope } = foldMapC matchDef (decls scope)
   where
-  matchDef = fmap (first (name:.:)) . lookupScope n . tm <=< unDInterface
+  matchDef = fmap (bimap (name:.:) (DTerm Nothing)) . lookupScope n . tm <=< unDInterface
 
 lookupD :: Has Empty sig m => Name -> Module -> m (RName :=: Def)
 lookupD n Module{ name, scope } = maybe empty (pure . first (name:.:)) (lookupScope n scope)
@@ -108,7 +108,7 @@ newtype Import = Import { name :: MName }
 data Def
   = DTerm (Maybe Expr) Type
   | DData (Scope Def) Kind
-  | DInterface (Scope Def) Kind
+  | DInterface (Scope Type) Kind
   | DModule (Scope Def) Kind
 
 unDTerm :: Has Empty sig m => Def -> m (Maybe Expr ::: Type)
@@ -121,7 +121,7 @@ unDData = \case
   DData cs _K -> pure $ cs ::: _K
   _           -> empty
 
-unDInterface :: Has Empty sig m => Def -> m (Scope Def ::: Kind)
+unDInterface :: Has Empty sig m => Def -> m (Scope Type ::: Kind)
 unDInterface = \case
   DInterface cs _K -> pure $ cs ::: _K
   _                -> empty

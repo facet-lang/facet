@@ -287,7 +287,7 @@ elabInterfaceDef
 elabInterfaceDef (dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _T
-    pure $ n :=: DTerm Nothing _T'
+    pure $ n :=: _T'
   pure [ dname :=: DInterface (scopeFromList cs) _T ]
 
 -- FIXME: add a parameter for the effect signature.
