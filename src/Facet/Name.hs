@@ -61,7 +61,7 @@ __ :: Name
 __ = U T.empty
 
 
-type MName = NonEmpty Text
+type MName = NonEmpty Name
 
 prettyMName :: Printer a => MName -> a
 prettyMName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
@@ -72,7 +72,7 @@ showsModuleName c m n p = showParen (p > 9) $ foldl' (.) id (intersperse (showCh
 
 
 -- | Qualified names, consisting of a module name and declaration name.
-data QName = Snoc Text :. Name -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
+data QName = Snoc Name :. Name
   deriving (Eq, Ord)
 
 instance Show QName where

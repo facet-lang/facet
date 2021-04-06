@@ -235,7 +235,7 @@ printPattern Options{ rname } = go
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
   mname
-  (qvar (fromList [T.pack "Kernel"]:.U (T.pack "Module")))
+  (qvar (fromList [U (T.pack "Kernel")]:.U (T.pack "Module")))
   (map (\ (C.Import n) -> import' n) is)
   (map (def . fmap defBody) (C.scopeToList ds))
   where
