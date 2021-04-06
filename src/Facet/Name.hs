@@ -15,6 +15,7 @@ module Facet.Name
 , Name(..)
 , Assoc(..)
 , Op(..)
+, formatOp
 , OpN(..)
 ) where
 
