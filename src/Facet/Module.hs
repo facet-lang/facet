@@ -98,7 +98,7 @@ scopeFromList = Scope . Map.fromList . map (\ (n :=: v) -> (n, v))
 scopeToList :: Scope a -> [Name :=: a]
 scopeToList = map (uncurry (:=:)) . Map.toList . decls
 
-lookupScope :: Has Empty sig m => Name -> Scope Def -> m (Name :=: Def)
+lookupScope :: Has Empty sig m => Name -> Scope a -> m (Name :=: a)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 
 
