@@ -95,7 +95,7 @@ decls_ = coerced
 scopeFromList :: [Name :=: a] -> Scope a
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v) -> (n, v))
 
-scopeToList :: Scope Def -> [Name :=: Def]
+scopeToList :: Scope a -> [Name :=: a]
 scopeToList = map (uncurry (:=:)) . Map.toList . decls
 
 lookupScope :: Has Empty sig m => Name -> Scope Def -> m (Name :=: Def)
