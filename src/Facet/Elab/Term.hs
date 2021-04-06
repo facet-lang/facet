@@ -12,6 +12,7 @@ module Facet.Elab.Term
 , app
 , string
 , let'
+, comp
   -- * Pattern combinators
 , wildcardP
 , varP
@@ -53,7 +54,7 @@ import           Data.Bifunctor (first)
 import           Data.Either (partitionEithers)
 import           Data.Foldable
 import           Data.Functor
-import           Data.Maybe (catMaybes, fromMaybe)
+import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import           Data.Monoid (Ap(..), First(..))
 import qualified Data.Set as Set
 import           Data.Text (Text)
@@ -150,6 +151,18 @@ let' p a b = Check $ \ _B -> do
   a' ::: _A <- synth a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
   pure $ XLet p' a' b'
+
+
+comp :: Has (Throw Err) sig m => Check m Expr -> Check m Expr
+comp b = Check $ \ _T -> do
+  (sig, _B) <- assertComp _T
+  StaticContext{ graph, module' } <- ask
+  let interfacePattern :: Has (Throw Err) sig m => Interface Type -> Elab m (RName :=: (Name ::: Classifier))
+      interfacePattern (Interface n _) = maybe (freeVariable (toQ n)) (\ (n' :=: _T) -> pure ((n .:. n') :=: (n' ::: CT _T))) (listToMaybe (scopeToList . tm =<< unDInterface . def =<< lookupQ graph module' (toQ n)))
+  p' <- traverse interfacePattern (interfaces sig)
+  -- FIXME: can we apply quantities to dictionaries? what would they mean?
+  b' <- (Many, PDict p') |- check (b ::: _B)
+  pure $ XComp (map (fmap tm) p') b'
 
 
 -- Pattern combinators
