@@ -17,9 +17,10 @@ module Facet.Name
 , Op(..)
 , formatOp
 , OpN(..)
+, formatOpN
 ) where
 
-import           Data.Foldable (foldr', toList)
+import           Data.Foldable (foldl', foldr', toList)
 import           Data.Functor.Classes (showsUnaryWith)
 import qualified Data.List.NonEmpty as NE
 import           Data.String (IsString(..))
@@ -149,3 +150,10 @@ data OpN
   deriving (Eq, Ord, Show)
 
 -- FIXME: can we treat this more compositionally instead? i.e. treat an n-ary prefix operator as a composition of individual prefix operators? Then each placeholder lines up with a unary operator corresponding to the type of the tail
+
+formatOpN :: (a -> a -> a) -> (Text -> a) -> a -> OpN -> a
+formatOpN (<+>) pretty place = \case
+  PrefixN   s ss        -> foldl' (<+>) (comp s) (map comp ss) where comp s = pretty s <+> place
+  PostfixN  ee e        -> foldr' (<+>) (comp e) (map comp ee) where comp e = place <+> pretty e
+  InfixN    (m NE.:|mm) -> place <+> foldr' comp (pretty m) mm <+> place where comp s e = pretty s <+> place <+> e
+  OutfixN s mm e        -> foldr' comp (pretty e) (s : mm) where comp s e = pretty s <+> place <+> e
