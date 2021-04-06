@@ -10,6 +10,7 @@ module Facet.Name
 , prettyMName
 , QName(..)
 , RName(..)
+, (.:.)
 , toQ
 , LName(..)
 , Name(..)
@@ -91,6 +92,10 @@ instance Show RName where
 
 instance P.Pretty RName where
   pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
+
+-- | Append a 'Name' onto an 'RName'.
+(.:.) :: RName -> Name -> RName
+m :.: n .:. n' = (m |> n) :.: n'
 
 -- | Weaken an 'RName' to a 'QName'. This is primarily used for performing lookups in the graph starting from an 'RName' where the stronger structure is not required.
 toQ :: RName -> QName
