@@ -122,14 +122,17 @@ data Op
   | Outfix Text Text
   deriving (Eq, Ord, Show)
 
+formatOp :: (a -> a -> a) -> (Text -> a) -> a -> Op -> a
+formatOp (<+>) pretty place = \case
+  Prefix   s -> pretty s <+> place
+  Postfix  s -> place <+> pretty s
+  Infix    s -> place <+> pretty s <+> place
+  Outfix s e -> pretty s <+> place <+> pretty e
+
 -- FIXME: specify relative precedences
 
 instance P.Pretty Op where
-  pretty = \case
-    Prefix   s -> P.pretty s <+> place
-    Postfix  s -> place <+> P.pretty s
-    Infix    s -> place <+> P.pretty s <+> place
-    Outfix s e -> P.pretty s <+> place <+> P.pretty e
+  pretty = formatOp (<+>) P.pretty place
     where
     place = P.pretty '_'
 
