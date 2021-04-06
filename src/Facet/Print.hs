@@ -215,6 +215,7 @@ printExpr opts@Options{ rname, instantiation } = go
     C.XString s       -> annotate Lit $ pretty (show s)
     C.XDict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
     C.XLet p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (printPattern opts (def <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
+    C.XComp p b       -> comp (clause env (PDict p, b))
     where
     d = level env
   qvar = group . setPrec Var . rname

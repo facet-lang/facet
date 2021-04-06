@@ -46,6 +46,7 @@ eval env = \case
   XString s       -> string s
   XDict os        -> VDict <$> traverse (traverse (eval env)) os
   XLet p v b      -> eval env v >>= \ v' -> eval (env |> fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v')) b
+  XComp p b       -> lam env [(PDict p, b)] -- FIXME: this won’t roundtrip correctly
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
 global n = do

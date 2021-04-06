@@ -69,6 +69,7 @@ norm env = \case
   XLam cs    -> NLam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
   XDict os   -> NDict (map (fmap (norm env)) os)
   XLet p v b -> norm (env |> fromMaybe (error "norm: non-exhaustive pattern in let") (match (norm env v) p)) b
+  XComp p b  -> NLam [(PDict p, \ p' -> norm (env |> p') b)] -- FIXME: this won’t roundtrip correctly
 
 
 napp :: Norm -> Norm -> Norm

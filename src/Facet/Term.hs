@@ -21,4 +21,5 @@ data Expr
   | XString Text
   | XDict [RName :=: Expr]
   | XLet (Pattern Name) Expr Expr
+  | XComp [RName :=: Name] Expr -- ^ NB: the first argument is a specialization of @'Pattern' 'Name'@ to the 'PDict' constructor
   deriving (Eq, Ord, Show)
