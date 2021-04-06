@@ -239,9 +239,7 @@ printModule (C.Module mname is _ ds) = module_
   (map (\ (C.Import n) -> import' n) is)
   (map def (C.scopeToList ds))
   where
-  def (n :=: d) = ann
-    $   qvar (Nil:.n)
-    ::: defBody d
+  def (n :=: d) = ann (qvar (Nil:.n) ::: defBody d)
   defBody = \case
     C.DTerm Nothing  _T ->       printType opts empty _T
     C.DTerm (Just b) _T -> defn (printType opts empty _T :=: printExpr opts empty b)
