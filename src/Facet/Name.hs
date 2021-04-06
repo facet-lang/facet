@@ -22,6 +22,7 @@ module Facet.Name
 
 import           Data.Foldable (foldl', foldr', toList)
 import           Data.Functor.Classes (showsUnaryWith)
+import           Data.List (intersperse)
 import qualified Data.List.NonEmpty as NE
 import           Data.String (IsString(..))
 import           Data.Text (Text)
@@ -65,13 +66,17 @@ type MName = NonEmpty Text
 prettyMName :: Printer a => MName -> a
 prettyMName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
 
+showsModuleName :: (Foldable t, Show a, Show b) => String -> t a -> b -> Int -> ShowS
+showsModuleName c m n p = showParen (p > 9) $ foldl' (.) id (intersperse (showChar '.') (shows <$> toList m)) . showString c . showsPrec 10 n
+
+
 
 -- | Qualified names, consisting of a module name and declaration name.
 data QName = Snoc Text :. Name -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
   deriving (Eq, Ord)
 
 instance Show QName where
-  showsPrec p (m :. n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":." . showsPrec 10 n
+  showsPrec p (m :. n) = showsModuleName ":." m n p
 
 instance P.Pretty QName where
   pretty (m :. n) = foldr' (surround dot . pretty) (pretty n) m
@@ -82,7 +87,7 @@ data RName = MName :.: Name
   deriving (Eq, Ord)
 
 instance Show RName where
-  showsPrec p (m :.: n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":.:" . showsPrec 10 n
+  showsPrec p (m :.: n) = showsModuleName ":.:" m n p
 
 instance P.Pretty RName where
   pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
