@@ -237,17 +237,17 @@ printModule (C.Module mname is _ ds) = module_
   mname
   (qvar (fromList [T.pack "Kernel"]:.U (T.pack "Module")))
   (map (\ (C.Import n) -> import' n) is)
-  (map def (C.scopeToList ds))
+  (map (def . fmap defBody) (C.scopeToList ds))
   where
-  def (n :=: d) = ann (qvar (Nil:.n) ::: defBody d)
+  def (n :=: d) = ann (qvar (Nil:.n) ::: d)
   defBody = \case
     C.DTerm Nothing  _T ->       printType opts empty _T
     C.DTerm (Just b) _T -> defn (printType opts empty _T :=: printExpr opts empty b)
     C.DData cs _K -> annotate Keyword (pretty "data") <+> declList
-      (map def (C.scopeToList cs))
+      (map (def . fmap defBody) (C.scopeToList cs))
     C.DInterface os _K -> annotate Keyword (pretty "interface") <+> declList
-      (map (def . fmap (C.DTerm Nothing)) (C.scopeToList os))
-    C.DModule ds _K -> block (concatWith (surround hardline) (map ((hardline <>) . def) (C.scopeToList ds)))
+      (map (def . fmap (printType opts empty)) (C.scopeToList os))
+    C.DModule ds _K -> block (concatWith (surround hardline) (map ((hardline <>) . def . fmap defBody) (C.scopeToList ds)))
   declList = block . group . concatWith (surround (hardline <> comma <> space)) . map group
   import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))
   module_ n t is ds = ann (setPrec Var (prettyMName n) ::: t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
