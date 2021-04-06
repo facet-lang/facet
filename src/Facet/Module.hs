@@ -23,7 +23,7 @@ module Facet.Module
 import           Control.Algebra
 import           Control.Effect.Choose
 import           Control.Effect.Empty
-import           Control.Lens (Lens', coerced, lens)
+import           Control.Lens (Lens, Lens', coerced, lens)
 import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
 import           Data.Coerce
@@ -89,7 +89,7 @@ lookupD n Module{ name, scope } = maybe empty (pure . first (name:.:)) (lookupSc
 newtype Scope a = Scope { decls :: Map.Map Name a }
   deriving (Monoid, Semigroup)
 
-decls_ :: Lens' (Scope Def) (Map.Map Name Def)
+decls_ :: Lens (Scope a) (Scope b) (Map.Map Name a) (Map.Map Name b)
 decls_ = coerced
 
 scopeFromList :: [Name :=: Def] -> Scope Def
