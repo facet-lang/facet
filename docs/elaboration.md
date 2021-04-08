@@ -90,6 +90,14 @@ Technically these can’t appear in the surface syntax right now, but here’s t
 Γ ⊢ {M} ~~> {M′} : Thunk T
 ```
 
+Thunks are eliminated by forcing:
+
+```
+Γ ⊢ M ~~> M′ : Thunk T
+----------------------
+  Γ ⊢ M! ~~> M′! : T
+```
+
 
 ### Negative terms
 
