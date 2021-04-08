@@ -87,3 +87,16 @@ Technically these can’t appear in the surface syntax right now, but here’s t
 --------------------------
 Γ ⊢ {M} ~~> {M′} : Thunk T
 ```
+
+
+### Negative terms
+
+#### Functions
+
+Functions are defined using curly braces containing pattern matching clauses. These define not only functions in the typical sense, but also effect handlers, making them (paraphrasing the Frank paper, _Do Be Do Be Do_) a more general sort of coroutining construct. Here’s the pure case (functions without effect handlers), ignoring (for the moment) non-variable patterns, nested lambdas, and multiple clauses:
+
+```
+        Γ, x : S ⊢ M ~~> M′ <== T
+-----------------------------------------
+Γ ⊢ { x -> M } ~~> { x -> M′ } <== S -> T
+```
