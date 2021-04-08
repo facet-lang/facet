@@ -61,6 +61,7 @@ In Facet’s case, matters are muddied slightly by computations, which are not e
 
 Computation types are computations in the CBPV/polarization sense, i.e. negative, and thus are lazily evaluated. The elaborator models this by treating them as a kind of function type mapping products of operations—dictionaries—to the computed result.
 
+
 ## Strategy
 
 Computation types arise in arguments and returns.
@@ -77,6 +78,7 @@ Facet’s implementation isn’t currently polarized, but it’s a good model fo
 --------------------------
 Γ ⊢ "…" ~~> "…" ==> String
 ```
+
 
 #### Thunks
 
