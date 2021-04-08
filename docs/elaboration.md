@@ -188,3 +188,26 @@ Thus, despite the fact that the arguments to `incr` are occurring in positions n
 ```
 
 where `dict` is the name bound in the context for the `[State Int]` dictionary. Thus, elaboration has to resolve computation types not just at e.g. return positions in lambdas, but within applications therein.
+
+Furthermore, we also need to know where the dictionary came into scope. Zooming out from the single expression, we’ll define a top-level term `incr2`:
+
+```facet
+incr2 : [State Int] Int
+{ incr ; incr }
+```
+
+Since `incr2` is typed as `[State Int] Int`, we can see that its elaboration will have type `[State Int] -> Int`. Thus, instead of the body being an application, it must now be a lambda binding the dictionary:
+
+```facet
+incr2 : [State Int] -> Int
+{ [get, put] -> … }
+```
+
+Here we see a slight discrepancy with the above: the dictionary is fully decomposed into its operations. Thus, when elaborating the body, we’ll need to reconstruct the dictionary to give to child terms. (This allows them to receive only the operations they require, which might be quite a small subset of the available terms, rather than the dictionary for all available effects.) In full, we now have:
+
+```facet
+incr2 : [State Int] -> Int
+{ [get, put] -> incr [get = get, put = put] ; incr [get = get, put = put] }
+```
+
+where the `[x̅ = y̅]` notation in the body is a record (in this case, a dictionary) giving field `x` the value `y`.
