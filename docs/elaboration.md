@@ -65,6 +65,7 @@ Computation types are computations in the CBPV/polarization sense, i.e. negative
 
 Computation types arise in arguments and returns.
 
+
 ### Positive terms
 
 #### String literals
