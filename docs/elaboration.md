@@ -100,3 +100,11 @@ Functions are defined using curly braces containing pattern matching clauses. Th
 -----------------------------------------
 Γ ⊢ { x -> M } ~~> { x -> M′ } <== S -> T
 ```
+
+Pure applications, likewise, just distribute the elaboration of the terms while synthesizing the type:
+
+```
+Γ ⊢ M ~~> M′ ==> S -> T   Γ ⊢ N ~~> N′ <== S
+--------------------------------------------
+          Γ ⊢ M N ~~> M′ N′ ==> T
+```
