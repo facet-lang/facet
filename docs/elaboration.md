@@ -20,7 +20,16 @@ Types:
 
 ## Judgements
 
-Elaboration is performed bidrectionally, and thus consists of two judgements, checking and synthesis.
+Elaboration is _specified_ as a single judgement relating surface terms to core terms at a core type. However, it is _performed_ bidrectionally, and thus in practice consists of two judgements, checking and synthesis. We’ll give rules for each of these as convenience allows.
+
+
+### Elaboration
+
+```
+Γ ⊢ M ~~> V : τ
+```
+
+This judgement can be recovered by “erasing” the directionality of the two bidirectional judgements by replacing the `<==`/`==>` symbols with `:`. Note that this judgement is in general nondeterministic, and thus should not be considered as specifying an algorithm. (That’s what the bidirectional judgements are for.)
 
 
 ### Checking
@@ -55,3 +64,22 @@ Computation types are computations in the CBPV/polarization sense, i.e. negative
 ## Strategy
 
 Computation types arise in arguments and returns.
+
+### Positive terms
+
+#### String literals
+
+```
+--------------------------
+Γ ⊢ "…" ~~> "…" ==> String
+```
+
+#### Thunks
+
+Technically these can’t appear in the surface syntax right now, but here’s the proposed rule. (It bidirectionalizes trivially by replacing `:` with `<==`/`==>` in both premise and conclusion.)
+
+```
+     Γ ⊢ M ~~> M′ : T
+--------------------------
+Γ ⊢ {M} ~~> {M′} : Thunk T
+```
