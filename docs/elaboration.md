@@ -221,7 +221,7 @@ In order to accomplish this, we need to:
 
 ```
 Γ, [Dict(σ̅)] ⊢ M ~~> M′ : T
------------------------------------------
+-------------------------------------
 Γ ⊢ M ~~> { [Dict(σ̅)] -> M′ } : [σ̅] T
 ```
 
@@ -229,7 +229,7 @@ Value/value application is standard (i.e. this rule only differs from the standa
 
 ```
 Γ ⊢ M ~~> M′ : S -> T   Γ ⊢ N ~~> N′ : S
-------------------------------------------------
+----------------------------------------
 Γ ⊢ M N ~~> M′ N′ : T
 ```
 
