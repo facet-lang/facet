@@ -266,3 +266,5 @@ where we can read the negative shift `↑` on terms as sugar for `return` in the
 1. Should `id incr` elaborate to `id (incr dict)` or `id incr dict`?
 
 2. Do the two above potential elaborations of `id incr` differ observationally?
+
+3. What should the strategy be for applying these? Can we do it in `check`, or at least `checkExpr`?
