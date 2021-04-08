@@ -147,3 +147,18 @@ Pure applications, likewise, just distribute the elaboration of the terms while 
 --------------------------------------------
           Γ ⊢ M N ~~> M′ N′ ==> T
 ```
+
+
+### Computations
+
+Things get more interesting once we start talking about arguments and returns at computation types. The critical observation for the elaboration of computations is that a computation type `[σ̅] T` intuitively represents a promise to produce `T`s given facilities for the operations in `σ̅`. Further decomposing that, we have “a promise to produce `T` given _something_,” and “facilities for the operations in `σ̅`.” We already have a connective for producing `T` given _something_: `something -> T` represents precisely such a promise. And for the latter component, we can represent the facilities for an effect’s operations by a dictionary of the operations’ implementations, as provided by a handler.
+
+Thus, we elaborate computation _types_ into functions from dictionaries of effect handlers to the return type:
+
+```
+Γ ⊢ σ̅ ~~> σ̅′ <== Interface   Γ ⊢ T ~~> T′ <== Type
+--------------------------------------------------
+        Γ ⊢ [σ̅] T ~~> [σ̅′] -> T′ ==> Type
+```
+
+where `[σ̅]` (to the right of the `~~>`) can now be understood as an n-ary type constructor named `[]` taking zero or more interfaces to a type. (We do not show a type formation rule for this type since it cannot appear in the surface syntax except composed into a computation type, which is already covered by the elaboration judgements.)
