@@ -25,6 +25,17 @@ Elaboration occurs on both terms and types. The type level elaboration proceeds 
 Elaboration of terms is _specified_ as a single judgement relating surface terms to core terms at a core type. However, it is _performed_ bidrectionally, and thus in practice consists of two judgements, checking and synthesis. We’ll give rules for each of these as convenience allows.
 
 
+### Typing
+
+```
+Γ ⊢ S ~~> T ==> K
+```
+
+This judgement describes the elaboration of surface types `S` to core types `T` with synthesized kinds `K`. (The kind language is particularly simple, consisting of the base kinds `Type` and `Interface`, and arrow kinds.)
+
+Note that the same symbols this judgement employs are also used by the term-level synthesis judgement, below. The term and type languages are disjoint, so we are free to overload the symbols without ambiguity (if not _necessarily_ without confusion).
+
+
 ### Elaboration
 
 ```
