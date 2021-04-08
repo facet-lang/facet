@@ -171,39 +171,41 @@ The meat of this approach centres on terms. Unlike other types, terms at computa
 
 The first point means that we can no longer elaborate with a purely syntax-directed algorithm, because the syntax alone doesn’t suffice to determine what sort of term should be output. Instead, a string literal elaborated at `[σ̅] String` should first be elaborated as a `String` before being lifted into the computation via a return; this is an example of the second point in action.
 
-The third point is subtler. Consider the expression `incr ; incr`, where `incr` increments a mutable variable and returns the new value, and `;` is the definition in `Data.Function`. The type of `incr` is `[State Int] Int`, which we elaborate to `[State Int] -> Int`:
+The third point is subtler, and can be decomposed by analyzing the various pieces of syntax which introduce and eliminate dictionaries.
 
-```facet
-(incr : [State Int] -> Int) ; (incr : [State Int] -> Int)
-```
 
-Whereas before the operands to `;` were computations, now they are functions. The type of `;` (`_ ; _ : {A, B : Type} -> A -> B -> B`) is polymorphic and will accommodate them, but returning a function does not have the same semantics as running a computation. We need to arrange for the correct dictionary to be passed in.
+#### Introduction
 
-Note that since the type of `;` indicates that it returns the result of its second argument, not its first; thus, we could apply only the result of the expression to the dictionary. However, this would not work for many other operations, and would still not have the desired semantics, since we expect the original expression to increment the variable _twice_.
-
-Thus, despite the fact that the arguments to `incr` are occurring in positions not obviously of computation type, we are obligated to arrange for them to nevertheless receive the relevant dictionaries. The elaborated term should therefore be:
-
-```facet
-(incr : [State Int] -> Int) dict ; (incr : [State Int] -> Int) dict
-```
-
-where `dict` is the name bound in the context for the `[State Int]` dictionary. Thus, elaboration has to resolve computation types not just at e.g. return positions in lambdas, but within applications therein.
-
-Furthermore, we also need to know where the dictionary came into scope. Zooming out from the single expression, we’ll define a top-level term `incr2`:
+Introduction of dictionaries occurs when terms are given computation types bringing one or more interfaces into scope. The simplest case is a top-level definition explicitly annotated with a computation type:
 
 ```facet
 incr2 : [State Int] Int
 { incr ; incr }
 ```
 
-Since `incr2` is typed as `[State Int] Int`, we can see that its elaboration will have type `[State Int] -> Int`. Thus, instead of the body being an application, it must now be a lambda binding the dictionary:
+where `incr : [State Int] Int` increments the mutable variable managed by `State` and returns the new value, and `_ ; _ : {A, B : Type} -> A -> B -> B` is the definition given in `Data.Function`.
+
+Since `incr2` is typed as `[State Int] Int`, we can see that its elaboration must be a function effectively of type `[State Int] -> Int`. Thus, the elaborated definition must wrap the elaborated contents in a lambda binding the dictionary:
 
 ```facet
 incr2 : [State Int] -> Int
 { [get, put] -> … }
 ```
 
-Here we see a slight discrepancy with the above: the dictionary is fully decomposed into its operations. Thus, when elaborating the body, we’ll need to reconstruct the dictionary to give to child terms. (This allows them to receive only the operations they require, which might be quite a small subset of the available terms, rather than the dictionary for all available effects.) In full, we now have:
+Note that the dictionary is fully decomposed into its operations; this implies that effect operations like `get` and `put` are not distinguished constructs (e.g. field projections), but are rather local variables.
+
+Dictionaries are constructed, but not brought into scope, by effect handlers, which can now be understood as functions applying computations (higher-order functions from dictionaries) to the dictionary consisting of their elaborated effect cases.
+
+
+#### Elimination
+
+Dictionaries’ members are only brought into scope by the elaborated syntax, and are thus implicit in the surface syntax. Therefore, consumption of these dictionaries must also be implicit, part of the elaboration of the body of the computation.
+
+Terms of computation type within the body will have been elaborated to functions from dictionaries, and thus we must resolve the requested dictionaries with any provided by the context, applying them to eliminate the computation.
+
+Continuing with the example from above, we recall that `incr` has type `[State Int] Int`, and is thus such a function. `_ ; _`, on the other hand, is not. Since `_ ; _` is the outermost term, we must therefore propagate the dictionaries as elaboration proceeds inwards. This is in a sense alredy taken care of by the fact that we extended the context (and do not e.g. contract it in the premises of applications), so now all that is left is to ensure that the operands of `_ ; _` are elaborated s.t. they are applied to the appropriate dictionary.
+
+As noted above, the dictionary is brought into scope piecewise; therefore when elaborating the body, we reconstruct (sub-)dictionaries to pass to any terms consuming effects. (This allows them to receive only the operations they require, rather than the dictionary for the entire signature, potentially at the cost of some allocation.) In full, we now have:
 
 ```facet
 incr2 : [State Int] -> Int
@@ -211,6 +213,13 @@ incr2 : [State Int] -> Int
 ```
 
 where the `[x̅ = y̅]` notation in the body is a record (in this case, a dictionary) giving field `x` the value `y`.
+
+Note however that we’ve only looked at function operands; are there other positions where terms of computation type must be eliminated? And how do we account for effect handlers as shadowing outer handlers for the same effect at the same type?
+
+_TBD_
+
+
+#### Judgements
 
 In order to accomplish this, we need to:
 
