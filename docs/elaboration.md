@@ -35,6 +35,22 @@ This judgement describes the elaboration of surface types `S` to core types `T` 
 
 Note that the same symbols this judgement employs are also used by the term-level synthesis judgement, below. The term and type languages are disjoint, so we are free to overload the symbols without ambiguity (if not _necessarily_ without confusion).
 
+As described above, our kinds are quite simple, so we can elaborate types entirely in synthesis mode. However, it is nevertheless convenient in the implementation to operate bidirectionally in the small, by synthesizing a type’s kind and then immediately checking it against our expectation using the ubiquitous switch rule. For that reason, we can also reference type elaboration in checking mode in premises:
+
+```
+Γ ⊢ S ~~> T <== K
+```
+
+with the understanding that proof search will immediately switch (as this is the only checking-mode conclusion in the type elaboration judgement) and check the kinds for equality:
+
+```
+Γ ⊢ S ~~> T ==> K′   K ≡ K′
+---------------------------
+     Γ ⊢ S ~~> T <== K
+```
+
+(where equality of kinds is syntactic.)
+
 
 ### Elaboration
 
