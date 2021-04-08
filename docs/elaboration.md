@@ -259,3 +259,10 @@ Handler/value application is standard except for a shift of the parameter:
 ```
 
 where we can read the negative shift `↑` on terms as sugar for `return` in the CBPV sense, or in practical terms, the constant function sending all inputs to `N′`. (Were this fully polarized, it would additionally require an enclosing thunk; this discussion leaves thunking as an exercise for the code generator.)
+
+
+#### Questions
+
+1. Should `id incr` elaborate to `id (incr dict)` or `id incr dict`?
+
+2. Do the two above potential elaborations of `id incr` differ observationally?
