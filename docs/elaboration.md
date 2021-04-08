@@ -68,6 +68,9 @@ Computation types arise in arguments and returns.
 
 ### Positive terms
 
+Facet’s implementation isn’t currently polarized, but it’s a good model for thinking about the structure of the system. (The primary difference in the implementation is that we don’t distinguish thunk types; nullary computations are instead encoded as functions from unit.)
+
+
 #### String literals
 
 ```
