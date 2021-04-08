@@ -211,3 +211,42 @@ incr2 : [State Int] -> Int
 ```
 
 where the `[x̅ = y̅]` notation in the body is a record (in this case, a dictionary) giving field `x` the value `y`.
+
+In order to accomplish this, we need to:
+
+1. elaborate subterms at computation types into applications of the elaborated subterm to the dictionary of operations they require, discovered in the local environment. However, if the position is itself a handler, this is subtler still as the innermost handler should provide the dictionaries, not the outermost.
+
+2. elaborate lambda bodies at computation type into one more lambda binding the dictionary of required operations.
+
+
+```
+Γ, [Dict(σ̅)] ⊢ M ~~> M′ : T
+-----------------------------------------
+Γ ⊢ M ~~> { [Dict(σ̅)] -> M′ } : [σ̅] T
+```
+
+Value/value application is standard (i.e. this rule only differs from the standard typechecking rule in using the elaboration judgements in its premise):
+
+```
+Γ ⊢ M ~~> M′ : S -> T   Γ ⊢ N ~~> N′ : S
+------------------------------------------------
+Γ ⊢ M N ~~> M′ N′ : T
+```
+
+Handler/computation application is standard:
+
+```
+Γ ⊢ M ~~> M′ : [σ̅] S -> T   Γ ⊢ N ~~> N′ : [σ̅] S
+------------------------------------------------
+           Γ ⊢ M N ~~> M′ N′ : T
+```
+
+Handler/value application is standard except for a shift of the parameter:
+
+```
+Γ ⊢ M ~~> M′ : [σ̅] S -> T   Γ ⊢ N ~~> N′ : S
+--------------------------------------------
+           Γ ⊢ M N ~~> M′ (↑N′) : T
+```
+
+where we can read the negative shift `↑` on terms as sugar for `return` in the CBPV sense, or in practical terms, the constant function sending all inputs to `N′`.
