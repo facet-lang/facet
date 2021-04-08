@@ -162,3 +162,29 @@ Thus, we elaborate computation _types_ into functions from dictionaries of effec
 ```
 
 where `[σ̅]` (to the right of the `~~>`) can now be understood as an n-ary type constructor named `[]` taking zero or more interfaces to a type. (We do not show a type formation rule for this type since it cannot appear in the surface syntax except composed into a computation type, which is already covered by the elaboration judgements.)
+
+The meat of this approach centres on terms. Unlike other types, terms at computation type:
+
+1. have (almost) no corresponding explicit term-level syntax;
+2. implicitly embed positive terms by returning them à la CBPV; and
+3. propagate part of the context into (some) subterms
+
+The first point means that we can no longer elaborate with a purely syntax-directed algorithm, because the syntax alone doesn’t suffice to determine what sort of term should be output. Instead, a string literal elaborated at `[σ̅] String` should first be elaborated as a `String` before being lifted into the computation via a return; this is an example of the second point in action.
+
+The third point is subtler. Consider the expression `incr ; incr`, where `incr` increments a mutable variable and returns the new value, and `;` is the definition in `Data.Function`. The type of `incr` is `[State Int] Int`, which we elaborate to `[State Int] -> Int`:
+
+```facet
+(incr : [State Int] -> Int) ; (incr : [State Int] -> Int)
+```
+
+Whereas before the operands to `;` were computations, now they are functions. The type of `;` (`_ ; _ : {A, B : Type} -> A -> B -> B`) is polymorphic and will accommodate them, but returning a function does not have the same semantics as running a computation. We need to arrange for the correct dictionary to be passed in.
+
+Note that since the type of `;` indicates that it returns the result of its second argument, not its first; thus, we could apply only the result of the expression to the dictionary. However, this would not work for many other operations, and would still not have the desired semantics, since we expect the original expression to increment the variable _twice_.
+
+Thus, despite the fact that the arguments to `incr` are occurring in positions not obviously of computation type, we are obligated to arrange for them to nevertheless receive the relevant dictionaries. The elaborated term should therefore be:
+
+```facet
+(incr : [State Int] -> Int) dict ; (incr : [State Int] -> Int) dict
+```
+
+where `dict` is the name bound in the context for the `[State Int]` dictionary. Thus, elaboration has to resolve computation types not just at e.g. return positions in lambdas, but within applications therein.
