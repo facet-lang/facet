@@ -258,4 +258,4 @@ Handler/value application is standard except for a shift of the parameter:
            Γ ⊢ M N ~~> M′ (↑N′) : T
 ```
 
-where we can read the negative shift `↑` on terms as sugar for `return` in the CBPV sense, or in practical terms, the constant function sending all inputs to `N′`.
+where we can read the negative shift `↑` on terms as sugar for `return` in the CBPV sense, or in practical terms, the constant function sending all inputs to `N′`. (Were this fully polarized, it would additionally require an enclosing thunk; this discussion leaves thunking as an exercise for the code generator.)
