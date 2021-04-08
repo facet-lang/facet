@@ -20,7 +20,9 @@ Types:
 
 ## Judgements
 
-Elaboration is _specified_ as a single judgement relating surface terms to core terms at a core type. However, it is _performed_ bidrectionally, and thus in practice consists of two judgements, checking and synthesis. We’ll give rules for each of these as convenience allows.
+Elaboration occurs on both terms and types. The type level elaboration proceeds first, relating well-kinded surface types to core types. These core types are then used to inform the elaboration of terms. Note also that since Facet’s type system is quite simple, we enjoy an entirely inferred kinding judgement.
+
+Elaboration of terms is _specified_ as a single judgement relating surface terms to core terms at a core type. However, it is _performed_ bidrectionally, and thus in practice consists of two judgements, checking and synthesis. We’ll give rules for each of these as convenience allows.
 
 
 ### Elaboration
