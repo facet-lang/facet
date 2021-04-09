@@ -268,3 +268,8 @@ where we can read the negative shift `↑` on terms as sugar for `return` in the
 2. Do the two above potential elaborations of `id incr` differ observationally?
 
 3. What should the strategy be for applying these? Can we do it in `check`, or at least `checkExpr`?
+
+
+#### Observations
+
+Elaboration visits the entire tree. Thus, we shouldn’t need to search around the input term for places to apply the rules, but rather apply them as we get to them, suggesting that `checkExpr` and `synthExpr` might be reasonable places to start. Since elaboration is necessarily semantics-preserving, we will have sufficient information at the nested positions to take the necessary actions.
