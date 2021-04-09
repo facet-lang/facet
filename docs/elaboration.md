@@ -234,7 +234,7 @@ In order to accomplish this, we need to:
 Γ ⊢ M ~~> { [Dict(σ̅)] -> M′ } : [σ̅] T
 ```
 
-Value/value application is standard (i.e. this rule only differs from the standard typechecking rule in using the elaboration judgements in its premise):
+Function/value application is standard (i.e. this rule only differs from the standard typechecking rule in using the elaboration judgements in its premise):
 
 ```
 Γ ⊢ M ~~> M′ : S -> T   Γ ⊢ N ~~> N′ : S
