@@ -196,7 +196,7 @@ fieldsP = foldr cons nil
 allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (Pattern (Name ::: Classifier))
 allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
-  k (PVar (n ::: CT (T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit"))  Nil) (T.Comp sig _T))))
+  k (PVar (n ::: CT (T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (T.Comp sig _T))))
 
 
 -- Expression elaboration
