@@ -202,13 +202,11 @@ printNorm :: Options -> Env Print -> N.Norm -> Print
 printNorm opts env = printExpr opts env . N.quote (level env)
 
 printExpr :: Options -> Env Print -> C.Expr -> Print
-printExpr opts@Options{ rname, instantiation } = go
+printExpr opts@Options{ rname } = go
   where
   go env = \case
     C.XVar (Global n) -> qvar n
     C.XVar (Free n)   -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
-    C.XTLam n b       -> let { d = level env ; v = tintro n d } in braces (braces v <+> arrow <+> go (env |> PVar (__ :=: v)) b)
-    C.XInst e t       -> go env e `instantiation` braces (printTExpr opts env t)
     C.XLam cs         -> comp (commaSep (map (clause env) cs))
     C.XApp f a        -> go env f $$ go env a
     C.XCon n p        -> qvar n $$* (group . go env <$> p)

@@ -30,7 +30,6 @@ import Facet.Semialign (zipWithM)
 import Facet.Snoc.NonEmpty as NE hiding ((|>))
 import Facet.Syntax
 import Facet.Term
-import Facet.Type.Expr (Type)
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
@@ -38,8 +37,6 @@ eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) 
 eval env = \case
   XVar (Global n) -> global n >>= eval env
   XVar (Free n)   -> var env n
-  XTLam _ b       -> tlam (eval env b)
-  XInst f t       -> inst (eval env f) t
   XLam cs         -> lam env cs
   XApp  f a       -> app env (eval env f) a
   XCon n fs       -> con n (eval env <$> fs)
@@ -58,12 +55,6 @@ global n = do
 
 var :: (HasCallStack, Applicative m) => Env (Value m) -> LName Index -> m (Value m)
 var env n = pure (index env n)
-
-tlam :: Eval m (Value (Eval m)) -> Eval m (Value (Eval m))
-tlam = id
-
-inst :: Eval m (Value (Eval m)) -> Type -> Eval m (Value (Eval m))
-inst = const
 
 lam :: Env (Value (Eval m)) -> [(Pattern Name, Expr)] -> Eval m (Value (Eval m))
 lam env cs = pure $ VLam env cs

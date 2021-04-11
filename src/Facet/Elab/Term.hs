@@ -102,7 +102,7 @@ as (m ::: _T) = Synth $ do
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global :: Algebra sig m => RName ::: Type -> Synth m Expr
-global (q ::: _T) = Synth $ instantiate XInst (XVar (Global q) ::: _T)
+global (q ::: _T) = Synth $ instantiate const (XVar (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
@@ -123,8 +123,7 @@ tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
-  b' <- (zero, PVar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
-  pure $ XTLam n b'
+  (zero, PVar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name ::: Classifier)), Check m Expr)] -> Check m Expr
 lam cs = Check $ \ _T -> do
