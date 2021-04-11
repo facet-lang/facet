@@ -313,6 +313,21 @@ Eliminating free computations using the dictionary bound in the context:
 
     Note that this effectively reinstates implicit effect polymorphism.
 
+3. `toOption`
+
+    ```facet
+    toOption : {A : Type} -> [Empty] A -> Option A
+    { [empty ; _] -> none
+    , a           -> some a }
+    ```
+
+    ~~>
+
+    ```facet
+    toOption : {A : Type} -> ([Empty] -> A) -> Option A
+    { a -> a [empty = { _ -> none }] { a -> some a } }
+    ```
+
 
 #### Questions
 
