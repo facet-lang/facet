@@ -322,6 +322,10 @@ Eliminating free computations using the dictionary bound in the context:
 
 3. What should the strategy be for applying these? Can we do it in `check`, or at least `checkExpr`?
 
+4. We want to elaborate terms at type `[σ̅] T` into lambdas at type `[σ̅] -> T`. What about when the term in question is already at type `[σ̅] T`?
+
+    - We should probably expand thus only when in checking mode.
+
 
 #### Observations
 
