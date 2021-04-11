@@ -281,6 +281,39 @@ Eliminating free computations using the dictionary bound in the context:
 ```
 
 
+#### Examples
+
+1. `modify`
+
+    ```facet
+    modify : {S : Type} -> (f : S -> S) -> [State S] Unit
+    { put (f get) }
+    ```
+
+    ~~>
+
+    ```facet
+    modify : {S : Type} -> (S -> S) -> [State S] -> Unit
+    { f [get, put] -> put (f get) }
+    ```
+
+2. `modify`, with effects in the higher-order function
+
+    ```facet
+    modify : {S : Type} -> (f : S -> S) -> [State S] Unit
+    { put (f get) }
+    ```
+
+    ~~>
+
+    ```facet
+    modify : {S : Type} -> (S -> [σ] -> S) -> [State S, σ] -> Unit
+    { f [get, put, σ] -> put (f [σ] get) }
+    ```
+
+    Note that this effectively reinstates implicit effect polymorphism.
+
+
 #### Questions
 
 1. Should `id incr` elaborate to `id (incr dict)` or `id incr dict`?
