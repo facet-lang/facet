@@ -268,6 +268,18 @@ Function/computation application is standard except for passing the requirements
 Γ ⊢ M N ~~> { [Dict(σ̅)] -> M′ (N′ [Dict(σ̅)]) } : [σ̅] T
 ```
 
+As described thus far, this strategy will result in a lot of unnecessary redices (applications of computation lambdas to dictionaries at intermediate positions within terms). We could certainly rely on normalization to eliminate any non-essential computation lambdas, or we could lean on the context instead.
+
+This requires pushing dictionaries onto the context when elaborating terms at computation type (like any other bound pattern), and then finding them again. Applying a dictionary filling each field with the variable of the same name (e.g. `[get = get, put = put]`) will do this.
+
+Eliminating free computations using the dictionary bound in the context:
+
+```
+Γ ⊢ M ~~> { [Dict(σ̅)] -> M′ } : [σ̅] T   Γ ∋ [Dict(σ̅)]
+-----------------------------------------------------
+     Γ ⊢ M ~~> { [Dict(σ̅)] -> M′ } [Dict(σ̅)] : T
+```
+
 
 #### Questions
 
