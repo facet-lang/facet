@@ -324,7 +324,7 @@ Eliminating free computations using the dictionary bound in the context:
     ~~>
 
     ```facet
-    toOption : {A : Type} -> ([Empty] -> A) -> Option A
+    toOption : {A : Type} -> ([Empty] -> (A -> Option A) -> Option A) -> Option A
     { a -> a [empty = { _ -> none }] { a -> some a } }
     ```
 
