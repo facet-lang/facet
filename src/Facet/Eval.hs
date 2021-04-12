@@ -165,3 +165,6 @@ toMaybe = runE Empty{ empty = const Nothing } Just
 
 runReader' :: e -> E (Reader' e) a a -> a
 runReader' e = runE Reader'{ ask' = \ k -> runReader' e (k e), local' = \ f m k -> runReader' e (k (runReader' (f e) m)) } id
+
+runState' :: s -> E (State' s) (s, a) a -> (s, a)
+runState' s = runE State'{ get' = \ k -> runState' s (k s), put' = \ s k -> runState' s (k ()) } (s,)
