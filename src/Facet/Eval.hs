@@ -155,3 +155,6 @@ newtype Empty m r a = Empty { empty :: forall b . (b -> m r a) -> r }
 
 
 data Reader' e m r a  = Reader' { ask' :: (e -> m r a) -> r, local' :: forall x . (e -> e) -> m x x -> (x -> m r a) -> r }
+
+
+data State' s m r a  = State' { get' :: (s -> m r a) -> r, put' :: s -> (() -> m r a) -> r }
