@@ -172,3 +172,6 @@ runState' s = runE State'{ get' = \ k -> runState' s (k s), put' = \ s k -> runS
 
 get'' :: E (State' s) x s
 get'' = E $ \ State'{ get' } k -> get' (liftE . k)
+
+put'' :: s -> E (State' s) x ()
+put'' s = E $ \ State'{ put' } k -> put' s (liftE . k)
