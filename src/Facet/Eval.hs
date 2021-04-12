@@ -149,3 +149,6 @@ runE h k (E run) = run h k
 
 liftE :: r -> E sig r a
 liftE r = E $ \ _ _ -> r
+
+
+newtype Empty m r a = Empty { empty :: forall b . (b -> m r a) -> r }
