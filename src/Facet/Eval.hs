@@ -140,3 +140,6 @@ quoteV d = \case
   VCon n fs -> XCon n <$> traverse (quoteV d) fs
   VString s -> pure $ XString s
   VDict os  -> XDict <$> traverse (traverse (quoteV d)) os
+
+
+newtype E sig r a = E (sig (E sig) r a -> (a -> r) -> r)
