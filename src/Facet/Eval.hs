@@ -168,3 +168,7 @@ runReader' e = runE Reader'{ ask' = \ k -> runReader' e (k e), local' = \ f m k 
 
 runState' :: s -> E (State' s) (s, a) a -> (s, a)
 runState' s = runE State'{ get' = \ k -> runState' s (k s), put' = \ s k -> runState' s (k ()) } (s,)
+
+
+get'' :: E (State' s) x s
+get'' = E $ \ State'{ get' } k -> get' (liftE . k)
