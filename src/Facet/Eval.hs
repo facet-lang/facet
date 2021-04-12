@@ -143,3 +143,6 @@ quoteV d = \case
 
 
 newtype E sig r a = E (sig (E sig) r a -> (a -> r) -> r)
+
+runE :: sig (E sig) r a -> (a -> r) -> E sig r a -> r
+runE h k (E run) = run h k
