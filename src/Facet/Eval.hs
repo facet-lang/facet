@@ -162,3 +162,6 @@ data State' s m r a  = State' { get' :: (s -> m r a) -> r, put' :: s -> (() -> m
 
 toMaybe :: E Empty (Maybe a) a -> Maybe a
 toMaybe = runE Empty{ empty = const Nothing } Just
+
+runReader' :: e -> E (Reader' e) a a -> a
+runReader' e = runE Reader'{ ask' = \ k -> runReader' e (k e), local' = \ f m k -> runReader' e (k (runReader' (f e) m)) } id
