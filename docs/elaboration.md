@@ -328,6 +328,50 @@ Eliminating free computations using the dictionary bound in the context:
     { a -> a [empty = { _ -> none }] { a -> some a } }
     ```
 
+4. `guard`
+
+    ```facet
+    guard : (c : Bool) -> [Empty] Unit
+    { if c id { (unit) -> empty } }
+    ```
+
+    ~~>
+
+    ```facet
+    guard : Bool -> [Empty] -> Unit
+    { c [empty] -> if c id { (unit) -> empty } }
+    ```
+
+5. `bool`
+
+    ```facet
+    bool : { A : Type } -> (e : Unit -> A) -> (t : Unit -> A) -> Bool -> A
+    { (true)  -> t!
+    , (false) -> e! }
+    ```
+
+    ~~>
+
+    ```facet
+    bool : { A : Type } -> (Unit -> [σ] -> A) -> (Unit -> [σ] -> A) -> Bool -> [σ] -> A
+    { _ t (true)  -> t!
+    , e _ (false) -> e! }
+    ```
+
+6. `if`
+
+    ```facet
+    if : { A : Type } -> (c : Bool) -> (t : Unit -> A) -> (e : Unit -> A) -> A
+    { bool e t c }
+    ```
+
+    ~~>
+
+    ```facet
+    if : { A : Type } -> Bool -> (Unit -> [σ] -> A) -> (Unit -> [σ] -> A) -> [σ] -> A
+    { c t e -> bool e t c }
+    ```
+
 
 #### Questions
 
