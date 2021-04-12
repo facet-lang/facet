@@ -158,3 +158,7 @@ data Reader' e m r a  = Reader' { ask' :: (e -> m r a) -> r, local' :: forall x 
 
 
 data State' s m r a  = State' { get' :: (s -> m r a) -> r, put' :: s -> (() -> m r a) -> r }
+
+
+toMaybe :: E Empty (Maybe a) a -> Maybe a
+toMaybe = runE Empty{ empty = const Nothing } Just
