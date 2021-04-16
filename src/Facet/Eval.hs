@@ -181,19 +181,19 @@ class (Profunctor p, Monad m) => RightPromodule m p | p -> m where
   {-# MINIMAL dibind | (lbind, rbind) #-}
 
 
-newtype E sig r a = E (sig (Cont r) a r -> Cont r a)
+newtype E sig r a = E (sig (E sig r) a r -> Cont r a)
 
-instance Profunctor (sig (Cont r)) => Functor (E sig r) where
+instance Profunctor (sig (E sig r)) => Functor (E sig r) where
   fmap f (E run) = E $ \ d -> f <$> run (lmap f d)
 
-instance RightPromodule (Cont r) (sig (Cont r)) => Applicative (E sig r) where
+instance RightPromodule (E sig r) (sig (E sig r)) => Applicative (E sig r) where
   pure a = E $ \ _ -> pure a
   (<*>) = ap
 
-instance RightPromodule (Cont r) (sig (Cont r)) => Monad (E sig r) where
-  E run >>= f = E $ \ d -> run (lbind (runE d . f) d) >>= runE d . f
+instance RightPromodule (E sig r) (sig (E sig r)) => Monad (E sig r) where
+  E run >>= f = E $ \ d -> run (lbind f d) >>= runE d . f
 
-runE :: sig (Cont r) a r -> E sig r a -> Cont r a
+runE :: sig (E sig r) a r -> E sig r a -> Cont r a
 runE d (E run) = run d
 
 liftE :: Cont r a -> E sig r a
@@ -224,14 +224,14 @@ instance Monad m => RightPromodule m (Reader' r m) where
 
 
 ask'' :: E (Reader' r) x r
-ask'' = E $ \ Reader'{ ask' } -> send' ask'
+ask'' = E $ \ d@Reader'{ ask' } -> runE d (send' ask')
 
-reader' :: r -> E (Reader' r) a a -> Cont x a
-reader' r m = reset $ runE dict m
+reader' :: r -> E (Reader' r) a a -> E (Reader' r) x a
+reader' r m = E $ \ _ -> reset $ runE dict m
   where
   dict = Reader'
-    { ask'   = \     k -> reader' r (liftE (k r))
-    -- , local' = \ f m k -> reader' r (liftE (k =<< reader' (f r) m))
+    { ask'   = \     k -> reader' r (k r)
+    -- , local' = \ f m k -> reader' r (k =<< reader' (f r) m)
     }
 
 
@@ -245,24 +245,24 @@ instance Monad m => RightPromodule m (State' r m) where
   dibind f g State'{ get', put' } = State'{ get' = \ k -> g =<< get' (f <=< k), put' = \ s k -> g =<< put' s (f <=< k) }
 
 
-send' :: ((c -> Cont r b) -> Cont r r) -> Cont r c
-send' hdl = ContT $ \ k -> evalContT (hdl (\ a -> ContT (\ _ -> k a)))
+send' :: RightPromodule (E sig r) (sig (E sig r)) => ((c -> E sig r c) -> E sig r r) -> E sig r c
+send' hdl = E $ \ d -> cont $ \ k -> evalCont (runE (lbind (liftE . cont . const) d) (hdl (liftE . cont . const . k)))
 
-state'' :: s -> E (State' s) (s, a) a -> Cont x (s, a)
+state'' :: s -> E (State' s) (s, a) a -> E (State' s) x (s, a)
 state'' = state' (,)
 
-state' :: (s -> a -> b) -> s -> E (State' s) b a -> Cont x b
-state' z s m = reset $ ContT $ \ k -> runContT (runE dict m) (k . z s)
+state' :: (s -> a -> b) -> s -> E (State' s) b a -> E (State' s) x b
+state' z s m = E $ \ _ -> reset $ ContT $ \ k -> runContT (runE dict m) (k . z s)
   where
   dict = State'
-    { get' = \   k -> state' z s (liftE (k s))
-    , put' = \ s k -> state' z s (liftE (k ())) }
+    { get' = \   k -> state' z s (k s)
+    , put' = \ s k -> state' z s (k ()) }
 
 modify :: (s -> s) -> E (State' s) x ()
 modify f = put'' . f =<< get''
 
 get'' :: E (State' s) x s
-get'' = E $ \ State'{ get' } -> send' get'
+get'' = E $ \ d@State'{ get' } -> runE d (send' get')
 
 put'' :: s -> E (State' s) x ()
-put'' s = E $ \ State'{ put' } -> send' (put' s)
+put'' s = E $ \ d@State'{ put' } -> runE d (send' (put' s))
