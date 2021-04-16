@@ -1,3 +1,4 @@
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -11,15 +12,31 @@ module Facet.Eval
 , unit
   -- * Quotation
 , quoteV
+, state'
+, state''
+, E(..)
+, runE
+, State'(..)
+, Reader'(..)
+-- , Empty(..)
+, toMaybe
+, send'
+, modify
+, get''
+, put''
+, ask''
+, reader'
 ) where
 
 import Control.Algebra
 import Control.Carrier.Reader
-import Control.Monad (ap, guard, liftM, (>=>))
+import Control.Monad (ap, guard, liftM, (<=<), (>=>))
 import Control.Monad.Trans.Class
+import Control.Monad.Trans.Cont
 import Data.Foldable
 import Data.Function
 import Data.Maybe (fromMaybe)
+import Data.Profunctor
 import Data.Text (Text)
 import Facet.Env as Env
 import Facet.Graph
@@ -142,36 +159,110 @@ quoteV d = \case
   VDict os  -> XDict <$> traverse (traverse (quoteV d)) os
 
 
-newtype E sig r a = E (sig (E sig) r a -> (a -> r) -> r)
+class (Profunctor p, Monad m) => LeftPromodule m p | p -> m where
+  bindl :: (a -> (b `p` c)) -> m a -> (b `p` c)
+  bindl f m = joinl (fmap f m)
 
-runE :: sig (E sig) r a -> (a -> r) -> E sig r a -> r
-runE h k (E run) = run h k
+  joinl :: m (a `p` b) -> (a `p` b)
+  joinl = bindl id
 
-liftE :: r -> E sig r a
-liftE r = E $ \ _ _ -> r
+  {-# MINIMAL bindl | joinl #-}
+
+class (Profunctor p, Monad m) => RightPromodule m p | p -> m where
+  dibind :: (a' -> m a) -> (b -> m b') -> (a `p` b) -> (a' `p` b')
+  dibind f g = lbind f . rbind g
+
+  lbind :: (a' -> m a) -> (a `p` b) -> (a' `p` b)
+  lbind = (`dibind` return)
+
+  rbind :: (b -> m b') -> (a `p` b) -> (a `p` b')
+  rbind = (return `dibind`)
+
+  {-# MINIMAL dibind | (lbind, rbind) #-}
 
 
-newtype Empty m r a = Empty { empty :: forall b . (b -> m r a) -> r }
+newtype E sig r a = E (sig (Cont r) a r -> Cont r a)
+
+instance Profunctor (sig (Cont r)) => Functor (E sig r) where
+  fmap f (E run) = E $ \ d -> f <$> run (lmap f d)
+
+instance RightPromodule (Cont r) (sig (Cont r)) => Applicative (E sig r) where
+  pure a = E $ \ _ -> pure a
+  (<*>) = ap
+
+instance RightPromodule (Cont r) (sig (Cont r)) => Monad (E sig r) where
+  E run >>= f = E $ \ d -> run (lbind (runE d . f) d) >>= runE d . f
+
+runE :: sig (Cont r) a r -> E sig r a -> Cont r a
+runE d (E run) = run d
+
+liftE :: Cont r a -> E sig r a
+liftE = E . const
 
 
-data Reader' e m r a  = Reader' { ask' :: (e -> m r a) -> r, local' :: forall x . (e -> e) -> m x x -> (x -> m r a) -> r }
+newtype Empty m a b = Empty { empty :: forall e . (e -> m a) -> m b }
+  deriving (Functor)
 
+instance Functor m => Profunctor (Empty m) where
+  dimap f g Empty{ empty } = Empty{ empty = \ k -> g <$> empty (fmap f . k) }
 
-data State' s m r a  = State' { get' :: (s -> m r a) -> r, put' :: s -> (() -> m r a) -> r }
-
+instance Monad m => RightPromodule m (Empty m) where
+  dibind f g Empty{ empty } = Empty{ empty = \ k -> g =<< empty (f <=< k) }
 
 toMaybe :: E Empty (Maybe a) a -> Maybe a
-toMaybe = runE Empty{ empty = const Nothing } Just
+toMaybe = (`runCont` Just) . runE Empty{ empty = \ _k -> pure Nothing }
 
-runReader' :: e -> E (Reader' e) a a -> a
-runReader' e = runE Reader'{ ask' = \ k -> runReader' e (k e), local' = \ f m k -> runReader' e (k (runReader' (f e) m)) } id
 
-runState' :: s -> E (State' s) (s, a) a -> (s, a)
-runState' s = runE State'{ get' = \ k -> runState' s (k s), put' = \ s k -> runState' s (k ()) } (s,)
+data Reader' r m a b = Reader' { ask' :: (r -> m a) -> m b, local' :: forall x . (r -> r) -> m x -> (x -> m a) -> m b }
+  deriving (Functor)
 
+instance Functor m => Profunctor (Reader' r m) where
+  dimap f g Reader'{ ask', local' } = Reader'{ ask' = \ k -> g <$> ask' (fmap f . k), local' = \ h m k -> g <$> local' h m (fmap f . k) }
+
+instance Monad m => RightPromodule m (Reader' r m) where
+  dibind f g Reader'{ ask', local' } = Reader'{ ask' = \ k -> g =<< ask' (f <=< k), local' = \ h m k -> g =<< local' h m (f <=< k) }
+
+
+ask'' :: E (Reader' r) x r
+ask'' = E $ \ Reader'{ ask' } -> send' ask'
+
+reader' :: r -> E (Reader' r) a a -> Cont x a
+reader' r m = reset $ runE dict m
+  where
+  dict = Reader'
+    { ask'   = \     k -> reader' r (liftE (k r))
+    -- , local' = \ f m k -> reader' r (liftE (k =<< reader' (f r) m))
+    }
+
+
+data State' s m a b = State' { get' :: (s -> m a) -> m b, put' :: s -> (() -> m a) -> m b }
+  deriving (Functor)
+
+instance Functor m => Profunctor (State' r m) where
+  dimap f g State'{ get', put' } = State'{ get' = \ k -> g <$> get' (fmap f . k), put' = \ s k -> g <$> put' s (fmap f . k) }
+
+instance Monad m => RightPromodule m (State' r m) where
+  dibind f g State'{ get', put' } = State'{ get' = \ k -> g =<< get' (f <=< k), put' = \ s k -> g =<< put' s (f <=< k) }
+
+
+send' :: ((c -> Cont r b) -> Cont r r) -> Cont r c
+send' hdl = ContT $ \ k -> evalContT (hdl (\ a -> ContT (\ _ -> k a)))
+
+state'' :: s -> E (State' s) (s, a) a -> Cont x (s, a)
+state'' = state' (,)
+
+state' :: (s -> a -> b) -> s -> E (State' s) b a -> Cont x b
+state' z s m = reset $ ContT $ \ k -> runContT (runE dict m) (k . z s)
+  where
+  dict = State'
+    { get' = \   k -> state' z s (liftE (k s))
+    , put' = \ s k -> state' z s (liftE (k ())) }
+
+modify :: (s -> s) -> E (State' s) x ()
+modify f = put'' . f =<< get''
 
 get'' :: E (State' s) x s
-get'' = E $ \ State'{ get' } k -> get' (liftE . k)
+get'' = E $ \ State'{ get' } -> send' get'
 
 put'' :: s -> E (State' s) x ()
-put'' s = E $ \ State'{ put' } k -> put' s (liftE . k)
+put'' s = E $ \ State'{ put' } -> send' (put' s)
