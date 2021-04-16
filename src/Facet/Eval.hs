@@ -248,15 +248,15 @@ instance Monad m => RightPromodule m (State' r m) where
 send' :: RightPromodule (E sig r) (sig (E sig r)) => ((c -> E sig r c) -> E sig r r) -> E sig r c
 send' hdl = E $ \ d -> cont $ \ k -> evalCont (runE (lbind (liftE . cont . const) d) (hdl (liftE . cont . const . k)))
 
-state'' :: s -> E (State' s) (s, a) a -> E (State' s) x (s, a)
+state'' :: s -> E (State' s) (s, a) a -> Cont x (s, a)
 state'' = state' (,)
 
-state' :: (s -> a -> b) -> s -> E (State' s) b a -> E (State' s) x b
-state' z s m = E $ \ _ -> reset $ ContT $ \ k -> runContT (runE dict m) (k . z s)
+state' :: (s -> a -> b) -> s -> E (State' s) b a -> Cont x b
+state' z s m = reset $ ContT $ \ k -> runContT (runE dict m) (k . z s)
   where
   dict = State'
-    { get' = \   k -> state' z s (k s)
-    , put' = \ s k -> state' z s (k ()) }
+    { get' = \   k -> liftE $ state' z s (k s)
+    , put' = \ s k -> liftE $ state' z s (k ()) }
 
 modify :: (s -> s) -> E (State' s) x ()
 modify f = put'' . f =<< get''
