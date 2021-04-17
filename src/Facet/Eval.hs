@@ -12,10 +12,10 @@ module Facet.Eval
 , unit
   -- * Quotation
 , quoteV
-, state'
-, state''
 , E(..)
 , runE
+, state'
+, state''
 , State'(..)
 , Reader'(..)
 -- , Empty(..)
@@ -30,13 +30,12 @@ module Facet.Eval
 
 import Control.Algebra
 import Control.Carrier.Reader
-import Control.Monad (ap, guard, liftM, (<=<), (>=>))
+import Control.Monad (ap, guard, liftM, (>=>))
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Cont
 import Data.Foldable
 import Data.Function
 import Data.Maybe (fromMaybe)
-import Data.Profunctor
 import Data.Text (Text)
 import Facet.Env as Env
 import Facet.Graph
@@ -159,112 +158,73 @@ quoteV d = \case
   VDict os  -> XDict <$> traverse (traverse (quoteV d)) os
 
 
-class (Profunctor p, Monad m) => LeftPromodule m p | p -> m where
-  bindl :: (a -> (b `p` c)) -> m a -> (b `p` c)
-  bindl f m = joinl (fmap f m)
+newtype E sig r i a = E (sig (E sig r i) i r -> Cont r a)
+  deriving (Functor)
 
-  joinl :: m (a `p` b) -> (a `p` b)
-  joinl = bindl id
-
-  {-# MINIMAL bindl | joinl #-}
-
-class (Profunctor p, Monad m) => RightPromodule m p | p -> m where
-  dibind :: (a' -> m a) -> (b -> m b') -> (a `p` b) -> (a' `p` b')
-  dibind f g = lbind f . rbind g
-
-  lbind :: (a' -> m a) -> (a `p` b) -> (a' `p` b)
-  lbind = (`dibind` return)
-
-  rbind :: (b -> m b') -> (a `p` b) -> (a `p` b')
-  rbind = (return `dibind`)
-
-  {-# MINIMAL dibind | (lbind, rbind) #-}
-
-
-newtype E sig r a = E (sig (E sig r) a r -> Cont r a)
-
-instance Profunctor (sig (E sig r)) => Functor (E sig r) where
-  fmap f (E run) = E $ \ d -> f <$> run (lmap f d)
-
-instance RightPromodule (E sig r) (sig (E sig r)) => Applicative (E sig r) where
+instance Functor (sig (E sig r i) i) => Applicative (E sig r i) where
   pure a = E $ \ _ -> pure a
   (<*>) = ap
 
-instance RightPromodule (E sig r) (sig (E sig r)) => Monad (E sig r) where
-  E run >>= f = E $ \ d -> run (lbind f d) >>= runE d . f
+instance Functor (sig (E sig r i) i) => Monad (E sig r i) where
+  E run >>= f = E $ \ d -> run d >>= runE d . f
 
-runE :: sig (E sig r) a r -> E sig r a -> Cont r a
+runE :: sig (E sig r i) i r -> E sig r i a -> Cont r a
 runE d (E run) = run d
-
-liftE :: Cont r a -> E sig r a
-liftE = E . const
 
 
 newtype Empty m a b = Empty { empty :: forall e . (e -> m a) -> m b }
   deriving (Functor)
 
-instance Functor m => Profunctor (Empty m) where
-  dimap f g Empty{ empty } = Empty{ empty = \ k -> g <$> empty (fmap f . k) }
-
-instance Monad m => RightPromodule m (Empty m) where
-  dibind f g Empty{ empty } = Empty{ empty = \ k -> g =<< empty (f <=< k) }
-
-toMaybe :: E Empty (Maybe a) a -> Maybe a
+toMaybe :: E Empty (Maybe a) a a -> Maybe a
 toMaybe = (`runCont` Just) . runE Empty{ empty = \ _k -> pure Nothing }
 
 
-data Reader' r m a b = Reader' { ask' :: (r -> m a) -> m b, local' :: forall x . (r -> r) -> m x -> (x -> m a) -> m b }
+data Reader' r m a b = Reader'
+  { ask'   :: (r -> m a) -> m b
+  , local' :: forall x . (r -> r) -> m x -> (x -> m a) -> m b }
   deriving (Functor)
 
-instance Functor m => Profunctor (Reader' r m) where
-  dimap f g Reader'{ ask', local' } = Reader'{ ask' = \ k -> g <$> ask' (fmap f . k), local' = \ h m k -> g <$> local' h m (fmap f . k) }
-
-instance Monad m => RightPromodule m (Reader' r m) where
-  dibind f g Reader'{ ask', local' } = Reader'{ ask' = \ k -> g =<< ask' (f <=< k), local' = \ h m k -> g =<< local' h m (f <=< k) }
-
-
-ask'' :: E (Reader' r) x r
+ask'' :: E (Reader' r) b i r
 ask'' = E $ \ d@Reader'{ ask' } -> runE d (send' ask')
 
-reader' :: r -> E (Reader' r) a a -> E (Reader' r) x a
-reader' r m = E $ \ _ -> reset $ runE dict m
+reader' :: r -> E (Reader' r) a a a -> Cont b a
+reader' = fmap reset . runE . dict
   where
-  dict = Reader'
+  reader' :: r -> E (Reader' r) a a a -> E (Reader' r) b a a
+  reader' r m = E $ \ _ -> reset $ cont $ \ k -> runCont (runE (dict r) m) k
+  dict :: r -> Reader' r (E (Reader' r) a a) a a
+  dict r = Reader'
     { ask'   = \     k -> reader' r (k r)
     -- , local' = \ f m k -> reader' r (k =<< reader' (f r) m)
     }
 
 
-data State' s m a b = State' { get' :: (s -> m a) -> m b, put' :: s -> (() -> m a) -> m b }
+data State' s m a b = State'
+  { get' :: (s -> m a) -> m b
+  , put' :: s -> (() -> m a) -> m b }
   deriving (Functor)
 
-instance Functor m => Profunctor (State' r m) where
-  dimap f g State'{ get', put' } = State'{ get' = \ k -> g <$> get' (fmap f . k), put' = \ s k -> g <$> put' s (fmap f . k) }
+send' :: ((c -> E sig b i i) -> E sig b i b) -> E sig b i c
+send' hdl = E $ \ d -> cont $ \ k -> evalCont (runE d (hdl (E . const . cont . const . k)))
 
-instance Monad m => RightPromodule m (State' r m) where
-  dibind f g State'{ get', put' } = State'{ get' = \ k -> g =<< get' (f <=< k), put' = \ s k -> g =<< put' s (f <=< k) }
-
-
-send' :: RightPromodule (E sig r) (sig (E sig r)) => ((c -> E sig r c) -> E sig r r) -> E sig r c
-send' hdl = E $ \ d -> cont $ \ k -> evalCont (runE (lbind (liftE . cont . const) d) (hdl (liftE . cont . const . k)))
-
-state'' :: s -> E (State' s) (s, a) a -> Cont x (s, a)
+state'' :: s -> E (State' s) (s, a) a a -> Cont x (s, a)
 state'' = state' (,)
 
-state' :: forall s a b x . (s -> a -> b) -> s -> E (State' s) b a -> Cont x b
-state' z s m = reset $ ContT $ \ k -> runContT (runE (dict s) m) (k . z s)
+state' :: (s -> a -> b) -> s -> E (State' s) b a a -> Cont x b
+state' z s m = reset $ cont $ \ k -> runCont (runE (dict z s) m) (k . z s)
   where
-  state' :: (s -> a -> b) -> s -> E (State' s) b a -> E (State' s) y b
-  state' z s m = E $ \ d -> reset $ ContT $ \ k -> runContT (runE (dict s) m) (k . z s)
-  dict s = State'
+  state' :: (s -> a -> b) -> s -> E (State' s) b a a -> E (State' s) b a b
+  state' z s m = E $ \ _ -> reset $ cont $ \ k -> runCont (runE (dict z s) m) (k . z s)
+  dict :: (s -> a -> b) -> s -> State' s (E (State' s) b a) a b
+  dict z s = State'
     { get' = \   k -> state' z s (k s)
     , put' = \ s k -> state' z s (k ()) }
 
-modify :: (s -> s) -> E (State' s) x ()
+modify :: (s -> s) -> E (State' s) r i ()
 modify f = put'' . f =<< get''
 
-get'' :: E (State' s) x s
+get'' :: E (State' s) r i s
 get'' = E $ \ d@State'{ get' } -> runE d (send' get')
 
-put'' :: s -> E (State' s) x ()
+put'' :: s -> E (State' s) r i ()
 put'' s = E $ \ d@State'{ put' } -> runE d (send' (put' s))
