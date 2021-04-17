@@ -218,7 +218,7 @@ state' z s m = reset $ cont $ \ k -> runCont (runE (dict z s) m) (k . z s)
   dict :: (s -> a -> b) -> s -> State' s (E (State' s) b a) a b
   dict z s = State'
     { get' = \   k -> state' z s (k s)
-    , put' = \ s k -> state' z s (k ()) }
+    , put' = \ s k -> state' (\ _ -> z s) s (k ()) }
 
 modify :: (s -> s) -> E (State' s) r i ()
 modify f = put'' . f =<< get''
