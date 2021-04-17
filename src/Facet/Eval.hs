@@ -251,12 +251,14 @@ send' hdl = E $ \ d -> cont $ \ k -> evalCont (runE (lbind (liftE . cont . const
 state'' :: s -> E (State' s) (s, a) a -> Cont x (s, a)
 state'' = state' (,)
 
-state' :: (s -> a -> b) -> s -> E (State' s) b a -> Cont x b
-state' z s m = reset $ ContT $ \ k -> runContT (runE dict m) (k . z s)
+state' :: forall s a b x . (s -> a -> b) -> s -> E (State' s) b a -> Cont x b
+state' z s m = reset $ ContT $ \ k -> runContT (runE (dict s) m) (k . z s)
   where
-  dict = State'
-    { get' = \   k -> liftE $ state' z s (k s)
-    , put' = \ s k -> liftE $ state' z s (k ()) }
+  state' :: (s -> a -> b) -> s -> E (State' s) b a -> E (State' s) y b
+  state' z s m = E $ \ d -> reset $ ContT $ \ k -> runContT (runE (dict s) m) (k . z s)
+  dict s = State'
+    { get' = \   k -> state' z s (k s)
+    , put' = \ s k -> state' z s (k ()) }
 
 modify :: (s -> s) -> E (State' s) x ()
 modify f = put'' . f =<< get''
