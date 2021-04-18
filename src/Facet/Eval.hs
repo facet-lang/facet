@@ -12,7 +12,6 @@ module Facet.Eval
 , unit
   -- * Quotation
 , quoteV
-, C(..)
 , E(..)
 , runE
 , state'
