@@ -185,8 +185,8 @@ runE d k (E run) = run d k
 newtype Empty m a b = Empty { empty :: forall e . (e -> m a) -> b }
   deriving (Functor)
 
-toMaybe :: E Empty (Maybe a) a -> Maybe a
-toMaybe = runE Empty{ empty = const Nothing } Just
+toMaybe :: C Empty a -> Maybe a
+toMaybe = runE Empty{ empty = const Nothing } Just . runC
 
 
 data Reader' r m a b = Reader'
@@ -197,12 +197,13 @@ data Reader' r m a b = Reader'
 ask'' :: E (Reader' r) b r
 ask'' = send' ask'
 
-reader' :: r -> E (Reader' r) (r -> a) a -> a
-reader' r m = runE dict const m r
+reader' :: r -> C (Reader' r) a -> a
+reader' r = go r . runC
   where
+  go r m = runE dict const m r
   dict = Reader'
-    { ask'   = \     k r -> reader' r (k r)
-    -- , local' = \ f m k r -> reader' r (k (reader' (f r) m))
+    { ask'   = \     k r -> go r (k r)
+    -- , local' = \ f m k r -> go r (k (reader' (f r) m))
     }
 
 
@@ -214,15 +215,16 @@ data State' s m a b = State'
 send' :: (forall i . sig (E sig b) i b -> (c -> E sig b i) -> b) -> E sig b c
 send' hdl = E $ \ d k -> hdl d (\ c -> E (\ _ _ -> k c))
 
-state'' :: s -> E (State' s) (s -> (s, a)) a -> (s, a)
+state'' :: s -> C (State' s) a -> (s, a)
 state'' = state' (,)
 
-state' :: (s -> a -> b) -> s -> E (State' s) (s -> b) a -> b
-state' z s m = runE dict (flip z) m s
+state' :: (s -> a -> b) -> s -> C (State' s) a -> b
+state' z s = go z s . runC
   where
+  go z s m = runE dict (flip z) m s
   dict = State'
-    { get' = \   k s -> state' z s (k s)
-    , put' = \ s k _ -> state' z s (k ()) }
+    { get' = \   k s -> go z s (k s)
+    , put' = \ s k _ -> go z s (k ()) }
 
 modify :: (s -> s) -> E (State' s) r ()
 modify f = put'' . f =<< get''
