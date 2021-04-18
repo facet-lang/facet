@@ -157,24 +157,24 @@ quoteV d = \case
   VDict os  -> XDict <$> traverse (traverse (quoteV d)) os
 
 
-newtype E sig r i a = E (sig (E sig r i) i r -> (a -> r) -> r)
+newtype E sig r a = E (forall i . sig (E sig r) i r -> (a -> r) -> r)
   deriving (Functor)
 
-instance Applicative (E sig r i) where
+instance Applicative (E sig r) where
   pure a = E $ \ _ k -> k a
   (<*>) = ap
 
-instance Monad (E sig r i) where
+instance Monad (E sig r) where
   E run >>= f = E $ \ d k -> run d (runE d k . f)
 
-runE :: sig (E sig r i) i r -> (a -> r) -> E sig r i a -> r
+runE :: sig (E sig r) i r -> (a -> r) -> E sig r a -> r
 runE d k (E run) = run d k
 
 
 newtype Empty m a b = Empty { empty :: forall e . (e -> m a) -> b }
   deriving (Functor)
 
-toMaybe :: E Empty (Maybe a) a a -> Maybe a
+toMaybe :: E Empty (Maybe a) a -> Maybe a
 toMaybe = runE Empty{ empty = const Nothing } Just
 
 
@@ -183,10 +183,10 @@ data Reader' r m a b = Reader'
   , local' :: forall x . (r -> r) -> m x -> (x -> m a) -> b }
   deriving (Functor)
 
-ask'' :: E (Reader' r) b i r
+ask'' :: E (Reader' r) b r
 ask'' = send' ask'
 
-reader' :: r -> E (Reader' r) (r -> a) a a -> a
+reader' :: r -> E (Reader' r) (r -> a) a -> a
 reader' r m = runE dict const m r
   where
   dict = Reader'
@@ -200,24 +200,24 @@ data State' s m a b = State'
   , put' :: s -> (() -> m a) -> b }
   deriving (Functor)
 
-send' :: (sig (E sig b i) i b -> (c -> E sig b i i) -> b) -> E sig b i c
-send' hdl = E $ \ d k -> hdl d (E . const . const . k)
+send' :: (forall i . sig (E sig b) i b -> (c -> E sig b i) -> b) -> E sig b c
+send' hdl = E $ \ d k -> hdl d (\ c -> E (\ _ _ -> k c))
 
-state'' :: s -> E (State' s) (s -> (s, a)) a a -> (s, a)
+state'' :: s -> E (State' s) (s -> (s, a)) a -> (s, a)
 state'' = state' (,)
 
-state' :: (s -> a -> b) -> s -> E (State' s) (s -> b) a a -> b
+state' :: (s -> a -> b) -> s -> E (State' s) (s -> b) a -> b
 state' z s m = runE dict (flip z) m s
   where
   dict = State'
     { get' = \   k s -> state' z s (k s)
     , put' = \ s k _ -> state' z s (k ()) }
 
-modify :: (s -> s) -> E (State' s) r i ()
+modify :: (s -> s) -> E (State' s) r ()
 modify f = put'' . f =<< get''
 
-get'' :: E (State' s) r i s
+get'' :: E (State' s) r s
 get'' = send' get'
 
-put'' :: s -> E (State' s) r i ()
+put'' :: s -> E (State' s) r ()
 put'' s = send' (`put'` s)
