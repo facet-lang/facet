@@ -186,13 +186,12 @@ data Reader' r m a b = Reader'
 ask'' :: E (Reader' r) b i r
 ask'' = send' ask'
 
-reader' :: r -> E (Reader' r) a a a -> a
-reader' r = runE (dict r) id
+reader' :: r -> E (Reader' r) (r -> a) a a -> a
+reader' r m = runE dict const m r
   where
-  dict :: r -> Reader' r (E (Reader' r) a a) a a
-  dict r = Reader'
-    { ask'   = \     k -> reader' r (k r)
-    -- , local' = \ f m k -> reader' r (k (reader' (f r) m))
+  dict = Reader'
+    { ask'   = \     k r -> reader' r (k r)
+    -- , local' = \ f m k r -> reader' r (k (reader' (f r) m))
     }
 
 
