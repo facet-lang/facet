@@ -193,7 +193,7 @@ reader' r = evalCont . runE (dict r)
   dict :: r -> Reader' r (E (Reader' r) a a) a a
   dict r = Reader'
     { ask'   = \     k -> reader' r (k r)
-    -- , local' = \ f m k -> reader' r (k =<< reader' (f r) m)
+    -- , local' = \ f m k -> reader' r (k (reader' (f r) m))
     }
 
 
