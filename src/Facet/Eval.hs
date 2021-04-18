@@ -32,7 +32,6 @@ import Control.Algebra
 import Control.Carrier.Reader
 import Control.Monad (ap, guard, liftM, (>=>))
 import Control.Monad.Trans.Class
-import Control.Monad.Trans.Cont
 import Data.Foldable
 import Data.Function
 import Data.Maybe (fromMaybe)
@@ -158,25 +157,25 @@ quoteV d = \case
   VDict os  -> XDict <$> traverse (traverse (quoteV d)) os
 
 
-newtype E sig r i a = E (sig (E sig r i) i r -> Cont r a)
+newtype E sig r i a = E (sig (E sig r i) i r -> (a -> r) -> r)
   deriving (Functor)
 
 instance Applicative (E sig r i) where
-  pure a = E $ \ _ -> pure a
+  pure a = E $ \ _ k -> k a
   (<*>) = ap
 
 instance Monad (E sig r i) where
-  E run >>= f = E $ \ d -> run d >>= runE d . f
+  E run >>= f = E $ \ d k -> run d (runE d k . f)
 
-runE :: sig (E sig r i) i r -> E sig r i a -> Cont r a
-runE d (E run) = run d
+runE :: sig (E sig r i) i r -> (a -> r) -> E sig r i a -> r
+runE d k (E run) = run d k
 
 
 newtype Empty m a b = Empty { empty :: forall e . (e -> m a) -> b }
   deriving (Functor)
 
 toMaybe :: E Empty (Maybe a) a a -> Maybe a
-toMaybe = (`runCont` Just) . runE Empty{ empty = const Nothing }
+toMaybe = runE Empty{ empty = const Nothing } Just
 
 
 data Reader' r m a b = Reader'
@@ -188,7 +187,7 @@ ask'' :: E (Reader' r) b i r
 ask'' = send' ask'
 
 reader' :: r -> E (Reader' r) a a a -> a
-reader' r = evalCont . runE (dict r)
+reader' r = runE (dict r) id
   where
   dict :: r -> Reader' r (E (Reader' r) a a) a a
   dict r = Reader'
@@ -203,13 +202,13 @@ data State' s m a b = State'
   deriving (Functor)
 
 send' :: (sig (E sig b i) i b -> (c -> E sig b i i) -> b) -> E sig b i c
-send' hdl = E $ \ d -> cont $ \ k -> hdl d (E . const . cont . const . k)
+send' hdl = E $ \ d k -> hdl d (E . const . const . k)
 
 state'' :: s -> E (State' s) (s, a) a a -> (s, a)
 state'' = state' (,)
 
 state' :: (s -> a -> b) -> s -> E (State' s) b a a -> b
-state' z s m = runCont (runE dict m) (z s)
+state' z s = runE dict (z s)
   where
   dict = State'
     { get' = \   k -> state' z s (k s)
