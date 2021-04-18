@@ -158,7 +158,7 @@ quoteV d = \case
   VDict os  -> XDict <$> traverse (traverse (quoteV d)) os
 
 
-newtype E sig r i a = E (sig (E sig r i) i r -> Cont r a)
+newtype E sig r i a = E (sig (E sig r i) (Cont r) i r -> Cont r a)
   deriving (Functor)
 
 instance Applicative (E sig r i) where
@@ -168,20 +168,20 @@ instance Applicative (E sig r i) where
 instance Monad (E sig r i) where
   E run >>= f = E $ \ d -> run d >>= runE d . f
 
-runE :: sig (E sig r i) i r -> E sig r i a -> Cont r a
+runE :: sig (E sig r i) (Cont r) i r -> E sig r i a -> Cont r a
 runE d (E run) = run d
 
 
-newtype Empty m a b = Empty { empty :: forall e . (e -> m a) -> m b }
+newtype Empty m n a b = Empty { empty :: forall e . (e -> m a) -> n b }
   deriving (Functor)
 
 toMaybe :: E Empty (Maybe a) a a -> Maybe a
 toMaybe = (`runCont` Just) . runE Empty{ empty = \ _k -> pure Nothing }
 
 
-data Reader' r m a b = Reader'
-  { ask'   :: (r -> m a) -> m b
-  , local' :: forall x . (r -> r) -> m x -> (x -> m a) -> m b }
+data Reader' r m n a b = Reader'
+  { ask'   :: (r -> m a) -> n b
+  , local' :: forall x . (r -> r) -> m x -> (x -> m a) -> n b }
   deriving (Functor)
 
 ask'' :: E (Reader' r) b i r
@@ -190,22 +190,20 @@ ask'' = E $ \ d@Reader'{ ask' } -> runE d (send' ask')
 reader' :: r -> E (Reader' r) a a a -> Cont b a
 reader' = fmap reset . runE . dict
   where
-  reader' :: r -> E (Reader' r) a a a -> E (Reader' r) b a a
-  reader' r m = E $ \ _ -> reset $ cont $ \ k -> runCont (runE (dict r) m) k
-  dict :: r -> Reader' r (E (Reader' r) a a) a a
+  dict :: r -> Reader' r (E (Reader' r) a a) (Cont a) a a
   dict r = Reader'
     { ask'   = \     k -> reader' r (k r)
     -- , local' = \ f m k -> reader' r (k =<< reader' (f r) m)
     }
 
 
-data State' s m a b = State'
-  { get' :: (s -> m a) -> m b
-  , put' :: s -> (() -> m a) -> m b }
+data State' s m n a b = State'
+  { get' :: (s -> m a) -> n b
+  , put' :: s -> (() -> m a) -> n b }
   deriving (Functor)
 
-send' :: ((c -> E sig b i i) -> E sig b i b) -> E sig b i c
-send' hdl = E $ \ d -> cont $ \ k -> evalCont (runE d (hdl (E . const . cont . const . k)))
+send' :: ((c -> E sig b i i) -> Cont b b) -> E sig b i c
+send' hdl = E $ \ _ -> cont $ \ k -> evalCont (hdl (E . const . cont . const . k))
 
 state'' :: s -> E (State' s) (s, a) a a -> Cont x (s, a)
 state'' = state' (,)
@@ -213,9 +211,7 @@ state'' = state' (,)
 state' :: (s -> a -> b) -> s -> E (State' s) b a a -> Cont x b
 state' z s m = reset $ cont $ \ k -> runCont (runE (dict z s) m) (k . z s)
   where
-  state' :: (s -> a -> b) -> s -> E (State' s) b a a -> E (State' s) b a b
-  state' z s m = E $ \ _ -> reset $ cont $ \ k -> runCont (runE (dict z s) m) (k . z s)
-  dict :: (s -> a -> b) -> s -> State' s (E (State' s) b a) a b
+  dict :: (s -> a -> b) -> s -> State' s (E (State' s) b a) (Cont b) a b
   dict z s = State'
     { get' = \   k -> state' z s (k s)
     , put' = \ s k -> state' z s (k ()) }
