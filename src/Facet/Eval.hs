@@ -157,7 +157,7 @@ quoteV d = \case
   VDict os  -> XDict <$> traverse (traverse (quoteV d)) os
 
 
-newtype E sig r a = E (forall i . sig (E sig r) i r -> (a -> r) -> r)
+newtype E sig r a = E (forall i . sig (E sig) i r -> (a -> r) -> r)
   deriving (Functor)
 
 instance Applicative (E sig r) where
@@ -167,21 +167,19 @@ instance Applicative (E sig r) where
 instance Monad (E sig r) where
   E run >>= f = E $ \ d k -> run d (runE d k . f)
 
-runE :: sig (E sig r) i r -> (a -> r) -> E sig r a -> r
+runE :: sig (E sig) i r -> (a -> r) -> E sig r a -> r
 runE d k (E run) = run d k
 
 
-newtype Empty m a b = Empty { empty :: forall e . (e -> m a) -> b }
-  deriving (Functor)
+newtype Empty m a b = Empty { empty :: forall e . (e -> m b a) -> b }
 
 toMaybe :: E Empty (Maybe a) a -> Maybe a
 toMaybe = runE Empty{ empty = const Nothing } Just
 
 
 data Reader' r m a b = Reader'
-  { ask'   :: (r -> m a) -> b
-  , local' :: forall x . (r -> r) -> m x -> (x -> m a) -> b }
-  deriving (Functor)
+  { ask'   :: (r -> m b a) -> b
+  , local' :: forall x . (r -> r) -> m b x -> (x -> m b a) -> b }
 
 ask'' :: E (Reader' r) b r
 ask'' = send' ask'
@@ -196,11 +194,10 @@ reader' r m = runE dict const m r
 
 
 data State' s m a b = State'
-  { get' :: (s -> m a) -> b
-  , put' :: s -> (() -> m a) -> b }
-  deriving (Functor)
+  { get' :: (s -> m b a) -> b
+  , put' :: s -> (() -> m b a) -> b }
 
-send' :: (forall i . sig (E sig b) i b -> (c -> E sig b i) -> b) -> E sig b c
+send' :: (forall i . sig (E sig) i b -> (c -> E sig b i) -> b) -> E sig b c
 send' hdl = E $ \ d k -> hdl d (\ c -> E (\ _ _ -> k c))
 
 state'' :: s -> E (State' s) (s -> (s, a)) a -> (s, a)
