@@ -161,11 +161,11 @@ quoteV d = \case
 newtype E sig r i a = E (sig (E sig r i) i r -> Cont r a)
   deriving (Functor)
 
-instance Functor (sig (E sig r i) i) => Applicative (E sig r i) where
+instance Applicative (E sig r i) where
   pure a = E $ \ _ -> pure a
   (<*>) = ap
 
-instance Functor (sig (E sig r i) i) => Monad (E sig r i) where
+instance Monad (E sig r i) where
   E run >>= f = E $ \ d -> run d >>= runE d . f
 
 runE :: sig (E sig r i) i r -> E sig r i a -> Cont r a
