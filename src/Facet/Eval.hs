@@ -157,6 +157,17 @@ quoteV d = \case
   VDict os  -> XDict <$> traverse (traverse (quoteV d)) os
 
 
+newtype C sig a = C { runC :: forall r . E sig r a }
+  deriving (Functor)
+
+instance Applicative (C sig) where
+  pure a = C (pure a)
+  (<*>) = ap
+
+instance Monad (C sig) where
+  C m >>= f = C (m >>= runC . f)
+
+
 newtype E sig r a = E (forall i . sig (E sig r) i r -> (a -> r) -> r)
   deriving (Functor)
 
