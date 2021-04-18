@@ -185,7 +185,7 @@ data Reader' r m a b = Reader'
   deriving (Functor)
 
 ask'' :: E (Reader' r) b i r
-ask'' = E $ \ d@Reader'{ ask' } -> runE d (send' ask')
+ask'' = send' ask'
 
 reader' :: r -> E (Reader' r) a a a -> a
 reader' r = evalCont . runE (dict r)
@@ -202,17 +202,16 @@ data State' s m a b = State'
   , put' :: s -> (() -> m a) -> b }
   deriving (Functor)
 
-send' :: ((c -> E sig b i i) -> b) -> E sig b i c
-send' hdl = E $ \ _ -> cont $ \ k -> hdl (E . const . cont . const . k)
+send' :: (sig (E sig b i) i b -> (c -> E sig b i i) -> b) -> E sig b i c
+send' hdl = E $ \ d -> cont $ \ k -> hdl d (E . const . cont . const . k)
 
 state'' :: s -> E (State' s) (s, a) a a -> (s, a)
 state'' = state' (,)
 
 state' :: (s -> a -> b) -> s -> E (State' s) b a a -> b
-state' z s m = runCont (runE (dict z s) m) (z s)
+state' z s m = runCont (runE dict m) (z s)
   where
-  dict :: (s -> a -> b) -> s -> State' s (E (State' s) b a) a b
-  dict z s = State'
+  dict = State'
     { get' = \   k -> state' z s (k s)
     , put' = \ s k -> state' z s (k ()) }
 
@@ -220,7 +219,7 @@ modify :: (s -> s) -> E (State' s) r i ()
 modify f = put'' . f =<< get''
 
 get'' :: E (State' s) r i s
-get'' = E $ \ d@State'{ get' } -> runE d (send' get')
+get'' = send' get'
 
 put'' :: s -> E (State' s) r i ()
-put'' s = E $ \ d@State'{ put' } -> runE d (send' (put' s))
+put'' s = send' (`put'` s)
