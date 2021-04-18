@@ -204,15 +204,15 @@ data State' s m a b = State'
 send' :: (sig (E sig b i) i b -> (c -> E sig b i i) -> b) -> E sig b i c
 send' hdl = E $ \ d k -> hdl d (E . const . const . k)
 
-state'' :: s -> E (State' s) (s, a) a a -> (s, a)
+state'' :: s -> E (State' s) (s -> (s, a)) a a -> (s, a)
 state'' = state' (,)
 
-state' :: (s -> a -> b) -> s -> E (State' s) b a a -> b
-state' z s = runE dict (z s)
+state' :: (s -> a -> b) -> s -> E (State' s) (s -> b) a a -> b
+state' z s m = runE dict (flip z) m s
   where
   dict = State'
-    { get' = \   k -> state' z s (k s)
-    , put' = \ s k -> state' z s (k ()) }
+    { get' = \   k s -> state' z s (k s)
+    , put' = \ s k _ -> state' z s (k ()) }
 
 modify :: (s -> s) -> E (State' s) r i ()
 modify f = put'' . f =<< get''
