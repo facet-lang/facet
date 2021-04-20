@@ -30,6 +30,15 @@ Types:
     | [ι̅] τ           (computation type)
 ```
 
+Expressions:
+
+```
+e ::= "…"           (string)
+    | x             (term variable)
+    | { ρ̅ -> e }    (lambda)
+    | e e           (application)
+```
+
 
 ## Judgements
 
