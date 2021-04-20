@@ -19,6 +19,7 @@ Types:
 τ ::= {X : κ} -> τ    (universal quantification)
     | X               (type variable)
     | τ -> τ          (function type)
+    | [ι̅] τ           (computation type)
 ```
 
 
