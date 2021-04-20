@@ -25,6 +25,7 @@ module Facet.Eval
 , get''
 , put''
 , ask''
+, local''
 , reader'
 ) where
 
@@ -183,6 +184,9 @@ data Reader' r m a b = Reader'
 
 ask'' :: E (Reader' r) b r
 ask'' = send' ask'
+
+local'' :: (r -> r) -> E (Reader' r) a a -> E (Reader' r) a a
+local'' f m = send' (\ Reader'{ local' } -> local' f m)
 
 reader' :: r -> E (Reader' r) a a -> a
 reader' r = runE dict id
