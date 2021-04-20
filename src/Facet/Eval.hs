@@ -179,17 +179,17 @@ toMaybe = runE Empty{ empty = const Nothing } Just
 
 data Reader' r m a b = Reader'
   { ask'   :: (r -> m b a) -> b
-  , local' :: forall x . (r -> r) -> m b x -> (x -> m b a) -> b }
+  , local' :: forall x . (r -> r) -> m x x -> (x -> m b a) -> b }
 
 ask'' :: E (Reader' r) b r
 ask'' = send' ask'
 
-reader' :: r -> E (Reader' r) (r -> a) a -> a
-reader' r m = runE dict const m r
+reader' :: r -> E (Reader' r) a a -> a
+reader' r = runE dict id
   where
   dict = Reader'
-    { ask'   = \     k r -> reader' r (k r)
-    -- , local' = \ f m k r -> reader' r (k (reader' (f r) m))
+    { ask'   = \     k -> reader' r (k r)
+    , local' = \ f m k -> reader' r (k (reader' (f r) m))
     }
 
 
