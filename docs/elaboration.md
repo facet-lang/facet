@@ -8,13 +8,17 @@ Elaboration takes a syntactically valid surface program (resp. declaratio, defin
 The syntax is mostly unsurprising, featuring such diverse elements as contexts:
 
 ```
-Γ ::= ◊ | Γ, x : τ | Γ, X : κ
+Γ ::= ◊
+    | Γ, x : τ
+    | Γ, X : κ
 ```
 
 Types:
 
 ```
-τ ::= {X : κ} -> τ | X | τ -> τ
+τ ::= {X : κ} -> τ
+    | X
+    | τ -> τ
 ```
 
 
