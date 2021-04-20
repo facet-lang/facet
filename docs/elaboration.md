@@ -39,6 +39,16 @@ e ::= "…"           (string)
     | e e           (application)
 ```
 
+Patterns:
+
+```
+ρ ::= _            (wildcard)
+    | x            (variable)
+    | (c ρ̅)        (constructor)
+    | [e ρ̅ ; k̅]    (effect operation)
+    | [x]          (catch-all)
+```
+
 
 ## Judgements
 
