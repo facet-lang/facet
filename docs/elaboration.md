@@ -13,6 +13,14 @@ The syntax is mostly unsurprising, featuring such diverse elements as contexts:
     | Γ, X : κ    (type variable assumption)
 ```
 
+Kinds:
+
+```
+κ ::= Type         (the kind of types)
+    | Interface    (the kind of interfaces)
+    | κ -> κ       (type constructor kind)
+```
+
 Types:
 
 ```
