@@ -127,6 +127,7 @@ data Value m
   -- | Computation; continuations, used in effect handlers.
   | VCont (Value m -> m (Value m))
   | VDict [RName :=: Value m]
+  | VComp [RName :=: Name] Expr
 
 unit :: Value m
 unit = VCon (NE.FromList ["Data", "Unit"] :.: U "unit") []
@@ -156,6 +157,7 @@ quoteV d = \case
   VCon n fs -> XCon n <$> traverse (quoteV d) fs
   VString s -> pure $ XString s
   VDict os  -> XDict <$> traverse (traverse (quoteV d)) os
+  VComp p b -> pure $ XComp p b
 
 
 newtype E sig r a = E (forall i . sig (E sig) i r -> (a -> r) -> r)
