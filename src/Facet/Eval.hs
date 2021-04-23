@@ -49,19 +49,19 @@ import Facet.Term
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Env (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
-eval env = \case
-  XVar (Global n) -> global n >>= eval env
-  XVar (Free n)   -> var env n
-  XLam cs         -> lam env cs
-  XApp  f a       -> app env (eval env f) a
-  XCon n fs       -> con n (eval env <$> fs)
+eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
+eval = \case
+  XVar (Global n) -> global n >>= eval
+  XVar (Free n)   -> var n
+  XLam cs         -> lam cs
+  XApp  f a       -> app (eval f) a
+  XCon n fs       -> con n (eval <$> fs)
   XString s       -> string s
-  XDict os        -> VDict <$> traverse (traverse (eval env)) os
-  XLet p v b      -> eval env v >>= \ v' -> eval (env |> fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v')) b
-  XComp p b       -> lam env [(PDict p, b)] -- FIXME: this won’t roundtrip correctly
+  XDict os        -> VDict <$> traverse (traverse eval) os
+  XLet p v b      -> eval v >>= \ v' -> local (|> fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v')) (eval b)
+  XComp p b       -> lam [(PDict p, b)] -- FIXME: this won’t roundtrip correctly
 
-global :: Has (Reader Graph :+: Reader Module) sig m => RName -> Eval m Expr
+global :: Has (Reader Graph :+: Reader Module) sig m => RName -> ReaderC (Env (Value (Eval m))) (Eval m) Expr
 global n = do
   mod <- lift ask
   graph <- lift ask
@@ -69,23 +69,23 @@ global n = do
     [_ :=: DTerm (Just v) _] -> pure v -- FIXME: store values in the module graph
     _                        -> error "throw a real error here"
 
-var :: (HasCallStack, Applicative m) => Env (Value m) -> LName Index -> m (Value m)
-var env n = pure (index env n)
+var :: (HasCallStack, Algebra sig m) => LName Index -> ReaderC (Env (Value m)) m (Value m)
+var n = asks (`index` n)
 
-lam :: Env (Value (Eval m)) -> [(Pattern Name, Expr)] -> Eval m (Value (Eval m))
-lam env cs = pure $ VLam env cs
+lam :: Algebra sig m => [(Pattern Name, Expr)] -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
+lam cs = asks (`VLam` cs)
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Env (Value (Eval m)) -> Eval m (Value (Eval m)) -> Expr -> Eval m (Value (Eval m))
-app envCallSite f a = f >>= \case
-  VLam env cs -> k a where
-    k = foldl' (\ vs (p, b) -> eval envCallSite >=> fromMaybe (vs a) . matchV (\ vs -> eval (env |> vs) b) p) (const (fail "non-exhaustive patterns in lambda")) cs
-  VCont k     -> k =<< eval envCallSite a
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m)) -> Expr -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
+app f a = ask >>= \ envCallSite -> f >>= \case
+  VLam env cs -> lift (k a) where
+    k = foldl' (\ vs (p, b) -> runReader envCallSite . eval >=> fromMaybe (vs a) . matchV (\ vs -> runReader (env |> vs) (eval b)) p) (const (fail "non-exhaustive patterns in lambda")) cs
+  VCont k     -> lift (k =<< runReader envCallSite (eval a))
   _           -> fail "expected lambda/continuation"
 
-string :: Text -> Eval m (Value (Eval m))
+string :: Text -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 string = pure . VString
 
-con :: RName -> [Eval m (Value (Eval m))] -> Eval m (Value (Eval m))
+con :: RName -> [ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))] -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
 
