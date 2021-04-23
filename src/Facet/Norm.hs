@@ -25,6 +25,7 @@ data Norm
   | NLam [(Pattern Name, Pattern (Name :=: Norm) -> Norm)]
   | NNe (Var (LName Level)) (Snoc Norm)
   | NDict [RName :=: Norm]
+  | NComp [RName :=: Name] (Pattern (Name :=: Norm) -> Norm)
 
 instance Eq Norm where
   (==) = (==) `on` quote 0
@@ -37,9 +38,12 @@ quote :: Level -> Norm -> Expr
 quote d = \case
   NString s -> XString s
   NCon n sp -> XCon n (quote d <$> sp)
-  NLam cs   -> XLam (map (\ (p, b) -> let (d', p') = mapAccumL (\ d n -> (succ d, n :=: NNe (Free (LName d n)) Nil)) d p in (p, quote d' (b p'))) cs)
+  NLam cs   -> XLam (map (uncurry clause) cs)
   NNe v sp  -> foldl' (\ h -> XApp h . quote d) (XVar (fmap (levelToIndex d) <$> v)) sp
   NDict os  -> XDict (map (fmap (quote d)) os)
+  NComp p b -> XComp p (snd (clause (PDict p) b))
+  where
+  clause p b = let (d', p') = mapAccumL (\ d n -> (succ d, n :=: NNe (Free (LName d n)) Nil)) d p in (p, quote d' (b p'))
 
 norm :: Env Norm -> Expr -> Norm
 norm env = \case
@@ -50,7 +54,7 @@ norm env = \case
   XLam cs    -> NLam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
   XDict os   -> NDict (map (fmap (norm env)) os)
   XLet p v b -> norm (env |> fromMaybe (error "norm: non-exhaustive pattern in let") (match (norm env v) p)) b
-  XComp p b  -> NLam [(PDict p, \ p' -> norm (env |> p') b)] -- FIXME: this won’t roundtrip correctly
+  XComp p b  -> NComp p (\ p' -> norm (env |> p') b)
 
 
 napp :: Norm -> Norm -> Norm
