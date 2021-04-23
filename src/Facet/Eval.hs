@@ -59,7 +59,7 @@ eval = \case
   XString s       -> string s
   XDict os        -> VDict <$> traverse (traverse eval) os
   XLet p v b      -> eval v >>= \ v' -> local (|> fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v')) (eval b)
-  XComp p b       -> lam [(PDict p, b)] -- FIXME: this won’t roundtrip correctly
+  XComp p b       -> comp p b
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> ReaderC (Env (Value (Eval m))) (Eval m) Expr
 global n = do
@@ -87,6 +87,9 @@ string = pure . VString
 
 con :: RName -> [ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))] -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
+
+comp :: [RName :=: Name] -> Expr -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
+comp p b = pure $ VComp p b
 
 
 -- Machinery
