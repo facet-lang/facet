@@ -35,7 +35,7 @@ Types:
 Negative types:
 
 ```
-N ::= O -> N          (function type)
+N ::= P -> N          (function type)
     | [ι̅] P           (computation type)
 ```
 
