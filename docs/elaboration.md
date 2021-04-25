@@ -29,6 +29,7 @@ Types:
     | τ -> τ          (function type)
     | [ι̅] τ           (computation type)
     | τ τ             (type constructor application)
+    | {τ}             (thunk type)
 ```
 
 Negative types:
