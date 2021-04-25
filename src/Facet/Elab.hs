@@ -280,11 +280,11 @@ warn reason = do
 
 -- Patterns
 
-assertMatch :: (HasCallStack, Has (Throw Err) sig m) => (Classifier -> Maybe out) -> String -> Classifier -> Elab m out
-assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (pat _T)
+assertMatch :: (HasCallStack, Has (Throw Err) sig m, Classified t) => (t -> Maybe out) -> String -> t -> Elab m out
+assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act (classify _T))) pure (pat _T)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-assertFunction = assertMatch (\case{ CT (TN.Arrow n q t b) -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _" . CT
+assertFunction = assertMatch (\case{ TN.Arrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
 
 
 -- Unification

@@ -49,7 +49,6 @@ import           Control.Effect.Lens (view, views, (.=))
 import           Control.Effect.Throw
 import           Control.Effect.Writer (censor)
 import           Control.Lens (at, ix)
-import           Control.Monad ((<=<))
 import           Data.Bifunctor (first)
 import           Data.Either (partitionEithers)
 import           Data.Foldable
@@ -362,15 +361,15 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
 -- Errors
 
 assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name ::: Kind, Type -> Type)
-assertQuantifier = assertMatch (\case{ CT (T.ForAll n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _" . CT
+assertQuantifier = assertMatch (\case{ T.ForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
 assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ((Quantity, Type), Type)
-assertTacitFunction = assertMatch (\case{ CT (T.Arrow Nothing q t b) -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _" . CT
+assertTacitFunction = assertMatch (\case{ T.Arrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _"
 
 -- | Expect a computation type with effects.
 assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Signature Type, Type)
-assertComp = assertMatch (unComp <=< classifierType) "[_] _" . CT
+assertComp = assertMatch unComp "[_] _"
 
 
 -- Elaboration
