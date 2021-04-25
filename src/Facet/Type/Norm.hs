@@ -92,6 +92,12 @@ instance Classified Kind where
     CK _K -> pure _K
     _     -> empty
 
+instance Classified Type where
+  classify = CT
+  classified = \case
+    CT _T -> pure _T
+    _     -> empty
+
 classifierType :: Classifier -> Maybe Type
 classifierType = \case
   CK _K -> empty
