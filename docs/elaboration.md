@@ -28,6 +28,7 @@ Types:
     | X               (type variable)
     | τ -> τ          (function type)
     | [ι̅] τ           (computation type)
+    | τ τ             (type constructor application)
 ```
 
 Negative types:
@@ -42,6 +43,7 @@ Positive types:
 ```
 P ::= {X : κ} -> P    (universal quantification)
     | X               (type variable)
+    | P P             (type constructor application)
     | {N}             (thunk type)
 ```
 
