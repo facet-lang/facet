@@ -395,7 +395,7 @@ Eliminating free computations using the dictionary bound in the context:
 5. `bool`
 
     ```facet
-    bool : { A : Type } -> (e : Unit -> A) -> (t : Unit -> A) -> Bool -> A
+    bool : {A : Type} -> (e : {A}) -> (t : {A}) -> Bool -> A
     { (true)  -> t!
     , (false) -> e! }
     ```
@@ -403,7 +403,7 @@ Eliminating free computations using the dictionary bound in the context:
     ~~>
 
     ```facet
-    bool : { A : Type } -> (Unit -> [σ] -> A) -> (Unit -> [σ] -> A) -> Bool -> [σ] -> A
+    bool : {σ : Interface} -> {A : Type} -> {[σ] -> A} -> {[σ] -> A} -> Bool -> [σ] -> A
     { _ t (true)  -> t!
     , e _ (false) -> e! }
     ```
@@ -411,14 +411,14 @@ Eliminating free computations using the dictionary bound in the context:
 6. `if`
 
     ```facet
-    if : { A : Type } -> (c : Bool) -> (t : Unit -> A) -> (e : Unit -> A) -> A
+    if : {A : Type} -> (c : Bool) -> (t : {A}) -> (e : {A}) -> A
     { bool e t c }
     ```
 
     ~~>
 
     ```facet
-    if : { A : Type } -> Bool -> (Unit -> [σ] -> A) -> (Unit -> [σ] -> A) -> [σ] -> A
+    if : {σ : Interface} -> {A : Type} -> Bool -> {[σ] -> A} -> {[σ] -> A} -> [σ] -> A
     { c t e -> bool e t c }
     ```
 
