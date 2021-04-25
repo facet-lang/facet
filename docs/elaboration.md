@@ -382,14 +382,14 @@ Eliminating free computations using the dictionary bound in the context:
 
     ```facet
     guard : (c : Bool) -> [Empty] Unit
-    { if c id { (unit) -> empty } }
+    { if c { unit } { empty } }
     ```
 
     ~~>
 
     ```facet
     guard : Bool -> [Empty] -> Unit
-    { c [empty] -> if c id { (unit) -> empty } }
+    { c [empty] -> if c { unit } { empty } }
     ```
 
 5. `bool`
