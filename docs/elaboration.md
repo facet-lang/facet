@@ -339,7 +339,7 @@ Eliminating free computations using the dictionary bound in the context:
     ~~>
 
     ```facet
-    modify : {S : Type} -> (S -> [σ] -> S) -> [State S, σ] -> Unit
+    modify : {σ : Interface} -> {S : Type} -> (S -> [σ] -> S) -> [State S, σ] -> Unit
     { f [get, put, σ] -> put (f [σ] get) }
     ```
 
