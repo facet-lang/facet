@@ -8,6 +8,7 @@ module Facet.Type.Norm
 , unNeutral
 , unComp
 , Classifier(..)
+, Classified(..)
 , classifierType
 , occursIn
   -- ** Elimination
@@ -80,6 +81,10 @@ unComp = \case
 data Classifier
   = CK Kind
   | CT Type
+
+class Classified t where
+  classify :: t -> Classifier
+  classified :: Has Empty sig m => Classifier -> m t
 
 classifierType :: Classifier -> Maybe Type
 classifierType = \case
