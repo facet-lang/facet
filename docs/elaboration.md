@@ -30,6 +30,21 @@ Types:
     | [ι̅] τ           (computation type)
 ```
 
+Negative types:
+
+```
+N ::= P -> N          (function type)
+    | [ι̅] P           (computation type)
+```
+
+Positive types:
+
+```
+P ::= {X : κ} -> P    (universal quantification)
+    | X               (type variable)
+    | {N}             (thunk type)
+```
+
 Expressions:
 
 ```
