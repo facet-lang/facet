@@ -39,11 +39,17 @@ N ::= P -> N          (function type)
     | [ι̅] P           (computation type)
 ```
 
+Neutral types:
+
+```
+O ::= {X : κ} -> O    (universal quantification)
+    | P               (embedding of positive type)
+```
+
 Positive types:
 
 ```
-P ::= {X : κ} -> P    (universal quantification)
-    | X               (type variable)
+P ::= X               (type variable)
     | P P             (type constructor application)
     | {N}             (thunk type)
 ```
