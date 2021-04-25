@@ -86,6 +86,12 @@ class Classified t where
   classify :: t -> Classifier
   classified :: Has Empty sig m => Classifier -> m t
 
+instance Classified Kind where
+  classify = CK
+  classified = \case
+    CK _K -> pure _K
+    _     -> empty
+
 classifierType :: Classifier -> Maybe Type
 classifierType = \case
   CK _K -> empty
