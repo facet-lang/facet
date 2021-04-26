@@ -56,7 +56,7 @@ import           Control.Carrier.State.Church
 import           Control.Carrier.Writer.Church
 import           Control.Effect.Choose
 import           Control.Effect.Lens (views)
-import           Control.Lens (Lens', lens)
+import           Control.Lens (Lens', lens, review)
 import           Control.Monad (unless, (<=<))
 import           Data.Foldable (for_)
 import           Facet.Context hiding (empty)
@@ -281,7 +281,7 @@ warn reason = do
 -- Patterns
 
 assertMatch :: (HasCallStack, Has (Throw Err) sig m, Classified t) => (t -> Maybe out) -> String -> t -> Elab m out
-assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act (classify _T))) pure (pat _T)
+assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act (review classified _T))) pure (pat _T)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
 assertFunction = assertMatch (\case{ TN.Arrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"

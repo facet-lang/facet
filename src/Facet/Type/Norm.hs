@@ -21,6 +21,7 @@ module Facet.Type.Norm
 ) where
 
 import           Control.Effect.Empty
+import           Control.Lens (Prism', prism')
 import           Data.Foldable (foldl')
 import           Data.Function (on, (&))
 import           Data.Maybe (fromMaybe)
@@ -83,20 +84,13 @@ data Classifier
   | CT Type
 
 class Classified t where
-  classify :: t -> Classifier
-  classified :: Has Empty sig m => Classifier -> m t
+  classified :: Prism' Classifier t
 
 instance Classified Kind where
-  classify = CK
-  classified = \case
-    CK _K -> pure _K
-    _     -> empty
+  classified = prism' CK (\case{ CK _K -> pure _K ; _ -> empty })
 
 instance Classified Type where
-  classify = CT
-  classified = \case
-    CT _T -> pure _T
-    _     -> empty
+  classified = prism' CT (\case{ CT _T -> pure _T ; _ -> empty })
 
 classifierType :: Classifier -> Maybe Type
 classifierType = \case
