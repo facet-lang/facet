@@ -9,7 +9,6 @@ module Facet.Type.Norm
 , unComp
 , Classifier(..)
 , Classified(..)
-, classifierType
 , occursIn
   -- ** Elimination
 , ($$)
@@ -91,11 +90,6 @@ instance Classified Kind where
 
 instance Classified Type where
   classified = prism' CT (\case{ CT _T -> pure _T ; _ -> empty })
-
-classifierType :: Classifier -> Maybe Type
-classifierType = \case
-  CK _K -> empty
-  CT _T -> pure _T
 
 
 occursIn :: Meta -> Level -> Type -> Bool
