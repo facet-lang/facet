@@ -6,6 +6,7 @@ module Facet.Term
 , xapp
 , xcon
 , xstring
+, xlet
 , Fields(..)
 ) where
 
@@ -44,6 +45,9 @@ xcon n b = T (XCon n (foldFields (pure . getT) b))
 
 xstring :: Text -> T Expr Text
 xstring = T . XString
+
+xlet :: T (Pattern Name) t -> T Expr t -> T Expr u -> T Expr u
+xlet (T p) (T v) (T b) = T (XLet p v b)
 
 
 class Fields f fs where
