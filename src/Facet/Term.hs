@@ -2,6 +2,7 @@ module Facet.Term
 ( -- * Term expressions
   Expr(..)
 , xlam
+, xapp
 ) where
 
 import Data.Bifunctor (bimap)
@@ -25,3 +26,8 @@ data Expr
 
 xlam :: [(T (Pattern Name) a, T Expr b)] -> T Expr (a -> b)
 xlam ps = T (XLam (map (bimap getT getT) ps))
+
+xapp :: T Expr (a -> b) -> T Expr a -> T Expr b
+xapp (T f) (T a) = T (f `XApp` a)
+
+infixl 9 `xapp`
