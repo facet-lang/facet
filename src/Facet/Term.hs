@@ -1,7 +1,7 @@
 module Facet.Term
 ( -- * Term expressions
   Expr(..)
-, ExprI(..)
+, TExpr(..)
 , Fields(..)
 ) where
 
@@ -24,7 +24,7 @@ data Expr
   | XComp [RName :=: Name] Expr -- ^ NB: the first argument is a specialization of @'Pattern' 'Name'@ to the 'PDict' constructor
   deriving (Eq, Ord, Show)
 
-class ExprI expr where
+class TExpr expr where
   xvar :: T (Var (LName Index)) a -> expr a
 
   xlam :: [(T (Pattern Name) a, expr b)] -> expr (a -> b)
@@ -39,7 +39,7 @@ class ExprI expr where
 
   xlet :: T (Pattern Name) t -> expr t -> expr u -> expr u
 
-instance ExprI (T Expr) where
+instance TExpr (T Expr) where
   xvar = T . XVar . getT
 
   xlam ps = T (XLam (map (bimap getT getT) ps))
