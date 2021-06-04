@@ -1,12 +1,7 @@
 module Facet.Term
 ( -- * Term expressions
   Expr(..)
-, xvar
-, xlam
-, xapp
-, xcon
-, xstring
-, xlet
+, ExprI(..)
 , Fields(..)
 ) where
 
@@ -29,25 +24,33 @@ data Expr
   | XComp [RName :=: Name] Expr -- ^ NB: the first argument is a specialization of @'Pattern' 'Name'@ to the 'PDict' constructor
   deriving (Eq, Ord, Show)
 
-xvar :: T (Var (LName Index)) a -> T Expr a
-xvar = T . XVar . getT
+class ExprI expr where
+  xvar :: T (Var (LName Index)) a -> expr a
 
-xlam :: [(T (Pattern Name) a, T Expr b)] -> T Expr (a -> b)
-xlam ps = T (XLam (map (bimap getT getT) ps))
+  xlam :: [(T (Pattern Name) a, expr b)] -> expr (a -> b)
 
-xapp :: T Expr (a -> b) -> T Expr a -> T Expr b
-xapp (T f) (T a) = T (f `XApp` a)
+  xapp :: expr (a -> b) -> expr a -> expr b
 
-infixl 9 `xapp`
+  infixl 9 `xapp`
 
-xcon :: Fields (T Expr) fs => RName -> fs -> T Expr fs
-xcon n b = T (XCon n (foldFields (pure . getT) b))
+  xcon :: Fields expr fs => RName -> fs -> expr fs
 
-xstring :: Text -> T Expr Text
-xstring = T . XString
+  xstring :: Text -> expr Text
 
-xlet :: T (Pattern Name) t -> T Expr t -> T Expr u -> T Expr u
-xlet (T p) (T v) (T b) = T (XLet p v b)
+  xlet :: T (Pattern Name) t -> expr t -> expr u -> expr u
+
+instance ExprI (T Expr) where
+  xvar = T . XVar . getT
+
+  xlam ps = T (XLam (map (bimap getT getT) ps))
+
+  xapp (T f) (T a) = T (f `XApp` a)
+
+  xcon n b = T (XCon n (foldFields (pure . getT) b))
+
+  xstring = T . XString
+
+  xlet (T p) (T v) (T b) = T (XLet p v b)
 
 
 class Fields f fs where
