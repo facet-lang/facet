@@ -3,6 +3,7 @@ module Facet.Term
   Expr(..)
 , xlam
 , xapp
+, xstring
 ) where
 
 import Data.Bifunctor (bimap)
@@ -31,3 +32,6 @@ xapp :: T Expr (a -> b) -> T Expr a -> T Expr b
 xapp (T f) (T a) = T (f `XApp` a)
 
 infixl 9 `xapp`
+
+xstring :: Text -> T Expr Text
+xstring = T . XString
