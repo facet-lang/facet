@@ -1,9 +1,13 @@
+{-# LANGUAGE GADTs #-}
 module Facet.Term
 ( -- * Term expressions
   Expr(..)
 , xlam
 , xapp
+, xcon
 , xstring
+, Tuple(..)
+, foldTuple
 ) where
 
 import Data.Bifunctor (bimap)
@@ -33,5 +37,18 @@ xapp (T f) (T a) = T (f `XApp` a)
 
 infixl 9 `xapp`
 
+xcon :: RName -> Tuple (T Expr) ts -> T Expr ts
+xcon n b = T (XCon n (foldTuple (pure . getT) b))
+
 xstring :: Text -> T Expr Text
 xstring = T . XString
+
+
+data Tuple f ts where
+  None :: Tuple f ()
+  (:<) :: f t -> Tuple f ts -> Tuple f (t, ts)
+
+foldTuple :: Monoid m => (forall t . f t -> m) -> Tuple f ts -> m
+foldTuple alg = \case
+  None    -> mempty
+  t :< ts -> alg t <> foldTuple alg ts
