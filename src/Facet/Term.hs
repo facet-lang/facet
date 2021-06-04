@@ -1,6 +1,7 @@
 module Facet.Term
 ( -- * Term expressions
   Expr(..)
+, xvar
 , xlam
 , xapp
 , xcon
@@ -26,6 +27,9 @@ data Expr
   | XLet (Pattern Name) Expr Expr
   | XComp [RName :=: Name] Expr -- ^ NB: the first argument is a specialization of @'Pattern' 'Name'@ to the 'PDict' constructor
   deriving (Eq, Ord, Show)
+
+xvar :: Var (LName Index) -> T Expr a
+xvar = T . XVar
 
 xlam :: [(T (Pattern Name) a, T Expr b)] -> T Expr (a -> b)
 xlam ps = T (XLam (map (bimap getT getT) ps))
