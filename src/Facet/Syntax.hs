@@ -12,6 +12,8 @@ module Facet.Syntax
   -- * Assertion data
 , Exp(..)
 , Act(..)
+  -- * Type-safe constructors
+, T(..)
 ) where
 
 import Data.Bifoldable
@@ -107,3 +109,8 @@ newtype Exp a = Exp { getExp :: a }
 
 newtype Act a = Act { getAct :: a }
   deriving (Functor)
+
+
+-- Type-safe constructors
+
+newtype T a b = T { getT :: a }
