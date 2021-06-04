@@ -120,6 +120,7 @@ library
     Facet.Syntax
     Facet.Term
     Facet.Timing
+    Facet.Type
     Facet.Type.Expr
     Facet.Type.Norm
     Facet.Unify
