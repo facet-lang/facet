@@ -5,6 +5,7 @@ module Facet.Term
 , xapp
 , xcon
 , xstring
+, Fields(..)
 ) where
 
 import Data.Bifunctor (bimap)
