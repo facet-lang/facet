@@ -1,4 +1,3 @@
-{-# LANGUAGE GADTs #-}
 module Facet.Term
 ( -- * Term expressions
   Expr(..)
@@ -6,8 +5,6 @@ module Facet.Term
 , xapp
 , xcon
 , xstring
-, Tuple(..)
-, foldTuple
 ) where
 
 import Data.Bifunctor (bimap)
@@ -37,18 +34,18 @@ xapp (T f) (T a) = T (f `XApp` a)
 
 infixl 9 `xapp`
 
-xcon :: RName -> Tuple (T Expr) ts -> T Expr ts
-xcon n b = T (XCon n (foldTuple (pure . getT) b))
+xcon :: Fields (T Expr) fs => RName -> fs -> T Expr fs
+xcon n b = T (XCon n (foldFields (pure . getT) b))
 
 xstring :: Text -> T Expr Text
 xstring = T . XString
 
 
-data Tuple f ts where
-  None :: Tuple f ()
-  (:<) :: f t -> Tuple f ts -> Tuple f (t, ts)
+class Fields f fs where
+  foldFields :: Monoid m => (forall t . f t -> m) -> fs -> m
 
-foldTuple :: Monoid m => (forall t . f t -> m) -> Tuple f ts -> m
-foldTuple alg = \case
-  None    -> mempty
-  t :< ts -> alg t <> foldTuple alg ts
+instance Fields f () where
+  foldFields _ _ = mempty
+
+instance Fields f fs => Fields f (f t, fs) where
+  foldFields alg = mappend . alg . fst <*> foldFields alg . snd
