@@ -5,6 +5,7 @@ module Facet.Interface
 , singleton
 , interfaces
 , mapSignature
+, traverseSignature
 ) where
 
 import qualified Data.Set as Set
@@ -28,3 +29,6 @@ interfaces = Set.toList . getSignature
 
 mapSignature :: Ord b => (a -> b) -> Signature a -> Signature b
 mapSignature f = Signature . Set.map (fmap f) . getSignature
+
+traverseSignature :: (Ord b, Applicative f) => (a -> f b) -> Signature a -> f (Signature b)
+traverseSignature f (Signature m) = Signature . Set.fromList <$> traverse (traverse f) (Set.toList m)
