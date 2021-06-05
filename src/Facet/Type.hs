@@ -1,6 +1,7 @@
 {-# LANGUAGE PolyKinds #-}
 module Facet.Type
 ( TType(..)
+, Comp
 ) where
 
 import Data.Kind (Type)
