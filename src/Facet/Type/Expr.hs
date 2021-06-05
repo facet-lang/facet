@@ -19,9 +19,9 @@ data Type
   deriving (Eq, Ord, Show)
 
 -- FIXME: this should be Level -> Type
-instance TType (T Type) where
-  string = T String
-  forAll n (T k) b = T (ForAll n k (getT (b (T (Var (Free (Right (LName (Index 0) n))))))))
-  arrow n q (T a) (T b) = T (Arrow n q a b)
-  comp sig (T b) = T (Comp (mapSignature getT sig) b)
-  app (T f) (T a) = T (App f a)
+instance TType (T (Level -> Type)) where
+  string = T (const String)
+  forAll n (T k) b = T (\ d -> ForAll n k (getT (b (T (\ d' -> Var (Free (Right (LName (levelToIndex d d') n)))))) d))
+  arrow n q (T a) (T b) = T (\ d -> Arrow n q (a d) (b d))
+  comp sig (T b) = T (\ d -> Comp (mapSignature (\ (T i) -> i d) sig) (b d))
+  app (T f) (T a) = T (\ d -> App (f d) (a d))
