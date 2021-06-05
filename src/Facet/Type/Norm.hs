@@ -32,6 +32,7 @@ import           Facet.Pattern
 import           Facet.Snoc
 import           Facet.Subst
 import           Facet.Syntax
+import           Facet.Type
 import qualified Facet.Type.Expr as TX
 import           Facet.Usage hiding (singleton)
 import           GHC.Stack
@@ -51,6 +52,13 @@ instance Eq Type where
 
 instance Ord Type where
   compare = compare `on` quote 0
+
+instance TType (T Type) where
+  string = T String
+  forAll n (T k) b = T (ForAll n k (getT . b . T))
+  arrow n q (T a) (T b) = T (Arrow n q a b)
+  comp sig (T b) = T (Comp (mapSignature getT sig) b)
+  app (T a) (T b) = T (a $$ b)
 
 
 global :: RName -> Type
