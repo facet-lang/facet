@@ -14,7 +14,7 @@ copyright:           2020 Rob Rix
 category:            Language
 
 tested-with:
-  GHC == 8.10.3
+  GHC == 8.10.4
 
 common common
   default-language: Haskell2010
