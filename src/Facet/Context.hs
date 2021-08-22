@@ -47,10 +47,10 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
 lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (LName Index, Quantity, Classifier)
 lookupIndex n = go (Index 0) . elems
   where
-  go _ S.Nil                                        = E.empty
+  go _ S.Nil                                  = E.empty
   go i (cs S.:> (q, p))
     | Just (n' ::: t) <- find ((== n) . tm) p = pure (LName i n', q, t)
-    | otherwise                                     = go (succ i) cs
+    | otherwise                               = go (succ i) cs
 
 
 toEnv :: Context -> Env.Env Type
