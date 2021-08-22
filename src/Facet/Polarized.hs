@@ -2,6 +2,7 @@ module Facet.Polarized
 ( Kind(..)
 , Type(..)
 , XType(..)
+, evalType
 , quoteType
 , Val(..)
 , Elab(..)
@@ -9,6 +10,7 @@ module Facet.Polarized
 
 import Control.Carrier.Reader
 import Facet.Name
+import Facet.Snoc
 
 data Kind
   = Type
@@ -52,6 +54,19 @@ data XType
 infixr 2 :->:
 infixr 7 :><:
 infixl 2 :>-:
+
+
+evalType :: Snoc Type -> XType -> Type
+evalType env = \case
+  XVar _ i    -> env ! getIndex i
+  XUp t       -> Up (evalType env t)
+  XBot        -> Bot
+  a :->: b    -> evalType env a :-> evalType env b
+  XForAll k b -> ForAll k (\ _A -> evalType (env :> _A) b)
+  XDown t     -> Down (evalType env t)
+  XOne        -> One
+  a :><: b    -> evalType env a :>< evalType env b
+  b :>-: a    -> evalType env b :>- evalType env a
 
 quoteType :: Level -> Type -> XType
 quoteType d = \case
