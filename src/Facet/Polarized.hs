@@ -5,7 +5,8 @@ module Facet.Polarized
 ) where
 
 data Kind
-  = Type
+  = NType
+  | PType
   | Kind :=> Kind
 
 infixr 2 :=>
