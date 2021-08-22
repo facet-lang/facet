@@ -103,6 +103,7 @@ library
     Facet.Parser
     Facet.Parser.Table
     Facet.Pattern
+    Facet.Polarized
     Facet.Pretty
     Facet.Print
     Facet.REPL
