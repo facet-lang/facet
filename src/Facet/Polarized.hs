@@ -21,6 +21,8 @@ infixr 2 :->
 
 data PType
   = Down NType
+  | PType :>< PType
   | NType :>- PType
 
+infixr 7 :><
 infixl 2 :>-
