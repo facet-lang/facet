@@ -43,4 +43,4 @@ data PVal t where
   Pair :: PVal a -> PVal b -> PVal (a, b)
 
 
-newtype Elab a = Elab { elab :: Maybe a }
+newtype Elab a = Elab { elab :: [PType] -> [NType] -> Maybe a }
