@@ -20,7 +20,7 @@ data Kind
 infixr 2 :=>
 
 data Type
-  = Var Kind Level
+  = TVar Kind Level
   -- negative
   | Up Type
   | Bot
@@ -38,7 +38,7 @@ infixl 2 :>-
 
 
 data XType
-  = XVar Kind Index
+  = XTVar Kind Index
   -- negative
   | XUp XType
   | XBot
@@ -58,7 +58,7 @@ infixl 2 :>-:
 
 evalType :: Snoc Type -> XType -> Type
 evalType env = \case
-  XVar _ i    -> env ! getIndex i
+  XTVar _ i   -> env ! getIndex i
   XUp t       -> Up (evalType env t)
   XBot        -> Bot
   a :->: b    -> evalType env a :-> evalType env b
@@ -70,11 +70,11 @@ evalType env = \case
 
 quoteType :: Level -> Type -> XType
 quoteType d = \case
-  Var k d'   -> XVar k (levelToIndex d d')
+  TVar k d'  -> XTVar k (levelToIndex d d')
   Up t       -> XUp (quoteType d t)
   Bot        -> XBot
   a :-> b    -> quoteType d a :->: quoteType d b
-  ForAll k b -> XForAll k (quoteType (succ d) (b (Var k d)))
+  ForAll k b -> XForAll k (quoteType (succ d) (b (TVar k d)))
   Down t     -> XDown (quoteType d t)
   One        -> XOne
   a :>< b    -> quoteType d a :><: quoteType d b
