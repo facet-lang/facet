@@ -62,6 +62,6 @@ data Val
   | Thunk Val
 
 
-newtype Elab a = Elab { elab :: [(String, Type)] -> [(String, Type)] -> Maybe a }
+newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
   deriving (Functor)
-  deriving (Applicative) via ReaderC [(String, Type)] (ReaderC [(String, Type)] Maybe)
+  deriving (Applicative) via ReaderC [(String, Type)] Maybe
