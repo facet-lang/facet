@@ -14,6 +14,7 @@ infixr 2 :=>
 
 data NType
   = Up PType
+  | NVar String
   | PType :-> NType
   | forall t . ForAll (Kind t) (t -> NType)
 
@@ -21,6 +22,7 @@ infixr 2 :->
 
 data PType
   = Down NType
+  | PVar String
   | PType :>< PType
   | NType :>- PType
 
