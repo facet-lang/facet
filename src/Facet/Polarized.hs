@@ -6,6 +6,9 @@ module Facet.Polarized
 
 data Kind
   = Type
+  | Kind :=> Kind
+
+infixr 2 :=>
 
 data NType
   = Up PType
