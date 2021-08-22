@@ -1,7 +1,11 @@
 module Facet.Polarized
-( NType(..)
+( Kind(..)
+, NType(..)
 , PType(..)
 ) where
+
+data Kind
+  = Type
 
 data NType
   = Up PType
