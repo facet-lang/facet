@@ -1,13 +1,14 @@
+{-# LANGUAGE GADTs #-}
 module Facet.Polarized
 ( Kind(..)
 , NType(..)
 , PType(..)
 ) where
 
-data Kind
-  = NType
-  | PType
-  | Kind :=> Kind
+data Kind where
+  NType :: Kind
+  PType :: Kind
+  (:=>) :: Kind -> Kind -> Kind
 
 infixr 2 :=>
 
