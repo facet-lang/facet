@@ -36,12 +36,14 @@ infixr 7 :><
 infixl 2 :>-
 
 
-data NVal t where
-  Lam :: (PVal a -> NVal b) -> NVal (a -> b)
+data NVal
+  = Lam (PVal -> NVal)
+  | Ret PVal
 
-data PVal t where
-  Unit :: PVal ()
-  Pair :: PVal a -> PVal b -> PVal (a, b)
+data PVal
+  = Unit
+  | Pair PVal PVal
+  | Thunk NVal
 
 
 newtype Elab a = Elab { elab :: [(String, PType)] -> [(String, NType)] -> Maybe a }
