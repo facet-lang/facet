@@ -8,6 +8,7 @@ module Facet.Polarized
 , Elab(..)
 ) where
 
+import Control.Carrier.Reader
 data Kind t where
   NType :: Kind NType
   PType :: Kind PType
@@ -44,3 +45,5 @@ data PVal t where
 
 
 newtype Elab a = Elab { elab :: [(String, PType)] -> [(String, NType)] -> Maybe a }
+  deriving (Functor)
+  deriving (Applicative) via ReaderC [(String, PType)] (ReaderC [(String, NType)] Maybe)
