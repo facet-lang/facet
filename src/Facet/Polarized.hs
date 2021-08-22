@@ -1,2 +1,7 @@
 module Facet.Polarized
-() where
+( NType
+, PType
+) where
+
+data NType
+data PType
