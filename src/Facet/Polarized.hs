@@ -3,6 +3,8 @@ module Facet.Polarized
 ( Kind(..)
 , NType(..)
 , PType(..)
+, NVal(..)
+, PVal(..)
 ) where
 
 data Kind t where
@@ -15,6 +17,7 @@ infixr 2 :=>
 data NType
   = Up PType
   | NVar String
+  | Bot
   | PType :-> NType
   | forall t . ForAll (Kind t) (t -> NType)
 
@@ -23,8 +26,16 @@ infixr 2 :->
 data PType
   = Down NType
   | PVar String
+  | One
   | PType :>< PType
   | NType :>- PType
 
 infixr 7 :><
 infixl 2 :>-
+
+
+data NVal t where
+  Lam :: (PVal a -> NVal b) -> NVal (a -> b)
+
+data PVal t where
+  Unit :: PVal ()
