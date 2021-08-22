@@ -3,6 +3,8 @@ module Facet.Polarized
 ( Kind(..)
 , NType(..)
 , PType(..)
+, XNType(..)
+, XPType(..)
 , NVal(..)
 , PVal(..)
 , Elab(..)
@@ -34,6 +36,27 @@ data PType
 
 infixr 7 :><
 infixl 2 :>-
+
+
+data XNType
+  = XUp XPType
+  | XNVar String
+  | XBot
+  | XPType :->: XNType
+  deriving (Eq, Ord, Show)
+
+infixr 2 :->:
+
+data XPType
+  = XDown XNType
+  | XPVar String
+  | XOne
+  | XPType :><: XPType
+  | XNType :>-: XPType
+  deriving (Eq, Ord, Show)
+
+infixr 7 :><:
+infixl 2 :>-:
 
 
 data NVal
