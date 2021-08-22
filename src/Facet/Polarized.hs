@@ -1,74 +1,67 @@
 {-# LANGUAGE GADTs #-}
 module Facet.Polarized
 ( Kind(..)
-, NType(..)
-, PType(..)
-, XNType(..)
-, XPType(..)
-, NVal(..)
-, PVal(..)
+, Type(..)
+, XType(..)
+, Val(..)
 , Elab(..)
 ) where
 
 import Control.Carrier.Reader
 data Kind t where
-  NType :: Kind NType
-  PType :: Kind PType
+  Type :: Kind Type
   (:=>) :: Kind t1 -> Kind t2 -> Kind (t1 -> t2)
 
 infixr 2 :=>
 
-data NType
-  = Up PType
+data Type
+  -- negative
+  = Up Type
   | NVar String
   | Bot
-  | PType :-> NType
-  | forall t . ForAll (Kind t) (t -> NType)
-
-infixr 2 :->
-
-data PType
-  = Down NType
+  | Type :-> Type
+  | forall t . ForAll (Kind t) (t -> Type)
+  -- positive
+  | Down Type
   | PVar String
   | One
-  | PType :>< PType
-  | NType :>- PType
+  | Type :>< Type
+  | Type :>- Type
 
+infixr 2 :->
 infixr 7 :><
 infixl 2 :>-
 
 
-data XNType
-  = XUp XPType
+data XType
+  -- negative
+  = XUp XType
   | XNVar String
   | XBot
-  | XPType :->: XNType
+  | XType :->: XType
+  -- positive
+  | XDown XType
+  | XPVar String
+  | XOne
+  | XType :><: XType
+  | XType :>-: XType
   deriving (Eq, Ord, Show)
 
 infixr 2 :->:
-
-data XPType
-  = XDown XNType
-  | XPVar String
-  | XOne
-  | XPType :><: XPType
-  | XNType :>-: XPType
-  deriving (Eq, Ord, Show)
-
 infixr 7 :><:
 infixl 2 :>-:
 
 
-data NVal
-  = Lam (PVal -> NVal)
-  | Ret PVal
+data Val
+  -- negative
+  = Lam (Val -> Val)
+  | Ret Val
+  -- positive
+  | Unit
+  | Pair Val Val
+  | Thunk Val
 
-data PVal
-  = Unit
-  | Pair PVal PVal
-  | Thunk NVal
 
-
-newtype Elab a = Elab { elab :: [(String, PType)] -> [(String, NType)] -> Maybe a }
+newtype Elab a = Elab { elab :: [(String, Type)] -> [(String, Type)] -> Maybe a }
   deriving (Functor)
-  deriving (Applicative) via ReaderC [(String, PType)] (ReaderC [(String, NType)] Maybe)
+  deriving (Applicative) via ReaderC [(String, Type)] (ReaderC [(String, Type)] Maybe)
