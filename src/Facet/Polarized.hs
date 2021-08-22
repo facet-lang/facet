@@ -3,8 +3,11 @@ module Facet.Polarized
 , PType(..)
 ) where
 
-newtype NType
+data NType
   = Up PType
+  | PType :-> NType
+
+infixr 2 :->
 
 newtype PType
   = Down NType
