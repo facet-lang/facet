@@ -5,17 +5,17 @@ module Facet.Polarized
 , PType(..)
 ) where
 
-data Kind where
-  NType :: Kind
-  PType :: Kind
-  (:=>) :: Kind -> Kind -> Kind
+data Kind t where
+  NType :: Kind NType
+  PType :: Kind PType
+  (:=>) :: Kind t1 -> Kind t2 -> Kind (t1 -> t2)
 
 infixr 2 :=>
 
 data NType
   = Up PType
   | PType :-> NType
-  | ForAll Kind (Either NType PType -> NType)
+  | forall t . ForAll (Kind t) (t -> NType)
 
 infixr 2 :->
 
