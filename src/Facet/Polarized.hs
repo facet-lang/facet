@@ -1,29 +1,31 @@
-{-# LANGUAGE GADTs #-}
 module Facet.Polarized
 ( Kind(..)
 , Type(..)
 , XType(..)
+, quoteType
 , Val(..)
 , Elab(..)
 ) where
 
 import Control.Carrier.Reader
-data Kind t where
-  Type :: Kind Type
-  (:=>) :: Kind t1 -> Kind t2 -> Kind (t1 -> t2)
+import Facet.Name
+
+data Kind
+  = Type
+  | Kind :=> Kind
+  deriving (Eq, Ord, Show)
 
 infixr 2 :=>
 
 data Type
+  = Var Kind Level
   -- negative
-  = Up Type
-  | NVar String
+  | Up Type
   | Bot
   | Type :-> Type
-  | forall t . ForAll (Kind t) (t -> Type)
+  | ForAll Kind (Type -> Type)
   -- positive
   | Down Type
-  | PVar String
   | One
   | Type :>< Type
   | Type :>- Type
@@ -34,14 +36,14 @@ infixl 2 :>-
 
 
 data XType
+  = XVar Kind Index
   -- negative
-  = XUp XType
-  | XNVar String
+  | XUp XType
   | XBot
   | XType :->: XType
+  | XForAll Kind XType
   -- positive
   | XDown XType
-  | XPVar String
   | XOne
   | XType :><: XType
   | XType :>-: XType
@@ -50,6 +52,19 @@ data XType
 infixr 2 :->:
 infixr 7 :><:
 infixl 2 :>-:
+
+quoteType :: Level -> Type -> XType
+quoteType d = \case
+  Var k d'   -> XVar k (levelToIndex d d')
+  Up t       -> XUp (quoteType d t)
+  Bot        -> XBot
+  a :-> b    -> quoteType d a :->: quoteType d b
+  ForAll k b -> XForAll k (quoteType (succ d) (b (Var k d)))
+  Down t     -> XDown (quoteType d t)
+  One        -> XOne
+  a :>< b    -> quoteType d a :><: quoteType d b
+  b :>- a    -> quoteType d b :>-: quoteType d a
+
 
 
 data Val
@@ -62,6 +77,6 @@ data Val
   | Thunk Val
 
 
-newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
+newtype Elab a = Elab { elab :: [Type] -> Maybe a }
   deriving (Functor)
-  deriving (Applicative) via ReaderC [(String, Type)] Maybe
+  deriving (Applicative) via ReaderC [Type] Maybe
