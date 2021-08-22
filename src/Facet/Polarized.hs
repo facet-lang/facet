@@ -19,5 +19,6 @@ data NType
 
 infixr 2 :->
 
-newtype PType
+data PType
   = Down NType
+  | NType :>- PType
