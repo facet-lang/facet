@@ -39,3 +39,4 @@ data NVal t where
 
 data PVal t where
   Unit :: PVal ()
+  Pair :: PVal a -> PVal b -> PVal (a, b)
