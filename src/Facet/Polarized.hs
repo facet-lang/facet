@@ -5,6 +5,7 @@ module Facet.Polarized
 , PType(..)
 , NVal(..)
 , PVal(..)
+, Elab(..)
 ) where
 
 data Kind t where
@@ -40,3 +41,6 @@ data NVal t where
 data PVal t where
   Unit :: PVal ()
   Pair :: PVal a -> PVal b -> PVal (a, b)
+
+
+newtype Elab a = Elab { elab :: Maybe a }
