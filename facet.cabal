@@ -106,6 +106,7 @@ library
     Facet.Polarized
     Facet.Pretty
     Facet.Print
+    Facet.Quote
     Facet.REPL
     Facet.REPL.Parser
     Facet.Run

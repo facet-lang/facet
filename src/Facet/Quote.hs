@@ -1,0 +1,2 @@
+module Facet.Quote
+() where
