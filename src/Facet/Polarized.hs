@@ -110,7 +110,7 @@ instance Eval Term Val Val where
     CThunk b  -> Thunk (eval env b)
     CElim t e -> velim (eval env t) (eval env e)
 
-instance Eval (Co Term) Val (Co Val) where
+instance Eval t e v => Eval (Co t) e (Co v) where
   eval env = \case
     App a -> App (eval env a)
     Fst   -> Fst
