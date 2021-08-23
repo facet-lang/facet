@@ -9,7 +9,7 @@ module Facet.Polarized
 , Val(..)
 , vvar
 , velim
-, Coval(..)
+, Co(..)
 , Elab(..)
 , Quote(..)
 , Eval(..)
@@ -116,7 +116,7 @@ data Coterm
   | CSnd
   | CForce
 
-instance Eval Coterm Val Coval where
+instance Eval Coterm Val (Co Val) where
   eval env = \case
     CApp a -> App (eval env a)
     CFst   -> Fst
@@ -124,7 +124,7 @@ instance Eval Coterm Val Coval where
     CForce -> Force
 
 data Val
-  = Ne Level (Snoc Coval)
+  = Ne Level (Snoc (Co Val))
   -- negative
   | Lam (Val -> Val)
   -- positive
@@ -144,7 +144,7 @@ instance Quote Val Term where
 vvar :: Level -> Val
 vvar l = Ne l Nil
 
-velim :: Val -> Coval -> Val
+velim :: Val -> Co Val -> Val
 velim = curry $ \case
   (Ne v sp,  c)     -> Ne v (sp :> c)
   (Lam f,    App a) -> f a
@@ -154,13 +154,13 @@ velim = curry $ \case
   (_,        _)     -> error "cannot elim"
 
 
-data Coval
-  = App Val
+data Co t
+  = App t
   | Fst
   | Snd
   | Force
 
-instance Quote Coval Coterm where
+instance Quote (Co Val) Coterm where
   quote d = \case
     App a -> CApp (quote d a)
     Fst   -> CFst
