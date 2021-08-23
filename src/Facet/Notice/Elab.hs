@@ -49,7 +49,7 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
       in  ( succ d
           , env Env.|> ((\ (n ::: _T) -> n :=: free (LName d n)) <$> p)
           , prints Env.|> ((\ (n ::: _) -> n :=: intro n d) <$> p)
-          , ctx :> getPrint (printPattern opts (binding <$> p)) )
+          , ctx :> getPrint (print opts prints (binding <$> p)) )
   mult m = if
     | m == zero -> (pretty "0" <+>)
     | m == one  -> (pretty "1" <+>)

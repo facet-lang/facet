@@ -16,7 +16,6 @@ module Facet.Print
 , printInstantiation
 , suppressInstantiation
   -- * Core printers
-, printPattern
 , printModule
   -- * Misc
 , intro
@@ -151,15 +150,6 @@ suppressInstantiation = const
 
 -- Core printers
 
-printPattern :: Options -> Pattern Print -> Print
-printPattern Options{ rname } = go
-  where
-  go = \case
-    PWildcard -> pretty '_'
-    PVar n    -> n
-    PCon n ps -> parens (annotate Con (rname n) $$* map go (toList ps))
-    PDict os  -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group v) os) <> flatAlt space line)
-
 printModule :: C.Module -> Print
 printModule (C.Module mname is _ ds) = module_
   mname
@@ -266,12 +256,12 @@ instance Printable C.Expr where
       C.XCon n p        -> qvar n $$* (group . go env <$> p)
       C.XString s       -> annotate Lit $ pretty (show s)
       C.XDict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
-      C.XLet p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (printPattern opts (def <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
+      C.XLet p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (print opts env (def <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
       C.XComp p b       -> comp (clause env (PDict p, b))
       where
       d = level env
     qvar = group . setPrec Var . rname
-    clause env (p, b) = printPattern opts (def <$> p') <+> arrow <+> go (env |> p') b
+    clause env (p, b) = print opts env (def <$> p') <+> arrow <+> go (env |> p') b
       where
       p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p)
 
