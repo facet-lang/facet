@@ -1,2 +1,12 @@
+{-# LANGUAGE FunctionalDependencies #-}
 module Facet.Quote
-() where
+( -- * Quotation
+  Quote(..)
+) where
+
+import Facet.Name (Level)
+
+-- Quotation
+
+class Quote v t | v -> t where
+  quote :: Level -> v -> t
