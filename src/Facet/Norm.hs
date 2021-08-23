@@ -5,7 +5,6 @@ module Facet.Norm
 
 import Control.Monad (guard)
 import Data.Foldable (foldl')
-import Data.Function (on)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.Text (Text)
@@ -26,12 +25,7 @@ data Norm
   | NNe (Var (LName Level)) (Snoc Norm)
   | NDict [RName :=: Norm]
   | NComp [RName :=: Name] (Pattern (Name :=: Norm) -> Norm)
-
-instance Eq Norm where
-  (==) = (==) `on` quote 0
-
-instance Ord Norm where
-  compare = compare `on` quote 0
+  deriving (Eq, Ord, Show) via Quoting Expr Norm
 
 instance Quote Norm Expr where
   quote d = \case

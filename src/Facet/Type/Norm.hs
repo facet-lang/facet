@@ -21,7 +21,7 @@ module Facet.Type.Norm
 import           Control.Effect.Empty
 import           Control.Lens (Prism', prism')
 import           Data.Foldable (foldl')
-import           Data.Function (on, (&))
+import           Data.Function ((&))
 import           Data.Maybe (fromMaybe)
 import           Facet.Env hiding (empty)
 import           Facet.Interface
@@ -46,12 +46,7 @@ data Type
   | Arrow (Maybe Name) Quantity Type Type
   | Ne (Var (Either Meta (LName Level))) (Snoc Type)
   | Comp (Signature Type) Type
-
-instance Eq Type where
-  (==) = (==) `on` quote 0
-
-instance Ord Type where
-  compare = compare `on` quote 0
+  deriving (Eq, Ord, Show) via Quoting TX.Type Type
 
 instance Quote Type TX.Type where
   quote d = \case
