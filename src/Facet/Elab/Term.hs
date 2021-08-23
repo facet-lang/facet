@@ -34,11 +34,9 @@ module Facet.Elab.Term
   -- * Judgements
 , check
 , Check(..)
-, mapCheck
 , Synth(..)
 , bind
 , Bind(..)
-, mapBind
 ) where
 
 import           Control.Algebra
@@ -231,7 +229,7 @@ checkLam cs = lam (snd vs)
   vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: Check (Elab m Expr)], [(Bind m (Pattern (Name ::: Classifier)), Check (Elab m Expr))])
   vs = partitionEithers (map (\ (S.Clause (S.Ann _ _ p) b) -> case p of
     S.PVal p                          -> Right (bindPattern p, checkExpr b)
-    S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: mapCheck (pushSpan s) (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k))) cs)
+    S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: Check (\ _T -> pushSpan s (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k) <==: _T))) cs)
 
 
 -- FIXME: check for unique variable names
@@ -381,10 +379,10 @@ runModule m = do
   runReader mod m
 
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
-withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
+withSpanB k (S.Ann s _ a) = Bind (\ _A k' -> pushSpan s (runBind (k a) _A k'))
 
 withSpanC :: Algebra sig m => (a -> Check (Elab m b)) -> S.Ann a -> Check (Elab m b)
-withSpanC k (S.Ann s _ a) = mapCheck (pushSpan s) (k a)
+withSpanC k (S.Ann s _ a) = Check (\ _T -> pushSpan s (k a <==: _T))
 
 withSpanS :: Algebra sig m => (a -> Elab m (Synth b)) -> S.Ann a -> Elab m (Synth b)
 withSpanS k (S.Ann s _ a) = pushSpan s (k a)
@@ -413,15 +411,9 @@ check (m ::: _T) = case _T of
   T.Comp sig _T -> provide sig $ m <==: _T
   _T            -> m <==: _T
 
-mapCheck :: (Elab m a -> Elab m b) -> Check (Elab m a) -> Check (Elab m b)
-mapCheck f m = Check $ \ _T -> f (m <==: _T)
-
 
 bind :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) ::: (Quantity, Type) -> Elab m b -> Elab m (Pattern Name, b)
 bind (p ::: (q, _T)) m = runBind p _T (\ p' -> (tm <$> p',) <$> ((q, p') |- m))
 
 newtype Bind m a = Bind { runBind :: forall x . Type -> (a -> Elab m x) -> Elab m x }
   deriving (Functor)
-
-mapBind :: (forall x . Elab m x -> Elab m x) -> Bind m a -> Bind m a
-mapBind f m = Bind $ \ _A k -> runBind m _A (f . k)
