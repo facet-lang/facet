@@ -89,6 +89,7 @@ library
     Facet.Eval
     Facet.Flag
     Facet.Format
+    Facet.Functor.Check
     Facet.Functor.Synth
     Facet.Graph
     Facet.Interface
