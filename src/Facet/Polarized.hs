@@ -12,11 +12,14 @@ module Facet.Polarized
 , Val(..)
 , vvar
 , velim
+, quoteVal
 , Coval(..)
+, quoteCoval
 , Elab(..)
 ) where
 
 import Control.Carrier.Reader
+import Data.Foldable (foldl')
 import Facet.Name
 import Facet.Snoc
 
@@ -145,11 +148,29 @@ velim = curry $ \case
   (Thunk v,  Force) -> v
   (_,        _)     -> error "cannot elim"
 
+
+quoteVal :: Level -> Val -> Term
+quoteVal d = \case
+  Ne l sp  -> foldl' (\ t c -> CElim t (quoteCoval d c)) (CVar (levelToIndex d l)) sp
+  Lam f    -> CLam (quoteVal (succ d) (f (vvar d)))
+  Unit     -> CUnit
+  Pair a b -> CPair (quoteVal d a) (quoteVal d b)
+  Thunk b  -> CThunk (quoteVal d b)
+
+
 data Coval
   = App Val
   | Fst
   | Snd
   | Force
+
+quoteCoval :: Level -> Coval -> Coterm
+quoteCoval d = \case
+  App a -> CApp (quoteVal d a)
+  Fst   -> CFst
+  Snd   -> CSnd
+  Force -> CForce
+
 
 newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
   deriving (Functor)
