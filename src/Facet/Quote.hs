@@ -25,3 +25,6 @@ newtype Quoting t v = Quoting { getQuoting :: v }
 
 instance (Quote v t, Eq t) => Eq (Quoting t v) where
   Quoting a == Quoting b = quote 0 a == quote 0 b
+
+instance (Quote v t, Ord t) => Ord (Quoting t v) where
+  Quoting a `compare` Quoting b = quote 0 a `compare` quote 0 b
