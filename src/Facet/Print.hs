@@ -239,6 +239,9 @@ name f n d = setPrec Var . annotate (Name d) $
 class Printable t where
   print :: Options -> Env Print -> t -> Print
 
+instance (Quote v t, Printable t) => Printable (Quoting t v) where
+  print opts env = print opts env . quote (level env) . getQuoting
+
 instance Printable TN.Classifier where
   print opts env = \case
     TN.CK k -> print opts env k
