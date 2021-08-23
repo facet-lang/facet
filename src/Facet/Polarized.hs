@@ -6,7 +6,9 @@ module Facet.Polarized
 , quoteType
 , Expr(..)
 , Term(..)
+, evalTerm
 , Coterm(..)
+, evalCoterm
 , Val(..)
 , Coval(..)
 , Elab(..)
@@ -97,11 +99,26 @@ data Term
   | CPair Term Term
   | CThunk Term
 
+evalTerm :: Snoc Val -> Term -> Val
+evalTerm env = \case
+  CVar i    -> env ! getIndex i
+  CLam b    -> Lam (\ a -> evalTerm (env :> a) b)
+  CUnit     -> Unit
+  CPair a b -> Pair (evalTerm env a) (evalTerm env b)
+  CThunk b  -> Thunk (evalTerm env b)
+
 data Coterm
-  = CApp Term Term
-  | CFst Term
-  | CSnd Term
-  | CForce Term
+  = CApp Term
+  | CFst
+  | CSnd
+  | CForce
+
+evalCoterm :: Snoc Val -> Coterm -> Coval
+evalCoterm env = \case
+  CApp a -> App (evalTerm env a)
+  CFst   -> Fst
+  CSnd   -> Snd
+  CForce -> Force
 
 data Val
   = Ne Level (Snoc Coval)
