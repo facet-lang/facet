@@ -4,7 +4,6 @@ module Facet.Polarized
 , Type(..)
 , XType(..)
 , evalType
-, quoteType
 , Expr(..)
 , Term(..)
 , evalTerm
@@ -47,6 +46,18 @@ infixr 2 :->
 infixr 7 :><
 infixl 2 :>-
 
+instance Quote Type XType where
+  quote d = \case
+    TVar k d'  -> XTVar k (levelToIndex d d')
+    Up t       -> XUp (quote d t)
+    Bot        -> XBot
+    a :-> b    -> quote d a :->: quote d b
+    ForAll k b -> XForAll k (quote (succ d) (b (TVar k d)))
+    Down t     -> XDown (quote d t)
+    One        -> XOne
+    a :>< b    -> quote d a :><: quote d b
+    b :>- a    -> quote d b :>-: quote d a
+
 
 data XType
   = XTVar Kind Index
@@ -78,18 +89,6 @@ evalType env = \case
   XOne        -> One
   a :><: b    -> evalType env a :>< evalType env b
   b :>-: a    -> evalType env b :>- evalType env a
-
-quoteType :: Level -> Type -> XType
-quoteType d = \case
-  TVar k d'  -> XTVar k (levelToIndex d d')
-  Up t       -> XUp (quoteType d t)
-  Bot        -> XBot
-  a :-> b    -> quoteType d a :->: quoteType d b
-  ForAll k b -> XForAll k (quoteType (succ d) (b (TVar k d)))
-  Down t     -> XDown (quoteType d t)
-  One        -> XOne
-  a :>< b    -> quoteType d a :><: quoteType d b
-  b :>- a    -> quoteType d b :>-: quoteType d a
 
 
 data Expr
