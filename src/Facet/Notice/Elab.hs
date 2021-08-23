@@ -39,13 +39,13 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
     ]
     where
     (_, _, printCtx, ctx) = foldl' combine (0, Env.empty, Env.empty, Nil) (elems context)
-    subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (printType opts printCtx) v)) (metas subst)
-    sig' = getPrint . printInterface opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
+    subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (print opts printCtx) v)) (metas subst)
+    sig' = getPrint . print opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
     combine (d, env, prints, ctx) (m, p) =
       let roundtrip = apply subst env
           binding (n ::: _T) = ann (intro n d ::: mult m (case _T of
             CK _K -> print opts prints _K
-            CT _T -> printType opts prints (roundtrip _T)))
+            CT _T -> print opts prints (roundtrip _T)))
       in  ( succ d
           , env Env.|> ((\ (n ::: _T) -> n :=: free (LName d n)) <$> p)
           , prints Env.|> ((\ (n ::: _) -> n :=: intro n d) <$> p)
@@ -75,7 +75,7 @@ printErrReason opts ctx = group . \case
     where
     reason = \case
       Mismatch   -> pretty "mismatch"
-      Occurs v t -> reflow "infinite type:" <+> getPrint (printType opts ctx (metavar v)) <+> reflow "occurs in" <+> getPrint (print opts ctx t)
+      Occurs v t -> reflow "infinite type:" <+> getPrint (print opts ctx (metavar v)) <+> reflow "occurs in" <+> getPrint (print opts ctx t)
     exp' = either reflow (getPrint . print opts ctx) exp
     act' = getPrint (print opts ctx act)
     -- line things up nicely for e.g. wrapped function types
@@ -84,7 +84,7 @@ printErrReason opts ctx = group . \case
     let _T' = getPrint (print opts ctx _T)
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
-  MissingInterface i -> reflow "could not find required interface" <+> getPrint (printInterface opts ctx i)
+  MissingInterface i -> reflow "could not find required interface" <+> getPrint (print opts ctx i)
 
 
 rethrowElabWarnings :: L.WriteC (Notice (Doc Style)) Warn m a -> m a

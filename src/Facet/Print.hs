@@ -16,8 +16,6 @@ module Facet.Print
 , printInstantiation
 , suppressInstantiation
   -- * Core printers
-, printType
-, printInterface
 , printNorm
 , printExpr
 , printPattern
@@ -155,12 +153,6 @@ suppressInstantiation = const
 
 -- Core printers
 
-printType :: Options -> Env Print -> TN.Type -> Print
-printType opts env = print opts env . quote (level env)
-
-printInterface :: Options -> Env Print -> Interface TN.Type -> Print
-printInterface = printWith printType
-
 printNorm :: Options -> Env Print -> N.Norm -> Print
 printNorm opts env = printExpr opts env . quote (level env)
 
@@ -202,10 +194,10 @@ printModule (C.Module mname is _ ds) = module_
   where
   def (n :=: d) = ann (qvar (Nil:.n) ::: d)
   defBody = \case
-    C.DTerm Nothing  _T ->       printType opts empty _T
-    C.DTerm (Just b) _T -> defn (printType opts empty _T :=: printExpr opts empty b)
+    C.DTerm Nothing  _T ->       print opts empty _T
+    C.DTerm (Just b) _T -> defn (print opts empty _T :=: printExpr opts empty b)
     C.DData cs _K       -> annotate Keyword (pretty "data") <+> scope defBody cs
-    C.DInterface os _K  -> annotate Keyword (pretty "interface") <+> scope (printType opts empty) os
+    C.DInterface os _K  -> annotate Keyword (pretty "interface") <+> scope (print opts empty) os
     C.DModule ds _K     -> block (concatWith (surround hardline) (map ((hardline <>) . def . fmap defBody) (C.scopeToList ds)))
   scope with = block . group . concatWith (surround (hardline <> comma <> space)) . map (group . def . fmap with) . C.scopeToList
   import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))
@@ -245,7 +237,7 @@ instance (Quote v t, Printable t) => Printable (Quoting t v) where
 instance Printable TN.Classifier where
   print opts env = \case
     TN.CK k -> print opts env k
-    TN.CT t -> printType opts env t
+    TN.CT t -> print opts env t
 
 instance Printable Kind where
   print opts env = \case
