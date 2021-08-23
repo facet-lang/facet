@@ -1,6 +1,5 @@
 module Facet.Norm
 ( Norm(..)
-, quote
 , norm
 ) where
 
@@ -14,6 +13,7 @@ import Data.Traversable (mapAccumL)
 import Facet.Env
 import Facet.Name
 import Facet.Pattern
+import Facet.Quote
 import Facet.Semialign (zipWithM)
 import Facet.Snoc
 import Facet.Syntax
@@ -33,17 +33,16 @@ instance Eq Norm where
 instance Ord Norm where
   compare = compare `on` quote 0
 
-
-quote :: Level -> Norm -> Expr
-quote d = \case
-  NString s -> XString s
-  NCon n sp -> XCon n (quote d <$> sp)
-  NLam cs   -> XLam (map (uncurry clause) cs)
-  NNe v sp  -> foldl' (\ h -> XApp h . quote d) (XVar (fmap (levelToIndex d) <$> v)) sp
-  NDict os  -> XDict (map (fmap (quote d)) os)
-  NComp p b -> XComp p (snd (clause (PDict p) b))
-  where
-  clause p b = let (d', p') = mapAccumL (\ d n -> (succ d, n :=: NNe (Free (LName d n)) Nil)) d p in (p, quote d' (b p'))
+instance Quote Norm Expr where
+  quote d = \case
+    NString s -> XString s
+    NCon n sp -> XCon n (quote d <$> sp)
+    NLam cs   -> XLam (map (uncurry clause) cs)
+    NNe v sp  -> foldl' (\ h -> XApp h . quote d) (XVar (fmap (levelToIndex d) <$> v)) sp
+    NDict os  -> XDict (map (fmap (quote d)) os)
+    NComp p b -> XComp p (snd (clause (PDict p) b))
+    where
+    clause p b = let (d', p') = mapAccumL (\ d n -> (succ d, n :=: NNe (Free (LName d n)) Nil)) d p in (p, quote d' (b p'))
 
 norm :: Env Norm -> Expr -> Norm
 norm env = \case

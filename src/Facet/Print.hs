@@ -43,6 +43,7 @@ import           Facet.Name as Name
 import qualified Facet.Norm as N
 import           Facet.Pattern
 import           Facet.Pretty (lower, upper)
+import           Facet.Quote
 import           Facet.Semiring (one, zero)
 import           Facet.Snoc
 import           Facet.Style
@@ -199,7 +200,7 @@ printInterfaceWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Pri
 printInterfaceWith with opts@Options{ rname } env (Interface h sp) = rname h $$* fmap (with opts env) sp
 
 printNorm :: Options -> Env Print -> N.Norm -> Print
-printNorm opts env = printExpr opts env . N.quote (level env)
+printNorm opts env = printExpr opts env . quote (level env)
 
 printExpr :: Options -> Env Print -> C.Expr -> Print
 printExpr opts@Options{ rname } = go
