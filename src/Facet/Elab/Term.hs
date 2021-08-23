@@ -62,6 +62,7 @@ import           Facet.Context (toEnv)
 import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type
+import qualified Facet.Functor.Check as C
 import qualified Facet.Functor.Synth as S
 import           Facet.Graph
 import           Facet.Interface
@@ -87,7 +88,7 @@ import           GHC.Stack
 -- General combinators
 
 switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
-switch (Synth m) = Check $ \ _Exp -> m >>= \case
+switch (Synth m) = Check $ C.Check $ \ _Exp -> m >>= \case
   a S.:==> T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
   a S.:==>            _Act -> unify (Exp _Exp) (Act _Act) $> a
 
@@ -116,17 +117,17 @@ var n = Synth $ views context_ (lookupInContext n) >>= \case
 
 
 hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check m a
-hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (CT _T)
+hole n = Check $ C.Check $ \ _T -> withFrozenCallStack $ err $ Hole n (CT _T)
 
 
 tlam :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr -> Check m Expr
-tlam b = Check $ \ _T -> do
+tlam b = Check $ C.Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
   (zero, PVar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name ::: Classifier)), Check m Expr)] -> Check m Expr
-lam cs = Check $ \ _T -> do
+lam cs = Check $ C.Check $ \ _T -> do
   (_A, _B) <- assertTacitFunction _T
   XLam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
 
@@ -146,14 +147,14 @@ string s = Synth $ pure $ XString s S.:==> T.String
 
 
 let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Synth m Expr -> Check m Expr -> Check m Expr
-let' p a b = Check $ \ _B -> do
+let' p a b = Check $ C.Check $ \ _B -> do
   a' S.:==> _A <- synth a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
   pure $ XLet p' a' b'
 
 
 comp :: Has (Throw Err) sig m => Check m Expr -> Check m Expr
-comp b = Check $ \ _T -> do
+comp b = Check $ C.Check $ \ _T -> do
   (sig, _B) <- assertComp _T
   StaticContext{ graph, module' } <- ask
   let interfacePattern :: Has (Throw Err) sig m => Interface Type -> Elab m (RName :=: (Name ::: Classifier))
@@ -256,7 +257,7 @@ abstractType body = go
 abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TX.Type -> Snoc Expr -> Expr) -> Check m Expr
 abstractTerm body = go Nil Nil
   where
-  go ts fs = Check $ \case
+  go ts fs = Check $ C.Check $ \case
     T.ForAll n   _T _B -> do
       d <- depth
       check (tlam (go (ts :> LName d n) fs) ::: T.ForAll n _T _B)
@@ -311,7 +312,7 @@ elabTermDef
 elabTermDef _T expr@(S.Ann s _ _) = do
   elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
-  go k = Check $ \ _T -> case _T of
+  go k = Check $ C.Check $ \ _T -> case _T of
     T.ForAll{}               -> check (tlam (go k) ::: _T)
     T.Arrow (Just n) q _A _B -> check (lam [(varP n, go k)] ::: T.Arrow Nothing q _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
@@ -410,14 +411,14 @@ findMaybeM p = getAp . fmap getFirst . foldMap (Ap . fmap First . p)
 
 check :: Algebra sig m => (Check m a ::: Type) -> Elab m a
 check (m ::: _T) = case _T of
-  T.Comp sig _T -> provide sig $ runCheck m _T
-  _T            -> runCheck m _T
+  T.Comp sig _T -> provide sig $ runCheck m C.<==: _T
+  _T            -> runCheck m C.<==: _T
 
-newtype Check m a = Check { runCheck :: Type -> Elab m a }
+newtype Check m a = Check { runCheck :: C.Check (Elab m a) }
   deriving (Applicative, Functor) via ReaderC Type (Elab m)
 
 mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
-mapCheck f m = Check $ \ _T -> f (runCheck m _T)
+mapCheck f m = Check $ C.Check $ \ _T -> f (runCheck m C.<==: _T)
 
 
 newtype Synth m a = Synth { synth :: Elab m (S.Synth a) }
