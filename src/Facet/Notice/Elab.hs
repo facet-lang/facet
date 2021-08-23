@@ -23,7 +23,7 @@ import           Facet.Subst (metas)
 import           Facet.Syntax
 import           Facet.Type.Norm (Classifier(..), apply, free, metavar)
 import           GHC.Stack
-import           Prelude hiding (unlines)
+import           Prelude hiding (print, unlines)
 import           Silkscreen
 
 -- Elaboration
@@ -70,18 +70,18 @@ printErrReason opts ctx = group . \case
       One  -> pretty "1"
       Many -> pretty "arbitrarily many"
   Unify r (Exp exp) (Act act) -> reason r
-    <> hardline <> pretty "expected:" <> print exp'
-    <> hardline <> pretty "  actual:" <> print act'
+    <> hardline <> pretty "expected:" <> align exp'
+    <> hardline <> pretty "  actual:" <> align act'
     where
     reason = \case
       Mismatch   -> pretty "mismatch"
-      Occurs v t -> reflow "infinite type:" <+> getPrint (printType opts ctx (metavar v)) <+> reflow "occurs in" <+> getPrint (printSubject opts ctx t)
-    exp' = either reflow (getPrint . printSubject opts ctx) exp
-    act' = getPrint (printSubject opts ctx act)
+      Occurs v t -> reflow "infinite type:" <+> getPrint (printType opts ctx (metavar v)) <+> reflow "occurs in" <+> getPrint (print opts ctx t)
+    exp' = either reflow (getPrint . print opts ctx) exp
+    act' = getPrint (print opts ctx act)
     -- line things up nicely for e.g. wrapped function types
-    print = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
+    align = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T                    ->
-    let _T' = getPrint (printSubject opts ctx _T)
+    let _T' = getPrint (print opts ctx _T)
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
   MissingInterface i -> reflow "could not find required interface" <+> getPrint (printInterface opts ctx i)

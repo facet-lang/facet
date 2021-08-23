@@ -16,7 +16,6 @@ module Facet.Print
 , printInstantiation
 , suppressInstantiation
   -- * Core printers
-, printSubject
 , printKind
 , printType
 , printInterface
@@ -154,11 +153,6 @@ suppressInstantiation = const
 
 
 -- Core printers
-
-printSubject :: Options -> Env Print -> TN.Classifier -> Print
-printSubject opts env = \case
-  TN.CK k -> printKind env k
-  TN.CT t -> printType opts env t
 
 printKind :: Env Print -> Kind -> Print
 printKind env = \case
