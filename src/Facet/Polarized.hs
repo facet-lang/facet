@@ -51,7 +51,7 @@ instance Quote Type XType where
     Up t       -> XUp (quote d t)
     Bot        -> XBot
     a :-> b    -> quote d a :->: quote d b
-    ForAll k b -> XForAll k (quote (succ d) (b (TVar k d)))
+    ForAll k b -> XForAll k (quoteBinder (TVar k) d b)
     Down t     -> XDown (quote d t)
     One        -> XOne
     a :>< b    -> quote d a :><: quote d b
@@ -130,7 +130,7 @@ data Val
 instance Quote Val Term where
   quote d = \case
     Ne l sp  -> foldl' (\ t c -> CElim t (quote d c)) (CVar (levelToIndex d l)) sp
-    Lam f    -> CLam (quote (succ d) (f (vvar d)))
+    Lam f    -> CLam (quoteBinder vvar d f)
     Unit     -> CUnit
     Pair a b -> CPair (quote d a) (quote d b)
     Thunk b  -> CThunk (quote d b)
