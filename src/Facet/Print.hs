@@ -168,7 +168,7 @@ printKind env = \case
   d = level env
 
 printType :: Options -> Env Print -> TN.Type -> Print
-printType opts env = printTExpr opts env . TN.quote (level env)
+printType opts env = printTExpr opts env . quote (level env)
 
 printInterface :: Options -> Env Print -> Interface TN.Type -> Print
 printInterface = printInterfaceWith printType

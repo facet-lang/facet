@@ -13,8 +13,7 @@ module Facet.Type.Norm
   -- ** Elimination
 , ($$)
 , ($$*)
-  -- * Quotation
-, quote
+  -- * Evaluation
 , eval
 , apply
 ) where
@@ -29,6 +28,7 @@ import           Facet.Interface
 import           Facet.Kind
 import           Facet.Name
 import           Facet.Pattern
+import           Facet.Quote
 import           Facet.Snoc
 import           Facet.Subst
 import           Facet.Syntax
@@ -52,6 +52,14 @@ instance Eq Type where
 
 instance Ord Type where
   compare = compare `on` quote 0
+
+instance Quote Type TX.Type where
+  quote d = \case
+    String        -> TX.String
+    ForAll n t b  -> TX.ForAll n t (quote (succ d) (b (free (LName d n))))
+    Arrow n q a b -> TX.Arrow n q (quote d a) (quote d b)
+    Comp s t      -> TX.Comp (mapSignature (quote d) s) (quote d t)
+    Ne n sp       -> foldl' (&) (TX.Var (fmap (fmap (levelToIndex d)) <$> n)) (flip TX.App . quote d <$> sp)
 
 instance TType (T Type) where
   string = T String
@@ -124,14 +132,6 @@ infixl 9 $$, $$*
 
 
 -- Quotation
-
-quote :: Level -> Type -> TX.Type
-quote d = \case
-  String        -> TX.String
-  ForAll n t b  -> TX.ForAll n t (quote (succ d) (b (free (LName d n))))
-  Arrow n q a b -> TX.Arrow n q (quote d a) (quote d b)
-  Comp s t      -> TX.Comp (mapSignature (quote d) s) (quote d t)
-  Ne n sp       -> foldl' (&) (TX.Var (fmap (fmap (levelToIndex d)) <$> n)) (flip TX.App . quote d <$> sp)
 
 eval :: HasCallStack => Subst Type -> Env Type -> TX.Type -> Type
 eval subst = go where

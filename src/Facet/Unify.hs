@@ -23,6 +23,7 @@ import           Facet.Interface
 import           Facet.Kind
 import           Facet.Name
 import           Facet.Pattern
+import           Facet.Quote
 import           Facet.Semialign
 import           Facet.Semiring
 import           Facet.Snoc
