@@ -17,7 +17,6 @@ module Facet.Print
 , suppressInstantiation
   -- * Core printers
 , printNorm
-, printExpr
 , printPattern
 , printModule
   -- * Misc
@@ -154,27 +153,7 @@ suppressInstantiation = const
 -- Core printers
 
 printNorm :: Options -> Env Print -> N.Norm -> Print
-printNorm opts env = printExpr opts env . quote (level env)
-
-printExpr :: Options -> Env Print -> C.Expr -> Print
-printExpr opts@Options{ rname } = go
-  where
-  go env = \case
-    C.XVar (Global n) -> qvar n
-    C.XVar (Free n)   -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
-    C.XLam cs         -> comp (commaSep (map (clause env) cs))
-    C.XApp f a        -> go env f $$ go env a
-    C.XCon n p        -> qvar n $$* (group . go env <$> p)
-    C.XString s       -> annotate Lit $ pretty (show s)
-    C.XDict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
-    C.XLet p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (printPattern opts (def <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
-    C.XComp p b       -> comp (clause env (PDict p, b))
-    where
-    d = level env
-  qvar = group . setPrec Var . rname
-  clause env (p, b) = printPattern opts (def <$> p') <+> arrow <+> go (env |> p') b
-    where
-    p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p)
+printNorm opts env = print opts env . quote (level env)
 
 printPattern :: Options -> Pattern Print -> Print
 printPattern Options{ rname } = go
@@ -195,7 +174,7 @@ printModule (C.Module mname is _ ds) = module_
   def (n :=: d) = ann (qvar (Nil:.n) ::: d)
   defBody = \case
     C.DTerm Nothing  _T ->       print opts empty _T
-    C.DTerm (Just b) _T -> defn (print opts empty _T :=: printExpr opts empty b)
+    C.DTerm (Just b) _T -> defn (print opts empty _T :=: print opts empty b)
     C.DData cs _K       -> annotate Keyword (pretty "data") <+> scope defBody cs
     C.DInterface os _K  -> annotate Keyword (pretty "interface") <+> scope (print opts empty) os
     C.DModule ds _K     -> block (concatWith (surround hardline) (map ((hardline <>) . def . fmap defBody) (C.scopeToList ds)))
@@ -275,6 +254,27 @@ instance Printable TX.Type where
       | otherwise -> id
 
 deriving via (Quoting TX.Type TN.Type) instance Printable TN.Type
+
+
+instance Printable C.Expr where
+  print opts@Options{ rname } = go
+    where
+    go env = \case
+      C.XVar (Global n) -> qvar n
+      C.XVar (Free n)   -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
+      C.XLam cs         -> comp (commaSep (map (clause env) cs))
+      C.XApp f a        -> go env f $$ go env a
+      C.XCon n p        -> qvar n $$* (group . go env <$> p)
+      C.XString s       -> annotate Lit $ pretty (show s)
+      C.XDict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
+      C.XLet p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (printPattern opts (def <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
+      C.XComp p b       -> comp (clause env (PDict p, b))
+      where
+      d = level env
+    qvar = group . setPrec Var . rname
+    clause env (p, b) = printPattern opts (def <$> p') <+> arrow <+> go (env |> p') b
+      where
+      p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p)
 
 
 class Printable1 f where
