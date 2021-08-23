@@ -100,6 +100,7 @@ data Term
   | CUnit
   | CPair Term Term
   | CThunk Term
+  | CElim Term Coterm
 
 evalTerm :: Snoc Val -> Term -> Val
 evalTerm env = \case
@@ -108,6 +109,7 @@ evalTerm env = \case
   CUnit     -> Unit
   CPair a b -> Pair (evalTerm env a) (evalTerm env b)
   CThunk b  -> Thunk (evalTerm env b)
+  CElim t e -> velim (evalTerm env t) (evalCoterm env e)
 
 data Coterm
   = CApp Term
