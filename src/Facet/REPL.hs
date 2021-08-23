@@ -195,12 +195,12 @@ removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets
 showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
-  e :==> _T <- runElab $ Elab.elabSynthTerm (Elab.synth (Elab.synthExpr e))
+  e :==> _T <- runElab $ Elab.elabSynthTerm (Elab.synthExpr e)
   opts <- get
   outputDocLn (getPrint (ann (Print.print opts mempty e ::: Print.print opts mempty _T)))
 
 showEval e = Action $ do
-  e' :==> _T <- runElab $ Elab.elabSynthTerm $ locally Elab.sig_ (I.singleton (I.Interface (["Effect", "Console"]:.:U "Output") Nil) :) $ Elab.synth (Elab.synthExpr e)
+  e' :==> _T <- runElab $ Elab.elabSynthTerm $ locally Elab.sig_ (I.singleton (I.Interface (["Effect", "Console"]:.:U "Output") Nil) :) $ Elab.synthExpr e
   e'' <- runElab $ runEvalMain e'
   opts <- get
   outputDocLn (getPrint (ann (Print.print opts mempty e'' ::: Print.print opts mempty _T)))

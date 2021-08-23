@@ -36,7 +36,6 @@ module Facet.Elab.Term
 , Check(..)
 , mapCheck
 , Synth(..)
-, mapSynth
 , bind
 , Bind(..)
 , mapBind
@@ -63,7 +62,7 @@ import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type
 import           Facet.Functor.Check
-import qualified Facet.Functor.Synth as S
+import           Facet.Functor.Synth
 import           Facet.Graph
 import           Facet.Interface
 import           Facet.Kind
@@ -87,32 +86,32 @@ import           GHC.Stack
 
 -- General combinators
 
-switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check (Elab m a)
-switch (Synth m) = Check $ \ _Exp -> m >>= \case
-  a S.:==> T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
-  a S.:==>            _Act -> unify (Exp _Exp) (Act _Act) $> a
+switch :: (HasCallStack, Has (Throw Err) sig m) => Elab m (Synth a) -> Check (Elab m a)
+switch m = Check $ \ _Exp -> m >>= \case
+  a :==> T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
+  a :==>            _Act -> unify (Exp _Exp) (Act _Act) $> a
 
-as :: (HasCallStack, Has (Throw Err) sig m) => Check (Elab m Expr) ::: IsType m Type -> Synth m Expr
-as (m ::: _T) = Synth $ do
+as :: (HasCallStack, Has (Throw Err) sig m) => Check (Elab m Expr) ::: IsType m Type -> Elab m (Synth Expr)
+as (m ::: _T) = do
   _T' <- checkIsType (_T ::: KType)
   a <- check (m ::: _T')
-  pure $ a S.:==> _T'
+  pure $ a :==> _T'
 
 
 -- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Algebra sig m => RName ::: Type -> Synth m Expr
-global (q ::: _T) = Synth $ (\ (v ::: _T) -> v S.:==> _T) <$> instantiate const (XVar (Global q) ::: _T)
+global :: Algebra sig m => RName ::: Type -> Elab m (Synth Expr)
+global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (XVar (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m Expr
-var n = Synth $ views context_ (lookupInContext n) >>= \case
-  [(n', q, CT _T)] -> use n' q $> (XVar (Free n') S.:==> _T)
+var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (Synth Expr)
+var n = views context_ (lookupInContext n) >>= \case
+  [(n', q, CT _T)] -> use n' q $> (XVar (Free n') :==> _T)
   _                -> resolveQ n >>= \case
-    n :=: DTerm _ _T -> synth $ global (n ::: _T)
+    n :=: DTerm _ _T -> global (n ::: _T)
     _ :=: _          -> freeVariable n
 
 
@@ -134,21 +133,21 @@ lam cs = Check $ \ _T -> do
 lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Check (Elab m Expr) -> Check (Elab m Expr)
 lam1 p b = lam [(p, b)]
 
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Synth m a) -> (HasCallStack => Check (Elab m b)) -> Synth m c
-app mk operator operand = Synth $ do
-  f' S.:==> _F <- synth operator
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (Synth a)) -> (HasCallStack => Check (Elab m b)) -> Elab m (Synth c)
+app mk operator operand = do
+  f' :==> _F <- operator
   (_ ::: (q, _A), _B) <- assertFunction _F
   a' <- censor @Usage (q ><<) $ check (operand ::: _A)
-  pure $ mk f' a' S.:==> _B
+  pure $ mk f' a' :==> _B
 
 
-string :: Text -> Synth m Expr
-string s = Synth $ pure $ XString s S.:==> T.String
+string :: Text -> Elab m (Synth Expr)
+string s = pure $ XString s :==> T.String
 
 
-let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Synth m Expr -> Check (Elab m Expr) -> Check (Elab m Expr)
+let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Elab m (Synth Expr) -> Check (Elab m Expr) -> Check (Elab m Expr)
 let' p a b = Check $ \ _B -> do
-  a' S.:==> _A <- synth a
+  a' :==> _A <- a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
   pure $ XLet p' a' b'
 
@@ -201,7 +200,7 @@ allP n = Bind $ \ _A k -> do
 
 -- Expression elaboration
 
-synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Synth m Expr
+synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Elab m (Synth Expr)
 synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanS $ \case
   S.Var n    -> var n
   S.App f a  -> synthApp f a
@@ -210,10 +209,10 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanS $ \ca
   S.Hole{}   -> nope
   S.Lam{}    -> nope
   where
-  nope = Synth couldNotSynthesize
-  synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Synth m Expr
+  nope = couldNotSynthesize
+  synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Elab m (Synth Expr)
   synthApp f a = app XApp (synthExpr f) (checkExpr a)
-  synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Synth m Expr
+  synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Elab m (Synth Expr)
   synthAs t _T = as (checkExpr t ::: mapIsType (>>= (\ (_T ::: _K) -> (::: _K) <$> evalTExpr _T)) (synthType _T))
 
 
@@ -387,8 +386,8 @@ withSpanB k (S.Ann s _ a) = mapBind (pushSpan s) (k a)
 withSpanC :: Algebra sig m => (a -> Check (Elab m b)) -> S.Ann a -> Check (Elab m b)
 withSpanC k (S.Ann s _ a) = mapCheck (pushSpan s) (k a)
 
-withSpanS :: Algebra sig m => (a -> Synth m b) -> S.Ann a -> Synth m b
-withSpanS k (S.Ann s _ a) = mapSynth (pushSpan s) (k a)
+withSpanS :: Algebra sig m => (a -> Elab m (Synth b)) -> S.Ann a -> Elab m (Synth b)
+withSpanS k (S.Ann s _ a) = pushSpan s (k a)
 
 provide :: Has (Reader ElabContext :+: State (Subst Type)) sig m => Signature Type -> m a -> m a
 provide sig m = do
@@ -416,15 +415,6 @@ check (m ::: _T) = case _T of
 
 mapCheck :: (Elab m a -> Elab m b) -> Check (Elab m a) -> Check (Elab m b)
 mapCheck f m = Check $ \ _T -> f (m <==: _T)
-
-
-newtype Synth m a = Synth { synth :: Elab m (S.Synth a) }
-
-instance Functor (Synth m) where
-  fmap f (Synth m) = Synth (fmap f <$> m)
-
-mapSynth :: (Elab m (S.Synth a) -> Elab m (S.Synth b)) -> Synth m a -> Synth m b
-mapSynth f = Synth . f . synth
 
 
 bind :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) ::: (Quantity, Type) -> Elab m b -> Elab m (Pattern Name, b)
