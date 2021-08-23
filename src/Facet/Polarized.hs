@@ -11,6 +11,7 @@ module Facet.Polarized
 , evalCoterm
 , Val(..)
 , vvar
+, velim
 , Coval(..)
 , Elab(..)
 ) where
@@ -132,6 +133,15 @@ data Val
 
 vvar :: Level -> Val
 vvar l = Ne l Nil
+
+velim :: Val -> Coval -> Val
+velim = curry $ \case
+  (Ne v sp,  c)     -> Ne v (sp :> c)
+  (Lam f,    App a) -> f a
+  (Pair a _, Fst)   -> a
+  (Pair _ b, Snd)   -> b
+  (Thunk v,  Force) -> v
+  (_,        _)     -> error "cannot elim"
 
 data Coval
   = App Val
