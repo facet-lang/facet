@@ -102,6 +102,7 @@ data Term
   | CPair Term Term
   | CThunk Term
   | CElim Term (Co Term)
+  deriving (Eq, Ord, Show)
 
 instance Eval Term Val Val where
   eval env = \case
@@ -127,6 +128,7 @@ data Val
   | Unit
   | Pair Val Val
   | Thunk Val
+  deriving (Eq, Ord, Show) via Quoting Term Val
 
 instance Quote Val Term where
   quote d = \case
