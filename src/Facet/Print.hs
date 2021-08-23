@@ -18,7 +18,6 @@ module Facet.Print
   -- * Core printers
 , printType
 , printInterface
-, printTExpr
 , printNorm
 , printExpr
 , printPattern
@@ -157,33 +156,10 @@ suppressInstantiation = const
 -- Core printers
 
 printType :: Options -> Env Print -> TN.Type -> Print
-printType opts env = printTExpr opts env . quote (level env)
+printType opts env = print opts env . quote (level env)
 
 printInterface :: Options -> Env Print -> Interface TN.Type -> Print
 printInterface = printWith printType
-
-printTExpr :: Options -> Env Print -> TX.Type -> Print
-printTExpr opts@Options{ rname } = go
-  where
-  qvar = group . setPrec Var . rname
-  go env = \case
-    TX.Var (Global n)       -> qvar n
-    TX.Var (Free (Right n)) -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
-    TX.Var (Free (Left m))  -> meta m
-    TX.ForAll      n    t b -> braces (ann (intro n d ::: print opts env t)) --> go (env |> PVar (n :=: intro n d)) b
-    TX.Arrow Nothing  q a b -> mult q (go env a) --> go env b
-    TX.Arrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
-    TX.Comp s t             -> if s == mempty then go env t else sig s <+> go env t
-    TX.App f a              -> group (go env f) $$ group (go env a)
-    TX.String               -> annotate Type $ pretty "String"
-    where
-    d = level env
-    sig s = brackets (commaSep (map (interface env) (interfaces s)))
-  interface = printWith printTExpr opts
-  mult q = if
-    | q == zero -> (pretty '0' <+>)
-    | q == one  -> (pretty '1' <+>)
-    | otherwise -> id
 
 printNorm :: Options -> Env Print -> N.Norm -> Print
 printNorm opts env = printExpr opts env . quote (level env)
@@ -279,6 +255,29 @@ instance Printable Kind where
 
 instance Printable a => Printable (Interface a) where
   print = print1
+
+instance Printable TX.Type where
+  print opts@Options{ rname } = go
+    where
+    qvar = group . setPrec Var . rname
+    go env = \case
+      TX.Var (Global n)       -> qvar n
+      TX.Var (Free (Right n)) -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
+      TX.Var (Free (Left m))  -> meta m
+      TX.ForAll      n    t b -> braces (ann (intro n d ::: print opts env t)) --> go (env |> PVar (n :=: intro n d)) b
+      TX.Arrow Nothing  q a b -> mult q (go env a) --> go env b
+      TX.Arrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
+      TX.Comp s t             -> if s == mempty then go env t else sig s <+> go env t
+      TX.App f a              -> group (go env f) $$ group (go env a)
+      TX.String               -> annotate Type $ pretty "String"
+      where
+      d = level env
+      sig s = brackets (commaSep (map (interface env) (interfaces s)))
+    interface = printWith print opts
+    mult q = if
+      | q == zero -> (pretty '0' <+>)
+      | q == one  -> (pretty '1' <+>)
+      | otherwise -> id
 
 
 class Printable1 f where
