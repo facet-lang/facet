@@ -29,6 +29,7 @@ module Facet.Print
 , meta
   -- * Printable
 , Printable(..)
+, Printable1(..)
 ) where
 
 import           Data.Foldable (foldl', toList)
@@ -277,3 +278,7 @@ instance Printable Kind where
     KArrow (Just n) a b -> parens (ann (intro n d ::: print opts env a)) --> print opts env b
     where
     d = level env
+
+
+class Printable1 f where
+  printWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Print -> f a -> Print
