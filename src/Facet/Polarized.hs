@@ -3,7 +3,6 @@ module Facet.Polarized
 ( Kind(..)
 , Type(..)
 , XType(..)
-, evalType
 , Expr(..)
 , Term(..)
 , Coterm(..)
@@ -76,18 +75,17 @@ infixr 2 :->:
 infixr 7 :><:
 infixl 2 :>-:
 
-
-evalType :: Snoc Type -> XType -> Type
-evalType env = \case
-  XTVar _ i   -> env ! getIndex i
-  XUp t       -> Up (evalType env t)
-  XBot        -> Bot
-  a :->: b    -> evalType env a :-> evalType env b
-  XForAll k b -> ForAll k (\ _A -> evalType (env :> _A) b)
-  XDown t     -> Down (evalType env t)
-  XOne        -> One
-  a :><: b    -> evalType env a :>< evalType env b
-  b :>-: a    -> evalType env b :>- evalType env a
+instance Eval XType Type Type where
+  eval env = \case
+    XTVar _ i   -> env ! getIndex i
+    XUp t       -> Up (eval env t)
+    XBot        -> Bot
+    a :->: b    -> eval env a :-> eval env b
+    XForAll k b -> ForAll k (\ _A -> eval (env :> _A) b)
+    XDown t     -> Down (eval env t)
+    XOne        -> One
+    a :><: b    -> eval env a :>< eval env b
+    b :>-: a    -> eval env b :>- eval env a
 
 
 data Expr
