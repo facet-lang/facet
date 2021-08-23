@@ -64,7 +64,7 @@ import           Text.Parser.Token hiding (brackets, comma)
 
 repl :: [FilePath] -> IO ExitCode
 repl searchPaths
-  = handle @IOError (\ e -> ExitFailure 1 <$ print e)
+  = handle @IOError (\ e -> ExitFailure 1 <$ Prelude.print e)
   . fmap (const ExitSuccess)
   . runReadlineWithHistory
   . evalState (defaultREPLState & target_.searchPaths_ .~ Set.fromList searchPaths)

@@ -29,6 +29,8 @@ module Facet.Print
 , intro
 , tintro
 , meta
+  -- * Printable
+, Printable(..)
 ) where
 
 import           Data.Foldable (foldl', toList)
@@ -270,3 +272,9 @@ name f n d = setPrec Var . annotate (Name d) $
     pretty '_' <> f d
   else
     pretty n
+
+
+-- Printable
+
+class Printable t where
+  print :: Options -> Env Print -> t -> Print
