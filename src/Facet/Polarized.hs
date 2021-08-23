@@ -40,6 +40,7 @@ data Type
   | One
   | Type :>< Type
   | Type :>- Type
+  deriving (Eq, Ord, Show) via Quoting XType Type
 
 infixr 2 :->
 infixr 7 :><
