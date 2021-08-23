@@ -89,8 +89,9 @@ data Expr
   | XApp Expr Expr
 
 data Val
+  = Ne Level (Snoc Coval)
   -- negative
-  = Lam (Val -> Val)
+  | Lam (Val -> Val)
   | Ret Val
   -- positive
   | Unit
