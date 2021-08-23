@@ -277,6 +277,9 @@ instance Printable C.Expr where
 
 deriving via (Quoting C.Expr N.Norm) instance Printable N.Norm
 
+instance Printable a => Printable (Pattern a) where
+  print = print1
+
 
 class Printable1 f where
   printWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Print -> f a -> Print
