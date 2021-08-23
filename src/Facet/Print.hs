@@ -16,7 +16,6 @@ module Facet.Print
 , printInstantiation
 , suppressInstantiation
   -- * Core printers
-, printKind
 , printType
 , printInterface
 , printTExpr
@@ -52,6 +51,7 @@ import           Facet.Syntax
 import qualified Facet.Term as C
 import qualified Facet.Type.Expr as TX
 import qualified Facet.Type.Norm as TN
+import           Prelude hiding (print)
 import qualified Prettyprinter as PP
 import           Silkscreen as P
 import           Silkscreen.Printer.Prec hiding (Level)
@@ -154,15 +154,6 @@ suppressInstantiation = const
 
 -- Core printers
 
-printKind :: Env Print -> Kind -> Print
-printKind env = \case
-  KType               -> annotate Type $ pretty "Type"
-  KInterface          -> annotate Type $ pretty "Interface"
-  KArrow Nothing  a b -> printKind env a --> printKind env b
-  KArrow (Just n) a b -> parens (ann (intro n d ::: printKind env a)) --> printKind env b
-  where
-  d = level env
-
 printType :: Options -> Env Print -> TN.Type -> Print
 printType opts env = printTExpr opts env . quote (level env)
 
@@ -177,7 +168,7 @@ printTExpr opts@Options{ rname } = go
     TX.Var (Global n)       -> qvar n
     TX.Var (Free (Right n)) -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
     TX.Var (Free (Left m))  -> meta m
-    TX.ForAll      n    t b -> braces (ann (intro n d ::: printKind env t)) --> go (env |> PVar (n :=: intro n d)) b
+    TX.ForAll      n    t b -> braces (ann (intro n d ::: print opts env t)) --> go (env |> PVar (n :=: intro n d)) b
     TX.Arrow Nothing  q a b -> mult q (go env a) --> go env b
     TX.Arrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
     TX.Comp s t             -> if s == mempty then go env t else sig s <+> go env t
@@ -275,5 +266,14 @@ class Printable t where
 
 instance Printable TN.Classifier where
   print opts env = \case
-    TN.CK k -> printKind env k
+    TN.CK k -> print opts env k
     TN.CT t -> printType opts env t
+
+instance Printable Kind where
+  print opts env = \case
+    KType               -> annotate Type $ pretty "Type"
+    KInterface          -> annotate Type $ pretty "Interface"
+    KArrow Nothing  a b -> print opts env a --> print opts env b
+    KArrow (Just n) a b -> parens (ann (intro n d ::: print opts env a)) --> print opts env b
+    where
+    d = level env
