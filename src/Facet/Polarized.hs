@@ -1,4 +1,5 @@
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Polarized
 ( Kind(..)
 , Type(..)
@@ -154,7 +155,7 @@ data Co t
   | Force
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-instance Quote (Co Val) (Co Term) where
+instance Quote v t => Quote (Co v) (Co t) where
   quote d = \case
     App a -> App (quote d a)
     Fst   -> Fst
