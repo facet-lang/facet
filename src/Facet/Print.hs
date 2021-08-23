@@ -277,6 +277,9 @@ instance Printable Kind where
     where
     d = level env
 
+instance Printable a => Printable (Interface a) where
+  print = print1
+
 
 class Printable1 f where
   printWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Print -> f a -> Print
