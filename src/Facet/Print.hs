@@ -30,6 +30,7 @@ module Facet.Print
   -- * Printable
 , Printable(..)
 , Printable1(..)
+, print1
 ) where
 
 import           Data.Foldable (foldl', toList)
@@ -282,3 +283,7 @@ class Printable1 f where
 
 instance Printable1 Interface where
   printWith with opts@Options{ rname } env (Interface h sp) = rname h $$* fmap (with opts env) sp
+
+
+print1 :: (Printable1 f, Printable a) => Options -> Env Print -> f a -> Print
+print1 = printWith print
