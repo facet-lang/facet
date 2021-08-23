@@ -18,6 +18,7 @@ module Facet.Polarized
 import Control.Carrier.Reader
 import Data.Foldable (foldl')
 import Facet.Name
+import Facet.Quote
 import Facet.Snoc
 
 data Kind
@@ -167,9 +168,6 @@ newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
   deriving (Functor)
   deriving (Applicative) via ReaderC [(String, Type)] Maybe
 
-
-class Quote v t | v -> t where
-  quote :: Level -> v -> t
 
 class Eval t e v | t -> e v where
   eval :: Snoc e -> t -> v
