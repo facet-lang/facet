@@ -159,6 +159,7 @@ data Co t
   | Fst
   | Snd
   | Force
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 instance Quote (Co Val) Coterm where
   quote d = \case
