@@ -10,6 +10,7 @@ module Facet.Polarized
 , Coterm(..)
 , evalCoterm
 , Val(..)
+, vvar
 , Coval(..)
 , Elab(..)
 ) where
@@ -128,6 +129,9 @@ data Val
   | Unit
   | Pair Val Val
   | Thunk Val
+
+vvar :: Level -> Val
+vvar l = Ne l Nil
 
 data Coval
   = App Val
