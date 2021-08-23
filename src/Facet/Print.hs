@@ -281,6 +281,15 @@ class Printable1 f where
 instance Printable1 Interface where
   printWith with opts@Options{ rname } env (Interface h sp) = rname h $$* fmap (with opts env) sp
 
+instance Printable1 Pattern where
+  printWith with opts@Options{ rname } env = go
+    where
+    go = \case
+      PWildcard -> pretty '_'
+      PVar n    -> with opts env n
+      PCon n ps -> parens (annotate Con (rname n) $$* map go (toList ps))
+      PDict os  -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (with opts env v)) os) <> flatAlt space line)
+
 
 print1 :: (Printable1 f, Printable a) => Options -> Env Print -> f a -> Print
 print1 = printWith print
