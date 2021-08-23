@@ -22,3 +22,6 @@ quoteBinder var d f = quote (succ d) (f (var d))
 -- Deriving
 
 newtype Quoting t v = Quoting { getQuoting :: v }
+
+instance (Quote v t, Eq t) => Eq (Quoting t v) where
+  Quoting a == Quoting b = quote 0 a == quote 0 b
