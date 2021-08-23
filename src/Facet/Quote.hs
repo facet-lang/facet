@@ -28,3 +28,6 @@ instance (Quote v t, Eq t) => Eq (Quoting t v) where
 
 instance (Quote v t, Ord t) => Ord (Quoting t v) where
   Quoting a `compare` Quoting b = quote 0 a `compare` quote 0 b
+
+instance (Quote v t, Show t) => Show (Quoting t v) where
+  showsPrec p = showsPrec p . quote 0 . getQuoting
