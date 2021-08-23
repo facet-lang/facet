@@ -5,7 +5,6 @@ module Facet.Polarized
 , XType(..)
 , Expr(..)
 , Term(..)
-, Coterm(..)
 , Val(..)
 , vvar
 , velim
@@ -99,7 +98,7 @@ data Term
   | CUnit
   | CPair Term Term
   | CThunk Term
-  | CElim Term Coterm
+  | CElim Term (Co Term)
 
 instance Eval Term Val Val where
   eval env = \case
@@ -110,18 +109,12 @@ instance Eval Term Val Val where
     CThunk b  -> Thunk (eval env b)
     CElim t e -> velim (eval env t) (eval env e)
 
-data Coterm
-  = CApp Term
-  | CFst
-  | CSnd
-  | CForce
-
-instance Eval Coterm Val (Co Val) where
+instance Eval (Co Term) Val (Co Val) where
   eval env = \case
-    CApp a -> App (eval env a)
-    CFst   -> Fst
-    CSnd   -> Snd
-    CForce -> Force
+    App a -> App (eval env a)
+    Fst   -> Fst
+    Snd   -> Snd
+    Force -> Force
 
 data Val
   = Ne Level (Snoc (Co Val))
@@ -161,12 +154,12 @@ data Co t
   | Force
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-instance Quote (Co Val) Coterm where
+instance Quote (Co Val) (Co Term) where
   quote d = \case
-    App a -> CApp (quote d a)
-    Fst   -> CFst
-    Snd   -> CSnd
-    Force -> CForce
+    App a -> App (quote d a)
+    Fst   -> Fst
+    Snd   -> Snd
+    Force -> Force
 
 
 newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
