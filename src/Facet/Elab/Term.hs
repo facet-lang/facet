@@ -62,6 +62,7 @@ import           Facet.Context (toEnv)
 import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type
+import qualified Facet.Functor.Synth as S
 import           Facet.Graph
 import           Facet.Interface
 import           Facet.Kind
@@ -87,28 +88,28 @@ import           GHC.Stack
 
 switch :: (HasCallStack, Has (Throw Err) sig m) => Synth m a -> Check m a
 switch (Synth m) = Check $ \ _Exp -> m >>= \case
-  a ::: T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
-  a :::            _Act -> unify (Exp _Exp) (Act _Act) $> a
+  a S.:==> T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
+  a S.:==>            _Act -> unify (Exp _Exp) (Act _Act) $> a
 
 as :: (HasCallStack, Has (Throw Err) sig m) => Check m Expr ::: IsType m Type -> Synth m Expr
 as (m ::: _T) = Synth $ do
   _T' <- checkIsType (_T ::: KType)
   a <- check (m ::: _T')
-  pure $ a ::: _T'
+  pure $ a S.:==> _T'
 
 
 -- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global :: Algebra sig m => RName ::: Type -> Synth m Expr
-global (q ::: _T) = Synth $ instantiate const (XVar (Global q) ::: _T)
+global (q ::: _T) = Synth $ (\ (v ::: _T) -> v S.:==> _T) <$> instantiate const (XVar (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Synth m Expr
 var n = Synth $ views context_ (lookupInContext n) >>= \case
-  [(n', q, CT _T)] -> use n' q $> (XVar (Free n') ::: _T)
+  [(n', q, CT _T)] -> use n' q $> (XVar (Free n') S.:==> _T)
   _                -> resolveQ n >>= \case
     n :=: DTerm _ _T -> synth $ global (n ::: _T)
     _ :=: _          -> freeVariable n
@@ -134,19 +135,19 @@ lam1 p b = lam [(p, b)]
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Synth m a) -> (HasCallStack => Check m b) -> Synth m c
 app mk operator operand = Synth $ do
-  f' ::: _F <- synth operator
+  f' S.:==> _F <- synth operator
   (_ ::: (q, _A), _B) <- assertFunction _F
   a' <- censor @Usage (q ><<) $ check (operand ::: _A)
-  pure $ mk f' a' ::: _B
+  pure $ mk f' a' S.:==> _B
 
 
 string :: Text -> Synth m Expr
-string s = Synth $ pure $ XString s ::: T.String
+string s = Synth $ pure $ XString s S.:==> T.String
 
 
 let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Synth m Expr -> Check m Expr -> Check m Expr
 let' p a b = Check $ \ _B -> do
-  a' ::: _A <- synth a
+  a' S.:==> _A <- synth a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
   pure $ XLet p' a' b'
 
@@ -419,12 +420,12 @@ mapCheck :: (Elab m a -> Elab m b) -> Check m a -> Check m b
 mapCheck f m = Check $ \ _T -> f (runCheck m _T)
 
 
-newtype Synth m a = Synth { synth :: Elab m (a ::: Type) }
+newtype Synth m a = Synth { synth :: Elab m (S.Synth a) }
 
 instance Functor (Synth m) where
-  fmap f (Synth m) = Synth (first f <$> m)
+  fmap f (Synth m) = Synth (fmap f <$> m)
 
-mapSynth :: (Elab m (a ::: Type) -> Elab m (b ::: Type)) -> Synth m a -> Synth m b
+mapSynth :: (Elab m (S.Synth a) -> Elab m (S.Synth b)) -> Synth m a -> Synth m b
 mapSynth f = Synth . f . synth
 
 

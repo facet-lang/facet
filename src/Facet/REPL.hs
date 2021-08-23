@@ -34,6 +34,7 @@ import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
 import qualified Facet.Elab.Type as Elab
 import           Facet.Eval as E
+import           Facet.Functor.Synth
 import           Facet.Graph
 import           Facet.Interface as I
 import           Facet.Lens
@@ -194,12 +195,12 @@ removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets
 showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
-  e ::: _T <- runElab $ Elab.elabSynthTerm (Elab.synth (Elab.synthExpr e))
+  e :==> _T <- runElab $ Elab.elabSynthTerm (Elab.synth (Elab.synthExpr e))
   opts <- get
   outputDocLn (getPrint (ann (Print.print opts mempty e ::: Print.print opts mempty _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- runElab $ Elab.elabSynthTerm $ locally Elab.sig_ (I.singleton (I.Interface (["Effect", "Console"]:.:U "Output") Nil) :) $ Elab.synth (Elab.synthExpr e)
+  e' :==> _T <- runElab $ Elab.elabSynthTerm $ locally Elab.sig_ (I.singleton (I.Interface (["Effect", "Console"]:.:U "Output") Nil) :) $ Elab.synth (Elab.synthExpr e)
   e'' <- runElab $ runEvalMain e'
   opts <- get
   outputDocLn (getPrint (ann (Print.print opts mempty e'' ::: Print.print opts mempty _T)))
