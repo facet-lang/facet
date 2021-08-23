@@ -11,7 +11,6 @@ module Facet.Eval
 , Value(..)
 , unit
   -- * Quotation
-, quoteV
 , E(..)
 , runE
 , state'
@@ -42,6 +41,7 @@ import Facet.Graph
 import Facet.Module
 import Facet.Name hiding (Op)
 import Facet.Pattern
+import Facet.Quote
 import Facet.Semialign (zipWithM)
 import Facet.Snoc.NonEmpty as NE hiding ((|>))
 import Facet.Syntax
@@ -132,6 +132,16 @@ data Value m
   | VDict [RName :=: Value m]
   | VComp [RName :=: Name] Expr
 
+instance Monad m => Quote (Value m) (m Expr) where
+  quote d = \case
+    VLam _ cs -> pure $ XLam cs
+    VCont k   -> quote (succ d) =<< k (VVar (Free (LName d __)))
+    VVar v    -> pure (XVar (fmap (levelToIndex d) <$> v))
+    VCon n fs -> XCon n <$> traverse (quote d) fs
+    VString s -> pure $ XString s
+    VDict os  -> XDict <$> traverse (traverse (quote d)) os
+    VComp p b -> pure $ XComp p b
+
 unit :: Value m
 unit = VCon (NE.FromList ["Data", "Unit"] :.: U "unit") []
 
@@ -151,17 +161,6 @@ matchV k p s = case p of
 
 
 -- Quotation
-
-quoteV :: Monad m => Level -> Value m -> m Expr
-quoteV d = \case
-  VLam _ cs -> pure $ XLam cs
-  VCont k   -> quoteV (succ d) =<< k (VVar (Free (LName d __)))
-  VVar v    -> pure (XVar (fmap (levelToIndex d) <$> v))
-  VCon n fs -> XCon n <$> traverse (quoteV d) fs
-  VString s -> pure $ XString s
-  VDict os  -> XDict <$> traverse (traverse (quoteV d)) os
-  VComp p b -> pure $ XComp p b
-
 
 newtype E sig r a = E (forall i . sig (E sig) i r -> (a -> r) -> r)
   deriving (Functor)
