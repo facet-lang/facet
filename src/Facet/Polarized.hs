@@ -6,15 +6,14 @@ module Facet.Polarized
 , evalType
 , Expr(..)
 , Term(..)
-, evalTerm
 , Coterm(..)
-, evalCoterm
 , Val(..)
 , vvar
 , velim
 , Coval(..)
 , Elab(..)
 , Quote(..)
+, Eval(..)
 ) where
 
 import Control.Carrier.Reader
@@ -104,14 +103,14 @@ data Term
   | CThunk Term
   | CElim Term Coterm
 
-evalTerm :: Snoc Val -> Term -> Val
-evalTerm env = \case
-  CVar i    -> env ! getIndex i
-  CLam b    -> Lam (\ a -> evalTerm (env :> a) b)
-  CUnit     -> Unit
-  CPair a b -> Pair (evalTerm env a) (evalTerm env b)
-  CThunk b  -> Thunk (evalTerm env b)
-  CElim t e -> velim (evalTerm env t) (evalCoterm env e)
+instance Eval Term Val Val where
+  eval env = \case
+    CVar i    -> env ! getIndex i
+    CLam b    -> Lam (\ a -> eval (env :> a) b)
+    CUnit     -> Unit
+    CPair a b -> Pair (eval env a) (eval env b)
+    CThunk b  -> Thunk (eval env b)
+    CElim t e -> velim (eval env t) (eval env e)
 
 data Coterm
   = CApp Term
@@ -119,12 +118,12 @@ data Coterm
   | CSnd
   | CForce
 
-evalCoterm :: Snoc Val -> Coterm -> Coval
-evalCoterm env = \case
-  CApp a -> App (evalTerm env a)
-  CFst   -> Fst
-  CSnd   -> Snd
-  CForce -> Force
+instance Eval Coterm Val Coval where
+  eval env = \case
+    CApp a -> App (eval env a)
+    CFst   -> Fst
+    CSnd   -> Snd
+    CForce -> Force
 
 data Val
   = Ne Level (Snoc Coval)
@@ -178,3 +177,6 @@ newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
 
 class Quote v t | v -> t where
   quote :: Level -> v -> t
+
+class Eval t e v | t -> e v where
+  eval :: Snoc e -> t -> v
