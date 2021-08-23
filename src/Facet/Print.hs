@@ -16,7 +16,6 @@ module Facet.Print
 , printInstantiation
 , suppressInstantiation
   -- * Core printers
-, printNorm
 , printPattern
 , printModule
   -- * Misc
@@ -152,9 +151,6 @@ suppressInstantiation = const
 
 -- Core printers
 
-printNorm :: Options -> Env Print -> N.Norm -> Print
-printNorm opts env = print opts env . quote (level env)
-
 printPattern :: Options -> Pattern Print -> Print
 printPattern Options{ rname } = go
   where
@@ -275,6 +271,8 @@ instance Printable C.Expr where
     clause env (p, b) = printPattern opts (def <$> p') <+> arrow <+> go (env |> p') b
       where
       p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p)
+
+deriving via (Quoting C.Expr N.Norm) instance Printable N.Norm
 
 
 class Printable1 f where
