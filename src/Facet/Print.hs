@@ -278,3 +278,8 @@ name f n d = setPrec Var . annotate (Name d) $
 
 class Printable t where
   print :: Options -> Env Print -> t -> Print
+
+instance Printable TN.Classifier where
+  print opts env = \case
+    TN.CK k -> printKind env k
+    TN.CT t -> printType opts env t
