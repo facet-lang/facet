@@ -4,7 +4,9 @@ module Facet.Polarized
 , XType(..)
 , evalType
 , quoteType
+, Expr(..)
 , Val(..)
+, Coval(..)
 , Elab(..)
 ) where
 
@@ -81,6 +83,9 @@ quoteType d = \case
   b :>- a    -> quoteType d b :>-: quoteType d a
 
 
+data Expr
+  = XVar String
+  | XLam String Expr
 
 data Val
   -- negative
@@ -91,7 +96,11 @@ data Val
   | Pair Val Val
   | Thunk Val
 
+data Coval
+  = App Val
+  | Fst
+  | Snd
 
-newtype Elab a = Elab { elab :: [Type] -> Maybe a }
+newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
   deriving (Functor)
-  deriving (Applicative) via ReaderC [Type] Maybe
+  deriving (Applicative) via ReaderC [(String, Type)] Maybe
