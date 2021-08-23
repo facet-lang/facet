@@ -159,7 +159,7 @@ printType :: Options -> Env Print -> TN.Type -> Print
 printType opts env = printTExpr opts env . quote (level env)
 
 printInterface :: Options -> Env Print -> Interface TN.Type -> Print
-printInterface = printInterfaceWith printType
+printInterface = printWith printType
 
 printTExpr :: Options -> Env Print -> TX.Type -> Print
 printTExpr opts@Options{ rname } = go
@@ -178,14 +178,11 @@ printTExpr opts@Options{ rname } = go
     where
     d = level env
     sig s = brackets (commaSep (map (interface env) (interfaces s)))
-  interface = printInterfaceWith printTExpr opts
+  interface = printWith printTExpr opts
   mult q = if
     | q == zero -> (pretty '0' <+>)
     | q == one  -> (pretty '1' <+>)
     | otherwise -> id
-
-printInterfaceWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Print -> Interface a -> Print
-printInterfaceWith with opts@Options{ rname } env (Interface h sp) = rname h $$* fmap (with opts env) sp
 
 printNorm :: Options -> Env Print -> N.Norm -> Print
 printNorm opts env = printExpr opts env . quote (level env)
@@ -282,3 +279,6 @@ instance Printable Kind where
 
 class Printable1 f where
   printWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Print -> f a -> Print
+
+instance Printable1 Interface where
+  printWith with opts@Options{ rname } env (Interface h sp) = rname h $$* fmap (with opts env) sp
