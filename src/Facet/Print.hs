@@ -15,8 +15,6 @@ module Facet.Print
 , unqualified
 , printInstantiation
 , suppressInstantiation
-  -- * Core printers
-, printModule
   -- * Misc
 , intro
 , tintro
@@ -148,28 +146,6 @@ printInstantiation = ($$)
 suppressInstantiation = const
 
 
--- Core printers
-
-printModule :: C.Module -> Print
-printModule (C.Module mname is _ ds) = module_
-  mname
-  (qvar (fromList [U (T.pack "Kernel")]:.U (T.pack "Module")))
-  (map (\ (C.Import n) -> import' n) is)
-  (map (def . fmap defBody) (C.scopeToList ds))
-  where
-  def (n :=: d) = ann (qvar (Nil:.n) ::: d)
-  defBody = \case
-    C.DTerm Nothing  _T ->       print opts empty _T
-    C.DTerm (Just b) _T -> defn (print opts empty _T :=: print opts empty b)
-    C.DData cs _K       -> annotate Keyword (pretty "data") <+> scope defBody cs
-    C.DInterface os _K  -> annotate Keyword (pretty "interface") <+> scope (print opts empty) os
-    C.DModule ds _K     -> block (concatWith (surround hardline) (map ((hardline <>) . def . fmap defBody) (C.scopeToList ds)))
-  scope with = block . group . concatWith (surround (hardline <> comma <> space)) . map (group . def . fmap with) . C.scopeToList
-  import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))
-  module_ n t is ds = ann (setPrec Var (prettyMName n) ::: t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
-  defn (a :=: b) = group a <> hardline <> group b
-  opts = quietOptions
-
 intro, tintro :: Name -> Level -> Print
 intro  n = name lower n . getLevel
 tintro n = name upper n . getLevel
@@ -269,6 +245,26 @@ deriving via (Quoting C.Expr N.Norm) instance Printable N.Norm
 
 instance Printable a => Printable (Pattern a) where
   print = print1
+
+
+instance Printable C.Module where
+  print opts env (C.Module mname is _ ds) = module_
+    mname
+    (qvar (fromList [U (T.pack "Kernel")]:.U (T.pack "Module")))
+    (map (\ (C.Import n) -> import' n) is)
+    (map (def . fmap defBody) (C.scopeToList ds))
+    where
+    def (n :=: d) = ann (qvar (Nil:.n) ::: d)
+    defBody = \case
+      C.DTerm Nothing  _T ->       print opts env _T
+      C.DTerm (Just b) _T -> defn (print opts env _T :=: print opts env b)
+      C.DData cs _K       -> annotate Keyword (pretty "data") <+> scope defBody cs
+      C.DInterface os _K  -> annotate Keyword (pretty "interface") <+> scope (print opts env) os
+      C.DModule ds _K     -> block (concatWith (surround hardline) (map ((hardline <>) . def . fmap defBody) (C.scopeToList ds)))
+    scope with = block . group . concatWith (surround (hardline <> comma <> space)) . map (group . def . fmap with) . C.scopeToList
+    import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))
+    module_ n t is ds = ann (setPrec Var (prettyMName n) ::: t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
+    defn (a :=: b) = group a <> hardline <> group b
 
 
 class Printable1 f where
