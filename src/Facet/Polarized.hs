@@ -86,6 +86,7 @@ quoteType d = \case
 data Expr
   = XVar String
   | XLam String Expr
+  | XApp Expr Expr
 
 data Val
   -- negative
