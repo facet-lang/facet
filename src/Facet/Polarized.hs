@@ -5,7 +5,8 @@ module Facet.Polarized
 , evalType
 , quoteType
 , Expr(..)
-, Core(..)
+, Term(..)
+, Coterm(..)
 , Val(..)
 , Coval(..)
 , Elab(..)
@@ -89,16 +90,18 @@ data Expr
   | XLam String Expr
   | XApp Expr Expr
 
-data Core
+data Term
   = CVar Index
-  | CLam Core
+  | CLam Term
   | CUnit
-  | CPair Core Core
-  | CThunk Core
-  | CApp Core Core
-  | CFst Core
-  | CSnd Core
-  | CForce Core
+  | CPair Term Term
+  | CThunk Term
+
+data Coterm
+  = CApp Term Term
+  | CFst Term
+  | CSnd Term
+  | CForce Term
 
 data Val
   = Ne Level (Snoc Coval)
