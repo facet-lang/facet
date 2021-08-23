@@ -5,6 +5,7 @@ module Facet.Polarized
 , evalType
 , quoteType
 , Expr(..)
+, Core(..)
 , Val(..)
 , Coval(..)
 , Elab(..)
@@ -88,11 +89,21 @@ data Expr
   | XLam String Expr
   | XApp Expr Expr
 
+data Core
+  = CVar Index
+  | CLam Core
+  | CUnit
+  | CPair Core Core
+  | CThunk Core
+  | CApp Core Core
+  | CFst Core
+  | CSnd Core
+  | CForce Core
+
 data Val
   = Ne Level (Snoc Coval)
   -- negative
   | Lam (Val -> Val)
-  | Ret Val
   -- positive
   | Unit
   | Pair Val Val
@@ -102,6 +113,7 @@ data Coval
   = App Val
   | Fst
   | Snd
+  | Force
 
 newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
   deriving (Functor)
