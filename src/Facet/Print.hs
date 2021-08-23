@@ -282,6 +282,8 @@ instance Printable TX.Type where
       | q == one  -> (pretty '1' <+>)
       | otherwise -> id
 
+deriving via (Quoting TX.Type TN.Type) instance Printable TN.Type
+
 
 class Printable1 f where
   printWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Print -> f a -> Print
