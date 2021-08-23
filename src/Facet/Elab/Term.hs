@@ -199,7 +199,7 @@ allP n = Bind $ \ _A k -> do
 -- Expression elaboration
 
 synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Elab m (Synth Expr)
-synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanS $ \case
+synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \case
   S.Var n    -> var n
   S.App f a  -> synthApp f a
   S.As t _T  -> synthAs t _T
@@ -384,8 +384,8 @@ withSpanB k (S.Ann s _ a) = Bind (\ _A k' -> pushSpan s (runBind (k a) _A k'))
 withSpanC :: Algebra sig m => (a -> Check (Elab m b)) -> S.Ann a -> Check (Elab m b)
 withSpanC k (S.Ann s _ a) = Check (\ _T -> pushSpan s (k a <==: _T))
 
-withSpanS :: Algebra sig m => (a -> Elab m (Synth b)) -> S.Ann a -> Elab m (Synth b)
-withSpanS k (S.Ann s _ a) = pushSpan s (k a)
+withSpan :: Has (Reader ElabContext) sig m => (a -> m b) -> S.Ann a -> m b
+withSpan k (S.Ann s _ a) = pushSpan s (k a)
 
 provide :: Has (Reader ElabContext :+: State (Subst Type)) sig m => Signature Type -> m a -> m a
 provide sig m = do
