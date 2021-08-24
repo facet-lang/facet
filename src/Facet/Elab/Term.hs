@@ -82,12 +82,12 @@ import           GHC.Stack
 
 -- General combinators
 
-switch :: (HasCallStack, Has (Throw Err) sig m) => Elab m (a :==> Type) -> Check (Elab m a)
+switch :: (HasCallStack, Has (Throw Err) sig m) => Elab m (a :==> Type) -> Type <==: Elab m a
 switch m = Check $ \ _Exp -> m >>= \case
   a :==> T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
   a :==>            _Act -> unify (Exp _Exp) (Act _Act) $> a
 
-as :: (HasCallStack, Has (Throw Err) sig m) => Check (Elab m Expr) ::: Elab m (Type :==> Kind) -> Elab m (Expr :==> Type)
+as :: (HasCallStack, Has (Throw Err) sig m) => (Type <==: Elab m Expr) ::: Elab m (Type :==> Kind) -> Elab m (Expr :==> Type)
 as (m ::: _T) = do
   _T' <- checkIsType (_T ::: KType)
   a <- check (m ::: _T')
@@ -111,25 +111,25 @@ var n = views context_ (lookupInContext n) >>= \case
     _ :=: _          -> freeVariable n
 
 
-hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Check (Elab m a)
+hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Type <==: Elab m a
 hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (CT _T)
 
 
-tlam :: (HasCallStack, Has (Throw Err) sig m) => Check (Elab m Expr) -> Check (Elab m Expr)
+tlam :: (HasCallStack, Has (Throw Err) sig m) => Type <==: Elab m Expr -> Type <==: Elab m Expr
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
   (zero, PVar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name ::: Classifier)), Check (Elab m Expr))] -> Check (Elab m Expr)
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name ::: Classifier)), Type <==: Elab m Expr)] -> Type <==: Elab m Expr
 lam cs = Check $ \ _T -> do
   (_A, _B) <- assertTacitFunction _T
   XLam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
 
-lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Check (Elab m Expr) -> Check (Elab m Expr)
+lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Type <==: Elab m Expr -> Type <==: Elab m Expr
 lam1 p b = lam [(p, b)]
 
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (a :==> Type)) -> (HasCallStack => Check (Elab m b)) -> Elab m (c :==> Type)
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (a :==> Type)) -> (HasCallStack => Type <==: Elab m b) -> Elab m (c :==> Type)
 app mk operator operand = do
   f' :==> _F <- operator
   (_ ::: (q, _A), _B) <- assertFunction _F
@@ -141,14 +141,14 @@ string :: Text -> Elab m (Expr :==> Type)
 string s = pure $ XString s :==> T.String
 
 
-let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Elab m (Expr :==> Type) -> Check (Elab m Expr) -> Check (Elab m Expr)
+let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Elab m (Expr :==> Type) -> Type <==: Elab m Expr -> Type <==: Elab m Expr
 let' p a b = Check $ \ _B -> do
   a' :==> _A <- a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
   pure $ XLet p' a' b'
 
 
-comp :: Has (Throw Err) sig m => Check (Elab m Expr) -> Check (Elab m Expr)
+comp :: Has (Throw Err) sig m => Type <==: Elab m Expr -> Type <==: Elab m Expr
 comp b = Check $ \ _T -> do
   (sig, _B) <- assertComp _T
   StaticContext{ graph, module' } <- ask
@@ -212,7 +212,7 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \cas
   synthAs t _T = as (checkExpr t ::: do { _T :==> _K <- synthType _T ; (:==> _K) <$> evalTExpr _T })
 
 
-checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check (Elab m Expr)
+checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Type <==: Elab m Expr
 checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withSpanC expr $ \case
   S.Hole  n  -> hole n
   S.Lam cs   -> checkLam cs
@@ -221,10 +221,10 @@ checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withS
   S.As{}     -> switch (synthExpr expr)
   S.String{} -> switch (synthExpr expr)
 
-checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Check (Elab m Expr)
+checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Type <==: Elab m Expr
 checkLam cs = lam (snd vs)
   where
-  vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: Check (Elab m Expr)], [(Bind m (Pattern (Name ::: Classifier)), Check (Elab m Expr))])
+  vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: (Type <==: Elab m Expr)], [(Bind m (Pattern (Name ::: Classifier)), Type <==: Elab m Expr)])
   vs = partitionEithers (map (\ (S.Clause (S.Ann _ _ p) b) -> case p of
     S.PVal p                          -> Right (bindPattern p, checkExpr b)
     S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: Check (\ _T -> pushSpan s (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k) <==: _T))) cs)
@@ -249,7 +249,7 @@ abstractType body = go
     KArrow  (Just n) a b -> TX.ForAll n a <$> ((zero, PVar (n ::: CK a)) |- go b)
     _                    -> body
 
-abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TX.Type -> Snoc Expr -> Expr) -> Check (Elab m Expr)
+abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TX.Type -> Snoc Expr -> Expr) -> Type <==: Elab m Expr
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
@@ -379,7 +379,7 @@ runModule m = do
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
 withSpanB k (S.Ann s _ a) = Bind (\ _A k' -> pushSpan s (runBind (k a) _A k'))
 
-withSpanC :: Algebra sig m => (a -> Check (Elab m b)) -> S.Ann a -> Check (Elab m b)
+withSpanC :: Algebra sig m => (a -> Type <==: Elab m b) -> S.Ann a -> Type <==: Elab m b
 withSpanC k (S.Ann s _ a) = Check (\ _T -> pushSpan s (k a <==: _T))
 
 withSpan :: Has (Reader ElabContext) sig m => (a -> m b) -> S.Ann a -> m b
@@ -404,7 +404,7 @@ findMaybeM p = getAp . fmap getFirst . foldMap (Ap . fmap First . p)
 
 -- Judgements
 
-check :: Algebra sig m => (Check (Elab m a) ::: Type) -> Elab m a
+check :: Algebra sig m => ((Type <==: Elab m a) ::: Type) -> Elab m a
 check (m ::: _T) = case _T of
   T.Comp sig _T -> provide sig $ m <==: _T
   _T            -> m <==: _T

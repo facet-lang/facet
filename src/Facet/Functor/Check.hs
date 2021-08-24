@@ -1,17 +1,15 @@
 module Facet.Functor.Check
 ( -- * Check judgement
-  Check(..)
+  type (<==:)(..)
 , (<==:)
 ) where
 
-import Facet.Type.Norm
-
 -- Check judgement
 
-newtype Check a = Check (Type -> a)
+newtype b <==: a = Check (b -> a)
   deriving (Applicative, Functor, Monad)
 
-(<==:) :: Check a -> Type -> a
+(<==:) :: b <==: a -> b -> a
 Check f <==: _T = f _T
 
 infixl 2 <==:
