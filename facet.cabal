@@ -145,7 +145,6 @@ library
     , filepath
     , fresnel
     , fused-effects
-    , fused-effects-lens
     , haskeline ^>= 0.8.1
     , optparse-applicative
     , parsers
