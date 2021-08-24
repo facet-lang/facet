@@ -5,6 +5,7 @@ module Facet.Functor.Synth
 
 import Data.Bifoldable
 import Data.Bifunctor
+import Data.Bitraversable
 
 -- Synth judgement
 
@@ -18,3 +19,6 @@ instance Bifunctor (:==>) where
 
 instance Bifoldable (:==>) where
   bifoldMap f g (a :==> _T) = f a <> g _T
+
+instance Bitraversable (:==>) where
+  bitraverse f g (a :==> _T) = (:==>) <$> f a <*> g _T
