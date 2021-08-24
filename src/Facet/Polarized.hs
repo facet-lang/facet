@@ -6,7 +6,7 @@ module Facet.Polarized
 , XType(..)
 , Expr(..)
 , Term(..)
-, Val(..)
+, V(..)
 , vvar
 , velim
 , Co(..)
@@ -104,7 +104,7 @@ data Term
   | CElim Term (Co Term)
   deriving (Eq, Ord, Show)
 
-instance Eval Term Val Val where
+instance Eval Term V V where
   eval env = \case
     CVar i    -> env ! getIndex i
     CLam b    -> Lam (\ a -> eval (env :> a) b)
@@ -120,17 +120,17 @@ instance Eval t e v => Eval (Co t) e (Co v) where
     Snd   -> Snd
     Force -> Force
 
-data Val
-  = Ne Level (Snoc (Co Val))
+data V
+  = Ne Level (Snoc (Co V))
   -- negative
-  | Lam (Val -> Val)
+  | Lam (V -> V)
   -- positive
   | Unit
-  | Pair Val Val
-  | Thunk Val
-  deriving (Eq, Ord, Show) via Quoting Term Val
+  | Pair V V
+  | Thunk V
+  deriving (Eq, Ord, Show) via Quoting Term V
 
-instance Quote Val Term where
+instance Quote V Term where
   quote d = \case
     Ne l sp  -> foldl' (\ t c -> CElim t (quote d c)) (CVar (levelToIndex d l)) sp
     Lam f    -> CLam (quoteBinder vvar d f)
@@ -139,10 +139,10 @@ instance Quote Val Term where
     Thunk b  -> CThunk (quote d b)
 
 
-vvar :: Level -> Val
+vvar :: Level -> V
 vvar l = Ne l Nil
 
-velim :: Val -> Co Val -> Val
+velim :: V -> Co V -> V
 velim = curry $ \case
   (Ne v sp,  c)     -> Ne v (sp :> c)
   (Lam f,    App a) -> f a
