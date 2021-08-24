@@ -82,12 +82,12 @@ import           GHC.Stack
 
 -- General combinators
 
-switch :: (HasCallStack, Has (Throw Err) sig m) => Elab m (Synth a) -> Check (Elab m a)
+switch :: (HasCallStack, Has (Throw Err) sig m) => Elab m (a :==> Type) -> Check (Elab m a)
 switch m = Check $ \ _Exp -> m >>= \case
   a :==> T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
   a :==>            _Act -> unify (Exp _Exp) (Act _Act) $> a
 
-as :: (HasCallStack, Has (Throw Err) sig m) => Check (Elab m Expr) ::: IsType m Type -> Elab m (Synth Expr)
+as :: (HasCallStack, Has (Throw Err) sig m) => Check (Elab m Expr) ::: IsType m Type -> Elab m (Expr :==> Type)
 as (m ::: _T) = do
   _T' <- checkIsType (_T ::: KType)
   a <- check (m ::: _T')
@@ -97,13 +97,13 @@ as (m ::: _T) = do
 -- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Algebra sig m => RName ::: Type -> Elab m (Synth Expr)
+global :: Algebra sig m => RName ::: Type -> Elab m (Expr :==> Type)
 global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (XVar (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (Synth Expr)
+var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (Expr :==> Type)
 var n = views context_ (lookupInContext n) >>= \case
   [(n', q, CT _T)] -> use n' q $> (XVar (Free n') :==> _T)
   _                -> resolveQ n >>= \case
@@ -129,7 +129,7 @@ lam cs = Check $ \ _T -> do
 lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Check (Elab m Expr) -> Check (Elab m Expr)
 lam1 p b = lam [(p, b)]
 
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (Synth a)) -> (HasCallStack => Check (Elab m b)) -> Elab m (Synth c)
+app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (a :==> Type)) -> (HasCallStack => Check (Elab m b)) -> Elab m (c :==> Type)
 app mk operator operand = do
   f' :==> _F <- operator
   (_ ::: (q, _A), _B) <- assertFunction _F
@@ -137,11 +137,11 @@ app mk operator operand = do
   pure $ mk f' a' :==> _B
 
 
-string :: Text -> Elab m (Synth Expr)
+string :: Text -> Elab m (Expr :==> Type)
 string s = pure $ XString s :==> T.String
 
 
-let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Elab m (Synth Expr) -> Check (Elab m Expr) -> Check (Elab m Expr)
+let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Elab m (Expr :==> Type) -> Check (Elab m Expr) -> Check (Elab m Expr)
 let' p a b = Check $ \ _B -> do
   a' :==> _A <- a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
@@ -196,7 +196,7 @@ allP n = Bind $ \ _A k -> do
 
 -- Expression elaboration
 
-synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Elab m (Synth Expr)
+synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Elab m (Expr :==> Type)
 synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \case
   S.Var n    -> var n
   S.App f a  -> synthApp f a
@@ -206,9 +206,9 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \cas
   S.Lam{}    -> nope
   where
   nope = couldNotSynthesize
-  synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Elab m (Synth Expr)
+  synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Elab m (Expr :==> Type)
   synthApp f a = app XApp (synthExpr f) (checkExpr a)
-  synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Elab m (Synth Expr)
+  synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Elab m (Expr :==> Type)
   synthAs t _T = as (checkExpr t ::: mapIsType (>>= (\ (_T ::: _K) -> (::: _K) <$> evalTExpr _T)) (synthType _T))
 
 
