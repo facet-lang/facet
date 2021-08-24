@@ -209,7 +209,7 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \cas
   synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Elab m (Expr :==> Type)
   synthApp f a = app XApp (synthExpr f) (checkExpr a)
   synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Elab m (Expr :==> Type)
-  synthAs t _T = as (checkExpr t ::: mapIsType (>>= (\ (_T ::: _K) -> (::: _K) <$> evalTExpr _T)) (synthType _T))
+  synthAs t _T = as (checkExpr t ::: mapIsType (>>= (\ (_T :==> _K) -> (:==> _K) <$> evalTExpr _T)) (synthType _T))
 
 
 checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Check (Elab m Expr)
