@@ -15,10 +15,10 @@ data a :==> b = a :==> b
 infixr 2 :==>
 
 instance Bifunctor (:==>) where
-  bimap f g (a :==> _T) = f a :==> g _T
+  bimap = bimapDefault
 
 instance Bifoldable (:==>) where
-  bifoldMap f g (a :==> _T) = f a <> g _T
+  bifoldMap = bifoldMapDefault
 
 instance Bitraversable (:==>) where
   bitraverse f g (a :==> _T) = (:==>) <$> f a <*> g _T
