@@ -97,6 +97,8 @@ data Expr
 
 data Term
   = CVar Index
+  | CType Type
+  | CTLam Kind Term
   | CLam Term
   | CElim Term (K Term)
   deriving (Eq, Ord, Show)
@@ -104,23 +106,28 @@ data Term
 instance Eval Term V V where
   eval env = \case
     CVar i    -> env ! getIndex i
+    CType _T  -> VType _T
+    CTLam k b -> TLam k (\ _T -> eval (env :> VType _T) b)
     CLam b    -> Lam (\ a -> eval (env :> a) b)
     CElim t e -> velim (eval env t) (eval env e)
 
-instance Eval t e v => Eval (K t) e (K v) where
-  eval env = \case
-    App a -> App (eval env a)
+instance Eval m e v => Eval (K m) e (K v) where
+  eval = fmap . eval
 
 data V
   = Ne Level (Snoc (K V))
+  | VType Type
   -- negative
+  | TLam Kind (Type -> V)
   | Lam (V -> V)
   deriving (Eq, Ord, Show) via Quoting Term V
 
 instance Quote V Term where
   quote d = \case
-    Ne l sp -> foldl' (\ t c -> CElim t (quote d c)) (CVar (levelToIndex d l)) sp
-    Lam f   -> CLam (quoteBinder vvar d f)
+    Ne l sp  -> foldl' (\ t c -> CElim t (quote d c)) (CVar (levelToIndex d l)) sp
+    VType _T -> CType _T
+    TLam k f -> CTLam k (quoteBinder (TVar k) d f)
+    Lam f    -> CLam (quoteBinder vvar d f)
 
 
 vvar :: Level -> V
@@ -128,17 +135,21 @@ vvar l = Ne l Nil
 
 velim :: V -> K V -> V
 velim = curry $ \case
-  (Ne v sp,  c)     -> Ne v (sp :> c)
-  (Lam f,    App a) -> f a
+  (Ne v sp,  k)      -> Ne v (sp :> k)
+  (VType _T, k)      -> error $ "cannot eliminate VType " <> show _T <> " with " <> show k
+  (Lam f,    App a)  -> f a
+  (Lam{},    k)      -> error $ "cannot eliminate Lam with " <> show k
+  (TLam _ f, Inst t) -> f t
+  (TLam{},   k)      -> error $ "cannot eliminate TLam with " <> show k
 
 
-newtype K t
-  = App t
+data K v
+  = App v
+  | Inst Type
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-instance Quote v t => Quote (K v) (K t) where
-  quote d = \case
-    App a -> App (quote d a)
+instance Quote v m => Quote (K v) (K m) where
+  quote = fmap . quote
 
 
 newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
