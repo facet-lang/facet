@@ -4,12 +4,14 @@ module Facet.Functor.Check
 , (<==:)
 ) where
 
+import Data.Profunctor
+
 -- Check judgement
 
 newtype b <==: a = Check (b -> a)
-  deriving (Applicative, Functor, Monad)
+  deriving (Applicative, Functor, Monad, Profunctor)
+
+infixl 2 <==:
 
 (<==:) :: b <==: a -> b -> a
 Check f <==: _T = f _T
-
-infixl 2 <==:
