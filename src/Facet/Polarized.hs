@@ -10,8 +10,8 @@ module Facet.Polarized
 , vvar
 , velim
 , K(..)
+, C(..)
 , Elab(..)
-, Quote(..)
 , Eval(..)
 ) where
 
@@ -150,6 +150,10 @@ data K v
 
 instance Quote v m => Quote (K v) (K m) where
   quote = fmap . quote
+
+
+data C
+  = V :|: K V
 
 
 newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
