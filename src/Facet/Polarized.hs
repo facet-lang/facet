@@ -9,7 +9,7 @@ module Facet.Polarized
 , V(..)
 , vvar
 , velim
-, Co(..)
+, K(..)
 , Elab(..)
 , Quote(..)
 , Eval(..)
@@ -101,7 +101,7 @@ data Term
   | CUnit
   | CPair Term Term
   | CThunk Term
-  | CElim Term (Co Term)
+  | CElim Term (K Term)
   deriving (Eq, Ord, Show)
 
 instance Eval Term V V where
@@ -113,7 +113,7 @@ instance Eval Term V V where
     CThunk b  -> Thunk (eval env b)
     CElim t e -> velim (eval env t) (eval env e)
 
-instance Eval t e v => Eval (Co t) e (Co v) where
+instance Eval t e v => Eval (K t) e (K v) where
   eval env = \case
     App a -> App (eval env a)
     Fst   -> Fst
@@ -121,7 +121,7 @@ instance Eval t e v => Eval (Co t) e (Co v) where
     Force -> Force
 
 data V
-  = Ne Level (Snoc (Co V))
+  = Ne Level (Snoc (K V))
   -- negative
   | Lam (V -> V)
   -- positive
@@ -142,7 +142,7 @@ instance Quote V Term where
 vvar :: Level -> V
 vvar l = Ne l Nil
 
-velim :: V -> Co V -> V
+velim :: V -> K V -> V
 velim = curry $ \case
   (Ne v sp,  c)     -> Ne v (sp :> c)
   (Lam f,    App a) -> f a
@@ -152,14 +152,14 @@ velim = curry $ \case
   (_,        _)     -> error "cannot elim"
 
 
-data Co t
+data K t
   = App t
   | Fst
   | Snd
   | Force
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-instance Quote v t => Quote (Co v) (Co t) where
+instance Quote v t => Quote (K v) (K t) where
   quote d = \case
     App a -> App (quote d a)
     Fst   -> Fst
