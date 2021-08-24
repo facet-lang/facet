@@ -33,8 +33,6 @@ module Facet.Elab.Term
 , require
   -- * Judgements
 , check
-, Check(..)
-, Synth(..)
 , bind
 , Bind(..)
 ) where
