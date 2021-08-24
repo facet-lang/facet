@@ -218,7 +218,7 @@ runEvalMain e = runEval (quote 0 =<< runReader mempty (eval e)) pure
 
 showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
-  _T :==> _K <- runElab $ Elab.elabSynthType (Elab.isType (Elab.synthType _T))
+  _T :==> _K <- runElab $ Elab.elabSynthType (Elab.synthType _T)
   opts <- get
   outputDocLn (getPrint (ann (Print.print opts mempty _T ::: Print.print opts mempty _K)))
 
