@@ -143,6 +143,7 @@ library
     , directory
     , exceptions ^>= 0.10
     , filepath
+    , fresnel
     , fused-effects
     , fused-effects-lens
     , haskeline ^>= 0.8.1
