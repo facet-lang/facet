@@ -20,26 +20,28 @@ import           Control.Carrier.Writer.Church
 import           Control.Effect.Choose
 import           Control.Effect.Empty
 import           Control.Effect.Throw
-import           Control.Lens as Lens (At(..), Index, IxValue, Ixed(..), iso)
 import           Control.Monad (unless, when, (<=<))
 import           Control.Monad.Trans.Class
 import           Data.Foldable (for_)
 import qualified Data.Map as Map
 import           Data.Monoid (Endo(..))
 import qualified Data.Set as Set
+import           Facet.Lens
 import           Facet.Module
 import           Facet.Name
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty (fromSnoc, toSnoc)
 import           Facet.Syntax
+import           Fresnel.Iso
 
 newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Maybe Module) }
-  deriving (Semigroup, Monoid)
+  deriving (Monoid, Semigroup)
 
-type instance Lens.Index Graph = MName
-type instance IxValue Graph = (Maybe FilePath, Maybe Module)
+instance Ixed Graph where
+  type Index Graph = MName
+  type IxValue Graph = (Maybe FilePath, Maybe Module)
+  ix = ixAt
 
-instance Ixed Graph
 instance At   Graph where
   at i = iso getGraph Graph .at i
 

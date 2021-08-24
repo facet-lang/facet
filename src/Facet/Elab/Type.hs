@@ -14,7 +14,6 @@ module Facet.Elab.Type
 
 import           Control.Algebra
 import           Control.Applicative (liftA2)
-import           Control.Effect.Lens (views)
 import           Control.Effect.Throw
 import           Control.Monad (unless)
 import           Data.Foldable (foldl')
@@ -23,6 +22,7 @@ import           Facet.Elab
 import           Facet.Functor.Synth
 import           Facet.Interface
 import           Facet.Kind
+import           Facet.Lens (views)
 import           Facet.Module
 import           Facet.Name
 import           Facet.Pattern

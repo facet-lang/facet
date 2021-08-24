@@ -147,7 +147,6 @@ library
     , fused-effects
     , fused-effects-lens
     , haskeline ^>= 0.8.1
-    , lens
     , optparse-applicative
     , parsers
     , prettyprinter

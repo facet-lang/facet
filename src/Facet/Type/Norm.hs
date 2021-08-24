@@ -19,7 +19,6 @@ module Facet.Type.Norm
 ) where
 
 import           Control.Effect.Empty
-import           Control.Lens (Prism', prism')
 import           Data.Foldable (foldl')
 import           Data.Function ((&))
 import           Data.Maybe (fromMaybe)
@@ -35,6 +34,7 @@ import           Facet.Syntax
 import           Facet.Type
 import qualified Facet.Type.Expr as TX
 import           Facet.Usage hiding (singleton)
+import           Fresnel.Prism (Prism', prism')
 import           GHC.Stack
 import           Prelude hiding (lookup)
 

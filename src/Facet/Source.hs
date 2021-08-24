@@ -14,10 +14,10 @@ module Facet.Source
 ) where
 
 import           Control.Exception (assert)
-import           Control.Lens (Lens', lens)
 import qualified Data.List.NonEmpty as NE
 import           Data.Monoid (Endo(..))
 import qualified Facet.Span as Span
+import           Fresnel.Lens (Lens', lens)
 import           Prelude hiding (lines, span)
 import qualified Prettyprinter as P
 

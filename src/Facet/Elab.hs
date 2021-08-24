@@ -55,8 +55,6 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Carrier.Writer.Church
 import           Control.Effect.Choose
-import           Control.Effect.Lens (views)
-import           Control.Lens (Lens', lens, review)
 import           Control.Monad (unless, (<=<))
 import           Data.Foldable (for_)
 import           Facet.Context hiding (empty)
@@ -67,7 +65,7 @@ import           Facet.Functor.Synth
 import           Facet.Graph as Graph
 import           Facet.Interface
 import           Facet.Kind
-import           Facet.Lens
+import           Facet.Lens hiding (Index, use)
 import           Facet.Module
 import           Facet.Name hiding (L, R)
 import           Facet.Pattern
@@ -84,6 +82,8 @@ import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as TN
 import           Facet.Usage as Usage
 import           Facet.Vars as Vars
+import           Fresnel.Lens (Lens', lens)
+import           Fresnel.Review (review)
 import           GHC.Stack
 import           Prelude hiding (span, zipWith)
 

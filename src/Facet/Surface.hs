@@ -27,13 +27,13 @@ module Facet.Surface
 , Comment(..)
 ) where
 
-import Control.Lens (Lens, Lens', lens)
 import Data.Function (on)
 import Data.Text (Text)
 import Facet.Name
 import Facet.Snoc
 import Facet.Span
 import Facet.Syntax
+import Fresnel.Lens (Lens, Lens', lens)
 
 -- Types
 

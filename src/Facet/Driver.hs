@@ -23,9 +23,7 @@ module Facet.Driver
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Effect.Error
-import           Control.Effect.Lens (use, uses, (.=))
 import           Control.Effect.State
-import           Control.Lens (Lens, Lens', at, lens, (^.))
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
 import           Data.Maybe (catMaybes)
@@ -52,6 +50,8 @@ import           Facet.Source
 import           Facet.Style
 import qualified Facet.Surface as Import (Import(..))
 import qualified Facet.Surface as S
+import           Fresnel.Getter ((^.))
+import           Fresnel.Lens (Lens, Lens', lens)
 import           Silkscreen
 import           System.Directory (findFile)
 import qualified System.FilePath as FP

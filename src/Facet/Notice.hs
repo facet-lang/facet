@@ -8,8 +8,8 @@ module Facet.Notice
 , context_
 ) where
 
-import Control.Lens (Lens', lens)
 import Facet.Source (Source(..))
+import Fresnel.Lens (Lens', lens)
 
 -- Notices
 

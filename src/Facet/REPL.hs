@@ -12,14 +12,13 @@ import           Control.Carrier.Error.Church
 import           Control.Carrier.Fail.Either
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, uses, (%=))
 import           Control.Exception (handle)
-import           Control.Lens (Lens', lens, (&), (.~))
 import           Control.Monad (unless, (<=<))
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
 import           Data.Foldable (toList)
+import           Data.Function ((&))
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
@@ -54,6 +53,8 @@ import           Facet.Style as Style
 import qualified Facet.Surface as S
 import           Facet.Syntax
 import           Facet.Term (Expr)
+import           Fresnel.Lens (Lens', lens)
+import           Fresnel.Setter ((.~))
 import           Prelude hiding (span, unlines)
 import           Silkscreen as S hiding (Ann, line)
 import           System.Console.ANSI

@@ -40,10 +40,8 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (view, views, (.=))
 import           Control.Effect.Throw
 import           Control.Effect.Writer (censor)
-import           Control.Lens (at, ix)
 import           Data.Bifunctor (first)
 import           Data.Either (partitionEithers)
 import           Data.Foldable
@@ -62,7 +60,7 @@ import           Facet.Functor.Synth
 import           Facet.Graph
 import           Facet.Interface
 import           Facet.Kind
-import           Facet.Lens (locally)
+import           Facet.Lens (At(..), Ixed(..), locally, view, views, (.=))
 import           Facet.Module as Module
 import           Facet.Name
 import           Facet.Pattern

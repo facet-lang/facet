@@ -4,8 +4,6 @@ module Facet.Run
 
 import           Control.Carrier.Error.Church
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use)
-import           Control.Lens (at, (^.))
 import           Control.Monad ((<=<))
 import           Data.Foldable (for_)
 import qualified Data.Set as Set
@@ -14,9 +12,11 @@ import           Facet.Carrier.Time.System
 import           Facet.Carrier.Write.General
 import           Facet.Driver
 import           Facet.Graph
+import           Facet.Lens
 import           Facet.Print (quietOptions)
 import           Facet.Source as Source
 import           Facet.Style
+import           Fresnel.Getter ((^.))
 import           System.Exit
 
 runFile :: [FilePath] -> FilePath -> IO ExitCode

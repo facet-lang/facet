@@ -23,7 +23,6 @@ module Facet.Module
 import           Control.Algebra
 import           Control.Effect.Choose
 import           Control.Effect.Empty
-import           Control.Lens (Lens, Lens', coerced, lens)
 import           Control.Monad ((<=<))
 import           Data.Bifunctor (Bifunctor(bimap), first)
 import           Data.Coerce
@@ -33,6 +32,8 @@ import           Facet.Name
 import           Facet.Syntax
 import           Facet.Term
 import           Facet.Type.Norm
+import           Fresnel.Iso (coerced)
+import           Fresnel.Lens (Lens, Lens', lens)
 
 -- Modules
 
