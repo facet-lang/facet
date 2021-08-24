@@ -98,9 +98,6 @@ data Expr
 data Term
   = CVar Index
   | CLam Term
-  | CUnit
-  | CPair Term Term
-  | CThunk Term
   | CElim Term (K Term)
   deriving (Eq, Ord, Show)
 
@@ -108,35 +105,22 @@ instance Eval Term V V where
   eval env = \case
     CVar i    -> env ! getIndex i
     CLam b    -> Lam (\ a -> eval (env :> a) b)
-    CUnit     -> Unit
-    CPair a b -> Pair (eval env a) (eval env b)
-    CThunk b  -> Thunk (eval env b)
     CElim t e -> velim (eval env t) (eval env e)
 
 instance Eval t e v => Eval (K t) e (K v) where
   eval env = \case
     App a -> App (eval env a)
-    Fst   -> Fst
-    Snd   -> Snd
-    Force -> Force
 
 data V
   = Ne Level (Snoc (K V))
   -- negative
   | Lam (V -> V)
-  -- positive
-  | Unit
-  | Pair V V
-  | Thunk V
   deriving (Eq, Ord, Show) via Quoting Term V
 
 instance Quote V Term where
   quote d = \case
-    Ne l sp  -> foldl' (\ t c -> CElim t (quote d c)) (CVar (levelToIndex d l)) sp
-    Lam f    -> CLam (quoteBinder vvar d f)
-    Unit     -> CUnit
-    Pair a b -> CPair (quote d a) (quote d b)
-    Thunk b  -> CThunk (quote d b)
+    Ne l sp -> foldl' (\ t c -> CElim t (quote d c)) (CVar (levelToIndex d l)) sp
+    Lam f   -> CLam (quoteBinder vvar d f)
 
 
 vvar :: Level -> V
@@ -146,25 +130,15 @@ velim :: V -> K V -> V
 velim = curry $ \case
   (Ne v sp,  c)     -> Ne v (sp :> c)
   (Lam f,    App a) -> f a
-  (Pair a _, Fst)   -> a
-  (Pair _ b, Snd)   -> b
-  (Thunk v,  Force) -> v
-  (_,        _)     -> error "cannot elim"
 
 
-data K t
+newtype K t
   = App t
-  | Fst
-  | Snd
-  | Force
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 instance Quote v t => Quote (K v) (K t) where
   quote d = \case
     App a -> App (quote d a)
-    Fst   -> Fst
-    Snd   -> Snd
-    Force -> Force
 
 
 newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
