@@ -165,6 +165,9 @@ data C v
 instance Quote v t => Quote (C v) (C t) where
   quote = fmap . quote
 
+instance Eval m e v => Eval (C m) e (C v) where
+  eval = fmap . eval
+
 
 newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
   deriving (Functor)
