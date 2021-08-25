@@ -132,7 +132,7 @@ data Value m
   | VDict [RName :=: Value m]
   | VComp [RName :=: Name] Expr
 
-instance Monad m => Quote (Value m) (m Expr) where
+instance Monad m => Quote (Value m) Level (m Expr) where
   quote d = \case
     VLam _ cs -> pure $ XLam cs
     VCont k   -> quote (succ d) =<< k (VVar (Free (LName d __)))

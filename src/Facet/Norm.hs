@@ -25,9 +25,9 @@ data Norm
   | NNe (Var (LName Level)) (Snoc Norm)
   | NDict [RName :=: Norm]
   | NComp [RName :=: Name] (Pattern (Name :=: Norm) -> Norm)
-  deriving (Eq, Ord, Show) via Quoting Expr Norm
+  deriving (Eq, Ord, Show) via Quoting Level Expr Norm
 
-instance Quote Norm Expr where
+instance Quote Norm Level Expr where
   quote d = \case
     NString s -> XString s
     NCon n sp -> XCon n (quote d <$> sp)

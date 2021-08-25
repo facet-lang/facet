@@ -46,9 +46,9 @@ data Type
   | Arrow (Maybe Name) Quantity Type Type
   | Ne (Var (Either Meta (LName Level))) (Snoc Type)
   | Comp (Signature Type) Type
-  deriving (Eq, Ord, Show) via Quoting TX.Type Type
+  deriving (Eq, Ord, Show) via Quoting Level TX.Type Type
 
-instance Quote Type TX.Type where
+instance Quote Type Level TX.Type where
   quote d = \case
     String        -> TX.String
     ForAll n t b  -> TX.ForAll n t (quote (succ d) (b (free (LName d n))))
