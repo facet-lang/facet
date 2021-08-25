@@ -3,6 +3,7 @@ module Facet.Quote
 ( -- * Quotation
   Quote(..)
 , quoteBinder
+, quoteBinderWith
 , Quote1(..)
 , quote1
 , liftQuoteBinderWith
@@ -19,6 +20,9 @@ class Quote v t | v -> t where
 
 quoteBinder :: Quote v t => (Level -> u) -> Level -> (u -> v) -> t
 quoteBinder var d f = quote (succ d) (f (var d))
+
+quoteBinderWith :: (Level -> v -> t) -> (Level -> u) -> Level -> (u -> v) -> t
+quoteBinderWith quote var d f = quote (succ d) (f (var d))
 
 
 class Quote1 v t | v -> t where
