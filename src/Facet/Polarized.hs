@@ -6,6 +6,7 @@ module Facet.Polarized
 , XType(..)
 , Expr(..)
 , Term(..)
+, evalTerm
 , Binding(..)
 , fromV
 , V(..)
@@ -20,7 +21,9 @@ module Facet.Polarized
 ) where
 
 import Control.Carrier.Reader
+import Data.Bifunctor
 import Data.Foldable (foldl')
+import Data.Function (on)
 import Facet.Name
 import Facet.Quote
 import Facet.Snoc
@@ -103,8 +106,17 @@ data Term
   = CVar Index
   | CTLam Kind Term
   | CLam Term
-  | CElim Term (K Term)
+  | CMu (C Index Term)
+  | CElim Term (K Index Term)
   deriving (Eq, Ord, Show)
+
+evalTerm :: Snoc Binding -> Snoc (K Level V) -> Term -> V
+evalTerm env kenv = \case
+  CVar i    -> fromV (env ! getIndex i)
+  CTLam k b -> TLam k (\ _T -> evalTerm (env :> T _T) kenv b)
+  CLam b    -> Lam (\ a -> evalTerm (env :> V a) kenv b)
+  CMu c     -> Mu (\ k -> bimap (indexToLevel (Level (length kenv))) (evalTerm env (kenv :> k)) c)
+  CElim t e -> evalTerm env kenv t `velim` bimap (indexToLevel (Level (length kenv))) (evalTerm env kenv) e
 
 data Binding
   = V V
@@ -115,71 +127,86 @@ fromV = \case
   V v -> v
   T _ -> error "fromV: type binding"
 
-instance Eval Term Binding V where
-  eval env = \case
-    CVar i    -> fromV (env ! getIndex i)
-    CTLam k b -> TLam k (\ _T -> eval (env :> T _T) b)
-    CLam b    -> Lam (\ a -> eval (env :> V a) b)
-    CElim t e -> eval env t `velim` eval env e
 
 data V
-  = Ne Level (Snoc (K V))
+  = Ne Level (Snoc (K Level V))
   -- negative
   | TLam Kind (Type -> V)
   | Lam (V -> V)
-  deriving (Eq, Ord, Show) via Quoting Term V
+  | Mu (K Level V -> C Level V)
 
-instance Quote V Term where
-  quote d = \case
-    Ne l sp  -> foldl' (\ t c -> CElim t (quote d c)) (CVar (levelToIndex d l)) sp
-    TLam k f -> CTLam k (quoteBinder (TVar k) d f)
-    Lam f    -> CLam (quoteBinder vvar d f)
+instance Eq V where
+  (==) = (==) `on` quoteV 0 0
+
+instance Ord V where
+  compare = compare `on` quoteV 0 0
+
+instance Show V where
+  showsPrec p = showsPrec p . quoteV 0 0
+
+quoteV :: Level -> Level -> V -> Term
+quoteV lv lk = \case
+  Ne l sp  -> foldl' (\ t c -> CElim t (bimap (levelToIndex lk) (quoteV lk lv) c)) (CVar (levelToIndex lv l)) sp
+  TLam k f -> CTLam k (quoteBinderWith (`quoteV` lk) (TVar k) lv f)
+  Lam f    -> CLam (quoteBinderWith (`quoteV` lk) vvar lv f)
+  Mu f     -> CMu (bimap (levelToIndex lk) (quoteV lv (succ lk)) (f (Ret lk)))
 
 
 vvar :: Level -> V
 vvar l = Ne l Nil
 
-velim :: V -> K V -> V
+velim :: V -> K Level V -> V
 velim = curry $ \case
   (Ne v sp,  k)      -> Ne v (sp :> k)
   (Lam f,    App a)  -> f a
   (Lam{},    k)      -> error $ "cannot eliminate Lam with " <> show k
   (TLam _ f, Inst t) -> f t
   (TLam{},   k)      -> error $ "cannot eliminate TLam with " <> show k
+  (Mu{},     k)      -> error $ "cannot eliminate Mu with " <> show k
 
 
-data K v
+data K i v
   = App v
   | Inst Type
+  | Ret i
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-instance Quote1 K K where
+instance Bifunctor K where
+  bimap f g = \case
+    App c   -> App (g c)
+    Inst ty -> Inst ty
+    Ret i   -> Ret (f i)
+
+instance Quote1 (K Level) (K Level) where
   liftQuoteWith = fmap fmap
 
-instance Quote v m => Quote (K v) (K m) where
+instance Quote v m => Quote (K Level v) (K Level m) where
   quote = quote1
 
-instance Eval1 K K where
+instance Eval1 (K Index) (K Index) where
   liftEvalWith = fmap fmap
 
-instance Eval m e v => Eval (K m) e (K v) where
+instance Eval m e v => Eval (K Index m) e (K Index v) where
   eval = eval1
 
 
-data C v
-  = v :|: K v
+data C i v
+  = v :|: K i v
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-instance Quote1 C C where
+instance Bifunctor C where
+  bimap f g (v :|: k) = g v :|: bimap f g k
+
+instance Quote1 (C Level) (C Level) where
   liftQuoteWith = fmap fmap
 
-instance Quote v t => Quote (C v) (C t) where
+instance Quote v t => Quote (C Level v) (C Level t) where
   quote = quote1
 
-instance Eval1 C C where
+instance Eval1 (C Index) (C Index) where
   liftEvalWith = fmap fmap
 
-instance Eval m e v => Eval (C m) e (C v) where
+instance Eval m e v => Eval (C Index m) e (C Index v) where
   eval = eval1
 
 
