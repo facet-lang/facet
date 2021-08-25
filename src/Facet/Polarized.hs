@@ -98,7 +98,6 @@ data Expr
 
 data Term
   = CVar Index
-  | CType Type
   | CTLam Kind Term
   | CLam Term
   | CElim Term (K Term)
@@ -107,7 +106,6 @@ data Term
 instance Eval Term (Either Type V) V where
   eval env = \case
     CVar i    -> fromJust (either (const Nothing) Just (env ! getIndex i))
-    CType _T  -> VType _T
     CTLam k b -> TLam k (\ _T -> eval (env :> Left _T) b)
     CLam b    -> Lam (\ a -> eval (env :> Right a) b)
     CElim t e -> velim (eval env t) (eval env e)
@@ -117,7 +115,6 @@ instance Eval m e v => Eval (K m) e (K v) where
 
 data V
   = Ne Level (Snoc (K V))
-  | VType Type
   -- negative
   | TLam Kind (Type -> V)
   | Lam (V -> V)
@@ -126,7 +123,6 @@ data V
 instance Quote V Term where
   quote d = \case
     Ne l sp  -> foldl' (\ t c -> CElim t (quote d c)) (CVar (levelToIndex d l)) sp
-    VType _T -> CType _T
     TLam k f -> CTLam k (quoteBinder (TVar k) d f)
     Lam f    -> CLam (quoteBinder vvar d f)
 
@@ -137,7 +133,6 @@ vvar l = Ne l Nil
 velim :: V -> K V -> V
 velim = curry $ \case
   (Ne v sp,  k)      -> Ne v (sp :> k)
-  (VType _T, k)      -> error $ "cannot eliminate VType " <> show _T <> " with " <> show k
   (Lam f,    App a)  -> f a
   (Lam{},    k)      -> error $ "cannot eliminate Lam with " <> show k
   (TLam _ f, Inst t) -> f t
