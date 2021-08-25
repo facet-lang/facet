@@ -42,13 +42,13 @@ data Type
   | One
   | Type :>< Type
   | Type :>- Type
-  deriving (Eq, Ord, Show) via Quoting Level XType Type
+  deriving (Eq, Ord, Show) via Quoting XType Type
 
 infixr 2 :->
 infixr 7 :><
 infixl 2 :>-
 
-instance Quote Type Level XType where
+instance Quote Type XType where
   quote d = \case
     TVar k d'  -> XTVar k (levelToIndex d d')
     Up t       -> XUp (quote d t)
@@ -128,9 +128,9 @@ data V
   -- negative
   | TLam Kind (Type -> V)
   | Lam (V -> V)
-  deriving (Eq, Ord, Show) via Quoting Level Term V
+  deriving (Eq, Ord, Show) via Quoting Term V
 
-instance Quote V Level Term where
+instance Quote V Term where
   quote d = \case
     Ne l sp  -> foldl' (\ t c -> CElim t (quote d c)) (CVar (levelToIndex d l)) sp
     TLam k f -> CTLam k (quoteBinder (TVar k) d f)
@@ -154,7 +154,7 @@ data K v
   | Inst Type
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-instance Quote v l m => Quote (K v) l (K m) where
+instance Quote v m => Quote (K v) (K m) where
   quote = fmap . quote
 
 
@@ -162,7 +162,7 @@ data C v
   = v :|: K v
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-instance Quote v l t => Quote (C v) l (C t) where
+instance Quote v t => Quote (C v) (C t) where
   quote = fmap . quote
 
 instance Eval m e v => Eval (C m) e (C v) where

@@ -175,7 +175,7 @@ class Printable t where
 instance Printable Print where
   print _ _ = id
 
-instance (Quote v Level t, Printable t) => Printable (Quoting Level t v) where
+instance (Quote v t, Printable t) => Printable (Quoting t v) where
   print opts env = print opts env . quote (level env) . getQuoting
 
 instance Printable TN.Classifier where
@@ -218,7 +218,7 @@ instance Printable TX.Type where
       | q == one  -> (pretty '1' <+>)
       | otherwise -> id
 
-deriving via (Quoting Level TX.Type TN.Type) instance Printable TN.Type
+deriving via (Quoting TX.Type TN.Type) instance Printable TN.Type
 
 
 instance Printable C.Expr where
@@ -241,7 +241,7 @@ instance Printable C.Expr where
       where
       p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p)
 
-deriving via (Quoting Level C.Expr N.Norm) instance Printable N.Norm
+deriving via (Quoting C.Expr N.Norm) instance Printable N.Norm
 
 instance Printable a => Printable (Pattern a) where
   print = print1
