@@ -15,6 +15,7 @@ module Facet.Polarized
 , C(..)
 , Elab(..)
 , Eval(..)
+, Eval1(..)
 ) where
 
 import Control.Carrier.Reader
@@ -182,3 +183,6 @@ newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
 
 class Eval t e v | t -> e v where
   eval :: Snoc e -> t -> v
+
+class Eval1 t e v | t -> e v where
+  liftEvalWith :: (Snoc e -> s -> u) -> Snoc e -> t s -> v u
