@@ -158,8 +158,9 @@ instance Quote v m => Quote (K v) (K m) where
   quote = fmap . quote
 
 
-data C
-  = V :|: K V
+data C v
+  = v :|: K v
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
 newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
