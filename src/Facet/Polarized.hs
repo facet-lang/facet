@@ -19,7 +19,6 @@ module Facet.Polarized
 
 import Control.Carrier.Reader
 import Data.Foldable (foldl')
-import Data.Maybe
 import Facet.Name
 import Facet.Quote
 import Facet.Snoc
@@ -114,11 +113,11 @@ fromV = \case
   V v -> v
   T _ -> error "fromV: type binding"
 
-instance Eval Term (Either Type V) V where
+instance Eval Term Binding V where
   eval env = \case
-    CVar i    -> fromJust (either (const Nothing) Just (env ! getIndex i))
-    CTLam k b -> TLam k (\ _T -> eval (env :> Left _T) b)
-    CLam b    -> Lam (\ a -> eval (env :> Right a) b)
+    CVar i    -> fromV (env ! getIndex i)
+    CTLam k b -> TLam k (\ _T -> eval (env :> T _T) b)
+    CLam b    -> Lam (\ a -> eval (env :> V a) b)
     CElim t e -> velim (eval env t) (eval env e)
 
 instance Eval m e v => Eval (K m) e (K v) where
