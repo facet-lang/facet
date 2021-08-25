@@ -17,6 +17,7 @@ module Facet.Polarized
 
 import Control.Carrier.Reader
 import Data.Foldable (foldl')
+import Data.Maybe
 import Facet.Name
 import Facet.Quote
 import Facet.Snoc
@@ -103,12 +104,12 @@ data Term
   | CElim Term (K Term)
   deriving (Eq, Ord, Show)
 
-instance Eval Term V V where
+instance Eval Term (Either Type V) V where
   eval env = \case
-    CVar i    -> env ! getIndex i
+    CVar i    -> fromJust (either (const Nothing) Just (env ! getIndex i))
     CType _T  -> VType _T
-    CTLam k b -> TLam k (\ _T -> eval (env :> VType _T) b)
-    CLam b    -> Lam (\ a -> eval (env :> a) b)
+    CTLam k b -> TLam k (\ _T -> eval (env :> Left _T) b)
+    CLam b    -> Lam (\ a -> eval (env :> Right a) b)
     CElim t e -> velim (eval env t) (eval env e)
 
 instance Eval m e v => Eval (K m) e (K v) where
