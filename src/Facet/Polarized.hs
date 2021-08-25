@@ -16,6 +16,7 @@ module Facet.Polarized
 , Elab(..)
 , Eval(..)
 , Eval1(..)
+, eval1
 ) where
 
 import Control.Carrier.Reader
@@ -186,3 +187,6 @@ class Eval t e v | t -> e v where
 
 class Eval1 t e v | t -> e v where
   liftEvalWith :: (Snoc e -> s -> u) -> Snoc e -> t s -> v u
+
+eval1 :: (Eval s e u, Eval1 t e v) => Snoc e -> t s -> v u
+eval1 = liftEvalWith eval
