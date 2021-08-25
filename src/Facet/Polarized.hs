@@ -7,6 +7,7 @@ module Facet.Polarized
 , Expr(..)
 , Term(..)
 , Binding(..)
+, fromV
 , V(..)
 , vvar
 , velim
@@ -107,6 +108,11 @@ data Term
 data Binding
   = V V
   | T Type
+
+fromV :: Binding -> V
+fromV = \case
+  V v -> v
+  T _ -> error "fromV: type binding"
 
 instance Eval Term (Either Type V) V where
   eval env = \case
