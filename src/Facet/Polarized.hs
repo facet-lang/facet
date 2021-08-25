@@ -162,6 +162,9 @@ instance Quote1 K K where
 instance Quote v m => Quote (K v) (K m) where
   quote = quote1
 
+instance Eval1 K K where
+  liftEvalWith = fmap fmap
+
 
 data C v
   = v :|: K v
