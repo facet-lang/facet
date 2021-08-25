@@ -185,8 +185,8 @@ newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
 class Eval t e v | t -> e v where
   eval :: Snoc e -> t -> v
 
-class Eval1 t e v | t -> e v where
+class Eval1 t v | t -> v where
   liftEvalWith :: (Snoc e -> s -> u) -> Snoc e -> t s -> v u
 
-eval1 :: (Eval s e u, Eval1 t e v) => Snoc e -> t s -> v u
+eval1 :: (Eval s e u, Eval1 t v) => Snoc e -> t s -> v u
 eval1 = liftEvalWith eval
