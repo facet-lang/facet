@@ -112,11 +112,11 @@ data Term
 
 evalTerm :: Snoc Binding -> Snoc (K Level V) -> Term -> V
 evalTerm env kenv = \case
-  CVar i    -> fromV (env ! getIndex i)
-  CTLam k b -> TLam k (\ _T -> evalTerm (env :> T _T) kenv b)
-  CLam b    -> Lam (\ a -> evalTerm (env :> V a) kenv b)
-  CMu c     -> Mu (\ k -> bimap (indexToLevel (Level (length kenv))) (evalTerm env (kenv :> k)) c)
-  CElim t e -> evalTerm env kenv t `velim` bimap (indexToLevel (Level (length kenv))) (evalTerm env kenv) e
+  CVar i        -> fromV (env ! getIndex i)
+  CTLam k b     -> TLam k (\ _T -> evalTerm (env :> T _T) kenv b)
+  CLam b        -> Lam (\ a -> evalTerm (env :> V a) kenv b)
+  CMu (v :|: k) -> evalTerm env kenv v `velim` bimap (indexToLevel (Level (length kenv))) (evalTerm env kenv) k
+  CElim t e     -> evalTerm env kenv t `velim` bimap (indexToLevel (Level (length kenv))) (evalTerm env kenv) e
 
 data Binding
   = V V
