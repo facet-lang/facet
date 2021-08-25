@@ -162,6 +162,9 @@ data C v
   = v :|: K v
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+instance Quote1 C C where
+  liftQuoteWith = fmap fmap
+
 instance Quote v t => Quote (C v) (C t) where
   quote = fmap . quote
 
