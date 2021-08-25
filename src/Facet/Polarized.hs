@@ -122,9 +122,6 @@ instance Eval Term Binding V where
     CLam b    -> Lam (\ a -> eval (env :> V a) b)
     CElim t e -> eval env t `velim` eval env e
 
-instance Eval m e v => Eval (K m) e (K v) where
-  eval = eval1
-
 data V
   = Ne Level (Snoc (K V))
   -- negative
@@ -164,6 +161,9 @@ instance Quote v m => Quote (K v) (K m) where
 
 instance Eval1 K K where
   liftEvalWith = fmap fmap
+
+instance Eval m e v => Eval (K m) e (K v) where
+  eval = eval1
 
 
 data C v
