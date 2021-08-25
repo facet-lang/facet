@@ -154,6 +154,9 @@ data K v
   | Inst Type
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+instance Quote1 K K where
+  liftQuoteWith = fmap fmap
+
 instance Quote v m => Quote (K v) (K m) where
   quote = fmap . quote
 
