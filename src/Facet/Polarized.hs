@@ -105,8 +105,8 @@ data Term
   deriving (Eq, Ord, Show)
 
 data Binding
-  = Tm V
-  | Ty Type
+  = V V
+  | T Type
 
 instance Eval Term (Either Type V) V where
   eval env = \case
