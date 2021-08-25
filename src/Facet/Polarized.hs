@@ -118,7 +118,7 @@ instance Eval Term Binding V where
     CVar i    -> fromV (env ! getIndex i)
     CTLam k b -> TLam k (\ _T -> eval (env :> T _T) b)
     CLam b    -> Lam (\ a -> eval (env :> V a) b)
-    CElim t e -> velim (eval env t) (eval env e)
+    CElim t e -> eval env t `velim` eval env e
 
 instance Eval m e v => Eval (K m) e (K v) where
   eval = fmap . eval
