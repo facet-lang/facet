@@ -158,7 +158,7 @@ instance Quote1 K K where
   liftQuoteWith = fmap fmap
 
 instance Quote v m => Quote (K v) (K m) where
-  quote = fmap . quote
+  quote = quote1
 
 
 data C v
@@ -169,7 +169,7 @@ instance Quote1 C C where
   liftQuoteWith = fmap fmap
 
 instance Quote v t => Quote (C v) (C t) where
-  quote = fmap . quote
+  quote = quote1
 
 instance Eval m e v => Eval (C m) e (C v) where
   eval = fmap . eval
