@@ -6,6 +6,7 @@ module Facet.Polarized
 , XType(..)
 , Expr(..)
 , Term(..)
+, Binding(..)
 , V(..)
 , vvar
 , velim
@@ -102,6 +103,10 @@ data Term
   | CLam Term
   | CElim Term (K Term)
   deriving (Eq, Ord, Show)
+
+data Binding
+  = Tm V
+  | Ty Type
 
 instance Eval Term (Either Type V) V where
   eval env = \case
