@@ -162,6 +162,9 @@ data C v
   = v :|: K v
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+instance Quote v t => Quote (C v) (C t) where
+  quote = fmap . quote
+
 
 newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
   deriving (Functor)
