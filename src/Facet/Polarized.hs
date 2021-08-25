@@ -173,6 +173,9 @@ instance Quote1 C C where
 instance Quote v t => Quote (C v) (C t) where
   quote = quote1
 
+instance Eval1 C C where
+  liftEvalWith = fmap fmap
+
 instance Eval m e v => Eval (C m) e (C v) where
   eval = fmap . eval
 
