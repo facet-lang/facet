@@ -123,7 +123,7 @@ instance Eval Term Binding V where
     CElim t e -> eval env t `velim` eval env e
 
 instance Eval m e v => Eval (K m) e (K v) where
-  eval = fmap . eval
+  eval = eval1
 
 data V
   = Ne Level (Snoc (K V))
@@ -180,7 +180,7 @@ instance Eval1 C C where
   liftEvalWith = fmap fmap
 
 instance Eval m e v => Eval (C m) e (C v) where
-  eval = fmap . eval
+  eval = eval1
 
 
 newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
