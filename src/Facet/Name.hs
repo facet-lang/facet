@@ -65,6 +65,10 @@ instance DeBruijn Level Index where
   toIndexed = levelToIndex
   toLeveled = indexToLevel
 
+instance DeBruijn lv ix => DeBruijn (Either e lv) (Either e ix) where
+  toIndexed = fmap . toIndexed
+  toLeveled = fmap . toLeveled
+
 
 newtype Meta = Meta { getMeta :: Int }
   deriving (Eq, Ord, Show)
