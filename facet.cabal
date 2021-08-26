@@ -120,6 +120,7 @@ library
     Facet.Span
     Facet.Style
     Facet.Subst
+    Facet.Surface.Class
     Facet.Surface.Expr
     Facet.Syntax
     Facet.Term.Class
