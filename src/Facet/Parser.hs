@@ -204,7 +204,7 @@ signature :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, Tok
 signature = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
-  head = fmap mkHead <$> token (anned (runUnspaced (sepByNonEmpty comp dot)))
+  head = mkHead <$> token (runUnspaced (sepByNonEmpty comp dot))
   mkHead cs = fromList (NE.init cs) N.:. NE.last cs
   comp = ident tnameStyle
 

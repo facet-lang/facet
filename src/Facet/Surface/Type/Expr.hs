@@ -27,7 +27,7 @@ data Type
   deriving (Eq, Show)
 
 
-data Interface a = Interface (Ann Comment QName) (Snoc a)
+data Interface a = Interface QName (Snoc a)
   deriving (Eq, Show)
 
 
