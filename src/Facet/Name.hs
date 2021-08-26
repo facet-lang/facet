@@ -1,5 +1,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Name
 ( Index(..)
 , Level(..)
@@ -118,6 +119,10 @@ toQ (m :.: n) = toSnoc m :. n
 -- | Local names, consisting of a 'Level' or 'Index' to a pattern in an 'Env' or 'Context' and a 'Name' bound by said pattern.
 data LName v = LName v Name
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+instance DeBruijn lv ix => DeBruijn (LName lv) (LName ix) where
+  toIndexed = fmap . toIndexed
+  toLeveled = fmap . toLeveled
 
 lnameToIndex :: Level -> LName Level -> LName Index
 lnameToIndex = fmap . levelToIndex
