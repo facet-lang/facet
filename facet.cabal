@@ -125,7 +125,6 @@ library
     Facet.Term.Expr
     Facet.Term.Norm
     Facet.Timing
-    Facet.Type
     Facet.Type.Class
     Facet.Type.Expr
     Facet.Type.Norm
