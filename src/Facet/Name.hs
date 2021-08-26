@@ -16,8 +16,6 @@ module Facet.Name
 , (.:.)
 , toQ
 , LName(..)
-, lnameToIndex
-, lnameToLevel
 , Name(..)
 , Assoc(..)
 , Op(..)
@@ -123,12 +121,6 @@ data LName v = LName v Name
 instance DeBruijn lv ix => DeBruijn (LName lv) (LName ix) where
   toIndexed = fmap . toIndexed
   toLeveled = fmap . toLeveled
-
-lnameToIndex :: Level -> LName Level -> LName Index
-lnameToIndex = fmap . levelToIndex
-
-lnameToLevel :: Level -> LName Index -> LName Level
-lnameToLevel = fmap . indexToLevel
 
 
 -- | Declaration names; a choice of expression, constructor, term, or operator names.
