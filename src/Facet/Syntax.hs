@@ -17,6 +17,8 @@ module Facet.Syntax
 , Act(..)
   -- * Type-safe constructors
 , T(..)
+  -- * Natural transformations
+, type (~>)
 ) where
 
 import Data.Bifoldable
@@ -124,3 +126,8 @@ newtype Act a = Act { getAct :: a }
 type T :: Type -> forall k . k -> Type
 
 newtype T a b = T { getT :: a }
+
+
+-- Natural transformations
+
+type i ~> j = forall x . i x -> j x
