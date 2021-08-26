@@ -21,29 +21,8 @@ module Facet.Surface.Expr
 
 import Data.Text (Text)
 import Facet.Name
-import Facet.Snoc
+import Facet.Surface.Type.Expr
 import Facet.Syntax
-
--- Types
-
-data Kind
-  = KType
-  | KInterface
-  | KArrow (Maybe Name) (Ann Comment Kind) (Ann Comment Kind)
-  deriving (Eq, Show)
-
-data Type
-  = TVar QName
-  | TString
-  | TForAll Name (Ann Comment Kind) (Ann Comment Type)
-  | TArrow (Maybe Name) (Maybe Mul) (Ann Comment Type) (Ann Comment Type)
-  | TComp [Ann Comment Interface] (Ann Comment Type)
-  | TApp (Ann Comment Type) (Ann Comment Type)
-  deriving (Eq, Show)
-
-data Mul = Zero | One
-  deriving (Bounded, Enum, Eq, Ord, Show)
-
 
 -- Expressions
 
@@ -54,10 +33,6 @@ data Expr
   | App (Ann Comment Expr) (Ann Comment Expr)
   | As (Ann Comment Expr) (Ann Comment Type)
   | String Text
-  deriving (Eq, Show)
-
-
-data Interface = Interface (Ann Comment QName) (Snoc (Ann Comment Type))
   deriving (Eq, Show)
 
 
