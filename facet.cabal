@@ -120,9 +120,9 @@ library
     Facet.Span
     Facet.Style
     Facet.Subst
-    Facet.Surface.Class
     Facet.Surface.Module
     Facet.Surface.Term.Expr
+    Facet.Surface.Type.Class
     Facet.Surface.Type.Expr
     Facet.Syntax
     Facet.Term.Class
