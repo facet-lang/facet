@@ -1,5 +1,5 @@
 module Facet.Term.Norm
-( Norm(..)
+( Term(..)
 , norm
 ) where
 
@@ -19,16 +19,16 @@ import           Facet.Syntax
 import           Facet.Term.Expr (Expr)
 import qualified Facet.Term.Expr as X
 
-data Norm
+data Term
   = String Text
-  | Con RName [Norm]
-  | Lam [(Pattern Name, Pattern (Name :=: Norm) -> Norm)]
-  | Ne (Var (LName Level)) (Snoc Norm)
-  | Dict [RName :=: Norm]
-  | Comp [RName :=: Name] (Pattern (Name :=: Norm) -> Norm)
-  deriving (Eq, Ord, Show) via Quoting Expr Norm
+  | Con RName [Term]
+  | Lam [(Pattern Name, Pattern (Name :=: Term) -> Term)]
+  | Ne (Var (LName Level)) (Snoc Term)
+  | Dict [RName :=: Term]
+  | Comp [RName :=: Name] (Pattern (Name :=: Term) -> Term)
+  deriving (Eq, Ord, Show) via Quoting Expr Term
 
-instance Quote Norm Expr where
+instance Quote Term Expr where
   quote d = \case
     String s -> X.String s
     Con n sp -> X.Con n (quote d <$> sp)
@@ -39,7 +39,7 @@ instance Quote Norm Expr where
     where
     clause p b = let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName d n)) Nil)) d p in (p, quote d' (b p'))
 
-norm :: Env Norm -> Expr -> Norm
+norm :: Env Term -> Expr -> Term
 norm env = \case
   X.String s  -> String s
   X.Var v     -> Ne (fmap (indexToLevel (level env)) <$> v) Nil
@@ -51,7 +51,7 @@ norm env = \case
   X.Comp p b  -> Comp p (\ p' -> norm (env |> p') b)
 
 
-napp :: Norm -> Norm -> Norm
+napp :: Term -> Term -> Term
 napp f a = case f of
   Lam cs  -> case getFirst (foldMap (\ (p, b) -> First (b <$> match a p)) cs) of
     Just a' -> a'
@@ -59,7 +59,7 @@ napp f a = case f of
   Ne h sp -> Ne h (sp :> a)
   _       -> error "napp: ill-formed application"
 
-match :: Norm -> Pattern Name -> Maybe (Pattern (Name :=: Norm))
+match :: Term -> Pattern Name -> Maybe (Pattern (Name :=: Term))
 match s = \case
   PWildcard -> Just PWildcard
   PVar n    -> Just (PVar (n :=: s))
@@ -70,7 +70,7 @@ match s = \case
     Dict os -> PDict <$> zipWithM (\ (n1 :=: o) (n2 :=: p) -> (n1 :=: (p :=: o)) <$ guard (n1 == n2)) os ps
     _       -> Nothing
 
--- ninst :: Norm -> T.Type -> Norm
+-- ninst :: Term -> T.Type -> Term
 -- ninst f t = case f of
 --   NTLam _ b -> b t
 --   NNe h sp  -> NNe h (sp :> EInst t)
