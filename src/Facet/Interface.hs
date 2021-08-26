@@ -6,6 +6,7 @@ module Facet.Interface
 , interfaces
 , mapSignature
 , traverseSignature
+, sequenceSignature
 ) where
 
 import qualified Data.Set as Set
@@ -32,3 +33,6 @@ mapSignature f = Signature . Set.map (fmap f) . getSignature
 
 traverseSignature :: (Ord b, Applicative f) => (a -> f b) -> Signature a -> f (Signature b)
 traverseSignature f (Signature m) = Signature . Set.fromList <$> traverse (traverse f) (Set.toList m)
+
+sequenceSignature :: (Ord a, Applicative f) => Signature (f a) -> f (Signature a)
+sequenceSignature = traverseSignature id
