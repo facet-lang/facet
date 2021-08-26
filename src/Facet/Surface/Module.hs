@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Facet.Surface.Expr
+module Facet.Surface.Module
 ( -- * Definitions
   Def(..)
   -- * Modules

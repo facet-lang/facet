@@ -121,7 +121,7 @@ library
     Facet.Style
     Facet.Subst
     Facet.Surface.Class
-    Facet.Surface.Expr
+    Facet.Surface.Module
     Facet.Surface.Term.Expr
     Facet.Surface.Type.Expr
     Facet.Syntax

@@ -48,7 +48,7 @@ import           Facet.Print (Options)
 import           Facet.Snoc
 import           Facet.Source
 import           Facet.Style
-import qualified Facet.Surface.Expr as Import (Import(..))
+import qualified Facet.Surface.Module as Import (Import(..))
 import           Facet.Syntax as S
 import           Fresnel.Getter ((^.))
 import           Fresnel.Lens (Lens, Lens', lens)
