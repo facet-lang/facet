@@ -50,7 +50,7 @@ import           Facet.REPL.Parser
 import           Facet.Snoc
 import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Style as Style
-import qualified Facet.Surface.Expr as S
+import qualified Facet.Surface.Term.Expr as S
 import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (ann)
 import           Facet.Term.Expr (Term)

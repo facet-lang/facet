@@ -37,6 +37,7 @@ import           Facet.Parser.Table as Op
 import           Facet.Snoc
 import           Facet.Span
 import qualified Facet.Surface.Expr as S
+import qualified Facet.Surface.Term.Expr as S
 import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S
 import           Prelude hiding (lines, null, product, span)
