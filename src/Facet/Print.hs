@@ -40,7 +40,7 @@ import           Facet.Quote
 import           Facet.Semiring (one, zero)
 import           Facet.Snoc
 import           Facet.Style
-import           Facet.Syntax
+import           Facet.Syntax hiding (Ann(..))
 import qualified Facet.Term.Expr as C
 import qualified Facet.Term.Norm as N
 import qualified Facet.Type.Expr as TX

@@ -18,22 +18,13 @@ module Facet.Surface.Expr
 , Module(..)
 , Import(..)
   -- * Annotations
-, Ann(..)
-, ann_
-, context_
-, out_
-, annUnary
-, annBinary
 , Comment(..)
 ) where
 
-import Data.Function (on)
 import Data.Text (Text)
 import Facet.Name
 import Facet.Snoc
-import Facet.Span
 import Facet.Syntax
-import Fresnel.Lens (Lens, Lens', lens)
 
 -- Types
 
@@ -119,42 +110,6 @@ newtype Import = Import { name :: MName }
 
 
 -- Annotations
-
-data Ann c a = Ann
-  { ann     :: Span
-  , context :: Snoc (Span, c)
-  , out     :: a
-  }
-  deriving (Foldable, Functor, Traversable)
-
-instance Eq a => Eq (Ann c a) where
-  (==) = (==) `on` out
-
-instance Ord a => Ord (Ann c a) where
-  compare = compare `on` out
-
-instance Show a => Show (Ann c a) where
-  showsPrec p = showsPrec p . out
-
-instance HasSpan (Ann c a) where
-  span_ = ann_
-
-ann_ :: Lens' (Ann c a) Span
-ann_ = lens ann (\ a ann -> a{ ann })
-
-context_ :: Lens (Ann c a) (Ann d a) (Snoc (Span, c)) (Snoc (Span, d))
-context_ = lens context (\ a context -> a{ context })
-
-out_ :: Lens (Ann c a) (Ann c b) a b
-out_ = lens out (\ a out -> a{ out })
-
-
-annUnary :: (Ann c a -> a) -> Ann c a -> Ann c a
-annUnary f a = Ann (ann a) Nil (f a)
-
-annBinary :: (Ann c a -> Ann c b -> a) -> Ann c a -> Ann c b -> Ann c a
-annBinary f a b = Ann (ann a <> ann b) Nil (f a b)
-
 
 newtype Comment = Comment { getComment :: Text }
   deriving (Eq, Show)

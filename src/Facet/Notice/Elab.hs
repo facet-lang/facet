@@ -20,7 +20,7 @@ import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Snoc
 import           Facet.Style
 import           Facet.Subst (metas)
-import           Facet.Syntax
+import           Facet.Syntax hiding (ann)
 import           Facet.Type.Norm (Classifier(..), apply, free, metavar)
 import           GHC.Stack
 import           Prelude hiding (print, unlines)

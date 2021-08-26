@@ -76,7 +76,7 @@ import           Facet.Snoc.NonEmpty (toSnoc)
 import           Facet.Source (Source, slice)
 import           Facet.Span (Span(..))
 import           Facet.Subst
-import           Facet.Syntax
+import           Facet.Syntax hiding (context_)
 import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as TN

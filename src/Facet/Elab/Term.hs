@@ -70,7 +70,7 @@ import           Facet.Snoc.NonEmpty as NE
 import           Facet.Source (Source)
 import           Facet.Subst
 import qualified Facet.Surface.Expr as S
-import           Facet.Syntax
+import           Facet.Syntax as S hiding (context_)
 import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as T hiding (global)

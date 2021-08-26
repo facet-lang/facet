@@ -29,7 +29,7 @@ import           Facet.Pattern
 import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Snoc
 import qualified Facet.Surface.Expr as S
-import           Facet.Syntax
+import           Facet.Syntax as S hiding (context_)
 import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm
 import           GHC.Stack
