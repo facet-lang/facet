@@ -13,7 +13,6 @@ module Facet.Polarized
 , vvar
 , velim
 , K(..)
-, C(..)
 , Elab(..)
 , Eval(..)
 , Eval1(..)
@@ -21,7 +20,6 @@ module Facet.Polarized
 ) where
 
 import Control.Carrier.Reader
-import Data.Bifunctor
 import Data.Foldable (foldl')
 import Data.Function (on)
 import Facet.Name
@@ -106,17 +104,29 @@ data Term
   = CVar Index
   | CTLam Kind Term
   | CLam Term
-  | CMu (C Index Term)
-  | CElim Term (K Index Term)
+  | CMu Term Coterm
   deriving (Eq, Ord, Show)
 
-evalTerm :: Snoc Binding -> Snoc (K Level V) -> Term -> V
+data Coterm
+  = CApp Term Coterm
+  | CInst Type Coterm
+  | CRet Index
+  deriving (Eq, Ord, Show)
+
+evalTerm :: Snoc Binding -> Snoc K -> Term -> V
 evalTerm env kenv = \case
-  CVar i        -> fromV (env ! getIndex i)
-  CTLam k b     -> TLam k (\ _T -> evalTerm (env :> T _T) kenv b)
-  CLam b        -> Lam (\ a -> evalTerm (env :> V a) kenv b)
-  CMu (v :|: k) -> evalTerm env kenv v `velim` bimap (indexToLevel (Level (length kenv))) (evalTerm env (kenv :> Ret (Level (length kenv)))) k
-  CElim t e     -> evalTerm env kenv t `velim` bimap (indexToLevel (Level (length kenv))) (evalTerm env kenv) e
+  CVar i    -> fromV (env ! getIndex i)
+  CTLam k b -> TLam k (\ _T -> evalTerm (env :> T _T) kenv b)
+  CLam b    -> Lam (\ a -> evalTerm (env :> V a) kenv b)
+  CMu v k   -> foldl' velim (evalTerm env kenv v) (evalCoterm env (kenv :> Ret (Level (length kenv))) k)
+
+evalCoterm :: Snoc Binding -> Snoc K -> Coterm -> [K]
+evalCoterm env kenv = go
+  where
+  go = \case
+    CApp a k  -> App (evalTerm env kenv a) : go k
+    CInst t k -> Inst t : go k
+    CRet i    -> [Ret (indexToLevel (Level (length kenv)) i)]
 
 data Binding
   = V V
@@ -129,11 +139,10 @@ fromV = \case
 
 
 data V
-  = Ne Level (Snoc (K Level V))
+  = Ne Level (Snoc K)
   -- negative
   | TLam Kind (Type -> V)
   | Lam (V -> V)
-  | Mu (K Level V -> C Level V)
 
 instance Eq V where
   (==) = (==) `on` quoteV 0 0
@@ -146,68 +155,31 @@ instance Show V where
 
 quoteV :: Level -> Level -> V -> Term
 quoteV lv lk = \case
-  Ne l sp  -> foldl' (\ t c -> CElim t (bimap (levelToIndex lk) (quoteV lk lv) c)) (CVar (levelToIndex lv l)) sp
+  Ne l sp  -> CMu (CVar (levelToIndex lv l)) (foldr (\case
+    App v  -> CApp (quoteV lv lk v)
+    Inst t -> CInst t
+    Ret i  -> const (CRet (levelToIndex lk i))) (CRet (Index 0)) sp)
   TLam k f -> CTLam k (quoteBinderWith (`quoteV` lk) (TVar k) lv f)
   Lam f    -> CLam (quoteBinderWith (`quoteV` lk) vvar lv f)
-  Mu f     -> CMu (bimap (levelToIndex lk) (quoteV lv (succ lk)) (f (Ret lk)))
 
 
 vvar :: Level -> V
 vvar l = Ne l Nil
 
-velim :: V -> K Level V -> V
+velim :: V -> K -> V
 velim = curry $ \case
   (Ne v sp,  k)      -> Ne v (sp :> k)
   (Lam f,    App a)  -> f a
   (Lam{},    k)      -> error $ "cannot eliminate Lam with " <> show k
   (TLam _ f, Inst t) -> f t
   (TLam{},   k)      -> error $ "cannot eliminate TLam with " <> show k
-  (Mu{},     k)      -> error $ "cannot eliminate Mu with " <> show k
 
 
-data K i v
-  = App v
+data K
+  = App V
   | Inst Type
-  | Ret i
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-instance Bifunctor K where
-  bimap f g = \case
-    App c   -> App (g c)
-    Inst ty -> Inst ty
-    Ret i   -> Ret (f i)
-
-instance Quote1 (K Level) (K Level) where
-  liftQuoteWith = fmap fmap
-
-instance Quote v m => Quote (K Level v) (K Level m) where
-  quote = quote1
-
-instance Eval1 (K Index) (K Index) where
-  liftEvalWith = fmap fmap
-
-instance Eval m e v => Eval (K Index m) e (K Index v) where
-  eval = eval1
-
-
-data C i v
-  = v :|: K i v
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-instance Bifunctor C where
-  bimap f g (v :|: k) = g v :|: bimap f g k
-
-instance Quote1 (C Level) (C Level) where
-  liftQuoteWith = fmap fmap
-
-instance Quote v t => Quote (C Level v) (C Level t) where
-  quote = quote1
-
-instance Eval1 (C Index) (C Index) where
-  liftEvalWith = fmap fmap
-
-instance Eval m e v => Eval (C Index m) e (C Index v) where
-  eval = eval1
+  | Ret Level
+  deriving (Eq, Ord, Show)
 
 
 newtype Elab a = Elab { elab :: [(String, Type)] -> Maybe a }
