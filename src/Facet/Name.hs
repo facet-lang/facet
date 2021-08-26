@@ -62,6 +62,10 @@ class DeBruijn lv ix | lv -> ix, ix -> lv where
   toIndexed :: Level -> lv -> ix
   toLeveled :: Level -> ix -> lv
 
+instance DeBruijn Level Index where
+  toIndexed = levelToIndex
+  toLeveled = indexToLevel
+
 
 newtype Meta = Meta { getMeta :: Int }
   deriving (Eq, Ord, Show)
