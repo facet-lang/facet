@@ -33,7 +33,7 @@ instance C.Term (Quoter Term) where
   con n fs = Con n <$> sequenceA fs
   lam b = Lam <$> traverse (sequenceA . uncurry clause) b
   var v = Quoter (\ d -> Var (toIndexed d v))
-  app = liftA2 App
+  ($$) = liftA2 App
   dict fs = Dict <$> traverse sequenceA fs
   comp p b = Comp p <$> snd (clause (PDict p) b)
 

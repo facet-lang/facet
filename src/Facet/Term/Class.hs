@@ -12,6 +12,7 @@ class Term r where
   con :: RName -> [r] -> r
   lam :: [(Pattern Name, Pattern (Name :=: r) -> r)] -> r
   var :: Var (LName Level) -> r
-  app :: r -> r -> r
+  ($$) :: r -> r -> r
+  infixl 9 $$
   dict :: [RName :=: r] -> r
   comp :: [RName :=: Name] -> (Pattern (Name :=: r) -> r) -> r

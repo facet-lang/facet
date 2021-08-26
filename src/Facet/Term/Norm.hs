@@ -33,7 +33,7 @@ instance C.Term Term where
   con = Con
   lam = Lam
   var = (`Ne` Nil)
-  app = napp
+  ($$) = napp
   dict = Dict
   comp = Comp
 
