@@ -11,6 +11,7 @@ module Facet.Quote
 , Quoting(..)
   -- * Quoters
 , Quoter(..)
+, runQuoter
 , binder
 ) where
 
@@ -54,8 +55,11 @@ instance (Quote v t, Show t) => Show (Quoting t v) where
 
 -- Quoters
 
-newtype Quoter a = Quoter { runQuoter :: Level -> a }
+newtype Quoter a = Quoter (Level -> a)
   deriving (Applicative, Functor, Monad)
 
+runQuoter :: Level -> Quoter a -> a
+runQuoter d (Quoter f) = f d
+
 binder :: (Level -> Level -> a) -> (Quoter a -> Quoter b) -> Quoter b
-binder with f = Quoter (\ d -> runQuoter (f (Quoter (with d))) (d + 1))
+binder with f = Quoter (\ d -> runQuoter (d + 1) (f (Quoter (with d))))

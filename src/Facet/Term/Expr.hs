@@ -38,7 +38,7 @@ instance C.Term (Quoter Term) where
   comp p b = Comp p <$> snd (clause (PDict p) b)
 
 clause :: Traversable t => t Name -> (t (Name :=: Quoter Term) -> Quoter Term) -> (t Name, Quoter Term)
-clause p b = (p, Quoter (\ d -> let (_, p') = mapAccumL (\ d n -> (succ d, n :=: Free (LName d n))) d p in runQuoter (b (fmap C.var <$> p')) d))
+clause p b = (p, Quoter (\ d -> let (_, p') = mapAccumL (\ d n -> (succ d, n :=: Free (LName d n))) d p in runQuoter d (b (fmap C.var <$> p'))))
 
 class TExpr expr where
   xvar :: T (Var (LName Index)) a -> expr a
