@@ -71,7 +71,7 @@ foldMapC f = getChoosing #. foldMap (Choosing #. f)
 {-# INLINE (#.) #-}
 
 
-lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: Maybe Expr ::: Type)
+lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: Maybe Term ::: Type)
 lookupC n Module{ name, scope } = foldMapC matchDef (decls scope)
   where
   matchDef = matchTerm <=< lookupScope n . tm <=< unDData
@@ -107,12 +107,12 @@ newtype Import = Import { name :: MName }
 
 
 data Def
-  = DTerm (Maybe Expr) Type
+  = DTerm (Maybe Term) Type
   | DData (Scope Def) Kind
   | DInterface (Scope Type) Kind
   | DModule (Scope Def) Kind
 
-unDTerm :: Has Empty sig m => Def -> m (Maybe Expr ::: Type)
+unDTerm :: Has Empty sig m => Def -> m (Maybe Term ::: Type)
 unDTerm = \case
   DTerm expr _T -> pure $ expr ::: _T
   _             -> empty

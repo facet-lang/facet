@@ -1,6 +1,6 @@
 module Facet.Term.Expr
 ( -- * Term expressions
-  Expr(..)
+  Term(..)
 , TExpr(..)
 , Fields(..)
 ) where
@@ -13,15 +13,15 @@ import Facet.Syntax
 
 -- Term expressions
 
-data Expr
+data Term
   = Var (Var (LName Index))
-  | Lam [(Pattern Name, Expr)]
-  | App Expr Expr
-  | Con RName [Expr]
+  | Lam [(Pattern Name, Term)]
+  | App Term Term
+  | Con RName [Term]
   | String Text
-  | Dict [RName :=: Expr]
-  | Let (Pattern Name) Expr Expr
-  | Comp [RName :=: Name] Expr -- ^ NB: the first argument is a specialization of @'Pattern' 'Name'@ to the 'PDict' constructor
+  | Dict [RName :=: Term]
+  | Let (Pattern Name) Term Term
+  | Comp [RName :=: Name] Term -- ^ NB: the first argument is a specialization of @'Pattern' 'Name'@ to the 'PDict' constructor
   deriving (Eq, Ord, Show)
 
 class TExpr expr where
@@ -39,7 +39,7 @@ class TExpr expr where
 
   xlet :: T (Pattern Name) t -> expr t -> expr u -> expr u
 
-instance TExpr (T Expr) where
+instance TExpr (T Term) where
   xvar = T . Var . getT
 
   xlam ps = T (Lam (map (bimap getT getT) ps))

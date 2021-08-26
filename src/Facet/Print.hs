@@ -221,7 +221,7 @@ instance Printable TX.Type where
 deriving via (Quoting TX.Type TN.Type) instance Printable TN.Type
 
 
-instance Printable C.Expr where
+instance Printable C.Term where
   print opts@Options{ rname } = go
     where
     go env = \case
@@ -241,7 +241,7 @@ instance Printable C.Expr where
       where
       p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p)
 
-deriving via (Quoting C.Expr N.Term) instance Printable N.Term
+deriving via (Quoting C.Term N.Term) instance Printable N.Term
 
 instance Printable a => Printable (Pattern a) where
   print = print1

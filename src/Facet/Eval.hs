@@ -49,7 +49,7 @@ import Facet.Term.Expr
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 
-eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
+eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Term -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 eval = \case
   Var (Global n) -> global n >>= eval
   Var (Free n)   -> var n
@@ -61,7 +61,7 @@ eval = \case
   Let p v b      -> eval v >>= \ v' -> local (|> fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v')) (eval b)
   Comp p b       -> comp p b
 
-global :: Has (Reader Graph :+: Reader Module) sig m => RName -> ReaderC (Env (Value (Eval m))) (Eval m) Expr
+global :: Has (Reader Graph :+: Reader Module) sig m => RName -> ReaderC (Env (Value (Eval m))) (Eval m) Term
 global n = do
   mod <- lift ask
   graph <- lift ask
@@ -72,10 +72,10 @@ global n = do
 var :: (HasCallStack, Algebra sig m) => LName Index -> ReaderC (Env (Value m)) m (Value m)
 var n = asks (`index` n)
 
-lam :: Algebra sig m => [(Pattern Name, Expr)] -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
+lam :: Algebra sig m => [(Pattern Name, Term)] -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 lam cs = asks (`VLam` cs)
 
-app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m)) -> Expr -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
+app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m)) -> Term -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 app f a = ask >>= \ envCallSite -> f >>= \case
   VLam env cs -> lift (k a) where
     k = foldl' (\ vs (p, b) -> runReader envCallSite . eval >=> fromMaybe (vs a) . matchV (\ vs -> runReader (env |> vs) (eval b)) p) (const (fail "non-exhaustive patterns in lambda")) cs
@@ -88,7 +88,7 @@ string = pure . VString
 con :: RName -> [ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))] -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
-comp :: [RName :=: Name] -> Expr -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
+comp :: [RName :=: Name] -> Term -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 comp p b = pure $ VComp p b
 
 
@@ -126,13 +126,13 @@ data Value m
   -- | Value; strings.
   | VString Text
   -- | Computation; lambdas.
-  | VLam (Env (Value m)) [(Pattern Name, Expr)]
+  | VLam (Env (Value m)) [(Pattern Name, Term)]
   -- | Computation; continuations, used in effect handlers.
   | VCont (Value m -> m (Value m))
   | VDict [RName :=: Value m]
-  | VComp [RName :=: Name] Expr
+  | VComp [RName :=: Name] Term
 
-instance Monad m => Quote (Value m) (m Expr) where
+instance Monad m => Quote (Value m) (m Term) where
   quote d = \case
     VLam _ cs -> pure $ Lam cs
     VCont k   -> quote (succ d) =<< k (VVar (Free (LName d __)))

@@ -52,7 +52,7 @@ import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Style as Style
 import qualified Facet.Surface as S
 import           Facet.Syntax
-import           Facet.Term.Expr (Expr)
+import           Facet.Term.Expr (Term)
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Setter ((.~))
 import           Prelude hiding (span, unlines)
@@ -206,7 +206,7 @@ showEval e = Action $ do
   opts <- get
   outputDocLn (getPrint (ann (Print.print opts mempty e'' ::: Print.print opts mempty _T)))
 
-runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
+runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Term -> m Term
 runEvalMain e = runEval (quote 0 =<< runReader mempty (eval e)) pure
   -- where
   -- hdl = [(write, Handler handle)]

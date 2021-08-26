@@ -16,7 +16,6 @@ import           Facet.Quote
 import           Facet.Semialign (zipWithM)
 import           Facet.Snoc
 import           Facet.Syntax
-import           Facet.Term.Expr (Expr)
 import qualified Facet.Term.Expr as X
 
 data Term
@@ -26,9 +25,9 @@ data Term
   | Ne (Var (LName Level)) (Snoc Term)
   | Dict [RName :=: Term]
   | Comp [RName :=: Name] (Pattern (Name :=: Term) -> Term)
-  deriving (Eq, Ord, Show) via Quoting Expr Term
+  deriving (Eq, Ord, Show) via Quoting X.Term Term
 
-instance Quote Term Expr where
+instance Quote Term X.Term where
   quote d = \case
     String s -> X.String s
     Con n sp -> X.Con n (quote d <$> sp)
@@ -39,7 +38,7 @@ instance Quote Term Expr where
     where
     clause p b = let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName d n)) Nil)) d p in (p, quote d' (b p'))
 
-norm :: Env Term -> Expr -> Term
+norm :: Env Term -> X.Term -> Term
 norm env = \case
   X.String s  -> String s
   X.Var v     -> Ne (fmap (indexToLevel (level env)) <$> v) Nil

@@ -85,7 +85,7 @@ switch m = Check $ \ _Exp -> m >>= \case
   a :==> T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
   a :==>            _Act -> unify (Exp _Exp) (Act _Act) $> a
 
-as :: (HasCallStack, Has (Throw Err) sig m) => (Type <==: Elab m Expr) ::: Elab m (Type :==> Kind) -> Elab m (Expr :==> Type)
+as :: (HasCallStack, Has (Throw Err) sig m) => (Type <==: Elab m Term) ::: Elab m (Type :==> Kind) -> Elab m (Term :==> Type)
 as (m ::: _T) = do
   _T' <- checkIsType (_T ::: KType)
   a <- check (m ::: _T')
@@ -95,13 +95,13 @@ as (m ::: _T) = do
 -- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Algebra sig m => RName ::: Type -> Elab m (Expr :==> Type)
+global :: Algebra sig m => RName ::: Type -> Elab m (Term :==> Type)
 global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (Expr :==> Type)
+var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (Term :==> Type)
 var n = views context_ (lookupInContext n) >>= \case
   [(n', q, CT _T)] -> use n' q $> (Var (Free n') :==> _T)
   _                -> resolveQ n >>= \case
@@ -113,18 +113,18 @@ hole :: (HasCallStack, Has (Throw Err) sig m) => Name -> Type <==: Elab m a
 hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (CT _T)
 
 
-tlam :: (HasCallStack, Has (Throw Err) sig m) => Type <==: Elab m Expr -> Type <==: Elab m Expr
+tlam :: (HasCallStack, Has (Throw Err) sig m) => Type <==: Elab m Term -> Type <==: Elab m Term
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
   (zero, PVar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name ::: Classifier)), Type <==: Elab m Expr)] -> Type <==: Elab m Expr
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name ::: Classifier)), Type <==: Elab m Term)] -> Type <==: Elab m Term
 lam cs = Check $ \ _T -> do
   (_A, _B) <- assertTacitFunction _T
   Lam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
 
-lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Type <==: Elab m Expr -> Type <==: Elab m Expr
+lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Type <==: Elab m Term -> Type <==: Elab m Term
 lam1 p b = lam [(p, b)]
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (a :==> Type)) -> (HasCallStack => Type <==: Elab m b) -> Elab m (c :==> Type)
@@ -135,18 +135,18 @@ app mk operator operand = do
   pure $ mk f' a' :==> _B
 
 
-string :: Text -> Elab m (Expr :==> Type)
+string :: Text -> Elab m (Term :==> Type)
 string s = pure $ E.String s :==> T.String
 
 
-let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Elab m (Expr :==> Type) -> Type <==: Elab m Expr -> Type <==: Elab m Expr
+let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Elab m (Term :==> Type) -> Type <==: Elab m Term -> Type <==: Elab m Term
 let' p a b = Check $ \ _B -> do
   a' :==> _A <- a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
   pure $ Let p' a' b'
 
 
-comp :: Has (Throw Err) sig m => Type <==: Elab m Expr -> Type <==: Elab m Expr
+comp :: Has (Throw Err) sig m => Type <==: Elab m Term -> Type <==: Elab m Term
 comp b = Check $ \ _T -> do
   (sig, _B) <- assertComp _T
   StaticContext{ graph, module' } <- ask
@@ -194,7 +194,7 @@ allP n = Bind $ \ _A k -> do
 
 -- Expression elaboration
 
-synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Elab m (Expr :==> Type)
+synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Elab m (Term :==> Type)
 synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \case
   S.Var n    -> var n
   S.App f a  -> synthApp f a
@@ -204,13 +204,13 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \cas
   S.Lam{}    -> nope
   where
   nope = couldNotSynthesize
-  synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Elab m (Expr :==> Type)
+  synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Elab m (Term :==> Type)
   synthApp f a = app App (synthExpr f) (checkExpr a)
-  synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Elab m (Expr :==> Type)
+  synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Elab m (Term :==> Type)
   synthAs t _T = as (checkExpr t ::: do { _T :==> _K <- synthType _T ; (:==> _K) <$> evalTExpr _T })
 
 
-checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Type <==: Elab m Expr
+checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Type <==: Elab m Term
 checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withSpanC expr $ \case
   S.Hole  n  -> hole n
   S.Lam cs   -> checkLam cs
@@ -219,10 +219,10 @@ checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withS
   S.As{}     -> switch (synthExpr expr)
   S.String{} -> switch (synthExpr expr)
 
-checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Type <==: Elab m Expr
+checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Type <==: Elab m Term
 checkLam cs = lam (snd vs)
   where
-  vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: (Type <==: Elab m Expr)], [(Bind m (Pattern (Name ::: Classifier)), Type <==: Elab m Expr)])
+  vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: (Type <==: Elab m Term)], [(Bind m (Pattern (Name ::: Classifier)), Type <==: Elab m Term)])
   vs = partitionEithers (map (\ (S.Clause (S.Ann _ _ p) b) -> case p of
     S.PVal p                          -> Right (bindPattern p, checkExpr b)
     S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: Check (\ _T -> pushSpan s (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k) <==: _T))) cs)
@@ -247,7 +247,7 @@ abstractType body = go
     KArrow  (Just n) a b -> TX.ForAll n a <$> ((zero, PVar (n ::: CK a)) |- go b)
     _                    -> body
 
-abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TX.Type -> Snoc Expr -> Expr) -> Type <==: Elab m Expr
+abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TX.Type -> Snoc Term -> Term) -> Type <==: Elab m Term
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
@@ -301,7 +301,7 @@ elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Type
   -> S.Ann S.Expr
-  -> m Expr
+  -> m Term
 elabTermDef _T expr@(S.Ann s _ _) = do
   elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
