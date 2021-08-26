@@ -54,3 +54,4 @@ instance (Quote v t, Show t) => Show (Quoting t v) where
 -- Quoters
 
 newtype Quoter a = Quoter { runQuoter :: Level -> a }
+  deriving (Applicative, Functor, Monad)
