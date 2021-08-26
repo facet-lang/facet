@@ -1,10 +1,12 @@
 module Facet.Surface.Type.Class
 ( Kind(..)
 , Type(..)
+, Interface(..)
 ) where
 
 import Facet.Name
-import Facet.Surface.Type.Expr (Interface, Mul)
+import Facet.Snoc
+import Facet.Surface.Type.Expr (Mul)
 
 class Kind r where
   ktype :: r
@@ -17,6 +19,8 @@ class Type r where
   string :: r
   forAll :: Name -> r -> (r -> r) -> r
   arrow :: Maybe Name -> Maybe Mul -> r -> r -> r
-  -- FIXME: how do we annotate the interface?
-  comp :: [Interface r] -> r -> r
+  comp :: [r] -> r -> r
   tapp :: r -> r -> r
+
+class Interface r where
+  interface :: QName -> Snoc r -> r
