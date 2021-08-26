@@ -8,7 +8,6 @@ import           Facet.Kind
 import           Facet.Name
 import           Facet.Quote
 import           Facet.Syntax
-import           Facet.Type
 import qualified Facet.Type.Class as C
 import           Facet.Usage
 
@@ -28,14 +27,6 @@ instance C.Type (Quoter Type) where
   var v = Quoter (\ d -> Var (toIndexed d v))
   ($$) = liftA2 App
   sig |- t = Comp <$> sequenceSignature sig <*> t
-
--- FIXME: this should be Level -> Type
-instance TType (T (Level -> Type)) where
-  string = T (const String)
-  forAll n (T k) b = T (\ d -> ForAll n k (getT (b (T (lvar n . toIndexed d))) d))
-  arrow n q (T a) (T b) = T (\ d -> Arrow n q (a d) (b d))
-  comp sig (T b) = T (\ d -> Comp (mapSignature (\ (T i) -> i d) sig) (b d))
-  app (T f) (T a) = T (\ d -> App (f d) (a d))
 
 
 lvar :: Name -> Index -> Type

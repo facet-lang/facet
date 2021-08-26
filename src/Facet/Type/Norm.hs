@@ -31,7 +31,6 @@ import           Facet.Quote
 import           Facet.Snoc
 import           Facet.Subst
 import           Facet.Syntax
-import           Facet.Type
 import qualified Facet.Type.Class as C
 import qualified Facet.Type.Expr as TX
 import           Facet.Usage hiding (singleton)
@@ -64,13 +63,6 @@ instance Quote Type TX.Type where
     Arrow n q a b -> TX.Arrow n q (quote d a) (quote d b)
     Comp s t      -> TX.Comp (mapSignature (quote d) s) (quote d t)
     Ne n sp       -> foldl' (&) (TX.Var (toIndexed d n)) (flip TX.App . quote d <$> sp)
-
-instance TType (T Type) where
-  string = T String
-  forAll n (T k) b = T (ForAll n k (getT . b . T))
-  arrow n q (T a) (T b) = T (Arrow n q a b)
-  comp sig (T b) = T (Comp (mapSignature getT sig) b)
-  app (T a) (T b) = T (a $$ b)
 
 
 global :: RName -> Type
