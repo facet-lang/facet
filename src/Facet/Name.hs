@@ -59,8 +59,8 @@ indexToLevel (Level d) (Index index) = Level $ d - index - 1
 
 
 class DeBruijn lv ix | lv -> ix, ix -> lv where
-  toIndexed :: lv -> ix
-  toLeveled :: ix -> lv
+  toIndexed :: Level -> lv -> ix
+  toLeveled :: Level -> ix -> lv
 
 
 newtype Meta = Meta { getMeta :: Int }
