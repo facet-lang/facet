@@ -26,6 +26,7 @@ module Facet.Syntax
 , out_
 , annUnary
 , annBinary
+, Comment(..)
 ) where
 
 import Data.Bifoldable
@@ -34,6 +35,7 @@ import Data.Bitraversable
 import Data.Function (on)
 import Data.Functor.Classes
 import Data.Kind (Type)
+import Data.Text (Text)
 import Facet.Name
 import Facet.Snoc
 import Facet.Span
@@ -179,3 +181,7 @@ annUnary f a = Ann (ann a) Nil (f a)
 
 annBinary :: (Ann c a -> Ann c b -> a) -> Ann c a -> Ann c b -> Ann c a
 annBinary f a b = Ann (ann a <> ann b) Nil (f a b)
+
+
+newtype Comment = Comment { getComment :: Text }
+  deriving (Eq, Show)

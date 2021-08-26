@@ -17,8 +17,6 @@ module Facet.Surface.Expr
   -- * Modules
 , Module(..)
 , Import(..)
-  -- * Annotations
-, Comment(..)
 ) where
 
 import Data.Text (Text)
@@ -106,10 +104,4 @@ data Module = Module
 
 
 newtype Import = Import { name :: MName }
-  deriving (Eq, Show)
-
-
--- Annotations
-
-newtype Comment = Comment { getComment :: Text }
   deriving (Eq, Show)
