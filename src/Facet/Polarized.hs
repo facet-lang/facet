@@ -57,7 +57,7 @@ instance Quote Type XType where
     Up t       -> XUp (quote d t)
     Bot        -> XBot
     a :-> b    -> quote d a :->: quote d b
-    ForAll k b -> XForAll k (quoteBinder (TVar k) d b)
+    ForAll k b -> XForAll k (quoteBinder (TVar k . getUsed) d b)
     Down t     -> XDown (quote d t)
     One        -> XOne
     a :>< b    -> quote d a :><: quote d b
@@ -126,7 +126,7 @@ evalCoterm env kenv = go
   go = \case
     CApp a k  -> App (evalTerm env kenv a) : go k
     CInst t k -> Inst t : go k
-    CRet i    -> [Ret (toLeveled (Level (length kenv)) i)]
+    CRet i    -> [Ret (toLeveled (Used (Level (length kenv))) i)]
 
 data Binding
   = V V
@@ -153,14 +153,14 @@ instance Ord V where
 instance Show V where
   showsPrec p = showsPrec p . quoteV 0 0
 
-quoteV :: Level -> Level -> V -> Term
+quoteV :: Used -> Used -> V -> Term
 quoteV lv lk = \case
   Ne l sp  -> CMu (CVar (toIndexed lv l)) (foldr (\case
     App v  -> CApp (quoteV lv lk v)
     Inst t -> CInst t
     Ret i  -> const (CRet (toIndexed lk i))) (CRet (Index 0)) sp)
-  TLam k f -> CTLam k (quoteBinderWith (`quoteV` lk) (TVar k) lv f)
-  Lam f    -> CLam (quoteBinderWith (`quoteV` lk) vvar lv f)
+  TLam k f -> CTLam k (quoteBinderWith (`quoteV` lk) (TVar k . getUsed) lv f)
+  Lam f    -> CLam (quoteBinderWith (`quoteV` lk) (vvar . getUsed) lv f)
 
 
 vvar :: Level -> V

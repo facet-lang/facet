@@ -46,7 +46,7 @@ instance Quote Term X.Term where
     Dict os  -> X.Dict (map (fmap (quote d)) os)
     Comp p b -> X.Comp p (snd (clause (PDict p) b))
     where
-    clause p b = let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName d n)) Nil)) d p in (p, quote d' (b p'))
+    clause p b = let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName (getUsed d) n)) Nil)) d p in (p, quote d' (b p'))
 
 norm :: Env Term -> X.Term -> Term
 norm env = \case

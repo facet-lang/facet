@@ -22,7 +22,7 @@ data Type
 
 instance C.Type (Quoter Type) where
   string = pure String
-  forAll n k b = ForAll n k <$> binder (\ d d' -> lvar n (toIndexed d' d)) b
+  forAll n k b = ForAll n k <$> binder (\ d d' -> lvar n (toIndexed d d')) b
   arrow n q = liftA2 (Arrow n q)
   var v = Quoter (\ d -> Var (toIndexed d v))
   ($$) = liftA2 App

@@ -59,7 +59,7 @@ instance C.Type Type where
 instance Quote Type TX.Type where
   quote d = \case
     String        -> TX.String
-    ForAll n t b  -> TX.ForAll n t (quote (succ d) (b (free (LName d n))))
+    ForAll n t b  -> TX.ForAll n t (quote (succ d) (b (free (LName (getUsed d) n))))
     Arrow n q a b -> TX.Arrow n q (quote d a) (quote d b)
     Comp s t      -> TX.Comp (mapSignature (quote d) s) (quote d t)
     Ne n sp       -> foldl' (&) (TX.Var (toIndexed d n)) (flip TX.App . quote d <$> sp)

@@ -51,19 +51,19 @@ instance Show Level where
 
 
 class DeBruijn lv ix | lv -> ix, ix -> lv where
-  toIndexed :: Level -> lv -> ix
-  toLeveled :: Level -> ix -> lv
+  toIndexed :: Used -> lv -> ix
+  toLeveled :: Used -> ix -> lv
 
 instance DeBruijn Level Index where
-  toIndexed (Level d) (Level level) = Index $ d - level - 1
-  toLeveled (Level d) (Index index) = Level $ d - index - 1
+  toIndexed (Used (Level d)) (Level level) = Index $ d - level - 1
+  toLeveled (Used (Level d)) (Index index) = Level $ d - index - 1
 
 instance DeBruijn lv ix => DeBruijn (Either e lv) (Either e ix) where
   toIndexed = fmap . toIndexed
   toLeveled = fmap . toLeveled
 
 
-newtype Used = Used { getUsed :: Int }
+newtype Used = Used { getUsed :: Level }
   deriving (Enum, Eq, Num, Ord)
 
 instance Show Used where

@@ -33,8 +33,8 @@ Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
 
-level :: Context -> Level
-level (Context es) = Level (length es)
+level :: Context -> Used
+level (Context es) = Used (Level (length es))
 
 (!) :: HasCallStack => Context -> Index -> (Quantity, Pattern (Name ::: Classifier))
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
@@ -54,4 +54,4 @@ lookupIndex n = go (Index 0) . elems
 
 
 toEnv :: Context -> Env.Env Type
-toEnv c = Env.Env (S.fromList (zipWith (\ (_, p) d -> (\ b -> tm b :=: free (LName d (tm b))) <$> p) (toList (elems c)) [0..pred (level c)]))
+toEnv c = Env.Env (S.fromList (zipWith (\ (_, p) d -> (\ b -> tm b :=: free (LName (getUsed d) (tm b))) <$> p) (toList (elems c)) [0..pred (level c)]))

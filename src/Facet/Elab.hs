@@ -147,10 +147,10 @@ lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _)
 (q, p) |- b = do
   sigma <- asks scale
   d <- depth
-  (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> (q, p)) b
+  (u, a) <- censor (`Usage.withoutVars` Vars.singleton (getUsed d)) $ listen $ locally context_ (|> (q, p)) b
   for_ p $ \ (n ::: _T) -> do
     let exp = sigma >< q
-        act = Usage.lookup (LName d n) u
+        act = Usage.lookup (LName (getUsed d) n) u
     unless (act `sat` exp)
       $ resourceMismatch n exp act
   pure a
@@ -168,7 +168,7 @@ sat a b
 evalTExpr :: Has (Reader ElabContext :+: State (Subst Type)) sig m => TX.Type -> m Type
 evalTExpr texpr = TN.eval <$> get <*> views context_ toEnv <*> pure texpr
 
-depth :: Has (Reader ElabContext) sig m => m Level
+depth :: Has (Reader ElabContext) sig m => m Used
 depth = views context_ level
 
 use :: Has (Reader ElabContext :+: Writer Usage) sig m => LName Index -> Quantity -> m ()

@@ -117,7 +117,7 @@ tlam :: (HasCallStack, Has (Throw Err) sig m) => Type <==: Elab m Term -> Type <
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
-  (zero, PVar (n ::: CK _A)) |- check (b ::: _B (T.free (LName d n)))
+  (zero, PVar (n ::: CK _A)) |- check (b ::: _B (T.free (LName (getUsed d) n)))
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name ::: Classifier)), Type <==: Elab m Term)] -> Type <==: Elab m Term
 lam cs = Check $ \ _T -> do
@@ -253,10 +253,10 @@ abstractTerm body = go Nil Nil
   go ts fs = Check $ \case
     T.ForAll n   _T _B -> do
       d <- depth
-      check (tlam (go (ts :> LName d n) fs) ::: T.ForAll n _T _B)
+      check (tlam (go (ts :> LName (getUsed d) n) fs) ::: T.ForAll n _T _B)
     T.Arrow  n q _A _B -> do
       d <- depth
-      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> Var (Free (LName (toIndexed d' d) (fromMaybe __ n)))))] ::: T.Arrow n q _A _B)
+      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> Var (Free (LName (toIndexed d' (getUsed d)) (fromMaybe __ n)))))] ::: T.Arrow n q _A _B)
     _T                -> do
       d <- depth
       pure $ body (TX.Var . Free . Right . toIndexed d <$> ts) (fs <*> pure d)

@@ -188,9 +188,7 @@ instance Printable Kind where
     KType               -> annotate Type $ pretty "Type"
     KInterface          -> annotate Type $ pretty "Interface"
     KArrow Nothing  a b -> print opts env a --> print opts env b
-    KArrow (Just n) a b -> parens (ann (intro n d ::: print opts env a)) --> print opts env b
-    where
-    d = level env
+    KArrow (Just n) a b -> parens (ann (intro n (getUsed (level env)) ::: print opts env a)) --> print opts env b
 
 instance Printable a => Printable (Interface a) where
   print = print1
@@ -203,9 +201,9 @@ instance Printable TX.Type where
       TX.Var (Global n)       -> qvar n
       TX.Var (Free (Right n)) -> fromMaybe (lname (toLeveled d n)) $ Env.lookup env n
       TX.Var (Free (Left m))  -> meta m
-      TX.ForAll      n    t b -> braces (ann (intro n d ::: print opts env t)) --> go (env |> PVar (n :=: intro n d)) b
+      TX.ForAll      n    t b -> braces (ann (intro n (getUsed d) ::: print opts env t)) --> go (env |> PVar (n :=: intro n (getUsed d))) b
       TX.Arrow Nothing  q a b -> mult q (go env a) --> go env b
-      TX.Arrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
+      TX.Arrow (Just n) q a b -> parens (ann (intro n (getUsed d) ::: mult q (go env a))) --> go env b
       TX.Comp s t             -> if s == mempty then go env t else sig s <+> go env t
       TX.App f a              -> group (go env f) $$ group (go env a)
       TX.String               -> annotate Type $ pretty "String"
@@ -232,14 +230,14 @@ instance Printable C.Term where
       C.Con n p        -> qvar n $$* (group . go env <$> p)
       C.String s       -> annotate Lit $ pretty (show s)
       C.Dict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
-      C.Let p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (print opts env (def <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
+      C.Let p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (getUsed (level env)) p) in pretty "let" <+> braces (print opts env (def <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
       C.Comp p b       -> comp (clause env (PDict p, b))
       where
       d = level env
     qvar = group . setPrec Var . rname
     clause env (p, b) = print opts env (def <$> p') <+> arrow <+> go (env |> p') b
       where
-      p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p)
+      p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (getUsed (level env)) p)
 
 deriving via (Quoting C.Term N.Term) instance Printable N.Term
 

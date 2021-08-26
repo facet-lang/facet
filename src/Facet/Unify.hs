@@ -60,7 +60,7 @@ unifyType = curry $ \case
   (TN.Ne (Free (Left v1)) Nil, TN.Ne (Free (Left v2)) Nil) -> flexFlex v1 v2
   (TN.Ne (Free (Left v1)) Nil, t2)                         -> solve v1 t2
   (t1, TN.Ne (Free (Left v2)) Nil)                         -> solve v2 t1
-  (TN.ForAll _ t1 b1, TN.ForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> ((zero, PVar (n ::: CK t2)) |- unifyType (b1 (free (LName d n))) (b2 (free (LName d n))))
+  (TN.ForAll _ t1 b1, TN.ForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> ((zero, PVar (n ::: CK t2)) |- unifyType (b1 (free (LName (getUsed d) n))) (b2 (free (LName (getUsed d) n))))
   (TN.ForAll{}, _)                                         -> mismatch
   (TN.Arrow _ _ a1 b1, TN.Arrow n q a2 b2)                 -> TN.Arrow n q <$> unifyType a1 a2 <*> unifyType b1 b2
   (TN.Arrow{}, _)                                          -> mismatch
@@ -95,7 +95,7 @@ flexFlex v1 v2
 solve :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Meta -> Type -> m Type
 solve v t = do
   d <- depth
-  if occursIn v d t then
+  if occursIn v (getUsed d) t then
     occurs v t
   else
     gets (lookupMeta v) >>= \case
