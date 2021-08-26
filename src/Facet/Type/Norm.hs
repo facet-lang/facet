@@ -32,6 +32,7 @@ import           Facet.Snoc
 import           Facet.Subst
 import           Facet.Syntax
 import           Facet.Type
+import qualified Facet.Type.Class as C
 import qualified Facet.Type.Expr as TX
 import           Facet.Usage hiding (singleton)
 import           Fresnel.Prism (Prism', prism')
@@ -47,6 +48,14 @@ data Type
   | Ne (Var (Either Meta (LName Level))) (Snoc Type)
   | Comp (Signature Type) Type
   deriving (Eq, Ord, Show) via Quoting TX.Type Type
+
+instance C.Type Type where
+  string = String
+  forAll = ForAll
+  arrow = Arrow
+  var = Facet.Type.Norm.var
+  ($$) = (Facet.Type.Norm.$$)
+  (|-) = Comp
 
 instance Quote Type TX.Type where
   quote d = \case
