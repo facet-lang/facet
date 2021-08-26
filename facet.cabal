@@ -122,6 +122,7 @@ library
     Facet.Subst
     Facet.Surface.Class
     Facet.Surface.Expr
+    Facet.Surface.Term.Expr
     Facet.Surface.Type.Expr
     Facet.Syntax
     Facet.Term.Class
