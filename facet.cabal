@@ -121,6 +121,7 @@ library
     Facet.Subst
     Facet.Surface
     Facet.Syntax
+    Facet.Term.Class
     Facet.Term.Expr
     Facet.Term.Norm
     Facet.Timing
