@@ -1,5 +1,6 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Syntax
 ( (:::)(..)
 , tm
@@ -86,6 +87,10 @@ data Var a
   = Global RName -- ^ Global variables, considered equal by 'RName'.
   | Free a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+instance DeBruijn lv ix => DeBruijn (Var lv) (Var ix) where
+  toIndexed = fmap . toIndexed
+  toLeveled = fmap . toLeveled
 
 
 -- Decomposition
