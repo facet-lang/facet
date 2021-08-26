@@ -20,7 +20,7 @@ module Facet.Surface.Expr
   -- * Annotations
 , Ann(..)
 , ann_
-, comments_
+, context_
 , out_
 , annUnary
 , annBinary
@@ -121,9 +121,9 @@ newtype Import = Import { name :: MName }
 -- Annotations
 
 data Ann a = Ann
-  { ann      :: Span
-  , comments :: Snoc (Span, Comment)
-  , out      :: a
+  { ann     :: Span
+  , context :: Snoc (Span, Comment)
+  , out     :: a
   }
   deriving (Foldable, Functor, Traversable)
 
@@ -142,8 +142,8 @@ instance HasSpan (Ann a) where
 ann_ :: Lens' (Ann a) Span
 ann_ = lens ann (\ a ann -> a{ ann })
 
-comments_ :: Lens' (Ann a) (Snoc (Span, Comment))
-comments_ = lens comments (\ a comments -> a{ comments })
+context_ :: Lens' (Ann a) (Snoc (Span, Comment))
+context_ = lens context (\ a context -> a{ context })
 
 out_ :: Lens (Ann a) (Ann b) a b
 out_ = lens out (\ a out -> a{ out })
