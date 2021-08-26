@@ -5,6 +5,7 @@ module Facet.Name
 ( Index(..)
 , Level(..)
 , DeBruijn(..)
+, Used(..)
 , Meta(..)
 , __
 , MName
@@ -60,6 +61,13 @@ instance DeBruijn Level Index where
 instance DeBruijn lv ix => DeBruijn (Either e lv) (Either e ix) where
   toIndexed = fmap . toIndexed
   toLeveled = fmap . toLeveled
+
+
+newtype Used = Used { getUsed :: Int }
+  deriving (Enum, Eq, Num, Ord)
+
+instance Show Used where
+  showsPrec p = showsUnaryWith showsPrec "Used" p . getUsed
 
 
 newtype Meta = Meta { getMeta :: Int }
