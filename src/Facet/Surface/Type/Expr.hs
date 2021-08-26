@@ -22,12 +22,12 @@ data Type
   | TString
   | TForAll Name (Ann Comment Kind) (Ann Comment Type)
   | TArrow (Maybe Name) (Maybe Mul) (Ann Comment Type) (Ann Comment Type)
-  | TComp [Ann Comment Interface] (Ann Comment Type)
+  | TComp [Ann Comment (Interface (Ann Comment Type))] (Ann Comment Type)
   | TApp (Ann Comment Type) (Ann Comment Type)
   deriving (Eq, Show)
 
 
-data Interface = Interface (Ann Comment QName) (Snoc (Ann Comment Type))
+data Interface a = Interface (Ann Comment QName) (Snoc a)
   deriving (Eq, Show)
 
 

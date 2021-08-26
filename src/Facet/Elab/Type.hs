@@ -108,7 +108,7 @@ synthType (S.Ann s _ e) = pushSpan s $ case e of
     S.Zero -> zero
     S.One  -> one
 
-synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Comment S.Interface -> Elab m (Interface TX.Type :==> Kind)
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Comment (S.Interface (S.Ann S.Comment S.Type)) -> Elab m (Interface TX.Type :==> Kind)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = pushSpan s $ do
   -- FIXME: check that the application actually result in an Interface
   h' :==> _ <- pushSpan sh (ivar h)

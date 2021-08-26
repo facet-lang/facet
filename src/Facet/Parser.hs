@@ -200,7 +200,7 @@ tvar :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenPar
 tvar = anned (S.TVar <$> qname tname)
 
 
-signature :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Comment S.Interface]
+signature :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p [S.Ann S.Comment (S.Interface (S.Ann S.Comment S.Type))]
 signature = brackets (commaSep delta) <?> "signature"
   where
   delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
