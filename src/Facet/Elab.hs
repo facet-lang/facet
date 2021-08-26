@@ -174,7 +174,7 @@ depth = views context_ level
 use :: Has (Reader ElabContext :+: Writer Usage) sig m => LName Index -> Quantity -> m ()
 use n q = do
   d <- depth
-  tell (Usage.singleton (indexToLevel d <$> n) q)
+  tell (Usage.singleton (toLeveled d n) q)
 
 
 -- Errors

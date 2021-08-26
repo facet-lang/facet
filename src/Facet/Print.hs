@@ -201,7 +201,7 @@ instance Printable TX.Type where
     qvar = group . setPrec Var . rname
     go env = \case
       TX.Var (Global n)       -> qvar n
-      TX.Var (Free (Right n)) -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
+      TX.Var (Free (Right n)) -> fromMaybe (lname (toLeveled d n)) $ Env.lookup env n
       TX.Var (Free (Left m))  -> meta m
       TX.ForAll      n    t b -> braces (ann (intro n d ::: print opts env t)) --> go (env |> PVar (n :=: intro n d)) b
       TX.Arrow Nothing  q a b -> mult q (go env a) --> go env b
@@ -226,7 +226,7 @@ instance Printable C.Term where
     where
     go env = \case
       C.Var (Global n) -> qvar n
-      C.Var (Free n)   -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
+      C.Var (Free n)   -> fromMaybe (lname (toLeveled d n)) $ Env.lookup env n
       C.Lam cs         -> comp (commaSep (map (clause env) cs))
       C.App f a        -> go env f $$ go env a
       C.Con n p        -> qvar n $$* (group . go env <$> p)

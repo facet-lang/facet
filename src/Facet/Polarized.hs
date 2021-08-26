@@ -53,7 +53,7 @@ infixl 2 :>-
 
 instance Quote Type XType where
   quote d = \case
-    TVar k d'  -> XTVar k (levelToIndex d d')
+    TVar k d'  -> XTVar k (toIndexed d d')
     Up t       -> XUp (quote d t)
     Bot        -> XBot
     a :-> b    -> quote d a :->: quote d b
@@ -126,7 +126,7 @@ evalCoterm env kenv = go
   go = \case
     CApp a k  -> App (evalTerm env kenv a) : go k
     CInst t k -> Inst t : go k
-    CRet i    -> [Ret (indexToLevel (Level (length kenv)) i)]
+    CRet i    -> [Ret (toLeveled (Level (length kenv)) i)]
 
 data Binding
   = V V
@@ -155,10 +155,10 @@ instance Show V where
 
 quoteV :: Level -> Level -> V -> Term
 quoteV lv lk = \case
-  Ne l sp  -> CMu (CVar (levelToIndex lv l)) (foldr (\case
+  Ne l sp  -> CMu (CVar (toIndexed lv l)) (foldr (\case
     App v  -> CApp (quoteV lv lk v)
     Inst t -> CInst t
-    Ret i  -> const (CRet (levelToIndex lk i))) (CRet (Index 0)) sp)
+    Ret i  -> const (CRet (toIndexed lk i))) (CRet (Index 0)) sp)
   TLam k f -> CTLam k (quoteBinderWith (`quoteV` lk) (TVar k) lv f)
   Lam f    -> CLam (quoteBinderWith (`quoteV` lk) vvar lv f)
 

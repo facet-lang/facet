@@ -256,10 +256,10 @@ abstractTerm body = go Nil Nil
       check (tlam (go (ts :> LName d n) fs) ::: T.ForAll n _T _B)
     T.Arrow  n q _A _B -> do
       d <- depth
-      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> Var (Free (LName (levelToIndex d' d) (fromMaybe __ n)))))] ::: T.Arrow n q _A _B)
+      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> Var (Free (LName (toIndexed d' d) (fromMaybe __ n)))))] ::: T.Arrow n q _A _B)
     _T                -> do
       d <- depth
-      pure $ body (TX.Var . Free . Right . fmap (levelToIndex d) <$> ts) (fs <*> pure d)
+      pure $ body (TX.Var . Free . Right . toIndexed d <$> ts) (fs <*> pure d)
 
 patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern (Name ::: Classifier))
 patternForArgType = \case

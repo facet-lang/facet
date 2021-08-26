@@ -42,7 +42,7 @@ instance Quote Term X.Term where
     String s -> X.String s
     Con n sp -> X.Con n (quote d <$> sp)
     Lam cs   -> X.Lam (map (uncurry clause) cs)
-    Ne v sp  -> foldl' (\ h -> X.App h . quote d) (X.Var (fmap (levelToIndex d) <$> v)) sp
+    Ne v sp  -> foldl' (\ h -> X.App h . quote d) (X.Var (toIndexed d v)) sp
     Dict os  -> X.Dict (map (fmap (quote d)) os)
     Comp p b -> X.Comp p (snd (clause (PDict p) b))
     where
@@ -51,7 +51,7 @@ instance Quote Term X.Term where
 norm :: Env Term -> X.Term -> Term
 norm env = \case
   X.String s  -> String s
-  X.Var v     -> Ne (fmap (indexToLevel (level env)) <$> v) Nil
+  X.Var v     -> Ne (toLeveled (level env) v) Nil
   X.Con n sp  -> Con n (norm env <$> sp)
   X.App f a   -> norm env f `napp`  norm env a
   X.Lam cs    -> Lam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)

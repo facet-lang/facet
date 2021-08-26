@@ -21,7 +21,7 @@ data Type
 -- FIXME: this should be Level -> Type
 instance TType (T (Level -> Type)) where
   string = T (const String)
-  forAll n (T k) b = T (\ d -> ForAll n k (getT (b (T (\ d' -> Var (Free (Right (LName (levelToIndex d d') n)))))) d))
+  forAll n (T k) b = T (\ d -> ForAll n k (getT (b (T (\ d' -> Var (Free (Right (LName (toIndexed d d') n)))))) d))
   arrow n q (T a) (T b) = T (\ d -> Arrow n q (a d) (b d))
   comp sig (T b) = T (\ d -> Comp (mapSignature (\ (T i) -> i d) sig) (b d))
   app (T f) (T a) = T (\ d -> App (f d) (a d))

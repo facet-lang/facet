@@ -54,7 +54,7 @@ instance Quote Type TX.Type where
     ForAll n t b  -> TX.ForAll n t (quote (succ d) (b (free (LName d n))))
     Arrow n q a b -> TX.Arrow n q (quote d a) (quote d b)
     Comp s t      -> TX.Comp (mapSignature (quote d) s) (quote d t)
-    Ne n sp       -> foldl' (&) (TX.Var (fmap (fmap (levelToIndex d)) <$> n)) (flip TX.App . quote d <$> sp)
+    Ne n sp       -> foldl' (&) (TX.Var (toIndexed d n)) (flip TX.App . quote d <$> sp)
 
 instance TType (T Type) where
   string = T String

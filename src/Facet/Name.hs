@@ -4,8 +4,6 @@
 module Facet.Name
 ( Index(..)
 , Level(..)
-, levelToIndex
-, indexToLevel
 , DeBruijn(..)
 , Meta(..)
 , __
@@ -50,20 +48,14 @@ newtype Level = Level { getLevel :: Int }
 instance Show Level where
   showsPrec p = showsUnaryWith showsPrec "Level" p . getLevel
 
-levelToIndex :: Level -> Level -> Index
-levelToIndex (Level d) (Level level) = Index $ d - level - 1
-
-indexToLevel :: Level -> Index -> Level
-indexToLevel (Level d) (Index index) = Level $ d - index - 1
-
 
 class DeBruijn lv ix | lv -> ix, ix -> lv where
   toIndexed :: Level -> lv -> ix
   toLeveled :: Level -> ix -> lv
 
 instance DeBruijn Level Index where
-  toIndexed = levelToIndex
-  toLeveled = indexToLevel
+  toIndexed (Level d) (Level level) = Index $ d - level - 1
+  toLeveled (Level d) (Index index) = Level $ d - index - 1
 
 instance DeBruijn lv ix => DeBruijn (Either e lv) (Either e ix) where
   toIndexed = fmap . toIndexed

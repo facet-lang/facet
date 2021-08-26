@@ -136,7 +136,7 @@ instance Monad m => Quote (Value m) (m Term) where
   quote d = \case
     VLam _ cs -> pure $ Lam cs
     VCont k   -> quote (succ d) =<< k (VVar (Free (LName d __)))
-    VVar v    -> pure (Var (fmap (levelToIndex d) <$> v))
+    VVar v    -> pure (Var (toIndexed d v))
     VCon n fs -> Con n <$> traverse (quote d) fs
     VString s -> pure $ String s
     VDict os  -> Dict <$> traverse (traverse (quote d)) os
