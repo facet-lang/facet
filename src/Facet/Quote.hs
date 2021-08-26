@@ -9,6 +9,8 @@ module Facet.Quote
 , liftQuoteBinderWith
   -- * Deriving
 , Quoting(..)
+  -- * Quoters
+, Quoter(..)
 ) where
 
 import Facet.Name (Level)
@@ -47,3 +49,8 @@ instance (Quote v t, Ord t) => Ord (Quoting t v) where
 
 instance (Quote v t, Show t) => Show (Quoting t v) where
   showsPrec p = showsPrec p . quote 0 . getQuoting
+
+
+-- Quoters
+
+newtype Quoter a = Quoter { runQuoter :: Level -> a }
