@@ -88,14 +88,14 @@ comp s t = do
   pure $ TX.Comp (fromInterfaces s') t' :==> KType
 
 
-synthKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Kind -> Elab m (Kind :==> Kind)
+synthKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Comment S.Kind -> Elab m (Kind :==> Kind)
 synthKind (S.Ann s _ e) = pushSpan s $ case e of
   S.KArrow n a b -> arrow (KArrow n) (synthKind a) (synthKind b)
   S.KType        -> _Type
   S.KInterface   -> _Interface
 
 
-synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Elab m (TX.Type :==> Kind)
+synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Comment S.Type -> Elab m (TX.Type :==> Kind)
 synthType (S.Ann s _ e) = pushSpan s $ case e of
   S.TVar n          -> tvar n
   S.TString         -> _String
@@ -108,7 +108,7 @@ synthType (S.Ann s _ e) = pushSpan s $ case e of
     S.Zero -> zero
     S.One  -> one
 
-synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> Elab m (Interface TX.Type :==> Kind)
+synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Comment S.Interface -> Elab m (Interface TX.Type :==> Kind)
 synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = pushSpan s $ do
   -- FIXME: check that the application actually result in an Interface
   h' :==> _ <- pushSpan sh (ivar h)

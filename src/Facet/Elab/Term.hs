@@ -194,7 +194,7 @@ allP n = Bind $ \ _A k -> do
 
 -- Expression elaboration
 
-synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Elab m (Term :==> Type)
+synthExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Comment S.Expr -> Elab m (Term :==> Type)
 synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \case
   S.Var n    -> var n
   S.App f a  -> synthApp f a
@@ -204,13 +204,13 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \cas
   S.Lam{}    -> nope
   where
   nope = couldNotSynthesize
-  synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Elab m (Term :==> Type)
+  synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Comment S.Expr -> S.Ann S.Comment S.Expr -> Elab m (Term :==> Type)
   synthApp f a = app App (synthExpr f) (checkExpr a)
-  synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Elab m (Term :==> Type)
+  synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Comment S.Expr -> S.Ann S.Comment S.Type -> Elab m (Term :==> Type)
   synthAs t _T = as (checkExpr t ::: do { _T :==> _K <- synthType _T ; (:==> _K) <$> evalTExpr _T })
 
 
-checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Type <==: Elab m Term
+checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Comment S.Expr -> Type <==: Elab m Term
 checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withSpanC expr $ \case
   S.Hole  n  -> hole n
   S.Lam cs   -> checkLam cs
@@ -229,7 +229,7 @@ checkLam cs = lam (snd vs)
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.ValPattern -> Bind m (Pattern (Name ::: Classifier))
+bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Comment S.ValPattern -> Bind m (Pattern (Name ::: Classifier))
 bindPattern = go where
   go = withSpanB $ \case
     S.PWildcard -> wildcardP
@@ -272,7 +272,7 @@ patternForArgType = \case
 elabDataDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Name ::: Kind
-  -> [S.Ann (Name ::: S.Ann S.Type)]
+  -> [S.Ann S.Comment (Name ::: S.Ann S.Comment S.Type)]
   -> m [Name :=: Def]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef (dname ::: _K) constructors = do
@@ -288,7 +288,7 @@ elabDataDef (dname ::: _K) constructors = do
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Name ::: Kind
-  -> [S.Ann (Name ::: S.Ann S.Type)]
+  -> [S.Ann S.Comment (Name ::: S.Ann S.Comment S.Type)]
   -> m [Name :=: Def]
 elabInterfaceDef (dname ::: _T) constructors = do
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
@@ -300,7 +300,7 @@ elabInterfaceDef (dname ::: _T) constructors = do
 elabTermDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
   => Type
-  -> S.Ann S.Expr
+  -> S.Ann S.Comment S.Expr
   -> m Term
 elabTermDef _T expr@(S.Ann s _ _) = do
   elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
@@ -318,7 +318,7 @@ elabTermDef _T expr@(S.Ann s _ _) = do
 
 elabModule
   :: (HasCallStack, Has (Reader Graph :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
-  => S.Ann S.Module
+  => S.Ann S.Comment S.Module
   -> m Module
 elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os mempty) $ do
   let (importedNames, imports) = mapAccumL (\ names (S.Ann _ _ S.Import{ name }) -> (Set.insert name names, Import name)) Set.empty is
@@ -374,13 +374,13 @@ runModule m = do
   mod <- get
   runReader mod m
 
-withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
+withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann S.Comment a -> Bind m b
 withSpanB k (S.Ann s _ a) = Bind (\ _A k' -> pushSpan s (runBind (k a) _A k'))
 
-withSpanC :: Algebra sig m => (a -> Type <==: Elab m b) -> S.Ann a -> Type <==: Elab m b
+withSpanC :: Algebra sig m => (a -> Type <==: Elab m b) -> S.Ann S.Comment a -> Type <==: Elab m b
 withSpanC k (S.Ann s _ a) = Check (\ _T -> pushSpan s (k a <==: _T))
 
-withSpan :: Has (Reader ElabContext) sig m => (a -> m b) -> S.Ann a -> m b
+withSpan :: Has (Reader ElabContext) sig m => (a -> m b) -> S.Ann S.Comment a -> m b
 withSpan k (S.Ann s _ a) = pushSpan s (k a)
 
 provide :: Has (Reader ElabContext :+: State (Subst Type)) sig m => Signature Type -> m a -> m a
