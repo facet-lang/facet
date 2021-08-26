@@ -51,15 +51,15 @@ import Prelude hiding (zipWith)
 
 eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Expr -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 eval = \case
-  XVar (Global n) -> global n >>= eval
-  XVar (Free n)   -> var n
-  XLam cs         -> lam cs
-  XApp  f a       -> app (eval f) a
-  XCon n fs       -> con n (eval <$> fs)
-  XString s       -> string s
-  XDict os        -> VDict <$> traverse (traverse eval) os
-  XLet p v b      -> eval v >>= \ v' -> local (|> fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v')) (eval b)
-  XComp p b       -> comp p b
+  Var (Global n) -> global n >>= eval
+  Var (Free n)   -> var n
+  Lam cs         -> lam cs
+  App  f a       -> app (eval f) a
+  Con n fs       -> con n (eval <$> fs)
+  String s       -> string s
+  Dict os        -> VDict <$> traverse (traverse eval) os
+  Let p v b      -> eval v >>= \ v' -> local (|> fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v')) (eval b)
+  Comp p b       -> comp p b
 
 global :: Has (Reader Graph :+: Reader Module) sig m => RName -> ReaderC (Env (Value (Eval m))) (Eval m) Expr
 global n = do
@@ -134,13 +134,13 @@ data Value m
 
 instance Monad m => Quote (Value m) (m Expr) where
   quote d = \case
-    VLam _ cs -> pure $ XLam cs
+    VLam _ cs -> pure $ Lam cs
     VCont k   -> quote (succ d) =<< k (VVar (Free (LName d __)))
-    VVar v    -> pure (XVar (fmap (levelToIndex d) <$> v))
-    VCon n fs -> XCon n <$> traverse (quote d) fs
-    VString s -> pure $ XString s
-    VDict os  -> XDict <$> traverse (traverse (quote d)) os
-    VComp p b -> pure $ XComp p b
+    VVar v    -> pure (Var (fmap (levelToIndex d) <$> v))
+    VCon n fs -> Con n <$> traverse (quote d) fs
+    VString s -> pure $ String s
+    VDict os  -> Dict <$> traverse (traverse (quote d)) os
+    VComp p b -> pure $ Comp p b
 
 unit :: Value m
 unit = VCon (NE.FromList ["Data", "Unit"] :.: U "unit") []

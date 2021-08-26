@@ -225,15 +225,15 @@ instance Printable C.Expr where
   print opts@Options{ rname } = go
     where
     go env = \case
-      C.XVar (Global n) -> qvar n
-      C.XVar (Free n)   -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
-      C.XLam cs         -> comp (commaSep (map (clause env) cs))
-      C.XApp f a        -> go env f $$ go env a
-      C.XCon n p        -> qvar n $$* (group . go env <$> p)
-      C.XString s       -> annotate Lit $ pretty (show s)
-      C.XDict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
-      C.XLet p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (print opts env (def <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
-      C.XComp p b       -> comp (clause env (PDict p, b))
+      C.Var (Global n) -> qvar n
+      C.Var (Free n)   -> fromMaybe (lname (indexToLevel d <$> n)) $ Env.lookup env n
+      C.Lam cs         -> comp (commaSep (map (clause env) cs))
+      C.App f a        -> go env f $$ go env a
+      C.Con n p        -> qvar n $$* (group . go env <$> p)
+      C.String s       -> annotate Lit $ pretty (show s)
+      C.Dict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
+      C.Let p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (print opts env (def <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
+      C.Comp p b       -> comp (clause env (PDict p, b))
       where
       d = level env
     qvar = group . setPrec Var . rname

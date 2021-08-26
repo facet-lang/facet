@@ -14,14 +14,14 @@ import Facet.Syntax
 -- Term expressions
 
 data Expr
-  = XVar (Var (LName Index))
-  | XLam [(Pattern Name, Expr)]
-  | XApp Expr Expr
-  | XCon RName [Expr]
-  | XString Text
-  | XDict [RName :=: Expr]
-  | XLet (Pattern Name) Expr Expr
-  | XComp [RName :=: Name] Expr -- ^ NB: the first argument is a specialization of @'Pattern' 'Name'@ to the 'PDict' constructor
+  = Var (Var (LName Index))
+  | Lam [(Pattern Name, Expr)]
+  | App Expr Expr
+  | Con RName [Expr]
+  | String Text
+  | Dict [RName :=: Expr]
+  | Let (Pattern Name) Expr Expr
+  | Comp [RName :=: Name] Expr -- ^ NB: the first argument is a specialization of @'Pattern' 'Name'@ to the 'PDict' constructor
   deriving (Eq, Ord, Show)
 
 class TExpr expr where
@@ -40,17 +40,17 @@ class TExpr expr where
   xlet :: T (Pattern Name) t -> expr t -> expr u -> expr u
 
 instance TExpr (T Expr) where
-  xvar = T . XVar . getT
+  xvar = T . Var . getT
 
-  xlam ps = T (XLam (map (bimap getT getT) ps))
+  xlam ps = T (Lam (map (bimap getT getT) ps))
 
-  xapp (T f) (T a) = T (f `XApp` a)
+  xapp (T f) (T a) = T (f `App` a)
 
-  xcon n b = T (XCon n (foldFields (pure . getT) b))
+  xcon n b = T (Con n (foldFields (pure . getT) b))
 
-  xstring = T . XString
+  xstring = T . String
 
-  xlet (T p) (T v) (T b) = T (XLet p v b)
+  xlet (T p) (T v) (T b) = T (Let p v b)
 
 
 class Fields f fs where

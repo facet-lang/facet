@@ -29,25 +29,25 @@ data Norm
 
 instance Quote Norm Expr where
   quote d = \case
-    NString s -> XString s
-    NCon n sp -> XCon n (quote d <$> sp)
-    NLam cs   -> XLam (map (uncurry clause) cs)
-    NNe v sp  -> foldl' (\ h -> XApp h . quote d) (XVar (fmap (levelToIndex d) <$> v)) sp
-    NDict os  -> XDict (map (fmap (quote d)) os)
-    NComp p b -> XComp p (snd (clause (PDict p) b))
+    NString s -> String s
+    NCon n sp -> Con n (quote d <$> sp)
+    NLam cs   -> Lam (map (uncurry clause) cs)
+    NNe v sp  -> foldl' (\ h -> App h . quote d) (Var (fmap (levelToIndex d) <$> v)) sp
+    NDict os  -> Dict (map (fmap (quote d)) os)
+    NComp p b -> Comp p (snd (clause (PDict p) b))
     where
     clause p b = let (d', p') = mapAccumL (\ d n -> (succ d, n :=: NNe (Free (LName d n)) Nil)) d p in (p, quote d' (b p'))
 
 norm :: Env Norm -> Expr -> Norm
 norm env = \case
-  XString s  -> NString s
-  XVar v     -> NNe (fmap (indexToLevel (level env)) <$> v) Nil
-  XCon n sp  -> NCon n (norm env <$> sp)
-  XApp f a   -> norm env f `napp`  norm env a
-  XLam cs    -> NLam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
-  XDict os   -> NDict (map (fmap (norm env)) os)
-  XLet p v b -> norm (env |> fromMaybe (error "norm: non-exhaustive pattern in let") (match (norm env v) p)) b
-  XComp p b  -> NComp p (\ p' -> norm (env |> p') b)
+  String s  -> NString s
+  Var v     -> NNe (fmap (indexToLevel (level env)) <$> v) Nil
+  Con n sp  -> NCon n (norm env <$> sp)
+  App f a   -> norm env f `napp`  norm env a
+  Lam cs    -> NLam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
+  Dict os   -> NDict (map (fmap (norm env)) os)
+  Let p v b -> norm (env |> fromMaybe (error "norm: non-exhaustive pattern in let") (match (norm env v) p)) b
+  Comp p b  -> NComp p (\ p' -> norm (env |> p') b)
 
 
 napp :: Norm -> Norm -> Norm

@@ -96,14 +96,14 @@ as (m ::: _T) = do
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global :: Algebra sig m => RName ::: Type -> Elab m (Expr :==> Type)
-global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (XVar (Global q) ::: _T)
+global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (Expr :==> Type)
 var n = views context_ (lookupInContext n) >>= \case
-  [(n', q, CT _T)] -> use n' q $> (XVar (Free n') :==> _T)
+  [(n', q, CT _T)] -> use n' q $> (Var (Free n') :==> _T)
   _                -> resolveQ n >>= \case
     n :=: DTerm _ _T -> global (n ::: _T)
     _ :=: _          -> freeVariable n
@@ -122,7 +122,7 @@ tlam b = Check $ \ _T -> do
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name ::: Classifier)), Type <==: Elab m Expr)] -> Type <==: Elab m Expr
 lam cs = Check $ \ _T -> do
   (_A, _B) <- assertTacitFunction _T
-  XLam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
+  Lam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
 
 lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Type <==: Elab m Expr -> Type <==: Elab m Expr
 lam1 p b = lam [(p, b)]
@@ -136,14 +136,14 @@ app mk operator operand = do
 
 
 string :: Text -> Elab m (Expr :==> Type)
-string s = pure $ XString s :==> T.String
+string s = pure $ E.String s :==> T.String
 
 
 let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Elab m (Expr :==> Type) -> Type <==: Elab m Expr -> Type <==: Elab m Expr
 let' p a b = Check $ \ _B -> do
   a' :==> _A <- a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
-  pure $ XLet p' a' b'
+  pure $ Let p' a' b'
 
 
 comp :: Has (Throw Err) sig m => Type <==: Elab m Expr -> Type <==: Elab m Expr
@@ -155,7 +155,7 @@ comp b = Check $ \ _T -> do
   p' <- traverse interfacePattern (interfaces sig)
   -- FIXME: can we apply quantities to dictionaries? what would they mean?
   b' <- (Many, PDict p') |- check (b ::: _B)
-  pure $ XComp (map (fmap tm) p') b'
+  pure $ E.Comp (map (fmap tm) p') b'
 
 
 -- Pattern combinators
@@ -205,7 +205,7 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \cas
   where
   nope = couldNotSynthesize
   synthApp :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Elab m (Expr :==> Type)
-  synthApp f a = app XApp (synthExpr f) (checkExpr a)
+  synthApp f a = app App (synthExpr f) (checkExpr a)
   synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Elab m (Expr :==> Type)
   synthAs t _T = as (checkExpr t ::: do { _T :==> _K <- synthType _T ; (:==> _K) <$> evalTExpr _T })
 
@@ -256,7 +256,7 @@ abstractTerm body = go Nil Nil
       check (tlam (go (ts :> LName d n) fs) ::: T.ForAll n _T _B)
     T.Arrow  n q _A _B -> do
       d <- depth
-      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> XVar (Free (LName (levelToIndex d' d) (fromMaybe __ n)))))] ::: T.Arrow n q _A _B)
+      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> Var (Free (LName (levelToIndex d' d) (fromMaybe __ n)))))] ::: T.Arrow n q _A _B)
     _T                -> do
       d <- depth
       pure $ body (TX.Var . Free . Right . fmap (levelToIndex d) <$> ts) (fs <*> pure d)
@@ -279,7 +279,7 @@ elabDataDef (dname ::: _K) constructors = do
   mname <- view name_
   cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _K
-    con' <- elabTerm $ check (abstractTerm (const (XCon (mname :.: n) . toList)) ::: c_T)
+    con' <- elabTerm $ check (abstractTerm (const (Con (mname :.: n) . toList)) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
   pure
     $ (dname :=: DData (scopeFromList cs) _K)
