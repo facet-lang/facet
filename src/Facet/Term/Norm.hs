@@ -16,7 +16,7 @@ import Facet.Quote
 import Facet.Semialign (zipWithM)
 import Facet.Snoc
 import Facet.Syntax
-import Facet.Term.Expr
+import Facet.Term.Expr as X
 
 data Norm
   = NString Text
@@ -29,25 +29,25 @@ data Norm
 
 instance Quote Norm Expr where
   quote d = \case
-    NString s -> String s
-    NCon n sp -> Con n (quote d <$> sp)
-    NLam cs   -> Lam (map (uncurry clause) cs)
-    NNe v sp  -> foldl' (\ h -> App h . quote d) (Var (fmap (levelToIndex d) <$> v)) sp
-    NDict os  -> Dict (map (fmap (quote d)) os)
-    NComp p b -> Comp p (snd (clause (PDict p) b))
+    NString s -> X.String s
+    NCon n sp -> X.Con n (quote d <$> sp)
+    NLam cs   -> X.Lam (map (uncurry clause) cs)
+    NNe v sp  -> foldl' (\ h -> X.App h . quote d) (X.Var (fmap (levelToIndex d) <$> v)) sp
+    NDict os  -> X.Dict (map (fmap (quote d)) os)
+    NComp p b -> X.Comp p (snd (clause (PDict p) b))
     where
     clause p b = let (d', p') = mapAccumL (\ d n -> (succ d, n :=: NNe (Free (LName d n)) Nil)) d p in (p, quote d' (b p'))
 
 norm :: Env Norm -> Expr -> Norm
 norm env = \case
-  String s  -> NString s
-  Var v     -> NNe (fmap (indexToLevel (level env)) <$> v) Nil
-  Con n sp  -> NCon n (norm env <$> sp)
-  App f a   -> norm env f `napp`  norm env a
-  Lam cs    -> NLam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
-  Dict os   -> NDict (map (fmap (norm env)) os)
-  Let p v b -> norm (env |> fromMaybe (error "norm: non-exhaustive pattern in let") (match (norm env v) p)) b
-  Comp p b  -> NComp p (\ p' -> norm (env |> p') b)
+  X.String s  -> NString s
+  X.Var v     -> NNe (fmap (indexToLevel (level env)) <$> v) Nil
+  X.Con n sp  -> NCon n (norm env <$> sp)
+  X.App f a   -> norm env f `napp`  norm env a
+  X.Lam cs    -> NLam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
+  X.Dict os   -> NDict (map (fmap (norm env)) os)
+  X.Let p v b -> norm (env |> fromMaybe (error "norm: non-exhaustive pattern in let") (match (norm env v) p)) b
+  X.Comp p b  -> NComp p (\ p' -> norm (env |> p') b)
 
 
 napp :: Norm -> Norm -> Norm
