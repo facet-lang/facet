@@ -30,7 +30,7 @@ import qualified Data.Map as Map
 import           Facet.Kind
 import           Facet.Name
 import           Facet.Syntax
-import           Facet.Term
+import           Facet.Term.Expr
 import           Facet.Type.Norm
 import           Fresnel.Iso (coerced)
 import           Fresnel.Lens (Lens, Lens', lens)

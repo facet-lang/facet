@@ -52,7 +52,7 @@ import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Style as Style
 import qualified Facet.Surface as S
 import           Facet.Syntax
-import           Facet.Term (Expr)
+import           Facet.Term.Expr (Expr)
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Setter ((.~))
 import           Prelude hiding (span, unlines)

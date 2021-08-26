@@ -45,7 +45,7 @@ import Facet.Quote
 import Facet.Semialign (zipWithM)
 import Facet.Snoc.NonEmpty as NE hiding ((|>))
 import Facet.Syntax
-import Facet.Term
+import Facet.Term.Expr
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)
 

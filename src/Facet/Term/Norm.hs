@@ -1,4 +1,4 @@
-module Facet.Norm
+module Facet.Term.Norm
 ( Norm(..)
 , norm
 ) where
@@ -16,7 +16,7 @@ import Facet.Quote
 import Facet.Semialign (zipWithM)
 import Facet.Snoc
 import Facet.Syntax
-import Facet.Term
+import Facet.Term.Expr
 
 data Norm
   = NString Text

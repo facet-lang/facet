@@ -71,7 +71,7 @@ import           Facet.Source (Source)
 import           Facet.Subst
 import qualified Facet.Surface as S
 import           Facet.Syntax
-import           Facet.Term as E
+import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify

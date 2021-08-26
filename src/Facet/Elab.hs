@@ -77,7 +77,7 @@ import           Facet.Source (Source, slice)
 import           Facet.Span (Span(..))
 import           Facet.Subst
 import           Facet.Syntax
-import           Facet.Term as E
+import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as TN
 import           Facet.Usage as Usage

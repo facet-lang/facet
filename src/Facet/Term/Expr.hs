@@ -1,4 +1,4 @@
-module Facet.Term
+module Facet.Term.Expr
 ( -- * Term expressions
   Expr(..)
 , TExpr(..)

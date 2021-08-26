@@ -98,7 +98,6 @@ library
     Facet.Lexer
     Facet.Module
     Facet.Name
-    Facet.Norm
     Facet.Notice
     Facet.Notice.Elab
     Facet.Notice.Parser
@@ -122,7 +121,8 @@ library
     Facet.Subst
     Facet.Surface
     Facet.Syntax
-    Facet.Term
+    Facet.Term.Expr
+    Facet.Term.Norm
     Facet.Timing
     Facet.Type
     Facet.Type.Expr
