@@ -1,9 +1,11 @@
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Facet.Name
 ( Index(..)
 , Level(..)
 , levelToIndex
 , indexToLevel
+, DeBruijn(..)
 , Meta(..)
 , __
 , MName
@@ -54,6 +56,11 @@ levelToIndex (Level d) (Level level) = Index $ d - level - 1
 
 indexToLevel :: Level -> Index -> Level
 indexToLevel (Level d) (Index index) = Level $ d - index - 1
+
+
+class DeBruijn lv ix | lv -> ix, ix -> lv where
+  toIndexed :: lv -> ix
+  toLeveled :: ix -> lv
 
 
 newtype Meta = Meta { getMeta :: Int }
