@@ -18,4 +18,5 @@ class Type r where
   var :: Var (Either Meta (LName Level)) -> r
   ($$) :: r -> r -> r
   infixl 9 $$
-  comp :: Signature r -> r -> r
+  (|-) :: Signature r -> r -> r
+  infixr 9 |-
