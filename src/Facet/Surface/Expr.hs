@@ -1,12 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Surface.Expr
-( -- * Types
-  Kind(..)
-, Type(..)
-, Mul(..)
-  -- * Expressions
-, Expr(..)
-, Interface(..)
+( -- * Expressions
+  Expr(..)
 , Clause(..)
   -- * Patterns
 , Pattern(..)
