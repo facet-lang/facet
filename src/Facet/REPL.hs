@@ -50,7 +50,7 @@ import           Facet.REPL.Parser
 import           Facet.Snoc
 import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Style as Style
-import qualified Facet.Surface as S
+import qualified Facet.Surface.Expr as S
 import           Facet.Syntax
 import           Facet.Term.Expr (Term)
 import           Fresnel.Lens (Lens', lens)

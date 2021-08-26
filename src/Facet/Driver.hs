@@ -48,8 +48,8 @@ import           Facet.Print (Options)
 import           Facet.Snoc
 import           Facet.Source
 import           Facet.Style
-import qualified Facet.Surface as Import (Import(..))
-import qualified Facet.Surface as S
+import qualified Facet.Surface.Expr as Import (Import(..))
+import qualified Facet.Surface.Expr as S
 import           Fresnel.Getter ((^.))
 import           Fresnel.Lens (Lens, Lens', lens)
 import           Silkscreen

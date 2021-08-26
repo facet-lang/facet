@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Facet.Surface
+module Facet.Surface.Expr
 ( -- * Types
   Kind(..)
 , Type(..)

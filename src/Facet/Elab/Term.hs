@@ -69,7 +69,7 @@ import           Facet.Snoc
 import           Facet.Snoc.NonEmpty as NE
 import           Facet.Source (Source)
 import           Facet.Subst
-import qualified Facet.Surface as S
+import qualified Facet.Surface.Expr as S
 import           Facet.Syntax
 import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
