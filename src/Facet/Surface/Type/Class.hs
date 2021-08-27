@@ -1,4 +1,3 @@
-{-# LANGUAGE FunctionalDependencies #-}
 module Facet.Surface.Type.Class
 ( Kind(..)
 , Type(..)
@@ -9,18 +8,19 @@ import Facet.Name
 import Facet.Snoc
 import Facet.Surface.Type.Expr (Mul)
 
-class Kind f r | r -> f where
+class Kind r where
   ktype :: r
   kinterface :: r
-  karrow :: Maybe Name -> f r -> f r -> r
+  karrow :: Maybe Name -> r -> r -> r
 
-class Type f r | r -> f where
+-- FIXME: interface for annotating types/terms
+class Type r where
   var :: QName -> r
   string :: r
-  forAll :: Name -> f r -> (f r -> f r) -> r
-  arrow :: Maybe Name -> Maybe Mul -> f r -> f r -> r
-  comp :: [f r] -> f r -> r
-  tapp :: f r -> f r -> r
+  forAll :: Name -> r -> (r -> r) -> r
+  arrow :: Maybe Name -> Maybe Mul -> r -> r -> r
+  comp :: [r] -> r -> r
+  tapp :: r -> r -> r
 
-class Interface f r | r -> f where
-  interface :: QName -> Snoc (f r) -> r
+class Interface r where
+  interface :: QName -> Snoc r -> r
