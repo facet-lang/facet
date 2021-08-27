@@ -5,6 +5,7 @@ module Facet.Functor.Compose
 , liftCInner
 , mapCInner
 , liftCOuter
+, mapCOuter
 ) where
 
 import Facet.Syntax (type (~>))
@@ -27,3 +28,6 @@ mapCInner f = C . fmap f . runC
 
 liftCOuter :: (Functor i, Applicative j) => i a -> (i . j) a
 liftCOuter = C . fmap pure
+
+mapCOuter :: (i ~> i') -> ((i . j) ~> (i' . j))
+mapCOuter f = C . f . runC
