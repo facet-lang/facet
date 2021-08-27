@@ -8,8 +8,6 @@ module Facet.Functor.Compose
 , mapCOuter
 ) where
 
-import Facet.Syntax (type (~>))
-
 -- Composition functor
 
 newtype (i . j) a = C { runC :: i (j a) }
@@ -29,5 +27,5 @@ mapCInner f = C . fmap f . runC
 liftCOuter :: (Functor i, Applicative j) => i a -> (i . j) a
 liftCOuter = C . fmap pure
 
-mapCOuter :: (i ~> i') -> ((i . j) ~> (i' . j))
+mapCOuter :: (i (j a) -> i' (j' b)) -> ((i . j) a -> (i' . j') b)
 mapCOuter f = C . f . runC
