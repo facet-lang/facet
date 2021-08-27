@@ -1,26 +1,20 @@
 module Facet.Surface.Type.Expr
-( Kind(..)
-, Type(..)
+( Type(..)
 , Interface(..)
 , Mul(..)
 ) where
 
+import Facet.Kind
 import Facet.Name
 import Facet.Snoc
 import Facet.Syntax
 
 -- Types
 
-data Kind
-  = KType
-  | KInterface
-  | KArrow (Maybe Name) (Ann Comment Kind) (Ann Comment Kind)
-  deriving (Eq, Show)
-
 data Type
   = TVar QName
   | TString
-  | TForAll Name (Ann Comment Kind) (Ann Comment Type)
+  | TForAll Name Kind (Ann Comment Type)
   | TArrow (Maybe Name) (Maybe Mul) (Ann Comment Type) (Ann Comment Type)
   | TComp [Ann Comment (Interface (Ann Comment Type))] (Ann Comment Type)
   | TApp (Ann Comment Type) (Ann Comment Type)

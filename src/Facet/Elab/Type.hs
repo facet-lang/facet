@@ -2,11 +2,8 @@
 module Facet.Elab.Type
 ( -- * Types
   tvar
-, _Type
-, _Interface
 , _String
 , forAll
-, synthKind
 , synthType
   -- * Judgements
 , checkIsType
@@ -48,21 +45,14 @@ ivar n = resolveQ n >>= \case
     _                     -> freeVariable n
 
 
-_Type :: Elab m (Kind :==> Kind)
-_Type = pure $ KType :==> KType
-
-_Interface :: Elab m (Kind :==> Kind)
-_Interface = pure $ KInterface :==> KType
-
 _String :: Elab m (TX.Type :==> Kind)
 _String = pure $ TX.String :==> KType
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Elab m (Kind :==> Kind) -> Elab m (TX.Type :==> Kind) -> Elab m (TX.Type :==> Kind)
+forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Kind -> Elab m (TX.Type :==> Kind) -> Elab m (TX.Type :==> Kind)
 forAll (n ::: t) b = do
-  t' <- checkIsType (t ::: KType)
-  b' <- (zero, PVar (n ::: CK t')) |- checkIsType (b ::: KType)
-  pure $ TX.ForAll n t' b' :==> KType
+  b' <- (zero, PVar (n ::: CK t)) |- checkIsType (b ::: KType)
+  pure $ TX.ForAll n t b' :==> KType
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Elab m (a :==> Kind) -> Elab m (b :==> Kind) -> Elab m (c :==> Kind)
 arrow mk a b = do
@@ -88,18 +78,11 @@ comp s t = do
   pure $ TX.Comp (fromInterfaces s') t' :==> KType
 
 
-synthKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Comment S.Kind -> Elab m (Kind :==> Kind)
-synthKind (S.Ann s _ e) = pushSpan s $ case e of
-  S.KArrow n a b -> arrow (KArrow n) (synthKind a) (synthKind b)
-  S.KType        -> _Type
-  S.KInterface   -> _Interface
-
-
 synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Comment S.Type -> Elab m (TX.Type :==> Kind)
 synthType (S.Ann s _ e) = pushSpan s $ case e of
   S.TVar n          -> tvar n
   S.TString         -> _String
-  S.TForAll n t b   -> forAll (n ::: synthKind t) (synthType b)
+  S.TForAll n t b   -> forAll (n ::: t) (synthType b)
   S.TArrow  n q a b -> arrow (TX.Arrow n (maybe Many interpretMul q)) (synthType a) (synthType b)
   S.TComp s t       -> comp (map synthInterface s) (synthType t)
   S.TApp f a        -> app TX.App (synthType f) (synthType a)

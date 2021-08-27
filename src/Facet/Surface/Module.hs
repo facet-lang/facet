@@ -7,6 +7,7 @@ module Facet.Surface.Module
 , Import(..)
 ) where
 
+import Facet.Kind
 import Facet.Name
 import Facet.Surface.Term.Expr
 import Facet.Surface.Type.Expr
@@ -15,8 +16,8 @@ import Facet.Syntax
 -- Declarations
 
 data Def
-  = DataDef [Ann Comment (Name ::: Ann Comment Type)] (Ann Comment Kind)
-  | InterfaceDef [Ann Comment (Name ::: Ann Comment Type)] (Ann Comment Kind)
+  = DataDef [Ann Comment (Name ::: Ann Comment Type)] Kind
+  | InterfaceDef [Ann Comment (Name ::: Ann Comment Type)] Kind
   | TermDef (Ann Comment Expr) (Ann Comment Type)
   deriving (Eq, Show)
 

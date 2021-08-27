@@ -32,6 +32,7 @@ import qualified Data.HashSet as HashSet
 import qualified Data.List.NonEmpty as NE
 import           Data.Text (pack)
 import           Facet.Effect.Parser
+import           Facet.Kind
 import qualified Facet.Name as N
 import           Facet.Parser.Table as Op
 import           Facet.Snoc
@@ -130,7 +131,7 @@ con = anned ((:::) <$> dename <* colon <*> rec)
 
 kindSig
   :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p)
-  => p (S.Ann S.Comment S.Kind)
+  => p Kind
 kindSig = choice [ kindArrow kindSig, kind ]
 
 typeSig
@@ -142,14 +143,14 @@ typeSig name = choice [ forAll (typeSig name), bindArrow name (typeSig name), ty
 
 -- Types
 
-kind :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p) => p (S.Ann S.Comment S.Kind)
+kind :: (Has Parser sig p, TokenParsing p) => p Kind
 kind = choice
-  [ token (anned (S.KType      <$ string "Type"))
-  , token (anned (S.KInterface <$ string "Interface"))
+  [ token (KType      <$ string "Type")
+  , token (KInterface <$ string "Interface")
   ]
 
-kindArrow :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p) => p (S.Ann S.Comment S.Kind) -> p (S.Ann S.Comment S.Kind)
-kindArrow k = anned (try (S.KArrow . Just <$ lparen <*> (tname <|> N.__ <$ wildcard) <* colon) <*> kind <* rparen <* arrow <*> k)
+kindArrow :: (Has Parser sig p, TokenParsing p) => p Kind -> p Kind
+kindArrow k = try (KArrow . Just <$ lparen <*> (tname <|> N.__ <$ wildcard) <* colon) <*> kind <* rparen <* arrow <*> k
 
 
 -- FIXME: kind ascriptions
