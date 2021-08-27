@@ -3,8 +3,11 @@ module Facet.Functor.Compose
   type (.)(..)
   -- * Introduction
 , liftCInner
+, mapCInner
 , liftCOuter
 ) where
+
+import Facet.Syntax (type (~>))
 
 -- Composition functor
 
@@ -18,6 +21,9 @@ instance (Applicative i, Applicative j) => Applicative (i . j) where
 
 liftCInner :: Applicative i => j a -> (i . j) a
 liftCInner = C . pure
+
+mapCInner :: Functor i => (j ~> j') -> ((i . j) ~> (i . j'))
+mapCInner f = C . fmap f . runC
 
 liftCOuter :: (Functor i, Applicative j) => i a -> (i . j) a
 liftCOuter = C . fmap pure
