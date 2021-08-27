@@ -1,23 +1,18 @@
 module Facet.Surface.Type.Class
-( Kind(..)
-, Type(..)
+( Type(..)
 , Interface(..)
 ) where
 
+import Facet.Kind
 import Facet.Name
 import Facet.Snoc
 import Facet.Surface.Type.Expr (Mul)
-
-class Kind r where
-  ktype :: r
-  kinterface :: r
-  karrow :: Maybe Name -> r -> r -> r
 
 -- FIXME: interface for annotating types/terms
 class Type r where
   var :: QName -> r
   string :: r
-  forAll :: Name -> r -> (r -> r) -> r
+  forAll :: Name -> Kind -> (r -> r) -> r
   arrow :: Maybe Name -> Maybe Mul -> r -> r -> r
   comp :: [r] -> r -> r
   tapp :: r -> r -> r
