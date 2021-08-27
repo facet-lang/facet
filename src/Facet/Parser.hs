@@ -117,10 +117,10 @@ body = fmap (either S.out id) <$> anned (braces (Right . S.Lam <$> sepBy1 clause
 
 
 dataDecl :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Comment (N.Name, S.Ann S.Comment S.Def))
-dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> tname <* colon <*> anned (kindSig tname <**> (S.DataDef <$> braces (commaSep con)))
+dataDecl = anned $ (,) <$ reserve dnameStyle "data" <*> tname <* colon <*> anned (kindSig <**> (S.DataDef <$> braces (commaSep con)))
 
 interfaceDecl :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Comment (N.Name, S.Ann S.Comment S.Def))
-interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> tname <* colon <*> anned (kindSig tname <**> (S.InterfaceDef <$> braces (commaSep con)))
+interfaceDecl = anned $ (,) <$ reserve dnameStyle "interface" <*> tname <* colon <*> anned (kindSig <**> (S.InterfaceDef <$> braces (commaSep con)))
 
 con :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Comment (N.Name ::: S.Ann S.Comment S.Type))
 con = anned ((:::) <$> dename <* colon <*> rec)
@@ -130,9 +130,8 @@ con = anned ((:::) <$> dename <* colon <*> rec)
 
 kindSig
   :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p)
-  => p N.Name -- ^ a parser for names occurring in explicit (parenthesized) bindings
-  -> p (S.Ann S.Comment S.Kind)
-kindSig name = choice [ kindArrow name (kindSig name), kind ]
+  => p (S.Ann S.Comment S.Kind)
+kindSig = choice [ kindArrow kindSig, kind ]
 
 typeSig
   :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p)
@@ -149,8 +148,8 @@ kind = choice
   , token (anned (S.KInterface <$ string "Interface"))
   ]
 
-kindArrow :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p N.Name -> p (S.Ann S.Comment S.Kind) -> p (S.Ann S.Comment S.Kind)
-kindArrow name k = anned (try (S.KArrow . Just <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> kind <* rparen <* arrow <*> k)
+kindArrow :: (Has Parser sig p, Has (Writer (Snoc (Span, S.Comment))) sig p, TokenParsing p) => p (S.Ann S.Comment S.Kind) -> p (S.Ann S.Comment S.Kind)
+kindArrow k = anned (try (S.KArrow . Just <$ lparen <*> (tname <|> N.__ <$ wildcard) <* colon) <*> kind <* rparen <* arrow <*> k)
 
 
 -- FIXME: kind ascriptions
