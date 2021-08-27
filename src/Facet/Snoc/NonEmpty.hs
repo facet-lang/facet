@@ -21,6 +21,10 @@ infixl 5 :|>
 instance Semigroup (NonEmpty a) where
   as <> (bs :|> b) = toSnoc as <> bs :|> b
 
+instance Applicative NonEmpty where
+  pure = (Nil :|>)
+  fs <*> as = fromSnoc (toSnoc fs <*> toSnoc as)
+
 (|>) :: NonEmpty a -> a -> NonEmpty a
 i :|> l |> l' = i :> l :|> l'
 
