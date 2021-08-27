@@ -8,6 +8,8 @@ module Facet.Functor.Compose
 , mapCOuter
 ) where
 
+import Control.Applicative (Alternative(..))
+
 -- Composition functor
 
 newtype (i . j) a = C { runC :: i (j a) }
@@ -16,6 +18,10 @@ newtype (i . j) a = C { runC :: i (j a) }
 instance (Applicative i, Applicative j) => Applicative (i . j) where
   pure = C . pure . pure
   C f <*> C a = C ((<*>) <$> f <*> a)
+
+instance (Alternative i, Applicative j) => Alternative (i . j) where
+  empty = liftCOuter empty
+  C l <|> C r = C (l <|> r)
 
 
 liftCInner :: Applicative i => j a -> (i . j) a
