@@ -23,7 +23,7 @@ instance (Applicative i, Applicative j) => Applicative (i . j) where
 liftCInner :: Applicative i => j a -> (i . j) a
 liftCInner = C . pure
 
-mapCInner :: Functor i => (j ~> j') -> ((i . j) ~> (i . j'))
+mapCInner :: Functor i => (j a -> j' b) -> ((i . j) a -> (i . j') b)
 mapCInner f = C . fmap f . runC
 
 liftCOuter :: (Functor i, Applicative j) => i a -> (i . j) a
