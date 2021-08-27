@@ -18,6 +18,9 @@ data NonEmpty a = Snoc a :|> a
 
 infixl 5 :|>
 
+instance Semigroup (NonEmpty a) where
+  as <> (bs :|> b) = toSnoc as <> bs :|> b
+
 (|>) :: NonEmpty a -> a -> NonEmpty a
 i :|> l |> l' = i :> l :|> l'
 
