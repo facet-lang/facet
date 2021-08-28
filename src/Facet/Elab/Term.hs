@@ -328,15 +328,15 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: maybe figure out the graph for mutual recursion?
     -- FIXME: check for redundant naming
 
-    let build :: (Has (State Module) sig m, Monoid a) => Name -> Prism' Submodule a -> Kind -> Kind <==: ReaderC Module m b -> (b -> m a) -> m ()
-        build dname p _K elab ret = letrec (scope_.decls_) dname (_DSubmodule._tm.p) (DSubmodule (review p mempty) _K) (runModule (elab <==: _K) >>= ret)
+    let elabScope :: (Has (State Module) sig m, Monoid a) => Name -> Prism' Submodule a -> Kind -> Kind <==: ReaderC Module m b -> (b -> m a) -> m ()
+        elabScope dname p _K elab ret = letrec (scope_.decls_) dname (_DSubmodule._tm.p) (DSubmodule (review p mempty) _K) (runModule (elab <==: _K) >>= ret)
 
     -- elaborate all the types first
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> case def of
-      S.DataDef cs _K -> Nothing <$ build dname _SData _K (elabDataDef cs) (\ cs -> do
+      S.DataDef cs _K -> Nothing <$ elabScope dname _SData _K (elabDataDef cs) (\ cs -> do
         scopeFromList cs <$ for_ cs (\ (dname :=: decl) -> scope_.decls_.at dname .= Just decl))
 
-      S.InterfaceDef os _K -> Nothing <$ build dname _SInterface _K (elabInterfaceDef os) (pure . scopeFromList)
+      S.InterfaceDef os _K -> Nothing <$ elabScope dname _SInterface _K (elabInterfaceDef os) (pure . scopeFromList)
 
       S.TermDef t tele -> do
         _T <- runModule $ elabType $ Type.switch (synthType tele) <==: KType
