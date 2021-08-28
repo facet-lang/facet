@@ -14,6 +14,7 @@ module Facet.Module
 , scopeToList
 , lookupScope
 , Import(..)
+, Submodule(..)
 , Def(..)
 , unDTerm
 , unDData
@@ -28,6 +29,7 @@ import           Control.Effect.Choose
 import           Control.Effect.Empty
 import           Control.Monad ((<=<))
 import           Data.Bifunctor (Bifunctor(bimap), first)
+import           Data.Bitraversable
 import           Data.Coerce
 import qualified Data.Map as Map
 import           Facet.Kind
@@ -39,6 +41,7 @@ import           Facet.Type.Norm
 import           Fresnel.Iso (coerced)
 import           Fresnel.Lens (Lens, Lens', lens)
 import           Fresnel.Prism
+import           Fresnel.Review (review)
 
 -- Modules
 
@@ -111,11 +114,30 @@ lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
 newtype Import = Import { name :: MName }
 
 
+data Submodule
+  = SData (Scope Def)
+  | SInterface (Scope Type)
+  | SModule (Scope Def)
+
+_SData :: Prism' Submodule (Scope Def)
+_SData = prism' SData (\case
+  SData cs -> Just cs
+  _        -> Nothing)
+
+_SInterface :: Prism' Submodule (Scope Type)
+_SInterface = prism' SInterface (\case
+  SInterface os -> Just os
+  _             -> Nothing)
+
+_SModule :: Prism' Submodule (Scope Def)
+_SModule = prism' SModule (\case
+  SModule ds -> Just ds
+  _          -> Nothing)
+
+
 data Def
   = DTerm (Maybe Term) Type
-  | DData (Scope Def) Kind
-  | DInterface (Scope Type) Kind
-  | DModule (Scope Def) Kind
+  | DSubmodule Submodule Kind
 
 unDTerm :: Has Empty sig m => Def -> m (Maybe Term ::: Type)
 unDTerm = maybe empty pure . preview _DTerm
@@ -131,17 +153,19 @@ _DTerm = prism' (\ (t ::: _T) -> DTerm t _T) (\case
   DTerm t _T -> Just (t ::: _T)
   _          -> Nothing)
 
+_DSubmodule :: Prism' Def (Submodule ::: Kind)
+_DSubmodule = prism' (\ (s ::: _K) -> DSubmodule s _K) (\case
+  DSubmodule s _K -> Just (s ::: _K)
+  _               -> Nothing)
+
 _DData :: Prism' Def (Scope Def ::: Kind)
-_DData = prism' (\ (cs ::: _K) -> DData cs _K) (\case
-  DData cs _K -> Just (cs ::: _K)
-  _           -> Nothing)
+_DData = onFst _DSubmodule _SData
 
 _DInterface :: Prism' Def (Scope Type ::: Kind)
-_DInterface = prism' (\ (cs ::: _K) -> DInterface cs _K) (\case
-  DInterface os _K -> Just (os ::: _K)
-  _                -> Nothing)
+_DInterface = onFst _DSubmodule _SInterface
 
 _DModule :: Prism' Def (Scope Def ::: Kind)
-_DModule = prism' (\ (ds ::: _K) -> DModule ds _K) (\case
-  DModule ds _K -> Just (ds ::: _K)
-  _             -> Nothing)
+_DModule = onFst _DSubmodule _SModule
+
+onFst :: Bitraversable f => Prism' s (f a c) -> Prism' a b -> Prism' s (f b c)
+onFst p q = prism' (review p . first (review q)) (bitraverse (preview q) pure <=< preview p)

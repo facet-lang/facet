@@ -273,30 +273,26 @@ patternForArgType = \case
 
 elabDataDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
-  => Name ::: Kind
+  => Kind
   -> [S.Ann S.Comment (Name ::: S.Ann S.Comment S.Type)]
   -> m [Name :=: Def]
 -- FIXME: check that all constructors return the datatype.
-elabDataDef (dname ::: _K) constructors = do
+elabDataDef _K constructors = do
   mname <- view name_
-  cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
+  for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _K
     con' <- elabTerm $ check (abstractTerm (const (Con (mname :.: n) . toList)) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
-  pure
-    $ (dname :=: DData (scopeFromList cs) _K)
-    : cs
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw Err :+: Write Warn) sig m)
-  => Name ::: Kind
+  => Kind
   -> [S.Ann S.Comment (Name ::: S.Ann S.Comment S.Type)]
-  -> m [Name :=: Def]
-elabInterfaceDef (dname ::: _T) constructors = do
-  cs <- for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
+  -> m [Name :=: Type]
+elabInterfaceDef _T constructors = do
+  for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     _T' <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _T
     pure $ n :=: _T'
-  pure [ dname :=: DInterface (scopeFromList cs) _T ]
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
@@ -333,14 +329,15 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- elaborate all the types first
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> case def of
       S.DataDef cs _K -> Nothing <$ do
-        scope_.decls_.at dname .= Just (DData mempty _K)
-        decls <- runModule $ elabDataDef (dname ::: _K) cs
-        for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
+        scope_.decls_.at dname .= Just (DSubmodule (SData mempty) _K)
+        constructors <- runModule $ elabDataDef _K cs
+        scope_.decls_.at dname .= Just (DSubmodule (SData (scopeFromList constructors)) _K)
+        for_ constructors $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
       S.InterfaceDef os _K -> Nothing <$ do
-        scope_.decls_.at dname .= Just (DInterface mempty _K)
-        decls <- runModule $ elabInterfaceDef (dname ::: _K) os
-        for_ decls $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
+        scope_.decls_.at dname .= Just (DSubmodule (SInterface mempty) _K)
+        operations <- runModule $ elabInterfaceDef _K os
+        scope_.decls_.at dname .= Just (DSubmodule (SInterface (scopeFromList operations)) _K)
 
       S.TermDef t tele -> do
         _T <- runModule $ elabType $ checkIsType (synthType tele ::: KType)

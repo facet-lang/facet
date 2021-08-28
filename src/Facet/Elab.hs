@@ -140,7 +140,7 @@ lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _)
   _ :=: d <- lookupScope n defs
   pure $ m':.:n :=: d) . interfaces
   where
-  interfaceScope (_ :=: d) = case d of { DInterface defs _K -> pure defs ; _ -> empty }
+  interfaceScope (_ :=: d) = case d of { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
 
 
 (|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (Quantity, Pattern (Name ::: Classifier)) -> m a -> m a

@@ -35,14 +35,13 @@ tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (TX.Type :==> K
 tvar n = views context_ (lookupInContext n) >>= \case
   [(n', q, CK _K)] -> use n' q $> (TX.Var (Free (Right n')) :==> _K)
   _                -> resolveQ n >>= \case
-    q :=: DData      _ _K -> pure $ TX.Var (Global q) :==> _K
-    q :=: DInterface _ _K -> pure $ TX.Var (Global q) :==> _K
+    q :=: DSubmodule _ _K -> pure $ TX.Var (Global q) :==> _K
     _                     -> freeVariable n
 
 ivar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :==> Kind)
 ivar n = resolveQ n >>= \case
-    q :=: DInterface _ _K -> pure $ q :==> _K
-    _                     -> freeVariable n
+    q :=: DSubmodule (SInterface _) _K -> pure $ q :==> _K
+    _                                  -> freeVariable n
 
 
 _String :: Elab m (TX.Type :==> Kind)

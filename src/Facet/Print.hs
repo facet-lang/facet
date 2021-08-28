@@ -256,9 +256,10 @@ instance Printable C.Module where
     defBody = \case
       C.DTerm Nothing  _T ->       print opts env _T
       C.DTerm (Just b) _T -> defn (print opts env _T :=: print opts env b)
-      C.DData cs _K       -> annotate Keyword (pretty "data") <+> scope defBody cs
-      C.DInterface os _K  -> annotate Keyword (pretty "interface") <+> scope (print opts env) os
-      C.DModule ds _K     -> block (concatWith (surround hardline) (map ((hardline <>) . def . fmap defBody) (C.scopeToList ds)))
+      C.DSubmodule s _K   -> case s of
+        C.SData cs      -> annotate Keyword (pretty "data") <+> scope defBody cs
+        C.SInterface os -> annotate Keyword (pretty "interface") <+> scope (print opts env) os
+        C.SModule ds    -> block (concatWith (surround hardline) (map ((hardline <>) . def . fmap defBody) (C.scopeToList ds)))
     scope with = block . group . concatWith (surround (hardline <> comma <> space)) . map (group . def . fmap with) . C.scopeToList
     import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))
     module_ n t is ds = ann (setPrec Var (prettyMName n) ::: t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
