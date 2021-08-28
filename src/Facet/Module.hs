@@ -118,9 +118,7 @@ data Def
   | DModule (Scope Def) Kind
 
 unDTerm :: Has Empty sig m => Def -> m (Maybe Term ::: Type)
-unDTerm = \case
-  DTerm expr _T -> pure $ expr ::: _T
-  _             -> empty
+unDTerm = maybe empty pure . preview _DTerm
 
 unDData :: Has Empty sig m => Def -> m (Scope Def ::: Kind)
 unDData = maybe empty pure . preview _DData
