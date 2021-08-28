@@ -132,3 +132,8 @@ _DData :: Prism' Def (Scope Def ::: Kind)
 _DData = prism' (\ (cs ::: _K) -> DData cs _K) (\case
   DData cs _K -> Just (cs ::: _K)
   _           -> Nothing)
+
+_DInterface :: Prism' Def (Scope Type ::: Kind)
+_DInterface = prism' (\ (cs ::: _K) -> DInterface cs _K) (\case
+  DInterface os _K -> Just (os ::: _K)
+  _                -> Nothing)
