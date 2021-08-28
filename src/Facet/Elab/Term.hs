@@ -237,11 +237,10 @@ checkLam cs = lam (snd vs)
 
 -- FIXME: check for unique variable names
 bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Comment S.ValPattern -> Bind m (Pattern (Name ::: Classifier))
-bindPattern = go where
-  go = withSpanB $ \case
-    S.PWildcard -> wildcardP
-    S.PVar n    -> varP n
-    S.PCon n ps -> conP n (map go ps)
+bindPattern = withSpanB $ \case
+  S.PWildcard -> wildcardP
+  S.PVar n    -> varP n
+  S.PCon n ps -> conP n (map bindPattern ps)
 
 
 -- | Elaborate a type abstracted over another type’s parameters.
