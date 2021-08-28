@@ -28,7 +28,7 @@ import           Control.Effect.Reader
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import           Data.Profunctor (Choice(..), Profunctor(..))
-import           Data.Profunctor.Traversing (wander)
+import           Data.Profunctor.Traversing (traverse', wander)
 import qualified Fresnel.Getter as Getter
 import qualified Fresnel.Lens as Lens
 import           Fresnel.Optic
@@ -140,4 +140,4 @@ instance At (IntMap.IntMap v) where
 
 
 ixAt :: At a => Index a -> Traversal.Traversal' a (IxValue a)
-ixAt i = at i . wander traverse
+ixAt i = at i . traverse'
