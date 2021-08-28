@@ -1,6 +1,8 @@
 module Facet.Functor.Synth
 ( -- * Synth judgement
   (:==>)(..)
+  -- * Elimination
+, proof
 ) where
 
 import Data.Bifoldable
@@ -22,3 +24,9 @@ instance Bifoldable (:==>) where
 
 instance Bitraversable (:==>) where
   bitraverse f g (a :==> _T) = (:==>) <$> f a <*> g _T
+
+
+-- Elimination
+
+proof :: a :==> b -> a
+proof (a :==> _) = a
