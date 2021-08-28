@@ -31,6 +31,7 @@ import           Data.Bifunctor (Bifunctor(bimap), first)
 import           Data.Coerce
 import qualified Data.Map as Map
 import           Facet.Kind
+import           Facet.Lens
 import           Facet.Name
 import           Facet.Syntax
 import           Facet.Term.Expr
@@ -122,14 +123,10 @@ unDTerm = \case
   _             -> empty
 
 unDData :: Has Empty sig m => Def -> m (Scope Def ::: Kind)
-unDData = \case
-  DData cs _K -> pure $ cs ::: _K
-  _           -> empty
+unDData = maybe empty pure . preview _DData
 
 unDInterface :: Has Empty sig m => Def -> m (Scope Type ::: Kind)
-unDInterface = \case
-  DInterface cs _K -> pure $ cs ::: _K
-  _                -> empty
+unDInterface = maybe empty pure . preview _DInterface
 
 _DData :: Prism' Def (Scope Def ::: Kind)
 _DData = prism' (\ (cs ::: _K) -> DData cs _K) (\case
