@@ -143,12 +143,12 @@ lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _)
   interfaceScope (_ :=: d) = case d of { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
 
 
-(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (Quantity, Pattern (Name ::: Classifier)) -> m a -> m a
+(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (Quantity, Pattern (Name :==> Classifier)) -> m a -> m a
 (q, p) |- b = do
   sigma <- asks scale
   d <- depth
   (u, a) <- censor (`Usage.withoutVars` Vars.singleton (getUsed d)) $ listen $ locally context_ (|> (q, p)) b
-  for_ p $ \ (n ::: _T) -> do
+  for_ p $ \ (n :==> _T) -> do
     let exp = sigma >< q
         act = Usage.lookup (LName (getUsed d) n) u
     unless (act `sat` exp)

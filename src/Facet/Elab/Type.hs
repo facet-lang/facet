@@ -51,7 +51,7 @@ _String = pure $ TX.String :==> KType
 
 forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Kind -> Elab m (TX.Type :==> Kind) -> Elab m (TX.Type :==> Kind)
 forAll (n ::: t) b = do
-  b' <- (zero, PVar (n ::: CK t)) |- switch b <==: KType
+  b' <- (zero, PVar (n :==> CK t)) |- switch b <==: KType
   pure $ TX.ForAll n t b' :==> KType
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Elab m (a :==> Kind) -> Elab m (b :==> Kind) -> Elab m (c :==> Kind)

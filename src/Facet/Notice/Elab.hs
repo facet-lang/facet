@@ -11,6 +11,7 @@ import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context
 import           Facet.Elab as Elab
 import qualified Facet.Env as Env
+import           Facet.Functor.Synth
 import           Facet.Interface (interfaces)
 import           Facet.Name (LName(..))
 import           Facet.Notice as Notice hiding (level)
@@ -43,12 +44,12 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
     sig' = getPrint . print opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
     combine (d, env, prints, ctx) (m, p) =
       let roundtrip = apply subst env
-          binding (n ::: _T) = ann (intro n d ::: mult m (case _T of
+          binding (n :==> _T) = ann (intro n d ::: mult m (case _T of
             CK _K -> print opts prints _K
             CT _T -> print opts prints (roundtrip _T)))
       in  ( succ d
-          , env Env.|> ((\ (n ::: _T) -> n :=: free (LName d n)) <$> p)
-          , prints Env.|> ((\ (n ::: _) -> n :=: intro n d) <$> p)
+          , env Env.|> ((\ (n :==> _T) -> n :=: free (LName d n)) <$> p)
+          , prints Env.|> ((\ (n :==> _) -> n :=: intro n d) <$> p)
           , ctx :> getPrint (print opts prints (binding <$> p)) )
   mult m = if
     | m == zero -> (pretty "0" <+>)

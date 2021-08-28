@@ -124,14 +124,14 @@ tlam :: (HasCallStack, Has (Throw Err) sig m) => Type <==: Elab m Term -> Type <
 tlam b = Check $ \ _T -> do
   (n ::: _A, _B) <- assertQuantifier _T
   d <- depth
-  (zero, PVar (n ::: CK _A)) |- check (b ::: _B (T.free (LName (getUsed d) n)))
+  (zero, PVar (n :==> CK _A)) |- check (b ::: _B (T.free (LName (getUsed d) n)))
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name ::: Classifier)), Type <==: Elab m Term)] -> Type <==: Elab m Term
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name :==> Classifier)), Type <==: Elab m Term)] -> Type <==: Elab m Term
 lam cs = Check $ \ _T -> do
   (_A, _B) <- assertTacitFunction _T
   Lam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
 
-lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Type <==: Elab m Term -> Type <==: Elab m Term
+lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Classifier)) -> Type <==: Elab m Term -> Type <==: Elab m Term
 lam1 p b = lam [(p, b)]
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (a :==> Type)) -> (HasCallStack => Type <==: Elab m b) -> Elab m (c :==> Type)
@@ -146,7 +146,7 @@ string :: Text -> Elab m (Term :==> Type)
 string s = pure $ E.String s :==> T.String
 
 
-let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) -> Elab m (Term :==> Type) -> Type <==: Elab m Term -> Type <==: Elab m Term
+let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Classifier)) -> Elab m (Term :==> Type) -> Type <==: Elab m Term -> Type <==: Elab m Term
 let' p a b = Check $ \ _B -> do
   a' :==> _A <- a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
@@ -157,27 +157,27 @@ comp :: Has (Throw Err) sig m => Type <==: Elab m Term -> Type <==: Elab m Term
 comp b = Check $ \ _T -> do
   (sig, _B) <- assertComp _T
   StaticContext{ graph, module' } <- ask
-  let interfacePattern :: Has (Throw Err) sig m => Interface Type -> Elab m (RName :=: (Name ::: Classifier))
-      interfacePattern (Interface n _) = maybe (freeVariable (toQ n)) (\ (n' :=: _T) -> pure ((n .:. n') :=: (n' ::: CT _T))) (listToMaybe (scopeToList . tm =<< unDInterface . def =<< lookupQ graph module' (toQ n)))
+  let interfacePattern :: Has (Throw Err) sig m => Interface Type -> Elab m (RName :=: (Name :==> Classifier))
+      interfacePattern (Interface n _) = maybe (freeVariable (toQ n)) (\ (n' :=: _T) -> pure ((n .:. n') :=: (n' :==> CT _T))) (listToMaybe (scopeToList . tm =<< unDInterface . def =<< lookupQ graph module' (toQ n)))
   p' <- traverse interfacePattern (interfaces sig)
   -- FIXME: can we apply quantities to dictionaries? what would they mean?
   b' <- (Many, PDict p') |- check (b ::: _B)
-  pure $ E.Comp (map (fmap tm) p') b'
+  pure $ E.Comp (map (fmap proof) p') b'
 
 
 -- Pattern combinators
 
-wildcardP :: Bind m (Pattern (Name ::: Classifier))
+wildcardP :: Bind m (Pattern (Name :==> Classifier))
 wildcardP = Bind $ \ _T k -> k PWildcard
 
-varP :: Name -> Bind m (Pattern (Name ::: Classifier))
-varP n = Bind $ \ _A k -> k (PVar (n ::: CT (wrap _A)))
+varP :: Name -> Bind m (Pattern (Name :==> Classifier))
+varP n = Bind $ \ _A k -> k (PVar (n :==> CT (wrap _A)))
   where
   wrap = \case
     T.Comp sig _A -> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (T.Comp sig _A)
     _T            -> _T
 
-conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (Pattern (Name ::: Classifier))] -> Bind m (Pattern (Name ::: Classifier))
+conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (Pattern (Name :==> Classifier))] -> Bind m (Pattern (Name :==> Classifier))
 conP n fs = Bind $ \ _A k -> do
   n' :=: _ ::: _T <- resolveC n
   _T' <- maybe (pure _T) (foldl' (\ _T _A -> ($ _A) . snd <$> (_T >>= assertQuantifier)) (pure _T) . snd) (unNeutral _A)
@@ -193,10 +193,10 @@ fieldsP = foldr cons nil
   nil = Bind $ \ _T k -> k ([], _T)
 
 
-allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (Pattern (Name ::: Classifier))
+allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (Pattern (Name :==> Classifier))
 allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
-  k (PVar (n ::: CT (T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (T.Comp sig _T))))
+  k (PVar (n :==> CT (T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (T.Comp sig _T))))
 
 
 -- Expression elaboration
@@ -229,14 +229,14 @@ checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC 
 checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Type <==: Elab m Term
 checkLam cs = lam (snd vs)
   where
-  vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: (Type <==: Elab m Term)], [(Bind m (Pattern (Name ::: Classifier)), Type <==: Elab m Term)])
+  vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: (Type <==: Elab m Term)], [(Bind m (Pattern (Name :==> Classifier)), Type <==: Elab m Term)])
   vs = partitionEithers (map (\ (S.Clause (S.Ann _ _ p) b) -> case p of
     S.PVal p                          -> Right (bindPattern p, checkExpr b)
     S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: Check (\ _T -> pushSpan s (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k) <==: _T))) cs)
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Comment S.ValPattern -> Bind m (Pattern (Name ::: Classifier))
+bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Comment S.ValPattern -> Bind m (Pattern (Name :==> Classifier))
 bindPattern = withSpanB $ \case
   S.PWildcard -> wildcardP
   S.PVar n    -> varP n
@@ -250,7 +250,7 @@ abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TX.Type -> Kind 
 abstractType body = go
   where
   go = \case
-    KArrow (Just n) a b -> TX.ForAll n a <$> ((zero, PVar (n ::: CK a)) |- go b)
+    KArrow (Just n) a b -> TX.ForAll n a <$> ((zero, PVar (n :==> CK a)) |- go b)
     _                   -> body
 
 abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TX.Type -> Snoc Term -> Term) -> Type <==: Elab m Term
@@ -267,7 +267,7 @@ abstractTerm body = go Nil Nil
       d <- depth
       pure $ body (TX.Var . Free . Right . toIndexed d <$> ts) (fs <*> pure d)
 
-patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern (Name ::: Classifier))
+patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern (Name :==> Classifier))
 patternForArgType = \case
   T.Comp{} -> allP
   _        -> varP
@@ -408,8 +408,8 @@ check (m ::: _T) = case _T of
   _T            -> m <==: _T
 
 
-bind :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name ::: Classifier)) ::: (Quantity, Type) -> Elab m b -> Elab m (Pattern Name, b)
-bind (p ::: (q, _T)) m = runBind p _T (\ p' -> (tm <$> p',) <$> ((q, p') |- m))
+bind :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Classifier)) ::: (Quantity, Type) -> Elab m b -> Elab m (Pattern Name, b)
+bind (p ::: (q, _T)) m = runBind p _T (\ p' -> (proof <$> p',) <$> ((q, p') |- m))
 
 newtype Bind m a = Bind { runBind :: forall x . Type -> (a -> Elab m x) -> Elab m x }
   deriving (Functor)

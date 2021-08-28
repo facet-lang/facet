@@ -13,6 +13,7 @@ module Facet.Context
 import qualified Control.Effect.Empty as E
 import           Data.Foldable (find, toList)
 import qualified Facet.Env as Env
+import           Facet.Functor.Synth
 import           Facet.Name
 import           Facet.Pattern
 import qualified Facet.Snoc as S
@@ -22,13 +23,13 @@ import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
-newtype Context = Context { elems :: S.Snoc (Quantity, Pattern (Name ::: Classifier)) }
+newtype Context = Context { elems :: S.Snoc (Quantity, Pattern (Name :==> Classifier)) }
 
 
 empty :: Context
 empty = Context S.Nil
 
-(|>) :: Context -> (Quantity, Pattern (Name ::: Classifier)) -> Context
+(|>) :: Context -> (Quantity, Pattern (Name :==> Classifier)) -> Context
 Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
@@ -36,7 +37,7 @@ infixl 5 |>
 level :: Context -> Used
 level (Context es) = Used (Level (length es))
 
-(!) :: HasCallStack => Context -> Index -> (Quantity, Pattern (Name ::: Classifier))
+(!) :: HasCallStack => Context -> Index -> (Quantity, Pattern (Name :==> Classifier))
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
   where
   go (es S.:> e) i
@@ -47,11 +48,11 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
 lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (LName Index, Quantity, Classifier)
 lookupIndex n = go (Index 0) . elems
   where
-  go _ S.Nil                                  = E.empty
+  go _ S.Nil                                      = E.empty
   go i (cs S.:> (q, p))
-    | Just (n' ::: t) <- find ((== n) . tm) p = pure (LName i n', q, t)
-    | otherwise                               = go (succ i) cs
+    | Just (n' :==> t) <- find ((== n) . proof) p = pure (LName i n', q, t)
+    | otherwise                                   = go (succ i) cs
 
 
 toEnv :: Context -> Env.Env Type
-toEnv c = Env.Env (S.fromList (zipWith (\ (_, p) d -> (\ b -> tm b :=: free (LName (getUsed d) (tm b))) <$> p) (toList (elems c)) [0..pred (level c)]))
+toEnv c = Env.Env (S.fromList (zipWith (\ (_, p) d -> (\ b -> proof b :=: free (LName (getUsed d) (proof b))) <$> p) (toList (elems c)) [0..pred (level c)]))
