@@ -79,6 +79,7 @@ import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
+import           Fresnel.Prism (_Just)
 import           GHC.Stack
 
 -- General combinators
@@ -327,15 +328,15 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- elaborate all the types first
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> case def of
       S.DataDef cs _K -> Nothing <$ do
-        scope_.decls_.at dname .= Just (DSubmodule (SData mempty) _K)
+        scope_.decls_.at dname._Just._DData .= (mempty ::: _K)
         constructors <- runModule $ elabDataDef cs <==: _K
-        scope_.decls_.at dname .= Just (DSubmodule (SData (scopeFromList constructors)) _K)
+        scope_.decls_.ix dname._DData .= (scopeFromList constructors ::: _K)
         for_ constructors $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
 
       S.InterfaceDef os _K -> Nothing <$ do
-        scope_.decls_.at dname .= Just (DSubmodule (SInterface mempty) _K)
+        scope_.decls_.at dname._Just._DInterface .= (mempty ::: _K)
         operations <- runModule $ elabInterfaceDef os <==: _K
-        scope_.decls_.at dname .= Just (DSubmodule (SInterface (scopeFromList operations)) _K)
+        scope_.decls_.ix dname._DInterface .= (scopeFromList operations ::: _K)
 
       S.TermDef t tele -> do
         _T <- runModule $ elabType $ Type.switch (synthType tele) <==: KType
