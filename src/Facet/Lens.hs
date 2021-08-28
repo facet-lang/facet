@@ -25,6 +25,7 @@ module Facet.Lens
 import           Control.Applicative (Alternative(..))
 import           Control.Carrier.State.Church
 import           Control.Effect.Reader
+import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import           Data.Profunctor (Choice(..), Profunctor(..))
 import           Data.Profunctor.Traversing (wander)
@@ -118,6 +119,13 @@ instance Ord k => Ixed (Map.Map k v) where
   type IxValue (Map.Map k v) = v
   ix k = wander $ \ f m -> case Map.lookup k m of
     Just v  -> fmap (\ v' -> Map.insert k v' m) (f v)
+    Nothing -> pure m
+
+instance Ixed (IntMap.IntMap v) where
+  type Index (IntMap.IntMap v) = IntMap.Key
+  type IxValue (IntMap.IntMap v) = v
+  ix k = wander $ \ f m -> case IntMap.lookup k m of
+    Just v  -> fmap (\ v' -> IntMap.insert k v' m) (f v)
     Nothing -> pure m
 
 
