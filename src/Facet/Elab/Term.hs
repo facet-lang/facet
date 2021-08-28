@@ -329,12 +329,11 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> let { build :: (Has (State Module) sig m, Monoid a) => Prism' Submodule a -> Kind -> m a -> m () ; build p _K = letrec (scope_.decls_) dname (_DSubmodule._tm.p) (DSubmodule (review p mempty) _K) } in case def of
-      S.DataDef cs _K -> Nothing <$ build _SData _K (do
-        cs <- runModule (elabDataDef cs <==: _K)
+    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> let { build :: (Has (State Module) sig m, Monoid a) => Prism' Submodule a -> Kind -> Kind <==: ReaderC Module m b -> (b -> m a) -> m () ; build p _K elab ret = letrec (scope_.decls_) dname (_DSubmodule._tm.p) (DSubmodule (review p mempty) _K) (runModule (elab <==: _K) >>= ret) } in case def of
+      S.DataDef cs _K -> Nothing <$ build _SData _K (elabDataDef cs) (\ cs -> do
         scopeFromList cs <$ for_ cs (\ (dname :=: decl) -> scope_.decls_.at dname .= Just decl))
 
-      S.InterfaceDef os _K -> Nothing <$ build _SInterface _K (scopeFromList <$> runModule (elabInterfaceDef os <==: _K))
+      S.InterfaceDef os _K -> Nothing <$ build _SInterface _K (elabInterfaceDef os) (pure . scopeFromList)
 
       S.TermDef t tele -> do
         _T <- runModule $ elabType $ Type.switch (synthType tele) <==: KType
