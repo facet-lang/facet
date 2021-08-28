@@ -34,6 +34,7 @@ import           Facet.Term.Expr
 import           Facet.Type.Norm
 import           Fresnel.Iso (coerced)
 import           Fresnel.Lens (Lens, Lens', lens)
+import           Fresnel.Prism
 
 -- Modules
 
@@ -126,3 +127,8 @@ unDInterface :: Has Empty sig m => Def -> m (Scope Type ::: Kind)
 unDInterface = \case
   DInterface cs _K -> pure $ cs ::: _K
   _                -> empty
+
+_DData :: Prism' Def (Scope Def ::: Kind)
+_DData = prism' (\ (cs ::: _K) -> DData cs _K) (\case
+  DData cs _K -> Just (cs ::: _K)
+  _           -> Nothing)
