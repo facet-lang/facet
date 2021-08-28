@@ -6,6 +6,7 @@ module Facet.Syntax
 , tm
 , _tm
 , ty
+, _ty
 , (:=:)(..)
 , nm, def
   -- * Variables
@@ -76,6 +77,9 @@ _tm = lens tm (\ (_ ::: t) s' -> s' ::: t)
 
 ty :: a ::: b -> b
 ty (_ ::: b) = b
+
+_ty :: Lens (s ::: t) (s ::: t') t t'
+_ty = lens ty (\ (s ::: _) t' -> s ::: t')
 
 
 data a :=: b = a :=: b
