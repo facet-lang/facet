@@ -218,7 +218,7 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \cas
 
 
 checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Comment S.Expr -> Type <==: Elab m Term
-checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in flip withSpanC expr $ \case
+checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
   S.Hole  n  -> hole n
   S.Lam cs   -> checkLam cs
   S.Var{}    -> switch (synthExpr expr)
@@ -378,8 +378,8 @@ runModule m = do
 withSpanB :: Algebra sig m => (a -> Bind m b) -> S.Ann S.Comment a -> Bind m b
 withSpanB k (S.Ann s _ a) = Bind (\ _A k' -> pushSpan s (runBind (k a) _A k'))
 
-withSpanC :: Algebra sig m => (a -> Type <==: Elab m b) -> S.Ann S.Comment a -> Type <==: Elab m b
-withSpanC k (S.Ann s _ a) = Check (\ _T -> pushSpan s (k a <==: _T))
+withSpanC :: Algebra sig m => S.Ann S.Comment a -> (a -> Type <==: Elab m b) -> Type <==: Elab m b
+withSpanC (S.Ann s _ a) k = Check (\ _T -> pushSpan s (k a <==: _T))
 
 withSpan :: Has (Reader ElabContext) sig m => (a -> m b) -> S.Ann S.Comment a -> m b
 withSpan k (S.Ann s _ a) = pushSpan s (k a)
