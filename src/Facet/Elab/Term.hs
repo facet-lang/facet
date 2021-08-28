@@ -340,10 +340,10 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
       S.TermDef t tele -> do
         _T <- runModule $ elabType $ Type.switch (synthType tele) <==: KType
         scope_.decls_.at dname .= Just (DTerm Nothing _T)
-        pure (Just (dname, t ::: _T))
+        pure (Just (dname, t, _T))
 
     -- then elaborate the terms
-    for_ (catMaybes es) $ \ (dname, t ::: _T) -> do
+    for_ (catMaybes es) $ \ (dname, t, _T) -> do
       t' <- runModule $ elabTermDef t <==: _T
       scope_.decls_.ix dname .= DTerm (Just t') _T
 
