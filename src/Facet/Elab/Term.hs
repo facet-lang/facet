@@ -61,7 +61,7 @@ import           Facet.Functor.Synth
 import           Facet.Graph
 import           Facet.Interface
 import           Facet.Kind
-import           Facet.Lens (At(..), Ixed(..), locally, view, views, (.=))
+import           Facet.Lens as Lens (At(..), Ixed(..), locally, view, views, (.=), (<~))
 import           Facet.Module as Module
 import           Facet.Name
 import           Facet.Pattern
@@ -79,6 +79,8 @@ import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
+import           Fresnel.Setter (Setter')
+import           Fresnel.Traversal (Traversal')
 import           GHC.Stack
 
 -- General combinators
@@ -325,17 +327,12 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     -- elaborate all the types first
-    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> case def of
-      S.DataDef cs _K -> Nothing <$ do
-        scope_.decls_.at dname .= Just (DSubmodule (SData mempty) _K)
-        constructors <- runModule $ elabDataDef cs <==: _K
-        scope_.decls_.ix dname._DSubmodule._tm._SData .= scopeFromList constructors
-        for_ constructors $ \ (dname :=: decl) -> scope_.decls_.at dname .= Just decl
+    es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> let build = letrec (scope_.decls_) dname in case def of
+      S.DataDef cs _K -> Nothing <$ build (_DSubmodule._tm._SData) (DSubmodule (SData mempty) _K) (do
+        cs <- runModule $ elabDataDef cs <==: _K
+        scopeFromList cs <$ for_ cs (\ (dname :=: decl) -> scope_.decls_.at dname .= Just decl))
 
-      S.InterfaceDef os _K -> Nothing <$ do
-        scope_.decls_.at dname .= Just (DSubmodule (SInterface mempty) _K)
-        operations <- runModule $ elabInterfaceDef os <==: _K
-        scope_.decls_.ix dname._DSubmodule._tm._SInterface .= scopeFromList operations
+      S.InterfaceDef os _K -> Nothing <$ build (_DSubmodule._tm._SInterface) (DSubmodule (SInterface mempty) _K) (scopeFromList <$> runModule (elabInterfaceDef os <==: _K))
 
       S.TermDef t tele -> do
         _T <- runModule $ elabType $ Type.switch (synthType tele) <==: KType
@@ -346,6 +343,11 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     for_ (catMaybes es) $ \ (dname, t, _T) -> do
       t' <- runModule $ elabTermDef t <==: _T
       scope_.decls_.ix dname .= DTerm (Just t') _T
+
+letrec :: (Has (State s) sig m, At a) => Setter' s a -> Lens.Index a -> Traversal' (Lens.IxValue a) b -> Lens.IxValue a -> m b -> m ()
+letrec getter key projection initial final = do
+  getter.at key .= Just initial
+  getter.ix key.projection <~ final
 
 
 -- Errors
