@@ -4,6 +4,7 @@
 module Facet.Syntax
 ( (:::)(..)
 , tm
+, _tm
 , ty
 , (:=:)(..)
 , nm, def
@@ -69,6 +70,9 @@ instance Ord2 (:::) where
 
 tm :: a ::: b -> a
 tm (a ::: _) = a
+
+_tm :: Lens (s ::: t) (s' ::: t) s s'
+_tm = lens tm (\ (_ ::: t) s' -> s' ::: t)
 
 ty :: a ::: b -> b
 ty (_ ::: b) = b
