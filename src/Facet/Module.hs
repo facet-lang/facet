@@ -15,6 +15,9 @@ module Facet.Module
 , lookupScope
 , Import(..)
 , Submodule(..)
+, _SData
+, _SInterface
+, _SModule
 , Def(..)
 , unDTerm
 , unDData
