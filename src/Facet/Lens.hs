@@ -13,17 +13,23 @@ module Facet.Lens
 , (.=)
 , modifying
 , assign
+, preview
+, previews
+, ForgetF(..)
 , At(..)
 , Ixed(..)
 , ixAt
 ) where
 
+import           Control.Applicative (Alternative(..))
 import           Control.Carrier.State.Church
 import           Control.Effect.Reader
 import qualified Data.Map as Map
+import           Data.Profunctor (Choice(..), Profunctor(..))
 import           Data.Profunctor.Traversing (wander)
 import qualified Fresnel.Getter as Getter
 import qualified Fresnel.Lens as Lens
+import           Fresnel.Optic
 import qualified Fresnel.Setter as Setter
 import qualified Fresnel.Traversal as Traversal
 
@@ -75,6 +81,24 @@ modifying o = modify . Setter.over o
 
 assign :: Has (State s) sig m => Setter.Setter s s a b -> b -> m ()
 assign o = modify . Setter.set o
+
+
+preview :: Optic' (ForgetF Maybe a) s a -> s -> Maybe a
+preview o = previews o id
+
+previews :: Optic' (ForgetF Maybe r) s a -> (a -> r) -> (s -> Maybe r)
+previews o f = runForgetF (o (ForgetF (Just . f)))
+
+
+newtype ForgetF f r a b = ForgetF { runForgetF :: a -> f r }
+  deriving (Functor)
+
+instance Profunctor (ForgetF f r) where
+  dimap f _ = ForgetF . lmap f . runForgetF
+
+instance Alternative f => Choice (ForgetF f r) where
+  left'  (ForgetF r) = ForgetF (either r (const empty))
+  right' (ForgetF r) = ForgetF (either (const empty) r)
 
 
 class Ixed a where
