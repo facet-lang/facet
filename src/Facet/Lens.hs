@@ -13,6 +13,7 @@ module Facet.Lens
 , (.=)
 , modifying
 , assign
+, (^?)
 , preview
 , previews
 , ForgetF(..)
@@ -82,6 +83,11 @@ modifying o = modify . Setter.over o
 assign :: Has (State s) sig m => Setter.Setter s s a b -> b -> m ()
 assign o = modify . Setter.set o
 
+
+(^?) :: s -> Optic' (ForgetF Maybe a) s a -> Maybe a
+(^?) = flip preview
+
+infixl 8 ^?
 
 preview :: Optic' (ForgetF Maybe a) s a -> s -> Maybe a
 preview o = previews o id
