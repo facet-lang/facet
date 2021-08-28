@@ -128,6 +128,11 @@ unDData = maybe empty pure . preview _DData
 unDInterface :: Has Empty sig m => Def -> m (Scope Type ::: Kind)
 unDInterface = maybe empty pure . preview _DInterface
 
+_DTerm :: Prism' Def (Maybe Term ::: Type)
+_DTerm = prism' (\ (t ::: _T) -> DTerm t _T) (\case
+  DTerm t _T -> Just (t ::: _T)
+  _          -> Nothing)
+
 _DData :: Prism' Def (Scope Def ::: Kind)
 _DData = prism' (\ (cs ::: _K) -> DData cs _K) (\case
   DData cs _K -> Just (cs ::: _K)
