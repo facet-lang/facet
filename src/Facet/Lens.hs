@@ -135,6 +135,9 @@ class Ixed a => At a where
 instance Ord k => At (Map.Map k v) where
   at k = Lens.lens (Map.lookup k) (\ m v -> maybe (Map.delete k m) (\ v -> Map.insert k v m) v)
 
+instance At (IntMap.IntMap v) where
+  at k = Lens.lens (IntMap.lookup k) (\ m v -> maybe (IntMap.delete k m) (\ v -> IntMap.insert k v m) v)
+
 
 ixAt :: At a => Index a -> Traversal.Traversal' a (IxValue a)
 ixAt i = at i . wander traverse
