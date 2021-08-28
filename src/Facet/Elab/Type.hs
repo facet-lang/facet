@@ -16,6 +16,7 @@ import           Control.Monad (unless)
 import           Data.Foldable (foldl')
 import           Data.Functor (($>))
 import           Facet.Elab
+import           Facet.Functor.Check
 import           Facet.Functor.Synth
 import           Facet.Interface
 import           Facet.Kind
@@ -50,13 +51,13 @@ _String = pure $ TX.String :==> KType
 
 forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Kind -> Elab m (TX.Type :==> Kind) -> Elab m (TX.Type :==> Kind)
 forAll (n ::: t) b = do
-  b' <- (zero, PVar (n ::: CK t)) |- checkIsType (b ::: KType)
+  b' <- (zero, PVar (n ::: CK t)) |- checkIsType b <==: KType
   pure $ TX.ForAll n t b' :==> KType
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Elab m (a :==> Kind) -> Elab m (b :==> Kind) -> Elab m (c :==> Kind)
 arrow mk a b = do
-  a' <- checkIsType (a ::: KType)
-  b' <- checkIsType (b ::: KType)
+  a' <- checkIsType a <==: KType
+  b' <- checkIsType b <==: KType
   pure $ mk a' b' :==> KType
 
 
@@ -65,15 +66,15 @@ app mk f a = do
   f' :==> _F <- f
   (_ ::: _A, _B) <- assertTypeConstructor _F
   -- FIXME: assert that the usage is zero
-  a' <- checkIsType (a ::: _A)
+  a' <- checkIsType a <==: _A
   pure $ mk f' a' :==> _B
 
 
 comp :: (HasCallStack, Has (Throw Err) sig m) => [Elab m (Interface TX.Type :==> Kind)] -> Elab m (TX.Type :==> Kind) -> Elab m (TX.Type :==> Kind)
 comp s t = do
-  s' <- traverse (checkIsType . (::: KInterface)) s
+  s' <- traverse ((<==: KInterface) . checkIsType) s
   -- FIXME: polarize types and check that this is a value type being returned
-  t' <- checkIsType (t ::: KType)
+  t' <- checkIsType t <==: KType
   pure $ TX.Comp (fromInterfaces s') t' :==> KType
 
 
@@ -94,7 +95,7 @@ synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Comment (S.In
 synthInterface (S.Ann s _ (S.Interface h sp)) = pushSpan s $ do
   -- FIXME: check that the application actually result in an Interface
   h' :==> _ <- ivar h
-  sp' <- foldl' (liftA2 (:>)) (pure Nil) (checkIsType . (::: KType) . synthType <$> sp)
+  sp' <- foldl' (liftA2 (:>)) (pure Nil) ((<==: KType) . checkIsType . synthType <$> sp)
   pure $ Interface h' sp' :==> KInterface
 
 
@@ -106,7 +107,7 @@ assertTypeConstructor = assertMatch (\case{ KArrow n t b -> pure (n ::: t, b) ; 
 
 -- Judgements
 
-checkIsType :: (HasCallStack, Has (Throw Err) sig m) => Elab m (a :==> Kind) ::: Kind -> Elab m a
-checkIsType (m ::: _K) = do
+checkIsType :: (HasCallStack, Has (Throw Err) sig m) => Elab m (a :==> Kind) -> Kind <==: Elab m a
+checkIsType m = Check $ \ _K -> do
   a :==> _KA <- m
   a <$ unless (_KA == _K) (couldNotUnify (Exp (CK _K)) (Act (CK _KA)))

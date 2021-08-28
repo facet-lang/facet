@@ -89,7 +89,7 @@ switch m = Check $ \ _Exp -> m >>= \case
 
 as :: (HasCallStack, Has (Throw Err) sig m) => (Type <==: Elab m Term) ::: Elab m (Type :==> Kind) -> Elab m (Term :==> Type)
 as (m ::: _T) = do
-  _T' <- checkIsType (_T ::: KType)
+  _T' <- checkIsType _T <==: KType
   a <- check (m ::: _T')
   pure $ a :==> _T'
 
@@ -279,7 +279,7 @@ elabDataDef
 elabDataDef constructors = Check $ \ _K -> do
   mname <- view name_
   for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    c_T <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _K
+    c_T <- elabType $ abstractType (checkIsType (synthType t) <==: KType) _K
     con' <- elabTerm $ check (abstractTerm (const (Con (mname :.: n) . toList)) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
 
@@ -289,7 +289,7 @@ elabInterfaceDef
   -> Kind <==: m [Name :=: Type]
 elabInterfaceDef constructors = Check $ \ _K -> do
   for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    _K' <- elabType $ abstractType (checkIsType (synthType t ::: KType)) _K
+    _K' <- elabType $ abstractType (checkIsType (synthType t) <==: KType) _K
     pure $ n :=: _K'
 
 -- FIXME: add a parameter for the effect signature.
@@ -337,7 +337,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
         scope_.decls_.at dname .= Just (DSubmodule (SInterface (scopeFromList operations)) _K)
 
       S.TermDef t tele -> do
-        _T <- runModule $ elabType $ checkIsType (synthType tele ::: KType)
+        _T <- runModule $ elabType $ checkIsType (synthType tele) <==: KType
         scope_.decls_.at dname .= Just (DTerm Nothing _T)
         pure (Just (dname, t ::: _T))
 
