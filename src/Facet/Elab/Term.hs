@@ -246,8 +246,8 @@ abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TX.Type -> Kind 
 abstractType body = go
   where
   go = \case
-    KArrow  (Just n) a b -> TX.ForAll n a <$> ((zero, PVar (n ::: CK a)) |- go b)
-    _                    -> body
+    KArrow (Just n) a b -> TX.ForAll n a <$> ((zero, PVar (n ::: CK a)) |- go b)
+    _                   -> body
 
 abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TX.Type -> Snoc Term -> Term) -> Type <==: Elab m Term
 abstractTerm body = go Nil Nil
