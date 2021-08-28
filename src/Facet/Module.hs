@@ -18,6 +18,9 @@ module Facet.Module
 , unDTerm
 , unDData
 , unDInterface
+, _DData
+, _DInterface
+, _DModule
 ) where
 
 import           Control.Algebra
