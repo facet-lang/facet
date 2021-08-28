@@ -137,3 +137,8 @@ _DInterface :: Prism' Def (Scope Type ::: Kind)
 _DInterface = prism' (\ (cs ::: _K) -> DInterface cs _K) (\case
   DInterface os _K -> Just (os ::: _K)
   _                -> Nothing)
+
+_DModule :: Prism' Def (Scope Def ::: Kind)
+_DModule = prism' (\ (ds ::: _K) -> DModule ds _K) (\case
+  DModule ds _K -> Just (ds ::: _K)
+  _             -> Nothing)
