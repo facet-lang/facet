@@ -22,6 +22,7 @@ module Facet.Module
 , unDTerm
 , unDData
 , unDInterface
+, _DSubmodule
 , _DData
 , _DInterface
 , _DModule
