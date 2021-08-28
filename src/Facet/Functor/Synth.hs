@@ -3,6 +3,7 @@ module Facet.Functor.Synth
   (:==>)(..)
   -- * Elimination
 , proof
+, prop
 ) where
 
 import Data.Bifoldable
@@ -30,3 +31,6 @@ instance Bitraversable (:==>) where
 
 proof :: a :==> b -> a
 proof (a :==> _) = a
+
+prop :: a :==> b -> b
+prop (_ :==> b) = b
