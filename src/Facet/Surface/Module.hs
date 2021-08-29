@@ -16,9 +16,9 @@ import Facet.Syntax
 -- Declarations
 
 data Def
-  = DataDef [Ann Comment (Name ::: Ann Comment Type)] Kind
-  | InterfaceDef [Ann Comment (Name ::: Ann Comment Type)] Kind
-  | TermDef (Ann Comment Expr) (Ann Comment Type)
+  = DataDef [Ann (Name ::: Ann Type)] Kind
+  | InterfaceDef [Ann (Name ::: Ann Type)] Kind
+  | TermDef (Ann Expr) (Ann Type)
   deriving (Eq, Show)
 
 
@@ -26,10 +26,10 @@ data Def
 
 data Module = Module
   { name      :: MName
-  , imports   :: [Ann Comment Import]
+  , imports   :: [Ann Import]
   -- FIXME: store source references for operators’ definitions, for error reporting
   , operators :: [(Op, Assoc)]
-  , defs      :: [Ann Comment (Name, Ann Comment Def)]
+  , defs      :: [Ann (Name, Ann Def)]
   }
   deriving (Eq, Show)
 

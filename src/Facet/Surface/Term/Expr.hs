@@ -19,28 +19,28 @@ data Expr
   = Var QName
   | Hole Name
   | Lam [Clause]
-  | App (Ann Comment Expr) (Ann Comment Expr)
-  | As (Ann Comment Expr) (Ann Comment Type)
+  | App (Ann Expr) (Ann Expr)
+  | As (Ann Expr) (Ann Type)
   | String Text
   deriving (Eq, Show)
 
 
-data Clause = Clause (Ann Comment Pattern) (Ann Comment Expr)
+data Clause = Clause (Ann Pattern) (Ann Expr)
   deriving (Eq, Show)
 
 
 -- Patterns
 
 data Pattern
-  = PVal (Ann Comment ValPattern)
-  | PEff (Ann Comment EffPattern)
+  = PVal (Ann ValPattern)
+  | PEff (Ann EffPattern)
   deriving (Eq, Show)
 
 data ValPattern
   = PWildcard
   | PVar Name
-  | PCon QName [Ann Comment ValPattern]
+  | PCon QName [Ann ValPattern]
   deriving (Eq, Show)
 
-data EffPattern = POp QName [Ann Comment ValPattern] (Ann Comment ValPattern)
+data EffPattern = POp QName [Ann ValPattern] (Ann ValPattern)
   deriving (Eq, Show)

@@ -194,7 +194,7 @@ addTarget targets = Action $ do
 removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets)
 
 
-showType, showEval :: S.Ann S.Comment S.Expr -> Action
+showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
   e :==> _T <- runElab $ Elab.elabSynthTerm (Elab.synthExpr e)
@@ -218,7 +218,7 @@ runEvalMain e = runEval (quote 0 =<< runReader mempty (eval e)) pure
   -- handle _              _ = unhandled
   -- unhandled = throwError $ Notice.Notice (Just Notice.Error) [] (fillSep @(Doc Style) [reflow "unhandled effect operator"]) []
 
-showKind :: S.Ann S.Comment S.Type -> Action
+showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
   _T :==> _K <- runElab $ Elab.elabSynthType (Elab.synthType _T)
   opts <- get

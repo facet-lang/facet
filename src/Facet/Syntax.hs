@@ -155,39 +155,39 @@ type i ~> j = forall x . i x -> j x
 
 -- Annotations
 
-data Ann c a = Ann
+data Ann a = Ann
   { ann     :: Span
-  , context :: Snoc (Span, c)
+  , context :: Snoc (Span, Comment)
   , out     :: a
   }
   deriving (Foldable, Functor, Traversable)
 
-instance Eq a => Eq (Ann c a) where
+instance Eq a => Eq (Ann a) where
   (==) = (==) `on` out
 
-instance Ord a => Ord (Ann c a) where
+instance Ord a => Ord (Ann a) where
   compare = compare `on` out
 
-instance Show a => Show (Ann c a) where
+instance Show a => Show (Ann a) where
   showsPrec p = showsPrec p . out
 
-instance HasSpan (Ann c a) where
+instance HasSpan (Ann a) where
   span_ = ann_
 
-ann_ :: Lens' (Ann c a) Span
+ann_ :: Lens' (Ann a) Span
 ann_ = lens ann (\ a ann -> a{ ann })
 
-context_ :: Lens (Ann c a) (Ann d a) (Snoc (Span, c)) (Snoc (Span, d))
+context_ :: Lens (Ann a) (Ann a) (Snoc (Span, Comment)) (Snoc (Span, Comment))
 context_ = lens context (\ a context -> a{ context })
 
-out_ :: Lens (Ann c a) (Ann c b) a b
+out_ :: Lens (Ann a) (Ann b) a b
 out_ = lens out (\ a out -> a{ out })
 
 
-annUnary :: (Ann c a -> a) -> Ann c a -> Ann c a
+annUnary :: (Ann a -> a) -> Ann a -> Ann a
 annUnary f a = Ann (ann a) Nil (f a)
 
-annBinary :: (Ann c a -> Ann c b -> a) -> Ann c a -> Ann c b -> Ann c a
+annBinary :: (Ann a -> Ann b -> a) -> Ann a -> Ann b -> Ann a
 annBinary f a b = Ann (ann a <> ann b) Nil (f a b)
 
 

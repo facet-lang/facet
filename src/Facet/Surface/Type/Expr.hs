@@ -14,10 +14,10 @@ import Facet.Syntax
 data Type
   = TVar QName
   | TString
-  | TForAll Name Kind (Ann Comment Type)
-  | TArrow (Maybe Name) (Maybe Mul) (Ann Comment Type) (Ann Comment Type)
-  | TComp [Ann Comment (Interface (Ann Comment Type))] (Ann Comment Type)
-  | TApp (Ann Comment Type) (Ann Comment Type)
+  | TForAll Name Kind (Ann Type)
+  | TArrow (Maybe Name) (Maybe Mul) (Ann Type) (Ann Type)
+  | TComp [Ann (Interface (Ann Type))] (Ann Type)
+  | TApp (Ann Type) (Ann Type)
   deriving (Eq, Show)
 
 
