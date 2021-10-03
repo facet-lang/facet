@@ -13,27 +13,13 @@ module Facet.Lens
 , (.=)
 , modifying
 , assign
-, (^?)
-, preview
-, previews
-, ForgetF(..)
-, At(..)
-, Ixed(..)
-, ixAt
 ) where
 
-import           Control.Applicative (Alternative(..))
 import           Control.Carrier.State.Church
 import           Control.Effect.Reader
-import qualified Data.IntMap as IntMap
-import qualified Data.Map as Map
-import           Data.Profunctor (Choice(..), Profunctor(..))
-import           Data.Profunctor.Traversing (traverse', wander)
 import qualified Fresnel.Getter as Getter
 import qualified Fresnel.Lens as Lens
-import           Fresnel.Optic
 import qualified Fresnel.Setter as Setter
-import qualified Fresnel.Traversal as Traversal
 
 zoom :: Has (State s) sig m => Lens.Lens' s a -> StateC a m () -> m ()
 zoom lens action = lens <~> (`execState` action)
@@ -83,61 +69,3 @@ modifying o = modify . Setter.over o
 
 assign :: Has (State s) sig m => Setter.Setter s s a b -> b -> m ()
 assign o = modify . Setter.set o
-
-
-(^?) :: s -> Optic' (ForgetF Maybe a) s a -> Maybe a
-(^?) = flip preview
-
-infixl 8 ^?
-
-preview :: Optic' (ForgetF Maybe a) s a -> s -> Maybe a
-preview o = previews o id
-
-previews :: Optic' (ForgetF Maybe r) s a -> (a -> r) -> (s -> Maybe r)
-previews o f = runForgetF (o (ForgetF (Just . f)))
-
-
-newtype ForgetF f r a b = ForgetF { runForgetF :: a -> f r }
-  deriving (Functor)
-
-instance Profunctor (ForgetF f r) where
-  dimap f _ = ForgetF . lmap f . runForgetF
-
-instance Alternative f => Choice (ForgetF f r) where
-  left'  (ForgetF r) = ForgetF (either r (const empty))
-  right' (ForgetF r) = ForgetF (either (const empty) r)
-
-
-class Ixed a where
-  type Index a
-  type IxValue a
-
-  ix :: Index a -> Traversal.Traversal' a (IxValue a)
-
-instance Ord k => Ixed (Map.Map k v) where
-  type Index (Map.Map k v) = k
-  type IxValue (Map.Map k v) = v
-  ix k = wander $ \ f m -> case Map.lookup k m of
-    Just v  -> fmap (\ v' -> Map.insert k v' m) (f v)
-    Nothing -> pure m
-
-instance Ixed (IntMap.IntMap v) where
-  type Index (IntMap.IntMap v) = IntMap.Key
-  type IxValue (IntMap.IntMap v) = v
-  ix k = wander $ \ f m -> case IntMap.lookup k m of
-    Just v  -> fmap (\ v' -> IntMap.insert k v' m) (f v)
-    Nothing -> pure m
-
-
-class Ixed a => At a where
-  at :: Index a -> Lens.Lens' a (Maybe (IxValue a))
-
-instance Ord k => At (Map.Map k v) where
-  at k = Lens.lens (Map.lookup k) (\ m v -> maybe (Map.delete k m) (\ v -> Map.insert k v m) v)
-
-instance At (IntMap.IntMap v) where
-  at k = Lens.lens (IntMap.lookup k) (\ m v -> maybe (IntMap.delete k m) (\ v -> IntMap.insert k v m) v)
-
-
-ixAt :: At a => Index a -> Traversal.Traversal' a (IxValue a)
-ixAt i = at i . traverse'

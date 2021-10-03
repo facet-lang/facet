@@ -65,7 +65,7 @@ import           Facet.Functor.Synth
 import           Facet.Graph as Graph
 import           Facet.Interface
 import           Facet.Kind
-import           Facet.Lens hiding (Index, use)
+import           Facet.Lens hiding (use)
 import           Facet.Module
 import           Facet.Name hiding (L, R)
 import           Facet.Pattern

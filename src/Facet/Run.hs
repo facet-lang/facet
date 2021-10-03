@@ -16,6 +16,7 @@ import           Facet.Lens
 import           Facet.Print (quietOptions)
 import           Facet.Source as Source
 import           Facet.Style
+import           Fresnel.At
 import           Fresnel.Getter ((^.))
 import           System.Exit
 

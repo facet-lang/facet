@@ -26,13 +26,14 @@ import           Data.Foldable (for_)
 import qualified Data.Map as Map
 import           Data.Monoid (Endo(..))
 import qualified Data.Set as Set
-import           Facet.Lens
 import           Facet.Module
 import           Facet.Name
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty (fromSnoc, toSnoc)
 import           Facet.Syntax
+import           Fresnel.At
 import           Fresnel.Iso
+import           Fresnel.Ixed
 
 newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Maybe Module) }
   deriving (Monoid, Semigroup)

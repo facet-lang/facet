@@ -50,6 +50,7 @@ import           Facet.Source
 import           Facet.Style
 import qualified Facet.Surface.Module as Import (Import(..))
 import           Facet.Syntax as S
+import           Fresnel.At (at)
 import           Fresnel.Getter ((^.))
 import           Fresnel.Lens (Lens, Lens', lens)
 import           Silkscreen

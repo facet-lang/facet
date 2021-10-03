@@ -61,7 +61,7 @@ import           Facet.Functor.Synth
 import           Facet.Graph
 import           Facet.Interface
 import           Facet.Kind
-import           Facet.Lens as Lens (At(..), Ixed(..), locally, view, views, (.=), (<~))
+import           Facet.Lens as Lens (locally, view, views, (.=), (<~))
 import           Facet.Module as Module
 import           Facet.Name
 import           Facet.Pattern
@@ -79,6 +79,8 @@ import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
+import           Fresnel.At as At
+import           Fresnel.Ixed
 import           Fresnel.Prism (Prism')
 import           Fresnel.Review (review)
 import           Fresnel.Setter (Setter')
@@ -347,7 +349,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
       t' <- runModule $ elabTermDef t <==: _T
       scope_.decls_.ix dname .= DTerm (Just t') _T
 
-letrec :: (Has (State s) sig m, At a) => Setter' s a -> Lens.Index a -> Traversal' (Lens.IxValue a) b -> Lens.IxValue a -> m b -> m ()
+letrec :: (Has (State s) sig m, At a) => Setter' s a -> At.Index a -> Traversal' (IxValue a) b -> IxValue a -> m b -> m ()
 letrec getter key projection initial final = do
   getter.at key .= Just initial
   getter.ix key.projection <~ final
