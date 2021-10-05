@@ -116,13 +116,13 @@ data Classifier
   | CT Type
 
 class Classified t where
-  classified :: Prism' Classifier t
+  classified :: t -> Classifier
 
 instance Classified Kind where
-  classified = prism' CK (\case{ CK _K -> pure _K ; _ -> empty })
+  classified = CK
 
 instance Classified Type where
-  classified = prism' CT (\case{ CT _T -> pure _T ; _ -> empty })
+  classified = CT
 
 
 occursIn :: Meta -> Level -> Type -> Bool

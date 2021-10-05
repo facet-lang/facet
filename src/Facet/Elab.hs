@@ -85,7 +85,6 @@ import           Facet.Vars as Vars
 import           Fresnel.Fold ((^?))
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Prism (Prism')
-import           Fresnel.Review (review)
 import           GHC.Stack
 import           Prelude hiding (span, zipWith)
 
@@ -285,7 +284,7 @@ warn reason = do
 -- Patterns
 
 assertMatch :: (HasCallStack, Has (Throw Err) sig m, Classified s) => Prism' s a -> String -> s -> Elab m a
-assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act (review classified _T))) pure (_T ^? pat)
+assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act (classified _T))) pure (_T ^? pat)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name, Quantity, Type, Type)
 assertFunction = assertMatch _Arrow "_ -> _"
