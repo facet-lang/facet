@@ -2,7 +2,7 @@
 module Facet.Elab.Type
 ( -- * Types
   tvar
-, _String
+, Facet.Elab.Type._String
 , forAll
 , synthType
   -- * Judgements
@@ -64,7 +64,7 @@ arrow mk a b = do
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Elab m (a :==> Kind) -> Elab m (b :==> Kind) -> Elab m (c :==> Kind)
 app mk f a = do
   f' :==> _F <- f
-  (_ ::: _A, _B) <- assertTypeConstructor _F
+  (_, _A, _B) <- assertTypeConstructor _F
   -- FIXME: assert that the usage is zero
   a' <- switch a <==: _A
   pure $ mk f' a' :==> _B
@@ -81,7 +81,7 @@ comp s t = do
 synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> Elab m (TX.Type :==> Kind)
 synthType (S.Ann s _ e) = pushSpan s $ case e of
   S.TVar n          -> tvar n
-  S.TString         -> _String
+  S.TString         -> Facet.Elab.Type._String
   S.TForAll n t b   -> forAll (n ::: t) (synthType b)
   S.TArrow  n q a b -> arrow (TX.Arrow n (maybe Many interpretMul q)) (synthType a) (synthType b)
   S.TComp s t       -> comp (map synthInterface s) (synthType t)
@@ -101,8 +101,8 @@ synthInterface (S.Ann s _ (S.Interface h sp)) = pushSpan s $ do
 
 -- Assertions
 
-assertTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => Kind -> Elab m (Maybe Name ::: Kind, Kind)
-assertTypeConstructor = assertMatch (\case{ KArrow n t b -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _"
+assertTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => Kind -> Elab m (Maybe Name, Kind, Kind)
+assertTypeConstructor = assertMatch _KArrow "_ -> _"
 
 
 -- Judgements

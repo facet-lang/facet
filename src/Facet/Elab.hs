@@ -82,7 +82,9 @@ import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as TN
 import           Facet.Usage as Usage
 import           Facet.Vars as Vars
+import           Fresnel.Fold ((^?))
 import           Fresnel.Lens (Lens', lens)
+import           Fresnel.Prism (Prism')
 import           Fresnel.Review (review)
 import           GHC.Stack
 import           Prelude hiding (span, zipWith)
@@ -282,11 +284,11 @@ warn reason = do
 
 -- Patterns
 
-assertMatch :: (HasCallStack, Has (Throw Err) sig m, Classified t) => (t -> Maybe out) -> String -> t -> Elab m out
-assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act (review classified _T))) pure (pat _T)
+assertMatch :: (HasCallStack, Has (Throw Err) sig m, Classified s) => Prism' s a -> String -> s -> Elab m a
+assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act (review classified _T))) pure (_T ^? pat)
 
-assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name ::: (Quantity, Type), Type)
-assertFunction = assertMatch (\case{ TN.Arrow n q t b -> pure (n ::: (q, t), b) ; _ -> Nothing }) "_ -> _"
+assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name, Quantity, Type, Type)
+assertFunction = assertMatch _Arrow "_ -> _"
 
 
 -- Unification

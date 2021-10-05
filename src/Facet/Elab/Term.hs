@@ -124,14 +124,14 @@ hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n (CT _T)
 
 tlam :: (HasCallStack, Has (Throw Err) sig m) => Type <==: Elab m Term -> Type <==: Elab m Term
 tlam b = Check $ \ _T -> do
-  (n ::: _A, _B) <- assertQuantifier _T
+  (n, _A, _B) <- assertQuantifier _T
   d <- depth
   (zero, PVar (n :==> CK _A)) |- check (b ::: _B (T.free (LName (getUsed d) n)))
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name :==> Classifier)), Type <==: Elab m Term)] -> Type <==: Elab m Term
 lam cs = Check $ \ _T -> do
-  (_A, _B) <- assertTacitFunction _T
-  Lam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
+  (_, q, _A, _B) <- assertTacitFunction _T
+  Lam <$> traverse (\ (p, b) -> bind (p ::: (q, _A)) (check (b ::: _B))) cs
 
 lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Classifier)) -> Type <==: Elab m Term -> Type <==: Elab m Term
 lam1 p b = lam [(p, b)]
@@ -139,7 +139,7 @@ lam1 p b = lam [(p, b)]
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (a :==> Type)) -> (HasCallStack => Type <==: Elab m b) -> Elab m (c :==> Type)
 app mk operator operand = do
   f' :==> _F <- operator
-  (_ ::: (q, _A), _B) <- assertFunction _F
+  (_, q, _A, _B) <- assertFunction _F
   a' <- censor @Usage (q ><<) $ check (operand ::: _A)
   pure $ mk f' a' :==> _B
 
@@ -182,7 +182,7 @@ varP n = Bind $ \ _A k -> k (PVar (n :==> CT (wrap _A)))
 conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (Pattern (Name :==> Classifier))] -> Bind m (Pattern (Name :==> Classifier))
 conP n fs = Bind $ \ _A k -> do
   n' :=: _ ::: _T <- resolveC n
-  _T' <- maybe (pure _T) (foldl' (\ _T _A -> ($ _A) . snd <$> (_T >>= assertQuantifier)) (pure _T) . snd) (unNeutral _A)
+  _T' <- maybe (pure _T) (foldl' (\ _T _A -> do t <- _T ; (_, _, b) <- assertQuantifier t ; pure (b _A)) (pure _T) . snd) (unNeutral _A)
   fs' <- runBind (fieldsP fs) _T' (\ (fs, _T) -> fs <$ unify (Exp _A) (Act _T))
   k $ PCon n' (fromList fs')
 
@@ -190,7 +190,7 @@ fieldsP :: (HasCallStack, Has (Throw Err) sig m) => [Bind m a] -> Bind m ([a], T
 fieldsP = foldr cons nil
   where
   cons p ps = Bind $ \ _A k -> do
-    (_ ::: (_, _A'), _A'') <- assertFunction _A
+    (_, _, _A', _A'') <- assertFunction _A
     runBind p _A' $ \ p' -> runBind ps _A'' (k . first (p' :))
   nil = Bind $ \ _T k -> k ([], _T)
 
@@ -357,16 +357,16 @@ letrec getter key projection initial final = do
 
 -- Errors
 
-assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name ::: Kind, Type -> Type)
-assertQuantifier = assertMatch (\case{ T.ForAll n t b -> pure (n ::: t, b) ; _ -> Nothing }) "{_} -> _"
+assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name, Kind, Type -> Type)
+assertQuantifier = assertMatch _ForAll "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
-assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m ((Quantity, Type), Type)
-assertTacitFunction = assertMatch (\case{ T.Arrow Nothing q t b -> pure ((q, t), b) ; _ -> Nothing }) "_ -> _"
+assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name, Quantity, Type, Type)
+assertTacitFunction = assertMatch _Arrow "_ -> _"
 
 -- | Expect a computation type with effects.
 assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Signature Type, Type)
-assertComp = assertMatch unComp "[_] _"
+assertComp = assertMatch _Comp "[_] _"
 
 
 -- Elaboration

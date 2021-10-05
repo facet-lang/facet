@@ -2,6 +2,11 @@
 module Facet.Type.Norm
 ( -- * Types
   Type(..)
+, _String
+, _ForAll
+, _Arrow
+, _Ne
+, _Comp
 , global
 , free
 , metavar
@@ -63,6 +68,22 @@ instance Quote Type TX.Type where
     Arrow n q a b -> TX.Arrow n q (quote d a) (quote d b)
     Comp s t      -> TX.Comp (mapSignature (quote d) s) (quote d t)
     Ne n sp       -> foldl' (&) (TX.Var (toIndexed d n)) (flip TX.App . quote d <$> sp)
+
+
+_String :: Prism' Type ()
+_String = prism' (const String) (\case{ String -> Just () ; _ -> Nothing })
+
+_ForAll :: Prism' Type (Name, Kind, Type -> Type)
+_ForAll = prism' (\ (n, k, b) -> ForAll n k b) (\case{ ForAll n k b -> Just (n, k, b) ; _ -> Nothing })
+
+_Arrow :: Prism' Type (Maybe Name, Quantity, Type, Type)
+_Arrow = prism' (\ (n, q, a, b) -> Arrow n q a b) (\case{ Arrow n q a b -> Just (n, q, a, b) ; _ -> Nothing })
+
+_Ne :: Prism' Type (Var (Either Meta (LName Level)), Snoc Type)
+_Ne = prism' (uncurry Ne) (\case{ Ne c ts -> Just (c, ts) ; _ -> Nothing })
+
+_Comp :: Prism' Type (Signature Type, Type)
+_Comp = prism' (uncurry Comp) (\case{ Comp sig t -> Just (sig, t) ; _ -> Nothing })
 
 
 global :: RName -> Type
