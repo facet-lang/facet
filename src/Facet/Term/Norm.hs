@@ -16,7 +16,6 @@ import           Facet.Quote
 import           Facet.Semialign (zipWithM)
 import           Facet.Snoc
 import           Facet.Syntax
-import qualified Facet.Term.Class as C
 import qualified Facet.Term.Expr as X
 
 data Term
@@ -27,15 +26,6 @@ data Term
   | Dict [RName :=: Term]
   | Comp [RName :=: Name] (Pattern (Name :=: Term) -> Term)
   deriving (Eq, Ord, Show) via Quoting X.Term Term
-
-instance C.Term Term where
-  string = String
-  con = Con
-  lam = Lam
-  var = (`Ne` Nil)
-  ($$) = napp
-  dict = Dict
-  comp = Comp
 
 instance Quote Term X.Term where
   quote d = \case
