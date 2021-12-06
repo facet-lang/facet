@@ -40,5 +40,5 @@ class Term term coterm | coterm -> term, term -> coterm where
 
 data term :|: coterm = term :|: coterm
 
-instance (Quote term1 term2, Quote coterm1 coterm2)  => Quote (term1 :|: coterm1) (term2 :|: coterm2) where
+instance (Quote term1 term2, Quote coterm1 coterm2) => Quote (term1 :|: coterm1) (term2 :|: coterm2) where
   quote d (term :|: coterm) = quote d term :|: quote d coterm
