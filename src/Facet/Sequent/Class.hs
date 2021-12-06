@@ -13,7 +13,7 @@ class Term term coterm command | coterm -> term command, term -> coterm command,
   var :: Var (LName Level) -> term
   µR :: (coterm -> command) -> term
   funR :: [(Pattern Name, Pattern (Name :=: term) -> term)] -> term
-  conR :: RName -> term
+  conR :: RName -> [term] -> term
   stringR :: Text -> term
   dictR :: [RName :=: term] -> term
   compR :: [RName :=: Name] -> (Pattern (Name :=: term) -> term) -> term
