@@ -1,6 +1,9 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Sequent.Class
-( Term(..)
+( -- * Term abstraction
+  Term(..)
+  -- * Commands
+, Command(..)
 ) where
 
 import Data.Text (Text)
@@ -8,10 +11,12 @@ import Facet.Name (LName, Level, Name, RName)
 import Facet.Pattern (Pattern)
 import Facet.Syntax (Var, (:=:))
 
-class Term term coterm command | coterm -> term command, term -> coterm command, command -> term coterm where
+-- * Term abstraction
+
+class Term term coterm | coterm -> term, term -> coterm where
   -- Terms
   var :: Var (LName Level) -> term
-  µR :: Name -> (coterm -> command) -> term
+  µR :: Name -> (coterm -> Command term coterm) -> term
   funR :: [(Pattern Name, Pattern (Name :=: term) -> term)] -> term
   conR :: RName -> [term] -> term
   stringR :: Text -> term
@@ -20,10 +25,15 @@ class Term term coterm command | coterm -> term command, term -> coterm command,
 
   -- Coterms
   covar :: Var (LName Level) -> coterm
-  µL :: Name -> (term -> command) -> coterm
+  µL :: Name -> (term -> Command term coterm) -> coterm
   funL :: term -> coterm -> coterm
 
   -- Commands
-  (|||) :: term -> coterm -> command
+  (|||) :: term -> coterm -> Command term coterm
 
   infix 1 |||
+
+
+-- * Commands
+
+data Command term coterm = term :|: coterm

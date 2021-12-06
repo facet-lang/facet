@@ -4,19 +4,20 @@ module Facet.Sequent.Expr
   -- * Coterms
 , Coterm(..)
   -- * Commands
-, Command(..)
+, C.Command(..)
 ) where
 
-import Data.Text (Text)
-import Facet.Name
-import Facet.Pattern
-import Facet.Syntax
+import           Data.Text (Text)
+import           Facet.Name
+import           Facet.Pattern
+import qualified Facet.Sequent.Class as C
+import           Facet.Syntax
 
 -- Terms
 
 data Term
   = Var (Var (LName Index))
-  | MuR Name Command
+  | MuR Name (C.Command Term Coterm)
   | FunR [(Pattern Name, Term)]
   | ConR RName [Term]
   | StringR Text
@@ -28,10 +29,5 @@ data Term
 
 data Coterm
   = Covar (Var (LName Index))
-  | MuL Name Command
+  | MuL Name (C.Command Term Coterm)
   | FunL Term Coterm
-
-
--- Commands
-
-data Command = Term :|: Coterm
