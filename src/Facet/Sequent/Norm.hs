@@ -7,10 +7,11 @@ module Facet.Sequent.Norm
 , Command(..)
 ) where
 
-import Data.Text (Text)
-import Facet.Name
-import Facet.Pattern
-import Facet.Syntax
+import           Data.Text (Text)
+import           Facet.Name
+import           Facet.Pattern
+import qualified Facet.Sequent.Class as Class
+import           Facet.Syntax
 
 -- Terms
 
@@ -35,3 +36,19 @@ data Coterm
 -- Commands
 
 data Command = Term :|: Coterm
+
+
+instance Class.Term Term Coterm Command where
+  var = Var
+  µR = MuR
+  funR = FunR
+  conR = ConR
+  stringR = StringR
+  dictR = DictR
+  compR = CompR
+
+  covar = Covar
+  µL = MuL
+  funL = FunL
+
+  (|||) = (:|:)
