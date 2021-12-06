@@ -114,6 +114,7 @@ library
     Facet.Run
     Facet.Semialign
     Facet.Semiring
+    Facet.Sequent.Norm
     Facet.Snoc
     Facet.Snoc.NonEmpty
     Facet.Source
