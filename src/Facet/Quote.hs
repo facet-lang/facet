@@ -37,7 +37,13 @@ class Quote v t | v -> t where
 quoteBinder :: Quote v t => (Used -> u) -> Used -> (u -> v) -> t
 quoteBinder = quoteBinderWith quote
 
-quoteBinderWith :: (Used -> v -> t) -> (Used -> u) -> Used -> (u -> v) -> t
+-- | Quote binding syntax using the given a quotation function.
+quoteBinderWith
+  :: (Used -> v -> t) -- ^ Quotation of values back to termss.
+  -> (Used -> u)      -- ^ Variable construction.
+  -> Used             -- ^ The level that the term will be inserted at.
+  -> (u -> v)         -- ^ The higher-order function mapping variables to normalized values.
+  -> t                -- ^ A term representing the position in which the variable is bound.
 quoteBinderWith quote var d f = quote (succ d) (f (var d))
 
 
