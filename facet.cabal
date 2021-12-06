@@ -115,6 +115,7 @@ library
     Facet.Semialign
     Facet.Semiring
     Facet.Sequent.Class
+    Facet.Sequent.Expr
     Facet.Sequent.Norm
     Facet.Snoc
     Facet.Snoc.NonEmpty
