@@ -17,7 +17,7 @@ import           Facet.Syntax
 
 data Term
   = Var (Var (LName Level))
-  | MuR (Coterm -> Command)
+  | MuR Name (Coterm -> Command)
   | FunR [(Pattern Name, Pattern (Name :=: Term) -> Term)]
   | ConR RName [Term]
   | StringR Text

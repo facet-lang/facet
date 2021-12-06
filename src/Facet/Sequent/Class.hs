@@ -11,7 +11,7 @@ import Facet.Syntax (Var, (:=:))
 class Term term coterm command | coterm -> term command, term -> coterm command, command -> term coterm where
   -- Terms
   var :: Var (LName Level) -> term
-  µR :: (coterm -> command) -> term
+  µR :: Name -> (coterm -> command) -> term
   funR :: [(Pattern Name, Pattern (Name :=: term) -> term)] -> term
   conR :: RName -> [term] -> term
   stringR :: Text -> term
