@@ -3,7 +3,7 @@ module Facet.Sequent.Class
 ( -- * Term abstraction
   Term(..)
   -- * Commands
-, Command(..)
+, (:|:)(..)
 ) where
 
 import Data.Text (Text)
@@ -16,7 +16,7 @@ import Facet.Syntax (Var, (:=:))
 class Term term coterm | coterm -> term, term -> coterm where
   -- Terms
   var :: Var (LName Level) -> term
-  µR :: Name -> (coterm -> Command term coterm) -> term
+  µR :: Name -> (coterm -> term :|: coterm) -> term
   funR :: [(Pattern Name, Pattern (Name :=: term) -> term)] -> term
   conR :: RName -> [term] -> term
   stringR :: Text -> term
@@ -25,15 +25,15 @@ class Term term coterm | coterm -> term, term -> coterm where
 
   -- Coterms
   covar :: Var (LName Level) -> coterm
-  µL :: Name -> (term -> Command term coterm) -> coterm
+  µL :: Name -> (term -> term :|: coterm) -> coterm
   funL :: term -> coterm -> coterm
 
   -- Commands
-  (|||) :: term -> coterm -> Command term coterm
+  (|||) :: term -> coterm -> term :|: coterm
 
   infix 1 |||
 
 
 -- * Commands
 
-data Command term coterm = term :|: coterm
+data term :|: coterm = term :|: coterm

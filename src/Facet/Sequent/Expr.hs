@@ -4,7 +4,7 @@ module Facet.Sequent.Expr
   -- * Coterms
 , Coterm(..)
   -- * Commands
-, C.Command(..)
+, (C.:|:)(..)
 ) where
 
 import           Data.Text (Text)
@@ -17,7 +17,7 @@ import           Facet.Syntax
 
 data Term
   = Var (Var (LName Index))
-  | MuR Name (C.Command Term Coterm)
+  | MuR Name (Term C.:|: Coterm)
   | FunR [(Pattern Name, Term)]
   | ConR RName [Term]
   | StringR Text
@@ -29,5 +29,5 @@ data Term
 
 data Coterm
   = Covar (Var (LName Index))
-  | MuL Name (C.Command Term Coterm)
+  | MuL Name (Term C.:|: Coterm)
   | FunL Term Coterm
