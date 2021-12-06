@@ -82,5 +82,9 @@ newtype Quoter a = Quoter (Used -> a)
 runQuoter :: Used -> Quoter a -> a
 runQuoter d (Quoter f) = f d
 
-binder :: (Used -> Level -> a) -> (Quoter a -> Quoter b) -> Quoter b
+-- | Build quoted first-order syntax from a higher-order representation.
+binder
+  :: (Used -> Level -> a)   -- ^ Constructor for variables in @a@.
+  -> (Quoter a -> Quoter b) -- ^ The binder's scope, represented as a Haskell function mapping variables' values to complete terms.
+  -> Quoter b               -- ^ A 'Quoter' of the first-order term.
 binder with f = Quoter (\ d -> runQuoter (d + 1) (f (Quoter (`with` getUsed d))))
