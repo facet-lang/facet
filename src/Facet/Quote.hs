@@ -73,6 +73,9 @@ instance (Quote v t, Show t) => Show (Quoting t v) where
 
 -- Quoters
 
+-- | 'Quoter' is used to construct first-order representations of syntax directly from higher-order  APIs in final tagless style.
+--
+-- This typically requires that quotation keep track of the current de Bruijn level, but this data is typically not recorded in ASTs. 'Quoter' instead constructs a function parameterized by the initial level, and thus passing around the current level as quoting proceeds in exactly the same manner as the reader monad.
 newtype Quoter a = Quoter (Used -> a)
   deriving (Applicative, Functor, Monad)
 
