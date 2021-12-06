@@ -1,4 +1,5 @@
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Sequent.Class
 ( -- * Term abstraction
   Term(..)
@@ -9,6 +10,7 @@ module Facet.Sequent.Class
 import Data.Text (Text)
 import Facet.Name (LName, Level, Name, RName)
 import Facet.Pattern (Pattern)
+import Facet.Quote (Quote(..))
 import Facet.Syntax (Var, (:=:))
 
 -- * Term abstraction
@@ -37,3 +39,6 @@ class Term term coterm | coterm -> term, term -> coterm where
 -- * Commands
 
 data term :|: coterm = term :|: coterm
+
+instance (Quote term1 term2, Quote coterm1 coterm2)  => Quote (term1 :|: coterm1) (term2 :|: coterm2) where
+  quote d (term :|: coterm) = quote d term :|: quote d coterm

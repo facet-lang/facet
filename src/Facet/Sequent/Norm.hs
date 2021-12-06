@@ -75,6 +75,3 @@ instance Quote Coterm X.Coterm where
     Covar v  -> X.Covar (toIndexed d v)
     MuL n b  -> X.MuL n (quoteBinder (Var . Free . (`LName` n) . getUsed) d b)
     FunL a b -> X.FunL (quote d a) (quote d b)
-
-instance Quote (Term Class.:|: Coterm) (X.Term Class.:|: X.Coterm) where
-  quote d (term Class.:|: coterm) = quote d term Class.:|: quote d coterm
