@@ -7,6 +7,9 @@ module Facet.Sequent.Class
 , (:|:)(..)
 ) where
 
+import Data.Bifoldable
+import Data.Bifunctor
+import Data.Bitraversable
 import Data.Text (Text)
 import Facet.Name (LName, Level, Name, RName)
 import Facet.Pattern (Pattern)
@@ -42,3 +45,12 @@ data term :|: coterm = term :|: coterm
 
 instance (Quote term1 term2, Quote coterm1 coterm2) => Quote (term1 :|: coterm1) (term2 :|: coterm2) where
   quote d (term :|: coterm) = quote d term :|: quote d coterm
+
+instance Bifoldable (:|:) where
+  bifoldMap = bifoldMapDefault
+
+instance Bifunctor (:|:) where
+  bimap = bimapDefault
+
+instance Bitraversable (:|:) where
+  bitraverse f g (a :|: b) = (:|:) <$> f a <*> g b
