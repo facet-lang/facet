@@ -29,7 +29,7 @@ data Term
 
 data Coterm
   = Covar (Var (LName Level))
-  | MuL (Term -> Command)
+  | MuL Name (Term -> Command)
   | FunL Term Coterm
 
 

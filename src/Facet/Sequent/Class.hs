@@ -20,7 +20,7 @@ class Term term coterm command | coterm -> term command, term -> coterm command,
 
   -- Coterms
   covar :: Var (LName Level) -> coterm
-  µL :: (term -> command) -> coterm
+  µL :: Name -> (term -> command) -> coterm
   funL :: term -> coterm -> coterm
 
   -- Commands
