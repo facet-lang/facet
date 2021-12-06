@@ -19,8 +19,20 @@ import Facet.Name (Level, Used(..))
 
 -- Quotation
 
+-- | @'Quote' v t@ relates (normalized) values in @v@ to terms in @t@.
+--
+-- Values are expected to have been created by evaluating terms, and as such the properties
+--
+-- prop> 'quote' 0 . eval 'mempty' = 'id'
+-- prop> eval 'mempty' . 'quote' 0 = 'id'
+--
+-- (i.e. that @'quote'@  is both a left and right inverse of @eval@) should hold for some specific value of @eval@, modulo any effects it performs.
 class Quote v t | v -> t where
-  quote :: Used -> v -> t
+  -- | Quote a value back to an equivalent term.
+  quote
+    :: Used -- ^ The level from which to start quoting. If the resulting term is to be used under @n :: 'Level'@ binders, pass @'Used' n@.
+    -> v    -- ^ The value to quote.
+    -> t    -- ^ An equivalent term.
 
 quoteBinder :: Quote v t => (Used -> u) -> Used -> (u -> v) -> t
 quoteBinder = quoteBinderWith quote
