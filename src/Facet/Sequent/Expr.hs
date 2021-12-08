@@ -43,7 +43,7 @@ instance C.Term (Quoter Term) (Quoter Coterm) where
   conR n fs = ConR n <$> sequenceA fs
   stringR = pure . StringR
   dictR i = DictR <$> traverse sequenceA i
-  compR i b = CompR <$> traverse pure i <*> fmap snd (clause (PDict i) b)
+  compR i b = CompR i . snd <$> clause (PDict i) b
 
   covar v = Quoter (\ d -> Covar (toIndexed d v))
   µL n b = MuL n <$> binder (\ d d' -> var n (toIndexed d d')) (bisequenceA . b)
