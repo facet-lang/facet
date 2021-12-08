@@ -10,6 +10,7 @@ module Facet.Elab.Term
 , tlam
 , lam
 , app
+, appS
 , string
 , let'
 , comp
@@ -66,6 +67,7 @@ import           Facet.Module as Module
 import           Facet.Name
 import           Facet.Pattern
 import           Facet.Semiring (Few(..), zero, (><<))
+import qualified Facet.Sequent.Class as S
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty as NE
 import           Facet.Source (Source)
@@ -142,6 +144,13 @@ app mk operator operand = do
   (_, q, _A, _B) <- assertFunction _F
   a' <- censor @Usage (q ><<) $ check (operand ::: _A)
   pure $ mk f' a' :==> _B
+
+appS :: (HasCallStack, Has (Throw Err) sig m) => S.Term t c => (HasCallStack => Elab m (t :==> Type)) -> (HasCallStack => Type <==: Elab m t) -> Elab m (t :==> Type)
+appS f a = do
+  f' :==> _F <- f
+  (_, q, _A, _B) <- assertFunction _F
+  a' <- censor @Usage (q ><<) $ check (a ::: _A)
+  pure $ S.µR __ (\ k -> f' S.:|: S.funL a' k) :==> _B
 
 
 string :: Text -> Elab m (Term :==> Type)
