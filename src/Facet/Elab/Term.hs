@@ -12,6 +12,7 @@ module Facet.Elab.Term
 , app
 , appS
 , string
+, stringS
 , let'
 , comp
   -- * Pattern combinators
@@ -155,6 +156,9 @@ appS f a = do
 
 string :: Text -> Elab m (Term :==> Type)
 string s = pure $ E.String s :==> T.String
+
+stringS :: S.Term t c => Text -> Elab m (t :==> Type)
+stringS s = pure $ S.stringR s :==> T.String
 
 
 let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Classifier)) -> Elab m (Term :==> Type) -> Type <==: Elab m Term -> Type <==: Elab m Term
